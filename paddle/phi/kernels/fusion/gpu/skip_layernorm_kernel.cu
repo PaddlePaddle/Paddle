@@ -42,7 +42,10 @@ void SkipLayerNormKernel(const Context &dev_ctx,
   for (size_t i = 0; i < x.dims().size(); i++) {
     num *= x.dims()[i];
   }
-  int hidden = x.dims()[2];
+  int64_t hidden = x.dims()[2];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   phi::funcs::SkipLayerNormFunctor<T> skip_layer_norm_func;
 
   if (std::is_same<T, phi::float16>::value) {

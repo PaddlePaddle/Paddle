@@ -19,7 +19,7 @@ import warnings
 from typing import TYPE_CHECKING
 
 from paddle.utils.decorator_utils import (
-    lp_pool_decorator,
+    lp_pool_layer_decorator,
     param_one_alias,
 )
 
@@ -445,7 +445,7 @@ class LPPool1D(Layer):
     data_format: DataLayout1D
     name: str | None
 
-    @lp_pool_decorator
+    @lp_pool_layer_decorator
     def __init__(
         self,
         norm_type: float,
@@ -562,7 +562,7 @@ class LPPool2D(Layer):
     data_format: DataLayout2D
     name: str | None
 
-    @lp_pool_decorator
+    @lp_pool_layer_decorator
     def __init__(
         self,
         norm_type: float,
@@ -1228,8 +1228,7 @@ class AdaptiveMaxPool1D(Layer):
         Output(i) &= max(Input[lstart:lend])
 
     Parameters:
-        output_size(int): The pool kernel size. If pool kernel size is a tuple or list,
-            it must contain one int.
+        output_size(int|list|tuple): The pool kernel size. It can be an integer, or a list or tuple containing a single integer.
         return_mask(bool, optional): If true, the index of max pooling point will be returned along
             with outputs. It cannot be set in average pooling type. Default False.
         name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`.
@@ -1277,14 +1276,14 @@ class AdaptiveMaxPool1D(Layer):
 
     """
 
-    output_size: int
+    output_size: Size1
     return_mask: bool
     name: str | None
 
     @param_one_alias(["return_mask", "return_indices"])
     def __init__(
         self,
-        output_size: int,
+        output_size: Size1,
         return_mask: bool = False,
         name: str | None = None,
     ) -> None:

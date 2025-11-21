@@ -14,14 +14,32 @@
 
 from __future__ import annotations
 
-import sys
-import types
-import warnings
-from contextlib import contextmanager
+from typing import TYPE_CHECKING, Any, NamedTuple
+
+import paddle
+from paddle import _C_ops
+from paddle.base.framework import Variable
+from paddle.framework import (
+    in_dynamic_mode,
+)
+from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 from . import nn  # noqa: F401
+from .proxy import (  # noqa: F401
+    disable_torch_proxy,
+    enable_torch_proxy,
+    extend_torch_proxy_blocked_modules,
+    use_torch_proxy_guard,
+)
+from .utils import _check_out_status
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from paddle import Tensor
 
 __all__ = [
+    'equal',
     'slogdet',
     'sort',
     'split',
@@ -33,23 +51,42 @@ __all__ = [
 ]
 
 
-from typing import TYPE_CHECKING, Any, NamedTuple
-
-import paddle
-from paddle import _C_ops
-from paddle.base import core
-from paddle.base.framework import Variable
-from paddle.framework import (
-    in_dynamic_mode,
+@ForbidKeywordsDecorator(
+    illegal_keys={"x", "y"},
+    func_name="paddle.compat.equal",
+    correct_name="paddle.equal",
 )
-from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+def equal(
+    input: Tensor,
+    other: Tensor,
+) -> bool:
+    """
 
-from .utils import _check_out_status
+    ``True`` if two tensors have the same size and elements, ``False`` otherwise.
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
+    Note:
+        Tensors containing NaNs are never equal to each other. Additionally, this function does not differentiate between the data types of the tensors during comparison.
 
-    from paddle import Tensor
+    Args:
+        input (Tensor): Tensor, data type is bool, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+        other (Tensor): Tensor, data type is bool, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+
+    Returns:
+        Bool: ``True`` if two tensors have the same size and elements, ``False`` otherwise.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> y = paddle.to_tensor([1, 3, 2])
+            >>> result1 = paddle.compat.equal(x, y)
+            >>> print(result1)
+            False
+    """
+
+    return paddle.equal_all(input, other).item()
 
 
 class MedianRetType(NamedTuple):

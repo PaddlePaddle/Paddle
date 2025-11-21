@@ -383,7 +383,10 @@ void FusedMultiTransformerINT8OpKernel(
 
     if (time_step) {  // generation decoder stage
       // [2, batch_size, num_head, max_seq_len, head_size]
-      int max_seq_len = cache_kv->dims()[3];
+      int64_t max_seq_len = cache_kv->dims()[3];
+      // TODO(large-tensor): downstream functors may still use int; guard until
+      // upgraded.
+
       phi::fusion::fmha<T>(dev_ctx,
                            qkv_out,
                            *qkv_bias,
@@ -426,7 +429,10 @@ void FusedMultiTransformerINT8OpKernel(
       const T *v_ptr = k_ptr + k_size;
 
       // [2, bsz, num_head, max_seq_len, head_dim]
-      int max_seq_len = cache_kv_out->dims()[3];
+      int64_t max_seq_len = cache_kv_out->dims()[3];
+      // TODO(large-tensor): downstream functors may still use int; guard until
+      // upgraded.
+
       T *cache_kv_data = cache_kv_out->data<T>();
       int64_t cache_k_size = bsz * num_head * max_seq_len * dim_head;
 

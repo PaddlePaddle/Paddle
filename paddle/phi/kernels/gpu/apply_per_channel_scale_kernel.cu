@@ -154,8 +154,14 @@ void ApplyPerChannelScaleKernel(const Context& dev_ctx,
                                 DenseTensor* out) {
 #ifdef PADDLE_WITH_CUDA
   using DataType = typename PDDataTypeTraits<T>::DataType;
-  int rows = x.dims()[0];
-  int cols = x.dims()[1];
+  int64_t rows = x.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t cols = x.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int elems = rows * cols;
   const T* x_data = x.data<T>();
   const T* scales_data = scales.data<T>();

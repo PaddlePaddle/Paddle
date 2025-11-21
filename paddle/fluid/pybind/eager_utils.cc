@@ -2169,7 +2169,7 @@ paddle::Tensor CreateTensorFromVarDesc(
 
   if (!autograd_meta->GetMutableGradNode()) {
     autograd_meta->SetGradNode(
-        std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+        std::make_shared<egr::GradNodeAccumulation>(tensor));
   }
 
   return tensor;
@@ -2648,7 +2648,8 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
   PyTypeObject* type = obj->ob_type;
   auto type_name = std::string(type->tp_name);
   if (type_name == "list" || type_name == "tuple" ||
-      type_name == "numpy.ndarray") {
+      type_name == "numpy.ndarray" ||
+      type_name == "paddle.base.libpaddle.Size") {
     std::vector<int64_t> value = CastPyArg2Longs(obj, op_type, arg_pos);
     return paddle::experimental::IntArray(value);
   } else if (type_name == "paddle.Tensor" || type_name == "Tensor") {

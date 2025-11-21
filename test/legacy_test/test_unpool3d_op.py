@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
 import numpy as np
@@ -52,22 +53,18 @@ def unpool3dmax_forward_naive(
     out_hsize = output_size[1]
     out_wsize = output_size[2]
     out = np.zeros((s0, s1, out_dsize, out_hsize, out_wsize))
-    for nidx in range(s0):
-        for cidx in range(s1):
-            for d in range(s2):
-                for h in range(s3):
-                    for w in range(s4):
-                        index = indices[nidx, cidx, d, h, w]
-                        didx = index // (out_wsize * out_hsize)
-                        hidx = (
-                            index - didx * out_hsize * out_wsize
-                        ) // out_wsize
-                        widx = (
-                            index - didx * out_hsize * out_wsize
-                        ) % out_wsize
-                        out[nidx, cidx, didx, hidx, widx] = input[
-                            nidx, cidx, d, h, w
-                        ]
+    for nidx, cidx, d, h, w in itertools.product(
+        range(s0),
+        range(s1),
+        range(s2),
+        range(s3),
+        range(s4),
+    ):
+        index = indices[nidx, cidx, d, h, w]
+        didx = index // (out_wsize * out_hsize)
+        hidx = (index - didx * out_hsize * out_wsize) // out_wsize
+        widx = (index - didx * out_hsize * out_wsize) % out_wsize
+        out[nidx, cidx, didx, hidx, widx] = input[nidx, cidx, d, h, w]
 
     return out
 

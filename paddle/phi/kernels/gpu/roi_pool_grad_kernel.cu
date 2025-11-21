@@ -104,7 +104,10 @@ void RoiPoolGradKernel(const Context& dev_ctx,
 
     auto gplace = dev_ctx.GetPlace();
     if (boxes_num) {
-      int boxes_batch_size = boxes_num->numel();
+      int64_t boxes_batch_size = boxes_num->numel();
+      // TODO(large-tensor): downstream functors may still use int; guard until
+      // upgraded.
+
       std::vector<int> boxes_num_list(boxes_batch_size);
       memory_utils::Copy(phi::CPUPlace(),
                          boxes_num_list.data(),

@@ -378,8 +378,14 @@ void WeightDequantize(const Context& dev_ctx,
                       const int32_t group_size,
                       DenseTensor* out) {
   using DataType = typename PDDataTypeTraits<T>::DataType;
-  int n = scale.dims()[0];
-  int k = x.dims()[1];
+  int64_t n = scale.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t k = x.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   PADDLE_ENFORCE_EQ(
       (k % NUMPERTHREAD == 0),
       true,

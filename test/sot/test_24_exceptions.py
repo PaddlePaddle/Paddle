@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
 import unittest
 
 from test_case_base import (
@@ -961,9 +962,13 @@ class TestBuiltinFunctionRaiseExceptionGuard(TestCaseBase):
             0,
         )
         self.assert_results(foo_mod, 10)
+        if sys.version_info >= (3, 14):
+            zero_mod_msg = "division by zero"
+        else:
+            zero_mod_msg = "integer (.)*modulo by zero"
         self.assert_exceptions(
             ZeroDivisionError,
-            "integer (.)*modulo by zero",
+            zero_mod_msg,
             foo_mod,
             0,
         )
