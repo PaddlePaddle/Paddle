@@ -28,6 +28,7 @@ void Pool2dKernel(const Context& dev_ctx,
                   const IntArray& kernel_size,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   bool ceil_mode,
                   bool exclusive,
                   const std::string& data_format,
@@ -53,6 +54,7 @@ void LPPool2dKernel(const Context& dev_ctx,
                     const float norm_type,
                     DenseTensor* out);
 
+//TODO:验证这个是什么东西
 template <typename T, typename Context>
 void Pool2dGPUDNNKernel(const Context& dev_ctx,
                         const DenseTensor& x,
@@ -74,6 +76,7 @@ void MaxPool2dWithIndexKernel(const Context& dev_ctx,
                               const std::vector<int>& kernel_size,
                               const std::vector<int>& strides,
                               const std::vector<int>& paddings,
+                              const std::vector<int>& dilations,
                               bool global_pooling,
                               bool adaptive,
                               bool ceil_mode,
