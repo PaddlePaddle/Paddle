@@ -2588,45 +2588,47 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   } else {
 #endif  // CUDA_VERSION >= 9010
     dev_ctx_.CublasCall([&](cublasHandle_t handle) {
-      /*
-      CUBlas<T>::GEMM_STRIDED_BATCH(handle,
-                                    cuTransB,
-                                    cuTransA,
-                                    static_cast<int>(N),
-                                    static_cast<int>(M),
-                                    static_cast<int>(K),
-                                    &alpha,
-                                    B,
-                                    static_cast<int>(ldb),
-                                    strideB,
-                                    A,
-                                    static_cast<int>(lda),
-                                    strideA,
-                                    &beta,
-                                    C,
-                                    static_cast<int>(ldc),
-                                    strideC,
-                                    static_cast<int>(batchCount));
-      */
-      CUBlas<T>::GEMM_STRIDED_BATCH(
-          handle,
-          (cuTransA == CUBLAS_OP_T) ? CUBLAS_OP_N : CUBLAS_OP_T,
-          (cuTransB == CUBLAS_OP_T) ? CUBLAS_OP_N : CUBLAS_OP_T,
-          static_cast<int>(M),
-          static_cast<int>(N),
-          static_cast<int>(K),
-          &alpha,
-          A,
-          static_cast<int>(lda),
-          strideA,
-          B,
-          static_cast<int>(ldb),
-          strideB,
-          &beta,
-          C,
-          static_cast<int>(ldc),
-          strideC,
-          static_cast<int>(batchCount));
+      if (ldc == 1 && M >= 1) {
+        CUBlas<T>::GEMM_STRIDED_BATCH(
+            handle,
+            (cuTransA == CUBLAS_OP_T) ? CUBLAS_OP_N : CUBLAS_OP_T,
+            (cuTransB == CUBLAS_OP_T) ? CUBLAS_OP_N : CUBLAS_OP_T,
+            static_cast<int>(M),
+            static_cast<int>(N),
+            static_cast<int>(K),
+            &alpha,
+            A,
+            static_cast<int>(lda),
+            strideA,
+            B,
+            static_cast<int>(ldb),
+            strideB,
+            &beta,
+            C,
+            static_cast<int>(ldc),
+            strideC,
+            static_cast<int>(batchCount));
+
+      } else {
+        CUBlas<T>::GEMM_STRIDED_BATCH(handle,
+                                      cuTransB,
+                                      cuTransA,
+                                      static_cast<int>(N),
+                                      static_cast<int>(M),
+                                      static_cast<int>(K),
+                                      &alpha,
+                                      B,
+                                      static_cast<int>(ldb),
+                                      strideB,
+                                      A,
+                                      static_cast<int>(lda),
+                                      strideA,
+                                      &beta,
+                                      C,
+                                      static_cast<int>(ldc),
+                                      strideC,
+                                      static_cast<int>(batchCount));
+      }
     });
 
 #if CUDA_VERSION >= 9010
