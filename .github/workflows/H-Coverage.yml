@@ -142,7 +142,9 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
           flashattn_version=$(git submodule status|grep flashattn|awk "{print \$1}"|sed "s#-##g")
+          echo flashattn_version:$flashattn_version
           url="https://xly-devops.bj.bcebos.com/gpups/flash-attention/cu90/flashattn_libs_${flashattn_version}.tar"
+          echo url:$url
           url_return=`curl -s -o /dev/null -w "%{http_code}" $url`
           if [ "$url_return" != "200" ];then
             echo "flashattn cache not found, please contact umiswing"
