@@ -264,7 +264,7 @@ class TorchProxyMetaFinder:
                     if isinstance(v, types.ModuleType):
                         v = ProxyModule(
                             v,
-                            f"{self._source}.{k}",
+                            f"{self._target_name}.{k}",
                             {
                                 kk.removeprefix(f"{k}."): vv
                                 for kk, vv in overrides.items()
