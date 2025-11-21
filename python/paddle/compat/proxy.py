@@ -95,8 +95,7 @@ class ProxyModule(types.ModuleType):
     def __getattr__(self, name: str) -> Any:
         if name in self._overrides:
             return self._overrides[name].get_value()
-        result = getattr(self._original_module, name)
-        return result
+        return getattr(self._original_module, name)
 
 
 GLOBAL_OVERRIDES: dict[str, OverriddenAttribute] = {
