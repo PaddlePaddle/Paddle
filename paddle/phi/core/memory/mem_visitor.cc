@@ -72,6 +72,19 @@ void TryAllocVisitor::Visit(
   VLOG(1) << "Visit VirtualMemoryAutoGrowthBestFitAllocator try_alloc_result:"
           << is_try_alloc_success_;
 }
+
+void VMMFreeBlocksInfoVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitAllocator* allocator) {
+  std::vector<std::pair<size_t, uintptr_t>> keys;
+  for (const auto& item : allocator->GetFreeBlocks()) {
+    size_t size = item.first.first;
+    uintptr_t addr = reinterpret_cast<uintptr_t>(item.first.second);
+    keys.emplace_back(size, addr);
+  }
+  if (!keys.empty()) {
+    free_blocks_info_.push_back(keys);
+  }
+}
 #endif
 }  // namespace memory
 }  // namespace paddle

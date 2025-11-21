@@ -174,6 +174,62 @@ class TryAllocVisitor : public AllocatorVisitor {
   const std::vector<size_t>& sizes_;
   bool is_try_alloc_success_ = false;
 };
+
+/**
+ * @brief Visitor class to retrieve free block information from a VMM allocator.
+ *
+ * Inherits from AllocatorVisitor, implementing the Visitor Pattern.
+ * The purpose of this class is to access a specific memory allocator's
+ * internal state (the list of free memory blocks) and extract key information
+ * (size and address) for external analysis or debugging.
+ */
+class VMMFreeBlocksInfoVisitor : public AllocatorVisitor {
+ public:
+  /**
+   * @brief Default Constructor.
+   */
+  VMMFreeBlocksInfoVisitor() {}
+
+  /**
+   * @brief Retrieves the collected information about the free memory blocks.
+   *
+   * The structure is a nested vector:
+   * Outer Vector: Represents different categories or lists within the
+   * allocator. Inner Vector: Contains pairs of (size, address) for the free
+   * blocks in that category. uintptr_t is used to safely store the memory
+   * address (void*) as an integer.
+   *
+   * @return A nested vector structure containing the size and integer address
+   * of all free blocks.
+   */
+  std::vector<std::vector<std::pair<size_t, uintptr_t>>> GetFreeBlocksInfo()
+      const {
+    return free_blocks_info_;
+  }
+
+  /**
+   * @brief Visits the VirtualMemoryAutoGrowthBestFitAllocator.
+   *
+   * This is the core implementation of the Visitor Pattern. When called,
+   * it accesses the `allocator` object's internal structure that holds the
+   * free block list(s) and populates the `free_blocks_info_` member variable
+   * with the necessary data.
+   *
+   * @param allocator Pointer to the memory allocator object whose free blocks
+   * information is to be extracted.
+   */
+  void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;
+
+ private:
+  /**
+   * @brief Stores the extracted free block information.
+   *
+   * This member is populated during the Visit() call. It is structured to
+   * hold lists of (size, address) pairs, where the outer vector typically
+   * distinguishes between different free lists (e.g., small, large blocks).
+   */
+  std::vector<std::vector<std::pair<size_t, uintptr_t>>> free_blocks_info_;
+};
 #endif
 
 }  // namespace memory

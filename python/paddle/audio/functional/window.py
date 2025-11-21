@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import math
+import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -21,8 +22,16 @@ import paddle
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import PlaceLike
 
     from ..features.layers import _WindowLiteral
+
+from paddle.base.framework import (
+    _current_expected_place,
+    _get_paddle_place,
+    core,
+    in_dynamic_or_pir_mode,
+)
 
 
 class WindowFunctionRegister:
@@ -445,3 +454,287 @@ def get_window(
     params = (win_length, *args)
     kwargs = {'sym': sym}
     return winfunc(*params, dtype=dtype, **kwargs)
+
+
+def _apply_window_postprocess(
+    w: Tensor,
+    *,
+    layout: str | None = None,
+    device: PlaceLike | None = None,
+    pin_memory: bool = False,
+    requires_grad: bool = False,
+) -> Tensor:
+    if layout is not None:
+        warnings.warn("layout only supports 'strided' in Paddle; ignored")
+
+    if in_dynamic_or_pir_mode():
+        device = (
+            _get_paddle_place(device)
+            if device is not None
+            else _current_expected_place()
+        )
+        if (
+            pin_memory
+            and paddle.in_dynamic_mode()
+            and device is not None
+            and not isinstance(
+                device, (core.CUDAPinnedPlace, core.XPUPinnedPlace)
+            )
+        ):
+            if isinstance(device, core.CUDAPlace) or (
+                isinstance(device, core.Place) and device.is_gpu_place()
+            ):
+                device = core.CUDAPinnedPlace()
+            elif isinstance(device, core.XPUPlace) or (
+                isinstance(device, core.Place) and device.is_xpu_place()
+            ):
+                device = core.XPUPinnedPlace()
+            else:
+                raise RuntimeError(
+                    f"Pinning memory is not supported for {device}"
+                )
+    w = w.to(device=device)
+    if pin_memory and paddle.in_dynamic_mode():
+        w = w.pin_memory()
+    if requires_grad is True:
+        w.stop_gradient = False
+    return w
+
+
+def hamming_window(
+    window_length: int,
+    periodic: bool = True,
+    alpha: float = 0.54,
+    beta: float = 0.46,
+    *,
+    dtype: str = 'float64',
+    layout: str | None = None,
+    device: PlaceLike | None = None,
+    pin_memory: bool = False,
+    requires_grad: bool = False,
+):
+    """
+    Compute a generalized Hamming window.
+
+    Args:
+        window_length (int): The size of the returned window. Must be positive.
+        periodic (bool, optional): If True, returns a window for use as a periodic function; if False, returns a symmetric window. Defaults to True.
+        alpha (float, optional): The coefficient α in the equation above. Defaults to 0.54.
+        beta (float, optional): The coefficient β in the equation above. Defaults to 0.46.
+        dtype (str, optional): The data type of the returned tensor. Defaults to 'float64'.
+        layout (str, optional): Only included for API consistency with PyTorch; ignored in Paddle. Defaults to None.
+        device(PlaceLike|None, optional): The desired device of returned tensor.
+            if None, uses the current device for the default tensor type (see paddle.device.set_device()).
+            device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
+        pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
+        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
+
+    Returns:
+        Tensor: A 1-D tensor of shape `(window_length,)` containing the Hamming window.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> win = paddle.hamming_window(400, requires_grad=True)
+            >>> win = paddle.hamming_window(256, alpha=0.5, beta=0.5)
+    """
+    w0 = get_window('hamming', window_length, fftbins=periodic, dtype=dtype)
+    alpha0, beta0 = 0.54, 0.46
+    B = beta / beta0
+    A = alpha - B * alpha0
+    w = A + B * w0
+    return _apply_window_postprocess(
+        w,
+        layout=layout,
+        device=device,
+        pin_memory=pin_memory,
+        requires_grad=requires_grad,
+    )
+
+
+def hann_window(
+    window_length: int,
+    periodic: bool = True,
+    *,
+    dtype: str = 'float64',
+    layout: str | None = None,
+    device: PlaceLike | None = None,
+    pin_memory: bool = False,
+    requires_grad: bool = False,
+):
+    """
+    Compute a Hann window.
+
+    Args:
+        window_length (int): The size of the returned window. Must be positive.
+        periodic (bool, optional): If True, returns a window for use as a periodic function; if False, returns a symmetric window. Defaults to True.
+        dtype (str, optional): The data type of the returned tensor. Defaults to 'float64'.
+        layout (str, optional): Only included for API consistency with PyTorch; ignored in Paddle. Defaults to None.
+        device(PlaceLike|None, optional): The desired device of returned tensor.
+            if None, uses the current device for the default tensor type (see paddle.device.set_device()).
+            device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
+        pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
+        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
+
+    Returns:
+        Tensor: A 1-D tensor of shape `(window_length,)` containing the Hann window.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> win = paddle.hann_window(512)
+            >>> win = paddle.hann_window(512, requires_grad=True)
+    """
+    w = get_window('hann', window_length, fftbins=periodic, dtype=dtype)
+    return _apply_window_postprocess(
+        w,
+        layout=layout,
+        device=device,
+        pin_memory=pin_memory,
+        requires_grad=requires_grad,
+    )
+
+
+def kaiser_window(
+    window_length: int,
+    periodic: bool = True,
+    beta: float = 12.0,
+    *,
+    dtype: str = 'float64',
+    layout: str | None = None,
+    device: PlaceLike | None = None,
+    pin_memory: bool = False,
+    requires_grad: bool = False,
+):
+    """
+    Compute a Kaiser window.
+
+    Args:
+        window_length (int): The size of the returned window. Must be positive.
+        periodic (bool, optional): If True, returns a window for use as a periodic function; if False, returns a symmetric window. Defaults to True.
+        beta (float, optional): Shape parameter for the window. Defaults to 12.0.
+        dtype (str, optional): The data type of the returned tensor. Defaults to 'float64'.
+        layout (str, optional): Only included for API consistency with PyTorch; ignored in Paddle. Defaults to None.
+        device(PlaceLike|None, optional): The desired device of returned tensor.
+            if None, uses the current device for the default tensor type (see paddle.device.set_device()).
+            device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
+        pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
+        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
+
+    Returns:
+        Tensor: A 1-D tensor of shape `(window_length,)` containing the Kaiser window.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> win = paddle.kaiser_window(400, beta=8.6)
+            >>> win = paddle.kaiser_window(400, requires_grad=True)
+    """
+    w = get_window(
+        ('kaiser', beta), window_length, fftbins=periodic, dtype=dtype
+    )
+    return _apply_window_postprocess(
+        w,
+        layout=layout,
+        device=device,
+        pin_memory=pin_memory,
+        requires_grad=requires_grad,
+    )
+
+
+def blackman_window(
+    window_length: int,
+    periodic: bool = True,
+    *,
+    dtype: str = 'float64',
+    layout: str | None = None,
+    device: PlaceLike | None = None,
+    pin_memory: bool = False,
+    requires_grad: bool = False,
+):
+    """
+    Compute a Blackman window.
+
+    Args:
+        window_length (int): The size of the returned window. Must be positive.
+        periodic (bool, optional): If True, returns a window for use as a periodic function; if False, returns a symmetric window. Defaults to True.
+        dtype (str, optional): The data type of the returned tensor. Defaults to 'float64'.
+        layout (str, optional): Only included for API consistency with PyTorch; ignored in Paddle. Defaults to None.
+        device(PlaceLike|None, optional): The desired device of returned tensor.
+            if None, uses the current device for the default tensor type (see paddle.device.set_device()).
+            device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
+        pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
+        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
+
+    Returns:
+        Tensor: A 1-D tensor of shape `(window_length,)` containing the Blackman window.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> win = paddle.blackman_window(256)
+            >>> win = paddle.blackman_window(256, requires_grad=True)
+    """
+    w = get_window('blackman', window_length, fftbins=periodic, dtype=dtype)
+    return _apply_window_postprocess(
+        w,
+        layout=layout,
+        device=device,
+        pin_memory=pin_memory,
+        requires_grad=requires_grad,
+    )
+
+
+def bartlett_window(
+    window_length: int,
+    periodic: bool = True,
+    *,
+    dtype: str = 'float64',
+    layout: str | None = None,
+    device: PlaceLike | None = None,
+    pin_memory: bool = False,
+    requires_grad: bool = False,
+):
+    """
+    Compute a Bartlett window.
+
+    Args:
+        window_length (int): The size of the returned window. Must be positive.
+        periodic (bool, optional): If True, returns a window for use as a periodic function; if False, returns a symmetric window. Defaults to True.
+        dtype (str, optional): The data type of the returned tensor. Defaults to 'float64'.
+        layout (str, optional): Only included for API consistency with PyTorch; ignored in Paddle. Defaults to None.
+        device(PlaceLike|None, optional): The desired device of returned tensor.
+            if None, uses the current device for the default tensor type (see paddle.device.set_device()).
+            device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
+        pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
+        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
+
+    Returns:
+        Tensor: A 1-D tensor of shape `(window_length,)` containing the Bartlett window.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> n_fft = 512
+            >>> win = paddle.bartlett_window(n_fft)
+
+            >>> win = paddle.bartlett_window(n_fft, requires_grad=True)
+    """
+    w = get_window('bartlett', window_length, fftbins=periodic, dtype=dtype)
+    return _apply_window_postprocess(
+        w,
+        layout=layout,
+        device=device,
+        pin_memory=pin_memory,
+        requires_grad=requires_grad,
+    )

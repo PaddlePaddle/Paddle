@@ -309,12 +309,22 @@ jobs:
           '
 
       - name: Test
+        id: unit_test
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
           pip install build//python/dist/*.whl --no-deps
           pip install -r python/unittest_py/requirements.txt
           bash $ci_scripts/h-test.sh
+          '
+
+      - name: FA Test
+        if: (success() || failure()) && steps.unit_test.conclusion != 'skipped'
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          cd test/test_flashmask_ci
+          bash run.sh
           '
 
       - name: Terminate and delete the container
