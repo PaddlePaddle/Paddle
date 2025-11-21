@@ -2314,3 +2314,56 @@ PHI_DEFINE_EXPORTED_bool(
 PHI_DEFINE_EXPORTED_bool(use_accuracy_compatible_kernel,
                          false,
                          "Whether use torch compatible version kernel.");
+
+/**
+ * Allocator Compact related FLAG
+ * Name: FLAGS_enable_compact_mem
+ * Since Version: 3.2.2
+ * Value Range: bool, default=false
+ * Example:
+ * Note: whether start compact memory.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_compact_mem,
+                         false,
+                         "whether start compact memory or not.");
+/**
+ * Allocator Compact related FLAG
+ * Name: FLAGS_max_reserved_threshold_in_gb
+ * Since Version: 3.2.2
+ * Value Range: int64, default=70
+ * Example:
+ * Note: Threshold (GB) used in compact memory. Only reserved_mem greater than
+ * threshold may trigger defragmentation.
+ */
+PHI_DEFINE_EXPORTED_int64(
+    max_reserved_threshold_in_gb,
+    70,
+    "Threshold (GB) used in compact memory. Only reserved_mem greater than "
+    "threshold may trigger defragmentation.");
+
+/**
+ * Allocator Compact related FLAG
+ * Name: FLAGS_cur_allocated_threshold_in_gb
+ * Since Version: 3.2.2
+ * Value Range: int64, default=70
+ * Example:
+ * Note: Threshold (GB) used in compact memory. Only reserved_mem greater than
+ * threshold may trigger defragmentation.
+ */
+PHI_DEFINE_EXPORTED_int64(
+    cur_allocated_threshold_in_gb,
+    55,
+    "Threshold (GB) used in compact memory. Only reserved_mem greater than "
+    "threshold may trigger defragmentation.");
+
+/**
+ * Allocator Compact related FLAG
+ * Name: FLAGS_try_allocate
+ * Since Version: 3.2.2
+ * Value Range: bool, default=false
+ * Example:
+ * Note: whether start compact memory.
+ */
+PHI_DEFINE_EXPORTED_bool(try_allocate,
+                         false,
+                         "whether use try allocate in memory compact.");

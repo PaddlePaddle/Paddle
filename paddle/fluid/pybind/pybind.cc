@@ -81,6 +81,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/prim/utils/utils.h"
+#include "paddle/fluid/pybind/size.h"
 #include "paddle/fluid/pybind/torch_compat.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
@@ -140,6 +141,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/phi/core/memory/allocation/mmap_allocator.h"
+#include "paddle/phi/core/memory/mem_utils.h"
 #include "paddle/phi/core/platform/cpu_helper.h"
 #include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/device_context.h"
@@ -3622,13 +3624,13 @@ All parameter, weight, gradient are variables in Paddle.
     }
     platform::EmptyCache();
   });
-  m.def("vmm_compact", [] { platform::VmmCompact(); });
   m.def(
       "get_device_properties",
       [](int id) -> const gpuDeviceProp & {
         return platform::GetDeviceProperties(id);
       },
-      py::return_value_policy::copy);
+      py::return_value_policy::reference);
+
   py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties", py::module_local())
       .def_property_readonly(
           "name", [](const gpuDeviceProp &prop) { return prop.name; })
@@ -3671,8 +3673,12 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #if defined(PADDLE_WITH_CUDA)
   m.def("vmm_max_free_size", [] {
-    memory::VmmMaxFreeSize(phi::GPUPlace(platform::GetCurrentDeviceId()), 1);
+    return memory::VmmMaxFreeSize(phi::GPUPlace(platform::GetCurrentDeviceId()),
+                                  1);
   });
+  m.def("vmm_compact", [] { return paddle::memory::VmmCompact(); });
+  m.def("vmm_free_block_info",
+        [] { return paddle::memory::FreeBlockInfoOfVmmAllocator(); });
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   m.def(
@@ -4237,6 +4243,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindCompiledProgram(m);
   BindPlace(m);
   BindTensor(m);
+  BindSize(&m);
 
   py::enum_<phi::DataType> data_type(m, "DataType");
   g_data_type_pytype = (PyTypeObject *)data_type.ptr();  // NOLINT

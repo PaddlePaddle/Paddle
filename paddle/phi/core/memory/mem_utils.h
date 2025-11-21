@@ -80,5 +80,24 @@ class TotalMemoryCompactor final : public MemoryCompactionStrategy {
                  void* start_ptr,
                  void* end_ptr) override;
 };
+
+#if defined(PADDLE_WITH_CUDA)
+// return a pair of <largest_free_block_size, sum_of_n_largest_free_block_size>
+PADDLE_API extern std::pair<size_t, size_t> VmmMaxFreeSize(
+    const phi::GPUPlace& place, int32_t n);
+
+// Try using Allocator to simulate an allocation, simulating a request for
+// vector<size>.
+PADDLE_API extern bool TryAllocBatch(const phi::GPUPlace& place,
+                                     const std::vector<size_t>& sizes);
+
+// Compact memory of free blocks held by the VmmAllocator.
+PADDLE_API extern size_t VmmCompact(void);
+
+// Get VMM allocator free block info.
+PADDLE_API extern std::vector<std::vector<std::pair<size_t, uintptr_t>>>
+FreeBlockInfoOfVmmAllocator();
+#endif
+
 }  // namespace memory
 }  // namespace paddle

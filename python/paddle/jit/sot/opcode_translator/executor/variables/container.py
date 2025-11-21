@@ -1117,3 +1117,8 @@ class DictVariable(ContainerVariable):
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if type(value) in (dict, OrderedDict):
             return DictVariable(value, graph=graph, tracker=tracker)
+
+
+class SizeVariable(ListVariable):
+    def get_py_type(self):
+        return paddle.Size
