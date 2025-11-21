@@ -411,8 +411,7 @@ class SingleCommGroupFullParamAssembler(BaseAssembler):
     """
     Implements the assembly logic from the original full_param function.
     This version handles both single-card and distributed scenarios.
-    In the distributed case, it uses a broadcast-based communication strategy,
-    packing bfloat16 tensors into a buffer for efficiency.
+    In the distributed case, it uses a broadcast-based communication strategy.
     """
 
     def __init__(
