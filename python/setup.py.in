@@ -1507,7 +1507,10 @@ if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
 
 
 if '${WITH_XPU}' == 'ON':
-    headers += list(find_files('*.h', '@PADDLE_BINARY_DIR@/third_party/xpu/src/extern_xpu/xpu', recursive=True)) # xdnn api headers
+    headers += [
+        h for h in find_files('*.h', '@PADDLE_BINARY_DIR@/third_party/xpu/src/extern_xpu/xpu', recursive=True)
+        if '/include/xpu/kernel/' not in h
+    ] # xdnn api headers
     headers += list(find_files('*.hpp', '@PADDLE_BINARY_DIR@/third_party/xpu/src/extern_xpu/xpu', recursive=True)) # xre headers with .hpp extension
 
 if (
