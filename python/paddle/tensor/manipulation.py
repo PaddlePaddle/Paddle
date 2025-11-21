@@ -30,6 +30,7 @@ from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
     expand_decorator,
+    index_add_decorator,
     param_one_alias,
     param_two_alias,
     reshape_decorator,
@@ -7600,40 +7601,19 @@ def scatter_add_(
     )
 
 
-@overload
+@index_add_decorator()
 def index_add(
     x: Tensor,
     index: Tensor,
     axis: int,
     value: Tensor,
     alpha: Number = 1,
-    out: Tensor | None = None,
     name: str | None = None,
-) -> Tensor: ...
-
-
-@overload
-def index_add(
-    input: Tensor,
-    dim: int,
-    index: Tensor,
-    source: Tensor,
-    alpha: Number = 1,
+    *,
     out: Tensor | None = None,
-) -> Tensor: ...
-
-
-def index_add(*args: Any, **kwargs: Any) -> Tensor:
+) -> Tensor:
     """
     Adds the elements of the input tensor with value tensor by selecting the indices in the order given in index.
-
-    .. note::
-    Alias and Order Support:
-    1. The parameter name ``input`` can be used as an alias for ``x``.
-    2. The parameter name ``dim`` can be used as an alias for ``axis``.
-    3. The parameter name ``source`` can be used as an alias for ``value``.
-    4. This API also supports the PyTorch argument order ``(input, dim, index, source)`` for positional arguments, which will be converted to the Paddle order ``(x, index, axis, value)``.
-    For example, ``paddle.index_add(input=x, dim=1, index=idx, source=val)`` is equivalent to ``paddle.index_add(x=x, axis=1, index=idx, value=val)``, and ``paddle.index_add(x, 1, idx, val)`` is equivalent to ``paddle.index_add(x, idx, 1, val)``.
 
     Args:
         x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
@@ -7668,43 +7648,6 @@ def index_add(*args: Any, **kwargs: Any) -> Tensor:
              [1., 1., 1.],
              [2., 2., 2.]])
     """
-
-    def safe_set_param(key: str, value: Any):
-        if key in kwargs:
-            raise TypeError(f"got multiple values for argument '{key}'")
-        kwargs[key] = value
-
-    len_args = len(args)
-    if len_args >= 2 and isinstance(args[1], int):
-        param_keys = ["dim", "index", "source", "alpha", "out"]
-
-        for idx in range(min(len_args - 1, len(param_keys))):
-            safe_set_param(param_keys[idx], args[idx + 1])
-
-        safe_set_param("input", args[0])
-        args = ()
-
-    if 'input' in kwargs:
-        safe_set_param('x', kwargs.pop('input'))
-
-    if 'dim' in kwargs:
-        safe_set_param('axis', kwargs.pop('dim'))
-
-    if 'source' in kwargs:
-        safe_set_param('value', kwargs.pop('source'))
-
-    return _index_add_wrapper(*args, **kwargs)
-
-
-def _index_add_wrapper(
-    x: Tensor,
-    index: Tensor,
-    axis: int,
-    value: Tensor,
-    alpha: Number = 1,
-    out: Tensor | None = None,
-    name: str | None = None,
-) -> Tensor:
     if in_dynamic_or_pir_mode():
         scaled_value = value * alpha if alpha != 1 else value
         return _C_ops.index_add(x, index, scaled_value, axis, out=out)
@@ -7728,36 +7671,15 @@ def _index_add_wrapper(
         ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
         'paddle.tensor.manipulation.index_add',
     )
-    scaled_value = (
-        helper.create_variable_for_type_inference(value.dtype)
-        if alpha != 1
-        else value
-    )
 
-    if alpha != 1:
-        helper.append_op(
-            type='scale',
-            inputs={'X': [value]},
-            outputs={'Out': [scaled_value]},
-            attrs={'scale': alpha, 'bias': 0.0},
-        )
-
-    if out is not None:
-        check_variable_and_dtype(
-            out,
-            'out',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
-            'paddle.tensor.manipulation.index_add',
-        )
-    else:
-        out = helper.create_variable_for_type_inference(x.dtype)
+    out = helper.create_variable_for_type_inference(x.dtype)
 
     helper.append_op(
         type='index_add',
         inputs={
             'X': x,
             'Index': index,
-            'AddValue': scaled_value,
+            'AddValue': value,
         },
         outputs={'Out': out},
         attrs={'axis': axis},
@@ -7765,6 +7687,7 @@ def _index_add_wrapper(
     return out
 
 
+@index_add_decorator()
 @inplace_apis_in_dygraph_only
 def index_add_(
     x: Tensor,

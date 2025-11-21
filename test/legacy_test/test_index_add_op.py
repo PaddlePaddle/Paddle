@@ -624,14 +624,18 @@ class TestIndexAddAPI_Compatibility(unittest.TestCase):
         paddle_dygraph_out.append(out7)
         # 8. Test 'alpha' parameter
         alpha = 2.0
-        out10 = paddle.index_add(
+        out8 = paddle.index_add(
+            input=x, dim=self.axis, index=index, source=value, alpha=alpha
+        )
+        out9 = paddle.index_add_(
             input=x, dim=self.axis, index=index, source=value, alpha=alpha
         )
         ref_out_alpha = self.get_ref_out(alpha=alpha)
 
         for out in paddle_dygraph_out:
             np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-05)
-        np.testing.assert_allclose(ref_out_alpha, out10.numpy(), rtol=1e-05)
+        np.testing.assert_allclose(ref_out_alpha, out8.numpy(), rtol=1e-05)
+        np.testing.assert_allclose(ref_out_alpha, out9.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_static_Compatibility(self):
