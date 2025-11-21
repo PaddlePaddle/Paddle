@@ -14,7 +14,7 @@
 
 #include "paddle/phi/core/platform/cuda_graph_with_memory_pool.h"
 
-#include "paddle/phi/backends/xpu/xpu_graph.h"
+// #include "paddle/phi/backends/xpu/xpu_graph.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
@@ -325,6 +325,41 @@ std::unique_ptr<phi::backends::xpu::XPUGraph> EndXPUGraphCapture() {
       .ClearDeviceContextsRecords();
   dev_ctx->SetCUDAGraphAllocator(nullptr);
   return phi::backends::xpu::XPUGraph::EndCapture();
+}
+
+std::unique_ptr<phi::backends::xpu::XPUGraph> EndCUDAGraphCapture() {
+  auto place = phi::backends::xpu::XPUGraph::CapturingPlace();
+  auto pool_id = phi::backends::xpu::XPUGraph::CapturingPoolID();
+  auto* mutable_dev_ctx = SelectXPUGraphDeviceContext(place, &pool_id);
+  auto* dev_ctx = reinterpret_cast<phi::XPUContext*>(mutable_dev_ctx);
+
+  auto all_capturing_dev_ctxs =
+      phi::backends::xpu::XPUGraphContextManager::Instance()
+          .GetAllCapturingDeviceContexts();
+  auto num_stream = all_capturing_dev_ctxs.size();
+  if (num_stream > 1) {
+    // join all other streams back to origin cuda graph stream.
+    for (auto all_capturing_dev_ctx : all_capturing_dev_ctxs) {
+      auto* capturing_dev_ctx =
+          reinterpret_cast<phi::XPUContext*>(all_capturing_dev_ctx);
+      std::shared_ptr<platform::DeviceEvent> capturing_event =
+          std::make_shared<platform::DeviceEvent>(
+              capturing_dev_ctx->GetPlace(),
+              platform::GenerateDeviceEventFlag());
+      capturing_event->Record(capturing_dev_ctx);
+      capturing_event->Wait(platform::kCUDA, dev_ctx);
+      VLOG(4) << "CUDA Graph stream eventWait. cuda graph dev_ctx: " << dev_ctx
+              << " wait for capturing dev_ctx: " << capturing_dev_ctx;
+      // capturing_dev_ctx->cudnn_workspace_handle().ResetWorkspace();
+      capturing_dev_ctx->SetCUDAGraphAllocator(nullptr);
+    }
+  }
+
+  phi::backends::xpu::XPUGraphContextManager::Instance()
+      .ClearDeviceContextsRecords();
+  // dev_ctx->cudnn_workspace_handle().ResetWorkspace();
+  dev_ctx->SetCUDAGraphAllocator(nullptr);
+  return XPUGraph::EndCapture();
 }
 #endif
 }  // namespace paddle::platform

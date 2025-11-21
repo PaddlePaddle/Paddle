@@ -15,9 +15,11 @@
 import os
 
 from paddle.base.core import (
+    XPUPlace,
     CUDAPlace,
     is_compiled_with_cuda,
     is_compiled_with_rocm,
+    is_compiled_with_xpu
 )
 
 if is_compiled_with_cuda() or is_compiled_with_rocm():
@@ -25,7 +27,10 @@ if is_compiled_with_cuda() or is_compiled_with_rocm():
 
     def is_cuda_graph_supported():
         return True
-
+elif is_compiled_with_xpu():
+    from paddle.base.core import XPUGraph as CoreCUDAGraph
+    def is_cuda_graph_supported():
+        return True
 else:
     CoreCUDAGraph = None
 
@@ -45,8 +50,12 @@ class CUDAGraph:
 
         self._graph = None
         if place is None:
-            device_id = int(os.environ.get('FLAGS_selected_gpus', 0))
-            place = CUDAPlace(device_id)
+            if is_compiled_with_xpu():
+                device_id = int(os.environ.get('FLAGS_selected_xpus', 0))
+                place = XPUPlace(device_id)
+            else:
+                device_id = int(os.environ.get('FLAGS_selected_gpus', 0))
+                place = CUDAPlace(device_id)
         self._place = place
         assert mode in ALL_MODES
         self._mode = ALL_MODES.index(mode)

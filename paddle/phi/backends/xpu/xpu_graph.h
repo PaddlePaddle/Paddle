@@ -3,7 +3,7 @@
 
 #ifdef PADDLE_WITH_XPU
 
-
+#pragma once
 #include <thread>
 #include <unordered_set>
 #include <array>
@@ -79,7 +79,7 @@ class XPUGraphContextManager {
 
 
  private:
-  XPUGraphContextManager() = default;
+  XPUGraphContextManager(){}
   DISABLE_COPY_AND_ASSIGN(XPUGraphContextManager);
 
 
