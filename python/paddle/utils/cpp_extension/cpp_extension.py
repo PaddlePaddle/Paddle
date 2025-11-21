@@ -26,6 +26,7 @@ import setuptools
 import sys
 import paddle
 import site
+import subprocess
 
 from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
@@ -434,6 +435,19 @@ class BuildExtension(build_ext):
         self._check_abi()
         current_extension_builder = self
 
+        # Check if RDC is enabled
+        ext = self.extensions[0]
+        nvcc_flags = []
+        if isinstance(ext.extra_compile_args, dict):
+            nvcc_flags = ext.extra_compile_args.get('nvcc', [])
+        else:
+            nvcc_flags = ext.extra_compile_args
+
+        rdc_enabled = any(
+            x in ['-rdc=true', '--relocatable-device-code=true']
+            for x in nvcc_flags
+        )
+
         # Note(Aurelius84): If already compiling source before, we should check whether
         # cflags have changed and delete the built shared library to re-compile the source
         # even though source file content keep unchanged.
@@ -554,6 +568,83 @@ class BuildExtension(build_ext):
             finally:
                 # restore original_compiler
                 self.set_executable('compiler_so', original_compiler)
+
+        def unix_custom_link_shared_object(
+            self,
+            objects: list[str] | tuple[str, ...],
+            output_filename: str,
+            output_dir: str | None = None,
+            libraries: list[str] | tuple[str, ...] | None = None,
+            library_dirs: list[str] | tuple[str, ...] | None = None,
+            runtime_library_dirs: list[str] | tuple[str, ...] | None = None,
+            export_symbols: Any | None = None,
+            debug: bool = False,
+            extra_preargs: list[str] | None = None,
+            extra_postargs: list[str] | None = None,
+            build_temp: str | os.PathLike[str] | None = None,
+            target_lang: str | None = None,
+        ):
+            # Get extension
+            extension = current_extension_builder.extensions[0]
+
+            # Get nvcc flags
+            nvcc_flags = []
+            if isinstance(extension.extra_compile_args, dict):
+                nvcc_flags = extension.extra_compile_args.get('nvcc', [])
+            else:
+                nvcc_flags = extension.extra_compile_args
+
+            objects, dlink_dir = self.compiler._fix_object_args(
+                objects, output_dir
+            )
+            if not os.path.exists(dlink_dir):
+                os.makedirs(dlink_dir)
+            dlink_object = os.path.join(dlink_dir, 'dlink.o')
+
+            # Construct command
+            # nvcc -dlink <objects> -o <dlink_object> <flags>
+
+            cuda_home = find_cuda_home()
+            if cuda_home is None:
+                raise RuntimeError("CUDA_HOME is not found, please set it.")
+
+            nvcc_cmd = os.path.join(cuda_home, 'bin', 'nvcc')
+            if CCACHE_HOME:
+                nvcc_cmd = f"{CCACHE_HOME} {nvcc_cmd}"
+
+            cmd = [nvcc_cmd] if ' ' not in nvcc_cmd else nvcc_cmd.split()
+            cmd += ['-dlink']
+            cmd += list(objects)
+            cmd += ['-o', dlink_object]
+
+            cmd += nvcc_flags
+
+            dlink_flags = prepare_unix_cudaflags(copy.deepcopy(nvcc_flags))
+
+            cmd += dlink_flags
+
+            # Execute
+            print(f"Running dlink: {' '.join(cmd)}")
+            subprocess.check_call(cmd)
+
+            # Add dlink object to objects
+            objects = [*list(objects), dlink_object]
+
+            return original_link(
+                self,
+                objects,
+                output_filename,
+                output_dir,
+                libraries,
+                library_dirs,
+                runtime_library_dirs,
+                export_symbols,
+                debug,
+                extra_preargs,
+                extra_postargs,
+                build_temp,
+                target_lang,
+            )
 
         def unix_custom_single_compiler(
             self,
@@ -756,6 +847,12 @@ class BuildExtension(build_ext):
         )
         self._record_op_info()
 
+        if rdc_enabled and self.compiler.compiler_type != 'msvc':
+            original_link = self.compiler.__class__.link_shared_object
+            self.compiler.__class__.link_shared_object = (
+                unix_custom_link_shared_object
+            )
+
         print("Compiling user custom op, it will cost a few seconds.....")
         build_ext.build_extensions(self)
 
@@ -763,6 +860,8 @@ class BuildExtension(build_ext):
             self.compiler.compile = original_compile
         else:
             self.compiler.__class__.compile = original_compile
+            if rdc_enabled:
+                self.compiler.__class__.link_shared_object = original_link
 
         # Reset runtime library path on MacOS platform
         so_path = self.get_ext_fullpath(self.extensions[0]._full_name)
