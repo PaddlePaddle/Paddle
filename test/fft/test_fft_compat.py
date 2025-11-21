@@ -23,9 +23,9 @@ import paddle
 class TestFFTAliasBase(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        self.places = ['cpu']
+        self.places = [paddle.CPUPlace()]
         if paddle.is_compiled_with_cuda():
-            self.places.append('gpu')
+            self.places.append(paddle.CUDAPlace(0))
 
         self.init_params()
         self.init_data()
@@ -68,48 +68,51 @@ class TestFFTAliasBase(unittest.TestCase):
             return
 
         paddle.disable_static()
-        x = paddle.to_tensor(self.np_x)
-        paddle_dygraph_out = []
+        for place in self.places:
+            paddle.set_device(place)
 
-        # 1. Paddle Usage
-        kw_std = {"x": x, self.paddle_axis_arg: self.test_dim_val}
-        if 'shift' not in self.paddle_api.__name__:
-            kw_std["norm"] = self.norm
+            x = paddle.to_tensor(self.np_x)
+            paddle_dygraph_out = []
 
-        out1 = self.paddle_api(**kw_std)
-        paddle_dygraph_out.append(out1)
+            # 1. Paddle Usage
+            kw_std = {"x": x, self.paddle_axis_arg: self.test_dim_val}
+            if 'shift' not in self.paddle_api.__name__:
+                kw_std["norm"] = self.norm
 
-        # 2. Alias Usage
-        kw_alias = {"input": x, "dim": self.test_dim_val}
-        if 'shift' not in self.paddle_api.__name__:
-            kw_alias["norm"] = self.norm
+            out1 = self.paddle_api(**kw_std)
+            paddle_dygraph_out.append(out1)
 
-        out2 = self.paddle_api(**kw_alias)
-        paddle_dygraph_out.append(out2)
+            # 2. Alias Usage
+            kw_alias = {"input": x, "dim": self.test_dim_val}
+            if 'shift' not in self.paddle_api.__name__:
+                kw_alias["norm"] = self.norm
 
-        # 3. Alias Usage with 'out' parameter (Skip for shift APIs)
-        if 'shift' not in self.paddle_api.__name__:
-            out_tensor = paddle.empty_like(out1)
-            kw_out = {
-                "input": x,
-                "dim": self.test_dim_val,
-                "out": out_tensor,
-                "norm": self.norm,
-            }
+            out2 = self.paddle_api(**kw_alias)
+            paddle_dygraph_out.append(out2)
 
-            self.paddle_api(**kw_out)
-            paddle_dygraph_out.append(out_tensor)
+            # 3. Alias Usage with 'out' parameter (Skip for shift APIs)
+            if 'shift' not in self.paddle_api.__name__:
+                out_tensor = paddle.empty_like(out1)
+                kw_out = {
+                    "input": x,
+                    "dim": self.test_dim_val,
+                    "out": out_tensor,
+                    "norm": self.norm,
+                }
 
-        ref_out = self.get_scipy_ref()
+                self.paddle_api(**kw_out)
+                paddle_dygraph_out.append(out_tensor)
 
-        for i, out in enumerate(paddle_dygraph_out):
-            np.testing.assert_allclose(
-                out.numpy(),
-                ref_out,
-                rtol=1e-05,
-                atol=1e-08,
-                err_msg=f"Dygraph mismatch case {i} (0=std, 1=alias, 2=out) for {self.paddle_api.__name__}",
-            )
+            ref_out = self.get_scipy_ref()
+
+            for i, out in enumerate(paddle_dygraph_out):
+                np.testing.assert_allclose(
+                    out.numpy(),
+                    ref_out,
+                    rtol=1e-05,
+                    atol=1e-08,
+                    err_msg=f"Dygraph mismatch case {i} (0=std, 1=alias, 2=out) for {self.paddle_api.__name__} on {place}",
+                )
         paddle.enable_static()
 
     def test_static_Compatibility(self):
@@ -153,7 +156,7 @@ class TestFFTAliasBase(unittest.TestCase):
                     ref_out,
                     rtol=1e-05,
                     atol=1e-08,
-                    err_msg=f"Static graph mismatch (Standard Args) for {self.paddle_api.__name__}",
+                    err_msg=f"Static graph mismatch (Standard Args) for {self.paddle_api.__name__} on {place}",
                 )
 
                 np.testing.assert_allclose(
@@ -161,7 +164,7 @@ class TestFFTAliasBase(unittest.TestCase):
                     ref_out,
                     rtol=1e-05,
                     atol=1e-08,
-                    err_msg=f"Static graph mismatch (Alias Args) for {self.paddle_api.__name__}",
+                    err_msg=f"Static graph mismatch (Alias Args) for {self.paddle_api.__name__} on {place}",
                 )
 
 
