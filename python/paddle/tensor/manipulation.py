@@ -7726,21 +7726,21 @@ def unflatten(
             >>> axis = 1
             >>> res = paddle.unflatten(x, axis, shape)
             >>> print(res.shape)
-            [4, 2, 3, 8]
+            paddle.Size([4, 2, 3, 8])
 
             >>> x = paddle.randn(shape=[4, 6, 8])
             >>> shape = (-1, 2)
             >>> axis = -1
             >>> res = paddle.unflatten(x, axis, shape)
             >>> print(res.shape)
-            [4, 6, 4, 2]
+            paddle.Size([4, 6, 4, 2])
 
             >>> x = paddle.randn(shape=[4, 6, 8])
             >>> shape = paddle.to_tensor([2, 2])
             >>> axis = 0
             >>> res = paddle.unflatten(x, axis, shape)
             >>> print(res.shape)
-            [2, 2, 6, 8]
+            paddle.Size([2, 2, 6, 8])
     """
 
     # determine whether the input axis is valid.
