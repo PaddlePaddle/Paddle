@@ -267,7 +267,9 @@ paddle::Tensor GradTensorHolder::ValidateGradient(
   VLOG(6) << "GradTensorHolder: Converting gradient dtype from " << grad_dtype
           << " to " << expected_dtype << " for slot " << slot_id << ", rank "
           << rank;
-  return grad_tensor.cast(expected_dtype);
+  return expected_dtype == phi::DataType::FLOAT8_E4M3FN
+             ? grad_tensor
+             : grad_tensor.cast(expected_dtype);
 }
 
 void GradTensorHolder::SetBuffers(
