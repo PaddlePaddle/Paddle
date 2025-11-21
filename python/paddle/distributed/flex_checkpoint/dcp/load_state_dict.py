@@ -249,7 +249,6 @@ def get_rank_to_files(
     logger.debug(f"mapping rank_to_files:{rank_to_files}")
     return rank_to_files, missing_keys, mw_name_compatibility_mapping
 
-
 def _modify_mw_name_for_compatibility(
     state_dict, missing_keys, tensor_key_list
 ):
