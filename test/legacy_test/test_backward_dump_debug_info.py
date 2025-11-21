@@ -158,6 +158,28 @@ import paddle
 import paddle.nn.functional as F
 import paddle.nn as nn
 
+# Pylayer indent log
+from paddle.autograd import PyLayer
+class cus_tanh(PyLayer):
+    @staticmethod
+    def forward(ctx, x):
+        y = paddle.tanh(x)
+        # Pass tensors to backward.
+        ctx.save_for_backward(y)
+        return y
+    @staticmethod
+    def backward(ctx, dy):
+        # Get the tensors passed by forward.
+        y, = ctx.saved_tensor()
+        grad = dy * (1 - paddle.square(y))
+        return grad
+
+pylayer_input = paddle.rand([3, 4])
+pylayer_input.stop_gradient = False
+custom_tanh = cus_tanh.apply
+pylayer_output = custom_tanh(pylayer_input)
+pylayer_output.mean().backward()
+
 paddle.base.core.set_vlog_level({"backward":6, "*": 7})
 
 x = paddle.randn([3,3],dtype='float16')
