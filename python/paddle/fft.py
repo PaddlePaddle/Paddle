@@ -1646,7 +1646,7 @@ def ifftshift(
 
 
 # internal functions
-def fft_c2c(x, n, axis, norm, forward, name, out):
+def fft_c2c(x, n, axis, norm, forward, name, out=None):
     if is_integer(x):
         x = paddle.cast(x, _real_to_complex_dtype(paddle.get_default_dtype()))
     elif is_floating_point(x):
@@ -1684,7 +1684,7 @@ def fft_c2c(x, n, axis, norm, forward, name, out):
     return ret
 
 
-def fft_r2c(x, n, axis, norm, forward, onesided, name, out):
+def fft_r2c(x, n, axis, norm, forward, onesided, name, out=None):
     if is_integer(x):
         x = paddle.cast(x, paddle.get_default_dtype())
     _check_normalization(norm)
@@ -1727,7 +1727,7 @@ def fft_r2c(x, n, axis, norm, forward, onesided, name, out):
     return ret
 
 
-def fft_c2r(x, n, axis, norm, forward, name, out):
+def fft_c2r(x, n, axis, norm, forward, name, out=None):
     if is_integer(x):
         x = paddle.cast(x, _real_to_complex_dtype(paddle.get_default_dtype()))
     elif is_floating_point(x):
@@ -1771,7 +1771,7 @@ def fft_c2r(x, n, axis, norm, forward, name, out):
     return ret
 
 
-def fftn_c2c(x, s, axes, norm, forward, name, out):
+def fftn_c2c(x, s, axes, norm, forward, name, out=None):
     if is_integer(x):
         x = paddle.cast(x, _real_to_complex_dtype(paddle.get_default_dtype()))
     elif is_floating_point(x):
@@ -1824,7 +1824,7 @@ def fftn_c2c(x, s, axes, norm, forward, name, out):
     return ret
 
 
-def fftn_r2c(x, s, axes, norm, forward, onesided, name, out):
+def fftn_r2c(x, s, axes, norm, forward, onesided, name, out=None):
     if is_integer(x):
         x = paddle.cast(x, paddle.get_default_dtype())
     _check_normalization(norm)
@@ -1884,7 +1884,7 @@ def fftn_r2c(x, s, axes, norm, forward, onesided, name, out):
     return ret
 
 
-def fftn_c2r(x, s, axes, norm, forward, name, out):
+def fftn_c2r(x, s, axes, norm, forward, name, out=None):
     if is_integer(x):
         x = paddle.cast(x, _real_to_complex_dtype(paddle.get_default_dtype()))
     elif is_floating_point(x):
