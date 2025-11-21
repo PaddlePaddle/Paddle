@@ -47,6 +47,11 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   std::shared_ptr<Allocator> &GetUnderLyingAllocator() {
     return underlying_allocator_;
   }
+  std::map<std::pair<size_t, void *>, std::list<Block>::iterator>
+      &GetFreeBlocks() {
+    return free_blocks_;
+  }
+
   std::pair<size_t, size_t> SumLargestFreeBlockSizes(int32_t n) const;
   void Accept(AllocatorVisitor *visitor) override { visitor->Visit(this); }
 

@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/memory/malloc.h"
+#include "paddle/phi/core/memory/mem_utils.h"
 #include "paddle/phi/core/memory/stats.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/strided_copy_kernel.h"

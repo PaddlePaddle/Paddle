@@ -27,29 +27,59 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
+inline T AreaPixelComputeScale(int64_t input_size,
+                               int64_t output_size,
+                               bool align_corners,
+                               const T scale) {
+  if (align_corners) {
+    if (output_size > 1) {
+      return static_cast<T>(input_size - 1) / (output_size - 1);
+    }
+  } else {
+    if (scale > 0.) {
+      return static_cast<T>(1.0) / scale;
+    }
+    if (output_size > 0) {
+      return static_cast<T>(input_size) / output_size;
+    }
+  }
+  return static_cast<T>(0);
+}
+
+template <typename T>
+HOSTDEVICE inline T AreaPixelComputeSourceIndex(T scale,
+                                                int64_t dst_index,
+                                                bool align_corners,
+                                                T align_type_value = 0.5) {
+  if (align_corners) {
+    return scale * dst_index;
+  } else {
+    return scale * (dst_index + align_type_value) - align_type_value;
+  }
+}
+
+template <typename T>
 HOSTDEVICE inline T CubicConvolution1(T x, T A) {
-  return ((A + static_cast<T>(2)) * x - (A + static_cast<T>(3))) * x * x +
-         static_cast<T>(1);
+  return ((A + 2) * x - (A + 3)) * x * x + 1;
 }
 
 template <typename T>
 HOSTDEVICE inline T CubicConvolution2(T x, T A) {
-  return ((A * x - static_cast<T>(5) * A) * x + static_cast<T>(8) * A) * x -
-         static_cast<T>(4) * A;
+  return ((A * x - 5 * A) * x + 8 * A) * x - 4 * A;
 }
 
 template <typename T>
-HOSTDEVICE inline void get_cubic_upsample_coefficients(T coeffs[4], T t) {
+HOSTDEVICE inline void GetCubicUpsampleCoefficients(T coeffs[4], T t) {
   T A = static_cast<T>(-0.75);
 
   T x1 = t;
-  coeffs[0] = CubicConvolution2<T>(x1 + static_cast<T>(1.0), A);
+  coeffs[0] = CubicConvolution2<T>(x1 + 1.0, A);
   coeffs[1] = CubicConvolution1<T>(x1, A);
 
   // opposite coefficients
-  T x2 = static_cast<T>(1.0) - t;
+  T x2 = 1.0 - t;
   coeffs[2] = CubicConvolution1<T>(x2, A);
-  coeffs[3] = CubicConvolution2<T>(x2 + static_cast<T>(1.0), A);
+  coeffs[3] = CubicConvolution2<T>(x2 + 1.0, A);
 }
 
 inline void ExtractNCDWH(const DDim& dims,
@@ -196,6 +226,47 @@ struct FastDivModForInterpolate {
 };
 
 #endif
+
+namespace antialias {
+
+// taken from
+// https://github.com/pytorch/pytorch/blob/a527e816935957a164d74dd7c5069310b2857695/
+// aten/src/ATen/native/cuda/UpSample.cuh#L207-L305
+struct BilinearFilterFunctor {
+  template <typename T>
+  HOSTDEVICE T operator()(T x) const {
+    if (x < 0) {
+      x = -x;
+    }
+    if (x < 1) {
+      return 1 - x;
+    }
+    return 0;
+  }
+
+  static constexpr int size = 2;
+};
+struct BicubicFilterFunctor {
+  template <typename T>
+  HOSTDEVICE T operator()(T x) const {
+    // https://en.wikipedia.org/wiki/Bicubic_interpolation#Bicubic_convolution_algorithm
+    const T a = -0.5;
+    if (x < 0) {
+      x = -x;
+    }
+    if (x < 1) {
+      return ((a + 2) * x - (a + 3)) * x * x + 1;
+    }
+    if (x < 2) {
+      return (((x - 5) * x + 8) * x - 4) * a;
+    }
+    return 0;
+  }
+
+  static constexpr int size = 4;
+};
+
+}  // namespace antialias
 
 }  // namespace funcs
 }  // namespace phi

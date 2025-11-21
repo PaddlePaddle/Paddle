@@ -28,6 +28,7 @@ from paddle.tensor.math import broadcast_shape
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
+    param_two_alias,
     transpose_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -4178,8 +4179,14 @@ def _transpose_last_2dim(x):
     return x
 
 
+@param_two_alias(["x", "A"], ["y", "B"])
 def solve(
-    x: Tensor, y: Tensor, left: bool = True, name: str | None = None
+    x: Tensor,
+    y: Tensor,
+    left: bool = True,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
 
@@ -4199,12 +4206,13 @@ def solve(
 
     Args:
         x (Tensor): A square matrix or a batch of square matrices. Its shape should be ``[*, M, M]``, where ``*`` is zero or
-            more batch dimensions. Its data type should be float32 or float64.
+            more batch dimensions. Its data type should be float32 or float64. Alias: ``A``.
         y (Tensor): A vector/matrix or a batch of vectors/matrices. Its shape should be ``[*, M, K]``, where ``*`` is zero or
-            more batch dimensions. Its data type should be float32 or float64.
+            more batch dimensions. Its data type should be float32 or float64. Alias: ``B``.
         left (bool, optional): Whether to solve the system :math:`X * Out = Y` or :math:`Out * X = Y`. Default: True.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor: The solution of a square system of linear equations with a unique solution for input 'x' and 'y'.
@@ -4234,7 +4242,7 @@ def solve(
         y = _transpose_last_2dim(y)
 
     if in_dynamic_or_pir_mode():
-        out = _C_ops.solve(x, y)
+        ret = _C_ops.solve(x, y)
     else:
         inputs = {"X": [x], "Y": [y]}
         helper = LayerHelper("solve", **locals())
@@ -4247,8 +4255,10 @@ def solve(
         )
 
     if not left:
-        out = _transpose_last_2dim(out)
-    return out
+        ret = _transpose_last_2dim(ret)
+    if out is not None:
+        paddle.assign(ret, out)
+    return ret
 
 
 def triangular_solve(
