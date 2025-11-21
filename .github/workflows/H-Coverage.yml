@@ -142,7 +142,9 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
           flashattn_version=$(git submodule status|grep flashattn|awk "{print \$1}"|sed "s#-##g")
+          echo flashattn_version:$flashattn_version
           url="https://xly-devops.bj.bcebos.com/gpups/flash-attention/cu90/flashattn_libs_${flashattn_version}.tar"
+          echo url:$url
           url_return=`curl -s -o /dev/null -w "%{http_code}" $url`
           if [ "$url_return" != "200" ];then
             echo "flashattn cache not found, please contact umiswing"
@@ -309,12 +311,22 @@ jobs:
           '
 
       - name: Test
+        id: unit_test
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
           pip install build//python/dist/*.whl --no-deps
           pip install -r python/unittest_py/requirements.txt
           bash $ci_scripts/h-test.sh
+          '
+
+      - name: FA Test
+        if: (success() || failure()) && steps.unit_test.conclusion != 'skipped'
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          cd test/test_flashmask_ci
+          bash run.sh
           '
 
       - name: Terminate and delete the container

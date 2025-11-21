@@ -28,6 +28,7 @@ from paddle.base.framework import (
     in_pir_mode,
 )
 from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
     param_two_alias,
 )
 
@@ -49,12 +50,15 @@ if TYPE_CHECKING:
 __all__ = []
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"], "epsilon": ["eps"]})
 def normalize(
     x: Tensor,
     p: float = 2,
     axis: int = 1,
     epsilon: float = 1e-12,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     Normalize ``x`` along dimension ``axis`` using :math:`L_p` norm. This layer computes
@@ -68,13 +72,16 @@ def normalize(
 
     where, :math:`\sum_i{\lvert x_i \rvert^p}` is calculated along the ``axis`` dimension.
 
-
     Parameters:
         x (Tensor): The input tensor could be N-D tensor, and the input data type could be float32 or float64.
+            Alias: ``input``.
         p (float|int, optional): The exponent value in the norm formulation. Default: 2.
         axis (int, optional): The axis on which to apply normalization. If `axis < 0`, the dimension to normalization is `x.ndim + axis`. -1 is the last dimension.
+            Alias: ``dim``.
         epsilon (float, optional): Small float added to denominator to avoid dividing by zero. Default is 1e-12.
+            Alias: ``esp``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, the output has the same shape and data type with ``x``.
@@ -110,13 +117,13 @@ def normalize(
 
     if in_dygraph_mode():
         eps = paddle.full(shape=[1], fill_value=epsilon, dtype=x.dtype)
-        out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
-        return x / _C_ops.maximum(out, eps)
+        ret = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
+        ret = x / _C_ops.maximum(ret, eps)
 
     elif in_pir_mode():
         eps = paddle.full(shape=[1], fill_value=epsilon, dtype=x.dtype)
-        out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
-        return paddle.divide(x, _C_ops.maximum(out, eps), name=name)
+        ret = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
+        ret = paddle.divide(x, _C_ops.maximum(ret, eps), name=name)
 
     else:
         check_type(p, 'p', (float, int), 'normalize')
@@ -142,7 +149,12 @@ def normalize(
         )
         eps = out.block.create_var(dtype=out.dtype)
         eps = paddle.full(shape=[1], fill_value=epsilon, dtype=out.dtype)
-        return paddle.divide(x, paddle.maximum(out, eps), name=name)
+        out = paddle.divide(x, paddle.maximum(out, eps), name=name)
+
+    if out is not None:
+        paddle.assign(ret, out)
+        return out
+    return ret
 
 
 def batch_norm(

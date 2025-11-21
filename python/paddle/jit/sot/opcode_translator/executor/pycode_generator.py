@@ -813,6 +813,8 @@ class PyCodeGen:
         return self.add_instr("BINARY_OP", arg=BINARY_OP_ARG_MAP["NB_SUBSCR"])
 
     def gen_build_tuple(self, count):
+        if sys.version_info >= (3, 14) and count == 0:
+            return self.gen_load_const(())
         return self.add_instr("BUILD_TUPLE", arg=count, argval=count)
 
     def gen_build_list(self, count):

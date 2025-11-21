@@ -44,6 +44,7 @@ class CUDAVirtualMemAllocator : public Allocator {
 
  private:
   phi::GPUPlace place_;
+  std::once_flag init_flag_;
 
   CUdeviceptr virtual_mem_base_;
   size_t virtual_mem_size_;
@@ -55,6 +56,8 @@ class CUDAVirtualMemAllocator : public Allocator {
 
   std::map<CUdeviceptr, std::pair<CUmemGenericAllocationHandle, size_t>>
       virtual_2_physical_map_;
+
+  void InitOnce();
 };
 
 }  // namespace allocation

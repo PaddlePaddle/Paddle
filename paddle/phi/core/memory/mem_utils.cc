@@ -13,7 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/core/memory/mem_utils.h"
+
 #include <algorithm>
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/memory/malloc.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
@@ -84,6 +88,37 @@ size_t TotalMemoryCompactor::Compact(std::list<Block>& blocks,
   return remaining_size;
 #endif
 }
+
+#if defined(PADDLE_WITH_CUDA)
+std::pair<size_t, size_t> VmmMaxFreeSize(const phi::GPUPlace& place,
+                                         int32_t n) {
+  FreeMemoryMetricsVisitor free_memory_metrics_visitor(n);
+  allocation::AllocatorFacade::Instance().Accept(place,
+                                                 &free_memory_metrics_visitor);
+  return std::make_pair(free_memory_metrics_visitor.GetLargeSize(),
+                        free_memory_metrics_visitor.GetSumSize());
+}
+
+bool TryAllocBatch(const phi::GPUPlace& place,
+                   const std::vector<size_t>& sizes) {
+  TryAllocVisitor try_alloc_visitor(sizes);
+  allocation::AllocatorFacade::Instance().Accept(place, &try_alloc_visitor);
+  return try_alloc_visitor.IsTryAllocSuccess();
+}
+
+size_t VmmCompact() {
+  return memory::Compact(phi::GPUPlace(paddle::platform::GetCurrentDeviceId()));
+}
+
+std::vector<std::vector<std::pair<size_t, uintptr_t>>>
+FreeBlockInfoOfVmmAllocator() {
+  VMMFreeBlocksInfoVisitor free_blocks_info_visitor;
+  allocation::AllocatorFacade::Instance().Accept(
+      phi::GPUPlace(paddle::platform::GetCurrentDeviceId()),
+      &free_blocks_info_visitor);
+  return free_blocks_info_visitor.GetFreeBlocksInfo();
+}
+#endif
 
 }  // namespace memory
 }  // namespace paddle
