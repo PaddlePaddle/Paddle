@@ -63,6 +63,11 @@ class TestMultiScaleAllocator(unittest.TestCase):
             print(
                 f"reserved = {paddle_reserved2} allocated = {paddle_allocated2} auto growth = {paddle_reserved2 - paddle_reserved1} max_allocated = {paddle_max_allocated} max_reserved = {paddle_max_reserved}"
             )
+        # for multi stream
+        stream = paddle.device.cuda.Stream()
+        with paddle.device.cuda.stream_guard(stream):
+            x = paddle.empty([int(1 * 1024 * 1024 * 1024)], dtype=paddle.uint8)
+            del x
         return params
 
     def test_multi_scale_alloc_free(self):

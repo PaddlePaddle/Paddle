@@ -89,6 +89,7 @@ class AllocatorVisitor : public AllocatorVisitorReqImpl {
  */
 class AllocatorComputeStreamVisitor : public AllocatorVisitor {
  public:
+  using AllocatorVisitor::Visit;
   void Visit(StreamSafeCUDAAllocator* allocator) override;
 };
 
@@ -103,6 +104,7 @@ class AllocatorComputeStreamVisitor : public AllocatorVisitor {
  */
 class FreeMemoryMetricsVisitor : public AllocatorComputeStreamVisitor {
  public:
+  using AllocatorComputeStreamVisitor::Visit;
   /**
    * @brief Constructor for FreeMemoryMetricsVisitor.
    * @param nums_blocks The number of largest free blocks to potentially track
@@ -149,6 +151,8 @@ class FreeMemoryMetricsVisitor : public AllocatorComputeStreamVisitor {
  * attempts were successful.
  */
 class TryAllocVisitor : public AllocatorComputeStreamVisitor {
+  using AllocatorComputeStreamVisitor::Visit;
+
  public:
   /**
    * @brief Constructor.
@@ -192,13 +196,10 @@ class TryAllocVisitor : public AllocatorComputeStreamVisitor {
  * internal state (the list of free memory blocks) and extract key information
  * (size and address) for external analysis or debugging.
  */
-class VMMFreeBlocksInfoVisitor : public AllocatorVisitor {
- public:
-  /**
-   * @brief Default Constructor.
-   */
-  VMMFreeBlocksInfoVisitor() {}
+class VMMFreeBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
+  using AllocatorComputeStreamVisitor::Visit;
 
+ public:
   /**
    * @brief Retrieves the collected information about the free memory blocks.
    *

@@ -23,7 +23,6 @@
 #include "paddle/phi/core/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
 #endif
 
-PHI_DECLARE_bool(use_multi_scale_virtual_memory_auto_growth);
 namespace paddle {
 namespace memory {
 
@@ -58,8 +57,7 @@ void AllocatorVisitor::Visit(
 void AllocatorComputeStreamVisitor::Visit(StreamSafeCUDAAllocator* allocator) {
   const std::vector<StreamSafeCUDAAllocator*>& allocators =
       allocator->GetAllocatorByPlace();
-  int compute_stream_allocator_num =
-      FLAGS_use_multi_scale_virtual_memory_auto_growth ? 2 : 1;
+  assert(!allocators.empty());
   // NOTE(liujinnan): Currently, the Allocator initialization sequence is as
   // follows: the compute stream Allocator is initialized at program startup,
   // and then, when multiple streams are encountered at runtime, additional
@@ -67,9 +65,7 @@ void AllocatorComputeStreamVisitor::Visit(StreamSafeCUDAAllocator* allocator) {
   // `StreamSafeCUDAAllocator`. Therefore, we can use the first allocator in
   // `allocator_map_` as the compute stream allocator. Although this approach is
   // somewhat ugly and may not be robust, it is currently effective.
-  for (int i = 0; i < compute_stream_allocator_num; i++) {
-    allocators[i]->GetUnderLyingAllocator()->Accept(this);
-  }
+  allocators[0]->GetUnderLyingAllocator()->Accept(this);
 }
 
 void FreeMemoryMetricsVisitor::Visit(
@@ -78,8 +74,6 @@ void FreeMemoryMetricsVisitor::Visit(
       allocator->SumLargestFreeBlockSizes(nums_blocks_);
   large_size_ = std::max(large_size_, large_size);
   sum_size_ = std::max(sum_size_, sum_size);
-  VLOG(1) << "Visit VirtualMemoryAutoGrowthBestFitAllocator large_free_size:"
-          << large_size_ << " sum_free_size:" << sum_size_;
 }
 
 void TryAllocVisitor::Visit(
@@ -87,8 +81,6 @@ void TryAllocVisitor::Visit(
   // TODO(liujinnan): More detailed handling of multi-stream and MultiScalePool
   // scenarios.
   is_try_alloc_success_ |= allocator->TryAllocateBatch(sizes_);
-  VLOG(1) << "Visit VirtualMemoryAutoGrowthBestFitAllocator try_alloc_result:"
-          << is_try_alloc_success_;
 }
 
 void VMMFreeBlocksInfoVisitor::Visit(
