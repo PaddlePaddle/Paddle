@@ -513,10 +513,10 @@ void FlashAttnV3GradBaseKernel(
                                            dq_semaphore.data<int>());
   DenseTensor dk_semaphore = phi::Empty<int32_t>(
         dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
-    DenseTensor dv_semaphore = phi::Empty<int32_t>(
+  DenseTensor dv_semaphore = phi::Empty<int32_t>(
         dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
   if (num_heads_k != num_heads &&
-      dynload::fa3_bwd_params_get_deterministic(params_handle)) {
+    dynload::fa3_bwd_params_get_deterministic(params_handle)) {
     phi::funcs::SetConstant<Context, int32_t> set_zero_dk;
     set_zero_dk(dev_ctx, &dk_semaphore, static_cast<int32_t>(0));
     phi::funcs::SetConstant<Context, int32_t> set_zero_dv;
@@ -1432,10 +1432,10 @@ void FlashMaskV2GradBaseKernel(
                                                    dq_semaphore.data<int>());
   DenseTensor dk_semaphore = phi::Empty<int32_t>(
         dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
-    DenseTensor dv_semaphore = phi::Empty<int32_t>(
+  DenseTensor dv_semaphore = phi::Empty<int32_t>(
         dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
   if (num_heads_k != num_heads &&
-      dynload::flashmaskv2_bwd_params_get_deterministic(params_handle)) {
+    dynload::flashmaskv2_bwd_params_get_deterministic(params_handle)) {
     // xiangrui: we need to zero them out
     phi::funcs::SetConstant<Context, int32_t> set_zero_dk;
     set_zero_dk(dev_ctx, &dk_semaphore, static_cast<int32_t>(0));
