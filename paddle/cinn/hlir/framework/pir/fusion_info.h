@@ -55,6 +55,7 @@ class OperationInfo {
   std::string name_;
   std::vector<ValueInfo> input_infos_;
   std::vector<ValueInfo> output_infos_;
+  std::vector<::symbol::ShapeOrDataDimExprs> output_infos_symbol_;
   std::vector<AttributeInfo> attr_infos_;
 };
 
@@ -120,10 +121,12 @@ class FusionInfo {
  private:
   void ParseOpInfos(const OpLoweringGroup &group);
   void ParseInputDimExprs(const OpLoweringGroup &group);
+  void ParseOutputDimExprs(const OpLoweringGroup &group);
   void ParseProgramInfo(const OpLoweringGroup &group);
 
   std::vector<FusionOpInfo> op_infos_;
   std::vector<::symbol::ShapeOrDataDimExprs> input_dim_exprs_;
+  std::vector<::symbol::ShapeOrDataDimExprs> output_dim_exprs_;
   std::shared_ptr<ProgramInfo> program_info_;
   std::size_t cached_hash_value_{0};
 

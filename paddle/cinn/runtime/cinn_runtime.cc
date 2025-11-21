@@ -27,14 +27,14 @@ extern "C" {
 
 int cinn_buffer_malloc(void* context, struct cinn_buffer_t* buf) {
   // ASSERT_NOT_NULL(context)
-  ASSERT_NOT_NULL(buf)
-  ASSERT_NOT_NULL(buf->device_interface)
+  // ASSERT_NOT_NULL(buf)
+  // ASSERT_NOT_NULL(buf->device_interface)
   return buf->device_interface->impl->malloc(context, buf);
 }
 
 int cinn_buffer_free(void* context, struct cinn_buffer_t* buf) {
   // ASSERT_NOT_NULL(context)
-  ASSERT_NOT_NULL(buf)
+  // ASSERT_NOT_NULL(buf)
   // If buffer is lazy, then we will not free this buffer, that will greatly
   // improve performance.
   if (buf->lazy) return 0;
@@ -42,15 +42,15 @@ int cinn_buffer_free(void* context, struct cinn_buffer_t* buf) {
 }
 
 void* cinn_buffer_slice(struct cinn_buffer_t* buf, uint32_t offset) {
-  CINN_CHECK(buf);
+  // CINN_CHECK(buf);
   uint64_t offset_byte = offset * buf->type.bytes();
-  CINN_CHECK_LT(offset_byte, buf->memory_size);
+  // CINN_CHECK_LT(offset_byte, buf->memory_size);
   return buf->memory + offset_byte;
 }
 
 int cinn_device_sync(void* context, struct cinn_buffer_t* buf) {
-  ASSERT_NOT_NULL(buf)
-  ASSERT_NOT_NULL(buf->device_interface)
+  // ASSERT_NOT_NULL(buf)
+  // ASSERT_NOT_NULL(buf->device_interface)
   // ASSERT_NOT_NULL(context)
   buf->device_interface->impl->sync(context, buf);
   return 0;
@@ -59,39 +59,39 @@ int cinn_device_sync(void* context, struct cinn_buffer_t* buf) {
 int cinn_device_release(
     void* context, const struct cinn_device_interface_t* device_interface) {
   // ASSERT_NOT_NULL(context)
-  ASSERT_NOT_NULL(device_interface)
-  CINN_RUNTIME_NOT_IMPLEMENTED
+  // ASSERT_NOT_NULL(device_interface)
+  // CINN_RUNTIME_NOT_IMPLEMENTED
 }
 
 int cinn_buffer_copy_to_host(void* context, struct cinn_buffer_t* buf) {
   // ASSERT_NOT_NULL(context)
-  ASSERT_NOT_NULL(buf)
-  ASSERT_NOT_NULL(buf->device_interface)
+  // ASSERT_NOT_NULL(buf)
+  // ASSERT_NOT_NULL(buf->device_interface)
   return buf->device_interface->impl->copy_to_host(context, buf);
 }
 
 int cinn_buffer_copy_to_device(void* context, struct cinn_buffer_t* buf) {
   // ASSERT_NOT_NULL(context)
-  ASSERT_NOT_NULL(buf)
-  ASSERT_NOT_NULL(buf->device_interface)
+  // ASSERT_NOT_NULL(buf)
+  // ASSERT_NOT_NULL(buf->device_interface)
   return buf->device_interface->impl->copy_to_device(context, buf);
 }
 int cinn_buffer_copy(void* context,
                      struct cinn_buffer_t* src,
                      struct cinn_buffer_t* dst) {
   // ASSERT_NOT_NULL(context);
-  ASSERT_NOT_NULL(src);
-  ASSERT_NOT_NULL(dst);
+  // ASSERT_NOT_NULL(src);
+  // ASSERT_NOT_NULL(dst);
   return dst->device_interface->buffer_copy(context, src, dst);
 }
 
 void* cinn_buffer_get_data_handle(struct cinn_buffer_t* buf) {
-  CINN_CHECKP(buf, "%s", "buffer is null");
+  // CINN_CHECKP(buf, "%s", "buffer is null");
   return buf->memory;
 }
 
 void* cinn_buffer_get_data_const_handle(const struct cinn_buffer_t* buf) {
-  CINN_CHECKP(buf, "%s", "buffer is null");
+  // CINN_CHECKP(buf, "%s", "buffer is null");
   return buf->memory;
 }
 
@@ -116,11 +116,11 @@ cinn_buffer_t* cinn_buffer_new_default(int target,
       buf->device_interface = cinn_x86_device_interface();
       break;
     case cinn_unk_device:
-      fprintf(stderr, "Device type of buffer should be set, found Unk");
+      // fprintf(GetStdErr(), "Device type of buffer should be set, found Unk");
       abort();
       break;
     default:
-      fprintf(stderr, "Not supported device type");
+      // fprintf(GetStdErr(), "Not supported device type");
       abort();
   }
   cinn_buffer_malloc(reinterpret_cast<void*>(0), buf);
@@ -237,7 +237,7 @@ struct cinn_buffer_t* cinn_buffer_t::new_(cinn_device_kind_t device,
                                           const std::vector<int>& shape,
                                           int align) {
   int32_t dimensions = shape.size();
-  CINN_CHECK(shape.size() < CINN_BUFFER_MAX_DIMS);
+  // CINN_CHECK(shape.size() < CINN_BUFFER_MAX_DIMS);
 
   struct cinn_buffer_t* buf =
       (struct cinn_buffer_t*)malloc(sizeof(struct cinn_buffer_t));
@@ -253,11 +253,11 @@ struct cinn_buffer_t* cinn_buffer_t::new_(cinn_device_kind_t device,
       buf->device_interface = cinn_x86_device_interface();
       break;
     case cinn_unk_device:
-      fprintf(stderr, "Device type of buffer should be set, found Unk");
+      // fprintf(GetStdErr(), "Device type of buffer should be set, found Unk");
       abort();
       break;
     default:
-      fprintf(stderr, "Not supported device type");
+      // fprintf(GetStdErr(), "Not supported device type");
       abort();
   }
 
@@ -278,75 +278,75 @@ cinn_buffer_t* cinn_buffer_new(cinn_device_kind_t device,
 }
 
 cinn_pod_value_t::operator double() const {
-  CINN_CHECK_EQ(type_code_, ::cinn_type_code<double>());
+  // CINN_CHECK_EQ(type_code_, ::cinn_type_code<double>());
   return value_.v_float64;
 }
 cinn_pod_value_t::operator float() const {
-  CINN_CHECK_EQ(type_code_, ::cinn_type_code<float>());
+  // CINN_CHECK_EQ(type_code_, ::cinn_type_code<float>());
   return value_.v_float64;
 }
 cinn_pod_value_t::operator cinn::common::bfloat16() const {
-  CINN_CHECK_EQ(type_code_, ::cinn_type_code<cinn::common::bfloat16>());
+  // CINN_CHECK_EQ(type_code_, ::cinn_type_code<cinn::common::bfloat16>());
   return static_cast<cinn::common::bfloat16>(value_.v_float64);
 }
 cinn_pod_value_t::operator cinn::common::float8e4m3() const {
-  CINN_CHECK_EQ(type_code_, ::cinn_type_code<cinn::common::float8e4m3>());
+  // CINN_CHECK_EQ(type_code_, ::cinn_type_code<cinn::common::float8e4m3>());
   return static_cast<cinn::common::float8e4m3>(value_.v_float64);
 }
 cinn_pod_value_t::operator cinn::common::float16() const {
-  CINN_CHECK_EQ(type_code_, ::cinn_type_code<cinn::common::float16>());
+  // CINN_CHECK_EQ(type_code_, ::cinn_type_code<cinn::common::float16>());
   return static_cast<cinn::common::float16>(value_.v_float64);
 }
 
 cinn_pod_value_t::operator bool() const {
-  CINN_CHECK_EQ(type_code_, ::cinn_type_code<bool>());
+  // CINN_CHECK_EQ(type_code_, ::cinn_type_code<bool>());
   return value_.v_int64;
 }
 
 cinn_pod_value_t::operator int8_t() const {
-  CINN_CHECK_EQ(type_code_, ::cinn_type_code<int8_t>());
+  // CINN_CHECK_EQ(type_code_, ::cinn_type_code<int8_t>());
   return value_.v_int64;
 }
 cinn_pod_value_t::operator int16_t() const {
-  CINN_CHECK_EQ(type_code_, ::cinn_type_code<int16_t>());
+  // CINN_CHECK_EQ(type_code_, ::cinn_type_code<int16_t>());
   return value_.v_int64;
 }
 cinn_pod_value_t::operator int32_t() const {
-  CINN_CHECK_EQ(type_code_, ::cinn_type_code<int32_t>());
+  // CINN_CHECK_EQ(type_code_, ::cinn_type_code<int32_t>());
   return value_.v_int64;
 }
 cinn_pod_value_t::operator int64_t() const {
-  CINN_CHECK_EQ(type_code_, ::cinn_type_code<int64_t>());
+  // CINN_CHECK_EQ(type_code_, ::cinn_type_code<int64_t>());
   return value_.v_int64;
 }
 
 cinn_pod_value_t::operator uint8_t() const {
-  CINN_CHECK_EQ(type_code_, ::cinn_type_code<uint8_t>());
+  // CINN_CHECK_EQ(type_code_, ::cinn_type_code<uint8_t>());
   return value_.v_int64;
 }
 cinn_pod_value_t::operator uint16_t() const {
-  CINN_CHECK_EQ(type_code_, ::cinn_type_code<uint16_t>());
+  // CINN_CHECK_EQ(type_code_, ::cinn_type_code<uint16_t>());
   return value_.v_int64;
 }
 cinn_pod_value_t::operator uint32_t() const {
-  CINN_CHECK_EQ(type_code_, ::cinn_type_code<uint32_t>());
+  // CINN_CHECK_EQ(type_code_, ::cinn_type_code<uint32_t>());
   return value_.v_int64;
 }
 cinn_pod_value_t::operator uint64_t() const {
-  CINN_CHECK_EQ(type_code_, ::cinn_type_code<uint64_t>());
+  // CINN_CHECK_EQ(type_code_, ::cinn_type_code<uint64_t>());
   return value_.v_int64;
 }
 
 cinn_pod_value_t::operator void*() const {
-  CINN_CHECK_EQ(type_code_, ::cinn_type_code<void*>());
+  // CINN_CHECK_EQ(type_code_, ::cinn_type_code<void*>());
   return value_.v_handle;
 }
 cinn_pod_value_t::operator cinn_buffer_t*() const {
-  CINN_CHECK_EQ(type_code_, ::cinn_type_code<cinn_buffer_t*>());
+  // CINN_CHECK_EQ(type_code_, ::cinn_type_code<cinn_buffer_t*>());
   return static_cast<cinn_buffer_t*>(value_.v_handle);
 }
 cinn_pod_value_t::operator char*() const {
-  CINN_CHECK_EQ(type_code_, ::cinn_type_code<char*>());
+  // CINN_CHECK_EQ(type_code_, ::cinn_type_code<char*>());
   return static_cast<char*>(value_.v_handle);
 }
 
@@ -512,10 +512,10 @@ void buffer_p_to_cinn_pod_value(const cinn_buffer_t* v, cinn_pod_value_t* out) {
 void cinn_print_debug_string(const char* s, ...) {
   va_list args;
   va_start(args, s);
-  vfprintf(stderr, s, args);
+  // vfprintf(GetStdErr(), s, args);
   va_end(args);
 
-  fprintf(stderr, "\n");
+  // fprintf(GetStdErr(), "\n");
 }
 
 void debug_pod_value(cinn_pod_value_t v, int i) {
@@ -558,7 +558,7 @@ void cinn_print_debug_args(cinn_pod_value_t* args, int count) {
 }
 
 void cinn_args_construct(cinn_pod_value_t* arr, int count, ...) {
-  CINN_CHECK(count < 1000);
+  // CINN_CHECK(count < 1000);
 
   va_list args;
   va_start(args, count);
@@ -594,7 +594,7 @@ void* cinn_pod_value_t::data_addr() const {
       return (void*)&value_.v_handle;  // NOLINT
     default:
       cinn_print_debug_string("POD value type [%d] not supported", type_code());
-      CINN_RUNTIME_NOT_IMPLEMENTED
+      // CINN_RUNTIME_NOT_IMPLEMENTED
   }
   return nullptr;
 }

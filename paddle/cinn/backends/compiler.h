@@ -20,6 +20,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <dlfcn.h>
 
 #include "paddle/cinn/backends/llvm/codegen_llvm.h"
 #include "paddle/cinn/backends/llvm/execution_engine.h"
@@ -131,6 +132,45 @@ class Compiler final {
 
   std::vector<void*> GetFnPtr() const { return fn_ptr_; }
 
+  /**
+   * Set kernel cache mode
+   */
+  void SetKernelCache(bool enable) { cinn_kernel_cache_ = enable; }
+
+  /**
+   * Get kernel cache mode
+   */
+  bool GetKernelCache() const { return cinn_kernel_cache_; }
+
+  /**
+   * Set pir fusion hash
+   */
+  void SetFusionHash(size_t hash) { fusion_hash_ = hash; }
+
+  /**
+   * Get pir fusion hash
+   */
+  size_t GetFusionHash() const { return fusion_hash_; }
+
+  void LoadAndRegisterFromCache(const std::string& source_hash);
+
+  ~Compiler() {
+    // 检查是否有动态库句柄需要释放
+    if (dynamic_library_handle_) {
+      VLOG(3) << "Closing dynamic library handle for: " << dynamic_library_path_;
+      
+      // 调用 dlclose 来释放共享库资源
+      int result = dlclose(dynamic_library_handle_);
+      if (result != 0) {
+          // 使用 LOG(WARNING) 或 VLOG(0) 记录错误，但不终止程序
+          LOG(WARNING) << "Error closing dynamic library handle for " 
+                        << dynamic_library_path_ << ". Error: " << dlerror();
+      }
+      // 清除句柄指针
+      dynamic_library_handle_ = nullptr;
+    }
+  }
+
  private:
   // do not register device symbol until end=true for build function
   void RegisterDeviceModuleSymbol();
@@ -164,14 +204,47 @@ class Compiler final {
   // only heterogeneous systems need to record device func and module
   std::vector<std::string> device_fn_name_;
   std::string device_fn_code_;
+  // kernel cache control
+  bool cinn_kernel_cache_{true};
+  size_t fusion_hash_{0};
+
 #ifdef CINN_WITH_CUDA
   std::unique_ptr<runtime::cuda::CUDAModule> cuda_module_;
+  // dynamic library support
+  std::string dynamic_library_path_;
+  void* dynamic_library_handle_{nullptr};
 #endif
 #ifdef CINN_WITH_HIP
   std::unique_ptr<runtime::hip::HIPModule> hip_module_;
 #endif
 #ifdef CINN_WITH_SYCL
   std::unique_ptr<runtime::sycl::SYCLModule> sycl_module_;
+#endif
+
+  // Dynamic library helper methods
+#ifdef CINN_WITH_CUDA
+  std::string ComputeSourceHash();
+  std::string ExtractKernelName(const std::string& source_code);
+  std::string GenerateObjectWithoutCache(const std::string& source_code);
+  std::string GenerateFatbinWithoutCache(const std::string& source_code);
+  void SaveKernelNamesToMeta();
+  void LoadKernelNamesFromMeta();
+  std::pair<bool, std::string> FindKernelInCache(const std::string& so_path, 
+                                               const std::string& kernel_name);
+  std::string UpdateKernelInCache(const std::string& so_path,
+                                const std::string& kernel_name,
+                                const std::string& source_code,
+                                const std::string& source_hash);
+  std::string AddKernelToCache(const std::string& so_path,
+                             const std::string& kernel_name,
+                             const std::string& source_code,
+                             const std::string& source_hash);
+  std::string CreateNewCache(const std::string& so_path,
+                           const std::string& kernel_name,
+                           const std::string& source_code,
+                           const std::string& source_hash);
+  std::vector<char> ExtractFatbinFromSo(const std::string& so_path);
+  void* CreateLibraryInfo(const std::string& library_path, const std::string& function_name);
 #endif
 };
 

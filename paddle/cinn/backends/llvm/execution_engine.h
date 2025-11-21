@@ -80,12 +80,18 @@ class ExecutionEngine {
 
   void ExportObject(const std::string &path);
 
+  bool compileLLVMIR(llvm::Module* module, size_t fusionHash=0);
+
+  bool linkSharedLibrary(const size_t fusionHash=0, const std::vector<std::string> &cinn_runtime_include_path = {}); 
+
   bool AddModule(std::unique_ptr<llvm::Module> module,
-                 std::unique_ptr<llvm::LLVMContext> context);
+                 std::unique_ptr<llvm::LLVMContext> context,
+                 const size_t fusionHash=0,
+                 const std::vector<std::string> &cinn_runtime_include_path = {});
 
   void RegisterModuleRuntimeSymbols(RuntimeSymbols &&module_symbols);
 
-  bool AddSelfModule();
+  bool AddSelfModule(const size_t fusionHash=0, const std::vector<std::string> &cinn_runtime_include_path = {});
 
  protected:
   explicit ExecutionEngine(bool enable_object_cache)
@@ -111,6 +117,9 @@ class ExecutionEngine {
   std::unique_ptr<llvm::LLVMContext> ctx;
   std::unique_ptr<llvm::Module> m;
   std::unique_ptr<llvm::IRBuilder<>> b;
+
+  // kernel cache control
+  bool cinn_kernel_cache_{true};
 };
 
 }  // namespace cinn::backends

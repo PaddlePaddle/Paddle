@@ -53,6 +53,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <fstream>
 
 #include "paddle/cinn/backends/codegen_cuda_host.h"
 #include "paddle/cinn/backends/llvm/cinn_runtime_llvm_ir.h"
@@ -223,8 +224,76 @@ void ExecutionEngine::Link<CodeGenGpuHost>(const ir::Module &module) {
   ir_emitter->Compile(module);
 }
 
+// 使用 LLVM C++ API 将 .ll 文件编译为 .o 文件
+bool ExecutionEngine::compileLLVMIR(llvm::Module* module, size_t fusionHash) {
+  std::error_code EC;
+
+  // 1. 查找当前平台的目标
+  std::string Error;
+  const llvm::Target* TheTarget = llvm::TargetRegistry::lookupTarget(module->getTargetTriple(), Error);
+  if (!TheTarget) {
+      llvm::errs() << Error;
+      return false;
+  }
+
+  // 2. 创建 TargetMachine (这是核心)
+  llvm::TargetOptions TargetOpts;
+  // **核心：** 必须设置为 PIC (Position Independent Code)
+  llvm::Reloc::Model RelocModel = llvm::Reloc::Model::PIC_; 
+  std::string CPU = "generic";
+  std::string Features = "";
+  llvm::TargetMachine* TM = TheTarget->createTargetMachine(
+      module->getTargetTriple(), CPU, Features, TargetOpts, RelocModel
+  );
+  module->setDataLayout(TM->createDataLayout());
+  module->setTargetTriple(TM->getTargetTriple().str()); // 确保 TargetTriple 是 TargetMachine 使用的
+
+  // 3. 设置输出文件的路径和类型
+  std::string source_hash = std::to_string(fusionHash);
+  std::string OutputFilename = "/tmp/cinn/" + source_hash + "/module.o";
+  llvm::raw_fd_ostream dest(OutputFilename, EC, llvm::sys::fs::OF_None);
+
+  // 4. 创建 PassManager 并添加 "Emit Object File" Pass
+  llvm::legacy::PassManager pass_manager;
+  llvm::CodeGenFileType FileType = llvm::CodeGenFileType::CGFT_ObjectFile;
+  TM->addPassesToEmitFile(pass_manager, dest, nullptr, FileType);
+
+  // 5. 运行 Pass，生成 .o 文件！
+  pass_manager.run(*module);
+  dest.flush();
+
+  VLOG(5) << "LLVM API: Successfully compiled to '" << OutputFilename;
+  return true;
+}
+
+bool ExecutionEngine::linkSharedLibrary(const size_t fusionHash, const std::vector<std::string> &cinn_runtime_include_path) {
+  std::string source_hash = std::to_string(fusionHash);
+  std::string output_so = "/tmp/cinn/" + source_hash + "/cinn_cache.so";
+  std::string cuda_obj = "/tmp/cinn/" + source_hash + "/cinn_cuda_kernel.o";
+  std::string llvm_obj = "/tmp/cinn/" + source_hash + "/module.o";
+  std::string cuda_lib_path = "/usr/local/cuda/lib64";
+  std::string link_cmd = "g++ -shared -o " + output_so + " " + 
+                          cuda_obj + " " + llvm_obj + 
+                          " -L" + cuda_lib_path + " -lcudart";
+  
+  for (auto& header : cinn_runtime_include_path) {
+    link_cmd += " -L " + header + " -lcinnapi";
+  }
+                          
+  std::cout << "Linker command: " << link_cmd << "\n";
+
+  int link_ret = system(link_cmd.c_str());
+  if (link_ret != 0) {
+      std::cerr << "Error: Final linking failed.\n";
+      return 1;
+  }
+  return 0;
+}
+
 bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
-                                std::unique_ptr<llvm::LLVMContext> context) {
+                                std::unique_ptr<llvm::LLVMContext> context,
+                                const size_t fusionHash,
+                                const std::vector<std::string> &cinn_runtime_include_path) {
   utils::RecordEvent("ExecutionEngine AddModule", utils::EventType::kOrdinary);
   module->setDataLayout(jit_->getDataLayout());
   if (VLOG_IS_ON(5)) {
@@ -236,9 +305,40 @@ bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
     os.flush();
     VLOG(5) << buffer;
   }
+
+  std::error_code EC;
+  std::string source_hash = std::to_string(fusionHash);
+  llvm::raw_fd_ostream out("/tmp/cinn/" + source_hash + "/module.ll", EC);
+  if (EC) {
+      LOG(ERROR) << "Failed to open file: " << EC.message();
+      return false;
+  }
+  module->print(out, {});
+  out.close();
+  VLOG(5) << "LLVM IR dumped to module.ll";
+
+  if (cinn_kernel_cache_) {
+    std::string cache_so_path = "/tmp/cinn/" + source_hash + "/" + "cinn_cache.so";
+    if (std::ifstream(cache_so_path).good()) {
+      // 缓存文件已经存在
+      return true;
+    } else {
+      // Compiling LLVM IR with LLVM API
+      if (!compileLLVMIR(module.get(), fusionHash)) {
+        std::cerr << "Error: LLVM IR compilation failed.\n";
+        return false;
+      }
+
+      // Linking object files into shared library
+      if (linkSharedLibrary(fusionHash, cinn_runtime_include_path)) {
+        std::cerr << "Error: Linking object files into shared library failed.\n";
+        return false;
+      }
+    }
+  }
   llvm::orc::ThreadSafeContext tsc(std::move(context));
   llvm::orc::ThreadSafeModule tsm(std::move(module), std::move(tsc));
-  llvm::cantFail(jit_->addIRModule(std::move(tsm)));
+  llvm::cantFail(jit_->addIRModule(std::move(tsm))); // todo
   return true;
 }
 
@@ -255,8 +355,8 @@ void ExecutionEngine::RegisterModuleRuntimeSymbols(
   }
 }
 
-bool ExecutionEngine::AddSelfModule() {
-  return AddModule(std::move(m), std::move(ctx));
+bool ExecutionEngine::AddSelfModule(const size_t fusionHash, const std::vector<std::string> &cinn_runtime_include_path) {
+  return AddModule(std::move(m), std::move(ctx), fusionHash, cinn_runtime_include_path);
 }
 
 void ExecutionEngine::ExportObject(const std::string &path) {

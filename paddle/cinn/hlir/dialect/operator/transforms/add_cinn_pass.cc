@@ -381,6 +381,12 @@ void ApplyCinnPass(
               << origin_num_ops << " = "
               << static_cast<float>(new_num_ops) / origin_num_ops << ")";
   }
+  if (VLOG_IS_ON(1)) {
+    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(program);
+    std::cout << "Program after lowering: \n"
+              << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
+              << std::endl;
+  }
 }
 
 }  // namespace cinn::dialect::ir

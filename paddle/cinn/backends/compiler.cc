@@ -30,6 +30,10 @@
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
 #include "paddle/cinn/runtime/flags.h"
+#include <dlfcn.h>
+#include <ctime>
+#include <cstdlib>
+#include <unistd.h>
 #endif
 #ifdef CINN_WITH_HIP
 #include "paddle/cinn/backends/hip/codegen_hip_dev.h"
@@ -260,7 +264,66 @@ void Compiler::AppendBroadcastSwitchModule(const ir::Module& module) {
 
 void Compiler::EndCompile() {
   RegisterDeviceModuleSymbol();
-  engine_->AddSelfModule();
+  std::vector<std::string> cinn_runtime_include_path = {Context::Global().runtime_include_dir()};
+  engine_->AddSelfModule(GetFusionHash(), cinn_runtime_include_path);
+}
+
+void Compiler::LoadAndRegisterFromCache(const std::string& source_hash) {
+  std::string cache_so_path = "/tmp/cinn/" + source_hash + "/" + "cinn_cache.so";
+  VLOG(5) << "YUHAN!!! LoadAndRegisterFromCache, cache_so_path = " << cache_so_path;
+  
+  // 1. 加载元数据 (恢复 Kernel 名称列表)
+  // 🚨 注意：如果 LoadKernelNamesFromMeta 依赖 source_hash，请确保它能获取到，例如修改其签名接受 source_hash。
+  // 假设 LoadKernelNamesFromMeta(); 内部已经可以根据 source_hash 找到文件
+  LoadKernelNamesFromMeta(); 
+
+  // 2. 加载共享库 (.so)
+  void* handle = dlopen(cache_so_path.c_str(), RTLD_LAZY | RTLD_LOCAL);
+  if (!handle) {
+    LOG(FATAL) << "Failed to dlopen shared library: " << cache_so_path << " Error: " << dlerror();
+  }
+  
+  // 3. 加载 CUDA Fatbin (Device Code)
+  std::string fatbin_path = "/tmp/cinn/" + source_hash + "/cinn_cuda_kernel.fatbin"; 
+  CUmodule cu_module;
+  if (cuModuleLoad(&cu_module, fatbin_path.c_str()) != CUDA_SUCCESS) {
+      LOG(FATAL) << "Failed to load CUDA Module from " << fatbin_path;
+  }
+  // 🚨 保存 CUmodule 句柄到成员变量，以便后续销毁
+  // this->cuda_module_handle_ = cu_module; 
+
+  RuntimeSymbols symbols;
+  // 4. 遍历并注册符号
+  for (const auto& kernel_fn_name : device_fn_name_) {
+    // 4A. 查找 Host Wrapper 函数指针
+    void* fn_kernel = dlsym(handle, kernel_fn_name.c_str());
+    if (!fn_kernel) {
+        LOG(FATAL) << "Failed to dlsym kernel symbol: " << kernel_fn_name << " from " << cache_so_path << " Error: " << dlerror();
+    }
+    
+    // 4B. 注册到 ExecutionEngine (用于运行时查找 Host Wrapper 地址)
+    fn_ptr_.push_back(fn_kernel); 
+    symbols.RegisterVar(kernel_fn_name + "_ptr_", fn_kernel);
+
+    // 4C. 获取 Device 句柄，并覆盖 Host 侧指针
+    CUfunction cu_kernel_func;
+    if (cuModuleGetFunction(&cu_kernel_func, cu_module, kernel_fn_name.c_str()) != CUDA_SUCCESS) {
+        LOG(FATAL) << "Failed to get CUfunction handle for " << kernel_fn_name;
+    }
+    void* kernel_ptr_host_addr = dlsym(handle, (kernel_fn_name + "_ptr_").c_str());
+    if (!kernel_ptr_host_addr) {
+         LOG(FATAL) << "Failed to dlsym kernel pointer variable: " << kernel_fn_name + "_ptr_";
+    }
+    *static_cast<void**>(kernel_ptr_host_addr) = reinterpret_cast<void*>(cu_kernel_func); 
+  }
+
+  // 5. 注册所有运行时符号
+  engine_->RegisterModuleRuntimeSymbols(std::move(symbols));
+  VLOG(3) << "Successfully registered symbols from cache .so: " << cache_so_path;
+
+  // 6. 存储句柄和路径，以便后续 dlclose/cuModuleUnload
+  dynamic_library_path_ = cache_so_path; 
+  dynamic_library_handle_ = handle;      
 }
 
 std::string Compiler::GetSourceCode(const ir::Module& module) {
@@ -347,32 +410,167 @@ void Compiler::RegisterDeviceModuleSymbol() {
       [&](common::HygonDCUArchSYCL) { RegisterSyclModuleSymbol(); });
 }
 
+
 void Compiler::RegisterCudaModuleSymbol() {
 #ifdef CINN_WITH_CUDA
+  VLOG(3) << "RegisterCudaModuleSymbol with kernel cache: " << cinn_kernel_cache_;
   nvrtc::Compiler compiler;
   std::string source_code = CodeGenCudaDev::GetSourceHeader() + device_fn_code_;
-  auto ptx = compiler(source_code);
-  PADDLE_ENFORCE_EQ(!ptx.empty(),
-                    true,
-                    ::common::errors::InvalidArgument(
-                        "Compile PTX failed from source code\n"));
-  using runtime::cuda::CUDAModule;
-  cuda_module_.reset(new CUDAModule(ptx,
-                                    compiler.compile_to_cubin()
-                                        ? CUDAModule::Kind::CUBIN
-                                        : CUDAModule::Kind::PTX));
 
-  RuntimeSymbols symbols;
+  // 我们必须在 C++ (Host) 代码中定义 LLVM IR (module.o) 期望链接的
+  // [kernel_name]_ptr_ 全局变量。
+  // 这些变量必须与 CUDA Kernel 函数本身一起编译。
+
+  std::string host_symbol_definitions = "\n\nextern \"C\" {\n";
   for (const auto& kernel_fn_name : device_fn_name_) {
-    auto fn_kernel = cuda_module_->GetFunction(kernel_fn_name);
-    PADDLE_ENFORCE_NOT_NULL(fn_kernel,
-                            ::common::errors::InvalidArgument(
-                                "Fail to get CUfunction kernel_fn_name"));
-    fn_ptr_.push_back(reinterpret_cast<void*>(fn_kernel));
-    symbols.RegisterVar(kernel_fn_name + "_ptr_",
-                        reinterpret_cast<void*>(fn_kernel));
+      // 这将生成如下 C++ 代码：
+      // void* fn_mul_sum_scale..._kernel_ptr_ = (void*)fn_mul_sum_scale...;
+      host_symbol_definitions += "  void* " + kernel_fn_name + "_ptr_ = (void*)" + kernel_fn_name + ";\n";
   }
-  engine_->RegisterModuleRuntimeSymbols(std::move(symbols));
+  host_symbol_definitions += "}\n";
+
+  // 2. 将 C++ 指针定义附加到 CUDA Kernel 源代码
+  std::string full_source_to_compile = source_code + host_symbol_definitions;
+
+  // ----------------------------------------------------------------------
+  
+  if (cinn_kernel_cache_) {
+    // 缓存模式逻辑：检查/tmp/cinn/source_hash/cinn_cuda_kernel.o是否存在
+    std::string kernel_name = ExtractKernelName(source_code);
+    std::string source_hash = ComputeSourceHash();
+    std::string cache_so_path = "/tmp/cinn/" + source_hash + "/" + "cinn_cache.so";
+    VLOG(3) << "YUHAN!!! source code is : " << source_code;
+    VLOG(3) << "YUHAN!!! kernel name is : " << kernel_name;
+    VLOG(3) << "YUHAN!!! source hash is : " << source_hash;
+    
+    // 检查缓存文件是否存在
+    if (std::ifstream(cache_so_path).good()) {
+      VLOG(3) << "YUHAN!!! " << cache_so_path << " already exist!!";
+      // Find Loading symbols from .so...
+      // Step 1: 加载共享库 (dlopen)
+      // RTLD_LAZY: 延迟解析符号。RTLD_LOCAL: 符号不导出给其他 dlopen 的库。
+      void* handle = dlopen(cache_so_path.c_str(), RTLD_LAZY | RTLD_LOCAL);
+      if (!handle) {
+        // 严重错误，dlerror() 给出详细信息
+        LOG(FATAL) << "Failed to dlopen shared library: " << cache_so_path << " Error: " << dlerror();
+      }
+      
+      // 加载 CUDA Fatbin (Device Code)
+      std::string fatbin_path = "/tmp/cinn/" + source_hash + "/cinn_cuda_kernel.fatbin"; 
+      CUmodule cu_module;
+      // 假设您的 CUDA Driver API 函数名是 cuModuleLoad
+      if (cuModuleLoad(&cu_module, fatbin_path.c_str()) != CUDA_SUCCESS) {
+          LOG(FATAL) << "Failed to load CUDA Module from " << fatbin_path;
+      }
+      // 🚨 TODO: 务必将 cu_module 句柄保存到 ExecutionEngine 或 Compiler 成员变量中，
+      // 以便在 CINN 销毁时调用 cuModuleUnload。
+
+      RuntimeSymbols symbols;
+      // Step 2: 查找 CUDA Kernel 符号 (dlsym)
+      // 我们查找 device_fn_name_ 列表中的所有 CUDA Kernel 函数
+      LoadKernelNamesFromMeta();
+      for (const auto& kernel_fn_name : device_fn_name_) {
+        // 在 .so 中查找符号
+        void* fn_kernel = dlsym(handle, kernel_fn_name.c_str());
+        if (!fn_kernel) {
+            // 找不到符号，可能是 .so 损坏或编译失败
+            LOG(FATAL) << "Failed to dlsym kernel symbol: " << kernel_fn_name << " from " << cache_so_path << " Error: " << dlerror();
+        }
+        
+        // Step 3: 注册符号 (注册到 CINN ExecutionEngine)
+        // 注册给运行时使用的函数指针
+        fn_ptr_.push_back(fn_kernel); 
+        // 注册到 ExecutionEngine 的符号表，通常以 "_ptr_" 结尾供运行时识别
+        symbols.RegisterVar(kernel_fn_name + "_ptr_", fn_kernel);
+
+        // ===================================================================
+        // 🚨 修复步骤 B: 获取 Device 句柄，并覆盖 .so 中的全局变量
+        // ===================================================================
+        
+        // B1. 从已加载的 CUDA Module 中获取 Device 侧 Kernel 句柄 (CUfunction)
+        CUfunction cu_kernel_func;
+        if (cuModuleGetFunction(&cu_kernel_func, cu_module, kernel_fn_name.c_str()) != CUDA_SUCCESS) {
+            LOG(FATAL) << "Failed to get CUfunction handle for " << kernel_fn_name;
+        }
+
+        // B2. 查找 .so 中全局变量 [kernel_name]_ptr_ 的 Host 内存地址
+        // 这是 Host 函数读取的变量
+        void* kernel_ptr_host_addr = dlsym(handle, (kernel_fn_name + "_ptr_").c_str());
+        if (!kernel_ptr_host_addr) {
+             LOG(FATAL) << "Failed to dlsym kernel pointer variable: " << kernel_fn_name + "_ptr_";
+        }
+        
+        // B3. 写入：将 Device 句柄的值写入 Host 变量的地址中
+        // 覆盖掉它初始化时错误的 Host 函数地址
+        *static_cast<void**>(kernel_ptr_host_addr) = reinterpret_cast<void*>(cu_kernel_func); 
+        // ===================================================================
+      }
+
+      // 注册所有运行时符号到 ExecutionEngine
+      engine_->RegisterModuleRuntimeSymbols(std::move(symbols));
+      VLOG(3) << "Successfully registered symbols from cache .so: " << cache_so_path;
+
+      // 存储句柄和路径，以便在 Compiler 或 ExecutionEngine 销毁时调用 dlclose
+      // TODO:: 确认是否要销毁
+      dynamic_library_path_ = cache_so_path; // 存储路径
+      dynamic_library_handle_ = handle;      // 假设 Compiler 类中有一个成员 `void* dynamic_library_handle_` 存储句柄
+    } else {
+      // .so不存在，编译生成新的cinn_cuda_kernel.o和cinn_cuda_kernel.fatbin
+      VLOG(3) << "Creating new kernel cache file";
+      dynamic_library_path_ = GenerateObjectWithoutCache(full_source_to_compile);
+      GenerateFatbinWithoutCache(full_source_to_compile);
+      SaveKernelNamesToMeta();
+
+
+      // 按照正常方式注册到JIT
+      auto ptx = compiler(source_code);
+      PADDLE_ENFORCE_EQ(!ptx.empty(),
+                        true,
+                        ::common::errors::InvalidArgument(
+                            "Compile PTX failed from source code\n"));
+      using runtime::cuda::CUDAModule;
+      cuda_module_.reset(new CUDAModule(ptx,
+                                        compiler.compile_to_cubin()
+                                            ? CUDAModule::Kind::CUBIN
+                                            : CUDAModule::Kind::PTX));
+
+      RuntimeSymbols symbols;
+      for (const auto& kernel_fn_name : device_fn_name_) {
+        auto fn_kernel = cuda_module_->GetFunction(kernel_fn_name);
+        PADDLE_ENFORCE_NOT_NULL(fn_kernel,
+                                ::common::errors::InvalidArgument(
+                                    "Fail to get CUfunction kernel_fn_name"));
+        fn_ptr_.push_back(reinterpret_cast<void*>(fn_kernel));
+        symbols.RegisterVar(kernel_fn_name + "_ptr_",
+                            reinterpret_cast<void*>(fn_kernel));
+      }
+      engine_->RegisterModuleRuntimeSymbols(std::move(symbols));
+    }
+  } else {
+    // 按照正常方式注册到JIT
+    auto ptx = compiler(source_code);
+    PADDLE_ENFORCE_EQ(!ptx.empty(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "Compile PTX failed from source code\n"));
+    using runtime::cuda::CUDAModule;
+    cuda_module_.reset(new CUDAModule(ptx,
+                                      compiler.compile_to_cubin()
+                                          ? CUDAModule::Kind::CUBIN
+                                          : CUDAModule::Kind::PTX));
+
+    RuntimeSymbols symbols;
+    for (const auto& kernel_fn_name : device_fn_name_) {
+      auto fn_kernel = cuda_module_->GetFunction(kernel_fn_name);
+      PADDLE_ENFORCE_NOT_NULL(fn_kernel,
+                              ::common::errors::InvalidArgument(
+                                  "Fail to get CUfunction kernel_fn_name"));
+      fn_ptr_.push_back(reinterpret_cast<void*>(fn_kernel));
+      symbols.RegisterVar(kernel_fn_name + "_ptr_",
+                          reinterpret_cast<void*>(fn_kernel));
+    }
+    engine_->RegisterModuleRuntimeSymbols(std::move(symbols));
+  }
 #else
   CINN_NOT_IMPLEMENTED
 #endif
@@ -565,14 +763,759 @@ void Compiler::ExportObject(const std::string& path) {
   engine_->ExportObject(path);
 }
 
+// 位于 paddle/cinn/backends/compiler.cc
+
 void* Compiler::Lookup(std::string_view fn_name) {
-  PADDLE_ENFORCE_NOT_NULL(
-      engine_, ::common::errors::InvalidArgument("Sorry, engine_ is nullptr"));
-  if (engine_->Lookup(fn_name) != nullptr) {
+  // 1. 检查是否已通过 Cache 加载了动态库
+  // 这个 dynamic_library_handle_ 只有在 LoadAndRegisterFromCache 被调用时才会赋值
+  // 即：只有在“缓存命中”路径下，它才不为空。
+  if (cinn_kernel_cache_ && dynamic_library_handle_) {
+      void* func_ptr = dlsym(dynamic_library_handle_, fn_name.data());
+      if (func_ptr) {
+          LOG(WARNING) << "Lookup symbol " << fn_name << " from cached .so success. " << fusion_hash_;
+          return func_ptr;
+      }
+      LOG(WARNING) << "Kernel cache is enabled but symbol " << fn_name << " not found in .so " << fusion_hash_;
+  }
+
+  // 2. 如果没有动态库句柄（说明是第一次编译），或者 .so 里找不到
+  // 则回退到 JIT 引擎查找
+  if (engine_) {
+    // 注意：不要在 Cache Hit 且 dlsym 失败后盲目调这个，因为 engine_ 可能是空的
+    // 但只要代码逻辑正确，First Run 时 engine_ 一定有值。
     return engine_->Lookup(fn_name);
   }
+
   return nullptr;
 }
+
+#ifdef CINN_WITH_CUDA
+std::string Compiler::ComputeSourceHash() {
+  return std::to_string(fusion_hash_);
+}
+std::string Compiler::ExtractKernelName(const std::string& source_code) {
+  // 从CUDA源码中提取kernel函数名
+  // 查找"__global__"关键字后面的函数名
+  size_t global_pos = source_code.find("__global__");
+  if (global_pos == std::string::npos) {
+    return "unknown_kernel_" + std::to_string(std::time(nullptr));
+  }
+  
+  // 跳过__global__关键字
+  size_t pos = global_pos + 10; // "__global__"的长度是10
+  
+  // 跳过空格和换行符
+  pos = source_code.find_first_not_of(" \t\n", pos);
+  if (pos == std::string::npos) {
+    return "unknown_kernel_" + std::to_string(std::time(nullptr));
+  }
+  
+  // 跳过返回类型（如void、float等），找到函数名
+  // 查找函数名的开始位置（在返回类型之后）
+  size_t func_name_start = source_code.find_first_not_of(" \t\n", pos);
+  if (func_name_start == std::string::npos) {
+    return "unknown_kernel_" + std::to_string(std::time(nullptr));
+  }
+  
+  // 跳过返回类型单词
+  size_t return_type_end = source_code.find_first_of(" \t\n", func_name_start);
+  if (return_type_end == std::string::npos) {
+    return "unknown_kernel_" + std::to_string(std::time(nullptr));
+  }
+  
+  // 找到__launch_bounds__开始位置
+  size_t launch_bounds_start = source_code.find_first_not_of(" \t\n", return_type_end);
+  if (launch_bounds_start == std::string::npos) {
+    return "unknown_kernel_" + std::to_string(std::time(nullptr));
+  }
+  // 找到__launch_bounds__结束的位置
+  size_t launch_bounds_end = source_code.find_first_of(" \t\n", launch_bounds_start);
+  if (launch_bounds_end == std::string::npos) {
+    return "unknown_kernel_" + std::to_string(std::time(nullptr));
+  }
+  
+  
+  // 处理可能存在的 __launch_bounds__ 属性
+  std::string potential_attribute = source_code.substr(launch_bounds_start,
+                                                       launch_bounds_end - launch_bounds_start);
+  if (potential_attribute.find("__launch_bounds__") == std::string::npos) {
+    return "unknown_kernel_" + std::to_string(std::time(nullptr));
+  }
+    
+  // 找到 __launch_bounds__ 后面的位置
+  size_t real_func_start = source_code.find_first_not_of(" \t\n", launch_bounds_end + 1);
+  if (real_func_start == std::string::npos) {
+    return "unknown_kernel_" + std::to_string(std::time(nullptr));
+  }
+  
+  // 找到函数名结束位置（空格、制表符、换行符或左括号）
+  size_t func_end = source_code.find_first_of(" \t\n(", real_func_start);
+  if (func_end == std::string::npos) {
+    return "unknown_kernel_" + std::to_string(std::time(nullptr));
+  }
+  
+  std::string kernel_name = source_code.substr(real_func_start, func_end - real_func_start);
+  
+  // 验证提取的函数名是否有效（不能是C++关键字或返回类型）
+  static const std::set<std::string> invalid_names = {
+    "void", "int", "float", "double", "char", "bool", "short", "long", 
+    "signed", "unsigned", "const", "volatile", "static", "extern", "auto",
+    "register", "inline", "virtual", "explicit", "friend", "typedef",
+    "__launch_bounds__"
+  };
+  
+  if (invalid_names.find(kernel_name) != invalid_names.end() || kernel_name.empty()) {
+    // 如果提取到的是无效名称，尝试更精确的解析
+    // 查找第一个有效的函数名（跳过所有C++关键字）
+    size_t current_pos = real_func_start;
+    while (current_pos < source_code.length()) {
+      size_t next_space = source_code.find_first_of(" \t\n(", current_pos);
+      if (next_space == std::string::npos) {
+        break;
+      }
+      
+      std::string candidate = source_code.substr(current_pos, next_space - current_pos);
+      
+      // 检查候选名称是否有效
+      if (invalid_names.find(candidate) == invalid_names.end() && 
+          !candidate.empty()) {
+        return candidate;
+      }
+      
+      current_pos = source_code.find_first_not_of(" \t\n", next_space);
+      if (current_pos == std::string::npos) {
+        break;
+      }
+    }
+    
+    // 如果所有尝试都失败，使用默认名称
+    return "cinn_kernel_" + std::to_string(std::time(nullptr));
+  }
+  
+  return kernel_name;
+}
+
+std::string Compiler::GenerateObjectWithoutCache(const std::string& source_code) {
+
+  std::string kernel_name = ExtractKernelName(source_code);
+  std::string library_path = "/tmp/cinn/" + std::to_string(fusion_hash_) + "/";
+  llvm::sys::fs::create_directories(library_path);
+
+  // 生成一个临时.cu文件，然后使用nvcc编译为.o文件
+  std::string cuda_source_file = library_path + "cinn_cuda_kernel.cu";
+  std::ofstream source_file(cuda_source_file);
+
+  // 检查文件是否成功打开
+  if (!source_file.is_open()) {
+      LOG(FATAL) << "Failed to open CUDA source file for writing: " 
+                 << cuda_source_file 
+                 << ". Check file permissions.";
+      return "";
+  }
+
+  source_file << source_code;
+  source_file.close();
+
+  // 检查文件状态
+  if (!source_file.good()) {
+      LOG(FATAL) << "Failed to write or close the CUDA source file: " 
+                 << cuda_source_file 
+                 << ". Check disk space or permissions.";
+      return "";
+  }
+
+  // 创建.o
+  std::string cuda_source_o = library_path + "cinn_cuda_kernel.o";
+  
+  std::string compile_cmd = "nvcc -c -Xcompiler -fPIC -o " + cuda_source_o + " " + cuda_source_file + 
+                          " -arch=sm_80 --std=c++14 --expt-relaxed-constexpr " +
+                          "-I/work/Paddle/build/python/paddle/libs " +
+                          "-I/work/env3.10/lib/python3.10/site-packages/paddle/libs " +
+                          "-I/work/env3.10/lib/python3.10/site-packages/paddle/include/paddle/phi/common " +
+                          "-I/work/env3.10/lib/python3.10/site-packages/nvidia/cuda_runtime/include " +
+                          "-I/usr/local/cuda/include -include cuda_fp16.h " +
+                          "-DCINN_CUDA_FP16 -include cuda_fp8.h -DCINN_CUDA_FP8 " +
+                          "-include cuda_bf16.h -DCINN_CUDA_BF16 " +
+                          "-DCUDA_VERSION=12030 " +
+                          "-Wno-deprecated-gpu-targets " +
+                          "--generate-code=arch=compute_80,code=sm_80";
+
+  VLOG(3) << "Yuhan!!! GenerateObjectWithoutCache FusionHash \n" << std::to_string(fusion_hash_);
+  VLOG(3) << "Yuhan!!! GenerateObjectWithoutCache compile_cmd \n" << compile_cmd;
+
+  int result = std::system((compile_cmd + " > compile.log 2>&1").c_str());
+  if (result != 0) {
+    std::ifstream log_file("compile.log");
+    std::string log_content((std::istreambuf_iterator<char>(log_file)), 
+                           std::istreambuf_iterator<char>());
+    LOG(ERROR) << "Compilation failed with output:\n" << log_content;
+    return "";
+  }
+  VLOG(3) << "Yuhan!!! GenerateObjectWithoutCache " << cuda_source_o;
+  std::remove(cuda_source_file.c_str());
+  return cuda_source_o;
+}
+
+std::string Compiler::GenerateFatbinWithoutCache(const std::string& source_code) {
+  
+  std::string kernel_name = ExtractKernelName(source_code);
+  std::string library_path = "/tmp/cinn/" + std::to_string(fusion_hash_) + "/";
+  llvm::sys::fs::create_directories(library_path);
+  
+  // 生成一个临时.cu文件，然后使用nvcc编译为fatbin文件
+  std::string cuda_source_file = library_path + "cinn_cuda_kernel.cu";
+  std::ofstream source_file(cuda_source_file);
+
+  // 检查文件是否成功打开
+  if (!source_file.is_open()) {
+      LOG(FATAL) << "Failed to open CUDA source file for writing: " 
+                 << cuda_source_file 
+                 << ". Check file permissions.";
+      return "";
+  }
+
+  source_file << source_code;
+  source_file.close();
+
+  // 检查文件状态
+  if (!source_file.good()) {
+      LOG(FATAL) << "Failed to write or close the CUDA source file: " 
+                 << cuda_source_file 
+                 << ". Check disk space or permissions.";
+      return "";
+  }
+  
+  // 创建fatbin
+  std::string cuda_fatbin = library_path + "cinn_cuda_kernel.fatbin";
+
+  std::string compile_cmd = "nvcc --fatbin -o " + cuda_fatbin + " " + cuda_source_file + 
+                           " -arch=sm_80 --std=c++14 --expt-relaxed-constexpr " +
+                           "-I/work/Paddle/build/python/paddle/libs " +
+                           "-I/workspace/xuyuhan/env3.10/lib/python3.10/site-packages/paddle/libs " +
+                           "-I/workspace/xuyuhan/env3.10/lib/python3.10/site-packages/paddle/include/paddle/phi/common " +
+                           "-I/workspace/xuyuhan/env3.10/lib/python3.10/site-packages/nvidia/cuda_runtime/include " +
+                           "-I/usr/local/cuda/include -include cuda_fp16.h " +
+                           "-DCINN_CUDA_FP16 -include cuda_fp8.h -DCINN_CUDA_FP8 " +
+                           "-include cuda_bf16.h -DCINN_CUDA_BF16 " +
+                           "-DCUDA_VERSION=12030 " +
+                           "-Wno-deprecated-gpu-targets " +
+                           "--generate-code=arch=compute_80,code=sm_80";
+
+  VLOG(3) << "Yuhan!!! GenerateFatbinWithoutCache FusionHash \n" << std::to_string(fusion_hash_);;
+  VLOG(3) << "Yuhan!!! GenerateFatbinWithoutCache compile_cmd \n" << compile_cmd;
+  VLOG(3) << "Yuhan!!! GenerateFatbinWithoutCache " << cuda_fatbin;
+  int result = std::system((compile_cmd + " > compile_fatbin.log 2>&1").c_str());
+  if (result != 0) {
+    std::ifstream log_file("compile_fatbin.log");
+    std::string log_content((std::istreambuf_iterator<char>(log_file)), 
+                           std::istreambuf_iterator<char>());
+    LOG(ERROR) << "Compilation failed with output:\n" << log_content;
+    return "";
+  }
+  VLOG(3) << "Yuhan!!! GenerateFatbinWithoutCache " << cuda_fatbin;
+  std::remove(cuda_source_file.c_str());
+  return cuda_fatbin;
+}
+
+void Compiler::SaveKernelNamesToMeta() {
+  // 1. 获取元数据文件路径
+  std::string meta_path = "/tmp/cinn/" + std::to_string(fusion_hash_) + "/cinn_cuda_kernel.meta";
+  VLOG(3) << "Saving CINN kernel names to meta file: " << meta_path;
+
+  // 2. 打开文件
+  // 使用 std::ofstream 自动处理文件关闭
+  std::ofstream outfile(meta_path);
+  if (!outfile.is_open()) {
+    // 理论上目录在 GenerateFatbinWithoutCache 中已创建，此处应仅检查权限
+    LOG(FATAL) << "Failed to open meta file for writing: " << meta_path;
+  }
+
+  // 3. 写入数据
+  // 每行写入一个 Kernel 名称
+  for (const auto& name : device_fn_name_) {
+    outfile << name << "\n";
+    VLOG(3) << "Saving kernel name " << name;
+  }
+
+  // 4. 检查写入状态
+  if (outfile.fail()) {
+    LOG(FATAL) << "Error writing to meta file: " << meta_path;
+  }
+}
+
+void Compiler::LoadKernelNamesFromMeta() {
+  // 1. 获取元数据文件路径
+  std::string meta_path = "/tmp/cinn/" + std::to_string(fusion_hash_) + "/cinn_cuda_kernel.meta";
+  VLOG(3) << "Loading CINN kernel names from meta file: " << meta_path;
+
+  // 2. 打开文件
+  std::ifstream infile(meta_path);
+  if (!infile.is_open()) {
+    // 如果文件不存在，这是一个缓存逻辑错误
+    LOG(FATAL) << "Failed to open meta file for reading during cache hit: " << meta_path;
+  }
+
+  // 3. 清空旧数据并读取新数据
+  device_fn_name_.clear(); // 清空旧数据，防止数据污染
+  std::string line;
+  
+  while (std::getline(infile, line)) {
+    // 检查并忽略空行
+    if (!line.empty()) {
+      device_fn_name_.push_back(line);
+      VLOG(4) << "Loaded kernel name: " << line;
+    }
+  }
+
+  // 4. 检查是否成功加载了至少一个 Kernel 名称
+  if (device_fn_name_.empty()) {
+    LOG(FATAL) << "Meta file is empty or corrupted: " << meta_path;
+  }
+}
+
+std::pair<bool, std::string> Compiler::FindKernelInCache(const std::string& so_path, 
+                                                        const std::string& kernel_name) {
+  // 从缓存文件中查找kernel信息
+  std::ifstream so_file(so_path, std::ios::binary);
+  if (!so_file.is_open()) {
+    VLOG(3) << "Unable to open file: " << so_path;
+    return {false, ""};
+  }
+  
+  // 读取缓存文件头
+  struct CacheHeader {
+    char magic[4];
+    uint32_t version;
+    uint32_t num_kernels;  // 应该是kernel数量，不是fatbin大小
+    uint64_t timestamp;
+  };
+  
+  CacheHeader header;
+  so_file.read(reinterpret_cast<char*>(&header), sizeof(header));
+  
+  if (std::string(header.magic, 4) != "CINN") {
+    VLOG(3) << "Invalid cache file format: " << so_path;
+    return {false, ""};
+  }
+  
+  VLOG(3) << "Cache header: magic=" << std::string(header.magic, 4) 
+          << ", version=" << header.version 
+          << ", num_kernels=" << header.num_kernels;
+  
+  // 遍历kernel条目
+  for (uint32_t i = 0; i < header.num_kernels; i++) {
+    struct KernelEntry {
+      char name[256];
+      char hash[64];
+      uint64_t fatbin_offset;
+      uint64_t fatbin_size;
+    };
+    
+    KernelEntry entry;
+    so_file.read(reinterpret_cast<char*>(&entry), sizeof(entry));
+    
+    // 正确提取kernel名称，确保以null结尾
+    std::string entry_name(entry.name, strnlen(entry.name, sizeof(entry.name)));
+    std::string entry_hash(entry.hash, strnlen(entry.hash, sizeof(entry.hash)));
+    
+    VLOG(3) << "Entry name is: " << entry_name;
+    VLOG(3) << "Looking for kernel: " << kernel_name;
+    
+    if (entry_name == kernel_name) {
+      VLOG(3) << "Found kernel in cache! Hash is: " << entry_hash;
+      return {true, entry_hash};
+    }
+  }
+  
+  VLOG(3) << "Kernel '" << kernel_name << "' not found in cache";
+  return {false, ""};
+}
+
+std::string Compiler::UpdateKernelInCache(const std::string& so_path, 
+                                         const std::string& kernel_name,
+                                         const std::string& source_code,
+                                         const std::string& source_hash) {
+  // 重新生成fatbin
+  std::string temp_fatbin = GenerateObjectWithoutCache(source_code);
+  if (temp_fatbin.empty()) {
+    return "";
+  }
+  
+  // 读取新的fatbin数据
+  std::ifstream fatbin_file(temp_fatbin, std::ios::binary);
+  std::vector<char> new_fatbin_data((std::istreambuf_iterator<char>(fatbin_file)),
+                                   std::istreambuf_iterator<char>());
+  fatbin_file.close();
+  std::remove(temp_fatbin.c_str());
+  
+  // 读取现有缓存文件
+  std::ifstream old_so_file(so_path, std::ios::binary);
+  if (!old_so_file.is_open()) {
+    LOG(ERROR) << "Failed to open existing cache file: " << so_path;
+    return "";
+  }
+  
+  // 读取缓存文件头
+  struct CacheHeader {
+    char magic[4];
+    uint32_t version;
+    uint32_t num_kernels;
+    uint64_t timestamp;
+  };
+  
+  CacheHeader header;
+  old_so_file.read(reinterpret_cast<char*>(&header), sizeof(header));
+  
+  if (std::string(header.magic, 4) != "CINN") {
+    LOG(ERROR) << "Invalid cache file format: " << so_path;
+    old_so_file.close();
+    return "";
+  }
+  
+  // 读取所有kernel条目，跳过要更新的那个
+  struct KernelEntry {
+    char name[256];
+    char hash[64];
+    uint64_t fatbin_offset;
+    uint64_t fatbin_size;
+  };
+  
+  std::vector<KernelEntry> remaining_entries;
+  std::vector<std::vector<char>> remaining_fatbins;
+  
+  for (uint32_t i = 0; i < header.num_kernels; i++) {
+    KernelEntry entry;
+    old_so_file.read(reinterpret_cast<char*>(&entry), sizeof(entry));
+    
+    std::string entry_name(entry.name, strnlen(entry.name, sizeof(entry.name)));
+    
+    if (entry_name != kernel_name) {
+      // 保留其他kernel
+      remaining_entries.push_back(entry);
+      
+      // 读取对应的fatbin数据
+      old_so_file.seekg(entry.fatbin_offset);
+      std::vector<char> fatbin_data(entry.fatbin_size);
+      old_so_file.read(fatbin_data.data(), entry.fatbin_size);
+      remaining_fatbins.push_back(fatbin_data);
+    }
+  }
+  old_so_file.close();
+  
+  // 创建新的缓存文件
+  std::string new_so_path = so_path + ".new";
+  std::ofstream new_so_file(new_so_path, std::ios::binary);
+  if (!new_so_file.is_open()) {
+    LOG(ERROR) << "Failed to create new cache file: " << new_so_path;
+    return "";
+  }
+  
+  // 写入新的缓存文件头
+  CacheHeader new_header;
+  strncpy(new_header.magic, "CINN", 4);
+  new_header.version = header.version;
+  new_header.num_kernels = remaining_entries.size() + 1;  // 保留的kernel + 新kernel
+  new_header.timestamp = std::time(nullptr);
+  
+  new_so_file.write(reinterpret_cast<char*>(&new_header), sizeof(new_header));
+  
+  // 写入kernel条目
+  uint64_t current_offset = sizeof(new_header) + (remaining_entries.size() + 1) * sizeof(KernelEntry);
+  
+  // 先写入保留的kernel条目
+  for (size_t i = 0; i < remaining_entries.size(); i++) {
+    KernelEntry entry = remaining_entries[i];
+    entry.fatbin_offset = current_offset;
+    entry.fatbin_size = remaining_fatbins[i].size();
+    new_so_file.write(reinterpret_cast<char*>(&entry), sizeof(entry));
+    current_offset += entry.fatbin_size;
+  }
+  
+  // 写入新kernel的条目
+  KernelEntry new_entry;
+  strncpy(new_entry.name, kernel_name.c_str(), sizeof(new_entry.name) - 1);
+  new_entry.name[sizeof(new_entry.name) - 1] = '\0';
+  strncpy(new_entry.hash, source_hash.c_str(), sizeof(new_entry.hash) - 1);
+  new_entry.hash[sizeof(new_entry.hash) - 1] = '\0';
+  new_entry.fatbin_offset = current_offset;
+  new_entry.fatbin_size = new_fatbin_data.size();
+  
+  new_so_file.write(reinterpret_cast<char*>(&new_entry), sizeof(new_entry));
+  
+  // 写入fatbin数据
+  for (size_t i = 0; i < remaining_fatbins.size(); i++) {
+    new_so_file.write(remaining_fatbins[i].data(), remaining_fatbins[i].size());
+  }
+  
+  // 写入新fatbin数据
+  new_so_file.write(new_fatbin_data.data(), new_fatbin_data.size());
+  new_so_file.close();
+  
+  // 替换旧文件
+  std::remove(so_path.c_str());
+  std::rename(new_so_path.c_str(), so_path.c_str());
+  
+  VLOG(3) << "Updated cache file: " << so_path << ", removed old kernel: " << kernel_name;
+  return so_path;
+}
+
+std::string Compiler::AddKernelToCache(const std::string& so_path,
+                                      const std::string& kernel_name,
+                                      const std::string& source_code,
+                                      const std::string& source_hash) {
+  // 生成新的fatbin
+  std::string temp_fatbin = GenerateObjectWithoutCache(source_code);
+  if (temp_fatbin.empty()) {
+    return "";
+  }
+  
+  // 读取新的fatbin数据
+  std::ifstream fatbin_file(temp_fatbin, std::ios::binary);
+  std::vector<char> new_fatbin_data((std::istreambuf_iterator<char>(fatbin_file)),
+                                   std::istreambuf_iterator<char>());
+  fatbin_file.close();
+  std::remove(temp_fatbin.c_str());
+  
+  // 读取现有缓存文件
+  std::ifstream old_so_file(so_path, std::ios::binary);
+  if (!old_so_file.is_open()) {
+    LOG(ERROR) << "Failed to open existing cache file: " << so_path;
+    return "";
+  }
+  
+  // 读取缓存文件头
+  struct CacheHeader {
+    char magic[4];
+    uint32_t version;
+    uint32_t num_kernels;
+    uint64_t timestamp;
+  };
+  
+  CacheHeader header;
+  old_so_file.read(reinterpret_cast<char*>(&header), sizeof(header));
+  
+  if (std::string(header.magic, 4) != "CINN") {
+    LOG(ERROR) << "Invalid cache file format: " << so_path;
+    old_so_file.close();
+    return "";
+  }
+  
+  // 读取所有现有的kernel条目和fatbin数据
+  struct KernelEntry {
+    char name[256];
+    char hash[64];
+    uint64_t fatbin_offset;
+    uint64_t fatbin_size;
+  };
+  
+  std::vector<KernelEntry> existing_entries;
+  std::vector<std::vector<char>> existing_fatbins;
+  
+  for (uint32_t i = 0; i < header.num_kernels; i++) {
+    KernelEntry entry;
+    old_so_file.read(reinterpret_cast<char*>(&entry), sizeof(entry));
+    existing_entries.push_back(entry);
+    
+    // 读取对应的fatbin数据
+    old_so_file.seekg(entry.fatbin_offset);
+    std::vector<char> fatbin_data(entry.fatbin_size);
+    old_so_file.read(fatbin_data.data(), entry.fatbin_size);
+    existing_fatbins.push_back(fatbin_data);
+  }
+  old_so_file.close();
+  
+  // 创建新的缓存文件
+  std::string new_so_path = so_path + ".new";
+  std::ofstream new_so_file(new_so_path, std::ios::binary);
+  if (!new_so_file.is_open()) {
+    LOG(ERROR) << "Failed to create new cache file: " << new_so_path;
+    return "";
+  }
+  
+  // 写入新的缓存文件头
+  CacheHeader new_header;
+  strncpy(new_header.magic, "CINN", 4);
+  new_header.version = header.version;
+  new_header.num_kernels = existing_entries.size() + 1;  // 现有kernel + 新kernel
+  new_header.timestamp = std::time(nullptr);
+  
+  new_so_file.write(reinterpret_cast<char*>(&new_header), sizeof(new_header));
+  
+  // 写入kernel条目
+  uint64_t current_offset = sizeof(new_header) + (existing_entries.size() + 1) * sizeof(KernelEntry);
+  
+  // 写入现有的kernel条目
+  for (size_t i = 0; i < existing_entries.size(); i++) {
+    KernelEntry entry = existing_entries[i];
+    entry.fatbin_offset = current_offset;
+    entry.fatbin_size = existing_fatbins[i].size();
+    new_so_file.write(reinterpret_cast<char*>(&entry), sizeof(entry));
+    current_offset += entry.fatbin_size;
+  }
+  
+  // 写入新kernel的条目
+  KernelEntry new_entry;
+  strncpy(new_entry.name, kernel_name.c_str(), sizeof(new_entry.name) - 1);
+  new_entry.name[sizeof(new_entry.name) - 1] = '\0';
+  strncpy(new_entry.hash, source_hash.c_str(), sizeof(new_entry.hash) - 1);
+  new_entry.hash[sizeof(new_entry.hash) - 1] = '\0';
+  new_entry.fatbin_offset = current_offset;
+  new_entry.fatbin_size = new_fatbin_data.size();
+  
+  new_so_file.write(reinterpret_cast<char*>(&new_entry), sizeof(new_entry));
+  
+  // 写入fatbin数据
+  for (size_t i = 0; i < existing_fatbins.size(); i++) {
+    new_so_file.write(existing_fatbins[i].data(), existing_fatbins[i].size());
+  }
+  
+  // 写入新fatbin数据
+  new_so_file.write(new_fatbin_data.data(), new_fatbin_data.size());
+  new_so_file.close();
+  
+  // 替换旧文件
+  std::remove(so_path.c_str());
+  std::rename(new_so_path.c_str(), so_path.c_str());
+  
+  VLOG(3) << "Added kernel to cache: " << so_path << ", new kernel: " << kernel_name;
+  return so_path;
+}
+
+std::string Compiler::CreateNewCache(const std::string& so_path,
+                                    const std::string& kernel_name,
+                                    const std::string& source_code,
+                                    const std::string& source_hash) {
+  // 生成新的fatbin
+  std::string temp_fatbin = GenerateObjectWithoutCache(source_code);
+  if (temp_fatbin.empty()) {
+    return "";
+  }
+  
+  // 读取fatbin文件内容
+  std::ifstream fatbin_file(temp_fatbin, std::ios::binary);
+  if (!fatbin_file.is_open()) {
+    LOG(ERROR) << "Failed to open fatbin file: " << temp_fatbin;
+    return "";
+  }
+  
+  std::vector<char> fatbin_data((std::istreambuf_iterator<char>(fatbin_file)),
+                              std::istreambuf_iterator<char>());
+  fatbin_file.close();
+  
+  // 创建新的缓存文件
+  std::ofstream so_file(so_path, std::ios::binary);
+  if (!so_file.is_open()) {
+    LOG(ERROR) << "Failed to create cache file: " << so_path;
+    return "";
+  }
+  
+  // 写入缓存文件头
+  struct CacheHeader {
+    char magic[4] = {'C', 'I', 'N', 'N'};
+    uint32_t version = 1;
+    uint32_t num_kernels = 1;  // 使用正确的字段名
+    uint64_t timestamp = std::time(nullptr);
+  };
+  
+  CacheHeader header;
+  so_file.write(reinterpret_cast<char*>(&header), sizeof(header));
+  
+  // 写入kernel条目
+  struct KernelEntry {
+    char name[256] = {0};
+    char hash[64] = {0};
+    uint64_t fatbin_offset = 0;
+    uint64_t fatbin_size = 0;
+  };
+  
+  KernelEntry entry;
+  // 确保字符串正确null终止
+  strncpy(entry.name, kernel_name.c_str(), sizeof(entry.name) - 1);
+  entry.name[sizeof(entry.name) - 1] = '\0';  // 确保null终止
+  strncpy(entry.hash, source_hash.c_str(), sizeof(entry.hash) - 1);
+  entry.hash[sizeof(entry.hash) - 1] = '\0';  // 确保null终止
+  entry.fatbin_offset = sizeof(header) + sizeof(entry);
+  entry.fatbin_size = fatbin_data.size();
+  
+  so_file.write(reinterpret_cast<char*>(&entry), sizeof(entry));
+  
+  // 写入fatbin数据
+  so_file.write(fatbin_data.data(), fatbin_data.size());
+  so_file.close();
+  
+  // 清理临时文件
+  std::remove(temp_fatbin.c_str());
+  
+  VLOG(3) << "Created new cache file: " << so_path << " with kernel: " << kernel_name;
+  return so_path;
+}
+void* Compiler::CreateLibraryInfo(const std::string& library_path, const std::string& function_name) {
+  // 创建库信息结构，包含库路径和函数名
+  struct LibraryInfo {
+    std::string path;
+    std::string function;
+  };
+  
+  LibraryInfo* info = new LibraryInfo{library_path, function_name};
+  return reinterpret_cast<void*>(info);
+}
+
+std::vector<char> Compiler::ExtractFatbinFromSo(const std::string& so_path) {
+  std::ifstream so_file(so_path, std::ios::binary);
+  VLOG(3) << "Trying to open .so file: " << so_path;
+  if (!so_file.is_open()) {
+    LOG(ERROR) << "Failed to open .so file: " << so_path;
+    return {};
+  }
+  VLOG(3) << "Successfully open .so file: " << so_path;
+  
+  // 读取头部 - 使用新的缓存格式
+  struct CacheHeader {
+    char magic[4];
+    uint32_t version;
+    uint32_t num_kernels;  // 使用正确的字段名
+    uint64_t timestamp;
+  };
+  
+  CacheHeader header;
+  so_file.read(reinterpret_cast<char*>(&header), sizeof(header));
+  
+  // 验证魔术字
+  if (std::string(header.magic, 4) != "CINN") {
+    LOG(ERROR) << "Invalid .so file format: " << so_path;
+    return {};
+  }
+  VLOG(3) << "In .so file: \t version is " << header.version;
+  VLOG(3) << "\t num_kernels is " << header.num_kernels;
+  VLOG(3) << "\t timestamp is " << header.timestamp;
+  
+  // 跳过kernel条目，直接读取fatbin数据
+  // 计算fatbin数据的位置：header + 所有kernel条目
+  struct KernelEntry {
+    char name[256];
+    char hash[64];
+    uint64_t fatbin_offset;
+    uint64_t fatbin_size;
+  };
+  
+  // 跳过所有kernel条目
+  so_file.seekg(sizeof(header) + header.num_kernels * sizeof(KernelEntry));
+  
+  // 读取fatbin数据 - 需要从文件末尾计算大小
+  so_file.seekg(0, std::ios::end);
+  size_t file_size = so_file.tellg();
+  size_t fatbin_start = sizeof(header) + header.num_kernels * sizeof(KernelEntry);
+  size_t fatbin_size = file_size - fatbin_start;
+  
+  so_file.seekg(fatbin_start);
+  std::vector<char> fatbin_data(fatbin_size);
+  so_file.read(fatbin_data.data(), fatbin_size);
+  so_file.close();
+  
+  LOG(INFO) << "Successfully extracted fatbin from .so file, size: " << fatbin_data.size();
+  return fatbin_data;
+}
+#endif
 
 }  // namespace backends
 }  // namespace cinn

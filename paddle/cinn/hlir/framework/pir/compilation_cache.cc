@@ -19,7 +19,7 @@ namespace cinn::hlir::framework {
 
 namespace pir {
 void* BackendResource::GetHostFuncPtr() const {
-  VLOG(4) << "Lookup kernel name: " << host_fn_name_;
+  LOG(WARNING) << "YUHAN!!! Lookup kernel name: " << host_fn_name_;
   void* ptr = backend_compiler_->Lookup(host_fn_name_);
   PADDLE_ENFORCE_NOT_NULL(ptr,
                           ::common::errors::InvalidArgument(
@@ -51,6 +51,9 @@ pir::CINNKernelInfo BackendResource::GenerateKernelInfo(
     bool need_x86_kernel) const {
   pir::CINNKernelInfo kernel_info;
   kernel_info.fn_name = host_fn_name_;
+  
+  // 在动态链接库模式下，fn_ptr指向动态链接库执行器
+  // 而不是直接的函数指针
   kernel_info.fn_ptr = GetHostFuncPtr();
   kernel_info.infer_shape_fn_ptr = GetInferFuncPtr();
   if (need_x86_kernel) {
@@ -58,6 +61,7 @@ pir::CINNKernelInfo BackendResource::GenerateKernelInfo(
   }
   kernel_info.symbol_args_map = GetSymbolArgsMap();
   kernel_info.temp_space_sizes = GetTempSpaceSizes();
+  
   return kernel_info;
 }
 }  // namespace pir
