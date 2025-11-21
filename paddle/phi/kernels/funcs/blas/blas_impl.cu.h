@@ -2520,10 +2520,6 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
     }
     if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
 #if CUDA_VERSION >= 12030 && defined(__linux__)
-      std::cout << "!!!!m: " << M << ", n: " << N << ", k: " << K
-                << ", strideA: " << strideA << ", strideB: " << strideB
-                << "strideC: " << strideC << ", lda: " << lda
-                << ", ldb: " << ldb << ", ldc: " << ldc << std::endl;
       dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
         PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::cublasGemmStridedBatchedEx_64(handle,

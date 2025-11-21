@@ -523,7 +523,7 @@ struct CublasLtBase {
 
       PADDLE_ENFORCE_GPU_SUCCESS(
           dynload::cublasLtMatmulPreferenceDestroy(preference));
-      *desc->algo = heuristic_results.algo;
+      desc->algo = &heuristic_results.algo;
     }
 
     VLOG(7) << "[Impl CublasltDescriptor] ";
