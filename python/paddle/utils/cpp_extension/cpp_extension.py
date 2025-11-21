@@ -444,7 +444,7 @@ class BuildExtension(build_ext):
             nvcc_flags = ext.extra_compile_args
 
         rdc_enabled = any(
-            x in ['-rdc=true', '--relocatable-device-code=true']
+            x.strip() in ['-rdc=true', '--relocatable-device-code=true']
             for x in nvcc_flags
         )
 
@@ -458,11 +458,17 @@ class BuildExtension(build_ext):
 
         # Consider .cu, .cu.cc as valid source extensions.
         self.compiler.src_extensions += ['.cu', '.cu.cc']
+
+        original_compile = None
+        original_link = None
+
         # Save the original _compile method for later.
         if self.compiler.compiler_type == 'msvc':
             self.compiler._cpp_extensions += ['.cu', '.cuh']
             original_compile = self.compiler.compile
             original_spawn = self.compiler.spawn
+        else:
+            original_compile = self.compiler.__class__.compile
 
         for extension in self.extensions:
             define_paddle_extension_name(extension)
@@ -594,8 +600,7 @@ class BuildExtension(build_ext):
             else:
                 nvcc_flags = extension.extra_compile_args
 
-            objects, dlink_dir = self._fix_object_args(objects, output_dir)
-            self.mkpath(dlink_dir)
+            dlink_dir = os.path.dirname(objects[0])
             dlink_object = os.path.join(dlink_dir, 'dlink.o')
 
             # Construct command
@@ -833,10 +838,8 @@ class BuildExtension(build_ext):
 
         # customized compile process
         if self.compiler.compiler_type == 'msvc':
-            original_compile = self.compiler.compile
             self.compiler.compile = win_custom_single_compiler
         else:
-            original_compile = self.compiler.__class__.compile
             self.compiler.__class__.compile = unix_custom_single_compiler
 
         self.compiler.object_filenames = object_filenames_with_cuda(
@@ -844,21 +847,22 @@ class BuildExtension(build_ext):
         )
         self._record_op_info()
 
-        if rdc_enabled and self.compiler.compiler_type != 'msvc':
-            original_link = self.compiler.__class__.link_shared_object
-            self.compiler.__class__.link_shared_object = (
-                unix_custom_link_shared_object
-            )
+        try:
+            if rdc_enabled and self.compiler.compiler_type != 'msvc':
+                original_link = self.compiler.__class__.link_shared_object
+                self.compiler.__class__.link_shared_object = (
+                    unix_custom_link_shared_object
+                )
 
-        print("Compiling user custom op, it will cost a few seconds.....")
-        build_ext.build_extensions(self)
-
-        if self.compiler.compiler_type == 'msvc':
-            self.compiler.compile = original_compile
-        else:
-            self.compiler.__class__.compile = original_compile
-            if rdc_enabled:
-                self.compiler.__class__.link_shared_object = original_link
+            print("Compiling user custom op, it will cost a few seconds.....")
+            build_ext.build_extensions(self)
+        finally:
+            if self.compiler.compiler_type == 'msvc':
+                self.compiler.compile = original_compile
+            else:
+                self.compiler.__class__.compile = original_compile
+                if original_link:
+                    self.compiler.__class__.link_shared_object = original_link
 
         # Reset runtime library path on MacOS platform
         so_path = self.get_ext_fullpath(self.extensions[0]._full_name)
