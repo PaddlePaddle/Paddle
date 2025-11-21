@@ -163,18 +163,23 @@ class TestFlashAttentionAPI(unittest.TestCase):
         cu_q = paddle.arange(0, (bs + 1) * ms, ms, dtype='int32')
 
         qq = paddle.reshape(q, [bs * ms, nh, hd])
-        if is_sm90:
+        if (
+            is_sm90
+            and paddle.base.framework.get_flags(["FLAGS_flash_attn_version"])
+            == 3
+        ):
+            assert self.dropout == 0.0, (
+                "flash_attention_v3_varlen not support dropout"
+            )
             out, _ = flash_attention_v3_varlen(
-                qq,
-                qq,
-                qq,
-                cu_q,
-                cu_q,
-                self.dropout,
-                self.causal,
-                self.return_softmax,
+                query=qq,
+                key=qq,
+                value=qq,
+                cu_seqlens_q=cu_q,
+                cu_seqlens_k=cu_q,
                 max_seqlen_q=ms,
                 max_seqlen_k=ms,
+                causal=self.causal,
             )
         else:
             out, _ = flash_attn_unpadded(
