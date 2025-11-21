@@ -296,3 +296,23 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'Slice / Check bypass / Check bypass'
+
+      - name: Rerun H-Coverage Build
+        if: ${{ contains(github.event.comment.body, 'h-ci') && contains(github.event.comment.body, 'build') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'H-Coverage build'
+
+      - name: Rerun H-Coverage Test
+        if: ${{ contains(github.event.comment.body, 'h-ci') && contains(github.event.comment.body, 'test') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'H-Coverage test'

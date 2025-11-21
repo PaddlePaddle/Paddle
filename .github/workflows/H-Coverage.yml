@@ -30,14 +30,14 @@ defaults:
 
 jobs:
   clone:
-    name: Coverage clone
+    name: H-Coverage clone
     uses: ./.github/workflows/_Clone-linux.yml
     with:
       workflow-name: 'coverage'
       clone_dir: Paddle-coverage
 
   build:
-    name: Coverage build
+    name: H-Coverage build
     needs: [clone]
     if: needs.clone.outputs.can-skip != 'true'
     runs-on:
@@ -211,7 +211,7 @@ jobs:
           docker rm ${{ env.container_name }}
 
   test:
-    name: Coverage test
+    name: H-Coverage test
     needs: [build]
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
