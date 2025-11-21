@@ -103,37 +103,6 @@ def scaled_dot_product_attention(
         raise RuntimeError(
             "Explicit attn_mask should not be set when is_causal=True"
         )
-    if len(query.shape) == 3:
-        query = query.unsqueeze(0)
-    if len(key.shape) == 3:
-        key = key.unsqueeze(0)
-    if len(value.shape) == 3:
-        value = value.unsqueeze(0)
-    if enable_gqa:
-        k_heads, q_heads, v_heads = (
-            key.shape[-3],
-            query.shape[-3],
-            value.shape[-3],
-        )
-
-        assert q_heads % k_heads == 0, (
-            f"The number of groups in query({q_heads}) must be divisible by the number of groups in key({k_heads}) if GQA enabled."
-        )
-        assert k_heads == v_heads, (
-            f"The number of groups in key({k_heads}) must be equal to the number of groups in value({v_heads}) if GQA enabled."
-        )
-        # repeat_interleave does not support float16 on GPU, so we manually expand the tensor
-        if k_heads != q_heads:
-            repeats = q_heads // k_heads
-            key, value = key.unsqueeze(-3), value.unsqueeze(-3)
-            key, value = (
-                key.expand([-1, -1, repeats, -1, -1]),
-                value.expand([-1, -1, repeats, -1, -1]),
-            )
-            key, value = (
-                key.flatten(-4, -3).contiguous(),
-                value.flatten(-4, -3).contiguous(),
-            )
 
     query, key, value = (
         query.swapaxes(-3, -2),
@@ -151,5 +120,6 @@ def scaled_dot_product_attention(
         None,  # name
         None,  # backend
         scale,
+        enable_gqa,
     )
     return out.swapaxes(-3, -2)

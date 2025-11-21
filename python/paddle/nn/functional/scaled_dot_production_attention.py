@@ -559,6 +559,7 @@ def scaled_dot_product_attention(
     name: str | None = None,
     backend: str | None = None,
     scale: float | None = None,
+    enable_gqa: bool = False,
 ) -> Tensor:
     r"""
     The equation is:
@@ -611,6 +612,7 @@ def scaled_dot_product_attention(
                         Currently only support "p2p" for distribution usage.
         scale(float, optional): The scaling factor used in the calculation of attention weights.
                         If None, scale = 1 / sqrt(head_dim).
+        enable_gqa(bool, optional): Whether enable GQA(Generic Query Attention) mode.
 
     Returns:
         out(Tensor): The attention tensor.
@@ -628,15 +630,37 @@ def scaled_dot_product_attention(
             >>> print(output)
             >>> # doctest: -SKIP
     """
-    query_ndim = query.ndim
-    if query.ndim == 3:
-        query = paddle.unsqueeze(query, axis=0)
+    is_batched = query.dim() == 4
+    if not is_batched:
+        query = query.unsqueeze(0)
+        key = key.unsqueeze(0)
+        value = value.unsqueeze(0)
+    if enable_gqa:
+        k_heads, q_heads, v_heads = (
+            key.shape[2],
+            query.shape[2],
+            value.shape[2],
+        )
 
-    if key.ndim == 3:
-        key = paddle.unsqueeze(key, axis=0)
+        assert q_heads % k_heads == 0, (
+            f"The number of groups in query({q_heads}) must be divisible by the number of groups in key({k_heads}) if GQA enabled."
+        )
+        assert k_heads == v_heads, (
+            f"The number of groups in key({k_heads}) must be equal to the number of groups in value({v_heads}) if GQA enabled."
+        )
+        # repeat_interleave does not support float16 on GPU, so we manually expand the tensor
+        if k_heads != q_heads:
+            repeats = q_heads // k_heads
+            key, value = key.unsqueeze(-3), value.unsqueeze(-3)
+            key, value = (
+                key.expand([-1, -1, repeats, -1, -1]),
+                value.expand([-1, -1, repeats, -1, -1]),
+            )
+            key, value = (
+                key.flatten(-4, -3).contiguous(),
+                value.flatten(-4, -3).contiguous(),
+            )
 
-    if value.ndim == 3:
-        value = paddle.unsqueeze(value, axis=0)
     bs, seq_len_q, num_heads_q, head_dim_q = query.shape
     _, seq_len_k, num_heads_k, head_dim_k = key.shape
 
@@ -717,13 +741,6 @@ def scaled_dot_product_attention(
             bias_input = attn_mask
         else:
             bias_input = None
-        if isinstance(bias_input, paddle.Tensor) and bias_input.ndim == 4:
-            num_heads = query.shape[2]
-
-            if bias_input.shape[1] == 1 and num_heads > 1:
-                target_shape = list(bias_input.shape)
-                target_shape[1] = num_heads
-                bias_input = bias_input.expand(target_shape)
         out = memory_efficient_attention(
             query,
             key,
@@ -749,6 +766,6 @@ def scaled_dot_product_attention(
     else:
         raise ValueError(f"Invalid backend {backend}")
 
-    if query_ndim == 3:
+    if not is_batched:
         out = paddle.squeeze(out, axis=0)
     return out
