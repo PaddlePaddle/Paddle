@@ -36,14 +36,13 @@ void MixedPrecisionAddGradKernel(const Context& dev_ctx,
                                  DenseTensor* dx,
                                  DenseTensor* dy) {
   using T = float;
-  using XPUType = typename XPUTypeTrait<float>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
   using XPUYType = typename XPUTypeTrait<YType>::Type;
 
   if (dout.numel() == 0) {
     if (dx) {
-      if (dx->numel() == 0) {
-        dev_ctx.template Alloc<T>(dx);
-      } else {
+      dev_ctx.template Alloc<T>(dx);
+      if (dx->numel() > 0) {
         int ret =
             xpu::constant<XPUType>(dev_ctx.x_context(),
                                    reinterpret_cast<XPUType*>(dx->data<T>()),
@@ -53,9 +52,8 @@ void MixedPrecisionAddGradKernel(const Context& dev_ctx,
       }
     }
     if (dy) {
-      if (dy->numel() == 0) {
-        dev_ctx.template Alloc<YType>(dy);
-      } else {
+      dev_ctx.template Alloc<YType>(dy);
+      if (dy->numel() > 0) {
         int ret = xpu::constant<XPUYType>(
             dev_ctx.x_context(),
             reinterpret_cast<XPUYType*>(dy->data<YType>()),
@@ -165,9 +163,8 @@ void AddGradKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   if (dout.numel() == 0) {
     if (dx) {
-      if (dx->numel() == 0) {
-        dev_ctx.template Alloc<T>(dx);
-      } else {
+      dev_ctx.template Alloc<T>(dx);
+      if (dx->numel() > 0) {
         int ret =
             xpu::constant<XPUType>(dev_ctx.x_context(),
                                    reinterpret_cast<XPUType*>(dx->data<T>()),
@@ -177,9 +174,8 @@ void AddGradKernel(const Context& dev_ctx,
       }
     }
     if (dy) {
-      if (dy->numel() == 0) {
-        dev_ctx.template Alloc<T>(dy);
-      } else {
+      dev_ctx.template Alloc<T>(dy);
+      if (dy->numel() > 0) {
         int ret =
             xpu::constant<XPUType>(dev_ctx.x_context(),
                                    reinterpret_cast<XPUType*>(dy->data<T>()),
