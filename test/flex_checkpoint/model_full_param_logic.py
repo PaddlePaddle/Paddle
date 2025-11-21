@@ -224,7 +224,7 @@ class TestFullParamHVGroupLogic(TestFullParamLogic):
         self.run_full_param_with_aoa_test()
         self.run_full_param_memory_growth_threshold_test()
 
-    def run_full_param_test(self):
+    def run_full_param_test(self, memory_growth_threshold=8 * (2**30)):
         hcg = fleet.get_hybrid_communicate_group()
         model = SimpleMLPPipeline(
             hcg=hcg,
@@ -239,7 +239,11 @@ class TestFullParamHVGroupLogic(TestFullParamLogic):
         model_state_dict = model.state_dict()
         tp_group = hcg.get_model_parallel_group()
         pp_group = hcg.get_pipe_parallel_group()
-        full_param_iter = model.full(h_group=tp_group, v_group=pp_group)
+        full_param_iter = model.full(
+            h_group=tp_group,
+            v_group=pp_group,
+            memory_growth_threshold=memory_growth_threshold,
+        )
 
         full_param = dict(full_param_iter)
         param_shape = {
@@ -276,7 +280,7 @@ class TestFullParamHVGroupLogic(TestFullParamLogic):
             t = splited[model_parallel_rank]
             assert t._md5sum() == model_state_dict[name]._md5sum()
 
-    def run_full_param_with_aoa_test(self):
+    def run_full_param_with_aoa_test(self, memory_growth_threshold=8 * (2**30)):
         hcg = fleet.get_hybrid_communicate_group()
         model = SimpleMLPPipeline(
             hcg=hcg,
@@ -300,7 +304,10 @@ class TestFullParamHVGroupLogic(TestFullParamLogic):
         }
 
         full_param_iter = model.full(
-            aoa_config, h_group=tp_group, v_group=pp_group
+            aoa_config,
+            h_group=tp_group,
+            v_group=pp_group,
+            memory_growth_threshold=memory_growth_threshold,
         )
 
         full_param = dict(full_param_iter)
@@ -347,59 +354,8 @@ class TestFullParamHVGroupLogic(TestFullParamLogic):
             assert t._md5sum() == model_state_dict[name]._md5sum()
 
     def run_full_param_memory_growth_threshold_test(self):
-        hcg = fleet.get_hybrid_communicate_group()
-        model = SimpleMLPPipeline(
-            hcg=hcg,
-            hidden_size=self.hidden_size,
-            has_bias=self.has_bias,
-            vocab_size=self.vocab_size,
-            pp_degree=self.pp_degree,
-        )
-        model = fleet.distributed_model(model)
-        model.train()
-
-        model_state_dict = model.state_dict()
-
-        tp_group = hcg.get_model_parallel_group()
-        pp_group = hcg.get_pipe_parallel_group()
-        full_param_iter = model.full(
-            h_group=tp_group, v_group=pp_group, memory_growth_threshold=1
-        )
-
-        full_param = dict(full_param_iter)
-        param_shape = {
-            "_layers.shared_layers.shared_embedding.weight": [24, 32],
-            "_layers.1.weight": [32, 32],
-            "_layers.1.bias": [32],
-            "_layers.2.weight": [32, 32],
-            "_layers.2.bias": [32],
-        }
-        param_split_axis = {
-            "_layers.shared_layers.shared_embedding.weight": 0,
-            "_layers.1.weight": 1,
-            "_layers.1.bias": 0,
-            "_layers.2.weight": 0,
-            "_layers.2.bias": -1,
-        }
-        model_parallel_rank = hcg.get_model_parallel_rank()
-
-        for name, shape in param_shape.items():
-            assert name in full_param.keys()
-            assert tuple(full_param[name].shape) == tuple(shape)
-
-        for name, param in full_param.items():
-            if name not in model_state_dict:
-                continue
-            splited_axis = param_split_axis[name]
-
-            if splited_axis == -1:
-                splited = [param, param]
-            else:
-                splited = paddle.split(
-                    param, num_or_sections=2, axis=splited_axis
-                )
-            t = splited[model_parallel_rank]
-            assert t._md5sum() == model_state_dict[name]._md5sum()
+        self.run_full_param_test(memory_growth_threshold=1)
+        self.run_full_param_with_aoa_test(memory_growth_threshold=1)
 
 
 if __name__ == '__main__':

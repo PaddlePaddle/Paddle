@@ -230,7 +230,7 @@ class TestFullParamWithSingleDevices(unittest.TestCase):
             ]
         }
 
-        full_param_iter = model.full(aoa_config, None)
+        full_param_iter = model.full(aoa_config)
         full_param = dict(full_param_iter)
 
         param_shape = {
