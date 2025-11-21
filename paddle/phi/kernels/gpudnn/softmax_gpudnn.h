@@ -1347,13 +1347,14 @@ struct LogSoftMaxBackwardEpilogue {
   const AccT sum;
 };
 
-inline dim3 SpatialSoftMax_getGridSize(dim3 block,
-                                       uint32_t max_active_blocks,
-                                       uint64_t outer_size,
-                                       uint64_t inner_size) {
+void SpatialSoftMax_getGridSize(dim3* block,
+                                uint32_t max_active_blocks,
+                                uint64_t outer_size,
+                                uint64_t inner_size,
+                                dim3* grid) {
   // 1. Calculate the number of blocks required along the Y-axis to cover
   // 'inner_size'.
-  uint32_t inner_blocks = (inner_size + block.y - 1) / block.y;
+  uint32_t inner_blocks = (inner_size + block->y - 1) / block->y;
   if (inner_blocks > max_active_blocks) {
     inner_blocks = max_active_blocks;
   }
@@ -1362,11 +1363,13 @@ inline dim3 SpatialSoftMax_getGridSize(dim3 block,
   if (outer_blocks > outer_size) {
     outer_blocks = outer_size;
   }
-  return dim3(outer_blocks, inner_blocks);
+  grid->x = outer_blocks;
+  grid->y = inner_blocks;
 }
 
-inline dim3 SpatialSoftMax_getBlockSize(uint64_t dim_size,
-                                        uint64_t inner_size) {
+void SpatialSoftMax_getBlockSize(uint64_t dim_size,
+                                 uint64_t inner_size,
+                                 dim3* block) {
   uint32_t inner_threads = inner_size;
   inner_threads = std::min(inner_threads, static_cast<uint32_t>(1024));
   uint32_t dim_threads = 1;
@@ -1375,7 +1378,8 @@ inline dim3 SpatialSoftMax_getBlockSize(uint64_t dim_size,
       dim_threads *= 2;
     dim_threads /= 2;
   }
-  return dim3(dim_threads, inner_threads);
+  block->x = dim_threads;
+  block->y = inner_threads;
 }
 
 inline dim3 SoftMaxForward_getBlockSize(uint64_t dim_size) {
@@ -1396,15 +1400,15 @@ void SpatialSoftMax_getLaunchSizes(Kernel k,
                                    IndexType outer_size,
                                    IndexType dim_size,
                                    IndexType inner_size,
-                                   dim3& grid,
-                                   dim3& block,
-                                   uint32_t& smem_size) {
-  block = SpatialSoftMax_getBlockSize(dim_size, inner_size);
-  uint32_t block_threads = block.x * block.y;
-  smem_size = block.x == 1 ? 0 : block_threads * sizeof(AccT);
+                                   dim3* grid,
+                                   dim3* block,
+                                   uint32_t* smem_size) {
+  SpatialSoftMax_getBlockSize(dim_size, inner_size, block);
+  uint32_t block_threads = block->x * block->y;
+  *smem_size = block->x == 1 ? 0 : block_threads * sizeof(AccT);
   int max_active_blocks;
   cudaError_t occ_err = cudaOccupancyMaxActiveBlocksPerMultiprocessor(
-      &max_active_blocks, k, block_threads, smem_size);
+      &max_active_blocks, k, block_threads, *smem_size);
   if (occ_err != cudaSuccess) {
     PADDLE_THROW(::common::errors::InvalidArgument(
         "cudaOccupancyMaxActiveBlocksPerMultiprocessor failed. "
@@ -1412,8 +1416,8 @@ void SpatialSoftMax_getLaunchSizes(Kernel k,
         "exceeds the limit of hardware. Dim_size is too large? "));
   }
   max_active_blocks *= GetDeviceProp()->multiProcessorCount;
-  grid = SpatialSoftMax_getGridSize(
-      block, max_active_blocks, outer_size, inner_size);
+  SpatialSoftMax_getGridSize(
+      block, max_active_blocks, outer_size, inner_size, grid);
 }
 
 template <typename T>
@@ -1694,14 +1698,14 @@ template <typename T,
           template <typename, typename, typename>
           class Function,
           typename IndexType,
-          int32_t reg_cnt>
+          int32_t kRegCnt>
 __global__ void cunn_SoftMaxForwardReg(T* output,
                                        const T* input,
                                        IndexType classes) {
   extern __shared__ unsigned char smem[];
   auto sdata = reinterpret_cast<AccT*>(smem);
 
-  T reg[reg_cnt];
+  T reg[kRegCnt];
 
   input += static_cast<int64_t>(blockIdx.x) * classes;
   output += static_cast<int64_t>(blockIdx.x) * classes;
@@ -1713,7 +1717,7 @@ __global__ void cunn_SoftMaxForwardReg(T* output,
   MaxFunctor<T, AccT> maxFunc;
 
 #pragma unroll
-  for (int reg_idx = 0; reg_idx < reg_cnt; reg_idx++) {
+  for (int reg_idx = 0; reg_idx < kRegCnt; reg_idx++) {
     int offset = threadIdx.x + reg_idx * blockDim.x;
     if (offset < classes) {
       reg[reg_idx] = input[offset];
@@ -1728,7 +1732,7 @@ __global__ void cunn_SoftMaxForwardReg(T* output,
   SumExpFunctor<T, AccT> sumExpFunc(max_k);
 // reduce all values
 #pragma unroll
-  for (int reg_idx = 0; reg_idx < reg_cnt; reg_idx++) {
+  for (int reg_idx = 0; reg_idx < kRegCnt; reg_idx++) {
     int offset = threadIdx.x + reg_idx * blockDim.x;
     if (offset < classes) {
       threadExp = sumExpFunc(threadExp, reg[reg_idx]);
@@ -1741,7 +1745,7 @@ __global__ void cunn_SoftMaxForwardReg(T* output,
 
 // Write back the value
 #pragma unroll
-  for (int reg_idx = 0; reg_idx < reg_cnt; reg_idx++) {
+  for (int reg_idx = 0; reg_idx < kRegCnt; reg_idx++) {
     int offset = threadIdx.x + reg_idx * blockDim.x;
     if (offset < classes) {
       output[offset] = function(reg[reg_idx]);
@@ -2131,21 +2135,21 @@ __global__ void softmax_warp_forward(T* dst,
                                      IndexType stride,
                                      IndexType element_count,
                                      const IndexType head_chunk_size = -1) {
-  // warp_size_t and warp_batch_t must match the return values batches_per_warp
-  // and warp_size of method warp_softmax_forward_kernel.
+  // warp_size_t and kWarpBatchSize must match the return values
+  // batches_per_warp and warp_size of method warp_softmax_forward_kernel.
   constexpr IndexType next_power_of_two = 1 << log2_elements;
   constexpr IndexType warp_size_t =
       (next_power_of_two < 32) ? next_power_of_two : 32;
-  constexpr IndexType warp_iterations_t = next_power_of_two / warp_size_t;
-  constexpr IndexType warp_batch_t = (next_power_of_two <= 128) ? 2 : 1;
+  constexpr IndexType kWarpIterationSize = next_power_of_two / warp_size_t;
+  constexpr IndexType kWarpBatchSize = (next_power_of_two <= 128) ? 2 : 1;
 
   IndexType first_batch =
-      (blockDim.y * blockIdx.x + threadIdx.y) * warp_batch_t;
+      (blockDim.y * blockIdx.x + threadIdx.y) * kWarpBatchSize;
 
-  // batch_size might not be a multiple of warp_batch_t. Check how
+  // batch_size might not be a multiple of kWarpBatchSize. Check how
   // many batches have to computed within this WARP.
   IndexType local_batches = batch_size - first_batch;
-  if (local_batches > warp_batch_t) local_batches = warp_batch_t;
+  if (local_batches > kWarpBatchSize) local_batches = kWarpBatchSize;
 
   // there might be multiple batches per warp. compute the index within the
   // batch
@@ -2155,16 +2159,16 @@ __global__ void softmax_warp_forward(T* dst,
   src += idx_offset;
   dst += idx_offset;
 
-  // The nested loops over warp_batch_t and then warp_iterations_t can be
+  // The nested loops over kWarpBatchSize and then kWarpIterationSize can be
   // simplified to one loop, but I think doing so would obfuscate the logic of
   // the algorithm, thus I chose to keep the nested loops. This should have no
   // impact on performance because the loops are unrolled anyway.
 
   // load data from global memory
-  AccT elements[warp_batch_t][warp_iterations_t];
-  for (IndexType i = 0; i < warp_batch_t; ++i) {
+  AccT elements[kWarpBatchSize][kWarpIterationSize];
+  for (IndexType i = 0; i < kWarpBatchSize; ++i) {
     IndexType batch_element_count = (i >= local_batches) ? 0 : element_count;
-    for (IndexType it = 0; it < warp_iterations_t; ++it) {
+    for (IndexType it = 0; it < kWarpIterationSize; ++it) {
       IndexType element_index = local_idx + it * warp_size_t;
       if (element_index < batch_element_count) {
         elements[i][it] = src[i * element_count + it * warp_size_t];
@@ -2175,26 +2179,26 @@ __global__ void softmax_warp_forward(T* dst,
   }
 
   // compute max_value
-  AccT max_value[warp_batch_t];
+  AccT max_value[kWarpBatchSize];
 #pragma unroll
-  for (IndexType i = 0; i < warp_batch_t; ++i) {
+  for (IndexType i = 0; i < kWarpBatchSize; ++i) {
     IndexType batch_element_count = (i >= local_batches) ? 0 : element_count;
     bool is_meaningful_max = false;
     max_value[i] = elements[i][0];
 #pragma unroll
-    for (IndexType it = 0; it < warp_iterations_t; ++it) {
+    for (IndexType it = 0; it < kWarpIterationSize; ++it) {
       max_value[i] =
           max_value[i] > elements[i][it] ? max_value[i] : elements[i][it];
     }
   }
-  WarpReduceMax<AccT, warp_batch_t, warp_size_t>(max_value);
+  WarpReduceMax<AccT, kWarpBatchSize, warp_size_t>(max_value);
 
-  AccT sum[warp_batch_t]{0.0f};
+  AccT sum[kWarpBatchSize]{0.0f};
 #pragma unroll
-  for (IndexType i = 0; i < warp_batch_t; ++i) {
+  for (IndexType i = 0; i < kWarpBatchSize; ++i) {
     IndexType batch_element_count = (i >= local_batches) ? 0 : element_count;
 #pragma unroll
-    for (IndexType it = 0; it < warp_iterations_t; ++it) {
+    for (IndexType it = 0; it < kWarpIterationSize; ++it) {
       if (is_log_softmax) {
         sum[i] += std::exp(elements[i][it] - max_value[i]);
       } else {
@@ -2203,15 +2207,15 @@ __global__ void softmax_warp_forward(T* dst,
       }
     }
   }
-  WarpReduceSum<AccT, warp_batch_t, warp_size_t>(sum);
+  WarpReduceSum<AccT, kWarpBatchSize, warp_size_t>(sum);
 
 // store result
 #pragma unroll
-  for (IndexType i = 0; i < warp_batch_t; ++i) {
+  for (IndexType i = 0; i < kWarpBatchSize; ++i) {
     if (i >= local_batches) break;
     if (is_log_softmax) sum[i] = std::log(sum[i]);
 #pragma unroll
-    for (IndexType it = 0; it < warp_iterations_t; ++it) {
+    for (IndexType it = 0; it < kWarpIterationSize; ++it) {
       IndexType element_index = local_idx + it * warp_size_t;
       if (element_index < element_count) {
         if (is_log_softmax) {
@@ -2241,21 +2245,21 @@ __global__ void softmax_warp_backward(T* gradInput,
                                       IndexType batch_size,
                                       IndexType stride,
                                       IndexType element_count) {
-  // warp_size_t and warp_batch_t must match the return values batches_per_warp
-  // and warp_size of method warp_softmax_backward_kernel.
+  // warp_size_t and kWarpBatchSize must match the return values
+  // batches_per_warp and warp_size of method warp_softmax_backward_kernel.
   constexpr IndexType next_power_of_two = 1 << log2_elements;
   constexpr IndexType warp_size_t =
       (next_power_of_two < 32) ? next_power_of_two : 32;
-  constexpr IndexType warp_iterations_t = next_power_of_two / warp_size_t;
-  constexpr IndexType warp_batch_t = (next_power_of_two <= 128) ? 2 : 1;
+  constexpr IndexType kWarpIterationSize = next_power_of_two / warp_size_t;
+  constexpr IndexType kWarpBatchSize = (next_power_of_two <= 128) ? 2 : 1;
 
   IndexType first_batch =
-      (blockDim.y * blockIdx.x + threadIdx.y) * warp_batch_t;
+      (blockDim.y * blockIdx.x + threadIdx.y) * kWarpBatchSize;
 
-  // batch_size might not be a multiple of warp_batch_t. Check how
+  // batch_size might not be a multiple of kWarpBatchSize. Check how
   // many batches have to computed within this WARP.
   IndexType local_batches = batch_size - first_batch;
-  if (local_batches > warp_batch_t) local_batches = warp_batch_t;
+  if (local_batches > kWarpBatchSize) local_batches = kWarpBatchSize;
 
   // there might be multiple batches per warp. compute the index within the
   // batch
@@ -2267,17 +2271,17 @@ __global__ void softmax_warp_backward(T* gradInput,
   output += thread_offset;
   gradInput += thread_offset;
 
-  // The nested loops over warp_batch_t and then warp_iterations_t can be
+  // The nested loops over kWarpBatchSize and then kWarpIterationSize can be
   // simplified to one loop, but I think doing so would obfuscate the logic of
   // the algorithm, thus I chose to keep the nested loops. This should have no
   // impact on performance because the loops are unrolled anyway.
 
   // load data from global memory
-  AccT grad_reg[warp_batch_t][warp_iterations_t];
-  AccT output_reg[warp_batch_t][warp_iterations_t];
-  for (IndexType i = 0; i < warp_batch_t; ++i) {
+  AccT grad_reg[kWarpBatchSize][kWarpIterationSize];
+  AccT output_reg[kWarpBatchSize][kWarpIterationSize];
+  for (IndexType i = 0; i < kWarpBatchSize; ++i) {
     IndexType batch_element_count = (i >= local_batches) ? 0 : element_count;
-    for (IndexType it = 0; it < warp_iterations_t; ++it) {
+    for (IndexType it = 0; it < kWarpIterationSize; ++it) {
       IndexType element_index = local_idx + it * warp_size_t;
       if (element_index < batch_element_count) {
         grad_reg[i][it] = grad[i * element_count + it * warp_size_t];
@@ -2289,22 +2293,22 @@ __global__ void softmax_warp_backward(T* gradInput,
     }
   }
 
-  AccT sum[warp_batch_t]{0.0f};
+  AccT sum[kWarpBatchSize]{0.0f};
 #pragma unroll
-  for (IndexType i = 0; i < warp_batch_t; ++i) {
+  for (IndexType i = 0; i < kWarpBatchSize; ++i) {
 #pragma unroll
-    for (IndexType it = 0; it < warp_iterations_t; ++it) {
+    for (IndexType it = 0; it < kWarpIterationSize; ++it) {
       sum[i] += grad_reg[i][it];
     }
   }
-  WarpReduceSum<AccT, warp_batch_t, warp_size_t>(sum);
+  WarpReduceSum<AccT, kWarpBatchSize, warp_size_t>(sum);
 
 // store result
 #pragma unroll
-  for (IndexType i = 0; i < warp_batch_t; ++i) {
+  for (IndexType i = 0; i < kWarpBatchSize; ++i) {
     if (i >= local_batches) break;
 #pragma unroll
-    for (IndexType it = 0; it < warp_iterations_t; ++it) {
+    for (IndexType it = 0; it < kWarpIterationSize; ++it) {
       IndexType element_index = local_idx + it * warp_size_t;
       if (element_index < element_count) {
         // compute gradients
@@ -2335,7 +2339,7 @@ void dispatch_softmax_forward(const GPUContext& dev_ctx,
   // softmax_warp_forward.
   IndexType warp_size = (next_power_of_two < 32) ? next_power_of_two : 32;
 
-  // This value must match the warp_batch_t constexpr value computed inside
+  // This value must match the kWarpBatchSize constexpr value computed inside
   // softmax_warp_forward.
   IndexType batches_per_warp = (next_power_of_two <= 128) ? 2 : 1;
 
@@ -2391,7 +2395,7 @@ void dispatch_softmax_backward(const GPUContext& dev_ctx,
   // softmax_warp_backward.
   IndexType warp_size = (next_power_of_two < 32) ? next_power_of_two : 32;
 
-  // This value must match the warp_batch_t constexpr value computed inside
+  // This value must match the kWarpBatchSize constexpr value computed inside
   // softmax_warp_backward.
   IndexType batches_per_warp = (next_power_of_two <= 128) ? 2 : 1;
 
@@ -2457,9 +2461,9 @@ void dispatch_host_softmax_forward(const GPUContext& dev_ctx,
   int32_t potential_reg_cnt = (dim_size + block.x - 1) / block.x;
   if (potential_reg_cnt < 10) {
     switch (potential_reg_cnt) {
-#define LAUNCH_SOFTMAX_FORWARD_REG(reg_cnt)                       \
-  case reg_cnt:                                                   \
-    cunn_SoftMaxForwardReg<T, AccT, Function, IndexType, reg_cnt> \
+#define LAUNCH_SOFTMAX_FORWARD_REG(kRegCnt)                       \
+  case kRegCnt:                                                   \
+    cunn_SoftMaxForwardReg<T, AccT, Function, IndexType, kRegCnt> \
         <<<grid, block, smem_reduction_sz, dev_ctx.stream()>>>(   \
             out_data, input_data, dim_size);                      \
     break;
@@ -2628,9 +2632,9 @@ void SoftmaxForwardCUDAKernelCompatible(const GPUContext& dev_ctx,
         N,
         dim,
         D,
-        grid,
-        block,
-        smem_size);
+        &grid,
+        &block,
+        &smem_size);
     cunn_SpatialSoftMaxForward<T, AccT, IndexType, Function>
         <<<grid, block, smem_size, dev_ctx.stream()>>>(
             out_data, input_data, N, dim, D);
@@ -2690,9 +2694,9 @@ void SoftmaxBackwardCUDAKernelCompatible(const GPUContext& dev_ctx,
         N,
         dim,
         D,
-        grid,
-        block,
-        smem_size);
+        &grid,
+        &block,
+        &smem_size);
     cunn_SpatialSoftMaxBackward<T, AccT, IndexType, Function>
         <<<grid, block, smem_size, dev_ctx.stream()>>>(
             dx_data, out_data, dout_data, N, dim, D);
