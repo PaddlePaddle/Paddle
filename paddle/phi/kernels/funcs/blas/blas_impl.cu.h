@@ -2482,6 +2482,10 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   cublasOperation_t cuTransB =
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   const int64_t strideC = M * N;
+  std::cout << "@@@@m: " << M << ", n: " << N << ", k: " << K
+            << ", strideA: " << strideA << ", strideB: " << strideB
+            << "strideC: " << strideC << ", lda: " << lda << ", ldb: " << ldb
+            << ", ldc: " << ldc << std::endl;
 #if CUDA_VERSION >= 9010
   if ((FLAGS_enable_cublas_tensor_op_math && (std::is_same<T, float>::value)) ||
       std::is_same<T, phi::float16>::value) {
@@ -2519,6 +2523,10 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
     }
     if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
 #if CUDA_VERSION >= 12030 && defined(__linux__)
+      std::cout << "!!!!m: " << M << ", n: " << N << ", k: " << K
+                << ", strideA: " << strideA << ", strideB: " << strideB
+                << "strideC: " << strideC << ", lda: " << lda
+                << ", ldb: " << ldb << ", ldc: " << ldc << std::endl;
       dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
         PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::cublasGemmStridedBatchedEx_64(handle,
@@ -2580,6 +2588,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   } else {
 #endif  // CUDA_VERSION >= 9010
     dev_ctx_.CublasCall([&](cublasHandle_t handle) {
+      /*
       CUBlas<T>::GEMM_STRIDED_BATCH(handle,
                                     cuTransB,
                                     cuTransA,
@@ -2598,6 +2607,26 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                     static_cast<int>(ldc),
                                     strideC,
                                     static_cast<int>(batchCount));
+      */
+      CUBlas<T>::GEMM_STRIDED_BATCH(
+          handle,
+          (cuTransA == CUBLAS_OP_T) ? CUBLAS_OP_N : CUBLAS_OP_T,
+          (cuTransB == CUBLAS_OP_T) ? CUBLAS_OP_N : CUBLAS_OP_T,
+          static_cast<int>(M),
+          static_cast<int>(N),
+          static_cast<int>(K),
+          &alpha,
+          A,
+          static_cast<int>(lda),
+          strideA,
+          B,
+          static_cast<int>(ldb),
+          strideB,
+          &beta,
+          C,
+          static_cast<int>(ldc),
+          strideC,
+          static_cast<int>(batchCount));
     });
 
 #if CUDA_VERSION >= 9010
@@ -2620,7 +2649,6 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         int64_t batchCount,
                                         int64_t strideA,
                                         int64_t strideB) const {
-  std::cout << "####### HI BGEMM" << std::endl;
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int64_t lda = (transA == CblasNoTrans) ? K : M;
