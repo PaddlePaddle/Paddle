@@ -14,14 +14,13 @@
 
 from __future__ import annotations
 
-import copy
 import gc
 import json
 import math
 import os
 from collections import defaultdict
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, Dict, List, Set, Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -249,6 +248,7 @@ def get_rank_to_files(
     logger.debug(f"mapping rank_to_files:{rank_to_files}")
     return rank_to_files, missing_keys, mw_name_compatibility_mapping
 
+
 def _modify_mw_name_for_compatibility(
     state_dict, missing_keys, tensor_key_list
 ):
@@ -283,19 +283,22 @@ def _modify_mw_name_for_compatibility(
     missing_keys -= compatibility_set
     return mw_name_compatibility_mapping
 
+
 class CheckpointLoadBalancer:
     """
     Responsible for balancing file reading tasks in distributed training.
-    
+
     Objectives:
     1. Ensure each file is read exactly once globally.
     2. Prioritize reading from the rank that has the file locally (minimize network overhead).
     3. Balance the load (number of files read) across all ranks.
     """
 
-    def __init__(self, 
-                 rank_to_required_files: Dict[int, List[str]], 
-                 rank_to_available_files: Dict[int, List[str]]):
+    def __init__(
+        self,
+        rank_to_required_files,
+        rank_to_available_files,
+    ):
         """
         Args:
             rank_to_required_files: Mapping of rank -> list of files it logically needs to load.
@@ -303,13 +306,13 @@ class CheckpointLoadBalancer:
         """
         self.rank_to_required = rank_to_required_files
         self.rank_to_available = rank_to_available_files
-        
+
         # Final result: {rank: [files_to_read]}
-        self.assignments: Dict[int, List[str]] = defaultdict(list)
+        self.assignments = defaultdict(list)
         # Real-time load counter for decision making: {rank: file_count}
-        self.load_counts: Dict[int, int] = defaultdict(int)
+        self.load_counts = defaultdict(int)
         # Track assigned files to prevent duplicate reading
-        self.assigned_files: Set[str] = set()
+        self.assigned_files = set()
 
     def _assign(self, rank: int, file_name: str):
         """Execute the assignment and update internal state."""
@@ -317,28 +320,30 @@ class CheckpointLoadBalancer:
         self.load_counts[rank] += 1
         self.assigned_files.add(file_name)
 
-    def _get_rank_with_min_load(self, candidates: List[int]) -> int:
+    def _get_rank_with_min_load(self, candidates) -> int:
         """
         Select the rank with the minimum current load among candidates.
         If loads are equal, select the smaller rank ID for deterministic behavior.
         """
         return min(candidates, key=lambda r: (self.load_counts[r], r))
 
-    def _balance_files(self, file_to_candidates: Dict[str, List[int]]):
+    def _balance_files(self, file_to_candidates):
         """
         Core load balancing algorithm.
-        
+
         Strategy:
         1. Sort files by candidate count (Ascending). Process files with fewer options first (stronger constraints).
         2. For files with multiple options, greedily assign to the rank with the lowest current load.
         """
         # Sort items by number of candidates: process most constrained files first.
-        sorted_items = sorted(file_to_candidates.items(), key=lambda x: len(x[1]))
+        sorted_items = sorted(
+            file_to_candidates.items(), key=lambda x: len(x[1])
+        )
 
         for file_name, candidates in sorted_items:
             if file_name in self.assigned_files:
                 continue
-            
+
             if not candidates:
                 continue
 
@@ -346,9 +351,9 @@ class CheckpointLoadBalancer:
             chosen_rank = self._get_rank_with_min_load(candidates)
             self._assign(chosen_rank, file_name)
 
-    def plan(self) -> Dict[int, List[str]]:
+    def plan(self):
         """Execute the planning process and return assignments for all ranks."""
-        
+
         # --- Phase 1: Handle "Local" Files ---
         # Identify files that ranks need AND possess locally.
         local_file_candidates = defaultdict(list)
@@ -361,7 +366,7 @@ class CheckpointLoadBalancer:
                     local_file_candidates[file_name].append(rank)
                 else:
                     cross_node_files.add(file_name)
-        
+
         # Assign local files (prioritizing load balance if multiple ranks have the file locally)
         self._balance_files(local_file_candidates)
 
@@ -369,10 +374,12 @@ class CheckpointLoadBalancer:
         # These files are required but not found locally on the requester.
         # We must assign them to *any* rank that physically has the file.
         remaining_file_candidates = defaultdict(list)
-        
+
         # Only process files that haven't been assigned in Phase 1
-        files_to_process = [f for f in cross_node_files if f not in self.assigned_files]
-        
+        files_to_process = [
+            f for f in cross_node_files if f not in self.assigned_files
+        ]
+
         # Build global index: file -> [all ranks that physically have it]
         global_availability = defaultdict(list)
         for rank, files in self.rank_to_available.items():
@@ -384,37 +391,45 @@ class CheckpointLoadBalancer:
             if candidates:
                 remaining_file_candidates[file_name] = candidates
             else:
-                logger.warning(f"File {file_name} is required but not found on any rank.")
+                logger.warning(
+                    f"File {file_name} is required but not found on any rank."
+                )
 
         # Assign remaining files using the same greedy strategy
         self._balance_files(remaining_file_candidates)
 
         return self.assignments
 
-def get_rank_to_read_files(rank_to_files: Dict[int, List[str]], 
-                           rank_to_local_data_files: Dict[int, List[str]]) -> List[str]:
+
+def get_rank_to_read_files(
+    rank_to_files,
+    rank_to_local_data_files,
+):
     """
     Public API to determine which files the current rank should read.
-    
+
     Args:
         rank_to_files: Logical mapping of rank to files it needs.
         rank_to_local_data_files: Physical mapping of rank to files on disk.
-        
+
     Returns:
         List of file names the current rank is responsible for loading.
     """
     balancer = CheckpointLoadBalancer(rank_to_files, rank_to_local_data_files)
     all_assignments = balancer.plan()
-    
+
     current_rank = paddle.distributed.get_rank()
     my_files = all_assignments.get(current_rank, [])
-    
+
     if not my_files:
-        logger.warning(f"Rank:{current_rank} does not need to load any checkpoint files.")
+        logger.warning(
+            f"Rank:{current_rank} does not need to load any checkpoint files."
+        )
     else:
         logger.debug(f"Rank:{current_rank} assigned files: {my_files}")
-        
+
     return my_files
+
 
 def get_load_infos(metadata_list, local_load_files, process_group, use_dist):
     load_info = {}
