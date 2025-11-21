@@ -2460,7 +2460,7 @@ add_doc_and_signature(
 """,
     """
 def logical_and(
-    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor
 """,
 )
@@ -2511,7 +2511,7 @@ add_doc_and_signature(
 """,
     """
 def logical_or(
-    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor
 """,
 )
@@ -2557,7 +2557,7 @@ add_doc_and_signature(
 """,
     """
 def logical_not(
-    x: Tensor, out: Tensor | None = None, name: str | None = None
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor
 """,
 )
@@ -2608,7 +2608,7 @@ add_doc_and_signature(
 """,
     """
 def logical_xor(
-    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor
 """,
 )
@@ -2705,7 +2705,7 @@ add_doc_and_signature(
 """,
     """
 def tanh(
-    x: Tensor, *, out: Tensor | None = None, name: str | None = None,
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor
 """,
 )
@@ -2745,7 +2745,7 @@ add_doc_and_signature(
 """,
     """
 def exp(
-    x: Tensor, *, out: Tensor | None = None, name: str | None = None
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor
 """,
 )
@@ -2785,7 +2785,7 @@ add_doc_and_signature(
 """,
     """
 def expm1(
-    x: Tensor, *, out: Tensor | None = None, name: str | None = None
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor
 """,
 )
@@ -2917,7 +2917,7 @@ add_doc_and_signature(
 """,
     """
 def round(
-    x: Tensor, decimals = 0, *, out: Tensor | None = None, name: str | None = None,
+    x: Tensor, decimals: int = 0, name: str | None = None, *, out: Tensor | None = None,
 ) -> Tensor
 """,
 )
