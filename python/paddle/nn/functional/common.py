@@ -2510,24 +2510,34 @@ def linear(
              [-0.67769694, -0.67769694, -0.67769694, -0.67769694]])
     """
     if in_dynamic_mode():
-        if bias is not None:
-            assert len(bias.shape) == 1, "only support 1D bias"
-            if weight.shape[0] > 1 and weight.shape[1] > 1:
-                out, _ = _C_ops.fused_gemm_epilogue(
-                    x, weight, bias, False, False, "none"
-                )
+        if paddle.get_flags(["FLAGS_use_legacy_gemm"]).get(
+            "FLAGS_use_legacy_gemm", False
+        ):
+            if bias is not None:
+                assert len(bias.shape) == 1, "only support 1D bias"
+                if weight.shape[0] > 1 and weight.shape[1] > 1:
+                    out, _ = _C_ops.fused_gemm_epilogue(
+                        x.reshape(-1, x.shape[-1]),
+                        weight.reshape(-1, weight.shape[-1]),
+                        bias,
+                        False,
+                        False,
+                        "none",
+                    )
+                else:
+                    bias_reshaped = paddle.repeat_interleave(
+                        bias, x.shape[0], axis=0
+                    )
+                    bias_reshaped = paddle.unsqueeze(bias_reshaped, axis=1)
+                    out = paddle.addmm(
+                        bias_reshaped, x, weight, alpha=1.0, beta=1.0
+                    )
             else:
-                bias_reshaped = paddle.repeat_interleave(
-                    bias, x.shape[0], axis=0
-                )
-                bias_reshaped = paddle.unsqueeze(bias_reshaped, axis=1)
-                out = paddle.addmm(
-                    bias_reshaped, x, weight, alpha=1.0, beta=1.0
-                )
+                out = _C_ops.matmul(x, weight, False, False)
+            return out
         else:
-            out = _C_ops.matmul(x, weight, False, False)
-
-        return out
+            # Fallback logic
+            return _C_ops.linear(x, weight, bias)
 
     elif in_pir_mode():
         out = _C_ops.matmul(x, weight, False, False)

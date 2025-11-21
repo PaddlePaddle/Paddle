@@ -28,6 +28,7 @@
 
 COMMON_DECLARE_bool(enable_cublas_tensor_op_math);
 COMMON_DECLARE_bool(gemm_use_half_precision_compute_type);
+COMMON_DECLARE_bool(use_legacy_gemm);
 
 namespace phi {
 namespace funcs {
@@ -2482,10 +2483,6 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   cublasOperation_t cuTransB =
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   const int64_t strideC = M * N;
-  std::cout << "@@@@m: " << M << ", n: " << N << ", k: " << K
-            << ", strideA: " << strideA << ", strideB: " << strideB
-            << "strideC: " << strideC << ", lda: " << lda << ", ldb: " << ldb
-            << ", ldc: " << ldc << std::endl;
 #if CUDA_VERSION >= 9010
   if ((FLAGS_enable_cublas_tensor_op_math && (std::is_same<T, float>::value)) ||
       std::is_same<T, phi::float16>::value) {
@@ -2588,7 +2585,8 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   } else {
 #endif  // CUDA_VERSION >= 9010
     dev_ctx_.CublasCall([&](cublasHandle_t handle) {
-      if (ldc == 1 && M >= 1) {
+      if (ldc == 1 && M >= 1 && !FLAGS_use_legacy_gemm) {
+        // No transpose result in this case, align with torch's behaviour.
         CUBlas<T>::GEMM_STRIDED_BATCH(
             handle,
             (cuTransA == CUBLAS_OP_T) ? CUBLAS_OP_N : CUBLAS_OP_T,
@@ -2608,7 +2606,6 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
             static_cast<int>(ldc),
             strideC,
             static_cast<int>(batchCount));
-
       } else {
         CUBlas<T>::GEMM_STRIDED_BATCH(handle,
                                       cuTransB,
