@@ -1987,7 +1987,7 @@ class TestFlashAttentionAlignment(unittest.TestCase):
 class TestSDPAttentionWithScale(unittest.TestCase):
     def setUp(self):
         self.place = get_device_place()
-        self.shape = (2, 32, 8, 32)
+        self.shape = (2, 8, 8, 32)
         self.dtype = paddle.bfloat16
         self.dropout = 0.0
         self.causal = False
