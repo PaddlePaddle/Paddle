@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import paddle
 import paddle.nn.functional as F
 
 if TYPE_CHECKING:
@@ -136,21 +135,6 @@ def scaled_dot_product_attention(
                 value.flatten(-4, -3).contiguous(),
             )
 
-    if attn_mask is not None:
-        batch_size = query.shape[0]
-        seq_len_q = query.shape[2]
-        num_heads = query.shape[1]
-        seq_len_k = key.shape[2]
-
-        target_shape = [batch_size, num_heads, seq_len_q, seq_len_k]
-        attn_mask = attn_mask.expand(target_shape)
-        if attn_mask.dtype == paddle.bool:
-            neg_inf = float('-inf')
-            zeros = paddle.zeros_like(attn_mask, dtype=query.dtype)
-            masked_vals = paddle.full_like(
-                attn_mask, fill_value=neg_inf, dtype=query.dtype
-            )
-            attn_mask = paddle.where(attn_mask, zeros, masked_vals)
     query, key, value = (
         query.swapaxes(-3, -2),
         key.swapaxes(-3, -2),

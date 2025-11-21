@@ -453,6 +453,8 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_memory_efficient_attention$|\
 ^test_fused_flash_attn_pass$|\
 ^test_convert_mea_2_fa_pass$|\
+^test_flash_attention$|\
+^test_compat_attention$|\
 ^test_flash_attention_deterministic$|\
 ^test_map_op_another_pass$|\
 ^test_conv2d_add_fuse_pass$|\

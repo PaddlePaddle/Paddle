@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     from paddle.base.core import Place
 
 config = {}
-debug_sdpa = True
+debug_sdpa = False
 
 
 def init_config():
@@ -49,6 +49,9 @@ def init_config():
         "mem_efficient_attn": {
             "MINIMUM_SM_VERSION": (5, 0),
             "MAXIMUM_SM_VERSION": (12, 1),
+            "support_dtypes": (paddle.float16, paddle.bfloat16, paddle.float)
+            if paddle.device.is_bf16_supported()
+            else (paddle.float16, paddle.float),
         },
     }
 
@@ -247,7 +250,7 @@ def check_flash_causal_non_square_seqlens(params: SDPParams, debug: bool):
     return False
 
 
-def check_dtypes_low_precision(params: SDPParams, debug: bool):
+def check_dtypes_low_precision_fa(params: SDPParams, debug: bool):
     """
     check QKV share the same dtype and are supported dtype.
     """
@@ -264,6 +267,30 @@ def check_dtypes_low_precision(params: SDPParams, debug: bool):
                 f"got query dtype: {q_dtype}, key dtype: {k_dtype}"
                 f", value dtype: {v_dtype}. Supported dtypes are: "
                 f"{config['flash_attn']['support_dtypes']}"
+            )
+        return False
+    return True
+
+
+def check_dtypes_low_precision_mem_efficient_attn(
+    params: SDPParams, debug: bool
+):
+    """
+    check QKV share the same dtype and are supported dtype.
+    """
+    q_dtype, k_dtype, v_dtype = params.dtype
+    if (
+        q_dtype != k_dtype
+        or v_dtype != k_dtype
+        or q_dtype not in config["mem_efficient_attn"]["support_dtypes"]
+    ):
+        if debug:
+            warnings.warn(
+                f"Mem_efficient_attn requires query, key, and value "
+                f"to be of the same dtype and support dtype, but "
+                f"got query dtype: {q_dtype}, key dtype: {k_dtype}"
+                f", value dtype: {v_dtype}. Supported dtypes are: "
+                f"{config['mem_efficient_attn']['support_dtypes']}"
             )
         return False
     return True
@@ -450,7 +477,7 @@ def can_use_flash_attention(params: SDPParams, debug: bool = False) -> bool:
         check_flash_attention_hardware_support,
         check_requires_grad_and_head_dim_gt192_constraints_on_sm86_89_or_120,
         check_flash_causal_non_square_seqlens,
-        check_dtypes_low_precision,
+        check_dtypes_low_precision_fa,
     ]
 
     dense_tensor_constraints = [
@@ -481,6 +508,7 @@ def can_use_mem_efficient_attention(
         check_tensor_shapes,
         check_head_dim_size_mem_efficient,
         check_attn_mask_alignment,
+        check_dtypes_low_precision_mem_efficient_attn,
     ]
     for constraint in constraints:
         if not constraint(params, debug):
@@ -609,6 +637,8 @@ def scaled_dot_product_attention(
 
     if value.ndim == 3:
         value = paddle.unsqueeze(value, axis=0)
+    bs, seq_len_q, num_heads_q, head_dim_q = query.shape
+    _, seq_len_k, num_heads_k, head_dim_k = key.shape
 
     if (
         backend == 'p2p'
@@ -645,17 +675,20 @@ def scaled_dot_product_attention(
     if len(config) == 0:
         init_config()
 
-    if attn_mask is not None and attn_mask.dtype == paddle.bool:
-        attn_mask = paddle.where(
-            attn_mask,
-            paddle.to_tensor(0.0, dtype=query.dtype),
-            paddle.to_tensor(-float('inf'), dtype=query.dtype),
-        )
-    sdp_func_name = select_sdp_for_sdpa(
-        param,
-        debug=debug_sdpa,
-    )
-    print("Selected backend", sdp_func_name)
+    if attn_mask is not None:
+        if attn_mask.dtype == paddle.bool:
+            attn_mask = paddle.where(
+                attn_mask,
+                paddle.to_tensor(0.0, dtype=query.dtype),
+                paddle.to_tensor(-float('inf'), dtype=query.dtype),
+            )
+        if attn_mask.ndim == 3:
+            attn_mask = paddle.unsqueeze(attn_mask, axis=1)
+        mask_shape = (bs, num_heads_q, seq_len_q, seq_len_k)
+        attn_mask = attn_mask.expand(mask_shape)
+    sdp_func_name = select_sdp_for_sdpa(param, debug_sdpa)
+    if debug_sdpa:
+        print("Selected backend", sdp_func_name)
     if sdp_func_name == "flash_attn":
         fixed_seed_offset = None
         return_softmax = False
