@@ -850,6 +850,42 @@ class GroupShardedStage3(nn.Layer):
 
         self._optim.clear_grad = MethodType(_opt_clear, self._optim)
 
+    def init_slice_param(self):
+        for param in self._trainable_params.values():
+            value = paddle.zeros(param.shape, dtype=param.dtype)
+            value._share_buffer_to(param)
+
+    def align_param_to_buffer_and_clear_slice_param(self):
+        for param in self._trainable_params.values():
+            param_shape = param.shape
+            origin_state = param.stop_gradient
+            param.stop_gradient = True
+            start, end = self._param2buffer[param.name][self._rank]
+            param.flatten_()
+            param.stop_gradient = origin_state
+            param_numel = param.numel().item()
+            start = min(start, param_numel)
+            end = min(end, param_numel)
+            if end > start:
+                tmp_tensor = param._slice(start, end).detach()
+                buffer_slice = param.fw_storage._slice(0, end - start).detach()
+                buffer_slice.set_value(tmp_tensor)
+                del buffer_slice
+            param.get_tensor()._set_dims(param_shape)
+            param._clear_data()
+
+    def init_optimizer_for_slice_param(self):
+        for param in self._trainable_params.values():
+            local_param_list = []
+            var = param.fw_storage
+            tmp_param = EagerParamBase(
+                shape=var.shape, dtype=var.dtype, name="slice@" + param.name
+            )
+            local_param_list.append(tmp_param)
+        self._optim._parameter_list = local_param_list + list(
+            self._unslice_params
+        )
+
 
 def ForwardPreHooks(
     layer,
