@@ -227,20 +227,6 @@ struct UnarySubFunctor {
 };
 
 template <typename Tx, typename Ty = Tx>
-struct BinarySubFunctor {
-  HOSTDEVICE inline BinarySubFunctor() { alpha = static_cast<Tx>(0.0f); }
-
-  HOSTDEVICE explicit inline BinarySubFunctor(Tx alpha) : alpha((Tx)(alpha)) {}
-
-  HOSTDEVICE inline Ty operator()(const Tx& x, const Tx& y) const {
-    return static_cast<Ty>(x - y * alpha);
-  }
-
- private:
-  Tx alpha;
-};
-
-template <typename Tx, typename Ty = Tx>
 struct UnaryLogFunctor {
   HOSTDEVICE inline UnaryLogFunctor() {}
 
@@ -297,7 +283,7 @@ struct SoftmaxBackwardFunctor {
   HOSTDEVICE inline SoftmaxBackwardFunctor(Tx sum) : sum(sum) {}
 
   HOSTDEVICE inline Ty operator()(const Tx& grad_out, const Tx& out) const {
-    return static_cast<Ty>(grad_out - out * sum);
+    return static_cast<Ty>(out * (grad_out - sum));
   }
 
  private:
@@ -720,8 +706,8 @@ __global__ void WarpSoftmaxBackward(T* dst,
   // compute sum
   AccT sum[kBatchSize]{0.0};
   AccT sum_tmp[kBatchSize][kLoopsV][kVSize];
-  AccT* grad_tmp_ptr = reinterpret_cast<AccT*>(&grad_tmp[0][0][0]);
-  AccT* src_tmp_ptr = reinterpret_cast<AccT*>(&src_tmp[0][0][0]);
+  AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[0][0][0]);
+  AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[0][0][0]);
   if (LogMode) {
     kps::Reduce<AccT,
                 kVItem,
@@ -730,8 +716,8 @@ __global__ void WarpSoftmaxBackward(T* dst,
                 kps::details::ReduceMode::kLocalMode>(
         &sum[0], &grad_tmp[0][0][0], kps::AddFunctor<AccT>(), true);
   } else {
-    kps::ElementwiseBinary<T, AccT, kStep, 1, kps::MulFunctor<T>>(
-        &sum_tmp[0][0][0], &grad_ptr[0], &src_ptr[0], kps::MulFunctor<T>());
+    kps::ElementwiseBinary<AccT, AccT, kStep, 1, kps::MulFunctor<AccT>>(
+        &sum_tmp[0][0][0], &gradptr[0], &srcptr[0], kps::MulFunctor<AccT>());
     kps::Reduce<AccT,
                 kVItem,
                 kBatchSize,
@@ -747,28 +733,24 @@ __global__ void WarpSoftmaxBackward(T* dst,
 #pragma unroll
   for (IndexType i = 0; i < kBatchSize; ++i) {
     if (i >= local_batches) break;
+    AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[i][0][0]);
+    AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
     if (LogMode) {
-      AccT* grad_tmp_ptr_i = reinterpret_cast<AccT*>(&grad_tmp[i][0][0]);
-      AccT* src_tmp_ptr_i = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
       kps::ElementwiseUnary<AccT, AccT, kVItem, 1, ExpMulFunctor<AccT>>(
-          &out[i][0][0], &src_tmp_ptr_i[0], ExpMulFunctor<AccT>(sum[i]));
+          &out[i][0][0], &srcptr[0], ExpMulFunctor<AccT>(sum[i]));
       kps::ElementwiseBinary<AccT, T, kVItem, 1, kps::SubFunctor<AccT>>(
           &out_tmp[i][0][0],
-          &grad_tmp_ptr_i[0],
+          &gradptr[0],
           &out[i][0][0],
           kps::SubFunctor<AccT>());
     } else {
-      const T* grad_ptr_i = reinterpret_cast<const T*>(&grad_ptr[i * kVItem]);
-      const T* src_ptr_i = reinterpret_cast<const T*>(&src_ptr[i * kVItem]);
-      kps::ElementwiseBinary<T, AccT, kVItem, 1, kps::MulFunctor<T>>(
-          &out[i][0][0], &grad_ptr_i[0], &src_ptr_i[0], kps::MulFunctor<T>());
-
-      AccT* src_tmp_ptr_i = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
-      kps::ElementwiseBinary<AccT, T, kVItem, 1, BinarySubFunctor<AccT>>(
+      kps::ElementwiseUnary<AccT, AccT, kVItem, 1, UnarySubFunctor<AccT>>(
+          &out[i][0][0], &gradptr[0], UnarySubFunctor<AccT>(sum[i]));
+      kps::ElementwiseBinary<AccT, T, kVItem, 1, kps::MulFunctor<AccT>>(
           &out_tmp[i][0][0],
+          &srcptr[0],
           &out[i][0][0],
-          &src_tmp_ptr_i[0],
-          BinarySubFunctor<AccT>(sum[i]));
+          kps::MulFunctor<AccT>());
     }
     VecT* dst_v = reinterpret_cast<VecT*>(&dst[(first_batch + i) * stride]);
     VecT* reg_v = reinterpret_cast<VecT*>(&out_tmp[i][0][0]);
@@ -998,8 +980,8 @@ __global__ void NormalSoftmaxBackward(T* input_grad,
         for (IndexType mid_id = threadIdx.y; mid_id < mid_dim;
              mid_id += blockDim.y) {
           IndexType data_offset = grad_offset + mid_id * mid_stride;
-          sum +=
-              static_cast<AccT>(output_grad[data_offset] * output[data_offset]);
+          sum += static_cast<AccT>(output_grad[data_offset]) *
+                 static_cast<AccT>(output[data_offset]);
         }
       }
       if (blockDim.y > 1) {
@@ -1012,15 +994,9 @@ __global__ void NormalSoftmaxBackward(T* input_grad,
       for (IndexType mid_id = threadIdx.y; mid_id < mid_dim;
            mid_id += blockDim.y) {
         IndexType data_offset = grad_offset + mid_id * mid_stride;
-        if (LogMode) {
-          input_grad[data_offset] =
-              functor(static_cast<AccT>(output_grad[data_offset]),
-                      static_cast<AccT>(output[data_offset]));
-        } else {
-          input_grad[data_offset] = functor(
-              static_cast<AccT>(output_grad[data_offset] * output[data_offset]),
-              static_cast<AccT>(output[data_offset]));
-        }
+        input_grad[data_offset] =
+            functor(static_cast<AccT>(output_grad[data_offset]),
+                    static_cast<AccT>(output[data_offset]));
       }
     }
   }
