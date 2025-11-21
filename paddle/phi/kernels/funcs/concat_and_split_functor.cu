@@ -560,12 +560,29 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& ctx,
                                 int axis,
                                 phi::DenseTensor* output) {
   // TODO(zcd): Add input data validity checking
+  // Guard against empty input vector
+  PADDLE_ENFORCE_GT(ins.size(),
+                    0,
+                    common::errors::InvalidArgument(
+                        "Number of inputs to ConcatFunctorWithIndexType must be "
+                        "greater than 0, but got: %lu",
+                        ins.size()));
+
   IndexT in_num = ins.size();
   IndexT in_row = 1;
   auto dim_0 = ins[0].dims();
   for (int i = 0; i < axis; ++i) {
     in_row *= dim_0[i];
   }
+
+  // Guard against zero row count which would cause division by zero
+  PADDLE_ENFORCE_GT(in_row,
+                    0,
+                    common::errors::InvalidArgument(
+                        "Number of rows in ConcatFunctorWithIndexType must be "
+                        "greater than 0, but got: %lu",
+                        static_cast<size_t>(in_row)));
+
   IndexT in_col = ins[0].numel() / in_row;
   IndexT out_row = in_row, out_col = 0;
 
