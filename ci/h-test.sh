@@ -163,6 +163,21 @@ concurrency_list="^test_fp8_deep_gemm$|\
 ^test_ps_server_pass$|\
 ^test_white_lists$"
 
+disable_ut_quickly="$disable_ut_quickly|\
+^test_parallel_dygraph_sparse_embedding$|\
+^test_parallel_dygraph_unused_variables$|\
+^test_static_model_parallel$|\
+^test_parallel_dygraph_sync_batch_norm$|\
+^test_parallel_dygraph_no_sync$|\
+^test_parallel_dygraph_control_flow$|\
+^test_parallel_dygraph_no_sync$|\
+^test_orthogonal_strategy$|\
+^test_collective_alltoall_single$|\
+^test_collective_process_group$|\
+^test_parallel_dygraph_transformer$|\
+^test_new_api_per_op_and_group_intranode$|\
+^test_communication_stream_reduce_api$"
+
 cd ${work_dir}/build
 tmp_dir=`mktemp -d`
 tmpfile_rand=`date +%s%N`

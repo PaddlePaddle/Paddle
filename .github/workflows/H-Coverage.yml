@@ -1,4 +1,4 @@
-name: CI-H-Coverage
+name: CI-H
 
 on:
   pull_request:
@@ -34,7 +34,7 @@ jobs:
     uses: ./.github/workflows/_Clone-linux.yml
     with:
       workflow-name: 'coverage'
-      clone_dir: Paddle-coverage
+      clone_dir: h-ci
 
   build:
     name: Coverage build
