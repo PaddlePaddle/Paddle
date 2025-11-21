@@ -26,7 +26,7 @@ import setuptools
 import sys
 import paddle
 import site
-import subprocess
+from distutils.errors import DistutilsExecError, LinkError
 
 from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
@@ -594,38 +594,35 @@ class BuildExtension(build_ext):
             else:
                 nvcc_flags = extension.extra_compile_args
 
-            objects, dlink_dir = self.compiler._fix_object_args(
-                objects, output_dir
-            )
-            if not os.path.exists(dlink_dir):
-                os.makedirs(dlink_dir)
+            objects, dlink_dir = self._fix_object_args(objects, output_dir)
+            self.mkpath(dlink_dir)
             dlink_object = os.path.join(dlink_dir, 'dlink.o')
 
             # Construct command
             # nvcc -dlink <objects> -o <dlink_object> <flags>
 
-            cuda_home = find_cuda_home()
-            if cuda_home is None:
+            if CUDA_HOME is None:
                 raise RuntimeError("CUDA_HOME is not found, please set it.")
 
-            nvcc_cmd = os.path.join(cuda_home, 'bin', 'nvcc')
+            nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
+
+            cmd = []
             if CCACHE_HOME:
-                nvcc_cmd = f"{CCACHE_HOME} {nvcc_cmd}"
+                cmd.append(CCACHE_HOME)
+            cmd.append(nvcc_cmd)
 
-            cmd = [nvcc_cmd] if ' ' not in nvcc_cmd else nvcc_cmd.split()
-            cmd += ['-dlink']
-            cmd += list(objects)
-            cmd += ['-o', dlink_object]
-
-            cmd += nvcc_flags
+            cmd.append('-dlink')
+            cmd.extend(objects)
+            cmd.extend(['-o', dlink_object])
 
             dlink_flags = prepare_unix_cudaflags(copy.deepcopy(nvcc_flags))
-
-            cmd += dlink_flags
+            cmd.extend(dlink_flags)
 
             # Execute
-            print(f"Running dlink: {' '.join(cmd)}")
-            subprocess.check_call(cmd)
+            try:
+                self.spawn(cmd)
+            except DistutilsExecError as msg:
+                raise LinkError(msg)
 
             # Add dlink object to objects
             objects = [*list(objects), dlink_object]
