@@ -2620,6 +2620,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         int64_t batchCount,
                                         int64_t strideA,
                                         int64_t strideB) const {
+  std::cout << "####### HI BGEMM" << std::endl;
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int64_t lda = (transA == CblasNoTrans) ? K : M;
@@ -2731,6 +2732,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
 #endif  // CUDA_VERSION >= 9010
     T h_alpha = static_cast<T>(alpha);
     T h_beta = static_cast<T>(beta);
+
     dev_ctx_.CublasCall([&](cublasHandle_t handle) {
       CUBlas<T>::GEMM_STRIDED_BATCH(handle,
                                     cuTransB,

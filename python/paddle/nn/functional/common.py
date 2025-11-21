@@ -2510,8 +2510,24 @@ def linear(
              [-0.67769694, -0.67769694, -0.67769694, -0.67769694]])
     """
     if in_dynamic_mode():
-        # TODO(jiabin): using addmm for fast forward route
-        return _C_ops.linear(x, weight, bias)
+        if bias is not None:
+            assert len(bias.shape) == 1, "only support 1D bias"
+            if weight.shape[0] > 1 and weight.shape[1] > 1:
+                out, _ = _C_ops.fused_gemm_epilogue(
+                    x, weight, bias, False, False, "none"
+                )
+            else:
+                bias_reshaped = paddle.repeat_interleave(
+                    bias, x.shape[0], axis=0
+                )
+                bias_reshaped = paddle.unsqueeze(bias_reshaped, axis=1)
+                out = paddle.addmm(
+                    bias_reshaped, x, weight, alpha=1.0, beta=1.0
+                )
+        else:
+            out = _C_ops.matmul(x, weight, False, False)
+
+        return out
 
     elif in_pir_mode():
         out = _C_ops.matmul(x, weight, False, False)
