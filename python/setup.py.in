@@ -1532,6 +1532,8 @@ def get_header_install_dir(header):
             install_dir = re.sub('fluid/jit', 'jit', install_dir)
     else:
         # third_party
+        if 'third_party/xpu/src/extern_xpu/xpu/include/xpu/kernel' in header:
+            return None
         install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)
         patterns = ['install/mkldnn/include', 'pybind/src/extern_pybind/include', 'third_party/xpu/src/extern_xpu/xpu/include/']
         for pattern in patterns:
@@ -1570,6 +1572,8 @@ class InstallHeaders(Command):
 
     def mkdir_and_copy_file(self, header):
         install_dir = get_header_install_dir(header)
+        if install_dir is None:
+            return None, None
         install_dir = os.path.join(self.install_dir, os.path.dirname(install_dir))
         if not os.path.exists(install_dir):
             self.mkpath(install_dir)
@@ -1582,7 +1586,8 @@ class InstallHeaders(Command):
         self.mkpath(self.install_dir)
         for header in hdrs:
             (out, _) = self.mkdir_and_copy_file(header)
-            self.outfiles.append(out)
+            if out is not None:
+                self.outfiles.append(out)
 
     def get_inputs(self):
         return self.distribution.headers or []
@@ -1675,6 +1680,8 @@ def install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir):
     # install C++ header files
     for header in headers:
         install_dir = get_header_install_dir(header)
+        if install_dir is None:
+            continue
         install_dir = os.path.join(
             paddle_install_dir, 'include', os.path.dirname(install_dir)
         )

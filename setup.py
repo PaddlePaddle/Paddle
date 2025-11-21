@@ -143,6 +143,8 @@ def get_header_install_dir(header):
             install_dir = re.sub('fluid/jit', 'jit', install_dir, count=1)
     else:
         # third_party
+        if 'third_party/xpu/src/extern_xpu/xpu/include/xpu/kernel' in header:
+            return None
         install_dir = re.sub(
             env_dict.get("THIRD_PARTY_PATH"), 'third_party', header, count=1
         )
@@ -185,6 +187,8 @@ class InstallHeaders(Command):
         self.mkpath(self.install_dir)
         for header in hdrs:
             install_dir = get_header_install_dir(header)
+            if install_dir is None:
+                continue
             install_dir = os.path.join(
                 self.install_dir, os.path.dirname(install_dir)
             )
@@ -282,6 +286,8 @@ class InstallLib(install_lib):
             return
         for header in hrds:
             install_dir = get_header_install_dir(header)
+            if install_dir is None:
+                continue
             install_dir = os.path.join(
                 self.install_dir, 'paddle/include', os.path.dirname(install_dir)
             )
@@ -2597,6 +2603,8 @@ def install_cpp_dist_and_build_test(install_dir, lib_test_dir, headers, libs):
     # install C++ header files
     for header in headers:
         header_install_dir = get_header_install_dir(header)
+        if header_install_dir is None:
+            continue
         header_install_dir = os.path.join(
             install_dir, 'include', os.path.dirname(header_install_dir)
         )
