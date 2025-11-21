@@ -63,6 +63,88 @@ class PyLayerContext:
     not_inplace_tensors: tuple[Tensor, ...]
     non_differentiable: tuple[Tensor, ...]
     materialize_grads: bool
+    grad_in_dtype_consistent: bool
+
+    def set_grad_in_dtype_consistent(self, flag: bool) -> None:
+        """
+        Set whether to maintain gradient input dtype consistency between forward output and backward input.
+
+        Note:
+            This API should be called only inside `forward`.
+            By default, backward input gradients are automatically cast to match the dtype of forward outputs.
+            Set this to `False` to disable automatic casting and maintain original gradient dtypes in backward.
+
+        Args:
+            flag (bool): Whether to enable automatic dtype conversion in backward.
+                - `True`:  Cast backward input gradient to match forward output dtype (default behavior)
+                - `False`: Preserve original dtype of backward input gradient
+
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> from paddle.autograd import PyLayer
+                >>> paddle.seed(2025)
+                >>> # cus_tanh_backward_input is a global variable that stores the gradient input of cus_tanh.
+                >>> cus_tanh_backward_input = paddle.empty([])
+                >>> class cus_tanh(PyLayer):
+                ...     @staticmethod
+                ...     def forward(ctx, x):
+                ...         y = paddle.tanh(x)
+                ...         # Pass tensors to backward.
+                ...         ctx.save_for_backward(y)
+                ...         # The gradient input in the backward process
+                ...         # will not be automatically cast to the dtype of the forward output.
+                ...         ctx.set_grad_in_dtype_consistent(False)
+                ...         return y
+                ...
+                ...     @staticmethod
+                ...     def backward(ctx, dy):
+                ...         global cus_tanh_backward_input
+                ...         cus_tanh_backward_input = dy
+                ...
+                ...         # Get the tensors passed by forward.
+                ...         y, = ctx.saved_tensor()
+                ...         grad = dy * (1 - paddle.square(y))
+                ...         return grad
+                ...
+                >>> class cus_tanh_cast_grad(PyLayer):
+                ...     @staticmethod
+                ...     def forward(ctx, x):
+                ...         y = paddle.tanh(x)
+                ...         # Pass tensors to backward.
+                ...         ctx.save_for_backward(y)
+                ...         return y
+                ...
+                ...     @staticmethod
+                ...     def backward(ctx, dy):
+                ...         # Get the tensors passed by forward.
+                ...         y, = ctx.saved_tensor()
+                ...         grad = dy * (1 - paddle.square(y))
+                ...         grad = paddle.cast(grad,paddle.float16)
+                ...         return grad
+                ...
+                >>> x = paddle.randn([3,3]).astype("float32")
+                >>> x.stop_gradient = False
+                >>> y = cus_tanh.apply(x)
+                >>> cus_tanh_forward_out = y
+                >>> z = cus_tanh_cast_grad.apply(y)
+                >>> z.sum().backward()
+                >>> print(cus_tanh_forward_out)
+                Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+                    [[-0.17783271,  0.27381954,  0.83902466],
+                     [ 0.69548184, -0.68347871,  0.96448076],
+                     [ 0.75160277,  0.37102571,  0.36433718]])
+                >>> print(cus_tanh_backward_input)
+                Tensor(shape=[3, 3], dtype=float16, place=Place(gpu:0), stop_gradient=True,
+                    [[0.96923828, 0.92871094, 0.53027344],
+                     [0.63818359, 0.64746094, 0.44311523],
+                     [0.59521484, 0.87402344, 0.87841797]])
+        """
+        self.grad_in_dtype_consistent = flag
 
     def save_for_backward(self, *tensors: Tensor) -> None:
         """
