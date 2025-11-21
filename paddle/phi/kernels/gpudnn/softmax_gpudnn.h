@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -23,10 +24,13 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
+#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 
+#define SOFTMAX_ALIGN_BYTES 16
 #define MATRIX_SOFTMAX_ALIGN_BYTES 16
 #define MATRIX_SOFTMAX_THRESHOLD 100000
-#define FLAGS_use_accuracy_compatible_kernel true
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -179,6 +183,14 @@ struct MaxFunctor {
   }
 };
 
+template <typename T, typename AccT>
+struct AddFunctor {
+  __device__ __forceinline__ AccT operator()(const AccT& max_v,
+                                             const T& v) const {
+    return max_v + static_cast<AccT>(v);
+  }
+};
+
 template <typename Tx, typename Ty = Tx>
 struct ExpFunctor {
   HOSTDEVICE inline Ty operator()(const Tx& x) const {
@@ -212,20 +224,6 @@ struct UnarySubFunctor {
 
  private:
   Tx y;
-};
-
-template <typename Tx, typename Ty = Tx>
-struct BinarySubFunctor {
-  HOSTDEVICE inline BinarySubFunctor() { alpha = static_cast<Tx>(0.0f); }
-
-  HOSTDEVICE explicit inline BinarySubFunctor(Tx alpha) : alpha((Tx)(alpha)) {}
-
-  HOSTDEVICE inline Ty operator()(const Tx& x, const Tx& y) const {
-    return static_cast<Ty>(x - y * alpha);
-  }
-
- private:
-  Tx alpha;
 };
 
 template <typename Tx, typename Ty = Tx>
@@ -285,7 +283,7 @@ struct SoftmaxBackwardFunctor {
   HOSTDEVICE inline SoftmaxBackwardFunctor(Tx sum) : sum(sum) {}
 
   HOSTDEVICE inline Ty operator()(const Tx& grad_out, const Tx& out) const {
-    return static_cast<Ty>(grad_out - out * sum);
+    return static_cast<Ty>(out * (grad_out - sum));
   }
 
  private:
@@ -336,7 +334,7 @@ template <template <typename, typename> class Reduction,
           typename IndexType,
           int VecSize>
 __device__ __forceinline__ AccT
-ThreadVecReduce(T* data,
+ThreadVecReduce(const T* data,
                 IndexType dim_size,
                 const int shift,
                 const Reduction<T, AccT>& functor,
@@ -362,7 +360,7 @@ ThreadVecReduce(T* data,
   VecT* value = reinterpret_cast<VecT*>(&v);
 
   for (; offset * VecSize < dim_size - last; offset += blockDim.x) {
-    *value = reinterpret_cast<VecT*>(data)[offset];
+    *value = reinterpret_cast<const VecT*>(data)[offset];
 #pragma unroll
     for (int i = 0; i < VecSize; i++) {
       thread_val = functor(thread_val, v[i]);
@@ -708,8 +706,8 @@ __global__ void WarpSoftmaxBackward(T* dst,
   // compute sum
   AccT sum[kBatchSize]{0.0};
   AccT sum_tmp[kBatchSize][kLoopsV][kVSize];
-  AccT* grad_tmp_ptr = reinterpret_cast<AccT*>(&grad_tmp[0][0][0]);
-  AccT* src_tmp_ptr = reinterpret_cast<AccT*>(&src_tmp[0][0][0]);
+  AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[0][0][0]);
+  AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[0][0][0]);
   if (LogMode) {
     kps::Reduce<AccT,
                 kVItem,
@@ -718,8 +716,8 @@ __global__ void WarpSoftmaxBackward(T* dst,
                 kps::details::ReduceMode::kLocalMode>(
         &sum[0], &grad_tmp[0][0][0], kps::AddFunctor<AccT>(), true);
   } else {
-    kps::ElementwiseBinary<T, AccT, kStep, 1, kps::MulFunctor<T>>(
-        &sum_tmp[0][0][0], &grad_ptr[0], &src_ptr[0], kps::MulFunctor<T>());
+    kps::ElementwiseBinary<AccT, AccT, kStep, 1, kps::MulFunctor<AccT>>(
+        &sum_tmp[0][0][0], &gradptr[0], &srcptr[0], kps::MulFunctor<AccT>());
     kps::Reduce<AccT,
                 kVItem,
                 kBatchSize,
@@ -735,28 +733,24 @@ __global__ void WarpSoftmaxBackward(T* dst,
 #pragma unroll
   for (IndexType i = 0; i < kBatchSize; ++i) {
     if (i >= local_batches) break;
+    AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[i][0][0]);
+    AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
     if (LogMode) {
-      AccT* grad_tmp_ptr_i = reinterpret_cast<AccT*>(&grad_tmp[i][0][0]);
-      AccT* src_tmp_ptr_i = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
       kps::ElementwiseUnary<AccT, AccT, kVItem, 1, ExpMulFunctor<AccT>>(
-          &out[i][0][0], &src_tmp_ptr_i[0], ExpMulFunctor<AccT>(sum[i]));
+          &out[i][0][0], &srcptr[0], ExpMulFunctor<AccT>(sum[i]));
       kps::ElementwiseBinary<AccT, T, kVItem, 1, kps::SubFunctor<AccT>>(
           &out_tmp[i][0][0],
-          &grad_tmp_ptr_i[0],
+          &gradptr[0],
           &out[i][0][0],
           kps::SubFunctor<AccT>());
     } else {
-      const T* grad_ptr_i = reinterpret_cast<const T*>(&grad_ptr[i * kVItem]);
-      const T* src_ptr_i = reinterpret_cast<const T*>(&src_ptr[i * kVItem]);
-      kps::ElementwiseBinary<T, AccT, kVItem, 1, kps::MulFunctor<T>>(
-          &out[i][0][0], &grad_ptr_i[0], &src_ptr_i[0], kps::MulFunctor<T>());
-
-      AccT* src_tmp_ptr_i = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
-      kps::ElementwiseBinary<AccT, T, kVItem, 1, BinarySubFunctor<AccT>>(
+      kps::ElementwiseUnary<AccT, AccT, kVItem, 1, UnarySubFunctor<AccT>>(
+          &out[i][0][0], &gradptr[0], UnarySubFunctor<AccT>(sum[i]));
+      kps::ElementwiseBinary<AccT, T, kVItem, 1, kps::MulFunctor<AccT>>(
           &out_tmp[i][0][0],
+          &srcptr[0],
           &out[i][0][0],
-          &src_tmp_ptr_i[0],
-          BinarySubFunctor<AccT>(sum[i]));
+          kps::MulFunctor<AccT>());
     }
     VecT* dst_v = reinterpret_cast<VecT*>(&dst[(first_batch + i) * stride]);
     VecT* reg_v = reinterpret_cast<VecT*>(&out_tmp[i][0][0]);
@@ -986,8 +980,8 @@ __global__ void NormalSoftmaxBackward(T* input_grad,
         for (IndexType mid_id = threadIdx.y; mid_id < mid_dim;
              mid_id += blockDim.y) {
           IndexType data_offset = grad_offset + mid_id * mid_stride;
-          sum +=
-              static_cast<AccT>(output_grad[data_offset] * output[data_offset]);
+          sum += static_cast<AccT>(output_grad[data_offset]) *
+                 static_cast<AccT>(output[data_offset]);
         }
       }
       if (blockDim.y > 1) {
@@ -1000,15 +994,9 @@ __global__ void NormalSoftmaxBackward(T* input_grad,
       for (IndexType mid_id = threadIdx.y; mid_id < mid_dim;
            mid_id += blockDim.y) {
         IndexType data_offset = grad_offset + mid_id * mid_stride;
-        if (LogMode) {
-          input_grad[data_offset] =
-              functor(static_cast<AccT>(output_grad[data_offset]),
-                      static_cast<AccT>(output[data_offset]));
-        } else {
-          input_grad[data_offset] = functor(
-              static_cast<AccT>(output_grad[data_offset] * output[data_offset]),
-              static_cast<AccT>(output[data_offset]));
-        }
+        input_grad[data_offset] =
+            functor(static_cast<AccT>(output_grad[data_offset]),
+                    static_cast<AccT>(output[data_offset]));
       }
     }
   }
@@ -1299,6 +1287,1373 @@ bool UseCudnnSoftmax(const GPUContext& dev_ctx,
   }
 }
 
+/////////////////////////////////////////////////////////////////////////////
+static cudaDeviceProp* GetDeviceProp() {
+  int device = -1;
+  PD_CHECK(cudaGetDevice(&device) == cudaSuccess);
+  cudaDeviceProp prop;
+  PD_CHECK(cudaGetDeviceProperties(&prop, device) == cudaSuccess);
+  return &prop;
+}
+
+template <typename T, typename AccT, typename OutT>
+struct SoftMaxForwardEpilogue {
+  __device__ __forceinline__ SoftMaxForwardEpilogue(AccT max_input, AccT sum)
+      : max_input(max_input), sum(sum) {}
+
+  __device__ __forceinline__ OutT operator()(T input) const {
+    return static_cast<OutT>(std::exp(static_cast<AccT>(input) - max_input) /
+                             sum);
+  }
+
+  const AccT max_input;
+  const AccT sum;
+};
+
+template <typename T, typename AccT, typename OutT>
+struct SoftMaxBackwardEpilogue {
+  __device__ __forceinline__ SoftMaxBackwardEpilogue(AccT sum) : sum(sum) {}
+
+  __device__ __forceinline__ T operator()(OutT gradOutput, OutT output) const {
+    return static_cast<T>(static_cast<AccT>(gradOutput) -
+                          static_cast<AccT>(output) * sum);
+  }
+
+  const AccT sum;
+};
+
+template <typename T, typename AccT, typename OutT>
+struct LogSoftMaxForwardEpilogue {
+  __device__ __forceinline__ LogSoftMaxForwardEpilogue(AccT max_input, AccT sum)
+      : max_input(max_input), logsum(std::log(sum)) {}
+
+  __device__ __forceinline__ OutT operator()(T input) const {
+    return static_cast<OutT>(static_cast<AccT>(input) - max_input - logsum);
+  }
+
+  const AccT max_input;
+  const AccT logsum;
+};
+
+template <typename T, typename AccT, typename OutT>
+struct LogSoftMaxBackwardEpilogue {
+  __device__ __forceinline__ LogSoftMaxBackwardEpilogue(AccT sum) : sum(sum) {}
+
+  __device__ __forceinline__ T operator()(OutT gradOutput, OutT output) const {
+    return static_cast<T>(static_cast<AccT>(gradOutput) -
+                          std::exp(static_cast<AccT>(output)) * sum);
+  }
+
+  const AccT sum;
+};
+
+inline dim3 SpatialSoftMax_getGridSize(dim3 block,
+                                       uint32_t max_active_blocks,
+                                       uint64_t outer_size,
+                                       uint64_t inner_size) {
+  // Calculate the number of blocks required along the Y-axis to cover
+  // 'inner_size'.
+  uint32_t inner_blocks = (inner_size + block.y - 1) / block.y;
+  if (inner_blocks > max_active_blocks) {
+    inner_blocks = max_active_blocks;
+  }
+  // Calculate the maximum possible blocks for the X-axis (outer dimension).
+  uint32_t outer_blocks = (max_active_blocks + inner_blocks - 1) / inner_blocks;
+  if (outer_blocks > outer_size) {
+    outer_blocks = outer_size;
+  }
+  return dim3(outer_blocks, inner_blocks);
+}
+
+inline dim3 SpatialSoftMax_getBlockSize(uint64_t dim_size,
+                                        uint64_t inner_size) {
+  uint32_t inner_threads = inner_size;
+  inner_threads = std::min(inner_threads, static_cast<uint32_t>(1024));
+  uint32_t dim_threads = 1;
+  if (inner_threads <= 64 && dim_size >= 64) {
+    while (inner_threads * dim_threads <= 1024 && dim_threads <= dim_size)
+      dim_threads *= 2;
+    dim_threads /= 2;
+  }
+  return dim3(dim_threads, inner_threads);
+}
+
+inline dim3 SoftMaxForward_getBlockSize(uint64_t dim_size) {
+  uint64_t block_size = 1;
+  uint64_t max_block_size = std::min(dim_size, static_cast<uint64_t>(1024));
+
+  int warp_size = 32;
+  if (max_block_size % warp_size == 0) {
+    block_size = max_block_size;
+  } else {
+    block_size = (max_block_size / warp_size + 1) * warp_size;
+  }
+  return dim3(block_size);
+}
+
+template <typename AccT, typename IndexType, typename Kernel>
+void SpatialSoftMax_getLaunchSizes(Kernel k,
+                                   IndexType outer_size,
+                                   IndexType dim_size,
+                                   IndexType inner_size,
+                                   dim3* grid,
+                                   dim3* block,
+                                   uint32_t* smem_size) {
+  *block = SpatialSoftMax_getBlockSize(dim_size, inner_size);
+  uint32_t block_threads = block->x * block->y;
+  *smem_size = block->x == 1 ? 0 : block_threads * sizeof(AccT);
+  int max_active_blocks;
+  cudaError_t occ_err = cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+      &max_active_blocks, k, block_threads, *smem_size);
+  if (occ_err != cudaSuccess) {
+    PADDLE_THROW(::common::errors::InvalidArgument(
+        "cudaOccupancyMaxActiveBlocksPerMultiprocessor failed. "
+        "This error usually happens when the kernel occupancy "
+        "exceeds the limit of hardware. Dim_size is too large? "));
+  }
+  max_active_blocks *= GetDeviceProp()->multiProcessorCount;
+  *grid = SpatialSoftMax_getGridSize(
+      *block, max_active_blocks, outer_size, inner_size);
+}
+
+template <typename T>
+struct Add {
+  __device__ __forceinline__ T operator()(T a, T b) const { return a + b; }
+
+  __device__ __forceinline__ T combine(T a, T b) const { return a + b; }
+};
+
+template <typename T>
+struct Max {
+  __device__ __forceinline__ T operator()(T a, T b) const {
+    return a < b ? b : a;
+  }
+
+  __device__ __forceinline__ T combine(T a, T b) const { return a < b ? b : a; }
+};
+
+template <template <typename> class Reduction, typename AccT>
+__device__ __forceinline__ AccT
+blockReduce(AccT* smem, AccT val, const Reduction<AccT>& r, AccT defaultVal) {
+  // To avoid RaW races from chaining blockReduce calls together, we need a sync
+  // here
+  __syncthreads();
+
+  smem[threadIdx.x] = val;
+
+  __syncthreads();
+
+  AccT warpVal = defaultVal;
+
+  // First warp will perform per-warp reductions for the remaining warps
+  uint32_t mask = (((uint64_t)1) << (blockDim.x / 32)) - 1;
+  if (threadIdx.x < 32) {
+    int lane = threadIdx.x % 32;
+    if (lane < blockDim.x / 32) {
+#pragma unroll
+      for (int i = 0; i < 32; ++i) {
+        warpVal = r(warpVal, smem[lane * 32 + i]);
+      }
+#if !defined(USE_ROCM)
+      __syncwarp(mask);
+#endif
+      smem[lane] = warpVal;
+    }
+  }
+
+  __syncthreads();
+
+  // First thread will perform a reduction of the above per-warp reductions
+  AccT blockVal = defaultVal;
+
+  if (threadIdx.x == 0) {
+    for (int i = 0; i < blockDim.x / 32; ++i) {
+      blockVal = r(blockVal, smem[i]);
+    }
+    smem[0] = blockVal;
+  }
+
+  // Sync and broadcast
+  __syncthreads();
+  return smem[0];
+}
+
+// Note that it's not a complete block-wide reduction.
+// Only threads that share threadIdx.y reduce values.
+template <typename T, template <typename> class ReduceOp>
+__forceinline__ __device__ T spatialBlockReduceX(T* shared, T val) {
+  ReduceOp<T> r;
+  shared += threadIdx.y * blockDim.x;
+
+  __syncthreads();
+
+  shared[threadIdx.x] = val;
+
+  // NOTE: loop starts with __syncthreads()
+  int offset = blockDim.x / 2;
+  while (offset > 0) {
+    __syncthreads();
+    if (threadIdx.x < offset)
+      shared[threadIdx.x] =
+          r(shared[threadIdx.x], shared[threadIdx.x + offset]);
+    offset /= 2;
+  }
+
+  __syncthreads();
+
+  return shared[0];
+}
+
+/**
+ * This will apply the Function with vectorized reads & writes when input &
+ * output have the same shift
+ */
+template <int VecSize,
+          typename T,
+          typename AccT,
+          typename IndexType,
+          template <typename, typename, typename>
+          class Function>
+__device__ __forceinline__ void WriteFpropResultsVectorized(
+    IndexType size,
+    const IndexType shift,
+    const T* input,
+    T* output,
+    Function<T, AccT, T> function) {
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using StoreT = phi::AlignedVector<T, VecSize>;
+
+  int offset = threadIdx.x;
+
+  // if unaligned, do one value / thread and move on, guaranteeing aligned
+  // reads/writes later
+  if (shift > 0) {
+    input -= shift;
+    output -= shift;
+    size += shift;
+
+    if (offset >= shift && offset < size) {
+      output[offset] = function(input[offset]);
+    }
+    size -= blockDim.x > size ? size : blockDim.x;
+    input += blockDim.x;
+    output += blockDim.x;
+  }
+
+  const IndexType last = size % (VecSize * blockDim.x);
+
+  T in_v[VecSize];
+  LoadT* in_value = reinterpret_cast<LoadT*>(&in_v);
+
+  T out_v[VecSize];
+  const StoreT* out_value = reinterpret_cast<const StoreT*>(&out_v);
+
+  for (; offset * VecSize < (size - last); offset += blockDim.x) {
+    *in_value = reinterpret_cast<const LoadT*>(input)[offset];
+
+#pragma unroll
+    for (int j = 0; j < VecSize; ++j) {
+      out_v[j] = function(in_v[j]);
+    }
+
+    reinterpret_cast<StoreT*>(output)[offset] = *out_value;
+  }
+
+  offset = size - last + threadIdx.x;
+  // handle the tail
+  for (; offset < size; offset += blockDim.x) {
+    output[offset] = function(input[offset]);
+  }
+}
+
+/**
+ * This will apply the Function with non-vectorized reads & writes for the
+ * general case
+ */
+template <int VecSize,
+          typename T,
+          typename AccT,
+          typename IndexType,
+          template <typename, typename, typename>
+          class Function>
+__device__ __forceinline__ void WriteFpropResults(
+    IndexType classes,
+    const T* input,
+    T* output,
+    Function<T, AccT, T> function) {
+  for (IndexType offset = threadIdx.x; offset < classes; offset += blockDim.x) {
+    output[offset] = function(input[offset]);
+  }
+}
+
+template <int VecSize,
+          typename T,
+          typename AccT,
+          template <typename, typename, typename>
+          class Function,
+          typename IndexType = int32_t>
+__device__ __forceinline__ void WriteBpropResultsVectorized(
+    IndexType size,
+    const IndexType shift,
+    T* gradInput,
+    const T* output,
+    const T* gradOutput,
+    Function<T, AccT, T> function) {
+  using gradInputT = phi::AlignedVector<T, VecSize>;
+  using outputT = phi::AlignedVector<T, VecSize>;
+
+  IndexType offset = threadIdx.x;
+
+  // if unaligned, do one value / thread and move on, guaranteeing aligned
+  // reads/writes later
+  if (shift > 0) {
+    gradInput -= shift;
+    output -= shift;
+    gradOutput -= shift;
+    size += shift;
+
+    if (threadIdx.x >= shift) {
+      gradInput[offset] = function(gradOutput[offset], output[offset]);
+    }
+    size -= blockDim.x > size ? size : blockDim.x;
+    gradInput += blockDim.x;
+    output += blockDim.x;
+    gradOutput += blockDim.x;
+  }
+
+  const IndexType last = size % (VecSize * blockDim.x);
+
+  T dX[VecSize];
+  gradInputT* dX_v = reinterpret_cast<gradInputT*>(&dX);
+
+  T Y[VecSize];
+  outputT* Y_v = reinterpret_cast<outputT*>(&Y);
+
+  T dY[VecSize];
+  outputT* dY_v = reinterpret_cast<outputT*>(&dY);
+
+  for (; offset * VecSize < (size - last); offset += blockDim.x) {
+    *Y_v = reinterpret_cast<const outputT*>(output)[offset];
+    *dY_v = reinterpret_cast<const outputT*>(gradOutput)[offset];
+
+#pragma unroll
+    for (int j = 0; j < VecSize; ++j) {
+      dX[j] = function(dY[j], Y[j]);
+    }
+
+    reinterpret_cast<gradInputT*>(gradInput)[offset] = *dX_v;
+  }
+
+  offset = size - last + threadIdx.x;
+  for (; offset < size; offset += blockDim.x) {
+    gradInput[offset] = function(gradOutput[offset], output[offset]);
+  }
+}
+
+template <int VecSize,
+          typename T,
+          typename AccT,
+          template <typename, typename, typename>
+          class Function,
+          typename IndexType>
+__device__ __forceinline__ void WriteBpropResults(
+    int classes,
+    T* gradInput,
+    const T* output,
+    const T* gradOutput,
+    Function<T, AccT, T> function) {
+  IndexType offset = threadIdx.x;
+
+  IndexType last = classes % (VecSize * blockDim.x);
+
+  for (; offset < classes - last; offset += blockDim.x * VecSize) {
+    T tmpOutput[VecSize];
+    T tmpGradOutput[VecSize];
+
+#pragma unroll
+    for (int j = 0; j < VecSize; ++j) {
+      tmpOutput[j] = output[offset + j * blockDim.x];
+      tmpGradOutput[j] = gradOutput[offset + j * blockDim.x];
+    }
+
+#pragma unroll
+    for (int j = 0; j < VecSize; ++j) {
+      gradInput[offset + j * blockDim.x] =
+          function(tmpGradOutput[j], tmpOutput[j]);
+    }
+  }
+
+  // Remainder - no VecSize
+  for (; offset < classes; offset += blockDim.x) {
+    gradInput[offset] = function(gradOutput[offset], output[offset]);
+  }
+}
+
+template <typename T,
+          typename AccT,
+          template <typename, typename, typename>
+          class Function,
+          typename IndexType,
+          int32_t reg_cnt>
+__global__ void cunn_SoftMaxForwardReg(T* output,
+                                       const T* input,
+                                       IndexType classes) {
+  extern __shared__ unsigned char smem[];
+  auto sdata = reinterpret_cast<AccT*>(smem);
+
+  T reg[reg_cnt];
+
+  input += static_cast<int64_t>(blockIdx.x) * classes;
+  output += static_cast<int64_t>(blockIdx.x) * classes;
+
+  AccT threadMax = std::numeric_limits<AccT>::lowest();
+  AccT threadExp = static_cast<AccT>(0);
+
+  // Load the elements from gmem into reg, and get the max for current thread.
+  MaxFunctor<T, AccT> maxFunc;
+
+#pragma unroll
+  for (int reg_idx = 0; reg_idx < reg_cnt; reg_idx++) {
+    int offset = threadIdx.x + reg_idx * blockDim.x;
+    if (offset < classes) {
+      reg[reg_idx] = input[offset];
+      threadMax = maxFunc(threadMax, reg[reg_idx]);
+    }
+  }
+
+  // Reduce to the max for block
+  BlockReduceMax<AccT>(&threadMax);
+  AccT max_k = threadMax;
+
+  SumExpFunctor<T, AccT> sumExpFunc(max_k);
+// reduce all values
+#pragma unroll
+  for (int reg_idx = 0; reg_idx < reg_cnt; reg_idx++) {
+    int offset = threadIdx.x + reg_idx * blockDim.x;
+    if (offset < classes) {
+      threadExp = sumExpFunc(threadExp, reg[reg_idx]);
+    }
+  }
+  BlockReduceSum<AccT>(&threadExp);
+  AccT sumAll = threadExp;
+
+  Function<T, AccT, T> function(max_k, sumAll);
+
+// Write back the value
+#pragma unroll
+  for (int reg_idx = 0; reg_idx < reg_cnt; reg_idx++) {
+    int offset = threadIdx.x + reg_idx * blockDim.x;
+    if (offset < classes) {
+      output[offset] = function(reg[reg_idx]);
+    }
+  }
+}
+
+template <int VecSize,
+          typename T,
+          typename AccT,
+          typename IndexType,
+          template <typename, typename, typename>
+          class Function>
+__global__ void cunn_SoftMaxForward(T* output,
+                                    const T* input,
+                                    IndexType classes) {
+  extern __shared__ unsigned char smem[];
+  auto sdata = reinterpret_cast<AccT*>(smem);
+
+  // forward pointers to batch[blockIdx.x]
+  // each block handles a sample in the mini-batch
+  input += static_cast<int64_t>(blockIdx.x) * classes;
+  output += static_cast<int64_t>(blockIdx.x) * classes;
+
+  const IndexType shift = ((uint64_t)input) % SOFTMAX_ALIGN_BYTES / sizeof(T);
+  const IndexType output_shift =
+      ((uint64_t)output) % SOFTMAX_ALIGN_BYTES / sizeof(T);
+
+  // find the max
+  AccT threadMax = ThreadVecReduce<MaxFunctor, T, AccT, IndexType, VecSize>(
+      input,
+      classes,
+      static_cast<IndexType>(shift),
+      MaxFunctor<T, AccT>(),
+      std::numeric_limits<AccT>::lowest());
+  BlockReduceMax<AccT>(&threadMax);
+  AccT max_k = threadMax;
+
+  // reduce all values
+  AccT threadExp = ThreadVecReduce<SumExpFunctor, T, AccT, IndexType, VecSize>(
+      input,
+      classes,
+      static_cast<IndexType>(shift),
+      SumExpFunctor<T, AccT>(max_k),
+      static_cast<AccT>(0.));
+  BlockReduceSum<AccT>(&threadExp);
+  AccT sumAll = threadExp;
+
+  Function<T, AccT, T> function(max_k, sumAll);
+
+  if (shift == output_shift) {
+    WriteFpropResultsVectorized<VecSize, T, AccT, IndexType, Function>(
+        classes, shift, input, output, function);
+  } else {
+    WriteFpropResults<VecSize, T, AccT, IndexType, Function>(
+        classes, input, output, function);
+  }
+}
+
+template <int VecSize,
+          typename T,
+          typename AccT,
+          typename IndexType,
+          bool is_log_softmax,
+          template <typename, typename, typename>
+          class Function>
+__global__ void cunn_SoftMaxBackward(T* gradInput,
+                                     const T* output,
+                                     const T* gradOutput,
+                                     IndexType classes) {
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using StoreT = phi::AlignedVector<T, VecSize>;
+
+  extern __shared__ unsigned char smem[];
+  auto sdata = reinterpret_cast<AccT*>(smem);
+  gradInput += static_cast<int64_t>(blockIdx.x) * classes;
+  output += static_cast<int64_t>(blockIdx.x) * classes;
+  gradOutput += static_cast<int64_t>(blockIdx.x) * classes;
+
+  const int64_t shift = ((uint64_t)gradInput) % SOFTMAX_ALIGN_BYTES / sizeof(T);
+  const int64_t output_shift =
+      ((uint64_t)output) % SOFTMAX_ALIGN_BYTES / sizeof(T);
+  const int64_t grad_output_shift =
+      ((uint64_t)gradOutput) % SOFTMAX_ALIGN_BYTES / sizeof(T);
+
+  AccT threadSum;
+  threadSum = ThreadVecReduce<AddFunctor, T, AccT, IndexType, VecSize>(
+      gradOutput,
+      classes,
+      static_cast<IndexType>(grad_output_shift),
+      AddFunctor<T, AccT>(),
+      static_cast<AccT>(0.));
+  AccT sum_k = blockReduce<Add, AccT>(sdata, threadSum, Add<AccT>(), AccT(0));
+
+  Function<T, AccT, T> function(sum_k);
+
+  if (shift == output_shift && shift == grad_output_shift) {
+    WriteBpropResultsVectorized<VecSize, T, AccT, Function, IndexType>(
+        classes,
+        static_cast<IndexType>(shift),
+        gradInput,
+        output,
+        gradOutput,
+        function);
+  } else {
+    WriteBpropResults<VecSize, T, AccT, Function, IndexType>(
+        classes, gradInput, output, gradOutput, function);
+  }
+}
+
+template <int VecSize,
+          typename T,
+          typename AccT,
+          template <typename, typename, typename>
+          class Function,
+          typename IndexType = int32_t>
+__global__ void cunn_SoftMaxForwardSmem(T* output,
+                                        const T* input,
+                                        IndexType classes) {
+  // Each thread block processes a sample in the batch
+  input += static_cast<int64_t>(blockIdx.x) * classes;
+  output += static_cast<int64_t>(blockIdx.x) * classes;
+
+  AccT threadMax = std::numeric_limits<AccT>::lowest();
+  AccT threadExp = static_cast<AccT>(0);
+
+  // The first smem segment is used to cache input values and the last segment
+  // is used for thread block reductions
+  extern __shared__ unsigned char smem[];
+  auto smem_input_cache = reinterpret_cast<T*>(smem);
+  auto smem_reduction_cache =
+      reinterpret_cast<AccT*>(smem + classes * sizeof(T));
+
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  const LoadT* const input_vec_ptr = reinterpret_cast<const LoadT*>(input);
+  LoadT* const smem_input_cache_vec_ptr =
+      reinterpret_cast<LoadT*>(smem_input_cache);
+
+  // Download inputs to shared memory while doing the first step in max
+  // calculation
+  MaxFunctor<T, AccT> maxFunc;
+  for (IndexType offset = threadIdx.x; offset * VecSize < classes;
+       offset += blockDim.x) {
+    LoadT crnt_vec = input_vec_ptr[offset];
+    smem_input_cache_vec_ptr[offset] = crnt_vec;
+
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+      threadMax = maxFunc(threadMax, crnt_vec.val[i]);
+    }
+  }
+
+  BlockReduceMax<AccT>(&threadMax);
+  AccT max_k = threadMax;
+
+  // Reload input from shared memory to compute the sum. The previous
+  // reduce has performed a __syncthreads() so the smem contents are populated.
+  SumExpFunctor<T, AccT> sumExpFunc(max_k);
+  for (IndexType offset = threadIdx.x; offset * VecSize < classes;
+       offset += blockDim.x) {
+    LoadT crnt_vec = smem_input_cache_vec_ptr[offset];
+
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+      threadExp = sumExpFunc(threadExp, crnt_vec.val[i]);
+    }
+  }
+
+  BlockReduceSum<AccT>(&threadExp);
+  AccT sumAll = threadExp;
+
+  Function<T, AccT, T> function(max_k, sumAll);
+
+  // Use vectorized stores to save the output
+  using StoreT = phi::AlignedVector<T, VecSize>;
+  StoreT* output_vec_ptr = reinterpret_cast<StoreT*>(output);
+  for (IndexType offset = threadIdx.x; offset * VecSize < classes;
+       offset += blockDim.x) {
+    LoadT crnt_vec = smem_input_cache_vec_ptr[offset];
+    StoreT out_vec;
+
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+      out_vec.val[i] = function(crnt_vec.val[i]);
+    }
+
+    output_vec_ptr[offset] = out_vec;
+  }
+}
+
+template <int VecSize,
+          typename T,
+          typename AccT,
+          typename IndexType,
+          bool is_log_softmax,
+          template <typename, typename, typename>
+          class Function>
+__global__ void cunn_SoftMaxBackwardSmem(T* gradInput,
+                                         const T* output,
+                                         const T* gradOutput,
+                                         IndexType classes) {
+  // The first smem segment is used to cache input values and the last segment
+  // is used for thread block reductions
+  extern __shared__ unsigned char smem[];
+  auto smem_input_cache = reinterpret_cast<T*>(smem);
+  auto smem_reduction_cache =
+      reinterpret_cast<AccT*>(smem + classes * sizeof(T));
+
+  gradInput += static_cast<int64_t>(blockIdx.x) * classes;
+  output += static_cast<int64_t>(blockIdx.x) * classes;
+  gradOutput += static_cast<int64_t>(blockIdx.x) * classes;
+
+  AccT threadSum = 0;
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  const LoadT* const gradOutput_vec_ptr =
+      reinterpret_cast<const LoadT*>(gradOutput);
+  LoadT* const smem_gradOutput_cache_vec_ptr =
+      reinterpret_cast<LoadT*>(smem_input_cache);
+
+  // Download inputs to shared memory while doing the first step in sum
+  // calculation
+  for (IndexType offset = threadIdx.x; offset * VecSize < classes;
+       offset += blockDim.x) {
+    LoadT crnt_vec = gradOutput_vec_ptr[offset];
+    smem_gradOutput_cache_vec_ptr[offset] = crnt_vec;
+
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+      threadSum = threadSum + static_cast<AccT>(crnt_vec.val[i]);
+    }
+  }
+
+  // We need a __syncthreads() here to be safe. However, blockReduceWarp's code
+  // calls a __syncthreads() before reading shared memory so we are safe.
+
+  // AccT sum_k = blockReduceWarp<Add, AccT>(smem_reduction_cache, threadSum,
+  // Add<AccT>(), AccT(0));
+  BlockReduceSum<AccT>(&threadSum);
+  AccT sum_k = threadSum;
+
+  Function<T, AccT, T> function(sum_k);
+
+  // Use vectorized stores to save the output
+  using StoreT = phi::AlignedVector<T, VecSize>;
+  StoreT* gradInput_vec_ptr = reinterpret_cast<StoreT*>(gradInput);
+  const LoadT* const output_vec_ptr = reinterpret_cast<const LoadT*>(output);
+  for (int32_t offset = threadIdx.x; offset * VecSize < classes;
+       offset += blockDim.x) {
+    LoadT crnt_vec = smem_gradOutput_cache_vec_ptr[offset];
+    LoadT crnt_out = output_vec_ptr[offset];
+    StoreT out_vec;
+
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+      out_vec.val[i] = function(crnt_vec.val[i], crnt_out.val[i]);
+    }
+
+    gradInput_vec_ptr[offset] = out_vec;
+  }
+}
+
+template <typename T,
+          typename AccT,
+          typename IndexType,
+          template <typename, typename, typename>
+          class Function>
+__global__ void cunn_SpatialSoftMaxForward(T* output,
+                                           const T* input,
+                                           IndexType outer_size,
+                                           IndexType dim_size,
+                                           IndexType inner_size) {
+  extern __shared__ unsigned char smem[];
+  auto sdata = reinterpret_cast<AccT*>(smem);
+  const IndexType outer_stride = inner_size * dim_size;
+  const IndexType dim_stride = inner_size;
+
+  for (IndexType outer_index = blockIdx.x; outer_index < outer_size;
+       outer_index += gridDim.x) {
+    const IndexType outer_offset = outer_index * outer_stride;
+    for (IndexType inner_index = blockIdx.y * blockDim.y + threadIdx.y;
+         inner_index < inner_size;
+         inner_index += blockDim.y * gridDim.y) {
+      const IndexType data_offset = outer_offset + inner_index;
+      if (blockDim.x > 1) {
+        AccT max_input = std::numeric_limits<AccT>::lowest();
+        for (IndexType d = threadIdx.x; d < dim_size; d += blockDim.x) {
+          const AccT value =
+              static_cast<AccT>(input[data_offset + d * dim_stride]);
+          max_input = Max<AccT>()(max_input, value);
+        }
+        max_input = spatialBlockReduceX<AccT, Max>(sdata, max_input);
+
+        AccT sum = 0;
+        for (IndexType d = threadIdx.x; d < dim_size; d += blockDim.x)
+          sum +=
+              std::exp(static_cast<AccT>(input[data_offset + d * dim_stride]) -
+                       max_input);
+        sum = spatialBlockReduceX<AccT, Add>(sdata, sum);
+
+        Function<T, AccT, T> function(max_input, sum);
+        for (IndexType d = threadIdx.x; d < dim_size; d += blockDim.x)
+          output[data_offset + d * dim_stride] =
+              function(input[data_offset + d * dim_stride]);
+      } else {
+        AccT max_input = std::numeric_limits<AccT>::lowest();
+        for (IndexType d = threadIdx.x; d < dim_size; d += blockDim.x) {
+          const AccT value =
+              static_cast<AccT>(input[data_offset + d * dim_stride]);
+          max_input = Max<AccT>()(max_input, value);
+        }
+        AccT sum = 0;
+        for (IndexType d = threadIdx.x; d < dim_size; d += blockDim.x)
+          sum +=
+              std::exp(static_cast<AccT>(input[data_offset + d * dim_stride]) -
+                       max_input);
+        Function<T, AccT, T> function(max_input, sum);
+        for (IndexType d = threadIdx.x; d < dim_size; d += blockDim.x)
+          output[data_offset + d * dim_stride] =
+              function(input[data_offset + d * dim_stride]);
+      }
+    }
+  }
+}
+
+template <typename T,
+          typename AccT,
+          typename IndexType,
+          template <typename, typename, typename>
+          class Function>
+__global__ void cunn_SpatialSoftMaxBackward(T* gradInput,
+                                            const T* output,
+                                            const T* gradOutput,
+                                            IndexType outer_size,
+                                            IndexType dim_size,
+                                            IndexType inner_size) {
+  extern __shared__ unsigned char smem[];
+  auto sdata = reinterpret_cast<AccT*>(smem);
+  const IndexType outer_stride = inner_size * dim_size;
+  const IndexType dim_stride = inner_size;
+
+  for (IndexType outer_index = blockIdx.x; outer_index < outer_size;
+       outer_index += gridDim.x) {
+    const IndexType outer_offset = outer_index * outer_stride;
+    for (IndexType inner_index = blockIdx.y * blockDim.y + threadIdx.y;
+         inner_index < inner_size;
+         inner_index += blockDim.y * gridDim.y) {
+      const IndexType data_offset = outer_offset + inner_index;
+      // See the comment in forward kernel
+      if (blockDim.x > 1) {
+        AccT sum = 0;
+        for (IndexType d = threadIdx.x; d < dim_size; d += blockDim.x) {
+          sum += static_cast<AccT>(gradOutput[data_offset + d * dim_stride]);
+        }
+        sum = spatialBlockReduceX<AccT, Add>(sdata, sum);
+
+        Function<T, AccT, T> function(sum);
+        for (IndexType d = threadIdx.x; d < dim_size; d += blockDim.x) {
+          gradInput[data_offset + d * dim_stride] =
+              function(gradOutput[data_offset + d * dim_stride],
+                       output[data_offset + d * dim_stride]);
+        }
+      } else {
+        AccT sum = 0;
+        for (IndexType d = 0; d < dim_size; d++) {
+          sum += static_cast<AccT>(gradOutput[data_offset + d * dim_stride]);
+        }
+
+        Function<T, AccT, T> function(sum);
+        for (IndexType d = 0; d < dim_size; d++) {
+          gradInput[data_offset + d * dim_stride] =
+              function(gradOutput[data_offset + d * dim_stride],
+                       output[data_offset + d * dim_stride]);
+        }
+      }
+    }
+  }
+}
+
+template <typename T,
+          typename AccT,
+          typename IndexType,
+          int log2_elements,
+          bool is_log_softmax>
+__global__ void softmax_warp_forward(T* dst,
+                                     const T* src,
+                                     IndexType batch_size,
+                                     IndexType stride,
+                                     IndexType element_count,
+                                     const IndexType head_chunk_size = -1) {
+  // warp_size_t and warp_batch_t must match the return values batches_per_warp
+  // and warp_size of method warp_softmax_forward_kernel.
+  constexpr IndexType next_power_of_two = 1 << log2_elements;
+  constexpr IndexType warp_size_t =
+      (next_power_of_two < 32) ? next_power_of_two : 32;
+  constexpr IndexType warp_iterations_t = next_power_of_two / warp_size_t;
+  constexpr IndexType warp_batch_t = (next_power_of_two <= 128) ? 2 : 1;
+
+  IndexType first_batch =
+      (blockDim.y * blockIdx.x + threadIdx.y) * warp_batch_t;
+
+  // batch_size might not be a multiple of warp_batch_t. Check how
+  // many batches have to computed within this WARP.
+  IndexType local_batches = batch_size - first_batch;
+  if (local_batches > warp_batch_t) local_batches = warp_batch_t;
+
+  // there might be multiple batches per warp. compute the index within the
+  // batch
+  IndexType local_idx = threadIdx.x;
+  IndexType idx_offset = first_batch * stride + local_idx;
+
+  src += idx_offset;
+  dst += idx_offset;
+
+  // The nested loops over warp_batch_t and then warp_iterations_t can be
+  // simplified to one loop, but I think doing so would obfuscate the logic of
+  // the algorithm, thus I chose to keep the nested loops. This should have no
+  // impact on performance because the loops are unrolled anyway.
+
+  // load data from global memory
+  AccT elements[warp_batch_t][warp_iterations_t];
+  for (IndexType i = 0; i < warp_batch_t; ++i) {
+    IndexType batch_element_count = (i >= local_batches) ? 0 : element_count;
+    for (IndexType it = 0; it < warp_iterations_t; ++it) {
+      IndexType element_index = local_idx + it * warp_size_t;
+      if (element_index < batch_element_count) {
+        elements[i][it] = src[i * element_count + it * warp_size_t];
+      } else {
+        elements[i][it] = -std::numeric_limits<AccT>::infinity();
+      }
+    }
+  }
+
+  // compute max_value
+  AccT max_value[warp_batch_t];
+#pragma unroll
+  for (IndexType i = 0; i < warp_batch_t; ++i) {
+    IndexType batch_element_count = (i >= local_batches) ? 0 : element_count;
+    bool is_meaningful_max = false;
+    max_value[i] = elements[i][0];
+#pragma unroll
+    for (IndexType it = 0; it < warp_iterations_t; ++it) {
+      max_value[i] =
+          max_value[i] > elements[i][it] ? max_value[i] : elements[i][it];
+    }
+  }
+  WarpReduceMax<AccT, warp_batch_t, warp_size_t>(max_value);
+
+  AccT sum[warp_batch_t]{0.0f};
+#pragma unroll
+  for (IndexType i = 0; i < warp_batch_t; ++i) {
+    IndexType batch_element_count = (i >= local_batches) ? 0 : element_count;
+#pragma unroll
+    for (IndexType it = 0; it < warp_iterations_t; ++it) {
+      if (is_log_softmax) {
+        sum[i] += std::exp(elements[i][it] - max_value[i]);
+      } else {
+        elements[i][it] = std::exp(elements[i][it] - max_value[i]);
+        sum[i] += elements[i][it];
+      }
+    }
+  }
+  WarpReduceSum<AccT, warp_batch_t, warp_size_t>(sum);
+
+// store result
+#pragma unroll
+  for (IndexType i = 0; i < warp_batch_t; ++i) {
+    if (i >= local_batches) break;
+    if (is_log_softmax) sum[i] = std::log(sum[i]);
+#pragma unroll
+    for (IndexType it = 0; it < warp_iterations_t; ++it) {
+      IndexType element_index = local_idx + it * warp_size_t;
+      if (element_index < element_count) {
+        if (is_log_softmax) {
+          dst[i * element_count + it * warp_size_t] =
+              elements[i][it] - max_value[i] - sum[i];
+        } else if (sum[i] == 0) {
+          dst[i * element_count + it * warp_size_t] =
+              std::numeric_limits<AccT>::quiet_NaN();
+        } else {
+          dst[i * element_count + it * warp_size_t] = elements[i][it] / sum[i];
+        }
+      } else {
+        break;
+      }
+    }
+  }
+}
+
+template <typename T,
+          typename AccT,
+          typename IndexType,
+          int log2_elements,
+          bool is_log_softmax>
+__global__ void softmax_warp_backward(T* gradInput,
+                                      const T* grad,
+                                      const T* output,
+                                      IndexType batch_size,
+                                      IndexType stride,
+                                      IndexType element_count) {
+  // warp_size_t and warp_batch_t must match the return values batches_per_warp
+  // and warp_size of method warp_softmax_backward_kernel.
+  constexpr IndexType next_power_of_two = 1 << log2_elements;
+  constexpr IndexType warp_size_t =
+      (next_power_of_two < 32) ? next_power_of_two : 32;
+  constexpr IndexType warp_iterations_t = next_power_of_two / warp_size_t;
+  constexpr IndexType warp_batch_t = (next_power_of_two <= 128) ? 2 : 1;
+
+  IndexType first_batch =
+      (blockDim.y * blockIdx.x + threadIdx.y) * warp_batch_t;
+
+  // batch_size might not be a multiple of warp_batch_t. Check how
+  // many batches have to computed within this WARP.
+  IndexType local_batches = batch_size - first_batch;
+  if (local_batches > warp_batch_t) local_batches = warp_batch_t;
+
+  // there might be multiple batches per warp. compute the index within the
+  // batch
+  IndexType local_idx = threadIdx.x % warp_size_t;
+
+  // the first element to process by the current thread
+  IndexType thread_offset = first_batch * stride + local_idx;
+  grad += thread_offset;
+  output += thread_offset;
+  gradInput += thread_offset;
+
+  // The nested loops over warp_batch_t and then warp_iterations_t can be
+  // simplified to one loop, but I think doing so would obfuscate the logic of
+  // the algorithm, thus I chose to keep the nested loops. This should have no
+  // impact on performance because the loops are unrolled anyway.
+
+  // load data from global memory
+  AccT grad_reg[warp_batch_t][warp_iterations_t];
+  AccT output_reg[warp_batch_t][warp_iterations_t];
+  for (IndexType i = 0; i < warp_batch_t; ++i) {
+    IndexType batch_element_count = (i >= local_batches) ? 0 : element_count;
+    for (IndexType it = 0; it < warp_iterations_t; ++it) {
+      IndexType element_index = local_idx + it * warp_size_t;
+      if (element_index < batch_element_count) {
+        grad_reg[i][it] = grad[i * element_count + it * warp_size_t];
+        output_reg[i][it] = output[i * element_count + it * warp_size_t];
+      } else {
+        grad_reg[i][it] = AccT(0);
+        output_reg[i][it] = AccT(0);
+      }
+    }
+  }
+
+  AccT sum[warp_batch_t]{0.0f};
+#pragma unroll
+  for (IndexType i = 0; i < warp_batch_t; ++i) {
+#pragma unroll
+    for (IndexType it = 0; it < warp_iterations_t; ++it) {
+      sum[i] += grad_reg[i][it];
+    }
+  }
+  WarpReduceSum<AccT, warp_batch_t, warp_size_t>(sum);
+
+// store result
+#pragma unroll
+  for (IndexType i = 0; i < warp_batch_t; ++i) {
+    if (i >= local_batches) break;
+#pragma unroll
+    for (IndexType it = 0; it < warp_iterations_t; ++it) {
+      IndexType element_index = local_idx + it * warp_size_t;
+      if (element_index < element_count) {
+        // compute gradients
+        if (is_log_softmax) {
+          gradInput[i * element_count + it * warp_size_t] =
+              (grad_reg[i][it] - std::exp(output_reg[i][it]) * sum[i]);
+        } else {
+          gradInput[i * element_count + it * warp_size_t] =
+              (grad_reg[i][it] - output_reg[i][it] * sum[i]);
+        }
+      }
+    }
+  }
+}
+
+template <typename T, typename AccT, typename IndexType, bool is_log_softmax>
+void dispatch_softmax_forward(const GPUContext& dev_ctx,
+                              T* dst,
+                              const T* src,
+                              IndexType softmax_elements,
+                              IndexType softmax_elements_stride,
+                              IndexType batch_count,
+                              IndexType chunk_size = -1) {
+  IndexType log2_elements = Log2Ceil(softmax_elements);
+  const IndexType next_power_of_two = 1 << log2_elements;
+
+  // This value must match the warp_size_t constexpr value computed inside
+  // softmax_warp_forward.
+  IndexType warp_size = (next_power_of_two < 32) ? next_power_of_two : 32;
+
+  // This value must match the warp_batch_t constexpr value computed inside
+  // softmax_warp_forward.
+  IndexType batches_per_warp = (next_power_of_two <= 128) ? 2 : 1;
+
+  // use 128 threads per block to maximize gpu utilization
+  constexpr IndexType threads_per_block = 128;
+
+  IndexType warps_per_block = (threads_per_block / warp_size);
+  IndexType batches_per_block = warps_per_block * batches_per_warp;
+  IndexType blocks = (batch_count + batches_per_block - 1) / batches_per_block;
+  dim3 threads(warp_size, warps_per_block, 1);
+  // Launch code would be more elegant if C++ supported FOR CONSTEXPR
+  switch (log2_elements) {
+#define LAUNCH_SOFTMAX_WARP_FORWARD(L2E)                                    \
+  case L2E:                                                                 \
+    softmax_warp_forward<T, AccT, IndexType, L2E, is_log_softmax>           \
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(dst,                     \
+                                                   src,                     \
+                                                   batch_count,             \
+                                                   softmax_elements_stride, \
+                                                   softmax_elements,        \
+                                                   chunk_size);             \
+    break;
+    LAUNCH_SOFTMAX_WARP_FORWARD(0);   // 1
+    LAUNCH_SOFTMAX_WARP_FORWARD(1);   // 2
+    LAUNCH_SOFTMAX_WARP_FORWARD(2);   // 4
+    LAUNCH_SOFTMAX_WARP_FORWARD(3);   // 8
+    LAUNCH_SOFTMAX_WARP_FORWARD(4);   // 16
+    LAUNCH_SOFTMAX_WARP_FORWARD(5);   // 32
+    LAUNCH_SOFTMAX_WARP_FORWARD(6);   // 64
+    LAUNCH_SOFTMAX_WARP_FORWARD(7);   // 128
+    LAUNCH_SOFTMAX_WARP_FORWARD(8);   // 256
+    LAUNCH_SOFTMAX_WARP_FORWARD(9);   // 512
+    LAUNCH_SOFTMAX_WARP_FORWARD(10);  // 1024
+    LAUNCH_SOFTMAX_WARP_FORWARD(11);  // 2048
+    default:
+      break;
+  }
+}
+
+template <typename T, typename AccT, typename IndexType, bool is_log_softmax>
+void dispatch_softmax_backward(const GPUContext& dev_ctx,
+                               T* grad_input,
+                               const T* grad,
+                               const T* output,
+                               IndexType softmax_elements,
+                               IndexType softmax_elements_stride,
+                               IndexType batch_count) {
+  IndexType log2_elements = Log2Ceil(softmax_elements);
+  const IndexType next_power_of_two = 1 << log2_elements;
+
+  // This value must match the warp_size_t constexpr value computed inside
+  // softmax_warp_backward.
+  IndexType warp_size = (next_power_of_two < 32) ? next_power_of_two : 32;
+
+  // This value must match the warp_batch_t constexpr value computed inside
+  // softmax_warp_backward.
+  IndexType batches_per_warp = (next_power_of_two <= 128) ? 2 : 1;
+
+  // use 128 threads per block to maximize gpu utilization
+  constexpr IndexType threads_per_block = 128;
+
+  IndexType warps_per_block = (threads_per_block / warp_size);
+  IndexType batches_per_block = warps_per_block * batches_per_warp;
+  IndexType blocks = (batch_count + batches_per_block - 1) / batches_per_block;
+  dim3 threads(warp_size, warps_per_block, 1);
+  // Launch code would be more elegant if C++ supported FOR CONSTEXPR
+  switch (log2_elements) {
+#define LAUNCH_SOFTMAX_WARP_BACKWARD(L2E)                                   \
+  case L2E:                                                                 \
+    softmax_warp_backward<T, AccT, IndexType, L2E, is_log_softmax>          \
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(grad_input,              \
+                                                   grad,                    \
+                                                   output,                  \
+                                                   batch_count,             \
+                                                   softmax_elements_stride, \
+                                                   softmax_elements);       \
+    break;
+
+    LAUNCH_SOFTMAX_WARP_BACKWARD(0);   // 1
+    LAUNCH_SOFTMAX_WARP_BACKWARD(1);   // 2
+    LAUNCH_SOFTMAX_WARP_BACKWARD(2);   // 4
+    LAUNCH_SOFTMAX_WARP_BACKWARD(3);   // 8
+    LAUNCH_SOFTMAX_WARP_BACKWARD(4);   // 16
+    LAUNCH_SOFTMAX_WARP_BACKWARD(5);   // 32
+    LAUNCH_SOFTMAX_WARP_BACKWARD(6);   // 64
+    LAUNCH_SOFTMAX_WARP_BACKWARD(7);   // 128
+    LAUNCH_SOFTMAX_WARP_BACKWARD(8);   // 256
+    LAUNCH_SOFTMAX_WARP_BACKWARD(9);   // 512
+    LAUNCH_SOFTMAX_WARP_BACKWARD(10);  // 1024
+    default:
+      break;
+  }
+}
+
+template <typename T,
+          typename AccT,
+          typename IndexType,
+          template <typename, typename, typename>
+          class Function>
+void dispatch_host_softmax_forward(const GPUContext& dev_ctx,
+                                   IndexType dim_size,
+                                   dim3 grid,
+                                   const T* input_data,
+                                   T* out_data) {
+  constexpr IndexType VecSize = sizeof(float4) / sizeof(T);
+  dim3 block = SoftMaxForward_getBlockSize(dim_size);
+  size_t smem_reduction_sz = block.x / 32 * sizeof(AccT);
+  auto max_elements_per_smem =
+      (GetDeviceProp()->sharedMemPerBlock - smem_reduction_sz) / sizeof(T);
+
+  bool can_use_smem = static_cast<size_t>(dim_size) < max_elements_per_smem;
+  can_use_smem &=
+      !(reinterpret_cast<uintptr_t>(input_data) % SOFTMAX_ALIGN_BYTES);
+  can_use_smem &=
+      (!(reinterpret_cast<uintptr_t>(out_data) % SOFTMAX_ALIGN_BYTES));
+  can_use_smem &= !(dim_size % VecSize);
+
+  int32_t potential_reg_cnt = (dim_size + block.x - 1) / block.x;
+  if (potential_reg_cnt < 10) {
+    switch (potential_reg_cnt) {
+#define LAUNCH_SOFTMAX_FORWARD_REG(reg_cnt)                       \
+  case reg_cnt:                                                   \
+    cunn_SoftMaxForwardReg<T, AccT, Function, IndexType, reg_cnt> \
+        <<<grid, block, smem_reduction_sz, dev_ctx.stream()>>>(   \
+            out_data, input_data, dim_size);                      \
+    break;
+      LAUNCH_SOFTMAX_FORWARD_REG(1)
+      LAUNCH_SOFTMAX_FORWARD_REG(2)
+      LAUNCH_SOFTMAX_FORWARD_REG(3)
+      LAUNCH_SOFTMAX_FORWARD_REG(4)
+      LAUNCH_SOFTMAX_FORWARD_REG(5)
+      LAUNCH_SOFTMAX_FORWARD_REG(6)
+      LAUNCH_SOFTMAX_FORWARD_REG(7)
+      LAUNCH_SOFTMAX_FORWARD_REG(8)
+      LAUNCH_SOFTMAX_FORWARD_REG(9)
+      default:
+        break;
+    }
+  } else if (can_use_smem) {
+    size_t smem_sz = dim_size * sizeof(T) + smem_reduction_sz;
+    cunn_SoftMaxForwardSmem<VecSize, T, AccT, Function, IndexType>
+        <<<grid, block, smem_sz, dev_ctx.stream()>>>(
+            out_data, input_data, dim_size);
+  } else {
+    cunn_SoftMaxForward<VecSize, T, AccT, IndexType, Function>
+        <<<grid, block, smem_reduction_sz, dev_ctx.stream()>>>(
+            out_data, input_data, dim_size);
+  }
+}
+
+template <typename T,
+          typename AccT,
+          typename IndexType,
+          bool is_log_softmax,
+          template <typename, typename, typename>
+          class Function>
+void dispatch_host_softmax_backward(const GPUContext& dev_ctx,
+                                    IndexType dim_size,
+                                    dim3 grid,
+                                    const T* grad,
+                                    const T* output,
+                                    T* gI) {
+  constexpr int VecSize = sizeof(float4) / sizeof(T);
+  dim3 block = dim3(CalcBlockSize(VecSize, dim_size));
+
+  size_t smem_reduction_sz = block.x / 32 * sizeof(AccT);
+  auto max_elements_per_smem =
+      (GetDeviceProp()->sharedMemPerBlock - smem_reduction_sz) / sizeof(T);
+  bool can_use_smem = static_cast<size_t>(dim_size) < max_elements_per_smem;
+  can_use_smem &= (!(reinterpret_cast<uintptr_t>(gI) % SOFTMAX_ALIGN_BYTES));
+  can_use_smem &=
+      (!(reinterpret_cast<uintptr_t>(output) % SOFTMAX_ALIGN_BYTES));
+  can_use_smem &= !(reinterpret_cast<uintptr_t>(grad) % SOFTMAX_ALIGN_BYTES);
+  can_use_smem &= !(dim_size % VecSize);
+  // This should not be needed on current generation GPUs because the size of
+  // shared memory is so low. But we add this check to be defensive and
+  // future-proof just in case shared memory size goes up to be so large as to
+  // requires 64-bits of addressing.
+  can_use_smem &= (dim_size < std::numeric_limits<int32_t>::max());
+
+  if (can_use_smem) {
+    size_t smem_sz = dim_size * sizeof(T) + smem_reduction_sz;
+    cunn_SoftMaxBackwardSmem<VecSize,
+                             T,
+                             AccT,
+                             IndexType,
+                             is_log_softmax,
+                             Function>
+        <<<grid, block, smem_sz, dev_ctx.stream()>>>(
+            gI, output, grad, dim_size);
+  } else {
+    cunn_SoftMaxBackward<VecSize, T, AccT, IndexType, is_log_softmax, Function>
+        <<<grid, block, block.x * sizeof(AccT), dev_ctx.stream()>>>(
+            gI, output, grad, dim_size);
+  }
+}
+
+template <typename T,
+          typename IndexType,
+          bool LogMode = false,
+          template <typename, typename, typename>
+          class Function>
+void SoftmaxForwardCUDAKernelCompatible(const GPUContext& dev_ctx,
+                                        const DenseTensor& x,
+                                        const int input_axis,
+                                        DenseTensor* out) {
+  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  auto* out_data = out->data<T>();
+  auto* input_data = x.data<T>();
+  int rank = x.dims().size();
+  int axis = phi::funcs::CanonicalAxis(input_axis, rank);
+  std::vector<IndexType> tensor_dims =
+      GetSoftmaxTensorDims<IndexType>(x.dims(), axis);
+  IndexType N = tensor_dims[0];
+  IndexType dim = tensor_dims[1];
+  IndexType D = tensor_dims[2];
+
+  if (D == 1) {
+    dim3 grid(N);
+    if (dim <= 2048 && dim * sizeof(T) <= 8192) {
+      IndexType remaining = N;
+      IndexType chunk_size = (1L << 30L) / dim;
+      while (remaining > 0) {
+        dispatch_softmax_forward<T, AccT, IndexType, LogMode>(
+            dev_ctx,
+            out_data,
+            input_data,
+            dim,
+            dim,
+            std::min<IndexType>(remaining, chunk_size));
+        input_data += chunk_size * dim;
+        out_data += chunk_size * dim;
+        remaining -= chunk_size;
+      }
+    } else {
+      dispatch_host_softmax_forward<T, AccT, IndexType, Function>(
+          dev_ctx, dim, grid, input_data, out_data);
+    }
+  } else {
+    uint32_t smem_size;
+    dim3 grid, block;
+    SpatialSoftMax_getLaunchSizes<AccT, IndexType>(
+        &cunn_SpatialSoftMaxForward<T, AccT, IndexType, Function>,
+        N,
+        dim,
+        D,
+        &grid,
+        &block,
+        &smem_size);
+    cunn_SpatialSoftMaxForward<T, AccT, IndexType, Function>
+        <<<grid, block, smem_size, dev_ctx.stream()>>>(
+            out_data, input_data, N, dim, D);
+  }
+}
+
+template <typename T,
+          typename IndexType,
+          bool LogMode = false,
+          template <typename, typename, typename>
+          class Function>
+void SoftmaxBackwardCUDAKernelCompatible(const GPUContext& dev_ctx,
+                                         const DenseTensor& out,
+                                         const DenseTensor& dout,
+                                         const int input_axis,
+                                         DenseTensor* dx) {
+  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  auto* dx_data = dx->data<T>();
+  auto* out_data = out.data<T>();
+  auto* dout_data = dout.data<T>();
+  int rank = out.dims().size();
+  int axis = phi::funcs::CanonicalAxis(input_axis, rank);
+  std::vector<IndexType> tensor_dims =
+      GetSoftmaxTensorDims<IndexType>(out.dims(), axis);
+  IndexType N = tensor_dims[0];
+  IndexType dim = tensor_dims[1];
+  IndexType D = tensor_dims[2];
+
+  if (D == 1) {
+    if (dim <= 1024 && dim * sizeof(T) <= 4096) {
+      int64_t remaining = N;
+      int64_t chunk_size = (1 << 30) / dim;
+      while (remaining > 0) {
+        dispatch_softmax_backward<T, AccT, IndexType, LogMode>(
+            dev_ctx,
+            dx_data,
+            dout_data,
+            out_data,
+            dim,
+            dim,
+            std::min<int64_t>(remaining, chunk_size));
+        dx_data += chunk_size * dim;
+        dout_data += chunk_size * dim;
+        out_data += chunk_size * dim;
+        remaining -= chunk_size;
+      }
+    } else {
+      dim3 grid(N);
+      dispatch_host_softmax_backward<T, AccT, IndexType, LogMode, Function>(
+          dev_ctx, dim, grid, dout_data, out_data, dx_data);
+    }
+  } else {
+    dim3 grid, block;
+    uint32_t smem_size;
+    SpatialSoftMax_getLaunchSizes<AccT>(
+        &cunn_SpatialSoftMaxBackward<T, AccT, IndexType, Function>,
+        N,
+        dim,
+        D,
+        &grid,
+        &block,
+        &smem_size);
+    cunn_SpatialSoftMaxBackward<T, AccT, IndexType, Function>
+        <<<grid, block, smem_size, dev_ctx.stream()>>>(
+            dx_data, out_data, dout_data, N, dim, D);
+  }
+}
+/////////////////////////////////////////////////////////////////////////////
+
 template <typename T, typename IndexType, bool LogMode = false>
 void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
                                         const DenseTensor& x,
@@ -1314,15 +2669,11 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
   IndexType dim = tensor_dims[1];
   IndexType D = tensor_dims[2];
 
-  std::cout << "N=" << N << " dim=" << dim << " D=" << D << std::endl;
-
   if (D == 1) {
-    printf("--[paddle][D == 1]--\n");
     if (!UseCudnnSoftmax<T>(dev_ctx, dim, true) ||
         N > std::numeric_limits<int32_t>::max() ||
         dim > std::numeric_limits<int32_t>::max() ||
         D > std::numeric_limits<int32_t>::max()) {
-      printf("--[paddle][not UseCudnnSoftmax]--\n");
       int dim_log2 = static_cast<int>(Log2Ceil(dim));
       IndexType dim_ceil = 1 << dim_log2;
       int warp_size = (dim_ceil < 32) ? dim_ceil : 32;
@@ -1372,23 +2723,14 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
                                                            dim_log2);
       }
     } else {
-      printf("--[paddle][UseCudnnSoftmax]--\n");
       if (dim >= MATRIX_SOFTMAX_THRESHOLD) {
-        printf("--[paddle][dim >= 100000]--\n");
         LaunchKeMatrixSoftmaxForwardKernel<T, IndexType, LogMode>(
             dev_ctx, out_data, x.data<T>(), N, dim);
       } else {
-        printf("--[paddle][dim < 100000]--\n");
-        // if(FLAGS_use_accuracy_compatible_kernel) {
-        LaunchNormalSoftmaxForward<T, IndexType, LogMode>(
-            dev_ctx, out_data, x.data<T>(), N, dim, D);
-        // } else {
-        //   LaunchSoftmaxForwardCudnnKernel<T>(dev_ctx, x, axis, LogMode, out);
-        // }
+        LaunchSoftmaxForwardCudnnKernel<T>(dev_ctx, x, axis, LogMode, out);
       }
     }
   } else {
-    printf("--[paddle][D != 1]--\n");
     LaunchNormalSoftmaxForward<T, IndexType, LogMode>(
         dev_ctx, out_data, x.data<T>(), N, dim, D);
   }
@@ -1399,13 +2741,44 @@ void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
                                     const DenseTensor& x,
                                     const int input_axis,
                                     DenseTensor* out) {
-  printf("--[paddle][SoftmaxForwardCUDAKernelDriver]--\n");
-  if (x.numel() >= std::numeric_limits<int32_t>::max()) {
-    SoftmaxForwardCUDAKernelDriverImpl<T, int64_t, LogMode>(
-        dev_ctx, x, input_axis, out);
+  if (FLAGS_use_accuracy_compatible_kernel) {
+    if (LogMode) {
+      if (out->numel() >= std::numeric_limits<int32_t>::max()) {
+        SoftmaxForwardCUDAKernelCompatible<T,
+                                           int64_t,
+                                           true,
+                                           LogSoftMaxForwardEpilogue>(
+            dev_ctx, x, input_axis, out);
+      } else {
+        SoftmaxForwardCUDAKernelCompatible<T,
+                                           int32_t,
+                                           true,
+                                           LogSoftMaxForwardEpilogue>(
+            dev_ctx, x, input_axis, out);
+      }
+    } else {
+      if (out->numel() >= std::numeric_limits<int32_t>::max()) {
+        SoftmaxForwardCUDAKernelCompatible<T,
+                                           int64_t,
+                                           false,
+                                           SoftMaxForwardEpilogue>(
+            dev_ctx, x, input_axis, out);
+      } else {
+        SoftmaxForwardCUDAKernelCompatible<T,
+                                           int32_t,
+                                           false,
+                                           SoftMaxForwardEpilogue>(
+            dev_ctx, x, input_axis, out);
+      }
+    }
   } else {
-    SoftmaxForwardCUDAKernelDriverImpl<T, int32_t, LogMode>(
-        dev_ctx, x, input_axis, out);
+    if (x.numel() >= std::numeric_limits<int32_t>::max()) {
+      SoftmaxForwardCUDAKernelDriverImpl<T, int64_t, LogMode>(
+          dev_ctx, x, input_axis, out);
+    } else {
+      SoftmaxForwardCUDAKernelDriverImpl<T, int32_t, LogMode>(
+          dev_ctx, x, input_axis, out);
+    }
   }
 }
 
@@ -1480,13 +2853,8 @@ void SoftmaxBackwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
                                                             dim_log2);
       }
     } else {
-      // if(FLAGS_use_accuracy_compatible_kernel) {
-      LaunchNormalSoftmaxBackward<T, IndexType, LogMode>(
-          dev_ctx, dx_data, dout.data<T>(), out.data<T>(), N, dim, D);
-      // } else {
-      //   LaunchSoftmaxBackwardCudnnKernel<T>(dev_ctx, out, dout, axis,
-      //   LogMode, dx);
-      // }
+      LaunchSoftmaxBackwardCudnnKernel<T>(
+          dev_ctx, out, dout, axis, LogMode, dx);
     }
   } else {
     LaunchNormalSoftmaxBackward<T, IndexType, LogMode>(
@@ -1500,12 +2868,48 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
                                      const DenseTensor& dout,
                                      const int input_axis,
                                      DenseTensor* dx) {
-  if (out.numel() >= std::numeric_limits<int32_t>::max()) {
-    SoftmaxBackwardCUDAKernelDriverImpl<T, int64_t, LogMode>(
-        dev_ctx, out, dout, input_axis, dx);
+  if (FLAGS_use_accuracy_compatible_kernel) {
+    if (LogMode) {
+      if (out.numel() >= std::numeric_limits<int32_t>::max()) {
+        SoftmaxBackwardCUDAKernelCompatible<T,
+                                            int64_t,
+                                            true,
+                                            LogSoftMaxBackwardEpilogue>(
+            dev_ctx, out, dout, input_axis, dx);
+      } else {
+        SoftmaxBackwardCUDAKernelCompatible<T,
+                                            int32_t,
+                                            true,
+                                            LogSoftMaxBackwardEpilogue>(
+            dev_ctx, out, dout, input_axis, dx);
+      }
+    } else {
+      phi::DenseTensor tmp;
+      tmp.Resize(dout.dims());
+      dev_ctx.Alloc<T>(&tmp);
+      phi::MultiplyKernel<T>(dev_ctx, dout, out, &tmp);
+      if (out.numel() >= std::numeric_limits<int32_t>::max()) {
+        SoftmaxBackwardCUDAKernelCompatible<T,
+                                            int64_t,
+                                            false,
+                                            SoftMaxBackwardEpilogue>(
+            dev_ctx, out, tmp, input_axis, dx);
+      } else {
+        SoftmaxBackwardCUDAKernelCompatible<T,
+                                            int32_t,
+                                            false,
+                                            SoftMaxBackwardEpilogue>(
+            dev_ctx, out, tmp, input_axis, dx);
+      }
+    }
   } else {
-    SoftmaxBackwardCUDAKernelDriverImpl<T, int32_t, LogMode>(
-        dev_ctx, out, dout, input_axis, dx);
+    if (out.numel() >= std::numeric_limits<int32_t>::max()) {
+      SoftmaxBackwardCUDAKernelDriverImpl<T, int64_t, LogMode>(
+          dev_ctx, out, dout, input_axis, dx);
+    } else {
+      SoftmaxBackwardCUDAKernelDriverImpl<T, int32_t, LogMode>(
+          dev_ctx, out, dout, input_axis, dx);
+    }
   }
 }
 
