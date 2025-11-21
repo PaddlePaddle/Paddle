@@ -227,6 +227,20 @@ struct UnarySubFunctor {
 };
 
 template <typename Tx, typename Ty = Tx>
+struct BinarySubFunctor {
+  HOSTDEVICE inline BinarySubFunctor() { alpha = static_cast<Tx>(0.0f); }
+
+  HOSTDEVICE explicit inline BinarySubFunctor(Tx alpha) : alpha((Tx)(alpha)) {}
+
+  HOSTDEVICE inline Ty operator()(const Tx& x, const Tx& y) const {
+    return static_cast<Ty>(x - y * alpha);
+  }
+
+ private:
+  Tx alpha;
+};
+
+template <typename Tx, typename Ty = Tx>
 struct UnaryLogFunctor {
   HOSTDEVICE inline UnaryLogFunctor() {}
 
@@ -283,7 +297,7 @@ struct SoftmaxBackwardFunctor {
   HOSTDEVICE inline SoftmaxBackwardFunctor(Tx sum) : sum(sum) {}
 
   HOSTDEVICE inline Ty operator()(const Tx& grad_out, const Tx& out) const {
-    return static_cast<Ty>(out * (grad_out - sum));
+    return static_cast<Ty>(grad_out - out * sum);
   }
 
  private:
@@ -706,8 +720,8 @@ __global__ void WarpSoftmaxBackward(T* dst,
   // compute sum
   AccT sum[kBatchSize]{0.0};
   AccT sum_tmp[kBatchSize][kLoopsV][kVSize];
-  AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[0][0][0]);
-  AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[0][0][0]);
+  AccT* grad_tmp_ptr = reinterpret_cast<AccT*>(&grad_tmp[0][0][0]);
+  AccT* src_tmp_ptr = reinterpret_cast<AccT*>(&src_tmp[0][0][0]);
   if (LogMode) {
     kps::Reduce<AccT,
                 kVItem,
@@ -716,8 +730,8 @@ __global__ void WarpSoftmaxBackward(T* dst,
                 kps::details::ReduceMode::kLocalMode>(
         &sum[0], &grad_tmp[0][0][0], kps::AddFunctor<AccT>(), true);
   } else {
-    kps::ElementwiseBinary<AccT, AccT, kStep, 1, kps::MulFunctor<AccT>>(
-        &sum_tmp[0][0][0], &gradptr[0], &srcptr[0], kps::MulFunctor<AccT>());
+    kps::ElementwiseBinary<T, AccT, kStep, 1, kps::MulFunctor<T>>(
+        &sum_tmp[0][0][0], &grad_ptr[0], &src_ptr[0], kps::MulFunctor<T>());
     kps::Reduce<AccT,
                 kVItem,
                 kBatchSize,
@@ -733,24 +747,28 @@ __global__ void WarpSoftmaxBackward(T* dst,
 #pragma unroll
   for (IndexType i = 0; i < kBatchSize; ++i) {
     if (i >= local_batches) break;
-    AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[i][0][0]);
-    AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
     if (LogMode) {
+      AccT* grad_tmp_ptr_i = reinterpret_cast<AccT*>(&grad_tmp[i][0][0]);
+      AccT* src_tmp_ptr_i = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
       kps::ElementwiseUnary<AccT, AccT, kVItem, 1, ExpMulFunctor<AccT>>(
-          &out[i][0][0], &srcptr[0], ExpMulFunctor<AccT>(sum[i]));
+          &out[i][0][0], &src_tmp_ptr_i[0], ExpMulFunctor<AccT>(sum[i]));
       kps::ElementwiseBinary<AccT, T, kVItem, 1, kps::SubFunctor<AccT>>(
           &out_tmp[i][0][0],
-          &gradptr[0],
+          &grad_tmp_ptr_i[0],
           &out[i][0][0],
           kps::SubFunctor<AccT>());
     } else {
-      kps::ElementwiseUnary<AccT, AccT, kVItem, 1, UnarySubFunctor<AccT>>(
-          &out[i][0][0], &gradptr[0], UnarySubFunctor<AccT>(sum[i]));
-      kps::ElementwiseBinary<AccT, T, kVItem, 1, kps::MulFunctor<AccT>>(
+      const T* grad_ptr_i = reinterpret_cast<const T*>(&grad_ptr[i * kVItem]);
+      const T* src_ptr_i = reinterpret_cast<const T*>(&src_ptr[i * kVItem]);
+      kps::ElementwiseBinary<T, AccT, kVItem, 1, kps::MulFunctor<T>>(
+          &out[i][0][0], &grad_ptr_i[0], &src_ptr_i[0], kps::MulFunctor<T>());
+
+      AccT* src_tmp_ptr_i = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
+      kps::ElementwiseBinary<AccT, T, kVItem, 1, BinarySubFunctor<AccT>>(
           &out_tmp[i][0][0],
-          &srcptr[0],
           &out[i][0][0],
-          kps::MulFunctor<AccT>());
+          &src_tmp_ptr_i[0],
+          BinarySubFunctor<AccT>(sum[i]));
     }
     VecT* dst_v = reinterpret_cast<VecT*>(&dst[(first_batch + i) * stride]);
     VecT* reg_v = reinterpret_cast<VecT*>(&out_tmp[i][0][0]);
@@ -980,8 +998,8 @@ __global__ void NormalSoftmaxBackward(T* input_grad,
         for (IndexType mid_id = threadIdx.y; mid_id < mid_dim;
              mid_id += blockDim.y) {
           IndexType data_offset = grad_offset + mid_id * mid_stride;
-          sum += static_cast<AccT>(output_grad[data_offset]) *
-                 static_cast<AccT>(output[data_offset]);
+          sum +=
+              static_cast<AccT>(output_grad[data_offset] * output[data_offset]);
         }
       }
       if (blockDim.y > 1) {
@@ -994,9 +1012,15 @@ __global__ void NormalSoftmaxBackward(T* input_grad,
       for (IndexType mid_id = threadIdx.y; mid_id < mid_dim;
            mid_id += blockDim.y) {
         IndexType data_offset = grad_offset + mid_id * mid_stride;
-        input_grad[data_offset] =
-            functor(static_cast<AccT>(output_grad[data_offset]),
-                    static_cast<AccT>(output[data_offset]));
+        if (LogMode) {
+          input_grad[data_offset] =
+              functor(static_cast<AccT>(output_grad[data_offset]),
+                      static_cast<AccT>(output[data_offset]));
+        } else {
+          input_grad[data_offset] = functor(
+              static_cast<AccT>(output_grad[data_offset] * output[data_offset]),
+              static_cast<AccT>(output[data_offset]));
+        }
       }
     }
   }
@@ -1074,7 +1098,6 @@ void SoftmaxForwardCudnnKernel(const GPUContext& dev_ctx,
                                const bool log_mode,
                                const std::vector<int>& tensor_dims,
                                T* out_data) {
-  printf("--[paddle][SoftmaxForwardCudnnKernel1]--\n");
   auto handle = dev_ctx.cudnn_handle();
   GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
 
@@ -1085,7 +1108,6 @@ void SoftmaxForwardCudnnKernel(const GPUContext& dev_ctx,
   auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
                                : MIOPEN_SOFTMAX_MODE_CHANNEL;
   auto algo = log_mode ? MIOPEN_SOFTMAX_LOG : MIOPEN_SOFTMAX_ACCURATE;
-  printf("--[paddle][miopenSoftmaxForward_V2]--\n");
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSoftmaxForward_V2(
       handle,
       phi::backends::gpu::CudnnDataType<T>::kOne(),
@@ -1101,7 +1123,6 @@ void SoftmaxForwardCudnnKernel(const GPUContext& dev_ctx,
   auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                : CUDNN_SOFTMAX_MODE_CHANNEL;
   auto algo = log_mode ? CUDNN_SOFTMAX_LOG : CUDNN_SOFTMAX_ACCURATE;
-  printf("--[paddle][cudnnSoftmaxForward]--\n");
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSoftmaxForward(
       handle,
       algo,
@@ -1121,7 +1142,6 @@ void LaunchSoftmaxForwardCudnnKernel(const GPUContext& dev_ctx,
                                      const int axis,
                                      const bool log_mode,
                                      DenseTensor* out) {
-  printf("--[paddle][LaunchSoftmaxForwardCudnnKernel]--\n");
   auto* out_data = out->data<T>();
   auto* x_data = x.data<T>();
   const int rank = x.dims().size();
@@ -1288,11 +1308,15 @@ bool UseCudnnSoftmax(const GPUContext& dev_ctx,
 }
 
 /////////////////////////////////////////////////////////////////////////////
-static cudaDeviceProp* GetDeviceProp() {
+static cudaDeviceProp GetDevicePropImpl() {
   int device = -1;
   PD_CHECK(cudaGetDevice(&device) == cudaSuccess);
   cudaDeviceProp prop;
   PD_CHECK(cudaGetDeviceProperties(&prop, device) == cudaSuccess);
+  return prop;
+}
+static cudaDeviceProp* GetDeviceProp() {
+  static auto prop = GetDevicePropImpl();  // Calculate once, then reuse
   return &prop;
 }
 
@@ -1351,13 +1375,13 @@ inline dim3 SpatialSoftMax_getGridSize(dim3 block,
                                        uint32_t max_active_blocks,
                                        uint64_t outer_size,
                                        uint64_t inner_size) {
-  // Calculate the number of blocks required along the Y-axis to cover
+  // 1. Calculate the number of blocks required along the Y-axis to cover
   // 'inner_size'.
   uint32_t inner_blocks = (inner_size + block.y - 1) / block.y;
   if (inner_blocks > max_active_blocks) {
     inner_blocks = max_active_blocks;
   }
-  // Calculate the maximum possible blocks for the X-axis (outer dimension).
+  // Fill the x axis with as many blocks as we can fit (a little more is ok too)
   uint32_t outer_blocks = (max_active_blocks + inner_blocks - 1) / inner_blocks;
   if (outer_blocks > outer_size) {
     outer_blocks = outer_size;
@@ -1396,15 +1420,15 @@ void SpatialSoftMax_getLaunchSizes(Kernel k,
                                    IndexType outer_size,
                                    IndexType dim_size,
                                    IndexType inner_size,
-                                   dim3* grid,
-                                   dim3* block,
-                                   uint32_t* smem_size) {
-  *block = SpatialSoftMax_getBlockSize(dim_size, inner_size);
-  uint32_t block_threads = block->x * block->y;
-  *smem_size = block->x == 1 ? 0 : block_threads * sizeof(AccT);
+                                   dim3& grid,
+                                   dim3& block,
+                                   uint32_t& smem_size) {
+  block = SpatialSoftMax_getBlockSize(dim_size, inner_size);
+  uint32_t block_threads = block.x * block.y;
+  smem_size = block.x == 1 ? 0 : block_threads * sizeof(AccT);
   int max_active_blocks;
   cudaError_t occ_err = cudaOccupancyMaxActiveBlocksPerMultiprocessor(
-      &max_active_blocks, k, block_threads, *smem_size);
+      &max_active_blocks, k, block_threads, smem_size);
   if (occ_err != cudaSuccess) {
     PADDLE_THROW(::common::errors::InvalidArgument(
         "cudaOccupancyMaxActiveBlocksPerMultiprocessor failed. "
@@ -1412,8 +1436,8 @@ void SpatialSoftMax_getLaunchSizes(Kernel k,
         "exceeds the limit of hardware. Dim_size is too large? "));
   }
   max_active_blocks *= GetDeviceProp()->multiProcessorCount;
-  *grid = SpatialSoftMax_getGridSize(
-      *block, max_active_blocks, outer_size, inner_size);
+  grid = SpatialSoftMax_getGridSize(
+      block, max_active_blocks, outer_size, inner_size);
 }
 
 template <typename T>
@@ -2358,6 +2382,7 @@ void dispatch_softmax_forward(const GPUContext& dev_ctx,
                                                    softmax_elements,        \
                                                    chunk_size);             \
     break;
+
     LAUNCH_SOFTMAX_WARP_FORWARD(0);   // 1
     LAUNCH_SOFTMAX_WARP_FORWARD(1);   // 2
     LAUNCH_SOFTMAX_WARP_FORWARD(2);   // 4
@@ -2473,6 +2498,51 @@ void dispatch_host_softmax_forward(const GPUContext& dev_ctx,
       LAUNCH_SOFTMAX_FORWARD_REG(9)
       default:
         break;
+        // case 1:
+        //   cunn_SoftMaxForwardReg<T, AccT, T, Function, IndexType, 1>
+        //     <<<grid, block, smem_reduction_sz, dev_ctx.stream()>>>(out_data,
+        //     input_data, dim_size);
+        //   break;
+        // case 2:
+        //   cunn_SoftMaxForwardReg<T, AccT, T, Function, IndexType, 2>
+        //     <<<grid, block, smem_reduction_sz, dev_ctx.stream()>>>(out_data,
+        //     input_data, dim_size);
+        //   break;
+        // case 3:
+        //   cunn_SoftMaxForwardReg<T, AccT, T, Function, IndexType, 3>
+        //     <<<grid, block, smem_reduction_sz, dev_ctx.stream()>>>(out_data,
+        //     input_data, dim_size);
+        //   break;
+        // case 4:
+        //   cunn_SoftMaxForwardReg<T, AccT, T, Function, IndexType, 4>
+        //     <<<grid, block, smem_reduction_sz, dev_ctx.stream()>>>(out_data,
+        //     input_data, dim_size);
+        //   break;
+        // case 5:
+        //   cunn_SoftMaxForwardReg<T, AccT, T, Function, IndexType, 5>
+        //     <<<grid, block, smem_reduction_sz, dev_ctx.stream()>>>(out_data,
+        //     input_data, dim_size);
+        //   break;
+        // case 6:
+        //   cunn_SoftMaxForwardReg<T, AccT, T, Function, IndexType, 6>
+        //     <<<grid, block, smem_reduction_sz, dev_ctx.stream()>>>(out_data,
+        //     input_data, dim_size);
+        //   break;
+        // case 7:
+        //   cunn_SoftMaxForwardReg<T, AccT, T, Function, IndexType, 7>
+        //     <<<grid, block, smem_reduction_sz, dev_ctx.stream()>>>(out_data,
+        //     input_data, dim_size);
+        //   break;
+        // case 8:
+        //   cunn_SoftMaxForwardReg<T, AccT, T, Function, IndexType, 8>
+        //     <<<grid, block, smem_reduction_sz, dev_ctx.stream()>>>(out_data,
+        //     input_data, dim_size);
+        //   break;
+        // case 9:
+        //   cunn_SoftMaxForwardReg<T, AccT, T, Function, IndexType, 9>
+        //     <<<grid, block, smem_reduction_sz, dev_ctx.stream()>>>(out_data,
+        //     input_data, dim_size);
+        //   break;
     }
   } else if (can_use_smem) {
     size_t smem_sz = dim_size * sizeof(T) + smem_reduction_sz;
@@ -2582,9 +2652,9 @@ void SoftmaxForwardCUDAKernelCompatible(const GPUContext& dev_ctx,
         N,
         dim,
         D,
-        &grid,
-        &block,
-        &smem_size);
+        grid,
+        block,
+        smem_size);
     cunn_SpatialSoftMaxForward<T, AccT, IndexType, Function>
         <<<grid, block, smem_size, dev_ctx.stream()>>>(
             out_data, input_data, N, dim, D);
@@ -2644,9 +2714,9 @@ void SoftmaxBackwardCUDAKernelCompatible(const GPUContext& dev_ctx,
         N,
         dim,
         D,
-        &grid,
-        &block,
-        &smem_size);
+        grid,
+        block,
+        smem_size);
     cunn_SpatialSoftMaxBackward<T, AccT, IndexType, Function>
         <<<grid, block, smem_size, dev_ctx.stream()>>>(
             dx_data, out_data, dout_data, N, dim, D);
