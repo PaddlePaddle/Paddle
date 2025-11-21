@@ -363,10 +363,11 @@ bool VirtualMemoryAutoGrowthBestFitAllocator::TryAllocateBatch(
 
   std::lock_guard<SpinLock> guard(spinlock_);
 
-  // copy free_blocks_ to shadow_blocks_
+  // copy large N free_blocks_ to shadow_blocks_.
   std::map<std::pair<size_t, void *>, size_t> shadow_blocks;
-  for (const auto &pair : free_blocks_) {
-    shadow_blocks.emplace(pair.first, pair.first.first);
+  auto it = free_blocks_.rbegin();
+  for (int i = 0; i < sizes.size() && it != free_blocks_.rend(); ++i, ++it) {
+    shadow_blocks.emplace(it->first, it->first.first);
   }
   for (size_t size : sizes) {
     size_t aligned_size = AlignedSize(size, alignment_);

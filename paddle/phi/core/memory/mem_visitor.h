@@ -84,6 +84,15 @@ class AllocatorVisitor : public AllocatorVisitorReqImpl {
 
 #ifdef PADDLE_WITH_CUDA
 /**
+ * @brief AllocatorComputeStreamVisitor is a Concrete Visitor class designed to
+ * only visit compute stream allocators.
+ */
+class AllocatorComputeStreamVisitor : public AllocatorVisitor {
+ public:
+  void Visit(StreamSafeCUDAAllocator* allocator) override;
+};
+
+/**
  * @brief FreeMemoryMetricsVisitor is a Concrete Visitor class designed to
  * inspect allocators for free memory information.
  *
@@ -92,7 +101,7 @@ class AllocatorVisitor : public AllocatorVisitorReqImpl {
  * it provides specialized logic for the
  * VirtualMemoryAutoGrowthBestFitAllocator.
  */
-class FreeMemoryMetricsVisitor : public AllocatorVisitor {
+class FreeMemoryMetricsVisitor : public AllocatorComputeStreamVisitor {
  public:
   /**
    * @brief Constructor for FreeMemoryMetricsVisitor.
@@ -139,7 +148,7 @@ class FreeMemoryMetricsVisitor : public AllocatorVisitor {
  * (typically VirtualMemoryAutoGrowthBestFitAllocator) and record if all
  * attempts were successful.
  */
-class TryAllocVisitor : public AllocatorVisitor {
+class TryAllocVisitor : public AllocatorComputeStreamVisitor {
  public:
   /**
    * @brief Constructor.

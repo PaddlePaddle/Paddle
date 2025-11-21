@@ -543,7 +543,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
                                   PyObject* kwargs) {
   EAGER_TRY
   FLAGS_tensor_operants_mode = "phi";
-  bool old_flag = FLAGS_enable_compact_mem;
+  bool compact_flag_bak = FLAGS_enable_compact_mem;
   FLAGS_enable_compact_mem = false;
   if (paddle::OperantsManager::Instance().phi_operants.get() == nullptr) {
     paddle::OperantsManager::Instance().phi_operants =
@@ -881,7 +881,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("eager_api_run_custom_op " + op_type + " finish");
   }
-  FLAGS_enable_compact_mem = old_flag;
+  FLAGS_enable_compact_mem = compact_flag_bak;
   return ToPyObject(*ctx.AllMutableOutput());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }

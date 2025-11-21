@@ -23,6 +23,7 @@
 #include "paddle/phi/core/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
 #endif
 
+PHI_DECLARE_bool(use_multi_scale_virtual_memory_auto_growth);
 namespace paddle {
 namespace memory {
 
@@ -52,6 +53,23 @@ void AllocatorVisitor::Visit(
     VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) {
   allocator->GetSmallAllocator()->Accept(this);
   allocator->GetLargeAllocator()->Accept(this);
+}
+
+void AllocatorComputeStreamVisitor::Visit(StreamSafeCUDAAllocator* allocator) {
+  const std::vector<StreamSafeCUDAAllocator*>& allocators =
+      allocator->GetAllocatorByPlace();
+  int compute_stream_allocator_num =
+      FLAGS_use_multi_scale_virtual_memory_auto_growth ? 2 : 1;
+  // NOTE(liujinnan): Currently, the Allocator initialization sequence is as
+  // follows: the compute stream Allocator is initialized at program startup,
+  // and then, when multiple streams are encountered at runtime, additional
+  // Allocators are created and added to the end of the `allocator_map_` in
+  // `StreamSafeCUDAAllocator`. Therefore, we can use the first allocator in
+  // `allocator_map_` as the compute stream allocator. Although this approach is
+  // somewhat ugly and may not be robust, it is currently effective.
+  for (int i = 0; i < compute_stream_allocator_num; i++) {
+    allocators[i]->GetUnderLyingAllocator()->Accept(this);
+  }
 }
 
 void FreeMemoryMetricsVisitor::Visit(
