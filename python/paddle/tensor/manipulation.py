@@ -813,7 +813,11 @@ def shard_index(
     following formula:
     ::
 
-        v = v - shard_id * shard_size if shard_id * shard_size <= v < (shard_id+1) * shard_size else ignore_value
+        v = (
+            v - shard_id * shard_size
+            if shard_id * shard_size <= v < (shard_id + 1) * shard_size
+            else ignore_value
+        )
 
     That is, the value `v` is set to the new offset within the range represented by the shard `shard_id`
     if it in the range. Otherwise, we reset it to be `ignore_value`.

@@ -164,7 +164,10 @@ def sdpa_kernel(
         >>> print(out.shape)
         [2, 4, 8, 16]
         >>> # Example 3: Set priority order for multiple backends
-        >>> with sdpa_kernel([SDPBackend.MATH, SDPBackend.EFFICIENT_ATTENTION], set_priority=True):
+        >>> with sdpa_kernel(
+        ...     [SDPBackend.MATH, SDPBackend.EFFICIENT_ATTENTION],
+        ...     set_priority=True,
+        ... ):
         ...     out = scaled_dot_product_attention(query, key, value)
         >>> print(out.shape)
         [2, 4, 8, 16]

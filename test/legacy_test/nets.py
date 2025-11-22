@@ -104,18 +104,23 @@ def simple_img_conv_pool(
         Variable
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
-            import paddle.base as base
-            import paddle
-            paddle.enable_static()
-            img = paddle.static.data(name='img', shape=[100, 1, 28, 28], dtype='float32')
-            conv_pool = base.nets.simple_img_conv_pool(input=img,
-                                                        filter_size=5,
-                                                        num_filters=20,
-                                                        pool_size=2,
-                                                        pool_stride=2,
-                                                        act="relu")
+            >>> import paddle.base as base
+            >>> import paddle
+
+            >>> paddle.enable_static()
+            >>> img = paddle.static.data(
+            ...     name='img', shape=[100, 1, 28, 28], dtype='float32'
+            ... )
+            >>> conv_pool = base.nets.simple_img_conv_pool(
+            ...     input=img,
+            ...     filter_size=5,
+            ...     num_filters=20,
+            ...     pool_size=2,
+            ...     pool_stride=2,
+            ...     act="relu",
+            ... )
     """
     conv_out = paddle.static.nn.conv2d(
         input=input,
@@ -210,16 +215,21 @@ def img_conv_group(
 
             import paddle.base as base
             import paddle
+
             paddle.enable_static()
 
-            img = paddle.static.data(name='img', shape=[None, 1, 28, 28], dtype='float32')
-            conv_pool = base.nets.img_conv_group(input=img,
-                                                  conv_padding=1,
-                                                  conv_num_filter=[3, 3],
-                                                  conv_filter_size=3,
-                                                  conv_act="relu",
-                                                  pool_size=2,
-                                                  pool_stride=2)
+            img = paddle.static.data(
+                name='img', shape=[None, 1, 28, 28], dtype='float32'
+            )
+            conv_pool = base.nets.img_conv_group(
+                input=img,
+                conv_padding=1,
+                conv_num_filter=[3, 3],
+                conv_filter_size=3,
+                conv_act="relu",
+                pool_size=2,
+                pool_stride=2,
+            )
     """
     tmp = input
     assert isinstance(conv_num_filter, (list, tuple))
@@ -322,17 +332,24 @@ def sequence_conv_pool(
 
             import paddle.base as base
             import paddle
+
             paddle.enable_static()
-            input_dim = 100 #len(word_dict)
+            input_dim = 100  # len(word_dict)
             emb_dim = 128
             hid_dim = 512
-            data = paddle.static.data(name="words", shape=[None, 1], dtype="int64")
-            emb = paddle.static.nn.embedding(input=data, size=[input_dim, emb_dim], is_sparse=True)
-            seq_conv = base.nets.sequence_conv_pool(input=emb,
-                                                     num_filters=hid_dim,
-                                                     filter_size=3,
-                                                     act="tanh",
-                                                     pool_type="sqrt")
+            data = paddle.static.data(
+                name="words", shape=[None, 1], dtype="int64"
+            )
+            emb = paddle.static.nn.embedding(
+                input=data, size=[input_dim, emb_dim], is_sparse=True
+            )
+            seq_conv = base.nets.sequence_conv_pool(
+                input=emb,
+                num_filters=hid_dim,
+                filter_size=3,
+                act="tanh",
+                pool_type="sqrt",
+            )
     """
 
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'input')
@@ -384,10 +401,12 @@ def glu(input, dim=-1):
 
             import paddle.base as base
             import paddle
+
             paddle.enable_static()
 
             data = paddle.static.data(
-                name="words", shape=[-1, 6, 3, 9], dtype="float32")
+                name="words", shape=[-1, 6, 3, 9], dtype="float32"
+            )
             # shape of output: [-1, 3, 3, 9]
             output = base.nets.glu(input=data, dim=1)
     """

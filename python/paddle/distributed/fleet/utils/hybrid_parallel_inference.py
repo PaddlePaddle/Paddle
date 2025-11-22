@@ -50,9 +50,15 @@ class HybridParallelInferenceHelper:
             >>> # while op pattern
             >>> with paddle.base.device_guard(f'{device}:all'):
             ...     # init global cond
-            ...     max_len = paddle.full(shape=[1], dtype="int64", fill_value=10)
-            ...     step_idx = paddle.full(shape=[1], dtype="int64", fill_value=0)
-            ...     cond_int = paddle.full(shape=[1], dtype="int64", fill_value=0, name="cond_int")
+            ...     max_len = paddle.full(
+            ...         shape=[1], dtype="int64", fill_value=10
+            ...     )
+            ...     step_idx = paddle.full(
+            ...         shape=[1], dtype="int64", fill_value=0
+            ...     )
+            ...     cond_int = paddle.full(
+            ...         shape=[1], dtype="int64", fill_value=0, name="cond_int"
+            ...     )
             ...     cond = layers.cast(step_idx < max_len, dtype="bool")
             ...     while_op = layers.While(cond, is_test=True)
 
@@ -62,22 +68,30 @@ class HybridParallelInferenceHelper:
             >>> with while_op.block():
             ...     with paddle.base.device_guard(f'{device}:all'):
             ...         # read data from global lod_tensor_array
-            ...         element_in_arr = paddle.tensor.array_read(array=arr, i=step_idx)
+            ...         element_in_arr = paddle.tensor.array_read(
+            ...             array=arr, i=step_idx
+            ...         )
             ...         # write placeholder data to global lod_tensor_array,
             ...         # it need for send_v2 of lod_tensor_array
             ...         paddle.increment(x=step_idx, value=1.0)
-            ...         paddle.tensor.array_write(element_in_arr, i=step_idx, array=arr)
+            ...         paddle.tensor.array_write(
+            ...             element_in_arr, i=step_idx, array=arr
+            ...         )
             ...     with paddle.base.device_guard(f'{device}:0'):
-            ...         pass # some code
+            ...         pass  # some code
             ...     with paddle.base.device_guard(f'{device}:1'):
-            ...         pass # some code
-            ...     with paddle.base.device_guard(f'{device}:{num_pp-1}'):
+            ...         pass  # some code
+            ...     with paddle.base.device_guard(f'{device}:{num_pp - 1}'):
             ...         # generate some data in while block and write to global lod_tensor_array
             ...         # that they are read in next while step.
             ...         # we will using send_v2 to send global lod_tensor_array to other pipeline and sync
-            ...         paddle.tensor.array_write(other_var, i=step_idx, array=arr)
+            ...         paddle.tensor.array_write(
+            ...             other_var, i=step_idx, array=arr
+            ...         )
             ...         # update cond and assign to cond_int, we will sync cond_int
-            ...         layers.assign(layers.cast(cond, dtype="int32"), cond_int)
+            ...         layers.assign(
+            ...             layers.cast(cond, dtype="int32"), cond_int
+            ...         )
             ...     with paddle.base.device_guard(f'{model._device}:all'):
             ...         # the code below must at end of while block and exists in device:all
             ...         layers.assign(layers.cast(cond_int, dtype='bool'), cond)
