@@ -198,6 +198,8 @@ void ContiguousKernel(const Context& dev_ctx,
             tmp_in_data += value * whole_stride[dim * iter.ntensors() + 1];
           }
 
+          auto step = dimiter.iter_for_step();
+
           for (int64_t i = 0; i < step[1]; i++) {
             for (int64_t j = 0; j < step[0]; j++) {
               const char* real_in_ptr = tmp_in_data + j * whole_stride[1];
