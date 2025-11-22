@@ -604,7 +604,7 @@ def monkey_patch_value():
             Tensor, the number of elements for current Tensor
 
         Examples:
-            .. code-block:: pycon
+            .. code-block:: python-console
 
                 >>> import paddle
                 >>> paddle.enable_static()

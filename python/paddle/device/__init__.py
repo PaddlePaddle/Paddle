@@ -697,7 +697,7 @@ def get_default_device() -> paddle.device:
     Returns:
         str: The default device for PaddlePaddle.
     Example:
-        .. code-block:: pycon
+        .. code-block:: python-console
 
             >>> import paddle
 

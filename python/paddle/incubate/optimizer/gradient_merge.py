@@ -48,7 +48,7 @@ class GradientMergeOptimizer:
             the default value is `True`
 
     Examples:
-        .. code-block:: pycon
+        .. code-block:: python-console
 
             >>> import paddle
             >>> import numpy as np

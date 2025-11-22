@@ -220,7 +220,7 @@ class QuantConfig:
             weight(QuanterFactory | None): Quanter used for weights. Default is None.
 
         Examples:
-            .. code-block:: pycon
+            .. code-block:: python-console
 
                 >>> import paddle
                 >>> from paddle.nn import Linear
@@ -273,7 +273,7 @@ class QuantConfig:
             target(type[Layer]): The type of layers that will be converted to.
 
         Examples:
-            .. code-block:: pycon
+            .. code-block:: python-console
 
                 >>> import paddle
                 >>> from paddle.nn import Conv2D
