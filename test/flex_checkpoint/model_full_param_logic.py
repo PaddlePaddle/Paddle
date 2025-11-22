@@ -299,7 +299,8 @@ class TestFullParamHVGroupLogic(TestFullParamLogic):
 
         aoa_config = {
             "aoa_statements": [
-                "_layers.1.weight, _layers.2.weight -> _layers.fused_weight, axis=1"
+                "_layers.1.weight, _layers.2.weight -> _layers.fused_weight, axis=1",
+                "_layers.2.bias -> _",
             ]
         }
 
@@ -316,7 +317,6 @@ class TestFullParamHVGroupLogic(TestFullParamLogic):
             "_layers.shared_layers.shared_embedding.weight": [24, 32],
             "_layers.1.bias": [32],
             "_layers.fused_weight": [32, 64],
-            "_layers.2.bias": [32],
         }
 
         param_split_axis = {
@@ -324,12 +324,15 @@ class TestFullParamHVGroupLogic(TestFullParamLogic):
             "_layers.1.weight": 1,
             "_layers.1.bias": 0,
             "_layers.2.weight": 0,
-            "_layers.2.bias": -1,
         }
 
         for name, shape in param_shape.items():
             assert name in full_param.keys()
             assert tuple(full_param[name].shape) == tuple(shape)
+
+        assert "_layers.2.bias" not in full_param
+        assert "_layers.1.weight" not in full_param
+        assert "_layers.2.weight" not in full_param
 
         fused_weight = full_param.pop("_layers.fused_weight")
         splited = paddle.split(fused_weight, num_or_sections=2, axis=1)

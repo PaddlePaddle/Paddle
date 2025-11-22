@@ -269,6 +269,7 @@ class TestFullParamHVGroupWith4Devices(test_base.CommunicationTestDistBase):
     def test_full_param(self):
         for config in TEST_CONFIGS["4_card_hv_group_tests"]:
             envs = {k: str(v) for k, v in config.items()}
+            envs["test_using_hv_group"] = "1"
             self.run_test_case(
                 "model_full_param_logic.py",
                 user_defined_envs=envs,
