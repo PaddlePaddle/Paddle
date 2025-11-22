@@ -1373,8 +1373,6 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
     const int64_t padding_depth = paddings[0];
     const int64_t padding_height = paddings[1];
     const int64_t padding_width = paddings[2];
-    const int64_t input_stride = input_depth * input_height * input_width;
-    const int64_t output_stride = output_depth * output_height * output_width;
     const int64_t dilation_depth = dilations[0];
     const int64_t dilation_height = dilations[1];
     const int64_t dilation_width = dilations[2];

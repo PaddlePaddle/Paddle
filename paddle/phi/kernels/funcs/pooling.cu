@@ -652,6 +652,8 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
                                        stride_width,
                                        padding_height,
                                        padding_width,
+                                       dilation_height,
+                                       dilation_width,
                                        pool_divmods,
                                        pool_compute,
                                        exclusive,
@@ -1008,8 +1010,8 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
     const int64_t padding_height = paddings[0];
     const int64_t padding_width = paddings[1];
 
-    const int dilation_height = dilations[0];
-    const int dilation_width = dilations[1];
+    const int64_t dilation_height = dilations[0];
+    const int64_t dilation_width = dilations[1];
 
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
@@ -1070,6 +1072,8 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
                                                      stride_width,
                                                      padding_height,
                                                      padding_width,
+                                                     dilation_height,
+                                                     dilation_width,
                                                      input_grad_data,
                                                      pool_divmods,
                                                      channel_last);
@@ -1098,8 +1102,6 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
                                                      stride_width,
                                                      padding_height,
                                                      padding_width,
-                                                     dilation_height,
-                                                     dilation_width,
                                                      input_grad_data,
                                                      pool_divmods,
                                                      channel_last);
@@ -1125,10 +1127,10 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
                                                      dilation_height,
                                                      dilation_width,
                                                      input_grad_data,
+                                                     pool_divmods,
                                                      channel_last);
       }
     }
->>>>>>> develop
   }
 };
 
@@ -2630,9 +2632,9 @@ __global__ void KernelMaxPool3DWithIdx(
 
         T1 ele = static_cast<T1>(-FLT_MAX);
         IndexT max_index = -1;
-        for (IndexT d = dstart; d < dend; ++dilation_depth) {
-          for (IndexT h = hstart; h < hend; ++dilation_height) {
-            for (IndexT w = wstart; w < wend; ++dilation_width) {
+        for (IndexT d = dstart; d < dend; d += dilation_depth) {
+          for (IndexT h = hstart; h < hend; h += dilation_height) {
+            for (IndexT w = wstart; w < wend; w += dilation_width) {
               if (ele <
                   input_data_cur[(d * input_height + h) * input_width + w]) {
                 max_index = (d * input_height + h) * input_width + w;

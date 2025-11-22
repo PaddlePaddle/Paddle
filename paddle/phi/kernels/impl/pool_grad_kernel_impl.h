@@ -191,6 +191,7 @@ void MaxPoolWithIndexGradRawKernel(const Context& dev_ctx,
   std::vector<int64_t> paddings_(paddings.begin(), paddings.end());
   std::vector<int64_t> kernel_size_(kernel_size.begin(), kernel_size.end());
   std::vector<int64_t> strides_(strides.begin(), strides.end());
+  std::vector<int64_t> dilations_(dilations.begin(), dilations.end());
 
   if (global_pooling) {
     for (size_t i = 0; i < kernel_size_.size(); ++i) {
@@ -212,7 +213,7 @@ void MaxPoolWithIndexGradRawKernel(const Context& dev_ctx,
                         kernel_size_,
                         strides_,
                         paddings_,
-                        dilations,
+                        dilations_,
                         adaptive,
                         dx);
       } break;
@@ -224,7 +225,7 @@ void MaxPoolWithIndexGradRawKernel(const Context& dev_ctx,
                         kernel_size_,
                         strides_,
                         paddings_,
-                        dilations,
+                        dilations_,
                         adaptive,
                         dx);
       } break;
@@ -296,7 +297,7 @@ void LPPool2dGradKernel(const Context& dev_ctx,
                                 kernel_size.GetData(),
                                 strides,
                                 paddings,
-                                std::vector<int>{1, 1},
+                                std::vector<int64_t>{1, 1},
                                 exclusive,
                                 data_format,
                                 pooling_type,

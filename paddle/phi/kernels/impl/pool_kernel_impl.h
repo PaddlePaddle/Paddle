@@ -144,7 +144,7 @@ void PoolRawKernel(const Context& dev_ctx,
                          kernel_size_,
                          strides,
                          paddings_,
-                         std::vector<int>{1, 1},
+                         std::vector<int64_t>{1, 1},
                          data_format,
                          exclusive,
                          adaptive,
@@ -159,7 +159,7 @@ void PoolRawKernel(const Context& dev_ctx,
                          kernel_size_,
                          strides,
                          paddings_,
-                         std::vector<int>{1, 1},
+                         std::vector<int64_t>{1, 1},
                          data_format,
                          exclusive,
                          adaptive,
@@ -175,7 +175,7 @@ void PoolRawKernel(const Context& dev_ctx,
                        kernel_size_,
                        strides,
                        paddings_,
-                       std::vector<int>{1, 1},
+                       std::vector<int64_t>{1, 1},
                        data_format,
                        exclusive,
                        adaptive,
@@ -206,7 +206,7 @@ void PoolRawKernel(const Context& dev_ctx,
                        kernel_size_,
                        strides,
                        paddings_,
-                       std::vector<int>{1, 1, 1},
+                       std::vector<int64_t>{1, 1, 1},
                        data_format,
                        exclusive,
                        adaptive,
@@ -250,6 +250,7 @@ void MaxPoolWithIndexRawKernel(const Context& dev_ctx,
   std::vector<int64_t> paddings_(paddings.begin(), paddings.end());
   std::vector<int64_t> kernel_size_(kernel_size.begin(), kernel_size.end());
   std::vector<int64_t> strides_(strides.begin(), strides.end());
+  std::vector<int64_t> dilations_(dilations.begin(), dilations.end());
 
   if (global_pooling) {
     for (size_t i = 0; i < kernel_size_.size(); ++i) {
@@ -262,12 +263,12 @@ void MaxPoolWithIndexRawKernel(const Context& dev_ctx,
     case 2: {
       funcs::MaxPool2dWithIndexFunctor<Context, T1, T2> pool2d_forward;
       pool2d_forward(
-          dev_ctx, x, kernel_size_, strides_, paddings_, dilations, adaptive, out, mask);
+          dev_ctx, x, kernel_size_, strides_, paddings_, dilations_, adaptive, out, mask);
     } break;
     case 3: {
       funcs::MaxPool3dWithIndexFunctor<Context, T1, T2> pool3d_forward;
       pool3d_forward(
-          dev_ctx, x, kernel_size_, strides_, paddings_, dilations, adaptive, out, mask);
+          dev_ctx, x, kernel_size_, strides_, paddings_, dilations_, adaptive, out, mask);
     } break;
     default: {
       PADDLE_THROW(

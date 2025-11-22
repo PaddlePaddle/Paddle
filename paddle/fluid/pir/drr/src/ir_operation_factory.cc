@@ -464,14 +464,14 @@ void OperationFactory::RegisterManualOpCreator() {
                             common::errors::InvalidArgument(
                                 "'dilations' Attribute is expected for "
                                 "Pool2dOp. "));
-          std::vector<int> dilations;
+          std::vector<int64_t> dilations;
           for (size_t i = 0;
                i < attrs.at("dilations").dyn_cast<pir::ArrayAttribute>().size();
                i++) {
             dilations.push_back(attrs.at("dilations")
                                     .dyn_cast<pir::ArrayAttribute>()
                                     .at(i)
-                                    .dyn_cast<pir::Int32Attribute>()
+                                    .dyn_cast<pir::Int64Attribute>()
                                     .data());
           }
 
