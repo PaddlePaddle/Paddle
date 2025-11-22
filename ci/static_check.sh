@@ -29,11 +29,11 @@ function exec_samplecode_test() {
 
     cd ${PADDLE_ROOT}/tools
     if [ "$1" = "cpu" ] ; then
-        python sampcd_processor.py --mode cpu; example_error=$?
+        python sampcd_processor.py --mode cpu --full-test; example_error=$?
     elif [ "$1" = "gpu" ] ; then
         export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
         SAMPLE_CODE_EXEC_THREADS=${SAMPLE_CODE_EXEC_THREADS:-2}
-        python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} --mode gpu; example_error=$?
+        python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} --mode gpu --full-test; example_error=$?
     fi
     if [ "$example_error" != "0" ];then
         echo "Code instance execution failed" >&2
