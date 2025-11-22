@@ -104,7 +104,7 @@ def simple_img_conv_pool(
         Variable
 
     Examples:
-        .. code-block:: python-console
+        .. code-block:: pycon
 
             >>> import paddle.base as base
             >>> import paddle

@@ -144,7 +144,7 @@ class Input:
             tuple(numpy.ndarray, numpy.ndarray, numpy.ndarray): A tuple containing the generated input data for the minimum, optimal, and maximum shapes.
 
         Examples:
-            .. code-block:: python-console
+            .. code-block:: pycon
 
                 >>> from paddle.tensorrt.export import Input
                 >>> input_config = Input(
@@ -282,7 +282,7 @@ class TensorRTConfig:
             None
 
         Examples:
-            .. code-block:: python-console
+            .. code-block:: pycon
 
                 >>> # example 1:
                 >>> from paddle.tensorrt.export import (

@@ -40,7 +40,7 @@ class PrepareContextParallel(PlanBase):
         backend (string): select strategy for context parallel, now support 'p2p' and 'all2all'.
 
     Examples:
-        .. code-block:: python-console
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
