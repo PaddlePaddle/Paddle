@@ -450,7 +450,7 @@ def extract_code_blocks_from_docstr(docstr, google_style=True):
 
     lastlineindex = len(docstr_list) - 1
 
-    cb_start_pat = re.compile(r"code-block::\s*(python|python-console)")
+    cb_start_pat = re.compile(r"code-block::\s*(python|python-console|pycon)")
     cb_param_pat = re.compile(r"^\s*:(\w+):\s*(\S*)\s*$")
 
     cb_info = {}
