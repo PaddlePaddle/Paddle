@@ -262,13 +262,27 @@ void MaxPoolWithIndexRawKernel(const Context& dev_ctx,
   switch (kernel_size_.size()) {
     case 2: {
       funcs::MaxPool2dWithIndexFunctor<Context, T1, T2> pool2d_forward;
-      pool2d_forward(
-          dev_ctx, x, kernel_size_, strides_, paddings_, dilations_, adaptive, out, mask);
+      pool2d_forward(dev_ctx,
+                     x,
+                     kernel_size_,
+                     strides_,
+                     paddings_,
+                     dilations_,
+                     adaptive,
+                     out,
+                     mask);
     } break;
     case 3: {
       funcs::MaxPool3dWithIndexFunctor<Context, T1, T2> pool3d_forward;
-      pool3d_forward(
-          dev_ctx, x, kernel_size_, strides_, paddings_, dilations_, adaptive, out, mask);
+      pool3d_forward(dev_ctx,
+                     x,
+                     kernel_size_,
+                     strides_,
+                     paddings_,
+                     dilations_,
+                     adaptive,
+                     out,
+                     mask);
     } break;
     default: {
       PADDLE_THROW(

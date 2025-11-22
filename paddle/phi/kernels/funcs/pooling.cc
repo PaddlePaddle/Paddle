@@ -422,22 +422,26 @@ class MaxPool2dGradFunctor<CPUContext, T> {
         for (int64_t c = 0; c < output_channels; ++c) {
           for (int64_t ph = 0; ph < output_height; ++ph) {
             int64_t hstart = ph * stride_height - padding_height;
-            int64_t hend = std::min(hstart + dilated_ksize_height, input_height);
+            int64_t hend =
+                std::min(hstart + dilated_ksize_height, input_height);
             while (hstart < static_cast<int64_t>(0)) {
               hstart += dilation_height;
             }
             // hstart = std::max(hstart, 0);
             for (int64_t pw = 0; pw < output_width; ++pw) {
               int64_t wstart = pw * stride_width - padding_width;
-              int64_t wend = std::min(wstart + dilated_ksize_width, input_width);
+              int64_t wend =
+                  std::min(wstart + dilated_ksize_width, input_width);
               while (wstart < static_cast<int64_t>(0)) {
                 wstart += dilation_width;
               }
               // wstart = std::max(wstart, 0);
 
               bool stop = false;
-              for (int64_t h = hstart; h < hend && !stop; h += dilation_height) {
-                for (int64_t w = wstart; w < wend && !stop; w += dilation_width) {
+              for (int64_t h = hstart; h < hend && !stop;
+                   h += dilation_height) {
+                for (int64_t w = wstart; w < wend && !stop;
+                     w += dilation_width) {
                   int64_t input_idx = h * input_width + w;
                   int64_t output_idx = ph * output_width + pw;
                   if (input_data[input_idx] == output_data[output_idx]) {
@@ -456,27 +460,32 @@ class MaxPool2dGradFunctor<CPUContext, T> {
       }
     } else {
       const int64_t input_stride = input_height * input_width * input_channels;
-      const int64_t output_stride = output_height * output_width * output_channels;
+      const int64_t output_stride =
+          output_height * output_width * output_channels;
       for (int64_t i = 0; i < batch_size; i++) {
         for (int64_t c = 0; c < output_channels; ++c) {
           for (int64_t ph = 0; ph < output_height; ++ph) {
             int64_t hstart = ph * stride_height - padding_height;
-            int64_t hend = std::min(hstart + dilated_ksize_height, input_height);
+            int64_t hend =
+                std::min(hstart + dilated_ksize_height, input_height);
             while (hstart < static_cast<int64_t>(0)) {
               hstart += dilation_height;
             }
             // hstart = std::max(hstart, 0);
             for (int64_t pw = 0; pw < output_width; ++pw) {
               int64_t wstart = pw * stride_width - padding_width;
-              int64_t wend = std::min(wstart + dilated_ksize_width, input_width);
+              int64_t wend =
+                  std::min(wstart + dilated_ksize_width, input_width);
               while (wstart < static_cast<int64_t>(0)) {
                 wstart += dilation_width;
               }
               // wstart = std::max(wstart, 0);
 
               bool stop = false;
-              for (int64_t h = hstart; h < hend && !stop; h += dilation_height) {
-                for (int64_t w = wstart; w < wend && !stop; w += dilation_width) {
+              for (int64_t h = hstart; h < hend && !stop;
+                   h += dilation_height) {
+                for (int64_t w = wstart; w < wend && !stop;
+                     w += dilation_width) {
                   int64_t input_idx =
                       h * input_width * input_channels + w * input_channels + c;
                   int64_t output_idx = ph * output_width * output_channels +
@@ -1062,25 +1071,29 @@ class MaxPool3dGradFunctor<CPUContext, T> {
             // dstart = std::max(dstart, 0);
             for (int64_t ph = 0; ph < output_height; ++ph) {
               int64_t hstart = ph * stride_height - padding_height;
-              int64_t hend = std::min(hstart + dilated_ksize_height, input_height);
+              int64_t hend =
+                  std::min(hstart + dilated_ksize_height, input_height);
               while (hstart < static_cast<int64_t>(0)) {
                 hstart += dilation_height;
               }
               // hstart = std::max(hstart, 0);
               for (int64_t pw = 0; pw < output_width; ++pw) {
                 int64_t wstart = pw * stride_width - padding_width;
-                int64_t wend = std::min(wstart + dilated_ksize_width, input_width);
+                int64_t wend =
+                    std::min(wstart + dilated_ksize_width, input_width);
                 while (wstart < static_cast<int64_t>(0)) {
                   wstart += dilation_width;
                 }
                 // wstart = std::max(wstart, 0);
                 bool stop = false;
-                for (int64_t d = dstart; d < dend && !stop; d += dilation_depth) {
+                for (int64_t d = dstart; d < dend && !stop;
+                     d += dilation_depth) {
                   for (int64_t h = hstart; h < hend && !stop;
                        h += dilation_height) {
                     for (int64_t w = wstart; w < wend && !stop;
                          w += dilation_width) {
-                      int64_t input_idx = (d * input_height + h) * input_width + w;
+                      int64_t input_idx =
+                          (d * input_height + h) * input_width + w;
                       int64_t output_idx =
                           (pd * output_height + ph) * output_width + pw;
 
@@ -1117,21 +1130,24 @@ class MaxPool3dGradFunctor<CPUContext, T> {
             // dstart = std::max(dstart, 0);
             for (int64_t ph = 0; ph < output_height; ++ph) {
               int64_t hstart = ph * stride_height - padding_height;
-              int64_t hend = std::min(hstart + dilated_ksize_height, input_height);
+              int64_t hend =
+                  std::min(hstart + dilated_ksize_height, input_height);
               while (hstart < static_cast<int64_t>(0)) {
                 hstart += dilation_height;
               }
               // hstart = std::max(hstart, 0);
               for (int64_t pw = 0; pw < output_width; ++pw) {
                 int64_t wstart = pw * stride_width - padding_width;
-                int64_t wend = std::min(wstart + dilated_ksize_width, input_width);
+                int64_t wend =
+                    std::min(wstart + dilated_ksize_width, input_width);
                 while (wstart < static_cast<int64_t>(0)) {
                   wstart += dilation_width;
                 }
                 // wstart = std::max(wstart, 0);
                 bool stop = false;
 
-                for (int64_t d = dstart; d < dend && !stop; d += dilation_depth) {
+                for (int64_t d = dstart; d < dend && !stop;
+                     d += dilation_depth) {
                   for (int64_t h = hstart; h < hend && !stop;
                        h += dilation_height) {
                     for (int64_t w = wstart; w < wend && !stop;
@@ -1224,7 +1240,8 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
     const int64_t padding_width = paddings[1];
     const int64_t dilation_height = dilations[0];
     const int64_t dilation_width = dilations[1];
-    const int64_t dilated_ksize_height = (ksize_height - 1) * dilation_height + 1;
+    const int64_t dilated_ksize_height =
+        (ksize_height - 1) * dilation_height + 1;
     const int64_t dilated_ksize_width = (ksize_width - 1) * dilation_width + 1;
     const int64_t input_stride = input_height * input_width;
     const int64_t output_stride = output_height * output_width;
@@ -1377,7 +1394,8 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
     const int64_t dilation_height = dilations[1];
     const int64_t dilation_width = dilations[2];
     const int64_t dilated_ksize_depth = (ksize_depth - 1) * dilation_depth + 1;
-    const int64_t dilated_ksize_height = (ksize_height - 1) * dilation_height + 1;
+    const int64_t dilated_ksize_height =
+        (ksize_height - 1) * dilation_height + 1;
     const int64_t dilated_ksize_width = (ksize_width - 1) * dilation_width + 1;
     const int64_t input_stride = input_depth * input_height * input_width;
     const int64_t output_stride = output_depth * output_height * output_width;
@@ -1435,7 +1453,8 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
               for (int64_t d = dstart; d < dend; d += dilation_depth) {
                 for (int64_t h = hstart; h < hend; h += dilation_height) {
                   for (int64_t w = wstart; w < wend; w += dilation_width) {
-                    int64_t input_idx = (d * input_height + h) * input_width + w;
+                    int64_t input_idx =
+                        (d * input_height + h) * input_width + w;
                     if (ele < input_data[input_idx]) {
                       index = input_idx;
                       ele = input_data[input_idx];

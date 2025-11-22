@@ -198,7 +198,8 @@ __global__ void KernelPool2D(const IndexT nthreads,
         &input_offset);
     input_data += input_offset;
 
-    const IndexT dilation_ksize_height = (ksize_height - 1) * dilation_height + 1;
+    const IndexT dilation_ksize_height =
+        (ksize_height - 1) * dilation_height + 1;
     const IndexT dilation_ksize_width = (ksize_width - 1) * dilation_width + 1;
 
     hstart = h_offset * stride_height - padding_height;
@@ -473,7 +474,8 @@ __global__ void KernelMaxPool2DGrad(const IndexT nthreads,
     input_data += input_offset;
     input_grad += input_offset;
 
-    const IndexT dilation_ksize_height = (ksize_height - 1) * dilation_height + 1;
+    const IndexT dilation_ksize_height =
+        (ksize_height - 1) * dilation_height + 1;
     const IndexT dilation_ksize_width = (ksize_width - 1) * dilation_width + 1;
 
     IndexT hstart = h_offset * stride_height - padding_height;
@@ -495,9 +497,9 @@ __global__ void KernelMaxPool2DGrad(const IndexT nthreads,
     bool stop = false;
     for (IndexT h = hstart; h < hend && !stop; h += dilation_height) {
       for (IndexT w = wstart; w < wend && !stop; w += dilation_width) {
-        IndexT input_data_idx = channel_last
-                                 ? (h * input_width + w) * channels + c_offset
-                                 : h * input_width + w;
+        IndexT input_data_idx =
+            channel_last ? (h * input_width + w) * channels + c_offset
+                         : h * input_width + w;
         if (ele == input_data[input_data_idx]) {
           maxIndex = input_data_idx;
           stop = true;
@@ -2585,7 +2587,6 @@ __global__ void KernelMaxPool3DWithIdx(
   w_offset = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
   for (IndexT by = blockIdx.y; by < output_height; by += gridDim.y) {
     h_offset = by * blockDim.y + threadIdx.y;
-
 
     IndexT start_index =
         static_cast<IndexT>(blockIdx.z) * blockDim.z + threadIdx.z;

@@ -2832,13 +2832,12 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
       if ((!config.is_runtime) && (x_dims[i + 2] < 0)) {
         output_shape.push_back(x_dims[i + 2]);
       } else {
-        output_shape.push_back(
-            funcs::MaxPoolOutputSize(x_dims[i + 2],
-                                     kernel_size_[i],
-                                     paddings_[i],
-                                     strides[i],
-                                     dilations[i],
-                                     ceil_mode));
+        output_shape.push_back(funcs::MaxPoolOutputSize(x_dims[i + 2],
+                                                        kernel_size_[i],
+                                                        paddings_[i],
+                                                        strides[i],
+                                                        dilations[i],
+                                                        ceil_mode));
       }
     }
   }
@@ -3930,14 +3929,13 @@ void PoolInferMeta(const MetaTensor& x,
       if ((!config.is_runtime) && (data_dims[i] < 0)) {
         output_shape.push_back(data_dims[i]);
       } else {
-        output_shape.push_back(
-            funcs::PoolOutputSize(data_dims[i],
-                                  kernel_size_[i],
-                                  paddings_[2 * i],
-                                  paddings_[2 * i + 1],
-                                  strides[i],
-                                  dilations[i],
-                                  ceil_mode));
+        output_shape.push_back(funcs::PoolOutputSize(data_dims[i],
+                                                     kernel_size_[i],
+                                                     paddings_[2 * i],
+                                                     paddings_[2 * i + 1],
+                                                     strides[i],
+                                                     dilations[i],
+                                                     ceil_mode));
       }
     }
   }
