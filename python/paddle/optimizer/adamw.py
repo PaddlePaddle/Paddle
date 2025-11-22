@@ -870,7 +870,9 @@ class AdamW(Optimizer):
         # Process master weights if using mixed precision
         if master_weights is not None:
             for key, tensor in master_weights.items():
-                struct_name = static_to_struct_mapping[key]
+                struct_name = static_to_struct_mapping[
+                    key.replace("slice@", "")
+                ]
                 sharded_weight = model_sharded_state_dict[struct_name]
                 unified_name = f"{struct_name}.w_0"
                 if tensor.is_dist():
