@@ -653,7 +653,7 @@ def fused_multi_head_attention(
             ...     None, None, None, None, 1e-5, qkv_bias,
             ...     linear_bias, None, attn_mask)
             >>> print(output.shape)
-            [2, 4, 128]
+            paddle.Size([2, 4, 128])
     """
 
     seed = None
