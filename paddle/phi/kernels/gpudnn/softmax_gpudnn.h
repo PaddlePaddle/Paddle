@@ -2833,7 +2833,7 @@ void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
           dev_ctx, x, input_axis, out);
     }
   }
-#elif
+#else
   if (x.numel() >= std::numeric_limits<int32_t>::max()) {
     SoftmaxForwardCUDAKernelDriverImpl<T, int64_t, LogMode>(
         dev_ctx, x, input_axis, out);
@@ -2974,7 +2974,7 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
           dev_ctx, out, dout, input_axis, dx);
     }
   }
-#elif
+#else
   if (out.numel() >= std::numeric_limits<int32_t>::max()) {
     SoftmaxBackwardCUDAKernelDriverImpl<T, int64_t, LogMode>(
         dev_ctx, out, dout, input_axis, dx);
