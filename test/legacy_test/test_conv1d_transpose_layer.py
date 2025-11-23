@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 import paddle.base.dygraph as dg
@@ -93,37 +93,37 @@ class Conv1DTransposeTestCase(unittest.TestCase):
     def functional(self, place):
         main = base.Program()
         start = base.Program()
-        with base.unique_name.guard():
-            with base.program_guard(main, start):
-                input_shape = (
-                    (-1, self.in_channels, -1)
-                    if not self.channel_last
-                    else (-1, -1, self.in_channels)
+        with (
+            base.unique_name.guard(),
+            base.program_guard(main, start),
+        ):
+            input_shape = (
+                (-1, self.in_channels, -1)
+                if not self.channel_last
+                else (-1, -1, self.in_channels)
+            )
+            x_var = paddle.static.data("input", input_shape, dtype=self.dtype)
+            w_var = paddle.static.data(
+                "weight", self.weight_shape, dtype=self.dtype
+            )
+            if not self.no_bias:
+                b_var = paddle.static.data(
+                    "bias", (self.out_channels,), dtype=self.dtype
                 )
-                x_var = paddle.static.data(
-                    "input", input_shape, dtype=self.dtype
-                )
-                w_var = paddle.static.data(
-                    "weight", self.weight_shape, dtype=self.dtype
-                )
-                if not self.no_bias:
-                    b_var = paddle.static.data(
-                        "bias", (self.out_channels,), dtype=self.dtype
-                    )
-                else:
-                    b_var = None
-                y_var = F.conv1d_transpose(
-                    x_var,
-                    w_var,
-                    None if self.no_bias else b_var,
-                    output_size=self.output_size,
-                    padding=self.padding,
-                    output_padding=self.output_padding,
-                    stride=self.stride,
-                    dilation=self.dilation,
-                    groups=self.groups,
-                    data_format=self.data_format,
-                )
+            else:
+                b_var = None
+            y_var = F.conv1d_transpose(
+                x_var,
+                w_var,
+                None if self.no_bias else b_var,
+                output_size=self.output_size,
+                padding=self.padding,
+                output_padding=self.output_padding,
+                stride=self.stride,
+                dilation=self.dilation,
+                groups=self.groups,
+                data_format=self.data_format,
+            )
         feed_dict = {"input": self.input, "weight": self.weight}
         if self.bias is not None:
             feed_dict["bias"] = self.bias
@@ -163,17 +163,19 @@ class Conv1DTransposeTestCase(unittest.TestCase):
         place = base.CPUPlace()
         self._test_pir_equivalence(place)
 
-        if base.core.is_compiled_with_cuda():
-            place = base.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self._test_pir_equivalence(place)
 
 
 class Conv1DTransposeErrorTestCase(Conv1DTransposeTestCase):
     def runTest(self):
         place = base.CPUPlace()
-        with dg.guard(place):
-            with self.assertRaises(ValueError):
-                self.paddle_nn_layer()
+        with (
+            dg.guard(place),
+            self.assertRaises(ValueError),
+        ):
+            self.paddle_nn_layer()
 
 
 def add_cases(suite):

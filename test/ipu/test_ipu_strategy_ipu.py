@@ -48,9 +48,9 @@ class TestIpuStrategy(unittest.TestCase):
             try:
                 ipu_strategy.set_options({option_name: set_value})
                 new_value = ipu_strategy.get_option(option_name)
-                assert (
-                    new_value == set_value
-                ), f"set {option_name} to {set_value} failed"
+                assert new_value == set_value, (
+                    f"set {option_name} to {set_value} failed"
+                )
             except:
                 raise Exception(f"set {option_name} to {set_value} failed")
 
@@ -78,13 +78,13 @@ class TestIpuStrategy(unittest.TestCase):
         for k, v in options.items():
             ipu_strategy.set_options({k: v})
             if isinstance(v, list):
-                assert (
-                    v.sort() == ipu_strategy.get_option(k).sort()
-                ), f"set {k} to {v} failed "
+                assert v.sort() == ipu_strategy.get_option(k).sort(), (
+                    f"set {k} to {v} failed "
+                )
             else:
-                assert v == ipu_strategy.get_option(
-                    k
-                ), f"set {k} to {v} failed "
+                assert v == ipu_strategy.get_option(k), (
+                    f"set {k} to {v} failed "
+                )
 
         # The custom logger need 2 int as inputs
         logger = lambda progress, total: print(

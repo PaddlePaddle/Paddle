@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import tempfile
 import unittest
 
 import numpy
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 from paddle import base
@@ -26,6 +26,17 @@ from paddle.base.framework import (
     convert_np_dtype_to_dtype_,
 )
 from paddle.io import Dataset
+
+
+class Model(paddle.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv1 = paddle.nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = paddle.sum(x)
+        return x
 
 
 class TestOptimizerDtype(unittest.TestCase):
@@ -61,7 +72,7 @@ class TestOptimizerDtype(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
 )
@@ -153,7 +164,7 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
         return loss.numpy()
 
     def test_with_state_dict(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             with base.dygraph.guard():
                 out_use_state_dict = self.check_with_opt_state_dict(
                     use_save_load=True
@@ -162,6 +173,36 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
                     use_save_load=False
                 )
             np.testing.assert_array_equal(out_use_state_dict, out_no_state_dict)
+
+
+class TestNewOptimizerAPI(unittest.TestCase):
+    def test_zero_grad(self):
+        paddle.disable_static()
+        model = Model()
+        data_input = paddle.randn(64, 1, 28, 28)
+        data_output = model(data_input)
+        data_output.backward()
+        sgd = paddle.optimizer.SGD(
+            parameters=model.parameters(), weight_decay=0.0
+        )
+        sgd.zero_grad()
+
+        result = model.conv1.weight.grad
+        self.assertIsNone(result)
+
+    def test_load_state_dict(self):
+        paddle.disable_static()
+        theta = paddle.tensor([1.0, 1.0], requires_grad=True)
+        optim = paddle.optimizer.Optimizer(
+            parameters=[theta], **{"learning_rate": 1.0}
+        )
+        result_before = optim.state_dict()
+        optim.load_state_dict(result_before)
+        result_after = optim.state_dict()
+        self.assertEqual(
+            set(result_before.keys()),
+            set(result_after.keys()),
+        )
 
 
 if __name__ == '__main__':

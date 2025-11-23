@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import functools
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -36,14 +36,16 @@ DTYPE_ALL_CPU = {
 # add `bfloat16` if core is compiled with CUDA and support the bfloat16
 DTYPE_ALL_GPU = DTYPE_ALL_CPU | (
     {'bfloat16'}
-    if core.is_compiled_with_cuda()
-    and core.is_bfloat16_supported(paddle.CUDAPlace(0))
+    if (core.is_compiled_with_cuda() or is_custom_device())
+    and core.is_bfloat16_supported(get_device_place())
     else set()
 )
 
 
 PLACES = [paddle.CPUPlace()] + (
-    [paddle.CUDAPlace(0)] if core.is_compiled_with_cuda() else []
+    [get_device_place()]
+    if (core.is_compiled_with_cuda() or is_custom_device())
+    else []
 )
 
 
@@ -262,14 +264,14 @@ class TestHSplit(BaseTest):
                 },
             )
 
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             for dtype in DTYPE_ALL_GPU:
                 self._test_all(
                     {
                         **generate_data([6], dtype=dtype),
                         'split_paddle': 3,
                         'split_numpy': 3,
-                        'places': [paddle.CUDAPlace(0)],
+                        'places': [get_device_place()],
                     },
                 )
 
@@ -348,14 +350,14 @@ class TestVSplit(BaseTest):
                 },
             )
 
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             for dtype in DTYPE_ALL_GPU:
                 self._test_all(
                     {
                         **generate_data([6, 4], dtype=dtype),
                         'split_paddle': 3,
                         'split_numpy': 3,
-                        'places': [paddle.CUDAPlace(0)],
+                        'places': [get_device_place()],
                     },
                 )
 
@@ -416,14 +418,14 @@ class TestDSplit(BaseTest):
                 },
             )
 
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             for dtype in DTYPE_ALL_GPU:
                 self._test_all(
                     {
                         **generate_data([4, 2, 6], dtype=dtype),
                         'split_paddle': 3,
                         'split_numpy': 3,
-                        'places': [paddle.CUDAPlace(0)],
+                        'places': [get_device_place()],
                     },
                 )
 
@@ -606,14 +608,14 @@ class TestTensorSplit(BaseTest):
                 },
             )
 
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             for dtype in DTYPE_ALL_GPU:
                 self._test_all(
                     {
                         **generate_data([6], dtype=dtype),
                         'split_paddle': 3,
                         'split_numpy': 3,
-                        'places': [paddle.CUDAPlace(0)],
+                        'places': [get_device_place()],
                     },
                 )
 
@@ -630,14 +632,14 @@ class TestTensorSplit(BaseTest):
                 },
             )
 
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             for dtype in DTYPE_ALL_GPU:
                 self._test_all(
                     {
                         **generate_data([4, 6], dtype=dtype),
                         'split_paddle': 3,
                         'split_numpy': 3,
-                        'places': [paddle.CUDAPlace(0)],
+                        'places': [get_device_place()],
                     },
                 )
 
@@ -654,14 +656,14 @@ class TestTensorSplit(BaseTest):
                 },
             )
 
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             for dtype in DTYPE_ALL_GPU:
                 self._test_all(
                     {
                         **generate_data([4, 4, 6], dtype=dtype),
                         'split_paddle': 3,
                         'split_numpy': 3,
-                        'places': [paddle.CUDAPlace(0)],
+                        'places': [get_device_place()],
                     },
                 )
 
@@ -712,6 +714,153 @@ class TestTensorSplit(BaseTest):
         x = generate_data([6])
         with self.assertRaises(ValueError):
             self._test_all({**x, 'split_paddle': 0, 'split_numpy': None})
+
+
+class SplitCompatibilityTest(unittest.TestCase):
+    def test_a(
+        self,
+    ):
+        """Test `dygraph`, and check grads"""
+        paddle.disable_static()
+        x = generate_data([4, 6, 3])["x"]
+        places = PLACES
+        for place in places:
+            out = paddle.tensor_split(
+                input=paddle.to_tensor(x).astype("float32"),
+                dim=1,
+                indices_or_sections=[2, 4],
+            )
+            out_ref = np.array_split(x, [2, 4], 1)
+
+            for n, p in zip(out_ref, out):
+                np.testing.assert_allclose(n, p.numpy(), rtol=RTOL, atol=ATOL)
+
+            # check grads for the first tensor
+            out = out[0]
+
+            for y in out:
+                y.stop_gradient = False
+                z = y * 123
+                grads = paddle.grad(z, y)
+                self.assertTrue(len(grads), 1)
+                self.assertEqual(grads[0].dtype, y.dtype)
+                self.assertEqual(grads[0].shape, y.shape)
+
+    def test_b(
+        self,
+    ):
+        """Test `dygraph`, and check grads"""
+        paddle.disable_static()
+        x = generate_data([4, 6, 3])["x"]
+        places = PLACES
+        for place in places:
+            out = paddle.tensor_split(
+                paddle.to_tensor(x).astype("float32"),
+                indices_or_sections=2,
+                axis=2,
+            )
+            out_ref = np.array_split(x, 2, 2)
+
+            for n, p in zip(out_ref, out):
+                np.testing.assert_allclose(n, p.numpy(), rtol=RTOL, atol=ATOL)
+
+            # check grads for the first tensor
+            out = out[0]
+
+            for y in out:
+                y.stop_gradient = False
+                z = y * 123
+                grads = paddle.grad(z, y)
+                self.assertTrue(len(grads), 1)
+                self.assertEqual(grads[0].dtype, y.dtype)
+                self.assertEqual(grads[0].shape, y.shape)
+
+    def test_c(
+        self,
+    ):
+        """Test `dygraph`, and check grads"""
+        paddle.disable_static()
+        x = generate_data([4, 6, 3])["x"]
+        places = PLACES
+        for place in places:
+            out = paddle.tensor_split(
+                paddle.to_tensor(x).astype("float32"),
+                sections=2,
+                dim=2,
+            )
+            out_ref = np.array_split(x, 2, 2)
+
+            for n, p in zip(out_ref, out):
+                np.testing.assert_allclose(n, p.numpy(), rtol=RTOL, atol=ATOL)
+
+            # check grads for the first tensor
+            out = out[0]
+
+            for y in out:
+                y.stop_gradient = False
+                z = y * 123
+                grads = paddle.grad(z, y)
+                self.assertTrue(len(grads), 1)
+                self.assertEqual(grads[0].dtype, y.dtype)
+                self.assertEqual(grads[0].shape, y.shape)
+
+    def test_d(
+        self,
+    ):
+        """Test `dygraph`, and check grads"""
+        paddle.disable_static()
+        x = generate_data([4, 6, 3])["x"]
+        places = PLACES
+        for place in places:
+            out = paddle.tensor_split(
+                input=paddle.to_tensor(x).astype("float32"),
+                dim=1,
+                indices=[2, 4],
+            )
+            out_ref = np.array_split(x, [2, 4], 1)
+
+            for n, p in zip(out_ref, out):
+                np.testing.assert_allclose(n, p.numpy(), rtol=RTOL, atol=ATOL)
+
+            # check grads for the first tensor
+            out = out[0]
+
+            for y in out:
+                y.stop_gradient = False
+                z = y * 123
+                grads = paddle.grad(z, y)
+                self.assertTrue(len(grads), 1)
+                self.assertEqual(grads[0].dtype, y.dtype)
+                self.assertEqual(grads[0].shape, y.shape)
+
+    def test_e(
+        self,
+    ):
+        """Test `dygraph`, and check grads"""
+        paddle.disable_static()
+        x = generate_data([4, 6, 3])["x"]
+        places = PLACES
+        for place in places:
+            out = paddle.tensor_split(
+                indices=[2, 4],
+                dim=1,
+                input=paddle.to_tensor(x).astype("float32"),
+            )
+            out_ref = np.array_split(x, [2, 4], 1)
+
+            for n, p in zip(out_ref, out):
+                np.testing.assert_allclose(n, p.numpy(), rtol=RTOL, atol=ATOL)
+
+            # check grads for the first tensor
+            out = out[0]
+
+            for y in out:
+                y.stop_gradient = False
+                z = y * 123
+                grads = paddle.grad(z, y)
+                self.assertTrue(len(grads), 1)
+                self.assertEqual(grads[0].dtype, y.dtype)
+                self.assertEqual(grads[0].shape, y.shape)
 
 
 if __name__ == '__main__':

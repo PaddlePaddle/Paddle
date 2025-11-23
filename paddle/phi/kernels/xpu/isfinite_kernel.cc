@@ -21,10 +21,16 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IsnanKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
+void IsnanKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto* out_data = ctx.template Alloc<bool>(out);
-  int r = xpu::isnan<XPUType>(ctx.x_context(),
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<bool>(out);
+    return;
+  }
+  auto* out_data = dev_ctx.template Alloc<bool>(out);
+  int r = xpu::isnan<XPUType>(dev_ctx.x_context(),
                               reinterpret_cast<const XPUType*>(x.data<T>()),
                               out_data,
                               x.numel());
@@ -32,12 +38,16 @@ void IsnanKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
 }
 
 template <typename T, typename Context>
-void IsfiniteKernel(const Context& ctx,
+void IsfiniteKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto* out_data = ctx.template Alloc<bool>(out);
-  int r = xpu::isfinite<XPUType>(ctx.x_context(),
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<bool>(out);
+    return;
+  }
+  auto* out_data = dev_ctx.template Alloc<bool>(out);
+  int r = xpu::isfinite<XPUType>(dev_ctx.x_context(),
                                  reinterpret_cast<const XPUType*>(x.data<T>()),
                                  out_data,
                                  x.numel());
@@ -45,10 +55,16 @@ void IsfiniteKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void IsinfKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
+void IsinfKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto* out_data = ctx.template Alloc<bool>(out);
-  int r = xpu::isinf<XPUType>(ctx.x_context(),
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<bool>(out);
+    return;
+  }
+  auto* out_data = dev_ctx.template Alloc<bool>(out);
+  int r = xpu::isinf<XPUType>(dev_ctx.x_context(),
                               reinterpret_cast<const XPUType*>(x.data<T>()),
                               out_data,
                               x.numel());
@@ -62,8 +78,8 @@ PD_REGISTER_KERNEL(isnan,
                    ALL_LAYOUT,
                    phi::IsnanKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
@@ -72,8 +88,8 @@ PD_REGISTER_KERNEL(isfinite,
                    ALL_LAYOUT,
                    phi::IsfiniteKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 PD_REGISTER_KERNEL(isinf,
@@ -81,7 +97,7 @@ PD_REGISTER_KERNEL(isinf,
                    ALL_LAYOUT,
                    phi::IsinfKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }

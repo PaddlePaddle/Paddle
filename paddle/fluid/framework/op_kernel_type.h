@@ -69,7 +69,7 @@ class OpKernelType {
   virtual ~OpKernelType() {}
 
   struct Hash {
-    size_t operator()(const OpKernelType& key) const;
+    PADDLE_API size_t operator()(const OpKernelType& key) const;
   };
 
   size_t hash_key() const { return Hash()(*this); }
@@ -78,7 +78,7 @@ class OpKernelType {
     return hash_key() < o.hash_key();
   }
 
-  bool operator==(const OpKernelType& o) const;
+  PADDLE_API bool operator==(const OpKernelType& o) const;
 
   bool operator!=(const OpKernelType& o) const { return !(*this == o); }
 
@@ -107,7 +107,7 @@ inline bool NeedTransformLayout(const DataLayout& l, const DataLayout& r) {
   bool ret =
       (l != DataLayout::kAnyLayout && r != DataLayout::kAnyLayout && l != r);
 #ifdef PADDLE_WITH_DNNL
-  // Layout transform needed for either non-MKLDNN to OneDNN or vice versa
+  // Layout transform needed for either non-ONEDNN to OneDNN or vice versa
   ret |= (l != DataLayout::ONEDNN && r == DataLayout::ONEDNN);
   ret |= (l == DataLayout::ONEDNN && r != DataLayout::ONEDNN);
 #endif

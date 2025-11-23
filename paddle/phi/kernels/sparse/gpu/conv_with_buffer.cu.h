@@ -181,7 +181,7 @@ template <int BS>
 __global__ void GetOutIndices(const int* flags,
                               const int n,
                               const int* offsets,
-                              const int* out_nnz,
+                              const int out_nnz,
                               int* out) {
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
   __shared__ int block_counts[BS];
@@ -219,7 +219,7 @@ __global__ void GetOutIndices(const int* flags,
   __syncthreads();
   // write to block_outs
   int start = offsets[blockIdx.x];
-  int end = blockIdx.x == gridDim.x - 1 ? out_nnz[0] : offsets[blockIdx.x + 1];
+  int end = blockIdx.x == gridDim.x - 1 ? out_nnz : offsets[blockIdx.x + 1];
   for (int i = threadIdx.x; i < end - start; i += blockDim.x) {
     out[start + i] = block_outs[i];
   }
@@ -227,13 +227,11 @@ __global__ void GetOutIndices(const int* flags,
 
 template <typename IntT>
 __global__ void GroupIndices(const int* out_index_table,
-                             const int* rulebook_len_ptr,
+                             const int n,
                              const int kernel_size,
                              IntT* out_indices,
                              int* out_index_counts,
                              int* out_index_groups) {
-  int n = rulebook_len_ptr[0] / 2;
-  out_indices = out_indices + n;
   CUDA_KERNEL_LOOP_TYPE(i, n, int64_t) {
     IntT index = out_indices[i];
     int real_index = out_index_table[index];
@@ -248,12 +246,11 @@ __global__ void GroupIndices(const int* out_index_table,
 
 template <typename IntT>
 __global__ void GetOutIndexTable(int* indices,
-                                 const int* non_zero_num_ptr,
+                                 const int non_zero_num,
                                  const Dims4D out_dims,
                                  const bool is2D,
                                  int* out_index_table,
                                  IntT* out_indices) {
-  int non_zero_num = non_zero_num_ptr[0];
   CUDA_KERNEL_LOOP_TYPE(i, non_zero_num, int64_t) {
     IntT index = static_cast<IntT>(indices[i]);
     out_index_table[index] = i;
@@ -463,6 +460,18 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
                                      sizeof(int),
                                      gpuMemcpyDeviceToDevice,
                                      dev_ctx.stream());
+  phi::backends::gpu::GpuMemcpyAsync(h_buffer,
+                                     d_buffer.data<int>(),
+                                     (2 * kernel_size + 3) * sizeof(int),
+                                     gpuMemcpyDeviceToHost,
+                                     dev_ctx.stream());
+
+  dev_ctx.Wait();
+  int rulebook_len = h_buffer[2 * kernel_size + 1] / 2;
+  int out_nnz = h_buffer[2 * kernel_size + 2];
+
+  rulebook->Resize({rulebook_rows, static_cast<int>(rulebook_len)});
+  out_index->Resize({static_cast<int>(rulebook_len)});
 
   const int threads = 256;
   const int blocks = (index_flags->numel() + threads - 1) / threads;
@@ -493,57 +502,43 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
       <<<blocks, threads, 0, dev_ctx.stream()>>>(index_flags_ptr,
                                                  index_flags->numel(),
                                                  out_index_table_ptr,
-                                                 unique_key_ptr,
+                                                 out_nnz,
                                                  out_index_ptr);
 
   const int64_t sparse_dim = is2D ? 3 : 4;
   phi::DenseTensor out_indices =
-      phi::Empty<IntT>(dev_ctx, {sparse_dim, static_cast<int>(max_nnz)});
-  phi::DenseTensor out_values = phi::Empty<T>(
-      dev_ctx, {static_cast<int>(max_nnz), kernel_sizes[sparse_dim]});
+      phi::Empty<IntT>(dev_ctx, {sparse_dim, out_nnz});
+
+  phi::DenseTensor out_values =
+      phi::Empty<T>(dev_ctx, {out_nnz, kernel_sizes[sparse_dim]});
+  out->SetMember(out_indices, out_values, out_dims, false);
 
   IntT* out_indices_ptr = out_indices.data<IntT>();
 
-  config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, max_nnz, 1);
+  config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_nnz, 1);
   GetOutIndexTable<IntT>
       <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
           out_index_ptr,
-          unique_key_ptr,
+          out_nnz,
           d_out_dims,
           is2D,
           out_index_table_ptr,
           out_indices_ptr);
 
-  config = phi::backends::gpu::GetGpuLaunchConfig1D(
-      dev_ctx, static_cast<int>(max_nnz), 1);
-  unique_value->ResizeAndAllocate({static_cast<int>(max_nnz * kernel_size)});
+  config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+  unique_value->ResizeAndAllocate({static_cast<int>(out_nnz * kernel_size)});
   int* unique_value_ptr = unique_value->data<int>();
 
   GroupIndices<<<config.block_per_grid,
                  config.thread_per_block,
                  0,
                  dev_ctx.stream()>>>(out_index_table_ptr,
-                                     rulebook_len_tensor.data<int>(),
+                                     rulebook_len,
                                      kernel_size,
-                                     rulebook_ptr,
+                                     rulebook_ptr + rulebook_len,
                                      out_index_ptr,
                                      unique_value_ptr);
 
-  phi::backends::gpu::GpuMemcpyAsync(h_buffer,
-                                     d_buffer.data<int>(),
-                                     (2 * kernel_size + 3) * sizeof(int),
-                                     gpuMemcpyDeviceToHost,
-                                     dev_ctx.stream());
-  dev_ctx.Wait();
-  int rulebook_len = h_buffer[2 * kernel_size + 1] / 2;
-  int out_nnz = h_buffer[2 * kernel_size + 2];
-  rulebook->Resize({rulebook_rows, static_cast<int>(rulebook_len)});
-  out_index->Resize({static_cast<int>(rulebook_len)});
-  out_indices.Resize({sparse_dim, static_cast<int>(out_nnz)});
-  unique_value->Resize(
-      {static_cast<int>(static_cast<int>(out_nnz) * kernel_size)});
-  out_values.Resize({out_nnz, kernel_sizes[sparse_dim]});
-  out->SetMember(out_indices, out_values, out_dims, false);
   return rulebook_len;
 }
 }  // namespace sparse

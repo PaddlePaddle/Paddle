@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void Atan2Kernel(const Context& ctx,
+void Atan2Kernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const DenseTensor& y,
                  DenseTensor* out);

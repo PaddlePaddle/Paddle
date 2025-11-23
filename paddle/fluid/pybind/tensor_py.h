@@ -15,10 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <algorithm>
 #include <memory>
@@ -516,7 +512,7 @@ void SetTensorFromPyArrayT(
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Incompatible place type: Tensor.set() supports "
-          "CPUPlace, CUDAPlace"
+          "CPUPlace, CUDAPlace "
           "and CUDAPinnedPlace, but got %s!",
           place));
     }

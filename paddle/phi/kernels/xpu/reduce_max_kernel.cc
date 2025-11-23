@@ -27,22 +27,26 @@ void MaxKernel(const Context& dev_ctx,
                const IntArray& dims,
                bool keep_dim,
                DenseTensor* out) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   bool reduce_all = recompute_reduce_all(x, dims);
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto f = [](xpu::Context* ctx,
+  auto f = [](xpu::Context* xpu_ctx,
               const T* x,
               T* y,
               const std::vector<int64_t>& xdims,
               const std::vector<int64_t>& reduce_dims) {
 #ifndef PADDLE_WITH_XPU_PLUGIN
-    return xpu::reduce_max<XPUType>(ctx,
+    return xpu::reduce_max<XPUType>(xpu_ctx,
                                     reinterpret_cast<const XPUType*>(x),
                                     reinterpret_cast<XPUType*>(y),
                                     xdims,
                                     reduce_dims);
 #else
     return xpu::plugin::fast_reduce_max<XPUType>(
-        ctx,
+        xpu_ctx,
         reinterpret_cast<const XPUType*>(x),
         reinterpret_cast<XPUType*>(y),
         std::vector<int>(xdims.begin(), xdims.end()),
@@ -64,5 +68,5 @@ PD_REGISTER_KERNEL(max,
                    int,
                    int64_t,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

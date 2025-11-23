@@ -164,7 +164,8 @@ cas_intervals_t CollectVarIntervalsOfExprs(const std::vector<ir::Expr>& exprs,
           lower_bound = ir::Expr(1);
         }
         var_intervals.insert(
-            {var->name, CasInterval(lower_bound, upper_bound)});
+            {var->name,
+             CasInterval(lower_bound, NormalizeUpperBound(upper_bound))});
       }
       return false;
     });
@@ -572,6 +573,9 @@ class BoundReplacer : public ir::IRMutator<> {
 ir::Expr SymbolicExprAnalyzer::LowerBound(const ir::Expr& expr) const {
   BoundReplacer bound_replacer(var_intervals_, true);
   ir::Expr bound = ir::ir_utils::IRCopy(expr);
+  if (bound.is_index()) {
+    bound = bound.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel3);
+  }
   bound_replacer(&bound);
   return optim::ArithSimplify(bound);
 }
@@ -579,7 +583,11 @@ ir::Expr SymbolicExprAnalyzer::LowerBound(const ir::Expr& expr) const {
 ir::Expr SymbolicExprAnalyzer::UpperBound(const ir::Expr& expr) const {
   BoundReplacer bound_replacer(var_intervals_, false);
   ir::Expr bound = ir::ir_utils::IRCopy(expr);
+  if (bound.is_index()) {
+    bound = bound.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel3);
+  }
   bound_replacer(&bound);
+
   return optim::ArithSimplify(bound);
 }
 
@@ -709,7 +717,8 @@ SingleIntervalIntSet::SingleIntervalIntSet(const ir::Expr& min,
                                    ? x->as_var()->upper_bound
                                    : SymbolicExprLimit::positive_inf;
         var_intervals_.insert(
-            {x->as_var()->name, CasInterval(lower_bound, upper_bound)});
+            {x->as_var()->name,
+             CasInterval(lower_bound, NormalizeUpperBound(upper_bound))});
       }
       return false;
     };
@@ -771,10 +780,10 @@ std::optional<bool> SingleIntervalIntSet::ProveSuperSet(
 
 ir::Expr EnhancedSimplifyModExpr(
     ir::Expr e,
-    const absl::flat_hash_map<std::string, CasInterval>& var_intervals) {
+    const paddle::flat_hash_map<std::string, CasInterval>& var_intervals) {
   struct Mutator : public ir::IRMutator<ir::Expr*> {
     explicit Mutator(
-        const absl::flat_hash_map<std::string, CasInterval>& var_intervals)
+        const paddle::flat_hash_map<std::string, CasInterval>& var_intervals)
         : var_intervals_(var_intervals), analyzer_(var_intervals_) {}
 
     void operator()(ir::Expr* expr) { Visit(expr); }
@@ -789,7 +798,7 @@ ir::Expr EnhancedSimplifyModExpr(
     }
 
    private:
-    const absl::flat_hash_map<std::string, CasInterval>& var_intervals_;
+    const paddle::flat_hash_map<std::string, CasInterval>& var_intervals_;
     SymbolicExprAnalyzer analyzer_;
   };
 

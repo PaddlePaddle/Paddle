@@ -28,7 +28,7 @@
 
 namespace cinn {
 namespace ir {
-using attr_t = absl::variant<int, float, bool, std::string>;
+using attr_t = std::variant<int, float, bool, std::string>;
 
 Expr operator<<(Expr a, Expr b) {
   PADDLE_ENFORCE_EQ(a.type().is_int() || a.type().is_uint(),
@@ -377,7 +377,7 @@ static IndexExpr SimplifyAdd(const IndexExpr &lhs, const IndexExpr &rhs) {
 
   // 3 + d0 ===> d0 + 3.
   // d0 + (d1 + d2) ===> (d1 + d2) + d0.
-  if (!optim::ComparePriority(lhs, rhs)) {
+  if (optim::ComparePriority(lhs, rhs) == -1) {
     return rhs + lhs;
   }
 
@@ -525,7 +525,7 @@ static IndexExpr SimplifyMul(const IndexExpr &lhs, const IndexExpr &rhs) {
 
   // 3 * d0 ===> d0 * 3.
   // d0 * (d1 + d2) ===> (d1 + d2) * d0.
-  if (!optim::ComparePriority(lhs, rhs)) {
+  if (optim::ComparePriority(lhs, rhs) == -1) {
     return rhs * lhs;
   }
 

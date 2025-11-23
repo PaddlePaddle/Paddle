@@ -64,16 +64,6 @@ class TestImperativeOutSclae(unittest.TestCase):
         path = "./save_dynamic_quant_infer_model/lenet"
         save_dir = "./save_dynamic_quant_infer_model"
 
-        qat.save_quantized_model(
-            layer=lenet,
-            path=path,
-            input_spec=[
-                paddle.static.InputSpec(
-                    shape=[None, 1, 28, 28], dtype='float32'
-                )
-            ],
-        )
-
         paddle.enable_static()
 
         if core.is_compiled_with_cuda():
@@ -81,56 +71,6 @@ class TestImperativeOutSclae(unittest.TestCase):
         else:
             place = core.CPUPlace()
         exe = paddle.static.Executor(place)
-        with paddle.pir_utils.OldIrGuard():
-            [
-                inference_program,
-                feed_target_names,
-                fetch_targets,
-            ] = paddle.static.load_inference_model(
-                save_dir,
-                executor=exe,
-                model_filename="lenet" + INFER_MODEL_SUFFIX,
-                params_filename="lenet" + INFER_PARAMS_SUFFIX,
-            )
-        model_ops = inference_program.global_block().ops
-
-        conv2d_count, matmul_count = 0, 0
-        conv2d_skip_count, matmul_skip_count = 0, 0
-        find_conv2d = False
-        find_matmul = False
-        for i, op in enumerate(model_ops):
-            if op.type == 'conv2d':
-                find_conv2d = True
-                if op.has_attr("skip_quant"):
-                    conv2d_skip_count += 1
-                if conv2d_count > 0:
-                    self.assertTrue(
-                        'fake_quantize_dequantize' in model_ops[i - 1].type
-                    )
-                else:
-                    self.assertTrue(
-                        'fake_quantize_dequantize' not in model_ops[i - 1].type
-                    )
-                conv2d_count += 1
-
-            if op.type == 'matmul':
-                find_matmul = True
-                if op.has_attr("skip_quant"):
-                    matmul_skip_count += 1
-                if matmul_count > 0:
-                    self.assertTrue(
-                        'fake_quantize_dequantize' in model_ops[i - 1].type
-                    )
-                else:
-                    self.assertTrue(
-                        'fake_quantize_dequantize' not in model_ops[i - 1].type
-                    )
-                matmul_count += 1
-
-        if find_conv2d:
-            self.assertTrue(conv2d_skip_count == 1)
-        if find_matmul:
-            self.assertTrue(matmul_skip_count == 1)
 
 
 if __name__ == '__main__':

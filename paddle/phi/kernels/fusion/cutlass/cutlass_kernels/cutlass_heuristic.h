@@ -60,9 +60,14 @@ static std::vector<CutlassTileConfig> get_candidate_tiles(
   };
   std::vector<CutlassTileConfig> quant_B_configs_sm80{
       CutlassTileConfig::CtaShape16x128x64_WarpShape16x32x64,
+      CutlassTileConfig::CtaShape16x256x64_WarpShape16x64x64,
       CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64,
+      CutlassTileConfig::CtaShape64x64x64_WarpShape32x32x64,
+      CutlassTileConfig::CtaShape64x128x64_WarpShape64x32x64,
       CutlassTileConfig::CtaShape64x128x64_WarpShape64x64x64,
+      CutlassTileConfig::CtaShape128x64x64_WarpShape64x32x64,
       CutlassTileConfig::CtaShape128x128x64_WarpShape64x64x64,
+      CutlassTileConfig::CtaShape128x128x64_WarpShape128x32x64,
       CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64,
   };
   if (is_moe) {
@@ -115,9 +120,17 @@ static std::vector<CutlassGemmConfig> get_candidate_configs(
   if (is_moe) {
     max_stages = 5;
   }
+  // NOTE: (changwenbin)
+  // Support enabling stream_k by setting the environment
+  // variable `export CUTLASS_GEMM_STREAM_K=1`.
+  SplitKStyle env_split_k = SplitKStyle::NO_SPLIT_K;
+  const char* env_stream_k = std::getenv("CUTLASS_GEMM_STREAM_K");
+  if (env_stream_k != nullptr && !is_moe) {
+    env_split_k = SplitKStyle::SPLIT_K_SERIAL;
+  }
   for (const auto& tile_config : tiles) {
     for (int stages = min_stages; stages <= max_stages; ++stages) {
-      CutlassGemmConfig config{tile_config, SplitKStyle::NO_SPLIT_K, 1, stages};
+      CutlassGemmConfig config{tile_config, env_split_k, 1, stages};
       candidate_configs.push_back(config);
     }
   }

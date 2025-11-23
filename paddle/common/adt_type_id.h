@@ -20,7 +20,9 @@
 namespace common {
 
 template <typename T>
-struct AdtTypeId {};
+struct AdtTypeId {
+  using type = T;
+};
 
 template <typename... Ts>
 struct AdtBaseTypeId : public std::variant<AdtTypeId<Ts>...> {

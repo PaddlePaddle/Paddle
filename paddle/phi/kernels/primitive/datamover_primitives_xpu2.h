@@ -347,9 +347,9 @@ __device__ __forceinline__ void WriteData(T _global_ptr_* dst,
  * dst: The register pointer of the thread, the size is NX * NY.
  * src: The data pointer of the current block.
  * size_nx: The maximum offset of the current block is size_nx elements in the
- * lowest dimension. The parameters are only calculated when isboundary = true.
+ * lowest dimension. The parameters are only calculated when IsBoundary = true.
  * size_ny: The maximum offset of the current block is size_ny elements in the
- * first dimension. The parameters are only calculated when isboundary = true.
+ * first dimension. The parameters are only calculated when IsBoundary = true.
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
@@ -638,9 +638,9 @@ __device__ __inline__ void ReadDataBc(T* dst,
  * index_cal: Calculation configuration of Reduce. It is used to calculate the
  * coordinate mapping relationship between output data and input data.
  * size_nx: The current block needs to load size_nx columns of data, this
- * parameter will participate in the calculation when isboundary = true.
+ * parameter will participate in the calculation when IsBoundary = true.
  * size_ny: The current block needs to load size_ny rows of data, this parameter
- * will participate in the calculation when isboundary = true.
+ * will participate in the calculation when IsBoundary = true.
  * will be used when IsBoundary = true.
  * stride_nx: Each read one element stride stride_nx columns.
  * stride_ny: Each read one element stride stride_ny raws.
@@ -654,21 +654,22 @@ template <typename Tx,
           int Rank,
           typename IndexCal,
           typename Functor,
-          bool IsBoundary = false>
+          bool IsBoundary = false,
+          typename IndexType = int>
 __device__ __forceinline__ void ReadDataReduce(
     Ty* dst,
     const Tx _global_ptr_* __restrict__ src,
-    int block_offset,
+    IndexType block_offset,
     const IndexCal& index_cal,
-    int size_nx,
-    int size_ny,
-    int stride_nx,
-    int stride_ny,
+    IndexType size_nx,
+    IndexType size_ny,
+    IndexType stride_nx,
+    IndexType stride_ny,
     Functor func,
     bool reduce_last_dim) {
   __local__ Tx in_temp[1];
-  int thread_offset = 0;
-  int left_idx = 0;
+  IndexType thread_offset = 0;
+  IndexType left_idx = 0;
   if (reduce_last_dim) {
     thread_offset = core_id();
     left_idx = 0;
@@ -679,13 +680,13 @@ __device__ __forceinline__ void ReadDataReduce(
 
   if (NX == 1) {
 #pragma unroll
-    for (int ny = 0; ny < NY; ++ny) {
+    for (IndexType ny = 0; ny < NY; ++ny) {
       if (IsBoundary) {
         if (thread_offset >= size_ny) {
           break;
         }
       }
-      uint32_t index_src = index_cal(thread_offset + block_offset);
+      IndexType index_src = index_cal(thread_offset + block_offset);
       mfence_local();
       GM2LM(src + index_src, in_temp, sizeof(Tx));
       dst[ny] = static_cast<Ty>(func(in_temp[0]));
@@ -694,16 +695,16 @@ __device__ __forceinline__ void ReadDataReduce(
     }
   } else {
 #pragma unroll
-    for (int nx = 0; nx < NX; ++nx) {
+    for (IndexType nx = 0; nx < NX; ++nx) {
 #pragma unroll
-      for (int ny = 0; ny < NY; ++ny) {
+      for (IndexType ny = 0; ny < NY; ++ny) {
         if (IsBoundary) {
           if ((thread_offset >= size_ny) ||
               (left_idx + nx * stride_nx >= size_nx)) {
             break;
           }
         }
-        uint32_t index_src = index_cal(thread_offset + block_offset);
+        IndexType index_src = index_cal(thread_offset + block_offset);
         mfence_local();
         GM2LM(src + index_src, in_temp, sizeof(Tx));
         dst[nx + ny * NX] = static_cast<Ty>(func(in_temp[0]));

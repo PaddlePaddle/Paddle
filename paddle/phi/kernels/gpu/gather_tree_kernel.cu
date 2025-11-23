@@ -63,6 +63,9 @@ void GatherTreeKernel(const Context &dev_ctx,
   const auto *ids_data = ids.data<T>();
   const auto *parents_data = parents.data<T>();
   T *out_data = dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
 
   PADDLE_ENFORCE_NOT_NULL(ids_data,
                           common::errors::InvalidArgument(

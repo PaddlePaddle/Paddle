@@ -284,7 +284,7 @@ void PassInstrumentor::RunAfterAnalysis(const std::string& name,
   for (auto it = impl_->instrumentations.rbegin();
        it != impl_->instrumentations.rend();
        ++it) {
-    (*it)->RunBeforeAnalysis(name, id, op);
+    (*it)->RunAfterAnalysis(name, id, op);
   }
 }
 

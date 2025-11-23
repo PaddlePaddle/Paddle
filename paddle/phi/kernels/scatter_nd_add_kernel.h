@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ScatterNdAddKernel(const Context &ctx,
+void ScatterNdAddKernel(const Context &dev_ctx,
                         const DenseTensor &x,
                         const DenseTensor &index,
                         const DenseTensor &updates,

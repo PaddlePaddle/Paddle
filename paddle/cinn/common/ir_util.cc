@@ -26,6 +26,7 @@
 #include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
 namespace cinn {
 namespace common {
@@ -269,6 +270,16 @@ bool is_zero(Expr v) {
   return false;
 }
 
+Expr NormalizeUpperBound(Expr upper_bound, bool minus_one /* = true */) {
+  if (upper_bound == SymbolicExprLimit::positive_inf) {
+    return upper_bound;
+  }
+  if (minus_one) {
+    return upper_bound - ir::Expr(1);  // [lower, upper) to [lower, upper]
+  }
+  return upper_bound + ir::Expr(1);  // (lower, upper] to [lower, upper)
+}
+
 Expr CastIfNeeded(Expr body, Type type) {
   if (body.type() == type) return body;
   return ir::Cast::Make(type, body);
@@ -311,7 +322,7 @@ Expr or_all(const std::vector<Expr> &conds) {
 void CheckTensorUniqueInExpr(Expr expr) {
   auto tensor_uniq = ir::ir_utils::CollectIRNodes(
       expr, [](const Expr *x) { return x->as_tensor(); });
-  absl::flat_hash_map<std::string, const ir::_Tensor_ *> tensor_names;
+  paddle::flat_hash_map<std::string, const ir::_Tensor_ *> tensor_names;
   for (auto &t : tensor_uniq) {
     auto *tp = t.as_tensor();
     if (!tensor_names.count(tp->name)) {
@@ -506,20 +517,24 @@ void OpDataTypePromote(Expr *expr) {
 
     void Visit(const ir::Let *op, ir::Expr *expr) {
       auto node = expr->As<ir::Let>();
+      // For Symbol of LetOp, we need to insert a cast to convert its type, but
+      // inside LetOp, we should directly convert the Symbol type instead of
+      // inserting a cast.so we set the flag to false before the conversion and
+      // set it to true after the conversion, e.g.
+      // inside LetOp: type of v, v1 are int32.
+      //   int32 v = v1 * 2   ==TypePromote==>  int64 v = v1 * 2ll
+      // outside LetOp: type of v, v2 are int32 and v is defined by LetOp.
+      //   v2 = v * 2         ==TypePromote==>  v2 = (int64)v * 2ll
+      if (node->symbol.is_var()) {
+        node->symbol.as_var()->is_let_symbol = false;
+      }
       auto promote_args =
           std::move(ir::TryElevateInt32ToInt64({node->symbol, node->body}));
       node->symbol = promote_args.at(0);
       node->body = promote_args.at(1);
-      IRMutator::Visit(op, expr);
-    }
-
-    void Visit(const ir::For *op, ir::Expr *expr) {
-      auto node = expr->As<ir::For>();
-      auto promote_args = std::move(ir::TryElevateInt32ToInt64(
-          {node->loop_var, node->min, node->extent}));
-      node->loop_var = promote_args.at(0);
-      node->min = promote_args.at(1);
-      node->extent = promote_args.at(2);
+      if (node->symbol.is_var()) {
+        node->symbol.as_var()->is_let_symbol = true;
+      }
       IRMutator::Visit(op, expr);
     }
   };
@@ -545,5 +560,90 @@ void OpDataTypePromote(ir::LoweredFunc *func) {
   auto node = func->As<ir::_LoweredFunc_>();
   OpDataTypePromote(&node->body);
 }
+struct DynamicSymbolExprBitTracker : public ir::IRVisitor {
+  DynamicSymbolExprBitTracker() = default;
+
+#define TRAVERSE_EXPR_FIELDS(NodeType)         \
+  void Visit(const ir::NodeType *x) override { \
+    if (dyn_symbol_bit == 64) return;          \
+    for (auto expr : x->expr_fields()) {       \
+      IRVisitor::Visit(expr);                  \
+    }                                          \
+  }
+
+  NODETY_BINARY_OP_FOR_EACH(TRAVERSE_EXPR_FIELDS)
+  NODETY_UNARY_OP_FOR_EACH(TRAVERSE_EXPR_FIELDS)
+  NODETY_CONTROL_OP_FOR_INTRINSIC(TRAVERSE_EXPR_FIELDS)
+  TRAVERSE_EXPR_FIELDS(Cast)
+  TRAVERSE_EXPR_FIELDS(For)
+  TRAVERSE_EXPR_FIELDS(PolyFor)
+  TRAVERSE_EXPR_FIELDS(Select)
+  TRAVERSE_EXPR_FIELDS(IfThenElse)
+  TRAVERSE_EXPR_FIELDS(Block)
+  TRAVERSE_EXPR_FIELDS(Call)
+  TRAVERSE_EXPR_FIELDS(Load)
+  TRAVERSE_EXPR_FIELDS(Store)
+  TRAVERSE_EXPR_FIELDS(Alloc)
+  TRAVERSE_EXPR_FIELDS(Free)
+  TRAVERSE_EXPR_FIELDS(_Buffer_)
+  TRAVERSE_EXPR_FIELDS(_Tensor_)
+  TRAVERSE_EXPR_FIELDS(Let)
+  TRAVERSE_EXPR_FIELDS(Reduce)
+  TRAVERSE_EXPR_FIELDS(Ramp)
+  TRAVERSE_EXPR_FIELDS(Broadcast)
+  TRAVERSE_EXPR_FIELDS(FracOp)
+  TRAVERSE_EXPR_FIELDS(Product)
+  TRAVERSE_EXPR_FIELDS(Sum)
+  TRAVERSE_EXPR_FIELDS(PrimitiveNode)
+  TRAVERSE_EXPR_FIELDS(_BufferRange_)
+  TRAVERSE_EXPR_FIELDS(ScheduleBlock)
+  TRAVERSE_EXPR_FIELDS(ScheduleBlockRealize)
+  TRAVERSE_EXPR_FIELDS(_Dim_)
+#undef TRAVERSE_EXPR_FIELDS
+
+  void Visit(const ir::_Var_ *x) override {
+    auto it = search_map->find(x->name);
+    if (it != search_map->cend()) {
+      int num_bits = it->second.bits();
+      if (num_bits == 32 || num_bits == 64) {
+        dyn_symbol_bit = std::max(dyn_symbol_bit, num_bits);
+      }
+    }
+  }
+
+  int operator()(const std::unordered_map<std::string, common::Type> *map_,
+                 const Expr *e) {
+    // no need to continue if the result is already 64
+    if (dyn_symbol_bit == 64) return 64;
+    search_map = map_;
+    IRVisitor::Visit(e);
+    return dyn_symbol_bit;
+  }
+
+  const std::unordered_map<std::string, common::Type> *search_map;
+  int dyn_symbol_bit = 0;
+};
+
+#define VISIT_OP(NodeType)                                             \
+  std::pair<int, bool> UnifiedOperandTypeBits(                         \
+      const std::unordered_map<std::string, common::Type> *search_map, \
+      const ir::NodeType *node) {                                      \
+    if (search_map->empty()) return {0, false};                        \
+    if (!node->a().type().is_int() || !node->b().type().is_int())      \
+      return {0, false};                                               \
+    int node_a_bits = node->a().type().bits();                         \
+    int node_b_bits = node->b().type().bits();                         \
+    if (node_a_bits < 32 || node_b_bits < 32) return {0, false};       \
+    DynamicSymbolExprBitTracker tracker;                               \
+    int b1 = tracker(search_map, &node->a());                          \
+    tracker.dyn_symbol_bit = 0;                                        \
+    int b2 = tracker(search_map, &node->b());                          \
+    return std::make_pair(std::max(b1, b2), b1 > 0 && b2 > 0);         \
+  }
+
+VISIT_OP(Min)
+VISIT_OP(Max)
+#undef VISIT_OP
+
 }  // namespace common
 }  // namespace cinn

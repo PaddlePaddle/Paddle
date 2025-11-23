@@ -823,58 +823,10 @@ int CutlassFpAIntBGemmRunner<T, WeightType>::getWorkspaceSize(const int m,
   return max_grid_m * max_grid_n * split_k_limit * 4;
 }
 
-// =============================== Specialization T == WeightType
-// =======================================
-template <typename WeightType>
-void CutlassFpAIntBGemmRunner<float, WeightType>::gemm_bias_act(
-    const float* A,
-    const WeightType* B,
-    const float* weight_scales,
-    const float* biases,
-    float* C,
-    int m,
-    int n,
-    int k,
-    int group_size,
-    std::string activation_type,
-    char* workspace_ptr,
-    const size_t workspace_bytes,
-    cudaStream_t stream) {
-  throw std::runtime_error(
-      ("Attempting to run mixed gemm bias act when the types are the same is "
-       "an error."));
-}
-
-template <typename WeightType>
-void CutlassFpAIntBGemmRunner<float, WeightType>::gemm(
-    const float* A,
-    const WeightType* B,
-    const float* weight_scales,
-    float* C,
-    int m,
-    int n,
-    int k,
-    int group_size,
-    char* workspace_ptr,
-    const size_t workspace_bytes,
-    cudaStream_t stream) {
-  throw std::runtime_error((
-      "Attempting to run mixed gemm when the types are the same is an error."));
-}
-
-template <typename WeightType>
-int CutlassFpAIntBGemmRunner<float, WeightType>::getWorkspaceSize(const int m,
-                                                                  const int n,
-                                                                  const int k) {
-  return 0;
-}
-
-template class CutlassFpAIntBGemmRunner<float, uint8_t>;
 template class CutlassFpAIntBGemmRunner<half, uint8_t>;
 #ifdef PADDLE_CUDA_BF16
 template class CutlassFpAIntBGemmRunner<__nv_bfloat16, uint8_t>;
 #endif
-template class CutlassFpAIntBGemmRunner<float, cutlass::uint4b_t>;
 template class CutlassFpAIntBGemmRunner<half, cutlass::uint4b_t>;
 #ifdef PADDLE_CUDA_BF16
 template class CutlassFpAIntBGemmRunner<__nv_bfloat16, cutlass::uint4b_t>;

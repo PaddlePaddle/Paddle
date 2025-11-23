@@ -85,9 +85,9 @@ class ReturnAnalysisVisitor(gast.NodeVisitor):
 
     def __init__(self, root_node):
         self.root = root_node
-        assert isinstance(
-            self.root, gast.FunctionDef
-        ), "Input is not gast.FunctionDef node"
+        assert isinstance(self.root, gast.FunctionDef), (
+            "Input is not gast.FunctionDef node"
+        )
 
         # the number of return statements
         self.count_return = 0
@@ -151,9 +151,9 @@ class SingleReturnTransformer(BaseTransformer):
 
     def __init__(self, root):
         self.root = root
-        assert isinstance(
-            self.root, gast.FunctionDef
-        ), "Input is not gast.FunctionDef node"
+        assert isinstance(self.root, gast.FunctionDef), (
+            "Input is not gast.FunctionDef node"
+        )
 
         self.ancestor_nodes = []
 

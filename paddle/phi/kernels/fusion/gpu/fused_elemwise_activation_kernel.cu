@@ -22,7 +22,7 @@ PD_REGISTER_KERNEL(fused_elemwise_activation,
                    phi::FusedElemwiseActivationKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(fused_elemwise_add_activation,
                    GPU,
@@ -30,4 +30,4 @@ PD_REGISTER_KERNEL(fused_elemwise_add_activation,
                    phi::FusedElemwiseAddActivationKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

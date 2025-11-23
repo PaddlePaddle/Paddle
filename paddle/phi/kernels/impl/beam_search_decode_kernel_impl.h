@@ -34,8 +34,11 @@ struct BeamSearchDecodeFunctor {
         score_tensor_(score_tensor) {
     tensor_on_gpu_ = false;
     // First make a copy of GPU data on CPU
-    if (step_ids_origin_[0].place().GetType() == phi::AllocationType::GPU) {
-      if (step_ids_origin_[0].place().GetType() == phi::AllocationType::GPU) {
+    if (step_ids_origin_[0].place().GetType() == phi::AllocationType::GPU ||
+        step_ids_origin_[0].place().GetType() == phi::AllocationType::CUSTOM) {
+      if (step_ids_origin_[0].place().GetType() == phi::AllocationType::GPU ||
+          step_ids_origin_[0].place().GetType() ==
+              phi::AllocationType::CUSTOM) {
         tensor_on_gpu_ = true;
       }
       phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
@@ -55,9 +58,13 @@ struct BeamSearchDecodeFunctor {
         step_ids_.push_back(out);
       }
     }
-    if (step_scores_origin_[0].place().GetType() == phi::AllocationType::GPU) {
+    if (step_scores_origin_[0].place().GetType() == phi::AllocationType::GPU ||
+        step_scores_origin_[0].place().GetType() ==
+            phi::AllocationType::CUSTOM) {
       if (step_scores_origin_[0].place().GetType() ==
-          phi::AllocationType::GPU) {
+              phi::AllocationType::GPU ||
+          step_scores_origin_[0].place().GetType() ==
+              phi::AllocationType::CUSTOM) {
         tensor_on_gpu_ = true;
       }
       phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
@@ -127,7 +134,7 @@ void BeamSearchDecodeOpKernel(const Context& dev_ctx,
       step_num,
       0UL,
       common::errors::InvalidArgument(
-          "beam search steps, which is the"
+          "beam search steps, which is the "
           "size of Input(Ids) TensorArray. beam search steps should "
           "be larger than 0, but received %d. ",
           step_num));
@@ -136,9 +143,9 @@ void BeamSearchDecodeOpKernel(const Context& dev_ctx,
       source_num,
       0UL,
       common::errors::InvalidArgument(
-          "source_num is the sequence number of the"
+          "source_num is the sequence number of the "
           "first decoding step, indicating by Input(Ids)[0].lod[0].size. "
-          "The number of source_num should be larger than"
+          "The number of source_num should be larger than "
           "0, but received %d. ",
           source_num));
 

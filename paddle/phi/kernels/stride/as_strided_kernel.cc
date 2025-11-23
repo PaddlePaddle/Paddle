@@ -19,6 +19,26 @@
 COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
+void ValidateZeroSizeTensorShape(const std::vector<int64_t>& dims,
+                                 const std::vector<int64_t>& strides,
+                                 const DenseTensor& input) {
+  if (input.numel() != 0) {
+    return;
+  }
+  PADDLE_ENFORCE_EQ(dims.size(),
+                    strides.size(),
+                    common::errors::InvalidArgument(
+                        "The size of dims and strides should be equal."));
+  for (size_t i = 0; i < dims.size(); i++) {
+    if (dims[i] == 0) {
+      return;
+    }
+  }
+
+  PADDLE_THROW(common::errors::InvalidArgument(
+      "When input is zero-size tensor, the shape attribute must also be "
+      "zero-size."));
+}
 
 template <typename Context>
 void AsStridedKernel(const Context& dev_ctx,
@@ -36,6 +56,12 @@ void AsStridedKernel(const Context& dev_ctx,
   meta.dims = DDim(dims.data(), static_cast<int>(dims.size()));
   meta.strides = DDim(stride.data(), static_cast<int>(stride.size()));
   meta.offset = offset;
+  ValidateZeroSizeTensorShape(dims, stride, input);
+  PADDLE_ENFORCE_GE(
+      offset,
+      0,
+      common::errors::InvalidArgument(
+          "The offset must be non-negative, but got %d.", offset));
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
   out->ShareInplaceVersionCounterWith(input);

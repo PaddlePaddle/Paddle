@@ -42,10 +42,10 @@ class SelectedRows : public TensorBase,
    *
    */
  public:
-  TEST_API SelectedRows(const std::vector<int64_t>& rows,
-                        const int64_t& height);
+  PADDLE_API SelectedRows(const std::vector<int64_t>& rows,
+                          const int64_t& height);
 
-  TEST_API SelectedRows();
+  PADDLE_API SelectedRows();
 
   const DenseTensor& value() const { return impl_->value(); }
 
@@ -141,7 +141,7 @@ class SelectedRows : public TensorBase,
   DataType dtype() const noexcept override { return impl_->dtype(); }
 
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
-  void set_type(const DataType dtype);
+  PADDLE_API void set_type(const DataType dtype);
 #endif
 
   /// \brief Returns the data layout of the tensor.
@@ -149,7 +149,7 @@ class SelectedRows : public TensorBase,
   DataLayout layout() const noexcept override { return impl_->layout(); }
 
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
-  void set_layout(const DataLayout layout);
+  PADDLE_API void set_layout(const DataLayout layout);
 #endif
 
   /// \brief Returns the data place of the tensor.

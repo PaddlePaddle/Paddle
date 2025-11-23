@@ -301,7 +301,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   bool IsRuntime() const override;
 
-  bool IsRunMKLDNNKernel() const override;
+  bool IsRunONEDNNKernel() const override;
 
   proto::VarType::Type GetInputVarType(const std::string &name) const override {
     return GetVarType(Inputs(name).at(0));
@@ -563,6 +563,14 @@ VariableNameMap OpDesc::Inputs(bool with_attr_var) const {
     res[attr.first] = AttrVarNames(attr.second);
   }
   return res;
+}
+
+std::vector<std::string> OpDesc::InputNames(bool with_attr_var) const {
+  return MapKeys(inputs_);
+}
+
+std::vector<std::string> OpDesc::OutputNames() const {
+  return MapKeys(outputs_);
 }
 
 std::vector<std::string> OpDesc::InputArgumentNames(bool with_attr_var) const {
@@ -1349,7 +1357,7 @@ void CompileTimeInferShapeContext::SetRepeatedDims(
 
 bool CompileTimeInferShapeContext::IsRuntime() const { return false; }
 
-bool CompileTimeInferShapeContext::IsRunMKLDNNKernel() const { return false; }
+bool CompileTimeInferShapeContext::IsRunONEDNNKernel() const { return false; }
 
 proto::VarType::Type CompileTimeInferShapeContext::GetVarType(
     const std::string &name) const {

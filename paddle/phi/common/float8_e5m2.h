@@ -27,7 +27,7 @@
 #include <cuda.h>
 #endif
 
-#if defined(__CUDACC__) && CUDA_VERSION >= 11800
+#if defined(__CUDACC__) && CUDA_VERSION >= 11080
 #define PADDLE_CUDA_FP8
 #include <cuda_fp8.h>
 #endif

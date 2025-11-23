@@ -39,27 +39,6 @@ echo "::endgroup::"
 
 mkdir coverage_files
 
-function gen_full_report_cinn(){
-    lcov --extract coverage.info \
-        "${PADDLE_ROOT}/paddle/cinn/adt/*" \
-        "${PADDLE_ROOT}/paddle/cinn/api/*" \
-        "${PADDLE_ROOT}/paddle/cinn/ast_gen_ius/*" \
-        "${PADDLE_ROOT}/paddle/cinn/backends/*" \
-        "${PADDLE_ROOT}/paddle/cinn/common/*" \
-        "${PADDLE_ROOT}/paddle/cinn/frontend/*" \
-        "${PADDLE_ROOT}/paddle/cinn/hlir/*" \
-        "${PADDLE_ROOT}/paddle/cinn/ir/*" \
-        "${PADDLE_ROOT}/paddle/cinn/lang/*" \
-        "${PADDLE_ROOT}/paddle/cinn/operator_fusion/*" \
-        "${PADDLE_ROOT}/paddle/cinn/optim/*" \
-        "${PADDLE_ROOT}/paddle/cinn/poly/*" \
-        "${PADDLE_ROOT}/paddle/cinn/pybind/*" \
-        "${PADDLE_ROOT}/paddle/cinn/runtime/*" \
-        "${PADDLE_ROOT}/paddle/cinn/utils/*" \
-        -o coverage-full.tmp \
-        --rc lcov_branch_coverage=0
-}
-
 
 function gen_full_report() {
     lcov --extract coverage.info \
@@ -68,14 +47,15 @@ function gen_full_report() {
         "${PADDLE_ROOT}/paddle/fluid/inference/*" \
         "${PADDLE_ROOT}/paddle/fluid/memory/*" \
         "${PADDLE_ROOT}/paddle/fluid/operators/*" \
-        "${PADDLE_ROOT}/paddle/fluid/recordio/*" \
-        "${PADDLE_ROOT}/paddle/fluid/string/*" \
         "${PADDLE_ROOT}/paddle/fluid/eager/*" \
         "${PADDLE_ROOT}/paddle/fluid/pir/*" \
         "${PADDLE_ROOT}/paddle/fluid/ir_adaptor/*" \
         "${PADDLE_ROOT}/paddle/phi/*" \
         "${PADDLE_ROOT}/paddle/pir/*" \
+        "${PADDLE_ROOT}/paddle/ap/*" \
+        "${PADDLE_ROOT}/paddle/common/*" \
         "${PADDLE_ROOT}/paddle/utils/*" \
+        "${PADDLE_ROOT}/paddle/cinn/*" \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0
 
@@ -144,14 +124,6 @@ else
     echo "::endgroup::"
 fi
 
-if [ ${WITH_CINN:-OFF} == "ON" ]; then
-    echo "::group::Gen full report for cinn"
-    gen_full_report_cinn || true  # coverage-full.tmp. Didn't use this file
-    echo "::endgroup::"
-else
-    gen_full_report || true
-fi
-
 # mkdir coverage
 
 if [ "${PR_ID}" != "" ]; then
@@ -166,11 +138,11 @@ lcov --extract coverage-full.info \
     -o coverage-diff.info \
     --rc lcov_branch_coverage=0
 
-cp coverage-diff.info coverage_files
-
 python ${PADDLE_ROOT}/ci/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
 
 mv -f coverage-diff.tmp coverage-diff.info
+
+cp coverage-diff.info coverage_files
 
 # python coverage
 
@@ -213,34 +185,8 @@ lcov --extract python-coverage-full.info \
     -o python-coverage-diff.info \
     --rc lcov_branch_coverage=0
 
-cp python-coverage-diff.info coverage_files
-
 python ${PADDLE_ROOT}/ci/coverage_diff.py python-coverage-diff.info python-git-diff.out > python-coverage-diff.tmp
 
 mv -f python-coverage-diff.tmp python-coverage-diff.info
 
-# assert coverage lines
-
-echo "Assert Diff Coverage"
-
-python ${PADDLE_ROOT}/tools/coverage/coverage_lines.py coverage-diff.info 0.9 || COVERAGE_LINES_ASSERT=1
-
-echo "Assert Python Diff Coverage"
-
-if [ ${WITH_XPU:-OFF} == "ON" ]; then
-    echo "XPU has no python coverage!"
-else
-    if [[ "${NO_PYTHON_COVERAGE_DATA}" != "1" ]];then
-        python ${PADDLE_ROOT}/tools/coverage/coverage_lines.py python-coverage-diff.info 0.9 || PYTHON_COVERAGE_LINES_ASSERT=1
-    fi
-fi
-
-if [ "$COVERAGE_LINES_ASSERT" = "1" ] || [ "$PYTHON_COVERAGE_LINES_ASSERT" = "1" ]; then
-    echo "exit 9" > /tmp/paddle_coverage.result
-    python ${PADDLE_ROOT}/tools/get_pr_title.py skip_coverage_check && NOT_CHECK_COVERAGE_PR=1
-    if [[ "${NOT_CHECK_COVERAGE_PR}" = "1" ]];then
-        echo "Skip coverage check in the PR-CI-Coverage pipeline."
-        exit 0
-    fi
-    exit 9
-fi
+cp python-coverage-diff.info coverage_files

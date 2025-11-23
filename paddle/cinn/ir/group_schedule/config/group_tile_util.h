@@ -13,8 +13,8 @@
 // limitations under the License.
 #pragma once
 
+#include <unordered_set>
 #include "paddle/cinn/ir/ir.h"
-
 namespace cinn {
 namespace hlir::framework::pir {
 struct GroupVectorizeInfo;

@@ -221,14 +221,23 @@ class TestROIAlignOp(OpTest):
 
     def setUp(self):
         self.op_type = "roi_align"
-        self.python_api = lambda x, boxes, boxes_num, pooled_height, pooled_width, spatial_scale, sampling_ratio, aligned: paddle.vision.ops.roi_align(
-            x,
+        self.python_api = (
+            lambda x,
             boxes,
             boxes_num,
-            (pooled_height, pooled_width),
+            pooled_height,
+            pooled_width,
             spatial_scale,
             sampling_ratio,
-            aligned,
+            aligned: paddle.vision.ops.roi_align(
+                x,
+                boxes,
+                boxes_num,
+                (pooled_height, pooled_width),
+                spatial_scale,
+                sampling_ratio,
+                aligned,
+            )
         )
         self.set_data()
 
@@ -281,6 +290,58 @@ class TestROIAlignOpWithAligned(TestROIAlignOp):
         self.aligned = True
 
         self.x = np.random.random(self.x_dim).astype('float64')
+
+
+class TestROIAlignOp_ZeroSize(TestROIAlignOp):
+    def init_test_case(self):
+        self.batch_size = 3
+        self.channels = 3
+        self.height = 0
+        self.width = 6
+
+        # n, c, h, w
+        self.x_dim = (self.batch_size, self.channels, self.height, self.width)
+
+        self.spatial_scale = 1.0 / 2.0
+        self.pooled_height = 2
+        self.pooled_width = 2
+        self.sampling_ratio = -1
+        self.aligned = False
+
+        self.x = np.random.random(self.x_dim).astype('float64')
+
+    def make_rois(self):
+        rois = []
+        self.rois_lod = [[]]
+        for bno in range(self.batch_size):
+            self.rois_lod[0].append(bno + 1)
+            for i in range(bno + 1):
+                x1 = np.random.random_integers(
+                    0, self.width // self.spatial_scale - self.pooled_width
+                )
+                x2 = np.random.random_integers(
+                    x1 + self.pooled_width, self.width // self.spatial_scale
+                )
+                if self.height == 0:
+                    y1 = 0
+                    y2 = 0
+                else:
+                    y1 = np.random.random_integers(
+                        0,
+                        self.height // self.spatial_scale - self.pooled_height,
+                    )
+                    y2 = np.random.random_integers(
+                        y1 + self.pooled_height,
+                        self.height // self.spatial_scale,
+                    )
+
+                roi = [bno, x1, y1, x2, y2]
+                rois.append(roi)
+        self.rois_num = len(rois)
+        self.rois = np.array(rois).astype("float64")
+        self.boxes_num = np.array(
+            [bno + 1 for bno in range(self.batch_size)]
+        ).astype('int32')
 
 
 if __name__ == '__main__':

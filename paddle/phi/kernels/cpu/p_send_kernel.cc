@@ -55,7 +55,7 @@ PD_REGISTER_KERNEL(p_send,
                    uint8_t,
                    int16_t,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(p_send_array,
                    CPU,
@@ -69,4 +69,4 @@ PD_REGISTER_KERNEL(p_send_array,
                    uint8_t,
                    int16_t,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

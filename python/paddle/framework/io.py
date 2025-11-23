@@ -172,7 +172,11 @@ def _build_saved_state_dict(state_dict):
                     raise ValueError(
                         "The saved tensor is not initialized. If you used group sharded, please use save_group_sharded_model."
                     )
-                if value.is_dense() and value.place.is_custom_place():
+                if (
+                    value.is_dense()
+                    and value.place.is_custom_place()
+                    and core.is_compiled_with_custom_device('npu')
+                ):
                     value = paddle._C_ops.npu_identity(value, -1)
                 save_dict[key] = np.array(value.cpu())
             name_table[key] = value.name
@@ -231,9 +235,9 @@ def _load_state_dict_from_save_inference_model(model_path, config):
                 structured_name = extra_var_info[var_name].get(
                     'structured_name', None
                 )
-                assert (
-                    structured_name is not None
-                ), f"Cannot find saved variable ({var_name})'s structured name in saved model."
+                assert structured_name is not None, (
+                    f"Cannot find saved variable ({var_name})'s structured name in saved model."
+                )
                 structured_para_dict[structured_name] = load_param_dict[
                     var_name
                 ]
@@ -365,6 +369,7 @@ def _parse_load_config(configs):
         'params_filename',
         'keep_name_table',
         'return_numpy',
+        'safetensors',
     ]
 
     # input check
@@ -384,12 +389,13 @@ def _parse_load_config(configs):
     inner_config.params_filename = configs.get('params_filename', None)
     inner_config.keep_name_table = configs.get('keep_name_table', None)
     inner_config.return_numpy = configs.get('return_numpy', False)
+    inner_config.safetensors = configs.get('safetensors', False)
 
     return inner_config
 
 
 def _parse_save_config(configs):
-    supported_configs = ['use_binary_format', 'pickle_protocol']
+    supported_configs = ['use_binary_format', 'pickle_protocol', 'safetensors']
 
     # input check
     for key in configs:
@@ -406,6 +412,7 @@ def _parse_save_config(configs):
     inner_config = _SaveLoadConfig()
     inner_config.use_binary_format = configs.get('use_binary_format', False)
     inner_config.pickle_protocol = configs.get('pickle_protocol', None)
+    inner_config.safetensors = configs.get('safetensors', False)
 
     return inner_config
 
@@ -423,7 +430,11 @@ def _pickle_save(obj, f, protocol):
         )
 
     def reduce_varbase(self):
-        if self.is_dense() and self.place.is_custom_place():
+        if (
+            self.is_dense()
+            and self.place.is_custom_place()
+            and core.is_compiled_with_custom_device('npu')
+        ):
             data = np.array(paddle._C_ops.npu_identity(self, -1).cpu())
         else:
             data = np.array(self.cpu())
@@ -472,7 +483,7 @@ def _pickle_save(obj, f, protocol):
         for k in dispatch_table_layer:
             pickle.dispatch_table.pop(k)
 
-    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+    # When value of dict is larger than 4GB, there is a bug on macOS Python 3
     if sys.platform == 'darwin' and sys.version_info.major == 3:
         add_dispatch_table()
         pickle_bytes = pickle.dumps(obj)
@@ -935,7 +946,7 @@ def save(
     if config.use_binary_format:
         _save_binary_var(obj, path)
     else:
-        # `protocol` need to be used, `pickle_protocol` is a deprecated arg.
+        # `protocol` needs to be used, `pickle_protocol` is a deprecated arg.
         if config.pickle_protocol is not None:
             protocol = config.pickle_protocol
             warnings.warn(
@@ -944,9 +955,7 @@ def save(
 
         if isinstance(obj, paddle.static.Program):
             if in_pir_mode():
-                paddle.core.serialize_pir_program(
-                    obj, path, 1, True, False, True
-                )
+                paddle.core.serialize_pir_program(obj, path)
             else:
                 obj.desc.flush()
                 with _open_file_buffer(path, "wb") as f:
@@ -954,12 +963,43 @@ def save(
 
         elif _is_state_dict(obj):
             if in_dygraph_mode():
-                _legacy_save(obj, path, protocol)
+                if config.safetensors:
+                    _safe_save(obj, path)
+                else:
+                    _legacy_save(obj, path, protocol)
             else:
                 _legacy_static_save(obj, path, protocol)
         else:
             with _open_file_buffer(path, 'wb') as f:
                 _pickle_save(obj, f, protocol)
+
+
+def _safe_save(obj, path):
+    if not isinstance(obj, dict):
+        raise NotImplementedError(
+            "Now only supports save state_dict of Layer or Optimizer, "
+            f"expect dict, but received {type(obj)}."
+        )
+
+    if len(obj) == 0:
+        warnings.warn("The input state dict is empty, no need to save.")
+
+    if _is_file_path(path):
+        filename = os.path.basename(path)
+        if filename == "":
+            raise ValueError(
+                "The input path MUST be format of dirname/filename "
+                "[dirname\\filename in Windows system], but received "
+                "filename is empty string."
+            )
+        # 2. save object
+        dirname = os.path.dirname(path)
+        if dirname and not os.path.exists(dirname):
+            os.makedirs(dirname, exist_ok=True)
+
+    from safetensors.paddle import save_file
+
+    save_file(obj, path)
 
 
 def _legacy_save(obj, path, protocol=2):
@@ -1001,7 +1041,7 @@ def _legacy_save(obj, path, protocol=2):
 
     saved_obj = _unpack_saved_dict(saved_obj, protocol)
 
-    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+    # When value of dict is larger than 4GB, there is a bug on macOS Python 3
     if (
         _is_file_path(path)
         and sys.platform == 'darwin'
@@ -1010,8 +1050,10 @@ def _legacy_save(obj, path, protocol=2):
         pickle_bytes = pickle.dumps(saved_obj, protocol=protocol)
         with open(path, 'wb') as f:
             max_bytes = 2**30
-            for i in range(0, len(pickle_bytes), max_bytes):
-                f.write(pickle_bytes[i : i + max_bytes])
+            f.writelines(
+                pickle_bytes[i : i + max_bytes]
+                for i in range(0, len(pickle_bytes), max_bytes)
+            )
     else:
         with _open_file_buffer(path, 'wb') as f:
             pickle.dump(saved_obj, f, protocol=protocol)
@@ -1033,17 +1075,17 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
         ``path`` needs to be a complete file name, such as ``model.pdparams`` or
         ``model.pdopt`` ;
         2. loading from ``paddle.jit.save`` or ``paddle.static.save_inference_model``
-        or ``paddle.Model().save(training=False)`` , ``path`` need to be a file prefix,
+        or ``paddle.Model().save(training=False)`` , ``path`` needs to be a file prefix,
         such as ``model/mnist``, and ``paddle.load`` will get information from
         ``mnist.pdmodel`` and ``mnist.pdiparams`` ;
         3. loading from paddle 1.x APIs ``paddle.base.io.save_inference_model`` or
-        ``paddle.base.io.save_params/save_persistables`` , ``path`` need to be a
+        ``paddle.base.io.save_params/save_persistables`` , ``path`` needs to be a
         directory, such as ``model`` and model is a directory.
 
     Note:
         If you load ``state_dict`` from the saved result of static graph mode API such as
         ``paddle.static.save`` or ``paddle.static.save_inference_model`` ,
-        the structured variable name in dynamic mode will cannot be restored.
+        the structured variable name in dynamic mode cannot be restored.
         You need to set the argument ``use_structured_name=False`` when using
         ``Layer.set_state_dict`` later.
 
@@ -1186,8 +1228,38 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
         config = _parse_load_config(configs)
         exception_type = pickle.UnpicklingError
         try:
+            if config.safetensors:
+                if config.return_numpy:
+                    from safetensors.numpy import load_file
+
+                    load_result = load_file(path)
+                    load_result = _pack_loaded_dict(load_result)
+                else:
+                    import safetensors
+                    from safetensors.paddle import load_file
+
+                    if isinstance(_current_expected_place(), core.CUDAPlace):
+                        if (
+                            safetensors.__version__ > "0.6.2"
+                            and paddle.__version__ >= "3.2.0"
+                        ):
+                            # NOTE(Ruibiao): load_file may cause segmentation fault in some case.
+                            f = safetensors.safe_open(path, framework="paddle")
+                            load_result = {}
+                            for k in f.keys():
+                                load_result[k] = f.get_tensor(k).cuda()
+                        else:
+                            load_result = load_file(
+                                path, device=_current_expected_place()
+                            )
+
+                    else:
+                        load_result = load_file(path, device='cpu')
+
+                return load_result
+
             with _open_file_buffer(path, 'rb') as f:
-                # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+                # When value of dict is larger than 4GB, there is a bug on macOS Python 3
                 if (
                     _is_file_path(path)
                     and sys.platform == 'darwin'
@@ -1255,9 +1327,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
                     try:
                         if in_pir_mode():
                             program = paddle.static.Program()
-                            paddle.core.deserialize_pir_program(
-                                path, program, 1
-                            )
+                            paddle.core.deserialize_pir_program(path, program)
                             return program
                         with _open_file_buffer(path, "rb") as f:
                             program_desc_str = f.read()
@@ -1308,8 +1378,13 @@ def _legacy_load(path, **configs):
 
     if os.path.isfile(path) or _is_memory_buffer(path):
         # we think path is file means this file is created by paddle.save
-        with _open_file_buffer(path, 'rb') as f:
-            load_result = pickle.load(f, encoding='latin1')
+        if config.safetensors:
+            from safetensors.paddle import load_file
+
+            load_result = load_file(path)
+        else:
+            with _open_file_buffer(path, 'rb') as f:
+                load_result = pickle.load(f, encoding='latin1')
         load_result = _pack_loaded_dict(load_result)
         if (
             not config.keep_name_table

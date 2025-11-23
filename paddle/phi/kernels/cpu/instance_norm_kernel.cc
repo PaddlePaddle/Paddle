@@ -38,6 +38,22 @@ void InstanceNormKernel(const Context& dev_ctx,
                         DenseTensor* y,
                         DenseTensor* saved_mean,
                         DenseTensor* saved_variance) {
+  phi::funcs::SetConstant<CPUContext, T> set_constant;
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(y);
+    set_constant(dev_ctx, y, static_cast<T>(0));
+
+    if (saved_mean) {
+      dev_ctx.template Alloc<T>(saved_mean);
+      set_constant(dev_ctx, saved_mean, static_cast<T>(0));
+    }
+    if (saved_variance) {
+      dev_ctx.template Alloc<T>(saved_variance);
+      set_constant(dev_ctx, saved_variance, static_cast<T>(0));
+    }
+    return;
+  }
+
   const auto& x_dims = x.dims();
   T epsilon = static_cast<T>(epsilon_f);
   const int N = static_cast<int>(x_dims[0]);
@@ -63,7 +79,6 @@ void InstanceNormKernel(const Context& dev_ctx,
   Eigen::IndexList<Eigen::type2index<1>> rdims;
 #endif
 
-  phi::funcs::SetConstant<CPUContext, T> set_constant;
   DenseTensor saved_mean_tmp, saved_variance_tmp;
   if (saved_mean) {
     dev_ctx.template Alloc<T>(saved_mean);

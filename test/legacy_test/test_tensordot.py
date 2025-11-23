@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_device_place, get_places, is_custom_device
 
 import paddle
-from paddle.base import core
 
 np.random.seed(2021)
 
@@ -77,15 +76,7 @@ class TestTensordotAPI(unittest.TestCase):
         self.set_test_axes()
 
     def set_place(self):
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(core.CUDAPlace(0))
+        self.places = get_places()
 
     def set_dtype(self):
         self.dtype = np.float32
@@ -235,9 +226,9 @@ class TestTensordotAPI(unittest.TestCase):
 
     def test_fp16_with_gpu(self):
         paddle.enable_static()
-        if paddle.base.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
             for axes in self.all_axes:
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 with paddle.static.program_guard(
                     paddle.static.Program(), paddle.static.Program()
                 ):

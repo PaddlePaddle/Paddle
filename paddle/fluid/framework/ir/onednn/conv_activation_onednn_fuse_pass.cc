@@ -21,7 +21,7 @@ namespace paddle::framework::ir {
 
 using string::PrettyLogDetail;
 
-void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
+void ConvActivationOnednnFusePass::ApplyImpl(Graph* graph) const {
   auto act_types = GetSupportedActivations();
   act_types.erase(std::remove(act_types.begin(), act_types.end(), "sqrt"),
                   act_types.end());
@@ -35,7 +35,7 @@ void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
   }
 }
 
-void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
+void ConvActivationOnednnFusePass::FuseConvAct(Graph* graph,
                                                const std::string& conv_type,
                                                std::string& act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -86,7 +86,7 @@ void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
   }
 }
 
-void ConvActivationMkldnnFusePass::FuseConvConcatAct(
+void ConvActivationOnednnFusePass::FuseConvConcatAct(
     Graph* graph, std::string& act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
@@ -122,7 +122,8 @@ void ConvActivationMkldnnFusePass::FuseConvConcatAct(
       }
 
       bool is_not_conv_onednn =
-          !(prev_op_nodes[0]->Op()->GetAttrIfExists<bool>("use_mkldnn"));
+          !(prev_op_nodes[0]->Op()->GetAttrIfExists<bool>("use_mkldnn") ||
+            prev_op_nodes[0]->Op()->GetAttrIfExists<bool>("use_onednn"));
       if ((prev_op_nodes[0]->Op()->Type() != "conv2d" &&
            prev_op_nodes[0]->Op()->Type() != "fused_conv2d") ||
           is_not_conv_onednn) {
@@ -157,7 +158,7 @@ void ConvActivationMkldnnFusePass::FuseConvConcatAct(
   }
 }
 
-ConvActivationMkldnnFusePass::ConvActivationMkldnnFusePass() {
+ConvActivationOnednnFusePass::ConvActivationOnednnFusePass() {
   AddOpCompat(OpCompat("conv2d"))
       .AddInput("Input")
       .IsTensor()
@@ -374,7 +375,7 @@ ConvActivationMkldnnFusePass::ConvActivationMkldnnFusePass() {
 }  // namespace paddle::framework::ir
 
 REGISTER_PASS(conv_activation_onednn_fuse_pass,
-              paddle::framework::ir::ConvActivationMkldnnFusePass);
+              paddle::framework::ir::ConvActivationOnednnFusePass);
 
 REGISTER_PASS_CAPABILITY(conv_activation_onednn_fuse_pass)
     .AddCombination(

@@ -163,9 +163,17 @@ void RnnGradKernel(const Context& dev_ctx,
   int state_offset = pre_state[0]->dims()[1] * pre_state[0]->dims()[2];
 
   bool has_seq_length = sequence_length.is_initialized();
-  std::vector<int> seq_len_tensor(batch_size, seq_len);
+  std::vector<int64_t> seq_len_tensor(batch_size, seq_len);
   if (has_seq_length) {
-    seq_len_tensor = phi::GetVectorFromTensor<int>(sequence_length.get_ptr());
+    if (sequence_length->dtype() == phi::DataType::INT32) {
+      std::vector<int> tensor_int32 =
+          phi::GetVectorFromTensor<int>(sequence_length.get_ptr());
+      seq_len_tensor =
+          std::vector<int64_t>(tensor_int32.begin(), tensor_int32.end());
+    } else {  // phi::DataType::INT64
+      seq_len_tensor =
+          phi::GetVectorFromTensor<int64_t>(sequence_length.get_ptr());
+    }
   }
 
   for (int i = num_layers - 1; i >= 0; --i) {
@@ -273,6 +281,7 @@ void RnnGradKernel(const Context& dev_ctx,
                                           hidden_size,
                                           seq_len,
                                           seq_len_tensor,
+                                          1,
                                           nullptr,
                                           nullptr,
                                           nullptr,
@@ -280,7 +289,9 @@ void RnnGradKernel(const Context& dev_ctx,
                                           nullptr,
                                           nullptr,
                                           i_f_g_o,
-                                          c);
+                                          c,
+                                          xpu::Activation_t::TANH,
+                                          xpu::Activation_t::SIGMOID);
 
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "bilstm_grad");
     } else {

@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, get_places, is_custom_device
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -66,6 +65,12 @@ class TestMatrixRankAtolRtolOP(OpTest):
         self.attrs = {'hermitian': self.hermitian}
         self.outputs = {'out': self.out}
 
+    def _get_places(self):
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
+        return places
+
     def test_check_output(self):
         self.check_output(check_pir=True)
 
@@ -79,15 +84,25 @@ class TestMatrixRankAtolRtolOP(OpTest):
         self.out = np_matrix_rank_atol_rtol(
             self.x, self.atol, self.rtol, self.hermitian
         )
+        target_dtype = (
+            np.float32
+            if self.x.dtype == np.complex64
+            else (np.float64 if self.x.dtype == np.complex128 else self.x.dtype)
+        )
         if self.atol is None:
-            self.atol = np.full([], 0.0, self.x.dtype)
+            self.atol = np.full([], 0.0, target_dtype)
         if isinstance(self.atol, (float, int)):
-            self.atol = np.full([], self.atol, self.x.dtype)
+            self.atol = np.full([], self.atol, target_dtype)
+        if self.atol.dtype != target_dtype:
+            self.atol = self.atol.astype(target_dtype)
 
         if self.rtol is None:
-            self.rtol = np.full([], 0.0, self.x.dtype)
+            self.rtol = np.full([], 0.0, target_dtype)
         if isinstance(self.rtol, (float, int)):
-            self.rtol = np.full([], self.rtol, self.x.dtype)
+            self.rtol = np.full([], self.rtol, target_dtype)
+        if self.rtol.dtype != target_dtype:
+            self.rtol = self.rtol.astype(target_dtype)
+
         self.atol, self.rtol = np.broadcast_arrays(self.atol, self.rtol)
 
 
@@ -147,11 +162,109 @@ class TestMatrixRankAtolRtolOP7(TestMatrixRankAtolRtolOP):
         self.hermitian = True
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestMatrixRankAtolRtolComplexOP1(TestMatrixRankAtolRtolOP):
+    def init_data(self):
+        x_real = np.eye(3, dtype=np.float32)
+        x_imag = np.eye(3, dtype=np.float32)
+        self.x = x_real + 1j * x_imag
+        self.atol = None
+        self.rtol = 0.05
+        self.hermitian = True
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestMatrixRankAtolRtolComplexOP2(TestMatrixRankAtolRtolOP):
+    def init_data(self):
+        x_real = np.random.rand(3, 4, 5, 6).astype(np.float32)
+        x_imag = np.random.rand(3, 4, 5, 6).astype(np.float32)
+        self.x = x_real + 1j * x_imag
+        self.atol = np.random.random([3, 4]).astype(x_real.dtype)
+        self.rtol = None
+        self.hermitian = False
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestMatrixRankAtolRtolComplexOP3(TestMatrixRankAtolRtolOP):
+    def init_data(self):
+        x_real = np.random.rand(3, 4, 5, 6).astype(np.float32)
+        x_imag = np.random.rand(3, 4, 5, 6).astype(np.float32)
+        self.x = x_real + 1j * x_imag
+        self.atol = None
+        self.rtol = np.random.random([3, 4]).astype(x_real.dtype)
+        self.hermitian = False
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestMatrixRankAtolRtolComplexOP4(TestMatrixRankAtolRtolOP):
+    def init_data(self):
+        x_real = np.random.rand(1, 10).astype(np.float32)
+        x_imag = np.random.rand(1, 10).astype(np.float32)
+        self.x = x_real + 1j * x_imag
+        self.atol = 0.2
+        self.rtol = 1.1
+        self.hermitian = False
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestMatrixRankAtolRtolComplexOP5(TestMatrixRankAtolRtolOP):
+    def init_data(self):
+        x_real = np.random.rand(5, 1).astype(np.float64)
+        x_imag = np.random.rand(5, 1).astype(np.float64)
+        self.x = x_real + 1j * x_imag
+        self.atol = np.random.random([1, 4]).astype(x_real.dtype)
+        self.rtol = np.random.random([1, 4]).astype(x_real.dtype)
+        self.hermitian = False
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestMatrixRankAtolRtolComplexOP6(TestMatrixRankAtolRtolOP):
+    def init_data(self):
+        x_real = np.eye(200, dtype=np.float64)
+        x_imag = np.eye(200, dtype=np.float64)
+        self.x = x_real + 1j * x_imag
+        self.atol = np.random.random([200, 200]).astype(x_real.dtype)
+        self.rtol = 0.8
+        self.hermitian = False
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestMatrixRankAtolRtolComplexOP7(TestMatrixRankAtolRtolOP):
+    def init_data(self):
+        x_real = np.eye(200, dtype=np.float64)
+        x_imag = np.eye(200, dtype=np.float64)
+        self.x = x_real + 1j * x_imag
+        self.atol = np.random.random([200, 1]).astype(x_real.dtype)
+        self.rtol = np.random.random([200, 200]).astype(x_real.dtype)
+        self.hermitian = False
+
+
 class TestMatrixRankAtolRtolAPI(unittest.TestCase):
     def test_dygraph(self):
         places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for place in places:
             paddle.disable_static(place)
 
@@ -277,8 +390,8 @@ class TestMatrixRankAtolRtolAPI(unittest.TestCase):
     def test_static(self):
         paddle.enable_static()
         places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for place in places:
             # atol: float, rtol: None
             with static.program_guard(static.Program(), static.Program()):
@@ -477,61 +590,47 @@ class TestMatrixRankError(unittest.TestCase):
 
 
 class TestMatrixRankAtolRtolZeroSizeTensor(unittest.TestCase):
-
     def _get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        return places
+        return get_places()
 
     def _test_matrix_rank_static(self, place, atol, rtol):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x_valid = paddle.static.data(
-                    name='x_valid', shape=[2, 0, 6, 6], dtype='float32'
-                )
+            ),
+        ):
+            x_valid = paddle.static.data(
+                name='x_valid', shape=[2, 1, 6, 0], dtype='float32'
+            )
 
-                y_valid = paddle.linalg.matrix_rank(
-                    x_valid, atol=atol, rtol=rtol
-                )
+            y_valid = paddle.linalg.matrix_rank(x_valid, atol=atol, rtol=rtol)
 
-                exe = paddle.static.Executor(place)
-                res_valid = exe.run(
-                    feed={'x_valid': np.zeros((2, 0, 6, 6), dtype='float32')},
-                    fetch_list=[y_valid],
-                )
-                self.assertEqual(res_valid[0].shape, tuple(x_valid.shape[:-2]))
+            exe = paddle.static.Executor(place)
+            res_valid = exe.run(
+                feed={'x_valid': np.zeros((2, 1, 6, 0), dtype='float32')},
+                fetch_list=[y_valid],
+            )
+            self.assertEqual(res_valid[0].shape, tuple(x_valid.shape[:-2]))
 
     def _test_matrix_rank_dynamic(self, atol, rtol):
         with dygraph_guard():
             x_valid = paddle.full((2, 0, 6, 6), 1.0, dtype='float32')
-            x_invalid1 = paddle.full((0, 0), 1.0, dtype='float32')
-            x_invalid2 = paddle.full((2, 3, 0, 0), 1.0, dtype='float32')
-            self.assertRaises(
-                ValueError,
-                paddle.linalg.matrix_rank,
-                x_invalid1,
-                atol=atol,
-                rtol=rtol,
-            )
-            self.assertRaises(
-                ValueError,
-                paddle.linalg.matrix_rank,
-                x_invalid2,
-                atol=atol,
-                rtol=rtol,
-            )
+            x_valid1 = paddle.full((0, 0), 1.0, dtype='float32')
+            x_valid2 = paddle.full((2, 3, 0, 0), 1.0, dtype='float32')
 
             y_valid = paddle.linalg.matrix_rank(x_valid, atol=atol, rtol=rtol)
+            y_valid1 = paddle.linalg.matrix_rank(x_valid1, atol=atol, rtol=rtol)
+            y_valid2 = paddle.linalg.matrix_rank(x_valid2, atol=atol, rtol=rtol)
+
             self.assertEqual(y_valid.shape, x_valid.shape[:-2])
+            self.assertEqual(y_valid1.shape, x_valid1.shape[:-2])
+            self.assertEqual(y_valid2.shape, x_valid2.shape[:-2])
+
+            y_valid2_real = paddle.to_tensor(
+                np.zeros(x_valid2.shape[:-2]).astype(np.int64)
+            )
+            np.testing.assert_allclose(y_valid2, y_valid2_real, rtol=1e-05)
 
     def test_matrix_rank_tensor(self):
         atol = 0.2

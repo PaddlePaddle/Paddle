@@ -159,12 +159,36 @@ std::vector<ir::Var> GetAllForIters(const ir::Expr& expr);
 
 }  // namespace trivial_fusion_detail
 
+/*
+example:
+for i in range(1024):
+  for j in range(1024):
+    A[i, j] = B[i, 0]
+
+for i in range(1024):
+  for j in range(1024)
+    if j == 0:
+      C[i, 0] = A[i, j]
+In this example, A tensor is continuous Tensor,
+  B and C tensor are broadcast situation and are continuous.
+
+if A, B and C tensor are arguments in group,
+vetorize_args will contain A, B and C tensor names and tensor expr.
+eg : vetorize_args["A"] = A // A is tensor Expr
+
+args_broadcast_axis_info will contain B, C broadcast tensor name and broadcast
+axis info. eg : args_broadcast_axis_info["B"] = {{false, true}}
+*/
 struct GroupVectorizeInfo {
   bool meet_vectorization_condition{false};
   bool has_if_else_op{false};
   bool has_select_op{false};
-  int continuous_arg_nums{0};
-  int group_arg_nums{0};
+  // The collected group arguments can be vectorized.
+  std::unordered_map<std::string, ir::Expr> vetorize_args;
+  // Collect the broadcasted group arguments and its broadcasting axis
+  // information.
+  std::unordered_map<std::string, std::vector<std::vector<bool>>>
+      args_broadcast_axis_info;
 };
 
 struct FusionGroupInfo {
@@ -185,10 +209,7 @@ struct FusionGroupInfo {
        << "\nreduce_var_name: " << cinn::utils::Join(reduce_var_name, " ")
        << "\ncan_apply_grid_reduce: " << can_apply_grid_reduce
        << "\nmeet_vectorization_condition: "
-       << vectorize_info.meet_vectorization_condition
-       << "\nhas_select_op: " << vectorize_info.has_select_op
-       << "\ncontinuous_arg_nums: " << vectorize_info.continuous_arg_nums
-       << "\ngroup_arg_nums: " << vectorize_info.group_arg_nums;
+       << vectorize_info.meet_vectorization_condition;
     return ss.str();
   }
 };

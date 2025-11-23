@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from test_cuda_graph_static_mode import build_program, can_use_cuda_graph
 
 import paddle
@@ -23,7 +23,8 @@ from paddle.device.cuda.graphs import CUDAGraph
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or float(paddle.version.cuda()) < 11.0,
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or float(paddle.version.cuda()) < 11.0,
     "only support cuda >= 11.0",
 )
 class TestCUDAGraphInFirstBatch(unittest.TestCase):
@@ -49,7 +50,7 @@ class TestCUDAGraphInFirstBatch(unittest.TestCase):
 
             image, label, loss, lr = build_program(main, startup, 1, 10)
 
-            place = paddle.CUDAPlace(0)
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             scope = paddle.static.Scope()
             with paddle.static.scope_guard(scope):

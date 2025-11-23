@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
+from op_test import get_device_place, is_custom_device
 from test_eager_deletion_padding_rnn import PaddingRNNTestBase, RNNConfig
 
 import paddle
@@ -26,8 +26,8 @@ class FusionGroupPaddingRNNTest(PaddingRNNTestBase):
         self.build_strategy.enable_auto_fusion = True
 
         # Use CUDA executor
-        if core.is_compiled_with_cuda():
-            self.exe = base.Executor(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.exe = base.Executor(get_device_place())
 
     def test_train_enable_fusion_group(self):
         rnn_model = "static"

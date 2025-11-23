@@ -34,8 +34,8 @@ void ClipByNormKernel(const Context& dev_ctx,
                               "Please check if it is created correctly."));
 
   const auto& x_dims = input->dims();
-  std::vector<int> xshape(x_dims.size());
-  std::vector<int> rdims(x_dims.size());
+  std::vector<int64_t> xshape(x_dims.size());
+  std::vector<int64_t> rdims(x_dims.size());
   for (int i = 0; i < x_dims.size(); i++) {
     xshape[i] = x_dims[i];
     rdims[i] = i;

@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/einsum_impl.h"
+#include "paddle/phi/kernels/impl/einsum_kernel_impl.h"
 
 PD_REGISTER_KERNEL(einsum,
                    CPU,
@@ -24,8 +24,8 @@ PD_REGISTER_KERNEL(einsum,
                    phi::EinsumKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(einsum_infer,
                    CPU,
@@ -33,5 +33,5 @@ PD_REGISTER_KERNEL(einsum_infer,
                    phi::EinsumInferKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

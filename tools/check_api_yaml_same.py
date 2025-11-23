@@ -233,7 +233,7 @@ if len(api_add) == 0 and len(api_delete) == 0:
         # if op args in yaml is modified and this args is in API,
         # this PR need to be reviewed.
         if each_diff.startswith('-  args'):
-            yaml_op_args_str = each_diff.strip('-  args : ')
+            yaml_op_args_str = each_diff.removeprefix('-  args : ')
             yaml_op_args = get_yaml_op_args(yaml_op_args_str)
             for api in pr_apis:
                 if get_api_args(api) == yaml_op_args:

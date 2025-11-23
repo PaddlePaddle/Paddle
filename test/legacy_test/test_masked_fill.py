@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16
+from op_test import (
+    convert_float_to_uint16,
+    get_device,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -72,11 +77,7 @@ class TestMaskedFillAPI(unittest.TestCase):
             )
             out = paddle.masked_fill(x, mask, value)
 
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
+            place = get_device_place()
             exe = base.Executor(place)
             res = exe.run(
                 base.default_main_program(),
@@ -133,18 +134,11 @@ class TestMaskedFillAPI3(TestMaskedFillAPI):
 class TestMaskedFillGrad(unittest.TestCase):
     def setUp(self):
         self.typelist = ['float32', 'float64', 'int32', 'int64']
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if base.core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
         self.dtype = "float32"
 
     def test_backward(self):
+        paddle.disable_static()
         expected_np = np.array(
             [[2, 1, 1], [2, 1, 1], [2, 1, 1], [2, 1, 1]]
         ).astype('float32')
@@ -157,7 +151,7 @@ class TestMaskedFillGrad(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in self.typelist:
                 v = paddle.to_tensor(np.array(1).astype(self.dtype))
                 x = paddle.ones((4, 3), dtype=self.dtype)
@@ -167,6 +161,7 @@ class TestMaskedFillGrad(unittest.TestCase):
                 y = x * 2
                 y.retain_grads()
                 ny = y.masked_fill(mask=mask, value=v)
+                ny.retain_grads()  # if ny grad is none, v_grad should be 0
                 loss = ny.sum()
                 loss.backward()
 
@@ -184,7 +179,8 @@ class TestMaskedFillGrad(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedFillFP16API1(TestMaskedFillAPI):
     def init(self):
@@ -195,7 +191,8 @@ class TestMaskedFillFP16API1(TestMaskedFillAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedFillFP16API2(TestMaskedFillAPI):
     def init(self):
@@ -206,7 +203,8 @@ class TestMaskedFillFP16API2(TestMaskedFillAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedFillFP16API3(TestMaskedFillAPI):
     def init(self):
@@ -256,8 +254,36 @@ class TestMaskedFillAPIBroadcast5(TestMaskedFillAPI):
         self.scalar_value = True
 
 
+class TestMaskedFillAPIBroadcast6(TestMaskedFillAPI):
+    def init(self):
+        self.x_shape = (1, 1)
+        self.mask_shape = (40, 40)
+        self.dtype = "float32"
+        self.scalar_value = True
+
+
+class TestMaskedFillAPIBroadcast7(TestMaskedFillAPI):
+    def init(self):
+        self.x_shape = (15,)
+        self.mask_shape = (40, 1)
+        self.dtype = "float32"
+        self.scalar_value = True
+
+
+class TestMaskedFillAPIBroadcast8(TestMaskedFillAPI):
+    def init(self):
+        self.x_shape = (3, 1, 1)
+        self.mask_shape = (
+            120,
+            40,
+        )
+        self.dtype = "float32"
+        self.scalar_value = True
+
+
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedFillFP16APIBroadcast(TestMaskedFillAPI):
     def init(self):
@@ -268,7 +294,8 @@ class TestMaskedFillFP16APIBroadcast(TestMaskedFillAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedFillFP16APIBroadcast2(TestMaskedFillAPI):
     def init(self):
@@ -279,7 +306,8 @@ class TestMaskedFillFP16APIBroadcast2(TestMaskedFillAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedFillFP16APIBroadcast3(TestMaskedFillAPI):
     def init(self):
@@ -290,8 +318,8 @@ class TestMaskedFillFP16APIBroadcast3(TestMaskedFillAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestMaskedFillBF16(TestMaskedFillAPI):
@@ -318,8 +346,8 @@ class TestMaskedFillBF16(TestMaskedFillAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestMaskedFillBF16APIBroadcast2(TestMaskedFillBF16):
@@ -327,6 +355,50 @@ class TestMaskedFillBF16APIBroadcast2(TestMaskedFillBF16):
         self.x_shape = (300, 1)
         self.mask_shape = (300, 3)
         self.dtype = "uint16"
+        self.scalar_value = False
+
+
+class TestMaskedFillAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.init()
+
+        self.x_np = np.random.random(self.x_shape).astype(self.dtype)
+        self.mask_np = np.array(
+            np.random.randint(2, size=self.mask_shape), dtype="bool"
+        )
+
+        self.value_np = np.random.randn(1).astype(self.dtype)
+        self.out_np = np_masked_fill(self.x_np, self.mask_np, self.value_np)
+
+    def init(self):
+        self.x_shape = (0, 3)
+        self.mask_shape = self.x_shape
+        self.dtype = "float32"
+        self.scalar_value = False
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_np, dtype=self.dtype)
+        x.stop_gradient = False
+        mask = paddle.to_tensor(self.mask_np).astype('bool')
+        if self.scalar_value:
+            value = self.value_np[0]
+        else:
+            value = paddle.to_tensor(self.value_np, dtype=self.dtype)
+        result = paddle.masked_fill(x, mask, value)
+        np.testing.assert_allclose(self.out_np, result.numpy(), rtol=1e-05)
+
+        paddle.sum(result).backward()
+        np.testing.assert_allclose(x.grad.shape, x.shape)
+        np.testing.assert_allclose(x.grad.numpy(), np.zeros(x.shape))
+
+
+class TestMaskedFillAPI_ZeroSize2(TestMaskedFillAPI_ZeroSize):
+    # x_grad shape [2, 3], filled with 0.
+    def init(self):
+        self.x_shape = (1, 3)
+        self.mask_shape = (0, 3)
+        self.dtype = "float32"
         self.scalar_value = False
 
 

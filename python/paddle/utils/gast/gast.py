@@ -1221,10 +1221,7 @@ _nodes = (
 for name, descr in _nodes:
     _make_node(name, *descr)
 
-if _sys.version_info.major == 2:
-    from .ast2 import ast_to_gast, gast_to_ast
-if _sys.version_info.major == 3:
-    from .ast3 import ast_to_gast, gast_to_ast
+from .ast3 import ast_to_gast, gast_to_ast
 
 
 def parse(*args, **kwargs):

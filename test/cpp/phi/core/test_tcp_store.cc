@@ -25,7 +25,9 @@ namespace distributed {
 
 TEST(MasterDaemon, init) {
   int socket = tcputils::tcp_listen("", std::to_string(0), AF_INET);
-  auto d = detail::MasterDaemon::start(socket, 1, 100);
+  std::unique_ptr<detail::MasterDaemon> d =
+      detail::MasterDaemon::createDaemon(socket, 1, 100);
+  d->start();
   printf("started to sleep 2s\n");
 #ifdef _WIN32
   Sleep(2 * 1000);

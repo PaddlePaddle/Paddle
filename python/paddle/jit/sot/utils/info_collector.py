@@ -131,7 +131,6 @@ class InfoBase(ABC):
 
     @classmethod
     def serialize(cls, obj: dict[str:Any]) -> str:
-
         json_data = json.dumps(obj)
         b64_bytes = base64.b64encode(json_data.encode(ENCODING))
 
@@ -334,7 +333,6 @@ class BreakGraphReasonInfo(InfoBase):
 
     @classmethod
     def summary(cls, history: list[Self]) -> str:
-
         reason_dict, reason_list = cls.classify(history)
 
         return "\n".join(
@@ -346,7 +344,6 @@ class BreakGraphReasonInfo(InfoBase):
 
     @classmethod
     def json_report(cls, history: list[Self]) -> str:
-
         reason_dict, sorted_reasons = cls.classify(history)
         reason_dict["count"] = {k: len(v) for k, v in sorted_reasons}
         serialized = cls.serialize({cls.SHORT_NAME: reason_dict})
@@ -364,7 +361,6 @@ class BreakGraphReasonInfo(InfoBase):
         obj.pop("count")
 
         for classname in obj:
-
             ReasonClass = getattr(exceptions, classname, None)
             for reason in obj[classname]:
                 history.append(cls(ReasonClass(reason_str=reason)))
@@ -391,7 +387,9 @@ class SubGraphInfo(InfoBase):
         self.sir_name = sir_name
 
     def __str__(self):
-        return f"[SIR Name]: {self.sir_name}   [OpNum]: {self.op_num}\n{self.graph}"
+        return (
+            f"[SIR Name] {self.sir_name}   [OpNum] {self.op_num}\n{self.graph}"
+        )
 
     @classmethod
     def summary(cls, history: list[Self]) -> str:
@@ -406,12 +404,12 @@ class SubGraphInfo(InfoBase):
         if need_details:
             details = "\n".join(
                 [
-                    f"[SubGraphIdx]: {idx}   {info}"
+                    f"[SubGraphIdx] {idx}   {info}"
                     for idx, info in enumerate(map(str, history))
                 ]
             )
 
-        summary = f"[Number of subgraph]: {num_of_subgraph} [Sum of opnum]: {sum_of_op_num}"
+        summary = f"[Number of subgraph] {num_of_subgraph} [Sum of opnum] {sum_of_op_num}"
 
         return f"{summary}\n{details}"
 
@@ -444,7 +442,6 @@ class SubGraphInfo(InfoBase):
         obj = cls.deserialize(serialized)[cls.SHORT_NAME]
 
         for entry in obj:
-
             history.append(
                 SubGraphInfo(
                     graph=entry["Graph"],
@@ -456,7 +453,6 @@ class SubGraphInfo(InfoBase):
         return history
 
     def __eq__(self, other):
-
         need_graph_equal = "details" in ENV_SOT_COLLECT_INFO.get().get(
             self.SHORT_NAME, []
         )

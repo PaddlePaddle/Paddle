@@ -88,11 +88,10 @@ struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
   }
 };
 
-template struct DequantizeFunctor<phi::CPUContext, phi::dtype::float16>;
+template struct DequantizeFunctor<phi::CPUContext, phi::float16>;
 template struct DequantizeFunctor<phi::CPUContext, float>;
 template struct DequantizeFunctor<phi::CPUContext, double>;
-template struct ChannelDequantizeFunctorV2<phi::CPUContext,
-                                           phi::dtype::float16>;
+template struct ChannelDequantizeFunctorV2<phi::CPUContext, phi::float16>;
 template struct ChannelDequantizeFunctorV2<phi::CPUContext, float>;
 template struct ChannelDequantizeFunctorV2<phi::CPUContext, double>;
 

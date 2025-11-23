@@ -21,10 +21,6 @@
 #ifndef NOMINMAX
 #define NOMINMAX  // msvc max/min macro conflict with std::min/max
 #endif
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 #include <windows.h>
 #else
 #include <sys/syscall.h>

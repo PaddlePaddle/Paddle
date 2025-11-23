@@ -24,7 +24,7 @@ void SerializeToStream(std::ostream& os,
     os.write(reinterpret_cast<const char*>(&version), sizeof(version));
   }
   {
-    // the 2st field, rows information
+    // the 2nd field, rows information
     auto& rows = selected_rows.rows();
     uint64_t size = rows.size();
     os.write(reinterpret_cast<const char*>(&size), sizeof(size));
@@ -33,7 +33,7 @@ void SerializeToStream(std::ostream& os,
     }
   }
   {
-    // the 3st field, the height of SelectedRows
+    // the 3rd field, the height of SelectedRows
     int64_t height = selected_rows.height();
     os.write(reinterpret_cast<const char*>(&height), sizeof(height));
   }
@@ -70,7 +70,7 @@ void DeserializeFromStream(std::istream& is,
                           "Only version 0 SelectedRows is supported."));
   }
   {
-    // the 2st field, rows information
+    // the 2nd field, rows information
     uint64_t size = 0;
     is.read(reinterpret_cast<char*>(&size), sizeof(size));
     PADDLE_ENFORCE_EQ(
@@ -84,7 +84,7 @@ void DeserializeFromStream(std::istream& is,
     }
   }
   {
-    // the 3st field, the height of the SelectedRows
+    // the 3rd field, the height of the SelectedRows
     int64_t height = 0;
     is.read(reinterpret_cast<char*>(&height), sizeof(int64_t));
     selected_rows->set_height(height);

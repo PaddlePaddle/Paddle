@@ -21,7 +21,7 @@
 namespace phi {
 namespace autotune {
 
-class AutoTuneStatus {
+class PADDLE_API AutoTuneStatus {
  public:
   static AutoTuneStatus& Instance() {
     static AutoTuneStatus switch_autotune;

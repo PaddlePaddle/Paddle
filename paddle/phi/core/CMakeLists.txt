@@ -36,6 +36,7 @@ collect_srcs(
   selected_rows_impl.cc
   selected_rows.cc
   device_context.cc
+  cuda_stream.cc
   custom_kernel.cc
   mixed_vector.cc
   generator.cc

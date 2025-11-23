@@ -18,6 +18,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/impl/graph_message_passing_impl.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
@@ -25,7 +26,7 @@
 namespace phi {
 
 template <typename Context, typename T, typename IndexT>
-void CalculateGrad(const Context& ctx,
+void CalculateGrad(const Context& dev_ctx,
                    const T* out_grad,
                    const IndexT* s_index,
                    const IndexT* d_index,
@@ -64,8 +65,9 @@ void CalculateGrad(const Context& ctx,
       std::vector<int> out_grad_dims_2(out_grad_dims_1.begin() + 1,
                                        out_grad_dims_1.end());
       out_grad_dims_2.emplace(out_grad_dims_2.begin(), x_grad_dims[0]);
-      DenseTensor x_grad_v2 = phi::Empty<T, Context>(ctx, out_grad_dims_2);
-      phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, static_cast<T>(0));
+      DenseTensor x_grad_v2 = phi::Empty<T, Context>(dev_ctx, out_grad_dims_2);
+      phi::funcs::SetConstant<Context, T>()(
+          dev_ctx, &x_grad_v2, static_cast<T>(0));
       T* x_grad_v2_data = x_grad_v2.data<T>();
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -84,7 +86,7 @@ void CalculateGrad(const Context& ctx,
         }
       }
       DenseTensor x_grad_out =
-          phi::Sum<T, Context>(ctx,
+          phi::Sum<T, Context>(dev_ctx,
                                x_grad_v2,
                                phi::IntArray(reduce_idx),
                                phi::CppTypeToDataType<T>::Type(),
@@ -121,8 +123,9 @@ void CalculateGrad(const Context& ctx,
       std::vector<int> out_grad_dims_2(out_grad_dims_1.begin() + 1,
                                        out_grad_dims_1.end());
       out_grad_dims_2.emplace(out_grad_dims_2.begin(), x_grad_dims[0]);
-      DenseTensor x_grad_v2 = phi::Empty<T, Context>(ctx, out_grad_dims_2);
-      phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, static_cast<T>(0));
+      DenseTensor x_grad_v2 = phi::Empty<T, Context>(dev_ctx, out_grad_dims_2);
+      phi::funcs::SetConstant<Context, T>()(
+          dev_ctx, &x_grad_v2, static_cast<T>(0));
       T* x_grad_v2_data = x_grad_v2.data<T>();
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -146,7 +149,7 @@ void CalculateGrad(const Context& ctx,
         }
       }
       DenseTensor x_grad_out =
-          phi::Sum<T, Context>(ctx,
+          phi::Sum<T, Context>(dev_ctx,
                                x_grad_v2,
                                phi::IntArray(reduce_idx),
                                phi::CppTypeToDataType<T>::Type(),
@@ -157,7 +160,7 @@ void CalculateGrad(const Context& ctx,
 }
 
 template <typename Context, typename T, typename IndexT>
-void GraphSendUVGradOpKernelLaunchHelper(const Context& ctx,
+void GraphSendUVGradOpKernelLaunchHelper(const Context& dev_ctx,
                                          const DenseTensor& x,
                                          const DenseTensor& y,
                                          const DenseTensor& out_grad,
@@ -175,9 +178,9 @@ void GraphSendUVGradOpKernelLaunchHelper(const Context& ctx,
                               "should be greater than 0, but received %d.",
                               index_size));
 
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
   T* x_grad_data = x_grad->data<T>();
-  ctx.template Alloc<T>(y_grad);
+  dev_ctx.template Alloc<T>(y_grad);
   T* y_grad_data = y_grad->data<T>();
   const auto& x_grad_dims = x_grad->dims();
   const auto& y_grad_dims = y_grad->dims();
@@ -201,7 +204,7 @@ void GraphSendUVGradOpKernelLaunchHelper(const Context& ctx,
   const IndexT* d_index = dst_index.data<IndexT>();
   const auto& out_grad_dims = out_grad.dims();
   // Calculate X Grad.
-  CalculateGrad<Context, T, IndexT>(ctx,
+  CalculateGrad<Context, T, IndexT>(dev_ctx,
                                     out_grad_data,
                                     d_index,
                                     s_index,
@@ -214,7 +217,7 @@ void GraphSendUVGradOpKernelLaunchHelper(const Context& ctx,
                                     out_grad,
                                     y);
   // Calculate Y Grad.
-  CalculateGrad<Context, T, IndexT>(ctx,
+  CalculateGrad<Context, T, IndexT>(dev_ctx,
                                     out_grad_data,
                                     s_index,
                                     d_index,
@@ -229,7 +232,7 @@ void GraphSendUVGradOpKernelLaunchHelper(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void SendUVGradKernel(const Context& ctx,
+void SendUVGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& y,
                       const DenseTensor& src_index,
@@ -239,12 +242,36 @@ void SendUVGradKernel(const Context& ctx,
                       DenseTensor* x_grad,
                       DenseTensor* y_grad) {
   auto index_type = src_index.dtype();
+
+  if (out_grad.numel() == 0 || x.numel() == 0 || y.numel() == 0 ||
+      src_index.numel() == 0 || dst_index.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+    return;
+  }
+
   if (index_type == phi::DataType::INT32) {
-    GraphSendUVGradOpKernelLaunchHelper<Context, T, int32_t>(
-        ctx, x, y, out_grad, src_index, dst_index, message_op, x_grad, y_grad);
+    GraphSendUVGradOpKernelLaunchHelper<Context, T, int32_t>(dev_ctx,
+                                                             x,
+                                                             y,
+                                                             out_grad,
+                                                             src_index,
+                                                             dst_index,
+                                                             message_op,
+                                                             x_grad,
+                                                             y_grad);
   } else if (index_type == phi::DataType::INT64) {
-    GraphSendUVGradOpKernelLaunchHelper<Context, T, int64_t>(
-        ctx, x, y, out_grad, src_index, dst_index, message_op, x_grad, y_grad);
+    GraphSendUVGradOpKernelLaunchHelper<Context, T, int64_t>(dev_ctx,
+                                                             x,
+                                                             y,
+                                                             out_grad,
+                                                             src_index,
+                                                             dst_index,
+                                                             message_op,
+                                                             x_grad,
+                                                             y_grad);
   }
 }
 

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 from test_conv2d_op import conv2d_forward_naive
 
 from paddle.base import core
@@ -45,7 +45,8 @@ def create_test_padding_VALID_class(parent):
 
 def create_test_cudnn_channel_last_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestCudnnChannelLastCase(parent):
         def init_test_case(self):
@@ -59,7 +60,7 @@ def create_test_cudnn_channel_last_class(parent):
         def test_check_output(self):
             print(self.attrs)
             if self.has_cuda():
-                place = core.CUDAPlace(0)
+                place = get_device_place()
                 self.check_output_with_place(
                     place, atol=1e-5, check_dygraph=False
                 )
@@ -158,11 +159,11 @@ class TestFusedConv2dAddActOp(OpTest):
         self.set_outputs()
 
     def has_cuda(self):
-        return core.is_compiled_with_cuda()
+        return core.is_compiled_with_cuda() or is_custom_device()
 
     def test_check_output(self):
         if self.has_cuda():
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(place, atol=1e-5, check_dygraph=False)
 
     def init_test_case(self):

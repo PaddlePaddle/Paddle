@@ -15,12 +15,14 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
-
-paddle.enable_static()
 
 
 def strided_slice_native_forward(input, axes, starts, ends, strides):
@@ -325,6 +327,17 @@ class TestStrideSliceOp21(TestStrideSliceOp):
 
     def test_check_grad(self):
         pass
+
+
+# zero size tensor
+class TestStrideSliceOp22(TestStrideSliceOp):
+    def initTestCase(self):
+        self.input = np.random.rand(10, 0, 100)
+        self.axes = [1]
+        self.starts = [-101]
+        self.ends = [-101]
+        self.strides = [1]
+        self.infer_flags = [1]
 
 
 class TestStrideSliceOpBool(TestStrideSliceOp):
@@ -795,7 +808,7 @@ class TestStrideSliceBF16Op(OpTest):
 #         assert sliced_1.shape == [3, 2, 2, 2]
 
 #     @unittest.skipIf(
-#         not paddle.is_compiled_with_cuda(),
+#         not (paddle.is_compiled_with_cuda() or is_custom_device()),
 #         "Cannot use CUDAPinnedPlace in CPU only version",
 #     )
 #     def test_cuda_pinned_place(self):
@@ -927,7 +940,7 @@ class ArrayLayer(paddle.nn.Layer):
 #         )
 
 #     def test_strided_slice_tensor_array_cuda_pinned_place(self):
-#         if paddle.device.is_compiled_with_cuda():
+#         if (paddle.device.is_compiled_with_cuda() or is_custom_device()):
 #             with paddle.base.dygraph.guard():
 
 #                 class Simple(paddle.nn.Layer):
@@ -1139,7 +1152,8 @@ class ArrayLayer(paddle.nn.Layer):
 
 
 @unittest.skipIf(
-    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (base.core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestStridedSliceFloat16(unittest.TestCase):
     def init_test_case(self):
@@ -1153,17 +1167,16 @@ class TestStridedSliceFloat16(unittest.TestCase):
         self.infer_flags = [1, 1, 1, 1, 1]
 
     def check_main(self, x_np, dtype):
-        paddle.disable_static()
-        x_np = x_np.astype(dtype)
-        x = paddle.to_tensor(x_np)
-        x.stop_gradient = False
-        output = strided_slice_native_forward(
-            x, self.axes, self.starts, self.ends, self.strides
-        )
-        x_grad = paddle.grad(output, x)
-        output_np = output[0].numpy().astype('float32')
-        x_grad_np = x_grad[0].numpy().astype('float32')
-        paddle.enable_static()
+        with paddle.base.dygraph.guard():
+            x_np = x_np.astype(dtype)
+            x = paddle.to_tensor(x_np)
+            x.stop_gradient = False
+            output = strided_slice_native_forward(
+                x, self.axes, self.starts, self.ends, self.strides
+            )
+            x_grad = paddle.grad(output, x)
+            output_np = output[0].numpy().astype('float32')
+            x_grad_np = x_grad[0].numpy().astype('float32')
         return output_np, x_grad_np
 
     def test_check(self):
@@ -1179,4 +1192,5 @@ class TestStridedSliceFloat16(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

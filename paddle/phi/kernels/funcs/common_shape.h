@@ -32,11 +32,12 @@ inline void SetXShape(const DenseTensor &x, DenseTensor *xshape) {
   xshape->ResetLoD(x.meta().legacy_lod);
 }
 
+template <typename T>
 inline void GetBroadcastDimsArrays(const DDim &x_dims,
                                    const DDim &y_dims,
-                                   int *x_dims_array,
-                                   int *y_dims_array,
-                                   int *out_dims_array,
+                                   T *x_dims_array,
+                                   T *y_dims_array,
+                                   T *out_dims_array,
                                    const int max_dim,
                                    const int axis) {
   PADDLE_ENFORCE_GE(
@@ -96,7 +97,7 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
 }
 
 inline void GetPrePostNumel(
-    const DDim &dim, int axis, int *pre, int *n, int *post) {
+    const DDim &dim, int axis, int64_t *pre, int64_t *n, int64_t *post) {
   *pre = 1;
   *post = 1;
   *n = dim[axis];

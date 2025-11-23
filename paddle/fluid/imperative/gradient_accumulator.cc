@@ -187,6 +187,9 @@ void TensorAdd(const VarType& src, VarType* dst) {
     PADDLE_TENSOR_ADD(double, phi::XPUContext);
     PADDLE_TENSOR_ADD(phi::dtype::float16, phi::XPUContext);
     PADDLE_TENSOR_ADD(phi::dtype::bfloat16, phi::XPUContext);
+#ifdef PADDLE_WITH_XPU_FFT
+    PADDLE_TENSOR_ADD(phi::dtype::complex<float>, phi::XPUContext);
+#endif
 #endif
   }
 
@@ -218,7 +221,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
         phi::DeviceContextPool::Instance().Get(place));          \
     phi::stream::Stream stream(place, ctx->stream());            \
     auto device = phi::DeviceManager::GetDeviceWithPlace(place); \
-    device->BlasAXPBY<T>(stream,                                 \
+    device->BlasAXPBY<T>(stream.raw_stream(),                    \
                          static_cast<size_t>(numel),             \
                          1.,                                     \
                          src_tensor.data<T>(),                   \
@@ -243,10 +246,10 @@ void TensorAdd(const VarType& src, VarType* dst) {
       place));
 }
 
-template void TensorAdd<framework::Variable>(const framework::Variable& src,
-                                             framework::Variable* dst);
-template void TensorAdd<paddle::Tensor>(const paddle::Tensor& src,
-                                        paddle::Tensor* dst);
+template PADDLE_API void TensorAdd<framework::Variable>(
+    const framework::Variable& src, framework::Variable* dst);
+template PADDLE_API void TensorAdd<paddle::Tensor>(const paddle::Tensor& src,
+                                                   paddle::Tensor* dst);
 
 template <typename VarType>
 void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
@@ -420,10 +423,11 @@ std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
       framework::DataTypeToString(data_type)));
 }
 
-template std::shared_ptr<paddle::Tensor> SelectedRowsMerge(
+template PADDLE_API std::shared_ptr<paddle::Tensor> SelectedRowsMerge(
     const paddle::Tensor& src1, const paddle::Tensor& src2);
-template std::shared_ptr<paddle::imperative::VariableWrapper> SelectedRowsMerge(
-    const framework::Variable& src1, const framework::Variable& src2);
+template PADDLE_API std::shared_ptr<paddle::imperative::VariableWrapper>
+SelectedRowsMerge(const framework::Variable& src1,
+                  const framework::Variable& src2);
 
 void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
                         VariableWrapper* dst_var,

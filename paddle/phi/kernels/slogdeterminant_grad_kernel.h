@@ -25,4 +25,13 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
                                const DenseTensor& out_grad,
                                DenseTensor* x_grad);
 
+template <typename T, typename Context>
+void SlogDeterminantV2GradKernel(const Context& dev_ctx,
+                                 const DenseTensor& x,
+                                 const DenseTensor& sign,
+                                 const DenseTensor& logdet,
+                                 const DenseTensor& sign_grad,
+                                 const DenseTensor& logdet_grad,
+                                 DenseTensor* x_grad);
+
 }  // namespace phi

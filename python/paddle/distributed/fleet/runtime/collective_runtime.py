@@ -24,27 +24,27 @@ class CollectiveRuntime(RuntimeBase):
         super().__init__()
 
     def _init_worker(self):
-        logging.warn(
+        logging.warning(
             "You should not call 'init_worker' method for collective mode."
         )
 
     def _run_worker(self):
-        logging.warn(
+        logging.warning(
             "You should not call 'run_worker' method for collective mode."
         )
 
     def _init_server(self, *args, **kwargs):
-        logging.warn(
+        logging.warning(
             "You should not call 'init_server' method for collective mode."
         )
 
     def _run_server(self):
-        logging.warn(
+        logging.warning(
             "You should not call 'run_server' method for collective mode."
         )
 
     def _stop_worker(self):
-        logging.warn(
+        logging.warning(
             "You should not call 'stop_worker' method for collective mode."
         )
 

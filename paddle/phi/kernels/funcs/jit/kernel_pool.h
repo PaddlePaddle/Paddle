@@ -31,7 +31,7 @@ namespace jit {
 
 struct KernelKey;
 
-extern std::map<size_t, std::shared_ptr<void>>& GetJITCodesMap();
+PADDLE_API extern std::map<size_t, std::shared_ptr<void>>& GetJITCodesMap();
 
 template <KernelType KT>
 class JitCodePool {
@@ -66,7 +66,13 @@ class JitCodePool {
   DISABLE_COPY_AND_ASSIGN(JitCodePool);
 };
 
-class JitCodeCreatorPool {
+#ifdef _WIN32
+#define INSTANCE_JIT_CODE_POOL(kt) \
+  template class JitCodePool<KernelType::k##kt>;
+FOREACH_JIT_KERNEL_TYPE(INSTANCE_JIT_CODE_POOL)
+#undef INSTANCE_JIT_CODE_POOL
+#endif
+class PADDLE_API JitCodeCreatorPool {
   typedef std::unique_ptr<const GenCreator> GenCreatorPtr;
   typedef std::
       unordered_map<KernelKey, std::vector<GenCreatorPtr>, KernelKey::Hash>
@@ -92,7 +98,7 @@ typedef std::unique_ptr<const Kernel> KernelPtr;
 typedef std::unordered_map<KernelKey, std::vector<KernelPtr>, KernelKey::Hash>
     KernelMap;
 
-class KernelPool {
+class PADDLE_API KernelPool {
  public:
   static KernelPool& Instance();
   KernelPool() = default;
@@ -111,7 +117,7 @@ class KernelPool {
 
 // Every kernel should have refer code and it should be used in unit tests,
 // so refer kernels should have it's independent kernel pool
-class ReferKernelPool {
+class PADDLE_API ReferKernelPool {
  public:
   static ReferKernelPool& Instance();
   ReferKernelPool() = default;

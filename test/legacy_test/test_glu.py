@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 import paddle.base.dygraph as dg
@@ -43,13 +43,15 @@ class TestGLUV2(unittest.TestCase):
             x_var = paddle.to_tensor(self.x)
             y_var = F.glu(x_var, self.dim)
             y_np = y_var.numpy()
+            np.testing.assert_allclose(y_np, self.out)
 
-        np.testing.assert_allclose(y_np, self.out)
+            y_np = F.glu(input=x_var, axis=self.dim).numpy()
+            np.testing.assert_allclose(y_np, self.out)
 
     def test_case(self):
         self.check_identity(base.CPUPlace())
-        if base.is_compiled_with_cuda():
-            self.check_identity(base.CUDAPlace(0))
+        if base.is_compiled_with_cuda() or is_custom_device():
+            self.check_identity(get_device_place())
 
 
 class TestGlu(unittest.TestCase):
@@ -71,16 +73,22 @@ class TestnnGLU(unittest.TestCase):
         with dg.guard(place):
             x_var = paddle.to_tensor(self.x)
             for dim in self.dim:
-                act = nn.GLU(dim)
-                y_var = act(x_var)
-                y_np = y_var.numpy()
+                act1 = nn.GLU(dim)
+                y_np1 = act1(x_var).numpy()
+                y_np2 = act1(input=x_var).numpy()
+                act2 = nn.GLU(dim=1000)
+                self.assertEqual(act2.dim, 1000)
+                act2.dim = dim
+                y_np3 = act2(x_var).numpy()
                 out = glu(self.x, dim)
-                np.testing.assert_allclose(y_np, out)
+                np.testing.assert_allclose(y_np1, out)
+                np.testing.assert_allclose(y_np2, out)
+                np.testing.assert_allclose(y_np3, out)
 
     def test_case(self):
         self.check_identity(base.CPUPlace())
-        if base.is_compiled_with_cuda():
-            self.check_identity(base.CUDAPlace(0))
+        if base.is_compiled_with_cuda() or is_custom_device():
+            self.check_identity(get_device_place())
         act = nn.GLU(axis=0, name="test")
         self.assertTrue(act.extra_repr() == 'axis=0, name=test')
 
@@ -101,6 +109,30 @@ class TestnnGLUerror(unittest.TestCase):
             name='x_int32', shape=[10, 18], dtype='int32'
         )
         self.assertRaises(TypeError, act, x_int32)
+
+
+class TestGLU_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.x = np.random.randn(5, 0, 20)
+        self.dim = -1
+        self.out = glu(self.x, self.dim)
+
+    def check_dygraph(self, place):
+        with dg.guard(place):
+            x_var = paddle.to_tensor(self.x)
+            x_var.stop_gradient = False
+            y_var = F.glu(x_var, self.dim)
+            y_np = y_var.numpy()
+            np.testing.assert_allclose(y_np, self.out)
+
+            loss = paddle.sum(y_var)
+            loss.backward()
+            np.testing.assert_allclose(x_var.grad.shape, x_var.shape)
+
+    def test_case(self):
+        self.check_dygraph(base.CPUPlace())
+        if base.is_compiled_with_cuda() or is_custom_device():
+            self.check_dygraph(get_device_place())
 
 
 if __name__ == '__main__':

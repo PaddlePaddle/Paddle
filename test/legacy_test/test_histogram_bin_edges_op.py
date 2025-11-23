@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 
@@ -38,8 +38,8 @@ class TestHistogramBinEdgesOp(unittest.TestCase):
 
     def test_case(self):
         self.check_with_place(paddle.CPUPlace())
-        if paddle.is_compiled_with_cuda():
-            self.check_with_place(paddle.CUDAPlace(0))
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.check_with_place(get_device_place())
 
 
 class TestHistogramBinEdgesOp(TestHistogramBinEdgesOp):

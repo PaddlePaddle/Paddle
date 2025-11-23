@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import inspect
-import textwrap
 import unittest
 
-import astor
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
@@ -31,7 +28,6 @@ from ifelse_simple_func import (
 import paddle
 import paddle.jit.dy2static as _jst
 from paddle.jit.dy2static.utils import func_to_source_code
-from paddle.utils import gast
 
 np.random.seed(0)
 
@@ -54,14 +50,6 @@ def decorated_simple_func(x, weight_numpy):
     y = paddle.matmul(x, w)
     z = paddle.mean(y)
     return z
-
-
-def get_source_code(func):
-    raw_code = inspect.getsource(func)
-    code = textwrap.dedent(raw_code)
-    root = gast.parse(code)
-    source_code = astor.to_source(gast.gast_to_ast(root))
-    return source_code
 
 
 class StaticCode1:

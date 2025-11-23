@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 from paddle import base
@@ -53,23 +53,25 @@ class TestRawProgramOptimizer(unittest.TestCase):
             sharding_startup_program = paddle.static.Program()
             strategy = fleet.DistributedStrategy()
             strategy.without_graph_optimization = True
-            with base.program_guard(sharding_program, sharding_startup_program):
-                with base.unique_name.guard():
-                    input_x = paddle.static.data(
-                        name="x", shape=[None, 32], dtype='float32'
-                    )
-                    input_y = paddle.static.data(
-                        name="y", shape=[None, 1], dtype='int64'
-                    )
-                    cost = self.mlp(input_x=input_x, input_y=input_y)
-                    output_name = cost.name
-                    optimizer = fleet.distributed_optimizer(
-                        paddle.optimizer.Adam(), strategy
-                    )
-                    optimizer.minimize(cost)
+            with (
+                base.program_guard(sharding_program, sharding_startup_program),
+                base.unique_name.guard(),
+            ):
+                input_x = paddle.static.data(
+                    name="x", shape=[None, 32], dtype='float32'
+                )
+                input_y = paddle.static.data(
+                    name="y", shape=[None, 1], dtype='int64'
+                )
+                cost = self.mlp(input_x=input_x, input_y=input_y)
+                output_name = cost.name
+                optimizer = fleet.distributed_optimizer(
+                    paddle.optimizer.Adam(), strategy
+                )
+                optimizer.minimize(cost)
 
             trainer_id = fleet.worker_index()
-            exe = paddle.static.Executor(paddle.CUDAPlace(trainer_id))
+            exe = paddle.static.Executor(get_device_place(trainer_id))
             rank = fleet.worker_index()
             exe.run(sharding_startup_program)
             exe.run(program=sharding_program, feed=self.gen_data())

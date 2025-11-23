@@ -116,11 +116,11 @@ class TestOneDNNConvElementwiseAddFusePass(PassAutoScanTest):
         return program_config
 
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_mkldnn=True)
+        config = self.create_inference_config(use_onednn=True)
         yield config, ['relu', 'conv2d', 'fused_conv2d'], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False, passes=['conv_elementwise_add_onednn_fuse_pass']
         )
 

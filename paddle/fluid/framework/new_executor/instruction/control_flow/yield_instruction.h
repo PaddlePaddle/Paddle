@@ -41,6 +41,8 @@ class YieldInstruction : public InstructionBase {
   std::vector<Variable*> input_vars_;
 
   std::vector<Variable*> output_vars_;
+
+  ValueExecutionInfo* value_exe_info_;
 };
 
 }  // namespace framework

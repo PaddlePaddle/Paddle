@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
 import numpy as np
@@ -19,7 +20,12 @@ import numpy as np
 import paddle
 
 paddle.enable_static()
-from op_test import OpTest, copy_bits_from_float_to_uint16
+from op_test import (
+    OpTest,
+    copy_bits_from_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 from paddle.base import core
 
@@ -100,41 +106,41 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
     out_w = (in_w - 1) * stride[2] + d_block_w
     out = np.zeros((in_n, out_c, out_d, out_h, out_w))
 
-    for n in range(in_n):
-        for d in range(in_d):
-            for i in range(in_h):
-                for j in range(in_w):
-                    for g in range(groups):
-                        input_masked = input_[
-                            n, g * sub_in_c : (g + 1) * sub_in_c, d, i, j
-                        ]  # (c)
-                        input_masked = np.reshape(
-                            input_masked, (sub_in_c, 1, 1, 1)
-                        )
-                        input_masked = np.tile(input_masked, (1, f_d, f_h, f_w))
+    for n, d, i, j, g in itertools.product(
+        range(in_n),
+        range(in_d),
+        range(in_h),
+        range(in_w),
+        range(groups),
+    ):
+        input_masked = input_[
+            n, g * sub_in_c : (g + 1) * sub_in_c, d, i, j
+        ]  # (c)
+        input_masked = np.reshape(input_masked, (sub_in_c, 1, 1, 1))
+        input_masked = np.tile(input_masked, (1, f_d, f_h, f_w))
 
-                        for k in range(f_out_c):
-                            tmp_out = np.sum(
-                                input_masked
-                                * filter_[
-                                    g * sub_in_c : (g + 1) * sub_in_c,
-                                    k,
-                                    :,
-                                    :,
-                                    :,
-                                ],
-                                axis=0,
-                            )
-                            d1, d2 = d * stride[0], d * stride[0] + d_block_d
-                            i1, i2 = i * stride[1], i * stride[1] + d_block_h
-                            j1, j2 = j * stride[2], j * stride[2] + d_block_w
-                            out[
-                                n,
-                                g * f_out_c + k,
-                                d1 : d2 : dilations[0],
-                                i1 : i2 : dilations[1],
-                                j1 : j2 : dilations[2],
-                            ] += tmp_out
+        for k in range(f_out_c):
+            tmp_out = np.sum(
+                input_masked
+                * filter_[
+                    g * sub_in_c : (g + 1) * sub_in_c,
+                    k,
+                    :,
+                    :,
+                    :,
+                ],
+                axis=0,
+            )
+            d1, d2 = d * stride[0], d * stride[0] + d_block_d
+            i1, i2 = i * stride[1], i * stride[1] + d_block_h
+            j1, j2 = j * stride[2], j * stride[2] + d_block_w
+            out[
+                n,
+                g * f_out_c + k,
+                d1 : d2 : dilations[0],
+                i1 : i2 : dilations[1],
+                j1 : j2 : dilations[2],
+            ] += tmp_out
 
     out = out[
         :,
@@ -150,7 +156,8 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
 
 def create_test_cudnn_fp16_class(parent, grad_check=True):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestConv3DTransposeCUDNNFP16(parent):
         def init_kernel_type(self):
@@ -158,20 +165,20 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
             self.dtype = np.float16
 
         def test_check_output(self):
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 if core.is_float16_supported(place):
                     self.check_output_with_place(place, atol=2e-2)
 
         def test_check_grad_no_filter(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
                     place, ['Input'], 'Output', no_grad_set={'Filter'}
                 )
 
         def test_check_grad_no_input(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
                     place, ['Filter'], 'Output', no_grad_set={'Input'}
@@ -184,8 +191,8 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
 
 def create_test_cudnn_bf16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        not (core.is_compiled_with_cuda() or is_custom_device())
+        or not core.is_bfloat16_supported(get_device_place()),
         "core is not compiled with CUDA and do not support bfloat16",
     )
     class TestConv3DTransposeCUDNNBF16(parent):
@@ -194,11 +201,11 @@ def create_test_cudnn_bf16_class(parent):
             self.dtype = np.uint16
 
         def test_check_output(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(place)
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 {'Input', 'Filter'},
@@ -206,7 +213,7 @@ def create_test_cudnn_bf16_class(parent):
             )
 
         def test_check_grad_no_filter(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ['Input'],
@@ -215,7 +222,7 @@ def create_test_cudnn_bf16_class(parent):
             )
 
         def test_check_grad_no_input(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ['Filter'],
@@ -306,14 +313,14 @@ class TestConv3DTransposeOp(OpTest):
 
     def test_check_output(self):
         if self.use_cudnn:
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(place, atol=1e-5)
         else:
             self.check_output()
 
     def test_check_grad(self):
         if self.use_cudnn:
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 {'Input', 'Filter'},
@@ -327,7 +334,7 @@ class TestConv3DTransposeOp(OpTest):
 
     def test_check_grad_no_filter(self):
         if self.use_cudnn:
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ['Input'],
@@ -345,7 +352,7 @@ class TestConv3DTransposeOp(OpTest):
 
     def test_check_grad_no_input(self):
         if self.use_cudnn:
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ['Filter'],
@@ -471,7 +478,8 @@ class Test_NHWC(TestConv3DTransposeOp):
 
 # ------------ test_cudnn ------------
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCUDNN(TestConv3DTransposeOp):
     def init_op_type(self):
@@ -481,7 +489,8 @@ class TestCUDNN(TestConv3DTransposeOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCUDNNWithSymmetricPad(TestWithSymmetricPad):
     def init_test_case(self):
@@ -500,7 +509,8 @@ class TestCUDNNWithSymmetricPad(TestWithSymmetricPad):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCUDNNWithAsymmetricPad(TestWithAsymmetricPad):
     def init_test_case(self):
@@ -519,7 +529,8 @@ class TestCUDNNWithAsymmetricPad(TestWithAsymmetricPad):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCUDNNWithSAMEPad(TestWithSAMEPad):
     def init_test_case(self):
@@ -538,7 +549,8 @@ class TestCUDNNWithSAMEPad(TestWithSAMEPad):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCUDNNWithVALIDPad(TestWithVALIDPad):
     def init_test_case(self):
@@ -557,7 +569,8 @@ class TestCUDNNWithVALIDPad(TestWithVALIDPad):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCUDNNWithStride(TestWithStride):
     def init_test_case(self):
@@ -576,7 +589,8 @@ class TestCUDNNWithStride(TestWithStride):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCUDNNWithGroups(TestWithGroups):
     def init_test_case(self):
@@ -610,7 +624,8 @@ class TestCUDNNWithGroups(TestWithGroups):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCUDNN_NHWC(TestConv3DTransposeOp):
     def init_test_case(self):
@@ -630,7 +645,8 @@ class TestCUDNN_NHWC(TestConv3DTransposeOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCUDNNWithSymmetricPad_NHWC(TestWithSymmetricPad):
     def init_test_case(self):
@@ -650,7 +666,8 @@ class TestCUDNNWithSymmetricPad_NHWC(TestWithSymmetricPad):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCUDNNWithAsymmetricPad_NHWC(TestWithAsymmetricPad):
     def init_test_case(self):
@@ -670,7 +687,8 @@ class TestCUDNNWithAsymmetricPad_NHWC(TestWithAsymmetricPad):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCUDNNWithStride_NHWC(TestWithStride):
     def init_test_case(self):
@@ -690,7 +708,8 @@ class TestCUDNNWithStride_NHWC(TestWithStride):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCUDNNWithGroups_NHWC(TestWithGroups):
     def init_test_case(self):

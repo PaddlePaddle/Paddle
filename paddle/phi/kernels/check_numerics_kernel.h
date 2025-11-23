@@ -19,7 +19,7 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void CheckNumericsKernel(const Context& ctx,
+void CheckNumericsKernel(const Context& dev_ctx,
                          const DenseTensor& tensor,
                          const std::string& op_type,
                          const std::string& var_name,
@@ -29,4 +29,17 @@ void CheckNumericsKernel(const Context& ctx,
                          DenseTensor* stats,
                          DenseTensor* values);
 
+#ifdef _WIN32
+#define INSTANTIATE_CHECKNUMBERICS_KERNEL(type, context)       \
+  template PADDLE_API void CheckNumericsKernel<type, context>( \
+      const context&,                                          \
+      const DenseTensor&,                                      \
+      const std::string&,                                      \
+      const std::string&,                                      \
+      const int,                                               \
+      const int,                                               \
+      const std::string&,                                      \
+      DenseTensor*,                                            \
+      DenseTensor*);
+#endif
 }  // namespace phi

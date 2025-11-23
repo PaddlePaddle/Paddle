@@ -21,10 +21,17 @@
 
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
-#include "paddle/fluid/framework/inlined_vector.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/memory/allocation/inlined_vector.h"
+#include "paddle/phi/core/memory/mem_visitor.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/cuda_stream.h"
+#endif
 
 #ifdef PADDLE_WITH_NCCL
 #include <nccl.h>
@@ -42,7 +49,7 @@ namespace allocation {
 // Exception when `Alloc`/`AllocShared` failed
 struct BadAlloc : public std::exception {
   inline explicit BadAlloc(std::string err_msg, const char* file, int line)
-      : err_str_(platform::GetCompleteTraceBackString(
+      : err_str_(phi::enforce::GetCompleteTraceBackString(
             std::move(err_msg), file, line)) {}
 
   const char* what() const noexcept override { return err_str_.c_str(); }
@@ -128,7 +135,7 @@ class Allocation : public phi::Allocation {
    */
   static constexpr size_t kReserveAllocatorNum = 8;
   using DecoratedAllocatorStack =
-      framework::InlinedVector<Allocator*, kReserveAllocatorNum>;
+      InlinedVector<Allocator*, kReserveAllocatorNum>;
 
   DecoratedAllocatorStack decorated_allocators_;
 
@@ -170,7 +177,7 @@ static T&& FillValue(T&& allocation) {
 }
 
 // Base interface class of memory Allocator.
-class Allocator : public phi::Allocator {
+class PADDLE_API Allocator : public phi::Allocator {
  public:
   static void AllocationDeleter(phi::Allocation* allocation) {
     Allocator* allocator =
@@ -183,22 +190,29 @@ class Allocator : public phi::Allocator {
   // in each Allocator. So we handle size == 0 inside AllocatorFacade
   // in our design.
   AllocationPtr Allocate(size_t size) override {
-    auto ptr = AllocateImpl(size);
+    auto* ptr = AllocateImpl(size);
     static_cast<Allocation*>(ptr)->RegisterDecoratedAllocator(this);
     return FillValue(AllocationPtr(ptr, AllocationDeleter));
   }
 
-  void Free(phi::Allocation* allocation) {
+  void Free(phi::Allocation* allocation) override {
     static_cast<Allocation*>(allocation)->PopDecoratedAllocator();
     FreeImpl(allocation);
   }
 
   uint64_t Release(const phi::Place& place) { return ReleaseImpl(place); }
+  size_t Compact(const phi::Place& place) { return CompactImpl(place); }
+
+  virtual void Accept(AllocatorVisitor* visitor) { visitor->Visit(this); }
 
  protected:
   virtual phi::Allocation* AllocateImpl(size_t size) = 0;
   virtual void FreeImpl(phi::Allocation* allocation);
   virtual uint64_t ReleaseImpl(const phi::Place& place UNUSED) { return 0; }
+  virtual size_t CompactImpl(const phi::Place& place UNUSED) {
+    LOG(INFO) << "Compact is not supported";
+    return 0;
+  }
 };
 
 inline size_t AlignedSize(size_t size, size_t alignment) {
@@ -219,6 +233,47 @@ decltype(auto) static_unique_ptr_cast(std::unique_ptr<Base, BaseDel>&& p) {
   auto d = static_cast<Derived*>(p.release());
   return std::unique_ptr<Derived, BaseDel>(d, p.get_deleter());
 }
+
+/**
+ * \brief MultiScalePoolAllocator is a decorator of Allocator.
+ * It allocates small request from small_allocator and large request from
+ * large_allocator.
+ */
+
+class PADDLE_API MultiScalePoolAllocator : public Allocator {
+ public:
+  MultiScalePoolAllocator(const std::shared_ptr<Allocator>& small_allocator,
+                          const std::shared_ptr<Allocator>& large_allocator,
+                          size_t alignment,
+                          const phi::GPUPlace& place)
+      : small_allocator_(small_allocator),
+        large_allocator_(large_allocator),
+        alignment_(alignment),
+        place_(place) {}
+
+  // Allocate an allocation from small_allocator or large_allocator according to
+  // size.
+  AllocationPtr Allocate(size_t size) override {
+    return IsSmallRequest(size) ? small_allocator_->Allocate(size)
+                                : large_allocator_->Allocate(size);
+  };
+  // Free an allocation from small_allocator or large_allocator.
+  void Free(phi::Allocation* allocation) override {
+    IsSmallRequest(allocation->size()) ? small_allocator_->Free(allocation)
+                                       : large_allocator_->Free(allocation);
+  };
+  // Get small_allocator_ and large_allocator_.
+  std::shared_ptr<Allocator>& GetSmallAllocator() { return small_allocator_; }
+  std::shared_ptr<Allocator>& GetLargeAllocator() { return large_allocator_; }
+  virtual bool IsSmallRequest(size_t size) = 0;
+
+ private:
+  phi::Allocation* AllocateImpl(size_t UNUSED) { return nullptr; }
+  std::shared_ptr<Allocator> small_allocator_;
+  std::shared_ptr<Allocator> large_allocator_;
+  size_t alignment_;
+  phi::Place place_;
+};
 
 }  // namespace allocation
 }  // namespace memory

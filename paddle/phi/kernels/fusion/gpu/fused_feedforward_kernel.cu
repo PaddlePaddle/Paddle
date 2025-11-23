@@ -250,6 +250,10 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(dropout1_out, dropout1_out->numel() * sizeof(T));
   dev_ctx.template Alloc<T>(dropout2_out, dropout2_out->numel() * sizeof(T));
 
+  if (out->numel() == 0) {
+    return;
+  }
+
   auto x_dim = x_ptr->dims();
   auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
       phi::RowMatrixFromVector(x_dim), 0, false);
@@ -302,7 +306,7 @@ PD_REGISTER_KERNEL(fused_feedforward,
                    phi::fusion::FusedFeedForwardKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
   kernel->OutputAt(2).SetDataType(phi::DataType::UINT8);
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {

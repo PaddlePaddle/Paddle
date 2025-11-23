@@ -1,0 +1,5 @@
+formatter:
+  indent: 2
+  type: basic
+  retain_line_breaks: true
+  scan_folded_as_literal: true

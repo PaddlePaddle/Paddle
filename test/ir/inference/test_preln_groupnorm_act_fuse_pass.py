@@ -160,7 +160,7 @@ class TestElementGNActPass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=50,
             passes=["preln_elementwise_groupnorm_act_pass"],
@@ -296,7 +296,7 @@ class TestElementGNNoActPass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=50,
             passes=["preln_elementwise_groupnorm_act_pass"],

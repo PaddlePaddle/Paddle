@@ -250,7 +250,7 @@ class BlockDimExprsAsserter {
         ::common::errors::InvalidArgument(
             "The numel of value must be >= 0, but received numel is %d.",
             numel));
-    return numel;
+    return static_cast<size_t>(numel);
   }
 
   void AddAssertEqual(const pir::Operation* op,

@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MultiClassNMSKernel(const Context& ctx,
+void MultiClassNMSKernel(const Context& dev_ctx,
                          const DenseTensor& bboxes,
                          const DenseTensor& scores,
                          const paddle::optional<DenseTensor>& rois_num,

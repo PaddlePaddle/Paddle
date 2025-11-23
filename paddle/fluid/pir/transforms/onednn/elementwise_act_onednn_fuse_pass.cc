@@ -53,8 +53,7 @@ class ElementwiseActivationFusePattern : public paddle::drr::DrrPatternBase {
   std::string name() const override {
     return elementwise_type_ + activation_name_ + "FusePattern";
   }
-
-  uint32_t benefit() const override { return level_; }
+  uint32_t benefit() const override { return static_cast<uint32_t>(level_); }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -84,7 +83,7 @@ class ElementwiseActivationFusePattern : public paddle::drr::DrrPatternBase {
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       if (activation_name_ == "leaky_relu") {
-        float negative_slope = match_ctx.Attr<float>("negative_slope");
+        auto negative_slope = match_ctx.Attr<double>("negative_slope");
         // leaky relu alpha is a positive number
         if (negative_slope <= 0.0) {
           return false;
@@ -104,7 +103,10 @@ class ElementwiseActivationFusePattern : public paddle::drr::DrrPatternBase {
     } else if (activation_name_ == "swish") {
       fuse_alpha = res.Float32Attr(1.0f);
     } else if (activation_name_ == "leaky_relu") {
-      fuse_alpha = pat.Attr("negative_slope");
+      fuse_alpha = res.ComputeAttr(
+          [](const paddle::drr::MatchContext &match_ctx) -> float {
+            return static_cast<float>(match_ctx.Attr<double>("negative_slope"));
+          });
     } else if (activation_name_ == "hard_sigmoid") {
       fuse_alpha = pat.Attr("slope");
       fuse_beta = pat.Attr("offset");
@@ -148,8 +150,7 @@ class ElementwiseGeluFusePattern : public paddle::drr::DrrPatternBase {
   std::string name() const override {
     return elementwise_type_ + "GeluFusePattern";
   }
-
-  uint32_t benefit() const override { return level_; }
+  uint32_t benefit() const override { return static_cast<uint32_t>(level_); }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -206,8 +207,7 @@ class ElementwiseClipFusePattern : public paddle::drr::DrrPatternBase {
   std::string name() const override {
     return elementwise_type_ + "ClipFusePattern";
   }
-
-  uint32_t benefit() const override { return level_; }
+  uint32_t benefit() const override { return static_cast<uint32_t>(level_); }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();

@@ -464,9 +464,9 @@ def prune_model(
         'mask_2d_greedy': MaskAlgo.MASK_2D_GREEDY,
         'mask_2d_best': MaskAlgo.MASK_2D_BEST,
     }
-    assert (
-        mask_algo in MaskAlgo_mapping
-    ), 'The "mask_algo" should be one of ["mask_1d", "mask_2d_greedy", "mask_2d_best"]'
+    assert mask_algo in MaskAlgo_mapping, (
+        'The "mask_algo" should be one of ["mask_1d", "mask_2d_greedy", "mask_2d_best"]'
+    )
 
     prune_func = None
     if isinstance(model, paddle.nn.Layer):
@@ -685,9 +685,9 @@ class ASPHelper:
             target_program = None
             for param in layer.parameters():
                 target_program = param.block.program
-            assert (
-                target_program is not None
-            ), 'Cannot get paddle.static.Program from Paddle.nn.Layer.'
+            assert target_program is not None, (
+                'Cannot get paddle.static.Program from Paddle.nn.Layer.'
+            )
             return ASPHelper.prune_model_by_program(
                 place,
                 target_program,
@@ -795,7 +795,9 @@ class ASPHelper:
         return False
 
     @classmethod
-    def _get_prune_func_by_name(cls, param_name: str) -> Callable[
+    def _get_prune_func_by_name(
+        cls, param_name: str
+    ) -> Callable[
         [npt.NDArray[Any], int, int, MaskAlgo, str],
         tuple[npt.NDArray[Any], npt.NDArray[Any]],
     ]:
@@ -1036,9 +1038,9 @@ class OptimizerWithSparsityGuarantee:
         )
         for param_name, var in asp_info.mask_vars.items():
             param_mask_name = ASPHelper._get_mask_name(param_name)
-            assert (
-                param_mask_name in state_dict
-            ), f"The {param_mask_name} is not found."
+            assert param_mask_name in state_dict, (
+                f"The {param_mask_name} is not found."
+            )
             var.set_value(state_dict[param_mask_name])
             asp_info.update_masks(param_name, var.numpy())
         return self._optimizer.set_state_dict(state_dict)

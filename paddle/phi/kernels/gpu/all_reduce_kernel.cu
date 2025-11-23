@@ -67,6 +67,11 @@ void AllReduceKernel(const Context& dev_ctx,
       // min to replace
       red_type = ncclMin;
       break;
+    case ReduceType::kRedAny:
+      // NOTE(ooooo): There is no reduce_any type of ncclRedOp_t, just use
+      // max to replace
+      red_type = ncclMax;
+      break;
   }
   comm_ctx->AllReduce(out, x, red_type, stream);
 #else
@@ -90,8 +95,8 @@ PD_REGISTER_KERNEL(all_reduce,
                    uint8_t,
                    int16_t,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}
 #else
 PD_REGISTER_KERNEL(all_reduce,
                    GPU,
@@ -105,5 +110,5 @@ PD_REGISTER_KERNEL(all_reduce,
                    uint8_t,
                    int16_t,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

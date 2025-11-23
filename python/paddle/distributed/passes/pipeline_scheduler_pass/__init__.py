@@ -35,7 +35,9 @@ def apply_pass(main_program, startup_program, pass_name, pass_attr={}):
         "VPP",
         "ZBH1",
         "ZBVPP",
-    ], f"pipeline scheduler only support FThenB, 1F1B, Eager1F1B, VPP and ZBH1, but receive {pass_name}"
+    ], (
+        f"pipeline scheduler only support FThenB, 1F1B, Eager1F1B, VPP and ZBH1, but receive {pass_name}"
+    )
 
     if pass_name == "1F1B":
         # TODO(Ruibiao): Move FLAGS_1f1b_backward_forward_overlap and

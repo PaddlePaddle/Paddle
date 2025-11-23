@@ -26,6 +26,7 @@
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/backends/gpu/forwards.h"
+#include "paddle/phi/core/distributed/nccl_config.h"
 #endif
 
 #if defined(PADDLE_WITH_FLAGCX)
@@ -59,30 +60,38 @@ class CommContextManager {
   CommContext* Emplace(const std::string& unique_comm_key,
                        std::unique_ptr<CommContext> comm_context);
 
-  CommContext* Get(const std::string& unique_comm_key) const;
+  PADDLE_API CommContext* Get(const std::string& unique_comm_key) const;
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   int GetRingId(const ncclComm_t& comm) const;
 #endif
 
-  bool Has(const std::string& unique_comm_key) const;
+  PADDLE_API bool Has(const std::string& unique_comm_key) const;
 
-  static void SetDeviceId(int dev_id);
+  PADDLE_API static void SetDeviceId(int dev_id);
 
-  void SetGroupSize(const std::string& pg_key, int size);
+  PADDLE_API void SetGroupSize(const std::string& pg_key, int size);
 
-  void AddGroupRanks(const std::string& pg_key, std::vector<int> global_ranks);
+  PADDLE_API void AddGroupRanks(const std::string& pg_key,
+                                std::vector<int> global_ranks);
 
-  std::vector<int> GetGroupRanks(const std::string& pg_key) const;
+  PADDLE_API std::vector<int> GetGroupRanks(const std::string& pg_key) const;
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  static void CreateNCCLCommContext(const std::shared_ptr<Store>& store,
-                                    const std::string& unique_comm_key,
-                                    int rank,
-                                    int size,
-                                    const std::string& hash_key = "",
-                                    const P2POption* opt = nullptr,
-                                    int nccl_comm_init_option = 0);
+  static void CreateNCCLCommContext(
+      const std::shared_ptr<Store>& store,
+      const std::string& unique_comm_key,
+      int rank,
+      int size,
+      const std::string& hash_key = "",
+      const P2POption* opt = nullptr,
+      int nccl_comm_init_option = 0,
+      std::shared_ptr<phi::distributed::NCCLConfig> nccl_config_ptr = nullptr);
+  static void RecreateNCCLComm(const std::shared_ptr<Store>& store,
+                               const std::string& unique_comm_key,
+                               int rank,
+                               const std::string& hash_key = "",
+                               const P2POption* opt = nullptr);
 #endif
 
 #if defined(PADDLE_WITH_GLOO)

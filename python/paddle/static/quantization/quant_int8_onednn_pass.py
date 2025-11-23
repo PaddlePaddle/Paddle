@@ -14,11 +14,13 @@
 
 import numpy as np
 
+from paddle.utils import deprecated
+
 from ...base.framework import IrGraph
 from ...framework import _get_paddle_place
 
 
-class QuantInt8MkldnnPass:
+class QuantInt8OnednnPass:
     """
     Convert QuantizationFreezePass generated IrGraph to MKL-DNN supported INT8
     IrGraph. Following transformations did in this pass:
@@ -48,13 +50,13 @@ class QuantInt8MkldnnPass:
                 >>> # The original graph will be rewrite.
                 >>> import paddle
                 >>> from paddle import static
-                >>> from paddle.static.quantization import QuantInt8MkldnnPass
+                >>> from paddle.static.quantization import QuantInt8OnednnPass
                 >>> from paddle.framework import IrGraph
                 >>> from paddle.framework import core
 
                 >>> graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
                 >>> place = paddle.CPUPlace()
-                >>> onednn_pass = QuantInt8MkldnnPass(static.global_scope(), place)
+                >>> onednn_pass = QuantInt8OnednnPass(static.global_scope(), place)
                 >>> onednn_pass.apply(graph)
         """
 
@@ -89,9 +91,9 @@ class QuantInt8MkldnnPass:
             graph(IrGraph): the applied graph.
         """
 
-        assert isinstance(
-            graph, IrGraph
-        ), 'graph must be the instance of IrGraph.'
+        assert isinstance(graph, IrGraph), (
+            'graph must be the instance of IrGraph.'
+        )
         ops = graph.all_op_nodes()
 
         persistable_vars = [p.name() for p in graph.all_persistable_nodes()]
@@ -175,7 +177,7 @@ class QuantInt8MkldnnPass:
         conv_op_node.set_attr("Scale_weights", scale_w)
         conv_op_node.set_attr("Scale_in", scale_in)
         conv_op_node.set_attr("Scale_out", 1.0)
-        conv_op_node.set_attr("use_mkldnn", 1)
+        conv_op_node.set_attr("use_onednn", 1)
         conv_op_node.set_attr("force_fp32_output", 1)
         graph.link_to(input_var_node, conv_op_node)
         graph.link_to(weight_var_node, conv_op_node)
@@ -221,7 +223,7 @@ class QuantInt8MkldnnPass:
         mul_op_node.set_attr("scale_y", scale_w)
         mul_op_node.set_attr("scale_x", scale_in)
         mul_op_node.set_attr("scale_out", 1.0)
-        mul_op_node.set_attr("use_mkldnn", 1)
+        mul_op_node.set_attr("use_onednn", 1)
         mul_op_node.set_attr("force_fp32_output", 1)
         graph.link_to(input_var_node, mul_op_node)
         graph.link_to(weight_var_node, mul_op_node)
@@ -245,8 +247,8 @@ class QuantInt8MkldnnPass:
         quant_op_node = graph.create_op_node(
             op_type='quantize',
             attrs={
-                'data_format': 'MKLDNNLAYOUT',
-                'use_mkldnn': 1,
+                'data_format': 'ONEDNNLAYOUT',
+                'use_onednn': 1,
                 'Scale': scale_in,
                 'is_negative_input': 1,
             },
@@ -287,3 +289,14 @@ class QuantInt8MkldnnPass:
             )
         )
         graph.safe_remove_nodes(all_unused_vars)
+
+
+class QuantInt8MkldnnPass(QuantInt8OnednnPass):
+    @deprecated(
+        since="3.1.0",
+        update_to="paddle.static.quantization.QuantInt8OnednnPass",
+        level=1,
+        reason="QuantInt8MkldnnPass will be removed in future",
+    )
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)

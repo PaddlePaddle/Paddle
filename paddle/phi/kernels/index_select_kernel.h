@@ -19,14 +19,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexSelectKernel(const Context& ctx,
+void IndexSelectKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& index,
                        int dim,
                        DenseTensor* output);
 
 template <typename Context>
-void IndexSelectStridedKernel(const Context& ctx,
+void IndexSelectStridedKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               int64_t index,
                               int dim,

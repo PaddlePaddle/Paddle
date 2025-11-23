@@ -127,26 +127,33 @@ const Attribute& KernelContext::AttrAt(size_t idx) const {
   return attrs_.at(idx);
 }
 
-template const bool& KernelContext::AttrAt(size_t idx) const;
-template const int& KernelContext::AttrAt(size_t idx) const;
-template const int64_t& KernelContext::AttrAt(size_t idx) const;
-template const float& KernelContext::AttrAt(size_t idx) const;
-template const double& KernelContext::AttrAt(size_t idx) const;
-template const std::string& KernelContext::AttrAt(size_t idx) const;
-template const std::vector<bool>& KernelContext::AttrAt(size_t idx) const;
-template const std::vector<int>& KernelContext::AttrAt(size_t idx) const;
-template const std::vector<int64_t>& KernelContext::AttrAt(size_t idx) const;
-template const std::vector<float>& KernelContext::AttrAt(size_t idx) const;
-template const std::vector<double>& KernelContext::AttrAt(size_t idx) const;
-template const std::vector<std::string>& KernelContext::AttrAt(
+template PADDLE_API const bool& KernelContext::AttrAt(size_t idx) const;
+template PADDLE_API const int& KernelContext::AttrAt(size_t idx) const;
+template PADDLE_API const int64_t& KernelContext::AttrAt(size_t idx) const;
+template PADDLE_API const float& KernelContext::AttrAt(size_t idx) const;
+template PADDLE_API const double& KernelContext::AttrAt(size_t idx) const;
+template PADDLE_API const std::string& KernelContext::AttrAt(size_t idx) const;
+template PADDLE_API const std::vector<bool>& KernelContext::AttrAt(
     size_t idx) const;
-template const Scalar& KernelContext::AttrAt(size_t idx) const;
-template const std::vector<Scalar>& KernelContext::AttrAt(size_t idx) const;
-template const IntArray& KernelContext::AttrAt(size_t idx) const;
-template const DataType& KernelContext::AttrAt(size_t idx) const;
-template const DataLayout& KernelContext::AttrAt(size_t idx) const;
-template const Place& KernelContext::AttrAt(size_t idx) const;
-template const TensorRef& KernelContext::AttrAt(size_t idx) const;
-template const std::vector<TensorRef>& KernelContext::AttrAt(size_t idx) const;
+template PADDLE_API const std::vector<int>& KernelContext::AttrAt(
+    size_t idx) const;
+template PADDLE_API const std::vector<int64_t>& KernelContext::AttrAt(
+    size_t idx) const;
+template PADDLE_API const std::vector<float>& KernelContext::AttrAt(
+    size_t idx) const;
+template PADDLE_API const std::vector<double>& KernelContext::AttrAt(
+    size_t idx) const;
+template PADDLE_API const std::vector<std::string>& KernelContext::AttrAt(
+    size_t idx) const;
+template PADDLE_API const Scalar& KernelContext::AttrAt(size_t idx) const;
+template PADDLE_API const std::vector<Scalar>& KernelContext::AttrAt(
+    size_t idx) const;
+template PADDLE_API const IntArray& KernelContext::AttrAt(size_t idx) const;
+template PADDLE_API const DataType& KernelContext::AttrAt(size_t idx) const;
+template PADDLE_API const DataLayout& KernelContext::AttrAt(size_t idx) const;
+template PADDLE_API const Place& KernelContext::AttrAt(size_t idx) const;
+template PADDLE_API const TensorRef& KernelContext::AttrAt(size_t idx) const;
+template PADDLE_API const std::vector<TensorRef>& KernelContext::AttrAt(
+    size_t idx) const;
 
 }  // namespace phi

@@ -45,7 +45,10 @@
 #endif
 
 #if defined(PADDLE_WITH_FLAGCX)
+#if !defined(PADDLE_WITH_XPU)
 #include "paddle/phi/core/distributed/flagcx_comm_context.h"
+#endif
+#include "paddle/phi/backends/dynload/flagcx.h"
 #include "paddle/phi/core/distributed/flagcx_tools.h"
 #endif
 
@@ -71,7 +74,8 @@ void CommContextManager::CreateNCCLCommContext(
     int size,
     const std::string& hash_key,
     const P2POption* p2p_opt,
-    int nccl_comm_init_option) {
+    int nccl_comm_init_option,
+    std::shared_ptr<phi::distributed::NCCLConfig> nccl_config_ptr) {
   auto& comm_context_manager = CommContextManager::GetInstance();
   if (comm_context_manager.Has(unique_comm_key)) {
     return;
@@ -101,7 +105,7 @@ void CommContextManager::CreateNCCLCommContext(
           << ", unique_key: " << unique_key
           << ", nccl_id: " << SerializeNCCLUniqueId(nccl_id);
   auto nccl_comm_context = std::make_unique<NCCLCommContext>(
-      rank, size, nccl_id, nccl_comm_init_option);
+      rank, size, nccl_id, nccl_comm_init_option, nccl_config_ptr);
   if (CommContextManager::device_id != -1) {
     std::unique_ptr<phi::GPUContext> dev_ctx(
         new phi::GPUContext(phi::GPUPlace(CommContextManager::device_id)));
@@ -125,6 +129,39 @@ void CommContextManager::CreateNCCLCommContext(
 
   comm_context_manager.SetStore(store);
   comm_context_manager.Emplace(unique_comm_key, std::move(nccl_comm_context));
+}
+
+void CommContextManager::RecreateNCCLComm(const std::shared_ptr<Store>& store,
+                                          const std::string& unique_comm_key,
+                                          int rank,
+                                          const std::string& recreate_key,
+                                          const P2POption* p2p_opt) {
+  auto& comm_context_manager = CommContextManager::GetInstance();
+
+  ncclUniqueId nccl_id;
+  if (rank == 0 || (p2p_opt && p2p_opt->is_p2p_op && p2p_opt->p2p_rank == 0)) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetUniqueId(&nccl_id));
+  }
+
+  std::string unique_key =
+      "NCCLCommContext/" + unique_comm_key + "/" + recreate_key;
+  if (rank == 0 || (p2p_opt && p2p_opt->is_p2p_op && p2p_opt->p2p_rank == 0)) {
+    std::vector<uint8_t> nccl_id_wrapper(
+        reinterpret_cast<uint8_t*>(&nccl_id),
+        reinterpret_cast<uint8_t*>(&nccl_id) + NCCL_UNIQUE_ID_BYTES);
+    store->set(unique_key, nccl_id_wrapper);
+  } else {
+    const auto& nccl_id_wrapper = store->get(unique_key);
+    std::memcpy(&nccl_id, nccl_id_wrapper.data(), nccl_id_wrapper.size());
+  }
+
+  VLOG(3) << "RecreateNCCLComm nccl_id: " << SerializeNCCLUniqueId(nccl_id);
+
+  auto comm_context = static_cast<phi::distributed::NCCLCommContext*>(
+      comm_context_manager.Get(unique_comm_key));
+  comm_context->CreateNCCLComm(nccl_id);
+
+  comm_context_manager.SetStore(store);
 }
 #endif
 
@@ -217,12 +254,34 @@ void CommContextManager::CreateBKCLCommContext(
   if (comm_context_manager.Has(unique_comm_key)) {
     return;
   }
+#if defined(PADDLE_WITH_FLAGCX)
+  flagcxHandlerGroup_t flagcx_handler;
+  phi::dynload::flagcxHandleInit(&flagcx_handler);
+  if (rank == 0) {
+    phi::dynload::flagcxGetUniqueId(&flagcx_handler->uniqueId);
+  }
+#else
   BKCLUniqueId bkcl_id;
   if (rank == 0) {
     PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_get_unique_id(&bkcl_id));
   }
+#endif
 
   std::string unique_key = "BKCLCommContext/" + unique_comm_key + hash_key;
+#if defined(PADDLE_WITH_FLAGCX)
+  if (rank == 0) {
+    std::vector<uint8_t> bkcl_id_wrapper(
+        reinterpret_cast<uint8_t*>(flagcx_handler->uniqueId),
+        reinterpret_cast<uint8_t*>(flagcx_handler->uniqueId) +
+            sizeof(flagcxUniqueId));
+    store->set(unique_key, bkcl_id_wrapper);
+  } else {
+    const auto& bkcl_id_wrapper = store->get(unique_key);
+    std::memcpy(reinterpret_cast<uint8_t*>(flagcx_handler->uniqueId),
+                bkcl_id_wrapper.data(),
+                bkcl_id_wrapper.size());
+  }
+#else
   if (rank == 0) {
     std::vector<uint8_t> bkcl_id_wrapper(
         reinterpret_cast<uint8_t*>(&bkcl_id),
@@ -232,12 +291,18 @@ void CommContextManager::CreateBKCLCommContext(
     const auto& bkcl_id_wrapper = store->get(unique_key);
     std::memcpy(&bkcl_id, bkcl_id_wrapper.data(), bkcl_id_wrapper.size());
   }
+#endif
 
   VLOG(3) << "init BKCLCommContext rank: " << rank << ", size: " << size
           << ", unique_comm_key: " << unique_comm_key
           << ", unique_key: " << unique_key;
+#if defined(PADDLE_WITH_FLAGCX)
+  auto bkcl_comm_context =
+      std::make_unique<BKCLCommContext>(rank, size, flagcx_handler);
+#else
   auto bkcl_comm_context =
       std::make_unique<BKCLCommContext>(rank, size, bkcl_id);
+#endif
 
   if (CommContextManager::device_id != -1) {
     std::unique_ptr<phi::XPUContext> dev_ctx(new phi::XPUContext(
@@ -267,7 +332,7 @@ void CommContextManager::CreateBKCLCommContext(
 }
 #endif
 
-#if defined(PADDLE_WITH_FLAGCX)
+#if defined(PADDLE_WITH_FLAGCX) && !defined(PADDLE_WITH_XPU)
 void CommContextManager::CreateFlagcxCommContext(
     const std::shared_ptr<Store>& store,
     const std::string& unique_comm_key,
@@ -284,7 +349,7 @@ void CommContextManager::CreateFlagcxCommContext(
     phi::dynload::flagcxGetUniqueId(&flagcx_handler->uniqueId);
   }
 
-  std::string unique_key = "FlagcxCommContext/" + unique_comm_key + hash_key;
+  std::string unique_key = "XCCLCommContext/" + unique_comm_key + hash_key;
   if (rank == 0) {
     std::vector<uint8_t> flagcx_id_wrapper(
         reinterpret_cast<uint8_t*>(flagcx_handler->uniqueId),

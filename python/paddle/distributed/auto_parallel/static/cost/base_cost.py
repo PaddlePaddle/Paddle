@@ -585,26 +585,19 @@ class CommContext:
         # NOTE: Get beta by ring, even in the case of tree such as tree broadcast
         ranks = self.cluster.convert_rank_to_device_id(ranks)
         key = ','.join(map(str, sorted(ranks)))
-        max_beta = None
         if key in self.beta:
-            max_beta = self.beta[key]
-        else:
-            for i in range(len(ranks)):
-                for j in range(i + 1, len(ranks)):
-                    forward_order_beta = self.cluster.get_beta(
-                        ranks[i], ranks[j]
-                    )
-                    backward_order_beta = self.cluster.get_beta(
-                        ranks[j], ranks[i]
-                    )
-                    beta = max(backward_order_beta, forward_order_beta)
-                    if max_beta is None:
-                        max_beta = beta
-                    else:
-                        if beta > max_beta:
-                            max_beta = beta
-            self.beta[key] = max_beta
-
+            return self.beta[key]
+        max_beta = None
+        for i in range(len(ranks)):
+            for j in range(i + 1, len(ranks)):
+                forward_order_beta = self.cluster.get_beta(ranks[i], ranks[j])
+                backward_order_beta = self.cluster.get_beta(ranks[j], ranks[i])
+                beta = max(backward_order_beta, forward_order_beta)
+                if max_beta is None or beta > max_beta:
+                    max_beta = beta
+        if max_beta is None:
+            max_beta = 0
+        self.beta[key] = max_beta
         return max_beta
 
     def get_hops(self, ranks):
@@ -629,14 +622,14 @@ class Cost:
         assert val >= 0, "Time must be greater than or equal to 0."
 
     def _check_memory(self, val):
-        assert (
-            isinstance(val, int) and val >= 0
-        ), "Memory must be int and greater than equal to 0."
+        assert isinstance(val, int) and val >= 0, (
+            "Memory must be int and greater than equal to 0."
+        )
 
     def _check_flops(self, val):
-        assert (
-            isinstance(val, int) and val >= 0
-        ), "FLOPs must be int and greater than equal to 0."
+        assert isinstance(val, int) and val >= 0, (
+            "FLOPs must be int and greater than equal to 0."
+        )
 
     @property
     def time(self):
@@ -987,9 +980,9 @@ def calc_time_by_cost_model(op, cluster=None):
         var_name = op.output_arg_names[0]
         dtype = op.block._var_recursive(var_name).dtype
         device = cluster.get_device(0)
-        assert (
-            device.type == DeviceType.GPU
-        ), "Only GPU device is supported currently."
+        assert device.type == DeviceType.GPU, (
+            "Only GPU device is supported currently."
+        )
 
         gflops = 0.0
         if dtype == paddle.float64:

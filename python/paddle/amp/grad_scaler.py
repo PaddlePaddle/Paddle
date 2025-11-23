@@ -958,7 +958,7 @@ class GradScaler(AmpScaler):
         Whether to use dynamic loss scaling.
 
         Returns:
-            bool: if fixed loss_scaling is used return False, if the loss scaling is updated dynamically return true.
+            bool: if fixed loss_scaling is used return False, if the loss scaling is updated dynamically return True.
 
         Examples:
             .. code-block:: python
@@ -1213,7 +1213,7 @@ class GradScaler(AmpScaler):
         Return the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
 
         Returns:
-            int:  the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
+            int: the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
 
         Examples:
             .. code-block:: python
@@ -1308,7 +1308,7 @@ class GradScaler(AmpScaler):
         Loads the scaler state.
 
         Args:
-            state_dict(dict): scaler state.  Should be an object returned from a call to `GradScaler.state_dict()`.
+            state_dict(dict): scaler state. Should be an object returned from a call to `GradScaler.state_dict()`.
 
         Examples:
 

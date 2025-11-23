@@ -51,6 +51,16 @@ list(APPEND GLOO_PATCH_COMMAND
 set(GLOO_CMAKE_C_FLAGS "-O3 -fPIC")
 set(GLOO_CMAKE_CXX_FLAGS "-O3 -fPIC")
 
+# For CMake >= 4.0.0, set policy compatibility for gloo's CMake.
+set(GLOO_POLICY_ARGS "")
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
+  message(
+    WARNING
+      "gloo: forcing CMake policy compatibility for CMake >= 4.0 (CMAKE_POLICY_VERSION_MINIMUM=3.5)"
+  )
+  set(GLOO_POLICY_ARGS "-DCMAKE_POLICY_VERSION_MINIMUM=3.5")
+endif()
+
 ExternalProject_Add(
   ${GLOO_PROJECT}
   ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -63,6 +73,7 @@ ExternalProject_Add(
              -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
              -DCMAKE_C_FLAGS=${GLOO_CMAKE_C_FLAGS}
              -DCMAKE_CXX_FLAGS=${GLOO_CMAKE_CXX_FLAGS}
+             ${GLOO_POLICY_ARGS}
   BUILD_BYPRODUCTS ${GLOO_LIBRARIES})
 
 add_library(gloo STATIC IMPORTED GLOBAL)

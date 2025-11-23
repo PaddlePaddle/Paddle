@@ -22,6 +22,8 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
+COMMON_DECLARE_bool(cinn_debug);
+
 namespace {
 using GroupOpsVec = std::vector<pir::Operation*>;
 using CompatibleInfo = cinn::hlir::framework::pir::CompatibleInfo;
@@ -63,10 +65,12 @@ class BuildCinnPass : public pir::Pass {
       ::pir::ReplaceWithGroupOp(block, group_ops, false);
     }
     auto end_t = std::chrono::high_resolution_clock::now();
-    auto duration =
-        std::chrono::duration_cast<std::chrono::milliseconds>(end_t - start_t);
-    LOG(INFO) << "Time of building group ops (size=" << num_ops
-              << "): " << FormatDuration(duration);
+    if (FLAGS_cinn_debug) {
+      auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+          end_t - start_t);
+      LOG(INFO) << "Time of building group ops (size=" << num_ops
+                << "): " << FormatDuration(duration);
+    }
   }
 };
 

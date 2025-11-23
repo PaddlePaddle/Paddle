@@ -44,9 +44,9 @@ class LazyInitHelper:
         """
         if self._state:
             return
-        assert (
-            framework.in_dygraph_mode()
-        ), "LazyInit.enable() is only available in dygraph mode."
+        assert framework.in_dygraph_mode(), (
+            "LazyInit.enable() is only available in dygraph mode."
+        )
         self._state = True
 
     def disable(self):

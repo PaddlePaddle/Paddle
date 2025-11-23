@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_default_and_pir,
+    test_default_mode_only,
 )
 
 import paddle
@@ -67,7 +67,7 @@ class TestDygraphBasicApi_ToVariable(Dy2StTestBase):
 
         return static_res
 
-    @test_default_and_pir
+    @test_default_mode_only
     def test_transformed_static_result(self):
         for func in self.test_funcs:
             self.dygraph_func = func
@@ -143,7 +143,7 @@ class TestDygraphBasicApi(Dy2StTestBase):
 
         return static_res
 
-    @test_default_and_pir
+    @test_default_mode_only
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
         static_res = self.get_static_output()
@@ -361,7 +361,7 @@ class TestDygraphBasicApi_CosineDecay(Dy2StTestBase):
         static_res = to_static(self.dygraph_func)()
         return static_res
 
-    @test_default_and_pir
+    @test_default_mode_only
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
         static_res = self.get_static_output()

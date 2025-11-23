@@ -19,7 +19,6 @@
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 

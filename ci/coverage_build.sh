@@ -19,9 +19,12 @@ function check_diff_file_for_coverage() {
     diff_h_file=$(git diff --name-status test -- | awk '$1 != "D" {print $2}' | grep '\.h$' | awk -F "/" '{printf "%s,",$NF}')
     diff_cc_file=$(git diff --name-status test -- | awk '$1 != "D" {print $2}' | grep -E '\.(cc|c)$' | awk -F "/" '{printf "%s,",$NF}')
     diff_py_file=$(git diff --name-status test -- | grep '\.py$' | awk '$1 != "D" {printf "%s,",$2}')
-    echo "PADDLE_GIT_DIFF_H_FILE=${diff_h_file%*,}" >> $1
-    echo "PADDLE_GIT_DIFF_CC_FILE=${diff_cc_file%*,}" >> $1
-    echo "PADDLE_GIT_DIFF_PY_FILE=${diff_py_file%*,}" >> $1
+    export PADDLE_GIT_DIFF_H_FILE=${diff_h_file%*,}
+    export PADDLE_GIT_DIFF_CC_FILE=${diff_cc_file%*,}
+    export PADDLE_GIT_DIFF_PY_FILE=${diff_py_file%*,}
+    echo "export PADDLE_GIT_DIFF_H_FILE=${diff_h_file%*,}" >> ~/.bashrc
+    echo "export PADDLE_GIT_DIFF_CC_FILE=${diff_cc_file%*,}" >> ~/.bashrc
+    echo "export PADDLE_GIT_DIFF_PY_FILE=${diff_py_file%*,}" >> ~/.bashrc
 }
 
 echo "export LD_LIBRARY_PATH=/usr/local/cuda/compat:/usr/local/cuda/lib:/usr/local/cuda/lib64:\\" >> ~/.bashrc
@@ -29,7 +32,8 @@ echo "/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:\$
 echo "export PATH=/usr/local/bin:\\" >> ~/.bashrc
 echo "\${PATH}" >> ~/.bashrc
 source ~/.bashrc
+unset GREP_OPTIONS
 
-check_diff_file_for_coverage $6
+check_diff_file_for_coverage
 
 bash $ci_scripts/run_setup.sh "$@"

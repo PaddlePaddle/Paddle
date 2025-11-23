@@ -18,9 +18,6 @@
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/ir/operation.h"
 #include "paddle/cinn/optim/ir_simplify.h"
-#include "paddle/cinn/poly/dim.h"
-#include "paddle/cinn/poly/domain.h"
-#include "paddle/cinn/poly/stage.h"
 #include "paddle/cinn/runtime/use_extern_funcs.h"
 
 namespace cinn {
@@ -47,7 +44,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
         PADDLE_ENFORCE_EQ(axis.size(),
                           1,
                           ::common::errors::InvalidArgument(
-                              "The size of axis vector is incorrect"
+                              "The size of axis vector is incorrect. "
                               "Expected value is 1, but receive %d. ",
                               axis.size()));
         return fn(axis[0]);
@@ -66,7 +63,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
         PADDLE_ENFORCE_EQ(axis.size(),
                           2,
                           ::common::errors::InvalidArgument(
-                              "The size of axis vector is incorrect"
+                              "The size of axis vector is incorrect. "
                               "Expected value is 2, but receive %d. ",
                               axis.size()));
         return fn(axis[0], axis[1]);
@@ -85,7 +82,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
         PADDLE_ENFORCE_EQ(axis.size(),
                           3,
                           ::common::errors::InvalidArgument(
-                              "The size of axis vector is incorrect"
+                              "The size of axis vector is incorrect. "
                               "Expected value is 3, but receive %d. ",
                               axis.size()));
         return fn(axis[0], axis[1], axis[2]);
@@ -104,7 +101,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
         PADDLE_ENFORCE_EQ(axis.size(),
                           4,
                           ::common::errors::InvalidArgument(
-                              "The size of axis vector is incorrect"
+                              "The size of axis vector is incorrect. "
                               "Expected value is 4, but receive %d. ",
                               axis.size()));
         return fn(axis[0], axis[1], axis[2], axis[3]);
@@ -123,7 +120,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
         PADDLE_ENFORCE_EQ(axis.size(),
                           5,
                           ::common::errors::InvalidArgument(
-                              "The size of axis vector is incorrect"
+                              "The size of axis vector is incorrect. "
                               "Expected value is 5, but receive %d. ",
                               axis.size()));
         return fn(axis[0], axis[1], axis[2], axis[3], axis[4]);
@@ -142,7 +139,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
         PADDLE_ENFORCE_EQ(axis.size(),
                           6,
                           ::common::errors::InvalidArgument(
-                              "The size of axis vector is incorrect"
+                              "The size of axis vector is incorrect. "
                               "Expected value is 6, but receive %d. ",
                               axis.size()));
         return fn(axis[0], axis[1], axis[2], axis[3], axis[4], axis[5]);

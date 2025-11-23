@@ -89,15 +89,15 @@ def max_pool3d(
             [1, 2, 2, 2, 3]
     """
 
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
-    assert (
-        x.is_sparse_coo()
-    ), "Currently, sparse.relu only support the input of SparseCooTensor"
-    assert (
-        data_format == 'NDHWC'
-    ), "Currently, sparse.max_pool3d only support data format of 'NDHWC'"
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
+    assert x.is_sparse_coo(), (
+        "Currently, sparse.relu only support the input of SparseCooTensor"
+    )
+    assert data_format == 'NDHWC', (
+        "Currently, sparse.max_pool3d only support data format of 'NDHWC'"
+    )
 
     kernel_size = convert_to_list(kernel_size, 3, 'pool_size')
     if stride is None:

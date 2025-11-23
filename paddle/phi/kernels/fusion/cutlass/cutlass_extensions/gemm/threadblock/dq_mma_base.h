@@ -169,7 +169,8 @@ class DqMmaBase {
     AlignedBuffer<typename Operator::ElementB, ShapeB::kCount> operand_B;
 
     /// Buffer to hold scales for threadblock
-    AlignedBuffer<ElementScale, Shape::kN> operand_scale;
+    /// Note(zkk): allocate more used in group wise weight-only.
+    AlignedBuffer<ElementScale, Shape::kN * kStages> operand_scale;
 
    public:
     //

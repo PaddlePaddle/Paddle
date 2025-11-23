@@ -19,12 +19,12 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MaxRawKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const IntArray& dims,
-                  bool keep_dim,
-                  bool reduce_all,
-                  DenseTensor* out) {
+PADDLE_API void MaxRawKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             const IntArray& dims,
+                             bool keep_dim,
+                             bool reduce_all,
+                             DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
   phi::Reduce<T, kps::MaxFunctor, kps::IdentityFunctor>(
@@ -44,8 +44,8 @@ PD_REGISTER_KERNEL(max_raw,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float8_e5m2) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2) {}
 #endif

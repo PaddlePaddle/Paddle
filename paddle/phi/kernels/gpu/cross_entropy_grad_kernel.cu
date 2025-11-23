@@ -43,8 +43,8 @@ __global__ void SoftLabelCrossEntropyGradientKernel(T* logit_grad,
                                                     const int n,
                                                     const int d,
                                                     const int remain) {
-  int ids = blockIdx.x * blockDim.x + threadIdx.x;
-  if (ids < n * d) {
+  int64_t ids = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (ids < static_cast<int64_t>(n) * d) {
     int idx_n = ids / d;
     int idx_remain = ids % remain;
     int idx_loss = idx_n * remain + idx_remain;
@@ -59,7 +59,7 @@ __global__ void HardLabelCrossEntropyGradientKernel(T* logit_grad,
                                                     const int d,
                                                     const int remain,
                                                     const int ignore_index) {
-  CUDA_KERNEL_LOOP(index, n * remain) {
+  CUDA_KERNEL_LOOP(index, static_cast<int64_t>(n) * remain) {
     int idx_n = index / remain;
     int idx_remain = index % remain;
     int tmp = static_cast<int>(labels[index]);
@@ -99,7 +99,9 @@ __global__ void SoftCrossEntropyGradientKernel(T* logit_grad,
                                                const int64_t n,
                                                const int64_t d,
                                                const int64_t remain) {
-  int64_t ids = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t ids =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (ids < n * d) {
     int64_t idx_n = ids / d;
     int64_t idx_remain = ids % remain;
@@ -120,7 +122,9 @@ __global__ void SoftmaxWithCrossEntropyGradHardLabel(T* logits_grad,
                                                      const int64_t dim,
                                                      const int64_t d,
                                                      const int ignore_index) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int64_t idx_n = idx / (d * dim);
   int64_t idx_dim = (idx / d) % dim;
   int64_t idx_d = idx % d;
@@ -168,7 +172,9 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
 
   const int rank = logit_grad->dims().size();
   const int axis_v = phi::funcs::CanonicalAxis(axis, rank);
-  int axis_dim = logit_grad->dims()[axis_v];
+  int64_t axis_dim = logit_grad->dims()[axis_v];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   const int64_t n = phi::funcs::SizeToAxis(axis_v, logit_grad->dims());
   const int64_t d = phi::funcs::SizeFromAxis(axis_v, logit_grad->dims());
@@ -180,19 +186,19 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
   // do not with softmax op, and input is softmax
   if (!use_softmax) {
     if (soft_label) {
-      int grid = (n * d + block - 1) / block;
+      int64_t grid = (n * d + block - 1) / block;
       const T* label_data = label.data<T>();
       SoftLabelCrossEntropyGradientKernel<T><<<grid, block, 0, stream>>>(
           logit_grad_data, loss_grad_data, label_data, n, d, remain);
     } else {
       DenseTensor logits_grad_2d(*logit_grad);
       logits_grad_2d.Resize({n, d});
-      int grid = (n * remain + block - 1) / block;
+      int64_t grid = (n * remain + block - 1) / block;
       const auto* label_data = label.data<LabelT>();
       HardLabelCrossEntropyGradientKernel<T, LabelT>
           <<<grid, block, 0, stream>>>(
               logit_grad_data, label_data, n, d, remain, ignore_index);
-      int num = n * d;
+      int64_t num = n * d;
       grid = (num + block - 1) / block;
       ScaleCrossEntropyGradient<T, LabelT>
           <<<grid, block, 0, stream>>>(logit_grad_data,
@@ -217,7 +223,7 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
   } else {
     const T* softmax_data = softmax.data<T>();
     const auto* label_data = label.data<LabelT>();
-    int grid = (n * d + block - 1) / block;
+    int64_t grid = (n * d + block - 1) / block;
     SoftmaxWithCrossEntropyGradHardLabel<T>
         <<<grid, block, 0, stream>>>(logit_grad_data,
                                      loss_grad_data,
@@ -241,6 +247,10 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
                                        int ignore_index,
                                        int axis,
                                        DenseTensor* logits_grad) {
+  if (logits_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(logits_grad);
+    return;
+  }
   auto dtype = label.dtype();
   if (soft_label) {
     PADDLE_ENFORCE_EQ(
@@ -284,7 +294,7 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
                    phi::CrossEntropyWithSoftmaxGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
@@ -293,7 +303,7 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
                    phi::CrossEntropyWithSoftmaxGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #else
 PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
                    GPU,
@@ -301,6 +311,6 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
                    phi::CrossEntropyWithSoftmaxGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif
 #endif

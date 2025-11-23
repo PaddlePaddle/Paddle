@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include <absl/types/any.h>
+#include <any>
 
 #include <string>
 #include <utility>
@@ -35,7 +35,7 @@ class DebugManager {
   void Clear();
 
  protected:
-  void Append(const std::string& key, absl::any value);
+  void Append(const std::string& key, std::any value);
 
   template <typename T>
   inline std::string AppendTypeSuffix(const std::string& key) {
@@ -44,7 +44,7 @@ class DebugManager {
 
  private:
   //! hide the type of vector<pair<string, any>>
-  absl::any data_;
+  std::any data_;
 };
 
 }  // namespace common

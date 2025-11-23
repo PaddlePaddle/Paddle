@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void CSplitKernel(const Context& ctx,
+void CSplitKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int rank,
                   int nranks,
@@ -38,4 +38,4 @@ PD_REGISTER_KERNEL(c_split,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

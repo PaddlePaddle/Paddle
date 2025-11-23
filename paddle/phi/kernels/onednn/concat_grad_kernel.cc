@@ -76,9 +76,5 @@ void ConcatGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(concat_grad,
-                   OneDNN,
-                   ONEDNN,
-                   phi::ConcatGradKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    concat_grad, OneDNN, ONEDNN, phi::ConcatGradKernel, float, phi::bfloat16) {}

@@ -21,21 +21,19 @@
 
 namespace phi {
 
-#define PD_VISIT_FLOAT_AND_BF16_TYPES(TYPE, NAME, ...)                    \
-  [&] {                                                                   \
-    const auto& __dtype__ = TYPE;                                         \
-    switch (__dtype__) {                                                  \
-      PD_PRIVATE_CASE_TYPE(                                               \
-          NAME, ::paddle::DataType::FLOAT32, float, __VA_ARGS__)          \
-      PD_PRIVATE_CASE_TYPE(NAME,                                          \
-                           ::paddle::DataType::BFLOAT16,                  \
-                           ::phi::dtype::bfloat16,                        \
-                           __VA_ARGS__)                                   \
-      default:                                                            \
-        PD_THROW("function " #NAME " is not implemented for data type `", \
-                 __dtype__,                                               \
-                 "`");                                                    \
-    }                                                                     \
+#define PD_VISIT_FLOAT_AND_BF16_TYPES(TYPE, NAME, ...)                      \
+  [&] {                                                                     \
+    const auto& __dtype__ = TYPE;                                           \
+    switch (__dtype__) {                                                    \
+      PD_PRIVATE_CASE_TYPE(                                                 \
+          NAME, ::paddle::DataType::FLOAT32, float, __VA_ARGS__)            \
+      PD_PRIVATE_CASE_TYPE(                                                 \
+          NAME, ::paddle::DataType::BFLOAT16, ::phi::bfloat16, __VA_ARGS__) \
+      default:                                                              \
+        PD_THROW("function " #NAME " is not implemented for data type `",   \
+                 __dtype__,                                                 \
+                 "`");                                                      \
+    }                                                                       \
   }()
 
 template <typename T, typename Context>
@@ -51,10 +49,6 @@ void ConvGradKernel(const Context& dev_ctx,
                     const std::string& data_format,
                     DenseTensor* input_grad,
                     DenseTensor* filter_grad) {
-  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType(),
-                    AllocationType::CPU,
-                    common::errors::PreconditionNotMet(
-                        "Operator oneDNN ConvGrad must use CPUPlace"));
   const auto& onednn_engine = dev_ctx.GetEngine();
 
   bool is_test = dev_ctx.HasDnnAttr("is_test")
@@ -259,12 +253,8 @@ KernelKey ConvGradGetKernelTypeForVar(const GetKernelTypeForVarContext* ctx) {
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(conv2d_grad,
-                   OneDNN,
-                   ONEDNN,
-                   phi::ConvGradKernel,
-                   float,
-                   phi::dtype::bfloat16) {
+PD_REGISTER_KERNEL(
+    conv2d_grad, OneDNN, ONEDNN, phi::ConvGradKernel, float, phi::bfloat16) {
   kernel->get_kerneltype_forvar_fn_ = phi::ConvGradGetKernelTypeForVar;
 }
 
@@ -273,7 +263,7 @@ PD_REGISTER_KERNEL(depthwise_conv2d_grad,
                    ONEDNN,
                    phi::DepthwiseConvGradKernel,
                    float,
-                   phi::dtype::bfloat16) {
+                   phi::bfloat16) {
   kernel->get_kerneltype_forvar_fn_ = phi::ConvGradGetKernelTypeForVar;
 }
 

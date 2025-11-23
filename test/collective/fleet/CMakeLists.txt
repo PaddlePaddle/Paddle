@@ -141,14 +141,29 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
     START_BASH
     ../../legacy_test/dist_test.sh
     TIMEOUT
-    "500"
+    "600"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
     "PADDLE_DIST_UT_PORT=21218;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_parallel_dygraph_pipeline_parallel
-                       PROPERTIES TIMEOUT "500")
+                       PROPERTIES TIMEOUT "600")
+endif()
+if((WITH_GPU) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_parallel_dygraph_pipeline_parallel_shared_weight
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "600"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21328;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_parallel_dygraph_pipeline_parallel_shared_weight
+                       PROPERTIES TIMEOUT "600")
 endif()
 if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
@@ -356,6 +371,21 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   )
   set_tests_properties(test_parallel_dygraph_sharding_parallel
                        PROPERTIES TIMEOUT "400")
+endif()
+if((WITH_GPU) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_parallel_dygraph_sharding_parallel_chunkoffload
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "600"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21218;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_parallel_dygraph_sharding_parallel_chunkoffload
+                       PROPERTIES TIMEOUT "600")
 endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   bash_test_modules(
@@ -806,4 +836,60 @@ if(LOCAL_ALL_ARCH AND (LINUX OR APPLE))
     ENVS
     "PADDLE_DIST_UT_PORT=21212;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
+endif()
+if((WITH_GPU) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_shutdown_process_group
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "200"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=22024;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_shutdown_process_group PROPERTIES TIMEOUT "200")
+endif()
+if((WITH_GPU) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_pp_send_recv_dict
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "500"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21282;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_pp_send_recv_dict PROPERTIES TIMEOUT "500")
+endif()
+if((WITH_GPU) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_pp_unified_dygraph_model
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "500"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21282;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_pp_unified_dygraph_model PROPERTIES TIMEOUT "500")
+endif()
+if((WITH_GPU) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_sharding_stage3_bugfix
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "500"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21282;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_sharding_stage3_bugfix PROPERTIES TIMEOUT "500")
 endif()

@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void UnfoldKernel(const Context& ctx,
+void UnfoldKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const std::vector<int>& kernel_sizes,
                   const std::vector<int>& strides,

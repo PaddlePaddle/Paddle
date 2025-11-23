@@ -50,15 +50,9 @@ class YoloBoxPlugin : public nvinfer1::IPluginV2Ext {
   bool supportsFormat(nvinfer1::DataType type, nvinfer1::TensorFormat format)
       const TRT_NOEXCEPT override;
   size_t getWorkspaceSize(int max_batch_size) const TRT_NOEXCEPT override;
-#if IS_TRT_VERSION_LT(8000)
-  int enqueue(int batch_size,
-              const void* const* inputs,
-              void** outputs,
-#else
   int enqueue(int batch_size,
               const void* const* inputs,
               void* const* outputs,
-#endif
               void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
   template <typename T>
@@ -268,15 +262,9 @@ class PIRYoloBoxPlugin : public nvinfer1::IPluginV2Ext {
   bool supportsFormat(nvinfer1::DataType type, nvinfer1::TensorFormat format)
       const TRT_NOEXCEPT override;
   size_t getWorkspaceSize(int max_batch_size) const TRT_NOEXCEPT override;
-#if IS_TRT_VERSION_LT(8000)
-  int enqueue(int batch_size,
-              const void* const* inputs,
-              void** outputs,
-#else
   int enqueue(int batch_size,
               const void* const* inputs,
               void* const* outputs,
-#endif
               void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
   template <typename T>

@@ -14,9 +14,6 @@
 
 
 import ast
-import sys
-
-import astor
 
 from paddle.utils import gast
 
@@ -32,13 +29,5 @@ def ast_to_source_code(ast_node):
     if isinstance(ast_node, gast.AST):
         ast_node = gast.gast_to_ast(ast_node)
 
-    if sys.version_info >= (3, 9):
-        ast.fix_missing_locations(ast_node)
-        return ast.unparse(ast_node)
-
-    # Do not wrap lines even if they are too long
-    def pretty_source(source):
-        return ''.join(source)
-
-    source_code = astor.to_source(ast_node, pretty_source=pretty_source)
-    return source_code
+    ast.fix_missing_locations(ast_node)
+    return ast.unparse(ast_node)

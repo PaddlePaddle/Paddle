@@ -75,14 +75,17 @@ nvinfer1::DataType PrelnGroupnormActPluginDynamic::getOutputDataType(
 
 int PrelnGroupnormActPluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
-static inline int32_t divUp(int32_t m, int32_t n) { return (m + n - 1) / n; }
+template <typename T>
+static inline T divUp(T m, T n) {
+  return (m + n - 1) / n;
+}
 
-static int32_t findMaxDivisor(int32_t n, int32_t maxAllowedDivisor) {
-  int32_t maxDivisor = -1;
-  for (int32_t i = 1; i <= std::sqrt(n); i++) {
+static int64_t findMaxDivisor(int64_t n, int64_t maxAllowedDivisor) {
+  int64_t maxDivisor = -1;
+  for (int64_t i = 1; i <= std::sqrt(n); i++) {
     if (n % i == 0) {
-      int32_t divisor1 = n / i;
-      int32_t divisor2 = i;
+      int64_t divisor1 = n / i;
+      int64_t divisor2 = i;
 
       if (divisor1 > maxDivisor && divisor1 < maxAllowedDivisor) {
         maxDivisor = divisor1;
@@ -137,16 +140,16 @@ __global__ void prelnGroupNormNDHWCSumKernel(
   int32_t ci = blockIdx.x * params.cPerBlock + threadIdx.x * 2;
 
   // The first activation loaded by that block.
-  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
+  int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
   // The sums.
   float sum = 0.F;
   float sumSq = 0.F;
 
   // Iterate over the activations to compute the sums.
-  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
+  for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The offset.
     int64_t offset = static_cast<int64_t>(ni) * params.dhwc +
                      static_cast<int64_t>(dhwi) * params.c + ci;
@@ -220,7 +223,7 @@ void prelnGroupNormNDHWCSum(GroupNormNDHWCParams<__half> const &params,
                     0,
                     common::errors::InvalidArgument(
                         "The groupNormNDHWCSum of prelnGroupnormAct Plugin got "
-                        "wrong parameters"
+                        "wrong parameters: "
                         "params.c %% params.cPerBlock should be 0, but get %d.",
                         params.c % params.cPerBlock));
   PADDLE_ENFORCE_EQ(
@@ -228,7 +231,7 @@ void prelnGroupNormNDHWCSum(GroupNormNDHWCParams<__half> const &params,
       0,
       common::errors::InvalidArgument(
           "The groupNormNDHWCSum of prelnGroupnormAct Plugin got wrong "
-          "parameters"
+          "parameters: "
           "params.dhw  %% params.dhwPerBlock should be 0, but get %d.",
           params.dhw % params.dhwPerBlock));
   // Make sure a group does not span multiple blocks.
@@ -237,7 +240,7 @@ void prelnGroupNormNDHWCSum(GroupNormNDHWCParams<__half> const &params,
       0,
       common::errors::InvalidArgument(
           "The groupNormNDHWCSum of prelnGroupnormAct Plugin got wrong "
-          "parameters"
+          "parameters: "
           "params.cPerBlock %% params.cPerGroup should be 0, but get %d.",
           params.cPerBlock % params.cPerGroup));
   dim3 grid;
@@ -306,12 +309,12 @@ __global__ void prelnGroupNormNDHWCScaleKernel(
   float invStdDev = rsqrtf(var + params.eps);
 
   // The first activation loaded by that block.
-  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
+  int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
   // Iterate over the activations to compute the sums.
-  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
+  for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
     int64_t offset = (int64_t)ni * params.dhwc + dhwi * params.c + ci;
 
@@ -353,7 +356,7 @@ void prelnGroupNormNDHWCScale(GroupNormNDHWCParams<__half> const &params,
       0,
       common::errors::InvalidArgument(
           "The groupNormNDHWCScale of prelnGroupnormAct Plugin got "
-          "wrong parameters"
+          "wrong parameters: "
           "params.c %% params.cPerBlock should be 0, but get %d.",
           params.c % params.cPerBlock));
   // Make sure a group does not span multiple blocks.
@@ -362,7 +365,7 @@ void prelnGroupNormNDHWCScale(GroupNormNDHWCParams<__half> const &params,
       0,
       common::errors::InvalidArgument(
           "The groupNormNDHWCScale of prelnGroupnormAct Plugin got wrong "
-          "parameters"
+          "parameters: "
           "params.cPerBlock %% params.cPerGroup should be 0, but get %d.",
           params.cPerBlock % params.cPerGroup));
   dim3 grid;
@@ -465,8 +468,9 @@ int PrelnGroupnormActPluginDynamic::enqueue(
     // params_.w = input_desc[0].dims.d[3];
     // params_.c = input_desc[0].dims.d[1];
     params_.groups = groups_;
-    params_.dhw = params_.d * params_.h * params_.w;
-    const int32_t blocksPerDHW = findMaxDivisor(params_.dhw, maxBlocksPerDHW);
+    params_.dhw = static_cast<int64_t>(params_.d) * params_.h * params_.w;
+    const int64_t blocksPerDHW =
+        findMaxDivisor(params_.dhw, static_cast<int64_t>(maxBlocksPerDHW));
     params_.dhwPerBlock = divUp(params_.dhw, blocksPerDHW);
     params_.cPerBlock = cPerBlock;
     params_.cPerGroup = params_.c / params_.groups;

@@ -17,7 +17,7 @@
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-#define MAX_RANK_SUPPORTED 6
+#define MAX_RANK_SUPPORTED 7
 
 namespace phi {
 

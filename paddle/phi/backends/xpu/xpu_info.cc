@@ -40,9 +40,13 @@ PHI_DEFINE_EXPORTED_string(
     "This option is useful when doing multi process training and "
     "each process have only one device (XPU). If you want to use "
     "all visible devices, set this to empty string. NOTE: the "
-    "reason of doing this is that we want to use P2P communication"
-    "between XPU devices, use XPU_VISIBLE_DEVICES can only use"
+    "reason of doing this is that we want to use P2P communication "
+    "between XPU devices, use XPU_VISIBLE_DEVICES can only use "
     "share-memory only.");
+
+static std::once_flag g_device_props_size_init_flag;
+static std::vector<std::unique_ptr<std::once_flag>> g_device_props_init_flags;
+static std::vector<phi::gpuDeviceProp> g_device_props;
 
 namespace phi {
 class XPUContext;
@@ -161,6 +165,40 @@ std::vector<int> GetXPUSelectedDevices() {
   return devices;
 }
 
+const gpuDeviceProp& GetDeviceProperties(int id) {
+  std::call_once(g_device_props_size_init_flag, [&] {
+    int gpu_num = 0;
+    gpu_num = GetXPUDeviceCount();
+    g_device_props_init_flags.resize(gpu_num);
+    g_device_props.resize(gpu_num);
+    for (int i = 0; i < gpu_num; ++i) {
+      g_device_props_init_flags[i] = std::make_unique<std::once_flag>();
+    }
+  });
+
+  if (id == -1) {
+    id = GetXPUCurrentDeviceId();
+  }
+
+  if (id < 0 || id >= static_cast<int>(g_device_props.size())) {
+    PADDLE_THROW(common::errors::OutOfRange(
+        "The device id %d is out of range [0, %d), where %d is the number of "
+        "devices on this machine. Because the device id should be greater than "
+        "or equal to zero and smaller than the number of xpus. Please input "
+        "appropriate device again!",
+        id,
+        static_cast<int>(g_device_props.size()),
+        static_cast<int>(g_device_props.size())));
+  }
+
+  std::call_once(*(g_device_props_init_flags[id]), [&] {
+    PADDLE_ENFORCE_XPU_SUCCESS(
+        cudaGetDeviceProperties(&g_device_props[id], id));
+  });
+
+  return g_device_props[id];
+}
+
 #ifdef PADDLE_WITH_XPU
 std::pair<int, int> GetXpuStreamPriorityRange() {
   int least_priority, greatest_priority;
@@ -237,7 +275,7 @@ int GetXPUDeviceUtilizationRate(int dev_id) {
   return dev_util.xpu;
 }
 
-int GetXPUDeviceTotalMemory(int dev_id) {
+int64_t GetXPUDeviceTotalMemory(int dev_id) {
   std::call_once(xpuml_init_flag, xpumlInit);
   if (dev_id == -1) {
     dev_id = GetXPUCurrentDeviceId();
@@ -249,10 +287,10 @@ int GetXPUDeviceTotalMemory(int dev_id) {
   xpumlMemory_t dev_mem_info;
   PADDLE_ENFORCE_XPUML_SUCCESS(
       xpumlDeviceGetMemoryInfo(dev_handle, &dev_mem_info));
-  return dev_mem_info.totalGlobalMemory / 1024 / 1024;  // MB
+  return dev_mem_info.totalGlobalMemory;  // with Byte
 }
 
-int GetXPUDeviceUsedMemory(int dev_id) {
+int64_t GetXPUDeviceUsedMemory(int dev_id) {
   std::call_once(xpuml_init_flag, xpumlInit);
   if (dev_id == -1) {
     dev_id = GetXPUCurrentDeviceId();
@@ -264,7 +302,7 @@ int GetXPUDeviceUsedMemory(int dev_id) {
   xpumlMemory_t dev_mem_info;
   PADDLE_ENFORCE_XPUML_SUCCESS(
       xpumlDeviceGetMemoryInfo(dev_handle, &dev_mem_info));
-  return dev_mem_info.usedGlobalMemory / 1024 / 1024;  // MB
+  return dev_mem_info.usedGlobalMemory;  // with Byte
 }
 
 XPUVersion get_xpu_version(int dev_id) {

@@ -36,11 +36,9 @@ void SigmoidCrossEntropyWithLogitsKernel(
     int ignore_index,
     DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  PADDLE_ENFORCE_EQ(x.place().GetType() == phi::AllocationType::XPU,
-                    true,
-                    errors::Unavailable("This kernel only runs on XPU."));
 
   dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0) return;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   int* hit = RAII_GUARD.alloc_l3_or_gm<int>(x.numel());
   PADDLE_ENFORCE_NOT_NULL(
@@ -48,7 +46,7 @@ void SigmoidCrossEntropyWithLogitsKernel(
   auto pos_weight_data =
       (pos_weight.get_ptr() == nullptr ? nullptr
                                        : pos_weight.get_ptr()->data<T>());
-  // int paddle_sigmoid_cross_entropy_with_logits(Context* ctx, const T* x,
+  // int paddle_sigmoid_cross_entropy_with_logits(Context* xpu_ctx, const T* x,
   // const T* label, const T* pos_weight, T* y, int* hit, int ignore_index,
   // int64_t n);
   int r = xpu::paddle_sigmoid_cross_entropy_with_logits(
@@ -62,7 +60,7 @@ void SigmoidCrossEntropyWithLogitsKernel(
       x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "sigmoid_cross_entropy_with_logits");
   if (normalize) {
-    int* non_zero = RAII_GUARD.alloc_l3_or_gm<int>(1);
+    int64_t* non_zero = RAII_GUARD.alloc_l3_or_gm<int64_t>(1);
     PADDLE_ENFORCE_NOT_NULL(
         non_zero, errors::External("XPU alloc_l3_or_gm returns nullptr"));
     int r = xpu::nonzero_count(dev_ctx.x_context(),
@@ -70,12 +68,12 @@ void SigmoidCrossEntropyWithLogitsKernel(
                                non_zero,
                                x.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "nonzero_count");
-    int non_zero_cpu = 0;
+    int64_t non_zero_cpu = 0;
     memory_utils::Copy(CPUPlace(),
                        static_cast<void*>(&non_zero_cpu),
                        dev_ctx.GetPlace(),
                        static_cast<void*>(non_zero),
-                       sizeof(int));
+                       sizeof(int64_t));
     if (std::getenv("XPUSIM_SKIP_RUN") &&
         std::strcmp(std::getenv("XPUSIM_SKIP_RUN"), "1") == 0) {
       VLOG(3)

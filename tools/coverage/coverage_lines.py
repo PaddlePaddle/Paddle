@@ -16,6 +16,7 @@
 """
 usage: coverage_lines.py info_file expected
 """
+
 import os
 import sys
 

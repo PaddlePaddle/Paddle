@@ -21,6 +21,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/psroi_pool_grad_kernel.h"
 #include "paddle/phi/kernels/psroi_pool_kernel.h"
 
 namespace phi {
@@ -34,7 +35,7 @@ static inline int NumBlocks(const int N) {
 }
 
 template <typename T>
-__global__ void GPUPSROIPoolBackward(const int nthreads,
+__global__ void GPUPSROIPoolBackward(const int64_t nthreads,
                                      const T* input_rois,
                                      const T* dout_data,
                                      const float spatial_scale,
@@ -46,19 +47,21 @@ __global__ void GPUPSROIPoolBackward(const int nthreads,
                                      const int pooled_width,
                                      const int* rois_batch_id_data,
                                      T* dx_data) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t index =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int offset = blockDim.x * gridDim.x;
-  for (int i = index; i < nthreads; i += offset) {
+  for (int64_t i = index; i < nthreads; i += offset) {
     // The output is in order (n, c, ph, pw)
-    int pw = i % pooled_width;
-    int ph = (i / pooled_width) % pooled_height;
-    int c = (i / pooled_width / pooled_height) % output_channels;
-    int n = i / pooled_width / pooled_height / output_channels;
+    int64_t pw = i % pooled_width;
+    int64_t ph = (i / pooled_width) % pooled_height;
+    int64_t c = (i / pooled_width / pooled_height) % output_channels;
+    int64_t n = i / pooled_width / pooled_height / output_channels;
 
     // set roi_batch_id
-    int roi_batch_id = rois_batch_id_data[n];
-    int input_channel = (c * pooled_height + ph) * pooled_width + pw;
-    int input_offset =
+    int64_t roi_batch_id = rois_batch_id_data[n];
+    int64_t input_channel = (c * pooled_height + ph) * pooled_width + pw;
+    int64_t input_offset =
         (roi_batch_id * input_channels + input_channel) * height * width;
     T* offset_dx_data = dx_data + input_offset;
 
@@ -104,7 +107,7 @@ __global__ void GPUPSROIPoolBackward(const int nthreads,
 }
 
 template <typename T, typename Context>
-void PsroiPoolGradKernel(const Context& ctx,
+void PsroiPoolGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& rois,
                          const paddle::optional<DenseTensor>& rois_num,
@@ -114,23 +117,35 @@ void PsroiPoolGradKernel(const Context& ctx,
                          int output_channels,
                          float spatial_scale,
                          DenseTensor* dx) {
-  int rois_num_t = rois.dims()[0];
-  int input_channels = x.dims()[1];
-  int height = x.dims()[2];
-  int width = x.dims()[3];
+  int64_t rois_num_t = rois.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t input_channels = x.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t height = x.dims()[2];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t width = x.dims()[3];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   if (dx) {
     // set roi batch id
     DenseTensor rois_batch_id_list;
     rois_batch_id_list.Resize({rois_num_t});
-    int* rois_batch_id_data = ctx.template HostAlloc<int>(&rois_batch_id_list);
+    int* rois_batch_id_data =
+        dev_ctx.template HostAlloc<int>(&rois_batch_id_list);
     int rois_batch_size;
     if (rois_num.get_ptr()) {
       rois_batch_size = rois_num->numel();
       std::vector<int> rois_num_list(rois_batch_size);
       memory_utils::Copy(CPUPlace(),
                          rois_num_list.data(),
-                         ctx.GetPlace(),
+                         dev_ctx.GetPlace(),
                          rois_num->data<int>(),
                          sizeof(int) * rois_batch_size,
                          0);
@@ -152,22 +167,22 @@ void PsroiPoolGradKernel(const Context& ctx,
     }
 
     DenseTensor rois_batch_id_list_gpu;
-    Copy(ctx,
+    Copy(dev_ctx,
          rois_batch_id_list,
-         ctx.GetPlace(),
+         dev_ctx.GetPlace(),
          false,
          &rois_batch_id_list_gpu);
 
-    ctx.template Alloc<T>(dx);
+    dev_ctx.template Alloc<T>(dx);
     funcs::SetConstant<Context, T> set_zero;
-    set_zero(ctx, dx, static_cast<T>(0));
+    set_zero(dev_ctx, dx, static_cast<T>(0));
 
-    int dout_size = dout.numel();
+    int64_t dout_size = dout.numel();
     int blocks = NumBlocks(dout_size);
     int threads = kNumCUDAThreads;
 
     if (dout_size > 0) {
-      GPUPSROIPoolBackward<T><<<blocks, threads, 0, ctx.stream()>>>(
+      GPUPSROIPoolBackward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
           dout_size,
           rois.data<T>(),
           dout.data<T>(),
@@ -179,7 +194,7 @@ void PsroiPoolGradKernel(const Context& ctx,
           pooled_height,
           pooled_width,
           rois_batch_id_list_gpu.data<int>(),
-          ctx.template Alloc<T>(dx));
+          dev_ctx.template Alloc<T>(dx));
     }
   }
 }

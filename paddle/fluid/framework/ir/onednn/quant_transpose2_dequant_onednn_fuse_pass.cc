@@ -43,8 +43,13 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseQuantizeTranspose2(
     GET_IR_NODE_FROM_SUBGRAPH(
         transpose_op, transpose_op, quant_transpose2_pattern);
 
-    if (!transpose_op->Op()->HasAttr("use_mkldnn") ||
-        !(PADDLE_GET_CONST(bool, transpose_op->Op()->GetAttr("use_mkldnn")))) {
+    bool use_mkldnn_not =
+        !transpose_op->Op()->HasAttr("use_mkldnn") ||
+        !(PADDLE_GET_CONST(bool, transpose_op->Op()->GetAttr("use_mkldnn")));
+    bool use_onednn_not =
+        !transpose_op->Op()->HasAttr("use_onednn") ||
+        !(PADDLE_GET_CONST(bool, transpose_op->Op()->GetAttr("use_onednn")));
+    if (use_mkldnn_not && use_onednn_not) {
       VLOG(4)
           << "Only oneDNN version of transpose2 can be fused with quantize.";
       return;
@@ -124,8 +129,13 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseTranspose2Dequantize(
     GET_IR_NODE_FROM_SUBGRAPH(
         dequant_out, dequant_out, transpose2_dequant_pattern);
 
-    if (!transpose_op->Op()->HasAttr("use_mkldnn") ||
-        !(PADDLE_GET_CONST(bool, transpose_op->Op()->GetAttr("use_mkldnn")))) {
+    bool use_mkldnn_not =
+        !transpose_op->Op()->HasAttr("use_mkldnn") ||
+        !(PADDLE_GET_CONST(bool, transpose_op->Op()->GetAttr("use_mkldnn")));
+    bool use_onednn_not =
+        !transpose_op->Op()->HasAttr("use_onednn") ||
+        !(PADDLE_GET_CONST(bool, transpose_op->Op()->GetAttr("use_onednn")));
+    if (use_mkldnn_not && use_onednn_not) {
       VLOG(4)
           << "Only oneDNN version of transpose2 can be fused with dequantize.";
       return;

@@ -25,8 +25,8 @@ from .group import (  # noqa: F401
     is_initialized,
     wait,
 )
-from .recv import irecv, recv  # noqa: F401
+from .recv import irecv, recv, recv_object_list  # noqa: F401
 from .reduce import ReduceOp, reduce  # noqa: F401
 from .reduce_scatter import reduce_scatter  # noqa: F401
 from .scatter import scatter, scatter_object_list  # noqa: F401
-from .send import isend, send  # noqa: F401
+from .send import isend, send, send_object_list  # noqa: F401

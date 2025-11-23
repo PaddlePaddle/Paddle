@@ -269,7 +269,7 @@ struct PermuteDimsSimplifier {
     int valid_map[phi::DDim::kMaxRank];
     int64_t combined_dims[phi::DDim::kMaxRank];
 
-    // Merge consecutive dims to the fist one dim and
+    // Merge consecutive dims to the first one dim and
     // leave original dim to be 1. Example below :
     // perm: [2, 3, 0, 1], origin_dims : [4, 8, 2, 5]
     // new_dims: [4, 8, 2, 5] -> [32, 1, 10, 1]
@@ -333,11 +333,11 @@ struct DimsSimplifiedLogger {
                   const std::string &op_name) {
     VLOG(6) << op_name << "`s dims after simplification is below :";
     for (size_t i = 0; i < ins.size(); ++i) {
-      VLOG(6) << "input i=" << i << ": origin_dims={" << ins[i]->dims()
+      VLOG(6) << "    input i=" << i << ": origin_dims={" << ins[i]->dims()
               << "}, simplified_dims={"
               << ReversedVectorToString(dims_simplifier.in_dims[i]) << "}";
     }
-    VLOG(6) << "output: origin_dims={" << (*outs)[0]->dims()
+    VLOG(6) << "    output: origin_dims={" << (*outs)[0]->dims()
             << "}, simplified_dims={"
             << ReversedVectorToString(dims_simplifier.out_dims) << "}";
   }

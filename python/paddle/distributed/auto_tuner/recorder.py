@@ -69,9 +69,9 @@ class HistoryRecorder:
         if buffer is not None:
             if buffer < 0:
                 raise ValueError("The buffer should be not less than 0.")
-            assert (
-                max_mem_usage is not None
-            ), "max_mem_usage cannot be None when buffer is greater than 0."
+            assert max_mem_usage is not None, (
+                "max_mem_usage cannot be None when buffer is greater than 0."
+            )
             if max_mem_usage <= 0:
                 raise ValueError("max_mem_usage should be greater than 0.")
 

@@ -34,7 +34,6 @@ namespace lang {
 
 using ast_gen_ius::TensorGroup;
 using ir::Tensor;
-using poly::Stage;
 
 std::vector<ir::Argument> GetArgs(
     const Expr& func_body, const std::vector<std::string>& input_output_nodes) {

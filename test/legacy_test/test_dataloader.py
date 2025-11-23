@@ -85,9 +85,9 @@ class TestDygraphDataLoader(unittest.TestCase):
             self.iter_loader_data(loader)
 
     def test_single_process_loader_filename(self):
-        paddle.base.core.globals()[
-            "FLAGS_dataloader_use_file_descriptor"
-        ] = False
+        paddle.base.core.globals()["FLAGS_dataloader_use_file_descriptor"] = (
+            False
+        )
         with base.dygraph.guard():
             loader = DataLoader(
                 dataset,
@@ -100,9 +100,9 @@ class TestDygraphDataLoader(unittest.TestCase):
             self.iter_loader_data(loader)
 
     def test_multi_process_dataloader_filename(self):
-        paddle.base.core.globals()[
-            "FLAGS_dataloader_use_file_descriptor"
-        ] = False
+        paddle.base.core.globals()["FLAGS_dataloader_use_file_descriptor"] = (
+            False
+        )
         with base.dygraph.guard():
             loader = DataLoader(
                 dataset,

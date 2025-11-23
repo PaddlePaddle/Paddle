@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import os
-from typing import Generic, List, TypeVar
+from typing import Generic, TypeVar
 
 from typing_extensions import Self
 
@@ -106,9 +106,9 @@ class BooleanEnvironmentVariable(EnvironmentVariable[bool]):
 class IntegerEnvironmentVariable(EnvironmentVariable[int]):
     def __init__(self, name: str, default: int):
         super().__init__(name, default)
-        assert isinstance(default, int) and not isinstance(
-            default, bool
-        ), "default must be an integer"
+        assert isinstance(default, int) and not isinstance(default, bool), (
+            "default must be an integer"
+        )
 
     def parse_from_string(self) -> int:
         try:
@@ -117,13 +117,13 @@ class IntegerEnvironmentVariable(EnvironmentVariable[int]):
             return self.default
 
     def convert_to_string(self, value: int) -> str:
-        assert isinstance(value, int) and not isinstance(
-            value, bool
-        ), "value must be an integer"
+        assert isinstance(value, int) and not isinstance(value, bool), (
+            "value must be an integer"
+        )
         return str(value)
 
 
-class StringListEnvironmentVariable(EnvironmentVariable[List[str]]):
+class StringListEnvironmentVariable(EnvironmentVariable[list[str]]):
     def __init__(self, name: str, default: list[str]):
         super().__init__(name, default)
         assert isinstance(default, list), "default must be a list"
@@ -133,9 +133,9 @@ class StringListEnvironmentVariable(EnvironmentVariable[List[str]]):
 
     def convert_to_string(self, value: list[str]) -> str:
         assert isinstance(value, list), "value must be a list"
-        assert all(
-            isinstance(x, str) for x in value
-        ), "value must be a list of strings"
+        assert all(isinstance(x, str) for x in value), (
+            "value must be a list of strings"
+        )
         return ",".join(value)
 
 

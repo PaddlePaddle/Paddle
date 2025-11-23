@@ -84,12 +84,9 @@ class SequenceParallelOptimizationPass(PassBase):
                 return False
             pre_op = block.ops[idx - 1]
             if not (
-                pre_op.type == "c_allreduce_sum"
-                or (
-                    pre_op.type == "all_reduce"
-                    and pre_op.attr("reduce_type")
-                    == paddle.distributed.ReduceOp.SUM
-                )
+                pre_op.type == "all_reduce"
+                and pre_op.attr("reduce_type")
+                == paddle.distributed.ReduceOp.SUM
             ):
                 return False
             pre_output_name = pre_op.output_arg_names[0]
@@ -121,9 +118,9 @@ class SequenceParallelOptimizationPass(PassBase):
             intersection = set(split_output_names).intersection(
                 set(consumer_input_names)
             )
-            assert (
-                len(intersection) == 1
-            ), f"Sequence Parallel ReduceScatter Output more than 1: {intersection}."
+            assert len(intersection) == 1, (
+                f"Sequence Parallel ReduceScatter Output more than 1: {intersection}."
+            )
             keep_output_name = intersection.pop()
             split_output_names.remove(keep_output_name)
             remove_varnames.extend(split_output_names)

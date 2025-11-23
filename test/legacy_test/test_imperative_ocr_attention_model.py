@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from test_imperative_base import new_program_scope
 
 import paddle
@@ -427,7 +427,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
     def test_ocr_test(self):
         seed = 90
         epoch_num = 1
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             batch_num = 3
         else:
             batch_num = 2
@@ -557,8 +557,8 @@ class TestDygraphOCRAttention(unittest.TestCase):
                 paddle.framework.random._manual_program_seed(seed)
             exe = base.Executor(
                 base.CPUPlace()
-                if not core.is_compiled_with_cuda()
-                else base.CUDAPlace(0)
+                if not (core.is_compiled_with_cuda() or is_custom_device())
+                else get_device_place()
             )
             ocr_attention = OCRAttention()
 

@@ -18,6 +18,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/const_fold.h"
+#include "paddle/cinn/common/shape_constraint.h"
 #include "paddle/cinn/common/simplify_special_pattern.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -28,25 +29,44 @@
 namespace cinn {
 namespace optim {
 
-bool ComparePriority(const ir::IndexExpr &lhs, const ir::IndexExpr &rhs) {
+int ComparePriority(const ir::IndexExpr &lhs, const ir::IndexExpr &rhs) {
   if (lhs.node_type() == ir::IrNodeTy::IntImm &&
       rhs.node_type() != ir::IrNodeTy::IntImm)
-    return false;
+    return -1;
   if (rhs.node_type() == ir::IrNodeTy::IntImm &&
       lhs.node_type() != ir::IrNodeTy::IntImm)
-    return true;
-  if (auto lhsVar = lhs.As<ir::_Var_>())
-    if (auto rhsVar = rhs.As<ir::_Var_>())
-      return std::make_tuple(lhsVar->name.length(), lhsVar->name) <=
-             std::make_tuple(rhsVar->name.length(), rhsVar->name);
+    return 1;
+  if (auto lhsVar = lhs.As<ir::_Var_>()) {
+    if (auto rhsVar = rhs.As<ir::_Var_>()) {
+      if (std::make_tuple(lhsVar->name.length(), lhsVar->name) <
+          std::make_tuple(rhsVar->name.length(), rhsVar->name))
+        return 1;
+      else if (std::make_tuple(lhsVar->name.length(), lhsVar->name) ==
+               std::make_tuple(rhsVar->name.length(), rhsVar->name))
+        return 0;
+      else
+        return -1;
+    }
+  }
   auto lhsLen = lhs.length();
   auto rhsLen = rhs.length();
-  if (lhsLen < rhsLen) return false;
-  // Add < Mul < Div < Mod < Min < Max < Cast < Load.
-  else if (lhsLen == rhsLen)
-    return lhs.node_type() <= rhs.node_type();
-  else
-    return true;
+  if (lhsLen < rhsLen) {
+    return -1;
+  } else if (lhsLen == rhsLen) {
+    // Add < Mul < Div < Mod < Min < Max < Cast < Load.
+    if (lhs.node_type() < rhs.node_type())
+      return 1;
+    else if (lhs.node_type() == rhs.node_type())
+      return 0;
+    else
+      return -1;
+  } else {
+    return 1;
+  }
+}
+
+bool SortComparePriority(const ir::IndexExpr &lhs, const ir::IndexExpr &rhs) {
+  return ComparePriority(lhs, rhs) > 0;
 }
 
 bool IsSumPartialBySymbol(const ir::IndexExpr &expr,
@@ -223,14 +243,27 @@ bool IsNegatedIndexExpr(const ir::IndexExpr &candidate,
 
 ir::IndexExpr::IndexType VerifyIndex(const ir::Expr &expr) {
   switch (expr.node_type()) {
-    case ir::IrNodeTy::_Var_:
+    case ir::IrNodeTy::_Var_: {
+      if (expr.type().is_index_type()) {
+        return expr.as_var()->is_let_symbol ? ir::IndexExpr::IndexType::kLoad
+                                            : ir::IndexExpr::IndexType::kValid;
+      } else {
+        return ir::IndexExpr::IndexType::kInvalid;
+      }
+    }
     case ir::IrNodeTy::IntImm: {
       return expr.type().is_index_type() ? ir::IndexExpr::IndexType::kValid
                                          : ir::IndexExpr::IndexType::kInvalid;
     }
     case ir::IrNodeTy::Load: {
-      return expr.type().is_index_type() ? ir::IndexExpr::IndexType::kLoad
-                                         : ir::IndexExpr::IndexType::kInvalid;
+      if (!expr.type().is_index_type())
+        return ir::IndexExpr::IndexType::kInvalid;
+      auto load = expr.As<ir::Load>();
+      for (const auto &indices : load->indices) {
+        if (VerifyIndex(indices) == ir::IndexExpr::IndexType::kInvalid)
+          return ir::IndexExpr::IndexType::kInvalid;
+      }
+      return ir::IndexExpr::IndexType::kLoad;
     }
     case ir::IrNodeTy::Cast: {
       ir::IndexExpr::IndexType result = VerifyIndex(expr->operand(0));
@@ -265,7 +298,9 @@ ir::IndexExpr ConstructIndexExprByNodeType(const ir::IrNodeTy &ty,
     case ir::IrNodeTy::Add:
       return simplify_flag ? lhs + rhs : ir::Add::Make(lhs, rhs);
     case ir::IrNodeTy::Sub:
-      return simplify_flag ? lhs - rhs : ir::Sub::Make(lhs, rhs);
+      return simplify_flag
+                 ? lhs - rhs
+                 : ir::Add::Make(lhs, ir::Mul::Make(rhs, ir::IndexExpr(-1)));
     case ir::IrNodeTy::Mul:
       return simplify_flag ? lhs * rhs : ir::Mul::Make(lhs, rhs);
     case ir::IrNodeTy::Div:
@@ -663,8 +698,124 @@ std::optional<std::unordered_map<std::string, ir::IndexExpr>> MatchPattern(
   return std::nullopt;
 }
 
+/*!
+ * \brief Optimize linear division and modulo operations with constant
+ * denominators.
+ *
+ * This function handles linear expressions of the form
+ *   `(a * C1 + b) / C2` and `(a * C1 + b) % C2`
+ * where C1 and C2 are constants. It specifically targets:
+ * 1. Linear combinations in the numerator (sums of terms)
+ * 2. Constant denominators
+ *
+ * The optimization:
+ * 1. Separates terms divisible by the denominator (linear coefficients)
+ * 2. Groups remaining terms as a remainder expression
+ * 3. For division:
+ *    - Returns the sum of divisible terms if remainder < denominator
+ *    - Otherwise preserves the original division
+ * 4. For modulo:
+ *    - Returns the remainder if it's provably smaller than denominator
+ *    - Otherwise preserves the original modulo
+ *
+ * Example linear optimizations:
+ * 1. Linear division: (x * 8 + y * 4 + 3) / 4 → x*2 + y + 0 (when 3 < 4)
+ * 2. Linear modulo: (x * 8 + y * 4 + 3) % 4 → 0 + 0 + 3
+ * 3. Partial division: (x * 6 + 5) / 3 → x * 2 + 5 / 3 (when 5 >= 3)
+ *
+ * \param expr The linear division/modulo expression to optimize
+ * \param ana Symbolic analyzer for proving expression bounds
+ * \return Simplified expression if provably correct, original otherwise
+ */
+ir::IndexExpr HandleDivModWithConstants(
+    const ir::IndexExpr &expr, const common::SymbolicExprAnalyzer &ana) {
+  // Get numerator and denominator
+  auto numerator = expr.operand(0);
+  auto denominator = expr.operand(1);
+
+  // Check if denominator is a constant
+  if (!denominator.is_constant()) {
+    return expr;
+  }
+  int64_t denom_val = denominator.as_int64();
+
+  // Recursively expand addition chain and collect all terms
+  std::vector<ir::IndexExpr> terms = optim::GetFlattenExprs<ir::Add>(numerator);
+  if (terms.empty()) {
+    return expr;
+  }
+
+  // Separate terms that are multiples of denominator from other terms
+  std::vector<ir::IndexExpr> multiple_terms;
+  std::vector<ir::IndexExpr> remainder_terms;
+
+  for (auto &term : terms) {
+    if (term.node_type() == ir::IrNodeTy::Mul) {
+      auto rhs = term.operand(1);
+      if (rhs.is_constant() && rhs.as_int64() % denom_val == 0) {
+        // Extract terms divisible by denominator
+        multiple_terms.push_back(
+            term.operand(0) *
+            (rhs.as_int64() / denom_val));  // Extract multiplicand part
+        continue;
+      }
+    }
+    // Extract terms not divisible by denominator
+    auto remainder_upper = ana.UpperBound(term);
+    if (!ana.ProveLT(remainder_upper, denominator).value_or(false)) {
+      return expr;
+    }
+    remainder_terms.push_back(term);
+  }
+
+  // Build remainder expression
+  ir::IndexExpr remainder_expr;
+  if (remainder_terms.empty()) {
+    remainder_expr = ir::IndexExpr(0);
+  } else if (remainder_terms.size() == 1) {
+    remainder_expr = remainder_terms[0];
+  } else {
+    remainder_expr = ir::Add::Make(remainder_terms[0], remainder_terms[1]);
+    for (size_t i = 2; i < remainder_terms.size(); ++i) {
+      remainder_expr = ir::Add::Make(remainder_expr, remainder_terms[i]);
+    }
+  }
+
+  // Build multiplicand terms expression
+  ir::IndexExpr multiple_expr;
+  if (multiple_terms.empty()) {
+    multiple_expr = ir::IndexExpr(0);
+  } else if (multiple_terms.size() == 1) {
+    multiple_expr = multiple_terms[0];
+  } else {
+    multiple_expr = ir::Add::Make(multiple_terms[0], multiple_terms[1]);
+    for (size_t i = 2; i < multiple_terms.size(); ++i) {
+      multiple_expr = ir::Add::Make(multiple_expr, multiple_terms[i]);
+    }
+  }
+
+  // Verify if remainder range is less than denominator
+  auto remainder_upper = ana.UpperBound(remainder_expr);
+  if (!ana.ProveLT(remainder_upper, denominator).value_or(false)) {
+    // If remainder is greater than denominator, the division result is non-zero
+    if (expr.node_type() == ir::IrNodeTy::Div) {
+      return ir::Add::Make(multiple_expr,
+                           ir::Div::Make(remainder_expr, denominator));
+    } else {  // Modulo operation
+      return ir::Mod::Make(remainder_expr, denominator);
+    }
+  } else {
+    // If remainder is less than denominator, the division result is zero
+    if (expr.node_type() == ir::IrNodeTy::Div) {
+      return multiple_expr;
+    } else {  // Modulo operation
+      return remainder_expr;
+    }
+  }
+}
+
 ir::IndexExpr BoundSimplify(const ir::IndexExpr &expr) {
-  // return expr if expr is not a division or modulo
+  // Return expr if expr is not a division or modulo
   if (expr.node_type() != ir::IrNodeTy::Div &&
       expr.node_type() != ir::IrNodeTy::Mod)
     return expr;
@@ -672,10 +823,10 @@ ir::IndexExpr BoundSimplify(const ir::IndexExpr &expr) {
   common::cas_intervals_t var_intervals =
       common::CollectVarIntervalsOfExprs({expr});
   common::SymbolicExprAnalyzer ana(var_intervals);
-  // Because the SymbolicExprAnalyzer bound result is [lower, upper), `ProveLE`
-  // is used here instead of `ProveLT`.
+  // Because the SymbolicExprAnalyzer bound result is [lower, upper],
+  // `ProveLT` is used here instead of `ProveLE`.
   auto canBeSimplified =
-      ana.ProveLE(ana.UpperBound(expr.operand(0)), expr.operand(1));
+      ana.ProveLT(ana.UpperBound(expr.operand(0)), expr.operand(1));
 
   if (canBeSimplified.value_or(false)) {
     if (expr.node_type() == ir::IrNodeTy::Div) {
@@ -684,7 +835,70 @@ ir::IndexExpr BoundSimplify(const ir::IndexExpr &expr) {
       return expr.operand(0);
     }
   }
-  return expr;
+
+  return HandleDivModWithConstants(expr, ana);
+}
+
+ir::IndexExpr BroadcastSimplify(const ir::IndexExpr &expr) {
+  // Two consecutive modular operations.
+  auto opt_map =
+      MatchPattern(expr,
+                   "f % a % b",
+                   [](const std::unordered_map<std::string, ir::IndexExpr> &m) {
+                     return m.at("a").node_type() == ir::IrNodeTy::Max ||
+                            m.at("a").node_type() == ir::IrNodeTy::Mul;
+                   });
+  if (!opt_map) return expr;
+
+  auto &map = opt_map.value();
+  auto ll = map.at("f");
+  auto lr = map.at("a");
+  auto r = map.at("b");
+
+  auto CanSimplifyMaxMod = [](const ir::IndexExpr &lr, const ir::IndexExpr &r) {
+    auto lr_elems = GetFlattenExprs<ir::Max>(lr);
+    auto r_elems = GetFlattenExprs<ir::Max>(r);
+
+    // The second modulus is a subset of the first modulus.
+    for (auto &&r_elem : r_elems) {
+      if (std::find(lr_elems.begin(), lr_elems.end(), r_elem) == lr_elems.end())
+        return false;
+    }
+
+    // The first modulus is broadcastable.
+    auto &constraint = cinn::common::ShapeConstraintManager::Instance();
+    return constraint.IsBroadcastable(lr_elems) ? true : false;
+  };
+
+  if (lr.node_type() == ir::IrNodeTy::Max) {
+    if (CanSimplifyMaxMod(lr, r)) return ll % r;
+    return expr;
+  } else {
+    std::unordered_map<ir::IndexExpr, int> r_elems;
+    std::unordered_map<ir::IndexExpr, int> lr_elems;
+    UnpackReduction<ir::Mul>(r, [&](ir::IndexExpr val) { r_elems[val]++; });
+    UnpackReduction<ir::Mul>(lr, [&](ir::IndexExpr val) { lr_elems[val]++; });
+    bool can_simplify = false;
+    for (const auto &[r_first, r_second] : r_elems) {
+      for (auto &[lr_first, lr_second] : lr_elems) {
+        // Check equal relationship between the two operands.
+        if (lr_first == r_first && lr_second >= r_second) {
+          lr_second -= r_second;
+          can_simplify = true;
+          break;
+        }
+        // Check broadcastable relationship between the two operands.
+        if (lr_first.node_type() == ir::IrNodeTy::Max &&
+            CanSimplifyMaxMod(lr_first, r_first) && lr_second >= r_second) {
+          lr_second -= r_second;
+          can_simplify = true;
+          break;
+        }
+      }
+      if (!can_simplify) return expr;
+    }
+    return ll % r;
+  }
 }
 }  // namespace optim
 }  // namespace cinn

@@ -69,8 +69,8 @@ PD_REGISTER_KERNEL(dropout_grad,
                    phi::DropoutGradRawKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(dropout_nd_grad,
                    GPU,
@@ -78,5 +78,5 @@ PD_REGISTER_KERNEL(dropout_nd_grad,
                    phi::DropoutNdGradKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}

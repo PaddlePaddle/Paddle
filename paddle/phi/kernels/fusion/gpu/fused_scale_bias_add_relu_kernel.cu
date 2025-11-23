@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 
-PHI_DECLARE_bool(cudnn_deterministic);
+COMMON_DECLARE_bool(cudnn_deterministic);
 COMMON_DECLARE_bool(cudnn_exhaustive_search);
 
 namespace phi {
@@ -243,4 +243,4 @@ PD_REGISTER_KERNEL(fused_scale_bias_add_relu,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedScaleBiasAddReluKernel,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

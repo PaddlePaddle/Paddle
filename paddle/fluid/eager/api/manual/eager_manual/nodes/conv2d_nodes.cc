@@ -15,7 +15,6 @@
 #include "glog/logging.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
-#include "paddle/fluid/eager/to_static/run_program_op_node.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/tracer.h"
@@ -32,6 +31,11 @@ using egr::ConvertAllInputsToDistTensor;
 using egr::InputsContainDistTensor;
 
 COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_cuda_error);
+COMMON_DECLARE_bool(enable_unique_name);
+COMMON_DECLARE_string(tensor_md5_checksum_output_path);
+
+#define SEPARATOR "=========================="
 
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 Conv2dGradNodeFinal::operator()(
@@ -40,7 +44,13 @@ Conv2dGradNodeFinal::operator()(
     bool create_graph,
     bool is_new_grad) {
   // Fill Zero For GradIn Tensors
-  VLOG(3) << " Running Conv2dGradNodeFinal: " << this;
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_AD_API_GRAD: "
+          << "conv2d_grad" << SEPARATOR;
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("Conv2dGradNodeFinal begin");
+  }
   // This 'Local_XXXGradNode' record event is different with
   // 'Global_XXXGradNode' event.
   // * 'Local_XXXGradNode' will only cover execution time of this function.
@@ -106,7 +116,15 @@ Conv2dGradNodeFinal::operator()(
   // Inplace Strategy
 
   // Call grad_api function
-  VLOG(3) << "Final State Running: Conv2dGradNodeFinal";
+
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3) || FLAGS_enable_unique_name) {
+    static int64_t call_count = 0;
+    call_count++;
+    unique_api_name = egr::GenerateUniqueApiName("conv2d_grad", call_count);
+  }
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
 
   paddle::experimental::conv2d_grad(input,
                                     filter,
@@ -119,6 +137,8 @@ Conv2dGradNodeFinal::operator()(
                                     data_format,
                                     api_output_0,
                                     api_output_1);
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
   // Check NaN and Inf id needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("conv2d_grad", returns);
@@ -145,6 +165,17 @@ Conv2dGradNodeFinal::operator()(
     grad_filter_autograd_meta->SetStopGradient(false);
   VLOG(3) << "Conv2dGradNodeFinal grad_filter_autograd_meta: "
           << grad_filter_autograd_meta;
+  if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
+    egr::SetGradTensorName(&grad_input, 0, out_metas);
+    egr::SetGradTensorName(&grad_filter, 1, out_metas);
+  }
+  // Save the tensors checksum to file_path
+  if (!FLAGS_tensor_md5_checksum_output_path.empty()) {
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path,
+                                     grad_input);
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path,
+                                     grad_filter);
+  }
 
   // Create Grad Node
   if (trace_backward) {
@@ -230,8 +261,15 @@ Conv2dGradNodeFinal::operator()(
     returns = ApplyNodePostHooks(returns, hooked_grads);
   }
 
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("Conv2dGradNodeFinal finish");
+  }
+
   // Return
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
+  VLOG(3) << "\n"
+          << SEPARATOR << "Finish_AD_API_GRAD: "
+          << "conv2d_grad" << SEPARATOR;
   return returns;
 }
 
@@ -241,6 +279,9 @@ Conv2dDoubleGradNodeFinal::operator()(
                          egr::kSlotSmallVectorSize>& grads,
     bool create_graph,
     bool is_new_grad) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("Conv2dDoubleGradNodeFinal begin");
+  }
   // This 'Local_XXXGradNode' record event is different with
   // 'Global_XXXGradNode' event.
   // * 'Local_XXXGradNode' will only cover execution time of this function.
@@ -422,6 +463,10 @@ Conv2dDoubleGradNodeFinal::operator()(
 
   if (HasNodePostHook()) {
     returns = ApplyNodePostHooks(returns, hooked_grads);
+  }
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("Conv2dDoubleGradNodeFinal finish");
   }
 
   // Return

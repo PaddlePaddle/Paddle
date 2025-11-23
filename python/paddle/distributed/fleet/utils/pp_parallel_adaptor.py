@@ -330,10 +330,11 @@ class PipeLineModelAdaptor:
             # special treatment for shared layer
             if config.vpp > 1:
                 segments[0] = [
-                    ([layers[0][0], segments[0][0][0][0]], layers[0][1])
-                ] + segments[0][1:]
+                    ([layers[0][0], segments[0][0][0][0]], layers[0][1]),
+                    *segments[0][1:],
+                ]
             else:
-                segments[0] = [([layers[0][0]], layers[0][1])] + segments[0][1:]
+                segments[0] = [([layers[0][0]], layers[0][1]), *segments[0][1:]]
 
             for i in range(1, config.pp):
                 segments[i] = [([layers[0][0]], layers[0][1])] + segments[i]
@@ -544,9 +545,9 @@ def parse_args():
     if args.dst_pp is None:
         args.dst_pp = args.src_pp
 
-    assert (
-        args.src_mp == args.dst_mp
-    ), f"src mp {args.src_mp} dst mp {args.dst_mp}"
+    assert args.src_mp == args.dst_mp, (
+        f"src mp {args.src_mp} dst mp {args.dst_mp}"
+    )
 
     assert args.method in [
         'peek_model',

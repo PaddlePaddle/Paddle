@@ -25,6 +25,9 @@ from paddle.distributed.fleet.meta_parallel import get_rng_state_tracker
 from paddle.distributed.fleet.utils.hybrid_parallel_util import (
     fused_allreduce_gradients_with_group,
 )
+from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
+    build_sharded_state_dict,
+)
 from paddle.nn import (
     Layer,
     functional as F,
@@ -45,9 +48,9 @@ def scatter(input):
     parallelism = group.nranks
     rank = group.rank
     seq_len = input.shape[0]
-    assert (
-        seq_len % parallelism == 0
-    ), f"Input sequence length {seq_len} can't be divided exactly by sequence parallelism {parallelism}"
+    assert seq_len % parallelism == 0, (
+        f"Input sequence length {seq_len} can't be divided exactly by sequence parallelism {parallelism}"
+    )
     interval = seq_len // parallelism
     input = paddle.slice(
         input, axes=[0], starts=[interval * rank], ends=[interval * (rank + 1)]
@@ -71,9 +74,9 @@ def reduce_scatter(input):
     group = hcg.get_model_parallel_group()
     parallelism = group.nranks
     output_shape = input.shape
-    assert (
-        input.shape[0] % parallelism == 0
-    ), f"Input sequence length {input.shape[0]} can't be divided exactly by sequence parallelism {parallelism}"
+    assert input.shape[0] % parallelism == 0, (
+        f"Input sequence length {input.shape[0]} can't be divided exactly by sequence parallelism {parallelism}"
+    )
     output_shape[0] = output_shape[0] // parallelism
     output = paddle.empty(shape=output_shape, dtype=input.dtype)
     dist.stream.reduce_scatter(
@@ -315,9 +318,9 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
                 dy, paddle.cast(weight, dtype=dy.dtype), transpose_y=True
             )
 
-        assert (
-            dinput_parallel.shape[0] % parallelism == 0
-        ), f"Input sequence length {dinput_parallel.shape[0]} can't be divided exactly by sequence parallelism {parallelism}"
+        assert dinput_parallel.shape[0] % parallelism == 0, (
+            f"Input sequence length {dinput_parallel.shape[0]} can't be divided exactly by sequence parallelism {parallelism}"
+        )
 
         if ctx.recompute_allgather:
             # wait the finish of all-gather of x
@@ -449,16 +452,15 @@ class ColumnSequenceParallelLinear(Layer):
             if mp_group is None
             else mp_group.nranks
         )
-        assert (
-            self.world_size > 1
-        ), "tensor parallel degree must be greater than 1 in sequence parallel"
+        assert self.world_size > 1, (
+            "tensor parallel degree must be greater than 1 in sequence parallel"
+        )
 
         self._name = name
         self.is_mp = self.world_size > 1
-        assert (
-            gather_output is False
-        ), "If sequence_parallel is True, \
-                                        gather_output is False"
+        assert gather_output is False, (
+            "If sequence_parallel is True, gather_output is False"
+        )
 
         self.gather_output = gather_output
         assert out_features % self.world_size == 0, (
@@ -500,6 +502,12 @@ class ColumnSequenceParallelLinear(Layer):
             self.bias.is_distributed = True if self.is_mp else False
         else:
             self.bias = None
+
+        if self.weight.is_distributed:
+            self.weight.split_axis = 1
+
+        if has_bias and self.bias.is_distributed:
+            self.bias.split_axis = 0
 
         self.linear = F.linear
 
@@ -549,6 +557,15 @@ class ColumnSequenceParallelLinear(Layer):
             )
         return output
 
+    def sharded_state_dict(
+        self,
+        structured_name_prefix: str = "",
+    ):
+        state_dict = self.state_dict(structured_name_prefix="")
+        return build_sharded_state_dict(
+            state_dict, {"weight": 1, "bias": 0}, structured_name_prefix
+        )
+
 
 class MPScale(PyLayer):
     @staticmethod
@@ -577,10 +594,9 @@ class RowSequenceParallelLinear(Layer):
 
         self.in_features = in_features
         self.out_features = out_features
-        assert (
-            input_is_parallel is True
-        ), "If sequence_parallel is True, \
-                                           input_is_parallel should be true."
+        assert input_is_parallel is True, (
+            "If sequence_parallel is True, input_is_parallel should be true."
+        )
 
         self.input_is_parallel = input_is_parallel
         self._weight_attr = weight_attr
@@ -642,6 +658,9 @@ class RowSequenceParallelLinear(Layer):
         else:
             self.bias = None
 
+        if self.weight.is_distributed:
+            self.weight.split_axis = 0
+
         self.linear = F.linear
 
         self.mp_scale = None
@@ -681,3 +700,12 @@ class RowSequenceParallelLinear(Layer):
                 input_parallel, self.weight, self.bias, name=self._name
             )
         return output
+
+    def sharded_state_dict(
+        self,
+        structured_name_prefix: str = "",
+    ):
+        state_dict = self.state_dict(structured_name_prefix="")
+        return build_sharded_state_dict(
+            state_dict, {"weight": 0}, structured_name_prefix
+        )

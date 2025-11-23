@@ -17,7 +17,11 @@
 #include "pybind11/stl.h"
 
 #ifdef PADDLE_WITH_DEEP_EP
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/distributed/collective/deep_ep/deep_ep.hpp"
+#elif defined(PADDLE_WITH_XPU)
+#include "paddle/fluid/distributed/collective/deep_ep_xpu/deep_ep.hpp"
+#endif
 #endif
 #include "paddle/fluid/pybind/deep_ep_api.h"
 #include "paddle/utils/pybind.h"
@@ -41,6 +45,10 @@ void BindDeepEPApi(pybind11::module *m) {
            &deep_ep::Config::get_rdma_buffer_size_hint);
   m->def("get_low_latency_rdma_size_hint",
          &deep_ep::get_low_latency_rdma_size_hint);
+  m->def("get_low_latency_rdma_size_hint_two_stage",
+         &deep_ep::get_low_latency_rdma_size_hint_two_stage);
+  m->def("get_low_latency_nvl_size_hint_two_stage",
+         &deep_ep::get_low_latency_nvl_size_hint_two_stage);
 
   pybind11::class_<deep_ep::EventHandle>(*m, "EventHandle")
       .def(pybind11::init<>())
@@ -52,6 +60,9 @@ void BindDeepEPApi(pybind11::module *m) {
          &deep_ep::GetEventHandleFromCalcStream);
   m->def("get_event_handle_from_comm_stream",
          &deep_ep::GetEventHandleFromCommStream);
+
+  m->def("get_event_handle_from_custom_stream",
+         &deep_ep::GetEventHandleFromCustomStream);
 
   pybind11::class_<deep_ep::Buffer>(*m, "Buffer")
       .def(pybind11::init<int, int, int64_t, int64_t, bool, int>())
@@ -65,7 +76,11 @@ void BindDeepEPApi(pybind11::module *m) {
              int device_id = self.get_local_device_id();
              cudaStream_t comm_stream = self.get_comm_stream();
              auto s = phi::Stream(reinterpret_cast<phi::StreamId>(comm_stream));
+#if defined(PADDLE_WITH_CUDA)
              return phi::CUDAStream(phi::GPUPlace(device_id), s);
+#elif defined(PADDLE_WITH_XPU)
+             return phi::XPUCUDAStream(phi::XPUPlace(device_id), s);
+#endif
            })
       .def("get_local_ipc_handle", &deep_ep::Buffer::get_local_ipc_handle)
       .def("get_local_nvshmem_unique_id",
@@ -89,10 +104,21 @@ void BindDeepEPApi(pybind11::module *m) {
       .def("intranode_combine", &deep_ep::Buffer::intranode_combine_api)
       .def("internode_dispatch", &deep_ep::Buffer::internode_dispatch_api)
       .def("internode_combine", &deep_ep::Buffer::internode_combine_api)
+      .def("barrier_all", &deep_ep::Buffer::barrier_all)
       .def("clean_low_latency_buffer",
            &deep_ep::Buffer::clean_low_latency_buffer)
+      .def("clean_low_latency_two_stage_buffer",
+           &deep_ep::Buffer::clean_low_latency_two_stage_buffer)
       .def("low_latency_dispatch", &deep_ep::Buffer::low_latency_dispatch_api)
-      .def("low_latency_combine", &deep_ep::Buffer::low_latency_combine_api);
+      .def("low_latency_combine", &deep_ep::Buffer::low_latency_combine_api)
+      .def("low_latency_dispatch_two_stage",
+           &deep_ep::Buffer::low_latency_dispatch_two_stage_api)
+      .def("low_latency_combine_two_stage",
+           &deep_ep::Buffer::low_latency_combine_two_stage_api)
+      .def("m2n_low_latency_dispatch_two_stage",
+           &deep_ep::Buffer::m2n_low_latency_dispatch_two_stage_api)
+      .def("m2n_low_latency_combine_two_stage",
+           &deep_ep::Buffer::m2n_low_latency_combine_two_stage_api);
 #endif
 }
 

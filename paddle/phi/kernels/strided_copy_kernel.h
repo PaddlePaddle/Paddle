@@ -43,4 +43,23 @@ DenseTensor StridedCopy(const Context& dev_ctx,
       dev_ctx, input, dims, out_stride, offset, &dense_out);
   return dense_out;
 }
+
+template <typename T, typename Context>
+void StridedElementwiseCopyKernel(const Context& dev_ctx,
+                                  const DenseTensor& input,
+                                  const std::vector<int64_t>& out_dims,
+                                  const std::vector<int64_t>& out_strides,
+                                  int64_t out_offset,
+                                  DenseTensor* out);
+
+#ifdef _WIN32
+#define INSTANTIATE_STRIDEDCOPY_KERNEL(type, context)        \
+  template PADDLE_API void StridedCopyKernel<type, context>( \
+      const context&,                                        \
+      const DenseTensor&,                                    \
+      const std::vector<int64_t>&,                           \
+      const std::vector<int64_t>&,                           \
+      int64_t,                                               \
+      DenseTensor*);
+#endif
 }  // namespace phi

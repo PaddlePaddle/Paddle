@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MultiDotKernel(const Context& ctx,
+void MultiDotKernel(const Context& dev_ctx,
                     const std::vector<const DenseTensor*>& x,
                     DenseTensor* out);
 

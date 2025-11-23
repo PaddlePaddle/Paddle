@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 from utils import dygraph_guard
 
 import paddle
@@ -27,39 +27,55 @@ from paddle import base
 )
 class TestDLPack(unittest.TestCase):
     def test_dlpack_dygraph(self):
-        with dygraph_guard():
-            tensor = paddle.to_tensor(np.array([1, 2, 3, 4]).astype("int"))
-            dlpack_v1 = paddle.utils.dlpack.to_dlpack(tensor)
-            out_from_dlpack_v1 = paddle.utils.dlpack.from_dlpack(dlpack_v1)
-            dlpack_v2 = tensor.__dlpack__()
-            out_from_dlpack_v2 = paddle.from_dlpack(dlpack_v2)
-            self.assertTrue(
-                isinstance(out_from_dlpack_v1, paddle.base.core.eager.Tensor)
-            )
-            self.assertTrue(
-                isinstance(out_from_dlpack_v2, paddle.base.core.eager.Tensor)
-            )
-            self.assertEqual(str(tensor.place), str(out_from_dlpack_v1.place))
-            self.assertEqual(str(tensor.place), str(out_from_dlpack_v2.place))
-            np.testing.assert_array_equal(
-                out_from_dlpack_v1.numpy(), np.array([1, 2, 3, 4]).astype("int")
-            )
-            np.testing.assert_array_equal(
-                out_from_dlpack_v2.numpy(), np.array([1, 2, 3, 4]).astype("int")
-            )
+        if paddle.is_compiled_with_cuda():
+            with dygraph_guard():
+                tensor = paddle.to_tensor(np.array([1, 2, 3, 4]).astype("int"))
+                dlpack_v1 = paddle.utils.dlpack.to_dlpack(tensor)
+                out_from_dlpack_v1 = paddle.utils.dlpack.from_dlpack(dlpack_v1)
+                dlpack_v2 = tensor.__dlpack__()
+                out_from_dlpack_v2 = paddle.from_dlpack(dlpack_v2)
+                self.assertTrue(
+                    isinstance(
+                        out_from_dlpack_v1, paddle.base.core.eager.Tensor
+                    )
+                )
+                self.assertTrue(
+                    isinstance(
+                        out_from_dlpack_v2, paddle.base.core.eager.Tensor
+                    )
+                )
+                self.assertEqual(
+                    str(tensor.place), str(out_from_dlpack_v1.place)
+                )
+                self.assertEqual(
+                    str(tensor.place), str(out_from_dlpack_v2.place)
+                )
+                np.testing.assert_array_equal(
+                    out_from_dlpack_v1.numpy(),
+                    np.array([1, 2, 3, 4]).astype("int"),
+                )
+                np.testing.assert_array_equal(
+                    out_from_dlpack_v2.numpy(),
+                    np.array([1, 2, 3, 4]).astype("int"),
+                )
 
     def test_dlpack_tensor_larger_than_2dim(self):
-        with dygraph_guard():
-            numpy_data = np.random.randn(4, 5, 6)
-            t = paddle.to_tensor(numpy_data)
-            dlpack_v1 = paddle.utils.dlpack.to_dlpack(t)
-            dlpack_v2 = t.__dlpack__()
-            out_v1 = paddle.utils.dlpack.from_dlpack(dlpack_v1)
-            out_v2 = paddle.from_dlpack(dlpack_v2)
-            self.assertEqual(str(t.place), str(out_v1.place))
-            self.assertEqual(str(t.place), str(out_v2.place))
-            np.testing.assert_allclose(numpy_data, out_v1.numpy(), rtol=1e-05)
-            np.testing.assert_allclose(numpy_data, out_v2.numpy(), rtol=1e-05)
+        if paddle.is_compiled_with_cuda():
+            with dygraph_guard():
+                numpy_data = np.random.randn(4, 5, 6)
+                t = paddle.to_tensor(numpy_data)
+                dlpack_v1 = paddle.utils.dlpack.to_dlpack(t)
+                dlpack_v2 = t.__dlpack__()
+                out_v1 = paddle.utils.dlpack.from_dlpack(dlpack_v1)
+                out_v2 = paddle.from_dlpack(dlpack_v2)
+                self.assertEqual(str(t.place), str(out_v1.place))
+                self.assertEqual(str(t.place), str(out_v2.place))
+                np.testing.assert_allclose(
+                    numpy_data, out_v1.numpy(), rtol=1e-05
+                )
+                np.testing.assert_allclose(
+                    numpy_data, out_v2.numpy(), rtol=1e-05
+                )
 
     def test_dlpack_dtype_and_place_consistency(self):
         with dygraph_guard():
@@ -76,7 +92,7 @@ class TestDLPack(unittest.TestCase):
             ]
             places = [paddle.CPUPlace()]
             if paddle.device.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+                places.append(get_device_place())
                 dtypes.append("bfloat16")
 
             data = np.ones((2, 3, 4))
@@ -126,7 +142,7 @@ class TestDLPack(unittest.TestCase):
         with dygraph_guard():
             places = [base.CPUPlace()]
             if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     a = paddle.rand(shape=[3, 5], dtype="float32").to(
@@ -144,7 +160,7 @@ class TestDLPack(unittest.TestCase):
         with dygraph_guard():
             places = [base.CPUPlace()]
             if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     x = paddle.rand([3, 5]).to(device=place)
@@ -156,7 +172,7 @@ class TestDLPack(unittest.TestCase):
         with dygraph_guard():
             places = [base.CPUPlace()]
             if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     x = paddle.rand([3, 5]).to(device=place)
@@ -176,7 +192,7 @@ class TestDLPack(unittest.TestCase):
         with dygraph_guard():
             places = [base.CPUPlace()]
             if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     x = paddle.rand([3, 5]).to(device=place)
@@ -194,7 +210,7 @@ class TestDLPack(unittest.TestCase):
         with dygraph_guard():
             places = [base.CPUPlace()]
             if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     x = paddle.rand([10, 10]).to(device=place)
@@ -215,7 +231,7 @@ class TestDLPack(unittest.TestCase):
         with dygraph_guard():
             places = [base.CPUPlace()]
             if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     x = paddle.to_tensor(1.0, place=place)
@@ -238,7 +254,7 @@ class TestDLPack(unittest.TestCase):
         with dygraph_guard():
             places = [base.CPUPlace()]
             if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     x = paddle.zeros([0, 10]).to(device=place)
@@ -258,7 +274,7 @@ class TestDLPack(unittest.TestCase):
                     np.testing.assert_array_equal(x.numpy(), y2.numpy())
 
     def test_dlpack_with_custom_stream(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda()):
             self.skipTest("Test requires CUDA support.")
         with dygraph_guard():
             paddle.set_device('gpu:0')
@@ -268,7 +284,7 @@ class TestDLPack(unittest.TestCase):
             s2.wait_event(e)
             x = paddle.to_tensor([1, 2, 3], dtype='float32')
             s1.synchronize()
-            dlpack_capsule = x.__dlpack__(s1)
+            dlpack_capsule = x.__dlpack__(stream=s1)
             y = paddle.from_dlpack(dlpack_capsule)
             np.testing.assert_array_equal(x.numpy(), y.numpy())
             self.assertTrue(s1.query(), "Stream s1 did not complete all tasks.")

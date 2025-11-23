@@ -30,7 +30,9 @@ __global__ void EmbeddingFW(T *output,
                             const int64_t D,
                             const int64_t padding_idx) {
   int idx = threadIdx.x;
-  int idy = blockIdx.x + threadIdx.y * gridDim.x;
+  int64_t idy =
+      static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.y) * static_cast<int64_t>(gridDim.x);
 
   while (idy < K) {
     auto id = static_cast<int64_t>(ids[idy]);
@@ -46,7 +48,7 @@ __global__ void EmbeddingFW(T *output,
     }
     T *out = output + idy * D;
     const T *tab = table + id * D;
-    for (int i = idx; i < D; i += blockDim.x) {
+    for (int64_t i = idx; i < D; i += blockDim.x) {
       if (PaddingFlag) {
         if (id == padding_idx)
           out[i] = static_cast<T>(0);
@@ -106,13 +108,13 @@ struct EmbeddingCUDAFunctor {
 };
 
 template <typename T, typename Context>
-void EmbeddingKernel(const Context &ctx,
+void EmbeddingKernel(const Context &dev_ctx,
                      const DenseTensor &input,
                      const DenseTensor &weight,
                      int64_t padding_idx,
                      DenseTensor *out) {
   EmbeddingCUDAFunctor<T, Context> functor(
-      ctx, input, weight, padding_idx, out);
+      dev_ctx, input, weight, padding_idx, out);
 
   if (input.dtype() == phi::DataType::INT32) {
     functor.template apply<int32_t>();
@@ -135,7 +137,7 @@ PD_REGISTER_KERNEL(embedding,
                    float,
                    double,
                    int8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

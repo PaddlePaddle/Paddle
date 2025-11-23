@@ -23,11 +23,11 @@ namespace hlir {
 namespace pe {
 
 void InputX86Param(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data,
     const std::string &key,
-    const absl::flat_hash_map<std::string, std::vector<int>> &schedule_data) {
+    const paddle::flat_hash_map<std::string, std::vector<int>> &schedule_data) {
   PADDLE_ENFORCE_NOT_NULL(
       model_data,
       ::common::errors::PreconditionNotMet("model_data should not be null."));
@@ -35,8 +35,8 @@ void InputX86Param(
 }
 
 void LoadX86DefaultParams(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
   PADDLE_ENFORCE_NOT_NULL(
       model_data,
@@ -307,8 +307,8 @@ void LoadX86DefaultParams(
 }
 
 void LoadResNet18Params(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
   PADDLE_ENFORCE_NOT_NULL(
       model_data,
@@ -463,8 +463,8 @@ void LoadResNet18Params(
 }
 
 void LoadResNet50Params(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
   PADDLE_ENFORCE_NOT_NULL(
       model_data,
@@ -843,8 +843,8 @@ void LoadResNet50Params(
 }
 
 void LoadMobileNetV1Params(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
   PADDLE_ENFORCE_NOT_NULL(
       model_data,
@@ -1041,8 +1041,8 @@ void LoadMobileNetV1Params(
 }
 
 void LoadMobileNetV2Params(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
   PADDLE_ENFORCE_NOT_NULL(
       model_data,
@@ -1427,8 +1427,8 @@ void LoadMobileNetV2Params(
 }
 
 void LoadSqueezeNetParams(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
   PADDLE_ENFORCE_NOT_NULL(
       model_data,
@@ -1618,8 +1618,8 @@ void LoadSqueezeNetParams(
 }
 
 void LoadFaceDetParams(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
   PADDLE_ENFORCE_NOT_NULL(
       model_data,
@@ -1991,8 +1991,8 @@ void LoadFaceDetParams(
 }
 
 void LoadEfficientNetParams(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
   PADDLE_ENFORCE_NOT_NULL(
       model_data,
@@ -2330,11 +2330,11 @@ void LoadEfficientNetParams(
                  {"oh_bn", {2}}});
 }
 
-absl::flat_hash_map<std::string,
-                    absl::flat_hash_map<std::string, std::vector<int>>>
+paddle::flat_hash_map<std::string,
+                      paddle::flat_hash_map<std::string, std::vector<int>>>
 CreateX86Params() {
-  absl::flat_hash_map<std::string,
-                      absl::flat_hash_map<std::string, std::vector<int>>>
+  paddle::flat_hash_map<std::string,
+                        paddle::flat_hash_map<std::string, std::vector<int>>>
       model_data;
   LoadX86DefaultParams(&model_data);
   LoadResNet18Params(&model_data);

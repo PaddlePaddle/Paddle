@@ -60,7 +60,9 @@ __global__ void PaddingMergeAndDelCudaKernel(const int64_t num_token,
                                              const int64_t batch_size,
                                              T* output,
                                              T* output_length) {
-  int ind = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t ind =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (ind >= batch_size) return;
   int output_idx = ind * num_token;
   T prev_token = -1;
@@ -87,11 +89,6 @@ void CTCAlignOpCUDAKernel(const Context& dev_ctx,
                           int padding_value,
                           DenseTensor* output,
                           DenseTensor* output_length) {
-  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
-                    true,
-                    common::errors::InvalidArgument(
-                        "CTCAlign operator CUDA kernel must use CUDAPlace "
-                        "rather than CPUPlace."));
   const T* tokens = input.data<T>();
   auto stream = dev_ctx.stream();
 

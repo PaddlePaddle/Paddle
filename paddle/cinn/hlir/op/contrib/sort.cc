@@ -165,10 +165,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
       1,
       ::common::errors::InvalidArgument(
           "The attr_store doesn't have the attribute of 'axis'."));
-  int axis = absl::get<int>(attr_store.at("axis"));
+  int axis = std::get<int>(attr_store.at("axis"));
   bool is_ascend = true;
   if (attr_store.count("is_ascend")) {
-    is_ascend = absl::get<bool>(attr_store.at("is_ascend"));
+    is_ascend = std::get<bool>(attr_store.at("is_ascend"));
   }
 
   framework::CINNCompute sort_compute([=](lang::Args args,
@@ -235,10 +235,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
       1,
       ::common::errors::InvalidArgument(
           "The attr_store doesn't have the attribute of 'axis'."));
-  int axis = absl::get<int>(attr_store.at("axis"));
+  int axis = std::get<int>(attr_store.at("axis"));
   bool is_ascend = true;
   if (attr_store.count("is_ascend")) {
-    is_ascend = absl::get<bool>(attr_store.at("is_ascend"));
+    is_ascend = std::get<bool>(attr_store.at("is_ascend"));
   }
 
   framework::CINNCompute argsort_compute([=](lang::Args args,

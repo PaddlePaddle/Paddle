@@ -186,14 +186,14 @@ static inline void xpu_conv2d(xpu::Context *ctx,
                               int stride,
                               int dilation,
                               int group) {
-  std::vector<int> ksize{filter_shape[2], filter_shape[3]};
-  std::vector<int> stride_vec{stride, stride};
-  std::vector<int> dilation_vec{dilation, dilation};
-  std::vector<int> padding_vec{padding, padding};
-  int N = input_shape[0];
-  int C = input_shape[1];
-  int H = input_shape[2];
-  int W = input_shape[3];
+  std::vector<int64_t> ksize{filter_shape[2], filter_shape[3]};
+  std::vector<int64_t> stride_vec{stride, stride};
+  std::vector<int64_t> dilation_vec{dilation, dilation};
+  std::vector<int64_t> padding_vec{padding, padding};
+  int64_t N = static_cast<int64_t>(input_shape[0]);
+  int64_t C = static_cast<int64_t>(input_shape[1]);
+  int64_t H = static_cast<int64_t>(input_shape[2]);
+  int64_t W = static_cast<int64_t>(input_shape[3]);
 
   int r = xpu::conv2d<T, T, T, int16_t>(ctx,
                                         input_data,

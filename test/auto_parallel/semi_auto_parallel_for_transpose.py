@@ -28,9 +28,9 @@ class TestTransposeApiForSemiAutoParallel(SemiAutoParallelTestBase):
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
     def check_placements(self, output, expected_placements):
-        assert (
-            output.placements == expected_placements
-        ), f"{output.placements}  vs {expected_placements}"
+        assert output.placements == expected_placements, (
+            f"{output.placements}  vs {expected_placements}"
+        )
 
     def test_transpose_shard(self):
         x_shape = ([10, 6, 8],)

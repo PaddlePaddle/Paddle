@@ -63,7 +63,9 @@ __global__ void GetSampleCountAndNeighborCountKernel(const T* col_ptr,
                                                      int* neighbor_count,
                                                      int sample_size,
                                                      int n) {
-  int i = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t i =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   if (i >= n) return;
   T nid = input_nodes[i];
   int neighbor_size = static_cast<int>(col_ptr[nid + 1] - col_ptr[nid]);
@@ -125,7 +127,7 @@ __launch_bounds__(BLOCK_SIZE) __global__
     bool topk_is_unique;
 
     using BlockRadixSelectT =
-        paddle::framework::BlockRadixTopKGlobalMemory<float, BLOCK_SIZE, true>;
+        phi::funcs::BlockRadixTopKGlobalMemory<float, BLOCK_SIZE, true>;
     __shared__ typename BlockRadixSelectT::TempStorage share_storage;
 
     BlockRadixSelectT{share_storage}.radixTopKGetThreshold(
@@ -254,7 +256,7 @@ __launch_bounds__(BLOCK_SIZE) __global__
     RandomNumGen rng(gidx, random_seed);
     float weight_keys[ITEMS_PER_THREAD];
     int neighbor_idxs[ITEMS_PER_THREAD];
-    using BlockRadixTopKT = paddle::framework::
+    using BlockRadixTopKT = phi::funcs::
         BlockRadixTopKRegister<float, BLOCK_SIZE, ITEMS_PER_THREAD, true, int>;
     __shared__ typename BlockRadixTopKT::TempStorage sort_tmp_storage;
 
@@ -329,7 +331,9 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
   auto* x_data = x.data<T>();
   auto* eids_data =
       (eids.get_ptr() == nullptr ? nullptr : eids.get_ptr()->data<T>());
-  int bs = x.dims()[0];
+  int64_t bs = x.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   thread_local std::random_device rd;
   thread_local std::mt19937 gen(rd());

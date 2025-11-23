@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/common/exception.h"
+#include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 
@@ -46,6 +47,15 @@ const char *AllocationTypeStr(AllocationType type) {
       PD_THROW("Invalid phi device type.");
       return {};
   }
+}
+
+std::ostream &operator<<(std::ostream &os, AllocationType type) {
+  os << AllocationTypeStr(type);
+  return os;
+}
+
+bool operator==(AllocationType lhs, AllocationType rhs) {
+  return static_cast<int>(lhs) == static_cast<int>(rhs);
 }
 
 Place::Place(AllocationType type, const std::string &dev_type)
@@ -181,6 +191,11 @@ TEST_API bool is_cpu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::CPU;
 }
 
+bool is_pinned_place(const Place &p) {
+  return p.GetType() == phi::AllocationType::GPUPINNED ||
+         p.GetType() == phi::AllocationType::XPUPINNED;
+}
+
 bool is_cuda_pinned_place(const Place &p) {
   return p.GetType() == phi::AllocationType::GPUPINNED;
 }
@@ -295,6 +310,16 @@ phi::XPUPlace DefaultXPUPlace() {
       phi::backends::xpu::GetXPUCurrentDeviceId());
 #else
       0);
+#endif
+}
+
+phi::CustomPlace DefaultCustomPlace() {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  int device_id = phi::DeviceManager::GetDevice(dev_types[0]);
+  return phi::CustomPlace(dev_types[0], device_id);
+#else
+  PADDLE_THROW(common::errors::Unavailable("Unsupported custom device"));
 #endif
 }
 

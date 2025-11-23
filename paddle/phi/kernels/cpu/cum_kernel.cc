@@ -57,6 +57,10 @@ void ScanKernel(const Context& dev_ctx,
                 bool reverse,
                 Reducer reducer,
                 DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   dev_ctx.template Alloc<T>(out);
 
   if (x.numel() == 1) {
@@ -269,9 +273,13 @@ PD_REGISTER_KERNEL(cumsum,
                    phi::CumsumKernel,
                    float,
                    double,
+                   uint8_t,
+                   int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(
     logcumsumexp, CPU, ALL_LAYOUT, phi::LogcumsumexpKernel, float, double) {}

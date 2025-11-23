@@ -67,7 +67,7 @@ void AllReduceKernel(const phi::CustomContext& dev_ctx,
       errors::Unavailable("XCCLCommContext is nullptr, collective op should "
                           "has ring_id attr."));
   comm_ctx->AllReduce(
-      out, x, phi::ccl::ToXCCLReduceOp(reduce_type), *dev_ctx.GetStream());
+      out, x, phi::ccl::ToXCCLReduceOp(reduce_type), dev_ctx.stream());
 }
 #endif
 
@@ -85,7 +85,7 @@ PD_REGISTER_KERNEL(all_reduce,
                    uint8_t,
                    int16_t,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 PD_REGISTER_KERNEL(all_reduce,
@@ -99,5 +99,5 @@ PD_REGISTER_KERNEL(all_reduce,
                    int8_t,
                    uint8_t,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/kernels/abs_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -40,14 +39,14 @@ struct AbsGradCUDAFunctor {
 };
 
 template <>
-struct AbsGradCUDAFunctor<phi::dtype::bfloat16> {
+struct AbsGradCUDAFunctor<phi::bfloat16> {
   HOSTDEVICE inline AbsGradCUDAFunctor() {}
 
-  HOSTDEVICE inline phi::dtype::bfloat16 operator()(
-      const phi::dtype::bfloat16 x, const phi::dtype::bfloat16 dout) const {
-    phi::dtype::bfloat16 output;
-    if (x == phi::dtype::bfloat16(0)) {
-      output = static_cast<phi::dtype::bfloat16>(0);
+  HOSTDEVICE inline phi::bfloat16 operator()(const phi::bfloat16 x,
+                                             const phi::bfloat16 dout) const {
+    phi::bfloat16 output;
+    if (x == phi::bfloat16(0)) {
+      output = static_cast<phi::bfloat16>(0);
     } else {
       output = (dout) * (x / abs(x));
     }
@@ -56,32 +55,30 @@ struct AbsGradCUDAFunctor<phi::dtype::bfloat16> {
 };
 
 template <>
-struct AbsGradCUDAFunctor<phi::dtype::complex<float>> {
+struct AbsGradCUDAFunctor<phi::complex64> {
   HOSTDEVICE inline AbsGradCUDAFunctor() {}
-  HOSTDEVICE inline phi::dtype::complex<float> operator()(
-      const phi::dtype::complex<float> x, const float dout) const {
-    phi::dtype::complex<float> output;
-    if (x == phi::dtype::complex<float>(0)) {
-      output = phi::dtype::complex<float>(0);
+  HOSTDEVICE inline phi::complex64 operator()(const phi::complex64 x,
+                                              const float dout) const {
+    phi::complex64 output;
+    if (x == phi::complex64(0)) {
+      output = phi::complex64(0);
     } else {
-      output = phi::dtype::complex<float>(dout) *
-               (x / phi::dtype::complex<float>(abs(x)));
+      output = phi::complex64(dout) * (x / phi::complex64(abs(x)));
     }
     return output;
   }
 };
 
 template <>
-struct AbsGradCUDAFunctor<phi::dtype::complex<double>> {
+struct AbsGradCUDAFunctor<phi::complex128> {
   HOSTDEVICE inline AbsGradCUDAFunctor() {}
-  HOSTDEVICE inline phi::dtype::complex<double> operator()(
-      const phi::dtype::complex<double> x, const double dout) const {
-    phi::dtype::complex<double> output;
-    if (x == phi::dtype::complex<double>(0)) {
-      output = phi::dtype::complex<double>(0);
+  HOSTDEVICE inline phi::complex128 operator()(const phi::complex128 x,
+                                               const double dout) const {
+    phi::complex128 output;
+    if (x == phi::complex128(0)) {
+      output = phi::complex128(0);
     } else {
-      output = phi::dtype::complex<double>(dout) *
-               (x / phi::dtype::complex<double>(abs(x)));
+      output = phi::complex128(dout) * (x / phi::complex128(abs(x)));
     }
     return output;
   }
@@ -108,7 +105,7 @@ void AbsGradKernel(const Context& dev_ctx,
 }
 #else
 template <typename T, typename Context>
-void AbsGradKernel(const Context& ctx,
+void AbsGradKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& dout,
                    DenseTensor* dx) {
@@ -116,27 +113,27 @@ void AbsGradKernel(const Context& ctx,
   auto* dout_data = dout.data<phi::dtype::Real<T>>();
   auto* x_data = x.data<T>();
 
-  ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
+  dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
   auto* dx_data = dx->data<T>();
 
-  phi::funcs::ForRange<Context> for_range(ctx, numel);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   phi::funcs::AbsGradFunctor<T> functor(dout_data, x_data, dx_data, numel);
   for_range(functor);
 }
 
 #endif
 template <typename T, typename Context>
-void AbsDoubleGradKernel(const Context& ctx,
+void AbsDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& ddx,
                          DenseTensor* ddout) {
   auto numel = ddx.numel();
   auto* ddx_data = ddx.data<T>();
   auto* x_data = x.data<T>();
-  ctx.template Alloc<T>(ddout, static_cast<size_t>(numel * sizeof(T)));
+  dev_ctx.template Alloc<T>(ddout, static_cast<size_t>(numel * sizeof(T)));
   auto* ddout_data = ddout->data<T>();
 
-  phi::funcs::ForRange<Context> for_range(ctx, numel);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   phi::funcs::AbsGradGradFunctor<T> functor(
       ddx_data, x_data, ddout_data, numel);
   for_range(functor);

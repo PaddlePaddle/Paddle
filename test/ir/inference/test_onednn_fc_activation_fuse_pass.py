@@ -56,7 +56,7 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
             },
             outputs={"Out": ["fc_output"]},
             attrs={
-                "use_mkldnn": True,
+                "use_onednn": True,
                 "padding_weights": False,
                 "in_num_col_dims": 1,
             },
@@ -134,7 +134,7 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True,
+            use_onednn=True,
             passes=[
                 "fc_act_onednn_fuse_pass",
                 "operator_scale_onednn_fuse_pass",
@@ -143,7 +143,7 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
         yield config, ["fc"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             passes=[
                 "fc_act_onednn_fuse_pass",

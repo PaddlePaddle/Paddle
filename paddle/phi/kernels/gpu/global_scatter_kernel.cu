@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/gpu/global_scatter_kernel.h"
 #include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -164,7 +165,7 @@ PD_REGISTER_KERNEL(global_scatter,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->InputAt(1).SetDataType(phi::DataType::INT64);
   kernel->InputAt(2).SetDataType(phi::DataType::INT64);
 }

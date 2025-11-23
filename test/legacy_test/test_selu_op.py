@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -42,7 +47,6 @@ class SeluTest(OpTest):
     def setUp(self):
         self.op_type = "selu"
         self.python_api = paddle.nn.functional.selu
-        self.x_shape = [3, 5, 5, 10]
         self.init_x_shape()
         self.init_dtype()
 
@@ -73,7 +77,7 @@ class SeluTest(OpTest):
         }
 
     def init_x_shape(self):
-        pass
+        self.x_shape = [3, 5, 5, 10]
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -91,8 +95,8 @@ class SeluTestFP16OP(SeluTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class SeluTestBF16OP(SeluTest):
@@ -100,12 +104,27 @@ class SeluTestBF16OP(SeluTest):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(get_device_place(), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            core.CUDAPlace(0), ['X'], 'Out', check_pir=True
+            get_device_place(), ['X'], 'Out', check_pir=True
         )
+
+
+class SeluTestZeroSize1(SeluTest):
+    def init_x_shape(self):
+        self.x_shape = [9, 0]
+
+
+class SeluTestZeroSize2(SeluTest):
+    def init_x_shape(self):
+        self.x_shape = [0, 0]
+
+
+class SeluTestZeroSize3(SeluTest):
+    def init_x_shape(self):
+        self.x_shape = [5, 0, 8]
 
 
 class TestSeluAPI(unittest.TestCase):
@@ -117,11 +136,7 @@ class TestSeluAPI(unittest.TestCase):
         # Since zero point in selu is not differentiable, avoid randomize
         # zero.
         self.x_np[np.abs(self.x_np) < 0.005] = 0.02
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -172,7 +187,7 @@ class TestSeluAPI(unittest.TestCase):
             # The alpha must be no less than 0
             self.assertRaises(ValueError, F.selu, x_fp32, 1.6, -1.0)
             # support the input dtype is float16
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 x_fp16 = paddle.static.data(
                     name='x_fp16', shape=[12, 10], dtype='float16'
                 )
@@ -180,4 +195,5 @@ class TestSeluAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

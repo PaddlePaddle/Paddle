@@ -22,12 +22,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PoissonKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
+void PoissonKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   DenseTensor* out) {
   const T* x_data = x.data<T>();
-  T* out_data = ctx.template Alloc<T>(out);
+  T* out_data = dev_ctx.template Alloc<T>(out);
   int64_t size = x.numel();
 
-  auto gen = ctx.GetGenerator();
+  auto gen = dev_ctx.GetGenerator();
   auto engine = gen->GetCPUEngine();
 
   for (int64_t i = 0; i < size; ++i) {

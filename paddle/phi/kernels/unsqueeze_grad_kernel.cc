@@ -47,10 +47,10 @@ PD_REGISTER_KERNEL(unsqueeze_grad,
                    uint8_t,
                    int8_t,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(unsqueeze_grad,
@@ -65,10 +65,10 @@ PD_REGISTER_KERNEL(unsqueeze_grad,
                    uint8_t,
                    int8_t,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 #endif
 
@@ -79,8 +79,8 @@ PD_REGISTER_KERNEL(unsqueeze_grad,
                    phi::UnsqueezeGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    bool,
                    int,
                    uint8_t,

@@ -35,9 +35,11 @@ class TestOpTranslator(unittest.TestCase):
         raise NotImplementedError("Define the op to be tested here!")
 
     def build_model(self):
-        with paddle.static.scope_guard(self.new_scope):
-            with paddle.static.program_guard(self.main_program):
-                self.append_op()
+        with (
+            paddle.static.scope_guard(self.new_scope),
+            paddle.static.program_guard(self.main_program),
+        ):
+            self.append_op()
 
     def check(self):
         self.build_model()
@@ -62,21 +64,23 @@ class TestOpWithBackwardTranslator(unittest.TestCase):
         raise NotImplementedError("Define the op to be tested here!")
 
     def build_model(self):
-        with paddle.static.scope_guard(self.new_scope):
-            with paddle.static.program_guard(self.main_program):
-                out = self.append_op()
-                out.stop_gradient = False
-                append_backward(out)
+        with (
+            paddle.static.scope_guard(self.new_scope),
+            paddle.static.program_guard(self.main_program),
+        ):
+            out = self.append_op()
+            out.stop_gradient = False
+            append_backward(out)
 
     def check(self):
         self.build_model()
         pir_program = pir.translate_to_pir(self.main_program.desc)
-        assert hasattr(
-            self, "forward_op_type"
-        ), "forward_op_type should be specified!"
-        assert hasattr(
-            self, "backward_op_type"
-        ), "backward_op_type should be specified!"
+        assert hasattr(self, "forward_op_type"), (
+            "forward_op_type should be specified!"
+        )
+        assert hasattr(self, "backward_op_type"), (
+            "backward_op_type should be specified!"
+        )
         serialized_pir_program = str(pir_program)
         assert self.forward_op_type in serialized_pir_program, (
             self.forward_op_type

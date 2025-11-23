@@ -63,10 +63,7 @@ EOF
         buildSize=$($com ${PADDLE_ROOT}/build |awk '{print $1}')
 
         # github action env variable
-        if [ -n "$2" ]; then
-            echo "buildSize=${buildSize}" >> $2
-            echo "buildSize=${buildSize}" >> "$HOME/.bashrc"
-        fi
+        echo "export buildSize=${buildSize}" >> "$HOME/.bashrc"
 
         echo "Build Size: $buildSize"
         echo "ipipe_log_param_Build_Size: $buildSize" >> ${PADDLE_ROOT}/build/build_summary.txt
@@ -104,9 +101,7 @@ failed_test_lists=''
 tmp_dir=`mktemp -d`
 
 function get_quickly_disable_ut() {
-    echo "::group::Installing httpx..."
     python -m pip install httpx
-    echo "::endgroup::"
     if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
         echo "========================================="
         echo "The following unittests have been disabled:"
@@ -193,7 +188,7 @@ function show_ut_retry_result() {
         if [ "$SYSTEM" == "Darwin" ]; then
             retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
         else
-            retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=2) {print $2}}')
+            retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=4) {print $2}}')
         fi
         if [ -z "${retry_unittests_record_judge}" ];then
             echo "========================================"
@@ -227,6 +222,67 @@ function clean_build_files() {
     done
 }
 
+function determine_kunlun_runner() {
+    runner_name=$1
+
+    if [[ $runner_name == "paddle-1" ]]; then
+        echo "CUDA_VISIBLE_DEVICES=0,1" >> $GITHUB_ENV
+        echo "XPU_CODE_1=/dev/xpu0" >> $GITHUB_ENV
+        echo "XPU_CODE_2=/dev/xpu1" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-2" ]]; then
+        echo "CUDA_VISIBLE_DEVICES=0,1" >> $GITHUB_ENV
+        echo "XPU_CODE_1=/dev/xpu2" >> $GITHUB_ENV
+        echo "XPU_CODE_2=/dev/xpu3" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-3" ]]; then
+        echo "CUDA_VISIBLE_DEVICES=0,1" >> $GITHUB_ENV
+        echo "XPU_CODE_1=/dev/xpu4" >> $GITHUB_ENV
+        echo "XPU_CODE_2=/dev/xpu5" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-4" ]]; then
+        echo "CUDA_VISIBLE_DEVICES=0,1" >> $GITHUB_ENV
+        echo "XPU_CODE_1=/dev/xpu6" >> $GITHUB_ENV
+        echo "XPU_CODE_2=/dev/xpu7" >> $GITHUB_ENV
+    else
+        echo "Unknown runner name: $runner_name"
+        exit 1
+    fi
+    cd $GITHUB_WORKSPACE
+}
+
+function determine_dcu_runner() {
+    runner_name=$1
+
+    if [[ $runner_name == "paddle-1" ]]; then
+        echo "HIP_VISIBLE_DEVICES=0,1" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-2" ]]; then
+        echo "HIP_VISIBLE_DEVICES=2,3" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-3" ]]; then
+        echo "HIP_VISIBLE_DEVICES=4,5" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-4" ]]; then
+        echo "HIP_VISIBLE_DEVICES=6,7" >> $GITHUB_ENV
+    else
+        echo "Unknown runner name: $runner_name"
+        exit 1
+    fi
+    cd $GITHUB_WORKSPACE
+    # rm -rf * .[^.]* .??*
+}
+
+function determine_npu_runner() {
+    runner_name=$1
+    if [[ $runner_name == "paddle-1" ]]; then
+        echo "ASCEND_RT_VISIBLE_DEVICES=0,1,2,3" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-2" ]]; then
+        echo "ASCEND_RT_VISIBLE_DEVICES=4,5,6,7" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-3" ]]; then
+        echo "ASCEND_RT_VISIBLE_DEVICES=8,9,10,11" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-4" ]]; then
+        echo "ASCEND_RT_VISIBLE_DEVICES=12,13,14,15" >> $GITHUB_ENV
+    else
+        echo "Unknown runner name: $runner_name"
+        exit 1
+    fi
+}
+
 function cmake_base() {
     # Build script will not fail if *.deb does not exist
     rm *.deb 2>/dev/null || true
@@ -241,19 +297,7 @@ function cmake_base() {
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
         echo "Using python abi: $1"
-        if [ "$1" == "cp38-cp38" ]; then
-            if [ -d "/Library/Frameworks/Python.framework/Versions/3.8" ]; then
-                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
-                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.8/lib/
-                export PATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/:${PATH}
-                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
-            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.8/include/python3.8/
-            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/libpython3.8.dylib"
-                pip3.8 install --user -r ${PADDLE_ROOT}/python/requirements.txt
-            else
-                exit 1
-            fi
-        elif [ "$1" == "cp39-cp39" ]; then
+        if [ "$1" == "cp39-cp39" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.9" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.9/lib/
@@ -317,15 +361,7 @@ function cmake_base() {
     else
         if [ "$1" != "" ]; then
             echo "using python abi: $1"
-            if [ "$1" == "cp38-cp38" ]; then
-                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH}
-                export PATH=/opt/_internal/cpython-3.8.0/bin/:${PATH}
-                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.8.0/bin/python3.8
-            -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.8.0/include/python3.8
-            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.8.0/lib/libpython3.so"
-                pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
-                pip3.8 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
-            elif [ "$1" == "cp39-cp39" ]; then
+            if [ "$1" == "cp39-cp39" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.9.0/bin/:${PATH}
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.9.0/bin/python3.9
@@ -357,7 +393,7 @@ function cmake_base() {
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.12.0/lib/libpython3.so"
                 pip3.12 install -r ${PADDLE_ROOT}/python/requirements.txt
                 pip3.12 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
-	    elif [ "$1" == "cp313-cp313" ]; then
+	        elif [ "$1" == "cp313-cp313" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.13.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.13.0/bin/:${PATH}
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.13.0/bin/python3.13
@@ -365,13 +401,6 @@ function cmake_base() {
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.13.0/lib/libpython3.so"
                 pip3.13 install -r ${PADDLE_ROOT}/python/requirements.txt
                 pip3.13 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
-            elif [ "$1" == "conda-python3.8" ]; then
-                export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
-                export PATH=/opt/conda/bin/:${PATH}
-                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/conda/bin/python
-                                     -DPYTHON_INCLUDE_DIR:PATH=/opt/conda/include/python3.8m
-                                     -DPYTHON_LIBRARIES:FILEPATH=/opt/conda/lib/libpython3.so"
-                /opt/conda/bin/pip install -r ${PADDLE_ROOT}/python/requirements.txt
             fi
             # for CINN, to find libcuda.so.1
             export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/cuda-11.2/compat/
@@ -392,10 +421,6 @@ function cmake_base() {
     distributed_flag=${WITH_DISTRIBUTE:-OFF}
     gloo_flag=${distributed_flag}
     pscore_flag=${distributed_flag}
-    pslib_flag=${WITH_PSLIB:-OFF}
-    if [ "${pslib_flag}" == "ON" ];then
-      pscore_flag=${WITH_PSCORE:-OFF}
-    fi
 
     if [ "$2" != "approval" ];then
       which python
@@ -432,7 +457,7 @@ function cmake_base() {
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
-        -DPY_VERSION=${PY_VERSION:-3.8}
+        -DPY_VERSION=${PY_VERSION:-3.9}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_PSCORE=${pscore_flag}
         -DWITH_PSLIB=${pslib_flag}
@@ -441,11 +466,13 @@ function cmake_base() {
         -DWITH_IPU=${WITH_IPU:-OFF}
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
+        -DWITH_XPU_XHPC=${WITH_XPU_XHPC:-OFF}
+        -DWITH_XPU_XFT=${WITH_XPU_XFT:-OFF}
         -DWITH_XPU_XRE5=${WITH_XPU_XRE5:-OFF}
+        -DWITH_XPU_FFT=${WITH_XPU_FFT:-OFF}
         -DWITH_ARM=${WITH_ARM:-OFF}
         -DWITH_STRIP=${WITH_STRIP:-ON}
         -DON_INFER=${ON_INFER:-OFF}
-        -DWITH_HETERPS=${WITH_HETERPS:-OFF}
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
         -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
@@ -483,7 +510,7 @@ EOF
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
-        -DPY_VERSION=${PY_VERSION:-3.8} \
+        -DPY_VERSION=${PY_VERSION:-3.9} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_PSCORE=${pscore_flag} \
         -DWITH_PSLIB=${pslib_flag} \
@@ -493,10 +520,12 @@ EOF
         -DWITH_IPU=${WITH_IPU:-OFF} \
         -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} \
+        -DWITH_XPU_XHPC=${WITH_XPU_XHPC:-OFF} \
+        -DWITH_XPU_XFT=${WITH_XPU_XFT:-OFF} \
+        -DWITH_XPU_FFT=${WITH_XPU_FFT:-OFF} \
         -DWITH_ARM=${WITH_ARM:-OFF} \
         -DWITH_STRIP=${WITH_STRIP:-ON} \
         -DON_INFER=${ON_INFER:-OFF} \
-        -DWITH_HETERPS=${WITH_HETERPS:-OFF} \
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}" \
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}  \
@@ -506,7 +535,7 @@ EOF
         -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF};build_error=$?
 
     if [ "$build_error" != 0 ];then
-        exit 7;
+        return 7;
     fi
 }
 
@@ -520,7 +549,7 @@ function check_approvals_of_unittest() {
     if [ $check_times == 1 ]; then
         approval_line=`curl -H "Authorization: token ${GITHUB_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
         if [ "${approval_line}" != "" ]; then
-            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244 32428676 45041955`
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
             if [ "${APPROVALS}" == "TRUE" ]; then
                 echo "==================================="
@@ -539,7 +568,7 @@ function check_approvals_of_unittest() {
                 echo "************************************"
                 echo -e "It is forbidden to disable or delete the unit-test.\n"
                 echo -e "If you must delete it temporarily, please add it to[https://github.com/PaddlePaddle/Paddle/wiki/Temporarily-disabled-Unit-Test]."
-                echo -e "Then you must have one RD (kolinwei(recommended), chalsliu, XieYunshen or zhouwei25) approval for the deletion of unit-test. \n"
+                echo -e "Then you must have one RD (kolinwei(recommended), XieYunshen, chalsliu) approval for the deletion of unit-test. \n"
                 echo -e "If you have any problems about deleting unit-test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/Deleting-unit-test-is-forbidden]. \n"
                 echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"
                 echo "************************************"
@@ -587,13 +616,10 @@ function check_cinn_file_diff() {
         CMakeLists.txt
         cmake
         paddle/cinn
-        python/cinn
         python/CMakeLists.txt
-        python/setup_cinn.py.in
         test/CMakeLists.txt
         test/cinn
         test/cpp/cinn
-        tools/cinn
     )
 
     run_cinn_ut="OFF"
@@ -621,7 +647,7 @@ function case_count(){
 EOF
     testcases=$1
     num=$(echo $testcases|grep -o '\^'|wc -l)
-    if (( $2 == -1 )); then
+    if [[ "$2" == "-1" ]]; then
         echo "exclusive TestCases count is $num"
         echo "ipipe_log_param_Exclusive_TestCases_Count: $num" >> ${PADDLE_ROOT}/build/build_summary.txt
     else
@@ -706,7 +732,7 @@ function card_test() {
                     cuda_list="$cuda_list,$[i*cardnumber+j]"
             fi
         done
-        tmpfile=$tmp_dir/$tmpfile_rand"_"$iget_quickly_disable_ut
+        tmpfile=$tmp_dir/$tmpfile_rand"_"$i
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
                 (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} -V --timeout 120 -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
@@ -1004,8 +1030,8 @@ set +x
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s"
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         if [ "$WITH_ROCM" != "ON" ];then
-            # cp $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}/
-            echo "CTestCostData.txt"
+            mkdir -p /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}/
+            cp $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}/
         fi
         if [[ "$EXIT_CODE" != "0" ]]; then
             show_ut_retry_result
@@ -1016,12 +1042,195 @@ set -ex
 
 function check_coverage() {
     if [ ${WITH_COVERAGE:-ON} == "ON" ] ; then
-        /bin/bash ${PADDLE_ROOT}/ci/coverage_info.sh
+      if [ ${WITH_ALL_COVERAGE:-OFF} == "ON" ];then
+          echo "Run all info coverage "
+          /bin/bash ${PADDLE_ROOT}/ci/coverage_all_info.sh
+        else
+          echo "Run info coverage "
+          /bin/bash ${PADDLE_ROOT}/ci/coverage_info.sh
+      fi
     else
         echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
     fi
 }
 
+function test_fluid_lib() {
+    cat <<EOF
+    ========================================
+    Testing fluid library for inference ...
+    ========================================
+EOF
+    demo_ci_startTime_s=`date +%s`
+    cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
+    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
+             ${WITH_TENSORRT:-ON} ${TENSORRT_ROOT_DIR:-/usr} ${WITH_ONNXRUNTIME:-ON}
+    DEMO_EXIT_CODE=$?
+    ./clean.sh
+    demo_ci_endTime_s=`date +%s`
+    echo "demo_ci tests Total time: $[ $demo_ci_endTime_s - $demo_ci_startTime_s ]s"
+    echo "ipipe_log_param_Demo_Ci_Tests_Total_Time: $[ $demo_ci_endTime_s - $demo_ci_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+
+    infer_ut_startTime_s=`date +%s`
+    cd ${PADDLE_ROOT}/test/cpp/inference/infer_ut
+    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
+             ${TENSORRT_ROOT_DIR:-/usr} ${WITH_ONNXRUNTIME:-ON}
+    TEST_EXIT_CODE=$?
+    infer_ut_endTime_s=`date +%s`
+    echo "infer_ut tests Total time: $[ $infer_ut_endTime_s - $infer_ut_startTime_s ]s"
+    echo "ipipe_log_param_Infer_Ut_Tests_Total_Time: $[ $infer_ut_endTime_s - $infer_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+    if [[ "$DEMO_EXIT_CODE" != "0" || "$TEST_EXIT_CODE" != "0" ]]; then
+        exit 8;
+    fi
+}
+
+function test_go_inference_api() {
+    cat <<EOF
+    ========================================
+    Testing go inference api ...
+    ========================================
+EOF
+
+    # ln paddle_inference_c lib
+    cd ${PADDLE_ROOT}/build
+    ln -s ${PADDLE_ROOT}/build/paddle_inference_c_install_dir/ ${PADDLE_ROOT}/paddle/fluid/inference/goapi/paddle_inference_c
+
+    # run go test
+    cd ${PADDLE_ROOT}/paddle/fluid/inference/goapi
+    bash test.sh
+    EXIT_CODE=$?
+    if [[ "$EXIT_CODE" != "0" ]]; then
+        exit 8;
+    fi
+}
+
+function check_approvals_of_unittest() {
+    set +x
+    if [ "$GITHUB_API_TOKEN" == "" ] || [ "$GIT_PR_ID" == "" ]; then
+        return 0
+    fi
+    # approval_user_list: XiaoguangHu01 46782768,luotao1 6836917,phlrain 43953930,lanxianghit 47554610, zhouwei25 52485244, kolinwei 22165420
+    check_times=$1
+    if [ $check_times == 1 ]; then
+        approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+        if [ "${approval_line}" != "" ]; then
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244 32428676 45041955`
+            echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+            if [ "${APPROVALS}" == "TRUE" ]; then
+                echo "==================================="
+                echo -e "\n current pr ${GIT_PR_ID} has got approvals. So, Pass CI directly!\n"
+                echo "==================================="
+                exit 0
+            fi
+        fi
+    elif [ $check_times == 2 ]; then
+        unittest_spec_diff=`python ${PADDLE_ROOT}/tools/diff_unittest.py ${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV.spec ${PADDLE_ROOT}/paddle/fluid/UNITTEST_PR.spec`
+        if [ "$unittest_spec_diff" != "" ]; then
+            approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244 32428676 45041955`
+            echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+            if [ "${APPROVALS}" == "FALSE" ]; then
+                echo "************************************"
+                echo -e "It is forbidden to disable or delete the unit-test.\n"
+                echo -e "If you must delete it temporarily, please add it to[https://github.com/PaddlePaddle/Paddle/wiki/Temporarily-disabled-Unit-Test]."
+                echo -e "Then you must have one RD (kolinwei(recommended), XieYunshen, chalsliu) approval for the deletion of unit-test. \n"
+                echo -e "If you have any problems about deleting unit-test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/Deleting-unit-test-is-forbidden]. \n"
+                echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"
+                echo "************************************"
+                exit 6
+            fi
+        fi
+    elif [ $check_times == 3 ]; then
+        if [ ${BRANCH} != 'develop' ];then
+            return
+        fi
+
+        rm -f fluidInference_so_size
+        curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/fluidInference_so_size
+        oriBuildSize=`cat fluidInference_so_size`
+        curBuildSize=$(du -m --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_install_dir/paddle/lib/libpaddle_inference.so |awk '{print $1}')
+        diffSize=$(awk "BEGIN{print $curBuildSize-$oriBuildSize}")
+        AllDiffSize=$(awk "BEGIN{print $diffSize * 4}")
+        cat <<EOF
+        ========================================
+        Original libpaddle_inference.so Size is ${oriBuildSize}M.
+        Current libpaddle_inference.so Size is ${curBuildSize}M.
+        In single gpu architecture, Growing size of libpaddle_inference.so is ${diffSize}M.
+        In release version, The gpu architecture parameter is "All", The library size is four times to single gpu architecture.
+        It means the release version library size growth is about ${AllDiffSize}M.
+        ========================================
+EOF
+        if [ $(awk "BEGIN{print 20<$AllDiffSize}") -eq 1 ] ; then
+            approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 vivienfanghuagood Aurelius84 qingqing01 yuanlehome`
+            echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+            if [ "${APPROVALS}" == "FALSE" ]; then
+                echo "=========================================================================================="
+                echo "This PR make the release inference library size growth exceeds 20 M."
+                echo "Then you must have one RD (vivienfanghuagood (Recommend), Aurelius84 (ForPir) qingqing01 or yuanlehome) approval for this PR.\n"
+                echo "=========================================================================================="
+                exit 6
+            fi
+        fi
+    fi
+    set -x
+}
+
+function generate_api_spec() {
+    set -e
+    spec_kind=$2
+    if [ "$spec_kind" != "PR" ] && [ "$spec_kind" != "DEV" ]; then
+        echo "Not supported $2"
+        exit 1
+    fi
+    if [ "$spec_kind" == "DEV" ]; then
+        git checkout $BRANCH
+    fi
+    REQUIREMENTS_PATH=${PADDLE_ROOT}/python/requirements.txt
+    PRINT_SIGNATURES_SCRIPT_PATH=${PADDLE_ROOT}/tools/print_signatures.py
+
+    mkdir -p ${PADDLE_ROOT}/build/.check_api_workspace
+    cd ${PADDLE_ROOT}/build/.check_api_workspace
+    virtualenv -p `which python` .${spec_kind}_env
+    source .${spec_kind}_env/bin/activate
+    pip install -r $REQUIREMENTS_PATH
+
+    if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
+        pip install ${PADDLE_ROOT}/build/python/dist/*whl --no-index --no-deps
+    elif [ -d "${PADDLE_ROOT}/dist/" ];then
+        pip install ${PADDLE_ROOT}/dist/*whl --no-index --no-deps
+        mkdir ${PADDLE_ROOT}/build/python/dist/ && mv  ${PADDLE_ROOT}/dist/*whl  ${PADDLE_ROOT}/build/python/dist/
+    fi
+    spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
+    python ${PRINT_SIGNATURES_SCRIPT_PATH} paddle > $spec_path
+    python ${PRINT_SIGNATURES_SCRIPT_PATH} --show-fields="args,varargs,varkw,defaults,kwonlyargs,kwonlydefaults" paddle > ${spec_path}.api
+    python ${PRINT_SIGNATURES_SCRIPT_PATH} --show-fields="annotations" paddle > ${spec_path}.annotations
+    python ${PRINT_SIGNATURES_SCRIPT_PATH} --show-fields="document" paddle > ${spec_path}.doc
+
+    # used to log op_register data_type
+    op_type_path=${PADDLE_ROOT}/paddle/fluid/OP_TYPE_${spec_kind}.spec
+    python ${PADDLE_ROOT}/tools/check_op_register_type.py > $op_type_path
+
+    # used to log op_register data_type
+    op_type_path=${PADDLE_ROOT}/paddle/fluid/OP_KERNEL_DTYPE_${spec_kind}.spec
+    python ${PADDLE_ROOT}/tools/check_op_kernel_same_dtypes.py > $op_type_path
+
+    # print all ops desc in dict to op_desc_path
+    op_desc_path=${PADDLE_ROOT}/paddle/fluid/OP_DESC_${spec_kind}.spec
+    python ${PADDLE_ROOT}/tools/print_op_desc.py > $op_desc_path
+
+    # print api and the md5 of source code of the api.
+    api_source_md5_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.source.md5
+    python ${PADDLE_ROOT}/tools/count_api_without_core_ops.py -p paddle > $api_source_md5_path
+
+    python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
+        ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_${spec_kind}.spec
+
+    deactivate
+
+    cd ${PADDLE_ROOT}/build
+    rm -rf ${PADDLE_ROOT}/build/.check_api_workspace
+    git checkout test
+}
 
 function check_excode() {
     if [[ $EXCODE -eq 0 ]];then

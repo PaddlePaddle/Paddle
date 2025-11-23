@@ -123,42 +123,4 @@ class CutlassFpAIntBGemmRunner {
   int multi_processor_count_;
 };
 
-// This allocation is present to help with compiling with other structures in
-// FT. It will throw an error in all functions because this runner assumes the
-// weight type and the activation type are different. We allow empty classes to
-// be created, but any calls to gemm or gemm_bias_act will throw an error.
-template <typename WeightType>
-class CutlassFpAIntBGemmRunner<float, WeightType> {
- public:
-  CutlassFpAIntBGemmRunner() = default;
-  ~CutlassFpAIntBGemmRunner() = default;
-
-  void gemm(const float* A,
-            const WeightType* B,
-            const float* weight_scales,
-            float* C,
-            int m,
-            int n,
-            int k,
-            int group_size,
-            char* workspace_ptr,
-            const size_t workspace_bytes,
-            cudaStream_t stream);
-
-  void gemm_bias_act(const float* A,
-                     const WeightType* B,
-                     const float* weight_scales,
-                     const float* biases,
-                     float* C,
-                     int m,
-                     int n,
-                     int k,
-                     int group_size,
-                     std::string activation_type,
-                     char* workspace_ptr,
-                     const size_t workspace_bytes,
-                     cudaStream_t stream);
-
-  int getWorkspaceSize(const int m, const int n, const int k);
-};
 }  // namespace phi

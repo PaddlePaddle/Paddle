@@ -16,7 +16,7 @@ include(ExternalProject)
 
 set(PSLIB_BRPC_PROJECT "extern_pslib_brpc")
 if((NOT DEFINED PSLIB_BRPC_NAME) OR (NOT DEFINED PSLIB_BRPC_URL))
-  message(STATUS "use pre defined download url")
+  message(STATUS "use predefined download url")
   set(PSLIB_BRPC_VER
       "0.1.0"
       CACHE STRING "" FORCE)
@@ -47,7 +47,7 @@ include_directories(${PSLIB_BRPC_INC_DIR})
 
 file(
   WRITE ${PSLIB_BRPC_DOWNLOAD_DIR}/CMakeLists.txt
-  "PROJECT(PSLIB_BRPC)\n" "cmake_minimum_required(VERSION 3.0)\n"
+  "PROJECT(PSLIB_BRPC)\n" "cmake_minimum_required(VERSION 3.5)\n"
   "install(DIRECTORY ${PSLIB_BRPC_NAME}/include ${PSLIB_BRPC_NAME}/lib \n"
   "        DESTINATION ${PSLIB_BRPC_DST_DIR})\n")
 

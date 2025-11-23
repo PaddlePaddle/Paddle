@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/operator_fusion/pir_graph_analyzing/loop_axis_mapping.h"
-
+#include <deque>
 namespace cinn::fusion {
 
 std::ostream& operator<<(std::ostream& os, const AxisTransform& transform) {

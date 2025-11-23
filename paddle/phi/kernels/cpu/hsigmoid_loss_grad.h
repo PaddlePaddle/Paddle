@@ -25,7 +25,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void HSigmoidLossGradKernelImpl(const Context& ctx,
+void HSigmoidLossGradKernelImpl(const Context& dev_ctx,
                                 const DenseTensor& x,
                                 const DenseTensor& w,
                                 const DenseTensor& label,
@@ -45,9 +45,9 @@ void HSigmoidLossGradKernelImpl(const Context& ctx,
   DenseTensor pre_out_grad;
 
   pre_out_grad.Resize(pre_out.dims());
-  ctx.template Alloc<T>(&pre_out_grad);
-  ctx.template Alloc<T>(x_grad);
-  zero(ctx, x_grad, static_cast<T>(0.0));
+  dev_ctx.template Alloc<T>(&pre_out_grad);
+  dev_ctx.template Alloc<T>(x_grad);
+  zero(dev_ctx, x_grad, static_cast<T>(0.0));
 
   bool is_custom = false;
   if (path.get_ptr()) {
@@ -65,7 +65,7 @@ void HSigmoidLossGradKernelImpl(const Context& ctx,
 
   // softrelu derivative
 
-  auto blas = funcs::GetBlas<Context, T>(ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
   auto* pre_out_grad_data = pre_out_grad.data<T>();
   auto* pre_out_data = pre_out.template data<T>();
@@ -87,12 +87,12 @@ void HSigmoidLossGradKernelImpl(const Context& ctx,
   // TODO(guosheng): multiply pre_out_grad with subgradient of clipping to
   // be consistent with the clipping in forward.
   if (bias_grad) {
-    ctx.template Alloc<T>(bias_grad);
-    zero(ctx, bias_grad, static_cast<T>(0.0));
+    dev_ctx.template Alloc<T>(bias_grad);
+    zero(dev_ctx, bias_grad, static_cast<T>(0.0));
     bit_code->AddGrad(pre_out_grad, bias_grad);
   }
-  ctx.template Alloc<T>(w_grad);
-  zero(ctx, w_grad, static_cast<T>(0.0));
+  dev_ctx.template Alloc<T>(w_grad);
+  zero(dev_ctx, w_grad, static_cast<T>(0.0));
   if (!is_sparse) {
     bit_code->MulGradWeight(pre_out_grad, w_grad, x);
   } else {

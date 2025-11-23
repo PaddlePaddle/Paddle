@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -47,12 +48,15 @@ void ConcatGradKernel(const Context& dev_ctx,
   // get output tensor that the name is not kEmptyVarName
   std::vector<XPUType*> ptrs(outs.size());
   for (size_t j = 0; j < outs.size(); ++j) {
-    if (outs[j] && outs[j]->numel() != 0UL) {
+    if (outs[j]) {
       dev_ctx.template Alloc<T>(outs[j]);
       ptrs[j] = reinterpret_cast<XPUType*>(outs[j]->data<T>());
-    } else {
-      ptrs[j] = nullptr;
     }
+  }
+  // if the out_grad.numel() == 0 ,the all x and x_grad must be zero size
+  // tensor, so just return
+  if (out_grad.numel() == 0) {
+    return;
   }
   PADDLE_ENFORCE_GE(axis,
                     0,
@@ -70,9 +74,9 @@ void ConcatGradKernel(const Context& dev_ctx,
                         out_grad.dims().size()));
 
   auto input_dims = x[0]->dims();
-  std::vector<int> split_list(x.size());
-  std::vector<int> xdims_list(input_dims.size());
-  int total_length = 0;
+  std::vector<int64_t> split_list(x.size());
+  std::vector<int64_t> xdims_list(input_dims.size());
+  int64_t total_length = 0;
   for (size_t i = 0; i < x.size(); ++i) {
     split_list[i] = x[i]->dims()[axis];
     total_length += x[i]->dims()[axis];
@@ -85,14 +89,25 @@ void ConcatGradKernel(const Context& dev_ctx,
   }
   xdims_list[axis] = total_length;
 
-  int r =
-      xpu::split<XPUType>(dev_ctx.x_context(),
-                          reinterpret_cast<const XPUType*>(out_grad.data<T>()),
-                          ptrs,
-                          xdims_list,
-                          split_list,
-                          axis);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "concat_grad");
+  std::vector<XPUType*> ptrs_nozero;
+  std::vector<int64_t> split_list_nozero;
+  for (size_t i = 0; i < x.size(); i++) {
+    if (split_list[i] != 0) {
+      ptrs_nozero.push_back(ptrs[i]);
+      split_list_nozero.push_back(split_list[i]);
+    }
+  }
+
+  if (ptrs_nozero.size() != 0) {
+    int r = xpu::split<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+        ptrs_nozero,
+        xdims_list,
+        split_list_nozero,
+        axis);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "concat_grad");
+  }
 }
 
 }  // namespace phi
@@ -102,5 +117,5 @@ PD_REGISTER_KERNEL(concat_grad,
                    ALL_LAYOUT,
                    phi::ConcatGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

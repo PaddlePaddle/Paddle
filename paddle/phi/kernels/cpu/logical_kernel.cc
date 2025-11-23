@@ -19,7 +19,6 @@
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/logical_functor.h"
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/common/transform.h"
 
 namespace phi {
@@ -100,8 +99,8 @@ void LogicalNotKernel(const Context& dev_ctx,
                      int64_t,                               \
                      int,                                   \
                      int8_t,                                \
-                     phi::dtype::complex<float>,            \
-                     phi::dtype::complex<double>,           \
+                     phi::complex64,                        \
+                     phi::complex128,                       \
                      int16_t) {                             \
     kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);   \
   }

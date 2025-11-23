@@ -20,7 +20,7 @@ import scipy
 import scipy.linalg
 
 sys.path.append("..")
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -106,9 +106,7 @@ class TestCholeskySolveOp(OpTest):
         self.y_shape = [15, 15]
         self.x_shape = [15, 5]
         self.upper = False
-        self.dtype = (
-            np.float64
-        )  # Here cholesky_solve Op only supports float64/float32 type, please check others if Op supports more types.
+        self.dtype = np.float64  # Here cholesky_solve Op only supports float64/float32 type, please check others if Op supports more types.
 
     # get scipy result
     def set_output(self):
@@ -164,8 +162,8 @@ class TestCholeskySolveAPI(unittest.TestCase):
         self.place = [paddle.CPUPlace()]
         self.dtype = "float64"
         self.upper = True
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place.append(get_device_place())
 
     def check_static_result(self, place):
         paddle.enable_static()
@@ -280,6 +278,64 @@ class TestCholeskySolveOpError(unittest.TestCase):
             x7 = paddle.static.data(name="x7", shape=[2, 3, 4], dtype="float64")
             y7 = paddle.static.data(name="y7", shape=[2, 4, 3], dtype="float64")
             self.assertRaises(ValueError, paddle.linalg.cholesky_solve, x7, y7)
+
+
+# API function test
+class TestCholeskySolveAPIZeroSize(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.place = [paddle.CPUPlace()]
+        self.dtype = "float64"
+        self.upper = True
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place.append(get_device_place())
+        self.init_shape()
+
+    def init_shape(self):
+        self.x_shape = [10, 0]
+        self.y_shape = [10, 10]
+        self.expected_shape = [10, 0]
+        # test in dynamic mode
+
+    def test_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            x_np = np.random.random(self.x_shape).astype(self.dtype)
+            y_np = np.random.random(self.y_shape).astype(self.dtype)
+
+            x = paddle.to_tensor(x_np, stop_gradient=False)
+            y = paddle.to_tensor(y_np, stop_gradient=False)
+            z = paddle.linalg.cholesky_solve(x, y, upper=self.upper)
+            loss = paddle.sum(z)
+            loss.backward()
+
+            self.assertEqual(z.shape, self.expected_shape)
+            self.assertEqual(x.shape, x.grad.shape)
+            self.assertEqual(y.shape, y.grad.shape)
+
+        for idx, place in enumerate(self.place):
+            run(place)
+
+
+class TestCholeskySolveAPIZeroSize1(TestCholeskySolveAPIZeroSize):
+    def init_shape(self):
+        self.x_shape = [0, 6]
+        self.y_shape = [0, 0]
+        self.expected_shape = [0, 6]
+
+
+class TestCholeskySolveAPIZeroSize2(TestCholeskySolveAPIZeroSize):
+    def init_shape(self):
+        self.x_shape = [1, 10, 6]
+        self.y_shape = [0, 10, 10]
+        self.expected_shape = [0, 10, 6]
+
+
+class TestCholeskySolveAPIZeroSize3(TestCholeskySolveAPIZeroSize):
+    def init_shape(self):
+        self.x_shape = [0, 0, 0]
+        self.y_shape = [0, 0, 0]
+        self.expected_shape = [0, 0, 0]
 
 
 if __name__ == "__main__":

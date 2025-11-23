@@ -22,16 +22,16 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PolygammaKernel(const Context& ctx,
+void PolygammaKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const int n,
                      DenseTensor* out) {
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
 
   auto functor = CudaPolygammaFunctor<T>(n);
-  phi::funcs::ElementwiseKernel<T>(ctx, ins, &outs, functor);
+  phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
 }
 
 }  // namespace phi

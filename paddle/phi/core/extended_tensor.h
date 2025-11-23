@@ -25,7 +25,7 @@ namespace phi {
 /// \brief The ExtendedTensor is a interface for custom designed class.
 /// If you want to pass some self-designed data as input/output to kernels,
 /// you can inherit from this class to store your self-designed data.
-class TEST_API ExtendedTensor : public TensorBase {
+class PADDLE_API ExtendedTensor : public TensorBase {
  public:
   ExtendedTensor() = default;
   virtual ~ExtendedTensor() = default;

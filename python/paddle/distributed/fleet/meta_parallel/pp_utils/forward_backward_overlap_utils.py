@@ -61,7 +61,11 @@ def detach_and_requires_grad(inputs):
 def clone_and_clear_dataptr(outputs, clear_dataptr=False):
     if isinstance(outputs, (tuple, list)):
         is_tuple = isinstance(outputs, tuple)
-        ret = [FakeClone.apply(o) for o in outputs if o is not None]
+        ret = [
+            FakeClone.apply(o)
+            for o in outputs
+            if o is not None and isinstance(o, paddle.Tensor)
+        ]
 
         if clear_dataptr:
             for o in ret:
@@ -135,9 +139,9 @@ class ScheduleNode:
             outputs = self.outputs
             if not isinstance(outputs, (tuple, list)):
                 outputs = (outputs,)
-            assert len(outputs) == len(
-                output_grad
-            ), f"{len(outputs)} of {type(outputs[0])} vs {len(output_grad)} of {type(output_grad[0])}"
+            assert len(outputs) == len(output_grad), (
+                f"{len(outputs)} of {type(outputs[0])} vs {len(output_grad)} of {type(output_grad[0])}"
+            )
 
             paddle.autograd.backward(outputs, output_grad)
 

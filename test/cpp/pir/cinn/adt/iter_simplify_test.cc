@@ -47,11 +47,12 @@ class TestIterSimplify : public ::testing::Test {
     i_j_k_fused =
         ir::Var(ir::Expr(0), ir::Expr(64), "i_j_k_fused").set_index(1);
     var_intervals = {
-        {"i", CasInterval(i->lower_bound, i->upper_bound)},
-        {"j", CasInterval(j->lower_bound, j->upper_bound)},
-        {"k", CasInterval(k->lower_bound, k->upper_bound)},
+        {"i", CasInterval(i->lower_bound, i->upper_bound - ir::Expr(1))},
+        {"j", CasInterval(j->lower_bound, j->upper_bound - ir::Expr(1))},
+        {"k", CasInterval(k->lower_bound, k->upper_bound - ir::Expr(1))},
         {"i_j_k_fused",
-         CasInterval(i_j_k_fused->lower_bound, i_j_k_fused->upper_bound)}};
+         CasInterval(i_j_k_fused->lower_bound,
+                     i_j_k_fused->upper_bound - ir::Expr(1))}};
   };
 
   ir::Var i;

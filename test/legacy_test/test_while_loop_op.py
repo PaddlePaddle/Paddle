@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from utils import compare_legacy_with_pt
 
 import paddle
@@ -46,8 +46,8 @@ class TestApiWhileLoop(unittest.TestCase):
             out = paddle.static.nn.while_loop(cond, body, (i,))
 
         place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)
@@ -83,8 +83,8 @@ class TestApiWhileLoop(unittest.TestCase):
             data_one = np.ones(10).astype('float32')
 
         place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)
@@ -147,8 +147,8 @@ class TestApiWhileLoop(unittest.TestCase):
                 cond, body, [i, ten, test_dict, test_list, test_list_dict]
             )
         place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)
@@ -178,7 +178,6 @@ class TestApiWhileLoop(unittest.TestCase):
 
 
 class TestApiWhileLoop_Nested(unittest.TestCase):
-
     @compare_legacy_with_pt
     def test_nested_net(self):
         def external_cond(i, j, init, sums):
@@ -233,8 +232,8 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
             data_sums = np.zeros([3, 3]).astype('float32')
 
         place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)
@@ -282,8 +281,8 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
                 grad_list = append_backward(mean)
 
             place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
+                get_device_place()
+                if (core.is_compiled_with_cuda() or is_custom_device())
                 else base.CPUPlace()
             )
             exe = base.Executor(place)
@@ -333,8 +332,8 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             grad_list = append_backward(mean)
 
         place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)
@@ -444,8 +443,8 @@ class TestApiWhileLoop_NestedWithBackwardAndDenseTensorArray(unittest.TestCase):
             mean = paddle.mean(sum_result)
             grad_list = append_backward(mean)
             place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
+                get_device_place()
+                if (core.is_compiled_with_cuda() or is_custom_device())
                 else base.CPUPlace()
             )
             exe = base.Executor(place)
@@ -519,8 +518,8 @@ class TestApiWhileLoop_NestedWithBackwardAndDenseTensorArray(unittest.TestCase):
                 j = paddle.increment(j)
                 dmem3 = paddle.tensor.array_read(dmem_array, j)
                 place = (
-                    base.CUDAPlace(0)
-                    if core.is_compiled_with_cuda()
+                    get_device_place()
+                    if (core.is_compiled_with_cuda() or is_custom_device())
                     else base.CPUPlace()
                 )
                 exe = base.Executor(place)
@@ -542,7 +541,6 @@ class TestApiWhileLoop_NestedWithBackwardAndDenseTensorArray(unittest.TestCase):
 
 
 class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
-    @compare_legacy_with_pt
     def test_with_switch_case(self):
         def cond(i):
             return paddle.less_than(i, ten)
@@ -580,8 +578,8 @@ class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
             out = paddle.static.nn.while_loop(cond, body, [i])
 
         place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)
@@ -793,8 +791,8 @@ class TestApiWhileLoopSliceInBody(unittest.TestCase):
             z, _ = paddle.static.nn.while_loop(cond, body, [z, i])
 
         place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)

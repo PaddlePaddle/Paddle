@@ -26,10 +26,10 @@ logger = get_logger(logging.INFO)
 
 # For allreduce pattern in the backward phase of column parallel linear:
 #   dX, dY = matmul_grad(X, Y, dOut)
-#   dX = c_allreduce_sum(dX)
+#   dX = all_reduce_sum(dX)
 # Split matmul_grad to 2 matmul:
 #   dX = matmul(dOut, Y^T)
-#   dX = c_allreduce_sum(dX)
+#   dX = all_reduce_sum(dX)
 #   dY = matmul(X^T, dOut)
 #
 # Then the all_reduce sum can overlap with the compute of dY.

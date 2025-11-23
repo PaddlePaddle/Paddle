@@ -37,9 +37,11 @@ class TestAssertVariable(Dy2StTestBase):
     def _run(self, func, x, with_exception, to_static):
         with enable_to_static_guard(to_static):
             if with_exception:
-                with self.assertRaises(BaseException):  # noqa: B017
-                    with base.dygraph.guard():
-                        func(x)
+                with (
+                    self.assertRaises(BaseException),  # noqa: B017
+                    base.dygraph.guard(),
+                ):
+                    func(x)
             else:
                 with base.dygraph.guard():
                     func(x)

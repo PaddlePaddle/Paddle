@@ -108,7 +108,15 @@ def create_async_load():
     Constructs a new AsyncLoad object.
     It is used to load/reload data asynchronously on GPU.
     """
-    return core.AsyncLoad()
+    custom_devices = paddle.device.get_all_custom_device_type()
+    if paddle.is_compiled_with_xpu():
+        return core.XpuAsyncLoad()
+    elif any(
+        paddle.is_compiled_with_custom_device(dev) for dev in custom_devices
+    ):
+        return None
+    else:  # default is GPU or CUDA
+        return core.AsyncLoad()
 
 
 def create_xpu_async_load():
@@ -117,6 +125,19 @@ def create_xpu_async_load():
     It is used to load/reload data asynchronously on XPU.
     """
     return core.XpuAsyncLoad()
+
+
+class _NoopAsyncTask:
+    """A dummy Task for sync‐fallback on XPU."""
+
+    def is_completed(self):
+        return True
+
+    def cpu_wait(self):
+        pass
+
+    def xpu_wait(self):
+        pass
 
 
 def async_offload(src_tensor, async_load):
@@ -132,6 +153,28 @@ def async_offload(src_tensor, async_load):
          - dest_tensor (EagerParamBase|paddle.Tensor): The destination tensor.
          - task (Task): The task that loads the source tensor into the destination tensor.
     """
+    is_xpu_tensor = (
+        paddle.is_compiled_with_xpu()
+        and hasattr(src_tensor, "place")
+        and src_tensor.place.is_xpu_place()
+    )
+
+    # async_offload does not support custom device now
+    custom_devices = paddle.device.get_all_custom_device_type()
+    is_custom_tensor = (
+        any(
+            paddle.is_compiled_with_custom_device(dev) for dev in custom_devices
+        )
+        and hasattr(src_tensor, "place")
+        and src_tensor.place.custom_device_type() in custom_devices
+    )
+
+    if is_xpu_tensor or is_custom_tensor:
+        # sync fallback
+        host_tensor = src_tensor.cpu()
+        out = paddle.to_tensor(host_tensor.numpy(), place=paddle.CPUPlace())
+        return out, _NoopAsyncTask()
+
     return _load_reload_impl(src_tensor, async_load.offload)
 
 
@@ -148,6 +191,16 @@ def async_reload(src_tensor, async_load):
          - dest_tensor (EagerParamBase|paddle.Tensor): The destination tensor.
          - task (Task): The task that reloads the source tensor into the destination tensor.
     """
+
+    if (
+        paddle.is_compiled_with_xpu()
+        and hasattr(src_tensor, "place")
+        and src_tensor.place.is_cpu_place()
+    ):
+        arr = src_tensor.numpy()
+        xpu = paddle.to_tensor(arr, place=paddle.XPUPlace(0))
+        return xpu, _NoopAsyncTask()
+
     return _load_reload_impl(src_tensor, async_load.reload)
 
 
@@ -175,3 +228,17 @@ def async_offload_with_offset(
     return async_loader.offload_with_offset(
         dst_tensor, src_tensor, dst_offset, src_offset, offload_size
     )
+
+
+def enable_activation_offload(model, enable=True, retry_times=1):
+    """
+    Enable activation offload
+    """
+    if enable:
+        paddle.set_flags({"FLAGS_offload_retry_times": retry_times})
+        paddle.core.register_offload_callback()
+        paddle.core.set_skip_offload_callback_tensors(model.parameters())
+    else:
+        paddle.set_flags({"FLAGS_offload_retry_times": -1})
+        paddle.core.clear_offload_callback()
+        paddle.core.set_skip_offload_callback_tensors([])

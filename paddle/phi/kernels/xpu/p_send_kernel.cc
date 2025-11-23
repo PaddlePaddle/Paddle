@@ -41,11 +41,11 @@ void PSendKernel(const Context& dev_ctx,
     send_shape_info<Context, distributed::BKCLCommContext, XPUStream>(
         dev_ctx, x, comm_ctx, peer, stream);
   }
-
   comm_ctx->Send(x, x.numel(), peer, stream);
 #else
-  PADDLE_THROW(
-      errors::PreconditionNotMet("PaddlePaddle should compile with XPU."));
+  PADDLE_THROW(common::errors::PreconditionNotMet(
+      "PaddlePaddle is not compiled with DWITH_XPU_BKCL, please recompile with "
+      "DWITH_XPU_BKCL for using p_send kernel."));
 #endif
 }
 
@@ -53,22 +53,21 @@ template <typename T, typename Context>
 void PSendArrayKernel(const Context& dev_ctx,
                       const TensorArray& x_array,
                       int peer) {
-#if defined(PADDLE_WITH_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
   auto comm_ctx =
       GetCommContext<Context, distributed::BKCLCommContext>(dev_ctx, peer);
   XPUStream stream = dev_ctx.stream();
   for (size_t idx = 0; idx < x_array.size(); idx++) {
     VLOG(3) << "DenseTensorArray: idx(" << idx << ")";
     auto x = x_array.at(idx);
-    int numel = x.numel();
-    bkclDataType_t dtype = ToBKCLDataType(x.type());
     comm_ctx->Send(x, x.numel(), peer, stream);
     VLOG(3) << "rank " << comm_ctx->GetRank() << " send "
             << common::product(x.dims()) << " to " << peer;
   }
 #else
-  PADDLE_THROW(
-      errors::PreconditionNotMet("PaddlePaddle should compile with XPU."));
+  PADDLE_THROW(common::errors::PreconditionNotMet(
+      "PaddlePaddle is not compiled with DWITH_XPU_BKCL, please recompile with "
+      "DWITH_XPU_BKCL for using p_send_array kernel."));
 #endif
 }
 
@@ -83,8 +82,8 @@ PD_REGISTER_KERNEL(p_send,
                    uint8_t,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(p_send_array,
                    XPU,
@@ -95,5 +94,5 @@ PD_REGISTER_KERNEL(p_send_array,
                    uint8_t,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}

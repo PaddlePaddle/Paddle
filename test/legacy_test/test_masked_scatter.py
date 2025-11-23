@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16
+from op_test import (
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -65,6 +70,7 @@ class TestMaskedScatterError(unittest.TestCase):
             paddle.masked_scatter(x, mask, value)
 
     def test_numel_error(self):
+        paddle.disable_static()
         self.value_np = np.random.randn(5, 5).astype(self.dtype)
         x = paddle.to_tensor(self.x_np, dtype=self.dtype)
         mask = paddle.to_tensor(self.mask_np).astype('bool')
@@ -107,11 +113,7 @@ class TestMaskedScatterAPI(unittest.TestCase):
             )
             out = paddle.masked_scatter(x, mask, value)
 
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
+            place = get_device_place()
             exe = base.Executor(place)
             res = exe.run(
                 base.default_main_program(),
@@ -163,7 +165,8 @@ class TestMaskedScatterAPI3(TestMaskedScatterAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedScatterFP16API1(TestMaskedScatterAPI):
     def init(self):
@@ -174,7 +177,8 @@ class TestMaskedScatterFP16API1(TestMaskedScatterAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedScatterFP16API2(TestMaskedScatterAPI):
     def init(self):
@@ -185,7 +189,8 @@ class TestMaskedScatterFP16API2(TestMaskedScatterAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedScatterFP16API3(TestMaskedScatterAPI):
     def init(self):
@@ -236,7 +241,8 @@ class TestMaskedScatterAPIBroadcast5(TestMaskedScatterAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedScatterFP16APIBroadcast(TestMaskedScatterAPI):
     def init(self):
@@ -247,7 +253,8 @@ class TestMaskedScatterFP16APIBroadcast(TestMaskedScatterAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedScatterFP16APIBroadcast2(TestMaskedScatterAPI):
     def init(self):
@@ -258,7 +265,8 @@ class TestMaskedScatterFP16APIBroadcast2(TestMaskedScatterAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedScatterFP16APIBroadcast3(TestMaskedScatterAPI):
     def init(self):
@@ -269,8 +277,8 @@ class TestMaskedScatterFP16APIBroadcast3(TestMaskedScatterAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestMaskedScatterBF16(TestMaskedScatterAPI):
@@ -297,8 +305,8 @@ class TestMaskedScatterBF16(TestMaskedScatterAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestMaskedScatterBF16APIBroadcast2(TestMaskedScatterBF16):
@@ -307,6 +315,43 @@ class TestMaskedScatterBF16APIBroadcast2(TestMaskedScatterBF16):
         self.mask_shape = (300, 3)
         self.dtype = "uint16"
         self.value_shape = (300, 300)
+
+
+class TestMaskedScatterAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.init()
+
+        self.x_np = np.random.random(self.x_shape).astype(self.dtype)
+        self.mask_np = np.array(
+            np.random.randint(2, size=self.mask_shape), dtype="bool"
+        )
+
+        self.value_np = np.random.randn(*self.value_shape).astype(self.dtype)
+        self.out_np = np_masked_scatter(self.x_np, self.mask_np, self.value_np)
+
+        self.places = get_places()
+
+    def init(self):
+        self.x_shape = (3, 0)
+        self.mask_shape = self.x_shape
+        self.dtype = "float32"
+        self.value_shape = (300, 300)
+
+    def _test_dygraph(self, place):
+        paddle.disable_static(place)
+        x = paddle.to_tensor(self.x_np, dtype=self.dtype)
+        x.stop_gradient = False
+        mask = paddle.to_tensor(self.mask_np).astype('bool')
+        value = paddle.to_tensor(self.value_np, dtype=self.dtype)
+        result = paddle.masked_scatter(x, mask, value)
+        np.testing.assert_allclose(self.out_np, result.numpy(), rtol=1e-05)
+        paddle.sum(result).backward()
+        np.testing.assert_allclose(x.grad.shape, x.shape)
+        paddle.enable_static()
+
+    def test_dygraph(self):
+        for place in self.places:
+            self._test_dygraph(place)
 
 
 if __name__ == '__main__':

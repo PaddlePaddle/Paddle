@@ -38,6 +38,7 @@ typeid_dict = {
     'int8': int(core.VarDesc.VarType.INT8),
     'uint8': int(core.VarDesc.VarType.UINT8),
     'float64': int(core.VarDesc.VarType.FP64),
+    'complex64': int(core.VarDesc.VarType.COMPLEX64),
 }
 
 
@@ -69,7 +70,7 @@ class XPUTestUniformRandomOp(XPUOpTestWrapper):
         def setUp(self):
             self.init()
             self.inputs = {}
-            self.use_mkldnn = False
+            self.use_onednn = False
             self.set_attrs()
             paddle.seed(10)
 

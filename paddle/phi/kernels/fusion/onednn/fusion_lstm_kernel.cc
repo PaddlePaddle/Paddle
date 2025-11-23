@@ -27,10 +27,10 @@ using phi::funcs::RNNReorderType;
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
 template <typename T, typename T_out = T>
-class LSTMMKLDNNHandler
-    : public RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out> {
+class LSTMONEDNNHandler
+    : public RNNONEDNNHandler<T, dnnl::lstm_forward, T_out> {
  public:
-  LSTMMKLDNNHandler(const OneDNNContext& dev_ctx,
+  LSTMONEDNNHandler(const OneDNNContext& dev_ctx,
                     const dnnl::engine onednn_engine,
                     phi::Place cpu_place,
                     const phi::DenseTensor* input,
@@ -50,7 +50,7 @@ class LSTMMKLDNNHandler
                     std::string gate_activation,
                     std::string cell_activation,
                     std::string candidate_activation)
-      : RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out>(dev_ctx,
+      : RNNONEDNNHandler<T, dnnl::lstm_forward, T_out>(dev_ctx,
                                                        onednn_engine,
                                                        cpu_place,
                                                        input,
@@ -389,7 +389,7 @@ void RunKernel(const Context& dev_ctx,
 
   std::string unique_name =
       dev_ctx.GetInputsName("X")[0] + dev_ctx.GetInputsName("WeightH")[0];
-  LSTMMKLDNNHandler<T, Tout> handler(dev_ctx,
+  LSTMONEDNNHandler<T, Tout> handler(dev_ctx,
                                      onednn_engine,
                                      dev_ctx.GetPlace(),
                                      input,
@@ -422,11 +422,11 @@ void RunKernel(const Context& dev_ctx,
     weight_x_memory_p = handler.template AcquireWeightXMemory<float>(weight_x);
     weight_h_memory_p = handler.template AcquireWeightHMemory<float>(weight_h);
   } else if (weight_h->dtype() == phi::DataType::BFLOAT16) {
-    h0_memory_p = handler.template AcquireH0Memory<phi::dtype::bfloat16>(h0);
+    h0_memory_p = handler.template AcquireH0Memory<phi::bfloat16>(h0);
     weight_x_memory_p =
-        handler.template AcquireWeightXMemory<phi::dtype::bfloat16>(weight_x);
+        handler.template AcquireWeightXMemory<phi::bfloat16>(weight_x);
     weight_h_memory_p =
-        handler.template AcquireWeightHMemory<phi::dtype::bfloat16>(weight_h);
+        handler.template AcquireWeightHMemory<phi::bfloat16>(weight_h);
   } else {
     h0_memory_p = handler.template AcquireH0Memory<uint8_t>(h0);
     weight_x_memory_p = handler.template AcquireWeightXMemory<int8_t>(weight_x);
@@ -503,7 +503,7 @@ void FusionLSTMMKLDNNKernel(const Context& dev_ctx,
                             phi::DenseTensor* reordered_h0,
                             phi::DenseTensor* reordered_c0,
                             phi::DenseTensor* checked_cell) {
-  const bool is_bf16 = std::is_same<T, phi::dtype::bfloat16>::value;
+  const bool is_bf16 = std::is_same<T, phi::bfloat16>::value;
 
   // BF16 does not support force output
   if (!is_bf16 && force_fp32_output) {  // NOLINT
@@ -572,4 +572,4 @@ PD_REGISTER_KERNEL(fusion_lstm,
                    phi::fusion::FusionLSTMMKLDNNKernel,
                    float,
                    uint8_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

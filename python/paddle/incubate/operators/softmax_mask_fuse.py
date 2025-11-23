@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import paddle
 from paddle import _C_ops
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
@@ -65,6 +66,8 @@ def softmax_mask_fuse(
             [2, 8, 8, 32]
     """
     if in_dynamic_or_pir_mode():
+        if isinstance(mask, (paddle.Tensor)) and mask.size == 0:
+            return x + mask
         out = _C_ops.fused_softmax_mask(x, mask)
         return out
     helper = LayerHelper('fused_softmax_mask', **locals())

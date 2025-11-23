@@ -78,22 +78,29 @@ __global__ void SwiGLUCUDAKernel(const T *__restrict__ x,
 }
 
 template <typename T, typename Context>
-void SwiGLUKernelImpl(
-    const Context &ctx, const T *x, const T *y, T *z, int64_t m, int64_t n) {
+void SwiGLUKernelImpl(const Context &dev_ctx,
+                      const T *x,
+                      const T *y,
+                      T *z,
+                      int64_t m,
+                      int64_t n) {
   int vec_size =
       std::min(phi::GetVectorizedSize<T>(x), phi::GetVectorizedSize<T>(z));
 
-#define PD_LAUNCH_SWIGLU_CUDA_KERNEL_BASE(__vec_size, __is_combine)            \
-  case __vec_size: {                                                           \
-    SwiGLUCUDAKernel<T, __vec_size, __is_combine>                              \
-        <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>( \
-            x, y, z, m, n);                                                    \
-    break;                                                                     \
+#define PD_LAUNCH_SWIGLU_CUDA_KERNEL_BASE(__vec_size, __is_combine) \
+  case __vec_size: {                                                \
+    SwiGLUCUDAKernel<T, __vec_size, __is_combine>                   \
+        <<<config.block_per_grid,                                   \
+           config.thread_per_block,                                 \
+           0,                                                       \
+           dev_ctx.stream()>>>(x, y, z, m, n);                      \
+    break;                                                          \
   }
 
 #define PD_LAUNCH_SWIGLU_CUDA_KERNEL(__is_combine)               \
   do {                                                           \
     switch (vec_size) {                                          \
+      PD_LAUNCH_SWIGLU_CUDA_KERNEL_BASE(8, __is_combine);        \
       PD_LAUNCH_SWIGLU_CUDA_KERNEL_BASE(VecSizeL, __is_combine); \
       PD_LAUNCH_SWIGLU_CUDA_KERNEL_BASE(VecSizeM, __is_combine); \
       PD_LAUNCH_SWIGLU_CUDA_KERNEL_BASE(VecSizeS, __is_combine); \
@@ -107,7 +114,7 @@ void SwiGLUKernelImpl(
   if (y) {
     vec_size = std::min(vec_size, phi::GetVectorizedSize<T>(y));
     auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(ctx, m * n, vec_size);
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, m * n, vec_size);
     PD_LAUNCH_SWIGLU_CUDA_KERNEL(false);
   } else {
     while (n % vec_size != 0) {
@@ -115,7 +122,7 @@ void SwiGLUKernelImpl(
     }
     y = x + n;
     auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(ctx, m * n / vec_size, 1);
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, m * n / vec_size, 1);
     PD_LAUNCH_SWIGLU_CUDA_KERNEL(true);
   }
 }
@@ -128,5 +135,5 @@ PD_REGISTER_KERNEL(swiglu,
                    phi::SwiGLUKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

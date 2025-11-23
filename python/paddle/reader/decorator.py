@@ -20,6 +20,7 @@ import multiprocessing
 import random
 import sys
 import warnings
+from collections.abc import Generator
 from itertools import zip_longest
 from queue import Queue
 from threading import Thread
@@ -27,7 +28,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Generator,
     TypedDict,
     TypeVar,
     overload,
@@ -673,9 +673,9 @@ def multiprocess_reader(
         )
         import json
 
-    assert (
-        isinstance(readers, (list, tuple)) and len(readers) > 0
-    ), "`readers` must be list or tuple."
+    assert isinstance(readers, (list, tuple)) and len(readers) > 0, (
+        "`readers` must be list or tuple."
+    )
 
     def _read_into_queue(reader, queue):
         try:

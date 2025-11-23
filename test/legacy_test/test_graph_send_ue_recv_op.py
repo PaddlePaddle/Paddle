@@ -16,7 +16,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -393,6 +393,30 @@ class TestSumCase7(TestGraphSendUERecvSumOp):
         self.message_op = 'MUL'
 
 
+class TestSumCase8_ZeroSize(TestGraphSendUERecvSumOp):
+    def set_config(self):
+        self.x = np.random.random((15, 0)).astype("float64")
+        self.y = np.random.random((15, 0)).astype("float64")
+        index = np.random.randint(0, 15, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.message_op = 'MUL'
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace(), check_pir=True)
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.check_output_with_place(get_device_place(), check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            core.CPUPlace(), ['X', 'Y'], 'Out', check_pir=True
+        )
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.check_grad_with_place(
+                get_device_place(), ['X', 'Y'], 'Out', check_pir=True
+            )
+
+
 class TestGraphSendUERecvMeanOp(OpTest):
     def setUp(self):
         paddle.enable_static()
@@ -497,6 +521,32 @@ class TestMeanCase7(TestGraphSendUERecvMeanOp):
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
         self.message_op = 'MUL'
+
+
+class TestMeanCase8_ZeroSize(TestGraphSendUERecvMeanOp):
+    def set_config(self):
+        self.x = np.random.random((15, 0)).astype("float64")
+        self.y = np.random.random((0, 0)).astype("float64")
+        index = np.random.randint(0, 15, (0, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.message_op = 'ADD'
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace(), check_pir=True)
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.check_output_with_place(
+                get_device_place(),
+            )
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            core.CPUPlace(), ['X', 'Y'], 'Out', check_pir=True
+        )
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.check_grad_with_place(
+                get_device_place(), ['X', 'Y'], 'Out', check_pir=True
+            )
 
 
 class TestGraphSendUERecvMaxOp(OpTest):
@@ -610,6 +660,38 @@ class TestMaxCase7(TestGraphSendUERecvMaxOp):
         self.message_op = 'MUL'
 
 
+class TestMaxCase8_ZeroSize(TestGraphSendUERecvMaxOp):
+    def set_config(self):
+        self.x = np.random.random((15, 0)).astype("float64")
+        self.y = np.random.random((15, 0)).astype("float64")
+        index = np.random.randint(0, 15, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.message_op = 'MUL'
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace(), check_pir=True)
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.check_output_with_place(get_device_place(), check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=self.gradients,
+            check_pir=True,
+        )
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.check_grad_with_place(
+                get_device_place(),
+                ['X', 'Y'],
+                'Out',
+                user_defined_grads=self.gradients,
+                check_pir=True,
+            )
+
+
 class TestGraphSendUERecvMinOp(OpTest):
     def setUp(self):
         paddle.enable_static()
@@ -719,6 +801,38 @@ class TestMinCase7(TestGraphSendUERecvMinOp):
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
         self.message_op = 'MUL'
+
+
+class TestMinCase8_ZeroSize(TestGraphSendUERecvMinOp):
+    def set_config(self):
+        self.x = np.random.random((15, 0)).astype("float64")
+        self.y = np.random.random((15, 0)).astype("float64")
+        index = np.random.randint(0, 15, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.message_op = 'MUL'
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace(), check_pir=True)
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.check_output_with_place(get_device_place(), check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=self.gradients,
+            check_pir=True,
+        )
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.check_grad_with_place(
+                get_device_place(),
+                ['X', 'Y'],
+                'Out',
+                user_defined_grads=self.gradients,
+                check_pir=True,
+            )
 
 
 class API_GeometricSendUERecvTest(unittest.TestCase):
@@ -836,8 +950,8 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
 
     def test_compute_all_with_max_fp16(self):
         paddle.disable_static()
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 x = paddle.to_tensor(
                     np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]]), dtype="float16"
@@ -930,8 +1044,8 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
 
     def test_compute_all_with_min_fp16(self):
         paddle.disable_static()
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 x = paddle.to_tensor(
                     np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]]), dtype="float16"

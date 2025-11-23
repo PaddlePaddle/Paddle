@@ -15,6 +15,7 @@
 #include "paddle/cinn/ir/group_schedule/tactic/tile_transpose_tactic.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
+#include "paddle/cinn/utils/string.h"
 
 PD_DECLARE_bool(cinn_enable_tile_transpose);
 

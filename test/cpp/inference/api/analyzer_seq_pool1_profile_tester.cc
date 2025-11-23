@@ -24,9 +24,9 @@ namespace inference {
 namespace analysis {
 namespace seq_pool1_tester {
 
-void profile(bool use_mkldnn = false) {
+void profile(bool use_onednn = false) {
   AnalysisConfig cfg;
-  SetConfig(&cfg, use_mkldnn);
+  SetConfig(&cfg, use_onednn);
 
   std::vector<std::vector<PaddleTensor>> outputs;
   std::vector<std::vector<PaddleTensor>> input_slots_all;

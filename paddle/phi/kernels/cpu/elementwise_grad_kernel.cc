@@ -95,6 +95,25 @@ void RemainderGradKernel(const Context& dev_ctx,
                          const DenseTensor& dout,
                          DenseTensor* dx,
                          DenseTensor* dy) {
+  if (dout.numel() == 0) {
+    if (dx) {
+      if (dx->numel() == 0) {
+        dev_ctx.template Alloc<T>(dx);
+      } else {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      }
+    }
+    if (dy) {
+      if (dy->numel() == 0) {
+        dev_ctx.template Alloc<T>(dy);
+      } else {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+      }
+    }
+    return;
+  }
   funcs::ElementwiseGradPreProcess(dout, dx);
   int axis = -1;
   phi::funcs::
@@ -161,7 +180,7 @@ PD_REGISTER_KERNEL(maximum_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(minimum_grad,
                    CPU,
@@ -171,7 +190,7 @@ PD_REGISTER_KERNEL(minimum_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(remainder_grad,
                    CPU,
@@ -181,7 +200,7 @@ PD_REGISTER_KERNEL(remainder_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(heaviside_grad,
                    CPU,
@@ -200,7 +219,9 @@ PD_REGISTER_KERNEL(elementwise_pow_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(copysign_grad,
                    CPU,
@@ -214,5 +235,5 @@ PD_REGISTER_KERNEL(copysign_grad,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

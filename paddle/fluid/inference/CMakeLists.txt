@@ -22,7 +22,7 @@ cc_library(
 # otherwise, there would be undefined reference to them in static library.
 add_subdirectory(analysis)
 add_subdirectory(utils)
-if(TENSORRT_FOUND)
+if(TENSORRT_FOUND AND WITH_GPU)
   add_subdirectory(tensorrt)
 endif()
 
@@ -95,10 +95,23 @@ list(REMOVE_ITEM fluid_modules cinn_op_dialect)
 # shared library to prune library size.
 # list(REMOVE_ITEM fluid_modules ${not_infer_modules})
 
-set(SHARED_INFERENCE_DEPS phi phi_core common ${fluid_modules}
-                          analysis_predictor ${utils_modules})
+if(WIN32)
+  set(SHARED_INFERENCE_DEPS phi dynload_common common ${fluid_modules}
+                            analysis_predictor ${utils_modules})
+else()
+  set(SHARED_INFERENCE_DEPS phi phi_core common ${fluid_modules}
+                            analysis_predictor ${utils_modules})
+endif()
 if(WITH_GPU OR WITH_ROCM)
-  list(APPEND SHARED_INFERENCE_DEPS phi_gpu)
+  if(WIN32)
+    list(APPEND SHARED_INFERENCE_DEPS dynload_cuda cuda_graph_lib dynload_cudnn
+         dynload_cublas)
+    if(TENSORRT_FOUND)
+      list(APPEND SHARED_INFERENCE_DEPS dynload_tensorrt)
+    endif()
+  else()
+    list(APPEND SHARED_INFERENCE_DEPS phi_gpu phi_core)
+  endif()
 endif()
 if(NOT WIN32)
   list(APPEND SHARED_INFERENCE_DEPS ${ir_targets})
@@ -106,10 +119,6 @@ endif()
 
 if(WITH_CRYPTO)
   set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} framework_io)
-endif()
-
-if(WITH_PSCORE)
-  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service)
 endif()
 
 if(WITH_ONNXRUNTIME)

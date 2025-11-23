@@ -13,13 +13,12 @@
 # limitations under the License.
 
 import math
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
-from paddle.base import core
 
 
 def reduce_lr_on_plateau(
@@ -71,15 +70,7 @@ class TestReduceOnPlateauDecay:
         with self.assertRaises(TypeError):
             paddle.optimizer.lr.ReduceOnPlateau(learning_rate=0.5).step("test")
 
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        places = get_places()
 
         for place in places:
             for m, n in zip(
@@ -295,15 +286,7 @@ class TestCosineAnnealingWarmRestarts(unittest.TestCase):
                 T_mult=1.0,
             )
 
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        places = get_places()
 
         for place in places:
             for T_0 in [1, 2, 3]:
@@ -480,21 +463,6 @@ def polynomial_lr(
     return (learning_rate - end_lr) * (
         (1 - float(epoch_num) / float(decay_steps)) ** power
     ) + end_lr
-
-    def get_lr(self):
-        if self.last_epoch == 0:
-            return self.base_lr
-        elif (self.last_epoch - 1 - self.T_max) % (2 * self.T_max) == 0:
-            return (
-                self.last_lr
-                + (self.base_lr - self.eta_min)
-                * (1 - math.cos(math.pi / self.T_max))
-                / 2
-            )
-
-        return (1 + math.cos(math.pi * self.last_epoch / self.T_max)) / (
-            1 + math.cos(math.pi * (self.last_epoch - 1) / self.T_max)
-        ) * (self.last_lr - self.eta_min) + self.eta_min
 
 
 cosine_annealing_lr_current = None
@@ -1305,15 +1273,7 @@ class TestLRScheduler(unittest.TestCase):
         ]
 
         for python_func, paddle_api, kwarg in func_api_kwargs:
-            places = []
-            if (
-                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-                in ['1', 'true', 'on']
-                or not core.is_compiled_with_cuda()
-            ):
-                places.append(paddle.CPUPlace())
-            if core.is_compiled_with_cuda():
-                places.append(paddle.CUDAPlace(0))
+            places = get_places()
 
             for place in places:
                 paddle.enable_static()

@@ -33,7 +33,7 @@ using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
 
 template <typename T, typename Context>
-void BatchNormKernel(const Context& ctx,
+void BatchNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& mean,
                      const DenseTensor& variance,
@@ -51,6 +51,19 @@ void BatchNormKernel(const Context& ctx,
                      DenseTensor* saved_mean,
                      DenseTensor* saved_variance,
                      DenseTensor* reserve_space) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(y);
+    if (mean_out) dev_ctx.template Alloc<T>(mean_out);
+    if (variance_out) dev_ctx.template Alloc<T>(variance_out);
+    if (saved_mean) dev_ctx.template Alloc<T>(saved_mean);
+    if (saved_variance) dev_ctx.template Alloc<T>(saved_variance);
+    if (reserve_space) {
+      // infermeta dim is -1.
+      reserve_space->Resize({0});
+      dev_ctx.template Alloc<T>(reserve_space);
+    }
+    return;
+  }
   bool test_mode = is_test && (!trainable_statistics);
 
   bool global_stats = test_mode || use_global_stats;
@@ -78,14 +91,14 @@ void BatchNormKernel(const Context& ctx,
   const int sample_size = static_cast<int>(x.numel() / N / C);
 
   // alloc memory
-  ctx.template Alloc<T>(y);
-  ctx.template Alloc<T>(mean_out);
-  ctx.template Alloc<T>(variance_out);
-  ctx.template Alloc<T>(saved_mean);
-  ctx.template Alloc<T>(saved_variance);
+  dev_ctx.template Alloc<T>(y);
+  dev_ctx.template Alloc<T>(mean_out);
+  dev_ctx.template Alloc<T>(variance_out);
+  dev_ctx.template Alloc<T>(saved_mean);
+  dev_ctx.template Alloc<T>(saved_variance);
   if (reserve_space != nullptr) {
     reserve_space->Resize({0});
-    ctx.template Alloc<T>(reserve_space);
+    dev_ctx.template Alloc<T>(reserve_space);
   }
 
   // input dimension is 2 and the format is NCHW. The input can be regarded
@@ -96,23 +109,25 @@ void BatchNormKernel(const Context& ctx,
 
   if (!global_stats) {
     // saved_xx is use just in this batch of data
-    EigenVectorArrayMap<T> saved_mean_e(ctx.template Alloc<T>(saved_mean), C);
+    EigenVectorArrayMap<T> saved_mean_e(dev_ctx.template Alloc<T>(saved_mean),
+                                        C);
     EigenVectorArrayMap<T> saved_variance_e(
-        ctx.template Alloc<T>(saved_variance), C);
+        dev_ctx.template Alloc<T>(saved_variance), C);
     saved_mean_e.setZero();
     saved_variance_e.setZero();
-    EigenVectorArrayMap<T> reserve_space_e(ctx.template Alloc<T>(reserve_space),
-                                           0);
+    EigenVectorArrayMap<uint8_t> reserve_space_e(
+        dev_ctx.template Alloc<uint8_t>(reserve_space), 0);
     reserve_space_e.setZero();
 
-    EigenVectorArrayMap<T> running_mean_arr(ctx.template Alloc<T>(mean_out), C);
-    EigenVectorArrayMap<T> running_var_arr(ctx.template Alloc<T>(variance_out),
-                                           C);
+    EigenVectorArrayMap<T> running_mean_arr(dev_ctx.template Alloc<T>(mean_out),
+                                            C);
+    EigenVectorArrayMap<T> running_var_arr(
+        dev_ctx.template Alloc<T>(variance_out), C);
 
     if ((N * sample_size) == 1) {
       // Only 1 element in normalization dimension,
       // we skip the batch norm calculation, let y = x.
-      phi::Copy(ctx, x, ctx.GetPlace(), false, y);
+      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, y);
       return;
     }
 
@@ -155,6 +170,47 @@ void BatchNormKernel(const Context& ctx,
         running_mean_arr * momentum + saved_mean_e * (1. - momentum);
     running_var_arr =
         running_var_arr * momentum + saved_variance_e * (1. - momentum);
+  } else {
+    const auto* est_mean = &mean;
+    const auto* est_var = &variance;
+    PADDLE_ENFORCE_EQ(
+        est_mean->dims().size(),
+        1UL,
+        common::errors::InvalidArgument(
+            "The size of mean's dimensions must equal to 1."
+            "But received: the size of mean's dimensions mean is [%d],"
+            "the dimensions of mean is [%s].",
+            est_mean->dims().size(),
+            est_mean->dims()));
+    PADDLE_ENFORCE_EQ(
+        est_var->dims().size(),
+        1UL,
+        common::errors::InvalidArgument(
+            "The size of variance's dimensions must equal to 1."
+            "But received: the size of variance's dimensions is [%d],"
+            "the dimensions of variance is [%s].",
+            est_var->dims().size(),
+            est_var->dims()));
+    PADDLE_ENFORCE_EQ(
+        est_mean->dims()[0],
+        C,
+        common::errors::InvalidArgument(
+            "The first dimension of mean must equal to the number of "
+            "Channels, which is [%d]. But received: the first dimension "
+            "of mean is [%d], the dimensions of mean is [%s].",
+            C,
+            est_mean->dims()[0],
+            est_mean->dims()));
+    PADDLE_ENFORCE_EQ(
+        est_var->dims()[0],
+        C,
+        common::errors::InvalidArgument(
+            "The first dimension of variance must equal to the number "
+            "of Channels, which is [%d]. But received: the first dimension of "
+            "variance is [%d], the dimensions of variance is [%s].",
+            C,
+            est_var->dims()[0],
+            est_var->dims()));
   }
 
   // use SavedMean and SavedVariance to do normalize
@@ -198,7 +254,7 @@ void BatchNormKernel(const Context& ctx,
 
   switch (data_layout) {
     case DataLayout::kNCHW: {
-      EigenArrayMap<T> y_arr(ctx.template Alloc<T>(y), sample_size, N * C);
+      EigenArrayMap<T> y_arr(dev_ctx.template Alloc<T>(y), sample_size, N * C);
       ConstEigenArrayMap<T> x_arr(x.data<T>(), sample_size, N * C);
       for (int nc = 0; nc < N * C; ++nc) {
         y_arr.col(nc) = x_arr.col(nc) * new_scale(nc % C) + new_bias(nc % C);
@@ -206,7 +262,7 @@ void BatchNormKernel(const Context& ctx,
       break;
     }
     case DataLayout::kNHWC: {
-      EigenArrayMap<T>(ctx.template Alloc<T>(y), C, N * sample_size) =
+      EigenArrayMap<T>(dev_ctx.template Alloc<T>(y), C, N * sample_size) =
           (ConstEigenArrayMap<T>(x.data<T>(), C, N * sample_size).colwise() *
            new_scale)
               .colwise() +
@@ -222,4 +278,6 @@ void BatchNormKernel(const Context& ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    batch_norm, CPU, ALL_LAYOUT, phi::BatchNormKernel, float, double) {}
+    batch_norm, CPU, ALL_LAYOUT, phi::BatchNormKernel, float, double) {
+  kernel->OutputAt(5).SetDataType(phi::DataType::UINT8);
+}

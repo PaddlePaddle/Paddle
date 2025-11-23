@@ -13,14 +13,19 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include <cuda.h>
 #include <cuda_runtime.h>
-#endif
 
 #include <string>
 #include <vector>
 
 #include "paddle/phi/common/place.h"
 
+namespace paddle {
+using gpuDeviceProp = cudaDeviceProp;
+}
+
 namespace phi {
+
+using gpuDeviceProp = cudaDeviceProp;
 
 class XPUContext;
 
@@ -49,12 +54,13 @@ int GetXPUCurrentDeviceId();
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetXPUSelectedDevices();
 
-#ifdef PADDLE_WITH_XPU
+//! Get the properties of the ith XPU device.
+PADDLE_API const gpuDeviceProp &GetDeviceProperties(int id);
+
 std::pair<int, int> GetXpuStreamPriorityRange();
 
 //! Blocks until stream has completed all operations.
 void XpuStreamSync(cudaStream_t stream);
-#endif
 
 /***** Memory Management *****/
 //! Get the minimum chunk size for XPU buddy allocator.
@@ -115,9 +121,11 @@ void set_xpu_debug_level(int level);
 
 int get_xpu_max_ptr_size(int dev_id);
 int GetXPUDeviceUtilizationRate(int dev_id);
-int GetXPUDeviceTotalMemory(int dev_id);
-int GetXPUDeviceUsedMemory(int dev_id);
+int64_t GetXPUDeviceTotalMemory(int dev_id);
+int64_t GetXPUDeviceUsedMemory(int dev_id);
 
 }  // namespace xpu
 }  // namespace backends
 }  // namespace phi
+
+#endif

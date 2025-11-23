@@ -55,7 +55,7 @@ struct CasInterval {
   friend std::ostream& operator<<(std::ostream& os, const CasInterval& i);
 };
 
-using cas_intervals_t = absl::flat_hash_map<std::string, CasInterval>;
+using cas_intervals_t = paddle::flat_hash_map<std::string, CasInterval>;
 
 cas_intervals_t CollectVarIntervalsOfExprs(const std::vector<ir::Expr>& exprs,
                                            bool is_lower_bound_zero = true);
@@ -146,7 +146,7 @@ cas_intervals_t MergeVarIntervals(const SingleIntervalIntSet& a,
 
 ir::Expr EnhancedSimplifyModExpr(
     ir::Expr e,
-    const absl::flat_hash_map<std::string, CasInterval>& var_intervals);
+    const paddle::flat_hash_map<std::string, CasInterval>& var_intervals);
 
 }  // namespace common
 }  // namespace cinn

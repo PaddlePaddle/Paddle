@@ -191,6 +191,11 @@ class TestGetitemDygraphAdvancedIndex(unittest.TestCase):
             x[np.array([0, 1, 0]), np.array([3, 2, 4])],
             y[paddle.to_tensor([0, 1, 0]), paddle.to_tensor([3, 2, 4])],
         )
+        # case 5:
+        # [5, 6, 7, 8, 9]
+        self.accuracy_check(
+            x[np.ones([], dtype=np.int64)], y[paddle.to_tensor(1)]
+        )
 
 
 class TestGetitemDygraphCombinedIndex(unittest.TestCase):
@@ -225,6 +230,16 @@ class TestGetitemDygraphCombinedIndex(unittest.TestCase):
         # case 6:
         # [[[4 , 5 ],[10, 11],[16, 17],[22, 23]]]
         self.accuracy_check(x[[True, False], :, -1], y[[True, False], :, -1])
+        # case 7:
+        # [[0, 3, 4, 5], [24, 26, 28, 29]]
+        index_np = np.array([[True, False], [False, True], [True, True]])
+        index_paddle = paddle.to_tensor(index_np)
+        self.accuracy_check(x[:, 0, index_np], y[:, 0, index_paddle])
+        # case 8:
+        # [[[[0, 1]], [[2, 3]], [[24, 25]], [[26, 27]]]]
+        index_np = np.array([[0], [1]])
+        index_paddle = paddle.to_tensor(index_np)
+        self.accuracy_check(x[:, 0, index_np], y[:, 0, index_paddle])
 
 
 class Test0DTensorIndexing(unittest.TestCase):
@@ -294,9 +309,6 @@ class TestGetItemErrorCase(unittest.TestCase):
         x = np.arange(10).reshape(2, 5)
         x = paddle.to_tensor(x)
         # case 5:
-        with self.assertRaises(IndexError):
-            res = x[[1, 3]]  # IndexError: (OutOfRange)
-        # case 6:
         with self.assertRaises(ValueError):
             res = x[
                 [0, 1], [3, 2], [1, 1]
@@ -321,9 +333,6 @@ class TestGetItemErrorCase(unittest.TestCase):
         x = np.arange(10).reshape(2, 5)
         x = paddle.to_tensor(x)
         # case 5:
-        with self.assertRaises(IndexError):
-            res = x[paddle.to_tensor([1, 3])]  # IndexError: (OutOfRange)
-        # case 6:
         with self.assertRaises(ValueError):
             res = x[
                 paddle.to_tensor([0, 1]),

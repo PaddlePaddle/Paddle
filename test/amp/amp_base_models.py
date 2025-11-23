@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import struct
 import unittest
 
@@ -125,36 +124,38 @@ def build_add_model(
 ):
     main_program = paddle.static.Program()
     startup_program = paddle.static.Program()
-    with paddle.utils.unique_name.guard():
-        with paddle.static.program_guard(main_program, startup_program):
-            x_dtype = "float32"
-            if use_amp and amp_level == "O2":
-                if amp_dtype == "bfloat16":
-                    x_dtype = "uint16"
-                elif amp_dtype == "float16":
-                    x_dtype = "float16"
-            cast_add_param(amp_dtype)
-            model = SimpleAddNet(x_dtype)
-            x = paddle.static.data(name='input', shape=[16, 16], dtype=x_dtype)
-            out = model(x)
-            loss = paddle.mean(out)
+    with (
+        paddle.utils.unique_name.guard(),
+        paddle.static.program_guard(main_program, startup_program),
+    ):
+        x_dtype = "float32"
+        if use_amp and amp_level == "O2":
+            if amp_dtype == "bfloat16":
+                x_dtype = "uint16"
+            elif amp_dtype == "float16":
+                x_dtype = "float16"
+        cast_add_param(amp_dtype)
+        model = SimpleAddNet(x_dtype)
+        x = paddle.static.data(name='input', shape=[16, 16], dtype=x_dtype)
+        out = model(x)
+        loss = paddle.mean(out)
 
-            if use_amp:
-                amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
-                    custom_white_list=["elementwise_add"],
-                    custom_black_list=["reduce_mean"],
-                    dtype=amp_dtype,
-                )
-            else:
-                amp_lists = None
-            optimizer = _build_optimizer(
-                use_amp,
-                amp_dtype,
-                amp_level,
-                amp_lists,
-                use_promote=use_promote,
+        if use_amp:
+            amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
+                custom_white_list=["elementwise_add"],
+                custom_black_list=["reduce_mean"],
+                dtype=amp_dtype,
             )
-            optimizer.minimize(loss)
+        else:
+            amp_lists = None
+        optimizer = _build_optimizer(
+            use_amp,
+            amp_dtype,
+            amp_level,
+            amp_lists,
+            use_promote=use_promote,
+        )
+        optimizer.minimize(loss)
     feed_vars = [x]
     fetch_vars = [loss]
     return main_program, startup_program, optimizer, feed_vars, fetch_vars
@@ -196,18 +197,20 @@ def build_conv_model(
 
     main_program = paddle.static.Program()
     startup_program = paddle.static.Program()
-    with paddle.utils.unique_name.guard():
-        with paddle.static.program_guard(main_program, startup_program):
-            model = SimpleConvNet()
-            x = paddle.static.data(
-                name='input', shape=[None, 1, 6, 6], dtype='float32'
-            )
-            out = model(x)
-            loss = paddle.mean(out)
-            optimizer = _build_optimizer(
-                use_amp, amp_dtype, amp_level, use_promote=use_promote
-            )
-            optimizer.minimize(loss)
+    with (
+        paddle.utils.unique_name.guard(),
+        paddle.static.program_guard(main_program, startup_program),
+    ):
+        model = SimpleConvNet()
+        x = paddle.static.data(
+            name='input', shape=[None, 1, 6, 6], dtype='float32'
+        )
+        out = model(x)
+        loss = paddle.mean(out)
+        optimizer = _build_optimizer(
+            use_amp, amp_dtype, amp_level, use_promote=use_promote
+        )
+        optimizer.minimize(loss)
     feed_vars = [x]
     fetch_vars = [loss]
     return main_program, startup_program, optimizer, feed_vars, fetch_vars
@@ -224,7 +227,7 @@ class SimpleEmbeddingNet(nn.Layer):
     def forward(self, x):
         out = self.embedding(x)
         scale = paddle.full(shape=[1], fill_value=2, dtype="int64")
-        out = paddle.multiply(out, scale.astype("float32"))
+        out = out * (scale.astype("float32"))
         out = self.linear(out)
         out = nn.functional.dropout(out, p=0.2)
         return out
@@ -239,30 +242,32 @@ def build_embedding_model(
 ):
     main_program = paddle.static.Program()
     startup_program = paddle.static.Program()
-    with paddle.utils.unique_name.guard():
-        with paddle.static.program_guard(main_program, startup_program):
-            model = SimpleEmbeddingNet()
-            x = paddle.static.data(name='x', shape=[None, 32], dtype='int64')
-            out = model(x)
-            loss = paddle.mean(out)
-            if use_amp:
-                amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
-                    custom_white_list=["elementwise_mul"],
-                    custom_black_list=["reduce_mean"],
-                    dtype=amp_dtype,
-                )
-            else:
-                amp_lists = None
-            optimizer = _build_optimizer(
-                use_amp,
-                amp_dtype,
-                amp_level,
-                amp_lists,
-                True,
-                use_promote=use_promote,
-                use_master_grad=use_master_grad,
+    with (
+        paddle.utils.unique_name.guard(),
+        paddle.static.program_guard(main_program, startup_program),
+    ):
+        model = SimpleEmbeddingNet()
+        x = paddle.static.data(name='x', shape=[None, 32], dtype='int64')
+        out = model(x)
+        loss = paddle.mean(out)
+        if use_amp:
+            amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
+                custom_white_list=["elementwise_mul"],
+                custom_black_list=["reduce_mean"],
+                dtype=amp_dtype,
             )
-            optimizer.minimize(loss)
+        else:
+            amp_lists = None
+        optimizer = _build_optimizer(
+            use_amp,
+            amp_dtype,
+            amp_level,
+            amp_lists,
+            True,
+            use_promote=use_promote,
+            use_master_grad=use_master_grad,
+        )
+        optimizer.minimize(loss)
 
     feed_vars = [x]
     fetch_vars = [loss]
@@ -294,37 +299,39 @@ def build_MLP_model(
 ):
     main_program = paddle.static.Program()
     startup_program = paddle.static.Program()
-    with paddle.utils.unique_name.guard():
-        with paddle.static.program_guard(main_program, startup_program):
-            model = SimpleMLPNet()
-            x_dtype = "float32"
-            if use_amp and amp_level == "O2":
-                if amp_dtype == "bfloat16":
-                    x_dtype = "uint16"
-                elif amp_dtype == "float16":
-                    x_dtype = "float16"
-            x = paddle.static.data(name='x', shape=[None, 16], dtype=x_dtype)
-            out = model(x)
-            loss = paddle.mean(out)
+    with (
+        paddle.utils.unique_name.guard(),
+        paddle.static.program_guard(main_program, startup_program),
+    ):
+        model = SimpleMLPNet()
+        x_dtype = "float32"
+        if use_amp and amp_level == "O2":
+            if amp_dtype == "bfloat16":
+                x_dtype = "uint16"
+            elif amp_dtype == "float16":
+                x_dtype = "float16"
+        x = paddle.static.data(name='x', shape=[None, 16], dtype=x_dtype)
+        out = model(x)
+        loss = paddle.mean(out)
 
-            if use_amp:
-                amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
-                    custom_black_list=["reduce_mean"],
-                    dtype=amp_dtype,
-                )
-            else:
-                amp_lists = None
-
-            optimizer = _build_optimizer(
-                use_amp,
-                amp_dtype,
-                amp_level,
-                amp_lists,
-                use_grad_clip=use_grad_clip,
-                use_promote=use_promote,
-                use_master_grad=use_master_grad,
+        if use_amp:
+            amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
+                custom_black_list=["reduce_mean"],
+                dtype=amp_dtype,
             )
-            optimizer.minimize(loss)
+        else:
+            amp_lists = None
+
+        optimizer = _build_optimizer(
+            use_amp,
+            amp_dtype,
+            amp_level,
+            amp_lists,
+            use_grad_clip=use_grad_clip,
+            use_promote=use_promote,
+            use_master_grad=use_master_grad,
+        )
+        optimizer.minimize(loss)
 
     feed_vars = [x]
     fetch_vars = [loss]
@@ -360,12 +367,14 @@ class SimpleWhileNet(nn.Layer):
 def build_while_model():
     main_program = paddle.static.Program()
     startup_program = paddle.static.Program()
-    with paddle.utils.unique_name.guard():
-        with paddle.static.program_guard(main_program, startup_program):
-            model = SimpleWhileNet()
-            x = paddle.static.data(name='x', shape=[32, 16], dtype='float32')
-            out = model(x)
-            loss = paddle.mean(out)
+    with (
+        paddle.utils.unique_name.guard(),
+        paddle.static.program_guard(main_program, startup_program),
+    ):
+        model = SimpleWhileNet()
+        x = paddle.static.data(name='x', shape=[32, 16], dtype='float32')
+        out = model(x)
+        loss = paddle.mean(out)
     return main_program, startup_program
 
 
@@ -386,7 +395,7 @@ class AmpTestBase(unittest.TestCase):
         debug_info=None,
     ):
         def _extract_op_call(op_calls_str, pos):
-            return int(copy.copy(op_calls_str).split(",")[pos])
+            return int(op_calls_str.split(",")[pos])
 
         for op_type, expected_value in expected_bf16_calls.items():
             # print(f"[BF16] op_type={op_type}, value={value}")
@@ -408,7 +417,7 @@ class AmpTestBase(unittest.TestCase):
             self.assertEqual(
                 actual_value,
                 expected_value,
-                f"[debug_info] The number of fp16 calls of operator < {op_type} > is expected to be {expected_value}, but received {actual_value}.",
+                f"[{debug_info}] The number of fp16 calls of operator < {op_type} > is expected to be {expected_value}, but received {actual_value}.",
             )
 
     def run_program(

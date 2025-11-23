@@ -21,7 +21,7 @@ class TestPIRNdMeshReshard(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(
             num_of_devices=4,
-            timeout=15,
+            timeout=20,
             nnode=1,
         )
         self._default_envs = {

@@ -274,7 +274,6 @@ void FFNGrad(const phi::XPUContext& dev_ctx,
   } else if (act_method == "relu") {
     r = xpu::relu_grad(xpu_ctx,
                        linear1_out_ptr,
-                       linear1_out_ptr,
                        d_dropout1_out_ptr,
                        d_act_out_ptr,
                        bsz_seq * dim_feedforward);
@@ -538,7 +537,7 @@ PD_REGISTER_KERNEL(fused_feedforward_grad,
                    ALL_LAYOUT,
                    phi::fusion::FusedFeedForwardGradKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(6).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(7).SetDataType(phi::DataType::FLOAT32);

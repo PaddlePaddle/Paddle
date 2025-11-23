@@ -931,9 +931,9 @@ def adjust_hue(img, hue_factor):
 
     """
     _assert_image_tensor(img, 'CHW')
-    assert (
-        hue_factor >= -0.5 and hue_factor <= 0.5
-    ), "hue_factor should be in range [-0.5, 0.5]"
+    assert hue_factor >= -0.5 and hue_factor <= 0.5, (
+        "hue_factor should be in range [-0.5, 0.5]"
+    )
     channels = _get_image_num_channels(img, 'CHW')
     if channels == 1:
         return img

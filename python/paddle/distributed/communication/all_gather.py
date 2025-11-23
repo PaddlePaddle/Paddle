@@ -119,9 +119,9 @@ def all_gather_object(
             >>> print(object_list)
             >>> # [{'foo': [1, 2, 3]}, {'bar': [4, 5, 6]}] (2 GPUs)
     """
-    assert (
-        framework.in_dynamic_mode()
-    ), "all_gather_object doesn't support static graph mode."
+    assert framework.in_dynamic_mode(), (
+        "all_gather_object doesn't support static graph mode."
+    )
 
     tensor, len_of_tensor = convert_object_to_tensor(obj)
 

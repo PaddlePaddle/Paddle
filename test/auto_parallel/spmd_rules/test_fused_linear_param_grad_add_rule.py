@@ -47,6 +47,12 @@ class TestFusedLinearParamGradAddSPMDRule(unittest.TestCase):
         inferred_dist_attrs = rule.infer_forward(
             input, out_grad, dweight, dbias, 0, True
         )
+        self.assertEqual(
+            inferred_dist_attrs[1][0].process_mesh, dweight.process_mesh()
+        )
+        self.assertEqual(
+            inferred_dist_attrs[1][1].process_mesh, dbias.process_mesh()
+        )
         self.assertEqual(inferred_dist_attrs[1][0].dims_mapping, [-1, 1])
         self.assertEqual(inferred_dist_attrs[1][1].dims_mapping, [1])
 
@@ -57,6 +63,12 @@ class TestFusedLinearParamGradAddSPMDRule(unittest.TestCase):
         dbias = self.build_inputs([], [])
         inferred_dist_attrs = rule.infer_forward(
             input, out_grad, dweight, dbias, 0, True
+        )
+        self.assertEqual(
+            inferred_dist_attrs[1][0].process_mesh, dweight.process_mesh()
+        )
+        self.assertEqual(
+            inferred_dist_attrs[1][1].process_mesh, dbias.process_mesh()
         )
         self.assertEqual(inferred_dist_attrs[1][0].dims_mapping, [1, -1])
         self.assertEqual(inferred_dist_attrs[1][1].dims_mapping, [-1])

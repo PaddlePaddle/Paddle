@@ -18,6 +18,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -26,8 +27,6 @@
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/funcs/tril_triu_compute.h"
-#include "paddle/phi/kernels/impl/set_value_kernel_impl.h"
-
 namespace phi {
 
 template <typename T>
@@ -153,13 +152,13 @@ void SetValueCompute(const Context& dev_ctx,
 
   slice_tensor.Resize(slice_dims_for_assign);
   if (value_tensor != nullptr) {
-    CheckIsDimsMatch(slice_dims_for_assign, value_tensor->dims());
+    phi::funcs::CheckIsDimsMatch(slice_dims_for_assign, value_tensor->dims());
     phi::funcs::ElementwiseCompute<SubFunctor<T>, T>(
         dev_ctx, slice_tensor, *value_tensor, SubFunctor<T>(), &slice_tensor);
   } else {
     DenseTensor value_t(dtype);
     auto value_dims = common::make_ddim(shape);
-    CheckIsDimsMatch(slice_dims_for_assign, value_dims);
+    phi::funcs::CheckIsDimsMatch(slice_dims_for_assign, value_dims);
 
     value_t.Resize(value_dims);
     dev_ctx.template Alloc<T>(&value_t);
@@ -405,7 +404,8 @@ struct OneFunctor {
       : output_(output), idtptr_(idtptr), w_(w), dim_(dim) {}
 
   HOSTDEVICE void operator()(size_t idx) const {
-    output_[w_ * idtptr_[idx] + idx % dim_] = static_cast<T>(1);
+    int64_t addr = static_cast<int64_t>(w_) * idtptr_[idx] + idx % dim_;
+    output_[addr] = static_cast<T>(1);
   }
 
   T* output_;

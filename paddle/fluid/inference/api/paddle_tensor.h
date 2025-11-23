@@ -65,6 +65,7 @@ enum DataType {
   BOOL,
   FLOAT64,
   BFLOAT16,
+  FLOAT8E4M3,
   // TODO(Inference): support more data types if needed.
 };
 

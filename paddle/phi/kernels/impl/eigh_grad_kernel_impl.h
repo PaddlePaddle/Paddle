@@ -36,6 +36,9 @@ void EighGradKernel(const Context& dev_ctx,
                     const DenseTensor& dout_v,
                     DenseTensor* dx) {
   dev_ctx.template Alloc<T>(dx);
+  if (out_v.numel() == 0) {
+    return;
+  }
   auto& dims = out_v.dims();
   const int m = dims[dims.size() - 1];
   DenseTensor tV =

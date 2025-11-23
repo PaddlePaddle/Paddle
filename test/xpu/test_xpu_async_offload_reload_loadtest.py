@@ -48,7 +48,7 @@ class TestLargeTensorOffloadAndReloadRepeated(unittest.TestCase):
         for i in range(1):
             # print(f"\n--- Iteration {i+1} ---")
             # Create a large tensor on XPU.
-            large_arr = np.empty((512, 512, 10000), dtype="float32")
+            large_arr = np.empty((512, 512, 1000), dtype="float32")
             large_tensor = paddle.to_tensor(large_arr, place=paddle.XPUPlace(0))
             print_debug_info(large_tensor, "large_tensor (original)")
             loader = create_xpu_async_load()

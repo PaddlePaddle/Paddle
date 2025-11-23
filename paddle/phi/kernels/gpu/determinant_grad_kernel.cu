@@ -21,8 +21,8 @@ PD_REGISTER_KERNEL(determinant_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::DeterminantGradKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

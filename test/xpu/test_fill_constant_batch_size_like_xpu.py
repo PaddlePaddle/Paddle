@@ -36,7 +36,7 @@ class XPUTestXPUFullBatchSizeLikeOp(XPUOpTestWrapper):
             self.init_op_type()
             self.initTestCase()
             self.use_xpu = True
-            self.use_mkldnn = False
+            self.use_onednn = False
             self.no_need_check_grad = True
             self.dtype = self.in_type
             self.input_dim_idx = 0
@@ -58,7 +58,7 @@ class XPUTestXPUFullBatchSizeLikeOp(XPUOpTestWrapper):
 
         def init_op_type(self):
             self.op_type = "fill_constant_batch_size_like"
-            self.use_mkldnn = False
+            self.use_onednn = False
 
         def convert_dtype2index(self):
             '''

@@ -64,7 +64,7 @@ class OpEquationContext {
 
   template <typename T>
   const T& Attr(const std::string& name) const {
-    return absl::get<T>(GetAttribute(name));
+    return std::get<T>(GetAttribute(name));
   }
 
  protected:

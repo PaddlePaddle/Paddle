@@ -34,8 +34,8 @@ class DistTensor;
 /// arrays are used in math operators.
 /// During the entire life cycle of a DenseTensor, its device type and key
 /// metadata are set unchanged.
-class TEST_API DenseTensor : public TensorBase,
-                             public TypeInfoTraits<TensorBase, DenseTensor> {
+class PADDLE_API DenseTensor : public TensorBase,
+                               public TypeInfoTraits<TensorBase, DenseTensor> {
  public:
   /// \brief Construct a dense tensor and allocate space.
   /// \param a The allocator used to allocate space.
@@ -84,6 +84,46 @@ class TEST_API DenseTensor : public TensorBase,
   /// \brief Returns the dims of the tensor.
   /// \return The dims of the tensor.
   const DDim& dims() const noexcept override { return meta_.dims; }
+
+  /// \brief Returns the size of the tensor along the specified dimension.
+  ///        Supports negative indices, which count from the last dimension.
+  /// \param dim The dimension index to retrieve. Must be in the range [0, ndim)
+  /// or [-ndim, -1]. \return The size of the tensor along the given dimension.
+  /// \throws phi::errors::OutOfRange if the tensor is empty or the index is out
+  /// of range.
+  const int64_t dims(int dim) const {
+    int ndim = meta_.dims.size();
+
+    // Ensure the tensor has at least one dimension
+    PADDLE_ENFORCE_GE(ndim,
+                      1,
+                      phi::errors::OutOfRange(
+                          "dims expects at least a 1-dimensional tensor"));
+
+    // Check if the index is within the valid range [-ndim, ndim)
+    PADDLE_ENFORCE_GE(
+        dim,
+        -ndim,
+        phi::errors::OutOfRange(
+            "dims: dimension index (%d) must be in range [-%d, %d)",
+            dim,
+            ndim,
+            ndim));
+    PADDLE_ENFORCE_LT(
+        dim,
+        ndim,
+        phi::errors::OutOfRange(
+            "dims: dimension index (%d) must be in range [-%d, %d)",
+            dim,
+            ndim,
+            ndim));
+
+    // Handle negative indices
+    if (dim < 0) {
+      dim += ndim;
+    }
+    return meta_.dims[dim];
+  }
 
   /// \brief Returns the stride of the tensor.
   /// \return The stride of the tensor.

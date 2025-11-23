@@ -16,7 +16,6 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/common/transform.h"
 
 namespace phi {
@@ -24,6 +23,63 @@ namespace phi {
 template <typename InT, typename OutT>
 struct CastOpTransformFunctor {
   HOSTDEVICE OutT operator()(InT in) const { return static_cast<OutT>(in); }
+};
+
+template <>
+struct CastOpTransformFunctor<::phi::dtype::float8_e5m2, ::phi::complex64> {
+  HOSTDEVICE ::phi::complex64 operator()(::phi::dtype::float8_e5m2 in) const {
+    return ::phi::complex64(static_cast<float>(in));
+  }
+};
+
+template <>
+struct CastOpTransformFunctor<::phi::dtype::float8_e5m2, ::phi::complex128> {
+  HOSTDEVICE ::phi::complex128 operator()(::phi::dtype::float8_e5m2 in) const {
+    return ::phi::complex128(static_cast<double>(in));
+  }
+};
+
+template <>
+struct CastOpTransformFunctor<::phi::dtype::float8_e4m3fn, ::phi::complex64> {
+  HOSTDEVICE ::phi::complex64 operator()(::phi::dtype::float8_e4m3fn in) const {
+    return ::phi::complex64(static_cast<float>(in));
+  }
+};
+
+template <>
+struct CastOpTransformFunctor<::phi::dtype::float8_e4m3fn, ::phi::complex128> {
+  HOSTDEVICE ::phi::complex128 operator()(
+      ::phi::dtype::float8_e4m3fn in) const {
+    return ::phi::complex128(static_cast<double>(in));
+  }
+};
+
+template <>
+struct CastOpTransformFunctor<::phi::dtype::bfloat16, ::phi::complex64> {
+  HOSTDEVICE ::phi::complex64 operator()(::phi::dtype::bfloat16 in) const {
+    return ::phi::complex64(static_cast<float>(in));
+  }
+};
+
+template <>
+struct CastOpTransformFunctor<::phi::dtype::bfloat16, ::phi::complex128> {
+  HOSTDEVICE ::phi::complex128 operator()(::phi::dtype::bfloat16 in) const {
+    return ::phi::complex128(static_cast<double>(in));
+  }
+};
+
+template <>
+struct CastOpTransformFunctor<::phi::dtype::float16, ::phi::complex64> {
+  HOSTDEVICE ::phi::complex64 operator()(::phi::dtype::float16 in) const {
+    return ::phi::complex64(static_cast<float>(in));
+  }
+};
+
+template <>
+struct CastOpTransformFunctor<::phi::dtype::float16, ::phi::complex128> {
+  HOSTDEVICE ::phi::complex128 operator()(::phi::dtype::float16 in) const {
+    return ::phi::complex128(static_cast<double>(in));
+  }
 };
 
 template <typename InT, typename OutT>

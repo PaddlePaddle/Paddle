@@ -83,9 +83,6 @@ function do_cpython_build {
     rm -rf Python-$py_ver
     # Some python's install as bin/python3. Make them available as
     # bin/python.
-    if [ -e ${prefix}/bin/python3.8 ]; then
-        ln -s python3.8 ${prefix}/bin/python
-    fi
     if [ -e ${prefix}/bin/python3.9 ]; then
         ln -s python3.9 ${prefix}/bin/python
     fi
@@ -97,6 +94,12 @@ function do_cpython_build {
     fi
     if [ -e ${prefix}/bin/python3.12 ]; then
         ln -s python3.12 ${prefix}/bin/python
+    fi
+    if [ -e ${prefix}/bin/python3.13 ]; then
+        ln -s python3.13 ${prefix}/bin/python
+    fi
+    if [ -e ${prefix}/bin/python3.13t ]; then
+        ln -s python3.13t ${prefix}/bin/python
     fi
     # NOTE Make libpython shared library visible to python calls below
     if [ -e ${prefix}/bin/python3.10 ] || [ -e ${prefix}/bin/python3.11 ] || [ -e ${prefix}/bin/python3.12 ]; then

@@ -16,7 +16,7 @@ import sys
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -77,7 +77,8 @@ class TestCumminOp(OpTest):
         self.dtype = np.float64
         self.axis = -1
         self.indices_type = paddle.int64
-        self.input_data = np.random.random((10, 10)).astype(self.dtype)
+        self.init_shape()
+        self.input_data = np.random.random(self.shape).astype(self.dtype)
         self.set_attrs()
 
         self.inputs = {'x': self.input_data}
@@ -87,6 +88,9 @@ class TestCumminOp(OpTest):
 
     def set_attrs(self):
         pass
+
+    def init_shape(self):
+        self.shape = (10, 10)
 
     def test_check_output(self):
         paddle.enable_static()
@@ -110,6 +114,11 @@ class TestCumminOpAxis2(TestCumminOp):
 class TestCumminOpIndexType(TestCumminOp):
     def set_attrs(self):
         self.indices_type = paddle.int32
+
+
+class TestCumminOp_ZeroSize(TestCumminOp):
+    def init_shape(self):
+        self.shape = (10, 0)
 
 
 class TestCumminAPI(unittest.TestCase):
@@ -160,7 +169,7 @@ class TestCumminAPI(unittest.TestCase):
             y4, indices4 = paddle.cummin(x, axis=-2)
             y5, indices5 = paddle.cummin(x, axis=-2, dtype=np.int32)
 
-            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            place = get_device_place() if use_gpu else base.CPUPlace()
             exe = base.Executor(place)
             out = exe.run(
                 feed={'x': data_np},
@@ -205,9 +214,9 @@ class TestCumminAPI(unittest.TestCase):
         self.run_static()
 
     def test_gpu(self):
-        if not base.core.is_compiled_with_cuda():
+        if not (base.core.is_compiled_with_cuda() or is_custom_device()):
             return
-        paddle.disable_static(paddle.base.CUDAPlace(0))
+        paddle.disable_static(get_device_place())
         self.run_cases()
         paddle.enable_static()
         self.run_static(use_gpu=True)

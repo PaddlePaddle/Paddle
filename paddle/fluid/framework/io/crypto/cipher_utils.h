@@ -17,11 +17,12 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include "paddle/common/macros.h"
 
 namespace paddle {
 namespace framework {
 
-class CipherUtils {
+class PADDLE_API CipherUtils {
  public:
   CipherUtils() = default;
   static std::string GenKey(int length);
@@ -42,7 +43,7 @@ class CipherUtils {
 };
 
 template <>
-bool CipherUtils::GetValue<bool>(
+PADDLE_API bool CipherUtils::GetValue<bool>(
     const std::unordered_map<std::string, std::string>& config,
     const std::string& key,
     bool* output);

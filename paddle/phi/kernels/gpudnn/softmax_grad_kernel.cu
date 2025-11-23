@@ -28,6 +28,7 @@ void SoftmaxGradGPUDNNKernel(const Context& dev_ctx,
                              int axis,
                              DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
+  if (x_grad->numel() == 0) return;
 
   const int rank = out.dims().size();
   // For 0D Tensor
@@ -47,8 +48,8 @@ PD_REGISTER_KERNEL(softmax_grad,
                    ALL_LAYOUT,
                    phi::SoftmaxGradGPUDNNKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(softmax_grad,
@@ -57,8 +58,8 @@ PD_REGISTER_KERNEL(softmax_grad,
                    phi::SoftmaxGradGPUDNNKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #else
 PD_REGISTER_KERNEL(softmax_grad,
                    GPUDNN,
@@ -66,6 +67,6 @@ PD_REGISTER_KERNEL(softmax_grad,
                    phi::SoftmaxGradGPUDNNKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif
 #endif

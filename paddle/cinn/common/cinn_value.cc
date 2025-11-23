@@ -17,7 +17,6 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/lowered_func.h"
-#include "paddle/cinn/poly/stage.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/common/enforce.h"
 namespace cinn {
@@ -116,12 +115,12 @@ bool CINNValue::is_var() const { return type_code_ == TypeCode<ir::Var>(); }
 
 bool CINNValue::is_expr() const {
   return type_code_ == TypeCode<ir::Expr>() &&
-         !absl::any_cast<Expr>(shared_).as_tensor();
+         !std::any_cast<Expr>(shared_).as_tensor();
 }
 
 bool CINNValue::is_tensor() const {
   return type_code_ == TypeCode<ir::Expr>() &&
-         absl::any_cast<Expr>(shared_).as_tensor();
+         std::any_cast<Expr>(shared_).as_tensor();
 }
 
 CINNValue::operator std::string() const {
@@ -129,28 +128,28 @@ CINNValue::operator std::string() const {
       type_code_,
       TypeCode<std::string>(),
       ::common::errors::InvalidArgument("The type_code is not std::string."));
-  return absl::any_cast<std::string>(shared_);
+  return std::any_cast<std::string>(shared_);
 }
 CINNValue::operator ir::Var() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       TypeCode<ir::Var>(),
       ::common::errors::InvalidArgument("The type_code is not ir::Var."));
-  return absl::any_cast<ir::Var>(shared_);
+  return std::any_cast<ir::Var>(shared_);
 }
 CINNValue::operator ir::Expr() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       TypeCode<ir::Expr>(),
       ::common::errors::InvalidArgument("The type_code is not ir::Expr."));
-  return absl::any_cast<Expr>(shared_);
+  return std::any_cast<Expr>(shared_);
 }
 CINNValue::operator CINNValuePack() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       TypeCode<CINNValuePack>(),
       ::common::errors::InvalidArgument("The type_code is not CINNValuePack."));
-  return absl::any_cast<CINNValuePack>(shared_);
+  return std::any_cast<CINNValuePack>(shared_);
 }
 
 CINNValue::CINNValue(char *value)

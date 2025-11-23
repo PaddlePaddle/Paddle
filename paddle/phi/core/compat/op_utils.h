@@ -27,7 +27,7 @@ limitations under the License. */
 
 namespace phi {
 
-class DefaultKernelSignatureMap {
+class PADDLE_API DefaultKernelSignatureMap {
  public:
   static DefaultKernelSignatureMap& Instance();
 
@@ -68,7 +68,7 @@ class DefaultKernelSignatureMap {
   DISABLE_COPY_AND_ASSIGN(DefaultKernelSignatureMap);
 };
 
-class OpUtilsMap {
+class PADDLE_API OpUtilsMap {
  public:
   static OpUtilsMap& Instance();
 
@@ -82,13 +82,9 @@ class OpUtilsMap {
     fluid_op_to_phi_kernel_.insert({op_type, base_kernel_name});
   }
   void InsertFluidOplName(std::string op_type, std::string base_kernel_name) {
-    PADDLE_ENFORCE_EQ(
-        phi_kernel_to_fluid_op_.count(base_kernel_name),
-        0UL,
-        common::errors::AlreadyExists(
-            "Operator (%s)'s kernel name (%s) has been registered.",
-            op_type,
-            base_kernel_name));
+    if (phi_kernel_to_fluid_op_.count(base_kernel_name)) {
+      return;
+    }
     phi_kernel_to_fluid_op_.insert({base_kernel_name, op_type});
   }
 
@@ -97,12 +93,9 @@ class OpUtilsMap {
   }
 
   void InsertArgumentMappingFn(std::string op_type, ArgumentMappingFn fn) {
-    PADDLE_ENFORCE_EQ(
-        arg_mapping_fn_map_.count(op_type),
-        0UL,
-        common::errors::AlreadyExists(
-            "Operator (%s)'s argument mapping function has been registered.",
-            op_type));
+    if (arg_mapping_fn_map_.count(op_type)) {
+      return;
+    }
     arg_mapping_fn_map_.insert({std::move(op_type), std::move(fn)});
   }
 
@@ -147,11 +140,11 @@ class OpUtilsMap {
   DISABLE_COPY_AND_ASSIGN(OpUtilsMap);
 };
 
-struct BaseKernelNameRegistrar {
+struct PADDLE_API BaseKernelNameRegistrar {
   BaseKernelNameRegistrar(const char* op_type, const char* base_kernel_name);
 };
 
-struct ArgumentMappingFnRegistrar {
+struct PADDLE_API ArgumentMappingFnRegistrar {
   ArgumentMappingFnRegistrar(const char* op_type,
                              ArgumentMappingFn arg_mapping_fn);
 };
@@ -163,7 +156,7 @@ struct ArgumentMappingFnRegistrar {
   static const ::phi::BaseKernelNameRegistrar                                 \
       __registrar_base_kernel_name_for_##base_kernel_name(#op_type,           \
                                                           #base_kernel_name); \
-  int TouchBaseKernelNameSymbol_##base_kernel_name() { return 0; }
+  PADDLE_API int TouchBaseKernelNameSymbol_##base_kernel_name() { return 0; }
 
 #define PD_DECLARE_BASE_KERNEL_NAME(op_type, base_kernel_name)                 \
   PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
@@ -179,7 +172,7 @@ struct ArgumentMappingFnRegistrar {
       "PD_REGISTER_ARG_MAPPING_FN must be called in global namespace."); \
   static const ::phi::ArgumentMappingFnRegistrar                         \
       __registrar_arg_map_fn_for_##op_type(#op_type, arg_mapping_fn);    \
-  int TouchArgumentMappingFnSymbol_##op_type() { return 0; }
+  PADDLE_API int TouchArgumentMappingFnSymbol_##op_type() { return 0; }
 
 #define PD_DECLARE_ARG_MAPPING_FN(op_type)                              \
   PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                    \

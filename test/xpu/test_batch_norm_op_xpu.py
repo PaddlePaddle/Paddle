@@ -448,7 +448,7 @@ class XPUTestBatchNormGradOp(XPUOpTestWrapper):
                     "epsilon": self.epsilon,
                     "is_test": False,
                     "data_layout": self.data_layout,
-                    "use_mkldnn": False,
+                    "use_onednn": False,
                     "fuse_with_relu": False,
                     "use_global_stats": self.use_global_stats,
                 }

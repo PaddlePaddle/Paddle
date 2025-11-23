@@ -12,7 +12,7 @@ op_patches:
       - action : xxxx  # 可能会对一个op进行多次操作
         object : xxxx
         type : xxxx
-        default : xxx
+        data : xxx
 
   - op_name : builtin.xxx # 对另一个op进行操作
     actions :
@@ -34,23 +34,31 @@ op_patches:
       - action : modify_output_attr # 修改OpresultAttribute
         object : stop_gradient      # 修改的具体属性名为stop_gradient
         type : pir::ArrayAttribute  # 修改属性类型为ArrayAttribute
-        default :                   # 修改属性为具体值
+        data :                   # 修改属性为具体值
           - type: pir::BoolAttribute  # ArrayAttribute类型需要对每一个字元素标识类型和值
-            default: "false"
+            data: "false"
       - action : modify_attr        # 修改Attribute，与修改OpresultAttribute类似
         object : name
         type : pir::StrAttribute
-        default : "B"
+        data : "B"
+  - op_name : pd_op.pool
+    actions :
+      - action : modify_attr  # 修改Attribute
+        object : kernel_size
+        type : pir::ArrayAttribute
+        data :
+          - type: pir::Int64Attribute # 对于修改ArrayAttribute内部类型的情况，依然归属在modify_attr中，但是default值置为空即可
+          - type: pir::Int64Attribute
   - op_name : builtin.parameter
     actions :
       - action : add_attr           # 新增Attribute
         object : new_attribute      # 新增属性名为new_attribute
         type : pir::StrAttribute    # 新增属性类型为StrAttribute
-        default : "new.attribute"   # 新增属性值为"new.attribute"
+        data : "new.attribute"   # 新增属性值为"new.attribute"
       - action : add_output_attr    # 新增OpresultAttribute
         object : new_Attribute      # 新增属性名为new_output
         type : pir::Int64Attribute  # 新增属性类型为ArrayAttribute
-        default : 1                 # 新增属性为具体值
+        data : 1                 # 新增属性为具体值
 ```
 
 - 删：Attribute与OpresultAttribute的删除格式类似，只需要指定需要删除的具体对象object即可
@@ -76,7 +84,7 @@ op_patches:
       - action : modify_output_type # 修改Opresult Type
         object : 0                  # 修改第几个输出的Type
         type : pir::DenseTensorType  # 修改属性类型为DenseTensorType
-        default : [pir::Float32Type,[-1,30],"NCHW",[],0]   # 修改属性为具体值
+        data : [pir::Float32Type,[-1,30],"NCHW",[],0]   # 修改属性为具体值
 
   ```
 - OpOperand / OpResult 增删改：需要提到block层进行处理。
@@ -92,7 +100,7 @@ op_patches:
         - action : add_output      # 增加输出
           object : 1               # 增加为第几个输出
           type : pir::DenseTensorType  # 修改属性类型为DenseTensorType
-          default : [pir::Float32Type,[-1,30],"NCHW",[],0]   # 修改属性为具体值
+          data : [pir::Float32Type,[-1,30],"NCHW",[],0]   # 修改属性为具体值
     - op_name : pd_op.add
       actions :
         - action : delete_input      # 删除输入
@@ -104,7 +112,7 @@ op_patches:
         - action : add_value         # 增加输入和输出
           object : [1,2]             # 增加为第1个op的第几个输入，第2个op的第几个输出
           type : pir::DenseTensorType
-          default : [pir::Float32Type,[1],"NCHW",[],0]
+          data : [pir::Float32Type,[1],"NCHW",[],0]
         - action : delete_value      # 删除输入和输出
           object : [1, 2]            # 删除第1个op的第几个输入，第2个op的第几个输出
   ```
@@ -136,8 +144,9 @@ type_patches:
       - action : add_type_attr           # 新增Type属性
       - object : 5                       # 新增属性为第几个属性
       - type : pir::Int64Attribute       # 新增属性类型为Int64Attribute
-      - default : 0                      # 新增属性默认值
+      - data : 0                      # 新增属性默认值
 ```
+更多patch配置案例可以参考相关单测，在`Paddle/test/cpp/pir/serialize_deserialize` 目录下。
 
 ## pir_version 配置说明
 ### C++端版本号管理与CMake配置
@@ -154,11 +163,12 @@ type_patches:
   │  ├─0.yaml
   │  └─1.yaml
   ```
-  - RELEASE_VERSION 为已发布的版本中PIR版本号，即为patch yaml文件名的最大值。
-  - DEVELOP_VERSION 为当前develop分支下的PIR版本号，若存在未发布的新增patch，配置在`0.yaml`中，且当前的develop pir 版本号为0。
+  - RELEASE_VERSION 为已发布的版本中PIR版本号，即为patch yaml文件名的最大值，每次新版本发布且存在新增patch时，`RELEASE_VERSION + 1`，若无新增patch则无需修改。
+  - DEVELOP_VERSION 为当前develop分支下的PIR版本号，若需要新增patch，配置在`0.yaml`中（没有则说明当前为新版本发布后第一次新增patch，需要新建文件），并将`-DDEVELOP_VERSION`设置为0。
 
 - ReadModule和WriteModule参数中的pir_version设为默认值，可以不用传递。pir_version 函数默认值为-1，进入函数后会获取CMake中配置的当前的PIR版本号。
 
+- 完整修改配置流程可以参考PR：https://github.com/PaddlePaddle/Paddle/pull/72751（修改DDEVELOP_VERSION），https://github.com/PaddlePaddle/Paddle/pull/72639（新增patch yaml）
 ### Python端
 - Paddle的主版本号定义在Python端，与PIR version不产生关联。Python端不再需要获取和传入pir_version，直接使用默认值即可。
 ### Paddle发版要求

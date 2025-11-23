@@ -173,8 +173,7 @@ __global__ void LogsumexpWarpImpl(const Context& dev_ctx,
       store_vec[row_id] = static_cast<SourceType>(res + warp_max[row_id]);
     }
     if (thread_id == 0 && cur_row < num_row) {
-      phi::Store<SourceType, RowsPerThread>(store_vec,
-                                            out + group_id * RowsPerThread);
+      phi::Store<SourceType, RowsPerThread>(store_vec, out + cur_row);
     }
   }
 }

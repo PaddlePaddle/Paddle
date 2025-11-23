@@ -1,23 +1,3 @@
-if(WITH_CINN)
-  file(GLOB_RECURSE CINN_PY_FILES ${PROJECT_SOURCE_DIR}/python/cinn/*.py)
-
-  if(WITH_GPU)
-    set(PACKAGE_NAME "cinn-gpu")
-  else()
-    set(PACKAGE_NAME "cinn")
-  endif()
-  set(SETUP_LOG_FILE "setup.py.log")
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup_cinn.py.in
-                 ${CMAKE_CURRENT_BINARY_DIR}/setup_cinn.py)
-
-  if(NOT PYTHON_EXECUTABLE)
-    find_package(PythonInterp ${PY_VERSION} REQUIRED)
-    find_package(PythonLibs ${PY_VERSION} REQUIRED)
-  endif()
-
-  message(STATUS "PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
-endif()
-
 file(GLOB UTILS_PY_FILES . ./paddle/legacy/utils/*.py)
 file(GLOB_RECURSE FLUID_PY_FILES ./paddle/base/*.py)
 set(PY_FILES paddle/__init__.py ${UTILS_PY_FILES} ${FLUID_PY_FILES})
@@ -48,13 +28,37 @@ set(FLUID_DST_DIR ${PADDLE_BINARY_DIR}/python/paddle/base/)
 
 if(WIN32)
   # Python would use the .pyd by default under Windows series platform
+  set(TARGET_DIR ${PADDLE_BINARY_DIR}/paddle/fluid/pybind/)
   set(FLUID_CORE ${FLUID_DST_DIR}/${FLUID_CORE_NAME}.pyd)
   set(FLUID_CORE_LIB ${FLUID_DST_DIR}/${FLUID_CORE_NAME}.lib)
   add_custom_command(
     OUTPUT ${FLUID_CORE}
     COMMAND cmake -E copy $<TARGET_FILE:libpaddle> ${FLUID_CORE}
-    COMMAND cmake -E copy $<TARGET_LINKER_FILE:libpaddle> ${FLUID_CORE_LIB}
-    DEPENDS libpaddle)
+    DEPENDS libpaddle
+    COMMENT "Copying ${TARGET_DIR}/${FLUID_CORE_NAME} to ${FLUID_CORE}")
+  # generate new lib based on libpaddle.pyd
+  add_custom_command(
+    OUTPUT ${FLUID_CORE_LIB}
+    COMMAND dumpbin /exports ${FLUID_CORE} > ${TARGET_DIR}/exports.txt
+    COMMAND echo LIBRARY libpaddle.pyd > ${TARGET_DIR}/libpaddle.def
+    COMMAND echo EXPORTS >> ${TARGET_DIR}/libpaddle.def
+    COMMAND
+      echo off && (for
+                   /f
+                   "skip=19 tokens=4"
+                   %A
+                   in
+                   (${TARGET_DIR}/exports.txt)
+                   do
+                   echo
+                   %A
+                   >>
+                   ${TARGET_DIR}/libpaddle.def) && echo on
+    COMMAND lib /def:${TARGET_DIR}/libpaddle.def /out:${FLUID_CORE_LIB}
+            /machine:x64
+    COMMENT "Generate libpaddle.lib manually--->"
+    DEPENDS ${FLUID_CORE}
+    VERBATIM)
 else()
   set(FLUID_CORE ${FLUID_DST_DIR}/${FLUID_CORE_NAME}.so)
   add_custom_command(
@@ -63,7 +67,7 @@ else()
     DEPENDS paddle)
 endif()
 
-set(FLUID_CORE_DEPS ${FLUID_CORE})
+set(FLUID_CORE_DEPS ${FLUID_CORE} ${FLUID_CORE_LIB})
 
 add_custom_target(copy_libpaddle ALL DEPENDS ${FLUID_CORE_DEPS})
 

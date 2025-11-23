@@ -215,7 +215,7 @@ class QuantConfig:
 
         Args:
             layer_type(type[Layer] | list[type[Layer]]): One or a list of layers' type. It should be subclass of
-            `paddle.nn.Layer`. Python build-in function `type()` can be used to get the type of a layer.
+            `paddle.nn.Layer`. Python built-in function `type()` can be used to get the type of a layer.
             activation(QuanterFactory | None): Quanter used for activations. Default is None.
             weight(QuanterFactory | None): Quanter used for weights. Default is None.
 
@@ -285,7 +285,9 @@ class QuantConfig:
         """
         assert isinstance(source, type) and issubclass(
             source, paddle.nn.Layer
-        ), "The source layer to be placed should be a subclass of paddle.nn.Layer"
+        ), (
+            "The source layer to be placed should be a subclass of paddle.nn.Layer"
+        )
         assert isinstance(target, type) and issubclass(
             target, paddle.nn.Layer
         ), "The target layer should be a subclass of paddle.nn.qat.Layer"

@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 from scipy import special
 
 import paddle
-from paddle.base import core
 
 np.random.seed(100)
 paddle.seed(100)
@@ -46,15 +44,7 @@ class TestI0eAPI(unittest.TestCase):
     def setUp(self):
         self.x = np.array(self.DATA).astype(self.DTYPE)
         self.out_ref = output_i0e(self.x)
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
 
     def test_api_static(self):
         def run(place):
@@ -150,6 +140,27 @@ class TestI0eOp(OpTest):
             user_defined_grads=[ref_i0e_grad(self.case, 1 / self.case.size)],
             check_pir=True,
         )
+
+
+class TestI0eOp_ZeroSize(OpTest):
+    def setUp(self) -> None:
+        self.__class__.op_type = "i0e"
+        self.op_type = "i0e"
+        self.python_api = paddle.i0e
+        self.init_config()
+        x = np.random.randn(3, 4, 0)
+        self.inputs = {'x': x.astype(self.dtype)}
+        self.attrs = {}
+        self.outputs = {'out': special.i0e(x)}
+
+    def init_config(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['x'], 'out')
 
 
 if __name__ == "__main__":

@@ -38,9 +38,11 @@ class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
 
         # for gpu
         config = self.create_inference_config(use_gpu=True)
-        yield config, [
-            "fusion_transpose_flatten_concat",
-        ], (1e-5, 1e-5)
+        yield (
+            config,
+            ["fusion_transpose_flatten_concat"],
+            (1e-5, 1e-5),
+        )
 
     def is_program_valid(self, prog_config):
         concat_axis = prog_config.ops[-1].attrs["axis"]
@@ -156,7 +158,7 @@ class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=300,
             passes=["transpose_flatten_concat_fuse_pass"],

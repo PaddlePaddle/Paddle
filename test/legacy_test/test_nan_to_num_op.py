@@ -17,9 +17,9 @@ from __future__ import annotations
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
-from paddle.base import core
 
 # from op_test import OpTest
 
@@ -56,11 +56,7 @@ def np_nan_to_num_grad(x: np.ndarray, dout: np.ndarray) -> np.ndarray:
 
 class TestNanToNum(unittest.TestCase):
     def setUp(self):
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static(self):
         x_np = np.array([[1, np.nan, -2], [np.inf, 0, -np.inf]]).astype(
@@ -200,6 +196,36 @@ class TestNanToNum(unittest.TestCase):
 #             'replace_neginf_with_min': False,
 #             'neginf': -10
 #         }
+
+
+class TestNanToNum_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.place = get_device_place()
+        self.x_np = np.random.random([2, 0, 3]).astype(np.float32)
+
+    def test_dygraph(self):
+        paddle.disable_static(place=self.place)
+
+        with paddle.base.dygraph.guard():
+            x_tensor = paddle.to_tensor(self.x_np, stop_gradient=False)
+
+            out_tensor = paddle.nan_to_num(x_tensor)
+            out_np = np_nan_to_num(self.x_np)
+            np.testing.assert_allclose(out_tensor.numpy(), out_np)
+
+        paddle.enable_static()
+
+    def test_check_grad(self):
+        paddle.disable_static(place=self.place)
+        x_tensor = paddle.to_tensor(self.x_np, stop_gradient=False)
+        x_tensor.stop_gradient = False
+        y = paddle.nan_to_num(x_tensor)
+        loss = paddle.sum(y)
+        loss.backward()
+        np.testing.assert_allclose(x_tensor.grad.shape, x_tensor.shape)
+
+        paddle.enable_static()
+
 
 if __name__ == "__main__":
     unittest.main()

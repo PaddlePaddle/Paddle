@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <absl/strings/string_view.h>
+#include <string_view>
 
 #include "paddle/cinn/common/axis.h"
 #include "paddle/cinn/common/cinn_value.h"
@@ -55,7 +55,7 @@ T& Reference(const T* x) {
   return *const_cast<T*>(x);
 }
 
-static void CheckVarNameValid(const absl::string_view name) {
+static void CheckVarNameValid(const std::string_view name) {
   PADDLE_ENFORCE_EQ(name.empty(),
                     false,
                     ::common::errors::InvalidArgument(

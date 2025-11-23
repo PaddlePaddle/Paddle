@@ -21,7 +21,7 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 class TestConvActOneDNNFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_gpu=False, use_mkldnn=True)
+        config = self.create_inference_config(use_gpu=False, use_onednn=True)
         yield config, ['fused_conv2d'], (1e-4, 1e-5)
 
     def is_program_valid(self, prog_config):
@@ -207,7 +207,7 @@ class TestConvActOneDNNFusePass(PassAutoScanTest):
             groups=groups,
             dilations=dilations,
             data_format=data_format,
-            use_mkldnn=True,
+            use_onednn=True,
         )
 
         ops = [conv2d_op, act_op]
@@ -223,7 +223,9 @@ class TestConvActOneDNNFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(quant=False, max_examples=300, passes=self.passes)
+        self.run_and_statistics(
+            quant=False, max_examples=300, passes=self.passes
+        )
 
 
 if __name__ == '__main__':

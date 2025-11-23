@@ -25,5 +25,5 @@ PD_REGISTER_KERNEL(qr_grad,
                    phi::QrGradKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

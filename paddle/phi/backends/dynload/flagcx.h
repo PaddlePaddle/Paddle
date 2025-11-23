@@ -48,10 +48,13 @@ extern void* flagcx_dso_handle;
   __macro(flagcxAllReduce);               \
   __macro(flagcxBroadcast);               \
   __macro(flagcxAllGather);               \
+  __macro(flagcxAlltoAll);                \
+  __macro(flagcxAlltoAllv);               \
   __macro(flagcxGroupStart);              \
   __macro(flagcxGroupEnd);                \
   __macro(flagcxReduce);                  \
   __macro(flagcxReduceScatter);           \
+  __macro(flagcxScatter);                 \
   __macro(flagcxCommGetAsyncError);       \
   __macro(flagcxSend);                    \
   __macro(flagcxRecv);                    \

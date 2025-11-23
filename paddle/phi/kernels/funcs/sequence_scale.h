@@ -34,7 +34,7 @@ namespace funcs {
  *      result = (2*s0, 2*s0, 2*s0, 2*s0; 3*s1, 3*s1; 4*s2, 4*s2, 4*s2; 5*s3)
 
  *
- * \param context       Device context of this functor.
+ * \param dev_ctx       Device context of this functor.
  * \param seq           phi::DenseTensor which is stored in sequence format, the
  shape
  *                      is [total_sequence_length, sequence_width] where
@@ -49,7 +49,7 @@ namespace funcs {
 template <typename DeviceContext, typename T>
 class ScaleDenseTensorFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const T* scales,
                   phi::DenseTensor* seq);
 };

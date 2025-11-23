@@ -480,6 +480,10 @@ InferSymbolicShapeContext::GetOpInferSymbolicShapeCache(
   return std::nullopt;
 }
 
+void InferSymbolicShapeContext::ClearOpInferSymbolicShapeCache() {
+  infer_symbolic_shape_cache_.clear();
+}
+
 bool InferSymbolicShapeContext::HasPredefinedDimExprForInputName(
     const std::string& input_name) const {
   return predefined_dimexpr_map_for_inputs_.count(input_name) != 0;

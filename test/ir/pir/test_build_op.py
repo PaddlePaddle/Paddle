@@ -22,28 +22,27 @@ paddle.enable_static()
 
 def get_ir_program():
     paddle.enable_static()
-    with paddle.pir_utils.OldIrGuard():
-        x = paddle.randn([4, 4])
-        main_program, start_program = (
-            paddle.static.Program(),
-            paddle.static.Program(),
-        )
-        with paddle.static.program_guard(main_program, start_program):
-            x_s = paddle.static.data('x', [4, 4], x.dtype)
-            x_s.stop_gradient = False
-            y_s = paddle.matmul(x_s, x_s)
-            y_s = paddle.add(x_s, y_s)
-            y_s = paddle.tanh(y_s)
-        pir_program = pir.translate_to_pir(main_program.desc)
-        return pir_program
+    x = paddle.randn([4, 4])
+    main_program, start_program = (
+        paddle.static.Program(),
+        paddle.static.Program(),
+    )
+    with paddle.static.program_guard(main_program, start_program):
+        x_s = paddle.static.data('x', [4, 4], x.dtype)
+        x_s.stop_gradient = False
+        y_s = x_s @ x_s
+        y_s = paddle.add(x_s, y_s)
+        y_s = paddle.tanh(y_s)
+    return main_program
 
 
 class TestBuildOp(unittest.TestCase):
     def test_build_mean_op(self):
         pir_program = get_ir_program()
         tanh_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             out = paddle.mean(tanh_out)
             self.assertEqual(out.get_defining_op().name(), "pd_op.mean")
@@ -63,8 +62,9 @@ class TestBuildOp2(unittest.TestCase):
     def test_build_add_n_op(self):
         pir_program = get_ir_program()
         tanh_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             out1 = paddle.mean(tanh_out)
             out2 = paddle.mean(tanh_out)
@@ -99,7 +99,6 @@ class TestBuildOp3(unittest.TestCase):
                 out = paddle.mean(sum_out)
                 tanh_operand.set_source(out)
 
-            print(pir_program)
             self.assertEqual(
                 tanh_operand.source().get_defining_op().name(), "pd_op.mean"
             )
@@ -109,8 +108,9 @@ class TestBuildOp4(unittest.TestCase):
     def test_build_concat_op(self):
         pir_program = get_ir_program()
         tanh_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             out = paddle.concat([tanh_out, tanh_out], 0)
             self.assertEqual(out.get_defining_op().name(), "pd_op.concat")
@@ -128,8 +128,9 @@ class TestBuildOp5(unittest.TestCase):
     def test_build_split_op(self):
         pir_program = get_ir_program()
         tanh_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             out = paddle.split(tanh_out, [2, 2], 0)
             self.assertEqual(out[0].get_defining_op().name(), "builtin.split")
@@ -148,8 +149,9 @@ class TestBuildOp6(unittest.TestCase):
     def test_build_tensorrt_engine_op(self):
         pir_program = get_ir_program()
         tanh_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             # create fake tensorrt op
             trt_params = paddle.base.libpaddle.TRTEngineParams()
@@ -200,14 +202,14 @@ class TestGetValueByOpId(unittest.TestCase):
             )
             pred = paddle.less_than(y, x)
             out = paddle.static.nn.cond(pred, true_func, false_func)
-            value1 = main_program.get_value_by_op_id(69)
+            value1 = main_program.get_value_by_op_id(87)
             self.assertEqual(
                 out.get_defining_op().id(),
                 value1[0].get_defining_op().id(),
             )
-            value2 = main_program.get_value_by_op_id([58, 69])
+            value2 = main_program.get_value_by_op_id([58, 87])
             self.assertEqual(
-                69,
+                87,
                 value2[0].get_defining_op().id(),
             )
 

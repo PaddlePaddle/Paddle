@@ -12,13 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -40,8 +45,8 @@ class TestFlipOp_API(unittest.TestCase):
             output = paddle.flip(output, -1)
             output = output.flip(0)
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
             exe.run(startup_program)
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
@@ -157,25 +162,32 @@ class TestFlipOpNegAxis(TestFlipOp):
         self.axis = [-1]
 
 
+class TestFlipOp_ZeroSize(TestFlipOp):
+    def init_test_case(self):
+        self.in_shape = (4, 0, 6, 3)
+        self.axis = [0, 2]
+
+
 # ----------------flip_fp16----------------
 def create_test_fp16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestFlipFP16(parent):
         def init_dtype(self):
             self.dtype = np.float16
 
         def test_check_output(self):
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 if core.is_float16_supported(place):
                     self.check_output_with_place(
                         place, check_cinn=True, check_pir=True
                     )
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
                     place, ["X"], "Out", check_cinn=True, check_pir=True
@@ -198,8 +210,8 @@ create_test_fp16_class(TestFlipOpNegAxis)
 # ----------------flip_bf16----------------
 def create_test_bf16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        not (core.is_compiled_with_cuda() or is_custom_device())
+        or not core.is_bfloat16_supported(get_device_place()),
         "core is not compiled with CUDA and do not support bfloat16",
     )
     class TestFlipBF16(parent):
@@ -207,12 +219,12 @@ def create_test_bf16_class(parent):
             self.dtype = np.uint16
 
         def test_check_output(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_output_with_place(place, check_pir=True)
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(place, ["X"], "Out", check_pir=True)
 
@@ -254,16 +266,7 @@ class TestFlipDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 
@@ -291,16 +294,7 @@ class TestFlipTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 

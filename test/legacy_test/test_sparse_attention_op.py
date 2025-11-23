@@ -13,29 +13,15 @@
 # limitations under the License.
 
 import copy
-import os
-import re
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_cuda_version, get_device_place, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
-
-
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
 
 
 def masked_fill(x):
@@ -201,7 +187,8 @@ def api_wrapper(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11030,
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or get_cuda_version() < 11030,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
 )
 class TestSparseAttentionOp(OpTest):
@@ -217,7 +204,7 @@ class TestSparseAttentionOp(OpTest):
         self.op_type = "sparse_attention"
         self.python_api = api_wrapper
         self.python_out_sig = ['Out']
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.q = np.random.random(self.shape).astype(self.dtype)
         self.k = np.random.random(self.shape).astype(self.dtype)
         self.v = np.random.random(self.shape).astype(self.dtype)
@@ -302,12 +289,13 @@ class TestSparseAttentionOpShapeTest(TestSparseAttentionOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11030,
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or get_cuda_version() < 11030,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
 )
 class TestSparseAttentionAPI(unittest.TestCase):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (1, 1, 8, 4)
         self.blocksize = 2
         self.dtype = 'float64'
@@ -494,7 +482,7 @@ class TestSparseAttentionAPI(unittest.TestCase):
 
 class TestSparseAttentionAPITestFloat(TestSparseAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (2, 2, 8, 4)
         self.blocksize = 2
         self.dtype = 'float32'
@@ -503,7 +491,7 @@ class TestSparseAttentionAPITestFloat(TestSparseAttentionAPI):
 
 class TestSparseAttentionAPITestShape1(TestSparseAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (2, 2, 64, 32)
         self.blocksize = 2
         self.dtype = 'float64'
@@ -512,7 +500,7 @@ class TestSparseAttentionAPITestShape1(TestSparseAttentionAPI):
 
 class TestSparseAttentionAPITestShape2(TestSparseAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (2, 1, 64, 32)
         self.blocksize = 2
         self.dtype = 'float64'
@@ -521,7 +509,7 @@ class TestSparseAttentionAPITestShape2(TestSparseAttentionAPI):
 
 class TestSparseAttentionAPITestShape3(TestSparseAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (4, 4, 128, 32)
         self.blocksize = 8
         self.dtype = 'float64'
@@ -530,7 +518,7 @@ class TestSparseAttentionAPITestShape3(TestSparseAttentionAPI):
 
 class TestSparseAttentionAPITestShape4(TestSparseAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (3, 3, 35, 15)
         self.blocksize = 3
         self.dtype = 'float64'

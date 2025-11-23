@@ -332,7 +332,7 @@ class TestTransformWhileLoopWithoutTensor(TestTransformWhileLoop):
         self.dyfunc = while_loop_dyfunc_without_tensor
 
 
-class TestTransformWhileLoopWithConflicVar(TestTransformWhileLoop):
+class TestTransformWhileLoopWithConflictVar(TestTransformWhileLoop):
     def _init_dyfunc(self):
         self.dyfunc = while_loop_dyfun_with_conflict_var
 
@@ -507,8 +507,8 @@ class TestLoopChangeValueToInt(Dy2StTestBase):
 def loop_update_iter_inner_normal(x):
     y = x + 1
     out = 0
-    for item in y:
-        y[0] = paddle.full([], 1, dtype="int64")
+    for i in range(len(y)):
+        y[0] = paddle.full([], 1, dtype="int64") + i
         out += y
     return out
 

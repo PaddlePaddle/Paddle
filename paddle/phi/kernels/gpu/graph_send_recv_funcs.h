@@ -61,8 +61,8 @@ __global__ void GraphSendRecvCUDAKernel(const T* params,
                                         const IndexT* src_indices,
                                         const IndexT* dst_indices,
                                         T* output,
-                                        size_t index_size,
-                                        size_t slice_size,
+                                        int64_t index_size,
+                                        int64_t slice_size,
                                         Functor functor) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
@@ -78,8 +78,8 @@ __global__ void GraphSendRecvCUDAKernel(const T* params,
 // For max
 template <typename T>
 __global__ void InputResetMaxCUDAKernel(T* output,
-                                        size_t input_size,
-                                        size_t slice_size) {
+                                        int64_t input_size,
+                                        int64_t slice_size) {
   CUDA_KERNEL_LOOP_TYPE(i, input_size * slice_size, int64_t) {
     if (*(output + i) == std::numeric_limits<T>::lowest()) {
       *(output + i) = 0;
@@ -90,8 +90,8 @@ __global__ void InputResetMaxCUDAKernel(T* output,
 // For min
 template <typename T>
 __global__ void InputResetMinCUDAKernel(T* output,
-                                        size_t input_size,
-                                        size_t slice_size) {
+                                        int64_t input_size,
+                                        int64_t slice_size) {
   CUDA_KERNEL_LOOP_TYPE(i, input_size * slice_size, int64_t) {
     if (*(output + i) == std::numeric_limits<T>::max()) {
       *(output + i) = 0;
@@ -130,8 +130,8 @@ __global__ void ManipulateMeanGradCUDAKernel(const T* params,
                                              const IndexT* src_indices,
                                              const IndexT* dst_indices,
                                              T* output,
-                                             size_t index_size,
-                                             size_t slice_size,
+                                             int64_t index_size,
+                                             int64_t slice_size,
                                              const int32_t* dst_count) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;

@@ -437,18 +437,13 @@ def adjust_brightness(
             >>> fake_img = Image.fromarray(fake_img)
             >>> print(fake_img.size)
             (300, 256)
-            >>> print(fake_img.load()[1,1]) # type: ignore[index]
+            >>> print(fake_img.load()[1, 1]) # type: ignore[index]
             (61, 155, 171)
             >>> converted_img = F.adjust_brightness(fake_img, 0.5)
             >>> print(converted_img.size)
             (300, 256)
-            >>> print(converted_img.load()[1,1]) # type: ignore[index]
+            >>> print(converted_img.load()[1, 1])
             (30, 77, 85)
-
-
-
-
-
     """
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)

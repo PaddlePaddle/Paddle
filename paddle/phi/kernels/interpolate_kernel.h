@@ -20,7 +20,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void BilinearInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -37,7 +37,7 @@ void BilinearInterpKernel(
 
 template <typename T, typename Context>
 void NearestInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -54,7 +54,7 @@ void NearestInterpKernel(
 
 template <typename T, typename Context>
 void TrilinearInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -71,7 +71,7 @@ void TrilinearInterpKernel(
 
 template <typename T, typename Context>
 void LinearInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -88,7 +88,7 @@ void LinearInterpKernel(
 
 template <typename T, typename Context>
 void BicubicInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -103,4 +103,37 @@ void BicubicInterpKernel(
     int align_mode,
     DenseTensor* output);
 
+template <typename T, typename Context>
+void LegacyBilinearInterpKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
+    const std::string& data_layout,
+    int out_d,
+    int out_h,
+    int out_w,
+    float scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    DenseTensor* output);
+
+template <typename T, typename Context>
+void LegacyNearestInterpKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
+    const std::string& data_layout,
+    int out_d,
+    int out_h,
+    int out_w,
+    float scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    DenseTensor* output);
 }  // namespace phi

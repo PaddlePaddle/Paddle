@@ -22,7 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void KthvalueKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    int k,
+                    int64_t k,
                     int axis,
                     bool keepdim,
                     DenseTensor* out,

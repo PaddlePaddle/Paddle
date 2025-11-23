@@ -30,7 +30,11 @@ struct DigammaFunctor {
   HOSTDEVICE void operator()(int64_t idx) const {
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     const MPType mp_input = static_cast<MPType>(input_[idx]);
-    output_[idx] = static_cast<T>(Eigen::numext::digamma(mp_input));
+    MPType eigen_out = Eigen::numext::digamma(mp_input);
+    constexpr MPType mp_inf = std::numeric_limits<MPType>::infinity();
+    MPType mp_out =
+        mp_input == 0 ? (std::signbit(mp_input) ? mp_inf : -mp_inf) : eigen_out;
+    output_[idx] = static_cast<T>(mp_out);
   }
 
  private:
@@ -40,12 +44,17 @@ struct DigammaFunctor {
 };
 
 template <typename T, typename Context>
-void DigammaKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  ctx.template Alloc<T>(out);
+void DigammaKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
   auto* x_data = x.data<T>();
   auto* out_data = out->data<T>();
   auto numel = x.numel();
-  phi::funcs::ForRange<Context> for_range(ctx, numel);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   DigammaFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);
 }

@@ -310,10 +310,10 @@ DEFINE_EXTERNAL_API_TYPE(cusolverStatus_t, CUSOLVER_STATUS_SUCCESS);
 DEFINE_EXTERNAL_API_TYPE(cufftResult_t, CUFFT_SUCCESS);
 DEFINE_EXTERNAL_API_TYPE(CUresult, CUDA_SUCCESS);
 
-#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
+#if !defined(__APPLE__) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_XCCL))
 DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
 #endif
-
 }  // namespace details
 
 template <typename T>
@@ -746,6 +746,14 @@ inline void retry_sleep(unsigned millisecond) {
 
 #undef DEFINE_EXTERNAL_API_TYPE
 #endif  // PADDLE_WITH_HIP
+
+#define PADDLE_THROW_BAD_ALLOC(...)                                           \
+  do {                                                                        \
+    HANDLE_THE_ERROR                                                          \
+    throw ::paddle::memory::allocation::BadAlloc(                             \
+        ::common::ErrorSummary(__VA_ARGS__).to_string(), __FILE__, __LINE__); \
+    END_HANDLE_THE_ERROR                                                      \
+  } while (0)
 
 }  // namespace enforce
 using namespace enforce;  // NOLINT

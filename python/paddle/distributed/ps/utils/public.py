@@ -842,9 +842,9 @@ def find_heter_ops(program, default_device="cpu"):
 
             # for cpu-op block append
             if len(current_default_block_ops) > 1:
-                default_ops[default_device][
-                    block_index
-                ] = current_default_block_ops
+                default_ops[default_device][block_index] = (
+                    current_default_block_ops
+                )
                 program_block_ops.append(current_default_block_ops)
                 current_default_block_ops = []
                 block_index += 1
@@ -918,9 +918,9 @@ def union_forward_gradient_op(program_block_ops_list):
     """
     block_length = len(program_block_ops_list)
     union_program_block_ops_list = []
-    assert (
-        block_length % 2 != 0
-    ), "the length of program_block_ops_list should be odd"
+    assert block_length % 2 != 0, (
+        "the length of program_block_ops_list should be odd"
+    )
     for i in range(0, block_length // 2):
         block_op_list = {"forward": program_block_ops_list[i]}
         block_op_list.update(
@@ -1499,12 +1499,12 @@ def build_var_distributed(context):
 
         for merged in merged_variables_pairs:
             m_param, m_grad = merged
-            context["merged_variable_map"][
-                m_param.merged_var.name
-            ] = m_param.merged_var
-            context["merged_variable_map"][
-                m_grad.merged_var.name
-            ] = m_grad.merged_var
+            context["merged_variable_map"][m_param.merged_var.name] = (
+                m_param.merged_var
+            )
+            context["merged_variable_map"][m_grad.merged_var.name] = (
+                m_grad.merged_var
+            )
 
         param_merges = []
         param_merges.extend(origin_for_sparse)

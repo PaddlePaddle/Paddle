@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/transpose_grad_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/transpose_grad_kernel_impl.h"
 
@@ -27,14 +26,17 @@ PD_REGISTER_KERNEL(transpose_grad,
                    float,
                    double,
                    uint8_t,
+                   uint16_t,
+                   uint32_t,
+                   uint64_t,
                    int8_t,
                    int16_t,
                    int32_t,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(trans_layout_grad,
                    GPU,
@@ -45,7 +47,7 @@ PD_REGISTER_KERNEL(trans_layout_grad,
                    double,
                    int32_t,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

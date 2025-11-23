@@ -46,6 +46,7 @@ EXTERN_CALL_DCL(Log2);
 EXTERN_CALL_DCL(Log10);
 EXTERN_CALL_DCL(Floor);
 EXTERN_CALL_DCL(Ceil);
+EXTERN_CALL_DCL(Rint);
 EXTERN_CALL_DCL(Round);
 EXTERN_CALL_DCL(Trunc);
 EXTERN_CALL_DCL(Cos);
@@ -96,7 +97,7 @@ Expr Abs(Expr e);
 
 inline Expr Negative(Expr e) { return -e; }
 inline Expr Identity(Expr e) { return e; }
-inline Expr LogicalNot(Expr e) { return !e; }
+inline Expr LogicalNot(Expr e) { return !(ir::Cast::Make(common::Bool(), e)); }
 inline Expr BitwiseNot(Expr e) { return ~e; }
 inline Expr BitwiseAnd(Expr a, Expr b) { return a & b; }
 inline Expr BitwiseOr(Expr a, Expr b) { return a | b; }

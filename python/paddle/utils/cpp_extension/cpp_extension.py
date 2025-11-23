@@ -20,10 +20,17 @@ import os
 import copy
 import concurrent
 import re
+import warnings
+import collections
 import setuptools
+import sys
+import paddle
+import site
+
 from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
 from distutils.command.build import build
+from setuptools.command.install import install
 
 
 from .extension_utils import (
@@ -32,6 +39,7 @@ from .extension_utils import (
     find_ccache_home,
     find_rocm_home,
     normalize_extension_kwargs,
+    define_paddle_extension_name,
 )
 from .extension_utils import (
     is_cuda_file,
@@ -51,9 +59,9 @@ from .extension_utils import (
 )
 from .extension_utils import _reset_so_rpath, clean_object_if_change_cflags
 from .extension_utils import (
-    bootstrap_context,
     get_build_directory,
     add_std_without_repeat,
+    custom_write_stub,
 )
 
 from .extension_utils import (
@@ -210,17 +218,17 @@ def setup(**attr: Any) -> None:
     if 'name' not in attr:
         raise ValueError(error_msg)
 
-    assert not attr['name'].endswith(
-        'module'
-    ), "Please don't use 'module' as suffix in `name` argument, "
+    assert not attr['name'].endswith('module'), (
+        "Please don't use 'module' as suffix in `name` argument, "
+    )
     "it will be stripped in setuptools.bdist_egg and cause import error."
 
     ext_modules = attr.get('ext_modules', [])
     if not isinstance(ext_modules, list):
         ext_modules = [ext_modules]
-    assert (
-        len(ext_modules) == 1
-    ), f"Required only one Extension, but received {len(ext_modules)}. If you want to compile multi operators, you can include all necessary source files in one Extension."
+    assert len(ext_modules) == 1, (
+        f"Required only one Extension, but received {len(ext_modules)}. If you want to compile multi operators, you can include all necessary source files in one Extension."
+    )
     # replace Extension.name with attr['name] to keep consistent with Package name.
     for ext_module in ext_modules:
         ext_module.name = attr['name']
@@ -230,6 +238,11 @@ def setup(**attr: Any) -> None:
     # Add rename .so hook in easy_install
     assert 'easy_install' not in cmdclass
     cmdclass['easy_install'] = EasyInstallCommand
+
+    # Compatible with wheel installation via `pip install .`
+    # Note: This is rarely used with modern pip, which uses bdist_wheel instead
+    assert 'install' not in cmdclass
+    cmdclass['install'] = InstallCommand
 
     # Note(Aurelius84): Add rename build_base directory hook in build command.
     # To avoid using same build directory that will lead to remove the directory
@@ -242,9 +255,7 @@ def setup(**attr: Any) -> None:
     # See http://peak.telecommunity.com/DevCenter/setuptools#setting-the-zip-safe-flag
     attr['zip_safe'] = False
 
-    # switch `write_stub` to inject paddle api in .egg
-    with bootstrap_context():
-        setuptools.setup(**attr)
+    setuptools.setup(**attr)
 
 
 def CppExtension(
@@ -439,6 +450,9 @@ class BuildExtension(build_ext):
             original_compile = self.compiler.compile
             original_spawn = self.compiler.spawn
 
+        for extension in self.extensions:
+            define_paddle_extension_name(extension)
+
         def unix_custom_compile_single_file(
             self, obj, src, ext, cc_args, extra_postargs, pp_opts
         ):
@@ -454,10 +468,10 @@ class BuildExtension(build_ext):
                 # nvcc or hipcc compile CUDA source
                 if is_cuda_file(src):
                     if core.is_compiled_with_rocm():
-                        assert (
-                            ROCM_HOME is not None
-                        ), "Not found ROCM runtime, \
+                        assert ROCM_HOME is not None, (
+                            "Not found ROCM runtime, \
                             please use `export ROCM_PATH= XXX` to specify it."
+                        )
                         if CCACHE_HOME is not None:
                             hipcc_cmd = os.path.join(ROCM_HOME, 'bin', 'hipcc')
                             hipcc_cmd = f'{CCACHE_HOME} {hipcc_cmd}'
@@ -467,11 +481,25 @@ class BuildExtension(build_ext):
                         # {'nvcc': {}, 'cxx: {}}
                         if isinstance(cflags, dict):
                             cflags = cflags['hipcc']
+                    elif core.is_compiled_with_custom_device("iluvatar_gpu"):
+                        ixcc_cmd = os.path.join(
+                            os.getenv("COREX_HOME", "/usr/local/corex/"),
+                            'bin',
+                            'clang++',
+                        )
+                        if not os.path.isfile(ixcc_cmd):
+                            raise ValueError(
+                                "Corex compiler is unavailable, please set `COREX_HOME` to specify it."
+                            )
+                        self.set_executable('compiler_so', ixcc_cmd)
+                        # {'nvcc': {}, 'cxx: {}}
+                        if isinstance(cflags, dict):
+                            cflags = cflags['nvcc']
                     else:
-                        assert (
-                            CUDA_HOME is not None
-                        ), "Not found CUDA runtime, \
+                        assert CUDA_HOME is not None, (
+                            "Not found CUDA runtime, \
                             please use `export CUDA_HOME= XXX` to specify it."
+                        )
                         if CCACHE_HOME is not None:
                             nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
                             nvcc_cmd = f'{CCACHE_HOME} {nvcc_cmd}'
@@ -628,10 +656,10 @@ class BuildExtension(build_ext):
                 src = src_list[0]
                 obj = obj_list[0]
                 if is_cuda_file(src):
-                    assert (
-                        CUDA_HOME is not None
-                    ), "Not found CUDA runtime, \
+                    assert CUDA_HOME is not None, (
+                        "Not found CUDA runtime, \
                         please use `export CUDA_HOME= XXX` to specify it."
+                    )
 
                     nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
                     if isinstance(self.cflags, dict):
@@ -703,7 +731,7 @@ class BuildExtension(build_ext):
                     # if user set build_directory, output objects there.
                     if build_directory is not None:
                         objects = [
-                            os.path.join(build_directory, os.path.basename(obj))
+                            os.path.join(build_directory, obj)
                             for obj in objects
                         ]
                     # ensure to use abspath
@@ -746,9 +774,9 @@ class BuildExtension(build_ext):
         split_str = '.'
         name_items = ext_name.split(split_str)
         if self.no_python_abi_suffix:
-            assert (
-                len(name_items) > 2
-            ), f"Expected len(name_items) > 2, but received {len(name_items)}"
+            assert len(name_items) > 2, (
+                f"Expected len(name_items) > 2, but received {len(name_items)}"
+            )
             name_items.pop(-2)
             ext_name = split_str.join(name_items)
 
@@ -818,6 +846,97 @@ class BuildExtension(build_ext):
                 CustomOpInfo.instance().add(
                     op_name, so_name=so_name, so_path=so_path
                 )
+
+    def _clean_intermediate_files(self):
+        for ext in self.extensions:
+            build_dir = os.path.dirname(self.get_ext_fullpath(ext.name))
+            for root, _, files in os.walk(build_dir):
+                for file in files:
+                    if file.endswith(".cu.o") or file.endswith('.o'):
+                        os.remove(os.path.join(root, file))
+                        print(f"Removed: {os.path.join(root, file)}")
+
+    def _generate_python_api_file(self) -> None:
+        """
+        Generate the top-level python api file (package stub) alongside the
+        built shared library in build_lib. This replaces the legacy bdist_egg
+        write_stub mechanism that is no longer triggered in setuptools >= 80.
+        """
+        try:
+            if not self.extensions:
+                return
+
+            # We only support a single extension per setup()
+            ext = self.extensions[0]
+            # Use get_ext_fullpath to handle both standard and inplace builds correctly
+            so_path = os.path.abspath(self.get_ext_fullpath(ext.name))
+            so_name = os.path.basename(so_path)
+            build_dir = os.path.dirname(so_path)
+
+            # Get the extension name from the extension module, not the distribution name
+            # This ensures we use the correct package name from setup.py
+            ext_name = ext.name
+
+            # Extract the last part of the extension name for the Python file
+            # For example, from "custom_setup_ops.my_ops.custom_relu" we get "custom_relu"
+            lib_name = ext_name.split('.')[-1] if '.' in ext_name else ext_name
+
+            pyfile = os.path.join(build_dir, f"{lib_name}.py")
+            # Write stub; it will reference the _pd_ renamed resource at import time
+            custom_write_stub(so_name, pyfile)
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to generate python api file: {e}"
+            ) from e
+
+    def _rename_inplace_shared_library(self) -> None:
+        """
+        Rename the shared library to *_pd_.so if it is an inplace build.
+        This is necessary for editable installs to work correctly with the python stub.
+        """
+        # We only support a single extension per setup()
+        if not self.extensions:
+            return
+
+        ext = self.extensions[0]
+        fullpath = self.get_ext_fullpath(ext.name)
+
+        filename = os.path.basename(fullpath)
+        dirname = os.path.dirname(fullpath)
+        name, ext_suffix = os.path.splitext(filename)
+
+        will_rename = False
+        if OS_NAME.startswith('linux') and ext_suffix == '.so':
+            will_rename = True
+        elif OS_NAME.startswith('darwin') and (
+            ext_suffix == '.dylib' or ext_suffix == '.so'
+        ):
+            will_rename = True
+        elif IS_WINDOWS and ext_suffix == '.pyd':
+            will_rename = True
+
+        if will_rename:
+            new_name = f"{name}_pd_{ext_suffix}"
+            new_path = os.path.join(dirname, new_name)
+
+            if os.path.exists(fullpath):
+                if os.path.exists(new_path):
+                    os.remove(new_path)
+                os.rename(fullpath, new_path)
+                print(
+                    f"Renaming {fullpath} to {new_path} for editable install compatibility"
+                )
+
+    def run(self):
+        super().run()
+
+        # Compatible with wheel installation via `pip install .`
+        self._generate_python_api_file()
+
+        if self.inplace:
+            self._rename_inplace_shared_library()
+
+        self._clean_intermediate_files()
 
 
 class EasyInstallCommand(easy_install):
@@ -890,6 +1009,222 @@ class BuildCommand(build):
         super().initialize_options()
         if self._specified_build_base is not None:
             self.build_base = self._specified_build_base
+
+
+class InstallCommand(install):
+    """
+    Extend install Command to:
+      1) choose an install dir that is actually importable (on sys.path)
+      2) ensure a single top-level entry for the package in site/dist-packages so
+         legacy tests that expect a sole artifact (egg/package) keep working
+      3) rename the compiled library to *_pd_.so to avoid shadowing the python stub
+    """
+
+    def _get_extension_name(self) -> str:
+        """
+        Get the extension name from the extension module, not the distribution name.
+        This ensures we use the correct package name from setup.py.
+
+        Note: This assumes there is only one extension module (len(ext_modules) == 1).
+
+        Returns:
+            str: The extension name
+        """
+        return self.distribution.ext_modules[0].name
+
+    def finalize_options(self) -> None:
+        super().finalize_options()
+
+        install_dir = (
+            getattr(self, 'install_lib', None)
+            or getattr(self, 'install_purelib', None)
+            or getattr(self, 'install_platlib', None)
+        )
+        if not install_dir or not os.path.isdir(install_dir):
+            return
+
+        # Get the extension name
+        ext_name = self._get_extension_name()
+
+        # Extract the first part of the extension name for the shared library
+        # For example, from "custom_setup_ops.my_ops.custom_relu" we get "custom_setup_ops"
+        pkg_name = ext_name.split('.')[0] if '.' in ext_name else ext_name
+
+        # Check if dist-info exists
+        has_dist_info = any(
+            name.endswith('.dist-info') and name.startswith(pkg_name)
+            for name in os.listdir(install_dir)
+        )
+        # If dist-info exists, we are installing a wheel, so we are done
+        if has_dist_info:
+            return
+
+        # Build candidate site dirs: global + user + entries already on sys.path
+        candidates = []
+        candidates.extend(site.getsitepackages())
+        usp = site.getusersitepackages()
+        if usp:
+            candidates.append(usp)
+        for sp in sys.path:
+            if isinstance(sp, str) and sp.endswith(
+                ('site-packages', 'dist-packages')
+            ):
+                candidates.append(sp)
+        # De-dup while preserving order
+        seen = set()
+        ordered = []
+        for c in candidates:
+            if c and c not in seen:
+                seen.add(c)
+                ordered.append(c)
+        # Prefer a candidate that is actually on sys.path
+        target = None
+        for c in ordered:
+            if c in sys.path and os.path.isdir(c):
+                target = c
+                break
+        # Fallback: pick the first existing candidate
+        if target is None:
+            for c in ordered:
+                if os.path.isdir(c):
+                    target = c
+                    break
+        if target:
+            option_dict = self.distribution.get_option_dict('install')
+
+            if 'install_lib' not in option_dict:
+                self.install_lib = target
+
+            if 'install_purelib' not in option_dict:
+                self.install_purelib = target
+
+            if 'install_platlib' not in option_dict:
+                self.install_platlib = target
+
+    def run(self, *args: Any, **kwargs: Any) -> None:
+        super().run(*args, **kwargs)
+
+        install_dir = (
+            getattr(self, 'install_lib', None)
+            or getattr(self, 'install_purelib', None)
+            or getattr(self, 'install_platlib', None)
+        )
+        if not install_dir or not os.path.isdir(install_dir):
+            return
+
+        # Get the extension name
+        ext_name = self._get_extension_name()
+
+        # Extract the first part of the extension name for the shared library
+        # For example, from "custom_setup_ops.my_ops.custom_relu" we get "custom_setup_ops"
+        pkg_name = ext_name.split('.')[0] if '.' in ext_name else ext_name
+
+        # Check if dist-info exists
+        has_egg_info = any(
+            name.endswith('.egg-info') and name.startswith(pkg_name)
+            for name in os.listdir(install_dir)
+        )
+        # If egg-info exists, we are installing a source distribution, we need to
+        # reorganize the files
+        if has_egg_info:
+            # First rename the shared library if present at top-level
+            self._rename_shared_library()
+            # Then canonicalize layout to a single top-level entry for this package
+            self._single_entry_layout()
+
+    def _rename_shared_library(self) -> None:
+        install_dir = (
+            getattr(self, 'install_lib', None)
+            or getattr(self, 'install_purelib', None)
+            or getattr(self, 'install_platlib', None)
+        )
+        if not install_dir or not os.path.isdir(install_dir):
+            return
+
+        # Get the extension name
+        ext_name = self._get_extension_name()
+
+        # Extract the last part of the extension name for the shared library
+        # For example, from "custom_setup_ops.my_ops.custom_relu" we get "custom_relu"
+        names = ext_name.split('.') if '.' in ext_name else [ext_name]
+        lib_name = names[-1]
+
+        suffix = (
+            '.pyd'
+            if IS_WINDOWS
+            else ('.dylib' if OS_NAME.startswith('darwin') else '.so')
+        )
+
+        # Build the directory path for the shared library
+        # For single-level: names[:-1] is empty, so dir_path = install_dir
+        # For multi-level: names[:-1] contains the package path
+        dir_path = os.path.join(install_dir, *names[:-1])
+        old = os.path.join(dir_path, f"{lib_name}{suffix}")
+        new = os.path.join(dir_path, f"{lib_name}_pd_{suffix}")
+        if os.path.exists(old):
+            if os.path.exists(new):
+                os.remove(new)
+            os.rename(old, new)
+
+    def _single_entry_layout(self) -> None:
+        """
+        Ensure only one top-level item in install_dir contains the package name by:
+          - moving {pkg}.py -> {pkg}/__init__.py
+          - moving {pkg}_pd_.so -> {pkg}/{pkg}_pd_.so
+          - removing any {pkg}-*.egg-info left by setuptools install (only if dist-info exists)
+        This keeps legacy tests that scan os.listdir(site_dir) happy.
+        """
+        install_dir = (
+            getattr(self, 'install_lib', None)
+            or getattr(self, 'install_purelib', None)
+            or getattr(self, 'install_platlib', None)
+        )
+        if not install_dir or not os.path.isdir(install_dir):
+            return
+
+        # Get the extension name
+        ext_name = self._get_extension_name()
+
+        # Extract the package path from the extension name
+        # For example, from "custom_setup_ops.my_ops.custom_relu" we get "custom_setup_ops/my_ops"
+        pkg_path_parts = (
+            ext_name.split('.')[:-1] if '.' in ext_name else [ext_name]
+        )
+        pkg_path = os.path.join(*pkg_path_parts)
+
+        # Extract the last part of the extension name for the Python file and shared library
+        # For example, from "custom_setup_ops.my_ops.custom_relu" we get "custom_relu"
+        lib_name = ext_name.split('.')[-1] if '.' in ext_name else ext_name
+
+        # Prepare paths
+        pkg_dir = os.path.join(install_dir, pkg_path)
+        py_src = os.path.join(install_dir, f"{lib_name}.py")
+        # Find compiled lib (renamed or not)
+        suf_so = (
+            '.pyd'
+            if IS_WINDOWS
+            else ('.dylib' if OS_NAME.startswith('darwin') else '.so')
+        )
+        so_candidates = [
+            os.path.join(install_dir, f"{lib_name}_pd_{suf_so}"),
+            os.path.join(install_dir, f"{lib_name}{suf_so}"),
+        ]
+        so_src = next((p for p in so_candidates if os.path.exists(p)), None)
+        # Create package dir
+        if not os.path.isdir(pkg_dir):
+            os.makedirs(pkg_dir, exist_ok=True)
+        # Move python stub to package/__init__.py if exists
+        if os.path.exists(py_src):
+            py_dst = os.path.join(pkg_dir, "__init__.py")
+            if os.path.exists(py_dst):
+                os.remove(py_dst)
+            os.replace(py_src, py_dst)
+        # Move shared lib into the package dir if exists
+        if so_src and os.path.exists(so_src):
+            so_dst = os.path.join(pkg_dir, os.path.basename(so_src))
+            if os.path.exists(so_dst):
+                os.remove(so_dst)
+            os.replace(so_src, so_dst)
 
 
 def load(
@@ -1003,12 +1338,12 @@ def load(
         extra_cxx_cflags = []
     if extra_cuda_cflags is None:
         extra_cuda_cflags = []
-    assert isinstance(
-        extra_cxx_cflags, list
-    ), f"Required type(extra_cxx_cflags) == list[str], but received {extra_cxx_cflags}"
-    assert isinstance(
-        extra_cuda_cflags, list
-    ), f"Required type(extra_cuda_cflags) == list[str], but received {extra_cuda_cflags}"
+    assert isinstance(extra_cxx_cflags, list), (
+        f"Required type(extra_cxx_cflags) == list[str], but received {extra_cxx_cflags}"
+    )
+    assert isinstance(extra_cuda_cflags, list), (
+        f"Required type(extra_cuda_cflags) == list[str], but received {extra_cuda_cflags}"
+    )
 
     log_v(
         "additional extra_cxx_cflags: [{}], extra_cuda_cflags: [{}]".format(
@@ -1038,3 +1373,140 @@ def load(
     custom_op_api = _import_module_from_library(name, build_base_dir, verbose)
 
     return custom_op_api
+
+
+def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
+    """
+    Determine CUDA arch flags to use.
+
+    For an arch, say "6.1", the added compile flag will be
+    ``-gencode=arch=compute_61,code=sm_61``.
+    For an added "+PTX", an additional
+    ``-gencode=arch=compute_xx,code=compute_xx`` is added.
+    """
+    # If cflags is given, there may already be user-provided arch flags in it
+    if cflags is not None:
+        for flag in cflags:
+            if any(x in flag for x in ['PADDLE_EXTENSION_NAME']):
+                continue
+            if 'arch' in flag:
+                return []
+
+    named_arches = collections.OrderedDict(
+        [
+            ('Pascal', '6.0;6.1+PTX'),
+            ('Volta+Tegra', '7.2'),
+            ('Volta', '7.0+PTX'),
+            ('Turing', '7.5+PTX'),
+            ('Ampere+Tegra', '8.7'),
+            ('Ampere', '8.0;8.6+PTX'),
+            ('Ada', '8.9+PTX'),
+            ('Hopper', '9.0+PTX'),
+            ('Blackwell+Tegra', '10.1'),
+            ('Blackwell', '10.0;12.0+PTX'),
+        ]
+    )
+
+    supported_arches = [
+        '6.0',
+        '6.1',
+        '6.2',
+        '7.0',
+        '7.2',
+        '7.5',
+        '8.0',
+        '8.6',
+        '8.7',
+        '8.9',
+        '9.0',
+        '9.0a',
+        '10.0',
+        '10.0a',
+        '10.1',
+        '10.1a',
+        '12.0',
+        '12.0a',
+    ]
+    valid_arch_strings = supported_arches + [
+        s + "+PTX" for s in supported_arches
+    ]
+
+    _arch_list = os.environ.get("PADDLE_CUDA_ARCH_LIST")
+
+    if not _arch_list:
+        warnings.warn(
+            "PADDLE_CUDA_ARCH_LIST are not set, all archs for visible cards are included for compilation. \n"
+            "If this is not desired, please set os.environ['PADDLE_CUDA_ARCH_LIST']."
+        )
+        arch_list = []
+        dev_types = core.get_all_custom_device_type()
+        if core.is_compiled_with_cuda():
+            for dev_id in range(paddle.device.cuda.device_count()):
+                capability = paddle.device.cuda.get_device_capability(
+                    dev_id
+                )  # (major, minor)
+                arch = f"{capability[0]}.{capability[1]}"
+                if arch not in arch_list:
+                    arch_list.append(arch)
+            arch_list = sorted(arch_list)
+            if arch_list:
+                arch_list[-1] += '+PTX'
+        elif dev_types and core.is_compiled_with_custom_device(dev_types[0]):
+            for dev_id in range(paddle.device.device_count()):
+                capability = paddle.device.get_device_capability(
+                    dev_types[0], dev_id
+                )
+                arch = f"{capability[0]}.{capability[1]}"
+                if arch not in arch_list:
+                    arch_list.append(arch)
+            arch_list = sorted(arch_list)
+            if arch_list:
+                arch_list[-1] += '+PTX'
+        else:
+            raise RuntimeError(
+                "Paddle is not compiled with CUDA or Custom Device, cannot determine CUDA arch."
+            )
+    else:
+        _arch_list = _arch_list.replace(' ', ';')
+        for named_arch, archival in named_arches.items():
+            _arch_list = _arch_list.replace(named_arch, archival)
+        arch_list = _arch_list.split(';')
+
+    flags = []
+    for arch in arch_list:
+        if arch not in valid_arch_strings:
+            raise ValueError(f"Unknown CUDA arch ({arch}) or GPU not supported")
+        version = arch.split('+')[0]
+        major, minor = version.split('.')
+        num = f"{major}{minor}"
+        flags.append(f"-gencode=arch=compute_{num},code=sm_{num}")
+        if arch.endswith('+PTX'):
+            flags.append(f"-gencode=arch=compute_{num},code=compute_{num}")
+    return sorted(set(flags))
+
+
+def _get_pybind11_abi_build_flags():
+    abi_cflags = []
+    for pname in ["COMPILER_TYPE", "STDLIB", "BUILD_ABI"]:
+        pval = getattr(paddle._C, f"_PYBIND11_{pname}")
+        if pval is not None and not IS_WINDOWS:
+            abi_cflags.append(f'-DPYBIND11_{pname}=\\"{pval}\\"')
+    return abi_cflags
+
+
+def _get_num_workers(verbose: bool) -> int | None:
+    max_jobs = os.environ.get('MAX_JOBS')
+    if max_jobs is not None and max_jobs.isdigit():
+        if verbose:
+            print(
+                f'Using envvar MAX_JOBS ({max_jobs}) as the number of workers...',
+                file=sys.stderr,
+            )
+        return int(max_jobs)
+    if verbose:
+        print(
+            'Allowing ninja to set a default number of workers... '
+            '(overridable by setting the environment variable MAX_JOBS=N)',
+            file=sys.stderr,
+        )
+    return None

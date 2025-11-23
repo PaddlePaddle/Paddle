@@ -131,7 +131,7 @@ __global__ void EmbeddingGradDeterministicKernel(T* table,
 }
 
 template <typename T, typename IdT>
-void LaunchEmbeddingGradDeterministicKernel(const GPUContext& ctx,
+void LaunchEmbeddingGradDeterministicKernel(const GPUContext& dev_ctx,
                                             const IdT* ids,
                                             const T* d_out,
                                             T* d_table,
@@ -153,12 +153,12 @@ void LaunchEmbeddingGradDeterministicKernel(const GPUContext& ctx,
                                   sizeof(IdT) * kWarpSize * kBlockDimY;
   if (start_idx < 0) {
     EmbeddingGradDeterministicKernel<T, IdT, kWarpSize, kBlockDimY, false>
-        <<<grids, threads, kSharedMemSize, ctx.stream()>>>(
+        <<<grids, threads, kSharedMemSize, dev_ctx.stream()>>>(
             d_table, d_out, ids, K, D, -1, -1);
   } else {
     int64_t end_idx = start_idx + N;
     EmbeddingGradDeterministicKernel<T, IdT, kWarpSize, kBlockDimY, true>
-        <<<grids, threads, kSharedMemSize, ctx.stream()>>>(
+        <<<grids, threads, kSharedMemSize, dev_ctx.stream()>>>(
             d_table, d_out, ids, K, D, start_idx, end_idx);
   }
 }

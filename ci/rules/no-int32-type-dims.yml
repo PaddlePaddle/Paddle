@@ -1,0 +1,54 @@
+id: no-int32-type-dims
+language: cpp
+files:
+  - paddle/phi/kernels/**
+ignores:
+  - paddle/phi/kernels/legacy/**
+  - paddle/phi/kernels/xpu/**
+  - paddle/phi/kernels/custom/**
+  - paddle/phi/kernels/sparse/**
+severity: error
+message: |
+  Use int64_t instead of int/int32_t for dims/shape/strides/numel/offset (large tensor support).
+  If it is a false positive, please contact zrr1999 (Recommend), wanghuancoder for more information.
+note: dims/shape/strides/numel/offset may be >= INT32_MAX; dims()/numel() return int64_t
+rule:
+  any:
+    # int x = <RIGHT>;
+    - pattern: int $VAR = $RIGHT
+    # int32_t x = <RIGHT>;
+    - pattern: int32_t $VAR = $RIGHT
+    # direct-initializer: int x(<RIGHT>);
+    - pattern: int $VAR($RIGHT)
+    # direct-initializer: int32_t x(<RIGHT>);
+    - pattern: int32_t $VAR($RIGHT)
+constraints:
+  RIGHT:
+    any:
+      # dims[...] / expr.dims()[...] / expr->dims()[...]
+      - pattern: $E.dims[$INDEX]
+      - pattern: $E.dims()[$INDEX]
+      - pattern: $E->dims[$INDEX]
+      - pattern: $E->dims()[$INDEX]
+      # shape[...] / expr.shape()[...] / expr->shape()[...]
+      - pattern: $E.shape[$INDEX]
+      - pattern: $E.shape()[$INDEX]
+      - pattern: $E->shape[$INDEX]
+      - pattern: $E->shape()[$INDEX]
+      # strides[...] / expr.strides()[...] / expr->strides()[...]
+      - pattern: $E.strides[$INDEX]
+      - pattern: $E.strides()[$INDEX]
+      - pattern: $E->strides[$INDEX]
+      - pattern: $E->strides()[$INDEX]
+      # numel / numel()
+      - pattern: $E.numel
+      - pattern: $E.numel()
+      - pattern: $E->numel()
+      - pattern: $E->numel()
+        # offset / offset()
+        # unsafe
+        # - pattern: $E.offset
+        # - pattern: $E.offset()
+fix: |
+  int64_t $VAR = $RIGHT;
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.

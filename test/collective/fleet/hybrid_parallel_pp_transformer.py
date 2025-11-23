@@ -22,7 +22,11 @@ import paddle.distributed as dist
 import paddle.nn.functional as F
 from paddle import nn
 from paddle.distributed import fleet
-from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
+from paddle.distributed.fleet.meta_parallel import (
+    LayerDesc,
+    PipelineDatasetPreprocessor,
+    PipelineLayer,
+)
 from paddle.nn import Layer
 
 
@@ -157,7 +161,6 @@ class TestDistPPTraining(unittest.TestCase):
 
     def test_pp_model(self):
         hcg = fleet.get_hybrid_communicate_group()
-        word_size = hcg.get_model_parallel_world_size()
         dp_id = hcg.get_data_parallel_rank()
         pp_id = hcg.get_stage_id()
         rank_id = dist.get_rank()
@@ -175,7 +178,7 @@ class TestDistPPTraining(unittest.TestCase):
         model = fleet.distributed_model(model)
         optimizer = fleet.distributed_optimizer(optimizer)
 
-        for step_id in range(5):
+        for _ in range(5):
             x_data = np.random.randint(0, vocab_size, size=[batch_size, length])
             x = paddle.to_tensor(x_data)
             x.stop_gradient = True
@@ -186,6 +189,34 @@ class TestDistPPTraining(unittest.TestCase):
             # TODO(shenliang03) add utest for loss
             if pp_id != 0:
                 np.testing.assert_allclose(loss.numpy(), e_loss.numpy())
+
+    def test_pp_model_with_dataset_processor(self):
+        hcg = fleet.get_hybrid_communicate_group()
+        dp_id = hcg.get_data_parallel_rank()
+        pp_id = hcg.get_stage_id()
+        rank_id = dist.get_rank()
+        topology = hcg.topology()
+        set_random_seed(1024, dp_id, rank_id)
+
+        model_ref = ModelPipe(topology)
+        model_test = ModelPipe(topology)
+        model_test.set_state_dict(model_ref.state_dict())
+
+        model_ref = fleet.distributed_model(model_ref)
+        model_test = fleet.distributed_model(model_test)
+
+        for _ in range(5):
+            x_data = np.random.randint(0, vocab_size, size=[batch_size, length])
+            x = paddle.to_tensor(x_data)
+            x.stop_gradient = True
+
+            loss_ref = model_ref.forward_backward_pipeline([x, x])
+
+            inputs = PipelineDatasetPreprocessor(lambda: [x, x])
+            loss_test = model_ref.forward_backward_pipeline(inputs)
+            # TODO(shenliang03) add utest for loss
+            if pp_id != 0:
+                np.testing.assert_equal(loss_ref.numpy(), loss_test.numpy())
 
 
 if __name__ == "__main__":

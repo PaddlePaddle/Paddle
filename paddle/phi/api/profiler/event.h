@@ -43,7 +43,7 @@ enum class EventRole {
   kSpecial,   // record event such as PE which is outer of thread local
 };
 
-class Event {
+class PADDLE_API Event {
  public:
   // The DeviceContext is used to get the cuda stream.
   // If CPU profiling mode, can pass nullptr.
@@ -81,7 +81,8 @@ class Event {
   uint64_t cpu_ns_;
   bool visited_status_{false};
   std::string attr_;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU)
 #ifdef PADDLE_WITH_CUPTI
   int64_t gpu_ns_ = 0;
 
@@ -140,23 +141,9 @@ class CudaEvent {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
  public:
-  CudaEvent() {
-#ifdef PADDLE_WITH_HIP
-    hipEventCreateWithFlags(&event_, flags_);
-#else
-    cudaEventCreateWithFlags(&event_, flags_);
-#endif
-    VLOG(4) << "CudaEvent " << event_;
-  }
+  PADDLE_API CudaEvent();
 
-  explicit CudaEvent(unsigned int flags) : flags_(flags) {
-#ifdef PADDLE_WITH_HIP
-    hipEventCreateWithFlags(&event_, flags_);
-#else
-    cudaEventCreateWithFlags(&event_, flags_);
-#endif
-    VLOG(4) << "CudaEvent " << event_;
-  }
+  PADDLE_API explicit CudaEvent(unsigned int flags);
 
   ~CudaEvent() {
 #ifdef PADDLE_WITH_HIP
@@ -174,41 +161,9 @@ class CudaEvent {
 #endif
   }
 
-  bool Query() {
-#ifdef PADDLE_WITH_HIP
-    gpuError_t err = hipEventQuery(event_);
-    if (err == hipSuccess) {
-      return true;
-    }
-    if (err == hipErrorNotReady) {
-      return false;
-    }
-#else
-    gpuError_t err = cudaEventQuery(event_);
-    if (err == cudaSuccess) {
-      return true;
-    }
-    if (err == cudaErrorNotReady) {
-      return false;
-    }
-#endif
-    PADDLE_ENFORCE_GPU_SUCCESS(err);
-    return false;
-  }
+  PADDLE_API bool Query();
 
-  float ElapsedTime(CudaEvent *end_event) {
-    float milliseconds = 0;
-#ifdef PADDLE_WITH_HIP
-    hipEventSynchronize(end_event->GetRawCudaEvent());
-    PADDLE_ENFORCE_GPU_SUCCESS(hipEventElapsedTime(
-        &milliseconds, event_, end_event->GetRawCudaEvent()));
-#else
-    cudaEventSynchronize(end_event->GetRawCudaEvent());
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventElapsedTime(
-        &milliseconds, event_, end_event->GetRawCudaEvent()));
-#endif
-    return milliseconds;
-  }
+  PADDLE_API float ElapsedTime(CudaEvent *end_event);
 
   void Synchronize() {
 #ifdef PADDLE_WITH_HIP

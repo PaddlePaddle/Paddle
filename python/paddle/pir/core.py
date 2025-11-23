@@ -93,10 +93,33 @@ _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
     DataType.INT32: 'int32',
     DataType.INT64: 'int64',
     DataType.UINT8: 'uint8',
+    DataType.UINT16: 'uint16',
+    DataType.UINT32: 'uint32',
+    DataType.UINT64: 'uint64',
     DataType.COMPLEX64: 'complex64',
     DataType.COMPLEX128: 'complex128',
     DataType.FLOAT8_E4M3FN: 'float8_e4m3fn',
     DataType.FLOAT8_E5M2: 'float8_e5m2',
+}
+
+
+str_to_paddle_type = {
+    "float32": DataType.FLOAT32,
+    "float64": DataType.FLOAT64,
+    "float16": DataType.FLOAT16,
+    "int32": DataType.INT32,
+    "int16": DataType.INT16,
+    "int64": DataType.INT64,
+    "bool": DataType.BOOL,
+    "bool_": DataType.BOOL,
+    "uint16": DataType.BFLOAT16,
+    "uint8": DataType.UINT8,
+    "int8": DataType.INT8,
+    "complex64": DataType.COMPLEX64,
+    "complex128": DataType.COMPLEX128,
+    "bfloat16": DataType.BFLOAT16,
+    "float8_e4m3fn": DataType.FLOAT8_E4M3FN,
+    "float8_e5m2": DataType.FLOAT8_E5M2,
 }
 
 
@@ -113,17 +136,11 @@ def convert_np_dtype_to_dtype_(np_dtype) -> DataType:
 
     """
     # Convert the data type string to numpy data type.
-    if isinstance(np_dtype, str) and np_dtype == "bfloat16":
-        # since there is still no support for bfloat16 in NumPy,
-        # uint16 is used for casting bfloat16
-        dtype = np.dtype("uint16")
-    elif isinstance(np_dtype, str) and np_dtype == "float8_e4m3fn":
-        dtype = 'float8_e4m3fn'
-    elif isinstance(np_dtype, str) and np_dtype == "float8_e5m2":
-        dtype = 'float8_e5m2'
-    else:
-        dtype = np.dtype(np_dtype)
-
+    if isinstance(np_dtype, str):
+        key = np_dtype.lower().strip()
+        if key in str_to_paddle_type:
+            return str_to_paddle_type[key]
+    dtype = np.dtype(np_dtype)
     if dtype in np_type_to_paddle_type:
         return np_type_to_paddle_type[dtype]
     else:
@@ -487,7 +504,7 @@ def _convert_into_value(tensor):
     Convert Tensor into Value.
     """
     import paddle
-    from paddle.jit.pir_dy2static.parameter_recorder import (
+    from paddle.jit.dy2static.parameter_recorder import (
         _global_parameter_recorder,
     )
 

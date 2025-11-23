@@ -325,7 +325,10 @@ class OpDequantBf16SquashPattern
     if (op_attributes.find("mkldnn_data_type") == op_attributes.end()) {
       return false;
     }
-    auto onednn_dtype = op_attributes.at("mkldnn_data_type")
+    auto mkldnn_dtype = op_attributes.at("mkldnn_data_type")
+                            .dyn_cast<pir::StrAttribute>()
+                            .AsString();
+    auto onednn_dtype = op_attributes.at("onednn_data_type")
                             .dyn_cast<pir::StrAttribute>()
                             .AsString();
 
@@ -337,7 +340,7 @@ class OpDequantBf16SquashPattern
              .data() == true)) {
       return false;
     }
-    if (onednn_dtype != "bfloat16") return false;
+    if (mkldnn_dtype != "bfloat16" && onednn_dtype != "bfloat16") return false;
     if (op_attributes.find("force_fp32_output") == op_attributes.end()) {
       return false;
     }
@@ -431,10 +434,13 @@ class CastBf16SquashPattern : public pir::OpRewritePattern<OpType> {
     if (!(with_q || with_dq)) return false;
 
     auto cast_attributes = op->attributes();
-    auto onednn_data_type = cast_attributes["mkldnn_data_type"];
+    auto mkldnn_data_type = cast_attributes["mkldnn_data_type"];
+    auto onednn_data_type = cast_attributes["onednn_data_type"];
+    std::string mkldnn_dtype =
+        mkldnn_data_type.template dyn_cast<pir::StrAttribute>().AsString();
     std::string onednn_dtype =
         onednn_data_type.template dyn_cast<pir::StrAttribute>().AsString();
-    if (onednn_dtype != "bfloat16") return false;
+    if (mkldnn_dtype != "bfloat16" && onednn_dtype != "bfloat16") return false;
 
     OpType new_cast;
     if (with_dq) {

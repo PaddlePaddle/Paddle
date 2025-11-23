@@ -34,10 +34,14 @@ void SvdvalsGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& s_grad,
                        DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   auto x_dims = x.dims();
-  int rows = static_cast<int>(x_dims[x_dims.size() - 2]);
-  int cols = static_cast<int>(x_dims[x_dims.size() - 1]);
-  int batches = static_cast<int>(x.numel() / (rows * cols));
+  int64_t rows = x_dims[x_dims.size() - 2];
+  int64_t cols = x_dims[x_dims.size() - 1];
+  int64_t batches = x.numel() / (rows * cols);
   DenseTensor dX_term;
   if (batches == 1) {
     dX_term = Diag<T, Context>(dev_ctx, s_grad, 0, 0);

@@ -88,16 +88,22 @@ def symbolic_translate(fn: Callable[P, R], **kwargs) -> Callable[P, R]:
 
     """
 
+    if not paddle.framework.use_pir_api():
+        raise RuntimeError(
+            "SOT is only supported when running in PIR mode. Please set the environment variable "
+            "FLAGS_enable_pir_api=1 to enable it."
+        )
+
     kwargs.setdefault('training', True)
 
     def callback(frame):
         return eval_frame_callback(frame, **kwargs)
 
     def impl(*args: P.args, **kwargs: P.kwargs) -> R:
+        assert hasattr(fn, "__code__"), (
+            "Target function doesn't have code for simulating."
+        )
         with StepInfoManager().step_guard(fn.__code__), SotStepProfilerGuard():
-            assert hasattr(
-                fn, "__code__"
-            ), "Target function doesn't have code for simulating."
             InfoCollector().clear_step_info()
             paddle.framework.core.set_eval_frame(callback)
             try:

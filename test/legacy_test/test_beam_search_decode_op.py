@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
 from op import Operator
+from op_test import get_device_place, is_custom_device
 
 from paddle.base import core
 
@@ -107,12 +107,13 @@ class TestBeamSearchDecodeOp(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestBeamSearchDecodeOpGPU(TestBeamSearchDecodeOp):
     def setUp(self):
         self.scope = core.Scope()
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
 
 if __name__ == '__main__':

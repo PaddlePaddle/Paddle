@@ -37,7 +37,7 @@ void EventPair::Start(cudaStream_t stream) {
   PADDLE_ENFORCE_EQ(
       started_,
       false,
-      phi::errors::InvalidArgument("GPUEventTimer has been started."));
+      common::errors::InvalidArgument("GPUEventTimer has been started."));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(start_, stream));
   started_ = true;
 }
@@ -46,7 +46,7 @@ void EventPair::Stop(cudaStream_t stream) {
   PADDLE_ENFORCE_EQ(
       started_,
       true,
-      phi::errors::InvalidArgument("GPUEventTimer has not been started."));
+      common::errors::InvalidArgument("GPUEventTimer has not been started."));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(end_, stream));
   started_ = false;
 }
@@ -57,7 +57,7 @@ double EventPair::Elapsed() {
   PADDLE_ENFORCE_EQ(
       started_,
       false,
-      phi::errors::InvalidArgument("GPUEventTimer has not been stopped."));
+      common::errors::InvalidArgument("GPUEventTimer has not been stopped."));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(start_));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(end_));
   float ms;
@@ -74,7 +74,7 @@ EventPair *GPUEventTimer::GetLatest() {
   PADDLE_ENFORCE_GT(
       length_,
       0,
-      phi::errors::InvalidArgument("GPUEventTimer has not been started."));
+      common::errors::InvalidArgument("GPUEventTimer has not been started."));
   auto &back = events_[length_ - 1];
   if (back == nullptr) {
     back.reset(new EventPair());

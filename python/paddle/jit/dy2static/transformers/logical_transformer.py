@@ -83,9 +83,9 @@ class LogicalTransformer(BaseTransformer):
           according to the actual order. In `convert_logical_and(lambda:x>1, lambda:y<1)`, `lambda:y<1`
           must be run after `lambda:x>1`, If `x>1` is False, `y<1` should NOT be run.
         '''
-        assert (
-            len(nodes) > 1
-        ), f"The length of BoolOp should be at least 2, but received {len(nodes)}."
+        assert len(nodes) > 1, (
+            f"The length of BoolOp should be at least 2, but received {len(nodes)}."
+        )
         if len(nodes) > 2:
             # Creates logic_and/logic_or node recursively.
             pre_logic_node = self._create_bool_op_node(nodes[:2], api_type)

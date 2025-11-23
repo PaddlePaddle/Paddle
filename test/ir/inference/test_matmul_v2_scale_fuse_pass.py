@@ -36,10 +36,12 @@ class TestMatmulV2ScaleFusePass(PassAutoScanTest):
         # yield config, ["matmul_v2", ], (1e-5, 1e-5)
 
         # onednn
-        config = self.create_inference_config(use_mkldnn=True)
-        yield config, [
-            "matmul_v2",
-        ], (1e-5, 1e-5)
+        config = self.create_inference_config(use_onednn=True)
+        yield (
+            config,
+            ["matmul_v2"],
+            (1e-5, 1e-5),
+        )
 
     def sample_program_config(self, draw):
         # 1. Generate shape and attr of matmul
@@ -117,7 +119,7 @@ class TestMatmulV2ScaleFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=100,
             passes=["matmul_v2_scale_fuse_pass"],

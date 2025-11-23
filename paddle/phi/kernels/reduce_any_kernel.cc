@@ -38,11 +38,16 @@ void AnyKernel(const Context& dev_ctx,
   bool reduce_all = recompute_reduce_all(x, dims);
   AnyRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
-
+#ifdef _WIN32
+INSTANTIATE_ANY_KERNEL(bool, CPUContext)
+#if defined(PADDLE_WITH_CUDA)
+INSTANTIATE_ANY_KERNEL(bool, GPUContext)
+#endif
+#endif
 }  // namespace phi
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+using complex64 = phi::complex64;
+using complex128 = phi::complex128;
 
 PD_REGISTER_KERNEL(any,
                    CPU,
@@ -79,5 +84,8 @@ PD_REGISTER_KERNEL(any, KPS, ALL_LAYOUT, phi::AnyKernel, bool) {}
 #endif
 
 #if defined(PADDLE_WITH_XPU)
-PD_REGISTER_KERNEL(any, XPU, ALL_LAYOUT, phi::AnyKernel, bool) {}
+PD_REGISTER_KERNEL(
+    any, XPU, ALL_LAYOUT, phi::AnyKernel, float, int, int64_t, bool) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
 #endif

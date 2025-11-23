@@ -16,7 +16,6 @@
 
 #include "paddle/phi/kernels/as_complex_kernel.h"
 
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
@@ -28,17 +27,17 @@ namespace phi {
  * old-fashioned real tensor. The size of the last dimension of the input tensor
  * should be 2, which corresponds to 'real' and 'complex', respectively.
  *
- * @param  ctx     device context
+ * @param  dev_ctx     device context
  * @param  x       the input tensor of as_complex
  * @param  out     the output tensor of as_complex
  */
 template <typename T, typename Context>
-void AsComplexKernel(const Context& ctx,
+void AsComplexKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      DenseTensor* out) {
-  ctx.template Alloc<phi::dtype::complex<T>>(out);
+  dev_ctx.template Alloc<phi::dtype::complex<T>>(out);
   auto out_dims_original = out->dims();
-  Copy(ctx, x, ctx.GetPlace(), false, out);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   out->Resize(out_dims_original);  // restored the shape.
   out->set_type(
       phi::CppTypeToDataType<phi::dtype::complex<T>>::Type());  // restored the

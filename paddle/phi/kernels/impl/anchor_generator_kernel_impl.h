@@ -23,6 +23,7 @@
 namespace phi {
 
 #ifdef PADDLE_WITH_CUDA
+#ifndef _WIN32
 template <typename T>
 extern __global__ void GenAnchors(T* out,
                                   const T* aspect_ratios,
@@ -40,6 +41,7 @@ extern __global__ void SetVariance(T* out,
                                    const T* var,
                                    const int vnum,
                                    const int num);
+#endif
 #endif
 
 template <typename T, typename Context>

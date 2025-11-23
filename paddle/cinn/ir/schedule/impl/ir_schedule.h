@@ -87,7 +87,6 @@ class DyScheduleImpl : public ScheduleBase {
   void ComputeInline(const Expr& schedule_block);
   void ReverseComputeInline(const Expr& schedule_block);
   void Bind(const Expr& loop, const std::string& thread_axis);
-  Expr Rfactor(const Expr& rf_loop, int rf_axis);
   Expr FactorizeReduction(const Expr& rf_loop,
                           int rf_axis,
                           bool with_write_back_block_init = true);

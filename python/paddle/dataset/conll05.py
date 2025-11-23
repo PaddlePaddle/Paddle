@@ -81,9 +81,10 @@ def corpus_reader(data_path, words_name, props_name):
         tf = tarfile.open(data_path)
         wf = tf.extractfile(words_name)
         pf = tf.extractfile(props_name)
-        with gzip.GzipFile(fileobj=wf) as words_file, gzip.GzipFile(
-            fileobj=pf
-        ) as props_file:
+        with (
+            gzip.GzipFile(fileobj=wf) as words_file,
+            gzip.GzipFile(fileobj=pf) as props_file,
+        ):
             sentences = []
             labels = []
             one_seg = []
@@ -189,7 +190,17 @@ def reader_creator(
             pred_idx = [predicate_dict.get(predicate)] * sen_len
             label_idx = [label_dict.get(w) for w in labels]
 
-            yield word_idx, ctx_n2_idx, ctx_n1_idx, ctx_0_idx, ctx_p1_idx, ctx_p2_idx, pred_idx, mark, label_idx
+            yield (
+                word_idx,
+                ctx_n2_idx,
+                ctx_n1_idx,
+                ctx_0_idx,
+                ctx_p1_idx,
+                ctx_p2_idx,
+                pred_idx,
+                mark,
+                label_idx,
+            )
 
     return reader
 

@@ -20,7 +20,9 @@
 #include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/common/dim_expr_converter.h"
+#include "paddle/cinn/common/shape_constraint.h"
 #include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
@@ -38,6 +40,7 @@
 #include "paddle/cinn/operator_fusion/fusion_interface.h"
 #include "paddle/cinn/optim/check_tensor_buffer_map.h"
 #include "paddle/cinn/optim/eliminate_common_global_memory_read.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/cinn/pass/pass_manager.h"
@@ -122,6 +125,10 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
                                 func_bodies,
                                 group->fusion_tracker_ptr,
                                 group->substitute_dimexpr_map());
+
+  std::for_each(func_bodies.begin(), func_bodies.end(), [](auto& expr) {
+    optim::SimplifyNoPureMath(&expr, ir::IndexExpr::OptLevel::kLevel4);
+  });
 
   std::unordered_set<std::string> fusion_group_args;
   for (auto value : group->GetInputOpValues()) {
@@ -295,9 +302,9 @@ std::vector<CondFuncPriorWrapper> OpLowererImpl::PostProcess(
     (*group_func_args).emplace_back(arg_tensor->buffer, io_type);
     // collect element size for longlong2int pass.
     if (FLAGS_cinn_longlong2int) {
-      inputs_element_size.push_back(common::FoldExpr(
+      inputs_element_size.push_back(cinn::optim::ArithSimplify(common::FoldExpr(
           [](const Expr& a, const Expr& b) { return ir::Mul::Make(a, b); },
-          arg_tensor->shape));
+          arg_tensor->shape)));
     }
     arg_name_set.insert(arg_tensor->buffer->name);
   }
@@ -313,10 +320,10 @@ std::vector<CondFuncPriorWrapper> OpLowererImpl::PostProcess(
     bool contain_unknown_dim = [&]() {
       bool check = op_result && op_result.type() &&
                    op_result.type().isa<paddle::dialect::DenseTensorType>();
-      PADDLE_ENFORCE_EQ(
-          check,
-          true,
-          phi::errors::PreconditionNotMet("cinn only support DenseTensorType"));
+      PADDLE_ENFORCE_EQ(check,
+                        true,
+                        ::common::errors::PreconditionNotMet(
+                            "cinn only support DenseTensorType"));
       const auto dims =
           op_result.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
       return ::common::contain_unknown_dim(dims);
@@ -839,6 +846,11 @@ ir::LoweredFunc OpLowererImpl::GenerateInferShapeFunc(
       ir::ConvertExprBlockToStmtBlock(infer_shape_func->body);
   return infer_shape_func;
 }
+bool IsOpDeniedOnCpu(::pir::Operation* op) {
+  // no op is denied after the support for composite reduce on cpu
+  static std::set<std::string> banned_ops = {"cinn_op.arange"};
+  return banned_ops.count(op->name());
+}
 ir::Expr OpLowererImpl::LowerX86(const OpLoweringGroupPtr& group,
                                  const std::vector<::pir::Operation*>& ops,
                                  bool apply_op_schedule) {
@@ -850,6 +862,9 @@ ir::Expr OpLowererImpl::LowerX86(const OpLoweringGroupPtr& group,
   std::vector<::pir::Value> vec_inputs;
   std::vector<::pir::Value> vec_outputs;
   for (auto* op : ops) {
+    if (IsOpDeniedOnCpu(op)) {
+      return ir::Expr(-1);
+    }
     for (size_t i = 0; i < op->num_operands(); ++i) {
       auto in = op->operand_source(i);
       if (!in || !in.type()) {

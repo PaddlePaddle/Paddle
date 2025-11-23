@@ -31,5 +31,5 @@ else
 fi
 protobuf/bin/protoc -I../../paddle/phi/core/ --python_out . ../../paddle/phi/core/external_error.proto
 
-python3.8 spider.py
+python3.10 spider.py
 tar czvf externalErrorMsg_$(date +'%Y%m%d').tar.gz externalErrorMsg.pb

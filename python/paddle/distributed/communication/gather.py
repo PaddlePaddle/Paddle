@@ -69,7 +69,7 @@ def gather(
             >>> # [[1, 2, 3], [4, 5, 6]] (2 GPUs, out for rank 0)
             >>> # [] (2 GPUs, out for rank 1)
     """
-    assert (
-        framework.in_dynamic_mode()
-    ), "gather doesn't support static graph mode yet."
+    assert framework.in_dynamic_mode(), (
+        "gather doesn't support static graph mode yet."
+    )
     return stream.gather(tensor, gather_list, dst, group, sync_op)

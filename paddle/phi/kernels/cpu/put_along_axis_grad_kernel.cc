@@ -35,11 +35,6 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
                             bool include_self,
                             DenseTensor* x_grad,
                             DenseTensor* value_grad) {
-  PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
-      true,
-      errors::PreconditionNotMet("PutAlongAxisGradOpKernel only runs on CPU."));
-
   const auto& index_type = index.dtype();
   if (x_grad) {
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
@@ -185,5 +180,6 @@ PD_REGISTER_KERNEL(put_along_axis_grad,
                    float,
                    double,
                    int,
+                   int16_t,
                    uint8_t,
                    int64_t) {}

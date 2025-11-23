@@ -59,6 +59,15 @@ set(CRYPTOPP_CMAKE_ARGS
     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
     -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER})
 
+# For CMake >= 4.0.0, set policy compatibility for cryptopp's CMake.
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
+  message(
+    WARNING
+      "cryptopp: forcing CMake policy compatibility for CMake >= 4.0 (CMAKE_POLICY_VERSION_MINIMUM=3.5)"
+  )
+  list(APPEND CRYPTOPP_CMAKE_ARGS -DCMAKE_POLICY_VERSION_MINIMUM=3.5)
+endif()
+
 include_directories(${CRYPTOPP_INCLUDE_DIR})
 
 ExternalProject_Add(

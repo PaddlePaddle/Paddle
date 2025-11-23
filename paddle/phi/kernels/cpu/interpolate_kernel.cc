@@ -26,7 +26,7 @@ namespace phi {
 template <typename T>
 static inline T cubic_interp(T x0, T x1, T x2, T x3, T t) {
   std::array<T, 4> coeffs;
-  funcs::get_cubic_upsample_coefficients<T>(coeffs.data(), t);
+  funcs::GetCubicUpsampleCoefficients<T>(coeffs.data(), t);
 
   return x0 * coeffs[0] + x1 * coeffs[1] + x2 * coeffs[2] + x3 * coeffs[3];
 }
@@ -561,7 +561,7 @@ static void Interpolate1DCPUFwd(
     int align_mode,
     DenseTensor* output) {
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
+  int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_w = -1.;
@@ -662,7 +662,7 @@ static void Interpolate2DCPUFwd(
     int align_mode,
     DenseTensor* output) {
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
+  int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_h = -1;
@@ -754,25 +754,17 @@ static void Interpolate2DCPUFwd(
     return;
   }
 
-  float ratio_h = 0.f;
-  float ratio_w = 0.f;
-  if (out_h > 1) {
-    float new_scale_h = 0.f;
-    new_scale_h = (scale_h > 0)
-                      ? static_cast<float>(1. / scale_h)
-                      : static_cast<float>(in_h) / static_cast<float>(out_h);
-    ratio_h = (align_corners)
-                  ? static_cast<float>(in_h - 1) / static_cast<float>(out_h - 1)
-                  : static_cast<float>(new_scale_h);
+  float ratio_h =
+      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
+  float ratio_w =
+      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
+
+  // TODO(zrr1999): to align xpu
+  if (out_h <= 1) {
+    ratio_h = 0;
   }
-  if (out_w > 1) {
-    float new_scale_w = 0.f;
-    new_scale_w = (scale_w > 0)
-                      ? static_cast<float>(1. / scale_w)
-                      : static_cast<float>(in_w) / static_cast<float>(out_w);
-    ratio_w = (align_corners)
-                  ? static_cast<float>(in_w - 1) / static_cast<float>(out_w - 1)
-                  : static_cast<float>(new_scale_w);
+  if (out_w <= 1) {
+    ratio_w = 0;
   }
 
   if ("bilinear" == interp_method) {
@@ -833,7 +825,7 @@ static void Interpolate3DCPUFwd(
     int align_mode,
     DenseTensor* output) {
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
+  int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_d = -1;
@@ -953,36 +945,12 @@ static void Interpolate3DCPUFwd(
     return;
   }
 
-  float ratio_d = 0.f;
-  float ratio_h = 0.f;
-  float ratio_w = 0.f;
-  if (out_d > 1) {
-    float new_scale_d = 0.f;
-    new_scale_d = (scale_d > 0)
-                      ? static_cast<float>(1. / scale_d)
-                      : static_cast<float>(in_d) / static_cast<float>(out_d);
-    ratio_d = (align_corners)
-                  ? static_cast<float>(in_d - 1) / static_cast<float>(out_d - 1)
-                  : static_cast<float>(new_scale_d);
-  }
-  if (out_h > 1) {
-    float new_scale_h = 0.f;
-    new_scale_h = (scale_h > 0)
-                      ? static_cast<float>(1. / scale_h)
-                      : static_cast<float>(in_h) / static_cast<float>(out_h);
-    ratio_h = (align_corners)
-                  ? static_cast<float>(in_h - 1) / static_cast<float>(out_h - 1)
-                  : static_cast<float>(new_scale_h);
-  }
-  if (out_w > 1) {
-    float new_scale_w = 0.f;
-    new_scale_w = (scale_w > 0)
-                      ? static_cast<float>(1. / scale_w)
-                      : static_cast<float>(in_w) / static_cast<float>(out_w);
-    ratio_w = (align_corners)
-                  ? static_cast<float>(in_w - 1) / static_cast<float>(out_w - 1)
-                  : static_cast<float>(new_scale_w);
-  }
+  float ratio_d =
+      funcs::AreaPixelComputeScale<float>(in_d, out_d, align_corners, scale_d);
+  float ratio_h =
+      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
+  float ratio_w =
+      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
 
   if ("trilinear" == interp_method) {
     TrilinearInterpolation<T>(x,
@@ -1019,7 +987,7 @@ static void Interpolate3DCPUFwd(
 
 template <typename T, typename Context>
 void InterpolateKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -1033,9 +1001,14 @@ void InterpolateKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(output);
+    return;
+  }
+
   auto input_dims = x.dims();
   if (input_dims.size() == 3) {  // 1D interpolation
-    Interpolate1DCPUFwd<T, Context>(ctx,
+    Interpolate1DCPUFwd<T, Context>(dev_ctx,
                                     x,
                                     out_size,
                                     size_tensor,
@@ -1049,7 +1022,7 @@ void InterpolateKernel(
                                     output);
 
   } else if (input_dims.size() == 4) {  // 2D interpolation
-    Interpolate2DCPUFwd<T>(ctx,
+    Interpolate2DCPUFwd<T>(dev_ctx,
                            x,
                            out_size,
                            size_tensor,
@@ -1063,7 +1036,7 @@ void InterpolateKernel(
                            align_mode,
                            output);
   } else if (input_dims.size() == 5) {  // 3D interpolation
-    Interpolate3DCPUFwd<T>(ctx,
+    Interpolate3DCPUFwd<T>(dev_ctx,
                            x,
                            out_size,
                            size_tensor,
@@ -1082,7 +1055,7 @@ void InterpolateKernel(
 
 template <typename T, typename Context>
 void BilinearInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -1096,7 +1069,7 @@ void BilinearInterpKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
-  InterpolateKernel<T, Context>(ctx,
+  InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,
                                 size_tensor,
@@ -1114,7 +1087,7 @@ void BilinearInterpKernel(
 
 template <typename T, typename Context>
 void LegacyBilinearInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -1135,7 +1108,7 @@ void LegacyBilinearInterpKernel(
       scale_vec.push_back(scale);
     }
   }
-  InterpolateKernel<T, Context>(ctx,
+  InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,
                                 size_tensor,
@@ -1153,7 +1126,7 @@ void LegacyBilinearInterpKernel(
 
 template <typename T, typename Context>
 void NearestInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -1167,7 +1140,7 @@ void NearestInterpKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
-  InterpolateKernel<T, Context>(ctx,
+  InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,
                                 size_tensor,
@@ -1185,7 +1158,7 @@ void NearestInterpKernel(
 
 template <typename T, typename Context>
 void LegacyNearestInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -1206,7 +1179,7 @@ void LegacyNearestInterpKernel(
       scale_vec.push_back(scale);
     }
   }
-  InterpolateKernel<T, Context>(ctx,
+  InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,
                                 size_tensor,
@@ -1224,7 +1197,7 @@ void LegacyNearestInterpKernel(
 
 template <typename T, typename Context>
 void TrilinearInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -1238,7 +1211,7 @@ void TrilinearInterpKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
-  InterpolateKernel<T, Context>(ctx,
+  InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,
                                 size_tensor,
@@ -1256,7 +1229,7 @@ void TrilinearInterpKernel(
 
 template <typename T, typename Context>
 void LinearInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -1270,7 +1243,7 @@ void LinearInterpKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
-  InterpolateKernel<T, Context>(ctx,
+  InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,
                                 size_tensor,
@@ -1288,7 +1261,7 @@ void LinearInterpKernel(
 
 template <typename T, typename Context>
 void BicubicInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -1302,7 +1275,7 @@ void BicubicInterpKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
-  InterpolateKernel<T, Context>(ctx,
+  InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,
                                 size_tensor,
@@ -1327,8 +1300,8 @@ PD_REGISTER_KERNEL(bilinear_interp,
                    float,
                    double,
                    uint8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1341,8 +1314,8 @@ PD_REGISTER_KERNEL(legacy_bilinear_interp,
                    int,
                    int64_t,
                    uint8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1355,8 +1328,8 @@ PD_REGISTER_KERNEL(nearest_interp,
                    int,
                    int64_t,
                    uint8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1369,8 +1342,8 @@ PD_REGISTER_KERNEL(legacy_nearest_interp,
                    int,
                    int64_t,
                    uint8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1381,8 +1354,8 @@ PD_REGISTER_KERNEL(trilinear_interp,
                    float,
                    double,
                    uint8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1393,8 +1366,8 @@ PD_REGISTER_KERNEL(linear_interp,
                    float,
                    double,
                    uint8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1404,8 +1377,8 @@ PD_REGISTER_KERNEL(bicubic_interp,
                    phi::BicubicInterpKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }

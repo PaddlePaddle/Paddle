@@ -51,7 +51,7 @@ class MixVector {
 
  private:
   // The actual class to implement vector logic
-  class VectorData {
+  class PADDLE_API VectorData {
    public:
     template <typename U>
     explicit VectorData(std::vector<U> *dat) : cpu_(dat), flag_(kDataInCPU) {}

@@ -34,7 +34,8 @@ set(standalone_executor_deps
     garbage_collector
     executor_gc_helper
     phi
-    common)
+    common
+    supplement_tracing)
 
 if(WITH_CINN)
   set(standalone_executor_deps
@@ -46,6 +47,11 @@ if(WITH_CINN)
       device_context
       op_registry
       ${DEVICE_EVENT_LIBS})
+endif()
+
+if(WITH_CUSTOM_DEVICE AND NOT WIN32)
+  set(standalone_executor_deps ${standalone_executor_deps}
+                               custom_engine_manager)
 endif()
 
 if(TENSORRT_FOUND AND WITH_TENSORRT)

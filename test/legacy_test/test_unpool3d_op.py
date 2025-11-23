@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+import itertools
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -53,22 +53,18 @@ def unpool3dmax_forward_naive(
     out_hsize = output_size[1]
     out_wsize = output_size[2]
     out = np.zeros((s0, s1, out_dsize, out_hsize, out_wsize))
-    for nidx in range(s0):
-        for cidx in range(s1):
-            for d in range(s2):
-                for h in range(s3):
-                    for w in range(s4):
-                        index = indices[nidx, cidx, d, h, w]
-                        didx = index // (out_wsize * out_hsize)
-                        hidx = (
-                            index - didx * out_hsize * out_wsize
-                        ) // out_wsize
-                        widx = (
-                            index - didx * out_hsize * out_wsize
-                        ) % out_wsize
-                        out[nidx, cidx, didx, hidx, widx] = input[
-                            nidx, cidx, d, h, w
-                        ]
+    for nidx, cidx, d, h, w in itertools.product(
+        range(s0),
+        range(s1),
+        range(s2),
+        range(s3),
+        range(s4),
+    ):
+        index = indices[nidx, cidx, d, h, w]
+        didx = index // (out_wsize * out_hsize)
+        hidx = (index - didx * out_hsize * out_wsize) // out_wsize
+        widx = (index - didx * out_hsize * out_wsize) % out_wsize
+        out[nidx, cidx, didx, hidx, widx] = input[nidx, cidx, d, h, w]
 
     return out
 
@@ -181,6 +177,17 @@ class TestUnpool3DOpOutput(TestUnpool3DOp):
         self.output_size = [7, 9, 11]
 
 
+class TestUnpool3DOp_ZeroSize(TestUnpool3DOp):
+    def init_test_case(self):
+        self.unpool3d_forward_naive = unpool3dmax_forward_naive
+        self.unpooling_type = "max"
+        self.shape = [1, 3, 4, 5, 0]
+        self.ksize = [2, 2, 2]
+        self.strides = [2, 2, 2]
+        self.paddings = [0, 0, 0]
+        self.output_size = None
+
+
 class TestUnpool3DOpException(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
@@ -263,7 +270,7 @@ class TestUnpool3DOpException(unittest.TestCase):
             r"The indices should have \[N, C, D, H, W\] format",
             indices_rank_error,
         )
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             self.assertRaisesRegex(
                 ValueError,
                 r"index should less than output",
@@ -284,16 +291,7 @@ class TestUnpool3DOpException(unittest.TestCase):
 
 class TestUnpool3DOpAPI_dygraph(unittest.TestCase):
     def test_case(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.base.core.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.base.core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             paddle.disable_static()
             input_data = np.random.rand(1, 3, 4, 4, 6)
             input_x = paddle.to_tensor(input_data)
@@ -320,16 +318,7 @@ class TestUnpool3DOpAPI_dygraph(unittest.TestCase):
 
 class TestUnpool3DOpAPI_dygraph2(unittest.TestCase):
     def test_case(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.base.core.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.base.core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             paddle.disable_static()
             input_data = np.random.rand(1, 3, 4, 4, 6)
             input_x = paddle.to_tensor(input_data)
@@ -356,16 +345,7 @@ class TestUnpool3DOpAPI_dygraph2(unittest.TestCase):
 
 class TestUnpool3DOpAPI_dygraph3(unittest.TestCase):
     def test_case(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.base.core.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.base.core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             paddle.disable_static()
             input_data = np.random.rand(1, 3, 4, 4, 6)
             input_x = paddle.to_tensor(input_data)
@@ -393,16 +373,7 @@ class TestUnpool3DOpAPI_dygraph3(unittest.TestCase):
 
 class TestUnpool3DOpAPI_dygraph4(unittest.TestCase):
     def test_case(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.base.core.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.base.core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             paddle.disable_static()
             input_data = (
                 np.arange(3 * 4 * 4 * 6)
@@ -435,20 +406,52 @@ class TestUnpool3DOpAPI_dygraph4(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestUnpool3DOpAPI_static(unittest.TestCase):
+class TestUnpool3DOpAPI_Compatibility(unittest.TestCase):
+    def setUp(self) -> None:
+        paddle.disable_static()
+        input_np = np.random.rand(1, 3, 4, 4, 6)
+        self.input_x = paddle.to_tensor(input_np)
+        Pool3d = paddle.nn.MaxPool3D(kernel_size=2, stride=2, return_mask=True)
+        self.output, self.indices = Pool3d(self.input_x)
+        self.expected_output_unpool = unpool3dmax_forward_naive(
+            self.output.numpy(),
+            self.indices.numpy(),
+            [2, 2, 2],
+            [2, 2, 2],
+            [0, 0, 0],
+            [4, 4, 6],
+        )
 
+    def test_MaxPool3D_API(self):
+        # test class alias paddle.nn.MaxUnpool3d
+        max_unpool_3d = paddle.nn.MaxUnpool3d(
+            kernel_size=2, stride=2, output_size=(1, 3, 4, 4, 6)
+        )
+        output_unpool = max_unpool_3d(x=self.output, indices=self.indices)
+        np.testing.assert_allclose(
+            output_unpool.numpy(), self.expected_output_unpool, rtol=1e-05
+        )
+
+        # test func alias
+        output_unpool = max_unpool_3d(input=self.output, indices=self.indices)
+        np.testing.assert_allclose(
+            output_unpool.numpy(), self.expected_output_unpool, rtol=1e-05
+        )
+
+        # test output_size argument
+        max_unpool_3d = paddle.nn.MaxUnpool3d(kernel_size=2, stride=2)
+        output_unpool = max_unpool_3d(
+            input=self.output, indices=self.indices, output_size=(1, 3, 4, 4, 6)
+        )
+        np.testing.assert_allclose(
+            output_unpool.numpy(), self.expected_output_unpool, rtol=1e-05
+        )
+
+
+class TestUnpool3DOpAPI_static(unittest.TestCase):
     def test_case(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.base.core.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.base.core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):

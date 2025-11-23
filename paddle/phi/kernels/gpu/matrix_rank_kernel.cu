@@ -47,6 +47,8 @@ PD_REGISTER_KERNEL(matrix_rank,  // cuda_only
                    ALL_LAYOUT,
                    phi::MatrixRankKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::complex64,
+                   phi::complex128) {}
 
 #endif  // not PADDLE_WITH_HIP

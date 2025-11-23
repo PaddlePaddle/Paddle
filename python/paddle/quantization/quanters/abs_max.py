@@ -217,7 +217,6 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
         return quant_out
 
     def pir_forward(self, input):
-
         state = self._state if self.training else None
         accum = self._accum if self.training else None
 

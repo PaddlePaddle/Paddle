@@ -122,14 +122,14 @@ struct EmbeddingWithScaledGradientGradCPUFunctor {
 };
 
 template <typename T, typename Context>
-void EmbeddingWithScaledGradientGradKernel(const Context& ctx,
+void EmbeddingWithScaledGradientGradKernel(const Context& dev_ctx,
                                            const DenseTensor& input,
                                            const DenseTensor& weight,
                                            const DenseTensor& out_grad,
                                            int64_t padding_idx,
                                            DenseTensor* weight_grad) {
   EmbeddingWithScaledGradientGradCPUFunctor<T, Context> functor(
-      ctx, input, weight, out_grad, padding_idx, weight_grad);
+      dev_ctx, input, weight, out_grad, padding_idx, weight_grad);
   if (input.dtype() == phi::DataType::INT32) {
     functor.template apply<int>();
   } else if (input.dtype() == phi::DataType::INT64) {
@@ -147,7 +147,7 @@ PD_REGISTER_KERNEL(embedding_with_scaled_gradient_grad,
                    phi::EmbeddingWithScaledGradientGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

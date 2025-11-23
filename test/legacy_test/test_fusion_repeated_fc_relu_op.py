@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
 from op_test import OpTest
-
-sys.path.append("../deprecated/legacy_test")
 from test_fc_op import MatrixGenerate, fc_refer
 
 
@@ -31,7 +28,7 @@ class TestFusionRepeatedFCReluOp(OpTest):
         self.set_conf()
         self.op_type = 'fusion_repeated_fc_relu'
         sz = len(self.oc)
-        ics = [self.ic] + self.oc[0 : sz - 1]
+        ics = [self.ic, *self.oc[0 : sz - 1]]
         assert len(ics) == len(self.oc)
         weights = []
         biases = []

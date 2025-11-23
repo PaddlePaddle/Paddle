@@ -195,9 +195,9 @@ class RawProgramOptimizer(MetaOptimizerBase):
             if gm_cond_var_name is None:
                 gm_cond_var_name = op.attr(GRAD_MERGE_COND_NAME)
             else:
-                assert gm_cond_var_name == op.attr(
-                    GRAD_MERGE_COND_NAME
-                ), "multiple gradient merge condition found"
+                assert gm_cond_var_name == op.attr(GRAD_MERGE_COND_NAME), (
+                    "multiple gradient merge condition found"
+                )
         if gm_cond_var_name is None:
             return None
 

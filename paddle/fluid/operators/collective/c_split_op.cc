@@ -88,7 +88,7 @@ class CSplitOpGradMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> retv) const override {
-    retv->SetType("c_allgather");
+    retv->SetType("all_gather");
     retv->SetInput("X", this->OutputGrad("Out"));
     retv->SetOutput("Out", this->InputGrad("X"));
     retv->SetAttrMap(this->Attrs());

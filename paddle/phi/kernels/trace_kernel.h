@@ -38,7 +38,7 @@ namespace phi {
  * @param  out      the sum along diagonals of the input tensor
  */
 template <typename T, typename Context>
-void TraceKernel(const Context& ctx,
+void TraceKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  int offset,
                  int axis1,

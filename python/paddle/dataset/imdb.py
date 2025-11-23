@@ -49,9 +49,14 @@ def tokenize(pattern):
         while tf is not None:
             if bool(pattern.match(tf.name)):
                 # newline and punctuations removal and ad-hoc tokenization.
-                yield tarf.extractfile(tf).read().rstrip(b'\n\r').translate(
-                    None, string.punctuation.encode('latin-1')
-                ).lower().split()
+                yield (
+                    tarf.extractfile(tf)
+                    .read()
+                    .rstrip(b'\n\r')
+                    .translate(None, string.punctuation.encode('latin-1'))
+                    .lower()
+                    .split()
+                )
             tf = tarf.next()
 
 

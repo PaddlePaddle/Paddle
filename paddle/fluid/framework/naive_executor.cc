@@ -95,7 +95,7 @@ void NaiveExecutor::RunInterpreterCore(
 
 void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_DNNL
-  platform::AttachPointerHashToMKLDNNKey(this, place_);
+  platform::AttachPointerHashToONEDNNKey(this, place_);
   platform::RegisterModelLayout(ops_, place_);
 #endif
   platform::ScopedFlushDenormal flush;
@@ -299,7 +299,7 @@ NaiveExecutor::~NaiveExecutor() {
 #ifdef PADDLE_WITH_DNNL
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
-  platform::ClearMKLDNNCache(place_, this);
+  platform::ClearONEDNNCache(place_, this);
 #endif
 }
 

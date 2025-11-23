@@ -278,7 +278,7 @@ def stft(
     center: bool = True,
     pad_mode: Literal["reflect", "constant"] = "reflect",
     normalized: bool = False,
-    onesided: bool = True,
+    onesided: bool | None = None,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -317,7 +317,7 @@ def stft(
             Default: `False`
         onesided (bool, optional): Control whether to return half of the Fourier transform
             output that satisfies the conjugate symmetry condition when input is a real-valued
-            tensor. It can not be `True` if input is a complex tensor. Default: `True`
+            tensor. It can not be `True` if input is a complex tensor. Default: `None`
         name (str|None, optional): The default value is None. Normally there is no need for user
             to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -374,18 +374,18 @@ def stft(
         win_length = n_fft
 
     if in_dynamic_mode():
-        assert (
-            0 < n_fft <= x.shape[-1]
-        ), f'n_fft should be in (0, seq_length({x.shape[-1]})], but got {n_fft}.'
+        assert 0 < n_fft <= x.shape[-1], (
+            f'n_fft should be in (0, seq_length({x.shape[-1]})], but got {n_fft}.'
+        )
 
-    assert (
-        0 < win_length <= n_fft
-    ), f'win_length should be in (0, n_fft({n_fft})], but got {win_length}.'
+    assert 0 < win_length <= n_fft, (
+        f'win_length should be in (0, n_fft({n_fft})], but got {win_length}.'
+    )
 
     if window is not None:
-        assert (
-            len(window.shape) == 1 and len(window) == win_length
-        ), f'expected a 1D window tensor of size equal to win_length({win_length}), but got window with shape {window.shape}.'
+        assert len(window.shape) == 1 and len(window) == win_length, (
+            f'expected a 1D window tensor of size equal to win_length({win_length}), but got window with shape {window.shape}.'
+        )
     else:
         window = paddle.ones(shape=(win_length,), dtype=x.dtype)
 
@@ -418,10 +418,14 @@ def stft(
     x_frames = paddle.multiply(x_frames, window)
 
     norm = 'ortho' if normalized else 'backward'
+
+    if onesided is None:
+        onesided = not is_complex(x_frames)
+
     if is_complex(x_frames):
-        assert (
-            not onesided
-        ), 'onesided should be False when input or window is a complex Tensor.'
+        assert not onesided, (
+            'onesided should be False when input or window is a complex Tensor.'
+        )
 
     if not is_complex(x):
         out = fft_r2c(
@@ -553,31 +557,32 @@ def istft(
         win_length = n_fft
 
     # Assure no gaps between frames.
-    assert (
-        0 < hop_length <= win_length
-    ), f'hop_length should be in (0, win_length({win_length})], but got {hop_length}.'
+    assert 0 < hop_length <= win_length, (
+        f'hop_length should be in (0, win_length({win_length})], but got {hop_length}.'
+    )
 
-    assert (
-        0 < win_length <= n_fft
-    ), f'win_length should be in (0, n_fft({n_fft})], but got {win_length}.'
+    assert 0 < win_length <= n_fft, (
+        f'win_length should be in (0, n_fft({n_fft})], but got {win_length}.'
+    )
 
     n_frames = x.shape[-1]
     fft_size = x.shape[-2]
 
     if in_dynamic_mode():
+        assert x.size != 0, 'x should not be an empty tensor.'
         if onesided:
-            assert (
-                fft_size == n_fft // 2 + 1
-            ), f'fft_size should be equal to n_fft // 2 + 1({n_fft // 2 + 1}) when onesided is True, but got {fft_size}.'
+            assert fft_size == n_fft // 2 + 1, (
+                f'fft_size should be equal to n_fft // 2 + 1({n_fft // 2 + 1}) when onesided is True, but got {fft_size}.'
+            )
         else:
-            assert (
-                fft_size == n_fft
-            ), f'fft_size should be equal to n_fft({n_fft}) when onesided is False, but got {fft_size}.'
+            assert fft_size == n_fft, (
+                f'fft_size should be equal to n_fft({n_fft}) when onesided is False, but got {fft_size}.'
+            )
 
     if window is not None:
-        assert (
-            len(window.shape) == 1 and len(window) == win_length
-        ), f'expected a 1D window tensor of size equal to win_length({win_length}), but got window with shape {window.shape}.'
+        assert len(window.shape) == 1 and len(window) == win_length, (
+            f'expected a 1D window tensor of size equal to win_length({win_length}), but got window with shape {window.shape}.'
+        )
     else:
         window_dtype = (
             paddle.float32
@@ -600,15 +605,15 @@ def istft(
     norm = 'ortho' if normalized else 'backward'
 
     if return_complex:
-        assert (
-            not onesided
-        ), 'onesided should be False when input(output of istft) or window is a complex Tensor.'
+        assert not onesided, (
+            'onesided should be False when input(output of istft) or window is a complex Tensor.'
+        )
 
         out = fft_c2c(x=x, n=None, axis=-1, norm=norm, forward=False, name=None)
     else:
-        assert not is_complex(
-            window
-        ), 'Data type of window should not be complex when return_complex is False.'
+        assert not is_complex(window), (
+            'Data type of window should not be complex when return_complex is False.'
+        )
 
         if onesided is False:
             x = x[:, :, : n_fft // 2 + 1]
@@ -625,9 +630,7 @@ def istft(
         x=paddle.tile(
             x=paddle.multiply(window, window).unsqueeze(0),
             repeat_times=[n_frames, 1],
-        ).transpose(
-            perm=[1, 0]
-        ),  # (n_fft, num_frames)
+        ).transpose(perm=[1, 0]),  # (n_fft, num_frames)
         hop_length=hop_length,
         axis=-1,
     )  # (seq_length, )
@@ -654,6 +657,6 @@ def istft(
     out = out / window_envelop
 
     if x_rank == 2:
-        out.squeeze_(0)
+        out = paddle.squeeze(out, axis=0)
 
     return out

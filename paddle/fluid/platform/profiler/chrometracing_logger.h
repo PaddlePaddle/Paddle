@@ -19,7 +19,12 @@ limitations under the License. */
 #include <unordered_map>
 #include <utility>
 
+#include "paddle/common/macros.h"
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
+#else
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#endif
 #include "paddle/phi/core/platform/profiler/output_logger.h"
 
 namespace paddle {
@@ -29,7 +34,7 @@ namespace platform {
 // A ChromeTracingLogger object can only dump a NodeTrees object,
 // creates a file in the constructor and closes the file in the destructor.
 // should only call LogNodeTrees and LogMetaInfo in order.
-class ChromeTracingLogger : public BaseLogger {
+class PADDLE_API ChromeTracingLogger : public BaseLogger {
  public:
   explicit ChromeTracingLogger(const std::string& filename);
   explicit ChromeTracingLogger(const char* filename);
@@ -41,11 +46,12 @@ class ChromeTracingLogger : public BaseLogger {
   void LogNodeTrees(const NodeTrees&) override;
   void LogExtraInfo(const std::unordered_map<std::string, std::string>);
   void LogMemTraceEventNode(const MemTraceEventNode&) override;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU)
   void LogDeviceProperty(
       const std::map<uint32_t, gpuDeviceProp>& device_property_map);
 #endif
-  void LogMetaInfo(const std::string& version, uint32_t span_indx);
+  void LogMetaInfo(const std::string& version, uint32_t span_index);
 
  private:
   void OpenFile();

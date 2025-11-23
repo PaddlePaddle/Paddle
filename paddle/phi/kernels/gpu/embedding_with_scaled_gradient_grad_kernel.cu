@@ -62,7 +62,9 @@ __global__ void EmbeddingGrad(T* table,
                               const int64_t K,
                               const int64_t D) {
   int idx = threadIdx.x;
-  int idy = blockIdx.x + threadIdx.y * gridDim.x;
+  int64_t idy =
+      static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.y) * static_cast<int64_t>(gridDim.x);
 
   while (idy < K) {
     auto id = static_cast<int64_t>(ids[idy]);
@@ -71,7 +73,7 @@ __global__ void EmbeddingGrad(T* table,
 #ifdef PADDLE_WITH_CUDA
     phi::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
 #else
-    for (int i = idx; i < D; i += blockDim.x) {
+    for (int64_t i = idx; i < D; i += blockDim.x) {
       phi::CudaAtomicAdd(&tab[i], out[i]);
     }
 #endif
@@ -85,7 +87,7 @@ __global__ void CountFreqKernel(const IdT* ids_data,
                                 int64_t num_weights,
                                 int* count_data) {
   extern __shared__ int buf_count[];
-  for (int i = threadIdx.x; i < num_weights; i += blockDim.x) {
+  for (int64_t i = threadIdx.x; i < num_weights; i += blockDim.x) {
     buf_count[i] = 0;
   }
   __syncthreads();
@@ -97,7 +99,7 @@ __global__ void CountFreqKernel(const IdT* ids_data,
 
   __syncthreads();
 
-  for (int i = threadIdx.x; i < num_weights; i += blockDim.x) {
+  for (int64_t i = threadIdx.x; i < num_weights; i += blockDim.x) {
     phi::CudaAtomicAdd(&count_data[i], buf_count[i]);
   }
 }
@@ -204,14 +206,14 @@ struct EmbeddingWithScaledGradientGradCUDAFunctor {
 };
 
 template <typename T, typename Context>
-void EmbeddingWithScaledGradientGradKernel(const Context& ctx,
+void EmbeddingWithScaledGradientGradKernel(const Context& dev_ctx,
                                            const DenseTensor& input,
                                            const DenseTensor& weight,
                                            const DenseTensor& out_grad,
                                            int64_t padding_idx,
                                            DenseTensor* weight_grad) {
   EmbeddingWithScaledGradientGradCUDAFunctor<T, Context> functor(
-      ctx, input, weight, out_grad, padding_idx, weight_grad);
+      dev_ctx, input, weight, out_grad, padding_idx, weight_grad);
   if (input.dtype() == phi::DataType::INT32) {
     functor.template apply<int>();
   } else if (input.dtype() == phi::DataType::INT64) {
@@ -231,7 +233,7 @@ PD_REGISTER_KERNEL(embedding_with_scaled_gradient_grad,
                    phi::EmbeddingWithScaledGradientGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

@@ -23,13 +23,29 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/distributed/store/tcp_utils.h"
 
+COMMON_DECLARE_bool(tcp_store_using_libuv);
 namespace phi::distributed::detail {
+
+// DaemonThread thread parent class methods
+DaemonThread::~DaemonThread() = default;
+
+void DaemonThread::start() {
+  daemonThread_ = std::thread{&DaemonThread::run, this};
+  is_running_.store(true);
+}
+
+void DaemonThread::cleanup() {
+  stop();
+  daemonThread_.join();
+}
+
+bool DaemonThread::is_running() { return is_running_.load(); }
 
 constexpr int INFTIME = 10000;  // 10 seconds
 
-std::unique_ptr<MasterDaemon> MasterDaemon::start(SocketType socket,
-                                                  int nranks,
-                                                  int timeout) {
+std::unique_ptr<MasterDaemon> MasterDaemon::createDaemon(SocketType socket,
+                                                         int nranks,
+                                                         int timeout) {
   VLOG(8) << ("begin to run start");
   return std::make_unique<MasterDaemon>(socket, nranks, timeout);
 }
@@ -37,13 +53,12 @@ std::unique_ptr<MasterDaemon> MasterDaemon::start(SocketType socket,
 MasterDaemon::MasterDaemon(SocketType socket, int nranks, int timeout)
     : _listen_socket(socket), _nranks(nranks), _timeout(timeout) {
   InitControlFd();
-  _background_thread = std::thread{&MasterDaemon::run, this};
 }
 
 MasterDaemon::~MasterDaemon() {  // NOLINT
   VLOG(8) << ("begin to destruct MasterDaemon");
   StopByControlFd();
-  _background_thread.join();
+  cleanup();
   tcputils::close_socket(_listen_socket);
   for (SocketType socket : _sockets) {
     tcputils::close_socket(socket);
@@ -313,11 +328,20 @@ void MasterDaemon::run() {
 
 std::unique_ptr<TCPServer> TCPServer::create(uint16_t port,
                                              int nranks,
-                                             int stop_check_timeout) {
-  int socket = tcputils::tcp_listen("", std::to_string(port), AF_INET);
+                                             int stop_check_timeout,
+                                             bool use_libuv) {
   auto server = std::make_unique<TCPServer>();
-  server->_master_daemon =
-      MasterDaemon::start(socket, nranks, stop_check_timeout);
+  if (use_libuv) {
+    // start libuv server
+    VLOG(0) << "create libuv server at port: " << port;
+    server->_master_daemon = create_libuv_tcpstore(port);
+    server->_master_daemon->start();
+  } else {
+    int socket = tcputils::tcp_listen("", std::to_string(port), AF_INET);
+    server->_master_daemon =
+        MasterDaemon::createDaemon(socket, nranks, stop_check_timeout);
+    server->_master_daemon->start();
+  }
   return server;
 }
 
@@ -376,7 +400,8 @@ TCPStore::TCPStore(std::string host,
 
   VLOG(7) << "input timeout" << timeout << ", member timeout:" << _timeout;
   if (_is_master) {
-    _server = detail::TCPServer::create(port, this->_num_workers, timeout);
+    _server = detail::TCPServer::create(
+        port, this->_num_workers, timeout, FLAGS_tcp_store_using_libuv);
   }
 
   _client = detail::TCPClient::connect(host, port);

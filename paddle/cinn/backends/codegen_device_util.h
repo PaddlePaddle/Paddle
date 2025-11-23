@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
-
 #include <string>
 #include <tuple>
 #include <vector>
@@ -36,6 +34,7 @@
 #include "paddle/cinn/ir/utils/stmt_converter.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/common/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 namespace cinn {
 namespace backends {
 

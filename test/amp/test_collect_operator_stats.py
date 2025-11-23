@@ -37,7 +37,7 @@ class TestOpStatsEager(unittest.TestCase):
         conv_num = 0
         for i in range(4):
             add_num += int(add_called[i])
-            conv_num += int(add_called[i])
+            conv_num += int(conv2d_called[i])
 
         self.assertTrue(conv_num == 1)
         self.assertTrue(add_num == 1)
@@ -63,10 +63,12 @@ class TestOpStatsEager(unittest.TestCase):
         conv = paddle.nn.Conv2D(3, 2, 3)
         x = paddle.rand([10, 3, 32, 32])
 
-        with paddle.amp.debugging.collect_operator_stats():
+        with (
+            paddle.amp.debugging.collect_operator_stats(),
             # amp list conv2d, elementwise_add, cast (transfer_dtype)
-            with paddle.amp.auto_cast(enable=True, level='O2'):
-                out = conv(x)
+            paddle.amp.auto_cast(enable=True, level='O2'),
+        ):
+            out = conv(x)
 
         self._check_result(dtype=out.dtype)
 
@@ -85,7 +87,7 @@ class TestOpStatsPir(unittest.TestCase):
         conv_num = 0
         for i in range(4):
             add_num += int(add_called[i])
-            conv_num += int(add_called[i])
+            conv_num += int(conv2d_called[i])
 
         self.assertTrue(conv_num == 1)
         self.assertTrue(add_num == 1)

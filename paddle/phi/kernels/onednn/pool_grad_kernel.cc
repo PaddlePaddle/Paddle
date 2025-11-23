@@ -18,14 +18,14 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
-bool Pool2dGradCheckIfOneDNNSupport(const KernelContext* ctx) {
-  if (ctx->AttrAt<bool>(8) == false) {
+bool Pool2dGradCheckIfOneDNNSupport(const KernelContext* dev_ctx) {
+  if (dev_ctx->AttrAt<bool>(8) == false) {
     // adaptive
     return true;
   }
   // oneDNN is supporting only unchangeable in size pool window
-  auto src_tz = common::vectorize(ctx->InputAt<phi::DenseTensor>(0).dims());
-  const TensorRef& kernel_size_tmp = ctx->AttrAt<TensorRef>(0);
+  auto src_tz = common::vectorize(dev_ctx->InputAt<phi::DenseTensor>(0).dims());
+  const TensorRef& kernel_size_tmp = dev_ctx->AttrAt<TensorRef>(0);
   IntArray kernel_size_array = IntArray(*kernel_size_tmp.Get());
   std::vector<int64_t> kernel_size = kernel_size_array.GetData();
   // Fast but not exhaustive check
@@ -39,8 +39,8 @@ void Pool2dGradKernel(const Context& dev_ctx,
                       const DenseTensor& out UNUSED,
                       const DenseTensor& dout,
                       const IntArray& kernel_size,
-                      const std::vector<int>& strides,
-                      const std::vector<int>& paddings,
+                      const std::vector<int64_t>& strides,
+                      const std::vector<int64_t>& paddings,
                       bool ceil_mode,
                       bool exclusive,
                       const std::string& data_format UNUSED,
@@ -88,13 +88,13 @@ void Pool2dGradKernel(const Context& dev_ctx,
 }
 
 phi::KernelKey PoolOpGradGetKernelTypeForVar(
-    const GetKernelTypeForVarContext* ctx) {
-  const DenseTensor& tensor = ctx->GetTensor();
-  const KernelKey& expected_kernel_type = ctx->GetKernelKey();
+    const GetKernelTypeForVarContext* dev_ctx) {
+  const DenseTensor& tensor = dev_ctx->GetTensor();
+  const KernelKey& expected_kernel_type = dev_ctx->GetKernelKey();
 #ifdef PADDLE_WITH_DNNL
   if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN)) {
-    const AttributeMap& attrs = ctx->GetAttrs();
+    const AttributeMap& attrs = dev_ctx->GetAttrs();
     auto it = attrs.find("data_format");
     const std::string data_format = PADDLE_GET_CONST(std::string, it->second);
     return phi::KernelKey(tensor.place(),
@@ -108,12 +108,8 @@ phi::KernelKey PoolOpGradGetKernelTypeForVar(
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(pool2d_grad,
-                   OneDNN,
-                   ONEDNN,
-                   phi::Pool2dGradKernel,
-                   float,
-                   phi::dtype::bfloat16) {
+PD_REGISTER_KERNEL(
+    pool2d_grad, OneDNN, ONEDNN, phi::Pool2dGradKernel, float, phi::bfloat16) {
   kernel->get_kerneltype_forvar_fn_ = phi::PoolOpGradGetKernelTypeForVar;
   kernel->check_if_onednn_kernel_support_ = phi::Pool2dGradCheckIfOneDNNSupport;
 }

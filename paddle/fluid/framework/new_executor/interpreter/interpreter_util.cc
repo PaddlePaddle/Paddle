@@ -59,6 +59,7 @@
 #endif
 
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_string(static_runtime_data_save_path);
 COMMON_DECLARE_bool(save_static_runtime_data);
@@ -136,24 +137,15 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
 }
 
 bool IsCommunicationOp(const OperatorBase* op) {
-  if (op->HasAttr("ring_id")) {
-    return true;
-  }
-  return false;
+  return op->HasAttr("ring_id");
 }
 
 bool IsCommunicationOp(const Instruction& instr) {
-  if (!instr.OpBaseValid()) {
-    return false;
-  }
-  return IsCommunicationOp(instr.OpBase());
+  return instr.OpBaseValid() && IsCommunicationOp(instr.OpBase());
 }
 
 bool IsCommunicationOp(const ::pir::Operation* op) {
-  if (op->attributes().count("ring_id") != 0) {
-    return true;
-  }
-  return false;
+  return op->attributes().count("ring_id") != 0;
 }
 
 bool IsCpuOp(const Instruction& instr) {
@@ -353,10 +345,14 @@ void CreateAllOps(const framework::BlockDesc& block,
     op_base->SetRuntimeAttributeMap(op_runtime_attr_map);
 
 #ifdef PADDLE_WITH_DNNL
-    if (FLAGS_use_mkldnn) {
+    if (FLAGS_use_mkldnn || FLAGS_use_onednn) {
       if (op->HasAttr("use_mkldnn")) {
         VLOG(4) << "Set use_mkldnn=True for " << op_base->Type();
         op_base->SetAttr("use_mkldnn", true);
+      }
+      if (op->HasAttr("use_onednn")) {
+        VLOG(4) << "Set use_onednn=True for " << op_base->Type();
+        op_base->SetAttr("use_onednn", true);
       }
     }
 #endif
@@ -641,7 +637,7 @@ void BuildOpFuncList(const phi::Place& place,
         "conditional_block",
         "conditional_block_grad",
         "pylayer",
-        "pylayer_grad"
+        "pylayer_grad",
         "recurrent_grad",
         "while",
         "while_grad"};

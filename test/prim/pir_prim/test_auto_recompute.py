@@ -162,6 +162,7 @@ class TestAutoRecomputeRmsNorm(unittest.TestCase):
                 atol=TOLERANCE[self.dtype]["atol"],
                 rtol=TOLERANCE[self.dtype]["rtol"],
             )
+            # The following code is related to coverage, although backward_ops,define_op,all_used_ops is not used, it needs to be retained
             forward_ops = recompute_program.global_block().ops[:13]
             backward_ops = recompute_program.global_block().ops[13:]
             saved_values = forward_ops[10].results()[0]

@@ -22,6 +22,7 @@ import inspect
 import random
 import sys
 import types
+from contextlib import contextmanager
 from enum import Enum
 from functools import cached_property
 from typing import TYPE_CHECKING
@@ -48,6 +49,7 @@ from ..instruction_utils import (
 )
 from ..instruction_utils.opcode_info import (
     ALL_JUMP,
+    BINARY_OP_ARG_MAP,
     RETURN,
     UNCONDITIONAL_JUMP,
     JumpDirection,
@@ -481,7 +483,7 @@ class PyCodeGen:
             elif not self._code_options['co_name'].startswith("#"):
                 random_number = int(CODE_NAME_RNG.random() * 100000000)
                 self._code_options['co_name'] = (
-                    f"#{self._code_options['co_name']}_{hex(random_number & 0xFFFFF)[2:]:0>5}"
+                    f"#{self._code_options['co_name']}_{(random_number & 0xFFFFF):05x}"
                 )
 
     def gen_pycode(self) -> types.CodeType:
@@ -545,26 +547,53 @@ class PyCodeGen:
         idx = list_find_index_by_id(self._code_options["co_consts"], value)
         return self.add_instr("LOAD_CONST", arg=idx, argval=value)
 
-    def gen_print_log(self, message):
-        """print a log"""
+    @contextmanager
+    def gen_disable_eval_frame_guard(self):
+        """
+        Generates instructions to disable the evaluation frame.
+        """
         import paddle
 
         self.gen_load_object(
-            paddle.framework.core.set_eval_frame, "dbg_set_eval_frame"
+            paddle.framework.core.set_eval_frame, "___set_eval_frame"
         )
         self.gen_load_const(None)
         self.gen_call_function(1)
         self.gen_store_fast("old_eval_frame")
-        self.gen_load_global("print", push_null=True)
-        self.gen_load_const(message)
-        self.gen_call_function(1)
-        self.gen_pop_top()
+        yield
         self.gen_load_object(
-            paddle.framework.core.set_eval_frame, "dbg_set_eval_frame"
+            paddle.framework.core.set_eval_frame, "___set_eval_frame"
         )
         self.gen_load_fast("old_eval_frame")
         self.gen_call_function(1)
         self.gen_pop_top()
+
+    def gen_print_log(self, message):
+        """print a log"""
+        with self.gen_disable_eval_frame_guard():
+            self.gen_load_global("print", push_null=True)
+            self.gen_load_const(message)
+            self.gen_call_function(1)
+            self.gen_pop_top()
+
+    @contextmanager
+    def gen_nvtx_event(self, event_name):
+        import paddle
+
+        with self.gen_disable_eval_frame_guard():
+            self.gen_load_object(
+                paddle.base.core.nvprof_nvtx_push, "___nvprof_nvtx_push"
+            )
+            self.gen_load_const(event_name)
+            self.gen_call_function(1)
+            self.gen_pop_top()
+        yield
+        with self.gen_disable_eval_frame_guard():
+            self.gen_load_object(
+                paddle.base.core.nvprof_nvtx_pop, "___nvprof_nvtx_pop"
+            )
+            self.gen_call_function(0)
+            self.gen_pop_top()
 
     def gen_dbg_function(self, dbg_fun):
         """debug bytecode helper function.
@@ -777,9 +806,15 @@ class PyCodeGen:
         return self.add_instr("STORE_SUBSCR")
 
     def gen_subscribe(self):
-        return self.add_instr("BINARY_SUBSCR")
+        if sys.version_info < (3, 14):
+            return self.add_instr("BINARY_SUBSCR")
+        # see: https://docs.python.org/3.14/library/dis.html#opcode-BINARY_OP and
+        # https://github.com/python/cpython/blob/0e46c0499413bc5f9f8336fe76e2e67cf93f64d8/Include/opcode.h#L36
+        return self.add_instr("BINARY_OP", arg=BINARY_OP_ARG_MAP["NB_SUBSCR"])
 
     def gen_build_tuple(self, count):
+        if sys.version_info >= (3, 14) and count == 0:
+            return self.gen_load_const(())
         return self.add_instr("BUILD_TUPLE", arg=count, argval=count)
 
     def gen_build_list(self, count):
@@ -946,29 +981,6 @@ class PyCodeGen:
     def gen_get_iter(self):
         return self.add_instr("GET_ITER")
 
-    def gen_operator_only(self, op_name):
-        """
-        only generator operator instruction, do nothing for
-        operands.
-        """
-        return self.add_instr(op_name)
-
-    def gen_operator(self, op_name):
-        """
-        only generator operator instruction, do nothing for
-        operands.
-        """
-        return self.add_instr(op_name)
-
-    def gen_compare(self, cmp_op):
-        """
-        only generator operator instruction, do nothing for
-        operands.
-        """
-        if sys.version_info >= (3, 12):
-            cmp_op <<= 4
-        return self.add_instr("COMPARE_OP", cmp_op)
-
     def add_instr(self, *args, **kwargs):
         instr = gen_instr(*args, **kwargs)
         self._instructions.append(instr)
@@ -993,11 +1005,8 @@ class ResumeFunctionType(Enum):
     IF_RESUME = 0
     # Call breakgraph
     CALL_RESUME = 1
-    # Loop breakgraph
-    LOOP_BODY_RESUME = 2
-    AFTER_LOOP_RESUME = 3
     # Loop inline call
-    LOOP_BODY_INLINE_CALL = 4
+    LOOP_BODY_INLINE_CALL = 2
 
 
 class ResumeFunctionCreator:
@@ -1016,9 +1025,9 @@ class ResumeFunctionCreator:
         self, inputs: list[str], stack_size: int, null_indices: list[int] = []
     ):
         stack_arg_str = self.name + '_stack_{}'
-        assert all(
-            idx < stack_size for idx in null_indices
-        ), "null index out of range"
+        assert all(idx < stack_size for idx in null_indices), (
+            "null index out of range"
+        )
 
         self.codegen._code_options['co_argcount'] = (
             len(inputs) + stack_size - len(null_indices)
@@ -1057,7 +1066,9 @@ class ResumeFunctionCreator:
     @staticmethod
     def validate_code(code):
         if len(code.co_freevars) + len(code.co_cellvars) > 0:
-            raise FallbackError("Break graph in closure is not support.")
+            raise FallbackError(
+                f"Break graph in closure is not support.\n`co_freevars`: {code.co_freevars}\n`co_cellvars`: {code.co_cellvars}"
+            )
 
     def lookup(self, cache_key):
         if cache_key in self.CODE_CACHE:

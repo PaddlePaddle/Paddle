@@ -12,7 +12,7 @@ charset = utf-8
 trim_trailing_whitespace = true
 insert_final_newline = true
 
-[*.{c,cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps}]
+[*.{c,cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps,yml,yaml}]
 indent_size = 2
 
 [*.{py,pyi,java,r,toml}]

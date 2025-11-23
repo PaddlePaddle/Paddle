@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
 import numpy as np
@@ -368,81 +369,73 @@ class TestAddGroupNormPattern_FP16(PassTest):
         return True
 
     def sample_program(self):
-        for x_shape in [[2, 6, 4, 2]]:
-            for residual_shape in [[1, 6, 1, 1]]:
-                for dtype in ['float16']:
-                    for epilson in [1e-5]:
-                        for groups in [2]:
-                            for data_layout in ['NCHW']:
-                                rand_value = (
-                                    0.001
-                                    * paddle.rand(
-                                        shape=[x_shape[1]], dtype=dtype
-                                    ).numpy()
-                                )
-                                with paddle.pir_utils.IrGuard():
-                                    start_prog = paddle.static.Program()
-                                    main_prog = paddle.static.Program()
-                                    with paddle.pir.core.program_guard(
-                                        main_prog, start_prog
-                                    ):
-                                        residual = paddle.static.data(
-                                            name='residual',
-                                            shape=residual_shape,
-                                            dtype=dtype,
-                                        )
-                                        x = paddle.static.data(
-                                            name='x', shape=x_shape, dtype=dtype
-                                        )
-                                        w = create_parameter(
-                                            shape=[x_shape[1]],
-                                            dtype=dtype,
-                                            initializer=paddle.nn.initializer.Assign(
-                                                rand_value
-                                            ),
-                                        )
-                                        b = create_parameter(
-                                            shape=[residual_shape[1]],
-                                            dtype=dtype,
-                                            initializer=paddle.nn.initializer.Assign(
-                                                rand_value
-                                            ),
-                                        )
-                                        add_out = paddle.add(x, residual)
+        for (
+            x_shape,
+            residual_shape,
+            dtype,
+            epilson,
+            groups,
+            data_layout,
+        ) in itertools.product(
+            [[2, 6, 4, 2]],
+            [[1, 6, 1, 1]],
+            ['float16'],
+            [1e-5],
+            [2],
+            ['NCHW'],
+        ):
+            rand_value = (
+                0.001 * paddle.rand(shape=[x_shape[1]], dtype=dtype).numpy()
+            )
+            with paddle.pir_utils.IrGuard():
+                start_prog = paddle.static.Program()
+                main_prog = paddle.static.Program()
+                with paddle.pir.core.program_guard(main_prog, start_prog):
+                    residual = paddle.static.data(
+                        name='residual',
+                        shape=residual_shape,
+                        dtype=dtype,
+                    )
+                    x = paddle.static.data(name='x', shape=x_shape, dtype=dtype)
+                    w = create_parameter(
+                        shape=[x_shape[1]],
+                        dtype=dtype,
+                        initializer=paddle.nn.initializer.Assign(rand_value),
+                    )
+                    b = create_parameter(
+                        shape=[residual_shape[1]],
+                        dtype=dtype,
+                        initializer=paddle.nn.initializer.Assign(rand_value),
+                    )
+                    add_out = paddle.add(x, residual)
 
-                                        group_norm_out = (
-                                            paddle.nn.functional.group_norm(
-                                                add_out,
-                                                num_groups=groups,
-                                                epsilon=epilson,
-                                                weight=w,
-                                                bias=b,
-                                                data_format=data_layout,
-                                            )
-                                        )
-                                        out = paddle.assign(group_norm_out)
-                                        self.pass_attr_list = [
-                                            {'add_norm_fuse_pass': {}},
-                                            {'transfer_layout_pass': {}},
-                                            {
-                                                'remove_redundant_transpose_pass': {}
-                                            },
-                                        ]
-                                        self.feeds = {
-                                            "x": np.random.random(
-                                                x_shape
-                                            ).astype(dtype),
-                                            "residual": np.random.random(
-                                                residual_shape
-                                            ).astype(dtype),
-                                        }
-                                        self.fetch_list = [out]
-                                        self.valid_op_map = {
-                                            "pa_op.add": 0,
-                                            "pd_op.group_norm": 0,
-                                            "pd_op.add_group_norm_silu": 1,
-                                        }
-                                        yield [main_prog, start_prog], False
+                    group_norm_out = paddle.nn.functional.group_norm(
+                        add_out,
+                        num_groups=groups,
+                        epsilon=epilson,
+                        weight=w,
+                        bias=b,
+                        data_format=data_layout,
+                    )
+                    out = paddle.assign(group_norm_out)
+                    self.pass_attr_list = [
+                        {'add_norm_fuse_pass': {}},
+                        {'transfer_layout_pass': {}},
+                        {'remove_redundant_transpose_pass': {}},
+                    ]
+                    self.feeds = {
+                        "x": np.random.random(x_shape).astype(dtype),
+                        "residual": np.random.random(residual_shape).astype(
+                            dtype
+                        ),
+                    }
+                    self.fetch_list = [out]
+                    self.valid_op_map = {
+                        "pa_op.add": 0,
+                        "pd_op.group_norm": 0,
+                        "pd_op.add_group_norm_silu": 1,
+                    }
+                    yield [main_prog, start_prog], False
 
     def setUp(self):
         if core.is_compiled_with_cuda():
@@ -465,84 +458,74 @@ class TestAddGroupNormPatternSilu_FP16(PassTest):
         return True
 
     def sample_program(self):
-        for x_shape in [[2, 6, 4, 2]]:
-            for residual_shape in [[1, 6, 1, 1]]:
-                for dtype in ['float16']:
-                    for epilson in [1e-5]:
-                        for groups in [2]:
-                            for data_layout in ['NCHW']:
-                                rand_value = (
-                                    0.001
-                                    * paddle.rand(
-                                        shape=[x_shape[1]], dtype=dtype
-                                    ).numpy()
-                                )
-                                with paddle.pir_utils.IrGuard():
-                                    start_prog = paddle.static.Program()
-                                    main_prog = paddle.static.Program()
-                                    with paddle.pir.core.program_guard(
-                                        main_prog, start_prog
-                                    ):
-                                        residual = paddle.static.data(
-                                            name='residual',
-                                            shape=residual_shape,
-                                            dtype=dtype,
-                                        )
-                                        x = paddle.static.data(
-                                            name='x', shape=x_shape, dtype=dtype
-                                        )
-                                        w = create_parameter(
-                                            shape=[x_shape[1]],
-                                            dtype=dtype,
-                                            initializer=paddle.nn.initializer.Assign(
-                                                rand_value
-                                            ),
-                                        )
-                                        b = create_parameter(
-                                            shape=[x_shape[1]],
-                                            dtype=dtype,
-                                            initializer=paddle.nn.initializer.Assign(
-                                                rand_value
-                                            ),
-                                        )
-                                        add_out = paddle.add(x, residual)
-                                        group_norm_out = (
-                                            paddle.nn.functional.group_norm(
-                                                add_out,
-                                                num_groups=groups,
-                                                epsilon=epilson,
-                                                weight=w,
-                                                bias=b,
-                                                data_format=data_layout,
-                                            )
-                                        )
-                                        out = paddle.nn.functional.silu(
-                                            group_norm_out
-                                        )
-                                        out = paddle.assign(out)
-                                        self.pass_attr_list = [
-                                            {'add_norm_fuse_pass': {}},
-                                            {'transfer_layout_pass': {}},
-                                            {
-                                                'remove_redundant_transpose_pass': {}
-                                            },
-                                        ]
-                                        self.feeds = {
-                                            "x": np.random.random(
-                                                x_shape
-                                            ).astype(dtype),
-                                            "residual": np.random.random(
-                                                residual_shape
-                                            ).astype(dtype),
-                                        }
-                                        self.fetch_list = [out]
-                                        self.valid_op_map = {
-                                            "pd_op.silu": 0,
-                                            "pd_op.add": 0,
-                                            "pd_op.group_norm": 0,
-                                            "pd_op.add_group_norm_silu": 1,
-                                        }
-                                        yield [main_prog, start_prog], False
+        for (
+            x_shape,
+            residual_shape,
+            dtype,
+            epilson,
+            groups,
+            data_layout,
+        ) in itertools.product(
+            [[2, 6, 4, 2]],
+            [[1, 6, 1, 1]],
+            ['float16'],
+            [1e-5],
+            [2],
+            ['NCHW'],
+        ):
+            rand_value = (
+                0.001 * paddle.rand(shape=[x_shape[1]], dtype=dtype).numpy()
+            )
+            with paddle.pir_utils.IrGuard():
+                start_prog = paddle.static.Program()
+                main_prog = paddle.static.Program()
+                with paddle.pir.core.program_guard(main_prog, start_prog):
+                    residual = paddle.static.data(
+                        name='residual',
+                        shape=residual_shape,
+                        dtype=dtype,
+                    )
+                    x = paddle.static.data(name='x', shape=x_shape, dtype=dtype)
+                    w = create_parameter(
+                        shape=[x_shape[1]],
+                        dtype=dtype,
+                        initializer=paddle.nn.initializer.Assign(rand_value),
+                    )
+                    b = create_parameter(
+                        shape=[x_shape[1]],
+                        dtype=dtype,
+                        initializer=paddle.nn.initializer.Assign(rand_value),
+                    )
+                    add_out = paddle.add(x, residual)
+                    group_norm_out = paddle.nn.functional.group_norm(
+                        add_out,
+                        num_groups=groups,
+                        epsilon=epilson,
+                        weight=w,
+                        bias=b,
+                        data_format=data_layout,
+                    )
+                    out = paddle.nn.functional.silu(group_norm_out)
+                    out = paddle.assign(out)
+                    self.pass_attr_list = [
+                        {'add_norm_fuse_pass': {}},
+                        {'transfer_layout_pass': {}},
+                        {'remove_redundant_transpose_pass': {}},
+                    ]
+                    self.feeds = {
+                        "x": np.random.random(x_shape).astype(dtype),
+                        "residual": np.random.random(residual_shape).astype(
+                            dtype
+                        ),
+                    }
+                    self.fetch_list = [out]
+                    self.valid_op_map = {
+                        "pd_op.silu": 0,
+                        "pd_op.add": 0,
+                        "pd_op.group_norm": 0,
+                        "pd_op.add_group_norm_silu": 1,
+                    }
+                    yield [main_prog, start_prog], False
 
     def setUp(self):
         if core.is_compiled_with_cuda():

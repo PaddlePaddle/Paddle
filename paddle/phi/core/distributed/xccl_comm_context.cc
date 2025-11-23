@@ -70,7 +70,7 @@ XCCLCommContext::XCCLCommContext(const phi::Place& place,
 void XCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,
                                 int root,
-                                const phi::stream::Stream& stream) const {
+                                const phi::stream::stream_t& stream) const {
   CommStaticCheck::SameShape(*out_tensor,
                              in_tensor,
                              /*dst_rank*/ rank_,
@@ -98,7 +98,7 @@ void XCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
 
 void XCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,
-                                const phi::stream::Stream& stream) const {
+                                const phi::stream::stream_t& stream) const {
   phi::distributed::CommStaticCheck::GatherLikeShape(
       *out_tensor,
       in_tensor,
@@ -117,7 +117,7 @@ void XCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
 void XCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
                                     const phi::DenseTensor& in_tensor,
                                     phi::ccl::CCLReduceOp reduce_type,
-                                    const phi::stream::Stream& stream) const {
+                                    const phi::stream::stream_t& stream) const {
   phi::distributed::CommStaticCheck::ScatterLikeShape(
       *out_tensor,
       in_tensor,
@@ -138,7 +138,7 @@ void XCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
 void XCCLCommContext::Send(const phi::DenseTensor& in_tensor,
                            const int64_t& count,
                            const int& peer,
-                           const phi::stream::Stream& stream) const {
+                           const phi::stream::stream_t& stream) const {
   phi::distributed::CommStaticCheck::CheckShape(
       in_tensor, rank_, size_, phi::AllocationType::CUSTOM);
   phi::DeviceManager::CCLSend(place_.GetDeviceType(),
@@ -155,7 +155,7 @@ void XCCLCommContext::Send(const phi::DenseTensor& in_tensor,
 void XCCLCommContext::Recv(phi::DenseTensor* out_tensor,
                            const int64_t& count,
                            const int& peer,
-                           const phi::stream::Stream& stream) const {
+                           const phi::stream::stream_t& stream) const {
   phi::distributed::CommStaticCheck::CheckShape(
       *out_tensor, rank_, size_, phi::AllocationType::CUSTOM);
   phi::DeviceManager::CCLRecv(place_.GetDeviceType(),
@@ -172,7 +172,7 @@ void XCCLCommContext::Recv(phi::DenseTensor* out_tensor,
 void XCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,
                                 phi::ccl::CCLReduceOp reduce_type,
-                                const phi::stream::Stream& stream) const {
+                                const phi::stream::stream_t stream) const {
   phi::distributed::CommStaticCheck::SameShape(*out_tensor,
                                                in_tensor,
                                                /*dst_rank*/ rank_,
@@ -193,7 +193,7 @@ void XCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
                              const phi::DenseTensor& in_tensor,
                              phi::ccl::CCLReduceOp reduce_type,
                              int root,
-                             const phi::stream::Stream& stream) const {
+                             const phi::stream::stream_t& stream) const {
   phi::distributed::CommStaticCheck::SameShape(*out_tensor,
                                                in_tensor,
                                                /*dst_rank*/ root,

@@ -28,9 +28,9 @@ template <typename T>
 static void LinearInterpolationGrad(const DenseTensor& output_grad,
                                     DenseTensor* input_grad,
                                     const float ratio_w,
-                                    const int in_w,
-                                    const int n,
-                                    const int c,
+                                    const int64_t in_w,
+                                    const int64_t n,
+                                    const int64_t c,
                                     const int out_w,
                                     const bool align_corners,
                                     const int align_mode,
@@ -75,10 +75,10 @@ static void BilinearInterpolationGrad(const DenseTensor& output_grad,
                                       DenseTensor* input_grad,
                                       const float ratio_h,
                                       const float ratio_w,
-                                      const int in_h,
-                                      const int in_w,
-                                      const int n,
-                                      const int c,
+                                      const int64_t in_h,
+                                      const int64_t in_w,
+                                      const int64_t n,
+                                      const int64_t c,
                                       const int out_h,
                                       const int out_w,
                                       const bool align_corners,
@@ -142,8 +142,8 @@ static void NearestNeighborInterpolateGrad(const DenseTensor& output_grad,
                                            DenseTensor* input_grad,
                                            const float ratio_h,
                                            const float ratio_w,
-                                           const int n,
-                                           const int c,
+                                           const int64_t n,
+                                           const int64_t c,
                                            const int out_h,
                                            const int out_w,
                                            const bool align_corners,
@@ -179,10 +179,10 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
                                      DenseTensor* input_grad,
                                      const float ratio_h,
                                      const float ratio_w,
-                                     const int in_h,
-                                     const int in_w,
-                                     const int n,
-                                     const int c,
+                                     const int64_t in_h,
+                                     const int64_t in_w,
+                                     const int64_t n,
+                                     const int64_t c,
                                      const int out_h,
                                      const int out_w,
                                      const bool align_corners,
@@ -194,20 +194,20 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
   for (int k = 0; k < out_h; k++) {  // loop for images
     MT y_n = align_corners ? ratio_h * static_cast<float>(k)
                            : ratio_h * (static_cast<float>(k) + 0.5f) - 0.5f;
-    int input_y = floorf(y_n);
+    int64_t input_y = floorf(y_n);
     MT y_t = y_n - input_y;
 
     for (int l = 0; l < out_w; l++) {
       MT x_n = align_corners ? ratio_w * static_cast<float>(l)
                              : ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f;
-      int input_x = floorf(x_n);
+      int64_t input_x = floorf(x_n);
       MT x_t = x_n - input_x;
 
       std::array<MT, 4> x_coeffs;
       std::array<MT, 4> y_coeffs;
 
-      funcs::get_cubic_upsample_coefficients<MT>(x_coeffs.data(), x_t);
-      funcs::get_cubic_upsample_coefficients<MT>(y_coeffs.data(), y_t);
+      funcs::GetCubicUpsampleCoefficients<MT>(x_coeffs.data(), x_t);
+      funcs::GetCubicUpsampleCoefficients<MT>(y_coeffs.data(), y_t);
 
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
@@ -215,9 +215,9 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
           for (int ii = 0; ii < 4; ii++) {
             for (int jj = 0; jj < 4; jj++) {
               int access_x = std::max(std::min(input_x - 1 + ii, in_w - 1),
-                                      static_cast<int>(0));
+                                      static_cast<int64_t>(0));
               int access_y = std::max(std::min(input_y - 1 + jj, in_h - 1),
-                                      static_cast<int>(0));
+                                      static_cast<int64_t>(0));
               if (data_layout == DataLayout::kNCHW) {
                 MT grad = static_cast<MT>(output_grad_t(i, j, k, l));
                 input_grad_t(i, j, access_y, access_x) +=
@@ -241,11 +241,11 @@ static void TrilinearInterpolationGrad(const DenseTensor& output_grad,
                                        const float ratio_d,
                                        const float ratio_h,
                                        const float ratio_w,
-                                       const int in_d,
-                                       const int in_h,
-                                       const int in_w,
-                                       const int n,
-                                       const int c,
+                                       const int64_t in_d,
+                                       const int64_t in_h,
+                                       const int64_t in_w,
+                                       const int64_t n,
+                                       const int64_t c,
                                        const int out_d,
                                        const int out_h,
                                        const int out_w,
@@ -348,8 +348,8 @@ static void NearestNeighbor3DInterpolateGrad(const DenseTensor& output_grad,
                                              const float ratio_d,
                                              const float ratio_h,
                                              const float ratio_w,
-                                             const int n,
-                                             const int c,
+                                             const int64_t n,
+                                             const int64_t c,
                                              const int out_d,
                                              const int out_h,
                                              const int out_w,
@@ -407,7 +407,7 @@ static void Interpolate1DCPUBwd(
     int align_mode,
     DenseTensor* input_grad) {
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
+  int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_w = -1.0;
@@ -508,7 +508,7 @@ static void Interpolate2DCPUBwd(
     int align_mode,
     DenseTensor* input_grad) {
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
+  int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_h = -1;
@@ -592,27 +592,18 @@ static void Interpolate2DCPUBwd(
     return;
   }
 
-  float ratio_h = 0.f;
-  float ratio_w = 0.f;
-  if (out_h > 1) {
-    float new_scale_h = 0.f;
-    new_scale_h = static_cast<float>(
-        (scale_h > 0) ? (1.f / scale_h)
-                      : static_cast<float>(in_h) / static_cast<float>(out_h));
-    ratio_h =
-        static_cast<float>(align_corners ? (static_cast<float>(in_h) - 1.f) /
-                                               (static_cast<float>(out_h) - 1.f)
-                                         : new_scale_h);
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  double ratio_h =
+      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
+  double ratio_w =
+      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
+
+  // TODO(zrr1999): to align xpu
+  if (out_h <= 1) {
+    ratio_h = 0;
   }
-  if (out_w > 1) {
-    float new_scale_w = 0.f;
-    new_scale_w = static_cast<float>(
-        (scale_w > 0) ? (1.f / scale_w)
-                      : static_cast<float>(in_w) / static_cast<float>(out_w));
-    ratio_w =
-        static_cast<float>(align_corners ? (static_cast<float>(in_w) - 1.f) /
-                                               (static_cast<float>(out_w) - 1.f)
-                                         : new_scale_w);
+  if (out_w <= 1) {
+    ratio_w = 0;
   }
 
   if ("bilinear" == interp_method) {
@@ -674,7 +665,7 @@ static void Interpolate3DCPUBwd(
     int align_mode,
     DenseTensor* input_grad) {
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
+  int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_d = -1;
@@ -778,38 +769,13 @@ static void Interpolate3DCPUBwd(
     return;
   }
 
-  float ratio_d = 0.f;
-  float ratio_h = 0.f;
-  float ratio_w = 0.f;
-  if (out_d > 1) {
-    float new_scale_d = 0.f;
-    new_scale_d = static_cast<float>(
-        (scale_d > 0) ? (1.f / scale_d)
-                      : static_cast<float>(in_d) / static_cast<float>(out_d));
-    ratio_d =
-        static_cast<float>(align_corners ? (static_cast<float>(in_d) - 1.f) /
-                                               (static_cast<float>(out_d) - 1.f)
-                                         : new_scale_d);
-  }
-  if (out_h > 1) {
-    float new_scale_h = 0.f;
-    new_scale_h = static_cast<float>(
-        (scale_h > 0) ? (1.f / scale_h)
-                      : static_cast<float>(in_h) / static_cast<float>(out_h));
-    ratio_h = (align_corners) ? static_cast<float>(in_h - 1) /
-                                    (static_cast<float>(out_h) - 1)
-                              : static_cast<float>(new_scale_h);
-  }
-  if (out_w > 1) {
-    float new_scale_w = 0.f;
-    new_scale_w = static_cast<float>(
-        (scale_w > 0) ? (1.f / scale_w)
-                      : static_cast<float>(in_w) / static_cast<float>(out_w));
-    ratio_w =
-        static_cast<float>(align_corners ? (static_cast<float>(in_w) - 1.f) /
-                                               (static_cast<float>(out_w) - 1.f)
-                                         : new_scale_w);
-  }
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  double ratio_d =
+      funcs::AreaPixelComputeScale<float>(in_d, out_d, align_corners, scale_d);
+  double ratio_h =
+      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
+  double ratio_w =
+      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
 
   if ("trilinear" == interp_method) {
     TrilinearInterpolationGrad<T>(output_grad,
@@ -861,6 +827,10 @@ void InterpolateGradKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   auto output_grad_dims = output_grad.dims();
   if (output_grad_dims.size() == 3) {  // 1D interpolation grad
     Interpolate1DCPUBwd<T, Context>(dev_ctx,
@@ -1170,8 +1140,8 @@ PD_REGISTER_KERNEL(bilinear_interp_grad,
                    phi::BilinearInterpGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1181,8 +1151,8 @@ PD_REGISTER_KERNEL(legacy_bilinear_interp_grad,
                    phi::LegacyBilinearInterpGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1192,8 +1162,8 @@ PD_REGISTER_KERNEL(nearest_interp_grad,
                    phi::NearestInterpGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1203,8 +1173,8 @@ PD_REGISTER_KERNEL(legacy_nearest_interp_grad,
                    phi::LegacyNearestInterpGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1214,8 +1184,8 @@ PD_REGISTER_KERNEL(trilinear_interp_grad,
                    phi::TrilinearInterpGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1225,8 +1195,8 @@ PD_REGISTER_KERNEL(linear_interp_grad,
                    phi::LinearInterpGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1236,8 +1206,8 @@ PD_REGISTER_KERNEL(bicubic_interp_grad,
                    phi::BicubicInterpGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }

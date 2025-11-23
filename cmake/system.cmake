@@ -30,10 +30,10 @@ if(WIN32)
 else()
   if(APPLE)
     set(HOST_SYSTEM "macosx")
-    exec_program(
-      sw_vers ARGS
-      -productVersion
-      OUTPUT_VARIABLE HOST_SYSTEM_VERSION)
+    execute_process(
+      COMMAND sw_vers -productVersion
+      OUTPUT_VARIABLE HOST_SYSTEM_VERSION
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
     string(REGEX MATCH "[0-9]+.[0-9]+" MACOS_VERSION "${HOST_SYSTEM_VERSION}")
     if(NOT DEFINED $ENV{MACOSX_DEPLOYMENT_TARGET})
       # Set cache variable - end user may change this during ccmake or cmake-gui configure.

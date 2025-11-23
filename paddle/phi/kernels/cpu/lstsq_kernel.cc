@@ -18,13 +18,13 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/impl/lstsq_kernel_impl.h"
 #include "paddle/phi/kernels/lstsq_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
-
 namespace phi {
 
 enum class LapackDriverType : int { Gels, Gelsd, Gelsy, Gelss };
@@ -40,6 +40,26 @@ void LstsqKernel(const Context& dev_ctx,
                  DenseTensor* rank,
                  DenseTensor* singular_values) {
   using ValueType = phi::dtype::Real<T>;
+  if (x.numel() == 0 || y.numel() == 0) {
+    if (solution)
+      Full<T, Context>(dev_ctx,
+                       phi::IntArray(common::vectorize(solution->dims())),
+                       0,
+                       solution);
+    if (rank)
+      Full<int64_t, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(rank->dims())), 0, rank);
+    if (residuals)
+      GetResidualsTensor<Context, T>(
+          dev_ctx, x, y, driver_string, solution, residuals, rank);
+    if (singular_values)
+      Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(singular_values->dims())),
+          0,
+          singular_values);
+    return;
+  }
 
   static auto driver_type = std::unordered_map<std::string, LapackDriverType>(
       {{"gels", LapackDriverType::Gels},
@@ -69,10 +89,10 @@ void LstsqKernel(const Context& dev_ctx,
   int lda = std::max<int>(m, 1);
   int ldb = std::max<int>(1, std::max(m, n));
 
-  DenseTensor* new_x = new DenseTensor();
-  new_x->Resize(common::make_ddim({batch_count, m, n}));
-  dev_ctx.template Alloc<T>(new_x);
-  phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, new_x);
+  DenseTensor new_x;
+  new_x.Resize(common::make_ddim({batch_count, m, n}));
+  dev_ctx.template Alloc<T>(&new_x);
+  phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, &new_x);
 
   solution->Resize(common::make_ddim({batch_count, std::max(m, n), nrhs}));
   dev_ctx.template Alloc<T>(solution);
@@ -89,13 +109,13 @@ void LstsqKernel(const Context& dev_ctx,
     }
   }
 
-  DenseTensor input_x_trans = phi::TransposeLast2Dim<T>(dev_ctx, *new_x);
+  DenseTensor input_x_trans = phi::TransposeLast2Dim<T>(dev_ctx, new_x);
   DenseTensor input_y_trans = phi::TransposeLast2Dim<T>(dev_ctx, *solution);
-  phi::Copy<Context>(dev_ctx, input_x_trans, dev_ctx.GetPlace(), true, new_x);
+  phi::Copy<Context>(dev_ctx, input_x_trans, dev_ctx.GetPlace(), true, &new_x);
   phi::Copy<Context>(
       dev_ctx, input_y_trans, dev_ctx.GetPlace(), true, solution);
 
-  auto* x_vector = new_x->data<T>();
+  auto* x_vector = new_x.data<T>();
   auto* y_vector = solution->data<T>();
 
   // "gels" divers does not need to compute rank
@@ -119,11 +139,11 @@ void LstsqKernel(const Context& dev_ctx,
   }
 
   // "jpvt" is only used for "gelsy" driver
-  DenseTensor* jpvt = new DenseTensor();
+  DenseTensor jpvt;
   int* jpvt_data = nullptr;
   if (driver == LapackDriverType::Gelsy) {
-    jpvt->Resize(common::make_ddim({std::max<int>(1, n)}));
-    jpvt_data = dev_ctx.template Alloc<int>(jpvt);
+    jpvt.Resize(common::make_ddim({std::max<int>(1, n)}));
+    jpvt_data = dev_ctx.template Alloc<int>(&jpvt);
   }
 
   // run once the driver, first to get the optimal workspace size
@@ -184,12 +204,12 @@ void LstsqKernel(const Context& dev_ctx,
   }
 
   lwork = std::max<int>(1, static_cast<int>(phi::dtype::Real<T>(wkopt)));
-  DenseTensor* work = new DenseTensor();
-  work->Resize(common::make_ddim({lwork}));
-  T* work_data = dev_ctx.template Alloc<T>(work);
+  DenseTensor work;
+  work.Resize(common::make_ddim({lwork}));
+  T* work_data = dev_ctx.template Alloc<T>(&work);
 
   // "rwork" only used for complex inputs and "gelsy/gelsd/gelss" drivers
-  DenseTensor* rwork = new DenseTensor();
+  DenseTensor rwork;
   ValueType* rwork_data = nullptr;
   if (IsComplexDtype(x.dtype()) && driver != LapackDriverType::Gels) {
     int rwork_len = 0;
@@ -200,16 +220,16 @@ void LstsqKernel(const Context& dev_ctx,
     } else if (driver == LapackDriverType::Gelsd) {
       rwork_len = std::max<int>(1, rwkopt);
     }
-    rwork->Resize(common::make_ddim({rwork_len}));
-    rwork_data = dev_ctx.template Alloc<ValueType>(rwork);
+    rwork.Resize(common::make_ddim({rwork_len}));
+    rwork_data = dev_ctx.template Alloc<ValueType>(&rwork);
   }
 
   // "iwork" workspace array is relevant only for "gelsd" driver
-  DenseTensor* iwork = new DenseTensor();
+  DenseTensor iwork;
   int* iwork_data = nullptr;
   if (driver == LapackDriverType::Gelsd) {
-    iwork->Resize(common::make_ddim({std::max<int>(1, iwkopt)}));
-    iwork_data = dev_ctx.template Alloc<int>(iwork);
+    iwork.Resize(common::make_ddim({std::max<int>(1, iwkopt)}));
+    iwork_data = dev_ctx.template Alloc<int>(&iwork);
   }
 
   for (auto i = 0; i < batch_count; ++i) {
@@ -296,7 +316,8 @@ void LstsqKernel(const Context& dev_ctx,
     solution->Resize(common::make_ddim({n, nrhs}));
   }
 
-  GetResidualsTensor<Context, T>(dev_ctx, x, y, solution, residuals);
+  GetResidualsTensor<Context, T>(
+      dev_ctx, x, y, driver_string, solution, residuals, rank);
 }
 
 }  // namespace phi

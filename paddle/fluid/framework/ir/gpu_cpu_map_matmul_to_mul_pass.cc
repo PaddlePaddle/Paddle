@@ -444,6 +444,9 @@ void GpuCpuMapMatmulV2ToMatmulPass::ApplyImpl(ir::Graph* graph) const {
     if (matmul_v2_op->Op()->HasAttr("use_mkldnn")) {
       desc.SetAttr("use_mkldnn", matmul_v2_op->Op()->GetAttr("use_mkldnn"));
     }
+    if (matmul_v2_op->Op()->HasAttr("use_onednn")) {
+      desc.SetAttr("use_onednn", matmul_v2_op->Op()->GetAttr("use_onednn"));
+    }
     if (matmul_v2_op->Op()->HasAttr("enable_int8")) {
       desc.SetAttr("enable_int8", matmul_v2_op->Op()->GetAttr("enable_int8"));
       desc.SetAttr("Input_scale", matmul_v2_op->Op()->GetAttr("Input_scale"));

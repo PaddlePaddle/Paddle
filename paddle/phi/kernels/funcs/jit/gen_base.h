@@ -25,7 +25,7 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/kernels/funcs/jit/kernel_base.h"
 
-PHI_DECLARE_bool(dump_jitcode);
+COMMON_DECLARE_bool(dump_jitcode);
 
 namespace phi {
 namespace jit {
@@ -54,7 +54,7 @@ class GenBase : public Kernel {
   void operator delete[](void* ptr) { operator delete(ptr); }
 
  protected:
-  void dumpCode(const unsigned char* code) const;
+  PADDLE_API void dumpCode(const unsigned char* code) const;
 };
 
 // Creator is used to creat the jitcode and save in pool.

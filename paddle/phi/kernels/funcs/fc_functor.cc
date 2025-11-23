@@ -22,7 +22,7 @@ namespace phi {
 namespace funcs {
 
 template <typename DeviceContext, typename T>
-void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
+void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
                                              const int M,
                                              const int N,
                                              const int K,
@@ -32,7 +32,7 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
                                              const T* B,
                                              bool relu,
                                              bool padding_weights) {
-  auto blas = GetBlas<DeviceContext, T>(context);
+  auto blas = GetBlas<DeviceContext, T>(dev_ctx);
   phi::DenseTensor Y1;
   T* Y1_data = nullptr;
   if (padding_weights) {
@@ -40,10 +40,10 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
     const int KK = K + 4;
     phi::DenseTensor X1;
     X1.Resize({M * KK});
-    T* X1_data = context.template HostAlloc<T>(&X1);
+    T* X1_data = dev_ctx.template HostAlloc<T>(&X1);
 
     Y1.Resize({M * (N + 4)});
-    Y1_data = context.template HostAlloc<T>(&Y1);
+    Y1_data = dev_ctx.template HostAlloc<T>(&Y1);
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif

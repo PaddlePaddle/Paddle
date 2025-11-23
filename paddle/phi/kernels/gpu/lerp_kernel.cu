@@ -25,7 +25,11 @@ namespace phi {
 template <typename T>
 struct LerpElementWiseDirectCUDAFunctor {
   HOSTDEVICE inline T operator()(const T x, const T y, const T weight) const {
-    return x + weight * (y - x);
+    if (abs(static_cast<float>(weight)) < 0.5f) {
+      return x + weight * (y - x);
+    } else {
+      return y - (y - x) * (static_cast<T>(1) - weight);
+    }
   }
 };
 
@@ -37,25 +41,24 @@ struct LerpScalarDirectCUDAFunctor {
       : weight_(weight) {}
 
   HOSTDEVICE inline T operator()(const T x, const T y) const {
-    return x + weight_[0] * (y - x);
+    if (abs(static_cast<float>(weight_[0])) < 0.5f) {
+      return x + weight_[0] * (y - x);
+    } else {
+      return y - (y - x) * (static_cast<T>(1) - weight_[0]);
+    }
   }
 };
 
 template <typename T, typename Context>
-void LerpKernel(const Context &ctx,
+void LerpKernel(const Context &dev_ctx,
                 const DenseTensor &x,
                 const DenseTensor &y,
                 const DenseTensor &weight,
                 DenseTensor *out) {
-  PADDLE_ENFORCE_GT(
-      x.numel(),
-      0,
-      common::errors::InvalidArgument("LerpKernel's input x must not empty."));
-
-  PADDLE_ENFORCE_GT(
-      y.numel(),
-      0,
-      common::errors::InvalidArgument("LerpKernel's input y must not empty."));
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
 
   int rank = out->dims().size();
   PADDLE_ENFORCE_GE(
@@ -66,7 +69,7 @@ void LerpKernel(const Context &ctx,
           "greater than or equal to 0, but the value received is %d.",
           rank));
 
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   std::vector<DenseTensor *> outputs = {out};
 
   std::vector<const DenseTensor *> inputs;
@@ -76,32 +79,32 @@ void LerpKernel(const Context &ctx,
     inputs.emplace_back(&x);
     inputs.emplace_back(&y);
     auto functor = LerpScalarDirectCUDAFunctor<T>(weight_ptr);
-    phi::funcs::BroadcastKernel<T>(ctx, inputs, &outputs, functor);
+    phi::funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, functor);
   } else {
     inputs.reserve(3);
     auto functor = LerpElementWiseDirectCUDAFunctor<T>();
-    DenseTensor b_min = phi::EmptyLike<T>(ctx, *out);
+    DenseTensor b_min = phi::EmptyLike<T>(dev_ctx, *out);
     if (x.dims().size() != y.dims().size() &&
         weight.dims().size() != y.dims().size()) {
       if (x.dims().size() < y.dims().size() &&
           x.dims().size() < weight.dims().size()) {
         // x broadcast to b_min
         ExpandKernel<T, Context>(
-            ctx, x, common::vectorize(b_min.dims()), &b_min);
+            dev_ctx, x, common::vectorize(b_min.dims()), &b_min);
         inputs.emplace_back(&b_min);
         inputs.emplace_back(&y);
         inputs.emplace_back(&weight);
       } else if (y.dims().size() < weight.dims().size()) {
         // y broadcast to b_min
         ExpandKernel<T, Context>(
-            ctx, y, common::vectorize(b_min.dims()), &b_min);
+            dev_ctx, y, common::vectorize(b_min.dims()), &b_min);
         inputs.emplace_back(&x);
         inputs.emplace_back(&b_min);
         inputs.emplace_back(&weight);
       } else {
         // weight broadcast to b_min
         ExpandKernel<T, Context>(
-            ctx, weight, common::vectorize(b_min.dims()), &b_min);
+            dev_ctx, weight, common::vectorize(b_min.dims()), &b_min);
         inputs.emplace_back(&x);
         inputs.emplace_back(&y);
         inputs.emplace_back(&b_min);
@@ -111,7 +114,7 @@ void LerpKernel(const Context &ctx,
       inputs.emplace_back(&y);
       inputs.emplace_back(&weight);
     }
-    phi::funcs::BroadcastKernel<T>(ctx, inputs, &outputs, functor);
+    phi::funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, functor);
   }
 }
 
@@ -121,7 +124,7 @@ PD_REGISTER_KERNEL(lerp,
                    GPU,
                    ALL_LAYOUT,
                    phi::LerpKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float,
                    double) {}

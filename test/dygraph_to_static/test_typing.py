@@ -18,7 +18,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pir
+from dygraph_to_static_utils import Dy2StTestBase
 
 import paddle
 
@@ -94,7 +94,6 @@ class TestTyping(Dy2StTestBase):
         out, _ = self.net(self.x)
         return out
 
-    @test_legacy_and_pir
     def test_type(self):
         self.net = self.build_net()
         out = self.run_dy()
@@ -109,7 +108,7 @@ class TestTypingTuple(TestTyping):
 
     def run_dy(self):
         out, np_data = self.net(self.x)
-        self.assertTrue(np.equal(np_data, np.ones_like(np_data)).all())
+        np.testing.assert_allclose(np_data, np.ones_like(np_data))
         return out
 
 

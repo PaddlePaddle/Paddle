@@ -73,7 +73,7 @@ class TrtConvertSwishTest(TrtLayerAutoScanTest):
 
                 yield program_config
 
-    def generate_dynamic_shape(self):
+    def generate_dynamic_shape(self, attrs):
         if self.dims == 0:
             self.dynamic_shape.min_input_shape = {"input_data": []}
             self.dynamic_shape.max_input_shape = {"input_data": []}
@@ -118,27 +118,35 @@ class TrtConvertSwishTest(TrtLayerAutoScanTest):
             clear_dynamic_shape()
             self.trt_param.precision = paddle_infer.PrecisionType.Float32
             program_config.set_input_type(np.float32)
-            yield self.create_inference_config(), generate_trt_nodes_num(
-                attrs, False
-            ), 1e-5
+            yield (
+                self.create_inference_config(),
+                generate_trt_nodes_num(attrs, False),
+                1e-5,
+            )
             self.trt_param.precision = paddle_infer.PrecisionType.Half
             program_config.set_input_type(np.float16)
-            yield self.create_inference_config(), generate_trt_nodes_num(
-                attrs, False
-            ), (1e-3, 1e-3)
+            yield (
+                self.create_inference_config(),
+                generate_trt_nodes_num(attrs, False),
+                (1e-3, 1e-3),
+            )
 
         # for dynamic_shape
-        self.generate_dynamic_shape()
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-5
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-5,
+        )
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), (1e-3, 1e-3)
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            (1e-3, 1e-3),
+        )
 
     def test(self):
         # test for old ir

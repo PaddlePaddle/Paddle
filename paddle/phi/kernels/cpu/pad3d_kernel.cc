@@ -15,8 +15,8 @@
 #include "paddle/phi/kernels/pad3d_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -381,7 +381,7 @@ void Pad3dKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const IntArray& paddings,
                  const std::string& mode,
-                 float pad_value,
+                 double pad_value,
                  const std::string& data_format,
                  DenseTensor* out) {
   T value = static_cast<T>(pad_value);
@@ -406,6 +406,11 @@ void Pad3dKernel(const Context& dev_ctx,
 
   auto out_dims = out->dims();
   T* out_data = dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), pad_value, out);
+    return;
+  }
 
   int channels = static_cast<int>(in_dims[1]);
   int in_depth = static_cast<int>(in_dims[2]);
@@ -583,5 +588,5 @@ PD_REGISTER_KERNEL(pad3d,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

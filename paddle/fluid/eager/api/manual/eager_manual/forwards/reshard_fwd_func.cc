@@ -18,12 +18,18 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 
+COMMON_DECLARE_bool(check_cuda_error);
+
 paddle::Tensor reshard_ad_function(
     const paddle::Tensor& input,
-    const phi::distributed::TensorDistAttr dist_attr) {
+    const phi::distributed::TensorDistAttr dist_attr,
+    paddle::optional<paddle::Tensor*> predefined_out) {
 #ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API: "
           << "reshard dygraph";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("reshard_ad_function begin");
+  }
   // Dygraph Record Event
   phi::RecordEvent dygraph_entrance_record_event(
       "reshard dygraph", phi::TracerEventType::Communication, 1);
@@ -31,6 +37,9 @@ paddle::Tensor reshard_ad_function(
   // Get Input AutoGradMeta
   egr::AutogradMeta* input_autograd_meta =
       egr::EagerUtils::nullable_autograd_meta(input);
+  // Check LeafTensor if its GradNodeAccumulation TensorMeta is consistent with
+  // its TensorMeta
+  egr::CheckGradNodeAccumulation(input);
   bool trace_backward = egr::Controller::Instance().HasGrad();
   bool require_any_grad =
       egr::EagerUtils::ComputeRequireGrad(trace_backward, input_autograd_meta);
@@ -75,7 +84,9 @@ paddle::Tensor reshard_ad_function(
     }
     grad_node->SetGradInMeta(out, 0);
   }
-
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("reshard_ad_function finish");
+  }
   return out;
 #else
   PADDLE_THROW(common::errors::Unavailable(

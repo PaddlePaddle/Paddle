@@ -17,6 +17,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/yolo_box_util.h"
 
 namespace phi {
@@ -35,6 +36,14 @@ void YoloBoxKernel(const Context& dev_ctx,
                    float iou_aware_factor,
                    DenseTensor* boxes,
                    DenseTensor* scores) {
+  if (x.numel() == 0 || img_size.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(boxes->dims())), 0, boxes);
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(scores->dims())), 0, scores);
+    return;
+  }
+
   auto* input = &x;
   auto* imgsize = &img_size;
   float scale = scale_x_y;

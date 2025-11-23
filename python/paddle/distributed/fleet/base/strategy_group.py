@@ -47,9 +47,9 @@ class StrategyGroupBase:
         """
         Initialize the communication group.
         """
-        assert (
-            dist.is_initialized()
-        ), "The global communication group need to be initialized."
+        assert dist.is_initialized(), (
+            "The global communication group need to be initialized."
+        )
         assert len(list_of_ranks), "The list_of_ranks can not be empty."
         self._rank = dist.get_rank()
         self._list_of_ranks = list_of_ranks
@@ -133,9 +133,9 @@ class DPGroup(StrategyGroupBase):
 
     def __init__(self, list_of_ranks):
         super().__init__(list_of_ranks)
-        assert not isinstance(
-            self.group, list
-        ), f"Rank {self._rank} belongs to multi dp groups"
+        assert not isinstance(self.group, list), (
+            f"Rank {self._rank} belongs to multi dp groups"
+        )
 
 
 class MPGroup(StrategyGroupBase):
@@ -152,9 +152,9 @@ class MPGroup(StrategyGroupBase):
 
     def __init__(self, list_of_ranks):
         super().__init__(list_of_ranks)
-        assert not isinstance(
-            self.group, list
-        ), f"Rank {self._rank} belongs to multi mp groups"
+        assert not isinstance(self.group, list), (
+            f"Rank {self._rank} belongs to multi mp groups"
+        )
 
 
 class ShardingGroup(StrategyGroupBase):
@@ -171,9 +171,9 @@ class ShardingGroup(StrategyGroupBase):
 
     def __init__(self, list_of_ranks):
         super().__init__(list_of_ranks)
-        assert not isinstance(
-            self.group, list
-        ), f"Rank {self._rank} belongs to multi sharding groups"
+        assert not isinstance(self.group, list), (
+            f"Rank {self._rank} belongs to multi sharding groups"
+        )
 
 
 class PPGroup(StrategyGroupBase):
@@ -190,9 +190,9 @@ class PPGroup(StrategyGroupBase):
 
     def __init__(self, list_of_ranks):
         super().__init__(list_of_ranks)
-        assert not isinstance(
-            self.group, list
-        ), f"Rank {self._rank} belongs to multi pp groups"
+        assert not isinstance(self.group, list), (
+            f"Rank {self._rank} belongs to multi pp groups"
+        )
 
         self._send_next_group = None
         self._send_prev_group = None

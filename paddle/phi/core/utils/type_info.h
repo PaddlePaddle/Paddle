@@ -41,7 +41,7 @@ class TypeInfo {
 };
 
 template <typename BaseT, typename DerivedT>
-class TEST_API TypeInfoTraits {
+class TypeInfoTraits {
  public:
   static const TypeInfo<BaseT> kType;
   TypeInfoTraits();

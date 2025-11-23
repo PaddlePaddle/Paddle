@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/clip_grad_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/clip_grad_kernel_impl.h"
 
@@ -27,5 +26,5 @@ PD_REGISTER_KERNEL(clip_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}

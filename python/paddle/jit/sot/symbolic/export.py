@@ -174,7 +174,7 @@ class PyFileGen:
         init_fn.add_sub("super().__init__()")
 
         for param in self.SIR.param_symbol:
-            meta = self.SIR.symbol_meta_map[param]
+            meta = self.SIR.symbol_meta_map[param].unwrap_unsafe()
             init_fn.add_sub(
                 f"{self.name_gener(param)} = self.create_parameter(",
                 f"   shape={meta.shape},",
@@ -218,7 +218,7 @@ class PyFileGen:
 
         for inp in self.SIR.inputs:
             if inp in self.SIR.non_param_symbol:
-                meta = self.SIR.symbol_meta_map[inp.name]
+                meta = self.SIR.symbol_meta_map[inp.name].unwrap_unsafe()
                 shape_str = "[1]" if len(meta.shape) == 0 else str(meta.shape)
                 if meta.dtype in (
                     paddle.int8,

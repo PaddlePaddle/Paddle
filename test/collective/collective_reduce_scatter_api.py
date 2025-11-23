@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+
+os.environ['FLAGS_enable_pir_api'] = '0'
 
 from legacy_test.test_collective_api_base import (
     TestCollectiveAPIRunnerBase,

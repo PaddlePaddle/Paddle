@@ -40,7 +40,7 @@ class XPUTestSquaredL2NormOp(XPUOpTestWrapper):
 
         def setUp(self):
             self.init()
-            self.use_mkldnn = False
+            self.use_onednn = False
             self.max_relative_error = 0.05
             self.set_inputs()
 

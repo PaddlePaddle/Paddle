@@ -20,13 +20,20 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 
+COMMON_DECLARE_bool(check_cuda_error);
+
 paddle::Tensor dtensor_from_local_ad_function(
     const paddle::Tensor& input,
     const phi::distributed::ProcessMesh& process_mesh,
-    const phi::distributed::Placements& placements) {
+    const phi::distributed::Placements& placements,
+    paddle::optional<paddle::Tensor*> predefined_out) {
 #ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API: "
           << "dtensor_from_local dygraph";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("dtensor_from_local_ad_function begin");
+  }
+
   if (input.is_dist_tensor()) {
     VLOG(3) << "Input is a distributed tensor, no need to convert.";
     return input;
@@ -39,6 +46,9 @@ paddle::Tensor dtensor_from_local_ad_function(
   // Get Input AutoGradMeta
   egr::AutogradMeta* input_autograd_meta =
       egr::EagerUtils::nullable_autograd_meta(input);
+  // Check LeafTensor if its GradNodeAccumulation TensorMeta is consistent with
+  // its TensorMeta
+  egr::CheckGradNodeAccumulation(input);
   bool trace_backward = egr::Controller::Instance().HasGrad();
   bool require_any_grad =
       egr::EagerUtils::ComputeRequireGrad(trace_backward, input_autograd_meta);
@@ -90,7 +100,14 @@ paddle::Tensor dtensor_from_local_ad_function(
     egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
 
     // SetGradOutMeta & SetEdges
-    grad_node->SetGradOutMeta(input, 0);
+    if (input_autograd_meta) {
+      grad_node->SetGradOutMeta(input, 0);
+      input_autograd_meta->SetGradNode(grad_node);
+      input_autograd_meta->SetSingleOutRankWithSlot(0, 0);
+    } else {
+      grad_node->SetGradOutMeta(input, 0);
+    }
+
     // SetOutRank & SetHistory & SetGradInMeta
     if (out_autograd_meta) {
       egr::EagerUtils::SetOutRankWithSlot(out_autograd_meta, 0);
@@ -99,7 +116,9 @@ paddle::Tensor dtensor_from_local_ad_function(
     grad_node->SetGradInMeta(out, 0);
     grad_node->SetTensorWrapperNoNeedBuffer_Output(out);
   }
-
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("dtensor_from_local_ad_function finish");
+  }
   return out;
 #else
   PADDLE_THROW(common::errors::Unavailable(

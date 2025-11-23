@@ -17,13 +17,8 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    IrMode,
-    ToStaticMode,
-    disable_test_case,
     enable_to_static_guard,
     test_ast_only,
-    test_legacy_and_pir,
-    test_pir_only,
 )
 from ifelse_simple_func import (
     NetWithControlFlowIf,
@@ -52,6 +47,7 @@ from ifelse_simple_func import (
 
 import paddle
 import paddle.nn.functional as F
+from paddle import nn
 from paddle.jit.dy2static.utils import Dygraph2StaticException
 
 np.random.seed(1)
@@ -66,9 +62,11 @@ class TestDy2staticException(Dy2StTestBase):
     @test_ast_only
     def test_error(self):
         if self.dyfunc:
-            with self.assertRaisesRegex(Dygraph2StaticException, self.error):
-                with enable_to_static_guard(True):
-                    self.assertTrue(paddle.jit.to_static(self.dyfunc)(self.x))
+            with (
+                self.assertRaisesRegex(Dygraph2StaticException, self.error),
+                enable_to_static_guard(True),
+            ):
+                self.assertTrue(paddle.jit.to_static(self.dyfunc)(self.x))
 
 
 class TestDy2StIfElseRetInt2(TestDy2staticException):
@@ -103,8 +101,6 @@ class TestDygraphIfElse2(TestDygraphIfElse):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = dyfunc_with_if_else2
 
-    # TODO(dev): fix AST mode
-    @disable_test_case((ToStaticMode.AST, IrMode.PT))
     def test_ast_to_func(self):
         np.testing.assert_allclose(
             self._run_dygraph(), self._run_static(), atol=1e-7, rtol=1e-7
@@ -331,7 +327,9 @@ class TestDygraphIfElseNet(Dy2StTestBase):
             return ret.numpy()
 
     def test_ast_to_func(self):
-        np.testing.assert_allclose(self._run_dygraph(), self._run_static())
+        np.testing.assert_allclose(
+            self._run_dygraph(), self._run_static(), rtol=1e-6, atol=1e-8
+        )
 
 
 # Test to call function ahead caller.
@@ -520,10 +518,12 @@ class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
 
     @test_ast_only
     def test_ast_to_func(self):
-        with enable_to_static_guard(True):
-            with self.assertRaises(Dygraph2StaticException):
-                static_func = paddle.jit.to_static(self.dyfunc)
-                out = static_func(self.x)
+        with (
+            enable_to_static_guard(True),
+            self.assertRaises(Dygraph2StaticException),
+        ):
+            static_func = paddle.jit.to_static(self.dyfunc)
+            out = static_func(self.x)
 
 
 class IfElseNet(paddle.nn.Layer):
@@ -547,7 +547,6 @@ class IfElseNet(paddle.nn.Layer):
 
 
 class TestDy2StIfElseBackward(Dy2StTestBase):
-    @test_legacy_and_pir
     def test_run_backward(self):
         a = paddle.randn((4, 3), dtype='float32')
         a.stop_gradient = False
@@ -599,7 +598,6 @@ class TestIfElseMaybeUnbound(Dy2StTestBase):
         np.testing.assert_allclose(dygraph_out.numpy(), static_out.numpy())
 
     @test_ast_only
-    @test_pir_only
     def test_use_undefined_var(self):
         truethy = paddle.to_tensor(1)
         falsy = paddle.to_tensor(0)
@@ -622,7 +620,6 @@ def dynamic_shape_with_constant_promotion(x):
 
 class TestDynamicShapeWithConstantPromotion(Dy2StTestBase):
     @test_ast_only
-    @test_pir_only
     def test_dynamic_shape_with_constant_promotion(self):
         x = paddle.randn([5, 3])
         static_fn = paddle.jit.to_static(
@@ -636,6 +633,33 @@ class TestDynamicShapeWithConstantPromotion(Dy2StTestBase):
         )
         out = static_fn(x)
         self.assertEqual(out, 3)
+
+
+salt = paddle.rand([8])
+
+
+class Net(nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.layer = nn.Linear(8, 8)
+
+    def fn(self, x):
+        global salt
+        if x.sum() > 0:
+            x = self.layer(x) + salt
+        else:
+            x += salt
+        return x
+
+    def forward(self, x):
+        return self.fn(x)
+
+
+class TestBuiltinParameter(Dy2StTestBase):
+    def test_move_builtin_parameter2top(self):
+        x = paddle.randn([8, 8])
+        static_fn = paddle.jit.to_static(Net())
+        out = static_fn(x)
 
 
 if __name__ == '__main__':

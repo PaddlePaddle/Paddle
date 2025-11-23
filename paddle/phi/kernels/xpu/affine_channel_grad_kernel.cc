@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/affine_channel_grad_kernel.h"
 #include <string>
 #include <unordered_map>
 #include <vector>
-
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -43,9 +43,10 @@ void AffineChannelGradXPUKernel(const Context& dev_ctx,
   const phi::DataLayout layout = common::StringToDataLayout(data_layout);
 
   auto dims = x->dims();
-  int N = dims[0];
-  int C = layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
-  int HxW = x->numel() / N / C;
+  int64_t N = dims[0];
+  int64_t C =
+      (layout == phi::DataLayout::kNCHW) ? dims[1] : dims[dims.size() - 1];
+  int64_t HxW = x->numel() / N / C;
 
   auto* dy_d = dy->data<T>();
   auto* scale_d = scale->data<T>();

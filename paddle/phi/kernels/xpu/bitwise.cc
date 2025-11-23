@@ -21,12 +21,12 @@
 namespace phi {
 
 template <typename T, typename Context>
-void BitwiseNotKernel(const Context& ctx,
+void BitwiseNotKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       DenseTensor* out) {
   using XPUDataType = typename XPUTypeTrait<T>::Type;
-  ctx.template Alloc<T>(out);
-  int r = xpu::logical_not(ctx.x_context(),
+  dev_ctx.template Alloc<T>(out);
+  int r = xpu::logical_not(dev_ctx.x_context(),
                            reinterpret_cast<const XPUDataType*>(x.data<T>()),
                            reinterpret_cast<XPUDataType*>(out->data<T>()),
                            x.numel());
@@ -34,7 +34,7 @@ void BitwiseNotKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void BitwiseAndKernel(const Context& ctx,
+void BitwiseAndKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& y,
                       DenseTensor* out) {
@@ -42,16 +42,16 @@ void BitwiseAndKernel(const Context& ctx,
   // However, because bitwise and logical operation is identical for bool type,
   // we can implement bitwise_and_bool kernel by calling their logical
   // counterpart. Need to be changed when adding support to other types.
-  LogicalAndKernel<T, Context>(ctx, x, y, out);
+  LogicalAndKernel<T, Context>(dev_ctx, x, y, out);
 }
 
 template <typename T, typename Context>
-void BitwiseOrKernel(const Context& ctx,
+void BitwiseOrKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      DenseTensor* out) {
   // Same reason as bitwise_and
-  LogicalOrKernel<T, Context>(ctx, x, y, out);
+  LogicalOrKernel<T, Context>(dev_ctx, x, y, out);
 }
 }  // namespace phi
 

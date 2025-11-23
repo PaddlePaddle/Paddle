@@ -310,6 +310,7 @@ StmtRef AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
       block_vars.push_back(Var(
           Expr(0), shape[i], cinn::UniqName("i" + std::to_string(i)), false));
       optim::ReplaceVarWithExpr(body, axis[i], block_vars[i]);
+      if (shape[i].type() == Int(64)) axis_vars[i]->set_type(Int(64));
       axis_vars[i]->is_reduce_axis = false;
       iter_values.push_back(axis_vars[i]);
     }

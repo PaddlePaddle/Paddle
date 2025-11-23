@@ -52,10 +52,10 @@
 #define PD_DECLARE_string(name) DECLARE_string(name)
 #endif
 
-#define PD_DECLARE_VARIABLE(type, name)     \
-  namespace paddle_flags {                  \
-  extern PHI_IMPORT_FLAG type FLAGS_##name; \
-  }                                         \
+#define PD_DECLARE_VARIABLE(type, name)        \
+  namespace paddle_flags {                     \
+  extern COMMON_IMPORT_FLAG type FLAGS_##name; \
+  }                                            \
   using paddle_flags::FLAGS_##name
 
 #define COMMON_DECLARE_VARIABLE(type, name)    \
@@ -127,6 +127,9 @@ PADDLE_API void AllowUndefinedFlags();
  */
 bool SetFlagValue(const std::string& name, const std::string& value);
 
+PADDLE_API bool UpdateLinkedFlags(const std::string& name,
+                                  const std::string& value);
+
 /**
  * @brief Find flag by name, return true if found.
  */
@@ -170,6 +173,15 @@ inline bool SetFlagValue(const char* name, const char* value) {
 }
 #else
 using paddle::flags::SetFlagValue;
+#endif
+#ifdef PADDLE_WITH_GFLAGS
+inline bool UpdateLinkedFlags(const std::string& name,
+                              const std::string& value) {
+  // Gflags does not support this feature.
+  return false;
+}
+#else
+using paddle::flags::UpdateLinkedFlags;
 #endif
 
 #ifdef PADDLE_WITH_GFLAGS
@@ -358,16 +370,16 @@ PADDLE_API ExportedFlagInfoMap* GetMutableExportedFlagInfoMap();
     int Touch() const { return 0; }                                           \
   };                                                                          \
   static __PaddleRegisterFlag_##__name __PaddleRegisterFlag_instance##__name; \
-  int TouchPaddleFlagRegister_##__name() {                                    \
+  PADDLE_API int TouchPaddleFlagRegister_##__name() {                         \
     return __PaddleRegisterFlag_instance##__name.Touch();                     \
   }                                                                           \
   static_assert(std::is_same<__PaddleRegisterFlag_##__name,                   \
                              ::__PaddleRegisterFlag_##__name>::value,         \
                 "FLAGS should define in global namespace")
 
-#define PADDLE_FORCE_LINK_FLAG(__name)           \
-  extern int TouchPaddleFlagRegister_##__name(); \
-  UNUSED static int __paddle_use_flag_##__name = \
+#define PADDLE_FORCE_LINK_FLAG(__name)                      \
+  PADDLE_API extern int TouchPaddleFlagRegister_##__name(); \
+  UNUSED static int __paddle_use_flag_##__name =            \
       TouchPaddleFlagRegister_##__name()
 
 #define PHI_DEFINE_EXPORTED_bool(name, default_value, doc) \

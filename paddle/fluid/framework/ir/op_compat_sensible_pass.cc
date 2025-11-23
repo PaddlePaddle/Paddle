@@ -32,6 +32,8 @@ std::unordered_set<std::string> global_extra_attrs = {
     "is_test",
     "use_mkldnn",
     "mkldnn_data_type",
+    "use_onednn",
+    "onednn_data_type",
     "use_quantizer",
     "use_cudnn",
     "name",

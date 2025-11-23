@@ -28,7 +28,7 @@ namespace pir {
 class Operation;
 class Program;
 
-class IR_API Block {
+class Block {
   using OpListType = std::list<Operation *>;
 
  public:
@@ -39,7 +39,7 @@ class IR_API Block {
   using ConstReverseIterator = std::reverse_iterator<ConstIterator>;
 
   Block() = default;
-  ~Block();
+  PADDLE_API ~Block();
 
   Region *GetParent() const { return parent_; }
   Operation *GetParentOp() const;
@@ -68,11 +68,11 @@ class IR_API Block {
   const Operation &back() const { return *ops_.back(); }
   const Operation &front() const { return *ops_.front(); }
 
-  void push_back(Operation *op);
-  void push_front(Operation *op);
+  PADDLE_API void push_back(Operation *op);
+  PADDLE_API void push_front(Operation *op);
   void pop_back();
-  Iterator insert(ConstIterator iterator, Operation *op);
-  Iterator erase(ConstIterator position);
+  PADDLE_API Iterator insert(ConstIterator iterator, Operation *op);
+  PADDLE_API Iterator erase(ConstIterator position);
   void ClearOps();
 
   // Assign the operation underlying in position with parameter op,
@@ -83,12 +83,12 @@ class IR_API Block {
   /// \brief Provide iterator interface to access Value use chain.
   ///
   using UseIterator = ValueUseIterator<BlockOperand>;
-  UseIterator use_begin() const;
-  UseIterator use_end() const;
+  PADDLE_API UseIterator use_begin() const;
+  PADDLE_API UseIterator use_end() const;
   BlockOperand first_use() const { return first_use_; }
   void set_first_use(BlockOperand first_use) { first_use_ = first_use; }
   bool use_empty() const { return !first_use_; }
-  bool HasOneUse() const;
+  PADDLE_API bool HasOneUse() const;
   BlockOperand *first_use_addr() { return &first_use_; }
 
   // This is a unsafe function, please use it carefully.
@@ -110,8 +110,8 @@ class IR_API Block {
   const ArgsType &args() const { return args_; }
   Value arg(uint32_t index) const { return args_[index]; }
   Type arg_type(uint32_t index) const { return args_[index].type(); }
-  void ClearArgs();
-  Value AddArg(Type type);
+  PADDLE_API void ClearArgs();
+  PADDLE_API Value AddArg(Type type);
   void EraseArg(uint32_t index);
   template <class TypeIter>
   void AddArgs(TypeIter first, TypeIter last);
@@ -142,7 +142,7 @@ class IR_API Block {
     return kwarg(keyword).type();
   }
   void ClearKwargs();
-  Value AddKwarg(const std::string &keyword, Type type);
+  PADDLE_API Value AddKwarg(const std::string &keyword, Type type);
   void EraseKwarg(const std::string &keyword);
   bool HasKwarg(const std::string &keyword) const {
     return kwargs_.find(keyword) != kwargs_.end();

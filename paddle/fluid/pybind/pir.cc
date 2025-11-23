@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/pir.h"
-
 #include <Python.h>
 #include <algorithm>
 #include <iterator>
@@ -63,6 +62,7 @@
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/pir_utils.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
+#include "paddle/fluid/pybind/size.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
@@ -90,6 +90,8 @@
 #include "pybind11/stl.h"
 
 #ifdef PADDLE_WITH_CINN
+#include "paddle/ap/include/paddle/hlir/op_dialect.h"
+#include "paddle/ap/include/paddle/pass/add_pcc_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
@@ -335,7 +337,7 @@ void PruneWithInput(const std::vector<pir::Value> &input_vars,
       if (!input_vars_set.empty() && SomeInSet(op_results, input_vars_set)) {
         PADDLE_THROW(common::errors::InvalidArgument(
             "The input_var create by: '{%s}' is not involved in the "
-            "output_vars calculation"
+            "output_vars calculation. "
             "Please remove it from input_vars.",
             op->name()));
       }
@@ -507,6 +509,10 @@ void BindProgram(py::module *m) {
             return vars;
           },
           return_value_policy::reference)
+      .def("_list_named_vars",
+           [](std::shared_ptr<Program> self) {
+             return name_analysis::GetAllNamedValues(*self);
+           })
       .def(
           "global_block",
           [](const std::shared_ptr<Program> &self) { return self->block(); },
@@ -1285,14 +1291,14 @@ const phi::DDim &GetTensorDims(Type type) {
   } else if (auto sparse_coo_tensor_type =
                  type.dyn_cast<SparseCooTensorType>()) {
     return sparse_coo_tensor_type.dims();
-  } else if (auto sparse_csr_tensr_type =
+  } else if (auto sparse_csr_tensor_type =
                  type.dyn_cast<SparseCsrTensorType>()) {
-    return sparse_csr_tensr_type.dims();
+    return sparse_csr_tensor_type.dims();
   } else if (auto dense_array_type = type.dyn_cast<DenseTensorArrayType>()) {
     return dense_array_type.dims();
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "Currently, we can only get shape for dense and selsect rows type."));
+        "Currently, we can only get shape for dense and select rows type."));
   }
 }
 const phi::DDim &GetValueDims(Value value) {
@@ -1439,7 +1445,16 @@ void BindValue(py::module *m) {
                              })
       .def_property(
           "shape",
-          [](Value self) { return phi::vectorize(GetValueDims(self)); },
+          [](Value self) {
+            auto array = phi::vectorize(GetValueDims(self));
+            auto ptr =
+                Paddle_Size_NewFromInt64Array(array.data(), array.size());
+            if (!ptr) {
+              throw py::error_already_set();
+            }
+
+            return py::reinterpret_steal<py::object>(ptr);
+          },
           [](Value self, const std::vector<int> &shape) {
             PADDLE_THROW(common::errors::InvalidArgument(
                 "can't set shape when building static graph"));
@@ -1570,6 +1585,38 @@ void BindValue(py::module *m) {
       .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
       .def("element_size",
            [](Value self) { return phi::SizeOf(pir::GetValueDtype(self)); })
+      .def(
+          "stride",
+          [](Value self, py::object dim_obj = py::none()) {
+            const auto &dims = paddle::pybind::GetValueDims(self);
+            std::vector<int64_t> strides;
+
+            int64_t step = 1;
+            for (int i = static_cast<int>(dims.size()) - 1; i >= 0; --i) {
+              strides.insert(strides.begin(), step);
+              step *= dims[i];
+            }
+
+            if (dim_obj.is_none()) {
+              return py::cast(strides);
+            }
+
+            int dim = py::cast<int>(dim_obj);
+            dim = dim < 0 ? dim + static_cast<int>(dims.size()) : dim;
+
+            PADDLE_ENFORCE_EQ(dim >= 0 && dim < static_cast<int>(dims.size()),
+                              true,
+                              common::errors::InvalidArgument(
+                                  "Dimension out of range (expected to be in "
+                                  "range of [%d, %d], "
+                                  "but got %d)",
+                                  -static_cast<int>(dims.size()),
+                                  static_cast<int>(dims.size()) - 1,
+                                  dim));
+
+            return py::cast(strides[dim]);
+          },
+          py::arg("dim") = py::none())
       .def("_rename", &name_analysis::RenameValue)
       .def("_has_only_one_name",
            [](Value self) -> bool {
@@ -2543,6 +2590,8 @@ void BindUtils(pybind11::module *m) {
   m->def("append_print", AppendPrintOp);
   m->def("append_prints", AppendPrintOps);
   m->def("fake_value", FakeValue);
+  m->def("get_fake_value_name",
+         []() -> std::string { return paddle::framework::kFakeVarName; });
   m->def("is_fake_value", IsFakeValue);
   m->def("get_current_insertion_point", []() -> PyInsertionPoint {
     return {ApiBuilder::Instance().GetCurrentInsertionPoint()};
@@ -2754,6 +2803,7 @@ void ApplyCinnPass(Program &program) {  // NOLINT
     pir::IrContext *ctx = pir::IrContext::Instance();
     ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
     ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<ap::dialect::OperatorDialect>();
     ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
     auto pass_manager = std::make_shared<pir::PassManager>(ctx);
     if (FLAGS_print_ir && VLOG_IS_ON(4)) {
@@ -2766,6 +2816,32 @@ void ApplyCinnPass(Program &program) {  // NOLINT
     return pass_manager;
   };
   cinn::dialect::ir::ApplyCinnPass(&program, CreatePassManager);
+#else
+  PADDLE_THROW(common::errors::Unimplemented(
+      "Currently we only support CINN Pass for Pir under @to_static, please "
+      "compile PaddlePaddle with CINN"));
+#endif
+}
+
+void ApplyPccPass(Program &program) {  // NOLINT
+#ifdef PADDLE_WITH_CINN
+  auto CreatePassManager = [&]() -> std::shared_ptr<pir::PassManager> {
+    pir::IrContext *ctx = pir::IrContext::Instance();
+    ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<ap::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+    auto pass_manager = std::make_shared<pir::PassManager>(ctx);
+    if (FLAGS_print_ir && VLOG_IS_ON(4)) {
+      pass_manager->EnableIRPrinting();
+    }
+    auto &shape_analysis = pir::ShapeAnalysisManager::Instance().Get(&program);
+    pass_manager->SetValueReplacedHook([&](pir::Value from, pir::Value to) {
+      shape_analysis.ShareShapeOrData(from, to);
+    });
+    return pass_manager;
+  };
+  ap::paddle::ApplyPccPass(&program, CreatePassManager);
 #else
   PADDLE_THROW(common::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "
@@ -2846,6 +2922,7 @@ std::shared_ptr<Program> ApplyFusedBnAddActPass(
 
 void BindIrPass(pybind11::module *m) {
   m->def("apply_cinn_pass", ApplyCinnPass);
+  m->def("apply_pcc_pass", ApplyPccPass);
   m->def("check_infer_symbolic_if_need", CheckInferSymbolicIfNeed);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
   m->def("apply_cse_pass", ApplyCommonSubexpressionEliminationPass);
@@ -3219,6 +3296,12 @@ void BindDrrPatternContext(pybind11::module *m) {
           },
           pybind11::arg("value"))
       .def(
+          "DoubleAttr",
+          [](drr::ResultPattern &self, double value) {
+            return self.DoubleAttr(value);
+          },
+          pybind11::arg("value"))
+      .def(
           "VectorInt32Attr",
           [](drr::ResultPattern &self, const std::vector<int32_t> &value) {
             return self.VectorInt32Attr(value);
@@ -3326,7 +3409,7 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
               if (actual.size() != expect.size()) {
                 LOG(ERROR) << compare_type << " expect size " << expect.size()
                            << " is not equal to actual size " << actual.size()
-                           << " . The detailed infermation is as follows:";
+                           << " . The detailed information is as follows:";
                 PrintExpectAndActual(compare_type);
                 return false;
               } else if (actual.empty()) {
@@ -3347,7 +3430,7 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
                       << compare_type << " expect[" << i
                       << "]: " << expect.at(i) << " is not equal to actual["
                       << i << "]: " << actual.at(i)
-                      << " . The detailed infermation is as follows:";
+                      << " . The detailed information is as follows:";
                   PrintExpectAndActual(compare_type);
                   return false;
                 }

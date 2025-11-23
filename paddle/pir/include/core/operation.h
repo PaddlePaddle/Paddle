@@ -63,8 +63,7 @@ class CloneOptions {
   bool clone_successors_{true};
 };
 
-class IR_API alignas(8) Operation final
-    : public DoubleLevelContainer<Operation> {
+class alignas(8) Operation final : public DoubleLevelContainer<Operation> {
  public:
   ///
   /// \brief Malloc memory and construct objects in the following order:
@@ -72,26 +71,27 @@ class IR_API alignas(8) Operation final
   /// NOTE: Similar to new and delete, the destroy() and the create() need to be
   /// used in conjunction.
   ///
-  static Operation *Create(const std::vector<pir::Value> &inputs,
-                           const AttributeMap &attributes,
-                           const std::vector<pir::Type> &output_types,
-                           pir::OpInfo op_info,
-                           size_t num_regions = 0,
-                           const std::vector<Block *> &successors = {},
-                           bool verify = true);
-  static Operation *Create(OperationArgument &&op_argument);
+  PADDLE_API static Operation *Create(
+      const std::vector<pir::Value> &inputs,
+      const AttributeMap &attributes,
+      const std::vector<pir::Type> &output_types,
+      pir::OpInfo op_info,
+      size_t num_regions = 0,
+      const std::vector<Block *> &successors = {},
+      bool verify = true);
+  PADDLE_API static Operation *Create(OperationArgument &&op_argument);
 
   ///
   /// \brief Deep copy all information and create a new operation.
   ///
-  Operation *Clone(IrMapping &ir_mapping,
-                   CloneOptions options = CloneOptions()) const;
+  PADDLE_API Operation *Clone(IrMapping &ir_mapping,
+                              CloneOptions options = CloneOptions()) const;
   ///
   /// \brief Destroy the operation objects and free memory by create().
   ///
-  void Destroy();
+  PADDLE_API void Destroy();
 
-  IrContext *ir_context() const;
+  PADDLE_API IrContext *ir_context() const;
 
   Dialect *dialect() const;
 
@@ -134,15 +134,15 @@ class IR_API alignas(8) Operation final
   T result_type(uint32_t index) const {
     return result(index).type().dyn_cast<T>();
   }
-  std::vector<Value> results() const;
+  PADDLE_API std::vector<Value> results() const;
 
   ///
   /// \brief op input related public interfaces
   ///
   uint32_t num_operands() const { return num_operands_; }
   OpOperand operand(uint32_t index) const { return op_operand_impl(index); }
-  std::vector<OpOperand> operands() const;
-  Value operand_source(uint32_t index) const;
+  PADDLE_API std::vector<OpOperand> operands() const;
+  PADDLE_API Value operand_source(uint32_t index) const;
   std::vector<Value> operands_source() const;
   Type operand_type(uint32_t index) const { return operand(index).type(); }
 
@@ -150,8 +150,8 @@ class IR_API alignas(8) Operation final
   /// \brief op successor related public interfaces
   ///
   uint32_t num_successors() const { return num_successors_; }
-  BlockOperand block_operand(uint32_t index) const;
-  Block *successor(uint32_t index) const;
+  PADDLE_API BlockOperand block_operand(uint32_t index) const;
+  PADDLE_API Block *successor(uint32_t index) const;
   void set_successor(Block *block, unsigned index);
   bool HasSuccessors() { return num_successors_ != 0; }
 
@@ -162,7 +162,7 @@ class IR_API alignas(8) Operation final
   using Iterator = Region *;
   using ConstIterator = const Region *;
   uint32_t num_regions() const { return num_regions_; }
-  Region &region(unsigned index);
+  PADDLE_API Region &region(unsigned index);
   const Region &region(unsigned index) const;
   ConstIterator begin() const { return regions_; }
   ConstIterator end() const { return regions_ + num_regions_; }
@@ -179,14 +179,14 @@ class IR_API alignas(8) Operation final
   Block *GetParent() const { return parent_; }
   Region *GetParentRegion() const;
   Operation *GetParentOp() const;
-  Program *GetParentProgram();
+  PADDLE_API Program *GetParentProgram();
   operator Block::Iterator() { return position_; }
   operator Block::ConstIterator() const { return position_; }
   void MoveTo(Block *block, Block::Iterator position);
 
-  void Print(std::ostream &os) const;
+  PADDLE_API void Print(std::ostream &os) const;
   pir::OpInfo info() const { return info_; }
-  std::string name() const;
+  PADDLE_API std::string name() const;
 
   ///
   /// \brief Operation Walkers
@@ -227,7 +227,7 @@ class IR_API alignas(8) Operation final
   }
 
   /// Replace all uses of results of this operation with the provided 'values'.
-  void ReplaceAllUsesWith(const std::vector<Value> &values);
+  PADDLE_API void ReplaceAllUsesWith(const std::vector<Value> &values);
 
   void ReplaceAllUsesWith(const std::vector<OpResult> &op_results);
 
@@ -248,11 +248,11 @@ class IR_API alignas(8) Operation final
             uint32_t num_regions,
             uint32_t num_successors);
 
-  int32_t ComputeOpResultOffset(uint32_t index) const;
-  detail::OpResultImpl *op_result_impl(uint32_t index) const;
+  PADDLE_API int32_t ComputeOpResultOffset(uint32_t index) const;
+  PADDLE_API detail::OpResultImpl *op_result_impl(uint32_t index) const;
 
   int32_t ComputeOpOperandOffset(uint32_t index) const;
-  detail::OpOperandImpl *op_operand_impl(uint32_t index) const;
+  PADDLE_API detail::OpOperandImpl *op_operand_impl(uint32_t index) const;
 
   template <typename To, typename Enabler = void>
   struct CastUtil {

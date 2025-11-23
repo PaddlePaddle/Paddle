@@ -73,7 +73,7 @@ class AssertOp : public framework::OperatorBase {
       return;
     }
 
-    funcs::TensorFormatter formatter;
+    phi::funcs::TensorFormatter formatter;
     formatter.SetSummarize(Attr<int64_t>(kSummarize.data()));
 
     const std::vector<std::string> &x_names = Inputs(kData.data());

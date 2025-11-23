@@ -313,6 +313,10 @@ void IRMutator<T>::Visit(const IntrinsicOp *expr, T op) {
         Visit(&expr, &expr);
       }
     } break;
+    case ir::IntrinsicKind::kGetAddr: {
+      auto *n = llvm::dyn_cast<intrinsics::GetAddr>(node);
+      Visit(&n->data, &n->data);
+    } break;
   }
 }
 

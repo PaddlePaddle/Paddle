@@ -56,9 +56,15 @@ void FuseOperatorUnsqueeze2OneDNNPass::FuseUnsqueeze2(
     GET_IR_NODE_FROM_SUBGRAPH(
         unsqueeze2_out, unsqueeze2_out, op_unsqueeze2_pattern);
 
-    if (!operator_op->Op()->HasAttr("use_mkldnn") ||
+    bool use_mkldnn_not =
+        !operator_op->Op()->HasAttr("use_mkldnn") ||
         (operator_op->Op()->HasAttr("use_mkldnn") &&
-         !(PADDLE_GET_CONST(bool, operator_op->Op()->GetAttr("use_mkldnn"))))) {
+         !(PADDLE_GET_CONST(bool, operator_op->Op()->GetAttr("use_mkldnn"))));
+    bool use_onednn_not =
+        !operator_op->Op()->HasAttr("use_onednn") ||
+        (operator_op->Op()->HasAttr("use_onednn") &&
+         !(PADDLE_GET_CONST(bool, operator_op->Op()->GetAttr("use_onednn"))));
+    if (use_mkldnn_not && use_onednn_not) {
       VLOG(4) << "Only oneDNN version of " << op_type
               << "can be fused with unsqueeze2.";
       return;

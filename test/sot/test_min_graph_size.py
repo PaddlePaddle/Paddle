@@ -20,7 +20,7 @@ from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit import sot
-from paddle.jit.sot.utils import min_graph_size_guard
+from paddle.jit.sot.utils import min_graph_size_guard, strict_mode_guard
 
 
 def case_for(x, vars):
@@ -84,7 +84,17 @@ def get_arg_from_kwargs(x, **kwargs):
     return x, y
 
 
+def add_with_breakgraph(x, y):
+    sot.psdb.breakgraph()
+    return x + y
+
+
+def restore_same_arg_when_fallback(x):
+    return add_with_breakgraph(x, x)
+
+
 class TestMinGraphSize(TestCaseBase):
+    @strict_mode_guard(False)
     @min_graph_size_guard(10)
     def test_cases(self):
         x = paddle.to_tensor(1)
@@ -115,6 +125,11 @@ class TestMinGraphSize(TestCaseBase):
     def test_get_arg_from_kwargs(self):
         self.assert_results(get_arg_from_kwargs, None)
         self.assert_results(get_arg_from_kwargs, None, y=1)
+
+    @min_graph_size_guard(10)
+    def test_restore_same_arg_when_fallback(self):
+        x = paddle.to_tensor(1)
+        self.assert_results(restore_same_arg_when_fallback, x)
 
 
 if __name__ == "__main__":

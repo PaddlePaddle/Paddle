@@ -92,7 +92,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(
                     true,
                     ::common::errors::InvalidArgument(
                         "The padding_idx should be set in lookup_table."));
-  auto padding_idx = absl::get<int64_t>(attr_store.at("padding_idx"));
+  auto padding_idx = std::get<int64_t>(attr_store.at("padding_idx"));
 
   framework::CINNCompute lookup_table_compute([=](lang::Args args,
                                                   lang::RetValue* ret) {

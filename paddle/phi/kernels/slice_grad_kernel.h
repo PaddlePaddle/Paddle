@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SliceGradKernel(const Context& ctx,
+void SliceGradKernel(const Context& dev_ctx,
                      const DenseTensor& input,
                      const DenseTensor& out_grad,
                      const std::vector<int64_t>& axes,
@@ -32,7 +32,7 @@ void SliceGradKernel(const Context& ctx,
                      DenseTensor* input_grad);
 
 template <typename Context>
-void SliceGradStridedKernel(const Context& ctx,
+void SliceGradStridedKernel(const Context& dev_ctx,
                             const DenseTensor& input,
                             const DenseTensor& out_grad,
                             const std::vector<int64_t>& axes,

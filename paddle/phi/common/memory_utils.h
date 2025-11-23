@@ -158,7 +158,8 @@ struct MemoryInterface {
           place_to_device_context,
       const std::vector<phi::Place>& places,
       bool disable_setting_default_stream_for_allocator,
-      int stream_priority);
+      int stream_priority,
+      bool set_to_default_stream);
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
@@ -182,10 +183,7 @@ struct MemoryInterface {
 
 class MemoryUtils {
  public:
-  static MemoryUtils& Instance() {
-    static MemoryUtils g_memory_utils;
-    return g_memory_utils;
-  }
+  PADDLE_API static MemoryUtils& Instance();
 
   void Init(std::unique_ptr<MemoryInterface> memory_method) {
     memory_method_ = std::move(memory_method);
@@ -326,7 +324,8 @@ class MemoryUtils {
           place_to_device_context,
       const std::vector<phi::Place>& places,
       bool disable_setting_default_stream_for_allocator,
-      int stream_priority) {
+      int stream_priority,
+      bool set_to_default_stream) {
     CheckMemoryMethod();
     PADDLE_ENFORCE_NE(
         memory_method_->emplace_device_contexts,
@@ -338,7 +337,8 @@ class MemoryUtils {
         place_to_device_context,
         places,
         disable_setting_default_stream_for_allocator,
-        stream_priority);
+        stream_priority,
+        set_to_default_stream);
   }
 
   void CheckMemoryMethod() {
@@ -418,34 +418,35 @@ class MemoryUtils {
 
 namespace memory_utils {
 
-TEST_API Allocator::AllocationPtr Alloc(const phi::Place& place,
-                                        size_t size,
-                                        const phi::Stream& stream);
+PADDLE_API Allocator::AllocationPtr Alloc(const phi::Place& place,
+                                          size_t size,
+                                          const phi::Stream& stream);
 
-TEST_API Allocator::AllocationPtr Alloc(const phi::Place& place, size_t size);
+PADDLE_API Allocator::AllocationPtr Alloc(const phi::Place& place, size_t size);
 
 std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
                                         size_t size,
                                         const phi::Stream& stream);
 
-std::shared_ptr<Allocation> AllocShared(const phi::Place& place, size_t size);
+PADDLE_API std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
+                                                   size_t size);
 
 bool InSameStream(const std::shared_ptr<Allocation>& allocation,
                   const phi::Stream& stream);
 
 void AllocationDeleter(Allocation* allocation);
 
-void Copy(const Place& dst_place,
-          void* dst,
-          const Place& src_place,
-          const void* src,
-          size_t num,
-          void* stream);
-void Copy(const Place& dst_place,
-          void* dst,
-          const Place& src_place,
-          const void* src,
-          size_t num);
+PADDLE_API void Copy(const Place& dst_place,
+                     void* dst,
+                     const Place& src_place,
+                     const void* src,
+                     size_t num,
+                     void* stream);
+PADDLE_API void Copy(const Place& dst_place,
+                     void* dst,
+                     const Place& src_place,
+                     const void* src,
+                     size_t num);
 
 int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id);
 
@@ -453,14 +454,15 @@ int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id);
 void GpuMemoryUsage(size_t* available, size_t* total);
 #endif
 
-TEST_API void InitDevices();
+PADDLE_API void InitDevices();
 
 void EmplaceDeviceContexts(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         place_to_device_context,
     const std::vector<phi::Place>& places,
     bool disable_setting_default_stream_for_allocator,
-    int stream_priority);
+    int stream_priority,
+    bool set_to_default_stream = false);
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
@@ -468,7 +470,7 @@ const Allocator* GetAllocator(int device_id, phi::gpuStream_t stream);
 
 const Allocator* GetHostAllocator();
 
-const Allocator* GetZeroAllocator(int device_id);
+PADDLE_API const Allocator* GetZeroAllocator(int device_id);
 
 const Allocator* GetHostZeroAllocator();
 

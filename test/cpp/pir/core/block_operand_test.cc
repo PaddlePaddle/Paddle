@@ -13,16 +13,17 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/program.h"
 
 #include "test/cpp/pir/tools/test_dialect.h"
 #include "test/cpp/pir/tools/test_op.h"
-
 TEST(block_operand_test, type_block) {
   pir::IrContext ctx;
-  ctx.GetOrRegisterDialect<test::TestDialect>();
+  ctx.GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
   pir::Program program(&ctx);
   pir::Block* block = program.block();

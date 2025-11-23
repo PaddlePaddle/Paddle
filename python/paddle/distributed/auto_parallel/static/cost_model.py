@@ -223,9 +223,9 @@ class CostModel:
         self.optim_time = []
 
     def _parse_sub_program(self, program, nodes, graph, cost_data, sub_idx):
-        assert (
-            len(program.blocks) == 1
-        ), "Program more than 1 block not supported."
+        assert len(program.blocks) == 1, (
+            "Program more than 1 block not supported."
+        )
         block = program.blocks[0]
 
         var_id = "lod_tensor_blocking_queue_0"

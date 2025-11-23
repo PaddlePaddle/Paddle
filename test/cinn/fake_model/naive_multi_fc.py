@@ -15,7 +15,6 @@
 A fake model with multiple FC layers to test CINN on a more complex model.
 """
 
-
 import paddle
 from paddle import static
 

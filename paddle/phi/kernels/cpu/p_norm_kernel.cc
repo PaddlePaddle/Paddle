@@ -73,8 +73,8 @@ void PNormKernel(const Context& dev_ctx,
 
   auto* place = dev_ctx.eigen_device();
 
-  Eigen::DSizes<int, 3> shape(pre, n, post);
-  Eigen::DSizes<int, 2> norm_shape(pre, post);
+  Eigen::DSizes<int64_t, 3> shape(pre, n, post);
+  Eigen::DSizes<int64_t, 2> norm_shape(pre, post);
 
   auto x_e = phi::EigenVector<T>::Flatten(*in_x);
   auto norm_e = phi::EigenVector<T>::Flatten(*out);

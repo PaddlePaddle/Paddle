@@ -16,6 +16,9 @@
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
+#include "paddle/fluid/framework/var_type.h"
+
+COMMON_DECLARE_bool(check_cuda_error);
 
 namespace paddle::framework {
 
@@ -122,6 +125,10 @@ class AssignFunctor {
 
 void SelectOutputInstruction::Run() {
   VLOG(6) << "run select_output instruction";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("SelectOutputInstruction begin");
+  }
+
   auto &mask = mask_->Get<phi::DenseTensor>();
   size_t output_branch = static_cast<size_t>(GetBranchNumber(mask));
   PADDLE_ENFORCE_LE(
@@ -135,6 +142,9 @@ void SelectOutputInstruction::Run() {
           outputs_.size()));
   Variable *selected = outputs_[output_branch];
   VisitVarType(*input_, AssignFunctor(selected));
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("SelectOutputInstruction finish");
+  }
 }
 
 }  // namespace paddle::framework

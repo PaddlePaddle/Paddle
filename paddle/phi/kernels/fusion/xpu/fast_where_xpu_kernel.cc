@@ -20,7 +20,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void FastWhereXPUKernel(const Context& ctx,
+void FastWhereXPUKernel(const Context& dev_ctx,
                         const DenseTensor& condition,
                         const DenseTensor& x,
                         const DenseTensor& y,
@@ -29,10 +29,10 @@ void FastWhereXPUKernel(const Context& ctx,
   auto* condition_data = condition.data<bool>();
   auto* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   auto* y_data = reinterpret_cast<const XPUType*>(y.data<T>());
-  auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
-  auto condition_dims = common::vectorize<int>(condition.dims());
-  auto x_dims = common::vectorize<int>(x.dims());
-  auto y_dims = common::vectorize<int>(y.dims());
+  auto* out_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
+  auto condition_dims = common::vectorize<int64_t>(condition.dims());
+  auto x_dims = common::vectorize<int64_t>(x.dims());
+  auto y_dims = common::vectorize<int64_t>(y.dims());
   PADDLE_ENFORCE_EQ(
       x_dims,
       y_dims,
@@ -45,26 +45,26 @@ void FastWhereXPUKernel(const Context& ctx,
 #ifndef PADDLE_WITH_XPU_PLUGIN
   LOG(INFO)
       << "Add -DWITH_XPU_PLUGIN=ON to build xpu::plugin::fast_where(), or use "
-         "xpu::select() instead, which leads low performance.";
-  int r = xpu::select<XPUType>(ctx.x_context(),
-                               condition_data,
-                               x_data,
-                               y_data,
-                               out_data,
-                               condition_dims,
-                               x_dims);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "select");
+         "xpu::where() instead, which leads low performance.";
+  int r = xpu::where<XPUType>(dev_ctx.x_context(),
+                              condition_data,
+                              x_data,
+                              y_data,
+                              out_data,
+                              condition_dims,
+                              x_dims);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "where");
 #else
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   if (condition_dims != x_dims) {
     bool* temp_data = RAII_GUARD.alloc_l3_or_gm<bool>(x.numel());
     int r = xpu::broadcast<bool>(
-        ctx.x_context(), condition_data, temp_data, condition_dims, x_dims);
+        dev_ctx.x_context(), condition_data, temp_data, condition_dims, x_dims);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
     condition_data = temp_data;
   }
   int r = xpu::plugin::fast_where<XPUType>(
-      ctx.x_context(), condition_data, x_data, y_data, out_data, x.numel());
+      dev_ctx.x_context(), condition_data, x_data, y_data, out_data, x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_where");
 #endif
 }
@@ -77,5 +77,5 @@ PD_REGISTER_KERNEL(fast_where_xpu,
                    ALL_LAYOUT,
                    phi::fusion::FastWhereXPUKernel,
                    float,
-                   phi::dtype::float16,
+                   phi::float16,
                    int) {}

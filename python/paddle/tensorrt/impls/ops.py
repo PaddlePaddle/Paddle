@@ -57,7 +57,7 @@ def UnaryOpConverter(network, paddle_op, inputs):
     return layer_output
 
 
-@converter_registry.register("pd_op.roi_align", trt_version="8.x")
+@converter_registry.register("pd_op.roi_align")
 def roi_align_converter(network, paddle_op, inputs):
     x = inputs[0]
     rois = inputs[1]

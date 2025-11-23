@@ -35,8 +35,11 @@ def getModelOp(model_path):
 
 def GetPirModelOp(model_path):
     recover_program = paddle.static.Program()
+    # pir_version
     paddle.base.core.deserialize_pir_program(
-        model_path, recover_program, 1  # pir_version
+        model_path,
+        recover_program,
+        1,
     )
 
     return recover_program
@@ -86,7 +89,6 @@ class IfElseNet(paddle.nn.Layer):
 
 
 class TestConditionalOp(unittest.TestCase):
-
     def test_while_op(self):
         paddle.disable_static()
         net = WhileNet()

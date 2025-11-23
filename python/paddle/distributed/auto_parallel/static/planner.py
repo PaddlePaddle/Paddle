@@ -159,9 +159,9 @@ class PlanSpace:
     @staticmethod
     def enum_process_mesh_topology(processes):
         """Enumerate all process meshes with the given processes."""
-        assert (
-            processes >= 1
-        ), "The processes must be number and greater than 0."
+        assert processes >= 1, (
+            "The processes must be number and greater than 0."
+        )
         # compute divisors
         divisors = []
         for i in range(1, processes + 1):
@@ -352,8 +352,7 @@ class PlanSpace:
                     auto.ProcessMesh(
                         mesh=np.array(
                             global_group[
-                                i
-                                * per_process_mesh_group : (i + 1)
+                                i * per_process_mesh_group : (i + 1)
                                 * per_process_mesh_group
                             ]
                         )
@@ -418,9 +417,9 @@ class PlanSpace:
                     program, op, op_process_mesh
                 )
 
-            assert (
-                op_valid_dist_attrs is not None
-            ), f"Enumerate {op} valid distributed attribute failed."
+            assert op_valid_dist_attrs is not None, (
+                f"Enumerate {op} valid distributed attribute failed."
+            )
             valid_dist_attr_dict[op.desc.id()] = [
                 op_valid_dist_attrs,
                 pipeline_stage,
@@ -645,9 +644,9 @@ class MCMC(SearchAlgorithm):
                 )
 
     def change_process_mesh(self, op, changed_process_mesh, vars, dist_context):
-        dist_context.get_op_dist_attr_for_program(op).process_mesh = (
-            changed_process_mesh
-        )
+        dist_context.get_op_dist_attr_for_program(
+            op
+        ).process_mesh = changed_process_mesh
         for var_name in op.output_arg_names:
             dist_context.get_tensor_dist_attr_for_program(
                 vars[var_name]
@@ -748,9 +747,9 @@ class MCMC(SearchAlgorithm):
                         )
 
                     # change the selected op stage and output dist attr
-                    new_valid_dist_attr_dict[selected_op.desc.id()][
-                        1
-                    ] = changed_stage
+                    new_valid_dist_attr_dict[selected_op.desc.id()][1] = (
+                        changed_stage
+                    )
                     new_process_mesh = pipeline_process_meshes[changed_stage]
                     selected_op_dist_attr.process_mesh = new_process_mesh
                     for op_dist_attr in new_valid_dist_attr_dict[
@@ -778,9 +777,9 @@ class MCMC(SearchAlgorithm):
                             changed_stage
                         ]
                         if stage == changed_stage + 1:
-                            new_valid_dist_attr_dict[ops[idx].desc.id()][
-                                1
-                            ] = changed_stage
+                            new_valid_dist_attr_dict[ops[idx].desc.id()][1] = (
+                                changed_stage
+                            )
                             for op_dist_attr in valid_dist_attr_list:
                                 op_dist_attr.process_mesh = new_process_mesh
                             new_dist_context.get_op_dist_attr_for_program(
@@ -843,9 +842,9 @@ class MCMC(SearchAlgorithm):
                         )
 
                     # change the selected op stage and output tensor dist attr
-                    new_valid_dist_attr_dict[selected_op.desc.id()][
-                        1
-                    ] = changed_stage
+                    new_valid_dist_attr_dict[selected_op.desc.id()][1] = (
+                        changed_stage
+                    )
                     new_process_mesh = pipeline_process_meshes[changed_stage]
                     selected_op_dist_attr.process_mesh = new_process_mesh
                     for op_dist_attr in new_valid_dist_attr_dict[
@@ -872,9 +871,9 @@ class MCMC(SearchAlgorithm):
                             changed_stage
                         ]
                         if stage == changed_stage - 1:
-                            new_valid_dist_attr_dict[ops[idx].desc.id()][
-                                1
-                            ] = changed_stage
+                            new_valid_dist_attr_dict[ops[idx].desc.id()][1] = (
+                                changed_stage
+                            )
                             for op_dist_attr in valid_dist_attr_list:
                                 op_dist_attr.process_mesh = new_process_mesh
 

@@ -143,9 +143,9 @@ class SqueezeNet(nn.Layer):
         self.with_pool = with_pool
 
         supported_versions = ['1.0', '1.1']
-        assert (
-            version in supported_versions
-        ), f"supported versions are {supported_versions} but input version is {version}"
+        assert version in supported_versions, (
+            f"supported versions are {supported_versions} but input version is {version}"
+        )
 
         if self.version == "1.0":
             self._conv = Conv2D(
@@ -236,9 +236,9 @@ def _squeezenet(
 ) -> SqueezeNet:
     model = SqueezeNet(version, **kwargs)
     if pretrained:
-        assert (
-            arch in model_urls
-        ), f"{arch} model do not have a pretrained model now, you should set pretrained=False"
+        assert arch in model_urls, (
+            f"{arch} model do not have a pretrained model now, you should set pretrained=False"
+        )
         weight_path = get_weights_path_from_url(
             model_urls[arch][0], model_urls[arch][1]
         )

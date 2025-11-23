@@ -43,19 +43,21 @@ def custom_relu_static(
     paddle.enable_static()
     paddle.set_device(device)
 
-    with static.scope_guard(static.Scope()):
-        with static.program_guard(static.Program()):
-            x = static.data(name='X', shape=[None, 8], dtype=dtype)
-            out = func(x) if use_func else paddle.nn.functional.relu(x)
+    with (
+        static.scope_guard(static.Scope()),
+        static.program_guard(static.Program()),
+    ):
+        x = static.data(name='X', shape=[None, 8], dtype=dtype)
+        out = func(x) if use_func else paddle.nn.functional.relu(x)
 
-            exe = static.Executor()
-            exe.run(static.default_startup_program())
-            # in static graph mode, x data has been covered by out
-            out_v = exe.run(
-                static.default_main_program(),
-                feed={'X': np_x},
-                fetch_list=[out],
-            )
+        exe = static.Executor()
+        exe.run(static.default_startup_program())
+        # in static graph mode, x data has been covered by out
+        out_v = exe.run(
+            static.default_main_program(),
+            feed={'X': np_x},
+            fetch_list=[out],
+        )
 
     paddle.disable_static()
     return out_v
@@ -70,15 +72,17 @@ class TestNewCustomOpXpuSetUpInstall(unittest.TestCase):
         run_cmd(cmd)
 
         site_dir = site.getsitepackages()[0]
-        custom_egg_path = [
+        custom_install_path = [
             x
             for x in os.listdir(site_dir)
             if 'custom_relu_xpu_module_setup' in x
         ]
-        assert (
-            len(custom_egg_path) == 1
-        ), f"Matched egg number is {len(custom_egg_path)}."
-        sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
+
+        assert len(custom_install_path) == 2, (
+            f"Matched egg number is {len(custom_install_path)}."
+        )
+
+        sys.path.append(os.path.join(site_dir, custom_install_path[0]))
 
         # usage: import the package directly
         import custom_relu_xpu_module_setup

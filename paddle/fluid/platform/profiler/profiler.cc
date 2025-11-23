@@ -15,15 +15,19 @@
 #include "paddle/fluid/platform/profiler/profiler.h"
 
 #include "glog/logging.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU)
 #include <cuda.h>
 #endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#elif defined(PADDLE_WITH_XPU)
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #endif
+
 #include "paddle/common/flags.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/cuda_tracer.h"
@@ -55,14 +59,13 @@ void SynchronizeDevice() {
   }
 #endif
 #ifdef PADDLE_WITH_XPU
-  // TODO(zhangxiaoci) xpu do not support device sync yet
-  // KL3 might do
+  PADDLE_ENFORCE_XPU_SUCCESS(cudaDeviceSynchronize());
 #endif
 }
 
 std::atomic<bool> Profiler::alive_{false};
 
-uint32_t Profiler::span_indx = 0;
+uint32_t Profiler::span_index = 0;
 const char* Profiler::version = "1.0.2";
 
 std::unique_ptr<Profiler> Profiler::Create(
@@ -161,9 +164,14 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
                             std::string("%s"),
                             kv.second.c_str());
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU)
   std::map<uint32_t, gpuDeviceProp> device_property_map;
+#ifdef PADDLE_WITH_XPU
+  std::vector<int32_t> device_ids = GetXPUSelectedDevices();
+#else
   std::vector<int32_t> device_ids = GetSelectedDevices();
+#endif
   for (auto device_id : device_ids) {
     const gpuDeviceProp& device_property = GetDeviceProperties(device_id);
     device_property_map[device_id] = device_property;
@@ -175,8 +183,8 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
       new platform::ProfilerResult(std::move(tree), extra_info);
 #endif
   profiler_result_ptr->SetVersion(std::string(version));
-  profiler_result_ptr->SetSpanIndx(span_indx);
-  span_indx += 1;
+  profiler_result_ptr->SetSpanIndex(span_index);
+  span_index += 1;
   return std::unique_ptr<ProfilerResult>(profiler_result_ptr);
 }
 

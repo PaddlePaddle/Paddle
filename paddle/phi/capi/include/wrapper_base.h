@@ -551,7 +551,7 @@ class Kernel : WrapperBase<PD_Kernel> {
 
   TensorArgDef InputAt(size_t idx) { return args_def().input_defs()[idx]; }
 
-  TensorArgDef OutputAt(size_t idx) { return args_def().input_defs()[idx]; }
+  TensorArgDef OutputAt(size_t idx) { return args_def().output_defs()[idx]; }
 };
 
 class MetaTensor : WrapperBase<PD_MetaTensor> {

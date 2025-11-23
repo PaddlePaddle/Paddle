@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void EmbeddingGradKernel(const Context& ctx,
+void EmbeddingGradKernel(const Context& dev_ctx,
                          const DenseTensor& input,
                          const DenseTensor& weight,
                          const DenseTensor& out_grad,
@@ -28,7 +28,7 @@ void EmbeddingGradKernel(const Context& ctx,
                          DenseTensor* weight_grad);
 
 template <typename T, typename Context>
-void EmbeddingSparseGradKernel(const Context& ctx,
+void EmbeddingSparseGradKernel(const Context& dev_ctx,
                                const DenseTensor& input,
                                const DenseTensor& weight,
                                const DenseTensor& out_grad,

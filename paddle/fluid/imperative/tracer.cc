@@ -36,6 +36,7 @@
 #include "paddle/utils/string/string_helper.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 COMMON_DECLARE_string(tracer_onednn_ops_on);
 COMMON_DECLARE_string(tracer_onednn_ops_off);
 COMMON_DECLARE_bool(use_stride_kernel);
@@ -163,6 +164,15 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "Paddle can't use XPU device since it's not compiled with XPU,"
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
+    } else if (phi::is_xpu_pinned_place(place)) {
+#if defined(PADDLE_WITH_XPU)
+      gc = std::make_unique<framework::XPUPinnedGarbageCollector>(place, 0);
+      VLOG(10) << "Created GarbageCollector at " << place;
+#else
+      PADDLE_THROW(common::errors::PermissionDenied(
+          "Paddle can't use XPUPinned device since it's not compiled with XPU,"
+          "Please recompile or reinstall Paddle with XPU support."));
+#endif
     } else if (phi::is_cpu_place(place)) {
       gc = std::make_unique<framework::CPUGarbageCollector>(place, 0);
       VLOG(10) << "Created GarbageCollector at " << place;
@@ -239,17 +249,19 @@ void Tracer::TraceOpImpl(const std::string& type,
       type, phi::TracerEventType::Operator, 1);
   platform::ScopedFlushDenormal flush;
   VLOG(4) << "Trace Op: " << type;
-  if (FLAGS_use_mkldnn) {
+  if (FLAGS_use_mkldnn || FLAGS_use_onednn) {
     // if both lists are empty all ops are enabled (default for
-    // FLAGS_use_mkldnn=1)
+    // FLAGS_use_onednn=1)
     // if ops_on list is not empty only ops from that list are enabled
     if (!FLAGS_tracer_onednn_ops_on.empty()) {
       auto is_on = FLAGS_tracer_onednn_ops_on.find(type) != std::string::npos;
       attrs["use_mkldnn"] = is_on;
+      attrs["use_onednn"] = is_on;
     } else {
       // if ops_on list is empty all ops are enabled except types from off_list
       auto is_off = FLAGS_tracer_onednn_ops_off.find(type) != std::string::npos;
       attrs["use_mkldnn"] = !is_off;
+      attrs["use_onednn"] = !is_off;
     }
   }
 
@@ -395,7 +407,7 @@ template TEST_API void Tracer::TraceOp<VarBase>(
     paddle::framework::AttributeMap* default_attrs,
     bool use_default_attr_map);
 
-template void Tracer::TraceOp<egr::EagerVariable>(
+template PADDLE_API void Tracer::TraceOp<egr::EagerVariable>(
     const std::string& type,
     const NameVarMap<egr::EagerVariable>& ins,
     const NameVarMap<egr::EagerVariable>& outs,

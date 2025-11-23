@@ -20,19 +20,19 @@
 namespace phi {
 namespace fusion {
 template <typename T, typename Context>
-void Conv2dTransposeXPUKernel(const Context& ctx,
+void Conv2dTransposeXPUKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const paddle::optional<DenseTensor>& x_max,
                               const DenseTensor& filter,
                               const DenseTensor& filter_max,
                               const paddle::optional<DenseTensor>& bias,
-                              const std::vector<int>& strides,
-                              const std::vector<int>& paddings,
+                              const std::vector<int>& strides_,
+                              const std::vector<int>& paddings_,
                               const std::vector<int>& output_padding,
                               const IntArray& output_size,
                               const std::string& padding_algorithm,
                               int groups,
-                              const std::vector<int>& dilations,
+                              const std::vector<int>& dilations_,
                               const std::string& data_format,
                               bool has_bias,
                               bool with_act,
@@ -41,24 +41,25 @@ void Conv2dTransposeXPUKernel(const Context& ctx,
                               DenseTensor* out_max) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  ctx.template Alloc<T>(out);
-  ctx.template Alloc<float>(out_max);
+  dev_ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<float>(out_max);
   bool is_nchw;
   is_nchw = (data_format == "NHWC") ? false : true;
 
   DDim in_data_dims = slice_ddim(x.dims(), 2, x.dims().size());  // hw
   DDim filter_data_dims = slice_ddim(filter.dims(), 2, filter.dims().size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
-  std::vector<int> paddings_ = paddings;
-  std::vector<int> dilations_ = dilations;
+  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
+  std::vector<int64_t> strides(strides_.begin(), strides_.end());
+  std::vector<int64_t> paddings(paddings_.begin(), paddings_.end());
+  std::vector<int64_t> dilations(dilations_.begin(), dilations_.end());
   UpdatePaddingAndDilation(
-      &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
+      &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
-  const int batch_size = static_cast<int>(x.dims()[0]);
-  const int img_yc = static_cast<int>(x.dims()[1]);
-  const int img_xc = static_cast<int>(out->dims()[1]);
-  const int img_xh = static_cast<int>(out->dims()[2]);
-  const int img_xw = static_cast<int>(out->dims()[3]);
+  const int64_t batch_size = x.dims()[0];
+  const int64_t img_yc = x.dims()[1];
+  const int64_t img_xc = out->dims()[1];
+  const int64_t img_xh = out->dims()[2];
+  const int64_t img_xw = out->dims()[3];
   auto act = xpu::Activation_t::LINEAR;
   if (with_act) {
     if (act_type == "relu") {
@@ -72,7 +73,7 @@ void Conv2dTransposeXPUKernel(const Context& ctx,
   auto filter_max_data = filter_max.data<float>();
 
   int r = xpu::conv2d_transpose_fusion_v2<XPUType, int16_t, XPUType, int16_t>(
-      ctx.x_context(),
+      dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(x.data<T>()),
       filter.data<int16_t>(),
       reinterpret_cast<XPUType*>(out->data<T>()),
@@ -83,8 +84,8 @@ void Conv2dTransposeXPUKernel(const Context& ctx,
       img_xc,
       ksize,
       strides,
-      paddings_,
-      dilations_,
+      paddings,
+      dilations,
       groups,
       x_max_data,
       filter_max_data,
@@ -102,4 +103,4 @@ PD_REGISTER_KERNEL(conv2d_transpose_xpu,
                    ALL_LAYOUT,
                    phi::fusion::Conv2dTransposeXPUKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

@@ -39,7 +39,7 @@ SpmdInfo CoalesceTensorInferSpmd(const std::vector<DistMetaTensor>& inputs,
   }
   TensorDistAttr fused_out_dist_attr;
   fused_out_dist_attr.set_process_mesh(mesh);
-  fused_out_dist_attr.set_dims_mapping({-1});
+  fused_out_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
   return {{inputs_attrs}, {inputs_attrs, fused_out_dist_attr}};
 }
 

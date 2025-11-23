@@ -17,11 +17,12 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include "paddle/common/macros.h"
 
 namespace phi {
 namespace distributed {
 
-class Store {
+class PADDLE_API Store {
  public:
   Store() : _timeout(900) {}
   explicit Store(const int timeout) : _timeout(timeout) {}

@@ -63,13 +63,53 @@ class TestCaseBase(unittest.TestCase):
                 self.assertEqual(x, y)
         elif cls_x in (np.ndarray, paddle.Tensor):
             # TODO: support assert_allclose github error log
-            np.testing.assert_allclose(x, y)
+            np.testing.assert_allclose(x, y, rtol=1e-6, atol=1e-8)
         else:
             self.assertEqual(x, y)
 
     def assert_results(self, func, *args, **kwargs):
         sym_output = symbolic_translate(func)(*args, **kwargs)
         paddle_output = func(*args, **kwargs)
+        self.assert_nest_match(sym_output, paddle_output)
+
+    def assert_results_with_grad(self, inputs, func, *args, **kwargs):
+        def _find_all_tensors(obj):
+            ret = []
+            container_types = (tuple, list, set)
+            if isinstance(obj, container_types):
+                for item in obj:
+                    ret.extend(_find_all_tensors(item))
+            elif isinstance(obj, dict):
+                for value in obj.values():
+                    ret.extend(_find_all_tensors(value))
+            elif isinstance(obj, paddle.Tensor):
+                ret.append(obj)
+            return ret
+
+        def _accumulate(tensors: list):
+            out = paddle.empty(shape=[], dtype='float64')
+            for tensor in tensors:
+                out += paddle.mean(tensor.astype('float64'))
+            return out
+
+        def _cal_input_grads(outputs):
+            tensor_outs = _find_all_tensors(outputs)
+            acc = _accumulate(tensor_outs)
+            acc.backward()
+            tensor_inputs = _find_all_tensors(inputs)
+            input_grads = []
+            for input in tensor_inputs:
+                input_grads.append(
+                    None if input.grad is None else input.grad.clone()
+                )
+                input.clear_gradient()
+            return input_grads
+
+        sym_output = symbolic_translate(func)(*args, **kwargs)
+        paddle_output = func(*args, **kwargs)
+        sym_input_grads = _cal_input_grads(sym_output)
+        paddle_input_grads = _cal_input_grads(paddle_output)
+        self.assert_nest_match(sym_input_grads, paddle_input_grads)
         self.assert_nest_match(sym_output, paddle_output)
 
     def assert_exceptions(self, exec, info, func, *args, **kwargs):

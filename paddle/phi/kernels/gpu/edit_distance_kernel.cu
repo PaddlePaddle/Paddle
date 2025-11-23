@@ -30,7 +30,9 @@ using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
 __global__ void FillFirstRow(T* dist, const int N) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (idx < N + 1) {
     dist[idx] = idx;
   }
@@ -38,7 +40,9 @@ __global__ void FillFirstRow(T* dist, const int N) {
 
 template <typename T>
 __global__ void FillFirstColumn(T* dist, const int M, const int N) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (idx < M + 1) {
     dist[idx * (N + 1)] = idx;
   }
@@ -51,7 +55,9 @@ __global__ void Levenshtein(T* dist,
                             const int M,
                             const int N,
                             const int start) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   int offset = N;
   int index = start + idx * offset;
   int row = index / (N + 1);
@@ -68,14 +74,16 @@ __global__ void Levenshtein(T* dist,
 template <typename T>
 __global__ void SetOutput(
     T* out, const T* dist, const int M, const int N, bool normalized) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (idx == 0) {
     out[0] = normalized ? dist[M * (N + 1) + N] / N : dist[M * (N + 1) + N];
   }
 }
 
 template <typename T, typename Context>
-void EditDistanceKernel(const Context& ctx,
+void EditDistanceKernel(const Context& dev_ctx,
                         const DenseTensor& hyps,
                         const DenseTensor& refs,
                         const paddle::optional<DenseTensor>& hypslength,
@@ -83,10 +91,10 @@ void EditDistanceKernel(const Context& ctx,
                         bool normalized,
                         DenseTensor* sequencenum,
                         DenseTensor* out) {
-  ctx.template Alloc<int64_t>(sequencenum);
+  dev_ctx.template Alloc<int64_t>(sequencenum);
   auto batch_size = hyps.dims()[0];
 
-  auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
+  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
 
   phi::Vector<size_t> hyp_lod(batch_size + 1);
   phi::Vector<size_t> ref_lod(batch_size + 1);
@@ -96,10 +104,16 @@ void EditDistanceKernel(const Context& ctx,
   if (use_length) {
     DenseTensor hyp_length_cpu;
     DenseTensor ref_length_cpu;
-    phi::Copy(
-        ctx, *(hypslength.get_ptr()), phi::CPUPlace(), false, &hyp_length_cpu);
-    phi::Copy(
-        ctx, *(refslength.get_ptr()), phi::CPUPlace(), false, &ref_length_cpu);
+    phi::Copy(dev_ctx,
+              *(hypslength.get_ptr()),
+              phi::CPUPlace(),
+              false,
+              &hyp_length_cpu);
+    phi::Copy(dev_ctx,
+              *(refslength.get_ptr()),
+              phi::CPUPlace(),
+              false,
+              &ref_length_cpu);
 
     for (auto i = 0; i < batch_size; i++) {
       hyp_lod[i + 1] = hyp_lod[i] + hyp_length_cpu.data<int64_t>()[i];
@@ -122,10 +136,10 @@ void EditDistanceKernel(const Context& ctx,
 
   const size_t num_strs = hyp_lod.size() - 1;
   phi::funcs::SetConstant<GPUContext, int64_t> set_constant;
-  set_constant(ctx, sequencenum, static_cast<int64_t>(num_strs));
+  set_constant(dev_ctx, sequencenum, static_cast<int64_t>(num_strs));
 
   out->Resize({static_cast<int64_t>(num_strs), 1});
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   auto out_data = out->data<T>();
 
   T distance = 0.0;
@@ -137,7 +151,7 @@ void EditDistanceKernel(const Context& ctx,
       if (normalized) {
         distance = distance / n;
       }
-      memory_utils::Copy(ctx.GetPlace(),
+      memory_utils::Copy(dev_ctx.GetPlace(),
                          out_data + num,
                          CPUPlace(),
                          &distance,
@@ -146,7 +160,7 @@ void EditDistanceKernel(const Context& ctx,
     } else {
       DenseTensor dist_t;
       dist_t.Resize({m + 1, n + 1});
-      ctx.template Alloc<T>(&dist_t);
+      dev_ctx.template Alloc<T>(&dist_t);
       auto dist = dist_t.data<T>();
       auto hyp_offset = use_length ? num * hyps.dims()[1] : hyp_lod[num];
       auto ref_offset = use_length ? num * refs.dims()[1] : ref_lod[num];

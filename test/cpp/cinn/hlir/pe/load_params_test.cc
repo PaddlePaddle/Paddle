@@ -28,7 +28,7 @@ TEST(load_x86_params, load_x86_params) {
       "3 dilation 1 1";
   ASSERT_EQ(res.count(key), 1);
 
-  absl::flat_hash_map<std::string, int> conv2d_factors;
+  paddle::flat_hash_map<std::string, int> conv2d_factors;
   auto target = cinn::common::DefaultHostTarget();
   std::vector<int> shape_input = {1, 64, 56, 56};
   std::vector<int> shape_weights = {64, 64, 3, 3};

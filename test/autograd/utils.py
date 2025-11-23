@@ -30,23 +30,23 @@ def _product(t):
 
 
 def _get_item(t, idx):
-    assert isinstance(
-        t, paddle.base.framework.Variable
-    ), "The first argument t must be Tensor."
-    assert isinstance(
-        idx, int
-    ), "The second argument idx must be an int number."
+    assert isinstance(t, paddle.base.framework.Variable), (
+        "The first argument t must be Tensor."
+    )
+    assert isinstance(idx, int), (
+        "The second argument idx must be an int number."
+    )
     flat_t = paddle.reshape(t, [-1])
     return flat_t.__getitem__(idx)
 
 
 def _set_item(t, idx, value):
-    assert isinstance(
-        t, paddle.base.framework.Variable
-    ), "The first argument t must be Tensor."
-    assert isinstance(
-        idx, int
-    ), "The second argument idx must be an int number."
+    assert isinstance(t, paddle.base.framework.Variable), (
+        "The first argument t must be Tensor."
+    )
+    assert isinstance(idx, int), (
+        "The second argument idx must be an int number."
+    )
     flat_t = paddle.reshape(t, [-1])
     flat_t.__setitem__(idx, value)
     return paddle.reshape(flat_t, t.shape)

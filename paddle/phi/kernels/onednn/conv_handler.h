@@ -54,7 +54,7 @@ class ConvOneDNNHandlerT
                      int groups,
                      const std::string& data_format UNUSED,
                      bool is_test,
-                     bool is_BFLOAT16,
+                     bool is_bfloat16,
                      const std::string& fuse_activation,
                      bool fuse_residual_conn,
                      bool force_fp32_output,
@@ -183,7 +183,7 @@ class ConvOneDNNHandlerT
        */
       auto chosen_memory_format = funcs::OneDNNMemoryFormat::any;
       auto data_type = dnnl::memory::data_type::f32;
-      if (is_BFLOAT16 || std::is_same<T_out, dtype::bfloat16>::value) {
+      if (is_bfloat16 || std::is_same<T_out, dtype::bfloat16>::value) {
         data_type = dnnl::memory::data_type::bf16;
       }
 

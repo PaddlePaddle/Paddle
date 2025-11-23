@@ -48,7 +48,7 @@
 
 #endif
 
-PHI_DECLARE_bool(enable_host_event_recorder_hook);
+COMMON_DECLARE_bool(enable_host_event_recorder_hook);
 PD_DECLARE_bool(log_memory_stats);
 COMMON_DECLARE_string(static_runtime_data_save_path);
 COMMON_DECLARE_bool(save_static_runtime_data);
@@ -149,7 +149,7 @@ ProgramInterpreter::~ProgramInterpreter() {
 #ifdef PADDLE_WITH_DNNL
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
-  platform::ClearMKLDNNCache(place_, this);
+  platform::ClearONEDNNCache(place_, this);
 #endif
 }
 
@@ -250,7 +250,7 @@ void ProgramInterpreter::Build(
   CheckCUDAGraphBeforeRun(feed_names);
 
 #ifdef PADDLE_WITH_DNNL
-  platform::AttachPointerHashToMKLDNNKey(this, place_);
+  platform::AttachPointerHashToONEDNNKey(this, place_);
 #endif
 
   if (!is_build_ || switch_stream) {
@@ -284,7 +284,7 @@ FetchList ProgramInterpreter::Run(
   CheckCUDAGraphBeforeRun(feed_names);
 
 #ifdef PADDLE_WITH_DNNL
-  platform::AttachPointerHashToMKLDNNKey(this, place_);
+  platform::AttachPointerHashToONEDNNKey(this, place_);
 #endif
 
   bool is_build = is_build_;

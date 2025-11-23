@@ -22,9 +22,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/datatype_traits.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
@@ -380,8 +378,14 @@ void WeightDequantize(const Context& dev_ctx,
                       const int32_t group_size,
                       DenseTensor* out) {
   using DataType = typename PDDataTypeTraits<T>::DataType;
-  int n = scale.dims()[0];
-  int k = x.dims()[1];
+  int64_t n = scale.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t k = x.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   PADDLE_ENFORCE_EQ(
       (k % NUMPERTHREAD == 0),
       true,
@@ -442,7 +446,6 @@ void WeightDequantizeKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& scale,
                             const std::string& algo,
-                            DataType out_dtype,
                             int32_t group_size,
                             DenseTensor* out) {
 #if defined(PADDLE_WITH_CUTLASS)
@@ -480,5 +483,5 @@ PD_REGISTER_KERNEL(weight_dequantize,
                    GPU,
                    ALL_LAYOUT,
                    phi::WeightDequantizeKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

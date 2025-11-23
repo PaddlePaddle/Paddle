@@ -71,7 +71,8 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
         AddAttr<int64_t>(attr_name, "custom operator int64_t attribute.")
             .SetDefault(1);
       } else if (attr_type_str == "std::string") {
-        AddAttr<std::string>(attr_name, "custom operator int attribute.")
+        AddAttr<std::string>(attr_name,
+                             "custom operator std::string attribute.")
             .SetDefault("");
       } else if (attr_type_str == "std::vector<int>") {
         AddAttr<std::vector<int>>(attr_name,
@@ -311,12 +312,13 @@ class CustomGradOpMaker<imperative::OpBase>
 };
 
 // Load custom op api: register op after user compiled
-const std::unordered_map<std::string, std::vector<OpMetaInfo>>&
+std::unordered_map<std::string, std::vector<OpMetaInfo>>
 LoadOpMetaInfoAndRegisterOp(const std::string& dso_name);
 
 // Register custom op api: register op directly
-void RegisterOperatorWithMetaInfoMap(
-    const paddle::OpMetaInfoMap& op_meta_info_map, void* dso_handle = nullptr);
+std::unordered_map<std::string, std::vector<OpMetaInfo>>
+RegisterOperatorWithMetaInfoMap(const paddle::OpMetaInfoMap& op_meta_info_map,
+                                void* dso_handle = nullptr);
 
 // Interface for selective register custom op.
 void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,

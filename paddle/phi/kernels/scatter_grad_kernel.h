@@ -18,7 +18,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ScatterGradKernel(const Context &ctx,
+void ScatterGradKernel(const Context &dev_ctx,
                        const DenseTensor &index,
                        const DenseTensor &updates,
                        const DenseTensor &out_grad,

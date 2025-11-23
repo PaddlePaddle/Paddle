@@ -17,20 +17,21 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include "paddle/common/macros.h"
 
 namespace phi {
 namespace distributed {
 class Store;
 
-int64_t GetCurGlobalRank();
+PADDLE_API int64_t GetCurGlobalRank();
 
-std::string GetMasterAddr();
+PADDLE_API std::string GetMasterAddr();
 
-int64_t GetGlobalWorldSize();
+PADDLE_API int64_t GetGlobalWorldSize();
 
-uint16_t GetMasterPort();
+PADDLE_API uint16_t GetMasterPort();
 
-std::shared_ptr<Store> CreateOrGetGlobalTCPStore();
+PADDLE_API std::shared_ptr<Store> CreateOrGetGlobalTCPStore();
 
 }  // namespace distributed
 }  // namespace phi

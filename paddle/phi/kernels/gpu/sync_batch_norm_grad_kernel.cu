@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SyncBatchNormGradKernel(const Context& ctx,
+void SyncBatchNormGradKernel(const Context& dev_ctx,
                              const DenseTensor& x,
                              const DenseTensor& scale,
                              const DenseTensor& bias,
@@ -38,7 +38,7 @@ void SyncBatchNormGradKernel(const Context& ctx,
                              DenseTensor* x_grad,
                              DenseTensor* scale_grad,
                              DenseTensor* bias_grad) {
-  SyncBatchNormGradFunctor<T, Context>(ctx,
+  SyncBatchNormGradFunctor<T, Context>(dev_ctx,
                                        &x,
                                        nullptr,
                                        scale,
@@ -61,7 +61,7 @@ PD_REGISTER_KERNEL(sync_batch_norm_grad,
                    ALL_LAYOUT,
                    phi::SyncBatchNormGradKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  // scale_grad
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
@@ -75,8 +75,8 @@ PD_REGISTER_KERNEL(sync_batch_norm_grad,
                    phi::SyncBatchNormGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #else
 PD_REGISTER_KERNEL(sync_batch_norm_grad,
                    GPU,
@@ -84,6 +84,6 @@ PD_REGISTER_KERNEL(sync_batch_norm_grad,
                    phi::SyncBatchNormGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif
 #endif

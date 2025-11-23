@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import re
 import time
 import unittest
 
 import numpy as np
 from legacy_test.test_collective_api_base import TestDistBase
+from op_test import get_cuda_version
 
 import paddle
 import paddle.distributed as dist
@@ -27,19 +26,6 @@ from paddle.base import core
 from paddle.base.core import Config
 from paddle.distributed import fleet
 from paddle.distributed.communication.group import Group
-
-
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
-
 
 is_sm90 = (
     core.is_compiled_with_cuda()
@@ -292,7 +278,9 @@ def test_main(
                     rank_prefix_matrix = handle[0]
                     assert (
                         gbl_num_tokens_per_rank[rank].item() == recv_x.shape[0]
-                    ), f'{gbl_num_tokens_per_rank[rank].item()} != {recv_x.shape[0]}'
+                    ), (
+                        f'{gbl_num_tokens_per_rank[rank].item()} != {recv_x.shape[0]}'
+                    )
                     assert (
                         gbl_num_tokens_per_expert.view([num_ranks, -1])[
                             rank
@@ -318,15 +306,13 @@ def test_main(
 
                         # Check `topk_weights`
                         if current_x is not x_pure_rand:
-                            recv_topk_weights[
-                                recv_topk_idx.equal(-1)
-                            ] = recv_topk_weights.amax(
-                                axis=1, keepdim=True
-                            ).expand_as(
-                                recv_topk_weights
-                            )[
-                                recv_topk_idx.equal(-1)
-                            ]
+                            recv_topk_weights[recv_topk_idx.equal(-1)] = (
+                                recv_topk_weights.amax(
+                                    axis=1, keepdim=True
+                                ).expand_as(recv_topk_weights)[
+                                    recv_topk_idx.equal(-1)
+                                ]
+                            )
                             # check_data(recv_topk_weights, rank_prefix_matrix)
 
                     # Test cached dispatch (must without top-k staffs)

@@ -15,8 +15,6 @@
 #include "paddle/phi/kernels/mode_grad_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/mode.h"
@@ -27,19 +25,19 @@ template <typename T>
 __global__ void AssignGradWithAxis(const T* grad_out,
                                    const int64_t* indices,
                                    T* grad_in,
-                                   int pre,
-                                   int post,
-                                   int raw_height,
+                                   int64_t pre,
+                                   int64_t post,
+                                   int64_t raw_height,
                                    int k) {
   // raw_height is the length of topk axis
-  for (int i = blockIdx.x; i < pre; i += gridDim.x) {
-    int base_index = i * post * k;
-    int base_grad = i * post * raw_height;
+  for (int64_t i = blockIdx.x; i < pre; i += gridDim.x) {
+    int64_t base_index = i * post * k;
+    int64_t base_grad = i * post * raw_height;
     for (int j = threadIdx.x; j < raw_height * post; j += blockDim.x) {
       grad_in[base_grad + j] = static_cast<T>(0);
     }
     __syncthreads();
-    for (int j = threadIdx.x; j < k * post; j += blockDim.x) {
+    for (int64_t j = threadIdx.x; j < k * post; j += blockDim.x) {
       int64_t idx_ij = indices[base_index + j];
       int64_t in_ij = base_grad + (idx_ij * post) + (j % post);
       grad_in[in_ij] = grad_out[base_index + j];
@@ -63,6 +61,9 @@ void ModeGradKernel(const Context& dev_ctx,
   T* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
   const T* out_grad_data = out_grad.data<T>();
   const int64_t* indices_data = indices.data<int64_t>();
+  if (x_grad && x_grad->numel() == 0) {
+    return;
+  }
 
   // For 0D Tensor
   if (in_dims.size() == 0) {
@@ -70,14 +71,15 @@ void ModeGradKernel(const Context& dev_ctx,
     return;
   }
 
-  int pre, n, post;
+  int64_t pre, n, post;
   funcs::GetDims(in_dims, axis, &pre, &n, &post);
 
   // calculate the block and grid num
-  int block_size = funcs::ComputeBlockSize(post);
-  int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
-  const int max_blocks = std::max(((max_threads - 1) / block_size + 1), 1);
-  int grid_size = std::min(max_blocks, pre);
+  int64_t block_size = funcs::ComputeBlockSize(post);
+  int64_t max_threads = dev_ctx.GetMaxPhysicalThreadCount();
+  const int64_t max_blocks =
+      std::max(((max_threads - 1) / block_size + 1), static_cast<int64_t>(1));
+  int64_t grid_size = std::min(max_blocks, pre);
   AssignGradWithAxis<T><<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
       out_grad_data, indices_data, x_grad_data, pre, post, n, 1);
 }
@@ -92,5 +94,5 @@ PD_REGISTER_KERNEL(mode_grad,
                    double,
                    int32_t,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

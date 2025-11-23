@@ -45,7 +45,8 @@ std::string read_file_as_string(const std::string& file_path) {
 #endif
 
 #ifdef CINN_WITH_CUDA
-  std::string cinn_path = defined_runtime_include_dir;
+  std::string cinn_path =
+      defined_runtime_include_dir ? defined_runtime_include_dir : "";
   std::ifstream file(cinn_path + '/' + file_path);
 
   if (!file.is_open()) {
@@ -66,6 +67,8 @@ static const std::string cinn_float16_header =  // NOLINT
     read_file_as_string("float16.h");
 static const std::string cinn_bfloat16_header =  // NOLINT
     read_file_as_string("bfloat16.h");
+static const std::string cinn_float8e4m3_header =  // NOLINT
+    read_file_as_string("float8e4m3.h");
 static const std::string cinn_with_cuda_header =  // NOLINT
     R"(
 #pragma once
@@ -85,6 +88,8 @@ JitSafeHeaderGenerator::JitSafeHeaderGenerator() {
   headers_.emplace_back(cinn_float16_header.data());
   include_names_.emplace_back("bfloat16_h");
   headers_.emplace_back(cinn_bfloat16_header.data());
+  include_names_.emplace_back("float8e4m3_h");
+  headers_.emplace_back(cinn_float8e4m3_header.data());
   include_names_.emplace_back("cinn_with_cuda_h");
   headers_.emplace_back(cinn_with_cuda_header.data());
   include_names_.emplace_back("cinn_cuda_runtime_source_h");

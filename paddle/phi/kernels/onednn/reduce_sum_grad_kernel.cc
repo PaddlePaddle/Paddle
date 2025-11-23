@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/reduce_sum_grad_kernel.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/onednn/reduce_kernel_impl.h"
 #include "paddle/phi/kernels/reduce_kernel_impl.h"
@@ -26,6 +27,10 @@ void SumGradKernel(const Context& dev_ctx,
                    bool keep_dim,
                    bool reduce_all,
                    DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   ReduceGradKernel<T, Context>(dev_ctx,
                                x,
@@ -42,7 +47,7 @@ void SumGradKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    sum_grad, OneDNN, ONEDNN, phi::SumGradKernel, float, phi::dtype::bfloat16) {
+    sum_grad, OneDNN, ONEDNN, phi::SumGradKernel, float, phi::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
   kernel->check_if_onednn_kernel_support_ = phi::ReduceGradCheckIfOneDNNSupport;
 }

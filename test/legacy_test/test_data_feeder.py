@@ -91,17 +91,17 @@ class TestDataFeeder(unittest.TestCase):
 
     def test_errors(self):
         def pir_mode_not_supported_str_feed():
-            with paddle.pir_utils.IrGuard():
-                with paddle.static.program_guard(
+            with (
+                paddle.pir_utils.IrGuard(),
+                paddle.static.program_guard(
                     paddle.static.Program(), paddle.static.Program()
-                ):
-                    img = paddle.static.data(
-                        name='image', shape=[-1, 1, 28, 28]
-                    )
-                    label = paddle.static.data(
-                        name='label', shape=[-1, 1], dtype='int64'
-                    )
-                    feeder = base.DataFeeder(['image', label], base.CPUPlace())
+                ),
+            ):
+                img = paddle.static.data(name='image', shape=[-1, 1, 28, 28])
+                label = paddle.static.data(
+                    name='label', shape=[-1, 1], dtype='int64'
+                )
+                feeder = base.DataFeeder(['image', label], base.CPUPlace())
 
         self.assertRaises(ValueError, pir_mode_not_supported_str_feed)
 

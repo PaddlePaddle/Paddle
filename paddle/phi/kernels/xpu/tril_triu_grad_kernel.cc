@@ -20,46 +20,56 @@
 namespace phi {
 
 template <typename T, typename Context>
-void TrilTriuGradKernel(const Context& ctx,
+void TrilTriuGradKernel(const Context& dev_ctx,
                         const DenseTensor& out_grad,
                         int diagonal,
                         bool lower,
                         DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  ctx.template Alloc<T>(x_grad);
-  auto dy_shape = common::vectorize<int>(out_grad.dims());
+  dev_ctx.template Alloc<T>(x_grad);
+  auto dy_shape = common::vectorize<int64_t>(out_grad.dims());
   int r = 0;
   if (lower) {
-    r = xpu::tril(ctx.x_context(),
+    r = xpu::tril(dev_ctx.x_context(),
                   reinterpret_cast<const XPUType*>(out_grad.data<T>()),
                   reinterpret_cast<XPUType*>(x_grad->data<T>()),
                   dy_shape,
-                  diagonal);
+                  static_cast<int64_t>(diagonal));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "tril_op");
   } else {
-    r = xpu::triu(ctx.x_context(),
+    r = xpu::triu(dev_ctx.x_context(),
                   reinterpret_cast<const XPUType*>(out_grad.data<T>()),
                   reinterpret_cast<XPUType*>(x_grad->data<T>()),
                   dy_shape,
-                  diagonal);
+                  static_cast<int64_t>(diagonal));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "triu_op");
   }
 }
 
 template <typename T, typename Context>
-void TrilGradKernel(const Context& ctx,
+void TrilGradKernel(const Context& dev_ctx,
                     const DenseTensor& out_grad,
                     int diagonal,
                     DenseTensor* x_grad) {
-  TrilTriuGradKernel<T, Context>(ctx, out_grad, diagonal, true, x_grad);
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
+
+  TrilTriuGradKernel<T, Context>(dev_ctx, out_grad, diagonal, true, x_grad);
 }
 
 template <typename T, typename Context>
-void TriuGradKernel(const Context& ctx,
+void TriuGradKernel(const Context& dev_ctx,
                     const DenseTensor& out_grad,
                     int diagonal,
                     DenseTensor* x_grad) {
-  TrilTriuGradKernel<T, Context>(ctx, out_grad, diagonal, false, x_grad);
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
+
+  TrilTriuGradKernel<T, Context>(dev_ctx, out_grad, diagonal, false, x_grad);
 }
 
 }  // namespace phi
@@ -71,8 +81,8 @@ PD_REGISTER_KERNEL(tril_grad,
                    int,
                    int64_t,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    bool) {}
 PD_REGISTER_KERNEL(triu_grad,
                    XPU,
@@ -81,8 +91,8 @@ PD_REGISTER_KERNEL(triu_grad,
                    int,
                    int64_t,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    bool) {}
 PD_REGISTER_KERNEL(tril_triu_grad,
                    XPU,
@@ -91,6 +101,6 @@ PD_REGISTER_KERNEL(tril_triu_grad,
                    int,
                    int64_t,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    bool) {}

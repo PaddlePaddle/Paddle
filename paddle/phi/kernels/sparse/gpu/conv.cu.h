@@ -207,73 +207,6 @@ __global__ void UniqueKernel(const IntT* in_indices,
   }
 }
 
-template <int BS>
-__global__ void GetOutIndices(const int* flags,
-                              const int n,
-                              const int* offsets,
-                              const int out_nnz,
-                              int* out) {
-  int tid = threadIdx.x + blockDim.x * blockIdx.x;
-  __shared__ int block_counts[BS];
-  __shared__ int block_outs[BS * 32];
-
-  int count = 0;
-
-  if (tid < n) {
-    // get the count of 1 in flags[tid]
-    int flag = flags[tid];
-    count = BitCount(static_cast<uint32_t>(flag));
-  }
-
-  // call block prefix_sum
-  // using namespace cub;
-  typedef cub::BlockScan<int, BS> BlockScan;
-  __shared__ typename BlockScan::TempStorage temp_storage;
-  BlockScan(temp_storage).ExclusiveSum(count, count);
-  __syncthreads();
-
-  // write index to out
-  if (tid < n) {
-    // get the count of 1 in flags[tid]
-    int flag = flags[tid];
-    // int j = block_counts[threadIdx.x];
-    int j = count;
-    // TODO(zhangkaihuo): opt the loop
-    for (int i = 0; i < 32; ++i) {
-      if ((1 & (flag >> i)) == 1) {
-        block_outs[j++] = (tid << 5) + i;
-      }
-    }
-  }
-
-  __syncthreads();
-  // write to block_outs
-  int start = offsets[blockIdx.x];
-  int end = blockIdx.x == gridDim.x - 1 ? out_nnz : offsets[blockIdx.x + 1];
-  for (int i = threadIdx.x; i < end - start; i += blockDim.x) {
-    out[start + i] = block_outs[i];
-  }
-}
-
-template <typename IntT>
-__global__ void GroupIndices(const int* out_index_table,
-                             const int n,
-                             const int kernel_size,
-                             IntT* out_indices,
-                             int* out_index_counts,
-                             int* out_index_groups) {
-  CUDA_KERNEL_LOOP_TYPE(i, n, int64_t) {
-    IntT index = out_indices[i];
-    int real_index = out_index_table[index];
-    out_indices[i] = real_index;
-
-    // kernel_size at most
-    int j = atomicAdd(out_index_counts + real_index, 1);
-    // nnz * kernel_size
-    out_index_groups[real_index * kernel_size + j] = i;
-  }
-}
-
 template <typename IntT>
 __global__ void GetOutIndexTable1(const IntT* indices,
                                   const IntT non_zero_num,
@@ -291,33 +224,6 @@ __global__ void GetOutIndexTable1(const IntT* indices,
     IntT index = PointToIndex(batch, in_x, in_y, in_z, dims);
     phi::funcs::sparse::SetBits(index, index_flags);
     out_index_table[index] = i;
-  }
-}
-
-template <typename IntT>
-__global__ void GetOutIndexTable(int* indices,
-                                 const int non_zero_num,
-                                 const Dims4D out_dims,
-                                 const bool is2D,
-                                 int* out_index_table,
-                                 IntT* out_indices) {
-  CUDA_KERNEL_LOOP_TYPE(i, non_zero_num, int64_t) {
-    IntT index = static_cast<IntT>(indices[i]);
-    out_index_table[index] = i;
-    IntT batch, x, y, z;
-    phi::funcs::sparse::IndexToPoint<Dims4D>(
-        index, out_dims, &batch, &x, &y, &z);
-    // get out indices
-    out_indices[i] = batch;
-    if (is2D) {
-      out_indices[i + non_zero_num] = y;
-      out_indices[i + non_zero_num * 2] = x;
-    } else {
-      out_indices[i + non_zero_num] = z;
-      out_indices[i + non_zero_num * 2] = y;
-      out_indices[i + non_zero_num * 3] = x;
-    }
-    indices[i] = 0;
   }
 }
 

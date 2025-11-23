@@ -12,10 +12,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <string>
 #include <vector>
@@ -125,13 +121,12 @@ void EmptyTensorInitializer(TensorObject* self,
       self->tensor.set_impl(tensor);
     }
   }
-
   if (!autograd_meta->GetMutableGradNode()) {
     autograd_meta->SetGradNode(
-        std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+        std::make_shared<egr::GradNodeAccumulation>(self->tensor));
     VLOG(3) << "Tensor(" << name
-            << ") have not GradNode, add GradNodeAccumulation"
-            << autograd_meta->GradNode() << " for it.";
+            << ") have not GradNode, add GradNodeAccumulation("
+            << autograd_meta->GradNode() << ") for it.";
   }
 }
 
@@ -834,7 +829,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   SetPythonStack();
   // set a flag to record use kwargs or not
   bool flag_kwargs = false;
-  if (kwargs) flag_kwargs = true;
+  if (kwargs && PyList_Size(PyDict_Keys(kwargs))) flag_kwargs = true;
 
   // all kwargs
   PyObject* kw_zero_copy = nullptr;
@@ -905,7 +900,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       true,
       common::errors::PreconditionNotMet(
           "Could not parse args and kwargs successfully, "
-          "please check your input first and make"
+          "please check your input first and make "
           "sure you are on the right way. "
           "The expected arguments as follow: ("
           "value, place, persistable, zero_copy, "
@@ -1311,7 +1306,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
                     true,
                     common::errors::PreconditionNotMet(
                         "Could not parse args and kwargs successfully, "
-                        "please check your input first and make"
+                        "please check your input first and make "
                         "sure you are on the right way. "
                         "The expected arguments as follow: ("
                         "value, zero_copy, name, dims)"));
@@ -1509,9 +1504,7 @@ void BindEager(pybind11::module* module) {
   type->tp_flags |=
       Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;  // NOLINT
   type->tp_dictoffset = offsetof(TensorObject, dict);
-#if PY_VERSION_HEX >= 0x03050000
   type->tp_as_async = &heap_type->as_async;
-#endif
   p_tensor_type = type;
 
   if (PyType_Ready(type) < 0) {
@@ -1558,9 +1551,7 @@ void BindEagerStringTensor(pybind11::module* module) {
   type->tp_flags |=
       Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;  // NOLINT
   type->tp_dictoffset = offsetof(TensorObject, dict);
-#if PY_VERSION_HEX >= 0x03050000
   type->tp_as_async = &heap_type->as_async;
-#endif
   p_string_tensor_type = type;
 
   if (PyType_Ready(type) < 0) {

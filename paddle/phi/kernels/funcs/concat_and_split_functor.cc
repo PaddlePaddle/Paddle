@@ -125,9 +125,9 @@ struct SplitFunctor<phi::CPUContext, T> {
   }
 };
 
-#define DEFINE_FUNCTOR(type)                           \
-  template class ConcatFunctor<phi::CPUContext, type>; \
-  template class SplitFunctor<phi::CPUContext, type>;
+#define DEFINE_FUNCTOR(type)                                      \
+  template class PADDLE_API ConcatFunctor<phi::CPUContext, type>; \
+  template class PADDLE_API SplitFunctor<phi::CPUContext, type>;
 
 FOR_ALL_TYPES(DEFINE_FUNCTOR);
 

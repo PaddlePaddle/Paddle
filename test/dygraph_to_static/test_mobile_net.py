@@ -22,7 +22,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_legacy_and_pir,
+    test_phi_only,
 )
 from predictor_utils import PredictorTools
 
@@ -30,7 +30,6 @@ import paddle
 from paddle import base
 from paddle.base.framework import unique_name
 from paddle.base.param_attr import ParamAttr
-from paddle.framework import use_pir_api
 from paddle.jit.pir_translated_layer import PIR_INFER_MODEL_SUFFIX
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
@@ -602,10 +601,8 @@ def predict_static(args, data):
     paddle.enable_static()
     exe = base.Executor(args.place)
     # load inference model
-    if use_pir_api():
-        model_filename = args.pir_model_filename
-    else:
-        model_filename = args.model_filename
+    model_filename = args.pir_model_filename
+
     [
         inference_program,
         feed_target_names,
@@ -656,10 +653,8 @@ def predict_dygraph_jit(args, data):
 
 
 def predict_analysis_inference(args, data):
-    if use_pir_api():
-        model_filename = args.pir_model_filename
-    else:
-        model_filename = args.model_filename
+    model_filename = args.pir_model_filename
+
     output = PredictorTools(
         args.model_save_dir, model_filename, args.params_filename, [data]
     )
@@ -730,7 +725,7 @@ class TestMobileNet(Dy2StTestBase):
             rtol=1e-05,
             err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
-        if os.name == "nt" and use_pir_api():
+        if os.name == "nt":
             return
         predictor_pre = predict_analysis_inference(self.args, image)
         np.testing.assert_allclose(
@@ -741,13 +736,13 @@ class TestMobileNet(Dy2StTestBase):
             err_msg=f'inference_pred_res:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_legacy_and_pir
+    @test_phi_only
     def test_mobile_net_v1(self):
         self.assert_same_loss("MobileNetV1")
 
         self.assert_same_predict("MobileNetV1")
 
-    @test_legacy_and_pir
+    @test_phi_only
     def test_mobile_net_v2(self):
         # MobileNet-V2
         self.assert_same_loss("MobileNetV2")

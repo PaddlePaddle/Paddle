@@ -20,7 +20,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_default_and_pir,
+    test_default_mode_only,
 )
 from yolov3 import YOLOv3, cfg
 
@@ -162,7 +162,7 @@ def train():
 
 
 class TestYolov3(Dy2StTestBase):
-    @test_default_and_pir
+    @test_default_mode_only
     def test_dygraph_static_same_loss(self):
         with enable_to_static_guard(False):
             dygraph_loss = train()

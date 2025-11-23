@@ -16,7 +16,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    get_device_place,
+    is_custom_device,
+    skip_check_grad_ci,
+)
 
 import paddle
 from paddle import nn
@@ -26,17 +31,37 @@ from paddle.base.executor import Executor
 
 def skip_unit_test():
     return (
-        not paddle.is_compiled_with_cuda()
+        not (paddle.base.libpaddle.is_compiled_with_cudnn_frontend())
+        or not (paddle.is_compiled_with_cuda() or is_custom_device())
         or paddle.device.cuda.get_device_capability()[0] < 8
     )
 
 
-skip_msg = "only support with cuda and Ampere or later devices"
+skip_msg = "only support with cuda and Ampere or later devices, also please ensure you have used compile mode to install paddlepaddle with -WITH_CUDNN_FRONTEND ON"
 
 
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFusedDconvDreluDbnOp(OpTest):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fuse_add = False
+        self.fuse_shortcut = False
+        self.fuse_dual = False
+        self.exhaustive_search = False
+
+    def set_attrs(
+        self,
+        fuse_add=False,
+        fuse_shortcut=False,
+        fuse_dual=False,
+        exhaustive_search=False,
+    ):
+        self.fuse_add = fuse_add
+        self.fuse_shortcut = fuse_shortcut
+        self.fuse_dual = fuse_dual
+        self.exhaustive_search = exhaustive_search
+
     def setUp(self):
         self.__class__.op_type = "fused_dconv_drelu_dbn"
         self.dtype = np.float16
@@ -97,7 +122,7 @@ class TestFusedDconvDreluDbnOp(OpTest):
         self.bn2_running_var_input = self.bn2._variance.numpy()
 
     def has_cuda(self):
-        return core.is_compiled_with_cuda()
+        return core.is_compiled_with_cuda() or is_custom_device()
 
     def get_feed_map(self, inputs, place):
         feed_map = {}
@@ -382,7 +407,7 @@ class TestFusedDconvDreluDbnOp(OpTest):
 
     def test_check_output(self):
         if self.has_cuda():
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             outputs_expected = self.calc_normal_pass()
             outputs_actual, _ = self.calc_fused_pass(place)
 
@@ -423,56 +448,47 @@ class TestFusedDconvDreluDbnOp(OpTest):
         self.exhaustive_search = False
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFusedDconvDreluDbnOpShortcut(TestFusedDconvDreluDbnOp):
-    def init_attr(self):
-        self.fuse_add = False
-        self.fuse_shortcut = True
-        self.fuse_dual = False
-        self.exhaustive_search = False
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.set_attrs(fuse_shortcut=True)
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFusedDconvDreluDbnOpDual(TestFusedDconvDreluDbnOp):
-    def init_attr(self):
-        self.fuse_add = False
-        self.fuse_shortcut = False
-        self.fuse_dual = True
-        self.exhaustive_search = False
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.set_attrs(fuse_dual=True)
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFusedDconvDreluDbnOpShortcutAdd(TestFusedDconvDreluDbnOp):
-    def init_attr(self):
-        self.fuse_add = True
-        self.fuse_shortcut = True
-        self.fuse_dual = False
-        self.exhaustive_search = False
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.set_attrs(fuse_add=True, fuse_shortcut=True)
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFusedDconvDreluDbnOpDualAdd(TestFusedDconvDreluDbnOp):
-    def init_attr(self):
-        self.fuse_add = True
-        self.fuse_shortcut = False
-        self.fuse_dual = True
-        self.exhaustive_search = False
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.set_attrs(fuse_add=True, fuse_dual=True)
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFusedDconvDreluDbnOpExhaustive(TestFusedDconvDreluDbnOp):
-    def init_attr(self):
-        self.fuse_add = False
-        self.fuse_shortcut = False
-        self.fuse_dual = False
-        self.exhaustive_search = True
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.set_attrs(exhaustive_search=True)
 
 
 if __name__ == '__main__':
-    np.random.seed(0)
-    unittest.main()
+    for _ in range(10):
+        np.random.seed(np.random.randint(0, 1000))
+        unittest.main()

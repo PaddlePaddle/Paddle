@@ -14,6 +14,8 @@
 
 import unittest
 
+from op_test import get_device_place, is_custom_device
+
 import paddle
 from paddle.base import core
 from paddle.device.cuda import (
@@ -25,7 +27,9 @@ from paddle.device.cuda import (
 
 class TestMaxMemoryAllocated(unittest.TestCase):
     def func_test_max_memory_allocated(self, device=None):
-        if core.is_compiled_with_cuda():
+        if (
+            core.is_compiled_with_cuda() or is_custom_device()
+        ) or is_custom_device():
             alloc_time = 100
             max_alloc_size = 10000
             peak_memory_allocated_size = max_memory_allocated(device)
@@ -43,16 +47,20 @@ class TestMaxMemoryAllocated(unittest.TestCase):
             )
 
     def test_max_memory_allocated_for_all_places(self):
-        if core.is_compiled_with_cuda():
+        if (
+            core.is_compiled_with_cuda() or is_custom_device()
+        ) or is_custom_device():
             gpu_num = device_count()
             for i in range(gpu_num):
                 paddle.device.set_device("gpu:" + str(i))
-                self.func_test_max_memory_allocated(core.CUDAPlace(i))
+                self.func_test_max_memory_allocated(get_device_place(i))
                 self.func_test_max_memory_allocated(i)
                 self.func_test_max_memory_allocated("gpu:" + str(i))
 
     def test_max_memory_allocated_exception(self):
-        if core.is_compiled_with_cuda():
+        if (
+            core.is_compiled_with_cuda() or is_custom_device()
+        ) or is_custom_device():
             wrong_device = [
                 core.CPUPlace(),
                 device_count() + 1,

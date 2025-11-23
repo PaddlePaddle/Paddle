@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/common/macros.h"
 #include "paddle_inference_api.h"  // NOLINT
 
 namespace paddle_infer {
@@ -43,7 +44,7 @@ class TensorUtils {
 
 /// \brief A status class, used to intercept exceptions and convert
 /// them into a status number.
-class Status {
+class PADDLE_API Status {
  public:
   using Code = int;
   struct Impl;

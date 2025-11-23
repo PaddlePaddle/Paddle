@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void WhereKernel(const Context& ctx,
+void WhereKernel(const Context& dev_ctx,
                  const DenseTensor& condition,
                  const DenseTensor& x,
                  const DenseTensor& y,

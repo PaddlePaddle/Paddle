@@ -69,7 +69,7 @@ inline cudnnDataType_t ToCudnnDataType(const phi::DataType& t) {
     case phi::DataType::FLOAT64:
       type = CUDNN_DATA_DOUBLE;
       break;
-#if CUDNN_VERSION_MIN(8, 6, 0) && CUDA_VERSION >= 11800
+#if CUDNN_VERSION_MIN(8, 6, 0) && CUDA_VERSION >= 11080
     case phi::DataType::FLOAT8_E4M3FN:
       type = CUDNN_DATA_FP8_E4M3;
       break;

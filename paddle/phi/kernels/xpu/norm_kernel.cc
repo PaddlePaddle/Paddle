@@ -22,7 +22,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void NormKernel(const Context& ctx,
+void NormKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 int axis,
                 float epsilon,
@@ -30,10 +30,10 @@ void NormKernel(const Context& ctx,
                 DenseTensor* out,
                 DenseTensor* norm) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  ctx.template Alloc<T>(out);
-  ctx.template Alloc<T>(norm);
+  dev_ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(norm);
 
-  std::vector<int> xshape;
+  std::vector<int64_t> xshape;
   auto x_dims = x.dims();
   auto x_dims_size = x_dims.size();
   xshape.resize(x_dims_size);
@@ -57,10 +57,10 @@ void NormKernel(const Context& ctx,
                         x_dims_size));
 
   for (int i = 0; i < x_dims_size; i++) {
-    xshape[i] = static_cast<int>(x_dims[i]);
+    xshape[i] = x_dims[i];
   }
 
-  int r = xpu::l2_norm(ctx.x_context(),
+  int r = xpu::l2_norm(dev_ctx.x_context(),
                        reinterpret_cast<const XPUType*>(x.data<T>()),
                        reinterpret_cast<XPUType*>(out->data<T>()),
                        reinterpret_cast<XPUType*>(norm->data<T>()),
@@ -73,5 +73,5 @@ void NormKernel(const Context& ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    norm, XPU, ALL_LAYOUT, phi::NormKernel, float, phi::dtype::float16) {}
+    norm, XPU, ALL_LAYOUT, phi::NormKernel, float, phi::float16) {}
 // TODO(zhangyikun02): add bfloat16 when xpu support it

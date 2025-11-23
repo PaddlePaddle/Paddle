@@ -357,9 +357,9 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
         if accumulate_steps != num_stages:
             split_backward = False
 
-        assert (
-            not enable_send_recv_overlap
-        ), "PIR does not support VPP with enable_send_recv_overlap yet."
+        assert not enable_send_recv_overlap, (
+            "PIR does not support VPP with enable_send_recv_overlap yet."
+        )
 
         if split_backward:
             self._pir_split_matmul_grad_ops_to_matmul(program)

@@ -48,15 +48,15 @@ class ReaderBase {
             "and need_check_feed"));
   }
 
-  TEST_API virtual void ReadNext(phi::TensorArray* out);
+  PADDLE_API virtual void ReadNext(phi::TensorArray* out);
 
-  TEST_API virtual void Shutdown();
+  PADDLE_API virtual void Shutdown();
 
-  TEST_API virtual void Start();
+  PADDLE_API virtual void Start();
 
   // Return the readers which are the end of decorating chain. Basically
   // they are readers just before read op.
-  TEST_API std::unordered_set<ReaderBase*> GetEndPoints();
+  PADDLE_API std::unordered_set<ReaderBase*> GetEndPoints();
 
   // Returns the shapes of the fed variables
   const std::vector<DDim>& Shapes() const { return shapes_; }
@@ -70,7 +70,7 @@ class ReaderBase {
   // This function returns whether you have the check shape for this Reader.
   const std::vector<bool>& NeedCheckFeed() const { return need_check_feed_; }
 
-  TEST_API virtual ~ReaderBase();
+  PADDLE_API virtual ~ReaderBase();
 
  protected:
   virtual void ReadNextImpl(phi::TensorArray* out UNUSED) {}
@@ -98,7 +98,7 @@ class ReaderBase {
   friend class DecoratedReader;
   // These methods can be only invoked inside DecoratedReader to record the
   // decorating chain.
-  TEST_API void InsertDecoratedReader(
+  PADDLE_API void InsertDecoratedReader(
       const std::shared_ptr<ReaderBase>& decorated_reader);
   // A set of which readers that decorated this reader.
   std::vector<std::weak_ptr<ReaderBase>> decorated_readers_;
@@ -121,7 +121,7 @@ class DecoratedReader : public ReaderBase,
     reader_->InsertDecoratedReader(shared_from_this());
   }
 
-  TEST_API ~DecoratedReader();
+  PADDLE_API ~DecoratedReader();
 
   const std::shared_ptr<ReaderBase>& UnderlyingReader() const {
     return reader_;

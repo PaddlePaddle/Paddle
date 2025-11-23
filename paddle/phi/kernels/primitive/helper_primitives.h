@@ -32,22 +32,22 @@ struct dim3 {
 #endif
 
 struct DimConfig {
-  int split_num_x;
-  int split_num_y;
-  int split_num_z;
-  int deal_size_x;
-  int deal_size_y;
-  int deal_size_z;
-  int rem_x;
-  int rem_y;
-  int rem_z;
+  int64_t split_num_x;
+  int64_t split_num_y;
+  int64_t split_num_z;
+  int64_t deal_size_x;
+  int64_t deal_size_y;
+  int64_t deal_size_z;
+  int64_t rem_x;
+  int64_t rem_y;
+  int64_t rem_z;
 
-  HOSTDEVICE explicit inline DimConfig(int split_x,
-                                       int split_y,
-                                       int split_z,
-                                       int size_x,
-                                       int size_y,
-                                       int size_z) {
+  HOSTDEVICE explicit inline DimConfig(int64_t split_x,
+                                       int64_t split_y,
+                                       int64_t split_z,
+                                       int64_t size_x,
+                                       int64_t size_y,
+                                       int64_t size_z) {
     split_num_x = split_x;
     split_num_y = split_y;
     split_num_z = split_z;
@@ -56,7 +56,7 @@ struct DimConfig {
     deal_size_z = size_z;
   }
 
-  HOSTDEVICE void SetRem(int rem_nx, int rem_ny, int rem_nz) {
+  HOSTDEVICE void SetRem(int64_t rem_nx, int64_t rem_ny, int64_t rem_nz) {
     rem_x = rem_nx;
     rem_y = rem_ny;
     rem_z = rem_nz;

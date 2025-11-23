@@ -54,7 +54,7 @@ class TestElementwiseAddActivationOneDNNFusePass(PassAutoScanTest):
             type='elementwise_add',
             inputs={'X': ['eltwise_X'], 'Y': ['eltwise_Y']},
             outputs={'Out': ['eltwise_output']},
-            attrs={"use_mkldnn": True},
+            attrs={"use_onednn": True},
         )
 
         if activation_type == 'relu6':
@@ -116,7 +116,7 @@ class TestElementwiseAddActivationOneDNNFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True,
+            use_onednn=True,
             passes=[
                 'elementwise_act_onednn_fuse_pass',
                 'operator_scale_onednn_fuse_pass',
@@ -125,7 +125,7 @@ class TestElementwiseAddActivationOneDNNFusePass(PassAutoScanTest):
         yield config, ['fused_elementwise_add'], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             passes=[
                 'elementwise_act_onednn_fuse_pass',

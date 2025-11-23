@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from simple_nets import simple_fc_net_with_inputs
 
 import paddle
@@ -23,7 +23,9 @@ from paddle.device.cuda.graphs import CUDAGraph
 
 
 def can_use_cuda_graph():
-    return paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm()
+    return (
+        paddle.is_compiled_with_cuda() or is_custom_device()
+    ) and not paddle.is_compiled_with_rocm()
 
 
 def build_program(main, startup, batch_size, class_num):
@@ -49,7 +51,8 @@ def build_program(main, startup, batch_size, class_num):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or float(paddle.version.cuda()) < 11.0,
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or float(paddle.version.cuda()) < 11.0,
     "only support cuda >= 11.0",
 )
 class TestCUDAGraphInStaticMode(unittest.TestCase):
@@ -102,7 +105,7 @@ class TestCUDAGraphInStaticMode(unittest.TestCase):
                 main, startup, batch_size, class_num
             )
 
-            place = paddle.CUDAPlace(0)
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             scope = paddle.static.Scope()
             with paddle.static.scope_guard(scope):

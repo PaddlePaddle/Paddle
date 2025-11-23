@@ -75,6 +75,9 @@ void DiagEmbedKernel(const Context& dev_ctx,
                      DenseTensor* out) {
   auto* input_data = x.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
   phi::funcs::SetConstant<Context, T> set_zero;
 
   set_zero(dev_ctx, out, static_cast<T>(0.0));

@@ -147,9 +147,9 @@ def split_program(program, op_indices):
         op_indices.append(op_num)
 
     for idx in range(len(op_indices) - 1):
-        assert (
-            op_indices[idx] < op_indices[idx + 1]
-        ), "op_indices must be strictly sorted"
+        assert op_indices[idx] < op_indices[idx + 1], (
+            "op_indices must be strictly sorted"
+        )
 
     split_programs = []
     for idx in range(len(op_indices) - 1):
@@ -303,9 +303,9 @@ def _set_skip_gc_vars_in_old_ir(
         )
 
         if job_type in ["backward", "backward_w"]:
-            assert (
-                len(skip_gc_vars) == 0
-            ), f"When enabling pipeline parallelism strategy, the skip_gc_vars for {job_type} subprogram must be empty, but it is {skip_gc_vars}."
+            assert len(skip_gc_vars) == 0, (
+                f"When enabling pipeline parallelism strategy, the skip_gc_vars for {job_type} subprogram must be empty, but it is {skip_gc_vars}."
+            )
 
         job.set_skip_gc_vars(skip_gc_vars)
         suffixed_required_vars[micro_batch_id] |= required_vars
@@ -355,9 +355,9 @@ def _set_skip_gc_vars_in_pir(num_micro_batches, job_types, sub_programs, jobs):
         )
 
         if job_type in ["send_backward", "backward_w"]:
-            assert (
-                len(skip_gc_vars) == 0
-            ), f"When enabling pipeline parallelism strategy, the skip_gc_vars for {job_type} subprogram must be empty, but it is {skip_gc_vars}."
+            assert len(skip_gc_vars) == 0, (
+                f"When enabling pipeline parallelism strategy, the skip_gc_vars for {job_type} subprogram must be empty, but it is {skip_gc_vars}."
+            )
 
         job.set_skip_gc_vars(skip_gc_vars)
         suffixed_required_vars[micro_batch_id] |= required_vars
@@ -603,9 +603,9 @@ def forward_complete_op_role(main_program):
             while right_idx < ops_len and all_ops[right_idx].op_role == -1:
                 right_idx += 1
             if right_idx >= ops_len:  # [first_left_op_role, xx, xx, xx, xx]
-                assert (
-                    first_left_op_role == -1
-                ), "first_left_op_role can't be -1."
+                assert first_left_op_role == -1, (
+                    "first_left_op_role can't be -1."
+                )
                 for idx in range(iop, right_idx):
                     all_ops[idx].op_role = first_left_op_role
                 break
@@ -614,7 +614,9 @@ def forward_complete_op_role(main_program):
                 assert (
                     first_left_op_role == -1
                     or first_left_op_role == first_right_op_role
-                ), f"The left and right operators of (idx[{iop}]) have different op_role."
+                ), (
+                    f"The left and right operators of (idx[{iop}]) have different op_role."
+                )
                 for idx in range(iop, right_idx):
                     all_ops[idx].op_role = first_right_op_role
                     iop = right_idx + 1
@@ -985,13 +987,13 @@ def split_matmul_grad_to_matmul(
     matmul_grad_op = ops[matmul_grad_id]
 
     tran_x = matmul_grad_op.attr("trans_x")
-    assert (
-        not tran_x
-    ), f"matmul_grad(id={matmul_grad_id}) with tran_x == True is not supported for splitting matmul_grad to matmul"
+    assert not tran_x, (
+        f"matmul_grad(id={matmul_grad_id}) with tran_x == True is not supported for splitting matmul_grad to matmul"
+    )
     tran_y = matmul_grad_op.attr("trans_y")
-    assert (
-        not tran_y
-    ), f"matmul_grad(id={matmul_grad_id}) with tran_y == True is not supported for splitting matmul_grad to matmul"
+    assert not tran_y, (
+        f"matmul_grad(id={matmul_grad_id}) with tran_y == True is not supported for splitting matmul_grad to matmul"
+    )
 
     x = matmul_grad_op.input("X")
     y = matmul_grad_op.input("Y")
@@ -1008,13 +1010,13 @@ def split_matmul_grad_to_matmul(
     out_grad_dims = var_out_grad.shape
     y_grad_dims = var_y_grad.shape
 
-    assert len(x_dims) == len(
-        out_grad_dims
-    ), f"The rank of x must be equal to that of out_grad, but got x rank = {len(x_dims)} and out_grad rank = {len(out_grad_dims)}."
+    assert len(x_dims) == len(out_grad_dims), (
+        f"The rank of x must be equal to that of out_grad, but got x rank = {len(x_dims)} and out_grad rank = {len(out_grad_dims)}."
+    )
     if len(x_dims) > 2:
-        assert (
-            x_dims[0:2] == out_grad_dims[0:2]
-        ), f"The first two dimensions of x must be equal to that of out_grad, but got x_dims:{x_dims} and out_grad_dims:{out_grad_dims}."
+        assert x_dims[0:2] == out_grad_dims[0:2], (
+            f"The first two dimensions of x must be equal to that of out_grad, but got x_dims:{x_dims} and out_grad_dims:{out_grad_dims}."
+        )
     new_x_dims = [x_dims[0] * x_dims[1], *list(x_dims[2:])]
     new_out_grad_dims = [
         out_grad_dims[0] * out_grad_dims[1],
@@ -1124,13 +1126,13 @@ def _pir_split_matmul_grad_to_matmul(block, matmul_grad_id):
     ops = block.ops
     matmul_grad_op = ops[matmul_grad_id]
 
-    assert not matmul_grad_op.has_attr(
-        "trans_x"
-    ), f"matmul_grad(id={matmul_grad_id}) with tran_x == True is not supported for splitting matmul_grad to matmul"
+    assert not matmul_grad_op.has_attr("trans_x"), (
+        f"matmul_grad(id={matmul_grad_id}) with tran_x == True is not supported for splitting matmul_grad to matmul"
+    )
 
-    assert not matmul_grad_op.has_attr(
-        "trans_y"
-    ), f"matmul_grad(id={matmul_grad_id}) with tran_y == True is not supported for splitting matmul_grad to matmul"
+    assert not matmul_grad_op.has_attr("trans_y"), (
+        f"matmul_grad(id={matmul_grad_id}) with tran_y == True is not supported for splitting matmul_grad to matmul"
+    )
 
     x = matmul_grad_op.operand_source(0)
     y = matmul_grad_op.operand_source(1)
@@ -1143,14 +1145,14 @@ def _pir_split_matmul_grad_to_matmul(block, matmul_grad_id):
     out_grad_dims = out_grad.shape
     y_grad_dims = y_grad.shape
 
-    assert len(x_dims) == len(
-        out_grad_dims
-    ), f"The rank of x must be equal to that of out_grad, but got x rank = {len(x_dims)} and out_grad rank = {len(out_grad_dims)}."
+    assert len(x_dims) == len(out_grad_dims), (
+        f"The rank of x must be equal to that of out_grad, but got x rank = {len(x_dims)} and out_grad rank = {len(out_grad_dims)}."
+    )
 
     if len(x_dims) > 2:
-        assert (
-            x_dims[0:2] == out_grad_dims[0:2]
-        ), f"The first two dimensions of x must be equal to that of out_grad, but got x_dims:{x_dims} and out_grad_dims:{out_grad_dims}."
+        assert x_dims[0:2] == out_grad_dims[0:2], (
+            f"The first two dimensions of x must be equal to that of out_grad, but got x_dims:{x_dims} and out_grad_dims:{out_grad_dims}."
+        )
 
     new_x_dims = [x_dims[0] * x_dims[1], *list(x_dims[2:])]
     new_out_grad_dims = [
@@ -1236,9 +1238,9 @@ class PipelineMemoryEstimator:
             skip_gc_vars = required_vars & suffixed_required_vars
 
             if job_type in ["backward", "backward_w"]:
-                assert (
-                    len(skip_gc_vars) == 0
-                ), f"When enabling pipeline parallelism strategy, the skip_gc_vars for {job_type} subprogram must be empty, but it is {skip_gc_vars}."
+                assert len(skip_gc_vars) == 0, (
+                    f"When enabling pipeline parallelism strategy, the skip_gc_vars for {job_type} subprogram must be empty, but it is {skip_gc_vars}."
+                )
 
             skip_gc_vars = dict(zip(skip_gc_vars, [-1] * len(skip_gc_vars)))
             self.type_to_skip_gc_vars[job_type] = skip_gc_vars

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/attribute.h"
 
 namespace phi {
@@ -41,9 +42,9 @@ class GetKernelTypeForVarContext {
 
   const AttributeMap& GetAttrs(void) const;
 
-  void SetVarName(std::string* var_name);
+  PADDLE_API void SetVarName(std::string* var_name);
 
-  void SetDenseTensor(DenseTensor* tensor);
+  PADDLE_API void SetDenseTensor(DenseTensor* tensor);
 
  private:
   const KernelKey* kernel_key_;  // not owned

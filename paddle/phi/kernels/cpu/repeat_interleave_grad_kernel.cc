@@ -25,11 +25,12 @@ namespace phi {
 
 template <typename T, typename Context>
 void RepeatInterleaveWithTensorIndexGradKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x UNUSED,
     const DenseTensor& repeats_tensor,
     const DenseTensor& out_grad,
     int dim,
+    int64_t output_size UNUSED,
     DenseTensor* x_grad) {
   auto input_dim = x_grad->dims();
   if (dim < 0) {
@@ -61,24 +62,30 @@ void RepeatInterleaveWithTensorIndexGradKernel(
 
   phi::DeviceContextPool::Instance().Get(repeats_tensor.place());
   if (index_type == phi::DataType::INT32) {
-    phi::funcs::RepeatsTensor2IndexTensor<Context, int>(
-        ctx, repeats_tensor, &index);
-    IndexSelectGradInner<Context, T, int>(ctx, out_grad, index, x_grad, dim);
+    phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
+        dev_ctx, repeats_tensor, &index);
+    IndexSelectGradInner<Context, T, int>(
+        dev_ctx, out_grad, index, x_grad, dim);
   } else if (index_type == phi::DataType::INT64) {
-    phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
-        ctx, repeats_tensor, &index);
+    phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
+        dev_ctx, repeats_tensor, &index);
     IndexSelectGradInner<Context, T, int64_t>(
-        ctx, out_grad, index, x_grad, dim);
+        dev_ctx, out_grad, index, x_grad, dim);
   }
 }
 
 template <typename T, typename Context>
-void RepeatInterleaveGradKernel(const Context& ctx,
+void RepeatInterleaveGradKernel(const Context& dev_ctx,
                                 const DenseTensor& x UNUSED,
                                 const DenseTensor& out_grad,
                                 int repeats,
                                 int dim,
+                                int64_t output_size UNUSED,
                                 DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   auto input_dim = x_grad->dims();
   if (dim < 0) {
     dim += input_dim.size();
@@ -91,9 +98,10 @@ void RepeatInterleaveGradKernel(const Context& ctx,
     std::fill_n(index_vec.begin() + i * repeats, repeats, i);
   }
   index.Resize(common::make_ddim({index_size}));
-  phi::TensorFromVector<int>(index_vec, ctx, &index);
+  phi::TensorFromVector<int>(index_vec, dev_ctx, &index);
   const DenseTensor index_copy = index;
-  IndexSelectGradInner<Context, T, int>(ctx, out_grad, index_copy, x_grad, dim);
+  IndexSelectGradInner<Context, T, int>(
+      dev_ctx, out_grad, index_copy, x_grad, dim);
 }
 }  // namespace phi
 
@@ -105,7 +113,7 @@ PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(repeat_interleave_grad,
                    CPU,
@@ -115,4 +123,4 @@ PD_REGISTER_KERNEL(repeat_interleave_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

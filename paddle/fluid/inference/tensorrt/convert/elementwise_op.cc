@@ -80,8 +80,8 @@ class ElementwiseTensorOpConverter : public OpConverter {
       reshape_layer->setInput(1, *new_y_shape_tensor);
       reshape_y_tensor = reshape_layer->getOutput(0);
     } else {
-      // In fact , we can remove this `else`, but -> rt_resnet50_test CI in trt
-      // 6015 faling, how ridiculous！
+      // In fact, we can remove this `else`, but -> rt_resnet50_test CI in trt
+      // 6015 failing, how ridiculous！
       reshape_y_tensor = Y;
     }
 

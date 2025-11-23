@@ -21,7 +21,6 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace ast_gen_ius {
@@ -183,7 +182,7 @@ void TensorGroup::MarkShareMemBuffer(const ir::Tensor& tensor,
       GetShareMemRootName(tensor->name);
 }
 
-absl::flat_hash_map<std::string, ir::Tensor> TensorGroup::AllocateBuffers() {
+paddle::flat_hash_map<std::string, ir::Tensor> TensorGroup::AllocateBuffers() {
   std::unordered_set<std::string> allocated_roots;
   for (auto& name_tensor : name_to_tensor_) {
     std::string root_name = GetShareMemRootName(name_tensor.first);

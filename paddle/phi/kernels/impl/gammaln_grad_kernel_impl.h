@@ -19,17 +19,12 @@
 
 namespace phi {
 template <typename T>
-HOSTDEVICE T digamma(T x) {
+HOSTDEVICE T digamma_positive_domain(T x) {
   static T c = T{8.5};
   static T euler_mascheroni = T{0.57721566490153286060};
   T r;
   T value;
   T x2;
-
-  if (x <= T{0.0}) {
-    value = T{0.0};
-    return value;
-  }
 
   if (x <= T{0.000001}) {
     value = -euler_mascheroni - T{1.0} / x + T{1.6449340668482264365} * x;
@@ -58,6 +53,27 @@ HOSTDEVICE T digamma(T x) {
 }
 
 template <typename T>
+HOSTDEVICE T digamma(T x) {
+  static T pi = T{3.14159265358979323846};
+
+  if (x == T{0.0}) {
+    T inf = std::numeric_limits<T>::infinity();
+    return std::signbit(x) ? inf : -inf;
+  } else if (x < T{0.0}) {
+    if (x == std::trunc(x)) {
+      return std::numeric_limits<T>::quiet_NaN();
+    } else {
+      T iptr;
+      T frac_part = std::modf(x, &iptr);
+      return digamma_positive_domain(T{1.0} - x) -
+             pi / std::tan(pi * frac_part);
+    }
+  } else {
+    return digamma_positive_domain(x);
+  }
+}
+
+template <typename T>
 struct GammalnGradFunctor {
   GammalnGradFunctor(const T* dout, const T* x, T* output, int64_t numel)
       : dout_(dout), x_(x), output_(output), numel_(numel) {}
@@ -81,6 +97,10 @@ void GammalnGradKernel(const Context& dev_ctx,
                        const DenseTensor& d_out,
                        DenseTensor* d_x) {
   auto numel = d_out.numel();
+  if (d_x && d_x->numel() == 0) {
+    dev_ctx.template Alloc<T>(d_x);
+    return;
+  }
   auto* dout_data = d_out.data<T>();
   auto* x_data = x.data<T>();
   auto* dx_data =

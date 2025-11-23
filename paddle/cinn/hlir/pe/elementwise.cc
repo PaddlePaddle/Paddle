@@ -71,6 +71,7 @@ HLIR_MKL_IMP_UNARY_PE(Log2, log2);
 HLIR_MKL_IMP_UNARY_PE(Log10, log10);
 HLIR_MKL_IMP_UNARY_PE(Floor, floor);
 HLIR_MKL_IMP_UNARY_PE(Ceil, ceil);
+HLIR_MKL_IMP_UNARY_PE(Rint, rint);
 HLIR_MKL_IMP_UNARY_PE(Round, round);
 HLIR_MKL_IMP_UNARY_PE(Tanh, tanh);
 HLIR_MKL_IMP_UNARY_PE(Trunc, trunc);
@@ -94,6 +95,7 @@ HLIR_IMP_UNARY_PE(Log2);
 HLIR_IMP_UNARY_PE(Log10);
 HLIR_IMP_UNARY_PE(Floor);
 HLIR_IMP_UNARY_PE(Ceil);
+HLIR_IMP_UNARY_PE(Rint);
 HLIR_IMP_UNARY_PE(Round);
 HLIR_IMP_UNARY_PE(Trunc);
 HLIR_IMP_UNARY_PE(Cos);
@@ -307,19 +309,16 @@ ir::Tensor Store(const ir::Tensor& A, const std::string& name) {
   return res;
 }
 
-ir::Tensor Arange(const float start,
-                  const float stop,
-                  const float step,
+ir::Tensor Arange(Expr start,
+                  Expr step,
+                  Expr size,
                   const Type& dtype,
                   const std::string& output_name) {
-  int num = static_cast<int>(std::ceil((stop - start) / step));
   ir::Tensor res = lang::Compute(
-      {Expr(num)},
+      {size},
       [=](const std::vector<ir::Expr>& indices) {
-        return ir::Cast::Make(
-            dtype,
-            Expr(start) +
-                Expr(step) * ir::Cast::Make(cinn::common::F32(), indices[0]));
+        return ir::Cast::Make(dtype,
+                              start + step * ir::Cast::Make(dtype, indices[0]));
       },
       output_name);
   return res;
@@ -338,7 +337,6 @@ ir::Tensor Tril(const ir::Tensor& A,
                               "The Tril op input tensor must have a rank "
                               "greater than or equal to 2."));
         std::vector<Expr> new_indice(indice.end() - 2, indice.end());
-        Expr col_indice = indice.back();
         return ir::Select::Make(new_indice[0] >= new_indice[1] - diagonal,
                                 A(indice),
                                 ir::Zero(A->type()));

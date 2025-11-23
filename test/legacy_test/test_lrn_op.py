@@ -12,15 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, paddle_static_guard
+from op_test import (
+    OpTest,
+    get_device_place,
+    get_places,
+    is_custom_device,
+    paddle_static_guard,
+)
 
 import paddle
 from paddle import base
-from paddle.base import core
 
 
 class TestLRNOp(OpTest):
@@ -111,15 +115,7 @@ class TestLRNOpAttrDataFormat(TestLRNOp):
 class TestLocalResponseNormFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_3d_input(self, place):
         with paddle.static.program_guard(
@@ -280,69 +276,60 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
 
 
 class TestLocalResponseNormFAPIError(unittest.TestCase):
-
     def test_errors(self):
-        with paddle_static_guard():
-            with paddle.static.program_guard(
+        with (
+            paddle_static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
+            ),
+        ):
 
-                def test_Variable():
-                    # the input of lrn must be Variable.
-                    x1 = base.create_lod_tensor(
-                        np.array([-1, 3, 5, 5]),
-                        [[1, 1, 1, 1]],
-                        base.CPUPlace(),
-                    )
-                    paddle.nn.functional.local_response_norm(x1, size=5)
+            def test_Variable():
+                # the input of lrn must be Variable.
+                x1 = base.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]),
+                    [[1, 1, 1, 1]],
+                    base.CPUPlace(),
+                )
+                paddle.nn.functional.local_response_norm(x1, size=5)
 
-                self.assertRaises(TypeError, test_Variable)
+            self.assertRaises(TypeError, test_Variable)
 
-                def test_datatype():
-                    x = paddle.static.data(
-                        name='x', shape=[3, 4, 5, 6], dtype="int32"
-                    )
-                    paddle.nn.functional.local_response_norm(x, size=5)
+            def test_datatype():
+                x = paddle.static.data(
+                    name='x', shape=[3, 4, 5, 6], dtype="int32"
+                )
+                paddle.nn.functional.local_response_norm(x, size=5)
 
-                self.assertRaises(TypeError, test_datatype)
+            self.assertRaises(TypeError, test_datatype)
 
-                def test_dataformat():
-                    x = paddle.static.data(
-                        name='x', shape=[3, 4, 5, 6], dtype="float32"
-                    )
-                    paddle.nn.functional.local_response_norm(
-                        x, size=5, data_format="NCTHW"
-                    )
+            def test_dataformat():
+                x = paddle.static.data(
+                    name='x', shape=[3, 4, 5, 6], dtype="float32"
+                )
+                paddle.nn.functional.local_response_norm(
+                    x, size=5, data_format="NCTHW"
+                )
 
-                self.assertRaises(ValueError, test_dataformat)
+            self.assertRaises(ValueError, test_dataformat)
 
-                def test_dim():
-                    x = paddle.static.data(
-                        name='x', shape=[3, 4], dtype="float32"
-                    )
-                    paddle.nn.functional.local_response_norm(x, size=5)
+            def test_dim():
+                x = paddle.static.data(name='x', shape=[3, 4], dtype="float32")
+                paddle.nn.functional.local_response_norm(x, size=5)
 
-                self.assertRaises(ValueError, test_dim)
+            self.assertRaises(ValueError, test_dim)
 
-                def test_shape():
-                    x = paddle.rand(shape=[0, 0, 2, 3], dtype="float32")
-                    paddle.nn.functional.local_response_norm(x, size=5)
+            def test_shape():
+                x = paddle.rand(shape=[0, 0, 2, 3], dtype="float32")
+                paddle.nn.functional.local_response_norm(x, size=5)
 
-                self.assertRaises(ValueError, test_shape)
+            self.assertRaises(ValueError, test_shape)
 
 
 class TestLocalResponseNormCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def test_dygraph(self):
         for place in self.places:
@@ -360,31 +347,65 @@ class TestLocalResponseNormCAPI(unittest.TestCase):
                 np.testing.assert_allclose(res1.numpy(), res2_tran, rtol=1e-05)
 
     def test_static_fp16_gpu(self):
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
-            with paddle_static_guard():
-                with paddle.static.program_guard(
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
+            with (
+                paddle_static_guard(),
+                paddle.static.program_guard(
                     paddle.static.Program(), paddle.static.Program()
-                ):
-                    input = np.random.random([3, 3, 112, 112]).astype("float16")
+                ),
+            ):
+                input = np.random.random([3, 3, 112, 112]).astype("float16")
 
-                    x = paddle.static.data(
-                        name="x", shape=[3, 3, 112, 112], dtype="float16"
-                    )
+                x = paddle.static.data(
+                    name="x", shape=[3, 3, 112, 112], dtype="float16"
+                )
 
-                    m = paddle.nn.LocalResponseNorm(size=5)
-                    y = m(x)
+                m = paddle.nn.LocalResponseNorm(size=5)
+                y = m(x)
 
-                    exe = paddle.static.Executor(place)
-                    res = exe.run(
-                        paddle.static.default_main_program(),
-                        feed={
-                            "x": input,
-                        },
-                        fetch_list=[y],
-                    )
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "x": input,
+                    },
+                    fetch_list=[y],
+                )
 
-                    np.testing.assert_array_equal(res[0].shape, input.shape)
+                np.testing.assert_array_equal(res[0].shape, input.shape)
+
+
+class TestLocalResponseNormAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.places = get_places()
+
+    def check_dygraph(self, place):
+        with base.dygraph.guard(place):
+            in_np1 = np.random.random([0, 40, 40]).astype("float32")
+            in_np2 = np.transpose(in_np1, (0, 2, 1))
+
+            in1 = paddle.to_tensor(in_np1)
+            in1.stop_gradient = False
+            in2 = paddle.to_tensor(in_np2)
+
+            res1 = paddle.nn.functional.local_response_norm(
+                x=in1, size=5, data_format='NCL'
+            )
+            res2 = paddle.nn.functional.local_response_norm(
+                x=in2, size=5, data_format='NLC'
+            )
+
+            res2_tran = np.transpose(res2.numpy(), (0, 2, 1))
+            np.testing.assert_allclose(res1.numpy(), res2_tran, rtol=1e-05)
+
+            res1.sum().backward()
+            np.testing.assert_allclose(in1.grad.shape, in1.shape)
+
+    def test_dygraph(self):
+        for place in self.places:
+            self.check_dygraph(place)
 
 
 if __name__ == "__main__":

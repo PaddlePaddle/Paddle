@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 
@@ -39,11 +40,7 @@ class TestHistogramddAPI(unittest.TestCase):
 
         self.init_input()
         self.set_expect_output()
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def init_input(self):
         # self.sample = np.array([[0.0, 1.0], [1.0, 0.0], [2.0, 0.0], [2.0, 2.0]])
@@ -431,7 +428,7 @@ class TestHistogramddAPI_check_weights_type_error(TestHistogramddAPI):
             paddle.histogramdd(sample, weights=weights)
 
 
-class TestHistogramddAPI_sample_weights_shape_dismatch_error(
+class TestHistogramddAPI_sample_weights_shape_mismatch_error(
     TestHistogramddAPI
 ):
     def test_error(self):
@@ -450,7 +447,7 @@ class TestHistogramddAPI_sample_weights_shape_dismatch_error(
             paddle.histogramdd(sample, weights=weights)
 
 
-class TestHistogramddAPI_sample_weights_type_dismatch_error(TestHistogramddAPI):
+class TestHistogramddAPI_sample_weights_type_mismatch_error(TestHistogramddAPI):
     def test_error(self):
         sample = paddle.to_tensor(
             [  # float32

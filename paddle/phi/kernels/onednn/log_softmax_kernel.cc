@@ -16,7 +16,6 @@
 
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -67,9 +66,5 @@ void LogSoftmaxKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(log_softmax,
-                   OneDNN,
-                   ONEDNN,
-                   phi::LogSoftmaxKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    log_softmax, OneDNN, ONEDNN, phi::LogSoftmaxKernel, float, phi::bfloat16) {}

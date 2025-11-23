@@ -137,7 +137,7 @@ void DoInsertCastOp(Graph* graph,
       desc.SetAttr("in_dtype", in_dtype);
       desc.SetAttr("out_dtype", out_dtype);
     }
-    desc.SetAttr("use_mkldnn", false);
+    desc.SetAttr("use_onednn", false);
     desc.SetAttr("with_quant_attr", false);
     desc.Flush();
   };

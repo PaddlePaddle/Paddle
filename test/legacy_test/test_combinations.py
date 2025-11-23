@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
 import random
 import unittest
 from itertools import combinations, combinations_with_replacement
 
 import numpy as np
+from op_test import get_devices
 
 import paddle
 from paddle.base import Program
@@ -47,15 +47,7 @@ class TestCombinationsAPIBase(unittest.TestCase):
         self.modify_setting()
         self.x_np = np.random.random(self.x_shape).astype(self.dtype_np)
 
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            self.place.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            self.place.append('gpu')
+        self.place = get_devices()
 
     def init_setting(self):
         self.dtype_np = 'float64'
@@ -128,24 +120,29 @@ class TestCombinationsAPI2(TestCombinationsAPIBase):
 
 class TestCombinationsEmpty(unittest.TestCase):
     def setUp(self):
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            self.place.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            self.place.append('gpu')
+        self.place = get_devices()
 
     def test_dygraph(self):
         paddle.disable_static()
         for place in self.place:
             paddle.device.set_device(place)
             a = paddle.rand([3], dtype='float32')
+            a.stop_gradient = False
             c = paddle.combinations(a, r=4)
             expected = convert_combinations_to_array(a.numpy(), r=4)
             np.testing.assert_allclose(c, expected)
+            loss = c.sum().backward()
+            expected = np.zeros([3], dtype='float32')
+            np.testing.assert_allclose(a.grad, expected)
+
+            a = paddle.rand([0], dtype='float32')
+            a.stop_gradient = False
+            c = paddle.combinations(a, r=2, with_replacement=True)
+            expected = convert_combinations_to_array(a.numpy(), r=2)
+            np.testing.assert_allclose(c, expected)
+            loss = c.sum().backward()
+            expected = np.empty([0], dtype='float32')
+            np.testing.assert_allclose(a.grad, expected)
 
             # test empty input
             a = paddle.empty([random.randint(0, 8)])

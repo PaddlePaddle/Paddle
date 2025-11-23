@@ -23,7 +23,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void NormKernel(const Context& ctx,
+void NormKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 int axis,
                 float epsilon,
@@ -33,7 +33,7 @@ void NormKernel(const Context& ctx,
   auto xdim = x.dims();
   T eps = epsilon;
   if (axis < 0) axis = xdim.size() + axis;
-  int pre = 0, n = 0, post = 0;
+  int64_t pre = 0, n = 0, post = 0;
   funcs::GetPrePostNumel(xdim, axis, &pre, &n, &post);
 
   DenseTensor* out_norm = nullptr;
@@ -47,13 +47,13 @@ void NormKernel(const Context& ctx,
     out_norm = norm;
   }
 
-  ctx.template Alloc<T>(out);
-  ctx.template Alloc<T>(out_norm);
+  dev_ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out_norm);
 
-  auto* place = ctx.eigen_device();
+  auto* place = dev_ctx.eigen_device();
 
-  Eigen::DSizes<int, 3> shape(pre, n, post);
-  Eigen::DSizes<int, 2> norm_shape(pre, post);
+  Eigen::DSizes<int64_t, 3> shape(pre, n, post);
+  Eigen::DSizes<int64_t, 2> norm_shape(pre, post);
 
   auto x_e = phi::EigenVector<T>::Flatten(x);
   auto y_e = phi::EigenVector<T>::Flatten(*out);
@@ -70,8 +70,9 @@ void NormKernel(const Context& ctx,
   norm_reshape.device(*place) = sum.sqrt();
 
   // y = x / norm
-  Eigen::DSizes<int, 3> rshape(pre, 1, post);
-  Eigen::DSizes<int, 3> bcast(1, n, 1);
+  Eigen::DSizes<int64_t, 3> rshape(pre, static_cast<int64_t>(1), post);
+  Eigen::DSizes<int64_t, 3> bcast(
+      static_cast<int64_t>(1), n, static_cast<int64_t>(1));
   y.device(*place) = x_r / norm_reshape.reshape(rshape).broadcast(bcast);
 }
 

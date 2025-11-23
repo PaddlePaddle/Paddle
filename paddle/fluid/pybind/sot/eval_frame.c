@@ -22,17 +22,15 @@ limitations under the License. */
 
 #include <Python.h>
 
-#if PY_3_8_PLUS && !PY_3_9_PLUS
-#define Py_BUILD_CORE  // internal/pycore_pymem.h need this macro
-#include <internal/pycore_pystate.h>
-#undef Py_BUILD_CORE
-#endif
 #if !PY_3_11_PLUS
 #include <code.h>
 #endif
 
 #include <object.h>
 #include <pystate.h>
+#if PY_3_14_PLUS
+#include <internal/pycore_interpframe.h>
+#endif
 
 #if PY_3_11_PLUS
 #define CALL_STAT_INC(name) ((void)0)
@@ -65,14 +63,10 @@ inline static void eval_frame_callback_set(PyObject *obj) {
 inline static PyObject *eval_frame_default(PyThreadState *tstate,
                                            FrameObject *frame,
                                            int throw_flag) {
-#if PY_3_9_PLUS
   if (tstate == NULL) {
     tstate = PyThreadState_GET();
   }
   return _PyEval_EvalFrameDefault(tstate, frame, throw_flag);
-#else
-  return _PyEval_EvalFrameDefault(frame, throw_flag);
-#endif
 }
 
 #if PY_3_11_PLUS
@@ -106,7 +100,16 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   PyFunctionObject *func =
       (PyFunctionObject *)PyFunction_New((PyObject *)code, frame->f_globals);
   Py_INCREF(func);
-#if PY_3_12_PLUS
+
+#if PY_3_14_PLUS
+  func->func_closure = Py_XNewRef(
+      ((PyFunctionObject *)PyStackRef_AsPyObjectBorrow((frame)->f_funcobj))
+          ->func_closure);
+  _PyStackRef func_stackref = PyStackRef_FromPyObjectSteal((PyObject *)func);
+  _PyFrame_Initialize(
+      tstate, shadow, func_stackref, NULL, code, 0, frame->previous);
+  _PyStackRef *fastlocals_new = shadow->localsplus;
+#elif PY_3_12_PLUS
   Py_XINCREF(((PyFunctionObject *)frame->f_funcobj)->func_closure);
   func->func_closure = ((PyFunctionObject *)frame->f_funcobj)->func_closure;
   _PyFrame_Initialize(shadow, func, NULL, code, 0);
@@ -122,7 +125,11 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   }
 #endif
 
+#if PY_3_14_PLUS
+  _PyStackRef *fastlocals_old = frame->localsplus;
+#else
   PyObject **fastlocals_old = frame->localsplus;
+#endif
 
   // The namemap to map the name to index in new frame localsplus.
   PyObject *namemap = PyDict_New();
@@ -143,8 +150,17 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
     if (index == NULL) {
       continue;
     }
+#if PY_3_14_PLUS
+    if (PyStackRef_IsNull(fastlocals_old[i])) {
+      fastlocals_new[PyLong_AsSize_t(index)] = PyStackRef_NULL;
+    } else {
+      fastlocals_new[PyLong_AsSize_t(index)] =
+          PyStackRef_DUP(fastlocals_old[i]);
+    }
+#else
     Py_XINCREF(fastlocals_old[i]);
     fastlocals_new[PyLong_AsSize_t(index)] = fastlocals_old[i];
+#endif
   }
 
   PyObject *result = eval_frame_default(tstate, shadow, throw_flag);
@@ -330,14 +346,10 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
 #endif
 
   // code status
-  if (is_code_without_graph(code == Py_None ? PyFrame_GET_CODE(frame)
-                                            : (PyCodeObject *)code) &&
-      disable_eval_frame == Py_False) {
-    out = eval_frame_default(tstate, frame, throw_flag);
-    eval_frame_callback_set(callback);
-    Py_DECREF(code);
+  if (code == Py_None && is_code_without_graph(PyFrame_GET_CODE(frame))) {
     Py_DECREF(disable_eval_frame);
-    return out;
+    disable_eval_frame = Py_True;
+    Py_INCREF(disable_eval_frame);
   }
 
   // run code
@@ -364,9 +376,9 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   return out;
 }
 
-static PyObject *_custom_eval_frame_shim(PyThreadState *tstate,
-                                         FrameObject *frame,
-                                         int throw_flag) {
+static PyObject *custom_eval_frame_shim(PyThreadState *tstate,
+                                        FrameObject *frame,
+                                        int throw_flag) {
   PyObject *callback = eval_frame_callback_get();
 
   if (callback == Py_None) {
@@ -376,19 +388,6 @@ static PyObject *_custom_eval_frame_shim(PyThreadState *tstate,
   return _custom_eval_frame(tstate, frame, throw_flag, callback);
 }
 
-#if PY_3_9_PLUS
-static PyObject *custom_eval_frame_shim(PyThreadState *tstate,
-                                        FrameObject *frame,
-                                        int throw_flag) {
-  return _custom_eval_frame_shim(tstate, frame, throw_flag);
-}
-#else
-static PyObject *custom_eval_frame_shim(FrameObject *frame, int throw_flag) {
-  PyThreadState *tstate = PyThreadState_GET();
-  return _custom_eval_frame_shim(tstate, frame, throw_flag);
-}
-#endif
-
 static PyObject *set_eval_frame(PyObject *new_callback, PyThreadState *tstate) {
   // Change the eval frame callback and return the old one
   //  - None: disables: disable custom callback.
@@ -396,34 +395,21 @@ static PyObject *set_eval_frame(PyObject *new_callback, PyThreadState *tstate) {
   //  NOTE: Cache is not supported now
   PyObject *old_callback = eval_frame_callback_get();
 
-#if PY_3_9_PLUS
   _PyFrameEvalFunction old_eval_frame =
       _PyInterpreterState_GetEvalFrameFunc(tstate->interp);
-#else
-  // Function pointer.
-  _PyFrameEvalFunction old_eval_frame = tstate->interp->eval_frame;
-#endif
 
   // NOTE: multi-threading is not supported now
   if (old_callback != Py_None && new_callback == Py_None) {
     if (old_eval_frame != &_PyEval_EvalFrameDefault) {
       // VLOG(7) << "set _PyEval_EvalFrameDefault";
-#if PY_3_9_PLUS
       _PyInterpreterState_SetEvalFrameFunc(tstate->interp,
                                            &_PyEval_EvalFrameDefault);
-#else
-      tstate->interp->eval_frame = &_PyEval_EvalFrameDefault;
-#endif
     }
   } else if (old_callback == Py_None && new_callback != Py_None) {
     if (old_eval_frame != &custom_eval_frame_shim) {
       // VLOG(7) << "set custom_eval_frame_shim";
-#if PY_3_9_PLUS
       _PyInterpreterState_SetEvalFrameFunc(tstate->interp,
                                            &custom_eval_frame_shim);
-#else
-      tstate->interp->eval_frame = &custom_eval_frame_shim;
-#endif
     }
   }
 

@@ -20,7 +20,7 @@
 
 namespace phi {
 template <typename T, typename Context>
-void FFTC2CGradKernel(const Context& ctx,
+void FFTC2CGradKernel(const Context& dev_ctx,
                       const DenseTensor& out_grad,
                       const std::vector<int64_t>& axes,
                       const std::string& normalization,
@@ -28,7 +28,7 @@ void FFTC2CGradKernel(const Context& ctx,
                       DenseTensor* x_grad);
 
 template <typename T, typename Context>
-void FFTC2RGradKernel(const Context& ctx,
+void FFTC2RGradKernel(const Context& dev_ctx,
                       const DenseTensor& out_grad,
                       const std::vector<int64_t>& axes,
                       const std::string& normalization,
@@ -37,7 +37,7 @@ void FFTC2RGradKernel(const Context& ctx,
                       DenseTensor* x_grad);
 
 template <typename T, typename Context>
-void FFTR2CGradKernel(const Context& ctx,
+void FFTR2CGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out_grad,
                       const std::vector<int64_t>& axes,

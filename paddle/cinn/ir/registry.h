@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <absl/strings/string_view.h>
+#include <string_view>
 
 #include <string>
 #include <vector>

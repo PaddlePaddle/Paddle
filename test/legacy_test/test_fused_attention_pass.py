@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -44,9 +44,9 @@ class MultiHeadAttention(paddle.nn.Layer):
         self.attn_dropout = attn_dropout
 
         self.head_dim = embed_dim // num_heads
-        assert (
-            self.head_dim * num_heads == self.embed_dim
-        ), "embed_dim must be divisible by num_heads"
+        assert self.head_dim * num_heads == self.embed_dim, (
+            "embed_dim must be divisible by num_heads"
+        )
 
         self.norm1 = paddle.nn.LayerNorm(embed_dim, epsilon=1e-5)
         self.norm2 = paddle.nn.LayerNorm(embed_dim, epsilon=1e-5)
@@ -96,7 +96,8 @@ class MultiHeadAttention(paddle.nn.Layer):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestFusedAttentionPass(unittest.TestCase):
     def setUp(self):

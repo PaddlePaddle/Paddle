@@ -18,7 +18,6 @@ import paddle
 
 
 class TestRefinedRecomputeLlamaAuto(TestRecomputeLlamaAuto):
-
     def run_test_cases(self):
         self.config.recompute = True
         self.config.recompute_granularity = "full"

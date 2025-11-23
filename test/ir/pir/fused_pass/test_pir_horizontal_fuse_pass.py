@@ -332,7 +332,6 @@ class TestMatmulHorizontalFusePatternBadCase(PassTest):
         return True
 
     def sample_program(self):
-
         with paddle.pir_utils.IrGuard():
             start_prog = paddle.static.Program()
             main_prog = paddle.static.Program()

@@ -17,25 +17,36 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void ExpandGradKernel(const Context& ctx,
+void ExpandGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out_grad,
                       const IntArray& shape,
                       DenseTensor* x_grad) {
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
+  auto expand_shape = shape.GetData();
+  if (expand_shape.empty()) {
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    return;
+  }
+  if ((x_grad && x_grad->numel() == 0) || out_grad.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    return;
+  }
   if (x_grad->dims() == out_grad.dims()) {
-    phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   } else {
     std::vector<int> reduce_dims =
         funcs::GetReduceDim(x_grad->dims(), out_grad.dims(), -1);
     phi::SumKernel<T, Context>(
-        ctx, out_grad, reduce_dims, out_grad.dtype(), false, x_grad);
+        dev_ctx, out_grad, reduce_dims, out_grad.dtype(), false, x_grad);
   }
 }
 
@@ -53,7 +64,7 @@ PD_REGISTER_KERNEL(expand_grad,
                    int16_t,
                    uint8_t,
                    int8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

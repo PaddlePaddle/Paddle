@@ -16,7 +16,12 @@ import math
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 from scipy import special
 
 import paddle
@@ -30,7 +35,8 @@ class TestLgammaOp(OpTest):
         self.op_type = 'lgamma'
         self.python_api = paddle.lgamma
         self.init_dtype_type()
-        shape = (5, 20)
+        self.init_shape()
+        shape = self.shape
         data = np.random.random(shape).astype(self.dtype) + 1
         self.inputs = {'X': data}
         result = np.ones(shape).astype(self.dtype)
@@ -41,6 +47,9 @@ class TestLgammaOp(OpTest):
 
     def init_dtype_type(self):
         self.dtype = np.float64
+
+    def init_shape(self):
+        self.shape = (5, 20)
 
     def test_check_output(self):
         self.check_output(check_pir=True, check_symbol_infer=False)
@@ -65,9 +74,14 @@ class TestLgammaFP16Op(TestLgammaOp):
         self.check_grad(['X'], 'Out', check_pir=True)
 
 
+class TestLgammaOp_ZeroSize(TestLgammaOp):
+    def init_shape(self):
+        self.shape = (5, 0)
+
+
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestLgammaBF16Op(OpTest):
@@ -87,12 +101,12 @@ class TestLgammaBF16Op(OpTest):
     def test_check_output(self):
         # After testing, bfloat16 needs to set the parameter place
         self.check_output_with_place(
-            core.CUDAPlace(0), check_pir=True, check_symbol_infer=False
+            get_device_place(), check_pir=True, check_symbol_infer=False
         )
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            core.CUDAPlace(0), ['X'], 'Out', check_pir=True
+            get_device_place(), ['X'], 'Out', check_pir=True
         )
 
 

@@ -23,6 +23,7 @@ namespace lang {
 
 using cinn::common::bfloat16;
 using cinn::common::float16;
+using cinn::common::float8e4m3;
 
 ir::Tensor CreatePlaceHolder(const std::vector<int> &shape,
                              Type type,
@@ -68,6 +69,8 @@ ir::Tensor CreatePlaceHolder(const std::vector<ir::Dim> &shape,
     return Placeholder<uint64_t>(name, shape);
   } else if (type.is_bool()) {
     return Placeholder<bool>(name, shape);
+  } else if (type.is_float8e4m3()) {
+    return Placeholder<float8e4m3>(name, shape);
   }
   CINN_NOT_IMPLEMENTED
 }
@@ -102,6 +105,8 @@ ir::Tensor CreatePlaceHolder(const std::vector<Expr> &origin_shape,
     return Placeholder<uint64_t>(name, shape);
   } else if (type.is_bool()) {
     return Placeholder<bool>(name, shape);
+  } else if (type.is_float8e4m3()) {
+    return Placeholder<float8e4m3>(name, shape);
   }
   CINN_NOT_IMPLEMENTED
 }

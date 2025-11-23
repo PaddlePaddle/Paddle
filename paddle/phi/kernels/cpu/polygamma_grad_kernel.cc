@@ -22,7 +22,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PolygammaGradKernel(const Context& ctx,
+void PolygammaGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& out_grad,
                          const int n,
@@ -30,9 +30,9 @@ void PolygammaGradKernel(const Context& ctx,
   auto size = x.numel();
   auto* x_data = x.data<T>();
   auto* out_grad_data = out_grad.data<T>();
-  auto* x_grad_data = ctx.template Alloc<T>(x_grad);
+  auto* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
 
-  phi::funcs::ForRange<Context> for_range(ctx, size);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, size);
   PolygammaGradFunctor<T> functor(
       x_data, n + 1, out_grad_data, x_grad_data, size);
   for_range(functor);

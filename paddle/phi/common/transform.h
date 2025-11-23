@@ -143,10 +143,17 @@ struct Transform<phi::GPUContext> {
                   OutputIter result,
                   UnaryOperation op) {
     auto place = context.GetPlace();
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
     PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::GPU,
                       true,
                       common::errors::PreconditionNotMet(
                           "The CUDA Transform must be used in GPU place."));
+#else
+    PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::CUSTOM,
+                      true,
+                      common::errors::PreconditionNotMet(
+                          "The CUDA Transform must be used in CUSTOM place."));
+#endif
 #ifdef __HIPCC__
     thrust::transform(thrust::hip::par.on(context.stream()),
                       CastToCUDATransformIterator(first),
@@ -173,10 +180,17 @@ struct Transform<phi::GPUContext> {
                   OutputIter result,
                   BinaryOperation op) {
     auto place = context.GetPlace();
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
     PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::GPU,
                       true,
                       common::errors::PreconditionNotMet(
                           "The CUDA Transform must be used in GPU place."));
+#else
+    PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::CUSTOM,
+                      true,
+                      common::errors::PreconditionNotMet(
+                          "The CUDA Transform must be used in CUSTOM place."));
+#endif
 #ifdef __HIPCC__
     thrust::transform(thrust::hip::par.on(context.stream()),
                       CastToCUDATransformIterator(first1),

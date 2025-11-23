@@ -35,34 +35,36 @@ def run_pserver(pserver_id):
     remove_ps_flag(os.getpid())
     scope = base.core.Scope()
     program = Program()
-    with base.scope_guard(scope):
-        with program_guard(program, startup_program=Program()):
-            # create table parameter in scope
-            place = base.CPUPlace()
-            # create and initialize Param Variable
-            param = scope.var('table').get_tensor()
+    with (
+        base.scope_guard(scope),
+        program_guard(program, startup_program=Program()),
+    ):
+        # create table parameter in scope
+        place = base.CPUPlace()
+        # create and initialize Param Variable
+        param = scope.var('table').get_tensor()
 
-            param_array = np.ones((5, 8)).astype("float32")
-            for i in range(len(param_array)):
-                param_array[i] *= param_array[i] * i + pserver_id * 10 + 1
-            param.set(param_array, place)
+        param_array = np.ones((5, 8)).astype("float32")
+        for i in range(len(param_array)):
+            param_array[i] *= param_array[i] * i + pserver_id * 10 + 1
+        param.set(param_array, place)
 
-            optimize_block = program._create_block(program.global_block().idx)
-            program.global_block().append_op(
-                type="listen_and_serv",
-                inputs={'X': []},
-                outputs={},
-                attrs={
-                    "optimize_blocks": [optimize_block],
-                    "endpoint": '127.0.0.1:0',
-                    "Fanin": 1,
-                    "distributed_mode": DistributedMode.SYNC,
-                    "grad_to_block_id": [],
-                },
-            )
+        optimize_block = program._create_block(program.global_block().idx)
+        program.global_block().append_op(
+            type="listen_and_serv",
+            inputs={'X': []},
+            outputs={},
+            attrs={
+                "optimize_blocks": [optimize_block],
+                "endpoint": '127.0.0.1:0',
+                "Fanin": 1,
+                "distributed_mode": DistributedMode.SYNC,
+                "grad_to_block_id": [],
+            },
+        )
 
-            exe = base.Executor(place)
-            exe.run(program)
+        exe = base.Executor(place)
+        exe.run(program)
 
 
 @unittest.skip("do not need currently")
@@ -98,24 +100,26 @@ class TestListenAndServOp(unittest.TestCase):
     def _run_nce_op_two_pserver(self, place, port0, port1, model_file):
         scope = base.core.Scope()
         program = Program()
-        with base.scope_guard(scope):
-            with program_guard(program, startup_program=Program()):
-                emaps = ['127.0.0.1:' + str(port0), '127.0.0.1:' + str(port1)]
+        with (
+            base.scope_guard(scope),
+            program_guard(program, startup_program=Program()),
+        ):
+            emaps = ['127.0.0.1:' + str(port0), '127.0.0.1:' + str(port1)]
 
-                # create and run recv and save operator
-                remote_recv_op = Operator(
-                    "recv_save",
-                    trainer_id=0,
-                    shape=[10, 8],
-                    slice_shapes=["5,8", "5,8"],
-                    slice_varnames=["table", "table"],
-                    remote_varnames=['table', 'table'],
-                    is_sparse=False,
-                    endpoints=emaps,
-                    file_path=model_file,
-                )
+            # create and run recv and save operator
+            remote_recv_op = Operator(
+                "recv_save",
+                trainer_id=0,
+                shape=[10, 8],
+                slice_shapes=["5,8", "5,8"],
+                slice_varnames=["table", "table"],
+                remote_varnames=['table', 'table'],
+                is_sparse=False,
+                endpoints=emaps,
+                file_path=model_file,
+            )
 
-                remote_recv_op.run(scope, place)
+            remote_recv_op.run(scope, place)
 
     def _load_slice_var(self, model_file):
         load_prog = base.Program()

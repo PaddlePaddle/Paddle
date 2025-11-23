@@ -36,7 +36,6 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
@@ -462,7 +461,7 @@ void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
       sizeof(bias_data)));
 
   if (enable_auxiliary && activation != "none") {
-    // Note (Ming Huang): The initialization of ReseveSpace is happened in the
+    // Note (Ming Huang): The initialization of ReserveSpace is happened in the
     // dev_ctx.Alloc. Therefore, we set real date type up here.
     if (activation == "relu") {
       phi::DataType rs_type = phi::DataType::BOOL;

@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
-
-sys.path.append("../deprecated/legacy_test")
+from op_test import get_device_place
 from test_softmax_op import stable_softmax
 from test_softmax_with_cross_entropy_op import cross_entropy
 
@@ -127,7 +125,11 @@ def cross_entropy_soft(
 ):
     # 1.loss
     loss = cross_entropy(
-        softmax, label, True, axis, ignore_index  # soft_label,
+        softmax,
+        label,
+        True,
+        axis,
+        ignore_index,
     )
 
     if weight is None and reduction == 'none':
@@ -172,7 +174,11 @@ def cross_entropy_soft_2d(
 ):
     # 1.loss
     loss = cross_entropy(
-        softmax, label, True, axis, ignore_index  # soft_label,
+        softmax,
+        label,
+        True,
+        axis,
+        ignore_index,
     )
 
     if weight is None and reduction == 'none':
@@ -334,11 +340,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[self.N, self.C], dtype=self.dtype
@@ -431,11 +433,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[self.N, self.C], dtype=self.dtype
@@ -523,11 +521,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[self.N, self.C], dtype=self.dtype
@@ -608,11 +602,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[self.N, self.C], dtype=self.dtype
@@ -712,11 +702,7 @@ class CrossEntropyLoss(unittest.TestCase):
             paddle.enable_static()
             prog = base.Program()
             startup_prog = base.Program()
-            place = (
-                base.CUDAPlace(0)
-                if base.core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
+            place = get_device_place()
             with base.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input',
@@ -811,11 +797,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input',
@@ -918,11 +900,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[self.N, self.C], dtype=self.dtype
@@ -1015,11 +993,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[self.N, self.C], dtype=self.dtype
@@ -1126,11 +1100,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input',
@@ -1232,11 +1202,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input',
@@ -1340,11 +1306,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[self.N, self.C], dtype=self.input_dtype
@@ -1440,11 +1402,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[self.N, self.C], dtype=self.input_dtype
@@ -1550,11 +1508,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input',
@@ -1658,11 +1612,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input',
@@ -1709,11 +1659,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[2, 4], dtype=self.dtype
@@ -1757,11 +1703,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[N, C], dtype=self.dtype
@@ -1807,11 +1749,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[N, C], dtype=self.dtype
@@ -1888,11 +1826,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[2, 4], dtype=self.dtype
@@ -1943,11 +1877,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[100, 200], dtype=self.dtype
@@ -1997,11 +1927,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[100, 200], dtype=self.dtype
@@ -2053,11 +1979,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[100, 200], dtype=self.dtype
@@ -2105,11 +2027,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[100, 200], dtype=self.dtype
@@ -2143,11 +2061,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[100, 200], dtype=self.dtype
@@ -2185,11 +2099,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[100, 200], dtype=self.dtype
@@ -2235,11 +2145,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[2, 2, 2, 3], dtype=self.dtype
@@ -2297,11 +2203,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[2, 3, 2, 2], dtype=self.dtype
@@ -2387,11 +2289,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[2, 2, 2, 3], dtype=self.dtype
@@ -2447,11 +2345,7 @@ class CrossEntropyLoss(unittest.TestCase):
 
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[2, 2, 2, 3], dtype=self.dtype
@@ -2505,11 +2399,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[2, 2, 2, 3], dtype=self.dtype
@@ -2558,11 +2448,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[2, 2, 2, 3], dtype=self.dtype
@@ -2612,11 +2498,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.enable_static()
         prog = base.Program()
         startup_prog = base.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.program_guard(prog, startup_prog):
             input = paddle.static.data(
                 name='input', shape=[2, 2, 2, 3], dtype=self.dtype
@@ -2651,6 +2533,153 @@ class CrossEntropyLoss(unittest.TestCase):
             self.assertIsNotNone(dy_ret_value)
         expected = cross_entropy_loss_2d(input_np, label_np, reduction='sum')[0]
         np.testing.assert_allclose(static_ret[0], dy_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
+        np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
+
+    def test_softmax_with_cross_entropy_alias(self):
+        self.numeric_stable_mode = False
+        self.soft_label = True
+        self.dtype = (
+            'float32' if base.core.is_compiled_with_rocm() else 'float64'
+        )
+        self.axis = -1
+        self.ignore_index = -100  # should not be changed
+        self.N = 4
+        self.C = 3
+        self.shape = [self.N, self.C]
+        self.use_softmax = True
+        self.reduction = 'none'
+        self.weight = None
+        self.logits = getattr(
+            self,
+            "logits",
+            np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype),
+        )
+        softmax = np.apply_along_axis(stable_softmax, self.axis, self.logits)
+
+        self.labels = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
+        self.labels /= np.sum(self.labels, axis=self.axis, keepdims=True)
+
+        expected = cross_entropy_soft(
+            softmax,
+            self.labels,
+            self.axis,
+            self.N,
+            weight=self.weight,
+            reduction=self.reduction,
+            ignore_index=self.ignore_index,
+        )
+
+        paddle.set_device("cpu")
+
+        paddle.disable_static()
+        paddle_loss_swce = paddle.nn.functional.softmax_with_cross_entropy(
+            paddle.to_tensor(self.logits),
+            paddle.to_tensor(self.labels),
+            soft_label=True,
+            axis=self.axis,
+        )
+
+        paddle_loss_ce = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(self.logits),
+            target=paddle.to_tensor(self.labels),
+            soft_label=True,
+            axis=self.axis,
+            weight=(
+                paddle.to_tensor(self.weight)
+                if self.weight is not None
+                else None
+            ),
+            reduction=self.reduction,
+        )
+
+        np.testing.assert_allclose(
+            paddle_loss_swce.numpy(), expected, rtol=1e-05
+        )
+        np.testing.assert_allclose(paddle_loss_ce.numpy(), expected, rtol=1e-05)
+
+    def test_cross_entropy_loss_soft_1d_alias(self):
+        self.numeric_stable_mode = False
+        self.soft_label = True
+        self.dtype = (
+            'float32' if base.core.is_compiled_with_rocm() else 'float64'
+        )
+        self.axis = -1
+        self.ignore_index = -100  # should not be changed
+        self.N = 4
+        self.C = 3
+        self.shape = [self.N, self.C]
+        self.use_softmax = True
+        self.reduction = 'none'
+        self.weight = None
+        self.logits = getattr(
+            self,
+            "logits",
+            np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype),
+        )
+        softmax = np.apply_along_axis(stable_softmax, self.axis, self.logits)
+
+        self.labels = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
+        self.labels /= np.sum(self.labels, axis=self.axis, keepdims=True)
+
+        expected = cross_entropy_soft(
+            softmax,
+            self.labels,
+            self.axis,
+            self.N,
+            weight=self.weight,
+            reduction=self.reduction,
+            ignore_index=self.ignore_index,
+        )
+
+        paddle.set_device("cpu")
+
+        # 2. dygraph
+        paddle.disable_static()
+        paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(self.logits),
+            paddle.to_tensor(self.labels),
+            soft_label=True,
+            axis=self.axis,
+            weight=(
+                paddle.to_tensor(self.weight)
+                if self.weight is not None
+                else None
+            ),
+            reduction=self.reduction,
+        )
+        dy_ret_value = paddle_loss_none_weight.numpy()
+
+        # 3. static
+        paddle.enable_static()
+        prog = base.Program()
+        startup_prog = base.Program()
+        place = get_device_place()
+        with base.program_guard(prog, startup_prog):
+            input = paddle.static.data(
+                name='input', shape=[self.N, self.C], dtype=self.dtype
+            )
+            label = paddle.static.data(
+                name='label', shape=[self.N, self.C], dtype=self.dtype
+            )
+
+            cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+                reduction=self.reduction, soft_label=True
+            )
+            ret = cross_entropy_loss(input, target=label)
+
+            exe = base.Executor(place)
+            static_ret = exe.run(
+                prog,
+                feed={
+                    'input': self.logits,
+                    'label': self.labels,
+                },
+                fetch_list=[ret],
+            )
+            self.assertIsNotNone(static_ret)
+        paddle.disable_static()
+
         np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
@@ -2713,11 +2742,7 @@ class TestCrossEntropyFAPIError(unittest.TestCase):
                 paddle.enable_static()
                 prog = base.Program()
                 startup_prog = base.Program()
-                place = (
-                    base.CUDAPlace(0)
-                    if base.core.is_compiled_with_cuda()
-                    else base.CPUPlace()
-                )
+                place = get_device_place()
                 with base.program_guard(prog, startup_prog):
                     input = paddle.static.data(
                         name='input', shape=[2, 4], dtype='float32'

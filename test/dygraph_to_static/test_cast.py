@@ -18,7 +18,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_pir_only,
 )
 
 import paddle
@@ -220,7 +219,6 @@ class TestComplexCast(TestCastBase):
     def set_func(self):
         self.func = paddle.jit.to_static(full_graph=True)(test_complex_cast)
 
-    @test_pir_only
     def test_cast_result(self):
         self.set_func()
         res = self.do_test().numpy()

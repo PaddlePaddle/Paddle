@@ -57,7 +57,7 @@ class TestLoadMobilenetV1Model(unittest.TestCase):
         start = time.time()
         x_data = np.random.random(self.x_shape).astype("float32")
         self.executor = Interpreter([self.input_tensor], [self.x_shape])
-        print("self.mode_dir is:", self.model_dir)
+        print("self.model_dir is:", self.model_dir)
         # True means load combined model
         self.executor.load_paddle_model(
             self.model_dir, self.target, False, "mobilenetv1"

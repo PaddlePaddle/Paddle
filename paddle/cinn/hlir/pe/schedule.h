@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
-
 #include <string>
 #include <vector>
 
@@ -23,7 +21,7 @@
 #include "paddle/cinn/hlir/pe/schedule_param.pb.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/lang/compute.h"
-#include "paddle/cinn/poly/stage.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace hlir {
@@ -49,12 +47,12 @@ class ScheduleParam {
     static ScheduleParam instance{cinn::common::X86Arch{}};
     return instance;
   }
-  absl::flat_hash_map<std::string,
-                      absl::flat_hash_map<std::string, std::vector<int>>>
+  paddle::flat_hash_map<std::string,
+                        paddle::flat_hash_map<std::string, std::vector<int>>>
       &GetParam() {
     return param_data;
   }
-  absl::flat_hash_map<std::string, std::vector<int>> &operator[](
+  paddle::flat_hash_map<std::string, std::vector<int>> &operator[](
       const std::string &key) {
     return param_data[key];
   }
@@ -62,8 +60,8 @@ class ScheduleParam {
 
  private:
   explicit ScheduleParam(cinn::common::Arch arch);
-  absl::flat_hash_map<std::string,
-                      absl::flat_hash_map<std::string, std::vector<int>>>
+  paddle::flat_hash_map<std::string,
+                        paddle::flat_hash_map<std::string, std::vector<int>>>
       param_data;
 };
 
@@ -81,17 +79,7 @@ int GetArrayPackingFactor(int shape,
                           const Type &type,
                           const cinn::common::Target &target);
 
-void ScheduleInjectiveCPU(poly::Stage *stage,
-                          const std::vector<int> &output_shape,
-                          const cinn::common::Target &target,
-                          bool vectorizable = true);
-// to deprecate
-void ScheduleInjectiveCPU1(poly::Stage *stage,
-                           const std::vector<int> &output_shape,
-                           const cinn::common::Target &target,
-                           bool vectorizable = true);
-
-void GetConv2dFactors(absl::flat_hash_map<std::string, int> *factors,
+void GetConv2dFactors(paddle::flat_hash_map<std::string, int> *factors,
                       int oc,
                       int ic,
                       int fc,
@@ -102,17 +90,13 @@ void GetConv2dFactors(absl::flat_hash_map<std::string, int> *factors,
                       const std::string &key = "",
                       bool import_params = true);
 
-void GetConv2d1x1Factors(absl::flat_hash_map<std::string, int> *factors,
+void GetConv2d1x1Factors(paddle::flat_hash_map<std::string, int> *factors,
                          int oc,
                          int ic,
                          int oh,
                          int ow,
                          const Type &type,
                          const cinn::common::Target &target);
-
-void CudaScheduleInjective(poly::Stage *stage,
-                           const std::vector<int> &output_shape,
-                           const cinn::common::Target &target);
 
 void CudaSplitSchedule(cinn::common::CINNValuePack *arg_pack,
                        const std::vector<std::vector<int>> &output_shapes,
@@ -139,21 +123,21 @@ std::string GenerateX86ConvKey(const std::vector<int> &input_shape,
 void CreateX86SerialData(const std::string &file_name = "default_serial.log");
 
 void LoadSerialData(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *params,
     const std::string &file_name = "default_serial.log");
 
 void SaveSerialData(
-    const absl::flat_hash_map<
+    const paddle::flat_hash_map<
         std::string,
-        absl::flat_hash_map<std::string, std::vector<int>>> &model_data,
+        paddle::flat_hash_map<std::string, std::vector<int>>> &model_data,
     const std::string &file_name = "default_serial.log");
 
 int GetMaxSplitter(int a, int b);
 
-absl::flat_hash_map<std::string,
-                    absl::flat_hash_map<std::string, std::vector<int>>>
+paddle::flat_hash_map<std::string,
+                      paddle::flat_hash_map<std::string, std::vector<int>>>
 CreateCudaParams();
 
 }  // namespace pe

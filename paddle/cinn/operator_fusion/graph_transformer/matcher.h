@@ -327,10 +327,10 @@ struct HorizontalFusionConstrain {
     const auto rhs_reduce_loop = SliceVector(
         rhs.loop, rhs.loop.size() - rhs.reduce_axis_num, rhs.loop.size());
 
-    bool reduce_euqal = lhs_reduce_loop.empty() || rhs_reduce_loop.empty() ||
+    bool reduce_equal = lhs_reduce_loop.empty() || rhs_reduce_loop.empty() ||
                         lhs_reduce_loop == rhs_reduce_loop;
 
-    return reduce_euqal && ShapeProductEqual(lhs.loop, rhs.loop);
+    return reduce_equal && ShapeProductEqual(lhs.loop, rhs.loop);
   }
 
   bool operator()(const PatternGraph& graph,

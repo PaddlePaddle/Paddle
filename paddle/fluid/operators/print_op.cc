@@ -87,7 +87,7 @@ class PrintOp : public framework::OperatorBase {
     int first_n = Attr<int>("first_n");
     if (first_n > 0 && ++times_ > first_n) return;
 
-    funcs::TensorFormatter formatter;
+    phi::funcs::TensorFormatter formatter;
     const std::string &name =
         Attr<bool>("print_tensor_name") ? printed_var_name : "";
     formatter.SetPrintTensorType(Attr<bool>("print_tensor_type"));

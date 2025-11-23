@@ -67,7 +67,7 @@ void predictor_run() {
 TEST(PD_PredictorRun, predictor_run) { predictor_run(); }
 
 #ifdef PADDLE_WITH_DNNL
-TEST(PD_Config, profile_mkldnn) {
+TEST(PD_Config, profile_onednn) {
   std::string model_dir = FLAGS_infer_model;
   std::string prog_file = model_dir + "/model";
   std::string params_file = model_dir + "/params";
@@ -75,11 +75,11 @@ TEST(PD_Config, profile_mkldnn) {
   PD_ConfigDisableGpu(config);
   PD_ConfigSetCpuMathLibraryNumThreads(config, 10);
   PD_ConfigSwitchIrDebug(config, TRUE);
-  PD_ConfigEnableMKLDNN(config);
-  bool mkldnn_enable = PD_ConfigMkldnnEnabled(config);
-  EXPECT_TRUE(mkldnn_enable);
-  PD_ConfigEnableMkldnnBfloat16(config);
-  PD_ConfigSetMkldnnCacheCapacity(config, 0);
+  PD_ConfigEnableONEDNN(config);
+  bool onednn_enable = PD_ConfigOnednnEnabled(config);
+  EXPECT_TRUE(onednn_enable);
+  PD_ConfigEnableOnednnBfloat16(config);
+  PD_ConfigSetOnednnCacheCapacity(config, 0);
   PD_ConfigSetModel(config, prog_file.c_str(), params_file.c_str());
   PD_ConfigDestroy(config);
 }

@@ -156,6 +156,14 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                           DenseTensor* out,
                           DenseTensor* scale) {
   dev_ctx.template Alloc<int8_t>(out);
+  if (out->numel() == 0) {
+    if (algo == "llm.int8") {
+      dev_ctx.template Alloc<float>(scale);
+    } else {
+      dev_ctx.template Alloc<T>(scale);
+    }
+    return;
+  }
   if (algo == "weight_only_int8") {
     dev_ctx.template Alloc<T>(scale);
     quant_compute<Context, T, int8_t, 8>(
@@ -182,5 +190,5 @@ PD_REGISTER_KERNEL(weight_quantize,
                    CPU,
                    ALL_LAYOUT,
                    phi::WeightQuantizeKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

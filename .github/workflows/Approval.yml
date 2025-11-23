@@ -14,8 +14,13 @@ env:
 jobs:
   check-approvers:
     name: Check approval
-    runs-on: ubuntu-latest
+    runs-on:
+      group: APPROVAL
     steps:
+      - name: Cleanup
+        run: |
+          rm -rf * .[^.]*
+
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:

@@ -79,6 +79,10 @@ template <typename T, typename Context>
 void AddNKernel(const Context &dev_ctx,
                 const std::vector<const TensorBase *> &x,
                 DenseTensor *out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   const size_t in_num = x.size();
   for (int i = 0; i < in_num; ++i) {
     PADDLE_ENFORCE_EQ(
@@ -321,11 +325,11 @@ PD_REGISTER_KERNEL(add_n,
                    float,
                    double,
                    int,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
+                   phi::bfloat16,
+                   phi::float16,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(add_n_array,
                    GPU,
@@ -334,8 +338,8 @@ PD_REGISTER_KERNEL(add_n_array,
                    float,
                    double,
                    int,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
+                   phi::bfloat16,
+                   phi::float16,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

@@ -45,7 +45,7 @@ hidden_size = 16
 class SimpleNet(Layer):
     def __init__(self):
         super().__init__()
-        self.word_embeddings = nn.Linear(vocab_size, hidden_size)
+        self.linear = nn.Linear(vocab_size, hidden_size)
 
         self.softmax_weight = self.create_parameter(
             shape=[hidden_size, vocab_size]
@@ -55,14 +55,13 @@ class SimpleNet(Layer):
         )
 
     def forward(self, x1, x2, y1):
-        x_emb = self.word_embeddings(x1)
-        fc = paddle.matmul(x_emb, self.softmax_weight)
+        x_linear = self.linear(x1)
+        fc = paddle.matmul(x_linear, self.softmax_weight)
         fc = paddle.add(fc, self.softmax_bias)
         projection = paddle.reshape(fc, shape=[-1, vocab_size])
 
         projection = (
-            paddle.matmul(projection, self.word_embeddings.weight)
-            + self.word_embeddings.bias
+            paddle.matmul(projection, self.linear.weight) + self.linear.bias
         )
 
         loss = paddle.nn.functional.softmax_with_cross_entropy(
@@ -71,23 +70,23 @@ class SimpleNet(Layer):
         return loss.mean()
 
 
-class EmbeddingPipe(Layer):
+class SharedLinear(Layer):
     def __init__(self):
         super().__init__()
-        self.word_embeddings = nn.Linear(vocab_size, hidden_size)
+        self.linear = nn.Linear(vocab_size, hidden_size)
 
     @property
-    def embedding_weight(self):
-        return self.word_embeddings.weight
+    def linear_weight(self):
+        return self.linear.weight
 
     @property
-    def embedding_bias(self):
-        return self.word_embeddings.bias
+    def linear_bias(self):
+        return self.linear.bias
 
     def forward(self, args):
         x1, x2 = args
-        x_emb = self.word_embeddings(x1)
-        return x_emb, x2
+        x_linear = self.linear(x1)
+        return x_linear, x2
 
 
 class MatmulNet(Layer):
@@ -133,35 +132,35 @@ class SimpleNetPipe(PipelineLayer):
         self.descs = []
         self.descs.append(
             SharedLayerDesc(
-                'embed',
-                EmbeddingPipe,
-                shared_weight_attr=['embedding_weight', 'embedding_bias'],
+                'linear',
+                SharedLinear,
+                shared_weight_attr=['linear_weight', 'linear_bias'],
             )
         )
         self.descs.append(LayerDesc(MatmulNet))
 
         self.descs.append(LayerDesc(BiasNet))
 
-        def _logits_helper_0(embedding, output):
-            return paddle.matmul(output[0], embedding.embedding_weight)
+        def _logits_helper_0(linear, output):
+            return paddle.matmul(output[0], linear.linear_weight)
 
-        def _logits_helper_1(embedding, output):
-            return output + embedding.embedding_bias
+        def _logits_helper_1(linear, output):
+            return output + linear.linear_bias
 
         self.descs.append(
             SharedLayerDesc(
-                'embed',
-                EmbeddingPipe,
+                'linear',
+                SharedLinear,
                 forward_func=_logits_helper_0,
-                shared_weight_attr=['embedding_weight'],
+                shared_weight_attr=['linear_weight'],
             )
         )
         self.descs.append(
             SharedLayerDesc(
-                'embed',
-                EmbeddingPipe,
+                'linear',
+                SharedLinear,
                 forward_func=_logits_helper_1,
-                shared_weight_attr=['embedding_bias'],
+                shared_weight_attr=['linear_bias'],
             )
         )
 
