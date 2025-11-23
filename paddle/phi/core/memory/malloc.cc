@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/memory/mem_visitor.h"
 #include "paddle/phi/core/stream.h"
 
 namespace paddle::memory {
@@ -30,6 +31,10 @@ AllocationPtr Alloc(const phi::Place& place, size_t size) {
 
 uint64_t Release(const phi::Place& place) {
   return allocation::AllocatorFacade::Instance().Release(place);
+}
+
+size_t Compact(const phi::GPUPlace& place) {
+  return allocation::AllocatorFacade::Instance().Compact(place);
 }
 
 std::shared_ptr<Allocation> AllocShared(const phi::Place& place,

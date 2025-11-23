@@ -674,6 +674,64 @@ class TestPyLayer(unittest.TestCase):
         b.sum().backward()
         self.assertEqual(x.grad, paddle.ones([1], dtype="float64"))
 
+    def _test_nest_backward_error(self):
+        # This test just test the nest backward error mesg,
+        # the forward and backward func is meaning less
+        class cus_pylayer_0(PyLayer):
+            @staticmethod
+            def forward(ctx, x):
+                y = paddle.tanh(x)
+                # Pass tensors to backward.
+                ctx.save_for_backward(y)
+                return y
+
+            @staticmethod
+            def backward(ctx, dy):
+                # Get the tensors passed by forward.
+                (y,) = ctx.saved_tensor()
+
+                # Raise Error
+                x = paddle.flatten(y)
+                z = x + y
+
+                grad = dy * (1 - paddle.square(y))
+                return grad
+
+        class cus_pylayer_1(PyLayer):
+            @staticmethod
+            def forward(ctx, x):
+                y = paddle.tanh(x)
+                ctx.save_for_backward(y)
+                return y
+
+            @staticmethod
+            def backward(ctx, dy):
+                (y,) = ctx.saved_tensor()
+                # enable has grad
+                tracer = paddle.base.framework._dygraph_tracer()
+                tracer._has_grad = True
+                z = cus_pylayer_0.apply(y)
+                # Maybe raise error
+                z.mean().backward()
+                return dy
+
+        paddle.seed(2025)
+        data = paddle.randn([2, 3], dtype="float32")
+        paddle.framework.set_flags({"FLAGS_call_stack_level": 3})
+        data.stop_gradient = False
+        z = cus_pylayer_1.apply(data)
+        z.mean().backward()
+
+    def test_nest_backward_error(self):
+        try:
+            self._test_nest_backward_error()
+        except Exception as e:
+            err_msg = str(e)
+            expect_msg = "Error message in backward of"
+            self.assertIn(
+                expect_msg, err_msg, expect_msg + " should in error message "
+            )
+
 
 if __name__ == '__main__':
     unittest.main()

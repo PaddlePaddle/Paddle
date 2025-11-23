@@ -204,7 +204,7 @@ void DenseTensorIterator::set_output_raw_strided(int64_t output_idx,
     }
     op.current_dtype = op.target_dtype;
   } else if (op.will_resize) {
-    PADDLE_THROW(common::errors::Fatal("Opreator Reize not Implemented!"));
+    PADDLE_THROW(common::errors::Fatal("Operator Resize not Implemented!"));
   }
 }
 

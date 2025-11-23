@@ -87,8 +87,6 @@ jobs:
           set -x
           cd ${work_dir}/Paddle
           source ~/.zshrc
-          python3.10 -m pip uninstall cmake -y || true
-          python3.10 -m pip install cmake==3.27.7
           bash -x ${work_dir}/Paddle/ci/run_setup.sh bdist_wheel ${parallel_number:-""}
           EXCODE=$?
           exit $EXCODE

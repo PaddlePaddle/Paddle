@@ -744,6 +744,7 @@ def _handle_aoa(
                 and src_desc.global_shape == dst_desc.global_shape
                 and src_desc.global_offset == dst_desc.global_offset
                 and src_desc.dtype == dst_desc.dtype
+                and mapping.postprocess_list is None
             ):
                 new_load_dict[idx] = ShardedWeight(
                     key=src_desc.key,

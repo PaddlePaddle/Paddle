@@ -189,9 +189,7 @@ CUDNN_DNN_ROUTINE_EACH_FRONTEND(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnRNNBackwardData);                      \
   __macro(cudnnRNNBackwardWeights);
 CUDNN_DNN_ROUTINE_EACH_REMOVED_IN_E9(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
-#endif
 
-#if CUDNN_VERSION < 90000
 #define CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R7_REMOVED_IN_E9(__macro) \
   __macro(cudnnSetRNNPaddingMode);                                 \
   __macro(cudnnRNNForwardInferenceEx);                             \

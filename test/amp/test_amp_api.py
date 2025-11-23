@@ -128,6 +128,16 @@ class TestCudaAutoCast(unittest.TestCase):
             )
         )
 
+    def test_autocast(self):
+        self._run_autocast_test(
+            paddle.autocast(
+                device_type='cuda',
+                enabled=True,
+                dtype=paddle.float16,
+                cache_enabled=True,
+            )
+        )
+
     def test_cuda_amp_autocast(self):
         self._run_autocast_test(paddle.cuda.amp.autocast())
 

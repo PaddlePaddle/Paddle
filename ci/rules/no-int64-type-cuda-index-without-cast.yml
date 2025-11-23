@@ -1,0 +1,43 @@
+id: no-int64-type-cuda-index-without-cast
+language: cpp
+files:
+  - paddle/phi/kernels/**
+ignores:
+  - paddle/phi/kernels/legacy/**
+  - paddle/phi/kernels/xpu/**
+  - paddle/phi/kernels/custom/**
+  - paddle/phi/kernels/sparse/**
+severity: error
+message: CUDA indexing calculation assigned to int64_t variable may overflow due to intermediate 32-bit arithmetic. If it is a false positive, please contact zrr1999 (Recommend), wanghuancoder for more information.
+note: Add static_cast<int64_t> to each CUDA built-in variable in the expression to prevent integer overflow during calculation.
+rule:
+  any:
+    # int64_t x = <expr with threadIdx|blockDim|blockIdx|gridDim>;
+    - all:
+        - pattern: $T $VAR = $EXPR
+    # int64_t x(<expr with threadIdx|blockDim|blockIdx|gridDim>);
+    - all:
+        - pattern: $T $VAR($EXPR)
+constraints:
+  T:
+    regex: ^(int64_t)$
+  EXPR:
+    all:
+      - regex: \b(threadIdx|blockIdx|blockDim|gridDim)\.(x|y|z|w)?\b
+      - kind: binary_expression
+      - not:
+          regex: "static_cast<int64_t>"
+rewriters:
+  - id: add-static-cast
+    rule:
+      pattern: $IDENT.$ATTR
+    constraints:
+      IDENT:
+        regex: ^(threadIdx|blockIdx|blockDim|gridDim)$
+    fix: static_cast<int64_t>($IDENT.$ATTR)
+transform:
+  NEW_EXPR:
+    rewrite:
+      rewriters: [add-static-cast]
+      source: $EXPR
+fix: int64_t $VAR = $NEW_EXPR;

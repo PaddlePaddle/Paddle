@@ -83,6 +83,10 @@ class TestSearchAPIs(unittest.TestCase):
         res = paddle.where(self.con > 0.5, 0.5, 0.6)
         self.assertEqual(res.dtype, paddle.float32)
 
+    @unittest.skipIf(
+        paddle.is_compiled_with_xpu(),
+        "XPU cast kernel does not support complex128 yet.",
+    )
     def test_where_with_complex128_scalar(self):
         x = paddle.to_tensor([0.0, 0.0, 0.0, 0.0], dtype="complex128")
         y = paddle.to_tensor([0.1, 0.1, 0.1, 0.1], dtype="complex128")

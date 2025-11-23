@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import itertools
 import unittest
 from functools import partial
 from typing import Any
@@ -98,91 +99,94 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
             filter[0][0][0][0] = 8.8978638e-08
             return filter.astype(np.float32)
 
-        for batch in [
-            1,
-        ]:
-            for input_size in [[32, 32]]:
-                for kernel_sizes in [[3, 3]]:
-                    for strides in [[1, 1], [2, 2]]:
-                        for paddings in [[1, 1], [0, 2]]:
-                            for groups in [
-                                1,
-                            ]:
-                                for dilations in [[1, 1], [2, 2]]:
-                                    dics = [
-                                        {
-                                            "strides": strides,
-                                            "paddings": paddings,
-                                            "groups": groups,
-                                            "dilations": dilations,
-                                            "deformable_groups": 1,
-                                            "im2col_step": 1,
-                                        }
-                                    ]
+        for (
+            batch,
+            input_size,
+            kernel_sizes,
+            strides,
+            paddings,
+            groups,
+            dilations,
+        ) in itertools.product(
+            [1],
+            [[32, 32]],
+            [[3, 3]],
+            [[1, 1], [2, 2]],
+            [[1, 1], [0, 2]],
+            [1],
+            [[2, 2]],
+        ):
+            dics = [
+                {
+                    "strides": strides,
+                    "paddings": paddings,
+                    "groups": groups,
+                    "dilations": dilations,
+                    "deformable_groups": 1,
+                    "im2col_step": 1,
+                }
+            ]
+            ops_config = [
+                {
+                    "op_type": "deformable_conv",
+                    "op_inputs": {
+                        "Input": ["input_data"],
+                        "Offset": ["offset_data"],
+                        "Mask": ["mask_data"],
+                        "Filter": ["filter_data"],
+                    },
+                    "op_outputs": {"Output": ["output_data"]},
+                    "op_attrs": dics[0],
+                }
+            ]
+            ops = self.generate_op_config(ops_config)
 
-                                ops_config = [
-                                    {
-                                        "op_type": "deformable_conv",
-                                        "op_inputs": {
-                                            "Input": ["input_data"],
-                                            "Offset": ["offset_data"],
-                                            "Mask": ["mask_data"],
-                                            "Filter": ["filter_data"],
-                                        },
-                                        "op_outputs": {
-                                            "Output": ["output_data"]
-                                        },
-                                        "op_attrs": dics[0],
-                                    }
-                                ]
-                                ops = self.generate_op_config(ops_config)
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={
+                    "filter_data": TensorConfig(
+                        data_gen=partial(
+                            generate_filter1,
+                            batch,
+                            input_size,
+                            kernel_sizes,
+                            dics,
+                        )
+                    )
+                },
+                inputs={
+                    "input_data": TensorConfig(
+                        data_gen=partial(
+                            generate_input1,
+                            batch,
+                            input_size,
+                            kernel_sizes,
+                            dics,
+                        )
+                    ),
+                    "offset_data": TensorConfig(
+                        data_gen=partial(
+                            generate_offset1,
+                            batch,
+                            input_size,
+                            kernel_sizes,
+                            dics,
+                        )
+                    ),
+                    "mask_data": TensorConfig(
+                        data_gen=partial(
+                            generate_mask1,
+                            batch,
+                            input_size,
+                            kernel_sizes,
+                            dics,
+                        )
+                    ),
+                },
+                outputs=["output_data"],
+            )
 
-                                program_config = ProgramConfig(
-                                    ops=ops,
-                                    weights={
-                                        "filter_data": TensorConfig(
-                                            data_gen=partial(
-                                                generate_filter1,
-                                                batch,
-                                                input_size,
-                                                kernel_sizes,
-                                                dics,
-                                            )
-                                        )
-                                    },
-                                    inputs={
-                                        "input_data": TensorConfig(
-                                            data_gen=partial(
-                                                generate_input1,
-                                                batch,
-                                                input_size,
-                                                kernel_sizes,
-                                                dics,
-                                            )
-                                        ),
-                                        "offset_data": TensorConfig(
-                                            data_gen=partial(
-                                                generate_offset1,
-                                                batch,
-                                                input_size,
-                                                kernel_sizes,
-                                                dics,
-                                            )
-                                        ),
-                                        "mask_data": TensorConfig(
-                                            data_gen=partial(
-                                                generate_mask1,
-                                                batch,
-                                                input_size,
-                                                kernel_sizes,
-                                                dics,
-                                            )
-                                        ),
-                                    },
-                                    outputs=["output_data"],
-                                )
-
-                                yield program_config
+            yield program_config
 
     def sample_predictor_configs(
         self, program_config

@@ -78,7 +78,7 @@ TEST(Grad, SingleNodeEmptyGrad) {
 
     // Connect Tensor and AccumulationNode via AutoGradMeta
     auto acc_node_ptr =
-        std::make_shared<egr::GradNodeAccumulation>(auto_grad_meta1);
+        std::make_shared<egr::GradNodeAccumulation>(leaf_tensor);
 
     // input tensor set GradNode、OutRank、StopGradient properties
     auto_grad_meta1->SetGradNode(
@@ -154,7 +154,7 @@ TEST(Grad, SingleNodeCustomGrad) {
     AutogradMeta* auto_grad_meta1 = EagerUtils::autograd_meta(&leaf_tensor);
     // Connect Tensor and AccumulationNode via AutoGradMeta
     auto acc_node_ptr =
-        std::make_shared<egr::GradNodeAccumulation>(auto_grad_meta1);
+        std::make_shared<egr::GradNodeAccumulation>(leaf_tensor);
 
     auto_grad_meta1->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
@@ -235,7 +235,7 @@ TEST(Grad, LinearNodes) {
     AutogradMeta* auto_grad_meta1 = EagerUtils::autograd_meta(&leaf_tensor);
     // Connect Tensor and AccumulationNode via AutoGradMeta
     auto acc_node_ptr =
-        std::make_shared<egr::GradNodeAccumulation>(auto_grad_meta1);
+        std::make_shared<egr::GradNodeAccumulation>(leaf_tensor);
 
     auto_grad_meta1->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
@@ -353,7 +353,7 @@ TEST(Grad, WithAccumulation) {
     AutogradMeta* auto_grad_meta2 = EagerUtils::autograd_meta(&leaf_tensor);
     // Connect Tensor and AccumulationNode via AutoGradMeta
     auto acc_node_ptr =
-        std::make_shared<egr::GradNodeAccumulation>(auto_grad_meta2);
+        std::make_shared<egr::GradNodeAccumulation>(leaf_tensor);
 
     auto_grad_meta2->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));

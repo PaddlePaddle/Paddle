@@ -241,6 +241,17 @@ def monkey_patch_value():
             "Tensor do not have 'place' interface for pir graph mode, try not to use it. None will be returned."
         )
 
+    @property
+    def device(self):
+        """
+        Tensor don't have 'device' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warning here and return None.
+        """
+        warnings.warn(
+            "Tensor do not have 'device' interface for pir graph mode, try not to use it. None will be returned."
+        )
+
     def contiguous(self):
         """
         Tensor don't have 'contiguous' interface in static graph mode
@@ -1446,6 +1457,19 @@ def monkey_patch_value():
             )
         self.stop_gradient = not value
 
+    def requires_grad_(self, value: bool) -> None:
+        """
+        Set whether this Tensor requires gradient computation.
+
+        Args:
+            value (bool): True to enable gradient computation, False to disable.
+        """
+        if not isinstance(value, bool):
+            raise TypeError(
+                f"requires_grad must be bool, but got {type(value)}"
+            )
+        self.stop_gradient = not value
+
     @property
     def itemsize(self) -> int:
         """
@@ -1477,6 +1501,7 @@ def monkey_patch_value():
         ('cpu', cpu),
         ('cuda', cuda),
         ('place', place),
+        ('device', device),
         ('contiguous', contiguous),
         ('is_cuda', is_cuda),
         ('is_contiguous', is_contiguous),
@@ -1496,6 +1521,7 @@ def monkey_patch_value():
         ('new_ones', _new_ones_),
         ('new_zeros', _new_zeros_),
         ("requires_grad", requires_grad),
+        ("requires_grad_", requires_grad_),
         ('clone', clone),
         ('clear_gradient', clear_gradient),
         ('append', append),

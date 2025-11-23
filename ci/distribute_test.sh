@@ -148,7 +148,7 @@ pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 pip install onnx==1.17.0
 pip install -r "${work_dir}/python/requirements.txt"
 pip install -r "${work_dir}/python/unittest_py/requirements.txt"
-pip install  --force-reinstall ${work_dir}/dist/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --no-deps
+pip install  --force-reinstall ${work_dir}/dist/*.whl --no-deps
 echo "::endgroup::"
 ldconfig
 

@@ -1165,16 +1165,16 @@ llvm::Value *CodeGenLLVM::Visit(const ir::_LoweredFunc_ *op) {
 
   std::vector<Expr> new_body;
   auto create_temp_buffers = op->PrepareCreateTempBufferExprs();
-  auto alloca_temp_buffers = op->PrepareAllocTempBufferExprs();
-  auto dealloca_temp_buffers = op->PrepareDeallocTempBufferExprs();
+  auto alloc_temp_buffers = op->PrepareAllocTempBufferExprs();
+  auto dealloc_temp_buffers = op->PrepareDeallocTempBufferExprs();
 
   appendBody(new_body, op->argument_prepare_exprs);
   appendBody(new_body, create_temp_buffers);
-  appendBody(new_body, alloca_temp_buffers);
+  appendBody(new_body, alloc_temp_buffers);
   appendBody(new_body, op->alloc_output_buffer_exprs);
   appendBody(new_body, op->buffer_data_cast_exprs);
   appendBody(new_body, op->body);
-  appendBody(new_body, dealloca_temp_buffers);
+  appendBody(new_body, dealloc_temp_buffers);
   appendBody(new_body, op->dealloc_output_buffer_exprs);
 
   ir::Expr function_body = ir::Block::Make(new_body);

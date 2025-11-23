@@ -590,6 +590,61 @@ class TestZOutputSizeTensor3(unittest.TestCase):
         np.testing.assert_array_equal(unpool_out.shape, [1, 3, 7, 7])
 
 
+class TestUnpool2DOpAPI_Compatibility(unittest.TestCase):
+    def setUp(self) -> None:
+        paddle.disable_static()
+        self.input_data = np.array(
+            [
+                [
+                    [
+                        [1, 2, 3, 4],
+                        [5, 6, 7, 8],
+                        [9, 10, 11, 12],
+                        [13, 14, 15, 16],
+                    ]
+                ]
+            ]
+        ).astype("float32")
+        self.input_x = paddle.to_tensor(self.input_data)
+        self.Pool2d = paddle.nn.MaxPool2D(
+            kernel_size=2, stride=2, return_mask=True
+        )
+        self.output, self.indices = self.Pool2d(self.input_x)
+        self.expected_output_unpool = unpool2dmax_forward_naive(
+            self.output.numpy(),
+            self.indices.numpy(),
+            [2, 2],
+            [2, 2],
+            [0, 0],
+            [4, 4],
+        ).astype("float64")
+
+    def test_MaxPool2D_API(self):
+        # test class alias paddle.nn.MaxUnpool2d
+        max_unpool_2d = paddle.nn.MaxUnpool2d(
+            kernel_size=2, stride=2, output_size=(1, 1, 4, 4)
+        )
+        output_unpool = max_unpool_2d(x=self.output, indices=self.indices)
+        np.testing.assert_allclose(
+            output_unpool.numpy(), self.expected_output_unpool, rtol=1e-05
+        )
+
+        # test func alias
+        output_unpool = max_unpool_2d(input=self.output, indices=self.indices)
+        np.testing.assert_allclose(
+            output_unpool.numpy(), self.expected_output_unpool, rtol=1e-05
+        )
+
+        # test output_size argument
+        max_unpool_2d = paddle.nn.MaxUnpool2d(kernel_size=2, stride=2)
+        output_unpool = max_unpool_2d(
+            input=self.output, indices=self.indices, output_size=(1, 1, 4, 4)
+        )
+        np.testing.assert_allclose(
+            output_unpool.numpy(), self.expected_output_unpool, rtol=1e-05
+        )
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

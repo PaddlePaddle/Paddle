@@ -45,6 +45,7 @@ GradNodePyLayer::operator()(
     egr::CUDAErrorCheck("GradNodePyLayer begin");
   }
   pybind11::gil_scoped_acquire gil;
+  if (VLOG_IS_ON(2)) egr::LogIndent::Instance().IncreaseIndentLevel();
   VLOG(3) << "Running Eager Backward Node: " << name();
   if (FLAGS_call_stack_level == 3) {
     VLOG(3) << "PyLayer forward call stack: " << this->GetForwardTrace();
@@ -171,8 +172,9 @@ GradNodePyLayer::operator()(
   auto outputs = PyObject_CallObject(backward_fn, backward_args);
   egr::Controller::Instance().SetHasGrad(need_grad_tmp);
   if (!outputs) {
-    PADDLE_THROW(
-        common::errors::External(pybind11::detail::error_string().c_str()));
+    std::string err_msg =
+        FormatPyLayerBackwardErrorMsg(this, pybind11::detail::error_string());
+    PADDLE_THROW(common::errors::External(err_msg.c_str()));
   }
 
   VLOG(6) << "PyLayer backward function finish...";
@@ -255,6 +257,7 @@ GradNodePyLayer::operator()(
   Py_XDECREF(outputs);
   Py_XDECREF(ctx_);
   ctx_ = nullptr;
+  if (VLOG_IS_ON(2)) egr::LogIndent::Instance().DecreaseIndentLevel();
 
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("GradNodePyLayer finish");

@@ -74,9 +74,25 @@ jobs:
       docker_npu_image: ${{ needs.build-docker.outputs.docker_npu_image }}
 
   distribute:
-    name: Distribute-stable
+    name: Distribute-stable-build
     uses: ./.github/workflows/_Distribute-stable.yml
     needs: [clone, build-docker]
+    with:
+      docker_distribute_image: ${{ needs.build-docker.outputs.docker_distribute_image }}
+      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
+
+  distribute-test:
+    name: Distribute-stable-test
+    uses: ./.github/workflows/_Distribute-stable-Test.yml
+    needs: [clone, build-docker, distribute]
+    with:
+      docker_distribute_image: ${{ needs.build-docker.outputs.docker_distribute_image }}
+      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
+
+  distribute-formers:
+    name: Distribute-stable-formers
+    uses: ./.github/workflows/_Distribute-stable-Formers.yml
+    needs: [clone, build-docker, distribute]
     with:
       docker_distribute_image: ${{ needs.build-docker.outputs.docker_distribute_image }}
       clone-can-skip: ${{ needs.clone.outputs.can-skip }}

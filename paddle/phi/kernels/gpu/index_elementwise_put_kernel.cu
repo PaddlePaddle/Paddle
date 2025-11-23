@@ -21,7 +21,7 @@
 
 namespace phi {
 
-template <typename T, typename IndexT = int>
+template <typename T, typename IndexT = int, typename OffsetT = uint32_t>
 void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
                                   const DenseTensor& input,
                                   const Scalar& value,
@@ -65,8 +65,8 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
                            &numel,
                            strides_vec);
 
-  auto offset_calc =
-      funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
+  auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
+      desired_shape, strides_array);
 
   const int64_t N = numel;
   PADDLE_ENFORCE_EQ(true,
@@ -113,7 +113,7 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
   }
 }
 
-template <typename T, typename IndexT = int>
+template <typename T, typename IndexT = int, typename OffsetT = uint32_t>
 void GPUIndexElementwisePutWithTensorKernel(
     const phi::GPUContext& dev_ctx,
     const DenseTensor& input,
@@ -157,15 +157,11 @@ void GPUIndexElementwisePutWithTensorKernel(
                            &numel,
                            strides_vec);
 
-  auto offset_calc =
-      funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
+  auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
+      desired_shape, strides_array);
 
   const int64_t N = numel;
-  PADDLE_ENFORCE_EQ(true,
-                    (N >= 0 && N <= std::numeric_limits<int32_t>::max()),
-                    common::errors::PreconditionNotMet(
-                        "the value of N should be in [0, "
-                        "std::numeric_limits<int32_t>::max()]"));
+
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);
@@ -221,16 +217,29 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
           phi::DataType::INT64));
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) return;
-  GPUIndexElementwisePutKernel<T, int64_t>(dev_ctx,
-                                           x,
-                                           value,
-                                           index,
-                                           input_dims,
-                                           input_strides,
-                                           index_dims,
-                                           index_strides,
-                                           slice_offset,
-                                           out);
+  if (funcs::IsInUint32Range(out->numel())) {
+    GPUIndexElementwisePutKernel<T, int64_t>(dev_ctx,
+                                             x,
+                                             value,
+                                             index,
+                                             input_dims,
+                                             input_strides,
+                                             index_dims,
+                                             index_strides,
+                                             slice_offset,
+                                             out);
+  } else {
+    GPUIndexElementwisePutKernel<T, int64_t, uint64_t>(dev_ctx,
+                                                       x,
+                                                       value,
+                                                       index,
+                                                       input_dims,
+                                                       input_strides,
+                                                       index_dims,
+                                                       index_strides,
+                                                       slice_offset,
+                                                       out);
+  }
 }
 
 template <typename T, typename Context>
@@ -256,16 +265,30 @@ void IndexElementwisePutWithTensorKernel(
 
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) return;
-  GPUIndexElementwisePutWithTensorKernel<T, int64_t>(dev_ctx,
-                                                     x,
-                                                     value,
-                                                     index,
-                                                     input_dims,
-                                                     input_strides,
-                                                     index_dims,
-                                                     index_strides,
-                                                     slice_offset,
-                                                     out);
+  if (funcs::IsInUint32Range(out->numel())) {
+    GPUIndexElementwisePutWithTensorKernel<T, int64_t>(dev_ctx,
+                                                       x,
+                                                       value,
+                                                       index,
+                                                       input_dims,
+                                                       input_strides,
+                                                       index_dims,
+                                                       index_strides,
+                                                       slice_offset,
+                                                       out);
+
+  } else {
+    GPUIndexElementwisePutWithTensorKernel<T, int64_t, uint64_t>(dev_ctx,
+                                                                 x,
+                                                                 value,
+                                                                 index,
+                                                                 input_dims,
+                                                                 input_strides,
+                                                                 index_dims,
+                                                                 index_strides,
+                                                                 slice_offset,
+                                                                 out);
+  }
 }
 
 }  // namespace phi

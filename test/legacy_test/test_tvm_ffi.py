@@ -151,12 +151,19 @@ class TestCDLPackExchangeAPI(unittest.TestCase):
 class TestDLPackDataType(unittest.TestCase):
     @staticmethod
     def _paddle_dtype_to_tvm_ffi_dtype(paddle_dtype: paddle.dtype):
+        # Currently, our paddle.uint16 shows as 'paddle.bfloat16' in str(),
+        # We should use ml_dtypes to avoid this hack in the future.
+        if paddle_dtype == paddle.uint16:
+            return tvm_ffi.dtype("uint16")
         dtype_str = str(paddle_dtype).split('.')[-1]
         return tvm_ffi.dtype(dtype_str)
 
     def test_dlpack_data_type_base_protocol(self):
         for dtype in [
             paddle.uint8,
+            paddle.uint16,
+            paddle.uint32,
+            paddle.uint64,
             paddle.int16,
             paddle.int32,
             paddle.int64,

@@ -36,6 +36,7 @@
 #include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/variable.h"
 
@@ -564,7 +565,7 @@ std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
     if (!autograd_ptr->StopGradient()) {
       VLOG(6) << "Add GradNodeAccumulation for tensor: " << tensor.name();
       autograd_ptr->SetGradNode(
-          std::make_shared<egr::GradNodeAccumulation>(autograd_ptr));
+          std::make_shared<egr::GradNodeAccumulation>(tensor));
       return autograd_ptr->GetMutableGradNode();
     } else {
       return nullptr;
@@ -1662,6 +1663,7 @@ void SaveStringToFileWithPID(const std::string& filename,
   std::string newFilename = filename + "." + std::to_string(pid);
   SaveStringToFile(newFilename, content, mode);
 }
+
 void SavePythonCallStackToFile(const std::string& file_name,
                                const std::string& api_name) {
   SaveStringToFileWithPID(
@@ -1669,5 +1671,72 @@ void SavePythonCallStackToFile(const std::string& file_name,
       api_name + " : \n" + egr::Controller::Instance().GetPythonStack(),
       "append");
 }
+#define SEPARATOR "============================"
+std::string FormatPyLayerBackwardErrorMsg(GradNodeBase* node,
+                                          std::string error_mesg) {
+  std::ostringstream oss;
+  oss << SEPARATOR << " Error message in backward of " << node->name() << "("
+      << node << ")" << SEPARATOR << std::endl;
+  oss << error_mesg << std::endl;
+  oss << SEPARATOR << SEPARATOR << SEPARATOR << SEPARATOR << std::endl;
+  return "\n{\n" + paddle::framework::InsertIndentationIntoEachLine(oss.str()) +
+         "\n}\n";
+}
 
+void CheckGradNodeAccumulation(const paddle::Tensor& tensor) {
+  auto* autograd_meta = egr::EagerUtils::nullable_autograd_meta(tensor);
+  if (!autograd_meta) return;
+
+  auto grad_node = autograd_meta->GetMutableGradNode();
+  if (!grad_node || !grad_node.get()) return;
+
+  auto accumulation_node =
+      std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
+  if (!accumulation_node) return;
+
+  phi::DataType tensor_dtype = tensor.dtype();
+  const auto& input_metas = accumulation_node->InputMeta();
+  if (input_metas.empty() || input_metas[0].empty()) return;
+
+  const auto& slot_meta = input_metas[0][0];
+  if (slot_meta.HasTensorMeta()) {
+    const auto& tensor_meta = slot_meta.GetTensorMeta();
+    phi::DataType meta_dtype = tensor_meta.dtype;
+
+    if (tensor_dtype != meta_dtype) {
+      VLOG(7) << "Updating GradNodeAccumulation(" << accumulation_node.get()
+              << ") meta dtype from " << phi::DataTypeToString(meta_dtype)
+              << " to " << phi::DataTypeToString(tensor_dtype);
+      accumulation_node->SetGradInMeta(tensor, 0);
+    }
+  }
+}
+
+void CheckGradNodeAccumulation(const paddle::optional<paddle::Tensor>& tensor) {
+  if (!tensor) return;
+  CheckGradNodeAccumulation(*tensor);
+}
+
+void CheckGradNodeAccumulation(
+    const paddle::optional<std::vector<paddle::Tensor>>& tensors) {
+  if (!tensors) return;
+  for (const auto& tensor : *tensors) {
+    CheckGradNodeAccumulation(tensor);
+  }
+}
+
+void CheckGradNodeAccumulation(const std::vector<paddle::Tensor>& tensors) {
+  for (const auto& tensor : tensors) {
+    CheckGradNodeAccumulation(tensor);
+  }
+}
+
+void CheckGradNodeAccumulation(
+    const std::vector<std::vector<paddle::Tensor*>>& tensors) {
+  for (const auto& sub_tensors : tensors) {
+    for (const auto& tensor : sub_tensors) {
+      CheckGradNodeAccumulation(*tensor);
+    }
+  }
+}
 }  // namespace egr

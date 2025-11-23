@@ -225,6 +225,22 @@ class TensorBuffer:
         self._buffer._clear()
 
 
+def is_identity_mapping(shard_mappings):
+    if len(shard_mappings) != 1:
+        return False
+    mapping = shard_mappings[0]
+    src = mapping.source_slice
+    dst = mapping.target_slice
+    return (
+        src.key == dst.key
+        and src.local_shape == dst.local_shape
+        and src.global_shape == dst.global_shape
+        and src.global_offset == dst.global_offset
+        and src.dtype == dst.dtype
+        and mapping.postprocess_list is None
+    )
+
+
 def full_param(
     model: Layer,
     aoa_config: dict[str, list[str]] | None = None,
@@ -232,6 +248,7 @@ def full_param(
 ):
     cur_rank = paddle.distributed.get_rank()
     world_size = paddle.distributed.get_world_size()
+    use_dist = True if world_size > 1 else False
 
     source_sharded_state_dict = model.sharded_state_dict()
     source_state_shard_info = build_global_state_shard_info(
@@ -262,48 +279,136 @@ def full_param(
         shard_mappings = aoa_engine.find_shard_sources(v)
         destination_sharded_mappings[k] = shard_mappings
 
-    source_to_target_names = defaultdict(set)
-    for k, mapping in destination_sharded_mappings.items():
-        for m in mapping:
-            source_to_target_names[m.source_slice.key].add(k)
+    if not use_dist:
+        for k, v in source_sharded_state_dict.items():
+            assert v.local_shape == v.global_shape, (
+                "On a single card, each parameter must not be sharded."
+            )
 
-    read_items = get_read_items(
-        source_sharded_state_dict=source_sharded_state_dict,
-        source_to_target_names=source_to_target_names,
-        world_size=world_size,
-        process_group=process_group,
-    )
+        for k, shard_mappings in destination_sharded_mappings.items():
+            if is_identity_mapping(shard_mappings):
+                src_key = shard_mappings[0].source_slice.key
+                yield k, source_sharded_state_dict[src_key].local_tensor
+            else:
+                desc = destination_sharded_weight_desc[k]
+                local_tensor = paddle.empty(desc.local_shape, dtype=desc.dtype)
+                cur_sharded_tensor = ShardedWeight(
+                    key=desc.key,
+                    local_tensor=local_tensor,
+                    local_shape=desc.local_shape,
+                    global_shape=desc.global_shape,
+                    global_offset=desc.global_offset,
+                )
+                for mapping in shard_mappings:
+                    src_desc = mapping.source_slice
+                    dst_desc = mapping.target_slice
+                    source_sharded_tensor = source_sharded_state_dict[
+                        src_desc.key
+                    ]
+                    assign_sharded_slice(
+                        src_desc,
+                        source_sharded_tensor,
+                        dst_desc,
+                        cur_sharded_tensor,
+                        postprocess_list=mapping.postprocess_list,
+                    )
+                yield k, cur_sharded_tensor.local_tensor
 
-    grouped_read_items = group_read_items_by_tensor_name(read_items)
-    grouped_read_items = sort_groups_for_early_release(
-        grouped_read_items, source_to_target_names
-    )
-    ref_map = build_reference_map(grouped_read_items)
-    read_items = []
-    for _, items in grouped_read_items.items():
-        read_items.extend(items)
+    else:
+        source_to_target_names = defaultdict(set)
+        for k, mapping in destination_sharded_mappings.items():
+            for m in mapping:
+                source_to_target_names[m.source_slice.key].add(k)
 
-    buffer_size = max(
-        256 * 1024 * 1024,
-        max((math.prod(item.slice_shape) for item in read_items), default=0),
-    )
+        read_items = get_read_items(
+            source_sharded_state_dict=source_sharded_state_dict,
+            source_to_target_names=source_to_target_names,
+            world_size=world_size,
+            process_group=process_group,
+        )
 
-    tensor_buffer = TensorBuffer(buffer_size=buffer_size)
+        grouped_read_items = group_read_items_by_tensor_name(read_items)
+        grouped_read_items = sort_groups_for_early_release(
+            grouped_read_items, source_to_target_names
+        )
+        ref_map = build_reference_map(grouped_read_items)
+        read_items = []
+        for _, items in grouped_read_items.items():
+            read_items.extend(items)
 
-    sharded_desc_to_tensor = {}
+        buffer_size = max(
+            256 * 1024 * 1024,
+            max(
+                (math.prod(item.slice_shape) for item in read_items), default=0
+            ),
+        )
 
-    ref_count = deepcopy(source_to_target_names)
+        tensor_buffer = TensorBuffer(buffer_size=buffer_size)
 
-    while len(read_items) != 0:
-        read_items_comm_bf16 = []
-        read_items_comm_other = []
-        read_items_local = []
-        cur_batch_full_tensors = {}
-        first_item = read_items[0]
-        cur_src_rank = first_item.src_rank
-        for item in read_items:
-            if len(item.dst_rank) == 1 and item.dst_rank[0] == item.src_rank:
-                if item.src_rank == cur_rank:
+        sharded_desc_to_tensor = {}
+
+        ref_count = deepcopy(source_to_target_names)
+
+        while len(read_items) != 0:
+            read_items_comm_bf16 = []
+            read_items_comm_other = []
+            read_items_local = []
+            cur_batch_full_tensors = {}
+            first_item = read_items[0]
+            cur_src_rank = first_item.src_rank
+            for item in read_items:
+                if (
+                    len(item.dst_rank) == 1
+                    and item.dst_rank[0] == item.src_rank
+                ):
+                    if item.src_rank == cur_rank:
+                        shard_desc = ShardedWeightDesc(
+                            key=item.tensor_name,
+                            local_shape=item.slice_shape,
+                            global_shape=item.global_shape,
+                            global_offset=item.src_global_offset,
+                            dtype=item.dtype,
+                        )
+                        cur_tensor = source_sharded_state_dict[
+                            item.tensor_name
+                        ].local_tensor.clone()
+
+                        assert tuple(cur_tensor.shape) == item.slice_shape
+                        sharded_desc_to_tensor[shard_desc] = cur_tensor
+                    read_items_local.append(item)
+
+                elif item.src_rank == cur_src_rank and item.dtype == 'bfloat16':
+                    if item.src_rank == cur_rank:
+                        tensor_name = item.tensor_name
+                        assert tensor_name in source_sharded_state_dict
+                        local_tensor = source_sharded_state_dict[
+                            tensor_name
+                        ].local_tensor.clone()
+                        assert tuple(local_tensor.shape) == item.slice_shape
+                        if not tensor_buffer.append(local_tensor):
+                            break
+                    else:
+                        tmp_tensor = paddle.empty(
+                            item.slice_shape, dtype=item.dtype
+                        )
+                        if not tensor_buffer.append(tmp_tensor):
+                            tmp_tensor._clear()
+                            break
+                    read_items_comm_bf16.append(item)
+                elif item.src_rank == cur_src_rank and item.dtype != 'bfloat16':
+                    if item.src_rank == cur_rank:
+                        tensor_name = item.tensor_name
+                        assert tensor_name in source_sharded_state_dict
+                        local_tensor = source_sharded_state_dict[
+                            tensor_name
+                        ].local_tensor.clone()
+                    else:
+                        local_tensor = paddle.empty(
+                            item.slice_shape, dtype=item.dtype
+                        )
+                    paddle.distributed.broadcast(
+                        local_tensor, src=cur_src_rank, group=process_group
+                    )
                     shard_desc = ShardedWeightDesc(
                         key=item.tensor_name,
                         local_shape=item.slice_shape,
@@ -311,177 +416,132 @@ def full_param(
                         global_offset=item.src_global_offset,
                         dtype=item.dtype,
                     )
-                    cur_tensor = source_sharded_state_dict[
-                        item.tensor_name
-                    ].local_tensor.clone()
+                    sharded_desc_to_tensor[shard_desc] = local_tensor
+                    read_items_comm_other.append(item)
 
-                    assert tuple(cur_tensor.shape) == item.slice_shape
-                    sharded_desc_to_tensor[shard_desc] = cur_tensor
-                read_items_local.append(item)
-
-            elif item.src_rank == cur_src_rank and item.dtype == 'bfloat16':
-                if item.src_rank == cur_rank:
-                    tensor_name = item.tensor_name
-                    assert tensor_name in source_sharded_state_dict
-                    local_tensor = source_sharded_state_dict[
-                        tensor_name
-                    ].local_tensor.clone()
-                    assert tuple(local_tensor.shape) == item.slice_shape
-                    if not tensor_buffer.append(local_tensor):
-                        break
-                else:
-                    tmp_tensor = paddle.empty(
-                        item.slice_shape, dtype=item.dtype
-                    )
-                    if not tensor_buffer.append(tmp_tensor):
-                        tmp_tensor._clear()
-                        break
-                read_items_comm_bf16.append(item)
-            elif item.src_rank == cur_src_rank and item.dtype != 'bfloat16':
-                if item.src_rank == cur_rank:
-                    tensor_name = item.tensor_name
-                    assert tensor_name in source_sharded_state_dict
-                    local_tensor = source_sharded_state_dict[
-                        tensor_name
-                    ].local_tensor.clone()
-                else:
-                    local_tensor = paddle.empty(
-                        item.slice_shape, dtype=item.dtype
-                    )
+            if tensor_buffer.current_size > 0:
                 paddle.distributed.broadcast(
-                    local_tensor, src=cur_src_rank, group=process_group
-                )
-                shard_desc = ShardedWeightDesc(
-                    key=item.tensor_name,
-                    local_shape=item.slice_shape,
-                    global_shape=item.global_shape,
-                    global_offset=item.src_global_offset,
-                    dtype=item.dtype,
-                )
-                sharded_desc_to_tensor[shard_desc] = local_tensor
-                read_items_comm_other.append(item)
-
-        if tensor_buffer.current_size > 0:
-            paddle.distributed.broadcast(
-                tensor_buffer.get_buffer(),
-                src=cur_src_rank,
-                group=process_group,
-            )
-
-            tensors = tensor_buffer.recover()
-            tensor_buffer.clear()
-
-            for idx, item in enumerate(read_items_comm_bf16):
-                shard_desc = ShardedWeightDesc(
-                    key=item.tensor_name,
-                    local_shape=item.slice_shape,
-                    global_shape=item.global_shape,
-                    global_offset=item.src_global_offset,
-                    dtype=item.dtype,
+                    tensor_buffer.get_buffer(),
+                    src=cur_src_rank,
+                    group=process_group,
                 )
 
-                sharded_desc_to_tensor[shard_desc] = tensors[idx]
+                tensors = tensor_buffer.recover()
+                tensor_buffer.clear()
 
-        cur_batch_read_items = (
-            read_items_comm_bf16 + read_items_comm_other + read_items_local
-        )
-        ready_tensor_names = []
-        for item in cur_batch_read_items:
-            for name in item.target_tensor_names:
-                ref_map[name].remove(item)
-                if len(ref_map[name]) == 0:
-                    ready_tensor_names.append(name)
-
-        for name in ready_tensor_names:
-            del ref_map[name]
-
-        for item in cur_batch_read_items:
-            read_items.remove(item)
-
-        need_clear_tensor_names = []
-
-        for name in ready_tensor_names:
-            target_sharded_weight_desc = destination_sharded_weight_desc[name]
-            local_tensor = paddle.empty(
-                target_sharded_weight_desc.local_shape,
-                dtype=target_sharded_weight_desc.dtype,
-            )
-            cur_sharded_tensor = ShardedWeight(
-                key=target_sharded_weight_desc.key,
-                local_tensor=local_tensor,
-                local_shape=target_sharded_weight_desc.local_shape,
-                global_shape=target_sharded_weight_desc.global_shape,
-                global_offset=target_sharded_weight_desc.global_offset,
-            )
-            mappings = destination_sharded_mappings[name]
-            for mapping in mappings:
-                src_desc = mapping.source_slice
-                dst_desc = mapping.target_slice
-                src_shard = ShardedWeight(
-                    key=src_desc.key,
-                    local_tensor=paddle.zeros(
-                        src_desc.local_shape, dtype=src_desc.dtype
-                    ),
-                    local_shape=src_desc.local_shape,
-                    global_shape=src_desc.global_shape,
-                    global_offset=src_desc.global_offset,
-                )
-
-                sharded_weights = []
-
-                for desc, local_tensor in sharded_desc_to_tensor.items():
-                    if desc.key != src_desc.key:
-                        continue
-                    cur_shard = ShardedWeight(
-                        key=src_desc.key,
-                        local_tensor=local_tensor,
-                        local_shape=desc.local_shape,
-                        global_shape=desc.global_shape,
-                        global_offset=desc.global_offset,
+                for idx, item in enumerate(read_items_comm_bf16):
+                    shard_desc = ShardedWeightDesc(
+                        key=item.tensor_name,
+                        local_shape=item.slice_shape,
+                        global_shape=item.global_shape,
+                        global_offset=item.src_global_offset,
+                        dtype=item.dtype,
                     )
-                    sharded_weights.append(cur_shard)
 
-                recover_shard_tensor_from_shards(sharded_weights, src_shard)
+                    sharded_desc_to_tensor[shard_desc] = tensors[idx]
 
-                assign_sharded_slice(
-                    src_desc,
-                    src_shard,
-                    dst_desc,
-                    cur_sharded_tensor,
-                    postprocess_list=mapping.postprocess_list,
-                )
+            cur_batch_read_items = (
+                read_items_comm_bf16 + read_items_comm_other + read_items_local
+            )
+            ready_tensor_names = []
+            for item in cur_batch_read_items:
+                for name in item.target_tensor_names:
+                    ref_map[name].remove(item)
+                    if len(ref_map[name]) == 0:
+                        ready_tensor_names.append(name)
 
-                src_shard.local_tensor._clear()
+            for name in ready_tensor_names:
+                del ref_map[name]
 
-            cur_batch_full_tensors[name] = cur_sharded_tensor.local_tensor
+            for item in cur_batch_read_items:
+                read_items.remove(item)
 
             need_clear_tensor_names = []
-            del_keys = []
 
-            for source_name in list(ref_count.keys()):
-                target_names = ref_count[source_name]
-                if name in target_names:
-                    target_names.remove(name)
-                    if len(target_names) == 0:
-                        del_keys.append(source_name)
-                        need_clear_tensor_names.append(source_name)
+            for name in ready_tensor_names:
+                target_sharded_weight_desc = destination_sharded_weight_desc[
+                    name
+                ]
+                local_tensor = paddle.empty(
+                    target_sharded_weight_desc.local_shape,
+                    dtype=target_sharded_weight_desc.dtype,
+                )
+                cur_sharded_tensor = ShardedWeight(
+                    key=target_sharded_weight_desc.key,
+                    local_tensor=local_tensor,
+                    local_shape=target_sharded_weight_desc.local_shape,
+                    global_shape=target_sharded_weight_desc.global_shape,
+                    global_offset=target_sharded_weight_desc.global_offset,
+                )
+                mappings = destination_sharded_mappings[name]
+                for mapping in mappings:
+                    src_desc = mapping.source_slice
+                    dst_desc = mapping.target_slice
+                    src_shard = ShardedWeight(
+                        key=src_desc.key,
+                        local_tensor=paddle.zeros(
+                            src_desc.local_shape, dtype=src_desc.dtype
+                        ),
+                        local_shape=src_desc.local_shape,
+                        global_shape=src_desc.global_shape,
+                        global_offset=src_desc.global_offset,
+                    )
 
-            for k in del_keys:
-                del ref_count[k]
+                    sharded_weights = []
 
-        to_delete = []
+                    for desc, local_tensor in sharded_desc_to_tensor.items():
+                        if desc.key != src_desc.key:
+                            continue
+                        cur_shard = ShardedWeight(
+                            key=src_desc.key,
+                            local_tensor=local_tensor,
+                            local_shape=desc.local_shape,
+                            global_shape=desc.global_shape,
+                            global_offset=desc.global_offset,
+                        )
+                        sharded_weights.append(cur_shard)
 
-        for src_desc in sharded_desc_to_tensor:
-            if src_desc.key in need_clear_tensor_names:
-                local_tensor = sharded_desc_to_tensor[src_desc]
-                local_tensor._clear()
-                to_delete.append(src_desc)
+                    recover_shard_tensor_from_shards(sharded_weights, src_shard)
 
-        for src_desc in to_delete:
-            del sharded_desc_to_tensor[src_desc]
+                    assign_sharded_slice(
+                        src_desc,
+                        src_shard,
+                        dst_desc,
+                        cur_sharded_tensor,
+                        postprocess_list=mapping.postprocess_list,
+                    )
 
-        if len(read_items) == 0:
-            tensor_buffer.clear()
-            tensor_buffer.destroy()
-        for name, tensor in cur_batch_full_tensors.items():
-            yield name, tensor
+                    src_shard.local_tensor._clear()
+
+                cur_batch_full_tensors[name] = cur_sharded_tensor.local_tensor
+
+                need_clear_tensor_names = []
+                del_keys = []
+
+                for source_name in list(ref_count.keys()):
+                    target_names = ref_count[source_name]
+                    if name in target_names:
+                        target_names.remove(name)
+                        if len(target_names) == 0:
+                            del_keys.append(source_name)
+                            need_clear_tensor_names.append(source_name)
+
+                for k in del_keys:
+                    del ref_count[k]
+
+            to_delete = []
+
+            for src_desc in sharded_desc_to_tensor:
+                if src_desc.key in need_clear_tensor_names:
+                    local_tensor = sharded_desc_to_tensor[src_desc]
+                    local_tensor._clear()
+                    to_delete.append(src_desc)
+
+            for src_desc in to_delete:
+                del sharded_desc_to_tensor[src_desc]
+
+            if len(read_items) == 0:
+                tensor_buffer.clear()
+                tensor_buffer.destroy()
+            for name, tensor in cur_batch_full_tensors.items():
+                yield name, tensor
