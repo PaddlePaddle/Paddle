@@ -751,7 +751,6 @@ class TestPyLayer(unittest.TestCase):
             def backward(ctx, dy):
                 nonlocal cus_tanh_backward_input
                 cus_tanh_backward_input = dy
-
                 # Get the tensors passed by forward.
                 (y,) = ctx.saved_tensor()
                 grad = dy * (1 - paddle.square(y))
@@ -777,7 +776,7 @@ class TestPyLayer(unittest.TestCase):
         x.stop_gradient = False
         y = cus_tanh.apply(x)
         z = cus_tanh_cast_grad.apply(y)
-        paddle.grad([z.sum()], [x], grad_outputs=[None])
+        z.backward()
         self.assertEqual(cus_tanh_backward_input.dtype, paddle.float16)
 
 

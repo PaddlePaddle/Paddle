@@ -325,7 +325,7 @@ std::vector<paddle::Tensor> RunBackward(
 
       if (typeid(*grad_node) == typeid(GradNodePyLayer)) {
         auto pylayer_gradnode = dynamic_cast<GradNodePyLayer*>(grad_node);
-        std::make_unique<GradTensorHolder>(
+        node_input_buffers_dict[grad_node] = std::make_unique<GradTensorHolder>(
             grad_node->InputMeta(), pylayer_gradnode->GradInDtypeConsistent());
       } else {
         node_input_buffers_dict[grad_node] =
