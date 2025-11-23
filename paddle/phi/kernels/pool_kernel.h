@@ -54,7 +54,7 @@ void LPPool2dKernel(const Context& dev_ctx,
                     const float norm_type,
                     DenseTensor* out);
 
-//TODO:验证这个是什么东西
+// TODO:验证这个是什么东西
 template <typename T, typename Context>
 void Pool2dGPUDNNKernel(const Context& dev_ctx,
                         const DenseTensor& x,

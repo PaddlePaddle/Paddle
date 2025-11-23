@@ -58,7 +58,7 @@ void LPPool2dGradKernel(const Context& dev_ctx,
                         const float norm_type,
                         DenseTensor* dx);
 
-//TODO：验证这个是什么东西
+// TODO：验证这个是什么东西
 template <typename T, typename Context>
 void Pool2dGradGPUDNNKernel(const Context& dev_ctx,
                             const DenseTensor& x,

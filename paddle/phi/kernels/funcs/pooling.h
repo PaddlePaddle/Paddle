@@ -199,7 +199,6 @@ class Pool2dDirectCUDAFunctor {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  const std::vector<int>& dilations,
                   bool exclusive,
                   bool adaptive,
                   T* output,

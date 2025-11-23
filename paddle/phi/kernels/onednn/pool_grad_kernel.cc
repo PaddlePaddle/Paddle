@@ -19,7 +19,7 @@
 
 namespace phi {
 bool Pool2dGradCheckIfOneDNNSupport(const KernelContext* dev_ctx) {
-  if (dev_ctx->AttrAt<bool>(8) == false) {
+  if (dev_ctx->AttrAt<bool>(9) == false) {
     // adaptive
     return true;
   }
@@ -41,6 +41,7 @@ void Pool2dGradKernel(const Context& dev_ctx,
                       const IntArray& kernel_size,
                       const std::vector<int64_t>& strides,
                       const std::vector<int64_t>& paddings,
+                      const std::vector<int64_t>& dilations UNUSED,
                       bool ceil_mode,
                       bool exclusive,
                       const std::string& data_format UNUSED,

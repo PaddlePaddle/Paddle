@@ -51,6 +51,8 @@ void PoolGradRawGPUDNNKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(dx);
     return;
   }
+
+  const std::vector<int64_t> dilations = {1, 1};
   auto run_cuda_kernel = [&]() {
     PoolGradRawKernel<T, GPUContext>(dev_ctx,
                                      x,
@@ -59,6 +61,7 @@ void PoolGradRawGPUDNNKernel(const Context& dev_ctx,
                                      kernel_size,
                                      strides,
                                      paddings,
+                                     dilations,
                                      exclusive,
                                      data_format,
                                      pooling_type,

@@ -2293,7 +2293,7 @@
   output : Tensor(x_grad)
   infer_meta :
     func : MaxPoolWithIndexGradInferMeta
-    param : [x, kernel_size, strides, paddings, global_pooling, adaptive, ceil_mode]
+    param : [x, mask, out_grad, kernel_size, strides, paddings, global_pooling, adaptive, ceil_mode]
   kernel :
     func : max_pool2d_with_index_grad
 

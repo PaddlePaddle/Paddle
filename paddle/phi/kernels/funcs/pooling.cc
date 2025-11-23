@@ -98,17 +98,19 @@ class Pool2dFunctor<CPUContext, PoolProcess, T> {
                     std::min(wstart + ksize_width, input_width + padding_width);
                 pool_size = (hend - hstart) * (wend - wstart);
 
-                hend = hstart + (ksize_height-1)*dilation_height+1;
-                wend=wstart+(ksize_width-1)*dilation_width+1;
-                while(hstart<static_cast<int64_t>(0))hstart+=dilation_height;
-                while(hend>input_height)hend-=dilation_height;
-                while(wstart<static_cast<int64_t>(0))wstart+=dilation_width;
-                while(wend>input_width)wend-=dilation_width;
+                hend = hstart + (ksize_height - 1) * dilation_height + 1;
+                wend = wstart + (ksize_width - 1) * dilation_width + 1;
+                while (hstart < static_cast<int64_t>(0))
+                  hstart += dilation_height;
+                while (hend > input_height) hend -= dilation_height;
+                while (wstart < static_cast<int64_t>(0))
+                  wstart += dilation_width;
+                while (wend > input_width) wend -= dilation_width;
               }
 
               T ele = pool_process.initial();
-              for (int64_t h = hstart; h < hend; h+=dilation_height) {
-                for (int64_t w = wstart; w < wend; w+=dilation_width) {
+              for (int64_t h = hstart; h < hend; h += dilation_height) {
+                for (int64_t w = wstart; w < wend; w += dilation_width) {
                   pool_process.compute(input_data[h * input_width + w], &ele);
                 }
               }
@@ -148,16 +150,18 @@ class Pool2dFunctor<CPUContext, PoolProcess, T> {
                     std::min(wstart + ksize_width, input_width + padding_width);
                 pool_size = (hend - hstart) * (wend - wstart);
 
-                hend = hstart + (ksize_height-1)*dilation_height+1;
-                wend=wstart+(ksize_width-1)*dilation_width+1;
-                while(hstart<static_cast<int64_t>(0))hstart+=dilation_height;
-                while(hend>input_height)hend-=dilation_height;
-                while(wstart<static_cast<int64_t>(0))wstart+=dilation_width;
-                while(wend>input_width)wend-=dilation_width;
+                hend = hstart + (ksize_height - 1) * dilation_height + 1;
+                wend = wstart + (ksize_width - 1) * dilation_width + 1;
+                while (hstart < static_cast<int64_t>(0))
+                  hstart += dilation_height;
+                while (hend > input_height) hend -= dilation_height;
+                while (wstart < static_cast<int64_t>(0))
+                  wstart += dilation_width;
+                while (wend > input_width) wend -= dilation_width;
               }
               T ele = pool_process.initial();
-              for (int64_t h = hstart; h < hend; h+=dilation_height) {
-                for (int64_t w = wstart; w < wend; w+=dilation_width) {
+              for (int64_t h = hstart; h < hend; h += dilation_height) {
+                for (int64_t w = wstart; w < wend; w += dilation_width) {
                   pool_process.compute(
                       input_data[h * input_width * input_channels +
                                  w * input_channels + c],
@@ -409,19 +413,21 @@ class MaxPool2dGradFunctor<CPUContext, T> {
         for (int64_t c = 0; c < output_channels; ++c) {
           for (int64_t ph = 0; ph < output_height; ++ph) {
             int64_t hstart = ph * stride_height - padding_height;
-            int64_t hend = hstart + (ksize_height-1)*dilation_height+1;
-            while(hstart<static_cast<int64_t>(0))hstart+=dilation_height;
-            while(hend>input_height)hend-=dilation_height;
+            int64_t hend = hstart + (ksize_height - 1) * dilation_height + 1;
+            while (hstart < static_cast<int64_t>(0)) hstart += dilation_height;
+            while (hend > input_height) hend -= dilation_height;
 
             for (int64_t pw = 0; pw < output_width; ++pw) {
               int64_t wstart = pw * stride_width - padding_width;
-              int64_t wend = wstart+(ksize_width-1)*dilation_width+1;
-              while(wstart<static_cast<int64_t>(0))wstart+=dilation_width;
-              while(wend>input_width)wend-=dilation_width;
+              int64_t wend = wstart + (ksize_width - 1) * dilation_width + 1;
+              while (wstart < static_cast<int64_t>(0)) wstart += dilation_width;
+              while (wend > input_width) wend -= dilation_width;
 
               bool stop = false;
-              for (int64_t h = hstart; h < hend && !stop; h+=dilation_height) {
-                for (int64_t w = wstart; w < wend && !stop; w+=dilation_width) {
+              for (int64_t h = hstart; h < hend && !stop;
+                   h += dilation_height) {
+                for (int64_t w = wstart; w < wend && !stop;
+                     w += dilation_width) {
                   int64_t input_idx = h * input_width + w;
                   int64_t output_idx = ph * output_width + pw;
                   if (input_data[input_idx] == output_data[output_idx]) {
@@ -446,18 +452,20 @@ class MaxPool2dGradFunctor<CPUContext, T> {
         for (int64_t c = 0; c < output_channels; ++c) {
           for (int64_t ph = 0; ph < output_height; ++ph) {
             int64_t hstart = ph * stride_height - padding_height;
-            int64_t hend = hstart + (ksize_height-1)*dilation_height+1;
-            while(hstart<static_cast<int64_t>(0))hstart+=dilation_height;
-            while(hend>input_height)hend-=dilation_height;
+            int64_t hend = hstart + (ksize_height - 1) * dilation_height + 1;
+            while (hstart < static_cast<int64_t>(0)) hstart += dilation_height;
+            while (hend > input_height) hend -= dilation_height;
             for (int64_t pw = 0; pw < output_width; ++pw) {
               int64_t wstart = pw * stride_width - padding_width;
-              int64_t wend = wstart+(ksize_width-1)*dilation_width+1;
-              while(wstart<static_cast<int64_t>(0))wstart+=dilation_width;
-              while(wend>input_width)wend-=dilation_width;
+              int64_t wend = wstart + (ksize_width - 1) * dilation_width + 1;
+              while (wstart < static_cast<int64_t>(0)) wstart += dilation_width;
+              while (wend > input_width) wend -= dilation_width;
 
               bool stop = false;
-              for (int64_t h = hstart; h < hend && !stop; h+=dilation_height) {
-                for (int64_t w = wstart; w < wend && !stop; w+=dilation_width) {
+              for (int64_t h = hstart; h < hend && !stop;
+                   h += dilation_height) {
+                for (int64_t w = wstart; w < wend && !stop;
+                     w += dilation_width) {
                   int64_t input_idx =
                       h * input_width * input_channels + w * input_channels + c;
                   int64_t output_idx = ph * output_width * output_channels +
@@ -1125,7 +1133,8 @@ template class Pool3dGradFunctor<phi::CPUContext,
 // native版本，先不删
 // /*
 //  * All tensors are in NCHW format.
-//  * Ksize, strides, paddings, dilations are two elements. These two elements represent
+//  * Ksize, strides, paddings, dilations are two elements. These two elements
+//  represent
 //  * height and width, respectively.
 //  */
 // template <typename T1, typename T2>
@@ -1200,7 +1209,7 @@ template class Pool3dGradFunctor<phi::CPUContext,
 //                     ele = input_data[h * input_width + w];
 //                     index = h * input_width + w;
 //                   }
-//                 }   
+//                 }
 //               }
 //             }
 //             output_data[ph * output_width + pw] = ele;
@@ -1215,8 +1224,6 @@ template class Pool3dGradFunctor<phi::CPUContext,
 //     }
 //   }
 // };
-
-
 
 /*
  * All tensors are in NCHW format.
@@ -1266,9 +1273,9 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
             hend = AdaptEndIndex(ph, input_height, output_height);
           } else {
             hstart = ph * stride_height - padding_height;
-            hend = hstart + (ksize_height-1)*dilation_height+1;
-            while(hstart<static_cast<int64_t>(0))hstart+=dilation_height;
-            while(hend>input_height)hend-=dilation_height;
+            hend = hstart + (ksize_height - 1) * dilation_height + 1;
+            while (hstart < static_cast<int64_t>(0)) hstart += dilation_height;
+            while (hend > input_height) hend -= dilation_height;
           }
           for (int64_t pw = 0; pw < output_width; ++pw) {
             if (adaptive) {
@@ -1276,15 +1283,15 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
               wend = AdaptEndIndex(pw, input_width, output_width);
             } else {
               wstart = pw * stride_width - padding_width;
-              wend=wstart+(ksize_width-1)*dilation_width+1;
-              while(wstart<static_cast<int64_t>(0))wstart+=dilation_width;
-              while(wend>input_width)wend-=dilation_width;
+              wend = wstart + (ksize_width - 1) * dilation_width + 1;
+              while (wstart < static_cast<int64_t>(0)) wstart += dilation_width;
+              while (wend > input_width) wend -= dilation_width;
             }
 
             T1 ele = static_cast<T1>(-FLT_MAX);
             int64_t index = -1;
-            for (int64_t h = hstart; h < hend; h+=dilation_height) {
-              for (int64_t w = wstart; w < wend; w+=dilation_width) {
+            for (int64_t h = hstart; h < hend; h += dilation_height) {
+              for (int64_t w = wstart; w < wend; w += dilation_width) {
                 if (ele < input_data[h * input_width + w]) {
                   ele = input_data[h * input_width + w];
                   index = h * input_width + w;
@@ -1303,8 +1310,6 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
     }
   }
 };
-
-
 
 /*
  * All tensors are in NCHW format.

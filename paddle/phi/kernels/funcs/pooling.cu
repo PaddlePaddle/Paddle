@@ -95,12 +95,11 @@ struct FastDivModForPoolingWithMoreStaff {
         stride_h(stride_height) {}
 };
 
-static __device__ inline int p_start(int size,
-                                     int pad,
-                                     int dilation,
-                                     int kernel,
-                                     int stride) {
-  return (size + pad < kernel * dilation) ? 0 : (size + pad - kernel * dilation) / stride + 1;
+static __device__ inline int p_start(
+    int size, int pad, int dilation, int kernel, int stride) {
+  return (size + pad < kernel * dilation)
+             ? 0
+             : (size + pad - kernel * dilation) / stride + 1;
 }
 
 static __device__ inline int p_end(int size,
@@ -208,28 +207,28 @@ __global__ void KernelPool2D(const IndexT nthreads,
 
     hstart = h_offset * stride_height - padding_height;
     wstart = w_offset * stride_width - padding_width;
-    
-    if(dilation_height>static_cast<IndexT>(1)){
-      while(hstart<static_cast<IndexT>(0))hstart+=dilation_height;
-      hend = hstart + (ksize_height-1)*dilation_height+1;
-      while(hend>input_height)hend-=dilation_height;
-    }else{
+
+    if (dilation_height > static_cast<IndexT>(1)) {
+      while (hstart < static_cast<IndexT>(0)) hstart += dilation_height;
+      hend = hstart + (ksize_height - 1) * dilation_height + 1;
+      while (hend > input_height) hend -= dilation_height;
+    } else {
       hstart = max(hstart, static_cast<IndexT>(0));
       hend = min(hstart + ksize_height, input_height);
     }
 
-    if(dilation_width>static_cast<IndexT>(1)){
-      while(wstart<static_cast<IndexT>(0))wstart+=dilation_width;
-      wend=wstart+(ksize_width-1)*dilation_width+1;
-      while(wend>input_width)wend-=dilation_width;
-    }else{
+    if (dilation_width > static_cast<IndexT>(1)) {
+      while (wstart < static_cast<IndexT>(0)) wstart += dilation_width;
+      wend = wstart + (ksize_width - 1) * dilation_width + 1;
+      while (wend > input_width) wend -= dilation_width;
+    } else {
       wstart = max(wstart, static_cast<IndexT>(0));
       wend = min(wstart + ksize_width, input_width);
     }
 
     T ele = pool_process.initial();
-    for (IndexT h = hstart; h < hend; h+=dilation_height) {
-      for (IndexT w = wstart; w < wend; w+=dilation_width) {
+    for (IndexT h = hstart; h < hend; h += dilation_height) {
+      for (IndexT w = wstart; w < wend; w += dilation_width) {
         auto input_idx = channel_last
                              ? (h * input_width + w) * channels + c_offset
                              : h * input_width + w;
@@ -490,19 +489,19 @@ __global__ void KernelMaxPool2DGrad(const IndexT nthreads,
     hstart = h_offset * stride_height - padding_height;
     wstart = w_offset * stride_width - padding_width;
 
-    if(dilation_height>static_cast<IndexT>(1)){
-      hend = hstart + (ksize_height-1)*dilation_height+1;
-      while(hstart<static_cast<IndexT>(0))hstart+=dilation_height;
-      while(hend>input_height)hend-=dilation_height;
-    }else{
+    if (dilation_height > static_cast<IndexT>(1)) {
+      hend = hstart + (ksize_height - 1) * dilation_height + 1;
+      while (hstart < static_cast<IndexT>(0)) hstart += dilation_height;
+      while (hend > input_height) hend -= dilation_height;
+    } else {
       hend = min(hstart + ksize_height, input_height);
       hstart = max(hstart, static_cast<IndexT>(0));
     }
-    if(dilation_width>static_cast<IndexT>(1)){
-      wend=wstart+(ksize_width-1)*dilation_width+1;
-      while(wstart<static_cast<IndexT>(0))wstart+=dilation_width;
-      while(wend>input_width)wend-=dilation_width;
-    }else{
+    if (dilation_width > static_cast<IndexT>(1)) {
+      wend = wstart + (ksize_width - 1) * dilation_width + 1;
+      while (wstart < static_cast<IndexT>(0)) wstart += dilation_width;
+      while (wend > input_width) wend -= dilation_width;
+    } else {
       wend = min(wstart + ksize_width, input_width);
       wstart = max(wstart, static_cast<IndexT>(0));
     }
@@ -510,8 +509,8 @@ __global__ void KernelMaxPool2DGrad(const IndexT nthreads,
     T ele = output_data[index];
     IndexT maxIndex = -1;
     bool stop = false;
-    for (IndexT h = hstart; h < hend && !stop; h+=dilation_height) {
-      for (IndexT w = wstart; w < wend && !stop; w+=dilation_width) {
+    for (IndexT h = hstart; h < hend && !stop; h += dilation_height) {
+      for (IndexT w = wstart; w < wend && !stop; w += dilation_width) {
         IndexT input_data_idx =
             channel_last ? (h * input_width + w) * channels + c_offset
                          : h * input_width + w;
@@ -556,9 +555,11 @@ __global__ void KernelMaxPool2DGradCompatible(
   CUDA_KERNEL_LOOP(index, input_height * input_width) {
     IndexT h = index / input_width;
     IndexT w = index - h * input_width;
-    IndexT phstart = p_start(h, padding_height, dilation_height, ksize_height, stride_height);
+    IndexT phstart = p_start(
+        h, padding_height, dilation_height, ksize_height, stride_height);
     IndexT phend = p_end(h, padding_height, output_height, stride_height);
-    IndexT pwstart = p_start(w, padding_width, dilation_width, ksize_width, stride_width);
+    IndexT pwstart =
+        p_start(w, padding_width, dilation_width, ksize_width, stride_width);
     IndexT pwend = p_end(w, padding_width, output_width, stride_width);
     T input_data_value = input_data[h * input_width + w];
     for (IndexT n = blockIdx.y; n < batch_size; n += gridDim.y) {
@@ -569,9 +570,11 @@ __global__ void KernelMaxPool2DGradCompatible(
           for (int pw = pwstart; pw < pwend; ++pw) {
             IndexT hstart = ph * stride_height - padding_height;
             IndexT wstart = pw * stride_width - padding_width;
-            //TODO：是否需要对范围做二次验证
+            // TODO：是否需要对范围做二次验证
             T output_data_value = output_data[ph * output_width + pw + offset];
-            if (((h - hstart) % dilation_height == 0)&&((w - wstart) % dilation_width == 0)&&(output_data_value == input_data_value)) {
+            if (((h - hstart) % dilation_height == 0) &&
+                ((w - wstart) % dilation_width == 0) &&
+                (output_data_value == input_data_value)) {
               gradient += static_cast<MPType>(
                   output_grad[ph * output_width + pw + offset]);
             }
@@ -610,6 +613,8 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
   const int stride_width = strides[1];
   const int padding_height = paddings[0];
   const int padding_width = paddings[1];
+  const int dilation_height = 1;
+  const int dilation_width = 1;
   int64_t nthreads = static_cast<int64_t>(batch_size) * output_channels *
                      output_height * output_width;
   auto pool_divmods =
@@ -671,6 +676,8 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
                                        stride_width,
                                        padding_height,
                                        padding_width,
+                                       dilation_height,
+                                       dilation_width,
                                        pool_divmods,
                                        pool_compute,
                                        exclusive,
@@ -2085,19 +2092,19 @@ __global__ void KernelMaxPool2dWithIdx(const IndexT nthreads,
     } else {
       hstart = h_offset * stride_height - padding_height;
       wstart = w_offset * stride_width - padding_width;
-      if(dilation_height>static_cast<IndexT>(1)){
-        hend = hstart + (ksize_height-1)*dilation_height+1;
-        while(hstart<static_cast<IndexT>(0))hstart+=dilation_height;
-        while(hend>input_height)hend-=dilation_height;
-      }else{
+      if (dilation_height > static_cast<IndexT>(1)) {
+        hend = hstart + (ksize_height - 1) * dilation_height + 1;
+        while (hstart < static_cast<IndexT>(0)) hstart += dilation_height;
+        while (hend > input_height) hend -= dilation_height;
+      } else {
         hend = min(hstart + ksize_height, input_height);
         hstart = max(hstart, static_cast<IndexT>(0));
       }
-      if(dilation_width>static_cast<IndexT>(1)){
-        wend=wstart+(ksize_width-1)*dilation_width+1;
-        while(wstart<static_cast<IndexT>(0))wstart+=dilation_width;
-        while(wend>input_width)wend-=dilation_width;
-      }else{
+      if (dilation_width > static_cast<IndexT>(1)) {
+        wend = wstart + (ksize_width - 1) * dilation_width + 1;
+        while (wstart < static_cast<IndexT>(0)) wstart += dilation_width;
+        while (wend > input_width) wend -= dilation_width;
+      } else {
         wend = min(wstart + ksize_width, input_width);
         wstart = max(wstart, static_cast<IndexT>(0));
       }
@@ -2105,8 +2112,8 @@ __global__ void KernelMaxPool2dWithIdx(const IndexT nthreads,
 
     T1 ele = static_cast<T1>(-FLT_MAX);
     IndexT max_index = -1;
-    for (IndexT h = hstart; h < hend; h+=dilation_height) {
-      for (IndexT w = wstart; w < wend; w+=dilation_width) {
+    for (IndexT h = hstart; h < hend; h += dilation_height) {
+      for (IndexT w = wstart; w < wend; w += dilation_width) {
         IndexT input_index = h * input_width + w;
         if (ele < input_data[input_index]) {
           max_index = input_index;
@@ -2231,11 +2238,15 @@ __global__ void KernelMaxPool2DWithIdxGrad(
       phstart =
           (h_offset + padding_height < ksize_height * dilation_height)
               ? 0
-              : (h_offset + padding_height - ksize_height * dilation_height) / stride_height + 1;
+              : (h_offset + padding_height - ksize_height * dilation_height) /
+                        stride_height +
+                    1;
       pwstart =
-          (w_offset + padding_width < ksize_width* dilation_width)
+          (w_offset + padding_width < ksize_width * dilation_width)
               ? 0
-              : (w_offset + padding_width - ksize_width * dilation_width)/ stride_width + 1;
+              : (w_offset + padding_width - ksize_width * dilation_width) /
+                        stride_width +
+                    1;
       phend =
           min((h_offset + padding_height) / stride_height + 1, output_height);
       pwend = min((w_offset + padding_width) / stride_width + 1, output_width);
@@ -2247,8 +2258,10 @@ __global__ void KernelMaxPool2DWithIdxGrad(
       for (IndexT pw = pwstart; pw < pwend; ++pw) {
         IndexT hstart = ph * stride_height - padding_height;
         IndexT wstart = pw * stride_width - padding_width;
-        //TODO：是否需要对范围做二次验证
-        if (((h_offset - hstart) % dilation_height == 0)&&((w_offset - wstart) % dilation_width == 0)&&(mask_data[ph * output_width + pw] == input_current_featuremap_idx))
+        // TODO：是否需要对范围做二次验证
+        if (((h_offset - hstart) % dilation_height == 0) &&
+            ((w_offset - wstart) % dilation_width == 0) &&
+            (mask_data[ph * output_width + pw] == input_current_featuremap_idx))
           input_grad_data += output_grad[ph * output_width + pw];
       }
     }

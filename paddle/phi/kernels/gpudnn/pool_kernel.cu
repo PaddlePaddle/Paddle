@@ -49,11 +49,13 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
                               "rather than CPUPlace."));
 
   if (x.numel() > std::numeric_limits<int>::max()) {
+    const std::vector<int64_t> dilations = {1, 1};
     PoolRawKernel<T, GPUContext>(dev_ctx,
                                  x,
                                  kernel_size,
                                  strides,
                                  paddings,
+                                 dilations,
                                  exclusive,
                                  data_format,
                                  pooling_type,
