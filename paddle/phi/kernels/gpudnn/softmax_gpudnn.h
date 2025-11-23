@@ -1347,11 +1347,11 @@ struct LogSoftMaxBackwardEpilogue {
   const AccT sum;
 };
 
-void SpatialSoftMax_getGridSize(dim3* block,
-                                uint32_t max_active_blocks,
-                                uint64_t outer_size,
-                                uint64_t inner_size,
-                                dim3* grid) {
+inline void SpatialSoftMax_getGridSize(dim3* block,
+                                       uint32_t max_active_blocks,
+                                       uint64_t outer_size,
+                                       uint64_t inner_size,
+                                       dim3* grid) {
   // 1. Calculate the number of blocks required along the Y-axis to cover
   // 'inner_size'.
   uint32_t inner_blocks = (inner_size + block->y - 1) / block->y;
@@ -1367,9 +1367,9 @@ void SpatialSoftMax_getGridSize(dim3* block,
   grid->y = inner_blocks;
 }
 
-void SpatialSoftMax_getBlockSize(uint64_t dim_size,
-                                 uint64_t inner_size,
-                                 dim3* block) {
+inline void SpatialSoftMax_getBlockSize(uint64_t dim_size,
+                                        uint64_t inner_size,
+                                        dim3* block) {
   uint32_t inner_threads = inner_size;
   inner_threads = std::min(inner_threads, static_cast<uint32_t>(1024));
   uint32_t dim_threads = 1;
