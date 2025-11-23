@@ -1,5 +1,5 @@
 PyGithub
-coverage==7.6.0
+coverage==7.12.0
 mock
 gymnasium>=1.0.0a1
 hypothesis<6.145.0
