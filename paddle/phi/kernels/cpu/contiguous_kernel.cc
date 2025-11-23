@@ -46,10 +46,8 @@ inline void FallbackContiguous(const DDim& input_dims,
                                const int64_t numel,
                                const T* input_data,
                                T* output_data) {
-  // Serial fallback path
   int rank = input_dims.size();
   auto dims = input_dims;
-
   for (int64_t i = 0; i < numel; i++) {
     int64_t input_offset = 0;
     int64_t index_tmp = i;
@@ -58,7 +56,6 @@ inline void FallbackContiguous(const DDim& input_dims,
       index_tmp = index_tmp / dims[dim];
       input_offset += mod * input_stride[dim];
     }
-
     output_data[i] = input_data[input_offset];
   }
 }
@@ -88,13 +85,13 @@ void ContiguousKernel(const Context& dev_ctx,
     return;
   }
 
+  if (IsComplexType(input.dtype())) {
+    FallbackContiguous<T>(
+        input.dims(), input.strides(), numel, input_data, output_data);
+    return;
+  }
+
   if (FastTransposeCopyValid(*out, input)) {
-    if (IsComplexType(input.dtype())) {
-      FallbackContiguous<T>(
-          input.dims(), input.strides(), numel, input_data, output_data);
-      return;
-    }
-    // Fast path for 2D transpose
     constexpr int64_t TRANS_NUMEL = 60;
     void* trans_buffer =
         malloc(phi::SizeOf(input.dtype()) * TRANS_NUMEL * TRANS_NUMEL);
@@ -141,7 +138,6 @@ void ContiguousKernel(const Context& dev_ctx,
     free(trans_buffer);
   } else {
 #if defined(PADDLE_WITH_OPENMP)
-    // OpenMP parallel path
     phi::DenseTensorIteratorConfig config;
     config.add_output(*out);
     config.add_const_input(input);
@@ -217,7 +213,6 @@ void ContiguousKernel(const Context& dev_ctx,
       }
     }
 #else
-    // Serial fallback path
     FallbackContiguous<T>(
         input.dims(), input.strides(), numel, input_data, output_data);
 #endif
