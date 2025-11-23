@@ -126,7 +126,7 @@ list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op)
-list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op_static)
+# list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op_static)
 list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
@@ -297,8 +297,6 @@ if(WITH_COVERAGE
    OR WITH_NV_JETSON)
   list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
 endif()
-
-list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
 
 if((WITH_ROCM OR WITH_GPU) OR NOT WITH_MKLML)
   # matmul with multiple heads need MKL support
