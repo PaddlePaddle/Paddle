@@ -1284,6 +1284,7 @@ bool UseCudnnSoftmax(const GPUContext& dev_ctx,
 }
 
 /////////////////////////////////////////////////////////////////////////////
+#if defined(PADDLE_WITH_CUDA)
 static cudaDeviceProp GetDevicePropImpl() {
   int device = -1;
   PD_CHECK(cudaGetDevice(&device) == cudaSuccess);
@@ -2702,6 +2703,7 @@ void SoftmaxBackwardCUDAKernelCompatible(const GPUContext& dev_ctx,
             dx_data, out_data, dout_data, N, dim, D);
   }
 }
+#endif
 /////////////////////////////////////////////////////////////////////////////
 
 template <typename T, typename IndexType, bool LogMode = false>
@@ -2791,6 +2793,7 @@ void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
                                     const DenseTensor& x,
                                     const int input_axis,
                                     DenseTensor* out) {
+#if defined(PADDLE_WITH_CUDA)
   if (FLAGS_use_accuracy_compatible_kernel) {
     if (LogMode) {
       if (out->numel() >= std::numeric_limits<int32_t>::max()) {
@@ -2830,6 +2833,15 @@ void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
           dev_ctx, x, input_axis, out);
     }
   }
+#elif
+  if (x.numel() >= std::numeric_limits<int32_t>::max()) {
+    SoftmaxForwardCUDAKernelDriverImpl<T, int64_t, LogMode>(
+        dev_ctx, x, input_axis, out);
+  } else {
+    SoftmaxForwardCUDAKernelDriverImpl<T, int32_t, LogMode>(
+        dev_ctx, x, input_axis, out);
+  }
+#endif
 }
 
 template <typename T, typename IndexType, bool LogMode = false>
@@ -2918,6 +2930,7 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
                                      const DenseTensor& dout,
                                      const int input_axis,
                                      DenseTensor* dx) {
+#if defined(PADDLE_WITH_CUDA)
   if (FLAGS_use_accuracy_compatible_kernel) {
     if (LogMode) {
       if (out.numel() >= std::numeric_limits<int32_t>::max()) {
@@ -2961,6 +2974,15 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
           dev_ctx, out, dout, input_axis, dx);
     }
   }
+#elif
+  if (out.numel() >= std::numeric_limits<int32_t>::max()) {
+    SoftmaxBackwardCUDAKernelDriverImpl<T, int64_t, LogMode>(
+        dev_ctx, out, dout, input_axis, dx);
+  } else {
+    SoftmaxBackwardCUDAKernelDriverImpl<T, int32_t, LogMode>(
+        dev_ctx, out, dout, input_axis, dx);
+  }
+#endif
 }
 
 }  // namespace phi
