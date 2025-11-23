@@ -143,7 +143,7 @@ TEST_CONFIGS = {
         },
         {
             "test_type": "optimizer",
-            "layer_type": "GroupShardedOptimizerStage3",
+            "layer_type": "GroupShardedStage3",
             "world_size": 2,
             "tp": 1,
             "sharding_degree": 2,

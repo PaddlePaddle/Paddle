@@ -764,53 +764,6 @@ class AdamW(Optimizer):
             "velocity_0",
         ]
 
-        is_Sharding_stage3 = False
-        param_to_slice = {}
-        for param in self._parameter_list:
-            if hasattr(param, "fw_storage"):
-                param_to_slice[param.name] = True
-                is_Sharding_stage3 = True
-            else:
-                param_to_slice[param.name] = False
-        if is_Sharding_stage3:
-            hcg = paddle.distributed.fleet.get_hybrid_communicate_group()
-            sharding_rank = hcg.get_sharding_parallel_rank()
-
-        def _create_sharded_weight(
-            unified_name, tensor, sharded_param, static_name
-        ):
-            # this is special for stage3 sharding,only slice_param has attribute fw_storage
-            if param_to_slice[static_name.replace("slice@", "")]:
-                padding_begin = sharded_param.local_tensor.numel().item()
-                slice_begin = min(
-                    padding_begin, sharding_rank * tensor.shape[0]
-                )
-                slice_end = min(
-                    padding_begin, (sharding_rank + 1) * tensor.shape[0]
-                )
-                if slice_begin == padding_begin or slice_end == padding_begin:
-                    local_tensor = paddle.slice(
-                        tensor,
-                        axes=[0],
-                        starts=[0],
-                        ends=[slice_end - slice_begin],
-                    )
-                else:
-                    local_tensor = tensor
-                return ShardedWeight(
-                    key=unified_name,
-                    local_tensor=local_tensor,
-                    local_shape=sharded_param.local_shape,
-                    global_shape=sharded_param.global_shape,
-                    global_offset=sharded_param.global_offset,
-                    is_flattened=True,
-                    flattened_range=slice(slice_begin, slice_end),
-                )
-            else:
-                return create_sharded_weight_with_new_local(
-                    unified_name, tensor, sharded_param
-                )
-
         def _generate_base_static_name(vname):
             if _FP32_MASTER in vname:
                 return tuple(vname.split("_" + _FP32_MASTER + "_", 1))
@@ -854,8 +807,8 @@ class AdamW(Optimizer):
                     )
                 else:
                     optimizer_sharded_state_dict[unified_name] = (
-                        _create_sharded_weight(
-                            unified_name, tensor, sharded_weight, static_name
+                        create_sharded_weight_with_new_local(
+                            unified_name, tensor, sharded_weight
                         )
                     )
             else:  # Non-momentum parameters
@@ -870,9 +823,7 @@ class AdamW(Optimizer):
         # Process master weights if using mixed precision
         if master_weights is not None:
             for key, tensor in master_weights.items():
-                struct_name = static_to_struct_mapping[
-                    key.replace("slice@", "")
-                ]
+                struct_name = static_to_struct_mapping[key]
                 sharded_weight = model_sharded_state_dict[struct_name]
                 unified_name = f"{struct_name}.w_0"
                 if tensor.is_dist():
@@ -885,8 +836,8 @@ class AdamW(Optimizer):
                     )
                 else:
                     optimizer_sharded_state_dict[unified_name] = (
-                        _create_sharded_weight(
-                            unified_name, tensor, sharded_weight, static_name
+                        create_sharded_weight_with_new_local(
+                            unified_name, tensor, sharded_weight
                         )
                     )
 
