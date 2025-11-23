@@ -785,6 +785,7 @@ class MaxPool2D(Layer):
     kernel_size: Size2
     stride: Size2 | None
     padding: _PaddingSizeMode | Size2 | Size4
+    dilation: Size2
     return_mask: bool
     ceil_mode: bool
     data_format: DataLayout2D
@@ -795,6 +796,7 @@ class MaxPool2D(Layer):
         kernel_size: Size2,
         stride: Size2 | None = None,
         padding: _PaddingSizeMode | Size2 | Size4 = 0,
+        dilation: Size2 = 1,
         return_mask: bool = False,
         ceil_mode: bool = False,
         data_format: DataLayout2D = 'NCHW',
@@ -804,6 +806,7 @@ class MaxPool2D(Layer):
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
+        self.dilation = dilation
         self.return_mask = return_mask
         self.ceil_mode = ceil_mode
         self.data_format = data_format
@@ -815,6 +818,7 @@ class MaxPool2D(Layer):
             kernel_size=self.ksize,
             stride=self.stride,
             padding=self.padding,
+            dilation=self.dilation,
             return_mask=self.return_mask,
             ceil_mode=self.ceil_mode,
             data_format=self.data_format,
@@ -822,7 +826,7 @@ class MaxPool2D(Layer):
         )
 
     def extra_repr(self) -> str:
-        return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
+        return 'kernel_size={ksize}, stride={stride}, padding={padding}, dilation={dilation}'.format(
             **self.__dict__
         )
 
