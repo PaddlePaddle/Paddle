@@ -85,6 +85,11 @@ void ContiguousKernel(const Context& dev_ctx,
     return;
   }
 
+#if defined(_WIN32)
+  FallbackContiguous<T>(
+      input.dims(), input.strides(), numel, input_data, output_data);
+  return;
+#else
   if (IsComplexType(input.dtype())) {
     FallbackContiguous<T>(
         input.dims(), input.strides(), numel, input_data, output_data);
@@ -217,6 +222,7 @@ void ContiguousKernel(const Context& dev_ctx,
         input.dims(), input.strides(), numel, input_data, output_data);
 #endif
   }
+#endif
 }
 }  // namespace phi
 
