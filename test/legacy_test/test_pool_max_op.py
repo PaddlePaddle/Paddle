@@ -784,7 +784,7 @@ create_test_bf16_class(TestCase10)
 class TestCase2D_Dilations(TestMaxPoolWithIndex_Op):
     def init_test_case(self):
         self.op_type = "max_pool2d_with_index"
-        self.python_api = max_pool2d_with_index_wapper
+        self.python_api = max_pool2d_with_index_wrapper
         self.pool_forward_naive = max_pool2D_forward_naive
         self.shape = [2, 3, 7, 7]
         self.ksize = [3, 3]
@@ -796,7 +796,7 @@ class TestCase2D_Dilations(TestMaxPoolWithIndex_Op):
 class TestCase3D_Dilations(TestMaxPoolWithIndex_Op):
     def init_test_case(self):
         self.op_type = "max_pool3d_with_index"
-        self.python_api = max_pool3d_with_index_wapper
+        self.python_api = max_pool3d_with_index_wrapper
         self.pool_forward_naive = max_pool3D_forward_naive
         self.shape = [2, 3, 7, 7, 7]
         self.ksize = [3, 3, 3]
