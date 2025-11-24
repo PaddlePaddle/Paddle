@@ -401,7 +401,7 @@ static void Interpolate1DCPUBwd(
     const DenseTensor& output_grad,
     const std::string& data_layout_str,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -502,7 +502,7 @@ static void Interpolate2DCPUBwd(
     const std::string& data_layout_str,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -659,7 +659,7 @@ static void Interpolate3DCPUBwd(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -822,7 +822,7 @@ void InterpolateGradKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -893,7 +893,7 @@ void BilinearInterpGradKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -933,7 +933,7 @@ void LegacyBilinearInterpGradKernel(
     int align_mode,
     DenseTensor* x_grad) {
   const auto& dim_x = x.dims();
-  std::vector<float> scale_vec;
+  std::vector<double> scale_vec;
   if (scale > 0) {
     for (int i = 0; i < dim_x.size() - 2; i++) {
       scale_vec.push_back(scale);
@@ -967,7 +967,7 @@ void NearestInterpGradKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1007,7 +1007,7 @@ void LegacyNearestInterpGradKernel(
     int align_mode,
     DenseTensor* x_grad) {
   const auto& dim_x = x.dims();
-  std::vector<float> scale_vec;
+  std::vector<double> scale_vec;
   if (scale > 0) {
     for (int i = 0; i < dim_x.size() - 2; i++) {
       scale_vec.push_back(scale);
@@ -1042,7 +1042,7 @@ void TrilinearInterpGradKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1076,7 +1076,7 @@ void LinearInterpGradKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1110,7 +1110,7 @@ void BicubicInterpGradKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,

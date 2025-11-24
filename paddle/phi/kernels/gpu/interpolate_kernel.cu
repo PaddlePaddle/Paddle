@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/interpolate_kernel.h"
+#include <iostream>
 
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -775,7 +776,7 @@ static void Interpolate1DCUDAFwd(
     const paddle::optional<DenseTensor>& scale_tensor,
     const std::string& data_layout_str,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -889,7 +890,7 @@ static void Interpolate2DCUDAFwd(
     const std::string& data_layout_str,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1128,7 +1129,7 @@ static void InterpolateAA2DCUDAFwd(
     const std::string& data_layout_str,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1369,7 +1370,7 @@ static void Interpolate3DCUDAFwd(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1573,7 +1574,7 @@ void InterpolateKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1639,7 +1640,7 @@ void BilinearInterpKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1677,7 +1678,7 @@ void LegacyBilinearInterpKernel(
     int align_mode,
     DenseTensor* output) {
   const auto& dim_x = x.dims();
-  std::vector<float> scale_vec;
+  std::vector<double> scale_vec;
   if (scale > 0) {
     for (int i = 0; i < dim_x.size() - 2; i++) {
       scale_vec.push_back(scale);
@@ -1710,7 +1711,7 @@ void NearestInterpKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1748,7 +1749,7 @@ void LegacyNearestInterpKernel(
     int align_mode,
     DenseTensor* output) {
   const auto& dim_x = x.dims();
-  std::vector<float> scale_vec;
+  std::vector<double> scale_vec;
   if (scale > 0) {
     for (int i = 0; i < dim_x.size() - 2; i++) {
       scale_vec.push_back(scale);
@@ -1781,7 +1782,7 @@ void TrilinearInterpKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1813,7 +1814,7 @@ void LinearInterpKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1845,7 +1846,7 @@ void BicubicInterpKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1877,7 +1878,7 @@ void InterpAntialiasKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
