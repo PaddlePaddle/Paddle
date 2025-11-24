@@ -579,7 +579,7 @@ void dispatch(void* packed_recv_x,
   int sm_count;
   cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, dev_id);
   const int num_warp_groups = cell_div(num_experts, sm_count);
-  const auto num_sms = max(sm_count, cell_div(num_experts, num_warp_groups));
+
   EP_HOST_ASSERT(num_topk <= kNumMaxTopK);
 
   // Workspace checks
@@ -600,7 +600,7 @@ void dispatch(void* packed_recv_x,
                 ? dispatch<true, kNumWarpGroups, kNumWarpsPerGroup, kHidden>
                 : dispatch<false, kNumWarpGroups, kNumWarpsPerGroup, kHidden>;
         SETUP_LAUNCH_CONFIG(
-            num_sms, kNumWarpGroups * kNumWarpsPerGroup * 32, stream);
+            sm_count, kNumWarpGroups * kNumWarpsPerGroup * 32, stream);
         LAUNCH_KERNEL(&cfg,
                       dispatch_func,
                       packed_recv_x,
@@ -905,7 +905,6 @@ void combine(void* combined_x,
   int sm_count;
   cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, dev_id);
   const int num_warp_groups = cell_div(num_experts, sm_count);
-  const auto num_sms = max(sm_count, cell_div(num_experts, num_warp_groups));
 
   // Check workspace
   auto atomic_clean_flag = reinterpret_cast<int*>(workspace);
@@ -920,7 +919,7 @@ void combine(void* combined_x,
         auto combine_func =
             combine<kNumWarpGroups, kNumWarpsPerGroup, kHidden, kNumMaxTopk>;
         SETUP_LAUNCH_CONFIG(
-            num_sms, kNumWarpGroups * kNumWarpsPerGroup * 32, stream);
+            sm_count, kNumWarpGroups * kNumWarpsPerGroup * 32, stream);
         LAUNCH_KERNEL(&cfg,
                       combine_func,
                       combined_x,
