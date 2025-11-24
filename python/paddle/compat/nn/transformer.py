@@ -117,6 +117,11 @@ class MultiheadAttention(nn.Layer):
         self.head_dim = embed_dim // num_heads
         assert self.head_dim * num_heads == self.embed_dim
 
+        self.in_proj_bias = None
+        self.q_proj_bias = None
+        self.k_proj_bias = None
+        self.v_proj_bias = None
+
         if self._qkv_same_embed_dim:
             self.in_proj_weight = self.create_parameter(
                 shape=[3 * embed_dim, embed_dim],
@@ -128,6 +133,14 @@ class MultiheadAttention(nn.Layer):
             self.q_proj_weight = None
             self.k_proj_weight = None
             self.v_proj_weight = None
+            if bias:
+                self.in_proj_bias = self.create_parameter(
+                    shape=[3 * embed_dim],
+                    dtype=self._dtype,
+                    is_bias=True,
+                    device=device,
+                )
+
         else:
             self.q_proj_weight = self.create_parameter(
                 shape=[embed_dim, embed_dim],
@@ -152,19 +165,7 @@ class MultiheadAttention(nn.Layer):
             )
             self.in_proj_weight = None
 
-        if bias:
-            if self._qkv_same_embed_dim:
-                self.in_proj_bias = self.create_parameter(
-                    shape=[3 * embed_dim],
-                    dtype=self._dtype,
-                    is_bias=True,
-                    device=device,
-                )
-                self.q_proj_bias = None
-                self.k_proj_bias = None
-                self.v_proj_bias = None
-            else:
-                self.in_proj_bias = None
+            if bias:
                 self.q_proj_bias = self.create_parameter(
                     shape=[embed_dim],
                     dtype=self._dtype,
@@ -183,11 +184,6 @@ class MultiheadAttention(nn.Layer):
                     is_bias=True,
                     device=device,
                 )
-        else:
-            self.in_proj_bias = None
-            self.q_proj_bias = None
-            self.k_proj_bias = None
-            self.v_proj_bias = None
 
         self.out_proj = paddle.compat.nn.Linear(
             embed_dim, embed_dim, bias=bias, dtype=self._dtype
