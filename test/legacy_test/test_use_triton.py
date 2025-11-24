@@ -15,7 +15,6 @@
 import unittest
 
 import numpy as np
-import pytest
 import triton
 import triton.language as tl
 
@@ -34,6 +33,11 @@ def do_bench(kernel_call, quantiles, use_cuda_graph=True):
 
 
 class TestPaddleUseTriton(unittest.TestCase):
+    def setUp(self):
+        if not paddle.is_compiled_with_cuda():
+            print("Skip Triton tests because no CUDA available.")
+            return
+
     def test_kwargs_with_cuda_graph(self, device: str = 'cuda:0'):
         self._test_kwargs(True, device)
 
@@ -42,7 +46,8 @@ class TestPaddleUseTriton(unittest.TestCase):
 
     def _test_kwargs(self, use_cuda_graph: bool, device: str):
         if use_cuda_graph and not paddle.cuda.is_available():
-            pytest.xfail("CUDA is not available")
+            print("Skip cuda graph tests because no CUDA available.")
+            return
 
         M, N = 1024, 16
         src = paddle.randn(M * N, device=device)
