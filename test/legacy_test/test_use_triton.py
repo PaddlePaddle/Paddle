@@ -16,19 +16,15 @@ import unittest
 
 import numpy as np
 import pytest
-
-# paddle.compat.enable_torch_proxy()
-import torch
 import triton
 import triton.language as tl
 
+import paddle
 from paddle.compat import paddle_use_triton
 
 
 def do_bench(kernel_call, quantiles, use_cuda_graph=True):
-    print("use bench")
     if use_cuda_graph:
-        print("use cuda graph")
         return triton.testing.do_bench_cudagraph(
             kernel_call, quantiles=quantiles
         )
@@ -45,12 +41,12 @@ class TestPaddleUseTriton(unittest.TestCase):
         self._test_kwargs(False, device)
 
     def _test_kwargs(self, use_cuda_graph: bool, device: str):
-        if use_cuda_graph and not torch.cuda.is_available():
+        if use_cuda_graph and not paddle.cuda.is_available():
             pytest.xfail("CUDA is not available")
 
         M, N = 1024, 16
-        src = torch.randn(M * N, device=device)
-        dst = torch.empty(M * N, device=device)
+        src = paddle.randn(M * N, device=device)
+        dst = paddle.empty(M * N, device=device)
 
         configs = [
             triton.Config(kwargs={'BLOCK_SIZE_M': 32}),
@@ -91,8 +87,8 @@ class TestPaddleUseTriton(unittest.TestCase):
 
     def test_no_do_bench(self, device: str = 'cuda:0'):
         M, N = 1024, 16
-        src = torch.randn(M * N, device=device)
-        dst = torch.empty(M * N, device=device)
+        src = paddle.randn(M * N, device=device)
+        dst = paddle.empty(M * N, device=device)
 
         configs = [
             triton.Config(kwargs={'BLOCK_SIZE_M': 32}),
@@ -131,7 +127,7 @@ class TestPaddleUseTriton(unittest.TestCase):
 
     def _test_restore(self, pass_kwargs_to_kernel, device):
         N = 1024
-        src = torch.zeros(N, device=device)
+        src = paddle.zeros(N, device=device)
 
         configs = [
             triton.Config(kwargs={'BLOCK_SIZE': 32}),
@@ -153,12 +149,12 @@ class TestPaddleUseTriton(unittest.TestCase):
             _kernel[grid](src=src, N=N)
         else:
             _kernel[grid](src, N)
-        triton.testing.assert_close(src, torch.ones_like(src))
+        triton.testing.assert_close(src, paddle.ones_like(src))
 
     def test_hooks(self, device='cuda:0'):
         # Autotuner's pre- and post- hooks should be called the same number of times
         N = 4096
-        src = torch.zeros(N, device=device)
+        src = paddle.zeros(N, device=device)
 
         configs = [
             triton.Config(kwargs={'BLOCK_SIZE': 4096}),
@@ -217,8 +213,8 @@ class TestPaddleUseTriton(unittest.TestCase):
 
     def _test_prune_configs(self, with_perf_model: bool, device: str):
         N = 1024
-        src = torch.randn(N, device=device)
-        dst = torch.empty(N, device=device)
+        src = paddle.randn(N, device=device)
+        dst = paddle.empty(N, device=device)
         records = {}
 
         def early_config_prune(configs, named_args, **kwargs):
