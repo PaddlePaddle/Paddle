@@ -807,6 +807,16 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                               device_id);
       })
       .def("_new_shared_vmm", [](py::tuple meta) {
+// Fallback definitions for older glibc versions where SYS_pidfd_open and
+// SYS_pidfd_getfd are not defined, even though the kernel may support them.
+// These x86_64 syscall numbers (434, 438) are only used when the macros are
+// missing; newer systems will use the definitions provided by glibc.
+#ifndef SYS_pidfd_open
+#define SYS_pidfd_open 434
+#endif
+#ifndef SYS_pidfd_getfd
+#define SYS_pidfd_getfd 438
+#endif
         if (meta.size() != 5)
           throw std::runtime_error(
             "Invalid Tensor meta info for shared cuda tensor!");
