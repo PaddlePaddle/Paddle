@@ -64,13 +64,13 @@ SpmdInfo LabelSmoothInferSpmd(const DistMetaTensor& label,
       new_prior_dist_attr.set_dims_mapping(new_prior_dims_mapping);
       DistMetaTensor modified_prior_dist(prior_dist.dims(),
                                          new_prior_dist_attr);
-      VLOG(4) << "LabelSmoothInferSpmd call ElementwiseBinaryInferSpmd:";
+      VLOG(4) << "LabelSmoothInferSpmd call ElementwiseBinaryInferSpmd.";
       return ElementwiseBinaryInferSpmd(label, modified_prior_dist);
     }
-    VLOG(4) << "LabelSmoothInferSpmd call ElementwiseBinaryInferSpmd:";
+    VLOG(4) << "LabelSmoothInferSpmd call ElementwiseBinaryInferSpmd.";
     return ElementwiseBinaryInferSpmd(label, prior_dist);
   }
-  VLOG(4) << "LabelSmoothInferSpmd call ElementwiseUnaryInferSpmd:";
+  VLOG(4) << "LabelSmoothInferSpmd call ElementwiseUnaryInferSpmd.";
   SpmdInfo unary_spmd_info = ElementwiseUnaryInferSpmd(label);
   unary_spmd_info.first.push_back(TensorDistAttr());
   return unary_spmd_info;
@@ -78,7 +78,7 @@ SpmdInfo LabelSmoothInferSpmd(const DistMetaTensor& label,
 
 SpmdInfo LabelSmoothGradInferSpmd(const DistMetaTensor& out_grad,
                                   float epsilon) {
-  VLOG(4) << "LabelSmoothGradInferSpmd call ElementwiseUnaryGradInferSpmd:";
+  VLOG(4) << "LabelSmoothGradInferSpmd call ElementwiseUnaryGradInferSpmd.";
   return ElementwiseUnaryGradInferSpmd(out_grad);
 }
 }  // namespace distributed

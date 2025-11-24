@@ -84,9 +84,41 @@ class TestPool1D_API(unittest.TestCase):
                 input_np, ksize=[16], strides=[0], paddings=[0], adaptive=True
             )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+            # test @param_two_alias(["x", "input"], ["return_mask", "return_indices"])
+            # test output_size with tuple
+            result = F.adaptive_max_pool1d(
+                input=input, output_size=(16,), return_indices=False
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+            # test output_size with list
+            result = F.adaptive_max_pool1d(
+                input=input,
+                output_size=[
+                    16,
+                ],
+                return_indices=False,
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             ada_max_pool1d_dg = paddle.nn.layer.AdaptiveMaxPool1D(
                 output_size=16
+            )
+            result = ada_max_pool1d_dg(input)
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+            # test output_size with tuple
+            ada_max_pool1d_dg = paddle.nn.layer.AdaptiveMaxPool1D(
+                output_size=(16,)
+            )
+            result = ada_max_pool1d_dg(input)
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+            # test output_size with list
+            ada_max_pool1d_dg = paddle.nn.layer.AdaptiveMaxPool1D(
+                output_size=[
+                    16,
+                ]
             )
             result = ada_max_pool1d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)

@@ -194,6 +194,11 @@ from .layer.transformer import (
     TransformerEncoderLayer,
 )
 from .layer.vision import ChannelShuffle, PixelShuffle, PixelUnshuffle
+from .modules.container import (
+    ModuleDict,
+    ModuleList,
+)
+from .modules.module import Module
 from .parameter import Parameter
 from .utils.spectral_norm_hook import spectral_norm  # noqa: F401
 
@@ -408,4 +413,7 @@ __all__ = [
     'AdaptiveMaxPool3d',
     'LPPool2d',
     'LPPool1d',
+    'Module',
+    'ModuleDict',
+    'ModuleList',
 ]

@@ -176,7 +176,7 @@ Graph *Pass::Apply(Graph *graph) const {
   }
   applied_ = true;
 #ifdef PADDLE_WITH_DNNL
-  // Clear mkl-dnn cache,
+  // Clear one-dnn cache,
   // Passes can change params, tensors, so caching need to be discarded
   platform::ClearONEDNNCache(phi::CPUPlace());
 #endif

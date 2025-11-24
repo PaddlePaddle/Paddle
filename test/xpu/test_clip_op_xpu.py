@@ -266,7 +266,7 @@ class TestInplaceClipAPI(TestClipAPI):
 
 support_types = get_xpu_op_support_types('clip')
 for stype in support_types:
-    # TODO(lilujia): disable int32 and int64 test temporarily, as xdnn not support corresponding resuce_mean
+    # TODO(lilujia): disable int32 and int64 test temporarily, as xdnn not support corresponding reduce_mean
     if stype in ["int32", "int64"]:
         continue
     create_test_class(globals(), XPUTestClipOp, stype)

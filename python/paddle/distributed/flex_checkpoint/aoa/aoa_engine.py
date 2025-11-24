@@ -576,7 +576,11 @@ class AOAEngine:
             # from source_state_shard_info and aha_statements. In this case, all destination_states
             # remain unsharded (not partitioned).
             for name, ref_t in self.input_vars.items():
-                if name not in self.output_vars and ref_t.out_degree == 0:
+                if (
+                    name not in self.output_vars
+                    and ref_t.out_degree == 0
+                    and name not in self.need_remove_input_vars
+                ):
                     self.output_vars[name] = self.identity(ref_t)
             for name, ref_t in self.intermediate_vars.items():
                 if name not in self.output_vars and ref_t.out_degree == 0:

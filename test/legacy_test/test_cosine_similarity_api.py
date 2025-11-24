@@ -89,6 +89,10 @@ class TestCosineSimilarityAPI(unittest.TestCase):
 
         np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
 
+        # test dim alias for axis
+        y = F.cosine_similarity(tensor_x1, tensor_x2, dim=axis, eps=eps)
+        np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
+
     def test_dygraph_2(self):
         paddle.disable_static()
 

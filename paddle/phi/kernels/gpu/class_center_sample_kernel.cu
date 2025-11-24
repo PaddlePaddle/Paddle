@@ -32,6 +32,7 @@ namespace cub = hipcub;
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/class_center_sample_kernel.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"

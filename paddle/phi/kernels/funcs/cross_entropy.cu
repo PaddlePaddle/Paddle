@@ -54,8 +54,8 @@ __global__ void SoftCrossEntropyKernel(T* Y,
   int64_t tid = threadIdx.x;
   T val(0);
 
-  int64_t idx = blockIdx.x * class_num + tid;
-  int64_t end = blockIdx.x * class_num + class_num;
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * class_num + tid;
+  int64_t end = static_cast<int64_t>(blockIdx.x) * class_num + class_num;
   for (; idx < end; idx += blockDim.x) {
     val += phi::funcs::TolerableValue<T>()(phi::funcs::real_log(X[idx])) *
            label[idx];

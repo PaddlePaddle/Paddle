@@ -106,6 +106,7 @@ type_promote_white_list = {
     "elementwise_pow": ["x", "y"],
     "where": ["x", "y"],
     "equal": ["x", "y"],
+    "equal_all": ["x", "y"],
     "not_equal": ["x", "y"],
     "less_than": ["x", "y"],
     "less_equal": ["x", "y"],
@@ -310,7 +311,6 @@ strided_compute_op_list = {
     "index_put",
     # others
     "matmul",
-    "expand",
 }
 
 strided_op_need_flags_check_list = {
@@ -601,10 +601,10 @@ AFTER_LOG_PRINT_TEMPLATE = """
 """
 
 FORWARD_AFTER_LOG_PRINT_TEMPLATE = """
-  if (VLOG_IS_ON(6)) {{
+  if (VLOG_IS_ON(3)) {{
     const char* INPUT_PRINT_TEMPLATE = \"\\nForward Debug Info {{\\nAPI_Name: %s \\nInput: [%s]  \\nOutput: [%s] }} \";
 {}
-    VLOG(6) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
+    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
   }}
 """
 

@@ -224,7 +224,7 @@ def param_two_alias(
     return decorator
 
 
-def lp_pool_decorator(
+def lp_pool_layer_decorator(
     func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     @functools.wraps(func)
@@ -232,6 +232,27 @@ def lp_pool_decorator(
         if len(args) == 5 and isinstance(args[4], bool):
             warnings.warn(
                 "The 4th positional argument in '__init__' method is a boolean value, which is being interpreted as 'ceil_mode'.",
+                category=Warning,
+                stacklevel=2,
+            )
+            kwargs["ceil_mode"] = args[4]
+            args = args[:4]
+        return func(*args, **kwargs)
+
+    wrapper.__signature__ = inspect.signature(func)
+    return wrapper
+
+
+def lp_pool_function_decorator(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    @functools.wraps(func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        if "input" in kwargs:
+            kwargs["x"] = kwargs.pop("input")
+        if len(args) == 5 and isinstance(args[4], bool):
+            warnings.warn(
+                "The 5th positional argument is a boolean value, which is being interpreted as 'ceil_mode'.",
                 category=Warning,
                 stacklevel=2,
             )
@@ -892,3 +913,33 @@ def legacy_reduction_special_decorator(
 
     wrapper.__signature__ = inspect.signature(init_func)
     return wrapper
+
+
+def index_add_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> _RetT:
+            if "input" in kwargs:
+                kwargs["x"] = kwargs.pop("input")
+            if "dim" in kwargs:
+                kwargs["axis"] = kwargs.pop("dim")
+            if "source" in kwargs:
+                kwargs["value"] = kwargs.pop("source")
+
+            if len(args) >= 2 and isinstance(args[1], int):
+                kwargs["x"] = args[0]
+                kwargs["axis"] = args[1]
+                if len(args) > 2:
+                    kwargs["index"] = args[2]
+                if len(args) > 3:
+                    kwargs["value"] = args[3]
+                args = args[4:]
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator

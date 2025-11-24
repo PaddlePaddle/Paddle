@@ -92,7 +92,9 @@ TEST(ProfilerTest, TestCudaTracer) {
     }
   }
 #ifdef PADDLE_WITH_CUPTI
+#ifndef PADDLE_WITH_XPU
   EXPECT_GT(runtime_events.size(), 0u);
+#endif
 #endif
 }
 

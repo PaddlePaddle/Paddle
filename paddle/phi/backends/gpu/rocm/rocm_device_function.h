@@ -14,8 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-// NOTE(): support float16 to half in header file.
-#define PADDLE_CUDA_FP16
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
