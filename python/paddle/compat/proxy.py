@@ -322,3 +322,60 @@ def extend_torch_proxy_blocked_modules(modules: Iterable[str]):
             >>> import my_custom_module  # This import will not use torch proxy
     """
     TORCH_PROXY_BLOCKED_MODULES.update(modules)
+
+
+def paddle_use_triton(fn):
+    """
+    Decorator to use triton kernel with paddle.
+    Args: fn(callable): The function to decorate.
+    Note: This decorator should be installed at the top of the decorator in the Triton kernel, supporting all Triton decorators, but still not supporting some Triton functions, such as triton.testing.do_bench_cudagraph, which will be supported in future planning.
+
+    Example:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import triton
+            >>> import triton.language as tl
+
+            >>> @paddle_use_triton
+            ... @triton.jit
+            ... def add_kernel(X, Y, Z, N, BLOCK: tl.constexpr):
+            ...     pid = tl.program_id(0)
+            ...     offs = pid * BLOCK + tl.arange(0, BLOCK)
+            ...     mask = offs < N
+            ...     x = tl.load(X + offs, mask=mask)
+            ...     y = tl.load(Y + offs, mask=mask)
+            ...     tl.store(Z + offs, x + y, mask=mask)
+
+            >>> N = 5
+            >>> BLOCK = 1024
+            >>> X = paddle.ones([N], dtype='float32')
+            >>> Y = paddle.ones([N], dtype='float32')
+            >>> Z = paddle.zeros([N], dtype='float32')
+
+            >>> grid = (triton.cdiv(N, BLOCK),)
+            >>> add_kernel[grid](X, Y, Z, N, BLOCK=1024)
+
+            >>> print(Z)
+            Tensor(shape=[5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                [2., 2., 2., 2., 2.])
+
+    """
+
+    class KernelWrapper:
+        def __init__(self, kernel):
+            self.kernel = kernel
+
+        def __getitem__(self, meta):
+            launcher = self.kernel[meta]
+
+            def launcher_wrapper(*args, **kwargs):
+                with use_torch_proxy_guard():
+                    return launcher(*args, **kwargs)
+
+            return launcher_wrapper
+
+        def __getattr__(self, name):
+            return getattr(self.kernel, name)
+
+    return KernelWrapper(fn)

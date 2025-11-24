@@ -203,6 +203,7 @@ __all__ = [
     'reset_peak_memory_stats',
     'ipc_collect',
     'get_stream_from_external',
+    'StreamContext',
 ]
 
 _cudnn_version = None
