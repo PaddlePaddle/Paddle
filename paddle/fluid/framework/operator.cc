@@ -3587,9 +3587,13 @@ void OperatorWithKernel::BuildPhiKernelContext(
                     attr_names[i]));
             }
             break;
-          case phi::AttributeType::FLOAT32S:  // NOLINT
+          case phi::AttributeType::FLOAT32S:
             phi_kernel_context->EmplaceBackAttr(
                 PADDLE_GET_CONST(std::vector<float>, attr_iter->second));
+            break;
+          case phi::AttributeType::FLOAT64S:
+            phi_kernel_context->EmplaceBackAttr(
+                PADDLE_GET_CONST(std::vector<double>, attr_iter->second));
             break;
           case phi::AttributeType::STRINGS:
             phi_kernel_context->EmplaceBackAttr(
