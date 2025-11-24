@@ -1056,6 +1056,14 @@ std::string EagerUtils::TensorStr(const std::vector<paddle::Tensor>& tensors) {
   return "[ " + tensors_str + " ]";
 }
 
+std::string EagerUtils::TensorStr(const std::vector<paddle::Tensor*>& tensors) {
+  std::string tensors_str = "";
+  for (const auto& tensor : tensors) {
+    tensors_str += TensorStr(*tensor) + ", ";
+  }
+  return tensors_str;
+}
+
 std::string EagerUtils::TensorStr(const paddle::optional<paddle::Tensor>& t) {
   if (!t.is_initialized()) {
     return "{ UnDefinedTensor }";
@@ -1509,7 +1517,19 @@ TEST_API void SetTensorName(const std::string& unique_api_name,
     auto& t = (*tensors)[i];
     if (t.defined() && t.has_allocation()) {
       t.set_name(egr::GenerateUniqueTensorName(
-          unique_api_name, var_name + std::to_string(i), &t));
+          unique_api_name, var_name + "_" + std::to_string(i), &t));
+    }
+  }
+}
+
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            std::vector<paddle::Tensor*>* tensors) {
+  for (size_t i = 0; i < tensors->size(); i++) {
+    auto& t = (*tensors)[i];
+    if (t->defined() && t->has_allocation()) {
+      t->set_name(egr::GenerateUniqueTensorName(
+          unique_api_name, var_name + "_" + std::to_string(i), t));
     }
   }
 }

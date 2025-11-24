@@ -286,6 +286,7 @@ class TEST_API EagerUtils {
 
   static std::string TensorStr(
       const paddle::optional<std::vector<paddle::Tensor>>& tensors);
+  static std::string TensorStr(const std::vector<paddle::Tensor*>& tensors);
 };
 
 using paddle::experimental::detail::ArgsIterator;
@@ -458,6 +459,9 @@ TEST_API void SetTensorName(const std::string& unique_api_name,
 TEST_API void SetTensorName(const std::string& unique_api_name,
                             const std::string& var_name,
                             std::vector<paddle::Tensor>* tensors);
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            std::vector<paddle::Tensor*>* tensors);
 TEST_API void SetTensorName(
     const std::string& unique_api_name,
     const std::string& var_name,
