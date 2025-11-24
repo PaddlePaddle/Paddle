@@ -122,7 +122,11 @@ if(WITH_MKLML)
 endif()
 
 if(WITH_XPU)
-  collect_srcs(backends_srcs SRCS xpti.cc)
+  if(CUPTI_FOUND)
+    collect_srcs(backends_srcs SRCS xpti.cc nvtx.cc cupti.cc)
+  else()
+    collect_srcs(backends_srcs SRCS xpti.cc nvtx.cc)
+  endif()
 endif()
 
 if(WITH_FLAGCX)

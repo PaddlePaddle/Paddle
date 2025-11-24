@@ -28,6 +28,17 @@ from paddle.base.framework import (
 from paddle.io import Dataset
 
 
+class Model(paddle.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv1 = paddle.nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = paddle.sum(x)
+        return x
+
+
 class TestOptimizerDtype(unittest.TestCase):
     '''
     The dtype of optimizer should be inferred by parameters, and the learning rate
@@ -162,6 +173,36 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
                     use_save_load=False
                 )
             np.testing.assert_array_equal(out_use_state_dict, out_no_state_dict)
+
+
+class TestNewOptimizerAPI(unittest.TestCase):
+    def test_zero_grad(self):
+        paddle.disable_static()
+        model = Model()
+        data_input = paddle.randn(64, 1, 28, 28)
+        data_output = model(data_input)
+        data_output.backward()
+        sgd = paddle.optimizer.SGD(
+            parameters=model.parameters(), weight_decay=0.0
+        )
+        sgd.zero_grad()
+
+        result = model.conv1.weight.grad
+        self.assertIsNone(result)
+
+    def test_load_state_dict(self):
+        paddle.disable_static()
+        theta = paddle.tensor([1.0, 1.0], requires_grad=True)
+        optim = paddle.optimizer.Optimizer(
+            parameters=[theta], **{"learning_rate": 1.0}
+        )
+        result_before = optim.state_dict()
+        optim.load_state_dict(result_before)
+        result_after = optim.state_dict()
+        self.assertEqual(
+            set(result_before.keys()),
+            set(result_after.keys()),
+        )
 
 
 if __name__ == '__main__':

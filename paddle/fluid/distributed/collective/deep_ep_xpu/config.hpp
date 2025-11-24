@@ -289,7 +289,7 @@ struct LowLatencyTwoStageLayout {
     const int num_rdma_ranks = num_ranks / NUM_MAX_NVL_PEERS;
 
     // Message sizes
-    EP_HOST_ASSERT(num_scales * sizeof(float) <= hidden);
+    EP_HOST_ASSERT(num_scales * sizeof(float) <= static_cast<size_t>(hidden));
     size_t num_bytes_per_dispatch_msg =
         sizeof(int4) +
         (num_rdma_ranks * (num_topk * 3 + 1) * sizeof(int) + sizeof(int4) - 1) /

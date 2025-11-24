@@ -32,7 +32,9 @@ class CONVERT_VALUE_FLAG:
     CV_ASCII = 3
 
 
+# https://github.com/python/cpython/blob/3.14/Include/internal/pycore_opcode_utils.h#L63-L68
 class MAKE_FUNCTION_FLAG:
+    MF_HAS_ANNOTATE = 0x10
     MF_HAS_CLOSURE = 0x08
     MF_HAS_ANNOTATION = 0x04
     MF_HAS_KWDEFAULTS = 0x02
@@ -57,3 +59,14 @@ class IntrinsicsUnaryFunctions(Enum):
     INTRINSIC_TYPEVARTUPLE = 9  # no support, PEP 695
     INTRINSIC_SUBSCRIPT_GENERIC = 10  # no support, PEP 695
     INTRINSIC_TYPEALIAS = 11  # no support, PEP 695
+
+
+# https://github.com/python/cpython/blob/3.14/Include/internal/pycore_opcode_utils.h#L70-L76
+# All are attributes of 'builtins'
+LOAD_COMMON_CONSTANT_FLAG = (
+    "AssertionError",
+    "NotImplementedError",
+    "tuple",
+    "all",
+    "any",
+)
