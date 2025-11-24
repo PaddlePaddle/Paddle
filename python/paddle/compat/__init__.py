@@ -27,9 +27,9 @@ __all__ = [
     'split',
     'min',
     'max',
+    'unique',
     'median',
     'nanmedian',
-    'unique',
 ]
 
 
