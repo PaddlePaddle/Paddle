@@ -38,14 +38,6 @@ def do_bench(kernel_call, quantiles, use_cuda_graph=True):
 
 
 class TestPaddleUseTriton(unittest.TestCase):
-    def setUp(self):
-        if (
-            not paddle.is_compiled_with_cuda()
-            or paddle.device.is_compiled_with_rocm()
-        ):
-            print("Skip Triton tests because no CUDA available.")
-            return
-
     def test_kwargs_with_cuda_graph(self, device: str = 'cuda:0'):
         self._test_kwargs(True, device)
 
@@ -53,6 +45,12 @@ class TestPaddleUseTriton(unittest.TestCase):
         self._test_kwargs(False, device)
 
     def _test_kwargs(self, use_cuda_graph: bool, device: str):
+        if (
+            not paddle.is_compiled_with_cuda()
+            or paddle.device.is_compiled_with_rocm()
+        ):
+            print("Skip Triton tests because no CUDA available.")
+            return
         if use_cuda_graph and not paddle.cuda.is_available():
             print("Skip cuda graph tests because no CUDA available.")
             return
@@ -99,6 +97,12 @@ class TestPaddleUseTriton(unittest.TestCase):
         assert len(_kernel.cache) == 2
 
     def test_no_do_bench(self, device: str = 'cuda:0'):
+        if (
+            not paddle.is_compiled_with_cuda()
+            or paddle.device.is_compiled_with_rocm()
+        ):
+            print("Skip Triton tests because no CUDA available.")
+            return
         M, N = 1024, 16
         src = paddle.randn(M * N, device=device)
         dst = paddle.empty(M * N, device=device)
@@ -139,6 +143,12 @@ class TestPaddleUseTriton(unittest.TestCase):
         self._test_restore(False, device)
 
     def _test_restore(self, pass_kwargs_to_kernel, device):
+        if (
+            not paddle.is_compiled_with_cuda()
+            or paddle.device.is_compiled_with_rocm()
+        ):
+            print("Skip Triton tests because no CUDA available.")
+            return
         N = 1024
         src = paddle.zeros(N, device=device)
 
@@ -165,6 +175,12 @@ class TestPaddleUseTriton(unittest.TestCase):
         triton.testing.assert_close(src, paddle.ones_like(src))
 
     def test_hooks(self, device='cuda:0'):
+        if (
+            not paddle.is_compiled_with_cuda()
+            or paddle.device.is_compiled_with_rocm()
+        ):
+            print("Skip Triton tests because no CUDA available.")
+            return
         # Autotuner's pre- and post- hooks should be called the same number of times
         N = 4096
         src = paddle.zeros(N, device=device)
@@ -225,6 +241,12 @@ class TestPaddleUseTriton(unittest.TestCase):
         self._test_prune_configs(False, device)
 
     def _test_prune_configs(self, with_perf_model: bool, device: str):
+        if (
+            not paddle.is_compiled_with_cuda()
+            or paddle.device.is_compiled_with_rocm()
+        ):
+            print("Skip Triton tests because no CUDA available.")
+            return
         N = 1024
         src = paddle.randn(N, device=device)
         dst = paddle.empty(N, device=device)
