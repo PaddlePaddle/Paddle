@@ -15,8 +15,6 @@ extend-exclude = [
 extend-ignore-words-re = ["^[a-zA-Z]{1,3}$"]
 # refer to https://github.com/crate-ci/typos/blob/master/docs/reference.md#example-configurations
 extend-ignore-re = [
-    # Ignore "sittin" in python/paddle/nn/functional/loss.py
-    '"kitten" -> "sitten" -> "sittin" -> "sitting"',
     # Ignore lines by `# typos: disable-line`
     "(?Rm)^.*(#|//)\\s*typos:\\s*disable-line$",
     # Ignore block by `# typos: off` and `# typos: on`
