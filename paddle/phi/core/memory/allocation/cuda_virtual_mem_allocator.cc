@@ -41,6 +41,7 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(const phi::GPUPlace& place)
   prop.type = CU_MEM_ALLOCATION_TYPE_PINNED;
   prop.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
   prop.location.id = place.device;  // NOLINT
+  prop.requestedHandleTypes = CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR;
   prop_ = prop;
 
   // Prepare the access descriptor array indicating where and how the backings
@@ -210,9 +211,14 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
   virtual_2_physical_map_.emplace(ptr, std::make_pair(handle, size));
 
   virtual_mem_alloced_offset_ += size;
+  VLOG(10) << "AllocateImpl chunk handle: " << static_cast<int64_t>(handle)
+           << ", size=" << size
+           << ", device=" << static_cast<int>(place_.device);
 
-  return new Allocation(
-      reinterpret_cast<void*>(ptr), size, phi::Place(place_));  // NOLINT
+  return new Allocation(reinterpret_cast<void*>(ptr),
+                        size,
+                        phi::Place(place_),
+                        handle);  // NOLINT
 }
 
 }  // namespace paddle::memory::allocation

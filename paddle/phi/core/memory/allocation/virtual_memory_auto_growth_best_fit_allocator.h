@@ -16,8 +16,10 @@
 
 #include <list>
 #include <map>
+#include <memory>
 #include <optional>
 #include <set>
+#include <vector>
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
@@ -26,8 +28,8 @@
 
 namespace paddle {
 namespace memory {
-namespace allocation {
 
+namespace allocation {
 /**
  * Like AutoGrowthBestFitAllocator, VirtualMemoryAutoGrowthBestFitAllocator will
  * gradually apply to GPU for video memory as the model uses more video memory.
@@ -37,6 +39,7 @@ namespace allocation {
  * the two video memories later. This combination can greatly reduce
  * fragmentation.
  */
+
 class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
  public:
   VirtualMemoryAutoGrowthBestFitAllocator(

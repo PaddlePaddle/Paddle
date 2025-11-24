@@ -33,6 +33,10 @@ class AlignedAllocation : public Allocation {
             underlying_allocation->place()),
         underlying_allocation_(std::move(underlying_allocation)) {}
 
+  const CUmemGenericAllocationHandle handle() const override {
+    return underlying_allocation_ ? underlying_allocation_->handle() : 0ULL;
+  }
+
  private:
   DecoratedAllocationPtr underlying_allocation_;
 };

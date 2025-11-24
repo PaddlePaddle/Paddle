@@ -17,10 +17,13 @@
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
 
+#include "paddle/phi/backends/dynload/cuda_driver.h"
 #include "paddle/phi/core/platform/cuda_device_guard.h"
 #endif
 
+#include <memory>
 #include <mutex>  // NOLINT
+#include <vector>
 
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
@@ -32,6 +35,69 @@ namespace memory {
 namespace allocation {
 
 // Allocate memory using NVIDIA's virtual memory management technology
+
+struct VmmShareInfo {
+  int os_fd{-1};     // Linux: file descriptor
+  size_t size{0};    // total mapped length (page aligned)
+  size_t offset{0};  // byte offset inside the handle (page aligned)
+  int device{-1};    // exporter device
+};
+
+struct ImportedVmmMulti {
+  CUdeviceptr base{0};
+  size_t reserved_size{0};
+  std::vector<CUmemGenericAllocationHandle> hs;
+  ~ImportedVmmMulti() {
+    if (base && reserved_size) {
+      phi::dynload::cuMemUnmap(base, reserved_size);
+    }
+    for (auto h : hs) {
+      if (h) {
+        phi::dynload::cuMemRelease(h);
+      }
+    }
+    if (base && reserved_size) {
+      phi::dynload::cuMemAddressFree(base, reserved_size);
+    }
+  }
+};
+
+class VmmImportedAllocation : public phi::Allocation {
+ public:
+  VmmImportedAllocation(void* ptr,
+                        size_t bytes,
+                        phi::Place place,
+                        std::shared_ptr<ImportedVmmMulti> keep)
+      : Allocation(ptr, bytes, place), keep_(std::move(keep)) {}
+
+ private:
+  std::shared_ptr<ImportedVmmMulti> keep_;
+};
+
+#pragma pack(push, 1)
+struct VmmIpcHeader {
+  uint8_t version;
+  uint8_t type;
+  uint16_t flags;
+  uint32_t pid;
+  uint32_t num_entries;
+  uint64_t alloc_size;
+  uint64_t offset;
+  uint64_t reserved_size;
+};
+
+struct VmmIpcEntry {
+  uint8_t handle_type;
+  uint8_t reserved[7];
+  uint64_t rel_offset;
+  uint64_t chunk_size;
+  uint64_t chunk_rel_off;
+};
+#pragma pack(pop)
+
+static_assert(sizeof(VmmIpcHeader) == 36, "VmmIpcHeader size changed");
+static_assert(sizeof(VmmIpcEntry) == 32, "VmmIpcEntry size changed");
+
 class CUDAVirtualMemAllocator : public Allocator {
  public:
   explicit CUDAVirtualMemAllocator(const phi::GPUPlace& place);
