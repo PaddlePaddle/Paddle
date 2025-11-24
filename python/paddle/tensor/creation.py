@@ -320,12 +320,17 @@ def create_tensor(
     )
 
 
+@param_two_alias(["stop", "end"], ["num", "steps"])
 def linspace(
     start: float | paddle.Tensor,
     stop: float | paddle.Tensor,
     num: int | paddle.Tensor,
     dtype: DTypeLike | None = None,
     name: str | None = None,
+    *,
+    out: paddle.Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
 ) -> paddle.Tensor:
     r"""
     Return fixed number of evenly spaced values within a given interval. Note: no gradient calculation is performed.
@@ -340,11 +345,26 @@ def linspace(
         dtype(str|paddle.dtype|np.dtype|None, optional): The data type of output tensor, it could be
             int32, int64, float32 and float64. Default: if None, the data type is float32.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out(Tensor|None, optional): Optional output tensor. If provided, the result will be stored in this tensor. \
+            The tensor must have the correct shape and dtype. Default: None.
+        device(str|paddle.CUDAPlace|paddle.CPUPlace|None, optional): The device where the output tensor will be placed. \
+            It can be a string (e.g., 'cpu', 'gpu:0'), a paddle.CUDAPlace, or a paddle.CPUPlace object. \
+            If None, the current device context will be used. Default: None.
+        requires_grad(bool, optional): Whether the output tensor should have gradient computation enabled. \
+            If True, the output tensor's ``stop_gradient`` attribute will be set to False. Default: False.
 
     Returns:
         Tensor: the output data type will be float32, float64. The 1-D tensor with fixed number of evenly spaced values, \
         the data shape of this tensor is :math:`[num]` . If the :attr:`num` is set 1, the output tensor just has \
         the value with input :attr:`start`.
+
+    .. note::
+        **Alias Support:**
+
+        - The parameter name ``end`` can be used as an alias for ``stop``. \
+          For example, ``linspace(start=0, end=10, ...)`` is equivalent to ``linspace(start=0, stop=10, ...)``.
+        - The parameter name ``steps`` can be used as an alias for ``num``. \
+          For example, ``linspace(start=0, stop=10, steps=5)`` is equivalent to ``linspace(start=0, stop=10, num=5)``.
 
     Examples:
         .. code-block:: python
@@ -357,9 +377,24 @@ def linspace(
             >>> print(data.numpy())
             [0.]
 
+            >>> # Using device parameter
+            >>> data = paddle.linspace(0, 10, 5, device='cpu')
+            >>> print(data.numpy())
+            [0. 2.5 5. 7.5 10.]
+
+            >>> # Using requires_grad parameter
+            >>> data = paddle.linspace(0, 10, 5, requires_grad=True)
+            >>> print(data.stop_gradient)
+            False
+
     """
     if dtype is None:
         dtype = paddle.get_default_dtype()
+    device = (
+        _get_paddle_place(device)
+        if device is not None
+        else _current_expected_place()
+    )
     tensor_num = num
     tensor_start = start
     tensor_stop = stop
@@ -377,13 +412,17 @@ def linspace(
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
     if in_dynamic_mode():
-        return _C_ops.linspace(
+        out_tensor = _C_ops.linspace(
             tensor_start,
             tensor_stop,
             tensor_num,
             dtype,
-            _current_expected_place(),
+            device,
+            out=out,
         )
+        if requires_grad:
+            out_tensor.stop_gradient = False
+        return out_tensor
     elif in_pir_mode():
         helper = LayerHelper("linspace", **locals())
 
@@ -431,13 +470,17 @@ def linspace(
         if isinstance(dtype, paddle.base.core.VarDesc.VarType):
             dtype = paddle.pir.core.vartype_to_datatype[dtype]
 
-        return _C_ops.linspace(
+        out_tensor = _C_ops.linspace(
             tensor_start,
             tensor_stop,
             tensor_num,
             dtype,
-            _current_expected_place(),
+            device,
+            out=out,
         )
+        if requires_grad:
+            out_tensor.stop_gradient = False
+        return out_tensor
     else:
         helper = LayerHelper("linspace", **locals())
 

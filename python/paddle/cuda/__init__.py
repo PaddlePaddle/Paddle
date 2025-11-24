@@ -827,9 +827,9 @@ def get_stream_from_external(
             >>> import paddle
 
             >>> # Assume an external library provides a stream pointer:original_raw_ptr
-
-            >>> # Wrap it into a Paddle Stream
-            >>> # external_stream = paddle.cuda.get_stream_from_external(original_raw_ptr)
+            >>> # doctest: +SKIP('original_raw_ptr not exist')
+            >>> original_raw_ptr = 77777
+            >>> external_stream = paddle.cuda.get_stream_from_external(original_raw_ptr)
     """
 
     device = _device_to_paddle(device)

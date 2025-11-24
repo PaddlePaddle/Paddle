@@ -211,6 +211,55 @@ void IsClosePreProcess(Value* x, Value* y, Value* rtol, Value* atol) {
   CheckDataType(
       "is_close", "atol", pir::GetValueDtype(*atol), {phi::DataType::FLOAT64});
 }
+
+void GridSamplePreProcess(Tensor* x,
+                          Tensor* grid,
+                          std::string* mode,
+                          std::string* padding_mode,
+                          bool* align_corners) {
+  // mode should be in ['bilinear', 'nearest']
+  // padding_mode should be in ['zeros', 'reflection', 'border']
+  if (mode->compare("bilinear") != 0 && mode->compare("nearest") != 0) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The mode of grid sample function should be in ['bilinear', "
+        "'nearest'], but got: %s",
+        *mode));
+  }
+  if (padding_mode->compare("zeros") != 0 &&
+      padding_mode->compare("reflection") != 0 &&
+      padding_mode->compare("border") != 0) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The padding mode of grid sample function should be in "
+        "['zeros', 'reflection', 'border'], but got: %s",
+        *padding_mode));
+  }
+  return;
+}
+
+void GridSamplePreProcess(pir::Value* x,
+                          pir::Value* grid,
+                          std::string* mode,
+                          std::string* padding_mode,
+                          bool* align_corners) {
+  // mode should be in ['bilinear', 'nearest']
+  // padding_mode should be in ['zeros', 'reflection', 'border']
+  if (mode->compare("bilinear") != 0 && mode->compare("nearest") != 0) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The mode of grid sample function should be in ['bilinear', "
+        "'nearest'], but got: %s",
+        *mode));
+  }
+  if (padding_mode->compare("zeros") != 0 &&
+      padding_mode->compare("reflection") != 0 &&
+      padding_mode->compare("border") != 0) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The padding mode of grid sample function should be in "
+        "['zeros', 'reflection', 'border'], but got: %s",
+        *padding_mode));
+  }
+  return;
+}
+
 }  // namespace pybind
 
 }  // namespace paddle

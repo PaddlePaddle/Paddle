@@ -3442,10 +3442,7 @@ class Layer:
         """
         for p in self.parameters():
             if p.grad is not None:
-                if set_to_none:
-                    p.clear_gradient(set_to_zero=False)
-                else:
-                    p.clear_gradient(set_to_zero=True)
+                p.clear_gradient(not set_to_none)
 
     def _get_name(self):
         return self.__class__.__name__

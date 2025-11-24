@@ -73,6 +73,7 @@ COMMON_DECLARE_string(tensor_operants_mode);
 COMMON_DECLARE_bool(check_cuda_error);
 COMMON_DECLARE_bool(enable_unique_name);
 COMMON_DECLARE_string(tensor_md5_checksum_output_path);
+COMMON_DECLARE_bool(enable_compact_mem);
 
 using egr::ConvertAllInputsToDistTensor;
 using egr::InputsContainDistTensor;
@@ -544,6 +545,8 @@ PyObject* eager_api_run_custom_op(PyObject* self,
                                   PyObject* kwargs) {
   EAGER_TRY
   FLAGS_tensor_operants_mode = "phi";
+  bool old_flag = FLAGS_enable_compact_mem;
+  FLAGS_enable_compact_mem = false;
   if (paddle::OperantsManager::Instance().phi_operants.get() == nullptr) {
     paddle::OperantsManager::Instance().phi_operants =
         std::make_unique<paddle::operants::PhiTensorOperants>();
@@ -929,6 +932,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
     VLOG(3) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
   }
+  FLAGS_enable_compact_mem = old_flag;
   return ToPyObject(*ctx.AllMutableOutput());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -1446,12 +1450,12 @@ PyObject* eager__add_doc_str(PyObject* self, PyObject* args) {
   PyObject* func_obj = nullptr;
   PyObject* doc_obj = nullptr;
   PyObject* sig_obj = nullptr;
-  PyObject* annotatio_obj = nullptr;
+  PyObject* annotation_obj = nullptr;
   if (!PyArg_ParseTuple(
-          args, "OOOO", &func_obj, &doc_obj, &sig_obj, &annotatio_obj)) {
+          args, "OOOO", &func_obj, &doc_obj, &sig_obj, &annotation_obj)) {
     return nullptr;
   }
-  if (PyDict_Check(annotatio_obj) == false) {
+  if (PyDict_Check(annotation_obj) == false) {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The 4th arg which be used to init __annotations__  must be dict in "
         "python!"));
@@ -1477,12 +1481,13 @@ PyObject* eager__add_doc_str(PyObject* self, PyObject* args) {
     //   return nullptr;
     // }
     // Py_INCREF(sig_obj);
-    if (PyDict_SetItemString(
-            func_obj->ob_type->tp_dict, "__annotations__", annotatio_obj) < 0) {
+    if (PyDict_SetItemString(func_obj->ob_type->tp_dict,
+                             "__annotations__",
+                             annotation_obj) < 0) {
       VLOG(6) << "eager__add_doc_str add __annotations__ failed";
       return nullptr;
     }
-    Py_INCREF(annotatio_obj);
+    Py_INCREF(annotation_obj);
   }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
