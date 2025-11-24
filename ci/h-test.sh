@@ -163,6 +163,15 @@ concurrency_list="^test_fp8_deep_gemm$|\
 ^test_ps_server_pass$|\
 ^test_white_lists$"
 
+cd ${work_dir}/build
+tmp_dir=`mktemp -d`
+tmpfile_rand=`date +%s%N`
+tmpfile1_rand=`date +%s%N`
+tmpfile=$tmp_dir/$tmpfile_rand"_"$i
+tmpfile1=$tmp_dir/$tmpfile1_rand"_"$i
+set +e
+
+get_quickly_disable_ut||disable_ut_quickly='disable_ut'
 disable_ut_quickly="$disable_ut_quickly|\
 ^test_parallel_dygraph_sparse_embedding$|\
 ^test_parallel_dygraph_unused_variables$|\
@@ -177,16 +186,6 @@ disable_ut_quickly="$disable_ut_quickly|\
 ^test_parallel_dygraph_transformer$|\
 ^test_new_api_per_op_and_group_intranode$|\
 ^test_communication_stream_reduce_api$"
-
-cd ${work_dir}/build
-tmp_dir=`mktemp -d`
-tmpfile_rand=`date +%s%N`
-tmpfile1_rand=`date +%s%N`
-tmpfile=$tmp_dir/$tmpfile_rand"_"$i
-tmpfile1=$tmp_dir/$tmpfile1_rand"_"$i
-set +e
-
-get_quickly_disable_ut||disable_ut_quickly='disable_ut'
 
 NUM_PROC=4
 EXIT_CODE=0
