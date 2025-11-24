@@ -1159,14 +1159,20 @@ def monkey_patch_tensor():
     def cuda(
         self: Tensor, device_id: int | None = None, blocking: bool = True
     ) -> Tensor:
-        if device_id is None:
+        res_place = framework._current_expected_place()
+        if isinstance(res_place, core.CPUPlace):
+            paddle.set_device(0)
             res_place = framework._current_expected_place()
-            if not isinstance(res_place, core.CUDAPlace):
-                res_place = core.CUDAPlace(0)
-        elif isinstance(device_id, int):
-            res_place = core.CUDAPlace(device_id)
-        else:
-            raise ValueError("device_id must be int|None")
+            paddle.set_device('cpu')
+            if isinstance(device_id, int):
+                if isinstance(res_place, core.XPUPlace):
+                    res_place = core.XPUPlace(device_id)
+                elif isinstance(res_place, core.CUDAPlace):
+                    res_place = core.CUDAPlace(device_id)
+                elif isinstance(res_place, core.CustomPlace):
+                    res_place = core.CustomPlace(
+                        res_place.get_device_type(), device_id
+                    )
 
         if self.place._equals(res_place):
             return self
