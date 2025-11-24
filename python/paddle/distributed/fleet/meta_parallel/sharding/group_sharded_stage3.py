@@ -187,7 +187,11 @@ class GroupShardedStage3(nn.Layer):
             "Multiple optimizers are not supported now."
         )
         self._optim = _OptimizerWrapper(
-            optimizer, self._offload, self._group, self._update_params_slice
+            optimizer,
+            self._offload,
+            self._group,
+            self._update_params_slice,
+            self._sharded_state_dict,
         )
         self._ori_parameter_list = self._optim._parameter_list
         self._ori_param_groups = self._optim._param_groups
@@ -1392,13 +1396,16 @@ def _TensorWrapper(param):
     return tmp_param
 
 
-def _OptimizerWrapper(optimizer, offload, group, update_params_slice):
+def _OptimizerWrapper(
+    optimizer, offload, group, update_params_slice, sharded_state_dict
+):
     if not hasattr(optimizer, "_optim"):
         optimizer._optim = optimizer
         optimizer.offload = offload
         optimizer._group = group
         optimizer.update_scaler = None
         optimizer.update_slice = update_params_slice
+        optimizer.sharded_state_dict = sharded_state_dict
     return optimizer
 
 
