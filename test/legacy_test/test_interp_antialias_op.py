@@ -25,72 +25,44 @@ from paddle.base import core
 from paddle.nn.functional import interpolate
 
 
-def _bilinear_kernel_1d(x):
-    """Bilinear filter kernel for anti-aliasing"""
+def _bilinear_filter(x):
     x = np.abs(x)
     if x < 1.0:
         return 1.0 - x
-    else:
-        return 0.0
+    return 0.0
 
 
-def _compute_weights_and_indices_aa_bilinear(
-    in_size, out_size, align_corners, scale
-):
-    """Compute anti-aliasing weights and indices for one dimension (bilinear)"""
-    if align_corners:
-        if out_size > 1:
-            scale = (in_size - 1.0) / (out_size - 1.0)
-        else:
-            scale = 0.0
-    else:
-        if scale > 0:
-            scale = 1.0 / scale
-        else:
-            scale = float(in_size) / float(out_size)
+def _bicubic_filter(x):
+    x = np.abs(x)
+    a = -0.5
+    if x < 1.0:
+        return ((a + 2.0) * x - (a + 3.0)) * x * x + 1.0
+    elif x < 2.0:
+        return (((x - 5.0) * x + 8.0) * x - 4.0) * a
+    return 0.0
 
-    # Filter support for bilinear is 1.0
-    filter_scale = max(1.0, scale)
-    support = 1.0 * filter_scale
 
-    weights_list = []
-    indices_list = []
+def _compute_weights_span(out_idx, in_size, scale, support):
+    center = scale * (out_idx + 0.5)
+    xmin = max(int(center - support + 0.5), 0)
+    xsize = min(int(center + support + 0.5), in_size) - xmin
+    return xmin, xsize, center
 
-    for out_idx in range(out_size):
-        # Compute center
-        if align_corners:
-            center = out_idx * scale
-        else:
-            center = (out_idx + 0.5) * scale - 0.5
 
-        # Compute support region
-        left = int(np.floor(center - support))
-        right = int(np.ceil(center + support))
+def _compute_weights(filter_fn, filter_size, scale, xmin, xsize, xmin_m_center):
+    invscale = 1.0 / scale if scale >= 1.0 else 1.0
+    weights = np.zeros(xsize, dtype=np.float64)
+    total_w = 0.0
 
-        # Clip to valid range
-        left = max(0, left)
-        right = min(in_size - 1, right)
+    for j in range(xsize):
+        w = filter_fn((j + xmin_m_center + 0.5) * invscale)
+        weights[j] = w
+        total_w += w
 
-        # Compute weights
-        weights = []
-        indices = []
-        total_weight = 0.0
+    if total_w != 0.0:
+        weights /= total_w
 
-        for i in range(left, right + 1):
-            w = _bilinear_kernel_1d((i - center) / filter_scale)
-            if abs(w) > 1e-10:
-                weights.append(w)
-                indices.append(i)
-                total_weight += w
-
-        # Normalize weights
-        if abs(total_weight) > 1e-10:
-            weights = [w / total_weight for w in weights]
-
-        weights_list.append(weights)
-        indices_list.append(indices)
-
-    return weights_list, indices_list
+    return weights
 
 
 def interp_antialias_test(
@@ -161,75 +133,24 @@ def value_bound(input, w, h, x, y):
     return input[:, :, access_y, access_x]
 
 
-def _bicubic_kernel_1d(x):
-    """Bicubic filter kernel for anti-aliasing"""
-    x = np.abs(x)
-    a = -0.5
-    if x < 1.0:
-        return ((a + 2.0) * x - (a + 3.0)) * x * x + 1.0
-    elif x < 2.0:
-        return (((x - 5.0) * x + 8.0) * x - 4.0) * a
-    else:
-        return 0.0
-
-
-def _compute_weights_and_indices_aa_bicubic(
-    in_size, out_size, align_corners, scale
-):
-    """Compute anti-aliasing weights and indices for one dimension (bicubic)"""
+def _area_pixel_compute_scale(input_size, output_size, align_corners, scale):
     if align_corners:
-        if out_size > 1:
-            scale = (in_size - 1.0) / (out_size - 1.0)
-        else:
-            scale = 0.0
+        if output_size > 1:
+            return float(input_size - 1) / (output_size - 1)
+        return 0.0
     else:
         if scale > 0:
-            scale = 1.0 / scale
-        else:
-            scale = float(in_size) / float(out_size)
+            return 1.0 / scale
+        if output_size > 0:
+            return float(input_size) / output_size
+    return 0.0
 
-    # Filter support for bicubic is 2.0
-    filter_scale = max(1.0, scale)
-    support = 2.0 * filter_scale
 
-    weights_list = []
-    indices_list = []
-
-    for out_idx in range(out_size):
-        # Compute center
-        if align_corners:
-            center = out_idx * scale
-        else:
-            center = (out_idx + 0.5) * scale - 0.5
-
-        # Compute support region
-        left = int(np.floor(center - support))
-        right = int(np.ceil(center + support))
-
-        # Clip to valid range
-        left = max(0, left)
-        right = min(in_size - 1, right)
-
-        # Compute weights
-        weights = []
-        indices = []
-        total_weight = 0.0
-
-        for i in range(left, right + 1):
-            w = _bicubic_kernel_1d((i - center) / filter_scale)
-            if abs(w) > 1e-10:
-                weights.append(w)
-                indices.append(i)
-                total_weight += w
-
-        # Normalize weights
-        if abs(total_weight) > 1e-10:
-            weights = [w / total_weight for w in weights]
-
-        weights_list.append(weights)
-        indices_list.append(indices)
-
-    return weights_list, indices_list
+def _interpolate_aa_single_dim(src, weights, size):
+    output = 0.0
+    for j in range(size):
+        output += src[j] * weights[j]
+    return output
 
 
 def interp_antialias_np(
@@ -244,12 +165,9 @@ def interp_antialias_np(
     data_format='NCHW',
     interp_method='bicubic',
 ):
-    """
-    bilinear/bicubic interpolation implement in shape [N, C, H, W]
-    with anti-aliasing support for downsampling
-    """
-    if data_format == "NHWC":
-        input = np.transpose(input, (0, 3, 1, 2))  # NHWC => NCHW
+    is_nhwc = data_format == "NHWC"
+    if is_nhwc:
+        input = np.transpose(input, (0, 3, 1, 2))
     if out_size is not None:
         out_h = out_size[0]
         out_w = out_size[1]
@@ -258,163 +176,63 @@ def interp_antialias_np(
         out_w = actual_shape[1]
     batch_size, channel, in_h, in_w = input.shape
 
-    # Use anti-aliasing implementation if requested and downsampling
-    if out_h < in_h or out_w < in_w:
-        out = np.zeros((batch_size, channel, out_h, out_w), dtype=input.dtype)
+    filter_fn = (
+        _bilinear_filter if interp_method == 'bilinear' else _bicubic_filter
+    )
+    filter_size = 2 if interp_method == 'bilinear' else 4
 
-        # Choose the appropriate weight computation function based on interpolation method
-        if interp_method == 'bilinear':
-            compute_weights_fn = _compute_weights_and_indices_aa_bilinear
-        else:  # bicubic
-            compute_weights_fn = _compute_weights_and_indices_aa_bicubic
+    ratio_h = _area_pixel_compute_scale(in_h, out_h, align_corners, scale_h)
+    ratio_w = _area_pixel_compute_scale(in_w, out_w, align_corners, scale_w)
 
-        # Compute weights for height
-        h_weights, h_indices = compute_weights_fn(
-            in_h, out_h, align_corners, max(0, scale_h)
-        )
+    scale_h_val = ratio_h
+    scale_w_val = ratio_w
+    half = 0.5
+    support_h = (
+        (filter_size * half) * scale_h_val
+        if scale_h_val >= 1.0
+        else filter_size * half
+    )
+    support_w = (
+        (filter_size * half) * scale_w_val
+        if scale_w_val >= 1.0
+        else filter_size * half
+    )
 
-        # Compute weights for width
-        w_weights, w_indices = compute_weights_fn(
-            in_w, out_w, align_corners, max(0, scale_w)
-        )
+    out = np.zeros((batch_size, channel, out_h, out_w), dtype=input.dtype)
 
-        # Apply separable convolution
-        for b in range(batch_size):
-            for c in range(channel):
-                # First interpolate along width
-                temp = np.zeros((in_h, out_w), dtype=input.dtype)
-                for j in range(out_w):
-                    for in_y in range(in_h):
-                        val = 0.0
-                        for w, idx in zip(w_weights[j], w_indices[j]):
-                            val += input[b, c, in_y, idx] * w
-                        temp[in_y, j] = val
+    for out_img_idy in range(out_h):
+        for out_img_idx in range(out_w):
+            ymin, ysize, ycenter = _compute_weights_span(
+                out_img_idy, in_h, scale_h_val, support_h
+            )
+            xmin, xsize, xcenter = _compute_weights_span(
+                out_img_idx, in_w, scale_w_val, support_w
+            )
 
-                # Then interpolate along height
-                for i in range(out_h):
-                    for j in range(out_w):
-                        val = 0.0
-                        for w, idx in zip(h_weights[i], h_indices[i]):
-                            val += temp[idx, j] * w
-                        out[b, c, i, j] = val
+            wy = _compute_weights(
+                filter_fn, filter_size, scale_h_val, ymin, ysize, ymin - ycenter
+            )
+            wx = _compute_weights(
+                filter_fn, filter_size, scale_w_val, xmin, xsize, xmin - xcenter
+            )
 
-        if data_format == "NHWC":
-            out = np.transpose(out, (0, 2, 3, 1))  # NCHW => NHWC
+            for nc_id in range(batch_size * channel):
+                buffer2 = np.zeros(ysize, dtype=input.dtype)
+                for y in range(ysize):
+                    buffer1 = input[
+                        nc_id // channel,
+                        nc_id % channel,
+                        ymin + y,
+                        xmin : xmin + xsize,
+                    ]
+                    buffer2[y] = _interpolate_aa_single_dim(buffer1, wx, xsize)
 
-        return out.astype(input.dtype)
+                out[
+                    nc_id // channel, nc_id % channel, out_img_idy, out_img_idx
+                ] = _interpolate_aa_single_dim(buffer2, wy, ysize)
 
-    # Standard interpolation (no anti-aliasing) for upsampling or same size
-    ratio_h = ratio_w = 0.0
-    if align_corners:
-        if out_h > 1:
-            ratio_h = (in_h - 1.0) / (out_h - 1.0)
-        if out_w > 1:
-            ratio_w = (in_w - 1.0) / (out_w - 1.0)
-    else:
-        if scale_h > 0:
-            ratio_h = 1.0 / scale_h
-        else:
-            ratio_h = 1.0 * in_h / out_h
-        if scale_w > 0:
-            ratio_w = 1.0 / scale_w
-        else:
-            ratio_w = 1.0 * in_w / out_w
-
-    out = np.zeros((batch_size, channel, out_h, out_w))
-
-    if interp_method == 'bilinear':
-        # Standard bilinear interpolation
-        for i in range(out_h):
-            if align_corners:
-                h = ratio_h * i
-            else:
-                h = ratio_h * (i + 0.5) - 0.5
-            h = max(0, h)
-            y_low = int(h)
-            y_high = y_low + 1
-
-            if y_low >= in_h - 1:
-                y_high = y_low = in_h - 1
-                y = float(y_low)
-            else:
-                y = float(y_low)
-
-            y_high = min(y_high, in_h - 1)
-            wy_h = h - y
-
-            for j in range(out_w):
-                if align_corners:
-                    w = ratio_w * j
-                else:
-                    w = ratio_w * (j + 0.5) - 0.5
-                w = max(0, w)
-                x_low = int(w)
-                x_high = x_low + 1
-
-                if x_low >= in_w - 1:
-                    x_high = x_low = in_w - 1
-                    x = float(x_low)
-                else:
-                    x = float(x_low)
-
-                x_high = min(x_high, in_w - 1)
-                wy_w = w - x
-
-                for b in range(batch_size):
-                    for c in range(channel):
-                        out[b, c, i, j] = (
-                            input[b, c, y_low, x_low]
-                            * (1.0 - wy_h)
-                            * (1.0 - wy_w)
-                            + input[b, c, y_low, x_high] * (1.0 - wy_h) * wy_w
-                            + input[b, c, y_high, x_low] * wy_h * (1.0 - wy_w)
-                            + input[b, c, y_high, x_high] * wy_h * wy_w
-                        )
-    else:  # bicubic
-        # Standard bicubic interpolation
-        for k in range(out_h):
-            if align_corners:
-                h = ratio_h * k
-            else:
-                h = ratio_h * (k + 0.5) - 0.5
-            input_y = np.floor(h)
-            y_t = h - input_y
-            for l in range(out_w):
-                if align_corners:
-                    w = ratio_w * l
-                else:
-                    w = ratio_w * (l + 0.5) - 0.5
-                input_x = np.floor(w)
-                x_t = w - input_x
-                for i in range(batch_size):
-                    for j in range(channel):
-                        coefficients = [0, 0, 0, 0]
-                        for ii in range(4):
-                            access_x_0 = int(max(min(input_x - 1, in_w - 1), 0))
-                            access_x_1 = int(max(min(input_x + 0, in_w - 1), 0))
-                            access_x_2 = int(max(min(input_x + 1, in_w - 1), 0))
-                            access_x_3 = int(max(min(input_x + 2, in_w - 1), 0))
-                            access_y = int(
-                                max(min(input_y - 1 + ii, in_h - 1), 0)
-                            )
-
-                            coefficients[ii] = cubic_interp1d(
-                                input[i, j, access_y, access_x_0],
-                                input[i, j, access_y, access_x_1],
-                                input[i, j, access_y, access_x_2],
-                                input[i, j, access_y, access_x_3],
-                                x_t,
-                            )
-                        out[i, j, k, l] = cubic_interp1d(
-                            coefficients[0],
-                            coefficients[1],
-                            coefficients[2],
-                            coefficients[3],
-                            y_t,
-                        )
-
-    if data_format == "NHWC":
-        out = np.transpose(out, (0, 2, 3, 1))  # NCHW => NHWC
+    if is_nhwc:
+        out = np.transpose(out, (0, 2, 3, 1))
     return out.astype(input.dtype)
 
 
@@ -609,14 +427,14 @@ class TestBilinearInterpAntiAliasCase5(TestInterpAntiAlias):
         self.align_corners = True
 
 
-# @unittest.skipIf(
-#     not core.is_compiled_with_cuda(), "Antialias only supported on GPU"
-# )
-# class TestBilinearInterpAntiAliasCase6(TestInterpAntiAlias):
-#     def init_test_case(self) -> None:
-#         self.interp_method = 'bilinear'
-#         self.data_format = 'NHWC'
-#         self.input_shape = (2, 10, 10, 3)
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "Antialias only supported on GPU"
+)
+class TestBilinearInterpAntiAliasCase6(TestInterpAntiAlias):
+    def init_test_case(self) -> None:
+        self.interp_method = 'bilinear'
+        self.data_format = 'NHWC'
+        self.input_shape = (2, 10, 10, 3)
 
 
 @unittest.skipIf(

@@ -916,18 +916,18 @@ __device__ __forceinline__ void ComputeWeightsBw(
   }
 }
 
-// Anti-aliasing interpolation backward kernel
 template <typename T, typename InterpFilter>
-__global__ void KeInterpAABw(T* in_grad,
-                             const int64_t in_img_h,
-                             const int64_t in_img_w,
-                             const T* out_grad,
-                             const int64_t out_img_h,
-                             const int64_t out_img_w,
-                             const int64_t nc,
-                             const float ratio_h,
-                             const float ratio_w,
-                             const InterpFilter& interp_filter) {
+__global__ void KeInterpAABwNCHW(T* in_grad,
+                                 const int64_t in_img_h,
+                                 const int64_t in_img_w,
+                                 const T* out_grad,
+                                 const int64_t out_img_h,
+                                 const int64_t out_img_w,
+                                 const int64_t n,
+                                 const int64_t c,
+                                 const float ratio_h,
+                                 const float ratio_w,
+                                 const InterpFilter& interp_filter) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   const int out_img_idx = threadIdx.x + blockIdx.x * blockDim.x;
@@ -975,8 +975,8 @@ __global__ void KeInterpAABw(T* in_grad,
 
   __syncthreads();
 
-  // Process each batch and channel
-  for (int64_t i = blockIdx.z; i < nc; i += gridDim.z) {
+  // Process each batch and channel - NCHW布局
+  for (int64_t i = blockIdx.z; i < n * c; i += gridDim.z) {
     const MT grad_out =
         static_cast<MT>(out_grad[i * out_img_h * out_img_w +
                                  out_img_idy * out_img_w + out_img_idx]);
@@ -990,6 +990,92 @@ __global__ void KeInterpAABw(T* in_grad,
         const int64_t in_idx =
             i * in_img_h * in_img_w + (ymin + y) * in_img_w + (xmin + x);
         phi::CudaAtomicAdd(&in_grad[in_idx], static_cast<T>(grad));
+      }
+    }
+  }
+}
+
+template <typename T, typename InterpFilter>
+__global__ void KeInterpAABwNHWC(T* in_grad,
+                                 const int64_t in_img_h,
+                                 const int64_t in_img_w,
+                                 const T* out_grad,
+                                 const int64_t out_img_h,
+                                 const int64_t out_img_w,
+                                 const int64_t n,
+                                 const int64_t c,
+                                 const float ratio_h,
+                                 const float ratio_w,
+                                 const InterpFilter& interp_filter) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  const int out_img_idx = threadIdx.x + blockIdx.x * blockDim.x;
+  const int out_img_idy = threadIdx.y + blockIdx.y * blockDim.y;
+
+  if (out_img_idx >= out_img_w || out_img_idy >= out_img_h) {
+    return;
+  }
+
+  MT scale_h = static_cast<MT>(ratio_h);
+  MT scale_w = static_cast<MT>(ratio_w);
+
+  const MT half = 0.5;
+  const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * half) * scale_h
+                                        : interp_filter.size * half;
+  const MT support_w = (scale_w >= 1.0) ? (interp_filter.size * half) * scale_w
+                                        : interp_filter.size * half;
+
+  const int interp_height = static_cast<int>(ceilf(support_h)) * 2 + 1;
+  const int interp_width = static_cast<int>(ceilf(support_w)) * 2 + 1;
+
+  // Use shared memory for weights
+  extern __shared__ int smem[];
+  T* wx = reinterpret_cast<T*>(smem) + interp_width * threadIdx.x;
+  T* wy = reinterpret_cast<T*>(smem) + interp_width * blockDim.x +
+          interp_height * threadIdx.y;
+
+  // Compute weights and kernel spans
+  int xmin, xsize, ymin, ysize;
+  MT xcenter, ycenter;
+  ComputeWeightsSpanBw<MT>(
+      out_img_idx, in_img_w, scale_w, support_w, &xmin, &xsize, &xcenter);
+  ComputeWeightsSpanBw<MT>(
+      out_img_idy, in_img_h, scale_h, support_h, &ymin, &ysize, &ycenter);
+
+  if (threadIdx.y == 0) {
+    ComputeWeightsBw<T, MT>(
+        wx, scale_w, interp_width, interp_filter, xmin - xcenter, xsize);
+  }
+
+  if (threadIdx.x == 0) {
+    ComputeWeightsBw<T, MT>(
+        wy, scale_h, interp_height, interp_filter, ymin - ycenter, ysize);
+  }
+
+  __syncthreads();
+
+  // Process each batch - NHWC布局
+  for (int64_t i = blockIdx.z; i < n; i += gridDim.z) {
+    // 对于NHWC布局，需要处理每个通道
+    for (int64_t ch = 0; ch < c; ch++) {
+      const MT grad_out =
+          static_cast<MT>(out_grad[(i * out_img_h * out_img_w +
+                                    out_img_idy * out_img_w + out_img_idx) *
+                                       c +
+                                   ch]);
+
+      // Backward pass: distribute gradient to input pixels according to weights
+      for (int y = 0; y < ysize; y++) {
+        const MT wy_val = static_cast<MT>(wy[y]);
+        for (int x = 0; x < xsize; x++) {
+          const MT wx_val = static_cast<MT>(wx[x]);
+          const MT grad = grad_out * wy_val * wx_val;
+          const int64_t in_idx =
+              (i * in_img_h * in_img_w + (ymin + y) * in_img_w + (xmin + x)) *
+                  c +
+              ch;
+          phi::CudaAtomicAdd(&in_grad[in_idx], static_cast<T>(grad));
+        }
       }
     }
   }
@@ -1482,13 +1568,6 @@ static void InterpolateAA2DCUDABwd(
     return;
   }
 
-  // Only support NCHW layout for anti-aliasing
-  if (data_layout != DataLayout::kNCHW) {
-    PADDLE_THROW(
-        errors::InvalidArgument("Anti-aliasing interpolation backward only "
-                                "supports NCHW data layout."));
-  }
-
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   float ratio_h =
       funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
@@ -1532,18 +1611,33 @@ static void InterpolateAA2DCUDABwd(
                           "Required shared memory size %d exceeds limit %d",
                           shmem_size,
                           gpu_props.sharedMemPerBlock));
-
-    KeInterpAABw<T>
-        <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_grad_data,
-                                                        in_h,
-                                                        in_w,
-                                                        output_grad_data,
-                                                        out_h,
-                                                        out_w,
-                                                        nc,
-                                                        ratio_h,
-                                                        ratio_w,
-                                                        filter);
+    if (data_layout == DataLayout::kNCHW) {
+      KeInterpAABwNCHW<T>
+          <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_grad_data,
+                                                          in_h,
+                                                          in_w,
+                                                          output_grad_data,
+                                                          out_h,
+                                                          out_w,
+                                                          n,
+                                                          c,
+                                                          ratio_h,
+                                                          ratio_w,
+                                                          filter);
+    } else {
+      KeInterpAABwNHWC<T>
+          <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_grad_data,
+                                                          in_h,
+                                                          in_w,
+                                                          output_grad_data,
+                                                          out_h,
+                                                          out_w,
+                                                          n,
+                                                          c,
+                                                          ratio_h,
+                                                          ratio_w,
+                                                          filter);
+    }
   } else if ("bicubic" == interp_method) {
     // Use anti-aliasing bicubic interpolation backward
     // Compute block and grid dimensions
@@ -1579,18 +1673,33 @@ static void InterpolateAA2DCUDABwd(
                           "Required shared memory size %d exceeds limit %d",
                           shmem_size,
                           gpu_props.sharedMemPerBlock));
-
-    KeInterpAABw<T>
-        <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_grad_data,
-                                                        in_h,
-                                                        in_w,
-                                                        output_grad_data,
-                                                        out_h,
-                                                        out_w,
-                                                        nc,
-                                                        ratio_h,
-                                                        ratio_w,
-                                                        filter);
+    if (data_layout == DataLayout::kNCHW) {
+      KeInterpAABwNCHW<T>
+          <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_grad_data,
+                                                          in_h,
+                                                          in_w,
+                                                          output_grad_data,
+                                                          out_h,
+                                                          out_w,
+                                                          n,
+                                                          c,
+                                                          ratio_h,
+                                                          ratio_w,
+                                                          filter);
+    } else {
+      KeInterpAABwNHWC<T>
+          <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_grad_data,
+                                                          in_h,
+                                                          in_w,
+                                                          output_grad_data,
+                                                          out_h,
+                                                          out_w,
+                                                          n,
+                                                          c,
+                                                          ratio_h,
+                                                          ratio_w,
+                                                          filter);
+    }
   }
 }
 
