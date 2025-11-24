@@ -2581,8 +2581,10 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   } else {
 #endif  // CUDA_VERSION >= 9010
     dev_ctx_.CublasCall([&](cublasHandle_t handle) {
-      if (ldc == 1 && M >= 1 && !FLAGS_use_legacy_gemm) {
-        // No transpose result in this case, align with torch's behaviour.
+      if (N == 1 && ldc >= std::max<int64_t>(1, M) && !FLAGS_use_legacy_gemm) {
+        // No transpose result in these case, align with torch's behaviour.
+        // TODO(Pan Zhaowu): Integrate proper stride support for arbitrary input
+        // tensor.
         CUBlas<T>::GEMM_STRIDED_BATCH(
             handle,
             (cuTransA == CUBLAS_OP_T) ? CUBLAS_OP_N : CUBLAS_OP_T,
