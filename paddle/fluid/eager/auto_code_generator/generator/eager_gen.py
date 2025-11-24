@@ -601,10 +601,10 @@ AFTER_LOG_PRINT_TEMPLATE = """
 """
 
 FORWARD_AFTER_LOG_PRINT_TEMPLATE = """
-  if (VLOG_IS_ON(6)) {{
+  if (VLOG_IS_ON(3)) {{
     const char* INPUT_PRINT_TEMPLATE = \"\\nForward Debug Info {{\\nAPI_Name: %s \\nInput: [%s]  \\nOutput: [%s] }} \";
 {}
-    VLOG(6) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
+    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
   }}
 """
 
