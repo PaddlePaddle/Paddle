@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -11,10 +11,6 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
-// #include "paddle/fluid/eager/hooks.h"
-// #include "paddle/fluid/eager/pylayer/py_layer_node.h"
-// #include "paddle/phi/core/dense_tensor.h"
-// #include "paddle/utils/pybind.h"
 #include "pybind11/functional.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
