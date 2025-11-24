@@ -15,11 +15,16 @@
 import unittest
 
 import numpy as np
-import triton
-import triton.language as tl
 
 import paddle
 from paddle.compat import paddle_use_triton
+
+if (
+    paddle.device.is_compiled_with_cuda()
+    and not paddle.device.is_compiled_with_rocm()
+):
+    import triton
+    import triton.language as tl
 
 
 def do_bench(kernel_call, quantiles, use_cuda_graph=True):
@@ -34,7 +39,10 @@ def do_bench(kernel_call, quantiles, use_cuda_graph=True):
 
 class TestPaddleUseTriton(unittest.TestCase):
     def setUp(self):
-        if not paddle.is_compiled_with_cuda():
+        if (
+            not paddle.is_compiled_with_cuda()
+            or paddle.device.is_compiled_with_rocm()
+        ):
             print("Skip Triton tests because no CUDA available.")
             return
 
