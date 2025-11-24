@@ -274,6 +274,4 @@ class TestPaddleUseTriton(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    t = TestPaddleUseTriton()
-    t._test_kwargs(True, "cuda:0")
-    # unittest.main()
+    unittest.main()
