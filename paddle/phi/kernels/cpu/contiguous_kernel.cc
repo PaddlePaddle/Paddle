@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/contiguous_kernel.h"
 
+#include <set>
 #include <vector>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
@@ -60,6 +61,60 @@ inline void FallbackContiguous(const DDim& input_dims,
   }
 }
 
+inline bool OnlyTransposed(const DDim& shape,
+                           const DDim& stride,
+                           const uint64_t& offset) {
+  if (offset != 0) {
+    return false;
+  }
+
+  DDim x_stride = stride;
+  DDim x_shape = shape;
+
+  std::set<int> visited_idx;
+  for (int i = 0; i < stride.size(); i++) {
+    int64_t max_num = 0;
+    int max_idx = -1;
+    for (int j = 0; j < stride.size(); j++) {
+      if (visited_idx.count(j)) {
+        continue;
+      }
+      if (stride[j] < 1) {
+        return false;
+      }
+      if (stride[j] > max_num) {
+        max_num = stride[j];
+        max_idx = j;
+      }
+    }
+    if (max_idx == -1) {
+      return false;
+    }
+    if (i != 0 && x_stride[i - 1] == max_num) {
+      return false;
+    }
+    visited_idx.insert(max_idx);
+    x_stride[i] = max_num;
+    x_shape[i] = shape[max_idx];
+  }
+
+  if (DenseTensorMeta::calc_strides(x_shape) == x_stride) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+inline bool FastContiguousJudge(const std::vector<int64_t>& coalesce_shape,
+                                const DenseTensor& input) {
+  if (coalesce_shape.size() > 3 || input.dims().size() == 0) return false;
+  auto x_meta = input.meta();
+  if (coalesce_shape.size() == 3 &&
+      !OnlyTransposed(x_meta.dims, x_meta.strides, x_meta.offset))
+    return false;
+  return true;
+}
+
 inline bool FastTransposeCopyValid(const DenseTensor& self,
                                    const DenseTensor& src) {
   constexpr int64_t MIN_NUMEL = 360;
@@ -85,17 +140,17 @@ void ContiguousKernel(const Context& dev_ctx,
     return;
   }
 
-#if defined(_WIN32)
-  FallbackContiguous<T>(
-      input.dims(), input.strides(), numel, input_data, output_data);
-  return;
-#else
   if (IsComplexType(input.dtype())) {
     FallbackContiguous<T>(
         input.dims(), input.strides(), numel, input_data, output_data);
     return;
   }
 
+#if defined(_WIN32)
+  FallbackContiguous<T>(
+      input.dims(), input.strides(), numel, input_data, output_data);
+  return;
+#else
   if (FastTransposeCopyValid(*out, input)) {
     constexpr int64_t TRANS_NUMEL = 60;
     void* trans_buffer =
@@ -148,8 +203,7 @@ void ContiguousKernel(const Context& dev_ctx,
     config.add_const_input(input);
     config.is_alloc_out_ = true;
     phi::DenseTensorIterator iter = config.build();
-
-    if (iter.shape().size() > 3 || input.dims().size() == 0) {
+    if (!FastContiguousJudge(iter.shape(), input)) {
       FallbackContiguous<T>(
           input.dims(), input.strides(), numel, input_data, output_data);
       return;
