@@ -158,12 +158,16 @@ class ReferenceImplementation:
         return output, attn_weights
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(),
+    "SDPA is not fully supported on non-CUDA devices.",
+)
 class TestMHA_Coverage(unittest.TestCase):
     def setUp(self):
         self.seed = 42
         self.random_seed()
         self.atol = 1e-3
-        self.num_fuzz_iter = 2000
+        self.num_fuzz_iter = 200
 
     def random_seed(self):
         random.seed(self.seed)

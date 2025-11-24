@@ -118,9 +118,9 @@ def scaled_dot_product_attention(
         dropout_p,
         is_causal,
         True,  # training
-        None,  # name
         None,  # backend
         scale,
         enable_gqa,
+        None,  # name
     )
     return out.swapaxes(-3, -2)

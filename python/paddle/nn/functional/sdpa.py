@@ -124,7 +124,7 @@ def check_all_tensors_on_device(params: SDPParams):
     Check all input tensors are placed on the GPU device.
     """
     if not params.place[0].is_gpu_place():
-        _logger.info(
+        _logger.debug(
             "All input tensors should be placed on GPU place, but "
             f"query place: {params.place[0]}, key place: "
             f"{params.place[1]}, value place: {params.place[2]}"
@@ -138,7 +138,7 @@ def check_for_attn_mask(params: SDPParams):
     Check flash attention does not support attn_mask.
     """
     if params.attn_mask_shape is not None:
-        _logger.info("Flash attention does not support attn_mask.")
+        _logger.debug("Flash attention does not support attn_mask.")
         return False
     return True
 
@@ -150,13 +150,13 @@ def check_head_dim_size_flash(params: SDPParams):
     q_head_dim, k_head_dim, v_head_dim = params.head_dim
 
     if q_head_dim > 256 or q_head_dim != k_head_dim or k_head_dim != v_head_dim:
-        _logger.info(
+        _logger.debug(
             "The dimension of head in query, key, and value should be equal and all less than 256, "
             f"but q_head_dim: {q_head_dim}, k_head_dim: {k_head_dim}, v_head_dim: {v_head_dim}"
         )
         return False
     if q_head_dim % 8 != 0:
-        _logger.info(
+        _logger.debug(
             "The dimension of head in query, key, and value should be a multiple of 8, "
             f"but q_head_dim: {q_head_dim}"
         )
@@ -170,7 +170,7 @@ def check_flash_attention_hardware_support(device_id: int):
     Check flash attention requires CUDA support and SM between 8.0 and 12.1.
     """
     if not check_cuda_is_available():
-        _logger.info("Flash attention requires CUDA support.")
+        _logger.debug("Flash attention requires CUDA support.")
         return False
 
     if not check_sm_version(
@@ -178,7 +178,7 @@ def check_flash_attention_hardware_support(device_id: int):
         _config["flash_attn"]["MAXIMUM_SM_VERSION"],
         device_id,
     ):
-        _logger.info(
+        _logger.debug(
             f"Flash attention requires SM between {_config['flash_attn']['MINIMUM_SM_VERSION']}"
             f"and {_config['flash_attn']['MAXIMUM_SM_VERSION']}, but found SM "
             f"{get_device_capability(device_id)}"
@@ -198,7 +198,7 @@ def check_flash_causal_non_square_seqlens(params: SDPParams):
     if q_len == k_len:
         return True
 
-    _logger.info(
+    _logger.debug(
         f"Flash attention only supports causal attention when the sequence"
         f"length of query and key are equal, but got query shape: "
         f"{params.query_shape}, key shape: {params.key_shape}"
@@ -216,7 +216,7 @@ def check_dtypes_low_precision_fa(params: SDPParams):
         or v_dtype != k_dtype
         or q_dtype not in _config["flash_attn"]["support_dtypes"]
     ):
-        _logger.info(
+        _logger.debug(
             f"Flash attention requires query, key, and value "
             f"to be of the same dtype and support dtype, but "
             f"got query dtype: {q_dtype}, key dtype: {k_dtype}"
@@ -237,7 +237,7 @@ def check_dtypes_low_precision_mem_efficient_attn(params: SDPParams):
         or v_dtype != k_dtype
         or q_dtype not in _config["mem_efficient_attn"]["support_dtypes"]
     ):
-        _logger.info(
+        _logger.debug(
             f"Mem_efficient_attn requires query, key, and value "
             f"to be of the same dtype and support dtype, but "
             f"got query dtype: {q_dtype}, key dtype: {k_dtype}"
@@ -276,7 +276,7 @@ def check_mem_efficient_hardware_support(device_id: int):
     Check mem_efficient attention requires CUDA support and SM between 5.0 and 12.1.
     """
     if not check_cuda_is_available():
-        _logger.info("Mem efficient attention requires CUDA support.")
+        _logger.debug("Mem efficient attention requires CUDA support.")
         return False
 
     if not check_sm_version(
@@ -284,7 +284,7 @@ def check_mem_efficient_hardware_support(device_id: int):
         _config["mem_efficient_attn"]["MAXIMUM_SM_VERSION"],
         device_id,
     ):
-        _logger.info(
+        _logger.debug(
             f"Mem efficient attention requires SM between {_config['mem_efficient_attn']['MINIMUM_SM_VERSION']}"
             f"and {_config['mem_efficient_attn']['MAXIMUM_SM_VERSION']}, but found SM "
             f"{get_device_capability(device_id)}"
@@ -305,7 +305,7 @@ def check_head_dim_size_mem_efficient(params: SDPParams):
         or k_head_dim % alignment != 0
         or v_head_dim % alignment != 0
     ):
-        _logger.info(
+        _logger.debug(
             f"Mem efficient attention requires head dim size aligned to {alignment}, "
             f"but found q_head_dim: {q_head_dim}, k_head_dim: {k_head_dim}, v_head_dim: {v_head_dim}"
         )
@@ -323,7 +323,7 @@ def check_attn_mask_alignment(params: SDPParams) -> bool:
     last_dim = params.attn_mask_shape[-1]
 
     if last_dim % 8 != 0:
-        _logger.info(
+        _logger.debug(
             f"Mem efficient attention requires attn_mask last dimension to be divisible by 8 "
             f"to satisfy vector alignment, but got {last_dim}. "
             "Falling back to other backends."
@@ -336,7 +336,7 @@ def check_attn_mask_alignment(params: SDPParams) -> bool:
 def check_scale_is_None(params: SDPParams) -> bool:
     if params.scale is None:
         return True
-    _logger.info("Paddle's FAV2 does not support scale parameter.")
+    _logger.debug("Paddle's FAV2 does not support scale parameter.")
     return False
 
 
@@ -586,7 +586,7 @@ def scaled_dot_product_attention(
         attn_mask = attn_mask.expand(mask_shape)
     sdp_func_name = select_sdp_for_sdpa(param)
 
-    _logger.info("Selected backend:" + sdp_func_name)
+    _logger.debug("Selected backend:" + sdp_func_name)
     if sdp_func_name == "flash_attn":
         fixed_seed_offset = None
         return_softmax = False
