@@ -88,8 +88,6 @@ class PyLayerContext:
                 >>> import paddle
                 >>> from paddle.autograd import PyLayer
                 >>> paddle.seed(2025)
-                >>> # cus_tanh_backward_input is a global variable that stores the gradient input of cus_tanh.
-                >>> cus_tanh_backward_input = paddle.empty([])
                 >>> class cus_tanh(PyLayer):
                 ...     @staticmethod
                 ...     def forward(ctx, x):
@@ -103,8 +101,6 @@ class PyLayerContext:
                 ...
                 ...     @staticmethod
                 ...     def backward(ctx, dy):
-                ...         global cus_tanh_backward_input
-                ...         cus_tanh_backward_input = dy
                 ...
                 ...         # Get the tensors passed by forward.
                 ...         y, = ctx.saved_tensor()
@@ -124,25 +120,17 @@ class PyLayerContext:
                 ...         # Get the tensors passed by forward.
                 ...         y, = ctx.saved_tensor()
                 ...         grad = dy * (1 - paddle.square(y))
+                ...         # The gradient input in cus_tanh be cast to bfloat16 manually,
+                ...         # and cus_tanh will not cast the gradient to the dtype of the forward output.
                 ...         grad = paddle.cast(grad,paddle.float16)
                 ...         return grad
                 ...
                 >>> x = paddle.randn([3,3]).astype("float32")
                 >>> x.stop_gradient = False
                 >>> y = cus_tanh.apply(x)
-                >>> cus_tanh_forward_out = y
                 >>> z = cus_tanh_cast_grad.apply(y)
                 >>> z.sum().backward()
-                >>> print(cus_tanh_forward_out)
-                Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-                    [[-0.17783271,  0.27381954,  0.83902466],
-                     [ 0.69548184, -0.68347871,  0.96448076],
-                     [ 0.75160277,  0.37102571,  0.36433718]])
-                >>> print(cus_tanh_backward_input)
-                Tensor(shape=[3, 3], dtype=float16, place=Place(gpu:0), stop_gradient=True,
-                    [[0.96923828, 0.92871094, 0.53027344],
-                     [0.63818359, 0.64746094, 0.44311523],
-                     [0.59521484, 0.87402344, 0.87841797]])
+
         """
         self.grad_in_dtype_consistent = flag
 
