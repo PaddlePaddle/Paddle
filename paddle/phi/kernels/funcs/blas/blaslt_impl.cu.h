@@ -523,27 +523,26 @@ struct CublasLtBase {
 
       PADDLE_ENFORCE_GPU_SUCCESS(
           dynload::cublasLtMatmulPreferenceDestroy(preference));
-      desc->algo = &heuristic_results.algo;
     }
 
     VLOG(7) << "[Impl CublasltDescriptor] ";
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::cublasLtMatmul(cublaslt_handle,
-                                desc->op_desc,
-                                static_cast<void*>(&alpha),
-                                y_ptr,
-                                desc->y_desc,
-                                x_ptr,
-                                desc->x_desc,
-                                static_cast<void*>(&beta),
-                                out_ptr,
-                                desc->out_desc,
-                                out_ptr,
-                                desc->out_desc,
-                                desc->algo,
-                                workspace->ptr(),
-                                workspace_size,
-                                dev_ctx.stream()));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmul(
+        cublaslt_handle,
+        desc->op_desc,
+        static_cast<void*>(&alpha),
+        y_ptr,
+        desc->y_desc,
+        x_ptr,
+        desc->x_desc,
+        static_cast<void*>(&beta),
+        out_ptr,
+        desc->out_desc,
+        out_ptr,
+        desc->out_desc,
+        FLAGS_use_legacy_gemm ? desc->algo : &heuristic_results.algo,
+        workspace->ptr(),
+        workspace_size,
+        dev_ctx.stream()));
   }
 
   static void SearchBestAlgo(const phi::GPUContext& dev_ctx,

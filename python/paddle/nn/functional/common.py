@@ -2510,12 +2510,13 @@ def linear(
              [-0.67769694, -0.67769694, -0.67769694, -0.67769694]])
     """
     if in_dynamic_mode():
-        if paddle.get_flags(["FLAGS_use_legacy_gemm"]).get(
+        if not paddle.get_flags(["FLAGS_use_legacy_gemm"]).get(
             "FLAGS_use_legacy_gemm", False
         ):
             if bias is not None:
                 assert len(bias.shape) == 1, "only support 1D bias"
                 if weight.shape[0] > 1 and weight.shape[1] > 1:
+                    x_shape_prefix = x.shape[:-1]
                     out, _ = _C_ops.fused_gemm_epilogue(
                         x.reshape(-1, x.shape[-1]),
                         weight.reshape(-1, weight.shape[-1]),
@@ -2524,6 +2525,8 @@ def linear(
                         False,
                         "none",
                     )
+                    output_shape = x_shape_prefix + [weight.shape[-1]]  # noqa:RUF005
+                    out = out.reshape(output_shape)
                 else:
                     bias_reshaped = paddle.repeat_interleave(
                         bias, x.shape[0], axis=0
