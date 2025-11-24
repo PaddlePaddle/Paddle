@@ -378,6 +378,17 @@ class Pool2dOpPattern
       VLOG(3) << "The padding size should be less than 2";
       return false;
     }
+
+    auto dilation_attr = op->attribute<pir::ArrayAttribute>("dilations");
+    std::vector<int64_t> dilations;
+    for (const auto &attr : dilation_attr.AsVector()) {
+      dilations.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
+    }
+    if (dilations.size() > 2) {
+      VLOG(3) << "The dilation size should be less than 2";
+      return false;
+    }
+
     if (op->HasAttribute("data_format")) {
       auto data_format =
           op->attribute<pir::StrAttribute>("data_format").AsString();
