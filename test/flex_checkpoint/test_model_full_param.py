@@ -142,6 +142,16 @@ TEST_CONFIGS = {
             "has_bias": "True",
         },
     ],
+    "4_card_hv_group_tests": [
+        {
+            "world_size": 4,
+            "tp": 2,
+            "pp": 2,
+            "sharding_degree": 1,
+            "has_bias": "True",
+            "test_using_hv_group": 1,
+        },
+    ],
 }
 
 
@@ -152,6 +162,7 @@ class TestFullParamWith2Devices(test_base.CommunicationTestDistBase):
     def test_full_param(self):
         for config in TEST_CONFIGS["2_card_tests"]:
             envs = {k: str(v) for k, v in config.items()}
+            envs["test_using_hv_group"] = "0"
             self.run_test_case(
                 "model_full_param_logic.py",
                 user_defined_envs=envs,
@@ -165,6 +176,7 @@ class TestFullParamWith4Devices(test_base.CommunicationTestDistBase):
     def test_full_param(self):
         for config in TEST_CONFIGS["4_card_tests"]:
             envs = {k: str(v) for k, v in config.items()}
+            envs["test_using_hv_group"] = "0"
             self.run_test_case(
                 "model_full_param_logic.py",
                 user_defined_envs=envs,
@@ -218,7 +230,7 @@ class TestFullParamWithSingleDevices(unittest.TestCase):
             ]
         }
 
-        full_param_iter = model.full(aoa_config, None)
+        full_param_iter = model.full(aoa_config)
         full_param = dict(full_param_iter)
 
         param_shape = {
@@ -248,6 +260,20 @@ class TestFullParamWithSingleDevices(unittest.TestCase):
         zeros = paddle.zeros([32, 32], 'float16')
         answer = paddle.concat([zeros, ones], axis=1)
         assert full_param["fused_weight"]._md5sum() == answer._md5sum()
+
+
+class TestFullParamHVGroupWith4Devices(test_base.CommunicationTestDistBase):
+    def setUp(self):
+        super().setUp(num_of_devices=4, timeout=240)
+
+    def test_full_param(self):
+        for config in TEST_CONFIGS["4_card_hv_group_tests"]:
+            envs = {k: str(v) for k, v in config.items()}
+            envs["test_using_hv_group"] = "1"
+            self.run_test_case(
+                "model_full_param_logic.py",
+                user_defined_envs=envs,
+            )
 
 
 if __name__ == "__main__":

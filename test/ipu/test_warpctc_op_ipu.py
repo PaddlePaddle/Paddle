@@ -30,7 +30,7 @@ class TestBase(IPUOpTest):
         self.set_op_attrs()
 
     def set_training(self):
-        # ctcloss only support training currently.
+        # ctc_loss only support training currently.
         self.is_training = True
         self.epoch = 1
 

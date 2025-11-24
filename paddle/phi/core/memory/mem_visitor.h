@@ -84,6 +84,16 @@ class AllocatorVisitor : public AllocatorVisitorReqImpl {
 
 #ifdef PADDLE_WITH_CUDA
 /**
+ * @brief AllocatorComputeStreamVisitor is a Concrete Visitor class designed to
+ * only visit compute stream allocators.
+ */
+class AllocatorComputeStreamVisitor : public AllocatorVisitor {
+ public:
+  using AllocatorVisitor::Visit;
+  void Visit(StreamSafeCUDAAllocator* allocator) override;
+};
+
+/**
  * @brief FreeMemoryMetricsVisitor is a Concrete Visitor class designed to
  * inspect allocators for free memory information.
  *
@@ -92,8 +102,9 @@ class AllocatorVisitor : public AllocatorVisitorReqImpl {
  * it provides specialized logic for the
  * VirtualMemoryAutoGrowthBestFitAllocator.
  */
-class FreeMemoryMetricsVisitor : public AllocatorVisitor {
+class FreeMemoryMetricsVisitor : public AllocatorComputeStreamVisitor {
  public:
+  using AllocatorComputeStreamVisitor::Visit;
   /**
    * @brief Constructor for FreeMemoryMetricsVisitor.
    * @param nums_blocks The number of largest free blocks to potentially track
@@ -139,7 +150,9 @@ class FreeMemoryMetricsVisitor : public AllocatorVisitor {
  * (typically VirtualMemoryAutoGrowthBestFitAllocator) and record if all
  * attempts were successful.
  */
-class TryAllocVisitor : public AllocatorVisitor {
+class TryAllocVisitor : public AllocatorComputeStreamVisitor {
+  using AllocatorComputeStreamVisitor::Visit;
+
  public:
   /**
    * @brief Constructor.
@@ -183,13 +196,10 @@ class TryAllocVisitor : public AllocatorVisitor {
  * internal state (the list of free memory blocks) and extract key information
  * (size and address) for external analysis or debugging.
  */
-class VMMFreeBlocksInfoVisitor : public AllocatorVisitor {
- public:
-  /**
-   * @brief Default Constructor.
-   */
-  VMMFreeBlocksInfoVisitor() {}
+class VMMFreeBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
+  using AllocatorComputeStreamVisitor::Visit;
 
+ public:
   /**
    * @brief Retrieves the collected information about the free memory blocks.
    *

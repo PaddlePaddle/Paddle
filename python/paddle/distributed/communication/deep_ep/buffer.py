@@ -879,6 +879,7 @@ class Buffer:
         use_fp8: bool = True,
         async_finish: bool = False,
         return_recv_hook: bool = False,
+        num_per_channel: int = 128,
     ) -> tuple[
         tuple[paddle.Tensor, paddle.Tensor],
         paddle.Tensor,
@@ -906,6 +907,8 @@ class Buffer:
             return_recv_hook: return a receiving hook if set. If set, the kernel will just do the RDMA request issues,
                 but **without actually receiving the data**. You must call the received hook to make sure the data's arrival.
                 If you not set this flag, the kernel will ensure the data's arrival.
+            num_per_channel: the number of tokens per channel used in dynamic quantization to fp8.
+                Now we support 128 for per group quantization and -1 for per token quantization.
 
         Returns:
             recv_x: a tuple with received tokens for each expert. The first element is a `paddle.Tensor` shaped as
@@ -938,6 +941,7 @@ class Buffer:
             use_fp8,
             async_finish,
             return_recv_hook,
+            num_per_channel,
         )
         handle = (
             packed_recv_src_info,

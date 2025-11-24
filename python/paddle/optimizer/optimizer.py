@@ -512,8 +512,6 @@ class Optimizer:
                         )
                 var.set_value(state_dict[var_tmp.name])
 
-    load_state_dict = set_state_dict
-
     def get_opti_var_name_list(self) -> list[str]:
         return self._opti_name_list
 
@@ -1892,10 +1890,6 @@ class Optimizer:
 
         for p in param_list:
             p.clear_gradient(set_to_zero)
-
-    @framework.non_static_only
-    def zero_grad(self, set_to_none: bool = True) -> None:
-        self.clear_grad(set_to_zero=not set_to_none)
 
     @imperative_base.no_grad()
     def minimize(
