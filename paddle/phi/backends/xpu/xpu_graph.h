@@ -121,10 +121,10 @@ class XPUGraphNodeLauncher {
 using XPUGraphExecuterSetter_t = std::function<void(cudaGraphExec_t)>;  // 改用XPU图执行类型
 
 
-static void ThrowErrorIfNotSupportXPUGraph() {
-  PADDLE_THROW(common::errors::Unimplemented(
-      "XPU Graph is not supported in current version"));
-}
+// static void ThrowErrorIfNotSupportXPUGraph() {
+//   PADDLE_THROW(common::errors::Unimplemented(
+//       "XPU Graph is not supported in current version"));
+// }
 
 
 enum xpuStreamCaptureMode {

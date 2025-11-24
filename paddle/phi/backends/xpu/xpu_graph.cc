@@ -44,8 +44,8 @@ static std::string ConcatPath(const std::string &dirname,
 }
 
 XPUGraph::XPUGraph() {
-  ThrowErrorIfNotSupportXPUGraph();
-  id_ = UniqueID();
+  // ThrowErrorIfNotSupportXPUGraph();
+  // id_ = UniqueID();
 }
 
 XPUGraph::~XPUGraph() {
@@ -122,7 +122,7 @@ void XPUGraph::AddJoiningStream(XPUStream stream) {
 }
 
 void XPUGraph::PrintToDotFiles(const std::string &dirname, unsigned int flags){
-  ThrowErrorIfNotSupportXPUGraph();
+  // ThrowErrorIfNotSupportXPUGraph();
 #if CUDA_VERSION >= 11030
   for (size_t i = 0; i < graphs_.size(); ++i) {
     auto filename =
@@ -165,7 +165,7 @@ int64_t XPUGraph::SetMemoryPoolID(int64_t pool_id) {
 
 
 void XPUGraph::BeginSegmentCapture() {
-  ThrowErrorIfNotSupportXPUGraph();
+  // ThrowErrorIfNotSupportXPUGraph();
 #if CUDA_VERSION >= 10010
   PADDLE_ENFORCE_EQ(IsCapturing(),
                     true,
@@ -208,7 +208,7 @@ inline void sync_streams(cudaStream_t to_record, cudaStream_t to_wait) {
 }
 
 void XPUGraph::EndSegmentCapture() {
-  ThrowErrorIfNotSupportXPUGraph();
+  // ThrowErrorIfNotSupportXPUGraph();
 #if CUDA_VERSION >= 10010
   PADDLE_ENFORCE_EQ(
       IsCapturing(),
@@ -272,7 +272,7 @@ void XPUGraph::EndSegmentCapture() {
 void XPUGraph::BeginCapture(phi::XPUPlace place,
                        XPUStream stream,
                        xpuStreamCaptureMode mode) {
-  ThrowErrorIfNotSupportXPUGraph();
+  // ThrowErrorIfNotSupportXPUGraph();
 #if CUDA_VERSION >= 10010
   PADDLE_ENFORCE_EQ(IsCapturing(),
                     false,
