@@ -391,6 +391,10 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                                    DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
   phi::funcs::set_constant(dev_ctx, x_grad, static_cast<float>(0));
+  auto meta = x_grad->meta();
+  meta.strides = meta.calc_strides(x_grad->dims());
+  x_grad->set_meta(meta);
+
   if (out_grad.numel() == 0) return;
 
   const auto& index_type = index[0]->dtype();
@@ -446,7 +450,51 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void IndexElementwiseGetStridedGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const std::vector<const DenseTensor*>& index,
+    const DenseTensor& out_grad,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t slice_offset,
+    const bool accumulate,
+    const bool is_combined,
+    DenseTensor* x_grad) {
+  IndexElementwiseGetGradKernel<T, Context>(dev_ctx,
+                                            x,
+                                            index,
+                                            out_grad,
+                                            input_dims,
+                                            input_strides,
+                                            index_dims,
+                                            index_strides,
+                                            slice_offset,
+                                            accumulate,
+                                            is_combined,
+                                            x_grad);
+}
+
 }  // namespace phi
+PD_REGISTER_KERNEL(index_elementwise_get_strided_grad,
+                   GPU,
+                   STRIDED,
+                   phi::IndexElementwiseGetStridedGradKernel,
+                   bool,
+                   float,
+                   double,
+                   int,
+                   int8_t,
+                   int64_t,
+                   int16_t,
+                   uint8_t,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(index_elementwise_get_grad,
                    GPU,
                    ALL_LAYOUT,

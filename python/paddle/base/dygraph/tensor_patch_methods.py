@@ -1077,6 +1077,11 @@ def monkey_patch_tensor():
                 item[i] = np.array(slice_item)
             elif isinstance(slice_item, range):
                 item[i] = np.array(list(slice_item))
+            elif isinstance(slice_item, paddle.Tensor):
+                if not slice_item.is_contiguous():
+                    item[i] = slice_item.contiguous()
+                else:
+                    item[i] = slice_item
 
         return tuple(item)
 

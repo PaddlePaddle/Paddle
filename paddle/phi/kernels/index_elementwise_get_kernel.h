@@ -32,4 +32,18 @@ void IndexElementwiseGetKernel(const Context &ctx,
                                const bool is_combined,
                                DenseTensor *out);
 
+template <typename T, typename Context>
+void IndexElementwiseGetStridedKernel(
+    const Context &ctx,
+    const DenseTensor &x,
+    const std::vector<const DenseTensor *> &index,
+    const std::vector<int64_t> &input_dims,
+    const std::vector<int64_t> &input_strides,
+    const std::vector<int64_t> &index_dims,
+    const std::vector<int64_t> &index_stride,
+    const int64_t slice_offset,
+    const bool accumulate,
+    const bool is_combined,
+    DenseTensor *out);
+
 }  // namespace phi

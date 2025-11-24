@@ -311,6 +311,7 @@ strided_compute_op_list = {
     "index_put",
     # others
     "matmul",
+    "index_elementwise_get_strided",
 }
 
 strided_op_need_flags_check_list = {
