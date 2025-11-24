@@ -113,7 +113,7 @@ def check_sm_version(
 
 @lru_cache(maxsize=1)
 def check_cuda_is_available() -> bool:
-    return paddle.is_compiled_with_cuda() and paddle.device.is_available()
+    return paddle.is_compiled_with_cuda() and paddle.cuda.is_available()
 
 
 def check_all_tensors_on_device(params: SDPParams, debug: bool):
