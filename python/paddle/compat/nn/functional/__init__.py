@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import (
         ShapeLike,
+        Size2,
     )
 
     _PaddingTensorMode: TypeAlias = Literal[
@@ -38,7 +39,7 @@ if TYPE_CHECKING:
     ]
 
 
-__all__ = ['pad', 'softmax', 'linear']
+__all__ = ['pad', 'softmax', 'linear', 'unfold']
 
 
 def _check_valid_pad_len(pad_len, x_dim, is_constant):
@@ -266,3 +267,95 @@ def linear(input: Tensor, weight: Tensor, bias: Tensor | None = None) -> Tensor:
     if bias is not None:
         out = _C_ops.add(out, bias)
     return out
+
+
+@ForbidKeywordsDecorator(
+    illegal_keys={
+        "x",
+        "kernel_sizes",
+        "dilations",
+        "paddings",
+        "strides",
+        "name",
+    },
+    func_name="paddle.compat.nn.functional.unfold",
+    correct_name="paddle.nn.functional.unfold",
+)
+def unfold(
+    input: Tensor,
+    kernel_size: Size2,
+    dilation: Size2 = 1,
+    padding: Size2 = 0,
+    stride: Size2 = 1,
+) -> Tensor:
+    r"""
+
+    Return a col buffer of sliding local blocks of input, also known
+    as im2col for batched 2D image tensors. For each block under the convolution filter,
+    all element will be rearranged as a column. While the convolution filter sliding over
+    the input feature map, a series of such columns will be formed.
+
+    For each input :math:`input` with shape [N, C, H, W], the output shape [N, Cout, Lout]
+    can be calculated as following.
+
+    .. math::
+
+        dkernel[0] &= dilation[0] \times (kernel\_sizes[0] - 1) + 1
+
+        dkernel[1] &= dilation[1] \times (kernel\_sizes[1] - 1) + 1
+
+        hout &= \frac{H + padding[0] + padding[2] - dkernel[0]}{stride[0]} + 1
+
+        wout &= \frac{W + padding[1] + padding[3] - dkernel[1]}{stride[1]} + 1
+
+        Cout &= C \times kernel\_sizes[0] \times kernel\_sizes[1]
+
+        Lout &= hout \times wout
+
+
+    Parameters:
+        input(Tensor):              4-D Tensor, input tensor of format [N, C, H, W],
+                                  data type can be float32 or float64
+        kernel_size(int|list|tuple):   The size of convolution kernel, should be [k_h, k_w]
+                                  or an integer k treated as [k, k].
+        dilation(int|list|tuple, optional):      the dilation of convolution kernel, should be
+                                  [dilation_h, dilation_w], or an integer dilation treated as
+                                  [dilation, dilation]. For default, it will be [1, 1].
+        padding(int|list|tuple, optional):       The paddings of each dimension, should be
+                                    a single integer or [padding_h, padding_w]. If [padding_h, padding_w] was given, it will expanded to
+                                    [padding_h, padding_w, padding_h, padding_w]. If an integer padding was given,
+                                    [padding, padding, padding, padding] will be used. By default, paddings will be 0.
+        strides(int|list|tuple, optional):        The strides, should be [stride_h, stride_w]
+                                  or an integer stride treated as [stride, stride].
+                                  For default, strides will be [1, 1].
+
+    Returns:
+        Tensor, The tensor corresponding to the sliding local blocks.
+        The output shape is [N, Cout, Lout] as described above.
+        Cout is the  total number of values within each block,
+        and Lout is the total number of such blocks.
+        The data type of output is the same as the input :math:`input`
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.compat.nn.functional as F
+
+            >>> x = paddle.randn((100,3,224,224))
+            >>> y = F.unfold(x, [3, 3], 1, 1, 1)
+    """
+
+    def to_list_if_necessary(x):
+        if isinstance(x, (paddle.pir.Value, paddle.Tensor)):
+            x = x.tolist()
+        return x
+
+    return paddle.nn.functional.unfold(
+        x=input,
+        kernel_sizes=to_list_if_necessary(kernel_size),
+        strides=to_list_if_necessary(stride),
+        paddings=to_list_if_necessary(padding),
+        dilations=to_list_if_necessary(dilation),
+    )
