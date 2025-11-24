@@ -2326,11 +2326,16 @@ def flashmask_attention(
             assert block_mask is None, (
                 " blockmask attention no supports deterministic now ."
             )
-        elif paddle.base.framework.get_flags(
-                ["FLAGS_flash_attn_version"]
-            )["FLAGS_flash_attn_version"] == 3 and paddle.base.framework.get_flags(
-                ["FLAGS_cudnn_deterministic"]
-            )["FLAGS_cudnn_deterministic"] and query.shape[3] > 128:python/paddle/nn/functional/flash_attention.py
+        elif (
+            paddle.base.framework.get_flags(["FLAGS_flash_attn_version"])[
+                "FLAGS_flash_attn_version"
+            ]
+            == 3
+            and paddle.base.framework.get_flags(["FLAGS_cudnn_deterministic"])[
+                "FLAGS_cudnn_deterministic"
+            ]
+            and query.shape[3] > 128
+        ):
             fa_version = 2
         else:
             fa_version = paddle.base.framework.get_flags(
