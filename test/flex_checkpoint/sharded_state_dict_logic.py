@@ -426,7 +426,27 @@ class TestParallelLayersLogic:
             for param in opt._parameter_list:
                 if hasattr(param, "fw_storage"):
                     assert len(param.shape) == 1
-
+            model_sharded_state_dict = model.sharded_state_dict()
+            for k, v in model_sharded_state_dict.items():
+                if (
+                    k == "_layers.linear1.weight"
+                    or k == "_layers.linear2.weight"
+                ):
+                    assert not v.local_tensor._is_initialized()
+            wrapped_model.init_slice_param()
+            for k, v in model_sharded_state_dict.items():
+                if (
+                    k == "_layers.linear1.weight"
+                    or k == "_layers.linear2.weight"
+                ):
+                    assert v.local_tensor._is_initialized()
+            wrapped_model.align_param_to_buffer_and_clear_slice_param()
+            for k, v in model_sharded_state_dict.items():
+                if (
+                    k == "_layers.linear1.weight"
+                    or k == "_layers.linear2.weight"
+                ):
+                    assert not v.local_tensor._is_initialized()
             model.train()
             x = paddle.randint(
                 low=0,
@@ -456,7 +476,6 @@ class TestParallelLayersLogic:
                 model_sharded_state_dict
             )
 
-            wrapped_model.init_slice_param()
             for k, v in model_sharded_state_dict.items():
                 if (
                     k == "_layers.linear1.weight"
