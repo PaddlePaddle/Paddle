@@ -1861,6 +1861,21 @@
   backward : instance_norm_double_grad
   composite: instance_norm_grad(x, scale, bias, saved_mean, saved_variance, y_grad, epsilon, x_grad, scale_grad, bias_grad)
 
+- backward_op : interp_antialias_grad
+  forward : interp_antialias (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_format, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  optional: out_size, size_tensor, scale_tensor
+  no_need_buffer : x
+  kernel :
+    func : interp_antialias_grad
+    data_type : output_grad
+  data_transform :
+    skip_transform : out_size, size_tensor, scale_tensor
+
 - backward_op : inverse_grad
   forward : inverse(Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
@@ -4086,6 +4101,26 @@
   kernel:
     func: check_model_nan_inf
     data_type: out_grad
+
+- backward_op: fast_ln_grad
+  forward: fast_ln (Tensor x, Tensor scale, Tensor bias, float epsilon) -> Tensor(y), Tensor(mean), Tensor(invvar)
+  args: (Tensor x, Tensor scale, Tensor mean, Tensor invvar, Tensor y_grad, float epsilon)
+  output: Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
+  infer_meta:
+    func: FastLayerNormGradInfermeta
+  kernel:
+    func: fast_ln_grad
+    data_type: scale
+
+- backward_op: fast_rms_norm_grad
+  forward: fast_rms_norm (Tensor x, Tensor scale, float epsilon) -> Tensor(y), Tensor(invvar)
+  args: (Tensor x, Tensor scale, Tensor invvar, Tensor y_grad, float epsilon)
+  output: Tensor(x_grad), Tensor(scale_grad)
+  infer_meta:
+    func: FastRMSNormGradInfermeta
+  kernel:
+    func: fast_rms_norm_grad
+    data_type: scale
 
 - backward_op: fused_rms_norm_ext_grad
   forward: fused_rms_norm_ext (Tensor x, Tensor scale, float epsilon) -> Tensor(y), Tensor(invvar)

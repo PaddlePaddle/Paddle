@@ -12,16 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import importlib
 import importlib.abc
 import importlib.util
 import inspect
+import pkgutil
 import sys
 import types
 import warnings
-from collections.abc import Iterable
 from contextlib import contextmanager
-from typing import Any
+from functools import cache
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 def warning_about_fake_interface(name: str):
@@ -48,12 +54,38 @@ def create_fake_function(name):
     return fn
 
 
+class OverriddenAttribute:
+    def get_value(self):
+        raise NotImplementedError
+
+
+class LazyImportOverriddenAttribute(OverriddenAttribute):
+    def __init__(self, full_name: str):
+        self._full_name = full_name
+
+    def get_value(self):
+        parts = self._full_name.split(".")
+        root_module = importlib.import_module(parts[0])
+        result = root_module
+        for part in parts[1:]:
+            result = getattr(result, part)
+        return result
+
+
+class RawOverriddenAttribute(OverriddenAttribute):
+    def __init__(self, value: Any):
+        self._value = value
+
+    def get_value(self):
+        return self._value
+
+
 class ProxyModule(types.ModuleType):
     def __init__(
         self,
         original_module: types.ModuleType,
         proxy_name: str,
-        overrides: dict[str, Any],
+        overrides: dict[str, OverriddenAttribute],
     ):
         super().__init__(proxy_name)
         self._original_module = original_module
@@ -62,16 +94,54 @@ class ProxyModule(types.ModuleType):
 
     def __getattr__(self, name: str) -> Any:
         if name in self._overrides:
-            return self._overrides[name]
+            return self._overrides[name].get_value()
         return getattr(self._original_module, name)
 
 
-GLOBAL_OVERRIDES = {}
+GLOBAL_OVERRIDES: dict[str, OverriddenAttribute] = {
+    "torch.relu": LazyImportOverriddenAttribute("paddle.nn.functional.relu"),
+}
 
 TORCH_PROXY_BLOCKED_MODULES = {
     "tvm_ffi",
     "transformers",
 }
+
+
+def _extend_torch_proxy_overrides(
+    overrides: dict[str, OverriddenAttribute],
+) -> None:
+    GLOBAL_OVERRIDES.update(overrides)
+
+
+@cache
+def _register_compat_override():
+    import paddle.compat
+
+    PADDLE_PREFIX = "paddle.compat"
+    TORCH_PREFIX = "torch"
+    PUBLIC_ATTR_DECLARATION = "__all__"
+
+    compat_overrides = {}
+    for module_info in pkgutil.walk_packages(
+        paddle.compat.__path__,
+        paddle.compat.__name__ + ".",
+    ):
+        module = importlib.import_module(module_info.name)
+        if hasattr(module, PUBLIC_ATTR_DECLARATION):
+            public_attrs = getattr(module, PUBLIC_ATTR_DECLARATION)
+            torch_module_name = module_info.name.replace(
+                PADDLE_PREFIX, TORCH_PREFIX, 1
+            )
+            for attr_name in public_attrs:
+                if attr_name.startswith("_"):
+                    continue
+                paddle_attr = getattr(module, attr_name)
+                torch_attr_name = f"{torch_module_name}.{attr_name}"
+                compat_overrides[torch_attr_name] = RawOverriddenAttribute(
+                    paddle_attr
+                )
+    _extend_torch_proxy_overrides(compat_overrides)
 
 
 def _is_specific_module_or_its_submodule(name: str, module: str) -> bool:
@@ -189,6 +259,18 @@ class TorchProxyMetaFinder:
                 for k, v in self._source.__dict__.items():
                     if k in ("__name__", "__package__", "__path__", "__spec__"):
                         continue
+                    if k in overrides:
+                        continue
+                    if isinstance(v, types.ModuleType):
+                        v = ProxyModule(
+                            v,
+                            f"{self._target_name}.{k}",
+                            {
+                                kk.removeprefix(f"{k}."): vv
+                                for kk, vv in overrides.items()
+                                if kk.startswith(f"{k}.")
+                            },
+                        )
                     module.__dict__[k] = v
 
         # Use fullname for the spec name and mark as package when appropriate so that
@@ -223,6 +305,7 @@ def enable_torch_proxy() -> None:
             >>> import torch  # This will import paddle as torch
             >>> assert torch.sin is paddle.sin
     """
+    _register_compat_override()
     _clear_torch_modules()
     sys.meta_path.insert(0, TORCH_PROXY_FINDER)
 

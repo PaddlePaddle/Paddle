@@ -108,7 +108,7 @@ class JitCode : public GenBase, public Xbyak::CodeGenerator {
                                     int offt,
                                     bool bcast = false) {
     int scale = 0;
-    // Learn from https://github.com/intel/mkl-dnn
+    // Learn from https://github.com/uxlfoundation/oneDNN
     if (EVEX_max_8b_offt <= offt && offt < 3 * EVEX_max_8b_offt) {
       offt = offt - 2 * EVEX_max_8b_offt;
       scale = 1;

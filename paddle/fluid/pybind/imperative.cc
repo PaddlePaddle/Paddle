@@ -753,7 +753,7 @@ void BindImperative(py::module *m_ptr) {
              // c++
              // STL and python set/list/dict involve a copy operation that
              // prevents pass-by-reference semantics, so it is ok to swap.
-             // The reaseon why not directly pass
+             // The reason why not directly pass
              // std::shared_ptr<std::unordered_set<std::string>>
              // is that pybind11 forbid shared_ptr<T> where T is not custom
              // type.

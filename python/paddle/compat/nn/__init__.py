@@ -27,6 +27,7 @@ from paddle.framework import (
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 from . import functional
+from .transformer import MultiheadAttention
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -48,6 +49,7 @@ __all__ = [
     'AvgPool1d',
     'AvgPool2d',
     'AvgPool3d',
+    'MultiheadAttention',
 ]
 
 
@@ -399,6 +401,9 @@ class AvgPool3D(nn.Layer):
         self.__dict__.setdefault("padding", 0)
         self.__dict__.setdefault("ceil_mode", False)
         self.__dict__.setdefault("count_include_pad", True)
+
+
+__all__ = ['Unfold', 'Linear', 'MultiheadAttention']
 
 
 class Unfold(nn.Unfold):
