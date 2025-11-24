@@ -105,6 +105,28 @@ class TestTorchProxyBlockedModule(unittest.TestCase):
             torch_proxy_blocked_module.use_torch_specific_fn()
 
 
+class TestOverrideTorchModule(unittest.TestCase):
+    @paddle.compat.use_torch_proxy_guard()
+    def test_relu(self):
+        import torch
+
+        self.assertIs(torch.relu, paddle.nn.functional.relu)
+
+    @paddle.compat.use_torch_proxy_guard()
+    def test_access_compat_functions_by_getattr(self):
+        import torch
+
+        self.assertIs(torch.nn.Unfold, paddle.compat.nn.Unfold)
+        self.assertIs(torch.nn.Linear, paddle.compat.nn.Linear)
+
+    @paddle.compat.use_torch_proxy_guard()
+    def test_access_compat_functions_by_import(self):
+        from torch.nn.functional import linear, softmax
+
+        self.assertIs(softmax, paddle.compat.nn.functional.softmax)
+        self.assertIs(linear, paddle.compat.nn.functional.linear)
+
+
 class TestFakeInterface(unittest.TestCase):
     def test_fake_interface(self):
         FakeGenerator = create_fake_class(

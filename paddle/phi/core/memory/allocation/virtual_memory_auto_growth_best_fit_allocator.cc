@@ -211,7 +211,6 @@ VirtualMemoryAutoGrowthBestFitAllocator::AllocateOrCompact(size_t size) {
     VLOG(4) << "Do Memory Compact allocate size and compact " << size;
     size_t compact_free_size = memory_compactor_->Compact(
         all_blocks_, all_blocks_.front().ptr_, all_blocks_.back().ptr_);
-    if (compact_free_size < 0) throw;
     VLOG(4) << "Memory Compacted Size: " << compact_free_size;
     auto free_block = std::prev(all_blocks_.end());
     if (free_block->is_free_ && free_block->size_ < size) {
@@ -363,10 +362,11 @@ bool VirtualMemoryAutoGrowthBestFitAllocator::TryAllocateBatch(
 
   std::lock_guard<SpinLock> guard(spinlock_);
 
-  // copy free_blocks_ to shadow_blocks_
+  // copy large N free_blocks_ to shadow_blocks_.
   std::map<std::pair<size_t, void *>, size_t> shadow_blocks;
-  for (const auto &pair : free_blocks_) {
-    shadow_blocks.emplace(pair.first, pair.first.first);
+  auto it = free_blocks_.rbegin();
+  for (int i = 0; i < sizes.size() && it != free_blocks_.rend(); ++i, ++it) {
+    shadow_blocks.emplace(it->first, it->first.first);
   }
   for (size_t size : sizes) {
     size_t aligned_size = AlignedSize(size, alignment_);

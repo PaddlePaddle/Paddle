@@ -35,14 +35,14 @@ void AddKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
-  if (out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
-    return;
-  }
   if (x.dtype() == phi::DataType::FLOAT32 &&
       (y.dtype() == phi::DataType::BFLOAT16 ||
        y.dtype() == phi::DataType::FLOAT16)) {
     // special case for "float32 + bfloat16", or "float32 + float16"
+    if (out->numel() == 0) {
+      dev_ctx.template Alloc<float>(out);
+      return;
+    }
     auto dev_version =
         phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
     if (dev_version >= phi::backends::xpu::XPUVersion::XPU3 &&
@@ -82,6 +82,10 @@ void AddKernel(const Context& dev_ctx,
       XPUElementwise<Type, XPUType>(dev_ctx, x, casted_y, -1, out, f);
     }
   } else {
+    if (out->numel() == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
     using XPUType = typename XPUTypeTrait<T>::Type;
 
     auto f = [](xpu::Context* xpu_ctx,
