@@ -68,7 +68,7 @@ def _has_global_step(lr_ops):
 
 def is_sparse_op(op):
     if not hasattr(op, 'type'):
-        return False
+        return False  # pragma: no cover
 
     if (
         op.type in SPARSE_OP_LIST
@@ -1257,7 +1257,7 @@ class CompileTimeStrategy:
             block = origin_program.global_block()
 
             if not hasattr(block, 'vars'):
-                return [], []
+                return [], []  # pragma: no cover
 
             dense_param_grads = []
             sparse_param_grads = []
@@ -1267,7 +1267,7 @@ class CompileTimeStrategy:
             role_id = int(core.op_proto_and_checker_maker.OpRole.Backward)
             for op in block.ops:
                 if not hasattr(op, 'type'):
-                    continue
+                    continue  # pragma: no cover
 
                 if _is_opt_role_op(op):
                     # delete clip op from opt_ops when run in Parameter Server mode
@@ -1297,7 +1297,7 @@ class CompileTimeStrategy:
             varnames = []
             for op in origin_program.global_block().ops:
                 if not hasattr(op, 'type'):
-                    continue
+                    continue  # pragma: no cover
 
                 if (
                     op.type in SPARSE_OP_TYPE_DICT.keys()
@@ -1356,7 +1356,7 @@ def _get_optimize_ops(_program):
     opt_ops = []
     for op in block.ops:
         if not hasattr(op, 'type'):
-            continue
+            continue  # pragma: no cover
 
         if _is_opt_role_op(op):
             # delete clip op from opt_ops when run in Parameter Server mode
