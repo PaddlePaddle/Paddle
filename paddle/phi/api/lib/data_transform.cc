@@ -939,7 +939,9 @@ void ReshardKernelOutputToApiOutput(
     // skip_sharding3_output_reshard for sharding stage3 with AMP.
     bool skip_sharding3_output_reshard =
         std::getenv("skip_sharding3_output_reshard") &&
-        std::string(std::getenv("skip_sharding3_output_reshard")) == "1";
+        std::string(std::getenv("skip_sharding3_output_reshard")) == "1" &&
+        src_tensor->dist_attr().is_partial() &&
+        dist_tensor->dist_attr().is_shard();
     if (!skip_sharding3_output_reshard &&
         ReshardIsNeeded(src_tensor->dist_attr(), dist_tensor->dist_attr())) {
       auto argument_name = (arg_name.empty() ? "tensor" : arg_name);
