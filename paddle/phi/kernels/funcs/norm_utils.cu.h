@@ -17,14 +17,8 @@ limitations under the License. */
 #include <cfloat>
 #include <string>
 #include <vector>
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
 #include "paddle/common/layout.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 

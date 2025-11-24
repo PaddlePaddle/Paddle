@@ -23,15 +23,7 @@
 #include <set>
 #include <vector>
 
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
+#include "paddle/phi/kernels/funcs/cub.h"
 #ifndef PADDLE_WITH_XPU_KP
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"

@@ -17,17 +17,9 @@ limitations under the License. */
 
 #include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-
-#ifdef __NVCC__
-#include <cub/cub.cuh>
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpudnn/conv_gpudnn.h"
 #include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
