@@ -611,6 +611,9 @@ void* GetCUPTIDsoHandle() {
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
   return GetDsoHandleFromSearchPath(
       FLAGS_cupti_dir, PTI_LIB_NAME, false, {cupti_lib_path});
+#elif defined(PADDLE_WITH_XPU)
+  return GetDsoHandleFromSearchPath(
+      FLAGS_cupti_dir, "libcupti.so", false, {cupti_lib_path});
 #elif defined(__linux__) && defined(PADDLE_WITH_CUDA)
   if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12000) {
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
