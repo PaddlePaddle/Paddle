@@ -1680,7 +1680,7 @@ void FusedElemwiseAddActivationGradInferMeta(
     MetaTensor* y_grad) {
   PADDLE_ENFORCE_NOT_NULL(
       out_grad,
-      common::errors::InvalidArgument("Input(Out@Grad) should not be null."));
+      common::errors::InvalidArgument("Input(Out@GRAD) should not be null."));
 
   if (save_intermediate_out) {
     PADDLE_ENFORCE_NOT_NULL(intermediate_out,
@@ -5547,7 +5547,7 @@ void FusedElemwiseActivationGradInferMeta(
   PADDLE_ENFORCE_EQ(
       out_grad.initialized(),
       true,
-      common::errors::InvalidArgument("Input(Out@Grad) should not be null."));
+      common::errors::InvalidArgument("Input(Out@GRAD) should not be null."));
 
   if (save_intermediate_out) {
     PADDLE_ENFORCE_EQ(intermediate_out.initialized(),
