@@ -103,7 +103,7 @@ class ForLoopTuplePreTransformer(BaseTransformer):
     will be changed into :
 
     >>> # make iterator-only to indexable list.
-    >>> UUID_iterator = _jst.Indexable(B)  
+    >>> UUID_iterator = _jst.Indexable(B)
     >>> for UUID_target in UUID_iterator:
     >>>     A = _jst.Unpack(UUID_target, structure)
     >>>     C
