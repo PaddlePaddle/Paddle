@@ -44,9 +44,8 @@ __global__ void im2col(const T* data_im,
   int64_t input_channels = num_outs / col_height / col_width;
   int64_t channels_col = input_channels * filter_height * filter_width;
   const int64_t index =
-      static_cast<int64_t>(blockIdx.x * gridDim.y + blockIdx.y) *
-          static_cast<int64_t>(blockDim.x) +
-      static_cast<int64_t>(threadIdx.x);
+      (static_cast<int64_t>(blockIdx.x) * gridDim.y + blockIdx.y) * blockDim.x +
+      threadIdx.x;
   if (index < num_outs) {
     int64_t w_out = (data_layout != DataLayout::NHWC
                          ? index % col_width
@@ -133,9 +132,11 @@ class Im2ColFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
 #ifdef WITH_NV_JETSON
     phi::backends::gpu::ChangeThreadNum(dev_ctx, &num_thread);
 #endif
-    int blocks = (num_outputs + num_thread - 1) / num_thread;
+    int64_t blocks = (num_outputs + num_thread - 1) / num_thread;
+    PADDLE_ENFORCE_LE_INT_MAX(blocks, "blocks");
+
     int block_x = 512;
-    int block_y = (blocks + 512 - 1) / 512;
+    int block_y = (static_cast<int>(blocks) + 512 - 1) / 512;
     dim3 threads(num_thread, 1);
     dim3 grid(block_x, block_y);
     im2col<T><<<grid, threads, 0, dev_ctx.stream()>>>(im.data<T>(),
