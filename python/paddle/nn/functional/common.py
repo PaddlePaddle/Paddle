@@ -2516,7 +2516,7 @@ def linear(
             not paddle.get_flags(["FLAGS_use_legacy_gemm"]).get(
                 "FLAGS_use_legacy_gemm", False
             )
-            and x.place.is_gpu_place()
+            and core.is_compiled_with_cuda()
         ):
             if bias is not None and bias.shape == []:
                 if bias.numel() == 0:
