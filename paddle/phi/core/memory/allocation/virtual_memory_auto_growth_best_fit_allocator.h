@@ -22,6 +22,7 @@
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
 #include "paddle/phi/core/memory/mem_utils.h"
+#include "paddle/phi/core/memory/mem_visitor.h"
 
 namespace paddle {
 namespace memory {
@@ -43,13 +44,22 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
       size_t alignment,
       const phi::GPUPlace &place);
 
+  std::shared_ptr<Allocator> &GetUnderLyingAllocator() {
+    return underlying_allocator_;
+  }
+  std::pair<size_t, size_t> SumLargestFreeBlockSizes(int32_t n) const;
+  void Accept(AllocatorVisitor *visitor) override { visitor->Visit(this); }
+
   bool IsAllocThreadSafe() const override { return true; }
   void PreAlloc() override;
   void PreAllocate(size_t size);
+  // Try to simulate an allocation, simulating a request for vector<size>.
+
+  bool TryAllocateBatch(const std::vector<size_t> &sizes);
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;
-
+  size_t CompactImpl(const phi::Place &place) override;
   void FreeImpl(phi::Allocation *allocation) override;
 
  private:
@@ -92,10 +102,11 @@ class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator
             small_allocator, large_allocator, alignment, place) {}
   bool IsAllocThreadSafe() const override { return true; }
   void PreAlloc() override;
-
- private:
-  // Determine if the request size is a small request.
+  void Accept(AllocatorVisitor *visitor) override { visitor->Visit(this); }
   bool IsSmallRequest(size_t size) override;
+
+ protected:
+  size_t CompactImpl(const phi::Place &place) override;
 };
 
 }  // namespace allocation

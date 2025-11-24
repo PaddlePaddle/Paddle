@@ -22,6 +22,7 @@ import numpy as np
 
 from paddle import _C_ops, in_dynamic_mode, pir_utils
 from paddle.device import get_all_custom_device_type
+from paddle.utils.decorator_utils import param_one_alias
 
 from ...base import dygraph_utils
 from ...base.data_feeder import check_variable_and_dtype
@@ -51,6 +52,7 @@ if TYPE_CHECKING:
         DataLayoutND,
         DTypeLike,
         ParamAttrLike,
+        PlaceLike,
         ShapeLike,
     )
 
@@ -420,8 +422,7 @@ class InstanceNorm3D(_InstanceNormBase):
 
 
 class GroupNorm(Layer):
-    """
-
+    r"""
     This interface is used to construct a callable object of the ``GroupNorm`` class.
     For more details, refer to code examples.
     It implements the function of the Group Normalization Layer.
@@ -432,14 +433,35 @@ class GroupNorm(Layer):
         num_channels(int): The number of channels of input.
         epsilon(float, optional): The small value added to the variance to prevent
             division by zero. Default: 1e-05.
-        weight_attr(ParamAttr|bool|None, optional): The parameter attribute for the learnable
-            scale :math:`g`. If it is set to False, no scale will be added to the output units.
-            If it is set to None, the scale is initialized one. Default: None.
-        bias_attr(ParamAttr|bool|None, optional): The parameter attribute for the learnable
-            bias :math:`b`. If it is set to False, no bias will be added to the output units.
-            If it is set to None, the bias is initialized zero. Default: None.
+            alias: ``eps``.
+        affine(bool, optional): Whether this module has learnable affine parameters (weight and bias).
+            If set to ``False``, no learnable parameters will be created, regardless of the settings of
+            `weight_attr` and `bias_attr`. Defaults to True.
+            **Note: This argument must be passed as a keyword argument.**
+        device(PlaceLike, optional): Device where the computation takes place. Default: None.
+            **Note: This argument must be passed as a keyword argument.**
+        dtype(DTypeLike, optional): Data type of the weights and bias. Default: None.
+            **Note: This argument must be passed as a keyword argument.**
+        weight_attr(ParamAttr|bool|None, optional): The parameter attribute for the learnable scale :math:`g`.
+            This setting only takes effect when `affine` is ``True``.
+            - If set to ``False``, no scale parameter will be created.
+            - If set to ``True`` or a `ParamAttr` object, a learnable scale parameter will be created.
+              When set to ``True``, it is equivalent to ``ParamAttr()`` with default initialization.
+            - If set to ``None``, a learnable scale parameter will be created and initialized to one.
+            Default: None.
+            **Note: This argument must be passed as a keyword argument.**
+        bias_attr (ParamAttr|bool|None, optional): The parameter attribute for the learnable bias :math:`b`.
+            This setting only takes effect when `affine` is ``True``.
+            - If set to ``False``, no bias parameter will be created.
+            - If set to ``True`` or a `ParamAttr` object, a learnable bias parameter will be created.
+              When set to ``True``, it is equivalent to ``ParamAttr()`` with default initialization.
+            - If set to ``None``, a learnable bias parameter will be created and initialized to zero.
+            Default: None.
+            **Note: This argument must be passed as a keyword argument.**
         data_format(str, optional): Specify the input data format. Support "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
-        name(str|None, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
+            **Note: This argument must be passed as a keyword argument.**
+        name(str|None, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`.
+            **Note: This argument must be passed as a keyword argument.**
 
     Shape:
         - x: Tensor with shape: attr:`(batch, num_features, *)`.
@@ -488,22 +510,30 @@ class GroupNorm(Layer):
     weight: Tensor
     bias: Tensor
 
+    @param_one_alias(["epsilon", "eps"])
     def __init__(
         self,
         num_groups: int,
         num_channels: int,
         epsilon: float = 1e-5,
+        *,
+        affine: bool = True,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
         weight_attr: bool | ParamAttr | None = None,
         bias_attr: bool | ParamAttr | None = None,
         data_format: DataLayout1D | DataLayout2D | DataLayout3D = 'NCHW',
         name: str | None = None,
     ) -> None:
         super().__init__()
-        self._weight_attr = weight_attr
-        self._bias_attr = bias_attr
         self._epsilon = epsilon
         self._num_channels = num_channels
         self._num_groups = num_groups
+        self._device = device
+        self._dtype = (
+            self._helper.get_default_dtype() if dtype is None else dtype
+        )
+
         if data_format not in ['NCL', 'NCHW', 'NCDHW', 'NLC', 'NHWC', 'NDHWC']:
             raise ValueError("unsupported data layout:" + data_format)
 
@@ -512,16 +542,22 @@ class GroupNorm(Layer):
 
         param_shape = [self._num_channels]
 
+        if not affine:
+            weight_attr = False
+            bias_attr = False
+
+        self._weight_attr = weight_attr
+        self._bias_attr = bias_attr
+
         if weight_attr is False:
-            self.weight = self.create_parameter(
-                attr=None, shape=param_shape, default_initializer=Constant(1.0)
-            )
-            self.weight.stop_gradient = True
+            self.weight = None
         else:
             self.weight = self.create_parameter(
                 attr=self._weight_attr,
                 shape=param_shape,
+                dtype=self._dtype,
                 default_initializer=Constant(1.0),
+                device=self._device,
             )
             self.weight.stop_gradient = self._weight_attr is not None and (
                 hasattr(self._weight_attr, "learning_rate")
@@ -529,16 +565,15 @@ class GroupNorm(Layer):
             )
 
         if bias_attr is False:
-            self.bias = self.create_parameter(
-                attr=None,
-                shape=param_shape,
-                default_initializer=Constant(0.0),
-                is_bias=True,
-            )
-            self.bias.stop_gradient = True
+            self.bias = None
         else:
             self.bias = self.create_parameter(
-                attr=self._bias_attr, shape=param_shape, is_bias=True
+                attr=self._bias_attr,
+                shape=param_shape,
+                dtype=self._dtype,
+                default_initializer=Constant(0.0),
+                is_bias=True,
+                device=self._device,
             )
             self.bias.stop_gradient = self._bias_attr is not None and (
                 hasattr(self._bias_attr, "learning_rate")
@@ -589,13 +624,34 @@ class LayerNorm(Layer):
             which is expected to be of that specific size.
         epsilon(float, optional): The small value added to the variance to prevent
             division by zero. Default: 1e-05.
+            alias: ``eps``.
+        elementwise_affine(bool, optional): Whether to apply element-wise affine transformation
+            (i.e., learnable scale and bias). If set to ``False``, both the scale (:math:`g`) and
+            bias (:math:`b`) parameters will be disabled, regardless of the settings of `weight_attr`
+            and `bias_attr`. This parameter acts as a master switch. Defaults to True.
+            **Note: This argument must be passed as a keyword argument.**
+        bias(bool, optional): Whether to include a learnable bias term in the layer. This setting
+            only takes effect when `elementwise_affine` is ``True``. If set to ``False``, no bias
+            parameter will be created, even if `bias_attr` is specified. Defaults to True.
+            **Note: This argument must be passed as a keyword argument.**
         weight_attr(ParamAttr|bool|None, optional): The parameter attribute for the learnable
-            gain :math:`g`. If False, weight is None. If is None, a default :code:`ParamAttr` would be added as scale. The
-            :attr:`param_attr` is initialized as 1 if it is added. Default: None. For more information, please refer to :ref:`api_paddle_ParamAttr` .
+            gain :math:`g` (scale). This setting only takes effect when `elementwise_affine` is ``True``.
+            - If set to ``False``, no gain parameter will be created.
+            - If set to ``None`` or ``True``, a default :code:`ParamAttr` will be used, and the
+              parameter will be initialized to 1.
+            - If set to a custom :code:`ParamAttr` object, it will be used to configure the parameter.
+            Default: None.
+            **Note: This argument must be passed as a keyword argument.**
         bias_attr(ParamAttr|bool|None, optional): The parameter attribute for the learnable
-            bias :math:`b`. If is False, bias is None. If is None, a default :code:`ParamAttr` would be added as bias. The
-            :attr:`bias_attr` is initialized as 0 if it is added. Default: None. For more information, please refer to :ref:`api_paddle_ParamAttr` .
+            bias :math:`b`. This setting only takes effect when both `elementwise_affine` and `bias` are ``True``.
+            - If set to ``False``, no bias parameter will be created.
+            - If set to ``None`` or ``True``, a default :code:`ParamAttr` will be used, and the
+              parameter will be initialized to 0.
+            - If set to a custom :code:`ParamAttr` object, it will be used to configure the parameter.
+            Default: None.
+            **Note: This argument must be passed as a keyword argument.**
         name(str|None, optional): Name for the LayerNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .
+            **Note: This argument must be passed as a keyword argument.**
 
     Shape:
         - x: 2-D, 3-D, 4-D or 5-D tensor.
@@ -629,10 +685,16 @@ class LayerNorm(Layer):
     weight: Tensor | None
     bias: Tensor | None
 
+    @param_one_alias(["epsilon", "eps"])
     def __init__(
         self,
         normalized_shape: int | Sequence[int],
         epsilon: float = 1e-5,
+        *,
+        elementwise_affine: bool = True,
+        bias: bool = True,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
         weight_attr: bool | ParamAttr | None = None,
         bias_attr: bool | ParamAttr | None = None,
         name: str | None = None,
@@ -643,6 +705,17 @@ class LayerNorm(Layer):
 
         self._normalized_shape = list(normalized_shape)
         self._epsilon = epsilon
+        self._device = device
+        self._dtype = (
+            self._helper.get_default_dtype() if dtype is None else dtype
+        )
+
+        if not elementwise_affine:
+            weight_attr = False
+            bias_attr = False
+        elif not bias:
+            bias_attr = False
+
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
         param_shape = [np.prod(self._normalized_shape)]
@@ -652,15 +725,22 @@ class LayerNorm(Layer):
         else:
             self.weight = self.create_parameter(
                 attr=self._weight_attr,
+                dtype=self._dtype,
                 shape=param_shape,
                 default_initializer=Constant(1.0),
+                device=self._device,
             )
 
         if bias_attr is False:
             self.bias = None
         else:
             self.bias = self.create_parameter(
-                attr=self._bias_attr, shape=param_shape, is_bias=True
+                attr=self._bias_attr,
+                dtype=self._dtype,
+                shape=param_shape,
+                default_initializer=Constant(0.0),
+                device=self._device,
+                is_bias=True,
             )
 
     def forward(self, input: Tensor) -> Tensor:

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/memory/mem_visitor.h"
 #include "paddle/phi/core/stream.h"
 
 namespace paddle::memory {
@@ -78,6 +79,24 @@ gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) {
   return allocation::AllocatorFacade::Instance().GetStream(allocation);
 }
 
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
+std::pair<size_t, size_t> VmmMaxFreeSize(const phi::GPUPlace& place,
+                                         int32_t n) {
+  FreeMemoryMetricsVisitor free_memory_metrics_visitor(n);
+  allocation::AllocatorFacade::Instance().Accept(place,
+                                                 &free_memory_metrics_visitor);
+  return std::make_pair(free_memory_metrics_visitor.GetLargeSize(),
+                        free_memory_metrics_visitor.GetSumSize());
+}
+
+bool TryAllocBatch(const phi::GPUPlace& place,
+                   const std::vector<size_t>& sizes) {
+  TryAllocVisitor try_alloc_visitor(sizes);
+  allocation::AllocatorFacade::Instance().Accept(place, &try_alloc_visitor);
+  return try_alloc_visitor.IsTryAllocSuccess();
+}
 #endif
 
 #ifdef PADDLE_WITH_XPU

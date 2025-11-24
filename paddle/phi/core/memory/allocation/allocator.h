@@ -25,6 +25,7 @@
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/inlined_vector.h"
+#include "paddle/phi/core/memory/mem_visitor.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -202,6 +203,8 @@ class PADDLE_API Allocator : public phi::Allocator {
   uint64_t Release(const phi::Place& place) { return ReleaseImpl(place); }
   size_t Compact(const phi::Place& place) { return CompactImpl(place); }
 
+  virtual void Accept(AllocatorVisitor* visitor) { visitor->Visit(this); }
+
  protected:
   virtual phi::Allocation* AllocateImpl(size_t size) = 0;
   virtual void FreeImpl(phi::Allocation* allocation);
@@ -259,15 +262,13 @@ class PADDLE_API MultiScalePoolAllocator : public Allocator {
     IsSmallRequest(allocation->size()) ? small_allocator_->Free(allocation)
                                        : large_allocator_->Free(allocation);
   };
-
- protected:
   // Get small_allocator_ and large_allocator_.
   std::shared_ptr<Allocator>& GetSmallAllocator() { return small_allocator_; }
   std::shared_ptr<Allocator>& GetLargeAllocator() { return large_allocator_; }
+  virtual bool IsSmallRequest(size_t size) = 0;
 
  private:
   phi::Allocation* AllocateImpl(size_t UNUSED) { return nullptr; }
-  virtual bool IsSmallRequest(size_t size) = 0;
   std::shared_ptr<Allocator> small_allocator_;
   std::shared_ptr<Allocator> large_allocator_;
   size_t alignment_;

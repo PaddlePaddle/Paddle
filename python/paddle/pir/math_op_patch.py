@@ -241,6 +241,17 @@ def monkey_patch_value():
             "Tensor do not have 'place' interface for pir graph mode, try not to use it. None will be returned."
         )
 
+    @property
+    def device(self):
+        """
+        Tensor don't have 'device' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warning here and return None.
+        """
+        warnings.warn(
+            "Tensor do not have 'device' interface for pir graph mode, try not to use it. None will be returned."
+        )
+
     def contiguous(self):
         """
         Tensor don't have 'contiguous' interface in static graph mode
@@ -1477,6 +1488,7 @@ def monkey_patch_value():
         ('cpu', cpu),
         ('cuda', cuda),
         ('place', place),
+        ('device', device),
         ('contiguous', contiguous),
         ('is_cuda', is_cuda),
         ('is_contiguous', is_contiguous),

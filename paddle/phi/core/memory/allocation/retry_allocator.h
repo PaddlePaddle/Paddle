@@ -23,6 +23,7 @@
 
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/core/memory/mem_visitor.h"
 
 namespace paddle {
 namespace memory {
@@ -49,6 +50,10 @@ class PADDLE_API RetryAllocator : public Allocator {
         common::errors::PreconditionNotMet(
             "Underlying allocator of RetryAllocator is not thread-safe"));
   }
+  std::shared_ptr<Allocator>& GetUnderLyingAllocator() {
+    return underlying_allocator_;
+  }
+  void Accept(AllocatorVisitor* visitor) override { visitor->Visit(this); }
 
   bool IsAllocThreadSafe() const override { return true; }
 
