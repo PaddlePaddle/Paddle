@@ -33,10 +33,15 @@ __device__ __forceinline__ void ComputeWeightsSpan(const int i,
                                                    const int input_size,
                                                    const MT scale,
                                                    const MT support,
+                                                   const bool align_corners,
                                                    int* xmin,
                                                    int* xsize,
                                                    MT* center) {
-  *center = scale * (i + static_cast<MT>(0.5));
+  if (align_corners) {
+    *center = scale * static_cast<MT>(i);
+  } else {
+    *center = scale * (static_cast<MT>(i) + static_cast<MT>(0.5));
+  }
   *xmin = max(static_cast<int>(*center - support + static_cast<MT>(0.5)), 0);
   *xsize = min(static_cast<int>(*center + support + static_cast<MT>(0.5)),
                input_size) -
@@ -322,6 +327,7 @@ __global__ void KeInterpAAFw(const T* in,
                              const size_t nc,
                              const float ratio_h,
                              const float ratio_w,
+                             const bool align_corners,
                              const InterpFilter& interp_filter) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
@@ -356,10 +362,22 @@ __global__ void KeInterpAAFw(const T* in,
   // Compute weights and kernel spans
   int xmin, xsize, ymin, ysize;
   MT xcenter, ycenter;
-  ComputeWeightsSpan<MT>(
-      out_img_idx, in_img_w, scale_w, support_w, &xmin, &xsize, &xcenter);
-  ComputeWeightsSpan<MT>(
-      out_img_idy, in_img_h, scale_h, support_h, &ymin, &ysize, &ycenter);
+  ComputeWeightsSpan<MT>(out_img_idx,
+                         in_img_w,
+                         scale_w,
+                         support_w,
+                         align_corners,
+                         &xmin,
+                         &xsize,
+                         &xcenter);
+  ComputeWeightsSpan<MT>(out_img_idy,
+                         in_img_h,
+                         scale_h,
+                         support_h,
+                         align_corners,
+                         &ymin,
+                         &ysize,
+                         &ycenter);
 
   if (threadIdx.y == 0) {
     ComputeWeights<T, MT>(
@@ -1297,16 +1315,18 @@ static void InterpolateAA2DCUDAFwd(
                           shmem_size,
                           gpu_props.sharedMemPerBlock));
 
-    KeInterpAAFw<T><<<grid, block, shmem_size, dev_ctx.stream()>>>(input_data,
-                                                                   in_h,
-                                                                   in_w,
-                                                                   output_data,
-                                                                   out_h,
-                                                                   out_w,
-                                                                   nc,
-                                                                   ratio_h,
-                                                                   ratio_w,
-                                                                   filter);
+    KeInterpAAFw<T>
+        <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_data,
+                                                        in_h,
+                                                        in_w,
+                                                        output_data,
+                                                        out_h,
+                                                        out_w,
+                                                        nc,
+                                                        ratio_h,
+                                                        ratio_w,
+                                                        align_corners,
+                                                        filter);
   } else if ("bicubic" == interp_method) {
     // Use anti-aliasing bicubic interpolation
     int64_t nc = static_cast<int64_t>(n) * c;
@@ -1346,16 +1366,18 @@ static void InterpolateAA2DCUDAFwd(
                           shmem_size,
                           gpu_props.sharedMemPerBlock));
 
-    KeInterpAAFw<T><<<grid, block, shmem_size, dev_ctx.stream()>>>(input_data,
-                                                                   in_h,
-                                                                   in_w,
-                                                                   output_data,
-                                                                   out_h,
-                                                                   out_w,
-                                                                   nc,
-                                                                   ratio_h,
-                                                                   ratio_w,
-                                                                   filter);
+    KeInterpAAFw<T>
+        <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_data,
+                                                        in_h,
+                                                        in_w,
+                                                        output_data,
+                                                        out_h,
+                                                        out_w,
+                                                        nc,
+                                                        ratio_h,
+                                                        ratio_w,
+                                                        align_corners,
+                                                        filter);
   }
 }
 
