@@ -149,7 +149,7 @@ void ContiguousKernel(const Context& dev_ctx,
     config.is_alloc_out_ = true;
     phi::DenseTensorIterator iter = config.build();
 
-    if (iter.shape().size() > 2 || input.dims().size() == 0) {
+    if (iter.shape().size() > 3 || input.dims().size() == 0) {
       FallbackContiguous<T>(
           input.dims(), input.strides(), numel, input_data, output_data);
       return;
