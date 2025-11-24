@@ -839,7 +839,6 @@ def vmm_max_free_size(device: _CudaPlaceLike | None = None) -> tuple[int, int]:
 
             >>> max_free, total_free = paddle.device.cuda.vmm_max_free_size(0)
             >>> print(f"Max free size: {max_free}, Total free size: {total_free}")
-            # Example output: Max free size: 536870912, Total free size: 1073741824
     '''
     name = 'paddle.device.cuda.vmm_max_free_size'
     if not (core.is_compiled_with_cuda()):
@@ -872,7 +871,6 @@ def vmm_compact(device: _CudaPlaceLike | None = None) -> int:
 
             >>> moved_bytes = paddle.device.cuda.vmm_compact(0)
             >>> print(f"Bytes moved during compaction: {moved_bytes}")
-            # Example output: Bytes moved during compaction: 0
     '''
     name = 'paddle.device.cuda.vmm_compact'
     if not (core.is_compiled_with_cuda()):
@@ -983,8 +981,6 @@ def memory_summary(device: _CudaPlaceLike | None = None) -> None:
             >>> paddle.device.set_device('gpu')  # or '<custom_device>'
 
             >>> paddle.device.cuda.memory_summary(0)
-            # Expected output in the terminal will be a multi-line formatted string
-            # with three distinct tables: Global Summary, Allocator Summary, and Distribution.
     '''
     nvidia_smi_AVAILABLE = False
     try:
