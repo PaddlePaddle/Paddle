@@ -102,6 +102,7 @@ def get_device_capability(device_id: int) -> tuple[int, int]:
     return paddle.device.cuda.get_device_capability(device_id)
 
 
+@lru_cache(maxsize=32)
 def check_sm_version(
     min_sm: tuple[int, int], max_sm: tuple[int, int], device_id: int = 0
 ) -> bool:
@@ -130,24 +131,6 @@ def check_all_tensors_on_device(params: SDPParams, debug: bool):
     return True
 
 
-def check_tensor_shapes(params: SDPParams, debug: bool):
-    """
-    Check the number of dimensions of QKV are all 4.
-    """
-    query_dim = len(params.query_shape)
-    key_dim = len(params.key_shape)
-    value_dim = len(params.value_shape)
-
-    if query_dim != 4 or key_dim != 4 or value_dim != 4:
-        if debug:
-            warnings.warn(
-                "The number of dimensions of query, key, and value should be 4, "
-                f"but query_dim: {query_dim}, key_dim: {key_dim}, value_dim: {value_dim}"
-            )
-        return False
-    return True
-
-
 def check_for_attn_mask(params: SDPParams, debug: bool):
     """
     Check flash attention does not support attn_mask.
@@ -155,7 +138,7 @@ def check_for_attn_mask(params: SDPParams, debug: bool):
     if params.attn_mask_shape is not None:
         if debug:
             warnings.warn("Flash attention does not support attn_mask.")
-            return False
+        return False
     return True
 
 
@@ -172,61 +155,38 @@ def check_head_dim_size_flash(params: SDPParams, debug: bool):
                 f"but q_head_dim: {q_head_dim}, k_head_dim: {k_head_dim}, v_head_dim: {v_head_dim}"
             )
         return False
+    if q_head_dim % 8 != 0:
+        if debug:
+            warnings.warn(
+                "The dimension of head in query, key, and value should be a multiple of 8, "
+                f"but q_head_dim: {q_head_dim}"
+            )
+        return False
     return True
 
 
-def check_flash_attention_hardware_support(params: SDPParams, debug: bool):
+@lru_cache(maxsize=8)
+def check_flash_attention_hardware_support(device_id: int, debug: bool):
     """
     Check flash attention requires CUDA support and SM between 8.0 and 12.1.
     """
     if not check_cuda_is_available():
         if debug:
             warnings.warn("Flash attention requires CUDA support.")
-            return False
+        return False
 
     if not check_sm_version(
         config["flash_attn"]["MINIMUM_SM_VERSION"],
         config["flash_attn"]["MAXIMUM_SM_VERSION"],
-        params.device_id[0],
+        device_id,
     ):
         if debug:
             warnings.warn(
                 f"Flash attention requires SM between {config['flash_attn']['MINIMUM_SM_VERSION']}"
                 f"and {config['flash_attn']['MAXIMUM_SM_VERSION']}, but found SM "
-                f"{get_device_capability(params.device_id)}"
-            )
-            return False
-    return True
-
-
-def check_requires_grad_and_head_dim_gt192_constraints_on_sm86_89_or_120(
-    params: SDPParams, debug: bool
-):
-    if params.query_stop_gradient:
-        return True
-
-    maj, min = get_device_capability(params.device_id[0])
-    is_consumer_ampere_ada = maj == 8 and min in [6, 9]
-    is_blackwell = maj == 12 and min in [0, 1]
-
-    if not (is_consumer_ampere_ada or is_blackwell):
-        return True
-
-    hdim = params.head_dim[0]
-    dropout = params.dropout
-
-    cond1 = 192 < hdim <= 224
-    cond2 = (hdim > 224) and (dropout > 0.0)
-
-    if cond1 or cond2:
-        if debug:
-            warnings.warn(
-                f"Flash Attention training disabled on SM{maj}.{min} "
-                f"for head_dim={hdim} and dropout={dropout}. "
-                "Constraints: (192, 224] OR (>224 with dropout)."
+                f"{get_device_capability(device_id)}"
             )
         return False
-
     return True
 
 
@@ -296,80 +256,6 @@ def check_dtypes_low_precision_mem_efficient_attn(
     return True
 
 
-def check_batch_size_and_num_heads_dense(
-    params: SDPParams, debug: bool = False
-):
-    """
-    Check the batch size and number of heads of query, key, and value are equal.
-    """
-    # it assumes that dim of kqv is 4, layout is [bs, seq_len, num_heads, head_dim]
-    q_bs, k_bs, v_bs = params.batch_size
-    q_num_heads, k_num_heads, v_num_heads = params.num_heads
-
-    # our flash attn does not support GQA, so they must equal
-    if (
-        q_bs != k_bs
-        or q_bs != v_bs
-        or q_num_heads != k_num_heads
-        or q_num_heads != v_num_heads
-    ):
-        if debug:
-            warnings.warn(
-                f"Flash attention requires the batch size and number of heads"
-                f"of query, key, and value to be equal, but got query shape: "
-                f"{params.query_shape}, key shape: {params.key_shape}, value "
-                f"shape: {params.value_shape}"
-            )
-        return False
-    return True
-
-
-def check_nonzero_sequence_lengths_dense(
-    params: SDPParams, debug: bool = False
-):
-    """
-    Check the sequence lengths of query and key are non-zero.
-    """
-    query_seq_len, key_seq_len, _ = params.seq_len
-    if query_seq_len == 0 or key_seq_len == 0:
-        if debug:
-            warnings.warn(
-                f"Flash attention requires non-zero sequence lengths, "
-                f"but got query shape: {params.query_shape}, key shape: {params.key_shape}"
-            )
-        return False
-    return True
-
-
-def check_last_dim_stride_equals_1_dense(
-    params: SDPParams, debug: bool = False
-):
-    """
-    Check the last dimension stride equals 1.
-    """
-
-    if params.query_shape[-1] != 1 and (
-        params.strides[0][-1] != 1
-        or params.strides[1][-1] != 1
-        or params.strides[2][-1] != 1
-    ):
-        if debug:
-            warnings.warn(
-                f"Flash attention requires last dimension stride equals 1, "
-                f"but got query strides: {params.strides[0]}, key strides:"
-                f"{params.strides[1]}, value strides: {params.strides[2]}"
-            )
-        return False
-    if params.attn_strides is not None and params.attn_strides[-1] != 1:
-        if debug:
-            warnings.warn(
-                f"Flash attention requires last dimension stride equals 1, "
-                f"but got attn_mask strides: {params.attn_strides}"
-            )
-        return False
-    return True
-
-
 @lru_cache(maxsize=2)
 def use_tensor_cores(is_half: bool, device_id: int) -> bool:
     major, _ = get_device_capability(device_id)
@@ -380,7 +266,7 @@ def use_tensor_cores(is_half: bool, device_id: int) -> bool:
     return False
 
 
-@lru_cache(maxsize=8)
+@lru_cache(maxsize=32)
 def minimum_gemm_alignment(dtype: dtype, device_id: int):
     is_half = dtype in (paddle.float16, paddle.bfloat16)
     use_tc = use_tensor_cores(is_half, device_id)
@@ -392,7 +278,8 @@ def minimum_gemm_alignment(dtype: dtype, device_id: int):
     return matmul_alignment_mn
 
 
-def check_mem_efficient_hardware_support(params: SDPParams, debug: bool):
+@lru_cache(maxsize=8)
+def check_mem_efficient_hardware_support(device_id: int, debug: bool):
     """
     Check mem_efficient attention requires CUDA support and SM between 5.0 and 12.1.
     """
@@ -404,15 +291,15 @@ def check_mem_efficient_hardware_support(params: SDPParams, debug: bool):
     if not check_sm_version(
         config["mem_efficient_attn"]["MINIMUM_SM_VERSION"],
         config["mem_efficient_attn"]["MAXIMUM_SM_VERSION"],
-        params.device_id[0],
+        device_id,
     ):
         if debug:
             warnings.warn(
-                f"Flash attention requires SM between {config['mem_efficient_attn']['MINIMUM_SM_VERSION']}"
+                f"Mem efficient attention requires SM between {config['mem_efficient_attn']['MINIMUM_SM_VERSION']}"
                 f"and {config['mem_efficient_attn']['MAXIMUM_SM_VERSION']}, but found SM "
-                f"{get_device_capability(params.device_id)}"
+                f"{get_device_capability(device_id)}"
             )
-            return False
+        return False
     return True
 
 
@@ -471,28 +358,18 @@ def check_scale_is_None(params: SDPParams, debug: bool) -> bool:
 def can_use_flash_attention(params: SDPParams, debug: bool = False) -> bool:
     general_constraints = [
         check_all_tensors_on_device,
-        check_tensor_shapes,
         check_for_attn_mask,
         check_head_dim_size_flash,
-        check_flash_attention_hardware_support,
-        check_requires_grad_and_head_dim_gt192_constraints_on_sm86_89_or_120,
         check_flash_causal_non_square_seqlens,
         check_dtypes_low_precision_fa,
-    ]
-
-    dense_tensor_constraints = [
-        check_batch_size_and_num_heads_dense,
-        check_nonzero_sequence_lengths_dense,
-        check_last_dim_stride_equals_1_dense,
     ]
 
     for constraint in general_constraints:
         if not constraint(params, debug):
             return False
 
-    for constraint in dense_tensor_constraints:
-        if not constraint(params, debug):
-            return False
+    if not check_flash_attention_hardware_support(params.device_id[0], debug):
+        return False
 
     if not check_scale_is_None(params, debug):
         return False
@@ -504,8 +381,6 @@ def can_use_mem_efficient_attention(
 ) -> bool:
     constraints = [
         check_all_tensors_on_device,
-        check_mem_efficient_hardware_support,
-        check_tensor_shapes,
         check_head_dim_size_mem_efficient,
         check_attn_mask_alignment,
         check_dtypes_low_precision_mem_efficient_attn,
@@ -513,10 +388,18 @@ def can_use_mem_efficient_attention(
     for constraint in constraints:
         if not constraint(params, debug):
             return False
+    if not check_mem_efficient_hardware_support(params.device_id[0], debug):
+        return False
     return True
 
 
 def select_sdp_for_sdpa(param: SDPParams, debug: bool) -> str:
+    # Note: This API is designed for nn.functional.scaled_dot_product_attention,
+    # and is **NOT** expected to be called by others. Some promises should be guaranteed
+    # by caller to skip some rarely unmet constraints:
+    # 1. The input dim is 4, layout is (batch, seq_len, num_heads, head_dim)
+    # 2. The batch_size and num_heads of each input should be the same
+
     place = paddle.get_device()
     if "xpu" in place:
         return "flash_attn"
@@ -573,35 +456,41 @@ def scaled_dot_product_attention(
     ``d`` represents the size of the last dimension of the three parameters.
 
     Warning:
-        This API only supports inputs with dtype float16 and bfloat16.
+        This API only verifies inputs with dtype float16 and bfloat16, other dtypes may fall back to math
+            implementation, which is less optimized.
+
+    Warning:
+        If is_causal is set to True, the causal mask should not be provided, otherwise
+            the provided mask will be ignored.
 
     Note:
         This API differs from :ref:`api_paddle_compat_nn_functional_scaled_dot_product_attention` in that:
             1. The QKV layout of this API is [batch_size, seq_len, num_heads, head_dim] or [seq_len, num_heads, head_dim].
-            2. This API supports GQA(Generic Query Attention) mode.
-        If you need GQA mode or num_head first layout, please use ``paddle.compat.nn.functional.scaled_dot_product_attention``.
+        If you need num_heads before seq_len layout, please use ``paddle.compat.nn.functional.scaled_dot_product_attention``.
 
     Args:
         query(Tensor): The query tensor in the Attention module.
                         4-D tensor with shape:
-                        [batch_size, seq_len, num_heads, head_dim].
+                        [batch_size, seq_len_key, num_heads, head_dim].
                         3-D tensor with shape:
-                        [seq_len, num_heads, head_dim].
+                        [seq_len_key, num_heads, head_dim].
                         The dtype can be float16 or bfloat16.
         key(Tensor): The key tensor in the Attention module.
                         4-D tensor with shape:
-                        [batch_size, seq_len, num_heads, head_dim].
+                        [batch_size, seq_len_key, num_heads, head_dim].
                         3-D tensor with shape:
-                        [seq_len, num_heads, head_dim].
+                        [seq_len_key, num_heads, head_dim].
                         The dtype can be float16 or bfloat16.
         value(Tensor): The value tensor in the Attention module.
                         4-D tensor with shape:
-                        [batch_size, seq_len, num_heads, head_dim].
+                        [batch_size, seq_len_value, num_heads, head_dim].
                         3-D tensor with shape:
-                        [seq_len, num_heads, head_dim].
+                        [seq_len_value, num_heads, head_dim].
                         The dtype can be float16 or bfloat16.
-        attn_mask(Tensor, optional): A float mask of the same type as query,
-                        key, value that is added to the attention score.
+        attn_mask(Tensor, optional): The attention mask tensor. The shape should be broadcastable to
+                        [batch_size, num_heads, seq_len_key, seq_len_query]. The dtype can be bool
+                        or same type of query. The bool mask indicates the positions should take part
+                        in attention. The non-bool mask will be added to attention score.
         dropout_p(float, optional): The dropout ratio.
         is_causal(bool, optional): Whether enable causal mode.
         training(bool, optional): Whether it is in the training phase.
@@ -632,6 +521,8 @@ def scaled_dot_product_attention(
     """
     is_batched = query.dim() == 4
     if not is_batched:
+        # FlashAttention backend does not support unbatched input,
+        # we add batch dim here and will skip check input dim when selecting FA backend.
         query = query.unsqueeze(0)
         key = key.unsqueeze(0)
         value = value.unsqueeze(0)
@@ -651,14 +542,14 @@ def scaled_dot_product_attention(
         # repeat_interleave does not support float16 on GPU, so we manually expand the tensor
         if k_heads != q_heads:
             repeats = q_heads // k_heads
-            key, value = key.unsqueeze(-3), value.unsqueeze(-3)
+            key, value = key.unsqueeze(3), value.unsqueeze(3)
             key, value = (
-                key.expand([-1, -1, repeats, -1, -1]),
-                value.expand([-1, -1, repeats, -1, -1]),
+                key.expand([-1, -1, -1, repeats, -1]),
+                value.expand([-1, -1, -1, repeats, -1]),
             )
             key, value = (
-                key.flatten(-4, -3).contiguous(),
-                value.flatten(-4, -3).contiguous(),
+                key.flatten(2, 3).contiguous(),
+                value.flatten(2, 3).contiguous(),
             )
 
     bs, seq_len_q, num_heads_q, head_dim_q = query.shape
@@ -711,6 +602,7 @@ def scaled_dot_product_attention(
         mask_shape = (bs, num_heads_q, seq_len_q, seq_len_k)
         attn_mask = attn_mask.expand(mask_shape)
     sdp_func_name = select_sdp_for_sdpa(param, debug_sdpa)
+
     if debug_sdpa:
         print("Selected backend", sdp_func_name)
     if sdp_func_name == "flash_attn":

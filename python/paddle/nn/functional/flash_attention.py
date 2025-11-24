@@ -128,26 +128,6 @@ def _math_attention(
     This is a basic implementation of scaled dot product attention composed of
     combinations of fundamental components.
     """
-    q_heads = query.shape[2]
-    k_heads = key.shape[2]
-    if q_heads != k_heads:
-        assert q_heads % k_heads == 0, (
-            f"Query heads ({q_heads}) must be a multiple of Key heads ({k_heads})"
-        )
-        num_rep = q_heads // k_heads
-        # key = paddle.expand(key, [-1, -1, num_rep, -1])
-        # value = paddle.expand(value, [-1, -1, num_rep, -1])
-        key = key.unsqueeze(axis=3)
-        value = value.unsqueeze(axis=3)
-        expand_shape = key.shape
-        expand_shape[3] = num_rep
-        key = paddle.expand(key, expand_shape)
-        value = paddle.expand(value, expand_shape)
-        final_shape = key.shape
-        final_shape[2] = final_shape[2] * final_shape[3]
-        final_shape.pop(3)
-        key = key.reshape(final_shape)
-        value = value.reshape(final_shape)
 
     head_dim = query.shape[-1]
     query = paddle.transpose(query, [0, 2, 1, 3])

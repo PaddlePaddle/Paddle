@@ -43,13 +43,14 @@ def scaled_dot_product_attention(
     The dimensions of the three parameters are the same.
     ``d`` represents the size of the last dimension of the three parameters.
 
-    Note:
-        This API differs from :ref:`api_paddle_nn_functional_scaled_dot_product_attention` in that:
-            1. This API supports GQA(Generic Query Attention) mode.
-            2. The QKV layout of this API is [batch_size, num_heads, seq_len, head_dim] or [num_heads, seq_len, head_dim].
 
     Warning:
-        This API only supports inputs with dtype float16 and bfloat16.
+        This API only verifies inputs with dtype float16 and bfloat16, other dtypes may fall back to math
+            implementation, which is less optimized.
+
+    Note:
+        This API differs from :ref:`api_paddle_nn_functional_scaled_dot_product_attention` in that:
+            The QKV layout of this API is [batch_size, num_heads, seq_len, head_dim] or [num_heads, seq_len, head_dim].
 
     Args:
         query(Tensor): The query tensor in the Attention module.
@@ -81,7 +82,7 @@ def scaled_dot_product_attention(
                         An error is thrown if both attn_mask and is_causal are set.
         scale(float, optional): The scaling factor used in the calculation of attention weights.
                         If None, scale = 1 / sqrt(head_dim).
-        enable_gqa(bool, optional): Whether enable GQA mode.
+        enable_gqa(bool, optional): Whether enable GQA mode. Default False.
 
     Returns:
         out(Tensor): The attention tensor.
