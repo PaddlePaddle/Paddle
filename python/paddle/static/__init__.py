@@ -38,6 +38,7 @@ from ..base.framework import (
     set_ipu_shard,
     xpu_places,
 )
+from ..base.libpaddle import MetaTensor  # noqa: F401
 from ..base.param_attr import WeightNormParamAttr
 from ..tensor.creation import create_global_var, create_parameter
 from . import amp, nn  # noqa: F401
