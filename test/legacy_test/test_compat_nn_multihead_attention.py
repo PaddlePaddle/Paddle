@@ -522,6 +522,7 @@ class TestMHA_Coverage(unittest.TestCase):
                 dtype=(
                     random.choice(['float32', 'bfloat16', 'float16'])
                     if paddle.is_compiled_with_cuda()
+                    and paddle.device.is_bf16_supported()
                     else 'float32'
                 ),
                 random_mask=random.choice([True, False]),
