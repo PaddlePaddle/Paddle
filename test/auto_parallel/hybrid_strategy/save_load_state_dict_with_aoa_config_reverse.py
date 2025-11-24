@@ -90,7 +90,8 @@ def test_save_load_with_aoa_config_reverse():
 
     aoa_config["aoa_config_reverse"] = True
     itr = fc_model.full(aoa_config=aoa_config)
-    (full_weight_k, full_weight_v) = next(itr)
+    full_param = dict(itr)
+    (full_weight_k, full_weight_v) = next(iter(full_param.items()))
     assert full_weight_k == "huggingface.weight"
     assert paddle.allclose(full_weight_v, hf_model.huggingface.weight)
 
