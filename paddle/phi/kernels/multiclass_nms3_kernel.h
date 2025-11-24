@@ -49,5 +49,5 @@ void MultiClassNMSGPUKernel(const Context& dev_ctx,
                             DenseTensor* out,
                             DenseTensor* index,
                             DenseTensor* nms_rois_num);
-                            
+
 }  // namespace phi
