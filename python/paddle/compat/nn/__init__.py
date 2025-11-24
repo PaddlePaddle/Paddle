@@ -400,9 +400,6 @@ class AvgPool3D(nn.Layer):
         self.__dict__.setdefault("count_include_pad", True)
 
 
-__all__ = ['Unfold', 'Linear', 'MultiheadAttention']
-
-
 class Unfold(nn.Unfold):
     """
     A compatible version of paddle.nn.Unfold:
