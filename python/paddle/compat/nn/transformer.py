@@ -42,9 +42,7 @@ class MultiheadAttention(nn.Layer):
 
     .. note::
         This layer will use the optimized implementation
-        :func:`paddle.nn.functional.scaled_dot_product_attention` when possible.
-        The fast path is enabled only when ``need_weights`` is ``False`` and the input
-        data type is ``float16`` or ``bfloat16``.
+        :func:`paddle.nn.functional.scaled_dot_product_attention` if no need to return the attention weights.
 
     Parameters:
         embed_dim (int): Total dimension of the model.

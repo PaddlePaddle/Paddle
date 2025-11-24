@@ -25,7 +25,7 @@ from paddle.framework import (
 from paddle.tensor import softmax
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
-from .attention import scaled_dot_product_attention
+from .sdpa import scaled_dot_product_attention
 
 if TYPE_CHECKING:
     from typing_extensions import TypeAlias

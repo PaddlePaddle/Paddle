@@ -162,7 +162,7 @@ from .pooling import (
     max_unpool2d,
     max_unpool3d,
 )
-from .scaled_dot_production_attention import scaled_dot_product_attention
+from .sdpa import scaled_dot_product_attention
 from .sparse_attention import sparse_attention
 from .vision import (
     affine_grid,

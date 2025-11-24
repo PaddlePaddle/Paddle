@@ -163,7 +163,7 @@ concurrency_list="^test_fp8_deep_gemm$|\
 ^test_ps_server_pass$|\
 ^test_white_lists$|\
 ^test_scaled_dot_product_attention$|\
-^test_compat_attention$|\
+^test_compat_scaled_dot_product_attention$|\
 ^test_flash_attention$"
 
 cd ${work_dir}/build

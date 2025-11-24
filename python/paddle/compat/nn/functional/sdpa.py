@@ -46,11 +46,11 @@ def scaled_dot_product_attention(
 
     Warning:
         This API only verifies inputs with dtype float16 and bfloat16, other dtypes may fall back to math
-            implementation, which is less optimized.
+        implementation, which is less optimized.
 
     Note:
         This API differs from :ref:`api_paddle_nn_functional_scaled_dot_product_attention` in that:
-            The QKV layout of this API is [batch_size, num_heads, seq_len, head_dim] or [num_heads, seq_len, head_dim].
+        The QKV layout of this API is [batch_size, num_heads, seq_len, head_dim] or [num_heads, seq_len, head_dim].
 
     Args:
         query(Tensor): The query tensor in the Attention module.
