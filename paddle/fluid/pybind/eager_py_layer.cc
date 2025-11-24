@@ -516,7 +516,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
 
   if (outputs_tensor.empty()) {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "At least one output of `PyLayer.forward` is a `Tensor`."));
+        "%s : At least one output of `PyLayer.forward` is a `Tensor`.",
+        classname));
   }
   VLOG(6) << classname << ":"
           << "PyLayer forward function finish...";
@@ -544,8 +545,9 @@ PyObject* pylayer_method_apply(PyObject* cls,
                             egr::EagerUtils::IsLeafTensor(*inplace_tensor),
                         false,
                         common::errors::InvalidArgument(
-                            "Leaf Var (%s) that doesn't stop gradient "
+                            "%s : Leaf Var (%s) that doesn't stop gradient "
                             "can't use inplace strategy.",
+                            classname,
                             inplace_tensor->name()));
       inplace_tensor->bump_inplace_version();
       VLOG(3) << "Tensor(" << inplace_tensor->name()
@@ -624,8 +626,9 @@ PyObject* pylayer_method_apply(PyObject* cls,
 #ifdef PADDLE_WITH_CUDA
   if (has_grad && FLAGS_offload_retry_times > 0) {
     auto grad_node = ctx->grad_node.lock();
-    PADDLE_ENFORCE_NOT_NULL(grad_node,
-                            phi::errors::InvalidArgument("Cannot be null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        grad_node,
+        phi::errors::InvalidArgument("%s : Cannot be null", classname));
     PyLayerAddOffloadActivation(ctx, grad_node->name());
   }
 #endif
