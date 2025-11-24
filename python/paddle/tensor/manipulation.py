@@ -2035,18 +2035,23 @@ def flatten(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> image_shape=(2, 3, 4, 4)
+            >>> image_shape = (2, 3, 4, 4)
 
-            >>> x = paddle.arange(end=image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3])
+            >>> x = paddle.arange(
+            ...     end=image_shape[0]
+            ...     * image_shape[1]
+            ...     * image_shape[2]
+            ...     * image_shape[3]
+            ... )
             >>> img = paddle.reshape(x, image_shape)
 
             >>> out = paddle.flatten(img, start_axis=1, stop_axis=2)
             >>> print(out.shape)
-            [2, 12, 4]
+            paddle.Size([2, 12, 4])
 
             >>> # out shares data with img in dygraph mode
             >>> img[0, 0, 0, 0] = -1
