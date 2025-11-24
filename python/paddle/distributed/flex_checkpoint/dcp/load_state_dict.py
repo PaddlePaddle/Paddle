@@ -402,20 +402,20 @@ class CheckpointLoadBalancer:
 
 
 def get_rank_to_read_files(
-    rank_to_files,
-    rank_to_local_data_files,
+    rank_to_required,
+    rank_to_available_files,
 ):
     """
     Public API to determine which files the current rank should read.
 
     Args:
-        rank_to_files: Logical mapping of rank to files it needs.
-        rank_to_local_data_files: Physical mapping of rank to files on disk.
+        rank_to_required: Logical mapping of rank to files it needs.
+        rank_to_available_files: Physical mapping of rank to files on disk.
 
     Returns:
         List of file names the current rank is responsible for loading.
     """
-    balancer = CheckpointLoadBalancer(rank_to_files, rank_to_local_data_files)
+    balancer = CheckpointLoadBalancer(rank_to_required, rank_to_available_files)
     all_assignments = balancer.plan()
 
     current_rank = paddle.distributed.get_rank()
