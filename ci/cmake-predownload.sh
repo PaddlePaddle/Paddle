@@ -155,7 +155,7 @@ cp ${PREDOWNLOAD_DIR}/${filename} ${TARGET_DIR}/lapack/Linux/${filename}
 filename=magma_lnx_v2.9.0.20250728.tar.gz
 filepath="${PREDOWNLOAD_DIR}/${filename}"
 URL=https://paddlepaddledeps.bj.bcebos.com/${filename}
-EXPECTED_MD5=35bb7d1d8641dc7fc3be96b02f32645b
+EXPECTED_MD5=5c111aeb17a358c64abac24393cfcf63
 echo "check ${filename}"
 if check_file_with_md5 "${filepath}" "${EXPECTED_MD5}"; then
     echo "use cfs cache"

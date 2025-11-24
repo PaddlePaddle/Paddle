@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import platform
 import unittest
 
 import numpy as np
@@ -376,8 +377,14 @@ class TestEigUnsupportedDtypeError(unittest.TestCase):
 
 
 class TestOptionalGradInput(unittest.TestCase):
+    @unittest.skipIf(
+        not platform.system().lower().startswith("linux")
+        or not paddle.device.is_compiled_with_cuda()
+        or paddle.device.is_compiled_with_rocm(),
+        reason="enable only in linux+cuda now",
+    )
     def test_eager(self):
-        with dygraph_guard(), paddle.device.device_guard("cpu"):
+        with dygraph_guard(), paddle.device.device_guard("cuda"):
             x = paddle.randn(3, 3, requires_grad=True)
             w, v = paddle.linalg.eig(x)
 
@@ -398,8 +405,14 @@ class TestOptionalGradInput(unittest.TestCase):
                 rtol=1e-5,
             )
 
+    @unittest.skipIf(
+        not platform.system().lower().startswith("linux")
+        or not paddle.device.is_compiled_with_cuda()
+        or paddle.device.is_compiled_with_rocm(),
+        reason="enable only in linux+cuda now",
+    )
     def test_dy2st(self):
-        with dygraph_guard(), paddle.device.device_guard("cpu"):
+        with dygraph_guard(), paddle.device.device_guard("cuda"):
             x = paddle.randn(3, 3, requires_grad=True)
 
             def f(x):
