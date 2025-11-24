@@ -65,13 +65,20 @@ class TestAllocatorVisitor(unittest.TestCase):
 
     def test_multi_scale_alloc_free(self):
         params = self.allocate_cmds(self.cmds)
-        paddle.core.vmm_max_free_size()
+        paddle.device.cuda.vmm_max_free_size()
 
-    def test_free_block_info(self):
+    def test_block_info(self):
         params = self.allocate_cmds(self.cmds)
-        x = paddle.core.vmm_free_block_info()
+        x = paddle.device.cuda.vmm_free_block_info()
+        y = paddle.device.cuda.vmm_all_block_info()
         self.assertEqual(x[0][0][0], 1000000000)
         self.assertEqual(x[0][1][0], 2002049024)
+        self.assertEqual(len(y), 1)  # 1 allocators
+        self.assertEqual(len(y[0]), 4)  # 4 blocks
+
+    def test_memory_summary(self):
+        params = self.allocate_cmds(self.cmds)
+        paddle.device.cuda.memory_summary()
 
 
 if __name__ == '__main__':

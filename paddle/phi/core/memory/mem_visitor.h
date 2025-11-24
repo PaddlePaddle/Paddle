@@ -230,6 +230,22 @@ class VMMFreeBlocksInfoVisitor : public AllocatorVisitor {
    */
   std::vector<std::vector<std::pair<size_t, uintptr_t>>> free_blocks_info_;
 };
+
+class VMMAllBlocksInfoVisitor : public AllocatorVisitor {
+ public:
+  VMMAllBlocksInfoVisitor() {}
+
+  std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
+  GetAllBlocksInfo() const {
+    return all_blocks_info_;
+  }
+
+  void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;
+
+ private:
+  std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
+      all_blocks_info_;
+};
 #endif
 
 }  // namespace memory
