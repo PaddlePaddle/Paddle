@@ -54,7 +54,7 @@ struct EmbeddingCPUSparseFunctor {
         PADDLE_ENFORCE_GE(ids[i],
                           0,
                           common::errors::InvalidArgument(
-                              "Variable value (input) of OP(lookup_table) "
+                              "Variable value (input) of OP(embedding) "
                               "expected >= 0. But received %ld",
                               ids[i]));
         auto id_index = table_t.Index(ids[i]);
