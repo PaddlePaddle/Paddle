@@ -11,6 +11,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pybind/ir_tensor.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "pybind11/functional.h"
@@ -59,11 +60,7 @@ void BindIrTensor(py::module* m) {
           "shape",
           [](const IrTensor& self) -> std::vector<int64_t> {
             const phi::DDim& dims = self.dims();
-            std::vector<int64_t> shape;
-            for (int i = 0; i < dims.size(); ++i) {
-              shape.push_back(dims[i]);
-            }
-            return shape;
+            return common::vectorize<int64_t>(dims);
           },
           "Get tensor shape")
       .def("__eq__",
@@ -83,7 +80,7 @@ void BindIrTensor(py::module* m) {
         }
         shape_ss << "]";
         std::string dtype_str = phi::DataTypeToString(self.dtype());
-        return "MetaTensor(shape=" + shape_ss.str() + ", dtype=" + dtype_str +
+        return "IrTensor(shape=" + shape_ss.str() + ", dtype=" + dtype_str +
                ")";
       });
 }
