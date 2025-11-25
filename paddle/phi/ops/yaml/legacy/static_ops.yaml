@@ -980,7 +980,6 @@
     func : top_p_sampling
     data_type : x
   optional : threshold, topp_seed, topk_scores, topk_ids
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : topk_v1
