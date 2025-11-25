@@ -21,9 +21,7 @@
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
-#ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/core/memory/allocation/vmm_ipc_allocation.h"
-#endif
 
 namespace paddle {
 
@@ -42,9 +40,7 @@ struct Block {
   size_t size_;
   bool is_free_;
   BlockAllocation* allocation_;
-#ifdef PADDLE_WITH_CUDA
   std::vector<BlockPart> parts_;
-#endif
 };
 
 struct BlockAllocation : public Allocation {

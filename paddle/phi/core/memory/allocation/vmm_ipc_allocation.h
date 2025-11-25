@@ -20,9 +20,11 @@
 
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/backends/dynload/cuda_driver.h"
+using VmmDevicePtr = CUdeviceptr;
+using VmmAllocHandle = CUmemGenericAllocationHandle;
 #else
-using CUdeviceptr = uintptr_t;
-using CUmemGenericAllocationHandle = uint64_t;
+using VmmDevicePtr = uintptr_t;
+using VmmAllocHandle = uint64_t;
 #endif
 
 #include "paddle/phi/common/place.h"
@@ -33,9 +35,9 @@ namespace memory {
 namespace allocation {
 
 struct ImportedVmmMulti {
-  CUdeviceptr base{0};
+  VmmDevicePtr base{0};
   size_t reserved_size{0};
-  std::vector<CUmemGenericAllocationHandle> hs;
+  std::vector<VmmAllocHandle> hs;
 #if defined(PADDLE_WITH_CUDA)
   ~ImportedVmmMulti() {
     if (base && reserved_size) {
@@ -66,9 +68,9 @@ class VmmImportedAllocation : public phi::Allocation {
 };
 
 struct VmmChunkMeta {
-  CUdeviceptr base;
+  VmmDevicePtr base;
   size_t size;
-  CUmemGenericAllocationHandle handle;
+  VmmAllocHandle handle;
   int device;
 };
 

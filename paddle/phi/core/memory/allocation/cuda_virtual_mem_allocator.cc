@@ -74,7 +74,7 @@ void CUDAVirtualMemAllocator::InitOnce() {
     // total size & VA size
     size_t actual_avail, actual_total;
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemGetInfo(&actual_avail, &actual_total));
-    VLOG(0) << "VMM InitOnce dev " << place_.device << " actual_avail: "
+    VLOG(1) << "VMM InitOnce dev " << place_.device << " actual_avail: "
             << static_cast<double>(actual_avail) / (1 << 20) << " MB, "
             << "actual_total: " << static_cast<double>(actual_total) / (1 << 20)
             << " MB";

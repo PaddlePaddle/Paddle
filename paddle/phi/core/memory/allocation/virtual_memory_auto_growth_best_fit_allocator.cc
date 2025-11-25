@@ -20,7 +20,6 @@
 
 #include "paddle/phi/core/memory/allocation/aligned_allocator.h"
 #include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator.h"
-#include "paddle/phi/core/memory/mem_utils.h"
 
 PHI_DEFINE_EXPORTED_uint64(
     vmm_small_pool_size_in_mb,
@@ -331,7 +330,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendOrCompact(size_t size) {
 
   std::vector<BlockPart> new_parts;
   auto chunk = std::make_shared<VmmChunkMeta>();
-  chunk->base = reinterpret_cast<CUdeviceptr>(alloc_ptr);
+  chunk->base = reinterpret_cast<VmmDevicePtr>(alloc_ptr);
   chunk->size = alloc_size;
 #ifdef PADDLE_WITH_CUDA
   auto handle = CUDAVirtualMemAllocator::GetHandleFromBasePtr(alloc_ptr);

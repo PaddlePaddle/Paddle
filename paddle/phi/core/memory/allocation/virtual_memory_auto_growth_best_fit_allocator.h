@@ -23,6 +23,7 @@
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
+#include "paddle/phi/core/memory/allocation/vmm_ipc_allocation.h"
 #include "paddle/phi/core/memory/mem_utils.h"
 #include "paddle/phi/core/memory/mem_visitor.h"
 

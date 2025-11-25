@@ -33,7 +33,6 @@ class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator;
 }  // namespace allocation
 
 using allocation::Allocator;
-using allocation::BlockPart;
 using allocation::RetryAllocator;
 using allocation::StatAllocator;
 using allocation::StreamSafeCUDAAllocator;
@@ -302,6 +301,7 @@ class VMMAllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
 
 class VmmTensorPartsVisitor : public AllocatorVisitor {
  public:
+  using BlockPart = allocation::BlockPart;
   explicit VmmTensorPartsVisitor(void* ptr) : target_ptr_(ptr) {}
 
   void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;

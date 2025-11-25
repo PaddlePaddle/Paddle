@@ -22,7 +22,6 @@
 #include "paddle/phi/core/platform/cuda_device_guard.h"
 #endif
 
-#include <memory>
 #include <mutex>  // NOLINT
 #include <unordered_map>
 #include <vector>
