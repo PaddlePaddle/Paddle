@@ -49,10 +49,10 @@ class SDPBackend(IntEnum):
 _backend_enabled = {
     SDPBackend.MATH: True,
     SDPBackend.FLASH_ATTENTION: paddle.framework._global_flags()[
-        "FLAGS_flash_attention_available"
+        "FLAGS_flash_attn_available"
     ],
     SDPBackend.EFFICIENT_ATTENTION: paddle.framework._global_flags()[
-        "FLAGS_memory_efficient_attention_available"
+        "FLAGS_mem_efficient_attn_available"
     ],
 }
 _current_priority = [
