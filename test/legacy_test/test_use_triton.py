@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 from paddle.compat import paddle_use_triton
 
+paddle_use_triton()
 if (
     paddle.device.is_compiled_with_cuda()
     and not paddle.device.is_compiled_with_rocm()
@@ -64,7 +65,6 @@ class TestPaddleUseTriton(unittest.TestCase):
             triton.Config(kwargs={'BLOCK_SIZE_M': 128}),
         ]
 
-        @paddle_use_triton
         @triton.autotune(
             configs=configs,
             key=["M"],
@@ -112,7 +112,6 @@ class TestPaddleUseTriton(unittest.TestCase):
             triton.Config(kwargs={'BLOCK_SIZE_M': 128}),
         ]
 
-        @paddle_use_triton
         @triton.autotune(configs=configs, key=["M"])
         @triton.jit
         def _kernel(
@@ -157,7 +156,6 @@ class TestPaddleUseTriton(unittest.TestCase):
             triton.Config(kwargs={'BLOCK_SIZE': 128}),
         ]
 
-        @paddle_use_triton
         @triton.autotune(
             configs=configs, key=['N'], restore_value=['src'], do_bench=do_bench
         )
@@ -201,7 +199,6 @@ class TestPaddleUseTriton(unittest.TestCase):
                 values["has_exception"] = True
             assert values["counter"] == 0
 
-        @paddle_use_triton
         @triton.autotune(
             configs=configs,
             key=['N'],
@@ -278,7 +275,6 @@ class TestPaddleUseTriton(unittest.TestCase):
         else:
             prune_configs_by = {'early_config_prune': early_config_prune}
 
-        @paddle_use_triton
         @triton.autotune(
             configs=configs,
             key=['N'],

@@ -20,5 +20,5 @@ mypy==1.18.2
 soundfile
 apache-tvm-ffi==0.1.2
 cuda-python ; platform_system != "Darwin"
-triton ; platform_system != "Darwin"
+triton ; platform_system == 'Linux' and platform_machine == 'x86_64'
 graphviz
