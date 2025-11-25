@@ -1575,6 +1575,7 @@ def flashmask_attention(
     training: bool = True,
     name: str | None = None,
     softmax_scale: float | None = None,
+    block_mask: Tensor | None = None,
 ):
     r"""
     FlashMask: Official Implementation
@@ -1635,6 +1636,25 @@ def flashmask_attention(
         training (bool): Whether the module is in training mode. Default is True.
         name (str, optional): Name of the operation. Default is None. Normally, users do not need to set this property.
             For more information, refer to :ref:`api_guide_Name` .
+        block_mask (tensor, optional):
+            A 4-D integer mask tensor indicating whether each block in the attention matrix should be kept or masked. Must be used together with flashmask.
+            The shape should be [batch_size, num_heads, blocklen_q, blocklen_k], where:
+
+            blocklen_q = ceil(seqlen_q / 128), i.e., block_mask.shape[2] must be (seqlen_q + 127) // 128
+            blocklen_k = ceil(seqlen_k / 128), i.e., block_mask.shape[3] must be (seqlen_k + 127) // 128
+            block_mask.shape[1] (number of heads) must match the num_heads dimension of the flashmask
+            Both seqlen_q and seqlen_k must be less than or equal to 128 * 1024
+            The dtype should be int32, and each element should be either 0 or 1.
+            A value of 1 indicates that the corresponding block is kept (not masked), while 0 means the block is masked.
+
+            Usage Notes:
+
+            Only supported when blockdim_q = blockdim_k = 128 now.
+            Only supported when headdim = 128 now.
+            This argument must be provided together with flashmask.
+            The mask will be applied at the block level: each [i, j] position in block_mask controls whether the corresponding [128 x 128] block in the attention matrix is masked.
+            Any mismatch in expected shape or head dimension will raise an error.
+
 
     Returns
         Tensor. The computed attention result with the same shape as the input `query`.
@@ -2207,6 +2227,12 @@ def flashmask_attention(
                 startend_row_indices, min=0, max=sq
             ).repeat_interleave(bsz, 0)
 
+    if block_mask is not None:
+        # xhy: can set a full startend_row_indices for block_mask_attn when using block_mask_attn?
+        assert startend_row_indices is not None, (
+            "must provide startend_row_indices when using block_mask_attn"
+        )
+
     if startend_row_indices is None:
         (
             out,
@@ -2248,6 +2274,31 @@ def flashmask_attention(
             "startend_row_indices head_num must be equal to 1(broadcast) or head_num_k."
         )
 
+        if block_mask is not None:
+            assert block_mask.dtype == paddle.int32, (
+                f"block_mask.dtype must be paddle.int32, but got {block_mask.dtype}"
+            )
+
+            assert block_mask.shape[0] == key.shape[0], (
+                f"block_mask.shape[0] must be equal to batch_size, but got {block_mask.shape[0]} and {key.shape[0]}"
+            )
+
+            assert block_mask.shape[1] == startend_row_indices.shape[1], (
+                f"block_mask.shape[1] must be equal to startend_row_indices.shape[1], but got {block_mask.shape[1]} and {key.shape[2]}"
+            )
+
+            assert block_mask.shape[2] == (query.shape[1] + 127) // 128, (
+                "block_size must be 128 when using block_mask_attn"
+            )
+
+            assert block_mask.shape[3] == (key.shape[1] + 127) // 128, (
+                "block_size must be 128 when using block_mask_attn"
+            )
+
+            assert key.shape[3] == 128, (
+                "headdim must be 128 when using block_mask_attn"
+            )
+
         if causal:
             if startend_row_indices.shape[-1] == 1:
                 has_end = False
@@ -2272,6 +2323,9 @@ def flashmask_attention(
         elif paddle.get_flags(["FLAGS_cudnn_deterministic"])[
             "FLAGS_cudnn_deterministic"
         ]:
+            assert block_mask is None, (
+                " blockmask attention no supports deterministic now ."
+            )
             fa_version = 2
         else:
             fa_version = paddle.base.framework.get_flags(
@@ -2281,6 +2335,10 @@ def flashmask_attention(
         if fa_version == 2:
             assert softmax_scale is None, (
                 "flashmask_attention does not support setting softmax_scale, use flashmask_attention_v2 instead"
+            )
+
+            assert block_mask is None, (
+                " blockmask attention only supports sm >= 90 now."
             )
 
             (
@@ -2329,7 +2387,13 @@ def flashmask_attention(
                 out,
                 result_softmax_lse,
             ) = _C_ops.flashmask_attention_v2(
-                query, key, value, startend_row_indices, softmax_scale, causal
+                query,
+                key,
+                value,
+                startend_row_indices,
+                block_mask,
+                softmax_scale,
+                causal,
             )
         else:
             raise ValueError(f"Invalid flash attention version: {fa_version}")

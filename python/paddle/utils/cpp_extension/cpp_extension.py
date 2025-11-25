@@ -863,17 +863,19 @@ class BuildExtension(build_ext):
         write_stub mechanism that is no longer triggered in setuptools >= 80.
         """
         try:
-            outputs = self.get_outputs()
-            if not outputs:
+            if not self.extensions:
                 return
+
             # We only support a single extension per setup()
-            so_path = os.path.abspath(outputs[0])
+            ext = self.extensions[0]
+            # Use get_ext_fullpath to handle both standard and inplace builds correctly
+            so_path = os.path.abspath(self.get_ext_fullpath(ext.name))
             so_name = os.path.basename(so_path)
             build_dir = os.path.dirname(so_path)
 
             # Get the extension name from the extension module, not the distribution name
             # This ensures we use the correct package name from setup.py
-            ext_name = self.extensions[0].name
+            ext_name = ext.name
 
             # Extract the last part of the extension name for the Python file
             # For example, from "custom_setup_ops.my_ops.custom_relu" we get "custom_relu"
@@ -887,11 +889,52 @@ class BuildExtension(build_ext):
                 f"Failed to generate python api file: {e}"
             ) from e
 
+    def _rename_inplace_shared_library(self) -> None:
+        """
+        Rename the shared library to *_pd_.so if it is an inplace build.
+        This is necessary for editable installs to work correctly with the python stub.
+        """
+        # We only support a single extension per setup()
+        if not self.extensions:
+            return
+
+        ext = self.extensions[0]
+        fullpath = self.get_ext_fullpath(ext.name)
+
+        filename = os.path.basename(fullpath)
+        dirname = os.path.dirname(fullpath)
+        name, ext_suffix = os.path.splitext(filename)
+
+        will_rename = False
+        if OS_NAME.startswith('linux') and ext_suffix == '.so':
+            will_rename = True
+        elif OS_NAME.startswith('darwin') and (
+            ext_suffix == '.dylib' or ext_suffix == '.so'
+        ):
+            will_rename = True
+        elif IS_WINDOWS and ext_suffix == '.pyd':
+            will_rename = True
+
+        if will_rename:
+            new_name = f"{name}_pd_{ext_suffix}"
+            new_path = os.path.join(dirname, new_name)
+
+            if os.path.exists(fullpath):
+                if os.path.exists(new_path):
+                    os.remove(new_path)
+                os.rename(fullpath, new_path)
+                print(
+                    f"Renaming {fullpath} to {new_path} for editable install compatibility"
+                )
+
     def run(self):
         super().run()
 
         # Compatible with wheel installation via `pip install .`
         self._generate_python_api_file()
+
+        if self.inplace:
+            self._rename_inplace_shared_library()
 
         self._clean_intermediate_files()
 

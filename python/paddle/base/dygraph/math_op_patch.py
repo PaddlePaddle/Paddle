@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -179,6 +180,9 @@ def monkey_patch_math_tensor():
             return astype(tensor, 'uint8')
         elif self.is_complex():
             real = astype(self.real(), 'int8')
+            logging.warning(
+                "Casting complex values to real discards the imaginary part"
+            )
             return astype(real, 'uint8')
         else:
             return astype(self, 'uint8')
@@ -574,6 +578,19 @@ def monkey_patch_math_tensor():
             )
         self.stop_gradient = not value
 
+    def requires_grad_(self, value: bool) -> None:
+        """
+        Set whether this Tensor requires gradient computation.
+
+        Args:
+            value (bool): True to enable gradient computation, False to disable.
+        """
+        if not isinstance(value, bool):
+            raise TypeError(
+                f"requires_grad must be bool, but got {type(value)}"
+            )
+        self.stop_gradient = not value
+
     @property
     def itemsize(self: Tensor) -> int:
         """
@@ -625,6 +642,7 @@ def monkey_patch_math_tensor():
         ('new_ones', _new_ones_),
         ('new_zeros', _new_zeros_),
         ("requires_grad", requires_grad),
+        ("requires_grad_", requires_grad_),
         # for logical compare
         ('__array_ufunc__', None),
         ('itemsize', itemsize),

@@ -179,9 +179,6 @@ PADDLE_API bool IsGpuMallocRecorded(int dev_id);
 //! Empty idle cached memory held by the allocator.
 PADDLE_API void EmptyCache(void);
 
-//! Compact memory of free blocks held by the VmmAllocator.
-PADDLE_API void VmmCompact(void);
-
 PADDLE_API bool IsGPUManagedMemorySupported(int dev_id);
 
 PADDLE_API bool IsGPUManagedMemoryOversubscriptionSupported(int dev_id);

@@ -67,6 +67,12 @@ class TestAllocatorVisitor(unittest.TestCase):
         params = self.allocate_cmds(self.cmds)
         paddle.core.vmm_max_free_size()
 
+    def test_free_block_info(self):
+        params = self.allocate_cmds(self.cmds)
+        x = paddle.core.vmm_free_block_info()
+        self.assertEqual(x[0][0][0], 1000000000)
+        self.assertEqual(x[0][1][0], 2002049024)
+
 
 if __name__ == '__main__':
     unittest.main()

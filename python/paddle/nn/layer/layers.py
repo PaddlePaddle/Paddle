@@ -26,7 +26,7 @@ import numpy as np
 from typing_extensions import Self, overload
 
 import paddle
-from paddle import Tensor, nn, profiler
+from paddle import Tensor, dtype, nn, profiler
 from paddle.autograd.backward_utils import ValueSet
 from paddle.base import core, framework, unique_name
 from paddle.base.core import VarDesc
@@ -55,11 +55,6 @@ from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
     ShardedStateDict,
     build_sharded_state_dict,
 )
-
-if TYPE_CHECKING:
-    from paddle.distributed.communication.group import Group
-
-from paddle import dtype
 from paddle.framework import ParamAttr
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
@@ -2602,31 +2597,39 @@ class Layer:
     def full(
         self,
         aoa_config: dict[str : list[str]] | None = None,
-        process_group: Group | None = None,
+        **kwargs,
     ):
         """
         Returns an iterator over the full, unsharded model parameters.
         The output parameters can be customized using the `aoa_config` argument.
 
         Args:
-            aoa_config (dict[str, list[str]], optional):
-                Optional. Specifies the Area of Application (AOA) customization configuration.
-                The dictionary keys are strings and the values are lists of strings.
-                If None, all parameters are returned.
-            process_group (Group, optional):
-                Optional. Specifies the process group for collective communication.
-                If None, the default process group is used.
+        sharded_state_dict (ShardedStateDict):
+            The state dict containing parameter shards local to the current process.
+        aoa_config (dict[str, list[str]] | None, optional):
+            AoA (Almost AllReduce) configuration. Default is None.
+        kwargs:
+            Optional keyword arguments:
+            - h_group: The horizontal communication group.
+                If using group communication, both h_group and v_group must be provided.
+            - v_group: The vertical communication group.
+            - process_group: The communication group in single-group setups (when h_group and v_group are not used).
+            - num_splits (int): The number of splits to divide the parameters.
+            - shard_idx (int): The index of the split handled by the current process. Default is 0.
+            - memory_growth_threshold (int): The memory threshold (in bytes) for controlling memory growth during parameter assembly.
+                Default is 8 * (2 ** 30), i.e., 8GB.
 
         Returns:
             Iterator:
                 An iterator over the full, unsharded model parameters, optionally filtered and customized according to `aoa_config`.
+
         """
 
         from paddle.distributed.flex_checkpoint.dcp.full_param import (
             full_param,
         )
 
-        return full_param(self, aoa_config, process_group)
+        return full_param(self.sharded_state_dict(), aoa_config, **kwargs)
 
     @framework.deprecate_stat_dict
     def set_state_dict(
