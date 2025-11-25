@@ -27,15 +27,17 @@ class MetaTensor:
 
     @property
     def shape(self):
-        return self.ir_meta_tensor.get_shape()
+        return self.ir_meta_tensor.shape
 
     def set_dtype(self, dtype):
         self.ir_meta_tensor.set_dtype(dtype)
 
     @property
     def dtype(self):
-        return self.ir_meta_tensor.get_dtype()
+        return self.ir_meta_tensor.dtype
 
     def __eq__(self, other):
-        return self.ir_meta_tensor.dtype == other.ir_meta_tensor.dtype and \
-            self.ir_meta_tensor.shape == other.ir_meta_tensor.shape
+        return (
+            self.ir_meta_tensor.dtype == other.ir_meta_tensor.dtype
+            and self.ir_meta_tensor.shape == other.ir_meta_tensor.shape
+        )

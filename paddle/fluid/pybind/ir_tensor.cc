@@ -13,16 +13,18 @@ limitations under the License. */
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 #include "paddle/fluid/pybind/ir_tensor.h"
 #include "paddle/phi/core/tensor_base.h"
-#include "paddle/utils/pybind.h"
-// #include "pybind11/functional.h"
-// #include "pybind11/pybind11.h"
-// #include "pybind11/stl.h"
+#include "pybind11/functional.h"
+#include "pybind11/pybind11.h"
+#include "pybind11/stl.h"
 
 namespace paddle::pybind {
 
 using IrTensor = paddle::dialect::IrTensor;
 
 void BindIrTensor(py::module* m) {
+  // IrTensor inherits from phi::TensorBase,
+  // pybind11 requires base type registration
+  py::class_<phi::TensorBase>(*m, "TensorBaseHolder");
   py::class_<IrTensor, phi::TensorBase>(*m, "IrTensor")
       .def(py::init<>())
       .def(py::init<const IrTensor&>())
@@ -31,7 +33,7 @@ void BindIrTensor(py::module* m) {
           [](const IrTensor& self) { return IrTensor(self); },
           "Create a deep copy of this tensor")
       .def(
-          "set_dim",
+          "set_shape",
           [](IrTensor& self, const std::vector<int64_t>& dims) {
             phi::DDim ddim = phi::make_ddim(dims);
             self.SetDims(ddim);

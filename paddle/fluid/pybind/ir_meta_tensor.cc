@@ -13,26 +13,24 @@ limitations under the License. */
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
 #include "paddle/fluid/pybind/ir_meta_tensor.h"
 #include "paddle/phi/core/tensor_base.h"
-// #include "paddle/fluid/pybind/ir_tensor.h"
-// #include "paddle/utils/pybind.h"
-// #include "pybind11/functional.h"
-// #include "pybind11/pybind11.h"
-// #include "pybind11/stl.h"
+#include "pybind11/functional.h"
+#include "pybind11/pybind11.h"
+#include "pybind11/stl.h"
 
 namespace paddle::pybind {
 
 using IrMetaTensor = paddle::dialect::IrMetaTensor;
 
 void BindIrMetaTensor(py::module* m) {
-  py::class_<IrMetaTensor, MetaTensor>(*m, "IrMetaTensor")
-      .def(py::init(
-               [](const TensorBase& tensor, const bool strided_kernel_used) {
-                 return IrMetaTensor(tensor, strided_kernel_used);
-               }),
+  py::class_<IrMetaTensor>(*m, "IrMetaTensor")
+      .def(py::init([](const phi::TensorBase& tensor,
+                       const bool strided_kernel_used) {
+             return IrMetaTensor(tensor, strided_kernel_used);
+           }),
            py::arg("tensor"),
            py::arg("strided_kernel_used") = false)
       .def(
-          "set_dim",
+          "set_shape",
           [](IrMetaTensor& self, const std::vector<int64_t>& dims) {
             phi::DDim ddim = phi::make_ddim(dims);
             self.set_dims(ddim);
@@ -66,6 +64,21 @@ void BindIrMetaTensor(py::module* m) {
             }
             return shape;
           },
-          "Get tensor shape");
+          "Get tensor shape")
+      .def("__repr__", [](const IrMetaTensor& self) {
+        const phi::DDim& dims = self.dims();
+        std::ostringstream shape_ss;
+        shape_ss << "[";
+        for (int i = 0; i < dims.size(); ++i) {
+          if (i > 0) {
+            shape_ss << ", ";
+          }
+          shape_ss << dims[i];
+        }
+        shape_ss << "]";
+        std::string dtype_str = phi::DataTypeToString(self.dtype());
+        return "IrMetaTensor(shape=" + shape_ss.str() + ", dtype=" + dtype_str +
+               ")";
+      });
 }
 }  // namespace paddle::pybind
