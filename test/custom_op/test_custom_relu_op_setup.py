@@ -171,9 +171,9 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             x for x in os.listdir(site_dir) if 'custom_relu_module_setup' in x
         ]
 
-        # assert len(custom_install_path) == 2, (
-        #     f"Matched egg number is {len(custom_install_path)}."
-        # )
+        assert len(custom_install_path) == 2, (
+            f"Matched egg number is {len(custom_install_path)}."
+        )
 
         sys.path.append(os.path.join(site_dir, custom_install_path[0]))
 
