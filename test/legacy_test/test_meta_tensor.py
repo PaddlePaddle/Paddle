@@ -16,6 +16,44 @@ import unittest
 
 import paddle
 from paddle.static import MetaTensor
+from paddle.base.libpaddle import IrMetaTensor, IrTensor
+
+
+class TestIrTensor(unittest.TestCase):
+    def test_basic_get_set(self):
+        meta_tensor = IrTensor()
+
+        meta_tensor.set_dim([4, 8192, 768])
+        self.assertEqual(meta_tensor.shape, [4, 8192, 768])
+
+        meta_tensor.set_dtype('bfloat16')
+        self.assertEqual(meta_tensor.dtype, paddle.bfloat16)
+        meta_tensor.set_dtype(paddle.uint8)
+        self.assertEqual(meta_tensor.dtype, paddle.uint8)
+
+    def test_eq(self):
+        x_meta = IrTensor()
+        y_meta = IrTensor()
+        self.assertEqual(x_meta, y_meta)
+        x_meta.set_dim([4, 8192])
+        y_meta.set_dim([4, 8192])
+        self.assertEqual(x_meta, y_meta)
+        x_meta.set_dim([4, 8193])
+        self.assertNotEqual(x_meta, y_meta)
+        y_meta = IrTensor(x_meta)
+        self.assertEqual(x_meta, y_meta)
+
+    def test_infer_meta(self):
+        x_meta = IrTensor()
+        x_meta.set_dim([4, 8192])
+        x_meta.set_dtype('bfloat16')
+        y_meta = IrTensor()
+        y_meta.set_dim([4, 8192, 768])
+        z_meta = infer_meta_fn(x_meta, y_meta)
+        self.assertEqual(z_meta.shape, [4, 768])
+        self.assertEqual(z_meta.dtype, paddle.float32)
+
+
 
 
 def infer_meta_fn(x_meta, y_meta):

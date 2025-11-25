@@ -10,21 +10,20 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#include <Python.h>
-
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
-#include "paddle/fluid/pybind/irtensor.h"
+#include "paddle/fluid/pybind/ir_tensor.h"
+#include "paddle/phi/core/tensor_base.h"
 #include "paddle/utils/pybind.h"
-#include "pybind11/functional.h"
-#include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
+// #include "pybind11/functional.h"
+// #include "pybind11/pybind11.h"
+// #include "pybind11/stl.h"
 
 namespace paddle::pybind {
 
 using IrTensor = paddle::dialect::IrTensor;
 
-void BindMetaTensor(py::module* m) {
-  py::class_<IrTensor>(*m, "MetaTensor")
+void BindIrTensor(py::module* m) {
+  py::class_<IrTensor, phi::TensorBase>(*m, "IrTensor")
       .def(py::init<>())
       .def(py::init<const IrTensor&>())
       .def(
@@ -65,7 +64,6 @@ void BindMetaTensor(py::module* m) {
             return shape;
           },
           "Get tensor shape")
-
       .def("__eq__",
            [](const IrTensor& self, const IrTensor& other) {
              return self.dtype() == other.dtype() &&

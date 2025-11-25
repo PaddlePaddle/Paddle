@@ -10,16 +10,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#include <Python.h>
-#include "pybind11/functional.h"
 #include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
 
 namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
-void BindMetaTensor(py::module* m);
+void BindIrTensor(py::module* m);
 
 }  // namespace pybind
 }  // namespace paddle

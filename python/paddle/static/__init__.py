@@ -38,7 +38,6 @@ from ..base.framework import (
     set_ipu_shard,
     xpu_places,
 )
-from ..base.libpaddle import MetaTensor  # noqa: F401
 from ..base.param_attr import WeightNormParamAttr
 from ..tensor.creation import create_global_var, create_parameter
 from . import amp, nn  # noqa: F401
@@ -65,6 +64,7 @@ from .io import (
     serialize_program,
     set_program_state,
 )
+from .meta_tensor import MetaTensor
 from .nn.common import ExponentialMovingAverage, py_func
 from .nn.control_flow import Print
 from .nn.metric import accuracy, auc, ctr_metric_bundle
@@ -115,4 +115,5 @@ __all__ = [
     'create_parameter',
     'set_ipu_shard',
     'ctr_metric_bundle',
+    'MetaTensor',
 ]
