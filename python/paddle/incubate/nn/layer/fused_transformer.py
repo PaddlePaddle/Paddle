@@ -577,7 +577,7 @@ class FusedFeedForward(Layer):
             this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -588,7 +588,7 @@ class FusedFeedForward(Layer):
             >>> x = paddle.rand((1, 8, 8))
             >>> out = fused_feedforward_layer(x)
             >>> print(out.shape)
-            [1, 8, 8]
+            paddle.Size([1, 8, 8])
     """
 
     name: str | None
@@ -789,7 +789,7 @@ class FusedTransformerEncoderLayer(Layer):
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -803,7 +803,7 @@ class FusedTransformerEncoderLayer(Layer):
             >>> encoder_layer = FusedTransformerEncoderLayer(128, 2, 512)
             >>> enc_output = encoder_layer(enc_input, attn_mask)
             >>> print(enc_output.shape)
-            [2, 4, 128]
+            paddle.Size([2, 4, 128])
 
     """
 

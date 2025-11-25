@@ -10,6 +10,7 @@ target-version = "py39"
 [tool.ruff.format]
 # Prevent change to double quotes by some users use ruff format
 quote-style = "preserve"
+docstring-code-format = true
 
 [tool.ruff.lint]
 select = [

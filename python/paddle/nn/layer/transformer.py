@@ -608,7 +608,7 @@ class TransformerEncoderLayer(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.nn import TransformerEncoderLayer
@@ -620,7 +620,7 @@ class TransformerEncoderLayer(Layer):
             >>> encoder_layer = TransformerEncoderLayer(128, 2, 512)
             >>> enc_output = encoder_layer(enc_input, attn_mask)
             >>> print(enc_output.shape)
-            [2, 4, 128]
+            paddle.Size([2, 4, 128])
     """
 
     activation: Layer
@@ -972,7 +972,7 @@ class TransformerDecoderLayer(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.nn import TransformerDecoderLayer
@@ -986,12 +986,11 @@ class TransformerDecoderLayer(Layer):
             >>> # cross attention mask: [batch_size, n_head, tgt_len, src_len]
             >>> cross_attn_mask = paddle.rand((2, 2, 4, 6))
             >>> decoder_layer = TransformerDecoderLayer(128, 2, 512)
-            >>> output = decoder_layer(dec_input,
-            ...                        enc_output,
-            ...                        self_attn_mask,
-            ...                        cross_attn_mask)
+            >>> output = decoder_layer(
+            ...     dec_input, enc_output, self_attn_mask, cross_attn_mask
+            ... )
             >>> print(output.shape)
-            [2, 4, 128]
+            paddle.Size([2, 4, 128])
     """
 
     normalize_before: bool
@@ -1498,7 +1497,7 @@ class Transformer(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.nn import Transformer
@@ -1514,13 +1513,15 @@ class Transformer(Layer):
             >>> # memory_mask: [batch_size, n_head, tgt_len, src_len]
             >>> cross_attn_mask = paddle.rand((2, 2, 6, 4))
             >>> transformer = Transformer(128, 2, 4, 4, 512)
-            >>> output = transformer(enc_input,
-            ...                      dec_input,
-            ...                      enc_self_attn_mask,
-            ...                      dec_self_attn_mask,
-            ...                      cross_attn_mask)
+            >>> output = transformer(
+            ...     enc_input,
+            ...     dec_input,
+            ...     enc_self_attn_mask,
+            ...     dec_self_attn_mask,
+            ...     cross_attn_mask,
+            ... )
             >>> print(output.shape)
-            [2, 6, 128]
+            paddle.Size([2, 6, 128])
     """
 
     encoder: Layer
