@@ -347,6 +347,7 @@ def can_use_flash_attention(params: SDPParams = False) -> bool:
         check_head_dim_size_flash,
         check_flash_causal_non_square_seqlens,
         check_dtypes_low_precision_fa,
+        check_scale_is_None,
     ]
 
     for constraint in general_constraints:
@@ -356,8 +357,6 @@ def can_use_flash_attention(params: SDPParams = False) -> bool:
     if not check_flash_attention_hardware_support(params.device_id[0]):
         return False
 
-    if not check_scale_is_None(params):
-        return False
     return True
 
 

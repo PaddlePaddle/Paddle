@@ -35,6 +35,14 @@
 #include "paddle/phi/kernels/gpu/flash_attn_v3_kernel.h"
 #endif
 
+PHI_DEFINE_EXPORTED_bool(flash_attention_available,
+#ifdef PADDLE_WITH_FLASHATTN
+                         true,
+#else
+                         false,
+#endif
+                         "Weather flash efficient attention is available");
+
 COMMON_DECLARE_int32(flash_attn_version);
 COMMON_DECLARE_bool(cudnn_deterministic);
 

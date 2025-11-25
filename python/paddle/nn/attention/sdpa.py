@@ -17,6 +17,7 @@ from __future__ import annotations
 from enum import IntEnum
 from typing import TYPE_CHECKING
 
+import paddle
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 if TYPE_CHECKING:
@@ -47,8 +48,12 @@ class SDPBackend(IntEnum):
 
 _backend_enabled = {
     SDPBackend.MATH: True,
-    SDPBackend.FLASH_ATTENTION: True,
-    SDPBackend.EFFICIENT_ATTENTION: True,
+    SDPBackend.FLASH_ATTENTION: paddle.framework._global_flags()[
+        "FLAGS_flash_attention_available"
+    ],
+    SDPBackend.EFFICIENT_ATTENTION: paddle.framework._global_flags()[
+        "FLAGS_memory_efficient_attention_available"
+    ],
 }
 _current_priority = [
     SDPBackend.FLASH_ATTENTION,

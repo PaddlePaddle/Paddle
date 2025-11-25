@@ -21,6 +21,11 @@ import numpy as np
 import paddle
 from paddle.compat.nn.transformer import MultiheadAttention
 
+is_bf16_supported = (
+    paddle.is_compiled_with_cuda()
+    and paddle.cuda.get_device_capability()[0] >= 8
+)
+
 
 class ReferenceImplementation:
     @staticmethod
@@ -513,7 +518,7 @@ class TestMHA_Coverage(unittest.TestCase):
             pass
 
     def test_random_fuzz(self):
-        for i in range(self.num_fuzz_iter):
+        for _ in range(self.num_fuzz_iter):
             config = self.generate_config(
                 add_bias_kv=random.choice([True, False]),
                 add_zero_attn=random.choice([True, False]),
@@ -521,8 +526,7 @@ class TestMHA_Coverage(unittest.TestCase):
                 is_causal=random.choice([True, False]),
                 dtype=(
                     random.choice(['float32', 'bfloat16', 'float16'])
-                    if paddle.is_compiled_with_cuda()
-                    and paddle.device.is_bf16_supported()
+                    if is_bf16_supported
                     else 'float32'
                 ),
                 random_mask=random.choice([True, False]),
