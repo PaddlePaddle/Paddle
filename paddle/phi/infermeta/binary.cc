@@ -521,8 +521,6 @@ void CompareInferMeta(const MetaTensor& x,
 void CompareAllInferMeta(const MetaTensor& x,
                          const MetaTensor& y,
                          MetaTensor* out) {
-  auto dim_x = x.dims();
-  auto dim_y = y.dims();
   out->share_lod(x);
   out->set_dims(common::make_ddim({}));
 }
@@ -1843,6 +1841,56 @@ void ExpandAsInferMeta(const MetaTensor& x,
   out->set_dims(common::make_ddim(target_shape));
   out->set_dtype(x.dtype());
 #undef MAX_RANK_SUPPORTED
+}
+
+void FastRMSNormInfermeta(const MetaTensor& x,
+                          const MetaTensor& scale,
+                          float epsilon,
+                          MetaTensor* y,
+                          MetaTensor* invvar) {
+  auto x_dim = x.dims();
+  auto x_ndim = x_dim.size();
+
+  auto matrix_dim = common::flatten_to_2d(x_dim, x_ndim - 1);
+
+  int64_t right = matrix_dim[1];
+  if (scale) {
+    PADDLE_ENFORCE_EQ(scale.dims().size(),
+                      1,
+                      common::errors::InvalidArgument(
+                          "The dimensions of Input(Scale) must be 1, but "
+                          "received dimensions of "
+                          "Input(Scale) is [%d]",
+                          scale.dims().size()));
+  }
+
+  PADDLE_ENFORCE_EQ(
+      scale.dims()[0],
+      right,
+      common::errors::InvalidArgument(
+          "The first dimension value of Input(Scale) must equal to be the "
+          "second dimension value of the flattened 2D matrix of Input(X), "
+          "But received the first dimension value of Input(Scale) is "
+          "[%d], the second dimension value of the flattened 2D matrix of "
+          " Input(Scale) is [%d].",
+          scale.dims()[0],
+          right));
+
+  PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f,
+                    true,
+                    common::errors::InvalidArgument(
+                        "'epsilon' in Op(LayerNorm) should be between"
+                        "0.0 and 0.001, But received [%s].",
+                        epsilon));
+
+  phi::DataType x_dtype = x.dtype();
+  phi::DataType scale_dtype = scale.dtype();
+  y->set_dims(x_dim);
+  y->set_dtype(scale_dtype);
+
+  auto row_shape = slice_ddim(x_dim, 0, x_dim.size() - 1);
+  invvar->set_dims({row_shape});
+  invvar->set_dtype(paddle::DataType::FLOAT32);
 }
 
 void FakeDequantizeMaxAbsInferMeta(const MetaTensor& x,

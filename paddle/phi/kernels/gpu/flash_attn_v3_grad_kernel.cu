@@ -850,6 +850,7 @@ void FlashMaskV2GradBaseKernel(
         &seqused_k_,  // b. If given, only this many elements of each batch
                       // element's keys are used.
     const paddle::optional<DenseTensor> &startend_row_indices_,
+    const paddle::optional<DenseTensor> &block_mask_,  // （(b,h,s//128,s//128)
     int max_seqlen_q_,
     int max_seqlen_k_,
     float const softmax_scale,
@@ -1078,6 +1079,50 @@ void FlashMaskV2GradBaseKernel(
       ut_start_row_indices =
           phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {2}, {3});
     }
+  }
+
+  bool const is_blockmask = block_mask_.is_initialized();
+  DenseTensor block_mask;
+  if (is_blockmask) block_mask = block_mask_.get();
+
+  if (is_blockmask) {
+    PADDLE_ENFORCE_EQ(
+        is_flashmask,
+        true,
+        common::errors::InvalidArgument(
+            "blockmask should be used with flashmask at the same time "));
+
+    PADDLE_ENFORCE_EQ(block_mask.dims().size(),
+                      4,
+                      common::errors::InvalidArgument(
+                          "blockmask receive blockmask_indices with dim "
+                          "[batch_size, num_heads, blocklen_q, blocklen_k]"));
+
+    PADDLE_ENFORCE_EQ(block_mask.dims()[2],
+                      (seqlen_q + 127) / 128,
+                      common::errors::InvalidArgument(
+                          "blockmask only supports blockdim_q = 128 now"));
+
+    PADDLE_ENFORCE_EQ(block_mask.dims()[3],
+                      (seqlen_k + 127) / 128,
+                      common::errors::InvalidArgument(
+                          "blockmask only supports blockdim_k = 128 now"));
+
+    PADDLE_ENFORCE_EQ(
+        block_mask.dims()[1],
+        startend_row_indices.dims()[1],
+        common::errors::InvalidArgument(
+            "blockmask only supports same dim num_heads with flashmask now"));
+
+    PADDLE_ENFORCE_LE(seqlen_k,
+                      1024 * 128,
+                      common::errors::InvalidArgument(
+                          "blockmask only supports seqlen <= 128k in bwd now"));
+
+    PADDLE_ENFORCE_LE(seqlen_q,
+                      1024 * 128,
+                      common::errors::InvalidArgument(
+                          "blockmask only supports seqlen <= 128k in bwd now"));
   }
 
   const bool has_lt_start = lt_start_row_indices.initialized();
@@ -1361,7 +1406,7 @@ void FlashMaskV2GradBaseKernel(
       num_heads_k != num_heads && dk_accum ? dk_accum->data() : nullptr,
       num_heads_k != num_heads && dv_accum ? dv_accum->data() : nullptr,
       const_cast<void *>(softmax_lse.data()),
-      softmax_d ? const_cast<void *>(softmax_d->data()) : nullptr,
+      softmax_d ? (softmax_d->data()) : nullptr,
       /*p_dropout=*/0.f,
       softmax_scale,
       window_size_left,
@@ -1408,36 +1453,31 @@ void FlashMaskV2GradBaseKernel(
   if (is_flashmask) {
     if (lt_start_row_indices.initialized())
       dynload::flashmaskv2_bwd_params_set_lt_start_ptr(
-          params_handle,
-          const_cast<int32_t *>(lt_start_row_indices.data<int32_t>()));
+          params_handle, (lt_start_row_indices.data<int32_t>()));
     else
       dynload::flashmaskv2_bwd_params_set_lt_start_ptr(params_handle, nullptr);
 
     if (lt_end_row_indices.initialized())
       dynload::flashmaskv2_bwd_params_set_lt_end_ptr(
-          params_handle,
-          const_cast<int32_t *>(lt_end_row_indices.data<int32_t>()));
+          params_handle, (lt_end_row_indices.data<int32_t>()));
     else
       dynload::flashmaskv2_bwd_params_set_lt_end_ptr(params_handle, nullptr);
 
     if (ut_start_row_indices.initialized())
       dynload::flashmaskv2_bwd_params_set_ut_start_ptr(
-          params_handle,
-          const_cast<int32_t *>(ut_start_row_indices.data<int32_t>()));
+          params_handle, (ut_start_row_indices.data<int32_t>()));
     else
       dynload::flashmaskv2_bwd_params_set_ut_start_ptr(params_handle, nullptr);
 
     if (ut_end_row_indices.initialized())
       dynload::flashmaskv2_bwd_params_set_ut_end_ptr(
-          params_handle,
-          const_cast<int32_t *>(ut_end_row_indices.data<int32_t>()));
+          params_handle, (ut_end_row_indices.data<int32_t>()));
     else
       dynload::flashmaskv2_bwd_params_set_ut_end_ptr(params_handle, nullptr);
 
     if (flashmask_maxmin.initialized())
       dynload::flashmaskv2_bwd_params_set_flashmask_maxmin_ptr(
-          params_handle,
-          const_cast<int32_t *>(flashmask_maxmin.data<int32_t>()));
+          params_handle, (flashmask_maxmin.data<int32_t>()));
     else
       dynload::flashmaskv2_bwd_params_set_flashmask_maxmin_ptr(params_handle,
                                                                nullptr);
@@ -1457,6 +1497,13 @@ void FlashMaskV2GradBaseKernel(
     dynload::flashmaskv2_bwd_params_set_h_h_flashmask_ratio(params_handle, 0);
   }
 
+  if (is_blockmask) {
+    // xhy: blockmask is now only support blockdim_q k = 128
+    dynload::flashmaskv2_bwd_params_set_m_block_dim(params_handle, 128);
+    dynload::flashmaskv2_bwd_params_set_n_block_dim(params_handle, 128);
+    dynload::flashmaskv2_bwd_params_set_block_mask_ptr(
+        params_handle, (block_mask.data<int32_t>()));
+  }
 #ifdef FLASHATTENTION_DISABLE_LOCAL
   PADDLE_ENABLE_EQ(
       !dynload::flashmaskv2_bwd_params_get_is_local(params_handle),
@@ -1504,6 +1551,7 @@ void FlashMaskV2GradKernel(
     const DenseTensor &out,
     const DenseTensor &softmax_lse,
     const DenseTensor &startend_row_indices,  // TODO(xiehaoyang): remove this
+    const paddle::optional<DenseTensor> &block_mask,
     const DenseTensor &out_grad,
     float const softmax_scale,
     bool is_causal,
@@ -1540,6 +1588,7 @@ void FlashMaskV2GradKernel(
                                         paddle::none,
                                         paddle::none,
                                         startend_row_indices,
+                                        block_mask,
                                         0,  // max_seqlen_q,
                                         0,  // max_seqlen_k,
                                         softmax_scale,

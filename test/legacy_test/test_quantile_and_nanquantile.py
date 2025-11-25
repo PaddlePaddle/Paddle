@@ -14,7 +14,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_device, is_custom_device
+from op_test import get_device, get_device_place, is_custom_device
 
 import paddle
 
@@ -513,6 +513,118 @@ class TestQuantileRuntime(unittest.TestCase):
                     np.testing.assert_allclose(paddle_res, np_res, rtol=1e-05)
                     np.testing.assert_allclose(
                         paddle_res_fp64, np_res_fp64, rtol=1e-05
+                    )
+
+
+class TestQuantileAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.places = ['cpu', get_device_place()]
+        self.shape = [2, 3, 4]
+        self.dtype = "float32"
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.rand(*self.shape).astype(self.dtype)
+        self.q = 0.5
+        self.axis = 1
+        self.keepdim = False
+        self.interpolation = "linear"
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.quantile(
+            x, self.q, self.axis, self.keepdim, self.interpolation
+        )
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.quantile(
+            x=x,
+            q=self.q,
+            axis=self.axis,
+            keepdim=self.keepdim,
+            interpolation=self.interpolation,
+        )
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch compatibility
+        out3 = paddle.quantile(
+            input=x,
+            q=self.q,
+            dim=self.axis,
+            keepdim=self.keepdim,
+            interpolation=self.interpolation,
+        )
+        paddle_dygraph_out.append(out3)
+        # Key words args for out
+        out4 = paddle.zeros_like(x)
+        out1 = paddle.quantile(
+            x, self.q, self.axis, self.keepdim, self.interpolation, out=out4
+        )
+        paddle_dygraph_out.append(out4)
+        # Numpy reference output
+        ref_out = np.quantile(
+            self.np_x,
+            self.q,
+            axis=self.axis,
+            keepdims=self.keepdim,
+            method=self.interpolation,
+        )
+
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(
+                ref_out, out.numpy(), rtol=1e-05, atol=1e-08
+            )
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.quantile(
+                x, self.q, self.axis, self.keepdim, self.interpolation
+            )
+            # Key words args (kwargs) for paddle
+            out2 = paddle.quantile(
+                x=x,
+                q=self.q,
+                axis=self.axis,
+                keepdim=self.keepdim,
+                interpolation=self.interpolation,
+            )
+            # Key words args for torch compatibility
+            out3 = paddle.quantile(
+                input=x,
+                q=self.q,
+                dim=self.axis,
+                keepdim=self.keepdim,
+                interpolation=self.interpolation,
+            )
+            # Numpy reference output
+            ref_out = np.quantile(
+                self.np_x,
+                self.q,
+                axis=self.axis,
+                keepdims=self.keepdim,
+                method=self.interpolation,
+            )
+
+            fetch_list = [out1, out2, out3]
+            for place in self.places:
+                exe = paddle.base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed={"x": self.np_x},
+                    fetch_list=fetch_list,
+                )
+                for out in fetches:
+                    np.testing.assert_allclose(
+                        out, ref_out, rtol=1e-05, atol=1e-08
                     )
 
 

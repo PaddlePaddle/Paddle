@@ -26,7 +26,7 @@ namespace phi {
 template <typename T>
 static inline T cubic_interp(T x0, T x1, T x2, T x3, T t) {
   std::array<T, 4> coeffs;
-  funcs::get_cubic_upsample_coefficients<T>(coeffs.data(), t);
+  funcs::GetCubicUpsampleCoefficients<T>(coeffs.data(), t);
 
   return x0 * coeffs[0] + x1 * coeffs[1] + x2 * coeffs[2] + x3 * coeffs[3];
 }
@@ -754,25 +754,17 @@ static void Interpolate2DCPUFwd(
     return;
   }
 
-  float ratio_h = 0.f;
-  float ratio_w = 0.f;
-  if (out_h > 1) {
-    float new_scale_h = 0.f;
-    new_scale_h = (scale_h > 0)
-                      ? static_cast<float>(1. / scale_h)
-                      : static_cast<float>(in_h) / static_cast<float>(out_h);
-    ratio_h = (align_corners)
-                  ? static_cast<float>(in_h - 1) / static_cast<float>(out_h - 1)
-                  : static_cast<float>(new_scale_h);
+  float ratio_h =
+      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
+  float ratio_w =
+      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
+
+  // TODO(zrr1999): to align xpu
+  if (out_h <= 1) {
+    ratio_h = 0;
   }
-  if (out_w > 1) {
-    float new_scale_w = 0.f;
-    new_scale_w = (scale_w > 0)
-                      ? static_cast<float>(1. / scale_w)
-                      : static_cast<float>(in_w) / static_cast<float>(out_w);
-    ratio_w = (align_corners)
-                  ? static_cast<float>(in_w - 1) / static_cast<float>(out_w - 1)
-                  : static_cast<float>(new_scale_w);
+  if (out_w <= 1) {
+    ratio_w = 0;
   }
 
   if ("bilinear" == interp_method) {
@@ -953,36 +945,12 @@ static void Interpolate3DCPUFwd(
     return;
   }
 
-  float ratio_d = 0.f;
-  float ratio_h = 0.f;
-  float ratio_w = 0.f;
-  if (out_d > 1) {
-    float new_scale_d = 0.f;
-    new_scale_d = (scale_d > 0)
-                      ? static_cast<float>(1. / scale_d)
-                      : static_cast<float>(in_d) / static_cast<float>(out_d);
-    ratio_d = (align_corners)
-                  ? static_cast<float>(in_d - 1) / static_cast<float>(out_d - 1)
-                  : static_cast<float>(new_scale_d);
-  }
-  if (out_h > 1) {
-    float new_scale_h = 0.f;
-    new_scale_h = (scale_h > 0)
-                      ? static_cast<float>(1. / scale_h)
-                      : static_cast<float>(in_h) / static_cast<float>(out_h);
-    ratio_h = (align_corners)
-                  ? static_cast<float>(in_h - 1) / static_cast<float>(out_h - 1)
-                  : static_cast<float>(new_scale_h);
-  }
-  if (out_w > 1) {
-    float new_scale_w = 0.f;
-    new_scale_w = (scale_w > 0)
-                      ? static_cast<float>(1. / scale_w)
-                      : static_cast<float>(in_w) / static_cast<float>(out_w);
-    ratio_w = (align_corners)
-                  ? static_cast<float>(in_w - 1) / static_cast<float>(out_w - 1)
-                  : static_cast<float>(new_scale_w);
-  }
+  float ratio_d =
+      funcs::AreaPixelComputeScale<float>(in_d, out_d, align_corners, scale_d);
+  float ratio_h =
+      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
+  float ratio_w =
+      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
 
   if ("trilinear" == interp_method) {
     TrilinearInterpolation<T>(x,

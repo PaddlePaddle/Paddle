@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.compat.proxy import create_fake_class, create_fake_function
 
 
 def use_torch_inside_inner_function():
@@ -84,6 +85,57 @@ class TestTorchProxy(unittest.TestCase):
         np.testing.assert_allclose(
             result, np.sin([0.0, 1.0, 2.0]), atol=1e-6, rtol=1e-6
         )
+
+
+class TestTorchProxyBlockedModule(unittest.TestCase):
+    def test_blocked_module(self):
+        with paddle.compat.use_torch_proxy_guard():
+            with self.assertRaises(ModuleNotFoundError):
+                import torch._dynamo.allow_in_graph  # noqa: F401
+
+            with self.assertRaises(AttributeError):
+                import torch_proxy_blocked_module
+
+            paddle.compat.extend_torch_proxy_blocked_modules(
+                {"torch_proxy_blocked_module"}
+            )
+            import torch_proxy_blocked_module
+
+            # Use torch specific function out of execute module stage
+            torch_proxy_blocked_module.use_torch_specific_fn()
+
+
+class TestOverrideTorchModule(unittest.TestCase):
+    @paddle.compat.use_torch_proxy_guard()
+    def test_relu(self):
+        import torch
+
+        self.assertIs(torch.relu, paddle.nn.functional.relu)
+
+    @paddle.compat.use_torch_proxy_guard()
+    def test_access_compat_functions_by_getattr(self):
+        import torch
+
+        self.assertIs(torch.nn.Unfold, paddle.compat.nn.Unfold)
+        self.assertIs(torch.nn.Linear, paddle.compat.nn.Linear)
+
+    @paddle.compat.use_torch_proxy_guard()
+    def test_access_compat_functions_by_import(self):
+        from torch.nn.functional import linear, softmax
+
+        self.assertIs(softmax, paddle.compat.nn.functional.softmax)
+        self.assertIs(linear, paddle.compat.nn.functional.linear)
+
+
+class TestFakeInterface(unittest.TestCase):
+    def test_fake_interface(self):
+        FakeGenerator = create_fake_class(
+            "torch.Generator",
+            {"manual_seed": create_fake_function("manual_seed")},
+        )
+
+        fake_gen = FakeGenerator()
+        self.assertTrue(hasattr(fake_gen, "manual_seed"))
 
 
 if __name__ == "__main__":
