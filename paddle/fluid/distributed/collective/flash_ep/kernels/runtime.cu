@@ -141,7 +141,8 @@ __global__ void __launch_bounds__(kNumThreads, 1)
         int num_topk,
         int num_ranks,
         int num_experts,
-        int num_sms_per_loop) {
+        int num_sms_per_loop,
+        int num_loop_stage) {
   int sm_id = static_cast<int>(blockIdx.x);
   int loop_idx = sm_id / num_sms_per_loop;
   int sm_id_in_loop = sm_id % num_sms_per_loop;
@@ -149,10 +150,22 @@ __global__ void __launch_bounds__(kNumThreads, 1)
 
   int num_rdma_ranks = num_ranks / NUM_MAX_NVL_PEERS;
 
-  num_tokens_per_rank += loop_idx * 2 * num_ranks;
-  num_tokens_per_rdma_rank += loop_idx * 2 * num_rdma_ranks;
-  num_tokens_per_expert += loop_idx * 2 * num_experts;
-  is_token_in_rank += loop_idx * 2 * num_tokens * num_ranks;
+  auto dispatch_num_tokens_per_rank =
+      num_tokens_per_rank + loop_idx * num_ranks;
+  auto dispatch_num_tokens_per_rdma_rank =
+      num_tokens_per_rdma_rank + loop_idx * num_rdma_ranks;
+  auto dispatch_num_tokens_per_expert =
+      num_tokens_per_expert + loop_idx * num_experts;
+  auto dispatch_is_token_in_rank =
+      is_token_in_rank + loop_idx * num_tokens * num_ranks;
+  auto combine_num_tokens_per_rank =
+      num_tokens_per_rank + (num_loop_stage + loop_idx) * num_ranks;
+  auto combine_num_tokens_per_rdma_rank =
+      num_tokens_per_rdma_rank + (num_loop_stage + loop_idx) * num_rdma_ranks;
+  auto combine_num_tokens_per_expert =
+      num_tokens_per_expert + (num_loop_stage + loop_idx) * num_experts;
+  auto combine_is_token_in_rank =
+      is_token_in_rank + (num_loop_stage + loop_idx) * num_tokens * num_ranks;
 
   // 统计专家级别发送指标, 每个sm负责一些experts
   __shared__ int dispatch_num_tokens_per_expert_per_thread
@@ -247,9 +260,9 @@ __global__ void __launch_bounds__(kNumThreads, 1)
         dispatch_sum += dispatch_num_tokens_per_expert_per_thread[i][thread_id];
         combine_sum += combine_num_tokens_per_expert_per_thread[i][thread_id];
       }
-      num_tokens_per_expert[expert_begin_idx + thread_id] = dispatch_sum;
-      num_tokens_per_expert[num_experts + expert_begin_idx + thread_id] =
-          combine_sum;
+      dispatch_num_tokens_per_expert[expert_begin_idx + thread_id] =
+          dispatch_sum;
+      combine_num_tokens_per_expert[expert_begin_idx + thread_id] = combine_sum;
     }
     return;
   }
@@ -362,9 +375,10 @@ __global__ void __launch_bounds__(kNumThreads, 1)
       EP_STATIC_ASSERT(kNumRanksPerSM == 8,
                        "Not match the vectorized memory access");
       EP_DEVICE_ASSERT(rank_end_idx - rank_begin_idx == 8);
-      auto dispatch_shifted_is_token_in_rank = is_token_in_rank + i * num_ranks;
+      auto dispatch_shifted_is_token_in_rank =
+          dispatch_is_token_in_rank + i * num_ranks;
       auto combine_shifted_is_token_in_rank =
-          is_token_in_rank + num_tokens * num_ranks + i * num_ranks;
+          combine_is_token_in_rank + i * num_ranks;
 
       int2* dispatch_shifted_is_token_in_rank_vec = reinterpret_cast<int2*>(
           dispatch_shifted_is_token_in_rank + rank_begin_idx);
@@ -412,8 +426,8 @@ __global__ void __launch_bounds__(kNumThreads, 1)
         dispatch_sum += dispatch_num_tokens_per_rank_per_thread[i][thread_id];
         combine_sum += combine_num_tokens_per_rank_per_thread[i][thread_id];
       }
-      num_tokens_per_rank[rank_begin_idx + thread_id] = dispatch_sum;
-      num_tokens_per_rank[num_ranks + rank_begin_idx + thread_id] = combine_sum;
+      dispatch_num_tokens_per_rank[rank_begin_idx + thread_id] = dispatch_sum;
+      combine_num_tokens_per_rank[rank_begin_idx + thread_id] = combine_sum;
     }
 
     if (num_tokens_per_rdma_rank != nullptr &&
@@ -428,9 +442,10 @@ __global__ void __launch_bounds__(kNumThreads, 1)
             combine_num_tokens_per_rdma_rank_per_thread[i][thread_id];
       }
       int num_rdma_ranks = num_ranks / NUM_MAX_NVL_PEERS;
-      num_tokens_per_rdma_rank[rdma_rank_begin_idx + thread_id] = dispatch_sum;
-      num_tokens_per_rdma_rank[num_rdma_ranks + rdma_rank_begin_idx +
-                               thread_id] = combine_sum;
+      dispatch_num_tokens_per_rdma_rank[rdma_rank_begin_idx + thread_id] =
+          dispatch_sum;
+      combine_num_tokens_per_rdma_rank[rdma_rank_begin_idx + thread_id] =
+          combine_sum;
     }
   }
 }
@@ -480,7 +495,8 @@ void get_flash_ep_coalesce_rdma_layout(const int64_t* topk_idx,
                   num_topk,                                        \
                   num_ranks,                                       \
                   num_experts,                                     \
-                  num_sms_per_loop);                               \
+                  num_sms_per_loop,                                \
+                  num_loop_stage);                                 \
   }                                                                \
   break
 

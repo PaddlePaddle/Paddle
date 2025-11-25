@@ -63,7 +63,7 @@ void BindFlashEPApi(pybind11::module *m) {
   m->def("local_combine_backward", &flash_ep::local_combine_backward_api);
 
   pybind11::class_<flash_ep::Buffer>(*m, "FEBuffer")
-      .def(pybind11::init<int, int, int64_t, int64_t, bool, int>())
+      .def(pybind11::init<int, int, int, int64_t, int64_t, bool, int>())
       .def("is_available", &flash_ep::Buffer::is_available)
       .def("get_num_rdma_ranks", &flash_ep::Buffer::get_num_rdma_ranks)
       .def("get_rdma_rank", &flash_ep::Buffer::get_rdma_rank)
@@ -81,13 +81,9 @@ void BindFlashEPApi(pybind11::module *m) {
            &flash_ep::Buffer::get_local_nvshmem_unique_id)
       .def("sync", &flash_ep::Buffer::sync)
       .def("internode_dispatch", &flash_ep::Buffer::internode_dispatch_api)
-      .def("internode_notify_dispatch",
-           &flash_ep::Buffer::internode_notify_dispatch_api)
       .def("internode_fused_notify",
            &flash_ep::Buffer::internode_fused_notify_api)
       .def("clear_buffer", &flash_ep::Buffer::clear_buffer_api)
-      .def("internode_notify_combine",
-           &flash_ep::Buffer::internode_notify_combine_api)
       .def("internode_combine", &flash_ep::Buffer::internode_combine_api);
 #endif
 }

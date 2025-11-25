@@ -38,7 +38,7 @@ class FlashEPBuffer:
         """
         self._buffer = None
 
-    def get_buffer(self, group, hidden_bytes):
+    def get_buffer(self, group, hidden_bytes, num_loop_stage):
         """Get or create a buffer for all-to-all communication.
 
         Args:
@@ -73,7 +73,12 @@ class FlashEPBuffer:
             or self._buffer.num_nvl_bytes < num_nvl_bytes
             or self._buffer.num_rdma_bytes < num_rdma_bytes
         ):
-            self._buffer = Buffer(group, num_nvl_bytes, num_rdma_bytes)
+            self._buffer = Buffer(
+                group,
+                num_nvl_bytes,
+                num_rdma_bytes,
+                num_loop_stage=num_loop_stage,
+            )
         return self._buffer
 
     def clear_buffer(self):
@@ -299,148 +304,6 @@ def fused_get_schedule_and_layout_func(
     )
 
 
-def fused_notify_func(
-    x,
-    token_indices,
-    num_tokens_per_rank,
-    num_tokens_per_rdma_rank,
-    num_tokens_per_expert,
-    is_token_in_rank,
-    combine_schedule_map,
-    buffer,
-    num_loop_stage,
-):
-    combine_num_combine_tokens_list = []
-    # The total number of tokens received via RDMA during each combine operation.
-    combine_asymm_recv_rdma_counter_list = []
-    combine_recv_rdma_rank_prefix_sum = []
-    combine_recv_rdma_channel_prefix_matrix = []
-    combine_recv_gbl_channel_prefix_matrix = []
-    # The intra-channel offset of a token. This is precomputed by the dispatch sender,
-    # which uses it internally for asymmetric combine reception and also transmits it
-    # to the dispatch receiver.
-    combine_send_rdma_head = []
-    # The token's offset within the channel. The dispatch receiver uses this information
-    # for asymmetric combine sends. It is calculated by the dispatch sender and then
-    # transmitted to the dispatch receiver.
-    combine_send_nvl_head = []
-
-    dispatch_notify_infos = []
-    for loop_idx in range(num_loop_stage):
-        dispatch_notify_info, combine_notify_info = (
-            buffer.internode_fused_notify(
-                x,
-                token_indices,
-                num_tokens_per_rank[loop_idx][0],
-                num_tokens_per_rdma_rank[loop_idx][0],
-                num_tokens_per_expert[loop_idx][0],
-                is_token_in_rank[loop_idx][0],
-                num_tokens_per_rank[loop_idx][1],
-                num_tokens_per_rdma_rank[loop_idx][1],
-                is_token_in_rank[loop_idx][1],
-            )
-        )
-        (
-            dispatch_num_recv_tokens_per_expert,
-            _,
-            _,
-            dispatch_handle,
-        ) = dispatch_notify_info
-        (
-            combine_num_combine_tokens_,
-            combine_moe_recv_rdma_counter_,
-            combine_recv_rdma_rank_prefix_sum_,
-            combine_recv_rdma_channel_prefix_matrix_,
-            combine_recv_gbl_channel_prefix_matrix_,
-            combine_send_rdma_head_,
-            combine_send_nvl_head_,
-        ) = combine_notify_info
-
-        dispatch_states = {}
-        dispatch_states["num_recv_tokens_per_expert_list"] = (
-            dispatch_num_recv_tokens_per_expert
-        )
-        dispatch_states["handle"] = dispatch_handle
-
-        combine_num_combine_tokens_list.append(combine_num_combine_tokens_)
-        combine_asymm_recv_rdma_counter_list.append(
-            combine_moe_recv_rdma_counter_
-        )
-        combine_recv_rdma_rank_prefix_sum.append(
-            combine_recv_rdma_rank_prefix_sum_
-        )
-        combine_recv_rdma_channel_prefix_matrix.append(
-            combine_recv_rdma_channel_prefix_matrix_
-        )
-        combine_recv_gbl_channel_prefix_matrix.append(
-            combine_recv_gbl_channel_prefix_matrix_
-        )
-        combine_send_rdma_head.append(combine_send_rdma_head_)
-        combine_send_nvl_head.append(combine_send_nvl_head_)
-
-        dispatch_notify_infos.append(dispatch_states)
-
-    asymm_recv_rdma_counter_loop_prefix_sum = paddle.cumsum(
-        paddle.to_tensor(combine_asymm_recv_rdma_counter_list, dtype="int32")
-    )
-    asymm_recv_rdma_rank_prefix_sum = paddle.stack(
-        combine_recv_rdma_rank_prefix_sum
-    )
-    asymm_recv_rdma_channel_prefix_matrix = paddle.stack(
-        combine_recv_rdma_channel_prefix_matrix
-    )
-    asymm_send_rdma_head = paddle.stack(combine_send_rdma_head)
-    asymm_send_nvl_head = paddle.stack(combine_send_nvl_head)
-
-    # Create a buffer, which will be populated during the actual dispatch.
-    asymm_aggregated_nvl_head = paddle.empty(
-        [sum(combine_asymm_recv_rdma_counter_list), 8], dtype="int32"
-    )
-
-    # Pass it to dispatch for use.
-    asymmetric_handle = (
-        combine_schedule_map,
-        asymm_recv_rdma_counter_loop_prefix_sum,
-        asymm_recv_rdma_rank_prefix_sum,
-        asymm_recv_rdma_channel_prefix_matrix,
-        asymm_send_rdma_head,
-        asymm_send_nvl_head,
-        asymm_aggregated_nvl_head,
-    )
-    combine_notify_infos = []
-    asymm_recv_rdma_start_idx = 0
-    for loop_idx in range(num_loop_stage):
-        asymm_recv_rdma_end_idx = (
-            asymm_recv_rdma_start_idx
-            + combine_asymm_recv_rdma_counter_list[loop_idx]
-        )
-        # Pass it to combine for use.
-        combine_handle = (
-            None,
-            None,
-            None,
-            combine_recv_rdma_channel_prefix_matrix[loop_idx],
-            combine_recv_rdma_rank_prefix_sum[loop_idx],
-            combine_recv_gbl_channel_prefix_matrix[loop_idx],
-            None,
-            None,
-            combine_send_rdma_head[loop_idx],
-            asymm_aggregated_nvl_head[
-                asymm_recv_rdma_start_idx:asymm_recv_rdma_end_idx
-            ],  # In-place slice
-        )
-        asymm_recv_rdma_start_idx = asymm_recv_rdma_end_idx
-
-        combine_states = {}
-        combine_states["handle"] = combine_handle
-        combine_states["num_combine_tokens"] = combine_num_combine_tokens_list[
-            loop_idx
-        ]
-        combine_notify_infos.append(combine_states)
-
-    return dispatch_notify_infos, combine_notify_infos, asymmetric_handle
-
-
 def notify_dispatch_and_combine_func(
     x,
     token_indices,
@@ -450,7 +313,9 @@ def notify_dispatch_and_combine_func(
     num_loop_stage,
 ):
     nranks = group.nranks
-    buffer = flashep_buffer.get_buffer(group, get_hidden_bytes(x))
+    buffer = flashep_buffer.get_buffer(
+        group, get_hidden_bytes(x), num_loop_stage
+    )
 
     (
         _,
@@ -468,18 +333,20 @@ def notify_dispatch_and_combine_func(
     )
 
     dispatch_notify_infos, combine_notify_infos, asymmetric_handle = (
-        fused_notify_func(
+        buffer.internode_fused_notify(
             x,
             token_indices,
-            num_tokens_per_rank,
-            num_tokens_per_rdma_rank,
-            num_tokens_per_expert,
-            is_token_in_rank,
-            combine_schedule_map,
-            buffer,
-            num_loop_stage,
+            num_tokens_per_rank[0],
+            num_tokens_per_rdma_rank[0],
+            num_tokens_per_expert[0],
+            is_token_in_rank[0],
+            num_tokens_per_rank[1],
+            num_tokens_per_rdma_rank[1],
+            is_token_in_rank[1],
         )
     )
+
+    asymmetric_handle = (combine_schedule_map, *asymmetric_handle)
 
     # Count the total number of tokens received by each local expert.
     tokens_per_expert_list = [
@@ -507,9 +374,12 @@ def dispatch_func(
     async_finish=False,
     handle=None,
     asymmetric_handle=None,
+    num_loop_stage=1,
 ):
     assert handle is not None
-    buffer = flashep_buffer.get_buffer(group, get_hidden_bytes(x))
+    buffer = flashep_buffer.get_buffer(
+        group, get_hidden_bytes(x), num_loop_stage
+    )
 
     if scale is not None:
         x = (x, scale)
@@ -558,8 +428,11 @@ def combine_func(
     previous_event=None,
     async_finish=False,
     allocate_on_comm_stream=False,
+    num_loop_stage=1,
 ):
-    buffer = flashep_buffer.get_buffer(group, get_hidden_bytes(x))
+    buffer = flashep_buffer.get_buffer(
+        group, get_hidden_bytes(x), num_loop_stage
+    )
     combined_x, combined_weight, event = buffer.combine(
         x,
         topk_weights=topk_weights,

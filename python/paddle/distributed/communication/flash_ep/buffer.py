@@ -60,6 +60,7 @@ class Buffer:
         num_rdma_bytes: int = 0,
         low_latency_mode: bool = False,
         num_qps_per_rank: int = 12,
+        num_loop_stage: int = 1,
     ) -> None:
         """
         Initialize the communication buffer.
@@ -80,9 +81,11 @@ class Buffer:
         self.num_nvl_bytes = num_nvl_bytes
         self.num_rdma_bytes = num_rdma_bytes
         self.low_latency_mode = low_latency_mode
+        self.num_loop_stage = num_loop_stage
         self.runtime = CppBuffer(
             self.rank,
             self.group_size,
+            num_loop_stage,
             num_nvl_bytes,
             num_rdma_bytes,
             low_latency_mode,
@@ -592,19 +595,20 @@ class Buffer:
 
         (
             dispatch_num_recv_tokens_per_expert_list,
-            dispatch_num_recv_tokens,
-            dispatch_num_rdma_recv_tokens,
+            dispatch_num_recv_tokens_list,
+            dispatch_num_rdma_recv_tokens_list,
             dispatch_rdma_channel_prefix_matrix,
             dispatch_gbl_channel_prefix_matrix,
             dispatch_recv_rdma_rank_prefix_sum,
             dispatch_recv_gbl_rank_prefix_sum,
-            combine_num_recv_tokens,
-            combine_num_rdma_recv_tokens,
+            combine_num_recv_tokens_list,
+            combine_num_rdma_recv_tokens_list,
             combine_recv_rdma_rank_prefix_sum,
             combine_recv_rdma_channel_prefix_matrix,
             combine_recv_gbl_channel_prefix_matrix,
             combine_send_rdma_head,
             combine_send_nvl_head,
+            combine_num_rdma_recv_tokens_cumsum,
         ) = self.runtime.internode_fused_notify(
             x,
             x_scales,
@@ -619,166 +623,76 @@ class Buffer:
             expert_alignment,
             config,
         )
-        dispatch_handle = (
-            dispatch_is_token_in_rank,
-            dispatch_rdma_channel_prefix_matrix,
-            dispatch_gbl_channel_prefix_matrix,
-            None,
-            dispatch_recv_rdma_rank_prefix_sum,
-            None,
-            dispatch_recv_gbl_rank_prefix_sum,
-            paddle.empty(
-                [dispatch_num_recv_tokens, 0]
-            ),  # TODO: 只是用来传递shape, 后续可以简化
-            None,
-            paddle.empty([dispatch_num_rdma_recv_tokens, 0]),
-        )
-        dispatch_notify_info = (
-            dispatch_num_recv_tokens_per_expert_list,
-            dispatch_num_recv_tokens,
-            dispatch_num_rdma_recv_tokens,
-            dispatch_handle,
+
+        dispatch_notify_infos = []
+        for loop_idx in range(self.num_loop_stage):
+            handle = (
+                dispatch_is_token_in_rank[loop_idx],
+                dispatch_rdma_channel_prefix_matrix[loop_idx],
+                dispatch_gbl_channel_prefix_matrix[loop_idx],
+                None,
+                dispatch_recv_rdma_rank_prefix_sum[loop_idx],
+                None,
+                dispatch_recv_gbl_rank_prefix_sum[loop_idx],
+                paddle.empty(
+                    [dispatch_num_recv_tokens_list[loop_idx], 0]
+                ),  # TODO: Just used to pass shape, can be simplified later
+                None,
+                paddle.empty([dispatch_num_rdma_recv_tokens_list[loop_idx], 0]),
+            )
+
+            dispatch_states = {}
+            dispatch_states["num_recv_tokens_per_expert_list"] = (
+                dispatch_num_recv_tokens_per_expert_list[loop_idx]
+            )
+            dispatch_states["handle"] = handle
+            dispatch_notify_infos.append(dispatch_states)
+
+        asymm_aggregated_nvl_head = paddle.empty(
+            [sum(combine_num_rdma_recv_tokens_list), 8], dtype="int32"
         )
 
-        combine_notify_info = (
-            combine_num_recv_tokens,
-            combine_num_rdma_recv_tokens,
+        asymmetric_handle = (
+            combine_num_rdma_recv_tokens_cumsum,
             combine_recv_rdma_rank_prefix_sum,
             combine_recv_rdma_channel_prefix_matrix,
-            combine_recv_gbl_channel_prefix_matrix,
             combine_send_rdma_head,
             combine_send_nvl_head,
-        )
-        return dispatch_notify_info, combine_notify_info
-
-    def internode_notify_dispatch(
-        self,
-        x: paddle.Tensor | tuple[paddle.Tensor, paddle.Tensor],
-        topk_idx: paddle.Tensor | None = None,
-        num_tokens_per_rank: paddle.Tensor | None = None,
-        num_tokens_per_rdma_rank: paddle.Tensor | None = None,
-        num_tokens_per_expert: paddle.Tensor | None = None,
-        is_token_in_rank: paddle.Tensor | None = None,
-        expert_alignment: int = 1,
-        config: Config | None = None,
-    ) -> tuple[
-        list[int],
-        int,
-        int,
-        paddle.Tensor,
-        paddle.Tensor,
-        paddle.Tensor,
-        paddle.Tensor,
-        tuple,
-    ]:
-        # Default config
-        config = (
-            self.get_dispatch_config(self.group_size)
-            if config is None
-            else config
-        )
-        # Launch the kernel with cached or non-cached mode
-        x, x_scales = x if isinstance(x, tuple) else (x, None)
-        assert (
-            num_tokens_per_rank is not None
-            and is_token_in_rank is not None
-            and num_tokens_per_expert is not None
+            asymm_aggregated_nvl_head,
         )
 
-        (
-            num_recv_tokens_per_expert_list,
-            num_recv_tokens,
-            num_rdma_recv_tokens,
-            rdma_channel_prefix_matrix,
-            gbl_channel_prefix_matrix,
-            recv_rdma_rank_prefix_sum,
-            recv_gbl_rank_prefix_sum,
-        ) = self.runtime.internode_notify_dispatch(
-            x,
-            x_scales,
-            topk_idx,
-            num_tokens_per_rank,
-            num_tokens_per_rdma_rank,
-            num_tokens_per_expert,
-            is_token_in_rank,
-            expert_alignment,
-            config,
-        )
-        handle = (
-            is_token_in_rank,
-            rdma_channel_prefix_matrix,
-            gbl_channel_prefix_matrix,
-            None,
-            recv_rdma_rank_prefix_sum,
-            None,
-            recv_gbl_rank_prefix_sum,
-            paddle.empty([num_recv_tokens, 0]),
-            None,
-            paddle.empty([num_rdma_recv_tokens, 0]),
-        )
-        return (
-            num_recv_tokens_per_expert_list,
-            num_recv_tokens,
-            num_rdma_recv_tokens,
-            handle,
-        )
+        combine_notify_infos = []
+        asymm_recv_rdma_start_idx = 0
+        for loop_idx in range(self.num_loop_stage):
+            asymm_recv_rdma_end_idx = (
+                asymm_recv_rdma_start_idx
+                + combine_num_rdma_recv_tokens_list[loop_idx]
+            )
 
-    def internode_notify_combine(
-        self,
-        x: paddle.Tensor | tuple[paddle.Tensor, paddle.Tensor],
-        topk_idx: paddle.Tensor | None = None,
-        num_tokens_per_rank: paddle.Tensor | None = None,
-        num_tokens_per_rdma_rank: paddle.Tensor | None = None,
-        is_token_in_rank: paddle.Tensor | None = None,
-        expert_alignment: int = 1,
-        config: Config | None = None,
-    ) -> tuple[
-        int,
-        int,
-        paddle.Tensor,
-        paddle.Tensor,
-        paddle.Tensor,
-        paddle.Tensor,
-        paddle.Tensor,
-    ]:
-        # Default config
-        config = (
-            self.get_dispatch_config(self.group_size)
-            if config is None
-            else config
-        )
-        # Launch the kernel with cached or non-cached mode
-        x, x_scales = x if isinstance(x, tuple) else (x, None)
-        assert num_tokens_per_rank is not None and is_token_in_rank is not None
+            combine_handle = (
+                None,
+                None,
+                None,
+                combine_recv_rdma_channel_prefix_matrix[loop_idx],
+                combine_recv_rdma_rank_prefix_sum[loop_idx],
+                combine_recv_gbl_channel_prefix_matrix[loop_idx],
+                None,
+                None,
+                combine_send_rdma_head[loop_idx],
+                asymm_aggregated_nvl_head[
+                    asymm_recv_rdma_start_idx:asymm_recv_rdma_end_idx
+                ],  # inplace slice
+            )
+            asymm_recv_rdma_start_idx = asymm_recv_rdma_end_idx
 
-        (
-            num_recv_tokens,
-            num_rdma_recv_tokens,
-            recv_rdma_rank_prefix_sum,
-            recv_rdma_channel_prefix_matrix,
-            recv_gbl_channel_prefix_matrix,
-            send_rdma_head,
-            send_nvl_head,
-        ) = self.runtime.internode_notify_combine(
-            x,
-            x_scales,
-            topk_idx,
-            num_tokens_per_rank,
-            num_tokens_per_rdma_rank,
-            is_token_in_rank,
-            expert_alignment,
-            config,
-        )
+            combine_states = {}
+            combine_states["handle"] = combine_handle
+            combine_states["num_combine_tokens"] = combine_num_recv_tokens_list[
+                loop_idx
+            ]
+            combine_notify_infos.append(combine_states)
 
-        return (
-            num_recv_tokens,
-            num_rdma_recv_tokens,
-            recv_rdma_rank_prefix_sum,
-            recv_rdma_channel_prefix_matrix,
-            recv_gbl_channel_prefix_matrix,
-            send_rdma_head,
-            send_nvl_head,
-        )
+        return dispatch_notify_infos, combine_notify_infos, asymmetric_handle
 
     # noinspection PyTypeChecker
     def internode_combine(

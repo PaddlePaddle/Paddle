@@ -44,8 +44,9 @@
 
 namespace flash_ep {
 
-constexpr int kCumsumBlocakSize = 32;
+constexpr int kCumsumBlockSize = 32;
 constexpr int kCumsumInvalidTag = -1;
+
 struct Buffer {
   EP_STATIC_ASSERT(NUM_MAX_NVL_PEERS == 8,
                    "The number of maximum NVLink peers must be 8");
@@ -111,12 +112,15 @@ struct Buffer {
   volatile int* combine_moe_recv_rdma_counter = nullptr;
   int* combine_moe_recv_rdma_counter_mapped = nullptr;
 
+  int num_loop_stage{1};
+
  private:
   void move_fifo_slots(int num_slots = 1);
 
  public:
   Buffer(int rank,
          int num_ranks,
+         int num_loop_stage,
          int64_t num_nvl_bytes,
          int64_t num_rdma_bytes,
          bool low_latency_mode,
@@ -227,41 +231,6 @@ struct Buffer {
       bool async,
       bool allocate_on_comm_stream);
 
-  std::tuple<std::vector<int>,          // num_recv_tokens_per_expert_list
-             int,                       // num_recv_tokens
-             int,                       // num_rdma_recv_tokens
-             flash_ep::detail::Tensor,  // rdma_channel_prefix_matrix
-             flash_ep::detail::Tensor,  // gbl_channel_prefix_matrix
-             flash_ep::detail::Tensor,  // recv_rdma_rank_prefix_sum
-             flash_ep::detail::Tensor>  // recv_gbl_rank_prefix_sum
-  internode_notify_dispatch(
-      const flash_ep::detail::Tensor& x,
-      const std::optional<flash_ep::detail::Tensor>& x_scales,
-      const std::optional<flash_ep::detail::Tensor>& topk_idx,
-      const std::optional<flash_ep::detail::Tensor>& num_tokens_per_rank,
-      const std::optional<flash_ep::detail::Tensor>& num_tokens_per_rdma_rank,
-      const std::optional<flash_ep::detail::Tensor>& num_tokens_per_expert,
-      const flash_ep::detail::Tensor& is_token_in_rank,
-      int expert_alignment,
-      const Config& config);
-
-  std::tuple<int,
-             int,
-             flash_ep::detail::Tensor,
-             flash_ep::detail::Tensor,
-             flash_ep::detail::Tensor,
-             flash_ep::detail::Tensor,
-             flash_ep::detail::Tensor>
-  internode_notify_combine(
-      const flash_ep::detail::Tensor& x,
-      const std::optional<flash_ep::detail::Tensor>& x_scales,
-      const std::optional<flash_ep::detail::Tensor>& topk_idx,
-      const std::optional<flash_ep::detail::Tensor>& num_tokens_per_rank,
-      const std::optional<flash_ep::detail::Tensor>& num_tokens_per_rdma_rank,
-      const flash_ep::detail::Tensor& is_token_in_rank,
-      int expert_alignment,
-      const Config& config);
-
 #endif  // PADDLE_WITH_NVSHMEM
 
   std::tuple<paddle::Tensor,
@@ -328,32 +297,16 @@ struct Buffer {
       bool async,
       bool allocate_on_comm_stream);
 
-  std::tuple<int,
-             int,
-             paddle::Tensor,
-             paddle::Tensor,
-             paddle::Tensor,
-             paddle::Tensor,
-             paddle::Tensor>
-  internode_notify_combine_api(
-      const paddle::Tensor& x,
-      const std::optional<paddle::Tensor>& x_scales,
-      const std::optional<paddle::Tensor>& topk_idx,
-      const std::optional<paddle::Tensor>& num_tokens_per_rank,
-      const std::optional<paddle::Tensor>& num_tokens_per_rdma_rank,
-      const paddle::Tensor& is_token_in_rank,
-      int expert_alignment,
-      const Config& config);
-
-  std::tuple<std::vector<int>,
-             int,
-             int,
+  std::tuple<std::vector<std::vector<int>>,
+             std::vector<int>,
+             std::vector<int>,
              flash_ep::detail::Tensor,
              flash_ep::detail::Tensor,
              flash_ep::detail::Tensor,
              flash_ep::detail::Tensor,
-             int,
-             int,
+             std::vector<int>,
+             std::vector<int>,
+             flash_ep::detail::Tensor,
              flash_ep::detail::Tensor,
              flash_ep::detail::Tensor,
              flash_ep::detail::Tensor,
@@ -378,15 +331,16 @@ struct Buffer {
       int expert_alignment,
       const Config& config);
 
-  std::tuple<std::vector<int>,
-             int,
-             int,
+  std::tuple<std::vector<std::vector<int>>,
+             std::vector<int>,
+             std::vector<int>,
              paddle::Tensor,
              paddle::Tensor,
              paddle::Tensor,
              paddle::Tensor,
-             int,
-             int,
+             std::vector<int>,
+             std::vector<int>,
+             paddle::Tensor,
              paddle::Tensor,
              paddle::Tensor,
              paddle::Tensor,
@@ -403,24 +357,6 @@ struct Buffer {
       const std::optional<paddle::Tensor>& combine_num_tokens_per_rank,
       const std::optional<paddle::Tensor>& combine_num_tokens_per_rdma_rank,
       const paddle::Tensor& combine_is_token_in_rank,
-      int expert_alignment,
-      const Config& config);
-
-  std::tuple<std::vector<int>,  // num_recv_tokens_per_expert_list
-             int,               // num_recv_tokens
-             int,               // num_rdma_recv_tokens
-             paddle::Tensor,    // rdma_channel_prefix_matrix
-             paddle::Tensor,    // gbl_channel_prefix_matrix
-             paddle::Tensor,    // recv_rdma_rank_prefix_sum
-             paddle::Tensor>    // recv_gbl_rank_prefix_sum
-  internode_notify_dispatch_api(
-      const paddle::Tensor& x,
-      const std::optional<paddle::Tensor>& x_scales,
-      const std::optional<paddle::Tensor>& topk_idx,
-      const std::optional<paddle::Tensor>& num_tokens_per_rank,
-      const std::optional<paddle::Tensor>& num_tokens_per_rdma_rank,
-      const std::optional<paddle::Tensor>& num_tokens_per_expert,
-      const paddle::Tensor& is_token_in_rank,
       int expert_alignment,
       const Config& config);
 
