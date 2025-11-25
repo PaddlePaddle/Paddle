@@ -15,20 +15,11 @@
 #include "glog/logging.h"
 
 #include "paddle/common/errors.h"
-#include "paddle/common/flags.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen/memory_efficient_attention.h"
 #include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/gemm_kernel_utils.h"
 #include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention_utils.h"
-
-PHI_DEFINE_EXPORTED_bool(memory_efficient_attention_available,
-#ifdef PADDLE_WITH_MEMORY_EFFICIENT_ATTENTION
-                         true,
-#else
-                         false,
-#endif
-                         "Weather memory efficient attention is available");
 
 namespace phi {
 namespace fusion {
