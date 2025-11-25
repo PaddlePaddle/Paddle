@@ -554,5 +554,154 @@ class TestIndexAdd_ZeroSize2(OpTest):
         )
 
 
+def get_places():
+    places = []
+    if paddle.base.is_compiled_with_cuda() or is_custom_device():
+        places.append(get_device_place())
+    places.append(paddle.CPUPlace())
+    return places
+
+
+class TestIndexAddAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.places = get_places()
+        self.shape = [10, 20]
+        self.index_shape = [5]
+        self.axis = 1
+        self.dtype = "float32"
+        self.value_shape = list(self.shape)
+        self.value_shape[self.axis] = self.index_shape[0]
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.rand(*self.shape).astype(self.dtype)
+        self.np_index = np.random.randint(
+            0, self.shape[self.axis], self.index_shape
+        ).astype("int64")
+        self.np_value = np.random.rand(*self.value_shape).astype(self.dtype)
+
+    def get_ref_out(self, alpha=1.0):
+        ref_out = np.copy(self.np_input)
+        idx = [slice(None)] * len(self.shape)
+        idx[self.axis] = self.np_index
+        np.add.at(ref_out, tuple(idx), self.np_value * alpha)
+        return ref_out
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        index = paddle.to_tensor(self.np_index)
+        value = paddle.to_tensor(self.np_value)
+        paddle_dygraph_out = []
+
+        ref_out = self.get_ref_out()
+        # 1. Position args (Paddle style: x, index, axis, value)
+        out1 = paddle.index_add(x, index, self.axis, value)
+        paddle_dygraph_out.append(out1)
+        # 2. Key words args (kwargs) for paddle
+        out2 = paddle.index_add(x=x, index=index, axis=self.axis, value=value)
+        paddle_dygraph_out.append(out2)
+        # 3. Key words args (kwargs) for torch
+        out3 = paddle.index_add(
+            input=x, dim=self.axis, index=index, source=value
+        )
+        paddle_dygraph_out.append(out3)
+        # 4. PyTorch positional args order: (input, dim, index, source)
+        out4 = paddle.index_add(x, self.axis, index, value)
+        paddle_dygraph_out.append(out4)
+        # 5. Tensor method args (Paddle style)
+        out5 = x.index_add(index, self.axis, value)
+        paddle_dygraph_out.append(out5)
+        # 6. Tensor method kwargs (PyTorch style)
+        out6 = x.index_add(dim=self.axis, index=index, source=value)
+        paddle_dygraph_out.append(out6)
+        # 7. Test 'out' parameter
+        out7 = paddle.empty_like(x)
+        paddle.index_add(
+            input=x, dim=self.axis, index=index, source=value, out=out7
+        )
+        paddle_dygraph_out.append(out7)
+        # 8. Test 'alpha' parameter
+        alpha = 2.0
+        out8 = paddle.index_add(
+            input=x, dim=self.axis, index=index, source=value, alpha=alpha
+        )
+        out9 = paddle.index_add_(
+            input=x, dim=self.axis, index=index, source=value, alpha=alpha
+        )
+        ref_out_alpha = self.get_ref_out(alpha=alpha)
+
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-05)
+        np.testing.assert_allclose(ref_out_alpha, out8.numpy(), rtol=1e-05)
+        np.testing.assert_allclose(ref_out_alpha, out9.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            index = paddle.static.data(
+                name="index", shape=self.index_shape, dtype="int64"
+            )
+            value = paddle.static.data(
+                name="value", shape=self.value_shape, dtype=self.dtype
+            )
+            # 1. Position args (Paddle style: x, index, axis, value)
+            out1 = paddle.index_add(x, index, self.axis, value)
+            # 2. Key words args (kwargs) for paddle
+            out2 = paddle.index_add(
+                x=x, index=index, axis=self.axis, value=value
+            )
+            # 3. Key words args (kwargs) for torch
+            out3 = paddle.index_add(
+                input=x, dim=self.axis, index=index, source=value
+            )
+            # 4. PyTorch positional args order: (input, dim, index, source)
+            out4 = paddle.index_add(x, self.axis, index, value)
+            # 5. Tensor method args (Paddle style)
+            out5 = x.index_add(index, self.axis, value)
+            # 6. Tensor method kwargs (PyTorch style)
+            out6 = x.index_add(dim=self.axis, index=index, source=value)
+            # 7. Test 'alpha' parameter
+            alpha = 2.0
+            out7 = paddle.index_add(
+                input=x, dim=self.axis, index=index, source=value, alpha=alpha
+            )
+            ref_out = self.get_ref_out()
+            ref_out_alpha = self.get_ref_out(alpha=alpha)
+
+            fetch_list = [
+                out1,
+                out2,
+                out3,
+                out4,
+                out5,
+                out6,
+                out7,
+            ]
+            feed_dict = {
+                "x": self.np_input,
+                "index": self.np_index,
+                "value": self.np_value,
+            }
+
+            for place in self.places:
+                exe = paddle.base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed=feed_dict,
+                    fetch_list=fetch_list,
+                )
+                for out in fetches[:-1]:
+                    np.testing.assert_allclose(out, ref_out, rtol=1e-05)
+                np.testing.assert_allclose(
+                    fetches[-1], ref_out_alpha, rtol=1e-05
+                )
+
+
 if __name__ == '__main__':
     unittest.main()

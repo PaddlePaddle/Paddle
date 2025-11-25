@@ -1,4 +1,4 @@
-name: CI-H-Coverage
+name: CI-H
 
 on:
   pull_request:
@@ -34,7 +34,7 @@ jobs:
     uses: ./.github/workflows/_Clone-linux.yml
     with:
       workflow-name: 'coverage'
-      clone_dir: Paddle-coverage
+      clone_dir: h-ci
 
   build:
     name: Coverage build
@@ -114,7 +114,7 @@ jobs:
           rm -rf * .[^.]*
           set -e
           echo "Downloading Paddle.tar.gz"
-          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle-coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-ci/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
           tar -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz

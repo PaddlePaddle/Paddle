@@ -3672,13 +3672,19 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #endif
 #if defined(PADDLE_WITH_CUDA)
-  m.def("vmm_max_free_size", [] {
-    return memory::VmmMaxFreeSize(phi::GPUPlace(platform::GetCurrentDeviceId()),
-                                  1);
+  m.def("vmm_max_free_size", [](int device_id) {
+    return memory::VmmMaxFreeSize(phi::GPUPlace(device_id), 1);
   });
-  m.def("vmm_compact", [] { return paddle::memory::VmmCompact(); });
-  m.def("vmm_free_block_info",
-        [] { return paddle::memory::FreeBlockInfoOfVmmAllocator(); });
+  m.def("vmm_compact", [](int device_id) {
+    return paddle::memory::VmmCompact(phi::GPUPlace(device_id));
+  });
+  m.def("vmm_free_block_info", [](int device_id) {
+    return paddle::memory::FreeBlockInfoOfVmmAllocator(
+        phi::GPUPlace(device_id));
+  });
+  m.def("vmm_all_block_info", [](int device_id) {
+    return paddle::memory::AllBlockInfoOfVmmAllocator(phi::GPUPlace(device_id));
+  });
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   m.def(

@@ -512,8 +512,6 @@ class Optimizer:
                         )
                 var.set_value(state_dict[var_tmp.name])
 
-    load_state_dict = set_state_dict
-
     def get_opti_var_name_list(self) -> list[str]:
         return self._opti_name_list
 
@@ -1893,10 +1891,6 @@ class Optimizer:
         for p in param_list:
             p.clear_gradient(set_to_zero)
 
-    @framework.non_static_only
-    def zero_grad(self, set_to_none: bool = True) -> None:
-        self.clear_grad(set_to_zero=not set_to_none)
-
     @imperative_base.no_grad()
     def minimize(
         self,
@@ -2020,18 +2014,16 @@ class Optimizer:
             for param in self._param_groups:
                 if param.stop_gradient:
                     continue
-                if getattr(self, 'enable_tensor_fusion', False) or os.getenv(
-                    "FLAGS_enable_main_grad"
-                ) in [
-                    "True",
-                    "true",
-                    "1",
-                ]:
+                if getattr(self, 'enable_tensor_fusion', False):
                     if (
                         hasattr(param, "main_grad")
                         and param.main_grad is not None
                     ):
                         params_grads.append((param, param.main_grad))
+                elif (
+                    hasattr(param, "main_grad") and param.main_grad is not None
+                ):
+                    params_grads.append((param, param.main_grad))
                 else:
                     if param._grad_ivar() is not None:
                         grad_var = param._grad_ivar()

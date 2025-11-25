@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 from paddle._C_ops import (  # noqa: F401
     abs,
+    acos,
     asin,
     ceil,
     cos,
@@ -81,60 +82,6 @@ for _OP in set(__inplace_unary_func__):
     func.__module__ = __name__
     _func = inplace_apis_in_dygraph_only(func)
     globals()[_OP] = _func
-
-
-def acos(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    Acos Activation Operator.
-
-    .. math::
-        out = cos^{-1}(x)
-
-    Args:
-        x (Tensor): Input of Acos operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64, complex64 or complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Acos operator, a Tensor with shape same as input
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = paddle.acos(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [1.98231316, 1.77215421, 1.47062886, 1.26610363])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.acos(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-                'complex64',
-                'complex128',
-            ],
-            'acos',
-        )
-        helper = LayerHelper('acos', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='acos', inputs={"X": x}, outputs={"Out": out})
-        return out
 
 
 def acosh(x: Tensor, name: str | None = None) -> Tensor:

@@ -685,6 +685,57 @@ class TestAOAEngine(unittest.TestCase):
         result = aoa_engine.find_shard_sources(query)
         self.assertEqual(result, answer)
 
+    def test_aoa_transpose_reverse(self):
+        s0 = ShardedWeightDesc(
+            key="s0",
+            local_shape=(1, 2, 4),
+            global_shape=(1, 2, 4),
+            global_offset=(0, 0, 0),
+            dtype="float32",
+        )
+        d0 = ShardedWeightDesc(
+            key="d0",
+            local_shape=(4, 1, 2),
+            global_shape=(4, 1, 2),
+            global_offset=(0, 0, 0),
+            dtype="float32",
+        )
+        aoa_statements = [
+            "s0 -> d0, permute= '[2, 0, 1]' \n",
+        ]
+        aoa_config = {
+            "aoa_statements": aoa_statements,
+            "aoa_config_reverse": True,
+        }
+        source_state_shard_info = {
+            "d0": [d0],
+        }
+        destination_state_shard_info = {
+            "s0": [s0],
+        }
+        aoa_engine = AOAEngine(
+            aoa_config=aoa_config,
+            source_state_shard_info=source_state_shard_info,
+            destination_state_shard_info=destination_state_shard_info,
+        )
+
+        query = ShardedWeightDesc(
+            key="s0",
+            local_shape=(1, 2, 4),
+            global_shape=(1, 2, 4),
+            global_offset=(0, 0, 0),
+            dtype="float32",
+        )
+        answer = [
+            ShardMappingEntry(
+                target_slice=s0,
+                source_slice=d0,
+                postprocess_list=['[1, 2, 0]'],
+            )
+        ]
+        result = aoa_engine.find_shard_sources(query)
+        self.assertEqual(result, answer)
+
 
 if __name__ == '__main__':
     unittest.main()

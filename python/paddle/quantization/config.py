@@ -220,12 +220,14 @@ class QuantConfig:
             weight(QuanterFactory | None): Quanter used for weights. Default is None.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.nn import Linear
                 >>> from paddle.quantization import QuantConfig
-                >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+                >>> from paddle.quantization.quanters import (
+                ...     FakeQuanterWithAbsMaxObserver,
+                ... )
 
                 >>> class Model(paddle.nn.Layer):
                 ...     def __init__(self):
@@ -234,7 +236,9 @@ class QuantConfig:
                 >>> model = Model()
                 >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
                 >>> q_config = QuantConfig(activation=None, weight=None)
-                >>> q_config.add_type_config([Linear], activation=quanter, weight=quanter)
+                >>> q_config.add_type_config(
+                ...     [Linear], activation=quanter, weight=quanter
+                ... )
                 >>> # doctest: +SKIP('random memory address')
                 >>> print(q_config)
                 Global config:
@@ -269,19 +273,23 @@ class QuantConfig:
             target(type[Layer]): The type of layers that will be converted to.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.nn import Conv2D
                 >>> from paddle.quantization import QuantConfig
-                >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+                >>> from paddle.quantization.quanters import (
+                ...     FakeQuanterWithAbsMaxObserver,
+                ... )
                 >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
                 >>> q_config = QuantConfig(activation=None, weight=None)
                 >>> class CustomizedQuantedConv2D(paddle.nn.Layer):
                 ...     def forward(self, x):
                 ...         pass
                 ...         # add some code for quantization simulation
-                >>> q_config.add_qat_layer_mapping(Conv2D, CustomizedQuantedConv2D)
+                >>> q_config.add_qat_layer_mapping(
+                ...     Conv2D, CustomizedQuantedConv2D
+                ... )
         """
         assert isinstance(source, type) and issubclass(
             source, paddle.nn.Layer

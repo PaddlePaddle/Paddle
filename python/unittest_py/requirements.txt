@@ -21,3 +21,4 @@ soundfile
 apache-tvm-ffi==0.1.2
 cuda-python ; platform_system != "Darwin"
 graphviz
+nvidia-ml-py3 ; platform_system != "Darwin"

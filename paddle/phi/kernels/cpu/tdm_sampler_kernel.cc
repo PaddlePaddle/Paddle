@@ -91,7 +91,7 @@ void TDMSamplerInner(const Context &dev_ctx,
         -1,
         input_id,
         common::errors::InvalidArgument(
-            "Variable value (input) of OP(fluid.layers.tdm_sampler) "
+            "Variable value (input) of OP(tdm_sampler) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
             travel_dim[0],
@@ -100,7 +100,7 @@ void TDMSamplerInner(const Context &dev_ctx,
         input_id,
         travel_dim[0],
         common::errors::InvalidArgument(
-            "Variable value (input) of OP(fluid.layers.tdm_sampler) "
+            "Variable value (input) of OP(tdm_sampler) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
             travel_dim[0],
@@ -123,7 +123,7 @@ void TDMSamplerInner(const Context &dev_ctx,
           sample_num,
           node_nums - 1,
           common::errors::InvalidArgument(
-              "Neg sample nums id of OP(fluid.layers.tdm_sampler) at layer %ld "
+              "Neg sample nums id of OP(tdm_sampler) at layer %ld "
               "expected <= %ld - 1 (positive included), but got %ld. Please "
               "check neg_samples_num_list.",
               layer_idx,
@@ -160,7 +160,7 @@ void TDMSamplerInner(const Context &dev_ctx,
           positive_node_id,
           node_id_max,
           common::errors::InvalidArgument(
-              "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
+              "Positive node id of OP(tdm_sampler) at layer %ld "
               "expected >= %ld and <= %ld, but got %ld. Please check input "
               "value.",
               layer_idx,
@@ -171,7 +171,7 @@ void TDMSamplerInner(const Context &dev_ctx,
           node_id_min,
           positive_node_id,
           common::errors::InvalidArgument(
-              "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
+              "Positive node id of OP(tdm_sampler) at layer %ld "
               "expected >= %ld and <= %ld, but got %ld. Please check input "
               "value.",
               layer_idx,
@@ -221,7 +221,7 @@ void TDMSamplerInner(const Context &dev_ctx,
             layer_data[layer_offset[layer_idx] + sample_res],
             node_id_max,
             common::errors::InvalidArgument(
-                "Negative node id of OP(fluid.layers.tdm_sampler) at layer "
+                "Negative node id of OP(tdm_sampler) at layer "
                 "%ld, "
                 "expected >= %ld and <= %ld, but got %ld. Please check input "
                 "tdm tree structure and tdm travel info.",

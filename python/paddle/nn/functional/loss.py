@@ -494,6 +494,7 @@ def edit_distance(
     input_length: Tensor | None = None,
     label_length: Tensor | None = None,
 ) -> tuple[Tensor, Tensor]:
+    # typos: off
     """
     This op computes the edit distances, also called Levenshtein distance, between a batch of
     hypothesis strings and their references. It measures how dissimilar two strings are by counting
@@ -564,6 +565,7 @@ def edit_distance(
                      [0.25000000]])
 
     """
+    # typos: on
 
     helper = LayerHelper("edit_distance", **locals())
 

@@ -34,7 +34,7 @@ void ArgMaxMinMapper(PyObject* args,
                      bool* keepdims,
                      bool* flatten,
                      phi::DataType* dtype) {
-  // The python params are (x, axis,keepdim,dtype,name) which  haven't flatten
+  // The python params are (x, axis,keepdim,dtype,name) which haven't flatten
   // The _C_ops params are (x, axis,keepdim,flatten,dtype) which have flatten
   // but haven't name We should parse the python params and convert them to the
   // _C_ops params

@@ -15,6 +15,7 @@
 #include "paddle/fluid/eager/backward.h"
 
 #include "paddle/fluid/eager/general_grad.h"
+#include "paddle/fluid/eager/pylayer/py_layer_node.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/phi/core/memory/stats.h"
@@ -321,8 +322,15 @@ std::vector<paddle::Tensor> RunBackward(
       VLOG(4) << "RunBackward: Create Value for grad input tensor " << i
               << " of grad node: " << grad_node->name() << "(" << grad_node
               << ")";
-      node_input_buffers_dict[grad_node] =
-          std::make_unique<GradTensorHolder>(grad_node->InputMeta());
+
+      if (typeid(*grad_node) == typeid(GradNodePyLayer)) {
+        auto pylayer_gradnode = dynamic_cast<GradNodePyLayer*>(grad_node);
+        node_input_buffers_dict[grad_node] = std::make_unique<GradTensorHolder>(
+            grad_node->InputMeta(), pylayer_gradnode->GradInDtypeConsistent());
+      } else {
+        node_input_buffers_dict[grad_node] =
+            std::make_unique<GradTensorHolder>(grad_node->InputMeta());
+      }
     }
 
     // copy grad tensor since we should totally run grad without affect forward
@@ -589,11 +597,23 @@ std::vector<paddle::Tensor> RunBackward(
 
           if (!node_input_buffers_dict.count(next_node)) {
             const auto& input_meta = next_node->InputMeta();
-            auto grad_tensor_holder =
-                std::make_unique<GradTensorHolder>(input_meta);
+
             VLOG(6) << "RunBackward: Construct GradTensorHolder for grad node: "
                     << next_node->name() << "(" << next_node << ") ";
-            node_input_buffers_dict[next_node] = std::move(grad_tensor_holder);
+
+            if (typeid(*next_node) == typeid(GradNodePyLayer)) {
+              auto pylayer_gradnode = dynamic_cast<GradNodePyLayer*>(next_node);
+              auto grad_tensor_holder = std::make_unique<GradTensorHolder>(
+                  next_node->InputMeta(),
+                  pylayer_gradnode->GradInDtypeConsistent());
+              node_input_buffers_dict[next_node] =
+                  std::move(grad_tensor_holder);
+            } else {
+              auto grad_tensor_holder =
+                  std::make_unique<GradTensorHolder>(input_meta);
+              node_input_buffers_dict[next_node] =
+                  std::move(grad_tensor_holder);
+            }
           }
 
           VLOG(7) << "RunBackward: Sum or Move grad inputs for edge slot: "
