@@ -18,6 +18,7 @@
 #include <cuda_runtime.h>
 
 #include "paddle/phi/backends/dynload/cuda_driver.h"
+#include "paddle/phi/core/memory/allocation/vmm_ipc_allocation.h"
 #include "paddle/phi/core/platform/cuda_device_guard.h"
 #endif
 
@@ -28,7 +29,6 @@
 
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
-#include "paddle/phi/core/memory/allocation/vmm_ipc_allocation.h"
 
 #ifdef PADDLE_WITH_CUDA
 
