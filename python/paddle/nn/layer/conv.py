@@ -720,9 +720,7 @@ class Conv2D(_ConvNd):
 
             >>> paddle.disable_static()
 
-            >>> x_var = paddle.uniform(
-            ...     (2, 4, 8, 8), dtype='float32', min=-1.0, max=1.0
-            ... )
+            >>> x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1.0, max=1.0)
 
             >>> conv = nn.Conv2D(4, 6, (3, 3))
             >>> y_var = conv(x_var)
@@ -933,9 +931,7 @@ class Conv2DTranspose(_ConvNd):
 
             >>> paddle.disable_static()
 
-            >>> x_var = paddle.uniform(
-            ...     (2, 4, 8, 8), dtype='float32', min=-1.0, max=1.0
-            ... )
+            >>> x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1.0, max=1.0)
 
             >>> conv = nn.Conv2DTranspose(4, 6, (3, 3))
             >>> y_var = conv(x_var)
@@ -1096,9 +1092,7 @@ class Conv3D(_ConvNd):
 
             >>> paddle.disable_static()
 
-            >>> x_var = paddle.uniform(
-            ...     (2, 4, 8, 8, 8), dtype='float32', min=-1.0, max=1.0
-            ... )
+            >>> x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1.0, max=1.0)
 
             >>> conv = nn.Conv3D(4, 6, (3, 3, 3))
             >>> y_var = conv(x_var)
@@ -1287,9 +1281,7 @@ class Conv3DTranspose(_ConvNd):
 
             >>> paddle.disable_static()
 
-            >>> x_var = paddle.uniform(
-            ...     (2, 4, 8, 8, 8), dtype='float32', min=-1.0, max=1.0
-            ... )
+            >>> x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1.0, max=1.0)
 
             >>> conv = nn.Conv3DTranspose(4, 6, (3, 3, 3))
             >>> y_var = conv(x_var)

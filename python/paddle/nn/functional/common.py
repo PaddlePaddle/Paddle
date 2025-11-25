@@ -461,9 +461,7 @@ def interpolate(*args: Any, **kwargs: Any) -> Tensor:
             >>> import paddle
             >>> import paddle.nn.functional as F
 
-            >>> input_data = paddle.randn(shape=(2, 3, 6, 10)).astype(
-            ...     paddle.float32
-            ... )
+            >>> input_data = paddle.randn(shape=(2, 3, 6, 10)).astype(paddle.float32)
             >>> output_1 = F.interpolate(x=input_data, size=[12, 12])
             >>> print(output_1.shape)
             paddle.Size([2, 3, 12, 12])
@@ -472,9 +470,7 @@ def interpolate(*args: Any, **kwargs: Any) -> Tensor:
             >>> print(output_2.shape)
             paddle.Size([2, 3, 12, 10])
             >>> # bilinear interp
-            >>> output_3 = F.interpolate(
-            ...     x=input_data, scale_factor=[2, 1], mode="bilinear"
-            ... )
+            >>> output_3 = F.interpolate(x=input_data, scale_factor=[2, 1], mode="bilinear")
             >>> print(output_2.shape)
             paddle.Size([2, 3, 12, 10])
     """
@@ -1164,9 +1160,7 @@ def upsample(
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> input_data = paddle.randn(shape=(2, 3, 6, 10)).astype(
-            ...     paddle.float32
-            ... )
+            >>> input_data = paddle.randn(shape=(2, 3, 6, 10)).astype(paddle.float32)
             >>> upsample_out = paddle.nn.Upsample(size=[12, 12])
             >>> output = upsample_out(x=input_data)
             >>> print(output.shape)

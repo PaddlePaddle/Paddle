@@ -344,12 +344,7 @@ class ParameterDict(Layer):
             ...         super().__init__()
             ...         # create ParameterDict with iterable Parameters
             ...         self.params = paddle.nn.ParameterDict(
-            ...             {
-            ...                 f"t{i}": paddle.create_parameter(
-            ...                     shape=[2, 2], dtype='float32'
-            ...                 )
-            ...                 for i in range(num_stacked_param)
-            ...             }
+            ...             {f"t{i}": paddle.create_parameter(shape=[2, 2], dtype='float32') for i in range(num_stacked_param)}
             ...         )
             ...
             ...     def forward(self, x):
@@ -365,16 +360,12 @@ class ParameterDict(Layer):
             >>> print(res.shape)
             paddle.Size([5, 2])
 
-            >>> replaced_param = paddle.create_parameter(
-            ...     shape=[2, 3], dtype='float32'
-            ... )
+            >>> replaced_param = paddle.create_parameter(shape=[2, 3], dtype='float32')
             >>> model.params['t3'] = replaced_param  # replace t3 param
             >>> res = model(x)
             >>> print(res.shape)
             paddle.Size([5, 3])
-            >>> model.params['t4'] = paddle.create_parameter(
-            ...     shape=[3, 4], dtype='float32'
-            ... )  # append param
+            >>> model.params['t4'] = paddle.create_parameter(shape=[3, 4], dtype='float32')  # append param
             >>> print(len(model.params))
             5
             >>> res = model(x)
@@ -455,12 +446,7 @@ class ParameterList(Layer):
             ...         super().__init__()
             ...         # create ParameterList with iterable Parameters
             ...         self.params = paddle.nn.ParameterList(
-            ...             [
-            ...                 paddle.create_parameter(
-            ...                     shape=[2, 2], dtype='float32'
-            ...                 )
-            ...                 for _ in range(num_stacked_param)
-            ...             ]
+            ...             [paddle.create_parameter(shape=[2, 2], dtype='float32') for _ in range(num_stacked_param)]
             ...         )
             ...
             ...     def forward(self, x):
@@ -475,16 +461,12 @@ class ParameterList(Layer):
             >>> res = model(x)
             >>> print(res.shape)
             paddle.Size([5, 2])
-            >>> replaced_param = paddle.create_parameter(
-            ...     shape=[2, 3], dtype='float32'
-            ... )
+            >>> replaced_param = paddle.create_parameter(shape=[2, 3], dtype='float32')
             >>> model.params[num_stacked_param - 1] = replaced_param
             >>> res = model(x)
             >>> print(res.shape)
             paddle.Size([5, 3])
-            >>> model.params.append(
-            ...     paddle.create_parameter(shape=[3, 4], dtype='float32')
-            ... )  # append param
+            >>> model.params.append(paddle.create_parameter(shape=[3, 4], dtype='float32'))  # append param
             >>> print(len(model.params))
             5
             >>> res = model(x)

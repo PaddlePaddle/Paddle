@@ -394,9 +394,7 @@ def fused_bias_dropout_residual_layer_norm(
             >>> # linear bias: [embed_dim]
             >>> bias = paddle.rand(shape=[128], dtype="float32")
             >>> # output: [batch_size, seq_len, embed_dim]
-            >>> output = F.fused_bias_dropout_residual_layer_norm(
-            ...     x, residual, bias
-            ... )
+            >>> output = F.fused_bias_dropout_residual_layer_norm(x, residual, bias)
             >>> print(output.shape)
             paddle.Size([2, 4, 128])
 

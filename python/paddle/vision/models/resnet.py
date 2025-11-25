@@ -261,9 +261,7 @@ class ResNet(nn.Layer):
             >>> wide_resnet50_2 = ResNet(BottleneckBlock, 50, width=64 * 2)
 
             >>> # build ResNeXt model
-            >>> resnext50_32x4d = ResNet(
-            ...     BottleneckBlock, 50, width=4, groups=32
-            ... )
+            >>> resnext50_32x4d = ResNet(BottleneckBlock, 50, width=4, groups=32)
 
             >>> x = paddle.rand([1, 3, 224, 224])
             >>> out = resnet18(x)

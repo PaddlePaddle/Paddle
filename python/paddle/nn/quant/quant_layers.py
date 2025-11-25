@@ -658,9 +658,7 @@ class QuantizedConv2DTranspose(Layer):
             ...     QuantizedConv2DTranspose,
             ... )
 
-            >>> x_var = paddle.uniform(
-            ...     (2, 4, 8, 8), dtype='float32', min=-1.0, max=1.0
-            ... )
+            >>> x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1.0, max=1.0)
             >>> conv = nn.Conv2DTranspose(4, 6, (3, 3))
             >>> conv_quantized = QuantizedConv2DTranspose(conv)
             >>> y_quantized = conv_quantized(x_var)

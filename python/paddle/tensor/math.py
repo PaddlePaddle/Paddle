@@ -5884,11 +5884,7 @@ def angle(x: Tensor, name: str | None = None) -> Tensor:
 
             >>> import paddle
 
-            >>> x = (
-            ...     paddle.to_tensor([-2, -1, 0, 1])
-            ...     .unsqueeze(-1)
-            ...     .astype('float32')
-            ... )
+            >>> x = paddle.to_tensor([-2, -1, 0, 1]).unsqueeze(-1).astype('float32')
             >>> y = paddle.to_tensor([-2, -1, 0, 1]).astype('float32')
             >>> z = x + 1j * y
             >>> z

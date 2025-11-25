@@ -218,9 +218,7 @@ def weight_only_linear(
             >>> from paddle.nn.quant import weight_only_linear
 
             >>> x = paddle.cast(paddle.randn([1, 2, 64]), dtype='float16')
-            >>> weight = paddle.cast(
-            ...     paddle.randint(0, 127, [32, 64]), dtype='int8'
-            ... )
+            >>> weight = paddle.cast(paddle.randint(0, 127, [32, 64]), dtype='int8')
             >>> scale = paddle.randn([32], dtype='float32')
             >>> bias = paddle.cast(paddle.randn([32]), dtype='float16')
             >>> if paddle.device.cuda.get_device_capability()[0] >= 8:
@@ -319,15 +317,11 @@ def llm_int8_linear(
             >>> from paddle.nn.quant import llm_int8_linear
 
             >>> x = paddle.cast(paddle.randn([1, 2, 64]), dtype='float16')
-            >>> weight = paddle.cast(
-            ...     paddle.randint(0, 127, [32, 64]), dtype='int8'
-            ... )
+            >>> weight = paddle.cast(paddle.randint(0, 127, [32, 64]), dtype='int8')
             >>> scale = paddle.randn([32], dtype='float32')
             >>> bias = paddle.cast(paddle.randn([32]), dtype='float16')
             >>> if paddle.device.cuda.get_device_capability()[0] >= 8:
-            ...     out = llm_int8_linear(
-            ...         x, weight, bias=bias, weight_scale=scale, threshold=6.0
-            ...     )
+            ...     out = llm_int8_linear(x, weight, bias=bias, weight_scale=scale, threshold=6.0)
             ...     print(out.shape)
             paddle.Size([1, 2, 32])
     """

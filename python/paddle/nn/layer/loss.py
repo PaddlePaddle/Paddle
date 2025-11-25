@@ -1150,9 +1150,7 @@ class KLDivLoss(Layer):
 
             >>> shape = (5, 20)
             >>> x = paddle.uniform(shape, min=-10, max=10).astype('float32')
-            >>> target = paddle.uniform(shape, min=-10, max=10).astype(
-            ...     'float32'
-            ... )
+            >>> target = paddle.uniform(shape, min=-10, max=10).astype('float32')
 
             >>> # 'batchmean' reduction, loss shape will be []
             >>> kldiv_criterion = nn.KLDivLoss(reduction='batchmean')
@@ -1182,9 +1180,7 @@ class KLDivLoss(Layer):
             >>> target = paddle.uniform(shape, min=0, max=10).astype('float32')
             >>> log_target = paddle.log(target)
             >>> kldiv_criterion_1 = nn.KLDivLoss(reduction='none')
-            >>> kldiv_criterion_2 = nn.KLDivLoss(
-            ...     reduction='none', log_target=True
-            ... )
+            >>> kldiv_criterion_2 = nn.KLDivLoss(reduction='none', log_target=True)
             >>> pred_loss_1 = kldiv_criterion_1(x, target)
             >>> pred_loss_2 = kldiv_criterion_2(x, log_target)
             >>> print(paddle.allclose(pred_loss_1, pred_loss_2))

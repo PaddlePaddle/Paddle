@@ -58,9 +58,7 @@ class Dirac(Initializer):
             >>> import paddle
 
             >>> # 1. For kernel_size is uneven number:
-            >>> attr = paddle.ParamAttr(
-            ...     initializer=paddle.nn.initializer.Dirac()
-            ... )
+            >>> attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Dirac())
             >>> conv = paddle.nn.Conv1D(3, 2, 3, weight_attr=attr)
             >>> print(conv.weight)
             Parameter containing:
@@ -79,9 +77,7 @@ class Dirac(Initializer):
             >>> # It means output is almost the same with input, 2 channels are reserved
 
             >>> # 2. For kernel_size is even number:
-            >>> attr = paddle.ParamAttr(
-            ...     initializer=paddle.nn.initializer.Dirac()
-            ... )
+            >>> attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Dirac())
             >>> conv = paddle.nn.Conv1D(3, 2, 4, weight_attr=attr)
             >>> print(conv.weight)
             Parameter containing:

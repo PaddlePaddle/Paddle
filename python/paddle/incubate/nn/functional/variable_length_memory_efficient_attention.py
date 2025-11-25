@@ -76,15 +76,9 @@ def variable_length_memory_efficient_attention(
 
             >>> dtype = paddle.float16
 
-            >>> query = paddle.randn(
-            ...     [batch, num_head, seq_len, head_size], dtype=dtype
-            ... )
-            >>> key = paddle.randn(
-            ...     [batch, num_head, seq_len, head_size], dtype=dtype
-            ... )
-            >>> value = paddle.randn(
-            ...     [batch, num_head, seq_len, head_size], dtype=dtype
-            ... )
+            >>> query = paddle.randn([batch, num_head, seq_len, head_size], dtype=dtype)
+            >>> key = paddle.randn([batch, num_head, seq_len, head_size], dtype=dtype)
+            >>> value = paddle.randn([batch, num_head, seq_len, head_size], dtype=dtype)
             >>> seq_lens = paddle.to_tensor(
             ...     [
             ...         seq_len,

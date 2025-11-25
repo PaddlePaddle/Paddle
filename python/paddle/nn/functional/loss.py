@@ -1739,9 +1739,7 @@ def kl_div(
             >>> # input(x) should be a distribution in the log space
             >>> x = F.log_softmax(paddle.randn(shape), axis=1).astype('float32')
 
-            >>> target = paddle.uniform(shape, min=-10, max=10).astype(
-            ...     'float32'
-            ... )
+            >>> target = paddle.uniform(shape, min=-10, max=10).astype('float32')
 
             >>> # 'batchmean' reduction, loss shape will be [], who is 0-D Tensor
             >>> pred_loss = F.kl_div(x, target, reduction='batchmean')
@@ -1767,9 +1765,7 @@ def kl_div(
             >>> target = paddle.uniform(shape, min=0, max=10).astype('float32')
             >>> log_target = paddle.log(target)
             >>> pred_loss_1 = F.kl_div(x, target, reduction='none')
-            >>> pred_loss_2 = F.kl_div(
-            ...     x, log_target, reduction='none', log_target=True
-            ... )
+            >>> pred_loss_2 = F.kl_div(x, log_target, reduction='none', log_target=True)
             >>> print(paddle.allclose(pred_loss_1, pred_loss_2))
             Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
             True)

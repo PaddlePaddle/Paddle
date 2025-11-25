@@ -595,17 +595,13 @@ def uniform_random_batch_size_like(
             >>> from paddle.tensor import random
             >>> paddle.enable_static()
             >>> # example 1:
-            >>> input = paddle.static.data(
-            ...     name="input", shape=[1, 3], dtype='float32'
-            ... )
+            >>> input = paddle.static.data(name="input", shape=[1, 3], dtype='float32')
             >>> out_1 = random.uniform_random_batch_size_like(input, [2, 4])
             >>> print(out_1.shape)
             paddle.Size([1, 4])
 
             >>> # example 2:
-            >>> out_2 = random.uniform_random_batch_size_like(
-            ...     input, [2, 4], input_dim_idx=1, output_dim_idx=1
-            ... )
+            >>> out_2 = random.uniform_random_batch_size_like(input, [2, 4], input_dim_idx=1, output_dim_idx=1)
             >>> print(out_2.shape)
             paddle.Size([2, 3])
     """

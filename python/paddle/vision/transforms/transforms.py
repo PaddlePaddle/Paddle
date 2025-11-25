@@ -384,9 +384,7 @@ class ToTensor(BaseTransform[_InputT, "Tensor"]):
             >>> import paddle.vision.transforms as T
             >>> import paddle.vision.transforms.functional as F
 
-            >>> img_arr = (
-            ...     (paddle.rand((4, 5, 3)) * 255.0).astype('uint8')
-            ... ).numpy()
+            >>> img_arr = ((paddle.rand((4, 5, 3)) * 255.0).astype('uint8')).numpy()
             >>> fake_img = Image.fromarray(img_arr)
             >>> transform = T.ToTensor()
             >>> tensor = transform(fake_img)
@@ -1356,9 +1354,7 @@ class RandomCrop(BaseTransform[_InputT, _RetT]):
             >>> from paddle.vision.transforms import RandomCrop
             >>> transform = RandomCrop(224)
 
-            >>> fake_img = paddle.randint(
-            ...     0, 255, shape=(3, 324, 300), dtype='int32'
-            ... )
+            >>> fake_img = paddle.randint(0, 255, shape=(3, 324, 300), dtype='int32')
             >>> print(fake_img.shape)
             paddle.Size([3, 324, 300])
 

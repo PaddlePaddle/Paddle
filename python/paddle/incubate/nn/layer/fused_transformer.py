@@ -124,9 +124,7 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
             >>> x = paddle.rand((2, 4, 128))
             >>> # residual: [batch_size, seq_len, embed_dim]
             >>> residual = paddle.rand((2, 4, 128))
-            >>> fused_bias_dropout_residual_ln = (
-            ...     paddle.incubate.nn.FusedBiasDropoutResidualLayerNorm(128)
-            ... )
+            >>> fused_bias_dropout_residual_ln = paddle.incubate.nn.FusedBiasDropoutResidualLayerNorm(128)
             >>> output = fused_bias_dropout_residual_ln(x, residual)
             >>> print(output.shape)
             paddle.Size([2, 4, 128])
@@ -287,9 +285,7 @@ class FusedMultiHeadAttention(Layer):
             >>> query = paddle.rand((2, 4, 128))
             >>> # self attention mask: [batch_size, num_heads, query_len, query_len]
             >>> attn_mask = paddle.rand((2, 2, 4, 4))
-            >>> multi_head_attn = paddle.incubate.nn.FusedMultiHeadAttention(
-            ...     128, 2
-            ... )
+            >>> multi_head_attn = paddle.incubate.nn.FusedMultiHeadAttention(128, 2)
             >>> output = multi_head_attn(query, None, None, attn_mask=attn_mask)
             >>> print(output.shape)
             paddle.Size([2, 4, 128])
@@ -1235,9 +1231,7 @@ class FusedMultiTransformer(Layer):
             >>> enc_input = paddle.rand((2, 4, 128))
             >>> # self attention mask: [batch_size, 1, src_len, src_len]
             >>> attn_mask = paddle.rand((2, 1, 4, 4))
-            >>> encoder_layers = FusedMultiTransformer(
-            ...     128, 2, 512, num_layers=1
-            ... )
+            >>> encoder_layers = FusedMultiTransformer(128, 2, 512, num_layers=1)
             >>> enc_output = encoder_layers(enc_input, attn_mask)
             >>> print(enc_output.shape)
             paddle.Size([2, 4, 128])

@@ -919,9 +919,7 @@ def perspective(
             >>> fake_img = paddle.randn((3, 256, 300)).astype(paddle.float32)
             >>> startpoints = [[0, 0], [33, 0], [33, 25], [0, 25]]
             >>> endpoints = [[3, 2], [32, 3], [30, 24], [2, 25]]
-            >>> perspectived_img = F.perspective(
-            ...     fake_img, startpoints, endpoints
-            ... )
+            >>> perspectived_img = F.perspective(fake_img, startpoints, endpoints)
             >>> print(perspectived_img.shape)
             paddle.Size([3, 256, 300])
 

@@ -118,24 +118,18 @@ def fused_gate_attention(
             >>> qkv_weight = paddle.rand(shape=[3, 8, 4, 4], dtype="float32")
 
             >>> # nonbatched_bias: [batch_size, 1, num_heads, res_len, m_size]
-            >>> nonbatched_bias = paddle.rand(
-            ...     shape=[2, 1, 8, 2, 2], dtype="float32"
-            ... )
+            >>> nonbatched_bias = paddle.rand(shape=[2, 1, 8, 2, 2], dtype="float32")
 
             >>> # attn_mask: [batch_size, msa_len, 1, 1, m_size]
             >>> attn_mask = paddle.rand(shape=[2, 4, 1, 1, 2], dtype="float32")
 
             >>> # gate_linear_weight: [q_dim, num_heads, head_dim]
-            >>> gate_linear_weight = paddle.rand(
-            ...     shape=[4, 8, 4], dtype="float32"
-            ... )
+            >>> gate_linear_weight = paddle.rand(shape=[4, 8, 4], dtype="float32")
             >>> # gate_bias: [num_heads, head_dim]
             >>> gate_linear_bias = paddle.rand(shape=[8, 4], dtype="float32")
 
             >>> # out_linear_weight: [num_heads, head_dim, q_dim]
-            >>> out_linear_weight = paddle.rand(
-            ...     shape=[8, 4, 4], dtype="float32"
-            ... )
+            >>> out_linear_weight = paddle.rand(shape=[8, 4, 4], dtype="float32")
             >>> # out_linear_bias: [q_dim]
             >>> out_linear_bias = paddle.rand(shape=[4], dtype="float32")
 

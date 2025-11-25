@@ -50,9 +50,7 @@ def _npu_identity(x, format=-1):
             >>> paddle.device.set_device('npu')
 
             >>> x = paddle.ones(shape=[6])
-            >>> y = paddle.incubate._npu_identity(
-            ...     x, 3
-            ... )  # ACL_FORMAT_NC1HWC0 = 3
+            >>> y = paddle.incubate._npu_identity(x, 3)  # ACL_FORMAT_NC1HWC0 = 3
             >>> print(y.shape)
             paddle.Size([1, 1, 1, 1, 16])
     """

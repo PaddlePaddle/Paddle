@@ -111,9 +111,7 @@ class AvgPool1D(nn.Layer):
             >>> import paddle
             >>> import paddle.compat.nn as nn
 
-            >>> data = paddle.uniform(
-            ...     [1, 3, 32], dtype="float32", min=-1, max=1
-            ... )
+            >>> data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
             >>> AvgPool1D = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
             >>> pool_out = AvgPool1D(data)
             >>> print(pool_out.shape)
@@ -228,9 +226,7 @@ class AvgPool2D(nn.Layer):
             >>> import paddle.compat.nn as nn
 
             >>> # max pool2d
-            >>> input = paddle.uniform(
-            ...     [1, 3, 32, 32], dtype="float32", min=-1, max=1
-            ... )
+            >>> input = paddle.uniform([1, 3, 32, 32], dtype="float32", min=-1, max=1)
             >>> AvgPool2D = nn.AvgPool2D(kernel_size=2, stride=2, padding=0)
             >>> output = AvgPool2D(input)
             >>> print(output.shape)
@@ -338,9 +334,7 @@ class AvgPool3D(nn.Layer):
             >>> import paddle.compat.nn as nn
 
             >>> # avg pool3d
-            >>> input = paddle.uniform(
-            ...     [1, 2, 3, 32, 32], dtype="float32", min=-1, max=1
-            ... )
+            >>> input = paddle.uniform([1, 2, 3, 32, 32], dtype="float32", min=-1, max=1)
             >>> AvgPool3D = nn.AvgPool3D(kernel_size=2, stride=2, padding=0)
             >>> output = AvgPool3D(input)
             >>> print(output.shape)

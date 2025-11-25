@@ -815,11 +815,7 @@ def shard_index(
     following formula:
     ::
 
-        v = (
-            v - shard_id * shard_size
-            if shard_id * shard_size <= v < (shard_id + 1) * shard_size
-            else ignore_value
-        )
+        v = v - shard_id * shard_size if shard_id * shard_size <= v < (shard_id + 1) * shard_size else ignore_value
 
     That is, the value `v` is set to the new offset within the range represented by the shard `shard_id`
     if it in the range. Otherwise, we reset it to be `ignore_value`.
@@ -2041,12 +2037,7 @@ def flatten(
 
             >>> image_shape = (2, 3, 4, 4)
 
-            >>> x = paddle.arange(
-            ...     end=image_shape[0]
-            ...     * image_shape[1]
-            ...     * image_shape[2]
-            ...     * image_shape[3]
-            ... )
+            >>> x = paddle.arange(end=image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3])
             >>> img = paddle.reshape(x, image_shape)
 
             >>> out = paddle.flatten(img, start_axis=1, stop_axis=2)
@@ -2157,12 +2148,7 @@ def ravel(input: Tensor) -> Tensor:
 
             >>> image_shape = (2, 3, 4, 4)
 
-            >>> x = paddle.arange(
-            ...     end=image_shape[0]
-            ...     * image_shape[1]
-            ...     * image_shape[2]
-            ...     * image_shape[3]
-            ... )
+            >>> x = paddle.arange(end=image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3])
             >>> img = paddle.reshape(x, image_shape)
 
             >>> out = paddle.ravel(img)
@@ -2802,9 +2788,7 @@ def split(
             >>> print(out2.shape)
             paddle.Size([3, 3, 5])
 
-            >>> out0, out1, out2 = paddle.split(
-            ...     x, num_or_sections=[2, 3, 4], axis=1
-            ... )
+            >>> out0, out1, out2 = paddle.split(x, num_or_sections=[2, 3, 4], axis=1)
             >>> print(out0.shape)
             paddle.Size([3, 2, 5])
             >>> print(out1.shape)
@@ -2812,9 +2796,7 @@ def split(
             >>> print(out2.shape)
             paddle.Size([3, 4, 5])
 
-            >>> out0, out1, out2 = paddle.split(
-            ...     x, num_or_sections=[2, 3, -1], axis=1
-            ... )
+            >>> out0, out1, out2 = paddle.split(x, num_or_sections=[2, 3, -1], axis=1)
             >>> print(out0.shape)
             paddle.Size([3, 2, 5])
             >>> print(out1.shape)
@@ -3108,9 +3090,7 @@ def tensor_split(
             >>> # split along axis with indices
             >>> # x is a Tensor of shape [7, 8]
             >>> x = paddle.rand([7, 8])
-            >>> out0, out1, out2 = paddle.tensor_split(
-            ...     x, num_or_indices=[2, 3], axis=1
-            ... )
+            >>> out0, out1, out2 = paddle.tensor_split(x, num_or_indices=[2, 3], axis=1)
             >>> print(out0.shape)
             paddle.Size([7, 2])
             >>> print(out1.shape)
@@ -4650,9 +4630,7 @@ def scatter(*args: Any, **kwargs: Any) -> Tensor:
         >>> index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
         >>> # shape of updates should be the same as x
         >>> # shape of updates with dim > 1 should be the same as input
-        >>> updates = paddle.to_tensor(
-        ...     [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32'
-        ... )
+        >>> updates = paddle.to_tensor([[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
         >>> overwrite = False
         >>> # calculation:
         >>> if not overwrite:
@@ -4798,9 +4776,7 @@ def scatter_nd_add(
 
             >>> x = paddle.rand(shape=[3, 5, 9, 10], dtype='float32')
             >>> updates = paddle.rand(shape=[3, 9, 10], dtype='float32')
-            >>> index = paddle.to_tensor(
-            ...     [[1, 1], [0, 1], [1, 3]], dtype='int64'
-            ... )
+            >>> index = paddle.to_tensor([[1, 1], [0, 1], [1, 3]], dtype='int64')
 
             >>> output = paddle.scatter_nd_add(x, index, updates)
             >>> print(output.shape)
@@ -6874,9 +6850,7 @@ def moveaxis(
             paddle.Size([4, 3, 2])
 
             >>> x = paddle.ones([2, 3])
-            >>> outshape = paddle.moveaxis(
-            ...     x, 0, 1
-            ... ).shape  # equivalent to paddle.t(x)
+            >>> outshape = paddle.moveaxis(x, 0, 1).shape  # equivalent to paddle.t(x)
             >>> print(outshape)
             paddle.Size([3, 2])
     """

@@ -149,9 +149,7 @@ class Cauchy(distribution.Distribution):
                 paddle.Size([10])
 
                 >>> # init Cauchy with 0-Dim tensor
-                >>> rv = Cauchy(
-                ...     loc=paddle.full((), 0.1), scale=paddle.full((), 1.2)
-                ... )
+                >>> rv = Cauchy(loc=paddle.full((), 0.1), scale=paddle.full((), 1.2))
                 >>> print(rv.sample([10]).shape)
                 paddle.Size([10])
 
@@ -204,9 +202,7 @@ class Cauchy(distribution.Distribution):
                 paddle.Size([10])
 
                 >>> # init Cauchy with 0-Dim tensor
-                >>> rv = Cauchy(
-                ...     loc=paddle.full((), 0.1), scale=paddle.full((), 1.2)
-                ... )
+                >>> rv = Cauchy(loc=paddle.full((), 0.1), scale=paddle.full((), 1.2))
                 >>> print(rv.rsample([10]).shape)
                 paddle.Size([10])
 

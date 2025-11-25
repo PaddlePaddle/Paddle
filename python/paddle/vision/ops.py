@@ -1373,9 +1373,7 @@ def read_file(filename: str, name: str | None = None) -> Tensor:
             >>> import cv2
             >>> import paddle
             >>> paddle.seed(2023)
-            >>> fake_img = (paddle.rand((400, 300, 3)).numpy() * 255).astype(
-            ...     'uint8'
-            ... )
+            >>> fake_img = (paddle.rand((400, 300, 3)).numpy() * 255).astype('uint8')
             >>> cv2.imwrite('fake.jpg', fake_img)
             >>> img_bytes = paddle.vision.ops.read_file('fake.jpg')
             >>> print(img_bytes.shape)
@@ -1428,9 +1426,7 @@ def decode_jpeg(
             >>> import paddle
             >>> paddle.device.set_device('gpu')
 
-            >>> fake_img = (np.random.random((400, 300, 3)) * 255).astype(
-            ...     'uint8'
-            ... )
+            >>> fake_img = (np.random.random((400, 300, 3)) * 255).astype('uint8')
             >>> cv2.imwrite('fake.jpg', fake_img)
             >>> img_bytes = paddle.vision.ops.read_file('fake.jpg')
             >>> img = paddle.vision.ops.decode_jpeg(img_bytes)
@@ -1496,9 +1492,7 @@ def psroi_pool(
             ...     dtype='float32',
             ... )
             >>> boxes_num = paddle.to_tensor([1, 2], dtype='int32')
-            >>> pool_out = paddle.vision.ops.psroi_pool(
-            ...     x, boxes, boxes_num, 7, 1.0
-            ... )
+            >>> pool_out = paddle.vision.ops.psroi_pool(x, boxes, boxes_num, 7, 1.0)
             >>> print(pool_out.shape)
             paddle.Size([3, 10, 7, 7])
     """
@@ -1632,9 +1626,7 @@ def roi_pool(
             >>> boxes[:, 2] += boxes[:, 0] + 3
             >>> boxes[:, 3] += boxes[:, 1] + 4
             >>> boxes_num = paddle.to_tensor([3]).astype('int32')
-            >>> pool_out = roi_pool(
-            ...     data, boxes, boxes_num=boxes_num, output_size=3
-            ... )
+            >>> pool_out = roi_pool(data, boxes, boxes_num=boxes_num, output_size=3)
             >>> print(pool_out.shape)
             paddle.Size([3, 256, 3, 3])
     """

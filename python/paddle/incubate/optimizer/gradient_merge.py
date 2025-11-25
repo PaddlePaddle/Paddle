@@ -56,19 +56,13 @@ class GradientMergeOptimizer:
 
             >>> def gen_data(batch_size):
             ...     return {
-            ...         "x": np.random.random(size=(batch_size, 32)).astype(
-            ...             'float32'
-            ...         ),
-            ...         "y": np.random.random(size=(batch_size, 1)).astype(
-            ...             'int64'
-            ...         ),
+            ...         "x": np.random.random(size=(batch_size, 32)).astype('float32'),
+            ...         "y": np.random.random(size=(batch_size, 1)).astype('int64'),
             ...     }
 
             >>> def mlp(input_x, input_y, hid_dim=128, label_dim=2):
             ...     fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
-            ...     prediction = paddle.static.nn.fc(
-            ...         x=[fc_1], size=label_dim, activation='softmax'
-            ...     )
+            ...     prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
             ...     cost = paddle.nn.functional.cross_entropy(
             ...         input=prediction,
             ...         label=input_y,
@@ -78,17 +72,11 @@ class GradientMergeOptimizer:
             ...     sum_cost = paddle.mean(cost)
             ...     return sum_cost, fc_1, prediction
 
-            >>> input_x = paddle.static.data(
-            ...     name="x", shape=[-1, 32], dtype='float32'
-            ... )
-            >>> input_y = paddle.static.data(
-            ...     name="y", shape=[-1, 1], dtype='int64'
-            ... )
+            >>> input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
+            >>> input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
             >>> cost, fc_1, pred = mlp(input_x, input_y)
             >>> sgd = paddle.optimizer.Adam(learning_rate=0.01)
-            >>> sgd = paddle.incubate.optimizer.GradientMergeOptimizer(
-            ...     sgd, k_steps=4, avg=True
-            ... )
+            >>> sgd = paddle.incubate.optimizer.GradientMergeOptimizer(sgd, k_steps=4, avg=True)
             >>> sgd.minimize(cost)
 
             >>> place = paddle.CPUPlace()

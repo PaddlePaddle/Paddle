@@ -827,9 +827,7 @@ def split(
             >>> # x is a Tensor of shape [3, 8, 5]
             >>> x = paddle.rand([3, 8, 5])
 
-            >>> out0, out1, out2 = paddle.compat.split(
-            ...     x, split_size_or_sections=3, dim=1
-            ... )
+            >>> out0, out1, out2 = paddle.compat.split(x, split_size_or_sections=3, dim=1)
             >>> print(out0.shape)
             paddle.Size([3, 3, 5])
             >>> print(out1.shape)
@@ -837,9 +835,7 @@ def split(
             >>> print(out2.shape)
             paddle.Size([3, 2, 5])
 
-            >>> out0, out1, out2 = paddle.compat.split(
-            ...     x, split_size_or_sections=[1, 2, 5], dim=1
-            ... )
+            >>> out0, out1, out2 = paddle.compat.split(x, split_size_or_sections=[1, 2, 5], dim=1)
             >>> print(out0.shape)
             paddle.Size([3, 1, 5])
             >>> print(out1.shape)
@@ -848,9 +844,7 @@ def split(
             paddle.Size([3, 5, 5])
 
             >>> # dim is negative, the real dim is (rank(x) + dim)=1
-            >>> out0, out1, out2 = paddle.compat.split(
-            ...     x, split_size_or_sections=3, dim=-2
-            ... )
+            >>> out0, out1, out2 = paddle.compat.split(x, split_size_or_sections=3, dim=-2)
             >>> print(out0.shape)
             paddle.Size([3, 3, 5])
             >>> print(out1.shape)

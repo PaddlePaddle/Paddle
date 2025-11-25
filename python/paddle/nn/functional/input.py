@@ -99,9 +99,7 @@ def one_hot(
             >>> label = paddle.to_tensor([1, 1, 3, 0], dtype='int64')
             >>> print(label.shape)
             paddle.Size([4])
-            >>> one_hot_label = paddle.nn.functional.one_hot(
-            ...     label, num_classes=4
-            ... )
+            >>> one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)
             >>> print(one_hot_label.shape)
             paddle.Size([4, 4])
             >>> print(one_hot_label)
@@ -252,9 +250,7 @@ def embedding(
             >>> import paddle.nn as nn
 
             >>> x0 = paddle.arange(3, 6).reshape((3, 1)).astype(paddle.int64)
-            >>> w0 = paddle.full(shape=(10, 3), fill_value=2).astype(
-            ...     paddle.float32
-            ... )
+            >>> w0 = paddle.full(shape=(10, 3), fill_value=2).astype(paddle.float32)
 
             >>> x = paddle.to_tensor(x0, stop_gradient=False)
             >>> print(x.numpy())
@@ -279,9 +275,7 @@ def embedding(
             >>> print(w.shape)
             paddle.Size([10, 3])
 
-            >>> emb = nn.functional.embedding(
-            ...     x=x, weight=w, sparse=True, name="embedding"
-            ... )
+            >>> emb = nn.functional.embedding(x=x, weight=w, sparse=True, name="embedding")
             >>> print(emb.numpy())
             [[[2. 2. 2.]]
              [[2. 2. 2.]]

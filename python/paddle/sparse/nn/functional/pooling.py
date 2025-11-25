@@ -84,9 +84,7 @@ def max_pool3d(
             >>> kernel_sizes = [3, 3, 3]
             >>> paddings = [0, 0, 0]
             >>> strides = [1, 1, 1]
-            >>> out = paddle.sparse.nn.functional.max_pool3d(
-            ...     sparse_x, kernel_sizes, stride=strides, padding=paddings
-            ... )
+            >>> out = paddle.sparse.nn.functional.max_pool3d(sparse_x, kernel_sizes, stride=strides, padding=paddings)
             >>> print(out.shape)
             paddle.Size([1, 2, 2, 2, 3])
     """

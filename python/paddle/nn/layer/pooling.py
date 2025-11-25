@@ -96,9 +96,7 @@ class AvgPool1D(Layer):
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> data = paddle.uniform(
-            ...     [1, 3, 32], dtype="float32", min=-1, max=1
-            ... )
+            >>> data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
             >>> AvgPool1D = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
             >>> pool_out = AvgPool1D(data)
             >>> print(pool_out.shape)
@@ -212,9 +210,7 @@ class AvgPool2D(Layer):
             >>> import paddle.nn as nn
 
             >>> # max pool2d
-            >>> input = paddle.uniform(
-            ...     [1, 3, 32, 32], dtype="float32", min=-1, max=1
-            ... )
+            >>> input = paddle.uniform([1, 3, 32, 32], dtype="float32", min=-1, max=1)
             >>> AvgPool2D = nn.AvgPool2D(kernel_size=2, stride=2, padding=0)
             >>> output = AvgPool2D(input)
             >>> print(output.shape)
@@ -324,9 +320,7 @@ class AvgPool3D(Layer):
             >>> import paddle.nn as nn
 
             >>> # avg pool3d
-            >>> input = paddle.uniform(
-            ...     [1, 2, 3, 32, 32], dtype="float32", min=-1, max=1
-            ... )
+            >>> input = paddle.uniform([1, 2, 3, 32, 32], dtype="float32", min=-1, max=1)
             >>> AvgPool3D = nn.AvgPool3D(kernel_size=2, stride=2, padding=0)
             >>> output = AvgPool3D(input)
             >>> print(output.shape)
@@ -435,12 +429,8 @@ class LPPool1D(Layer):
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> data = paddle.uniform(
-            ...     [1, 3, 32], dtype="float32", min=-1, max=1
-            ... )
-            >>> LPPool1D = nn.LPPool1D(
-            ...     norm_type=2, kernel_size=2, stride=2, padding=0
-            ... )
+            >>> data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
+            >>> LPPool1D = nn.LPPool1D(norm_type=2, kernel_size=2, stride=2, padding=0)
             >>> pool_out = LPPool1D(data)
             >>> print(pool_out.shape)
             paddle.Size([1, 3, 16])
@@ -556,12 +546,8 @@ class LPPool2D(Layer):
             >>> import paddle.nn as nn
 
             >>> # lp pool2d
-            >>> input = paddle.uniform(
-            ...     [1, 3, 32, 32], dtype="float32", min=-1, max=1
-            ... )
-            >>> LPPool2D = nn.LPPool2D(
-            ...     norm_type=2, kernel_size=2, stride=2, padding=0
-            ... )
+            >>> input = paddle.uniform([1, 3, 32, 32], dtype="float32", min=-1, max=1)
+            >>> LPPool2D = nn.LPPool2D(norm_type=2, kernel_size=2, stride=2, padding=0)
             >>> output = LPPool2D(input)
             >>> print(output.shape)
             paddle.Size([1, 3, 16, 16])
@@ -664,17 +650,13 @@ class MaxPool1D(Layer):
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> data = paddle.uniform(
-            ...     [1, 3, 32], dtype="float32", min=-1, max=1
-            ... )
+            >>> data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
             >>> MaxPool1D = nn.MaxPool1D(kernel_size=2, stride=2, padding=0)
             >>> pool_out = MaxPool1D(data)
             >>> print(pool_out.shape)
             paddle.Size([1, 3, 16])
 
-            >>> MaxPool1D = nn.MaxPool1D(
-            ...     kernel_size=2, stride=2, padding=0, return_mask=True
-            ... )
+            >>> MaxPool1D = nn.MaxPool1D(kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> pool_out, indices = MaxPool1D(data)
             >>> print(pool_out.shape)
             paddle.Size([1, 3, 16])
@@ -785,18 +767,14 @@ class MaxPool2D(Layer):
             >>> import paddle.nn as nn
 
             >>> # max pool2d
-            >>> input = paddle.uniform(
-            ...     [1, 3, 32, 32], dtype="float32", min=-1, max=1
-            ... )
+            >>> input = paddle.uniform([1, 3, 32, 32], dtype="float32", min=-1, max=1)
             >>> MaxPool2D = nn.MaxPool2D(kernel_size=2, stride=2, padding=0)
             >>> output = MaxPool2D(input)
             >>> print(output.shape)
             paddle.Size([1, 3, 16, 16])
 
             >>> # for return_mask=True
-            >>> MaxPool2D = nn.MaxPool2D(
-            ...     kernel_size=2, stride=2, padding=0, return_mask=True
-            ... )
+            >>> MaxPool2D = nn.MaxPool2D(kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> output, max_indices = MaxPool2D(input)
             >>> print(output.shape)
             paddle.Size([1, 3, 16, 16])
@@ -897,18 +875,14 @@ class MaxPool3D(Layer):
             >>> import paddle.nn as nn
 
             >>> # max pool3d
-            >>> input = paddle.uniform(
-            ...     [1, 2, 3, 32, 32], dtype="float32", min=-1, max=1
-            ... )
+            >>> input = paddle.uniform([1, 2, 3, 32, 32], dtype="float32", min=-1, max=1)
             >>> MaxPool3D = nn.MaxPool3D(kernel_size=2, stride=2, padding=0)
             >>> output = MaxPool3D(input)
             >>> print(output.shape)
             paddle.Size([1, 2, 1, 16, 16])
 
             >>> # for return_mask=True
-            >>> MaxPool3D = nn.MaxPool3D(
-            ...     kernel_size=2, stride=2, padding=0, return_mask=True
-            ... )
+            >>> MaxPool3D = nn.MaxPool3D(kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> output, max_indices = MaxPool3D(input)
             >>> print(output.shape)
             paddle.Size([1, 2, 1, 16, 16])
@@ -1005,9 +979,7 @@ class AdaptiveAvgPool1D(Layer):
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> data = paddle.uniform(
-            ...     [1, 3, 32], dtype="float32", min=-1, max=1
-            ... )
+            >>> data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
             >>> AdaptiveAvgPool1D = nn.AdaptiveAvgPool1D(output_size=16)
             >>> pool_out = AdaptiveAvgPool1D(data)
             >>> print(pool_out.shape)
@@ -1288,18 +1260,14 @@ class AdaptiveMaxPool1D(Layer):
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> data = paddle.uniform(
-            ...     [1, 3, 32], dtype="float32", min=-1, max=1
-            ... )
+            >>> data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
             >>> AdaptiveMaxPool1D = nn.AdaptiveMaxPool1D(output_size=16)
             >>> pool_out = AdaptiveMaxPool1D(data)
             >>> print(pool_out.shape)
             paddle.Size([1, 3, 16])
 
             >>> # for return_mask = true
-            >>> AdaptiveMaxPool1D = nn.AdaptiveMaxPool1D(
-            ...     output_size=16, return_mask=True
-            ... )
+            >>> AdaptiveMaxPool1D = nn.AdaptiveMaxPool1D(output_size=16, return_mask=True)
             >>> pool_out, indices = AdaptiveMaxPool1D(data)
             >>> print(pool_out.shape)
             paddle.Size([1, 3, 16])
@@ -1399,9 +1367,7 @@ class AdaptiveMaxPool2D(Layer):
 
             >>> x = paddle.rand([2, 3, 32, 32])
 
-            >>> adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(
-            ...     output_size=3, return_mask=True
-            ... )
+            >>> adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=3, return_mask=True)
             >>> pool_out, indices = adaptive_max_pool(x=x)
             >>> print(pool_out.shape)
             paddle.Size([2, 3, 3, 3])
@@ -1512,9 +1478,7 @@ class AdaptiveMaxPool3D(Layer):
             >>> out = pool(x)
             >>> print(out.shape)
             paddle.Size([2, 3, 4, 4, 4])
-            >>> pool = paddle.nn.AdaptiveMaxPool3D(
-            ...     output_size=3, return_mask=True
-            ... )
+            >>> pool = paddle.nn.AdaptiveMaxPool3D(output_size=3, return_mask=True)
             >>> out, indices = pool(x)
             >>> print(out.shape)
             paddle.Size([2, 3, 3, 3, 3])
@@ -1601,9 +1565,7 @@ class MaxUnPool1D(Layer):
             >>> import paddle.nn.functional as F
 
             >>> data = paddle.rand(shape=[1, 3, 16])
-            >>> pool_out, indices = F.max_pool1d(
-            ...     data, kernel_size=2, stride=2, padding=0, return_mask=True
-            ... )
+            >>> pool_out, indices = F.max_pool1d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> print(pool_out.shape)
             paddle.Size([1, 3, 8])
             >>> print(indices.shape)
@@ -1720,9 +1682,7 @@ class MaxUnPool2D(Layer):
             >>> import paddle.nn.functional as F
 
             >>> data = paddle.rand(shape=[1, 1, 6, 6])
-            >>> pool_out, indices = F.max_pool2d(
-            ...     data, kernel_size=2, stride=2, padding=0, return_mask=True
-            ... )
+            >>> pool_out, indices = F.max_pool2d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> print(pool_out.shape)
             paddle.Size([1, 1, 3, 3])
             >>> print(indices.shape)
@@ -1840,9 +1800,7 @@ class MaxUnPool3D(Layer):
             >>> import paddle.nn.functional as F
 
             >>> data = paddle.rand(shape=[1, 1, 4, 4, 6])
-            >>> pool_out, indices = F.max_pool3d(
-            ...     data, kernel_size=2, stride=2, padding=0, return_mask=True
-            ... )
+            >>> pool_out, indices = F.max_pool3d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> print(pool_out.shape)
             paddle.Size([1, 1, 2, 2, 3])
             >>> print(indices.shape)
@@ -1975,24 +1933,18 @@ class FractionalMaxPool2D(Layer):
             >>> x = paddle.rand([2, 3, 32, 32])
 
             >>> # disjoint: without `kernel_size`
-            >>> fractional_max_pool = paddle.nn.FractionalMaxPool2D(
-            ...     output_size=3
-            ... )
+            >>> fractional_max_pool = paddle.nn.FractionalMaxPool2D(output_size=3)
             >>> pool_out = fractional_max_pool(x=x)
             >>> print(pool_out.shape)
             paddle.Size([2, 3, 3, 3])
 
             >>> # overlapping: with `kernel_size`
-            >>> fractional_max_pool = paddle.nn.FractionalMaxPool2D(
-            ...     kernel_size=2, output_size=3
-            ... )
+            >>> fractional_max_pool = paddle.nn.FractionalMaxPool2D(kernel_size=2, output_size=3)
             >>> pool_out = fractional_max_pool(x=x)
             >>> print(pool_out.shape)
             paddle.Size([2, 3, 3, 3])
 
-            >>> fractional_max_pool = paddle.nn.FractionalMaxPool2D(
-            ...     output_size=[2, 3], return_mask=True
-            ... )
+            >>> fractional_max_pool = paddle.nn.FractionalMaxPool2D(output_size=[2, 3], return_mask=True)
             >>> pool_out, indices = fractional_max_pool(x=x)
             >>> print(pool_out.shape)
             paddle.Size([2, 3, 2, 3])
@@ -2097,24 +2049,18 @@ class FractionalMaxPool3D(Layer):
             >>> x = paddle.rand([2, 3, 8, 32, 32])
 
             >>> # disjoint: without `kernel_size`
-            >>> fractional_max_pool = paddle.nn.FractionalMaxPool3D(
-            ...     output_size=3
-            ... )
+            >>> fractional_max_pool = paddle.nn.FractionalMaxPool3D(output_size=3)
             >>> pool_out = fractional_max_pool(x=x)
             >>> print(pool_out.shape)
             paddle.Size([2, 3, 3, 3, 3])
 
             >>> # overlapping: with `kernel_size`
-            >>> fractional_max_pool = paddle.nn.FractionalMaxPool3D(
-            ...     kernel_size=2, output_size=3
-            ... )
+            >>> fractional_max_pool = paddle.nn.FractionalMaxPool3D(kernel_size=2, output_size=3)
             >>> pool_out = fractional_max_pool(x=x)
             >>> print(pool_out.shape)
             paddle.Size([2, 3, 3, 3, 3])
 
-            >>> fractional_max_pool = paddle.nn.FractionalMaxPool3D(
-            ...     output_size=[2, 3, 3], return_mask=True
-            ... )
+            >>> fractional_max_pool = paddle.nn.FractionalMaxPool3D(output_size=[2, 3, 3], return_mask=True)
             >>> pool_out, indices = fractional_max_pool(x=x)
             >>> print(pool_out.shape)
             paddle.Size([2, 3, 2, 3, 3])
