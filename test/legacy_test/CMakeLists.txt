@@ -585,6 +585,14 @@ foreach(arch ${NVCC_ARCH_BIN})
     break()
   endif()
 endforeach()
+# Get flag for CUDA arch >= 70
+set(has_arch_le70 FALSE)
+foreach(arch ${NVCC_ARCH_BIN})
+  if(${arch} LESS_EQUAL 70)
+    set(has_arch_le70 TRUE)
+    break()
+  endif()
+endforeach()
 
 if(NOT WITH_GPU
    OR WITH_GPU
@@ -593,6 +601,15 @@ if(NOT WITH_GPU
    OR APPLE
    OR WITH_ROCM)
   list(REMOVE_ITEM TEST_OPS test_moe_permute_unpermute)
+endif()
+
+if(NOT WITH_GPU
+   OR WITH_GPU
+   AND (has_arch_le70 OR (CUDA_VERSION VERSION_LESS 12.0))
+   OR WIN32
+   OR APPLE
+   OR WITH_ROCM)
+  list(REMOVE_ITEM TEST_OPS test_incubate_fast_ln)
 endif()
 
 if(NOT WITH_CUDNN_FRONTEND)
