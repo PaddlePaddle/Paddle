@@ -248,23 +248,6 @@ class FlashEPFunc(paddle.autograd.PyLayer):
         ctx.tokens_per_expert_list = tokens_per_expert_list
         ctx.flash_ep_split_expert_bw = flash_ep_split_expert_bw
 
-        # Create combine-related buffers and control signals.
-        (
-            combine_buffers,
-            _,
-            output_tokens,
-            _,
-            is_buffer_active,
-            expert_result_buffer,
-        ) = _init_combine_buffer(
-            ctx.seq_len,
-            ctx.hidden_size,
-            ctx.topk,
-            ctx.local_num_experts,
-            ctx.combine_notify_infos,
-            expert_num_for_combine_stage_prefix,
-        )
-
         dispatch_history = []
         dispatch_events = []
         ctx.dispatched_indices = []
@@ -289,6 +272,23 @@ class FlashEPFunc(paddle.autograd.PyLayer):
             ctx.details_metas.append(states["handle"][DETAILS_METAS_OFFSET])
             dispatch_history.append((tokens, scale_, probs, states))
             dispatch_events.append(event)
+
+        # Create combine-related buffers and control signals.
+        (
+            combine_buffers,
+            _,
+            output_tokens,
+            _,
+            is_buffer_active,
+            expert_result_buffer,
+        ) = _init_combine_buffer(
+            ctx.seq_len,
+            ctx.hidden_size,
+            ctx.topk,
+            ctx.local_num_experts,
+            ctx.combine_notify_infos,
+            expert_num_for_combine_stage_prefix,
+        )
 
         combine_events = []
         ctx.probs = []
@@ -376,23 +376,6 @@ class FlashEPFunc(paddle.autograd.PyLayer):
             "expert_num_for_combine_stage_prefix"
         ]
 
-        (
-            combine_buffers,
-            combine_probs,
-            output_tokens,
-            output_topk_weights,
-            is_buffer_active,
-            expert_result_buffer,
-        ) = _init_combine_buffer(
-            ctx.seq_len,
-            ctx.hidden_size,
-            ctx.topk,
-            ctx.local_num_experts,
-            ctx.combine_notify_infos,
-            expert_num_for_combine_stage_prefix,
-            has_prob=True,
-        )
-
         dispatch_history = []
         dispatch_events = []
         for stage_idx in range(ctx.num_loop_stage):
@@ -414,7 +397,25 @@ class FlashEPFunc(paddle.autograd.PyLayer):
             dispatch_history.append((tokens, None, None, states))
             dispatch_events.append(event)
 
+        (
+            combine_buffers,
+            combine_probs,
+            output_tokens,
+            output_topk_weights,
+            is_buffer_active,
+            expert_result_buffer,
+        ) = _init_combine_buffer(
+            ctx.seq_len,
+            ctx.hidden_size,
+            ctx.topk,
+            ctx.local_num_experts,
+            ctx.combine_notify_infos,
+            expert_num_for_combine_stage_prefix,
+            has_prob=True,
+        )
+
         combine_events = []
+        backward_w_callbacks = []
         for local_expert_id in range(ctx.local_num_experts):
             dispatch_stage_idx = _get_expert_dependencies(
                 local_expert_id, expert_num_for_dispatch_stage_prefix
@@ -444,6 +445,7 @@ class FlashEPFunc(paddle.autograd.PyLayer):
                     ctx.probs[local_expert_id],
                     split_expert_bw=ctx.flash_ep_split_expert_bw,
                 )
+                backward_w_callbacks.append(backward_w_callback)
             else:
                 tokens, probs = ctx.expert_nodes[local_expert_id].backward(
                     tokens, ctx.probs[local_expert_id]
@@ -494,7 +496,8 @@ class FlashEPFunc(paddle.autograd.PyLayer):
             combine_probs[stage_idx] = None
 
         if ctx.flash_ep_split_expert_bw:
-            backward_w_callback()
+            for backward_w_callback in backward_w_callbacks:
+                backward_w_callback()
 
         if event:
             event.calc_stream_wait(ctx.group.id)

@@ -265,9 +265,9 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
     EP_DEVICE_ASSERT(rdma_recv_num_tokens_mixed.total_bytes <=
                      rdma_clean_offset * sizeof(int));
 
-#pragma unroll
-    for (int i = thread_id; i < rdma_num_int_clean; i += num_threads)
-      rdma_buffer_ptr_int[rdma_clean_offset + i] = 0;
+// #pragma unroll
+//     for (int i = thread_id; i < rdma_num_int_clean; i += num_threads)
+//       rdma_buffer_ptr_int[rdma_clean_offset + i] = 0;
 
 // Copy dispatch infos to send buffer
 #pragma unroll
@@ -362,9 +362,9 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
                          combine_nvl_send_num_tokens_per_rank.total_bytes <=
                      nvl_clean_offset * sizeof(int));
 
-#pragma unroll
-    for (int i = thread_id; i < nvl_num_int_clean; i += num_threads)
-      nvl_buffer_ptr_int[nvl_clean_offset + i] = 0;
+    // #pragma unroll
+    //     for (int i = thread_id; i < nvl_num_int_clean; i += num_threads)
+    //       nvl_buffer_ptr_int[nvl_clean_offset + i] = 0;
 
     __syncthreads();
 
