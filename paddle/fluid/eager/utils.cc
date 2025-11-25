@@ -1064,7 +1064,7 @@ std::string EagerUtils::TensorStr(const std::vector<paddle::Tensor*>& tensors) {
   for (const auto& tensor : tensors) {
     tensors_str += TensorStr(*tensor) + ", ";
   }
-  return tensors_str;
+  return "[ " + tensors_str + " ]";
 }
 
 std::string EagerUtils::TensorStr(const paddle::optional<paddle::Tensor>& t) {

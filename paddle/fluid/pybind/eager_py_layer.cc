@@ -195,6 +195,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   std::string classname =
       std::string(reinterpret_cast<PyTypeObject*>(cls)->tp_name);
   std::string forward_stack;
+  VLOG(3) << classname << ":Running PyLayer Apply ";
   if (VLOG_IS_ON(2)) egr::LogIndent::Instance().IncreaseIndentLevel();
   if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {
     // record the forward stack
@@ -206,7 +207,6 @@ PyObject* pylayer_method_apply(PyObject* cls,
     call_count++;
     unique_api_name = egr::GenerateUniqueApiName(classname, call_count);
   }
-  VLOG(3) << classname << ":Running PyLayer Apply ";
   VLOG(4) << classname << ":"
           << "Construct PyLayerContext";
   PyObject* backward_function =
@@ -519,32 +519,6 @@ PyObject* pylayer_method_apply(PyObject* cls,
       }
     }
   }
-  if (VLOG_IS_ON(3) || FLAGS_enable_unique_name) {
-    const char* INPUT_PRINT_TEMPLATE =
-        "\nForward Debug Info {\nAPI_Name: %s \nInput: [%s]  \nOutput: [%s] } ";
-    std::string input_str = "";
-    std::string output_str = "";
-    int i = 0;
-    for (auto& tensors : inputs_tensor) {
-      const char* TENSOR_INPUT_TEMPLATE = " \n( input%d , %s), ";
-      std::string input_x_str = paddle::string::Sprintf(
-          TENSOR_INPUT_TEMPLATE, i, egr::EagerUtils::TensorStr(tensors));
-      input_str += input_x_str;
-      i++;
-    }
-    i = 0;
-    for (auto& tensors : outputs_tensor) {
-      egr::SetTensorName(unique_api_name, "out" + std::to_string(i), &tensors);
-      const char* TENSOR_OUT_TEMPLATE = " \n( out%d , %s), ";
-      std::string output_out_str = paddle::string::Sprintf(
-          TENSOR_OUT_TEMPLATE, i, egr::EagerUtils::TensorStr(tensors));
-      output_str += output_out_str;
-      i++;
-    }
-    VLOG(3) << paddle::string::Sprintf(
-        INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
-  }
-
   if (outputs_tensor.empty()) {
     PADDLE_THROW(common::errors::InvalidArgument(
         "%s : At least one output of `PyLayer.forward` is a `Tensor`.",
@@ -681,6 +655,31 @@ PyObject* pylayer_method_apply(PyObject* cls,
   VLOG(3) << classname << ":"
           << "Finish PyLayer Apply";
   if (VLOG_IS_ON(2)) egr::LogIndent::Instance().DecreaseIndentLevel();
+  if (VLOG_IS_ON(3) || FLAGS_enable_unique_name) {
+    const char* INPUT_PRINT_TEMPLATE =
+        "\nForward Debug Info {\nAPI_Name: %s \nInput: [%s]  \nOutput: [%s] } ";
+    std::string input_str = "";
+    std::string output_str = "";
+    int i = 0;
+    for (auto& tensors : inputs_tensor) {
+      const char* TENSOR_INPUT_TEMPLATE = " \n( input%d , %s), ";
+      std::string input_x_str = paddle::string::Sprintf(
+          TENSOR_INPUT_TEMPLATE, i, egr::EagerUtils::TensorStr(tensors));
+      input_str += input_x_str;
+      i++;
+    }
+    i = 0;
+    for (auto& tensors : outputs_tensor) {
+      egr::SetTensorName(unique_api_name, "out" + std::to_string(i), &tensors);
+      const char* TENSOR_OUT_TEMPLATE = " \n( out%d , %s), ";
+      std::string output_out_str = paddle::string::Sprintf(
+          TENSOR_OUT_TEMPLATE, i, egr::EagerUtils::TensorStr(tensors));
+      output_str += output_out_str;
+      i++;
+    }
+    VLOG(3) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
+  }
   return outputs;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
