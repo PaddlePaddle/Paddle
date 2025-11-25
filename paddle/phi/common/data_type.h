@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
+#include <vector>
 #include "paddle/common/exception.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
@@ -274,6 +274,16 @@ inline std::string DataTypeToString(const DataType& dtype) {
     default:
       PD_THROW("Invalid enum data type `", static_cast<int>(dtype), "`.");
   }
+}
+inline std::string DataTypeToString(const std::vector<DataType>& dtypes) {
+  std::string dtype_str;
+  for (size_t i = 0; i < dtypes.size(); ++i) {
+    dtype_str += DataTypeToString(dtypes[i]);
+    if (i != dtypes.size() - 1) {
+      dtype_str += ", ";
+    }
+  }
+  return dtype_str;
 }
 
 inline DataType StringToDataType(const std::string& dtype) {

@@ -25,7 +25,11 @@ namespace phi {
 template <typename T>
 struct LerpElementWiseDirectCUDAFunctor {
   HOSTDEVICE inline T operator()(const T x, const T y, const T weight) const {
-    return x + weight * (y - x);
+    if (abs(static_cast<float>(weight)) < 0.5f) {
+      return x + weight * (y - x);
+    } else {
+      return y - (y - x) * (static_cast<T>(1) - weight);
+    }
   }
 };
 
@@ -37,7 +41,11 @@ struct LerpScalarDirectCUDAFunctor {
       : weight_(weight) {}
 
   HOSTDEVICE inline T operator()(const T x, const T y) const {
-    return x + weight_[0] * (y - x);
+    if (abs(static_cast<float>(weight_[0])) < 0.5f) {
+      return x + weight_[0] * (y - x);
+    } else {
+      return y - (y - x) * (static_cast<T>(1) - weight_[0]);
+    }
   }
 };
 

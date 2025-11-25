@@ -105,6 +105,13 @@ int32_t PyObject_ToInt32(PyObject* obj) {
       (PyObject_CheckTensor(obj) &&
        reinterpret_cast<TensorObject*>(obj)->tensor.numel() == 1)) {
     res = static_cast<int32_t>(PyLong_AsLong(obj));
+    if (res == -1 && PyErr_Occurred()) {
+      PyErr_Clear();
+      PADDLE_THROW(common::errors::OutOfRange(
+          "Integer value exceeds int32 range [%d, %d]",
+          std::numeric_limits<int32_t>::min(),
+          std::numeric_limits<int32_t>::max()));
+    }
     return res;
   }
   std::string type_name =
@@ -112,6 +119,13 @@ int32_t PyObject_ToInt32(PyObject* obj) {
   if (type_name.find("numpy.int") != std::string::npos) {
     auto num_obj = PyNumber_Long(obj);
     res = static_cast<int32_t>(PyLong_AsLong(num_obj));
+    if (res == -1 && PyErr_Occurred()) {
+      PyErr_Clear();
+      PADDLE_THROW(common::errors::OutOfRange(
+          "Integer value exceeds int32 range [%d, %d]",
+          std::numeric_limits<int32_t>::min(),
+          std::numeric_limits<int32_t>::max()));
+    }
     Py_DECREF(num_obj);
   } else {
     PADDLE_THROW(
@@ -1288,8 +1302,6 @@ void ConstructAttrMapForLegacyRunProgram(
       {"x_names", CastPyArg2AttrStrings},
       {"out_grad_names", CastPyArg2AttrStrings},
       {"x_grad_names", CastPyArg2AttrStrings},
-      {"cuda_graph_capture_mode", CastPyArg2AttrString},
-      {"cuda_graph_pool_id", CastPyArg2AttrLong},
       {"in_pir_pt_mode", CastPyArg2AttrBoolean},
       {"use_interpretorcore", CastPyArg2AttrBoolean},
       {"global_block", CastPyArg2AttrBlock},

@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import copy
 import gc
 import json
 import math
@@ -45,6 +44,7 @@ from .utils import (
     build_shard_desc,
     check_unique_id,
     compute_local_shape_and_global_offset,
+    create_hf_ckpt_metadata,
     flat_range_in_min_slice,
     flatten_state_dict,
     get_max_id,
@@ -108,6 +108,36 @@ def get_checkpoint_files(path, use_cache=True, unique_id=None):
         for file in accessible_files
         if file.endswith(f"{unique_id}.metadata")
     ]
+
+    safetensors_files = [
+        file for file in accessible_files if file.endswith(".safetensors")
+    ]
+
+    if len(safetensors_files) > 0:
+        logger.info(
+            f"Found HuggingFace-format checkpoint with files: {', '.join(safetensors_files)}"
+        )
+        metadata_files = [
+            file
+            for file in accessible_files
+            if file.endswith(".auto_generated.metadata")
+        ]
+        if len(metadata_files) == 0:
+            logger.info(
+                f"No metadata file found in the checkpoint directory: {path}. Creating one now."
+            )
+            create_hf_ckpt_metadata(path)
+            accessible_files = os.listdir(path)
+            metadata_files = [
+                file
+                for file in accessible_files
+                if file.endswith(".auto_generated.metadata")
+            ]
+            logger.info(
+                f"Created metadata file: {metadata_files[0]} successfully."
+            )
+        return (metadata_files, safetensors_files)
+
     assert len(metadata_files) > 0, (
         f"No metadata file ends with '{unique_id}.metadata' found in the checkpoint directory: {path}."
     )
@@ -254,162 +284,151 @@ def _modify_mw_name_for_compatibility(
     return mw_name_compatibility_mapping
 
 
-def get_rank_to_read_files(rank_to_files, rank_to_local_data_files):
-    cross_node_file_names = []
-    rank_to_need_files = copy.deepcopy(rank_to_files)
-    for rank, need_files in rank_to_need_files.items():
-        local_data_files = rank_to_local_data_files[rank]
-        file_need_to_remove = []
-        for file in need_files:
-            if file not in local_data_files:
-                file_need_to_remove.append(file)
-        for file in file_need_to_remove:
-            need_files.remove(file)
-        cross_node_file_names += file_need_to_remove
-
-    not_read_file_ranks = []
-    for rank, files in rank_to_need_files.items():
-        if len(files) == 0:
-            not_read_file_ranks.append(rank)
-    for rank in not_read_file_ranks:
-        rank_to_need_files.pop(rank)
-
-    rank_load_files = _get_rank_to_read_files(rank_to_need_files)
-
-    for rank in not_read_file_ranks:
-        rank_load_files[rank] = []
-
-    cur_load_files = []
-    for rank, load_file in rank_load_files.items():
-        cur_load_files += load_file
-
-    unload_files = []
-    for file in cross_node_file_names:
-        if file not in cur_load_files:
-            unload_files.append(file)
-
-    file_to_ranks = {}
-    for rank, files in rank_to_local_data_files.items():
-        for file in files:
-            if file not in file_to_ranks:
-                file_to_ranks[file] = [rank]
-            else:
-                file_to_ranks[file].append(rank)
-
-    seen = set()
-    unload_files = [x for x in unload_files if not (x in seen or seen.add(x))]
-    for file in unload_files:
-        sub_rank_load_files = {}
-        for rank in file_to_ranks[file]:
-            sub_rank_load_files[rank] = rank_load_files[rank]
-        min_rank = min(
-            sub_rank_load_files,
-            key=lambda rank: (len(sub_rank_load_files[rank]), rank),
-        )
-        rank_load_files[min_rank].append(file)
-
-    cur_rank = paddle.distributed.get_rank()
-    if cur_rank in rank_load_files:
-        return rank_load_files[cur_rank]
-    else:
-        logger.warning(f"rank:{cur_rank} does not need to load checkpoint")
-        return []
-
-
-def _get_rank_to_read_files(rank_to_files):
+class CheckpointLoadBalancer:
     """
-    Load files in a load-balanced manner.
+    Responsible for balancing file reading tasks in distributed training.
+
+    Objectives:
+    1. Ensure each file is read exactly once globally.
+    2. Prioritize reading from the rank that has the file locally (minimize network overhead).
+    3. Balance the load (number of files read) across all ranks.
+    """
+
+    def __init__(
+        self,
+        rank_to_required_files,
+        rank_to_available_files,
+    ):
+        """
+        Args:
+            rank_to_required_files: Mapping of rank -> list of files it logically needs to load.
+            rank_to_available_files: Mapping of rank -> list of files physically present on its local storage.
+        """
+        self.rank_to_required = rank_to_required_files
+        self.rank_to_available = rank_to_available_files
+
+        # Final result: {rank: [files_to_read]}
+        self.assignments = defaultdict(list)
+        # Real-time load counter for decision making: {rank: file_count}
+        self.load_counts = defaultdict(int)
+        # Track assigned files to prevent duplicate reading
+        self.assigned_files = set()
+
+    def _assign(self, rank: int, file_name: str):
+        """Execute the assignment and update internal state."""
+        self.assignments[rank].append(file_name)
+        self.load_counts[rank] += 1
+        self.assigned_files.add(file_name)
+
+    def _get_rank_with_min_load(self, candidates) -> int:
+        """
+        Select the rank with the minimum current load among candidates.
+        If loads are equal, select the smaller rank ID for deterministic behavior.
+        """
+        return min(candidates, key=lambda r: (self.load_counts[r], r))
+
+    def _balance_files(self, file_to_candidates):
+        """
+        Core load balancing algorithm.
+
+        Strategy:
+        1. Sort files by candidate count (Ascending). Process files with fewer options first (stronger constraints).
+        2. For files with multiple options, greedily assign to the rank with the lowest current load.
+        """
+        # Sort items by number of candidates: process most constrained files first.
+        sorted_items = sorted(
+            file_to_candidates.items(), key=lambda x: len(x[1])
+        )
+
+        for file_name, candidates in sorted_items:
+            if file_name in self.assigned_files:
+                continue
+
+            if not candidates:
+                continue
+
+            # Greedy selection: assign to the candidate with the least work so far
+            chosen_rank = self._get_rank_with_min_load(candidates)
+            self._assign(chosen_rank, file_name)
+
+    def plan(self):
+        """Execute the planning process and return assignments for all ranks."""
+
+        # --- Phase 1: Handle "Local" Files ---
+        # Identify files that ranks need AND possess locally.
+        local_file_candidates = defaultdict(list)
+        cross_node_files = set()
+
+        for rank, files in self.rank_to_required.items():
+            local_files_set = set(self.rank_to_available.get(rank, []))
+            for file_name in files:
+                if file_name in local_files_set:
+                    local_file_candidates[file_name].append(rank)
+                else:
+                    cross_node_files.add(file_name)
+
+        # Assign local files (prioritizing load balance if multiple ranks have the file locally)
+        self._balance_files(local_file_candidates)
+
+        # --- Phase 2: Handle "Cross-Node" Files ---
+        # These files are required but not found locally on the requester.
+        # We must assign them to *any* rank that physically has the file.
+        remaining_file_candidates = defaultdict(list)
+
+        # Only process files that haven't been assigned in Phase 1
+        files_to_process = [
+            f for f in cross_node_files if f not in self.assigned_files
+        ]
+
+        # Build global index: file -> [all ranks that physically have it]
+        global_availability = defaultdict(list)
+        for rank, files in self.rank_to_available.items():
+            for f in files:
+                global_availability[f].append(rank)
+
+        for file_name in files_to_process:
+            candidates = global_availability.get(file_name, [])
+            if candidates:
+                remaining_file_candidates[file_name] = candidates
+            else:
+                logger.warning(
+                    f"File {file_name} is required but not found on any rank."
+                )
+
+        # Assign remaining files using the same greedy strategy
+        self._balance_files(remaining_file_candidates)
+
+        return self.assignments
+
+
+def get_rank_to_read_files(
+    rank_to_required,
+    rank_to_available_files,
+):
+    """
+    Public API to determine which files the current rank should read.
 
     Args:
-        rank_to_files (dict): mapping from rank to files.
+        rank_to_required: Logical mapping of rank to files it needs.
+        rank_to_available_files: Physical mapping of rank to files on disk.
 
-    Example:
-        Case1: all ranks access the same data files
-            rank_to_files = {rank0:[0_0.distcp, 1_0.distcp, 2_0.distcp, 3_0.distcp], rank1:[0_0.distcp, 1_0.distcp, 2_0.distcp, 3_0.distcp]}
-            rank0 return [0_0.distcp, 1_0.distcp], rank1 return [2_0.distcp, 3_0.distcp]
-        Case2: all ranks access different data files but some overlapped
-            rank_to_files = {rank0:[0_0.distcp, 1_0.distcp, 2_0.distcp], rank1:[2_0.distcp, 3_0.distcp]
-            rank0 return [0_0.distcp, 1_0.distcp], rank1 return [2_0.distcp, 3_0.distcp]
-        Case3: all ranks access different data files and no overlapped
-            rank_to_files = {rank0:[0_0.distcp, 1_0.distcp], rank1:[2_0.distcp, 3_0.distcp]
-            rank0 return [0_0.distcp, 1_0.distcp], rank1 return [2_0.distcp, 3_0.distcp]
+    Returns:
+        List of file names the current rank is responsible for loading.
     """
-    file_to_ranks = {}
-    for rank, files in rank_to_files.items():
-        for file in files:
-            if file not in file_to_ranks:
-                file_to_ranks[file] = []
-            file_to_ranks[file].append(rank)
-    rank_to_not_read_files = copy.deepcopy(rank_to_files)
-    rank_to_read_files = {rank: [] for rank in rank_to_not_read_files.keys()}
-    for file, ranks in file_to_ranks.items():
-        if len(ranks) == 1:
-            rank = ranks[0]
-            rank_to_read_files[rank].append(file)
-            rank_to_not_read_files[rank].remove(file)
-            if len(rank_to_not_read_files[rank]) == 0:
-                rank_to_not_read_files.pop(rank)
+    balancer = CheckpointLoadBalancer(rank_to_required, rank_to_available_files)
+    all_assignments = balancer.plan()
 
-    logger.debug(
-        f"rank_to_read_files:{rank_to_read_files}, rank_to_not_read_files:{rank_to_not_read_files}"
-    )
+    current_rank = paddle.distributed.get_rank()
+    my_files = all_assignments.get(current_rank, [])
 
-    def get_least_read_files_ranks(rank_to_read_files):
-        nums = [
-            (rank, len(files)) for rank, files in rank_to_read_files.items()
-        ]
-        nums = sorted(nums, key=lambda x: x[1])
-        ranks = [rank for rank, num in nums if num == nums[0][1]]
-        return ranks
-
-    def get_read_rank_file(rank_to_not_read_files, ranks):
-        if len(rank_to_not_read_files) == 0:
-            return (None, None)
-        nums = [
-            (rank, len(files))
-            for rank, files in rank_to_not_read_files.items()
-            if rank in ranks
-        ]
-        # 'ranks' refer to the ranks that have read the fewest number of files so far. However, the files containing the weights required
-        # . by these ranks may have already been completely read. In this case, they will not read any more files.
-        if len(nums) == 0:
-            nums = [
-                (rank, len(files))
-                for rank, files in rank_to_not_read_files.items()
-            ]
-        nums = sorted(nums, key=lambda x: x[1])
-        rank = nums[0][0]
-        return (rank, rank_to_not_read_files[rank][0])
-
-    def update(rank_to_read_files, rank_to_not_read_files, rank_file):
-        rank, file = rank_file
-        if rank is None and file is None:
-            return
-        if rank not in rank_to_read_files:
-            rank_to_read_files[rank] = []
-        rank_to_read_files[rank].append(file)
-        # update rank_to_not_read_files
-        file_to_ranks = {}
-        for r, files in rank_to_not_read_files.items():
-            for f in files:
-                if f not in file_to_ranks:
-                    file_to_ranks[f] = []
-                file_to_ranks[f].append(r)
-        logger.debug(f"file_to_ranks:{file_to_ranks}")
-        if file in file_to_ranks:
-            for r in file_to_ranks[file]:
-                rank_to_not_read_files[r].remove(file)
-                if len(rank_to_not_read_files[r]) == 0:
-                    rank_to_not_read_files.pop(r)
-
-    while len(rank_to_not_read_files) > 0:
-        ranks = get_least_read_files_ranks(rank_to_read_files)
-        rank_file = get_read_rank_file(rank_to_not_read_files, ranks)
-        update(rank_to_read_files, rank_to_not_read_files, rank_file)
-        logger.debug(
-            f"update rank_to_read_files:{rank_to_read_files}, rank_to_not_read_files:{rank_to_not_read_files}, ranks:{ranks}, rank_file:{rank_file}"
+    if not my_files:
+        logger.warning(
+            f"Rank:{current_rank} does not need to load any checkpoint files."
         )
-    return rank_to_read_files
+    else:
+        logger.debug(f"Rank:{current_rank} assigned files: {my_files}")
+
+    return my_files
 
 
 def get_load_infos(metadata_list, local_load_files, process_group, use_dist):
@@ -664,6 +683,7 @@ def _handle_aoa(
     unique_id,
     offload,
     aoa_config,
+    safetensors,
 ):
     metadata_files, _ = get_checkpoint_files(path, unique_id=unique_id)
     assert len(metadata_files) == 1, "Only support one metadata file now."
@@ -711,6 +731,8 @@ def _handle_aoa(
                 src_desc.local_shape == dst_desc.local_shape
                 and src_desc.global_shape == dst_desc.global_shape
                 and src_desc.global_offset == dst_desc.global_offset
+                and src_desc.dtype == dst_desc.dtype
+                and mapping.postprocess_list is None
             ):
                 new_load_dict[idx] = ShardedWeight(
                     key=src_desc.key,
@@ -721,7 +743,7 @@ def _handle_aoa(
                 )
             else:
                 local_tensor = paddle.empty(
-                    src_desc.local_shape, dtype=tgt_shard.local_tensor.dtype
+                    src_desc.local_shape, dtype=src_desc.dtype
                 )
                 force_gc.append(local_tensor)
                 if local_tensor.place != tgt_shard.local_tensor.place:
@@ -743,6 +765,7 @@ def _handle_aoa(
         coordinator_rank=coordinator_rank,
         unique_id=unique_id,
         offload=offload,
+        safetensors=safetensors,
         worker_groups=worker_groups,
     )
 
@@ -835,15 +858,15 @@ def load_state_dict(
 
     if not is_sharded_state_dict(state_dict):
         load_state_dict_impl(
-            state_dict,
-            path,
-            process_group,
-            coordinator_rank,
-            unique_id,
-            offload,
-            mw_name_compatibility,
-            safetensors,
-            worker_groups,
+            state_dict=state_dict,
+            path=path,
+            process_group=process_group,
+            coordinator_rank=coordinator_rank,
+            unique_id=unique_id,
+            offload=offload,
+            mw_name_compatibility=mw_name_compatibility,
+            safetensors=safetensors,
+            worker_groups=worker_groups,
         )
         return
 
@@ -854,26 +877,17 @@ def load_state_dict(
                 f"{key} is not replicated!"
             )
             load_dict[key] = val
-        load_state_dict_impl(
-            load_dict,
-            path,
-            process_group,
-            coordinator_rank,
-            unique_id,
-            offload,
-            mw_name_compatibility,
-            safetensors,
-            worker_groups,
+        destination_state_shard_info = defaultdict(list)
+        for key, val in load_dict.items():
+            desc = build_shard_desc(val)
+            destination_state_shard_info[key].append(desc)
+    else:
+        flat_shards, nonflat_shards = _split_flat_shards(state_dict)
+        load_dict, padding_info = _unflatten_shards(flat_shards)
+        load_dict.update(nonflat_shards)
+        destination_state_shard_info = build_global_state_shard_info(
+            state_dict, process_group
         )
-        return
-
-    destination_state_shard_info = build_global_state_shard_info(
-        state_dict, process_group
-    )
-
-    flat_shards, nonflat_shards = _split_flat_shards(state_dict)
-    load_dict, padding_info = _unflatten_shards(flat_shards)
-    load_dict.update(nonflat_shards)
 
     if aoa_config is not None:
         _handle_aoa(
@@ -886,20 +900,22 @@ def load_state_dict(
             unique_id,
             offload,
             aoa_config,
+            safetensors,
         )
     else:
         load_state_dict_impl(
-            load_dict,
-            path,
-            process_group,
-            coordinator_rank,
-            unique_id,
-            offload,
-            mw_name_compatibility,
-            safetensors,
-            worker_groups,
+            state_dict=load_dict,
+            path=path,
+            process_group=process_group,
+            coordinator_rank=coordinator_rank,
+            unique_id=unique_id,
+            offload=offload,
+            mw_name_compatibility=mw_name_compatibility,
+            safetensors=safetensors,
+            worker_groups=worker_groups,
         )
-    _finish_unflatten(flat_shards, padding_info)
+    if use_dist:
+        _finish_unflatten(flat_shards, padding_info)
 
     global _metadata_manager
     _metadata_manager.clear()
@@ -1690,7 +1706,7 @@ def _load_state_dict_single_group(
                 )
                 if not dst_tensor.place.is_gpu_place():
                     gpu_dst_tensor = dst_tensor.cuda()
-                    gpu_dst_tensor.need_copy_to_cpu = True
+                    gpu_dst_tensor.need_cross_device_copy = True
                     gpu_dst_tensor.target_tensor = dst_tensor
                     destination_tensors[
                         (tensor_name, cur_rank, item.dst_global_offset)
@@ -1731,9 +1747,9 @@ def _load_state_dict_single_group(
             del buffer_tensor
 
         for dst_tensor in destination_tensors.values():
-            if hasattr(dst_tensor, 'need_copy_to_cpu'):
+            if getattr(dst_tensor, 'need_cross_device_copy', False):
                 target_tensor = dst_tensor.target_tensor
-                paddle.assign(dst_tensor.cpu(), target_tensor)
+                target_tensor.copy_(dst_tensor)
             else:
                 target_tensor = dst_tensor.target_tensor
                 paddle.assign(dst_tensor, target_tensor)
@@ -1795,7 +1811,7 @@ def _load_state_dict_multi_group(
                 )
                 if not dst_tensor.place.is_gpu_place():
                     gpu_dst_tensor = dst_tensor.cuda()
-                    gpu_dst_tensor.need_copy_to_cpu = True
+                    gpu_dst_tensor.need_cross_device_copy = True
                     gpu_dst_tensor.target_tensor = dst_tensor
                     destination_tensors[
                         (tensor_name, cur_rank, item.dst_global_offset)
@@ -1841,9 +1857,9 @@ def _load_state_dict_multi_group(
             del buffer_tensor
 
         for dst_tensor in destination_tensors.values():
-            if hasattr(dst_tensor, 'need_copy_to_cpu'):
+            if getattr(dst_tensor, 'need_cross_device_copy', False):
                 target_tensor = dst_tensor.target_tensor
-                paddle.assign(dst_tensor.cpu(), target_tensor)
+                target_tensor.copy_(dst_tensor)
             else:
                 target_tensor = dst_tensor.target_tensor
                 paddle.assign(dst_tensor, target_tensor)

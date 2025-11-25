@@ -20,7 +20,7 @@ from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit import sot
-from paddle.jit.sot.utils import min_graph_size_guard
+from paddle.jit.sot.utils import min_graph_size_guard, strict_mode_guard
 
 
 def case_for(x, vars):
@@ -94,6 +94,7 @@ def restore_same_arg_when_fallback(x):
 
 
 class TestMinGraphSize(TestCaseBase):
+    @strict_mode_guard(False)
     @min_graph_size_guard(10)
     def test_cases(self):
         x = paddle.to_tensor(1)

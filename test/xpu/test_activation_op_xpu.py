@@ -1629,7 +1629,7 @@ class XPUTestRsqrtOP(XPUOpTestWrapper):
         def init_shape(self):
             self.shape = (4, 256, 22, 22)
 
-    class TestRsqrtOp_ZeorDim(XPUTestRsqrtBase):
+    class TestRsqrtOp_ZeroDim(XPUTestRsqrtBase):
         def init_shape(self):
             self.shape = []
 

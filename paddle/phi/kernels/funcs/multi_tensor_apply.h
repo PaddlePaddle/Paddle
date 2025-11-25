@@ -75,7 +75,7 @@ void LaunchMultiTensorApplyKernel(
       InputNum - 1,
       errors::InvalidArgument(
           "input_vector.size() != InputNum - 1, the input vector's size is "
-          "unequal to InputNum - 1, please cheack grads, params, momemts1, "
+          "unequal to InputNum - 1, please cheack grads, params, moments1, "
           "moments2, moments2_max(if use amsgrad), and, master_params."));
   size_t length = input_vector[0].size();
   PADDLE_ENFORCE_GT(

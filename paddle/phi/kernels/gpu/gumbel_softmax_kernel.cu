@@ -122,7 +122,9 @@ __global__ void AddGumbelNoiseCUDAKernel(const T* input_data,
                                          MPType* noise,
                                          const float temperature,
                                          int64_t n) {
-  int index = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t index =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int step = blockDim.x * gridDim.x;
   for (int64_t i = index; i < n; i += step) {
     MPType gumbel_noise = -log(-log(noise[i]));

@@ -552,9 +552,9 @@ def fused_multi_head_attention(
         >>> out = matmul(out, qkv_weight) + qkv_bias
         >>> out = transpose(out, perm=[2, 0, 3, 1, 4])
         >>> # extract q, k and v from out
-        >>> q = out[0:1,::] * (head_dim ** -0.5)
-        >>> k = out[1:2,::]
-        >>> v = out[2:3,::]
+        >>> q = out[0:1, ::] * (head_dim**-0.5)
+        >>> k = out[1:2, ::]
+        >>> v = out[2:3, ::]
         >>> out = matmul(q, k, transpose_y=True)
         >>> out = out + attn_mask
         >>> out = softmax(out)
@@ -653,7 +653,7 @@ def fused_multi_head_attention(
             ...     None, None, None, None, 1e-5, qkv_bias,
             ...     linear_bias, None, attn_mask)
             >>> print(output.shape)
-            [2, 4, 128]
+            paddle.Size([2, 4, 128])
     """
 
     seed = None
@@ -1103,7 +1103,7 @@ def fused_multi_transformer(
         >>> q = out[0:1, ::]
         >>> k = out[1:2, ::]
         >>> v = out[2:3, ::]
-        >>> out = q * k^t
+        >>> out = q * k ^ t
         >>> out = attn_mask + out
         >>> out = softmax(out)
         >>> out = dropout(out)
@@ -1115,7 +1115,7 @@ def fused_multi_transformer(
         ... else:
         ...     out = layer_norm(x + dropout(out + bias))
 
-        >>> residual = out;
+        >>> residual = out
         >>> if pre_layer_norm:
         ...     out = ffn_layer_norm(out)
         >>> out = ffn1_linear(out)

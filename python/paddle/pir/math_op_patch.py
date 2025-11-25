@@ -241,6 +241,17 @@ def monkey_patch_value():
             "Tensor do not have 'place' interface for pir graph mode, try not to use it. None will be returned."
         )
 
+    @property
+    def device(self):
+        """
+        Tensor don't have 'device' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warning here and return None.
+        """
+        warnings.warn(
+            "Tensor do not have 'device' interface for pir graph mode, try not to use it. None will be returned."
+        )
+
     def contiguous(self):
         """
         Tensor don't have 'contiguous' interface in static graph mode
@@ -528,6 +539,13 @@ def monkey_patch_value():
                 # but only +, -, *, / can use this method
                 if scalar_method is not None:
                     return scalar_method(self, other_var)
+            elif other_var is None:
+                if method_name == "__eq__":
+                    return False
+                elif method_name == "__ne__":
+                    return True
+                else:
+                    pass
             else:
                 # do nothing
                 pass
@@ -586,18 +604,19 @@ def monkey_patch_value():
             Tensor, the number of elements for current Tensor
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
-            >>> import paddle
-            >>> paddle.enable_static()
-            >>> startup_prog = paddle.static.Program()
-            >>> main_prog = paddle.static.Program()
-            >>> with paddle.static.program_guard(startup_prog, main_prog):
-            ...     x = paddle.assign(np.random.rand(2, 3, 4).astype("float32"))
-            ...     (output_x,) = exe.run(main_program, fetch_list=[x.size])
-            ...     print(f"value's size is: {output_x}")
-            ...
-            value's size is: 24
+                >>> import paddle
+                >>> paddle.enable_static()
+                >>> startup_prog = paddle.static.Program()
+                >>> main_prog = paddle.static.Program()
+                >>> with paddle.static.program_guard(startup_prog, main_prog):
+                ...     x = paddle.assign(
+                ...         np.random.rand(2, 3, 4).astype("float32")
+                ...     )
+                ...     (output_x,) = exe.run(main_program, fetch_list=[x.size])
+                ...     print(f"value's size is: {output_x}")
+                value's size is: 24
         """
         return paddle.numel(self)
 
@@ -1439,6 +1458,19 @@ def monkey_patch_value():
             )
         self.stop_gradient = not value
 
+    def requires_grad_(self, value: bool) -> None:
+        """
+        Set whether this Tensor requires gradient computation.
+
+        Args:
+            value (bool): True to enable gradient computation, False to disable.
+        """
+        if not isinstance(value, bool):
+            raise TypeError(
+                f"requires_grad must be bool, but got {type(value)}"
+            )
+        self.stop_gradient = not value
+
     @property
     def itemsize(self) -> int:
         """
@@ -1470,6 +1502,7 @@ def monkey_patch_value():
         ('cpu', cpu),
         ('cuda', cuda),
         ('place', place),
+        ('device', device),
         ('contiguous', contiguous),
         ('is_cuda', is_cuda),
         ('is_contiguous', is_contiguous),
@@ -1489,6 +1522,7 @@ def monkey_patch_value():
         ('new_ones', _new_ones_),
         ('new_zeros', _new_zeros_),
         ("requires_grad", requires_grad),
+        ("requires_grad_", requires_grad_),
         ('clone', clone),
         ('clear_gradient', clear_gradient),
         ('append', append),

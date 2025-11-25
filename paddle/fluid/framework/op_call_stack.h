@@ -41,6 +41,7 @@ PADDLE_API void InsertCallStackInfoDygraph(
 // only append error op for exception message
 PADDLE_API void AppendErrorOpHint(const std::string &type,
                                   platform::EnforceNotMet *exception);
+PADDLE_API std::string InsertIndentationIntoEachLine(const std::string &str);
 
 }  // namespace framework
 }  // namespace paddle

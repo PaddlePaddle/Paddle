@@ -1035,7 +1035,9 @@ void DispatchTopPSampling(const Context& dev_ctx,
 __global__ void setup_kernel(GPU(randState_t) * state,
                              int64_t* seed,
                              const int bs) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   for (int i = idx; i < bs; i += gridDim.x * blockDim.x) {
     GPU(rand_init)(static_cast<uint64_t>(seed[i]), 0, 0, &state[i]);
   }
@@ -1046,7 +1048,9 @@ __global__ void setup_kernel(GPU(randState_t) * state,
                              const uint64_t offset,
                              const int bs,
                              const bool need_batch_random) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   for (int i = idx; i < bs; i += gridDim.x * blockDim.x) {
     if (need_batch_random) {
       GPU(rand_init)(seed, i, offset, &state[i]);
@@ -1090,7 +1094,10 @@ void TopPSamplingKernel(const Context& dev_ctx,
   const auto* input = &x;
   // get the input dims
   const auto& in_dims = input->dims();
-  int p_num = ps.numel();
+  int64_t p_num = ps.numel();
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int bs = in_dims[0];
   int vocab_size = in_dims[1];
   T* out_ptr = dev_ctx.template Alloc<T>(out);

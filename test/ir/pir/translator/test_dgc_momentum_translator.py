@@ -22,7 +22,7 @@ from paddle.base.layer_helper import LayerHelper
 paddle.pir_utils._switch_to_old_ir_()
 
 
-class TestDgcMomemtumOpTranslator(test_op_translator.TestOpTranslator):
+class TestDgcMomentumOpTranslator(test_op_translator.TestOpTranslator):
     def append_op(self):
         self.op_type = "dgc_momentum"
 

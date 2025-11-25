@@ -75,7 +75,7 @@ class Parser:
         tok = self.peek()
         if expected_type and tok.type != expected_type:
             raise SyntaxError(
-                f'Expected {expected_type}, got {tok.type} at pos {tok.pos}'
+                f'Expected {expected_type}, got {tok.type} at pos {self.pos}'
             )
         self.pos += 1
         return tok

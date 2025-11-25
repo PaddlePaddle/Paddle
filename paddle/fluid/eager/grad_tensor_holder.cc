@@ -43,10 +43,10 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
       slot_id < buffer_.size(),
       common::errors::Fatal("Invalid slot_id for GradTensorHolder::add() "
                             "which exceeds size of buffer"));
-  VLOG(6) << "Add Tensor for buffer_ slot: " << slot_id
+  VLOG(6) << "GradTensorHolder: Add Tensor for buffer_ slot: " << slot_id
           << ", size: " << buffer_[slot_id].size();
   if (buffer_[slot_id].empty()) {
-    VLOG(6) << "Pass add Tensor for buffer_ slot: " << slot_id
+    VLOG(6) << "GradTensorHolder: Pass add Tensor for buffer_ slot: " << slot_id
             << " since its buffer_ is empty ";
     return;
   }
@@ -59,14 +59,15 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
           buffer_[slot_id].size(),
           rank));
   if (!fill_one) {
+    auto grad_tensor = ValidateGradient(slot_id, rank, t);
     paddle::Tensor& buffer_tensor = buffer_[slot_id][rank];
     if ((!buffer_tensor.defined() || !buffer_tensor.has_allocation())) {
       if (FLAGS_share_tensor_for_grad_tensor_holder) {
         // Share the same tensor
-        buffer_tensor.set_impl(t.impl());
+        buffer_tensor.set_impl(grad_tensor.impl());
       } else {
         // Perform deep copy here
-        buffer_tensor.copy_(t, t.place(), false);
+        buffer_tensor.copy_(grad_tensor, grad_tensor.place(), false);
       }
       auto* meta = egr::EagerUtils::autograd_meta(&buffer_tensor);
       auto* origin_meta = egr::EagerUtils::nullable_autograd_meta(t);
@@ -156,6 +157,10 @@ void GradTensorHolder::add(size_t slot_id,
           rank));
 
   paddle::Tensor& buffer_tensor = buffer_[slot_id][rank];
+
+  // Validate and convert gradient before accumulation
+  auto grad_tensor = ValidateGradient(slot_id, rank, t);
+
   // TODO(jiabin): Code below is ugly to divide which inner var we used,
   // remove framework::Variable
   // related code later.
@@ -165,26 +170,27 @@ void GradTensorHolder::add(size_t slot_id,
     // Simply copy tensor->impl
     VLOG(7) << "GradTensorHolder: Move Tensor for buffer_ slot: " << slot_id
             << ", size: " << buffer_[slot_id].size();
-    buffer_tensor = t;
+    buffer_tensor = grad_tensor;
   } else {
     VLOG(7) << "GradTensorHolder: Add Tensor for buffer_ slot: " << slot_id
             << ", size: " << buffer_[slot_id].size();
     // Accumulation
     PADDLE_ENFORCE_EQ(
-        t.has_allocation(),
+        grad_tensor.has_allocation(),
         true,
         common::errors::Fatal(
             "We can only accumulate tensor having allocation, but we "
             "got tensor: %s without allocation, please check you network "
             "and make sure it creates grads.",
-            t.name()));
+            grad_tensor.name()));
 
-    if (t.is_dense_tensor()) {
+    if (grad_tensor.is_dense_tensor()) {
       if (buffer_tensor.is_dense_tensor()) {
-        if (create_graph || t.is_custom_device()) {
-          buffer_tensor = add_ad_func(t, buffer_tensor);
+        if (create_graph || grad_tensor.is_custom_device()) {
+          buffer_tensor = add_ad_func(grad_tensor, buffer_tensor);
         } else {
-          paddle::imperative::TensorAdd<paddle::Tensor>(t, &buffer_tensor);
+          paddle::imperative::TensorAdd<paddle::Tensor>(grad_tensor,
+                                                        &buffer_tensor);
         }
       } else if (buffer_tensor.is_dist_tensor()) {
         buffer_tensor = add_ad_func(t, buffer_tensor);
@@ -195,11 +201,12 @@ void GradTensorHolder::add(size_t slot_id,
         paddle::Tensor new_buffer(std::make_shared<phi::DenseTensor>(),
                                   "tmp_accumulator");
         paddle::imperative::SelectedRowsAddTensor(
-            buffer_tensor, t, &new_buffer);
+            buffer_tensor, grad_tensor, &new_buffer);
         buffer_tensor.set_impl(new_buffer.impl());
       }
-    } else if (t.is_sparse_coo_tensor()) {
-      auto t_sparse = std::dynamic_pointer_cast<phi::SparseCooTensor>(t.impl());
+    } else if (grad_tensor.is_sparse_coo_tensor()) {
+      auto t_sparse =
+          std::dynamic_pointer_cast<phi::SparseCooTensor>(grad_tensor.impl());
       paddle::Tensor t_values(
           std::make_shared<phi::DenseTensor>(t_sparse->non_zero_elements()));
       // In fact, the gradient of SparseTensor is still a SparseTensor
@@ -208,28 +215,70 @@ void GradTensorHolder::add(size_t slot_id,
             buffer_tensor.impl());
         paddle::Tensor buffer_values(std::make_shared<phi::DenseTensor>(
             buffer_sparse->non_zero_elements()));
-        if (create_graph || t.is_custom_device()) {
+        if (create_graph || grad_tensor.is_custom_device()) {
           buffer_values = add_ad_func(t_values, buffer_values);
         } else {
           paddle::imperative::TensorAdd<paddle::Tensor>(t_values,
                                                         &buffer_values);
         }
       }
-    } else if (t.is_dist_tensor()) {
-      buffer_tensor = add_ad_func(t, buffer_tensor);
+    } else if (grad_tensor.is_dist_tensor()) {
+      buffer_tensor = add_ad_func(grad_tensor, buffer_tensor);
     } else {
       // TODO(jiabin): Support Other TensorBase later
       // TODO(zhanlve): Replace SelectedRowsAddTensor with add_dygraph_function
       // once it's supported
       if (buffer_tensor.is_dense_tensor()) {
-        paddle::imperative::SelectedRowsAddToTensor(t, &buffer_tensor);
+        paddle::imperative::SelectedRowsAddToTensor(grad_tensor,
+                                                    &buffer_tensor);
       } else {
         buffer_tensor =
             std::move(*paddle::imperative::SelectedRowsMerge<paddle::Tensor>(
-                t, buffer_tensor));
+                grad_tensor, buffer_tensor));
       }
     }
   }
+}
+
+paddle::Tensor GradTensorHolder::ValidateGradient(
+    size_t slot_id, size_t rank, const paddle::Tensor& grad_tensor) {
+  if (!grad_tensor.defined() || !grad_tensor.has_allocation()) {
+    return grad_tensor;
+  }
+  if (slot_id >= input_dtypes_.size() ||
+      rank >= input_dtypes_[slot_id].size()) {
+    VLOG(7) << "GradTensorHolder: No input dtype available for slot " << slot_id
+            << ", rank " << rank << ", skipping validation";
+    return grad_tensor;
+  }
+  const auto& expected_dtype = input_dtypes_[slot_id][rank];
+  if (expected_dtype == phi::DataType::UNDEFINED) {
+    VLOG(7) << "GradTensorHolder: No dtype info available for slot " << slot_id
+            << ", rank " << rank << ", skipping validation";
+    return grad_tensor;
+  }
+  const auto grad_dtype = grad_tensor.dtype();
+  // Return directly if types match
+  if (grad_dtype == expected_dtype) {
+    return grad_tensor;
+  }
+
+  // Cast gradient to expected dtype
+  VLOG(6) << "GradTensorHolder: Converting gradient dtype from " << grad_dtype
+          << " to " << expected_dtype << " for slot " << slot_id << ", rank "
+          << rank;
+  return grad_tensor.cast(expected_dtype);
+}
+
+void GradTensorHolder::SetBuffers(
+    paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>&&
+        new_buffer) {
+  for (size_t i = 0; i < new_buffer.size(); ++i) {
+    for (size_t j = 0; j < new_buffer[i].size(); ++j) {
+      new_buffer[i][j] = ValidateGradient(i, j, new_buffer[i][j]);
+    }
+  }
+  buffer_ = std::move(new_buffer);
 }
 
 }  // namespace egr

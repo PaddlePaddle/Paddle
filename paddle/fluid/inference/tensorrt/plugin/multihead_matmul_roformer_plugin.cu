@@ -84,14 +84,9 @@ bool MultiheadMatmulRoformerPlugin::supportsFormatCombination(
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
     if (with_fp16_) {
-#ifdef TRT_PLUGIN_FP16_AVAILABLE
       return (in.type == nvinfer1::DataType::kFLOAT ||
               in.type == nvinfer1::DataType::kHALF) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
-#else
-      return (in.type == nvinfer1::DataType::kFLOAT) &&
-             (in.format == nvinfer1::TensorFormat::kLINEAR);
-#endif
     } else {
       return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
@@ -270,7 +265,6 @@ int MultiheadMatmulRoformerPlugin::enqueue(
         tptr, output, batch, seq_len, head_number_, head_size_);
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
-#ifdef TRT_PLUGIN_FP16_AVAILABLE
     VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp16";
     auto *multihead_temp_data =
         multihead_temp_tensor.mutable_data<int16_t>(  // NOLINT
@@ -353,14 +347,6 @@ int MultiheadMatmulRoformerPlugin::enqueue(
     half *output = static_cast<half *>(outputs[0]);
     transpose<half><<<grid, block, 0, stream>>>(
         tptr, output, batch, seq_len, head_number_, head_size_);
-#else
-    PADDLE_THROW(common::errors::Fatal(
-        "The Ernie(Bert) TensorRT Plugin should be "
-        "complied with CUDA version >= 10.0 when running with fp16. "
-        "Please recompile it or try to use fp32 by set "
-        "config.SetTRTDynamicShapeInfo(min_input_shape, "
-        "max_input_shape, opt_input_shape, true"));
-#endif
   } else {
     PADDLE_THROW(common::errors::Fatal(
         "The QKV TRT Plugin's input type should be float or half."));

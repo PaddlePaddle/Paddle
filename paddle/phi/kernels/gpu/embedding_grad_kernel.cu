@@ -48,7 +48,9 @@ __global__ void EmbeddingGrad(T* table,
                               const int64_t K,
                               const int64_t D) {
   int idx = threadIdx.x;
-  int idy = blockIdx.x + threadIdx.y * gridDim.x;
+  int64_t idy =
+      static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.y) * static_cast<int64_t>(gridDim.x);
 
   while (idy < K) {
     auto id = static_cast<int64_t>(ids[idy]);

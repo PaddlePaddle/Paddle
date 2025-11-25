@@ -102,5 +102,98 @@ class TestNNFunctionalNormalize(unittest.TestCase):
             self.run_static(use_gpu=True)
 
 
+class TestNormalizeAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.places = ['cpu', get_device_place()]
+        self.shape = [2, 3, 4]
+        self.dtype = "float32"
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.rand(*self.shape).astype(self.dtype)
+        self.p = 2
+        self.axis = 1
+        self.epsilon = 1e-12
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.nn.functional.normalize(
+            x, self.p, self.axis, self.epsilon
+        )
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.nn.functional.normalize(
+            x=x, p=self.p, axis=self.axis, epsilon=self.epsilon
+        )
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch compatibility
+        out3 = paddle.nn.functional.normalize(
+            input=x, p=self.p, dim=self.axis, eps=self.epsilon
+        )
+        paddle_dygraph_out.append(out3)
+        # Key words args for out
+        out4 = paddle.zeros_like(x)
+        paddle.nn.functional.normalize(
+            x, self.p, self.axis, self.epsilon, out=out4
+        )
+        paddle_dygraph_out.append(out4)
+        # Numpy reference output
+        ref_out = self.np_x / np.maximum(
+            np.linalg.norm(
+                self.np_x, ord=self.p, axis=self.axis, keepdims=True
+            ),
+            self.epsilon,
+        )
+
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(
+                ref_out, out.numpy(), rtol=1e-05, atol=1e-08
+            )
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.nn.functional.normalize(
+                x, self.p, self.axis, self.epsilon
+            )
+            # Key words args (kwargs) for paddle
+            out2 = paddle.nn.functional.normalize(
+                x=x, p=self.p, axis=self.axis, epsilon=self.epsilon
+            )
+            # Key words args for torch compatibility
+            out3 = paddle.nn.functional.normalize(
+                input=x, p=self.p, dim=self.axis, eps=self.epsilon
+            )
+            # Numpy reference output
+            ref_out = self.np_x / np.maximum(
+                np.linalg.norm(
+                    self.np_x, ord=self.p, axis=self.axis, keepdims=True
+                ),
+                self.epsilon,
+            )
+
+            fetch_list = [out1, out2, out3]
+            for place in self.places:
+                exe = paddle.base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed={"x": self.np_x},
+                    fetch_list=fetch_list,
+                )
+                for out in fetches:
+                    np.testing.assert_allclose(
+                        out, ref_out, rtol=1e-05, atol=1e-08
+                    )
+
+
 if __name__ == "__main__":
     unittest.main()

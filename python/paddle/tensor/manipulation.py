@@ -24,12 +24,13 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import roll  # noqa: F401
+from paddle._C_ops import index_put, index_put_, roll  # noqa: F401
 from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
     expand_decorator,
+    index_add_decorator,
     param_one_alias,
     param_two_alias,
     reshape_decorator,
@@ -58,6 +59,7 @@ from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
+    from numbers import Number
 
     from paddle import Tensor
     from paddle._typing import (
@@ -813,7 +815,11 @@ def shard_index(
     following formula:
     ::
 
-        v = v - shard_id * shard_size if shard_id * shard_size <= v < (shard_id+1) * shard_size else ignore_value
+        v = (
+            v - shard_id * shard_size
+            if shard_id * shard_size <= v < (shard_id + 1) * shard_size
+            else ignore_value
+        )
 
     That is, the value `v` is set to the new offset within the range represented by the shard `shard_id`
     if it in the range. Otherwise, we reset it to be `ignore_value`.
@@ -2029,18 +2035,23 @@ def flatten(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> image_shape=(2, 3, 4, 4)
+            >>> image_shape = (2, 3, 4, 4)
 
-            >>> x = paddle.arange(end=image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3])
+            >>> x = paddle.arange(
+            ...     end=image_shape[0]
+            ...     * image_shape[1]
+            ...     * image_shape[2]
+            ...     * image_shape[3]
+            ... )
             >>> img = paddle.reshape(x, image_shape)
 
             >>> out = paddle.flatten(img, start_axis=1, stop_axis=2)
             >>> print(out.shape)
-            [2, 12, 4]
+            paddle.Size([2, 12, 4])
 
             >>> # out shares data with img in dygraph mode
             >>> img[0, 0, 0, 0] = -1
@@ -2744,7 +2755,7 @@ def row_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     illegal_keys={"tensor", "split_size_or_sections", "dim"},
     func_name="paddle.split",
     correct_name="paddle.compat.split",
-    url_suffix="torch/torch.split",
+    url_suffix="torch.split",
 )
 def split(
     x: Tensor,
@@ -7599,18 +7610,31 @@ def scatter_add_(
     )
 
 
+@index_add_decorator()
 def index_add(
-    x: Tensor, index: Tensor, axis: int, value: Tensor, name: str | None = None
+    x: Tensor,
+    index: Tensor,
+    axis: int,
+    value: Tensor,
+    alpha: Number = 1,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Adds the elements of the input tensor with value tensor by selecting the indices in the order given in index.
 
     Args:
         x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
+            alias: ``input``.
         index (Tensor): The 1-D Tensor containing the indices to index.
             The data type of ``index`` must be int32 or int64.
         axis (int): The dimension in which we index.
+            alias: ``dim``.
         value (Tensor): The tensor used to add the elements along the target axis.
+            alias: ``source``.
+        alpha (Number, optional): Scaling factor for value. Default: 1.
+        out (Tensor, optional): The output tensor. Default: None.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -7634,7 +7658,8 @@ def index_add(
              [2., 2., 2.]])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.index_add(x, index, value, axis)
+        scaled_value = value * alpha if alpha != 1 else value
+        return _C_ops.index_add(x, index, scaled_value, axis, out=out)
 
     helper = LayerHelper("index_add", **locals())
     check_variable_and_dtype(
@@ -7671,110 +7696,25 @@ def index_add(
     return out
 
 
+@index_add_decorator()
 @inplace_apis_in_dygraph_only
 def index_add_(
-    x: Tensor, index: Tensor, axis: int, value: Tensor, name: str | None = None
+    x: Tensor,
+    index: Tensor,
+    axis: int,
+    value: Tensor,
+    alpha: int = 1,
+    name: str | None = None,
 ) -> Tensor:
     """
     Inplace version of ``index_add`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_index_add`.
     """
-    return _C_ops.index_add_(x, index, value, axis)
+    scaled_value = value * alpha if alpha != 1 else value
+    return _C_ops.index_add_(x, index, scaled_value, axis)
 
 
-@inplace_apis_in_dygraph_only
-def index_put_(
-    x: Tensor,
-    indices: Sequence[Tensor],
-    value: Tensor,
-    accumulate: bool = False,
-    name: str | None = None,
-) -> Tensor:
-    """
-    Inplace version of ``index_put`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_index_put`.
-    """
-    return _C_ops.index_put_(x, indices, value, accumulate)
-
-
-def index_put(
-    x: Tensor,
-    indices: Sequence[Tensor],
-    value: Tensor,
-    accumulate: bool = False,
-    name: str | None = None,
-) -> Tensor:
-    """
-    Puts values from the tensor values into the tensor x using the indices specified in indices (which is a tuple of Tensors).
-    The expression paddle.index_put_(x, indices, values) is equivalent to tensor[indices] = values. Returns x.
-    If accumulate is True, the elements in values are added to x. If accumulate is False, the behavior is undefined if indices contain duplicate elements.
-
-    Args:
-        x (Tensor) : The Source Tensor. Supported data types are int32, int64, float16, float32, float64, bool.
-        indices (list[Tensor]|tuple[Tensor]): The tuple of Tensor containing the indices to index.
-            The data type of ``tensor in indices`` must be int32, int64 or bool.
-        value (Tensor): The tensor used to be assigned to x.
-        accumulate (bool, optional): Whether the elements in values are added to x. Default: False.
-        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        Tensor, same dimension and dtype with x.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.zeros([3, 3])
-            >>> value = paddle.ones([3])
-            >>> ix1 = paddle.to_tensor([0,1,2])
-            >>> ix2 = paddle.to_tensor([1,2,1])
-            >>> indices=(ix1,ix2)
-
-            >>> out = paddle.index_put(x,indices,value)
-            >>> print(x)
-            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0., 0., 0.],
-             [0., 0., 0.],
-             [0., 0., 0.]])
-            >>> print(out)
-            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0., 1., 0.],
-             [0., 0., 1.],
-             [0., 1., 0.]])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.index_put(x, indices, value, accumulate)
-
-    helper = LayerHelper("index_put", **locals())
-    check_variable_and_dtype(
-        x,
-        'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
-        'paddle.tensor.manipulation.index_put',
-    )
-    check_variable_and_dtype(
-        value,
-        'value',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
-        'paddle.tensor.manipulation.index_put',
-    )
-
-    out = helper.create_variable_for_type_inference(x.dtype)
-
-    helper.append_op(
-        type='index_put',
-        inputs={
-            'x': x,
-            'indices': indices,
-            'value': value,
-        },
-        outputs={'out': out},
-        attrs={'accumulate': accumulate},
-    )
-    return out
-
-
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"], "shape": ["sizes"]})
 def unflatten(
     x: Tensor, axis: int, shape: ShapeLike, name: str | None = None
 ) -> Tensor:
@@ -7788,13 +7728,21 @@ def unflatten(
        :alt: Illustration of unflatten
        :align: center
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        Alias Support: The parameter name ``dim`` can be used as an alias for ``axis``.
+        Alias Support: The parameter name ``sizes`` can be used as an alias for ``shape``.
+
     Args:
         x (Tensor) : An N-D Tensor. The data type is float16, float32, float64, int16, int32, int64, bool, uint16.
+            Alias: ``input``.
         axis (int): :attr:`axis` to be unflattened, specified as an index into `x.shape`.
+            Alias: ``dim``.
         shape (list|tuple|Tensor): Unflatten :attr:`shape` on the specified :attr:`axis`. At most one dimension of the target :attr:`shape` can be -1.
             If the input :attr:`shape` does not contain -1 , the product of all elements in ``shape`` should be equal to ``x.shape[axis]``.
             The data type is `int` . If :attr:`shape` is a list or tuple, the elements of it should be integers or Tensors with shape [].
             If :attr:`shape` is an Tensor, it should be an 1-D Tensor.
+            Alias: ``sizes``.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -7810,21 +7758,21 @@ def unflatten(
             >>> axis = 1
             >>> res = paddle.unflatten(x, axis, shape)
             >>> print(res.shape)
-            [4, 2, 3, 8]
+            paddle.Size([4, 2, 3, 8])
 
             >>> x = paddle.randn(shape=[4, 6, 8])
             >>> shape = (-1, 2)
             >>> axis = -1
             >>> res = paddle.unflatten(x, axis, shape)
             >>> print(res.shape)
-            [4, 6, 4, 2]
+            paddle.Size([4, 6, 4, 2])
 
             >>> x = paddle.randn(shape=[4, 6, 8])
             >>> shape = paddle.to_tensor([2, 2])
             >>> axis = 0
             >>> res = paddle.unflatten(x, axis, shape)
             >>> print(res.shape)
-            [2, 2, 6, 8]
+            paddle.Size([2, 2, 6, 8])
     """
 
     # determine whether the input axis is valid.

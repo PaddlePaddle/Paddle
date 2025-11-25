@@ -81,9 +81,10 @@ struct Buffer {
   // After IPC/NVSHMEM synchronization, this flag will be true
   bool available = false;
 
-  // Barrier signals
-  int* barrier_signal_ptrs[NUM_MAX_NVL_PEERS] = {nullptr};
-  int** barrier_signal_ptrs_gpu = nullptr;
+  // Task fifo
+  int head = 0;
+  int* task_fifo_ptrs[NUM_MAX_NVL_PEERS] = {nullptr};
+  int** task_fifo_ptrs_gpu = nullptr;
 
   // Workspace
   void* workspace = nullptr;
@@ -99,6 +100,9 @@ struct Buffer {
   // Host-side RDMA-level MoE info
   volatile int* moe_recv_rdma_counter = nullptr;
   int* moe_recv_rdma_counter_mapped = nullptr;
+
+ private:
+  void move_fifo_slots(int num_slots = 1);
 
  public:
   Buffer(int rank,
@@ -275,7 +279,8 @@ struct Buffer {
       int num_experts,
       bool use_fp8,
       bool async,
-      bool return_recv_hook);
+      bool return_recv_hook,
+      int num_per_channel);
 
   std::tuple<deep_ep::detail::Tensor,
              std::optional<EventHandle>,
@@ -448,7 +453,8 @@ struct Buffer {
       int num_experts,
       bool use_fp8,
       bool async,
-      bool return_recv_hook);
+      bool return_recv_hook,
+      int num_per_channel);
 
   std::tuple<paddle::Tensor,
              std::optional<EventHandle>,

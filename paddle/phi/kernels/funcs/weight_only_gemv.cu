@@ -1357,9 +1357,17 @@ void WeightOnlyGemvKernel(const Context& dev_ctx,
   const T* bias_data = bias ? bias.get().data<T>() : nullptr;
   const T* weight_scale_data = weight_scale.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
-  int m = x.dims()[0];
-  int k = x.dims()[1];
-  int n = weight.dims()[0];
+  int64_t m = x.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t k = x.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t n = weight.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   WeightOnlyGemvWrapper<T>(dev_ctx,
                            x_data,

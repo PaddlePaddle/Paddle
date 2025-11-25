@@ -592,18 +592,20 @@ class GroupShardedStage3(nn.Layer):
             )
 
         def _forward_post_hook(layer, inputs, outputs):
+            if isinstance(outputs, paddle.Tensor):
+                outputs = (outputs,)
             return ForwardPostHooks.apply(
-                outputs,
-                layer,
-                self._order_tracer,
-                self._trainable_params,
-                self._param2buffer,
-                self._param2buffer_size,
-                self._rank,
-                self._group,
-                self._sync_comm,
-                self._offload,
-                task_flow,
+                *outputs,
+                layer=layer,
+                order_tracer=self._order_tracer,
+                trainable_params=self._trainable_params,
+                param2buffer=self._param2buffer,
+                param2buffer_size=self._param2buffer_size,
+                rank=self._rank,
+                group=self._group,
+                sync_comm=self._sync_comm,
+                offload=self._offload,
+                task_flow=task_flow,
             )
 
         # register previous forward hooks
@@ -903,7 +905,7 @@ class ForwardPostHooks(PyLayer):
     @staticmethod
     def forward(
         ctx,
-        inputs,
+        *inputs,
         layer,
         order_tracer,
         trainable_params,
@@ -936,8 +938,26 @@ class ForwardPostHooks(PyLayer):
         ctx.trainable_params = trainable_params
         ctx.param2buffer_size = param2buffer_size
         ctx.offload = offload
-
-        return inputs
+        inputs_list = []
+        grad_none = {}
+        tensor_count = 0
+        for input_tensor in inputs:
+            if isinstance(input_tensor, paddle.Tensor):
+                input_new = paddle.assign(input_tensor)
+                inputs_list.append(input_new)
+                input_new.stop_gradient = input_tensor.stop_gradient
+                if input_tensor.stop_gradient:
+                    grad_none[tensor_count] = True
+                else:
+                    grad_none[tensor_count] = False
+                tensor_count += 1
+            else:
+                inputs_list.append(input_tensor)
+        ctx.grad_none = grad_none
+        if len(inputs_list) == 1:
+            return inputs_list[0]
+        else:
+            return tuple(inputs_list)
 
     @staticmethod
     def backward(ctx, *args):
@@ -992,8 +1012,12 @@ class ForwardPostHooks(PyLayer):
                 sync_wait=sync_wait,
                 offload=offload,
             )
-
-        return args
+        grad_none = ctx.grad_none
+        args = list(args)
+        for i in range(len(args)):
+            if grad_none[i]:
+                args[i] = None
+        return tuple(args)
 
 
 class TaskFlow:

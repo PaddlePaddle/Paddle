@@ -71,7 +71,10 @@ void MultiEncoderXPUKernel(
   const int* max_seq_len_data = max_seq_len.get_ptr() == nullptr
                                     ? nullptr
                                     : max_seq_len.get_ptr()->data<int>();
-  int batch_size = x.dims()[0];
+  int64_t batch_size = x.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int seq_len = 1;
   int head_dim;
   if (x.dims().size() == 2) {
@@ -174,7 +177,10 @@ void MultiEncoderXPUKernel(
 
   xpu::Activation_t qkv_act(static_cast<xpu::Activation_t::act_enum>(act_type));
 
-  int batch = x.dims()[0];
+  int64_t batch = x.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   // matmul_size * layer_num
   if (seq_lod_data) {
     xpu::VectorParam<int> query_lod = {
@@ -229,7 +235,10 @@ void MultiEncoderXPUKernel(
     auto mask_dims = mask.get_ptr()->dims();
     std::vector<int> mask_shape(mask_dims.Get(),
                                 mask_dims.Get() + mask_dims.size());
-    int max_seq_len_value = x.dims()[1];
+    int64_t max_seq_len_value = x.dims()[1];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
     xpu::QKVAttnParam qkv_attn_param(batch,
                                      max_seq_len_value,
                                      head_num,
@@ -275,7 +284,10 @@ void MultiEncoderXPUKernel(
     }
   } else {
     // When no mask input, like VIT, create LOD to act as vsl.
-    int max_seq_len_value = x.dims()[1];
+    int64_t max_seq_len_value = x.dims()[1];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
     std::vector<int> lod;
     for (int i = 0; i < batch + 1; i++) {
       lod.push_back(i * max_seq_len_value);

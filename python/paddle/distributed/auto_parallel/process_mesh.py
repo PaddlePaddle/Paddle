@@ -485,7 +485,7 @@ class ProcessMesh(core.ProcessMesh):
         self,
         exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
-        exc_traceback: TracebackType | None,
+        traceback: TracebackType | None,
     ) -> None:
         from .static.dist_op import DistributedOperator
         from .static.dist_tensor import DistributedTensor

@@ -66,7 +66,7 @@ void LookupTableDequantKernel(const Context &dev_ctx,
           ids[i],
           row_number,
           common::errors::InvalidArgument(
-              "Variable value (input) of OP(fluid.layers.embedding) "
+              "Variable value (input) of OP(lookup_table_dequant) "
               "expected >= 0 and < %ld, but got %ld. Please check input "
               "value.",
               row_number,
@@ -75,7 +75,7 @@ void LookupTableDequantKernel(const Context &dev_ctx,
           ids[i],
           0,
           common::errors::InvalidArgument(
-              "Variable value (input) of OP(fluid.layers.embedding) "
+              "Variable value (input) of OP(lookup_table_dequant) "
               "expected >= 0 and < %ld, but got %ld. Please check input "
               "value.",
               row_number,

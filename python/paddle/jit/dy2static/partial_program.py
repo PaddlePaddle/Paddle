@@ -177,8 +177,6 @@ class PartialProgramLayer:
         self._origin_main_program = self._verify_program(main_program)
         with paddle.base.framework._dygraph_guard(paddle.base.dygraph.Tracer()):
             self._cuda_graph_vec = self._create_cuda_graph_vec()
-        self._cuda_graph_capture_mode = ""
-        self._cuda_graph_pool_id = 0
         # Set default mode to train
         self.training = True
         self._infer_info = ProgramInfo()
@@ -783,15 +781,6 @@ class PartialProgramLayer:
                     self._grad_var_names.get('out', []),
                     'x_grad_names',
                     self._grad_var_names.get('x', []),
-                )
-            )
-        if self._cuda_graph_capture_mode:
-            attrs.extend(
-                (
-                    'cuda_graph_capture_mode',
-                    self._cuda_graph_capture_mode,
-                    'cuda_graph_pool_id',
-                    self._cuda_graph_pool_id,
                 )
             )
 

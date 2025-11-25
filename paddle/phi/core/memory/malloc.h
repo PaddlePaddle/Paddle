@@ -41,6 +41,9 @@ PADDLE_API extern AllocationPtr Alloc(const phi::Place& place, size_t size);
 
 PADDLE_API extern uint64_t Release(const phi::Place& place);
 
+// Compact memory of free blocks held by the VmmAllocator.
+PADDLE_API extern size_t Compact(const phi::GPUPlace& place);
+
 PADDLE_API extern std::shared_ptr<Allocation> AllocShared(
     const phi::Place& place, size_t size, const phi::Stream& stream);
 

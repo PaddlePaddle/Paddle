@@ -194,7 +194,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
 
                 Args:
                     input(None): fake input
-                    output(None): fale output
+                    output(None): fake output
                 """
                 pass
 

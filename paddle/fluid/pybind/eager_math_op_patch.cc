@@ -56,11 +56,7 @@ using egr::InputsContainDistTensor;
 namespace paddle::pybind {
 
 static bool PyCheckInteger(PyObject* obj) {
-#if PY_VERSION_HEX < 0x03000000
-  return (PyLong_Check(obj) || PyInt_Check(obj)) && !PyBool_Check(obj);
-#else
   return PyLong_Check(obj) && !PyBool_Check(obj);
-#endif
 }
 
 static bool IsNumpyType(PyObject* obj) {
@@ -2204,8 +2200,16 @@ static PyObject* tensor__ne__method(TensorObject* self,
       other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
-      paddle::experimental::Scalar value =
-          CastPyArg2Scalar(other_obj, "__ne__", 0);
+      paddle::experimental::Scalar value;
+
+      // return True if other_obj is unsupported type
+      try {
+        value = CastPyArg2Scalar(other_obj, "__ne__", 0);
+      } catch (const ::common::enforce::EnforceNotMet& e) {
+        Py_INCREF(Py_True);
+        return Py_True;
+      }
+
       if (PyComplex_Check(other_obj)) {
         eager_gil_scoped_release guard;
         other_tensor =
@@ -2297,8 +2301,16 @@ static PyObject* tensor__eq__method(TensorObject* self,
       other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
-      paddle::experimental::Scalar value =
-          CastPyArg2Scalar(other_obj, "__eq__", 0);
+      paddle::experimental::Scalar value;
+
+      // return False if other_obj is unsupported type
+      try {
+        value = CastPyArg2Scalar(other_obj, "__eq__", 0);
+      } catch (const ::common::enforce::EnforceNotMet& e) {
+        Py_INCREF(Py_False);
+        return Py_False;
+      }
+
       if (PyComplex_Check(other_obj)) {
         eager_gil_scoped_release guard;
         other_tensor =

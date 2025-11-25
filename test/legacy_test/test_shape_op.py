@@ -110,7 +110,7 @@ class TestShapeWithSelectedRows(unittest.TestCase):
 
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or not core.supports_bfloat16(),
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or place do not support bfloat16",
 )
 class TestShapeOpBf16(OpTest):

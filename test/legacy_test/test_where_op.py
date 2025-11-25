@@ -549,7 +549,7 @@ class TestWhereAPI(unittest.TestCase):
     @unittest.skipIf(
         not (
             (paddle.is_compiled_with_cuda() or is_custom_device())
-            and paddle.base.core.supports_bfloat16()
+            and paddle.base.core.is_bfloat16_supported(get_device_place())
         ),
         "bf16 is not supported in current device",
     )
@@ -562,7 +562,7 @@ class TestWhereAPI(unittest.TestCase):
     @unittest.skipIf(
         not (
             (paddle.is_compiled_with_cuda() or is_custom_device())
-            and paddle.base.core.supports_bfloat16()
+            and paddle.base.core.is_bfloat16_supported(get_device_place())
         ),
         "bf16 is not supported in current device",
     )
@@ -575,7 +575,7 @@ class TestWhereAPI(unittest.TestCase):
     @unittest.skipIf(
         not (
             (paddle.is_compiled_with_cuda() or is_custom_device())
-            and paddle.base.core.supports_bfloat16()
+            and paddle.base.core.is_bfloat16_supported(get_device_place())
         ),
         "bf16 is not supported in current device",
     )

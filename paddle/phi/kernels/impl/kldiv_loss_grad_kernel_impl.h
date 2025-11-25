@@ -59,8 +59,8 @@ void KLDivLossGradKernel(const Context& dev_ctx,
   auto* loss_grad = &d_out;
 
   const int n = input_grad->dims()[0];
-  const int numel = input_grad->numel();
-  const int expand = numel / loss_grad->numel();
+  const int64_t numel = input_grad->numel();
+  const int64_t expand = numel / loss_grad->numel();
 
   dev_ctx.template Alloc<T>(input_grad);
 

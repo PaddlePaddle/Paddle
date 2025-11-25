@@ -454,6 +454,11 @@ class RecordedGpuMallocHelper {
     auto result = phi::dynload::cuMemCreate(handle, size, prop, flags);
     if (result == CUDA_SUCCESS) {
       cur_size_.fetch_add(size);
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
+      platform::RecordMemEvent(handle,
+                               GPUPlace(dev_id_),
+                               size,
+                               phi::TracerMemEventType::ReservedAllocate);
     }
     return result;
   }
@@ -462,6 +467,11 @@ class RecordedGpuMallocHelper {
     auto result = phi::dynload::cuMemRelease(handle);
     if (result == CUDA_SUCCESS) {
       cur_size_.fetch_sub(size);
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, -size);
+      platform::RecordMemEvent(&handle,
+                               GPUPlace(dev_id_),
+                               size,
+                               phi::TracerMemEventType::ReservedFree);
     }
     return result;
   }
@@ -474,6 +484,7 @@ class RecordedGpuMallocHelper {
     auto result = phi::dynload::hipMemCreate(handle, size, prop, flags);
     if (result == hipSuccess) {
       cur_size_.fetch_add(size);
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
     }
     return result;
   }
@@ -482,6 +493,7 @@ class RecordedGpuMallocHelper {
     auto result = phi::dynload::hipMemRelease(handle);
     if (result == hipSuccess) {
       cur_size_.fetch_sub(size);
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, -size);
     }
     return result;
   }

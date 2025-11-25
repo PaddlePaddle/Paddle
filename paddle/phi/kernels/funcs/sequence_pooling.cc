@@ -185,20 +185,20 @@ class MaxSeqPoolGradFunctor {
     PADDLE_ENFORCE_GT(og_dims.size(),
                       1,
                       errors::InvalidArgument(
-                          "The rank of output@Grad shall be greater than 1, "
+                          "The rank of output@GRAD shall be greater than 1, "
                           "but got %ld <= 1. Please check the input value.",
                           og_dims.size()));
     PADDLE_ENFORCE_GT(ig_dims.size(),
                       1,
                       errors::InvalidArgument(
-                          "The rank of input@Grad shall be greater than 1, but "
+                          "The rank of input@GRAD shall be greater than 1, but "
                           "got %ld <= 1. Please check the input value.",
                           ig_dims.size()));
     for (int64_t i = 1; i < og_dims.size(); ++i) {
       PADDLE_ENFORCE_EQ(og_dims[i],
                         ig_dims[i],
                         errors::InvalidArgument(
-                            "The dimension of input@Grad and output@Grad shall "
+                            "The dimension of input@GRAD and output@GRAD shall "
                             "be same. Expected %ld == %ld, but got %ld != %ld. "
                             "Please check the input value.",
                             og_dims[i],
@@ -210,7 +210,7 @@ class MaxSeqPoolGradFunctor {
         idx_dims,
         og_dims,
         errors::InvalidArgument(
-            "The dimension of index and output@Grad shall be same. Expected "
+            "The dimension of index and output@GRAD shall be same. Expected "
             "%ld == %ld, but got %ld != %ld. Please check the input value.",
             idx_dims,
             og_dims,
@@ -316,7 +316,7 @@ class SumSeqPoolGradFunctor {
     PADDLE_ENFORCE_EQ(in_w,
                       out_w,
                       errors::InvalidArgument(
-                          "The feature size of input@Grad and output@Grad "
+                          "The feature size of input@GRAD and output@GRAD "
                           "shall be same. Expected %ld == %ld, but got %ld != "
                           "%ld. Please check the input value.",
                           in_w,
@@ -447,7 +447,7 @@ class SequencePoolGradFunctor<phi::CPUContext, T> {
     }
 
     if (pooltype == "LAST" || pooltype == "FIRST") {
-      // set X@Grad be zero at first when pooltype is LAST/FIRST
+      // set X@GRAD be zero at first when pooltype is LAST/FIRST
       phi::funcs::SetConstant<phi::CPUContext, T> functor;
       functor(dev_ctx, in_grad, 0);
     }
