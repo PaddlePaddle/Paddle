@@ -64,7 +64,7 @@ from .io import (
     serialize_program,
     set_program_state,
 )
-from .meta_tensor import MetaTensor
+from .meta_tensor import MetaTensor  # noqa: F401
 from .nn.common import ExponentialMovingAverage, py_func
 from .nn.control_flow import Print
 from .nn.metric import accuracy, auc, ctr_metric_bundle
@@ -115,5 +115,4 @@ __all__ = [
     'create_parameter',
     'set_ipu_shard',
     'ctr_metric_bundle',
-    'MetaTensor',
 ]
