@@ -17,12 +17,12 @@
 
 function make_cpu_dockerfile(){
   dockerfile_name="Dockerfile.cuda9_cudnn7_gcc48_py35_centos6"
-  sed "s#<baseimg>#ubuntu:24.04#g" ./Dockerfile.ubuntu24 >${dockerfile_name}
+  sed "s#<baseimg>#ubuntu:20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
   sed -i "s#<setcuda>##g" ${dockerfile_name}
   sed -i "s#WITH_GPU:-ON#WITH_GPU:-OFF#g" ${dockerfile_name}
-  sed -i "/\/etc\/apt\/sources.list.d\/cuda/ d" ${dockerfile_name}
-  sed -i '/RUN curl https:\/\/developer.download.nvidia.cn/ d' ${dockerfile_name}
-  sed -i "s#RUN apt-key adv --fetch-keys https://developer.download.nvidia.cn/compute/cuda/repos/ubuntu2404/x86_64/3bf863cc.pub##g" ${dockerfile_name}
+  sed -i "s#RUN apt-key del 7fa2af80##g" ${dockerfile_name}
+  sed -i 's#RUN rm /etc/apt/sources.list.d/\*##g' ${dockerfile_name}
+  sed -i "s#RUN apt-key adv --fetch-keys https://developer.download.nvidia.cn/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub##g" ${dockerfile_name}
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i 's#RUN bash /build_scripts/install_trt.sh##g' ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
@@ -35,6 +35,25 @@ function make_cpu_dockerfile(){
     ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
     make -j8 \&\& make install " ${dockerfile_name}
   sed -i 's#<install_cpu_package>#RUN apt-get install -y gcc g++ make#g' ${dockerfile_name}
+  sed -i 's#RUN bash /build_scripts/install_gcc.sh gcc82#RUN add-apt-repository ppa:ubuntu-toolchain-r/test \&\& apt-get update \&\& apt-get install -y gcc-13 g++-13#g' ${dockerfile_name}
+  sed -i 's#/usr/local/gcc-8.2/bin/gcc#/usr/bin/gcc-13#g' ${dockerfile_name}
+  sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/bin/g++-13#g' ${dockerfile_name}
+  sed -i 's#ENV PATH=/usr/local/gcc-8.2/bin:$PATH##g' ${dockerfile_name}
+}
+
+
+function make_sot_dockerfile(){
+  dockerfile_name="Dockerfile.gcc133_ubuntu24_cpu_sot"
+  sed "s#<baseimg>#ubuntu:24.04#g" ./Dockerfile.ubuntu24 >${dockerfile_name}
+  sed -i "s#<setcuda>##g" ${dockerfile_name}
+  sed -i "s#WITH_GPU:-ON#WITH_GPU:-OFF#g" ${dockerfile_name}
+  sed -i "/\/etc\/apt\/sources.list.d\/cuda/ d" ${dockerfile_name}
+  sed -i '/RUN curl https:\/\/developer.download.nvidia.cn/ d' ${dockerfile_name}
+  sed -i "s#RUN apt-key adv --fetch-keys https://developer.download.nvidia.cn/compute/cuda/repos/ubuntu2404/x86_64/3bf863cc.pub##g" ${dockerfile_name}
+  dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
+  sed -i 's#RUN bash /build_scripts/install_trt.sh##g' ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN pip install wheel PyGithub distro" ${dockerfile_name}
+  sed -i 's#<install_cpu_package>#RUN apt-get install -y gcc g++ make libcurl4-openssl-dev gettext ninja-build#g' ${dockerfile_name}
 }
 
 
@@ -130,6 +149,7 @@ function make_ubuntu20_cu123_dockerfile(){
 
 function main() {
   make_cpu_dockerfile
+  make_sot_dockerfile
   make_ce_framework_dockerfile
   make_ubuntu20_cu12_dockerfile
   make_ubuntu20_cu123_dockerfile
