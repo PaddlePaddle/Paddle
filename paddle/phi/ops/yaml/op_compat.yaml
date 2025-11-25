@@ -2049,8 +2049,6 @@
 
 - op : index_elementwise_put_with_tensor
   backward : index_elementwise_put_with_tensor_grad, index_elementwise_put_with_tensor_double_grad
-  inputs :
-     {x : x, index : index, input_dims : input_dims, value: value, input_dims : input_dims, input_strides : input_strides, index_dims : index_dims, index_strides : index_strides, slice_offset : slice_offset}
   outputs :
      out : Out
 
