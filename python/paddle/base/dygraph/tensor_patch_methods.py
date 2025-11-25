@@ -1160,11 +1160,19 @@ def monkey_patch_tensor():
         self: Tensor, device_id: int | None = None, blocking: bool = True
     ) -> Tensor:
         res_place = framework._current_expected_place()
+        device_id = 0 if device_id is None else device_id
         if isinstance(res_place, core.CPUPlace):
-            paddle.set_device(0)
-            res_place = framework._current_expected_place()
-            paddle.set_device('cpu')
-        if isinstance(device_id, int):
+            device_type = paddle.device.get_all_device_type()
+            if (
+                len(device_type) != 0
+                and paddle.device.is_compiled_with_custom_device()
+            ):
+                res_place = core.CustomPlace(device_type[-1], device_id)
+            elif paddle.device.is_compiled_with_xpu():  # XPU
+                res_place = core.XPUPlace(device_id)
+            else:
+                res_place = core.CUDAPlace(device_id)  # GPU
+        else:
             if isinstance(res_place, core.XPUPlace):
                 res_place = core.XPUPlace(device_id)
             elif isinstance(res_place, core.CUDAPlace):
@@ -1173,7 +1181,6 @@ def monkey_patch_tensor():
                 res_place = core.CustomPlace(
                     res_place.get_device_type(), device_id
                 )
-
         if self.place._equals(res_place):
             return self
         else:
