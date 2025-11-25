@@ -105,12 +105,12 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
   const DataLayout data_layout = common::StringToDataLayout(data_format_str);
 
   const int64_t nt = output_grad->dims()[0];
-  const int64_t c = (data_layout == DataLayout::kNCHW ? output_grad->dims()[1]
-                                                      : output_grad->dims()[3]);
-  const int64_t h = (data_layout == DataLayout::kNCHW ? output_grad->dims()[2]
-                                                      : output_grad->dims()[1]);
-  const int64_t w = (data_layout == DataLayout::kNCHW ? output_grad->dims()[3]
-                                                      : output_grad->dims()[2]);
+  const int64_t c = (data_layout == DataLayout::NCHW ? output_grad->dims()[1]
+                                                     : output_grad->dims()[3]);
+  const int64_t h = (data_layout == DataLayout::NCHW ? output_grad->dims()[2]
+                                                     : output_grad->dims()[1]);
+  const int64_t w = (data_layout == DataLayout::NCHW ? output_grad->dims()[3]
+                                                     : output_grad->dims()[2]);
 
   const int64_t hw = h * w;
   const int64_t chw = c * hw;
@@ -121,8 +121,8 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
   const int64_t c2 = static_cast<int64_t>(c * 2 * shift_ratio);
 
   DDim in_grad_dims =
-      (data_layout == DataLayout::kNCHW ? common::make_ddim({nt, c, h, w})
-                                        : common::make_ddim({nt, h, w, c}));
+      (data_layout == DataLayout::NCHW ? common::make_ddim({nt, c, h, w})
+                                       : common::make_ddim({nt, h, w, c}));
   const T* output_grad_data = output_grad->data<T>();
   input_grad->Resize(in_grad_dims);
   T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
@@ -133,7 +133,7 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
   int64_t blocks_per_sm = dev_ctx.GetMaxPhysicalThreadCount() / threads;
   grid = std::min(dev_ctx.GetSMCount() * blocks_per_sm, grid);
 
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     if (output_grad->numel() < std::numeric_limits<int32_t>::max()) {
       KeTemporalShiftBwNCHW<T, int32_t><<<grid, threads, 0, dev_ctx.stream()>>>(
           output_grad_data, input_grad_data, ntchw, tchw, chw, hw, t, c1, c2);

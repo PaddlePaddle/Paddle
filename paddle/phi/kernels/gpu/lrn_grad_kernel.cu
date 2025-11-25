@@ -36,8 +36,8 @@ __global__ void KeCMRNormDiff(int img_size,
     const int h = (idx / W) % H;
     const int n = idx / W / H;
     const int offset =
-        (data_layout != DataLayout::kNHWC ? (n * C * H + h) * W + w
-                                          : ((n * H + h) * W + w) * C);
+        (data_layout != DataLayout::NHWC ? (n * C * H + h) * W + w
+                                         : ((n * H + h) * W + w) * C);
     x += offset;
     out += offset;
     mid += offset;
@@ -53,18 +53,18 @@ __global__ void KeCMRNormDiff(int img_size,
     // TODO(gongwb): optimize this with thread shared array.
     while (index < C + post_pad) {
       if (index < C) {
-        int idx = (data_layout != DataLayout::kNHWC ? index * step : index);
+        int idx = (data_layout != DataLayout::NHWC ? index * step : index);
         x_g[idx] = 0.0;
         accum += out_g[idx] * out[idx] / mid[idx];
       }
       if (index >= size) {
-        int idx = (data_layout != DataLayout::kNHWC ? (index - size) * step
-                                                    : index - size);
+        int idx = (data_layout != DataLayout::NHWC ? (index - size) * step
+                                                   : index - size);
         accum -= out_g[idx] * out[idx] / mid[idx];
       }
       if (index >= post_pad) {
-        int idx = (data_layout != DataLayout::kNHWC ? (index - post_pad) * step
-                                                    : index - post_pad);
+        int idx = (data_layout != DataLayout::NHWC ? (index - post_pad) * step
+                                                   : index - post_pad);
         x_g[idx] +=
             out_g[idx] * pow(mid[idx], negative_beta) - ratio * x[idx] * accum;
       }
