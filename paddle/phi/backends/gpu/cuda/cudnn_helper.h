@@ -45,7 +45,6 @@ enum class DataLayout {  // Not use
   kNCHW,
   kNCDHW,
   kNDHWC,  // add, liyamei
-  kNCHW_VECT_C,
 };
 
 enum class PoolingMode {
