@@ -533,9 +533,9 @@ def ihfft(
 
     Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
-        >>> import pycon
+        >>> import paddle
 
         >>> spectrum = paddle.to_tensor([10.0, -5.0, 0.0, -1.0, 0.0, -5.0])
         >>> print(paddle.fft.ifft(spectrum))
@@ -812,7 +812,7 @@ def rfftn(
             >>> # use axes(2, 0)
             >>> print(paddle.fft.rfftn(x, axes=(2, 0)))
             Tensor(shape=[2, 3, 4], dtype=complex64, place=Place(cpu), stop_gradient=True,
-                   [[(8.00000000+0.00000000j), (0.00000000+0.00000000j),
+                   [[[(8.00000000+0.00000000j), (0.00000000+0.00000000j),
                       (0.00000000+0.00000000j), (0.00000000+0.00000000j)],
                      [(8.00000000+0.00000000j), (0.00000000+0.00000000j),
                       (0.00000000+0.00000000j), (0.00000000+0.00000000j)],
