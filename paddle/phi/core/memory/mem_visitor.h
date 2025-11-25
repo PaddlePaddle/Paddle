@@ -16,7 +16,9 @@
 #include <cstdint>
 #include <vector>
 #include "paddle/phi/core/enforce.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/core/memory/allocation/vmm_ipc_allocation.h"
+#endif
 
 namespace paddle {
 namespace memory {
