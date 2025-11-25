@@ -98,19 +98,7 @@ def sparse_attention(
 
             >>> # `query`, `key` and `value` all have shape [1, 1, 4, 2]
             >>> query = paddle.to_tensor(
-            ...     [
-            ...         [
-            ...             [
-            ...                 [
-            ...                     0,
-            ...                     1,
-            ...                 ],
-            ...                 [2, 3],
-            ...                 [0, 1],
-            ...                 [2, 3],
-            ...             ]
-            ...         ]
-            ...     ],
+            ...     [[[[0, 1], [2, 3], [0, 1], [2, 3]]]],
             ...     dtype="float32",
             ... )
             >>> key = paddle.to_tensor([[[[0, 1], [2, 3], [0, 1], [2, 3]]]], dtype="float32")

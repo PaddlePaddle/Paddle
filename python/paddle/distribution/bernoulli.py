@@ -238,11 +238,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
                 >>> # `rsample` has to be followed by a `sigmoid`
                 >>> rv = Bernoulli(0.3)
-                >>> rsample = rv.rsample(
-                ...     [
-                ...         3,
-                ...     ]
-                ... )
+                >>> rsample = rv.rsample([3])
                 >>> rsample_sigmoid = paddle.nn.functional.sigmoid(rsample)
                 >>> print(rsample)
                 Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -255,9 +251,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 >>> print(
                 ...     paddle.nn.functional.sigmoid(
                 ...         rv.rsample(
-                ...             [
-                ...                 1000,
-                ...             ],
+                ...             [1000],
                 ...             temperature=1.0,
                 ...         )
                 ...     ).sum()
@@ -270,9 +264,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 >>> print(
                 ...     paddle.nn.functional.sigmoid(
                 ...         rv.rsample(
-                ...             [
-                ...                 1000,
-                ...             ],
+                ...             [1000],
                 ...             temperature=0.1,
                 ...         )
                 ...     ).sum()

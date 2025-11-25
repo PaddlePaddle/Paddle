@@ -545,16 +545,8 @@ def jacobian(
 
             >>> import paddle
 
-            >>> x1 = paddle.randn(
-            ...     [
-            ...         3,
-            ...     ]
-            ... )
-            >>> x2 = paddle.randn(
-            ...     [
-            ...         3,
-            ...     ]
-            ... )
+            >>> x1 = paddle.randn([3])
+            >>> x2 = paddle.randn([3])
             >>> x1.stop_gradient = False
             >>> x2.stop_gradient = False
 
@@ -653,16 +645,8 @@ def hessian(
 
             >>> import paddle
 
-            >>> x1 = paddle.randn(
-            ...     [
-            ...         3,
-            ...     ]
-            ... )
-            >>> x2 = paddle.randn(
-            ...     [
-            ...         4,
-            ...     ]
-            ... )
+            >>> x1 = paddle.randn([3])
+            >>> x2 = paddle.randn([4])
             >>> x1.stop_gradient = False
             >>> x2.stop_gradient = False
 

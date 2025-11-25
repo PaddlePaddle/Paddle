@@ -169,12 +169,7 @@ def block_multihead_attention(
             ... ):
             ...     max_seq_len = max(seq_lens)
             ...     mask = paddle.zeros(
-            ...         [
-            ...             batch_size,
-            ...             1,
-            ...             max_seq_len,
-            ...             max_seq_len + pre_cache_length,
-            ...         ],
+            ...         [batch_size, 1, max_seq_len, max_seq_len + pre_cache_length],
             ...         dtype=mask_type,
             ...     )
             ...     mask[:, :, :, :pre_cache_length] = 1
@@ -243,10 +238,7 @@ def block_multihead_attention(
             ...     "int32",
             ... )
             >>> seq_lens_decoder = paddle.to_tensor(
-            ...     [
-            ...         0,
-            ...     ]
-            ...     * batch_size,
+            ...     [0] * batch_size,
             ...     "int32",
             ... )
             >>> seq_lens_this_time = seq_lens_encoder

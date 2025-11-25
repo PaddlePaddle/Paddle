@@ -80,10 +80,7 @@ def variable_length_memory_efficient_attention(
             >>> key = paddle.randn([batch, num_head, seq_len, head_size], dtype=dtype)
             >>> value = paddle.randn([batch, num_head, seq_len, head_size], dtype=dtype)
             >>> seq_lens = paddle.to_tensor(
-            ...     [
-            ...         seq_len,
-            ...     ]
-            ...     * batch,
+            ...     [seq_len] * batch,
             ...     dtype='int32',
             ... )
             >>> mask = paddle.randn([batch, 1, seq_len, seq_len], dtype=dtype)
