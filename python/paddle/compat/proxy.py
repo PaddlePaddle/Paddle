@@ -198,15 +198,22 @@ class TorchProxyMetaFinder:
     Inspired by the setuptools _distutils_hack.
     """
 
+    _local_enabled_scope: set[str]
+    _globally_enabled: bool
+
     def __init__(self, scope: set[str] | None = None):
-        self._scope = scope
+        self._set_scope(scope)
+
+    def _set_scope(self, scope: set[str] | None):
+        self._local_enabled_scope = scope or set()
+        self._globally_enabled = scope is None
 
     def find_spec(self, fullname, path, target=None):
         if _is_torch_proxy_blocked_module(fullname):
             return self._find_spec_for_torch_proxy_blocked_module(fullname)
 
-        if self._scope is not None and _is_torch_proxy_local_enabled_module(
-            fullname, self._scope
+        if _is_torch_proxy_local_enabled_module(
+            fullname, self._local_enabled_scope
         ):
             return self._find_spec_for_torch_proxy_local_enabled_module(
                 fullname
@@ -219,7 +226,7 @@ class TorchProxyMetaFinder:
             return None
 
         if (
-            self._scope is not None
+            not self._globally_enabled
             and not _is_called_by_torch_proxy_local_enabled_module()
         ):
             return None
@@ -362,26 +369,27 @@ def _modify_scope_of_torch_proxy(
         warnings.warn(msg)
 
     if TORCH_PROXY_FINDER not in sys.meta_path:
-        TORCH_PROXY_FINDER._scope = scope
+        TORCH_PROXY_FINDER._set_scope(scope)
         return
 
-    if TORCH_PROXY_FINDER._scope is None:
+    if TORCH_PROXY_FINDER._globally_enabled:
         if scope is not None:
             _warn_or_not(
                 "PyTorch already enabled globally, scope modification ignored."
             )
+        TORCH_PROXY_FINDER._set_scope(scope)
         return
     if scope is None:
         _warn_or_not(
             "Enabling PyTorch proxy globally, previous scope will be ignored."
         )
-        TORCH_PROXY_FINDER._scope = scope
+        TORCH_PROXY_FINDER._globally_enabled = True
         return
-    if scope != TORCH_PROXY_FINDER._scope:
+    if scope != TORCH_PROXY_FINDER._local_enabled_scope:
         _warn_or_not(
-            f"Extending PyTorch proxy scope, previous scope: {TORCH_PROXY_FINDER._scope}, new scope: {scope}."
+            f"Extending PyTorch proxy scope, previous scope: {TORCH_PROXY_FINDER._local_enabled_scope}, new scope: {scope}."
         )
-    TORCH_PROXY_FINDER._scope |= scope
+    TORCH_PROXY_FINDER._local_enabled_scope |= scope
 
 
 def enable_torch_proxy(
@@ -471,8 +479,12 @@ def use_torch_proxy_guard(
             ...     assert torch.sin is paddle.sin
     """
     already_has_torch_proxy = TORCH_PROXY_FINDER in sys.meta_path
-    original_scope = TORCH_PROXY_FINDER._scope
-    if enable == already_has_torch_proxy and scope == original_scope:
+    original_local_enabled_scope = TORCH_PROXY_FINDER._local_enabled_scope
+    original_globally_enabled = TORCH_PROXY_FINDER._globally_enabled
+    if enable == already_has_torch_proxy and (
+        (original_globally_enabled and scope is None)
+        or (original_local_enabled_scope == (scope or set()))
+    ):
         yield
         return
     if enable:
@@ -480,14 +492,21 @@ def use_torch_proxy_guard(
         try:
             yield
         finally:
-            TORCH_PROXY_FINDER._scope = original_scope
+            TORCH_PROXY_FINDER._local_enabled_scope = (
+                original_local_enabled_scope
+            )
+            TORCH_PROXY_FINDER._globally_enabled = original_globally_enabled
             disable_torch_proxy()
     else:
         disable_torch_proxy()
         try:
             yield
         finally:
-            enable_torch_proxy(scope=original_scope, silent=True)
+            enable_torch_proxy(scope=None, silent=True)
+            TORCH_PROXY_FINDER._local_enabled_scope = (
+                original_local_enabled_scope
+            )
+            TORCH_PROXY_FINDER._globally_enabled = original_globally_enabled
 
 
 def extend_torch_proxy_blocked_modules(modules: Iterable[str]):
