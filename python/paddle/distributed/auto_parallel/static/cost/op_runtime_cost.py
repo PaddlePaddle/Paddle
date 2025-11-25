@@ -257,15 +257,21 @@ def measure_program_real_op_cost(
     Example
     -----------
     * Profiling a simple program from scratch:
-    >>> from paddle.distributed.auto_parallel.static.utils import measure_program_real_op_cost
-    >>> program = ... # build your own program object here.
+    >>> from paddle.distributed.auto_parallel.static.utils import (
+    ...     measure_program_real_op_cost,
+    ... )
+    >>> program = ...  # build your own program object here.
     >>> measure_program_real_op_cost(
     >>>     program, verbose_level=1
     >>> )
     * Profiling a program which is already embedded into an Executor or some other class instance:
     >>> import paddle
-    >>> from paddle.distributed.auto_parallel.static.utils import measure_program_real_op_cost
-    >>> place: str = paddle.device.get_device() # here we assume place = "cuda:x"
+    >>> from paddle.distributed.auto_parallel.static.utils import (
+    ...     measure_program_real_op_cost,
+    ... )
+    >>> place: str = (
+    ...     paddle.device.get_device()
+    ... )  # here we assume place = "cuda:x"
     >>> place = paddle.CUDAPlace(int(place.split(':')[1]))
     >>> # here "program" is an inner object that has already been built before
     >>> measure_program_real_op_cost(program, verbose_level=1)

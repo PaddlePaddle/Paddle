@@ -913,3 +913,33 @@ def legacy_reduction_special_decorator(
 
     wrapper.__signature__ = inspect.signature(init_func)
     return wrapper
+
+
+def index_add_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> _RetT:
+            if "input" in kwargs:
+                kwargs["x"] = kwargs.pop("input")
+            if "dim" in kwargs:
+                kwargs["axis"] = kwargs.pop("dim")
+            if "source" in kwargs:
+                kwargs["value"] = kwargs.pop("source")
+
+            if len(args) >= 2 and isinstance(args[1], int):
+                kwargs["x"] = args[0]
+                kwargs["axis"] = args[1]
+                if len(args) > 2:
+                    kwargs["index"] = args[2]
+                if len(args) > 3:
+                    kwargs["value"] = args[3]
+                args = args[4:]
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator

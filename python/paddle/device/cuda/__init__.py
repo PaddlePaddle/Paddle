@@ -51,6 +51,11 @@ __all__ = [
     'get_device_capability',
     'reset_max_memory_allocated',
     'reset_max_memory_reserved',
+    'memory_summary',
+    'vmm_max_free_size',
+    'vmm_compact',
+    'vmm_free_block_info',
+    'vmm_all_block_info',
 ]
 
 
@@ -809,3 +814,438 @@ def manual_seed(seed: int) -> None:
         core.default_cpu_generator().manual_seed(seed)
     else:
         core.default_cuda_generator(place.get_device_id()).manual_seed(seed)
+
+
+def vmm_max_free_size(device: _CudaPlaceLike | None = None) -> tuple[int, int]:
+    '''
+    Return the largest continuous free memory block size and the total free size
+    managed by the Virtual Memory Management (VMM) allocator of the given device.
+
+    Args:
+        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
+            Default: None.
+
+    Returns:
+        tuple[int, int]: A tuple containing the largest continuous free memory block size (in bytes)
+        and the total free memory size (in bytes).
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
+
+            >>> max_free, total_free = paddle.device.cuda.vmm_max_free_size(0)
+            >>> print(f"Max free size: {max_free}, Total free size: {total_free}")
+    '''
+    name = 'paddle.device.cuda.vmm_max_free_size'
+    if not (core.is_compiled_with_cuda()):
+        raise ValueError(
+            f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support to call this API."
+        )
+    device_id = extract_cuda_device_id(device, op_name=name)
+    return core.vmm_max_free_size(device_id)
+
+
+def vmm_compact(device: _CudaPlaceLike | None = None) -> int:
+    '''
+    Defragment the free memory blocks managed by the Virtual Memory Management (VMM)
+    allocator of the given device.
+
+    Args:
+        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
+            Default: None.
+
+    Returns:
+        int: The amount of memory (in bytes) that was moved during the compaction.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
+
+            >>> moved_bytes = paddle.device.cuda.vmm_compact(0)
+            >>> print(f"Bytes moved during compaction: {moved_bytes}")
+    '''
+    name = 'paddle.device.cuda.vmm_compact'
+    if not (core.is_compiled_with_cuda()):
+        raise ValueError(
+            f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support to call this API."
+        )
+    device_id = extract_cuda_device_id(device, op_name=name)
+    return core.vmm_compact(device_id)
+
+
+def vmm_free_block_info(
+    device: _CudaPlaceLike | None = None,
+) -> list[list[tuple[int, int]]]:
+    '''
+    Return detailed information about all free memory blocks managed by the Virtual Memory Management (VMM)
+    allocator of the given device.
+
+    Args:
+        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
+            Default: None.
+
+    Returns:
+        list[list[tuple[int, int]]]: A nested list. The outer list corresponds to different
+        Allocator. The inner list contains tuples, where each tuple is (size_in_bytes, allocation_ptr).
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
+
+            >>> info = paddle.device.cuda.vmm_free_block_info(0)
+            >>> # info might look like: [[(2002049024, 43983227392)], [(3002069522, 46983227392)]]
+            >>> print(info)
+    '''
+    name = 'paddle.device.cuda.vmm_free_block_info'
+    if not (core.is_compiled_with_cuda()):
+        raise ValueError(
+            f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support to call this API."
+        )
+    device_id = extract_cuda_device_id(device, op_name=name)
+    return core.vmm_free_block_info(device_id)
+
+
+def vmm_all_block_info(
+    device: _CudaPlaceLike | None = None,
+) -> list[list[tuple[int, int, bool]]]:
+    '''
+    Return detailed information about all memory blocks (both free and allocated) managed by
+    the Virtual Memory Management (VMM) allocator of the given device.
+
+    Args:
+        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
+            Default: None.
+
+    Returns:
+        list[list[tuple[int, int, bool]]]: A nested list. The outer list corresponds to different
+        Allocator. The inner list contains tuples, where each
+        tuple is (size_in_bytes, allocation_ptr, is_free).
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
+
+            >>> info = paddle.device.cuda.vmm_all_block_info(0)
+            >>> # info might look like: [[(2002049024, 43983227392, True), (3002069522, 46983227392, False)]]
+            >>> print(info)
+    '''
+    name = 'paddle.device.cuda.vmm_all_block_info'
+    if not (core.is_compiled_with_cuda()):
+        raise ValueError(
+            f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support to call this API."
+        )
+    device_id = extract_cuda_device_id(device, op_name=name)
+    return core.vmm_all_block_info(device_id)
+
+
+def memory_summary(device: _CudaPlaceLike | None = None) -> None:
+    '''
+    Return a string containing a detailed summary of the CUDA memory usage
+    for the specified device, printed in three distinct sections: Global Summary,
+    Allocator Summary, and Distribution. This function prints the summary directly
+    to the terminal.
+
+    Args:
+        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
+            Default: None.
+
+    The summary includes:
+    1. Global Summary: GPU utilization rates and physical memory information (similar to nvidia-smi).
+    2. Allocator Summary: Memory allocated by the PaddlePaddle's allocator (Total, Used, Free),
+       including a Weighted Fragmentation Rate.
+    3. Distribution: A wide pivot table showing the size distribution of allocated blocks
+       (split by common sizes like 1M, 10M, ... 3G).
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
+
+            >>> paddle.device.cuda.memory_summary(0)
+    '''
+    nvidia_smi_AVAILABLE = False
+    try:
+        # import nvidia_smi, pip install nvidia-ml-py3
+        import nvidia_smi
+
+        nvidia_smi_AVAILABLE = True
+    except ImportError:
+        nvidia_smi_AVAILABLE = False
+
+    # --- Constants ---
+    KB = 1024
+    MB = 1024 * 1024
+    GB = 1024 * 1024 * 1024
+
+    THRESHOLDS = [
+        1 * MB,
+        10 * MB,
+        50 * MB,
+        100 * MB,
+        200 * MB,
+        400 * MB,
+        600 * MB,
+        800 * MB,
+        1 * GB,
+        2 * GB,
+        3 * GB,
+    ]
+    RANGE_HEADERS = [
+        "[0B,1M)",
+        "[1M,10M)",
+        "[10M,50M)",
+        "[50M,100M)",
+        "[100M,200M)",
+        "[200M,400M)",
+        "[400M,600M)",
+        "[600M,800M)",
+        "[800M,1G)",
+        "[1G,2G)",
+        "[2G,3G)",
+        "[3G,+INF)",
+    ]
+
+    allocator_lists = vmm_all_block_info(device=device)
+
+    # --- Formatting Helpers ---
+    def format_size(size_bytes):
+        if size_bytes == 0:
+            return "0 B"
+        if size_bytes < MB:
+            return f"{size_bytes / KB:.2f} KB"
+        if size_bytes < GB:
+            return f"{size_bytes / MB:.2f} MB"
+        return f"{size_bytes / GB:.2f} GB"
+
+    def print_table(title, headers, rows):
+        if not rows:
+            return
+        # Calculate widths
+        col_widths = [len(str(h)) for h in headers]
+        for row in rows:
+            for i, cell in enumerate(row):
+                if i < len(col_widths):
+                    col_widths[i] = max(col_widths[i], len(str(cell)))
+        col_widths = [w + 2 for w in col_widths]
+
+        # Build lines
+        row_fmt = "|" + "|".join([f"{{:^{w}}}" for w in col_widths]) + "|"
+        header_sep = "+" + "+".join(["=" * w for w in col_widths]) + "+"
+        inner_sep = "+" + "+".join(["-" * w for w in col_widths]) + "+"
+
+        print(f"\n### {title}")
+        print(header_sep)
+        print(
+            "|"
+            + "|".join([f"{h:^{w}}" for h, w in zip(headers, col_widths)])
+            + "|"
+        )
+        print(header_sep)
+
+        for i, row in enumerate(rows):
+            print(row_fmt.format(*[str(c) for c in row]))
+            if (
+                title == "Block Size Distribution"
+                and (i + 1) % 2 == 0
+                and i != len(rows) - 1
+            ):
+                print(inner_sep)
+            elif title != "Block Size Distribution":
+                print(inner_sep)
+        if title == "Block Size Distribution":
+            print(header_sep)
+
+    # --- Feature 1: Global Summary with NVML & Rates ---
+
+    # 1.1 Get Paddle Stats
+    mem_allocated = paddle.device.cuda.memory_allocated()
+    max_mem_allocated = paddle.device.cuda.max_memory_allocated()
+    mem_reserved = paddle.device.cuda.memory_reserved()
+    max_mem_reserved = paddle.device.cuda.max_memory_reserved()
+
+    # 1.2 Calculate Rates (Utilization of the Reserved Pool)
+    # Rate = How much of the reserved pool is actually holding tensor data?
+    cur_alloc_rate = (
+        ((mem_reserved - mem_allocated) / mem_reserved)
+        if mem_reserved > 0
+        else 0.0
+    )
+    max_alloc_rate = (
+        ((mem_reserved - max_mem_allocated) / mem_reserved)
+        if mem_reserved > 0
+        else 0.0
+    )
+
+    # 1.3 Get Physical Usage via nvidia_smi
+    phy_used_str = "N/A"
+    if nvidia_smi_AVAILABLE:
+        try:
+            nvidia_smi.nvmlInit()
+            device_id = extract_cuda_device_id(
+                device, op_name="paddle.device.cuda.memory_summary"
+            )
+            handle = nvidia_smi.nvmlDeviceGetHandleByIndex(device_id)
+            info = nvidia_smi.nvmlDeviceGetMemoryInfo(handle)
+            phy_used_str = format_size(info.used)
+            phy_total_str = format_size(info.total)
+            # nvidia_smi.nvmlShutdown() # Optional, depends on lifecycle
+        except Exception as e:
+            phy_used_str = "Err"
+            phy_total_str = "Err"
+    else:
+        print(
+            "Place install nvidia-smi to check real memory usage, pip install command: `pip install nvidia-ml-py3`"
+        )
+        phy_used_str = "No nvidia_smi"
+        phy_total_str = "No nvidia_smi"
+
+    global_headers = [
+        "Allocators",
+        "Allocated",
+        "Max Alloc",
+        "Reserved",
+        "Max Reserved",
+        "Cur Util Rate",
+        "Max Util Rate",
+        "Phy GPU Used / Total",
+    ]
+
+    global_rows = [
+        [
+            len(allocator_lists),
+            format_size(mem_allocated),
+            format_size(max_mem_allocated),
+            format_size(mem_reserved),
+            format_size(max_mem_reserved),
+            f"{cur_alloc_rate:.2%}",
+            f"{max_alloc_rate:.2%}",
+            phy_used_str + ' / ' + phy_total_str,
+        ]
+    ]
+
+    print_table("Global Memory Snapshot", global_headers, global_rows)
+
+    # --- 2. Allocator Analysis ---
+    summary_rows = []
+    dist_rows = []
+
+    for idx, blocks in enumerate(allocator_lists):
+        allocator_name = f"Allocator_{idx}"
+
+        # A. Basic Counting
+        total_blocks = len(blocks)
+        free_blocks = 0
+        total_size = 0
+        free_size = 0
+        max_free_size = 0
+        max_used_size = 0
+        buckets = [[0, 0] for _ in range(len(RANGE_HEADERS))]
+
+        for size, addr, is_free in blocks:
+            total_size += size
+            if is_free:
+                free_blocks += 1
+                free_size += size
+                max_free_size = max(max_free_size, size)
+            else:
+                max_used_size = max(max_used_size, size)
+
+            # Bucket Mapping
+            b_idx = len(THRESHOLDS)
+            for i, t in enumerate(THRESHOLDS):
+                if size < t:
+                    b_idx = i
+                    break
+            buckets[b_idx][0 if is_free else 1] += 1
+
+        used_blocks = total_blocks - free_blocks
+        used_size = total_size - free_size
+
+        # B. Advanced Fragmentation Calculation
+        frag_ratio = 0.0
+
+        if free_size > 0 and total_blocks > 0:
+            # Factor 1: Mass Fragmentation (How small is the largest chunk?)
+            # Range: [0, 1]. 0 means MaxFree == TotalFree (Good).
+            # frag_mass = 1.0 - (max_free_size / free_size)
+
+            # Factor 2: Hole Density (How porous is the memory layout?)
+            # Range: [0, 1]. High means many holes relative to total blocks.
+            # frag_holes = free_blocks / total_blocks
+
+            # Composite Index
+            # If Mass Frag is High, ratio is High.
+            # If Mass Frag is Low (Good), we penalize it if Hole Density is High.
+            # frag_ratio = frag_mass + (1.0 - frag_mass) * frag_holes
+
+            frag_ratio = 1 - (max_free_size / free_size) * (
+                used_blocks / total_blocks
+            )
+        else:
+            # No free memory means 0 fragmentation (Fully utilized)
+            frag_ratio = 0.0
+
+        # C. Summary Row (Total -> Used -> Free)
+        summary_rows.append(
+            [
+                allocator_name,
+                total_blocks,
+                used_blocks,
+                free_blocks,
+                format_size(total_size),
+                format_size(used_size),
+                format_size(free_size),
+                format_size(max_used_size),
+                format_size(max_free_size),
+                f"{frag_ratio:.2%}",  # The new composite metric
+            ]
+        )
+
+        # D. Distribution Rows
+        dist_rows.append(
+            [allocator_name, "Free Blocks"] + [b[0] for b in buckets]
+        )
+        dist_rows.append(
+            [allocator_name, "Used Blocks"] + [b[1] for b in buckets]
+        )
+
+    # --- 3. Render Outputs ---
+    sum_headers = [
+        "ID",
+        "Tot Blks",
+        "Used Blks",
+        "Free Blks",
+        "Tot Size",
+        "Used Size",
+        "Free Size",
+        "Max Used",
+        "Max Free",
+        "Frag Ratio*",
+    ]
+    print_table("Allocator Summary Statistics", sum_headers, summary_rows)
+    print(
+        " * Frag_Ratio = Frag_Mass + (1 - Frag_Mass) x (Free_Blks / Tot_Blks)"
+    )
+    print(" * Frag_Mass  = 1 - (Max_Free / Free_Size)")
+
+    dist_headers = ["Allocator ID", "Block Type", *RANGE_HEADERS]
+    print_table("Block Size Distribution", dist_headers, dist_rows)

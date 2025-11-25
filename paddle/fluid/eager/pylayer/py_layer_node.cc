@@ -159,8 +159,8 @@ GradNodePyLayer::operator()(
   auto backward_fn =
       PyObject_GetAttrString(reinterpret_cast<PyObject*>(ctx), "backward");
   if (!backward_fn) {
-    PADDLE_THROW(
-        common::errors::InvalidArgument("Get backward function failed."));
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "%s:Get backward function failed.", name()));
   }
   bool need_grad_tmp = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(create_graph && need_grad_tmp);
@@ -194,8 +194,9 @@ GradNodePyLayer::operator()(
           << ctx->forward_input_tensor_is_duplicable.size();
   if (outputs_size > ctx->forward_input_tensor_is_duplicable.size()) {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "The number of outputs of `PyLayer.backward` should be %d, but "
+        "%s : The number of outputs of `PyLayer.backward` should be %d, but "
         "received %d.",
+        name(),
         ctx->forward_input_tensor_is_duplicable.size(),
         outputs_size));
   }
@@ -231,8 +232,9 @@ GradNodePyLayer::operator()(
             grad_out.push_back({paddle::Tensor()});
           } else {
             PADDLE_THROW(common::errors::InvalidArgument(
-                "We can only support Tensor or None for backward output, "
+                "%s : We can only support Tensor or None for backward output, "
                 ", but got %s, please check your PyLayer code and make it fits",
+                name(),
                 reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
           }
         }

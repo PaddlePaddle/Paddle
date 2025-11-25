@@ -66,6 +66,44 @@ def add_doc_and_signature(func_name: str, docstr: str, func_def: str) -> None:
 
 
 add_doc_and_signature(
+    "acos",
+    r"""
+    Acos Activation Operator.
+
+    .. math::
+        out = cos^{-1}(x)
+
+    Args:
+        x (Tensor): Input of Acos operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Output of Acos operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.acos(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.98231316, 1.77215421, 1.47062886, 1.26610363])
+""",
+    """
+def acos(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+    ) -> Tensor
+""",
+)
+
+add_doc_and_signature(
     "acosh",
     r"""
 Acosh Activation Operator.
@@ -2498,7 +2536,7 @@ add_doc_and_signature(
 """,
     """
 def logical_and(
-    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor
 """,
 )
@@ -2549,7 +2587,7 @@ add_doc_and_signature(
 """,
     """
 def logical_or(
-    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor
 """,
 )
@@ -2595,7 +2633,7 @@ add_doc_and_signature(
 """,
     """
 def logical_not(
-    x: Tensor, out: Tensor | None = None, name: str | None = None
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor
 """,
 )
@@ -2646,7 +2684,7 @@ add_doc_and_signature(
 """,
     """
 def logical_xor(
-    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor
 """,
 )
@@ -2743,7 +2781,7 @@ add_doc_and_signature(
 """,
     """
 def tanh(
-    x: Tensor, *, out: Tensor | None = None, name: str | None = None,
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor
 """,
 )
@@ -2783,7 +2821,7 @@ add_doc_and_signature(
 """,
     """
 def exp(
-    x: Tensor, *, out: Tensor | None = None, name: str | None = None
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor
 """,
 )
@@ -2823,7 +2861,7 @@ add_doc_and_signature(
 """,
     """
 def expm1(
-    x: Tensor, *, out: Tensor | None = None, name: str | None = None
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor
 """,
 )
@@ -2955,7 +2993,7 @@ add_doc_and_signature(
 """,
     """
 def round(
-    x: Tensor, decimals = 0, *, out: Tensor | None = None, name: str | None = None,
+    x: Tensor, decimals: int = 0, name: str | None = None, *, out: Tensor | None = None,
 ) -> Tensor
 """,
 )

@@ -141,6 +141,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/phi/core/memory/allocation/mmap_allocator.h"
+#include "paddle/phi/core/memory/mem_utils.h"
 #include "paddle/phi/core/platform/cpu_helper.h"
 #include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/device_context.h"
@@ -3623,7 +3624,6 @@ All parameter, weight, gradient are variables in Paddle.
     }
     platform::EmptyCache();
   });
-  m.def("vmm_compact", [] { platform::VmmCompact(); });
   m.def(
       "get_device_properties",
       [](int id) -> const gpuDeviceProp & {
@@ -3672,8 +3672,18 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #endif
 #if defined(PADDLE_WITH_CUDA)
-  m.def("vmm_max_free_size", [] {
-    memory::VmmMaxFreeSize(phi::GPUPlace(platform::GetCurrentDeviceId()), 1);
+  m.def("vmm_max_free_size", [](int device_id) {
+    return memory::VmmMaxFreeSize(phi::GPUPlace(device_id), 1);
+  });
+  m.def("vmm_compact", [](int device_id) {
+    return paddle::memory::VmmCompact(phi::GPUPlace(device_id));
+  });
+  m.def("vmm_free_block_info", [](int device_id) {
+    return paddle::memory::FreeBlockInfoOfVmmAllocator(
+        phi::GPUPlace(device_id));
+  });
+  m.def("vmm_all_block_info", [](int device_id) {
+    return paddle::memory::AllBlockInfoOfVmmAllocator(phi::GPUPlace(device_id));
   });
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -3809,7 +3819,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("save", &paddle::platform::ProfilerResult::Save)
       .def("get_extra_info", &paddle::platform::ProfilerResult::GetExtraInfo)
       .def("get_version", &paddle::platform::ProfilerResult::GetVersion)
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || PADDLE_WITH_XPU
       .def("get_span_index", &paddle::platform::ProfilerResult::GetSpanIndex)
       .def("get_device_property",
            &paddle::platform::ProfilerResult::GetDeviceProperty);
