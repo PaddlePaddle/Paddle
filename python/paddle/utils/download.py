@@ -317,19 +317,26 @@ def _is_within_directory(directory, target):
     """Check if the target path is within the given directory."""
     abs_directory = os.path.abspath(directory)
     abs_target = os.path.abspath(target)
-    prefix = os.path.commonprefix([abs_directory, abs_target])
+    prefix = os.path.commonpath([abs_directory, abs_target])
     return prefix == abs_directory
 
 
 def _safe_extract(tar, path, members=None):
     """Safely extract tar files to prevent path traversal attacks."""
+    extract_members = []
     for member in tar.getmembers():
         member_path = os.path.join(path, member.name)
         if not _is_within_directory(path, member_path):
             raise Exception(
                 f"Attempted path traversal in tar file: {member.name}"
             )
-    tar.extractall(path, members)
+        # Filter out symlinks, hardlinks, and other special files to prevent symlink attacks
+        if member.isfile() or member.isdir():
+            extract_members.append(member)
+        else:
+            logger.warning(f"Skipping non-regular file in tar: {member.name}")
+
+    tar.extractall(path, members=extract_members)
 
 
 def _uncompress_file_tar(filepath, mode="r:*"):
