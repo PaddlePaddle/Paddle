@@ -2576,22 +2576,33 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
 
         # Build environment dict
         env_markers = {
-            'python_version': f"{sys.version_info.major}.{sys.version_info.minor}",
-            'python_full_version': f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
-            'platform_system': platform.system(),
-            'platform_machine': platform.machine(),
-            'sys_platform': sys.platform,
+            'python_version': (sys.version_info.major, sys.version_info.minor),
+            'python_full_version': (
+                sys.version_info.major,
+                sys.version_info.minor,
+                sys.version_info.micro,
+            ),
+            'platform_system': f'"{platform.system()}"',
+            'platform_machine': f'"{platform.machine()}"',
+            'sys_platform': f'"{sys.platform}"',
         }
 
-        # Simple marker evaluation - handle common cases
-        # This is a simplified version that handles the most common patterns
+        # Marker evaluation
         try:
-            # Replace marker variables with their values
             eval_str = marker_str
+            # Replace marker variables with their values
             for key, value in env_markers.items():
-                eval_str = eval_str.replace(key, f'"{value}"')
+                eval_str = eval_str.replace(key, str(value))
 
-            # Evaluate the expression
+            def version_to_tuple(match):
+                version_str = match.group(1)
+                parts = version_str.split('.')
+                return '(' + ', '.join(parts) + ')'
+
+            eval_str = re.sub(
+                r'["\'](\d+(?:\.\d+)*)["\']', version_to_tuple, eval_str
+            )
+
             return eval(eval_str)
         except Exception as e:
             raise RuntimeError(f"Failed to evaluate marker '{marker_str}': {e}")
