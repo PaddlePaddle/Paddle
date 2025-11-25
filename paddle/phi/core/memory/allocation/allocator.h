@@ -25,7 +25,6 @@
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/inlined_vector.h"
-#include "paddle/phi/core/memory/mem_visitor.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -44,6 +43,7 @@ COMMON_DECLARE_int64(alloc_fill_value);
 
 namespace paddle {
 namespace memory {
+class AllocatorVisitor;
 namespace allocation {
 
 // Exception when `Alloc`/`AllocShared` failed
@@ -58,20 +58,6 @@ struct BadAlloc : public std::exception {
 };
 
 class Allocator;
-
-struct VmmChunkMeta {
-  CUdeviceptr base;
-  size_t size;
-  CUmemGenericAllocationHandle handle;
-  int device;
-};
-
-// Block中的一段连续子区间
-struct BlockPart {
-  std::shared_ptr<VmmChunkMeta> chunk;
-  size_t chunk_rel_off;  // 相对 chunk->base 的偏移
-  size_t len;            // 本子段长度
-};
 
 // Allocation is the object holding the actually pointer. Use
 // `Allocation::ptr()` will returns the pointer that allocated.
@@ -121,15 +107,8 @@ class Allocation : public phi::Allocation {
       : phi::Allocation(ptr, size, place), base_ptr_(ptr) {}
   Allocation(void* ptr, void* base_ptr, size_t size, const phi::Place& place)
       : phi::Allocation(ptr, size, place), base_ptr_(base_ptr) {}
-  Allocation(void* ptr,
-             size_t size,
-             phi::Place place,
-             CUmemGenericAllocationHandle handle)
-      : phi::Allocation(ptr, size, place), base_ptr_(ptr), handle_(handle) {}
 
   void* base_ptr() const { return base_ptr_; }
-  virtual const CUmemGenericAllocationHandle handle() const { return handle_; }
-  virtual const std::vector<BlockPart>* parts() const { return nullptr; }
 
  private:
   inline void RegisterDecoratedAllocator(Allocator* allocator) {
@@ -144,7 +123,6 @@ class Allocation : public phi::Allocation {
 
  private:
   void* base_ptr_;  // the point that directly requested from system
-  CUmemGenericAllocationHandle handle_;
 
   /**
    * NOTE(zjl): Since decorated_allocators_ is usually a small vector.
@@ -225,7 +203,7 @@ class PADDLE_API Allocator : public phi::Allocator {
   uint64_t Release(const phi::Place& place) { return ReleaseImpl(place); }
   size_t Compact(const phi::Place& place) { return CompactImpl(place); }
 
-  virtual void Accept(AllocatorVisitor* visitor) { visitor->Visit(this); }
+  virtual void Accept(AllocatorVisitor* visitor);
 
  protected:
   virtual phi::Allocation* AllocateImpl(size_t size) = 0;

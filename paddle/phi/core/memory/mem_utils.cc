@@ -17,6 +17,7 @@
 #include <algorithm>
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
 #include "paddle/phi/core/memory/malloc.h"
+#include "paddle/phi/core/memory/mem_visitor.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 #ifdef PADDLE_WITH_CUDA

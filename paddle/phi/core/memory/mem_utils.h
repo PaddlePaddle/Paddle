@@ -21,6 +21,7 @@
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
+#include "paddle/phi/core/memory/allocation/vmm_ipc_allocation.h"
 
 namespace paddle {
 
@@ -49,9 +50,6 @@ struct BlockAllocation : public Allocation {
     it->allocation_ = this;
   }
   std::list<Block>::iterator block_it_;
-  const std::vector<BlockPart>* parts() const override {
-    return &(block_it_->parts_);
-  }
 };
 }  // namespace allocation
 

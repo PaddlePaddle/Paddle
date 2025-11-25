@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <vector>
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/memory/allocation/vmm_ipc_allocation.h"
 
 namespace paddle {
 namespace memory {
@@ -30,6 +31,7 @@ class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator;
 }  // namespace allocation
 
 using allocation::Allocator;
+using allocation::BlockPart;
 using allocation::RetryAllocator;
 using allocation::StatAllocator;
 using allocation::StreamSafeCUDAAllocator;
@@ -229,6 +231,21 @@ class VMMFreeBlocksInfoVisitor : public AllocatorVisitor {
    * distinguishes between different free lists (e.g., small, large blocks).
    */
   std::vector<std::vector<std::pair<size_t, uintptr_t>>> free_blocks_info_;
+};
+
+class VmmTensorPartsVisitor : public AllocatorVisitor {
+ public:
+  explicit VmmTensorPartsVisitor(void* ptr) : target_ptr_(ptr) {}
+
+  void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;
+
+  bool Found() const { return found_; }
+  const std::vector<BlockPart>& Parts() const { return parts_; }
+
+ private:
+  void* target_ptr_{nullptr};
+  bool found_{false};
+  std::vector<BlockPart> parts_;
 };
 #endif
 

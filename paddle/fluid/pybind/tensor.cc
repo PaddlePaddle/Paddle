@@ -13,10 +13,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
-
+#if defined(__linux__)
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+#endif
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
@@ -64,6 +65,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/phi/core/framework/reader.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
 #include "paddle/phi/core/memory/allocation/allocator_strategy.h"
 #include "paddle/phi/core/tensor_utils.h"
 #ifdef PADDLE_WITH_CUDA
@@ -735,7 +737,15 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             common::errors::InvalidArgument(
                 "Tensor is not on GPU. share_vmm only support GPU "
                 "Tensor, share_filename is for CPU tensor."));
-        auto& parts = *(holder->parts());
+        paddle::memory::VmmTensorPartsVisitor parts_visitor(holder->ptr());
+        paddle::memory::allocation::AllocatorFacade::Instance().Accept(
+            holder->place(), &parts_visitor);
+        PADDLE_ENFORCE_EQ(
+            parts_visitor.Found(),
+            true,
+            common::errors::Unavailable(
+                "Failed to locate VMM allocation metadata for tensor."));
+        const auto& parts = parts_visitor.Parts();
         PADDLE_ENFORCE_GT(parts.size(), 0, "Empty VMM parts");
 
         const int &device_id = paddle::platform::GetCurrentDeviceId();
@@ -848,7 +858,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
         prop.location.id = device_id;
 
         const int cur_dev = paddle::platform::GetCurrentDeviceId();
-        // 物理分配所在设备（导出端 cuMemCreate 时的 location.id）
         VLOG(10) << "[VMM-IPC/import] device_id=" << device_id
                 << " cur_dev=" << cur_dev;
 

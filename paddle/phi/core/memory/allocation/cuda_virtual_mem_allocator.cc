@@ -29,6 +29,10 @@
 
 namespace paddle::memory::allocation {
 
+std::mutex CUDAVirtualMemAllocator::base_ptr_handle_mu_;
+std::unordered_map<void*, CUmemGenericAllocationHandle>
+    CUDAVirtualMemAllocator::base_ptr_handle_map_;
+
 CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(const phi::GPUPlace& place)
     : place_(place), virtual_mem_base_(0), prop_{} {
   CUmemAllocationProp prop = {};
@@ -124,6 +128,7 @@ void CUDAVirtualMemAllocator::FreeImpl(phi::Allocation* allocation) {
     cudaSetDevice(prev_id);
   }
 
+  UnregisterHandle(allocation->ptr());
   virtual_2_physical_map_.erase(iter);
 
   delete allocation;
@@ -215,10 +220,31 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
            << ", size=" << size
            << ", device=" << static_cast<int>(place_.device);
 
-  return new Allocation(reinterpret_cast<void*>(ptr),
-                        size,
-                        phi::Place(place_),
-                        handle);  // NOLINT
+  RegisterHandle(reinterpret_cast<void*>(ptr), handle);
+
+  return new Allocation(
+      reinterpret_cast<void*>(ptr), size, phi::Place(place_));  // NOLINT
+}
+
+CUmemGenericAllocationHandle CUDAVirtualMemAllocator::GetHandleFromBasePtr(
+    void* base_ptr) {
+  std::lock_guard<std::mutex> guard(base_ptr_handle_mu_);
+  auto it = base_ptr_handle_map_.find(base_ptr);
+  if (it == base_ptr_handle_map_.end()) {
+    return 0;
+  }
+  return it->second;
+}
+
+void CUDAVirtualMemAllocator::RegisterHandle(
+    void* base_ptr, CUmemGenericAllocationHandle handle) {
+  std::lock_guard<std::mutex> guard(base_ptr_handle_mu_);
+  base_ptr_handle_map_.emplace(base_ptr, handle);
+}
+
+void CUDAVirtualMemAllocator::UnregisterHandle(void* base_ptr) {
+  std::lock_guard<std::mutex> guard(base_ptr_handle_mu_);
+  base_ptr_handle_map_.erase(base_ptr);
 }
 
 }  // namespace paddle::memory::allocation

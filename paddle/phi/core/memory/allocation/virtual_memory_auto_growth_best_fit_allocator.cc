@@ -19,6 +19,7 @@
 #include "paddle/common/flags.h"
 
 #include "paddle/phi/core/memory/allocation/aligned_allocator.h"
+#include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator.h"
 #include "paddle/phi/core/memory/mem_utils.h"
 
 PHI_DEFINE_EXPORTED_uint64(
@@ -145,6 +146,20 @@ void VirtualMemoryAutoGrowthBestFitAllocator::FreeImpl(
   auto block_it = static_cast<BlockAllocation *>(allocation)->block_it_;
   TryMergeBlock2Blocks(block_it);
   delete allocation;
+}
+
+bool VirtualMemoryAutoGrowthBestFitAllocator::CollectTensorParts(
+    void *ptr, std::vector<BlockPart> *parts) {
+  std::lock_guard<SpinLock> guard(spinlock_);
+  for (const auto &block : all_blocks_) {
+    if (block.ptr_ == ptr) {
+      if (parts) {
+        *parts = block.parts_;
+      }
+      return true;
+    }
+  }
+  return false;
 }
 
 void VirtualMemoryAutoGrowthBestFitAllocator::TryMergeBlock2Blocks(
@@ -315,16 +330,14 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendOrCompact(size_t size) {
   alloc_size = allocateptr->size();
   allocations_.push_back(std::move(allocateptr));  // hold allocation
 
-  auto *base_alloc = dynamic_cast<Allocation *>(allocations_.back().get());
+  auto handle = CUDAVirtualMemAllocator::GetHandleFromBasePtr(alloc_ptr);
   std::vector<BlockPart> new_parts;
-  if (base_alloc != nullptr) {
-    auto chunk = std::make_shared<VmmChunkMeta>();
-    chunk->base = reinterpret_cast<CUdeviceptr>(alloc_ptr);
-    chunk->size = alloc_size;
-    chunk->handle = base_alloc->handle();
-    chunk->device = place_.device;
-    new_parts.emplace_back(BlockPart{chunk, 0, alloc_size});
-  }
+  auto chunk = std::make_shared<VmmChunkMeta>();
+  chunk->base = reinterpret_cast<CUdeviceptr>(alloc_ptr);
+  chunk->size = alloc_size;
+  chunk->handle = handle;
+  chunk->device = place_.device;
+  new_parts.emplace_back(BlockPart{chunk, 0, alloc_size});
 
   if (all_blocks_.empty()) {
     all_blocks_.emplace_back(alloc_ptr, alloc_size, true);

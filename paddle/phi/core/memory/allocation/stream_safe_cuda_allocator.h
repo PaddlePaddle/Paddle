@@ -53,14 +53,6 @@ class StreamSafeCUDAAllocation : public Allocation {
     return underlying_allocation_->place();
   }
 
-  const CUmemGenericAllocationHandle handle() const override {
-    return underlying_allocation_ ? underlying_allocation_->handle() : 0ULL;
-  }
-
-  const std::vector<BlockPart> *parts() const override {
-    return underlying_allocation_ ? underlying_allocation_->parts() : nullptr;
-  }
-
  private:
   thread_local static std::once_flag once_flag_;
   void RecordGraphCapturingStreams();
