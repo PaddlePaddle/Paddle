@@ -112,7 +112,12 @@ def sparse_attention(
             ...
             >>> key_padding_mask = paddle.to_tensor([[1, 1, 1, 0]], dtype="float32")
             >>> attention_mask = paddle.to_tensor(
-            ...     [[1, 0, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1]],
+            ...     [
+            ...         [1, 0, 1, 1],
+            ...         [1, 1, 1, 1],
+            ...         [1, 1, 1, 1],
+            ...         [1, 1, 1, 1],
+            ...     ],
             ...     dtype="float32",
             ... )
             >>> output_mask = paddle.nn.functional.sparse_attention(
