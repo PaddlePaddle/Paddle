@@ -24,6 +24,7 @@
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/gpu/interpolate.cuh"
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
 
 namespace phi {
@@ -873,22 +874,6 @@ __global__ void KeNearestNeighbor3DInterpBw(T* in,
   }
 }
 
-// Helper function to compute weights span for backward pass
-template <typename MT>
-__device__ __forceinline__ void ComputeWeightsSpanBw(const int i,
-                                                     const int input_size,
-                                                     const MT scale,
-                                                     const MT support,
-                                                     int* xmin,
-                                                     int* xsize,
-                                                     MT* center) {
-  *center = scale * (i + static_cast<MT>(0.5));
-  *xmin = max(static_cast<int>(*center - support + static_cast<MT>(0.5)), 0);
-  *xsize = min(static_cast<int>(*center + support + static_cast<MT>(0.5)),
-               input_size) -
-           *xmin;
-}
-
 // Helper function to compute weights for backward pass
 template <typename T, typename MT, typename InterpFilter>
 __device__ __forceinline__ void ComputeWeightsBw(
@@ -958,9 +943,9 @@ __global__ void KeInterpAABwNCHW(T* in_grad,
   // Compute weights and kernel spans
   int xmin, xsize, ymin, ysize;
   MT xcenter, ycenter;
-  ComputeWeightsSpanBw<MT>(
+  ComputeWeightsSpan<MT>(
       out_img_idx, in_img_w, scale_w, support_w, &xmin, &xsize, &xcenter);
-  ComputeWeightsSpanBw<MT>(
+  ComputeWeightsSpan<MT>(
       out_img_idy, in_img_h, scale_h, support_h, &ymin, &ysize, &ycenter);
 
   if (threadIdx.y == 0) {
@@ -1037,9 +1022,9 @@ __global__ void KeInterpAABwNHWC(T* in_grad,
   // Compute weights and kernel spans
   int xmin, xsize, ymin, ysize;
   MT xcenter, ycenter;
-  ComputeWeightsSpanBw<MT>(
+  ComputeWeightsSpan<MT>(
       out_img_idx, in_img_w, scale_w, support_w, &xmin, &xsize, &xcenter);
-  ComputeWeightsSpanBw<MT>(
+  ComputeWeightsSpan<MT>(
       out_img_idy, in_img_h, scale_h, support_h, &ymin, &ysize, &ycenter);
 
   if (threadIdx.y == 0) {

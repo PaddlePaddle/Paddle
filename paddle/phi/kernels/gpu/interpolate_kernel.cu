@@ -24,24 +24,10 @@
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
+#include "paddle/phi/kernels/gpu/interpolate.cuh"
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
 
 namespace phi {
-
-template <typename MT>
-__device__ __forceinline__ void ComputeWeightsSpan(const int i,
-                                                   const int input_size,
-                                                   const MT scale,
-                                                   const MT support,
-                                                   int* xmin,
-                                                   int* xsize,
-                                                   MT* center) {
-  *center = scale * (i + static_cast<MT>(0.5));
-  *xmin = max(static_cast<int>(*center - support + static_cast<MT>(0.5)), 0);
-  *xsize = min(static_cast<int>(*center + support + static_cast<MT>(0.5)),
-               input_size) -
-           *xmin;
-}
 
 template <typename T, typename MT, typename InterpFilter>
 __device__ __forceinline__ void ComputeWeights(
