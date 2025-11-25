@@ -3366,16 +3366,20 @@ class Layer:
         Returns:
             Layer: self
         """
-        if device is None:
-            device = paddle.CUDAPlace(paddle.cuda.current_device())
-        elif isinstance(device, int):
-            device = paddle.CUDAPlace(device)
-        elif isinstance(device, paddle.CUDAPlace):
-            pass
-        else:
-            raise TypeError(
-                f"device must be int, paddle.CUDAPlace or None, got {type(device)}"
-            )
+        res_place = framework._current_expected_place()
+        if isinstance(res_place, core.CPUPlace):
+            paddle.set_device(0)
+            res_place = framework._current_expected_place()
+            paddle.set_device('cpu')
+        if isinstance(device, int):
+            if isinstance(res_place, core.XPUPlace):
+                res_place = core.XPUPlace(device)
+            elif isinstance(res_place, core.CUDAPlace):
+                res_place = core.CUDAPlace(device)
+            elif isinstance(res_place, core.CustomPlace):
+                res_place = core.CustomPlace(
+                    res_place.get_device_type(), device
+                )
 
         return self._to_impl(device=device)
 

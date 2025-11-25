@@ -104,7 +104,7 @@ void MemcpyKernel(const Context& dev_ctx,
                          dst_place_type));
   PADDLE_ENFORCE_LE(
       dst_place_type,
-      5,
+      4,
       errors::OutOfRange("dst_place_type only support 0-4, but got: %d",
                          dst_place_type));
   switch (dst_place_type) {
@@ -112,21 +112,8 @@ void MemcpyKernel(const Context& dev_ctx,
       dev_ctx.HostAlloc(out, out->dtype());
       Copy(dev_ctx, x, CPUPlace(), true, out);
       break;
-    case 5: /* auto select */
-#if defined(PADDLE_WITH_CUSTOM_DEVICE)
-      dev_ctx.Alloc(out, x.dtype());
-      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-      break;
-#elif defined(PADDLE_WITH_XPU)
-      dev_ctx.Alloc(out, x.dtype());
-      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-      break;
-#elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      dev_ctx.Alloc(out, x.dtype());
-      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-      break;
-#endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
     case 1: /* CUDAPlace */
       dev_ctx.Alloc(out, x.dtype());
       Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);

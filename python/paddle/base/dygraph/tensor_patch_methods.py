@@ -1164,15 +1164,15 @@ def monkey_patch_tensor():
             paddle.set_device(0)
             res_place = framework._current_expected_place()
             paddle.set_device('cpu')
-            if isinstance(device_id, int):
-                if isinstance(res_place, core.XPUPlace):
-                    res_place = core.XPUPlace(device_id)
-                elif isinstance(res_place, core.CUDAPlace):
-                    res_place = core.CUDAPlace(device_id)
-                elif isinstance(res_place, core.CustomPlace):
-                    res_place = core.CustomPlace(
-                        res_place.get_device_type(), device_id
-                    )
+        if isinstance(device_id, int):
+            if isinstance(res_place, core.XPUPlace):
+                res_place = core.XPUPlace(device_id)
+            elif isinstance(res_place, core.CUDAPlace):
+                res_place = core.CUDAPlace(device_id)
+            elif isinstance(res_place, core.CustomPlace):
+                res_place = core.CustomPlace(
+                    res_place.get_device_type(), device_id
+                )
 
         if self.place._equals(res_place):
             return self
