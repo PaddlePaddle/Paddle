@@ -276,7 +276,6 @@ VirtualMemoryAutoGrowthBestFitAllocator::AllocateOrCompact(size_t size) {
     VLOG(4) << "Do Memory Compact allocate size and compact " << size;
     size_t compact_free_size = memory_compactor_->Compact(
         all_blocks_, all_blocks_.front().ptr_, all_blocks_.back().ptr_);
-    if (compact_free_size < 0) throw;
     VLOG(4) << "Memory Compacted Size: " << compact_free_size;
     auto free_block = std::prev(all_blocks_.end());
     if (free_block->is_free_ && free_block->size_ < size) {
@@ -330,12 +329,22 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendOrCompact(size_t size) {
   alloc_size = allocateptr->size();
   allocations_.push_back(std::move(allocateptr));  // hold allocation
 
-  auto handle = CUDAVirtualMemAllocator::GetHandleFromBasePtr(alloc_ptr);
   std::vector<BlockPart> new_parts;
   auto chunk = std::make_shared<VmmChunkMeta>();
   chunk->base = reinterpret_cast<CUdeviceptr>(alloc_ptr);
   chunk->size = alloc_size;
+#ifdef PADDLE_WITH_CUDA
+  auto handle = CUDAVirtualMemAllocator::GetHandleFromBasePtr(alloc_ptr);
+  PADDLE_ENFORCE_NE(
+      handle,
+      0,
+      common::errors::InvalidArgument(
+          "Allocation returned by underlying allocator is not VMM allocation"));
   chunk->handle = handle;
+#else
+  PADDLE_THROW(common::errors::Unavailable(
+      "Virtual memory auto-growth allocator requires CUDA support."));
+#endif
   chunk->device = place_.device;
   new_parts.emplace_back(BlockPart{chunk, 0, alloc_size});
 
@@ -447,10 +456,11 @@ bool VirtualMemoryAutoGrowthBestFitAllocator::TryAllocateBatch(
 
   std::lock_guard<SpinLock> guard(spinlock_);
 
-  // copy free_blocks_ to shadow_blocks_
+  // copy large N free_blocks_ to shadow_blocks_.
   std::map<std::pair<size_t, void *>, size_t> shadow_blocks;
-  for (const auto &pair : free_blocks_) {
-    shadow_blocks.emplace(pair.first, pair.first.first);
+  auto it = free_blocks_.rbegin();
+  for (int i = 0; i < sizes.size() && it != free_blocks_.rend(); ++i, ++it) {
+    shadow_blocks.emplace(it->first, it->first.first);
   }
   for (size_t size : sizes) {
     size_t aligned_size = AlignedSize(size, alignment_);

@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any, NamedTuple
 
 import paddle
 from paddle import _C_ops
+from paddle.base import core
 from paddle.base.framework import Variable
 from paddle.framework import (
     in_dynamic_mode,
@@ -47,6 +48,7 @@ __all__ = [
     'max',
     'median',
     'nanmedian',
+    'seed',
 ]
 
 
@@ -232,6 +234,22 @@ def nanmedian(
             paddle.assign(indices, out[1])
             return MedianRetType(values=out[0], indices=out[1])
         return MedianRetType(values=values, indices=indices)
+
+
+def seed() -> int:
+    r"""Sets the seed for generating random numbers to a non-deterministic
+    random number on all devices. Returns a 64 bit number used to seed the RNG.
+    Returns:
+        Returns: int64, the seed used to seed the RNG.
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> seed = paddle.compat.seed()
+    """
+    seed = core.default_cpu_generator().seed()
+    paddle.seed(seed)
+    return seed
 
 
 class MinMaxRetType(NamedTuple):

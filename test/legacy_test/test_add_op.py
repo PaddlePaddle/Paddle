@@ -20,6 +20,33 @@ import paddle
 from paddle.base import core
 
 
+class TestPaddleAddZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.place = get_device_place()
+        self.shape = [0, 3]
+        self.dtype_pairs = [(paddle.float32, paddle.float32)]
+        if core.is_float16_supported(self.place):
+            self.dtype_pairs.append((paddle.float32, paddle.float16))
+        if core.is_bfloat16_supported(self.place):
+            self.dtype_pairs.append((paddle.float32, paddle.bfloat16))
+
+    def test_0size(self):
+        for x_dtype, y_dtype in self.dtype_pairs:
+            with self.subTest(msg=f"{x_dtype} + {y_dtype}"):
+                x = paddle.randn(self.shape, dtype=x_dtype)
+                y = paddle.randn(self.shape, dtype=y_dtype)
+                x.stop_gradient = False
+                y.stop_gradient = False
+
+                out = paddle.add(x, y)
+                out.backward()
+
+                self.assertEqual(out.shape, self.shape)
+                self.assertEqual(out.dtype, x_dtype)
+                self.assertEqual(x.grad.dtype, x_dtype)
+                self.assertEqual(y.grad.dtype, y_dtype)
+
+
 class TestPaddleAddBackward(unittest.TestCase):
     def setUp(self):
         self.place = get_device_place()
