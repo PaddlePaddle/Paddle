@@ -932,7 +932,6 @@ PyObject* eager_api_run_custom_op(PyObject* self,
     VLOG(3) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
   }
-  FLAGS_enable_compact_mem = old_flag;
   FLAGS_enable_compact_mem = compact_flag_bak;
   return ToPyObject(*ctx.AllMutableOutput());
   EAGER_CATCH_AND_THROW_RETURN_NULL
