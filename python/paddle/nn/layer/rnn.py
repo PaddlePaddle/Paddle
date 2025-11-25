@@ -1468,7 +1468,7 @@ class BiRNN(Layer):
             ...     len(final_states),
             ...     len(final_states[0]),
             ... )
-            [2, 32] 2 2
+            paddle.Size([2, 32]) 2 2
 
     """
 
