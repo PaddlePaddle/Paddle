@@ -237,15 +237,14 @@ class Tensor : public TensorBase {
   }
 
   at::Tensor index(const std::vector<at::indexing::Slice>& indices) {
-    auto slice01 = indices[0];
-    auto slice02 = indices[1];
+    std::vector<int64_t> starts(indices.size());
+    std::vector<int64_t> ends(indices.size());
+    for (size_t i = 0; i < indices.size(); ++i) {
+      starts[i] = indices[i].start();
+      ends[i] = indices[i].stop();
+    }
     return Tensor(
-        paddle::experimental::slice(tensor_,
-                                    {0, 1},
-                                    {slice01.start(), slice02.start()},
-                                    {slice01.stop(), slice02.stop()},
-                                    {1},
-                                    {})
+        paddle::experimental::slice(tensor_, {0, 1}, starts, ends, {1}, {})
             .contiguous());
   }
 
