@@ -360,7 +360,6 @@ __global__ void KeInterpAAFwNCHW(const T* in,
 
   __syncthreads();
 
-  // Process each batch and channel - NCHW布局
   for (size_t i = blockIdx.z; i < n * c; i += gridDim.z) {
     // Interpolate on y-axis for this channel/batch combination
     for (int y = 0; y < ysize; y++) {
@@ -438,9 +437,7 @@ __global__ void KeInterpAAFwNHWC(const T* in,
 
   __syncthreads();
 
-  // Process each batch - NHWC布局
   for (size_t i = blockIdx.z; i < n; i += gridDim.z) {
-    // 对于NHWC布局，需要处理每个通道
     for (size_t ch = 0; ch < c; ch++) {
       // Interpolate on y-axis for this channel/batch combination
       for (int y = 0; y < ysize; y++) {

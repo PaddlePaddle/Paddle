@@ -960,7 +960,6 @@ __global__ void KeInterpAABwNCHW(T* in_grad,
 
   __syncthreads();
 
-  // Process each batch and channel - NCHW布局
   for (int64_t i = blockIdx.z; i < n * c; i += gridDim.z) {
     const MT grad_out =
         static_cast<MT>(out_grad[i * out_img_h * out_img_w +
@@ -1039,9 +1038,8 @@ __global__ void KeInterpAABwNHWC(T* in_grad,
 
   __syncthreads();
 
-  // Process each batch - NHWC布局
+  // Process each batch
   for (int64_t i = blockIdx.z; i < n; i += gridDim.z) {
-    // 对于NHWC布局，需要处理每个通道
     for (int64_t ch = 0; ch < c; ch++) {
       const MT grad_out =
           static_cast<MT>(out_grad[(i * out_img_h * out_img_w +
