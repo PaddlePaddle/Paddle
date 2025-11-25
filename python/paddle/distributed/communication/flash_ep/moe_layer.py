@@ -20,6 +20,7 @@ import paddle
 from .asymmetric_a2a import (
     combine_func,
     dispatch_func,
+    get_flashep_rowmap_func,
     local_combine_backward_func,
     local_combine_forward_func,
     local_dispatch_backward_func,
@@ -292,14 +293,22 @@ class FlashEPFunc(paddle.autograd.PyLayer):
 
         combine_events = []
         ctx.probs = []
+        ctx.output_rowmap_list = []
+        ctx.output_rowmap_len_list = []
         for local_expert_id in range(ctx.local_num_experts):
             # Identify prior data dependencies and perform multi-stream synchronization.
             dispatch_stage_idx = _get_expert_dependencies(
                 local_expert_id, expert_num_for_dispatch_stage_prefix
             )
-
             if dispatch_events[dispatch_stage_idx]:
                 dispatch_events[dispatch_stage_idx].calc_stream_wait(group.id)
+            if dispatch_stage_idx == len(ctx.output_rowmap_list):
+                output_rowmap, output_rowmap_len = get_flashep_rowmap_func(
+                    ctx.dispatched_indices[dispatch_stage_idx],
+                    ctx.local_num_experts,
+                )
+                ctx.output_rowmap_list.append(output_rowmap)
+                ctx.output_rowmap_len_list.append(output_rowmap_len)
 
             # Local dispatch data redistribution
             (
@@ -310,8 +319,12 @@ class FlashEPFunc(paddle.autograd.PyLayer):
                 ori_len,
             ) = local_dispatch_forward_func(
                 dispatch_history[: dispatch_stage_idx + 1],
+                ctx.output_rowmap_list[: dispatch_stage_idx + 1],
+                ctx.output_rowmap_len_list[: dispatch_stage_idx + 1],
+                ctx.local_num_experts,
                 local_expert_id,
                 out_len=tokens_per_expert_list[local_expert_id],
+                num_loop_stage=ctx.num_loop_stage,
             )
             ctx.probs.append(probs)
 
@@ -433,8 +446,12 @@ class FlashEPFunc(paddle.autograd.PyLayer):
                 ori_len,
             ) = local_dispatch_backward_func(
                 dispatch_history[: dispatch_stage_idx + 1],
+                ctx.output_rowmap_list[: dispatch_stage_idx + 1],
+                ctx.output_rowmap_len_list[: dispatch_stage_idx + 1],
+                ctx.local_num_experts,
                 local_expert_id,
                 out_len=ctx.tokens_per_expert_list[local_expert_id],
+                num_loop_stage=ctx.num_loop_stage,
             )
 
             if ctx.flash_ep_split_expert_bw:

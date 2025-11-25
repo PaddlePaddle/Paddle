@@ -57,6 +57,7 @@ void BindFlashEPApi(pybind11::module *m) {
          &flash_ep::get_flash_ep_coalesce_rdma_layout_api);
   m->def("get_flash_ep_coalesce_rdma_schedule",
          &flash_ep::get_flash_ep_coalesce_rdma_schedule_api);
+  m->def("get_flashep_rowmap", &flash_ep::get_flashep_rowmap_api);
   m->def("local_dispatch_forward", &flash_ep::local_dispatch_forward_api);
   m->def("local_dispatch_backward", &flash_ep::local_dispatch_backward_api);
   m->def("local_combine_forward", &flash_ep::local_combine_forward_api);

@@ -389,6 +389,9 @@ get_flash_ep_coalesce_rdma_layout_api(
     const int num_experts,
     const int num_loop_stage);
 
+std::vector<paddle::Tensor> get_flashep_rowmap_api(
+    const paddle::Tensor& topk_idx, const int64_t num_experts);
+
 std::tuple<paddle::Tensor,
            paddle::Tensor,
            paddle::Tensor,
@@ -399,17 +402,25 @@ local_dispatch_forward_api(
     const std::vector<paddle::Tensor>& topk_idx,
     const std::vector<paddle::Tensor>& recv_src_meta_per_a2a,
     const std::optional<std::vector<paddle::Tensor>>& fp8_scales,
+    const std::vector<paddle::Tensor>& output_route_map,
+    const std::vector<paddle::Tensor>& output_route_map_len,
+    const int64_t num_experts,
     const int64_t local_expert_id,
     const int64_t ori_out_len,
-    const int64_t padding_align);
+    const int64_t padding_align,
+    const int64_t num_loop_stage);
 
 std::vector<paddle::Tensor> local_dispatch_backward_api(
     const std::vector<paddle::Tensor>& hidden_states,
     const std::vector<paddle::Tensor>& topk_idx,
     const std::vector<paddle::Tensor>& recv_src_meta_per_a2a,
+    const std::vector<paddle::Tensor>& output_route_map,
+    const std::vector<paddle::Tensor>& output_route_map_len,
+    const int64_t num_experts,
     const int64_t local_expert_id,
     const int64_t ori_out_len,
-    const int64_t padding_align);
+    const int padding_align,
+    const int64_t num_loop_stage);
 
 void local_combine_forward_api(
     std::vector<paddle::Tensor>& combine_buffers,  // NOLINT

@@ -702,15 +702,12 @@ __device__ __forceinline__ void vectorized_add<__nv_bfloat16>(
 
 struct token_infos {
   int token_row_idx;
-  float token_probs;
 
-  __device__ __host__ token_infos() : token_row_idx(-1), token_probs(0.f) {}
-  __device__ __host__ token_infos(int idx, float prob)
-      : token_row_idx(idx), token_probs(prob) {}
+  __device__ __host__ token_infos() : token_row_idx(-1) {}
+  __device__ __host__ token_infos(int idx) : token_row_idx(idx) {}
 
   __device__ __host__ token_infos& operator=(const token_infos& other) {
     token_row_idx = other.token_row_idx;
-    token_probs = other.token_probs;
     return *this;
   }
 };
@@ -731,108 +728,40 @@ __device__ __forceinline__ int findPtrIndex(const int* prefix_sum,
   return low - 1;
 }
 
-template <bool kIsForward, bool kMixedPrecision, int kCumsumBlockSize>
-__global__ void dispatch_moe_kernel(const void** dispatched_hidden_states,
-                                    const float** dispatched_topk_weights,
-                                    const int32_t** dispatched_topk_idx,
-                                    const int32_t** recv_src_meta,
-                                    const float** fp8_scales,
-                                    const int32_t* a2a_prefix_sum,
-                                    int32_t* global_expertwise_block_cumsum,
-                                    const int32_t local_expert_id,
-                                    const int32_t hidden_size,
-                                    const int32_t topk,
-                                    const int32_t a2a_num,
-                                    const int64_t all_token_num,
-                                    const int64_t output_token_num,
-                                    const int64_t scale_num,
-                                    void* output_hidden,
-                                    int32_t* output_top_idx,
-                                    float* output_top_probs,
-                                    int32_t* output_src_meta,
-                                    float* output_fp8_scale) {
+template <int kCumsumBlockSize, int kMaxNumExpertsPerRank>
+__global__ void dispatch_moe_meta_kernel(
+    const int32_t* dispatched_topk_idx,
+    int32_t* global_expertwise_block_cumsum,
+    const int32_t topk,
+    const int32_t all_token_num,
+    const int32_t num_experts,
+    int32_t* output_route_map,
+    int32_t* output_route_map_len) {
   int local_cumsum = 0;
   const int block_row_base = blockIdx.x * kCumsumBlockSize;
   int cumsum_offset = (blockIdx.x != 0) * kCumsumInvalidTag;
+  __shared__ token_infos
+      shared_token_infos[kCumsumBlockSize][kMaxNumExpertsPerRank];
 
-  __shared__ token_infos shared_token_infos[kCumsumBlockSize];
-  __shared__ int shared_cumsum;
-  __shared__ int32_t last_warp_valid_count;
-  if (threadIdx.x == 0) {
-    shared_cumsum = 0;
-    last_warp_valid_count = 0;
-  }
-
-#pragma unroll
-  for (int i = threadIdx.x; i < kCumsumBlockSize; i += blockDim.x) {
-    shared_token_infos[i].token_row_idx = -1;
-  }
-  __syncthreads();
-
-  // one warp 32 thread == one block for 32 tokens
-  token_infos local_token_infos[kCumsumBlockSize];
-  for (int row = block_row_base + threadIdx.x;
-       row < block_row_base + kCumsumBlockSize;
-       row += blockDim.x) {
-    if (row >= all_token_num) break;
-    if (block_row_base + 32 > all_token_num) {
+  if (threadIdx.x < num_experts) {
+    token_infos local_token_infos[kCumsumBlockSize];
+    for (int row = block_row_base; row < block_row_base + kCumsumBlockSize;
+         row++) {
+      if (row >= all_token_num) break;
       const int internal_row = row - block_row_base;
 #pragma unroll
       for (int k = 0; k < topk; k++) {
-        int a2a_idx = findPtrIndex(a2a_prefix_sum, a2a_num, row);
-        int a2a_token_idx = row - a2a_prefix_sum[a2a_idx];
-        token_infos proposed;
-        if (kIsForward) {
-          proposed = {
-              dispatched_topk_idx[a2a_idx][a2a_token_idx * topk + k],
-              dispatched_topk_weights[a2a_idx][a2a_token_idx * topk + k]};
-        } else {
-          proposed = {dispatched_topk_idx[a2a_idx][a2a_token_idx * topk + k],
-                      0};
+        token_infos proposed = {dispatched_topk_idx[row * topk + k]};
+        if (proposed.token_row_idx == -1) continue;
+        if (threadIdx.x == proposed.token_row_idx) {
+          local_token_infos[internal_row] = {local_cumsum};
+          local_cumsum += 1;
         }
-        bool found = proposed.token_row_idx == local_expert_id;
-        if (found) {
-          int warp_position = atomicAdd(&last_warp_valid_count, 1);
-          int local_cumsum = warp_position + shared_cumsum;
-          shared_token_infos[internal_row] = {local_cumsum,
-                                              proposed.token_probs};
-        }
-      }
-    } else {
-      const int internal_row = row - block_row_base;
-#pragma unroll
-      for (int k = 0; k < topk; k++) {
-        int a2a_idx = findPtrIndex(a2a_prefix_sum, a2a_num, row);
-        int a2a_token_idx = row - a2a_prefix_sum[a2a_idx];
-        token_infos proposed;
-        if (kIsForward) {
-          proposed = {
-              dispatched_topk_idx[a2a_idx][a2a_token_idx * topk + k],
-              dispatched_topk_weights[a2a_idx][a2a_token_idx * topk + k]};
-        } else {
-          proposed = {dispatched_topk_idx[a2a_idx][a2a_token_idx * topk + k],
-                      0};
-        }
-        bool found = proposed.token_row_idx == local_expert_id;
-        unsigned mask = __ballot_sync(0xFFFFFFFF, found);
-        int valid_count = __popc(mask);
-        unsigned lane_mask = (1u << threadIdx.x) - 1;
-        int warp_position = __popc(mask & lane_mask);
-        if (found) {
-          int local_cumsum = warp_position + shared_cumsum;
-          shared_token_infos[internal_row] = {local_cumsum,
-                                              proposed.token_probs};
-        }
-        if (threadIdx.x == 0) shared_cumsum += valid_count;
       }
     }
-  }
-  __syncthreads();
-
-  if (threadIdx.x == 0) {
     // Inter-block communication
-    const int anticipate_signal_idx = blockIdx.x;
-    const int push_signal_idx = (blockIdx.x + 1);
+    const int anticipate_signal_idx = blockIdx.x * num_experts + threadIdx.x;
+    const int push_signal_idx = (blockIdx.x + 1) * num_experts + threadIdx.x;
     if (blockIdx.x != 0) {
       // signal receive from previous block, using light-weight atomicAdd(check)
       // this will not change any data, only do fetch in low-cost
@@ -842,47 +771,137 @@ __global__ void dispatch_moe_kernel(const void** dispatched_hidden_states,
       }
     }
     // signal send for next block, with current cumsum
-    const int proposed_offset = cumsum_offset + shared_cumsum;
+    const int proposed_offset = cumsum_offset + local_cumsum;
     global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
+    if (blockIdx.x == gridDim.x - 1) {
+      output_route_map_len[threadIdx.x] = proposed_offset;
+    }
     // Intra-block communication;
-
 #pragma unroll
     for (int i = 0; i < kCumsumBlockSize; i++) {
-      shared_token_infos[i].token_row_idx =
-          (shared_token_infos[i].token_row_idx == -1)
+      local_token_infos[i].token_row_idx =
+          (local_token_infos[i].token_row_idx == -1)
               ? -1
-              : shared_token_infos[i].token_row_idx + cumsum_offset;
+              : local_token_infos[i].token_row_idx + cumsum_offset;
+      shared_token_infos[i][threadIdx.x] = local_token_infos[i];
     }
   }
-
   __syncthreads();
 
   for (int row = block_row_base; row < block_row_base + kCumsumBlockSize;
        row++) {
+    if (row >= all_token_num) return;
+    const int internal_row = row - block_row_base;
+    for (int expert_id = 0; expert_id < num_experts; expert_id++) {
+      const token_infos this_expert_token_info =
+          shared_token_infos[internal_row][expert_id];
+      const int proposed_row_idx = this_expert_token_info.token_row_idx;
+      if (proposed_row_idx == -1) continue;  // no memcpy
+      if (threadIdx.x == 0)
+        output_route_map[row * num_experts + expert_id] = proposed_row_idx;
+    }
+  }
+}
+
+void dispatch_moe_meta(const int32_t* dispatched_topk_idx,
+                       int32_t* global_expertwise_block_cumsum,
+                       const int32_t topk,
+                       const int32_t all_token_num,
+                       const int32_t num_experts,
+                       int32_t* output_route_map,
+                       int32_t* output_route_map_len,
+                       cudaStream_t stream) {
+  constexpr int kCumsumBlockSize = 32;
+  constexpr int kMaxNumExpertsPerRank = 64;
+  constexpr int kNumThreads = 512;
+
+  EP_HOST_ASSERT(num_experts <= kMaxNumExpertsPerRank);
+  int num_sms = (all_token_num + kCumsumBlockSize - 1) / kCumsumBlockSize;
+
+  dispatch_moe_meta_kernel<kCumsumBlockSize, kMaxNumExpertsPerRank>
+      <<<num_sms, kNumThreads, 0, stream>>>(dispatched_topk_idx,
+                                            global_expertwise_block_cumsum,
+                                            topk,
+                                            all_token_num,
+                                            num_experts,
+                                            output_route_map,
+                                            output_route_map_len);
+}
+
+template <bool kIsForward,
+          bool kMixedPrecision,
+          int kCumsumBlockSize,
+          int kMaxStageNum>
+__global__ void local_dispatch_kernel(const void** dispatched_hidden_states,
+                                      const float** dispatched_topk_weights,
+                                      const int32_t** dispatched_topk_idx,
+                                      const int32_t** recv_src_meta,
+                                      const float** fp8_scales,
+                                      const int32_t** output_route_map,
+                                      const int32_t** output_route_map_len,
+                                      const int32_t* a2a_prefix_sum,
+                                      const int32_t local_expert_id,
+                                      const int32_t hidden_size,
+                                      const int32_t topk,
+                                      const int32_t a2a_num,
+                                      const int32_t all_token_num,
+                                      const int32_t scale_num,
+                                      const int32_t num_experts,
+                                      void* output_hidden,
+                                      int32_t* output_top_idx,
+                                      float* output_top_probs,
+                                      int32_t* output_src_meta,
+                                      float* output_fp8_scale) {
+  int64_t expert_prefix_sum[kMaxStageNum];
+  expert_prefix_sum[0] = 0;
+  for (int i = 1; i < a2a_num; i++) {
+    expert_prefix_sum[i] =
+        expert_prefix_sum[i - 1] + output_route_map_len[i - 1][local_expert_id];
+  }
+
+  const int64_t block_row_base = blockIdx.x * kCumsumBlockSize;
+  for (int64_t row = block_row_base; row < block_row_base + kCumsumBlockSize;
+       row++) {
     // OOB check
     if (row >= all_token_num) return;
-    int a2a_idx = findPtrIndex(a2a_prefix_sum, a2a_num, row);
-    int a2a_token_idx = row - a2a_prefix_sum[a2a_idx];
-    const int internal_row = row - block_row_base;
-    const token_infos this_expert_token_info = shared_token_infos[internal_row];
-    const int proposed_row_idx = this_expert_token_info.token_row_idx;
-    if (proposed_row_idx == -1) continue;  // no memcpy
-    if (threadIdx.x == 0) {
-      if (kIsForward) {
-        output_top_probs[proposed_row_idx] = this_expert_token_info.token_probs;
+    const int64_t a2a_idx = findPtrIndex(a2a_prefix_sum, a2a_num, row);
+    const int64_t a2a_token_idx = row - a2a_prefix_sum[a2a_idx];
+    int64_t tmp_proposed_row_idx =
+        output_route_map[a2a_idx]
+                        [a2a_token_idx * static_cast<int64_t>(num_experts) +
+                         static_cast<int64_t>(local_expert_id)];
+    if (tmp_proposed_row_idx == -1) continue;  // no memcpy
+    const int64_t proposed_row_idx =
+        tmp_proposed_row_idx + expert_prefix_sum[a2a_idx];
+
+    if (kIsForward) {
+      if (threadIdx.x < topk) {
+        int64_t tmp_idx =
+            dispatched_topk_idx[a2a_idx][static_cast<int64_t>(a2a_token_idx) *
+                                             static_cast<int64_t>(topk) +
+                                         static_cast<int64_t>(threadIdx.x)];
+        if (tmp_idx == local_expert_id) {
+          output_top_probs[proposed_row_idx] =
+              dispatched_topk_weights[a2a_idx]
+                                     [static_cast<int64_t>(a2a_token_idx) *
+                                          static_cast<int64_t>(topk) +
+                                      static_cast<int64_t>(threadIdx.x)];
+        }
       }
+    }
+
+    if (threadIdx.x == 0) {
       if (!kIsForward) {
         for (int i = 0; i < topk; i++) {
           output_top_idx[proposed_row_idx * topk + i] =
               dispatched_topk_idx[a2a_idx][static_cast<int64_t>(a2a_token_idx) *
                                                static_cast<int64_t>(topk) +
-                                           i];
+                                           static_cast<int64_t>(i)];
         }
       }
-      using VecType = VectorType<int32_t, 4>;
-      const VecType* src_vec = reinterpret_cast<const VecType*>(
+      const int4* src_vec = reinterpret_cast<const int4*>(
           &(recv_src_meta[a2a_idx][static_cast<int64_t>(a2a_token_idx) * 4]));
-      VecType* dst_vec = reinterpret_cast<VecType*>(
+      int4* dst_vec = reinterpret_cast<int4*>(
           &(output_src_meta[static_cast<int64_t>(proposed_row_idx) * 4]));
       dst_vec[0] = src_vec[0];
     }
@@ -999,15 +1018,16 @@ void local_dispatch(const void** dispatched_hidden_states,
                     const int32_t** dispatched_topk_idx,
                     const int32_t** recv_src_meta,
                     const float** fp8_scales,
+                    const int32_t** output_route_map,
+                    const int32_t** output_route_map_len,
                     const int32_t* a2a_prefix_sum,
-                    int32_t* global_expertwise_block_cumsum,
                     const int32_t local_expert_id,
                     const int32_t hidden_size,
                     const int32_t topk,
                     const int32_t a2a_num,
-                    const int64_t all_token_num,
-                    const int64_t output_token_num,
-                    const int64_t scale_num,
+                    const int32_t all_token_num,
+                    const int32_t scale_num,
+                    const int32_t num_experts,
                     void* output_hidden,
                     int32_t* output_top_idx,
                     float* output_top_probs,
@@ -1015,35 +1035,39 @@ void local_dispatch(const void** dispatched_hidden_states,
                     float* output_fp8_scale,
                     cudaStream_t stream,
                     bool use_fp8,
-                    bool forward) {
+                    bool forward,
+                    int num_loop_stage) {
   constexpr int kNumThreads = 1024;
-  constexpr int kCumsumBlockSize = 32;
+  constexpr int kCumsumBlockSize = 4;
+  constexpr int kMaxStageNum = 16;
 
   int num_sms = (all_token_num + kCumsumBlockSize - 1) / kCumsumBlockSize;
   EP_HOST_ASSERT(!(use_fp8 && !forward));
+  EP_HOST_ASSERT(num_loop_stage <= kMaxStageNum);
 
-#define LAUNCH_LOCAL_DISPATCH_KERNEL(T, FORWARD, USE_FP8)                     \
-  do {                                                                        \
-    dispatch_moe_kernel<FORWARD, USE_FP8, kCumsumBlockSize>                   \
-        <<<num_sms, kNumThreads, 0, stream>>>(dispatched_hidden_states,       \
-                                              dispatched_topk_weights,        \
-                                              dispatched_topk_idx,            \
-                                              recv_src_meta,                  \
-                                              fp8_scales,                     \
-                                              a2a_prefix_sum,                 \
-                                              global_expertwise_block_cumsum, \
-                                              local_expert_id,                \
-                                              hidden_size,                    \
-                                              topk,                           \
-                                              a2a_num,                        \
-                                              all_token_num,                  \
-                                              output_token_num,               \
-                                              scale_num,                      \
-                                              output_hidden,                  \
-                                              output_top_idx,                 \
-                                              output_top_probs,               \
-                                              output_src_meta,                \
-                                              output_fp8_scale);              \
+#define LAUNCH_LOCAL_DISPATCH_KERNEL(T, FORWARD, USE_FP8)                   \
+  do {                                                                      \
+    local_dispatch_kernel<FORWARD, USE_FP8, kCumsumBlockSize, kMaxStageNum> \
+        <<<num_sms, kNumThreads, 0, stream>>>(dispatched_hidden_states,     \
+                                              dispatched_topk_weights,      \
+                                              dispatched_topk_idx,          \
+                                              recv_src_meta,                \
+                                              fp8_scales,                   \
+                                              output_route_map,             \
+                                              output_route_map_len,         \
+                                              a2a_prefix_sum,               \
+                                              local_expert_id,              \
+                                              hidden_size,                  \
+                                              topk,                         \
+                                              a2a_num,                      \
+                                              all_token_num,                \
+                                              scale_num,                    \
+                                              num_experts,                  \
+                                              output_hidden,                \
+                                              output_top_idx,               \
+                                              output_top_probs,             \
+                                              output_src_meta,              \
+                                              output_fp8_scale);            \
   } while (0)
 
   if (use_fp8 && forward) {

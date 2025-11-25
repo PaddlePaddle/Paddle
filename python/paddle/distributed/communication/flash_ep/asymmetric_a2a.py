@@ -16,6 +16,7 @@ import paddle
 from paddle.base.core import (
     get_flash_ep_coalesce_rdma_layout,
     get_flash_ep_coalesce_rdma_schedule,
+    get_flashep_rowmap,
     local_combine_backward,
     local_combine_forward,
     local_dispatch_backward,
@@ -99,7 +100,19 @@ def get_hidden_bytes(x) -> int:
     return x.shape[1] * max(x.element_size(), 2)
 
 
-def local_dispatch_forward_func(dispatch_history, local_expert_id, out_len):
+def get_flashep_rowmap_func(topk_idx, num_experts):
+    return get_flashep_rowmap(topk_idx.astype("int32"), num_experts)
+
+
+def local_dispatch_forward_func(
+    dispatch_history,
+    output_route_map_list,
+    output_route_map_len_list,
+    num_experts,
+    local_expert_id,
+    out_len,
+    num_loop_stage,
+):
     dispatched_hidden_states_list = []
     dispatched_indices_list = []
     dispatched_topk_weights_list = []
@@ -141,9 +154,13 @@ def local_dispatch_forward_func(dispatch_history, local_expert_id, out_len):
         dispatched_indices_list,
         details_metas_list,
         fp8_scales_list if use_fp8 else None,
+        output_route_map_list,
+        output_route_map_len_list,
+        num_experts,
         local_expert_id,
         out_len,
         FP8_ALIGN,
+        num_loop_stage,
     )
 
     return (
@@ -155,7 +172,15 @@ def local_dispatch_forward_func(dispatch_history, local_expert_id, out_len):
     )
 
 
-def local_dispatch_backward_func(dispatch_history, local_expert_id, out_len):
+def local_dispatch_backward_func(
+    dispatch_history,
+    output_route_map_list,
+    output_route_map_len_list,
+    num_experts,
+    local_expert_id,
+    out_len,
+    num_loop_stage,
+):
     dispatched_hidden_states_list = []
     dispatched_indices_list = []
     details_metas_list = []
@@ -182,9 +207,13 @@ def local_dispatch_backward_func(dispatch_history, local_expert_id, out_len):
         dispatched_hidden_states_list,
         dispatched_indices_list,
         details_metas_list,
+        output_route_map_list,
+        output_route_map_len_list,
+        num_experts,
         local_expert_id,
         out_len,
         FP8_ALIGN,
+        num_loop_stage,
     )
 
     return (

@@ -1803,6 +1803,46 @@ get_flash_ep_coalesce_rdma_layout_api(
           is_token_in_rank};
 }
 
+std::vector<paddle::Tensor> get_flashep_rowmap_api(
+    const paddle::Tensor& topk_idx, const int64_t num_experts) {
+  EP_HOST_ASSERT(topk_idx.shape().size() == 2);
+  EP_HOST_ASSERT(topk_idx.dtype() == phi::DataType::INT32);
+  int64_t topk = topk_idx.shape()[1];
+
+  auto place = topk_idx.place();
+  auto stream = topk_idx.stream();
+
+  // a2a_prefix_sum
+  int64_t all_token_num = topk_idx.shape()[0];
+
+  paddle::Tensor output_route_map = paddle::experimental::full(
+      {all_token_num, num_experts}, -1, phi::DataType::INT32, place);
+  paddle::Tensor output_route_map_len =
+      paddle::experimental::empty({num_experts}, phi::DataType::INT32, place);
+
+  constexpr int kCumsumBlockSize = 32;
+  const int cumsum_blocknum =
+      (all_token_num + kCumsumBlockSize - 1) / kCumsumBlockSize;
+
+  paddle::Tensor global_expertwise_block_cumsum =
+      paddle::experimental::full({cumsum_blocknum + 1, num_experts},
+                                 kCumsumInvalidTag,
+                                 phi::DataType::INT32,
+                                 place);
+
+  flash_ep::internode::dispatch_moe_meta(
+      topk_idx.data<int32_t>(),
+      global_expertwise_block_cumsum.data<int32_t>(),
+      topk,
+      all_token_num,
+      num_experts,
+      output_route_map.data<int32_t>(),
+      output_route_map_len.data<int32_t>(),
+      stream);
+
+  return {output_route_map, output_route_map_len};
+}
+
 std::tuple<paddle::Tensor,
            paddle::Tensor,
            paddle::Tensor,
@@ -1813,9 +1853,13 @@ local_dispatch_forward_api(
     const std::vector<paddle::Tensor>& topk_idx,
     const std::vector<paddle::Tensor>& recv_src_meta_per_a2a,
     const std::optional<std::vector<paddle::Tensor>>& fp8_scales,
+    const std::vector<paddle::Tensor>& output_route_map,
+    const std::vector<paddle::Tensor>& output_route_map_len,
+    const int64_t num_experts,
     const int64_t local_expert_id,
     const int64_t ori_out_len,
-    const int64_t padding_align) {
+    const int64_t padding_align,
+    const int64_t num_loop_stage) {
   EP_HOST_ASSERT(hidden_states[0].dtype() == paddle::DataType::FLOAT8_E4M3FN ||
                  hidden_states[0].dtype() == paddle::DataType::BFLOAT16);
   EP_HOST_ASSERT(hidden_states[0].shape().size() == 2);
@@ -1902,6 +1946,30 @@ local_dispatch_forward_api(
                   cudaMemcpyHostToDevice,
                   stream);
 
+  const int32_t** d_output_map_ptr;
+  cudaMallocAsync(&d_output_map_ptr, a2a_num * sizeof(int32_t*), stream);
+  std::vector<const int32_t*> host_output_map_ptrs;
+  for (int64_t i = 0; i < a2a_num; ++i) {
+    host_output_map_ptrs.push_back(output_route_map[i].data<int32_t>());
+  }
+  cudaMemcpyAsync(d_output_map_ptr,
+                  host_output_map_ptrs.data(),
+                  a2a_num * sizeof(int32_t*),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
+  const int32_t** d_output_map_len_ptr;
+  cudaMallocAsync(&d_output_map_len_ptr, a2a_num * sizeof(int32_t*), stream);
+  std::vector<const int32_t*> host_output_map_len_ptrs;
+  for (int64_t i = 0; i < a2a_num; ++i) {
+    host_output_map_len_ptrs.push_back(output_route_map_len[i].data<int32_t>());
+  }
+  cudaMemcpyAsync(d_output_map_len_ptr,
+                  host_output_map_len_ptrs.data(),
+                  a2a_num * sizeof(int32_t*),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
   const float** d_fp8_scales_ptr = nullptr;
   if (use_fp8) {
     cudaMallocAsync(&d_fp8_scales_ptr, a2a_num * sizeof(float*), stream);
@@ -1933,35 +2001,30 @@ local_dispatch_forward_api(
                   cudaMemcpyHostToDevice,
                   stream);
 
-  const int cumsum_blocknum =
-      (all_token_num + kCumsumBlockSize - 1) / kCumsumBlockSize;
-
-  paddle::Tensor global_expertwise_block_cumsum = paddle::experimental::full(
-      {cumsum_blocknum + 1}, kCumsumInvalidTag, phi::DataType::INT32, place);
-
-  flash_ep::internode::local_dispatch(
-      d_hidden_states_ptr,
-      d_topk_weights_ptr,
-      d_topk_idx_ptr,
-      d_recv_src_meta_per_a2a_ptr,
-      d_fp8_scales_ptr,
-      a2a_prefix_sum_tensor.data<int32_t>(),
-      global_expertwise_block_cumsum.data<int32_t>(),
-      local_expert_id,
-      hidden_size,
-      topk,
-      a2a_num,
-      all_token_num,
-      ori_out_len,
-      scale_num,
-      output_hidden_states.data(),
-      nullptr,
-      output_topk_probs.data<float>(),
-      output_src_meta.data<int32_t>(),
-      output_scale_ptr,
-      stream,
-      use_fp8,
-      true);
+  flash_ep::internode::local_dispatch(d_hidden_states_ptr,
+                                      d_topk_weights_ptr,
+                                      d_topk_idx_ptr,
+                                      d_recv_src_meta_per_a2a_ptr,
+                                      d_fp8_scales_ptr,
+                                      d_output_map_ptr,
+                                      d_output_map_len_ptr,
+                                      a2a_prefix_sum_tensor.data<int32_t>(),
+                                      local_expert_id,
+                                      hidden_size,
+                                      topk,
+                                      a2a_num,
+                                      all_token_num,
+                                      scale_num,
+                                      num_experts,
+                                      output_hidden_states.data(),
+                                      nullptr,
+                                      output_topk_probs.data<float>(),
+                                      output_src_meta.data<int32_t>(),
+                                      output_scale_ptr,
+                                      stream,
+                                      use_fp8,
+                                      true,
+                                      num_loop_stage);
   return {
       output_hidden_states, output_topk_probs, output_src_meta, output_scale};
 }
@@ -1970,9 +2033,13 @@ std::vector<paddle::Tensor> local_dispatch_backward_api(
     const std::vector<paddle::Tensor>& hidden_states,
     const std::vector<paddle::Tensor>& topk_idx,
     const std::vector<paddle::Tensor>& recv_src_meta_per_a2a,
+    const std::vector<paddle::Tensor>& output_route_map,
+    const std::vector<paddle::Tensor>& output_route_map_len,
+    const int64_t num_experts,
     const int64_t local_expert_id,
     const int64_t ori_out_len,
-    const int64_t padding_align) {
+    const int padding_align,
+    const int64_t num_loop_stage) {
   EP_HOST_ASSERT(hidden_states[0].dtype() == paddle::DataType::BFLOAT16);
   EP_HOST_ASSERT(hidden_states[0].shape().size() == 2);
   EP_HOST_ASSERT(topk_idx[0].shape().size() == 2);
@@ -2033,6 +2100,30 @@ std::vector<paddle::Tensor> local_dispatch_backward_api(
                   cudaMemcpyHostToDevice,
                   stream);
 
+  const int32_t** d_output_map_ptr;
+  cudaMallocAsync(&d_output_map_ptr, a2a_num * sizeof(int32_t*), stream);
+  std::vector<const int32_t*> host_output_map_ptrs;
+  for (int64_t i = 0; i < a2a_num; ++i) {
+    host_output_map_ptrs.push_back(output_route_map[i].data<int32_t>());
+  }
+  cudaMemcpyAsync(d_output_map_ptr,
+                  host_output_map_ptrs.data(),
+                  a2a_num * sizeof(int32_t*),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
+  const int32_t** d_output_map_len_ptr;
+  cudaMallocAsync(&d_output_map_len_ptr, a2a_num * sizeof(int32_t*), stream);
+  std::vector<const int32_t*> host_output_map_len_ptrs;
+  for (int64_t i = 0; i < a2a_num; ++i) {
+    host_output_map_len_ptrs.push_back(output_route_map_len[i].data<int32_t>());
+  }
+  cudaMemcpyAsync(d_output_map_len_ptr,
+                  host_output_map_len_ptrs.data(),
+                  a2a_num * sizeof(int32_t*),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
   // a2a_prefix_sum
   int64_t all_token_num = hidden_states[0].shape()[0];
   paddle::Tensor a2a_prefix_sum_tensor =
@@ -2050,35 +2141,30 @@ std::vector<paddle::Tensor> local_dispatch_backward_api(
                   cudaMemcpyHostToDevice,
                   stream);
 
-  const int cumsum_blocknum =
-      (all_token_num + kCumsumBlockSize - 1) / kCumsumBlockSize;
-
-  paddle::Tensor global_expertwise_block_cumsum = paddle::experimental::full(
-      {cumsum_blocknum + 1}, kCumsumInvalidTag, phi::DataType::INT32, place);
-
-  flash_ep::internode::local_dispatch(
-      d_hidden_states_ptr,
-      nullptr,
-      d_topk_idx_ptr,
-      d_recv_src_meta_per_a2a_ptr,
-      nullptr,
-      a2a_prefix_sum_tensor.data<int32_t>(),
-      global_expertwise_block_cumsum.data<int32_t>(),
-      local_expert_id,
-      hidden_size,
-      topk,
-      a2a_num,
-      all_token_num,
-      ori_out_len,
-      -1,
-      output_hidden_states.data(),
-      output_topk_idx.data<int32_t>(),
-      nullptr,
-      output_src_meta.data<int32_t>(),
-      nullptr,
-      stream,
-      false,
-      false);
+  flash_ep::internode::local_dispatch(d_hidden_states_ptr,
+                                      nullptr,
+                                      d_topk_idx_ptr,
+                                      d_recv_src_meta_per_a2a_ptr,
+                                      nullptr,
+                                      d_output_map_ptr,
+                                      d_output_map_len_ptr,
+                                      a2a_prefix_sum_tensor.data<int32_t>(),
+                                      local_expert_id,
+                                      hidden_size,
+                                      topk,
+                                      a2a_num,
+                                      all_token_num,
+                                      -1,
+                                      num_experts,
+                                      output_hidden_states.data(),
+                                      output_topk_idx.data<int32_t>(),
+                                      nullptr,
+                                      output_src_meta.data<int32_t>(),
+                                      nullptr,
+                                      stream,
+                                      false,
+                                      false,
+                                      num_loop_stage);
   return {output_hidden_states, output_topk_idx, output_src_meta};
 }
 
