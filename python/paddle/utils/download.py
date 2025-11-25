@@ -313,35 +313,50 @@ def _uncompress_file_zip(filepath):
         return uncompressed_path
 
 
+def _is_within_directory(directory, target):
+    """Check if the target path is within the given directory."""
+    abs_directory = os.path.abspath(directory)
+    abs_target = os.path.abspath(target)
+    prefix = os.path.commonprefix([abs_directory, abs_target])
+    return prefix == abs_directory
+
+
+def _safe_extract(tar, path, members=None):
+    """Safely extract tar files to prevent path traversal attacks."""
+    for member in tar.getmembers():
+        member_path = os.path.join(path, member.name)
+        if not _is_within_directory(path, member_path):
+            raise Exception(
+                f"Attempted path traversal in tar file: {member.name}"
+            )
+    tar.extractall(path, members)
+
+
 def _uncompress_file_tar(filepath, mode="r:*"):
     with tarfile.open(filepath, mode) as files:
-        file_list_tmp = files.getnames()
-        file_list = []
-        for file in file_list_tmp:
-            assert file[0] != "/", (
-                f"uncompress file path {file} should not start with /"
-            )
-            file_list.append(file.replace("../", ""))
-
+        file_list = files.getnames()
         file_dir = os.path.dirname(filepath)
+
+        for name in file_list:
+            if name.startswith('/'):
+                raise ValueError(f"Unsafe path in tar: {name}")
 
         if _is_a_single_file(file_list):
             rootpath = file_list[0]
             uncompressed_path = os.path.join(file_dir, rootpath)
-            files.extractall(file_dir)
+            _safe_extract(files, file_dir)
         elif _is_a_single_dir(file_list):
             rootpath = os.path.splitext(file_list[0].strip(os.sep))[0].split(
                 os.sep
             )[-1]
             uncompressed_path = os.path.join(file_dir, rootpath)
-            files.extractall(file_dir)
+            _safe_extract(files, file_dir)
         else:
             rootpath = os.path.splitext(filepath)[0].split(os.sep)[-1]
             uncompressed_path = os.path.join(file_dir, rootpath)
             if not os.path.exists(uncompressed_path):
                 os.makedirs(uncompressed_path)
-
-            files.extractall(os.path.join(file_dir, rootpath))
+            _safe_extract(files, os.path.join(file_dir, rootpath))
 
         return uncompressed_path
 
