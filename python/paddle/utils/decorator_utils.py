@@ -928,8 +928,16 @@ def index_add_decorator() -> Callable[
             if "source" in kwargs:
                 kwargs["value"] = kwargs.pop("source")
 
-            if len(args) >= 3 and isinstance(args[1], int):
-                args = (args[0], args[2], args[1], *args[3:])
+            if len(args) >= 2 and isinstance(args[1], int):
+                kwargs["x"] = args[0]
+                kwargs["axis"] = args[1]
+                if len(args) > 2:
+                    kwargs["index"] = args[2]
+                if len(args) > 3:
+                    kwargs["value"] = args[3]
+                if len(args) > 4:
+                    kwargs["alpha"] = args[4]
+                args = ()
 
             return func(*args, **kwargs)
 
