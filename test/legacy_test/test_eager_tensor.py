@@ -98,6 +98,41 @@ class TestEagerTensor(unittest.TestCase):
                     self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     with self.assertRaises(ValueError):
                         y = x.cuda("test")
+                if core.is_compiled_with_cuda():
+                    pre_device = paddle.get_device()
+                    paddle.set_device(0)
+                    current_place = paddle.framework._current_expected_place_()
+                    paddle.set_device(pre_device)
+                    y = x.cuda()
+                    self.assertEqual(
+                        y.place.__repr__(), current_place.__repr__()
+                    )
+                    y = x.cuda(None)
+                    self.assertEqual(
+                        y.place.__repr__(), current_place.__repr__()
+                    )
+                    y = x.cuda(device_id=0)
+                    self.assertEqual(
+                        y.place.__repr__(), current_place.__repr__()
+                    )
+                    y = x.cuda(blocking=False)
+                    self.assertEqual(
+                        y.place.__repr__(), current_place.__repr__()
+                    )
+                    y = x.cuda(blocking=True)
+                    self.assertEqual(
+                        y.place.__repr__(), current_place.__repr__()
+                    )
+                    y = x.cuda(device_id=0, blocking=True)
+                    self.assertEqual(
+                        y.place.__repr__(), current_place.__repr__()
+                    )
+                    y = x.cuda(device_id=0, blocking=False)
+                    self.assertEqual(
+                        y.place.__repr__(), current_place.__repr__()
+                    )
+                    with self.assertRaises(ValueError):
+                        y = x.cuda()
 
                 # support 'dtype' is core.VarType
                 x = paddle.rand((2, 2))
