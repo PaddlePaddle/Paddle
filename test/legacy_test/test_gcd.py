@@ -126,8 +126,8 @@ class TestGcdInplaceAPI(unittest.TestCase):
         y = paddle.to_tensor(self.y_np)
         other = paddle.to_tensor(self.y_np)
         x_clone = x.clone()
-        with self.assertRaises(ValueError):
-            out = paddle.gcd_(x_clone, y=y, other=other)
+        with self.assertRaises(TypeError):
+            out = paddle.gcd_(x_clone, y, other=other)
         paddle.enable_static()
 
 
