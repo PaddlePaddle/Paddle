@@ -58,6 +58,8 @@ GLOBAL_ATTRIBUTE_KEYWORDS = [
     'permute',
     'dtype',
     'fused_qkv',
+    'src_dtype',
+    'dst_dtype',
 ]
 
 EXTRA_SUFFIX = [
@@ -268,14 +270,24 @@ def fused_qkv_old_macro(tokens, expression, context):
         else:
             dst_qkv_weight_name = tokens[2].value
 
-        src_state_shard_num = context.get_src_state_shard_num(
-            src_qkv_weight_name
-        )
-        dst_state_shard_num = (
-            context.get_dst_state_shard_num(dst_qkv_weight_name)
-            if dst_qkv_weight_name is not None
-            else 1
-        )
+        if context.aoa_config_reverse:
+            dst_state_shard_num = context.get_src_state_shard_num(
+                dst_qkv_weight_name
+            )
+            src_state_shard_num = (
+                context.get_dst_state_shard_num(src_qkv_weight_name)
+                if src_qkv_weight_name is not None
+                else 1
+            )
+        else:
+            src_state_shard_num = context.get_src_state_shard_num(
+                src_qkv_weight_name
+            )
+            dst_state_shard_num = (
+                context.get_dst_state_shard_num(dst_qkv_weight_name)
+                if dst_qkv_weight_name is not None
+                else 1
+            )
 
         configs = [
             (src_state_shard_num, src_qkv_weight_name),
@@ -409,14 +421,24 @@ def fused_ffn_macro(tokens, expression, context):
             dst_ffn_weight_name = tokens[2].value
         else:
             dst_ffn_weight_name = None
-        src_state_shard_num = context.get_src_state_shard_num(
-            src_ffn_weight_name
-        )
-        dst_state_shard_num = (
-            context.get_dst_state_shard_num(dst_ffn_weight_name)
-            if dst_ffn_weight_name is not None
-            else 1
-        )
+        if context.aoa_config_reverse:
+            dst_state_shard_num = context.get_src_state_shard_num(
+                dst_ffn_weight_name
+            )
+            src_state_shard_num = (
+                context.get_dst_state_shard_num(src_ffn_weight_name)
+                if src_ffn_weight_name is not None
+                else 1
+            )
+        else:
+            src_state_shard_num = context.get_src_state_shard_num(
+                src_ffn_weight_name
+            )
+            dst_state_shard_num = (
+                context.get_dst_state_shard_num(dst_ffn_weight_name)
+                if dst_ffn_weight_name is not None
+                else 1
+            )
         splited_num = math.lcm(src_state_shard_num, dst_state_shard_num)
 
         configs = [
@@ -723,15 +745,27 @@ def id(tokens, expression, context):
     if not has_allowed_placeholder:
         return expression
 
-    name_with_id = next(
-        (
-            token.value
-            for token in tokens
-            if token.type == TokenType.IDENTIFIER
-            and any(ph in token.value for ph in allowed_placeholders)
-        ),
-        None,
-    )
+    if not context.aoa_config_reverse:
+        name_with_id = next(
+            (
+                token.value
+                for token in tokens
+                if token.type == TokenType.IDENTIFIER
+                and any(ph in token.value for ph in allowed_placeholders)
+            ),
+            None,
+        )
+    else:
+        flag_right_var = False
+        for token in tokens:
+            if token.type == TokenType.RARROW:
+                flag_right_var = True
+            if token.type == TokenType.IDENTIFIER and any(
+                ph in token.value for ph in allowed_placeholders
+            ):
+                if flag_right_var:
+                    name_with_id = token.value
+                    break
 
     assert name_with_id is not None, "No $ID found in NAME tokens"
     all_src_state_keys = context.get_all_src_state_keys()
@@ -739,28 +773,18 @@ def id(tokens, expression, context):
         all_src_state_keys, EXTRA_SUFFIX, allowed_placeholders
     )
     valid_id_combos = id_matcher.find_matches(name_with_id)
-
-    from collections import Counter
-
-    def dict_list_equal_unordered(
-        d1: dict[str, list[int]], d2: dict[str, list[int]]
-    ) -> bool:
-        if set(d1.keys()) != set(d2.keys()):
-            return False
-        for k in d1:
-            if Counter(d1[k]) != Counter(d2[k]):
-                return False
-        return True
-
-    for tkn in tokens:
-        if tkn.type == TokenType.RARROW:
+    valid_keys = list(valid_id_combos.keys())
+    IDENTIFIER_tokens = []
+    for token in tokens:
+        if token.value in GLOBAL_ATTRIBUTE_KEYWORDS:
             break
-        if tkn.type == TokenType.IDENTIFIER and any(
-            ph in tkn.value for ph in allowed_placeholders
-        ):
-            assert dict_list_equal_unordered(
-                id_matcher.find_matches(tkn.value), valid_id_combos
-            )
+        if token.type == TokenType.IDENTIFIER:
+            IDENTIFIER_tokens.append(token)
+
+    for token in IDENTIFIER_tokens:
+        assert all(k in token.value for k in valid_keys), (
+            f"The token: {token.value} must contain all of the following keys: {valid_keys}"
+        )
 
     def dict_cartesian_tuples(d: dict[str, list[int]]):
         keys = list(d.keys())
