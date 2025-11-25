@@ -585,6 +585,7 @@ foreach(arch ${NVCC_ARCH_BIN})
     break()
   endif()
 endforeach()
+
 # Get flag for CUDA arch >= 70
 set(has_arch_le70 FALSE)
 foreach(arch ${NVCC_ARCH_BIN})
