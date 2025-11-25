@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/memory/mem_visitor.h"
 #include "paddle/phi/core/stream.h"
 
 namespace paddle::memory {

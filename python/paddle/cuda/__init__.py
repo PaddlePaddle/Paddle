@@ -28,6 +28,7 @@ from paddle.device import (
     amp,  # noqa: F401
     current_device,
     device,
+    ipc_collect,
     is_available as _device_is_available,
     is_bf16_supported,
     is_current_stream_capturing as _is_current_stream_capturing,
@@ -826,9 +827,9 @@ def get_stream_from_external(
             >>> import paddle
 
             >>> # Assume an external library provides a stream pointer:original_raw_ptr
-
-            >>> # Wrap it into a Paddle Stream
-            >>> # external_stream = paddle.cuda.get_stream_from_external(original_raw_ptr)
+            >>> # doctest: +SKIP('original_raw_ptr not exist')
+            >>> original_raw_ptr = 77777
+            >>> external_stream = paddle.cuda.get_stream_from_external(original_raw_ptr)
     """
 
     device = _device_to_paddle(device)
@@ -878,5 +879,6 @@ __all__ = [
     "max_memory_allocated",
     "reset_peak_memory_stats",
     "Event",
+    "ipc_collect",
     "StreamContext",
 ]

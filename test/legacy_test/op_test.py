@@ -651,6 +651,8 @@ class OpTest(unittest.TestCase):
                 and not is_custom_device_op_test()
                 and not cls.check_prim
                 and not cls.check_prim_pir
+                and os.environ.get('FLAG_SKIP_FLOAT64', '').lower()
+                not in ['1', 'true', 'on']
             ):
                 raise AssertionError(
                     f"This test of {cls.op_type} op needs check_grad with fp64 precision."

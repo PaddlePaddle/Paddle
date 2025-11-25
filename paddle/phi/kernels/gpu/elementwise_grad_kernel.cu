@@ -116,6 +116,54 @@ void DivideGradKernel(const Context& dev_ctx,
 }
 
 template <typename T>
+void MixedPrecisionAddGradFunc(const GPUContext& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& y,
+                               const DenseTensor& out,
+                               const DenseTensor& dout,
+                               DenseTensor* dx,
+                               DenseTensor* dy,
+                               int axis = -1) {
+  const auto& x_dtype = x.dtype();
+  const auto& y_dtype = y.dtype();
+  bool no_broadcast =
+      (dx && dy && dx->dims() == dy->dims() && dx->dims() == dout.dims());
+  if (no_broadcast) {
+    // Dispatch to non-broadcast (elementwise) kernels
+    if (x_dtype == phi::DataType::FLOAT32 &&
+        y_dtype == phi::DataType::FLOAT16) {
+      ElementwiseMixedPrecisionAddGrad<phi::float16>(dev_ctx, dout, dx, dy);
+    } else if (x_dtype == phi::DataType::FLOAT32 &&
+               y_dtype == phi::DataType::BFLOAT16) {
+      ElementwiseMixedPrecisionAddGrad<phi::bfloat16>(dev_ctx, dout, dx, dy);
+    } else {
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Unsupported mixed precision combination for AddGrad non-broadcast "
+          "path: x_dtype=%s, y_dtype=%s",
+          phi::DataTypeToString(x_dtype),
+          phi::DataTypeToString(y_dtype)));
+    }
+  } else {
+    // Dispatch to broadcast-aware kernels
+    if (x_dtype == phi::DataType::FLOAT32 &&
+        y_dtype == phi::DataType::FLOAT16) {
+      DefaultMixedPrecisionAddGrad<phi::float16>(
+          dev_ctx, x, y, dout, dx, dy, axis);
+    } else if (x_dtype == phi::DataType::FLOAT32 &&
+               y_dtype == phi::DataType::BFLOAT16) {
+      DefaultMixedPrecisionAddGrad<phi::bfloat16>(
+          dev_ctx, x, y, dout, dx, dy, axis);
+    } else {
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Unsupported mixed precision combination for AddGrad broadcast path: "
+          "x_dtype=%s, y_dtype=%s",
+          phi::DataTypeToString(x_dtype),
+          phi::DataTypeToString(y_dtype)));
+    }
+  }
+}
+
+template <typename T>
 void AddGradFunc(const GPUContext& dev_ctx,
                  const DenseTensor& x,
                  const DenseTensor& y,
@@ -139,6 +187,14 @@ void AddGradKernel(const Context& dev_ctx,
                    int axis,
                    DenseTensor* dx,
                    DenseTensor* dy) {
+#ifdef PADDLE_WITH_CUDA
+  if (x.dtype() == DataType::FLOAT32 &&
+      (y.dtype() == DataType::FLOAT16 || y.dtype() == DataType::BFLOAT16)) {
+    phi::MixedPrecisionAddGradImpl<float>(
+        dev_ctx, x, y, dout, axis, dx, dy, MixedPrecisionAddGradFunc<float>);
+    return;
+  }
+#endif
   phi::AddGradImpl<T>(dev_ctx, x, y, dout, axis, dx, dy, AddGradFunc<T>);
 }
 

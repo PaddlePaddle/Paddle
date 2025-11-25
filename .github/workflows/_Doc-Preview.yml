@@ -27,7 +27,7 @@ defaults:
 
 jobs:
   check-bypass:
-    name: Check bypass for Doc-Preview
+    name: Check bypass
     if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:

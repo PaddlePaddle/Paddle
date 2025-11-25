@@ -1628,6 +1628,7 @@
   kernel :
     func : dropout
     data_type : x
+  inplace : (x -> out)
   optional : seed_tensor
   intermediate : mask
   backward : dropout_grad
@@ -2153,8 +2154,9 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flashmask_attention_v2
-  args : (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices, float softmax_scale, bool is_causal)
+  args : (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices, Tensor block_mask, float softmax_scale, bool is_causal)
   output : Tensor(out), Tensor(softmax_lse)
+  optional : block_mask
   infer_meta :
     func : FlashMaskV2InferMeta
     param : [q, k, v]
@@ -2933,6 +2935,20 @@
   intermediate : saved_mean, saved_variance
   backward : instance_norm_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
+- op : interp_antialias
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
+  output : Tensor(output)
+  infer_meta :
+    func : InterpolateInferMeta
+  optional: out_size, size_tensor, scale_tensor
+  kernel :
+    func : interp_antialias
+    data_type : x
+  backward : interp_antialias_grad
+  data_transform :
+    skip_transform : out_size, size_tensor, scale_tensor
+  # interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : inverse
   args : (Tensor x)
@@ -5974,6 +5990,26 @@
   optional: seq_length
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
+
+- op: fast_ln
+  args: (Tensor x, Tensor scale, Tensor bias, float epsilon)
+  output: Tensor(y), Tensor(mean), Tensor(invvar)
+  infer_meta:
+    func: FastLayerNormInfermeta
+  kernel:
+    func: fast_ln
+    data_type: scale
+  backward: fast_ln_grad
+
+- op: fast_rms_norm
+  args: (Tensor x, Tensor scale, float epsilon)
+  output: Tensor(y), Tensor(invvar)
+  infer_meta:
+    func: FastRMSNormInfermeta
+  kernel:
+    func: fast_rms_norm
+    data_type: scale
+  backward: fast_rms_norm_grad
 
 - op: fp8_gemm_blockwise_
   args: (Tensor A, Tensor A_scale, Tensor B, Tensor B_scale, Tensor input_result, Tensor bias, Tensor pre_gelu, Tensor workspace, bool transa, bool transb, bool grad, bool accumulate, bool use_split_accumulator, int math_sm_count, bool is_A_1d_scaled, bool is_B_1d_scaled)

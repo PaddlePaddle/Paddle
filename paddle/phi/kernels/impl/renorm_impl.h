@@ -178,7 +178,9 @@ __global__ void RenormKernelFunc3(int64_t size,
                                   T* dim_value,
                                   float p,
                                   float max_norm) {
-  int64_t i = ((int64_t)blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t i =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (i < size) {
     T temp = pow(dim_value[i], (T)(1.0 / p));
     dim_value[i] = 1.0;
@@ -193,7 +195,9 @@ __global__ void RenormKernelFunc4(const T* x_data,
                                   T* dim_value,
                                   int64_t dimension_each,
                                   int64_t dim_divisor) {
-  int64_t i = ((int64_t)blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t i =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   auto dim_index = i / dim_divisor % dimension_each;
   if (i < size) {
     if (dim_value[dim_index] < 1.0)
@@ -208,7 +212,9 @@ __global__ void RenormElementwisePow(const T* x_data,
                                      T* pow_value,
                                      int64_t size,
                                      float p) {
-  int64_t i = ((int64_t)blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t i = ((int64_t) static_cast<int64_t>(blockIdx.x)) *
+                  static_cast<int64_t>(blockDim.x) +
+              static_cast<int64_t>(threadIdx.x);
   if (i < size) {
     pow_value[i] = pow(abs(x_data[i]), (T)p);
   }
@@ -223,7 +229,9 @@ __global__ void RenormGradKernelFunc1(const T* x_data,
                                       int64_t dimension_each,
                                       float p,
                                       int64_t dim_divisor) {
-  int64_t i = ((int64_t)blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t i =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   auto dim_index = i / dim_divisor % dimension_each;
   if (i < size) {
     pow_value[i] = pow(abs(x_data[i]), (T)p);
@@ -243,7 +251,9 @@ __global__ void RenormGradKernelFunc2(const T* x_data,
                                       float p,
                                       float max_norm,
                                       int64_t dim_divisor) {
-  int64_t i = ((int64_t)blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t i =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   auto dim_index = i / dim_divisor % dimension_each;
   if (i < dimension_each) {
     dim_power_sum[i] = 0;

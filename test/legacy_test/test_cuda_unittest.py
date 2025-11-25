@@ -16,6 +16,7 @@ import ctypes
 import platform
 import types
 import unittest
+import warnings
 
 import numpy as np
 from op_test import get_device, is_custom_device
@@ -35,6 +36,47 @@ from paddle.cuda import (
     stream,
     synchronize,
 )
+
+
+class TestDevice(unittest.TestCase):
+    def test_device(self):
+        tensor = paddle.tensor([1]).to(paddle.get_device())
+        tensor_device = tensor.device
+        with tensor_device:
+            new_tensor = paddle.tensor([1])
+            assert new_tensor.device == tensor_device
+
+    def test_static_device(self):
+        paddle.enable_static()
+
+        x = paddle.static.data(name="x", shape=[2, 3], dtype='float32')
+        assert x.device is None
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+
+            _ = x.device
+
+            self.assertTrue(
+                any("device" in str(warning.message).lower() for warning in w),
+                msg=f"Expected a warning related to 'device', but got {[str(w.message) for w in w]}",
+            )
+
+
+class TestCudaIpcCollect(unittest.TestCase):
+    def test_ipc_collect(self):
+        if (
+            paddle.device.is_compiled_with_cuda() or is_custom_device()
+        ) and paddle.device.is_compiled_with_rocm():
+            reason = "Skip for ipc_collect function in dcu is not correct"
+            print(reason)
+            return
+        if platform.system().lower() == "windows":
+            print("Skip: ipc_collect function on Windows is not supported.")
+            return
+        device = paddle.device.get_device()
+        if device.startswith("gpu") or device.startswith("xpu"):
+            paddle.device.ipc_collect()
+            paddle.cuda.ipc_collect()
 
 
 class TestCudaCompat(unittest.TestCase):

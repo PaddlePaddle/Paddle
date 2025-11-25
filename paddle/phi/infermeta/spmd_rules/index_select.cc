@@ -114,7 +114,7 @@ SpmdInfo IndexSelectGradInferSpmd(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(x_ndim,
                     out_grad_ndim,
                     common::errors::InvalidArgument(
-                        "IndexSelectGrad: The rank of x [%d] and outgrad [%d] "
+                        "IndexSelectGrad: The rank of x [%d] and out_grad [%d] "
                         "must be the same.",
                         x_ndim,
                         out_grad_ndim));

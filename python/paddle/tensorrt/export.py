@@ -144,17 +144,19 @@ class Input:
             tuple(numpy.ndarray, numpy.ndarray, numpy.ndarray): A tuple containing the generated input data for the minimum, optimal, and maximum shapes.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
-            >>> from paddle.tensorrt.export import Input
-            >>> input_config = Input(
-            >>>     min_input_shape=(1,100),
-            >>>     optim_input_shape=(4,100),
-            >>>     max_input_shape=(8,100),
-            >>> )
-            >>> input.input_data_type='int64'
-            >>> input.input_range=(1,10)
-            >>> input_min_data, input_optim_data, input_max_data = input_config.generate_input_data()
+                >>> from paddle.tensorrt.export import Input
+                >>> input_config = Input(
+                >>>     min_input_shape=(1,100),
+                >>>     optim_input_shape=(4,100),
+                >>>     max_input_shape=(8,100),
+                >>> )
+                >>> input.input_data_type = 'int64'
+                >>> input.input_range = (1, 10)
+                >>> input_min_data, input_optim_data, input_max_data = (
+                ...     input_config.generate_input_data()
+                ... )
         """
         if self.warmup_data is not None:
             raise RuntimeError(
@@ -280,41 +282,42 @@ class TensorRTConfig:
             None
 
         Examples:
-            .. code-block:: python
-            >>> # example 1:
-            >>> from paddle.tensorrt.export import (
-            >>>    Input,
-            >>>    TensorRTConfig,
-            >>>    PrecisionMode,
-            >>> )
-            >>> input_config = Input(
-            >>>     min_input_shape=(1,100),
-            >>>     optim_input_shape=(4,100),
-            >>>     max_input_shape=(8,100),
-            >>> )
-            >>> input_config.input_data_type='int64'
-            >>> input_config.input_range=(1,10)
+            .. code-block:: pycon
 
-            >>> trt_config = TensorRTConfig(inputs=[input_config])
-            >>> trt_config.disable_ops = ["pd_op.dropout"]
-            >>> trt_config.precision_mode = PrecisionMode.FP16
-            >>> trt_config.ops_run_float = "pd_op.conv2d"
-            >>> trt_config.workspace_size = 1 << 32
+                >>> # example 1:
+                >>> from paddle.tensorrt.export import (
+                >>>    Input,
+                >>>    TensorRTConfig,
+                >>>    PrecisionMode,
+                >>> )
+                >>> input_config = Input(
+                >>>     min_input_shape=(1,100),
+                >>>     optim_input_shape=(4,100),
+                >>>     max_input_shape=(8,100),
+                >>> )
+                >>> input_config.input_data_type = 'int64'
+                >>> input_config.input_range = (1, 10)
 
-            >>> # example 2:
-            >>> from paddle.tensorrt.export import (
-            >>>     Input,
-            >>>     TensorRTConfig,
-            >>>     PrecisionMode,
-            >>> )
-            >>> input_config = Input(
-            >>>     warmup_data=(
-            >>>         np.random.rand(1,100).astype(np.float32),
-            >>>         np.random.rand(4,100).astype(np.float32),
-            >>>         np.random.rand(8,100).astype(np.float32),
-            >>>     )
-            >>> )
-            >>> trt_config = TensorRTConfig(inputs=[input_config])
+                >>> trt_config = TensorRTConfig(inputs=[input_config])
+                >>> trt_config.disable_ops = ["pd_op.dropout"]
+                >>> trt_config.precision_mode = PrecisionMode.FP16
+                >>> trt_config.ops_run_float = "pd_op.conv2d"
+                >>> trt_config.workspace_size = 1 << 32
+
+                >>> # example 2:
+                >>> from paddle.tensorrt.export import (
+                >>>     Input,
+                >>>     TensorRTConfig,
+                >>>     PrecisionMode,
+                >>> )
+                >>> input_config = Input(
+                >>>     warmup_data=(
+                >>>         np.random.rand(1,100).astype(np.float32),
+                >>>         np.random.rand(4,100).astype(np.float32),
+                >>>         np.random.rand(8,100).astype(np.float32),
+                >>>     )
+                >>> )
+                >>> trt_config = TensorRTConfig(inputs=[input_config])
         """
         # Checking Input Consistency
         has_input_data = [i.warmup_data is not None for i in inputs]
