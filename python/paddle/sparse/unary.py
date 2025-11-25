@@ -924,7 +924,7 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         Tensor: A reshaped Tensor with the same data type as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -932,7 +932,9 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
             >>> new_shape = [1, 0, 2, -1, 3]
             >>> format = "coo"
 
-            >>> dense_x = paddle.randint(-100, 100, x_shape) * paddle.randint(0, 2, x_shape)
+            >>> dense_x = paddle.randint(-100, 100, x_shape) * paddle.randint(
+            ...     0, 2, x_shape
+            ... )
 
             >>> if format == "coo":
             ...     sp_x = dense_x.to_sparse_coo(len(x_shape))
@@ -941,7 +943,7 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
             >>> sp_out = paddle.sparse.reshape(sp_x, new_shape)
 
             >>> print(sp_out.shape)
-            [1, 2, 2, 3, 3]
+            paddle.Size([1, 2, 2, 3, 3])
 
     """
     if in_dynamic_or_pir_mode():

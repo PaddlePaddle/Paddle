@@ -1728,7 +1728,7 @@ def kl_div(
         Tensor: The KL divergence loss. The data type is same as input tensor
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1739,33 +1739,37 @@ def kl_div(
             >>> # input(x) should be a distribution in the log space
             >>> x = F.log_softmax(paddle.randn(shape), axis=1).astype('float32')
 
-            >>> target = paddle.uniform(shape, min=-10, max=10).astype('float32')
+            >>> target = paddle.uniform(shape, min=-10, max=10).astype(
+            ...     'float32'
+            ... )
 
             >>> # 'batchmean' reduction, loss shape will be [], who is 0-D Tensor
             >>> pred_loss = F.kl_div(x, target, reduction='batchmean')
             >>> print(pred_loss.shape)
-            []
+            paddle.Size([])
 
             >>> # 'mean' reduction, loss shape will be [], who is 0-D Tensor
             >>> pred_loss = F.kl_div(x, target, reduction='mean')
             >>> print(pred_loss.shape)
-            []
+            paddle.Size([])
 
             >>> # 'sum' reduction, loss shape will be [], who is 0-D Tensor
             >>> pred_loss = F.kl_div(x, target, reduction='sum')
             >>> print(pred_loss.shape)
-            []
+            paddle.Size([])
 
             >>> # 'none' reduction, loss shape is same with input shape
             >>> pred_loss = F.kl_div(x, target, reduction='none')
             >>> print(pred_loss.shape)
-            [5, 20]
+            paddle.Size([5, 20])
 
             >>> # if label is in the log space, set log_target = True
             >>> target = paddle.uniform(shape, min=0, max=10).astype('float32')
             >>> log_target = paddle.log(target)
             >>> pred_loss_1 = F.kl_div(x, target, reduction='none')
-            >>> pred_loss_2 = F.kl_div(x, log_target, reduction='none', log_target=True)
+            >>> pred_loss_2 = F.kl_div(
+            ...     x, log_target, reduction='none', log_target=True
+            ... )
             >>> print(paddle.allclose(pred_loss_1, pred_loss_2))
             Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
             True)

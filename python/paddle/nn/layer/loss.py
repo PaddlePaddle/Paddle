@@ -1143,44 +1143,48 @@ class KLDivLoss(Layer):
         output (Tensor): tensor with shape: [] by default.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
 
             >>> shape = (5, 20)
             >>> x = paddle.uniform(shape, min=-10, max=10).astype('float32')
-            >>> target = paddle.uniform(shape, min=-10, max=10).astype('float32')
+            >>> target = paddle.uniform(shape, min=-10, max=10).astype(
+            ...     'float32'
+            ... )
 
             >>> # 'batchmean' reduction, loss shape will be []
             >>> kldiv_criterion = nn.KLDivLoss(reduction='batchmean')
             >>> pred_loss = kldiv_criterion(x, target)
             >>> print(pred_loss.shape)
-            []
+            paddle.Size([])
 
             >>> # 'mean' reduction, loss shape will be []
             >>> kldiv_criterion = nn.KLDivLoss(reduction='mean')
             >>> pred_loss = kldiv_criterion(x, target)
             >>> print(pred_loss.shape)
-            []
+            paddle.Size([])
 
             >>> # 'sum' reduction, loss shape will be []
             >>> kldiv_criterion = nn.KLDivLoss(reduction='sum')
             >>> pred_loss = kldiv_criterion(x, target)
             >>> print(pred_loss.shape)
-            []
+            paddle.Size([])
 
             >>> # 'none' reduction, loss shape is same with X shape
             >>> kldiv_criterion = nn.KLDivLoss(reduction='none')
             >>> pred_loss = kldiv_criterion(x, target)
             >>> print(pred_loss.shape)
-            [5, 20]
+            paddle.Size([5, 20])
 
             >>> # if label is in the log space, set log_target = True
             >>> target = paddle.uniform(shape, min=0, max=10).astype('float32')
             >>> log_target = paddle.log(target)
             >>> kldiv_criterion_1 = nn.KLDivLoss(reduction='none')
-            >>> kldiv_criterion_2 = nn.KLDivLoss(reduction='none', log_target=True)
+            >>> kldiv_criterion_2 = nn.KLDivLoss(
+            ...     reduction='none', log_target=True
+            ... )
             >>> pred_loss_1 = kldiv_criterion_1(x, target)
             >>> pred_loss_2 = kldiv_criterion_2(x, log_target)
             >>> print(paddle.allclose(pred_loss_1, pred_loss_2))
