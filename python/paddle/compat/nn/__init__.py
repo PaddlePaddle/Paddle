@@ -439,13 +439,7 @@ class Unfold(nn.Unfold):
     strides: Size2
 
     @ForbidKeywordsDecorator(
-        illegal_keys={
-            "kernel_sizes",
-            "dilations",
-            "paddings",
-            "strides",
-            "name",
-        },
+        illegal_keys={"kernel_sizes", "dilations", "paddings", "strides"},
         func_name="paddle.compat.nn.Unfold",
         correct_name="paddle.nn.Unfold",
     )
@@ -470,6 +464,7 @@ class Unfold(nn.Unfold):
             strides=to_list_if_necessary(self.strides),
             paddings=to_list_if_necessary(self.paddings),
             dilations=to_list_if_necessary(self.dilations),
+            name=self.name,
         )
 
 
@@ -743,3 +738,8 @@ class Softmax(nn.Layer):
 
     def extra_repr(self) -> str:
         return f"dim={self.dim}"
+
+
+AvgPool1d = AvgPool1D
+AvgPool2d = AvgPool2D
+AvgPool3d = AvgPool3D
