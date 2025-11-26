@@ -410,7 +410,7 @@ static void Interpolate1DCPUBwd(
   int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  float scale_w = -1.0;
+  double scale_w = -1.0;
   if (scale_tensor) {
     auto scale_data =
         funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
@@ -511,8 +511,8 @@ static void Interpolate2DCPUBwd(
   int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  float scale_h = -1;
-  float scale_w = -1;
+  double scale_h = -1;
+  double scale_w = -1;
   if (scale_tensor) {
     auto scale_data =
         funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
@@ -668,9 +668,9 @@ static void Interpolate3DCPUBwd(
   int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  float scale_d = -1;
-  float scale_h = -1;
-  float scale_w = -1;
+  double scale_d = -1;
+  double scale_h = -1;
+  double scale_w = -1;
   if (scale_tensor) {
     auto scale_data =
         funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());

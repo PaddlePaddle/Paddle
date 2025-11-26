@@ -564,7 +564,7 @@ static void Interpolate1DCPUFwd(
   int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  float scale_w = -1.;
+  double scale_w = -1.;
   if (size_tensor && !size_tensor->empty()) {
     // have size tensor
     auto new_size = funcs::get_new_shape(size_tensor.get());
@@ -665,8 +665,8 @@ static void Interpolate2DCPUFwd(
   int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  float scale_h = -1;
-  float scale_w = -1;
+  double scale_h = -1;
+  double scale_w = -1;
 
   if (size_tensor && !size_tensor->empty()) {
     // have size tensor
@@ -828,9 +828,9 @@ static void Interpolate3DCPUFwd(
   int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  float scale_d = -1;
-  float scale_h = -1;
-  float scale_w = -1;
+  double scale_d = -1;
+  double scale_h = -1;
+  double scale_w = -1;
 
   if (size_tensor && !size_tensor->empty()) {
     // have size tensor
