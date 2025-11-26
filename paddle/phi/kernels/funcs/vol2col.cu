@@ -183,7 +183,7 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
   int64_t num_outputs =
       input_channels * output_depth * output_height * output_width;
 
-  int max_threads = 1024;
+  int max_threads = 512;
 #ifdef WITH_NV_JETSON
   phi::backends::gpu::ChangeThreadNum(dev_ctx, &max_threads);
 #endif
@@ -397,7 +397,7 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
   int64_t num_kernels =
       input_channels * input_depth * input_height * input_width;
 
-  int max_threads = 1024;
+  int max_threads = 512;
 #ifdef WITH_NV_JETSON
   phi::backends::gpu::ChangeThreadNum(dev_ctx, &max_threads);
 #endif

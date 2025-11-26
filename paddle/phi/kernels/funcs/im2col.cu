@@ -128,7 +128,7 @@ class Im2ColFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
     int64_t col_width = col->dims()[4];
 
     int64_t num_outputs = im_channels * col_height * col_width;
-    int num_thread = 1024;
+    int num_thread = 512;
 #ifdef WITH_NV_JETSON
     phi::backends::gpu::ChangeThreadNum(dev_ctx, &num_thread);
 #endif
@@ -290,7 +290,7 @@ class Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
 
     int64_t num_kernels = im_channels * im_height * im_width;
 
-    int num_thread = 1024;
+    int num_thread = 512;
 #ifdef WITH_NV_JETSON
     phi::backends::gpu::ChangeThreadNum(dev_ctx, &num_thread);
 #endif
