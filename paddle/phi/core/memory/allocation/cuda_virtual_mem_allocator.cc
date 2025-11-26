@@ -45,7 +45,11 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(const phi::GPUPlace& place)
   prop.type = CU_MEM_ALLOCATION_TYPE_PINNED;
   prop.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
   prop.location.id = place.device;  // NOLINT
+#if defined(_WIN32)
+  prop.requestedHandleTypes = CU_MEM_HANDLE_TYPE_NONE;
+#else
   prop.requestedHandleTypes = CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR;
+#endif
   prop_ = prop;
 
   // Prepare the access descriptor array indicating where and how the backings
