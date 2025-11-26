@@ -22,6 +22,7 @@ import sys
 import tarfile
 import time
 import zipfile
+from pathlib import Path
 from typing import Literal
 
 import httpx
@@ -315,26 +316,71 @@ def _uncompress_file_zip(filepath):
 
 def _is_within_directory(directory, target):
     """Check if the target path is within the given directory."""
-    abs_directory = os.path.abspath(directory)
-    abs_target = os.path.abspath(target)
-    prefix = os.path.commonpath([abs_directory, abs_target])
-    return prefix == abs_directory
+    abs_directory = Path(directory).resolve()
+    abs_target = Path(target).resolve()
+    try:
+        abs_target.relative_to(abs_directory)
+        return True
+    except ValueError:
+        return False
+
+
+def _validate_tar_member_name(name):
+    """
+    Validate tar member name for security.
+
+    Raises ValueError if the name contains unsafe patterns:
+    - Absolute paths (Unix: /path, Windows: C:\\path, UNC: \\\\server\\share)
+    - Path traversal components ('..')
+    """
+    # Check for absolute paths (cross-platform)
+    name_path = Path(name)
+    if name_path.is_absolute():
+        raise ValueError(f"Unsafe absolute path in tar: {name}")
+
+    # Check for path traversal components '..'
+    if '..' in name_path.parts:
+        raise ValueError(f"Unsafe path traversal '..' in tar: {name}")
 
 
 def _safe_extract(tar, path, members=None):
-    """Safely extract tar files to prevent path traversal attacks."""
+    """
+    Safely extract tar files to prevent path traversal attacks.
+
+    Security measures:
+    1. Verify resolved paths are within target directory
+    2. Skip symlinks, hardlinks and other special files
+    3. Only extract regular files and directories
+    """
+    members_to_check = members if members is not None else tar.getmembers()
     extract_members = []
-    for member in tar.getmembers():
-        member_path = os.path.join(path, member.name)
+
+    for member in members_to_check:
+        # Compute the target path and verify it's within the destination
+        member_path = Path(path) / member.name
         if not _is_within_directory(path, member_path):
-            raise Exception(
+            raise ValueError(
                 f"Attempted path traversal in tar file: {member.name}"
             )
-        # Filter out symlinks, hardlinks, and other special files to prevent symlink attacks
-        if member.isfile() or member.isdir():
-            extract_members.append(member)
-        else:
-            logger.warning(f"Skipping non-regular file in tar: {member.name}")
+
+        # Skip symlinks, hardlinks, and other special files to prevent symlink attacks
+        if member.issym():
+            logger.warning(
+                f"Skipping symbolic link in tar for security: {member.name}"
+            )
+            continue
+        elif member.islnk():
+            logger.warning(
+                f"Skipping hard link in tar for security: {member.name}"
+            )
+            continue
+        elif not (member.isfile() or member.isdir()):
+            logger.warning(
+                f"Skipping special file in tar for security: {member.name}"
+            )
+            continue
+
+        extract_members.append(member)
 
     tar.extractall(path, members=extract_members)
 
@@ -344,9 +390,9 @@ def _uncompress_file_tar(filepath, mode="r:*"):
         file_list = files.getnames()
         file_dir = os.path.dirname(filepath)
 
+        # Validate all member names before extraction
         for name in file_list:
-            if name.startswith('/'):
-                raise ValueError(f"Unsafe path in tar: {name}")
+            _validate_tar_member_name(name)
 
         if _is_a_single_file(file_list):
             rootpath = file_list[0]
