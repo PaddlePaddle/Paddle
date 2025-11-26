@@ -246,7 +246,7 @@ void FusionInfo::ParseInputDimExprs(const OpLoweringGroup& group) {
   const auto TryGetDimExprsFromGlobal = [&](const ::pir::Value& value) -> bool {
     auto& shape_analysis =
         ::pir::ShapeAnalysisManager::Instance().Get(group.GetParentProgram());
-    VLOG(3) << "YUHAN!!! FusionInfo:ParseInputDimExprs Global value: " << group.GetShapeOrDataExprs(value);
+    VLOG(3) << "YUHAN!!! FusionInfo:ParseInputDimExprs Global value: " << shape_analysis.GetShapeOrDataForValue(value);
     input_dim_exprs_.push_back(shape_analysis.GetShapeOrDataForValue(value));
     return true;
   };

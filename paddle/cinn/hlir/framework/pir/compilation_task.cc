@@ -331,8 +331,7 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::BuildPirCINNKernelInfo(
     bool need_x86_kernel) {
   auto compilation_result = std::make_shared<pir::CompilationResult>(
       context_->target_, need_x86_kernel);
-  
-  
+
   auto backend_resource = std::make_shared<pir::BackendResource>(
       context_->target_,
       context_->group_->FuncName(),
@@ -372,6 +371,7 @@ CompilationTask::CompileBroadcastModules(
     broadcast_conditions.emplace_back(context.broadcast_condition_);
     ir::Module ir_module = context.module_builder_.Build();
     ir::Module ir_moduleCX86 = context.CX86_module_builder_.Build();
+    backend_resource->GetBackendCompiler()->SetFusionHash(context.GetFusionHash());
     backend_resource->GetBackendCompiler()->Build(ir_module, ""); //
     backend_resource->GetBackendCompiler()->AppendCX86(ir_moduleCX86);
   }

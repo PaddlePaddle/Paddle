@@ -25,7 +25,7 @@
 
 namespace cinn::runtime {
 
-std::optional<int> GetArchDevice(const common::Target& target) {
+inline std::optional<int> GetArchDevice(const common::Target& target) {
   return target.arch.Match(
       [&](common::UnknownArch) -> std::optional<int> { return std::nullopt; },
       [&](common::X86Arch) -> std::optional<int> { return std::nullopt; },
@@ -54,7 +54,7 @@ std::optional<int> GetArchDevice(const common::Target& target) {
       });
 }
 
-void SetArchDevice(const common::Target& target,
+inline void SetArchDevice(const common::Target& target,
                    const std::optional<int>& device_id) {
   target.arch.Match(
       [&](common::UnknownArch) -> void {},

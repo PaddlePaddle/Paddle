@@ -73,7 +73,9 @@ std::string NameGenerator::New(const std::string& name_hint) {
     name_hint_idx_.emplace(name_hint, -1);
     return name_hint;
   }
-  return name_hint + "_" + std::to_string(++it->second);
+  auto ret = name_hint + "_" + std::to_string(++it->second);
+  VLOG(5) << "YUHAN!!! Generate NameGenerator " << ret;
+  return ret;
 }
 
 }  // namespace common

@@ -24,6 +24,7 @@
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/runtime/backend_api.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/cinn/runtime/arch_device.h"
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
@@ -34,6 +35,7 @@
 #include <ctime>
 #include <cstdlib>
 #include <unistd.h>
+#include <cuda_runtime.h>
 #endif
 #ifdef CINN_WITH_HIP
 #include "paddle/cinn/backends/hip/codegen_hip_dev.h"
@@ -268,8 +270,13 @@ void Compiler::EndCompile() {
   engine_->AddSelfModule(GetFusionHash(), cinn_runtime_include_path);
 }
 
+std::string Compiler::GetDeviceId() {
+    const auto device_id = cinn::runtime::GetArchDevice(target_);
+    return std::to_string(device_id.value());
+}
+
 void Compiler::LoadAndRegisterFromCache(const std::string& source_hash) {
-  std::string cache_so_path = "/tmp/cinn/" + source_hash + "/" + "cinn_cache.so";
+  std::string cache_so_path = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/" + "cinn_cache.so";
   VLOG(5) << "YUHAN!!! LoadAndRegisterFromCache, cache_so_path = " << cache_so_path;
   
   // 1. 加载元数据 (恢复 Kernel 名称列表)
@@ -284,7 +291,7 @@ void Compiler::LoadAndRegisterFromCache(const std::string& source_hash) {
   }
   
   // 3. 加载 CUDA Fatbin (Device Code)
-  std::string fatbin_path = "/tmp/cinn/" + source_hash + "/cinn_cuda_kernel.fatbin"; 
+  std::string fatbin_path = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/cinn_cuda_kernel.fatbin"; 
   CUmodule cu_module;
   if (cuModuleLoad(&cu_module, fatbin_path.c_str()) != CUDA_SUCCESS) {
       LOG(FATAL) << "Failed to load CUDA Module from " << fatbin_path;
@@ -438,7 +445,7 @@ void Compiler::RegisterCudaModuleSymbol() {
     // 缓存模式逻辑：检查/tmp/cinn/source_hash/cinn_cuda_kernel.o是否存在
     std::string kernel_name = ExtractKernelName(source_code);
     std::string source_hash = ComputeSourceHash();
-    std::string cache_so_path = "/tmp/cinn/" + source_hash + "/" + "cinn_cache.so";
+    std::string cache_so_path = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/" + "cinn_cache.so";
     VLOG(3) << "YUHAN!!! source code is : " << source_code;
     VLOG(3) << "YUHAN!!! kernel name is : " << kernel_name;
     VLOG(3) << "YUHAN!!! source hash is : " << source_hash;
@@ -456,7 +463,7 @@ void Compiler::RegisterCudaModuleSymbol() {
       }
       
       // 加载 CUDA Fatbin (Device Code)
-      std::string fatbin_path = "/tmp/cinn/" + source_hash + "/cinn_cuda_kernel.fatbin"; 
+      std::string fatbin_path = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/cinn_cuda_kernel.fatbin";
       CUmodule cu_module;
       // 假设您的 CUDA Driver API 函数名是 cuModuleLoad
       if (cuModuleLoad(&cu_module, fatbin_path.c_str()) != CUDA_SUCCESS) {
@@ -772,7 +779,7 @@ void* Compiler::Lookup(std::string_view fn_name) {
   if (cinn_kernel_cache_ && dynamic_library_handle_) {
       void* func_ptr = dlsym(dynamic_library_handle_, fn_name.data());
       if (func_ptr) {
-          VLOG(4) << "Lookup symbol " << fn_name << " from cached .so success.";
+          LOG(WARNING) << "Lookup symbol " << fn_name << " from cached .so success.";
           return func_ptr;
       }
       LOG(WARNING) << "Kernel cache is enabled but symbol " << fn_name << " not found in .so";
@@ -895,10 +902,38 @@ std::string Compiler::ExtractKernelName(const std::string& source_code) {
   return kernel_name;
 }
 
+std::string Compiler::GetDeviceArch() {
+  int major = 0, minor = 0;
+  if (cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, 0) ==
+          cudaSuccess &&
+      cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, 0) ==
+          cudaSuccess) {
+    return "sm_" + std::to_string(major) + std::to_string(minor);
+  } else {
+    LOG(WARNING) << "cannot detect compute capability from your device, "
+                 << "fall back to compute_30.";
+    return "sm_30";
+  }
+}
+
+std::string Compiler::GetComputeArch() {
+  int major = 0, minor = 0;
+  if (cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, 0) ==
+          cudaSuccess &&
+      cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, 0) ==
+          cudaSuccess) {
+    return "compute_" + std::to_string(major) + std::to_string(minor);
+  } else {
+    LOG(WARNING) << "cannot detect compute capability from your device, "
+                 << "fall back to compute_30.";
+    return "compute_30";
+  }
+}
+
 std::string Compiler::GenerateObjectWithoutCache(const std::string& source_code) {
 
   std::string kernel_name = ExtractKernelName(source_code);
-  std::string library_path = "/tmp/cinn/" + std::to_string(fusion_hash_) + "/";
+  std::string library_path = "/tmp/cinn/" + GetDeviceId() + "/" + std::to_string(fusion_hash_) + "/";
   llvm::sys::fs::create_directories(library_path);
 
   // 生成一个临时.cu文件，然后使用nvcc编译为.o文件
@@ -914,6 +949,7 @@ std::string Compiler::GenerateObjectWithoutCache(const std::string& source_code)
   }
 
   source_file << source_code;
+  source_file.flush(); 
   source_file.close();
 
   // 检查文件状态
@@ -924,17 +960,40 @@ std::string Compiler::GenerateObjectWithoutCache(const std::string& source_code)
       return "";
   }
 
+  if (!llvm::sys::fs::exists(cuda_source_file)) {
+       LOG(FATAL) << "File successfully written but immediately missing/unreadable: " << cuda_source_file;
+       return "";
+  }
+
   // 创建.o
   std::string cuda_source_o = library_path + "cinn_cuda_kernel.o";
+
+  // 如果cuda_source_o已经存在，要报错
+  if (llvm::sys::fs::exists(cuda_source_o)) {
+      VLOG(1) << "Internal error: Object file already exists. "
+                 << "This indicates a logic error in hash or kernel naming. File: "
+                 << cuda_source_o;
+  }
+
+  std::vector<std::string> cinn_runtime_include_path = {Context::Global().runtime_include_dir()};
+  std::string include_dir_str = "";
+  for (const auto& dir : cinn_runtime_include_path) {
+      include_dir_str += "-I" + dir + " ";
+  }
   
   std::string compile_cmd = "nvcc -c -Xcompiler -fPIC -o " + cuda_source_o + " " + cuda_source_file + 
-                           " -arch=sm_90 --std=c++14 --expt-relaxed-constexpr " +
-                           "-I/workspace/xuyuhan/env3.10/lib/python3.10/site-packages/paddle/libs " +
-                           "-I/usr/local/cuda/include -include cuda_fp16.h " +
-                           "-DCINN_CUDA_FP16 -include cuda_fp8.h -DCINN_CUDA_FP8 " +
-                           "-DCUDA_VERSION=12030 " +
-                           "-Wno-deprecated-gpu-targets " +
-                           "--generate-code=arch=compute_90,code=sm_90";
+                          " -arch=sm_80 --std=c++14 --expt-relaxed-constexpr " +
+                          include_dir_str +
+                          // "-I/work/Paddle/build/python/paddle/libs " +
+                          // "-I/work/env3.10/lib/python3.10/site-packages/paddle/libs " +
+                          // "-I/work/env3.10/lib/python3.10/site-packages/paddle/include/paddle/phi/common " +
+                          // "-I/work/env3.10/lib/python3.10/site-packages/nvidia/cuda_runtime/include " +
+                          "-I/usr/local/cuda/include -include cuda_fp16.h " +
+                          "-DCINN_CUDA_FP16 -include cuda_fp8.h -DCINN_CUDA_FP8 " +
+                          "-include cuda_bf16.h -DCINN_CUDA_BF16 " +
+                          "-DCUDA_VERSION=" + std::to_string(CUDA_VERSION) + " " +
+                          "-Wno-deprecated-gpu-targets " +
+                          "--generate-code=arch=" + GetComputeArch() + ",code=" + GetDeviceArch();
 
   VLOG(3) << "Yuhan!!! GenerateObjectWithoutCache FusionHash \n" << std::to_string(fusion_hash_);
   VLOG(3) << "Yuhan!!! GenerateObjectWithoutCache compile_cmd \n" << compile_cmd;
@@ -948,14 +1007,14 @@ std::string Compiler::GenerateObjectWithoutCache(const std::string& source_code)
     return "";
   }
   VLOG(3) << "Yuhan!!! GenerateObjectWithoutCache " << cuda_source_o;
-  std::remove(cuda_source_file.c_str());
+  // std::remove(cuda_source_file.c_str());
   return cuda_source_o;
 }
 
 std::string Compiler::GenerateFatbinWithoutCache(const std::string& source_code) {
   
   std::string kernel_name = ExtractKernelName(source_code);
-  std::string library_path = "/tmp/cinn/" + std::to_string(fusion_hash_) + "/";
+  std::string library_path = "/tmp/cinn/" + GetDeviceId() + "/" + std::to_string(fusion_hash_) + "/";
   llvm::sys::fs::create_directories(library_path);
   
   // 生成一个临时.cu文件，然后使用nvcc编译为fatbin文件
@@ -971,6 +1030,7 @@ std::string Compiler::GenerateFatbinWithoutCache(const std::string& source_code)
   }
 
   source_file << source_code;
+  source_file.flush(); 
   source_file.close();
 
   // 检查文件状态
@@ -981,17 +1041,40 @@ std::string Compiler::GenerateFatbinWithoutCache(const std::string& source_code)
       return "";
   }
   
+  if (!llvm::sys::fs::exists(cuda_source_file)) {
+       LOG(FATAL) << "File successfully written but immediately missing/unreadable: " << cuda_source_file;
+       return "";
+  }
+
   // 创建fatbin
   std::string cuda_fatbin = library_path + "cinn_cuda_kernel.fatbin";
 
+  // 如果cuda_source_o已经存在，要报错
+  if (llvm::sys::fs::exists(cuda_fatbin)) {
+      VLOG(1) << "Internal error: Object file already exists. "
+                 << "This indicates a logic error in hash or kernel naming. File: "
+                 << cuda_fatbin;
+  }
+
+  std::vector<std::string> cinn_runtime_include_path = {Context::Global().runtime_include_dir()};
+  std::string include_dir_str = "";
+  for (const auto& dir : cinn_runtime_include_path) {
+      include_dir_str += "-I" + dir + " ";
+  }
+
   std::string compile_cmd = "nvcc --fatbin -o " + cuda_fatbin + " " + cuda_source_file + 
-                           " -arch=sm_90 --std=c++14 --expt-relaxed-constexpr " +
-                           "-I/workspace/xuyuhan/env3.10/lib/python3.10/site-packages/paddle/libs " +
+                           " -arch=sm_80 --std=c++14 --expt-relaxed-constexpr " +
+                           include_dir_str +
+                          //  "-I/work/Paddle/build/python/paddle/libs " +
+                          //  "-I/workspace/xuyuhan/env3.10/lib/python3.10/site-packages/paddle/libs " +
+                          //  "-I/workspace/xuyuhan/env3.10/lib/python3.10/site-packages/paddle/include/paddle/phi/common " +
+                          //  "-I/workspace/xuyuhan/env3.10/lib/python3.10/site-packages/nvidia/cuda_runtime/include " +
                            "-I/usr/local/cuda/include -include cuda_fp16.h " +
                            "-DCINN_CUDA_FP16 -include cuda_fp8.h -DCINN_CUDA_FP8 " +
-                           "-DCUDA_VERSION=12030 " +
+                           "-include cuda_bf16.h -DCINN_CUDA_BF16 " +
+                           "-DCUDA_VERSION=" + std::to_string(CUDA_VERSION) + " " +
                            "-Wno-deprecated-gpu-targets " +
-                           "--generate-code=arch=compute_90,code=sm_90";
+                           "--generate-code=arch=" + GetComputeArch() + ",code=" + GetDeviceArch();
 
   VLOG(3) << "Yuhan!!! GenerateFatbinWithoutCache FusionHash \n" << std::to_string(fusion_hash_);;
   VLOG(3) << "Yuhan!!! GenerateFatbinWithoutCache compile_cmd \n" << compile_cmd;
@@ -1001,17 +1084,17 @@ std::string Compiler::GenerateFatbinWithoutCache(const std::string& source_code)
     std::ifstream log_file("compile_fatbin.log");
     std::string log_content((std::istreambuf_iterator<char>(log_file)), 
                            std::istreambuf_iterator<char>());
-    LOG(ERROR) << "Compilation failed with output:\n" << log_content;
+    LOG(ERROR) << "Compilation failed with output:\n" << compile_cmd << "\n" << source_code << "\n" << log_content;
     return "";
   }
   VLOG(3) << "Yuhan!!! GenerateFatbinWithoutCache " << cuda_fatbin;
-  std::remove(cuda_source_file.c_str());
+  // std::remove(cuda_source_file.c_str());
   return cuda_fatbin;
 }
 
 void Compiler::SaveKernelNamesToMeta() {
   // 1. 获取元数据文件路径
-  std::string meta_path = "/tmp/cinn/" + std::to_string(fusion_hash_) + "/cinn_cuda_kernel.meta";
+  std::string meta_path = "/tmp/cinn/" + GetDeviceId() + "/" + std::to_string(fusion_hash_) + "/cinn_cuda_kernel.meta";
   VLOG(3) << "Saving CINN kernel names to meta file: " << meta_path;
 
   // 2. 打开文件
@@ -1037,7 +1120,7 @@ void Compiler::SaveKernelNamesToMeta() {
 
 void Compiler::LoadKernelNamesFromMeta() {
   // 1. 获取元数据文件路径
-  std::string meta_path = "/tmp/cinn/" + std::to_string(fusion_hash_) + "/cinn_cuda_kernel.meta";
+  std::string meta_path = "/tmp/cinn/" + GetDeviceId() + "/" + std::to_string(fusion_hash_) + "/cinn_cuda_kernel.meta";
   VLOG(3) << "Loading CINN kernel names from meta file: " << meta_path;
 
   // 2. 打开文件

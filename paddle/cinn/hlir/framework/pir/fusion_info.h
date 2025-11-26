@@ -112,6 +112,7 @@ class FusionInfo {
   FusionInfo(FusionInfo &&) = default;
 
   std::size_t hash() const;
+  std::string unique_fn_name() const { return unique_fn_name_; }
 
   bool operator==(const FusionInfo &other) const {
     return this->hash() == other.hash();

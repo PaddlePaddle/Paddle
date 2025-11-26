@@ -19,7 +19,7 @@ namespace cinn::hlir::framework {
 
 namespace pir {
 void* BackendResource::GetHostFuncPtr() const {
-  VLOG(4) << "Lookup kernel name: " << host_fn_name_;
+  LOG(WARNING) << "YUHAN!!! Lookup kernel name: " << host_fn_name_;
   void* ptr = backend_compiler_->Lookup(host_fn_name_);
   PADDLE_ENFORCE_NOT_NULL(ptr,
                           ::common::errors::InvalidArgument(
@@ -96,6 +96,15 @@ void CompilationCache::Insert(const CacheKey& key, const CacheValue& value) {
                         key));
   cache_.insert({key, value});
 }
+
+void CompilationCache::InsertOrReplace(const CacheKey& key, const CacheValue& value) {
+    // 使用 std::unordered_map 的 operator[] 或 insert/erase 组合实现插入或替换
+    cache_[key] = value;
+    // VLOG 记录替换/插入信息
+    VLOG(4) << "CompilationCache: Inserted or replaced cache key " << key.hash()
+            << " with kernel: " << value->GetHostFuncName();
+}
+
 
 void CompilationCache::Clear() { cache_.clear(); }
 

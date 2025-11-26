@@ -19,7 +19,7 @@ namespace backends {
 const std::string CodeGenCudaDev::general_source_header_ =  // NOLINT
     R"(
 #pragma once
-#include <cstdint>
+#include "cstdint"
 #define CINN_WITH_CUDA
 #include "bfloat16.h"
 #include "float16.h"
