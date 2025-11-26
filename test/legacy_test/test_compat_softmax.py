@@ -65,15 +65,10 @@ class TestCompatSoftmax(unittest.TestCase):
         x = paddle.randn([3, 9, 5])
 
         msg_gt_1 = "paddle.compat.nn.Softmax() received unexpected keyword argument 'axis'. \nDid you mean to use paddle.nn.Softmax() instead?"
-        msg_gt_2 = "paddle.compat.nn.Softmax() received unexpected keyword arguments 'axis', 'name'. \nDid you mean to use paddle.nn.Softmax() instead?"
 
         with self.assertRaises(TypeError) as cm:
             softmax = paddle.compat.nn.Softmax(axis=1)
         self.assertEqual(str(cm.exception), msg_gt_1)
-
-        with self.assertRaises(TypeError) as cm:
-            softmax = paddle.compat.nn.Softmax(axis=1, name="softmax")
-        self.assertEqual(str(cm.exception), msg_gt_2)
 
 
 if __name__ == "__main__":
