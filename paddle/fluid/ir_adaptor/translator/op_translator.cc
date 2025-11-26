@@ -3877,7 +3877,7 @@ static std::pair<pir::Value, pir::Value> ParseXAndOutGradValue(
   auto var_desc = op_desc.Block()->FindVarRecursive(input_xshape_name);
   auto dtype = ::phi::TransToPhiDataType(var_desc->GetDataType());
   auto shape_vec = var_desc->GetShape();
-  // NOTE(dev): GradOp depends on X instead of XShape, so we need
+  // NOTE(dev): GraphOp depends on X instead of XShape, so we need
   // erase first element in xshape.
   shape_vec.erase(shape_vec.begin());
   xshape_value = builder
@@ -4140,6 +4140,16 @@ OpTranslator::OpTranslator() {
   special_handlers["bicubic_interp_grad"] = InterpolateOpTranscriber();
   special_handlers["linear_interp"] = InterpolateOpTranscriber();
   special_handlers["linear_interp_grad"] = InterpolateOpTranscriber();
+  special_handlers["bilinear_interp_v2"] = InterpolateOpTranscriber();
+  special_handlers["bilinear_interp_v2_grad"] = InterpolateOpTranscriber();
+  special_handlers["nearest_interp_v2"] = InterpolateOpTranscriber();
+  special_handlers["nearest_interp_v2_grad"] = InterpolateOpTranscriber();
+  special_handlers["trilinear_interp_v2"] = InterpolateOpTranscriber();
+  special_handlers["trilinear_interp_v2_grad"] = InterpolateOpTranscriber();
+  special_handlers["bicubic_interp_v2"] = InterpolateOpTranscriber();
+  special_handlers["bicubic_interp_v2_grad"] = InterpolateOpTranscriber();
+  special_handlers["linear_interp_v2"] = InterpolateOpTranscriber();
+  special_handlers["linear_interp_v2_grad"] = InterpolateOpTranscriber();
   special_handlers["conv2d"] = Conv2dOpTranscriber();
   special_handlers["conv3d"] = Conv3dOpTranscriber();
   special_handlers["cross_entropy_with_softmax"] =
