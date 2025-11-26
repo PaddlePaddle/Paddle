@@ -95,9 +95,9 @@ SpmdInfo ArgSortGradInferSpmd(const DistMetaTensor& indices,
 
   auto ind_shape = common::vectorize(indices.dims());
   int ind_ndim = static_cast<int>(ind_shape.size());
-  auto ind_dist_attr_src = indices.dist_attr();
+  auto indices_dist_attr_src = indices.dist_attr();
   std::vector<std::vector<int64_t>> ind_dims_mapping =
-      ind_dist_attr_src.multi_dims_mapping();
+      indices_dist_attr_src.multi_dims_mapping();
   PADDLE_ENFORCE_EQ(
       ind_ndim,
       ind_dims_mapping.size(),
@@ -170,7 +170,7 @@ SpmdInfo ArgSortGradInferSpmd(const DistMetaTensor& indices,
   x_grad_dist_attr_dst.set_dims_mapping(x_dims_mapping_dst);
 
   VLOG(4) << "ArgSortGradInferSpmdBase:" << std::endl;
-  VLOG(4) << "indices_dist_attr_src: " << ind_dist_attr_src.to_string()
+  VLOG(4) << "indices_dist_attr_src: " << indices_dist_attr_src.to_string()
           << " indices_dist_attr_dst: " << indices_dist_attr_dst.to_string()
           << std::endl;
   VLOG(4) << "x_dist_attr_src: " << x_dist_attr_src.to_string()

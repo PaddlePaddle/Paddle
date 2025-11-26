@@ -26,6 +26,7 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 from paddle import _C_ops, nn, pir
+from paddle.amp.auto_cast import amp_global_state
 from paddle.amp.grad_scaler import OptimizerState
 from paddle.autograd import PyLayer
 from paddle.base import unique_name
@@ -1176,6 +1177,9 @@ class _ShardOptimizer(Optimizer):
         if isinstance(self._shard_fn, ShardingStage3):
             for param in self._inner_opt._parameter_list:
                 self._shard_fn._shard_parameter(param)
+            for param in self._inner_opt._parameter_list:
+                self._shard_fn._register_hook_for_param_grad(param)
+            os.environ["skip_sharding3_output_reshard"] = "1"
 
         self.fuse_param_view = []
         self.param_storage = []
@@ -1252,9 +1256,7 @@ class _ShardOptimizer(Optimizer):
             master_weight = self._inner_opt._master_weights[param.name]
             target_name = master_weight.name
             # shard the master weight
-            if isinstance(
-                self._shard_fn, (ShardingStage1, ShardingStage2, ShardingStage3)
-            ):
+            if isinstance(self._shard_fn, (ShardingStage1, ShardingStage2)):
                 self._inner_opt._master_weights[param.name] = (
                     self._shard_fn.shard_master_weight(param, master_weight)
                 )
@@ -1343,13 +1345,16 @@ class _ShardOptimizer(Optimizer):
                         slice_buffer, self.param_storage[i]
                     ).wait()
         else:
-            if isinstance(parameters_and_grads, list):
-                for p, _ in parameters_and_grads:
-                    self._reset_placements(p)
-            else:
-                # reset the parameter and grad to right placements
-                for p, _ in parameters_and_grads['params']:
-                    self._reset_placements(p)
+            if not isinstance(parameters_and_grads, list):
+                parameters_and_grads = parameters_and_grads['params']
+
+            # reset the parameter and grad to right placements
+            for p, _ in parameters_and_grads:
+                if amp_global_state().use_master_grad and isinstance(
+                    self._shard_fn, (ShardingStage2, ShardingStage3)
+                ):
+                    p.main_grad = None
+                self._reset_placements(p)
 
     def apply_gradients(self, params_grads):
         new_params_grads = []
@@ -2073,6 +2078,36 @@ class _ShardingStageBase:
     def _reshard_fake_replicate_grad_to_partial(self, grad: Tensor) -> Tensor:
         return _fake_replicate_grad_to_partial(grad, self._sharding_axis)
 
+    def _register_hook_for_param_grad(self, param):
+        def _reshard_grad(grad):
+            # do reshard only if the grad is dist tensor and in partial status
+            if grad.is_dist():
+                partial_mesh_axis = None
+                for mesh_axis, placement in enumerate(grad.placements):
+                    if isinstance(placement, dist.Partial):
+                        partial_mesh_axis = mesh_axis
+                if partial_mesh_axis is not None:
+                    new_placements = get_placement_with_sharding(
+                        grad, partial_mesh_axis
+                    )
+                    return reshard(grad, grad.process_mesh, new_placements)
+            return grad
+
+        def _main_grad_hook(grad):
+            tmp_grad = paddle.cast(grad, paddle.float32)
+            grad._clear_data()
+            if param.main_grad is None:
+                param.main_grad = _reshard_grad(tmp_grad)
+            else:
+                param.main_grad.add_(_reshard_grad(tmp_grad))
+
+        if amp_global_state().use_master_grad:
+            param.main_grad = None
+            param.register_hook(_main_grad_hook)
+            amp_global_state().already_register_final_backward_hook = True
+        else:
+            param.register_hook(_reshard_grad)
+
 
 class _ShardingStage0(_ShardingStageBase):
     def __init__(
@@ -2216,31 +2251,6 @@ class ShardingStage2(_ShardingStageBase):
                 placements=placements,
             )
         return tensor
-
-    @staticmethod
-    def _grad_hook(grad):
-        # do reshard only if the grad is dist tensor and in partial status
-        if grad.is_dist():
-            partial_mesh_axis = None
-            for mesh_axis, placement in enumerate(grad.placements):
-                if isinstance(placement, dist.Partial):
-                    partial_mesh_axis = mesh_axis
-            if partial_mesh_axis is not None:
-                new_placements = get_placement_with_sharding(
-                    grad, partial_mesh_axis
-                )
-                return reshard(grad, grad.process_mesh, new_placements)
-
-        return grad
-
-    def _register_hook_for_param_grad(self, param):
-        if param.is_dense() and self._mesh is not None:
-            placements = []
-            for _ in range(len(self._mesh.shape)):
-                placements.append(dist.Replicate())
-            param._to_dist_(placements, self._mesh)
-        if param.is_dist():
-            param.register_hook(ShardingStage2._grad_hook)
 
 
 class ShardingStage3(_ShardingStageBase):

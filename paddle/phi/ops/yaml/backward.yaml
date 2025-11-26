@@ -1749,6 +1749,19 @@
     data_type : out_grad
   no_need_buffer: x
 
+- backward_op : index_elementwise_put_with_tensor_double_grad
+  forward : index_elementwise_put_with_tensor_grad (Tensor x, Tensor[] index, Tensor value, Tensor grad_out, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset) -> Tensor(grad_x), Tensor(grad_value)
+  args : (Tensor grad_out, Tensor value, Tensor[] index, Tensor grad_x_grad, Tensor grad_value_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [grad_out]
+  data_transform :
+    skip_transform : index
+  composite : index_elementwise_put_with_tensor_double_grad(grad_out, value, index, grad_x_grad, grad_value_grad, input_dims, input_strides, index_dims, index_strides, slice_offset, grad_out_grad)
+  optional: grad_x_grad, grad_value_grad
+  no_need_buffer: grad_out, value
+
 - backward_op : index_elementwise_put_with_tensor_grad
   forward : index_elementwise_put_with_tensor (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset) -> Tensor(out)
   args : (Tensor x, Tensor[] index, Tensor value, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
@@ -1759,6 +1772,7 @@
     func : index_elementwise_put_with_tensor_grad
     data_type : out_grad
   no_need_buffer: x, value
+  backward: index_elementwise_put_with_tensor_double_grad
 
 - backward_op : index_put_double_grad
   forward : index_put_grad (Tensor x, Tensor[] indices, Tensor value, Tensor grad_out, bool accumulate=false) -> Tensor(grad_x), Tensor(grad_value)

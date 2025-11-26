@@ -2318,7 +2318,7 @@ PHI_DEFINE_EXPORTED_bool(use_accuracy_compatible_kernel,
 /**
  * Allocator Compact related FLAG
  * Name: FLAGS_enable_compact_mem
- * Since Version: 3.2.2
+ * Since Version: 3.3
  * Value Range: bool, default=false
  * Example:
  * Note: whether start compact memory.
@@ -2329,7 +2329,7 @@ PHI_DEFINE_EXPORTED_bool(enable_compact_mem,
 /**
  * Allocator Compact related FLAG
  * Name: FLAGS_max_reserved_threshold_in_gb
- * Since Version: 3.2.2
+ * Since Version: 3.3
  * Value Range: int64, default=70
  * Example:
  * Note: Threshold (GB) used in compact memory. Only reserved_mem greater than
@@ -2344,7 +2344,7 @@ PHI_DEFINE_EXPORTED_int64(
 /**
  * Allocator Compact related FLAG
  * Name: FLAGS_cur_allocated_threshold_in_gb
- * Since Version: 3.2.2
+ * Since Version: 3.3
  * Value Range: int64, default=70
  * Example:
  * Note: Threshold (GB) used in compact memory. Only reserved_mem greater than
@@ -2359,7 +2359,7 @@ PHI_DEFINE_EXPORTED_int64(
 /**
  * Allocator Compact related FLAG
  * Name: FLAGS_try_allocate
- * Since Version: 3.2.2
+ * Since Version: 3.3
  * Value Range: bool, default=false
  * Example:
  * Note: whether start compact memory.

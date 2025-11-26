@@ -588,7 +588,7 @@ def uniform_random_batch_size_like(
     Returns:
         Tensor, A Tensor of the specified shape filled with uniform_random values. The shape of the Tensor is determined by the shape parameter and the specified dimension of the input Tensor.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.base as base
@@ -598,12 +598,12 @@ def uniform_random_batch_size_like(
             >>> input = paddle.static.data(name="input", shape=[1, 3], dtype='float32')
             >>> out_1 = random.uniform_random_batch_size_like(input, [2, 4])
             >>> print(out_1.shape)
-            [1, 4]
+            paddle.Size([1, 4])
 
             >>> # example 2:
             >>> out_2 = random.uniform_random_batch_size_like(input, [2, 4], input_dim_idx=1, output_dim_idx=1)
             >>> print(out_2.shape)
-            [2, 3]
+            paddle.Size([2, 3])
     """
     if in_dynamic_or_pir_mode():
         dtype = convert_np_dtype_to_dtype_(dtype)

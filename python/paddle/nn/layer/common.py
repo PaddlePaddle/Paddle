@@ -429,7 +429,7 @@ class Upsample(Layer):
         A callable object of Upsample.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -438,7 +438,7 @@ class Upsample(Layer):
 
             >>> output = upsample_out(x=input)
             >>> print(output.shape)
-            [2, 3, 12, 12]
+            paddle.Size([2, 3, 12, 12])
 
     """
 
@@ -549,17 +549,17 @@ class UpsamplingNearest2D(Layer):
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
 
             >>> input_data = paddle.rand(shape=(2, 3, 6, 10)).astype("float32")
-            >>> upsample_out  = paddle.nn.UpsamplingNearest2D(size=[12, 12])
+            >>> upsample_out = paddle.nn.UpsamplingNearest2D(size=[12, 12])
             >>> input = paddle.to_tensor(input_data)
             >>> output = upsample_out(x=input)
             >>> print(output.shape)
-            [2, 3, 12, 12]
+            paddle.Size([2, 3, 12, 12])
     """
 
     size: ShapeLike | None
@@ -646,17 +646,17 @@ class UpsamplingBilinear2D(Layer):
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
 
             >>> input_data = paddle.rand(shape=(2, 3, 6, 10)).astype("float32")
-            >>> upsample_out  = paddle.nn.UpsamplingBilinear2D(size=[12, 12])
+            >>> upsample_out = paddle.nn.UpsamplingBilinear2D(size=[12, 12])
             >>> input = paddle.to_tensor(input_data)
             >>> output = upsample_out(x=input)
             >>> print(output.shape)
-            [2, 3, 12, 12]
+            paddle.Size([2, 3, 12, 12])
     """
 
     size: ShapeLike | None
@@ -743,19 +743,17 @@ class Bilinear(Layer):
        Tensor: A 2-D Tensor of shape [batch_size, out_features].
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> layer1 = paddle.rand((5, 5)).astype('float32')
             >>> layer2 = paddle.rand((5, 4)).astype('float32')
-            >>> bilinear = paddle.nn.Bilinear(in1_features=5,
-            ...                               in2_features=4,
-            ...                               out_features=1000)
+            >>> bilinear = paddle.nn.Bilinear(in1_features=5, in2_features=4, out_features=1000)
 
-            >>> result = bilinear(layer1,layer2)
+            >>> result = bilinear(layer1, layer2)
             >>> print(result.shape)
-            [5, 1000]
+            paddle.Size([5, 1000])
 
     """
 
@@ -2537,7 +2535,7 @@ class Unfold(Layer):
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -2546,7 +2544,7 @@ class Unfold(Layer):
             >>> unfold = nn.Unfold(kernel_sizes=[3, 3])
             >>> result = unfold(x)
             >>> print(result.shape)
-            [100, 27, 49284]
+            paddle.Size([100, 27, 49284])
 
     """
 
@@ -2639,7 +2637,7 @@ class Fold(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -2648,7 +2646,7 @@ class Fold(Layer):
             >>> fold = nn.Fold(output_sizes=[4, 5], kernel_sizes=2)
             >>> y = fold(x)
             >>> print(y.shape)
-            [2, 3, 4, 5]
+            paddle.Size([2, 3, 4, 5])
    """
 
     output_sizes: Size2
@@ -2756,7 +2754,7 @@ class Flatten(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2764,7 +2762,7 @@ class Flatten(Layer):
             >>> flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
             >>> y = flatten(inp)
             >>> print(y.shape)
-            [5, 6, 4]
+            paddle.Size([5, 6, 4])
 
     """
 
@@ -2802,7 +2800,7 @@ class Unflatten(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2812,7 +2810,7 @@ class Unflatten(Layer):
             >>> unflatten = paddle.nn.Unflatten(axis, shape)
             >>> res = unflatten(x)
             >>> print(res.shape)
-            [4, 2, 3, 8]
+            paddle.Size([4, 2, 3, 8])
 
     """
 

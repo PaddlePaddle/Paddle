@@ -34,4 +34,20 @@ void MultiClassNMSKernel(const Context& dev_ctx,
                          DenseTensor* index,
                          DenseTensor* nms_rois_num);
 
+template <typename T, typename Context>
+void MultiClassNMSGPUKernel(const Context& dev_ctx,
+                            const DenseTensor& bboxes,
+                            const DenseTensor& scores,
+                            const paddle::optional<DenseTensor>& rois_num,
+                            float score_threshold,
+                            int nms_top_k,
+                            int keep_top_k,
+                            float nms_threshold,
+                            bool normalized,
+                            float nms_eta,
+                            int background_label,
+                            DenseTensor* out,
+                            DenseTensor* index,
+                            DenseTensor* nms_rois_num);
+
 }  // namespace phi

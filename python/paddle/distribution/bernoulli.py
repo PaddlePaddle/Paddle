@@ -157,26 +157,26 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.distribution import Bernoulli
 
                 >>> rv = Bernoulli(paddle.full([1], 0.3))
                 >>> print(rv.sample([100]).shape)
-                [100, 1]
+                paddle.Size([100, 1])
 
                 >>> rv = Bernoulli(paddle.to_tensor(0.3))
                 >>> print(rv.sample([100]).shape)
-                [100]
+                paddle.Size([100])
 
                 >>> rv = Bernoulli(paddle.to_tensor([0.3, 0.5]))
                 >>> print(rv.sample([100]).shape)
-                [100, 2]
+                paddle.Size([100, 2])
 
                 >>> rv = Bernoulli(paddle.to_tensor([0.3, 0.5]))
                 >>> print(rv.sample([100, 2]).shape)
-                [100, 2, 2]
+                paddle.Size([100, 2, 2])
         """
         name = self.name + '_sample'
         if not in_dynamic_mode():
@@ -214,7 +214,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(1)
@@ -222,23 +222,23 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
                 >>> rv = Bernoulli(paddle.full([1], 0.3))
                 >>> print(rv.sample([100]).shape)
-                [100, 1]
+                paddle.Size([100, 1])
 
                 >>> rv = Bernoulli(0.3)
                 >>> print(rv.rsample([100]).shape)
-                [100]
+                paddle.Size([100])
 
                 >>> rv = Bernoulli(paddle.to_tensor([0.3, 0.5]))
                 >>> print(rv.rsample([100]).shape)
-                [100, 2]
+                paddle.Size([100, 2])
 
                 >>> rv = Bernoulli(paddle.to_tensor([0.3, 0.5]))
                 >>> print(rv.rsample([100, 2]).shape)
-                [100, 2, 2]
+                paddle.Size([100, 2, 2])
 
                 >>> # `rsample` has to be followed by a `sigmoid`
                 >>> rv = Bernoulli(0.3)
-                >>> rsample = rv.rsample([3, ])
+                >>> rsample = rv.rsample([3])
                 >>> rsample_sigmoid = paddle.nn.functional.sigmoid(rsample)
                 >>> print(rsample)
                 Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -248,13 +248,27 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 [0.18829606, 0.49690047, 0.20954758])
 
                 >>> # The smaller the `temperature`, the distribution of `rsample` closer to `sample`, with `probs` of 0.3.
-                >>> print(paddle.nn.functional.sigmoid(rv.rsample([1000, ], temperature=1.0)).sum())
+                >>> print(
+                ...     paddle.nn.functional.sigmoid(
+                ...         rv.rsample(
+                ...             [1000],
+                ...             temperature=1.0,
+                ...         )
+                ...     ).sum()
+                ... )
                 >>> # doctest: +SKIP('output will be different')
                 Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                 365.63122559)
                 >>> # doctest: -SKIP
 
-                >>> print(paddle.nn.functional.sigmoid(rv.rsample([1000, ], temperature=0.1)).sum())
+                >>> print(
+                ...     paddle.nn.functional.sigmoid(
+                ...         rv.rsample(
+                ...             [1000],
+                ...             temperature=0.1,
+                ...         )
+                ...     ).sum()
+                ... )
                 Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                 320.15057373)
         """
