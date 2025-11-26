@@ -176,7 +176,10 @@ void CholeskyKernel(const Context& dev_ctx,
   for (int i = 0; i < dims.size() - 2; i++) {
     batch_count *= dims[i];
   }
-  int m = dims[dims.size() - 1];
+  int64_t m = dims[dims.size() - 1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int64_t tensor_size = batch_count * static_cast<int64_t>(m) * m;
 
   const auto* x_data = x.data<T>();

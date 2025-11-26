@@ -1009,13 +1009,25 @@ void DispatchWithDtype(const Context &dev_ctx,
                        NormalVersion) {
   const auto &x_dims = x.dims();
   int bsz = x_dims[0];
-  int cache_bsz = cache_kv.dims()[1];
-  int max_seq_len = cache_kv.dims()[3];
-  int dim_head = cache_kv.dims()[4];
+  int64_t cache_bsz = cache_kv.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t max_seq_len = cache_kv.dims()[3];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t dim_head = cache_kv.dims()[4];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int timestep = max_seq_len;
   float inv_sqrt_dh = 1. / sqrt(dim_head);
 
-  int k_num_head = cache_kv.dims()[2];
+  int64_t k_num_head = cache_kv.dims()[2];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int v_num_head = k_num_head;
   // this num_head means query's head
   int num_head =

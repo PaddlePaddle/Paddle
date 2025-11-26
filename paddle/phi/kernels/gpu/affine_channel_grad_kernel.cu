@@ -109,7 +109,10 @@ void AffineChannelGradCUDAKernel(const Context& dev_ctx,
 
   auto dims = dy->dims();
   const int64_t num = dy->numel();
-  int N = dims[0];
+  int64_t N = dims[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int C = layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
   int64_t HxW = num / N / C;
 
