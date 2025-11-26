@@ -355,7 +355,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       !phi::backends::xpu::is_xpu_support_op(TransToFluidOpName(kernel_name),
                                              kernel_key.dtype()) &&
       !phi::backends::xpu::is_xpu_support_op(kernel_name, kernel_key.dtype());
-  if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) ||
+  if (FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end() &&
       is_xpu_unsupported
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (kernel_iter == iter->second.end() &&
