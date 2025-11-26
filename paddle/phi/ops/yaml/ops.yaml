@@ -2933,6 +2933,20 @@
   backward : instance_norm_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
+- op : interp_antialias
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
+  output : Tensor(output)
+  infer_meta :
+    func : InterpolateInferMeta
+  optional: out_size, size_tensor, scale_tensor
+  kernel :
+    func : interp_antialias
+    data_type : x
+  backward : interp_antialias_grad
+  data_transform :
+    skip_transform : out_size, size_tensor, scale_tensor
+  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : inverse
   args : (Tensor x)
   output : Tensor(out)

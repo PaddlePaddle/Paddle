@@ -35,13 +35,13 @@ __forceinline__ __device__ void PreCalculatorForLinearInterpInputIndex(
     T* lambda2,
     T src_x,
     const int64_t in_img_x) {
-  src_x = max(src_x, static_cast<T>(0));
-  T src_x_floor = floorf(src_x);
-  T frac_part = src_x - src_x_floor;
-  *lambda1 = frac_part;
-  *lambda2 = static_cast<T>(1) - frac_part;
-  *in_img_idx = static_cast<int64_t>(src_x_floor);
-  *x_id = (*in_img_idx < in_img_x - 1);
+  src_x = max(src_x, T(0));
+  *in_img_idx = min(static_cast<int64_t>(src_x), in_img_x - 1);
+  *x_id = (*in_img_idx < in_img_x - 1) ? 1 : 0;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  *lambda1 =
+      static_cast<T>(static_cast<MT>(src_x) - static_cast<MT>(*in_img_idx));
+  *lambda2 = static_cast<T>(1.0) - *lambda1;
 }
 
 template <typename T>
@@ -584,33 +584,33 @@ __global__ void KeBicubicInterpBw(T* in,
       channel_id = tid % num_channels;
     }
 
-    MT in_img_idy = align_corners ? ratio_h * out_img_idy
-                                  : ratio_h * (out_img_idy + 0.5) - 0.5;
-    int64_t input_y = floorf(static_cast<float>(in_img_idy));
+    MT in_img_idy = funcs::AreaPixelComputeSourceIndex<float>(
+        ratio_h, out_img_idy, align_corners);
+    int64_t input_y = floorf(in_img_idy);
 
     const MT y_t = in_img_idy - input_y;
-    MT in_img_idx = align_corners ? ratio_w * out_img_idx
-                                  : ratio_w * (out_img_idx + 0.5) - 0.5;
-    int64_t input_x = floorf(static_cast<float>(in_img_idx));
+    MT in_img_idx = funcs::AreaPixelComputeSourceIndex<float>(
+        ratio_w, out_img_idx, align_corners);
+    int64_t input_x = floorf(in_img_idx);
     const MT x_t = in_img_idx - input_x;
 
     MT x_coeffs[4];
     MT y_coeffs[4];
 
-    funcs::get_cubic_upsample_coefficients<MT>(x_coeffs, x_t);
-    funcs::get_cubic_upsample_coefficients<MT>(y_coeffs, y_t);
+    funcs::GetCubicUpsampleCoefficients<MT>(x_coeffs, x_t);
+    funcs::GetCubicUpsampleCoefficients<MT>(y_coeffs, y_t);
 
     const T* out_pos = &out[out_id_h * output_w + out_id_w];
     T* in_pos;
 
     for (int64_t i = 0; i < 4; i++) {
       for (int64_t j = 0; j < 4; j++) {
-        int64_t access_y = max(min(static_cast<int>(input_y - 1 + j),
-                                   static_cast<int>(in_img_h - 1)),
-                               0);
-        int64_t access_x = max(min(static_cast<int>(input_x - 1 + i),
-                                   static_cast<int>(in_img_w - 1)),
-                               0);
+        int64_t access_y = max(min(static_cast<int64_t>(input_y - 1 + j),
+                                   static_cast<int64_t>(in_img_h - 1)),
+                               static_cast<int64_t>(0));
+        int64_t access_x = max(min(static_cast<int64_t>(input_x - 1 + i),
+                                   static_cast<int64_t>(in_img_w - 1)),
+                               static_cast<int64_t>(0));
         if (data_layout == DataLayout::kNCHW) {
           in_pos = &in[out_id_h * input_w + channel_id * in_img_size +
                        access_y * in_img_w + access_x];
@@ -1082,22 +1082,11 @@ static void Interpolate2DCUDABwd(
     return;
   }
 
-  float ratio_h = 0.f;
-  float ratio_w = 0.f;
-  if (out_h > 1) {
-    float new_scale_h = 0.f;
-    new_scale_h = (scale_h > 0) ? static_cast<float>(1. / scale_h)
-                                : static_cast<float>(in_h) / out_h;
-    ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
-                              : static_cast<float>(new_scale_h);
-  }
-  if (out_w > 1) {
-    float new_scale_w = 0.f;
-    new_scale_w = (scale_w > 0) ? static_cast<float>(1. / scale_w)
-                                : static_cast<float>(in_w) / out_w;
-    ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
-                              : static_cast<float>(new_scale_w);
-  }
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  float ratio_h =
+      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
+  float ratio_w =
+      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
 
   int64_t in_hw = in_h * in_w;
   int64_t out_hw = out_h * out_w;
@@ -1380,32 +1369,13 @@ static void Interpolate3DCUDABwd(
     return;
   }
 
-  double ratio_d = 0.f;
-  double ratio_h = 0.f;
-  double ratio_w = 0.f;
-  if (out_d > 1) {
-    double new_scale_d = 0.0;
-    new_scale_d = (scale_d > 0) ? static_cast<double>(1.0 / scale_d)
-                                : static_cast<double>(in_d) / out_d;
-    ratio_d = (align_corners) ? static_cast<double>(in_d - 1) / (out_d - 1)
-                              : new_scale_d;
-  }
-
-  if (out_h > 1) {
-    double new_scale_h = 0.0;
-    new_scale_h = (scale_h > 0) ? static_cast<double>(1.0 / scale_h)
-                                : static_cast<double>(in_h) / out_h;
-    ratio_h = (align_corners) ? static_cast<double>(in_h - 1) / (out_h - 1)
-                              : new_scale_h;
-  }
-
-  if (out_w > 1) {
-    double new_scale_w = 0.0;
-    new_scale_w = (scale_w > 0) ? static_cast<double>(1.0 / scale_w)
-                                : static_cast<double>(in_w) / out_w;
-    ratio_w = (align_corners) ? static_cast<double>(in_w - 1) / (out_w - 1)
-                              : new_scale_w;
-  }
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  float ratio_d =
+      funcs::AreaPixelComputeScale<float>(in_d, out_d, align_corners, scale_d);
+  float ratio_h =
+      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
+  float ratio_w =
+      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
 
   int64_t in_dhw = in_d * in_h * in_w;
   int64_t out_dhw = out_d * out_h * out_w;
@@ -1472,7 +1442,7 @@ void InterpolateGradKernel(
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
     const paddle::optional<DenseTensor>& scale_tensor,
-    const DenseTensor& output_grad,
+    const DenseTensor& out_grad,
     const std::string& data_layout,
     int out_d,
     int out_h,
@@ -1486,14 +1456,14 @@ void InterpolateGradKernel(
     dev_ctx.template Alloc<T>(x_grad);
     return;
   }
-  auto output_grad_dims = output_grad.dims();
+  auto output_grad_dims = out_grad.dims();
   if (output_grad_dims.size() == 3) {  // 1D interpolation grad
     Interpolate1DCUDABwd<T, Context>(dev_ctx,
                                      x,
                                      out_size,
                                      size_tensor,
                                      scale_tensor,
-                                     output_grad,
+                                     out_grad,
                                      data_layout,
                                      out_w,
                                      scale,
@@ -1507,7 +1477,7 @@ void InterpolateGradKernel(
                                      out_size,
                                      size_tensor,
                                      scale_tensor,
-                                     output_grad,
+                                     out_grad,
                                      data_layout,
                                      out_h,
                                      out_w,
@@ -1523,7 +1493,7 @@ void InterpolateGradKernel(
                                      out_size,
                                      size_tensor,
                                      scale_tensor,
-                                     output_grad,
+                                     out_grad,
                                      data_layout,
                                      out_d,
                                      out_h,
@@ -1789,6 +1759,19 @@ void BicubicInterpGradKernel(
 }
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(interp_antialias_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::InterpolateGradKernel,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16) {
+  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}
 
 PD_REGISTER_KERNEL(bilinear_interp_grad,
                    GPU,
