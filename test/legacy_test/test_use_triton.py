@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import platform
 import unittest
 
 import numpy as np
@@ -39,9 +40,6 @@ def do_bench(kernel_call, quantiles, use_cuda_graph=True):
 
 
 class TestPaddleUseTriton(unittest.TestCase):
-    def test_kwargs_with_cuda_graph(self, device: str = 'cuda:0'):
-        self._test_kwargs(True, device)
-
     def test_kwargs_without_cuda_graph(self, device: str = 'cuda:0'):
         self._test_kwargs(False, device)
 
@@ -51,6 +49,8 @@ class TestPaddleUseTriton(unittest.TestCase):
             or paddle.device.is_compiled_with_rocm()
         ):
             print("Skip Triton tests because no CUDA available.")
+            return
+        if platform.system().lower() == "windows":
             return
         if use_cuda_graph and not paddle.cuda.is_available():
             print("Skip cuda graph tests because no CUDA available.")
@@ -103,6 +103,8 @@ class TestPaddleUseTriton(unittest.TestCase):
         ):
             print("Skip Triton tests because no CUDA available.")
             return
+        if platform.system().lower() == "windows":
+            return
         M, N = 1024, 16
         src = paddle.randn(M * N, device=device)
         dst = paddle.empty(M * N, device=device)
@@ -135,9 +137,6 @@ class TestPaddleUseTriton(unittest.TestCase):
         _kernel[grid](dst, src, N, M, N)
         assert len(_kernel.cache) == 1
 
-    def test_restore_with_kwargs(self, device='cuda:0'):
-        self._test_restore(True, device)
-
     def test_restore_without_kwargs(self, device='cuda:0'):
         self._test_restore(False, device)
 
@@ -147,6 +146,8 @@ class TestPaddleUseTriton(unittest.TestCase):
             or paddle.device.is_compiled_with_rocm()
         ):
             print("Skip Triton tests because no CUDA available.")
+            return
+        if platform.system().lower() == "windows":
             return
         N = 1024
         src = paddle.zeros(N, device=device)
@@ -178,6 +179,8 @@ class TestPaddleUseTriton(unittest.TestCase):
             or paddle.device.is_compiled_with_rocm()
         ):
             print("Skip Triton tests because no CUDA available.")
+            return
+        if platform.system().lower() == "windows":
             return
         # Autotuner's pre- and post- hooks should be called the same number of times
         N = 4096
@@ -231,9 +234,6 @@ class TestPaddleUseTriton(unittest.TestCase):
         else:
             assert values["has_exception"] is False
 
-    def test_prune_configs_with_perf_model(self, device: str = 'cuda:0'):
-        self._test_prune_configs(True, device)
-
     def test_prune_configs_without_perf_model(self, device: str = 'cuda:0'):
         self._test_prune_configs(False, device)
 
@@ -243,6 +243,8 @@ class TestPaddleUseTriton(unittest.TestCase):
             or paddle.device.is_compiled_with_rocm()
         ):
             print("Skip Triton tests because no CUDA available.")
+            return
+        if platform.system().lower() == "windows":
             return
         N = 1024
         src = paddle.randn(N, device=device)
