@@ -95,7 +95,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDX(
     T ddx_mul_x_sub_mean_sum = 0;
     for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
       const int64_t index =
-          layout == phi::DataLayout::kNCHW
+          layout == phi::DataLayout::NCHW
               ? (j / sample_size * C + i) * sample_size + j % sample_size
               : j * outer_size + i;
       T ddx_i = ddx[index];
@@ -131,7 +131,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDX(
     if (ddx != nullptr) {
       for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
         const int64_t index =
-            layout == phi::DataLayout::kNCHW
+            layout == phi::DataLayout::NCHW
                 ? (j / sample_size * C + i) * sample_size + j % sample_size
                 : j * outer_size + i;
         dx[index] +=
@@ -150,7 +150,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDX(
     if (ddscale != nullptr) {
       for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
         const int64_t index =
-            layout == phi::DataLayout::kNCHW
+            layout == phi::DataLayout::NCHW
                 ? (j / sample_size * C + i) * sample_size + j % sample_size
                 : j * outer_size + i;
         dx[index] += (dy[index] * var_val - dy_sum_val / inner_size * var_val -
@@ -195,7 +195,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDDY(
     T ddx_mul_x_sub_mean_sum = 0;
     for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
       const int64_t index =
-          layout == phi::DataLayout::kNCHW
+          layout == phi::DataLayout::NCHW
               ? (j / sample_size * C + i) * sample_size + j % sample_size
               : j * outer_size + i;
       T ddx_i = ddx[index];
@@ -215,7 +215,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDDY(
     if (ddx != nullptr) {
       for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
         const int64_t index =
-            layout == phi::DataLayout::kNCHW
+            layout == phi::DataLayout::NCHW
                 ? (j / sample_size * C + i) * sample_size + j % sample_size
                 : j * outer_size + i;
         ddy[index] += scale[i] * var_val *
@@ -228,7 +228,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDDY(
     if (ddscale != nullptr) {
       for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
         const int64_t index =
-            layout == phi::DataLayout::kNCHW
+            layout == phi::DataLayout::NCHW
                 ? (j / sample_size * C + i) * sample_size + j % sample_size
                 : j * outer_size + i;
         ddy[index] += (x[index] - mean_val) * var_val * ddscale[i];
@@ -238,7 +238,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDDY(
     if (ddbias != nullptr) {
       for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
         const int64_t index =
-            layout == phi::DataLayout::kNCHW
+            layout == phi::DataLayout::NCHW
                 ? (j / sample_size * C + i) * sample_size + j % sample_size
                 : j * outer_size + i;
         ddy[index] += ddbias[i];
@@ -279,7 +279,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDScale(
     T var_val = variance[i];
     for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
       const int64_t index =
-          layout == phi::DataLayout::kNCHW
+          layout == phi::DataLayout::NCHW
               ? (j / sample_size * C + i) * sample_size + j % sample_size
               : j * outer_size + i;
       T dy_i = dy[index];
@@ -300,7 +300,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDScale(
       T dscale_tmp = 0;
       for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
         const int64_t index =
-            layout == phi::DataLayout::kNCHW
+            layout == phi::DataLayout::NCHW
                 ? (j / sample_size * C + i) * sample_size + j % sample_size
                 : j * outer_size + i;
         dscale_tmp += ddx[index] * var_val *
@@ -340,7 +340,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDScaleWithGlobal(
     T ddx_mul_dy_sum = 0;
     for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
       const int64_t index =
-          layout == phi::DataLayout::kNCHW
+          layout == phi::DataLayout::NCHW
               ? (j / sample_size * C + i) * sample_size + j % sample_size
               : j * outer_size + i;
       T ddx_i = ddx[index];
@@ -377,7 +377,7 @@ __global__ void DoubleGradComputeDXWithGlobal(const T *dy,
   if (ddscale != nullptr) {
     for (int64_t i = gid; i < num; i += stride) {
       const int c =
-          layout == phi::DataLayout::kNCHW ? i / sample_size % C : i % C;
+          layout == phi::DataLayout::NCHW ? i / sample_size % C : i % C;
       T inv_var = 1.0 / sqrt(variance[c] + epsilon);
       dx[i] = dy[i] * ddscale[c] * inv_var;
     }
@@ -407,7 +407,7 @@ __global__ void DoubleGradComputeDDYWithGlobal(const T *ddx,
   if (ddx != nullptr) {
     for (int64_t i = gid; i < num; i += stride) {
       const int c =
-          layout == phi::DataLayout::kNCHW ? i / sample_size % C : i % C;
+          layout == phi::DataLayout::NCHW ? i / sample_size % C : i % C;
       T inv_var = 1.0 / sqrt(variance[c] + epsilon);
       ddy[i] += ddx[i] * scale[c] * inv_var;
     }
@@ -416,7 +416,7 @@ __global__ void DoubleGradComputeDDYWithGlobal(const T *ddx,
   if (ddscale != nullptr) {
     for (int64_t i = gid; i < num; i += stride) {
       const int c =
-          layout == phi::DataLayout::kNCHW ? i / sample_size % C : i % C;
+          layout == phi::DataLayout::NCHW ? i / sample_size % C : i % C;
       T inv_var = 1.0 / sqrt(variance[c] + epsilon);
       ddy[i] += (x[i] - mean[c]) * inv_var * ddscale[c];
     }
@@ -425,7 +425,7 @@ __global__ void DoubleGradComputeDDYWithGlobal(const T *ddx,
   if (ddbias != nullptr) {
     for (int64_t i = gid; i < num; i += stride) {
       const int c =
-          layout == phi::DataLayout::kNCHW ? i / sample_size % C : i % C;
+          layout == phi::DataLayout::NCHW ? i / sample_size % C : i % C;
       ddy[i] += ddbias[c];
     }
   }
@@ -459,8 +459,8 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
   phi::funcs::SetConstant<DeviceContext, T> set_constant;
 
   auto &x_dims = X->dims();
-  const int C = (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                                  : x_dims[x_dims.size() - 1]);
+  const int C =
+      (data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
   const int N = x_dims[0];
   const int64_t num = X->numel();
   const int sample_size = num / N / C;
@@ -498,8 +498,8 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
     T *dx_data = dev_ctx.template Alloc<T>(dX);
     set_constant(dev_ctx, dX, static_cast<T>(0));
     if (use_global_stats) {
-      if (data_layout == DataLayout::kNHWC) {
-        DoubleGradComputeDXWithGlobal<T, DataLayout::kNHWC>
+      if (data_layout == DataLayout::NHWC) {
+        DoubleGradComputeDXWithGlobal<T, DataLayout::NHWC>
             <<<grid1, block, 0, dev_ctx.stream()>>>(dy_data,
                                                     ddscale_data,
                                                     variance_data,
@@ -509,7 +509,7 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                                                     num,
                                                     dx_data);
       } else {
-        DoubleGradComputeDXWithGlobal<T, DataLayout::kNCHW>
+        DoubleGradComputeDXWithGlobal<T, DataLayout::NCHW>
             <<<grid1, block, 0, dev_ctx.stream()>>>(dy_data,
                                                     ddscale_data,
                                                     variance_data,
@@ -520,8 +520,8 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                                                     dx_data);
       }
     } else {
-      if (data_layout == DataLayout::kNHWC) {
-        DoubleGradComputeDX<T, block, DataLayout::kNHWC>
+      if (data_layout == DataLayout::NHWC) {
+        DoubleGradComputeDX<T, block, DataLayout::NHWC>
             <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
                                                    mean_data,
                                                    variance_data,
@@ -535,7 +535,7 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                                                    epsilon,
                                                    dx_data);
       } else {
-        DoubleGradComputeDX<T, block, DataLayout::kNCHW>
+        DoubleGradComputeDX<T, block, DataLayout::NCHW>
             <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
                                                    mean_data,
                                                    variance_data,
@@ -555,8 +555,8 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
     T *dscale_data = dev_ctx.template Alloc<T>(dScale);
     set_constant(dev_ctx, dScale, static_cast<T>(0));
     if (use_global_stats) {
-      if (data_layout == DataLayout::kNHWC) {
-        DoubleGradComputeDScaleWithGlobal<T, block, DataLayout::kNHWC>
+      if (data_layout == DataLayout::NHWC) {
+        DoubleGradComputeDScaleWithGlobal<T, block, DataLayout::NHWC>
             <<<grid, block, 0, dev_ctx.stream()>>>(ddx_data,
                                                    variance_data,
                                                    dy_data,
@@ -566,7 +566,7 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                                                    sample_size,
                                                    dscale_data);
       } else {
-        DoubleGradComputeDScaleWithGlobal<T, block, DataLayout::kNCHW>
+        DoubleGradComputeDScaleWithGlobal<T, block, DataLayout::NCHW>
             <<<grid, block, 0, dev_ctx.stream()>>>(ddx_data,
                                                    variance_data,
                                                    dy_data,
@@ -577,8 +577,8 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                                                    dscale_data);
       }
     } else {
-      if (data_layout == DataLayout::kNHWC) {
-        DoubleGradComputeDScale<T, block, DataLayout::kNHWC>
+      if (data_layout == DataLayout::NHWC) {
+        DoubleGradComputeDScale<T, block, DataLayout::NHWC>
             <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
                                                    mean_data,
                                                    variance_data,
@@ -590,7 +590,7 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                                                    epsilon,
                                                    dscale_data);
       } else {
-        DoubleGradComputeDScale<T, block, DataLayout::kNCHW>
+        DoubleGradComputeDScale<T, block, DataLayout::NCHW>
             <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
                                                    mean_data,
                                                    variance_data,
@@ -608,8 +608,8 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
     T *ddy_data = dev_ctx.template Alloc<T>(ddY);
     set_constant(dev_ctx, ddY, static_cast<T>(0));
     if (use_global_stats) {
-      if (data_layout == DataLayout::kNHWC) {
-        DoubleGradComputeDDYWithGlobal<T, DataLayout::kNHWC>
+      if (data_layout == DataLayout::NHWC) {
+        DoubleGradComputeDDYWithGlobal<T, DataLayout::NHWC>
             <<<grid1, block, 0, dev_ctx.stream()>>>(ddx_data,
                                                     scale_data,
                                                     mean_data,
@@ -623,7 +623,7 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                                                     num,
                                                     ddy_data);
       } else {
-        DoubleGradComputeDDYWithGlobal<T, DataLayout::kNCHW>
+        DoubleGradComputeDDYWithGlobal<T, DataLayout::NCHW>
             <<<grid1, block, 0, dev_ctx.stream()>>>(ddx_data,
                                                     scale_data,
                                                     mean_data,
@@ -638,8 +638,8 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                                                     ddy_data);
       }
     } else {
-      if (data_layout == DataLayout::kNHWC) {
-        DoubleGradComputeDDY<T, block, DataLayout::kNHWC>
+      if (data_layout == DataLayout::NHWC) {
+        DoubleGradComputeDDY<T, block, DataLayout::NHWC>
             <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
                                                    mean_data,
                                                    variance_data,
@@ -653,7 +653,7 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                                                    epsilon,
                                                    ddy_data);
       } else {
-        DoubleGradComputeDDY<T, block, DataLayout::kNCHW>
+        DoubleGradComputeDDY<T, block, DataLayout::NCHW>
             <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
                                                    mean_data,
                                                    variance_data,
