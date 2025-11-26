@@ -213,6 +213,8 @@ class TestFoldAPI_Compatibility(TestFoldOp):
         self.op_type = 'fold'
         self.python_api = paddle.nn.functional.fold
         self.set_data()
+        if isinstance(self.paddings, list):
+            self.paddings = tuple(self.paddings)
         self.places = get_places()
 
     def test_check_output(self):
@@ -236,7 +238,7 @@ class TestFoldAPI_Compatibility(TestFoldOp):
         }
         self.check_grad(['X'], 'Y', check_pir=True)
 
-    def test_api(self):
+    def test_layer_api(self):
         # self.attrs in nn.Fold can be alias
         self.attrs = {
             'kernel_size': self.kernel_sizes,
@@ -261,6 +263,25 @@ class TestFoldAPI_Compatibility(TestFoldOp):
                 m.output_size = self.output_sizes
                 m.eval()
                 result = m(input)
+                np.testing.assert_allclose(
+                    result.numpy(), self.outputs['Y'], rtol=1e-05
+                )
+
+    def test_function_api(self):
+        # self.attrs in nn.Fold can be alias
+        self.fold_input = {
+            'kernel_size': self.kernel_sizes,
+            'padding': self.paddings,
+            'dilation': self.dilations,
+            'stride': self.strides,
+            'output_size': self.output_sizes,
+        }
+        for place in self.places:
+            with base.dygraph.guard(place):
+                input = paddle.to_tensor(self.x)
+                result = paddle.nn.functional.fold(
+                    input=input, **self.fold_input
+                )
                 np.testing.assert_allclose(
                     result.numpy(), self.outputs['Y'], rtol=1e-05
                 )

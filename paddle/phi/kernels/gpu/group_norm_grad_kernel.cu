@@ -181,7 +181,10 @@ __global__ void GetScaleBiasGradientCUDAKernel(int64_t N,
                                                const AccT* db,
                                                T* d_scale,
                                                T* d_bias) {
-  for (int64_t c = blockIdx.x * blockDim.x + threadIdx.x; c < C;
+  for (int64_t c =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       c < C;
        c += gridDim.x * blockDim.x) {
     if (c < C) {
       const int G = group;

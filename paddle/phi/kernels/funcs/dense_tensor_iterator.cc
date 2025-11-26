@@ -204,7 +204,7 @@ void DenseTensorIterator::set_output_raw_strided(int64_t output_idx,
     }
     op.current_dtype = op.target_dtype;
   } else if (op.will_resize) {
-    PADDLE_THROW(common::errors::Fatal("Opreator Reize not Implemented!"));
+    PADDLE_THROW(common::errors::Fatal("Operator Resize not Implemented!"));
   }
 }
 
@@ -501,7 +501,7 @@ void DimIter::iter_to_next(const std::array<int64_t, 2>& step) {
 std::array<int64_t, 2> DimIter::iter_for_step() const {
   int64_t step0 = std::min(shape[0] - values[0], end - offset);
   int64_t step1 = 1;
-  if (step0 == shape[0] && !shape.empty()) {
+  if (step0 == shape[0] && !shape.empty() && shape.size() > 1) {
     step1 = std::min(shape[1] - values[1], (end - offset) / shape[0]);
   }
   return {step0, step1};

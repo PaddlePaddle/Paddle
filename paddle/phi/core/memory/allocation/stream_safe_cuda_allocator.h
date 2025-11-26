@@ -21,6 +21,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
+#include "paddle/phi/core/memory/mem_visitor.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
@@ -76,14 +77,22 @@ class StreamSafeCUDAAllocator
                           bool in_cuda_graph_capturing = false);
   ~StreamSafeCUDAAllocator();
 
+  std::shared_ptr<Allocator> &GetUnderLyingAllocator() {
+    return underlying_allocator_;
+  }
+  std::vector<StreamSafeCUDAAllocator *> &GetAllocatorByPlace() {
+    return allocator_map_[place_];
+  }
   bool IsAllocThreadSafe() const override;
   gpuStream_t GetDefaultStream() const;
   void SetDefaultStream(gpuStream_t stream);
+  void Accept(AllocatorVisitor *visitor) override { visitor->Visit(this); }
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;
   void FreeImpl(phi::Allocation *allocation) override;
   uint64_t ReleaseImpl(const phi::Place &place) override;
+  size_t CompactImpl(const phi::Place &place) override;
 
  private:
   void ProcessUnfreedAllocations();

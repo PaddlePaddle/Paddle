@@ -88,5 +88,7 @@ PD_REGISTER_KERNEL(mean_raw,
                    phi::MeanRawKernel,
                    float,
                    double,
+                   int,
+                   int64_t,
                    phi::float16,
                    phi::bfloat16) {}

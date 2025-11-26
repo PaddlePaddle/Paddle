@@ -45,7 +45,9 @@ struct AttnMaskFunctor {
 
 __global__ void FillIndex(int64_t* indices, int num_raws, int num_cols) {
   int64_t num_threads = static_cast<int64_t>(num_raws) * num_cols;
-  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int stride = blockDim.x * gridDim.x;
 
   for (; tid < num_threads; tid += stride) {
@@ -63,7 +65,9 @@ __global__ void TakeAlongAxis(const T* src,
                               int dst_num_cols,
                               int num_elements) {
   int64_t num_threads = static_cast<int64_t>(num_raws) * dst_num_cols;
-  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int stride = blockDim.x * gridDim.x;
 
   for (; tid < num_threads; tid += stride) {

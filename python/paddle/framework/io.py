@@ -483,7 +483,7 @@ def _pickle_save(obj, f, protocol):
         for k in dispatch_table_layer:
             pickle.dispatch_table.pop(k)
 
-    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+    # When value of dict is larger than 4GB, there is a bug on macOS Python 3
     if sys.platform == 'darwin' and sys.version_info.major == 3:
         add_dispatch_table()
         pickle_bytes = pickle.dumps(obj)
@@ -946,7 +946,7 @@ def save(
     if config.use_binary_format:
         _save_binary_var(obj, path)
     else:
-        # `protocol` need to be used, `pickle_protocol` is a deprecated arg.
+        # `protocol` needs to be used, `pickle_protocol` is a deprecated arg.
         if config.pickle_protocol is not None:
             protocol = config.pickle_protocol
             warnings.warn(
@@ -1041,7 +1041,7 @@ def _legacy_save(obj, path, protocol=2):
 
     saved_obj = _unpack_saved_dict(saved_obj, protocol)
 
-    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+    # When value of dict is larger than 4GB, there is a bug on macOS Python 3
     if (
         _is_file_path(path)
         and sys.platform == 'darwin'
@@ -1075,17 +1075,17 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
         ``path`` needs to be a complete file name, such as ``model.pdparams`` or
         ``model.pdopt`` ;
         2. loading from ``paddle.jit.save`` or ``paddle.static.save_inference_model``
-        or ``paddle.Model().save(training=False)`` , ``path`` need to be a file prefix,
+        or ``paddle.Model().save(training=False)`` , ``path`` needs to be a file prefix,
         such as ``model/mnist``, and ``paddle.load`` will get information from
         ``mnist.pdmodel`` and ``mnist.pdiparams`` ;
         3. loading from paddle 1.x APIs ``paddle.base.io.save_inference_model`` or
-        ``paddle.base.io.save_params/save_persistables`` , ``path`` need to be a
+        ``paddle.base.io.save_params/save_persistables`` , ``path`` needs to be a
         directory, such as ``model`` and model is a directory.
 
     Note:
         If you load ``state_dict`` from the saved result of static graph mode API such as
         ``paddle.static.save`` or ``paddle.static.save_inference_model`` ,
-        the structured variable name in dynamic mode will cannot be restored.
+        the structured variable name in dynamic mode cannot be restored.
         You need to set the argument ``use_structured_name=False`` when using
         ``Layer.set_state_dict`` later.
 
@@ -1259,7 +1259,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
                 return load_result
 
             with _open_file_buffer(path, 'rb') as f:
-                # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+                # When value of dict is larger than 4GB, there is a bug on macOS Python 3
                 if (
                     _is_file_path(path)
                     and sys.platform == 'darwin'

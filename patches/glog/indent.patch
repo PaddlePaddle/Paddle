@@ -1,0 +1,88 @@
+diff --git a/src/glog/logging.h.in b/src/glog/logging.h.in
+index 9968b96..e2e1a4a 100644
+--- a/src/glog/logging.h.in
++++ b/src/glog/logging.h.in
+@@ -343,6 +343,9 @@ DECLARE_bool(colorlogtostderr);
+ // stderr in addition to log files.
+ DECLARE_int32(stderrthreshold);
+ 
++//The indent level for every lines in log message
++DECLARE_int32(indentlevel);
++
+ // Set whether the log prefix should be prepended to each line of output.
+ DECLARE_bool(log_prefix);
+ 
+diff --git a/src/logging.cc b/src/logging.cc
+index 0c86cf6..024d169 100644
+--- a/src/logging.cc
++++ b/src/logging.cc
+@@ -109,6 +109,8 @@ GLOG_DEFINE_bool(alsologtostderr, BoolFromEnv("GOOGLE_ALSOLOGTOSTDERR", false),
+                  "log messages go to stderr in addition to logfiles");
+ GLOG_DEFINE_bool(colorlogtostderr, false,
+                  "color messages logged to stderr (if supported by terminal)");
++GLOG_DEFINE_int32(indentlevel, 0,
++                 "the indent level of everylines in log messages");
+ #ifdef OS_LINUX
+ GLOG_DEFINE_bool(drop_log_memory, true, "Drop in-memory buffers of log contents. "
+                  "Logs can grow very quickly and they are rarely read before they "
+@@ -672,6 +674,25 @@ inline void LogDestination::SetEmailLogging(LogSeverity min_severity,
+   LogDestination::email_logging_severity_ = min_severity;
+   LogDestination::addresses_ = addresses;
+ }
++std::string InsertIndentationIntoEachLine(const char* message,const int indent_num, const int len) {
++  std::ostringstream sout;
++  std::string str(message);
++  str = str.substr(0,len);
++  int start_pos = 0;
++  int end_pos = 0;
++  std::string indents = "";
++  for (int i = 0; i < indent_num; ++i) {
++    indents += "\t";
++  }
++  while ((end_pos = str.find_first_of('\n', start_pos)) != std::string::npos) {
++    sout << indents  << str.substr(start_pos, end_pos - start_pos + 1);
++    start_pos = end_pos + 1;
++  }
++  if(len - start_pos > 0){
++    sout << indents << str.substr(start_pos, len - start_pos + 1) ;
++  }
++  return sout.str();
++}
+ 
+ static void ColoredWriteToStderr(LogSeverity severity,
+                                  const char* message, size_t len) {
+@@ -681,6 +702,12 @@ static void ColoredWriteToStderr(LogSeverity severity,
+ 
+   // Avoid using cerr from this module since we may get called during
+   // exit code, and cerr may be partially or fully destroyed by then.
++  std::string indent_log_str;
++  if(FLAGS_indentlevel > 0){
++    indent_log_str = InsertIndentationIntoEachLine(message, FLAGS_indentlevel,len);
++    message = indent_log_str.c_str();
++    len = indent_log_str.size();
++  }
+   if (COLOR_DEFAULT == color) {
+     fwrite(message, len, 1, stderr);
+     return;
+@@ -707,6 +734,7 @@ static void ColoredWriteToStderr(LogSeverity severity,
+   fprintf(stderr, "\033[0;3%sm", GetAnsiColorCode(color));
+   fwrite(message, len, 1, stderr);
+   fprintf(stderr, "\033[m");  // Resets the terminal to default.
++  fflush(stderr);
+ #endif  // OS_WINDOWS
+ }
+ 
+diff --git a/src/windows/glog/logging.h b/src/windows/glog/logging.h
+index 3681fa3..1d8af8a 100755
+--- a/src/windows/glog/logging.h
++++ b/src/windows/glog/logging.h
+@@ -347,6 +347,9 @@ DECLARE_bool(colorlogtostderr);
+ // stderr in addition to log files.
+ DECLARE_int32(stderrthreshold);
+ 
++//The indent level for every lines in log message
++DECLARE_int32(indentlevel);
++
+ // Set whether the log prefix should be prepended to each line of output.
+ DECLARE_bool(log_prefix);
+ 

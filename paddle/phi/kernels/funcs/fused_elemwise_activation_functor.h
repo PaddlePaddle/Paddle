@@ -63,7 +63,7 @@ static inline bool IsUnaryCompound(
 
 /**
  *  For the in-place unary functor, the inputs of op_desc only have Out and
- *  Out@Grad.
+ *  Out@GRAD.
  */
 static inline bool HasInPlaceUnary(
     const std::vector<std::string> &functor_list) {

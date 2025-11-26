@@ -443,7 +443,9 @@ __global__ void ChannelClipAndQuantKernelQuantAxisN(const T *in,
                                                     const int nScale,
                                                     const int quant_stride,
                                                     T *out) {
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   using ComputeDataType = typename QuantizeDataType<T>::type;
   ComputeDataType qmax_t = static_cast<ComputeDataType>(qmax);
   for (int64_t i = idx; i < n; i += blockDim.x * gridDim.x) {
@@ -536,7 +538,9 @@ __global__ void ChannelClipAndQuantDequantKernelQuantAxis0(const T *in,
                                                            const int64_t num,
                                                            const int cout,
                                                            T *out) {
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   using ComputeDataType = typename QuantizeDataType<T>::type;
   ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
 
@@ -571,7 +575,9 @@ __global__ void ChannelClipAndQuantDequantKernelQuantAxis1(const T *in,
                                                            const int64_t num,
                                                            const int64_t cout,
                                                            T *out) {
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   using ComputeDataType = typename QuantizeDataType<T>::type;
   ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
 

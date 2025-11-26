@@ -25,6 +25,8 @@ set(XPU_CUDA_RT_LIB_NAME "libcudart.so")
 set(XPU_ML_LIB_NAME "libxpuml.so")
 set(XPU_XFT_LIB_NAME "libxft.so")
 set(XPU_XPTI_LIB_NAME "libxpti.so")
+set(XPU_XPUTX_LIB_NAME "libxpuToolsExt.so")
+set(XPU_CUPTI_LIB_NAME "libcupti.so")
 set(XPU_XBLAS_LIB_NAME "libxpu_blas.so")
 set(XPU_XFA_LIB_NAME "libxpu_flash_attention.so")
 set(XPU_XPUDNN_LIB_NAME "libxpu_dnn.so")
@@ -57,6 +59,14 @@ if(WITH_XPU_XRE5)
   set(XPU_XPTI_BASE_VERSION "0.2.0")
 else()
   set(XPU_XPTI_BASE_VERSION "0.0.1")
+endif()
+
+if(WITH_XPU_XRE5)
+  set(XPU_XPUTX_BASE_VERSION "2.0.2.0")
+endif()
+
+if(WITH_XPU_XRE5)
+  set(XPU_CUPTI_BASE_VERSION "1.0.1.0")
 endif()
 
 if(NOT DEFINED XPU_FFT_BASE_DATE)
@@ -95,6 +105,13 @@ if(WITH_XPU_XRE5)
   set(XPU_XCCL_BASE_URL
       "https://klx-sdk-release-public.su.bcebos.com/xccl/release/${XPU_XCCL_BASE_VERSION}"
   )
+  set(XPU_XPUTX_BASE_URL
+      "https://klx-sdk-release-public.su.bcebos.com/xre/xprofiler/release")
+  set(XPU_XPUTX_DIR_NAME "xprofiler-Linux_x86_64-${XPU_XPUTX_BASE_VERSION}")
+  set(XPU_CUPTI_BASE_URL
+      "https://klx-sdk-release-public.su.bcebos.com/cupti/paddle-dev/${XPU_CUPTI_BASE_VERSION}"
+  )
+  set(XPU_CUPTI_DIR_NAME "cupti-11.8-Linux")
 endif()
 
 if(WITH_XPU_FFT)
@@ -172,6 +189,9 @@ endif()
 set(XPU_XHPC_URL
     "https://klx-sdk-release-public.su.bcebos.com/xhpc/${XPU_XHPC_BASE_DATE}/${XPU_XHPC_DIR_NAME}.tar.gz"
     CACHE STRING "" FORCE)
+
+set(XPU_XPUTX_URL "${XPU_XPUTX_BASE_URL}/${XPU_XPUTX_DIR_NAME}.tar.gz")
+set(XPU_CUPTI_URL "${XPU_CUPTI_BASE_URL}/${XPU_CUPTI_DIR_NAME}.tar.gz")
 
 if(DEFINED XPU_BASE_URL)
   set(XPU_XRE_URL "${XPU_BASE_URL}/${XPU_XRE_DIR_NAME}.tar.gz")
@@ -267,6 +287,10 @@ if(WITH_XPU_XRE5)
       ${XPU_XFT_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
       ${XPU_XPTI_DIR_NAME} && bash
+      ${CMAKE_SOURCE_DIR}/tools/xpu/get_cupti_dependence.sh ${XPU_CUPTI_URL}
+      ${XPU_CUPTI_DIR_NAME} && bash
+      ${CMAKE_SOURCE_DIR}/tools/xpu/get_xputx_dependence.sh ${XPU_XPUTX_URL}
+      ${XPU_XPUTX_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpufft_dependence.sh ${XPU_FFT_URL}
     DOWNLOAD_NO_PROGRESS 1
     UPDATE_COMMAND ""
@@ -345,12 +369,25 @@ if(WITH_XPU_XRE5)
   include_directories(${XPU_XFA_INC_DIR})
   set(XPU_XPUDNN_INC_DIR "${XPU_INC_DIR}/xhpc/xpudnn")
   include_directories(${XPU_XPUDNN_INC_DIR})
+  set(XPU_XPUTX_INC_DIR "${XPU_INC_DIR}/nvtx3")
+  include_directories(${XPU_XPUTX_INC_DIR})
+  set(XPU_XPUTX_LIB "${XPU_LIB_DIR}/${XPU_XPUTX_LIB_NAME}")
+  set(XPU_CUPTI_INC_DIR "${XPU_INC_DIR}/cupti")
+  include_directories(${XPU_CUPTI_INC_DIR})
+  set(XPU_CUPTI_LIB "${XPU_LIB_DIR}/${XPU_CUPTI_LIB_NAME}")
 endif()
 
 if(WITH_XPTI)
   message(STATUS "Compile with XPU XPTI!")
   add_definitions(-DPADDLE_WITH_XPTI)
   set(XPU_XPTI_LIB "${XPU_LIB_DIR}/${XPU_XPTI_LIB_NAME}")
+endif()
+
+if(WITH_XPU_XRE5 AND (NOT WITH_XPTI))
+  set(CUPTI_FOUND ON)
+  set(CUPTI_INCLUDE_DIR "${XPU_CUPTI_INC_DIR}")
+  set(CUPTI_LIBRARY_PATH "${XPU_LIB_DIR}")
+  message(STATUS "Compile with XPU CUPTI!")
 endif()
 
 if(WITH_XPU_PLUGIN)
@@ -385,6 +422,17 @@ if(WITH_XPU_BKCL)
   target_link_libraries(xpulib ${XPU_BKCL_LIB})
 endif()
 
+if(WITH_XPU_XRE5)
+  get_filename_component(XPUTX_DIR "${XPU_XPUTX_LIB}" DIRECTORY)
+  if(EXISTS "${XPUTX_DIR}")
+    set(ENV{LD_LIBRARY_PATH} "$ENV{LD_LIBRARY_PATH}:${XPUTX_DIR}")
+  else()
+    message(
+      WARNING
+        "Directory '${XPUTX_DIR}' does not exist; cannot add it to LD_LIBRARY_PATH"
+    )
+  endif()
+endif()
 add_dependencies(xpulib ${XPU_PROJECT})
 
 # Ensure that xpu/api.h can be included without dependency errors.

@@ -40,13 +40,13 @@ void BilinearGradKernel(const Context& dev_ctx,
   auto y_mat = EigenMatrix<T>::From(y);
   auto dout_mat = EigenMatrix<T>::From(dout);
   auto& place = *dev_ctx.eigen_device();
-  // Create the intermediate variable to calculate the Output(Y@Grad).
+  // Create the intermediate variable to calculate the Output(Y@GRAD).
   DenseTensor x_scale;
   x_scale.Resize(common::make_ddim({batch_size, x_dim}));
   dev_ctx.template Alloc<T>(&x_scale);
   auto x_scale_mat = EigenMatrix<T>::From(x_scale);
 
-  // Create the intermediate variable to calculate the Output(X@Grad).
+  // Create the intermediate variable to calculate the Output(X@GRAD).
   DenseTensor y_scale;
   y_scale.Resize(common::make_ddim({batch_size, y_dim}));
   dev_ctx.template Alloc<T>(&y_scale);
@@ -70,7 +70,7 @@ void BilinearGradKernel(const Context& dev_ctx,
 
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
-  // Calculate the Output(X@Grad) and Output(Y@Grad).
+  // Calculate the Output(X@GRAD) and Output(Y@GRAD).
   if (dx || dy || dweight) {
     Eigen::DSizes<int, 2> bcast_for_x(1, y_dim);
     Eigen::DSizes<int, 2> bcast_for_y(1, x_dim);

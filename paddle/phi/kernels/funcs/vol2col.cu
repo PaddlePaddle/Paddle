@@ -50,7 +50,9 @@ __global__ void vol2col(int64_t num_kernels,
       num_kernels / output_detph / output_height / output_width;
   int64_t channels_col =
       input_channels * filter_depth * filter_height * filter_width;
-  for (int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int64_t index =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
        index < num_kernels;
        index += blockDim.x * gridDim.x) {
     int w_out = index % output_width;
@@ -264,7 +266,9 @@ __global__ void col2vol(int64_t num_kernels,
   const int d_filter_width = dilation_w * (filter_width - 1) + 1;
 
   int input_channels = num_kernels / depth / height / width;
-  for (int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int64_t index =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
        index < num_kernels;
        index += blockDim.x * gridDim.x) {
     T src_val = 0;

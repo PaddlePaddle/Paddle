@@ -35,13 +35,13 @@
 
 #include "paddle/fluid/distributed/collective/deep_ep_xpu/config.hpp"
 #include "paddle/fluid/distributed/collective/deep_ep_xpu/event.hpp"
+#include "paddle/fluid/distributed/collective/deep_ep_xpu/kernels/api.h"
 #include "paddle/fluid/distributed/collective/deep_ep_xpu/kernels/configs.h"
 #include "paddle/fluid/distributed/collective/deep_ep_xpu/kernels/exception.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/phi/api/include/tensor.h"
 
-// #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
-// #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
 
 namespace deep_ep {
@@ -51,6 +51,10 @@ struct Buffer {
                    "The number of maximum NVLink peers must be 8");
 
  private:
+  // init
+  bool init_low_latency_buffer = false;
+  bool init_normal_buffer = false;
+
   // Low-latency mode buffer
   int low_latency_buffer_idx = 0;
   bool low_latency_mode = false;
@@ -75,7 +79,6 @@ struct Buffer {
   cudaIpcMemHandle_t ipc_handles[NUM_MAX_NVL_PEERS];
 
   // Stream for communication
-  // deep_ep::detail::CUDAStream comm_stream;
   cudaStream_t comm_stream;
   phi::distributed::BKCLCommContext* comm_ctx;
   phi::XPUContext* calc_ctx;
@@ -101,6 +104,10 @@ struct Buffer {
   // Host-side RDMA-level MoE info
   volatile int* moe_recv_rdma_counter = nullptr;
   int* moe_recv_rdma_counter_mapped = nullptr;
+
+  std::optional<deep_ep::detail::Tensor> last_topk_idx = std::nullopt;
+  std::optional<deep_ep::detail::Tensor> last_topk_weights = std::nullopt;
+  int last_num_experts = 0;
 
  public:
   Buffer(int rank,
@@ -191,7 +198,6 @@ struct Buffer {
                     bool async,
                     bool allocate_on_comm_stream);
 
-#ifdef PADDLE_WITH_NVSHMEM
   std::tuple<deep_ep::detail::Tensor,
              std::optional<deep_ep::detail::Tensor>,
              std::optional<deep_ep::detail::Tensor>,
@@ -248,7 +254,6 @@ struct Buffer {
                     std::optional<EventHandle>& previous_event,  // NOLINT
                     bool async,
                     bool allocate_on_comm_stream);
-#endif  // PADDLE_WITH_NVSHMEM
 
   void clean_low_latency_buffer(int num_max_dispatch_tokens_per_rank,
                                 int hidden,
@@ -261,7 +266,6 @@ struct Buffer {
                                           bool use_fp8);
   void barrier_all();
 
-#ifdef PADDLE_WITH_NVSHMEM
   std::tuple<deep_ep::detail::Tensor,
              std::optional<deep_ep::detail::Tensor>,
              deep_ep::detail::Tensor,
@@ -379,8 +383,6 @@ struct Buffer {
       bool async,
       bool return_recv_hook,
       const std::optional<deep_ep::detail::Tensor>& out);
-
-#endif  // PADDLE_WITH_NVSHMEM
 
   std::tuple<paddle::Tensor,
              std::optional<paddle::Tensor>,
