@@ -91,6 +91,8 @@ class TestCaptureBackwardSubGraphGuard(unittest.TestCase):
                 )
 
     def test_dy2st(self):
+        if 'Windows' == platform.system() or not paddle.is_compiled_with_cuda():
+            return
         x = paddle.randn((3, 3))
         y = paddle.randn((3, 3))
         x.stop_gradient = False
