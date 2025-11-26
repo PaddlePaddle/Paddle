@@ -2338,14 +2338,28 @@ def flashmask_attention(
                     f"Invalid shape of startend_row_indices, when causal is False, the last dimension should be either 2 or 4 but got {startend_row_indices.shape[-1]}"
                 )
 
-        if "xpu" in paddle.get_device():
-            fa_version = 2
-        elif paddle.get_flags(["FLAGS_cudnn_deterministic"])[
-            "FLAGS_cudnn_deterministic"
-        ]:
+        if (
+            "xpu" not in paddle.get_device()
+            and paddle.get_flags(["FLAGS_cudnn_deterministic"])[
+                "FLAGS_cudnn_deterministic"
+            ]
+        ):
             assert block_mask is None, (
                 " blockmask attention no supports deterministic now ."
             )
+
+        if "xpu" in paddle.get_device():
+            fa_version = 2
+        elif (
+            paddle.base.framework.get_flags(["FLAGS_flash_attn_version"])[
+                "FLAGS_flash_attn_version"
+            ]
+            == 3
+            and paddle.base.framework.get_flags(["FLAGS_cudnn_deterministic"])[
+                "FLAGS_cudnn_deterministic"
+            ]
+            and query.shape[3] > 128
+        ):
             fa_version = 2
         else:
             fa_version = paddle.base.framework.get_flags(
