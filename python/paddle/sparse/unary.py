@@ -831,11 +831,11 @@ def deg2rad(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> dense_x = paddle.to_tensor([-180, 0, 180])
+            >>> dense_x = paddle.to_tensor([-180, 0, 180], dtype='float32')
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.deg2rad(sparse_x)
             >>> out
