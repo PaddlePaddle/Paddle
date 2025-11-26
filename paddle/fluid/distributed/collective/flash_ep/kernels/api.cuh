@@ -125,6 +125,7 @@ void local_combine_forward(const __nv_bfloat16* hidden_states,
                            const int32_t num_loop_stage,
                            const int64_t token_num,
                            float** output_hidden_states,
+                           int num_channels,
                            cudaStream_t stream);
 
 void local_combine_backward(const __nv_bfloat16* hidden_states,
@@ -139,6 +140,7 @@ void local_combine_backward(const __nv_bfloat16* hidden_states,
                             const int32_t local_expert_id,
                             float** output_hidden_states,
                             float** output_topk_weights,
+                            int num_channels,
                             cudaStream_t stream);
 
 int get_source_meta_bytes();

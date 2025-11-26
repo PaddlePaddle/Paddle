@@ -428,7 +428,8 @@ void local_combine_forward_api(
     const paddle::Tensor& recv_gbl_src_meta,
     const std::vector<paddle::Tensor>& recv_gbl_channel_prefix_matrix_list,
     const int64_t ori_len,
-    const std::vector<int>& is_buffer_active);
+    const std::vector<int>& is_buffer_active,
+    const Config& config);
 
 void local_combine_backward_api(
     std::vector<paddle::Tensor>& combine_buffers,  // NOLINT
@@ -440,7 +441,8 @@ void local_combine_backward_api(
     const std::vector<paddle::Tensor>& recv_gbl_channel_prefix_matrix_list,
     const int64_t local_expert_id,
     const int64_t ori_len,
-    const std::vector<int>& is_buffer_active);
+    const std::vector<int>& is_buffer_active,
+    const Config& config);
 
 flash_ep::detail::Tensor ConvertPaddleTensorToDetailTensor(
     const paddle::Tensor& tensor);

@@ -291,7 +291,6 @@ class FlashEPFunc(paddle.autograd.PyLayer):
             expert_num_for_combine_stage_prefix,
         )
 
-        combine_events = []
         ctx.probs = []
         ctx.output_rowmap_list = []
         ctx.output_rowmap_len_list = []
@@ -341,6 +340,8 @@ class FlashEPFunc(paddle.autograd.PyLayer):
                 combine_buffers,
                 ori_len,
                 is_buffer_active,
+                ctx.group,
+                ctx.num_loop_stage,
             )
             tokens, scale_, probs, details_metas = None, None, None, None
 
@@ -349,31 +350,21 @@ class FlashEPFunc(paddle.autograd.PyLayer):
             if expert_result_buffer[local_expert_id] != -1:
                 stage_idx = expert_result_buffer[local_expert_id]
                 is_buffer_active[stage_idx] = 0
-                combine_buffers[stage_idx] = combine_buffers[stage_idx].astype(
-                    "bfloat16"
+                tokens = combine_buffers[stage_idx].astype("bfloat16")
+                combine_buffers[stage_idx] = paddle.empty(
+                    [0, tokens.shape[1]], combine_buffers[stage_idx].dtype
+                )  # TODO: Set None
+                combine_states = combine_notify_infos[stage_idx]
+                _, _, event = combine_func(
+                    tokens,
+                    group,
+                    previous_event=get_event_from_calc_stream(group.id),
+                    async_finish=True,
+                    allocate_on_comm_stream=True,
+                    output=output_tokens,
+                    handle=combine_states["handle"],
+                    num_loop_stage=ctx.num_loop_stage,
                 )
-
-            combine_events.append(get_event_from_calc_stream(group.id))
-
-        for stage_idx in range(ctx.num_loop_stage):
-            # Identify prior data dependencies and perform multi-stream synchronization.
-            local_expert_id = expert_num_for_combine_stage_prefix[stage_idx]
-            previous_event = combine_events[local_expert_id - 1]
-
-            # Perform global combine via all-to-all communication,
-            # then in-place add the result to the output buffer.
-            combine_states = combine_notify_infos[stage_idx]
-            _, _, event = combine_func(
-                combine_buffers[stage_idx],
-                group,
-                previous_event=previous_event,
-                async_finish=True,
-                allocate_on_comm_stream=True,
-                output=output_tokens,
-                handle=combine_states["handle"],
-                num_loop_stage=ctx.num_loop_stage,
-            )
-            combine_buffers[stage_idx] = None
 
         if event:
             event.calc_stream_wait(group.id)
@@ -427,7 +418,6 @@ class FlashEPFunc(paddle.autograd.PyLayer):
             has_prob=True,
         )
 
-        combine_events = []
         backward_w_callbacks = []
         for local_expert_id in range(ctx.local_num_experts):
             dispatch_stage_idx = _get_expert_dependencies(
@@ -479,38 +469,35 @@ class FlashEPFunc(paddle.autograd.PyLayer):
                 local_expert_id,
                 ori_len,
                 is_buffer_active,
+                ctx.group,
+                ctx.num_loop_stage,
             )
             tokens, indices, details_metas = None, None, None
 
             if expert_result_buffer[local_expert_id] != -1:
                 stage_idx = expert_result_buffer[local_expert_id]
                 is_buffer_active[stage_idx] = 0
-                combine_buffers[stage_idx] = combine_buffers[stage_idx].astype(
-                    "bfloat16"
+                tokens = combine_buffers[stage_idx].astype("bfloat16")
+                probs = combine_probs[stage_idx]
+                combine_buffers[stage_idx] = paddle.empty(
+                    [0, tokens.shape[1]], combine_buffers[stage_idx].dtype
                 )
-
-            combine_events.append(get_event_from_calc_stream(ctx.group.id))
-
-        for stage_idx in range(ctx.num_loop_stage):
-            local_expert_id = expert_num_for_combine_stage_prefix[stage_idx]
-
-            previous_event = combine_events[local_expert_id - 1]
-
-            combine_states = ctx.combine_notify_infos[stage_idx]
-            _, _, event = combine_func(
-                combine_buffers[stage_idx],
-                ctx.group,
-                topk_weights=combine_probs[stage_idx],
-                previous_event=previous_event,
-                async_finish=True,
-                allocate_on_comm_stream=True,
-                output=output_tokens,
-                output_topk_weights=output_topk_weights,
-                handle=combine_states["handle"],
-                num_loop_stage=ctx.num_loop_stage,
-            )
-            combine_buffers[stage_idx] = None
-            combine_probs[stage_idx] = None
+                combine_probs[stage_idx] = paddle.empty(
+                    [0, probs.shape[1]], combine_probs[stage_idx].dtype
+                )
+                combine_states = ctx.combine_notify_infos[stage_idx]
+                _, _, event = combine_func(
+                    tokens,
+                    ctx.group,
+                    topk_weights=probs,
+                    previous_event=get_event_from_calc_stream(ctx.group.id),
+                    async_finish=True,
+                    allocate_on_comm_stream=True,
+                    output=output_tokens,
+                    output_topk_weights=output_topk_weights,
+                    handle=combine_states["handle"],
+                    num_loop_stage=ctx.num_loop_stage,
+                )
 
         if ctx.flash_ep_split_expert_bw:
             for backward_w_callback in backward_w_callbacks:

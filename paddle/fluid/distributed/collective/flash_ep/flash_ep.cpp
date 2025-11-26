@@ -1818,7 +1818,7 @@ std::vector<paddle::Tensor> get_flashep_rowmap_api(
   paddle::Tensor output_route_map = paddle::experimental::full(
       {all_token_num, num_experts}, -1, phi::DataType::INT32, place);
   paddle::Tensor output_route_map_len =
-      paddle::experimental::empty({num_experts}, phi::DataType::INT32, place);
+      paddle::experimental::zeros({num_experts}, phi::DataType::INT32, place);
 
   constexpr int kCumsumBlockSize = 32;
   const int cumsum_blocknum =
@@ -1880,109 +1880,74 @@ local_dispatch_forward_api(
   int token_out_len =
       ((ori_out_len + padding_align - 1) / padding_align) * padding_align;
 
-  paddle::Tensor output_hidden_states = paddle::experimental::full(
-      {token_out_len, hidden_size}, 0, hidden_states[0].dtype(), place);
-  paddle::Tensor output_topk_probs = paddle::experimental::full(
-      {token_out_len}, 0, topk_weights[0].dtype(), place);
-  paddle::Tensor output_src_meta = paddle::experimental::full(
-      {token_out_len, 4}, 0, phi::DataType::INT32, place);
+  paddle::Tensor output_hidden_states = paddle::experimental::empty(
+      {token_out_len, hidden_size}, hidden_states[0].dtype(), place);
+  paddle::Tensor output_topk_probs = paddle::experimental::empty(
+      {token_out_len}, topk_weights[0].dtype(), place);
+  paddle::Tensor output_src_meta = paddle::experimental::empty(
+      {token_out_len, 4}, phi::DataType::INT32, place);
   std::optional<paddle::Tensor> output_scale;
   float* output_scale_ptr = nullptr;
   if (use_fp8) {
     EP_HOST_ASSERT(fp8_scales.has_value());
     EP_HOST_ASSERT(fp8_scales.value().size() == hidden_states.size());
-    output_scale = paddle::experimental::full(
-        {token_out_len, scale_num}, 0, fp8_scales.value()[0].dtype(), place);
+    output_scale = paddle::experimental::empty(
+        {token_out_len, scale_num}, fp8_scales.value()[0].dtype(), place);
     output_scale_ptr = output_scale.value().data<float>();
   }
 
-  const void** d_hidden_states_ptr;
-  cudaMallocAsync(&d_hidden_states_ptr, a2a_num * sizeof(void*), stream);
-  std::vector<const void*> host_hidden_states_ptrs;
-  for (int64_t i = 0; i < a2a_num; ++i) {
-    host_hidden_states_ptrs.push_back(hidden_states[i].data());
-  }
-  cudaMemcpyAsync(d_hidden_states_ptr,
-                  host_hidden_states_ptrs.data(),
-                  a2a_num * sizeof(void*),
-                  cudaMemcpyHostToDevice,
-                  stream);
+  char* device_base_ptr;
+  int ptr_array_size = a2a_num * sizeof(void*);
+  int total_size = (6 + (use_fp8 ? 1 : 0)) * ptr_array_size;
+  cudaMallocAsync(&device_base_ptr, total_size, stream);
 
-  const float** d_topk_weights_ptr;
-  cudaMallocAsync(&d_topk_weights_ptr, a2a_num * sizeof(float*), stream);
-  std::vector<const float*> host_topk_weights_ptrs;
-  for (int64_t i = 0; i < a2a_num; ++i) {
-    host_topk_weights_ptrs.push_back(topk_weights[i].data<float>());
-  }
-  cudaMemcpyAsync(d_topk_weights_ptr,
-                  host_topk_weights_ptrs.data(),
-                  a2a_num * sizeof(float*),
-                  cudaMemcpyHostToDevice,
-                  stream);
-
-  const int32_t** d_topk_idx_ptr;
-  cudaMallocAsync(&d_topk_idx_ptr, a2a_num * sizeof(int32_t*), stream);
-  std::vector<const int32_t*> host_topk_idx_ptrs;
+  std::vector<const void*> host_ptrs;
   for (int32_t i = 0; i < a2a_num; ++i) {
-    host_topk_idx_ptrs.push_back(topk_idx[i].data<int32_t>());
+    host_ptrs.push_back(hidden_states[i].data());
   }
-  cudaMemcpyAsync(d_topk_idx_ptr,
-                  host_topk_idx_ptrs.data(),
-                  a2a_num * sizeof(int32_t*),
-                  cudaMemcpyHostToDevice,
-                  stream);
-
-  const int32_t** d_recv_src_meta_per_a2a_ptr;
-  cudaMallocAsync(
-      &d_recv_src_meta_per_a2a_ptr, a2a_num * sizeof(int32_t*), stream);
-  std::vector<const int32_t*> host_recv_src_meta_per_a2a_ptrs;
+  for (int32_t i = 0; i < a2a_num; ++i) {
+    host_ptrs.push_back(topk_weights[i].data<float>());
+  }
+  for (int32_t i = 0; i < a2a_num; ++i) {
+    host_ptrs.push_back(topk_idx[i].data<int32_t>());
+  }
+  for (int32_t i = 0; i < a2a_num; ++i) {
+    host_ptrs.push_back(recv_src_meta_per_a2a[i].data<int32_t>());
+  }
+  for (int32_t i = 0; i < a2a_num; ++i) {
+    host_ptrs.push_back(output_route_map[i].data<int32_t>());
+  }
   for (int64_t i = 0; i < a2a_num; ++i) {
-    host_recv_src_meta_per_a2a_ptrs.push_back(
-        recv_src_meta_per_a2a[i].data<int32_t>());
+    host_ptrs.push_back(output_route_map_len[i].data<int32_t>());
   }
-  cudaMemcpyAsync(d_recv_src_meta_per_a2a_ptr,
-                  host_recv_src_meta_per_a2a_ptrs.data(),
-                  a2a_num * sizeof(int32_t*),
-                  cudaMemcpyHostToDevice,
-                  stream);
-
-  const int32_t** d_output_map_ptr;
-  cudaMallocAsync(&d_output_map_ptr, a2a_num * sizeof(int32_t*), stream);
-  std::vector<const int32_t*> host_output_map_ptrs;
-  for (int64_t i = 0; i < a2a_num; ++i) {
-    host_output_map_ptrs.push_back(output_route_map[i].data<int32_t>());
-  }
-  cudaMemcpyAsync(d_output_map_ptr,
-                  host_output_map_ptrs.data(),
-                  a2a_num * sizeof(int32_t*),
-                  cudaMemcpyHostToDevice,
-                  stream);
-
-  const int32_t** d_output_map_len_ptr;
-  cudaMallocAsync(&d_output_map_len_ptr, a2a_num * sizeof(int32_t*), stream);
-  std::vector<const int32_t*> host_output_map_len_ptrs;
-  for (int64_t i = 0; i < a2a_num; ++i) {
-    host_output_map_len_ptrs.push_back(output_route_map_len[i].data<int32_t>());
-  }
-  cudaMemcpyAsync(d_output_map_len_ptr,
-                  host_output_map_len_ptrs.data(),
-                  a2a_num * sizeof(int32_t*),
-                  cudaMemcpyHostToDevice,
-                  stream);
-
-  const float** d_fp8_scales_ptr = nullptr;
   if (use_fp8) {
-    cudaMallocAsync(&d_fp8_scales_ptr, a2a_num * sizeof(float*), stream);
-    std::vector<const float*> host_fp8_scales_ptrs;
     for (int64_t i = 0; i < a2a_num; ++i) {
-      host_fp8_scales_ptrs.push_back(fp8_scales.value()[i].data<float>());
+      host_ptrs.push_back(fp8_scales.value()[i].data<float>());
     }
-    cudaMemcpyAsync(d_fp8_scales_ptr,
-                    host_fp8_scales_ptrs.data(),
-                    a2a_num * sizeof(float*),
-                    cudaMemcpyHostToDevice,
-                    stream);
   }
+
+  cudaMemcpyAsync(device_base_ptr,
+                  host_ptrs.data(),
+                  total_size,
+                  cudaMemcpyHostToDevice,
+                  stream);
+
+  const void** d_hidden_states_ptr =
+      reinterpret_cast<const void**>(device_base_ptr);
+  const float** d_topk_weights_ptr =
+      reinterpret_cast<const float**>(device_base_ptr + 1 * ptr_array_size);
+  const int32_t** d_topk_idx_ptr =
+      reinterpret_cast<const int32_t**>(device_base_ptr + 2 * ptr_array_size);
+  const int32_t** d_recv_src_meta_per_a2a_ptr =
+      reinterpret_cast<const int32_t**>(device_base_ptr + 3 * ptr_array_size);
+  const int32_t** d_output_map_ptr =
+      reinterpret_cast<const int32_t**>(device_base_ptr + 4 * ptr_array_size);
+  const int32_t** d_output_map_len_ptr =
+      reinterpret_cast<const int32_t**>(device_base_ptr + 5 * ptr_array_size);
+  const float** d_fp8_scales_ptr =
+      use_fp8 ? reinterpret_cast<const float**>(device_base_ptr +
+                                                6 * ptr_array_size)
+              : nullptr;
 
   // a2a_prefix_sum
   int64_t all_token_num = hidden_states[0].shape()[0];
@@ -2055,74 +2020,51 @@ std::vector<paddle::Tensor> local_dispatch_backward_api(
   int token_out_len =
       ((ori_out_len + padding_align - 1) / padding_align) * padding_align;
 
-  paddle::Tensor output_hidden_states = paddle::experimental::full(
-      {token_out_len, hidden_size}, 0, hidden_states[0].dtype(), place);
-  paddle::Tensor output_topk_idx = paddle::experimental::full(
-      {token_out_len, topk}, -1, phi::DataType::INT32, place);
-  paddle::Tensor output_src_meta = paddle::experimental::full(
-      {token_out_len, 4}, 0, phi::DataType::INT32, place);
+  paddle::Tensor output_hidden_states = paddle::experimental::empty(
+      {token_out_len, hidden_size}, hidden_states[0].dtype(), place);
+  paddle::Tensor output_topk_idx = paddle::experimental::empty(
+      {token_out_len, topk}, phi::DataType::INT32, place);
+  paddle::Tensor output_src_meta = paddle::experimental::empty(
+      {token_out_len, 4}, phi::DataType::INT32, place);
 
-  const void** d_hidden_states_ptr;
-  cudaMallocAsync(&d_hidden_states_ptr, a2a_num * sizeof(void*), stream);
-  std::vector<const void*> host_hidden_states_ptrs;
+  char* device_base_ptr;
+  int ptr_array_size = a2a_num * sizeof(void*);
+  int total_size = 5 * ptr_array_size;
+  cudaMallocAsync(&device_base_ptr, total_size, stream);
+
+  std::vector<const void*> host_ptrs;
   for (int64_t i = 0; i < a2a_num; ++i) {
-    host_hidden_states_ptrs.push_back(hidden_states[i].data());
+    host_ptrs.push_back(hidden_states[i].data());
   }
-  cudaMemcpyAsync(d_hidden_states_ptr,
-                  host_hidden_states_ptrs.data(),
-                  a2a_num * sizeof(void*),
-                  cudaMemcpyHostToDevice,
-                  stream);
-
-  const int32_t** d_topk_idx_ptr;
-  cudaMallocAsync(&d_topk_idx_ptr, a2a_num * sizeof(int32_t*), stream);
-  std::vector<const int32_t*> host_topk_idx_ptrs;
   for (int32_t i = 0; i < a2a_num; ++i) {
-    host_topk_idx_ptrs.push_back(topk_idx[i].data<int32_t>());
+    host_ptrs.push_back(topk_idx[i].data<int32_t>());
   }
-  cudaMemcpyAsync(d_topk_idx_ptr,
-                  host_topk_idx_ptrs.data(),
-                  a2a_num * sizeof(int32_t*),
+  for (int64_t i = 0; i < a2a_num; ++i) {
+    host_ptrs.push_back(recv_src_meta_per_a2a[i].data<int32_t>());
+  }
+  for (int64_t i = 0; i < a2a_num; ++i) {
+    host_ptrs.push_back(output_route_map[i].data<int32_t>());
+  }
+  for (int64_t i = 0; i < a2a_num; ++i) {
+    host_ptrs.push_back(output_route_map_len[i].data<int32_t>());
+  }
+
+  cudaMemcpyAsync(device_base_ptr,
+                  host_ptrs.data(),
+                  total_size,
                   cudaMemcpyHostToDevice,
                   stream);
 
-  const int32_t** d_recv_src_meta_per_a2a_ptr;
-  cudaMallocAsync(
-      &d_recv_src_meta_per_a2a_ptr, a2a_num * sizeof(int32_t*), stream);
-  std::vector<const int32_t*> host_recv_src_meta_per_a2a_ptrs;
-  for (int64_t i = 0; i < a2a_num; ++i) {
-    host_recv_src_meta_per_a2a_ptrs.push_back(
-        recv_src_meta_per_a2a[i].data<int32_t>());
-  }
-  cudaMemcpyAsync(d_recv_src_meta_per_a2a_ptr,
-                  host_recv_src_meta_per_a2a_ptrs.data(),
-                  a2a_num * sizeof(int32_t*),
-                  cudaMemcpyHostToDevice,
-                  stream);
-
-  const int32_t** d_output_map_ptr;
-  cudaMallocAsync(&d_output_map_ptr, a2a_num * sizeof(int32_t*), stream);
-  std::vector<const int32_t*> host_output_map_ptrs;
-  for (int64_t i = 0; i < a2a_num; ++i) {
-    host_output_map_ptrs.push_back(output_route_map[i].data<int32_t>());
-  }
-  cudaMemcpyAsync(d_output_map_ptr,
-                  host_output_map_ptrs.data(),
-                  a2a_num * sizeof(int32_t*),
-                  cudaMemcpyHostToDevice,
-                  stream);
-
-  const int32_t** d_output_map_len_ptr;
-  cudaMallocAsync(&d_output_map_len_ptr, a2a_num * sizeof(int32_t*), stream);
-  std::vector<const int32_t*> host_output_map_len_ptrs;
-  for (int64_t i = 0; i < a2a_num; ++i) {
-    host_output_map_len_ptrs.push_back(output_route_map_len[i].data<int32_t>());
-  }
-  cudaMemcpyAsync(d_output_map_len_ptr,
-                  host_output_map_len_ptrs.data(),
-                  a2a_num * sizeof(int32_t*),
-                  cudaMemcpyHostToDevice,
-                  stream);
+  const void** d_hidden_states_ptr =
+      reinterpret_cast<const void**>(device_base_ptr);
+  const int32_t** d_topk_idx_ptr =
+      reinterpret_cast<const int32_t**>(device_base_ptr + 1 * ptr_array_size);
+  const int32_t** d_recv_src_meta_per_a2a_ptr =
+      reinterpret_cast<const int32_t**>(device_base_ptr + 2 * ptr_array_size);
+  const int32_t** d_output_map_ptr =
+      reinterpret_cast<const int32_t**>(device_base_ptr + 3 * ptr_array_size);
+  const int32_t** d_output_map_len_ptr =
+      reinterpret_cast<const int32_t**>(device_base_ptr + 4 * ptr_array_size);
 
   // a2a_prefix_sum
   int64_t all_token_num = hidden_states[0].shape()[0];
@@ -2174,7 +2116,8 @@ void local_combine_forward_api(
     const paddle::Tensor& recv_gbl_src_meta,
     const std::vector<paddle::Tensor>& recv_gbl_channel_prefix_matrix_list,
     const int64_t ori_len,
-    const std::vector<int>& is_buffer_active) {
+    const std::vector<int>& is_buffer_active,
+    const Config& config) {
   int hidden_size = hidden_states.shape()[1];
   int token_num = ori_len;
   int num_loop_stage = recv_gbl_channel_prefix_matrix_list.size();
@@ -2186,37 +2129,34 @@ void local_combine_forward_api(
 
   auto stream = hidden_states.stream();
 
-  const int32_t** d_recv_gbl_channel_prefix_ptr;
-  cudaMallocAsync(&d_recv_gbl_channel_prefix_ptr,
-                  num_loop_stage * sizeof(int32_t*),
-                  stream);
-  std::vector<const int32_t*> host_recv_gbl_channel_prefix_ptrs;
-  for (int i = 0; i < num_loop_stage; ++i) {
-    host_recv_gbl_channel_prefix_ptrs.push_back(
-        recv_gbl_channel_prefix_matrix_list[i].data<int32_t>());
-  }
-  cudaMemcpyAsync(d_recv_gbl_channel_prefix_ptr,
-                  host_recv_gbl_channel_prefix_ptrs.data(),
-                  num_loop_stage * sizeof(int32_t*),
-                  cudaMemcpyHostToDevice,
-                  stream);
+  char* device_base_ptr;
+  int ptr_array_size = num_loop_stage * sizeof(void*);
+  int total_size = 2 * ptr_array_size;
+  cudaMallocAsync(&device_base_ptr, total_size, stream);
 
-  float** d_out_combine_ptr;
-  cudaMallocAsync(&d_out_combine_ptr, num_loop_stage * sizeof(float*), stream);
-  std::vector<float*> host_out_combine_ptrs;
+  std::vector<const void*> host_ptrs;
+  for (int i = 0; i < num_loop_stage; ++i) {
+    host_ptrs.push_back(recv_gbl_channel_prefix_matrix_list[i].data<int32_t>());
+  }
   for (int i = 0; i < num_loop_stage; ++i) {
     if (is_buffer_active[i]) {
-      host_out_combine_ptrs.push_back(combine_buffers[i].data<float>());
+      host_ptrs.push_back(combine_buffers[i].data<float>());
     } else {
-      host_out_combine_ptrs.push_back(nullptr);
+      host_ptrs.push_back(nullptr);
     }
   }
-  cudaMemcpyAsync(d_out_combine_ptr,
-                  host_out_combine_ptrs.data(),
-                  num_loop_stage * sizeof(float*),
+  cudaMemcpyAsync(device_base_ptr,
+                  host_ptrs.data(),
+                  total_size,
                   cudaMemcpyHostToDevice,
                   stream);
 
+  const int32_t** d_recv_gbl_channel_prefix_ptr =
+      reinterpret_cast<const int32_t**>(device_base_ptr);
+  float** d_out_combine_ptr =
+      reinterpret_cast<float**>(device_base_ptr + 1 * ptr_array_size);
+
+  const int num_channels = config.num_sms / 2;
   flash_ep::internode::local_combine_forward(
       reinterpret_cast<const __nv_bfloat16*>(hidden_states.data()),
       d_recv_gbl_channel_prefix_ptr,
@@ -2225,6 +2165,7 @@ void local_combine_forward_api(
       num_loop_stage,
       token_num,
       d_out_combine_ptr,
+      num_channels,
       stream);
 }
 
@@ -2238,7 +2179,8 @@ void local_combine_backward_api(
     const std::vector<paddle::Tensor>& recv_gbl_channel_prefix_matrix_list,
     const int64_t local_expert_id,
     const int64_t ori_len,
-    const std::vector<int>& is_buffer_active) {
+    const std::vector<int>& is_buffer_active,
+    const Config& config) {
   EP_HOST_ASSERT(hidden_states.shape().size() == 2);
   EP_HOST_ASSERT(hidden_states.dtype() == phi::DataType::BFLOAT16);
   EP_HOST_ASSERT(topk_idx.shape().size() == 2);
@@ -2256,52 +2198,44 @@ void local_combine_backward_api(
 
   auto stream = hidden_states.stream();
 
-  const int32_t** d_recv_gbl_channel_prefix_ptr;
-  cudaMallocAsync(&d_recv_gbl_channel_prefix_ptr,
-                  num_loop_stage * sizeof(int32_t*),
-                  stream);
-  std::vector<const int32_t*> host_recv_gbl_channel_prefix_ptrs;
+  char* device_base_ptr;
+  int ptr_array_size = num_loop_stage * sizeof(void*);
+  int total_size = 3 * ptr_array_size;
+  cudaMallocAsync(&device_base_ptr, total_size, stream);
+
+  std::vector<const void*> host_ptrs;
+
   for (int i = 0; i < num_loop_stage; ++i) {
-    host_recv_gbl_channel_prefix_ptrs.push_back(
-        recv_gbl_channel_prefix_matrix_list[i].data<int32_t>());
+    host_ptrs.push_back(recv_gbl_channel_prefix_matrix_list[i].data<int32_t>());
   }
-  cudaMemcpyAsync(d_recv_gbl_channel_prefix_ptr,
-                  host_recv_gbl_channel_prefix_ptrs.data(),
-                  num_loop_stage * sizeof(int32_t*),
+  for (int i = 0; i < num_loop_stage; ++i) {
+    if (is_buffer_active[i]) {
+      host_ptrs.push_back(combine_buffers[i].data<float>());
+    } else {
+      host_ptrs.push_back(nullptr);
+    }
+  }
+  for (int i = 0; i < num_loop_stage; ++i) {
+    if (is_buffer_active[i]) {
+      host_ptrs.push_back(combine_probs[i].data<float>());
+    } else {
+      host_ptrs.push_back(nullptr);
+    }
+  }
+  cudaMemcpyAsync(device_base_ptr,
+                  host_ptrs.data(),
+                  total_size,
                   cudaMemcpyHostToDevice,
                   stream);
 
-  float** d_out_combine_ptr;
-  cudaMallocAsync(&d_out_combine_ptr, num_loop_stage * sizeof(float*), stream);
-  std::vector<float*> host_out_combine_ptrs;
-  for (int i = 0; i < num_loop_stage; ++i) {
-    if (is_buffer_active[i]) {
-      host_out_combine_ptrs.push_back(combine_buffers[i].data<float>());
-    } else {
-      host_out_combine_ptrs.push_back(nullptr);
-    }
-  }
-  cudaMemcpyAsync(d_out_combine_ptr,
-                  host_out_combine_ptrs.data(),
-                  num_loop_stage * sizeof(float*),
-                  cudaMemcpyHostToDevice,
-                  stream);
+  const int32_t** d_recv_gbl_channel_prefix_ptr =
+      reinterpret_cast<const int32_t**>(device_base_ptr);
+  float** d_out_combine_ptr =
+      reinterpret_cast<float**>(device_base_ptr + 1 * ptr_array_size);
+  float** d_out_probs_ptr =
+      reinterpret_cast<float**>(device_base_ptr + 2 * ptr_array_size);
 
-  float** d_out_probs_ptr;
-  cudaMallocAsync(&d_out_probs_ptr, num_loop_stage * sizeof(float*), stream);
-  std::vector<float*> host_out_probs_ptrs;
-  for (int i = 0; i < num_loop_stage; ++i) {
-    if (is_buffer_active[i]) {
-      host_out_probs_ptrs.push_back(combine_probs[i].data<float>());
-    } else {
-      host_out_probs_ptrs.push_back(nullptr);
-    }
-  }
-  cudaMemcpyAsync(d_out_probs_ptr,
-                  host_out_probs_ptrs.data(),
-                  num_loop_stage * sizeof(float*),
-                  cudaMemcpyHostToDevice,
-                  stream);
+  const int num_channels = config.num_sms / 2;
   flash_ep::internode::local_combine_backward(
       reinterpret_cast<const __nv_bfloat16*>(hidden_states.data()),
       topk_idx.data<int32_t>(),
@@ -2315,6 +2249,7 @@ void local_combine_backward_api(
       local_expert_id,
       d_out_combine_ptr,
       d_out_probs_ptr,
+      num_channels,
       stream);
 }
 

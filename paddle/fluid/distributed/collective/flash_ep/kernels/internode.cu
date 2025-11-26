@@ -2117,7 +2117,7 @@ __global__ void __launch_bounds__(
             if (kAsymmertricMode) {
               // Indicates at which round the token needs to be received during
               // combination.
-              int asymm_combine_loop_idx =
+              int64_t asymm_combine_loop_idx =
                   asymm_send_combine_schedule_map[token_idx * kNumRDMARanks +
                                                   i];
               auto shifted_asymm_send_rdma_head =
@@ -2127,8 +2127,8 @@ __global__ void __launch_bounds__(
                   asymm_send_nvl_head + asymm_combine_loop_idx * num_tokens *
                                             kNumRDMARanks * NUM_MAX_NVL_PEERS;
 
-              int send_rdma_head = ld_nc_global(shifted_asymm_send_rdma_head +
-                                                token_idx * kNumRDMARanks + i);
+              auto send_rdma_head = ld_nc_global(shifted_asymm_send_rdma_head +
+                                                 token_idx * kNumRDMARanks + i);
 
               src_meta =
                   SourceMeta(rdma_rank,

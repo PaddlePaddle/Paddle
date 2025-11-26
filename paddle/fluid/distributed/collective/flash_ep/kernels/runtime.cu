@@ -737,20 +737,21 @@ __global__ void dispatch_moe_meta_kernel(
     const int32_t num_experts,
     int32_t* output_route_map,
     int32_t* output_route_map_len) {
-  int local_cumsum = 0;
-  const int block_row_base = blockIdx.x * kCumsumBlockSize;
-  int cumsum_offset = (blockIdx.x != 0) * kCumsumInvalidTag;
+  int64_t local_cumsum = 0;
+  const int64_t block_row_base =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(kCumsumBlockSize);
+  int64_t cumsum_offset = (blockIdx.x != 0) * kCumsumInvalidTag;
   __shared__ token_infos
       shared_token_infos[kCumsumBlockSize][kMaxNumExpertsPerRank];
 
   if (threadIdx.x < num_experts) {
     token_infos local_token_infos[kCumsumBlockSize];
-    for (int row = block_row_base; row < block_row_base + kCumsumBlockSize;
+    for (int64_t row = block_row_base; row < block_row_base + kCumsumBlockSize;
          row++) {
       if (row >= all_token_num) break;
-      const int internal_row = row - block_row_base;
+      const int64_t internal_row = row - block_row_base;
 #pragma unroll
-      for (int k = 0; k < topk; k++) {
+      for (int64_t k = 0; k < topk; k++) {
         token_infos proposed = {dispatched_topk_idx[row * topk + k]};
         if (proposed.token_row_idx == -1) continue;
         if (threadIdx.x == proposed.token_row_idx) {
@@ -760,8 +761,12 @@ __global__ void dispatch_moe_meta_kernel(
       }
     }
     // Inter-block communication
-    const int anticipate_signal_idx = blockIdx.x * num_experts + threadIdx.x;
-    const int push_signal_idx = (blockIdx.x + 1) * num_experts + threadIdx.x;
+    const int64_t anticipate_signal_idx =
+        static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(num_experts) +
+        threadIdx.x;
+    const int64_t push_signal_idx = (static_cast<int64_t>(blockIdx.x) + 1) *
+                                        static_cast<int64_t>(num_experts) +
+                                    threadIdx.x;
     if (blockIdx.x != 0) {
       // signal receive from previous block, using light-weight atomicAdd(check)
       // this will not change any data, only do fetch in low-cost
@@ -771,14 +776,14 @@ __global__ void dispatch_moe_meta_kernel(
       }
     }
     // signal send for next block, with current cumsum
-    const int proposed_offset = cumsum_offset + local_cumsum;
+    const int64_t proposed_offset = cumsum_offset + local_cumsum;
     global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
     if (blockIdx.x == gridDim.x - 1) {
       output_route_map_len[threadIdx.x] = proposed_offset;
     }
     // Intra-block communication;
 #pragma unroll
-    for (int i = 0; i < kCumsumBlockSize; i++) {
+    for (int64_t i = 0; i < kCumsumBlockSize; i++) {
       local_token_infos[i].token_row_idx =
           (local_token_infos[i].token_row_idx == -1)
               ? -1
@@ -788,17 +793,18 @@ __global__ void dispatch_moe_meta_kernel(
   }
   __syncthreads();
 
-  for (int row = block_row_base; row < block_row_base + kCumsumBlockSize;
+  for (int64_t row = block_row_base; row < block_row_base + kCumsumBlockSize;
        row++) {
     if (row >= all_token_num) return;
-    const int internal_row = row - block_row_base;
-    for (int expert_id = 0; expert_id < num_experts; expert_id++) {
+    const int64_t internal_row = row - block_row_base;
+    for (int64_t expert_id = 0; expert_id < num_experts; expert_id++) {
       const token_infos this_expert_token_info =
           shared_token_infos[internal_row][expert_id];
-      const int proposed_row_idx = this_expert_token_info.token_row_idx;
+      const int64_t proposed_row_idx = this_expert_token_info.token_row_idx;
       if (proposed_row_idx == -1) continue;  // no memcpy
       if (threadIdx.x == 0)
-        output_route_map[row * num_experts + expert_id] = proposed_row_idx;
+        output_route_map[row * static_cast<int64_t>(num_experts) + expert_id] =
+            proposed_row_idx;
     }
   }
 }
@@ -812,7 +818,7 @@ void dispatch_moe_meta(const int32_t* dispatched_topk_idx,
                        int32_t* output_route_map_len,
                        cudaStream_t stream) {
   constexpr int kCumsumBlockSize = 32;
-  constexpr int kMaxNumExpertsPerRank = 64;
+  constexpr int kMaxNumExpertsPerRank = 8;
   constexpr int kNumThreads = 512;
 
   EP_HOST_ASSERT(num_experts <= kMaxNumExpertsPerRank);
@@ -945,26 +951,30 @@ __global__ void combine_moe_kernel_forward(
     const int32_t hidden_size,
     const int32_t num_loop_stage,
     const int64_t token_num,
-    float** output_hidden_states) {
+    float** output_hidden_states,
+    int num_channels) {
   EP_DEVICE_ASSERT(blockDim.x % 32 == 0);
 
-  const int block_row_base = blockIdx.x * kSMNum;
-  for (int row = block_row_base; row < block_row_base + kSMNum; row++) {
+  const int64_t block_row_base =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(kSMNum);
+  for (int64_t row = block_row_base; row < block_row_base + kSMNum; row++) {
     if (row >= token_num) return;
     const int4* vec_token_meta = reinterpret_cast<const int4*>(recv_src_meta);
     const int4 meta_vec = __ldg(vec_token_meta + row);
-    const int32_t channel_id = meta_vec.x;
-    const int32_t nvl_head = meta_vec.y;
-    const int32_t src_rank = meta_vec.z;
-    const int32_t stage_idx_to_combine = meta_vec.w;
+    const int64_t channel_id = meta_vec.x;
+    const int64_t nvl_head = meta_vec.y;
+    const int64_t src_rank = meta_vec.z;
+    const int64_t stage_idx_to_combine = meta_vec.w;
 
     const int64_t channel_offset =
         recv_gbl_channel_prefix[stage_idx_to_combine]
-                               [src_rank * 10 + channel_id];
+                               [src_rank * static_cast<int64_t>(num_channels) +
+                                channel_id];
     const int64_t offset = channel_offset + nvl_head;
-    float* token_out_ptr =
-        output_hidden_states[stage_idx_to_combine] + offset * hidden_size;
-    const __nv_bfloat16* token_load_ptr = hidden_states + row * hidden_size;
+    float* token_out_ptr = output_hidden_states[stage_idx_to_combine] +
+                           offset * static_cast<int64_t>(hidden_size);
+    const __nv_bfloat16* token_load_ptr =
+        hidden_states + row * static_cast<int64_t>(hidden_size);
     vectorized_add(token_load_ptr, token_out_ptr, hidden_size);
   }
 }
@@ -982,33 +992,40 @@ __global__ void combine_moe_kernel_backward(
     const int32_t topk,
     const int32_t local_expert_id,
     float** output_hidden_states,
-    float** output_topk_weights) {
+    float** output_topk_weights,
+    int num_channels) {
   EP_DEVICE_ASSERT(blockDim.x % 32 == 0);
-  const int block_row_base = blockIdx.x * kSMNum;
-  for (int row = block_row_base; row < block_row_base + kSMNum; row++) {
+  const int64_t block_row_base =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(kSMNum);
+  for (int64_t row = block_row_base; row < block_row_base + kSMNum; row++) {
     if (row >= token_num) return;
     const int4* vec_token_meta = reinterpret_cast<const int4*>(recv_src_meta);
     const int4 meta_vec = __ldg(vec_token_meta + row);
-    const int32_t channel_id = meta_vec.x;
-    const int32_t nvl_head = meta_vec.y;
-    const int32_t src_rank = meta_vec.z;
-    const int32_t stage_idx_to_combine = meta_vec.w;
+    const int64_t channel_id = meta_vec.x;
+    const int64_t nvl_head = meta_vec.y;
+    const int64_t src_rank = meta_vec.z;
+    const int64_t stage_idx_to_combine = meta_vec.w;
 
     const int64_t channel_offset =
         recv_gbl_channel_prefix[stage_idx_to_combine]
-                               [src_rank * 10 + channel_id];
+                               [src_rank * static_cast<int64_t>(num_channels) +
+                                channel_id];
     const int64_t offset = channel_offset + nvl_head;
 
     if (threadIdx.x < topk) {
-      if (topk_idx[row * topk + threadIdx.x] == local_expert_id) {
-        output_topk_weights[stage_idx_to_combine][offset * topk + threadIdx.x] =
-            topk_weights[row];
+      if (topk_idx[row * static_cast<int64_t>(topk) +
+                   static_cast<int64_t>(threadIdx.x)] == local_expert_id) {
+        output_topk_weights[stage_idx_to_combine]
+                           [offset * static_cast<int64_t>(topk) +
+                            static_cast<int64_t>(threadIdx.x)] =
+                               topk_weights[row];
       }
     }
 
-    float* token_out_ptr =
-        output_hidden_states[stage_idx_to_combine] + offset * hidden_size;
-    const __nv_bfloat16* token_load_ptr = hidden_states + row * hidden_size;
+    float* token_out_ptr = output_hidden_states[stage_idx_to_combine] +
+                           offset * static_cast<int64_t>(hidden_size);
+    const __nv_bfloat16* token_load_ptr =
+        hidden_states + row * static_cast<int64_t>(hidden_size);
     vectorized_add(token_load_ptr, token_out_ptr, hidden_size);
   }
 }
@@ -1038,7 +1055,7 @@ void local_dispatch(const void** dispatched_hidden_states,
                     bool forward,
                     int num_loop_stage) {
   constexpr int kNumThreads = 1024;
-  constexpr int kCumsumBlockSize = 4;
+  constexpr int kCumsumBlockSize = 2;
   constexpr int kMaxStageNum = 16;
 
   int num_sms = (all_token_num + kCumsumBlockSize - 1) / kCumsumBlockSize;
@@ -1091,6 +1108,7 @@ void local_combine_forward(const __nv_bfloat16* hidden_states,
                            const int32_t num_loop_stage,
                            const int64_t token_num,
                            float** output_hidden_states,
+                           int num_channels,
                            cudaStream_t stream) {
   constexpr int kNumThreads = 1024;
   constexpr int kSMNum = 4;
@@ -1103,7 +1121,8 @@ void local_combine_forward(const __nv_bfloat16* hidden_states,
                                             hidden_size,
                                             num_loop_stage,
                                             token_num,
-                                            output_hidden_states);
+                                            output_hidden_states,
+                                            num_channels);
 }
 
 void local_combine_backward(const __nv_bfloat16* hidden_states,
@@ -1118,6 +1137,7 @@ void local_combine_backward(const __nv_bfloat16* hidden_states,
                             const int32_t local_expert_id,
                             float** output_hidden_states,
                             float** output_topk_weights,
+                            int num_channels,
                             cudaStream_t stream) {
   constexpr int kNumThreads = 1024;
   constexpr int kSMNum = 4;
@@ -1135,7 +1155,8 @@ void local_combine_backward(const __nv_bfloat16* hidden_states,
                                             topk,
                                             local_expert_id,
                                             output_hidden_states,
-                                            output_topk_weights);
+                                            output_topk_weights,
+                                            num_channels);
 }
 
 #ifdef PADDLE_WITH_NVSHMEM

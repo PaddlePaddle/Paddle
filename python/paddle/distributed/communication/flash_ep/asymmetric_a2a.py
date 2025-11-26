@@ -231,6 +231,8 @@ def local_combine_forward_func(
     combine_buffers,
     ori_len,
     is_buffer_active,
+    group,
+    num_loop_stage,
 ):
     recv_gbl_channel_prefix_matrix_list = []
 
@@ -244,6 +246,10 @@ def local_combine_forward_func(
     if tokens.shape[0] == 0:
         return
 
+    buffer = flashep_buffer.get_buffer(
+        group, get_hidden_bytes(tokens), num_loop_stage
+    )
+    config = buffer.get_dispatch_config(buffer.group_size)
     combine_buffers = local_combine_forward(
         combine_buffers,
         tokens,
@@ -251,6 +257,7 @@ def local_combine_forward_func(
         recv_gbl_channel_prefix_matrix_list,
         ori_len,
         is_buffer_active,
+        config,
     )
 
 
@@ -265,6 +272,8 @@ def local_combine_backward_func(
     local_expert_id,
     ori_len,
     is_buffer_active,
+    group,
+    num_loop_stage,
 ):
     recv_gbl_channel_prefix_matrix_list = []
 
@@ -278,6 +287,10 @@ def local_combine_backward_func(
     if tokens.shape[0] == 0:
         return
 
+    buffer = flashep_buffer.get_buffer(
+        group, get_hidden_bytes(tokens), num_loop_stage
+    )
+    config = buffer.get_dispatch_config(buffer.group_size)
     local_combine_backward(
         combine_buffers,
         combine_probs,
@@ -289,6 +302,7 @@ def local_combine_backward_func(
         local_expert_id,
         ori_len,
         is_buffer_active,
+        config,
     )
 
 
