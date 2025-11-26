@@ -1161,12 +1161,8 @@ def monkey_patch_tensor():
     ) -> Tensor:
         if device_id is None:
             device_id = 0
-        elif isinstance(device_id, int):
-            pass
-        else:
-            raise ValueError(
-                f"Expected device_id to be an integer or None, but got {device_id}."
-            )
+        elif not isinstance(device_id, int):
+            raise ValueError("device_id must be int|None")
         res_place = framework._current_expected_place()
         if isinstance(res_place, core.CPUPlace):
             device_type = paddle.device.get_all_device_type()
@@ -1182,15 +1178,6 @@ def monkey_patch_tensor():
             else:
                 raise RuntimeError(
                     "The current environment does not have a available device."
-                )
-        else:
-            if isinstance(res_place, core.XPUPlace):
-                res_place = core.XPUPlace(device_id)
-            elif isinstance(res_place, core.CUDAPlace):
-                res_place = core.CUDAPlace(device_id)
-            elif isinstance(res_place, core.CustomPlace):
-                res_place = core.CustomPlace(
-                    res_place.get_device_type(), device_id
                 )
         if self.place._equals(res_place):
             return self

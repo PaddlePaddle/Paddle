@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import tempfile
 import unittest
+
+sys.path.append("../../")
 
 import collective.test_communication_api_base as test_base
 
