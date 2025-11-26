@@ -334,8 +334,7 @@ class CustomGenericPluginCreator : public OpConverter {
 
 }  // namespace paddle::inference::tensorrt
 
-REGISTER_TRT_OP_CONVERTER(custom_plugin_creater,
-                          CustomPluginCreator);  // typos: disable-line
+REGISTER_TRT_OP_CONVERTER(custom_plugin_creator, CustomPluginCreator);
 REGISTER_TRT_OP_CONVERTER(generic_plugin_creator, GenericPluginCreator);
 REGISTER_TRT_OP_CONVERTER(custom_generic_plugin_creator,
                           CustomGenericPluginCreator);

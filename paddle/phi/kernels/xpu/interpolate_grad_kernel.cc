@@ -111,7 +111,7 @@ void InterpolateGradKernel(
   }
 
   phi::DDim dim_grad;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_h, in_w};
   } else {
     dim_grad = {n, in_h, in_w, c};
@@ -150,7 +150,7 @@ void InterpolateGradKernel(
                                  out_w,
                                  nearest,
                                  trans_mode,
-                                 (data_layout == DataLayout::kNCHW));
+                                 (data_layout == DataLayout::NCHW));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "interpolate2d_grad");
 }
 

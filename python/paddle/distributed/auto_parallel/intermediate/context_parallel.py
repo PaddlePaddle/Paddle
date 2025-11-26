@@ -50,11 +50,7 @@ class PrepareContextParallel(PlanBase):
             ...         super().__init__()
             ...
             ...     def forward(self, q, k, v):
-            ...         return (
-            ...             paddle.nn.functional.scaled_dot_product_attention(
-            ...                 q, k, v
-            ...             )
-            ...         )
+            ...         return paddle.nn.functional.scaled_dot_product_attention(q, k, v)
             >>>
             >>> class AttentionLayer(paddle.nn.Layer):
             ...     def __init__(self):
@@ -249,9 +245,7 @@ class ContextParallel(PlanBase):
         ...         super().__init__()
         ...
         ...     def forward(self, q, k, v):
-        ...         return paddle.nn.functional.scaled_dot_product_attention(
-        ...             q, k, v
-        ...         )
+        ...         return paddle.nn.functional.scaled_dot_product_attention(q, k, v)
         >>>
         >>> class AttentionLayer(paddle.nn.Layer):
         ...     def __init__(self):

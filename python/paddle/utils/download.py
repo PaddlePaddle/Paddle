@@ -22,6 +22,7 @@ import sys
 import tarfile
 import time
 import zipfile
+from pathlib import Path
 from typing import Literal
 
 import httpx
@@ -313,35 +314,102 @@ def _uncompress_file_zip(filepath):
         return uncompressed_path
 
 
+def _is_within_directory(directory, target):
+    """Check if the target path is within the given directory."""
+    abs_directory = Path(directory).resolve()
+    abs_target = Path(target).resolve()
+    try:
+        abs_target.relative_to(abs_directory)
+        return True
+    except ValueError:
+        return False
+
+
+def _validate_tar_member_name(name):
+    """
+    Validate tar member name for security.
+
+    Raises ValueError if the name contains unsafe patterns:
+    - Absolute paths (Unix: /path, Windows: C:\\path, UNC: \\\\server\\share)
+    - Path traversal components ('..')
+    """
+    # Check for absolute paths (cross-platform)
+    name_path = Path(name)
+    if name_path.is_absolute():
+        raise ValueError(f"Unsafe absolute path in tar: {name}")
+
+    # Check for path traversal components '..'
+    if '..' in name_path.parts:
+        raise ValueError(f"Unsafe path traversal '..' in tar: {name}")
+
+
+def _safe_extract(tar, path, members=None):
+    """
+    Safely extract tar files to prevent path traversal attacks.
+
+    Security measures:
+    1. Verify resolved paths are within target directory
+    2. Skip symlinks, hardlinks and other special files
+    3. Only extract regular files and directories
+    """
+    members_to_check = members if members is not None else tar.getmembers()
+    extract_members = []
+
+    for member in members_to_check:
+        # Compute the target path and verify it's within the destination
+        member_path = Path(path) / member.name
+        if not _is_within_directory(path, member_path):
+            raise ValueError(
+                f"Attempted path traversal in tar file: {member.name}"
+            )
+
+        # Skip symlinks, hardlinks, and other special files to prevent symlink attacks
+        if member.issym():
+            logger.warning(
+                f"Skipping symbolic link in tar for security: {member.name}"
+            )
+            continue
+        elif member.islnk():
+            logger.warning(
+                f"Skipping hard link in tar for security: {member.name}"
+            )
+            continue
+        elif not (member.isfile() or member.isdir()):
+            logger.warning(
+                f"Skipping special file in tar for security: {member.name}"
+            )
+            continue
+
+        extract_members.append(member)
+
+    tar.extractall(path, members=extract_members)
+
+
 def _uncompress_file_tar(filepath, mode="r:*"):
     with tarfile.open(filepath, mode) as files:
-        file_list_tmp = files.getnames()
-        file_list = []
-        for file in file_list_tmp:
-            assert file[0] != "/", (
-                f"uncompress file path {file} should not start with /"
-            )
-            file_list.append(file.replace("../", ""))
-
+        file_list = files.getnames()
         file_dir = os.path.dirname(filepath)
+
+        # Validate all member names before extraction
+        for name in file_list:
+            _validate_tar_member_name(name)
 
         if _is_a_single_file(file_list):
             rootpath = file_list[0]
             uncompressed_path = os.path.join(file_dir, rootpath)
-            files.extractall(file_dir)
+            _safe_extract(files, file_dir)
         elif _is_a_single_dir(file_list):
             rootpath = os.path.splitext(file_list[0].strip(os.sep))[0].split(
                 os.sep
             )[-1]
             uncompressed_path = os.path.join(file_dir, rootpath)
-            files.extractall(file_dir)
+            _safe_extract(files, file_dir)
         else:
             rootpath = os.path.splitext(filepath)[0].split(os.sep)[-1]
             uncompressed_path = os.path.join(file_dir, rootpath)
             if not os.path.exists(uncompressed_path):
                 os.makedirs(uncompressed_path)
-
-            files.extractall(os.path.join(file_dir, rootpath))
+            _safe_extract(files, os.path.join(file_dir, rootpath))
 
         return uncompressed_path
 

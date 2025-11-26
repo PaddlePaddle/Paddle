@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -179,6 +180,9 @@ def monkey_patch_math_tensor():
             return astype(tensor, 'uint8')
         elif self.is_complex():
             real = astype(self.real(), 'int8')
+            logging.warning(
+                "Casting complex values to real discards the imaginary part"
+            )
             return astype(real, 'uint8')
         else:
             return astype(self, 'uint8')
@@ -325,13 +329,13 @@ def monkey_patch_math_tensor():
             Tensor: A new Tensor with its last two dimensions swapped.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> x = paddle.randn([2, 3, 4])
                 >>> x_transposed = x.mT
                 >>> x_transposed.shape
-                [2, 4, 3]
+                paddle.Size([2, 4, 3])
         """
         if len(var.shape) < 2:
             raise ValueError(
@@ -418,13 +422,13 @@ def monkey_patch_math_tensor():
             Tensor: A new uninitialized Tensor with the specified shape.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> x = paddle.ones([2, 2])
                 >>> y = x.new_empty(3, 3)  # type: ignore
                 >>> y.shape
-                [3, 3]
+                paddle.Size([3, 3])
         """
 
         if dtype is None:

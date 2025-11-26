@@ -662,7 +662,7 @@ def conv2d(
         A Tensor representing the conv2d result, whose data type is the same with input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -673,7 +673,7 @@ def conv2d(
             >>> y_var = F.conv2d(x_var, w_var)
 
             >>> print(y_var.shape)
-            [2, 6, 6, 6]
+            paddle.Size([2, 6, 6, 6])
     """
     # entry checks
     if data_format not in ["NCHW", "NHWC"]:
@@ -1189,7 +1189,7 @@ def conv2d_transpose(
         transposed convolution result.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1200,7 +1200,7 @@ def conv2d_transpose(
             >>> y_var = F.conv2d_transpose(x_var, w_var)
 
             >>> print(y_var.shape)
-            [2, 6, 10, 10]
+            paddle.Size([2, 6, 10, 10])
     """
 
     if data_format not in ['NCHW', 'NHWC']:
@@ -1474,7 +1474,7 @@ def conv3d(
         convolution and non-linearity activation result.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1485,7 +1485,7 @@ def conv3d(
             >>> y_var = F.conv3d(x_var, w_var)
 
             >>> print(y_var.shape)
-            [2, 6, 6, 6, 6]
+            paddle.Size([2, 6, 6, 6, 6])
     """
     # entry check
     if data_format not in ["NCDHW", "NDHWC"]:
@@ -1677,7 +1677,7 @@ def conv3d_transpose(
         variable storing transposed convolution and non-linearity activation result.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1688,7 +1688,7 @@ def conv3d_transpose(
             >>> y_var = F.conv3d_transpose(x_var, w_var)
 
             >>> print(y_var.shape)
-            [2, 6, 10, 10, 10]
+            paddle.Size([2, 6, 10, 10, 10])
     """
     # entry checks
     if data_format not in ["NCDHW", "NDHWC"]:

@@ -296,6 +296,8 @@ from .nn.functional import (
     conv1d,
     conv2d,
     conv3d,
+    group_norm,
+    layer_norm,
 )
 from .nn.functional.distance import (
     pdist,
@@ -1490,6 +1492,8 @@ __all__ = [
     'conv1d',
     'conv2d',
     'conv3d',
+    'group_norm',
+    'layer_norm',
     'manual_seed',
     'softmax',
     'Generator',

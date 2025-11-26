@@ -124,7 +124,7 @@ void InterpolateKernel(
                               "should be greater than 0."));
 
   phi::DDim dim_out;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     dim_out = {n, c, out_h, out_w};
   } else {
     dim_out = {n, out_h, out_w, c};
@@ -141,7 +141,7 @@ void InterpolateKernel(
   if (nearest) {
     trans_mode = (align_corners == true) ? 0 : 2;
     PADDLE_ENFORCE_EQ(
-        (data_layout == DataLayout::kNCHW),
+        (data_layout == DataLayout::NCHW),
         true,
         errors::InvalidArgument("XPU nearest is only support NCHW"));
   }
@@ -158,7 +158,7 @@ void InterpolateKernel(
                                   out_w,
                                   nearest,
                                   trans_mode,
-                                  (data_layout == DataLayout::kNCHW));
+                                  (data_layout == DataLayout::NCHW));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "interpolate2d");
 }
 

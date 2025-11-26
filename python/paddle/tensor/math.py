@@ -3514,7 +3514,7 @@ def trace(
         Tensor: the output data type is the same as input data type.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3523,13 +3523,13 @@ def trace(
             >>> case3 = paddle.randn([3, 10, 5, 10])
             >>> data1 = paddle.trace(case1)
             >>> data1.shape
-            []
+            paddle.Size([])
             >>> data2 = paddle.trace(case2, offset=1, axis1=1, axis2=2)
             >>> data2.shape
-            [3]
+            paddle.Size([3])
             >>> data3 = paddle.trace(case3, offset=-3, axis1=1, axis2=-1)
             >>> data3.shape
-            [3, 5]
+            paddle.Size([3, 5])
     """
 
     def __check_input(x, offset, axis1, axis2):
@@ -5880,7 +5880,7 @@ def angle(x: Tensor, name: str | None = None) -> Tensor:
         Tensor: An N-D Tensor of real data type with the same precision as that of x's data type.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -5889,10 +5889,14 @@ def angle(x: Tensor, name: str | None = None) -> Tensor:
             >>> z = x + 1j * y
             >>> z
             Tensor(shape=[4, 4], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[(-2-2j), (-2-1j), (-2+0j), (-2+1j)],
-             [(-1-2j), (-1-1j), (-1+0j), (-1+1j)],
-             [-2j    , -1j    ,  0j    ,  1j    ],
-             [ (1-2j),  (1-1j),  (1+0j),  (1+1j)]])
+            [[(-2.00000000-2.00000000j), (-2.00000000-1.00000000j),
+              (-2.00000000+0.00000000j), (-2.00000000+1.00000000j)],
+             [(-1.00000000-2.00000000j), (-1.00000000-1.00000000j),
+              (-1.00000000+0.00000000j), (-1.00000000+1.00000000j)],
+             [(0.00000000-2.00000000j) , (0.00000000-1.00000000j) ,
+               (0.00000000+0.00000000j),  (0.00000000+1.00000000j)],
+             [ (1.00000000-2.00000000j),  (1.00000000-1.00000000j),
+               (1.00000000+0.00000000j),  (1.00000000+1.00000000j)]])
 
             >>> theta = paddle.angle(z)
             >>> theta

@@ -69,7 +69,7 @@ class TestAOAEngineTransposeCast(unittest.TestCase):
 
         self.aoa_statements = [
             "s0, s1 -> s, axis = 1 \n",
-            "s -> s, dtype = 'float64'\n",
+            "s -> s, dtype = 'float32'\n",
             "s^T -> d\n",
             "d -> d0, d1, axis = 1",
         ]
@@ -95,7 +95,7 @@ class TestAOAEngineTransposeCast(unittest.TestCase):
         shard_mapping_entry = ShardMappingEntry(
             target_slice=query,
             source_slice=src_sharded_weight_desc,
-            postprocess_list=["float64", "[1, 0]"],
+            postprocess_list=["float32", "[1, 0]"],
         )
         answer = [shard_mapping_entry]
         self.queries.append(query)
@@ -118,7 +118,7 @@ class TestAOAEngineTransposeCast(unittest.TestCase):
         shard_mapping_entry = ShardMappingEntry(
             target_slice=query,
             source_slice=src_sharded_weight_desc,
-            postprocess_list=["float64", "[1, 0]"],
+            postprocess_list=["float32", "[1, 0]"],
         )
         answer = [shard_mapping_entry]
         self.queries.append(query)
@@ -164,12 +164,12 @@ class TestAOAEngineTransposeCast(unittest.TestCase):
         shard_mapping_entry0 = ShardMappingEntry(
             target_slice=dst_sharded_weight_desc0,
             source_slice=src_sharded_weight_desc0,
-            postprocess_list=["float64", "[1, 0]"],
+            postprocess_list=["float32", "[1, 0]"],
         )
         shard_mapping_entry1 = ShardMappingEntry(
             target_slice=dst_sharded_weight_desc1,
             source_slice=src_sharded_weight_desc1,
-            postprocess_list=["float64", "[1, 0]"],
+            postprocess_list=["float32", "[1, 0]"],
         )
         answer = [shard_mapping_entry0, shard_mapping_entry1]
         self.queries.append(query)

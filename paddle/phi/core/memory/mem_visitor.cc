@@ -95,6 +95,20 @@ void VMMFreeBlocksInfoVisitor::Visit(
     free_blocks_info_.push_back(keys);
   }
 }
+
+void VMMAllBlocksInfoVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitAllocator* allocator) {
+  std::vector<std::tuple<size_t, uintptr_t, bool>> info;
+  for (const auto& item : allocator->GetAllBlocks()) {
+    size_t size = item.size_;
+    uintptr_t addr = reinterpret_cast<uintptr_t>(item.ptr_);
+    bool is_free = item.is_free_;
+    info.emplace_back(size, addr, is_free);
+  }
+  if (!info.empty()) {
+    all_blocks_info_.push_back(info);
+  }
+}
 #endif
 }  // namespace memory
 }  // namespace paddle

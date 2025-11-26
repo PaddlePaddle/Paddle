@@ -31,6 +31,7 @@ _ShardInfo = dict[str, list[ShardedWeightDesc]]
 
 # SliceRef := (key, src_slice, dst_slice, postprocess_list)
 SliceRef = tuple[str, tuple[slice, ...], tuple[slice, ...], Optional[list[str]]]
+SUPPORTED_DTYPES = ['float16', 'float32', 'bfloat16']
 
 
 class TensorDesc:
@@ -87,9 +88,11 @@ class AOAShardInfoContext:
         self,
         source_state_shard_info: _ShardInfo,
         destination_state_shard_info: _ShardInfo,
+        aoa_config_reverse: bool = False,
     ) -> None:
         self.source_state_shard_info = source_state_shard_info
         self.destination_state_shard_info = destination_state_shard_info
+        self.aoa_config_reverse = aoa_config_reverse
         self.left_var_to_right_var_mapping = {}
         self.right_var_from_left_var_mapping = {}
 
@@ -136,10 +139,12 @@ class AOAShardInfoContext:
         assert opt_state_name is None, (
             "AOA notions apply only to the model state, but are automatically propagated to the optimizer state."
         )
-
+        reverse = True
+        if self.aoa_config_reverse:
+            reverse = False
         # Only need to parse the model state key for optimizer state shard num, because the optimizer state slice info is completely consistent with the model state slice info.
         resolved_model_state_key = self.resolve_mapping_chain(
-            model_state_key, reverse=True
+            model_state_key, reverse=reverse
         )
 
         state_keys = [
@@ -182,10 +187,12 @@ class AOAShardInfoContext:
         assert opt_state_name is None, (
             "AOA notions apply only to the model state, but are automatically propagated to the optimizer state."
         )
-
+        reverse = False
+        if self.aoa_config_reverse:
+            reverse = True
         # Only need to parse the model state key for optimizer state shard num, because the optimizer state slice info is completely consistent with the model state slice info.
         resolved_model_state_key = self.resolve_mapping_chain(
-            model_state_key, reverse=False
+            model_state_key, reverse=reverse
         )
 
         state_keys = [
@@ -266,15 +273,21 @@ class AOAEngine:
         self.aoa_config = aoa_config
         self.source_state_shard_info = source_state_shard_info
         self.destination_state_shard_info = destination_state_shard_info
+        self.aoa_config_reverse = self.aoa_config.get(
+            "aoa_config_reverse", False
+        )
         self.context = AOAShardInfoContext(
             source_state_shard_info,
             destination_state_shard_info,
+            self.aoa_config_reverse,
         )
         self.lexer = Lexer(self.context)
         self.parser = Parser(
             self.lexer.all_tokens(self.aoa_config.get("aoa_statements", []))
         )
         self.statements = self.parser.parse_program()
+        if self.aoa_config_reverse:
+            self.statements = list(reversed(self.statements))
         self.input_vars = self.build_input_vars()
         self.output_vars = {}
         self.intermediate_vars = {}
@@ -485,6 +498,8 @@ class AOAEngine:
         for stmt in self.statements:
             left_vars = stmt.left_vars
             right_vars = stmt.right_vars
+            if self.aoa_config_reverse:
+                left_vars, right_vars = right_vars, left_vars
             attrs = stmt.attrs
             if len(left_vars) > 1 or len(right_vars) > 1:
                 if not (len(attrs) == 1 and attrs[0].key == "axis"):
@@ -531,7 +546,15 @@ class AOAEngine:
                     self.need_add_output_vars.add(rvar.name)
                 else:
                     if len(attrs) > 0:
-                        assert len(attrs) == 1, "Only support one operator!"
+                        assert len(attrs) == 1 or (
+                            len(attrs) == 2
+                            and {attr.key for attr in attrs}
+                            == {"src_dtype", "dst_dtype"}
+                        ), (
+                            "Only support:\n"
+                            " - One operator, OR\n"
+                            " - Two operators with keys {'src_dtype', 'dst_dtype'}."
+                        )
                         attr = attrs[0]
                         in_ref = _get_var_ref(lvar)
                         if attr.key == "permute":
@@ -540,9 +563,39 @@ class AOAEngine:
                                 perm = str(list(range(ndim - 1, -1, -1)))
                             else:
                                 perm = attr.value
+                                if self.aoa_config_reverse:
+                                    perm = str(
+                                        invert_permutation(
+                                            ast.literal_eval(perm)
+                                        )
+                                    )
                             result = self.transpose(in_ref, perm)
                         elif attr.key == "dtype":
+                            assert not self.aoa_config_reverse, (
+                                "When `aoa_config_reverse=True`, the dtype must be specified as "
+                                "'src_dtype=...,dst_dtype=...'. Formats like 'dtype=xxx' are not supported."
+                            )
+                            assert attr.value in SUPPORTED_DTYPES, (
+                                f"Unsupported cast dtype: {attr.value}"
+                            )
                             result = self.cast(in_ref, attr.value)
+                        elif (
+                            attrs[0].key == "src_dtype"
+                            and attrs[1].key == "dst_dtype"
+                        ):
+                            src_dtype, dst_dtype = (
+                                attrs[0].value,
+                                attrs[1].value,
+                            )
+                            assert src_dtype in SUPPORTED_DTYPES, (
+                                f"Unsupported cast dtype: {src_dtype}"
+                            )
+                            assert dst_dtype in SUPPORTED_DTYPES, (
+                                f"Unsupported cast dtype: {dst_dtype}"
+                            )
+                            if self.aoa_config_reverse:
+                                src_dtype, dst_dtype = dst_dtype, src_dtype
+                            result = self.cast(in_ref, dst_dtype)
                         elif attr.key == "axis":
                             result = in_ref
                         else:
@@ -804,3 +857,10 @@ def transpose_list(
         return tuple(trans_list)
     else:
         return trans_list
+
+
+def invert_permutation(p: list[int]) -> list[int]:
+    q = [0] * len(p)
+    for i, pi in enumerate(p):
+        q[pi] = i
+    return q
