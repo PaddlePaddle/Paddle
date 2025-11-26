@@ -201,7 +201,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
     def test_all(self):
         self._test_static()
         self._test_dynamic()
-        self._test_debug()
+        self._test_debug_tools()
         self._test_static_save_and_load_inference_model()
         self._test_static_save_and_run_inference_predictor()
         self._test_double_grad_dynamic()
@@ -335,7 +335,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                 if batch_id == 5:
                     break
 
-    def _test_debug(self):
+    def _test_debug_tools(self):
         # Test the debug utils on custom op
         # It is only necessary to test whether any error occur,
         # and there is no need to verify the results
