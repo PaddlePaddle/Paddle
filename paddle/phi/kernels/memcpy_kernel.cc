@@ -112,8 +112,7 @@ void MemcpyKernel(const Context& dev_ctx,
       dev_ctx.HostAlloc(out, out->dtype());
       Copy(dev_ctx, x, CPUPlace(), true, out);
       break;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_CUSTOM_DEVICE)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case 1: /* CUDAPlace */
       dev_ctx.Alloc(out, x.dtype());
       Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
@@ -123,6 +122,10 @@ void MemcpyKernel(const Context& dev_ctx,
       Copy(dev_ctx, x, GPUPinnedPlace(), false, out);
       break;
 #elif defined(PADDLE_WITH_XPU)
+    case 1:  // XPUPlace
+      dev_ctx.Alloc(out, x.dtype());
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      break;
     case 3:  // XPUPlace
       dev_ctx.Alloc(out, x.dtype());
       Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
@@ -132,10 +135,15 @@ void MemcpyKernel(const Context& dev_ctx,
       Copy(dev_ctx, x, XPUPinnedPlace(), false, out);
       break;
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+    case 1:  // CustomPlace
+      dev_ctx.Alloc(out, x.dtype());
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      break;
     case 4:  // CustomPlace
       dev_ctx.Alloc(out, x.dtype());
       Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
       break;
+
 #endif
     default:
       PADDLE_THROW(errors::Unimplemented(
