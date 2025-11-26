@@ -36,3 +36,8 @@ op_patches:
       - action : modify_attr
         object : pad_value
         type : pir::DoubleAttribute
+  - op_name : pd_op.top_p_sampling
+    actions:
+      - action : modify_attr
+        object : seed
+        type : pir::Int64Attribute
