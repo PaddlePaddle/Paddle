@@ -31,11 +31,7 @@ if (
     import triton.language as tl
 
 
-def do_bench(kernel_call, quantiles, use_cuda_graph=True):
-    if use_cuda_graph:
-        return triton.testing.do_bench_cudagraph(
-            kernel_call, quantiles=quantiles
-        )
+def do_bench(kernel_call, quantiles, use_cuda_graph=False):
     return triton.testing.do_bench(
         kernel_call, quantiles=quantiles, warmup=1, rep=1
     )
