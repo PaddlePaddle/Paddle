@@ -44,7 +44,7 @@ if(LINUX)
       "magma_lnx_${MAGMA_ARCH}_v2.9.0.20250728.tar.gz"
       CACHE STRING "" FORCE)
   set(MAGMA_URL
-      "file:///work/magma/magma_install/lib/${MAGMA_FILE}"
+      "https://paddlepaddledeps.bj.bcebos.com/${MAGMA_FILE}"
       CACHE STRING "" FORCE)
   set(MAGMA_LIB "${MAGMA_LIB_DIR}/libmagma.so")
 elseif(WIN32)
