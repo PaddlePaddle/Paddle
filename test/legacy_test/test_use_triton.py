@@ -21,9 +21,11 @@ import paddle
 from paddle.compat import paddle_use_triton
 
 paddle_use_triton()
+
 if (
     paddle.device.is_compiled_with_cuda()
     and not paddle.device.is_compiled_with_rocm()
+    and platform.system().lower() == 'linux'
 ):
     import triton
     import triton.language as tl
