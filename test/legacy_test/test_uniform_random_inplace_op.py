@@ -287,6 +287,10 @@ class TestUniformInplaceAPI_Compatibility(unittest.TestCase):
         kwargs_alias = {"from": self.min_v, "to": self.max_v, "seed": self.seed}
         out3 = x3.uniform_(**kwargs_alias)
         self._check_range(out3, self.min_v, self.max_v)
+        # Default parameters
+        x4 = paddle.zeros(self.shape, dtype=self.dtype)
+        out4 = x4.uniform_()
+        self._check_range(out4, 0, 1)
 
 
 if __name__ == '__main__':
