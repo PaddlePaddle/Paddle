@@ -1556,8 +1556,11 @@ TEST_API void SetGradTensorName(
     const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
         bwd_out_meta) {
   const auto& metas = bwd_out_meta[slot];
+  if (metas.size() == 0) return;
   std::string name = GenerateGradTensorName(metas[0]);
-  tensor->set_name(name);
+  if (tensor != nullptr && tensor->defined() && tensor->has_allocation()) {
+    tensor->set_name(name);
+  }
 }
 TEST_API void SetGradTensorName(
     std::vector<paddle::Tensor>* tensors,
@@ -1565,7 +1568,7 @@ TEST_API void SetGradTensorName(
     const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
         bwd_out_meta) {
   const auto& metas = bwd_out_meta[slot];
-  for (size_t i = 0; i < tensors->size(); i++) {
+  for (size_t i = 0; i < tensors->size() && i < metas.size(); i++) {
     auto& t = (*tensors)[i];
     if (t.defined() && t.has_allocation()) {
       std::string name = GenerateGradTensorName(metas[i]);
