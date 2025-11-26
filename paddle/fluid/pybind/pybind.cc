@@ -137,6 +137,12 @@ limitations under the License. */
 #include "paddle/fluid/pybind/xpu_streams_py.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#endif
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/xpu_info.h"
+#endif
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
@@ -2858,12 +2864,16 @@ All parameter, weight, gradient are variables in Paddle.
     std::vector<std::string> device_types;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     device_types = phi::DeviceManager::GetAllDeviceTypes();
+#elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    device_types.push_back("gpu");
+#elif defined(PADDLE_WITH_XPU)
+    device_types.push_back("xpu");
 #else
           VLOG(1) << string::Sprintf(
               "Cannot use get_all_device_type because you have installed "
-              "CPU/GPU version PaddlePaddle.\n"
+              "CPU version PaddlePaddle.\n"
               "If you want to use get_all_device_type, please try to install "
-              "CustomDevice version "
+              "CUDA/XPU/CustomDevice version "
               "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
     return device_types;
@@ -2886,12 +2896,22 @@ All parameter, weight, gradient are variables in Paddle.
     std::vector<std::string> devices;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     devices = phi::DeviceManager::GetAllDeviceList();
+#elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    int gpu_count = phi::backends::gpu::GetGPUDeviceCount();
+    for (int i = 0; i < gpu_count; ++i) {
+      devices.push_back("gpu:" + std::to_string(i));
+    }
+#elif defined(PADDLE_WITH_XPU)
+    int xpu_count = phi::backends::xpu::GetXPUDeviceCount();
+    for (int i = 0; i < xpu_count; ++i) {
+      devices.push_back("xpu:" + std::to_string(i));
+    }
 #else
           VLOG(1) << string::Sprintf(
               "Cannot use get_available_device because you have installed "
-              "CPU/GPU version PaddlePaddle.\n"
+              "CPU version PaddlePaddle.\n"
               "If you want to use get_available_device, please try to install "
-              "CustomDevice version "
+              "CUDA/XPU/CustomDevice version "
               "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
     return devices;
