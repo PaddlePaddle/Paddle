@@ -1706,7 +1706,7 @@ class Model:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.nn as nn
@@ -1732,7 +1732,7 @@ class Model:
                 >>> label = paddle.randint(0, 10, (4, 1), dtype="int64")
                 >>> loss, acc = model.eval_batch([data], [label])
                 >>> print(loss, acc)
-                [array(3.0039132, dtype=float32)] [0.0]
+                [array(2.8679318, dtype=float32)] [np.float64(0.0)]
 
         """
         loss = self._adapter.eval_batch(inputs, labels)
@@ -2879,7 +2879,7 @@ class Model:
             Dict: A summary of the network including total params and total trainable params.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.static import InputSpec
@@ -2913,7 +2913,7 @@ class Model:
                 Params size (MB): 0.24
                 Estimated Total Size (MB): 0.35
                 ---------------------------------------------------------------------------
-                {'total_params': 61610, 'trainable_params': 61610}
+                {'total_params': np.int64(61610), 'trainable_params': np.int64(61610)}
 
         """
         assert input_size is not None or self._inputs is not None, (

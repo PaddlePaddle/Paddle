@@ -1280,7 +1280,7 @@ class Layer:
             list of Layer, a list of sub layers.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1297,7 +1297,7 @@ class Layer:
                 ...
                 >>> mylayer = MyLayer()
                 >>> print(mylayer.sublayers())
-                [Linear(in_features=1, out_features=1, dtype=float32), Dropout(p=0.5, axis=None, mode=upscale_in_train)]
+                [Linear(in_features=1, out_features=1, dtype=float32), Dropout(p=0.5, axis=None, mode=upscale_in_train, inplace=False)]
 
         """
         ret = [
@@ -3180,7 +3180,7 @@ class Layer:
             Layer: self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -3197,9 +3197,10 @@ class Layer:
                 ...
                 >>> model = Model()
                 >>> model.float()
+                >>> print(model)
                 Model(
                     (linear): Linear(in_features=1, out_features=1, dtype=paddle.float32)
-                    (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train)
+                    (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train, inplace=False)
                 )
         '''
 
