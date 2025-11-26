@@ -16,9 +16,7 @@ from __future__ import annotations
 
 import inspect
 import math
-import operator
 import warnings
-from functools import reduce
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy
@@ -2512,50 +2510,7 @@ def linear(
              [-0.67769694, -0.67769694, -0.67769694, -0.67769694]])
     """
     if in_dynamic_mode():
-        if (
-            not paddle.get_flags(["FLAGS_use_legacy_gemm"]).get(
-                "FLAGS_use_legacy_gemm", False
-            )
-            and core.is_compiled_with_cuda()
-        ):
-            if bias is not None and bias.shape == []:
-                if bias.numel() == 0:
-                    bias = None
-                else:
-                    # scalar bias
-                    if bias.numel() != weight.shape[-1]:
-                        bias = bias.expand([weight.shape[-1]])
-
-            if bias is not None:
-                assert len(bias.shape) == 1, "only support 1D bias"
-                x_shape_prefix = x.shape[:-1]
-                output_shape = x_shape_prefix + [weight.shape[-1]]  # noqa:RUF005
-                if weight.shape[0] > 1 and weight.shape[1] > 1:
-                    out, _ = _C_ops.fused_gemm_epilogue(
-                        x.reshape(-1, x.shape[-1]),
-                        weight.reshape(-1, weight.shape[-1]),
-                        bias,
-                        False,
-                        False,
-                        "none",
-                    )
-                else:
-                    flattened_m = reduce(operator.mul, x_shape_prefix, 1)
-                    out = paddle.addmm(
-                        bias.expand([flattened_m, bias.shape[0]]),
-                        x.reshape(-1, x.shape[-1]),
-                        weight.reshape(-1, weight.shape[-1]),
-                        alpha=1.0,
-                        beta=1.0,
-                    )
-
-                out = out.reshape(output_shape)
-            else:
-                out = _C_ops.matmul(x, weight, False, False)
-            return out
-        else:
-            # Fallback logic
-            return _C_ops.linear(x, weight, bias)
+        return _C_ops.linear(x, weight, bias)
 
     elif in_pir_mode():
         out = _C_ops.matmul(x, weight, False, False)
