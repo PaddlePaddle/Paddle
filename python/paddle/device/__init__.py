@@ -698,9 +698,11 @@ def get_default_device() -> paddle.device:
     Returns:
         str: The default device for PaddlePaddle.
     Example:
-        .. code-block:: python
-            import paddle
-            print(paddle.get_default_device())
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> print(paddle.get_default_device())
     """
     return paddle.device(get_device().replace("gpu", "cuda"))
 
@@ -1094,7 +1096,7 @@ class Event:
         ```python
         # New usage
         paddle.set_device("gpu:0")  # Set device first
-        e = paddle.device.Event()   # Will use gpu:0
+        e = paddle.device.Event()  # Will use gpu:0
         ```
 
         paddle.device.Event is equivalent to paddle.cuda.Event.

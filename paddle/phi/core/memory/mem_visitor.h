@@ -236,9 +236,64 @@ class VMMFreeBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
    *
    * This member is populated during the Visit() call. It is structured to
    * hold lists of (size, address) pairs, where the outer vector typically
-   * distinguishes between different free lists (e.g., small, large blocks).
+   * distinguishes between different allocators (e.g., small, large allocator).
    */
   std::vector<std::vector<std::pair<size_t, uintptr_t>>> free_blocks_info_;
+};
+
+/**
+ * @brief Visitor class to retrieve All block information from a VMM allocator.
+ *
+ * Inherits from AllocatorVisitor, implementing the Visitor Pattern.
+ * The purpose of this class is to access a specific memory allocator's
+ * internal state (the list of all memory blocks) and extract key information
+ * (size, address and free_info) for external analysis or debugging.
+ */
+class VMMAllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
+  using AllocatorComputeStreamVisitor::Visit;
+
+ public:
+  /**
+   * @brief Retrieves the collected information about the free memory blocks.
+   *
+   * The structure is a nested vector:
+   * Outer Vector: Represents different categories or lists within the
+   * allocator. Inner Vector: Contains tuple of (size, address, free_info) for
+   * the all blocks in that category. uintptr_t is used to safely store the
+   * memory address (void*) as an integer.
+   *
+   * @return A nested vector structure containing the size, integer address,
+   * free info of all blocks.
+   */
+  std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
+  GetAllBlocksInfo() const {
+    return all_blocks_info_;
+  }
+
+  /**
+   * @brief Visits the VirtualMemoryAutoGrowthBestFitAllocator.
+   *
+   * This is the core implementation of the Visitor Pattern. When called,
+   * it accesses the `allocator` object's internal structure that holds the
+   * free block list(s) and populates the `all_blocks_info_` member variable
+   * with the necessary data.
+   *
+   * @param allocator Pointer to the memory allocator object whose free blocks
+   * information is to be extracted.
+   */
+  void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;
+
+ private:
+  /**
+   * @brief Stores the extracted all block information.
+   *
+   * This member is populated during the Visit() call. It is structured to
+   * hold lists of (size, address, free_info) tuples, where the outer vector
+   * typically distinguishes between different allocators (e.g., small, large
+   * allocator).
+   */
+  std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
+      all_blocks_info_;
 };
 #endif
 

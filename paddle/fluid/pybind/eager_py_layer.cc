@@ -85,6 +85,7 @@ PyObject* PyLayerNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
     v->container = nullptr;
     v->materialize_grads = true;
     v->container_be_packed = false;
+    v->grad_in_dtype_consistent = true;
     new (&v->grad_node) std::weak_ptr<egr::GradNodePyLayer>();
     new (&v->forward_input_tensor_is_duplicable) std::vector<bool>();
     new (&v->forward_output_tensor_is_duplicable) std::vector<bool>();
@@ -575,6 +576,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
     if (ctx->materialize_grads) {
       grad_node->SaveForwardOutputsMeta(outputs_tensor);
     }
+    grad_node->SetGradInDtypeConsistent(ctx->grad_in_dtype_consistent);
 
     for (size_t i = 0; i < inputs_autograd_meta.size(); i++) {
       if (ctx->forward_input_tensor_is_duplicable[i]) {
@@ -858,6 +860,14 @@ int tensor_properties_set_materialize_grads(PyLayerObject* self,
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
+int tensor_properties_set_grad_in_dtype_consistent(PyLayerObject* self,
+                                                   PyObject* value,
+                                                   void* closure) {
+  EAGER_TRY
+  self->grad_in_dtype_consistent = CastPyArg2AttrBoolean(value, 0);
+  return 0;
+  EAGER_CATCH_AND_THROW_RETURN_NEG
+}
 
 PyMethodDef pylayer_methods[] = {{"name",  // NOLINT
                                   (PyCFunction)(void (*)())pylayer_method_name,
@@ -888,6 +898,11 @@ struct PyGetSetDef pylayer_properties[] {  // NOLINT
       {"materialize_grads",
        nullptr,
        (setter)tensor_properties_set_materialize_grads,
+       nullptr,
+       nullptr},
+      {"grad_in_dtype_consistent",
+       nullptr,
+       (setter)tensor_properties_set_grad_in_dtype_consistent,
        nullptr,
        nullptr},
   {

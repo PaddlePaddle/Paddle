@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any, NamedTuple
 
 import paddle
 from paddle import _C_ops
+from paddle.base import core
 from paddle.base.framework import Variable
 from paddle.framework import (
     in_dynamic_mode,
@@ -48,6 +49,7 @@ __all__ = [
     'max',
     'median',
     'nanmedian',
+    'seed',
 ]
 
 
@@ -233,6 +235,22 @@ def nanmedian(
             paddle.assign(indices, out[1])
             return MedianRetType(values=out[0], indices=out[1])
         return MedianRetType(values=values, indices=indices)
+
+
+def seed() -> int:
+    r"""Sets the seed for generating random numbers to a non-deterministic
+    random number on all devices. Returns a 64 bit number used to seed the RNG.
+    Returns:
+        Returns: int64, the seed used to seed the RNG.
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> seed = paddle.compat.seed()
+    """
+    seed = core.default_cpu_generator().seed()
+    paddle.seed(seed)
+    return seed
 
 
 class MinMaxRetType(NamedTuple):
@@ -803,7 +821,7 @@ def split(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -812,28 +830,28 @@ def split(
 
             >>> out0, out1, out2 = paddle.compat.split(x, split_size_or_sections=3, dim=1)
             >>> print(out0.shape)
-            [3, 3, 5]
+            paddle.Size([3, 3, 5])
             >>> print(out1.shape)
-            [3, 3, 5]
+            paddle.Size([3, 3, 5])
             >>> print(out2.shape)
-            [3, 2, 5]
+            paddle.Size([3, 2, 5])
 
             >>> out0, out1, out2 = paddle.compat.split(x, split_size_or_sections=[1, 2, 5], dim=1)
             >>> print(out0.shape)
-            [3, 1, 5]
+            paddle.Size([3, 1, 5])
             >>> print(out1.shape)
-            [3, 2, 5]
+            paddle.Size([3, 2, 5])
             >>> print(out2.shape)
-            [3, 5, 5]
+            paddle.Size([3, 5, 5])
 
             >>> # dim is negative, the real dim is (rank(x) + dim)=1
             >>> out0, out1, out2 = paddle.compat.split(x, split_size_or_sections=3, dim=-2)
             >>> print(out0.shape)
-            [3, 3, 5]
+            paddle.Size([3, 3, 5])
             >>> print(out1.shape)
-            [3, 3, 5]
+            paddle.Size([3, 3, 5])
             >>> print(out2.shape)
-            [3, 2, 5]
+            paddle.Size([3, 2, 5])
     """
 
     def GetSplitSize(split_size, shape_on_dim):

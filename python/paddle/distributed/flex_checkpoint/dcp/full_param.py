@@ -26,7 +26,7 @@ from typing import (
 
 import paddle
 
-from ..aoa.aoa_engine import AOAEngine
+from ..aoa.aoa_engine import SUPPORTED_DTYPES, AOAEngine
 from .load_state_dict import (
     ReadItem,
 )
@@ -49,7 +49,6 @@ if TYPE_CHECKING:
     from .sharded_weight import ShardedStateDict
 
 
-SUPPORTED_DTYPES = ['float16', 'float32', 'bfloat16']
 INTERNAL_PADDING_TENSOR_NAME = "__internal_padding_tensor_name__"
 
 

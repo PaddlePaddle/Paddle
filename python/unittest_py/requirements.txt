@@ -22,3 +22,4 @@ apache-tvm-ffi==0.1.2
 cuda-python ; platform_system != "Darwin"
 triton ; platform_system == 'Linux' and platform_machine == 'x86_64'
 graphviz
+nvidia-ml-py3 ; platform_system != "Darwin"

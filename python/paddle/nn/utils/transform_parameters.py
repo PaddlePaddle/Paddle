@@ -100,7 +100,7 @@ def parameters_to_vector(
 
 
     Examples:
-       .. code-block:: python
+       .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)
@@ -108,7 +108,7 @@ def parameters_to_vector(
 
             >>> t = paddle.nn.utils.parameters_to_vector(linear.parameters())
             >>> print(t.shape)
-            [165]
+            paddle.Size([165])
 
     """
     dtype = parameters[0].dtype

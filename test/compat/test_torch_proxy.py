@@ -105,6 +105,24 @@ class TestTorchProxyBlockedModule(unittest.TestCase):
             torch_proxy_blocked_module.use_torch_specific_fn()
 
 
+class TestTorchProxyLocalEnabledModule(unittest.TestCase):
+    def test_local_enabled_module(self):
+        with self.assertRaises(ModuleNotFoundError):
+            import torch_proxy_local_enabled_module
+
+        paddle.compat.enable_torch_proxy(
+            scope={"torch_proxy_local_enabled_module"}
+        )
+        with self.assertRaises(ModuleNotFoundError):
+            import torch  # noqa: F401
+
+        import torch_proxy_local_enabled_module
+
+        torch_proxy_local_enabled_module.use_torch_compat_api()
+        paddle.compat.proxy.TORCH_PROXY_FINDER._scope = None
+        paddle.compat.disable_torch_proxy()
+
+
 class TestOverrideTorchModule(unittest.TestCase):
     @paddle.compat.use_torch_proxy_guard()
     def test_relu(self):

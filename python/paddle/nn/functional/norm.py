@@ -608,14 +608,14 @@ def local_response_norm(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.rand(shape=(3, 3, 112, 112), dtype="float32")
             >>> y = paddle.nn.functional.local_response_norm(x, size=5)
             >>> print(y.shape)
-            [3, 3, 112, 112]
+            paddle.Size([3, 3, 112, 112])
 
     """
     if not in_dynamic_mode():
