@@ -464,7 +464,6 @@ class Unfold(nn.Unfold):
             strides=to_list_if_necessary(self.strides),
             paddings=to_list_if_necessary(self.paddings),
             dilations=to_list_if_necessary(self.dilations),
-            name=self.name,
         )
 
 
@@ -724,7 +723,7 @@ class Softmax(nn.Layer):
     """
 
     @ForbidKeywordsDecorator(
-        illegal_keys={"axis", "name"},
+        illegal_keys={"axis"},
         func_name="paddle.compat.nn.Softmax",
         correct_name="paddle.nn.Softmax",
     )
