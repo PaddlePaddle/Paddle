@@ -1294,7 +1294,6 @@ class Layer:
                 ...         temp = self._linear(input)
                 ...         temp = self._dropout(temp)
                 ...         return temp
-                ...
                 >>> mylayer = MyLayer()
                 >>> print(mylayer.sublayers())
                 [Linear(in_features=1, out_features=1, dtype=float32), Dropout(p=0.5, axis=None, mode=upscale_in_train, inplace=False)]
@@ -3194,7 +3193,6 @@ class Layer:
                 ...         out = self.linear(input)
                 ...         out = self.dropout(out)
                 ...         return out
-                ...
                 >>> model = Model()
                 >>> model.float()
                 >>> print(model)

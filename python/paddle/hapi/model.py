@@ -1713,21 +1713,14 @@ class Model:
                 >>> from paddle.static import InputSpec
                 >>> paddle.seed(2023)
 
-                >>> device = paddle.set_device('cpu') # or 'gpu'
+                >>> device = paddle.set_device('cpu')  # or 'gpu'
 
-                >>> net = nn.Sequential(
-                ...     nn.Linear(784, 200),
-                ...     nn.Tanh(),
-                ...     nn.Linear(200, 10))
-                ...
+                >>> net = nn.Sequential(nn.Linear(784, 200), nn.Tanh(), nn.Linear(200, 10))
                 >>> input = InputSpec([None, 784], 'float32', 'x')
                 >>> label = InputSpec([None, 1], 'int64', 'label')
                 >>> model = paddle.Model(net, input, label)
-                >>> optim = paddle.optimizer.SGD(learning_rate=1e-3,
-                ...     parameters=model.parameters())
-                >>> model.prepare(optim,
-                ...               paddle.nn.CrossEntropyLoss(),
-                ...               metrics=paddle.metric.Accuracy())
+                >>> optim = paddle.optimizer.SGD(learning_rate=1e-3, parameters=model.parameters())
+                >>> model.prepare(optim, paddle.nn.CrossEntropyLoss(), metrics=paddle.metric.Accuracy())
                 >>> data = paddle.rand((4, 784), dtype="float32")
                 >>> label = paddle.randint(0, 10, (4, 1), dtype="int64")
                 >>> loss, acc = model.eval_batch([data], [label])
