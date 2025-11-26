@@ -3,19 +3,19 @@
 
 /CMakeLists.txt @wanghuancoder @XiaoguangHu01
 paddle/fluid/distributed/collective @sneaxiy @ForFishes
-paddle/fluid/eager/autograd_meta.cc @JiabinYang @zhangbo9674
-paddle/fluid/eager/autograd_meta.h @JiabinYang @zhangbo9674
-paddle/fluid/eager/backward.cc @JiabinYang @zhangbo9674
-paddle/fluid/eager/backward.h @JiabinYang @zhangbo9674
-paddle/fluid/eager/grad_node_info.cc @JiabinYang @zhangbo9674
-paddle/fluid/eager/grad_node_info.h @JiabinYang @zhangbo9674
-paddle/fluid/eager/grad_tensor_holder.cc @JiabinYang @zhangbo9674
-paddle/fluid/eager/grad_tensor_holder.h @JiabinYang @zhangbo9674
+paddle/fluid/eager/autograd_meta.cc @JiabinYang @xiaoguoguo626807
+paddle/fluid/eager/autograd_meta.h @JiabinYang @xiaoguoguo626807
+paddle/fluid/eager/backward.cc @JiabinYang @xiaoguoguo626807
+paddle/fluid/eager/backward.h @JiabinYang @xiaoguoguo626807
+paddle/fluid/eager/grad_node_info.cc @JiabinYang @xiaoguoguo626807
+paddle/fluid/eager/grad_node_info.h @JiabinYang @xiaoguoguo626807
+paddle/fluid/eager/grad_tensor_holder.cc @JiabinYang @xiaoguoguo626807
+paddle/fluid/eager/grad_tensor_holder.h @JiabinYang @xiaoguoguo626807
 paddle/fluid/eager/tensor_wrapper.h @JiabinYang @zhangbo9674
 paddle/fluid/framework/block_desc.h @XiaoguangHu01 @zhangbo9674 @Xreki
 paddle/fluid/framework/details/op_registry.h @XiaoguangHu01 @zhangbo9674 @Xreki
 paddle/fluid/framework/framework.proto @XiaoguangHu01 @zhangbo9674 @Xreki
-paddle/fluid/framework/grad_op_desc_maker.h @XiaoguangHu01 @zhangbo9674 @Xreki
+paddle/fluid/framework/grad_op_desc_maker.h @XiaoguangHu01 @xiaoguoguo626807 @Xreki
 paddle/fluid/framework/ir/graph.h @XiaoguangHu01 @zhangbo9674 @Xreki
 paddle/fluid/framework/ir/node.h @XiaoguangHu01 @zhangbo9674 @Xreki
 paddle/fluid/framework/lod_tensor.h @XiaoguangHu01 @zhangbo9674 @Xreki
@@ -47,9 +47,9 @@ paddle/phi/infermeta/spmd_rules @LiYuRio @ForFishes @From00
 paddle/scripts/paddle_build.bat @zhwesky2010 @wanghuancoder
 paddle/scripts/paddle_build.sh @risemeup1 @zhangbo9674 @XieYunshen
 pyproject.toml @SigureMo @gouzil
-python/paddle/autograd/backward_utils.py @xiaoguoguo626807 @changeyoung98 @zhangbo9674
+python/paddle/autograd/backward_utils.py @xiaoguoguo626807 @changeyoung98
 python/paddle/autograd/ir_backward.py @xiaoguoguo626807 @changeyoung98
-python/paddle/base/backward.py @XiaoguangHu01 @zhangbo9674 @Xreki @qili93
+python/paddle/base/backward.py @XiaoguangHu01 @xiaoguoguo626807 @Xreki @qili93
 python/paddle/base/compiler.py @XiaoguangHu01 @zhangbo9674 @Xreki @qili93
 python/paddle/base/dygraph/layers.py @JiabinYang @zhangbo9674
 python/paddle/base/framework.py @XiaoguangHu01 @zhangbo9674 @Xreki @qili93
@@ -66,7 +66,7 @@ python/paddle/distributed/fleet/__init__.py @sneaxiy @raindrops2sea
 python/paddle/distributed/fleet/launch.py @sneaxiy @raindrops2sea
 python/paddle/distributed/__init__.py @sneaxiy @raindrops2sea
 python/paddle/incubate/autograd/composite_rules.py @xiaoguoguo626807 @JiabinYang
-python/paddle/incubate/autograd/primitives.py @xiaoguoguo626807 @JiabinYang @zhangbo9674
+python/paddle/incubate/autograd/primitives.py @xiaoguoguo626807 @JiabinYang
 python/paddle/_typing @SigureMo @zrr1999 @gouzil
 python/requirements.txt @zhangbo9674 @jzhang533 @kolinwei
 test/dygraph_to_static @SigureMo @DrRyanHuang @zrr1999 @gouzil
