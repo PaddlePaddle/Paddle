@@ -34,6 +34,7 @@ void PoolGradRawGPUDNNKernel(const Context& dev_ctx,
                              const std::vector<int64_t>& kernel_size,
                              const std::vector<int64_t>& strides,
                              const std::vector<int64_t>& paddings,
+                             const std::vector<int64_t>& dilations,
                              bool exclusive,
                              const std::string& data_format,
                              const std::string& pooling_type,
@@ -52,7 +53,7 @@ void PoolGradRawGPUDNNKernel(const Context& dev_ctx,
     return;
   }
 
-  const std::vector<int64_t> dilations = {1, 1};
+  // const std::vector<int64_t> dilations = {1, 1};
   auto run_cuda_kernel = [&]() {
     PoolGradRawKernel<T, GPUContext>(dev_ctx,
                                      x,
@@ -72,7 +73,9 @@ void PoolGradRawGPUDNNKernel(const Context& dev_ctx,
                                      dx);
   };
 
-  if (std::max(x.numel(), out.numel()) > std::numeric_limits<int>::max()) {
+  if (std::max(x.numel(), out.numel()) > std::numeric_limits<int>::max() ||
+      dilations[0] > static_cast<int>(1) ||
+      dilations[1] > static_cast<int>(1)) {
     run_cuda_kernel();
     return;
   }
@@ -324,6 +327,7 @@ void Pool2dGradGPUDNNKernel(const Context& dev_ctx,
                             const IntArray& kernel_size,
                             const std::vector<int64_t>& strides,
                             const std::vector<int64_t>& paddings,
+                            const std::vector<int64_t>& dilations,
                             bool ceil_mode,
                             bool exclusive,
                             const std::string& data_format,
@@ -339,6 +343,7 @@ void Pool2dGradGPUDNNKernel(const Context& dev_ctx,
                                       kernel_size.GetData(),
                                       strides,
                                       paddings,
+                                      dilations,
                                       exclusive,
                                       data_format,
                                       pooling_type,
@@ -354,6 +359,7 @@ void Pool2dDoubleGradGPUDNNKernel(const Context& dev_ctx,
                                   const IntArray& kernel_size,
                                   const std::vector<int64_t>& strides,
                                   const std::vector<int64_t>& paddings,
+                                  const std::vector<int64_t>& dilations,
                                   bool ceil_mode,
                                   bool exclusive,
                                   const std::string& data_format,
@@ -371,6 +377,7 @@ void Pool2dDoubleGradGPUDNNKernel(const Context& dev_ctx,
                                    kernel_size,
                                    strides,
                                    paddings,
+                                   dilations,
                                    ceil_mode,
                                    exclusive,
                                    data_format,
@@ -398,6 +405,7 @@ void Pool3dGradGPUDNNKernel(const Context& dev_ctx,
                             bool adaptive,
                             const std::string& padding_algorithm,
                             DenseTensor* dx) {
+  const std::vector<int64_t> dilations = {1, 1};
   PoolGradRawGPUDNNKernel<T, Context>(dev_ctx,
                                       x,
                                       out,
@@ -405,6 +413,7 @@ void Pool3dGradGPUDNNKernel(const Context& dev_ctx,
                                       kernel_size,
                                       strides,
                                       paddings,
+                                      dilations,
                                       exclusive,
                                       data_format,
                                       pooling_type,

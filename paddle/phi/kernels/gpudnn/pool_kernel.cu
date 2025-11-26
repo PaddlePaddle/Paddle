@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/pool_kernel.h"
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -21,7 +22,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/gpudnn/pool_gpudnn.h"
 #include "paddle/phi/kernels/impl/pool_kernel_impl.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -30,6 +30,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
                          const std::vector<int64_t>& kernel_size,
                          const std::vector<int64_t>& strides,
                          const std::vector<int64_t>& paddings,
+                         const std::vector<int64_t>& dilations,
                          bool exclusive,
                          const std::string& data_format,
                          const std::string& pooling_type,
@@ -48,8 +49,13 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
       errors::InvalidArgument("Pool operator CUDA kernel must use CUDAPlace "
                               "rather than CPUPlace."));
 
-  if (x.numel() > std::numeric_limits<int>::max()) {
-    const std::vector<int64_t> dilations = {1, 1};
+  // if (x.numel() >
+  // std::numeric_limits<int>::max()||dilations[0]>static_cast<int>(1)||dilations[1]>static_cast<int>(1))
+  // {
+  if (x.numel() > 1 || dilations[0] > static_cast<int>(1) ||
+      dilations[1] > static_cast<int>(1)) {
+    // const std::vector<int64_t> dilations = {1, 1};
+    VLOG(1) << "PoolRawKernel-dilations";
     PoolRawKernel<T, GPUContext>(dev_ctx,
                                  x,
                                  kernel_size,
@@ -66,7 +72,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
                                  out);
     return;
   }
-
+  VLOG(1) << "PoolRawKernel-no-dilations";
   const DenseTensor* input = &x;
   DenseTensor* output = out;
   std::vector<int> kernel_size_(kernel_size.begin(), kernel_size.end());
@@ -260,6 +266,7 @@ void Pool2dGPUDNNKernel(const Context& dev_ctx,
                         const IntArray& kernel_size,
                         const std::vector<int64_t>& strides,
                         const std::vector<int64_t>& paddings,
+                        const std::vector<int64_t>& dilations,
                         bool ceil_mode,
                         bool exclusive,
                         const std::string& data_format,
@@ -268,6 +275,7 @@ void Pool2dGPUDNNKernel(const Context& dev_ctx,
                         bool adaptive,
                         const std::string& padding_algorithm,
                         DenseTensor* out) {
+  VLOG(1) << "VLOG GPUDNN";
   if (x.numel() == 0) {
     if (pooling_type == "max") {
       phi::Full<T, Context>(
@@ -283,6 +291,7 @@ void Pool2dGPUDNNKernel(const Context& dev_ctx,
                                   kernel_size.GetData(),
                                   strides,
                                   paddings,
+                                  dilations,
                                   exclusive,
                                   data_format,
                                   pooling_type,
@@ -316,11 +325,13 @@ void Pool3dGPUDNNKernel(const Context& dev_ctx,
     }
     return;
   }
+  const std::vector<int64_t> dilations = {1, 1};
   PoolRawGPUDNNKernel<T, Context>(dev_ctx,
                                   x,
                                   kernel_size,
                                   strides,
                                   paddings,
+                                  dilations,
                                   exclusive,
                                   data_format,
                                   pooling_type,

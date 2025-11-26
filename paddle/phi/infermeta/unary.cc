@@ -2864,10 +2864,12 @@ void MaxPoolV2InferMeta(const MetaTensor& x,
   std::vector<int64_t> kernel_size_(kernel_size.begin(), kernel_size.end());
   std::vector<int64_t> strides_(strides.begin(), strides.end());
   std::vector<int64_t> paddings_(paddings.begin(), paddings.end());
+  std::vector<int64_t> dilations_(paddings.begin(), paddings.end());
   Pool2DInferMeta(x,
                   kernel_size_,
                   strides_,
                   paddings_,
+                  dilations_,
                   false,
                   false,
                   data_format,
@@ -3751,6 +3753,7 @@ void Pool2DInferMeta(const MetaTensor& x,
                      const IntArray& kernel_size,
                      const std::vector<int64_t>& strides,
                      const std::vector<int64_t>& paddings,
+                     const std::vector<int64_t>& dilations,
                      bool ceil_mode,
                      bool exclusive,
                      const std::string& data_format,

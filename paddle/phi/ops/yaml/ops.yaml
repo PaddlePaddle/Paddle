@@ -3393,7 +3393,7 @@
   output : Tensor(out)
   infer_meta :
     func : Pool2DInferMeta
-    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+    param : [x, kernel_size, strides, paddings, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
   kernel :
     func : lp_pool2d
     param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm, norm_type]
@@ -4216,7 +4216,7 @@
   output : Tensor(out)
   infer_meta :
     func : Pool2DInferMeta
-    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+    param : [x, kernel_size, strides, paddings, dilations, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
   kernel :
     func : pool2d
     param : [x, kernel_size, strides, paddings, dilations, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
