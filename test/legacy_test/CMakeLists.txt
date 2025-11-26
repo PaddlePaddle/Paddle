@@ -54,7 +54,6 @@ list(REMOVE_ITEM TEST_OPS test_matmul_v2_op)
 
 list(REMOVE_ITEM TEST_OPS test_allgather)
 list(REMOVE_ITEM TEST_OPS test_reducescatter)
-list(REMOVE_ITEM TEST_OPS test_flash_attention)
 
 #Note(risemeup1): Delete some unit tests related to the parameter server.
 list(REMOVE_ITEM TEST_OPS test_dist_fleet_trainer_desc_config)
@@ -1305,3 +1304,4 @@ if(NOT WIN32)
 endif()
 set_tests_properties(test_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_load_state_dict_from_url PROPERTIES TIMEOUT 40)
+set_tests_properties(test_flash_attention PROPERTIES TIMEOUT 240)

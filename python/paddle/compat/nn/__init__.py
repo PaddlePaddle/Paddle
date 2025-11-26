@@ -106,7 +106,7 @@ class AvgPool1D(nn.Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.compat.nn as nn
@@ -115,7 +115,7 @@ class AvgPool1D(nn.Layer):
             >>> AvgPool1D = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
             >>> pool_out = AvgPool1D(data)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
 
     """
 
@@ -220,7 +220,7 @@ class AvgPool2D(nn.Layer):
         A callable object of AvgPool2D.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.compat.nn as nn
@@ -230,7 +230,7 @@ class AvgPool2D(nn.Layer):
             >>> AvgPool2D = nn.AvgPool2D(kernel_size=2, stride=2, padding=0)
             >>> output = AvgPool2D(input)
             >>> print(output.shape)
-            [1, 3, 16, 16]
+            paddle.Size([1, 3, 16, 16])
 
     """
 
@@ -328,7 +328,7 @@ class AvgPool3D(nn.Layer):
           The data type is same as input x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.compat.nn as nn
@@ -338,7 +338,7 @@ class AvgPool3D(nn.Layer):
             >>> AvgPool3D = nn.AvgPool3D(kernel_size=2, stride=2, padding=0)
             >>> output = AvgPool3D(input)
             >>> print(output.shape)
-            [1, 2, 1, 16, 16]
+            paddle.Size([1, 2, 1, 16, 16])
 
     """
 
@@ -400,9 +400,6 @@ class AvgPool3D(nn.Layer):
         self.__dict__.setdefault("count_include_pad", True)
 
 
-__all__ = ['Unfold', 'Linear', 'MultiheadAttention']
-
-
 class Unfold(nn.Unfold):
     """
     A compatible version of paddle.nn.Unfold:
@@ -425,14 +422,14 @@ class Unfold(nn.Unfold):
             For default, it will be [1, 1].
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.randn((100, 3, 224, 224))
             >>> unfold = paddle.compat.nn.Unfold(kernel_size=[3, 3])
             >>> result = unfold(x)
             >>> print(result.shape)
-            [100, 27, 49284]
+            paddle.Size([100, 27, 49284])
     """
 
     kernel_sizes: Size2

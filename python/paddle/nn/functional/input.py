@@ -92,16 +92,16 @@ def one_hot(
         Tensor, The one-hot representations of `x`. A Tensor with type float32.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> # Correspond to the first example above, where label.shape is 4 and one_hot_label.shape is [4, 4].
             >>> label = paddle.to_tensor([1, 1, 3, 0], dtype='int64')
             >>> print(label.shape)
-            [4]
+            paddle.Size([4])
             >>> one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)
             >>> print(one_hot_label.shape)
-            [4, 4]
+            paddle.Size([4, 4])
             >>> print(one_hot_label)
             Tensor(shape=[4, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [[0., 1., 0., 0.],
@@ -244,7 +244,7 @@ def embedding(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -258,7 +258,7 @@ def embedding(
              [4]
              [5]]
             >>> print(x.shape)
-            [3, 1]
+            paddle.Size([3, 1])
 
             >>> w = paddle.to_tensor(w0, stop_gradient=False)
             >>> print(w.numpy())
@@ -273,16 +273,15 @@ def embedding(
              [2. 2. 2.]
              [2. 2. 2.]]
             >>> print(w.shape)
-            [10, 3]
+            paddle.Size([10, 3])
 
-            >>> emb = nn.functional.embedding(
-            ...         x=x, weight=w, sparse=True, name="embedding")
+            >>> emb = nn.functional.embedding(x=x, weight=w, sparse=True, name="embedding")
             >>> print(emb.numpy())
             [[[2. 2. 2.]]
              [[2. 2. 2.]]
              [[2. 2. 2.]]]
             >>> print(emb.shape)
-            [3, 1, 3]
+            paddle.Size([3, 1, 3])
 
     """
     padding_idx = (

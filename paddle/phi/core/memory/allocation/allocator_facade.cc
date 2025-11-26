@@ -1020,7 +1020,6 @@ class AllocatorFacadePrivate {
           std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
               cuda_allocator, platform::GpuMinChunkSize(), p);
     } else if (val > 0 && FLAGS_use_multi_scale_virtual_memory_auto_growth) {
-      std::cout << "enter init branch" << std::endl;
       auto cuda_allocator_small = std::make_shared<CUDAVirtualMemAllocator>(p);
       auto cuda_allocator_large = std::make_shared<CUDAVirtualMemAllocator>(p);
       auto vmm_allocator_small =

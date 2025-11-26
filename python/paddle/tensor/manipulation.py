@@ -675,14 +675,14 @@ def transpose(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.randn([2, 3, 4])
             >>> x_transposed = paddle.transpose(x, perm=[1, 0, 2])
             >>> print(x_transposed.shape)
-            [3, 2, 4]
+            paddle.Size([3, 2, 4])
 
     """
     if in_dynamic_or_pir_mode():
@@ -815,11 +815,7 @@ def shard_index(
     following formula:
     ::
 
-        v = (
-            v - shard_id * shard_size
-            if shard_id * shard_size <= v < (shard_id + 1) * shard_size
-            else ignore_value
-        )
+        v = v - shard_id * shard_size if shard_id * shard_size <= v < (shard_id + 1) * shard_size else ignore_value
 
     That is, the value `v` is set to the new offset within the range represented by the shard `shard_id`
     if it in the range. Otherwise, we reset it to be `ignore_value`.
@@ -2041,12 +2037,7 @@ def flatten(
 
             >>> image_shape = (2, 3, 4, 4)
 
-            >>> x = paddle.arange(
-            ...     end=image_shape[0]
-            ...     * image_shape[1]
-            ...     * image_shape[2]
-            ...     * image_shape[3]
-            ... )
+            >>> x = paddle.arange(end=image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3])
             >>> img = paddle.reshape(x, image_shape)
 
             >>> out = paddle.flatten(img, start_axis=1, stop_axis=2)
@@ -2151,18 +2142,18 @@ def ravel(input: Tensor) -> Tensor:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> image_shape=(2, 3, 4, 4)
+            >>> image_shape = (2, 3, 4, 4)
 
             >>> x = paddle.arange(end=image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3])
             >>> img = paddle.reshape(x, image_shape)
 
             >>> out = paddle.ravel(img)
             >>> print(out.shape)
-            [96]
+            paddle.Size([96])
     """
     return flatten(input)
 
@@ -2319,7 +2310,7 @@ def stack(
         Tensor, The stacked tensor with same data type as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2329,7 +2320,7 @@ def stack(
 
             >>> out = paddle.stack([x1, x2, x3], axis=0)
             >>> print(out.shape)
-            [3, 1, 2]
+            paddle.Size([3, 1, 2])
             >>> print(out)
             Tensor(shape=[3, 1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[1., 2.]],
@@ -2338,7 +2329,7 @@ def stack(
 
             >>> out = paddle.stack([x1, x2, x3], axis=-2)
             >>> print(out.shape)
-            [1, 3, 2]
+            paddle.Size([1, 3, 2])
             >>> print(out)
             Tensor(shape=[1, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[1., 2.],
@@ -2351,7 +2342,7 @@ def stack(
 
             >>> out = paddle.stack([x1, x2], axis=0)
             >>> print(out.shape)
-            [2, 0, 1, 2]
+            paddle.Size([2, 0, 1, 2])
             >>> print(out)
             Tensor(shape=[2, 0, 1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[],
@@ -2359,7 +2350,7 @@ def stack(
 
             >>> out = paddle.stack([x1, x2], axis=1)
             >>> print(out.shape)
-            [0, 2, 1, 2]
+            paddle.Size([0, 2, 1, 2])
             >>> print(out)
             Tensor(shape=[0, 2, 1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [])
@@ -2782,7 +2773,7 @@ def split(
         list(Tensor), The list of segmented Tensors.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2791,36 +2782,36 @@ def split(
 
             >>> out0, out1, out2 = paddle.split(x, num_or_sections=3, axis=1)
             >>> print(out0.shape)
-            [3, 3, 5]
+            paddle.Size([3, 3, 5])
             >>> print(out1.shape)
-            [3, 3, 5]
+            paddle.Size([3, 3, 5])
             >>> print(out2.shape)
-            [3, 3, 5]
+            paddle.Size([3, 3, 5])
 
             >>> out0, out1, out2 = paddle.split(x, num_or_sections=[2, 3, 4], axis=1)
             >>> print(out0.shape)
-            [3, 2, 5]
+            paddle.Size([3, 2, 5])
             >>> print(out1.shape)
-            [3, 3, 5]
+            paddle.Size([3, 3, 5])
             >>> print(out2.shape)
-            [3, 4, 5]
+            paddle.Size([3, 4, 5])
 
             >>> out0, out1, out2 = paddle.split(x, num_or_sections=[2, 3, -1], axis=1)
             >>> print(out0.shape)
-            [3, 2, 5]
+            paddle.Size([3, 2, 5])
             >>> print(out1.shape)
-            [3, 3, 5]
+            paddle.Size([3, 3, 5])
             >>> print(out2.shape)
-            [3, 4, 5]
+            paddle.Size([3, 4, 5])
 
             >>> # axis is negative, the real axis is (rank(x) + axis)=1
             >>> out0, out1, out2 = paddle.split(x, num_or_sections=3, axis=-2)
             >>> print(out0.shape)
-            [3, 3, 5]
+            paddle.Size([3, 3, 5])
             >>> print(out1.shape)
-            [3, 3, 5]
+            paddle.Size([3, 3, 5])
             >>> print(out2.shape)
-            [3, 3, 5]
+            paddle.Size([3, 3, 5])
     """
 
     input = x
@@ -3022,7 +3013,7 @@ def tensor_split(
         list[Tensor], The list of segmented Tensors.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: tensor-split-example-1
 
             >>> import paddle
@@ -3032,14 +3023,14 @@ def tensor_split(
             >>> x = paddle.rand([8])
             >>> out0, out1 = paddle.tensor_split(x, num_or_indices=2)
             >>> print(out0.shape)
-            [4]
+            paddle.Size([4])
             >>> print(out1.shape)
-            [4]
+            paddle.Size([4])
 
 
         .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/tensor_split/tensor_split-2.png
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: tensor-split-example-2
 
             >>> import paddle
@@ -3049,15 +3040,15 @@ def tensor_split(
             >>> x = paddle.rand([8])
             >>> out0, out1, out2 = paddle.tensor_split(x, num_or_indices=3)
             >>> print(out0.shape)
-            [3]
+            paddle.Size([3])
             >>> print(out1.shape)
-            [3]
+            paddle.Size([3])
             >>> print(out2.shape)
-            [2]
+            paddle.Size([2])
 
         .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/tensor_split/tensor_split-3_en.png
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: tensor-split-example-3
 
             >>> import paddle
@@ -3067,15 +3058,15 @@ def tensor_split(
             >>> x = paddle.rand([8])
             >>> out0, out1, out2 = paddle.tensor_split(x, num_or_indices=[2, 3])
             >>> print(out0.shape)
-            [2]
+            paddle.Size([2])
             >>> print(out1.shape)
-            [1]
+            paddle.Size([1])
             >>> print(out2.shape)
-            [5]
+            paddle.Size([5])
 
         .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/tensor_split/tensor_split-4.png
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: tensor-split-example-4
 
             >>> import paddle
@@ -3085,13 +3076,13 @@ def tensor_split(
             >>> x = paddle.rand([7, 8])
             >>> out0, out1 = paddle.tensor_split(x, num_or_indices=2, axis=1)
             >>> print(out0.shape)
-            [7, 4]
+            paddle.Size([7, 4])
             >>> print(out1.shape)
-            [7, 4]
+            paddle.Size([7, 4])
 
         .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/tensor_split/tensor_split-5.png
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: tensor-split-example-5
 
             >>> import paddle
@@ -3101,11 +3092,11 @@ def tensor_split(
             >>> x = paddle.rand([7, 8])
             >>> out0, out1, out2 = paddle.tensor_split(x, num_or_indices=[2, 3], axis=1)
             >>> print(out0.shape)
-            [7, 2]
+            paddle.Size([7, 2])
             >>> print(out1.shape)
-            [7, 1]
+            paddle.Size([7, 1])
             >>> print(out2.shape)
-            [7, 5]
+            paddle.Size([7, 5])
 
         .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/tensor_split/tensor_split-6.png
 
@@ -3184,7 +3175,7 @@ def hsplit(
         list[Tensor], The list of segmented Tensors.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3192,25 +3183,25 @@ def hsplit(
             >>> x = paddle.rand([8])
             >>> out0, out1 = paddle.hsplit(x, num_or_indices=2)
             >>> print(out0.shape)
-            [4]
+            paddle.Size([4])
             >>> print(out1.shape)
-            [4]
+            paddle.Size([4])
 
             >>> # x is a Tensor of shape [7, 8]
             >>> x = paddle.rand([7, 8])
             >>> out0, out1 = paddle.hsplit(x, num_or_indices=2)
             >>> print(out0.shape)
-            [7, 4]
+            paddle.Size([7, 4])
             >>> print(out1.shape)
-            [7, 4]
+            paddle.Size([7, 4])
 
             >>> out0, out1, out2 = paddle.hsplit(x, num_or_indices=[1, 4])
             >>> print(out0.shape)
-            [7, 1]
+            paddle.Size([7, 1])
             >>> print(out1.shape)
-            [7, 3]
+            paddle.Size([7, 3])
             >>> print(out2.shape)
-            [7, 4]
+            paddle.Size([7, 4])
 
     """
     if x.ndim < 1:
@@ -3248,7 +3239,7 @@ def dsplit(
         list[Tensor], The list of segmented Tensors.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3256,17 +3247,17 @@ def dsplit(
             >>> x = paddle.rand([7, 6, 8])
             >>> out0, out1 = paddle.dsplit(x, num_or_indices=2)
             >>> print(out0.shape)
-            [7, 6, 4]
+            paddle.Size([7, 6, 4])
             >>> print(out1.shape)
-            [7, 6, 4]
+            paddle.Size([7, 6, 4])
 
             >>> out0, out1, out2 = paddle.dsplit(x, num_or_indices=[1, 4])
             >>> print(out0.shape)
-            [7, 6, 1]
+            paddle.Size([7, 6, 1])
             >>> print(out1.shape)
-            [7, 6, 3]
+            paddle.Size([7, 6, 3])
             >>> print(out2.shape)
-            [7, 6, 4]
+            paddle.Size([7, 6, 4])
 
     """
     if x.ndim < 3:
@@ -3306,7 +3297,7 @@ def vsplit(
         list[Tensor], The list of segmented Tensors.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3314,17 +3305,17 @@ def vsplit(
             >>> x = paddle.rand([8, 6, 7])
             >>> out0, out1 = paddle.vsplit(x, num_or_indices=2)
             >>> print(out0.shape)
-            [4, 6, 7]
+            paddle.Size([4, 6, 7])
             >>> print(out1.shape)
-            [4, 6, 7]
+            paddle.Size([4, 6, 7])
 
             >>> out0, out1, out2 = paddle.vsplit(x, num_or_indices=[1, 4])
             >>> print(out0.shape)
-            [1, 6, 7]
+            paddle.Size([1, 6, 7])
             >>> print(out1.shape)
-            [3, 6, 7]
+            paddle.Size([3, 6, 7])
             >>> print(out2.shape)
-            [4, 6, 7]
+            paddle.Size([4, 6, 7])
 
     """
     if x.ndim < 2:
@@ -3401,7 +3392,7 @@ def squeeze(
         Tensor, Squeezed Tensor with the same data type as input Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3409,12 +3400,12 @@ def squeeze(
             >>> output = paddle.squeeze(x, axis=1)
 
             >>> print(x.shape)
-            [5, 1, 10]
+            paddle.Size([5, 1, 10])
             >>> print(output.shape)
-            [5, 10]
+            paddle.Size([5, 10])
 
             >>> # output shares data with x in dygraph mode
-            >>> x[0, 0, 0] = 10.
+            >>> x[0, 0, 0] = 10.0
             >>> print(output[0, 0])
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             10.)
@@ -3997,29 +3988,29 @@ def unsqueeze(
         Tensor, Unsqueezed Tensor with the same data type as input Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.rand([5, 10])
             >>> print(x.shape)
-            [5, 10]
+            paddle.Size([5, 10])
 
             >>> out1 = paddle.unsqueeze(x, axis=0)
             >>> print(out1.shape)
-            [1, 5, 10]
+            paddle.Size([1, 5, 10])
 
             >>> out2 = paddle.unsqueeze(x, axis=[0, 2])
             >>> print(out2.shape)
-            [1, 5, 1, 10]
+            paddle.Size([1, 5, 1, 10])
 
             >>> axis = paddle.to_tensor([0, 1, 2])
             >>> out3 = paddle.unsqueeze(x, axis=axis)
             >>> print(out3.shape)
-            [1, 1, 1, 5, 10]
+            paddle.Size([1, 1, 1, 5, 10])
 
             >>> # out1, out2, out3 share data with x in dygraph mode
-            >>> x[0, 0] = 10.
+            >>> x[0, 0] = 10.0
             >>> print(out1[0, 0, 0])
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             10.)
@@ -4630,11 +4621,11 @@ def scatter(*args: Any, **kwargs: Any) -> Tensor:
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/scatter.png
         :alt: Legend - scatter behavior display
 
-    .. code-block:: python
+    .. code-block:: pycon
         :name: scatter-example-1
 
         >>> import paddle
-        >>> #input:
+        >>> # input:
         >>> x = paddle.to_tensor([[1, 1], [2, 2], [3, 3]], dtype='float32')
         >>> index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
         >>> # shape of updates should be the same as x
@@ -4646,14 +4637,14 @@ def scatter(*args: Any, **kwargs: Any) -> Tensor:
         ...     for i in range(len(index)):
         ...         x[index[i]] = paddle.zeros([2])
         >>> for i in range(len(index)):
-        ...     if (overwrite):
+        ...     if overwrite:
         ...         x[index[i]] = updates[i]
         ...     else:
         ...         x[index[i]] += updates[i]
         >>> # output:
         >>> out = paddle.to_tensor([[3, 3], [6, 6], [1, 1]])
         >>> print(out.shape)
-        [3, 2]
+        paddle.Size([3, 2])
 
     **NOTICE**: The order in which updates are applied is nondeterministic,
     so the output will be nondeterministic if index contains duplicates.
@@ -4779,19 +4770,17 @@ def scatter_nd_add(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.rand(shape=[3, 5, 9, 10], dtype='float32')
             >>> updates = paddle.rand(shape=[3, 9, 10], dtype='float32')
-            >>> index = paddle.to_tensor([[1, 1],
-            ...                           [0, 1],
-            ...                           [1, 3]], dtype='int64')
+            >>> index = paddle.to_tensor([[1, 1], [0, 1], [1, 3]], dtype='int64')
 
             >>> output = paddle.scatter_nd_add(x, index, updates)
             >>> print(output.shape)
-            [3, 5, 9, 10]
+            paddle.Size([3, 5, 9, 10])
     """
     if x.dtype != updates.dtype:
         raise TypeError(
@@ -5375,7 +5364,7 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         Tensor, A reshaped Tensor with the same data type as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -5384,18 +5373,18 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
 
             >>> out = paddle.reshape(x, [-1, 0, 3, 2])
             >>> print(out.shape)
-            [2, 4, 3, 2]
+            paddle.Size([2, 4, 3, 2])
 
             >>> out = paddle.reshape(x, shape=[positive_four, 12])
             >>> print(out.shape)
-            [4, 12]
+            paddle.Size([4, 12])
 
             >>> shape_tensor = paddle.to_tensor([8, 6], dtype=paddle.int32)
             >>> out = paddle.reshape(x, shape=shape_tensor)
             >>> print(out.shape)
-            [8, 6]
+            paddle.Size([8, 6])
             >>> # out shares data with x in dygraph mode
-            >>> x[0, 0, 0] = 10.
+            >>> x[0, 0, 0] = 10.0
             >>> print(out[0, 0])
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             10.)
@@ -6851,19 +6840,19 @@ def moveaxis(
         Tensor, A new tensor whose axis have been moved.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.ones([3, 2, 4])
             >>> outshape = paddle.moveaxis(x, [0, 1], [1, 2]).shape
             >>> print(outshape)
-            [4, 3, 2]
+            paddle.Size([4, 3, 2])
 
             >>> x = paddle.ones([2, 3])
-            >>> outshape = paddle.moveaxis(x, 0, 1).shape # equivalent to paddle.t(x)
+            >>> outshape = paddle.moveaxis(x, 0, 1).shape  # equivalent to paddle.t(x)
             >>> print(outshape)
-            [3, 2]
+            paddle.Size([3, 2])
     """
     src = [source] if isinstance(source, int) else source
     dst = [destination] if isinstance(destination, int) else destination
@@ -7829,7 +7818,7 @@ def as_strided(
         Tensor, A as_strided Tensor with the same data type as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
@@ -7838,7 +7827,7 @@ def as_strided(
 
             >>> out = paddle.as_strided(x, [8, 6], [6, 1])
             >>> print(out.shape)
-            [8, 6]
+            paddle.Size([8, 6])
             >>> # the stride is [6, 1].
     """
     return _C_ops.as_strided(x, shape, stride, offset)
@@ -7876,7 +7865,7 @@ def view(
         Tensor, A viewed Tensor with the same data as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
@@ -7885,7 +7874,7 @@ def view(
 
             >>> out = paddle.view(x, [8, 6])
             >>> print(out.shape)
-            [8, 6]
+            paddle.Size([8, 6])
 
             >>> import paddle
             >>> paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
@@ -7894,7 +7883,7 @@ def view(
 
             >>> out = paddle.view(x, "uint8")
             >>> print(out.shape)
-            [2, 4, 24]
+            paddle.Size([2, 4, 24])
 
             >>> import paddle
             >>> paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
@@ -7903,7 +7892,7 @@ def view(
 
             >>> out = paddle.view(x, [8, -1])
             >>> print(out.shape)
-            [8, 6]
+            paddle.Size([8, 6])
 
             >>> import paddle
             >>> paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
@@ -7912,7 +7901,7 @@ def view(
 
             >>> out = paddle.view(x, paddle.uint8)
             >>> print(out.shape)
-            [2, 4, 24]
+            paddle.Size([2, 4, 24])
 
     """
     if isinstance(shape_or_dtype, (list, tuple)):
@@ -7951,7 +7940,7 @@ def view_as(x: Tensor, other: Tensor, name: str | None = None) -> Tensor:
         Tensor, A viewed Tensor with the same shape as ``other``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
@@ -7961,7 +7950,7 @@ def view_as(x: Tensor, other: Tensor, name: str | None = None) -> Tensor:
 
             >>> out = paddle.view_as(x, y)
             >>> print(out.shape)
-            [8, 6]
+            paddle.Size([8, 6])
     """
     return _C_ops.view_shape(x, other.shape)
 

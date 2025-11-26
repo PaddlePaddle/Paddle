@@ -2567,10 +2567,71 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
     python_dependencies_module = []
     installed_packages = []
 
+    def eval_marker(marker_str):
+        """Simple evaluation of PEP 508 environment markers."""
+        if not marker_str:
+            return True
+
+        marker_str = marker_str.strip()
+
+        # Build environment dict
+        env_markers = {
+            'python_version': (sys.version_info.major, sys.version_info.minor),
+            'python_full_version': (
+                sys.version_info.major,
+                sys.version_info.minor,
+                sys.version_info.micro,
+            ),
+            'platform_system': f'"{platform.system()}"',
+            'platform_machine': f'"{platform.machine()}"',
+            'sys_platform': f'"{sys.platform}"',
+        }
+
+        # Marker evaluation
+        try:
+            eval_str = marker_str
+            # Replace marker variables with their values
+            for key, value in env_markers.items():
+                eval_str = eval_str.replace(key, str(value))
+
+            def version_to_tuple(match):
+                version_str = match.group(1)
+                parts = version_str.split('.')
+                return '(' + ', '.join(parts) + ')'
+
+            eval_str = re.sub(
+                r'["\'](\d+(?:\.\d+)*)["\']', version_to_tuple, eval_str
+            )
+
+            return eval(eval_str)
+        except Exception as e:
+            raise RuntimeError(f"Failed to evaluate marker '{marker_str}': {e}")
+
     for dependency in build_dependencies:
-        python_dependencies_module.append(
-            re.sub("_|-", '', re.sub(r"==.*|>=.*|<=.*", '', dependency))
-        )
+        dependency = dependency.strip()
+        if not dependency or dependency.startswith('#'):
+            continue
+
+        # Split dependency spec and environment marker
+        if ';' in dependency:
+            dependency_spec, marker = dependency.split(';', 1)
+            dependency_spec = dependency_spec.strip()
+            marker = marker.strip()
+
+            # Evaluate marker - skip if not applicable to current environment
+            if not eval_marker(marker):
+                continue
+        else:
+            dependency_spec = dependency
+
+        # Remove version specifiers from dependency spec
+        dependency_name = re.sub(
+            r"==.*|>=.*|<=.*|~=.*|!=.*", '', dependency_spec
+        ).strip()
+
+        # Normalize package name (remove _ and -)
+        python_dependencies_module.append(re.sub("_|-", '', dependency_name))
+
     reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
 
     for r in reqs.split():

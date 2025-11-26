@@ -854,7 +854,7 @@ def deform_conv2d(
             A Tensor with type float32, float64.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> #deformable conv v2:
 
@@ -870,7 +870,7 @@ def deform_conv2d(
             >>> mask = paddle.rand((8, kh * kw, 26, 26))
             >>> out = paddle.vision.ops.deform_conv2d(input, offset, weight, mask=mask)
             >>> print(out.shape)
-            [8, 16, 26, 26]
+            paddle.Size([8, 16, 26, 26])
 
             >>> #deformable conv v1:
 
@@ -884,7 +884,7 @@ def deform_conv2d(
             >>> offset = paddle.rand((8, 2 * kh * kw, 26, 26))
             >>> out = paddle.vision.ops.deform_conv2d(input, offset, weight)
             >>> print(out.shape)
-            [8, 16, 26, 26]
+            paddle.Size([8, 16, 26, 26])
     """
     stride = convert_to_list(stride, 2, 'stride')
     padding = convert_to_list(padding, 2, 'padding')
@@ -1073,7 +1073,7 @@ class DeformConv2D(Layer):
             W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> #deformable conv v2:
             >>> import paddle
@@ -1091,7 +1091,7 @@ class DeformConv2D(Layer):
             ...     kernel_size=[kh, kw])
             >>> out = deform_conv(input, offset, mask)
             >>> print(out.shape)
-            [8, 16, 26, 26]
+            paddle.Size([8, 16, 26, 26])
 
             >>> #deformable conv v1:
             >>> import paddle
@@ -1108,7 +1108,7 @@ class DeformConv2D(Layer):
             ...     kernel_size=[kh, kw])
             >>> out = deform_conv(input, offset)
             >>> print(out.shape)
-            [8, 16, 26, 26]
+            paddle.Size([8, 16, 26, 26])
     """
 
     weight: Tensor
@@ -1368,7 +1368,7 @@ def read_file(filename: str, name: str | None = None) -> Tensor:
         A uint8 tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import cv2
             >>> import paddle
@@ -1377,7 +1377,7 @@ def read_file(filename: str, name: str | None = None) -> Tensor:
             >>> cv2.imwrite('fake.jpg', fake_img)
             >>> img_bytes = paddle.vision.ops.read_file('fake.jpg')
             >>> print(img_bytes.shape)
-            [142773]
+            paddle.Size([142773])
     """
 
     attr_dtype = convert_np_dtype_to_dtype_('uint8')
@@ -1418,7 +1418,7 @@ def decode_jpeg(
         Tensor: A decoded image tensor with shape (image_channels, image_height, image_width)
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import cv2
@@ -1426,13 +1426,12 @@ def decode_jpeg(
             >>> import paddle
             >>> paddle.device.set_device('gpu')
 
-            >>> fake_img = (np.random.random(
-            ...             (400, 300, 3)) * 255).astype('uint8')
+            >>> fake_img = (np.random.random((400, 300, 3)) * 255).astype('uint8')
             >>> cv2.imwrite('fake.jpg', fake_img)
             >>> img_bytes = paddle.vision.ops.read_file('fake.jpg')
             >>> img = paddle.vision.ops.decode_jpeg(img_bytes)
             >>> print(img.shape)
-            [3, 400, 300]
+            paddle.Size([3, 400, 300])
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.decode_jpeg(x, mode, _current_expected_place())
@@ -1484,15 +1483,18 @@ def psroi_pool(
         The output_channels equal to C / (pooled_h * pooled_w), where C is the channels of input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.uniform([2, 490, 28, 28], dtype='float32')
-            >>> boxes = paddle.to_tensor([[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]], dtype='float32')
+            >>> boxes = paddle.to_tensor(
+            ...     [[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]],
+            ...     dtype='float32',
+            ... )
             >>> boxes_num = paddle.to_tensor([1, 2], dtype='int32')
             >>> pool_out = paddle.vision.ops.psroi_pool(x, boxes, boxes_num, 7, 1.0)
             >>> print(pool_out.shape)
-            [3, 10, 7, 7]
+            paddle.Size([3, 10, 7, 7])
     """
 
     check_type(output_size, 'output_size', (int, tuple, list), 'psroi_pool')
@@ -1553,17 +1555,20 @@ class PSRoIPool(Layer):
         None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> psroi_module = paddle.vision.ops.PSRoIPool(7, 1.0)
             >>> x = paddle.uniform([2, 490, 28, 28], dtype='float32')
-            >>> boxes = paddle.to_tensor([[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]], dtype='float32')
+            >>> boxes = paddle.to_tensor(
+            ...     [[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]],
+            ...     dtype='float32',
+            ... )
             >>> boxes_num = paddle.to_tensor([1, 2], dtype='int32')
             >>> pool_out = psroi_module(x, boxes, boxes_num)
             >>> print(pool_out.shape)
-            [3, 10, 7, 7]
+            paddle.Size([3, 10, 7, 7])
     """
 
     output_size: Size2
@@ -1611,7 +1616,7 @@ def roi_pool(
         pool_out (Tensor): the pooled feature, 4D-Tensor with the shape of [num_boxes, C, output_size[0], output_size[1]].
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.ops import roi_pool
@@ -1623,7 +1628,7 @@ def roi_pool(
             >>> boxes_num = paddle.to_tensor([3]).astype('int32')
             >>> pool_out = roi_pool(data, boxes, boxes_num=boxes_num, output_size=3)
             >>> print(pool_out.shape)
-            [3, 256, 3, 3]
+            paddle.Size([3, 256, 3, 3])
     """
 
     check_type(output_size, 'output_size', (int, tuple), 'roi_pool')
@@ -1678,7 +1683,7 @@ class RoIPool(Layer):
         pool_out (Tensor): the pooled feature, 4D-Tensor with the shape of [num_boxes, C, output_size[0], output_size[1]].
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.ops import RoIPool
@@ -1691,7 +1696,7 @@ class RoIPool(Layer):
             >>> roi_pool = RoIPool(output_size=(4, 3))
             >>> pool_out = roi_pool(data, boxes, boxes_num)
             >>> print(pool_out.shape)
-            [3, 256, 4, 3]
+            paddle.Size([3, 256, 4, 3])
     """
 
     def __init__(self, output_size: Size2, spatial_scale: float = 1.0) -> None:
@@ -1771,7 +1776,7 @@ def roi_align(
             channels, pooled_h, pooled_w). The data type is float32 or float64.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.ops import roi_align
@@ -1783,7 +1788,7 @@ def roi_align(
             >>> boxes_num = paddle.to_tensor([3]).astype('int32')
             >>> align_out = roi_align(data, boxes, boxes_num, output_size=3)
             >>> print(align_out.shape)
-            [3, 256, 3, 3]
+            paddle.Size([3, 256, 3, 3])
     """
 
     check_type(output_size, 'output_size', (int, tuple), 'roi_align')
@@ -1851,7 +1856,7 @@ class RoIAlign(Layer):
             shape (num_boxes, channels, pooled_h, pooled_w).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.ops import RoIAlign
@@ -1864,7 +1869,7 @@ class RoIAlign(Layer):
             >>> roi_align = RoIAlign(output_size=(4, 3))
             >>> align_out = roi_align(data, boxes, boxes_num)
             >>> print(align_out.shape)
-            [3, 256, 4, 3]
+            paddle.Size([3, 256, 4, 3])
     """
 
     def __init__(self, output_size: Size2, spatial_scale: float = 1.0) -> None:

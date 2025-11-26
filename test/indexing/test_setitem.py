@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from legacy_test.utils import dygraph_guard
 from op_test import convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
@@ -1021,6 +1022,67 @@ class TestSetitemInStatic(unittest.TestCase):
             res = self.exe.run(fetch_list=[tensor])[0]
         tensor_np[mask_np] = value_np
         np.testing.assert_allclose(res, tensor_np)
+
+    def test_index_elementwise_put_with_tensor(self):
+        with dygraph_guard(), paddle.device("cpu"):
+            x = paddle.randn(10, 4, requires_grad=True)
+            xx = x + 0
+
+            index = paddle.to_tensor(
+                [
+                    [0, 1],
+                    [2, 3],
+                    [9, 4],
+                    [7, 6],
+                ],
+                dtype=paddle.int64,
+            )
+            value = paddle.randn_like(xx[index], requires_grad=True)
+
+            xx[index] = value
+            y = xx
+
+            dy = paddle.randn_like(y, requires_grad=True)
+
+            dx, dv = paddle.autograd.grad(y, [x, value], dy, create_graph=True)
+
+            ddx = paddle.randn_like(dx)
+            ddv = paddle.randn_like(dv)
+
+            # ddx && ddv
+            (ddy1,) = paddle.autograd.grad(
+                [dx, dv], dy, [ddx, ddv], retain_graph=True
+            )
+            ddy1_ref = ddx.clone()
+            ddy1_ref[index] = ddv
+            np.testing.assert_allclose(
+                ddy1.numpy(),
+                ddy1_ref.numpy(),
+                1e-6,
+                1e-6,
+            )
+
+            # ddx && !ddv
+            (ddy2,) = paddle.autograd.grad([dx], dy, [ddx], retain_graph=True)
+            ddy2_ref = ddx.clone()
+            ddy2_ref[index] = 0.0
+            np.testing.assert_allclose(
+                ddy2.numpy(),
+                ddy2_ref.numpy(),
+                1e-6,
+                1e-6,
+            )
+
+            # !ddx && ddv
+            (ddy3,) = paddle.autograd.grad([dv], dy, [ddv])
+            ddy3_ref = paddle.zeros_like(ddx)
+            ddy3_ref[index] = ddv
+            np.testing.assert_allclose(
+                ddy3.numpy(),
+                ddy3_ref.numpy(),
+                1e-6,
+                1e-6,
+            )
 
 
 if __name__ == '__main__':

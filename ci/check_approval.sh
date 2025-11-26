@@ -587,6 +587,21 @@ if [ -n "${UNITYBUILD_RULE_CHANGED}" -a -n "${PR_ID}" ]; then
     check_approval 1 Avin0323 wanghuancoder
 fi
 
+BIGTENSOR_GLOBS=(
+    'paddle/phi/kernels/**'
+    ':!paddle/phi/kernels/legacy/**'
+    ':!paddle/phi/kernels/xpu/**'
+    ':!paddle/phi/kernels/custom/**'
+    ':!paddle/phi/kernels/sparse/**'
+)
+
+BIGTENSOR_CHANGED=$(git diff -U0 upstream/$BRANCH -- "${BIGTENSOR_GLOBS[@]}" | grep "^+" | grep -E "int .*threadIdx.*\*.*|int .*blockDim.*\*.*|int .*blockIdx.*\*.*|int32_t .*threadIdx.*\*.*|int32_t .*blockDim.*\*.*|int32_t .*blockIdx.*|auto .*threadIdx.*\*.*|auto .*blockDim.*\*.*|auto .*blockIdx.*\*.*|uint32_t .*threadIdx.*\*.*|uint32_t .*blockDim.*\*.*|uint32_t .*blockIdx.*\*.*" || true)
+if [ -n "${BIGTENSOR_CHANGED}" ]; then
+    echo_line="You must have one RD (zrr1999(Recommend) or wanghuancoder) approval for modifying kernel code with threadIdx, blockDim or blockIdx multiplications assigned to int, int32_t, uint32_t, or auto type variables.\nThe following lines were found:\n${BIGTENSOR_CHANGED}"
+    check_approval 1 zrr1999 wanghuancoder
+fi
+
+
 if [ -n "${echo_list}" ];then
   echo "****************"
   echo -e "${echo_list[@]}"

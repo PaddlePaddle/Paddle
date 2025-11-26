@@ -511,13 +511,16 @@ void FlashAttnV3GradBaseKernel(
       dev_ctx, {(seqlen_q + kBlockM - 1) / kBlockM, batch_size, num_heads});
   dynload::fa3_bwd_params_set_dq_semaphore(params_handle,
                                            dq_semaphore.data<int>());
+  DenseTensor dk_semaphore = phi::Empty<int32_t>(
+      dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
+  DenseTensor dv_semaphore = phi::Empty<int32_t>(
+      dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
   if (num_heads_k != num_heads &&
       dynload::fa3_bwd_params_get_deterministic(params_handle)) {
-    // TODO(tridao): do we need to zero them out?
-    DenseTensor dk_semaphore = phi::Empty<int32_t>(
-        dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
-    DenseTensor dv_semaphore = phi::Empty<int32_t>(
-        dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
+    phi::funcs::SetConstant<Context, int32_t> set_zero_dk;
+    set_zero_dk(dev_ctx, &dk_semaphore, static_cast<int32_t>(0));
+    phi::funcs::SetConstant<Context, int32_t> set_zero_dv;
+    set_zero_dv(dev_ctx, &dv_semaphore, static_cast<int32_t>(0));
     dynload::fa3_bwd_params_set_dk_semaphore(params_handle,
                                              dk_semaphore.data<int>());
     dynload::fa3_bwd_params_set_dv_semaphore(params_handle,
@@ -599,11 +602,6 @@ void FlashAttnV3GradKernel(const Context &dev_ctx,
       0,
       common::errors::InvalidArgument(
           "sm_margin is not supported, please set sm_margin to 0"));
-  PADDLE_ENFORCE_EQ(FLAGS_cudnn_deterministic,
-                    false,
-                    common::errors::InvalidArgument(
-                        "deterministic is not supported in flash attention 3, "
-                        "please set FLAGS_cudnn_deterministic to false"));
   // umiswing: fake grad tensor for FlashAttnV3GradBaseKernel
   DenseTensor softmax_d;
   DenseTensor softmax_lse_log2;
@@ -737,11 +735,6 @@ void FlashAttnV3VarlenGradKernel(const Context &dev_ctx,
       0,
       common::errors::InvalidArgument(
           "sm_margin is not supported, please set sm_margin to 0"));
-  PADDLE_ENFORCE_EQ(FLAGS_cudnn_deterministic,
-                    false,
-                    common::errors::InvalidArgument(
-                        "deterministic is not supported in flash attention 3, "
-                        "please set FLAGS_cudnn_deterministic to false"));
 
   PADDLE_ENFORCE_EQ(
       q.dims()[q.dims().size() - 1],
@@ -1437,13 +1430,17 @@ void FlashMaskV2GradBaseKernel(
       dev_ctx, {(seqlen_q + kBlockM - 1) / kBlockM, batch_size, num_heads});
   dynload::flashmaskv2_bwd_params_set_dq_semaphore(params_handle,
                                                    dq_semaphore.data<int>());
+  DenseTensor dk_semaphore = phi::Empty<int32_t>(
+      dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
+  DenseTensor dv_semaphore = phi::Empty<int32_t>(
+      dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
   if (num_heads_k != num_heads &&
       dynload::flashmaskv2_bwd_params_get_deterministic(params_handle)) {
-    // TODO(tridao): do we need to zero them out?
-    DenseTensor dk_semaphore = phi::Empty<int32_t>(
-        dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
-    DenseTensor dv_semaphore = phi::Empty<int32_t>(
-        dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
+    // xiangrui: we need to zero them out
+    phi::funcs::SetConstant<Context, int32_t> set_zero_dk;
+    set_zero_dk(dev_ctx, &dk_semaphore, static_cast<int32_t>(0));
+    phi::funcs::SetConstant<Context, int32_t> set_zero_dv;
+    set_zero_dv(dev_ctx, &dv_semaphore, static_cast<int32_t>(0));
     dynload::flashmaskv2_bwd_params_set_dk_semaphore(params_handle,
                                                      dk_semaphore.data<int>());
     dynload::flashmaskv2_bwd_params_set_dv_semaphore(params_handle,
@@ -1573,39 +1570,40 @@ void FlashMaskV2GradKernel(
   DenseTensor dq_accum;
   DenseTensor dk_accum;
   DenseTensor dv_accum;
-  FlashMaskV2GradBaseKernel<T, Context>(dev_ctx,
-                                        out_grad,
-                                        q,
-                                        k,
-                                        v,
-                                        out,
-                                        softmax_lse,
-                                        paddle::none,  // dq_
-                                        paddle::none,  // dk_
-                                        paddle::none,  // dv_
-                                        paddle::none,
-                                        paddle::none,
-                                        paddle::none,
-                                        paddle::none,
-                                        startend_row_indices,
-                                        block_mask,
-                                        0,  // max_seqlen_q,
-                                        0,  // max_seqlen_k,
-                                        softmax_scale,
-                                        is_causal,
-                                        -1,     // window_size_left,
-                                        -1,     // window_size_right,
-                                        0,      // softcap,
-                                        false,  // deterministic,
-                                        0,      // sm_margin,
-                                        dq,
-                                        dk,
-                                        dv,
-                                        &softmax_d,
-                                        &softmax_lse_log2,
-                                        &dq_accum,
-                                        &dk_accum,
-                                        &dv_accum);
+  FlashMaskV2GradBaseKernel<T, Context>(
+      dev_ctx,
+      out_grad,
+      q,
+      k,
+      v,
+      out,
+      softmax_lse,
+      paddle::none,  // dq_
+      paddle::none,  // dk_
+      paddle::none,  // dv_
+      paddle::none,
+      paddle::none,
+      paddle::none,
+      paddle::none,
+      startend_row_indices,
+      block_mask,
+      0,  // max_seqlen_q,
+      0,  // max_seqlen_k,
+      softmax_scale,
+      is_causal,
+      -1,                         // window_size_left,
+      -1,                         // window_size_right,
+      0,                          // softcap,
+      FLAGS_cudnn_deterministic,  // deterministic,
+      0,                          // sm_margin,
+      dq,
+      dk,
+      dv,
+      &softmax_d,
+      &softmax_lse_log2,
+      &dq_accum,
+      &dk_accum,
+      &dv_accum);
 
   // umiswing: some branch in upstream fa3 could have padded the head dimension
   PADDLE_ENFORCE_EQ(

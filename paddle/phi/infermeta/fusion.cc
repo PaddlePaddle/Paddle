@@ -1794,8 +1794,7 @@ void FusedFeedForwardGradInferMeta(const MetaTensor& out_grad,
                                    MetaTensor* ln1_bias_grad,
                                    MetaTensor* ln2_scale_grad,
                                    MetaTensor* ln2_bias_grad) {
-  auto d_out_dim = out_grad.dims();
-  x_grad->set_dims(d_out_dim);
+  x_grad->set_dims(out_grad.dims());
   if (ln1_scale_grad && ln1_scale) {
     ln1_scale_grad->set_dims(ln1_scale.dims());
   }

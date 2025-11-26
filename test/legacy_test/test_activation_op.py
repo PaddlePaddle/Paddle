@@ -6366,6 +6366,7 @@ create_test_act_bf16_class(
 class TestActivationAPI_Compatibility(unittest.TestCase):
     ACTIVATION_CONFIGS = [
         ("paddle.abs", np.abs, {'min_val': -1.0, 'max_val': 1.0}),
+        ("paddle.acos", np.arccos, {'min_val': -1.0, 'max_val': 1.0}),
         ("paddle.asin", np.arcsin, {'min_val': -1.0, 'max_val': 1.0}),
         ("paddle.log2", np.log2, {'min_val': 0.0, 'max_val': 8.0}),
         ("paddle.exp", np.exp, {'min_val': -1.0, 'max_val': 1.0}),
