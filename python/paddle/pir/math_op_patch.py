@@ -1456,18 +1456,19 @@ def monkey_patch_value():
             )
         self.stop_gradient = not value
 
-    def requires_grad_(self, value: bool) -> None:
+    def requires_grad_(self, requires_grad: bool = True):
         """
         Set whether this Tensor requires gradient computation.
 
         Args:
             value (bool): True to enable gradient computation, False to disable.
         """
-        if not isinstance(value, bool):
+        if not isinstance(requires_grad, bool):
             raise TypeError(
-                f"requires_grad must be bool, but got {type(value)}"
+                f"requires_grad must be bool, but got {type(requires_grad)}"
             )
-        self.stop_gradient = not value
+        self.stop_gradient = not requires_grad
+        return self
 
     @property
     def itemsize(self) -> int:
