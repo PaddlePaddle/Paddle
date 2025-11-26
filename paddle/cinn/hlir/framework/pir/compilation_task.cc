@@ -372,6 +372,7 @@ CompilationTask::CompileBroadcastModules(
     broadcast_conditions.emplace_back(context.broadcast_condition_);
     ir::Module ir_module = context.module_builder_.Build();
     ir::Module ir_moduleCX86 = context.CX86_module_builder_.Build();
+    backend_resource->GetBackendCompiler()->SetFusionHash(context.GetFusionHash());
     backend_resource->GetBackendCompiler()->Build(ir_module, ""); //
     backend_resource->GetBackendCompiler()->AppendCX86(ir_moduleCX86);
   }

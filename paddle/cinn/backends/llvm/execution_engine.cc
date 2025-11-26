@@ -62,9 +62,11 @@
 #include "paddle/cinn/backends/llvm/llvm_optimizer.h"
 #include "paddle/cinn/backends/llvm/llvm_util.h"
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
+#include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/profiler.h"
+#include "paddle/cinn/runtime/arch_device.h"
 
 namespace cinn::backends {
 namespace {
@@ -224,6 +226,12 @@ void ExecutionEngine::Link<CodeGenGpuHost>(const ir::Module &module) {
   ir_emitter->Compile(module);
 }
 
+
+std::string GetDeviceId() {
+    const auto device_id = cinn::runtime::GetArchDevice(common::DefaultDeviceTarget());
+    return std::to_string(device_id.value());
+}
+
 // 使用 LLVM C++ API 将 .ll 文件编译为 .o 文件
 bool ExecutionEngine::compileLLVMIR(llvm::Module* module, size_t fusionHash) {
   std::error_code EC;
@@ -250,7 +258,7 @@ bool ExecutionEngine::compileLLVMIR(llvm::Module* module, size_t fusionHash) {
 
   // 3. 设置输出文件的路径和类型
   std::string source_hash = std::to_string(fusionHash);
-  std::string OutputFilename = "/tmp/cinn/" + source_hash + "/module.o";
+  std::string OutputFilename = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/module.o";
   llvm::raw_fd_ostream dest(OutputFilename, EC, llvm::sys::fs::OF_None);
 
   // 4. 创建 PassManager 并添加 "Emit Object File" Pass
@@ -268,9 +276,10 @@ bool ExecutionEngine::compileLLVMIR(llvm::Module* module, size_t fusionHash) {
 
 bool ExecutionEngine::linkSharedLibrary(const size_t fusionHash, const std::vector<std::string> &cinn_runtime_include_path) {
   std::string source_hash = std::to_string(fusionHash);
-  std::string output_so = "/tmp/cinn/" + source_hash + "/cinn_cache.so";
-  std::string cuda_obj = "/tmp/cinn/" + source_hash + "/cinn_cuda_kernel.o";
-  std::string llvm_obj = "/tmp/cinn/" + source_hash + "/module.o";
+
+  std::string output_so = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/cinn_cache.so";
+  std::string cuda_obj = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/cinn_cuda_kernel.o";
+  std::string llvm_obj = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/module.o";
   std::string cuda_lib_path = "/usr/local/cuda/lib64";
   std::string link_cmd = "g++ -shared -o " + output_so + " " + 
                           cuda_obj + " " + llvm_obj + 
@@ -308,7 +317,7 @@ bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
 
   std::error_code EC;
   std::string source_hash = std::to_string(fusionHash);
-  llvm::raw_fd_ostream out("/tmp/cinn/" + source_hash + "/module.ll", EC);
+  llvm::raw_fd_ostream out("/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/module.ll", EC);
   if (EC) {
       LOG(ERROR) << "Failed to open file: " << EC.message();
       return false;
@@ -318,7 +327,7 @@ bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
   VLOG(5) << "LLVM IR dumped to module.ll";
 
   if (cinn_kernel_cache_) {
-    std::string cache_so_path = "/tmp/cinn/" + source_hash + "/" + "cinn_cache.so";
+    std::string cache_so_path = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/" + "cinn_cache.so";
     if (std::ifstream(cache_so_path).good()) {
       // 缓存文件已经存在
       return true;

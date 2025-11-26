@@ -120,6 +120,7 @@ void cinn_call_cuda_kernel(void* kernel_fn,
  * @param kernel_fn the compiled PTX kernel.
  * @param args an array of cinn_pod_value_ts(consists of scalars and buffers).
  */
+extern "C" {
 void cinn_call_cuda_cooperative_kernel(void* kernel_fn,
                                        void* v_args,
                                        int num_args,
@@ -131,6 +132,7 @@ void cinn_call_cuda_cooperative_kernel(void* kernel_fn,
                                        int block_z,
                                        int shared_memory_bytes,
                                        void* stream);
+}
 
 void cinn_call_cublas(void* v_args,
                       int num_args,

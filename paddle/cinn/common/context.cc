@@ -74,7 +74,7 @@ std::string NameGenerator::New(const std::string& name_hint) {
     return name_hint;
   }
   auto ret = name_hint + "_" + std::to_string(++it->second);
-  LOG(WARNING) << "YUHAN!!! Generate NameGenerator " << ret;
+  VLOG(5) << "YUHAN!!! Generate NameGenerator " << ret;
   return ret;
 }
 

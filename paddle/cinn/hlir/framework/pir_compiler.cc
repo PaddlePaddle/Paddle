@@ -25,6 +25,9 @@
 #include "paddle/common/flags.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 #include <fstream> // 必须包含
+#include <string>
+#include <algorithm>
+#include <stdexcept>
 
 PD_DECLARE_bool(enable_cinn_compile_cache);
 PD_DECLARE_int64(cinn_compile_thread_num);
@@ -239,7 +242,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
       VLOG(5) << "YUHAN!!! Before Compile Parallell group_compilation_contexts[" << index << "].fusion_hash = " << group_compilation_contexts[index].GetFusionHash();
       auto fusion_info_hash = group_compilation_contexts[index].GetFusionHash();
       std::string source_hash = std::to_string(fusion_info_hash);
-      std::string cache_dir = "/tmp/cinn/" + source_hash; // 建议先定义目录
+      std::string cache_dir = "/tmp/cinn/" + std::to_string(device_id.value()) + "/" + source_hash; // 建议先定义目录
       std::string cache_so_path = cache_dir + "/cinn_cache.so";
       std::string meta_filepath = cache_dir + "/cinn_cache.meta";
       // 检查 .so 是否存在 (这里假设 good() 是有效的检查)
@@ -266,7 +269,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
             target_, false, fusion_info_hash);
         
         // B. 构造 BackendResource (使用加载的数据!)
-        LOG(WARNING) << "YUHAN!!! .so file exists, constructing BackendResource" << group_compilation_contexts[index].GetGroup()->FuncName();
+        LOG(WARNING) << "YUHAN!!! .so file exists, constructing BackendResource " << group_compilation_contexts[index].GetGroup()->FuncName();
         auto resource = std::make_shared<pir::BackendResource>(
             target_,
             group_compilation_contexts[index].GetGroup()->FuncName(),
@@ -319,6 +322,7 @@ std::shared_ptr<pir::CompilationResult> PirCompiler::Compile(
       pir::GetBroadcastGroupListForOptimize(ctx->GetGroup());
 
   if (optional_broadcast_optimize_groups.has_value()) {
+    VLOG(3) << "YUHAN!!! Broadcast Optimize " << ctx->GetGroup()->FuncName();
     const auto& broadcast_switch_case_groups =
         optional_broadcast_optimize_groups.value();
     std::vector<GroupCompilationContext> switch_group_ctxs;
@@ -359,6 +363,73 @@ std::shared_ptr<pir::CompilationResult> PirCompiler::Compile(
   return compile_result;
 }
 
+#include <string>
+#include <stdexcept>
+#include <cctype> // for std::isdigit
+// 假设您已包含相应的日志头文件 (如 "paddle/common/log.h")
+
+std::string RemoveKernelSuffixNumber(const std::string& func_name) {
+    if (func_name.empty()) {
+        return func_name;
+    }
+
+    // 1. 从后往前找到第一个非数字字符的位置。
+    // suffix_start 将指向数字后缀的起始索引。
+    size_t suffix_start = func_name.length();
+    while (suffix_start > 0 && std::isdigit(func_name[suffix_start - 1])) {
+        suffix_start--;
+    }
+    
+    // 初始化 cut_idx：假设不移除任何内容
+    size_t cut_idx = func_name.length();
+
+    // 2. 检查数字后缀是否有效 (必须有数字，且前面必须是下划线)
+    if (suffix_start < func_name.length() && suffix_start > 0 && func_name[suffix_start - 1] == '_') {
+        
+        // 提取并验证数字后缀
+        std::string suffix = func_name.substr(suffix_start);
+        size_t pos;
+        
+        try {
+            // 验证后缀是否为有效数字
+            std::stoi(suffix, &pos); 
+            
+            // 检查是否整个后缀都被转换了
+            if (pos != suffix.length()) {
+                LOG(FATAL) << "Kernel suffix conversion failed for '" << func_name 
+                           << "'. Suffix '" << suffix << "' contains non-digit characters after parsing.";
+            }
+            
+            // 验证成功：设置 cut_idx 为数字后缀的起始位置
+            cut_idx = suffix_start;
+
+        } catch (const std::exception& e) {
+            // 转换失败：后缀不是有效数字或超出范围 (Fatal Error)
+            LOG(FATAL) << "Kernel suffix conversion failed for '" << func_name 
+                       << "'. Suffix '" << suffix << "' is not a valid integer. Exception: " 
+                       << e.what();
+        }
+        
+    } else {
+        // Case 1: 没有数字后缀 (suffix_start == func_name.length())
+        // Case 2: 有数字，但前面不是下划线 (例如 "fn123")
+        // 在这两种情况下，cut_idx 保持为 func_name.length()，只进行下划线移除。
+        cut_idx = func_name.length();
+    }
+    
+    // --- 3. 最终步骤：移除所有末尾的下划线分隔符 ---
+    // 无论是移除了数字后缀 (cut_idx = suffix_start)，还是保留了整个字符串 
+    // (cut_idx = func_name.length())，我们都从 cut_idx 开始向前移除下划线。
+
+    size_t final_cut_idx = cut_idx;
+    while (final_cut_idx > 0 && func_name[final_cut_idx - 1] == '_') {
+        final_cut_idx--;
+    }
+        
+    // 返回去除后缀和分隔符后的干净名称
+    return func_name.substr(0, final_cut_idx);
+}
+
 void CompilationContextMapper::Construct(
     const Target& target, const std::vector<pir::OpLoweringGroupPtr>& groups) {
   std::unordered_set<size_t> unique_infos;
@@ -375,20 +446,26 @@ void CompilationContextMapper::Construct(
     //
     // auto fusion_info_hash = fusion_infos_[i].hash();
     // std::string source_hash = std::to_string(fusion_info_hash);
-    // std::string cache_so_path = "/tmp/cinn/" + source_hash + "/" + "cinn_cache.so";
+    // std::string cache_so_path = "/tmp/cinn/device_id" + source_hash + "/" + "cinn_cache.so";
     // if (std::ifstream(cache_so_path).good()) continue;
     //
     VLOG(4) << "Construct FusionInfo: " << fusion_infos_[i]
             << " for group: " << *groups[i];
+    // TODO Rename FuncName
+    auto fusion_info_hash = fusion_infos_[i].hash();
+    auto func_name = groups[i]->FuncName();
+    auto new_func_name = RemoveKernelSuffixNumber(func_name);
+    const auto device_id = runtime::GetArchDevice(target);
+    groups[i]->RenewFuncName(new_func_name + "__" + std::to_string(fusion_info_hash));
     // If FLAGS_enable_cinn_compile_cache=False, Cache strategy will not take
     // effects.
     if (IsNewAndUnique(fusion_infos_[i]) || !FLAGS_enable_cinn_compile_cache) { //
       mapper_index_.push_back(i);
-      auto fusion_info_hash = fusion_infos_[i].hash();
       group_compilation_contexts_.emplace_back(target, groups[i]);
       group_compilation_contexts_.back().SetFusionHash(fusion_info_hash);
       VLOG(4) << "YUHAN!!! compilation_results_.size() is " << compilation_results_.size();
-      VLOG(4) << "YUHAN!!! compilation_results_.push_back hashKey is " << fusion_info_hash;
+      VLOG(1) << "YUHAN!!! compilation_results_.push_back hashKey is " << fusion_info_hash;
+      VLOG(1) << "YUHAN!!! compilation_results_.push_back FuncName is " << group_compilation_contexts_.back().GetGroup()->FuncName();
       compilation_results_.push_back(
           std::make_shared<pir::CompilationResult>(target, false, fusion_info_hash));
     }

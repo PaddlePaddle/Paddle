@@ -132,7 +132,7 @@ class PrettyNamer {
     if (pretty_names_.find(hash_key) == pretty_names_.end()) {
       pretty_names_[hash_key] = name_generator_.New(name_hint);
     }
-    LOG(WARNING) << "YUHAN!!! Generate PrettyNamer 1  " << pretty_names_.at(hash_key);
+    VLOG(5) << "YUHAN!!! Generate PrettyNamer 1  " << pretty_names_.at(hash_key);
     return pretty_names_.at(hash_key);
   }
 

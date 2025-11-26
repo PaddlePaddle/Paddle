@@ -152,6 +152,8 @@ class Compiler final {
    */
   size_t GetFusionHash() const { return fusion_hash_; }
 
+  std::string GetDeviceId();
+
   void LoadAndRegisterFromCache(const std::string& source_hash);
 
   ~Compiler() {
@@ -225,6 +227,8 @@ class Compiler final {
 #ifdef CINN_WITH_CUDA
   std::string ComputeSourceHash();
   std::string ExtractKernelName(const std::string& source_code);
+  std::string GetDeviceArch();
+  std::string GetComputeArch();
   std::string GenerateObjectWithoutCache(const std::string& source_code);
   std::string GenerateFatbinWithoutCache(const std::string& source_code);
   void SaveKernelNamesToMeta();

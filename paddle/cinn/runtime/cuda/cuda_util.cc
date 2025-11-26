@@ -148,7 +148,7 @@ extern "C" {
     }
   }
 }
-
+extern "C" {
 void cinn_call_cuda_cooperative_kernel(void *kernel_fn,
                                        void *v_args,
                                        int num_args,
@@ -198,7 +198,7 @@ void cinn_call_cuda_cooperative_kernel(void *kernel_fn,
                                   kernel_args.data()))
   }
 }
-
+}
 void cinn_call_cublas(void *v_args,
                       int num_args,
                       bool trans_a,
