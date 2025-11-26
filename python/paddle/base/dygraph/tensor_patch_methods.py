@@ -1163,22 +1163,22 @@ def monkey_patch_tensor():
             device_id = 0
         elif not isinstance(device_id, int):
             raise ValueError("device_id must be int|None")
-        res_place = framework._current_expected_place()
-        if isinstance(res_place, core.CPUPlace):
-            device_type = paddle.device.get_all_device_type()
-            if (
-                len(device_type) != 0
-                and paddle.device.is_compiled_with_custom_device()
-            ):
-                res_place = core.CustomPlace(device_type[-1], device_id)
-            elif paddle.device.is_compiled_with_xpu():  # XPU
-                res_place = core.XPUPlace(device_id)
-            elif paddle.device.is_compiled_with_cuda():
-                res_place = core.CUDAPlace(device_id)  # GPU
-            else:
-                raise RuntimeError(
-                    "The current environment does not have a available device."
-                )
+
+        device_type = paddle.device.get_all_device_type()
+        if (
+            len(device_type) != 0
+            and paddle.device.is_compiled_with_custom_device()
+        ):
+            res_place = core.CustomPlace(device_type[-1], device_id)
+        elif paddle.device.is_compiled_with_xpu():  # XPU
+            res_place = core.XPUPlace(device_id)
+        elif paddle.device.is_compiled_with_cuda():
+            res_place = core.CUDAPlace(device_id)  # GPU
+        else:
+            raise RuntimeError(
+                "The current environment does not have a available device."
+            )
+
         if self.place._equals(res_place):
             return self
         else:
