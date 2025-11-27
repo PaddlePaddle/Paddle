@@ -444,7 +444,6 @@ def enable_torch_proxy(
             >>> assert torch.sin is paddle.sin
     """
     _register_compat_override()
-    # _clear_torch_modules()
     _swap_torch_modules_to_cache()
     _modify_scope_of_torch_proxy(scope, silent=silent)
     sys.meta_path.insert(0, TORCH_PROXY_FINDER)
