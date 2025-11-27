@@ -31,6 +31,7 @@ from paddle.framework import (
 )
 from paddle.utils.decorator_utils import (
     param_one_alias,
+    param_two_alias,
     size_args_decorator,
 )
 
@@ -588,7 +589,7 @@ def uniform_random_batch_size_like(
     Returns:
         Tensor, A Tensor of the specified shape filled with uniform_random values. The shape of the Tensor is determined by the shape parameter and the specified dimension of the input Tensor.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.base as base
@@ -598,12 +599,12 @@ def uniform_random_batch_size_like(
             >>> input = paddle.static.data(name="input", shape=[1, 3], dtype='float32')
             >>> out_1 = random.uniform_random_batch_size_like(input, [2, 4])
             >>> print(out_1.shape)
-            [1, 4]
+            paddle.Size([1, 4])
 
             >>> # example 2:
             >>> out_2 = random.uniform_random_batch_size_like(input, [2, 4], input_dim_idx=1, output_dim_idx=1)
             >>> print(out_2.shape)
-            [2, 3]
+            paddle.Size([2, 3])
     """
     if in_dynamic_or_pir_mode():
         dtype = convert_np_dtype_to_dtype_(dtype)
@@ -1278,15 +1279,18 @@ def rand_like(
     )
 
 
+@param_one_alias(["shape", "size"])
 def normal(
     mean: complex | Tensor = 0.0,
     std: float | Tensor = 1.0,
     shape: ShapeLike | None = None,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Returns a Tensor filled with random values sampled from a normal
-    distribution with ``mean`` and ``std`` (standard deviation) .
+    distribution with ``mean`` and ``std`` (standard deviation).
 
     If ``mean`` is a Tensor, the output Tensor has the same shape and data type as ``mean``.
     If ``mean`` is not a Tensor and ``std`` is a Tensor, the output Tensor has the same shape and data type as ``std``.
@@ -1294,28 +1298,34 @@ def normal(
 
     If ``mean`` and ``std`` are Tensor, the num of elements of ``mean`` and ``std`` should be the same.
 
-    If ``mean`` is a complex number, the output Tensor follows complex normal distribution, with data type complex 64.
+    If ``mean`` is a complex number, the output Tensor follows complex normal distribution, with data type complex64.
     If ``mean`` is a Tensor with complex data type, the output Tensor has same data type with ``mean``.
+
+    .. note::
+        Alias Support: The parameter name ``size`` can be used as an alias for ``shape``.
+        For example, ``normal(size=[2, 3], ...)`` is equivalent to ``normal(shape=[2, 3], ...)``.
 
     Args:
         mean (float|complex|Tensor, optional): The mean of the output Tensor's normal distribution.
             If ``mean`` is float, all elements of the output Tensor shared the same mean.
             If ``mean`` is a Tensor(data type supports float32, float64, complex64, complex128), it has per-element means.
             Default is 0.0
-        std (float|Tensor, optional): The  standard deviation of the output Tensor's normal distribution.
+        std (float|Tensor, optional): The standard deviation of the output Tensor's normal distribution.
             If ``std`` is float, all elements of the output Tensor shared the same standard deviation.
             If ``std`` is a Tensor(data type supports float32, float64), it has per-element standard deviations.
             Default is 1.0
-        shape (tuple|list|Tensor|None, optional): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+        shape (tuple|list|Tensor|None, optional): Shape of the Tensor to be created. The data type is ``int32`` or ``int64``.
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list. If ``mean`` or ``std``
-            is a Tensor, the shape of the output Tensor is the same as ``mean`` or ``std`` , attr ``shape`` is ignored.
+            is a Tensor, the shape of the output Tensor is the same as ``mean`` or ``std``, attr ``shape`` is ignored.
             Default is None
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): Optional output tensor. If provided, the result will be stored in this tensor.
+            The ``out`` tensor must have the same shape and dtype as the expected output. Default is None.
 
     Returns:
-        Tensor, A Tensor filled with random values sampled from a normal distribution with ``mean`` and ``std`` .
+        Tensor: A Tensor filled with random values sampled from a normal distribution with ``mean`` and ``std``.
 
     Examples:
         .. code-block:: python
@@ -1397,10 +1407,15 @@ def normal(
     if isinstance(mean, complex):
         if isinstance(std, float):
             return gaussian(
-                shape=shape, mean=mean, std=std, dtype='complex64', name=name
+                shape=shape,
+                mean=mean,
+                std=std,
+                dtype='complex64',
+                name=name,
+                out=out,
             )
         else:
-            out = gaussian(
+            out_tensor = gaussian(
                 shape=paddle.shape(std),
                 mean=(0.0 + 0.0j),
                 std=1.0,
@@ -1419,7 +1434,7 @@ def normal(
                 std = paddle.reshape(std, mean_shape)
             else:
                 std = float(std)
-            out = gaussian(
+            out_tensor = gaussian(
                 shape=paddle.shape(mean),
                 mean=(0.0 + 0.0j),
                 std=1.0,
@@ -1434,17 +1449,21 @@ def normal(
                 std = paddle.reshape(std, mean_shape)
             else:
                 std = float(std)
-            out = standard_normal(paddle.shape(mean), mean.dtype, name)
+            out_tensor = standard_normal(paddle.shape(mean), mean.dtype, name)
     elif isinstance(std, (Variable, paddle.pir.Value)):
         mean = float(mean)
-        out = standard_normal(paddle.shape(std), std.dtype, name)
+        out_tensor = standard_normal(paddle.shape(std), std.dtype, name)
     else:
-        return gaussian(shape=shape, mean=mean, std=std, name=name)
+        return gaussian(shape=shape, mean=mean, std=std, name=name, out=out)
 
-    out = out * std + mean
+    out_tensor = out_tensor * std + mean
     if not in_dynamic_or_pir_mode():
-        out.stop_gradient = True
-    return out
+        out_tensor.stop_gradient = True
+    if out is not None:
+        paddle.assign(out_tensor, out)
+        out_tensor = out
+
+    return out_tensor
 
 
 @dygraph_only
@@ -1486,7 +1505,7 @@ def normal_(
 def uniform(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,
-    min: float = -1.0,
+    min: float = 0,
     max: float = 1.0,
     seed: int = 0,
     name: str | None = None,
@@ -1517,7 +1536,7 @@ def uniform(
             Default is None, use global default dtype (see ``get_default_dtype``
             for details).
         min(float|int, optional): The lower bound on the range of random values
-            to generate, ``min`` is included in the range. Default is -1.0.
+            to generate, ``min`` is included in the range. Default is 0.
         max(float|int, optional): The upper bound on the range of random values
             to generate, ``max`` is excluded in the range. Default is 1.0.
         seed(int, optional): Random seed used for generating samples. If seed is 0,
@@ -1663,10 +1682,11 @@ def uniform(
         return out
 
 
+@param_two_alias(["min", "from"], ["max", "to"])
 @dygraph_only
 def uniform_(
     x: Tensor,
-    min: float = -1.0,
+    min: float = 0,
     max: float = 1.0,
     seed: int = 0,
     name: str | None = None,
@@ -1679,9 +1699,11 @@ def uniform_(
     Args:
         x(Tensor): The input tensor to be filled with random values.
         min(float|int, optional): The lower bound on the range of random values
-            to generate, ``min`` is included in the range. Default is -1.0.
+            to generate, ``min`` is included in the range. Default is 0.
+            Alias: ``from``.
         max(float|int, optional): The upper bound on the range of random values
             to generate, ``max`` is excluded in the range. Default is 1.0.
+            Alias: ``to``.
         seed(int, optional): Random seed used for generating samples. If seed is 0,
             it will use the seed of the global default generator (which can be set by paddle.seed).
             Note that if seed is not 0, this operator will always generate the same random numbers every
@@ -1689,9 +1711,11 @@ def uniform_(
         name(str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
+
     Returns:
         Tensor, The input tensor x filled with random values sampled from a uniform
         distribution in the range [``min``, ``max``).
+
     Examples:
         .. code-block:: python
 

@@ -92,7 +92,7 @@ class Im2ColFunctor {
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
                   phi::DenseTensor* col,
-                  const DataLayout data_layout = DataLayout::kNCHW);
+                  const DataLayout data_layout = DataLayout::NCHW);
 };
 
 template <ColFormat Format, typename DeviceContext, typename T>
@@ -104,7 +104,7 @@ class Col2ImFunctor {
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
                   phi::DenseTensor* im,
-                  const DataLayout data_layout = DataLayout::kNCHW);
+                  const DataLayout data_layout = DataLayout::NCHW);
 };
 
 }  // namespace funcs

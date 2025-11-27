@@ -30,6 +30,9 @@ from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import (
     GroupShardedOptimizerStage2,
 )
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import (
+    GroupShardedStage3,
+)
 from paddle.distributed.fleet.utils.sequence_parallel_utils import (
     ColumnSequenceParallelLinear,
     RowSequenceParallelLinear,
@@ -401,6 +404,116 @@ class TestParallelLayersLogic:
                 for state_name in self.optimizer_var_suffix:
                     opt__var_name = key + state_name
                     if opt__var_name in opt_sharded_state_dict:
+                        assert tuple(
+                            opt_sharded_state_dict[opt__var_name].local_shape
+                        ) == tuple(value.local_shape)
+                        assert tuple(
+                            opt_sharded_state_dict[opt__var_name].global_shape
+                        ) == tuple(value.global_shape)
+                        assert tuple(
+                            opt_sharded_state_dict[opt__var_name].global_offset
+                        ) == tuple(value.global_offset)
+
+        elif self.layer_type == "GroupShardedStage3":
+            model = fleet.distributed_model(model)
+            wrapped_model = GroupShardedStage3(
+                model, opt, segment_size=2**12
+            )  # slice the linear1、linear2 weight
+            for param in opt._parameter_list:
+                if hasattr(param, "fw_storage"):
+                    assert len(param.shape) != 1
+            wrapped_model.init_optimizer_for_slice_param()
+            for param in opt._parameter_list:
+                if hasattr(param, "fw_storage"):
+                    assert len(param.shape) == 1
+            model_sharded_state_dict = model.sharded_state_dict()
+            for k, v in model_sharded_state_dict.items():
+                if (
+                    k == "_layers.linear1.weight"
+                    or k == "_layers.linear2.weight"
+                ):
+                    assert not v.local_tensor._is_initialized()
+            wrapped_model.init_slice_param()
+            for k, v in model_sharded_state_dict.items():
+                if (
+                    k == "_layers.linear1.weight"
+                    or k == "_layers.linear2.weight"
+                ):
+                    assert v.local_tensor._is_initialized()
+            wrapped_model.align_param_to_buffer_and_clear_slice_param()
+            for k, v in model_sharded_state_dict.items():
+                if (
+                    k == "_layers.linear1.weight"
+                    or k == "_layers.linear2.weight"
+                ):
+                    assert not v.local_tensor._is_initialized()
+            model.train()
+            x = paddle.randint(
+                low=0,
+                high=self.vocab_size,
+                shape=[self.batch_size, self.seq_len, self.hidden_size],
+                dtype='int64',
+            )
+            rank = paddle.distributed.get_rank()
+            sharidng_x = (
+                x[0 : self.batch_size // 2]
+                if rank == 0
+                else x[self.batch_size // 2 :]
+            )
+            y = model(sharidng_x).mean()
+            y.backward()
+            opt.step()
+            opt.clear_grad()
+            model_sharded_state_dict = model.sharded_state_dict()
+            for k, v in model_sharded_state_dict.items():
+                if (
+                    k == "_layers.linear1.weight"
+                    or k == "_layers.linear2.weight"
+                ):
+                    assert not v.local_tensor._is_initialized()
+            wrapped_model.get_all_parameters()
+            opt_sharded_state_dict = opt.sharded_state_dict(
+                model_sharded_state_dict
+            )
+
+            for k, v in model_sharded_state_dict.items():
+                if (
+                    k == "_layers.linear1.weight"
+                    or k == "_layers.linear2.weight"
+                ):
+                    assert v.local_tensor._is_initialized()
+
+            for key, value in model_sharded_state_dict.items():
+                for state_name in self.optimizer_var_suffix:
+                    opt__var_name = key + state_name
+                    if opt__var_name in opt_sharded_state_dict:
+                        if hasattr(
+                            value.local_tensor, "fw_storage"
+                        ):  # check the optimizer_var which isFragment
+                            opt_var_globle_flattened_range = []
+                            paddle.distributed.all_gather_object(
+                                opt_var_globle_flattened_range,
+                                opt_sharded_state_dict[
+                                    opt__var_name
+                                ].flattened_range,
+                            )
+
+                            first_fragment = opt_var_globle_flattened_range[0]
+                            second_fragment = opt_var_globle_flattened_range[1]
+                            assert (
+                                first_fragment.stop == second_fragment.start
+                            )  # the first_flattened_range_stop == the second_flattened_range_start
+                            opt_var_globle_size_flattened = (
+                                second_fragment.stop - first_fragment.start
+                            )
+                            model_var_globle_size_flattened = math.prod(
+                                value.local_shape
+                            )
+                            assert (
+                                opt_var_globle_size_flattened
+                                == model_var_globle_size_flattened
+                            )
+
                         assert tuple(
                             opt_sharded_state_dict[opt__var_name].local_shape
                         ) == tuple(value.local_shape)

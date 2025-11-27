@@ -157,17 +157,17 @@ class CoalesceGradTensorPass : public ir::Pass {
       PADDLE_ENFORCE_EQ(iter != vars_info.end(),
                         true,
                         common::errors::NotFound(
-                            "Parameter@Grad %s is not found.", p_g.second));
+                            "Parameter@GRAD %s is not found.", p_g.second));
       PADDLE_ENFORCE_EQ(
           !iter->second.empty(),
           true,
           common::errors::InvalidArgument(
-              "Parameter@Grad %s's var node is empty.", p_g.second));
+              "Parameter@GRAD %s's var node is empty.", p_g.second));
       for (auto it : iter->second) {
         PADDLE_ENFORCE_NOT_NULL(
             it->Var(),
             common::errors::InvalidArgument(
-                "A node of Parameter@Grad %s does not hold variable.",
+                "A node of Parameter@GRAD %s does not hold variable.",
                 p_g.second));
         pinned_var_set->insert(it->Var()->Name());
       }
@@ -175,7 +175,7 @@ class CoalesceGradTensorPass : public ir::Pass {
           IsDenseTensorType(GetTypeOfVar(vars_info, p_g.second)),
           true,
           common::errors::InvalidArgument(
-              "Parameter@Grad %s is not phi::DenseTensor.", p_g.second));
+              "Parameter@GRAD %s is not phi::DenseTensor.", p_g.second));
     }
   }
 
@@ -541,7 +541,7 @@ class CoalesceGradTensorPass : public ir::Pass {
       PADDLE_ENFORCE_EQ(next_dtype,
                         dtype,
                         common::errors::InvalidArgument(
-                            "All Parameter@Grad should have same dtype, but "
+                            "All Parameter@GRAD should have same dtype, but "
                             "there are two different type: %s, %s.",
                             DataTypeToString(next_dtype),
                             DataTypeToString(dtype)));

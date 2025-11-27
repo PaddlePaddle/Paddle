@@ -40,20 +40,20 @@ void TemporalShiftKernel(const Context& dev_ctx,
   const int64_t nt = input->dims()[0];
   const int64_t n = nt / t;
   const int64_t c =
-      (data_layout == DataLayout::kNCHW ? input->dims()[1] : input->dims()[3]);
+      (data_layout == DataLayout::NCHW ? input->dims()[1] : input->dims()[3]);
   const int64_t h =
-      (data_layout == DataLayout::kNCHW ? input->dims()[2] : input->dims()[1]);
+      (data_layout == DataLayout::NCHW ? input->dims()[2] : input->dims()[1]);
   const int64_t w =
-      (data_layout == DataLayout::kNCHW ? input->dims()[3] : input->dims()[2]);
+      (data_layout == DataLayout::NCHW ? input->dims()[3] : input->dims()[2]);
 
   DDim out_dims =
-      (data_layout == DataLayout::kNCHW ? common::make_ddim({nt, c, h, w})
-                                        : common::make_ddim({nt, h, w, c}));
+      (data_layout == DataLayout::NCHW ? common::make_ddim({nt, c, h, w})
+                                       : common::make_ddim({nt, h, w, c}));
   const T* input_data = input->data<T>();
   output->Resize(out_dims);
   T* output_data = dev_ctx.template Alloc<T>(output);
 
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     int r = xpu::temporal_shift(dev_ctx.x_context(),
                                 input_data,
                                 output_data,

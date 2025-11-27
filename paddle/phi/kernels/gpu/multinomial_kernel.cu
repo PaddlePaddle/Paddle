@@ -13,16 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/multinomial_kernel.h"
-#include "paddle/phi/kernels/funcs/multinomial_kernel_helper.h"
-
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
@@ -30,11 +20,13 @@ namespace cub = hipcub;
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/arg_min_max_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/inclusive_scan.h"
 #include "paddle/phi/kernels/funcs/multinomial_functor.h"
+#include "paddle/phi/kernels/funcs/multinomial_kernel_helper.h"
 #include "paddle/phi/kernels/top_k_kernel.h"
 
 namespace phi {

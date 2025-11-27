@@ -24,6 +24,7 @@ from . import (  # noqa: F401
 )
 from .deprecated import deprecated
 from .environments import strtobool as strtobool
+from .fwd_graph_utils import capture_fwd_graph_guard  # noqa: F401
 from .install_check import run_check
 from .layers_utils import (  # noqa: F401
     _contain_var,

@@ -26,7 +26,7 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
-    if: ${{ inputs.can-skip != 'true' }}
+    if: ${{ inputs.clone-can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: "sot"
@@ -123,6 +123,7 @@ jobs:
           git fetch upstream $BRANCH
           git checkout test
           git merge --no-edit $BRANCH
+          git submodule update
           '
 
       - name: Determine sot ci trigger
