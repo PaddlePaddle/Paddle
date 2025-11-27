@@ -122,10 +122,7 @@ _extend_skip_modules_if_exists("colorama")
 
 
 def _strip_init_py(s):
-    try:
-        return re.sub(r"__init__.py$", "", s)
-    except TypeError as e:
-        raise TypeError(f"Expected a string, but got {type(s)}, {s}") from e
+    return re.sub(r"__init__.py$", "", s)
 
 
 def _module_dir(m: types.ModuleType):
