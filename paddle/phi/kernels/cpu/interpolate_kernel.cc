@@ -85,7 +85,7 @@ static void LinearInterpolation(const DenseTensor& input,
       for (int l = 0; l < out_w; l++) {
         // linear interpolation
         T out_t;
-        if (data_layout == DataLayout::kNCHW) {
+        if (data_layout == DataLayout::NCHW) {
           out_t =
               static_cast<T>(static_cast<MT>(input_t(i, j, vx_w[l])) * vd_e[l] +
                              static_cast<MT>(input_t(i, j, vx_e[l])) * vd_w[l]);
@@ -186,7 +186,7 @@ static void BilinearInterpolation(const DenseTensor& input,
         for (int l = 0; l < out_w; l++) {
           // bilinear interpolation
           T out_t;
-          if (data_layout == DataLayout::kNCHW) {
+          if (data_layout == DataLayout::NCHW) {
             out_t = static_cast<T>(
                 static_cast<MT>(input_t(i, j, vy_n[k], vx_w[l])) * vd_s[k] *
                     vd_e[l] +
@@ -244,7 +244,7 @@ static void NearestNeighborInterpolate(const DenseTensor& input,
 
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
-          if (data_layout == DataLayout::kNCHW) {
+          if (data_layout == DataLayout::NCHW) {
             output_t(i, j, k, l) = input_t(i, j, in_k, in_l);
           } else {
             output_t(i, k, l, j) = input_t(i, in_k, in_l, j);
@@ -299,7 +299,7 @@ static void BicubicInterpolation(const DenseTensor& input,
                 std::max(std::min(input_x + 1, in_w - 1), static_cast<int>(0));
             int access_x_3 =
                 std::max(std::min(input_x + 2, in_w - 1), static_cast<int>(0));
-            if (data_layout == DataLayout::kNCHW) {
+            if (data_layout == DataLayout::NCHW) {
               coefficients[ii] = cubic_interp<MT>(
                   static_cast<MT>(input_t(i, j, access_y, access_x_0)),
                   static_cast<MT>(input_t(i, j, access_y, access_x_1)),
@@ -317,7 +317,7 @@ static void BicubicInterpolation(const DenseTensor& input,
           }
 
           // interp y direction
-          if (data_layout == DataLayout::kNCHW) {
+          if (data_layout == DataLayout::NCHW) {
             output_t(i, j, k, l) =
                 static_cast<T>(cubic_interp<MT>(coefficients[0],
                                                 coefficients[1],
@@ -454,7 +454,7 @@ static void TrilinearInterpolation(const DenseTensor& input,
         for (int k = 0; k < out_h; k++) {
           for (int l = 0; l < out_w; l++) {
             // trilinear interpolation
-            if (data_layout == DataLayout::kNCHW) {
+            if (data_layout == DataLayout::NCHW) {
               T out_t = static_cast<T>(
                   static_cast<MT>(input_t(b, i, vt_f[j], vy_n[k], vx_w[l])) *
                       vd_b[j] * vd_s[k] * vd_e[l] +
@@ -534,7 +534,7 @@ static void NearestNeighbor3DInterpolate(const DenseTensor& input,
 
         for (int i = 0; i < n; i++) {    // loop for batches
           for (int j = 0; j < c; j++) {  // loop for channels
-            if (data_layout == DataLayout::kNCHW) {
+            if (data_layout == DataLayout::NCHW) {
               output_t(i, j, d, k, l) = input_t(i, j, in_d, in_k, in_l);
             } else {  // NDHWC
               output_t(i, d, k, l, j) = input_t(i, in_d, in_k, in_l, j);
@@ -609,7 +609,7 @@ static void Interpolate1DCPUFwd(
       errors::InvalidArgument("out_w in Attr(out_shape) of Op(interpolate) "
                               "should be greater than 0."));
   phi::DDim dim_out;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     dim_out = {n, c, out_w};
   } else {
     dim_out = {n, out_w, c};
@@ -741,7 +741,7 @@ static void Interpolate2DCPUFwd(
       errors::InvalidArgument("out_w in Attr(out_shape) of Op(interpolate) "
                               "should be greater than 0."));
   phi::DDim dim_out;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     dim_out = {n, c, out_h, out_w};
   } else {
     dim_out = {n, out_h, out_w, c};
@@ -931,7 +931,7 @@ static void Interpolate3DCPUFwd(
                               "should be greater than 0."));
 
   phi::DDim dim_out;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     dim_out = {n, c, out_d, out_h, out_w};
   } else {
     dim_out = {n, out_d, out_h, out_w, c};

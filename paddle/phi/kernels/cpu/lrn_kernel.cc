@@ -46,7 +46,7 @@ struct LRNFunctor<phi::CPUContext, T> {
     phi::funcs::Transpose<phi::CPUContext, T, 4> transpose;
     phi::DenseTensor in_transpose, mid_transpose, out_transpose;
     // if channel_last, transpose to channel_first
-    if (data_layout == DataLayout::kNHWC) {
+    if (data_layout == DataLayout::NHWC) {
       auto in_dims = input.dims();
       std::vector<int64_t> shape(
           {in_dims[0], in_dims[3], in_dims[1], in_dims[2]});
@@ -110,7 +110,7 @@ struct LRNFunctor<phi::CPUContext, T> {
     blas.VMUL(mid->numel(), odata, idata, odata);
 
     // if channel_last, transpose the output(NCHW) to channel_last
-    if (data_layout == DataLayout::kNHWC) {
+    if (data_layout == DataLayout::NHWC) {
       std::vector<int> axis = {0, 2, 3, 1};
       transpose(dev_ctx, mid_transpose, mid, axis);
       transpose(dev_ctx, out_transpose, out, axis);
