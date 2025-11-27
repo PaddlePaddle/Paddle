@@ -24,6 +24,67 @@ limitations under the License. */
 #include "paddle/phi/kernels/impl/pool_kernel_impl.h"
 namespace phi {
 
+// template <typename Context, typename T>
+// void PrintDenseTensorPython(const Context& dev_ctx,
+//                             DenseTensor* out,
+//                             const std::string& name) {
+//   const auto& dims = out->dims();
+//   // int64_t numel = t.numel();
+
+//   T* ptr;
+
+//   if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
+//     DenseTensor out_cpu;
+//     phi::Copy(dev_ctx, *out, phi::CPUPlace(), true, &out_cpu);
+//     ptr = out_cpu.data<double>();
+//   } else {
+//     ptr = out->data<double>();
+//   }
+
+//   VLOG(1) << "Tensor [" << name << "] dims=" << dims.to_str();
+
+//   // 计算每个维度对应的步长（扁平化索引）
+//   std::vector<int64_t> stride(dims.size(), 1);
+//   for (int i = dims.size() - 2; i >= 0; --i) {
+//     stride[i] = stride[i + 1] * dims[i + 1];
+//   }
+
+//   // 递归打印函数：Python 风格的多维数组
+//   std::function<void(int, int64_t)> print_dim;
+//   print_dim = [&](int dim, int64_t offset) {
+//     std::string indent(dim * 2, ' ');
+
+//     if (dim == dims.size()) {
+//       // 打印单个元素
+//       VLOG(1) << indent << (*(ptr+offset));
+//       return;
+//     }
+
+//     VLOG(1) << indent << "[";
+
+//     for (int i = 0; i < dims[dim]; ++i) {
+//       int64_t sub_offset = offset + i * stride[dim];
+//       if (dim == dims.size() - 1) {
+//         // 最后一维, 打印成 [a, b, c]
+//         std::string line = indent + "  [";
+//         for (int j = 0; j < dims[dim]; ++j) {
+//           line += std::to_string((*(ptr+offset + j)));
+//           if (j + 1 < dims[dim]) line += ", ";
+//         }
+//         line += "]";
+//         VLOG(1) << line;
+//         break;
+//       } else {
+//         print_dim(dim + 1, sub_offset);
+//       }
+//     }
+
+//     VLOG(1) << indent << "]";
+//   };
+
+//   print_dim(0, 0);
+// }
+
 template <typename T, typename Context>
 void PoolRawGPUDNNKernel(const Context& dev_ctx,
                          const DenseTensor& x,
@@ -49,11 +110,11 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
       errors::InvalidArgument("Pool operator CUDA kernel must use CUDAPlace "
                               "rather than CPUPlace."));
 
-  // if (x.numel() >
-  // std::numeric_limits<int>::max()||dilations[0]>static_cast<int>(1)||dilations[1]>static_cast<int>(1))
-  // {
-  if (x.numel() > 1 || dilations[0] > static_cast<int>(1) ||
+  if (x.numel() > std::numeric_limits<int>::max() ||
+      dilations[0] > static_cast<int>(1) ||
       dilations[1] > static_cast<int>(1)) {
+    // if (x.numel() > 1 || dilations[0] > static_cast<int>(1) ||
+    //     dilations[1] > static_cast<int>(1)) {
     // const std::vector<int64_t> dilations = {1, 1};
     VLOG(1) << "PoolRawKernel-dilations";
     PoolRawKernel<T, GPUContext>(dev_ctx,
@@ -258,6 +319,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
     trans(dev_ctx, transformed_output, output, axis);
   }
 #endif
+  // PrintDenseTensorPython<Context, double>(dev_ctx, out, "gpudnn_pool_out");
 }
 
 template <typename T, typename Context>

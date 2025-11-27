@@ -3797,6 +3797,35 @@ void Pool2DInferMeta(const MetaTensor& x,
   }
 }
 
+void LPPool2DInferMeta(const MetaTensor& x,
+                       const IntArray& kernel_size,
+                       const std::vector<int64_t>& strides,
+                       const std::vector<int64_t>& paddings,
+                       bool ceil_mode,
+                       bool exclusive,
+                       const std::string& data_format,
+                       const std::string& pooling_type,
+                       bool global_pooling,
+                       bool adaptive,
+                       const std::string& padding_algorithm,
+                       MetaTensor* out,
+                       MetaConfig config) {
+  Pool2DInferMeta(x,
+                  kernel_size,
+                  strides,
+                  paddings,
+                  paddings,
+                  ceil_mode,
+                  exclusive,
+                  data_format,
+                  pooling_type,
+                  global_pooling,
+                  adaptive,
+                  padding_algorithm,
+                  out,
+                  config);
+}
+
 void PSendInferMeta(const MetaTensor& x, int peer) {
   LOG(INFO) << "SendBaseInferMeta begin";
   PADDLE_ENFORCE_GE(
