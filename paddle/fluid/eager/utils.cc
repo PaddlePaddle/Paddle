@@ -43,7 +43,7 @@
 #include "paddle/utils/md5.h"
 COMMON_DECLARE_bool(enable_unique_name);
 COMMON_DECLARE_int32(tensor_md5_checksum_precision);
-
+COMMON_DECLARE_bool(tensor_md5_checksum_use_binary_format);
 #ifdef _WIN32
 #define getprocessid GetCurrentProcessId
 typedef int pid_t;
@@ -824,6 +824,67 @@ std::string EagerUtils::GradNodeStr(const paddle::Tensor& t) {
     return "None";
   }
 }
+
+template <typename T>
+std::string FormatData(const phi::DenseTensor& print_tensor,
+                       int precision,
+                       bool use_binary = false) {
+  int64_t print_size = print_tensor.numel();
+  std::stringstream data_stream;
+  const T* data = nullptr;
+  phi::DenseTensor cpu_tensor;
+  if (print_tensor.place().GetType() == phi::AllocationType::CPU) {
+    data = print_tensor.data<T>();
+  } else {
+    phi::CPUPlace cpu_place;
+
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    auto dev_ctx = pool.Get(print_tensor.place());
+
+    phi::Copy(*dev_ctx, print_tensor, cpu_place, true, &cpu_tensor);
+    data = cpu_tensor.data<T>();
+  }
+
+  if (print_size > 0) {
+    auto print_element =
+        [&data_stream, &precision, &use_binary](const auto& elem) {
+          auto to_binary = [](const auto& elem) {
+            const unsigned char* bytes =
+                reinterpret_cast<const unsigned char*>(&elem);
+            std::ostringstream oss;
+            for (size_t i = 0; i < sizeof(elem); ++i) {
+              oss << bytes[i];
+            }
+            return oss.str();
+          };
+          if constexpr (std::is_same_v<T, phi::complex64> ||
+                        std::is_same_v<T, phi::complex128>) {
+            if (use_binary) {
+              data_stream << to_binary(elem.real) << to_binary(elem.imag);
+            } else {
+              data_stream << std::fixed << std::setprecision(precision)
+                          << static_cast<double>(elem.real) << "+" << std::fixed
+                          << std::setprecision(precision)
+                          << static_cast<double>(elem.imag) << "j";
+            }
+          } else {
+            if (use_binary) {
+              data_stream << to_binary(elem);
+            } else {
+              data_stream << std::fixed << std::setprecision(precision)
+                          << static_cast<double>(elem);
+            }
+          }
+        };
+
+    print_element(data[0]);
+    for (int64_t i = 1; i < print_size; ++i) {
+      print_element(data[i]);
+    }
+  }
+  return data_stream.str();
+}
+
 std::string GetTensorMD5Checksum(const paddle::Tensor& t) {
   if (!t.defined() || !t.has_allocation()) {
     return "None";
@@ -842,33 +903,34 @@ std::string GetTensorMD5Checksum(const paddle::Tensor& t) {
   auto& dense_tensor = *(dense_tensor_ptr);
   auto dtype = dense_tensor.dtype();
   int precision = FLAGS_tensor_md5_checksum_precision;
-
+  bool use_binary = FLAGS_tensor_md5_checksum_use_binary_format;
+  std::string data_str = "";
   if (dtype == phi::DataType::FLOAT32) {
-    formatter.FormatData<float>(dense_tensor, data_stream, precision);
+    data_str = FormatData<float>(dense_tensor, precision, use_binary);
   } else if (dtype == phi::DataType::FLOAT64) {
-    formatter.FormatData<double>(dense_tensor, data_stream, precision);
+    data_str = FormatData<double>(dense_tensor, precision, use_binary);
   } else if (dtype == phi::DataType::INT32) {
-    formatter.FormatData<int>(dense_tensor, data_stream, precision);
+    data_str = FormatData<int>(dense_tensor, precision, use_binary);
   } else if (dtype == phi::DataType::INT64) {
-    formatter.FormatData<int64_t>(dense_tensor, data_stream, precision);
+    data_str = FormatData<int64_t>(dense_tensor, precision, use_binary);
   } else if (dtype == phi::DataType::BOOL) {
-    formatter.FormatData<bool>(dense_tensor, data_stream, precision);
+    data_str = FormatData<bool>(dense_tensor, precision, use_binary);
   } else if (dtype == phi::DataType::FLOAT16) {
-    formatter.FormatData<phi::float16>(dense_tensor, data_stream, precision);
+    data_str = FormatData<phi::float16>(dense_tensor, precision, use_binary);
   } else if (dtype == phi::DataType::BFLOAT16) {
-    formatter.FormatData<phi::bfloat16>(dense_tensor, data_stream, precision);
+    data_str = FormatData<phi::bfloat16>(dense_tensor, precision, use_binary);
   } else if (dtype == phi::DataType::FLOAT8_E4M3FN) {
-    formatter.FormatData<phi::float8_e4m3fn>(
-        dense_tensor, data_stream, precision);
+    data_str =
+        FormatData<phi::float8_e4m3fn>(dense_tensor, precision, use_binary);
   } else if (dtype == phi::DataType::FLOAT8_E5M2) {
-    formatter.FormatData<phi::float8_e5m2>(
-        dense_tensor, data_stream, precision);
+    data_str =
+        FormatData<phi::float8_e5m2>(dense_tensor, precision, use_binary);
   } else if (dtype == phi::DataType::COMPLEX64) {
-    formatter.FormatData<phi::complex64>(dense_tensor, data_stream, precision);
+    data_str = FormatData<phi::complex64>(dense_tensor, precision, use_binary);
   } else if (dtype == phi::DataType::COMPLEX128) {
-    formatter.FormatData<phi::complex128>(dense_tensor, data_stream, precision);
+    data_str = FormatData<phi::complex128>(dense_tensor, precision, use_binary);
   }
-  return paddle::md5(data_stream.str());
+  return paddle::md5(data_str);
 }
 /**
  * Print Input Output (level 0 means least info, level 2 means most info)
