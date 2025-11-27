@@ -77,15 +77,6 @@ struct ScopedRecording {
   ~ScopedRecording() { original_val = false; }
 };
 
-/**
- * @brief Thread-local boolean flag indicating whether the current thread is
- * currently in a "recording allocation" state.
- * * When this flag is true, it means memory allocation is being executed
- * in a context that requires tracking or special handling. It must be
- * thread_local to ensure each thread maintains its independent state.
- */
-extern thread_local bool in_recording_alloc;
-
 // Exception when `Alloc`/`AllocShared` failed
 struct BadAlloc : public std::exception {
   inline explicit BadAlloc(std::string err_msg, const char* file, int line)
@@ -268,7 +259,17 @@ class PADDLE_API Allocator : public phi::Allocator {
   }
 
  private:
+  // Thread-local boolean flag indicating whether the current thread is
+  // currently in a "recording allocation" state. It must be
+  // thread_local to ensure each thread maintains its independent state.
+  thread_local static bool in_recording_alloc;
+
+  // Record event into `allocation_records_` when `FLAGS_record_alloc_event` is
+  // True.
   void RecordAlloc(size_t size);
+
+  // Return tuple is <id, allocate_size, cur_allocated, max_reserved>, if more
+  // fields are added later, consider using a struct to combine them.
   std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>>
       allocation_records_;
   SpinLock spinlock_;

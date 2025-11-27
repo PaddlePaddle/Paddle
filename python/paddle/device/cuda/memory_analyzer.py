@@ -331,7 +331,6 @@ class MemoryAnalysisTool:
         headers = ['Seq ID', 'Req Size', 'Cur Alloc', 'Cur Rsrv']
         title = "Allocate Event Table"
 
-        # 调用自定义的表格打印函数
         print_table(title, headers, data_rows)
 
     @classmethod
