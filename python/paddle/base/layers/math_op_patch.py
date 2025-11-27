@@ -15,6 +15,8 @@
 import inspect
 import warnings
 
+from paddle import Tensor
+
 from .. import core
 from ..dygraph.base import in_to_static_mode
 from ..framework import (
@@ -598,7 +600,7 @@ def monkey_patch_variable():
             )
         self.stop_gradient = not value
 
-    def requires_grad_(self, requires_grad: bool = True):
+    def requires_grad_(self, requires_grad: bool = True) -> Tensor:
         """
         Set whether this Tensor requires gradient computation.
 

@@ -33,8 +33,8 @@ from paddle.utils.decorator_utils import (
 from . import Value
 
 if TYPE_CHECKING:
+    from paddle import Tensor
     from paddle._typing import DTypeLike, PlaceLike, ShapeLike
-
 
 _already_patch_value = False
 
@@ -1456,7 +1456,7 @@ def monkey_patch_value():
             )
         self.stop_gradient = not value
 
-    def requires_grad_(self, requires_grad: bool = True):
+    def requires_grad_(self, requires_grad: bool = True) -> Tensor:
         """
         Set whether this Tensor requires gradient computation.
 

@@ -578,7 +578,7 @@ def monkey_patch_math_tensor():
             )
         self.stop_gradient = not value
 
-    def requires_grad_(self, requires_grad: bool = True):
+    def requires_grad_(self, requires_grad: bool = True) -> Tensor:
         """
         Set whether this Tensor requires gradient computation.
 
