@@ -69,7 +69,7 @@ void QKVAttentionXPUKernelImpl(const Context& dev_ctx,
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
 
-  int qkv_shape = 0;  // B x L x H x D
+  int64_t qkv_shape = 0;  // B x L x H x D
   int hidden_dim = head_num * head_dim;
   // no mask input, construct a fake LOD to compute via vsl
   std::vector<int> lod;

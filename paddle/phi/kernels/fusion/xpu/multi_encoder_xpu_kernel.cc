@@ -74,8 +74,7 @@ void MultiEncoderXPUKernel(
   int64_t batch_size = x.dims()[0];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-
-  int seq_len = 1;
+  int64_t seq_len = 1;
   int head_dim;
   if (x.dims().size() == 2) {
     head_dim = x.dims()[1];
