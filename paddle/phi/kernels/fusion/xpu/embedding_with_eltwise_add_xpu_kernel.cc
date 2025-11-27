@@ -21,14 +21,14 @@ namespace fusion {
 
 namespace {
 template <typename T>
-void FillSeqLod(int64_t batch_size,
+void FillSeqLod(int batch_size,
                 int max_seq_len,
                 const T* mask,
                 std::vector<int>* cpu_seq_lod) {
-  for (int64_t batch_idx = 0; batch_idx < batch_size; batch_idx++) {
+  for (int batch_idx = 0; batch_idx < batch_size; batch_idx++) {
     int cur_batch_seq_len = 0;
     for (int seq_idx = 0; seq_idx < max_seq_len; seq_idx++) {
-      int64_t mask_idx = batch_idx * max_seq_len + seq_idx;
+      int mask_idx = batch_idx * max_seq_len + seq_idx;
       if (mask[mask_idx] > 0) {
         cur_batch_seq_len++;
       } else {
@@ -40,14 +40,14 @@ void FillSeqLod(int64_t batch_size,
 }
 
 template <>
-void FillSeqLod<float>(int64_t batch_size,
+void FillSeqLod<float>(int batch_size,
                        int max_seq_len,
                        const float* mask,
                        std::vector<int>* cpu_seq_lod) {
-  for (int64_t batch_idx = 0; batch_idx < batch_size; batch_idx++) {
+  for (int batch_idx = 0; batch_idx < batch_size; batch_idx++) {
     int cur_batch_seq_len = 0;
     for (int seq_idx = 0; seq_idx < max_seq_len; seq_idx++) {
-      int64_t mask_idx = batch_idx * max_seq_len + seq_idx;
+      int mask_idx = batch_idx * max_seq_len + seq_idx;
       if (mask[mask_idx] > 1e-7) {
         cur_batch_seq_len++;
       } else {
@@ -108,6 +108,9 @@ void MultiEmbeddingKernel(const Context& dev_ctx,
   auto* mask_tensor = mask.get_ptr();
   if (mask_tensor != nullptr) {
     int64_t batch_size = mask_tensor->dims()[0];
+    // NOTE(large-tensor): XPU FillSeqLod API not support int64
+    PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
+
     auto pad_seq_len = mask_tensor->dims()[1];
     max_seq_len->Resize({1});
     dev_ctx.template HostAlloc<int>(max_seq_len)[0] = pad_seq_len;

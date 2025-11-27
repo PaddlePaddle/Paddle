@@ -56,7 +56,7 @@ void FcXPUKernelImpl(const Context& dev_ctx,
   int k = in_mat_dims[1];
   int64_t n = w.dims()[0];
 
-  // TODO(large-tensor): XPU fc_fusion API not support int64
+  // NOTE(large-tensor): XPU fc_fusion API not support int64
   PADDLE_ENFORCE_LE_INT_MAX(n, "n");
 
   auto* x_data = reinterpret_cast<const XPUTypeX*>(x.data<T_X>());

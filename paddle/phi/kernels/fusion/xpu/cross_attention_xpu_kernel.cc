@@ -76,7 +76,7 @@ void CrossAttentionXPUKernelImpl(
   int64_t q_mul_m = batch * max_q_len;
   int64_t kv_mul_m = batch * max_kv_len;
 
-  // TODO(large-tensor): XPU fc_fusion API not support int64
+  // NOTE(large-tensor): XPU fc_fusion API not support int64
   PADDLE_ENFORCE_LE_INT_MAX(q_mul_m, "q_mul_m");
   PADDLE_ENFORCE_LE_INT_MAX(kv_mul_m, "kv_mul_m");
 

@@ -290,7 +290,8 @@ void MultiEncoderXPUKernel(
     int64_t max_seq_len_value = x.dims()[1];
 
     // TODO(large-tensor): XPU QKVAttnParam not support int64
-    PADDLE_ENFORCE_LE_INT_MAX(max_seq_len_value, "max_seq_len_value");
+    PADDLE_ENFORCE_LE_INT_MAX(max_seq_len_value * batch,
+                              "max_seq_len_value*batch");
 
     std::vector<int> lod;
     for (int64_t i = 0; i < batch + 1; i++) {
