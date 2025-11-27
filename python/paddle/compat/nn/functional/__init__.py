@@ -25,6 +25,8 @@ from paddle.framework import (
 from paddle.tensor import softmax
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
+from .sdpa import scaled_dot_product_attention
+
 if TYPE_CHECKING:
     from typing_extensions import TypeAlias
 
@@ -39,7 +41,7 @@ if TYPE_CHECKING:
     ]
 
 
-__all__ = ['pad', 'softmax', 'linear', 'unfold']
+__all__ = ['pad', 'softmax', 'linear', 'scaled_dot_product_attention', 'unfold']
 
 
 def _check_valid_pad_len(pad_len, x_dim, is_constant):
