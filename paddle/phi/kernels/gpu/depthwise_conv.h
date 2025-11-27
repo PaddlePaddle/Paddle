@@ -125,7 +125,6 @@ namespace phi::math {
  * \brief Compute the depthwise convolution which include
  * forward process and backpropagation process
  */
-using DataLayout = phi::DataLayout;
 template <typename DeviceContext,
           typename T,
           bool fuse_relu_before_conv = false>

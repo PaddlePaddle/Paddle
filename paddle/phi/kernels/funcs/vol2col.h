@@ -22,8 +22,6 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-using DataLayout = phi::DataLayout;
-
 /*
  * \brief Converts the feature data of four dimensions(CDHW) into a colData of
  *        seven dimensions in the Vol2ColFunctor calculation,
