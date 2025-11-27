@@ -17,17 +17,9 @@ limitations under the License. */
 
 #include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-
-#ifdef __NVCC__
-#include <cub/cub.cuh>
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpudnn/conv_gpudnn.h"
 #include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
@@ -138,7 +130,7 @@ class DepthwiseConvFunctor {
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
                   phi::DenseTensor* output,
-                  const DataLayout data_layout = DataLayout::kNCHW);
+                  const DataLayout data_layout = DataLayout::NCHW);
 };
 
 template <typename DeviceContext,
@@ -154,7 +146,7 @@ class DepthwiseConvInputGradFunctor {
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
                   phi::DenseTensor* input_grad,
-                  const DataLayout data_layout = DataLayout::kNCHW);
+                  const DataLayout data_layout = DataLayout::NCHW);
 };
 
 template <typename DeviceContext,
@@ -169,7 +161,7 @@ class DepthwiseConvFilterGradFunctor {
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
                   phi::DenseTensor* filter_grad,
-                  const DataLayout data_layout = DataLayout::kNCHW);
+                  const DataLayout data_layout = DataLayout::NCHW);
 };
 
 #define FINAL_MASK 0xffffffff
@@ -443,7 +435,7 @@ __global__ void KernelDepthwiseConvSp(ARG_DEFINE_KernelDepthwiseConv) {
     w_stride = c_stride;
   }
   if (c_filter == -1) {
-    if (data_layout != DataLayout::kNHWC) {
+    if (data_layout != DataLayout::NHWC) {
       KernelDepthwiseConvNCHW<T, c_filter, fuse_relu_before_conv>(
           input_data,
           filter_data,
@@ -487,7 +479,7 @@ __global__ void KernelDepthwiseConvSp(ARG_DEFINE_KernelDepthwiseConv) {
           output_data);
     }
   } else {
-    if (data_layout != DataLayout::kNHWC) {
+    if (data_layout != DataLayout::NHWC) {
       KernelDepthwiseConvCFilterNCHW<T, c_filter, fuse_relu_before_conv>(
           input_data,
           filter_data,
@@ -817,7 +809,7 @@ __global__ void KernelDepthwiseConvInputGradSp(
   }
 
   if (c_filter_multiplier == 0 || c_filter == -1) {
-    if (data_layout != DataLayout::kNHWC) {
+    if (data_layout != DataLayout::NHWC) {
       KernelDepthwiseConvInputGradNCHW<T, c_filter, fuse_relu_before_conv>(
           input_data,
           output_grad_data,
@@ -863,7 +855,7 @@ __global__ void KernelDepthwiseConvInputGradSp(
           input_grad_data);
     }
   } else {
-    if (data_layout != DataLayout::kNHWC) {
+    if (data_layout != DataLayout::NHWC) {
       KernelDepthwiseConvInputGradCFilterNCHW<T,
                                               c_filter,
                                               c_filter_multiplier,
@@ -1336,7 +1328,7 @@ __global__ void KernelDepthwiseConvFilterGradSp(const T* output_grad_data,
     w_stride = c_stride;
   }
   if (c_filter_multiplier == 0 || c_filter == -1) {
-    if (data_layout != DataLayout::kNHWC) {
+    if (data_layout != DataLayout::NHWC) {
       KernelDepthwiseConvFilterGradNCHW<T, fuse_relu_before_conv>(
           output_grad_data,
           input_data,
@@ -1380,7 +1372,7 @@ __global__ void KernelDepthwiseConvFilterGradSp(const T* output_grad_data,
           filter_grad_data);
     }
   } else {
-    if (data_layout != DataLayout::kNHWC) {
+    if (data_layout != DataLayout::NHWC) {
       KernelDepthwiseConvFilterGradNCHW<T, fuse_relu_before_conv>(
           output_grad_data,
           input_data,
@@ -1468,23 +1460,23 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
                   phi::DenseTensor* output,
-                  const DataLayout data_layout = DataLayout::kNCHW) {
+                  const DataLayout data_layout = DataLayout::NCHW) {
     const int batch_size = input.dims()[0];
     const int input_channels =
-        (data_layout != DataLayout::kNHWC ? input.dims()[1] : input.dims()[3]);
+        (data_layout != DataLayout::NHWC ? input.dims()[1] : input.dims()[3]);
     const int input_height =
-        (data_layout != DataLayout::kNHWC ? input.dims()[2] : input.dims()[1]);
+        (data_layout != DataLayout::NHWC ? input.dims()[2] : input.dims()[1]);
     const int input_width =
-        (data_layout != DataLayout::kNHWC ? input.dims()[3] : input.dims()[2]);
+        (data_layout != DataLayout::NHWC ? input.dims()[3] : input.dims()[2]);
     const int output_channels =
-        (data_layout != DataLayout::kNHWC ? output->dims()[1]
-                                          : output->dims()[3]);
+        (data_layout != DataLayout::NHWC ? output->dims()[1]
+                                         : output->dims()[3]);
     const int output_height =
-        (data_layout != DataLayout::kNHWC ? output->dims()[2]
-                                          : output->dims()[1]);
+        (data_layout != DataLayout::NHWC ? output->dims()[2]
+                                         : output->dims()[1]);
     const int output_width =
-        (data_layout != DataLayout::kNHWC ? output->dims()[3]
-                                          : output->dims()[2]);
+        (data_layout != DataLayout::NHWC ? output->dims()[3]
+                                         : output->dims()[2]);
     const int ksize_height = filter.dims()[2];
     const int ksize_width = filter.dims()[3];
     const int stride_height = strides[0];
@@ -1499,7 +1491,7 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
     T* output_data = dev_ctx.template Alloc<T>(output);
 
     phi::DenseTensor filter_hwc;
-    if (data_layout == DataLayout::kNHWC) {
+    if (data_layout == DataLayout::NHWC) {
       phi::DDim filter_hwc_dims({filter.dims()[2],
                                  filter.dims()[3],
                                  filter.dims()[0],
@@ -1517,7 +1509,7 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
     dim3 threads;
     dim3 grid;
 
-    if (data_layout != DataLayout::kNHWC) {
+    if (data_layout != DataLayout::NHWC) {
       if (output_width > 1024 && output_width <= 2048)
         thread = (output_width - 1) / 2 + 1;
       else if (output_width > 512 && output_width <= 1024)
@@ -1550,12 +1542,12 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
       grid.x = grid_size;                                               \
       threads.y = threads.z = grid.y = grid.z = 1;                      \
     }                                                                   \
-    if (data_layout != DataLayout::kNHWC) {                             \
+    if (data_layout != DataLayout::NHWC) {                              \
       KernelDepthwiseConvSp<T,                                          \
                             c_filter_multiplier,                        \
                             c_stride,                                   \
                             c_filter,                                   \
-                            DataLayout::kNCHW,                          \
+                            DataLayout::NCHW,                           \
                             fuse_relu_before_conv>                      \
           <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,          \
                                                    filter_data,         \
@@ -1581,7 +1573,7 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
                             c_filter_multiplier,                        \
                             c_stride,                                   \
                             c_filter,                                   \
-                            DataLayout::kNHWC,                          \
+                            DataLayout::NHWC,                           \
                             fuse_relu_before_conv>                      \
           <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,          \
                                                    filter_data,         \
@@ -1635,23 +1627,23 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
                   phi::DenseTensor* input_grad,
-                  const DataLayout data_layout = DataLayout::kNCHW) {
+                  const DataLayout data_layout = DataLayout::NCHW) {
     const int batch_size = input.dims()[0];
     const int input_channels =
-        (data_layout != DataLayout::kNHWC ? input.dims()[1] : input.dims()[3]);
+        (data_layout != DataLayout::NHWC ? input.dims()[1] : input.dims()[3]);
     const int input_height =
-        (data_layout != DataLayout::kNHWC ? input.dims()[2] : input.dims()[1]);
+        (data_layout != DataLayout::NHWC ? input.dims()[2] : input.dims()[1]);
     const int input_width =
-        (data_layout != DataLayout::kNHWC ? input.dims()[3] : input.dims()[2]);
+        (data_layout != DataLayout::NHWC ? input.dims()[3] : input.dims()[2]);
     const int output_channels =
-        (data_layout != DataLayout::kNHWC ? output_grad.dims()[1]
-                                          : output_grad.dims()[3]);
+        (data_layout != DataLayout::NHWC ? output_grad.dims()[1]
+                                         : output_grad.dims()[3]);
     const int output_height =
-        (data_layout != DataLayout::kNHWC ? output_grad.dims()[2]
-                                          : output_grad.dims()[1]);
+        (data_layout != DataLayout::NHWC ? output_grad.dims()[2]
+                                         : output_grad.dims()[1]);
     const int output_width =
-        (data_layout != DataLayout::kNHWC ? output_grad.dims()[3]
-                                          : output_grad.dims()[2]);
+        (data_layout != DataLayout::NHWC ? output_grad.dims()[3]
+                                         : output_grad.dims()[2]);
     const int ksize_height = filter.dims()[2];
     const int ksize_width = filter.dims()[3];
     const int stride_height = strides[0];
@@ -1667,7 +1659,7 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
     T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
 
     phi::DenseTensor filter_hwc;
-    if (data_layout == DataLayout::kNHWC) {
+    if (data_layout == DataLayout::NHWC) {
       phi::DDim filter_hwc_dims({filter.dims()[2],
                                  filter.dims()[3],
                                  filter.dims()[0],
@@ -1685,7 +1677,7 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
     dim3 threads;
     dim3 grid;
 
-    if (data_layout != DataLayout::kNHWC) {
+    if (data_layout != DataLayout::NHWC) {
       if (input_width > 1024 && input_width <= 2048) {
         thread = (input_width - 1) / 2 + 1;
       } else if (input_width > 512 && input_width <= 1024) {
@@ -1714,7 +1706,7 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
           stride_height == stride_width && stride_height == c_stride && \
           (ksize_height == ksize_width && ksize_height == c_filter ||   \
            c_filter == -1)) {                                           \
-    if (data_layout != DataLayout::kNHWC) {                             \
+    if (data_layout != DataLayout::NHWC) {                              \
       if (c_filter == -1) {                                             \
         threads.x = block_size;                                         \
         grid.x = grid_size;                                             \
@@ -1724,7 +1716,7 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
                                      c_filter_multiplier,               \
                                      c_stride,                          \
                                      c_filter,                          \
-                                     DataLayout::kNCHW,                 \
+                                     DataLayout::NCHW,                  \
                                      fuse_relu_before_conv>             \
           <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,          \
                                                    output_grad_data,    \
@@ -1751,7 +1743,7 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
                                      c_filter_multiplier,               \
                                      c_stride,                          \
                                      c_filter,                          \
-                                     DataLayout::kNHWC,                 \
+                                     DataLayout::NHWC,                  \
                                      fuse_relu_before_conv>             \
           <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,          \
                                                    output_grad_data,    \
@@ -1807,23 +1799,23 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
                   phi::DenseTensor* filter_grad,
-                  const DataLayout data_layout = DataLayout::kNCHW) {
+                  const DataLayout data_layout = DataLayout::NCHW) {
     const int batch_size = input.dims()[0];
     const int input_channels =
-        (data_layout != DataLayout::kNHWC ? input.dims()[1] : input.dims()[3]);
+        (data_layout != DataLayout::NHWC ? input.dims()[1] : input.dims()[3]);
     const int input_height =
-        (data_layout != DataLayout::kNHWC ? input.dims()[2] : input.dims()[1]);
+        (data_layout != DataLayout::NHWC ? input.dims()[2] : input.dims()[1]);
     const int input_width =
-        (data_layout != DataLayout::kNHWC ? input.dims()[3] : input.dims()[2]);
+        (data_layout != DataLayout::NHWC ? input.dims()[3] : input.dims()[2]);
     const int output_channels =
-        (data_layout != DataLayout::kNHWC ? output_grad.dims()[1]
-                                          : output_grad.dims()[3]);
+        (data_layout != DataLayout::NHWC ? output_grad.dims()[1]
+                                         : output_grad.dims()[3]);
     const int output_height =
-        (data_layout != DataLayout::kNHWC ? output_grad.dims()[2]
-                                          : output_grad.dims()[1]);
+        (data_layout != DataLayout::NHWC ? output_grad.dims()[2]
+                                         : output_grad.dims()[1]);
     const int output_width =
-        (data_layout != DataLayout::kNHWC ? output_grad.dims()[3]
-                                          : output_grad.dims()[2]);
+        (data_layout != DataLayout::NHWC ? output_grad.dims()[3]
+                                         : output_grad.dims()[2]);
     const int ksize_height = filter_grad->dims()[2];
     const int ksize_width = filter_grad->dims()[3];
     const int stride_height = strides[0];
@@ -1841,7 +1833,7 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
     int blocks;
     dim3 threads;
     dim3 grid;
-    if (data_layout != DataLayout::kNHWC) {
+    if (data_layout != DataLayout::NHWC) {
       if (output_width > 1024 && output_width <= 2048) {
         block_size = (output_width - 1) / 2 + 1;
       } else if (output_width > 512 && output_width <= 1024) {
@@ -1879,12 +1871,12 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
           stride_height == stride_width && stride_height == c_stride &&        \
           (ksize_height == ksize_width && ksize_height == c_filter ||          \
            c_filter == -1)) {                                                  \
-    if (data_layout != DataLayout::kNHWC) {                                    \
+    if (data_layout != DataLayout::NHWC) {                                     \
       KernelDepthwiseConvFilterGradSp<T,                                       \
                                       c_filter_multiplier,                     \
                                       c_stride,                                \
                                       c_filter,                                \
-                                      DataLayout::kNCHW,                       \
+                                      DataLayout::NCHW,                        \
                                       fuse_relu_before_conv>                   \
           <<<grid, threads, 0, dev_ctx.stream()>>>(output_grad_data,           \
                                                    input_data,                 \
@@ -1933,7 +1925,7 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                                       c_filter_multiplier,                     \
                                       c_stride,                                \
                                       c_filter,                                \
-                                      DataLayout::kNHWC,                       \
+                                      DataLayout::NHWC,                        \
                                       fuse_relu_before_conv>                   \
           <<<grid, threads, 0, dev_ctx.stream()>>>(output_grad_data,           \
                                                    input_data,                 \

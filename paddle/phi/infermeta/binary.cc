@@ -831,8 +831,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
             "should be the same."));
 
   const int64_t C =
-      (data_layout != DataLayout::kNHWC ? x_dims[1]
-                                        : x_dims[x_dims.size() - 1]);
+      (data_layout != DataLayout::NHWC ? x_dims[1] : x_dims[x_dims.size() - 1]);
   PADDLE_ENFORCE_EQ(
       C,
       filter_dims[0],
@@ -849,7 +848,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
           data_format));
 
   DDim x_data_dims;
-  if (data_layout != DataLayout::kNHWC) {
+  if (data_layout != DataLayout::NHWC) {
     x_data_dims = slice_ddim(x_dims, 2, x_dims.size());
   } else {
     x_data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
@@ -860,10 +859,10 @@ void ConvTransposeInferMeta(const MetaTensor& x,
       &paddings_, &dilations_, padding_algorithm, x_data_dims, strides, ksize);
 
   std::vector<int64_t> output_shape({x_dims[0]});
-  if (data_layout != DataLayout::kNHWC) {
+  if (data_layout != DataLayout::NHWC) {
     output_shape.push_back(filter_dims[1] * groups);
   }
-  const int offset = (data_layout != DataLayout::kNHWC ? 2 : 1);
+  const int offset = (data_layout != DataLayout::NHWC ? 2 : 1);
   for (int i = 0; i < static_cast<int>(strides.size()); ++i) {
     auto filter_extent = dilations_[i] * (filter_dims[i + 2] - 1) + 1;
     auto infer_shape = (config.is_runtime || x_dims[i + offset] > 0)
@@ -932,7 +931,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
       output_shape.push_back(infer_shape);
     }
   }
-  if (data_layout == DataLayout::kNHWC) {
+  if (data_layout == DataLayout::NHWC) {
     output_shape.push_back(filter_dims[1] * groups);
   }
 
@@ -1700,7 +1699,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     bool should_rotate =
         config.is_run_onednn_kernel &&
         (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-         phi::DataLayout::kNHWC) &&
+         phi::DataLayout::NHWC) &&
         (x_dims.size() >= 3 || y_dims.size() >= 3);
     if (should_rotate) {
       // Pick bigger shape and rotate this one
@@ -1743,10 +1742,10 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
   }
   out->set_dtype(promote_result);
 
-  // layout need change when meet input layout contain kNHWC
+  // layout need change when meet input layout contain NHWC
   auto layout = [&]() {
-    if (x.layout() == DataLayout::kNHWC || y.layout() == DataLayout::kNHWC)
-      return DataLayout::kNHWC;
+    if (x.layout() == DataLayout::NHWC || y.layout() == DataLayout::NHWC)
+      return DataLayout::NHWC;
     return x.layout();
   }();
 

@@ -46,15 +46,15 @@ __global__ void im2col(const T* data_im,
   const int index =
       (blockIdx.x * gridDim.y + blockIdx.y) * blockDim.x + threadIdx.x;
   if (index < num_outs) {
-    int w_out = (data_layout != DataLayout::kNHWC
+    int w_out = (data_layout != DataLayout::NHWC
                      ? index % col_width
                      : (index / input_channels) % col_width);
-    int h_out = (data_layout != DataLayout::kNHWC
+    int h_out = (data_layout != DataLayout::NHWC
                      ? (index / col_width) % col_height
                      : (index / input_channels / col_width) % col_height);
     int channel_in =
-        (data_layout != DataLayout::kNHWC ? index / col_width / col_height
-                                          : index % input_channels);
+        (data_layout != DataLayout::NHWC ? index / col_width / col_height
+                                         : index % input_channels);
     int channel_out = channel_in * filter_height * filter_width;
     int h_in = h_out * stride_height - padding_height;
     int w_in = w_out * stride_width - padding_width;
@@ -65,7 +65,7 @@ __global__ void im2col(const T* data_im,
         int rIdx = h_in + i * dilation_h;
         int cIdx = w_in + j * dilation_w;
         int im_idx;
-        if (data_layout != DataLayout::kNHWC) {
+        if (data_layout != DataLayout::NHWC) {
           im_idx = (channel_in * im_height + rIdx) * im_width + cIdx;
         } else {
           im_idx = (rIdx * im_width + cIdx) * input_channels + channel_in;
@@ -116,11 +116,11 @@ class Im2ColFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
                           im.numel()));
 
     int im_channels =
-        (data_layout != DataLayout::kNHWC ? im.dims()[0] : im.dims()[2]);
+        (data_layout != DataLayout::NHWC ? im.dims()[0] : im.dims()[2]);
     int im_height =
-        (data_layout != DataLayout::kNHWC ? im.dims()[1] : im.dims()[0]);
+        (data_layout != DataLayout::NHWC ? im.dims()[1] : im.dims()[0]);
     int im_width =
-        (data_layout != DataLayout::kNHWC ? im.dims()[2] : im.dims()[1]);
+        (data_layout != DataLayout::NHWC ? im.dims()[2] : im.dims()[1]);
     int64_t filter_height = col->dims()[1];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
@@ -193,15 +193,15 @@ __global__ void col2im(int n,
 
   if (index < n) {
     T val = static_cast<T>(0);
-    int w = (data_layout != DataLayout::kNHWC
+    int w = (data_layout != DataLayout::NHWC
                  ? index % im_width + padding_width
                  : (index / input_channels) % im_width + padding_width);
-    int h = (data_layout != DataLayout::kNHWC
+    int h = (data_layout != DataLayout::NHWC
                  ? (index / im_width) % im_height + padding_height
                  : (index / input_channels / im_width) % im_height +
                        padding_height);
-    int c = (data_layout != DataLayout::kNHWC ? index / im_width / im_height
-                                              : index % input_channels);
+    int c = (data_layout != DataLayout::NHWC ? index / im_width / im_height
+                                             : index % input_channels);
 
     // compute the start and end of the output
     int w_col_start =
@@ -262,11 +262,11 @@ class Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
                           col.dims()));
 
     int im_channels =
-        (data_layout != DataLayout::kNHWC ? im->dims()[0] : im->dims()[2]);
+        (data_layout != DataLayout::NHWC ? im->dims()[0] : im->dims()[2]);
     int im_height =
-        (data_layout != DataLayout::kNHWC ? im->dims()[1] : im->dims()[0]);
+        (data_layout != DataLayout::NHWC ? im->dims()[1] : im->dims()[0]);
     int im_width =
-        (data_layout != DataLayout::kNHWC ? im->dims()[2] : im->dims()[1]);
+        (data_layout != DataLayout::NHWC ? im->dims()[2] : im->dims()[1]);
     int64_t filter_height = col.dims()[1];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.

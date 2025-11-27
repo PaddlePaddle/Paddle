@@ -45,7 +45,6 @@ enum class DataLayout {  // Not use
   kNCHW,
   kNCDHW,
   kNDHWC,  // add, liyamei
-  kNCHW_VECT_C,
 };
 
 enum class PoolingMode {
@@ -295,7 +294,6 @@ class ScopedTensorDescriptor {
   DISABLE_COPY_AND_ASSIGN(ScopedTensorDescriptor);
 };
 
-#if CUDNN_VERSION >= 7201
 class ScopedRNNTensorDescriptor {
  public:
   ScopedRNNTensorDescriptor() {
@@ -358,7 +356,6 @@ class ScopedRNNTensorDescriptor {
   cudnnRNNDataDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedRNNTensorDescriptor);
 };
-#endif
 
 class ScopedDropoutDescriptor {
  public:
@@ -623,11 +620,9 @@ class ScopedActivationDescriptor {
     ActivationMode activation_mode = StringToActivationMode(act);
     cudnnActivationMode_t mode;
     switch (activation_mode) {
-#if CUDNN_VERSION >= 7100
       case ActivationMode::kNone:
         mode = CUDNN_ACTIVATION_IDENTITY;
         break;
-#endif
       case ActivationMode::kRelu6:
         relu_ceiling = 6.0;
         mode = CUDNN_ACTIVATION_CLIPPED_RELU;
@@ -660,7 +655,6 @@ class ScopedActivationDescriptor {
   DISABLE_COPY_AND_ASSIGN(ScopedActivationDescriptor);
 };
 
-#if CUDNN_VERSION >= 7001
 class ScopedCTCLossDescriptor {
  public:
   ScopedCTCLossDescriptor() {
@@ -683,7 +677,6 @@ class ScopedCTCLossDescriptor {
   cudnnCTCLossDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedCTCLossDescriptor);
 };
-#endif
 
 }  // namespace gpu
 }  // namespace backends
