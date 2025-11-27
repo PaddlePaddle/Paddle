@@ -116,11 +116,11 @@ class Im2ColFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
                           "elements, but got %lld",
                           im.numel()));
 
-    int im_channels =
+    int64_t im_channels =
         (data_layout != DataLayout::NHWC ? im.dims()[0] : im.dims()[2]);
-    int im_height =
+    int64_t im_height =
         (data_layout != DataLayout::NHWC ? im.dims()[1] : im.dims()[0]);
-    int im_width =
+    int64_t im_width =
         (data_layout != DataLayout::NHWC ? im.dims()[2] : im.dims()[1]);
     int64_t filter_height = col->dims()[1];
     int64_t filter_width = col->dims()[2];
@@ -165,8 +165,8 @@ __global__ void col2im(int64_t n,
                        int64_t im_width,
                        int dilation_h,
                        int dilation_w,
-                       int64_t filter_height,
-                       int64_t filter_width,
+                       int filter_height,
+                       int filter_width,
                        int stride_height,
                        int stride_width,
                        int padding_height,
@@ -176,14 +176,15 @@ __global__ void col2im(int64_t n,
                        T* data_im,
                        const DataLayout data_layout) {
   const int64_t index =
-      static_cast<int64_t>(blockIdx.x * gridDim.y + blockIdx.y) *
-          static_cast<int64_t>(blockDim.x) +
-      static_cast<int64_t>(threadIdx.x);
+      (static_cast<int64_t>(blockIdx.x) * gridDim.y + blockIdx.y) * blockDim.x +
+      threadIdx.x;
 
-  const int64_t d_filter_height = dilation_h * (filter_height - 1) + 1;
-  const int64_t d_filter_width = dilation_w * (filter_width - 1) + 1;
+  // NOTE(zrr1999): dilation_x and filter_x are usually small
+  const int d_filter_height = dilation_h * (filter_height - 1) + 1;
+  const int d_filter_width = dilation_w * (filter_width - 1) + 1;
 
-  int64_t input_channels = n / im_height / im_width;
+  // NOTE(zrr1999): input_channels must be less than the range of int32
+  int input_channels = n / im_height / im_width;
 
   if (index < n) {
     T val = static_cast<T>(0);
@@ -194,8 +195,8 @@ __global__ void col2im(int64_t n,
                      ? (index / im_width) % im_height + padding_height
                      : (index / input_channels / im_width) % im_height +
                            padding_height);
-    int64_t c = (data_layout != DataLayout::NHWC ? index / im_width / im_height
-                                                 : index % input_channels);
+    int c = (data_layout != DataLayout::NHWC ? index / im_width / im_height
+                                             : index % input_channels);
 
     // compute the start and end of the output
     int64_t w_col_start =
@@ -206,8 +207,8 @@ __global__ void col2im(int64_t n,
     int64_t h_col_end = min(h / stride_height + 1, col_height);
 
     for (int64_t h_col = h_col_start; h_col < h_col_end; ++h_col) {
+      int64_t h_off = (h - h_col * stride_height);
       for (int64_t w_col = w_col_start; w_col < w_col_end; ++w_col) {
-        int64_t h_off = (h - h_col * stride_height);
         int64_t w_off = (w - w_col * stride_width);
         if (h_off % dilation_h == 0 && w_off % dilation_w == 0) {
           h_off /= dilation_h;
@@ -226,7 +227,6 @@ __global__ void col2im(int64_t n,
     data_im[index] = val;
   }
 }
-
 /*
  * im = [input_channels, input_height, input_width]
  * col =
@@ -255,16 +255,21 @@ class Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
                           "the dims of tensor 'col' is [%s].",
                           col.dims()));
 
-    int im_channels =
+    int64_t im_channels =
         (data_layout != DataLayout::NHWC ? im->dims()[0] : im->dims()[2]);
-    int im_height =
+    int64_t im_height =
         (data_layout != DataLayout::NHWC ? im->dims()[1] : im->dims()[0]);
-    int im_width =
+    int64_t im_width =
         (data_layout != DataLayout::NHWC ? im->dims()[2] : im->dims()[1]);
     int64_t filter_height = col.dims()[1];
     int64_t filter_width = col.dims()[2];
     int64_t col_height = col.dims()[3];
     int64_t col_width = col.dims()[4];
+
+    // NOTE(zrr1999): im_channels, filter_height, filter_width are usually small
+    PADDLE_ENFORCE_LE_INT_MAX(im_channels, "im_channels");
+    PADDLE_ENFORCE_LE_INT_MAX(filter_height, "filter_height");
+    PADDLE_ENFORCE_LE_INT_MAX(filter_width, "filter_width");
 
     PADDLE_ENFORCE_EQ(
         (im_height + padding[0] + padding[2] -
@@ -283,15 +288,17 @@ class Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
         common::errors::InvalidArgument("col_width and padding(padding_left, "
                                         "padding_right) are inconsistent."));
 
-    size_t num_kernels = im_channels * im_height * im_width;
+    int64_t num_kernels = im_channels * im_height * im_width;
 
     int num_thread = 1024;
 #ifdef WITH_NV_JETSON
     phi::backends::gpu::ChangeThreadNum(dev_ctx, &num_thread);
 #endif
-    size_t blocks = (num_kernels + num_thread - 1) / num_thread;
-    size_t block_x = 512;
-    size_t block_y = (blocks + 512 - 1) / 512;
+    int64_t blocks = (num_kernels + num_thread - 1) / num_thread;
+    PADDLE_ENFORCE_LE_INT_MAX(blocks, "blocks");
+
+    int block_x = 512;
+    int block_y = (static_cast<int>(blocks) + 512 - 1) / 512;
     dim3 threads(num_thread, 1);
     dim3 grid(block_x, block_y);
 
