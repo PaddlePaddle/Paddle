@@ -232,20 +232,21 @@ class FusionStorageHelper:
             or merged_model_params_meta is None
         ), "merged_model_params_meta must be a dict or None"
         self.merged_model_params_meta = merged_model_params_meta
-        """
-        assert (
-            isinstance(buffer_ipc_meta, tuple) and len(buffer_ipc_meta) == 7
-        ), "buffer_ipc_meta must be a tuple with length 7"
-        """
         self.buffer_ipc_meta = buffer_ipc_meta
 
         if paddle.get_flags('FLAGS_use_virtual_memory_auto_growth')[
             'FLAGS_use_virtual_memory_auto_growth'
         ]:
+            assert (
+                isinstance(buffer_ipc_meta, tuple) and len(buffer_ipc_meta) == 5
+            ), "buffer_ipc_meta must be a tuple with length 5"
             new_tensor = paddle.base.core.DenseTensor._new_shared_vmm(
                 self.buffer_ipc_meta
             )
         else:
+            assert (
+                isinstance(buffer_ipc_meta, tuple) and len(buffer_ipc_meta) == 7
+            ), "buffer_ipc_meta must be a tuple with length 7"
             new_tensor = paddle.base.core.DenseTensor._new_shared_cuda(
                 self.buffer_ipc_meta
             )
