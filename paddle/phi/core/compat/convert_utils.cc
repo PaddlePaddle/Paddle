@@ -31,7 +31,7 @@ namespace phi {
 Backend TransToPhiBackend(const phi::Place& place) {
   auto allocation_type = place.GetType();
   switch (allocation_type) {
-    case phi::AllocationType::GPU:
+    case AllocationType::GPU:
       return Backend::GPU;
     case AllocationType::CPU:
       return Backend::CPU;
@@ -71,26 +71,26 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
   // always needed.
   // So, add set_device_id parameter here.
   switch (backend) {
-    case phi::Backend::CPU:
+    case Backend::CPU:
       return phi::CPUPlace();
-    case phi::Backend::UNDEFINED:
+    case Backend::UNDEFINED:
       return phi::Place();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case phi::Backend::GPU:
-    case phi::Backend::GPUDNN:
+    case Backend::GPU:
+    case Backend::GPUDNN:
       return phi::GPUPlace(
           set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
 #endif
 #ifdef PADDLE_WITH_DNNL
-    case phi::Backend::ONEDNN:  // NOLINT
+    case Backend::ONEDNN:  // NOLINT
       return phi::CPUPlace();
 #endif
 #if defined(PADDLE_WITH_XPU)
-    case phi::Backend::XPU:
+    case Backend::XPU:
       return phi::XPUPlace(
           set_device_id ? phi::backends::xpu::GetXPUCurrentDeviceId() : 0);
 #endif
-    case phi::Backend::KPS:
+    case Backend::KPS:
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       return phi::GPUPlace(
           set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
@@ -102,7 +102,7 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       size_t device_type_id_ = static_cast<size_t>(backend) -
                                static_cast<size_t>(Backend::NUM_BACKENDS);
-      if (backend == phi::Backend::CUSTOM) {
+      if (backend == Backend::CUSTOM) {
         device_type_id_ = 1;
       }
       std::string device_type =

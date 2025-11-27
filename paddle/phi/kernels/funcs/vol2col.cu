@@ -76,7 +76,7 @@ __global__ void vol2col(int64_t num_kernels,
           int h = h_in + i * dilation_h;
           int w = w_in + j * dilation_w;
           int64_t vol_idx;
-          if (data_layout != DataLayout::kNHWC) {
+          if (data_layout != DataLayout::NHWC) {
             vol_idx =
                 ((static_cast<int64_t>(channel_in) * depth + d) * height + h) *
                     width +
@@ -130,13 +130,13 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
                         col->dims().size()));
 
   int input_channels =
-      (data_layout != DataLayout::kNHWC ? vol.dims()[0] : vol.dims()[3]);
+      (data_layout != DataLayout::NHWC ? vol.dims()[0] : vol.dims()[3]);
   int input_depth =
-      (data_layout != DataLayout::kNHWC ? vol.dims()[1] : vol.dims()[0]);
+      (data_layout != DataLayout::NHWC ? vol.dims()[1] : vol.dims()[0]);
   int input_height =
-      (data_layout != DataLayout::kNHWC ? vol.dims()[2] : vol.dims()[1]);
+      (data_layout != DataLayout::NHWC ? vol.dims()[2] : vol.dims()[1]);
   int input_width =
-      (data_layout != DataLayout::kNHWC ? vol.dims()[3] : vol.dims()[2]);
+      (data_layout != DataLayout::NHWC ? vol.dims()[3] : vol.dims()[2]);
   int64_t filter_depth = col->dims()[1];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
@@ -272,17 +272,17 @@ __global__ void col2vol(int64_t num_kernels,
        index < num_kernels;
        index += blockDim.x * gridDim.x) {
     T src_val = 0;
-    int w = (data_layout != DataLayout::kNHWC
+    int w = (data_layout != DataLayout::NHWC
                  ? index % width + padding_width
                  : (index / input_channels) % width + padding_width);
-    int h = (data_layout != DataLayout::kNHWC
+    int h = (data_layout != DataLayout::NHWC
                  ? (index / width) % height + padding_height
                  : (index / input_channels / width) % height + padding_height);
-    int d = (data_layout != DataLayout::kNHWC
+    int d = (data_layout != DataLayout::NHWC
                  ? (index / width / height) % depth + padding_depth
                  : index / input_channels / width / height + padding_depth);
-    int c = (data_layout != DataLayout::kNHWC ? index / width / height / depth
-                                              : index % input_channels);
+    int c = (data_layout != DataLayout::NHWC ? index / width / height / depth
+                                             : index % input_channels);
 
     // compute the start and end of the output
     int w_col_start =
@@ -358,13 +358,13 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
                         col.dims().size()));
 
   int input_channels =
-      (data_layout != DataLayout::kNHWC ? vol->dims()[0] : vol->dims()[3]);
+      (data_layout != DataLayout::NHWC ? vol->dims()[0] : vol->dims()[3]);
   int input_depth =
-      (data_layout != DataLayout::kNHWC ? vol->dims()[1] : vol->dims()[0]);
+      (data_layout != DataLayout::NHWC ? vol->dims()[1] : vol->dims()[0]);
   int input_height =
-      (data_layout != DataLayout::kNHWC ? vol->dims()[2] : vol->dims()[1]);
+      (data_layout != DataLayout::NHWC ? vol->dims()[2] : vol->dims()[1]);
   int input_width =
-      (data_layout != DataLayout::kNHWC ? vol->dims()[3] : vol->dims()[2]);
+      (data_layout != DataLayout::NHWC ? vol->dims()[3] : vol->dims()[2]);
   int64_t filter_depth = col.dims()[1];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.

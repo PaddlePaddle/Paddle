@@ -20,8 +20,11 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/enforce.h"
 
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML)
 #include "paddle/phi/backends/dynload/mklml.h"
+#endif
+#if defined(PADDLE_WITH_HML)
+#include "paddle/phi/backends/dynload/hml.h"
 #endif
 
 namespace phi {
@@ -51,7 +54,7 @@ inline void vec_scal(const int n, const T a, T* x) {
   }
 }
 
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
 template <>
 inline void vec_exp<float>(const int n, const float* x, float* y) {
   constexpr int small_enough = 128;

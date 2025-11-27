@@ -40,7 +40,7 @@ __global__ static inline void KeAffineChannelCUDA(const T* x,
       static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
   for (int64_t i = gid; i < num; i += stride) {
-    const int c = layout == phi::DataLayout::kNCHW ? i / HxW % C : i % C;
+    const int c = layout == phi::DataLayout::NCHW ? i / HxW % C : i % C;
     if (HasBias) {
       y[i] = scale[c] * x[i] + bias[c];
     } else {
@@ -67,7 +67,7 @@ __global__ void AffineChannelScaleBiasGradientCUDAKernel(const T* dy,
     T ds_sum = 0;
     T db_sum = 0;
     for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int index = layout == phi::DataLayout::kNCHW
+      const int index = layout == phi::DataLayout::NCHW
                             ? (j / HxW * C + i) * HxW + j % HxW
                             : j * outer_size + i;
       ds_sum += dy[index] * x[index];
@@ -113,7 +113,7 @@ void AffineChannelGradCUDAKernel(const Context& dev_ctx,
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
 
-  int C = layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
+  int C = layout == phi::DataLayout::NCHW ? dims[1] : dims[dims.size() - 1];
   int64_t HxW = num / N / C;
 
   const T* dy_d = dy->data<T>();
@@ -132,28 +132,28 @@ void AffineChannelGradCUDAKernel(const Context& dev_ctx,
   const int max_blocks = std::max(max_threads / block, 1);
   int grid1 = (num + block - 1) / block;
   int grid2 = std::min(C, max_blocks);
-  if (layout == phi::DataLayout::kNCHW) {
+  if (layout == phi::DataLayout::NCHW) {
     if (dscale && dbias) {
       const T* x_d = x->data<T>();
-      AffineChannelScaleBiasGradientCUDAKernel<T, block, phi::DataLayout::kNCHW>
+      AffineChannelScaleBiasGradientCUDAKernel<T, block, phi::DataLayout::NCHW>
           <<<grid2, block, 0, dev_ctx.stream()>>>(
               dy_d, x_d, N, C, HxW, ds_d, db_d);
     }
     if (dx) {
-      KeAffineChannelCUDA<T, phi::DataLayout::kNCHW, false>
+      KeAffineChannelCUDA<T, phi::DataLayout::NCHW, false>
           <<<grid1, block, 0, dev_ctx.stream()>>>(
               dy_d, s_d, nullptr, C, HxW, num, dx_d);
     }
   } else {
     if (dscale && dbias) {
       const T* x_d = x->data<T>();
-      AffineChannelScaleBiasGradientCUDAKernel<T, block, phi::DataLayout::kNHWC>
+      AffineChannelScaleBiasGradientCUDAKernel<T, block, phi::DataLayout::NHWC>
           <<<grid2, block, 0, dev_ctx.stream()>>>(
               dy_d, x_d, N, C, HxW, ds_d, db_d);
     }
 
     if (dx) {
-      KeAffineChannelCUDA<T, phi::DataLayout::kNHWC, false>
+      KeAffineChannelCUDA<T, phi::DataLayout::NHWC, false>
           <<<grid1, block, 0, dev_ctx.stream()>>>(
               dy_d, s_d, nullptr, C, HxW, num, dx_d);
     }
