@@ -14,7 +14,8 @@
 
 #ifdef PADDLE_WITH_MAGMA
 #include "paddle/phi/kernels/funcs/magma/magma_function.h"
-
+#include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/dynload/magma.h"
 #include "paddle/phi/common/data_type.h"
 
@@ -24,9 +25,27 @@ void magmaEnsureInit() {
   static std::once_flag magma_once_flag;
 
   std::call_once(magma_once_flag, []() {
-    dynload::magma_init();
+    magma_int_t info = dynload::magma_init();
+    PADDLE_ENFORCE_EQ(
+        info,
+        0,
+        phi::errors::External("magma_init failed, info code = %d,"
+                              "please checkout this code in: "
+                              "https://github.com/icl-utk-edu/magma/blob/"
+                              "master/include/magma_types.h#L542",
+                              info));
 
-    std::atexit([]() { dynload::magma_finalize(); });
+    std::atexit([]() {
+      magma_int_t info = dynload::magma_finalize();
+      PADDLE_ENFORCE_EQ(
+          info,
+          0,
+          phi::errors::External("magma_finalize failed, info code = %d,"
+                                "please checkout this code in: "
+                                "https://github.com/icl-utk-edu/magma/blob/"
+                                "master/include/magma_types.h#L542",
+                                info));
+    });
   });
 }
 

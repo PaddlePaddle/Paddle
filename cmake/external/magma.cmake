@@ -29,7 +29,7 @@ if(LINUX)
   set(MAGMA_URL
       "https://paddlepaddledeps.bj.bcebos.com/${MAGMA_FILE}"
       CACHE STRING "" FORCE)
-  set(MAGMA_URL_MD5 e0c12bdfd0fd7737cb1cb3a24472f0a5)
+  set(MAGMA_URL_MD5 c67b19d3326115f3ead8337358fd2bef)
   set(MAGMA_LIB "${MAGMA_LIB_DIR}/libmagma.so")
 elseif(WIN32)
   message("magma do not support windows yet, skip ...")
