@@ -28,6 +28,8 @@
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/value.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
+COMMON_DECLARE_bool(enable_unique_name);
+COMMON_DECLARE_string(tensor_md5_checksum_output_path);
 
 namespace egr::to_static {
 
@@ -275,6 +277,11 @@ std::vector<paddle::Tensor> run_program_ad_func(
   // its TensorMeta
   egr::CheckGradNodeAccumulation(x);
   egr::CheckGradNodeAccumulation(params);
+  std::string unique_api_name = "Dy2St";
+  if (FLAGS_enable_unique_name) {
+    static int count = 0;
+    unique_api_name = egr::GenerateUniqueApiName(unique_api_name, count);
+  }
 
   bool trace_backward = egr::Controller::Instance().HasGrad();
   bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(
@@ -318,7 +325,18 @@ std::vector<paddle::Tensor> run_program_ad_func(
   if (!is_test && require_any_grad) {
     // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
     auto grad_node = std::make_shared<GradNodeRunProgram>(1, 2);
-
+    // Set for Record Subgraph
+    if (egr::EagerBackwardSubGraphNodeRecorder::Instance()
+            .NeedCaptureSubGraph()) {
+      VLOG(3) << "Capture the grad node" << grad_node->name() << "("
+              << grad_node.get() << ")"
+              << "for subgraph.";
+      egr::EagerBackwardSubGraphNodeRecorder::Instance().AddGradNode(
+          grad_node.get());
+    }
+    if (FLAGS_enable_unique_name) {
+      grad_node->SetNameFromAPI(unique_api_name);
+    }
     // Set place hash keys for backward
     grad_node->SetPlaceHashKey(place_hash_key);
 
@@ -367,6 +385,34 @@ std::vector<paddle::Tensor> run_program_ad_func(
 
     // Set History for output set current Grad Node for
     egr::EagerUtils::SetHistory(&p_autograd_outs, grad_node);
+  }
+  if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
+    egr::SetTensorName(unique_api_name, "out", &out);
+  }
+  // Save the tensors checksum to file_path
+  if (!FLAGS_tensor_md5_checksum_output_path.empty()) {
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path,
+                                     out);
+  }
+  if (VLOG_IS_ON(3) && FLAGS_enable_unique_name) {
+    const char* INPUT_PRINT_TEMPLATE =
+        "\nForward Debug Info {\nAPI_Name: %s \nInput: [%s]  \nOutput: [%s] } ";
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_X_TEMPLATE = " \n( x , %s), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
+    const char* TENSOR_PARAMS_TEMPLATE = " \n( params , %s), ";
+    std::string input_params_str = paddle::string::Sprintf(
+        TENSOR_PARAMS_TEMPLATE, egr::EagerUtils::TensorStr(params));
+
+    input_str += input_params_str;
+    const char* TENSOR_OUT_TEMPLATE = " \n( out, %s), ";
+    output_str = paddle::string::Sprintf(TENSOR_OUT_TEMPLATE,
+                                         egr::EagerUtils::TensorStr(out));
+    VLOG(3) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
   }
   return out;
 }

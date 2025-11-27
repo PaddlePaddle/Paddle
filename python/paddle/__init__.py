@@ -228,6 +228,13 @@ from .amp import (
     is_autocast_enabled,
 )
 from .amp.auto_cast import autocast
+from .audio.functional.window import (  # noqa: F401
+    bartlett_window,
+    blackman_window,
+    hamming_window,
+    hann_window,
+    kaiser_window,
+)
 from .autograd import (
     enable_grad,
     grad,
@@ -235,6 +242,7 @@ from .autograd import (
     no_grad,
     set_grad_enabled,
 )
+from .base.core import Size
 from .device import (  # noqa: F401
     Event,
     Stream,
@@ -288,6 +296,8 @@ from .nn.functional import (
     conv1d,
     conv2d,
     conv3d,
+    group_norm,
+    layer_norm,
 )
 from .nn.functional.distance import (
     pdist,
@@ -727,7 +737,6 @@ from .tensor.search import (
     where,
     where_,
 )
-from .tensor.size import Size
 from .tensor.stat import (
     mean,
     median,
@@ -1483,6 +1492,8 @@ __all__ = [
     'conv1d',
     'conv2d',
     'conv3d',
+    'group_norm',
+    'layer_norm',
     'manual_seed',
     'softmax',
     'Generator',

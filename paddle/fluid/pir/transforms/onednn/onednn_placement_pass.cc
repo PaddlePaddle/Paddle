@@ -193,8 +193,9 @@ class OneDNNPlacementPass : public pir::PatternRewritePass {
     patternCreator.CreatePatterns<paddle::dialect::Cast_Op>(ps);
     patternCreator.CreatePatterns<paddle::dialect::Conv2dTransposeOp>(ps);
     patternCreator.CreatePatterns<paddle::dialect::Conv2dTransposeBiasOp>(ps);
-    patternCreator.CreatePatterns<paddle::dialect::DivideOp>(ps);
-    patternCreator.CreatePatterns<paddle::dialect::Divide_Op>(ps);
+    // TODO(hehongyu): to enable it after fix the bug.
+    // patternCreator.CreatePatterns<paddle::dialect::DivideOp>(ps);
+    // patternCreator.CreatePatterns<paddle::dialect::Divide_Op>(ps);
     patternCreator.CreatePatterns<paddle::dialect::GaussianOp>(ps);
     patternCreator.CreatePatterns<paddle::dialect::HardswishOp>(ps);
     patternCreator.CreatePatterns<paddle::dialect::LrnOp>(ps);

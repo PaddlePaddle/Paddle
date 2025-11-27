@@ -93,7 +93,7 @@ void FusedElemwiseActivationGradKernel(
   PADDLE_ENFORCE_NE(in_out_grad,
                     nullptr,
                     common::errors::InvalidArgument(
-                        "Input(Out@Grad) should not be nullptr."));
+                        "Input(Out@GRAD) should not be nullptr."));
 
   std::vector<std::string> functor_list_new = functor_list;
   size_t sz = functor_list_new[0].size();

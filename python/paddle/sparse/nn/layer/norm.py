@@ -92,7 +92,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(123)
@@ -103,7 +103,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
             >>> batch_norm = paddle.sparse.nn.BatchNorm(channels)
             >>> batch_norm_out = batch_norm(sparse_x)
             >>> print(batch_norm_out.shape)
-            [1, 6, 6, 6, 3]
+            paddle.Size([1, 6, 6, 6, 3])
     """
 
     def __init__(

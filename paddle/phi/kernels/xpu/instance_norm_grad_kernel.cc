@@ -35,7 +35,7 @@ void InstanceNormGradKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto& x_dims = x.dims();
   int64_t N, C, H, W, D;
-  funcs::ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
+  funcs::ExtractNCWHD(x_dims, DataLayout::NCHW, &N, &C, &H, &W, &D);
   PADDLE_ENFORCE_EQ(
       x_dims.size() <= 5 && D == 1,
       true,

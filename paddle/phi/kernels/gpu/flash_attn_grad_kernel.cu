@@ -625,11 +625,10 @@ void FlashAttnGradBaseKernel(
   const float softmax_scale = 1.0f / std::sqrt(head_size);
   const float softmax_unscale = std::sqrt(head_size);
 
-  int version =
-      FLAGS_flash_attn_version == 3 && !FLAGS_cudnn_deterministic &&
-              (head_size == 64 || head_size == 128 || head_size == 256)
-          ? FLAGS_flash_attn_version
-          : 2;
+  int version = FLAGS_flash_attn_version == 3 && FLAGS_cudnn_deterministic &&
+                        head_size > 128
+                    ? 2
+                    : FLAGS_flash_attn_version;
   FlashAttnBwdParamsV2 params =
       FlashAttnBwdParamsV2(dev_ctx,
                            version,

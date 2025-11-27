@@ -21,7 +21,7 @@ import os
 import re
 import sys
 import types
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, overload
 
 from typing_extensions import TypeAlias
 
@@ -632,7 +632,15 @@ def set_device(device: PlaceLike | int) -> PlaceLike:
     return place
 
 
-def get_device(input: paddle.Tensor = None) -> str | int:
+@overload
+def get_device(input: None = None) -> str: ...
+
+
+@overload
+def get_device(input: paddle.Tensor) -> int: ...
+
+
+def get_device(input: paddle.Tensor | None = None) -> str | int:
     """
 
     This function can get the current global device of the program is running.
@@ -697,9 +705,11 @@ def get_default_device() -> paddle.device:
     Returns:
         str: The default device for PaddlePaddle.
     Example:
-        .. code-block:: python
-            import paddle
-            print(paddle.get_default_device())
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> print(paddle.get_default_device())
     """
     return paddle.device(get_device().replace("gpu", "cuda"))
 
@@ -1093,7 +1103,7 @@ class Event:
         ```python
         # New usage
         paddle.set_device("gpu:0")  # Set device first
-        e = paddle.device.Event()   # Will use gpu:0
+        e = paddle.device.Event()  # Will use gpu:0
         ```
 
         paddle.device.Event is equivalent to paddle.cuda.Event.
@@ -1876,8 +1886,9 @@ def get_stream_from_external(
         .. code-block:: python
 
             >>> import paddle
-            >>> # Suppose external_stream_ptr is from another CUDA library
-            >>> # s = paddle.device.get_stream_from_external(external_stream_ptr, "gpu:0")
+            >>> # doctest: +SKIP('original_raw_ptr not exist')
+            >>> original_raw_ptr = 77777
+            >>> external_stream = paddle.device.get_stream_from_external(original_raw_ptr,"cuda:0")
     '''
     if device is None:
         place = paddle.framework._current_expected_place_()
