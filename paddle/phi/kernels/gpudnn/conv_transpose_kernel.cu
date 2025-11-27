@@ -45,7 +45,7 @@ limitations under the License. */
 
 namespace phi {
 
-using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
+using GPUDNNDataLayout = phi::DataLayout;
 
 template <typename T, typename Context>
 void ConvTransposeCudnnKernelImplV7(const DenseTensor* transformed_x,

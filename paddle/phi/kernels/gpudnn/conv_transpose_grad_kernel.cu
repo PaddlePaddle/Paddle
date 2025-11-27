@@ -39,7 +39,7 @@ limitations under the License. */
 
 namespace phi {
 
-using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
+using GPUDNNDataLayout = phi::DataLayout;
 
 template <typename T, typename Context>
 void ConvTransposeGradRawGPUDNNKernel(const Context& dev_ctx,

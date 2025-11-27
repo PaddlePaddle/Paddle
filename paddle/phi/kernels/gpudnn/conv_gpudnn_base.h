@@ -31,7 +31,7 @@ limitations under the License. */
 
 namespace phi {
 
-using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
+using GPUDNNDataLayout = phi::DataLayout;
 
 template <typename T>
 using ScalingParamType =
