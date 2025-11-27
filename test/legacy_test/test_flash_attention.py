@@ -479,6 +479,20 @@ class TestFlashAttentionAPITest5(TestFlashAttentionAPI):
         self.use_sdp_kernel = False
 
 
+class TestFlashAttentionAPITest6(TestFlashAttentionAPI):
+    def setUp(self):
+        self.place = get_device_place()
+        self.shape = (0, 256, 8, 16)
+        self.dtype = 'float16'
+        self.dropout = 0.0
+        self.causal = True
+        self.return_softmax = False
+        self.use_sdp_kernel = False
+
+    def test_unpadded(self):
+        pass
+
+
 class TestMathAttentionAPITest(TestFlashAttentionAPI):
     def setUp(self):
         self.place = get_device_place()
@@ -564,7 +578,7 @@ class TestSDPAttentionWithMaskAPITest4(TestFlashAttentionWithMaskAPI):
         self.shape = (0, 1024, 16, 128)
         self.dtype = 'float32'
         self.dropout = 0.0
-        self.causal = False
+        self.causal = True
 
 
 @unittest.skipIf(
