@@ -106,13 +106,6 @@ if sys.version_info < (3, 12):
 
     NEED_SKIP_THIRD_PARTY_MODULES.add(distutils)
 
-try:
-    import coverage
-except ImportError:
-    ...
-else:
-    NEED_SKIP_THIRD_PARTY_MODULES.add(coverage)
-
 
 def _strip_init_py(s):
     return re.sub(r"__init__.py$", "", s)
