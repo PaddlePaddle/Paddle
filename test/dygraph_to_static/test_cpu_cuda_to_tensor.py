@@ -28,13 +28,16 @@ class TestCpuCuda(Dy2StTestBase):
             x = x.cpu()
             return x
 
-        x = paddle.to_tensor([3])
-        res = paddle.jit.to_static(func)(x)
-        self.assertTrue(res.place.is_cpu_place())
+        if paddle.device.is_available():
+            x = paddle.to_tensor([3])
+            res = paddle.jit.to_static(func)(x)
+            self.assertTrue(res.place.is_cpu_place())
 
-        x = paddle.to_tensor([3])
-        res = func(x)
-        self.assertTrue(res.place.is_cpu_place())
+            x = paddle.to_tensor([3])
+            x = x.cuda()
+            self.assertFalse(x.place.is_cpu_place())
+            x = x.cpu()
+            self.assertTrue(res.place.is_cpu_place())
 
 
 class TestToTensor(Dy2StTestBase):
