@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/interpolate_kernel.h"
-#include <iostream>
 
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"

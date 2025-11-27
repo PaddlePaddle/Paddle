@@ -371,9 +371,6 @@ class TestInterpAntiAliasCase2(TestInterpAntiAlias):
     def init_test_case(self):
         self.dtype = np.float16
 
-    def test_check_grad(self):
-        self.check_grad(['x'], 'output', in_place=False, check_pir=False)
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "Antialias only supported on GPU"
@@ -413,9 +410,6 @@ class TestBilinearInterpAntiAliasCase4(TestInterpAntiAlias):
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.dtype = np.float16
-
-    def test_check_grad(self):
-        self.check_grad(['x'], 'output', in_place=False, check_pir=False)
 
 
 @unittest.skipIf(
