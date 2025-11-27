@@ -4,7 +4,52 @@ if(WITH_DISTRIBUTE
    AND WITH_GPU
    AND (ARCH_BIN_CONTAINS_90 GREATER -1))
   message(STATUS "Enable DeepEP alltoall communication.")
-  add_subdirectory(deep_ep)
+  if(WITH_NVSHMEM)
+    set(CMAKE_CUDA_FLAGS
+        "${CMAKE_CUDA_FLAGS} -rdc=true --ptxas-options=--register-usage-level=10,--warn-on-local-memory-usage"
+    )
+    string(REGEX REPLACE "-gencode arch=compute_[0-8][0-9],code=sm_[0-8][0-9]"
+                         "" CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")
+
+    set(DEEPEP_KERNEL_SRCS
+        deep_ep/kernels/intranode.cu
+        deep_ep/kernels/runtime.cu
+        deep_ep/kernels/internode.cu
+        deep_ep/kernels/internode_ll.cu
+        deep_ep/kernels/internode_ll_two_stage.cu
+        flash_ep/kernels/runtime.cu
+        flash_ep/kernels/internode.cu)
+    cc_library(
+      deepep_kernels
+      SRCS ${DEEPEP_KERNEL_SRCS}
+      DEPS nvshmem cudadevrt)
+
+    set_target_properties(deepep_kernels PROPERTIES CUDA_SEPARABLE_COMPILATION
+                                                    ON)
+    set_target_properties(deepep_kernels PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS
+                                                    ON)
+  else()
+    set(DEEPEP_KERNEL_SRCS
+        deep_ep/kernels/intranode.cu deep_ep/kernels/runtime.cu
+        flash_ep/kernels/runtime.cu)
+    cc_library(deepep_kernels SRCS ${DEEPEP_KERNEL_SRCS})
+  endif()
+
+  cc_library(
+    deep_ep
+    SRCS deep_ep/deep_ep.cpp
+         deep_ep/src/event_pool.cc
+         deep_ep/src/event.cc
+         deep_ep/src/CUDAStream.cc
+         flash_ep/flash_ep.cpp
+         flash_ep/src/event_pool.cc
+         flash_ep/src/event.cc
+         flash_ep/src/CUDAStream.cc
+    DEPS phi common deepep_kernels)
+
+  set_target_properties(deep_ep PROPERTIES CUDA_SEPARABLE_COMPILATION OFF)
+  target_compile_options(deep_ep PRIVATE -Wno-reorder -Wno-unused-variable)
+
   set(DEEPEP_LIB deep_ep)
 endif()
 
