@@ -1567,7 +1567,7 @@ def monkey_patch_tensor():
                 "Currently, the __tvm_ffi_env_stream__ method is only supported for GPU tensors."
             )
 
-    def _get_c_dlpack_exchange_api(self):
+    def _get_c_dlpack_exchange_api():
         """
         Returns the C DLPack exchange API pointer for the current tensor.
         This is used for interoperability with other libraries that support DLPack.
