@@ -60,7 +60,7 @@ class Buffer:
         num_rdma_bytes: int = 0,
         low_latency_mode: bool = False,
         num_qps_per_rank: int = 12,
-        num_loop_stage: int = 1,
+        num_pipeline_stages: int = 1,
     ) -> None:
         """
         Initialize the communication buffer.
@@ -81,11 +81,11 @@ class Buffer:
         self.num_nvl_bytes = num_nvl_bytes
         self.num_rdma_bytes = num_rdma_bytes
         self.low_latency_mode = low_latency_mode
-        self.num_loop_stage = num_loop_stage
+        self.num_pipeline_stages = num_pipeline_stages
         self.runtime = CppBuffer(
             self.rank,
             self.group_size,
-            num_loop_stage,
+            num_pipeline_stages,
             num_nvl_bytes,
             num_rdma_bytes,
             low_latency_mode,
@@ -102,9 +102,9 @@ class Buffer:
         local_ipc_handle = self.runtime.get_local_ipc_handle()
         dist.all_gather_object(ipc_handles, local_ipc_handle, group)
 
-        assert (
-            self.runtime.get_num_rdma_ranks() > 1
-        ), f"current group:{group}, rank:{self.rank}"
+        assert self.runtime.get_num_rdma_ranks() > 1, (
+            f"current group:{group}, rank:{self.rank}"
+        )
         assert not low_latency_mode, "current low_latency_mode is not supported"
 
         # Synchronize NVSHMEM unique IDs
@@ -124,7 +124,7 @@ class Buffer:
             # Make sure QP depth is always larger than the number of on-flight WRs, so that we can skip WQ slot check
             os.environ['NVSHMEM_QP_DEPTH'] = '1024'
             # NOTES: NVSHMEM initialization requires at least 256 MiB
-            os.environ['NVSHMEM_CUMEM_GRANULARITY'] = f'{2 ** 29}'
+            os.environ['NVSHMEM_CUMEM_GRANULARITY'] = f'{2**29}'
 
             nvshmem_unique_ids = []
             if (low_latency_mode and self.rank == 0) or (
@@ -185,9 +185,9 @@ class Buffer:
             144: Config(Buffer.num_sms, 32, 720, 12, 128),
             160: Config(Buffer.num_sms, 28, 720, 12, 128),
         }
-        assert (
-            num_ranks in config_map
-        ), f'Unsupported number of EP ranks: {num_ranks}'
+        assert num_ranks in config_map, (
+            f'Unsupported number of EP ranks: {num_ranks}'
+        )
         return config_map[num_ranks]
 
     @staticmethod
@@ -213,9 +213,9 @@ class Buffer:
             144: Config(Buffer.num_sms, 2, 720, 8, 128),
             160: Config(Buffer.num_sms, 2, 720, 8, 128),
         }
-        assert (
-            num_ranks in config_map
-        ), f'Unsupported number of EP ranks: {num_ranks}'
+        assert num_ranks in config_map, (
+            f'Unsupported number of EP ranks: {num_ranks}'
+        )
         return config_map[num_ranks]
 
     # noinspection PyTypeChecker
@@ -625,25 +625,27 @@ class Buffer:
         )
 
         dispatch_notify_infos = []
-        for loop_idx in range(self.num_loop_stage):
+        for stage_idx in range(self.num_pipeline_stages):
             handle = (
-                dispatch_is_token_in_rank[loop_idx],
-                dispatch_rdma_channel_prefix_matrix[loop_idx],
-                dispatch_gbl_channel_prefix_matrix[loop_idx],
+                dispatch_is_token_in_rank[stage_idx],
+                dispatch_rdma_channel_prefix_matrix[stage_idx],
+                dispatch_gbl_channel_prefix_matrix[stage_idx],
                 None,
-                dispatch_recv_rdma_rank_prefix_sum[loop_idx],
+                dispatch_recv_rdma_rank_prefix_sum[stage_idx],
                 None,
-                dispatch_recv_gbl_rank_prefix_sum[loop_idx],
+                dispatch_recv_gbl_rank_prefix_sum[stage_idx],
                 paddle.empty(
-                    [dispatch_num_recv_tokens_list[loop_idx], 0]
+                    [dispatch_num_recv_tokens_list[stage_idx], 0]
                 ),  # TODO: Just used to pass shape, can be simplified later
                 None,
-                paddle.empty([dispatch_num_rdma_recv_tokens_list[loop_idx], 0]),
+                paddle.empty(
+                    [dispatch_num_rdma_recv_tokens_list[stage_idx], 0]
+                ),
             )
 
             dispatch_states = {}
             dispatch_states["num_recv_tokens_per_expert_list"] = (
-                dispatch_num_recv_tokens_per_expert_list[loop_idx]
+                dispatch_num_recv_tokens_per_expert_list[stage_idx]
             )
             dispatch_states["handle"] = handle
             dispatch_notify_infos.append(dispatch_states)
@@ -663,22 +665,22 @@ class Buffer:
 
         combine_notify_infos = []
         asymm_recv_rdma_start_idx = 0
-        for loop_idx in range(self.num_loop_stage):
+        for stage_idx in range(self.num_pipeline_stages):
             asymm_recv_rdma_end_idx = (
                 asymm_recv_rdma_start_idx
-                + combine_num_rdma_recv_tokens_list[loop_idx]
+                + combine_num_rdma_recv_tokens_list[stage_idx]
             )
 
             combine_handle = (
                 None,
                 None,
                 None,
-                combine_recv_rdma_channel_prefix_matrix[loop_idx],
-                combine_recv_rdma_rank_prefix_sum[loop_idx],
-                combine_recv_gbl_channel_prefix_matrix[loop_idx],
+                combine_recv_rdma_channel_prefix_matrix[stage_idx],
+                combine_recv_rdma_rank_prefix_sum[stage_idx],
+                combine_recv_gbl_channel_prefix_matrix[stage_idx],
                 None,
                 None,
-                combine_send_rdma_head[loop_idx],
+                combine_send_rdma_head[stage_idx],
                 asymm_aggregated_nvl_head[
                     asymm_recv_rdma_start_idx:asymm_recv_rdma_end_idx
                 ],  # inplace slice
@@ -688,7 +690,7 @@ class Buffer:
             combine_states = {}
             combine_states["handle"] = combine_handle
             combine_states["num_combine_tokens"] = combine_num_recv_tokens_list[
-                loop_idx
+                stage_idx
             ]
             combine_notify_infos.append(combine_states)
 

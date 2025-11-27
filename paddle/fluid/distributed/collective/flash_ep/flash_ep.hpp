@@ -112,7 +112,7 @@ struct Buffer {
   volatile int* combine_moe_recv_rdma_counter = nullptr;
   int* combine_moe_recv_rdma_counter_mapped = nullptr;
 
-  int num_loop_stage{1};
+  int num_pipeline_stages{1};
 
  private:
   void move_fifo_slots(int num_slots = 1);
@@ -120,7 +120,7 @@ struct Buffer {
  public:
   Buffer(int rank,
          int num_ranks,
-         int num_loop_stage,
+         int num_pipeline_stages,
          int64_t num_nvl_bytes,
          int64_t num_rdma_bytes,
          bool low_latency_mode,
@@ -375,7 +375,7 @@ get_flash_ep_coalesce_rdma_schedule_api(
     const paddle::Tensor& local_expert_to_stage_map,
     const int num_ranks,
     const int num_experts,
-    const int num_loop_stage);
+    const int num_pipeline_stages);
 
 std::tuple<paddle::Tensor,  // num_tokens_per_rank
            paddle::Tensor,  // num_tokens_per_rdma_rank
@@ -387,7 +387,7 @@ get_flash_ep_coalesce_rdma_layout_api(
     const paddle::Tensor& combine_rdma_schedule_map,
     const int num_ranks,
     const int num_experts,
-    const int num_loop_stage);
+    const int num_pipeline_stages);
 
 std::vector<paddle::Tensor> get_flashep_rowmap_api(
     const paddle::Tensor& topk_idx, const int64_t num_experts);
@@ -408,7 +408,7 @@ local_dispatch_forward_api(
     const int64_t local_expert_id,
     const int64_t ori_out_len,
     const int64_t padding_align,
-    const int64_t num_loop_stage);
+    const int64_t num_pipeline_stages);
 
 std::vector<paddle::Tensor> local_dispatch_backward_api(
     const std::vector<paddle::Tensor>& hidden_states,
@@ -420,7 +420,7 @@ std::vector<paddle::Tensor> local_dispatch_backward_api(
     const int64_t local_expert_id,
     const int64_t ori_out_len,
     const int padding_align,
-    const int64_t num_loop_stage);
+    const int64_t num_pipeline_stages);
 
 void local_combine_forward_api(
     std::vector<paddle::Tensor>& combine_buffers,  // NOLINT

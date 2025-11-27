@@ -76,7 +76,7 @@ __global__ void get_flash_ep_coalesce_rdma_schedule_kernel(
     int num_topk,
     int num_ranks,
     int num_experts,
-    int num_loop_stage) {
+    int num_pipeline_stages) {
   int token_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (token_idx >= num_tokens) return;
 
@@ -92,7 +92,7 @@ __global__ void get_flash_ep_coalesce_rdma_schedule_kernel(
 
 #pragma unroll
   for (int i = 0; i < kNumRDMARanks; ++i) {
-    dispatch_rdma_schedule_map_fragment[i] = num_loop_stage;
+    dispatch_rdma_schedule_map_fragment[i] = num_pipeline_stages;
     combine_rdma_schedule_map_fragment[i] = -1;
   }
 
@@ -103,18 +103,18 @@ __global__ void get_flash_ep_coalesce_rdma_schedule_kernel(
     int rank_idx = (expert_idx / num_experts_per_rank) % num_ranks;
     int rdma_rank_idx = rank_idx / NUM_MAX_NVL_PEERS;
     int local_expert_idx = expert_idx % num_experts_per_rank;
-    auto loop_idx = reinterpret_cast<const int2*>(
+    auto stage_idx = reinterpret_cast<const int2*>(
         local_expert_to_stage_map)[local_expert_idx];
-    int dispatch_loop_idx = loop_idx.x;
-    int combine_loop_idx = loop_idx.y;
-    EP_DEVICE_ASSERT(dispatch_loop_idx >= 0 &&
-                     dispatch_loop_idx < num_loop_stage);
-    EP_DEVICE_ASSERT(combine_loop_idx >= 0 &&
-                     combine_loop_idx < num_loop_stage);
+    int dispatch_stage_idx = stage_idx.x;
+    int combine_stage_idx = stage_idx.y;
+    EP_DEVICE_ASSERT(dispatch_stage_idx >= 0 &&
+                     dispatch_stage_idx < num_pipeline_stages);
+    EP_DEVICE_ASSERT(combine_stage_idx >= 0 &&
+                     combine_stage_idx < num_pipeline_stages);
     dispatch_rdma_schedule_map_fragment[rdma_rank_idx] = min(
-        dispatch_loop_idx, dispatch_rdma_schedule_map_fragment[rdma_rank_idx]);
+        dispatch_stage_idx, dispatch_rdma_schedule_map_fragment[rdma_rank_idx]);
     combine_rdma_schedule_map_fragment[rdma_rank_idx] = max(
-        combine_loop_idx, combine_rdma_schedule_map_fragment[rdma_rank_idx]);
+        combine_stage_idx, combine_rdma_schedule_map_fragment[rdma_rank_idx]);
   }
   for (int i = 0; i < num_rdma_ranks; ++i) {
     dispatch_rdma_schedule_map[token_idx * num_rdma_ranks + i] =
@@ -142,30 +142,32 @@ __global__ void __launch_bounds__(kNumThreads, 1)
         int num_ranks,
         int num_experts,
         int num_sms_per_loop,
-        int num_loop_stage) {
+        int num_pipeline_stages) {
   int sm_id = static_cast<int>(blockIdx.x);
-  int loop_idx = sm_id / num_sms_per_loop;
+  int stage_idx = sm_id / num_sms_per_loop;
   int sm_id_in_loop = sm_id % num_sms_per_loop;
   int thread_id = static_cast<int>(threadIdx.x);
 
   int num_rdma_ranks = num_ranks / NUM_MAX_NVL_PEERS;
 
   auto dispatch_num_tokens_per_rank =
-      num_tokens_per_rank + loop_idx * num_ranks;
+      num_tokens_per_rank + stage_idx * num_ranks;
   auto dispatch_num_tokens_per_rdma_rank =
-      num_tokens_per_rdma_rank + loop_idx * num_rdma_ranks;
+      num_tokens_per_rdma_rank + stage_idx * num_rdma_ranks;
   auto dispatch_num_tokens_per_expert =
-      num_tokens_per_expert + loop_idx * num_experts;
+      num_tokens_per_expert + stage_idx * num_experts;
   auto dispatch_is_token_in_rank =
-      is_token_in_rank + loop_idx * num_tokens * num_ranks;
+      is_token_in_rank + stage_idx * num_tokens * num_ranks;
   auto combine_num_tokens_per_rank =
-      num_tokens_per_rank + (num_loop_stage + loop_idx) * num_ranks;
+      num_tokens_per_rank + (num_pipeline_stages + stage_idx) * num_ranks;
   auto combine_num_tokens_per_rdma_rank =
-      num_tokens_per_rdma_rank + (num_loop_stage + loop_idx) * num_rdma_ranks;
+      num_tokens_per_rdma_rank +
+      (num_pipeline_stages + stage_idx) * num_rdma_ranks;
   auto combine_num_tokens_per_expert =
-      num_tokens_per_expert + (num_loop_stage + loop_idx) * num_experts;
+      num_tokens_per_expert + (num_pipeline_stages + stage_idx) * num_experts;
   auto combine_is_token_in_rank =
-      is_token_in_rank + (num_loop_stage + loop_idx) * num_tokens * num_ranks;
+      is_token_in_rank +
+      (num_pipeline_stages + stage_idx) * num_tokens * num_ranks;
 
   // 统计专家级别发送指标, 每个sm负责一些experts
   __shared__ int dispatch_num_tokens_per_expert_per_thread
@@ -233,13 +235,13 @@ __global__ void __launch_bounds__(kNumThreads, 1)
             expert_begin_idx <= expert_idx &&
             expert_idx < expert_end_idx;  // 表示这个专家是否是当前sm负责
         if (in_sm_range &&
-            dispatch_schedule_map_fragment[rdma_rank_idx] == loop_idx) {
+            dispatch_schedule_map_fragment[rdma_rank_idx] == stage_idx) {
           ++dispatch_num_tokens_per_expert_per_thread[thread_id]
                                                      [expert_idx -
                                                       expert_begin_idx];
         }
         if (in_sm_range &&
-            combine_schedule_map_fragment[rdma_rank_idx] == loop_idx) {
+            combine_schedule_map_fragment[rdma_rank_idx] == stage_idx) {
           ++combine_num_tokens_per_expert_per_thread[thread_id]
                                                     [expert_idx -
                                                      expert_begin_idx];
@@ -361,12 +363,12 @@ __global__ void __launch_bounds__(kNumThreads, 1)
         int rdma_rank_idx =
             (expert_idx / num_experts_per_rank) / NUM_MAX_NVL_PEERS;
         if (in_sm_range &&
-            dispatch_schedule_map_fragment[rdma_rank_idx] == loop_idx) {
+            dispatch_schedule_map_fragment[rdma_rank_idx] == stage_idx) {
           dispatch_is_in_rank[rank_idx]++;
           dispatch_is_in_rdma_rank[rank_idx / NUM_MAX_NVL_PEERS]++;
         }
         if (in_sm_range &&
-            combine_schedule_map_fragment[rdma_rank_idx] == loop_idx) {
+            combine_schedule_map_fragment[rdma_rank_idx] == stage_idx) {
           combine_is_in_rank[rank_idx]++;
           combine_is_in_rdma_rank[rank_idx / NUM_MAX_NVL_PEERS]++;
         }
@@ -461,7 +463,7 @@ void get_flash_ep_coalesce_rdma_layout(const int64_t* topk_idx,
                                        int num_topk,
                                        int num_ranks,
                                        int num_experts,
-                                       int num_loop_stage,
+                                       int num_pipeline_stages,
                                        cudaStream_t stream) {
   constexpr int kNumThreads = 256;
   constexpr int kNumExpertsPerSM = 8;
@@ -470,7 +472,7 @@ void get_flash_ep_coalesce_rdma_layout(const int64_t* topk_idx,
   int num_sms_per_loop =
       ((num_experts + kNumExpertsPerSM - 1) / kNumExpertsPerSM) +
       (num_ranks + kNumRanksPerSM - 1) / kNumRanksPerSM;
-  int num_sms = num_sms_per_loop * num_loop_stage;
+  int num_sms = num_sms_per_loop * num_pipeline_stages;
 
   static_assert(kNumExpertsPerSM % NUM_MAX_NVL_PEERS == 0,
                 "Invalid number of experts per SM");
@@ -496,7 +498,7 @@ void get_flash_ep_coalesce_rdma_layout(const int64_t* topk_idx,
                   num_ranks,                                       \
                   num_experts,                                     \
                   num_sms_per_loop,                                \
-                  num_loop_stage);                                 \
+                  num_pipeline_stages);                            \
   }                                                                \
   break
 
@@ -512,7 +514,7 @@ void get_flash_ep_coalesce_rdma_schedule(const int64_t* topk_idx,
                                          int* combine_rdma_schedule_map,
                                          const int num_ranks,
                                          const int num_experts,
-                                         const int num_loop_stage,
+                                         const int num_pipeline_stages,
                                          const int num_tokens,
                                          const int num_topk,
                                          cudaStream_t stream) {
@@ -537,7 +539,7 @@ void get_flash_ep_coalesce_rdma_schedule(const int64_t* topk_idx,
                   num_topk,                                         \
                   num_ranks,                                        \
                   num_experts,                                      \
-                  num_loop_stage);                                  \
+                  num_pipeline_stages);                             \
   }                                                                 \
   break
 
@@ -730,13 +732,13 @@ __device__ __forceinline__ int findPtrIndex(const int* prefix_sum,
 
 template <int kCumsumBlockSize, int kMaxNumExpertsPerRank>
 __global__ void dispatch_moe_meta_kernel(
-    const int32_t* dispatched_topk_idx,
+    const int32_t* input_topk_idx,
     int32_t* global_expertwise_block_cumsum,
     const int32_t topk,
     const int32_t all_token_num,
     const int32_t num_experts,
-    int32_t* output_route_map,
-    int32_t* output_route_map_len) {
+    int32_t* output_rowmap,
+    int32_t* output_rowmap_offset) {
   int64_t local_cumsum = 0;
   const int64_t block_row_base =
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(kCumsumBlockSize);
@@ -752,7 +754,7 @@ __global__ void dispatch_moe_meta_kernel(
       const int64_t internal_row = row - block_row_base;
 #pragma unroll
       for (int64_t k = 0; k < topk; k++) {
-        token_infos proposed = {dispatched_topk_idx[row * topk + k]};
+        token_infos proposed = {input_topk_idx[row * topk + k]};
         if (proposed.token_row_idx == -1) continue;
         if (threadIdx.x == proposed.token_row_idx) {
           local_token_infos[internal_row] = {local_cumsum};
@@ -779,7 +781,7 @@ __global__ void dispatch_moe_meta_kernel(
     const int64_t proposed_offset = cumsum_offset + local_cumsum;
     global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
     if (blockIdx.x == gridDim.x - 1) {
-      output_route_map_len[threadIdx.x] = proposed_offset;
+      output_rowmap_offset[threadIdx.x] = proposed_offset;
     }
     // Intra-block communication;
 #pragma unroll
@@ -803,19 +805,19 @@ __global__ void dispatch_moe_meta_kernel(
       const int64_t proposed_row_idx = this_expert_token_info.token_row_idx;
       if (proposed_row_idx == -1) continue;  // no memcpy
       if (threadIdx.x == 0)
-        output_route_map[row * static_cast<int64_t>(num_experts) + expert_id] =
+        output_rowmap[row * static_cast<int64_t>(num_experts) + expert_id] =
             proposed_row_idx;
     }
   }
 }
 
-void dispatch_moe_meta(const int32_t* dispatched_topk_idx,
+void dispatch_moe_meta(const int32_t* input_topk_idx,
                        int32_t* global_expertwise_block_cumsum,
                        const int32_t topk,
                        const int32_t all_token_num,
                        const int32_t num_experts,
-                       int32_t* output_route_map,
-                       int32_t* output_route_map_len,
+                       int32_t* output_rowmap,
+                       int32_t* output_rowmap_offset,
                        cudaStream_t stream) {
   constexpr int kCumsumBlockSize = 32;
   constexpr int kMaxNumExpertsPerRank = 8;
@@ -825,26 +827,26 @@ void dispatch_moe_meta(const int32_t* dispatched_topk_idx,
   int num_sms = (all_token_num + kCumsumBlockSize - 1) / kCumsumBlockSize;
 
   dispatch_moe_meta_kernel<kCumsumBlockSize, kMaxNumExpertsPerRank>
-      <<<num_sms, kNumThreads, 0, stream>>>(dispatched_topk_idx,
+      <<<num_sms, kNumThreads, 0, stream>>>(input_topk_idx,
                                             global_expertwise_block_cumsum,
                                             topk,
                                             all_token_num,
                                             num_experts,
-                                            output_route_map,
-                                            output_route_map_len);
+                                            output_rowmap,
+                                            output_rowmap_offset);
 }
 
 template <bool kIsForward,
           bool kMixedPrecision,
           int kCumsumBlockSize,
           int kMaxStageNum>
-__global__ void local_dispatch_kernel(const void** dispatched_hidden_states,
-                                      const float** dispatched_topk_weights,
-                                      const int32_t** dispatched_topk_idx,
-                                      const int32_t** recv_src_meta,
-                                      const float** fp8_scales,
-                                      const int32_t** output_route_map,
-                                      const int32_t** output_route_map_len,
+__global__ void local_dispatch_kernel(const void** input_x,
+                                      const float** input_topk_weights,
+                                      const int32_t** input_topk_idx,
+                                      const int32_t** src_meta,
+                                      const float** input_scales,
+                                      const int32_t** output_rowmap,
+                                      const int32_t** output_rowmap_offset,
                                       const int32_t* a2a_prefix_sum,
                                       const int32_t local_expert_id,
                                       const int32_t hidden_size,
@@ -855,14 +857,33 @@ __global__ void local_dispatch_kernel(const void** dispatched_hidden_states,
                                       const int32_t num_experts,
                                       void* output_hidden,
                                       int32_t* output_top_idx,
-                                      float* output_top_probs,
+                                      float* output_topk_weights,
                                       int32_t* output_src_meta,
-                                      float* output_fp8_scale) {
-  int64_t expert_prefix_sum[kMaxStageNum];
-  expert_prefix_sum[0] = 0;
+                                      float* output_scales) {
+  __shared__ const float* smem_topk_weights_ptrs[kMaxStageNum];
+  __shared__ const int32_t* smem_topk_idx_ptrs[kMaxStageNum];
+  __shared__ const void* smem_input_x_ptrs[kMaxStageNum];
+  __shared__ const int32_t* smem_src_meta_ptrs[kMaxStageNum];
+  __shared__ const float* smem_input_scales_ptrs[kMaxStageNum];
+  EP_DEVICE_ASSERT(a2a_num < blockDim.x);
+  if (threadIdx.x < a2a_num) {
+    if (input_topk_weights)
+      smem_topk_weights_ptrs[threadIdx.x] = input_topk_weights[threadIdx.x];
+    if (input_topk_idx)
+      smem_topk_idx_ptrs[threadIdx.x] = input_topk_idx[threadIdx.x];
+    if (input_x) smem_input_x_ptrs[threadIdx.x] = input_x[threadIdx.x];
+    if (src_meta) smem_src_meta_ptrs[threadIdx.x] = src_meta[threadIdx.x];
+    if (input_scales)
+      smem_input_scales_ptrs[threadIdx.x] = input_scales[threadIdx.x];
+  }
+
+  __syncthreads();
+
+  int64_t rmem_expert_prefix_sum[kMaxStageNum];
+  rmem_expert_prefix_sum[0] = 0;
   for (int i = 1; i < a2a_num; i++) {
-    expert_prefix_sum[i] =
-        expert_prefix_sum[i - 1] + output_route_map_len[i - 1][local_expert_id];
+    rmem_expert_prefix_sum[i] = rmem_expert_prefix_sum[i - 1] +
+                                output_rowmap_offset[i - 1][local_expert_id];
   }
 
   const int64_t block_row_base = blockIdx.x * kCumsumBlockSize;
@@ -873,25 +894,25 @@ __global__ void local_dispatch_kernel(const void** dispatched_hidden_states,
     const int64_t a2a_idx = findPtrIndex(a2a_prefix_sum, a2a_num, row);
     const int64_t a2a_token_idx = row - a2a_prefix_sum[a2a_idx];
     int64_t tmp_proposed_row_idx =
-        output_route_map[a2a_idx]
-                        [a2a_token_idx * static_cast<int64_t>(num_experts) +
-                         static_cast<int64_t>(local_expert_id)];
+        output_rowmap[a2a_idx]
+                     [a2a_token_idx * static_cast<int64_t>(num_experts) +
+                      static_cast<int64_t>(local_expert_id)];
     if (tmp_proposed_row_idx == -1) continue;  // no memcpy
     const int64_t proposed_row_idx =
-        tmp_proposed_row_idx + expert_prefix_sum[a2a_idx];
+        tmp_proposed_row_idx + rmem_expert_prefix_sum[a2a_idx];
 
     if (kIsForward) {
       if (threadIdx.x < topk) {
         int64_t tmp_idx =
-            dispatched_topk_idx[a2a_idx][static_cast<int64_t>(a2a_token_idx) *
-                                             static_cast<int64_t>(topk) +
-                                         static_cast<int64_t>(threadIdx.x)];
+            smem_topk_idx_ptrs[a2a_idx][static_cast<int64_t>(a2a_token_idx) *
+                                            static_cast<int64_t>(topk) +
+                                        static_cast<int64_t>(threadIdx.x)];
         if (tmp_idx == local_expert_id) {
-          output_top_probs[proposed_row_idx] =
-              dispatched_topk_weights[a2a_idx]
-                                     [static_cast<int64_t>(a2a_token_idx) *
-                                          static_cast<int64_t>(topk) +
-                                      static_cast<int64_t>(threadIdx.x)];
+          output_topk_weights[proposed_row_idx] =
+              smem_topk_weights_ptrs[a2a_idx]
+                                    [static_cast<int64_t>(a2a_token_idx) *
+                                         static_cast<int64_t>(topk) +
+                                     static_cast<int64_t>(threadIdx.x)];
         }
       }
     }
@@ -900,42 +921,41 @@ __global__ void local_dispatch_kernel(const void** dispatched_hidden_states,
       if (!kIsForward) {
         for (int i = 0; i < topk; i++) {
           output_top_idx[proposed_row_idx * topk + i] =
-              dispatched_topk_idx[a2a_idx][static_cast<int64_t>(a2a_token_idx) *
-                                               static_cast<int64_t>(topk) +
-                                           static_cast<int64_t>(i)];
+              smem_topk_idx_ptrs[a2a_idx][static_cast<int64_t>(a2a_token_idx) *
+                                              static_cast<int64_t>(topk) +
+                                          static_cast<int64_t>(i)];
         }
       }
       const int4* src_vec = reinterpret_cast<const int4*>(
-          &(recv_src_meta[a2a_idx][static_cast<int64_t>(a2a_token_idx) * 4]));
+          &(smem_src_meta_ptrs[a2a_idx]
+                              [static_cast<int64_t>(a2a_token_idx) * 4]));
       int4* dst_vec = reinterpret_cast<int4*>(
           &(output_src_meta[static_cast<int64_t>(proposed_row_idx) * 4]));
       dst_vec[0] = src_vec[0];
     }
     if (kMixedPrecision) {
-      auto dispatched_hidden_states_ptr =
-          reinterpret_cast<const __nv_fp8_e4m3**>(dispatched_hidden_states);
+      auto input_x_ptr =
+          reinterpret_cast<const __nv_fp8_e4m3*>(smem_input_x_ptrs[a2a_idx]);
       auto output_hidden_ptr = reinterpret_cast<__nv_fp8_e4m3*>(output_hidden);
       vectorized_memcpy<__nv_fp8_e4m3>(
-          &dispatched_hidden_states_ptr[a2a_idx]
-                                       [static_cast<int64_t>(a2a_token_idx) *
-                                        static_cast<int64_t>(hidden_size)],
+          &input_x_ptr[static_cast<int64_t>(a2a_token_idx) *
+                       static_cast<int64_t>(hidden_size)],
           &output_hidden_ptr[static_cast<int64_t>(proposed_row_idx) *
                              static_cast<int64_t>(hidden_size)],
           hidden_size);
       vectorized_memcpy(
-          &fp8_scales[a2a_idx][static_cast<int64_t>(a2a_token_idx) *
-                               static_cast<int64_t>(scale_num)],
-          &output_fp8_scale[static_cast<int64_t>(proposed_row_idx) *
-                            static_cast<int64_t>(scale_num)],
+          &smem_input_scales_ptrs[a2a_idx][static_cast<int64_t>(a2a_token_idx) *
+                                           static_cast<int64_t>(scale_num)],
+          &output_scales[static_cast<int64_t>(proposed_row_idx) *
+                         static_cast<int64_t>(scale_num)],
           scale_num);
     } else {
-      auto dispatched_hidden_states_ptr =
-          reinterpret_cast<const __nv_bfloat16**>(dispatched_hidden_states);
+      auto input_x_ptr =
+          reinterpret_cast<const __nv_bfloat16*>(smem_input_x_ptrs[a2a_idx]);
       auto output_hidden_ptr = reinterpret_cast<__nv_bfloat16*>(output_hidden);
       vectorized_memcpy<__nv_bfloat16>(
-          &dispatched_hidden_states_ptr[a2a_idx]
-                                       [static_cast<int64_t>(a2a_token_idx) *
-                                        static_cast<int64_t>(hidden_size)],
+          &input_x_ptr[static_cast<int64_t>(a2a_token_idx) *
+                       static_cast<int64_t>(hidden_size)],
           &output_hidden_ptr[static_cast<int64_t>(proposed_row_idx) *
                              static_cast<int64_t>(hidden_size)],
           hidden_size);
@@ -944,26 +964,27 @@ __global__ void local_dispatch_kernel(const void** dispatched_hidden_states,
 }
 
 template <int kSMNum, int kMaxStageNum>
-__global__ void combine_moe_kernel_forward(
-    const __nv_bfloat16* hidden_states,
-    const int32_t** recv_gbl_channel_prefix,
-    const int32_t* recv_src_meta,
-    const int32_t hidden_size,
-    const int32_t num_loop_stage,
-    const int64_t token_num,
-    float** output_hidden_states,
-    int num_channels) {
+__global__ void combine_moe_kernel_forward(const __nv_bfloat16* input_x,
+                                           const int32_t** gbl_channel_prefix,
+                                           const int32_t* src_meta,
+                                           const int32_t hidden_size,
+                                           const int32_t num_pipeline_stages,
+                                           const int64_t token_num,
+                                           float** output_x,
+                                           int num_channels) {
   EP_DEVICE_ASSERT(blockDim.x % 32 == 0);
-  const int32_t* recv_gbl_channel_prefix_ptr_reg[kMaxStageNum];
-  for (int i = 0; i < num_loop_stage; i++) {
-    recv_gbl_channel_prefix_ptr_reg[i] = recv_gbl_channel_prefix[i];
+  const int32_t* rmem_gbl_channel_prefix_ptrs[kMaxStageNum];
+  float* rmem_output_x_ptrs[kMaxStageNum];
+  for (int i = 0; i < num_pipeline_stages; i++) {
+    rmem_gbl_channel_prefix_ptrs[i] = gbl_channel_prefix[i];
+    rmem_output_x_ptrs[i] = output_x[i];
   }
 
   const int64_t block_row_base =
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(kSMNum);
   for (int64_t row = block_row_base; row < block_row_base + kSMNum; row++) {
     if (row >= token_num) return;
-    const int4* vec_token_meta = reinterpret_cast<const int4*>(recv_src_meta);
+    const int4* vec_token_meta = reinterpret_cast<const int4*>(src_meta);
     const int4 meta_vec = __ldg(vec_token_meta + row);
     const int64_t channel_id = meta_vec.x;
     const int64_t nvl_head = meta_vec.y;
@@ -971,49 +992,48 @@ __global__ void combine_moe_kernel_forward(
     const int64_t stage_idx_to_combine = meta_vec.w;
 
     const int64_t channel_offset =
-        recv_gbl_channel_prefix_ptr_reg[stage_idx_to_combine]
-                                       [src_rank *
-                                            static_cast<int64_t>(num_channels) +
-                                        channel_id];
+        rmem_gbl_channel_prefix_ptrs[stage_idx_to_combine]
+                                    [src_rank *
+                                         static_cast<int64_t>(num_channels) +
+                                     channel_id];
     const int64_t offset = channel_offset + nvl_head;
-    float* token_out_ptr = output_hidden_states[stage_idx_to_combine] +
+    float* token_out_ptr = rmem_output_x_ptrs[stage_idx_to_combine] +
                            offset * static_cast<int64_t>(hidden_size);
     const __nv_bfloat16* token_load_ptr =
-        hidden_states + row * static_cast<int64_t>(hidden_size);
+        input_x + row * static_cast<int64_t>(hidden_size);
     vectorized_add(token_load_ptr, token_out_ptr, hidden_size);
   }
 }
 
 template <int kSMNum, int kMaxStageNum>
-__global__ void combine_moe_kernel_backward(
-    const __nv_bfloat16* hidden_states,
-    const int32_t* topk_idx,
-    const float* topk_weights,
-    const int32_t** recv_gbl_channel_prefix,
-    const int32_t* recv_src_meta,
-    const int32_t hidden_size,
-    const int32_t num_loop_stage,
-    const int64_t token_num,
-    const int32_t topk,
-    const int32_t local_expert_id,
-    float** output_hidden_states,
-    float** output_topk_weights,
-    int num_channels) {
+__global__ void combine_moe_kernel_backward(const __nv_bfloat16* input_x,
+                                            const int32_t* topk_idx,
+                                            const float* topk_weights,
+                                            const int32_t** gbl_channel_prefix,
+                                            const int32_t* src_meta,
+                                            const int32_t hidden_size,
+                                            const int32_t num_pipeline_stages,
+                                            const int64_t token_num,
+                                            const int32_t topk,
+                                            const int32_t local_expert_id,
+                                            float** output_x,
+                                            float** output_topk_weights,
+                                            int num_channels) {
   EP_DEVICE_ASSERT(blockDim.x % 32 == 0);
-  const int32_t* recv_gbl_channel_prefix_ptr_reg[kMaxStageNum];
-  float* output_hidden_states_ptr_reg[kMaxStageNum];
-  float* output_topk_weights_ptr_reg[kMaxStageNum];
-  for (int i = 0; i < num_loop_stage; i++) {
-    recv_gbl_channel_prefix_ptr_reg[i] = recv_gbl_channel_prefix[i];
-    output_hidden_states_ptr_reg[i] = output_hidden_states[i];
-    output_topk_weights_ptr_reg[i] = output_topk_weights[i];
+  const int32_t* rmem_gbl_channel_prefix_ptrs[kMaxStageNum];
+  float* rmem_output_x_ptrs[kMaxStageNum];
+  float* rmem_output_topk_weights_ptrs[kMaxStageNum];
+  for (int i = 0; i < num_pipeline_stages; i++) {
+    rmem_gbl_channel_prefix_ptrs[i] = gbl_channel_prefix[i];
+    rmem_output_x_ptrs[i] = output_x[i];
+    rmem_output_topk_weights_ptrs[i] = output_topk_weights[i];
   }
 
   const int64_t block_row_base =
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(kSMNum);
   for (int64_t row = block_row_base; row < block_row_base + kSMNum; row++) {
     if (row >= token_num) return;
-    const int4* vec_token_meta = reinterpret_cast<const int4*>(recv_src_meta);
+    const int4* vec_token_meta = reinterpret_cast<const int4*>(src_meta);
     const int4 meta_vec = __ldg(vec_token_meta + row);
     const int64_t channel_id = meta_vec.x;
     const int64_t nvl_head = meta_vec.y;
@@ -1021,37 +1041,37 @@ __global__ void combine_moe_kernel_backward(
     const int64_t stage_idx_to_combine = meta_vec.w;
 
     const int64_t channel_offset =
-        recv_gbl_channel_prefix_ptr_reg[stage_idx_to_combine]
-                                       [src_rank *
-                                            static_cast<int64_t>(num_channels) +
-                                        channel_id];
+        rmem_gbl_channel_prefix_ptrs[stage_idx_to_combine]
+                                    [src_rank *
+                                         static_cast<int64_t>(num_channels) +
+                                     channel_id];
     const int64_t offset = channel_offset + nvl_head;
 
     if (threadIdx.x < topk) {
       if (topk_idx[row * static_cast<int64_t>(topk) +
                    static_cast<int64_t>(threadIdx.x)] == local_expert_id) {
-        output_topk_weights[stage_idx_to_combine]
-                           [offset * static_cast<int64_t>(topk) +
-                            static_cast<int64_t>(threadIdx.x)] =
-                               topk_weights[row];
+        rmem_output_topk_weights_ptrs[stage_idx_to_combine]
+                                     [offset * static_cast<int64_t>(topk) +
+                                      static_cast<int64_t>(threadIdx.x)] =
+                                         topk_weights[row];
       }
     }
 
-    float* token_out_ptr = output_hidden_states[stage_idx_to_combine] +
+    float* token_out_ptr = rmem_output_x_ptrs[stage_idx_to_combine] +
                            offset * static_cast<int64_t>(hidden_size);
     const __nv_bfloat16* token_load_ptr =
-        hidden_states + row * static_cast<int64_t>(hidden_size);
+        input_x + row * static_cast<int64_t>(hidden_size);
     vectorized_add(token_load_ptr, token_out_ptr, hidden_size);
   }
 }
 
-void local_dispatch(const void** dispatched_hidden_states,
-                    const float** dispatched_topk_weights,
-                    const int32_t** dispatched_topk_idx,
-                    const int32_t** recv_src_meta,
-                    const float** fp8_scales,
-                    const int32_t** output_route_map,
-                    const int32_t** output_route_map_len,
+void local_dispatch(const void** input_x,
+                    const float** input_topk_weights,
+                    const int32_t** input_topk_idx,
+                    const int32_t** src_meta,
+                    const float** input_scales,
+                    const int32_t** output_rowmap,
+                    const int32_t** output_rowmap_offset,
                     const int32_t* a2a_prefix_sum,
                     const int32_t local_expert_id,
                     const int32_t hidden_size,
@@ -1062,31 +1082,31 @@ void local_dispatch(const void** dispatched_hidden_states,
                     const int32_t num_experts,
                     void* output_hidden,
                     int32_t* output_top_idx,
-                    float* output_top_probs,
+                    float* output_topk_weights,
                     int32_t* output_src_meta,
-                    float* output_fp8_scale,
+                    float* output_scales,
                     cudaStream_t stream,
                     bool use_fp8,
                     bool forward,
-                    int num_loop_stage) {
+                    int num_pipeline_stages) {
   constexpr int kNumThreads = 1024;
   constexpr int kCumsumBlockSize = 2;
-  constexpr int kMaxStageNum = 16;
+  constexpr int kMaxStageNum = 8;
 
   int num_sms = (all_token_num + kCumsumBlockSize - 1) / kCumsumBlockSize;
   EP_HOST_ASSERT(!(use_fp8 && !forward));
-  EP_HOST_ASSERT(num_loop_stage <= kMaxStageNum);
+  EP_HOST_ASSERT(num_pipeline_stages <= kMaxStageNum);
 
 #define LAUNCH_LOCAL_DISPATCH_KERNEL(T, FORWARD, USE_FP8)                   \
   do {                                                                      \
     local_dispatch_kernel<FORWARD, USE_FP8, kCumsumBlockSize, kMaxStageNum> \
-        <<<num_sms, kNumThreads, 0, stream>>>(dispatched_hidden_states,     \
-                                              dispatched_topk_weights,      \
-                                              dispatched_topk_idx,          \
-                                              recv_src_meta,                \
-                                              fp8_scales,                   \
-                                              output_route_map,             \
-                                              output_route_map_len,         \
+        <<<num_sms, kNumThreads, 0, stream>>>(input_x,                      \
+                                              input_topk_weights,           \
+                                              input_topk_idx,               \
+                                              src_meta,                     \
+                                              input_scales,                 \
+                                              output_rowmap,                \
+                                              output_rowmap_offset,         \
                                               a2a_prefix_sum,               \
                                               local_expert_id,              \
                                               hidden_size,                  \
@@ -1097,9 +1117,9 @@ void local_dispatch(const void** dispatched_hidden_states,
                                               num_experts,                  \
                                               output_hidden,                \
                                               output_top_idx,               \
-                                              output_top_probs,             \
+                                              output_topk_weights,          \
                                               output_src_meta,              \
-                                              output_fp8_scale);            \
+                                              output_scales);               \
   } while (0)
 
   if (use_fp8 && forward) {
@@ -1116,13 +1136,13 @@ static int LimitGridDim(int64_t n) {
   return static_cast<int>(std::min<int64_t>(n, 1024 * 1024));
 }
 
-void local_combine_forward(const __nv_bfloat16* hidden_states,
-                           const int32_t** recv_gbl_channel_prefix,
-                           const int32_t* recv_src_meta,
+void local_combine_forward(const __nv_bfloat16* input_x,
+                           const int32_t** gbl_channel_prefix,
+                           const int32_t* src_meta,
                            const int32_t hidden_size,
-                           const int32_t num_loop_stage,
+                           const int32_t num_pipeline_stages,
                            const int64_t token_num,
-                           float** output_hidden_states,
+                           float** output_x,
                            int num_channels,
                            cudaStream_t stream) {
   constexpr int kNumThreads = 1024;
@@ -1130,30 +1150,30 @@ void local_combine_forward(const __nv_bfloat16* hidden_states,
   constexpr int kMaxStageNum = 8;
   int num_sms = LimitGridDim((token_num + kSMNum - 1) / kSMNum);
 
-  EP_HOST_ASSERT(num_loop_stage <= kMaxStageNum);
+  EP_HOST_ASSERT(num_pipeline_stages <= kMaxStageNum);
 
   combine_moe_kernel_forward<kSMNum, kMaxStageNum>
-      <<<num_sms, kNumThreads, 0, stream>>>(hidden_states,
-                                            recv_gbl_channel_prefix,
-                                            recv_src_meta,
+      <<<num_sms, kNumThreads, 0, stream>>>(input_x,
+                                            gbl_channel_prefix,
+                                            src_meta,
                                             hidden_size,
-                                            num_loop_stage,
+                                            num_pipeline_stages,
                                             token_num,
-                                            output_hidden_states,
+                                            output_x,
                                             num_channels);
 }
 
-void local_combine_backward(const __nv_bfloat16* hidden_states,
+void local_combine_backward(const __nv_bfloat16* input_x,
                             const int32_t* topk_idx,
                             const float* topk_weights,
-                            const int32_t** recv_gbl_channel_prefix,
-                            const int32_t* recv_src_meta,
+                            const int32_t** gbl_channel_prefix,
+                            const int32_t* src_meta,
                             const int32_t hidden_size,
-                            const int32_t num_loop_stage,
+                            const int32_t num_pipeline_stages,
                             const int64_t token_num,
                             const int32_t topk,
                             const int32_t local_expert_id,
-                            float** output_hidden_states,
+                            float** output_x,
                             float** output_topk_weights,
                             int num_channels,
                             cudaStream_t stream) {
@@ -1162,20 +1182,20 @@ void local_combine_backward(const __nv_bfloat16* hidden_states,
   int num_sms = LimitGridDim((token_num + kSMNum - 1) / kSMNum);
   constexpr int kMaxStageNum = 8;
 
-  EP_HOST_ASSERT(num_loop_stage <= kMaxStageNum);
+  EP_HOST_ASSERT(num_pipeline_stages <= kMaxStageNum);
 
   combine_moe_kernel_backward<kSMNum, kMaxStageNum>
-      <<<num_sms, kNumThreads, 0, stream>>>(hidden_states,
+      <<<num_sms, kNumThreads, 0, stream>>>(input_x,
                                             topk_idx,
                                             topk_weights,
-                                            recv_gbl_channel_prefix,
-                                            recv_src_meta,
+                                            gbl_channel_prefix,
+                                            src_meta,
                                             hidden_size,
-                                            num_loop_stage,
+                                            num_pipeline_stages,
                                             token_num,
                                             topk,
                                             local_expert_id,
-                                            output_hidden_states,
+                                            output_x,
                                             output_topk_weights,
                                             num_channels);
 }

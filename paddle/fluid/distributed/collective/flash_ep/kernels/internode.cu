@@ -42,7 +42,7 @@ struct DetailsMeta {
   int src_channel_id;
   int nvl_head;
   int src_rank;
-  int combine_loop_idx;
+  int combine_stage_idx;
 };
 
 struct alignas(64) SourceMeta {
@@ -50,7 +50,7 @@ struct alignas(64) SourceMeta {
   int is_token_in_nvl_rank_bits;
   int src_rank;
   int src_channel_id;
-  int combine_loop_idx;
+  int combine_stage_idx;
   int send_rdma_head;
   int send_nvl_head[NUM_MAX_NVL_PEERS];
 
@@ -64,7 +64,7 @@ struct alignas(64) SourceMeta {
                                         const bool* is_token_in_nvl_ranks,
                                         const int rank,
                                         const int channel_id,
-                                        const int dst_combine_loop_idx,
+                                        const int dst_combine_stage_idx,
                                         const int rdma_head,
                                         const int* nvl_head) {
     src_rdma_rank = rdma_rank;
@@ -75,7 +75,7 @@ struct alignas(64) SourceMeta {
 
     src_channel_id = channel_id;
     src_rank = rank;
-    combine_loop_idx = dst_combine_loop_idx;
+    combine_stage_idx = dst_combine_stage_idx;
 
     send_rdma_head = rdma_head;
 
@@ -205,7 +205,7 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
                              int num_tokens,
                              int num_channels,
                              int expert_alignment,
-                             int num_loop_stage,
+                             int num_pipeline_stages,
                              const int rdma_clean_offset,
                              const int rdma_num_int_clean,
                              const int nvl_clean_offset,
@@ -257,8 +257,8 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
     int combine_num_elements = NUM_MAX_NVL_PEERS + 1;
     auto rdma_recv_num_tokens_mixed =
         SymBuffer<int>(rdma_buffer_ptr,
-                       (dispatch_num_elements * num_loop_stage +
-                        combine_num_elements * num_loop_stage),
+                       (dispatch_num_elements * num_pipeline_stages +
+                        combine_num_elements * num_pipeline_stages),
                        kNumRDMARanks);
 
     // Clean up for later data dispatch
@@ -272,7 +272,7 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
 // Copy dispatch infos to send buffer
 #pragma unroll
     for (int i = thread_id; i < num_ranks; i += num_threads) {
-      for (int j = 0; j < num_loop_stage; ++j) {
+      for (int j = 0; j < num_pipeline_stages; ++j) {
         rdma_recv_num_tokens_mixed.send_buffer(
             i / NUM_MAX_NVL_PEERS)[dispatch_num_elements * j +
                                    (i % NUM_MAX_NVL_PEERS)] =
@@ -281,7 +281,7 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
     }
 #pragma unroll
     for (int i = thread_id; i < num_experts; i += num_threads) {
-      for (int j = 0; j < num_loop_stage; ++j) {
+      for (int j = 0; j < num_pipeline_stages; ++j) {
         rdma_recv_num_tokens_mixed.send_buffer(
             i / num_rdma_experts)[dispatch_num_elements * j +
                                   NUM_MAX_NVL_PEERS + i % num_rdma_experts] =
@@ -290,7 +290,7 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
     }
     if (thread_id < kNumRDMARanks) {
 #pragma unroll
-      for (int j = 0; j < num_loop_stage; ++j) {
+      for (int j = 0; j < num_pipeline_stages; ++j) {
         rdma_recv_num_tokens_mixed.send_buffer(
             thread_id)[dispatch_num_elements * j + NUM_MAX_NVL_PEERS +
                        num_rdma_experts] =
@@ -302,9 +302,9 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
 // Copy combine infors to send buffer
 #pragma unroll
     for (int i = thread_id; i < num_ranks; i += num_threads) {
-      for (int j = 0; j < num_loop_stage; ++j) {
+      for (int j = 0; j < num_pipeline_stages; ++j) {
         rdma_recv_num_tokens_mixed.send_buffer(
-            i / NUM_MAX_NVL_PEERS)[dispatch_num_elements * num_loop_stage +
+            i / NUM_MAX_NVL_PEERS)[dispatch_num_elements * num_pipeline_stages +
                                    combine_num_elements * j +
                                    i % NUM_MAX_NVL_PEERS] =
             combine_num_tokens_per_rank[j * num_ranks + i];
@@ -312,9 +312,9 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
     }
 #pragma unroll
     if (thread_id < kNumRDMARanks) {
-      for (int j = 0; j < num_loop_stage; ++j) {
+      for (int j = 0; j < num_pipeline_stages; ++j) {
         rdma_recv_num_tokens_mixed.send_buffer(
-            thread_id)[dispatch_num_elements * num_loop_stage +
+            thread_id)[dispatch_num_elements * num_pipeline_stages +
                        combine_num_elements * j + NUM_MAX_NVL_PEERS] =
             combine_num_tokens_per_rdma_rank[j * kNumRDMARanks + thread_id];
       }
@@ -325,7 +325,7 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
       nvshmem_int_put_nbi(
           rdma_recv_num_tokens_mixed.recv_buffer(rdma_rank),
           rdma_recv_num_tokens_mixed.send_buffer(thread_id),
-          (dispatch_num_elements + combine_num_elements) * num_loop_stage,
+          (dispatch_num_elements + combine_num_elements) * num_pipeline_stages,
           translate_dst_rdma_rank<kLowLatencyMode>(thread_id, nvl_rank));
     }
     __syncthreads();
@@ -338,21 +338,33 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
         thread_id < NUM_MAX_NVL_PEERS ? buffer_ptrs[thread_id] : nullptr;
     auto nvl_recv_buffer = buffer_ptrs[nvl_rank];
     auto dispatch_nvl_reduced_num_tokens_per_expert =
-        Buffer<int>(nvl_recv_buffer, num_rdma_experts * num_loop_stage)
+        Buffer<int>(nvl_recv_buffer, num_rdma_experts * num_pipeline_stages)
             .advance_also(nvl_send_buffer);
-    auto dispatch_nvl_send_num_tokens_per_rank = AsymBuffer<int>(
-        nvl_send_buffer, kNumRDMARanks * num_loop_stage, NUM_MAX_NVL_PEERS);
-    auto dispatch_nvl_send_num_tokens_per_expert = AsymBuffer<int>(
-        nvl_send_buffer, num_nvl_experts * num_loop_stage, NUM_MAX_NVL_PEERS);
-    auto dispatch_nvl_recv_num_tokens_per_rank = AsymBuffer<int>(
-        nvl_recv_buffer, kNumRDMARanks * num_loop_stage, NUM_MAX_NVL_PEERS);
-    auto dispatch_nvl_recv_num_tokens_per_expert = AsymBuffer<int>(
-        nvl_recv_buffer, num_nvl_experts * num_loop_stage, NUM_MAX_NVL_PEERS);
+    auto dispatch_nvl_send_num_tokens_per_rank =
+        AsymBuffer<int>(nvl_send_buffer,
+                        kNumRDMARanks * num_pipeline_stages,
+                        NUM_MAX_NVL_PEERS);
+    auto dispatch_nvl_send_num_tokens_per_expert =
+        AsymBuffer<int>(nvl_send_buffer,
+                        num_nvl_experts * num_pipeline_stages,
+                        NUM_MAX_NVL_PEERS);
+    auto dispatch_nvl_recv_num_tokens_per_rank =
+        AsymBuffer<int>(nvl_recv_buffer,
+                        kNumRDMARanks * num_pipeline_stages,
+                        NUM_MAX_NVL_PEERS);
+    auto dispatch_nvl_recv_num_tokens_per_expert =
+        AsymBuffer<int>(nvl_recv_buffer,
+                        num_nvl_experts * num_pipeline_stages,
+                        NUM_MAX_NVL_PEERS);
 
-    auto combine_nvl_send_num_tokens_per_rank = AsymBuffer<int>(
-        nvl_send_buffer, kNumRDMARanks * num_loop_stage, NUM_MAX_NVL_PEERS);
-    auto combine_nvl_recv_num_tokens_per_rank = AsymBuffer<int>(
-        nvl_recv_buffer, kNumRDMARanks * num_loop_stage, NUM_MAX_NVL_PEERS);
+    auto combine_nvl_send_num_tokens_per_rank =
+        AsymBuffer<int>(nvl_send_buffer,
+                        kNumRDMARanks * num_pipeline_stages,
+                        NUM_MAX_NVL_PEERS);
+    auto combine_nvl_recv_num_tokens_per_rank =
+        AsymBuffer<int>(nvl_recv_buffer,
+                        kNumRDMARanks * num_pipeline_stages,
+                        NUM_MAX_NVL_PEERS);
 
     // Clean up for later data dispatch
     auto nvl_buffer_ptr_int = static_cast<int*>(buffer_ptrs[nvl_rank]);
@@ -372,7 +384,7 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
     // TODO(Xreki): may use NVSHMEM reduction
     EP_DEVICE_ASSERT(num_rdma_experts <= num_threads);
     if (thread_id < num_rdma_experts) {
-      for (int j = 0; j < num_loop_stage; ++j) {
+      for (int j = 0; j < num_pipeline_stages; ++j) {
         int sum = 0;
 #pragma unroll
         for (int i = 0; i < kNumRDMARanks; ++i)
@@ -385,7 +397,7 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
     __syncthreads();
 
     // Reduce dispatch RDMA received tokens
-    if (thread_id < num_loop_stage) {
+    if (thread_id < num_pipeline_stages) {
       int sum = 0;
 #pragma unroll
       for (int i = 0; i < kNumRDMARanks; ++i) {
@@ -403,7 +415,7 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
     // Send numbers of tokens per rank/expert to NVL ranks
     EP_DEVICE_ASSERT(NUM_MAX_NVL_PEERS <= num_threads);
     if (thread_id < NUM_MAX_NVL_PEERS) {
-      for (int j = 0; j < num_loop_stage; ++j) {
+      for (int j = 0; j < num_pipeline_stages; ++j) {
 #pragma unroll
         for (int i = 0; i < kNumRDMARanks; ++i)
           dispatch_nvl_send_num_tokens_per_rank.buffer(
@@ -420,16 +432,16 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
     }
 
     // Cumsum the tokens number for multi-stages
-    EP_DEVICE_ASSERT(num_loop_stage <= 32);
+    EP_DEVICE_ASSERT(num_pipeline_stages <= 32);
     __shared__ int tokens_cumsum[32];
 
     // Reduce combine RDMA received tokens
-    if (thread_id < num_loop_stage) {
+    if (thread_id < num_pipeline_stages) {
       int sum = 0;
 #pragma unroll
       for (int i = 0; i < kNumRDMARanks; ++i) {
         sum += rdma_recv_num_tokens_mixed.recv_buffer(
-            i)[dispatch_num_elements * num_loop_stage +
+            i)[dispatch_num_elements * num_pipeline_stages +
                thread_id * combine_num_elements + NUM_MAX_NVL_PEERS];
         combine_recv_rdma_rank_prefix_sum[thread_id * kNumRDMARanks + i] = sum;
       }
@@ -444,7 +456,7 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
     if (thread_id == 0) {
       combine_num_rdma_recv_tokens_cumsum[0] = tokens_cumsum[0];
       int prefix = tokens_cumsum[0];
-      for (int i = 1; i < num_loop_stage; ++i) {
+      for (int i = 1; i < num_pipeline_stages; ++i) {
         prefix += tokens_cumsum[i];
         combine_num_rdma_recv_tokens_cumsum[i] = prefix;
       }
@@ -454,12 +466,12 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
     EP_DEVICE_ASSERT(NUM_MAX_NVL_PEERS <= num_threads);
     if (thread_id < NUM_MAX_NVL_PEERS) {
 #pragma unroll
-      for (int j = 0; j < num_loop_stage; ++j) {
+      for (int j = 0; j < num_pipeline_stages; ++j) {
         for (int i = 0; i < kNumRDMARanks; ++i)
           combine_nvl_send_num_tokens_per_rank.buffer(
               nvl_rank)[j * kNumRDMARanks + i] =
               rdma_recv_num_tokens_mixed.recv_buffer(
-                  i)[dispatch_num_elements * num_loop_stage +
+                  i)[dispatch_num_elements * num_pipeline_stages +
                      j * combine_num_elements + thread_id];
       }
     }
@@ -470,9 +482,9 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
     __syncthreads();
 
     // Reduce dispatch number of tokens per rank/expert
-    EP_DEVICE_ASSERT(num_nvl_experts * num_loop_stage <= num_threads);
+    EP_DEVICE_ASSERT(num_nvl_experts * num_pipeline_stages <= num_threads);
 
-    if (thread_id < num_loop_stage) {
+    if (thread_id < num_pipeline_stages) {
       int sum = 0;
 #pragma unroll
       for (int i = 0; i < num_ranks; ++i) {
@@ -487,7 +499,7 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
       }
       dispatch_moe_recv_counter_mapped[thread_id] = sum;
     }
-    if (thread_id < num_nvl_experts * num_loop_stage) {
+    if (thread_id < num_nvl_experts * num_pipeline_stages) {
       int sum = 0;
 #pragma unroll
       for (int i = 0; i < NUM_MAX_NVL_PEERS; ++i)
@@ -500,7 +512,7 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
     }
 
     // Reduce combine number of tokens per rank/expert
-    if (thread_id < num_loop_stage) {
+    if (thread_id < num_pipeline_stages) {
       int sum = 0;
 #pragma unroll
       for (int i = 0; i < num_ranks; ++i) {
@@ -522,7 +534,7 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
     barrier_device<NUM_MAX_NVL_PEERS>(task_fifo_ptrs, head, nvl_rank);
     move_fifo_slots<NUM_MAX_NVL_PEERS>(head);
 
-  } else if (sm_id < 1 + kNumRDMARanks * num_loop_stage) {
+  } else if (sm_id < 1 + kNumRDMARanks * num_pipeline_stages) {
     // Calculate meta data
     int stage_id = (sm_id - 1) / kNumRDMARanks;
     int dst_rdma_rank = (sm_id - 1) % kNumRDMARanks;
@@ -594,9 +606,10 @@ __global__ void fused_notify(const int* dispatch_num_tokens_per_rank,
     }
   } else {
     // Calculate meta data
-    int stage_id = (sm_id - 1 - kNumRDMARanks * num_loop_stage) / kNumRDMARanks;
+    int stage_id =
+        (sm_id - 1 - kNumRDMARanks * num_pipeline_stages) / kNumRDMARanks;
     int dst_rdma_rank =
-        (sm_id - 1 - kNumRDMARanks * num_loop_stage) % kNumRDMARanks;
+        (sm_id - 1 - kNumRDMARanks * num_pipeline_stages) % kNumRDMARanks;
     for (int channel_id = warp_id; channel_id < num_channels;
          channel_id += num_warps) {
       int token_start_idx, token_end_idx;
@@ -745,7 +758,7 @@ void fused_notify(const int* dispatch_num_tokens_per_rank,
                   int64_t num_rdma_bytes,
                   int64_t num_nvl_bytes,
                   bool low_latency_mode,
-                  int num_loop_stage,
+                  int num_pipeline_stages,
                   int* combine_num_rdma_recv_tokens_cumsum) {
 #define FUSE_NOTIFY_LAUNCH_CASE(num_rdma_ranks)                        \
   {                                                                    \
@@ -771,7 +784,7 @@ void fused_notify(const int* dispatch_num_tokens_per_rank,
                   num_tokens,                                          \
                   num_channels,                                        \
                   expert_alignment,                                    \
-                  num_loop_stage,                                      \
+                  num_pipeline_stages,                                 \
                   rdma_clean_meta.first,                               \
                   rdma_clean_meta.second,                              \
                   nvl_clean_meta.first,                                \
@@ -827,7 +840,7 @@ void fused_notify(const int* dispatch_num_tokens_per_rank,
 
   // Launch kernel
   SETUP_LAUNCH_CONFIG(
-      1 + 2 * num_rdma_ranks * num_loop_stage, kNumThreads, stream);
+      1 + 2 * num_rdma_ranks * num_pipeline_stages, kNumThreads, stream);
   SWITCH_RDMA_RANKS(FUSE_NOTIFY_LAUNCH_CASE);
 #undef FUSE_NOTIFY_LAUNCH_CASE
 }
@@ -1442,7 +1455,7 @@ __global__ void notify_combine(const int* num_tokens_per_rank,
 template <bool kLowLatencyMode, int kNumRDMARanks>
 __global__ void fused_notify_combine_post_step(
     int num_channels,
-    int num_loop_stage,
+    int num_pipeline_stages,
     const int* recv_gbl_rank_prefix_sum,
     const int* rdma_channel_prefix_matrix,
     const int* gbl_channel_prefix_matrix,
@@ -1463,12 +1476,12 @@ __global__ void fused_notify_combine_post_step(
   auto rdma_rank = rank / NUM_MAX_NVL_PEERS,
        nvl_rank = rank % NUM_MAX_NVL_PEERS;
 
-  auto rdma_channel_meta =
-      SymBuffer<int>(rdma_buffer_ptr,
-                     (num_channels + num_channels * NUM_MAX_NVL_PEERS) *
-                         num_loop_stage,  // (rdma_channel_meta +
-                                          // nvl_channel_meta) * num_loop_stage
-                     kNumRDMARanks);
+  auto rdma_channel_meta = SymBuffer<int>(
+      rdma_buffer_ptr,
+      (num_channels + num_channels * NUM_MAX_NVL_PEERS) *
+          num_pipeline_stages,  // (rdma_channel_meta +
+                                // nvl_channel_meta) * num_pipeline_stages
+      kNumRDMARanks);
 
   // NVL buffers
   auto nvl_send_buffer =
@@ -1477,11 +1490,11 @@ __global__ void fused_notify_combine_post_step(
 
   auto nvl_send_channel_meta =
       AsymBuffer<int>(nvl_send_buffer,
-                      num_loop_stage * kNumRDMARanks * num_channels,
+                      num_pipeline_stages * kNumRDMARanks * num_channels,
                       NUM_MAX_NVL_PEERS);
   auto nvl_recv_channel_meta =
       AsymBuffer<int>(nvl_recv_buffer,
-                      num_loop_stage * kNumRDMARanks * num_channels,
+                      num_pipeline_stages * kNumRDMARanks * num_channels,
                       NUM_MAX_NVL_PEERS);
 
   if (thread_id == 32)
@@ -1493,7 +1506,7 @@ __global__ void fused_notify_combine_post_step(
   if (warp_id == 0) {  // rdma_channel_prefix_matrix data
     // land_id -> dst_rdma_rank
     if (lane_id < kNumRDMARanks) {
-      for (int j = 0; j < num_loop_stage; ++j) {
+      for (int j = 0; j < num_pipeline_stages; ++j) {
         for (int i = 0; i < num_channels; ++i) {
           rdma_channel_meta.send_buffer(
               lane_id)[j * (num_channels + num_channels * NUM_MAX_NVL_PEERS) +
@@ -1510,7 +1523,7 @@ __global__ void fused_notify_combine_post_step(
     // land_id -> dst_rdma_rank
     // warp_id -1  -> dst_nvl_rank
     if (lane_id < kNumRDMARanks) {
-      for (int j = 0; j < num_loop_stage; ++j) {
+      for (int j = 0; j < num_pipeline_stages; ++j) {
         auto dst_ptr = rdma_channel_meta.send_buffer(lane_id) +
                        j * (num_channels + num_channels * NUM_MAX_NVL_PEERS) +
                        num_channels + (warp_id - 1) * num_channels;
@@ -1534,7 +1547,7 @@ __global__ void fused_notify_combine_post_step(
     nvshmem_int_put_nbi(
         rdma_channel_meta.recv_buffer(rdma_rank),
         rdma_channel_meta.send_buffer(thread_id),
-        (num_channels + num_channels * NUM_MAX_NVL_PEERS) * num_loop_stage,
+        (num_channels + num_channels * NUM_MAX_NVL_PEERS) * num_pipeline_stages,
         translate_dst_rdma_rank<kLowLatencyMode>(thread_id, nvl_rank));
   }
   __syncthreads();
@@ -1549,7 +1562,7 @@ __global__ void fused_notify_combine_post_step(
   if (warp_id == 0) {
     // lane_id -> src_rdma_rank
     if (lane_id < kNumRDMARanks) {
-      for (int j = 0; j < num_loop_stage; ++j) {
+      for (int j = 0; j < num_pipeline_stages; ++j) {
         for (int i = 0; i < num_channels; ++i) {
           recv_rdma_channel_prefix_matrix[(j * kNumRDMARanks + lane_id) *
                                               num_channels +
@@ -1565,7 +1578,7 @@ __global__ void fused_notify_combine_post_step(
     // lane_id -> src_rdma_rank
     // warp_id - 1  -> dst_nvl_rank
     if (lane_id < kNumRDMARanks) {
-      for (int j = 0; j < num_loop_stage; ++j) {
+      for (int j = 0; j < num_pipeline_stages; ++j) {
         auto recv_ptr = rdma_channel_meta.recv_buffer(lane_id) +
                         j * (num_channels + num_channels * NUM_MAX_NVL_PEERS) +
                         num_channels + (warp_id - 1) * num_channels;
@@ -1588,7 +1601,7 @@ __global__ void fused_notify_combine_post_step(
   if (thread_id < kNumRDMARanks * NUM_MAX_NVL_PEERS) {
     const auto src_rdma_rank = thread_id / NUM_MAX_NVL_PEERS;
     const auto src_nvl_rank = thread_id % NUM_MAX_NVL_PEERS;
-    for (int j = 0; j < num_loop_stage; ++j) {
+    for (int j = 0; j < num_pipeline_stages; ++j) {
       int rank_offset =
           thread_id > 0
               ? recv_gbl_rank_prefix_sum[j * kNumRDMARanks * NUM_MAX_NVL_PEERS +
@@ -1718,7 +1731,7 @@ void notify_combine(const int* num_tokens_per_rank,
 
 void fused_notify_combine_post_step(int num_ranks,
                                     int num_channels,
-                                    int num_loop_stage,
+                                    int num_pipeline_stages,
                                     const int* recv_gbl_rank_prefix_sum,
                                     const int* rdma_channel_prefix_matrix,
                                     const int* gbl_channel_prefix_matrix,
@@ -1740,7 +1753,7 @@ void fused_notify_combine_post_step(int num_ranks,
     LAUNCH_KERNEL(&cfg,                                              \
                   notify_combine_post_step_func,                     \
                   num_channels,                                      \
-                  num_loop_stage,                                    \
+                  num_pipeline_stages,                               \
                   recv_gbl_rank_prefix_sum,                          \
                   rdma_channel_prefix_matrix,                        \
                   gbl_channel_prefix_matrix,                         \
@@ -2117,14 +2130,14 @@ __global__ void __launch_bounds__(
             if (kAsymmertricMode) {
               // Indicates at which round the token needs to be received during
               // combination.
-              int64_t asymm_combine_loop_idx =
+              int64_t asymm_combine_stage_idx =
                   asymm_send_combine_schedule_map[token_idx * kNumRDMARanks +
                                                   i];
               auto shifted_asymm_send_rdma_head =
                   asymm_send_rdma_head +
-                  asymm_combine_loop_idx * num_tokens * kNumRDMARanks;
+                  asymm_combine_stage_idx * num_tokens * kNumRDMARanks;
               auto shifted_asymm_send_nvl_head =
-                  asymm_send_nvl_head + asymm_combine_loop_idx * num_tokens *
+                  asymm_send_nvl_head + asymm_combine_stage_idx * num_tokens *
                                             kNumRDMARanks * NUM_MAX_NVL_PEERS;
 
               auto send_rdma_head = ld_nc_global(shifted_asymm_send_rdma_head +
@@ -2135,7 +2148,7 @@ __global__ void __launch_bounds__(
                              recv_is_token_in_rank_values,
                              rank,
                              channel_id,
-                             asymm_combine_loop_idx,
+                             asymm_combine_stage_idx,
                              send_rdma_head,
                              shifted_asymm_send_nvl_head +
                                  token_idx * kNumRDMARanks * NUM_MAX_NVL_PEERS +
@@ -2472,10 +2485,10 @@ __global__ void __launch_bounds__(
           if (kAsymmertricMode) {
             auto shifted_asymm_recv_rdma_rank_prefix_sum =
                 asymm_recv_rdma_rank_prefix_sum +
-                src_meta.combine_loop_idx * kNumRDMARanks;
+                src_meta.combine_stage_idx * kNumRDMARanks;
             auto shifted_asymm_recv_rdma_channel_prefix_matrix =
                 asymm_recv_rdma_channel_prefix_matrix +
-                src_meta.combine_loop_idx * kNumRDMARanks * num_channels;
+                src_meta.combine_stage_idx * kNumRDMARanks * num_channels;
             int64_t asymm_rdma_start_idx =
                 src_rdma_rank == 0
                     ? 0
@@ -2488,10 +2501,10 @@ __global__ void __launch_bounds__(
                           shifted_asymm_recv_rdma_channel_prefix_matrix +
                           src_rdma_rank * num_channels + channel_id - 1);
             int64_t asymm_combine_start_idx =
-                src_meta.combine_loop_idx == 0
+                src_meta.combine_stage_idx == 0
                     ? 0
                     : asymm_recv_rdma_counter_loop_prefix_sum
-                          [src_meta.combine_loop_idx - 1];
+                          [src_meta.combine_stage_idx - 1];
             int64_t asymm_aggregated_nvl_head_offset =
                 asymm_combine_start_idx + asymm_rdma_start_idx +
                 asymm_channel_start_idx + src_meta.send_rdma_head;
@@ -2728,7 +2741,7 @@ __global__ void __launch_bounds__(
           details.src_channel_id = meta.src_channel_id;
           details.nvl_head = meta.send_nvl_head[nvl_rank];
           details.src_rank = meta.src_rank;
-          details.combine_loop_idx = meta.combine_loop_idx;
+          details.combine_stage_idx = meta.combine_stage_idx;
           st_na_global(recv_src_meta + recv_token_idx, details);
         }
 

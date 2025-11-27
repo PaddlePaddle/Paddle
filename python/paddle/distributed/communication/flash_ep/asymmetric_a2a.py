@@ -39,7 +39,7 @@ class FlashEPBuffer:
         """
         self._buffer = None
 
-    def get_buffer(self, group, hidden_bytes, num_loop_stage):
+    def get_buffer(self, group, hidden_bytes, num_pipeline_stages):
         """Get or create a buffer for all-to-all communication.
 
         Args:
@@ -78,7 +78,7 @@ class FlashEPBuffer:
                 group,
                 num_nvl_bytes,
                 num_rdma_bytes,
-                num_loop_stage=num_loop_stage,
+                num_pipeline_stages=num_pipeline_stages,
             )
         return self._buffer
 
@@ -106,12 +106,12 @@ def get_flashep_rowmap_func(topk_idx, num_experts):
 
 def local_dispatch_forward_func(
     dispatch_history,
-    output_route_map_list,
-    output_route_map_len_list,
+    output_rowmap_list,
+    output_rowmap_offset_list,
     num_experts,
     local_expert_id,
     out_len,
-    num_loop_stage,
+    num_pipeline_stages,
 ):
     dispatched_hidden_states_list = []
     dispatched_indices_list = []
@@ -154,13 +154,13 @@ def local_dispatch_forward_func(
         dispatched_indices_list,
         details_metas_list,
         fp8_scales_list if use_fp8 else None,
-        output_route_map_list,
-        output_route_map_len_list,
+        output_rowmap_list,
+        output_rowmap_offset_list,
         num_experts,
         local_expert_id,
         out_len,
         FP8_ALIGN,
-        num_loop_stage,
+        num_pipeline_stages,
     )
 
     return (
@@ -174,12 +174,12 @@ def local_dispatch_forward_func(
 
 def local_dispatch_backward_func(
     dispatch_history,
-    output_route_map_list,
-    output_route_map_len_list,
+    output_rowmap_list,
+    output_rowmap_offset_list,
     num_experts,
     local_expert_id,
     out_len,
-    num_loop_stage,
+    num_pipeline_stages,
 ):
     dispatched_hidden_states_list = []
     dispatched_indices_list = []
@@ -207,13 +207,13 @@ def local_dispatch_backward_func(
         dispatched_hidden_states_list,
         dispatched_indices_list,
         details_metas_list,
-        output_route_map_list,
-        output_route_map_len_list,
+        output_rowmap_list,
+        output_rowmap_offset_list,
         num_experts,
         local_expert_id,
         out_len,
         FP8_ALIGN,
-        num_loop_stage,
+        num_pipeline_stages,
     )
 
     return (
@@ -232,7 +232,7 @@ def local_combine_forward_func(
     ori_len,
     is_buffer_active,
     group,
-    num_loop_stage,
+    num_pipeline_stages,
 ):
     recv_gbl_channel_prefix_matrix_list = []
 
@@ -247,7 +247,7 @@ def local_combine_forward_func(
         return
 
     buffer = flashep_buffer.get_buffer(
-        group, get_hidden_bytes(tokens), num_loop_stage
+        group, get_hidden_bytes(tokens), num_pipeline_stages
     )
     config = buffer.get_dispatch_config(buffer.group_size)
     combine_buffers = local_combine_forward(
@@ -273,7 +273,7 @@ def local_combine_backward_func(
     ori_len,
     is_buffer_active,
     group,
-    num_loop_stage,
+    num_pipeline_stages,
 ):
     recv_gbl_channel_prefix_matrix_list = []
 
@@ -288,7 +288,7 @@ def local_combine_backward_func(
         return
 
     buffer = flashep_buffer.get_buffer(
-        group, get_hidden_bytes(tokens), num_loop_stage
+        group, get_hidden_bytes(tokens), num_pipeline_stages
     )
     config = buffer.get_dispatch_config(buffer.group_size)
     local_combine_backward(
@@ -311,7 +311,7 @@ def fused_get_schedule_and_layout_func(
     local_expert_to_stage_map,
     num_experts,
     nranks,
-    num_loop_stage,
+    num_pipeline_stages,
 ):
     dispatch_schedule_map, combine_schedule_map = (
         get_flash_ep_coalesce_rdma_schedule(
@@ -319,7 +319,7 @@ def fused_get_schedule_and_layout_func(
             local_expert_to_stage_map,
             nranks,
             num_experts,
-            num_loop_stage,
+            num_pipeline_stages,
         )
     )
 
@@ -334,7 +334,7 @@ def fused_get_schedule_and_layout_func(
         combine_schedule_map,
         nranks,
         num_experts,
-        num_loop_stage,
+        num_pipeline_stages,
     )
 
     return (
@@ -353,11 +353,11 @@ def notify_dispatch_and_combine_func(
     local_expert_to_stage_map,
     num_experts,
     group,
-    num_loop_stage,
+    num_pipeline_stages,
 ):
     nranks = group.nranks
     buffer = flashep_buffer.get_buffer(
-        group, get_hidden_bytes(x), num_loop_stage
+        group, get_hidden_bytes(x), num_pipeline_stages
     )
 
     (
@@ -372,7 +372,7 @@ def notify_dispatch_and_combine_func(
         local_expert_to_stage_map,
         num_experts,
         nranks,
-        num_loop_stage,
+        num_pipeline_stages,
     )
 
     dispatch_notify_infos, combine_notify_infos, asymmetric_handle = (
@@ -417,11 +417,11 @@ def dispatch_func(
     async_finish=False,
     handle=None,
     asymmetric_handle=None,
-    num_loop_stage=1,
+    num_pipeline_stages=1,
 ):
     assert handle is not None
     buffer = flashep_buffer.get_buffer(
-        group, get_hidden_bytes(x), num_loop_stage
+        group, get_hidden_bytes(x), num_pipeline_stages
     )
 
     if scale is not None:
@@ -471,10 +471,10 @@ def combine_func(
     previous_event=None,
     async_finish=False,
     allocate_on_comm_stream=False,
-    num_loop_stage=1,
+    num_pipeline_stages=1,
 ):
     buffer = flashep_buffer.get_buffer(
-        group, get_hidden_bytes(x), num_loop_stage
+        group, get_hidden_bytes(x), num_pipeline_stages
     )
     combined_x, combined_weight, event = buffer.combine(
         x,

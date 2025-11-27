@@ -49,7 +49,7 @@ void SetAllocatorStreamForGPUContext(cudaStream_t stream,
 
 Buffer::Buffer(int rank,
                int num_ranks,
-               int num_loop_stage,
+               int num_pipeline_stages,
                int64_t num_nvl_bytes,
                int64_t num_rdma_bytes,
                bool low_latency_mode,
@@ -59,7 +59,7 @@ Buffer::Buffer(int rank,
       num_nvl_bytes(num_nvl_bytes),
       num_rdma_bytes(num_rdma_bytes),
       low_latency_mode(low_latency_mode),
-      num_loop_stage(num_loop_stage) {
+      num_pipeline_stages(num_pipeline_stages) {
   CUDA_CHECK(cudaGetDevice(&device_id));
   auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
   paddle::distributed::ProcessGroup* pg = map->get(context_ring_id);
@@ -134,7 +134,7 @@ Buffer::Buffer(int rank,
 
   // MoE counter
   CUDA_CHECK(cudaMallocHost(&dispatch_moe_recv_counter,
-                            sizeof(int64_t) * num_loop_stage,
+                            sizeof(int64_t) * num_pipeline_stages,
                             cudaHostAllocMapped));
   CUDA_CHECK(
       cudaHostGetDevicePointer(&dispatch_moe_recv_counter_mapped,
@@ -143,7 +143,7 @@ Buffer::Buffer(int rank,
   *dispatch_moe_recv_counter = -1;
 
   CUDA_CHECK(cudaMallocHost(&combine_moe_recv_counter,
-                            sizeof(int64_t) * num_loop_stage,
+                            sizeof(int64_t) * num_pipeline_stages,
                             cudaHostAllocMapped));
   CUDA_CHECK(
       cudaHostGetDevicePointer(&combine_moe_recv_counter_mapped,
@@ -154,7 +154,7 @@ Buffer::Buffer(int rank,
   // MoE expert-level counter
   CUDA_CHECK(
       cudaMallocHost(&moe_recv_expert_counter,
-                     sizeof(int) * NUM_MAX_LOCAL_EXPERTS * num_loop_stage,
+                     sizeof(int) * NUM_MAX_LOCAL_EXPERTS * num_pipeline_stages,
                      cudaHostAllocMapped));
   CUDA_CHECK(cudaHostGetDevicePointer(&moe_recv_expert_counter_mapped,
                                       const_cast<int*>(moe_recv_expert_counter),
@@ -165,7 +165,7 @@ Buffer::Buffer(int rank,
   // MoE RDMA-level counter
   if (num_rdma_ranks > 0) {
     CUDA_CHECK(cudaMallocHost(&dispatch_moe_recv_rdma_counter,
-                              sizeof(int) * num_loop_stage,
+                              sizeof(int) * num_pipeline_stages,
                               cudaHostAllocMapped));
     CUDA_CHECK(cudaMallocHost(
         &dispatch_moe_recv_rdma_counter, sizeof(int), cudaHostAllocMapped));
@@ -175,7 +175,7 @@ Buffer::Buffer(int rank,
         0));
     *dispatch_moe_recv_rdma_counter = -1;
     CUDA_CHECK(cudaMallocHost(&combine_moe_recv_rdma_counter,
-                              sizeof(int) * num_loop_stage,
+                              sizeof(int) * num_pipeline_stages,
                               cudaHostAllocMapped));
     CUDA_CHECK(cudaHostGetDevicePointer(
         &combine_moe_recv_rdma_counter_mapped,
@@ -1058,9 +1058,10 @@ Buffer::internode_fused_notify(
   EP_HOST_ASSERT(config.num_sms % 2 == 0);
   EP_HOST_ASSERT(0 < get_num_rdma_ranks() &&
                  get_num_rdma_ranks() <= NUM_MAX_RDMA_PEERS);
-  EP_HOST_ASSERT(dispatch_num_tokens_per_rank->size(0) == num_loop_stage);
-  EP_HOST_ASSERT(dispatch_num_tokens_per_rdma_rank->size(0) == num_loop_stage);
-  EP_HOST_ASSERT(combine_num_tokens_per_rank->size(0) == num_loop_stage);
+  EP_HOST_ASSERT(dispatch_num_tokens_per_rank->size(0) == num_pipeline_stages);
+  EP_HOST_ASSERT(dispatch_num_tokens_per_rdma_rank->size(0) ==
+                 num_pipeline_stages);
+  EP_HOST_ASSERT(combine_num_tokens_per_rank->size(0) == num_pipeline_stages);
 
   auto num_tokens = static_cast<int>(x.size(0)),
        hidden = static_cast<int>(x.size(1)),
@@ -1096,71 +1097,74 @@ Buffer::internode_fused_notify(
   // notify dispatch
   auto dispatch_rdma_channel_prefix_matrix =
       ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {num_loop_stage, num_rdma_ranks, num_channels},
+          {num_pipeline_stages, num_rdma_ranks, num_channels},
           phi::DataType::INT32,
           phi::GPUPlace(device_id)));
   auto dispatch_recv_rdma_rank_prefix_sum = ConvertPaddleTensorToDetailTensor(
-      paddle::experimental::empty({num_loop_stage, num_rdma_ranks},
+      paddle::experimental::empty({num_pipeline_stages, num_rdma_ranks},
                                   phi::DataType::INT32,
                                   phi::GPUPlace(device_id)));
-  auto dispatch_gbl_channel_prefix_matrix = ConvertPaddleTensorToDetailTensor(
-      paddle::experimental::empty({num_loop_stage, num_ranks, num_channels},
-                                  phi::DataType::INT32,
-                                  phi::GPUPlace(device_id)));
+  auto dispatch_gbl_channel_prefix_matrix =
+      ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
+          {num_pipeline_stages, num_ranks, num_channels},
+          phi::DataType::INT32,
+          phi::GPUPlace(device_id)));
   auto dispatch_recv_gbl_rank_prefix_sum = ConvertPaddleTensorToDetailTensor(
-      paddle::experimental::empty({num_loop_stage, num_ranks},
+      paddle::experimental::empty({num_pipeline_stages, num_ranks},
                                   phi::DataType::INT32,
                                   phi::GPUPlace(device_id)));
 
   // notify combine
   auto combine_rdma_channel_prefix_matrix =
       ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {num_loop_stage, num_rdma_ranks, num_channels},
+          {num_pipeline_stages, num_rdma_ranks, num_channels},
           phi::DataType::INT32,
           phi::GPUPlace(device_id)));
   auto combine_recv_rdma_rank_prefix_sum = ConvertPaddleTensorToDetailTensor(
-      paddle::experimental::empty({num_loop_stage, num_rdma_ranks},
+      paddle::experimental::empty({num_pipeline_stages, num_rdma_ranks},
                                   phi::DataType::INT32,
                                   phi::GPUPlace(device_id)));
-  auto combine_gbl_channel_prefix_matrix = ConvertPaddleTensorToDetailTensor(
-      paddle::experimental::empty({num_loop_stage, num_ranks, num_channels},
-                                  phi::DataType::INT32,
-                                  phi::GPUPlace(device_id)));
+  auto combine_gbl_channel_prefix_matrix =
+      ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
+          {num_pipeline_stages, num_ranks, num_channels},
+          phi::DataType::INT32,
+          phi::GPUPlace(device_id)));
   auto combine_recv_gbl_rank_prefix_sum = ConvertPaddleTensorToDetailTensor(
-      paddle::experimental::empty({num_loop_stage, num_ranks},
+      paddle::experimental::empty({num_pipeline_stages, num_ranks},
                                   phi::DataType::INT32,
                                   phi::GPUPlace(device_id)));
 
   auto combine_recv_rdma_channel_prefix_matrix =
       ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {num_loop_stage, num_rdma_ranks, num_channels},
+          {num_pipeline_stages, num_rdma_ranks, num_channels},
           phi::DataType::INT32,
           phi::GPUPlace(device_id)));
   auto combine_recv_gbl_channel_prefix_matrix =
-      ConvertPaddleTensorToDetailTensor(
-          paddle::experimental::empty({num_loop_stage, num_ranks, num_channels},
-                                      phi::DataType::INT32,
-                                      phi::GPUPlace(device_id)));
+      ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
+          {num_pipeline_stages, num_ranks, num_channels},
+          phi::DataType::INT32,
+          phi::GPUPlace(device_id)));
 
   auto combine_send_rdma_head =
       ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {num_loop_stage, num_tokens, num_ranks / NUM_MAX_NVL_PEERS},
+          {num_pipeline_stages, num_tokens, num_ranks / NUM_MAX_NVL_PEERS},
           phi::DataType::INT32,
           phi::GPUPlace(device_id)));
   auto combine_send_nvl_head =
       ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {num_loop_stage, num_tokens, num_ranks / NUM_MAX_NVL_PEERS, 8},
+          {num_pipeline_stages, num_tokens, num_ranks / NUM_MAX_NVL_PEERS, 8},
           phi::DataType::INT32,
           phi::GPUPlace(device_id)));
-  auto combine_num_rdma_recv_tokens_cumsum =
-      ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {num_loop_stage}, phi::DataType::INT32, phi::GPUPlace(device_id)));
+  auto combine_num_rdma_recv_tokens_cumsum = ConvertPaddleTensorToDetailTensor(
+      paddle::experimental::empty({num_pipeline_stages},
+                                  phi::DataType::INT32,
+                                  phi::GPUPlace(device_id)));
 
   auto compute_stream = calc_ctx->stream();
   stream_wait(comm_stream, compute_stream);
 
   // notify dispatch
-  for (int s = 0; s < num_loop_stage; ++s) {
+  for (int s = 0; s < num_pipeline_stages; ++s) {
     dispatch_moe_recv_counter[s] = -1;
     dispatch_moe_recv_rdma_counter[s] = -1;
     combine_moe_recv_counter[s] = -1;
@@ -1213,14 +1217,14 @@ Buffer::internode_fused_notify(
       config.get_rdma_buffer_size_hint(hidden_int4 * sizeof(int4), num_ranks),
       num_nvl_bytes,
       low_latency_mode,
-      num_loop_stage,
+      num_pipeline_stages,
       combine_num_rdma_recv_tokens_cumsum.data_ptr<int>());
   move_fifo_slots(3);
 
   internode::fused_notify_combine_post_step(
       num_ranks,
       num_channels,
-      num_loop_stage,
+      num_pipeline_stages,
       combine_recv_gbl_rank_prefix_sum.data_ptr<int>(),
       combine_rdma_channel_prefix_matrix.data_ptr<int>(),
       combine_gbl_channel_prefix_matrix.data_ptr<int>(),
@@ -1239,11 +1243,11 @@ Buffer::internode_fused_notify(
   auto start_time = std::chrono::high_resolution_clock::now();
   while (true) {
     bool ready = true;
-    for (int s = 0; s < num_loop_stage; ++s) {
+    for (int s = 0; s < num_pipeline_stages; ++s) {
       ready = ready && (combine_moe_recv_counter[s] >= 0) &&
               (combine_moe_recv_rdma_counter[s] >= 0);
     }
-    for (int s = 0; s < num_loop_stage && ready; ++s) {
+    for (int s = 0; s < num_pipeline_stages && ready; ++s) {
       ready &= (dispatch_moe_recv_counter[s] >= 0) &&
                (dispatch_moe_recv_rdma_counter[s] >= 0);
       for (int i = 0; i < num_local_experts && ready; ++i)
@@ -1270,19 +1274,20 @@ Buffer::internode_fused_notify(
     }
   }
   std::vector<int> combine_num_recv_tokens(
-      combine_moe_recv_counter, combine_moe_recv_counter + num_loop_stage);
+      combine_moe_recv_counter, combine_moe_recv_counter + num_pipeline_stages);
   std::vector<int> combine_num_rdma_recv_tokens(
       combine_moe_recv_rdma_counter,
-      combine_moe_recv_rdma_counter + num_loop_stage);
+      combine_moe_recv_rdma_counter + num_pipeline_stages);
   std::vector<int> dispatch_num_recv_tokens(
-      dispatch_moe_recv_counter, dispatch_moe_recv_counter + num_loop_stage);
+      dispatch_moe_recv_counter,
+      dispatch_moe_recv_counter + num_pipeline_stages);
   std::vector<int> dispatch_num_rdma_recv_tokens(
       dispatch_moe_recv_rdma_counter,
-      dispatch_moe_recv_rdma_counter + num_loop_stage);
+      dispatch_moe_recv_rdma_counter + num_pipeline_stages);
 
   std::vector<std::vector<int>> num_recv_tokens_per_expert_list;
-  num_recv_tokens_per_expert_list.reserve(num_loop_stage);
-  for (int s = 0; s < num_loop_stage; ++s) {
+  num_recv_tokens_per_expert_list.reserve(num_pipeline_stages);
+  for (int s = 0; s < num_pipeline_stages; ++s) {
     num_recv_tokens_per_expert_list.emplace_back(
         moe_recv_expert_counter + s * num_local_experts,
         moe_recv_expert_counter + (s + 1) * num_local_experts);
@@ -1710,7 +1715,7 @@ get_flash_ep_coalesce_rdma_schedule_api(
     const paddle::Tensor& local_expert_to_stage_map,
     const int num_ranks,
     const int num_experts,
-    const int num_loop_stage) {
+    const int num_pipeline_stages) {
   EP_HOST_ASSERT(topk_idx.shape().size() == 2);
   EP_HOST_ASSERT(topk_idx.dtype() == phi::DataType::INT64);
   EP_HOST_ASSERT(num_experts >= num_ranks);
@@ -1731,7 +1736,7 @@ get_flash_ep_coalesce_rdma_schedule_api(
   auto stream = topk_idx.stream();
 
   // 表示了, 每个token发给每个rdma_rank时是在第几轮.
-  // 取值范围是[-1, num_loop_stage], -1和num_loop_stage代表不发送
+  // 取值范围是[-1, num_pipeline_stages], -1和num_pipeline_stages代表不发送
   paddle::Tensor dispatch_rdma_schedule_map = paddle::experimental::empty(
       {num_tokens, num_rdma_ranks}, phi::DataType::INT32, place);
   paddle::Tensor combine_rdma_schedule_map = paddle::experimental::empty(
@@ -1744,7 +1749,7 @@ get_flash_ep_coalesce_rdma_schedule_api(
       combine_rdma_schedule_map.data<int>(),
       num_ranks,
       num_experts,
-      num_loop_stage,
+      num_pipeline_stages,
       num_tokens,
       num_topk,
       stream);
@@ -1762,7 +1767,7 @@ get_flash_ep_coalesce_rdma_layout_api(
     const paddle::Tensor& combine_rdma_schedule_map,
     const int num_ranks,
     const int num_experts,
-    const int num_loop_stage) {
+    const int num_pipeline_stages) {
   EP_HOST_ASSERT(topk_idx.shape().size() == 2);
   EP_HOST_ASSERT(topk_idx.dtype() == phi::DataType::INT64);
   EP_HOST_ASSERT(num_experts >= num_ranks);
@@ -1776,13 +1781,15 @@ get_flash_ep_coalesce_rdma_layout_api(
   auto stream = topk_idx.stream();
 
   paddle::Tensor num_tokens_per_rank = paddle::experimental::empty(
-      {2, num_loop_stage, num_ranks}, phi::DataType::INT32, place);
+      {2, num_pipeline_stages, num_ranks}, phi::DataType::INT32, place);
   paddle::Tensor num_tokens_per_rdma_rank = paddle::experimental::empty(
-      {2, num_loop_stage, num_rdma_ranks}, phi::DataType::INT32, place);
+      {2, num_pipeline_stages, num_rdma_ranks}, phi::DataType::INT32, place);
   paddle::Tensor num_tokens_per_expert = paddle::experimental::empty(
-      {2, num_loop_stage, num_experts}, phi::DataType::INT32, place);
+      {2, num_pipeline_stages, num_experts}, phi::DataType::INT32, place);
   paddle::Tensor is_token_in_rank = paddle::experimental::empty(
-      {2, num_loop_stage, num_tokens, num_ranks}, phi::DataType::BOOL, place);
+      {2, num_pipeline_stages, num_tokens, num_ranks},
+      phi::DataType::BOOL,
+      place);
   flash_ep::internode::get_flash_ep_coalesce_rdma_layout(
       topk_idx.data<int64_t>(),
       dispatch_rdma_schedule_map.data<int>(),
@@ -1795,7 +1802,7 @@ get_flash_ep_coalesce_rdma_layout_api(
       num_topk,
       num_ranks,
       num_experts,
-      num_loop_stage,
+      num_pipeline_stages,
       stream);
   return {num_tokens_per_rank,
           num_tokens_per_rdma_rank,
@@ -1815,9 +1822,9 @@ std::vector<paddle::Tensor> get_flashep_rowmap_api(
   // a2a_prefix_sum
   int64_t all_token_num = topk_idx.shape()[0];
 
-  paddle::Tensor output_route_map = paddle::experimental::full(
+  paddle::Tensor output_rowmap = paddle::experimental::full(
       {all_token_num, num_experts}, -1, phi::DataType::INT32, place);
-  paddle::Tensor output_route_map_len =
+  paddle::Tensor output_rowmap_offset =
       paddle::experimental::zeros({num_experts}, phi::DataType::INT32, place);
 
   constexpr int kCumsumBlockSize = 32;
@@ -1836,11 +1843,11 @@ std::vector<paddle::Tensor> get_flashep_rowmap_api(
       topk,
       all_token_num,
       num_experts,
-      output_route_map.data<int32_t>(),
-      output_route_map_len.data<int32_t>(),
+      output_rowmap.data<int32_t>(),
+      output_rowmap_offset.data<int32_t>(),
       stream);
 
-  return {output_route_map, output_route_map_len};
+  return {output_rowmap, output_rowmap_offset};
 }
 
 std::tuple<paddle::Tensor,
@@ -1848,40 +1855,43 @@ std::tuple<paddle::Tensor,
            paddle::Tensor,
            std::optional<paddle::Tensor>>
 local_dispatch_forward_api(
-    const std::vector<paddle::Tensor>& hidden_states,
+    const std::vector<paddle::Tensor>& x,
     const std::vector<paddle::Tensor>& topk_weights,
     const std::vector<paddle::Tensor>& topk_idx,
     const std::vector<paddle::Tensor>& recv_src_meta_per_a2a,
     const std::optional<std::vector<paddle::Tensor>>& fp8_scales,
-    const std::vector<paddle::Tensor>& output_route_map,
-    const std::vector<paddle::Tensor>& output_route_map_len,
+    const std::vector<paddle::Tensor>& output_rowmap,
+    const std::vector<paddle::Tensor>& output_rowmap_offset,
     const int64_t num_experts,
     const int64_t local_expert_id,
     const int64_t ori_out_len,
     const int64_t padding_align,
-    const int64_t num_loop_stage) {
-  EP_HOST_ASSERT(hidden_states[0].dtype() == paddle::DataType::FLOAT8_E4M3FN ||
-                 hidden_states[0].dtype() == paddle::DataType::BFLOAT16);
-  EP_HOST_ASSERT(hidden_states[0].shape().size() == 2);
+    const int64_t num_pipeline_stages) {
+  EP_HOST_ASSERT(x.size() > 0);
+  EP_HOST_ASSERT(x[0].dtype() == paddle::DataType::FLOAT8_E4M3FN ||
+                 x[0].dtype() == paddle::DataType::BFLOAT16);
+  EP_HOST_ASSERT(x[0].shape().size() == 2);
   EP_HOST_ASSERT(topk_weights[0].shape().size() == 2);
   EP_HOST_ASSERT(topk_idx[0].shape().size() == 2);
-  EP_HOST_ASSERT(hidden_states.size() == topk_weights.size());
+  EP_HOST_ASSERT(x.size() == topk_weights.size());
   EP_HOST_ASSERT(topk_idx.size() == topk_weights.size());
 
-  int64_t hidden_size = hidden_states[0].shape()[1];
+  int64_t hidden_size = x[0].shape()[1];
   int64_t topk = topk_idx[0].shape()[1];
-  int64_t a2a_num = hidden_states.size();
-  bool use_fp8 = hidden_states[0].dtype() == phi::DataType::FLOAT8_E4M3FN;
+  int64_t a2a_num = x.size();
+  bool use_fp8 = x[0].dtype() == phi::DataType::FLOAT8_E4M3FN;
   int64_t scale_num = hidden_size / 128;
 
-  auto place = hidden_states[0].place();
-  auto stream = hidden_states[0].stream();
+  EP_HOST_ASSERT(a2a_num <= num_pipeline_stages);
+
+  auto place = x[0].place();
+  auto stream = x[0].stream();
 
   int token_out_len =
       ((ori_out_len + padding_align - 1) / padding_align) * padding_align;
 
-  paddle::Tensor output_hidden_states = paddle::experimental::empty(
-      {token_out_len, hidden_size}, hidden_states[0].dtype(), place);
+  paddle::Tensor output_x = paddle::experimental::empty(
+      {token_out_len, hidden_size}, x[0].dtype(), place);
   paddle::Tensor output_topk_probs = paddle::experimental::empty(
       {token_out_len}, topk_weights[0].dtype(), place);
   paddle::Tensor output_src_meta = paddle::experimental::empty(
@@ -1890,11 +1900,26 @@ local_dispatch_forward_api(
   float* output_scale_ptr = nullptr;
   if (use_fp8) {
     EP_HOST_ASSERT(fp8_scales.has_value());
-    EP_HOST_ASSERT(fp8_scales.value().size() == hidden_states.size());
+    EP_HOST_ASSERT(fp8_scales.value().size() == x.size());
     output_scale = paddle::experimental::empty(
         {token_out_len, scale_num}, fp8_scales.value()[0].dtype(), place);
     output_scale_ptr = output_scale.value().data<float>();
   }
+  auto memset_invalid_rows =
+      [&](void* ptr, int64_t stride, int64_t element_size) {
+        cudaMemsetAsync(ptr + ori_out_len * stride * element_size,
+                        0,
+                        (token_out_len - ori_out_len) * stride * element_size,
+                        stream);
+      };
+
+  memset_invalid_rows(output_x.data(),
+                      hidden_size,
+                      use_fp8 ? sizeof(phi::dtype::float8_e4m3fn)
+                              : sizeof(phi::dtype::bfloat16));
+  memset_invalid_rows(output_topk_probs.data(), 1, sizeof(float));
+  if (use_fp8)
+    memset_invalid_rows(output_scale.value().data(), scale_num, sizeof(float));
 
   char* device_base_ptr;
   int ptr_array_size = a2a_num * sizeof(void*);
@@ -1903,7 +1928,7 @@ local_dispatch_forward_api(
 
   std::vector<const void*> host_ptrs;
   for (int32_t i = 0; i < a2a_num; ++i) {
-    host_ptrs.push_back(hidden_states[i].data());
+    host_ptrs.push_back(x[i].data());
   }
   for (int32_t i = 0; i < a2a_num; ++i) {
     host_ptrs.push_back(topk_weights[i].data<float>());
@@ -1915,10 +1940,10 @@ local_dispatch_forward_api(
     host_ptrs.push_back(recv_src_meta_per_a2a[i].data<int32_t>());
   }
   for (int32_t i = 0; i < a2a_num; ++i) {
-    host_ptrs.push_back(output_route_map[i].data<int32_t>());
+    host_ptrs.push_back(output_rowmap[i].data<int32_t>());
   }
   for (int64_t i = 0; i < a2a_num; ++i) {
-    host_ptrs.push_back(output_route_map_len[i].data<int32_t>());
+    host_ptrs.push_back(output_rowmap_offset[i].data<int32_t>());
   }
   if (use_fp8) {
     for (int64_t i = 0; i < a2a_num; ++i) {
@@ -1932,8 +1957,7 @@ local_dispatch_forward_api(
                   cudaMemcpyHostToDevice,
                   stream);
 
-  const void** d_hidden_states_ptr =
-      reinterpret_cast<const void**>(device_base_ptr);
+  const void** d_x_ptr = reinterpret_cast<const void**>(device_base_ptr);
   const float** d_topk_weights_ptr =
       reinterpret_cast<const float**>(device_base_ptr + 1 * ptr_array_size);
   const int32_t** d_topk_idx_ptr =
@@ -1950,15 +1974,14 @@ local_dispatch_forward_api(
               : nullptr;
 
   // a2a_prefix_sum
-  int64_t all_token_num = hidden_states[0].shape()[0];
+  int64_t all_token_num = x[0].shape()[0];
   paddle::Tensor a2a_prefix_sum_tensor =
       paddle::experimental::empty({a2a_num}, phi::DataType::INT32, place);
   std::vector<int32_t> h_a2a_prefix_sum(a2a_num);
   h_a2a_prefix_sum[0] = 0;
   for (int64_t i = 1; i < a2a_num; i++) {
-    h_a2a_prefix_sum[i] =
-        h_a2a_prefix_sum[i - 1] + hidden_states[i - 1].shape()[0];
-    all_token_num += hidden_states[i].shape()[0];
+    h_a2a_prefix_sum[i] = h_a2a_prefix_sum[i - 1] + x[i - 1].shape()[0];
+    all_token_num += x[i].shape()[0];
   }
   cudaMemcpyAsync(a2a_prefix_sum_tensor.data<int32_t>(),
                   h_a2a_prefix_sum.data(),
@@ -1966,7 +1989,7 @@ local_dispatch_forward_api(
                   cudaMemcpyHostToDevice,
                   stream);
 
-  flash_ep::internode::local_dispatch(d_hidden_states_ptr,
+  flash_ep::internode::local_dispatch(d_x_ptr,
                                       d_topk_weights_ptr,
                                       d_topk_idx_ptr,
                                       d_recv_src_meta_per_a2a_ptr,
@@ -1981,7 +2004,7 @@ local_dispatch_forward_api(
                                       all_token_num,
                                       scale_num,
                                       num_experts,
-                                      output_hidden_states.data(),
+                                      output_x.data(),
                                       nullptr,
                                       output_topk_probs.data<float>(),
                                       output_src_meta.data<int32_t>(),
@@ -1989,43 +2012,53 @@ local_dispatch_forward_api(
                                       stream,
                                       use_fp8,
                                       true,
-                                      num_loop_stage);
-  return {
-      output_hidden_states, output_topk_probs, output_src_meta, output_scale};
+                                      num_pipeline_stages);
+  return {output_x, output_topk_probs, output_src_meta, output_scale};
 }
 
 std::vector<paddle::Tensor> local_dispatch_backward_api(
-    const std::vector<paddle::Tensor>& hidden_states,
+    const std::vector<paddle::Tensor>& x,
     const std::vector<paddle::Tensor>& topk_idx,
     const std::vector<paddle::Tensor>& recv_src_meta_per_a2a,
-    const std::vector<paddle::Tensor>& output_route_map,
-    const std::vector<paddle::Tensor>& output_route_map_len,
+    const std::vector<paddle::Tensor>& output_rowmap,
+    const std::vector<paddle::Tensor>& output_rowmap_offset,
     const int64_t num_experts,
     const int64_t local_expert_id,
     const int64_t ori_out_len,
     const int padding_align,
-    const int64_t num_loop_stage) {
-  EP_HOST_ASSERT(hidden_states[0].dtype() == paddle::DataType::BFLOAT16);
-  EP_HOST_ASSERT(hidden_states[0].shape().size() == 2);
+    const int64_t num_pipeline_stages) {
+  EP_HOST_ASSERT(x[0].dtype() == paddle::DataType::BFLOAT16);
+  EP_HOST_ASSERT(x[0].shape().size() == 2);
   EP_HOST_ASSERT(topk_idx[0].shape().size() == 2);
-  EP_HOST_ASSERT(hidden_states.size() == topk_idx.size());
+  EP_HOST_ASSERT(x.size() == topk_idx.size());
 
-  int64_t hidden_size = hidden_states[0].shape()[1];
+  int64_t hidden_size = x[0].shape()[1];
   int64_t topk = topk_idx[0].shape()[1];
-  int64_t a2a_num = hidden_states.size();
+  int64_t a2a_num = x.size();
 
-  auto place = hidden_states[0].place();
-  auto stream = hidden_states[0].stream();
+  auto place = x[0].place();
+  auto stream = x[0].stream();
 
   int token_out_len =
       ((ori_out_len + padding_align - 1) / padding_align) * padding_align;
 
-  paddle::Tensor output_hidden_states = paddle::experimental::empty(
-      {token_out_len, hidden_size}, hidden_states[0].dtype(), place);
+  paddle::Tensor output_x = paddle::experimental::empty(
+      {token_out_len, hidden_size}, x[0].dtype(), place);
   paddle::Tensor output_topk_idx = paddle::experimental::empty(
       {token_out_len, topk}, phi::DataType::INT32, place);
   paddle::Tensor output_src_meta = paddle::experimental::empty(
       {token_out_len, 4}, phi::DataType::INT32, place);
+
+  auto memset_invalid_rows =
+      [&](void* ptr, int64_t stride, int64_t element_size) {
+        cudaMemsetAsync(ptr + ori_out_len * stride * element_size,
+                        0,
+                        (token_out_len - ori_out_len) * stride * element_size,
+                        stream);
+      };
+  memset_invalid_rows(
+      output_x.data(), hidden_size, sizeof(phi::dtype::bfloat16));
+  memset_invalid_rows(output_topk_idx.data(), topk, sizeof(int32_t));
 
   char* device_base_ptr;
   int ptr_array_size = a2a_num * sizeof(void*);
@@ -2034,7 +2067,7 @@ std::vector<paddle::Tensor> local_dispatch_backward_api(
 
   std::vector<const void*> host_ptrs;
   for (int64_t i = 0; i < a2a_num; ++i) {
-    host_ptrs.push_back(hidden_states[i].data());
+    host_ptrs.push_back(x[i].data());
   }
   for (int32_t i = 0; i < a2a_num; ++i) {
     host_ptrs.push_back(topk_idx[i].data<int32_t>());
@@ -2043,10 +2076,10 @@ std::vector<paddle::Tensor> local_dispatch_backward_api(
     host_ptrs.push_back(recv_src_meta_per_a2a[i].data<int32_t>());
   }
   for (int64_t i = 0; i < a2a_num; ++i) {
-    host_ptrs.push_back(output_route_map[i].data<int32_t>());
+    host_ptrs.push_back(output_rowmap[i].data<int32_t>());
   }
   for (int64_t i = 0; i < a2a_num; ++i) {
-    host_ptrs.push_back(output_route_map_len[i].data<int32_t>());
+    host_ptrs.push_back(output_rowmap_offset[i].data<int32_t>());
   }
 
   cudaMemcpyAsync(device_base_ptr,
@@ -2055,8 +2088,7 @@ std::vector<paddle::Tensor> local_dispatch_backward_api(
                   cudaMemcpyHostToDevice,
                   stream);
 
-  const void** d_hidden_states_ptr =
-      reinterpret_cast<const void**>(device_base_ptr);
+  const void** d_x_ptr = reinterpret_cast<const void**>(device_base_ptr);
   const int32_t** d_topk_idx_ptr =
       reinterpret_cast<const int32_t**>(device_base_ptr + 1 * ptr_array_size);
   const int32_t** d_recv_src_meta_per_a2a_ptr =
@@ -2067,15 +2099,14 @@ std::vector<paddle::Tensor> local_dispatch_backward_api(
       reinterpret_cast<const int32_t**>(device_base_ptr + 4 * ptr_array_size);
 
   // a2a_prefix_sum
-  int64_t all_token_num = hidden_states[0].shape()[0];
+  int64_t all_token_num = x[0].shape()[0];
   paddle::Tensor a2a_prefix_sum_tensor =
       paddle::experimental::empty({a2a_num}, phi::DataType::INT32, place);
   std::vector<int32_t> h_a2a_prefix_sum(a2a_num);
   h_a2a_prefix_sum[0] = 0;
   for (int64_t i = 1; i < a2a_num; i++) {
-    h_a2a_prefix_sum[i] =
-        h_a2a_prefix_sum[i - 1] + hidden_states[i - 1].shape()[0];
-    all_token_num += hidden_states[i].shape()[0];
+    h_a2a_prefix_sum[i] = h_a2a_prefix_sum[i - 1] + x[i - 1].shape()[0];
+    all_token_num += x[i].shape()[0];
   }
   cudaMemcpyAsync(a2a_prefix_sum_tensor.data<int32_t>(),
                   h_a2a_prefix_sum.data(),
@@ -2083,7 +2114,7 @@ std::vector<paddle::Tensor> local_dispatch_backward_api(
                   cudaMemcpyHostToDevice,
                   stream);
 
-  flash_ep::internode::local_dispatch(d_hidden_states_ptr,
+  flash_ep::internode::local_dispatch(d_x_ptr,
                                       nullptr,
                                       d_topk_idx_ptr,
                                       d_recv_src_meta_per_a2a_ptr,
@@ -2098,7 +2129,7 @@ std::vector<paddle::Tensor> local_dispatch_backward_api(
                                       all_token_num,
                                       -1,
                                       num_experts,
-                                      output_hidden_states.data(),
+                                      output_x.data(),
                                       output_topk_idx.data<int32_t>(),
                                       nullptr,
                                       output_src_meta.data<int32_t>(),
@@ -2106,39 +2137,39 @@ std::vector<paddle::Tensor> local_dispatch_backward_api(
                                       stream,
                                       false,
                                       false,
-                                      num_loop_stage);
-  return {output_hidden_states, output_topk_idx, output_src_meta};
+                                      num_pipeline_stages);
+  return {output_x, output_topk_idx, output_src_meta};
 }
 
 void local_combine_forward_api(
     std::vector<paddle::Tensor>& combine_buffers,  // NOLINT
-    const paddle::Tensor& hidden_states,
+    const paddle::Tensor& x,
     const paddle::Tensor& recv_gbl_src_meta,
     const std::vector<paddle::Tensor>& recv_gbl_channel_prefix_matrix_list,
     const int64_t ori_len,
     const std::vector<int>& is_buffer_active,
     const Config& config) {
-  int hidden_size = hidden_states.shape()[1];
+  int hidden_size = x.shape()[1];
   int token_num = ori_len;
-  int num_loop_stage = recv_gbl_channel_prefix_matrix_list.size();
+  int num_pipeline_stages = recv_gbl_channel_prefix_matrix_list.size();
 
-  EP_HOST_ASSERT(hidden_states.shape().size() == 2);
-  EP_HOST_ASSERT(hidden_states.dtype() == phi::DataType::BFLOAT16);
+  EP_HOST_ASSERT(x.shape().size() == 2);
+  EP_HOST_ASSERT(x.dtype() == phi::DataType::BFLOAT16);
   EP_HOST_ASSERT(is_buffer_active.size() == combine_buffers.size());
-  EP_HOST_ASSERT(is_buffer_active.size() == num_loop_stage);
+  EP_HOST_ASSERT(is_buffer_active.size() == num_pipeline_stages);
 
-  auto stream = hidden_states.stream();
+  auto stream = x.stream();
 
   char* device_base_ptr;
-  int ptr_array_size = num_loop_stage * sizeof(void*);
+  int ptr_array_size = num_pipeline_stages * sizeof(void*);
   int total_size = 2 * ptr_array_size;
   cudaMallocAsync(&device_base_ptr, total_size, stream);
 
   std::vector<const void*> host_ptrs;
-  for (int i = 0; i < num_loop_stage; ++i) {
+  for (int i = 0; i < num_pipeline_stages; ++i) {
     host_ptrs.push_back(recv_gbl_channel_prefix_matrix_list[i].data<int32_t>());
   }
-  for (int i = 0; i < num_loop_stage; ++i) {
+  for (int i = 0; i < num_pipeline_stages; ++i) {
     if (is_buffer_active[i]) {
       host_ptrs.push_back(combine_buffers[i].data<float>());
     } else {
@@ -2158,11 +2189,11 @@ void local_combine_forward_api(
 
   const int num_channels = config.num_sms / 2;
   flash_ep::internode::local_combine_forward(
-      reinterpret_cast<const __nv_bfloat16*>(hidden_states.data()),
+      reinterpret_cast<const __nv_bfloat16*>(x.data()),
       d_recv_gbl_channel_prefix_ptr,
       recv_gbl_src_meta.data<int32_t>(),
       hidden_size,
-      num_loop_stage,
+      num_pipeline_stages,
       token_num,
       d_out_combine_ptr,
       num_channels,
@@ -2172,7 +2203,7 @@ void local_combine_forward_api(
 void local_combine_backward_api(
     std::vector<paddle::Tensor>& combine_buffers,  // NOLINT
     std::vector<paddle::Tensor>& combine_probs,    // NOLINT
-    const paddle::Tensor& hidden_states,
+    const paddle::Tensor& x,
     const paddle::Tensor& topk_idx,
     const paddle::Tensor& topk_weights,
     const paddle::Tensor& recv_gbl_src_meta,
@@ -2181,41 +2212,41 @@ void local_combine_backward_api(
     const int64_t ori_len,
     const std::vector<int>& is_buffer_active,
     const Config& config) {
-  EP_HOST_ASSERT(hidden_states.shape().size() == 2);
-  EP_HOST_ASSERT(hidden_states.dtype() == phi::DataType::BFLOAT16);
+  EP_HOST_ASSERT(x.shape().size() == 2);
+  EP_HOST_ASSERT(x.dtype() == phi::DataType::BFLOAT16);
   EP_HOST_ASSERT(topk_idx.shape().size() == 2);
   EP_HOST_ASSERT(topk_idx.dtype() == phi::DataType::INT32);
   EP_HOST_ASSERT(topk_weights.shape().size() == 1);
   EP_HOST_ASSERT(topk_weights.dtype() == phi::DataType::FLOAT32);
-  EP_HOST_ASSERT(topk_weights.shape()[0] == hidden_states.shape()[0]);
+  EP_HOST_ASSERT(topk_weights.shape()[0] == x.shape()[0]);
   EP_HOST_ASSERT(is_buffer_active.size() == combine_buffers.size());
 
-  int hidden_size = hidden_states.shape()[1];
+  int hidden_size = x.shape()[1];
   int topk = topk_idx.shape()[1];
-  int num_loop_stage = recv_gbl_channel_prefix_matrix_list.size();
+  int num_pipeline_stages = recv_gbl_channel_prefix_matrix_list.size();
 
-  EP_HOST_ASSERT(is_buffer_active.size() == num_loop_stage);
+  EP_HOST_ASSERT(is_buffer_active.size() == num_pipeline_stages);
 
-  auto stream = hidden_states.stream();
+  auto stream = x.stream();
 
   char* device_base_ptr;
-  int ptr_array_size = num_loop_stage * sizeof(void*);
+  int ptr_array_size = num_pipeline_stages * sizeof(void*);
   int total_size = 3 * ptr_array_size;
   cudaMallocAsync(&device_base_ptr, total_size, stream);
 
   std::vector<const void*> host_ptrs;
 
-  for (int i = 0; i < num_loop_stage; ++i) {
+  for (int i = 0; i < num_pipeline_stages; ++i) {
     host_ptrs.push_back(recv_gbl_channel_prefix_matrix_list[i].data<int32_t>());
   }
-  for (int i = 0; i < num_loop_stage; ++i) {
+  for (int i = 0; i < num_pipeline_stages; ++i) {
     if (is_buffer_active[i]) {
       host_ptrs.push_back(combine_buffers[i].data<float>());
     } else {
       host_ptrs.push_back(nullptr);
     }
   }
-  for (int i = 0; i < num_loop_stage; ++i) {
+  for (int i = 0; i < num_pipeline_stages; ++i) {
     if (is_buffer_active[i]) {
       host_ptrs.push_back(combine_probs[i].data<float>());
     } else {
@@ -2237,13 +2268,13 @@ void local_combine_backward_api(
 
   const int num_channels = config.num_sms / 2;
   flash_ep::internode::local_combine_backward(
-      reinterpret_cast<const __nv_bfloat16*>(hidden_states.data()),
+      reinterpret_cast<const __nv_bfloat16*>(x.data()),
       topk_idx.data<int32_t>(),
       topk_weights.data<float>(),
       d_recv_gbl_channel_prefix_ptr,
       recv_gbl_src_meta.data<int32_t>(),
       hidden_size,
-      num_loop_stage,
+      num_pipeline_stages,
       ori_len,
       topk,
       local_expert_id,

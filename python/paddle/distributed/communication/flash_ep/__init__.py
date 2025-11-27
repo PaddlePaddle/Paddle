@@ -18,8 +18,9 @@ from .asymmetric_a2a import (
 )
 from .buffer import Buffer
 from .moe_layer import (
-    FlashEPFunc,
-    build_pipeline_stage_infos,
+    BaseExpertNode,
+    FlashEPFunction,
+    init_pipeline_stage_infos,
 )
 from .utils import (
     EventOverlap,
@@ -36,6 +37,7 @@ __all__ = [
     "get_event_from_custom_stream",
     "get_flash_ep_coalesce_rdma_schedule",
     "get_flash_ep_coalesce_rdma_layout",
-    "build_pipeline_stage_infos",
-    "FlashEPFunc",
+    "init_pipeline_stage_infos",
+    "FlashEPFunction",
+    "BaseExpertNode",
 ]
