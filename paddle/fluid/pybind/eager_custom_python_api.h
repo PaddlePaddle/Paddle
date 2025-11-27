@@ -39,14 +39,14 @@ static PyObject *eager_api_linear(PyObject *self,
 
     tstate = PyEval_SaveThread();
 
-    if (bias.is_dist_tensor() || (bias.has_allocation() && bias.numel() > 0)) {
+    if (bias.has_allocation() || bias.is_dist_tensor()) {
       const phi::distributed::ProcessMesh *mesh = nullptr;
       if (InputsContainDistTensor(&mesh, x, weight, bias)) {
         ConvertAllInputsToDistTensor(mesh, x, weight, bias);
       }
 #if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000 && \
      !(defined(_WIN32) || defined(WIN32)))
-      if (!FLAGS_use_legacy_gemm) {
+      if (!FLAGS_use_legacy_gemm) [[likely]] {  // NOLINT
         // TODO(Pan Zhaowu): Add proper broadcast logic for batchsize unaligned
         // batch-gemm. Currently handles: (B..., k) x (k, n) -> (B..., n), with
         // 1D or scalar bias.
@@ -77,7 +77,7 @@ static PyObject *eager_api_linear(PyObject *self,
         // If x is 1D (e.g., shape [k]), reshape it to [1, k] to fit the (B...,
         // k) x (k, n) pattern. This effectively treats a 1D vector as a row
         // vector for matrix multiplication.
-        if (x_ndim_original == 1) {
+        if (x_ndim_original == 1) [[unlikely]] {
           x_processed = reshape_ad_func(x, {1, k_dim});
         }
         // If weight is 1D (e.g., shape [n]), reshape it to [k, 1].
@@ -88,7 +88,7 @@ static PyObject *eager_api_linear(PyObject *self,
         // semantics are ambiguous and not directly covered by (B..., k) x (k,
         // n). The current design implies weight is at least 2D or is treated as
         // [k, 1] if 1D.
-        else if (weight_ndim_original == 1) {  // NOLINT
+        else if (weight_ndim_original == 1) [[unlikely]] {  // NOLINT
           weight_processed = reshape_ad_func(weight, {k_dim, 1});
         }
 
