@@ -29,9 +29,12 @@ class TestCpuCuda(Dy2StTestBase):
             return x
 
         x = paddle.to_tensor([3])
-        if paddle.is_compiled_with_cuda():
-            res = paddle.jit.to_static(func)(x)
-            self.assertTrue(res.place.is_cpu_place())
+        res = paddle.jit.to_static(func)(x)
+        self.assertTrue(res.place.is_cpu_place())
+
+        x = paddle.to_tensor([3])
+        res = func(x)
+        self.assertTrue(res.place.is_cpu_place())
 
 
 class TestToTensor(Dy2StTestBase):
