@@ -911,7 +911,8 @@ def allocate_record_plot(
     device: _CudaPlaceLike | None = None, save_path: str | None = None
 ) -> None:
     '''
-    Retrieve recorded Allocate events on the specified device and plot the events, default name is 'memory_analysis.png', saved at current working directory; these events are only counted when FLAGS_record_alloc_event is enabled.
+    Retrieve recorded Allocate events on the specified device and plot the events, default name is 'memory_analysis.png', saved at current working directory;
+    these events are only counted when FLAGS_record_alloc_event is enabled.
 
     Args:
         device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
