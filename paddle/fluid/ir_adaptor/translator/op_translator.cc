@@ -3829,7 +3829,7 @@ static std::pair<pir::Value, pir::Value> ParseXAndOutGradValue(
   auto var_desc = op_desc.Block()->FindVarRecursive(input_xshape_name);
   auto dtype = ::phi::TransToPhiDataType(var_desc->GetDataType());
   auto shape_vec = var_desc->GetShape();
-  // NOTE(dev): GrapOp depends on X instead of XShape, so we need
+  // NOTE(dev): GradOp depends on X instead of XShape, so we need
   // erase first element in xshape.
   shape_vec.erase(shape_vec.begin());
   xshape_value = builder

@@ -62,7 +62,7 @@ inline int BatchCount(const DenseTensor& matrix) {
   int count = 1;
   int num_dims = matrix.dims().size();
   for (int i = 0; i < num_dims - 2; ++i) {
-    count *= matrix.dims()[i];
+    count *= matrix.dims(i);
   }
   return count;
 }
@@ -240,6 +240,13 @@ void MagmaEig(const Context& dev_ctx,
               const DenseTensor& input,
               DenseTensor* values,
               DenseTensor* vectors) {
+  int64_t numel = input.numel();
+  PADDLE_ENFORCE_EQ(
+      true,
+      (numel >= 0 && numel <= std::numeric_limits<int32_t>::max()),
+      common::errors::PreconditionNotMet(
+          "the numel of input should be in [0, "
+          "std::numeric_limits<int32_t>::max()]"));
   auto num_dims = input.dims().size();
   // magma will modify original input, so copy to cpu at any case
   DenseTensor input_copy_cpu;
@@ -249,8 +256,7 @@ void MagmaEig(const Context& dev_ctx,
   using RealT = typename phi::dtype::Real<T>;
   magma_vec_t jobvr = MagmaVec;
   magma_vec_t jobvl = MagmaNoVec;
-  magma_int_t order =
-      static_cast<magma_int_t>(input_copy_cpu.dims()[num_dims - 1]);
+  magma_int_t order = static_cast<magma_int_t>(input_copy_cpu.dims(-1));
 
   auto* input_data = input_copy_cpu.data<T>();
   magma_int_t lda = std::max<magma_int_t>(1, order);
@@ -486,8 +492,8 @@ void ComputeBackwardForComplexInput(const DenseTensor& L,
   // Vh: matrix with shape [m,m]
   // rhs: rhs with shape [m,k]
   // x_grad: out
-  int m = Vh.dims(-1);
-  int k = rhs.dims(-1);
+  int m = static_cast<int>(Vh.dims(-1));
+  int k = static_cast<int>(rhs.dims(-1));
   auto* matrix_data = Vh.data<T>();
   auto* rhs_data = rhs.data<T>();
 

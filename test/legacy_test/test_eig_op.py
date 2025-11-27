@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import platform
 import unittest
 
 import numpy as np
@@ -375,13 +376,14 @@ class TestEigUnsupportedDtypeError(unittest.TestCase):
         self.assertRaises(RuntimeError, paddle.linalg.eig, x)
 
 
-class TestEigMagma(unittest.TestCase):
-    # @unittest.skipIf(
-    #     not platform.system().lower().startswith("linux")
-    #     or not paddle.device.is_compiled_with_cuda()
-    #     or paddle.device.is_compiled_with_rocm(),
-    #     reason="enable only in linux+cuda now",
-    # )
+class TestOptionalGradInput(unittest.TestCase):
+    @unittest.skipIf(
+        not platform.system().lower().startswith("linux")
+        or not paddle.device.is_compiled_with_cuda()
+        or paddle.device.is_compiled_with_rocm(),
+        # or not paddle.device.is_compiled_with_xpu(), # TODO: support VisitDataType for complex dtype in non-cuda device
+        reason="enable only in linux+cuda now",
+    )
     def test_eager(self):
         with dygraph_guard(), paddle.device.device_guard("xpu"):
             x = paddle.randn(3, 3, requires_grad=True)
@@ -389,7 +391,7 @@ class TestEigMagma(unittest.TestCase):
 
             np.testing.assert_allclose(
                 (x @ v).numpy(),
-                w.unsqueeze(0) * v,
+                (w.unsqueeze(0) * v).numpy(),
                 atol=1e-5,
                 rtol=1e-5,
             )  # Aμ = λμ
@@ -404,12 +406,13 @@ class TestEigMagma(unittest.TestCase):
                 rtol=1e-5,
             )
 
-    # @unittest.skipIf(
-    #     not platform.system().lower().startswith("linux")
-    #     or not paddle.device.is_compiled_with_cuda()
-    #     or paddle.device.is_compiled_with_rocm(),
-    #     reason="enable only in linux+cuda now",
-    # )
+    @unittest.skipIf(
+        not platform.system().lower().startswith("linux")
+        or not paddle.device.is_compiled_with_cuda()
+        or paddle.device.is_compiled_with_rocm(),
+        # or not paddle.device.is_compiled_with_xpu(), # TODO: support VisitDataType for complex dtype in non-cuda device
+        reason="enable only in linux+cuda now",
+    )
     def test_dy2st(self):
         with dygraph_guard(), paddle.device.device_guard("xpu"):
             x = paddle.randn(3, 3, requires_grad=True)
@@ -421,15 +424,12 @@ class TestEigMagma(unittest.TestCase):
                     v,
                 )
 
-            st_f = paddle.jit.to_static(f, full_graph=True)
+            st_f = paddle.jit.to_static(f, full_graph=True, backend=None)
 
-            (
-                w,
-                v,
-            ) = st_f(x)
+            w, v = st_f(x)
             np.testing.assert_allclose(
                 (x @ v).numpy(),
-                w.unsqueeze(0) * v,
+                (w.unsqueeze(0) * v).numpy(),
                 atol=1e-5,
                 rtol=1e-5,
             )  # Aμ = λμ

@@ -61,7 +61,7 @@ class FusedLinear(Layer):
         - output: Multi-dimensional tensor with shape :math:`[batch\_size, *, out\_features]` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -72,7 +72,7 @@ class FusedLinear(Layer):
             >>> linear = FusedLinear(4, 5)
             >>> y = linear(x)
             >>> print(y.shape)
-            [3, 5]
+            paddle.Size([3, 5])
     """
 
     weight: Tensor

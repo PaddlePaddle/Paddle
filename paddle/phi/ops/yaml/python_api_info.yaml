@@ -1,3 +1,8 @@
+- op : acos
+  name : [paddle.acos,paddle.Tensor.acos]
+  args_alias :
+    use_default_mapping : True
+
 - op : amin
   name : [paddle.amin,paddle.Tensor.amin]
   args_alias :
@@ -271,3 +276,10 @@
     use_default_mapping : True
   pre_process:
     static_func: IsClosePreProcess(x, y, rtol,atol)
+
+- op : grid_sample
+  name : [paddle.nn.functional.grid_sample]
+  args_alias:
+    x : [input]
+  pre_process:
+    func : GridSamplePreProcess(x, grid, mode, padding_mode, align_corners)

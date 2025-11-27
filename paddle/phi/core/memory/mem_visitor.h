@@ -26,6 +26,7 @@ class RetryAllocator;
 class StatAllocator;
 class StreamSafeCUDAAllocator;
 class VirtualMemoryAutoGrowthBestFitAllocator;
+class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator;
 }  // namespace allocation
 
 using allocation::Allocator;
@@ -33,6 +34,7 @@ using allocation::RetryAllocator;
 using allocation::StatAllocator;
 using allocation::StreamSafeCUDAAllocator;
 using allocation::VirtualMemoryAutoGrowthBestFitAllocator;
+using allocation::VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator;
 
 /**
  * @brief AllocatorVisitorReqImpl serves as the Abstract Visitor interface in
@@ -52,6 +54,8 @@ class AllocatorVisitorReqImpl {
 #ifdef PADDLE_WITH_CUDA
   virtual void Visit(StreamSafeCUDAAllocator* allocator) = 0;
   virtual void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) = 0;
+  virtual void Visit(
+      VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) = 0;
 #endif
 };
 
@@ -73,10 +77,22 @@ class AllocatorVisitor : public AllocatorVisitorReqImpl {
 #ifdef PADDLE_WITH_CUDA
   virtual void Visit(StreamSafeCUDAAllocator* allocator);
   virtual void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator);
+  virtual void Visit(
+      VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator);
 #endif
 };
 
 #ifdef PADDLE_WITH_CUDA
+/**
+ * @brief AllocatorComputeStreamVisitor is a Concrete Visitor class designed to
+ * only visit compute stream allocators.
+ */
+class AllocatorComputeStreamVisitor : public AllocatorVisitor {
+ public:
+  using AllocatorVisitor::Visit;
+  void Visit(StreamSafeCUDAAllocator* allocator) override;
+};
+
 /**
  * @brief FreeMemoryMetricsVisitor is a Concrete Visitor class designed to
  * inspect allocators for free memory information.
@@ -86,8 +102,9 @@ class AllocatorVisitor : public AllocatorVisitorReqImpl {
  * it provides specialized logic for the
  * VirtualMemoryAutoGrowthBestFitAllocator.
  */
-class FreeMemoryMetricsVisitor : public AllocatorVisitor {
+class FreeMemoryMetricsVisitor : public AllocatorComputeStreamVisitor {
  public:
+  using AllocatorComputeStreamVisitor::Visit;
   /**
    * @brief Constructor for FreeMemoryMetricsVisitor.
    * @param nums_blocks The number of largest free blocks to potentially track
@@ -123,6 +140,160 @@ class FreeMemoryMetricsVisitor : public AllocatorVisitor {
   int32_t nums_blocks_ = 1;
   size_t large_size_ = 0;
   size_t sum_size_ = 0;
+};
+
+/**
+ * @brief Visitor class to attempt memory allocation.
+ *
+ * To execute a series of memory allocation attempts (based on the
+ * sizes_ list provided in the constructor) on a specific memory allocator
+ * (typically VirtualMemoryAutoGrowthBestFitAllocator) and record if all
+ * attempts were successful.
+ */
+class TryAllocVisitor : public AllocatorComputeStreamVisitor {
+  using AllocatorComputeStreamVisitor::Visit;
+
+ public:
+  /**
+   * @brief Constructor.
+   *
+   * @param sizes A constant reference to a vector containing the sizes
+   * of the memory blocks to be attempted for allocation. Defaults to an empty
+   * list.
+   */
+  explicit TryAllocVisitor(const std::vector<size_t>& sizes = {})
+      : sizes_(sizes) {}
+  /**
+   * @brief Visits the VirtualMemoryAutoGrowthBestFitAllocator.
+   *
+   * This is the core implementation of the Visitor Pattern for this specific
+   * allocator. It iterates through the sizes_ list and attempts to call the
+   * allocator's TryAllocate() method for each size. The flag
+   * is_try_alloc_success_ is only set to true if ALL TryAllocate calls succeed.
+   *
+   * @param allocator Pointer to the memory allocator object to be visited and
+   * tested.
+   */
+  void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;
+  /**
+   * @brief Queries the result of the allocation attempt.
+   *
+   * @return Returns true if all TryAllocate attempts were successful;
+   * otherwise, returns false.
+   */
+  bool IsTryAllocSuccess() const { return is_try_alloc_success_; }
+
+ private:
+  const std::vector<size_t>& sizes_;
+  bool is_try_alloc_success_ = false;
+};
+
+/**
+ * @brief Visitor class to retrieve free block information from a VMM allocator.
+ *
+ * Inherits from AllocatorVisitor, implementing the Visitor Pattern.
+ * The purpose of this class is to access a specific memory allocator's
+ * internal state (the list of free memory blocks) and extract key information
+ * (size and address) for external analysis or debugging.
+ */
+class VMMFreeBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
+  using AllocatorComputeStreamVisitor::Visit;
+
+ public:
+  /**
+   * @brief Retrieves the collected information about the free memory blocks.
+   *
+   * The structure is a nested vector:
+   * Outer Vector: Represents different categories or lists within the
+   * allocator. Inner Vector: Contains pairs of (size, address) for the free
+   * blocks in that category. uintptr_t is used to safely store the memory
+   * address (void*) as an integer.
+   *
+   * @return A nested vector structure containing the size and integer address
+   * of all free blocks.
+   */
+  std::vector<std::vector<std::pair<size_t, uintptr_t>>> GetFreeBlocksInfo()
+      const {
+    return free_blocks_info_;
+  }
+
+  /**
+   * @brief Visits the VirtualMemoryAutoGrowthBestFitAllocator.
+   *
+   * This is the core implementation of the Visitor Pattern. When called,
+   * it accesses the `allocator` object's internal structure that holds the
+   * free block list(s) and populates the `free_blocks_info_` member variable
+   * with the necessary data.
+   *
+   * @param allocator Pointer to the memory allocator object whose free blocks
+   * information is to be extracted.
+   */
+  void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;
+
+ private:
+  /**
+   * @brief Stores the extracted free block information.
+   *
+   * This member is populated during the Visit() call. It is structured to
+   * hold lists of (size, address) pairs, where the outer vector typically
+   * distinguishes between different allocators (e.g., small, large allocator).
+   */
+  std::vector<std::vector<std::pair<size_t, uintptr_t>>> free_blocks_info_;
+};
+
+/**
+ * @brief Visitor class to retrieve All block information from a VMM allocator.
+ *
+ * Inherits from AllocatorVisitor, implementing the Visitor Pattern.
+ * The purpose of this class is to access a specific memory allocator's
+ * internal state (the list of all memory blocks) and extract key information
+ * (size, address and free_info) for external analysis or debugging.
+ */
+class VMMAllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
+  using AllocatorComputeStreamVisitor::Visit;
+
+ public:
+  /**
+   * @brief Retrieves the collected information about the free memory blocks.
+   *
+   * The structure is a nested vector:
+   * Outer Vector: Represents different categories or lists within the
+   * allocator. Inner Vector: Contains tuple of (size, address, free_info) for
+   * the all blocks in that category. uintptr_t is used to safely store the
+   * memory address (void*) as an integer.
+   *
+   * @return A nested vector structure containing the size, integer address,
+   * free info of all blocks.
+   */
+  std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
+  GetAllBlocksInfo() const {
+    return all_blocks_info_;
+  }
+
+  /**
+   * @brief Visits the VirtualMemoryAutoGrowthBestFitAllocator.
+   *
+   * This is the core implementation of the Visitor Pattern. When called,
+   * it accesses the `allocator` object's internal structure that holds the
+   * free block list(s) and populates the `all_blocks_info_` member variable
+   * with the necessary data.
+   *
+   * @param allocator Pointer to the memory allocator object whose free blocks
+   * information is to be extracted.
+   */
+  void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;
+
+ private:
+  /**
+   * @brief Stores the extracted all block information.
+   *
+   * This member is populated during the Visit() call. It is structured to
+   * hold lists of (size, address, free_info) tuples, where the outer vector
+   * typically distinguishes between different allocators (e.g., small, large
+   * allocator).
+   */
+  std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
+      all_blocks_info_;
 };
 #endif
 
