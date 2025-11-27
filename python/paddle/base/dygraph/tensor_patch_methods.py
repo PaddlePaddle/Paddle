@@ -1587,7 +1587,7 @@ def monkey_patch_tensor():
             # TODO(dev): We should cleanup this after tvm ffi 0.1.3 is not supported.
             if tvm_ffi_version <= (0, 1, 3):
                 return core.dlpack_exchange_api_ptr()
-        except:
+        except Exception:
             pass
         return core.dlpack_exchange_api_pycapsule()
 
