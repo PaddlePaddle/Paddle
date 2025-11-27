@@ -853,7 +853,7 @@ def vmm_compact(device: _CudaPlaceLike | None = None) -> int:
 
 def memory_summary(device: _CudaPlaceLike | None = None) -> None:
     '''
-    Return a string containing a detailed summary of the CUDA memory usage
+    Get detailed summary of the CUDA memory usage
     for the specified device, printed in three distinct sections: Global Summary,
     Allocator Summary, and Distribution. This function prints the summary directly
     to the terminal.
@@ -884,6 +884,24 @@ def memory_summary(device: _CudaPlaceLike | None = None) -> None:
 
 
 def allocate_record_table(device: _CudaPlaceLike | None = None) -> None:
+    '''
+    Retrieve recorded Allocate events on the specified device and prints the events directly
+    to the terminal; these events are only counted when FLAGS_record_alloc_event is set to true.
+
+    Args:
+        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
+            Default: None.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
+
+            >>> paddle.device.cuda.allocate_record_table(0)
+    '''
     device_id = extract_cuda_device_id(device, op_name='allocate_record_table')
     data = paddle.core.get_allocate_record(device_id)
     MemoryAnalysisTool.allocate_record_table(data)
@@ -892,6 +910,23 @@ def allocate_record_table(device: _CudaPlaceLike | None = None) -> None:
 def allocate_record_plot(
     device: _CudaPlaceLike | None = None, save_path: str | None = None
 ) -> None:
+    '''
+    Retrieve recorded Allocate events on the specified device and plot the events, default name is 'memory_analysis.png', saved at current working directory; these events are only counted when FLAGS_record_alloc_event is enabled.
+
+    Args:
+        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
+            Default: None.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
+
+            >>> paddle.device.cuda.allocate_record_plot(0)
+    '''
     device_id = extract_cuda_device_id(device, op_name='allocate_record_plot')
     data = paddle.core.get_allocate_record(device_id)
     MemoryAnalysisTool.allocate_record_plot(data, save_path)
