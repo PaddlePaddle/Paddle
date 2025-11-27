@@ -123,6 +123,7 @@ jobs:
           git fetch upstream $BRANCH
           git checkout test
           git merge --no-edit $BRANCH
+          git submodule update
           '
 
       - name: Determine sot ci trigger
