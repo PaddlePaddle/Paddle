@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/lrn_kernel_impl.h"
 namespace phi {
@@ -80,33 +81,36 @@ void CrossMapNormalGrad(const phi::GPUContext& dev_ctx,
                         const T* mid,
                         T* x_g,
                         const T* out_g,
-                        int N,
-                        int C,
-                        int H,
-                        int W,
+                        int64_t N,
+                        int64_t C,
+                        int64_t H,
+                        int64_t W,
                         int n,
                         T alpha,
                         T beta,
                         const DataLayout data_layout) {
-  int img_size = N * H * W;
+  int64_t img_size = N * H * W;
 
   const int block_size = 1024;
-  int grid_size = (img_size + block_size - 1) / block_size;
+  int64_t grid_size = (img_size + block_size - 1) / block_size;
+  PADDLE_ENFORCE_LE_INT_MAX(grid_size, "grid_size");
+  PADDLE_ENFORCE_LE_INT_MAX(C, "C");
 
   KeCMRNormDiff<T>
-      <<<grid_size, block_size, 0, dev_ctx.stream()>>>(img_size,
-                                                       x,
-                                                       out,
-                                                       mid,
-                                                       x_g,
-                                                       out_g,
-                                                       C,
-                                                       H,
-                                                       W,
-                                                       n,
-                                                       -beta,
-                                                       2.0f * alpha * beta,
-                                                       data_layout);
+      <<<static_cast<int>(grid_size), block_size, 0, dev_ctx.stream()>>>(
+          static_cast<int>(img_size),
+          x,
+          out,
+          mid,
+          x_g,
+          out_g,
+          static_cast<int>(C),
+          static_cast<int>(H),
+          static_cast<int>(W),
+          n,
+          -beta,
+          2.0f * alpha * beta,
+          data_layout);
 }
 
 template <typename T>
@@ -117,10 +121,10 @@ struct LRNGradFunctor<phi::GPUContext, T> {
                   const phi::DenseTensor& mid,
                   phi::DenseTensor* x_g,
                   const phi::DenseTensor& out_g,
-                  int N,
-                  int C,
-                  int H,
-                  int W,
+                  int64_t N,
+                  int64_t C,
+                  int64_t H,
+                  int64_t W,
                   int n,
                   T alpha,
                   T beta,

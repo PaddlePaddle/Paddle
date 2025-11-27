@@ -199,12 +199,7 @@ void ArgFullSort(const phi::GPUContext& dev_ctx,
                  const int64_t num_rows,
                  const int64_t num_cols,
                  const bool descending) {
-  PADDLE_ENFORCE_LE(num_cols,
-                    std::numeric_limits<int>::max(),
-                    ::common::errors::PreconditionNotMet(
-                        "The dimension being sorted should be less than "
-                        "2^31, but got %lld. Please check the input tensor. ",
-                        num_cols));
+  PADDLE_ENFORCE_LE_INT_MAX(num_cols, "num_cols");
 
   auto cu_stream = dev_ctx.stream();
   auto ComputeBlockSize = [](IndType col) {
