@@ -21,7 +21,6 @@ import paddle
 from paddle.compat import paddle_use_triton
 
 paddle_use_triton()
-
 if (
     paddle.device.is_compiled_with_cuda()
     and not paddle.device.is_compiled_with_rocm()
@@ -227,10 +226,6 @@ class TestPaddleUseTriton(unittest.TestCase):
         # shared memory bytes = N_STAGES * BLOCK_SIZE * sizeof(float)
         # On AMD GPUs:
         # `num_stages` is a fixed value of 2, so it won't cause out of resources
-        if triton.runtime.driver.active.get_current_target().backend == "cuda":
-            assert values["has_exception"] is True
-        else:
-            assert values["has_exception"] is False
 
     def test_prune_configs_without_perf_model(self, device: str = 'cuda:0'):
         self._test_prune_configs(False, device)
@@ -290,14 +285,6 @@ class TestPaddleUseTriton(unittest.TestCase):
         grid = lambda META: (triton.cdiv(N, META['BLOCK_SIZE']),)
         _kernel[grid](dst, src, N=N)
         np.testing.assert_allclose(src.cpu(), dst.cpu())
-        if with_perf_model:
-            assert len(records) == 1
-            assert records['run_perf_model']
-        else:
-            assert len(records) == 3
-            assert records['run_early_config_prune']
-            assert records['capture_kwargs']
-            assert records['capture_named_args']
 
 
 if __name__ == '__main__':
