@@ -1584,6 +1584,7 @@ def monkey_patch_tensor():
             # We assume version format is like '0.1.3'.
             # All supported releases are '0.1.0', '0.1.1', '0.1.2', '0.1.3'.
             # We simply assume user will not use beta/rc versions here.
+            # TODO(dev): We should cleanup this after tvm ffi 0.1.3 is not supported.
             if tvm_ffi_version <= (0, 1, 3):
                 return core.dlpack_exchange_api_ptr()
         except:
