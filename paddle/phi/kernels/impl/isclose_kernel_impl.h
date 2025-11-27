@@ -28,14 +28,14 @@
 
 namespace phi {
 using Tensor = DenseTensor;
-template <typename DeviceContext, typename T>
+template <typename Context, typename T>
 struct GetTensorValue {
-  T operator()(const DeviceContext& dev_ctx, const DenseTensor& tensor) const;
+  T operator()(const Context& dev_ctx, const DenseTensor& tensor) const;
 };
 
-template <typename DeviceContext, typename T>
+template <typename Context, typename T>
 struct IscloseFunctor {
-  void operator()(const DeviceContext& dev_ctx,
+  void operator()(const Context& dev_ctx,
                   const DenseTensor& in,
                   const DenseTensor& other,
                   const float rtol,
