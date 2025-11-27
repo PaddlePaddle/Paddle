@@ -50,12 +50,17 @@ def get_device_properties(
             and the number of multiprocessors on the device.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
-            >>> paddle.device.get_device_properties('metax_gpu:0')
-            >>> paddle.device.get_device_properties(0)
-            >>> paddle.device.get_device_properties(paddle.CustomPlace('metax_gpu', 0))
+            >>> try:
+            ...     paddle.device.default_backend.get_device_properties('metax_gpu:0')
+            ...     paddle.device.default_backend.get_device_properties(0)
+            ...     paddle.device.default_backend.get_device_properties(paddle.CustomPlace('metax_gpu',0)
+            >>> except RuntimeError as e:
+            ...     print("Error:", e)
+            get_device_properties is not supported for this device type.
+            This function is only available for gpgpu devices.
     """
     raise RuntimeError(
         "get_device_properties is not supported for this device type. "

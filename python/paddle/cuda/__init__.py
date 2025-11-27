@@ -51,6 +51,8 @@ from paddle.tensor.creation import (
 )
 
 if TYPE_CHECKING:
+    from paddle.base.libpaddle import _customDeviceProperties
+
     DeviceLike = Union[paddle.core.Place, int, str, None]
 
 
@@ -168,7 +170,7 @@ def is_current_stream_capturing() -> bool:
     return _is_current_stream_capturing()
 
 
-def get_device_properties(device: DeviceLike = None):
+def get_device_properties(device: DeviceLike = None) -> _customDeviceProperties:
     """
     Get the properties of a CUDA device.
 
@@ -186,7 +188,7 @@ def get_device_properties(device: DeviceLike = None):
         name, total memory, compute capability, and multiprocessor count.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -216,7 +218,7 @@ def get_device_name(device: DeviceLike = None) -> str:
         str: The name of the CUDA device.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -249,7 +251,7 @@ def get_device_capability(device: DeviceLike = None) -> tuple[int, int]:
         tuple[int, int]: A tuple ``(major, minor)`` representing the compute capability of the CUDA device.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
