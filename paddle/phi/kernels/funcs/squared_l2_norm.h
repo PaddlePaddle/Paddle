@@ -19,13 +19,8 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#else
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
 #endif
 
 namespace phi {

@@ -14,16 +14,9 @@
 
 #pragma once
 
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include <thrust/device_ptr.h>
 #include <thrust/iterator/reverse_iterator.h>
+#include "paddle/phi/kernels/funcs/cub.h"
 
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/type_traits.h"
