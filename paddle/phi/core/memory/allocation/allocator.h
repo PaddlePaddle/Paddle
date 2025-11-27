@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #pragma once
+#include <atomic>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -25,6 +27,7 @@
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/inlined_vector.h"
+#include "paddle/phi/core/memory/allocation/spin_lock.h"
 #include "paddle/phi/core/memory/mem_visitor.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 
@@ -41,10 +44,47 @@
 COMMON_DECLARE_string(allocator_strategy);
 COMMON_DECLARE_bool(sync_after_alloc);
 COMMON_DECLARE_int64(alloc_fill_value);
+COMMON_DECLARE_bool(record_alloc_event);
 
 namespace paddle {
 namespace memory {
 namespace allocation {
+
+/**
+ * @brief RAII (Resource Acquisition Is Initialization) struct used to
+ * temporarily set a boolean flag within a specific scope and automatically
+ * restore its state when the scope is exited.
+ * * This is primarily used to control the state of a thread-local variable
+ * (like in_recording_alloc) to ensure the state is cleaned up upon function
+ * return.
+ */
+struct ScopedRecording {
+  bool& original_val;  ///< Reference to the thread-local boolean variable to be
+                       ///< modified.
+
+  /**
+   * @brief Constructor: Sets the referenced boolean value to true.
+   * @param val A reference to the boolean variable to operate on (typically
+   * in_recording_alloc).
+   */
+  explicit ScopedRecording(bool& val) : original_val(val) {
+    original_val = true;
+  }
+
+  /**
+   * @brief Destructor: Restores the boolean value to false when the scope ends.
+   */
+  ~ScopedRecording() { original_val = false; }
+};
+
+/**
+ * @brief Thread-local boolean flag indicating whether the current thread is
+ * currently in a "recording allocation" state.
+ * * When this flag is true, it means memory allocation is being executed
+ * in a context that requires tracking or special handling. It must be
+ * thread_local to ensure each thread maintains its independent state.
+ */
+extern thread_local bool in_recording_alloc;
 
 // Exception when `Alloc`/`AllocShared` failed
 struct BadAlloc : public std::exception {
@@ -190,6 +230,13 @@ class PADDLE_API Allocator : public phi::Allocator {
   // in each Allocator. So we handle size == 0 inside AllocatorFacade
   // in our design.
   AllocationPtr Allocate(size_t size) override {
+    // Note(liujinnan): This variable is used to ensure that only the outermost
+    // `Allocator::Allocate` function executes the event logging.
+    std::unique_ptr<ScopedRecording> scope = nullptr;
+    if (FLAGS_record_alloc_event && !in_recording_alloc) {
+      scope = std::make_unique<ScopedRecording>(in_recording_alloc);
+      RecordAlloc(size);
+    }
     auto* ptr = AllocateImpl(size);
     static_cast<Allocation*>(ptr)->RegisterDecoratedAllocator(this);
     return FillValue(AllocationPtr(ptr, AllocationDeleter));
@@ -205,6 +252,12 @@ class PADDLE_API Allocator : public phi::Allocator {
 
   virtual void Accept(AllocatorVisitor* visitor) { visitor->Visit(this); }
 
+  // Get allocate event when start FLAGS_record_alloc_event.
+  std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>> GetEvents() {
+    std::lock_guard<SpinLock> lock(spinlock_);
+    return allocation_records_;
+  }
+
  protected:
   virtual phi::Allocation* AllocateImpl(size_t size) = 0;
   virtual void FreeImpl(phi::Allocation* allocation);
@@ -213,6 +266,13 @@ class PADDLE_API Allocator : public phi::Allocator {
     LOG(INFO) << "Compact is not supported";
     return 0;
   }
+
+ private:
+  void RecordAlloc(size_t size);
+  std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>>
+      allocation_records_;
+  SpinLock spinlock_;
+  static std::atomic<uint64_t> global_seq_counter_;
 };
 
 inline size_t AlignedSize(size_t size, size_t alignment) {

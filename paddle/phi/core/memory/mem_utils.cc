@@ -123,6 +123,12 @@ AllBlockInfoOfVmmAllocator(const phi::GPUPlace& place) {
                                                  &all_blocks_info_visitor);
   return all_blocks_info_visitor.GetAllBlocksInfo();
 }
+
+std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>> GetAllocateEvent(
+    const phi::GPUPlace& place) {
+  return allocation::AllocatorFacade::Instance().GetAllocateEvent(place);
+}
+
 #endif
 
 }  // namespace memory
