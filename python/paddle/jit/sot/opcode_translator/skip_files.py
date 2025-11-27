@@ -129,10 +129,17 @@ def _strip_init_py(s):
 
 
 def _module_dir(m: types.ModuleType):
-    return _strip_init_py(m.__file__)
+    module_file = getattr(m, "__file__", None)
+    if module_file is None:
+        return None
+    return _strip_init_py(module_file)
 
 
-skip_file_names = {_module_dir(m) for m in NEED_SKIP_THIRD_PARTY_MODULES}
+skip_file_names = {
+    path
+    for path in [_module_dir(m) for m in NEED_SKIP_THIRD_PARTY_MODULES]
+    if path is not None
+}
 
 
 sot_path = os.path.dirname(__file__).rpartition(os.sep)[0] + os.sep
