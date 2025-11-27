@@ -1572,7 +1572,7 @@ def monkey_patch_tensor():
         Returns the C DLPack exchange API pointer for the current tensor.
         This is used for interoperability with other libraries that support DLPack.
 
-        In tvm ffi 0.1.3 or above, this API returns the pointer directly.
+        In tvm ffi 0.1.3 or below, this API returns the pointer directly.
         In newer versions, it returns a python capsule containing the pointer.
         """
         try:
