@@ -39,7 +39,7 @@ if(LINUX)
 
   if(WITH_XPU)
     set(MAGMA_ARCH "xpu")
-    set(MAGMA_URL_MD5 "c67b19d3326115f3ead8337358fd2bef")
+    set(MAGMA_URL_MD5 "889f990bfd4a24c98831cfda0243674a")
   endif()
 
   message(STATUS "Selected MAGMA architecture: ${MAGMA_ARCH}")
