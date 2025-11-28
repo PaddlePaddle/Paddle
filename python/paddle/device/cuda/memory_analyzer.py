@@ -316,6 +316,7 @@ class MemoryAnalysisTool:
             print("No data to display.")
             return
 
+        print(f"Record data size: {len(data)}, start printing...")
         data_rows = []
         for row in data:
             # row[0]=ID, row[1]=Size, row[2]=Allocated, row[3]=Reserved
@@ -346,7 +347,7 @@ class MemoryAnalysisTool:
         if not data:
             print("No data to plot.")
             return
-
+        print(f"Record data size: {len(data)}, start plotting...")
         data_np = np.array(data)
         ids = data_np[:, 0]
         sizes = data_np[:, 1]
