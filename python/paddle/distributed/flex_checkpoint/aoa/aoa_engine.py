@@ -94,7 +94,7 @@ class AOAShardInfoContext:
         self.right_var_from_left_var_mapping = {}
         self.src_state_keys = set()
         self.dst_state_keys = set()
-        self.init_dst_state_keys()
+        self.init_src_state_keys()
         self.init_dst_state_keys()
 
     def init_src_state_keys(self):
