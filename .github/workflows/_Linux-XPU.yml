@@ -127,6 +127,7 @@ jobs:
           git checkout test
           echo "Pull upstream develop or target branch"
           bash ci/git_pull.sh $BRANCH
+          git submodule update
           '
 
       - name: Run build

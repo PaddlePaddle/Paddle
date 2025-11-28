@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
+from unittest.mock import MagicMock
 
 import numpy as np
 
@@ -119,8 +121,24 @@ class TestTorchProxyLocalEnabledModule(unittest.TestCase):
         import torch_proxy_local_enabled_module
 
         torch_proxy_local_enabled_module.use_torch_compat_api()
-        paddle.compat.proxy.TORCH_PROXY_FINDER._scope = None
+        paddle.compat.proxy.TORCH_PROXY_FINDER._globally_enabled = False
+        paddle.compat.proxy.TORCH_PROXY_FINDER._local_enabled_scope = set()
         paddle.compat.disable_torch_proxy()
+
+
+class TestTorchProxyUseMockedModule(unittest.TestCase):
+    def test_use_mocked_module(self):
+        # Define mocked torch before use torch proxy
+        mocked_torch = MagicMock()
+        sys.modules["torch"] = mocked_torch
+        with paddle.compat.use_torch_proxy_guard(scope=set()):
+            import torch
+
+            # torch proxy should not affect mocked torch,
+            # because the `import torch` not under the enabled scope
+            self.assertIs(torch, mocked_torch)
+
+        self.assertIs(torch, mocked_torch)
 
 
 class TestOverrideTorchModule(unittest.TestCase):

@@ -56,8 +56,8 @@ inline bool IsComplexDtype(const DataType& type) {
   return (type == DataType::COMPLEX64 || type == DataType::COMPLEX128);
 }
 
-template <typename DeviceContext, typename T>
-inline void GetResidualsTensor(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+inline void GetResidualsTensor(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
                                const std::string& driver,
@@ -94,21 +94,21 @@ inline void GetResidualsTensor(const DeviceContext& dev_ctx,
 
       auto sum_tensor = phi::Sum<T>(
           dev_ctx, pow_tensor, phi::IntArray({-2}), pow_tensor.dtype(), false);
-      phi::Copy<DeviceContext>(
+      phi::Copy<Context>(
           dev_ctx, sum_tensor, dev_ctx.GetPlace(), true, residuals);
       return;
     }
   }
 
   IntArray empty_shape({0});
-  DenseTensor empty_tensor = phi::Empty<T, DeviceContext>(dev_ctx, empty_shape);
-  phi::Copy<DeviceContext>(
+  DenseTensor empty_tensor = phi::Empty<T, Context>(dev_ctx, empty_shape);
+  phi::Copy<Context>(
       dev_ctx, empty_tensor, dev_ctx.GetPlace(), true, residuals);
 }
 
 #ifdef PADDLE_WITH_HIP
-template <typename DeviceContext, typename T>
-inline void BatchedOrmqr(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+inline void BatchedOrmqr(const Context& dev_ctx,
                          bool left,
                          bool transpose,
                          int batch_size,
@@ -165,8 +165,8 @@ inline void BatchedOrmqr(const DeviceContext& dev_ctx,
 FUNC_WITH_TYPES(ORMQR_BATCH_INSTANCE);
 #endif
 #if defined(PADDLE_WITH_CUDA)
-template <typename DeviceContext, typename T>
-inline void BatchedOrmqr(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+inline void BatchedOrmqr(const Context& dev_ctx,
                          bool left,
                          bool transpose,
                          int batch_size,

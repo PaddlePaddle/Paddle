@@ -729,7 +729,7 @@ std::vector<paddle::Tensor> RunBackward(
     }
   }
   // Save Debug info to the dump_backward_graph_path
-  if (need_debug_backward_graph) {
+  if (need_debug_backward_graph && !dot.IsEmpty()) {
     SaveDebugInfo(dump_backward_graph_path,
                   forward_debug_dot_graph.Build(),
                   debug_call_stack,

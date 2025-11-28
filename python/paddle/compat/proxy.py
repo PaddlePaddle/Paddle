@@ -223,12 +223,16 @@ class TorchProxyMetaFinder:
             return None
 
         if _is_called_by_torch_proxy_blocked_module():
+            if fullname in TORCH_MODULES_CACHE:
+                return self._find_spec_for_cached_torch_module(fullname)
             return None
 
         if (
             not self._globally_enabled
             and not _is_called_by_torch_proxy_local_enabled_module()
         ):
+            if fullname in TORCH_MODULES_CACHE:
+                return self._find_spec_for_cached_torch_module(fullname)
             return None
 
         return self._find_spec_for_torch_module(fullname)
@@ -248,7 +252,7 @@ class TorchProxyMetaFinder:
             if original_loader is None:
                 return None
 
-            class TorchBlockedModuleLoader(importlib.abc.Loader):
+            class SpecificModuleLoader(importlib.abc.Loader):
                 def create_module(self, spec):
                     mod = original_loader.create_module(spec)
                     if mod is None:
@@ -272,7 +276,7 @@ class TorchProxyMetaFinder:
                     # Mark module as torch proxy disabled/local enabled
                     module.__dict__[patched_dunder_attr] = True
 
-        spec.loader = TorchBlockedModuleLoader()
+        spec.loader = SpecificModuleLoader()
         return spec
 
     def _find_spec_for_torch_proxy_local_enabled_module(self, fullname: str):
@@ -287,6 +291,21 @@ class TorchProxyMetaFinder:
             fullname,
             enable_proxy_when_exec_module=False,
             patched_dunder_attr=MAGIC_DISABLED_MODULE_ATTR,
+        )
+
+    def _find_spec_for_cached_torch_module(self, fullname: str):
+        # Return cached module before enable proxy
+        class CachedTorchModuleLoader(importlib.abc.Loader):
+            def create_module(self, spec):
+                return TORCH_MODULES_CACHE[fullname]
+
+            def exec_module(self, module):
+                pass
+
+        return importlib.util.spec_from_loader(
+            fullname,
+            CachedTorchModuleLoader(),
+            origin=getattr(TORCH_MODULES_CACHE[fullname], "__file__", None),
         )
 
     def _find_spec_for_torch_module(self, fullname: str):
@@ -350,12 +369,27 @@ class TorchProxyMetaFinder:
 
 
 TORCH_PROXY_FINDER = TorchProxyMetaFinder()
+TORCH_MODULES_CACHE: dict[str, types.ModuleType] = {}
 
 
 def _clear_torch_modules():
     for name in list(sys.modules):
         if _is_torch_module(name):
             del sys.modules[name]
+
+
+def _swap_torch_modules_to_cache():
+    for name in list(sys.modules):
+        if _is_torch_module(name):
+            TORCH_MODULES_CACHE[name] = sys.modules[name]
+            del sys.modules[name]
+
+
+def _swap_torch_modules_from_cache():
+    for name in list(TORCH_MODULES_CACHE):
+        assert _is_torch_module(name), f"`{name}` is not a PyTorch module"
+        sys.modules[name] = TORCH_MODULES_CACHE[name]
+        del TORCH_MODULES_CACHE[name]
 
 
 def _modify_scope_of_torch_proxy(
@@ -410,7 +444,7 @@ def enable_torch_proxy(
             >>> assert torch.sin is paddle.sin
     """
     _register_compat_override()
-    _clear_torch_modules()
+    _swap_torch_modules_to_cache()
     _modify_scope_of_torch_proxy(scope, silent=silent)
     sys.meta_path.insert(0, TORCH_PROXY_FINDER)
 
@@ -436,6 +470,7 @@ def disable_torch_proxy() -> None:
     if TORCH_PROXY_FINDER in sys.meta_path:
         sys.meta_path.remove(TORCH_PROXY_FINDER)
         _clear_torch_modules()
+        _swap_torch_modules_from_cache()
         return
     warnings.warn("torch proxy is not installed.")
 

@@ -4329,8 +4329,12 @@ void GetDecoderTensor(const phi::GPUContext &dev_ctx,
   // qkv_out: [token_num, 2 * kv_num_head + q_num_head, dim_head] -> [bs, 1, 2 *
   // kv_num_head + q_num_head, dim_head] rope: [2, bsz, 1, seq_len, dim_head] ->
   // [2, bsz, 1, 1, dim_head]
-  int elem_nums = qkv_out_decoder->numel();
-  int qkv_out_nums = qkv_out.numel();
+  // TODO(large-tensor): downstream functors may still use int
+  int64_t elem_nums = qkv_out_decoder->numel();
+
+  // TODO(large-tensor): downstream functors may still use int
+  int64_t qkv_out_nums = qkv_out.numel();
+
   constexpr int PackSize = VEC_16B / sizeof(T);
   PADDLE_ENFORCE_EQ(
       dim_head % PackSize,

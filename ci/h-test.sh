@@ -161,7 +161,10 @@ concurrency_list="^test_fp8_deep_gemm$|\
 ^test_dist_fuse_gemm_epilogue_pass$|\
 ^test_fuse_allreduce_split_to_reducescatter_pass$|\
 ^test_ps_server_pass$|\
-^test_white_lists$"
+^test_white_lists$|\
+^test_scaled_dot_product_attention$|\
+^test_compat_scaled_dot_product_attention$|\
+^test_flash_attention$"
 
 cd ${work_dir}/build
 tmp_dir=`mktemp -d`

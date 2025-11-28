@@ -246,7 +246,7 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
   DenseTensor& self = *output;
 
   if (indices.size() > static_cast<size_t>(self.dims().size())) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Too many indices for tensor of dimension %d (got %d).",
         self.dims().size(),
         indices.size()));

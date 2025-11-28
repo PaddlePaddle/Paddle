@@ -71,7 +71,7 @@ void DepthwiseConv2dTransposeKernel(const Context& dev_ctx,
   auto filter_dims = filter_.dims();
 
   DDim in_data_dims;
-  if (data_layout != DataLayout::kNHWC) {
+  if (data_layout != DataLayout::NHWC) {
     in_data_dims = slice_ddim(x_dims, 2, x_dims.size());
   } else {
     in_data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
