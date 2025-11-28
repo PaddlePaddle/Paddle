@@ -26,7 +26,6 @@
 #include "paddle/phi/core/string_tensor.h"
 
 namespace phi {
-using DataType = phi::DataType;
 
 struct DeviceContext::Impl {
   Impl() = default;

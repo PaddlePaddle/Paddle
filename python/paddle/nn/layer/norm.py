@@ -1855,7 +1855,7 @@ class LocalResponseNorm(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1863,7 +1863,7 @@ class LocalResponseNorm(Layer):
             >>> m = paddle.nn.LocalResponseNorm(size=5)
             >>> y = m(x)
             >>> print(y.shape)
-            [3, 3, 112, 112]
+            paddle.Size([3, 3, 112, 112])
     """
 
     size: int
@@ -1957,14 +1957,14 @@ class SpectralNorm(Layer):
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
-            >>> x = paddle.rand((2,8,32,32))
+            >>> x = paddle.rand((2, 8, 32, 32))
             >>> spectral_norm = paddle.nn.SpectralNorm(x.shape, dim=1, power_iters=2)
             >>> spectral_norm_out = spectral_norm(x)
             >>> print(spectral_norm_out.shape)
-            [2, 8, 32, 32]
+            paddle.Size([2, 8, 32, 32])
 
     """
 

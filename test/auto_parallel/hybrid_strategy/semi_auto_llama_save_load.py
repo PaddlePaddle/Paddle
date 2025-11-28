@@ -143,27 +143,27 @@ class TestLlamaAuto:
         )
         for i in range(program_a.num_ops()):
             a_op = program_a.global_block().ops[i]
-            b_op = program_a.global_block().ops[i]
+            b_op = program_b.global_block().ops[i]
             # check op name
             assert a_op.name() == b_op.name(), (
                 f'The name of {i} op in program is different: {a_op.name()} vs {b_op.name()}.'
             )
             # check op inputs
             for index in range(a_op.num_operands()):
-                assert (
-                    a_op.operand(index)
-                    .source()
-                    .is_same(b_op.operand(index).source())
+                assert str(a_op.operand(index).source()) == str(
+                    b_op.operand(index).source()
                 ), (
                     f'The type of {index} operand is different: {a_op.operand(index).source()} vs {b_op.operand(index).source()}'
                 )
             # check op outputs
             for index in range(a_op.num_results()):
-                assert a_op.result(index).is_same(b_op.result(index)), (
+                assert str(a_op.result(index)) == str(b_op.result(index)), (
                     f'The type of {index} result is different: {a_op.result(index)} vs {b_op.result(index)}'
                 )
             # check op attrs
             for k, v in a_op.attrs().items():
+                if k in ["op_callstack"]:
+                    continue
                 assert k in b_op.attrs(), (
                     f'Can not find key of {k} attribute in other program'
                 )

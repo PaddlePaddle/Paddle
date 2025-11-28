@@ -12,16 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import importlib
 import importlib.abc
 import importlib.util
 import inspect
+import pkgutil
 import sys
 import types
 import warnings
-from collections.abc import Iterable
 from contextlib import contextmanager
-from typing import Any
+from functools import cache
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 def warning_about_fake_interface(name: str):
@@ -48,12 +54,38 @@ def create_fake_function(name):
     return fn
 
 
+class OverriddenAttribute:
+    def get_value(self):
+        raise NotImplementedError
+
+
+class LazyImportOverriddenAttribute(OverriddenAttribute):
+    def __init__(self, full_name: str):
+        self._full_name = full_name
+
+    def get_value(self):
+        parts = self._full_name.split(".")
+        root_module = importlib.import_module(parts[0])
+        result = root_module
+        for part in parts[1:]:
+            result = getattr(result, part)
+        return result
+
+
+class RawOverriddenAttribute(OverriddenAttribute):
+    def __init__(self, value: Any):
+        self._value = value
+
+    def get_value(self):
+        return self._value
+
+
 class ProxyModule(types.ModuleType):
     def __init__(
         self,
         original_module: types.ModuleType,
         proxy_name: str,
-        overrides: dict[str, Any],
+        overrides: dict[str, OverriddenAttribute],
     ):
         super().__init__(proxy_name)
         self._original_module = original_module
@@ -62,16 +94,57 @@ class ProxyModule(types.ModuleType):
 
     def __getattr__(self, name: str) -> Any:
         if name in self._overrides:
-            return self._overrides[name]
+            return self._overrides[name].get_value()
         return getattr(self._original_module, name)
 
 
-GLOBAL_OVERRIDES = {}
+GLOBAL_OVERRIDES: dict[str, OverriddenAttribute] = {
+    "torch.relu": LazyImportOverriddenAttribute("paddle.nn.functional.relu"),
+}
 
 TORCH_PROXY_BLOCKED_MODULES = {
     "tvm_ffi",
     "transformers",
 }
+
+MAGIC_DISABLED_MODULE_ATTR: str = "__disable_torch_proxy__"
+MAGIC_ENABLED_MODULE_ATTR: str = "__enable_torch_proxy__"
+
+
+def _extend_torch_proxy_overrides(
+    overrides: dict[str, OverriddenAttribute],
+) -> None:
+    GLOBAL_OVERRIDES.update(overrides)
+
+
+@cache
+def _register_compat_override():
+    import paddle.compat
+
+    PADDLE_PREFIX = "paddle.compat"
+    TORCH_PREFIX = "torch"
+    PUBLIC_ATTR_DECLARATION = "__all__"
+
+    compat_overrides = {}
+    for module_info in pkgutil.walk_packages(
+        paddle.compat.__path__,
+        paddle.compat.__name__ + ".",
+    ):
+        module = importlib.import_module(module_info.name)
+        if hasattr(module, PUBLIC_ATTR_DECLARATION):
+            public_attrs = getattr(module, PUBLIC_ATTR_DECLARATION)
+            torch_module_name = module_info.name.replace(
+                PADDLE_PREFIX, TORCH_PREFIX, 1
+            )
+            for attr_name in public_attrs:
+                if attr_name.startswith("_"):
+                    continue
+                paddle_attr = getattr(module, attr_name)
+                torch_attr_name = f"{torch_module_name}.{attr_name}"
+                compat_overrides[torch_attr_name] = RawOverriddenAttribute(
+                    paddle_attr
+                )
+    _extend_torch_proxy_overrides(compat_overrides)
 
 
 def _is_specific_module_or_its_submodule(name: str, module: str) -> bool:
@@ -82,6 +155,13 @@ def _is_torch_module(name: str) -> bool:
     return _is_specific_module_or_its_submodule(name, "torch")
 
 
+def _is_torch_proxy_local_enabled_module(name: str, scope: set[str]) -> bool:
+    for enabled_module in scope:
+        if _is_specific_module_or_its_submodule(name, enabled_module):
+            return True
+    return False
+
+
 def _is_torch_proxy_blocked_module(name: str) -> bool:
     for blocked_module in TORCH_PROXY_BLOCKED_MODULES:
         if _is_specific_module_or_its_submodule(name, blocked_module):
@@ -89,12 +169,24 @@ def _is_torch_proxy_blocked_module(name: str) -> bool:
     return False
 
 
-def _is_called_by_torch_proxy_blocked_module():
+def _is_called_by_module_with_specific_dunder_attr(dunder_attr: str) -> bool:
     stack = inspect.stack()
     for frame_info in stack[1:]:
-        if frame_info.frame.f_globals.get("__disable_torch_proxy__"):
+        if frame_info.frame.f_globals.get(dunder_attr):
             return True
     return False
+
+
+def _is_called_by_torch_proxy_blocked_module():
+    return _is_called_by_module_with_specific_dunder_attr(
+        MAGIC_DISABLED_MODULE_ATTR
+    )
+
+
+def _is_called_by_torch_proxy_local_enabled_module():
+    return _is_called_by_module_with_specific_dunder_attr(
+        MAGIC_ENABLED_MODULE_ATTR
+    )
 
 
 class TorchProxyMetaFinder:
@@ -106,21 +198,53 @@ class TorchProxyMetaFinder:
     Inspired by the setuptools _distutils_hack.
     """
 
+    _local_enabled_scope: set[str]
+    _globally_enabled: bool
+
+    def __init__(self, scope: set[str] | None = None):
+        self._set_scope(scope)
+
+    def _set_scope(self, scope: set[str] | None):
+        self._local_enabled_scope = scope or set()
+        self._globally_enabled = scope is None
+
     def find_spec(self, fullname, path, target=None):
         if _is_torch_proxy_blocked_module(fullname):
             return self._find_spec_for_torch_proxy_blocked_module(fullname)
+
+        if _is_torch_proxy_local_enabled_module(
+            fullname, self._local_enabled_scope
+        ):
+            return self._find_spec_for_torch_proxy_local_enabled_module(
+                fullname
+            )
 
         if not _is_torch_module(fullname):
             return None
 
         if _is_called_by_torch_proxy_blocked_module():
+            if fullname in TORCH_MODULES_CACHE:
+                return self._find_spec_for_cached_torch_module(fullname)
+            return None
+
+        if (
+            not self._globally_enabled
+            and not _is_called_by_torch_proxy_local_enabled_module()
+        ):
+            if fullname in TORCH_MODULES_CACHE:
+                return self._find_spec_for_cached_torch_module(fullname)
             return None
 
         return self._find_spec_for_torch_module(fullname)
 
-    def _find_spec_for_torch_proxy_blocked_module(self, fullname: str):
+    def _find_spec_for_specific_module(
+        self,
+        fullname: str,
+        enable_proxy_when_exec_module: bool,
+        patched_dunder_attr: str,
+    ):
         # Return a special loader that imports the blocked module without torch proxy
-        with use_torch_proxy_guard(False):
+        with use_torch_proxy_guard(enable=False):
             spec = importlib.util.find_spec(fullname)
             if spec is None:
                 return None
@@ -128,7 +252,7 @@ class TorchProxyMetaFinder:
             if original_loader is None:
                 return None
 
-            class TorchBlockedModuleLoader(importlib.abc.Loader):
+            class SpecificModuleLoader(importlib.abc.Loader):
                 def create_module(self, spec):
                     mod = original_loader.create_module(spec)
                     if mod is None:
@@ -145,13 +269,44 @@ class TorchProxyMetaFinder:
 
                 def exec_module(self, module):
                     # Import the real module with torch proxy disabled
-                    with use_torch_proxy_guard(False):
+                    with use_torch_proxy_guard(
+                        enable=enable_proxy_when_exec_module, silent=True
+                    ):
                         original_loader.exec_module(module)
-                    # Mark module as torch proxy disabled
-                    module.__dict__["__disable_torch_proxy__"] = True
+                    # Mark module as torch proxy disabled/local enabled
+                    module.__dict__[patched_dunder_attr] = True
 
-        spec.loader = TorchBlockedModuleLoader()
+        spec.loader = SpecificModuleLoader()
         return spec
+
+    def _find_spec_for_torch_proxy_local_enabled_module(self, fullname: str):
+        return self._find_spec_for_specific_module(
+            fullname,
+            enable_proxy_when_exec_module=True,
+            patched_dunder_attr=MAGIC_ENABLED_MODULE_ATTR,
+        )
+
+    def _find_spec_for_torch_proxy_blocked_module(self, fullname: str):
+        return self._find_spec_for_specific_module(
+            fullname,
+            enable_proxy_when_exec_module=False,
+            patched_dunder_attr=MAGIC_DISABLED_MODULE_ATTR,
+        )
+
+    def _find_spec_for_cached_torch_module(self, fullname: str):
+        # Return cached module before enable proxy
+        class CachedTorchModuleLoader(importlib.abc.Loader):
+            def create_module(self, spec):
+                return TORCH_MODULES_CACHE[fullname]
+
+            def exec_module(self, module):
+                pass
+
+        return importlib.util.spec_from_loader(
+            fullname,
+            CachedTorchModuleLoader(),
+            origin=getattr(TORCH_MODULES_CACHE[fullname], "__file__", None),
+        )
 
     def _find_spec_for_torch_module(self, fullname: str):
         # Map the requested torch fullname to the corresponding paddle fullname.
@@ -189,6 +344,18 @@ class TorchProxyMetaFinder:
                 for k, v in self._source.__dict__.items():
                     if k in ("__name__", "__package__", "__path__", "__spec__"):
                         continue
+                    if k in overrides:
+                        continue
+                    if isinstance(v, types.ModuleType):
+                        v = ProxyModule(
+                            v,
+                            f"{self._target_name}.{k}",
+                            {
+                                kk.removeprefix(f"{k}."): vv
+                                for kk, vv in overrides.items()
+                                if kk.startswith(f"{k}.")
+                            },
+                        )
                     module.__dict__[k] = v
 
         # Use fullname for the spec name and mark as package when appropriate so that
@@ -202,6 +369,7 @@ class TorchProxyMetaFinder:
 
 
 TORCH_PROXY_FINDER = TorchProxyMetaFinder()
+TORCH_MODULES_CACHE: dict[str, types.ModuleType] = {}
 
 
 def _clear_torch_modules():
@@ -210,7 +378,59 @@ def _clear_torch_modules():
             del sys.modules[name]
 
 
-def enable_torch_proxy() -> None:
+def _swap_torch_modules_to_cache():
+    for name in list(sys.modules):
+        if _is_torch_module(name):
+            TORCH_MODULES_CACHE[name] = sys.modules[name]
+            del sys.modules[name]
+
+
+def _swap_torch_modules_from_cache():
+    for name in list(TORCH_MODULES_CACHE):
+        assert _is_torch_module(name), f"`{name}` is not a PyTorch module"
+        sys.modules[name] = TORCH_MODULES_CACHE[name]
+        del TORCH_MODULES_CACHE[name]
+
+
+def _modify_scope_of_torch_proxy(
+    scope: set[str] | None,
+    *,
+    silent: bool = False,
+) -> None:
+    def _warn_or_not(msg: str):
+        if silent:
+            return
+        warnings.warn(msg)
+
+    if TORCH_PROXY_FINDER not in sys.meta_path:
+        TORCH_PROXY_FINDER._set_scope(scope)
+        return
+
+    if TORCH_PROXY_FINDER._globally_enabled:
+        if scope is not None:
+            _warn_or_not(
+                "PyTorch already enabled globally, scope modification ignored."
+            )
+        TORCH_PROXY_FINDER._set_scope(scope)
+        return
+    if scope is None:
+        _warn_or_not(
+            "Enabling PyTorch proxy globally, previous scope will be ignored."
+        )
+        TORCH_PROXY_FINDER._globally_enabled = True
+        return
+    if scope != TORCH_PROXY_FINDER._local_enabled_scope:
+        _warn_or_not(
+            f"Extending PyTorch proxy scope, previous scope: {TORCH_PROXY_FINDER._local_enabled_scope}, new scope: {scope}."
+        )
+    TORCH_PROXY_FINDER._local_enabled_scope |= scope
+
+
+def enable_torch_proxy(
+    *,
+    scope: set[str] | None = None,
+    silent: bool = False,
+) -> None:
     """
     Enable the PyTorch proxy by adding the TorchProxyMetaFinder to sys.meta_path.
     This allows importing 'torch' modules that are actually proxies to PaddlePaddle.
@@ -223,7 +443,9 @@ def enable_torch_proxy() -> None:
             >>> import torch  # This will import paddle as torch
             >>> assert torch.sin is paddle.sin
     """
-    _clear_torch_modules()
+    _register_compat_override()
+    _swap_torch_modules_to_cache()
+    _modify_scope_of_torch_proxy(scope, silent=silent)
     sys.meta_path.insert(0, TORCH_PROXY_FINDER)
 
 
@@ -248,12 +470,18 @@ def disable_torch_proxy() -> None:
     if TORCH_PROXY_FINDER in sys.meta_path:
         sys.meta_path.remove(TORCH_PROXY_FINDER)
         _clear_torch_modules()
+        _swap_torch_modules_from_cache()
         return
     warnings.warn("torch proxy is not installed.")
 
 
 @contextmanager
-def use_torch_proxy_guard(enable: bool = True):
+def use_torch_proxy_guard(
+    *,
+    enable: bool = True,
+    scope: set[str] | None = None,
+    silent: bool = False,
+):
     """
     Context manager to temporarily enable or disable the PyTorch proxy.
 
@@ -286,21 +514,34 @@ def use_torch_proxy_guard(enable: bool = True):
             ...     assert torch.sin is paddle.sin
     """
     already_has_torch_proxy = TORCH_PROXY_FINDER in sys.meta_path
-    if enable == already_has_torch_proxy:
+    original_local_enabled_scope = TORCH_PROXY_FINDER._local_enabled_scope
+    original_globally_enabled = TORCH_PROXY_FINDER._globally_enabled
+    if enable == already_has_torch_proxy and (
+        (original_globally_enabled and scope is None)
+        or (original_local_enabled_scope == (scope or set()))
+    ):
         yield
         return
     if enable:
-        enable_torch_proxy()
+        enable_torch_proxy(scope=scope, silent=silent)
         try:
             yield
         finally:
+            TORCH_PROXY_FINDER._local_enabled_scope = (
+                original_local_enabled_scope
+            )
+            TORCH_PROXY_FINDER._globally_enabled = original_globally_enabled
             disable_torch_proxy()
     else:
         disable_torch_proxy()
         try:
             yield
         finally:
-            enable_torch_proxy()
+            enable_torch_proxy(scope=None, silent=True)
+            TORCH_PROXY_FINDER._local_enabled_scope = (
+                original_local_enabled_scope
+            )
+            TORCH_PROXY_FINDER._globally_enabled = original_globally_enabled
 
 
 def extend_torch_proxy_blocked_modules(modules: Iterable[str]):

@@ -61,11 +61,7 @@ namespace py = pybind11;  // NOLINT
 namespace paddle::pybind {
 
 static bool PyCheckInteger(PyObject *obj) {
-#if PY_VERSION_HEX < 0x03000000
-  return (PyLong_Check(obj) || PyInt_Check(obj)) && !PyBool_Check(obj);
-#else
   return PyLong_Check(obj) && !PyBool_Check(obj);
-#endif
 }
 
 using paddle::distributed::auto_parallel::DistTensorSpec;

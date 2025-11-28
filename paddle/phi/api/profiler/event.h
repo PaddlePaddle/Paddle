@@ -30,6 +30,8 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/cuda_stream.h"
+#elif defined(PADDLE_WITH_XPU)
+#include "paddle/phi/core/xpu_cuda_stream.h"
 #endif
 
 namespace phi {
@@ -62,7 +64,8 @@ class PADDLE_API Event {
   void set_name(std::string name) { name_ = name; }
   void set_role(EventRole role) { role_ = role; }
   std::string attr() const { return attr_; }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU)
 #ifndef PADDLE_WITH_CUPTI
   gpuEvent_t event() const { return event_; }
   int device() const { return device_; }

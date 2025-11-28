@@ -60,9 +60,9 @@ and other special float),
 */
 
 /* IsfiniteFunctor */
-template <typename DeviceContext, typename T, typename Enable = void>
+template <typename Context, typename T, typename Enable = void>
 struct IsfiniteFunctor {
-  void operator()(const DeviceContext& dev_ctx,
+  void operator()(const Context& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* output);
 };
@@ -139,9 +139,9 @@ struct IsfiniteFunctor<
 };
 
 /* IsnanFunctor */
-template <typename DeviceContext, typename T, typename Enable = void>
+template <typename Context, typename T, typename Enable = void>
 struct IsnanFunctor {
-  void operator()(const DeviceContext& dev_ctx,
+  void operator()(const Context& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* output);
 };
@@ -217,9 +217,9 @@ struct IsnanFunctor<
 };
 
 /* IsinfFunctor */
-template <typename DeviceContext, typename T, typename Enable = void>
+template <typename Context, typename T, typename Enable = void>
 struct IsinfFunctor {
-  void operator()(const DeviceContext& dev_ctx,
+  void operator()(const Context& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* output);
 };

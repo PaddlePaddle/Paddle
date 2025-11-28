@@ -1250,5 +1250,51 @@ void index_add_double_grad(const Tensor& index,
   }
 }
 
+template <typename T>
+void index_elementwise_put_with_tensor_double_grad(
+    const Tensor& grad_out,
+    const Tensor& value,
+    const std::vector<Tensor>& index,
+    const paddle::optional<Tensor>& grad_x_grad,
+    const paddle::optional<Tensor>& grad_value_grad,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t& slice_offset,
+    Tensor* grad_out_grad) {
+  if (grad_out_grad) {
+    Tensor grad_x_grad_maybe_zero;
+    Tensor grad_value_grad_maybe_zero;
+
+    if (grad_x_grad) {
+      grad_x_grad_maybe_zero = grad_x_grad.get();
+    } else {
+      grad_x_grad_maybe_zero = full<T>(common::vectorize(grad_out.dims()),
+                                       0,
+                                       grad_out.dtype(),
+                                       grad_out.place());
+    }
+
+    if (grad_value_grad) {
+      grad_value_grad_maybe_zero = grad_value_grad.get();
+    } else {
+      grad_value_grad_maybe_zero = full<T>(
+          common::vectorize(value.dims()), 0, value.dtype(), value.place());
+    }
+
+    Tensor grad_out_grad_tmp =
+        index_elementwise_put_with_tensor<T>(grad_x_grad_maybe_zero,
+                                             index,
+                                             grad_value_grad_maybe_zero,
+                                             input_dims,
+                                             input_strides,
+                                             index_dims,
+                                             index_strides,
+                                             slice_offset);
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+}
+
 }  // namespace prim
 }  // namespace paddle

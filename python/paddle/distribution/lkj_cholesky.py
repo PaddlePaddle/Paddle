@@ -137,7 +137,7 @@ class LKJCholesky(distribution.Distribution):
         sample_method (str, optional): The sampling method to use, either "onion" or "cvine". Default is "onion".
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -145,7 +145,7 @@ class LKJCholesky(distribution.Distribution):
             >>> lkj = paddle.distribution.LKJCholesky(dim=dim)
             >>> sample = lkj.sample()
             >>> sample.shape
-            [3, 3]
+            paddle.Size([3, 3])
     """
 
     concentration: Tensor

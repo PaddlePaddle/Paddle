@@ -40,7 +40,7 @@ __global__ static inline void KeAffineChannelCUDA(const T* x,
       static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
   for (int64_t i = gid; i < num; i += stride) {
-    const int c = layout == phi::DataLayout::kNCHW ? i / HxW % C : i % C;
+    const int c = layout == phi::DataLayout::NCHW ? i / HxW % C : i % C;
     if (HasBias) {
       y[i] = scale[c] * x[i] + bias[c];
     } else {
@@ -71,7 +71,7 @@ void AffineChannelCUDAKernel(const Context& dev_ctx,
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
 
-  int C = layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
+  int C = layout == phi::DataLayout::NCHW ? dims[1] : dims[dims.size() - 1];
   int64_t HxW = num / N / C;
 
   const T* x_d = x->data<T>();
@@ -88,12 +88,12 @@ void AffineChannelCUDAKernel(const Context& dev_ctx,
 
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   grid = std::min(std::max(max_threads / block, 1), grid);
-  if (layout == phi::DataLayout::kNCHW) {
-    KeAffineChannelCUDA<T, phi::DataLayout::kNCHW, true>
+  if (layout == phi::DataLayout::NCHW) {
+    KeAffineChannelCUDA<T, phi::DataLayout::NCHW, true>
         <<<grid, block, 0, dev_ctx.stream()>>>(
             x_d, scale_d, bias_d, C, HxW, num, y_d);
   } else {
-    KeAffineChannelCUDA<T, phi::DataLayout::kNHWC, true>
+    KeAffineChannelCUDA<T, phi::DataLayout::NHWC, true>
         <<<grid, block, 0, dev_ctx.stream()>>>(
             x_d, scale_d, bias_d, C, HxW, num, y_d);
   }
