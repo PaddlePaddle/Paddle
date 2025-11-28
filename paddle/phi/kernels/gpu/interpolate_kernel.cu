@@ -472,8 +472,11 @@ __global__ void KeBicubicInterpFw(const T* in,
                                   const bool align_corners,
                                   const DataLayout data_layout) {
   size_t nthreads = output_h * output_w;
-  size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
-  size_t stride = blockDim.x * gridDim.x;
+  size_t tid =
+      static_cast<size_t>(blockIdx.x) * static_cast<size_t>(blockDim.x) +
+      static_cast<size_t>(threadIdx.x);
+  size_t stride =
+      static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x);
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   for (; tid < nthreads; tid += stride) {

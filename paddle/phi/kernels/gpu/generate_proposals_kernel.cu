@@ -292,10 +292,7 @@ static void NMS(const phi::GPUContext &dev_ctx,
                 DenseTensor *keep_out,
                 bool pixel_offset = true) {
   int64_t boxes_num = proposals.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
-  const int col_blocks = DIVUP(boxes_num, kThreadsPerBlock);
+  const int64_t col_blocks = DIVUP(boxes_num, kThreadsPerBlock);
   dim3 blocks(DIVUP(boxes_num, kThreadsPerBlock),
               DIVUP(boxes_num, kThreadsPerBlock));
   dim3 threads(kThreadsPerBlock);
@@ -332,7 +329,7 @@ static void NMS(const phi::GPUContext &dev_ctx,
       ++num_to_keep;
       keep_vec.push_back(i);
       uint64_t *p = mask_host.data() + i * col_blocks;
-      for (int j = nblock; j < col_blocks; j++) {
+      for (int64_t j = nblock; j < col_blocks; j++) {
         remv[j] |= p[j];
       }
     }
