@@ -250,11 +250,11 @@ class Tensor : public TensorBase {
             .contiguous());
   }
 
-  at::Tensor& floor_divide_(const at::Scalar& other) {
+  at::Tensor& floor_divide_(const at::Scalar& other) const {
     paddle::experimental::floor_divide_(
         const_cast<PaddleTensor&>(tensor_),
         paddle::experimental::full({}, other, other.dtype()));
-    return *this;
+    return const_cast<at::Tensor&>(*this);
   }
 
   // Paddle Tensor has no storage_offset, so we add it here, and it is always
