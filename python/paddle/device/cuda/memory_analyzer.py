@@ -13,8 +13,6 @@
 # limitations under the License.
 from __future__ import annotations
 
-import os
-
 import numpy as np
 
 import paddle
@@ -335,7 +333,7 @@ class MemoryAnalysisTool:
         print_table(title, headers, data_rows)
 
     @classmethod
-    def allocate_record_plot(self, data, save_path: str | None = None):
+    def allocate_record_plot(self, data, save_path: str = ""):
         try:
             import matplotlib.pyplot as plt
             from matplotlib import ticker
@@ -422,9 +420,9 @@ class MemoryAnalysisTool:
 
         ax2.invert_yaxis()
         ax2.set_ylim(reserved.max() * 3.0, LOG_START_VALUE)
-        ax2.set_yscale('symlog', linthresh=1024 * 1024)
+        # ax2.set_yscale('symlog', linthresh=1024 * 1024)
         ax2.set_ylabel(
-            'Pool Status (Symlog, Inverted)',
+            'Pool Status (Inverted)',
             fontsize=11,
             fontweight='bold',
             labelpad=10,
@@ -474,12 +472,6 @@ class MemoryAnalysisTool:
             edgecolor='black',
             shadow=False,
         )
-
-        if save_path is None:
-            save_path = os.path.join(os.getcwd(), 'memory_analysis.png')
-        dir_name = os.path.dirname(save_path)
-        if dir_name and not os.path.exists(dir_name):
-            os.makedirs(dir_name)
 
         plt.tight_layout()
         plt.subplots_adjust(hspace=0.05)

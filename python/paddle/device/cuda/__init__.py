@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING, NoReturn, Union
 
 from typing_extensions import TypeAlias
@@ -55,10 +56,7 @@ __all__ = [
     'reset_max_memory_allocated',
     'reset_max_memory_reserved',
     'memory_summary',
-    'vmm_max_free_size',
     'vmm_compact',
-    'vmm_free_block_info',
-    'vmm_all_block_info',
 ]
 
 
@@ -930,4 +928,19 @@ def allocate_record_plot(
     '''
     device_id = extract_cuda_device_id(device, op_name='allocate_record_plot')
     data = paddle.core.get_allocate_record(device_id)
-    MemoryAnalysisTool.allocate_record_plot(data, save_path)
+    updated_save_path = save_path
+    if save_path is None or save_path == "":
+        updated_save_path = os.path.join(
+            os.getcwd(), f'memory_analysis_id{device_id}.png'
+        )
+    else:
+        dir_name = os.path.dirname(save_path)
+        base_name = os.path.basename(save_path)
+        file_name_without_ext, ext = os.path.splitext(base_name)
+        new_file_name = f"{file_name_without_ext}_id{device_id}{ext}"
+        updated_save_path = os.path.join(dir_name, new_file_name)
+
+    dir_name = os.path.dirname(updated_save_path)
+    if dir_name and not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+    MemoryAnalysisTool.allocate_record_plot(data, updated_save_path)
