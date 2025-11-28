@@ -379,10 +379,14 @@ class TestEigUnsupportedDtypeError(unittest.TestCase):
 class TestOptionalGradInput(unittest.TestCase):
     @unittest.skipIf(
         not platform.system().lower().startswith("linux")
-        or not paddle.device.is_compiled_with_cuda()
-        or paddle.device.is_compiled_with_rocm(),
-        # or not paddle.device.is_compiled_with_xpu(), # TODO: support VisitDataType for complex dtype in non-cuda device
-        reason="enable only in linux+cuda now",
+        or (
+            not (
+                paddle.device.is_compiled_with_cuda()
+                and paddle.device.is_compiled_with_rocm()
+            )
+            and not paddle.device.is_compiled_with_xpu()
+        ),
+        reason="enable only in linux+cuda/xpu now",
     )
     def test_eager(self):
         with dygraph_guard(), paddle.device.device_guard("xpu"):
@@ -408,10 +412,14 @@ class TestOptionalGradInput(unittest.TestCase):
 
     @unittest.skipIf(
         not platform.system().lower().startswith("linux")
-        or not paddle.device.is_compiled_with_cuda()
-        or paddle.device.is_compiled_with_rocm(),
-        # or not paddle.device.is_compiled_with_xpu(), # TODO: support VisitDataType for complex dtype in non-cuda device
-        reason="enable only in linux+cuda now",
+        or (
+            not (
+                paddle.device.is_compiled_with_cuda()
+                and paddle.device.is_compiled_with_rocm()
+            )
+            and not paddle.device.is_compiled_with_xpu()
+        ),
+        reason="enable only in linux+cuda/xpu now",
     )
     def test_dy2st(self):
         with dygraph_guard(), paddle.device.device_guard("xpu"):
