@@ -110,7 +110,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
   DataLayout layout;
 
   if (data_format == str_NDHWC) {
-    layout = DataLayout::kNCDHW;
+    layout = DataLayout::NCDHW;
     std::vector<int> axis{0, 4, 1, 2, 3};
 
     // input
@@ -139,7 +139,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
     // MIOPEN not support NHWC data layout
   } else if (data_format == str_NHWC) {
-    layout = DataLayout::kNCHW;
+    layout = DataLayout::NCHW;
 
     std::vector<int> axis{0, 3, 1, 2};
 

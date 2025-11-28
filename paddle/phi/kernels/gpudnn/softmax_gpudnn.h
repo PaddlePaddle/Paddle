@@ -1074,7 +1074,7 @@ void SoftmaxForwardCudnnKernel(const GPUContext& dev_ctx,
                                const std::vector<int>& tensor_dims,
                                T* out_data) {
   auto handle = dev_ctx.cudnn_handle();
-  DataLayout layout = DataLayout::kNCHW;
+  DataLayout layout = DataLayout::NCHW;
 
   ScopedTensorDescriptor scoped_desc;
 #ifdef PADDLE_WITH_HIP
@@ -1146,7 +1146,7 @@ void SoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
                                 const std::vector<int>& tensor_dims,
                                 T* dx_data) {
   auto handle = dev_ctx.cudnn_handle();
-  DataLayout layout = DataLayout::kNCHW;
+  DataLayout layout = DataLayout::NCHW;
 
   ScopedTensorDescriptor scoped_desc;
 #ifdef PADDLE_WITH_HIP

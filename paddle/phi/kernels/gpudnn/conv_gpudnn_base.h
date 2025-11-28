@@ -171,8 +171,8 @@ static inline void GetNCDHW(const phi::DDim& dims,
                             int* H,
                             int* W) {
   *N = dims[0];
-  *C = layout == DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
-  int i = layout == DataLayout::kNCHW ? 0 : 1;
+  *C = layout == DataLayout::NCHW ? dims[1] : dims[dims.size() - 1];
+  int i = layout == DataLayout::NCHW ? 0 : 1;
   if (dims.size() == 5) {
     *D = dims[2 - i];
     *H = dims[3 - i];

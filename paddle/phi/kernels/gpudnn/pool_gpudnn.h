@@ -53,13 +53,13 @@ class CudnnIndexType<int8_t> {
 
 inline DataLayout GetLayoutFromStr(std::string data_format) {
   if (data_format == "NHWC") {
-    return DataLayout::kNHWC;
+    return DataLayout::NHWC;
   } else if (data_format == "NCHW") {
-    return DataLayout::kNCHW;
+    return DataLayout::NCHW;
   } else if (data_format == "NCDHW") {
-    return DataLayout::kNCDHW;
+    return DataLayout::NCDHW;
   } else {
-    return DataLayout::kNCDHW;
+    return DataLayout::NCDHW;
   }
 }
 
