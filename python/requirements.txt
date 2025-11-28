@@ -6,4 +6,5 @@ opt_einsum==3.3.0
 networkx
 typing_extensions
 safetensors>=0.6.0
+cuda-python ; platform_system == "Linux"
 setuptools; python_version>="3.12"

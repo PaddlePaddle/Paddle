@@ -24,8 +24,6 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-using DataLayout = phi::DataLayout;
-
 /* The storage format of the coldata in the Im2ColFunctor and Col2ImFunctor. */
 enum class ColFormat { kCFO = 0, kOCF = 1 };
 

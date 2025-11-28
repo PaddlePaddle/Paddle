@@ -72,10 +72,11 @@ void MultiEncoderXPUKernel(
                                     ? nullptr
                                     : max_seq_len.get_ptr()->data<int>();
   int64_t batch_size = x.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
 
-  int seq_len = 1;
+  // TODO(large-tensor): XPU multi_encoder API not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
+
+  int64_t seq_len = 1;
   int head_dim;
   if (x.dims().size() == 2) {
     head_dim = x.dims()[1];
@@ -178,8 +179,9 @@ void MultiEncoderXPUKernel(
   xpu::Activation_t qkv_act(static_cast<xpu::Activation_t::act_enum>(act_type));
 
   int64_t batch = x.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+
+  // TODO(large-tensor): XPU multi_encoder QKVAttnParam not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(batch, "batch");
 
   // matmul_size * layer_num
   if (seq_lod_data) {
@@ -236,11 +238,12 @@ void MultiEncoderXPUKernel(
     std::vector<int> mask_shape(mask_dims.Get(),
                                 mask_dims.Get() + mask_dims.size());
     int64_t max_seq_len_value = x.dims()[1];
-    // TODO(large-tensor): downstream functors may still use int; guard until
-    // upgraded.
 
-    xpu::QKVAttnParam qkv_attn_param(batch,
-                                     max_seq_len_value,
+    // TODO(large-tensor): XPU QKVAttnParam not support int64
+    PADDLE_ENFORCE_LE_INT_MAX(max_seq_len_value, "max_seq_len_value");
+
+    xpu::QKVAttnParam qkv_attn_param(static_cast<int>(batch),
+                                     static_cast<int>(max_seq_len_value),
                                      head_num,
                                      size_per_head,
                                      mask_shape,
@@ -285,12 +288,14 @@ void MultiEncoderXPUKernel(
   } else {
     // When no mask input, like VIT, create LOD to act as vsl.
     int64_t max_seq_len_value = x.dims()[1];
-    // TODO(large-tensor): downstream functors may still use int; guard until
-    // upgraded.
+
+    // TODO(large-tensor): XPU QKVAttnParam not support int64
+    PADDLE_ENFORCE_LE_INT_MAX(max_seq_len_value * batch,
+                              "max_seq_len_value*batch");
 
     std::vector<int> lod;
-    for (int i = 0; i < batch + 1; i++) {
-      lod.push_back(i * max_seq_len_value);
+    for (int64_t i = 0; i < batch + 1; i++) {
+      lod.push_back(static_cast<int>(i * max_seq_len_value));
     }
     xpu::VectorParam<int> query_lod = {
         lod.data(), static_cast<int>(lod.size()), nullptr};

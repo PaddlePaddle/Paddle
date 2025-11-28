@@ -16,19 +16,16 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
 #else
-#include <cub/cub.cuh>
 #include "cuda.h"  // NOLINT
 #endif
-
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/nonzero_kernel.h"

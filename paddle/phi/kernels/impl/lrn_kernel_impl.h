@@ -29,10 +29,10 @@ struct LRNFunctor {
                   const phi::DenseTensor& input,
                   phi::DenseTensor* out,
                   phi::DenseTensor* mid,
-                  int N,
-                  int C,
-                  int H,
-                  int W,
+                  int64_t N,
+                  int64_t C,
+                  int64_t H,
+                  int64_t W,
                   int n,
                   T k,
                   T alpha,
@@ -64,10 +64,6 @@ void LRNKernel(const Context& dev_ctx,
   int64_t C = (data_layout != DataLayout::NHWC ? x_dims[1] : x_dims[3]);
   int64_t H = (data_layout != DataLayout::NHWC ? x_dims[2] : x_dims[1]);
   int64_t W = (data_layout != DataLayout::NHWC ? x_dims[3] : x_dims[2]);
-
-  // TODO(large-tensor): LRN GPU kernel implementation still uses int for
-  // dimensions. Need to update GPU kernel to support dimensions > INT32_MAX.
-  PADDLE_ENFORCE_LE_INT_MAX(std::max({N, C, H, W}), "std::max({N, C, H, W})");
 
   dev_ctx.template Alloc<T>(out);
 
@@ -161,10 +157,6 @@ void LRNGradKernel(const Context& dev_ctx,
   int64_t C = (data_layout != DataLayout::NHWC ? x_dims[1] : x_dims[3]);
   int64_t H = (data_layout != DataLayout::NHWC ? x_dims[2] : x_dims[1]);
   int64_t W = (data_layout != DataLayout::NHWC ? x_dims[3] : x_dims[2]);
-
-  // TODO(large-tensor): LRN GPU kernel implementation still uses int for
-  // dimensions. Need to update GPU kernel to support dimensions > INT32_MAX.
-  PADDLE_ENFORCE_LE_INT_MAX(std::max({N, C, H, W}), "std::max({N, C, H, W})");
 
   LRNGradFunctor<Context, T> f;
   f(dev_ctx, x, out, mid, x_g, out_g, N, C, H, W, n, alpha, beta, data_layout);
