@@ -24,6 +24,7 @@
 
 #include "cutlass/epilogue/thread/linear_combination_bias_elementwise.h"
 #include "cutlass/util/device_memory.h"
+#include "cutlass/arch/memory.h"
 
 #include "cutlass/gemm/device/gemm_universal.h"
 #include "cutlass/gemm/device/gemm_universal_with_broadcast.h"
@@ -50,14 +51,11 @@ using unroll = cutlass::Unroll<NUnroll>;
 
 template <typename T, int VecSize>
 __device__ __forceinline__ auto load_vector(const T* ptr, int64_t offset, bool valid, int64_t size) {
-  return valid ? *reinterpret_cast<const VectorType<T, VecSize>*>(ptr + offset) : VectorType<T, VecSize>();
+  using AccessType = VectorType<T, VecSize>;
+  AccessType v;
+  cutlass::arch::global_load<AccessType, sizeof(AccessType)>(v, ptr + offset, valid);
+  return v;
 }
-
-// template <typename T, int VecSize>
-// __device__ __forceinline__ const auto& 
-// extract_scalar(const VectorType<T, VecSize>& vec, int i) {
-//     return reinterpret_cast<const T&>(vec[i]);
-// }
 
 template <typename T, int VecSize>
 __device__ __forceinline__ decltype(auto)
