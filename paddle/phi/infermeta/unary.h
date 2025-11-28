@@ -482,6 +482,18 @@ PADDLE_API void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                           MetaTensor* mask,
                                           MetaConfig config = MetaConfig());
 
+PADDLE_API void MaxPool2DWithIndexInferMeta(const MetaTensor& x,
+                                            const std::vector<int>& kernel_size,
+                                            const std::vector<int>& strides,
+                                            const std::vector<int>& paddings,
+                                            const std::vector<int>& dilations,
+                                            bool global_pooling,
+                                            bool adaptive,
+                                            bool ceil_mode,
+                                            MetaTensor* out,
+                                            MetaTensor* mask,
+                                            MetaConfig config = MetaConfig());
+
 PADDLE_API void MaxPoolV2InferMeta(const MetaTensor& x,
                                    const std::vector<int>& kernel_size,
                                    const std::vector<int>& strides,

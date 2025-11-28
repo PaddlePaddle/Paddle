@@ -47,6 +47,7 @@ class TestPool2D_API(unittest.TestCase):
                 ksize=[2, 2],
                 strides=[2, 2],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 pool_type='avg',
             )
 
@@ -68,6 +69,7 @@ class TestPool2D_API(unittest.TestCase):
                 ksize=[2, 2],
                 strides=[2, 2],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 pool_type='avg',
             )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
@@ -91,6 +93,7 @@ class TestPool2D_API(unittest.TestCase):
                 ksize=[2, 2],
                 strides=[2, 2],
                 paddings=[1, 1],
+                dilations=[1, 1],
                 ceil_mode=False,
                 exclusive=False,
             )
@@ -115,6 +118,7 @@ class TestPool2D_API(unittest.TestCase):
                 ksize=[2, 2],
                 strides=[2, 2],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 ceil_mode=True,
             )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
@@ -132,7 +136,9 @@ class TestPool2D_API(unittest.TestCase):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 32, 32], dtype="float32"
             )
-            result = max_pool2d(input, kernel_size=2, stride=2, padding=0)
+            result = max_pool2d(
+                input, kernel_size=2, stride=2, padding=0, dilation=1
+            )
 
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
             result_np = pool2D_forward_naive(
@@ -140,6 +146,7 @@ class TestPool2D_API(unittest.TestCase):
                 ksize=[2, 2],
                 strides=[2, 2],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 pool_type='max',
             )
 
@@ -155,7 +162,12 @@ class TestPool2D_API(unittest.TestCase):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
             input = paddle.to_tensor(input_np)
             result = max_pool2d(
-                input, kernel_size=2, stride=2, padding=0, return_mask=False
+                input,
+                kernel_size=2,
+                stride=2,
+                padding=0,
+                dilation=1,
+                return_mask=False,
             )
 
             result_np = pool2D_forward_naive(
@@ -163,12 +175,13 @@ class TestPool2D_API(unittest.TestCase):
                 ksize=[2, 2],
                 strides=[2, 2],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 pool_type='max',
             )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             max_pool2d_dg = paddle.nn.layer.MaxPool2D(
-                kernel_size=2, stride=2, padding=0
+                kernel_size=2, stride=2, padding=0, dilation=1
             )
             result = max_pool2d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
@@ -182,6 +195,7 @@ class TestPool2D_API(unittest.TestCase):
                 kernel_size=2,
                 stride=2,
                 padding=0,
+                dilation=1,
                 return_mask=False,
                 data_format="NHWC",
             )
@@ -191,6 +205,7 @@ class TestPool2D_API(unittest.TestCase):
                 ksize=[2, 2],
                 strides=[2, 2],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 pool_type='max',
             )
             np.testing.assert_allclose(
@@ -204,7 +219,12 @@ class TestPool2D_API(unittest.TestCase):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
             input = paddle.to_tensor(input_np)
             result = max_pool2d(
-                input, kernel_size=2, stride=2, padding=1, ceil_mode=False
+                input,
+                kernel_size=2,
+                stride=2,
+                padding=1,
+                dilation=1,
+                ceil_mode=False,
             )
 
             result_np = max_pool2D_forward_naive(
@@ -212,13 +232,14 @@ class TestPool2D_API(unittest.TestCase):
                 ksize=[2, 2],
                 strides=[2, 2],
                 paddings=[1, 1],
+                dilations=[1, 1],
                 ceil_mode=False,
                 exclusive=False,
             )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             max_pool2d_dg = paddle.nn.layer.MaxPool2D(
-                kernel_size=2, stride=2, padding=1, ceil_mode=False
+                kernel_size=2, stride=2, padding=1, dilation=1, ceil_mode=False
             )
             result = max_pool2d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
@@ -228,7 +249,12 @@ class TestPool2D_API(unittest.TestCase):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
             input = paddle.to_tensor(input_np)
             result = max_pool2d(
-                input, kernel_size=2, stride=2, padding=0, ceil_mode=True
+                input,
+                kernel_size=2,
+                stride=2,
+                padding=0,
+                dilation=1,
+                ceil_mode=True,
             )
 
             result_np = max_pool2D_forward_naive(
@@ -236,12 +262,13 @@ class TestPool2D_API(unittest.TestCase):
                 ksize=[2, 2],
                 strides=[2, 2],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 ceil_mode=True,
             )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             max_pool2d_dg = paddle.nn.layer.MaxPool2D(
-                kernel_size=2, stride=2, padding=0, ceil_mode=True
+                kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=True
             )
             result = max_pool2d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
@@ -255,6 +282,7 @@ class TestPool2D_API(unittest.TestCase):
                 kernel_size=2,
                 stride=None,
                 padding="SAME",
+                dilation=1,
                 return_mask=True,
             )
 
@@ -263,13 +291,14 @@ class TestPool2D_API(unittest.TestCase):
                 ksize=[2, 2],
                 strides=[2, 2],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 pool_type='max',
                 padding_algorithm="SAME",
             )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             max_pool2d_dg = paddle.nn.layer.MaxPool2D(
-                kernel_size=2, stride=2, padding=0
+                kernel_size=2, stride=2, padding=0, dilation=1
             )
             result = max_pool2d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
@@ -287,6 +316,7 @@ class TestPool2D_API(unittest.TestCase):
                 ksize=[2, 2],
                 strides=[2, 2],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 pool_type='avg',
                 padding_algorithm="SAME",
             )
@@ -308,6 +338,7 @@ class TestPool2D_API(unittest.TestCase):
                 kernel_size=2,
                 stride=2,
                 padding=padding,
+                dilation=1,
                 return_mask=False,
             )
 
@@ -316,12 +347,13 @@ class TestPool2D_API(unittest.TestCase):
                 ksize=[2, 2],
                 strides=[2, 2],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 pool_type='max',
             )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             max_pool2d_dg = paddle.nn.layer.MaxPool2D(
-                kernel_size=2, stride=2, padding=0
+                kernel_size=2, stride=2, padding=0, dilation=1
             )
             result = max_pool2d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
@@ -344,6 +376,7 @@ class TestPool2D_API(unittest.TestCase):
                 ksize=[2, 2],
                 strides=[2, 2],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 pool_type='avg',
             )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
@@ -363,6 +396,7 @@ class TestPool2D_API(unittest.TestCase):
                 kernel_size=5,
                 stride=5,
                 padding=0,
+                dilation=1,
                 ceil_mode=True,
                 return_mask=True,
             )
@@ -371,6 +405,7 @@ class TestPool2D_API(unittest.TestCase):
                 ksize=[5, 5],
                 strides=[5, 5],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 ceil_mode=True,
             )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
@@ -397,6 +432,7 @@ class TestPool2D_API(unittest.TestCase):
                 input_np,
                 ksize=[4, 4],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 strides=[4, 4],
                 ceil_mode=True,
                 norm_type=norm_type,
@@ -427,6 +463,7 @@ class TestPool2D_API(unittest.TestCase):
                 input_np,
                 ksize=[2, 2],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 strides=[1, 1],
                 ceil_mode=False,
                 norm_type=norm_type,
@@ -487,6 +524,7 @@ class TestPool2D_API(unittest.TestCase):
                 input_np,
                 ksize=[2, 4],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 strides=[2, 2],
                 ceil_mode=False,
                 norm_type=norm_type,
@@ -521,6 +559,7 @@ class TestPool2D_API(unittest.TestCase):
                 input_np,
                 ksize=[2, 2],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 strides=[2, 2],
                 ceil_mode=False,
                 norm_type=norm_type,
@@ -554,6 +593,7 @@ class TestPool2D_API(unittest.TestCase):
                 input_np,
                 ksize=[5, 5],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 strides=[3, 3],
                 ceil_mode=True,
                 norm_type=norm_type,
@@ -587,6 +627,7 @@ class TestPool2D_API(unittest.TestCase):
                 input_np,
                 ksize=[2, 2],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 strides=[2, 2],
                 ceil_mode=False,
                 norm_type=norm_type,
@@ -627,6 +668,7 @@ class TestPool2D_API(unittest.TestCase):
             result_np = pool2D_forward_naive(
                 input_np,
                 paddings=[0, 0],
+                dilations=[1, 1],
                 ksize=[2, 2],
                 strides=[2, 2],
                 ceil_mode=False,
@@ -666,6 +708,7 @@ class TestPool2D_API(unittest.TestCase):
                     input_np,
                     ksize=[4, 4],
                     paddings=[0, 0],
+                    dilations=[1, 1],
                     strides=[2, 4],
                     ceil_mode=True,
                     norm_type=norm_type,
@@ -702,6 +745,7 @@ class TestPool2D_API(unittest.TestCase):
                 input_np,
                 ksize=[5, 5],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 strides=[3, 3],
                 ceil_mode=True,
                 norm_type=norm_type,
@@ -733,6 +777,7 @@ class TestPool2D_API(unittest.TestCase):
                     input_np,
                     ksize=[3, 3],
                     paddings=[0, 0],
+                    dilations=[1, 1],
                     strides=[2, 2],
                     ceil_mode=False,
                     norm_type=norm_type,
@@ -770,6 +815,7 @@ class TestPool2D_API(unittest.TestCase):
                 input_np,
                 ksize=[5, 5],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 strides=[3, 3],
                 ceil_mode=False,
                 norm_type=norm_type,
@@ -835,7 +881,11 @@ class TestPool2DError_API(unittest.TestCase):
                 input_pd = paddle.to_tensor(input_np)
                 padding = [[0, 1], [0, 0], [0, 0], [0, 0]]
                 res_pd = max_pool2d(
-                    input_pd, kernel_size=2, stride=2, padding=padding
+                    input_pd,
+                    kernel_size=2,
+                    stride=2,
+                    padding=padding,
+                    dilation=1,
                 )
 
         self.assertRaises(ValueError, run1)
@@ -852,6 +902,7 @@ class TestPool2DError_API(unittest.TestCase):
                     kernel_size=2,
                     stride=2,
                     padding=padding,
+                    dilation=1,
                     data_format='NHWC',
                 )
 
@@ -869,6 +920,7 @@ class TestPool2DError_API(unittest.TestCase):
                     kernel_size=2,
                     stride=2,
                     padding=padding,
+                    dilation=1,
                     data_format='NHWC',
                 )
 
@@ -903,6 +955,7 @@ class TestPool2DError_API(unittest.TestCase):
                     kernel_size=2,
                     stride=2,
                     padding=padding,
+                    dilation=1,
                     ceil_mode=True,
                     data_format='NHWC',
                 )
@@ -992,6 +1045,7 @@ class TestPool2DError_API(unittest.TestCase):
                     kernel_size=2,
                     stride=2,
                     padding=padding,
+                    dilation=1,
                     ceil_mode=False,
                     data_format='NNNN',
                 )
@@ -1009,6 +1063,7 @@ class TestPool2DError_API(unittest.TestCase):
                     kernel_size=2,
                     stride=2,
                     padding=0,
+                    dilation=1,
                     ceil_mode=False,
                     data_format='NHWC',
                     return_mask=True,
@@ -1057,7 +1112,13 @@ class TestPool2DError_API(unittest.TestCase):
                     np.reshape(array, [1, 1, 1, 1]), dtype='float32'
                 )
                 out = max_pool2d(
-                    x, 1, stride=0, padding=1, return_mask=True, ceil_mode=True
+                    x,
+                    1,
+                    stride=0,
+                    padding=1,
+                    dilation=1,
+                    return_mask=True,
+                    ceil_mode=True,
                 )
 
         self.assertRaises(ValueError, run_zero_stride)
@@ -1069,7 +1130,12 @@ class TestPool2DError_API(unittest.TestCase):
                     np.reshape(array, [1, 1, 1, 1]), dtype='float32'
                 )
                 out = max_pool2d(
-                    x, 1, stride=(0, 0), return_mask=False, data_format='NHWC'
+                    x,
+                    1,
+                    stride=(0, 0),
+                    dilation=1,
+                    return_mask=False,
+                    data_format='NHWC',
                 )
 
         self.assertRaises(ValueError, run_zero_tuple_stride)
@@ -1102,6 +1168,7 @@ class TestPool2D_API_ZeroSize(unittest.TestCase):
                 ksize=[2, 2],
                 strides=[2, 2],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 pool_type='avg',
             )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
@@ -1115,7 +1182,12 @@ class TestPool2D_API_ZeroSize(unittest.TestCase):
             input = paddle.to_tensor(input_np)
             input.stop_gradient = False
             result = max_pool2d(
-                input, kernel_size=2, stride=2, padding=0, return_mask=False
+                input,
+                kernel_size=2,
+                stride=2,
+                padding=0,
+                dilation=1,
+                return_mask=False,
             )
 
             result_np = pool2D_forward_naive(
@@ -1123,6 +1195,7 @@ class TestPool2D_API_ZeroSize(unittest.TestCase):
                 ksize=[2, 2],
                 strides=[2, 2],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 pool_type='max',
             )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
@@ -1148,6 +1221,7 @@ class TestPool2D_API_ZeroSize(unittest.TestCase):
                 input_np,
                 ksize=[2, 2],
                 paddings=[0, 0],
+                dilations=[1, 1],
                 strides=[1, 1],
                 ceil_mode=False,
                 norm_type=norm_type,

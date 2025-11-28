@@ -118,11 +118,13 @@ class TestCompatAvgPool2DAPI(unittest.TestCase):
             if isinstance(padding, int):
                 padding = [padding, padding]
 
+            mock_dilation = padding
             result_np = avg_pool2D_forward_naive(
                 self.input_np,
                 kernel_size,
                 stride,
                 padding,
+                mock_dilation,
                 ceil_mode=ceil_mode,
                 exclusive=not count_include_pad,
             )

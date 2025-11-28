@@ -2306,8 +2306,8 @@
   args : (Tensor x, Tensor mask, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, int[] dilations, bool global_pooling, bool adaptive, bool ceil_mode = false)
   output : Tensor(x_grad)
   infer_meta :
-    func : MaxPoolWithIndexGradInferMeta
-    param : [x, mask, out_grad, kernel_size, strides, paddings, global_pooling, adaptive, ceil_mode]
+    func : MaxPool2DWithIndexGradInferMeta
+    param : [x, mask, out_grad, kernel_size, strides, paddings, dilations, global_pooling, adaptive, ceil_mode]
   kernel :
     func : max_pool2d_with_index_grad
 

@@ -300,9 +300,10 @@ class TestLayerPrint(unittest.TestCase):
             str(module), 'MaxPool1D(kernel_size=2, stride=2, padding=0)'
         )
 
-        module = nn.MaxPool2D(kernel_size=2, stride=2, padding=0)
+        module = nn.MaxPool2D(kernel_size=2, stride=2, padding=0, dilation=1)
         self.assertEqual(
-            str(module), 'MaxPool2D(kernel_size=2, stride=2, padding=0)'
+            str(module),
+            'MaxPool2D(kernel_size=2, stride=2, padding=0, dilation=1)',
         )
 
         module = nn.MaxPool3D(kernel_size=2, stride=2, padding=0)
