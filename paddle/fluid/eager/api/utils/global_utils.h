@@ -207,13 +207,25 @@ class EagerBackwardSubGraphNodeRecorder {
     need_dump_grad_tensors_ = need_dump;
   }
   bool GetNeedDumpGradTensors() { return need_dump_grad_tensors_; }
-  bool HasCapturedSubgraph() { return !set_.empty(); }
+  int GetSubGraphBwdVlogLevel() { return subgraph_bwd_vlog_level_; }
+  void SetSubGraphBwdVlogLevel(int level) { subgraph_bwd_vlog_level_ = level; }
+  // Is Gradnode within the scope of backward vlog guard
+  bool IsGradNodeInVlogGuard(GradNodeBase* node) {
+    return subgraph_bwd_vlog_level_ != 0 && set_.count(node);
+  }
+  bool NeedDumpBwdSubGraph() {
+    return !set_.empty() && !dump_dir_path_.empty();
+  }
+  bool NeedBwdVlogGuard() {
+    return subgraph_bwd_vlog_level_ != 0 && !set_.empty();
+  }
 
  private:
   std::unordered_set<const GradNodeBase*> set_;
   std::string dump_dir_path_;
   bool need_dump_grad_tensors_ = false;
   bool need_capture_subgraph_ = false;
+  int subgraph_bwd_vlog_level_ = 0;
 };
 
 /**

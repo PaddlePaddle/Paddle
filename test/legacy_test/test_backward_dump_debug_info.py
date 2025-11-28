@@ -292,5 +292,19 @@ class TestVlogGuard(unittest.TestCase):
         self.assertRaises(TypeError, test_invalid_input)
 
 
+class TestBackwardVlogGuard(unittest.TestCase):
+    def test_guard(self):
+        x = paddle.randn([3, 3], dtype='float32')
+        y = paddle.randn([3, 3], dtype='float32')
+        x.stop_gradient = False
+        y.stop_gradient = False
+        z = x + y
+        h = x * z
+        with paddle.base.framework.backward_vlog_guard(3):
+            w = h + y
+        loss = w.sum()
+        loss.backward()
+
+
 if __name__ == "__main__":
     unittest.main()

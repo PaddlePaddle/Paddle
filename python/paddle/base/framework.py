@@ -8635,8 +8635,18 @@ def capture_backward_subgraph_guard(
     # for multi process
     check_and_create_dir(dump_dir_path)
     paddle.base.core.eager._init_backward_subgraph_recorder(
-        dump_dir_path, need_dump_grad_tensors
+        dump_dir_path, need_dump_grad_tensors, 0
     )
+    paddle.base.core.eager._start_capture_debug_backward_subgraph()
+    try:
+        yield
+    finally:
+        paddle.base.core.eager._end_capture_debug_backward_subgraph()
+
+
+@signature_safe_contextmanager
+def backward_vlog_guard(levels: int) -> Generator[None, None, None]:
+    paddle.base.core.eager._init_backward_subgraph_recorder("", False, levels)
     paddle.base.core.eager._start_capture_debug_backward_subgraph()
     try:
         yield

@@ -1496,10 +1496,13 @@ PyObject* eager__init_backward_subgraph_recorder(PyObject* self,
       CastPyArg2AttrString(PyTuple_GET_ITEM(args, 0), 0);
   bool need_dump_grad_tensors =
       CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
+  int subgraph_vlog_level = CastPyArg2AttrInt(PyTuple_GET_ITEM(args, 2), 2);
   egr::EagerBackwardSubGraphNodeRecorder::Instance().SetDumpDirPath(
       dump_dir_path);
   egr::EagerBackwardSubGraphNodeRecorder::Instance().SetNeedDumpGradTensors(
       need_dump_grad_tensors);
+  egr::EagerBackwardSubGraphNodeRecorder::Instance().SetSubGraphBwdVlogLevel(
+      subgraph_vlog_level);
   RETURN_PY_NONE
 
   EAGER_CATCH_AND_THROW_RETURN_NULL

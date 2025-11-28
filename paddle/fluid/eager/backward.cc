@@ -244,7 +244,9 @@ std::vector<paddle::Tensor> RunBackward(
 
   // Control variables related to debugging
   bool need_dump_backward_subgraph =
-      egr::EagerBackwardSubGraphNodeRecorder::Instance().HasCapturedSubgraph();
+      egr::EagerBackwardSubGraphNodeRecorder::Instance().NeedDumpBwdSubGraph();
+  bool need_backward_vlog_guard =
+      egr::EagerBackwardSubGraphNodeRecorder::Instance().NeedBwdVlogGuard();
   bool need_debug_backward_graph =
       !dump_backward_graph_path.empty() || need_dump_backward_subgraph;
   //
@@ -458,6 +460,7 @@ std::vector<paddle::Tensor> RunBackward(
             << " Preparing ";
     try {
       queue.pop_front();
+      egr::LogLevelGuardBackward log_guard(need_backward_vlog_guard, node);
 
       // Construct backward graph for debug
       std::string dot_node_label = "";
