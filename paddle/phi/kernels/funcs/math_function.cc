@@ -109,17 +109,10 @@ DEFINE_CPU_TRANS(4);
 DEFINE_CPU_TRANS(5);
 DEFINE_CPU_TRANS(6);
 
-#define DEFINE_XPU_TRANS(RANK)                                                \
-  template struct PADDLE_API Transpose<phi::XPUContext, phi::float16, RANK>;  \
-  template struct PADDLE_API Transpose<phi::XPUContext, phi::bfloat16, RANK>; \
-  template struct PADDLE_API                                                  \
-      Transpose<phi::XPUContext, phi::float8_e4m3fn, RANK>;                   \
-  template struct PADDLE_API                                                  \
-      Transpose<phi::XPUContext, phi::float8_e5m2, RANK>;                     \
-  template struct PADDLE_API Transpose<phi::XPUContext, bool, RANK>;          \
-  template struct PADDLE_API Transpose<phi::XPUContext, int, RANK>;           \
-  template struct PADDLE_API Transpose<phi::XPUContext, int64_t, RANK>;       \
-  template struct PADDLE_API Transpose<phi::XPUContext, float, RANK>;         \
+#define DEFINE_XPU_TRANS(RANK)                                          \
+  template struct PADDLE_API Transpose<phi::XPUContext, int, RANK>;     \
+  template struct PADDLE_API Transpose<phi::XPUContext, int64_t, RANK>; \
+  template struct PADDLE_API Transpose<phi::XPUContext, float, RANK>;   \
   template struct PADDLE_API Transpose<phi::XPUContext, phi::complex64, RANK>;
 
 DEFINE_XPU_TRANS(1);
