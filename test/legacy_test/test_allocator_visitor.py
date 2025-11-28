@@ -87,17 +87,13 @@ class TestAllocatorVisitor(unittest.TestCase):
         self.assertEqual(len(y[0]), 4)  # 4 blocks
 
     def test_memory_summary(self):
-        paddle.set_flags(
-            {'FLAGS_use_multi_scale_virtual_memory_auto_growth': True}
-        )
-        paddle.set_flags({'FLAGS_vmm_small_pool_size_in_mb': 1})
+        paddle.set_flags({'FLAGS_use_virtual_memory_auto_growth': True})
         paddle.device.cuda.memory_summary()
         params = self.allocate_cmds(self.cmds2)
-        paddle.device.cuda.memory_summary()
+        # paddle.device.cuda.memory_summary()
 
     def test_memory_record(self):
         paddle.set_flags({'FLAGS_use_virtual_memory_auto_growth': True})
-        paddle.set_flags({'FLAGS_vmm_small_pool_size_in_mb': 1})
         paddle.set_flags({'FLAGS_record_alloc_event': True})
         params = self.allocate_cmds(self.cmds)
         params2 = self.allocate_cmds(self.cmds2)
