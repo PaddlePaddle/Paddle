@@ -4593,16 +4593,15 @@ def digamma(x: Tensor, name: str | None = None) -> Tensor:
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
-
             >>> data = paddle.to_tensor([[1, 1.5], [0, -2.2]], dtype='float32')
             >>> res = paddle.digamma(data)
-            >>> res
+            >>> print(res)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.57721591,  0.03648996],
-             [ nan       ,  5.32286835]])
+             [-inf.     ,  5.32286835]])
     """
 
     if in_dynamic_or_pir_mode():
