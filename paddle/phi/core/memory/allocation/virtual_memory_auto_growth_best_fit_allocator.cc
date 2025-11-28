@@ -441,7 +441,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::PreAllocate(size_t size) {
 bool VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::IsSmallRequest(
     size_t size) {
   auto small_pool_size = FLAGS_vmm_small_pool_size_in_mb << 20;
-  return size <= small_pool_size;
+  return size < small_pool_size;
 }
 
 void VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::PreAlloc() {
