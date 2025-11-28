@@ -24,9 +24,10 @@ if (
     and not paddle.device.is_compiled_with_rocm()
     and platform.system().lower() == 'linux'
 ):
-    from triton import language as tl
-
+    # isort: off
     from paddle.compat import paddle_triton as triton
+    from triton import language as tl
+    # isort: on
 
 
 def do_bench(kernel_call, quantiles, use_cuda_graph=False):
