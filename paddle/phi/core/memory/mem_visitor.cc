@@ -117,6 +117,11 @@ void VMMAllocateRecordEventsVisitor::Visit(
   allocate_record_event_ = allocator->GetEvents();
 }
 
+void VMMAllocateCompactSizeVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) {
+  allocate_compact_size_ = allocator->GetCompactSize();
+}
+
 #endif
 }  // namespace memory
 }  // namespace paddle

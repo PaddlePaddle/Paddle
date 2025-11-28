@@ -132,6 +132,13 @@ std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>> GetAllocateEvent(
   return allocate_record_event_visitor.GetAllocateRecordEvents();
 }
 
+std::vector<size_t> GetCompactSize(const phi::GPUPlace& place) {
+  VMMAllocateCompactSizeVisitor allocate_compact_visitor;
+  allocation::AllocatorFacade::Instance().Accept(place,
+                                                 &allocate_compact_visitor);
+  return allocate_compact_visitor.GetCompactSize();
+}
+
 #endif
 
 }  // namespace memory

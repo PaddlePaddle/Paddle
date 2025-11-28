@@ -193,12 +193,12 @@ VirtualMemoryAutoGrowthBestFitAllocator::AllocateOrCompact(size_t size) {
       if (free_block->is_free_) {
         assert(free_block->size_ < size);
         auto remain_size = size - free_block->size_;
-        VLOG(1) << " Tail free block size {" << free_block->size_
+        VLOG(4) << " Tail free block size {" << free_block->size_
                 << "} is smaller than allocate size {" << size
                 << "} after compact, re-alloc {" << remain_size << "}";
         allocateptr = std::move(underlying_allocator_->Allocate(remain_size));
       } else {
-        VLOG(1) << "Tail block is not free, just allocate {" << size << "}";
+        VLOG(4) << "Tail block is not free, just allocate {" << size << "}";
         allocateptr = std::move(underlying_allocator_->Allocate(size));
       }
     }
@@ -484,6 +484,7 @@ size_t VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::CompactImpl(
   size_t compact_free_size = large_allocator->Compact(place);
   VLOG(1) << "Memory Compact Large Pool Manual Finish Compact size: "
           << compact_free_size;
+  compact_size_.emplace_back(compact_free_size);
   return compact_free_size;
 }
 

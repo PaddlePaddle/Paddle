@@ -312,6 +312,19 @@ class VMMAllocateRecordEventsVisitor : public AllocatorComputeStreamVisitor {
   std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>>
       allocate_record_event_;
 };
+
+class VMMAllocateCompactSizeVisitor : public AllocatorComputeStreamVisitor {
+  using AllocatorComputeStreamVisitor::Visit;
+
+ public:
+  std::vector<size_t> GetCompactSize() const { return allocate_compact_size_; }
+
+  void Visit(VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator)
+      override;
+
+ private:
+  std::vector<size_t> allocate_compact_size_;
+};
 #endif
 
 }  // namespace memory
