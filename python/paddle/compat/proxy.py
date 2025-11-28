@@ -530,20 +530,19 @@ def extend_torch_proxy_blocked_modules(modules: Iterable[str]):
     TORCH_PROXY_BLOCKED_MODULES.update(modules)
 
 
-def paddle_use_triton():
+def paddle_triton_fun():
     """
-    Enable the triton support.
+    Enable the triton support and return triton module.
     Args: None.
+    Returns: triton module
 
     Example:
         .. code-block:: python
             >>> # doctest: +REQUIRES(env:GPU)
-            >>> import paddle
-            >>> import triton
+            >>> from paddle.compat import paddle_triton_fun
+            >>> triton = paddle_triton_fun()
             >>> import triton.language as tl
 
-            >>> from paddle.compat import paddle_use_triton
-            >>> paddle_use_triton()
             >>> @triton.jit
             >>> def add_kernel(X, Y, Z, N, BLOCK: tl.constexpr):
             ...     pid = tl.program_id(0)
@@ -552,20 +551,8 @@ def paddle_use_triton():
             ...     x = tl.load(X + offs, mask=mask)
             ...     y = tl.load(Y + offs, mask=mask)
             ...     tl.store(Z + offs, x + y, mask=mask)
-
-            >>> N = 5
-            >>> BLOCK = 1024
-            >>> X = paddle.ones([N], dtype='float32')
-            >>> Y = paddle.ones([N], dtype='float32')
-            >>> Z = paddle.zeros([N], dtype='float32')
-
-            >>> grid = (triton.cdiv(N, BLOCK),)
-            >>> add_kernel[grid](X, Y, Z, N, BLOCK=1024)
-
-            >>> print(Z)
-            Tensor(shape=[5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                [2., 2., 2., 2., 2.])
-
     """
-
     enable_torch_proxy(scope={"triton"})
+    import triton
+
+    return triton

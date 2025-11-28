@@ -18,16 +18,15 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.compat import paddle_use_triton
 
-paddle_use_triton()
 if (
     paddle.device.is_compiled_with_cuda()
     and not paddle.device.is_compiled_with_rocm()
     and platform.system().lower() == 'linux'
 ):
-    import triton
     import triton.language as tl
+
+    from paddle.compat import paddle_triton as triton
 
 
 def do_bench(kernel_call, quantiles, use_cuda_graph=False):
@@ -288,4 +287,9 @@ class TestPaddleUseTriton(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    from paddle.compat import paddle_triton
+
+    triton = paddle_triton
+    triton.testing.assert_close(123, 123)
+
     unittest.main()
