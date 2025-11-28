@@ -152,11 +152,11 @@ class PADDLE_API TensorBase {
       bool copy = false,
       std::optional<at::MemoryFormat> memory_format = std::nullopt) const {
     if (options.device_opt().has_value()) {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "The `to` method with device option is not supported yet."));
     }
     if (memory_format.has_value()) {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "The `to` method with memory_format option is not supported yet."));
     }
     return paddle::experimental::cast(

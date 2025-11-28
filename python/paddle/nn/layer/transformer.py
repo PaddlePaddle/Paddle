@@ -159,7 +159,7 @@ class MultiHeadAttention(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -170,7 +170,7 @@ class MultiHeadAttention(Layer):
             >>> multi_head_attn = paddle.nn.MultiHeadAttention(128, 2)
             >>> output = multi_head_attn(query, None, None, attn_mask=attn_mask)
             >>> print(output.shape)
-            [2, 4, 128]
+            paddle.Size([2, 4, 128])
     """
 
     Cache = collections.namedtuple("Cache", ["k", "v"])
@@ -795,10 +795,13 @@ class TransformerEncoder(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
-            >>> from paddle.nn import TransformerEncoderLayer, TransformerEncoder
+            >>> from paddle.nn import (
+            ...     TransformerEncoderLayer,
+            ...     TransformerEncoder,
+            ... )
 
             >>> # encoder input: [batch_size, src_len, d_model]
             >>> enc_input = paddle.rand((2, 4, 128))
@@ -808,7 +811,7 @@ class TransformerEncoder(Layer):
             >>> encoder = TransformerEncoder(encoder_layer, 2)
             >>> enc_output = encoder(enc_input, attn_mask)
             >>> print(enc_output.shape)
-            [2, 4, 128]
+            paddle.Size([2, 4, 128])
     """
 
     num_layers: int
@@ -986,9 +989,7 @@ class TransformerDecoderLayer(Layer):
             >>> # cross attention mask: [batch_size, n_head, tgt_len, src_len]
             >>> cross_attn_mask = paddle.rand((2, 2, 4, 6))
             >>> decoder_layer = TransformerDecoderLayer(128, 2, 512)
-            >>> output = decoder_layer(
-            ...     dec_input, enc_output, self_attn_mask, cross_attn_mask
-            ... )
+            >>> output = decoder_layer(dec_input, enc_output, self_attn_mask, cross_attn_mask)
             >>> print(output.shape)
             paddle.Size([2, 4, 128])
     """
@@ -1221,10 +1222,13 @@ class TransformerDecoder(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
-            >>> from paddle.nn import TransformerDecoderLayer, TransformerDecoder
+            >>> from paddle.nn import (
+            ...     TransformerDecoderLayer,
+            ...     TransformerDecoder,
+            ... )
 
             >>> # decoder input: [batch_size, tgt_len, d_model]
             >>> dec_input = paddle.rand((2, 4, 128))
@@ -1236,12 +1240,9 @@ class TransformerDecoder(Layer):
             >>> cross_attn_mask = paddle.rand((2, 2, 4, 6))
             >>> decoder_layer = TransformerDecoderLayer(128, 2, 512)
             >>> decoder = TransformerDecoder(decoder_layer, 2)
-            >>> output = decoder(dec_input,
-            ...                  enc_output,
-            ...                  self_attn_mask,
-            ...                  cross_attn_mask)
+            >>> output = decoder(dec_input, enc_output, self_attn_mask, cross_attn_mask)
             >>> print(output.shape)
-            [2, 4, 128]
+            paddle.Size([2, 4, 128])
     """
 
     num_layers: int

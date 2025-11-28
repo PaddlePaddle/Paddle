@@ -1059,6 +1059,14 @@ std::string EagerUtils::TensorStr(const std::vector<paddle::Tensor>& tensors) {
   return "[ " + tensors_str + " ]";
 }
 
+std::string EagerUtils::TensorStr(const std::vector<paddle::Tensor*>& tensors) {
+  std::string tensors_str = "";
+  for (const auto& tensor : tensors) {
+    tensors_str += TensorStr(*tensor) + ", ";
+  }
+  return "[ " + tensors_str + " ]";
+}
+
 std::string EagerUtils::TensorStr(const paddle::optional<paddle::Tensor>& t) {
   if (!t.is_initialized()) {
     return "{ UnDefinedTensor }";
@@ -1512,7 +1520,19 @@ TEST_API void SetTensorName(const std::string& unique_api_name,
     auto& t = (*tensors)[i];
     if (t.defined() && t.has_allocation()) {
       t.set_name(egr::GenerateUniqueTensorName(
-          unique_api_name, var_name + std::to_string(i), &t));
+          unique_api_name, var_name + "_" + std::to_string(i), &t));
+    }
+  }
+}
+
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            std::vector<paddle::Tensor*>* tensors) {
+  for (size_t i = 0; i < tensors->size(); i++) {
+    auto& t = (*tensors)[i];
+    if (t->defined() && t->has_allocation()) {
+      t->set_name(egr::GenerateUniqueTensorName(
+          unique_api_name, var_name + "_" + std::to_string(i), t));
     }
   }
 }
@@ -1536,8 +1556,11 @@ TEST_API void SetGradTensorName(
     const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
         bwd_out_meta) {
   const auto& metas = bwd_out_meta[slot];
+  if (metas.size() == 0) return;
   std::string name = GenerateGradTensorName(metas[0]);
-  tensor->set_name(name);
+  if (tensor != nullptr && tensor->defined() && tensor->has_allocation()) {
+    tensor->set_name(name);
+  }
 }
 TEST_API void SetGradTensorName(
     std::vector<paddle::Tensor>* tensors,
@@ -1545,7 +1568,7 @@ TEST_API void SetGradTensorName(
     const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
         bwd_out_meta) {
   const auto& metas = bwd_out_meta[slot];
-  for (size_t i = 0; i < tensors->size(); i++) {
+  for (size_t i = 0; i < tensors->size() && i < metas.size(); i++) {
     auto& t = (*tensors)[i];
     if (t.defined() && t.has_allocation()) {
       std::string name = GenerateGradTensorName(metas[i]);

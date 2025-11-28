@@ -166,15 +166,15 @@ def pixel_shuffle(
         Out(tensor): Reshaped tensor according to the new dimension.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
 
-            >>> x = paddle.randn(shape=[2,9,4,4])
+            >>> x = paddle.randn(shape=[2, 9, 4, 4])
             >>> out_var = F.pixel_shuffle(x, 3)
             >>> print(out_var.shape)
-            [2, 1, 12, 12]
+            paddle.Size([2, 1, 12, 12])
     """
     if not isinstance(upscale_factor, int):
         raise TypeError("upscale factor must be int type")
@@ -224,14 +224,14 @@ def pixel_unshuffle(
         Out (Tensor): Reshaped tensor according to the new dimension.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
             >>> x = paddle.randn([2, 1, 12, 12])
             >>> out = F.pixel_unshuffle(x, 3)
             >>> print(out.shape)
-            [2, 9, 4, 4]
+            paddle.Size([2, 9, 4, 4])
     """
     if len(x.shape) != 4:
         raise ValueError(

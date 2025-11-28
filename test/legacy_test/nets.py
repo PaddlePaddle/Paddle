@@ -110,9 +110,7 @@ def simple_img_conv_pool(
             >>> import paddle
 
             >>> paddle.enable_static()
-            >>> img = paddle.static.data(
-            ...     name='img', shape=[100, 1, 28, 28], dtype='float32'
-            ... )
+            >>> img = paddle.static.data(name='img', shape=[100, 1, 28, 28], dtype='float32')
             >>> conv_pool = base.nets.simple_img_conv_pool(
             ...     input=img,
             ...     filter_size=5,
@@ -218,9 +216,7 @@ def img_conv_group(
 
             paddle.enable_static()
 
-            img = paddle.static.data(
-                name='img', shape=[None, 1, 28, 28], dtype='float32'
-            )
+            img = paddle.static.data(name='img', shape=[None, 1, 28, 28], dtype='float32')
             conv_pool = base.nets.img_conv_group(
                 input=img,
                 conv_padding=1,
@@ -337,12 +333,8 @@ def sequence_conv_pool(
             input_dim = 100  # len(word_dict)
             emb_dim = 128
             hid_dim = 512
-            data = paddle.static.data(
-                name="words", shape=[None, 1], dtype="int64"
-            )
-            emb = paddle.static.nn.embedding(
-                input=data, size=[input_dim, emb_dim], is_sparse=True
-            )
+            data = paddle.static.data(name="words", shape=[None, 1], dtype="int64")
+            emb = paddle.static.nn.embedding(input=data, size=[input_dim, emb_dim], is_sparse=True)
             seq_conv = base.nets.sequence_conv_pool(
                 input=emb,
                 num_filters=hid_dim,
@@ -404,9 +396,7 @@ def glu(input, dim=-1):
 
             paddle.enable_static()
 
-            data = paddle.static.data(
-                name="words", shape=[-1, 6, 3, 9], dtype="float32"
-            )
+            data = paddle.static.data(name="words", shape=[-1, 6, 3, 9], dtype="float32")
             # shape of output: [-1, 3, 3, 9]
             output = base.nets.glu(input=data, dim=1)
     """
