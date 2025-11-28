@@ -126,7 +126,10 @@ AllBlockInfoOfVmmAllocator(const phi::GPUPlace& place) {
 
 std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>> GetAllocateEvent(
     const phi::GPUPlace& place) {
-  return allocation::AllocatorFacade::Instance().GetAllocateEvent(place);
+  VMMAllocateRecordEventsVisitor allocate_record_event_visitor;
+  allocation::AllocatorFacade::Instance().Accept(
+      place, &allocate_record_event_visitor);
+  return allocate_record_event_visitor.GetAllocateRecordEvents();
 }
 
 #endif

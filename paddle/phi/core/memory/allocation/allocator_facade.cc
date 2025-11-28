@@ -1010,30 +1010,27 @@ class AllocatorFacadePrivate {
     }
 
     if (val > 0 && FLAGS_use_virtual_memory_auto_growth) {
-      if (!FLAGS_vmm_small_pool_size_in_mb) {
-        auto cuda_allocator = std::make_shared<CUDAVirtualMemAllocator>(p);
-        cuda_allocators_[p][stream] =
-            std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
-                cuda_allocator, platform::GpuMinChunkSize(), p);
-      } else {
-        auto cuda_allocator_small =
-            std::make_shared<CUDAVirtualMemAllocator>(p);
-        auto cuda_allocator_large =
-            std::make_shared<CUDAVirtualMemAllocator>(p);
-        auto vmm_allocator_small =
-            std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
-                cuda_allocator_small, platform::GpuMinChunkSize(), p);
-        auto vmm_allocator_large =
-            std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
-                cuda_allocator_large, platform::GpuMinChunkSize(), p);
+      auto cuda_allocator_small =
+          FLAGS_vmm_small_pool_size_in_mb
+              ? std::make_shared<CUDAVirtualMemAllocator>(p)
+              : nullptr;
+      auto vmm_allocator_small =
+          FLAGS_vmm_small_pool_size_in_mb
+              ? std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
+                    cuda_allocator_small, platform::GpuMinChunkSize(), p)
+              : nullptr;
+      auto cuda_allocator_large = std::make_shared<CUDAVirtualMemAllocator>(p);
+      auto vmm_allocator_large =
+          std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
+              cuda_allocator_large, platform::GpuMinChunkSize(), p);
 
-        cuda_allocators_[p][stream] = std::make_shared<
-            VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator>(
-            vmm_allocator_small,
-            vmm_allocator_large,
-            platform::GpuMinChunkSize(),
-            p);
-      }
+      cuda_allocators_[p][stream] = std::make_shared<
+          VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator>(
+          vmm_allocator_small,
+          vmm_allocator_large,
+          platform::GpuMinChunkSize(),
+          p);
+
     } else {
       auto cuda_allocator = CreateCUDAAllocator(p);
       if (FLAGS_use_auto_growth_v2) {
@@ -1096,30 +1093,26 @@ class AllocatorFacadePrivate {
     }
 
     if (val > 0 && FLAGS_use_virtual_memory_auto_growth) {
-      if (!FLAGS_vmm_small_pool_size_in_mb) {
-        auto cuda_allocator = std::make_shared<CUDAVirtualMemAllocator>(p);
-        allocators_[p] =
-            std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
-                cuda_allocator, platform::GpuMinChunkSize(), p);
-      } else {
-        auto cuda_allocator_small =
-            std::make_shared<CUDAVirtualMemAllocator>(p);
-        auto cuda_allocator_large =
-            std::make_shared<CUDAVirtualMemAllocator>(p);
-        auto vmm_allocator_small =
-            std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
-                cuda_allocator_small, platform::GpuMinChunkSize(), p);
-        auto vmm_allocator_large =
-            std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
-                cuda_allocator_large, platform::GpuMinChunkSize(), p);
+      auto cuda_allocator_small =
+          FLAGS_vmm_small_pool_size_in_mb
+              ? std::make_shared<CUDAVirtualMemAllocator>(p)
+              : nullptr;
+      auto vmm_allocator_small =
+          FLAGS_vmm_small_pool_size_in_mb
+              ? std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
+                    cuda_allocator_small, platform::GpuMinChunkSize(), p)
+              : nullptr;
+      auto cuda_allocator_large = std::make_shared<CUDAVirtualMemAllocator>(p);
+      auto vmm_allocator_large =
+          std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
+              cuda_allocator_large, platform::GpuMinChunkSize(), p);
 
-        allocators_[p] = std::make_shared<
-            VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator>(
-            vmm_allocator_small,
-            vmm_allocator_large,
-            platform::GpuMinChunkSize(),
-            p);
-      }
+      allocators_[p] = std::make_shared<
+          VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator>(
+          vmm_allocator_small,
+          vmm_allocator_large,
+          platform::GpuMinChunkSize(),
+          p);
     } else {
       auto cuda_allocator = CreateCUDAAllocator(p);
       if (FLAGS_use_auto_growth_v2) {
@@ -1706,15 +1699,6 @@ void AllocatorFacade::Accept(const phi::Place& place,
   GetPrivate()
       ->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1)
       ->Accept(visitor);
-}
-
-std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>>
-AllocatorFacade::GetAllocateEvent(const phi::Place& place) {
-  const std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>>& ret =
-      GetPrivate()
-          ->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1)
-          ->GetEvents();
-  return ret;
 }
 
 size_t AllocatorFacade::Compact(const phi::Place& place) {

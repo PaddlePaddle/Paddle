@@ -24,7 +24,7 @@ void Allocator::FreeImpl(phi::Allocation* allocation) {
       ->Free(allocation);
 }
 
-void Allocator::RecordAlloc(size_t size) {
+void MultiScalePoolAllocator::RecordAlloc(size_t size) {
   uint64_t seq = global_seq_counter_.fetch_add(1, std::memory_order_relaxed);
   std::lock_guard<SpinLock> lock(spinlock_);
   const auto current_device_id = phi::backends::gpu::GetCurrentDeviceId();
@@ -34,6 +34,6 @@ void Allocator::RecordAlloc(size_t size) {
       "Allocated", current_device_id);
   allocation_records_.emplace_back(seq, size, cur_allocated, max_reserved);
 }
-std::atomic<uint64_t> Allocator::global_seq_counter_{0};
+std::atomic<uint64_t> MultiScalePoolAllocator::global_seq_counter_{0};
 
 }  // namespace paddle::memory::allocation

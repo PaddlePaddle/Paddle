@@ -89,10 +89,6 @@ class AllocatorFacade {
    */
   void Accept(const phi::Place& place, AllocatorVisitor* visitor);
 
-  // Get allocate event when start FLAGS_record_alloc_event.
-  std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>> GetAllocateEvent(
-      const phi::Place& place);
-
   std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
                                           size_t size,
                                           const phi::Stream& stream);

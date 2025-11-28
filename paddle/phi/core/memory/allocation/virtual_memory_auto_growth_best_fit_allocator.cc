@@ -455,7 +455,7 @@ void VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::PreAlloc() {
   auto vmm_small_pool_pre_alloc = FLAGS_vmm_small_pool_pre_alloc_in_mb << 20;
   auto vmm_large_pool_pre_alloc = FLAGS_vmm_large_pool_pre_alloc_in_mb << 20;
 
-  if (vmm_small_pool_pre_alloc > 0) {
+  if (vmm_small_pool_pre_alloc > 0 && small_allocator) {
     VLOG(4) << "Begin Small Pool PreAllocate in "
                "VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator size "
             << vmm_small_pool_pre_alloc;
@@ -464,7 +464,7 @@ void VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::PreAlloc() {
                "VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator size "
             << vmm_small_pool_pre_alloc;
   }
-  if (vmm_large_pool_pre_alloc > 0) {
+  if (vmm_large_pool_pre_alloc > 0 && large_allocator) {
     VLOG(4) << "Begin Large Pool PreAllocate in "
                "VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator size "
             << vmm_large_pool_pre_alloc;

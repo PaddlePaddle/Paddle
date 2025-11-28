@@ -295,6 +295,23 @@ class VMMAllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
   std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
       all_blocks_info_;
 };
+
+class VMMAllocateRecordEventsVisitor : public AllocatorComputeStreamVisitor {
+  using AllocatorComputeStreamVisitor::Visit;
+
+ public:
+  std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>>
+  GetAllocateRecordEvents() const {
+    return allocate_record_event_;
+  }
+
+  void Visit(VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator)
+      override;
+
+ private:
+  std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>>
+      allocate_record_event_;
+};
 #endif
 
 }  // namespace memory
