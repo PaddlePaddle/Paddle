@@ -102,6 +102,7 @@ class TestAllocatorVisitor(unittest.TestCase):
         params = self.allocate_cmds(self.cmds)
         params2 = self.allocate_cmds(self.cmds2)
         paddle.device.cuda.allocate_record_plot()
+        paddle.device.cuda.allocate_record_plot(save_path="ana.png")
         paddle.device.cuda.allocate_record_table()
         paddle.device.cuda.memory_summary()
 
