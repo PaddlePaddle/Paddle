@@ -15,18 +15,13 @@
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
-
-#include <cub/cub.cuh>  // NOLINT
 #endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
-
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
 #endif
 
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/emb_eltwise_layer_norm_functor.h"
-
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
 namespace phi {

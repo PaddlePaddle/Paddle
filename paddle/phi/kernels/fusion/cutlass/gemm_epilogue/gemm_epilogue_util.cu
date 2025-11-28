@@ -54,8 +54,10 @@ __global__ void naive_gemm_epilogue_kernel(const T *input,
                                            float leaky_alpha,
                                            bool isVec_bias,
                                            OpType op_type) {
-  size_t j = threadIdx.x + blockIdx.x * blockDim.x;
-  size_t i = threadIdx.y + blockIdx.y * blockDim.y;
+  size_t j = static_cast<size_t>(threadIdx.x) +
+             static_cast<size_t>(blockIdx.x) * static_cast<size_t>(blockDim.x);
+  size_t i = static_cast<size_t>(threadIdx.y) +
+             static_cast<size_t>(blockIdx.y) * static_cast<size_t>(blockDim.y);
 
   if (i < M && j < N) {
     float accumulator = 0.;

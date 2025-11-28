@@ -3,7 +3,7 @@ name: PR-CI-SOT
 on:
   workflow_call:
     inputs:
-      docker_cpu_image:
+      docker_sot_image:
         type: string
         required: true
       clone-can-skip:
@@ -68,7 +68,7 @@ jobs:
           set -x
           container_name=${TASK}-$(date +%s)
           echo "container_name=${container_name}" >> ${{ github.env }}
-          docker_image=${{ inputs.docker_cpu_image }}
+          docker_image=${{ inputs.docker_sot_image }}
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
@@ -110,8 +110,12 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
           set -e
+          echo "Downloading Paddle.tar.gz"
           wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          echo "Extracting Paddle.tar.gz"
+          git config --global --add safe.directory ${work_dir}
           tar xf Paddle.tar.gz --strip-components=1
+          git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           rm Paddle.tar.gz
           git config --global user.name "PaddleCI"
           git config --global user.email "paddle_ci@example.com"
@@ -137,6 +141,35 @@ jobs:
           determine_excode=$?
           echo "determine_excode=$determine_excode" >> ${{ github.env }}
           '
+
+      - name: Build with python3.14
+        env:
+          work_dir: ${{ github.workspace }}
+          PADDLE_ROOT: ${{ github.workspace }}
+        if: ${{ env.determine_excode == 0 }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          export PY_VERSION=3.14
+          source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/run_setup.sh bdist_wheel
+          EXCODE=$?
+          rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
+          exit $EXCODE
+          '
+
+      # - name: Test with python3.14
+      #   env:
+      #     work_dir: ${{ github.workspace }}
+      #     PADDLE_ROOT: ${{ github.workspace }}
+      #   if: ${{ env.determine_excode == 0 }}
+      #   run: |
+      #     docker exec -t ${{ env.container_name }} /bin/bash -c '
+      #     source ${{ github.workspace }}/../../../proxy
+      #     bash ${ci_scripts}/run_sot_test.sh 3.14
+      #     EXCODE=$?
+      #     rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
+      #     exit $EXCODE
+      #     '
 
       - name: Build with python3.9
         env:

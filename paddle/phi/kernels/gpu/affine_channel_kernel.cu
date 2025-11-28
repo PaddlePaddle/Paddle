@@ -68,10 +68,7 @@ void AffineChannelCUDAKernel(const Context& dev_ctx,
   auto dims = x->dims();
   const int64_t num = x->numel();
   int64_t N = dims[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
-  int C = layout == phi::DataLayout::NCHW ? dims[1] : dims[dims.size() - 1];
+  int64_t C = layout == phi::DataLayout::NCHW ? dims[1] : dims[dims.size() - 1];
   int64_t HxW = num / N / C;
 
   const T* x_d = x->data<T>();
@@ -88,14 +85,18 @@ void AffineChannelCUDAKernel(const Context& dev_ctx,
 
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   grid = std::min(std::max(max_threads / block, 1), grid);
+
+  // NOTE(large-tensor): KeAffineChannelCUDA function signature uses int for C
+  // parameter
+  PADDLE_ENFORCE_LE_INT_MAX(C, "C");
   if (layout == phi::DataLayout::NCHW) {
     KeAffineChannelCUDA<T, phi::DataLayout::NCHW, true>
         <<<grid, block, 0, dev_ctx.stream()>>>(
-            x_d, scale_d, bias_d, C, HxW, num, y_d);
+            x_d, scale_d, bias_d, static_cast<int>(C), HxW, num, y_d);
   } else {
     KeAffineChannelCUDA<T, phi::DataLayout::NHWC, true>
         <<<grid, block, 0, dev_ctx.stream()>>>(
-            x_d, scale_d, bias_d, C, HxW, num, y_d);
+            x_d, scale_d, bias_d, static_cast<int>(C), HxW, num, y_d);
   }
 }
 }  // namespace phi

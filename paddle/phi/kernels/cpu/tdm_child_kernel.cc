@@ -37,8 +37,7 @@ void TDMChildInner(const Context &dev_ctx,
   int length = info_dims[1];
 
   int64_t input_ids_num = input.numel();
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   VLOG(4) << "TDM child op: input numel ->  " << input_ids_num;
 
