@@ -201,14 +201,13 @@ class Tensor : public TensorBase {
         tensor_, compat::_PD_AtenScalarTypeToPhiDataType(dtype)));
   }
 
-  at::Tensor squeeze(at::IntArrayRef axis) const {
+  at::Tensor squeeze(at::IntArrayRef dim) const {
     return Tensor(
-        paddle::experimental::squeeze(tensor_, axis._PD_ToPaddleIntArray()));
+        paddle::experimental::squeeze(tensor_, dim._PD_ToPaddleIntArray()));
   }
 
-  at::Tensor unsqueeze(at::IntArrayRef axis) const {
-    return Tensor(
-        paddle::experimental::unsqueeze(tensor_, axis._PD_ToPaddleIntArray()));
+  at::Tensor unsqueeze(int64_t dim) const {
+    return Tensor(paddle::experimental::unsqueeze(tensor_, {dim}));
   }
 
   at::Tensor index_select(int64_t dim, const at::Tensor& index) const {
@@ -216,15 +215,16 @@ class Tensor : public TensorBase {
         paddle::experimental::index_select(tensor_, index._PD_GetInner(), dim));
   }
 
-  at::Tensor bitwise_right_shift(const Scalar other) {
+  at::Tensor bitwise_right_shift(const Scalar& other) const {
     return Tensor(paddle::experimental::bitwise_right_shift(
         tensor_,
         paddle::experimental::full({}, other, paddle::DataType::INT64)));
   }
 
   at::Tensor slice(int64_t dim = 0,
-                   std::optional<int64_t> start = ::std::nullopt,
-                   std::optional<int64_t> end = ::std::nullopt) {
+                   ::std::optional<int64_t> start = ::std::nullopt,
+                   ::std::optional<int64_t> end = ::std::nullopt,
+                   int64_t step = 1) {
     return Tensor(paddle::experimental::slice(
         tensor_,
         {dim},
@@ -236,7 +236,9 @@ class Tensor : public TensorBase {
         {}));
   }
 
-  at::Tensor index(const std::vector<at::indexing::Slice>& indices) {
+  // TODO(wangyanpeng04): modify the api to
+  // Tensor index(ArrayRef<at::indexing::TensorIndex> indices) const;
+  at::Tensor index(const std::vector<at::indexing::Slice>& indices) const {
     std::vector<int64_t> starts(indices.size());
     std::vector<int64_t> ends(indices.size());
     for (size_t i = 0; i < indices.size(); ++i) {
@@ -246,11 +248,6 @@ class Tensor : public TensorBase {
     return Tensor(
         paddle::experimental::slice(tensor_, {0, 1}, starts, ends, {1}, {})
             .contiguous());
-  }
-
-  at::Tensor to(at::ScalarType dtype) {
-    return Tensor(paddle::experimental::cast(
-        tensor_, compat::_PD_AtenScalarTypeToPhiDataType(dtype)));
   }
 
   at::Tensor& floor_divide_(const at::Scalar& other) {
