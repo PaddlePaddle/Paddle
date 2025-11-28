@@ -47,6 +47,24 @@ if(WITH_MKLML)
                  "(include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
 endif()
 
+if(WITH_HML)
+  include(external/hml) # download, install hml package
+  message(STATUS "WITH_HML is ON, try to find HML dependency...")
+  message(STATUS "HML_INC_DIR: ${HML_INC_DIR}")
+  message(STATUS "HML_LIB_DIR: ${HML_LIB_DIR}")
+  message(STATUS "HML_LIB: ${HML_LIB}")
+
+  set(CBLAS_PROVIDER HML)
+  set(CBLAS_INC_DIR ${HML_INC_DIR})
+  set(CBLAS_LIBRARIES ${HML_LIB})
+
+  add_definitions(-DPADDLE_WITH_HML)
+  add_dependencies(cblas hml)
+
+  message(STATUS "Found cblas in HML "
+                 "(include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+endif()
+
 ## find accelerate on apple
 if(APPLE AND NOT DEFINED CBLAS_PROVIDER)
   find_library(ACCELERATE_FRAMEWORK Accelerate)
@@ -174,6 +192,9 @@ endif()
 
 include_directories(${CBLAS_INC_DIR})
 if(${CBLAS_PROVIDER} STREQUAL REFERENCE_CBLAS)
+  target_link_libraries(cblas gfortran ${CBLAS_LIBRARIES}
+                        ${REFERENCE_BLAS_LIBRARY})
+elseif(${CBLAS_PROVIDER} STREQUAL HML)
   target_link_libraries(cblas gfortran ${CBLAS_LIBRARIES}
                         ${REFERENCE_BLAS_LIBRARY})
 elseif(NOT ${CBLAS_PROVIDER} STREQUAL MKLML)
