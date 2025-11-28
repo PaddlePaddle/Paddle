@@ -811,8 +811,8 @@ PHI_DEFINE_EXPORTED_int32(tensor_md5_checksum_precision,
  * Since Version: 3.3
  * Value Range: bool, default=false
  * Example:
- * Note: The precision of the tensor data used for computing the MD5 checksum
- * (the number of decimal places after the decimal point).
+ * Note: The data format used for calculating the md5 checksum. If true, the md5
+ * checksum will be calculated based on the binary format of the stored data.
  *
  */
 PHI_DEFINE_EXPORTED_bool(
