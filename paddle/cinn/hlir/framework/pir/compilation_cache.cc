@@ -19,7 +19,7 @@ namespace cinn::hlir::framework {
 
 namespace pir {
 void* BackendResource::GetHostFuncPtr() const {
-  LOG(WARNING) << "YUHAN!!! Lookup kernel name: " << host_fn_name_;
+  VLOG(4) << "YUHAN!!! Lookup kernel name: " << host_fn_name_;
   void* ptr = backend_compiler_->Lookup(host_fn_name_);
   PADDLE_ENFORCE_NOT_NULL(ptr,
                           ::common::errors::InvalidArgument(

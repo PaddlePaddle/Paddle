@@ -68,6 +68,7 @@
 #include "paddle/cinn/utils/profiler.h"
 #include "paddle/cinn/runtime/arch_device.h"
 
+COMMON_DECLARE_bool(enable_cinn_kernel_cache); 
 namespace cinn::backends {
 namespace {
 void InitializeLLVMPasses() {
@@ -231,11 +232,11 @@ std::string GetDeviceId() {
     return std::to_string(device_id.value());
 }
 
-// 使用 LLVM C++ API 将 .ll 文件编译为 .o 文件
+// Use LLVM C++ API to compile .ll file to .o file
 bool ExecutionEngine::compileLLVMIR(llvm::Module* module, size_t fusionHash) {
   std::error_code EC;
 
-  // 1. 查找当前平台的目标
+  // 1. Find target for current platform
   std::string Error;
   const llvm::Target* TheTarget = llvm::TargetRegistry::lookupTarget(module->getTargetTriple(), Error);
   if (!TheTarget) {
@@ -243,9 +244,9 @@ bool ExecutionEngine::compileLLVMIR(llvm::Module* module, size_t fusionHash) {
       return false;
   }
 
-  // 2. 创建 TargetMachine (这是核心)
+  // 2. Create TargetMachine (this is the core)
   llvm::TargetOptions TargetOpts;
-  // **核心：** 必须设置为 PIC (Position Independent Code)
+  // **Core:** Must be set to PIC (Position Independent Code)
   llvm::Reloc::Model RelocModel = llvm::Reloc::Model::PIC_; 
   std::string CPU = "generic";
   std::string Features = "";
@@ -253,19 +254,19 @@ bool ExecutionEngine::compileLLVMIR(llvm::Module* module, size_t fusionHash) {
       module->getTargetTriple(), CPU, Features, TargetOpts, RelocModel
   );
   module->setDataLayout(TM->createDataLayout());
-  module->setTargetTriple(TM->getTargetTriple().str()); // 确保 TargetTriple 是 TargetMachine 使用的
+  module->setTargetTriple(TM->getTargetTriple().str());
 
-  // 3. 设置输出文件的路径和类型
+  // 3. Set output file path and type
   std::string source_hash = std::to_string(fusionHash);
   std::string OutputFilename = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/module.o";
   llvm::raw_fd_ostream dest(OutputFilename, EC, llvm::sys::fs::OF_None);
 
-  // 4. 创建 PassManager 并添加 "Emit Object File" Pass
+  // 4. Create PassManager and add "Emit Object File" Pass
   llvm::legacy::PassManager pass_manager;
   llvm::CodeGenFileType FileType = llvm::CodeGenFileType::CGFT_ObjectFile;
   TM->addPassesToEmitFile(pass_manager, dest, nullptr, FileType);
 
-  // 5. 运行 Pass，生成 .o 文件！
+  // 5. Run Pass to generate .o file!
   pass_manager.run(*module);
   dest.flush();
 
@@ -288,7 +289,7 @@ bool ExecutionEngine::linkSharedLibrary(const size_t fusionHash, const std::vect
     link_cmd += " -L " + header + " -lcinnapi";
   }
                           
-  std::cout << "Linker command: " << link_cmd << "\n";
+  VLOG(5) << "Linker command: " << link_cmd << "\n";
 
   int link_ret = system(link_cmd.c_str());
   if (link_ret != 0) {
@@ -314,21 +315,21 @@ bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
     VLOG(5) << buffer;
   }
 
-  std::error_code EC;
-  std::string source_hash = std::to_string(fusionHash);
-  llvm::raw_fd_ostream out("/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/module.ll", EC);
-  if (EC) {
-      LOG(ERROR) << "Failed to open file: " << EC.message();
-      return false;
-  }
-  module->print(out, {});
-  out.close();
-  VLOG(5) << "LLVM IR dumped to module.ll";
+  if (FLAGS_enable_cinn_kernel_cache) {
+    std::error_code EC;
+    std::string source_hash = std::to_string(fusionHash);
+    llvm::raw_fd_ostream out("/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/module.ll", EC);
+    if (EC) {
+        LOG(ERROR) << "Failed to open file: " << EC.message();
+        return false;
+    }
+    module->print(out, {});
+    out.close();
+    VLOG(5) << "LLVM IR dumped to module.ll";
 
-  if (cinn_kernel_cache_) {
     std::string cache_so_path = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/" + "cinn_cache.so";
     if (std::ifstream(cache_so_path).good()) {
-      // 缓存文件已经存在
+      // Cache file already exists, do nothing
       return true;
     } else {
       // Compiling LLVM IR with LLVM API
@@ -346,7 +347,7 @@ bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
   }
   llvm::orc::ThreadSafeContext tsc(std::move(context));
   llvm::orc::ThreadSafeModule tsm(std::move(module), std::move(tsc));
-  llvm::cantFail(jit_->addIRModule(std::move(tsm))); // todo
+  llvm::cantFail(jit_->addIRModule(std::move(tsm)));
   return true;
 }
 

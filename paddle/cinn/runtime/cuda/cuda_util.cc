@@ -119,14 +119,14 @@ extern "C" {
     {
       cinn::utils::RecordEvent record_run("cuLaunchKernel",
                                           cinn::utils::EventType::kInstruction);
-      // 检查CUDA函数指针有效性
+      // Check CUDA function pointer validity
       CUfunction cu_func = static_cast<CUfunction>(kernel_fn);
       if (!cu_func) {
         LOG(FATAL) << "Invalid CUDA function pointer";
         return;
       }
       
-      // 检查当前CUDA上下文
+      // Check current CUDA context
       CUcontext ctx;
       CUresult ctx_result = cuCtxGetCurrent(&ctx);
       if (ctx_result != CUDA_SUCCESS || !ctx) {

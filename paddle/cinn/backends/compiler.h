@@ -133,16 +133,6 @@ class Compiler final {
   std::vector<void*> GetFnPtr() const { return fn_ptr_; }
 
   /**
-   * Set kernel cache mode
-   */
-  void SetKernelCache(bool enable) { cinn_kernel_cache_ = enable; }
-
-  /**
-   * Get kernel cache mode
-   */
-  bool GetKernelCache() const { return cinn_kernel_cache_; }
-
-  /**
    * Set pir fusion hash
    */
   void SetFusionHash(size_t hash) { fusion_hash_ = hash; }
@@ -157,18 +147,18 @@ class Compiler final {
   void LoadAndRegisterFromCache(const std::string& source_hash);
 
   ~Compiler() {
-    // 检查是否有动态库句柄需要释放
+    // Check if dynamic library handle needs to be released
     if (dynamic_library_handle_) {
       VLOG(3) << "Closing dynamic library handle for: " << dynamic_library_path_;
       
-      // 调用 dlclose 来释放共享库资源
+      // Call dlclose to release shared library resources
       int result = dlclose(dynamic_library_handle_);
       if (result != 0) {
-          // 使用 LOG(WARNING) 或 VLOG(0) 记录错误，但不终止程序
+          // Use LOG(WARNING) or VLOG(0) to log error but not terminate program
           LOG(WARNING) << "Error closing dynamic library handle for " 
                         << dynamic_library_path_ << ". Error: " << dlerror();
       }
-      // 清除句柄指针
+      // Clear handle pointer
       dynamic_library_handle_ = nullptr;
     }
   }
@@ -207,7 +197,6 @@ class Compiler final {
   std::vector<std::string> device_fn_name_;
   std::string device_fn_code_;
   // kernel cache control
-  bool cinn_kernel_cache_{true};
   size_t fusion_hash_{0};
 
 #ifdef CINN_WITH_CUDA
@@ -226,29 +215,12 @@ class Compiler final {
   // Dynamic library helper methods
 #ifdef CINN_WITH_CUDA
   std::string ComputeSourceHash();
-  std::string ExtractKernelName(const std::string& source_code);
   std::string GetDeviceArch();
   std::string GetComputeArch();
   std::string GenerateObjectWithoutCache(const std::string& source_code);
   std::string GenerateFatbinWithoutCache(const std::string& source_code);
   void SaveKernelNamesToMeta();
   void LoadKernelNamesFromMeta();
-  std::pair<bool, std::string> FindKernelInCache(const std::string& so_path, 
-                                               const std::string& kernel_name);
-  std::string UpdateKernelInCache(const std::string& so_path,
-                                const std::string& kernel_name,
-                                const std::string& source_code,
-                                const std::string& source_hash);
-  std::string AddKernelToCache(const std::string& so_path,
-                             const std::string& kernel_name,
-                             const std::string& source_code,
-                             const std::string& source_hash);
-  std::string CreateNewCache(const std::string& so_path,
-                           const std::string& kernel_name,
-                           const std::string& source_code,
-                           const std::string& source_hash);
-  std::vector<char> ExtractFatbinFromSo(const std::string& so_path);
-  void* CreateLibraryInfo(const std::string& library_path, const std::string& function_name);
 #endif
 };
 

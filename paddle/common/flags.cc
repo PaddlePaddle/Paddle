@@ -1838,6 +1838,8 @@ PHI_DEFINE_EXPORTED_int32(
 
 PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
 
+PHI_DEFINE_EXPORTED_bool(enable_cinn_kernel_cache, false, "Whether enable cinn kernel cache.");
+
 PHI_DEFINE_EXPORTED_bool(
     comp_skip_default_ops,
     true,

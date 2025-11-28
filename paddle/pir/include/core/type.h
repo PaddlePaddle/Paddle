@@ -21,8 +21,6 @@
 #include "paddle/pir/include/core/type_base.h"
 #include "paddle/pir/include/core/type_id.h"
 #include "paddle/pir/include/core/utils.h"
-#include "glog/logging.h"  // 添加VLOG宏定义
-
 
 namespace pir {
 class TypeStorage;
@@ -130,7 +128,6 @@ class IR_API Type {
 
   std::size_t hash() const {
     std::size_t seed = std::hash<TypeId>()(storage_->abstract_type().type_id());
-    // VLOG(3) << "YUHAN!!! ValueInfo hash " << seed;
     return seed;
   }
 

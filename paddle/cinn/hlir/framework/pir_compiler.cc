@@ -24,13 +24,16 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
-#include <fstream> // 必须包含
+#include <fstream> // Required to include
 #include <string>
 #include <algorithm>
+#include <stdexcept>
+#include <cctype>
 #include <stdexcept>
 
 PD_DECLARE_bool(enable_cinn_compile_cache);
 PD_DECLARE_int64(cinn_compile_thread_num);
+COMMON_DECLARE_bool(enable_cinn_kernel_cache);
 
 namespace cinn::hlir::framework {
 class CompilationContextMapper {
@@ -76,13 +79,13 @@ static size_t GetThreadNum(size_t task_size) {
 //  Helper Functions for Serialization (Placed inside namespace)
 // ==========================================================
 
-// 辅助函数：将任意基础类型写入文件
+// Helper function: Write any primitive type to file
 template <typename T>
 void WriteBinary(std::ofstream& ofs, const T& value) {
     ofs.write(reinterpret_cast<const char*>(&value), sizeof(T));
 }
 
-// 辅助函数：从文件读取任意基础类型
+// Helper function: Read any primitive type from file
 template <typename T>
 bool ReadBinary(std::ifstream& ifs, T& value) {
     if (ifs.read(reinterpret_cast<char*>(&value), sizeof(T))) {
@@ -92,9 +95,9 @@ bool ReadBinary(std::ifstream& ifs, T& value) {
     return false;
 }
 
-// 保存元数据
+// Save kernel metadata to file
 bool SaveKernelMetaData(const pir::CINNKernelInfo* group_info, const std::string& filepath) {
-    // 1. 打开文件流
+    // 1. Open file stream
     std::ofstream ofs(filepath, std::ios::binary);
     if (!ofs.is_open()) {
         VLOG(3) << "Error: Could not open file for writing: " << filepath;
@@ -102,7 +105,7 @@ bool SaveKernelMetaData(const pir::CINNKernelInfo* group_info, const std::string
     }
 
     // ----------------------------------------------------
-    // A. 序列化 temp_space_sizes
+    // A. Serialize temp_space_sizes
     // ----------------------------------------------------
     const auto& temp_sizes = group_info->temp_space_sizes; 
     size_t temp_size = temp_sizes.size();
@@ -112,7 +115,7 @@ bool SaveKernelMetaData(const pir::CINNKernelInfo* group_info, const std::string
     }
 
     // ----------------------------------------------------
-    // B. 序列化 symbol_args_map
+    // B. Serialize symbol_args_map  
     // ----------------------------------------------------
     const auto& symbol_map = group_info->symbol_args_map;
     size_t map_size = symbol_map.size();
@@ -129,17 +132,17 @@ bool SaveKernelMetaData(const pir::CINNKernelInfo* group_info, const std::string
             if constexpr (std::is_same_v<T, pir::CINNKernelInfo::ArgDimIdx>) {
                 type_index = 0;
                 WriteBinary(ofs, type_index);
-                // ArgDimIdx 只有 dim_idx
+                // ArgDimIdx only contains dim_idx
                 WriteBinary(ofs, arg.arg_idx);
                 WriteBinary(ofs, arg.dim_idx);
             } else if constexpr (std::is_same_v<T, pir::CINNKernelInfo::ArgValueIdx>) {
                 type_index = 1;
                 WriteBinary(ofs, type_index);
-                // ArgValueIdx 有 input_idx 和 value_idx
+                // ArgValueIdx contains input_idx and value_idx
                 WriteBinary(ofs, arg.arg_idx); 
                 WriteBinary(ofs, arg.value_idx);
             } else {
-                 // 应该不会到达这里
+                 // Should not reach here
             }
             
         }, bind_info);
@@ -149,9 +152,9 @@ bool SaveKernelMetaData(const pir::CINNKernelInfo* group_info, const std::string
     return true;
 }
 
-// 加载 Kernel 元数据函数
+// Load kernel metadata from file
 bool LoadKernelMetaData(pir::CINNKernelInfo* group_info, const std::string& filepath) {
-    // 1. 打开文件流
+    // 1. Open file stream
     std::ifstream ifs(filepath, std::ios::binary);
     if (!ifs.is_open()) {
         VLOG(3) << "Error: Could not open file for reading: " << filepath;
@@ -159,7 +162,7 @@ bool LoadKernelMetaData(pir::CINNKernelInfo* group_info, const std::string& file
     }
 
     // ----------------------------------------------------
-    // A. 反序列化 temp_space_sizes
+    // A. Deserialize temp_space_sizes
     // ----------------------------------------------------
     auto& temp_sizes = group_info->temp_space_sizes;
     size_t temp_size = 0;
@@ -176,7 +179,7 @@ bool LoadKernelMetaData(pir::CINNKernelInfo* group_info, const std::string& file
     }
 
     // ----------------------------------------------------
-    // B. 反序列化 symbol_args_map
+    // B. Deserialize symbol_args_map
     // ----------------------------------------------------
     auto& symbol_map = group_info->symbol_args_map;
     symbol_map.clear();
@@ -193,13 +196,13 @@ bool LoadKernelMetaData(pir::CINNKernelInfo* group_info, const std::string& file
 
         if (type_index == 0) { // ArgDimIdx
             pir::CINNKernelInfo::ArgDimIdx dim_info;
-            // ArgDimIdx 只有 dim_idx (根据序列化逻辑反推)
+            // ArgDimIdx only contains dim_idx (inferred from serialization logic)
             if (!ReadBinary(ifs, dim_info.arg_idx)) return false;
             if (!ReadBinary(ifs, dim_info.dim_idx)) return false;
             bind_info = dim_info;
         } else if (type_index == 1) { // ArgValueIdx
             pir::CINNKernelInfo::ArgValueIdx value_info;
-            // ArgValueIdx 有 arg_idx 和 value_idx
+            // ArgValueIdx contains arg_idx and value_idx
             if (!ReadBinary(ifs, value_info.arg_idx)) return false;
             if (!ReadBinary(ifs, value_info.value_idx)) return false;
             bind_info = value_info;
@@ -217,10 +220,10 @@ bool LoadKernelMetaData(pir::CINNKernelInfo* group_info, const std::string& file
 
 std::vector<pir::CINNKernelInfo> PirCompiler::Build(
     const std::vector<pir::OpLoweringGroupPtr>& groups) {
-  CompilationContextMapper ctx_mapper(target_, groups); // construct and 往compilation_results_后追加
+  CompilationContextMapper ctx_mapper(target_, groups); // construct and append to compilation_results_
   VLOG(5) << "YUHAN!!! CompilationContextMapper Constructed ";
   auto& group_compilation_contexts = ctx_mapper.UniqueCompilationContexts();
-  auto& compilation_results = ctx_mapper.MutableCompilationResult(); // 可能是空的，如果它不是NewAndQuique
+  auto& compilation_results = ctx_mapper.MutableCompilationResult(); // may be empty if it's not new and unique
   VLOG(5) << "YUHAN!!! CompilationContextMapper compilation_results.size() =  " << compilation_results.size();
   const size_t task_size = group_compilation_contexts.size();
   const size_t thread_size = GetThreadNum(task_size);
@@ -242,17 +245,17 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
       VLOG(5) << "YUHAN!!! Before Compile Parallell group_compilation_contexts[" << index << "].fusion_hash = " << group_compilation_contexts[index].GetFusionHash();
       auto fusion_info_hash = group_compilation_contexts[index].GetFusionHash();
       std::string source_hash = std::to_string(fusion_info_hash);
-      std::string cache_dir = "/tmp/cinn/" + std::to_string(device_id.value()) + "/" + source_hash; // 建议先定义目录
+      std::string cache_dir = "/tmp/cinn/" + std::to_string(device_id.value()) + "/" + source_hash; // recommended to define directory first
       std::string cache_so_path = cache_dir + "/cinn_cache.so";
       std::string meta_filepath = cache_dir + "/cinn_cache.meta";
-      // 检查 .so 是否存在 (这里假设 good() 是有效的检查)
-      if (std::ifstream(cache_so_path).good()) {
+      // Check if .so exists (assuming good() is valid checkpoint)
+      if (FLAGS_enable_cinn_kernel_cache && std::ifstream(cache_so_path).good()) {
         VLOG(4) << "Cache hit for hash: " << source_hash;
 
-        // 1. 声明临时结构体
+        // 1. Declare temporary structure
         pir::CINNKernelInfo loaded_kernel_info; 
         
-        // 2. 加载元数据
+        // 2. Load metadata
         bool load_success = LoadKernelMetaData(&loaded_kernel_info, meta_filepath);
 
         PADDLE_ENFORCE_EQ(
@@ -264,11 +267,11 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
                                         "directory and retry.", meta_filepath));
         VLOG(4) << "Successfully loaded metadata.";
         
-        // A. 构造 CompilationResult
+        // A. Construct CompilationResult
         auto result = std::make_shared<pir::CompilationResult>(
             target_, false, fusion_info_hash);
         
-        // B. 构造 BackendResource (使用加载的数据!)
+        // B. Construct BackendResource (using loaded data!)
         auto resource = std::make_shared<pir::BackendResource>(
             target_,
             group_compilation_contexts[index].GetGroup()->FuncName(),
@@ -285,22 +288,23 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
         compilation_results[index] = result;
 
       } else {
-        // 编译路径
+        // Compilation path
         compilation_results[index] = Compile(&group_compilation_contexts[index]);
         
-        // 保存元数据
+        // Save metadata
         pir::CINNKernelInfo info_to_save = compilation_results[index]->GetKernelInfo();
         
-        // 确保目录存在 (此处略去 mkdir 逻辑，假设已由其他部分保证或手动创建)
+        // Ensure directory exists (mkdir logic omitted here, assumed to be handled elsewhere or manually)
         // system(("mkdir -p " + cache_dir).c_str()); 
-        
-        SaveKernelMetaData(&info_to_save, meta_filepath);
+        if (FLAGS_enable_cinn_kernel_cache) {
+          SaveKernelMetaData(&info_to_save, meta_filepath);
+        }
       }
       VLOG(5) << "YUHAN!!! group_compilation_contexts[index].GetGroup()->symbol_args_map().size() = " << 
       group_compilation_contexts[index].GetGroup()->symbol_args_map().size();
       VLOG(5) << "YUHAN!!! After Compile Parallell group_compilation_contexts[" << index << "].fusion_hash = " << group_compilation_contexts[index].GetFusionHash();
     };
-    // 并行编译
+    // Parallel compilation
     utils::parallel_run(worker_fn,
                         utils::SequenceDispatcher(0, task_size),
                         /*thread_num=*/thread_size);
@@ -362,70 +366,64 @@ std::shared_ptr<pir::CompilationResult> PirCompiler::Compile(
   return compile_result;
 }
 
-#include <string>
-#include <stdexcept>
-#include <cctype> // for std::isdigit
-// 假设您已包含相应的日志头文件 (如 "paddle/common/log.h")
-
 std::string RemoveKernelSuffixNumber(const std::string& func_name) {
     if (func_name.empty()) {
         return func_name;
     }
 
-    // 1. 从后往前找到第一个非数字字符的位置。
-    // suffix_start 将指向数字后缀的起始索引。
+    // 1. Find the position of the first non-digit character from the end.
+    // suffix_start will point to the start index of the numeric suffix.
     size_t suffix_start = func_name.length();
     while (suffix_start > 0 && std::isdigit(func_name[suffix_start - 1])) {
         suffix_start--;
     }
 
-    // 初始化 cut_idx：假设不移除任何内容
+    // Initialize cut_idx: assume no removal needed
     size_t cut_idx = func_name.length();
 
-    // 2. 检查数字后缀是否有效 (必须有数字，且前面必须是下划线)
+    // 2. Check if the numeric suffix is valid (must have digits and be preceded by underscore)
     if (suffix_start < func_name.length() && suffix_start > 0 && func_name[suffix_start - 1] == '_') {
 
-        // 提取并验证数字后缀
+        // Extract and validate numeric suffix
         std::string suffix = func_name.substr(suffix_start);
         size_t pos;
 
         try {
-            // 验证后缀是否为有效数字
+            // Validate if the suffix is a valid numeric value
             std::stoi(suffix, &pos); 
 
-            // 检查是否整个后缀都被转换了
+            // Check if the entire suffix was converted
             if (pos != suffix.length()) {
                 LOG(FATAL) << "Kernel suffix conversion failed for '" << func_name 
                            << "'. Suffix '" << suffix << "' contains non-digit characters after parsing.";
             }
 
-            // 验证成功：设置 cut_idx 为数字后缀的起始位置
+            // Validation successful: set cut_idx to the start position of the numeric suffix
             cut_idx = suffix_start;
 
         } catch (const std::exception& e) {
-            // 转换失败：后缀不是有效数字或超出范围 (Fatal Error)
+            // Conversion failed: suffix is not a valid number or out of range (Fatal Error)
             LOG(FATAL) << "Kernel suffix conversion failed for '" << func_name 
                        << "'. Suffix '" << suffix << "' is not a valid integer. Exception: " 
                        << e.what();
         }
 
     } else {
-        // Case 1: 没有数字后缀 (suffix_start == func_name.length())
-        // Case 2: 有数字，但前面不是下划线 (例如 "fn123")
-        // 在这两种情况下，cut_idx 保持为 func_name.length()，只进行下划线移除。
+        // Case 1: No numeric suffix (suffix_start == func_name.length())
+        // Case 2: Has digits but not preceded by underscore (e.g., "fn123")
+        // In both cases, keep cut_idx as func_name.length() and only remove underscores
         cut_idx = func_name.length();
     }
 
-    // --- 3. 最终步骤：移除所有末尾的下划线分隔符 ---
-    // 无论是移除了数字后缀 (cut_idx = suffix_start)，还是保留了整个字符串 
-    // (cut_idx = func_name.length())，我们都从 cut_idx 开始向前移除下划线。
-
+    // --- 3. Final step: Remove all trailing underscore separators ---
+    // Whether we removed numeric suffix (cut_idx = suffix_start), or kept the full string 
+    // (cut_idx = func_name.length()), we remove underscores starting from cut_idx backwards.
     size_t final_cut_idx = cut_idx;
     while (final_cut_idx > 0 && func_name[final_cut_idx - 1] == '_') {
         final_cut_idx--;
     }
 
-    // 返回去除后缀和分隔符后的干净名称
+    // Return cleaned name without suffix and separators
     return func_name.substr(0, final_cut_idx);
 }
 
@@ -442,15 +440,8 @@ void CompilationContextMapper::Construct(
   for (size_t i = 0; i < groups.size(); ++i) {
     cinn::dialect::ir::details::UpdateGroupShapeOrDataExprs(groups[i]);
     fusion_infos_.emplace_back(*groups[i]);
-    //
-    // auto fusion_info_hash = fusion_infos_[i].hash();
-    // std::string source_hash = std::to_string(fusion_info_hash);
-    // std::string cache_so_path = "/tmp/cinn/device_id" + source_hash + "/" + "cinn_cache.so";
-    // if (std::ifstream(cache_so_path).good()) continue;
-    //
-    VLOG(4) << "Construct FusionInfo: " << fusion_infos_[i]
-            << " for group: " << *groups[i];
-    // TODO Rename FuncName
+
+    // Rename FuncName
     auto fusion_info_hash = fusion_infos_[i].hash();
     auto func_name = groups[i]->FuncName();
     auto new_func_name = RemoveKernelSuffixNumber(func_name);
@@ -458,14 +449,13 @@ void CompilationContextMapper::Construct(
     groups[i]->RenewFuncName(new_func_name + "__" + std::to_string(fusion_info_hash));
     // If FLAGS_enable_cinn_compile_cache=False, Cache strategy will not take
     // effects.
-    if (IsNewAndUnique(fusion_infos_[i]) || !FLAGS_enable_cinn_compile_cache) { //
+    if (IsNewAndUnique(fusion_infos_[i]) || !FLAGS_enable_cinn_compile_cache) {
       mapper_index_.push_back(i);
       auto fusion_info_hash = fusion_infos_[i].hash();
       group_compilation_contexts_.emplace_back(target, groups[i]);
       group_compilation_contexts_.back().SetFusionHash(fusion_info_hash);
-      VLOG(4) << "YUHAN!!! compilation_results_.size() is " << compilation_results_.size();
-      VLOG(1) << "YUHAN!!! compilation_results_.push_back hashKey is " << fusion_info_hash;
-      VLOG(1) << "YUHAN!!! compilation_results_.push_back FuncName is " << group_compilation_contexts_.back().GetGroup()->FuncName();
+      VLOG(5) << "ComilerCache hashKey is " << fusion_info_hash;
+      VLOG(5) << "ComilerCache FuncName is " << group_compilation_contexts_.back().GetGroup()->FuncName();
       compilation_results_.push_back(
           std::make_shared<pir::CompilationResult>(target, false, fusion_info_hash));
     }

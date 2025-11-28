@@ -117,9 +117,6 @@ class ExecutionEngine {
   std::unique_ptr<llvm::LLVMContext> ctx;
   std::unique_ptr<llvm::Module> m;
   std::unique_ptr<llvm::IRBuilder<>> b;
-
-  // kernel cache control
-  bool cinn_kernel_cache_{true};
 };
 
 }  // namespace cinn::backends

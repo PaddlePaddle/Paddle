@@ -81,6 +81,7 @@ COMMON_DECLARE_bool(enable_ap);
 COMMON_DECLARE_bool(ap_enable_classic_gemm_epilogue);
 COMMON_DECLARE_bool(logging_pir_py_code_dump_symbolic_dims);
 COMMON_DECLARE_bool(cinn_debug);
+COMMON_DECLARE_bool(enable_cinn_kernel_cache);
 
 namespace cinn::dialect::ir {
 
