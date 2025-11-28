@@ -39,6 +39,7 @@ COMMON_DECLARE_string(nccl_dir);
 COMMON_DECLARE_string(cupti_dir);
 COMMON_DECLARE_string(tensorrt_dir);
 COMMON_DECLARE_string(mklml_dir);
+COMMON_DECLARE_string(hml_dir);
 COMMON_DECLARE_string(lapack_dir);
 COMMON_DECLARE_string(mkl_dir);
 COMMON_DECLARE_string(op_dir);
@@ -978,6 +979,16 @@ void* GetMKLMLDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "mklml.dll");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.so");
+#endif
+}
+
+void* GetHMLDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return nullptr;
+#elif defined(_WIN32)
+  return nullptr;
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_hml_dir, "libhml_rt.so");
 #endif
 }
 

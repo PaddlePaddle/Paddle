@@ -54,7 +54,6 @@ list(REMOVE_ITEM TEST_OPS test_matmul_v2_op)
 
 list(REMOVE_ITEM TEST_OPS test_allgather)
 list(REMOVE_ITEM TEST_OPS test_reducescatter)
-list(REMOVE_ITEM TEST_OPS test_flash_attention)
 
 #Note(risemeup1): Delete some unit tests related to the parameter server.
 list(REMOVE_ITEM TEST_OPS test_dist_fleet_trainer_desc_config)
@@ -570,9 +569,17 @@ if(NOT WITH_GPU
    OR APPLE
    OR WITH_ROCM
    OR (${CUDA_ARCH_NAME} STREQUAL "Volta") # Affects the accuracy of op tests
-   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
+   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 11.8))
 )# Restrict the use of older versions of CUB
   list(REMOVE_ITEM TEST_OPS test_incubate_fused_rmsnorm_ext)
+endif()
+
+if(NOT WITH_GPU
+   OR APPLE
+   OR WITH_ROCM
+   OR (${CUDA_ARCH_NAME} STREQUAL "Volta") # Affects the accuracy of op tests
+   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
+)# Restrict the use of older versions of CUB
   list(REMOVE_ITEM TEST_OPS test_incubate_fast_ln)
 endif()
 
@@ -1303,3 +1310,4 @@ if(NOT WIN32)
 endif()
 set_tests_properties(test_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_load_state_dict_from_url PROPERTIES TIMEOUT 40)
+set_tests_properties(test_flash_attention PROPERTIES TIMEOUT 240)

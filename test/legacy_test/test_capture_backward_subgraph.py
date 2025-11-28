@@ -90,6 +90,35 @@ class TestCaptureBackwardSubGraphGuard(unittest.TestCase):
                     f"Error: File '{keywords}' not found in directory '{directory}'! "
                 )
 
+    def test_dy2st(self):
+        if 'Windows' == platform.system() or not paddle.is_compiled_with_cuda():
+            return
+        x = paddle.randn((3, 3))
+        y = paddle.randn((3, 3))
+        x.stop_gradient = False
+        y.stop_gradient = False
+
+        def matmul_func(x, y):
+            res = paddle.matmul(x, y)
+            return res
+
+        func = paddle.jit.to_static(matmul_func, full_graph=True)
+        dump_dir_path = "./dy2st_debug"
+        paddle.set_flags(
+            {"FLAGS_tensor_md5_checksum_output_path": "./dy2st_md5.txt"}
+        )
+        with (
+            paddle.base.framework.capture_backward_subgraph_guard(
+                dump_dir_path, True
+            ),
+            paddle.utils.capture_fwd_graph_guard("./dy2st_subraph"),
+        ):
+            res = func(x, y)
+            z = res + x
+        loss = z.sum()
+        loss.backward()
+        self._check_files_in_directory(dump_dir_path)
+
 
 if __name__ == "__main__":
     unittest.main()

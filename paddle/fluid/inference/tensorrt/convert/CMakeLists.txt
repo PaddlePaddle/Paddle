@@ -102,7 +102,7 @@ list(
   trans_layernorm_op.cc
   merge_layernorm_op.cc
   skip_merge_layernorm_op.cc
-  generic_and_custom_plugin_creater.cc
+  generic_and_custom_plugin_creator.cc
   lookup_table_op.cc
   elementwiseadd_transpose_op.cc
   skip_groupnorm_act_op.cc

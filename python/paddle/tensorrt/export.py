@@ -154,9 +154,7 @@ class Input:
                 >>> )
                 >>> input.input_data_type = 'int64'
                 >>> input.input_range = (1, 10)
-                >>> input_min_data, input_optim_data, input_max_data = (
-                ...     input_config.generate_input_data()
-                ... )
+                >>> input_min_data, input_optim_data, input_max_data = input_config.generate_input_data()
         """
         if self.warmup_data is not None:
             raise RuntimeError(

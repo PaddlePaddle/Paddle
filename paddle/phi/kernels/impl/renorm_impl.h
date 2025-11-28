@@ -212,9 +212,9 @@ __global__ void RenormElementwisePow(const T* x_data,
                                      T* pow_value,
                                      int64_t size,
                                      float p) {
-  int64_t i = ((int64_t) static_cast<int64_t>(blockIdx.x)) *
-                  static_cast<int64_t>(blockDim.x) +
-              static_cast<int64_t>(threadIdx.x);
+  int64_t i =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (i < size) {
     pow_value[i] = pow(abs(x_data[i]), (T)p);
   }

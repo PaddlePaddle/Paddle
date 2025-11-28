@@ -236,9 +236,7 @@ class QuantConfig:
                 >>> model = Model()
                 >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
                 >>> q_config = QuantConfig(activation=None, weight=None)
-                >>> q_config.add_type_config(
-                ...     [Linear], activation=quanter, weight=quanter
-                ... )
+                >>> q_config.add_type_config([Linear], activation=quanter, weight=quanter)
                 >>> # doctest: +SKIP('random memory address')
                 >>> print(q_config)
                 Global config:
@@ -287,9 +285,7 @@ class QuantConfig:
                 ...     def forward(self, x):
                 ...         pass
                 ...         # add some code for quantization simulation
-                >>> q_config.add_qat_layer_mapping(
-                ...     Conv2D, CustomizedQuantedConv2D
-                ... )
+                >>> q_config.add_qat_layer_mapping(Conv2D, CustomizedQuantedConv2D)
         """
         assert isinstance(source, type) and issubclass(
             source, paddle.nn.Layer

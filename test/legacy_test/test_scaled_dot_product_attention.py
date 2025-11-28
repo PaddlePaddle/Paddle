@@ -18,7 +18,7 @@ from op_test import get_device_place, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
-from paddle.nn.functional.flash_attention import (
+from paddle.nn.functional import (
     scaled_dot_product_attention,
     sdp_kernel,
 )
@@ -81,7 +81,7 @@ def attention_naive_with_bool_mask(q, k, v, bool_mask):
 class TestAttentionWithBoolMask(unittest.TestCase):
     def setUp(self):
         self.place = get_device_place()
-        self.shape = (1, 1, 8, 8)
+        self.shape = (1, 8, 8, 8)
         self.dtype = 'float32'
         self.dropout = 0.0
         self.causal = False
@@ -294,7 +294,7 @@ class TestAttentionWith3DInput(unittest.TestCase):
 class TestAttentionWithBoolMaskZeroSize(TestAttentionWithBoolMask):
     def setUp(self):
         self.place = get_device_place()
-        self.shape = (0, 1, 8, 8)
+        self.shape = (0, 8, 8, 8)
         self.dtype = 'float32'
         self.dropout = 0.0
         self.causal = False

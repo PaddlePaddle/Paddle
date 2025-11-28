@@ -47,7 +47,9 @@ __global__ void cal_aux_loss_kernel(
   float seqlen_float_f = 0.f;
   if (dispatch_tokens_mask) {
     float local_seqlen_float_f = 0.f;
-    int64_t num_k = (dispatch_tokens_mask_len + blockDim.x - 1) / blockDim.x;
+    int64_t num_k =
+        (dispatch_tokens_mask_len + static_cast<int64_t>(blockDim.x) - 1) /
+        static_cast<int64_t>(blockDim.x);
     for (int64_t k = 0; k < num_k; ++k) {
       if (k * blockDim.x + threadIdx.x >= dispatch_tokens_mask_len) continue;
       bool mask = dispatch_tokens_mask[k * blockDim.x + threadIdx.x];
@@ -60,7 +62,8 @@ __global__ void cal_aux_loss_kernel(
     if (tokens_mask && row_gate_prob != dispatch_tokens_mask_len) {
       float sum_tokens_mask = 0.f;
       float local_sum_tokens_mask = 0.f;
-      int64_t num_k = (row_gate_prob + blockDim.x - 1) / blockDim.x;
+      int64_t num_k = (row_gate_prob + static_cast<int64_t>(blockDim.x) - 1) /
+                      static_cast<int64_t>(blockDim.x);
       for (int64_t k = 0; k < num_k; ++k) {
         if (k * blockDim.x + threadIdx.x >= row_gate_prob) continue;
         T mask = tokens_mask[k * blockDim.x + threadIdx.x];
@@ -77,7 +80,8 @@ __global__ void cal_aux_loss_kernel(
 
   } else if (tokens_mask) {
     float local_seqlen_float_f = 0.f;
-    int64_t num_k = (row_gate_prob + blockDim.x - 1) / blockDim.x;
+    int64_t num_k = (row_gate_prob + static_cast<int64_t>(blockDim.x) - 1) /
+                    static_cast<int64_t>(blockDim.x);
     for (int64_t k = 0; k < num_k; ++k) {
       if (k * blockDim.x + threadIdx.x >= row_gate_prob) continue;
       T mask = tokens_mask[k * blockDim.x + threadIdx.x];
@@ -100,7 +104,8 @@ __global__ void cal_aux_loss_kernel(
   __syncthreads();
   // 处理dispatch_mask
   if (col_dispatch_mask > 1) {
-    int64_t num_k = (row_dispatch_mask + blockDim.x - 1) / blockDim.x;
+    int64_t num_k = (row_dispatch_mask + static_cast<int64_t>(blockDim.x) - 1) /
+                    static_cast<int64_t>(blockDim.x);
 
     for (int64_t e = 0; e < col_dispatch_mask; e++) {
       int64_t local_sum_val = 0.f;
@@ -128,7 +133,8 @@ __global__ void cal_aux_loss_kernel(
 
   // 算me和l_aux
   float l_aux = 0.f;
-  int64_t num_k = (row_gate_prob + blockDim.x - 1) / blockDim.x;
+  int64_t num_k = (row_gate_prob + static_cast<int64_t>(blockDim.x) - 1) /
+                  static_cast<int64_t>(blockDim.x);
   for (int64_t e = 0; e < col_gate_prob; e++) {
     float local_sum_val = 0.f;
     for (int64_t k = 0; k < num_k; ++k) {

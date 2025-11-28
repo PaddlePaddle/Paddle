@@ -59,12 +59,14 @@ def variable_length_memory_efficient_attention(
         Tensor, the output Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import math
             >>> import paddle
-            >>> from paddle.incubate.nn.functional import variable_length_memory_efficient_attention
+            >>> from paddle.incubate.nn.functional import (
+            ...     variable_length_memory_efficient_attention,
+            ... )
             >>> paddle.device.set_device('gpu')
 
             >>> batch = 1
@@ -77,7 +79,10 @@ def variable_length_memory_efficient_attention(
             >>> query = paddle.randn([batch, num_head, seq_len, head_size], dtype=dtype)
             >>> key = paddle.randn([batch, num_head, seq_len, head_size], dtype=dtype)
             >>> value = paddle.randn([batch, num_head, seq_len, head_size], dtype=dtype)
-            >>> seq_lens = paddle.to_tensor([seq_len, ] * batch, dtype='int32')
+            >>> seq_lens = paddle.to_tensor(
+            ...     [seq_len] * batch,
+            ...     dtype='int32',
+            ... )
             >>> mask = paddle.randn([batch, 1, seq_len, seq_len], dtype=dtype)
 
             >>> scale = float(1.0 / math.sqrt(head_size))
@@ -94,8 +99,8 @@ def variable_length_memory_efficient_attention(
             >>> out = naive_attention_impl(query, key, value, mask, scale)
             >>> # equals to: out = variable_length_memory_efficient_attention(query, key, value, seq_lens, seq_lens, mask, scale, pre_cache_length)
 
-            >>> out.shape # [batch, num_head, seq_len, head_size]
-            [1, 8, 256, 32]
+            >>> out.shape  # [batch, num_head, seq_len, head_size]
+            paddle.Size([1, 8, 256, 32])
     """
     if scale is None:
         head_size = query.shape[3]
