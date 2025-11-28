@@ -42,12 +42,15 @@ struct ImportedVmmMulti {
   ~ImportedVmmMulti() {
     if (base && reserved_size) {
       phi::dynload::cuMemUnmap(base, reserved_size);
+      VLOG(0) << "~ImportedVmmMulti cuMemUnmap " << reserved_size;
     }
     for (auto h : hs) {
       if (h) phi::dynload::cuMemRelease(h);
+      VLOG(0) << "~ImportedVmmMulti cuMemRelease " << h;
     }
     if (base && reserved_size) {
       phi::dynload::cuMemAddressFree(base, reserved_size);
+      VLOG(0) << "~ImportedVmmMulti cuMemAddressFree " << reserved_size;
     }
   }
 #else

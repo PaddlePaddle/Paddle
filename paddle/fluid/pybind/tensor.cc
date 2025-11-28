@@ -851,12 +851,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                  << " reserved_size=" << header->reserved_size
                  << " offset=" << header->offset;
 
-        // 预留 VA
-        CUmemAllocationProp prop{};
-        prop.type = CU_MEM_ALLOCATION_TYPE_PINNED;
-        prop.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
-        prop.location.id = device_id;
-
         const int cur_dev = paddle::platform::GetCurrentDeviceId();
         VLOG(10) << "[VMM-IPC/import] device_id=" << device_id
                 << " cur_dev=" << cur_dev;
@@ -866,13 +860,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
           phi::dynload::cuMemAddressReserve(
             &base, header->reserved_size, 0, 0, 0));
 
-        // 访问权限
         CUmemAccessDesc desc{};
         desc.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
         desc.location.id   = device_id;
         desc.flags         = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
 
-        // 导入句柄并映射
         std::vector<CUmemGenericAllocationHandle> handles;
         handles.reserve(header->num_entries);
 

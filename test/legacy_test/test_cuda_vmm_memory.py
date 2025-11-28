@@ -33,6 +33,27 @@ def _skip_vmm_tests() -> bool:
     )
 
 
+_VMM_RUNTIME_AVAILABLE = None
+
+
+def _vmm_runtime_available() -> bool:
+    global _VMM_RUNTIME_AVAILABLE
+    if _VMM_RUNTIME_AVAILABLE is not None:
+        return _VMM_RUNTIME_AVAILABLE
+    if _skip_vmm_tests():
+        _VMM_RUNTIME_AVAILABLE = False
+        return False
+    try:
+        tensor = paddle.randn([32], dtype="float32")
+        meta = tensor.get_tensor()._share_vmm()
+        rebuilt = paddle.base.core.DenseTensor._new_shared_vmm(meta)
+        _ = paddle.to_tensor(rebuilt)
+        _VMM_RUNTIME_AVAILABLE = True
+    except Exception:
+        _VMM_RUNTIME_AVAILABLE = False
+    return _VMM_RUNTIME_AVAILABLE
+
+
 class TestMemoryreserved(unittest.TestCase):
     def setUp(self):
         if paddle.base.is_compiled_with_cuda():
@@ -82,8 +103,11 @@ class TestMemoryreserved(unittest.TestCase):
     def test_memory_stats(self):
         self.func_test_memory_stats()
 
-    @unittest.skipIf(_skip_vmm_tests(), "VMM IPC requires Linux CUDA build.")
     def test_reduce_scatter_buffer_uses_vmm(self):
+        if not _vmm_runtime_available():
+            self.skipTest(
+                "Virtual memory allocator is not available on this device."
+            )
         params = self._simple_parameters()
         (
             sharding_views,
@@ -108,15 +132,21 @@ class TestMemoryreserved(unittest.TestCase):
         self.assertEqual(len(sharding_views), len(params))
 
         values = paddle.arange(param_storage.numel(), dtype=param_storage.dtype)
+        values_md5sum = values._md5sum()
         param_storage.set_value(values)
         imported = paddle.base.core.DenseTensor._new_shared_vmm(
             param_buffer_ipc_meta
         )
         imported_tensor = paddle.to_tensor(imported)
         np.testing.assert_allclose(imported_tensor.numpy(), values.numpy())
+        del imported_tensor
+        self.assertEqual(values._md5sum(), values_md5sum)
 
-    @unittest.skipIf(_skip_vmm_tests(), "VMM IPC requires Linux CUDA build.")
     def test_fusion_storage_vmm_buffer(self):
+        if not _vmm_runtime_available():
+            self.skipTest(
+                "Virtual memory allocator is not available on this device."
+            )
         tensor_a = paddle.zeros([16], dtype="float32")
         tensor_b = paddle.zeros([16], dtype="float32")
         accumulators = {"momentum": {"param_a": tensor_a}}
@@ -141,8 +171,11 @@ class TestMemoryreserved(unittest.TestCase):
             helper.buffer.numpy(),
         )
 
-    @unittest.skipIf(_skip_vmm_tests(), "VMM IPC requires Linux CUDA build.")
     def test_multiprocessing_reductions_use_vmm(self):
+        if not _vmm_runtime_available():
+            self.skipTest(
+                "Virtual memory allocator is not available on this device."
+            )
         tensor = paddle.arange(0, 64, dtype="float32").reshape([8, 8])
         dense = tensor.value().get_tensor()
         rebuild, meta = reductions._reduce_lodtensor(dense)
