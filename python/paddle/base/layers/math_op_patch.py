@@ -14,8 +14,10 @@
 
 import inspect
 import warnings
+from typing import TYPE_CHECKING
 
-from paddle import Tensor
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 from .. import core
 from ..dygraph.base import in_to_static_mode
