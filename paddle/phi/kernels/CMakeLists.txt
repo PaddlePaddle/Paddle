@@ -120,7 +120,8 @@ if(NOT WITH_DGC)
 endif()
 
 if(NOT WITH_MAGMA)
-  list(REMOVE_ITEM kernel_gpu "gpu/eig_kernel.cu" "gpu/eig_grad_kernel.cu")
+  list(REMOVE_ITEM kernel_gpu "gpu/eig_kernel.cu" "gpu/eig_grad_kernel.cu"
+       "xpu/eig_kernel.cc")
 endif()
 
 if(WITH_CUTLASS)

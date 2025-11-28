@@ -46,7 +46,7 @@ void EigKernel(const Context& dev_ctx,
   if (!IsComplexType(x.dtype())) {
     // output still be complex though input is real
     int batch_count = BatchCount(x);
-    int order = static_cast<int>(x.dims()[x.dims().size() - 1]);
+    int order = static_cast<int>(x.dims(-1));
 
     DenseTensor real_w_cpu, real_v_cpu;
 

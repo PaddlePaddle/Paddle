@@ -25,8 +25,8 @@ typedef int magma_int_t;
 
 typedef enum { MagmaNoVec = 301, MagmaVec = 302 } magma_vec_t;
 
-typedef cuDoubleComplex magmaDoubleComplex;  // CUDA 的 double complex
-typedef cuFloatComplex magmaFloatComplex;    // CUDA 的 float complex
+typedef cuDoubleComplex magmaDoubleComplex;
+typedef cuFloatComplex magmaFloatComplex;
 
 // geev
 extern "C" magma_int_t magma_dgeev(magma_vec_t jobvl,

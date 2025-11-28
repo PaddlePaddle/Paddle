@@ -46,7 +46,7 @@ void EigKernel(const Context& dev_ctx,
   if (!IsComplexType(x.dtype())) {
     // output still be complex though input is real
     int batch_count = BatchCount(x);
-    int order = static_cast<int>(x.dims()[x.dims().size() - 1]);
+    int order = static_cast<int>(x.dims(-1));
 
     DenseTensor real_w_cpu, real_v_cpu;
 
@@ -115,12 +115,8 @@ void EigKernel(const Context& dev_ctx,
 }  // namespace phi
 
 #ifdef PADDLE_WITH_MAGMA
-PD_REGISTER_KERNEL(eig,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::EigKernel,
-                   float,
-                   phi::complex64) {
+PD_REGISTER_KERNEL(
+    eig, XPU, ALL_LAYOUT, phi::EigKernel, float, phi::complex64) {
   if (kernel_key.dtype() == phi::DataType::FLOAT32 ||
       kernel_key.dtype() == phi::DataType::FLOAT64) {
     kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
