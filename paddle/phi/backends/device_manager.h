@@ -22,6 +22,7 @@
 #include "paddle/phi/core/utils/rw_lock.h"
 
 #include "paddle/phi/backends/c_comm_lib.h"
+#include "paddle/phi/backends/c_cuda_graph_lib.h"
 #include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/backends/device_ext.h"
 #include "paddle/phi/backends/event.h"
@@ -112,6 +113,40 @@ class PADDLE_API Device final {
   void MemoryDeallocateUnified(void* ptr, size_t size);
 
   void MemorySet(void* ptr, uint8_t value, size_t size);
+
+  void CUDAStreamBeginCapture(stream::stream_t stream,
+                              graph::streamCaptureMode mode);
+
+  void CudaStreamEndCapture(stream::stream_t stream,
+                            graph::CUDAGraph_t* pGraph);
+
+  void CudaGraphLaunch(graph::CUDAGraphExec_t exec, stream::stream_t stream);
+
+  void CudaGraphDestroy(graph::CUDAGraph_t Graph);
+
+  void CudaGraphExecDestroy(graph::CUDAGraphExec_t GraphExec);
+
+  void CudaGraphInstantiate(graph::CUDAGraphExec_t* pGraphExec,
+                            graph::CUDAGraph_t* pGraph,
+                            void** pErrorNode,
+                            char* pLogBuffer,
+                            size_t bufferSize);
+
+  void CudaGraphGetNodes(graph::CUDAGraph_t Graph,
+                         graph::CUDAGraphNode_t* pNodes,
+                         size_t* numNodes);
+
+  void CudaStreamGetCaptureInfo(
+      stream::stream_t stream,
+      graph::streamCaptureStatus* captureStatus_out,
+      unsigned long long* id_out = nullptr,  // NOLINT
+      graph::CUDAGraph_t* graph_out = nullptr,
+      graph::CUDAGraphNode_t* dependencies_out = nullptr,
+      void** edgeData_out = nullptr,
+      size_t* numDependencies_out = nullptr);
+
+  void GetParameterSetterForExecGraph(graph::CUDAGraph_t graph,
+                                      graph::GraphHookManager* hook);
 
   // Blas
   // ! y = alpha * x + beta * y
@@ -323,6 +358,61 @@ class PADDLE_API DeviceManager {
   static void DestroyBlasHandle(const Place& place, void* blas_handle);
 
   static void DestroyBlasLtHandle(const Place& place, void* blaslt_handle);
+
+  // cudaGraph
+  static void CUDAStreamBeginCapture(const Place& place,
+                                     stream::stream_t stream,
+                                     graph::streamCaptureMode mode);
+
+  static void CudaStreamEndCapture(const Place& place,
+                                   stream::stream_t stream,
+                                   graph::CUDAGraph_t* pGraph);
+
+  static void CudaGraphLaunch(const Place& place, 
+                              graph::CUDAGraphExec_t exec, 
+                              stream::stream_t stream);
+
+  static void CudaGraphDestroy(const Place& place, 
+                               graph::CUDAGraph_t Graph);
+
+  static void CudaGraphExecDestroy(const Place& place, 
+                                   graph::CUDAGraphExec_t GraphExec);
+
+  static void CudaGraphInstantiate(const Place& place,
+                                   graph::CUDAGraphExec_t* pGraphExec,
+                                   graph::CUDAGraph_t* pGraph,
+                                   void** pErrorNode,
+                                   char* pLogBuffer,
+                                   size_t bufferSize);
+
+  static void CudaGraphGetNodes(const Place& place,
+                                graph::CUDAGraph_t Graph,
+                                graph::CUDAGraphNode_t* pNodes,
+                                size_t* numNodes);
+  
+  static void CudaGraphDebugDotPrint(const Place& place,
+                                     graph::CUDAGraph_t Graph,
+                                     const char* path,
+                                     unsigned int flags);
+
+  static void CudaStreamGetCaptureInfo(
+      const Place& place,
+      stream::stream_t stream,
+      graph::streamCaptureStatus* captureStatus_out,
+      unsigned long long* id_out = nullptr,  // NOLINT
+      graph::CUDAGraph_t* graph_out = nullptr,
+      graph::CUDAGraphNode_t* dependencies_out = nullptr,
+      void** edgeData_out = nullptr,
+      size_t* numDependencies_out = nullptr);
+
+  static void GetParameterSetterForExecGraph(
+      const Place& place,
+      graph::CUDAGraph_t graph,
+      graph::GraphHookManager* hook);
+
+  static void CudaThreadExchangeStreamCaptureMode(
+      const Place& place, 
+      graph::streamCaptureMode* mode);
 
  private:
   DISABLE_COPY_AND_ASSIGN(DeviceManager);
