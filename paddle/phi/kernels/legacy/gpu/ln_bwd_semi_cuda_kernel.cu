@@ -115,7 +115,7 @@ void launch_(LaunchParams<BwdParams> &launch_params,  // NOLINT
 // Create backward launch function and register. Macro signature:
 //  HIDDEN_SIZE, WTYPE, ITYPE, OTYPE, CTYPE, CTAS_PER_ROW, WARPS_M, WARPS_N,
 //  BYTES_PER_LDG, BYTES_PER_LDG_FINAL
-
+#if (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700)
 REGISTER_BWD_LAUNCHER(768, fp32, fp32, fp32, fp32, 1, 4, 1, 16, 4);
 REGISTER_BWD_LAUNCHER(768, fp16, fp16, fp16, fp32, 1, 4, 1, 16, 4);
 REGISTER_BWD_LAUNCHER(768, fp16, fp32, fp16, fp32, 1, 4, 1, 16, 4);
@@ -271,3 +271,4 @@ REGISTER_BWD_LAUNCHER(65536, fp16, fp16, fp16, fp32, 8, 1, 8, 16, 4);
 REGISTER_BWD_LAUNCHER(65536, fp16, fp32, fp16, fp32, 8, 1, 8, 16, 4);
 REGISTER_BWD_LAUNCHER(65536, bf16, bf16, bf16, fp32, 8, 1, 8, 16, 4);
 REGISTER_BWD_LAUNCHER(65536, bf16, fp32, bf16, fp32, 8, 1, 8, 16, 4);
+#endif  // (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700)

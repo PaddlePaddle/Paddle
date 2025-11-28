@@ -375,7 +375,7 @@ void BindCudaStream(py::module *m_ptr) {
             }
             if (device >= device_count) {
               PADDLE_THROW(common::errors::InvalidArgument(
-                  "The device id  must be inside [0, %d), but input device=%d.",
+                  "The device id must be inside [0, %d), but input device=%d.",
                   device_count,
                   device));
             }

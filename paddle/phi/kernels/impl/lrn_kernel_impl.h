@@ -37,7 +37,7 @@ struct LRNFunctor {
                   T k,
                   T alpha,
                   T beta,
-                  const DataLayout data_layout = DataLayout::kAnyLayout);
+                  const DataLayout data_layout = DataLayout::ANY);
 };
 
 template <typename T, typename Context>
@@ -61,9 +61,9 @@ void LRNKernel(const Context& dev_ctx,
       common::StringToDataLayout(data_layout_str);
   // NCHW
   int64_t N = x_dims[0];
-  int64_t C = (data_layout != DataLayout::kNHWC ? x_dims[1] : x_dims[3]);
-  int64_t H = (data_layout != DataLayout::kNHWC ? x_dims[2] : x_dims[1]);
-  int64_t W = (data_layout != DataLayout::kNHWC ? x_dims[3] : x_dims[2]);
+  int64_t C = (data_layout != DataLayout::NHWC ? x_dims[1] : x_dims[3]);
+  int64_t H = (data_layout != DataLayout::NHWC ? x_dims[2] : x_dims[1]);
+  int64_t W = (data_layout != DataLayout::NHWC ? x_dims[3] : x_dims[2]);
 
   // TODO(large-tensor): LRN GPU kernel implementation still uses int for
   // dimensions. Need to update GPU kernel to support dimensions > INT32_MAX.
@@ -113,7 +113,7 @@ struct LRNGradFunctor {
                   int n,
                   T alpha,
                   T beta,
-                  const DataLayout data_layout = DataLayout::kAnyLayout);
+                  const DataLayout data_layout = DataLayout::ANY);
 };
 
 /**
@@ -158,9 +158,9 @@ void LRNGradKernel(const Context& dev_ctx,
 
   auto x_dims = x.dims();
   int64_t N = x_dims[0];
-  int64_t C = (data_layout != DataLayout::kNHWC ? x_dims[1] : x_dims[3]);
-  int64_t H = (data_layout != DataLayout::kNHWC ? x_dims[2] : x_dims[1]);
-  int64_t W = (data_layout != DataLayout::kNHWC ? x_dims[3] : x_dims[2]);
+  int64_t C = (data_layout != DataLayout::NHWC ? x_dims[1] : x_dims[3]);
+  int64_t H = (data_layout != DataLayout::NHWC ? x_dims[2] : x_dims[1]);
+  int64_t W = (data_layout != DataLayout::NHWC ? x_dims[3] : x_dims[2]);
 
   // TODO(large-tensor): LRN GPU kernel implementation still uses int for
   // dimensions. Need to update GPU kernel to support dimensions > INT32_MAX.

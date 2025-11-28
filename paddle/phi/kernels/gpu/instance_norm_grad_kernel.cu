@@ -324,7 +324,7 @@ void InstanceNormGradKernel(const Context &dev_ctx,
   const auto &x_dims = x.dims();
 
   int N, C, H, W, D;
-  funcs::ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
+  funcs::ExtractNCWHD(x_dims, DataLayout::NCHW, &N, &C, &H, &W, &D);
   int NxC = N * C;
 
   DenseTensor x_tmp, d_y_tmp;
@@ -562,7 +562,7 @@ void InstanceNormDoubleGradKernel(const Context &dev_ctx,
 
   auto &x_dims = x.dims();
   int N, C, H, W, D;
-  funcs::ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
+  funcs::ExtractNCWHD(x_dims, DataLayout::NCHW, &N, &C, &H, &W, &D);
   int NxC = N * C;
   const int64_t n = x.numel();
   int64_t sample_size = n / N / C;

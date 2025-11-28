@@ -100,7 +100,7 @@ void launch_(LaunchParams<FwdParams> &launch_params,  // NOLINT
 // Create forward launch function and register. Macro signature:
 //  HIDDEN_SIZE, WTYPE, ITYPE, OTYPE, CTYPE, CTAS_PER_ROW, WARPS_M, WARPS_N,
 //  BYTES_PER_LDG
-
+#if (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700)
 REGISTER_FWD_LAUNCHER(768, fp32, fp32, fp32, fp32, 1, 4, 1, 16);
 REGISTER_FWD_LAUNCHER(768, fp16, fp16, fp16, fp32, 1, 4, 1, 16);
 REGISTER_FWD_LAUNCHER(768, fp16, fp32, fp16, fp32, 1, 4, 1, 16);
@@ -256,3 +256,4 @@ REGISTER_FWD_LAUNCHER(65536, fp16, fp16, fp16, fp32, 8, 1, 4, 16);
 REGISTER_FWD_LAUNCHER(65536, fp16, fp32, fp16, fp32, 8, 1, 4, 16);
 REGISTER_FWD_LAUNCHER(65536, bf16, bf16, bf16, fp32, 8, 1, 4, 16);
 REGISTER_FWD_LAUNCHER(65536, bf16, fp32, bf16, fp32, 8, 1, 4, 16);
+#endif  // (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700)

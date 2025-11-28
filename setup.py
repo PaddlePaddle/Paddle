@@ -521,6 +521,7 @@ xpu_xhpc_version = '%(xpu_xhpc)s'
 is_tagged        = %(is_tagged)s
 commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
+with_hml         = '%(with_hml)s'
 cinn_version     = '%(cinn)s'
 tensorrt_version = '%(tensorrt)s'
 with_pip_cuda_libraries = '%(with_pip_cuda_libraries)s'
@@ -612,6 +613,9 @@ def show() -> None:
 
 def mkl() -> str:
     return with_mkl
+
+def hml() -> str:
+    return with_hml
 
 def nccl() -> str:
     """Get nccl version of paddle package.
@@ -844,6 +848,7 @@ def cuda_archs():
                 'commit': commit,
                 'is_tagged': is_tagged(),
                 'with_mkl': env_dict.get("WITH_MKL"),
+                'with_hml': env_dict.get("WITH_HML"),
                 'cinn': get_cinn_version(),
                 'tensorrt': get_tensorrt_version(),
                 'with_pip_cuda_libraries': env_dict.get(
@@ -1567,6 +1572,9 @@ def get_package_data_and_package_dir():
             ('libmklml_intel' if os.name != 'nt' else 'mklml') + ext_suffix,
             ('libiomp5' if os.name != 'nt' else 'libiomp5md') + ext_suffix,
         ]
+    elif env_dict.get("WITH_HML") == 'ON':
+        shutil.copy(env_dict.get("HML_LIB"), libs_path)
+        package_data['paddle.libs'] += ['libhml_rt' + ext_suffix]
     else:
         if os.name == 'nt':
             # copy the openblas.dll
@@ -1778,6 +1786,8 @@ def get_package_data_and_package_dir():
             ]
             shutil.copy(env_dict.get("XPU_XPUTX_LIB"), libs_path)
             package_data['paddle.libs'] += [env_dict.get("XPU_XPUTX_LIB_NAME")]
+            shutil.copy(env_dict.get("XPU_CUPTI_LIB"), libs_path)
+            package_data['paddle.libs'] += [env_dict.get("XPU_CUPTI_LIB_NAME")]
 
     if env_dict.get("WITH_XPU_BKCL") == 'ON':
         shutil.copy(env_dict.get("XPU_BKCL_LIB"), libs_path)
@@ -2246,13 +2256,15 @@ def get_headers():
         )
 
     if env_dict.get("WITH_XPU") == 'ON':
-        headers += list(
-            find_files(
+        headers += [
+            h
+            for h in find_files(
                 '*.h',
                 paddle_binary_dir + '/third_party/xpu/src/extern_xpu/xpu',
                 recursive=True,
             )
-        )  # xdnn api headers
+            if '/include/xpu/kernel/' not in h
+        ]  # xdnn api headers
         headers += list(
             find_files(
                 '*.hpp',
@@ -2583,10 +2595,71 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
     python_dependencies_module = []
     installed_packages = []
 
+    def eval_marker(marker_str):
+        """Simple evaluation of PEP 508 environment markers."""
+        if not marker_str:
+            return True
+
+        marker_str = marker_str.strip()
+
+        # Build environment dict
+        env_markers = {
+            'python_version': (sys.version_info.major, sys.version_info.minor),
+            'python_full_version': (
+                sys.version_info.major,
+                sys.version_info.minor,
+                sys.version_info.micro,
+            ),
+            'platform_system': f'"{platform.system()}"',
+            'platform_machine': f'"{platform.machine()}"',
+            'sys_platform': f'"{sys.platform}"',
+        }
+
+        # Marker evaluation
+        try:
+            eval_str = marker_str
+            # Replace marker variables with their values
+            for key, value in env_markers.items():
+                eval_str = eval_str.replace(key, str(value))
+
+            def version_to_tuple(match):
+                version_str = match.group(1)
+                parts = version_str.split('.')
+                return '(' + ', '.join(parts) + ')'
+
+            eval_str = re.sub(
+                r'["\'](\d+(?:\.\d+)*)["\']', version_to_tuple, eval_str
+            )
+
+            return eval(eval_str)
+        except Exception as e:
+            raise RuntimeError(f"Failed to evaluate marker '{marker_str}': {e}")
+
     for dependency in build_dependencies:
-        python_dependencies_module.append(
-            re.sub("_|-", '', re.sub(r"==.*|>=.*|<=.*", '', dependency))
-        )
+        dependency = dependency.strip()
+        if not dependency or dependency.startswith('#'):
+            continue
+
+        # Split dependency spec and environment marker
+        if ';' in dependency:
+            dependency_spec, marker = dependency.split(';', 1)
+            dependency_spec = dependency_spec.strip()
+            marker = marker.strip()
+
+            # Evaluate marker - skip if not applicable to current environment
+            if not eval_marker(marker):
+                continue
+        else:
+            dependency_spec = dependency
+
+        # Remove version specifiers from dependency spec
+        dependency_name = re.sub(
+            r"==.*|>=.*|<=.*|~=.*|!=.*", '', dependency_spec
+        ).strip()
+
+        # Normalize package name (remove _ and -)
+        python_dependencies_module.append(re.sub("_|-", '', dependency_name))
+
     reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
 
     for r in reqs.split():

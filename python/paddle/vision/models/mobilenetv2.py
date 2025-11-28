@@ -111,7 +111,7 @@ class MobileNetV2(nn.Layer):
         :ref:`api_paddle_nn_Layer`. An instance of MobileNetV2 model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import MobileNetV2
@@ -122,7 +122,7 @@ class MobileNetV2(nn.Layer):
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
 
     num_classes: int
@@ -249,7 +249,7 @@ def mobilenet_v2(
         :ref:`api_paddle_nn_Layer`. An instance of MobileNetV2 model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import mobilenet_v2
@@ -267,7 +267,7 @@ def mobilenet_v2(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     model = _mobilenet(
         'mobilenetv2_' + str(scale), pretrained, scale=scale, **kwargs

@@ -7,3 +7,4 @@ networkx
 typing_extensions
 safetensors>=0.6.0
 cuda-python ; platform_system == "Linux"
+setuptools; python_version>="3.12"

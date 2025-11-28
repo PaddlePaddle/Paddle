@@ -249,7 +249,7 @@ class ShuffleNetV2(nn.Layer):
         :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import ShuffleNetV2
@@ -258,7 +258,7 @@ class ShuffleNetV2(nn.Layer):
             >>> x = paddle.rand([1, 3, 224, 224])
             >>> out = shufflenet_v2_swish(x)
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
 
     scale: float
@@ -400,7 +400,7 @@ def shufflenet_v2_x0_25(
         :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with 0.25x output channels.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import shufflenet_v2_x0_25
@@ -415,7 +415,7 @@ def shufflenet_v2_x0_25(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     return _shufflenet_v2(
         "shufflenet_v2_x0_25", scale=0.25, pretrained=pretrained, **kwargs
@@ -437,7 +437,7 @@ def shufflenet_v2_x0_33(
         :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with 0.33x output channels.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import shufflenet_v2_x0_33
@@ -452,7 +452,7 @@ def shufflenet_v2_x0_33(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     return _shufflenet_v2(
         "shufflenet_v2_x0_33", scale=0.33, pretrained=pretrained, **kwargs
@@ -474,7 +474,7 @@ def shufflenet_v2_x0_5(
         :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with 0.5x output channels.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import shufflenet_v2_x0_5
@@ -489,7 +489,7 @@ def shufflenet_v2_x0_5(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     return _shufflenet_v2(
         "shufflenet_v2_x0_5", scale=0.5, pretrained=pretrained, **kwargs
@@ -511,7 +511,7 @@ def shufflenet_v2_x1_0(
         :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with 1.0x output channels.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import shufflenet_v2_x1_0
@@ -526,7 +526,7 @@ def shufflenet_v2_x1_0(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     return _shufflenet_v2(
         "shufflenet_v2_x1_0", scale=1.0, pretrained=pretrained, **kwargs
@@ -548,7 +548,7 @@ def shufflenet_v2_x1_5(
         :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with 1.5x output channels.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import shufflenet_v2_x1_5
@@ -563,7 +563,7 @@ def shufflenet_v2_x1_5(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     return _shufflenet_v2(
         "shufflenet_v2_x1_5", scale=1.5, pretrained=pretrained, **kwargs
@@ -585,7 +585,7 @@ def shufflenet_v2_x2_0(
         :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with 2.0x output channels.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import shufflenet_v2_x2_0
@@ -600,7 +600,7 @@ def shufflenet_v2_x2_0(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     return _shufflenet_v2(
         "shufflenet_v2_x2_0", scale=2.0, pretrained=pretrained, **kwargs
@@ -622,7 +622,7 @@ def shufflenet_v2_swish(
         :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with swish activation function.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import shufflenet_v2_swish
@@ -637,7 +637,7 @@ def shufflenet_v2_swish(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     return _shufflenet_v2(
         "shufflenet_v2_swish",

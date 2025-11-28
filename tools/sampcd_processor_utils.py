@@ -226,13 +226,13 @@ class DocTester:
         style(str): `style` should be in {'google', 'freeform'}.
             `google`, codeblock in `Example(s):` section of docstring.
             `freeform`, all codeblocks in docstring wrapped with PS1(>>> ) and PS2(... ).
-            **CAUTION** no matter `.. code-block:: python` used or not,
+            **CAUTION** no matter `.. code-block:: pycon` used or not,
                 the docstring in PS1(>>> ) and PS2(... ) should be considered as codeblock.
         target(str): `target` should be in {'docstring', 'codeblock'}.
             `docstring`, the test target is a docstring with optional description, `Args:`, `Returns:`, `Examples:` and so on.
             `codeblock`, the codeblock extracted by `extract_code_blocks_from_docstr` from the docstring, and the pure codeblock is the docstring to test.
-                If we use `.. code-block:: python` wrapping the codeblock, the target should be `codeblock` instead of `docstring`.
-                Because the `doctest` and `xdoctest` do NOT care the `.. code-block:: python` directive.
+                If we use `.. code-block:: pycon` wrapping the codeblock, the target should be `codeblock` instead of `docstring`.
+                Because the `doctest` and `xdoctest` do NOT care the `.. code-block:: pycon` directive.
                 If the `style` is set to `google` and `target` is set to `codeblock`, we should implement/overwrite `ensemble_docstring` method,
                 where ensemble the codeblock into a docstring with a `Examples:` and some indents as least.
         directives(list[str]): `DocTester` hold the default directives, we can/should replace them with method `convert_directive`.
@@ -450,7 +450,7 @@ def extract_code_blocks_from_docstr(docstr, google_style=True):
 
     lastlineindex = len(docstr_list) - 1
 
-    cb_start_pat = re.compile(r"code-block::\s*python")
+    cb_start_pat = re.compile(r"code-block::\s*(python|python-console|pycon)")
     cb_param_pat = re.compile(r"^\s*:(\w+):\s*(\S*)\s*$")
 
     cb_info = {}

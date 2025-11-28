@@ -417,6 +417,8 @@ include(cblas) # find first, then download, build, install openblas
 message(STATUS "CBLAS_PROVIDER: ${CBLAS_PROVIDER}")
 if(${CBLAS_PROVIDER} STREQUAL MKLML)
   list(APPEND third_party_deps extern_mklml)
+elseif(${CBLAS_PROVIDER} STREQUAL HML)
+  list(APPEND third_party_deps extern_hml)
 elseif(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
   list(APPEND third_party_deps extern_openblas)
 endif()

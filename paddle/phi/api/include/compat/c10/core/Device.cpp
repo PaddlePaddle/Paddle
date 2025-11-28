@@ -55,6 +55,7 @@ Device::Device(const std::string& device_string) : Device(Type::CPU) {
     std::string index_str = device_string.substr(colon_pos + 1);
     try {
       index = static_cast<DeviceIndex>(std::stoi(index_str));
+      inner_ = phi::Place(type, index);
     } catch (const std::invalid_argument&) {
       PADDLE_THROW(::common::errors::InvalidArgument(
           "Invalid device index: '%s' is not a number.", index_str));

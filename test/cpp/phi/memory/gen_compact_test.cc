@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ class CheckAndDoCompactTest : public ::testing::Test {
     FLAGS_try_allocate = true;
     FLAGS_use_multi_scale_virtual_memory_auto_growth = true;
     FLAGS_vmm_small_pool_size_in_mb = 2;
-    FLAGS_v = 4;
+    FLAGS_v = 10;
   }
 
   void TearDown() override { meta_tensors_.clear(); }

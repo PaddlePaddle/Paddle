@@ -206,29 +206,34 @@ void ProcessGroupBKCL::CreateBKCLEnvCache(const Place& place,
   VLOG(3) << "init bkcl rank: " << rank_ << ", nranks: " << size_
           << ", place: " << place_key;
 
+  int num_ranks = GetSize();
+  int rank = GetRank();
+
   phi::distributed::CommContextManager::CreateBKCLCommContext(
       store_, std::to_string(gid_), rank_, size_);
 
-  calc_event_ = std::make_shared<XPUEventManager>();
-  auto* calc_ctx = static_cast<phi::XPUContext*>(
-      phi::DeviceContextPool::Instance().Get(place));
+  auto bkcl_comm_ctx = this->GetCommContext();
+  VLOG(3) << "Get nccl comm: " << bkcl_comm_ctx->GetBKCLComm()
+          << " for place_key: " << place_key << " on rank_in_group: " << rank
+          << " nranks: " << num_ranks << " gid: " << gid_;
+
   // must use phi::XPUContext here to make sure XPUContext::Init() is called
   auto comm_ctx = std::make_unique<phi::XPUContext>(place, true);
   // comm_ctx does not require a pre-allocated GM buffer
   comm_ctx->x_context()->set_option("XPUAPI_DEFAULT_SIZE", "1");
-  auto bkcl_comm_ctx = this->GetCommContext();
   comm_ctx->SetBkclContext(bkcl_comm_ctx->GetBKCLComm());
 
-  // set allocator
-  comm_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
-                             .GetAllocator(place)
-                             .get());
+  calc_event_ = std::make_shared<XPUEventManager>();
+  auto* calc_ctx = static_cast<phi::XPUContext*>(
+      phi::DeviceContextPool::Instance().Get(place));
+  calc_ctx->CreateStream();
+
   // Note(lijin23): XPU use calc stream for communication now, so we disable the
   // creation of comm stream to reduce the total number of streams used.
   // comm_ctx->CreateStream();
 
-  place_to_calc_ctx_[place_key] = calc_ctx;
-  place_to_comm_ctx_[place_key] = std::move(comm_ctx);
+  place_to_calc_ctx_.emplace(place_key, calc_ctx);
+  place_to_comm_ctx_.emplace(place_key, std::move(comm_ctx));
 }
 
 void ProcessGroupBKCL::SyncCalcStream(const Place& place) {
@@ -988,6 +993,10 @@ phi::DeviceContext* ProcessGroupBKCL::GetDeviceContext(
   const std::string& key = GetKeyFromPlace(place);
   if (use_calc_stream) {
     const auto& iter = place_to_calc_ctx_.find(key);
+    PADDLE_ENFORCE_NE(iter,
+                      place_to_calc_ctx_.end(),
+                      common::errors::InvalidArgument(
+                          "Cannot find device context in process group."));
     return iter->second;
   } else {
     const auto& iter = place_to_comm_ctx_.find(key);

@@ -5489,7 +5489,7 @@
   traits: pir::UnaryElementWiseTrait
 
 - op : top_p_sampling
-  args : (Tensor x, Tensor ps, Tensor threshold, Tensor topp_seed, int seed=-1, int k=0, str mode="truncate")
+  args : (Tensor x, Tensor ps, Tensor threshold, Tensor topp_seed, int64_t seed=-1, int k=0, str mode="truncate")
   output : Tensor (out), Tensor(ids), Tensor(topk_scores), Tensor(topk_ids)
   infer_meta :
     func : TopPSamplingInferMeta
