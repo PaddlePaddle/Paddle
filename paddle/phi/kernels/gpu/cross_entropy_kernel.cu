@@ -746,7 +746,7 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
     int kWarpSize = (kDimCeil < 32) ? kDimCeil : 32;
     int batches_per_warp = (kDimCeil <= 128) ? 2 : 1;
 
-    // use 128 threads per block to maximimize gpu utilization
+    // use 128 threads per block to maximize gpu utilization
     constexpr int threads_per_block = 128;
     int warps_per_block = (threads_per_block / kWarpSize);
     int batches_per_block = warps_per_block * batches_per_warp;
