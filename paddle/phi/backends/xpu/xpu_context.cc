@@ -201,7 +201,7 @@ struct XPUContext::Impl {
       auto overload_alloc_fn =
           [&xhpc_buf_mgr = xhpc_buf_mgr_,
            &place = place_,
-           s = context_->get_stream()](size_t size) -> void* {
+           &s = context_->xpu_stream](size_t size) -> void* {
         return xhpc_buf_mgr.Alloc(place, size, s);
       };
       auto overload_save_fn = [&xhpc_buf_mgr = xhpc_buf_mgr_]() {
