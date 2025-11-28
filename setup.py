@@ -2580,14 +2580,8 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
         if dependency.strip().startswith('#') or not dependency.strip():
             continue
 
-        if '; platform_gpu' in dependency:
+        if 'cuda-python' in dependency:
             if '${WITH_GPU}' == 'ON':
-                build_dependencies.append(dependency.split(';')[0].strip())
-        elif '; platform_rocm' in dependency:
-            if '${WITH_ROCM}' == 'ON':
-                build_dependencies.append(dependency.split(';')[0].strip())
-        elif '; platform_xpu' in dependency:
-            if '${WITH_XPU}' == 'ON':
                 build_dependencies.append(dependency.split(';')[0].strip())
         else:
             build_dependencies.append(dependency)
