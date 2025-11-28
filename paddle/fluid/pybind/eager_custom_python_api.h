@@ -46,8 +46,12 @@ static PyObject *eager_api_linear(PyObject *self,
       }
 #if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000 && \
      !(defined(_WIN32) || defined(WIN32)))
-      if (!FLAGS_use_legacy_gemm && !bias.is_dist_tensor())  // NOLINT
-          [[likely]] {                                       // NOLINT
+      if (!FLAGS_use_legacy_gemm &&  // NOLINT
+          x.place().GetType() == phi::AllocationType::GPU &&
+          weight.place().GetType() == phi::AllocationType::GPU &&
+          bias.place().GetType() == phi::AllocationType::GPU &&
+          !bias.is_dist_tensor())  // NOLINT
+          [[likely]] {             // NOLINT
         // TODO(Pan Zhaowu): Add proper broadcast logic for batchsize unaligned
         // batch-gemm. Currently handles: (B..., k) x (k, n) -> (B..., n), with
         // 1D or scalar bias.
@@ -64,9 +68,6 @@ static PyObject *eager_api_linear(PyObject *self,
         // calculation.
         const int64_t k_dim =
             x_original_shape[x_ndim_original - 1];  // Last dimension of X
-        const int64_t n_dim =
-            weight_original_shape[weight_ndim_original -
-                                  1];  // Last dimension of Weight
 
         // --- Process 1D x and weight tensors by reshaping them to 2D if
         // necessary --- Subsequent operations will use these processed tensors.
