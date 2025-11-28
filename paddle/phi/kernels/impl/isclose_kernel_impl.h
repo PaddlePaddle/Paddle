@@ -129,7 +129,9 @@ __global__ void IscloseCUDAKernel(const T* in_data,
                                   bool equal_nan,
                                   IndexType num,
                                   bool* out_data) {
-  IndexType idx = static_cast<IndexType>(blockIdx.x) * blockDim.x + threadIdx.x;
+  IndexType idx =
+      static_cast<IndexType>(blockIdx.x) * static_cast<IndexType>(blockDim.x) +
+      static_cast<IndexType>(threadIdx.x);
   bool val;
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   for (IndexType i = idx; i < num; i += blockDim.x * gridDim.x) {

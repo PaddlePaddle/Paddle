@@ -492,8 +492,14 @@ void ComputeBackwardForComplexInput(const DenseTensor& L,
   // Vh: matrix with shape [m,m]
   // rhs: rhs with shape [m,k]
   // x_grad: out
-  int m = static_cast<int>(Vh.dims(-1));
-  int k = static_cast<int>(rhs.dims(-1));
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t m = Vh.dims(-1);
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t k = rhs.dims(-1);
+
   auto* matrix_data = Vh.data<T>();
   auto* rhs_data = rhs.data<T>();
 
