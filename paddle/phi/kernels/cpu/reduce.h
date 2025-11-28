@@ -22,8 +22,8 @@
 
 namespace phi {
 
-template <typename DeviceContext, typename T, typename Functor>
-void Reduce(const DeviceContext& dev_ctx,
+template <typename Context, typename T, typename Functor>
+void Reduce(const Context& dev_ctx,
             const DenseTensor& x,
             bool reduce_all,
             const std::vector<int64_t>& dims,
@@ -49,25 +49,25 @@ void Reduce(const DeviceContext& dev_ctx,
     // do reduce sum
     PD_VISIT_ALL_CPU_TYPES(
         x.dtype(), "ReduceKernelImpl", ([&] {
-          phi::funcs::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
+          phi::funcs::ReduceKernelImpl<Context, T, data_t, Functor>(
               dev_ctx, x, out, dims, keep_dim, reduce_all);
         }));
 
   } else {
     // cast x tensor to out_dtype
-    auto tmp_tensor = phi::Cast<T, DeviceContext>(dev_ctx, x, out_dtype);
+    auto tmp_tensor = phi::Cast<T, Context>(dev_ctx, x, out_dtype);
 
     // do reduce sum
     PD_VISIT_ALL_CPU_TYPES(
         out_dtype, "ReduceKernelImpl", ([&] {
-          phi::funcs::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
+          phi::funcs::ReduceKernelImpl<Context, T, data_t, Functor>(
               dev_ctx, tmp_tensor, out, dims, keep_dim, reduce_all);
         }));
   }
 }
 
-template <typename DeviceContext, typename T, typename Functor>
-void BoolReduceKernel(const DeviceContext& dev_ctx,
+template <typename Context, typename T, typename Functor>
+void BoolReduceKernel(const Context& dev_ctx,
                       const phi::DenseTensor& input,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
@@ -89,12 +89,11 @@ void BoolReduceKernel(const DeviceContext& dev_ctx,
   reduce_all = (reduce_all || full_dim);
   DenseTensor tmp_tensor;
   if (input.dtype() != phi::DataType::BOOL) {
-    tmp_tensor =
-        phi::Cast<T, DeviceContext>(dev_ctx, input, phi::DataType::BOOL);
+    tmp_tensor = phi::Cast<T, Context>(dev_ctx, input, phi::DataType::BOOL);
   } else {
     tmp_tensor = input;
   }
-  funcs::ReduceKernelImpl<DeviceContext, bool, bool, Functor>(
+  funcs::ReduceKernelImpl<Context, bool, bool, Functor>(
       dev_ctx, tmp_tensor, output, dims, keep_dim, reduce_all);
 }
 

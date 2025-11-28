@@ -69,7 +69,7 @@ __global__ void KeLinearInterpBw(T* in,
     int64_t out_img_size = output_w / num_channels;
 
     int64_t channel_id, out_img_idx;
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       channel_id = out_id_w / out_img_size;
       out_img_idx = tid % out_img_w;
     } else {
@@ -89,13 +89,13 @@ __global__ void KeLinearInterpBw(T* in,
     MT w2lambda = 1.0 - w1lambda;
 
     T* in_pos;
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       in_pos = &in[out_id_h * input_w + channel_id * in_img_size + in_img_idx];
     } else {
       in_pos = &in[out_id_h * input_w + in_img_idx * num_channels + channel_id];
     }
     const T* out_pos;
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       out_pos =
           &out[out_id_h * output_w + channel_id * out_img_size + out_img_idx];
     } else {
@@ -103,7 +103,7 @@ __global__ void KeLinearInterpBw(T* in,
           &out[out_id_h * output_w + out_img_idx * num_channels + channel_id];
     }
 
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       phi::CudaAtomicAdd(
           &in_pos[0], static_cast<T>(w2lambda * static_cast<MT>(out_pos[0])));
       phi::CudaAtomicAdd(
@@ -574,7 +574,7 @@ __global__ void KeBicubicInterpBw(T* in,
     int64_t out_img_size = output_w / num_channels;
 
     int64_t channel_id, out_img_idy, out_img_idx;
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       channel_id = out_id_w / out_img_size;
       out_img_idy = (out_id_w % out_img_size) / out_img_w;
       out_img_idx = tid % out_img_w;
@@ -611,7 +611,7 @@ __global__ void KeBicubicInterpBw(T* in,
         int64_t access_x = max(min(static_cast<int64_t>(input_x - 1 + i),
                                    static_cast<int64_t>(in_img_w - 1)),
                                static_cast<int64_t>(0));
-        if (data_layout == DataLayout::kNCHW) {
+        if (data_layout == DataLayout::NCHW) {
           in_pos = &in[out_id_h * input_w + channel_id * in_img_size +
                        access_y * in_img_w + access_x];
         } else {
@@ -657,7 +657,7 @@ __global__ void KeTrilinearInterpBw(T* in,
     int64_t out_img_size = output_w / num_channels;
 
     int64_t channel_id, out_img_idt, out_img_idy, out_img_idx;
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       channel_id = out_id_w / out_img_size;
       out_img_idt = (out_id_w % out_img_size) / out_img_h / out_img_w;
       out_img_idy = ((out_id_w % out_img_size) / out_img_w) % out_img_h;
@@ -721,7 +721,7 @@ __global__ void KeTrilinearInterpBw(T* in,
     T w1lambda = static_cast<T>(w1lambda_mt);
     T w2lambda = static_cast<T>(w2lambda_mt);
 
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       int64_t in_pos1_idx =
           static_cast<int64_t>(out_id_h) * input_w +
           static_cast<int64_t>(channel_id) * in_img_size +
@@ -819,7 +819,7 @@ __global__ void KeNearestNeighbor3DInterpBw(T* in,
     int64_t out_img_size = output_w / num_channels;
 
     int64_t channel_id, out_img_idt, out_img_idy, out_img_idx;
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       channel_id = out_id_w / out_img_size;
       out_img_idt = (out_id_w % out_img_size) / out_img_h / out_img_w;
       out_img_idy = ((out_id_w % out_img_size) / out_img_w) % out_img_h;
@@ -844,7 +844,7 @@ __global__ void KeNearestNeighbor3DInterpBw(T* in,
 
     int64_t in_pos_idx;
 
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       in_pos_idx = static_cast<int64_t>(out_id_h) * input_w +
                    static_cast<int64_t>(channel_id) * in_img_size +
                    static_cast<int64_t>(in_img_idt) * in_img_h * in_img_w +
@@ -928,7 +928,7 @@ static void Interpolate1DCUDABwd(
 
   auto* output_grad_data = output_grad.data<T>();
   phi::DDim dim_grad;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_w};
   } else {
     dim_grad = {n, in_w, c};
@@ -1067,7 +1067,7 @@ static void Interpolate2DCUDABwd(
 
   auto* output_grad_data = output_grad.data<T>();
   phi::DDim dim_grad;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_h, in_w};
   } else {
     dim_grad = {n, in_h, in_w, c};
@@ -1098,7 +1098,7 @@ static void Interpolate2DCUDABwd(
       backends::gpu::GetGpuLaunchConfig1D(dev_ctx, pixelNum);
 
   if ("nearest" == interp_method) {
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       // get launch 3D config
       int64_t nc = n * c;
       int64_t total_size = static_cast<int64_t>(n) * c * in_h * in_w;
@@ -1160,7 +1160,7 @@ static void Interpolate2DCUDABwd(
   } else if ("bilinear" == interp_method) {
     const float align_type_value =
         (align_mode == 0 && !align_corners) ? 0.5f : 0.f;
-    bool is_nchw = (data_layout == DataLayout::kNCHW) ? true : false;
+    bool is_nchw = (data_layout == DataLayout::NCHW) ? true : false;
     bool optimize_flag = false;
 #ifndef __HIPCC__
     optimize_flag = (in_h < (out_h >> 6) && in_w < (out_w >> 6))
@@ -1354,7 +1354,7 @@ static void Interpolate3DCUDABwd(
 
   auto* output_grad_data = output_grad.data<T>();
   phi::DDim dim_grad;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_d, in_h, in_w};
   } else {
     dim_grad = {n, in_d, in_h, in_w, c};

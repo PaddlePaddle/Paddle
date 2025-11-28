@@ -53,19 +53,19 @@ void RadixSortPairs(const phi::GPUContext& dev_ctx,
   PADDLE_ENFORCE_EQ(
       std::is_trivially_copyable<value_t>::value,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "RadixSortPairs value type must be trivially copyable"));
 
   using opaque_t = OpaqueTypeRadix<sizeof(value_t)>;
   PADDLE_ENFORCE_EQ(
       sizeof(value_t) <= 8 && (sizeof(value_t) & (sizeof(value_t) - 1)) == 0,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Unsupported value_t size (must be 1, 2, 4, or 8 bytes)"));
   PADDLE_ENFORCE_EQ(
       sizeof(value_t),
       alignof(value_t),
-      phi::errors::InvalidArgument("Expected value_t to be size-aligned"));
+      common::errors::InvalidArgument("Expected value_t to be size-aligned"));
 
   RadixSortPairsImpl<key_t, sizeof(value_t)>(
       dev_ctx,
