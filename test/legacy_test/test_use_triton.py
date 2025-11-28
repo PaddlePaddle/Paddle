@@ -24,7 +24,7 @@ if (
     and not paddle.device.is_compiled_with_rocm()
     and platform.system().lower() == 'linux'
 ):
-    import triton.language as tl
+    from triton import language as tl
 
     from paddle.compat import paddle_triton as triton
 
@@ -287,9 +287,4 @@ class TestPaddleUseTriton(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    from paddle.compat import paddle_triton
-
-    triton = paddle_triton
-    triton.testing.assert_close(123, 123)
-
     unittest.main()
