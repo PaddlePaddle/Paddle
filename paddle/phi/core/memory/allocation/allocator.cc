@@ -34,7 +34,6 @@ void Allocator::RecordAlloc(size_t size) {
       "Allocated", current_device_id);
   allocation_records_.emplace_back(seq, size, cur_allocated, max_reserved);
 }
-thread_local bool Allocator::in_recording_alloc = 0;
 std::atomic<uint64_t> Allocator::global_seq_counter_{0};
 
 }  // namespace paddle::memory::allocation

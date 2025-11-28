@@ -77,6 +77,11 @@ struct ScopedRecording {
   ~ScopedRecording() { original_val = false; }
 };
 
+// Thread-local boolean flag indicating whether the current thread is
+// currently in a "recording allocation" state. It must be
+// thread_local to ensure each thread maintains its independent state.
+thread_local static bool in_recording_alloc = false;
+
 // Exception when `Alloc`/`AllocShared` failed
 struct BadAlloc : public std::exception {
   inline explicit BadAlloc(std::string err_msg, const char* file, int line)
@@ -259,11 +264,6 @@ class PADDLE_API Allocator : public phi::Allocator {
   }
 
  private:
-  // Thread-local boolean flag indicating whether the current thread is
-  // currently in a "recording allocation" state. It must be
-  // thread_local to ensure each thread maintains its independent state.
-  thread_local static bool in_recording_alloc;
-
   // Record event into `allocation_records_` when `FLAGS_record_alloc_event` is
   // True.
   void RecordAlloc(size_t size);
