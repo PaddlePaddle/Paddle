@@ -820,7 +820,7 @@ def split(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -829,28 +829,28 @@ def split(
 
             >>> out0, out1, out2 = paddle.compat.split(x, split_size_or_sections=3, dim=1)
             >>> print(out0.shape)
-            [3, 3, 5]
+            paddle.Size([3, 3, 5])
             >>> print(out1.shape)
-            [3, 3, 5]
+            paddle.Size([3, 3, 5])
             >>> print(out2.shape)
-            [3, 2, 5]
+            paddle.Size([3, 2, 5])
 
             >>> out0, out1, out2 = paddle.compat.split(x, split_size_or_sections=[1, 2, 5], dim=1)
             >>> print(out0.shape)
-            [3, 1, 5]
+            paddle.Size([3, 1, 5])
             >>> print(out1.shape)
-            [3, 2, 5]
+            paddle.Size([3, 2, 5])
             >>> print(out2.shape)
-            [3, 5, 5]
+            paddle.Size([3, 5, 5])
 
             >>> # dim is negative, the real dim is (rank(x) + dim)=1
             >>> out0, out1, out2 = paddle.compat.split(x, split_size_or_sections=3, dim=-2)
             >>> print(out0.shape)
-            [3, 3, 5]
+            paddle.Size([3, 3, 5])
             >>> print(out1.shape)
-            [3, 3, 5]
+            paddle.Size([3, 3, 5])
             >>> print(out2.shape)
-            [3, 2, 5]
+            paddle.Size([3, 2, 5])
     """
 
     def GetSplitSize(split_size, shape_on_dim):

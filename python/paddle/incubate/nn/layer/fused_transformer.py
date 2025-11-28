@@ -115,7 +115,7 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -127,7 +127,7 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
             >>> fused_bias_dropout_residual_ln = paddle.incubate.nn.FusedBiasDropoutResidualLayerNorm(128)
             >>> output = fused_bias_dropout_residual_ln(x, residual)
             >>> print(output.shape)
-            [2, 4, 128]
+            paddle.Size([2, 4, 128])
     """
 
     embed_dim: int
@@ -276,7 +276,7 @@ class FusedMultiHeadAttention(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -288,7 +288,7 @@ class FusedMultiHeadAttention(Layer):
             >>> multi_head_attn = paddle.incubate.nn.FusedMultiHeadAttention(128, 2)
             >>> output = multi_head_attn(query, None, None, attn_mask=attn_mask)
             >>> print(output.shape)
-            [2, 4, 128]
+            paddle.Size([2, 4, 128])
     """
 
     normalize_before: bool
@@ -1017,7 +1017,7 @@ class FusedTransformer(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.nn import Transformer
@@ -1033,13 +1033,15 @@ class FusedTransformer(Layer):
             >>> # memory_mask: [batch_size, n_head, tgt_len, src_len]
             >>> cross_attn_mask = paddle.rand((2, 2, 6, 4))
             >>> transformer = Transformer(128, 2, 4, 4, 512)
-            >>> output = transformer(enc_input,
-            ...                      dec_input,
-            ...                      enc_self_attn_mask,
-            ...                      dec_self_attn_mask,
-            ...                      cross_attn_mask)
+            >>> output = transformer(
+            ...     enc_input,
+            ...     dec_input,
+            ...     enc_self_attn_mask,
+            ...     dec_self_attn_mask,
+            ...     cross_attn_mask,
+            ... )
             >>> print(output.shape)
-            [2, 6, 128]
+            paddle.Size([2, 6, 128])
     """
 
     def __init__(
@@ -1217,7 +1219,7 @@ class FusedMultiTransformer(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('Need compile flash attention')
             >>> # doctest: +REQUIRES(env:GPU)
@@ -1232,7 +1234,7 @@ class FusedMultiTransformer(Layer):
             >>> encoder_layers = FusedMultiTransformer(128, 2, 512, num_layers=1)
             >>> enc_output = encoder_layers(enc_input, attn_mask)
             >>> print(enc_output.shape)
-            [2, 4, 128]
+            paddle.Size([2, 4, 128])
     """
 
     normalize_before: bool

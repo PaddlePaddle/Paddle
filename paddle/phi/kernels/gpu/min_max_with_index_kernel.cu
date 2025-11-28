@@ -18,18 +18,11 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
 #include <limits>
 
 #include "paddle/common/ddim.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 namespace phi {
 

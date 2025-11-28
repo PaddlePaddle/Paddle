@@ -1971,6 +1971,10 @@ PHI_DEFINE_EXPORTED_string(
     "",
     "Specify path for loading libmklml_intel.so.");  // NOLINT
 
+PHI_DEFINE_EXPORTED_string(hml_dir,
+                           "",
+                           "Specify path for loading libhml_rt.so.");  // NOLINT
+
 PHI_DEFINE_EXPORTED_string(lapack_dir,
                            "",
                            "Specify path for loading liblapack.so.");  // NOLINT

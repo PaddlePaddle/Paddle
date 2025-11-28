@@ -611,9 +611,7 @@ def monkey_patch_value():
                 >>> startup_prog = paddle.static.Program()
                 >>> main_prog = paddle.static.Program()
                 >>> with paddle.static.program_guard(startup_prog, main_prog):
-                ...     x = paddle.assign(
-                ...         np.random.rand(2, 3, 4).astype("float32")
-                ...     )
+                ...     x = paddle.assign(np.random.rand(2, 3, 4).astype("float32"))
                 ...     (output_x,) = exe.run(main_program, fetch_list=[x.size])
                 ...     print(f"value's size is: {output_x}")
                 value's size is: 24
