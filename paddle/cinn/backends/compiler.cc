@@ -294,8 +294,8 @@ void Compiler::LoadAndRegisterFromCache(const std::string& source_hash) {
   if (cuModuleLoad(&cu_module, fatbin_path.c_str()) != CUDA_SUCCESS) {
       LOG(FATAL) << "Failed to load CUDA Module from " << fatbin_path;
   }
-  // 🚨 保存 CUmodule 句柄到成员变量，以便后续销毁
-  // this->cuda_module_handle_ = cu_module; 
+  // Store the CUmodule handle in a member variable for subsequent cuModuleUnload
+  this->cuda_module_handle_ = cu_module; 
 
   RuntimeSymbols symbols;
   // 4. Iterate and register symbols
@@ -310,7 +310,6 @@ void Compiler::LoadAndRegisterFromCache(const std::string& source_hash) {
     fn_ptr_.push_back(fn_kernel); 
     symbols.RegisterVar(kernel_fn_name + "_ptr_", fn_kernel);
 
-
     // 4C. Get Device handle and override Host-side pointer
     CUfunction cu_kernel_func;
     if (cuModuleGetFunction(&cu_kernel_func, cu_module, kernel_fn_name.c_str()) != CUDA_SUCCESS) {
@@ -323,13 +322,11 @@ void Compiler::LoadAndRegisterFromCache(const std::string& source_hash) {
     *static_cast<void**>(kernel_ptr_host_addr) = reinterpret_cast<void*>(cu_kernel_func); 
   }
 
-
   // 5. Register all runtime symbols
   engine_->RegisterModuleRuntimeSymbols(std::move(symbols));
   VLOG(3) << "Successfully registered symbols from cache .so: " << cache_so_path;
 
-
-  // 6. Store handles and paths for subsequent dlclose/cuModuleUnload
+  // 6. Store handles and paths for subsequent dlclose
   dynamic_library_path_ = cache_so_path; 
   dynamic_library_handle_ = handle;      
 }
@@ -428,102 +425,35 @@ void Compiler::RegisterCudaModuleSymbol() {
                              CodeGenCudaDev::GetSourceHeader()) +
                             device_fn_code_;
 
-  // We must define in C++ (Host) code the [kernel_name]_ptr_ global variables
-  // that LLVM IR (module.o) expects to link.
-  // These variables must be compiled together with the CUDA Kernel functions themselves.
-
-  std::string host_symbol_definitions = "\n\nextern \"C\" {\n";
-  for (const auto& kernel_fn_name : device_fn_name_) {
-      // This will generate C++ code like:
-      // void* fn_mul_sum_scale..._kernel_ptr_ = (void*)fn_mul_sum_scale...;
-      host_symbol_definitions += "  void* " + kernel_fn_name + "_ptr_ = (void*)" + kernel_fn_name + ";\n";
-  }
-  host_symbol_definitions += "}\n";
-
-  // 2. Append C++ pointer definitions to CUDA Kernel source code
-  std::string full_source_to_compile = source_code + host_symbol_definitions;
-
-  // ----------------------------------------------------------------------
-  
   if (FLAGS_enable_cinn_kernel_cache) {
-    // Cache mode logic: check if /tmp/cinn/source_hash/cinn_cuda_kernel.o exists
     std::string source_hash = ComputeSourceHash();
     std::string cache_so_path = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/" + "cinn_cache.so";
     
-      // Check if cache file exists
+    // Check if cache file exists
     if (std::ifstream(cache_so_path).good()) {
-      VLOG(3) << "DEBUG: " << cache_so_path << " already exist!!";
-      // Find Loading symbols from .so...
-      // Step 1: Load shared library (dlopen)
-      // RTLD_LAZY: Lazy symbol resolution. RTLD_LOCAL: Symbols not exported to other dlopen libraries.
-      void* handle = dlopen(cache_so_path.c_str(), RTLD_LAZY | RTLD_LOCAL);
-      if (!handle) {
-        // Critical error, dlerror() provides detailed information
-        LOG(FATAL) << "Failed to dlopen shared library: " << cache_so_path << " Error: " << dlerror();
-      }
-      
-      // Load CUDA Fatbin (Device Code)
-      std::string fatbin_path = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/cinn_cuda_kernel.fatbin";
-      CUmodule cu_module;
-      if (cuModuleLoad(&cu_module, fatbin_path.c_str()) != CUDA_SUCCESS) {
-          LOG(FATAL) << "Failed to load CUDA Module from " << fatbin_path;
-      }
-      // TODO: Must save cu_module handle to ExecutionEngine or Compiler member variable,
-      // so that cuModuleUnload can be called when CINN is destroyed.
-
-      RuntimeSymbols symbols;
-      // Step 2: Find CUDA Kernel symbols (dlsym)
-      // We look up all CUDA Kernel functions in the device_fn_name_ list
-      LoadKernelNamesFromMeta();
+      LOG(FATAL) << "cinn_cache.so exists! Should not walk in!!! "
+                 << "Should already redirect to kernel cache mechanism in PIRCompiler.";
+      LoadAndRegisterFromCache(source_hash); 
+      return;
+    } else {  // .so doesn't exist, compile new cinn_cuda_kernel.o and cinn_cuda_kernel.fatbin
+      // We must define in C++ (Host) code the [kernel_name]_ptr_ global variables
+      // that LLVM IR (module.o) expects to link.
+      // These variables must be compiled together with the CUDA Kernel functions themselves.
+      std::string host_symbol_definitions = "\n\nextern \"C\" {\n";
       for (const auto& kernel_fn_name : device_fn_name_) {
-        // Find symbol in .so
-        void* fn_kernel = dlsym(handle, kernel_fn_name.c_str());
-        if (!fn_kernel) {
-            // Symbol not found, possibly .so corrupted or compilation failed
-            LOG(FATAL) << "Failed to dlsym kernel symbol: " << kernel_fn_name << " from " << cache_so_path << " Error: " << dlerror();
-        }
-        
-        // Step 3: Register symbols (to CINN ExecutionEngine)
-        // Register function pointer for runtime use
-        fn_ptr_.push_back(fn_kernel); 
-        // Register to ExecutionEngine's symbol table, usually ending with "_ptr_" for runtime identification
-        symbols.RegisterVar(kernel_fn_name + "_ptr_", fn_kernel);
-
-        // Step 4: Get Device handle and override global variables in .so
-        // a. Get Device-side Kernel handle (CUfunction) from loaded CUDA Module
-        CUfunction cu_kernel_func;
-        if (cuModuleGetFunction(&cu_kernel_func, cu_module, kernel_fn_name.c_str()) != CUDA_SUCCESS) {
-            LOG(FATAL) << "Failed to get CUfunction handle for " << kernel_fn_name;
-        }
-
-        // b. Find Host memory address of global variable [kernel_name]_ptr_ in .so
-        // This variable is read by Host functions
-        void* kernel_ptr_host_addr = dlsym(handle, (kernel_fn_name + "_ptr_").c_str());
-        if (!kernel_ptr_host_addr) {
-             LOG(FATAL) << "Failed to dlsym kernel pointer variable: " << kernel_fn_name + "_ptr_";
-        }
-        
-        // c. Write Device handle value to Host variable address
-        // Override the incorrect Host function address from initialization
-        *static_cast<void**>(kernel_ptr_host_addr) = reinterpret_cast<void*>(cu_kernel_func); 
-        // ===================================================================
+          // This will generate C++ code like:
+          // void* fn_mul_sum_scale..._kernel_ptr_ = (void*)fn_mul_sum_scale...;
+          host_symbol_definitions += "  void* " + kernel_fn_name + "_ptr_ = (void*)" + kernel_fn_name + ";\n";
       }
+      host_symbol_definitions += "}\n";
 
-      // Register all runtime symbols to ExecutionEngine
-      engine_->RegisterModuleRuntimeSymbols(std::move(symbols));
-      VLOG(3) << "Successfully registered symbols from cache .so: " << cache_so_path;
+      // Append C++ pointer definitions to CUDA Kernel source code
+      std::string full_source_to_compile = source_code + host_symbol_definitions;
 
-      // Store handles and paths for dlclose during Compiler or ExecutionEngine destruction
-      // TODO: Confirm whether to destroy
-      dynamic_library_path_ = cache_so_path; // Store path
-      dynamic_library_handle_ = handle;      // Assuming Compiler class has member `void* dynamic_library_handle_` to store handle
-    } else {
-      // .so doesn't exist, compile new cinn_cuda_kernel.o and cinn_cuda_kernel.fatbin
       VLOG(3) << "Creating new kernel cache file";
       dynamic_library_path_ = GenerateObjectWithoutCache(full_source_to_compile);
       GenerateFatbinWithoutCache(full_source_to_compile);
       SaveKernelNamesToMeta();
-
 
       // Register to JIT in normal way
       auto ptx = compiler(source_code);
@@ -767,9 +697,9 @@ void Compiler::ExportObject(const std::string& path) {
 }
 
 void* Compiler::Lookup(std::string_view fn_name) {
-  // 1. 检查是否已通过 Cache 加载了动态库
-  // 这个 dynamic_library_handle_ 只有在 LoadAndRegisterFromCache 被调用时才会赋值
-  // 即：只有在“缓存命中”路径下，它才不为空。
+  // 1. Check if the dynamic library has already been loaded via Cache.
+  // This dynamic_library_handle_ is only assigned when LoadAndRegisterFromCache is called.
+  // it will only be non-null in the "cache hit" path.
   if (FLAGS_enable_cinn_kernel_cache && dynamic_library_handle_) {
       void* func_ptr = dlsym(dynamic_library_handle_, fn_name.data());
       if (func_ptr) {
@@ -862,7 +792,7 @@ std::string Compiler::GenerateObjectWithoutCache(const std::string& source_code)
 
   // If cuda_source_o already exists, report an error
   if (llvm::sys::fs::exists(cuda_source_o)) {
-      VLOG(1) << "Internal error: Object file already exists. "
+      LOG(FATAL) << "Internal error: Object file already exists. "
                  << "This indicates a logic error in hash or kernel naming. File: "
                  << cuda_source_o;
   }
@@ -874,12 +804,8 @@ std::string Compiler::GenerateObjectWithoutCache(const std::string& source_code)
   }
   
   std::string compile_cmd = "nvcc -c -Xcompiler -fPIC -o " + cuda_source_o + " " + cuda_source_file + 
-                          " -arch=sm_80 --std=c++14 --expt-relaxed-constexpr " +
+                          " -arch=" + GetDeviceArch() + " --std=c++14 --expt-relaxed-constexpr " +
                           include_dir_str +
-                          // "-I/work/Paddle/build/python/paddle/libs " +
-                          // "-I/work/env3.10/lib/python3.10/site-packages/paddle/libs " +
-                          // "-I/work/env3.10/lib/python3.10/site-packages/paddle/include/paddle/phi/common " +
-                          // "-I/work/env3.10/lib/python3.10/site-packages/nvidia/cuda_runtime/include " +
                           "-I/usr/local/cuda/include -include cuda_fp16.h " +
                           "-DCINN_CUDA_FP16 -include cuda_fp8.h -DCINN_CUDA_FP8 " +
                           "-include cuda_bf16.h -DCINN_CUDA_BF16 " +
@@ -942,7 +868,7 @@ std::string Compiler::GenerateFatbinWithoutCache(const std::string& source_code)
 
   // If cuda_source_o already exists, report an error
   if (llvm::sys::fs::exists(cuda_fatbin)) {
-      VLOG(1) << "Internal error: Object file already exists. "
+      LOG(FATAL) << "Internal error: Object file already exists. "
                  << "This indicates a logic error in hash or kernel naming. File: "
                  << cuda_fatbin;
   }
@@ -954,12 +880,8 @@ std::string Compiler::GenerateFatbinWithoutCache(const std::string& source_code)
   }
 
   std::string compile_cmd = "nvcc --fatbin -o " + cuda_fatbin + " " + cuda_source_file + 
-                           " -arch=sm_80 --std=c++14 --expt-relaxed-constexpr " +
+                           " -arch=" + GetDeviceArch() + "   --std=c++14 --expt-relaxed-constexpr " +
                            include_dir_str +
-                          //  "-I/work/Paddle/build/python/paddle/libs " +
-                          //  "-I/workspace/xuyuhan/env3.10/lib/python3.10/site-packages/paddle/libs " +
-                          //  "-I/workspace/xuyuhan/env3.10/lib/python3.10/site-packages/paddle/include/paddle/phi/common " +
-                          //  "-I/workspace/xuyuhan/env3.10/lib/python3.10/site-packages/nvidia/cuda_runtime/include " +
                            "-I/usr/local/cuda/include -include cuda_fp16.h " +
                            "-DCINN_CUDA_FP16 -include cuda_fp8.h -DCINN_CUDA_FP8 " +
                            "-include cuda_bf16.h -DCINN_CUDA_BF16 " +

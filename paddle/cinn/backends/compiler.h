@@ -147,18 +147,23 @@ class Compiler final {
   void LoadAndRegisterFromCache(const std::string& source_hash);
 
   ~Compiler() {
-    // Check if dynamic library handle needs to be released
-    if (dynamic_library_handle_) {
-      VLOG(3) << "Closing dynamic library handle for: " << dynamic_library_path_;
-      
-      // Call dlclose to release shared library resources
+#ifdef CINN_WITH_CUDA
+    // Release GPU Resource: CUDA module handle
+    if (cuda_module_handle_) {
+      CUresult result = cuModuleUnload(static_cast<CUmodule>(cuda_module_handle_));
+      if (result != CUDA_SUCCESS) {
+        LOG(WARNING) << "Failed to unload CUDA module. Error code: " << result;
+      }
+      cuda_module_handle_ = nullptr;
+    }
+#endif
+    // Release CPU Resource: dynamic library handle
+    if (dynamic_library_handle_) {      
       int result = dlclose(dynamic_library_handle_);
       if (result != 0) {
-          // Use LOG(WARNING) or VLOG(0) to log error but not terminate program
-          LOG(WARNING) << "Error closing dynamic library handle for " 
+        LOG(WARNING) << "Error closing dynamic library handle for " 
                         << dynamic_library_path_ << ". Error: " << dlerror();
       }
-      // Clear handle pointer
       dynamic_library_handle_ = nullptr;
     }
   }
@@ -204,6 +209,7 @@ class Compiler final {
   // dynamic library support
   std::string dynamic_library_path_;
   void* dynamic_library_handle_{nullptr};
+  void* cuda_module_handle_{nullptr};
 #endif
 #ifdef CINN_WITH_HIP
   std::unique_ptr<runtime::hip::HIPModule> hip_module_;
