@@ -29,6 +29,10 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    from typing_extensions import TypeAlias
+
+    _ScopeType: TypeAlias = str | Iterable[str] | None
+
 
 def warning_about_fake_interface(name: str):
     warnings.warn(
@@ -426,9 +430,17 @@ def _modify_scope_of_torch_proxy(
     TORCH_PROXY_FINDER._local_enabled_scope |= scope
 
 
+def _parse_scope(scope: str | Iterable[str] | None) -> set[str] | None:
+    if scope is None:
+        return None
+    if isinstance(scope, str):
+        return {scope}
+    return set(scope)
+
+
 def enable_torch_proxy(
     *,
-    scope: set[str] | None = None,
+    scope: _ScopeType = None,
     silent: bool = False,
 ) -> None:
     """
@@ -443,6 +455,7 @@ def enable_torch_proxy(
             >>> import torch  # This will import paddle as torch
             >>> assert torch.sin is paddle.sin
     """
+    scope = _parse_scope(scope)
     _register_compat_override()
     _swap_torch_modules_to_cache()
     _modify_scope_of_torch_proxy(scope, silent=silent)
@@ -479,7 +492,7 @@ def disable_torch_proxy() -> None:
 def use_torch_proxy_guard(
     *,
     enable: bool = True,
-    scope: set[str] | None = None,
+    scope: _ScopeType = None,
     silent: bool = False,
 ):
     """
@@ -513,6 +526,7 @@ def use_torch_proxy_guard(
             ...     import torch
             ...     assert torch.sin is paddle.sin
     """
+    scope = _parse_scope(scope)
     already_has_torch_proxy = TORCH_PROXY_FINDER in sys.meta_path
     original_local_enabled_scope = TORCH_PROXY_FINDER._local_enabled_scope
     original_globally_enabled = TORCH_PROXY_FINDER._globally_enabled
