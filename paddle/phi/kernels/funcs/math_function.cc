@@ -80,6 +80,7 @@ template struct SetConstant<phi::XPUContext, int64_t>;
 template struct SetConstant<phi::XPUContext, bool>;
 template struct SetConstant<phi::XPUContext, phi::complex64>;
 template struct SetConstant<phi::XPUContext, phi::complex128>;
+#endif  // PADDLE_WITH_XPU
 
 #define DEFINE_CPU_TRANS(RANK)                                                 \
   template struct PADDLE_API Transpose<phi::CPUContext, phi::float16, RANK>;   \
@@ -109,10 +110,12 @@ DEFINE_CPU_TRANS(4);
 DEFINE_CPU_TRANS(5);
 DEFINE_CPU_TRANS(6);
 
+#ifdef PADDLE_WITH_XPU
 #define DEFINE_XPU_TRANS(RANK)                                          \
+  template struct PADDLE_API Transpose<phi::XPUContext, bool, RANK>;    \
+  template struct PADDLE_API Transpose<phi::XPUContext, float, RANK>;   \
   template struct PADDLE_API Transpose<phi::XPUContext, int, RANK>;     \
   template struct PADDLE_API Transpose<phi::XPUContext, int64_t, RANK>; \
-  template struct PADDLE_API Transpose<phi::XPUContext, float, RANK>;   \
   template struct PADDLE_API Transpose<phi::XPUContext, phi::complex64, RANK>;
 
 DEFINE_XPU_TRANS(1);
@@ -121,7 +124,7 @@ DEFINE_XPU_TRANS(3);
 DEFINE_XPU_TRANS(4);
 DEFINE_XPU_TRANS(5);
 DEFINE_XPU_TRANS(6);
-#endif
+#endif  // PADDLE_WITH_XPU
 
 template <typename DeviceContext, typename T>
 void TransposeNormal<DeviceContext, T>::operator()(
@@ -175,12 +178,13 @@ DEFINE_CPU_TRANS_NORMAL(phi::complex128);
 #ifdef PADDLE_WITH_XPU
 #define DEFINE_XPU_TRANS_NORMAL(TYPE) \
   template struct TransposeNormal<phi::XPUContext, TYPE>
+DEFINE_XPU_TRANS_NORMAL(bool);
 DEFINE_XPU_TRANS_NORMAL(float);
 DEFINE_XPU_TRANS_NORMAL(int);
 DEFINE_XPU_TRANS_NORMAL(int64_t);
-DEFINE_XPU_TRANS_NORMAL(bool);
 DEFINE_XPU_TRANS_NORMAL(phi::complex64);
-#endif
+#endif  // PADDLE_WITH_XPU
+
 struct TensorSetConstantCPU {
   TensorSetConstantCPU(phi::DenseTensor* tensor, float value)
       : tensor_(tensor), value_(value) {}
