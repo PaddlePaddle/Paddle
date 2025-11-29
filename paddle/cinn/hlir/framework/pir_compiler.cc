@@ -221,10 +221,8 @@ bool LoadKernelMetaData(pir::CINNKernelInfo* group_info, const std::string& file
 std::vector<pir::CINNKernelInfo> PirCompiler::Build(
     const std::vector<pir::OpLoweringGroupPtr>& groups) {
   CompilationContextMapper ctx_mapper(target_, groups); // construct and append to compilation_results_
-  VLOG(5) << "YUHAN!!! CompilationContextMapper Constructed ";
   auto& group_compilation_contexts = ctx_mapper.UniqueCompilationContexts();
   auto& compilation_results = ctx_mapper.MutableCompilationResult(); // may be empty if it's not new and unique
-  VLOG(5) << "YUHAN!!! CompilationContextMapper compilation_results.size() =  " << compilation_results.size();
   const size_t task_size = group_compilation_contexts.size();
   const size_t thread_size = GetThreadNum(task_size);
   VLOG(5) << "Found " << task_size << " new groups parsed from "
@@ -242,7 +240,6 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
       cinn::common::ShapeConstraintManager::Instance().Init(
           shape_analysis_manager.constraints_manager());
       runtime::SetArchDevice(target_, device_id);
-      VLOG(5) << "YUHAN!!! Before Compile Parallell group_compilation_contexts[" << index << "].fusion_hash = " << group_compilation_contexts[index].GetFusionHash();
       auto fusion_info_hash = group_compilation_contexts[index].GetFusionHash();
       std::string source_hash = std::to_string(fusion_info_hash);
       std::string cache_dir = "/tmp/cinn/" + std::to_string(device_id.value()) + "/" + source_hash; // recommended to define directory first
@@ -300,9 +297,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
           SaveKernelMetaData(&info_to_save, meta_filepath);
         }
       }
-      VLOG(5) << "YUHAN!!! group_compilation_contexts[index].GetGroup()->symbol_args_map().size() = " << 
       group_compilation_contexts[index].GetGroup()->symbol_args_map().size();
-      VLOG(5) << "YUHAN!!! After Compile Parallell group_compilation_contexts[" << index << "].fusion_hash = " << group_compilation_contexts[index].GetFusionHash();
     };
     // Parallel compilation
     utils::parallel_run(worker_fn,
@@ -318,14 +313,12 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
 std::shared_ptr<pir::CompilationResult> PirCompiler::Compile(
     GroupCompilationContext* ctx) {
   std::shared_ptr<pir::CompilationResult> compile_result;
-  VLOG(5) << "Inside Compile() ctx->GetFusionHash() = " << ctx->GetFusionHash();
   CompilationTask task(ctx);
 
   const auto& optional_broadcast_optimize_groups =
       pir::GetBroadcastGroupListForOptimize(ctx->GetGroup());
 
   if (optional_broadcast_optimize_groups.has_value()) {
-    VLOG(3) << "YUHAN!!! Broadcast Optimize " << ctx->GetGroup()->FuncName();
     const auto& broadcast_switch_case_groups =
         optional_broadcast_optimize_groups.value();
     std::vector<GroupCompilationContext> switch_group_ctxs;
@@ -360,6 +353,7 @@ std::shared_ptr<pir::CompilationResult> PirCompiler::Compile(
   } else {
     compile_result = task();
   }
+  compile_result->SetFusionHash(ctx->GetFusionHash());
 
   // Triggering llvm compilation in thread
   compile_result->GetKernelInfo();

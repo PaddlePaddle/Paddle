@@ -320,7 +320,7 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::CodegenAndJit() {
   ir::Module ir_moduleCX86 = context_->CX86_module_builder_.Build();
   cinn::common::OpDataTypePromote(&ir_module);
   cinn::common::OpDataTypePromote(&ir_moduleCX86);
-  VLOG(5) << "YUHAN!!! Begin BuildPirCINNKernelInfo " << context_->GetFusionHash();
+  VLOG(5) << "Begin BuildPirCINNKernelInfo " << context_->GetFusionHash();
   return BuildPirCINNKernelInfo(
       ir_module, ir_moduleCX86, context_->NeedCompileCX86Kernel());
 }
@@ -372,7 +372,7 @@ CompilationTask::CompileBroadcastModules(
     ir::Module ir_module = context.module_builder_.Build();
     ir::Module ir_moduleCX86 = context.CX86_module_builder_.Build();
     backend_resource->GetBackendCompiler()->SetFusionHash(context.GetFusionHash());
-    backend_resource->GetBackendCompiler()->Build(ir_module, ""); //
+    backend_resource->GetBackendCompiler()->Build(ir_module, "");
     backend_resource->GetBackendCompiler()->AppendCX86(ir_moduleCX86);
   }
 

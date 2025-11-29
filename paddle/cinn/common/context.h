@@ -56,8 +56,6 @@ struct PrettyNamer {
     if (pretty_names_.find(hash_key) == pretty_names_.end()) {
       pretty_names_[hash_key] = name_generator_.New(name_hint);
     }
-    VLOG(5) << "YUHAN!!! Generate PrettyNamer 2  " << pretty_names_.at(hash_key);
-    return pretty_names_.at(hash_key);
   }
 
   NameGenerator& GetNameGenerator() { return name_generator_; }

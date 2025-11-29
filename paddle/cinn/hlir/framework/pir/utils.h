@@ -34,14 +34,6 @@ struct CINNKernelInfo {
   void* fn_ptr;
   void* infer_shape_fn_ptr;
   void* CX86_fn_ptr{nullptr};
-  
-  // Dynamic library support
-  struct LibraryInfo {
-    std::string library_path;
-    std::string function_name;
-    void* library_handle{nullptr};
-  };
-  LibraryInfo dynamic_library_info;
 
   struct ArgDimIdx {
     int arg_idx;
@@ -132,7 +124,6 @@ class PrettyNamer {
     if (pretty_names_.find(hash_key) == pretty_names_.end()) {
       pretty_names_[hash_key] = name_generator_.New(name_hint);
     }
-     VLOG(5) << "YUHAN!!! Generate PrettyNamer 1  " << pretty_names_.at(hash_key);
     return pretty_names_.at(hash_key);
   }
 

@@ -38,8 +38,6 @@ std::size_t AttributeInfo::hash() const {
   std::string attr_str = oss.str();
   hash_combine(seed, attr_str);
   
-  // VLOG(3) << "YUHAN!!! AttributeInfo hash based on name: " << name_ 
-  //         << ", attr: " << attr_str << " -> " << seed;
   return seed;
 }
 
@@ -63,8 +61,6 @@ std::size_t ValueInfo::hash() const {
   std::string type_str = oss.str();
   hash_combine(seed, type_str);
   
-  // VLOG(3) << "YUHAN!!! ValueInfo hash based on type: " << type_str 
-  //         << " -> " << seed;
   return seed;
 }
 
@@ -109,17 +105,12 @@ OperationInfo::OperationInfo(const ::pir::Operation& op) {
 std::size_t OperationInfo::hash() const {
   std::size_t seed = 1789;
   hash_combine(seed, name_);
-  // VLOG(3) << "YUHAN!!! OperationInfo Seed Generated0: " << seed << ", related op name is " << name_;
   for (const auto& info : input_infos_) {
-    // VLOG(3) << "YUHAN!!! OperationInfo InputInfo: " << info;
     hash_combine(seed, info);
   }
-  // VLOG(3) << "YUHAN!!! OperationInfo Seed Generated1: " << seed << ", related op name is " << name_;
   for (const auto& info : output_infos_) hash_combine(seed, info);
   for (const auto& shape_or_data: output_infos_symbol_) hash_combine(seed, shape_or_data);
-  // VLOG(3) << "YUHAN!!! OperationInfo Seed Generated2: " << seed << ", related op name is " << name_;
   for (const auto& info : attr_infos_) hash_combine(seed, info);
-  // VLOG(3) << "YUHAN!!! OperationInfo Seed Generated3: " << seed << ", related op name is " << name_;
   return seed;
 }
 
@@ -149,22 +140,16 @@ std::size_t OpDepInfo::hash() const {
 }
 
 std::size_t FusionOpInfo::hash() const {
-  // VLOG(3) << "YUHAN!!! FusionOpInfo Seed Generated Start: ";
   std::size_t seed = op_info_.hash();
-  // VLOG(3) << "YUHAN!!! FusionOpInfo Seed Generated0: " << seed;
   for (const auto& [value_index, op_info_hash] : inner_deps_) {
     hash_combine(seed, value_index);
-    // VLOG(3) << "YUHAN!!! FusionOpInfo Seed Generated1: " << seed;
     hash_combine(seed, op_info_hash);
-    // VLOG(3) << "YUHAN!!! FusionOpInfo Seed Generated2: " << seed;
   }
-  for (const auto& [value_index, op_info_hash] : inner_deps_) {
-    hash_combine(seed, value_index);
-    // VLOG(3) << "YUHAN!!! FusionOpInfo Seed Generated1: " << seed;
-    hash_combine(seed, op_info_hash);
-    // VLOG(3) << "YUHAN!!! FusionOpInfo Seed Generated2: " << seed;
-  }
-  // VLOG(3) << "YUHAN!!! FusionOpInfo Seed Generated3: " << seed << ;
+  // TODO(xuyuhan) Maybe inner deps are not enough?
+  // for (const auto& [value_index, op_info_hash] : outer_deps_) {
+  //   hash_combine(seed, value_index);
+  //   hash_combine(seed, op_info_hash);
+  // }
   return seed;
 }
 
@@ -187,19 +172,15 @@ std::ostream& operator<<(std::ostream& os, const ProgramInfo& info) {
 }
 
 FusionInfo::FusionInfo(const OpLoweringGroup& group) {
-  // VLOG(3) << "YUHAN!!! FusionInfo:ParseOpInfos Start:";
   ParseOpInfos(group);
-  // VLOG(3) << "YUHAN!!! FusionInfo:ParseInputDimExprs Start:";
   ParseInputDimExprs(group);
   ParseOutputDimExprs(group);
-  // VLOG(3) << "YUHAN!!! FusionInfo:ParseProgramInfo Start:";
   ParseProgramInfo(group);
 }
 
 void FusionInfo::ParseOpInfos(const OpLoweringGroup& group) {
   std::unordered_map<const ::pir::Operation*, size_t> op_mapper;
   unique_fn_name_ = group.FuncName();
-  VLOG(3) << "YUHAN!!! FusionInfo:ParseOpInfos " << unique_fn_name_;
   const auto GetInnerUpstreamOps =
       [&](const ::pir::Operation* op) -> decltype(auto) {
     std::map<size_t, OpDepInfo> upstream_dep_infos;
@@ -230,14 +211,12 @@ void FusionInfo::ParseOpInfos(const OpLoweringGroup& group) {
 }
 
 void FusionInfo::ParseInputDimExprs(const OpLoweringGroup& group) {
-  VLOG(3) << "YUHAN!!! FusionInfo:ParseInputDimExprs " << unique_fn_name_;
   // NOTE(Aurelius84): [Why try get DimExpr from Group firstly? ]
   // In case of BroadcastTree, we will clone many Groups containing same ops.
   // But its input values is defining outside and will have same DimExprs in
   // global ShapeAnalysis, which leading hash conflict unexpected.
   const auto TryGetDimExprsFromGroup = [&](const ::pir::Value& value) -> bool {
     if (!group.HasShapeOrDataExprs(value)) return false;
-    VLOG(3) << "YUHAN!!! FusionInfo:ParseInputDimExprs Group value: " << group.GetShapeOrDataExprs(value);
     input_dim_exprs_.push_back(group.GetShapeOrDataExprs(value));
     return true;
   };
@@ -246,7 +225,6 @@ void FusionInfo::ParseInputDimExprs(const OpLoweringGroup& group) {
   const auto TryGetDimExprsFromGlobal = [&](const ::pir::Value& value) -> bool {
     auto& shape_analysis =
         ::pir::ShapeAnalysisManager::Instance().Get(group.GetParentProgram());
-    VLOG(3) << "YUHAN!!! FusionInfo:ParseInputDimExprs Global value: " << shape_analysis.GetShapeOrDataForValue(value);
     input_dim_exprs_.push_back(shape_analysis.GetShapeOrDataForValue(value));
     return true;
   };
@@ -261,32 +239,27 @@ void FusionInfo::ParseInputDimExprs(const OpLoweringGroup& group) {
 }
 
 void FusionInfo::ParseOutputDimExprs(const OpLoweringGroup& group) {
-  VLOG(3) << "YUHAN!!! FusionInfo:ParseOutputDimExprs " << group;
   for (const auto& value : group.GetOutputOpValues()) {
     auto& shape_analysis =
         ::pir::ShapeAnalysisManager::Instance().Get(group.GetParentProgram());
-    VLOG(3) << "YUHAN!!! FusionInfo:ParseOutputDimExprs value: " << shape_analysis.GetShapeOrDataForValue(value);
     output_dim_exprs_.push_back(shape_analysis.GetShapeOrDataForValue(value));
   }
 }
 
 void FusionInfo::ParseProgramInfo(const OpLoweringGroup& group) {
-  VLOG(3) << "YUHAN!!! FusionInfo:ParseProgramInfo " << unique_fn_name_;
   program_info_ = std::make_shared<ProgramInfo>(*group.GetParentProgram());
 }
 
 std::size_t FusionInfo::hash() const {
   if (cached_hash_value_ != 0U) {
-    VLOG(3) << "YUHAN!!! FusionInfo::hash() find old CacheKey " << cached_hash_value_ << " for "  << unique_fn_name_;
     return cached_hash_value_;
   }
   std::size_t seed = 2153;
   for (const auto& info : op_infos_) hash_combine(seed, info);
   for (const auto& dim_expr : input_dim_exprs_) hash_combine(seed, dim_expr);
-  // for (const auto& dim_expr : output_dim_exprs_) hash_combine(seed, dim_expr);
-  // hash_combine(seed, *program_info_);
+  // TODO(xuyuhan) Maybe input_dim_exprs_ are not enough?
+  for (const auto& dim_expr : output_dim_exprs_) hash_combine(seed, dim_expr);
   if (!FLAGS_enable_cinn_compile_cache) hash_combine(seed, unique_fn_name_);
-  VLOG(3) << "YUHAN!!! FusionInfo::hash() generated new CacheKey " << seed << " for "  << unique_fn_name_;
   return seed;
 }
 

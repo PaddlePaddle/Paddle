@@ -123,7 +123,6 @@ class CompilationCache {
   bool Has(const CacheKey& key) const;
   const CacheValue& Get(const CacheKey& key) const;
   void Insert(const CacheKey& key, const CacheValue& value);
-  void InsertOrReplace(const CacheKey& key, const CacheValue& value);
   void Clear();
   size_t Size() const { return cache_.size(); }
 
