@@ -1216,8 +1216,6 @@ def load_state_dict_impl(
             logger.warning(
                 f"The following keys:{missing_keys} are not found in checkpoint path: {path}."
             )
-        if len(rank_to_files) <= 0:
-            return
 
         cur_rank = paddle.distributed.get_rank()
         global_local_data_files = []
