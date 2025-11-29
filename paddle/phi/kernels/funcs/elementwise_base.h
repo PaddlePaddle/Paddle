@@ -51,13 +51,14 @@ class MidWiseTransformIterator;
 
 // NOTE(dzhwinter): ptrdiff_t in iterator is deprecated in c++17
 template <typename T>
-class RowwiseTransformIterator<T, CPUContext>
-    : public std::iterator<std::random_access_iterator_tag,
-                           T,
-                           std::ptrdiff_t,
-                           T *,
-                           T &> {
+class RowwiseTransformIterator<T, CPUContext> {
  public:
+  using iterator_category = std::random_access_iterator_tag;
+  using value_type = T;
+  using difference_type = std::ptrdiff_t;
+  using pointer = T *;
+  using reference = T &;
+
   RowwiseTransformIterator(const T *ptr, int n) : ptr_(ptr), i_(0), n_(n) {}
 
   RowwiseTransformIterator<T, CPUContext> &operator++() {
@@ -96,13 +97,14 @@ class RowwiseTransformIterator<T, CPUContext>
 };
 
 template <typename T>
-class MidWiseTransformIterator<T, CPUContext>
-    : public std::iterator<std::random_access_iterator_tag,
-                           T,
-                           std::ptrdiff_t,
-                           T *,
-                           T &> {
+class MidWiseTransformIterator<T, CPUContext> {
  public:
+  using iterator_category = std::random_access_iterator_tag;
+  using value_type = T;
+  using difference_type = std::ptrdiff_t;
+  using pointer = T *;
+  using reference = T &;
+
   MidWiseTransformIterator(const T *ptr, int n, int post)
       : ptr_(ptr), i_(0), j_(0), n_(n), post_(post) {}
 

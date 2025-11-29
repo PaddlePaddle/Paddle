@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from .compat import split
+from .tensor.creation import meshgrid
 from .tensor.einsum import einsum
 from .tensor.linalg import norm
 from .tensor.manipulation import (
@@ -31,4 +32,5 @@ __all__ = [
     "norm",
     'split',
     'unique_consecutive',
+    "meshgrid",
 ]

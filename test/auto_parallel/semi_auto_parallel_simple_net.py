@@ -69,7 +69,6 @@ class DemoNet(nn.Layer):
             out = dist.reshard(out, *self.pp_reshard_dist_attr)
         out = self.norm(out)
         out = self.linear_1(out)
-        out = paddle.abs(out)
         return out
 
     def forward(self, x):

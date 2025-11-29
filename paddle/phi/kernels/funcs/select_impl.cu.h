@@ -16,19 +16,12 @@
 
 // CUDA and HIP use same api
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include <algorithm>
 #include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace kps = phi::kps;
@@ -156,7 +149,7 @@ __global__ void CumsumOneBlock(const InT *in,
                                int64_t numel,
                                int64_t main_offset,
                                Functor func) {
-  int64_t stride = BLOCK_NUM_X * VecSize;
+  int64_t stride = static_cast<int64_t>(BLOCK_NUM_X) * VecSize;
   int64_t offset = 0;
   OutT pre_cumsum = static_cast<OutT>(0);
   for (; offset < main_offset; offset += stride) {
@@ -164,7 +157,7 @@ __global__ void CumsumOneBlock(const InT *in,
         in + offset, out + offset, &pre_cumsum, stride, func);
   }
 
-  int num = numel - offset;
+  int64_t num = numel - offset;
   if (num > 0) {
     CumsumImpl<InT, OutT, Functor, VecSize, true>(
         in + offset, out + offset, &pre_cumsum, num, func);
@@ -449,7 +442,7 @@ void SelectKernel(const KPDevice &dev_ctx,
   IntArray dims_array(dims_vec);
   DenseTensor count_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
   CT *count_data = count_mem.data<CT>();
-  // 1.3 launch CountKernl
+  // 1.3 launch CountKernel
   switch (kVecSize) {
     CALL_GET_BLOCK_COUNT_KERNEL(4)
     CALL_GET_BLOCK_COUNT_KERNEL(2)
@@ -546,13 +539,13 @@ void RestrictSelectKernel(const KPDevice &dev_ctx,
   int block = 64;
   auto stream = dev_ctx.x_context()->xpu_stream;
   const int num_per_block = kVecSize * block;
-  const int need_grids = (numel + num_per_block - 1) / num_per_block;
-  const int grid = std::min(need_grids, 8);
+  const int64_t need_grids = (numel + num_per_block - 1) / num_per_block;
+  const int grid = std::min(need_grids, static_cast<int64_t>(8));
 #else
   const int block = 256;
   const int num_per_block = kVecSize * block;
-  const int need_grids = (numel + num_per_block - 1) / num_per_block;
-  const int grid = std::min(need_grids, 256);
+  const int64_t need_grids = (numel + num_per_block - 1) / num_per_block;
+  const int grid = std::min(need_grids, static_cast<int64_t>(256));
   auto stream = dev_ctx.stream();
 #endif
   const int64_t main_offset = Floor(numel, num_per_block);
@@ -562,7 +555,7 @@ void RestrictSelectKernel(const KPDevice &dev_ctx,
   IntArray dims_array(dims_vec);
   DenseTensor count_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
   CT *count_data = count_mem.data<CT>();
-  // 1.3 launch CountKernl
+  // 1.3 launch CountKernel
   GetBlockCountKernel<MT, CT, kVecSize>
       <<<grid, block, 0, stream>>>(cond_data, count_data, numel, main_offset);
   // 2.1 alloc cumsum data for CoutBlock prefix

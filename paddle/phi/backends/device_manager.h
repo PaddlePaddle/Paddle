@@ -190,6 +190,8 @@ class PADDLE_API DeviceManager {
 
   static bool IsBFloat16Supported(const Place& place);
 
+  static bool IsDnnAvailable(const Place& place);
+
   static void* InitEigenDevice(const Place& place,
                                phi::stream::stream_t stream,
                                phi::Allocator* allocator);

@@ -47,10 +47,10 @@ std::vector<paddle::Tensor> relu_cuda_forward(const paddle::Tensor& x) {
   CHECK_GPU_INPUT(x);
   auto out = paddle::empty_like(x);
 
-  PADDLE_ENFORCE_EQ(
-      x.place() == paddle::DefaultGPUPlace(),
-      true,
-      common::errors::InvalidArgument("Input tensor `x` should be on GPU"));
+  PADDLE_ENFORCE_EQ(x.is_gpu(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Input tensor `x` must be a GPU Tensor."));
 
   int64_t numel = x.numel();
   int64_t block = 512;
@@ -72,10 +72,10 @@ std::vector<paddle::Tensor> relu_cuda_backward(const paddle::Tensor& x,
   CHECK_GPU_INPUT(grad_out);
   auto grad_x = paddle::empty_like(x);
 
-  PADDLE_ENFORCE_EQ(
-      x.place() == paddle::DefaultGPUPlace(),
-      true,
-      common::errors::InvalidArgument("Input tensor `x` should be on GPU"));
+  PADDLE_ENFORCE_EQ(x.is_gpu(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Input tensor `x` must be a GPU Tensor."));
 
   int64_t numel = out.numel();
   int64_t block = 512;

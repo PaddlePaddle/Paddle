@@ -163,7 +163,7 @@ def map_variables(
         new_dataclass = dataclass_from_dict(
             variable.get_py_type(),
             {
-                fd.name: map_func(variable.getattr(fd.name))
+                fd.name: _map_variable(variable.getattr(fd.name))
                 for fd in fields(variable.get_py_type())
             },
         )

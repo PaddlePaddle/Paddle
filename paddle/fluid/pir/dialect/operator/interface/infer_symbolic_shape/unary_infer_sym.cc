@@ -830,7 +830,8 @@ bool CropOpInferSymbolicShape(pir::Operation *op,
 
   for (size_t i = 0; i < in_shape.size(); ++i) {
     if (in_shape[i].isa<int64_t>()) {
-      if (x_shape[i].Get<int64_t>() == 0) {  // x is 0-size
+      if (x_shape[i].isa<int64_t>() &&
+          x_shape[i].Get<int64_t>() == 0) {  // x is 0-size
         out_dims.push_back(symbol::DimExpr(x_shape[i]));
       } else if (in_shape[i].Get<int64_t>() == -1) {
         out_dims.push_back(symbol::DimExpr(x_shape[i] - offsets[i]));
@@ -2203,7 +2204,7 @@ bool MatrixPowerOpInferSymbolicShape(
 
 bool MatrixRankOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  // 获取输入x的符号形状
+  // Get the symbolic shape of input x
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
@@ -2217,16 +2218,17 @@ bool MatrixRankOpInferSymbolicShape(
   };
   const auto &x_numel = GetProduct(x_shape);
 
-  // 确保输入x的维度大于等于2
+  // Ensure the rank of input x is at least 2
   PADDLE_ENFORCE_GE(x_shape.size(),
                     2,
                     common::errors::InvalidArgument(
                         "The dims of input must be greater than 2."));
 
-  // 获取Hermitian属性
+  // Get the Hermitian attribute
   bool hermitian = op->attribute<pir::BoolAttribute>("hermitian").data();
 
-  // 如果hermitian为true，确保输入x是方阵,0-size Tensor不需要此检查
+  // If Hermitian is true, ensure input x is a square matrix (skip 0-size
+  // Tensors)
   if (hermitian && x_numel != 0) {
     infer_context->AddEqualCstr(x_shape[x_shape.size() - 2],
                                 x_shape[x_shape.size() - 1]);
@@ -2239,7 +2241,7 @@ bool MatrixRankOpInferSymbolicShape(
     x_batch_dims.erase(x_batch_dims.end() - 2, x_batch_dims.end());
   }
 
-  // 推断输出的形状，设置批次维度
+  // Infer output shape and set batch dimensions
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{

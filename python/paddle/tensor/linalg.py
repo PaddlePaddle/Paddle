@@ -21,13 +21,14 @@ from typing_extensions import TypeAlias, overload
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import bmm, dot, matmul  # noqa: F401
+from paddle._C_ops import bmm, diagonal, dot, matmul  # noqa: F401
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc
 from paddle.tensor.math import broadcast_shape
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
+    param_two_alias,
     transpose_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -127,14 +128,14 @@ def transpose(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.randn([2, 3, 4])
             >>> x_transposed = paddle.transpose(x, perm=[1, 0, 2])
             >>> print(x_transposed.shape)
-            [3, 2, 4]
+            paddle.Size([3, 2, 4])
 
     """
     if in_dynamic_or_pir_mode():
@@ -216,18 +217,18 @@ def permute(input: Tensor, dims: Sequence[int]) -> Tensor:
         Tensor: A tensor with permuted dimensions.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.randn([2, 3, 4])
             >>> y = paddle.permute(x, (1, 0, 2))
             >>> print(y.shape)
-            [3, 2, 4]
+            paddle.Size([3, 2, 4])
 
             >>> y = x.permute([1, 0, 2])
             >>> print(y.shape)
-            [3, 2, 4]
+            paddle.Size([3, 2, 4])
     """
     return transpose(x=input, perm=dims)
 
@@ -250,13 +251,13 @@ def matrix_transpose(
         Tensor: A new tensor with the same shape as `x`, except that the last two dimensions are transposed.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.ones(shape=[2, 3, 5])
             >>> x_transposed = paddle.matrix_transpose(x)
             >>> print(x_transposed.shape)
-            [2, 5, 3]
+            paddle.Size([2, 5, 3])
     """
     return x.mT
 
@@ -1918,7 +1919,7 @@ def t(input: Tensor, name: str | None = None) -> Tensor:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example
 
             >>> import paddle
@@ -1937,13 +1938,12 @@ def t(input: Tensor, name: str | None = None) -> Tensor:
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.79000002, 0.83999997, 0.31999999])
             >>> print(paddle.t(x).shape)
-            [3]
+            paddle.Size([3])
 
             >>> # Example 3 (2-D tensor)
-            >>> x = paddle.to_tensor([[0.79, 0.84, 0.32],
-            ...                       [0.64, 0.14, 0.57]])
+            >>> x = paddle.to_tensor([[0.79, 0.84, 0.32], [0.64, 0.14, 0.57]])
             >>> print(x.shape)
-            [2, 3]
+            paddle.Size([2, 3])
             >>> out3 = paddle.t(x)
             >>> print(out3)
             Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1951,7 +1951,7 @@ def t(input: Tensor, name: str | None = None) -> Tensor:
              [0.83999997, 0.14000000],
              [0.31999999, 0.56999999]])
             >>> print(paddle.t(x).shape)
-            [3, 2]
+            paddle.Size([3, 2])
 
     """
     if len(input.shape) > 2:
@@ -3769,7 +3769,7 @@ def multi_dot(x: list[Tensor], name: str | None = None) -> Tensor:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3778,7 +3778,7 @@ def multi_dot(x: list[Tensor], name: str | None = None) -> Tensor:
             >>> B = paddle.rand([4, 5])
             >>> out = paddle.linalg.multi_dot([A, B])
             >>> print(out.shape)
-            [3, 5]
+            paddle.Size([3, 5])
 
             >>> # A * B * C
             >>> A = paddle.rand([10, 5])
@@ -3786,7 +3786,7 @@ def multi_dot(x: list[Tensor], name: str | None = None) -> Tensor:
             >>> C = paddle.rand([8, 7])
             >>> out = paddle.linalg.multi_dot([A, B, C])
             >>> print(out.shape)
-            [10, 7]
+            paddle.Size([10, 7])
 
     """
     if in_dynamic_or_pir_mode():
@@ -4178,8 +4178,14 @@ def _transpose_last_2dim(x):
     return x
 
 
+@param_two_alias(["x", "A"], ["y", "B"])
 def solve(
-    x: Tensor, y: Tensor, left: bool = True, name: str | None = None
+    x: Tensor,
+    y: Tensor,
+    left: bool = True,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
 
@@ -4199,12 +4205,13 @@ def solve(
 
     Args:
         x (Tensor): A square matrix or a batch of square matrices. Its shape should be ``[*, M, M]``, where ``*`` is zero or
-            more batch dimensions. Its data type should be float32 or float64.
+            more batch dimensions. Its data type should be float32 or float64. Alias: ``A``.
         y (Tensor): A vector/matrix or a batch of vectors/matrices. Its shape should be ``[*, M, K]``, where ``*`` is zero or
-            more batch dimensions. Its data type should be float32 or float64.
+            more batch dimensions. Its data type should be float32 or float64. Alias: ``B``.
         left (bool, optional): Whether to solve the system :math:`X * Out = Y` or :math:`Out * X = Y`. Default: True.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor: The solution of a square system of linear equations with a unique solution for input 'x' and 'y'.
@@ -4234,7 +4241,7 @@ def solve(
         y = _transpose_last_2dim(y)
 
     if in_dynamic_or_pir_mode():
-        out = _C_ops.solve(x, y)
+        ret = _C_ops.solve(x, y)
     else:
         inputs = {"X": [x], "Y": [y]}
         helper = LayerHelper("solve", **locals())
@@ -4247,8 +4254,10 @@ def solve(
         )
 
     if not left:
-        out = _transpose_last_2dim(out)
-    return out
+        ret = _transpose_last_2dim(ret)
+    if out is not None:
+        paddle.assign(ret, out)
+    return ret
 
 
 def triangular_solve(
@@ -4558,7 +4567,7 @@ def lstsq(
                 f"Only support valid driver is 'gels', 'gelss', 'gelsd', 'gelsy' or None for CPU inputs. But got {driver}"
             )
         driver = "gelsy" if driver is None else driver
-    elif "gpu" in device:
+    elif device.startswith('gpu'):
         if driver not in (None, "gels"):
             raise ValueError(
                 f"Only support valid driver is 'gels' or None for CUDA inputs. But got {driver}"
@@ -5774,131 +5783,3 @@ def cholesky_inverse(
     else:
         A = x @ x.T
     return paddle.linalg.inv(A)
-
-
-def diagonal(
-    x: Tensor,
-    offset: int = 0,
-    axis1: int = 0,
-    axis2: int = 1,
-    name: str | None = None,
-) -> Tensor:
-    """
-    Computes the diagonals of the input tensor x.
-
-    If ``x`` is 2D, returns the diagonal.
-    If ``x`` has larger dimensions, diagonals be taken from the 2D planes specified by axis1 and axis2.
-    By default, the 2D planes formed by the first and second axis of the input tensor x.
-
-    The argument ``offset`` determines where diagonals are taken from input tensor x:
-
-    - If offset = 0, it is the main diagonal.
-    - If offset > 0, it is above the main diagonal.
-    - If offset < 0, it is below the main diagonal.
-
-    Args:
-        x (Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be bool, int32,
-            int64, bfloat16, float16, float32, float64.
-        offset (int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
-        axis1 (int, optional): The first axis with respect to take diagonal. Default: 0.
-        axis2 (int, optional): The second axis with respect to take diagonal. Default: 1.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: a partial view of input tensor in specify two dimensions, the output data type is the same as input data type.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> paddle.seed(2023)
-            >>> x = paddle.rand([2, 2, 3],'float32')
-            >>> print(x)
-            Tensor(shape=[2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[0.86583614, 0.52014720, 0.25960937],
-              [0.90525323, 0.42400089, 0.40641287]],
-             [[0.97020894, 0.74437362, 0.51785129],
-              [0.73292869, 0.97786582, 0.04315904]]])
-
-            >>> out1 = paddle.diagonal(x)
-            >>> print(out1)
-            Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.86583614, 0.73292869],
-             [0.52014720, 0.97786582],
-             [0.25960937, 0.04315904]])
-
-            >>> out2 = paddle.diagonal(x, offset=0, axis1=2, axis2=1)
-            >>> print(out2)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.86583614, 0.42400089],
-             [0.97020894, 0.97786582]])
-
-            >>> out3 = paddle.diagonal(x, offset=1, axis1=0, axis2=1)
-            >>> print(out3)
-            Tensor(shape=[3, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.90525323],
-             [0.42400089],
-             [0.40641287]])
-
-            >>> out4 = paddle.diagonal(x, offset=0, axis1=1, axis2=2)
-            >>> print(out4)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.86583614, 0.42400089],
-             [0.97020894, 0.97786582]])
-
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.diagonal(x, offset, axis1, axis2)
-    else:
-
-        def __check_input(x, offset, axis1, axis2):
-            check_dtype(
-                x.dtype,
-                'Input',
-                [
-                    'bool',
-                    'int32',
-                    'int64',
-                    'float16',
-                    'uint16',
-                    'float32',
-                    'float64',
-                ],
-                'diagonal',
-            )
-
-            input_shape = list(x.shape)
-            assert len(input_shape) >= 2, (
-                "The x must be at least 2-dimensional, "
-                f"But received Input x's dimensional: {len(input_shape)}.\n"
-            )
-
-            axis1_ = axis1 if axis1 >= 0 else len(input_shape) + axis1
-            axis2_ = axis2 if axis2 >= 0 else len(input_shape) + axis2
-
-            assert axis1_ < len(input_shape), (
-                f"The argument axis1 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis1}).\n"
-            )
-
-            assert axis2_ < len(input_shape), (
-                f"The argument axis2 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis2}).\n"
-            )
-
-            assert axis1_ != axis2_, (
-                "axis1 and axis2 cannot be the same axis."
-                f"But received axis1 = {axis1}, axis2 = {axis2}\n"
-            )
-
-        __check_input(x, offset, axis1, axis2)
-        helper = LayerHelper('diagonal', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-        helper.append_op(
-            type='diagonal',
-            inputs={'Input': [x]},
-            attrs={'offset': offset, 'axis1': axis1, 'axis2': axis2},
-            outputs={'Out': [out]},
-        )
-
-        return out

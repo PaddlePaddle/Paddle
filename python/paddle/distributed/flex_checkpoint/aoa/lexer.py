@@ -88,12 +88,6 @@ class Lexer:
             mo = self.get_token(text, pos)
         return tokens
 
-    def apply_macros(self, expression):
-        expressions = [expression]
-        for macro in self.macros:
-            expressions = self.apply_macro(expressions, macro)
-        return expressions
-
     def apply_macro(self, expression, macro):
         if isinstance(expression, str):
             expression = [expression]
@@ -106,10 +100,24 @@ class Lexer:
                 new_expression.extend(results)
         return new_expression
 
-    def all_tokens(self, expressions):
-        tokens = []
+    def apply_single_macro_to_all(self, expressions, macro):
+        new_expressions = []
         for expr in expressions:
-            expanded_expressions = self.apply_macros(expr)
-            for e in expanded_expressions:
-                tokens.extend(self.tokenize(e))
+            results = macro(self.tokenize(expr), expr, self.context)
+            if isinstance(results, str):
+                new_expressions.append(results)
+            else:
+                new_expressions.extend(results)
+        return new_expressions
+
+    def all_tokens(self, expressions):
+        current_expressions = expressions
+        for macro in self.macros:
+            current_expressions = self.apply_single_macro_to_all(
+                current_expressions, macro
+            )
+
+        tokens = []
+        for expr in current_expressions:
+            tokens.extend(self.tokenize(expr))
         return tokens

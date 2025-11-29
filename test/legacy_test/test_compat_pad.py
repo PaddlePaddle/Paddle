@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.compat as F
+import paddle.compat.nn.functional as F
 
 
 class TestCompatPad(unittest.TestCase):
@@ -197,7 +197,7 @@ class TestCompatPad(unittest.TestCase):
         dummy_x = paddle.arange(3)
 
         wrong_api_used = (
-            "paddle.compat.pad() received unexpected keyword arguments 'name', 'x'. "
+            "paddle.compat.nn.functional.pad() received unexpected keyword arguments 'name', 'x'. "
             "\nDid you mean to use paddle.nn.functional.pad() instead?"
         )
         ndim_no_impl = "Input tensor dimension must be in [1-5] but got {x_dim}"

@@ -135,11 +135,7 @@ class SoftplusActivationFusePattern : public paddle::drr::DrrPatternBase {
       fused_attrs.emplace("fuse_beta", fuse_beta);
     } else if (act_type_ == paddle::dialect::LeakyRelu_Op::name() ||
                act_type_ == paddle::dialect::LeakyReluOp::name()) {
-      const auto &fuse_alpha = res.ComputeAttr(
-          [](const paddle::drr::MatchContext &match_ctx) -> double {
-            return static_cast<double>(match_ctx.Attr<float>("fuse_alpha"));
-          });
-      fused_attrs.emplace("fuse_alpha", fuse_alpha);
+      fused_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
     } else if (act_type_ == paddle::dialect::SwishOp::name()) {
       fused_attrs.emplace("fuse_alpha", res.DoubleAttr(1.0));
     } else if (act_type_ == paddle::dialect::Relu6Op::name()) {

@@ -299,7 +299,7 @@ class TestTensorMinlength(unittest.TestCase):
             if paddle.is_compiled_with_cuda():
                 config.enable_use_gpu(100, 0)
             elif is_custom_device():
-                config.enable_custom_device(get_device(), "custom_device")
+                config.enable_custom_device(get_device(), 0)
             else:
                 config.disable_gpu()
 

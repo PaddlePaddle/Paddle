@@ -83,6 +83,11 @@ bool DeviceInterface::IsBFloat16Supported(size_t dev_id) {
   return false;
 }
 
+bool DeviceInterface::IsDnnAvailable(size_t dev_id) {
+  VLOG(10) << Type() << " is dnn available: " << false;
+  return false;
+}
+
 void* DeviceInterface::InitEigenDevice(const Place& place,
                                        phi::stream::stream_t stream,
                                        phi::Allocator* allocator) {

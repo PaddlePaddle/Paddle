@@ -96,10 +96,8 @@ static phi::DataType TRT2FluidDataType(nvinfer1::DataType type) {
       return phi::DataType::FLOAT16;
     case nvinfer1::DataType::kINT8:
       return phi::DataType::INT8;
-#if IS_TRT_VERSION_GE(7000)
     case nvinfer1::DataType::kBOOL:
       return phi::DataType::BOOL;
-#endif
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
           "unknown fluid datatype in Fluid op converter"));

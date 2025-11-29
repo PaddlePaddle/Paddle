@@ -364,7 +364,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
                      const DenseTensor& out_grad,
                      const IntArray& paddings,
                      const std::string& mode,
-                     float pad_value UNUSED,
+                     double pad_value UNUSED,
                      const std::string& data_format,
                      DenseTensor* x_grad) {
   std::vector<int64_t> pads = paddings.GetData();

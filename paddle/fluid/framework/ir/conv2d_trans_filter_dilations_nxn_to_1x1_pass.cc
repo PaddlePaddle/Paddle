@@ -180,8 +180,7 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
           graph, "has_quant_info", "var_quant_scales", new_weights_scale);
     } else {
       VLOG(3) << "Transfilter only support float32/float16/int8 dtype of "
-                 "weights -- do "
-                 "nothing and break.";
+                 "weights -- do nothing and break.";
       return;
     }
 

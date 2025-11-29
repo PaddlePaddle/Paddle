@@ -297,8 +297,8 @@ void NaiveExecutor::MakeReusePlan(
 
 NaiveExecutor::~NaiveExecutor() {
 #ifdef PADDLE_WITH_DNNL
-  // Clear mkl-dnn cache,
-  // this is needed to have mkl-dnn unit tests working
+  // Clear one-dnn cache,
+  // this is needed to have one-dnn unit tests working
   platform::ClearONEDNNCache(place_, this);
 #endif
 }

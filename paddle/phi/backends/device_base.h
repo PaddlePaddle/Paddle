@@ -83,6 +83,8 @@ class DeviceInterface {  // Driver / Runtime
 
   virtual bool IsBFloat16Supported(size_t dev_id);
 
+  virtual bool IsDnnAvailable(size_t dev_id);
+
   virtual void* InitEigenDevice(const Place& place,
                                 phi::stream::stream_t stream,
                                 phi::Allocator* allocator);

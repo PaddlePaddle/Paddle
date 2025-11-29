@@ -133,6 +133,17 @@ jobs:
           fi
           '
 
+      - name: Check GPU Kernel approval
+        if: steps.check-bypass.outputs.can-skip != 'true'
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          bash ${work_dir}/tools/check_gpu_kernel_approval.sh;approval_error=$?
+          if [ "$approval_error" != 0 ];then
+            exit 6
+          fi
+          '
+
       - name: Terminate and delete the container
         if: always()
         run: |

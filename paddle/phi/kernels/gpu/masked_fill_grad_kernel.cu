@@ -42,7 +42,7 @@ __global__ void GPUMaskedFillXGradKernel(const T* out_grad,
                                          const int64_t input_len,
                                          const int64_t batch_size,
                                          T* x_grad) {
-  int64_t idx = (blockIdx.x * blockDim.x + threadIdx.x);
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
   if (idx >= (input_len / VecSize)) {
     return;
@@ -73,7 +73,7 @@ __global__ void GPUMaskedFillValueGradKernel(const T* out_grad,
                                              const int64_t input_len,
                                              const int64_t batch_size,
                                              T* value_grad) {
-  int64_t idx = (blockIdx.x * blockDim.x + threadIdx.x);
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
   if (idx >= (input_len / VecSize)) {
     return;
@@ -243,7 +243,7 @@ void GPUMaskedFillGrad(const phi::GPUContext& dev_ctx,
 
   int64_t input_len = out_grad.numel();
   int64_t mask_len = mask.numel();
-  int batch_size = input_len / mask_len;
+  int64_t batch_size = input_len / mask_len;
 
   int vec_size = 8;
   vec_size = std::min(phi::GetVectorizedSize(out_grad_data), vec_size);
@@ -275,14 +275,24 @@ void GPUMaskedFillGrad(const phi::GPUContext& dev_ctx,
                                           config);
     if (value_grad) {
       DenseTensor zero_tensor;
-      FullLikeKernel<T, phi::GPUContext>(
-          dev_ctx, out_grad, Scalar(T(0.0)), out_grad.dtype(), &zero_tensor);
+      phi::Full<T, phi::GPUContext>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(out_grad.dims())),
+          T(0.0),
+          &zero_tensor);
       DenseTensor value_grad_tensor;
       value_grad_tensor.set_meta(out_grad.meta());
       WhereKernel<T, phi::GPUContext>(
           dev_ctx, mask, out_grad, zero_tensor, &value_grad_tensor);
-      SumKernel<T, phi::GPUContext>(
-          dev_ctx, value_grad_tensor, {1}, out_grad.dtype(), false, value_grad);
+      std::vector<int> v_dims(value_grad_tensor.dims().size());
+      std::iota(v_dims.begin(), v_dims.end(), 0);
+      IntArray v_axis(v_dims);
+      SumKernel<T, phi::GPUContext>(dev_ctx,
+                                    value_grad_tensor,
+                                    v_axis,
+                                    value_grad->dtype(),
+                                    false,
+                                    value_grad);
     }
 
   } else {

@@ -40,15 +40,6 @@
   CUDA_CHECK(cudaLaunchKernelEx(config, kernel, ##__VA_ARGS__))
 #endif
 
-#ifndef SET_SHARED_MEMORY_FOR_TMA
-#define SET_SHARED_MEMORY_FOR_TMA(kernel)                               \
-  EP_HOST_ASSERT(                                                       \
-      cudaFuncSetAttribute(kernel,                                      \
-                           cudaFuncAttributeMaxDynamicSharedMemorySize, \
-                           smem_size) == cudaSuccess);                  \
-  cfg.dynamicSmemBytes = smem_size;
-#endif
-
 #define SWITCH_RANKS(case_macro)                     \
   switch (num_ranks) {                               \
     case 2:                                          \
@@ -143,6 +134,17 @@
     __VA_ARGS__                                    \
   } else {                                         \
     EP_HOST_ASSERT(false && "Unsupported hidden"); \
+  }
+
+#define DISPATCH_NUM_PER_CHANNEL(num_per_channel, kNumPerChannels, ...) \
+  if (num_per_channel == -1) {                                          \
+    constexpr int kNumPerChannels = -1;                                 \
+    __VA_ARGS__                                                         \
+  } else if (num_per_channel == 128) {                                  \
+    constexpr int kNumPerChannels = 128;                                \
+    __VA_ARGS__                                                         \
+  } else {                                                              \
+    EP_HOST_ASSERT(false && "Unsupported num_per_channel");             \
   }
 
 #define DISPATCH_NUM_TOPK(num_topk, kTopk, ...)      \

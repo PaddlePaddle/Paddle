@@ -38,8 +38,7 @@ TEST_API ::DLManagedTensor* ToDLPack(const phi::DenseTensor& src,
                                      uint64_t flags = 0);
 ::DLManagedTensorVersioned* ToDLPackVersioned(const phi::DenseTensor& src,
                                               uint64_t flags = 0);
-void ToDLPackNonOwningImpl(const phi::DenseTensor& tensor,
-                           ::DLTensor& out);  // NOLINT
+void ToDLPackNonOwningImpl(const phi::DenseTensor& tensor, ::DLTensor* out);
 TEST_API phi::DenseTensor FromDLPack(::DLManagedTensor* src);
 phi::DenseTensor FromDLPackVersioned(::DLManagedTensorVersioned* src);
 

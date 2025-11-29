@@ -462,6 +462,21 @@ void FlashAttnKernel(const Context& dev_ctx,
                     common::errors::InvalidArgument(
                         "flash_attn receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(k.dims().size(),
+                    4,
+                    common::errors::InvalidArgument(
+                        "flash_attn receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(v.dims().size(),
+                    4,
+                    common::errors::InvalidArgument(
+                        "flash_attn receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(out->dims().size(),
+                    4,
+                    common::errors::InvalidArgument(
+                        "flash_attn receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
 
   const int64_t batch_size = dims[0];
   const int64_t seqlen_q = dims[1];

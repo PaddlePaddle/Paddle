@@ -193,7 +193,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& dev_ctx,
 
   int iwo_groups = groups;
   int c_groups = 1;
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1)
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA)
   iwo_groups = 1;
   c_groups = groups;
   groups = 1;
@@ -648,7 +648,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
 
   int iwo_group = groups;
   int c_group = 1;
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1)
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA)
   iwo_group = 1;
   c_group = groups;
   groups = 1;

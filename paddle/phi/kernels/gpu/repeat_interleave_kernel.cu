@@ -37,7 +37,8 @@ __global__ void index_select_cuda_kernel(const T* input,
                                          int64_t stride,
                                          int64_t size,
                                          int64_t delta) {
-  const int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  const int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (idx >= N) {
     return;
   }
@@ -198,14 +199,15 @@ __global__ void RepeatInterleaveVecKernel(const T* __restrict__ input,
                                           const int repeats) {
   using VecType = kps::details::VectorType<T, VecSize>;
 
-  const int64_t tid = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  const int64_t tid =
+      (static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x) * VecSize;
   if (tid >= numel) return;
 
   VecType* vec_output = reinterpret_cast<VecType*>(output);
   const VecType* vec_input = reinterpret_cast<const VecType*>(input);
 
 #pragma unroll
-  for (int v = 0; v < VecSize && tid + v < numel; v++) {
+  for (int64_t v = 0; v < VecSize && tid + v < numel; v++) {
     const int64_t idx = tid + v;
     const int64_t inner_idx = idx % inner_size;
     const int64_t temp = idx / inner_size;

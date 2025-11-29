@@ -52,7 +52,6 @@ class TestStride(unittest.TestCase):
         y = x_transposed2 + 2
         y_np = x_np_transposed2 + 2
         np.testing.assert_allclose(y.numpy(), y_np)
-        self.assertTrue(y.is_contiguous())
         self.assertFalse(x._is_shared_buffer_with(y))
 
     def call_diagonal(self):

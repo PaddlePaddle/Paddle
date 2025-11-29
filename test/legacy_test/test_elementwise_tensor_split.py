@@ -32,7 +32,7 @@ class TestElementwiseOp(unittest.TestCase):
         if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
 
-        gpu_info = paddle.device.cuda.get_device_properties()
+        gpu_info = paddle.device.get_device_properties()
 
         gpu_name = gpu_info.name
         try:

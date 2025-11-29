@@ -30,7 +30,7 @@ from paddle.tensorrt.register import converter_registry
 from paddle.tensorrt.util import get_trt_version_list
 
 
-@converter_registry.register("pd_op.dropout", trt_version="8.x")
+@converter_registry.register("pd_op.dropout")
 def dropout_converter(network, paddle_op, inputs):
     input_x = inputs[0]
     dropout_prob = get_input_constant_value(paddle_op, inputs, 2)[0]

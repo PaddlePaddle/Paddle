@@ -163,6 +163,8 @@ class Dot {
     }
   }
   bool ContainsNode(const std::string& id) const { return nodes_.count(id); }
+  // If the graph has no nodes, then it is empty graph
+  bool IsEmpty() const { return nodes_.empty(); }
 
   void AddEdge(const std::string& source,
                const std::string& target,
@@ -226,6 +228,15 @@ const std::vector<Dot::Attr> teal_box_attrs({
     Dot::Attr("fontname", "Arial"),             //
     Dot::Attr("color", "#148b97"),              //
     Dot::Attr("fontcolor", "#ffffff"),          //
+});
+const std::vector<Dot::Attr> orange_box_attrs({
+    Dot::Attr("style", "rounded,filled,bold"),  //
+    Dot::Attr("shape", "box"),                  //
+    Dot::Attr("color", "#FFE4B5"),              //
+    Dot::Attr("fontcolor", "#ffffff"),          //
+    Dot::Attr("width", "1.3"),                  //
+    Dot::Attr("height", "0.84"),                //
+    Dot::Attr("fontname", "Arial"),             //
 });
 
 }  // namespace analysis

@@ -104,7 +104,7 @@ class CublasLtHelper {
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
 
-#if CUDA_VERSION >= 11020
+#if defined(PADDLE_WITH_CUDA)
 
     int algoId = 21;
     int swizzle = 0;
@@ -189,7 +189,7 @@ class CublasLtHelper {
                                  C_desc_,
                                  C_dev,
                                  C_desc_,
-#if CUDA_VERSION >= 11020
+#if defined(PADDLE_WITH_CUDA)
                                  &algo_,
                                  workspace,
                                  workspace_size_,
@@ -249,9 +249,14 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
                        const phi::DenseTensor& mat_b,
                        phi::DenseTensor* workspace,
                        phi::DenseTensor* out) {
-  int m = mat_a.dims()[0];
-  int k = mat_a.dims()[1];
-  int n = mat_b.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int
+  int64_t m = mat_a.dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int
+  int64_t k = mat_a.dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int
+  int64_t n = mat_b.dims()[1];
 
   // init data structure
   cublasStatus_t status;

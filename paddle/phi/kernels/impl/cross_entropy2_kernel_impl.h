@@ -50,7 +50,9 @@ void CrossEntropyOpKernel(const Context& dev_ctx,
     y_2d = phi::ReshapeToMatrix(*y, rank - 1);
   }
 
-  int axis_dim = x.dims()[rank - 1];
+  // TODO(large-tensor): downstream functors may still use int
+  int64_t axis_dim = x.dims()[rank - 1];
+
   phi::funcs::CrossEntropyFunctor<Context, T>()(
       dev_ctx, &y_2d, &x_2d, &labels_2d, soft_label, ignore_index, axis_dim);
 }

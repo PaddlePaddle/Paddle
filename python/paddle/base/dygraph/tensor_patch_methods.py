@@ -1256,7 +1256,9 @@ def monkey_patch_tensor():
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
-        Convert the current DenseTensor to SparseTensor in COO format.
+        Convert the current DenseTensor to SparseTensor in COO format. When the input is already a SparseCooTensor, this function will directly return
+        the input itself without performing any conversion.
+
 
         Returns:
             Tensor: A SparseCooTensor
@@ -1274,6 +1276,8 @@ def monkey_patch_tensor():
                                 [1, 3, 2, 3]],
                        values=[1., 2., 3., 4.])
         """
+        if self.is_sparse_coo():
+            return self
 
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
 
@@ -1368,6 +1372,32 @@ def monkey_patch_tensor():
             return DLDeviceType.kDLOneAPI, place.get_device_id()
         else:
             raise ValueError(f"Unsupported tensor place: {place}")
+
+    @property
+    def device(self: Tensor) -> str:
+        """
+        Return the device descriptor string indicating where the tensor is located.
+
+        Returns:
+            str: A string representing the device where the tensor resides.
+                 Possible formats include:
+                 - 'cpu' for CPU tensors
+                 - 'cuda:{device_id}' for GPU tensors (e.g., 'cuda:0')
+                 - 'xpu:{device_id}' for XPU tensors (e.g., 'xpu:0')
+                 - '{device_type}:{device_id}' for custom device tensors
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> # CPU tensor
+                >>> cpu_tensor = paddle.to_tensor([1, 2, 3]).to("cpu")
+                >>> print(cpu_tensor.device)
+                'cpu'
+        """
+        place = self.place
+        return paddle.device(place)
 
     @property
     def __cuda_array_interface__(self):
@@ -1587,6 +1617,7 @@ def monkey_patch_tensor():
         ("get_device", get_device),
         ("__tvm_ffi_env_stream__", __tvm_ffi_env_stream__),
         ("__c_dlpack_exchange_api__", core.dlpack_exchange_api_ptr()),
+        ("device", device),
     ):
         setattr(core.eager.Tensor, method_name, method)
 

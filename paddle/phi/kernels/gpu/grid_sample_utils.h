@@ -16,6 +16,9 @@
 
 #include <limits.h>
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
 namespace phi {
 
 enum class Mode {
@@ -42,7 +45,22 @@ static __forceinline__ __device__ bool InBounds3D(
 }
 
 inline bool cudnnIsAvailable() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  // Get all custom device types
+  auto custom_device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+
+  // Use the first custom device type
+  if (!custom_device_types.empty()) {
+    const std::string& device_type = custom_device_types[0];
+    // Get current device ID for this device type
+    int device_id = phi::DeviceManager::GetDevice(device_type);
+    // Create place for the current device
+    phi::Place place(phi::CustomPlace(device_type, device_id));
+    // Check if this device has DNN support
+    return phi::DeviceManager::IsDnnAvailable(place);
+  }
+  return false;
+#elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // cuDNN/MIOpen version > 0 means DNN lib loaded; require v7+ for sampler
   return phi::backends::gpu::DnnVersion() >= 7000;
 #else

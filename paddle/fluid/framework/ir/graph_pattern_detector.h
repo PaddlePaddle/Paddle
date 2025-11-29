@@ -374,8 +374,8 @@ class GraphPatternDetector {
   void ValidateByNodeRole(std::vector<subgraph_t>* subgraphs);
 
 #ifdef PADDLE_WITH_TESTING
-  FRIEND_TEST(GraphPatternDetecter, MarkPDNodesInGraph);
-  FRIEND_TEST(GraphPatternDetecter, DetectPatterns);
+  FRIEND_TEST(GraphPatternDetector, MarkPDNodesInGraph);
+  FRIEND_TEST(GraphPatternDetector, DetectPatterns);
 #endif
 
  private:
@@ -2637,9 +2637,9 @@ struct BNAddActConvGrad : public PatternBase {
   PATTERN_DECL_NODE(d_bn2_bias);
 };
 
-struct SparseConvOptimPartern : public PatternBase {
-  SparseConvOptimPartern(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "sparse_conv_optim_partern") {}
+struct SparseConvOptimPattern : public PatternBase {
+  SparseConvOptimPattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "sparse_conv_optim_pattern") {}
 
   void operator()();
   PATTERN_DECL_NODE(sp_conv3d_x);

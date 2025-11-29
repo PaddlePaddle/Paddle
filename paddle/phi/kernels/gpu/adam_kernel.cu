@@ -53,7 +53,9 @@ __global__ void AdamKernelREG(MT beta1,
   MT beta1_pow = beta1_pow_;
   MT beta2_pow = beta2_pow_;
 
-  int64_t id = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
 
   for (; id < ndim; id += gridDim.x * blockDim.x) {
     MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
@@ -111,7 +113,9 @@ __global__ void AdamKernelMEM(MT beta1,
   MT beta1_pow = *beta1_pow_;
   MT beta2_pow = *beta2_pow_;
 
-  int64_t id = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
 
   for (; id < ndim; id += gridDim.x * blockDim.x) {
     MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
@@ -255,7 +259,8 @@ PADDLE_API void AdamDenseKernel(
 
   // update param and moment
   int threads = 512;
-  int blocks = (param.numel() + threads - 1) / threads;
+  int64_t blocks_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int blocks = std::min((param.numel() + threads - 1) / threads, blocks_max);
 
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
     // Compute with betapow in REG
@@ -416,7 +421,9 @@ void MergedAdamKernel(
 
     // update param and moment
     int threads = 512;
-    int blocks = (param[idx]->numel() + threads - 1) / threads;
+    int64_t blocks_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    int blocks =
+        std::min((param[idx]->numel() + threads - 1) / threads, blocks_max);
 
     const auto grad_type = grad[idx]->dtype();
     if (beta1_pow[idx]->place() == CPUPlace() &&

@@ -74,15 +74,9 @@ PoolPlugin *PoolPlugin::clone() const TRT_NOEXCEPT {
 
 int PoolPlugin::enqueue(int batchSize,
                         const void *const *inputs,
-#if IS_TRT_VERSION_LT(8000)
-                        void **outputs,
-                        void *workspace,
-                        cudaStream_t stream) TRT_NOEXCEPT {
-#else
                         void *const *outputs,
                         void *workspace,
                         cudaStream_t stream) TRT_NOEXCEPT {
-#endif
   auto const &input_dims = this->getInputDims(0);
   int input_size = 0;
   float const *idata = reinterpret_cast<float const *>(inputs[0]);

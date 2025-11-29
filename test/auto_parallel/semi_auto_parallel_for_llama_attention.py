@@ -147,21 +147,21 @@ class TestLlamaAttentionForSemiAutoParallel:
             np1, np2, rtol=rtol, atol=atol, verbose=verbose
         )
 
-    def check_dim_mapping(self, output, expected_dim_mapping):
-        assert output.dist_attr.dims_mapping == expected_dim_mapping, (
-            f"{output.dist_attr.dims_mapping}  vs {expected_dim_mapping}"
+    def check_placements(self, output, expected_placements):
+        assert output.placements == expected_placements, (
+            f"{output.placements}  vs {expected_placements}"
         )
 
-    def get_shard_check_hook(self, dims_mapping, check_input=False):
+    def get_shard_check_hook(self, placements, check_input=False):
         def check_func(layer, input, output=None):
             if check_input:
                 if isinstance(input, tuple):
                     input = input[0]
-                self.check_dim_mapping(input, dims_mapping)
+                self.check_placements(input, placements)
             else:
                 if isinstance(output, tuple):
                     output = output[0]
-                self.check_dim_mapping(output, dims_mapping)
+                self.check_placements(output, placements)
 
         return check_func
 
@@ -169,10 +169,10 @@ class TestLlamaAttentionForSemiAutoParallel:
         self.set_random_seed(self._seed)
 
         dp_layer = LlamaAttention("dp_demo_weight")
-        qkv_proj_pre_hook = self.get_shard_check_hook([0, -1, -1], True)
-        qkv_proj_post_hook = self.get_shard_check_hook([0, -1, -1])
-        o_proj_pre_hook = self.get_shard_check_hook([0, -1, -1], True)
-        o_proj_post_hook = self.get_shard_check_hook([0, -1, -1])
+        qkv_proj_pre_hook = self.get_shard_check_hook([Shard(0)], True)
+        qkv_proj_post_hook = self.get_shard_check_hook([Shard(0)])
+        o_proj_pre_hook = self.get_shard_check_hook([Shard(0)], True)
+        o_proj_post_hook = self.get_shard_check_hook([Shard(0)])
 
         dp_layer.qkv_proj.register_forward_pre_hook(qkv_proj_pre_hook)
         dp_layer.qkv_proj.register_forward_post_hook(qkv_proj_post_hook)
@@ -196,9 +196,9 @@ class TestLlamaAttentionForSemiAutoParallel:
             LlamaAttention("mp_demo_weight"), self._mesh, self.mp_shard_fn
         )
 
-        qkv_proj_post_hook = self.get_shard_check_hook([-1, -1, 0])
-        o_proj_pre_hook = self.get_shard_check_hook([-1, -1, 0], True)
-        o_proj_post_hook = self.get_shard_check_hook([-1, -1, -1])
+        qkv_proj_post_hook = self.get_shard_check_hook([Shard(2)])
+        o_proj_pre_hook = self.get_shard_check_hook([Shard(2)], True)
+        o_proj_post_hook = self.get_shard_check_hook([Replicate()])
 
         mp_layer.qkv_proj.register_forward_post_hook(qkv_proj_post_hook)
         mp_layer.o_proj.register_forward_pre_hook(o_proj_pre_hook)
@@ -218,9 +218,9 @@ class TestLlamaAttentionForSemiAutoParallel:
             LlamaAttention("mp_demo_weight"), dp_mp_mesh, self.dp_mp_shard_fn
         )
 
-        qkv_proj_post_hook = self.get_shard_check_hook([0, -1, 1])
-        o_proj_pre_hook = self.get_shard_check_hook([0, -1, 1], True)
-        o_proj_post_hook = self.get_shard_check_hook([0, -1, -1])
+        qkv_proj_post_hook = self.get_shard_check_hook([Shard(0), Shard(2)])
+        o_proj_pre_hook = self.get_shard_check_hook([Shard(0), Shard(2)], True)
+        o_proj_post_hook = self.get_shard_check_hook([Shard(0), Replicate()])
 
         dp_mp_layer.qkv_proj.register_forward_post_hook(qkv_proj_post_hook)
         dp_mp_layer.o_proj.register_forward_pre_hook(o_proj_pre_hook)

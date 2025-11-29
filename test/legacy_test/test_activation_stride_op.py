@@ -280,7 +280,7 @@ create_test_act_stride_class(
 
 
 def ref_log_sigmoid(x):
-    out = np.log(1 / (1 + np.exp(-x)))
+    out = -np.log1p(np.exp(-x))
     return out
 
 

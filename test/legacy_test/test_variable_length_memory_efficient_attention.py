@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-import re
 import unittest
 
 import numpy as np
@@ -26,23 +24,6 @@ from paddle.incubate.nn.functional import (
 )
 
 paddle.seed(2023)
-
-
-def get_cuda_version():
-    if paddle.is_compiled_with_cuda():
-        result = os.popen("nvcc --version").read()
-        regex = r'release (\S+),'
-        match = re.search(regex, result)
-        if match:
-            num = str(match.group(1))
-            integer, decimal = num.split('.')
-            return int(integer) * 1000 + int(float(decimal) * 10)
-        else:
-            return -1
-    elif is_custom_device():
-        return 13000
-    else:
-        return -1
 
 
 def get_cuda_arch():
@@ -97,8 +78,8 @@ def naive_attention_impl(query, key, value, mask, scale):
 
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or get_cuda_version() < 11020,
-    "core is not compiled with CUDA and cuda version need larger than or equal to 11.2",
+    or core.is_compiled_with_rocm(),
+    "core is not compiled with CUDA",
 )
 class TestMemEffAttentionVariableAPI(unittest.TestCase):
     def setUp(self):
@@ -218,9 +199,9 @@ class TestMemEffAPIVariableDtypeFP16(TestMemEffAttentionVariableAPI):
 
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or get_cuda_version() < 11020
+    or core.is_compiled_with_rocm()
     or get_cuda_arch() < 8,
-    "MemEffAPIVariableDtypeBF16 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "MemEffAPIVariableDtypeBF16 requires CUDA_ARCH >= 8",
 )
 class TestMemEffAPIVariableDtypeBF16(TestMemEffAttentionVariableAPI):
     def setUp(self):
@@ -264,8 +245,8 @@ class TestMemEffAPIVariableDtypeBF16(TestMemEffAttentionVariableAPI):
 
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or get_cuda_version() < 11020,
-    "core is not compiled with CUDA and cuda version need larger than or equal to 11.2",
+    or core.is_compiled_with_rocm(),
+    "core is not compiled with CUDA",
 )
 class TestMemEffAPIVariableDtypeFP16Static(unittest.TestCase):
     def setUp(self):
@@ -359,8 +340,8 @@ class TestMemEffAPIVariableDtypeFP16Static(unittest.TestCase):
 
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or get_cuda_version() < 11020,
-    "core is not compiled with CUDA and cuda version need larger than or equal to 11.2",
+    or core.is_compiled_with_rocm(),
+    "core is not compiled with CUDA",
 )
 class TestMemEffAttentionVariableAPI_ZeroSize(unittest.TestCase):
     def setUp(self):

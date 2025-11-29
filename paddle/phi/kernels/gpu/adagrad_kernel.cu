@@ -35,11 +35,13 @@ __global__ void AdagradGPUKernel(const T* param,
                                  T* param_out,
                                  MT* moment_out,
                                  MT* master_param_out,
-                                 int num) {
-  auto idx = blockDim.x * blockIdx.x + threadIdx.x;
+                                 int64_t num) {
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   MT lr_data = static_cast<MT>(lr[0]);
 
-  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
+  for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
     MT grad_data = static_cast<MT>(grad[i]);
     MT moment_out_data = static_cast<MT>(moment[i]) + grad_data * grad_data;
     moment_out[i] = static_cast<MT>(moment_out_data);
@@ -80,7 +82,7 @@ struct DenseAdagradFunctor<phi::GPUContext, T> {
 
     MPDType epsilon = static_cast<MPDType>(epsilon_t);
 
-    int numel = param_t.numel();
+    int64_t numel = param_t.numel();
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
     int grid = config.block_per_grid.x;
     int block = config.thread_per_block.x;
@@ -122,7 +124,7 @@ __global__ void MergeGradKernel(const T* grad,
 
   grad += ty * row_numel;
   grad_merge += grad_merge_idx * row_numel;
-  for (int index = tid; index < row_numel; index += block_size) {
+  for (int64_t index = tid; index < row_numel; index += block_size) {
     phi::CudaAtomicAdd(grad_merge + index, grad[index]);
   }
 }
@@ -142,7 +144,7 @@ __global__ void SparseAdagradFunctorKernel(const T* grad,
   param += rows[ty] * row_numel;
   moment += rows[ty] * row_numel;
 
-  for (int index = tid; index < row_numel; index += block_size) {
+  for (int64_t index = tid; index < row_numel; index += block_size) {
     // Since index in rows of SelectedRows can be duplicate, we have to use
     // Atomic Operation to avoid concurrent write error.
     phi::CudaAtomicAdd(param + index,

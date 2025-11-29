@@ -32,6 +32,7 @@ namespace cub = hipcub;
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/class_center_sample_kernel.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
@@ -332,16 +333,9 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
 
   auto place = dev_ctx.GetPlace();
 
-  int batch_size = label.numel();
-  PADDLE_ENFORCE_LE(
-      label.numel(),
-      std::numeric_limits<int>::max(),
-      errors::InvalidArgument(
-          "The total number of elements for 'label' should be less than "
-          "%d, "
-          "but received %d",
-          std::numeric_limits<int>::max(),
-          label.numel()));
+  int64_t batch_size = label.numel();
+  // TODO(large-tensor): downstream functors may still use int
+  PADDLE_ENFORCE_LE_INT_MAX(label.numel(), "label.numel()");
   // Algorithm:
   // We first randomly generate a value in [0, num_classes) on each position
   // in a array(shape[num_classes]). Then, we mark the element as negative
@@ -377,7 +371,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
 #endif
 
   // step 2: Determine temporary device storage requirements
-  int num_buffer_ele = std::max(batch_size, num_classes);
+  int num_buffer_ele = std::max(static_cast<int>(batch_size), num_classes);
   size_t cub_sort_temp_store_size = 0;
   PADDLE_ENFORCE_GPU_SUCCESS(
       (cub::DeviceRadixSort::SortPairs<T, T>(nullptr,

@@ -105,16 +105,10 @@ class PluginTensorRT : public nvinfer1::IPluginV2 {
   // Find the workspace size required by the layer
   size_t getWorkspaceSize(int) const TRT_NOEXCEPT override { return 0; }
 
-// Execute the layer
-#if IS_TRT_VERSION_LT(8000)
-  virtual int enqueue(int batch_size,
-                      const void* const* inputs,
-                      void** outputs,
-#else
+  // Execute the layer
   virtual int enqueue(int batch_size,
                       const void* const* inputs,
                       void* const* outputs,
-#endif
                       void* workspace,
                       cudaStream_t stream) TRT_NOEXCEPT = 0;
 
@@ -229,16 +223,10 @@ class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
   // Find the workspace size required by the layer
   size_t getWorkspaceSize(int) const TRT_NOEXCEPT override { return 0; }
 
-// Execute the layer
-#if IS_TRT_VERSION_LT(8000)
-  virtual int enqueue(int batch_size,
-                      const void* const* inputs,
-                      void** outputs,
-#else
+  // Execute the layer
   virtual int enqueue(int batch_size,
                       const void* const* inputs,
                       void* const* outputs,
-#endif
                       void* workspace,
                       cudaStream_t stream) TRT_NOEXCEPT = 0;
 

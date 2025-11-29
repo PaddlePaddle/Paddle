@@ -56,8 +56,8 @@ inline bool IsComplexDtype(const DataType& type) {
   return (type == DataType::COMPLEX64 || type == DataType::COMPLEX128);
 }
 
-template <typename DeviceContext, typename T>
-inline void GetResidualsTensor(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+inline void GetResidualsTensor(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
                                const std::string& driver,
@@ -66,9 +66,12 @@ inline void GetResidualsTensor(const DeviceContext& dev_ctx,
                                DenseTensor* rank) {
   auto x_dims = x.dims();
   int dim_size = x_dims.size();
-  int m = x_dims[dim_size - 2];
-  int n = x_dims[dim_size - 1];
+  int64_t m = x_dims[dim_size - 2];
+  int64_t n = x_dims[dim_size - 1];
 
+  // Note(zrr1999): Although m and n are declared as int64_t, the rank tensor
+  // stores int values (see rank->data<int>() usage below), so effectively these
+  // dimensions are limited to int range in the current implementation.
   if (m > n && driver != "gelsy") {
     bool compute_residuals = true;
     if ((driver == "gelss" || driver == "gelsd") && rank->numel() != 0) {
@@ -91,21 +94,21 @@ inline void GetResidualsTensor(const DeviceContext& dev_ctx,
 
       auto sum_tensor = phi::Sum<T>(
           dev_ctx, pow_tensor, phi::IntArray({-2}), pow_tensor.dtype(), false);
-      phi::Copy<DeviceContext>(
+      phi::Copy<Context>(
           dev_ctx, sum_tensor, dev_ctx.GetPlace(), true, residuals);
       return;
     }
   }
 
   IntArray empty_shape({0});
-  DenseTensor empty_tensor = phi::Empty<T, DeviceContext>(dev_ctx, empty_shape);
-  phi::Copy<DeviceContext>(
+  DenseTensor empty_tensor = phi::Empty<T, Context>(dev_ctx, empty_shape);
+  phi::Copy<Context>(
       dev_ctx, empty_tensor, dev_ctx.GetPlace(), true, residuals);
 }
 
 #ifdef PADDLE_WITH_HIP
-template <typename DeviceContext, typename T>
-inline void BatchedOrmqr(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+inline void BatchedOrmqr(const Context& dev_ctx,
                          bool left,
                          bool transpose,
                          int batch_size,
@@ -162,8 +165,8 @@ inline void BatchedOrmqr(const DeviceContext& dev_ctx,
 FUNC_WITH_TYPES(ORMQR_BATCH_INSTANCE);
 #endif
 #if defined(PADDLE_WITH_CUDA)
-template <typename DeviceContext, typename T>
-inline void BatchedOrmqr(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+inline void BatchedOrmqr(const Context& dev_ctx,
                          bool left,
                          bool transpose,
                          int batch_size,

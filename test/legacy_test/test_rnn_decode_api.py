@@ -16,7 +16,7 @@ import random
 import unittest
 
 import numpy as np
-from op_test import is_custom_device
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import Model, base, nn, set_device
@@ -337,11 +337,10 @@ class ModuleApiTest(unittest.TestCase):
                 )
 
     def check_output(self):
-        devices = (
-            ["CPU", "GPU"]
-            if (base.is_compiled_with_cuda() or is_custom_device())
-            else ["CPU"]
-        )
+        devices = ["CPU"]
+        if base.is_compiled_with_cuda() or is_custom_device():
+            devices.append(get_device_place())
+
         for device in devices:
             place = set_device(device)
             self.check_output_with_place(place)

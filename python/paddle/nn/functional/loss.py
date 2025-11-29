@@ -494,6 +494,7 @@ def edit_distance(
     input_length: Tensor | None = None,
     label_length: Tensor | None = None,
 ) -> tuple[Tensor, Tensor]:
+    # typos: off
     """
     This op computes the edit distances, also called Levenshtein distance, between a batch of
     hypothesis strings and their references. It measures how dissimilar two strings are by counting
@@ -564,6 +565,7 @@ def edit_distance(
                      [0.25000000]])
 
     """
+    # typos: on
 
     helper = LayerHelper("edit_distance", **locals())
 
@@ -1728,7 +1730,7 @@ def kl_div(
         Tensor: The KL divergence loss. The data type is same as input tensor
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1744,22 +1746,22 @@ def kl_div(
             >>> # 'batchmean' reduction, loss shape will be [], who is 0-D Tensor
             >>> pred_loss = F.kl_div(x, target, reduction='batchmean')
             >>> print(pred_loss.shape)
-            []
+            paddle.Size([])
 
             >>> # 'mean' reduction, loss shape will be [], who is 0-D Tensor
             >>> pred_loss = F.kl_div(x, target, reduction='mean')
             >>> print(pred_loss.shape)
-            []
+            paddle.Size([])
 
             >>> # 'sum' reduction, loss shape will be [], who is 0-D Tensor
             >>> pred_loss = F.kl_div(x, target, reduction='sum')
             >>> print(pred_loss.shape)
-            []
+            paddle.Size([])
 
             >>> # 'none' reduction, loss shape is same with input shape
             >>> pred_loss = F.kl_div(x, target, reduction='none')
             >>> print(pred_loss.shape)
-            [5, 20]
+            paddle.Size([5, 20])
 
             >>> # if label is in the log space, set log_target = True
             >>> target = paddle.uniform(shape, min=0, max=10).astype('float32')
@@ -1911,6 +1913,7 @@ def ctc_loss(
     blank: int = 0,
     reduction: _ReduceMode = 'mean',
     norm_by_times: bool = False,
+    zero_infinity: bool = False,
 ) -> Tensor:
     """
 
@@ -1927,6 +1930,7 @@ def ctc_loss(
         blank (int, optional): The blank label index of Connectionist Temporal Classification (CTC) loss, which is in the half-opened interval [0, num_classes + 1). The data type must be int32. Default: 0.
         reduction (str, optional): Indicate how to average the loss, the candidates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default: ``'mean'``.
         norm_by_times (bool, optional): Whether to normalize the gradients by the number of time-step, which is also the sequence's length. There is no need to normalize the gradients if reduction mode is 'mean'. Default: False.
+        zero_infinity (bool, optional): If True, set infinite loss to zero. Default: False.
 
     Returns:
         Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is []. Data type is the same as ``log_probs``.
@@ -2041,8 +2045,17 @@ def ctc_loss(
     loss_out = warpctc(
         log_probs, labels, blank, norm_by_times, input_lengths, label_lengths
     )
-
     loss_out = paddle.squeeze(loss_out, [-1])
+
+    if zero_infinity:
+        inf_mask = paddle.isinf(loss_out)
+        zero_value = paddle.zeros_like(loss_out)
+        loss_out = paddle.where(
+            condition=inf_mask,
+            x=zero_value,
+            y=loss_out,
+        )
+
     assert reduction in ['mean', 'sum', 'none']
     if reduction == 'mean':
         loss_out = paddle.mean(loss_out / label_lengths.astype(loss_out.dtype))

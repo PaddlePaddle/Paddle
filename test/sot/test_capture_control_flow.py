@@ -20,6 +20,7 @@ from test_case_base import (
 )
 
 import paddle
+from paddle import nn
 
 
 @paddle.jit.marker.capture_control_flow
@@ -63,6 +64,41 @@ class TestCaptureControlFlow(TestCaseBase):
             self.assertEqual(ctx.translate_count, 1)
             x = paddle.full([3, 3], -1)
             self.assert_results(fn_with_control_flow_explicit_capture, x)
+            self.assertEqual(ctx.translate_count, 1)
+
+
+class NetWithCaptureControlFlow(nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.layer = nn.Linear(8, 8)
+
+    @paddle.jit.marker.capture_control_flow
+    def fn(self, x):
+        x = self.layer(x)
+        if x.sum() > 0:
+            x += paddle.ones_like(x)
+        else:
+            x -= paddle.zeros_like(x)
+        return x
+
+    def forward(self, x):
+        return self.fn(x) + 1
+
+
+def model_call(x: paddle.Tensor, net: paddle.nn.Layer):
+    return net(x)
+
+
+class TestEagerParamsToPirValue(TestCaseBase):
+    def test_case_without_capture_control_flow(self):
+        model = NetWithCaptureControlFlow()
+        with test_instruction_translator_cache_context() as ctx:
+            self.assertEqual(ctx.translate_count, 0)
+            x = paddle.randn([4, 8])
+            self.assert_results(model_call, x, model)
+            self.assertEqual(ctx.translate_count, 1)
+            x = paddle.randn([4, 8])
+            self.assert_results(model_call, x, model)
             self.assertEqual(ctx.translate_count, 1)
 
 

@@ -27,7 +27,6 @@ from op_test import (
     get_device_place,
     is_custom_device,
 )
-from test_sparse_attention_op import get_cuda_version
 
 import paddle
 import paddle.incubate.nn.functional as F
@@ -411,7 +410,7 @@ class TestMergeQKVLargeBatchSizeFp16Case(TestMergeQKVFp16Case):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11000
+    or paddle.is_compiled_with_rocm()
     or paddle.device.cuda.get_device_capability()[0] < 8,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
 )

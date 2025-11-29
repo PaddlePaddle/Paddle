@@ -24,6 +24,7 @@ from op_test import (
     get_places,
     is_custom_device,
 )
+from utils import dygraph_guard
 
 import paddle
 from paddle import base
@@ -205,6 +206,24 @@ class TestUniformRandomFP16Op(TestUniformRandomOp):
 class TestUniformRandomBF16Op(TestUniformRandomOp):
     def init_dtype(self):
         self.dtype = np.uint16
+
+
+class TestUniformRandomComplex64Op(TestUniformRandomOp):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def test_on_cpu(self):
+        with dygraph_guard(), paddle.device.device_guard("cpu"):
+            x = paddle.uniform([3, 3], paddle.complex64, -2, 2)
+
+
+class TestUniformRandomComplex128Op(TestUniformRandomOp):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+    def test_on_cpu(self):
+        with dygraph_guard(), paddle.device.device_guard("cpu"):
+            x = paddle.uniform([3, 3], paddle.complex128, -2, 2)
 
 
 class TestUniformRandomOpError(unittest.TestCase):

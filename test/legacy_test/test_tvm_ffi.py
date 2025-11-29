@@ -22,6 +22,7 @@ import numpy as np
 import tvm_ffi.cpp
 
 import paddle
+from paddle.utils.dlpack import DLDeviceType
 
 if TYPE_CHECKING:
     from tvm_ffi import Module
@@ -49,14 +50,14 @@ class TestCDLPackExchangeAPI(unittest.TestCase):
         cpp_source = r"""
             void add_one_cpu(tvm::ffi::TensorView x, tvm::ffi::TensorView y) {
                 // implementation of a library function
-                TVM_FFI_ICHECK(x->ndim == 1) << "x must be a 1D tensor";
+                TVM_FFI_ICHECK(x.ndim() == 1) << "x must be a 1D tensor";
                 DLDataType f32_dtype{kDLFloat, 32, 1};
-                TVM_FFI_ICHECK(x->dtype == f32_dtype) << "x must be a float tensor";
-                TVM_FFI_ICHECK(y->ndim == 1) << "y must be a 1D tensor";
-                TVM_FFI_ICHECK(y->dtype == f32_dtype) << "y must be a float tensor";
-                TVM_FFI_ICHECK(x->shape[0] == y->shape[0]) << "x and y must have the same shape";
-                for (int i = 0; i < x->shape[0]; ++i) {
-                    static_cast<float*>(y->data)[i] = static_cast<float*>(x->data)[i] + 1;
+                TVM_FFI_ICHECK(x.dtype() == f32_dtype) << "x must be a float tensor";
+                TVM_FFI_ICHECK(y.ndim() == 1) << "y must be a 1D tensor";
+                TVM_FFI_ICHECK(y.dtype() == f32_dtype) << "y must be a float tensor";
+                TVM_FFI_ICHECK(x.size(0) == y.size(0)) << "x and y must have the same shape";
+                for (int i = 0; i < x.size(0); ++i) {
+                    static_cast<float*>(y.data_ptr())[i] = static_cast<float*>(x.data_ptr())[i] + 1;
                 }
             }
         """
@@ -92,22 +93,22 @@ class TestCDLPackExchangeAPI(unittest.TestCase):
 
             void add_one_cuda(tvm::ffi::TensorView x, tvm::ffi::TensorView y) {
               // implementation of a library function
-              TVM_FFI_ICHECK(x->ndim == 1) << "x must be a 1D tensor";
+              TVM_FFI_ICHECK(x.ndim() == 1) << "x must be a 1D tensor";
               DLDataType f32_dtype{kDLFloat, 32, 1};
-              TVM_FFI_ICHECK(x->dtype == f32_dtype) << "x must be a float tensor";
-              TVM_FFI_ICHECK(y->ndim == 1) << "y must be a 1D tensor";
-              TVM_FFI_ICHECK(y->dtype == f32_dtype) << "y must be a float tensor";
-              TVM_FFI_ICHECK(x->shape[0] == y->shape[0]) << "x and y must have the same shape";
+              TVM_FFI_ICHECK(x.dtype() == f32_dtype) << "x must be a float tensor";
+              TVM_FFI_ICHECK(y.ndim() == 1) << "y must be a 1D tensor";
+              TVM_FFI_ICHECK(y.dtype() == f32_dtype) << "y must be a float tensor";
+              TVM_FFI_ICHECK(x.size(0) == y.size(0)) << "x and y must have the same shape";
 
-              int64_t n = x->shape[0];
+              int64_t n = x.size(0);
               int64_t nthread_per_block = 256;
               int64_t nblock = (n + nthread_per_block - 1) / nthread_per_block;
               // Obtain the current stream from the environment by calling TVMFFIEnvGetStream
               cudaStream_t stream = static_cast<cudaStream_t>(
-                  TVMFFIEnvGetStream(x->device.device_type, x->device.device_id));
+                  TVMFFIEnvGetStream(x.device().device_type, x.device().device_id));
               // launch the kernel
-              AddOneKernel<<<nblock, nthread_per_block, 0, stream>>>(static_cast<float*>(x->data),
-                                                                     static_cast<float*>(y->data), n);
+              AddOneKernel<<<nblock, nthread_per_block, 0, stream>>>(static_cast<float*>(x.data_ptr()),
+                                                                     static_cast<float*>(y.data_ptr()), n);
             }
         """
         mod: Module = tvm_ffi.cpp.load_inline(
@@ -123,23 +124,18 @@ class TestCDLPackExchangeAPI(unittest.TestCase):
         np.testing.assert_allclose(y.numpy(), [2.0, 2.0, 2.0])
 
     def test_c_dlpack_exchange_api_alloc_tensor(self):
-        if platform.system() == "Windows":
-            # Temporary skip this test case on windows because return owned tensor created by
-            # TVMFFIEnvGetTensorAllocator will cause double free error
-            return
         cpp_source = r"""
             inline tvm::ffi::Tensor alloc_tensor(tvm::ffi::Shape shape, DLDataType dtype, DLDevice device) {
-                return tvm::ffi::Tensor::FromDLPackAlloc(TVMFFIEnvGetTensorAllocator(), shape, dtype, device);
+                return tvm::ffi::Tensor::FromEnvAlloc(TVMFFIEnvTensorAlloc, shape, dtype, device);
             }
 
             tvm::ffi::Tensor add_one_cpu(tvm::ffi::TensorView x) {
-                TVM_FFI_ICHECK(x->ndim == 1) << "x must be a 1D tensor";
+                TVM_FFI_ICHECK(x.ndim() == 1) << "x must be a 1D tensor";
                 DLDataType f32_dtype{kDLFloat, 32, 1};
-                TVM_FFI_ICHECK(x->dtype == f32_dtype) << "x must be a float tensor";
-                tvm::ffi::Shape x_shape(x->shape, x->shape + x->ndim);
-                tvm::ffi::Tensor y = alloc_tensor(x_shape, f32_dtype, x->device);
-                for (int i = 0; i < x->shape[0]; ++i) {
-                    static_cast<float*>(y->data)[i] = static_cast<float*>(x->data)[i] + 1;
+                TVM_FFI_ICHECK(x.dtype() == f32_dtype) << "x must be a float tensor";
+                tvm::ffi::Tensor y = alloc_tensor(x.shape(), f32_dtype, x.device());
+                for (int i = 0; i < x.size(0); ++i) {
+                    static_cast<float*>(y.data_ptr())[i] = static_cast<float*>(x.data_ptr())[i] + 1;
                 }
                 return y;
             }
@@ -150,6 +146,120 @@ class TestCDLPackExchangeAPI(unittest.TestCase):
         x = paddle.full((3,), 1.0, dtype='float32').cpu()
         y = mod.add_one_cpu(x)
         np.testing.assert_allclose(y.numpy(), [2.0, 2.0, 2.0])
+
+
+class TestDLPackDataType(unittest.TestCase):
+    @staticmethod
+    def _paddle_dtype_to_tvm_ffi_dtype(paddle_dtype: paddle.dtype):
+        # Currently, our paddle.uint16 shows as 'paddle.bfloat16' in str(),
+        # We should use ml_dtypes to avoid this hack in the future.
+        if paddle_dtype == paddle.uint16:
+            return tvm_ffi.dtype("uint16")
+        dtype_str = str(paddle_dtype).split('.')[-1]
+        return tvm_ffi.dtype(dtype_str)
+
+    def test_dlpack_data_type_base_protocol(self):
+        for dtype in [
+            paddle.uint8,
+            paddle.uint16,
+            paddle.uint32,
+            paddle.uint64,
+            paddle.int16,
+            paddle.int32,
+            paddle.int64,
+            paddle.float32,
+            paddle.float64,
+            paddle.float16,
+            paddle.bfloat16,
+        ]:
+            tvm_ffi_dtype = TestDLPackDataType._paddle_dtype_to_tvm_ffi_dtype(
+                dtype
+            )
+            self.assertEqual(
+                dtype.__dlpack_data_type__(),
+                (
+                    tvm_ffi_dtype.type_code,
+                    tvm_ffi_dtype.bits,
+                    tvm_ffi_dtype.lanes,
+                ),
+            )
+
+    def test_data_type_as_input(self):
+        cpp_source = r"""
+            void check_dtype(tvm::ffi::TensorView x, DLDataType expected_dtype) {
+                TVM_FFI_ICHECK(x.dtype() == expected_dtype) << "dtype mismatch";
+            }
+        """
+        mod: Module = tvm_ffi.cpp.load_inline(
+            name='mod', cpp_sources=cpp_source, functions='check_dtype'
+        )
+        for dtype in [
+            paddle.bool,
+            paddle.uint8,
+            paddle.int16,
+            paddle.int32,
+            paddle.int64,
+            paddle.float32,
+            paddle.float64,
+            paddle.float16,
+            paddle.bfloat16,
+        ]:
+            x = paddle.zeros((10,), dtype=dtype).cpu()
+            mod.check_dtype(x, dtype)
+
+
+class TestDLPackDeviceType(unittest.TestCase):
+    def test_dlpack_device_type_base_protocol_from_place(self):
+        self.assertEqual(
+            paddle.CPUPlace().__dlpack_device__(),
+            (DLDeviceType.kDLCPU.value, 0),
+        )
+
+        if paddle.is_compiled_with_cuda():
+            self.assertEqual(
+                paddle.CUDAPlace(0).__dlpack_device__(),
+                (DLDeviceType.kDLCUDA.value, 0),
+            )
+
+            self.assertEqual(
+                paddle.CUDAPinnedPlace().__dlpack_device__(),
+                (DLDeviceType.kDLCUDAHost.value, 0),
+            )
+
+    def test_dlpack_device_type_base_protocol_from_device(self):
+        self.assertEqual(
+            paddle.device('cpu').__dlpack_device__(),
+            (DLDeviceType.kDLCPU.value, 0),
+        )
+
+        if paddle.is_compiled_with_cuda():
+            self.assertEqual(
+                paddle.device('cuda:0').__dlpack_device__(),
+                (DLDeviceType.kDLCUDA.value, 0),
+            )
+
+            self.assertEqual(
+                paddle.device('gpu:0').__dlpack_device__(),
+                (DLDeviceType.kDLCUDA.value, 0),
+            )
+
+    def test_dlpack_device_type_as_input(self):
+        cpp_source = r"""
+            void check_device(tvm::ffi::TensorView x, DLDevice expected_device) {
+                TVM_FFI_ICHECK(x.device().device_type == expected_device.device_type) << "device type mismatch";
+                TVM_FFI_ICHECK(x.device().device_id == expected_device.device_id) << "device id mismatch";
+            }
+        """
+        mod: Module = tvm_ffi.cpp.load_inline(
+            name='mod', cpp_sources=cpp_source, functions='check_device'
+        )
+
+        x_cpu = paddle.zeros((10,), dtype='float32').cpu()
+        mod.check_device(x_cpu, x_cpu.place)
+
+        if paddle.is_compiled_with_cuda():
+            x_gpu = paddle.zeros((10,), dtype='float32').cuda()
+            mod.check_device(x_gpu, x_gpu.place)
 
 
 if __name__ == '__main__':

@@ -99,16 +99,16 @@ def to_tensor(
         Tensor: Converted image. Data type is same as input img.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.0).astype('uint8')
             >>> fake_img = Image.fromarray(fake_img)
             >>> tensor = F.to_tensor(fake_img)
             >>> print(tensor.shape)
-            [3, 256, 300]
+            paddle.Size([3, 256, 300])
 
     """
     if not (
@@ -660,14 +660,20 @@ def affine(
         PIL.Image|np.array|paddle.Tensor: Affine Transformed image.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.transforms import functional as F
             >>> fake_img = paddle.randn((3, 256, 300)).astype(paddle.float32)
-            >>> affined_img = F.affine(fake_img, 45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 10])
+            >>> affined_img = F.affine(
+            ...     fake_img,
+            ...     45,
+            ...     translate=[0.2, 0.2],
+            ...     scale=0.5,
+            ...     shear=[-10, 10],
+            ... )
             >>> print(affined_img.shape)
-            [3, 256, 300]
+            paddle.Size([3, 256, 300])
     """
 
     if not (
@@ -906,7 +912,7 @@ def perspective(
         PIL.Image|np.array|paddle.Tensor: transformed Image.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.transforms import functional as F
@@ -915,7 +921,7 @@ def perspective(
             >>> endpoints = [[3, 2], [32, 3], [30, 24], [2, 25]]
             >>> perspectived_img = F.perspective(fake_img, startpoints, endpoints)
             >>> print(perspectived_img.shape)
-            [3, 256, 300]
+            paddle.Size([3, 256, 300])
 
     """
     if not (

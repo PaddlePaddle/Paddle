@@ -648,6 +648,16 @@ class CustomDevice : public DeviceInterface {
     return supported;
   }
 
+  bool IsDnnAvailable(size_t dev_id) override {
+    const auto device = &devices_pool[dev_id];
+    bool supported = false;
+    if (pimpl_->is_dnn_supported) {
+      pimpl_->is_dnn_supported(device, &supported);
+    }
+    VLOG(10) << Type() << " is dnn available: " << supported;
+    return supported;
+  }
+
   void* InitEigenDevice(const Place& place,
                         phi::stream::stream_t stream,
                         phi::Allocator* allocator) override {

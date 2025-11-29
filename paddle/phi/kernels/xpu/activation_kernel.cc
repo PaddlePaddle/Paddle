@@ -55,6 +55,19 @@ void ActivationXPUImpl(const Context& dev_ctx,
     ActivationXPUImpl<T, Context, functor_class<T>>(dev_ctx, x, out, functor); \
   }
 
+#define DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_DOUBLE_ATTRS(                    \
+    name, functor_class, attr)                                                 \
+  template <typename T, typename Context>                                      \
+  void name##Kernel(const Context& dev_ctx,                                    \
+                    const DenseTensor& x,                                      \
+                    double attr,                                               \
+                    DenseTensor* out) {                                        \
+    functor_class<T> functor;                                                  \
+    auto attrs = functor.GetAttrs();                                           \
+    *(attrs[0].second) = static_cast<float>(attr);                             \
+    ActivationXPUImpl<T, Context, functor_class<T>>(dev_ctx, x, out, functor); \
+  }
+
 #define DEFINE_XPU_ACTIVATION_KERNEL_WITH_TWO_ATTRS(                           \
     name, functor_class, attr1, attr2)                                         \
   template <typename T, typename Context>                                      \
@@ -592,9 +605,9 @@ DEFINE_XPU_ACTIVATION_KERNEL(Tan, XPUTanFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Acos, XPUAcosFunctor)
 
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Mish, XPUMishFunctor, threshold)
-DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(LeakyRelu,
-                                            XPULeakyReluFunctor,
-                                            alpha)
+DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_DOUBLE_ATTRS(LeakyRelu,
+                                                   XPULeakyReluFunctor,
+                                                   alpha)
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                             XPUHardSigmoidFunctor,
                                             slope,
