@@ -41,6 +41,7 @@ repos:
     rev: v0.39.9
     hooks:
       - id: ast-grep
+        args: [--color=never]
   - repo: local
     hooks:
       - id: copyright_checker
