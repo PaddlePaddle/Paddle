@@ -169,7 +169,7 @@ void DiagonalGradKernel(const Context& dev_ctx,
       break;
     default:
       PADDLE_THROW(errors::InvalidArgument(
-          "The rank of output(input@Grad) should be less than 10, but "
+          "The rank of output(input@GRAD) should be less than 10, but "
           "received %d.",
           dx_dim_size));
   }

@@ -733,10 +733,6 @@ def amp_guard(
                 "True",
                 "true",
                 "1",
-            ] or os.getenv("FLAGS_enable_main_grad") in [
-                "True",
-                "true",
-                "1",
             ]:
                 for param in amp_global_state().model_parameters:
                     if not hasattr(param, "main_grad"):

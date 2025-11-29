@@ -457,8 +457,8 @@ TEST(EagerUtils, SetTensorName) {
   // test paddle::optional<paddle::Tensor>* tensor
   egr::SetTensorName(unique_api_name, var_name, &optional_t);
   ASSERT_TRUE(t->name() == refer_name);
-  refer_name =
-      generate_tensor_name(unique_api_name, var_name + std::to_string(0), t);
+  refer_name = generate_tensor_name(
+      unique_api_name, var_name + "_" + std::to_string(0), t);
   // test std::vector<paddle::Tensor>* tensors
   egr::SetTensorName(unique_api_name, var_name, &tensors);
   ASSERT_TRUE(tensors[0].name() == refer_name);

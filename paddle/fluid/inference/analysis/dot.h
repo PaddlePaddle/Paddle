@@ -163,6 +163,8 @@ class Dot {
     }
   }
   bool ContainsNode(const std::string& id) const { return nodes_.count(id); }
+  // If the graph has no nodes, then it is empty graph
+  bool IsEmpty() const { return nodes_.empty(); }
 
   void AddEdge(const std::string& source,
                const std::string& target,

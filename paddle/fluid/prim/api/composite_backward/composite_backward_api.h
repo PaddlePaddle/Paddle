@@ -817,7 +817,7 @@ void group_norm_grad(const Tensor& x,
   // cal d_bias:
   // d_bias = sum(dy, axes=(0,2,3))
   DataLayout data_layout_ = common::StringToDataLayout(data_layout);
-  if (data_layout_ != DataLayout::kNCHW) {
+  if (data_layout_ != DataLayout::NCHW) {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Unsupported storage order: %s", data_layout));
   }
@@ -1568,8 +1568,8 @@ void batch_norm_grad(const Tensor& x,
   }
 
   auto x_dims = x_data.dims();
-  const int C = (data_layout_ == DataLayout::kNCHW ? x_dims[1]
-                                                   : x_dims[x_dims.size() - 1]);
+  const int C = (data_layout_ == DataLayout::NCHW ? x_dims[1]
+                                                  : x_dims[x_dims.size() - 1]);
   int nume = 1;
   for (auto i = 0; i < x_dims.size(); i++) {
     nume = nume * x_dims[i];
@@ -1577,8 +1577,8 @@ void batch_norm_grad(const Tensor& x,
 
   const int nhw = nume / C;
 
-  if (x_dims.size() == 2 && data_layout_ == DataLayout::kNCHW) {
-    data_layout_ = DataLayout::kNHWC;
+  if (x_dims.size() == 2 && data_layout_ == DataLayout::NCHW) {
+    data_layout_ = DataLayout::NHWC;
   }
 
   auto run_var = variance_out.get();
@@ -1619,7 +1619,7 @@ void batch_norm_grad(const Tensor& x,
   auto dtype = x_data.dtype();
 
   switch (data_layout_) {
-    case DataLayout::kNCHW: {
+    case DataLayout::NCHW: {
       auto nhwc_x = transpose<T>(x_data, nchw_to_nhwc_dim);
       auto nhwc_out_grad = transpose<T>(out_grad_data, nchw_to_nhwc_dim);
       auto nhwc_out_grad_sum = sum<T>(nhwc_out_grad, reduce_axis, dtype, false);
@@ -1665,7 +1665,7 @@ void batch_norm_grad(const Tensor& x,
       }
       break;
     }
-    case DataLayout::kNHWC: {
+    case DataLayout::NHWC: {
       if (x_grad) {
         auto out_grad_data_sum =
             sum<T>(out_grad_data, reduce_axis, dtype, false);

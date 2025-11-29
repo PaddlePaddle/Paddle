@@ -74,7 +74,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
   const auto x_dims = common::vectorize<int64_t>(x.dims());
   const int64_t N = x_dims[0];
   const bool channel_first =
-      data_layout == DataLayout::kNCHW || data_layout == DataLayout::kNCDHW;
+      data_layout == DataLayout::NCHW || data_layout == DataLayout::NCDHW;
   const int64_t C = (channel_first ? x_dims[1] : x_dims[x_dims.size() - 1]);
   const int64_t L =
       (channel_first ? std::accumulate(x_dims.begin() + 2,

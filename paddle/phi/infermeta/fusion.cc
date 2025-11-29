@@ -1680,7 +1680,7 @@ void FusedElemwiseAddActivationGradInferMeta(
     MetaTensor* y_grad) {
   PADDLE_ENFORCE_NOT_NULL(
       out_grad,
-      common::errors::InvalidArgument("Input(Out@Grad) should not be null."));
+      common::errors::InvalidArgument("Input(Out@GRAD) should not be null."));
 
   if (save_intermediate_out) {
     PADDLE_ENFORCE_NOT_NULL(intermediate_out,
@@ -1794,8 +1794,7 @@ void FusedFeedForwardGradInferMeta(const MetaTensor& out_grad,
                                    MetaTensor* ln1_bias_grad,
                                    MetaTensor* ln2_scale_grad,
                                    MetaTensor* ln2_bias_grad) {
-  auto d_out_dim = out_grad.dims();
-  x_grad->set_dims(d_out_dim);
+  x_grad->set_dims(out_grad.dims());
   if (ln1_scale_grad && ln1_scale) {
     ln1_scale_grad->set_dims(ln1_scale.dims());
   }
@@ -5547,7 +5546,7 @@ void FusedElemwiseActivationGradInferMeta(
   PADDLE_ENFORCE_EQ(
       out_grad.initialized(),
       true,
-      common::errors::InvalidArgument("Input(Out@Grad) should not be null."));
+      common::errors::InvalidArgument("Input(Out@GRAD) should not be null."));
 
   if (save_intermediate_out) {
     PADDLE_ENFORCE_EQ(intermediate_out.initialized(),

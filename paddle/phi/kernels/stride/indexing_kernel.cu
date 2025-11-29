@@ -119,6 +119,13 @@ void LaunchIndexPutKernel_V2(const Context& dev_ctx,
 
   funcs::AdvancedIndex ad =
       funcs::AdvancedIndex<T, Context>(dev_ctx, *out, indices);
+  if (ad.empty_index) {
+    if (!out->initialized()) {
+      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    }
+    return;
+  }
+
   if (!CheckIsDimsMatchBool(ad.src.dims(), value.dims())) {
     DenseTensor x_;
     DenseTensor value_;

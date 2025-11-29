@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,8 +25,8 @@ typedef int magma_int_t;
 
 typedef enum { MagmaNoVec = 301, MagmaVec = 302 } magma_vec_t;
 
-typedef cuDoubleComplex magmaDoubleComplex;  // CUDA 的 double complex
-typedef cuFloatComplex magmaFloatComplex;    // CUDA 的 float complex
+typedef cuDoubleComplex magmaDoubleComplex;
+typedef cuFloatComplex magmaFloatComplex;
 
 // geev
 extern "C" magma_int_t magma_dgeev(magma_vec_t jobvl,
@@ -92,8 +92,8 @@ extern "C" magma_int_t magma_cgeev(magma_vec_t jobvl,
                                    float *rwork,
                                    magma_int_t *info);
 
-extern "C" void magma_init();
-extern "C" void magma_finalize();
+extern "C" magma_int_t magma_init();
+extern "C" magma_int_t magma_finalize();
 
 namespace phi {
 namespace dynload {

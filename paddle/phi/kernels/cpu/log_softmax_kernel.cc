@@ -38,7 +38,7 @@ struct ValueClip {
 
 template <typename Context, typename T>
 struct LogSoftmaxFunctor {
-  void operator()(const Context& context,
+  void operator()(const Context& dev_ctx,
                   const DenseTensor* X,
                   DenseTensor* Y,
                   const int axis) {
@@ -72,7 +72,7 @@ struct LogSoftmaxFunctor {
     if (num_remain == 1) {
       // axis == -1, axis and class in same dimension, calculate along
       // class dimension directly for higher performance
-      log_softmax.device(*context.eigen_device()) =
+      log_softmax.device(*dev_ctx.eigen_device()) =
           (logits - logits.maximum(along_axis)
                         .eval()
                         .reshape(batch_by_one)
@@ -81,7 +81,7 @@ struct LogSoftmaxFunctor {
     } else {
       // axis != -1, class dimension split into (axis, remain), max and sum
       // should be calculated along axis dimension
-      log_softmax.device(*context.eigen_device()) =
+      log_softmax.device(*dev_ctx.eigen_device()) =
           (logits.reshape(batch_axis_remain) - logits.reshape(batch_axis_remain)
                                                    .maximum(along_axis)
                                                    .eval()
@@ -91,7 +91,7 @@ struct LogSoftmaxFunctor {
               .unaryExpr(ValueClip<T>());
     }
 
-    log_softmax.device(*context.eigen_device()) =
+    log_softmax.device(*dev_ctx.eigen_device()) =
         log_softmax - log_softmax.exp()
                           .eval()
                           .reshape(batch_axis_remain)

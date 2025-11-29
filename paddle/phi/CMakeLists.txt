@@ -106,6 +106,11 @@ if(WITH_MKLML)
   list(APPEND INFERENCE_DEPS dynload_mklml)
 endif()
 
+if(WITH_HML)
+  list(APPEND PHI_DEPS dynload_hml)
+  list(APPEND INFERENCE_DEPS dynload_hml)
+endif()
+
 if(WITH_XPU)
   list(APPEND PHI_DEPS xpulib)
   if(WITH_XPU_PLUGIN)

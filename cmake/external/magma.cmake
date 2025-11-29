@@ -23,13 +23,34 @@ set(MAGMA_LIB_DIR ${MAGMA_INSTALL_DIR}/lib)
 # Note(zhouwei): magma need fortran compiler which many machines don't have, so use precompiled library.
 # use magma tag v2.9.0 on 07/28/2025 https://github.com/icl-utk-edu/magma/tree/v2.9.0
 if(LINUX)
+  execute_process(
+    COMMAND ${CMAKE_CUDA_COMPILER} --list-gpu-arch
+    OUTPUT_VARIABLE CUDA_ARCH_LIST
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  message(STATUS "Detected CUDA architectures: ${CUDA_ARCH_LIST}")
+
+  set(MAGMA_ARCH "sm_70")
+  set(MAGMA_URL_MD5 "649b886f9df75face6aa98015ccb1885")
+
+  if(CUDA_ARCH_LIST MATCHES "compute_80")
+    set(MAGMA_ARCH "sm_80")
+    set(MAGMA_URL_MD5 "c16079b2eaf48f5af741d979c5090667")
+  endif()
+
+  if(WITH_XPU)
+    set(MAGMA_ARCH "xpu")
+    set(MAGMA_URL_MD5 "889f990bfd4a24c98831cfda0243674a")
+  endif()
+
+  message(STATUS "Selected MAGMA architecture: ${MAGMA_ARCH}")
+  message(STATUS "Selected MAGMA URL MD5: ${MAGMA_URL_MD5}")
+
   set(MAGMA_FILE
-      "magma_lnx_xpu_v2.9.0.20250728.tar.gz"
+      "magma_lnx_${MAGMA_ARCH}_v2.9.0.20250728.tar.gz"
       CACHE STRING "" FORCE)
   set(MAGMA_URL
       "https://paddlepaddledeps.bj.bcebos.com/${MAGMA_FILE}"
       CACHE STRING "" FORCE)
-  set(MAGMA_URL_MD5 e0c12bdfd0fd7737cb1cb3a24472f0a5)
   set(MAGMA_LIB "${MAGMA_LIB_DIR}/libmagma.so")
 elseif(WIN32)
   message("magma do not support windows yet, skip ...")
