@@ -122,6 +122,8 @@ extern void *cublas_dso_handle;
   __macro(cublasHgemmStridedBatched);     \
   __macro(cublasSetMathMode);             \
   __macro(cublasGetMathMode);             \
+  __macro(cublasCgeam);                   \
+  __macro(cublasZgeam);                   \
   __macro(cublasGemmBatchedEx);           \
   __macro(cublasGemmStridedBatchedEx);
 

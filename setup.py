@@ -1559,6 +1559,11 @@ def get_package_data_and_package_dir():
     shutil.copy(env_dict.get("LAPACK_LIB"), libs_path)
     shutil.copy(env_dict.get("GFORTRAN_LIB"), libs_path)
     shutil.copy(env_dict.get("GNU_RT_LIB_1"), libs_path)
+    if env_dict.get("WITH_MAGMA") == 'ON':
+        package_data['paddle.libs'] += [
+            os.path.basename('MAGMA_LIB'),
+        ]
+        shutil.copy(env_dict.get("MAGMA_LIB"), libs_path)
 
     if not sys.platform.startswith("linux"):
         package_data['paddle.libs'] += [
