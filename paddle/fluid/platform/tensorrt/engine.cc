@@ -916,7 +916,7 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
                         "twice in TRT OP converter.",
                         name_with_suffix));
 
-  if (weight_tensor.place() == PlaceType::kGPU ||
+  if (phi::is_gpu_place(weight_tensor.place()) ||
       weight_tensor.dtype() != phi::DataType::FLOAT32) {
     weight_map[name_with_suffix].reset(new phi::DenseTensor());
     weight_map[name_with_suffix]->Resize(weight_tensor.dims());
@@ -956,7 +956,7 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
     weight.SetDataType(phi::DataType::INT32);
     weight.SetValues(int32_data);
   } else {
-    if (weight_tensor.place() == PlaceType::kGPU) {
+    if (phi::is_gpu_place(weight_tensor.place())) {
       paddle::framework::TensorCopySync(
           weight_tensor, cpu_place, weight_map[name_with_suffix].get());
       weight.SetDataType(weight_tensor.dtype());

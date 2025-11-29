@@ -122,7 +122,7 @@ std::vector<paddle::Tensor> ReluBackward(const paddle::Tensor& x,
 
 std::vector<paddle::Tensor> ReluDoubleBackward(const paddle::Tensor& out,
                                                const paddle::Tensor& ddx) {
-  if (out.place() == paddle::PlaceType::kCPU) {
+  if (out.is_cpu()) {
     return relu_cpu_double_backward(out, ddx);
   } else {
     PD_THROW("Not implemented.");
