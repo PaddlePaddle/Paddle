@@ -2,6 +2,7 @@ id: no-int32-type-dims
 language: cpp
 files:
   - paddle/phi/kernels/**
+  # - paddle/**
 ignores:
   - paddle/phi/kernels/legacy/**
   - paddle/phi/kernels/xpu/**
@@ -28,8 +29,10 @@ constraints:
       # dims[...] / expr.dims()[...] / expr->dims()[...]
       - pattern: $E.dims[$INDEX]
       - pattern: $E.dims()[$INDEX]
+      - pattern: $E.dims($INDEX)
       - pattern: $E->dims[$INDEX]
       - pattern: $E->dims()[$INDEX]
+      - pattern: $E->dims($INDEX)
       # shape[...] / expr.shape()[...] / expr->shape()[...]
       - pattern: $E.shape[$INDEX]
       - pattern: $E.shape()[$INDEX]
@@ -41,14 +44,12 @@ constraints:
       - pattern: $E->strides[$INDEX]
       - pattern: $E->strides()[$INDEX]
       # numel / numel()
-      - pattern: $E.numel
       - pattern: $E.numel()
-      - pattern: $E->numel()
       - pattern: $E->numel()
         # offset / offset()
         # unsafe
         # - pattern: $E.offset
         # - pattern: $E.offset()
 fix: |
-  int64_t $VAR = $RIGHT;
   // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t $VAR = $RIGHT;

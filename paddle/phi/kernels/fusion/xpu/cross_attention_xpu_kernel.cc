@@ -67,23 +67,22 @@ void CrossAttentionXPUKernelImpl(
   }
 
   int64_t batch = input_q.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
   int64_t max_q_len = input_q.dims()[1];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
   int64_t max_kv_len = input_kv.dims()[1];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
 
-  int max_seq_len = std::max(max_q_len, max_kv_len);
+  int64_t max_seq_len = std::max(max_q_len, max_kv_len);
   int qkv_shape = 0;  // B x L x H x D
   int hidden_dim = head_num * head_dim;
-  int q_mul_m = batch * max_q_len;
-  int kv_mul_m = batch * max_kv_len;
-  int loop_m[3] = {q_mul_m, kv_mul_m, kv_mul_m};
+  int64_t q_mul_m = batch * max_q_len;
+  int64_t kv_mul_m = batch * max_kv_len;
+
+  // NOTE(large-tensor): XPU fc_fusion API not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(q_mul_m, "q_mul_m");
+  PADDLE_ENFORCE_LE_INT_MAX(kv_mul_m, "kv_mul_m");
+
+  int loop_m[3] = {static_cast<int>(q_mul_m),
+                   static_cast<int>(kv_mul_m),
+                   static_cast<int>(kv_mul_m)};
   int n = hidden_dim;
   int k = hidden_dim;
   bool do_fc_qkv_fusion = false;
