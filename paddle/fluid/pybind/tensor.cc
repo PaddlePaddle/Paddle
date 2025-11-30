@@ -726,17 +726,21 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            })
 #ifdef PADDLE_WITH_CUDA
       .def("_share_vmm", [](phi::DenseTensor self) {
-        if (!self.IsInitialized() || self.numel() == 0)
-          throw std::runtime_error(
-              "Tensor not initialized or numel is 0.  could not pass "
-              "to shared memory. ");
+        PADDLE_ENFORCE_EQ(
+            self.IsInitialized() && self.numel() > 0,
+            true,
+            common::errors::InvalidArgument(
+                "Tensor must be initialized and contain elements before "
+                "calling _share_vmm."));
         auto *holder = dynamic_cast<memory::allocation::Allocation *>(
           self.Holder().get());
         PADDLE_ENFORCE_EQ(
-            phi::is_gpu_place(holder->place()), true,
+            phi::is_gpu_place(holder->place()),
+            true,
             common::errors::InvalidArgument(
-                "Tensor is not on GPU. share_vmm only support GPU "
-                "Tensor, share_filename is for CPU tensor."));
+                "_share_vmm only supports tensors placed on GPU, but "
+                "the current tensor is on %s.",
+                holder->place()));
         paddle::memory::VmmTensorPartsVisitor parts_visitor(holder->ptr());
         paddle::memory::allocation::AllocatorFacade::Instance().Accept(
             holder->place(), &parts_visitor);
@@ -746,8 +750,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             common::errors::Unavailable(
                 "Failed to locate VMM allocation metadata for tensor."));
         const auto& parts = parts_visitor.Parts();
-        PADDLE_ENFORCE_GT(parts.size(), 0, "Empty VMM parts");
-
+        PADDLE_ENFORCE_GT(
+            parts.size(),
+            0,
+            common::errors::Unavailable(
+                "Cannot export VMM tensor because no VMM chunks were found."));
         const int &device_id = paddle::platform::GetCurrentDeviceId();
         auto stream =
             paddle::platform::get_current_stream(device_id);
@@ -757,7 +764,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
         using paddle::memory::allocation::VmmIpcEntry;
         VmmIpcHeader header{};
         header.version     = 1;
-        header.type        = 2;
         header.flags       = 0x1;  // pidfd
         header.pid         = static_cast<uint32_t>(::getpid());
         header.num_entries = static_cast<uint32_t>(parts.size());
@@ -784,7 +790,10 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
           int fd = -1;
           auto chunk = p.chunk;
-          PADDLE_ENFORCE_NOT_NULL(chunk, "chunk is null");
+          PADDLE_ENFORCE_NOT_NULL(
+              chunk,
+              common::errors::InvalidArgument(
+                  "Found an empty VMM chunk while exporting tensor."));
           VLOG(10) << "chunk handle="
                   << static_cast<int64_t>(chunk->handle)
                   << " device=" << chunk->device
@@ -792,8 +801,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                   << " rel_offset=" << rel_offset
                   << " chunk_rel_off=" << p.chunk_rel_off
                   << " len=" << p.len;
-          PADDLE_ENFORCE_NE(p.chunk->handle, 0,
-                            "Underlying allocation is not VMM allocation.");
+          PADDLE_ENFORCE_NE(
+              p.chunk->handle,
+              0,
+              common::errors::InvalidArgument(
+                  "VMM chunk handle must be non-zero when exporting tensor."));
           PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::cuMemExportToShareableHandle(
               &fd, p.chunk->handle,
@@ -827,9 +839,14 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 #ifndef SYS_pidfd_getfd
 #define SYS_pidfd_getfd 438
 #endif
-        if (meta.size() != 5)
-          throw std::runtime_error(
-            "Invalid Tensor meta info for shared cuda tensor!");
+        PADDLE_ENFORCE_EQ(
+            meta.size(),
+            5,
+            common::errors::InvalidArgument(
+                "VMM IPC metadata must contain 5 elements, but received %d. "
+                "Please make sure the tuple returned by _share_vmm is passed "
+                "unchanged.",
+                meta.size()));
         std::string blob = meta[0].cast<py::bytes>();
         int dtype_idx = meta[1].cast<int>();
         std::vector<int64_t> dims_vec = meta[2].cast<std::vector<int64_t>>();
@@ -837,14 +854,18 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
         using paddle::memory::allocation::VmmIpcHeader;
         using paddle::memory::allocation::VmmIpcEntry;
-        PADDLE_ENFORCE_GE(blob.size(), sizeof(VmmIpcHeader), "bad blob");
+        PADDLE_ENFORCE_GE(
+            blob.size(),
+            sizeof(VmmIpcHeader),
+            common::errors::InvalidArgument(
+                "Invalid VMM IPC payload: blob size %zu is smaller than header "
+                "size %zu.",
+                blob.size(),
+                sizeof(VmmIpcHeader)));
         const VmmIpcHeader* header =
             reinterpret_cast<const VmmIpcHeader*>(blob.data());
-        PADDLE_ENFORCE_EQ(header->version, 1, "bad version");
-        PADDLE_ENFORCE_EQ(header->type, 2, "bad type");
         VLOG(10) << "[VMM-IPC] header: ver="
                  << static_cast<int>(header->version)
-                 << " type=" << static_cast<int>(header->type)
                  << " pid=" << header->pid
                  << " num_entries=" << header->num_entries
                  << " alloc_size=" << header->alloc_size
@@ -870,24 +891,43 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
         int pidfd = static_cast<int>(::syscall(SYS_pidfd_open,
                                    (pid_t)header->pid, 0));
-        PADDLE_ENFORCE_NE(pidfd, -1, "pidfd_open failed");
-
+        PADDLE_ENFORCE_NE(
+            pidfd,
+            -1,
+            common::errors::Unavailable(
+                "pidfd_open failed while importing VMM tensor. errno=%d.",
+                errno));
         size_t off = sizeof(VmmIpcHeader);
         for (uint32_t i = 0; i < header->num_entries; ++i) {
-          PADDLE_ENFORCE_GE(blob.size() - off,
-              sizeof(VmmIpcEntry), "bad entry");
+          PADDLE_ENFORCE_GE(
+              blob.size() - off,
+              sizeof(VmmIpcEntry),
+              common::errors::InvalidArgument(
+                  "Invalid VMM IPC payload: insufficient bytes for entry %u.",
+                  i));
           const VmmIpcEntry* e =
               reinterpret_cast<const VmmIpcEntry*>(blob.data() + off);
           off += sizeof(VmmIpcEntry);
 
-          // 目前只支持 FD（handle_type==1）
-          PADDLE_ENFORCE_GE(blob.size() - off, sizeof(int), "no fd payload");
+          // Only support FD(handle_type==1)
+          PADDLE_ENFORCE_GE(
+              blob.size() - off,
+              sizeof(int),
+              common::errors::InvalidArgument(
+                  "Invalid VMM IPC payload: missing file descriptor for entry "
+                  "%u.",
+                  i));
           int remote_fd = *reinterpret_cast<const int*>(blob.data() + off);
           off += sizeof(int);
 
           int myfd = static_cast<int>(
             ::syscall(SYS_pidfd_getfd, pidfd, remote_fd, 0));
-          PADDLE_ENFORCE_NE(myfd, -1, "pidfd_getfd failed");
+          PADDLE_ENFORCE_NE(
+              myfd,
+              -1,
+              common::errors::Unavailable(
+                  "pidfd_getfd failed while importing VMM tensor. errno=%d.",
+                  errno));
 
           CUmemGenericAllocationHandle handle = 0;
           PADDLE_ENFORCE_GPU_SUCCESS(

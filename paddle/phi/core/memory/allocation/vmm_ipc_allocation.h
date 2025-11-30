@@ -42,15 +42,12 @@ struct ImportedVmmMulti {
   ~ImportedVmmMulti() {
     if (base && reserved_size) {
       phi::dynload::cuMemUnmap(base, reserved_size);
-      VLOG(0) << "~ImportedVmmMulti cuMemUnmap " << reserved_size;
     }
     for (auto h : hs) {
       if (h) phi::dynload::cuMemRelease(h);
-      VLOG(0) << "~ImportedVmmMulti cuMemRelease " << h;
     }
     if (base && reserved_size) {
       phi::dynload::cuMemAddressFree(base, reserved_size);
-      VLOG(0) << "~ImportedVmmMulti cuMemAddressFree " << reserved_size;
     }
   }
 #else
@@ -86,7 +83,6 @@ struct BlockPart {
 #pragma pack(push, 1)
 struct VmmIpcHeader {
   uint8_t version;
-  uint8_t type;
   uint16_t flags;
   uint32_t pid;
   uint32_t num_entries;
@@ -104,7 +100,7 @@ struct VmmIpcEntry {
 };
 #pragma pack(pop)
 
-static_assert(sizeof(VmmIpcHeader) == 36, "VmmIpcHeader size changed");
+static_assert(sizeof(VmmIpcHeader) == 35, "VmmIpcHeader size changed");
 static_assert(sizeof(VmmIpcEntry) == 32, "VmmIpcEntry size changed");
 
 }  // namespace allocation
