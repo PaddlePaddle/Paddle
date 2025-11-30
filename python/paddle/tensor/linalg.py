@@ -1374,7 +1374,7 @@ def cond(
 
             >>> import paddle
             >>> paddle.seed(2023)
-            >>> x = paddle.to_tensor([[1., 0, -1], [0, 1, 0], [1, 0, 1]])
+            >>> x = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
 
             >>> # compute conditional number when p is None
             >>> out = paddle.linalg.cond(x)
