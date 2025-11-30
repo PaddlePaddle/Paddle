@@ -33,10 +33,10 @@ struct LRNFunctor<phi::CPUContext, T> {
                   const phi::DenseTensor& input,
                   phi::DenseTensor* out,
                   phi::DenseTensor* mid,
-                  int N,
-                  int C,
-                  int H,
-                  int W,
+                  int64_t N,
+                  int64_t C,
+                  int64_t H,
+                  int64_t W,
                   int n,
                   T k,
                   T alpha,
@@ -76,22 +76,22 @@ struct LRNFunctor<phi::CPUContext, T> {
     squared.Resize({1, C + n - 1, H, W});
     T* sdata = dev_ctx.Alloc<T>(&squared);
     std::memset(sdata, 0, sizeof(T) * squared.numel());
-    for (int i = 0; i < mid->numel(); ++i) {
+    for (int64_t i = 0; i < mid->numel(); ++i) {
       mdata[i] = k;
     }
-    int img_size = H * W;
-    int fea_size = C * img_size;
+    int64_t img_size = H * W;
+    int64_t fea_size = C * img_size;
     int pre_pad = (n - 1) / 2;
     // compute batches one by one
-    for (int i = 0; i < N; ++i) {
+    for (int64_t i = 0; i < N; ++i) {
       blas.VSQUARE(fea_size, idata + i * fea_size, sdata + pre_pad * img_size);
       // init the first channel of mid
       for (int c = 0; c < n; ++c) {
         blas.AXPY(img_size, alpha, sdata + c * img_size, mdata + i * fea_size);
       }
-      for (int c = 1; c < C; ++c) {
+      for (int64_t c = 1; c < C; ++c) {
         // copy previous scale
-        int mid_offset = i * fea_size + c * img_size;
+        int64_t mid_offset = i * fea_size + c * img_size;
         std::memcpy(mdata + mid_offset,
                     mdata + mid_offset - img_size,
                     img_size * sizeof(T));

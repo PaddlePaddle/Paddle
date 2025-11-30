@@ -176,6 +176,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     phi::DenseTensor logits_2d, softmax_2d;
     logits_2d.ShareDataWith(*logits).Resize({N, D});
     softmax_2d.ShareDataWith(*softmax).Resize({N, D});
+    const int new_axis = logits_2d.dims().size() - 1;
 
     int ret = -1;
     // step 1, obtain logit_max
@@ -218,7 +219,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
         return xpu::broadcast_sub<XPUType>(xpu_ctx, x, y, z, xshape, yshape);
       };
       phi::XPUElementwise<T, XPUType>(
-          dev_ctx, logits_2d, logits_max, axis, &softmax_2d, f);
+          dev_ctx, logits_2d, logits_max, new_axis, &softmax_2d, f);
     }
 
     // step 3, obtain predict target

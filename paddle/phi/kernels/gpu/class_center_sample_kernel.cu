@@ -334,18 +334,8 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
   auto place = dev_ctx.GetPlace();
 
   int64_t batch_size = label.numel();
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
-  PADDLE_ENFORCE_LE(
-      label.numel(),
-      std::numeric_limits<int>::max(),
-      errors::InvalidArgument(
-          "The total number of elements for 'label' should be less than "
-          "%d, "
-          "but received %d",
-          std::numeric_limits<int>::max(),
-          label.numel()));
+  // TODO(large-tensor): downstream functors may still use int
+  PADDLE_ENFORCE_LE_INT_MAX(label.numel(), "label.numel()");
   // Algorithm:
   // We first randomly generate a value in [0, num_classes) on each position
   // in a array(shape[num_classes]). Then, we mark the element as negative

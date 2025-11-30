@@ -38,9 +38,13 @@ __global__ void gather_with_mask_permute_kernel(
   int* scatter_index_shared = reinterpret_cast<int*>(shared);
   float* combine_weights_shared =
       reinterpret_cast<float*>(shared + s_shared_num * k * sizeof(int));
-  int64_t shared_idx_begin = blockIdx.x * blockDim.x * vec_size;
+  int64_t shared_idx_begin = static_cast<int64_t>(blockIdx.x) *
+                             static_cast<int64_t>(blockDim.x) * vec_size;
 
-  for (int64_t idx = (blockIdx.x * blockDim.x + threadIdx.x) * vec_size;
+  for (int64_t idx = (static_cast<int64_t>(blockIdx.x) *
+                          static_cast<int64_t>(blockDim.x) +
+                      static_cast<int64_t>(threadIdx.x)) *
+                     vec_size;
        idx < N;
        idx += blockDim.x * gridDim.x * vec_size) {
     int64_t si = idx / dim;
@@ -106,9 +110,13 @@ __global__ void gather_with_mask_kernel(
   int* scatter_index_shared = reinterpret_cast<int*>(shared);
   float* combine_weights_shared =
       reinterpret_cast<float*>(shared + s_shared_num * k * sizeof(int));
-  int64_t shared_idx_begin = blockIdx.x * blockDim.x * vec_size;
+  int64_t shared_idx_begin = static_cast<int64_t>(blockIdx.x) *
+                             static_cast<int64_t>(blockDim.x) * vec_size;
 
-  for (int64_t idx = (blockIdx.x * blockDim.x + threadIdx.x) * vec_size;
+  for (int64_t idx = (static_cast<int64_t>(blockIdx.x) *
+                          static_cast<int64_t>(blockDim.x) +
+                      static_cast<int64_t>(threadIdx.x)) *
+                     vec_size;
        idx < N;
        idx += blockDim.x * gridDim.x * vec_size) {
     int64_t si = idx / dim;

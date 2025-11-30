@@ -41,7 +41,7 @@ void RandomKernel(const Context& dev_ctx,
 
     PADDLE_ENFORCE_LT(from,
                       to,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "random expects 'from' casted to dtype to be less "
                           "than 'to' casted to dtype, but got from=%d >= to=%d",
                           from,

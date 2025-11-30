@@ -35,10 +35,10 @@ struct LRNGradFunctor<phi::CPUContext, T> {
                   const phi::DenseTensor& mid,
                   phi::DenseTensor* x_g,
                   const phi::DenseTensor& out_g,
-                  int N,
-                  int C,
-                  int H,
-                  int W,
+                  int64_t N,
+                  int64_t C,
+                  int64_t H,
+                  int64_t W,
                   int n,
                   T alpha,
                   T beta,
@@ -55,13 +55,13 @@ struct LRNGradFunctor<phi::CPUContext, T> {
 
     const int start = -(n - 1) / 2;
     const int end = start + n;
-    for (int m = 0; m < N; m++) {
-      for (int i = 0; i < C; i++) {
-        auto offsets = Eigen::array<int, 4>({{m, i, 0, 0}});
-        auto extents = Eigen::array<int, 4>({{1, 1, H, W}});
+    for (int64_t m = 0; m < N; m++) {
+      for (int64_t i = 0; i < C; i++) {
+        auto offsets = Eigen::array<int64_t, 4>({{m, i, 0, 0}});
+        auto extents = Eigen::array<int64_t, 4>({{1, 1, H, W}});
         if (data_layout == DataLayout::kNHWC) {
-          offsets = Eigen::array<int, 4>({{m, 0, 0, i}});
-          extents = Eigen::array<int, 4>({{1, H, W, 1}});
+          offsets = Eigen::array<int64_t, 4>({{m, 0, 0, i}});
+          extents = Eigen::array<int64_t, 4>({{1, H, W, 1}});
         }
 
         auto i_x = e_x.slice(offsets, extents);
@@ -71,15 +71,15 @@ struct LRNGradFunctor<phi::CPUContext, T> {
 
         i_x_g = i_mid.pow(-beta) * i_out_g;
         for (int c = start; c < end; c++) {
-          int ch = i + c;
+          int64_t ch = i + c;
           if (ch < 0 || ch >= C) {
             continue;
           }
 
           if (data_layout != DataLayout::kNHWC) {
-            offsets = Eigen::array<int, 4>({{m, ch, 0, 0}});
+            offsets = Eigen::array<int64_t, 4>({{m, ch, 0, 0}});
           } else {
-            offsets = Eigen::array<int, 4>({{m, 0, 0, ch}});
+            offsets = Eigen::array<int64_t, 4>({{m, 0, 0, ch}});
           }
           auto c_out = e_out.slice(offsets, extents);
           auto c_mid = e_mid.slice(offsets, extents);

@@ -106,8 +106,12 @@ void BboxOverlaps(const phi::DenseTensor& r_boxes,
   auto r_boxes_et = phi::EigenTensor<T, 2>::From(r_boxes);
   auto c_boxes_et = phi::EigenTensor<T, 2>::From(c_boxes);
   auto overlaps_et = phi::EigenTensor<T, 2>::From(*overlaps);
-  int r_num = r_boxes.dims()[0];
-  int c_num = c_boxes.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int
+  int64_t r_num = r_boxes.dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int
+  int64_t c_num = c_boxes.dims()[0];
+
   auto zero = static_cast<T>(0.0);
   T r_box_area, c_box_area, x_min, y_min, x_max, y_max, inter_w, inter_h,
       inter_area;
@@ -137,8 +141,12 @@ void BboxOverlaps(const phi::DenseTensor& r_boxes,
 template <typename T>
 void MaxIoU(const phi::DenseTensor& iou, phi::DenseTensor* max_iou) {
   const T* iou_data = iou.data<T>();
-  int row = iou.dims()[0];
-  int col = iou.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int
+  int64_t row = iou.dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int
+  int64_t col = iou.dims()[1];
+
   T* max_iou_data = max_iou->data<T>();
   for (int i = 0; i < row; ++i) {
     const T* v = iou_data + i * col;

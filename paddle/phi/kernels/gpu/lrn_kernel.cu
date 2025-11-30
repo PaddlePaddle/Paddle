@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/lrn_kernel_impl.h"
 namespace phi {
@@ -33,8 +34,8 @@ __global__ void KeCMRNormFillScale(int img_size,
     const int h = (idx / W) % H;
     const int n = idx / W / H;
     const int offset =
-        (data_layout != DataLayout::kNHWC ? (n * C * H + h) * W + w
-                                          : ((n * H + h) * W + w) * C);
+        (data_layout != DataLayout::NHWC ? (n * C * H + h) * W + w
+                                         : ((n * H + h) * W + w) * C);
 
     in += offset;
     mid += offset;
@@ -46,20 +47,20 @@ __global__ void KeCMRNormFillScale(int img_size,
     int index = 0;
     while (index < C + post_pad) {
       if (index < C) {
-        int in_idx = (data_layout != DataLayout::kNHWC ? index * step : index);
+        int in_idx = (data_layout != DataLayout::NHWC ? index * step : index);
         T val = in[in_idx];
         accum += val * val;
       }
       if (index >= size) {
-        int in_idx = (data_layout != DataLayout::kNHWC ? (index - size) * step
-                                                       : index - size);
+        int in_idx = (data_layout != DataLayout::NHWC ? (index - size) * step
+                                                      : index - size);
         T val = in[in_idx];
         accum -= val * val;
       }
       if (index >= post_pad) {
         int mid_idx =
-            (data_layout != DataLayout::kNHWC ? (index - post_pad) * step
-                                              : index - post_pad);
+            (data_layout != DataLayout::NHWC ? (index - post_pad) * step
+                                             : index - post_pad);
         mid[mid_idx] = k + accum * alpha;
       }
       ++index;
@@ -81,26 +82,38 @@ void CrossMapNormal(const phi::GPUContext& dev_ctx,
                     const T* inputs,
                     T* outputs,
                     T* mid,
-                    int N,
-                    int C,
-                    int H,
-                    int W,
+                    int64_t N,
+                    int64_t C,
+                    int64_t H,
+                    int64_t W,
                     int n,
                     T k,
                     T alpha,
                     T beta,
                     const DataLayout data_layout) {
-  int img_size = N * H * W;
+  int64_t img_size = N * H * W;
   const int block_size = 1024;
-  int grid_size = (img_size + block_size - 1) / block_size;
+  int64_t grid_size = (img_size + block_size - 1) / block_size;
+  PADDLE_ENFORCE_LE_INT_MAX(grid_size * C, "grid_size*C");
 
-  KeCMRNormFillScale<T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-      img_size, inputs, mid, C, H, W, n, k, alpha, data_layout);
+  KeCMRNormFillScale<T>
+      <<<static_cast<int>(grid_size), block_size, 0, dev_ctx.stream()>>>(
+          static_cast<int>(img_size),
+          inputs,
+          mid,
+          static_cast<int>(C),
+          static_cast<int>(H),
+          static_cast<int>(W),
+          n,
+          k,
+          alpha,
+          data_layout);
 
-  int input_size = N * H * W * C;
+  int64_t input_size = N * H * W * C;
   grid_size = (input_size + block_size - 1) / block_size;
-  KeCMRNormOutput<T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-      input_size, inputs, mid, -beta, outputs);
+  KeCMRNormOutput<T>
+      <<<static_cast<int>(grid_size), block_size, 0, dev_ctx.stream()>>>(
+          static_cast<int>(input_size), inputs, mid, -beta, outputs);
 }
 
 template <typename T>
@@ -109,10 +122,10 @@ struct LRNFunctor<phi::GPUContext, T> {
                   const phi::DenseTensor& input,
                   phi::DenseTensor* out,
                   phi::DenseTensor* mid,
-                  int N,
-                  int C,
-                  int H,
-                  int W,
+                  int64_t N,
+                  int64_t C,
+                  int64_t H,
+                  int64_t W,
                   int n,
                   T k,
                   T alpha,
