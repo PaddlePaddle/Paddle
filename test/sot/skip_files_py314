@@ -1,2 +1,2 @@
-./test/sot/test_force_dynamic.py
-./test/sot/test_numpy.py
+test_force_dynamic.py
+test_numpy.py
