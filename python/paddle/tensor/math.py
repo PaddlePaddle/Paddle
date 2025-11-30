@@ -2475,13 +2475,19 @@ def baddbmm(
 
     $Input$, $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $input$.
 
+    .. note::
+        Alias Support: The parameter name ``batch1`` can be used as an alias for ``x``, and ``batch2`` can be used as an alias for ``y``.
+
     Args:
         input (Tensor): The input Tensor to be added to the final result.
         x (Tensor): The first input Tensor for batch matrix multiplication.
+            alias: ``batch1``.
         y (Tensor): The second input Tensor for batch matrix multiplication.
+            alias: ``batch2``.
         beta (float, optional): Coefficient of $input$, default is 1.
         alpha (float, optional): Coefficient of $x*y$, default is 1.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         Tensor: The output Tensor of baddbmm.
