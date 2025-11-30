@@ -22,6 +22,7 @@ from paddle.jit.sot.utils import log, log_do
 
 from ...utils import InnerError
 from .instruction_utils import instrs_info
+from .opcode_info import TO_FUSED_INSTS
 from .stack_analyse import StackAnalyser
 
 if TYPE_CHECKING:
@@ -82,7 +83,7 @@ def find_loaded_once_local_vars(instrs: list[Instruction], code_options):
     """
     loaded_vars = {}
     for instr in instrs:
-        if instr.opname in ["LOAD_FAST", "LOAD_FAST_CHECK"]:
+        if instr.opname in ["LOAD_FAST", "LOAD_FAST_BORROW", "LOAD_FAST_CHECK"]:
             if instr.argval in loaded_vars:
                 loaded_vars[instr.argval] += 1
             else:
@@ -94,12 +95,12 @@ def find_loaded_once_local_vars(instrs: list[Instruction], code_options):
 
 def find_related_local_opcodes(instrs: list[Instruction], code_options):
     """
-    find out the opcode pairs consist with LOAD_FAST and STORE_FAST and LOAD_FAST_CHECK
+    Find opcode pairs consisting of LOAD_FAST, LOAD_FAST_BORROW, STORE_FAST, and LOAD_FAST_CHECK.
     """
     stack = []
     opcode_pairs = []
     for instr in instrs:
-        if instr.opname in ["LOAD_FAST", "LOAD_FAST_CHECK"]:
+        if instr.opname in ["LOAD_FAST", "LOAD_FAST_BORROW", "LOAD_FAST_CHECK"]:
             stack.append(instr)
         elif instr.opname == "STORE_FAST":
             if len(stack) > 0 and stack[-1] is not None:
@@ -174,7 +175,12 @@ def remove_load_store_pass(instrs: list[Instruction], code_options):
                     for instr in instrs:
                         if (
                             instr.opname
-                            in ("LOAD_FAST_CHECK", "LOAD_FAST", "STORE_FAST")
+                            in (
+                                "LOAD_FAST_CHECK",
+                                "LOAD_FAST",
+                                "LOAD_FAST_BORROW",
+                                "STORE_FAST",
+                            )
                             and instr.argval == b_name
                         ):
                             instr.argval = a_name
@@ -229,6 +235,7 @@ def remove_load_store_pass(instrs: list[Instruction], code_options):
                     not code_exist("STORE_FAST", b_name, code_range)
                     and not code_exist("LOAD_FAST_CHECK", b_name, code_range)
                     and not code_exist("LOAD_FAST", b_name, code_range)
+                    and not code_exist("LOAD_FAST_BORROW", b_name, code_range)
                     and not code_exist(
                         "LOAD_FAST_CHECK",
                         a_name,
@@ -236,6 +243,11 @@ def remove_load_store_pass(instrs: list[Instruction], code_options):
                     )
                     and not code_exist(
                         "LOAD_FAST", a_name, instrs[instrs.index(store_b) :]
+                    )
+                    and not code_exist(
+                        "LOAD_FAST_BORROW",
+                        a_name,
+                        instrs[instrs.index(store_b) :],
                     )
                 ):
                     last_store_a.argval = b_name
@@ -245,7 +257,12 @@ def remove_load_store_pass(instrs: list[Instruction], code_options):
                     for instr in instrs[last_store_idx:]:
                         if (
                             instr.opname
-                            in ("LOAD_FAST_CHECK", "LOAD_FAST", "STORE_FAST")
+                            in (
+                                "LOAD_FAST_CHECK",
+                                "LOAD_FAST",
+                                "LOAD_FAST_BORROW",
+                                "STORE_FAST",
+                            )
                             and instr.argval == a_name
                         ):
                             instr.argval = b_name
@@ -287,17 +304,12 @@ def fuse_double_super_instrs(instrs: list[Instruction], code_options):
     Fuse two consecutive LOAD_FAST or STORE_FAST instructions into one.
     """
     co_varnames = code_options['co_varnames']
-    TO_FUSE_INSTS: dict[tuple[str, str], str] = {
-        ("LOAD_FAST", "LOAD_FAST"): "LOAD_FAST_LOAD_FAST",
-        ("STORE_FAST", "STORE_FAST"): "STORE_FAST_STORE_FAST",
-        ("STORE_FAST", "LOAD_FAST"): "STORE_FAST_LOAD_FAST",
-    }
 
     def able_to_merge(idx: int):
         return (
             idx > 0
             and (instrs[idx - 1].opname, instrs[idx].opname)
-            in TO_FUSE_INSTS.keys()
+            in TO_FUSED_INSTS.keys()
             and not instrs[idx].is_jump_target
             and not instrs[idx - 1].is_jump_target
             and co_varnames.index(instrs[idx - 1].argval) < 16
@@ -306,7 +318,7 @@ def fuse_double_super_instrs(instrs: list[Instruction], code_options):
 
     def merge_two_op(prev_instr: Instruction, instr: Instruction):
         merge_key = (instrs[idx - 1].opname, instrs[idx].opname)
-        prev_instr.opname = TO_FUSE_INSTS[merge_key]
+        prev_instr.opname = TO_FUSED_INSTS[merge_key]
         prev_instr.opcode = dis.opmap[prev_instr.opname]
         prev_instr.is_generated = True
         prev_instr.argval = (prev_instr.argval, instr.argval)

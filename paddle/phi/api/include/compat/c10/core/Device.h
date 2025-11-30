@@ -24,7 +24,16 @@ struct Device final {
   Device(DeviceType type, DeviceIndex index = 0)
       : inner_(phi::Place(type, index)) {}  // NOLINT
 
+  /// Constructs a `Device` from a string description, for convenience.
+  /// The string supplied must follow the following schema:
+  /// `(cpu|cuda)[:<device-index>]`
+  /// where `cpu` or `cuda` specifies the device type, and
+  /// `:<device-index>` optionally specifies a device index.
+  /* implicit */ Device(const std::string& device_string);
+
   DeviceIndex index() const noexcept { return inner_.GetDeviceId(); }
+
+  bool has_index() const noexcept { return index() != -1; }
 
   DeviceType type() const { return inner_.GetType(); }
 
@@ -32,11 +41,19 @@ struct Device final {
 
   bool is_cpu() const noexcept { return phi::is_cpu_place(inner_); }
 
+  std::string str() const;
+
+  bool operator==(const Device& other) const noexcept {
+    return type() == other.type() && this->index() == other.index();
+  }
+
   phi::Place _PD_GetInner() const { return inner_; }
 
  private:
   phi::Place inner_;
 };
+
+std::ostream& operator<<(std::ostream& stream, const Device& device);
 
 }  // namespace c10
 

@@ -33,3 +33,14 @@
 #define C10_UID __LINE__
 #define C10_ANONYMOUS_VARIABLE(str) C10_CONCATENATE(str, __LINE__)
 #endif
+
+#if defined(__CUDACC__) || defined(__HIPCC__)
+// Designates functions callable from the host (CPU) and the device (GPU)
+#define C10_HOST_DEVICE __host__ __device__
+#define C10_DEVICE __device__
+#define C10_HOST __host__
+#else
+#define C10_HOST_DEVICE
+#define C10_HOST
+#define C10_DEVICE
+#endif

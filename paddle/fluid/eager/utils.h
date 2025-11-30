@@ -286,6 +286,7 @@ class TEST_API EagerUtils {
 
   static std::string TensorStr(
       const paddle::optional<std::vector<paddle::Tensor>>& tensors);
+  static std::string TensorStr(const std::vector<paddle::Tensor*>& tensors);
 };
 
 using paddle::experimental::detail::ArgsIterator;
@@ -458,6 +459,9 @@ TEST_API void SetTensorName(const std::string& unique_api_name,
 TEST_API void SetTensorName(const std::string& unique_api_name,
                             const std::string& var_name,
                             std::vector<paddle::Tensor>* tensors);
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            std::vector<paddle::Tensor*>* tensors);
 TEST_API void SetTensorName(
     const std::string& unique_api_name,
     const std::string& var_name,
@@ -483,4 +487,22 @@ void AddEdgeToDebugBackwardGraph(paddle::inference::analysis::Dot* dot,
                                  bool need_dump_backward_subgraph);
 
 const std::string FormatTensor(const paddle::Tensor& t);
+static inline std::string GetGradNodeHexAddress(GradNodeBase* ptr) {
+  std::ostringstream oss;
+  // Use std::hex to output in hexadecimal format
+  // std::showbase to include the 0x prefix
+  oss << std::showbase << std::hex << reinterpret_cast<std::uintptr_t>(ptr);
+  return oss.str();
+}
+void SavePythonCallStackToFile(const std::string& file_name,
+                               const std::string& api_name);
+std::string FormatPyLayerBackwardErrorMsg(GradNodeBase* node,
+                                          std::string error_mesg);
+void CheckGradNodeAccumulation(const paddle::Tensor& tensor);
+void CheckGradNodeAccumulation(const paddle::optional<paddle::Tensor>& tensor);
+void CheckGradNodeAccumulation(
+    const paddle::optional<std::vector<paddle::Tensor>>& tensors);
+void CheckGradNodeAccumulation(const std::vector<paddle::Tensor>& tensors);
+void CheckGradNodeAccumulation(
+    const std::vector<std::vector<paddle::Tensor*>>& tensors);
 }  // namespace egr

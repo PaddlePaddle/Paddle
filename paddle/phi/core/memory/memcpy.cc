@@ -336,32 +336,6 @@ void Copy<phi::Place, phi::XPUPlace>(phi::Place dst_place,
 }
 
 template <>
-PADDLE_API void Copy<phi::Place, phi::Place>(phi::Place dst_place,
-                                             void* dst,
-                                             phi::Place src_place,
-                                             const void* src,
-                                             size_t num,
-                                             void* stream) {
-  if (dst_place.GetType() == phi::AllocationType::CPU) {
-    phi::CPUPlace place_dst;
-    if (src_place.GetType() == phi::AllocationType::XPU) {
-      phi::XPUPlace place_src(src_place.GetDeviceId());
-      return Copy(place_dst, dst, place_src, src, num);
-    } else {
-      VLOG(4) << "cannot fit into a copy stereotype, might be an error";
-    }
-  } else if (dst_place.GetType() == phi::AllocationType::XPU) {
-    phi::XPUPlace place_dst(dst_place.GetDeviceId());
-    if (src_place.GetType() == phi::AllocationType::CPU) {
-      phi::CPUPlace place_src;
-      return Copy(place_dst, dst, place_src, src, num);
-    } else {
-      VLOG(4) << "cannot fit into a copy stereotype, might be an error";
-    }
-  }
-}
-
-template <>
 void Copy<phi::CPUPlace, phi::XPUPinnedPlace>(phi::CPUPlace dst_place,
                                               void* dst,
                                               phi::XPUPinnedPlace src_place,
@@ -476,6 +450,32 @@ void Copy<phi::XPUPlace, phi::XPUPinnedPlace>(phi::XPUPlace dst_place,
   auto end = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double, std::milli> elapsed = end - start;
   VLOG(4) << "cudaMemcpy time: " << elapsed.count() << " ms";
+}
+
+// NOTE: for XPU and XPUPINNED.
+template <>
+PADDLE_API void Copy<phi::Place, phi::Place>(phi::Place dst_place,
+                                             void* dst,
+                                             phi::Place src_place,
+                                             const void* src,
+                                             size_t num,
+                                             void* stream) {
+  if (src_place.GetType() == phi::AllocationType::XPUPINNED &&
+      dst_place.GetType() == phi::AllocationType::XPU) {
+    phi::XPUPinnedPlace place_src;
+    phi::XPUPlace place_dst(dst_place.GetDeviceId());
+    return Copy(place_dst, dst, place_src, src, num, stream);
+  } else if (src_place.GetType() == phi::AllocationType::XPU &&
+             dst_place.GetType() == phi::AllocationType::XPUPINNED) {
+    phi::XPUPinnedPlace place_dst;
+    phi::XPUPlace place_src(src_place.GetDeviceId());
+    return Copy(place_dst, dst, place_src, src, num, stream);
+  } else {
+    PADDLE_THROW(::common::errors::Unimplemented(
+        "Asynchronous Copy from %s to %s is not supported.",
+        src_place,
+        dst_place));
+  }
 }
 
 template <>
@@ -866,50 +866,6 @@ PADDLE_API void Copy<phi::Place, phi::Place>(phi::Place dst_place,
     phi::GPUPinnedPlace place_dst;
     phi::GPUPlace place_src(src_place.GetDeviceId());
     return Copy(place_dst, dst, place_src, src, num, stream);
-#ifdef PADDLE_WITH_XPU
-  } else if (src_place.GetType() == phi::AllocationType::CPU &&
-             dst_place.GetType() == phi::AllocationType::XPUPINNED) {
-    phi::CPUPlace place_src;
-    phi::XPUPinnedPlace place_dst;
-    return Copy(place_dst, dst, place_src, src, num);
-  } else if (src_place.GetType() == phi::AllocationType::XPUPINNED &&
-             dst_place.GetType() == phi::AllocationType::CPU) {
-    phi::CPUPlace place_dst;
-    phi::XPUPinnedPlace place_src;
-    return Copy(place_dst, dst, place_src, src, num);
-  } else if (src_place.GetType() == phi::AllocationType::XPUPINNED &&
-             dst_place.GetType() == phi::AllocationType::XPUPINNED) {
-    phi::XPUPinnedPlace place_dst;
-    phi::XPUPinnedPlace place_src;
-    return Copy(place_dst, dst, place_src, src, num);
-  } else if (src_place.GetType() == phi::AllocationType::XPUPINNED &&
-             dst_place.GetType() == phi::AllocationType::XPU) {
-    phi::XPUPinnedPlace place_src;
-    phi::XPUPlace place_dst(dst_place.GetDeviceId());
-    return Copy(place_dst, dst, place_src, src, num, stream);
-  } else if (src_place.GetType() == phi::AllocationType::XPU &&
-             dst_place.GetType() == phi::AllocationType::XPUPINNED) {
-    phi::XPUPinnedPlace place_dst;
-    phi::XPUPlace place_src(src_place.GetDeviceId());
-    return Copy(place_dst, dst, place_src, src, num, stream);
-#endif
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  } else if (src_place.GetType() == phi::AllocationType::CPU &&  // NOLINT
-             dst_place.GetType() == phi::AllocationType::CUSTOM) {
-    phi::CPUPlace place_src;
-    phi::CustomPlace place_dst(dst_place);
-    return Copy(place_dst, dst, place_src, src, num, stream);
-  } else if (src_place.GetType() == phi::AllocationType::CUSTOM &&  // NOLINT
-             dst_place.GetType() == phi::AllocationType::CPU) {
-    phi::CustomPlace place_src(src_place);
-    phi::CPUPlace place_dst;
-    return Copy(place_dst, dst, place_src, src, num, stream);
-  } else if (src_place.GetType() == phi::AllocationType::CUSTOM &&  // NOLINT
-             dst_place.GetType() == phi::AllocationType::CUSTOM) {
-    phi::CustomPlace place_src(src_place);
-    phi::CustomPlace place_dst(dst_place);
-    return Copy(place_dst, dst, place_src, src, num, stream);
-#endif
   }
 }
 
@@ -1011,7 +967,7 @@ void Copy<phi::Place, phi::GPUPinnedPlace>(phi::Place dst_place,
 }
 #endif
 
-// NOTE: Only for CPUPlace, XPUPlace and PinnedPlace.
+// NOTE: Synchronous Copy for All Place.
 template <>
 PADDLE_API void Copy<phi::Place, phi::Place>(phi::Place dst_place,
                                              void* dst,
@@ -1026,8 +982,13 @@ PADDLE_API void Copy<phi::Place, phi::Place>(phi::Place dst_place,
     std::memcpy(dst, src, num);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  else if (src_place.GetType() == phi::AllocationType::CPU &&  // NOLINT
-           dst_place.GetType() == phi::AllocationType::GPUPINNED) {
+  else if (src_place.GetType() == phi::AllocationType::GPU &&  // NOLINT
+           dst_place.GetType() == phi::AllocationType::CPU) {
+    phi::GPUPlace place_src(src_place.GetDeviceId());
+    phi::CPUPlace place_dst;
+    return Copy(place_dst, dst, place_src, src, num, nullptr);
+  } else if (src_place.GetType() == phi::AllocationType::CPU &&
+             dst_place.GetType() == phi::AllocationType::GPUPINNED) {
     std::memcpy(dst, src, num);
   } else if (src_place.GetType() == phi::AllocationType::GPUPINNED &&
              dst_place.GetType() == phi::AllocationType::CPU) {
@@ -1039,11 +1000,7 @@ PADDLE_API void Copy<phi::Place, phi::Place>(phi::Place dst_place,
 #endif
 #ifdef PADDLE_WITH_XPU
   else if (src_place.GetType() == phi::AllocationType::CPU &&  // NOLINT
-           dst_place.GetType() == phi::AllocationType::CPU) {
-    phi::CPUPlace place_dst, place_src;
-    return Copy(place_dst, dst, place_src, src, num);
-  } else if (src_place.GetType() == phi::AllocationType::CPU &&
-             dst_place.GetType() == phi::AllocationType::XPU) {
+           dst_place.GetType() == phi::AllocationType::XPU) {
     phi::XPUPlace place_dst(dst_place.GetDeviceId());
     phi::CPUPlace place_src;
     return Copy(place_dst, dst, place_src, src, num);
@@ -1124,6 +1081,10 @@ PADDLE_API void Copy<phi::Place, phi::Place>(phi::Place dst_place,
     return Copy(place_dst, dst, place_src, src, num, nullptr);
   }
 #endif
+  else {  // NOLINT
+    PADDLE_THROW(::common::errors::Unimplemented(
+        "Copy from %s to %s is not supported.", src_place, dst_place));
+  }
 }
 
 // NOTE: Only for (CPUPlace) -> (CPUPlace and PinnedPlace).

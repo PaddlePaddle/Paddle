@@ -16,19 +16,16 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
 #else
-#include <cub/cub.cuh>
 #include "cuda.h"  // NOLINT
 #endif
-
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/nonzero_kernel.h"
@@ -672,7 +669,8 @@ __launch_bounds__(nthds_per_cta) __global__
                                 bool clip_boxes,
                                 const T_SCORE score_shift) {
   if (keep_top_k > top_k) return;
-  for (int i = blockIdx.x * nthds_per_cta + threadIdx.x;
+  for (int64_t i = static_cast<int64_t>(blockIdx.x) * nthds_per_cta +
+                   static_cast<int64_t>(threadIdx.x);
        i < num_images * keep_top_k;
        i += gridDim.x * nthds_per_cta) {
     const int imgId = i / keep_top_k;

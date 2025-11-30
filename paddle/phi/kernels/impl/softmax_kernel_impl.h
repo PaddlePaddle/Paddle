@@ -28,7 +28,7 @@ void SoftmaxKernel(const Context& dev_ctx,
                    DenseTensor* out) {
   const int rank = x.dims().size();
   const int calc_axis = phi::funcs::CanonicalAxis(axis, rank);
-  int axis_dim = x.dims()[calc_axis];
+  int64_t axis_dim = x.dims()[calc_axis];
 
   // allocate memory on device.
   dev_ctx.template Alloc<T>(out);
@@ -42,8 +42,8 @@ void SoftmaxKernel(const Context& dev_ctx,
     return;
   }
 
-  const int n = phi::funcs::SizeToAxis(calc_axis, x.dims());
-  const int d = phi::funcs::SizeFromAxis(calc_axis, x.dims());
+  const int64_t n = phi::funcs::SizeToAxis(calc_axis, x.dims());
+  const int64_t d = phi::funcs::SizeFromAxis(calc_axis, x.dims());
   DenseTensor X_2d, Out_2d;
   X_2d.ShareDataWith(x).Resize({n, d});
   Out_2d.ShareDataWith(*out).Resize({n, d});

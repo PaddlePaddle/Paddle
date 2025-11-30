@@ -15,6 +15,7 @@
 #include "paddle/fluid/eager/backward.h"
 
 #include "paddle/fluid/eager/general_grad.h"
+#include "paddle/fluid/eager/pylayer/py_layer_node.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/phi/core/memory/stats.h"
@@ -321,8 +322,15 @@ std::vector<paddle::Tensor> RunBackward(
       VLOG(4) << "RunBackward: Create Value for grad input tensor " << i
               << " of grad node: " << grad_node->name() << "(" << grad_node
               << ")";
-      node_input_buffers_dict[grad_node] =
-          std::make_unique<GradTensorHolder>(grad_node->InputMeta());
+
+      if (typeid(*grad_node) == typeid(GradNodePyLayer)) {
+        auto pylayer_gradnode = dynamic_cast<GradNodePyLayer*>(grad_node);
+        node_input_buffers_dict[grad_node] = std::make_unique<GradTensorHolder>(
+            grad_node->InputMeta(), pylayer_gradnode->GradInDtypeConsistent());
+      } else {
+        node_input_buffers_dict[grad_node] =
+            std::make_unique<GradTensorHolder>(grad_node->InputMeta());
+      }
     }
 
     // copy grad tensor since we should totally run grad without affect forward
@@ -337,7 +345,7 @@ std::vector<paddle::Tensor> RunBackward(
               "size = 0 or same size as tensors."));
       // Feed given tensor if it's provided
       VLOG(4) << "RunBackward: Fill grad input tensor " << i
-              << "with give grad tensor";
+              << " with given grad tensor";
 
       bool use_shared_buffer = false;
       // Check if inputs and outputs are equal in size and share the same buffer
@@ -355,9 +363,8 @@ std::vector<paddle::Tensor> RunBackward(
         paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
             inputs_grad_tensors;
         inputs_grad_tensors.push_back({grad_tensors[i]});
-        auto grad_holder = GradTensorHolder(std::move(inputs_grad_tensors));
-        node_input_buffers_dict[grad_node] =
-            std::make_unique<GradTensorHolder>(grad_holder);
+        node_input_buffers_dict[grad_node]->SetBuffers(
+            std::move(inputs_grad_tensors));
       } else {
         // Deep copy
         node_input_buffers_dict[grad_node]->CopyValueFromTensor(
@@ -590,11 +597,23 @@ std::vector<paddle::Tensor> RunBackward(
 
           if (!node_input_buffers_dict.count(next_node)) {
             const auto& input_meta = next_node->InputMeta();
-            auto grad_tensor_holder =
-                std::make_unique<GradTensorHolder>(input_meta);
+
             VLOG(6) << "RunBackward: Construct GradTensorHolder for grad node: "
                     << next_node->name() << "(" << next_node << ") ";
-            node_input_buffers_dict[next_node] = std::move(grad_tensor_holder);
+
+            if (typeid(*next_node) == typeid(GradNodePyLayer)) {
+              auto pylayer_gradnode = dynamic_cast<GradNodePyLayer*>(next_node);
+              auto grad_tensor_holder = std::make_unique<GradTensorHolder>(
+                  next_node->InputMeta(),
+                  pylayer_gradnode->GradInDtypeConsistent());
+              node_input_buffers_dict[next_node] =
+                  std::move(grad_tensor_holder);
+            } else {
+              auto grad_tensor_holder =
+                  std::make_unique<GradTensorHolder>(input_meta);
+              node_input_buffers_dict[next_node] =
+                  std::move(grad_tensor_holder);
+            }
           }
 
           VLOG(7) << "RunBackward: Sum or Move grad inputs for edge slot: "
@@ -710,7 +729,7 @@ std::vector<paddle::Tensor> RunBackward(
     }
   }
   // Save Debug info to the dump_backward_graph_path
-  if (need_debug_backward_graph) {
+  if (need_debug_backward_graph && !dot.IsEmpty()) {
     SaveDebugInfo(dump_backward_graph_path,
                   forward_debug_dot_graph.Build(),
                   debug_call_stack,

@@ -17,6 +17,11 @@
 #include <ctime>
 #include <iomanip>
 #include <ostream>
+#ifdef _WIN32
+#include <Windows.h>
+#else
+#include <unistd.h>
+#endif
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
@@ -31,12 +36,20 @@
 #include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/variable.h"
 
 #include "paddle/utils/md5.h"
 COMMON_DECLARE_bool(enable_unique_name);
 COMMON_DECLARE_int32(tensor_md5_checksum_precision);
+
+#ifdef _WIN32
+#define getprocessid GetCurrentProcessId
+typedef int pid_t;
+#else
+#define getprocessid getpid
+#endif
 namespace egr {
 using paddle::inference::analysis::Dot;
 
@@ -552,7 +565,7 @@ std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
     if (!autograd_ptr->StopGradient()) {
       VLOG(6) << "Add GradNodeAccumulation for tensor: " << tensor.name();
       autograd_ptr->SetGradNode(
-          std::make_shared<egr::GradNodeAccumulation>(autograd_ptr));
+          std::make_shared<egr::GradNodeAccumulation>(tensor));
       return autograd_ptr->GetMutableGradNode();
     } else {
       return nullptr;
@@ -1030,15 +1043,26 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
                                    t.has_allocation(),
                                    &t,
                                    t.impl());
-  } else {
-    return "[ Not specified tensor log level ]";
+  } else if (VLOG_IS_ON(3)) {
+    const char* TENSOR_PRINT_TEMPLATE = "{\n\tName: %s, %s}";
+    return paddle::string::Sprintf(
+        TENSOR_PRINT_TEMPLATE, tensor_name_str, tensor_info_str);
   }
+  { return "[ Not specified tensor log level ]"; }
 }
 
 std::string EagerUtils::TensorStr(const std::vector<paddle::Tensor>& tensors) {
   std::string tensors_str = "";
   for (const auto& tensor : tensors) {
     tensors_str += TensorStr(tensor) + ", ";
+  }
+  return "[ " + tensors_str + " ]";
+}
+
+std::string EagerUtils::TensorStr(const std::vector<paddle::Tensor*>& tensors) {
+  std::string tensors_str = "";
+  for (const auto& tensor : tensors) {
+    tensors_str += TensorStr(*tensor) + ", ";
   }
   return "[ " + tensors_str + " ]";
 }
@@ -1496,7 +1520,19 @@ TEST_API void SetTensorName(const std::string& unique_api_name,
     auto& t = (*tensors)[i];
     if (t.defined() && t.has_allocation()) {
       t.set_name(egr::GenerateUniqueTensorName(
-          unique_api_name, var_name + std::to_string(i), &t));
+          unique_api_name, var_name + "_" + std::to_string(i), &t));
+    }
+  }
+}
+
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            std::vector<paddle::Tensor*>* tensors) {
+  for (size_t i = 0; i < tensors->size(); i++) {
+    auto& t = (*tensors)[i];
+    if (t->defined() && t->has_allocation()) {
+      t->set_name(egr::GenerateUniqueTensorName(
+          unique_api_name, var_name + "_" + std::to_string(i), t));
     }
   }
 }
@@ -1520,8 +1556,11 @@ TEST_API void SetGradTensorName(
     const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
         bwd_out_meta) {
   const auto& metas = bwd_out_meta[slot];
+  if (metas.size() == 0) return;
   std::string name = GenerateGradTensorName(metas[0]);
-  tensor->set_name(name);
+  if (tensor != nullptr && tensor->defined() && tensor->has_allocation()) {
+    tensor->set_name(name);
+  }
 }
 TEST_API void SetGradTensorName(
     std::vector<paddle::Tensor>* tensors,
@@ -1529,7 +1568,7 @@ TEST_API void SetGradTensorName(
     const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
         bwd_out_meta) {
   const auto& metas = bwd_out_meta[slot];
-  for (size_t i = 0; i < tensors->size(); i++) {
+  for (size_t i = 0; i < tensors->size() && i < metas.size(); i++) {
     auto& t = (*tensors)[i];
     if (t.defined() && t.has_allocation()) {
       std::string name = GenerateGradTensorName(metas[i]);
@@ -1642,4 +1681,88 @@ const std::string FormatTensor(const paddle::Tensor& t) {
   return formatter.Format(dense_tensor, t.name());
 }
 
+void SaveStringToFileWithPID(const std::string& filename,
+                             const std::string& content,
+                             const std::string& mode = "trunc") {
+  pid_t pid = getprocessid();
+  // Create the new filename with PID suffix
+  std::string newFilename = filename + "." + std::to_string(pid);
+  SaveStringToFile(newFilename, content, mode);
+}
+
+void SavePythonCallStackToFile(const std::string& file_name,
+                               const std::string& api_name) {
+  SaveStringToFileWithPID(
+      file_name,
+      api_name + " : \n" + egr::Controller::Instance().GetPythonStack(),
+      "append");
+}
+#define SEPARATOR "============================"
+std::string FormatPyLayerBackwardErrorMsg(GradNodeBase* node,
+                                          std::string error_mesg) {
+  std::ostringstream oss;
+  oss << SEPARATOR << " Error message in backward of " << node->name() << "("
+      << node << ")" << SEPARATOR << std::endl;
+  oss << error_mesg << std::endl;
+  oss << SEPARATOR << SEPARATOR << SEPARATOR << SEPARATOR << std::endl;
+  return "\n{\n" + paddle::framework::InsertIndentationIntoEachLine(oss.str()) +
+         "\n}\n";
+}
+
+void CheckGradNodeAccumulation(const paddle::Tensor& tensor) {
+  auto* autograd_meta = egr::EagerUtils::nullable_autograd_meta(tensor);
+  if (!autograd_meta) return;
+
+  auto grad_node = autograd_meta->GetMutableGradNode();
+  if (!grad_node || !grad_node.get()) return;
+
+  auto accumulation_node =
+      std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
+  if (!accumulation_node) return;
+
+  phi::DataType tensor_dtype = tensor.dtype();
+  const auto& input_metas = accumulation_node->InputMeta();
+  if (input_metas.empty() || input_metas[0].empty()) return;
+
+  const auto& slot_meta = input_metas[0][0];
+  if (slot_meta.HasTensorMeta()) {
+    const auto& tensor_meta = slot_meta.GetTensorMeta();
+    phi::DataType meta_dtype = tensor_meta.dtype;
+
+    if (tensor_dtype != meta_dtype) {
+      VLOG(7) << "Updating GradNodeAccumulation(" << accumulation_node.get()
+              << ") meta dtype from " << phi::DataTypeToString(meta_dtype)
+              << " to " << phi::DataTypeToString(tensor_dtype);
+      accumulation_node->SetGradInMeta(tensor, 0);
+    }
+  }
+}
+
+void CheckGradNodeAccumulation(const paddle::optional<paddle::Tensor>& tensor) {
+  if (!tensor) return;
+  CheckGradNodeAccumulation(*tensor);
+}
+
+void CheckGradNodeAccumulation(
+    const paddle::optional<std::vector<paddle::Tensor>>& tensors) {
+  if (!tensors) return;
+  for (const auto& tensor : *tensors) {
+    CheckGradNodeAccumulation(tensor);
+  }
+}
+
+void CheckGradNodeAccumulation(const std::vector<paddle::Tensor>& tensors) {
+  for (const auto& tensor : tensors) {
+    CheckGradNodeAccumulation(tensor);
+  }
+}
+
+void CheckGradNodeAccumulation(
+    const std::vector<std::vector<paddle::Tensor*>>& tensors) {
+  for (const auto& sub_tensors : tensors) {
+    for (const auto& tensor : sub_tensors) {
+      CheckGradNodeAccumulation(*tensor);
+    }
+  }
+}
 }  // namespace egr

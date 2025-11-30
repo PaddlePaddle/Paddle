@@ -39,9 +39,9 @@ void SvdvalsGradKernel(const Context& dev_ctx,
     return;
   }
   auto x_dims = x.dims();
-  int rows = static_cast<int>(x_dims[x_dims.size() - 2]);
-  int cols = static_cast<int>(x_dims[x_dims.size() - 1]);
-  int batches = static_cast<int>(x.numel() / (rows * cols));
+  int64_t rows = x_dims[x_dims.size() - 2];
+  int64_t cols = x_dims[x_dims.size() - 1];
+  int64_t batches = x.numel() / (rows * cols);
   DenseTensor dX_term;
   if (batches == 1) {
     dX_term = Diag<T, Context>(dev_ctx, s_grad, 0, 0);

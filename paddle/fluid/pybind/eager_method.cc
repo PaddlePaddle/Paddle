@@ -881,8 +881,9 @@ static PyObject* tensor_retain_grads(TensorObject* self,
     auto meta = egr::EagerUtils::autograd_meta(&(self->tensor));
     if (!meta->GetMutableGradNode()) {
       VLOG(6) << "Make grad node of tensor: " << self->tensor.name()
-              << "become accumulation node";
-      meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
+              << " become accumulation node";
+      meta->SetGradNode(
+          std::make_shared<egr::GradNodeAccumulation>(self->tensor));
     }
     egr::egr_utils_api::RetainGradForTensor(self->tensor);
   }
@@ -2123,7 +2124,7 @@ static PyObject* tensor_register_grad_hook(TensorObject* self,
         VLOG(6) << "Detected nullptr grad_node, Leaf tensor should have had "
                    "grad_node with type: GradNodeAccumulation.";
         autograd_meta->SetGradNode(
-            std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+            std::make_shared<egr::GradNodeAccumulation>(self->tensor));
       }
     }
 

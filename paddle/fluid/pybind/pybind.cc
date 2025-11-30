@@ -81,6 +81,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/prim/utils/utils.h"
+#include "paddle/fluid/pybind/size.h"
 #include "paddle/fluid/pybind/torch_compat.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
@@ -125,6 +126,8 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/io.h"
+#include "paddle/fluid/pybind/ir_meta_tensor.h"
+#include "paddle/fluid/pybind/ir_tensor.h"
 #include "paddle/fluid/pybind/jit.h"
 #include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/pir.h"
@@ -140,6 +143,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/phi/core/memory/allocation/mmap_allocator.h"
+#include "paddle/phi/core/memory/mem_utils.h"
 #include "paddle/phi/core/platform/cpu_helper.h"
 #include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/device_context.h"
@@ -180,8 +184,10 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_XPU
+#include "paddle/phi/core/memory/allocation/xpu_ipc_allocator.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_op_list.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_profiler.h"
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -496,6 +502,15 @@ struct iinfo {
       case phi::DataType::UINT8:
         CASE_IINFO_BODY(uint8, uint8_t);
         break;
+      case phi::DataType::UINT16:
+        CASE_IINFO_BODY(uint16, uint16_t);
+        break;
+      case phi::DataType::UINT32:
+        CASE_IINFO_BODY(uint32, uint32_t);
+        break;
+      case phi::DataType::UINT64:
+        CASE_IINFO_BODY(uint64, uint64_t);
+        break;
       case phi::DataType::INT8:
         CASE_IINFO_BODY(int8, int8_t);
         break;
@@ -771,7 +786,7 @@ int DLPackDLTensorFromPyObjectNoSync(void *py_obj, DLTensor *out) {
     paddle::Tensor tensor = handle.cast<paddle::Tensor>();
     std::shared_ptr<phi::DenseTensor> dense_tensor =
         std::static_pointer_cast<phi::DenseTensor>(tensor.impl());
-    paddle::framework::ToDLPackNonOwningImpl(*dense_tensor, *out);
+    paddle::framework::ToDLPackNonOwningImpl(*dense_tensor, out);
     return 0;
   } catch (const std::exception &e) {
     PyErr_SetString(PyExc_RuntimeError, e.what());
@@ -1567,6 +1582,8 @@ PYBIND11_MODULE(libpaddle, m) {
   BindJit(&m);
   BindSot(&m);
   BindCustomDevicePy(&m);
+  BindIrTensor(&m);
+  BindIrMetaTensor(&m);
   BindEagerUtils(m.ptr());
   BindOpFunctionCommon(m.ptr());
 
@@ -1694,6 +1711,21 @@ PYBIND11_MODULE(libpaddle, m) {
           }
         });
 
+  m.def("_ipc_collect", []() {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU)
+#if defined(_WIN32)
+    PADDLE_THROW(common::errors::Unavailable(
+        "ipc_collect is not supported on Windows (CUDA/XPU IPC)."));
+#else
+      paddle::memory::allocation::IpcCollect();
+#endif
+#else
+      PADDLE_THROW(common::errors::Unavailable(
+        "Paddle is not compiled with CUDA/XPU, "
+        "so `ipc_collect` cannot be used."));
+#endif
+  });
+
   class NodePostHookRemoveHelper {
    public:
     NodePostHookRemoveHelper(std::shared_ptr<egr::GradNodeBase> node,
@@ -1790,14 +1822,17 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def("wait_device", [](const phi::Place &place) {
     phi::DeviceContextPool::Instance().Get(place)->Wait();
   });
-  py::class_<MmapStorage>(m, "MmapStorage")  // class attr: base_ptr_, size_
+  py::class_<MmapStorage, std::shared_ptr<MmapStorage>>(
+      m, "MmapStorage")  // class attr: base_ptr_, size_
       .def(py::init<const std::string &, int64_t>())  // filename_, nbytes
       .def("get_slice",
-           [](MmapStorage &self,
+           [](py::object self_obj,
               proto::VarType::Type dtype,
               int64_t start,
               int64_t stop,
               int64_t step) {
+             auto self_sp = py::cast<std::shared_ptr<MmapStorage>>(self_obj);
+             MmapStorage &self = *self_sp;
              if (stop < 0) {
                stop = start + 1;  // default: get the start element.
              }
@@ -1809,11 +1844,17 @@ PYBIND11_MODULE(libpaddle, m) {
                  PySlice_AdjustIndices(size_py, &start_py, &stop_py, step_py);
              auto data = static_cast<uint8_t *>(self.base_ptr_) + start;
              auto dtype_phi = phi::TransToPhiDataType(dtype);
-             return from_blob(data,
-                              phi::IntArray({slicelength}),
-                              dtype_phi,
-                              phi::DataLayout::NCHW,
-                              phi::CPUPlace());
+             return from_blob(
+                 reinterpret_cast<void *>(data),
+                 phi::IntArray({slicelength}),
+                 dtype_phi,
+                 phi::DataLayout::NCHW,
+                 phi::CPUPlace(),
+                 [self_sp = std::move(self_sp)](
+                     void *) mutable {  // NOLINT(readability/casting)
+                   pybind11::gil_scoped_acquire gil;
+                   self_sp.reset();
+                 });
            });
   m.def(
       "frombuffer",
@@ -1888,6 +1929,11 @@ PYBIND11_MODULE(libpaddle, m) {
 
   m.def("dlpack_exchange_api_ptr", []() -> int64_t {
     return reinterpret_cast<int64_t>(PaddleDLPackExchangeAPI::Instance());
+  });
+
+  m.def("dlpack_exchange_api_pycapsule", []() -> py::capsule {
+    return py::capsule(PaddleDLPackExchangeAPI::Instance(),
+                       "dlpack_exchange_api");
   });
 
   m.def("from_dlpack", [](py::object data) {
@@ -3592,7 +3638,7 @@ All parameter, weight, gradient are variables in Paddle.
       [](int id) -> const gpuDeviceProp & {
         return platform::GetDeviceProperties(id);
       },
-      py::return_value_policy::copy);
+      py::return_value_policy::reference);
 
   py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties", py::module_local())
       .def_property_readonly(
@@ -3634,7 +3680,21 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_disable_record_event", platform::NvprofDisableRecordEvent);
 #endif
 #endif
-
+#if defined(PADDLE_WITH_CUDA)
+  m.def("vmm_max_free_size", [](int device_id) {
+    return memory::VmmMaxFreeSize(phi::GPUPlace(device_id), 1);
+  });
+  m.def("vmm_compact", [](int device_id) {
+    return paddle::memory::VmmCompact(phi::GPUPlace(device_id));
+  });
+  m.def("vmm_free_block_info", [](int device_id) {
+    return paddle::memory::FreeBlockInfoOfVmmAllocator(
+        phi::GPUPlace(device_id));
+  });
+  m.def("vmm_all_block_info", [](int device_id) {
+    return paddle::memory::AllBlockInfoOfVmmAllocator(phi::GPUPlace(device_id));
+  });
+#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   m.def(
       "get_device_properties",
@@ -3696,6 +3756,14 @@ All parameter, weight, gradient are variables in Paddle.
         platform::GetXPUDeviceUtilizationRate);
   m.def("get_xpu_device_total_memory", platform::GetXPUDeviceTotalMemory);
   m.def("get_xpu_device_used_memory", platform::GetXPUDeviceUsedMemory);
+  m.def("nvprof_start", platform::CudaProfilerStart);
+  m.def("nvprof_stop", platform::CudaProfilerStop);
+  m.def("nvprof_nvtx_push", [](const std::string &name) {
+    platform::CudaNvtxRangePush(name, platform::NvtxRangeColor::Green);
+  });
+  m.def("nvprof_nvtx_pop", platform::CudaNvtxRangePop);
+  m.def("nvprof_enable_record_event", platform::NvprofEnableRecordEvent);
+  m.def("nvprof_disable_record_event", platform::NvprofDisableRecordEvent);
 #endif
 
   py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())
@@ -3760,7 +3828,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("save", &paddle::platform::ProfilerResult::Save)
       .def("get_extra_info", &paddle::platform::ProfilerResult::GetExtraInfo)
       .def("get_version", &paddle::platform::ProfilerResult::GetVersion)
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || PADDLE_WITH_XPU
       .def("get_span_index", &paddle::platform::ProfilerResult::GetSpanIndex)
       .def("get_device_property",
            &paddle::platform::ProfilerResult::GetDeviceProperty);
@@ -4190,6 +4258,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindCompiledProgram(m);
   BindPlace(m);
   BindTensor(m);
+  BindSize(&m);
 
   py::enum_<phi::DataType> data_type(m, "DataType");
   g_data_type_pytype = (PyTypeObject *)data_type.ptr();  // NOLINT

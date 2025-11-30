@@ -18,6 +18,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 from paddle.framework import get_default_dtype
+from paddle.utils.decorator_utils import param_one_alias
 
 from .. import functional as F
 from ..initializer import Constant
@@ -159,17 +160,27 @@ class GLU(Layer):
             [-1.05778778, -0.46985325]])
     """
 
+    @param_one_alias(["axis", "dim"])
     def __init__(self, axis: int = -1, name: str | None = None) -> None:
         super().__init__()
         self._axis = axis
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.glu(x, self._axis, self._name)
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
         return f'axis={self._axis}{name_str}'
+
+    @property
+    def dim(self) -> int:
+        return self._axis
+
+    @dim.setter
+    def dim(self, value: int) -> None:
+        self._axis = value
 
 
 class GELU(Layer):
@@ -291,17 +302,27 @@ class Hardshrink(Layer):
             [-1.       ,  0.       , 2.50000000])
     """
 
+    @param_one_alias(["threshold", "lambd"])
     def __init__(self, threshold: float = 0.5, name: str | None = None) -> None:
         super().__init__()
         self._threshold = threshold
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.hardshrink(x, self._threshold, self._name)
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
         return f'threshold={self._threshold}{name_str}'
+
+    @property
+    def lambd(self) -> float:
+        return self._threshold
+
+    @lambd.setter
+    def lambd(self, value: float) -> None:
+        self._threshold = value
 
 
 class Hardswish(Layer):
@@ -1011,17 +1032,27 @@ class Softshrink(Layer):
             [-0.39999998,  0.        ,  0.        ,  0.30000001])
     """
 
+    @param_one_alias(["threshold", "lambd"])
     def __init__(self, threshold: float = 0.5, name: str | None = None) -> None:
         super().__init__()
         self._threshold = threshold
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.softshrink(x, self._threshold, self._name)
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
         return f'threshold={self._threshold}{name_str}'
+
+    @property
+    def lambd(self) -> float:
+        return self._threshold
+
+    @lambd.setter
+    def lambd(self, value: float) -> None:
+        self._threshold = value
 
 
 class Softsign(Layer):

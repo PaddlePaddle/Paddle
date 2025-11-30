@@ -69,7 +69,7 @@ def frame(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle import signal
@@ -108,18 +108,18 @@ def frame(
             >>> x1 = paddle.arange(16).reshape([8, 2])
             >>> y1 = signal.frame(x1, frame_length=4, hop_length=2, axis=0)
             >>> print(y1.shape)
-            [3, 4, 2]
+            paddle.Size([3, 4, 2])
 
             >>> # > 2D
             >>> x0 = paddle.arange(32).reshape([2, 2, 8])
             >>> y0 = signal.frame(x0, frame_length=4, hop_length=2, axis=-1)
             >>> print(y0.shape)
-            [2, 2, 4, 3]
+            paddle.Size([2, 2, 4, 3])
 
             >>> x1 = paddle.arange(32).reshape([8, 2, 2])
             >>> y1 = signal.frame(x1, frame_length=4, hop_length=2, axis=0)
             >>> print(y1.shape)
-            [3, 4, 2, 2]
+            paddle.Size([3, 4, 2, 2])
     """
     if axis not in [0, -1]:
         raise ValueError(f'Unexpected axis: {axis}. It should be 0 or -1.')
@@ -190,7 +190,7 @@ def overlap_add(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.signal import overlap_add
@@ -231,12 +231,12 @@ def overlap_add(
             >>> x0 = paddle.arange(32).reshape([2, 1, 8, 2])
             >>> y0 = overlap_add(x0, hop_length=2, axis=-1)
             >>> print(y0.shape)
-            [2, 1, 10]
+            paddle.Size([2, 1, 10])
 
             >>> x1 = paddle.arange(32).reshape([2, 8, 1, 2])
             >>> y1 = overlap_add(x1, hop_length=2, axis=0)
             >>> print(y1.shape)
-            [10, 1, 2]
+            paddle.Size([10, 1, 2])
     """
     if axis not in [0, -1]:
         raise ValueError(f'Unexpected axis: {axis}. It should be 0 or -1.')
@@ -327,7 +327,7 @@ def stft(
         (`onesided` is `False`)
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.signal import stft
@@ -336,23 +336,23 @@ def stft(
             >>> x = paddle.randn([8, 48000], dtype=paddle.float64)
             >>> y1 = stft(x, n_fft=512)
             >>> print(y1.shape)
-            [8, 257, 376]
+            paddle.Size([8, 257, 376])
 
             >>> y2 = stft(x, n_fft=512, onesided=False)
             >>> print(y2.shape)
-            [8, 512, 376]
+            paddle.Size([8, 512, 376])
 
             >>> # complex input
             >>> x = paddle.randn([8, 48000], dtype=paddle.float64) + \
             ...         paddle.randn([8, 48000], dtype=paddle.float64)*1j
             >>> print(x.shape)
-            [8, 48000]
+            paddle.Size([8, 48000])
             >>> print(x.dtype)
             paddle.complex128
 
             >>> y1 = stft(x, n_fft=512, center=False, onesided=False)
             >>> print(y1.shape)
-            [8, 512, 372]
+            paddle.Size([8, 512, 372])
 
     """
 
@@ -517,7 +517,7 @@ def istft(
         `[..., seq_length]`
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> import paddle
@@ -529,12 +529,12 @@ def istft(
             >>> x = paddle.randn([8, 48000], dtype=paddle.float64)
             >>> y = stft(x, n_fft=512)
             >>> print(y.shape)
-            [8, 257, 376]
+            paddle.Size([8, 257, 376])
 
             >>> # ISTFT
             >>> x_ = istft(y, n_fft=512)
             >>> print(x_.shape)
-            [8, 48000]
+            paddle.Size([8, 48000])
 
             >>> np.allclose(x, x_)
             True

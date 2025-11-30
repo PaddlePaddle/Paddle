@@ -40,9 +40,9 @@ KernelKey MatmulGetkernelTypeForVar(const GetKernelTypeForVarContext *ctx) {
     if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
         (tensor.layout() != phi::DataLayout::ONEDNN) &&
         phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-            phi::DataLayout::kNHWC) {
+            phi::DataLayout::NHWC) {
       return phi::KernelKey(
-          tensor.place(), phi::DataLayout::kNHWC, expected_kernel_type.dtype());
+          tensor.place(), phi::DataLayout::NHWC, expected_kernel_type.dtype());
     }
 #endif
     return phi::KernelKey(

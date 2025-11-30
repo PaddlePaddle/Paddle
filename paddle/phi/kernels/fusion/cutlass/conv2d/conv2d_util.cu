@@ -71,8 +71,12 @@ __global__ void naive_conv2d_kernel(const T *input,
   int N = oc;
   int kc = ic / groups;
   int K = kc * kh * kw;
-  int m_i = threadIdx.x + blockIdx.x * blockDim.x;
-  int n_i = threadIdx.y + blockIdx.y * blockDim.y;
+  int64_t m_i =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
+  int64_t n_i =
+      static_cast<int64_t>(threadIdx.y) +
+      static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(blockDim.y);
   if (m_i >= M || n_i >= N) return;
 
   int batch_i = m_i / (oh * ow);

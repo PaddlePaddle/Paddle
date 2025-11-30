@@ -46,9 +46,8 @@ class RunCustomOpNode : public GradNodeBase {
       bool is_new_grad = false)  // NOLINT
       override;
 
-  std::string name() override {
-    return paddle::string::Sprintf("RunCustomOpNode: %s_grad", op_type_);
-  }
+  std::string name() override { return name_; }
+  void SetNameFromAPI(const std::string& name) { name_ = name + "GradNode"; }
 
   static std::vector<egr::TensorWrapper> ConstructTensorWrapper(
       const std::vector<paddle::Tensor>& fwd_var) {
@@ -90,6 +89,7 @@ class RunCustomOpNode : public GradNodeBase {
  private:
   std::vector<paddle::any> attrs_;
   std::string op_type_{""};
+  std::string name_ = "CustomOpGradNode";
 };
 
 class RunCustomOpDoubleGradNode : public GradNodeBase {

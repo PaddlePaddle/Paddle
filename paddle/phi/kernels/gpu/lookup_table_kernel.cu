@@ -35,19 +35,20 @@ __global__ void LookupTable(T *output,
                             const int64_t D,
                             const int64_t padding_idx) {
   int idx = threadIdx.x;
-  int idy = blockIdx.x + threadIdx.y * GridDimX;
+  int64_t idy = static_cast<int64_t>(blockIdx.x) +
+                static_cast<int64_t>(threadIdx.y) * GridDimX;
 
   while (idy < K) {
     int64_t id = ids[idy];
     PADDLE_ENFORCE(
         id >= 0,
-        "Variable value (input) of OP(fluid.layers.embedding) "
+        "Variable value (input) of OP(lookup_table) "
         "expected >= 0 and < %ld, but got %ld. Please check input value.",
         N,
         id);
     PADDLE_ENFORCE(
         id < N,
-        "Variable value (input) of OP(fluid.layers.embedding) "
+        "Variable value (input) of OP(lookup_table) "
         "expected >= 0 and < %ld, but got %ld. Please check input value.",
         N,
         id);

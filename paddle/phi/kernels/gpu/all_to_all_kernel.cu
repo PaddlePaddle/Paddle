@@ -30,7 +30,6 @@ void AllToAllKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     DenseTensor* out) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#if NCCL_VERSION_CODE >= 2703
   auto x_dims = x.dims();
   out->Resize(x_dims);
   dev_ctx.template Alloc<T>(out);
@@ -73,9 +72,6 @@ void AllToAllKernel(const Context& dev_ctx,
   }
   comm_ctx->GroupEnd();
 #else
-  PADDLE_THROW(common::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
-#endif
-#else
   PADDLE_THROW(
       errors::PreconditionNotMet("PaddlePaddle should compile with GPU."));
 #endif
@@ -83,8 +79,6 @@ void AllToAllKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
-    defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(all_to_all,
                    GPU,
                    ALL_LAYOUT,
@@ -99,18 +93,3 @@ PD_REGISTER_KERNEL(all_to_all,
                    bool,
                    phi::bfloat16,
                    phi::float16) {}
-#else
-PD_REGISTER_KERNEL(all_to_all,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::AllToAllKernel,
-                   float,
-                   double,
-                   int,
-                   int8_t,
-                   uint8_t,
-                   int16_t,
-                   int64_t,
-                   bool,
-                   phi::float16) {}
-#endif

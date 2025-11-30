@@ -398,7 +398,7 @@ class ResNetBasicBlock(Layer):
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: XPU)
             >>> import paddle
@@ -427,7 +427,7 @@ class ResNetBasicBlock(Layer):
             >>> out = resnet_basic_block.forward(x)
 
             >>> print(out.shape)
-            [2, 8, 16, 16]
+            paddle.Size([2, 8, 16, 16])
 
     """
 

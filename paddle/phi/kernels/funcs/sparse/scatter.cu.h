@@ -41,7 +41,9 @@ __global__ void ScatterKernel(const T* input,
                               const int rulebook_len,
                               const int channels,
                               T* out) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   const int vec_channels = channels / VecSize;
   using LoadT = phi::AlignedVector<T, VecSize>;
   using StoreT = phi::AlignedVector<T, VecSize>;
@@ -82,7 +84,9 @@ __global__ void ScatterKernelV2(const T* input,
                                 const int channels,
                                 const int buffer_counts,
                                 T* out) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   const int vec_channels = channels / VecSize;
   using LoadT = phi::AlignedVector<T, VecSize>;
   using StoreT = phi::AlignedVector<T, VecSize>;

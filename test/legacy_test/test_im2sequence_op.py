@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
 import numpy as np
@@ -108,42 +109,44 @@ def im2col(attrs, im, col):
     stride_height, stride_width = attrs['strides']
     padding_height, padding_width = attrs['paddings'][0:2]
 
-    for col_row_idx in range(0, output_height):
-        for col_col_idx in range(0, output_width):
-            for channel in range(0, input_channels):
-                for filter_row_idx in range(0, filter_height):
-                    for filter_col_idx in range(0, filter_width):
-                        im_row_offset = (
-                            col_row_idx * stride_height
-                            + filter_row_idx
-                            - padding_height
-                        )
+    for (
+        col_row_idx,
+        col_col_idx,
+        channel,
+        filter_row_idx,
+        filter_col_idx,
+    ) in itertools.product(
+        range(0, output_height),
+        range(0, output_width),
+        range(0, input_channels),
+        range(0, filter_height),
+        range(0, filter_width),
+    ):
+        im_row_offset = (
+            col_row_idx * stride_height + filter_row_idx - padding_height
+        )
 
-                        im_col_offset = (
-                            col_col_idx * stride_width
-                            + filter_col_idx
-                            - padding_width
-                        )
+        im_col_offset = (
+            col_col_idx * stride_width + filter_col_idx - padding_width
+        )
 
-                        if (
-                            im_row_offset < 0
-                            or im_row_offset >= input_height
-                            or im_col_offset < 0
-                            or im_col_offset >= input_width
-                        ):
-                            col[col_row_idx][col_col_idx][channel][
-                                filter_row_idx
-                            ][filter_col_idx] = 0.0
-                        else:
-                            im_offset = (
-                                channel * input_height + im_row_offset
-                            ) * input_width + im_col_offset
+        if (
+            im_row_offset < 0
+            or im_row_offset >= input_height
+            or im_col_offset < 0
+            or im_col_offset >= input_width
+        ):
+            col[col_row_idx][col_col_idx][channel][filter_row_idx][
+                filter_col_idx
+            ] = 0.0
+        else:
+            im_offset = (
+                channel * input_height + im_row_offset
+            ) * input_width + im_col_offset
 
-                            col[col_row_idx][col_col_idx][channel][
-                                filter_row_idx
-                            ][filter_col_idx] = im[channel][im_row_offset][
-                                im_col_offset
-                            ]
+            col[col_row_idx][col_col_idx][channel][filter_row_idx][
+                filter_col_idx
+            ] = im[channel][im_row_offset][im_col_offset]
 
 
 def Im2Sequence(inputs, img_real_size, attrs):
