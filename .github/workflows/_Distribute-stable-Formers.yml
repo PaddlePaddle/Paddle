@@ -73,6 +73,7 @@ jobs:
           CCACHE_DIR: /root/.ccache/formers
           CFS_DIR: /home/data/cfs
           paddle_whl: /workspace/dist/*.whl
+          AISTUDIO_PROXY_PATH: ${{ github.workspace }}/../../../proxy_aistudio
           formers_docker: ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:cuda126-dev-latest
         run: |
           export CUDA_SO="$(\ls -d /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls -d /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
@@ -125,6 +126,7 @@ jobs:
           -e CFS_DIR \
           -e paddle_whl \
           -e no_proxy \
+          -e AISTUDIO_PROXY_PATH \
           -w /workspace --network host ${formers_docker}
       - name: Download paddle.tar.gz and merge target branch
         run: |

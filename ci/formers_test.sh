@@ -17,6 +17,7 @@ function formers_api() {
   cd /workspace/PaddleFormers && git config --global --add safe.directory $PWD
   echo "Check whether the local model file exists:"
   ls -l ./models
+  sed -i '/python setup.py bdist_wheel > \/dev\/null/d' scripts/unit_test/ci_unittest.sh
   timeout 30m bash scripts/unit_test/ci_unittest.sh ${paddle_whl} false ${PYTEST_EXECUTE_FLAG_FILE} ${BRANCH}
 }
 
@@ -25,6 +26,7 @@ function formers_models() {
   cd /workspace/PaddleFormers && git config --global --add safe.directory $PWD
   echo "Check whether the local model file exists:"
   ls -l ./models
+  sed -i '/python setup.py bdist_wheel > \/dev\/null/d' scripts/regression/ci_model_unittest.sh
   timeout 30m bash scripts/regression/ci_model_unittest.sh ${paddle_whl} ${BRANCH}
 }
 
