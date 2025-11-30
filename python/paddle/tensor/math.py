@@ -2453,6 +2453,7 @@ def addmm_(
         return _C_ops.addmm_(input, x, y, beta, alpha)
 
 
+@param_two_alias(["x", "batch1"], ["y", "batch2"])
 def baddbmm(
     input: Tensor,
     x: Tensor,
@@ -2460,6 +2461,7 @@ def baddbmm(
     beta: float = 1.0,
     alpha: float = 1.0,
     name: str | None = None,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     **baddbmm**
@@ -2561,7 +2563,7 @@ def baddbmm(
         )
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.baddbmm(input, x, y, beta, alpha)
+        return _C_ops.baddbmm(input, x, y, beta, alpha, out)
     else:
         inputs = {'Input': input, "X": x, "Y": y}
         attrs = {'Alpha': alpha, 'Beta': beta}
@@ -2587,6 +2589,7 @@ def baddbmm(
         return out
 
 
+@param_two_alias(["x", "batch1"], ["y", "batch2"])
 @inplace_apis_in_dygraph_only
 def baddbmm_(
     input: Tensor,
@@ -2595,6 +2598,7 @@ def baddbmm_(
     beta: float = 1.0,
     alpha: float = 1.0,
     name: str | None = None,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Inplace version of ``baddbmm`` API, the output Tensor will be inplaced with input ``input``.
@@ -2659,7 +2663,7 @@ def baddbmm_(
         )
 
     if in_dynamic_mode():
-        return _C_ops.baddbmm_(input, x, y, beta, alpha)
+        return _C_ops.baddbmm_(input, x, y, beta, alpha, out)
 
 
 def renorm(x: Tensor, p: float, axis: int, max_norm: float) -> Tensor:
