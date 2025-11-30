@@ -258,8 +258,10 @@ bool ExecutionEngine::compileLLVMIR(llvm::Module* module, size_t fusionHash) {
 
   // 3. Set output file path and type
   std::string source_hash = std::to_string(fusionHash);
-  std::string OutputFilename = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/module.o";
-  llvm::raw_fd_ostream dest(OutputFilename, EC, llvm::sys::fs::OF_None);
+  std::string output_path = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash;
+  llvm::sys::fs::create_directories(output_path);
+  std::string output_file = output_path + "/module.o";
+  llvm::raw_fd_ostream dest(output_file, EC, llvm::sys::fs::OF_None);
 
   // 4. Create PassManager and add "Emit Object File" Pass
   llvm::legacy::PassManager pass_manager;
@@ -270,16 +272,18 @@ bool ExecutionEngine::compileLLVMIR(llvm::Module* module, size_t fusionHash) {
   pass_manager.run(*module);
   dest.flush();
 
-  VLOG(5) << "LLVM API: Successfully compiled to '" << OutputFilename;
+  VLOG(5) << "LLVM API: Successfully compiled to '" << output_file;
   return true;
 }
 
 bool ExecutionEngine::linkSharedLibrary(const size_t fusionHash, const std::vector<std::string> &cinn_runtime_include_path) {
   std::string source_hash = std::to_string(fusionHash);
+  std::string output_path = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash;
+  llvm::sys::fs::create_directories(output_path);
 
-  std::string output_so = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/cinn_cache.so";
-  std::string cuda_obj = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/cinn_cuda_kernel.o";
-  std::string llvm_obj = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/module.o";
+  std::string output_so = output_path + "/cinn_cache.so";
+  std::string cuda_obj = output_path + "/cinn_cuda_kernel.o";
+  std::string llvm_obj = output_path + "/module.o";
   std::string cuda_lib_path = "/usr/local/cuda/lib64";
   std::string link_cmd = "g++ -shared -o " + output_so + " " + 
                           cuda_obj + " " + llvm_obj + 
@@ -294,9 +298,9 @@ bool ExecutionEngine::linkSharedLibrary(const size_t fusionHash, const std::vect
   int link_ret = system(link_cmd.c_str());
   if (link_ret != 0) {
       std::cerr << "Error: Final linking failed.\n";
-      return 1;
+      return false;
   }
-  return 0;
+  return true;
 }
 
 bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
@@ -318,7 +322,9 @@ bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
   if (FLAGS_enable_cinn_kernel_cache) {
     std::error_code EC;
     std::string source_hash = std::to_string(fusionHash);
-    llvm::raw_fd_ostream out("/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/module.ll", EC);
+    std::string output_path = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash;
+    llvm::sys::fs::create_directories(output_path);
+    llvm::raw_fd_ostream out(output_path + "/module.ll", EC);
     if (EC) {
         LOG(ERROR) << "Failed to open file: " << EC.message();
         return false;
@@ -327,9 +333,10 @@ bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
     out.close();
     VLOG(5) << "LLVM IR dumped to module.ll";
 
-    std::string cache_so_path = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/" + "cinn_cache.so";
+    std::string cache_so_path = output_path + "/" + "cinn_cache.so";
     if (std::ifstream(cache_so_path).good()) {
       // Cache file already exists, do nothing
+      // module will register through LoadAndRegisterFromCache
       return true;
     } else {
       // Compiling LLVM IR with LLVM API
@@ -339,7 +346,7 @@ bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
       }
 
       // Linking object files into shared library
-      if (linkSharedLibrary(fusionHash, cinn_runtime_include_path)) {
+      if (!linkSharedLibrary(fusionHash, cinn_runtime_include_path)) {
         std::cerr << "Error: Linking object files into shared library failed.\n";
         return false;
       }

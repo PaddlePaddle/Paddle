@@ -340,9 +340,9 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::BuildPirCINNKernelInfo(
       context_->group_->temp_space_sizes());
   VLOG(5) << "Start to compile module into cuda kernel..." << context_->GetFusionHash();
   backend_resource->GetBackendCompiler()->SetFusionHash(context_->GetFusionHash());
-  backend_resource->GetBackendCompiler()->Build(module, ""); // gen device Code, JIT Linking function
-  backend_resource->GetBackendCompiler()->AppendCX86(CX86module); // 
-  backend_resource->GetBackendCompiler()->EndCompile(); // 生成llvm IR加入jit
+  backend_resource->GetBackendCompiler()->Build(module, ""); // Generate device Code
+  backend_resource->GetBackendCompiler()->AppendCX86(CX86module);
+  backend_resource->GetBackendCompiler()->EndCompile(); // Generate llvm IR
   compilation_result->SetBackendResource(backend_resource);
 
   VLOG(5) << "End to compile module into cuda kernel.";

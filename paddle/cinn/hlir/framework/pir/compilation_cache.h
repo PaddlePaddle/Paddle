@@ -97,7 +97,6 @@ class CompilationResult final {
     return backend_resource_->GenerateKernelInfo(have_cx86_kernel_);
   }
 
-  // 新增获取和设置fusion hash的方法
   size_t GetFusionHash() const { return fusion_hash_; }
   void SetFusionHash(size_t hash) { fusion_hash_ = hash; }
 
@@ -105,7 +104,7 @@ class CompilationResult final {
   Target target_;
   std::shared_ptr<BackendResource> backend_resource_{nullptr};
   bool have_cx86_kernel_{false};
-  size_t fusion_hash_{0};  // 新增成员变量，存储FusionInfo的hash seed
+  size_t fusion_hash_{0};
 };
 
 }  // namespace pir

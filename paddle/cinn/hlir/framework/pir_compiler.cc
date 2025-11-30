@@ -24,7 +24,7 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
-#include <fstream> // Required to include
+#include <fstream>
 #include <string>
 #include <algorithm>
 #include <stdexcept>
@@ -75,10 +75,6 @@ static size_t GetThreadNum(size_t task_size) {
   return thread_size;
 }
 
-// ==========================================================
-//  Helper Functions for Serialization (Placed inside namespace)
-// ==========================================================
-
 // Helper function: Write any primitive type to file
 template <typename T>
 void WriteBinary(std::ofstream& ofs, const T& value) {
@@ -97,16 +93,13 @@ bool ReadBinary(std::ifstream& ifs, T& value) {
 
 // Save kernel metadata to file
 bool SaveKernelMetaData(const pir::CINNKernelInfo* group_info, const std::string& filepath) {
-    // 1. Open file stream
     std::ofstream ofs(filepath, std::ios::binary);
     if (!ofs.is_open()) {
         VLOG(3) << "Error: Could not open file for writing: " << filepath;
         return false;
     }
 
-    // ----------------------------------------------------
-    // A. Serialize temp_space_sizes
-    // ----------------------------------------------------
+    // Serialize temp_space_sizes
     const auto& temp_sizes = group_info->temp_space_sizes; 
     size_t temp_size = temp_sizes.size();
     WriteBinary(ofs, temp_size);
@@ -114,9 +107,7 @@ bool SaveKernelMetaData(const pir::CINNKernelInfo* group_info, const std::string
         ofs.write(reinterpret_cast<const char*>(temp_sizes.data()), temp_size * sizeof(int64_t));
     }
 
-    // ----------------------------------------------------
-    // B. Serialize symbol_args_map  
-    // ----------------------------------------------------
+    // Serialize symbol_args_map
     const auto& symbol_map = group_info->symbol_args_map;
     size_t map_size = symbol_map.size();
     WriteBinary(ofs, map_size);
@@ -154,16 +145,13 @@ bool SaveKernelMetaData(const pir::CINNKernelInfo* group_info, const std::string
 
 // Load kernel metadata from file
 bool LoadKernelMetaData(pir::CINNKernelInfo* group_info, const std::string& filepath) {
-    // 1. Open file stream
     std::ifstream ifs(filepath, std::ios::binary);
     if (!ifs.is_open()) {
         VLOG(3) << "Error: Could not open file for reading: " << filepath;
         return false;
     }
 
-    // ----------------------------------------------------
-    // A. Deserialize temp_space_sizes
-    // ----------------------------------------------------
+    // Deserialize temp_space_sizes
     auto& temp_sizes = group_info->temp_space_sizes;
     size_t temp_size = 0;
     if (!ReadBinary(ifs, temp_size)) return false;
@@ -178,9 +166,7 @@ bool LoadKernelMetaData(pir::CINNKernelInfo* group_info, const std::string& file
         temp_sizes.clear();
     }
 
-    // ----------------------------------------------------
-    // B. Deserialize symbol_args_map
-    // ----------------------------------------------------
+    // Deserialize symbol_args_map
     auto& symbol_map = group_info->symbol_args_map;
     symbol_map.clear();
     size_t map_size = 0;
@@ -242,10 +228,11 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
       runtime::SetArchDevice(target_, device_id);
       auto fusion_info_hash = group_compilation_contexts[index].GetFusionHash();
       std::string source_hash = std::to_string(fusion_info_hash);
-      std::string cache_dir = "/tmp/cinn/" + std::to_string(device_id.value()) + "/" + source_hash; // recommended to define directory first
+      std::string cache_dir = "/tmp/cinn/" + std::to_string(device_id.value()) + "/" + source_hash;
+      llvm::sys::fs::create_directories(cache_dir);
       std::string cache_so_path = cache_dir + "/cinn_cache.so";
       std::string meta_filepath = cache_dir + "/cinn_cache.meta";
-      // Check if .so exists (assuming good() is valid checkpoint)
+      // Check if .so exists
       if (FLAGS_enable_cinn_kernel_cache && std::ifstream(cache_so_path).good()) {
         VLOG(4) << "Cache hit for hash: " << source_hash;
 
@@ -264,11 +251,11 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
                                         "directory and retry.", meta_filepath));
         VLOG(4) << "Successfully loaded metadata.";
         
-        // A. Construct CompilationResult
+        // 3. Construct CompilationResult
         auto result = std::make_shared<pir::CompilationResult>(
             target_, false, fusion_info_hash);
         
-        // B. Construct BackendResource (using loaded data!)
+        // 4. Construct BackendResource (using loaded data!)
         auto resource = std::make_shared<pir::BackendResource>(
             target_,
             group_compilation_contexts[index].GetGroup()->FuncName(),
@@ -277,7 +264,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
             loaded_kernel_info.temp_space_sizes  // Load from meta
         );
 
-        // C. Load .so
+        // 5. Load .so
         resource->GetBackendCompiler()->SetFusionHash(fusion_info_hash);
         resource->GetBackendCompiler()->LoadAndRegisterFromCache(source_hash);
         
@@ -291,8 +278,6 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
         // Save metadata
         pir::CINNKernelInfo info_to_save = compilation_results[index]->GetKernelInfo();
         
-        // Ensure directory exists (mkdir logic omitted here, assumed to be handled elsewhere or manually)
-        // system(("mkdir -p " + cache_dir).c_str()); 
         if (FLAGS_enable_cinn_kernel_cache) {
           SaveKernelMetaData(&info_to_save, meta_filepath);
         }
@@ -304,7 +289,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
                         utils::SequenceDispatcher(0, task_size),
                         /*thread_num=*/thread_size);
   }
-  VLOG(5) << "Finished compiling " << task_size << " Cinn Kernel info.";
+
   ctx_mapper.SetFinalize(true);
   ctx_mapper.UpdateGlobalCache();
   return ctx_mapper.RecoverKernelInfos();
@@ -409,7 +394,7 @@ std::string RemoveKernelSuffixNumber(const std::string& func_name) {
         cut_idx = func_name.length();
     }
 
-    // --- 3. Final step: Remove all trailing underscore separators ---
+    // 3. Final step: Remove all trailing underscore separators
     // Whether we removed numeric suffix (cut_idx = suffix_start), or kept the full string 
     // (cut_idx = func_name.length()), we remove underscores starting from cut_idx backwards.
     size_t final_cut_idx = cut_idx;
@@ -428,7 +413,7 @@ void CompilationContextMapper::Construct(
       [&unique_infos](const pir::FusionInfo& info) -> bool {
     const bool is_unique = unique_infos.find(info.hash()) == unique_infos.end();
     const bool is_new = !CompilationCache::Instance().Has(info);
-    return is_new && is_unique; //
+    return is_new && is_unique;
   };
 
   for (size_t i = 0; i < groups.size(); ++i) {
@@ -453,7 +438,7 @@ void CompilationContextMapper::Construct(
       compilation_results_.push_back(
           std::make_shared<pir::CompilationResult>(target, false, fusion_info_hash));
     }
-    unique_infos.insert(fusion_infos_[i].hash()); //
+    unique_infos.insert(fusion_infos_[i].hash());
   }
 }
 

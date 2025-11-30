@@ -16,7 +16,7 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/pir/include/core/ir_printer.h"
-#include "paddle/pir/include/core/dialect.h"  // 添加Dialect类的完整定义
+#include "paddle/pir/include/core/dialect.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 PD_DECLARE_bool(enable_cinn_compile_cache);
 
@@ -25,14 +25,14 @@ namespace cinn::hlir::framework::pir {
 constexpr static char* kOpCallStack = "op_callstack";
 constexpr static char* kSymShapeStr = "sym_shape_str";
 
-std::size_t AttributeInfo::hash() const { 
-  // 使用稳定的属性信息来计算hash，而不是基于指针地址
+  std::size_t AttributeInfo::hash() const { 
+  // Use stable attribute information to calculate hash instead of pointer addresses
   std::size_t seed = 0;
   
-  // 使用属性名称和属性字符串表示作为稳定hash基础
+  // Use attribute name and string representation as stable hash basis
   hash_combine(seed, name_);
   
-  // 使用属性字符串表示
+  // Use attribute string representation
   std::ostringstream oss;
   ::pir::IrPrinter(oss).PrintAttribute(attr_);
   std::string attr_str = oss.str();
@@ -51,11 +51,11 @@ std::ostream& operator<<(std::ostream& os, const AttributeInfo& attr_info) {
   return os;
 }
 
-std::size_t ValueInfo::hash() const {
-  // 使用稳定的类型信息来计算hash
+  std::size_t ValueInfo::hash() const {
+  // Use stable type information to calculate hash
   std::size_t seed = 0;
   
-  // 使用类型字符串表示作为稳定hash基础
+  // Use type string representation as stable hash basis
   std::ostringstream oss;
   ::pir::IrPrinter(oss).PrintType(type_);
   std::string type_str = oss.str();
@@ -90,7 +90,7 @@ OperationInfo::OperationInfo(const ::pir::Operation& op) {
       const_cast<::pir::Operation&>(op).GetParentProgram());
     output_infos_symbol_.push_back(shape_analysis.GetShapeOrDataForValue(value));
   }
-  // Keep attribute always in order.
+  // Keep attributes always in order.
   const auto& attributes = op.attributes();
   std::map<std::string, ::pir::Attribute, std::less<>> order_attributes(
       attributes.begin(), attributes.end());
@@ -257,6 +257,7 @@ std::size_t FusionInfo::hash() const {
   std::size_t seed = 2153;
   for (const auto& info : op_infos_) hash_combine(seed, info);
   for (const auto& dim_expr : input_dim_exprs_) hash_combine(seed, dim_expr);
+  hash_combine(seed, *program_info_);
   // TODO(xuyuhan) Maybe input_dim_exprs_ are not enough?
   for (const auto& dim_expr : output_dim_exprs_) hash_combine(seed, dim_expr);
   if (!FLAGS_enable_cinn_compile_cache) hash_combine(seed, unique_fn_name_);

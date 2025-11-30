@@ -278,7 +278,6 @@ std::string Compiler::GetDeviceId() {
 
 void Compiler::LoadAndRegisterFromCache(const std::string& source_hash) {
   std::string cache_so_path = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/" + "cinn_cache.so";
-  VLOG(5) << "DEBUG: LoadAndRegisterFromCache, cache_so_path = " << cache_so_path;
   // 1. Load metadata (restore Kernel name list)
   LoadKernelNamesFromMeta(); 
 
@@ -324,7 +323,6 @@ void Compiler::LoadAndRegisterFromCache(const std::string& source_hash) {
 
   // 5. Register all runtime symbols
   engine_->RegisterModuleRuntimeSymbols(std::move(symbols));
-  VLOG(3) << "Successfully registered symbols from cache .so: " << cache_so_path;
 
   // 6. Store handles and paths for subsequent dlclose
   dynamic_library_path_ = cache_so_path; 
@@ -418,7 +416,6 @@ void Compiler::RegisterDeviceModuleSymbol() {
 
 void Compiler::RegisterCudaModuleSymbol() {
 #ifdef CINN_WITH_CUDA
-  VLOG(3) << "RegisterCudaModuleSymbol with kernel cache: " << FLAGS_enable_cinn_kernel_cache;
   nvrtc::Compiler compiler;
   std::string source_code = (FLAGS_enable_cinn_kernel_cache ?
                              CodeGenCudaDev::GetGeneralSourceHeader() :
@@ -442,7 +439,7 @@ void Compiler::RegisterCudaModuleSymbol() {
       std::string host_symbol_definitions = "\n\nextern \"C\" {\n";
       for (const auto& kernel_fn_name : device_fn_name_) {
           // This will generate C++ code like:
-          // void* fn_mul_sum_scale..._kernel_ptr_ = (void*)fn_mul_sum_scale...;
+          // void* fn_name..._kernel_ptr_ = (void*)fn_name...;
           host_symbol_definitions += "  void* " + kernel_fn_name + "_ptr_ = (void*)" + kernel_fn_name + ";\n";
       }
       host_symbol_definitions += "}\n";
@@ -450,7 +447,6 @@ void Compiler::RegisterCudaModuleSymbol() {
       // Append C++ pointer definitions to CUDA Kernel source code
       std::string full_source_to_compile = source_code + host_symbol_definitions;
 
-      VLOG(3) << "Creating new kernel cache file";
       dynamic_library_path_ = GenerateObjectWithoutCache(full_source_to_compile);
       GenerateFatbinWithoutCache(full_source_to_compile);
       SaveKernelNamesToMeta();
@@ -703,20 +699,18 @@ void* Compiler::Lookup(std::string_view fn_name) {
   if (FLAGS_enable_cinn_kernel_cache && dynamic_library_handle_) {
       void* func_ptr = dlsym(dynamic_library_handle_, fn_name.data());
       if (func_ptr) {
-          LOG(WARNING) << "Lookup symbol " << fn_name << " from cached .so success.";
+          VLOG(5) << "Lookup symbol " << fn_name << " from cached .so success.";
           return func_ptr;
       }
-      LOG(WARNING) << "Kernel cache is enabled but symbol " << fn_name << " not found in .so";
+      LOG(FATAL) << "Kernel cache is enabled but symbol " << fn_name << " not found in .so";
+      return nullptr;
   }
 
-  // 2. If no dynamic library handle (indicating first compilation), or symbol not found in .so
-  // then fall back to JIT engine lookup
-  if (engine_) {
-  // Note: Don't call this blindly after Cache Hit with dlsym failure, as engine_ might be empty
-  // But with correct code logic, engine_ must have value during First Run.
+  PADDLE_ENFORCE_NOT_NULL(
+      engine_, ::common::errors::InvalidArgument("Sorry, engine_ is nullptr"));
+  if (engine_->Lookup(fn_name) != nullptr) {
     return engine_->Lookup(fn_name);
   }
-
   return nullptr;
 }
 
@@ -813,9 +807,6 @@ std::string Compiler::GenerateObjectWithoutCache(const std::string& source_code)
                           "-Wno-deprecated-gpu-targets " +
                           "--generate-code=arch=" + GetComputeArch() + ",code=" + GetDeviceArch();
 
-  VLOG(3) << "DEBUG: GenerateObjectWithoutCache FusionHash \n" << std::to_string(fusion_hash_);
-  VLOG(3) << "DEBUG: GenerateObjectWithoutCache compile_cmd \n" << compile_cmd;
-
   int result = std::system((compile_cmd + " > compile.log 2>&1").c_str());
   if (result != 0) {
     std::ifstream log_file("compile.log");
@@ -824,8 +815,6 @@ std::string Compiler::GenerateObjectWithoutCache(const std::string& source_code)
     LOG(ERROR) << "Compilation failed with output:\n" << log_content;
     return "";
   }
-  VLOG(3) << "DEBUG: GenerateObjectWithoutCache " << cuda_source_o;
-  // std::remove(cuda_source_file.c_str());
   return cuda_source_o;
 }
 
@@ -889,9 +878,6 @@ std::string Compiler::GenerateFatbinWithoutCache(const std::string& source_code)
                            "-Wno-deprecated-gpu-targets " +
                            "--generate-code=arch=" + GetComputeArch() + ",code=" + GetDeviceArch();
 
-  VLOG(3) << "DEBUG: GenerateFatbinWithoutCache FusionHash \n" << std::to_string(fusion_hash_);;
-  VLOG(3) << "DEBUG: GenerateFatbinWithoutCache compile_cmd \n" << compile_cmd;
-  VLOG(3) << "DEBUG: GenerateFatbinWithoutCache " << cuda_fatbin;
   int result = std::system((compile_cmd + " > compile_fatbin.log 2>&1").c_str());
   if (result != 0) {
     std::ifstream log_file("compile_fatbin.log");
@@ -900,41 +886,40 @@ std::string Compiler::GenerateFatbinWithoutCache(const std::string& source_code)
     LOG(ERROR) << "Compilation failed with output:\n" << compile_cmd << "\n" << source_code << "\n" << log_content;
     return "";
   }
-  VLOG(3) << "DEBUG: GenerateFatbinWithoutCache " << cuda_fatbin;
-  // std::remove(cuda_source_file.c_str());
   return cuda_fatbin;
 }
 
 void Compiler::SaveKernelNamesToMeta() {
   // 1. Get metadata file path
-  std::string meta_path = "/tmp/cinn/" + GetDeviceId() + "/" + std::to_string(fusion_hash_) + "/cinn_cuda_kernel.meta";
-  VLOG(3) << "Saving CINN kernel names to meta file: " << meta_path;
+  std::string meta_path = "/tmp/cinn/" + GetDeviceId() + "/" + std::to_string(fusion_hash_);
+  llvm::sys::fs::create_directories(meta_path);
+  std::string meta_file = meta_path + "/cinn_cuda_kernel.meta";
 
   // 2. Open file
   // 使用 std::ofstream 自动处理文件关闭
-  std::ofstream outfile(meta_path);
+  std::ofstream outfile(meta_file);
   if (!outfile.is_open()) {
     // Theoretically the directory was created in GenerateFatbinWithoutCache, should only check permissions here
-    LOG(FATAL) << "Failed to open meta file for writing: " << meta_path;
+    LOG(FATAL) << "Failed to open meta file for writing: " << meta_file;
   }
 
   // 3. Write data
   // Write one Kernel name per line
   for (const auto& name : device_fn_name_) {
     outfile << name << "\n";
-    VLOG(3) << "Saving kernel name " << name;
+    VLOG(8) << "Saving kernel name " << name;
   }
 
   // 4. Check write status
   if (outfile.fail()) {
-    LOG(FATAL) << "Error writing to meta file: " << meta_path;
+    LOG(FATAL) << "Error writing to meta file: " << meta_file;
   }
 }
 
 void Compiler::LoadKernelNamesFromMeta() {
   // 1. Get metadata file path
   std::string meta_path = "/tmp/cinn/" + GetDeviceId() + "/" + std::to_string(fusion_hash_) + "/cinn_cuda_kernel.meta";
-  VLOG(3) << "Loading CINN kernel names from meta file: " << meta_path;
+  VLOG(5) << "Loading CINN kernel names from meta file: " << meta_path;
 
   // 2. Open file
   std::ifstream infile(meta_path);
@@ -951,7 +936,7 @@ void Compiler::LoadKernelNamesFromMeta() {
     // Check and ignore empty lines
     if (!line.empty()) {
       device_fn_name_.push_back(line);
-      VLOG(4) << "Loaded kernel name: " << line;
+      VLOG(5) << "Loaded kernel name: " << line;
     }
   }
 
