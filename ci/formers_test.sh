@@ -12,8 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+function init_env() {
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64/:/usr/local/lib/
+  export PATH=/usr/local/bin:${PATH}
+}
 
 function formers_api() {
+  init_env
   cd /workspace/PaddleFormers && git config --global --add safe.directory $PWD
   echo "Check whether the local model file exists:"
   ls -l ./models
@@ -22,6 +27,7 @@ function formers_api() {
 }
 
 function formers_models() {
+  init_env
   rm -rf /root/.cache/aistudio/
   cd /workspace/PaddleFormers && git config --global --add safe.directory $PWD
   echo "Check whether the local model file exists:"
@@ -30,41 +36,44 @@ function formers_models() {
   timeout 30m bash scripts/regression/ci_model_unittest.sh ${paddle_whl} ${BRANCH}
 }
 
-function formers_test() {
-  python /workspace/tools/get_pr_title.py skip_distribute_test && CINN_OR_BUAA_PR=1
-  if [[ "${CINN_OR_BUAA_PR}" = "1" ]];then
-      echo "PR's title with 'CINN' or 'BUAA', skip the run distribute ci test !"
-      exit 0
+function install_deps() {
+  set -e
+  init_env
+  ln -sf $(which python3.10) /usr/local/bin/python
+  ln -sf $(which pip3.10) /usr/local/bin/pip
+
+  echo "Downloading PaddleFormers.tar.gz..."
+  wget -q https://paddleformers.bj.bcebos.com/wheels/PaddleFormers.tar.gz
+  tar xf PaddleFormers.tar.gz
+  echo "Extracting PaddleFormers.tar.gz..."
+
+  if [ -d "PaddleFormers" ]; then
+      cd PaddleFormers
+      cp -r ${CFS_DIR}/models ./models
+  else
+      echo "Error: PaddleFormers dir not found after tar xf"
+      exit 1
   fi
 
-  echo "::group::Start formers api tests"
-  formers_api
-  echo "End api tests"
+  echo "::group::Install paddle dependencies"
+  pip config set global.cache-dir "/root/.cache/pip"
+  pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
   echo "::endgroup::"
-
-  echo "::group::Start formers models tests"
-  formers_models
-  echo "End models tests"
-  echo "::endgroup::"
+  ldconfig
 }
 
-set -e
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64/:/usr/local/lib/
-PATH=/usr/local/bin:${PATH}
-ln -sf $(which python3.10) /usr/local/bin/python
-ln -sf $(which pip3.10) /usr/local/bin/pip
-
-echo "Downloading PaddleFormers.tar.gz..."
-wget -q https://paddleformers.bj.bcebos.com/wheels/PaddleFormers.tar.gz
-tar xf PaddleFormers.tar.gz
-echo "Extracting PaddleFormers.tar.gz..."
-cd PaddleFormers
-cp -r ${CFS_DIR}/models ./models
-
-echo "::group::Install paddle dependencies"
-pip config set global.cache-dir "/root/.cache/pip"
-pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-echo "::endgroup::"
-ldconfig
-
-formers_test
+case "$1" in
+  setup)
+    install_deps
+    ;;
+  api)
+    formers_api
+    ;;
+  models)
+    formers_models
+    ;;
+  *)
+    echo "Usage: $0 {setup|api|models}"
+    exit 1
+    ;;
+esac

@@ -140,16 +140,51 @@ jobs:
           git config --global --add safe.directory /workspace
           git checkout test
           '
-      - name: Test
+      - name: Check PR Title
+        id: check_pr
+        run: |
+          if docker exec ${{ env.container_name }} /bin/bash -c 'source ${{ github.workspace }}/../../../proxy; python /workspace/tools/get_pr_title.py skip_distribute_test' > /dev/null 2>&1; then
+            echo "PR's title with 'CINN' or 'BUAA', skip the run formers ci test !"
+            echo "SKIP_FORMERS_TEST=true" >> $GITHUB_ENV
+          else
+            echo "SKIP_FORMERS_TEST=false" >> $GITHUB_ENV
+          fi
+
+      - name: Install Dependencies
+        id: install
+        if: env.SKIP_FORMERS_TEST != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
           source ${{ github.workspace }}/../../../AISTUDIO_ACCESS_TOKEN
           set -ex
-          bash /workspace/ci/formers_test.sh
+          bash /workspace/ci/formers_test.sh setup
           '
+
+      - name: Run Formers API Tests
+        id: api_test
+        if: env.SKIP_FORMERS_TEST != 'true' && steps.install.outcome == 'success' && !cancelled()
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          source ${{ github.workspace }}/../../../AISTUDIO_ACCESS_TOKEN
+          set -ex
+          bash /workspace/ci/formers_test.sh api
+          '
+
+      - name: Run Formers Models Tests
+        id: model_test
+        if: env.SKIP_FORMERS_TEST != 'true' && steps.install.outcome == 'success' && !cancelled()
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          source ${{ github.workspace }}/../../../AISTUDIO_ACCESS_TOKEN
+          set -ex
+          bash /workspace/ci/formers_test.sh models
+          '
+
       - name: Upload and display logs
-        if: always()
+        if: always() && env.SKIP_FORMERS_TEST != 'true' && steps.install.outcome == 'success' && !cancelled()
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
@@ -167,21 +202,28 @@ jobs:
           else
             bos_prefix="schedule/$(date +%Y%m%d)"
           fi
+
           # api test logs
-          cd /workspace/PaddleFormers/unittest_logs
-          for FILE in /workspace/PaddleFormers/unittest_logs/*; do
-            file=$(basename "$FILE")
-            python ${{ env.bos_file }} $file paddle-github-action/PR/PaddleFormers/unittest-gpu/${bos_prefix}/logs
-            echo "$file: https://paddle-github-action.bj.bcebos.com/PR/PaddleFormers/unittest-gpu/${bos_prefix}/logs/$file"
-          done
+          if [ -d "/workspace/PaddleFormers/unittest_logs" ]; then
+            cd /workspace/PaddleFormers/unittest_logs
+            for FILE in /workspace/PaddleFormers/unittest_logs/*; do
+                file=$(basename "$FILE")
+                python ${{ env.bos_file }} $file paddle-github-action/PR/PaddleFormers/unittest-gpu/${bos_prefix}/logs
+                echo "$file: https://paddle-github-action.bj.bcebos.com/PR/PaddleFormers/unittest-gpu/${bos_prefix}/logs/$file"
+            done
+          fi
+
           # models test logs
-          cd /workspace/PaddleFormers/model_unittest_logs
-          for FILE in /workspace/PaddleFormers/model_unittest_logs/*; do
-            file=$(basename "$FILE")
-            python ${{ env.bos_file }} $file paddle-github-action/PR/PaddleFormers/model-unittest-gpu/${bos_prefix}/logs
-            echo "$file: https://paddle-github-action.bj.bcebos.com/PR/PaddleFormers/model-unittest-gpu/${bos_prefix}/logs/$file"
-          done
+          if [ -d "/workspace/PaddleFormers/model_unittest_logs" ]; then
+            cd /workspace/PaddleFormers/model_unittest_logs
+            for FILE in /workspace/PaddleFormers/model_unittest_logs/*; do
+                file=$(basename "$FILE")
+                python ${{ env.bos_file }} $file paddle-github-action/PR/PaddleFormers/model-unittest-gpu/${bos_prefix}/logs
+                echo "$file: https://paddle-github-action.bj.bcebos.com/PR/PaddleFormers/model-unittest-gpu/${bos_prefix}/logs/$file"
+            done
+          fi
           '
+
       - name: Terminate and delete the container
         if: always()
         run: |
