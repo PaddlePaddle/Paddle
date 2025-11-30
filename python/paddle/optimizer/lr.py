@@ -536,7 +536,7 @@ class NaturalExpDecay(LRScheduler):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example1
 
             >>> # Example1: train on default dynamic graph mode
@@ -552,11 +552,11 @@ class NaturalExpDecay(LRScheduler):
             ...         loss = paddle.mean(out)
             ...         loss.backward()
             ...         sgd.step()
-            ...         sgd.clear_gradients()
+            ...         sgd.clear_grad()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example2
 
             >>> # Example2: train on static graph mode
@@ -584,7 +584,7 @@ class NaturalExpDecay(LRScheduler):
             ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
             ...                 'y': np.random.randn(3, 4, 5).astype('float32')
             ...             },
-            ...             fetch_list=loss.name)
+            ...             fetch_list=[loss])
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
     """
@@ -631,7 +631,7 @@ class InverseTimeDecay(LRScheduler):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example1
 
             >>> # Example1: train on default dynamic graph mode
@@ -649,11 +649,11 @@ class InverseTimeDecay(LRScheduler):
             ...         loss = paddle.mean(out)
             ...         loss.backward()
             ...         sgd.step()
-            ...         sgd.clear_gradients()
+            ...         sgd.clear_grad()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example2
 
             >>> # Example2: train on static graph mode
@@ -681,7 +681,7 @@ class InverseTimeDecay(LRScheduler):
             ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
             ...                 'y': np.random.randn(3, 4, 5).astype('float32')
             ...             },
-            ...             fetch_list=loss.name)
+            ...             fetch_list=[loss])
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
             ...
@@ -742,7 +742,7 @@ class PolynomialDecay(LRScheduler):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example1
 
             >>> # Example1: train on default dynamic graph mode
@@ -760,11 +760,11 @@ class PolynomialDecay(LRScheduler):
             ...         loss = paddle.mean(out)
             ...         loss.backward()
             ...         sgd.step()
-            ...         sgd.clear_gradients()
+            ...         sgd.clear_grad()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example2
 
             >>> # Example2: train on static graph mode
@@ -792,7 +792,7 @@ class PolynomialDecay(LRScheduler):
             ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
             ...                 'y': np.random.randn(3, 4, 5).astype('float32')
             ...             },
-            ...             fetch_list=loss.name)
+            ...             fetch_list=[loss])
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
     """
@@ -1021,7 +1021,7 @@ class ExponentialDecay(LRScheduler):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example1
 
             >>> # Example1: train on default dynamic graph mode
@@ -1039,11 +1039,11 @@ class ExponentialDecay(LRScheduler):
             ...         loss = paddle.mean(out)
             ...         loss.backward()
             ...         sgd.step()
-            ...         sgd.clear_gradients()
+            ...         sgd.clear_grad()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example2
 
             >>> # Example2: train on static graph mode
@@ -1248,7 +1248,7 @@ class StepDecay(LRScheduler):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example1
 
             >>> # Example1: train on default dynamic graph mode
@@ -1266,11 +1266,11 @@ class StepDecay(LRScheduler):
             ...         loss = paddle.mean(out)
             ...         loss.backward()
             ...         sgd.step()
-            ...         sgd.clear_gradients()
+            ...         sgd.clear_grad()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example2
 
             >>> # Example2: train on static graph mode
@@ -1298,7 +1298,7 @@ class StepDecay(LRScheduler):
             ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
             ...                 'y': np.random.randn(3, 4, 5).astype('float32')
             ...             },
-            ...             fetch_list=loss.name)
+            ...             fetch_list=[loss])
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
     """
