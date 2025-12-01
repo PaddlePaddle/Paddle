@@ -24,6 +24,24 @@ from paddle import base
 from paddle.base import core
 
 
+def is_cuda():
+    return (
+        paddle.device.is_compiled_with_cuda()
+        and not paddle.device.is_compiled_with_rocm()
+    )
+
+
+def is_xpu():
+    return paddle.device.is_compiled_with_xpu()
+
+
+def is_dcu():
+    return (
+        paddle.device.is_compiled_with_cuda()
+        and paddle.device.is_compiled_with_rocm()
+    )
+
+
 # cast output to complex for numpy.linalg.eig
 def cast_to_complex(input, output):
     if input.dtype == np.float32:
@@ -381,11 +399,11 @@ class TestEigUnsupportedDtypeError(unittest.TestCase):
 class TestOptionalGradInput(unittest.TestCase):
     @unittest.skipIf(
         not platform.system().lower().startswith("linux")
-        or not paddle.device.is_compiled_with_xpu(),
+        or (not is_xpu() and not is_cuda()),
         reason="enable only in linux+xpu now",
     )
     def test_eager(self):
-        with dygraph_guard(), paddle.device("xpu"):
+        with dygraph_guard():
             x = paddle.randn(3, 3, requires_grad=True)
             w, v = paddle.linalg.eig(x)
 
@@ -408,11 +426,11 @@ class TestOptionalGradInput(unittest.TestCase):
 
     @unittest.skipIf(
         not platform.system().lower().startswith("linux")
-        or not paddle.device.is_compiled_with_xpu(),
+        or (not is_xpu() and not is_cuda()),
         reason="enable only in linux+xpu now",
     )
     def test_dy2st(self):
-        with dygraph_guard(), paddle.device("xpu"):
+        with dygraph_guard():
             x = paddle.randn(3, 3, requires_grad=True)
 
             def f(x):
