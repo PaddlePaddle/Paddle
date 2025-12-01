@@ -41,22 +41,34 @@ _config = {}
 
 def init_config():
     global _config
-    _config = {
-        "flash_attn": {
-            "MINIMUM_SM_VERSION": (8, 0),
-            "MAXIMUM_SM_VERSION": (12, 1),
-            "support_dtypes": (paddle.float16, paddle.bfloat16)
-            if paddle.device.is_bf16_supported()
-            else (paddle.float16,),
-        },
-        "mem_efficient_attn": {
-            "MINIMUM_SM_VERSION": (5, 0),
-            "MAXIMUM_SM_VERSION": (12, 1),
-            "support_dtypes": (paddle.float16, paddle.bfloat16, paddle.float)
-            if paddle.device.is_bf16_supported()
-            else (paddle.float16, paddle.float),
-        },
-    }
+    with paddle.base.dygraph.guard():
+        is_bf16_natively_supported = False
+        if paddle.base.is_compiled_with_cuda():
+            is_bf16_natively_supported = (
+                paddle.cuda.get_device_capability()[0] >= 8
+            )
+        else:
+            is_bf16_natively_supported = paddle.device.is_bf16_supported()
+        _config = {
+            "flash_attn": {
+                "MINIMUM_SM_VERSION": (8, 0),
+                "MAXIMUM_SM_VERSION": (12, 1),
+                "support_dtypes": (paddle.float16, paddle.bfloat16)
+                if is_bf16_natively_supported
+                else (paddle.float16,),
+            },
+            "mem_efficient_attn": {
+                "MINIMUM_SM_VERSION": (5, 0),
+                "MAXIMUM_SM_VERSION": (12, 1),
+                "support_dtypes": (
+                    paddle.float16,
+                    paddle.bfloat16,
+                    paddle.float,
+                )
+                if is_bf16_natively_supported
+                else (paddle.float16, paddle.float),
+            },
+        }
 
 
 @dataclass
@@ -508,31 +520,18 @@ def scaled_dot_product_attention(
         query = query.unsqueeze(0)
         key = key.unsqueeze(0)
         value = value.unsqueeze(0)
+    k_heads, q_heads, v_heads = (
+        key.shape[2],
+        query.shape[2],
+        value.shape[2],
+    )
     if enable_gqa:
-        k_heads, q_heads, v_heads = (
-            key.shape[2],
-            query.shape[2],
-            value.shape[2],
-        )
-
         assert q_heads % k_heads == 0, (
             f"The number of groups in query({q_heads}) must be divisible by the number of groups in key({k_heads}) if GQA enabled."
         )
         assert k_heads == v_heads, (
             f"The number of groups in key({k_heads}) must be equal to the number of groups in value({v_heads}) if GQA enabled."
         )
-        # repeat_interleave does not support float16 on GPU, so we manually expand the tensor
-        if k_heads != q_heads:
-            repeats = q_heads // k_heads
-            key, value = key.unsqueeze(3), value.unsqueeze(3)
-            key, value = (
-                key.expand([-1, -1, -1, repeats, -1]),
-                value.expand([-1, -1, -1, repeats, -1]),
-            )
-            key, value = (
-                key.flatten(2, 3).contiguous(),
-                value.flatten(2, 3).contiguous(),
-            )
     else:
         assert q_heads == k_heads == v_heads, (
             f"The number of groups in query({q_heads}) must be equal to the number of groups in key({k_heads}) "
@@ -559,6 +558,11 @@ def scaled_dot_product_attention(
         )
         return out
 
+    qkv_place = (query.place, key.place, value.place)
+    if not paddle.base.in_dygraph_mode():
+        with paddle.base.dygraph.guard():
+            qkv_place = (paddle.framework._current_expected_place(),) * 3
+
     param = SDPParams(
         query_shape=query.shape,
         key_shape=key.shape,
@@ -571,7 +575,7 @@ def scaled_dot_product_attention(
         query_stop_gradient=query.stop_gradient,
         strides=(query.stride(), key.stride(), value.stride()),
         dtype=(query.dtype, key.dtype, value.dtype),
-        place=(query.place, key.place, value.place),
+        place=qkv_place,
     )
     if len(_config) == 0:
         init_config()
@@ -612,6 +616,19 @@ def scaled_dot_product_attention(
             memory_efficient_attention,
         )
 
+        # repeat_interleave does not support float16 on GPU, so we manually expand the tensor
+        if k_heads != q_heads:
+            repeats = q_heads // k_heads
+            key, value = key.unsqueeze(3), value.unsqueeze(3)
+            key, value = (
+                key.expand([-1, -1, -1, repeats, -1]),
+                value.expand([-1, -1, -1, repeats, -1]),
+            )
+            key, value = (
+                key.flatten(2, 3).contiguous(),
+                value.flatten(2, 3).contiguous(),
+            )
+
         if is_causal:
             bias_input = LowerTriangularMask()
         elif attn_mask is not None:
@@ -629,6 +646,18 @@ def scaled_dot_product_attention(
         )
 
     elif sdp_func_name == "math":
+        # repeat_interleave does not support float16 on GPU, so we manually expand the tensor
+        if k_heads != q_heads:
+            repeats = q_heads // k_heads
+            key, value = key.unsqueeze(3), value.unsqueeze(3)
+            key, value = (
+                key.expand([-1, -1, -1, repeats, -1]),
+                value.expand([-1, -1, -1, repeats, -1]),
+            )
+            key, value = (
+                key.flatten(2, 3).contiguous(),
+                value.flatten(2, 3).contiguous(),
+            )
         out = _math_attention(
             query,
             key,

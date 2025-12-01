@@ -148,6 +148,8 @@ def _math_attention(
             "xpu" in place
             or product.shape[-1] < 32
             or product.shape[-1] > 16384
+            or place == paddle.CPUPlace()
+            or product.shape[-1] != product.shape[-2]
         ):
             # softmax_mask_fuse_upper_triangle is not supported on XPU, use plain implementation
             mask = get_triangle_upper_mask(product)
