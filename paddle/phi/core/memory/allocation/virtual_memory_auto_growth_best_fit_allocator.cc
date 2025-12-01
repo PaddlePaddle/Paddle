@@ -23,7 +23,7 @@
 
 PHI_DEFINE_EXPORTED_uint64(
     vmm_small_pool_size_in_mb,
-    0,
+    1,
     "Threshold (MiB) separating the small and large pools. "
     "0 disables the small pool and enables single-pool mode "
     "(all requests go to the large pool). When > 0, requests "
