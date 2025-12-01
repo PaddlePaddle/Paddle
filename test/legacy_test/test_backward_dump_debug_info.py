@@ -298,9 +298,10 @@ class TestBackwardVlogGuard(unittest.TestCase):
         y = paddle.randn([3, 3], dtype='float32')
         x.stop_gradient = False
         y.stop_gradient = False
-        z = x + y
-        h = x * z
-        with paddle.base.framework.backward_vlog_guard(3):
+
+        with paddle.base.framework.backward_vlog_guard(4):
+            z = x + y
+            h = x * z
             w = h + y
         loss = w.sum()
         loss.backward()
