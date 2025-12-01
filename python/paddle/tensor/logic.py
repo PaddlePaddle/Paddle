@@ -949,6 +949,7 @@ def _bitwise_op(
         return out
 
 
+@param_two_alias(["x", "input"], ["y", "other"])
 def bitwise_and(
     x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
 ) -> Tensor:
@@ -1002,6 +1003,7 @@ def __rand__(x: Tensor, y: int | bool):
         )
 
 
+@param_two_alias(["x", "input"], ["y", "other"])
 @inplace_apis_in_dygraph_only
 def bitwise_and_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""

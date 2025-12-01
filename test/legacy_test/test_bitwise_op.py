@@ -132,6 +132,117 @@ class TestBitwiseAndBool(TestBitwiseAnd):
         self.outputs = {'Out': out}
 
 
+class TestBitwiseAndAlias(unittest.TestCase):
+    """Test parameter aliases for bitwise_and API"""
+
+    def test_bitwise_and_alias_input(self):
+        """Test using 'input' alias for parameter 'x'"""
+        paddle.disable_static()
+        x_data = np.array([1, 2, 3], dtype=np.int32)
+        y_data = np.array([4, 2, 1], dtype=np.int32)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+
+        # Use 'input' alias for 'x'
+        result = paddle.bitwise_and(input=x, y=y)
+        expected = np.bitwise_and(x_data, y_data)
+        np.testing.assert_array_equal(result.numpy(), expected)
+        paddle.enable_static()
+
+    def test_bitwise_and_alias_other(self):
+        """Test using 'other' alias for parameter 'y'"""
+        paddle.disable_static()
+        x_data = np.array([1, 2, 3], dtype=np.int32)
+        y_data = np.array([4, 2, 1], dtype=np.int32)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+
+        # Use 'other' alias for 'y'
+        result = paddle.bitwise_and(x=x, other=y)
+        expected = np.bitwise_and(x_data, y_data)
+        np.testing.assert_array_equal(result.numpy(), expected)
+        paddle.enable_static()
+
+    def test_bitwise_and_alias_both(self):
+        """Test using both 'input' and 'other' aliases"""
+        paddle.disable_static()
+        x_data = np.array([5, 6, 7], dtype=np.int32)
+        y_data = np.array([3, 2, 1], dtype=np.int32)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+
+        # Use both aliases
+        result = paddle.bitwise_and(input=x, other=y)
+        expected = np.bitwise_and(x_data, y_data)
+        np.testing.assert_array_equal(result.numpy(), expected)
+        paddle.enable_static()
+
+    def test_bitwise_and_with_out_parameter(self):
+        """Test bitwise_and with out parameter"""
+        paddle.disable_static()
+        x_data = np.array([1, 2, 3], dtype=np.int32)
+        y_data = np.array([4, 2, 1], dtype=np.int32)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+        out = paddle.empty([3], dtype='int32')
+
+        # Test with out parameter
+        result = paddle.bitwise_and(x, y, out=out)
+        expected = np.bitwise_and(x_data, y_data)
+        np.testing.assert_array_equal(result.numpy(), expected)
+        np.testing.assert_array_equal(out.numpy(), expected)
+        paddle.enable_static()
+
+
+class TestBitwiseAndInplaceAlias(unittest.TestCase):
+    """Test parameter aliases for bitwise_and_ inplace API"""
+
+    def test_bitwise_and_inplace_alias_input(self):
+        """Test using 'input' alias for parameter 'x' in inplace version"""
+        paddle.disable_static()
+        x_data = np.array([1, 2, 3], dtype=np.int32)
+        y_data = np.array([4, 2, 1], dtype=np.int32)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+
+        # Use 'input' alias for 'x'
+        result = paddle.bitwise_and_(input=x, y=y)
+        expected = np.bitwise_and(x_data, y_data)
+        np.testing.assert_array_equal(result.numpy(), expected)
+        np.testing.assert_array_equal(x.numpy(), expected)
+        paddle.enable_static()
+
+    def test_bitwise_and_inplace_alias_other(self):
+        """Test using 'other' alias for parameter 'y' in inplace version"""
+        paddle.disable_static()
+        x_data = np.array([1, 2, 3], dtype=np.int32)
+        y_data = np.array([4, 2, 1], dtype=np.int32)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+
+        # Use 'other' alias for 'y'
+        result = paddle.bitwise_and_(x=x, other=y)
+        expected = np.bitwise_and(x_data, y_data)
+        np.testing.assert_array_equal(result.numpy(), expected)
+        np.testing.assert_array_equal(x.numpy(), expected)
+        paddle.enable_static()
+
+    def test_bitwise_and_inplace_alias_both(self):
+        """Test using both 'input' and 'other' aliases in inplace version"""
+        paddle.disable_static()
+        x_data = np.array([5, 6, 7], dtype=np.int32)
+        y_data = np.array([3, 2, 1], dtype=np.int32)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+
+        # Use both aliases
+        result = paddle.bitwise_and_(input=x, other=y)
+        expected = np.bitwise_and(x_data, y_data)
+        np.testing.assert_array_equal(result.numpy(), expected)
+        np.testing.assert_array_equal(x.numpy(), expected)
+        paddle.enable_static()
+
+
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
