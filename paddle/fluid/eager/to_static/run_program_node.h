@@ -31,6 +31,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                                   egr::kSlotSmallVectorSize> &grads,  // NOLINT
              bool create_graph UNUSED,
              bool is_new_grad UNUSED) override;
+  std::string name() override { return name_; }
 
   void ClearTensorWrappers() override {
     x_.clear();
@@ -54,7 +55,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   void SetStepScope(const std::vector<paddle::framework::Scope *> &scopes) {
     step_scope_ = scopes;
   }
-
+  void SetNameFromAPI(const std::string &name) { name_ = name + "GradNode"; }
   void SetPlaceHashKey(const int64_t &place_hash_key) {
     place_hash_key_ = place_hash_key;
   }
@@ -83,6 +84,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   paddle::framework::AttributeMap cuda_graph_attrs_;
 
   int64_t place_hash_key_;
+  std::string name_ = "Dy2StGradNode";
 
   std::shared_ptr<bool> executed_ = std::make_shared<bool>(false);
 };

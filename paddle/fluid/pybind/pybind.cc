@@ -1931,6 +1931,11 @@ PYBIND11_MODULE(libpaddle, m) {
     return reinterpret_cast<int64_t>(PaddleDLPackExchangeAPI::Instance());
   });
 
+  m.def("dlpack_exchange_api_pycapsule", []() -> py::capsule {
+    return py::capsule(PaddleDLPackExchangeAPI::Instance(),
+                       "dlpack_exchange_api");
+  });
+
   m.def("from_dlpack", [](py::object data) {
     if (PyCapsule_IsValid(data.ptr(),
                           DLPackTraits<DLManagedTensorVersioned>::capsule)) {

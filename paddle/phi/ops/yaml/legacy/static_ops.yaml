@@ -971,6 +971,17 @@
     func : swish
   backward : swish_grad
 
+- op : top_p_sampling
+  args : (Tensor x, Tensor ps, Tensor threshold, Tensor topp_seed, int seed=-1, int k=0, str mode="truncate")
+  output : Tensor (out), Tensor(ids), Tensor(topk_scores), Tensor(topk_ids)
+  infer_meta :
+    func : TopPSamplingInferMeta
+  kernel :
+    func : top_p_sampling
+    data_type : x
+  optional : threshold, topp_seed, topk_scores, topk_ids
+  traits : paddle::dialect::ForwardOnlyTrait
+
 - op : topk_v1
   args : (Tensor x, Scalar(int) k = 1)
   output : Tensor(out), Tensor(indices)

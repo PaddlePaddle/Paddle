@@ -21,6 +21,11 @@ import numpy as np
 import paddle
 from paddle.compat.nn.transformer import MultiheadAttention
 
+is_bf16_supported = (
+    paddle.is_compiled_with_cuda()
+    and paddle.cuda.get_device_capability()[0] >= 8
+)
+
 
 class ReferenceImplementation:
     @staticmethod
@@ -158,6 +163,10 @@ class ReferenceImplementation:
         return output, attn_weights
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(),
+    "SDPA is not fully supported on non-CUDA devices.",
+)
 class TestMHA_Coverage(unittest.TestCase):
     def setUp(self):
         self.seed = 42
@@ -337,10 +346,8 @@ class TestMHA_Coverage(unittest.TestCase):
             )
 
         if config['is_causal']:
-            mask_vals = np.zeros((L, S), dtype=config['dtype'])
-            i_idxs, j_idxs = np.triu_indices(L, k=1, m=S)
-            mask_vals[i_idxs, j_idxs] = float('-inf')
-            attn_mask = paddle.to_tensor(mask_vals)
+            attn_mask = np.triu(np.ones((L, S), dtype="bool"), k=1)
+            attn_mask = paddle.to_tensor(attn_mask)
         elif config['random_mask']:
             if config['random_mask_3d']:
                 mask_vals = np.random.choice(
@@ -426,14 +433,49 @@ class TestMHA_Coverage(unittest.TestCase):
 
         # Pretty print config for error message
         config_str = pprint.pformat(config)
-
-        np.testing.assert_allclose(
-            out_pd.cast('float32').numpy(),
-            out_ref,
-            atol=current_atol,
-            rtol=current_atol,
-            err_msg=f"\nOutput mismatch.\nConfig:\n{config_str}",
-        )
+        try:
+            np.testing.assert_allclose(
+                out_pd.cast('float32').numpy(),
+                out_ref,
+                atol=current_atol,
+                rtol=current_atol,
+                err_msg=f"\nOutput mismatch.\nConfig:\n{config_str}",
+            )
+        except AssertionError as e:
+            print(f"Failed with config: {config}")
+            out_ref, w_ref = ReferenceImplementation.forward(
+                q_np,
+                k_np,
+                v_np,
+                w_q=weights['w_q'],
+                w_k=weights['w_k'],
+                w_v=weights['w_v'],
+                w_out=weights['w_out'],
+                b_q=weights['b_q'],
+                b_k=weights['b_k'],
+                b_v=weights['b_v'],
+                b_out=weights['b_out'],
+                bias_k=weights['bias_k'],
+                bias_v=weights['bias_v'],
+                key_padding_mask=kp_np,
+                attn_mask=am_np,
+                add_bias_kv=config['add_bias_kv'],
+                add_zero_attn=config['add_zero_attn'],
+                num_heads=H,
+                need_weights=config['need_weights'],
+                average_attn_weights=config['average_attn_weights'],
+            )
+            out_pd, w_pd = model(
+                q_pd,
+                k_pd,
+                v_pd,
+                key_padding_mask=key_padding_mask,
+                attn_mask=attn_mask,
+                need_weights=config['need_weights'],
+                average_attn_weights=config['average_attn_weights'],
+                is_causal=config['is_causal'],
+            )
+            raise e
 
         if config['need_weights'] and w_pd is not None:
             np.testing.assert_allclose(
@@ -476,15 +518,15 @@ class TestMHA_Coverage(unittest.TestCase):
             pass
 
     def test_random_fuzz(self):
-        for i in range(self.num_fuzz_iter):
+        for _ in range(self.num_fuzz_iter):
             config = self.generate_config(
                 add_bias_kv=random.choice([True, False]),
                 add_zero_attn=random.choice([True, False]),
                 need_weights=random.choice([True, False]),
                 is_causal=random.choice([True, False]),
                 dtype=(
-                    random.choice(['float32', 'float32', 'float16'])
-                    if paddle.is_compiled_with_cuda()
+                    random.choice(['float32', 'bfloat16', 'float16'])
+                    if is_bf16_supported
                     else 'float32'
                 ),
                 random_mask=random.choice([True, False]),
