@@ -393,7 +393,6 @@ def _swap_torch_modules_from_cache():
     for name in list(TORCH_MODULES_CACHE):
         assert _is_torch_module(name), f"`{name}` is not a PyTorch module"
         sys.modules[name] = TORCH_MODULES_CACHE[name]
-        del TORCH_MODULES_CACHE[name]
 
 
 def _modify_scope_of_torch_proxy(
