@@ -6555,7 +6555,7 @@ def as_complex(x: Tensor, name: str | None = None) -> Tensor:
         Tensor, The output. Data type is 'complex64' or 'complex128', with the same precision as the input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
