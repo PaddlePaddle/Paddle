@@ -35,7 +35,7 @@ class IndexProgramTranslatorMap:
             )
         )
 
-    def get_offset_var_name_with_size_name(
+    def get_offset_var_name(
         self,
         index_func_unique_id,
         mut_kernel_arg_id_registry,
@@ -46,7 +46,7 @@ class IndexProgramTranslatorMap:
             mut_kernel_arg_id_registry=mut_kernel_arg_id_registry,
             mut_lir_code_gen_ctx=mut_lir_code_gen_ctx,
         )
-        return ret.iter_var_names # [offset_var_name, size_var_name]
+        return ret.iter_var_names[0]
 
     def make_translator(self, program_id, index_program):
         pass_manager = ir_tools.create_pass_manager()

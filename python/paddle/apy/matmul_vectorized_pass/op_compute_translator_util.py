@@ -70,19 +70,28 @@ class ApOpLoadFromGlobalCodeGen:
         index_func_unique_id = index_func_unique_id_attr.match(
             a_str=lambda x: x
         )
-        var_names = self.index_program_translator_map.get_offset_var_name_with_size_name(
+        # offset
+        offset_var_name = self.index_program_translator_map.get_offset_var_name(
             index_func_unique_id=index_func_unique_id,
             mut_kernel_arg_id_registry=mut_kernel_arg_id_registry,
             mut_lir_code_gen_ctx=mut_lir_code_gen_ctx,
         )
-        offset_var_name = var_names[0]
-        size_var_name = var_names[1]
 
+        # ptr
         data_op_name = inputs[0].var_name
         arg_name = mut_kernel_arg_id_registry.get_in_tensor_data_ptr_var_name(
             data_op_name
         )
         ptr_var_name = self.kernel_arg_translator.get_use_name(arg_name)
+        
+        # size
+        shape = self.input_properties[0].symbolic_shape
+        size_expr = ap.reduce(lambda x, y: x * y, shape)
+        size_expr_name = mut_kernel_arg_id_registry.get_dim_expr_var_name(
+            size_expr
+        )
+        size_var_name = self.kernel_arg_translator.get_use_name(size_expr_name)
+        
         out = self.get_out_cg_val(0)
         mut_lir_code_gen_ctx.load_vector(out, ptr_var_name, offset_var_name, size_var_name)
         return [out]
