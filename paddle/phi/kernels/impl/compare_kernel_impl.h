@@ -15,6 +15,8 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/compare_kernel.h"
 #include "paddle/phi/kernels/funcs/compare_functors.h"
 
@@ -77,13 +79,29 @@ DEFINE_COMPARE_KERNEL(Equal, funcs::EqualFunctor, funcs::EqualFunctor)
 DEFINE_COMPARE_KERNEL(NotEqual, funcs::NotEqualFunctor, funcs::NotEqualFunctor)
 #undef DEFINE_COMPARE_KERNEL
 
-#define DEFINE_COMPARE_ALL_KERNEL(compare_all_kernel, functor)        \
-  template <typename T, typename Context>                             \
-  void compare_all_kernel(const Context& dev_ctx,                     \
-                          const DenseTensor& x,                       \
-                          const DenseTensor& y,                       \
-                          DenseTensor* out) {                         \
-    CompareAllKernelImpl<T, Context, functor<T>>(dev_ctx, x, y, out); \
+#define DEFINE_COMPARE_ALL_KERNEL(compare_all_kernel, functor)          \
+  template <typename T, typename Context>                               \
+  void compare_all_kernel(const Context& dev_ctx,                       \
+                          const DenseTensor& x,                         \
+                          const DenseTensor& y,                         \
+                          DenseTensor* out) {                           \
+    if (x.dtype() == y.dtype()) {                                       \
+      CompareAllKernelImpl<T, Context, funcs::EqualFunctor<T>>(         \
+          dev_ctx, x, y, out);                                          \
+      return;                                                           \
+    }                                                                   \
+    DenseTensor x_dbl, y_dbl;                                           \
+    x_dbl.Resize(x.dims());                                             \
+    y_dbl.Resize(y.dims());                                             \
+    dev_ctx.template Alloc<double>(&x_dbl);                             \
+    dev_ctx.template Alloc<double>(&y_dbl);                             \
+    PD_VISIT_ALL_TYPES(x.dtype(), "EqualAllKernel_CastX", ([&] {        \
+                         x_dbl = phi::Cast<data_t, Context>(            \
+                             dev_ctx, x, phi::DataType::FLOAT64);       \
+                       }));                                             \
+    y_dbl = phi::Cast<T, Context>(dev_ctx, y, phi::DataType::FLOAT64);  \
+    CompareAllKernelImpl<double, Context, funcs::EqualFunctor<double>>( \
+        dev_ctx, x_dbl, y_dbl, out);                                    \
   }
 
 DEFINE_COMPARE_ALL_KERNEL(EqualAllKernel, funcs::EqualFunctor)

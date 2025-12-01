@@ -17,12 +17,17 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import static
+from paddle import base, static
 from paddle.compat import equal
 from paddle.static import Program, program_guard
 
 
 class TestCompatEqualDygraph(unittest.TestCase):
+    def setUp(self):
+        self.places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
     def test_equal_tensors(self):
         """Test equal tensors return True"""
         x = paddle.to_tensor([1.0, 2.0, 3.0])
@@ -45,9 +50,23 @@ class TestCompatEqualDygraph(unittest.TestCase):
 
     def test_different_dtypes(self):
         """Test tensors with different dtypes"""
-        x_float = paddle.to_tensor([1.0, 2.0, 3.0], dtype='float32')
-        y_int = paddle.to_tensor([1, 2, 3], dtype='float64')
-        self.assertTrue(equal(x_float, y_int))
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x_float32 = paddle.to_tensor([1.0, 2.0, 3.0], dtype='float32')
+                y_float64 = paddle.to_tensor([1.0, 2.0, 3.0], dtype='float64')
+                self.assertTrue(equal(x_float32, y_float64))
+
+                x_int32 = paddle.to_tensor([1, 2, 3], dtype='int32')
+                y_float32 = paddle.to_tensor([1.0, 2.0, 3.0], dtype='float32')
+                self.assertTrue(equal(x_int32, y_float32))
+
+                x_int64 = paddle.to_tensor([1, 2, 3], dtype='int64')
+                y_float64 = paddle.to_tensor([1.0, 2.0, 3.0], dtype='float64')
+                self.assertTrue(equal(x_int64, y_float64))
+
+                x_int32 = paddle.to_tensor([1, 2, 3], dtype='int32')
+                y_int64 = paddle.to_tensor([1, 2, 3], dtype='int64')
+                self.assertTrue(equal(x_int32, y_int64))
 
     def test_different_ndim(self):
         """Test tensors with different number of dimensions"""
