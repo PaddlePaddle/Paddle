@@ -1199,7 +1199,8 @@ def get_paddle_extra_install_requirements():
                     "nvidia-nccl-cu12==2.27.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvtx-cu12==12.9.19; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvjitlink-cu12==12.9.41; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-cufile-cu12==1.14.0.30; platform_system == 'Linux' and platform_machine == 'x86_64'"
+                    "nvidia-cufile-cu12==1.14.0.30; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "cuda-python==12.9.4; platform_system == 'Linux' and platform_machine == 'x86_64'"
                 ),
                 "13.0": (
                     "nvidia-cuda-nvrtc==13.0.88; platform_system == 'Linux' and platform_machine == 'x86_64' | "
@@ -1215,7 +1216,8 @@ def get_paddle_extra_install_requirements():
                     "nvidia-nccl-cu13==2.28.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvtx==13.0.85; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvjitlink==13.0.88; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-cufile==1.15.1.6; platform_system == 'Linux' and platform_machine == 'x86_64'"
+                    "nvidia-cufile==1.15.1.6; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "cuda-python==13.0.3; platform_system == 'Linux' and platform_machine == 'x86_64'"
                 ),
             }
             if env_dict.get("WITH_CINN") == "ON":
