@@ -40,7 +40,7 @@ struct SigmoidBwdFunctor {
       counts = 0;
     } else {
       T simoid_x =
-          static_cast<T>(1) / (static_cast<T>(1) + phi::funcs::real_exp(-x));
+          static_cast<T>(1) / (static_cast<T>(1) + funcs::real_exp(-x));
       T diff = simoid_x - label;
       dx_data = dout * diff;
       counts = 1;
@@ -75,8 +75,8 @@ struct SigmoidBwdPosWeightFunctor {
     } else {
       T max_val = x < 0 ? -x : 0;
       T term1 = (x < 0) ? static_cast<T>(-1) : static_cast<T>(0);
-      T down1 = phi::funcs::real_exp(-max_val);
-      T down2 = phi::funcs::real_exp(-x - max_val);
+      T down1 = funcs::real_exp(-max_val);
+      T down2 = funcs::real_exp(-x - max_val);
       T term2 = down1 * (-term1) + down2 * (-1 - term1);
       T term3 = (static_cast<T>(1.) - label);
       T diff = pos_weight * (term2 / (down1 + down2) + term1) + term3;
@@ -116,13 +116,13 @@ void SigmoidCrossEntropyWithLogitsGradKernel(
   if (pos_weight.get_ptr() == nullptr) {
     std::vector<const DenseTensor *> ins = {&x, &label, &out_grad};
     auto functor = SigmoidBwdFunctor<T>(ignore_index);
-    phi::funcs::ElementwiseKernel<T, decltype(functor), 2>(
+    funcs::ElementwiseKernel<T, decltype(functor), 2>(
         dev_ctx, ins, &outs, functor);
   } else {
     std::vector<const DenseTensor *> ins = {
         &x, &label, pos_weight.get_ptr(), &out_grad};
     auto functor = SigmoidBwdPosWeightFunctor<T>(ignore_index);
-    phi::funcs::ElementwiseKernel<T, decltype(functor), 2>(
+    funcs::ElementwiseKernel<T, decltype(functor), 2>(
         dev_ctx, ins, &outs, functor);
   }
   if (normalize) {

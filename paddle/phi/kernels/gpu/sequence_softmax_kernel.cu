@@ -56,7 +56,7 @@ __global__ void sequence_softmax_kernel(const T *in_data,
     T sum_data = 0;
     for (size_t tid = threadIdx.x; tid < span; tid += blockDim.x) {
       T ele = in_data[start + tid];
-      sum_data += phi::funcs::real_exp(ele - shared_max_data);
+      sum_data += funcs::real_exp(ele - shared_max_data);
     }
     sum_data =
         BlockReduce<T, BlockDim>(temp_storage).Reduce(sum_data, cub::Sum());
@@ -68,7 +68,7 @@ __global__ void sequence_softmax_kernel(const T *in_data,
     // get final resit
     for (size_t tid = threadIdx.x; tid < span; tid += blockDim.x) {
       T ele = in_data[start + tid];
-      ele = phi::funcs::real_exp(ele - shared_max_data) / shared_sum_data;
+      ele = funcs::real_exp(ele - shared_max_data) / shared_sum_data;
       out_data[start + tid] = ele;
     }
   }
