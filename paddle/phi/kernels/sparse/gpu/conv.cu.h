@@ -16,26 +16,19 @@ limitations under the License. */
 
 #include <thrust/remove.h>
 #include <thrust/unique.h>
-#ifdef __NVCC__
-#include <cub/block/block_scan.cuh>
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-#include "paddle/phi/kernels/sparse/conv_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/funcs/sparse/utils.cu.h"
 #include "paddle/phi/kernels/primitive/compute_primitives.h"
+#include "paddle/phi/kernels/sparse/conv_kernel.h"
 #include "paddle/phi/kernels/sparse/gpu/conv_host_buffer.h"
 #include "paddle/phi/kernels/sparse/gpu/conv_with_buffer.cu.h"
 

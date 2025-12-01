@@ -16,6 +16,7 @@
 
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -23,6 +24,7 @@
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/gpu/interpolate.cuh"
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
 
 namespace phi {
@@ -872,6 +874,196 @@ __global__ void KeNearestNeighbor3DInterpBw(T* in,
   }
 }
 
+// Helper function to compute weights for backward pass
+template <typename T, typename MT, typename InterpFilter>
+__device__ __forceinline__ void ComputeWeightsBw(
+    T* wt_ptr,
+    const MT scale,
+    int interp_size,
+    const InterpFilter& interp_filter,
+    MT xmin_m_center,
+    int xsize) {
+  MT invscale = (scale >= 1.0) ? 1.0 / scale : 1.0;
+  MT total_w = 0.0;
+  int j = 0;
+  for (j = 0; j < xsize; j++) {
+    MT w = interp_filter((j + xmin_m_center + static_cast<MT>(0.5)) * invscale);
+    wt_ptr[j] = static_cast<T>(w);
+    total_w += w;
+  }
+  for (j = 0; j < xsize; j++) {
+    if (total_w != 0.0) {
+      wt_ptr[j] = static_cast<T>(static_cast<MT>(wt_ptr[j]) / total_w);
+    }
+  }
+  for (; j < interp_size; j++) {
+    wt_ptr[j] = static_cast<T>(0.0);
+  }
+}
+
+template <typename T, typename InterpFilter>
+__global__ void KeInterpAABwNCHW(T* in_grad,
+                                 const int64_t in_img_h,
+                                 const int64_t in_img_w,
+                                 const T* out_grad,
+                                 const int64_t out_img_h,
+                                 const int64_t out_img_w,
+                                 const int64_t n,
+                                 const int64_t c,
+                                 const float ratio_h,
+                                 const float ratio_w,
+                                 const InterpFilter& interp_filter) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  const int out_img_idx = threadIdx.x + blockIdx.x * blockDim.x;
+  const int out_img_idy = threadIdx.y + blockIdx.y * blockDim.y;
+
+  if (out_img_idx >= out_img_w || out_img_idy >= out_img_h) {
+    return;
+  }
+
+  MT scale_h = static_cast<MT>(ratio_h);
+  MT scale_w = static_cast<MT>(ratio_w);
+
+  const MT half = 0.5;
+  const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * half) * scale_h
+                                        : interp_filter.size * half;
+  const MT support_w = (scale_w >= 1.0) ? (interp_filter.size * half) * scale_w
+                                        : interp_filter.size * half;
+
+  const int interp_height = static_cast<int>(ceilf(support_h)) * 2 + 1;
+  const int interp_width = static_cast<int>(ceilf(support_w)) * 2 + 1;
+
+  // Use shared memory for weights
+  extern __shared__ int smem[];
+  T* wx = reinterpret_cast<T*>(smem) + interp_width * threadIdx.x;
+  T* wy = reinterpret_cast<T*>(smem) + interp_width * blockDim.x +
+          interp_height * threadIdx.y;
+
+  // Compute weights and kernel spans
+  int xmin, xsize, ymin, ysize;
+  MT xcenter, ycenter;
+  ComputeWeightsSpan<MT>(
+      out_img_idx, in_img_w, scale_w, support_w, &xmin, &xsize, &xcenter);
+  ComputeWeightsSpan<MT>(
+      out_img_idy, in_img_h, scale_h, support_h, &ymin, &ysize, &ycenter);
+
+  if (threadIdx.y == 0) {
+    ComputeWeightsBw<T, MT>(
+        wx, scale_w, interp_width, interp_filter, xmin - xcenter, xsize);
+  }
+
+  if (threadIdx.x == 0) {
+    ComputeWeightsBw<T, MT>(
+        wy, scale_h, interp_height, interp_filter, ymin - ycenter, ysize);
+  }
+
+  __syncthreads();
+
+  for (int64_t i = blockIdx.z; i < n * c; i += gridDim.z) {
+    const MT grad_out =
+        static_cast<MT>(out_grad[i * out_img_h * out_img_w +
+                                 out_img_idy * out_img_w + out_img_idx]);
+
+    // Backward pass: distribute gradient to input pixels according to weights
+    for (int y = 0; y < ysize; y++) {
+      const MT wy_val = static_cast<MT>(wy[y]);
+      for (int x = 0; x < xsize; x++) {
+        const MT wx_val = static_cast<MT>(wx[x]);
+        const MT grad = grad_out * wy_val * wx_val;
+        const int64_t in_idx =
+            i * in_img_h * in_img_w + (ymin + y) * in_img_w + (xmin + x);
+        phi::CudaAtomicAdd(&in_grad[in_idx], static_cast<T>(grad));
+      }
+    }
+  }
+}
+
+template <typename T, typename InterpFilter>
+__global__ void KeInterpAABwNHWC(T* in_grad,
+                                 const int64_t in_img_h,
+                                 const int64_t in_img_w,
+                                 const T* out_grad,
+                                 const int64_t out_img_h,
+                                 const int64_t out_img_w,
+                                 const int64_t n,
+                                 const int64_t c,
+                                 const float ratio_h,
+                                 const float ratio_w,
+                                 const InterpFilter& interp_filter) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  const int out_img_idx = threadIdx.x + blockIdx.x * blockDim.x;
+  const int out_img_idy = threadIdx.y + blockIdx.y * blockDim.y;
+
+  if (out_img_idx >= out_img_w || out_img_idy >= out_img_h) {
+    return;
+  }
+
+  MT scale_h = static_cast<MT>(ratio_h);
+  MT scale_w = static_cast<MT>(ratio_w);
+
+  const MT half = 0.5;
+  const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * half) * scale_h
+                                        : interp_filter.size * half;
+  const MT support_w = (scale_w >= 1.0) ? (interp_filter.size * half) * scale_w
+                                        : interp_filter.size * half;
+
+  const int interp_height = static_cast<int>(ceilf(support_h)) * 2 + 1;
+  const int interp_width = static_cast<int>(ceilf(support_w)) * 2 + 1;
+
+  // Use shared memory for weights
+  extern __shared__ int smem[];
+  T* wx = reinterpret_cast<T*>(smem) + interp_width * threadIdx.x;
+  T* wy = reinterpret_cast<T*>(smem) + interp_width * blockDim.x +
+          interp_height * threadIdx.y;
+
+  // Compute weights and kernel spans
+  int xmin, xsize, ymin, ysize;
+  MT xcenter, ycenter;
+  ComputeWeightsSpan<MT>(
+      out_img_idx, in_img_w, scale_w, support_w, &xmin, &xsize, &xcenter);
+  ComputeWeightsSpan<MT>(
+      out_img_idy, in_img_h, scale_h, support_h, &ymin, &ysize, &ycenter);
+
+  if (threadIdx.y == 0) {
+    ComputeWeightsBw<T, MT>(
+        wx, scale_w, interp_width, interp_filter, xmin - xcenter, xsize);
+  }
+
+  if (threadIdx.x == 0) {
+    ComputeWeightsBw<T, MT>(
+        wy, scale_h, interp_height, interp_filter, ymin - ycenter, ysize);
+  }
+
+  __syncthreads();
+
+  // Process each batch
+  for (int64_t i = blockIdx.z; i < n; i += gridDim.z) {
+    for (int64_t ch = 0; ch < c; ch++) {
+      const MT grad_out =
+          static_cast<MT>(out_grad[(i * out_img_h * out_img_w +
+                                    out_img_idy * out_img_w + out_img_idx) *
+                                       c +
+                                   ch]);
+
+      // Backward pass: distribute gradient to input pixels according to weights
+      for (int y = 0; y < ysize; y++) {
+        const MT wy_val = static_cast<MT>(wy[y]);
+        for (int x = 0; x < xsize; x++) {
+          const MT wx_val = static_cast<MT>(wx[x]);
+          const MT grad = grad_out * wy_val * wx_val;
+          const int64_t in_idx =
+              (i * in_img_h * in_img_w + (ymin + y) * in_img_w + (xmin + x)) *
+                  c +
+              ch;
+          phi::CudaAtomicAdd(&in_grad[in_idx], static_cast<T>(grad));
+        }
+      }
+    }
+  }
+}
+
 template <typename T, typename Context>
 static void Interpolate1DCUDABwd(
     const Context& dev_ctx,
@@ -882,7 +1074,7 @@ static void Interpolate1DCUDABwd(
     const DenseTensor& output_grad,
     const std::string& data_layout_str,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -891,7 +1083,7 @@ static void Interpolate1DCUDABwd(
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  float scale_w = -1;
+  double scale_w = -1;
   if (scale_tensor) {
     auto scale_data =
         funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
@@ -996,7 +1188,7 @@ static void Interpolate2DCUDABwd(
     const std::string& data_layout_str,
     int64_t out_h,
     int64_t out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1005,8 +1197,8 @@ static void Interpolate2DCUDABwd(
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  float scale_h = -1;
-  float scale_w = -1;
+  double scale_h = -1;
+  double scale_w = -1;
   if (scale_tensor) {
     auto scale_data =
         funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
@@ -1252,6 +1444,249 @@ static void Interpolate2DCUDABwd(
 }
 
 template <typename T, typename Context>
+static void InterpolateAA2DCUDABwd(
+    const Context& dev_ctx,
+    const DenseTensor& input,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
+    const DenseTensor& output_grad,
+    const std::string& data_layout_str,
+    int out_h,
+    int out_w,
+    const std::vector<double>& scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    DenseTensor* input_grad) {
+  if (input_grad && input_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(input_grad);
+    return;
+  }
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  int64_t n, c, in_d, in_h, in_w;
+  funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
+
+  double scale_h = -1;
+  double scale_w = -1;
+  if (size_tensor && size_tensor->size() > 0) {
+    // have size tensor
+    auto new_size = funcs::get_new_shape(size_tensor.get());
+    out_h = new_size[0];
+    out_w = new_size[1];
+  } else {
+    if (scale_tensor) {
+      auto scale_data =
+          funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
+      if (scale_data.size() > 1) {
+        scale_h = scale_data[0];
+        scale_w = scale_data[1];
+      } else {
+        scale_h = scale_data[0];
+        scale_w = scale_data[0];
+      }
+
+      PADDLE_ENFORCE_EQ(
+          scale_w > 0,
+          true,
+          errors::InvalidArgument(
+              "The scale_w in input 'Scale' Tensor of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_w));
+      PADDLE_ENFORCE_EQ(
+          scale_h > 0,
+          true,
+          errors::InvalidArgument(
+              "The scale_h in input 'Scale' Tensor of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_h));
+    } else {
+      if (scale.size() > 1) {
+        scale_w = scale[1];
+        scale_h = scale[0];
+
+        PADDLE_ENFORCE_EQ(
+            scale_w > 0,
+            true,
+            errors::InvalidArgument(
+                "The scale_w in Attr(scale) of Operator(interpolate) "
+                "should be greater than 0, but received value is %d.",
+                scale_w));
+        PADDLE_ENFORCE_EQ(
+            scale_h > 0,
+            true,
+            errors::InvalidArgument(
+                "The scale_h in Attr(scale) of Operator(interpolate) "
+                "should be greater than 0, but received value is %d.",
+                scale_h));
+      }
+    }
+    if (scale_w > 0. && scale_h > 0.) {
+      out_h = static_cast<int>(in_h * scale_h);
+      out_w = static_cast<int>(in_w * scale_w);
+    }
+    if (out_size) {
+      DenseTensor sizes;
+      phi::Copy(dev_ctx, *out_size, phi::CPUPlace(), true, &sizes);
+      auto size_data = sizes.data<int>();
+      out_h = size_data[0];
+      out_w = size_data[1];
+    }
+  }
+
+  auto* output_grad_data = output_grad.data<T>();
+  phi::DDim dim_grad;
+  if (data_layout == DataLayout::kNCHW) {
+    dim_grad = {n, c, in_h, in_w};
+  } else {
+    dim_grad = {n, in_h, in_w, c};
+  }
+  input_grad->Resize(dim_grad);
+  auto* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
+  phi::funcs::SetConstant<Context, T> zero;
+  zero(dev_ctx, input_grad, static_cast<T>(0.0));
+
+  if (in_h == out_h && in_w == out_w) {
+    phi::Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
+    return;
+  }
+
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  float ratio_h =
+      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
+  float ratio_w =
+      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
+
+  int64_t nc = static_cast<int64_t>(n) * c;
+
+  if ("bilinear" == interp_method) {
+    // Use anti-aliasing bilinear interpolation backward
+    // Compute block and grid dimensions
+    int device_id = dev_ctx.GetPlace().GetDeviceId();
+    auto& gpu_props = phi::backends::gpu::GetDeviceProperties(device_id);
+    int block_x = std::min(static_cast<int>(gpu_props.warpSize), 32);
+    int block_y = std::min(256 / block_x, 8);
+
+    int grid_x = (out_w + block_x - 1) / block_x;
+    int grid_y = (out_h + block_y - 1) / block_y;
+    int grid_z = std::min(static_cast<int>(nc), gpu_props.maxGridSize[2]);
+
+    dim3 block(block_x, block_y);
+    dim3 grid(grid_x, grid_y, grid_z);
+
+    // Compute shared memory size
+    funcs::antialias::BilinearFilterFunctor filter;
+    const int interp_height =
+        1 + 2 * static_cast<int>(ceilf((ratio_h >= 1.0)
+                                           ? filter.size * 0.5 * ratio_h
+                                           : filter.size * 0.5));
+    const int interp_width =
+        1 + 2 * static_cast<int>(ceilf((ratio_w >= 1.0)
+                                           ? filter.size * 0.5 * ratio_w
+                                           : filter.size * 0.5));
+
+    size_t weights_per_block = interp_width * block_x + interp_height * block_y;
+    size_t shmem_size = weights_per_block * sizeof(T);
+
+    PADDLE_ENFORCE_LE(shmem_size,
+                      gpu_props.sharedMemPerBlock,
+                      errors::InvalidArgument(
+                          "Required shared memory size %d exceeds limit %d",
+                          shmem_size,
+                          gpu_props.sharedMemPerBlock));
+    if (data_layout == DataLayout::kNCHW) {
+      KeInterpAABwNCHW<T>
+          <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_grad_data,
+                                                          in_h,
+                                                          in_w,
+                                                          output_grad_data,
+                                                          out_h,
+                                                          out_w,
+                                                          n,
+                                                          c,
+                                                          ratio_h,
+                                                          ratio_w,
+                                                          filter);
+    } else {
+      KeInterpAABwNHWC<T>
+          <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_grad_data,
+                                                          in_h,
+                                                          in_w,
+                                                          output_grad_data,
+                                                          out_h,
+                                                          out_w,
+                                                          n,
+                                                          c,
+                                                          ratio_h,
+                                                          ratio_w,
+                                                          filter);
+    }
+  } else if ("bicubic" == interp_method) {
+    // Use anti-aliasing bicubic interpolation backward
+    // Compute block and grid dimensions
+    int device_id = dev_ctx.GetPlace().GetDeviceId();
+    auto& gpu_props = phi::backends::gpu::GetDeviceProperties(device_id);
+    int block_x = std::min(static_cast<int>(gpu_props.warpSize), 32);
+    int block_y = std::min(256 / block_x, 8);
+
+    int grid_x = (out_w + block_x - 1) / block_x;
+    int grid_y = (out_h + block_y - 1) / block_y;
+    int grid_z = std::min(static_cast<int>(nc), gpu_props.maxGridSize[2]);
+
+    dim3 block(block_x, block_y);
+    dim3 grid(grid_x, grid_y, grid_z);
+
+    // Compute shared memory size
+    funcs::antialias::BicubicFilterFunctor filter;
+    const int interp_height =
+        1 + 2 * static_cast<int>(ceilf((ratio_h >= 1.0)
+                                           ? filter.size * 0.5 * ratio_h
+                                           : filter.size * 0.5));
+    const int interp_width =
+        1 + 2 * static_cast<int>(ceilf((ratio_w >= 1.0)
+                                           ? filter.size * 0.5 * ratio_w
+                                           : filter.size * 0.5));
+
+    size_t weights_per_block = interp_width * block_x + interp_height * block_y;
+    size_t shmem_size = weights_per_block * sizeof(T);
+
+    PADDLE_ENFORCE_LE(shmem_size,
+                      gpu_props.sharedMemPerBlock,
+                      errors::InvalidArgument(
+                          "Required shared memory size %d exceeds limit %d",
+                          shmem_size,
+                          gpu_props.sharedMemPerBlock));
+    if (data_layout == DataLayout::kNCHW) {
+      KeInterpAABwNCHW<T>
+          <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_grad_data,
+                                                          in_h,
+                                                          in_w,
+                                                          output_grad_data,
+                                                          out_h,
+                                                          out_w,
+                                                          n,
+                                                          c,
+                                                          ratio_h,
+                                                          ratio_w,
+                                                          filter);
+    } else {
+      KeInterpAABwNHWC<T>
+          <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_grad_data,
+                                                          in_h,
+                                                          in_w,
+                                                          output_grad_data,
+                                                          out_h,
+                                                          out_w,
+                                                          n,
+                                                          c,
+                                                          ratio_h,
+                                                          ratio_w,
+                                                          filter);
+    }
+  }
+}
+
+template <typename T, typename Context>
 static void Interpolate3DCUDABwd(
     const Context& dev_ctx,
     const DenseTensor& input,
@@ -1263,7 +1698,7 @@ static void Interpolate3DCUDABwd(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1272,9 +1707,9 @@ static void Interpolate3DCUDABwd(
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  float scale_d = -1;
-  float scale_h = -1;
-  float scale_w = -1;
+  double scale_d = -1;
+  double scale_h = -1;
+  double scale_w = -1;
   if (scale_tensor) {
     auto scale_data =
         funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
@@ -1454,7 +1889,7 @@ void InterpolateGradKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1525,7 +1960,7 @@ void BilinearInterpGradKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1565,7 +2000,7 @@ void LegacyBilinearInterpGradKernel(
     int align_mode,
     DenseTensor* x_grad) {
   const auto& dim_x = x.dims();
-  std::vector<float> scale_vec;
+  std::vector<double> scale_vec;
   if (scale > 0) {
     for (int i = 0; i < dim_x.size() - 2; i++) {
       scale_vec.push_back(scale);
@@ -1600,7 +2035,7 @@ void NearestInterpGradKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1640,7 +2075,7 @@ void LegacyNearestInterpGradKernel(
     int align_mode,
     DenseTensor* x_grad) {
   const auto& dim_x = x.dims();
-  std::vector<float> scale_vec;
+  std::vector<double> scale_vec;
   if (scale > 0) {
     for (int i = 0; i < dim_x.size() - 2; i++) {
       scale_vec.push_back(scale);
@@ -1675,7 +2110,7 @@ void TrilinearInterpGradKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1709,7 +2144,7 @@ void LinearInterpGradKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1743,7 +2178,7 @@ void BicubicInterpGradKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1765,12 +2200,45 @@ void BicubicInterpGradKernel(
                                     x_grad);
 }
 
+template <typename T, typename Context>
+void InterpAntialiasGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
+    const DenseTensor& out_grad,
+    const std::string& data_layout,
+    int out_d,
+    int out_h,
+    int out_w,
+    const std::vector<double>& scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    DenseTensor* x_grad) {
+  InterpolateAA2DCUDABwd<T, Context>(dev_ctx,
+                                     x,
+                                     out_size,
+                                     size_tensor,
+                                     scale_tensor,
+                                     out_grad,
+                                     data_layout,
+                                     out_h,
+                                     out_w,
+                                     scale,
+                                     interp_method,
+                                     align_corners,
+                                     align_mode,
+                                     x_grad);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(interp_antialias_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::InterpolateGradKernel,
+                   phi::InterpAntialiasGradKernel,
                    float,
                    double,
                    phi::float16,

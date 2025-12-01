@@ -209,6 +209,22 @@ inline cudnnTensorFormat_t GetCudnnTensorFormat(
   return CUDNN_TENSOR_NCHW;
 }
 
+inline cudnnTensorFormat_t GetCudnnTensorFormat(const phi::DataLayout& order) {
+  switch (order) {
+    case phi::DataLayout::NHWC:
+      return CUDNN_TENSOR_NHWC;
+    case phi::DataLayout::NCHW:
+      return CUDNN_TENSOR_NCHW;
+    case phi::DataLayout::NCDHW:
+      return CUDNN_TENSOR_NCHW;  // NOTE: cudnn treat NdTensor as the same
+    case phi::DataLayout::NDHWC:
+      return CUDNN_TENSOR_NHWC;
+    default:
+      PADDLE_THROW(common::errors::Unimplemented(
+          "CUDNN has no equivalent dataLayout for input order."));
+  }
+  return CUDNN_TENSOR_NCHW;
+}
 class ScopedTensorDescriptor {
  public:
   ScopedTensorDescriptor() {
@@ -267,6 +283,14 @@ class ScopedTensorDescriptor {
 
   template <typename T>
   inline cudnnTensorDescriptor_t descriptor(const DataLayout& order,
+                                            const std::vector<int>& dims,
+                                            const int groups = 1) {
+    return descriptor(
+        GetCudnnTensorFormat(order), CudnnDataType<T>::type, dims, groups);
+  }
+
+  template <typename T>
+  inline cudnnTensorDescriptor_t descriptor(const phi::DataLayout& order,
                                             const std::vector<int>& dims,
                                             const int groups = 1) {
     return descriptor(
@@ -456,6 +480,14 @@ class ScopedFilterDescriptor {
 
   template <typename T>
   inline cudnnFilterDescriptor_t descriptor(const DataLayout& order,
+                                            const std::vector<int>& kernel,
+                                            const int groups = 1) {
+    return descriptor(
+        GetCudnnTensorFormat(order), CudnnDataType<T>::type, kernel, groups);
+  }
+
+  template <typename T>
+  inline cudnnFilterDescriptor_t descriptor(const phi::DataLayout& order,
                                             const std::vector<int>& kernel,
                                             const int groups = 1) {
     return descriptor(

@@ -1979,6 +1979,12 @@ PHI_DEFINE_EXPORTED_string(lapack_dir,
                            "",
                            "Specify path for loading liblapack.so.");  // NOLINT
 
+#ifdef PADDLE_WITH_MAGMA
+PHI_DEFINE_EXPORTED_string(magma_dir,
+                           "",
+                           "Specify path for loading libmagma.so.");  // NOLINT
+#endif
+
 /**
  * Apply check infer symbolic pass FLAG
  * Name: check_infer_symbolic_pass
@@ -2385,3 +2391,15 @@ PHI_DEFINE_EXPORTED_int64(
 PHI_DEFINE_EXPORTED_bool(try_allocate,
                          false,
                          "whether use try allocate in memory compact.");
+
+/**
+ * Allocator Compact related FLAG
+ * Name: FLAGS_record_alloc_event
+ * Since Version: 3.3
+ * Value Range: bool, default=false
+ * Example:
+ * Note: whether record allocate event.
+ */
+PHI_DEFINE_EXPORTED_bool(record_alloc_event,
+                         false,
+                         "whether record allocate event.");

@@ -21,16 +21,11 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#else
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
 namespace phi {
 using phi::PADDLE_CUDA_NUM_THREADS;
 

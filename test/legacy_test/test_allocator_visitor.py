@@ -15,6 +15,7 @@
 import unittest
 
 import paddle
+from paddle.device.cuda.memory_analyzer import MemoryAnalysisTool
 
 
 @unittest.skipIf(
@@ -25,7 +26,6 @@ class TestAllocatorVisitor(unittest.TestCase):
     def setUp(self):
         self.GB = 1000**3
         self.MB = 1000**2
-        self.KB = 1000
         self.cmds = [
             ["Alloc", 1 * self.GB, "0x100000000"],
             ["Alloc", 2 * self.GB, "0x100000001"],
@@ -35,18 +35,14 @@ class TestAllocatorVisitor(unittest.TestCase):
             ["Free", 2 * self.GB, "0x100000003"],
         ]
         self.cmds2 = [
-            ["Alloc", 1 * self.KB, "0x100000000"],
-            ["Alloc", 2 * self.MB, "0x100000001"],
-            ["Alloc", 1 * self.GB, "0x100000002"],
-            ["Alloc", 2 * self.GB, "0x100000003"],
-            ["Free", 1 * self.KB, "0x100000000"],
-            ["Free", 2 * self.GB, "0x100000003"],
-            ["Alloc", 1.5 * self.KB, "0x100000000"],
+            ["Alloc", 1 * self.MB, "0x100000010"],
+            ["Alloc", 2 * self.GB, "0x100000011"],
+            ["Alloc", 1 * self.MB, "0x100000012"],
+            ["Alloc", 2 * self.GB, "0x100000013"],
+            ["Free", 1 * self.GB, "0x100000010"],
+            ["Free", 2 * self.GB, "0x100000013"],
         ]
-        paddle.set_flags(
-            {'FLAGS_use_multi_scale_virtual_memory_auto_growth': True}
-        )
-        paddle.set_flags({'FLAGS_vmm_small_pool_size_in_mb': 1})
+        paddle.set_flags({'FLAGS_use_virtual_memory_auto_growth': True})
 
     def allocate_cmds(self, cmds):
         params = {}
@@ -78,25 +74,32 @@ class TestAllocatorVisitor(unittest.TestCase):
 
     def test_multi_scale_alloc_free(self):
         params = self.allocate_cmds(self.cmds)
-        paddle.device.cuda.vmm_max_free_size()
+        MemoryAnalysisTool.vmm_max_free_size()
 
     def test_block_info(self):
         paddle.device.cuda.memory_summary()
         params = self.allocate_cmds(self.cmds)
-        x = paddle.device.cuda.vmm_free_block_info()
-        y = paddle.device.cuda.vmm_all_block_info()
+        x = MemoryAnalysisTool.vmm_free_block_info()
+        y = MemoryAnalysisTool.vmm_all_block_info()
         self.assertEqual(x[0][0][0], 1000000000)
         self.assertEqual(x[0][1][0], 2002049024)
         self.assertEqual(len(y), 1)  # 1 allocators
         self.assertEqual(len(y[0]), 4)  # 4 blocks
 
     def test_memory_summary(self):
-        paddle.set_flags(
-            {'FLAGS_use_multi_scale_virtual_memory_auto_growth': True}
-        )
-        paddle.set_flags({'FLAGS_vmm_small_pool_size_in_mb': 1})
+        paddle.set_flags({'FLAGS_use_virtual_memory_auto_growth': True})
         paddle.device.cuda.memory_summary()
         params = self.allocate_cmds(self.cmds2)
+        # paddle.device.cuda.memory_summary()
+
+    def test_memory_record(self):
+        paddle.set_flags({'FLAGS_use_virtual_memory_auto_growth': True})
+        paddle.set_flags({'FLAGS_record_alloc_event': True})
+        params = self.allocate_cmds(self.cmds)
+        params2 = self.allocate_cmds(self.cmds2)
+        paddle.device.cuda.allocate_record_plot()
+        paddle.device.cuda.allocate_record_plot(save_path="ana.png")
+        paddle.device.cuda.allocate_record_table()
         paddle.device.cuda.memory_summary()
 
 
