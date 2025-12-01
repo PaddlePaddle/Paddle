@@ -1567,6 +1567,30 @@ def monkey_patch_tensor():
                 "Currently, the __tvm_ffi_env_stream__ method is only supported for GPU tensors."
             )
 
+    def _get_c_dlpack_exchange_api():
+        """
+        Returns the C DLPack exchange API pointer for the current tensor.
+        This is used for interoperability with other libraries that support DLPack.
+
+        In tvm ffi 0.1.3 or below, this API returns the pointer directly.
+        In newer versions, it returns a python capsule containing the pointer.
+        """
+        try:
+            import tvm_ffi
+
+            tvm_ffi_version = tuple(
+                int(x) for x in tvm_ffi.__version__.split(".")
+            )
+            # We assume version format is like '0.1.3'.
+            # All supported releases are '0.1.0', '0.1.1', '0.1.2', '0.1.3'.
+            # We simply assume user will not use beta/rc versions here.
+            # TODO(dev): We should cleanup this after tvm ffi 0.1.3 is not supported.
+            if tvm_ffi_version <= (0, 1, 3):
+                return core.dlpack_exchange_api_ptr()
+        except Exception:
+            pass
+        return core.dlpack_exchange_api_pycapsule()
+
     if not hasattr(core, "eager"):
         return
 
@@ -1616,7 +1640,7 @@ def monkey_patch_tensor():
         ("__dlpack_device__", __dlpack_device__),
         ("get_device", get_device),
         ("__tvm_ffi_env_stream__", __tvm_ffi_env_stream__),
-        ("__c_dlpack_exchange_api__", core.dlpack_exchange_api_ptr()),
+        ("__c_dlpack_exchange_api__", _get_c_dlpack_exchange_api()),
         ("device", device),
     ):
         setattr(core.eager.Tensor, method_name, method)

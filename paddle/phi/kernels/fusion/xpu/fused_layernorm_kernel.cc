@@ -64,11 +64,6 @@ void FusedLayerNormKernel(const Context& dev_ctx,
 
   dev_ctx.template Alloc<float>(&residual_alpha_tmp);
   dev_ctx.template Alloc<T>(&residual_alpha_ptr);
-  r = baidu::xpu::api::constant(xpu_ctx->x_context(),
-                                reinterpret_cast<XPUType*>(out->data<T>()),
-                                out->numel(),
-                                static_cast<XPUType>(0.f));
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
   r = baidu::xpu::api::constant(xpu_ctx->x_context(),
                                 residual_alpha_tmp.data<float>(),
@@ -83,65 +78,87 @@ void FusedLayerNormKernel(const Context& dev_ctx,
       1);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
 
-  if (residual) {
-    dev_ctx.template Alloc<T>(residual_out);
-    r = baidu::xpu::api::broadcast_mul(
-        xpu_ctx->x_context(),
-        reinterpret_cast<const XPUType*>(residual.get().data<T>()),
-        reinterpret_cast<XPUType*>(residual_alpha_ptr.data<T>()),
-        reinterpret_cast<XPUType*>(const_cast<T*>(residual.get().data<T>())),
-        {m, n},
-        {1});
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
-  }
-
   if (!norm_weight && !norm_bias) {
-    if (bias) {
-      r = baidu::xpu::api::broadcast_add(
+    if (residual) {
+      r = baidu::xpu::api::broadcast_mul(
           xpu_ctx->x_context(),
-          reinterpret_cast<XPUType*>(out->data<T>()),
-          reinterpret_cast<const XPUType*>(bias.get().data<T>()),
+          reinterpret_cast<const XPUType*>(residual.get().data<T>()),
+          reinterpret_cast<XPUType*>(residual_alpha_ptr.data<T>()),
           reinterpret_cast<XPUType*>(out->data<T>()),
           {m, n},
-          {n});
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
-    }
-    if (residual) {
-      r = baidu::xpu::api::add(
-          xpu_ctx->x_context(),
-          reinterpret_cast<XPUType*>(out->data<T>()),
-          reinterpret_cast<const XPUType*>(residual.get().data<T>()),
-          reinterpret_cast<XPUType*>(out->data<T>()),
-          m * n);
+          {1});
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
+      if (bias) {
+        r = baidu::xpu::api::broadcast_add(
+            xpu_ctx->x_context(),
+            reinterpret_cast<XPUType*>(out->data<T>()),
+            reinterpret_cast<const XPUType*>(bias.get().data<T>()),
+            reinterpret_cast<XPUType*>(out->data<T>()),
+            {m, n},
+            {n});
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
+      }
+      r = baidu::xpu::api::add(xpu_ctx->x_context(),
+                               reinterpret_cast<XPUType*>(out->data<T>()),
+                               reinterpret_cast<const XPUType*>(x.data<T>()),
+                               reinterpret_cast<XPUType*>(out->data<T>()),
+                               m * n);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
+    } else {
+      if (bias) {
+        r = baidu::xpu::api::broadcast_add(
+            xpu_ctx->x_context(),
+            reinterpret_cast<const XPUType*>(x.data<T>()),
+            reinterpret_cast<const XPUType*>(bias.get().data<T>()),
+            reinterpret_cast<XPUType*>(out->data<T>()),
+            {m, n},
+            {n});
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
+      } else {
+        r = baidu::xpu::api::copy(xpu_ctx->x_context(),
+                                  reinterpret_cast<const XPUType*>(x.data<T>()),
+                                  reinterpret_cast<XPUType*>(out->data<T>()),
+                                  m * n);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+      }
     }
-
-    r = baidu::xpu::api::add(xpu_ctx->x_context(),
-                             reinterpret_cast<XPUType*>(out->data<T>()),
-                             reinterpret_cast<const XPUType*>(x.data<T>()),
-                             reinterpret_cast<XPUType*>(out->data<T>()),
-                             m * n);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
-    return;
   } else {
+    auto x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
     if (bias) {
+      DenseTensor x_tmp;
+      x_tmp.Resize(x.dims());
+      dev_ctx.template Alloc<T>(&x_tmp);
       r = baidu::xpu::api::broadcast_add(
           xpu_ctx->x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<const XPUType*>(bias.get().data<T>()),
-          reinterpret_cast<XPUType*>(const_cast<T*>((x.data<T>()))),
+          reinterpret_cast<XPUType*>(x_tmp.data<T>()),
           {m, n},
           {n});
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
+      x_ptr = reinterpret_cast<XPUType*>(x_tmp.data<T>());
     }
     if (residual) {
       if (std::is_same<T, phi::bfloat16>::value) {
         PD_THROW("NOT supported quant bfloat16. ");
       }
+      dev_ctx.template Alloc<T>(residual_out);
+      DenseTensor residual_tmp;
+      residual_tmp.Resize(residual.get().dims());
+      dev_ctx.template Alloc<T>(&residual_tmp);
+      r = baidu::xpu::api::broadcast_mul(
+          xpu_ctx->x_context(),
+          reinterpret_cast<const XPUType*>(residual.get().data<T>()),
+          reinterpret_cast<XPUType*>(residual_alpha_ptr.data<T>()),
+          reinterpret_cast<XPUType*>(residual_tmp.data<T>()),
+          {m, n},
+          {1});
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
+
       r = baidu::xpu::api::add_layer_norm_fusion(
           xpu_ctx->x_context(),
-          reinterpret_cast<const XPUType*>(x.data<T>()),
-          reinterpret_cast<const XPUType*>(residual.get().data<T>()),
+          x_ptr,
+          reinterpret_cast<const XPUType*>(residual_tmp.data<T>()),
           reinterpret_cast<XPUType*>(out->data<T>()),
           m,
           n,
@@ -155,7 +172,7 @@ void FusedLayerNormKernel(const Context& dev_ctx,
     } else {
       r = baidu::xpu::api::layer_norm(
           xpu_ctx->x_context(),
-          reinterpret_cast<const XPUType*>(x.data<T>()),
+          x_ptr,
           reinterpret_cast<XPUType*>(out->data<T>()),
           m,
           n,

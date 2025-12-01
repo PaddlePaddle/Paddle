@@ -36,7 +36,7 @@ KernelKey InterpolateGetKernelTypeForVar(
     auto dl = common::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
-    if (dl != DataLayout::kAnyLayout) {
+    if (dl != DataLayout::ANY) {
       return KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
     }
   }

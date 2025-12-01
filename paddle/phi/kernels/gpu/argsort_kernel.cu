@@ -97,7 +97,9 @@ __global__ void merge_kernel(const T* A,
       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(gridDim.x);
   int64_t num_per_thread = (sizeA + sizeB + thread) / thread;
   for (int64_t offset = 0; offset < num_per_thread; offset++) {
-    size_t idx = blockIdx.x * blockDim.x + threadIdx.x + offset * thread;
+    size_t idx =
+        static_cast<size_t>(blockIdx.x) * static_cast<size_t>(blockDim.x) +
+        static_cast<size_t>(threadIdx.x) + offset * thread;
     size_t total = sizeA + sizeB;
     if (idx >= total) return;
     size_t left = (idx > sizeB) ? idx - sizeB : 0;
@@ -197,12 +199,7 @@ void ArgFullSort(const phi::GPUContext& dev_ctx,
                  const int64_t num_rows,
                  const int64_t num_cols,
                  const bool descending) {
-  PADDLE_ENFORCE_LE(num_cols,
-                    std::numeric_limits<int>::max(),
-                    ::common::errors::PreconditionNotMet(
-                        "The dimension being sorted should be less than "
-                        "2^31, but got %lld. Please check the input tensor. ",
-                        num_cols));
+  PADDLE_ENFORCE_LE_INT_MAX(num_cols, "num_cols");
 
   auto cu_stream = dev_ctx.stream();
   auto ComputeBlockSize = [](IndType col) {

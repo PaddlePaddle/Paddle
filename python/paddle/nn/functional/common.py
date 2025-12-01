@@ -456,23 +456,23 @@ def interpolate(*args: Any, **kwargs: Any) -> Tensor:
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
 
-            >>> input_data = paddle.randn(shape=(2,3,6,10)).astype(paddle.float32)
-            >>> output_1 = F.interpolate(x=input_data, size=[12,12])
+            >>> input_data = paddle.randn(shape=(2, 3, 6, 10)).astype(paddle.float32)
+            >>> output_1 = F.interpolate(x=input_data, size=[12, 12])
             >>> print(output_1.shape)
-            [2, 3, 12, 12]
+            paddle.Size([2, 3, 12, 12])
             >>> # given scale
-            >>> output_2 = F.interpolate(x=input_data, scale_factor=[2,1])
+            >>> output_2 = F.interpolate(x=input_data, scale_factor=[2, 1])
             >>> print(output_2.shape)
-            [2, 3, 12, 10]
+            paddle.Size([2, 3, 12, 10])
             >>> # bilinear interp
-            >>> output_3 = F.interpolate(x=input_data, scale_factor=[2,1], mode="bilinear")
+            >>> output_3 = F.interpolate(x=input_data, scale_factor=[2, 1], mode="bilinear")
             >>> print(output_2.shape)
-            [2, 3, 12, 10]
+            paddle.Size([2, 3, 12, 10])
     """
     len_args = len(args)
 
@@ -1155,16 +1155,16 @@ def upsample(
         A 3-D, 4-D or 5-D Tensor, with the same data format of the input :attr:`x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> input_data = paddle.randn(shape=(2,3,6,10)).astype(paddle.float32)
-            >>> upsample_out = paddle.nn.Upsample(size=[12,12])
+            >>> input_data = paddle.randn(shape=(2, 3, 6, 10)).astype(paddle.float32)
+            >>> upsample_out = paddle.nn.Upsample(size=[12, 12])
             >>> output = upsample_out(x=input_data)
             >>> print(output.shape)
-            [2, 3, 12, 12]
+            paddle.Size([2, 3, 12, 12])
 
     """
 
@@ -1197,7 +1197,7 @@ def bilinear(
         Tensor: A 2-D Tensor of shape [batch_size, out_features].
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1208,7 +1208,7 @@ def bilinear(
             >>> b = paddle.randn((1, 1000)).astype(paddle.float32)
             >>> result = F.bilinear(x1, x2, w, b)
             >>> print(result.shape)
-            [5, 1000]
+            paddle.Size([5, 1000])
     """
 
     if in_dynamic_or_pir_mode():
@@ -2928,7 +2928,7 @@ def fold(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -2938,7 +2938,7 @@ def fold(
             >>> x = paddle.randn([2,3*2*2,12])
             >>> y = F.fold(x, output_sizes=[4, 5], kernel_sizes=2)
             >>> print(y.shape)
-            [2, 3, 4, 5]
+            paddle.Size([2, 3, 4, 5])
 
     """
 

@@ -21,7 +21,10 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
-from paddle.nn.functional import sdp_kernel
+from paddle.nn.functional import (
+    scaled_dot_product_attention,
+    sdp_kernel,
+)
 from paddle.nn.functional.flash_attention import (
     calc_reduced_attention_scores,
     flash_attention,
@@ -30,7 +33,6 @@ from paddle.nn.functional.flash_attention import (
     flash_attn_unpadded,
     flash_attn_varlen_qkvpacked,
     flashmask_attention,
-    scaled_dot_product_attention,
 )
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
@@ -59,6 +61,31 @@ def attention_naive_with_mask(q, k, v, attn_bias):
     s = paddle.matmul(qt, paddle.transpose(kt, [0, 1, 3, 2]))
     s = paddle.scale(s, scale)
     p = F.softmax(s + attn_bias)
+    o = paddle.matmul(p, vt)
+    return paddle.transpose(o, [0, 2, 1, 3])
+
+
+def attention_naive_with_mask_and_scale(q, k, v, attn_bias, scale):
+    """
+    Naive attention implementation that accepts a custom scale factor.
+    """
+    q = q.float()
+    k = k.float()
+    v = v.float()
+    attn_bias = attn_bias.float() if attn_bias is not None else None
+
+    qt = paddle.transpose(q, [0, 2, 1, 3])
+    kt = paddle.transpose(k, [0, 2, 1, 3])
+    vt = paddle.transpose(v, [0, 2, 1, 3])
+
+    scale_factor = scale if scale is not None else (1.0 / np.sqrt(q.shape[-1]))
+
+    s = paddle.matmul(qt * scale_factor, paddle.transpose(kt, [0, 1, 3, 2]))
+
+    if attn_bias is not None:
+        s = s + attn_bias
+
+    p = F.softmax(s)
     o = paddle.matmul(p, vt)
     return paddle.transpose(o, [0, 2, 1, 3])
 
@@ -136,18 +163,23 @@ class TestFlashAttentionAPI(unittest.TestCase):
         cu_q = paddle.arange(0, (bs + 1) * ms, ms, dtype='int32')
 
         qq = paddle.reshape(q, [bs * ms, nh, hd])
-        if is_sm90:
+        if (
+            is_sm90
+            and paddle.base.framework.get_flags(["FLAGS_flash_attn_version"])
+            == 3
+        ):
+            assert self.dropout == 0.0, (
+                "flash_attention_v3_varlen not support dropout"
+            )
             out, _ = flash_attention_v3_varlen(
-                qq,
-                qq,
-                qq,
-                cu_q,
-                cu_q,
-                self.dropout,
-                self.causal,
-                self.return_softmax,
+                query=qq,
+                key=qq,
+                value=qq,
+                cu_seqlens_q=cu_q,
+                cu_seqlens_k=cu_q,
                 max_seqlen_q=ms,
                 max_seqlen_k=ms,
+                causal=self.causal,
             )
         else:
             out, _ = flash_attn_unpadded(
@@ -1657,6 +1689,109 @@ class TestFlashAttentionAlignment(unittest.TestCase):
             self.mask[i, 0, :seq_len, :seq_len] = mask * 1e4
         self.rtol = 1e-3
         self.atol = 1e-3
+        self.expected_output_without_mask = np.array(
+            [
+                [
+                    [
+                        [
+                            -0.09814,
+                            0.004566,
+                            0.367,
+                            0.0902,
+                            0.09265,
+                            0.3545,
+                            -0.2441,
+                            0.4368,
+                        ]
+                    ],
+                    [
+                        [
+                            0.02464,
+                            -0.04175,
+                            0.339,
+                            0.18,
+                            -0.0385,
+                            0.3145,
+                            -0.197,
+                            0.3508,
+                        ]
+                    ],
+                    [
+                        [
+                            -0.02863,
+                            -0.06235,
+                            0.4292,
+                            0.1333,
+                            -0.007267,
+                            0.3306,
+                            -0.3108,
+                            0.3796,
+                        ]
+                    ],
+                    [
+                        [
+                            0.0829,
+                            -0.10266,
+                            0.353,
+                            0.2078,
+                            -0.1051,
+                            0.323,
+                            -0.1888,
+                            0.3223,
+                        ]
+                    ],
+                    [
+                        [
+                            -0.09283,
+                            0.04092,
+                            0.3728,
+                            0.0602,
+                            0.08417,
+                            0.346,
+                            -0.2312,
+                            0.4136,
+                        ]
+                    ],
+                    [
+                        [
+                            0.01353,
+                            -0.035,
+                            0.316,
+                            0.1869,
+                            -0.01083,
+                            0.352,
+                            -0.2344,
+                            0.3857,
+                        ]
+                    ],
+                    [
+                        [
+                            -0.0946,
+                            0.06775,
+                            0.3074,
+                            0.10254,
+                            0.11365,
+                            0.3347,
+                            -0.2047,
+                            0.4473,
+                        ]
+                    ],
+                    [
+                        [
+                            0.05087,
+                            -0.0742,
+                            0.395,
+                            0.1547,
+                            -0.0862,
+                            0.3196,
+                            -0.2118,
+                            0.3171,
+                        ]
+                    ],
+                ]
+            ],
+            dtype=np.float16,
+        )
 
         self.expected_output = np.array(
             [
@@ -1767,7 +1902,7 @@ class TestFlashAttentionAlignment(unittest.TestCase):
         query = paddle.to_tensor(self.query)
         key = paddle.to_tensor(self.key)
         value = paddle.to_tensor(self.value)
-        mask = paddle.to_tensor(self.mask)
+        mask = None
 
         with sdp_kernel(
             enable_flash=True, enable_math=False, enable_mem_efficient=False
@@ -1783,7 +1918,7 @@ class TestFlashAttentionAlignment(unittest.TestCase):
 
         np.testing.assert_allclose(
             output.numpy(),
-            self.expected_output,
+            self.expected_output_without_mask,
             rtol=self.rtol,
             atol=self.atol,
             err_msg='Flash attention output does not match expected values',
@@ -1842,6 +1977,145 @@ class TestFlashAttentionAlignment(unittest.TestCase):
             atol=self.atol,
             err_msg='Memory efficient attention output does not match expected values',
         )
+
+
+@unittest.skipIf(
+    not is_flashattn_supported(),
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 7.5 or 8.x",
+)
+class TestSDPAttentionWithScale(unittest.TestCase):
+    def setUp(self):
+        self.place = get_device_place()
+        self.shape = (2, 8, 8, 32)
+        self.dtype = paddle.bfloat16
+        self.dropout = 0.0
+        self.causal = False
+        self.scale = 0.5
+        self.rtol = 1e-3
+        self.atol = 5e-2
+        paddle.disable_static()
+
+    def _prepare_tensors(self):
+        """Helper to create q, k, v and reference q_, k_, v_"""
+        query = np.random.random(self.shape)
+        key = np.random.random(self.shape)
+        value = np.random.random(self.shape)
+
+        q = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        k = paddle.to_tensor(
+            key, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        v = paddle.to_tensor(
+            value, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        q_ = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        k_ = paddle.to_tensor(
+            key, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        v_ = paddle.to_tensor(
+            value, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        return q, k, v, q_, k_, v_
+
+    def _run_test(self, backends, attn_mask, scale, skip_grad=False):
+        """Generic test runner"""
+        q, k, v, q_, k_, v_ = self._prepare_tensors()
+
+        with sdp_kernel(**backends):
+            out = scaled_dot_product_attention(
+                q,
+                k,
+                v,
+                attn_mask=attn_mask,
+                dropout_p=self.dropout,
+                is_causal=self.causal,
+                scale=scale,
+            )
+
+        out_ = attention_naive_with_mask_and_scale(q_, k_, v_, attn_mask, scale)
+
+        np.testing.assert_allclose(
+            out.float().numpy(),
+            out_.float().numpy(),
+            rtol=self.rtol,
+            atol=self.atol,
+        )
+        if not skip_grad:
+            out.backward()
+            out_.backward()
+
+            self.assertIsNotNone(q.grad, "q.grad is None, backward failed.")
+            self.assertIsNotNone(k.grad, "k.grad is None, backward failed.")
+            self.assertIsNotNone(v.grad, "v.grad is None, backward failed.")
+
+            np.testing.assert_allclose(
+                q.grad.float().numpy(),
+                q_.grad.float().numpy(),
+                rtol=self.rtol,
+                atol=self.atol,
+            )
+            np.testing.assert_allclose(
+                k.grad.float().numpy(),
+                k_.grad.float().numpy(),
+                rtol=self.rtol,
+                atol=self.atol,
+            )
+            np.testing.assert_allclose(
+                v.grad.float().numpy(),
+                v_.grad.float().numpy(),
+                rtol=self.rtol,
+                atol=self.atol,
+            )
+
+    def test_no_mask_with_scale_fallback(self):
+        backends = {
+            "enable_math": True,
+            "enable_flash": True,
+            "enable_mem_efficient": True,
+        }
+        self._run_test(backends, attn_mask=None, scale=self.scale)
+
+    def test_mask_with_scale_math_only(self):
+        backends = {
+            "enable_math": True,
+            "enable_flash": False,
+            "enable_mem_efficient": False,
+        }
+        mask = paddle.randn(
+            [self.shape[0], 1, self.shape[1], self.shape[1]],
+            dtype=self.dtype,
+        )
+        self._run_test(backends, attn_mask=mask, scale=self.scale)
+
+    def test_mask_with_scale_full_fallback(self):
+        backends = {
+            "enable_math": True,
+            "enable_flash": True,
+            "enable_mem_efficient": True,
+        }
+        mask = paddle.randn(
+            [self.shape[0], 1, self.shape[1], self.shape[1]],
+            dtype=self.dtype,
+        )
+        self._run_test(backends, attn_mask=mask, scale=self.scale)
+
+    def test_mask_with_scale_none_math(self):
+        backends = {
+            "enable_math": True,
+            "enable_flash": False,
+            "enable_mem_efficient": False,
+        }
+        mask = paddle.randn(
+            [self.shape[0], 1, self.shape[1], self.shape[1]],
+            dtype=self.dtype,
+        )
+        self._run_test(backends, attn_mask=mask, scale=None)
 
 
 if __name__ == '__main__':

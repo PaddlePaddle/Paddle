@@ -187,12 +187,12 @@ static inline void GetNCDHW(const phi::DDim& dims,
 }
 
 template <typename DeviceContext, typename T, size_t D>
-static void RemovePaddingSlice(const phi::GPUContext& context,
+static void RemovePaddingSlice(const phi::GPUContext& dev_ctx,
                                const phi::DenseTensor* input,
                                phi::DenseTensor* out,
                                const std::vector<int>& starts,
                                const std::vector<int>& axes) {
-  auto& place = *context.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   auto in_dims = input->dims();
   auto new_out_dims = out->dims();
   auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();

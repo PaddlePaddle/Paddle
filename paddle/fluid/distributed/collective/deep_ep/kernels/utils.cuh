@@ -476,6 +476,15 @@ __forceinline__ __device__ int warp_reduce_sum(int value) {
   return value;
 }
 
+__forceinline__ __device__ float warp_reduce_max(float value) {
+  value = max(value, __shfl_xor_sync(0xffffffff, value, 8));
+  value = max(value, __shfl_xor_sync(0xffffffff, value, 8));
+  value = max(value, __shfl_xor_sync(0xffffffff, value, 4));
+  value = max(value, __shfl_xor_sync(0xffffffff, value, 2));
+  value = max(value, __shfl_xor_sync(0xffffffff, value, 1));
+  return value;
+}
+
 __forceinline__ __device__ float half_warp_reduce_max(float value) {
   auto mask = __activemask();
   // The mask be in `{0xffffffff, 0xffff}`

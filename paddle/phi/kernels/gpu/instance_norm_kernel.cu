@@ -55,7 +55,7 @@ void InstanceNormKernel(const Context &dev_ctx,
                         "the size of X's dimensions is [%d]",
                         x_dims.size()));
   int N, C, H, W, D;
-  funcs::ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
+  funcs::ExtractNCWHD(x_dims, DataLayout::NCHW, &N, &C, &H, &W, &D);
   int NxC = N * C;
   DenseTensor x_tmp;
   x_tmp.ShareDataWith(x).Resize({1, NxC, H, W, D});

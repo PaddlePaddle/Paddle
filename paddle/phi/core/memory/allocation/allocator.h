@@ -25,7 +25,6 @@
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/inlined_vector.h"
-#include "paddle/phi/core/memory/mem_visitor.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -44,6 +43,7 @@ COMMON_DECLARE_int64(alloc_fill_value);
 
 namespace paddle {
 namespace memory {
+class AllocatorVisitor;
 namespace allocation {
 
 // Exception when `Alloc`/`AllocShared` failed
@@ -203,7 +203,7 @@ class PADDLE_API Allocator : public phi::Allocator {
   uint64_t Release(const phi::Place& place) { return ReleaseImpl(place); }
   size_t Compact(const phi::Place& place) { return CompactImpl(place); }
 
-  virtual void Accept(AllocatorVisitor* visitor) { visitor->Visit(this); }
+  virtual void Accept(AllocatorVisitor* visitor);
 
  protected:
   virtual phi::Allocation* AllocateImpl(size_t size) = 0;

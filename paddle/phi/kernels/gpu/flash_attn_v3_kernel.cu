@@ -216,10 +216,7 @@ void FlashAttnV3BaseKernel(
   int seqlen_q = !is_varlen_q ? sizes[1] : max_seqlen_q_;
   int total_q = !is_varlen_q ? batch_size * sizes[1] : sizes[0];
   int64_t num_heads = q.dims()[q.dims().size() - 2];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
-  int const head_size = q.dims()[q.dims().size() - 1];
+  int64_t const head_size = q.dims()[q.dims().size() - 1];
   int const head_size_v = v.dims()[v.dims().size() - 1];
   int const max_num_pages_per_seq = !paged_KV ? 0 : page_table.dims()[1];
   int const num_pages = !paged_KV ? 0 : k.dims()[0];
@@ -1382,10 +1379,7 @@ void FlashMaskV2BaseKernel(
   int seqlen_q = !is_varlen_q ? sizes[1] : max_seqlen_q_;
   int total_q = !is_varlen_q ? batch_size * sizes[1] : sizes[0];
   int64_t num_heads = q.dims()[q.dims().size() - 2];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
-  int const head_size = q.dims()[q.dims().size() - 1];
+  int64_t const head_size = q.dims()[q.dims().size() - 1];
   int const head_size_v = v.dims()[v.dims().size() - 1];
   int const max_num_pages_per_seq = !paged_KV ? 0 : page_table.dims()[1];
   int const num_pages = !paged_KV ? 0 : k.dims()[0];

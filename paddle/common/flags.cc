@@ -795,7 +795,7 @@ PHI_DEFINE_EXPORTED_bool(share_tensor_for_grad_tensor_holder,
 /**
  * Debug related FLAG
  * Name: tensor_md5_checksum_precision
- * Since Version: 3.2.1
+ * Since Version: 3.3
  * Value Range: int32, default=3
  * Example:
  * Note: The precision of the tensor data used for computing the MD5 checksum
@@ -805,6 +805,20 @@ PHI_DEFINE_EXPORTED_bool(share_tensor_for_grad_tensor_holder,
 PHI_DEFINE_EXPORTED_int32(tensor_md5_checksum_precision,
                           3,
                           "The precision of tensor md5 checksum.");
+/**
+ * Debug related FLAG
+ * Name: tensor_md5_checksum_use_binary_input
+ * Since Version: 3.3
+ * Value Range: bool, default=false
+ * Example:
+ * Note: The data format used for calculating the md5 checksum. If true, the md5
+ * checksum will be calculated based on the binary format of the stored data.
+ *
+ */
+PHI_DEFINE_EXPORTED_bool(
+    tensor_md5_checksum_use_binary_format,
+    false,
+    "Whether to use binary format when computing tensor md5 checksum.");
 
 /**
  * Debug related FLAG
@@ -1957,6 +1971,10 @@ PHI_DEFINE_EXPORTED_string(
     "",
     "Specify path for loading libmklml_intel.so.");  // NOLINT
 
+PHI_DEFINE_EXPORTED_string(hml_dir,
+                           "",
+                           "Specify path for loading libhml_rt.so.");  // NOLINT
+
 PHI_DEFINE_EXPORTED_string(lapack_dir,
                            "",
                            "Specify path for loading liblapack.so.");  // NOLINT
@@ -2318,7 +2336,7 @@ PHI_DEFINE_EXPORTED_bool(use_accuracy_compatible_kernel,
 /**
  * Allocator Compact related FLAG
  * Name: FLAGS_enable_compact_mem
- * Since Version: 3.2.2
+ * Since Version: 3.3
  * Value Range: bool, default=false
  * Example:
  * Note: whether start compact memory.
@@ -2329,7 +2347,7 @@ PHI_DEFINE_EXPORTED_bool(enable_compact_mem,
 /**
  * Allocator Compact related FLAG
  * Name: FLAGS_max_reserved_threshold_in_gb
- * Since Version: 3.2.2
+ * Since Version: 3.3
  * Value Range: int64, default=70
  * Example:
  * Note: Threshold (GB) used in compact memory. Only reserved_mem greater than
@@ -2344,7 +2362,7 @@ PHI_DEFINE_EXPORTED_int64(
 /**
  * Allocator Compact related FLAG
  * Name: FLAGS_cur_allocated_threshold_in_gb
- * Since Version: 3.2.2
+ * Since Version: 3.3
  * Value Range: int64, default=70
  * Example:
  * Note: Threshold (GB) used in compact memory. Only reserved_mem greater than
@@ -2359,7 +2377,7 @@ PHI_DEFINE_EXPORTED_int64(
 /**
  * Allocator Compact related FLAG
  * Name: FLAGS_try_allocate
- * Since Version: 3.2.2
+ * Since Version: 3.3
  * Value Range: bool, default=false
  * Example:
  * Note: whether start compact memory.

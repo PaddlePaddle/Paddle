@@ -90,6 +90,30 @@ function(copy_part_of_third_party TARGET DST)
           COMMENT "striping libiomp5.so\nstriping libmklml_intel.so")
       endif()
     endif()
+  elseif(${CBLAS_PROVIDER} STREQUAL HML)
+    set(dst_dir "${DST}/third_party/install/hml")
+    message(STATUS "[HML] Start copying HML third_party files to ${dst_dir}")
+    if(WIN32)
+      copy(
+        ${TARGET}
+        SRCS ${HML_LIB} ${HML_INC_DIR}
+        DSTS ${dst_dir}/lib ${dst_dir})
+    else()
+      message(STATUS "[HML] HML_LIB: ${HML_LIB}")
+      message(STATUS "[HML] HML_INC_DIR: ${HML_INC_DIR}")
+      copy(
+        ${TARGET}
+        SRCS ${HML_LIB} ${HML_INC_DIR}
+        DSTS ${dst_dir}/lib ${dst_dir})
+      if(WITH_STRIP)
+        add_custom_command(
+          TARGET ${TARGET}
+          POST_BUILD
+          COMMAND strip -s ${dst_dir}/lib/libhml_rt.so
+          COMMENT "striping libhml_rt.so")
+      endif()
+    endif()
+    message(STATUS "[HML] Finished copying HML third_party files to ${dst_dir}")
   elseif(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
     set(dst_dir "${DST}/third_party/install/openblas")
     if(WIN32)
