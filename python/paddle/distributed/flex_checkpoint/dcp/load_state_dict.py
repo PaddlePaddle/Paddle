@@ -337,7 +337,11 @@ class CheckpointLoadBalancer:
         """
         # Sort items by number of candidates: process most constrained files first.
         sorted_items = sorted(
-            file_to_candidates.items(), key=lambda x: len(x[1])
+            file_to_candidates.items(),
+            key=lambda x: (
+                len(x[1]),
+                x[0],
+            ),  # When candidates are the same, use smaller file name
         )
 
         for file_name, candidates in sorted_items:
