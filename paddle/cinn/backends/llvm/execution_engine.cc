@@ -255,6 +255,13 @@ bool ExecutionEngine::compileLLVMIR(llvm::Module* module, size_t fusionHash) {
   );
   module->setDataLayout(TM->createDataLayout());
   module->setTargetTriple(TM->getTargetTriple().str());
+  
+  // Remove dso_local for stderr
+  for (llvm::GlobalVariable &GV : module->globals()) {
+      if (GV.getName() == "stderr" || GV.isDeclaration()) {
+          GV.setDSOLocal(false); 
+      }
+  }
 
   // 3. Set output file path and type
   std::string source_hash = std::to_string(fusionHash);

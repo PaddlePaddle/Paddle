@@ -29,22 +29,6 @@
 #include <string.h>
 
 #ifdef __cplusplus
-// ...
-extern "C" {
-#endif
-
-// ----------------------------------------------------
-// 🚨 PIC 修复声明：通过函数间接访问 stderr
-// ----------------------------------------------------
-FILE* GetStdErr();
-// ----------------------------------------------------
-
-#ifdef __cplusplus
-} // 关闭 extern "C"
-// ...
-#endif
-
-#ifdef __cplusplus
 #include <functional>
 #include <vector>
 #endif
@@ -408,19 +392,19 @@ static inline int32_t cinn_max(int32_t a, int32_t b) { return a > b ? a : b; }
 #ifndef CINN_RUNTIME_NOT_IMPLEMENTED
 #define CINN_RUNTIME_NOT_IMPLEMENTED     \
   do {                                   \
-    fprintf(GetStdErr(), "Not Implemented!"); \
+    fprintf(stderr, "Not Implemented!"); \
     abort();                             \
   } while (false);
 #endif
 
 #define ASSERT_NOT_NULL(v__)          \
   if (!v__) {                         \
-    fprintf(GetStdErr(), #v__ " is null"); \
+    fprintf(stderr, #v__ " is null"); \
     return -1;                        \
   }
 #define CINN_LOG(fmt, ...)      \
   do {                          \
-    fprintf(GetStdErr(),             \
+    fprintf(stderr,             \
             "%s:%d:%s(): " fmt, \
             __FILE__,           \
             __LINE__,           \
