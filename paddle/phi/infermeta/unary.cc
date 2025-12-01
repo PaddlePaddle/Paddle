@@ -3794,6 +3794,35 @@ void Pool2DInferMeta(const MetaTensor& x,
   }
 }
 
+void MaxPool2DWithDilationsInferMeta(const MetaTensor& x,
+                                     const IntArray& kernel_size,
+                                     const std::vector<int64_t>& strides,
+                                     const std::vector<int64_t>& paddings,
+                                     const std::vector<int64_t>& dilations,
+                                     bool ceil_mode,
+                                     bool exclusive,
+                                     const std::string& data_format,
+                                     const std::string& pooling_type,
+                                     bool global_pooling,
+                                     bool adaptive,
+                                     const std::string& padding_algorithm,
+                                     MetaTensor* out,
+                                     MetaConfig config) {
+  Pool2DInferMeta(x,
+                  kernel_size,
+                  strides,
+                  paddings,
+                  ceil_mode,
+                  exclusive,
+                  data_format,
+                  pooling_type,
+                  global_pooling,
+                  adaptive,
+                  padding_algorithm,
+                  out,
+                  config);
+}
+
 void PSendInferMeta(const MetaTensor& x, int peer) {
   LOG(INFO) << "SendBaseInferMeta begin";
   PADDLE_ENFORCE_GE(

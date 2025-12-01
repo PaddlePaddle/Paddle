@@ -172,6 +172,294 @@ class Pool2dFunctor<CPUContext, PoolProcess, T> {
   }
 };
 
+template <typename PoolProcess, typename T>
+class MaxPool2DWithDilationsFunctor<CPUContext, PoolProcess, T> {
+ public:
+  void operator()(const CPUContext& context,
+                  const DenseTensor& input,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
+                  const std::string data_format,
+                  bool exclusive,
+                  bool adaptive,
+                  DenseTensor* output,
+                  PoolProcess pool_process) {
+    bool channel_last = (data_format == "NHWC");
+
+    const int64_t batch_size = input.dims()[0];
+    const int64_t input_channels =
+        channel_last ? input.dims()[3] : input.dims()[1];
+    const int64_t input_height =
+        channel_last ? input.dims()[1] : input.dims()[2];
+    const int64_t input_width =
+        channel_last ? input.dims()[2] : input.dims()[3];
+
+    const int64_t output_channels =
+        channel_last ? output->dims()[3] : output->dims()[1];
+    const int64_t output_height =
+        channel_last ? output->dims()[1] : output->dims()[2];
+    const int64_t output_width =
+        channel_last ? output->dims()[2] : output->dims()[3];
+
+    const int64_t ksize_height = ksize[0];
+    const int64_t ksize_width = ksize[1];
+
+    const int64_t stride_height = strides[0];
+    const int64_t stride_width = strides[1];
+
+    const int64_t padding_height = paddings[0];
+    const int64_t padding_width = paddings[1];
+
+    const int64_t dilation_height = dilations[0];
+    const int64_t dilation_width = dilations[1];
+
+    const T* input_data = input.data<T>();
+    T* output_data = context.template Alloc<T>(output);
+
+    int64_t hstart = 0, hend = 1;
+    int64_t wstart = 0, wend = 1;
+    if (!channel_last) {
+      const int64_t input_stride = input_height * input_width;
+      const int64_t output_stride = output_height * output_width;
+      for (int64_t i = 0; i < batch_size; i++) {
+        for (int64_t c = 0; c < output_channels; ++c) {
+          for (int64_t ph = 0; ph < output_height; ++ph) {
+            if (adaptive) {
+              hstart = AdaptStartIndex(ph, input_height, output_height);
+              hend = AdaptEndIndex(ph, input_height, output_height);
+            }
+            for (int64_t pw = 0; pw < output_width; ++pw) {
+              int64_t pool_size = 1;
+              if (adaptive) {
+                wstart = AdaptStartIndex(pw, input_width, output_width);
+                wend = AdaptEndIndex(pw, input_width, output_width);
+              } else {
+                hstart = ph * stride_height - padding_height;
+                wstart = pw * stride_width - padding_width;
+                hend = std::min(hstart + ksize_height,
+                                input_height + padding_height);
+                wend =
+                    std::min(wstart + ksize_width, input_width + padding_width);
+                pool_size = (hend - hstart) * (wend - wstart);
+
+                hend = hstart + (ksize_height - 1) * dilation_height + 1;
+                wend = wstart + (ksize_width - 1) * dilation_width + 1;
+                while (hstart < static_cast<int64_t>(0))
+                  hstart += dilation_height;
+                while (hend > input_height) hend -= dilation_height;
+                while (wstart < static_cast<int64_t>(0))
+                  wstart += dilation_width;
+                while (wend > input_width) wend -= dilation_width;
+              }
+
+              T ele = pool_process.initial();
+              for (int64_t h = hstart; h < hend; h += dilation_height) {
+                for (int64_t w = wstart; w < wend; w += dilation_width) {
+                  pool_process.compute(input_data[h * input_width + w], &ele);
+                }
+              }
+              if (exclusive || adaptive) {
+                pool_size = (hend - hstart) * (wend - wstart);
+              }
+              pool_process.finalize(static_cast<T>(pool_size), &ele);
+              output_data[ph * output_width + pw] = ele;
+            }
+          }
+          input_data += input_stride;
+          output_data += output_stride;
+        }
+      }
+    } else {
+      const int64_t input_stride = input_height * input_width * input_channels;
+      const int64_t output_stride =
+          output_height * output_width * output_channels;
+      for (int64_t i = 0; i < batch_size; i++) {
+        for (int64_t c = 0; c < output_channels; ++c) {
+          for (int64_t ph = 0; ph < output_height; ++ph) {
+            if (adaptive) {
+              hstart = AdaptStartIndex(ph, input_height, output_height);
+              hend = AdaptEndIndex(ph, input_height, output_height);
+            }
+            for (int64_t pw = 0; pw < output_width; ++pw) {
+              int64_t pool_size = 1;
+              if (adaptive) {
+                wstart = AdaptStartIndex(pw, input_width, output_width);
+                wend = AdaptEndIndex(pw, input_width, output_width);
+              } else {
+                hstart = ph * stride_height - padding_height;
+                wstart = pw * stride_width - padding_width;
+                hend = std::min(hstart + ksize_height,
+                                input_height + padding_height);
+                wend =
+                    std::min(wstart + ksize_width, input_width + padding_width);
+                pool_size = (hend - hstart) * (wend - wstart);
+
+                hend = hstart + (ksize_height - 1) * dilation_height + 1;
+                wend = wstart + (ksize_width - 1) * dilation_width + 1;
+                while (hstart < static_cast<int64_t>(0))
+                  hstart += dilation_height;
+                while (hend > input_height) hend -= dilation_height;
+                while (wstart < static_cast<int64_t>(0))
+                  wstart += dilation_width;
+                while (wend > input_width) wend -= dilation_width;
+              }
+              T ele = pool_process.initial();
+              for (int64_t h = hstart; h < hend; h += dilation_height) {
+                for (int64_t w = wstart; w < wend; w += dilation_width) {
+                  pool_process.compute(
+                      input_data[h * input_width * input_channels +
+                                 w * input_channels + c],
+                      &ele);
+                }
+              }
+              if (exclusive || adaptive) {
+                pool_size = (hend - hstart) * (wend - wstart);
+              }
+              pool_process.finalize(static_cast<T>(pool_size), &ele);
+              output_data[ph * output_width * output_channels +
+                          pw * output_channels + c] = ele;
+            }
+          }
+        }
+        input_data += input_stride;
+        output_data += output_stride;
+      }
+    }
+  }
+};
+
+template <typename PoolProcess, class T>
+class MaxPool2DWithDilationsGradFunctor<CPUContext, PoolProcess, T> {
+ public:
+  void operator()(const CPUContext& context,
+                  const DenseTensor& input,
+                  const DenseTensor& output,
+                  const DenseTensor& output_grad,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
+                  const std::string data_format,
+                  DenseTensor* input_grad) {
+    bool channel_last = (data_format == "NHWC");
+
+    const int64_t batch_size = input.dims()[0];
+
+    const int64_t input_channels =
+        channel_last ? input.dims()[3] : input.dims()[1];
+    const int64_t input_height =
+        channel_last ? input.dims()[1] : input.dims()[2];
+    const int64_t input_width =
+        channel_last ? input.dims()[2] : input.dims()[3];
+
+    const int64_t output_channels =
+        channel_last ? output.dims()[3] : output.dims()[1];
+    const int64_t output_height =
+        channel_last ? output.dims()[1] : output.dims()[2];
+    const int64_t output_width =
+        channel_last ? output.dims()[2] : output.dims()[3];
+
+    const int64_t ksize_height = ksize[0];
+    const int64_t ksize_width = ksize[1];
+
+    const int64_t stride_height = strides[0];
+    const int64_t stride_width = strides[1];
+
+    const int64_t padding_height = paddings[0];
+    const int64_t padding_width = paddings[1];
+
+    const int64_t dilation_height = dilations[0];
+    const int64_t dilation_width = dilations[1];
+
+    const T* input_data = input.data<T>();
+    const T* output_data = output.data<T>();
+    const T* output_grad_data = output_grad.data<T>();
+    T* input_grad_data = context.template Alloc<T>(input_grad);
+
+    if (!channel_last) {
+      const int64_t input_stride = input_height * input_width;
+      const int64_t output_stride = output_height * output_width;
+      for (int64_t i = 0; i < batch_size; i++) {
+        for (int64_t c = 0; c < output_channels; ++c) {
+          for (int64_t ph = 0; ph < output_height; ++ph) {
+            int64_t hstart = ph * stride_height - padding_height;
+            int64_t hend = hstart + (ksize_height - 1) * dilation_height + 1;
+            while (hstart < static_cast<int64_t>(0)) hstart += dilation_height;
+            while (hend > input_height) hend -= dilation_height;
+
+            for (int64_t pw = 0; pw < output_width; ++pw) {
+              int64_t wstart = pw * stride_width - padding_width;
+              int64_t wend = wstart + (ksize_width - 1) * dilation_width + 1;
+              while (wstart < static_cast<int64_t>(0)) wstart += dilation_width;
+              while (wend > input_width) wend -= dilation_width;
+
+              bool stop = false;
+              for (int64_t h = hstart; h < hend && !stop;
+                   h += dilation_height) {
+                for (int64_t w = wstart; w < wend && !stop;
+                     w += dilation_width) {
+                  int64_t input_idx = h * input_width + w;
+                  int64_t output_idx = ph * output_width + pw;
+                  if (input_data[input_idx] == output_data[output_idx]) {
+                    input_grad_data[input_idx] += output_grad_data[output_idx];
+                    stop = true;
+                  }
+                }
+              }
+            }
+          }
+          input_data += input_stride;
+          output_data += output_stride;
+          input_grad_data += input_stride;
+          output_grad_data += output_stride;
+        }
+      }
+    } else {
+      const int64_t input_stride = input_height * input_width * input_channels;
+      const int64_t output_stride =
+          output_height * output_width * output_channels;
+      for (int64_t i = 0; i < batch_size; i++) {
+        for (int64_t c = 0; c < output_channels; ++c) {
+          for (int64_t ph = 0; ph < output_height; ++ph) {
+            int64_t hstart = ph * stride_height - padding_height;
+            int64_t hend = hstart + (ksize_height - 1) * dilation_height + 1;
+            while (hstart < static_cast<int64_t>(0)) hstart += dilation_height;
+            while (hend > input_height) hend -= dilation_height;
+            for (int64_t pw = 0; pw < output_width; ++pw) {
+              int64_t wstart = pw * stride_width - padding_width;
+              int64_t wend = wstart + (ksize_width - 1) * dilation_width + 1;
+              while (wstart < static_cast<int64_t>(0)) wstart += dilation_width;
+              while (wend > input_width) wend -= dilation_width;
+
+              bool stop = false;
+              for (int64_t h = hstart; h < hend && !stop;
+                   h += dilation_height) {
+                for (int64_t w = wstart; w < wend && !stop;
+                     w += dilation_width) {
+                  int64_t input_idx =
+                      h * input_width * input_channels + w * input_channels + c;
+                  int64_t output_idx = ph * output_width * output_channels +
+                                       pw * output_channels + c;
+                  if (input_data[input_idx] == output_data[output_idx]) {
+                    input_grad_data[input_idx] += output_grad_data[output_idx];
+                    stop = true;
+                  }
+                }
+              }
+            }
+          }
+        }
+        input_data += input_stride;
+        output_data += output_stride;
+        input_grad_data += input_stride;
+        output_grad_data += output_stride;
+      }
+    }
+  }
+};
+
 /*
  * tensors are in NCHW or NHWC format.
  * Ksize, strides are two elements. These two elements represent height
@@ -463,7 +751,6 @@ class MaxPool2dGradFunctor<CPUContext, T> {
 };
 template class MaxPool2dGradFunctor<CPUContext, float>;
 template class MaxPool2dGradFunctor<CPUContext, double>;
-
 template class MaxPool2dGradFunctor<CPUContext, dtype::float16>;
 
 template class Pool2dFunctor<CPUContext, MaxPool<float>, float>;
@@ -472,6 +759,24 @@ template class Pool2dFunctor<CPUContext, LPPool<float>, float>;
 template class Pool2dGradFunctor<CPUContext, MaxPoolGrad<float>, float>;
 template class Pool2dGradFunctor<CPUContext, AvgPoolGrad<float>, float>;
 template class Pool2dGradFunctor<CPUContext, LPPoolGrad<float>, float>;
+
+template class MaxPool2DWithDilationsFunctor<CPUContext, MaxPool<float>, float>;
+template class MaxPool2DWithDilationsFunctor<CPUContext,
+                                             MaxPool<double>,
+                                             double>;
+template class MaxPool2DWithDilationsFunctor<phi::CPUContext,
+                                             MaxPool<dtype::float16>,
+                                             dtype::float16>;
+template class MaxPool2DWithDilationsGradFunctor<CPUContext,
+                                                 MaxPool<float>,
+                                                 float>;
+template class MaxPool2DWithDilationsGradFunctor<CPUContext,
+                                                 MaxPool<double>,
+                                                 double>;
+template class MaxPool2DWithDilationsGradFunctor<CPUContext,
+                                                 MaxPool<dtype::float16>,
+                                                 dtype::float16>;
+
 template class Pool2dFunctor<CPUContext, MaxPool<double>, double>;
 template class Pool2dFunctor<CPUContext, AvgPool<double>, double>;
 template class Pool2dFunctor<CPUContext, LPPool<double>, double>;

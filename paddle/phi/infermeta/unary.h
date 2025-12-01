@@ -625,6 +625,22 @@ PADDLE_API void Pool2DInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaConfig config = MetaConfig());
 
+PADDLE_API void MaxPool2DWithDilationsInferMeta(
+    const MetaTensor& x,
+    const IntArray& kernel_size,
+    const std::vector<int64_t>& strides,
+    const std::vector<int64_t>& paddings,
+    const std::vector<int64_t>& dilations,
+    bool ceil_mode,
+    bool exclusive,
+    const std::string& data_format,
+    const std::string& pooling_type,
+    bool global_pooling,
+    bool adaptive,
+    const std::string& padding_algorithm,
+    MetaTensor* out,
+    MetaConfig config = MetaConfig());
+
 PADDLE_API void PSendInferMeta(const MetaTensor& x, int peer);
 
 PADDLE_API void PSendArrayInferMeta(const MetaTensor& x, int peer);

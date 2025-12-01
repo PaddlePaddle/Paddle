@@ -1,3 +1,14 @@
+# - op : max_pool2d_with_dilations
+#   args : (Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, int[] dilations = {1,1}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", bool use_cudnn = false)
+#   output : Tensor(out)
+#   infer_meta :
+#     func : MaxPool2DWithDilationsInferMeta
+#     param : [x, kernel_size, strides, paddings, dilations, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+#   kernel :
+#     func : max_pool2d_with_dilations
+#     param : [x, kernel_size, strides, paddings, dilations, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+#   backward : max_pool2d_with_dilations_grad
+
 - op : all
   args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
   output : Tensor(out)

@@ -2890,6 +2890,18 @@ bool Pool2dOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool MaxPool2dWithDilationsOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &kernel_size_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &kernel_size =
+      paddle::dialect::details::GetExprVecFromData(kernel_size_shape_or_data);
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      Pool2dRawInferSymbolicShape(op, kernel_size, infer_context));
+  return true;
+}
+
 bool Pool3dOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   std::vector<int64_t> kernel_size_ =

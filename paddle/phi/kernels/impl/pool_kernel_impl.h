@@ -217,6 +217,177 @@ void PoolRawKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void MaxPool2DWithDilationsRawKernel(const Context& dev_ctx,
+                                     const DenseTensor& x,
+                                     const std::vector<int64_t>& kernel_size,
+                                     const std::vector<int64_t>& strides,
+                                     const std::vector<int64_t>& paddings,
+                                     const std::vector<int64_t>& dilations,
+                                     bool exclusive,
+                                     const std::string& data_format,
+                                     const std::string& pooling_type,
+                                     bool global_pooling,
+                                     bool adaptive,
+                                     const std::string& padding_algorithm,
+                                     const float norm_type,
+                                     DenseTensor* out) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    return;
+  }
+  const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
+  std::vector<int64_t> paddings_ = paddings;
+  std::vector<int64_t> dilations_ = dilations;
+  std::vector<int64_t> kernel_size_ = kernel_size;
+
+  // update paddings
+  auto x_dims = x.dims();
+  DDim data_dims;
+  if (channel_last) {
+    data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
+  } else {
+    data_dims = slice_ddim(x_dims, 2, x_dims.size());
+  }
+
+  std::string true_type;
+  if (norm_type == INFINITY)
+    true_type = "max";
+  else
+    true_type = pooling_type;
+  if (true_type == "lp" && norm_type == 0)
+    PADDLE_THROW(
+        errors::InvalidArgument("norm_type of LPPool op cannot be 0."));
+
+  funcs::UpdatePadding(&paddings_,
+                       global_pooling,
+                       adaptive,
+                       padding_algorithm,
+                       data_dims,
+                       strides,
+                       kernel_size_);
+
+  if (data_dims.size() * 2 == static_cast<int>(paddings_.size())) {
+    for (int i = 0; i < data_dims.size(); ++i) {
+      paddings_.erase(paddings_.begin() + i + 1);
+    }
+  }
+
+  if (global_pooling) {
+    funcs::UpdateKernelSize(&kernel_size_, data_dims);
+  }
+
+  switch (kernel_size_.size()) {
+    case 2: {
+      if (true_type == "max") {
+        funcs::MaxPool2DWithDilationsFunctor<Context, funcs::MaxPool<T>, T>
+            pool2d_forward;
+        funcs::MaxPool<T> pool_process;
+        pool2d_forward(dev_ctx,
+                       x,
+                       kernel_size_,
+                       strides,
+                       paddings_,
+                       dilations_,
+                       data_format,
+                       true,
+                       false,
+                       out,
+                       pool_process);
+
+      } else if (true_type == "avg") {
+        std::vector<int> reduce_dim;
+        int64_t reduce_num = GetReduceNum(x, out, channel_last, &reduce_dim);
+        if (reduce_num > 0 &&
+            adaptive) {  // for adaptive_avg_pool2d && output_size == 1
+#if defined(__HIPCC__) || defined(__NVCC__)
+          auto stream = dev_ctx.stream();
+          funcs::ReduceKernel<T, T, kps::AddFunctor, kps::DivideFunctor<T>>(
+              dev_ctx, x, out, kps::DivideFunctor<T>(reduce_num), reduce_dim);
+#else  // for cpu
+          funcs::Pool2dFunctor<Context, funcs::AvgPool<T>, T> pool2d_forward;
+          funcs::AvgPool<T> pool_process;
+          pool2d_forward(dev_ctx,
+                         x,
+                         kernel_size_,
+                         strides,
+                         paddings_,
+                         data_format,
+                         exclusive,
+                         adaptive,
+                         out,
+                         pool_process);
+#endif
+        } else {  // avgpool_2d or  adaptive_avg_pool2d && output_size != 1
+          funcs::Pool2dFunctor<Context, funcs::AvgPool<T>, T> pool2d_forward;
+          funcs::AvgPool<T> pool_process;
+          pool2d_forward(dev_ctx,
+                         x,
+                         kernel_size_,
+                         strides,
+                         paddings_,
+                         data_format,
+                         exclusive,
+                         adaptive,
+                         out,
+                         pool_process);
+        }
+      } else {  // lp_pool2d
+        funcs::Pool2dFunctor<Context, funcs::LPPool<T>, T> pool2d_forward;
+        funcs::LPPool<T> pool_process;
+        pool_process.setNormType(norm_type);
+        pool2d_forward(dev_ctx,
+                       x,
+                       kernel_size_,
+                       strides,
+                       paddings_,
+                       data_format,
+                       exclusive,
+                       adaptive,
+                       out,
+                       pool_process);
+      }
+    } break;
+    case 3: {
+      if (true_type == "max") {
+        funcs::Pool3dFunctor<Context, funcs::MaxPool<T>, T> pool3d_forward;
+        funcs::MaxPool<T> pool_process;
+        pool3d_forward(dev_ctx,
+                       x,
+                       kernel_size_,
+                       strides,
+                       paddings_,
+                       data_format,
+                       true,
+                       false,
+                       out,
+                       pool_process);
+      } else if (true_type == "avg") {
+        funcs::Pool3dFunctor<Context, funcs::AvgPool<T>, T> pool3d_forward;
+        funcs::AvgPool<T> pool_process;
+        pool3d_forward(dev_ctx,
+                       x,
+                       kernel_size_,
+                       strides,
+                       paddings_,
+                       data_format,
+                       exclusive,
+                       adaptive,
+                       out,
+                       pool_process);
+      } else {  // lp_pool3d
+        PADDLE_THROW(
+            errors::InvalidArgument("LPPool op only supports 2D input."));
+      }
+    } break;
+    default: {
+      PADDLE_THROW(
+          errors::InvalidArgument("Pool op only supports 2D and 3D input."));
+    }
+  }
+}
+
 template <typename Context, typename T1, typename T2 = int>
 void MaxPoolWithIndexRawKernel(const Context& dev_ctx,
                                const DenseTensor& x,
@@ -305,6 +476,47 @@ void Pool2dKernel(const Context& dev_ctx,
                             padding_algorithm,
                             0,
                             out);
+}
+
+template <typename T, typename Context>
+void MaxPool2DWithDilationsKernel(const Context& dev_ctx,
+                                  const DenseTensor& x,
+                                  const IntArray& kernel_size,
+                                  const std::vector<int64_t>& strides,
+                                  const std::vector<int64_t>& paddings,
+                                  const std::vector<int64_t>& dilations,
+                                  bool ceil_mode UNUSED,
+                                  bool exclusive,
+                                  const std::string& data_format,
+                                  const std::string& pooling_type,
+                                  bool global_pooling,
+                                  bool adaptive,
+                                  const std::string& padding_algorithm,
+                                  DenseTensor* out) {
+  if (x.numel() == 0) {
+    if (pooling_type == "max") {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    } else {  // for pooling_type == "avg"
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    }
+    return;
+  }
+  MaxPool2DWithDilationsRawKernel<T, Context>(dev_ctx,
+                                              x,
+                                              kernel_size.GetData(),
+                                              strides,
+                                              paddings,
+                                              dilations,
+                                              exclusive,
+                                              data_format,
+                                              pooling_type,
+                                              global_pooling,
+                                              adaptive,
+                                              padding_algorithm,
+                                              0,
+                                              out);
 }
 
 template <typename T, typename Context>

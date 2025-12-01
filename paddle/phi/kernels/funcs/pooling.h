@@ -223,6 +223,22 @@ class Pool2dFunctor {
 };
 
 template <typename Context, typename PoolProcess, typename T>
+class MaxPool2DWithDilationsFunctor {
+ public:
+  void operator()(const Context& context,
+                  const DenseTensor& input,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
+                  const std::string data_format,
+                  bool exclusive,
+                  bool adaptive,
+                  DenseTensor* output,
+                  PoolProcess pool_compute);
+};
+
+template <typename Context, typename PoolProcess, typename T>
 class Pool2dGradFunctor {
  public:
   void operator()(const Context& context,
@@ -237,6 +253,21 @@ class Pool2dGradFunctor {
                   bool adaptive,
                   DenseTensor* input_grad,
                   PoolProcess pool_compute);
+};
+
+template <typename Context, typename PoolProcess, typename T>
+class MaxPool2DWithDilationsGradFunctor {
+ public:
+  void operator()(const Context& context,
+                  const DenseTensor& input,
+                  const DenseTensor& output,
+                  const DenseTensor& output_grad,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
+                  const std::string data_format,
+                  DenseTensor* input_grad);
 };
 
 template <typename Context, class T>

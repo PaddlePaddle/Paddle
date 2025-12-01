@@ -40,6 +40,24 @@ void Pool2dGradKernel(const Context& dev_ctx,
                       DenseTensor* dx);
 
 template <typename T, typename Context>
+void MaxPool2DWithDilationsGradKernel(const Context& dev_ctx,
+                                      const DenseTensor& x,
+                                      const DenseTensor& out,
+                                      const DenseTensor& dout,
+                                      const IntArray& kernel_size,
+                                      const std::vector<int64_t>& strides,
+                                      const std::vector<int64_t>& paddings,
+                                      const std::vector<int64_t>& dilations,
+                                      bool ceil_mode,
+                                      bool exclusive,
+                                      const std::string& data_format,
+                                      const std::string& pooling_type,
+                                      bool global_pooling,
+                                      bool adaptive,
+                                      const std::string& padding_algorithm,
+                                      DenseTensor* dx);
+
+template <typename T, typename Context>
 void LPPool2dGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& out,
