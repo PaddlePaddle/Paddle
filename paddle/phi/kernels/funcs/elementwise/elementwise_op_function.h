@@ -792,9 +792,8 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
     T *dy,
     T *d_intermediate) {
   __shared__ T sdata[BLOCK_Y][BLOCK_X];
-  size_t idx = static_cast<size_t>(threadIdx.x) +
-               BLOCK_X * static_cast<size_t>(blockIdx.x);
-  size_t width_stride = static_cast<size_t>(gridDim.x) * BLOCK_X;
+  size_t idx = threadIdx.x + BLOCK_X * blockIdx.x;
+  size_t width_stride = gridDim.x * BLOCK_X;
 
   size_t full_w = ROUNDUP(w, BLOCK_X);
 
@@ -875,7 +874,7 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
       val += phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, val, i);
     }
 
-    size_t idx_j = j + static_cast<size_t>(threadIdx.y);
+    size_t idx_j = j + threadIdx.y;
     if (BcastY) {
       if (dy) {
         if (threadIdx.x == 0 && (idx_j < w)) dy[idx_j] = val;

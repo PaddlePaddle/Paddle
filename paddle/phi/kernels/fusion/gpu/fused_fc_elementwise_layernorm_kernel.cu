@@ -15,7 +15,14 @@
 #include <algorithm>
 #include <type_traits>
 
-#include "paddle/phi/kernels/funcs/cub.h"
+#ifdef __NVCC__
+#include <cub/cub.cuh>
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
+
 #if defined(PADDLE_WITH_CUDA)
 #include <cuda_fp16.h>
 #endif

@@ -270,7 +270,10 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
   if (axis == out_dims.size() - 1) {
     int ndim = x.dims().size();
     int64_t row_size = x.dims()[ndim - 1];
-    int64_t num_rows = x.numel() / row_size;
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int num_rows = x.numel() / row_size;
 
     dim3 threads(16, 32);
     dim3 grid(std::min(

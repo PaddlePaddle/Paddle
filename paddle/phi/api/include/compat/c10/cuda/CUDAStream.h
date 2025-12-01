@@ -20,7 +20,7 @@
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/cuda_stream.h"
 
-namespace c10::cuda {
+namespace at::cuda {
 
 using StreamId = int64_t;
 
@@ -53,9 +53,4 @@ inline CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1) {
 
 #define getDefaultCUDAStream getCurrentCUDAStream;
 
-}  // namespace c10::cuda
-
-namespace at::cuda {
-using c10::cuda::CUDAStream;
-using c10::cuda::getCurrentCUDAStream;
 }  // namespace at::cuda

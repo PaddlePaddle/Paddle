@@ -388,10 +388,12 @@ void SvdKernel(const Context& dev_ctx,
   }
   int rank = dims.size();
   int64_t m = dims[rank - 2];
-  // TODO(large-tensor): downstream functors may still use int
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   int64_t n = dims[rank - 1];
-  // TODO(large-tensor): downstream functors may still use int
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   auto* u_data = dev_ctx.template Alloc<T>(U);
   auto* vh_data = dev_ctx.template Alloc<T>(VH);

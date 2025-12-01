@@ -409,7 +409,8 @@ void YoloBoxPostKernel(const Context& dev_ctx,
   // clip_bbox and scale_x_y is not used now!
 
   int64_t batch = image_shape.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   TensorInfo* ts_info = new TensorInfo[batch * boxes_input.size()];
   for (int i = 0; i < batch * static_cast<int>(boxes_input.size()); i++) {

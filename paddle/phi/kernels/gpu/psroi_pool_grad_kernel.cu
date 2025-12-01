@@ -118,16 +118,20 @@ void PsroiPoolGradKernel(const Context& dev_ctx,
                          float spatial_scale,
                          DenseTensor* dx) {
   int64_t rois_num_t = rois.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   int64_t input_channels = x.dims()[1];
-  // TODO(large-tensor): downstream functors may still use int
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   int64_t height = x.dims()[2];
-  // TODO(large-tensor): downstream functors may still use int
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   int64_t width = x.dims()[3];
-  // TODO(large-tensor): downstream functors may still use int
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   if (dx) {
     // set roi batch id

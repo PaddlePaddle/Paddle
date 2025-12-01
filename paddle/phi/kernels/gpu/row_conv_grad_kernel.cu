@@ -277,7 +277,8 @@ void RowConvGradKernel(const Context &dev_ctx,
   int input_dim = 0;
   phi::Vector<size_t> batch_indices(batch_size + 1);
   int64_t timesteps = X->dims()[1];
-  // TODO(large-tensor): downstream functors may still use int
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   if (is_tensor) {
     for (int i = 0; i < batch_size + 1; i++) {
@@ -291,7 +292,8 @@ void RowConvGradKernel(const Context &dev_ctx,
   // int input_dim = X->dims()[1];
   int num_sequence = batch_indices.size() - 1;
   int64_t future_context = Filter->dims()[0];
-  // TODO(large-tensor): downstream functors may still use int
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   phi::MixVector<size_t> mixv_batch_indices(&batch_indices);
   size_t *idx = mixv_batch_indices.CUDAMutableData(dev_ctx.GetPlace());

@@ -260,12 +260,13 @@ void AdamwDenseParamSparseGradKernel(
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
     int threads = 512;
     int64_t ndim = param.numel();
-    int64_t blocks = (ndim + threads - 1) / threads;
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
 
-    // NOTE(large-tensor): Kernel launch requires int type for grid dimension
-    PADDLE_ENFORCE_LE_INT_MAX(blocks, "blocks");
+    int blocks = (ndim + threads - 1) / threads;
+
     SparseAdamWCUDAKernelREG<T, MPDType>
-        <<<static_cast<int>(blocks), threads, 0, dev_ctx.stream()>>>(
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(
             beta1_,
             beta2_,
             epsilon_,

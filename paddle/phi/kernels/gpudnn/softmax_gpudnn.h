@@ -445,8 +445,7 @@ __device__ __forceinline__ void ThreadVecWrite(T* out,
   }
 
   // the tail
-  for (IndexType offset = dim_size - last + static_cast<IndexType>(threadIdx.x);
-       offset < dim_size;
+  for (IndexType offset = dim_size - last + threadIdx.x; offset < dim_size;
        offset += blockDim.x) {
     out[offset] = functor(static_cast<AccT>(input[offset]));
   }
@@ -1667,7 +1666,7 @@ __device__ __forceinline__ void WriteResults(int classes,
                                              Function<T, AccT, T> function) {
   IndexType offset = threadIdx.x;
 
-  IndexType last = classes % (VecSize * static_cast<IndexType>(blockDim.x));
+  IndexType last = classes % (VecSize * blockDim.x);
 
   for (; offset < classes - last; offset += blockDim.x * VecSize) {
     T tmpOutput[VecSize];
@@ -2018,9 +2017,7 @@ __global__ void SpatialSoftMaxForward(
   for (IndexType outer_index = blockIdx.x; outer_index < N;
        outer_index += gridDim.x) {
     const IndexType outer_offset = outer_index * outer_stride;
-    for (IndexType inner_index = static_cast<IndexType>(blockIdx.y) *
-                                     static_cast<IndexType>(blockDim.y) +
-                                 static_cast<IndexType>(threadIdx.y);
+    for (IndexType inner_index = blockIdx.y * blockDim.y + threadIdx.y;
          inner_index < D;
          inner_index += blockDim.y * gridDim.y) {
       const IndexType data_offset = outer_offset + inner_index;
@@ -2084,9 +2081,7 @@ __global__ void SpatialSoftMaxBackward(T* gradInput,
   for (IndexType outer_index = blockIdx.x; outer_index < N;
        outer_index += gridDim.x) {
     const IndexType outer_offset = outer_index * outer_stride;
-    for (IndexType inner_index = static_cast<IndexType>(blockIdx.y) *
-                                     static_cast<IndexType>(blockDim.y) +
-                                 static_cast<IndexType>(threadIdx.y);
+    for (IndexType inner_index = blockIdx.y * blockDim.y + threadIdx.y;
          inner_index < D;
          inner_index += blockDim.y * gridDim.y) {
       const IndexType data_offset = outer_offset + inner_index;
@@ -2140,9 +2135,7 @@ __global__ void softmax_warp_forward(T* dst,
   constexpr IndexType kWarpBatchSize = (next_power_of_two <= 128) ? 2 : 1;
 
   IndexType first_batch =
-      (static_cast<IndexType>(blockDim.y) * static_cast<IndexType>(blockIdx.x) +
-       static_cast<IndexType>(threadIdx.y)) *
-      kWarpBatchSize;
+      (blockDim.y * blockIdx.x + threadIdx.y) * kWarpBatchSize;
 
   // batch_size may not be a multiple of kWarpBatchSize. Determine how many
   // batches need to be computed within this warp.
@@ -2252,9 +2245,7 @@ __global__ void softmax_warp_backward(T* gradInput,
   constexpr IndexType kWarpBatchSize = (next_power_of_two <= 128) ? 2 : 1;
 
   IndexType first_batch =
-      (static_cast<IndexType>(blockDim.y) * static_cast<IndexType>(blockIdx.x) +
-       static_cast<IndexType>(threadIdx.y)) *
-      kWarpBatchSize;
+      (blockDim.y * blockIdx.x + threadIdx.y) * kWarpBatchSize;
 
   // batch_size may not be a multiple of kWarpBatchSize. Determine how many
   // batches need to be computed within this warp.
@@ -2263,7 +2254,7 @@ __global__ void softmax_warp_backward(T* gradInput,
 
   // There may be multiple batches per warp. Compute the thread’s index within
   // the batch.
-  IndexType local_idx = static_cast<IndexType>(threadIdx.x) % warp_size_t;
+  IndexType local_idx = threadIdx.x % warp_size_t;
 
   // The first element to be processed by the current thread.
   IndexType thread_offset = first_batch * stride + local_idx;

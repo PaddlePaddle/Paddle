@@ -41,7 +41,7 @@ namespace phi {
 //
 // NOTE: We don't assume that InputIter to be const InputType* and
 //       OutputIter to be OutputType*, because we might use a iterator
-//       class, phi::RowwiseTransformIterator.
+//       class, paddle::fluid::operators::RowwiseTransformIterator.
 template <typename Context>
 struct Transform {
   // The unary version.

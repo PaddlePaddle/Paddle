@@ -28,9 +28,9 @@
 
 namespace phi {
 
-template <typename Context, typename T>
+template <typename DeviceContext, typename T>
 struct AccuracyCheckFunctor {
-  void operator()(const Context& dev_ctx,
+  void operator()(const DeviceContext& dev_ctx,
                   const DenseTensor& in,
                   const DenseTensor& other,
                   const std::string& fn_name,

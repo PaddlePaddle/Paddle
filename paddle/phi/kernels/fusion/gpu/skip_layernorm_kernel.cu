@@ -43,7 +43,8 @@ void SkipLayerNormKernel(const Context &dev_ctx,
     num *= x.dims()[i];
   }
   int64_t hidden = x.dims()[2];
-  // TODO(large-tensor): downstream functors may still use int
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   phi::funcs::SkipLayerNormFunctor<T> skip_layer_norm_func;
 

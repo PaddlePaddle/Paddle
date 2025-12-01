@@ -106,6 +106,9 @@ void AverageAccumulatesKernel(const Context& dev_ctx,
   auto out_sum_2_tensor = EigenVector<T>::Flatten(*out_sum_2);
   auto out_sum_3_tensor = EigenVector<T>::Flatten(*out_sum_3);
 
+  // Compute
+  // auto& place = *dev_ctx.template
+  // device_context<DeviceContext>().eigen_device();
   auto& place = *dev_ctx.eigen_device();
 
   funcs::SetConstant<Context, T> constant_functor;

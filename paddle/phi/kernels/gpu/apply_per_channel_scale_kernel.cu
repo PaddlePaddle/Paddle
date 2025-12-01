@@ -155,8 +155,14 @@ void ApplyPerChannelScaleKernel(const Context& dev_ctx,
 #ifdef PADDLE_WITH_CUDA
   using DataType = typename PDDataTypeTraits<T>::DataType;
   int64_t rows = x.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int64_t cols = x.dims()[1];
-  int64_t elems = rows * cols;
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int elems = rows * cols;
   const T* x_data = x.data<T>();
   const T* scales_data = scales.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
@@ -185,8 +191,6 @@ void ApplyPerChannelScaleKernel(const Context& dev_ctx,
         reinterpret_cast<DataType*>(out_data),
         dev_ctx.stream());
   } else {
-    PADDLE_ENFORCE_LE_INT_MAX(rows, "rows");
-    PADDLE_ENFORCE_LE_INT_MAX(cols, "cols");
     apply_per_channel_scale_launcher<DataType, 16, float4>(
         reinterpret_cast<const DataType*>(x_data),
         reinterpret_cast<const DataType*>(scales_data),

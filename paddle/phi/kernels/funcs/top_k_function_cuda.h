@@ -875,10 +875,7 @@ __global__ void GatherKthValue(const T* input,
   void* shared_mem = static_cast<void*>(shared_mem_char);
 
   IndexType row =
-      static_cast<IndexType>(blockIdx.z) * static_cast<IndexType>(gridDim.y) *
-          static_cast<IndexType>(gridDim.x) +
-      static_cast<IndexType>(blockIdx.y) * static_cast<IndexType>(gridDim.x) +
-      static_cast<IndexType>(blockIdx.x);
+      blockIdx.z * gridDim.y * gridDim.x + blockIdx.y * gridDim.x + blockIdx.x;
   if (row >= num_rows) return;
   const T* cur_input = input + row * num_cols;
 

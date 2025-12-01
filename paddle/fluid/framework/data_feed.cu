@@ -522,9 +522,7 @@ __global__ void GraphFillIdKernel(uint64_t *id_tensor,
   __shared__ int global_num;
   bool need_filter = false;
 
-  size_t idx =
-      static_cast<size_t>(blockIdx.x) * static_cast<size_t>(blockDim.x) +
-      static_cast<size_t>(threadIdx.x);
+  size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (threadIdx.x == 0) {
     local_num = 0;
   }
@@ -580,9 +578,7 @@ __global__ void GraphFillIdKernel(uint64_t *id_tensor,
 }
 
 __global__ void GraphZeroIdKernel(uint64_t *id_tensor, int len) {
-  size_t idx =
-      static_cast<size_t>(blockIdx.x) * static_cast<size_t>(blockDim.x) +
-      static_cast<size_t>(threadIdx.x);
+  size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
   uint64_t zerokey = 0;
   if (idx < len) {
     int dst = idx * 2;

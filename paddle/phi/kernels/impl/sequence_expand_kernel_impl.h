@@ -23,18 +23,18 @@
 
 namespace phi {
 
-template <typename Context, typename T>
+template <typename DeviceContext, typename T>
 struct SequenceExpandFunctor {
-  void operator()(const Context& dev_ctx,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& x,
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
                   phi::DenseTensor* out);
 };
 
-template <typename Context, typename T>
+template <typename DeviceContext, typename T>
 struct SequenceExpandGradFunctor {
-  void operator()(const Context& dev_ctx,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& dout,
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
