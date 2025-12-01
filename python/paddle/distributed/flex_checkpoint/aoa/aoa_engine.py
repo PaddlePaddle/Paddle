@@ -95,22 +95,28 @@ class AOAShardInfoContext:
         self.aoa_config_reverse = aoa_config_reverse
         self.left_var_to_right_var_mapping = {}
         self.right_var_from_left_var_mapping = {}
+        self.src_state_keys = set()
+        self.dst_state_keys = set()
+        self.init_src_state_keys()
+        self.init_dst_state_keys()
 
-    def get_all_dst_state_keys(self):
-        dst_state_keys = set()
-        if self.destination_state_shard_info is None:
-            return dst_state_keys
-        for k in self.destination_state_shard_info.keys():
-            model_state_key, _ = split_optimizer_state_key(k)
-            dst_state_keys.add(model_state_key)
-        return dst_state_keys
-
-    def get_all_src_state_keys(self):
-        src_state_keys = set()
+    def init_src_state_keys(self):
         for k in self.source_state_shard_info.keys():
             model_state_key, _ = split_optimizer_state_key(k)
-            src_state_keys.add(model_state_key)
-        return src_state_keys
+            self.src_state_keys.add(model_state_key)
+
+    def init_dst_state_keys(self):
+        if self.destination_state_shard_info is None:
+            return
+        for k in self.destination_state_shard_info.keys():
+            model_state_key, _ = split_optimizer_state_key(k)
+            self.dst_state_keys.add(model_state_key)
+
+    def get_all_dst_state_keys(self):
+        return self.dst_state_keys
+
+    def get_all_src_state_keys(self):
+        return self.src_state_keys
 
     def get_num_hidden_layers(
         self,

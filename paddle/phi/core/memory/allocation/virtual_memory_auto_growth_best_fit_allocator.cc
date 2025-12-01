@@ -257,12 +257,12 @@ VirtualMemoryAutoGrowthBestFitAllocator::AllocateOrCompact(size_t size) {
       if (free_block->is_free_) {
         assert(free_block->size_ < size);
         auto remain_size = size - free_block->size_;
-        VLOG(1) << " Tail free block size {" << free_block->size_
+        VLOG(4) << " Tail free block size {" << free_block->size_
                 << "} is smaller than allocate size {" << size
                 << "} after compact, re-alloc {" << remain_size << "}";
         allocateptr = std::move(underlying_allocator_->Allocate(remain_size));
       } else {
-        VLOG(1) << "Tail block is not free, just allocate {" << size << "}";
+        VLOG(4) << "Tail block is not free, just allocate {" << size << "}";
         allocateptr = std::move(underlying_allocator_->Allocate(size));
       }
     }
@@ -534,7 +534,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::PreAllocate(size_t size) {
 bool VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::IsSmallRequest(
     size_t size) {
   auto small_pool_size = FLAGS_vmm_small_pool_size_in_mb << 20;
-  return size <= small_pool_size;
+  return size < small_pool_size;
 }
 
 void VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::PreAlloc() {
@@ -548,7 +548,7 @@ void VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::PreAlloc() {
   auto vmm_small_pool_pre_alloc = FLAGS_vmm_small_pool_pre_alloc_in_mb << 20;
   auto vmm_large_pool_pre_alloc = FLAGS_vmm_large_pool_pre_alloc_in_mb << 20;
 
-  if (vmm_small_pool_pre_alloc > 0) {
+  if (vmm_small_pool_pre_alloc > 0 && small_allocator) {
     VLOG(4) << "Begin Small Pool PreAllocate in "
                "VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator size "
             << vmm_small_pool_pre_alloc;
@@ -557,7 +557,7 @@ void VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::PreAlloc() {
                "VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator size "
             << vmm_small_pool_pre_alloc;
   }
-  if (vmm_large_pool_pre_alloc > 0) {
+  if (vmm_large_pool_pre_alloc > 0 && large_allocator) {
     VLOG(4) << "Begin Large Pool PreAllocate in "
                "VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator size "
             << vmm_large_pool_pre_alloc;
@@ -577,6 +577,7 @@ size_t VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::CompactImpl(
   size_t compact_free_size = large_allocator->Compact(place);
   VLOG(1) << "Memory Compact Large Pool Manual Finish Compact size: "
           << compact_free_size;
+  compact_size_.emplace_back(compact_free_size);
   return compact_free_size;
 }
 
