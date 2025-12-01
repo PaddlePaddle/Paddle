@@ -125,7 +125,7 @@ __global__ void KeLinearInterpFw(const T* in,
     size_t out_img_size = output_w / num_channels;
 
     size_t channel_id, out_img_idy, out_img_idx;
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       channel_id = out_id_w / out_img_size;
       out_img_idx = tid % out_img_w;
     } else {
@@ -142,7 +142,7 @@ __global__ void KeLinearInterpFw(const T* in,
                              : (ratio_w * out_img_idx - in_img_idx);
     MT w2lambda = 1.0 - w1lambda;
 
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       const T* in_pos =
           &in[out_id_h * input_w + channel_id * in_img_size + in_img_idx];
       // linear interpolation
@@ -472,8 +472,11 @@ __global__ void KeBicubicInterpFw(const T* in,
                                   const bool align_corners,
                                   const DataLayout data_layout) {
   size_t nthreads = output_h * output_w;
-  size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
-  size_t stride = blockDim.x * gridDim.x;
+  size_t tid =
+      static_cast<size_t>(blockIdx.x) * static_cast<size_t>(blockDim.x) +
+      static_cast<size_t>(threadIdx.x);
+  size_t stride =
+      static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x);
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   for (; tid < nthreads; tid += stride) {
@@ -484,7 +487,7 @@ __global__ void KeBicubicInterpFw(const T* in,
 
     size_t channel_id, out_img_idy, out_img_idx;
 
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       channel_id = out_id_w / out_img_size;
       out_img_idy = (out_id_w % out_img_size) / out_img_w;
       out_img_idx = tid % out_img_w;
@@ -507,7 +510,7 @@ __global__ void KeBicubicInterpFw(const T* in,
     T coefficients[4];
     const int64_t in_img_h_max = in_img_h - 1;
     const int64_t in_img_w_max = in_img_w - 1;
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       for (int k = 0; k < 4; k++) {
         size_t access_y = max(min(input_y - 1 + k, in_img_h_max), int64_t(0));
         size_t access_x_0 = max(min(input_x - 1, in_img_w_max), int64_t(0));
@@ -600,7 +603,7 @@ __global__ void KeTrilinearInterpFw(const T* in,
     size_t out_img_size = output_w / num_channels;
 
     size_t channel_id, out_img_idt, out_img_idy, out_img_idx;
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       channel_id = out_id_w / out_img_size;
       out_img_idt = (out_id_w % out_img_size) / out_img_h / out_img_w;
       out_img_idy = ((out_id_w % out_img_size) / out_img_w) % out_img_h;
@@ -641,7 +644,7 @@ __global__ void KeTrilinearInterpFw(const T* in,
                                    static_cast<MT>(in_img_idx);
     MT w2lambda = MT(1.0) - w1lambda;
 
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       size_t in_pos1_idx = out_id_h * input_w + channel_id * in_img_size +
                            (in_img_idt * in_img_h + in_img_idy) * in_img_w +
                            in_img_idx;
@@ -729,7 +732,7 @@ __global__ void KeNearestNeighbor3DInterpFw(const T* in,
     size_t out_img_size = output_w / num_channels;
 
     size_t channel_id, out_img_idt, out_img_idy, out_img_idx;
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       channel_id = out_id_w / out_img_size;
       out_img_idt = (out_id_w % out_img_size) / out_img_h / out_img_w;
       out_img_idy = ((out_id_w % out_img_size) / out_img_w) % out_img_h;
@@ -753,7 +756,7 @@ __global__ void KeNearestNeighbor3DInterpFw(const T* in,
                             ? static_cast<size_t>(ratio_w * out_img_idx + 0.5)
                             : static_cast<size_t>(ratio_w * out_img_idx);
 
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       out[tid] = in[out_id_h * input_w + channel_id * in_img_size +
                     in_img_idt * in_img_h * in_img_w + in_img_idy * in_img_w +
                     in_img_idx];
@@ -831,7 +834,7 @@ static void Interpolate1DCUDAFwd(
       errors::InvalidArgument("out_w in Attr(out_shape) of Op(interpolate) "
                               "should be greater than 0."));
   phi::DDim dim_out;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     dim_out = {n, c, out_w};
   } else {
     dim_out = {n, out_w, c};
@@ -979,7 +982,7 @@ static void Interpolate2DCUDAFwd(
                               "should be greater than 0."));
 
   phi::DDim dim_out;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     dim_out = {n, c, out_h, out_w};
   } else {
     dim_out = {n, out_h, out_w, c};
@@ -1009,7 +1012,7 @@ static void Interpolate2DCUDAFwd(
       backends::gpu::GetGpuLaunchConfig1D(dev_ctx, pixelNum);
 
   if ("nearest" == interp_method) {
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       // get launch 3D config
       int64_t nc = static_cast<int64_t>(n) * c;
       backends::gpu::GpuLaunchConfig config_3d =
@@ -1056,7 +1059,7 @@ static void Interpolate2DCUDAFwd(
       thread_num = 512;
     }
 #endif
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       // get launch 3D config
       int64_t nc = static_cast<int64_t>(n) * c;
       backends::gpu::GpuLaunchConfig config_3d =
@@ -1222,7 +1225,7 @@ static void InterpolateAA2DCUDAFwd(
                               "should be greater than 0."));
 
   phi::DDim dim_out;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     dim_out = {n, c, out_h, out_w};
   } else {
     dim_out = {n, out_h, out_w, c};
@@ -1252,7 +1255,7 @@ static void InterpolateAA2DCUDAFwd(
       backends::gpu::GetGpuLaunchConfig1D(dev_ctx, pixelNum);
 
   // Only support NCHW layout for anti-aliasing
-  if (data_layout != DataLayout::kNCHW) {
+  if (data_layout != DataLayout::NCHW) {
     PADDLE_THROW(errors::InvalidArgument(
         "Anti-aliasing interpolation only supports NCHW data layout."));
   }
@@ -1484,7 +1487,7 @@ static void Interpolate3DCUDAFwd(
                               "should be greater than 0."));
 
   phi::DDim dim_out;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     dim_out = {n, c, out_d, out_h, out_w};
   } else {
     dim_out = {n, out_d, out_h, out_w, c};

@@ -32,6 +32,16 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
                                   const std::vector<int64_t>& index_strides,
                                   const int64_t slice_offset,
                                   DenseTensor* output) {
+  bool is_initialized = output->initialized();
+  bool is_same_place = true;
+  if (is_initialized) {
+    is_same_place = (input.place() == output->place());
+  }
+  T* output_ = dev_ctx.template Alloc<T>(output);
+
+  if (!is_initialized || !is_same_place) {
+    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+  }
   int64_t numel = 0;
   int64_t num_indices = 0;
   std::vector<int64_t> shape_tmp;
@@ -80,13 +90,14 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
   const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
   auto stream = dev_ctx.stream();
 
-  char* out_ptr = reinterpret_cast<char*>(output->data<T>());
+  char* out_ptr = reinterpret_cast<char*>(output_);
   if (index.size() == 1 && index[0]->dtype() == phi::DataType::BOOL) {
     const bool* mask_data = index[0]->data<bool>();
     funcs::index_elementwise_with_tensor_kernel<nt, vt>
         <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
           const auto offsets = offset_calc.get(idx);
-          char* const out_data = out_ptr + offsets[0] + slice_offset;
+          char* const out_data =
+              out_ptr + static_cast<int64_t>(offsets[0]) + slice_offset;
           if (mask_data[idx]) {
             *reinterpret_cast<T*>(out_data) = value_T;
           }
@@ -96,7 +107,8 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
     funcs::index_elementwise_kernel<nt, vt, T><<<grid, block, 0, stream>>>(
         N, value_T, [=] __device__(int idx, const T value_tmp) {
           const auto offsets = offset_calc.get(idx);
-          char* const out_data = out_ptr + offsets[0] + slice_offset;
+          char* const out_data =
+              out_ptr + static_cast<int64_t>(offsets[0]) + slice_offset;
 
           int64_t offset = 0;
 #pragma unroll
@@ -125,6 +137,17 @@ void GPUIndexElementwisePutWithTensorKernel(
     const std::vector<int64_t>& index_strides,
     const int64_t slice_offset,
     DenseTensor* output) {
+  bool is_initialized = output->initialized();
+  bool is_same_place = true;
+  if (is_initialized) {
+    is_same_place = (input.place() == output->place());
+  }
+  T* output_ = dev_ctx.template Alloc<T>(output);
+
+  if (!is_initialized || !is_same_place) {
+    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+  }
+
   int64_t numel = 0;
   int64_t num_indices = 0;
   std::vector<int64_t> shape_tmp;
@@ -171,12 +194,13 @@ void GPUIndexElementwisePutWithTensorKernel(
   using dtype = funcs::OpaqueType<sizeof(T)>;
 
   const char* in_ptr = reinterpret_cast<const char*>(value.data<T>());
-  char* out_ptr = reinterpret_cast<char*>(output->data<T>());
+  char* out_ptr = reinterpret_cast<char*>(output_);
 
   funcs::index_elementwise_with_tensor_kernel<nt, vt>
       <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
         const auto offsets = offset_calc.get(idx);
-        char* const out_data = out_ptr + offsets[0] + slice_offset;
+        char* const out_data =
+            out_ptr + static_cast<int64_t>(offsets[0]) + slice_offset;
         const char* const in_data = in_ptr + offsets[1];
 
         int64_t offset = 0;
@@ -215,7 +239,7 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
           "desires to be [%s].",
           index_type,
           phi::DataType::INT64));
-  dev_ctx.template Alloc<T>(out);
+
   if (out->numel() == 0) return;
   if (funcs::IsInUint32Range(out->numel())) {
     GPUIndexElementwisePutKernel<T, int64_t>(dev_ctx,
@@ -263,7 +287,6 @@ void IndexElementwisePutWithTensorKernel(
                         index_type,
                         phi::DataType::INT64));
 
-  dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) return;
   if (funcs::IsInUint32Range(out->numel())) {
     GPUIndexElementwisePutWithTensorKernel<T, int64_t>(dev_ctx,

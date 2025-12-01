@@ -121,6 +121,17 @@ if(WITH_MKLML)
   endif()
 endif()
 
+if(WITH_HML)
+  # Only deps libhml_rt.so, not link
+  add_library(dynload_hml STATIC hml.cc)
+  add_dependencies(dynload_hml hml)
+  if(WIN32)
+    message(FATAL_ERROR "HML is not supported on Windows")
+  else()
+    target_link_libraries(dynload_hml "-L${HML_LIB_DIR} -lgomp -Wl,--as-needed")
+  endif()
+endif()
+
 if(WITH_XPU)
   if(CUPTI_FOUND)
     collect_srcs(backends_srcs SRCS xpti.cc nvtx.cc cupti.cc)

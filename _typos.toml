@@ -49,13 +49,3 @@ UNEXPECT = 'UNEXPECT'
 tood = 'tood'
 unpacket = "unpacket"
 vaccum = 'vaccum'
-
-# need to fix
-Detecter = 'Detecter'
-dismatch = 'dismatch'
-distributer = 'distributer'
-duoble = 'duoble'
-Grap = 'Grap'
-Simplied = 'Simplied'
-precess = 'precess'
-sittin = 'sittin'

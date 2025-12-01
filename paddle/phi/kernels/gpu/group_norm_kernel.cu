@@ -728,7 +728,7 @@ void GroupNormNDHWCKernel(const Context& dev_ctx,
                           DenseTensor* mean,
                           DenseTensor* var) {
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  if (data_layout != DataLayout::kNHWC) {
+  if (data_layout != DataLayout::NHWC) {
     PD_THROW("data_layout only supports NHWC and NDHWC");
   }
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
@@ -982,7 +982,7 @@ __global__ void GroupNormForward(const T* x,
         AccT val;
         int64_t hid, wid;
         int64_t index = (bid * C + ccid) * imsize + imid;
-        if (data_layout == DataLayout::kNCHW) {
+        if (data_layout == DataLayout::NCHW) {
           val = static_cast<AccT>(x[index]);
         } else {
           hid = imid / W;
@@ -996,7 +996,7 @@ __global__ void GroupNormForward(const T* x,
         if (flags & kHasBias) {
           val += static_cast<AccT>(bias[ccid]);
         }
-        if (data_layout == DataLayout::kNCHW) {
+        if (data_layout == DataLayout::NCHW) {
           y[index] = static_cast<T>(val);
         } else {
           y[(bid * H + hid) * W * C + wid * C + ccid] = static_cast<T>(val);
@@ -1022,15 +1022,15 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
     const DataLayout data_layout) {
   const auto input_ddim = common::make_ddim(input_shape);
   const int64_t C =
-      (data_layout == DataLayout::kNCHW ? input_ddim[1]
-                                        : input_ddim[input_ddim.size() - 1]);
+      (data_layout == DataLayout::NCHW ? input_ddim[1]
+                                       : input_ddim[input_ddim.size() - 1]);
   const int64_t group_size = C / groups;
   const int64_t W =
-      (data_layout == DataLayout::kNCHW ? input_ddim[input_ddim.size() - 1]
-                                        : input_ddim[input_ddim.size() - 2]);
+      (data_layout == DataLayout::NCHW ? input_ddim[input_ddim.size() - 1]
+                                       : input_ddim[input_ddim.size() - 2]);
 
   int64_t image_size = 1;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     for (int i = 2; i < input_ddim.size(); ++i) {
       image_size *= input_ddim[i];
     }
@@ -1045,7 +1045,7 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
             groups,
             std::min(input_ddim[0], max_grid_x));
   dim3 threads(block_size, 1, 1);
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     constexpr int vec_size = sizeof(float4) / sizeof(T);
     int64_t size = group_size * image_size;  // group element size
     const int max_num_threads = 1024;
@@ -1128,12 +1128,11 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
   const auto bias_ptr = bias.get_ptr();
   const auto x_dims = x.dims();
   const int64_t C =
-      (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                        : x_dims[x_dims.size() - 1]);
+      (data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
   const int64_t group_size = C / groups;
   const int64_t W =
-      (data_layout == DataLayout::kNCHW ? x_dims[x_dims.size() - 1]
-                                        : x_dims[x_dims.size() - 2]);
+      (data_layout == DataLayout::NCHW ? x_dims[x_dims.size() - 1]
+                                       : x_dims[x_dims.size() - 2]);
 
   dev_ctx.template Alloc<T>(y);
   dev_ctx.template Alloc<AccT>(mean);
@@ -1156,7 +1155,7 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
   if (bias_ptr) bias_data = bias_ptr->data<T>();
 
   int64_t imsize = 1;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     for (int i = 2; i < x_dims.size(); ++i) {
       imsize *= x_dims[i];
     }
@@ -1173,7 +1172,7 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
             groups,
             std::min(max_grid_z, x_dims[0]));
   dim3 threads(block_size, 1, 1);
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     constexpr int vec_size = sizeof(float4) / sizeof(T);
     int64_t size = group_size * imsize;
     const int max_num_threads = 1024;

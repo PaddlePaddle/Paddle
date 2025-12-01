@@ -936,7 +936,14 @@ void ReshardKernelOutputToApiOutput(
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(tensor_out.get());
     dist_tensor->unsafe_set_dims(src_tensor->dims());
-    if (ReshardIsNeeded(src_tensor->dist_attr(), dist_tensor->dist_attr())) {
+    // skip_sharding3_output_reshard for sharding stage3 with AMP.
+    bool skip_sharding3_output_reshard =
+        std::getenv("skip_sharding3_output_reshard") &&
+        std::string(std::getenv("skip_sharding3_output_reshard")) == "1" &&
+        src_tensor->dist_attr().is_partial() &&
+        dist_tensor->dist_attr().is_shard();
+    if (!skip_sharding3_output_reshard &&
+        ReshardIsNeeded(src_tensor->dist_attr(), dist_tensor->dist_attr())) {
       auto argument_name = (arg_name.empty() ? "tensor" : arg_name);
       auto tensor_name =
           (dst_tensor->name().empty() ? "None" : src_tensor->name());

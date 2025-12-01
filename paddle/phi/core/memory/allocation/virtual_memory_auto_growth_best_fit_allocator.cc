@@ -14,10 +14,12 @@
 
 #include "paddle/phi/core/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
 
+#include <algorithm>
 #include <mutex>
 #include "paddle/common/flags.h"
 
 #include "paddle/phi/core/memory/allocation/aligned_allocator.h"
+#include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator.h"
 
 PHI_DEFINE_EXPORTED_uint64(
     vmm_small_pool_size_in_mb,
@@ -68,6 +70,48 @@ bool NeedSplit(size_t block_size, size_t alignment, size_t alloc_size) {
   return block_size > (alloc_size * 2) || (block_size - alloc_size) > alignment;
 }
 
+// Merge if two parts refer to the same chunk and touch each other.
+static inline bool TryConcatAdjacent(BlockPart *a, const BlockPart &b) {
+  if (!a) return false;
+  if (a->chunk.get() != b.chunk.get()) return false;
+  if (a->chunk_rel_off + a->len != b.chunk_rel_off) return false;
+  a->len += b.len;
+  return true;
+}
+
+static std::vector<BlockPart> SlicePartsForRange(
+    const std::vector<BlockPart> &parts, size_t pick_off, size_t pick_len) {
+  std::vector<BlockPart> out;
+  size_t cursor = 0;
+  size_t need = pick_len;
+  for (const auto &p : parts) {
+    if (!need) break;
+    size_t L = cursor;
+    size_t R = cursor + p.len;
+    cursor = R;
+    size_t l = std::max(L, pick_off);
+    size_t r = std::min(R, pick_off + pick_len);
+    if (l >= r) continue;
+    BlockPart cut{p.chunk, p.chunk_rel_off + (l - L), r - l};
+    if (!out.empty() && TryConcatAdjacent(&out.back(), cut)) {
+      continue;
+    }
+    out.push_back(std::move(cut));
+    need -= (r - l);
+  }
+  return out;
+}
+
+static inline void AppendPartsTail(std::vector<BlockPart> *dst,
+                                   const std::vector<BlockPart> &src) {
+  if (src.empty()) return;
+  if (!dst->empty() && TryConcatAdjacent(&dst->back(), src.front())) {
+    dst->insert(dst->end(), std::next(src.begin()), src.end());
+  } else {
+    dst->insert(dst->end(), src.begin(), src.end());
+  }
+}
+
 VirtualMemoryAutoGrowthBestFitAllocator::
     VirtualMemoryAutoGrowthBestFitAllocator(
         const std::shared_ptr<Allocator> &underlying_allocator,
@@ -103,6 +147,20 @@ void VirtualMemoryAutoGrowthBestFitAllocator::FreeImpl(
   delete allocation;
 }
 
+bool VirtualMemoryAutoGrowthBestFitAllocator::CollectTensorParts(
+    void *ptr, std::vector<BlockPart> *parts) {
+  std::lock_guard<SpinLock> guard(spinlock_);
+  for (const auto &block : all_blocks_) {
+    if (block.ptr_ == ptr) {
+      if (parts) {
+        *parts = block.parts_;
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
 void VirtualMemoryAutoGrowthBestFitAllocator::TryMergeBlock2Blocks(
     std::list<Block>::iterator block) {
   if (block->ptr_ == all_blocks_.front().ptr_ &&
@@ -114,6 +172,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::TryMergeBlock2Blocks(
     if (next->is_free_ &&
         reinterpret_cast<uint8_t *>(block->ptr_) + block->size_ == next->ptr_) {
       // merge with next
+      AppendPartsTail(&block->parts_, next->parts_);
       block->size_ += next->size_;
       block->is_free_ = true;
       free_blocks_.erase(std::make_pair(next->size_, next->ptr_));
@@ -129,6 +188,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::TryMergeBlock2Blocks(
         reinterpret_cast<uint8_t *>(pre->ptr_) + pre->size_ == block->ptr_) {
       // merge with pre
       free_blocks_.erase(std::make_pair(pre->size_, pre->ptr_));
+      AppendPartsTail(&pre->parts_, block->parts_);
       pre->size_ += block->size_;
       all_blocks_.erase(block);
       free_blocks_.emplace(std::make_pair(pre->size_, pre->ptr_), pre);
@@ -146,6 +206,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::TryMergeBlock2Blocks(
               next->ptr_)) {
       // merge with pre
       free_blocks_.erase(std::make_pair(pre->size_, pre->ptr_));
+      AppendPartsTail(&pre->parts_, block->parts_);
       pre->size_ += block->size_;
       all_blocks_.erase(block);
       free_blocks_.emplace(std::make_pair(pre->size_, pre->ptr_), pre);
@@ -158,6 +219,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::TryMergeBlock2Blocks(
       // merge with next
       block->size_ += next->size_;
       block->is_free_ = true;
+      AppendPartsTail(&block->parts_, next->parts_);
       free_blocks_.erase(std::make_pair(next->size_, next->ptr_));
       all_blocks_.erase(next);
       free_blocks_.emplace(std::make_pair(block->size_, block->ptr_), block);
@@ -170,6 +232,8 @@ void VirtualMemoryAutoGrowthBestFitAllocator::TryMergeBlock2Blocks(
       // merge with pre and next
       free_blocks_.erase(std::make_pair(pre->size_, pre->ptr_));
       free_blocks_.erase(std::make_pair(next->size_, next->ptr_));
+      AppendPartsTail(&pre->parts_, block->parts_);
+      AppendPartsTail(&pre->parts_, next->parts_);
       pre->size_ += (block->size_ + next->size_);
       all_blocks_.erase(block);
       all_blocks_.erase(next);
@@ -264,10 +328,30 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendOrCompact(size_t size) {
   alloc_size = allocateptr->size();
   allocations_.push_back(std::move(allocateptr));  // hold allocation
 
+  std::vector<BlockPart> new_parts;
+  auto chunk = std::make_shared<VmmChunkMeta>();
+  chunk->base = reinterpret_cast<VmmDevicePtr>(alloc_ptr);
+  chunk->size = alloc_size;
+#ifdef PADDLE_WITH_CUDA
+  auto handle = CUDAVirtualMemAllocator::GetHandleFromBasePtr(alloc_ptr);
+  PADDLE_ENFORCE_NE(
+      handle,
+      0,
+      common::errors::InvalidArgument(
+          "Allocation returned by underlying allocator is not VMM allocation"));
+  chunk->handle = handle;
+#else
+  PADDLE_THROW(common::errors::Unavailable(
+      "Virtual memory auto-growth allocator requires CUDA support."));
+#endif
+  chunk->device = place_.device;
+  new_parts.emplace_back(BlockPart{chunk, 0, alloc_size});
+
   if (all_blocks_.empty()) {
     all_blocks_.emplace_back(alloc_ptr, alloc_size, true);
-    free_blocks_.emplace(std::make_pair(alloc_size, alloc_ptr),
-                         all_blocks_.begin());
+    auto it = all_blocks_.begin();
+    it->parts_ = std::move(new_parts);
+    free_blocks_.emplace(std::make_pair(alloc_size, alloc_ptr), it);
     return;
   }
 
@@ -280,6 +364,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendOrCompact(size_t size) {
     // merge with pre
     free_blocks_.erase(std::make_pair(block_it->size_, block_it->ptr_));
     block_it->size_ += alloc_size;
+    AppendPartsTail(&block_it->parts_, new_parts);
     free_blocks_.emplace(std::make_pair(block_it->size_, block_it->ptr_),
                          block_it);
   } else {
@@ -287,6 +372,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendOrCompact(size_t size) {
     all_blocks_.emplace_back(alloc_ptr, alloc_size, true);
     auto block_it = all_blocks_.end();
     block_it--;
+    block_it->parts_ = std::move(new_parts);
     free_blocks_.emplace(std::make_pair(alloc_size, alloc_ptr), block_it);
   }
   if (FLAGS_dump_vmm_allocation_info) {
@@ -306,11 +392,18 @@ phi::Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocFromFreeBlocks(
       void *remaining_ptr = reinterpret_cast<uint8_t *>(block_it->ptr_) + size;
       size_t remaining_size = block_it->size_ - size;
 
+      std::vector<BlockPart> alloc_parts =
+          SlicePartsForRange(block_it->parts_, 0, size);
+      std::vector<BlockPart> remaining_parts =
+          SlicePartsForRange(block_it->parts_, size, remaining_size);
+
       block_it->size_ = size;
       block_it->is_free_ = false;
+      block_it->parts_.swap(alloc_parts);
 
       auto remaining_free_block = all_blocks_.insert(
           std::next(block_it), Block(remaining_ptr, remaining_size, true));
+      remaining_free_block->parts_ = std::move(remaining_parts);
       free_blocks_.emplace(std::make_pair(remaining_size, remaining_ptr),
                            remaining_free_block);
     } else {

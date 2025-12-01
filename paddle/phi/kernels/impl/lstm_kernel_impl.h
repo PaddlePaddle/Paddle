@@ -259,7 +259,7 @@ void LSTMGradKernel(const Context& dev_ctx,
                     out_dims[1],
                     common::errors::InvalidArgument(
                         "The second dimension of Input(hidden_grad) should be "
-                        "%d, but received %d in LSTM@Grad operator.",
+                        "%d, but received %d in LSTM@GRAD operator.",
                         frame_size,
                         out_dims[1]));
 

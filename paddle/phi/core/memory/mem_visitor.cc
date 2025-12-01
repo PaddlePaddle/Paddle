@@ -26,6 +26,10 @@
 namespace paddle {
 namespace memory {
 
+void allocation::Allocator::Accept(AllocatorVisitor* visitor) {
+  visitor->Visit(this);
+}
+
 void AllocatorVisitor::Visit(RetryAllocator* allocator) {
   allocator->GetUnderLyingAllocator()->Accept(this);
 }
@@ -122,6 +126,19 @@ void VMMAllocateCompactSizeVisitor::Visit(
   allocate_compact_size_ = allocator->GetCompactSize();
 }
 
+void VmmTensorPartsVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitAllocator* allocator) {
+  if (found_) {
+    return;
+  }
+  std::vector<BlockPart> parts;
+  if (allocator->CollectTensorParts(target_ptr_, &parts)) {
+    found_ = true;
+    parts_ = std::move(parts);
+    return;
+  }
+  allocator->GetUnderLyingAllocator()->Accept(this);
+}
 #endif
 }  // namespace memory
 }  // namespace paddle

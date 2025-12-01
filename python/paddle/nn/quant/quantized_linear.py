@@ -79,7 +79,7 @@ def weight_quantize(
         out (Tensor): The Tensor which is the quantitative results, the data type is int8, the shape is transposition of x.
         scale (Tensor): The scale Tensor which is the scale of pre-channel, the data type is float32.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('No testing required')
             >>> import paddle
@@ -89,9 +89,9 @@ def weight_quantize(
             >>> x = paddle.rand(shape=[64, 32], dtype=paddle.float16)
             >>> out, scale = weight_quantize(x, algo='weight_only_int8')
             >>> print(out.shape)
-            [32, 64]
+            paddle.Size([32, 64])
             >>> print(scale.shape)
-            [32]
+            paddle.Size([32])
     """
     if arch is None:
         arch = _get_arch_info()
@@ -211,7 +211,7 @@ def weight_only_linear(
         Tensor: the output Tensor, the data type is the same as that of x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('No testing required')
             >>> import paddle
@@ -222,9 +222,15 @@ def weight_only_linear(
             >>> scale = paddle.randn([32], dtype='float32')
             >>> bias = paddle.cast(paddle.randn([32]), dtype='float16')
             >>> if paddle.device.cuda.get_device_capability()[0] >= 8:
-            ...    out = weight_only_linear(x, weight, bias=bias, weight_scale=scale, weight_dtype='int8')
-            ...    print(out.shape)
-            [1, 2, 32]
+            ...     out = weight_only_linear(
+            ...         x,
+            ...         weight,
+            ...         bias=bias,
+            ...         weight_scale=scale,
+            ...         weight_dtype='int8',
+            ...     )
+            ...     print(out.shape)
+            paddle.Size([1, 2, 32])
     """
     if arch is None:
         arch = _get_arch_info()
@@ -304,7 +310,7 @@ def llm_int8_linear(
         Tensor: the output Tensor, the data type is the same as that of x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('No testing required')
             >>> import paddle
@@ -315,9 +321,9 @@ def llm_int8_linear(
             >>> scale = paddle.randn([32], dtype='float32')
             >>> bias = paddle.cast(paddle.randn([32]), dtype='float16')
             >>> if paddle.device.cuda.get_device_capability()[0] >= 8:
-            ...    out = llm_int8_linear(x, weight, bias=bias, weight_scale=scale, threshold=6.0)
-            ...    print(out.shape)
-            [1, 2, 32]
+            ...     out = llm_int8_linear(x, weight, bias=bias, weight_scale=scale, threshold=6.0)
+            ...     print(out.shape)
+            paddle.Size([1, 2, 32])
     """
     if in_dynamic_or_pir_mode():
         out = _C_ops.llm_int8_linear(x, weight, bias, weight_scale, threshold)

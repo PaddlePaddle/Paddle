@@ -51,13 +51,12 @@ struct EmbeddingCPUSparseFunctor {
       if (padding_idx_ != kNoPadding && ids[i] == padding_idx_) {
         memset(output + i * row_width, 0, row_width * sizeof(T));
       } else {
-        PADDLE_ENFORCE_GE(
-            ids[i],
-            0,
-            common::errors::InvalidArgument(
-                "Variable value (input) of OP(fluid.layers.embedding) "
-                "expected >= 0. But received %ld",
-                ids[i]));
+        PADDLE_ENFORCE_GE(ids[i],
+                          0,
+                          common::errors::InvalidArgument(
+                              "Variable value (input) of OP(embedding) "
+                              "expected >= 0. But received %ld",
+                              ids[i]));
         auto id_index = table_t.Index(ids[i]);
         PADDLE_ENFORCE_GE(
             id_index,

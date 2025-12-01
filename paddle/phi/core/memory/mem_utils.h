@@ -17,12 +17,16 @@
 #include <list>
 #include <map>
 #include <set>
+#include <vector>
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
+#include "paddle/phi/core/memory/allocation/vmm_ipc_allocation.h"
 
 namespace paddle {
-namespace memory::allocation {
+
+namespace memory {
+namespace allocation {
 
 struct BlockAllocation;
 struct Block {
@@ -36,6 +40,7 @@ struct Block {
   size_t size_;
   bool is_free_;
   BlockAllocation* allocation_;
+  std::vector<BlockPart> parts_;
 };
 
 struct BlockAllocation : public Allocation {
@@ -46,10 +51,10 @@ struct BlockAllocation : public Allocation {
   }
   std::list<Block>::iterator block_it_;
 };
-}  // namespace memory::allocation
+}  // namespace allocation
 
-namespace memory {
 using allocation::Block;
+using allocation::BlockAllocation;
 /*!
  * Author: liujinnan
  * Note: MemoryCompactionStrategy is an abstract class that defines the

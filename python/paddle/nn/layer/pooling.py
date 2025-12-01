@@ -91,7 +91,7 @@ class AvgPool1D(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -100,7 +100,7 @@ class AvgPool1D(Layer):
             >>> AvgPool1D = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
             >>> pool_out = AvgPool1D(data)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
 
     """
 
@@ -204,7 +204,7 @@ class AvgPool2D(Layer):
         A callable object of AvgPool2D.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -214,7 +214,7 @@ class AvgPool2D(Layer):
             >>> AvgPool2D = nn.AvgPool2D(kernel_size=2, stride=2, padding=0)
             >>> output = AvgPool2D(input)
             >>> print(output.shape)
-            [1, 3, 16, 16]
+            paddle.Size([1, 3, 16, 16])
 
     """
 
@@ -314,7 +314,7 @@ class AvgPool3D(Layer):
           The data type is same as input x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -324,7 +324,7 @@ class AvgPool3D(Layer):
             >>> AvgPool3D = nn.AvgPool3D(kernel_size=2, stride=2, padding=0)
             >>> output = AvgPool3D(input)
             >>> print(output.shape)
-            [1, 2, 1, 16, 16]
+            paddle.Size([1, 2, 1, 16, 16])
 
     """
 
@@ -424,7 +424,7 @@ class LPPool1D(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -433,7 +433,7 @@ class LPPool1D(Layer):
             >>> LPPool1D = nn.LPPool1D(norm_type=2, kernel_size=2, stride=2, padding=0)
             >>> pool_out = LPPool1D(data)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
 
     """
 
@@ -540,7 +540,7 @@ class LPPool2D(Layer):
         A callable object of LPPool2D.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -550,7 +550,7 @@ class LPPool2D(Layer):
             >>> LPPool2D = nn.LPPool2D(norm_type=2, kernel_size=2, stride=2, padding=0)
             >>> output = LPPool2D(input)
             >>> print(output.shape)
-            [1, 3, 16, 16]
+            paddle.Size([1, 3, 16, 16])
 
     """
 
@@ -645,7 +645,7 @@ class MaxPool1D(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -654,14 +654,14 @@ class MaxPool1D(Layer):
             >>> MaxPool1D = nn.MaxPool1D(kernel_size=2, stride=2, padding=0)
             >>> pool_out = MaxPool1D(data)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
 
             >>> MaxPool1D = nn.MaxPool1D(kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> pool_out, indices = MaxPool1D(data)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
             >>> print(indices.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
 
     """
 
@@ -761,7 +761,7 @@ class MaxPool2D(Layer):
           The data type is same as input x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -771,15 +771,15 @@ class MaxPool2D(Layer):
             >>> MaxPool2D = nn.MaxPool2D(kernel_size=2, stride=2, padding=0)
             >>> output = MaxPool2D(input)
             >>> print(output.shape)
-            [1, 3, 16, 16]
+            paddle.Size([1, 3, 16, 16])
 
             >>> # for return_mask=True
             >>> MaxPool2D = nn.MaxPool2D(kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> output, max_indices = MaxPool2D(input)
             >>> print(output.shape)
-            [1, 3, 16, 16]
+            paddle.Size([1, 3, 16, 16])
             >>> print(max_indices.shape)
-            [1, 3, 16, 16]
+            paddle.Size([1, 3, 16, 16])
     """
 
     kernel_size: Size2
@@ -869,7 +869,7 @@ class MaxPool3D(Layer):
           The data type is same as input x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -879,15 +879,15 @@ class MaxPool3D(Layer):
             >>> MaxPool3D = nn.MaxPool3D(kernel_size=2, stride=2, padding=0)
             >>> output = MaxPool3D(input)
             >>> print(output.shape)
-            [1, 2, 1, 16, 16]
+            paddle.Size([1, 2, 1, 16, 16])
 
             >>> # for return_mask=True
             >>> MaxPool3D = nn.MaxPool3D(kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> output, max_indices = MaxPool3D(input)
             >>> print(output.shape)
-            [1, 2, 1, 16, 16]
+            paddle.Size([1, 2, 1, 16, 16])
             >>> print(max_indices.shape)
-            [1, 2, 1, 16, 16]
+            paddle.Size([1, 2, 1, 16, 16])
     """
 
     kernel_size: Size3
@@ -962,7 +962,7 @@ class AdaptiveAvgPool1D(Layer):
         A callable object for computing 1D adaptive average pooling.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # average adaptive pool1d
             >>> # suppose input data in shape of [N, C, L], `output_size` is m or [m],
@@ -983,7 +983,7 @@ class AdaptiveAvgPool1D(Layer):
             >>> AdaptiveAvgPool1D = nn.AdaptiveAvgPool1D(output_size=16)
             >>> pool_out = AdaptiveAvgPool1D(data)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
     """
 
     output_size: int
@@ -1042,7 +1042,7 @@ class AdaptiveAvgPool2D(Layer):
         A callable object of AdaptiveAvgPool2D.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # adaptive avg pool2d
             >>> # suppose input data in shape of [N, C, H, W], `output_size` is [m, n],
@@ -1064,9 +1064,9 @@ class AdaptiveAvgPool2D(Layer):
             >>> x = paddle.rand([2, 3, 32, 32])
 
             >>> adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(output_size=3)
-            >>> pool_out = adaptive_avg_pool(x = x)
+            >>> pool_out = adaptive_avg_pool(x=x)
             >>> print(pool_out.shape)
-            [2, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3])
     """
 
     def __init__(
@@ -1146,7 +1146,7 @@ class AdaptiveAvgPool3D(Layer):
         A callable object of AdaptiveAvgPool3D.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # adaptive avg pool3d
             >>> # suppose input data in shape of [N, C, D, H, W], `output_size` is [l, m, n],
@@ -1171,9 +1171,9 @@ class AdaptiveAvgPool3D(Layer):
             >>> x = paddle.rand([2, 3, 8, 32, 32])
 
             >>> adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3D(output_size=3)
-            >>> pool_out = adaptive_avg_pool(x = x)
+            >>> pool_out = adaptive_avg_pool(x=x)
             >>> print(pool_out.shape)
-            [2, 3, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3, 3])
     """
 
     def __init__(
@@ -1243,7 +1243,7 @@ class AdaptiveMaxPool1D(Layer):
           The data type is same as input x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # max adaptive pool1d
             >>> # suppose input data in shape of [N, C, L], `output_size` is m or [m],
@@ -1264,15 +1264,15 @@ class AdaptiveMaxPool1D(Layer):
             >>> AdaptiveMaxPool1D = nn.AdaptiveMaxPool1D(output_size=16)
             >>> pool_out = AdaptiveMaxPool1D(data)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
 
             >>> # for return_mask = true
             >>> AdaptiveMaxPool1D = nn.AdaptiveMaxPool1D(output_size=16, return_mask=True)
             >>> pool_out, indices = AdaptiveMaxPool1D(data)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
             >>> print(indices.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
 
     """
 
@@ -1346,7 +1346,7 @@ class AdaptiveMaxPool2D(Layer):
     Returns:
         A callable object of AdaptiveMaxPool2D.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # adaptive max pool2d
             >>> # suppose input data in shape of [N, C, H, W], `output_size` is [m, n],
@@ -1368,11 +1368,11 @@ class AdaptiveMaxPool2D(Layer):
             >>> x = paddle.rand([2, 3, 32, 32])
 
             >>> adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=3, return_mask=True)
-            >>> pool_out, indices = adaptive_max_pool(x = x)
+            >>> pool_out, indices = adaptive_max_pool(x=x)
             >>> print(pool_out.shape)
-            [2, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3])
             >>> print(indices.shape)
-            [2, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3])
     """
 
     @param_one_alias(["return_mask", "return_indices"])
@@ -1451,7 +1451,7 @@ class AdaptiveMaxPool3D(Layer):
     Returns:
         A callable object of AdaptiveMaxPool3D.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # adaptive max pool3d
             >>> # suppose input data in shape of [N, C, D, H, W], `output_size` is [l, m, n],
@@ -1477,13 +1477,13 @@ class AdaptiveMaxPool3D(Layer):
             >>> pool = paddle.nn.AdaptiveMaxPool3D(output_size=4)
             >>> out = pool(x)
             >>> print(out.shape)
-            [2, 3, 4, 4, 4]
+            paddle.Size([2, 3, 4, 4, 4])
             >>> pool = paddle.nn.AdaptiveMaxPool3D(output_size=3, return_mask=True)
             >>> out, indices = pool(x)
             >>> print(out.shape)
-            [2, 3, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3, 3])
             >>> print(indices.shape)
-            [2, 3, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3, 3])
 
     """
 
@@ -1559,7 +1559,7 @@ class MaxUnPool1D(Layer):
         A callable object of MaxUnPool1D.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1567,13 +1567,13 @@ class MaxUnPool1D(Layer):
             >>> data = paddle.rand(shape=[1, 3, 16])
             >>> pool_out, indices = F.max_pool1d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> print(pool_out.shape)
-            [1, 3, 8]
+            paddle.Size([1, 3, 8])
             >>> print(indices.shape)
-            [1, 3, 8]
+            paddle.Size([1, 3, 8])
             >>> Unpool1D = paddle.nn.MaxUnPool1D(kernel_size=2, padding=0)
             >>> unpool_out = Unpool1D(pool_out, indices)
             >>> print(unpool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
 
     """
 
@@ -1676,7 +1676,7 @@ class MaxUnPool2D(Layer):
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1684,13 +1684,13 @@ class MaxUnPool2D(Layer):
             >>> data = paddle.rand(shape=[1, 1, 6, 6])
             >>> pool_out, indices = F.max_pool2d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> print(pool_out.shape)
-            [1, 1, 3, 3]
+            paddle.Size([1, 1, 3, 3])
             >>> print(indices.shape)
-            [1, 1, 3, 3]
+            paddle.Size([1, 1, 3, 3])
             >>> Unpool2D = paddle.nn.MaxUnPool2D(kernel_size=2, padding=0)
             >>> unpool_out = Unpool2D(pool_out, indices)
             >>> print(unpool_out.shape)
-            [1, 1, 6, 6]
+            paddle.Size([1, 1, 6, 6])
 
     """
 
@@ -1794,7 +1794,7 @@ class MaxUnPool3D(Layer):
         A callable object of MaxUnPool3D.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1802,13 +1802,13 @@ class MaxUnPool3D(Layer):
             >>> data = paddle.rand(shape=[1, 1, 4, 4, 6])
             >>> pool_out, indices = F.max_pool3d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> print(pool_out.shape)
-            [1, 1, 2, 2, 3]
+            paddle.Size([1, 1, 2, 2, 3])
             >>> print(indices.shape)
-            [1, 1, 2, 2, 3]
+            paddle.Size([1, 1, 2, 2, 3])
             >>> Unpool3D = paddle.nn.MaxUnPool3D(kernel_size=2, padding=0)
             >>> unpool_out = Unpool3D(pool_out, indices)
             >>> print(unpool_out.shape)
-            [1, 1, 4, 4, 6]
+            paddle.Size([1, 1, 4, 4, 6])
 
     """
 
@@ -1920,7 +1920,7 @@ class FractionalMaxPool2D(Layer):
         A callable object of FractionalMaxPool2D.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # fractional max pool2d
             >>> # suppose input data in shape of [N, C, H, W], `output_size` is [m, n],
@@ -1936,20 +1936,20 @@ class FractionalMaxPool2D(Layer):
             >>> fractional_max_pool = paddle.nn.FractionalMaxPool2D(output_size=3)
             >>> pool_out = fractional_max_pool(x=x)
             >>> print(pool_out.shape)
-            [2, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3])
 
             >>> # overlapping: with `kernel_size`
             >>> fractional_max_pool = paddle.nn.FractionalMaxPool2D(kernel_size=2, output_size=3)
             >>> pool_out = fractional_max_pool(x=x)
             >>> print(pool_out.shape)
-            [2, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3])
 
             >>> fractional_max_pool = paddle.nn.FractionalMaxPool2D(output_size=[2, 3], return_mask=True)
             >>> pool_out, indices = fractional_max_pool(x=x)
             >>> print(pool_out.shape)
-            [2, 3, 2, 3]
+            paddle.Size([2, 3, 2, 3])
             >>> print(indices.shape)
-            [2, 3, 2, 3]
+            paddle.Size([2, 3, 2, 3])
     """
 
     def __init__(
@@ -2036,7 +2036,7 @@ class FractionalMaxPool3D(Layer):
         A callable object of FractionalMaxPool3D.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # fractional max pool3d
             >>> # suppose input data in shape of [N, C, D, H, W], `output_size` is [l, m, n],
@@ -2052,20 +2052,20 @@ class FractionalMaxPool3D(Layer):
             >>> fractional_max_pool = paddle.nn.FractionalMaxPool3D(output_size=3)
             >>> pool_out = fractional_max_pool(x=x)
             >>> print(pool_out.shape)
-            [2, 3, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3, 3])
 
             >>> # overlapping: with `kernel_size`
             >>> fractional_max_pool = paddle.nn.FractionalMaxPool3D(kernel_size=2, output_size=3)
             >>> pool_out = fractional_max_pool(x=x)
             >>> print(pool_out.shape)
-            [2, 3, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3, 3])
 
             >>> fractional_max_pool = paddle.nn.FractionalMaxPool3D(output_size=[2, 3, 3], return_mask=True)
             >>> pool_out, indices = fractional_max_pool(x=x)
             >>> print(pool_out.shape)
-            [2, 3, 2, 3, 3]
+            paddle.Size([2, 3, 2, 3, 3])
             >>> print(indices.shape)
-            [2, 3, 2, 3, 3]
+            paddle.Size([2, 3, 2, 3, 3])
     """
 
     def __init__(

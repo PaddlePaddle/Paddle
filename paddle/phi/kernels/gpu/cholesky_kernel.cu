@@ -177,8 +177,7 @@ void CholeskyKernel(const Context& dev_ctx,
     batch_count *= dims[i];
   }
   int64_t m = dims[dims.size() - 1];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int64_t tensor_size = batch_count * static_cast<int64_t>(m) * m;
 
