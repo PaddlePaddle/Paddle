@@ -41,3 +41,28 @@ op_patches:
       - action : modify_attr
         object : seed
         type : pir::Int64Attribute
+  - op_name : pd_op.bicubic_interp
+    actions:
+      - action : modify_attr
+        object : scale
+        type : pir::ArrayAttribute<pir::DoubleAttribute>
+  - op_name : pd_op.nearest_interp
+    actions:
+      - action : modify_attr
+        object : scale
+        type : pir::ArrayAttribute<pir::DoubleAttribute>
+  - op_name : pd_op.linear_interp
+    actions:
+      - action : modify_attr
+        object : scale
+        type : pir::ArrayAttribute<pir::DoubleAttribute>
+  - op_name : pd_op.bilinear_interp
+    actions:
+      - action : modify_attr
+        object : scale
+        type : pir::ArrayAttribute<pir::DoubleAttribute>
+  - op_name : pd_op.trilinear_interp
+    actions:
+      - action : modify_attr
+        object : scale
+        type : pir::ArrayAttribute<pir::DoubleAttribute>

@@ -13,14 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/viterbi_decode_kernel.h"
-
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
+#include "paddle/phi/kernels/funcs/cub.h"
 #ifdef PADDLE_WITH_MKLML
 #include <omp.h>
 #endif

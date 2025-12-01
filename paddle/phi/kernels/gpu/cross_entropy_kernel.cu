@@ -746,7 +746,7 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
     int kWarpSize = (kDimCeil < 32) ? kDimCeil : 32;
     int batches_per_warp = (kDimCeil <= 128) ? 2 : 1;
 
-    // use 128 threads per block to maximimize gpu utilization
+    // use 128 threads per block to maximize gpu utilization
     constexpr int threads_per_block = 128;
     int warps_per_block = (threads_per_block / kWarpSize);
     int batches_per_block = warps_per_block * batches_per_warp;
@@ -769,7 +769,7 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
   } else {
     ScopedTensorDescriptor desc;
     std::vector<int> tensor_dims = {N, dim, D, 1};
-    GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
+    DataLayout layout = DataLayout::kNCHW;
 #ifdef PADDLE_WITH_HIP
     miopenTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
     auto handle = dev_ctx.cudnn_handle();
@@ -1195,7 +1195,7 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
     auto* softmax_data = softmax->data<T>();
     ScopedTensorDescriptor desc;
     std::vector<int> tensor_dims = {N, dim, D, 1};
-    GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
+    DataLayout layout = DataLayout::kNCHW;
 
 #ifdef PADDLE_WITH_HIP
     miopenTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);

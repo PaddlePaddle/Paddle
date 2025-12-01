@@ -57,6 +57,7 @@ static inline bool IsVoltaOrLater(const phi::GPUContext& dev_ctx) {
 //   return CUDNN_TENSOR_NCHW;
 // }
 
+/*
 static inline void GetNCDHW(const DDim& dims,
                             const phi::DataLayout& layout,
                             int* N,
@@ -77,6 +78,7 @@ static inline void GetNCDHW(const DDim& dims,
     *W = dims[3 - i];
   }
 }
+*/
 
 }  // namespace phi
 
