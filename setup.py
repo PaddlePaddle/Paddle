@@ -2577,6 +2577,9 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
     python_dependencies_module = []
     installed_packages = []
 
+    def normalize_package_name(package_name: str) -> str:
+        return package_name.replace("_", "-").lower()
+
     def eval_marker(marker_str):
         """Simple evaluation of PEP 508 environment markers."""
         if not marker_str:
@@ -2639,14 +2642,15 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
             r"==.*|>=.*|<=.*|~=.*|!=.*", '', dependency_spec
         ).strip()
 
-        # Normalize package name (remove _ and -)
-        python_dependencies_module.append(re.sub("_|-", '', dependency_name))
+        python_dependencies_module.append(
+            normalize_package_name(dependency_name)
+        )
 
     reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
 
     for r in reqs.split():
         installed_packages.append(
-            re.sub("_|-", '', r.decode().split('==')[0]).lower()
+            normalize_package_name(r.decode().split('==')[0])
         )
 
     for dependency in python_dependencies_module:
