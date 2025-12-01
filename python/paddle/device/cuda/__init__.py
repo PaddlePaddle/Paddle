@@ -946,6 +946,7 @@ def allocate_record_plot(
     MemoryAnalysisTool.allocate_record_plot(data, updated_save_path)
 
 
+@signature_safe_contextmanager
 def allocate_record_guard(flag: bool) -> NoReturn:
     '''
     Notes:
