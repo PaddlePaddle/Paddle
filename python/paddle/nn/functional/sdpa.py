@@ -423,7 +423,7 @@ def scaled_dot_product_attention(
     training: bool = True,
     backend: str | None = None,
     scale: float | None = None,
-    enable_gqa: bool = False,
+    enable_gqa: bool = True,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -480,7 +480,7 @@ def scaled_dot_product_attention(
                         Currently only support "p2p" for distribution usage.
         scale(float, optional): The scaling factor used in the calculation of attention weights.
                         If None, scale = 1 / sqrt(head_dim).
-        enable_gqa(bool, optional): Whether enable GQA(Generic Query Attention) mode.
+        enable_gqa(bool, optional): Whether enable GQA(Generic Query Attention) mode. Default is True.
         name(str|None, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
@@ -533,7 +533,11 @@ def scaled_dot_product_attention(
                 key.flatten(2, 3).contiguous(),
                 value.flatten(2, 3).contiguous(),
             )
-
+    else:
+        assert q_heads == k_heads == v_heads, (
+            f"The number of groups in query({q_heads}) must be equal to the number of groups in key({k_heads}) "
+            f"and the number of groups in value({v_heads}) if GQA disabled."
+        )
     bs, seq_len_q, num_heads_q, head_dim_q = query.shape
     _, seq_len_k, num_heads_k, head_dim_k = key.shape
 
