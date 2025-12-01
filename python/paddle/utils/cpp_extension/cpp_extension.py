@@ -26,7 +26,7 @@ import setuptools
 import sys
 import paddle
 import site
-from setuptools.errors import LinkError, ExecError
+from setuptools._distutils.errors import LinkError, DistutilsExecError
 
 from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
@@ -626,7 +626,7 @@ class BuildExtension(build_ext):
             # Execute
             try:
                 self.spawn(cmd)
-            except ExecError as msg:
+            except DistutilsExecError as msg:
                 raise LinkError(msg)
 
             # Add dlink object to objects
