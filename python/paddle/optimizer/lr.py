@@ -553,7 +553,7 @@ class NaturalExpDecay(LRScheduler):
             ...         loss.backward()
             ...         sgd.step()
             ...         sgd.clear_grad()
-            ...         scheduler.step()    # If you update learning rate each step
+            ...         scheduler.step()  # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
 
         .. code-block:: pycon
@@ -573,19 +573,16 @@ class NaturalExpDecay(LRScheduler):
             ...     scheduler = paddle.optimizer.lr.NaturalExpDecay(learning_rate=0.5, gamma=0.1, verbose=True)
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
-            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(start_prog)
             >>> for epoch in range(20):
             ...     for batch_id in range(5):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={
-            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
-            ...                 'y': np.random.randn(3, 4, 5).astype('float32')
-            ...             },
-            ...             fetch_list=[loss])
-            ...         scheduler.step()    # If you update learning rate each step
+            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             fetch_list=[loss],
+            ...         )
+            ...         scheduler.step()  # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
     """
 
@@ -650,7 +647,7 @@ class InverseTimeDecay(LRScheduler):
             ...         loss.backward()
             ...         sgd.step()
             ...         sgd.clear_grad()
-            ...         scheduler.step()    # If you update learning rate each step
+            ...         scheduler.step()  # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
 
         .. code-block:: pycon
@@ -670,21 +667,17 @@ class InverseTimeDecay(LRScheduler):
             ...     scheduler = paddle.optimizer.lr.InverseTimeDecay(learning_rate=0.5, gamma=0.1, verbose=True)
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
-            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(start_prog)
             >>> for epoch in range(20):
             ...     for batch_id in range(5):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={
-            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
-            ...                 'y': np.random.randn(3, 4, 5).astype('float32')
-            ...             },
-            ...             fetch_list=[loss])
-            ...         scheduler.step()    # If you update learning rate each step
+            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             fetch_list=[loss],
+            ...         )
+            ...         scheduler.step()  # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ...
     """
 
     gamma: float
@@ -761,7 +754,7 @@ class PolynomialDecay(LRScheduler):
             ...         loss.backward()
             ...         sgd.step()
             ...         sgd.clear_grad()
-            ...         scheduler.step()    # If you update learning rate each step
+            ...         scheduler.step()  # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
 
         .. code-block:: pycon
@@ -781,19 +774,16 @@ class PolynomialDecay(LRScheduler):
             ...     scheduler = paddle.optimizer.lr.PolynomialDecay(learning_rate=0.5, decay_steps=20, verbose=True)
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
-            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(start_prog)
             >>> for epoch in range(20):
             ...     for batch_id in range(5):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={
-            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
-            ...                 'y': np.random.randn(3, 4, 5).astype('float32')
-            ...             },
-            ...             fetch_list=[loss])
-            ...         scheduler.step()    # If you update learning rate each step
+            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             fetch_list=[loss],
+            ...         )
+            ...         scheduler.step()  # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
     """
 
@@ -1040,7 +1030,7 @@ class ExponentialDecay(LRScheduler):
             ...         loss.backward()
             ...         sgd.step()
             ...         sgd.clear_grad()
-            ...         scheduler.step()    # If you update learning rate each step
+            ...         scheduler.step()  # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
 
         .. code-block:: pycon
@@ -1060,19 +1050,16 @@ class ExponentialDecay(LRScheduler):
             ...     scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=0.5, gamma=0.9, verbose=True)
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
-            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(start_prog)
             >>> for epoch in range(20):
             ...     for batch_id in range(5):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={
-            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
-            ...                 'y': np.random.randn(3, 4, 5).astype('float32')
-            ...             },
-            ...             fetch_list=loss.name)
-            ...         scheduler.step()    # If you update learning rate each step
+            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             fetch_list=[loss],
+            ...         )
+            ...         scheduler.step()  # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
     """
 
@@ -1267,7 +1254,7 @@ class StepDecay(LRScheduler):
             ...         loss.backward()
             ...         sgd.step()
             ...         sgd.clear_grad()
-            ...         scheduler.step()    # If you update learning rate each step
+            ...         scheduler.step()  # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
 
         .. code-block:: pycon
@@ -1287,19 +1274,16 @@ class StepDecay(LRScheduler):
             ...     scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.5, step_size=5, gamma=0.8, verbose=True)
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
-            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(start_prog)
             >>> for epoch in range(20):
             ...     for batch_id in range(5):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={
-            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
-            ...                 'y': np.random.randn(3, 4, 5).astype('float32')
-            ...             },
-            ...             fetch_list=[loss])
-            ...         scheduler.step()    # If you update learning rate each step
+            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             fetch_list=[loss],
+            ...         )
+            ...         scheduler.step()  # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
     """
 
