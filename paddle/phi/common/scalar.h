@@ -101,7 +101,7 @@ class ScalarBase {
     data_.c128 = val;
   }
 
-  // The compatible method for fliud operators,
+  // The compatible method for fluid operators,
   // and it will be removed in the future.
   explicit ScalarBase(const std::string& str_value)
       : dtype_(DataType::FLOAT64) {

@@ -18,6 +18,8 @@
 
 #pragma once
 #include <ATen/Device.h>
+#include <ATen/ops/arange.h>
+#include <ATen/ops/empty_strided.h>
 #include <c10/util/Exception.h>
 #include <torch/types.h>
 

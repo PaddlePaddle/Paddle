@@ -42,7 +42,7 @@ class IR_API Parameter {
     data_ = malloc(param.size_);
     PADDLE_ENFORCE_NOT_NULL(
         data_,
-        phi::errors::ResourceExhausted(
+        common::errors::ResourceExhausted(
             "Failed to allocate memory for Parameter::data_, "
             "requested size = %zu bytes.",
             param.size_));
@@ -55,7 +55,7 @@ class IR_API Parameter {
     data_ = malloc(param.size_);
     PADDLE_ENFORCE_NOT_NULL(
         data_,
-        phi::errors::ResourceExhausted(
+        common::errors::ResourceExhausted(
             "Failed to allocate memory for Parameter::data_, "
             "requested size = %zu bytes.",
             param.size_));

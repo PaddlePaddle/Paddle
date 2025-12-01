@@ -76,7 +76,7 @@ using EnableIfNonInteger =
     PADDLE_ENFORCE_EQ(                                                       \
         0,                                                                   \
         1,                                                                   \
-        phi::errors::InvalidArgument(                                        \
+        common::errors::InvalidArgument(                                     \
             "Integer type '%s' is not allowed to have stop_gradient=False.", \
             dtype_name.c_str()));                                            \
   }

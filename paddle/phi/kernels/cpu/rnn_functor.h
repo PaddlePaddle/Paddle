@@ -215,8 +215,12 @@ void AllocateReserveData(const Context& dev_ctx,
                          DenseTensor* hidden_data,
                          const DenseTensor* input) {
   int direction_num = is_bidirec ? 2 : 1;
-  int time_step = input->dims()[0];
-  int batch_size = input->dims()[1];
+  // TODO(large-tensor): downstream functors may still use int
+  int64_t time_step = input->dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int
+  int64_t batch_size = input->dims()[1];
+
   int block_size = direction_num * time_step * batch_size * hidden_size;
   int hidden_data_idx = (num_layers - 1);
   if (is_lstm(mode)) {

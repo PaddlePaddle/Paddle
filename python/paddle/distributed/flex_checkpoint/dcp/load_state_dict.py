@@ -716,7 +716,7 @@ def _handle_aoa(
     src_desc_to_postprocess_list = {}
     force_gc = []
 
-    for param_name, tgt_shard in load_dict.items():
+    for param_name, tgt_shard in sorted(load_dict.items()):
         tgt_desc = build_shard_desc(tgt_shard)
         shard_mappings = aoa_engine.find_shard_sources(tgt_desc)
         for mapping in shard_mappings:

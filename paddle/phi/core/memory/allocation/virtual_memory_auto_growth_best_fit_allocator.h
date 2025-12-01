@@ -16,18 +16,21 @@
 
 #include <list>
 #include <map>
+#include <memory>
 #include <optional>
 #include <set>
+#include <vector>
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
+#include "paddle/phi/core/memory/allocation/vmm_ipc_allocation.h"
 #include "paddle/phi/core/memory/mem_utils.h"
 #include "paddle/phi/core/memory/mem_visitor.h"
 
 namespace paddle {
 namespace memory {
-namespace allocation {
 
+namespace allocation {
 /**
  * Like AutoGrowthBestFitAllocator, VirtualMemoryAutoGrowthBestFitAllocator will
  * gradually apply to GPU for video memory as the model uses more video memory.
@@ -37,6 +40,7 @@ namespace allocation {
  * the two video memories later. This combination can greatly reduce
  * fragmentation.
  */
+
 class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
  public:
   VirtualMemoryAutoGrowthBestFitAllocator(
@@ -63,6 +67,8 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   // Try to simulate an allocation, simulating a request for vector<size>.
 
   bool TryAllocateBatch(const std::vector<size_t> &sizes);
+
+  bool CollectTensorParts(void *ptr, std::vector<BlockPart> *parts);
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;

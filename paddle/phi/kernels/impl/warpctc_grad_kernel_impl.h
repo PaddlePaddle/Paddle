@@ -39,9 +39,9 @@ void WarpctcGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(logits_grad);
 
   if (logits_length.is_initialized()) {
-    int max_seq_length = warpctcgrad.dims()[0];  // Tmax
-    int num_sequences = warpctcgrad.dims()[1];   // B
-    int seq_width = warpctcgrad.dims()[2];       // D
+    int64_t max_seq_length = warpctcgrad.dims()[0];  // Tmax
+    int64_t num_sequences = warpctcgrad.dims()[1];   // B
+    int64_t seq_width = warpctcgrad.dims()[2];       // D
 
     // B
     auto logits_len_e = EigenTensor<int64_t, 1>::From(*logits_length);
@@ -52,8 +52,8 @@ void WarpctcGradKernel(const Context& dev_ctx,
 
     auto logits_grad_e = EigenTensor<T, 3>::From(*logits_grad);
 
-    Eigen::DSizes<int, 3> grad_shape(1, num_sequences, 1);
-    Eigen::DSizes<int, 3> bcast(max_seq_length, 1, seq_width);
+    Eigen::DSizes<int64_t, 3> grad_shape(1, num_sequences, 1);
+    Eigen::DSizes<int64_t, 3> bcast(max_seq_length, 1, seq_width);
     auto logits_g =
         warpctcgrad_e * loss_grad_e.reshape(grad_shape).broadcast(bcast).eval();
 

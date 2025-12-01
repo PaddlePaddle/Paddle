@@ -134,8 +134,12 @@ void TransposeTwoAxis(const DenseTensor& input,
   transposed_input->Resize(input.dims());
   dev_ctx.template Alloc<T>(transposed_input);
 
+#ifdef PADDLE_WITH_XPU
+  phi::TransposeKernel<T, Context>(dev_ctx, input, permute, transposed_input);
+#else
   funcs::TransCompute<Context, T>(
       input.dims().size(), dev_ctx, input, transposed_input, permute);
+#endif
 }
 
 // Apply eig to a batch of matrices, values, vectors and (intermediate
@@ -488,8 +492,14 @@ void ComputeBackwardForComplexInput(const DenseTensor& L,
   // Vh: matrix with shape [m,m]
   // rhs: rhs with shape [m,k]
   // x_grad: out
-  int m = static_cast<int>(Vh.dims(-1));
-  int k = static_cast<int>(rhs.dims(-1));
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t m = Vh.dims(-1);
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t k = rhs.dims(-1);
+
   auto* matrix_data = Vh.data<T>();
   auto* rhs_data = rhs.data<T>();
 

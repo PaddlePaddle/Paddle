@@ -139,7 +139,16 @@ class FusionStorage:
                 self.offset += src_len
 
         self.buffer = paddle.zeros((self.offset,), dtype=self.dtype)
-        self.buffer_ipc_meta = self.buffer.value().get_tensor()._share_cuda()
+        if paddle.get_flags('FLAGS_use_virtual_memory_auto_growth')[
+            'FLAGS_use_virtual_memory_auto_growth'
+        ]:
+            # buffer_ipc_meta: (fd, offset, size, dtype, dims, lod, device)
+            # vmm_meta: (blob: bytes, dtype_idx: int, dims: List[int], lod, device: int)
+            self.buffer_ipc_meta = self.buffer.value().get_tensor()._share_vmm()
+        else:
+            self.buffer_ipc_meta = (
+                self.buffer.value().get_tensor()._share_cuda()
+            )
 
     @imperative_base.no_grad()
     def mapping_tensor(self):
@@ -223,14 +232,26 @@ class FusionStorageHelper:
             or merged_model_params_meta is None
         ), "merged_model_params_meta must be a dict or None"
         self.merged_model_params_meta = merged_model_params_meta
-        assert (
-            isinstance(buffer_ipc_meta, tuple) and len(buffer_ipc_meta) == 7
-        ), "buffer_ipc_meta must be a tuple with length 7"
         self.buffer_ipc_meta = buffer_ipc_meta
 
-        self.buffer = paddle.to_tensor(
-            paddle.base.core.DenseTensor._new_shared_cuda(self.buffer_ipc_meta)
-        )
+        if paddle.get_flags('FLAGS_use_virtual_memory_auto_growth')[
+            'FLAGS_use_virtual_memory_auto_growth'
+        ]:
+            assert (
+                isinstance(buffer_ipc_meta, tuple) and len(buffer_ipc_meta) == 5
+            ), "buffer_ipc_meta must be a tuple with length 5"
+            new_tensor = paddle.base.core.DenseTensor._new_shared_vmm(
+                self.buffer_ipc_meta
+            )
+        else:
+            assert (
+                isinstance(buffer_ipc_meta, tuple) and len(buffer_ipc_meta) == 7
+            ), "buffer_ipc_meta must be a tuple with length 7"
+            new_tensor = paddle.base.core.DenseTensor._new_shared_cuda(
+                self.buffer_ipc_meta
+            )
+
+        self.buffer = paddle.to_tensor(new_tensor)
         self.cpu_buffer = self.buffer.pin_memory()
         self.buffer_length = self.buffer._numel()
 

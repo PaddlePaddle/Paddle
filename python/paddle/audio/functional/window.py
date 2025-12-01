@@ -507,7 +507,7 @@ def hamming_window(
     alpha: float = 0.54,
     beta: float = 0.46,
     *,
-    dtype: str = 'float64',
+    dtype: str = 'float32',
     layout: str | None = None,
     device: PlaceLike | None = None,
     pin_memory: bool = False,
@@ -521,7 +521,7 @@ def hamming_window(
         periodic (bool, optional): If True, returns a window for use as a periodic function; if False, returns a symmetric window. Defaults to True.
         alpha (float, optional): The coefficient α in the equation above. Defaults to 0.54.
         beta (float, optional): The coefficient β in the equation above. Defaults to 0.46.
-        dtype (str, optional): The data type of the returned tensor. Defaults to 'float64'.
+        dtype (str, optional): The data type of the returned tensor. Defaults to 'float32'.
         layout (str, optional): Only included for API consistency with PyTorch; ignored in Paddle. Defaults to None.
         device(PlaceLike|None, optional): The desired device of returned tensor.
             if None, uses the current device for the default tensor type (see paddle.device.set_device()).
@@ -558,7 +558,7 @@ def hann_window(
     window_length: int,
     periodic: bool = True,
     *,
-    dtype: str = 'float64',
+    dtype: str = 'float32',
     layout: str | None = None,
     device: PlaceLike | None = None,
     pin_memory: bool = False,
@@ -570,7 +570,7 @@ def hann_window(
     Args:
         window_length (int): The size of the returned window. Must be positive.
         periodic (bool, optional): If True, returns a window for use as a periodic function; if False, returns a symmetric window. Defaults to True.
-        dtype (str, optional): The data type of the returned tensor. Defaults to 'float64'.
+        dtype (str, optional): The data type of the returned tensor. Defaults to 'float32'.
         layout (str, optional): Only included for API consistency with PyTorch; ignored in Paddle. Defaults to None.
         device(PlaceLike|None, optional): The desired device of returned tensor.
             if None, uses the current device for the default tensor type (see paddle.device.set_device()).
@@ -604,7 +604,7 @@ def kaiser_window(
     periodic: bool = True,
     beta: float = 12.0,
     *,
-    dtype: str = 'float64',
+    dtype: str = 'float32',
     layout: str | None = None,
     device: PlaceLike | None = None,
     pin_memory: bool = False,
@@ -617,7 +617,7 @@ def kaiser_window(
         window_length (int): The size of the returned window. Must be positive.
         periodic (bool, optional): If True, returns a window for use as a periodic function; if False, returns a symmetric window. Defaults to True.
         beta (float, optional): Shape parameter for the window. Defaults to 12.0.
-        dtype (str, optional): The data type of the returned tensor. Defaults to 'float64'.
+        dtype (str, optional): The data type of the returned tensor. Defaults to 'float32'.
         layout (str, optional): Only included for API consistency with PyTorch; ignored in Paddle. Defaults to None.
         device(PlaceLike|None, optional): The desired device of returned tensor.
             if None, uses the current device for the default tensor type (see paddle.device.set_device()).
@@ -652,7 +652,7 @@ def blackman_window(
     window_length: int,
     periodic: bool = True,
     *,
-    dtype: str = 'float64',
+    dtype: str = 'float32',
     layout: str | None = None,
     device: PlaceLike | None = None,
     pin_memory: bool = False,
@@ -664,7 +664,7 @@ def blackman_window(
     Args:
         window_length (int): The size of the returned window. Must be positive.
         periodic (bool, optional): If True, returns a window for use as a periodic function; if False, returns a symmetric window. Defaults to True.
-        dtype (str, optional): The data type of the returned tensor. Defaults to 'float64'.
+        dtype (str, optional): The data type of the returned tensor. Defaults to 'float32'.
         layout (str, optional): Only included for API consistency with PyTorch; ignored in Paddle. Defaults to None.
         device(PlaceLike|None, optional): The desired device of returned tensor.
             if None, uses the current device for the default tensor type (see paddle.device.set_device()).
@@ -697,7 +697,7 @@ def bartlett_window(
     window_length: int,
     periodic: bool = True,
     *,
-    dtype: str = 'float64',
+    dtype: str = 'float32',
     layout: str | None = None,
     device: PlaceLike | None = None,
     pin_memory: bool = False,
@@ -709,7 +709,7 @@ def bartlett_window(
     Args:
         window_length (int): The size of the returned window. Must be positive.
         periodic (bool, optional): If True, returns a window for use as a periodic function; if False, returns a symmetric window. Defaults to True.
-        dtype (str, optional): The data type of the returned tensor. Defaults to 'float64'.
+        dtype (str, optional): The data type of the returned tensor. Defaults to 'float32'.
         layout (str, optional): Only included for API consistency with PyTorch; ignored in Paddle. Defaults to None.
         device(PlaceLike|None, optional): The desired device of returned tensor.
             if None, uses the current device for the default tensor type (see paddle.device.set_device()).

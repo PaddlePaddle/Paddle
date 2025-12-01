@@ -1059,7 +1059,7 @@ class TestModuleListOperations(unittest.TestCase):
 
     def test_insert(self):
         new_module = nn.Sigmoid()
-        self.module_list1.insert(1, new_module)
+        self.module_list1.insert(1, module=new_module)
 
         self.assertEqual(len(self.module_list1), 3)
         self.assertIs(self.module_list1[0], self.modules1[0])
@@ -1080,7 +1080,7 @@ class TestModuleListOperations(unittest.TestCase):
     def test_append(self):
         new_module = nn.Softmax()
         original_len = len(self.module_list1)
-        result = self.module_list1.append(new_module)
+        result = self.module_list1.append(module=new_module)
 
         self.assertEqual(len(self.module_list1), original_len + 1)
         self.assertIs(self.module_list1[-1], new_module)
@@ -1111,7 +1111,7 @@ class TestModuleListOperations(unittest.TestCase):
     def test_extend(self):
         additional_modules = [nn.Dropout(0.3), nn.Sigmoid()]
         original_len = len(self.module_list1)
-        result = self.module_list1.extend(additional_modules)
+        result = self.module_list1.extend(modules=additional_modules)
 
         self.assertEqual(
             len(self.module_list1), original_len + len(additional_modules)
@@ -1356,7 +1356,7 @@ class TestModuleDictOperations(unittest.TestCase):
 
     def test_update_with_dict(self):
         new_modules = {'bn': nn.BatchNorm2D(16), 'pool': nn.MaxPool2D(2)}
-        self.module_dict.update(new_modules)
+        self.module_dict.update(modules=new_modules)
 
         self.assertEqual(len(self.module_dict), 4)
         self.assertIn('conv', self.module_dict)
