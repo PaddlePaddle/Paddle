@@ -492,7 +492,7 @@ def scaled_dot_product_attention(
                         Currently only support "p2p" for distribution usage.
         scale(float, optional): The scaling factor used in the calculation of attention weights.
                         If None, scale = 1 / sqrt(head_dim).
-        enable_gqa(bool, optional): Whether enable GQA(Generic Query Attention) mode. Default is True.
+        enable_gqa(bool, optional): Whether enable GQA(Group Query Attention) mode. Default is True.
         name(str|None, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
