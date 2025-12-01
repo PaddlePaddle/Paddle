@@ -72,7 +72,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
   const auto bias_ptr = bias.get_ptr();
   const auto& x_dims = y.dims();
   const int C = static_cast<int>(
-      data_layout == DataLayout::kNCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
+      data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
   const int group_size = C / groups;
 
   phi::funcs::SetConstant<CPUContext, T> set_zero;
@@ -107,7 +107,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
   if (bias_ptr) bias_data = bias_ptr->data<T>();
 
   int imsize = 1;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     for (int i = 2; i < x_dims.size(); ++i) {
       imsize *= static_cast<int>(x_dims[i]);
     }
@@ -135,7 +135,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
       auto* iter_d_x_data_backup = iter_d_x_data;
       T dp_scale = 0, dp_bias = 0;
 
-      if (data_layout == DataLayout::kNCHW) {
+      if (data_layout == DataLayout::NCHW) {
         for (int cid = 0; cid < number; cid++) {
           for (int imid = 0; imid < imsize;
                imid++, iter_x_data++, iter_y_data++) {
@@ -221,7 +221,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
         }
       }
     }
-    if (data_layout == DataLayout::kNHWC) {
+    if (data_layout == DataLayout::NHWC) {
       iter_x_data = x_data + (bid + 1) * C * imsize;
       if (d_x_data) {
         iter_d_x_data = d_x_data + (bid + 1) * C * imsize;

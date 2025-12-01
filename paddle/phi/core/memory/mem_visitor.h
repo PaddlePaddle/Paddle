@@ -16,6 +16,9 @@
 #include <cstdint>
 #include <vector>
 #include "paddle/phi/core/enforce.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/core/memory/allocation/vmm_ipc_allocation.h"
+#endif
 
 namespace paddle {
 namespace memory {
@@ -294,6 +297,22 @@ class VMMAllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
    */
   std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
       all_blocks_info_;
+};
+
+class VmmTensorPartsVisitor : public AllocatorVisitor {
+ public:
+  using BlockPart = allocation::BlockPart;
+  explicit VmmTensorPartsVisitor(void* ptr) : target_ptr_(ptr) {}
+
+  void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;
+
+  bool Found() const { return found_; }
+  const std::vector<BlockPart>& Parts() const { return parts_; }
+
+ private:
+  void* target_ptr_{nullptr};
+  bool found_{false};
+  std::vector<BlockPart> parts_;
 };
 #endif
 

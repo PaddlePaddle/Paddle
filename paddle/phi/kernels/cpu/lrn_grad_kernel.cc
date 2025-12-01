@@ -59,7 +59,7 @@ struct LRNGradFunctor<phi::CPUContext, T> {
       for (int64_t i = 0; i < C; i++) {
         auto offsets = Eigen::array<int64_t, 4>({{m, i, 0, 0}});
         auto extents = Eigen::array<int64_t, 4>({{1, 1, H, W}});
-        if (data_layout == DataLayout::kNHWC) {
+        if (data_layout == DataLayout::NHWC) {
           offsets = Eigen::array<int64_t, 4>({{m, 0, 0, i}});
           extents = Eigen::array<int64_t, 4>({{1, H, W, 1}});
         }
@@ -76,7 +76,7 @@ struct LRNGradFunctor<phi::CPUContext, T> {
             continue;
           }
 
-          if (data_layout != DataLayout::kNHWC) {
+          if (data_layout != DataLayout::NHWC) {
             offsets = Eigen::array<int64_t, 4>({{m, ch, 0, 0}});
           } else {
             offsets = Eigen::array<int64_t, 4>({{m, 0, 0, ch}});

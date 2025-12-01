@@ -25,17 +25,11 @@
 
 #include <iostream>
 #include <vector>
-
-#ifdef PADDLE_WITH_CUDA
-#include "cub/cub.cuh"
-#else
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/unique_functor.h"
 #include "paddle/phi/kernels/index_select_kernel.h"
 

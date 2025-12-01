@@ -48,6 +48,9 @@ COMMON_DECLARE_string(curand_dir);
 COMMON_DECLARE_string(cusolver_dir);
 COMMON_DECLARE_string(cusparse_dir);
 COMMON_DECLARE_string(win_cuda_bin_dir);
+#ifdef PADDLE_WITH_MAGMA
+COMMON_DECLARE_string(magma_dir);
+#endif
 
 #ifndef CUDA_LIB_NAME
 #define CUDA_LIB_NAME "libcuda.so"
@@ -1004,6 +1007,13 @@ void* GetLAPACKDsoHandle() {
 #else
   return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.so.3");
 #endif
+}
+
+void* GetMAGMADsoHandle() {
+#if defined(PADDLE_WITH_MAGMA)
+  return GetDsoHandleFromSearchPath(FLAGS_magma_dir, "libmagma.so");
+#endif
+  return nullptr;
 }
 
 void* GetOpDsoHandle(const std::string& dso_name) {
