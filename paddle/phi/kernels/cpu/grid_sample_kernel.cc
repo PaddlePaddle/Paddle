@@ -334,7 +334,7 @@ void GridSampleKernel(const Context& dev_ctx,
 
     out->Resize(common::make_ddim({n, c, out_h, out_w}));
     dev_ctx.template Alloc<T>(out);
-    phi::funcs::SetConstant<Context, T>()(dev_ctx, out, static_cast<T>(0));
+    funcs::SetConstant<Context, T>()(dev_ctx, out, static_cast<T>(0));
 
     DenseTensor grid_x, grid_y;
     CalcGridLocations<T>(dev_ctx,
@@ -363,7 +363,7 @@ void GridSampleKernel(const Context& dev_ctx,
 
     out->Resize(common::make_ddim({n, c, out_d, out_h, out_w}));
     dev_ctx.template Alloc<T>(out);
-    phi::funcs::SetConstant<Context, T>()(dev_ctx, out, static_cast<T>(0));
+    funcs::SetConstant<Context, T>()(dev_ctx, out, static_cast<T>(0));
 
     DenseTensor grid_x, grid_y, grid_z;
     Calc3DGridLocations<T>(dev_ctx,

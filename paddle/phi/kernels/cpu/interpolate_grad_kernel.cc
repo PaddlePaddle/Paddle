@@ -458,7 +458,7 @@ static void Interpolate1DCPUBwd(
   input_grad->Resize(dim_grad);
   dev_ctx.template Alloc<T>(input_grad);
 
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_w == out_w) {
@@ -584,7 +584,7 @@ static void Interpolate2DCPUBwd(
   input_grad->Resize(dim_grad);
   dev_ctx.template Alloc<T>(input_grad);
 
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_h == out_h && in_w == out_w) {
@@ -761,7 +761,7 @@ static void Interpolate3DCPUBwd(
   input_grad->Resize(dim_grad);
   dev_ctx.template Alloc<T>(input_grad);
 
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_d == out_d && in_h == out_h && in_w == out_w) {
