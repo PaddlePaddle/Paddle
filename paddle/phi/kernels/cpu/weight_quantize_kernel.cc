@@ -133,7 +133,7 @@ void quant_compute(const Context& dev_ctx,
       for (int i = 0; i < out->numel(); ++i) {
         out_data[i] = x_int_data[i];
       }
-    } else if ((arch == 90) || (arch == 89) || (arch == 86) || (arch == 80) ||
+    } else if ((arch == 100) || (arch == 90) || (arch == 89) || (arch == 86) || (arch == 80) ||
                (arch == 75)) {
       permute_B_rows_for_mixed_gemm<bits>(
           int_processed_data, x_int_data, std::vector<size_t>{m, n});
