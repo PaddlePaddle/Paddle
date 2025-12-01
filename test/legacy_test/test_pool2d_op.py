@@ -739,7 +739,7 @@ def lp_pool2d_wrapper(
 
 class TestPool2D_Op_Mixin:
     def setUp(self):
-        self.op_type = "pool2d"
+        self.op_type = "max_pool2d_with_dilations"
         self.use_cudnn = False
         self.init_kernel_type()
         self.use_onednn = False
@@ -1849,6 +1849,74 @@ class TestPool2D_Op(TestPool2D_Op_Mixin, OpTest):
 class TestPool2D_Max_Dilation(TestPool2D_Op):
     """Basic NCHW dilation test"""
 
+    def setUp(self):
+        self.op_type = "max_pool2d_with_dilations"
+        self.use_cudnn = False
+        self.init_kernel_type()
+        self.use_onednn = False
+        self.init_data_type()
+        self.init_test_case()
+        self.padding_algorithm = "EXPLICIT"
+        self.init_paddings()
+        self.init_dilations()
+        self.init_global_pool()
+        self.init_kernel_type()
+        self.init_pool_type()
+        self.init_ceil_mode()
+        self.init_exclusive()
+        self.init_adaptive()
+        self.init_data_format()
+        self.init_shape()
+
+        if self.is_bfloat16_op():
+            input = np.random.random(self.shape).astype(np.float32)
+        else:
+            input = np.random.random(self.shape).astype(self.dtype)
+
+        output = pool2D_forward_naive(
+            input,
+            self.ksize,
+            self.strides,
+            self.paddings,
+            self.dilations,
+            self.global_pool,
+            self.ceil_mode,
+            self.exclusive,
+            self.adaptive,
+            self.data_format,
+            self.pool_type,
+            self.padding_algorithm,
+        )
+
+        if self.is_bfloat16_op():
+            output = convert_float_to_uint16(output)
+            self.inputs = {'X': convert_float_to_uint16(input)}
+        else:
+            output = output.astype(self.dtype)
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(input)}
+
+        self.outputs = {'Out': output}
+
+        self.attrs = {
+            'strides': self.strides,
+            'paddings': self.paddings,
+            'dilations': self.dilations,
+            'ksize': self.ksize,
+            'pooling_type': self.pool_type,
+            'global_pooling': self.global_pool,
+            'use_cudnn': self.use_cudnn,
+            'use_onednn': self.use_onednn,
+            'ceil_mode': self.ceil_mode,
+            'data_format': self.data_format,
+            'exclusive': self.exclusive,
+            'adaptive': self.adaptive,
+            "padding_algorithm": self.padding_algorithm,
+        }
+        if self.use_cudnn:
+            self.python_api = pool2d_wrapper_use_cudnn_with_dilations
+        else:
+            self.python_api = pool2d_wrapper_not_use_cudnn_with_dilations
+
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool2D_forward_naive = max_pool2d_with_dilations_forward_naive
@@ -1861,7 +1929,7 @@ class TestPool2D_Max_Dilation(TestPool2D_Op):
         self.strides = [1, 1]
 
     def init_paddings(self):
-        self.paddings = [1, 1]
+        self.paddings = [0, 0]
 
     def init_global_pool(self):
         self.global_pool = False
