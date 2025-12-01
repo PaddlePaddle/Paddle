@@ -12,25 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
+#include "paddle/phi/kernels/gpu/collect_fpn_proposals_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/detection/bbox_util.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
-#include "paddle/phi/kernels/gpu/collect_fpn_proposals_kernel.h"
 #include "paddle/phi/kernels/impl/collect_fpn_proposals_kernel_impl.h"
 #include "paddle/utils/optional.h"
 

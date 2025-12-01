@@ -16,19 +16,12 @@
 
 // CUDA and HIP use same api
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include <algorithm>
 #include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace kps = phi::kps;

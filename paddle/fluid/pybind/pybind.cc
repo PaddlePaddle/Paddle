@@ -126,6 +126,8 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/io.h"
+#include "paddle/fluid/pybind/ir_meta_tensor.h"
+#include "paddle/fluid/pybind/ir_tensor.h"
 #include "paddle/fluid/pybind/jit.h"
 #include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/pir.h"
@@ -207,16 +209,8 @@ limitations under the License. */
 #include "paddle/fluid/pybind/crypto.h"
 #endif
 
-#if defined PADDLE_WITH_PSCORE
-#include "paddle/fluid/pybind/fleet_py.h"
-#endif
-
 #ifdef PADDLE_WITH_CINN
 #include "paddle/fluid/pybind/test.h"
-#endif
-
-#if defined(PADDLE_WITH_RPC)
-#include "paddle/fluid/pybind/rpc.h"
 #endif
 
 #include "paddle/common/flags.h"
@@ -1580,6 +1574,8 @@ PYBIND11_MODULE(libpaddle, m) {
   BindJit(&m);
   BindSot(&m);
   BindCustomDevicePy(&m);
+  BindIrTensor(&m);
+  BindIrMetaTensor(&m);
   BindEagerUtils(m.ptr());
   BindOpFunctionCommon(m.ptr());
 
@@ -1925,6 +1921,11 @@ PYBIND11_MODULE(libpaddle, m) {
 
   m.def("dlpack_exchange_api_ptr", []() -> int64_t {
     return reinterpret_cast<int64_t>(PaddleDLPackExchangeAPI::Instance());
+  });
+
+  m.def("dlpack_exchange_api_pycapsule", []() -> py::capsule {
+    return py::capsule(PaddleDLPackExchangeAPI::Instance(),
+                       "dlpack_exchange_api");
   });
 
   m.def("from_dlpack", [](py::object data) {
@@ -3685,6 +3686,12 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("vmm_all_block_info", [](int device_id) {
     return paddle::memory::AllBlockInfoOfVmmAllocator(phi::GPUPlace(device_id));
   });
+  m.def("get_allocate_record", [](int device_id) {
+    return paddle::memory::GetAllocateEvent(phi::GPUPlace(device_id));
+  });
+  m.def("get_compact_size", [](int device_id) {
+    return paddle::memory::GetCompactSize(phi::GPUPlace(device_id));
+  });
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   m.def(
@@ -4342,14 +4349,6 @@ All parameter, weight, gradient are variables in Paddle.
   });
 #endif
 
-#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
-  BindHeterWrapper(&m);
-  BindMetrics(&m);
-#endif
-#ifdef PADDLE_WITH_HETERPS
-  BindPSGPUWrapper(&m);
-  BindAfsWrapper(&m);
-#endif
   BindGlooWrapper(&m);
   BindBoxHelper(&m);
 #ifdef PADDLE_WITH_BOX_PS
@@ -4373,42 +4372,6 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #ifdef PADDLE_WITH_CRYPTO
   BindCrypto(&m);
-#endif
-
-#if defined PADDLE_WITH_PSCORE
-  BindDistFleetWrapper(&m);
-  BindPSHost(&m);
-  BindCommunicatorContext(&m);
-  BindDistCommunicator(&m);
-  BindHeterClient(&m);
-  BindGraphPyFeatureNode(&m);
-  BindGraphNode(&m);
-  BindGraphPyService(&m);
-  BindGraphPyServer(&m);
-  BindGraphPyClient(&m);
-  BindIndexNode(&m);
-  BindTreeIndex(&m);
-  BindIndexWrapper(&m);
-  BindIndexSampler(&m);
-#ifdef PADDLE_WITH_HETERPS
-  BindNodeQueryResult(&m);
-  BindNeighborSampleQuery(&m);
-  BindNeighborSampleResult(&m);
-  BindGraphGpuWrapper(&m);
-#endif
-#endif
-#if defined(PADDLE_WITH_RPC)
-  BindWorkerInfo(&m);
-  BindFuture(&m);
-  InitAndSetAgentInstance(&m);
-  InvokeRpc(&m);
-  StartWorker(&m);
-  StartClient(&m);
-  StopWorker(&m);
-  GetWorkerInfo(&m);
-  GetWorkerInfoByRank(&m);
-  GetCurrentWorkerInfo(&m);
-  GetAllWorkerInfos(&m);
 #endif
 
   BindPir(&m);

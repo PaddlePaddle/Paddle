@@ -71,6 +71,8 @@ typedef SSIZE_T ssize_t;
 
 COMMON_DECLARE_string(tensor_operants_mode);
 COMMON_DECLARE_bool(check_cuda_error);
+COMMON_DECLARE_bool(enable_unique_name);
+COMMON_DECLARE_string(tensor_md5_checksum_output_path);
 COMMON_DECLARE_bool(enable_compact_mem);
 
 using egr::ConvertAllInputsToDistTensor;
@@ -556,6 +558,13 @@ PyObject* eager_api_run_custom_op(PyObject* self,
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("eager_api_run_custom_op " + op_type + " begin");
   }
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3) || FLAGS_enable_unique_name) {
+    static int64_t call_count = 0;
+    call_count++;
+    unique_api_name =
+        egr::GenerateUniqueApiName("custom_op_" + op_type, call_count);
+  }
   paddle::CustomOpKernelContext ctx;
   auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
   PADDLE_ENFORCE_NE(meta_info_map.find(op_type),
@@ -755,6 +764,18 @@ PyObject* eager_api_run_custom_op(PyObject* self,
           // We can also consider using `autograd_meta` to tolerant nullptr.
           out_tensor->set_autograd_meta(std::make_shared<egr::AutogradMeta>());
         }
+        if (out_tensor) {
+          // Set unique name
+          if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
+            egr::SetTensorName(
+                unique_api_name, "out_" + std::to_string(i), out_tensor);
+          }
+          // Save the tensors checksum to file_path
+          if (!FLAGS_tensor_md5_checksum_output_path.empty()) {
+            egr::SaveTensorMD5CheckSumToFile(
+                FLAGS_tensor_md5_checksum_output_path, *out_tensor);
+          }
+        }
       }
     }
 
@@ -819,6 +840,20 @@ PyObject* eager_api_run_custom_op(PyObject* self,
       const auto& slot_map =
           egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type);
 
+      // Set for Record Subgraph
+      if (egr::EagerBackwardSubGraphNodeRecorder::Instance()
+              .NeedCaptureSubGraph()) {
+        VLOG(3) << "Capture the grad node" << grad_node->name() << "("
+                << grad_node.get() << ")"
+                << "for subgraph.";
+        egr::EagerBackwardSubGraphNodeRecorder::Instance().AddGradNode(
+            grad_node.get());
+      }
+      // Set GradNode name
+      if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
+        // Set GradNodeName
+        grad_node->SetNameFromAPI(unique_api_name);
+      }
       // Prepare Grad outputs
       size_t no_grad_cnt = 0;
       for (size_t i = 0; i < slot_ins_num; i++) {
@@ -880,6 +915,22 @@ PyObject* eager_api_run_custom_op(PyObject* self,
   }
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("eager_api_run_custom_op " + op_type + " finish");
+  }
+  if (VLOG_IS_ON(3) && FLAGS_enable_unique_name) {
+    const char* INPUT_PRINT_TEMPLATE =
+        "\nForward Debug Info {\nAPI_Name: %s \nInput: [%s]  \nOutput: [%s] } ";
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_INPUT_TEMPLATE = " \n( input , %s), ";
+    input_str = paddle::string::Sprintf(
+        TENSOR_INPUT_TEMPLATE,
+        egr::EagerUtils::TensorStr(*ctx.AllMutableInput()));
+    const char* TENSOR_OUT_TEMPLATE = " \n( out, %s), ";
+    output_str = paddle::string::Sprintf(
+        TENSOR_OUT_TEMPLATE,
+        egr::EagerUtils::TensorStr(*ctx.AllMutableOutput()));
+    VLOG(3) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
   }
   FLAGS_enable_compact_mem = compact_flag_bak;
   return ToPyObject(*ctx.AllMutableOutput());

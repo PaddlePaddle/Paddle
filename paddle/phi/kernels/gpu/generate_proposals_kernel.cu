@@ -16,18 +16,11 @@
 
 #include <algorithm>
 #include <vector>
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/detection/bbox_util.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
@@ -292,10 +285,7 @@ static void NMS(const phi::GPUContext &dev_ctx,
                 DenseTensor *keep_out,
                 bool pixel_offset = true) {
   int64_t boxes_num = proposals.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
-  const int col_blocks = DIVUP(boxes_num, kThreadsPerBlock);
+  const int64_t col_blocks = DIVUP(boxes_num, kThreadsPerBlock);
   dim3 blocks(DIVUP(boxes_num, kThreadsPerBlock),
               DIVUP(boxes_num, kThreadsPerBlock));
   dim3 threads(kThreadsPerBlock);
@@ -332,7 +322,7 @@ static void NMS(const phi::GPUContext &dev_ctx,
       ++num_to_keep;
       keep_vec.push_back(i);
       uint64_t *p = mask_host.data() + i * col_blocks;
-      for (int j = nblock; j < col_blocks; j++) {
+      for (int64_t j = nblock; j < col_blocks; j++) {
         remv[j] |= p[j];
       }
     }

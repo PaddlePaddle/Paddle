@@ -15,20 +15,12 @@
 #include "paddle/phi/kernels/gpu/fused_token_prune_kernel.h"
 #include <limits>
 
-#ifdef __NVCC__
-#include <cub/cub.cuh>
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
-#include "paddle/phi/backends/gpu/gpu_launch_config.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/phi/kernels/funcs/fused_token_prune_utils.h"
 

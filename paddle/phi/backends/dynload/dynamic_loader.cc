@@ -39,6 +39,7 @@ COMMON_DECLARE_string(nccl_dir);
 COMMON_DECLARE_string(cupti_dir);
 COMMON_DECLARE_string(tensorrt_dir);
 COMMON_DECLARE_string(mklml_dir);
+COMMON_DECLARE_string(hml_dir);
 COMMON_DECLARE_string(lapack_dir);
 COMMON_DECLARE_string(mkl_dir);
 COMMON_DECLARE_string(op_dir);
@@ -47,6 +48,9 @@ COMMON_DECLARE_string(curand_dir);
 COMMON_DECLARE_string(cusolver_dir);
 COMMON_DECLARE_string(cusparse_dir);
 COMMON_DECLARE_string(win_cuda_bin_dir);
+#ifdef PADDLE_WITH_MAGMA
+COMMON_DECLARE_string(magma_dir);
+#endif
 
 #ifndef CUDA_LIB_NAME
 #define CUDA_LIB_NAME "libcuda.so"
@@ -981,6 +985,16 @@ void* GetMKLMLDsoHandle() {
 #endif
 }
 
+void* GetHMLDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return nullptr;
+#elif defined(_WIN32)
+  return nullptr;
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_hml_dir, "libhml_rt.so");
+#endif
+}
+
 void* GetLAPACKDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
 #if defined(__arm__) || defined(__aarch64__)
@@ -993,6 +1007,13 @@ void* GetLAPACKDsoHandle() {
 #else
   return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.so.3");
 #endif
+}
+
+void* GetMAGMADsoHandle() {
+#if defined(PADDLE_WITH_MAGMA)
+  return GetDsoHandleFromSearchPath(FLAGS_magma_dir, "libmagma.so");
+#endif
+  return nullptr;
 }
 
 void* GetOpDsoHandle(const std::string& dso_name) {

@@ -13,26 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/cross_entropy_kernel.h"
-#include "paddle/phi/kernels/full_kernel.h"
-
 #include "glog/logging.h"
-
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/cross_entropy.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/softmax.h"
@@ -755,7 +746,7 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
     int kWarpSize = (kDimCeil < 32) ? kDimCeil : 32;
     int batches_per_warp = (kDimCeil <= 128) ? 2 : 1;
 
-    // use 128 threads per block to maximimize gpu utilization
+    // use 128 threads per block to maximize gpu utilization
     constexpr int threads_per_block = 128;
     int warps_per_block = (threads_per_block / kWarpSize);
     int batches_per_block = warps_per_block * batches_per_warp;
@@ -778,7 +769,7 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
   } else {
     ScopedTensorDescriptor desc;
     std::vector<int> tensor_dims = {N, dim, D, 1};
-    GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
+    DataLayout layout = DataLayout::kNCHW;
 #ifdef PADDLE_WITH_HIP
     miopenTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
     auto handle = dev_ctx.cudnn_handle();
@@ -1204,7 +1195,7 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
     auto* softmax_data = softmax->data<T>();
     ScopedTensorDescriptor desc;
     std::vector<int> tensor_dims = {N, dim, D, 1};
-    GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
+    DataLayout layout = DataLayout::kNCHW;
 
 #ifdef PADDLE_WITH_HIP
     miopenTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
@@ -1446,11 +1437,7 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
   const int rank = logits.dims().size();
   const int64_t axis_v = phi::funcs::CanonicalAxis(axis, rank);
   const int64_t d = phi::funcs::SizeFromAxis<int64_t>(axis_v, logits.dims());
-  PADDLE_ENFORCE_LE(d,
-                    std::numeric_limits<int>::max(),
-                    common::errors::InvalidArgument(
-                        "(PreconditionNotMet) The num of"
-                        " the classes should be <= INT_MAX(2147483647)"));
+  PADDLE_ENFORCE_LE_INT_MAX(d, "d");
   if (softmax->numel() == 0) {
     // When soft_label is False, the axis column cannot be 0. Other dimensions
     // are the same, so the numel of softmax and loss are both 0.

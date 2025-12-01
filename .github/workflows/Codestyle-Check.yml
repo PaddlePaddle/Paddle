@@ -42,14 +42,14 @@ jobs:
         if: steps.check-bypass.outputs.can-skip != 'true'
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-          cache: 'pip'
+          python-version: "3.12"
+          cache: "pip"
 
       - name: Install dependencies
         if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           pip install pre-commit==2.17.0 cpplint==1.6.0  clang-format==13.0.0
-          pip install ast-grep-cli==0.39.9 # This version should be consistent with the one in .pre-commit-config.yaml
+          pip install ast-grep-cli==0.40.0 # This version should be consistent with the one in .pre-commit-config.yaml
 
       - name: Run ast-grep unit tests
         if: steps.check-bypass.outputs.can-skip != 'true'

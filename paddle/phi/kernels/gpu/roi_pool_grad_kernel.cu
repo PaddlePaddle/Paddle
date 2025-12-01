@@ -49,8 +49,10 @@ __global__ void GPURoiPoolBackward(const IndexType nthreads,
                                    int* box_batch_id_data,
                                    T* input_grad) {
   IndexType index =
-      static_cast<IndexType>(blockIdx.x) * blockDim.x + threadIdx.x;
-  IndexType offset = static_cast<IndexType>(blockDim.x) * gridDim.x;
+      static_cast<IndexType>(blockIdx.x) * static_cast<IndexType>(blockDim.x) +
+      static_cast<IndexType>(threadIdx.x);
+  IndexType offset =
+      static_cast<IndexType>(blockDim.x) * static_cast<IndexType>(gridDim.x);
   for (IndexType i = index; i < nthreads; i += offset) {
     IndexType pw = i % pooled_width;
     IndexType ph = (i / pooled_width) % pooled_height;

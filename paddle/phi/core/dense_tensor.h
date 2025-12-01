@@ -89,22 +89,22 @@ class PADDLE_API DenseTensor : public TensorBase,
   ///        Supports negative indices, which count from the last dimension.
   /// \param dim The dimension index to retrieve. Must be in the range [0, ndim)
   /// or [-ndim, -1]. \return The size of the tensor along the given dimension.
-  /// \throws phi::errors::OutOfRange if the tensor is empty or the index is out
-  /// of range.
+  /// \throws common::errors::OutOfRange if the tensor is empty or the index is
+  /// out of range.
   const int64_t dims(int dim) const {
     int ndim = meta_.dims.size();
 
     // Ensure the tensor has at least one dimension
     PADDLE_ENFORCE_GE(ndim,
                       1,
-                      phi::errors::OutOfRange(
+                      common::errors::OutOfRange(
                           "dims expects at least a 1-dimensional tensor"));
 
     // Check if the index is within the valid range [-ndim, ndim)
     PADDLE_ENFORCE_GE(
         dim,
         -ndim,
-        phi::errors::OutOfRange(
+        common::errors::OutOfRange(
             "dims: dimension index (%d) must be in range [-%d, %d)",
             dim,
             ndim,
@@ -112,7 +112,7 @@ class PADDLE_API DenseTensor : public TensorBase,
     PADDLE_ENFORCE_LT(
         dim,
         ndim,
-        phi::errors::OutOfRange(
+        common::errors::OutOfRange(
             "dims: dimension index (%d) must be in range [-%d, %d)",
             dim,
             ndim,

@@ -269,9 +269,7 @@ def measure_program_real_op_cost(
     >>> from paddle.distributed.auto_parallel.static.utils import (
     ...     measure_program_real_op_cost,
     ... )
-    >>> place: str = (
-    ...     paddle.device.get_device()
-    ... )  # here we assume place = "cuda:x"
+    >>> place: str = paddle.device.get_device()  # here we assume place = "cuda:x"
     >>> place = paddle.CUDAPlace(int(place.split(':')[1]))
     >>> # here "program" is an inner object that has already been built before
     >>> measure_program_real_op_cost(program, verbose_level=1)

@@ -22,8 +22,6 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-using DataLayout = phi::DataLayout;
-
 /*
  * \brief Converts the feature data of four dimensions(CDHW) into a colData of
  *        seven dimensions in the Vol2ColFunctor calculation,
@@ -75,7 +73,7 @@ class Vol2ColFunctor {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   phi::DenseTensor* col,
-                  const DataLayout data_layout = DataLayout::kNCHW) const;
+                  const DataLayout data_layout = DataLayout::NCHW) const;
 };
 
 template <typename DeviceContext, typename T>
@@ -87,7 +85,7 @@ class Col2VolFunctor {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   phi::DenseTensor* vol,
-                  const DataLayout data_layout = DataLayout::kNCHW) const;
+                  const DataLayout data_layout = DataLayout::NCHW) const;
 };
 
 }  // namespace funcs
