@@ -2569,7 +2569,10 @@ def baddbmm(
         )
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.baddbmm(input, x, y, beta, alpha, out)
+        if out is None:
+            return _C_ops.baddbmm(input, x, y, beta, alpha)
+        else:
+            return _C_ops.baddbmm(input, x, y, beta, alpha, out)
     else:
         inputs = {'Input': input, "X": x, "Y": y}
         attrs = {'Alpha': alpha, 'Beta': beta}
@@ -2604,7 +2607,6 @@ def baddbmm_(
     beta: float = 1.0,
     alpha: float = 1.0,
     name: str | None = None,
-    out: Tensor | None = None,
 ) -> Tensor:
     """
     Inplace version of ``baddbmm`` API, the output Tensor will be inplaced with input ``input``.
@@ -2669,7 +2671,7 @@ def baddbmm_(
         )
 
     if in_dynamic_mode():
-        return _C_ops.baddbmm_(input, x, y, beta, alpha, out)
+        return _C_ops.baddbmm_(input, x, y, beta, alpha)
 
 
 def renorm(x: Tensor, p: float, axis: int, max_norm: float) -> Tensor:
