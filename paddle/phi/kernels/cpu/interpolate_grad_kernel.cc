@@ -56,7 +56,7 @@ static void LinearInterpolationGrad(const DenseTensor& output_grad,
     for (int i = 0; i < n; i++) {    // loop for batches
       for (int j = 0; j < c; j++) {  // loop for channels
         // linear interpolation grad
-        if (data_layout == DataLayout::kNCHW) {
+        if (data_layout == DataLayout::NCHW) {
           const MT grad = static_cast<MT>(output_grad_t(i, j, l));
           input_grad_t(i, j, x_w) += static_cast<T>(grad * d_e);
           input_grad_t(i, j, x_e) += static_cast<T>(grad * d_w);
@@ -118,7 +118,7 @@ static void BilinearInterpolationGrad(const DenseTensor& output_grad,
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
           // bilinear interpolation grad
-          if (data_layout == DataLayout::kNCHW) {
+          if (data_layout == DataLayout::NCHW) {
             const MT grad = static_cast<MT>(output_grad_t(i, j, k, l));
             input_grad_t(i, j, y_n, x_w) += static_cast<T>(grad * d_s * d_e);
             input_grad_t(i, j, y_s, x_w) += static_cast<T>(grad * d_n * d_e);
@@ -163,7 +163,7 @@ static void NearestNeighborInterpolateGrad(const DenseTensor& output_grad,
 
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
-          if (data_layout == DataLayout::kNCHW) {
+          if (data_layout == DataLayout::NCHW) {
             input_grad_t(i, j, in_k, in_l) += output_grad_t(i, j, k, l);
           } else {
             input_grad_t(i, in_k, in_l, j) += output_grad_t(i, k, l, j);
@@ -218,7 +218,7 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
                                       static_cast<int64_t>(0));
               int access_y = std::max(std::min(input_y - 1 + jj, in_h - 1),
                                       static_cast<int64_t>(0));
-              if (data_layout == DataLayout::kNCHW) {
+              if (data_layout == DataLayout::NCHW) {
                 MT grad = static_cast<MT>(output_grad_t(i, j, k, l));
                 input_grad_t(i, j, access_y, access_x) +=
                     static_cast<T>(grad * y_coeffs[jj] * x_coeffs[ii]);
@@ -298,7 +298,7 @@ static void TrilinearInterpolationGrad(const DenseTensor& output_grad,
         for (int b = 0; b < n; b++) {    // loop for batches
           for (int i = 0; i < c; i++) {  // loop for channels
             // trilinear interpolation grad
-            if (data_layout == DataLayout::kNCHW) {
+            if (data_layout == DataLayout::NCHW) {
               const MT grad = static_cast<MT>(output_grad_t(b, i, j, k, l));
               input_grad_t(b, i, t_f, y_n, x_w) +=
                   static_cast<T>(grad * d_b * d_s * d_e);
@@ -377,7 +377,7 @@ static void NearestNeighbor3DInterpolateGrad(const DenseTensor& output_grad,
 
         for (int i = 0; i < n; i++) {    // loop for batches
           for (int j = 0; j < c; j++) {  // loop for channels
-            if (data_layout == DataLayout::kNCHW) {
+            if (data_layout == DataLayout::NCHW) {
               input_grad_t(i, j, in_d, in_k, in_l) +=
                   output_grad_t(i, j, d, k, l);
             } else {
@@ -449,7 +449,7 @@ static void Interpolate1DCPUBwd(
   }
 
   phi::DDim dim_grad;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_w};
   } else {
     dim_grad = {n, in_w, c};
@@ -575,7 +575,7 @@ static void Interpolate2DCPUBwd(
   }
 
   phi::DDim dim_grad;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_h, in_w};
   } else {
     dim_grad = {n, in_h, in_w, c};
@@ -753,7 +753,7 @@ static void Interpolate3DCPUBwd(
   }
 
   phi::DDim dim_grad;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_d, in_h, in_w};
   } else {
     dim_grad = {n, in_d, in_h, in_w, c};

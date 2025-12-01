@@ -111,7 +111,7 @@ class TestTorchProxyLocalEnabledModule(unittest.TestCase):
             import torch_proxy_local_enabled_module
 
         paddle.compat.enable_torch_proxy(
-            scope={"torch_proxy_local_enabled_module"}
+            scope="torch_proxy_local_enabled_module"
         )
         with self.assertRaises(ModuleNotFoundError):
             import torch  # noqa: F401

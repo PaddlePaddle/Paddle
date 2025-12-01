@@ -31,18 +31,17 @@ inline void im2col_common(const phi::DenseTensor& im,
                           const std::vector<int>& stride,
                           const std::vector<int>& padding,
                           phi::DenseTensor* col,
-                          const DataLayout data_layout = DataLayout::kNCHW) {
-  int im_channels =
-      (data_layout != DataLayout::kNHWC ? im.dims()[0] : im.dims()[2]);
-  int im_height =
-      (data_layout != DataLayout::kNHWC ? im.dims()[1] : im.dims()[0]);
-  int im_width =
-      (data_layout != DataLayout::kNHWC ? im.dims()[2] : im.dims()[1]);
-  int filter_height = col->dims()[1];
-  int filter_width = col->dims()[2];
-  int output_height = col->dims()[3];
-  int output_width = col->dims()[4];
-  int channels_col = im_channels * filter_height * filter_width;
+                          const DataLayout data_layout = DataLayout::NCHW) {
+  int64_t im_channels =
+      (data_layout != DataLayout::NHWC ? im.dims()[0] : im.dims()[2]);
+  int64_t im_height =
+      (data_layout != DataLayout::NHWC ? im.dims()[1] : im.dims()[0]);
+  int64_t im_width =
+      (data_layout != DataLayout::NHWC ? im.dims()[2] : im.dims()[1]);
+  int64_t filter_height = col->dims()[1];
+  int64_t filter_width = col->dims()[2];
+  int64_t output_height = col->dims()[3];
+  int64_t output_width = col->dims()[4];
 
   // Convert dimensions to 64-bit to prevent overflow in arithmetic operations
   const int64_t im_channels64 = im_channels;
@@ -94,17 +93,17 @@ template <typename T>
 inline void im2col_sh1sw1dh1dw1ph0pw0(
     const phi::DenseTensor& im,
     phi::DenseTensor* col,
-    const DataLayout data_layout = DataLayout::kNCHW) {
+    const DataLayout data_layout = DataLayout::NCHW) {
   int im_channels =
-      (data_layout != DataLayout::kNHWC ? im.dims()[0] : im.dims()[2]);
+      (data_layout != DataLayout::NHWC ? im.dims()[0] : im.dims()[2]);
   int im_height =
-      (data_layout != DataLayout::kNHWC ? im.dims()[1] : im.dims()[0]);
+      (data_layout != DataLayout::NHWC ? im.dims()[1] : im.dims()[0]);
   int im_width =
-      (data_layout != DataLayout::kNHWC ? im.dims()[2] : im.dims()[1]);
-  int filter_height = col->dims()[1];
-  int filter_width = col->dims()[2];
-  int output_height = col->dims()[3];
-  int output_width = col->dims()[4];
+      (data_layout != DataLayout::NHWC ? im.dims()[2] : im.dims()[1]);
+  int64_t filter_height = col->dims()[1];
+  int64_t filter_width = col->dims()[2];
+  int64_t output_height = col->dims()[3];
+  int64_t output_width = col->dims()[4];
 
   const T* im_data = im.data<T>();
   T* col_data = col->data<T>();
@@ -148,15 +147,15 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const phi::DenseTensor& im,
                                       phi::DenseTensor* col,
                                       const DataLayout data_layout) {
   int im_channels =
-      (data_layout != DataLayout::kNHWC ? im.dims()[0] : im.dims()[2]);
+      (data_layout != DataLayout::NHWC ? im.dims()[0] : im.dims()[2]);
   int im_height =
-      (data_layout != DataLayout::kNHWC ? im.dims()[1] : im.dims()[0]);
+      (data_layout != DataLayout::NHWC ? im.dims()[1] : im.dims()[0]);
   int im_width =
-      (data_layout != DataLayout::kNHWC ? im.dims()[2] : im.dims()[1]);
-  int filter_height = col->dims()[1];
-  int filter_width = col->dims()[2];
-  int output_height = col->dims()[3];
-  int output_width = col->dims()[4];
+      (data_layout != DataLayout::NHWC ? im.dims()[2] : im.dims()[1]);
+  int64_t filter_height = col->dims()[1];
+  int64_t filter_width = col->dims()[2];
+  int64_t output_height = col->dims()[3];
+  int64_t output_width = col->dims()[4];
 
   constexpr int plh = 1;
   constexpr int prh = 1;
@@ -221,7 +220,7 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const phi::DenseTensor& im,
             dst_data = dst_data + col_matrix_width;
             continue;
           }
-          if (data_layout != DataLayout::kNHWC) {
+          if (data_layout != DataLayout::NHWC) {
             // Safe memcpy for filter_width == 1 case
             int want = output_width - plw - prw;
             int avail = im_width;
@@ -293,7 +292,7 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const phi::DenseTensor& im,
         // TODO(TJ): reuse plw-kw outside this for
         // try to unify
         for (int kw = 0; kw < plw; ++kw) {
-          if (data_layout != DataLayout::kNHWC) {
+          if (data_layout != DataLayout::NHWC) {
             // Left band: clamp memcpy to avoid over-read
             int want = output_width - (plw - kw);
             int src_col_start = 0;
@@ -325,7 +324,7 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const phi::DenseTensor& im,
           dst_data = dst_data + col_matrix_width;
         }
         for (int kw = plw; kw < filter_width - prw; ++kw) {
-          if (data_layout != DataLayout::kNHWC) {
+          if (data_layout != DataLayout::NHWC) {
             // Middle band: clamp memcpy to avoid over-read
             int src_col_start = kw - plw;
             int want = output_width;
@@ -354,7 +353,7 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const phi::DenseTensor& im,
         }
         int i = 1;
         for (int kw = filter_width - prw; kw < filter_width; ++kw, ++i) {
-          if (data_layout != DataLayout::kNHWC) {
+          if (data_layout != DataLayout::NHWC) {
             // Right band: clamp memcpy to avoid over-read
             int src_col_start = kw - plw;
             int want = output_width - i;

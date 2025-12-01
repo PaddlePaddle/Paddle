@@ -55,13 +55,13 @@ struct LRNGradFunctor<phi::CPUContext, T> {
 
     const int start = -(n - 1) / 2;
     const int end = start + n;
-    for (int m = 0; m < N; m++) {
-      for (int i = 0; i < C; i++) {
-        auto offsets = Eigen::array<int, 4>({{m, i, 0, 0}});
-        auto extents = Eigen::array<int, 4>({{1, 1, H, W}});
-        if (data_layout == DataLayout::kNHWC) {
-          offsets = Eigen::array<int, 4>({{m, 0, 0, i}});
-          extents = Eigen::array<int, 4>({{1, H, W, 1}});
+    for (int64_t m = 0; m < N; m++) {
+      for (int64_t i = 0; i < C; i++) {
+        auto offsets = Eigen::array<int64_t, 4>({{m, i, 0, 0}});
+        auto extents = Eigen::array<int64_t, 4>({{1, 1, H, W}});
+        if (data_layout == DataLayout::NHWC) {
+          offsets = Eigen::array<int64_t, 4>({{m, 0, 0, i}});
+          extents = Eigen::array<int64_t, 4>({{1, H, W, 1}});
         }
 
         auto i_x = e_x.slice(offsets, extents);
@@ -76,8 +76,8 @@ struct LRNGradFunctor<phi::CPUContext, T> {
             continue;
           }
 
-          if (data_layout != DataLayout::kNHWC) {
-            offsets = Eigen::array<int, 4>({{m, ch, 0, 0}});
+          if (data_layout != DataLayout::NHWC) {
+            offsets = Eigen::array<int64_t, 4>({{m, ch, 0, 0}});
           } else {
             offsets = Eigen::array<int, 4>({{m, 0, 0, ch}});
           }
