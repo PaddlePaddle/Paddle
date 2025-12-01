@@ -132,18 +132,18 @@ class Compiler final {
   std::vector<void*> GetFnPtr() const { return fn_ptr_; }
 
   /**
-   * Set pir fusion hash
+   * Set pir host_func_name_
    */
-  void SetFusionHash(size_t hash) { fusion_hash_ = hash; }
+  void SetFuncName(std::string func_name) { host_func_name_ = func_name; }
 
   /**
-   * Get pir fusion hash
+   * Get pir host_func_name_
    */
-  size_t GetFusionHash() const { return fusion_hash_; }
+  std::string GetFuncName() const { return host_func_name_; }
 
   std::string GetDeviceId();
 
-  void LoadAndRegisterFromCache(const std::string& source_hash);
+  void LoadAndRegisterFromCache();
 
   ~Compiler() {
 #ifdef CINN_WITH_CUDA
@@ -202,7 +202,7 @@ class Compiler final {
   std::vector<std::string> device_fn_name_;
   std::string device_fn_code_;
   // kernel cache control
-  size_t fusion_hash_{0};
+  std::string host_func_name_;
 
 #ifdef CINN_WITH_CUDA
   std::unique_ptr<runtime::cuda::CUDAModule> cuda_module_;

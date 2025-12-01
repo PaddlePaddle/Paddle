@@ -269,7 +269,7 @@ void Compiler::EndCompile() {
   RegisterDeviceModuleSymbol();
   std::vector<std::string> cinn_runtime_include_path = {
       Context::Global().runtime_include_dir()};
-  engine_->AddSelfModule(GetFusionHash(), cinn_runtime_include_path);
+  engine_->AddSelfModule(host_func_name_, cinn_runtime_include_path);
 }
 
 std::string Compiler::GetDeviceId() {
@@ -277,9 +277,9 @@ std::string Compiler::GetDeviceId() {
   return std::to_string(device_id.value());
 }
 
-void Compiler::LoadAndRegisterFromCache(const std::string& source_hash) {
-  std::string cache_so_path =
-      "/tmp/cinn/" + GetDeviceId() + "/" + source_hash + "/" + "cinn_cache.so";
+void Compiler::LoadAndRegisterFromCache() {
+  std::string cache_so_path = "/tmp/cinn/" + GetDeviceId() + "/" +
+                              host_func_name_ + "/" + "cinn_cache.so";
   // 1. Load metadata (restore Kernel name list)
   LoadKernelNamesFromMeta();
 
@@ -291,8 +291,8 @@ void Compiler::LoadAndRegisterFromCache(const std::string& source_hash) {
   }
 
   // 3. Load CUDA Fatbin (Device Code)
-  std::string fatbin_path = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash +
-                            "/cinn_cuda_kernel.fatbin";
+  std::string fatbin_path = "/tmp/cinn/" + GetDeviceId() + "/" +
+                            host_func_name_ + "/cinn_cuda_kernel.fatbin";
   CUmodule cu_module;
   if (cuModuleLoad(&cu_module, fatbin_path.c_str()) != CUDA_SUCCESS) {
     LOG(FATAL) << "Failed to load CUDA Module from " << fatbin_path;
@@ -434,16 +434,15 @@ void Compiler::RegisterCudaModuleSymbol() {
       device_fn_code_;
 
   if (FLAGS_enable_cinn_kernel_cache) {
-    std::string source_hash = ComputeSourceHash();
     std::string cache_so_path = "/tmp/cinn/" + GetDeviceId() + "/" +
-                                source_hash + "/" + "cinn_cache.so";
+                                host_func_name_ + "/" + "cinn_cache.so";
 
     // Check if cache file exists
     if (std::ifstream(cache_so_path).good()) {
       LOG(FATAL) << "cinn_cache.so exists! Should not walk in!!! "
                  << "Should already redirect to kernel cache mechanism in "
                     "PIRCompiler.";
-      LoadAndRegisterFromCache(source_hash);
+      LoadAndRegisterFromCache();
       return;
     } else {  // .so doesn't exist, compile new cinn_cuda_kernel.o and
               // cinn_cuda_kernel.fatbin
@@ -733,9 +732,7 @@ void* Compiler::Lookup(std::string_view fn_name) {
 }
 
 #ifdef CINN_WITH_CUDA
-std::string Compiler::ComputeSourceHash() {
-  return std::to_string(fusion_hash_);
-}
+std::string Compiler::ComputeSourceHash() { return host_func_name_; }
 
 std::string Compiler::GetDeviceArch() {
   int major = 0, minor = 0;
@@ -768,7 +765,7 @@ std::string Compiler::GetComputeArch() {
 std::string Compiler::GenerateObjectWithoutCache(
     const std::string& source_code) {
   std::string library_path =
-      "/tmp/cinn/" + GetDeviceId() + "/" + std::to_string(fusion_hash_) + "/";
+      "/tmp/cinn/" + GetDeviceId() + "/" + host_func_name_ + "/";
   llvm::sys::fs::create_directories(library_path);
 
   // Generate a temporary .cu file, then compile it to .o file using nvcc
@@ -842,7 +839,7 @@ std::string Compiler::GenerateObjectWithoutCache(
 std::string Compiler::GenerateFatbinWithoutCache(
     const std::string& source_code) {
   std::string library_path =
-      "/tmp/cinn/" + GetDeviceId() + "/" + std::to_string(fusion_hash_) + "/";
+      "/tmp/cinn/" + GetDeviceId() + "/" + host_func_name_ + "/";
   llvm::sys::fs::create_directories(library_path);
 
   // Generate a temporary .cu file, then compile it to fatbin file using nvcc
@@ -919,8 +916,7 @@ std::string Compiler::GenerateFatbinWithoutCache(
 
 void Compiler::SaveKernelNamesToMeta() {
   // 1. Get metadata file path
-  std::string meta_path =
-      "/tmp/cinn/" + GetDeviceId() + "/" + std::to_string(fusion_hash_);
+  std::string meta_path = "/tmp/cinn/" + GetDeviceId() + "/" + host_func_name_;
   llvm::sys::fs::create_directories(meta_path);
   std::string meta_file = meta_path + "/cinn_cuda_kernel.meta";
 
@@ -948,8 +944,7 @@ void Compiler::SaveKernelNamesToMeta() {
 
 void Compiler::LoadKernelNamesFromMeta() {
   // 1. Get metadata file path
-  std::string meta_path = "/tmp/cinn/" + GetDeviceId() + "/" +
-                          std::to_string(fusion_hash_) +
+  std::string meta_path = "/tmp/cinn/" + GetDeviceId() + "/" + host_func_name_ +
                           "/cinn_cuda_kernel.meta";
   VLOG(5) << "Loading CINN kernel names from meta file: " << meta_path;
 

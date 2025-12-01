@@ -234,7 +234,8 @@ std::string GetDeviceId() {
 }
 
 // Use LLVM C++ API to compile .ll file to .o file
-bool ExecutionEngine::compileLLVMIR(llvm::Module *module, size_t fusionHash) {
+bool ExecutionEngine::compileLLVMIR(llvm::Module *module,
+                                    std::string host_func_name) {
   std::error_code EC;
 
   // 1. Find target for current platform
@@ -265,8 +266,7 @@ bool ExecutionEngine::compileLLVMIR(llvm::Module *module, size_t fusionHash) {
   }
 
   // 3. Set output file path and type
-  std::string source_hash = std::to_string(fusionHash);
-  std::string output_path = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash;
+  std::string output_path = "/tmp/cinn/" + GetDeviceId() + "/" + host_func_name;
   llvm::sys::fs::create_directories(output_path);
   std::string output_file = output_path + "/module.o";
   llvm::raw_fd_ostream dest(output_file, EC, llvm::sys::fs::OF_None);
@@ -285,10 +285,9 @@ bool ExecutionEngine::compileLLVMIR(llvm::Module *module, size_t fusionHash) {
 }
 
 bool ExecutionEngine::linkSharedLibrary(
-    const size_t fusionHash,
+    const std::string host_func_name,
     const std::vector<std::string> &cinn_runtime_include_path) {
-  std::string source_hash = std::to_string(fusionHash);
-  std::string output_path = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash;
+  std::string output_path = "/tmp/cinn/" + GetDeviceId() + "/" + host_func_name;
   llvm::sys::fs::create_directories(output_path);
 
   std::string output_so = output_path + "/cinn_cache.so";
@@ -315,7 +314,7 @@ bool ExecutionEngine::linkSharedLibrary(
 bool ExecutionEngine::AddModule(
     std::unique_ptr<llvm::Module> module,
     std::unique_ptr<llvm::LLVMContext> context,
-    const size_t fusionHash,
+    const std::string host_func_name,
     const std::vector<std::string> &cinn_runtime_include_path) {
   utils::RecordEvent("ExecutionEngine AddModule", utils::EventType::kOrdinary);
   module->setDataLayout(jit_->getDataLayout());
@@ -331,8 +330,8 @@ bool ExecutionEngine::AddModule(
 
   if (FLAGS_enable_cinn_kernel_cache) {
     std::error_code EC;
-    std::string source_hash = std::to_string(fusionHash);
-    std::string output_path = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash;
+    std::string output_path =
+        "/tmp/cinn/" + GetDeviceId() + "/" + host_func_name;
     llvm::sys::fs::create_directories(output_path);
     llvm::raw_fd_ostream out(output_path + "/module.ll", EC);
     if (EC) {
@@ -350,13 +349,13 @@ bool ExecutionEngine::AddModule(
       return true;
     } else {
       // Compiling LLVM IR with LLVM API
-      if (!compileLLVMIR(module.get(), fusionHash)) {
+      if (!compileLLVMIR(module.get(), host_func_name)) {
         std::cerr << "Error: LLVM IR compilation failed.\n";
         return false;
       }
 
       // Linking object files into shared library
-      if (!linkSharedLibrary(fusionHash, cinn_runtime_include_path)) {
+      if (!linkSharedLibrary(host_func_name, cinn_runtime_include_path)) {
         std::cerr
             << "Error: Linking object files into shared library failed.\n";
         return false;
@@ -383,10 +382,10 @@ void ExecutionEngine::RegisterModuleRuntimeSymbols(
 }
 
 bool ExecutionEngine::AddSelfModule(
-    const size_t fusionHash,
+    const std::string host_func_name,
     const std::vector<std::string> &cinn_runtime_include_path) {
   return AddModule(
-      std::move(m), std::move(ctx), fusionHash, cinn_runtime_include_path);
+      std::move(m), std::move(ctx), host_func_name, cinn_runtime_include_path);
 }
 
 void ExecutionEngine::ExportObject(const std::string &path) {

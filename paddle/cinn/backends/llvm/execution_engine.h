@@ -80,22 +80,22 @@ class ExecutionEngine {
 
   void ExportObject(const std::string &path);
 
-  bool compileLLVMIR(llvm::Module *module, size_t fusionHash = 0);
+  bool compileLLVMIR(llvm::Module *module, std::string host_func_name = "");
 
   bool linkSharedLibrary(
-      const size_t fusionHash = 0,
+      const std::string host_func_name = "",
       const std::vector<std::string> &cinn_runtime_include_path = {});
 
   bool AddModule(
       std::unique_ptr<llvm::Module> module,
       std::unique_ptr<llvm::LLVMContext> context,
-      const size_t fusionHash = 0,
+      const std::string host_func_name = "",
       const std::vector<std::string> &cinn_runtime_include_path = {});
 
   void RegisterModuleRuntimeSymbols(RuntimeSymbols &&module_symbols);
 
   bool AddSelfModule(
-      const size_t fusionHash = 0,
+      const std::string host_func_name = "",
       const std::vector<std::string> &cinn_runtime_include_path = {});
 
  protected:
