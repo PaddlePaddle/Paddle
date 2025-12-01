@@ -43,8 +43,8 @@ using cinn::common::float8e4m34;
 const std::string CodeGenCudaDev::source_header_ =  // NOLINT
     R"(
 #pragma once
-#include <cinn_with_cuda_h>
 #include <bfloat16_h>
+#include <cinn_with_cuda_h>
 #include <cstdint>
 #include <float16_h>
 using cinn::common::bfloat16;

@@ -71,8 +71,12 @@ class CompilationResult final {
  public:
   explicit CompilationResult(const Target& target, bool need_x86_kernel = false)
       : target_(target), have_cx86_kernel_(need_x86_kernel) {}
-  explicit CompilationResult(const Target& target, bool need_x86_kernel, size_t fusion_hash)
-      : target_(target), have_cx86_kernel_(need_x86_kernel), fusion_hash_(fusion_hash) {}
+  explicit CompilationResult(const Target& target,
+                             bool need_x86_kernel,
+                             size_t fusion_hash)
+      : target_(target),
+        have_cx86_kernel_(need_x86_kernel),
+        fusion_hash_(fusion_hash) {}
   const std::shared_ptr<BackendResource>& GetBackendResource() const {
     return backend_resource_;
   }

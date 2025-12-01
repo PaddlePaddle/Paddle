@@ -131,7 +131,6 @@ class IR_API Type {
     return seed;
   }
 
-
  protected:
   const Storage *storage_{nullptr};
 

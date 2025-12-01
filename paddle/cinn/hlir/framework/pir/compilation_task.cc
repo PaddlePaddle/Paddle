@@ -338,11 +338,14 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::BuildPirCINNKernelInfo(
       context_->group_->FuncName() + "_infer_shape",
       context_->group_->symbol_args_map(),
       context_->group_->temp_space_sizes());
-  VLOG(5) << "Start to compile module into cuda kernel..." << context_->GetFusionHash();
-  backend_resource->GetBackendCompiler()->SetFusionHash(context_->GetFusionHash());
-  backend_resource->GetBackendCompiler()->Build(module, ""); // Generate device Code
+  VLOG(5) << "Start to compile module into cuda kernel..."
+          << context_->GetFusionHash();
+  backend_resource->GetBackendCompiler()->SetFusionHash(
+      context_->GetFusionHash());
+  backend_resource->GetBackendCompiler()->Build(module,
+                                                "");  // Generate device Code
   backend_resource->GetBackendCompiler()->AppendCX86(CX86module);
-  backend_resource->GetBackendCompiler()->EndCompile(); // Generate llvm IR
+  backend_resource->GetBackendCompiler()->EndCompile();  // Generate llvm IR
   compilation_result->SetBackendResource(backend_resource);
 
   VLOG(5) << "End to compile module into cuda kernel.";
@@ -371,7 +374,8 @@ CompilationTask::CompileBroadcastModules(
     broadcast_conditions.emplace_back(context.broadcast_condition_);
     ir::Module ir_module = context.module_builder_.Build();
     ir::Module ir_moduleCX86 = context.CX86_module_builder_.Build();
-    backend_resource->GetBackendCompiler()->SetFusionHash(context.GetFusionHash());
+    backend_resource->GetBackendCompiler()->SetFusionHash(
+        context.GetFusionHash());
     backend_resource->GetBackendCompiler()->Build(ir_module, "");
     backend_resource->GetBackendCompiler()->AppendCX86(ir_moduleCX86);
   }

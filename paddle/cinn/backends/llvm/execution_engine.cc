@@ -48,12 +48,12 @@
 #include <llvm/Transforms/Scalar/SimplifyCFG.h>
 
 #include <cmath>
+#include <fstream>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
 #include <string_view>
 #include <utility>
-#include <fstream>
 
 #include "paddle/cinn/backends/codegen_cuda_host.h"
 #include "paddle/cinn/backends/llvm/cinn_runtime_llvm_ir.h"
@@ -64,11 +64,11 @@
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/runtime/arch_device.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/profiler.h"
-#include "paddle/cinn/runtime/arch_device.h"
 
-COMMON_DECLARE_bool(enable_cinn_kernel_cache); 
+COMMON_DECLARE_bool(enable_cinn_kernel_cache);
 namespace cinn::backends {
 namespace {
 void InitializeLLVMPasses() {
@@ -228,39 +228,40 @@ void ExecutionEngine::Link<CodeGenGpuHost>(const ir::Module &module) {
 }
 
 std::string GetDeviceId() {
-    const auto device_id = cinn::runtime::GetArchDevice(common::DefaultDeviceTarget());
-    return std::to_string(device_id.value());
+  const auto device_id =
+      cinn::runtime::GetArchDevice(common::DefaultDeviceTarget());
+  return std::to_string(device_id.value());
 }
 
 // Use LLVM C++ API to compile .ll file to .o file
-bool ExecutionEngine::compileLLVMIR(llvm::Module* module, size_t fusionHash) {
+bool ExecutionEngine::compileLLVMIR(llvm::Module *module, size_t fusionHash) {
   std::error_code EC;
 
   // 1. Find target for current platform
   std::string Error;
-  const llvm::Target* TheTarget = llvm::TargetRegistry::lookupTarget(module->getTargetTriple(), Error);
+  const llvm::Target *TheTarget =
+      llvm::TargetRegistry::lookupTarget(module->getTargetTriple(), Error);
   if (!TheTarget) {
-      llvm::errs() << Error;
-      return false;
+    llvm::errs() << Error;
+    return false;
   }
 
   // 2. Create TargetMachine (this is the core)
   llvm::TargetOptions TargetOpts;
   // **Core:** Must be set to PIC (Position Independent Code)
-  llvm::Reloc::Model RelocModel = llvm::Reloc::Model::PIC_; 
+  llvm::Reloc::Model RelocModel = llvm::Reloc::Model::PIC_;
   std::string CPU = "generic";
   std::string Features = "";
-  llvm::TargetMachine* TM = TheTarget->createTargetMachine(
-      module->getTargetTriple(), CPU, Features, TargetOpts, RelocModel
-  );
+  llvm::TargetMachine *TM = TheTarget->createTargetMachine(
+      module->getTargetTriple(), CPU, Features, TargetOpts, RelocModel);
   module->setDataLayout(TM->createDataLayout());
   module->setTargetTriple(TM->getTargetTriple().str());
-  
+
   // Remove dso_local for stderr
   for (llvm::GlobalVariable &GV : module->globals()) {
-      if (GV.getName() == "stderr" || GV.isDeclaration()) {
-          GV.setDSOLocal(false); 
-      }
+    if (GV.getName() == "stderr" || GV.isDeclaration()) {
+      GV.setDSOLocal(false);
+    }
   }
 
   // 3. Set output file path and type
@@ -283,7 +284,9 @@ bool ExecutionEngine::compileLLVMIR(llvm::Module* module, size_t fusionHash) {
   return true;
 }
 
-bool ExecutionEngine::linkSharedLibrary(const size_t fusionHash, const std::vector<std::string> &cinn_runtime_include_path) {
+bool ExecutionEngine::linkSharedLibrary(
+    const size_t fusionHash,
+    const std::vector<std::string> &cinn_runtime_include_path) {
   std::string source_hash = std::to_string(fusionHash);
   std::string output_path = "/tmp/cinn/" + GetDeviceId() + "/" + source_hash;
   llvm::sys::fs::create_directories(output_path);
@@ -292,28 +295,28 @@ bool ExecutionEngine::linkSharedLibrary(const size_t fusionHash, const std::vect
   std::string cuda_obj = output_path + "/cinn_cuda_kernel.o";
   std::string llvm_obj = output_path + "/module.o";
   std::string cuda_lib_path = "/usr/local/cuda/lib64";
-  std::string link_cmd = "g++ -shared -o " + output_so + " " + 
-                          cuda_obj + " " + llvm_obj + 
-                          " -L" + cuda_lib_path + " -lcudart";
-  
-  for (auto& header : cinn_runtime_include_path) {
+  std::string link_cmd = "g++ -shared -o " + output_so + " " + cuda_obj + " " +
+                         llvm_obj + " -L" + cuda_lib_path + " -lcudart";
+
+  for (auto &header : cinn_runtime_include_path) {
     link_cmd += " -L " + header + " -lcinnapi";
   }
-                          
+
   VLOG(5) << "Linker command: " << link_cmd << "\n";
 
   int link_ret = system(link_cmd.c_str());
   if (link_ret != 0) {
-      std::cerr << "Error: Final linking failed.\n";
-      return false;
+    std::cerr << "Error: Final linking failed.\n";
+    return false;
   }
   return true;
 }
 
-bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
-                                std::unique_ptr<llvm::LLVMContext> context,
-                                const size_t fusionHash,
-                                const std::vector<std::string> &cinn_runtime_include_path) {
+bool ExecutionEngine::AddModule(
+    std::unique_ptr<llvm::Module> module,
+    std::unique_ptr<llvm::LLVMContext> context,
+    const size_t fusionHash,
+    const std::vector<std::string> &cinn_runtime_include_path) {
   utils::RecordEvent("ExecutionEngine AddModule", utils::EventType::kOrdinary);
   module->setDataLayout(jit_->getDataLayout());
   if (VLOG_IS_ON(5)) {
@@ -333,8 +336,8 @@ bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
     llvm::sys::fs::create_directories(output_path);
     llvm::raw_fd_ostream out(output_path + "/module.ll", EC);
     if (EC) {
-        LOG(ERROR) << "Failed to open file: " << EC.message();
-        return false;
+      LOG(ERROR) << "Failed to open file: " << EC.message();
+      return false;
     }
     module->print(out, {});
     out.close();
@@ -354,7 +357,8 @@ bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
 
       // Linking object files into shared library
       if (!linkSharedLibrary(fusionHash, cinn_runtime_include_path)) {
-        std::cerr << "Error: Linking object files into shared library failed.\n";
+        std::cerr
+            << "Error: Linking object files into shared library failed.\n";
         return false;
       }
     }
@@ -378,8 +382,11 @@ void ExecutionEngine::RegisterModuleRuntimeSymbols(
   }
 }
 
-bool ExecutionEngine::AddSelfModule(const size_t fusionHash, const std::vector<std::string> &cinn_runtime_include_path) {
-  return AddModule(std::move(m), std::move(ctx), fusionHash, cinn_runtime_include_path);
+bool ExecutionEngine::AddSelfModule(
+    const size_t fusionHash,
+    const std::vector<std::string> &cinn_runtime_include_path) {
+  return AddModule(
+      std::move(m), std::move(ctx), fusionHash, cinn_runtime_include_path);
 }
 
 void ExecutionEngine::ExportObject(const std::string &path) {

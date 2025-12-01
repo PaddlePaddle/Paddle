@@ -51,7 +51,7 @@ pir::CINNKernelInfo BackendResource::GenerateKernelInfo(
     bool need_x86_kernel) const {
   pir::CINNKernelInfo kernel_info;
   kernel_info.fn_name = host_fn_name_;
-  
+
   kernel_info.fn_ptr = GetHostFuncPtr();
   kernel_info.infer_shape_fn_ptr = GetInferFuncPtr();
   if (need_x86_kernel) {
@@ -59,7 +59,7 @@ pir::CINNKernelInfo BackendResource::GenerateKernelInfo(
   }
   kernel_info.symbol_args_map = GetSymbolArgsMap();
   kernel_info.temp_space_sizes = GetTempSpaceSizes();
-  
+
   return kernel_info;
 }
 }  // namespace pir

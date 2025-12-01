@@ -13,23 +13,21 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
-#include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
-
+#include <algorithm>
+#include <cctype>
+#include <fstream>
+#include <stdexcept>
+#include <string>
 #include "paddle/cinn/common/shape_constraint.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
 #include "paddle/cinn/hlir/framework/pir/broadcast_with_cf.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 #include "paddle/cinn/runtime/arch_device.h"
 #include "paddle/cinn/utils/multi_threading.h"
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
-#include <fstream>
-#include <string>
-#include <algorithm>
-#include <stdexcept>
-#include <cctype>
-#include <stdexcept>
 
 PD_DECLARE_bool(enable_cinn_compile_cache);
 PD_DECLARE_int64(cinn_compile_thread_num);
@@ -78,137 +76,147 @@ static size_t GetThreadNum(size_t task_size) {
 // Helper function: Write any primitive type to file
 template <typename T>
 void WriteBinary(std::ofstream& ofs, const T& value) {
-    ofs.write(reinterpret_cast<const char*>(&value), sizeof(T));
+  ofs.write(reinterpret_cast<const char*>(&value), sizeof(T));
 }
 
 // Helper function: Read any primitive type from file
 template <typename T>
-bool ReadBinary(std::ifstream& ifs, T& value) {
-    if (ifs.read(reinterpret_cast<char*>(&value), sizeof(T))) {
-        return true;
-    }
-    std::cerr << "Error: Failed to read binary data of size " << sizeof(T) << std::endl;
-    return false;
+bool ReadBinary(std::ifstream& ifs, T* value) {
+  if (ifs.read(reinterpret_cast<char*>(value), sizeof(T))) {
+    return true;
+  }
+  std::cerr << "Error: Failed to read binary data of size " << sizeof(T)
+            << std::endl;
+  return false;
 }
 
 // Save kernel metadata to file
-bool SaveKernelMetaData(const pir::CINNKernelInfo* group_info, const std::string& filepath) {
-    std::ofstream ofs(filepath, std::ios::binary);
-    if (!ofs.is_open()) {
-        VLOG(3) << "Error: Could not open file for writing: " << filepath;
-        return false;
-    }
+bool SaveKernelMetaData(const pir::CINNKernelInfo* group_info,
+                        const std::string& filepath) {
+  std::ofstream ofs(filepath, std::ios::binary);
+  if (!ofs.is_open()) {
+    VLOG(3) << "Error: Could not open file for writing: " << filepath;
+    return false;
+  }
 
-    // Serialize temp_space_sizes
-    const auto& temp_sizes = group_info->temp_space_sizes; 
-    size_t temp_size = temp_sizes.size();
-    WriteBinary(ofs, temp_size);
-    if (temp_size > 0) {
-        ofs.write(reinterpret_cast<const char*>(temp_sizes.data()), temp_size * sizeof(int64_t));
-    }
+  // Serialize temp_space_sizes
+  const auto& temp_sizes = group_info->temp_space_sizes;
+  size_t temp_size = temp_sizes.size();
+  WriteBinary(ofs, temp_size);
+  if (temp_size > 0) {
+    ofs.write(reinterpret_cast<const char*>(temp_sizes.data()),
+              temp_size * sizeof(int64_t));
+  }
 
-    // Serialize symbol_args_map
-    const auto& symbol_map = group_info->symbol_args_map;
-    size_t map_size = symbol_map.size();
-    WriteBinary(ofs, map_size);
+  // Serialize symbol_args_map
+  const auto& symbol_map = group_info->symbol_args_map;
+  size_t map_size = symbol_map.size();
+  WriteBinary(ofs, map_size);
 
-    for (const auto& [key, bind_info] : symbol_map) {
-        WriteBinary(ofs, key);
+  for (const auto& [key, bind_info] : symbol_map) {
+    WriteBinary(ofs, key);
 
-        std::visit([&](auto&& arg) {
-            using T = std::decay_t<decltype(arg)>;
-            
-            int type_index = -1;
-            
-            if constexpr (std::is_same_v<T, pir::CINNKernelInfo::ArgDimIdx>) {
-                type_index = 0;
-                WriteBinary(ofs, type_index);
-                // ArgDimIdx only contains dim_idx
-                WriteBinary(ofs, arg.arg_idx);
-                WriteBinary(ofs, arg.dim_idx);
-            } else if constexpr (std::is_same_v<T, pir::CINNKernelInfo::ArgValueIdx>) {
-                type_index = 1;
-                WriteBinary(ofs, type_index);
-                // ArgValueIdx contains input_idx and value_idx
-                WriteBinary(ofs, arg.arg_idx); 
-                WriteBinary(ofs, arg.value_idx);
-            } else {
-                 // Should not reach here
-            }
-            
-        }, bind_info);
-    }
-    
-    ofs.close();
-    return true;
+    std::visit(
+        [&](auto&& arg) {
+          using T = std::decay_t<decltype(arg)>;
+          using ArgValueIdx = pir::CINNKernelInfo::ArgValueIdx;
+
+          int type_index = -1;
+
+          if constexpr (std::is_same_v<T, pir::CINNKernelInfo::ArgDimIdx>) {
+            type_index = 0;
+            WriteBinary(ofs, type_index);
+            // ArgDimIdx only contains dim_idx
+            WriteBinary(ofs, arg.arg_idx);
+            WriteBinary(ofs, arg.dim_idx);
+          } else if constexpr (std::is_same_v<T, ArgValueIdx>) {
+            type_index = 1;
+            WriteBinary(ofs, type_index);
+            // ArgValueIdx contains input_idx and value_idx
+            WriteBinary(ofs, arg.arg_idx);
+            WriteBinary(ofs, arg.value_idx);
+          } else {
+            LOG(FATAL) << "Should not reach here";
+          }
+        },
+        bind_info);
+  }
+
+  ofs.close();
+  return true;
 }
 
 // Load kernel metadata from file
-bool LoadKernelMetaData(pir::CINNKernelInfo* group_info, const std::string& filepath) {
-    std::ifstream ifs(filepath, std::ios::binary);
-    if (!ifs.is_open()) {
-        VLOG(3) << "Error: Could not open file for reading: " << filepath;
-        return false;
-    }
+bool LoadKernelMetaData(pir::CINNKernelInfo* group_info,
+                        const std::string& filepath) {
+  std::ifstream ifs(filepath, std::ios::binary);
+  if (!ifs.is_open()) {
+    VLOG(3) << "Error: Could not open file for reading: " << filepath;
+    return false;
+  }
 
-    // Deserialize temp_space_sizes
-    auto& temp_sizes = group_info->temp_space_sizes;
-    size_t temp_size = 0;
-    if (!ReadBinary(ifs, temp_size)) return false;
-    
-    if (temp_size > 0) {
-        temp_sizes.resize(temp_size);
-        if (!ifs.read(reinterpret_cast<char*>(temp_sizes.data()), temp_size * sizeof(int64_t))) {
-            VLOG(3) << "Error: Failed to read temp_space_sizes content.";
-            return false;
-        }
+  // Deserialize temp_space_sizes
+  auto& temp_sizes = group_info->temp_space_sizes;
+  size_t temp_size = 0;
+  if (!ReadBinary(ifs, &temp_size)) return false;
+
+  if (temp_size > 0) {
+    temp_sizes.resize(temp_size);
+    if (!ifs.read(reinterpret_cast<char*>(temp_sizes.data()),
+                  temp_size * sizeof(int64_t))) {
+      VLOG(3) << "Error: Failed to read temp_space_sizes content.";
+      return false;
+    }
+  } else {
+    temp_sizes.clear();
+  }
+
+  // Deserialize symbol_args_map
+  auto& symbol_map = group_info->symbol_args_map;
+  symbol_map.clear();
+  size_t map_size = 0;
+  if (!ReadBinary(ifs, &map_size)) return false;
+
+  for (size_t i = 0; i < map_size; ++i) {
+    int key = 0;
+    int type_index = -1;
+    if (!ReadBinary(ifs, &key)) return false;
+    if (!ReadBinary(ifs, &type_index)) return false;
+
+    pir::CINNKernelInfo::SymbolArgBindInfo bind_info;
+
+    if (type_index == 0) {  // ArgDimIdx
+      pir::CINNKernelInfo::ArgDimIdx dim_info;
+      // ArgDimIdx only contains dim_idx (inferred from serialization logic)
+      if (!ReadBinary(ifs, &dim_info.arg_idx)) return false;
+      if (!ReadBinary(ifs, &dim_info.dim_idx)) return false;
+      bind_info = dim_info;
+    } else if (type_index == 1) {  // ArgValueIdx
+      pir::CINNKernelInfo::ArgValueIdx value_info;
+      // ArgValueIdx contains arg_idx and value_idx
+      if (!ReadBinary(ifs, &value_info.arg_idx)) return false;
+      if (!ReadBinary(ifs, &value_info.value_idx)) return false;
+      bind_info = value_info;
     } else {
-        temp_sizes.clear();
+      VLOG(3) << "Error: Unknown SymbolArgBindInfo type index: " << type_index;
+      return false;
     }
 
-    // Deserialize symbol_args_map
-    auto& symbol_map = group_info->symbol_args_map;
-    symbol_map.clear();
-    size_t map_size = 0;
-    if (!ReadBinary(ifs, map_size)) return false;
+    symbol_map.emplace(key, bind_info);
+  }
 
-    for (size_t i = 0; i < map_size; ++i) {
-        int key = 0;
-        int type_index = -1;
-        if (!ReadBinary(ifs, key)) return false;
-        if (!ReadBinary(ifs, type_index)) return false;
-
-        pir::CINNKernelInfo::SymbolArgBindInfo bind_info;
-
-        if (type_index == 0) { // ArgDimIdx
-            pir::CINNKernelInfo::ArgDimIdx dim_info;
-            // ArgDimIdx only contains dim_idx (inferred from serialization logic)
-            if (!ReadBinary(ifs, dim_info.arg_idx)) return false;
-            if (!ReadBinary(ifs, dim_info.dim_idx)) return false;
-            bind_info = dim_info;
-        } else if (type_index == 1) { // ArgValueIdx
-            pir::CINNKernelInfo::ArgValueIdx value_info;
-            // ArgValueIdx contains arg_idx and value_idx
-            if (!ReadBinary(ifs, value_info.arg_idx)) return false;
-            if (!ReadBinary(ifs, value_info.value_idx)) return false;
-            bind_info = value_info;
-        } else {
-            VLOG(3) << "Error: Unknown SymbolArgBindInfo type index: " << type_index;
-            return false;
-        }
-        
-        symbol_map.emplace(key, bind_info);
-    }
-    
-    ifs.close();
-    return true;
+  ifs.close();
+  return true;
 }
 
 std::vector<pir::CINNKernelInfo> PirCompiler::Build(
     const std::vector<pir::OpLoweringGroupPtr>& groups) {
-  CompilationContextMapper ctx_mapper(target_, groups); // construct and append to compilation_results_
+  CompilationContextMapper ctx_mapper(
+      target_, groups);  // construct and append to compilation_results_
   auto& group_compilation_contexts = ctx_mapper.UniqueCompilationContexts();
-  auto& compilation_results = ctx_mapper.MutableCompilationResult(); // may be empty if it's not new and unique
+  auto& compilation_results =
+      ctx_mapper.MutableCompilationResult();  // may be empty if it's not new
+                                              // and unique
   const size_t task_size = group_compilation_contexts.size();
   const size_t thread_size = GetThreadNum(task_size);
   VLOG(5) << "Found " << task_size << " new groups parsed from "
@@ -228,38 +236,43 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
       runtime::SetArchDevice(target_, device_id);
       auto fusion_info_hash = group_compilation_contexts[index].GetFusionHash();
       std::string source_hash = std::to_string(fusion_info_hash);
-      std::string cache_dir = "/tmp/cinn/" + std::to_string(device_id.value()) + "/" + source_hash;
+      std::string cache_dir =
+          "/tmp/cinn/" + std::to_string(device_id.value()) + "/" + source_hash;
       llvm::sys::fs::create_directories(cache_dir);
       std::string cache_so_path = cache_dir + "/cinn_cache.so";
       std::string meta_filepath = cache_dir + "/cinn_cache.meta";
       // Check if .so exists
-      if (FLAGS_enable_cinn_kernel_cache && std::ifstream(cache_so_path).good()) {
+      if (FLAGS_enable_cinn_kernel_cache &&
+          std::ifstream(cache_so_path).good()) {
         VLOG(4) << "Cache hit for hash: " << source_hash;
 
         // 1. Declare temporary structure
-        pir::CINNKernelInfo loaded_kernel_info; 
-        
-        // 2. Load metadata
-        bool load_success = LoadKernelMetaData(&loaded_kernel_info, meta_filepath);
+        pir::CINNKernelInfo loaded_kernel_info;
 
-        PADDLE_ENFORCE_EQ(
-            load_success,
-            true,
-            ::common::errors::Unavailable("Failed to load kernel metadata "
-                                        "from cache file: %s. Cache system is "
-                                        "broken or corrupted. Please delete the cache "
-                                        "directory and retry.", meta_filepath));
+        // 2. Load metadata
+        bool load_success =
+            LoadKernelMetaData(&loaded_kernel_info, meta_filepath);
+
+        PADDLE_ENFORCE_EQ(load_success,
+                          true,
+                          ::common::errors::Unavailable(
+                              "Failed to load kernel metadata "
+                              "from cache file: %s. Cache system is "
+                              "broken or corrupted. Please delete the cache "
+                              "directory and retry.",
+                              meta_filepath));
         VLOG(4) << "Successfully loaded metadata.";
-        
+
         // 3. Construct CompilationResult
         auto result = std::make_shared<pir::CompilationResult>(
             target_, false, fusion_info_hash);
-        
+
         // 4. Construct BackendResource (using loaded data!)
         auto resource = std::make_shared<pir::BackendResource>(
             target_,
             group_compilation_contexts[index].GetGroup()->FuncName(),
-            group_compilation_contexts[index].GetGroup()->FuncName() + "_infer_shape",
+            group_compilation_contexts[index].GetGroup()->FuncName() +
+                "_infer_shape",
             loaded_kernel_info.symbol_args_map,  // Load from meta
             loaded_kernel_info.temp_space_sizes  // Load from meta
         );
@@ -267,17 +280,19 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
         // 5. Load .so
         resource->GetBackendCompiler()->SetFusionHash(fusion_info_hash);
         resource->GetBackendCompiler()->LoadAndRegisterFromCache(source_hash);
-        
+
         result->SetBackendResource(resource);
         compilation_results[index] = result;
 
       } else {
         // Compilation path
-        compilation_results[index] = Compile(&group_compilation_contexts[index]);
-        
+        compilation_results[index] =
+            Compile(&group_compilation_contexts[index]);
+
         // Save metadata
-        pir::CINNKernelInfo info_to_save = compilation_results[index]->GetKernelInfo();
-        
+        pir::CINNKernelInfo info_to_save =
+            compilation_results[index]->GetKernelInfo();
+
         if (FLAGS_enable_cinn_kernel_cache) {
           SaveKernelMetaData(&info_to_save, meta_filepath);
         }
@@ -346,64 +361,69 @@ std::shared_ptr<pir::CompilationResult> PirCompiler::Compile(
 }
 
 std::string RemoveKernelSuffixNumber(const std::string& func_name) {
-    if (func_name.empty()) {
-        return func_name;
+  if (func_name.empty()) {
+    return func_name;
+  }
+
+  // 1. Find the position of the first non-digit character from the end.
+  // suffix_start will point to the start index of the numeric suffix.
+  size_t suffix_start = func_name.length();
+  while (suffix_start > 0 && std::isdigit(func_name[suffix_start - 1])) {
+    suffix_start--;
+  }
+
+  // Initialize cut_idx: assume no removal needed
+  size_t cut_idx = func_name.length();
+
+  // 2. Check if the numeric suffix is valid (must have digits and be preceded
+  // by underscore)
+  if (suffix_start < func_name.length() && suffix_start > 0 &&
+      func_name[suffix_start - 1] == '_') {
+    // Extract and validate numeric suffix
+    std::string suffix = func_name.substr(suffix_start);
+    size_t pos;
+
+    try {
+      // Validate if the suffix is a valid numeric value
+      std::stoi(suffix, &pos);
+
+      // Check if the entire suffix was converted
+      if (pos != suffix.length()) {
+        LOG(FATAL) << "Kernel suffix conversion failed for '" << func_name
+                   << "'. Suffix '" << suffix
+                   << "' contains non-digit characters after parsing.";
+      }
+
+      // Validation successful: set cut_idx to the start position of the numeric
+      // suffix
+      cut_idx = suffix_start;
+    } catch (const std::exception& e) {
+      // Conversion failed: suffix is not a valid number or out of range (Fatal
+      // Error)
+      LOG(FATAL) << "Kernel suffix conversion failed for '" << func_name
+                 << "'. Suffix '" << suffix
+                 << "' is not a valid integer. Exception: " << e.what();
     }
 
-    // 1. Find the position of the first non-digit character from the end.
-    // suffix_start will point to the start index of the numeric suffix.
-    size_t suffix_start = func_name.length();
-    while (suffix_start > 0 && std::isdigit(func_name[suffix_start - 1])) {
-        suffix_start--;
-    }
+  } else {
+    // Case 1: No numeric suffix (suffix_start == func_name.length())
+    // Case 2: Has digits but not preceded by underscore (e.g., "fn123")
+    // In both cases, keep cut_idx as func_name.length() and only remove
+    // underscores
+    cut_idx = func_name.length();
+  }
 
-    // Initialize cut_idx: assume no removal needed
-    size_t cut_idx = func_name.length();
+  // 3. Final step: Remove all trailing underscore separators
+  // Whether we removed numeric suffix (cut_idx = suffix_start), or kept the
+  // full string (cut_idx = func_name.length()), we remove underscores starting
+  // from cut_idx backwards.
+  size_t final_cut_idx = cut_idx;
+  while (final_cut_idx > 0 && func_name[final_cut_idx - 1] == '_') {
+    final_cut_idx--;
+  }
 
-    // 2. Check if the numeric suffix is valid (must have digits and be preceded by underscore)
-    if (suffix_start < func_name.length() && suffix_start > 0 && func_name[suffix_start - 1] == '_') {
-
-        // Extract and validate numeric suffix
-        std::string suffix = func_name.substr(suffix_start);
-        size_t pos;
-
-        try {
-            // Validate if the suffix is a valid numeric value
-            std::stoi(suffix, &pos); 
-
-            // Check if the entire suffix was converted
-            if (pos != suffix.length()) {
-                LOG(FATAL) << "Kernel suffix conversion failed for '" << func_name 
-                           << "'. Suffix '" << suffix << "' contains non-digit characters after parsing.";
-            }
-
-            // Validation successful: set cut_idx to the start position of the numeric suffix
-            cut_idx = suffix_start;
-
-        } catch (const std::exception& e) {
-            // Conversion failed: suffix is not a valid number or out of range (Fatal Error)
-            LOG(FATAL) << "Kernel suffix conversion failed for '" << func_name 
-                       << "'. Suffix '" << suffix << "' is not a valid integer. Exception: " 
-                       << e.what();
-        }
-
-    } else {
-        // Case 1: No numeric suffix (suffix_start == func_name.length())
-        // Case 2: Has digits but not preceded by underscore (e.g., "fn123")
-        // In both cases, keep cut_idx as func_name.length() and only remove underscores
-        cut_idx = func_name.length();
-    }
-
-    // 3. Final step: Remove all trailing underscore separators
-    // Whether we removed numeric suffix (cut_idx = suffix_start), or kept the full string 
-    // (cut_idx = func_name.length()), we remove underscores starting from cut_idx backwards.
-    size_t final_cut_idx = cut_idx;
-    while (final_cut_idx > 0 && func_name[final_cut_idx - 1] == '_') {
-        final_cut_idx--;
-    }
-
-    // Return cleaned name without suffix and separators
-    return func_name.substr(0, final_cut_idx);
+  // Return cleaned name without suffix and separators
+  return func_name.substr(0, final_cut_idx);
 }
 
 void CompilationContextMapper::Construct(
@@ -425,7 +445,8 @@ void CompilationContextMapper::Construct(
     auto func_name = groups[i]->FuncName();
     auto new_func_name = RemoveKernelSuffixNumber(func_name);
     const auto device_id = runtime::GetArchDevice(target);
-    groups[i]->RenewFuncName(new_func_name + "__" + std::to_string(fusion_info_hash));
+    groups[i]->RenewFuncName(new_func_name + "__" +
+                             std::to_string(fusion_info_hash));
     // If FLAGS_enable_cinn_compile_cache=False, Cache strategy will not take
     // effects.
     if (IsNewAndUnique(fusion_infos_[i]) || !FLAGS_enable_cinn_compile_cache) {
@@ -433,10 +454,11 @@ void CompilationContextMapper::Construct(
       auto fusion_info_hash = fusion_infos_[i].hash();
       group_compilation_contexts_.emplace_back(target, groups[i]);
       group_compilation_contexts_.back().SetFusionHash(fusion_info_hash);
-      VLOG(5) << "ComilerCache hashKey is " << fusion_info_hash;
-      VLOG(5) << "ComilerCache FuncName is " << group_compilation_contexts_.back().GetGroup()->FuncName();
-      compilation_results_.push_back(
-          std::make_shared<pir::CompilationResult>(target, false, fusion_info_hash));
+      VLOG(5) << "CompilerCache hashKey is " << fusion_info_hash;
+      VLOG(5) << "CompilerCache FuncName is "
+              << group_compilation_contexts_.back().GetGroup()->FuncName();
+      compilation_results_.push_back(std::make_shared<pir::CompilationResult>(
+          target, false, fusion_info_hash));
     }
     unique_infos.insert(fusion_infos_[i].hash());
   }

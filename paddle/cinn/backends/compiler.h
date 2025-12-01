@@ -14,13 +14,12 @@
 
 #pragma once
 
-#include <string_view>
-
+#include <dlfcn.h>
 #include <fstream>
 #include <memory>
 #include <mutex>
 #include <string>
-#include <dlfcn.h>
+#include <string_view>
 
 #include "paddle/cinn/backends/llvm/codegen_llvm.h"
 #include "paddle/cinn/backends/llvm/execution_engine.h"
@@ -150,7 +149,8 @@ class Compiler final {
 #ifdef CINN_WITH_CUDA
     // Release GPU Resource: CUDA module handle
     if (cuda_module_handle_) {
-      CUresult result = cuModuleUnload(static_cast<CUmodule>(cuda_module_handle_));
+      CUresult result =
+          cuModuleUnload(static_cast<CUmodule>(cuda_module_handle_));
       if (result != CUDA_SUCCESS) {
         LOG(WARNING) << "Failed to unload CUDA module. Error code: " << result;
       }
@@ -158,11 +158,11 @@ class Compiler final {
     }
 #endif
     // Release CPU Resource: dynamic library handle
-    if (dynamic_library_handle_) {      
+    if (dynamic_library_handle_) {
       int result = dlclose(dynamic_library_handle_);
       if (result != 0) {
-        LOG(WARNING) << "Error closing dynamic library handle for " 
-                        << dynamic_library_path_ << ". Error: " << dlerror();
+        LOG(WARNING) << "Error closing dynamic library handle for "
+                     << dynamic_library_path_ << ". Error: " << dlerror();
       }
       dynamic_library_handle_ = nullptr;
     }

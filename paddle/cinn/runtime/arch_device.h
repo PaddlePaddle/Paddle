@@ -55,7 +55,7 @@ inline std::optional<int> GetArchDevice(const common::Target& target) {
 }
 
 inline void SetArchDevice(const common::Target& target,
-                   const std::optional<int>& device_id) {
+                          const std::optional<int>& device_id) {
   target.arch.Match(
       [&](common::UnknownArch) -> void {},
       [&](common::X86Arch) -> void {},
