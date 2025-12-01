@@ -1111,7 +1111,7 @@ def __rand__(x: Tensor, y: int | bool):
             f"unsupported operand type(s) for |: '{type(y).__name__}' and 'Tensor'"
         )
 
-
+@param_one_alias(["y", "other"])
 @inplace_apis_in_dygraph_only
 def bitwise_and_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
