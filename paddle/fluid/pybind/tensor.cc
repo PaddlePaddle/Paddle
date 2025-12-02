@@ -204,6 +204,7 @@ namespace {
 #define SYS_pidfd_getfd 438
 #endif
 
+#if defined(__linux__)
 void ShareTensorViaVmm(const phi::DenseTensor &self, py::tuple *out) {
   auto *holder =
       dynamic_cast<memory::allocation::Allocation *>(self.Holder().get());
@@ -412,6 +413,7 @@ phi::DenseTensor RebuildTensorFromVmmMeta(const py::tuple &meta) {
   tensor.set_type(static_cast<phi::DataType>(dtype_idx));
   return tensor;
 }
+#endif
 #endif
 }  // namespace
 
