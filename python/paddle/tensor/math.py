@@ -6078,7 +6078,7 @@ def sgn(x: Tensor, name: str | None = None) -> Tensor:
         Tensor: A sign Tensor for real input, or normalized Tensor for complex input, shape and data type are same as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
