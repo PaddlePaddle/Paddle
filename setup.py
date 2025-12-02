@@ -150,7 +150,6 @@ def get_header_install_dir(header):
             'install/mkldnn/include/',
             'pybind/src/extern_pybind/include/',
             'third_party/xpu/src/extern_xpu/xpu/include/',
-            'install/glog/include/',
         ]
         for pattern in patterns:
             install_dir = re.sub(pattern, '', install_dir, count=1)
