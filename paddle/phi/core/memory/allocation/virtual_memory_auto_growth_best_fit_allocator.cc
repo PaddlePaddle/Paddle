@@ -14,6 +14,7 @@
 
 #include "paddle/phi/core/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
 
+#include "glog/logging.h"
 #include <algorithm>
 #include <mutex>
 #include "paddle/common/flags.h"

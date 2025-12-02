@@ -14,6 +14,8 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/memory/allocation/auto_growth_best_fit_allocator_v2.h"
 
+#include "glog/logging.h"
+
 #include <algorithm>
 #include <mutex>  // NOLINT
 

@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "glog/logging.h"
 #include "paddle/phi/core/memory/memcpy.h"
 
 #include "paddle/phi/api/profiler/event_tracing.h"
