@@ -462,29 +462,24 @@ void QKVDispatchWithDtype(const Context &dev_ctx,
   const auto &q_dims = q.dims();
   int bsz = q_dims[0];
   int64_t cache_bsz = q.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int64_t max_seq_len = v.dims()[1];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int64_t dim_head = v.dims()[3];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int timestep = max_seq_len;
   float inv_sqrt_dh = 1. / sqrt(dim_head);
 
   int64_t k_num_head = k.dims()[2];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int v_num_head = k_num_head;
   // this num_head means query's head
   int64_t num_head = q.dims()[2];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   QkvUnpackMhaParams<T> params;
 

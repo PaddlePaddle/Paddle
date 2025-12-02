@@ -17,6 +17,7 @@
 #include <algorithm>
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
 #include "paddle/phi/core/memory/malloc.h"
+#include "paddle/phi/core/memory/mem_visitor.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -106,18 +107,39 @@ bool TryAllocBatch(const phi::GPUPlace& place,
   return try_alloc_visitor.IsTryAllocSuccess();
 }
 
-size_t VmmCompact() {
-  return memory::Compact(phi::GPUPlace(paddle::platform::GetCurrentDeviceId()));
-}
+size_t VmmCompact(const phi::GPUPlace& place) { return memory::Compact(place); }
 
 std::vector<std::vector<std::pair<size_t, uintptr_t>>>
-FreeBlockInfoOfVmmAllocator() {
+FreeBlockInfoOfVmmAllocator(const phi::GPUPlace& place) {
   VMMFreeBlocksInfoVisitor free_blocks_info_visitor;
-  allocation::AllocatorFacade::Instance().Accept(
-      phi::GPUPlace(paddle::platform::GetCurrentDeviceId()),
-      &free_blocks_info_visitor);
+  allocation::AllocatorFacade::Instance().Accept(place,
+                                                 &free_blocks_info_visitor);
   return free_blocks_info_visitor.GetFreeBlocksInfo();
 }
+
+std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
+AllBlockInfoOfVmmAllocator(const phi::GPUPlace& place) {
+  VMMAllBlocksInfoVisitor all_blocks_info_visitor;
+  allocation::AllocatorFacade::Instance().Accept(place,
+                                                 &all_blocks_info_visitor);
+  return all_blocks_info_visitor.GetAllBlocksInfo();
+}
+
+std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>> GetAllocateEvent(
+    const phi::GPUPlace& place) {
+  VMMAllocateRecordEventsVisitor allocate_record_event_visitor;
+  allocation::AllocatorFacade::Instance().Accept(
+      place, &allocate_record_event_visitor);
+  return allocate_record_event_visitor.GetAllocateRecordEvents();
+}
+
+std::vector<size_t> GetCompactSize(const phi::GPUPlace& place) {
+  VMMAllocateCompactSizeVisitor allocate_compact_visitor;
+  allocation::AllocatorFacade::Instance().Accept(place,
+                                                 &allocate_compact_visitor);
+  return allocate_compact_visitor.GetCompactSize();
+}
+
 #endif
 
 }  // namespace memory

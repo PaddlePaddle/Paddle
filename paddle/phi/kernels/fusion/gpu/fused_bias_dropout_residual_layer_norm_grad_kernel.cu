@@ -14,18 +14,15 @@
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_fp16.h>
 #include <hip/hip_runtime.h>
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
 #else
 #include <cuda_fp16.h>
-#include <cub/cub.cuh>
 #endif
-
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_bias_dropout_residual_layer_norm_grad_kernel.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"

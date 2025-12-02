@@ -50,7 +50,7 @@ void SetTensorValueKernel(const Context& dev_ctx,
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();
   std::vector<int64_t> steps_local = steps.GetData();
-  phi::funcs::CheckAndUpdateSliceAttrs(
+  funcs::CheckAndUpdateSliceAttrs(
       in_dims, axes, &starts_local, &ends_local, &steps_local);
 
   std::vector<int64_t> output_dims = common::vectorize<int64_t>(in.dims());
@@ -88,7 +88,7 @@ void SetTensorValueKernel(const Context& dev_ctx,
     return;
   }
 
-  phi::funcs::CheckIsDimsMatch(phi::make_ddim(new_out_shape), value.dims());
+  funcs::CheckIsDimsMatch(phi::make_ddim(new_out_shape), value.dims());
   if (new_out_shape.empty()) new_out_shape.push_back(1);
   DenseTensor expand_tensor;
   if (value.numel() == 1) {
@@ -112,7 +112,7 @@ void SetTensorValueKernel(const Context& dev_ctx,
     auto v_dims = phi::make_ddim(value_dims);
     auto out_dims = phi::make_ddim(new_out_shape);
     value_tensor.Resize(v_dims);
-    if (phi::funcs::CheckIsLastDimsMatch(v_dims, out_dims)) {
+    if (funcs::CheckIsLastDimsMatch(v_dims, out_dims)) {
       expand_tensor = value_tensor;
     } else {
       expand_tensor = Empty<T>(dev_ctx, IntArray{new_out_shape});
@@ -171,8 +171,7 @@ void SetValueKernel(const Context& dev_ctx,
   if (is_full_set_one_value && !std::is_same<T, complex64>::value &&
       !std::is_same<T, complex128>::value) {
     dev_ctx.template Alloc<T>(out);
-    phi::funcs::set_constant(
-        dev_ctx, out, static_cast<float>(assign_values[0]));
+    funcs::set_constant(dev_ctx, out, static_cast<float>(assign_values[0]));
     return;
   }
 

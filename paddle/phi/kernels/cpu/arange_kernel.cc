@@ -27,7 +27,7 @@ void ArangeFunc(const Context& dev_ctx,
                 const T& step_value,
                 DenseTensor* out) {
   int64_t size = 0;
-  phi::funcs::GetSize(start_value, end_value, step_value, &size);
+  funcs::GetSize(start_value, end_value, step_value, &size);
   out->Resize(common::make_ddim({size}));
   T* out_data = dev_ctx.template Alloc<T>(out);
   T value = start_value;

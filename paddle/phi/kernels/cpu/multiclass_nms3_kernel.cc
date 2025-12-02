@@ -53,18 +53,16 @@ void Array2PointVec(const T* box,
 }
 
 template <class T>
-void Array2Poly(const T* box,
-                const size_t box_size,
-                phi::funcs::gpc_polygon* poly) {
+void Array2Poly(const T* box, const size_t box_size, funcs::gpc_polygon* poly) {
   size_t pts_num = box_size / 2;
   (*poly).num_contours = 1;
   (*poly).hole = reinterpret_cast<int*>(malloc(sizeof(int)));  // NOLINT
   (*poly).hole[0] = 0;
-  (*poly).contour = (phi::funcs::gpc_vertex_list*)malloc(  // NOLINT
-      sizeof(phi::funcs::gpc_vertex_list));
+  (*poly).contour = (funcs::gpc_vertex_list*)malloc(  // NOLINT
+      sizeof(funcs::gpc_vertex_list));
   (*poly).contour->num_vertices = static_cast<int>(pts_num);
-  (*poly).contour->vertex = (phi::funcs::gpc_vertex*)malloc(  // NOLINT
-      sizeof(phi::funcs::gpc_vertex) * pts_num);
+  (*poly).contour->vertex = (funcs::gpc_vertex*)malloc(  // NOLINT
+      sizeof(funcs::gpc_vertex) * pts_num);
   for (size_t i = 0; i < pts_num; ++i) {
     (*poly).contour->vertex[i].x = box[2 * i];
     (*poly).contour->vertex[i].y = box[2 * i + 1];
@@ -73,16 +71,16 @@ void Array2Poly(const T* box,
 
 template <class T>
 void PointVec2Poly(const std::vector<Point_<T>>& vec,
-                   phi::funcs::gpc_polygon* poly) {
+                   funcs::gpc_polygon* poly) {
   size_t pts_num = vec.size();
   (*poly).num_contours = 1;
   (*poly).hole = reinterpret_cast<int*>(malloc(sizeof(int)));  // NOLINT
   (*poly).hole[0] = 0;
-  (*poly).contour = (phi::funcs::gpc_vertex_list*)malloc(  // NOLINT
-      sizeof(phi::funcs::gpc_vertex_list));
+  (*poly).contour = (funcs::gpc_vertex_list*)malloc(  // NOLINT
+      sizeof(funcs::gpc_vertex_list));
   (*poly).contour->num_vertices = pts_num;
-  (*poly).contour->vertex = (phi::funcs::gpc_vertex*)malloc(  // NOLINT
-      sizeof(phi::funcs::gpc_vertex) * pts_num);
+  (*poly).contour->vertex = (funcs::gpc_vertex*)malloc(  // NOLINT
+      sizeof(funcs::gpc_vertex) * pts_num);
   for (size_t i = 0; i < pts_num; ++i) {
     (*poly).contour->vertex[i].x = vec[i].x;
     (*poly).contour->vertex[i].y = vec[i].y;
@@ -90,7 +88,7 @@ void PointVec2Poly(const std::vector<Point_<T>>& vec,
 }
 
 template <class T>
-void Poly2PointVec(const phi::funcs::gpc_vertex_list& contour,
+void Poly2PointVec(const funcs::gpc_vertex_list& contour,
                    std::vector<Point_<T>>* vec) {
   int pts_num = contour.num_vertices;
   (*vec).resize(pts_num);
@@ -126,13 +124,13 @@ T PolyOverlapArea(const T* box1,
                   const T* box2,
                   const size_t box_size,
                   const bool normalized UNUSED) {
-  phi::funcs::gpc_polygon poly1;
-  phi::funcs::gpc_polygon poly2;
+  funcs::gpc_polygon poly1;
+  funcs::gpc_polygon poly2;
   Array2Poly<T>(box1, box_size, &poly1);
   Array2Poly<T>(box2, box_size, &poly2);
-  phi::funcs::gpc_polygon respoly;
-  phi::funcs::gpc_op op = phi::funcs::GPC_INT;
-  phi::funcs::gpc_polygon_clip(op, &poly2, &poly1, &respoly);
+  funcs::gpc_polygon respoly;
+  funcs::gpc_op op = funcs::GPC_INT;
+  funcs::gpc_polygon_clip(op, &poly2, &poly1, &respoly);
 
   T inter_area = T(0.);
   int contour_num = respoly.num_contours;
@@ -144,9 +142,9 @@ T PolyOverlapArea(const T* box1,
     inter_area += GetContourArea<T>(resvec);
   }
 
-  phi::funcs::gpc_free_polygon(&poly1);
-  phi::funcs::gpc_free_polygon(&poly2);
-  phi::funcs::gpc_free_polygon(&respoly);
+  funcs::gpc_free_polygon(&poly1);
+  funcs::gpc_free_polygon(&poly2);
+  funcs::gpc_free_polygon(&respoly);
   return inter_area;
 }
 

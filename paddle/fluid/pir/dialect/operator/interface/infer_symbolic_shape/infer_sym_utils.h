@@ -52,6 +52,11 @@ struct AttributeTrait<float> {
   using value_type = ::pir::FloatAttribute;
 };
 
+template <>
+struct AttributeTrait<double> {
+  using value_type = ::pir::DoubleAttribute;
+};
+
 template <typename T = int64_t>
 std::vector<T> GetVectorAttr(const ::pir::Operation *op,
                              const std::string &name) {

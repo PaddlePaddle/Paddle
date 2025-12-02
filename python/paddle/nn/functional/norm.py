@@ -56,9 +56,8 @@ def normalize(
     p: float = 2,
     axis: int = 1,
     epsilon: float = 1e-12,
-    name: str | None = None,
-    *,
     out: Tensor | None = None,
+    name: str | None = None,
 ) -> Tensor:
     r"""
     Normalize ``x`` along dimension ``axis`` using :math:`L_p` norm. This layer computes
@@ -608,14 +607,14 @@ def local_response_norm(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.rand(shape=(3, 3, 112, 112), dtype="float32")
             >>> y = paddle.nn.functional.local_response_norm(x, size=5)
             >>> print(y.shape)
-            [3, 3, 112, 112]
+            paddle.Size([3, 3, 112, 112])
 
     """
     if not in_dynamic_mode():

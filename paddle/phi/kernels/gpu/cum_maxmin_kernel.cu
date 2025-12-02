@@ -240,7 +240,7 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
   if (out->numel() == 1) {
     auto raw_dims = out->dims();
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-    phi::funcs::SetConstant<Context, T2> set_zero;
+    funcs::SetConstant<Context, T2> set_zero;
     set_zero(dev_ctx, indices, static_cast<T2>(0.0));
     out->Resize(raw_dims);
     indices->Resize(raw_dims);
@@ -270,10 +270,7 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
   if (axis == out_dims.size() - 1) {
     int ndim = x.dims().size();
     int64_t row_size = x.dims()[ndim - 1];
-    // TODO(large-tensor): downstream functors may still use int; guard until
-    // upgraded.
-
-    int num_rows = x.numel() / row_size;
+    int64_t num_rows = x.numel() / row_size;
 
     dim3 threads(16, 32);
     dim3 grid(std::min(

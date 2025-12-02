@@ -104,7 +104,7 @@ struct Gather {
                   const DenseTensor& src,
                   const DenseTensor& index,
                   DenseTensor* output) {
-    phi::funcs::CPUGather<T, IndexT>(dev_ctx, src, index, output);
+    funcs::CPUGather<T, IndexT>(dev_ctx, src, index, output);
   }
 };
 
@@ -163,8 +163,8 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   auto batch_size = static_cast<int>(input.dims()[0]);
   auto seq_len = static_cast<int>(input.dims()[1]);
   auto n_labels = static_cast<int>(input.dims()[2]);
-  phi::funcs::SetConstant<Context, T> float_functor;
-  phi::funcs::SetConstant<Context, int64_t> int_functor;
+  funcs::SetConstant<Context, T> float_functor;
+  funcs::SetConstant<Context, int64_t> int_functor;
   std::vector<DenseTensor> historys;
   // We create tensor buffer in order to avoid allocating memory frequently
   // 10 means allocate 10*batch_size bytes memory, such as int_mask, zero...
@@ -230,21 +230,21 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   DenseTensor gather_idx = int_tensor_buffer.GetBufferBlock({batch_size});
   std::vector<const DenseTensor*> shape{&rest_trans, &stop_trans, &start_trans};
   std::vector<DenseTensor*> outputs{&rest_trans, &stop_trans, &start_trans};
-  phi::funcs::SplitFunctor<Context, T> split_functor;
+  funcs::SplitFunctor<Context, T> split_functor;
   split_functor(dev_ctx, trans_exp, shape, 1, &outputs);
   stop_trans.Resize({1, n_labels});
   start_trans.Resize({1, n_labels});
   auto logit0 = input_exp.Slice(0, 1);
   logit0.Resize({batch_size, n_labels});
-  BinaryOperation<Context, phi::funcs::AddFunctor, T> AddFloat;
-  BinaryOperation<Context, phi::funcs::AddFunctor, int64_t> AddInt;
-  BinaryOperation<Context, phi::funcs::MultiplyFunctor, T> MulFloat;
-  BinaryOperation<Context, phi::funcs::MultiplyFunctor, int64_t> MulInt;
-  BinaryOperation<Context, phi::funcs::SubtractFunctor, T> SubFloat;
-  BinaryOperation<Context, phi::funcs::SubtractFunctor, int64_t> SubInt;
+  BinaryOperation<Context, funcs::AddFunctor, T> AddFloat;
+  BinaryOperation<Context, funcs::AddFunctor, int64_t> AddInt;
+  BinaryOperation<Context, funcs::MultiplyFunctor, T> MulFloat;
+  BinaryOperation<Context, funcs::MultiplyFunctor, int64_t> MulInt;
+  BinaryOperation<Context, funcs::SubtractFunctor, T> SubFloat;
+  BinaryOperation<Context, funcs::SubtractFunctor, int64_t> SubInt;
   if (include_bos_eos_tag) {
     AddFloat(dev_ctx, logit0, start_trans, &alpha);
-    GetMask<Context, phi::funcs::EqualFunctor, T>()(
+    GetMask<Context, funcs::EqualFunctor, T>()(
         dev_ctx, left_length, one, &float_mask);
     MulFloat(dev_ctx, stop_trans, float_mask, &alpha_nxt);
     AddFloat(dev_ctx, alpha, alpha_nxt, &alpha);
@@ -264,14 +264,14 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
     historys.emplace_back(alpha_argmax_temp);
     AddFloat(dev_ctx, alpha_max, logit, &alpha_nxt);
     alpha.Resize({batch_size, n_labels});
-    GetMask<Context, phi::funcs::GreaterThanFunctor, T>()(
+    GetMask<Context, funcs::GreaterThanFunctor, T>()(
         dev_ctx, left_length, zero, &float_mask);
     MulFloat(dev_ctx, alpha_nxt, float_mask, &alpha_nxt);
     SubFloat(dev_ctx, float_one, float_mask, &float_mask);
     MulFloat(dev_ctx, alpha, float_mask, &alpha);
     AddFloat(dev_ctx, alpha, alpha_nxt, &alpha);
     if (include_bos_eos_tag) {
-      GetMask<Context, phi::funcs::EqualFunctor, T>()(
+      GetMask<Context, funcs::EqualFunctor, T>()(
           dev_ctx, left_length, one, &float_mask);
       MulFloat(dev_ctx, stop_trans, float_mask, &alpha_nxt);
       AddFloat(dev_ctx, alpha, alpha_nxt, &alpha);
@@ -280,7 +280,7 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   }
   argmax(dev_ctx, alpha, &last_ids, scores, 1);
   left_length.Resize({batch_size});
-  GetMask<Context, phi::funcs::GreaterEqualFunctor, int64_t>()(
+  GetMask<Context, funcs::GreaterEqualFunctor, int64_t>()(
       dev_ctx, left_length, zero, &int_mask);
   // last_ids_update = last_ids * tag_mask
   int last_ids_index = 1;
@@ -298,16 +298,16 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
     DenseTensor& last_ids_update = batch_path[actual_len - last_ids_index];
     hist->Resize({batch_size * n_labels});
     gather(dev_ctx, *hist, gather_idx, &last_ids_update);
-    GetMask<Context, phi::funcs::GreaterThanFunctor, int64_t>()(
+    GetMask<Context, funcs::GreaterThanFunctor, int64_t>()(
         dev_ctx, left_length, zero, &int_mask);
     MulInt(dev_ctx, last_ids_update, int_mask, &last_ids_update);
-    GetMask<Context, phi::funcs::EqualFunctor, int64_t>()(
+    GetMask<Context, funcs::EqualFunctor, int64_t>()(
         dev_ctx, left_length, zero, &zero_len_mask);
     MulInt(dev_ctx, last_ids, zero_len_mask, &last_ids_tmp);
     SubInt(dev_ctx, one, zero_len_mask, &zero_len_mask);
     MulInt(dev_ctx, last_ids_update, zero_len_mask, &last_ids_update);
     AddInt(dev_ctx, last_ids_update, last_ids_tmp, &last_ids_update);
-    GetMask<Context, phi::funcs::LessThanFunctor, int64_t>()(
+    GetMask<Context, funcs::LessThanFunctor, int64_t>()(
         dev_ctx, left_length, zero, &int_mask);
     MulInt(dev_ctx, last_ids, int_mask, &last_ids);
     AddInt(dev_ctx, last_ids_update, last_ids, &last_ids);

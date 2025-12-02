@@ -92,8 +92,7 @@ void ExpandKernel(const Context& dev_ctx,
   }
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
-  phi::funcs::BroadcastKernel<T>(
-      dev_ctx, ins, &outs, kps::IdentityFunctor<T>());
+  funcs::BroadcastKernel<T>(dev_ctx, ins, &outs, kps::IdentityFunctor<T>());
 }
 
 }  // namespace phi

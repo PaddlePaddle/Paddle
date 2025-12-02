@@ -56,7 +56,7 @@ static void LinearInterpolationGrad(const DenseTensor& output_grad,
     for (int i = 0; i < n; i++) {    // loop for batches
       for (int j = 0; j < c; j++) {  // loop for channels
         // linear interpolation grad
-        if (data_layout == DataLayout::kNCHW) {
+        if (data_layout == DataLayout::NCHW) {
           const MT grad = static_cast<MT>(output_grad_t(i, j, l));
           input_grad_t(i, j, x_w) += static_cast<T>(grad * d_e);
           input_grad_t(i, j, x_e) += static_cast<T>(grad * d_w);
@@ -118,7 +118,7 @@ static void BilinearInterpolationGrad(const DenseTensor& output_grad,
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
           // bilinear interpolation grad
-          if (data_layout == DataLayout::kNCHW) {
+          if (data_layout == DataLayout::NCHW) {
             const MT grad = static_cast<MT>(output_grad_t(i, j, k, l));
             input_grad_t(i, j, y_n, x_w) += static_cast<T>(grad * d_s * d_e);
             input_grad_t(i, j, y_s, x_w) += static_cast<T>(grad * d_n * d_e);
@@ -163,7 +163,7 @@ static void NearestNeighborInterpolateGrad(const DenseTensor& output_grad,
 
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
-          if (data_layout == DataLayout::kNCHW) {
+          if (data_layout == DataLayout::NCHW) {
             input_grad_t(i, j, in_k, in_l) += output_grad_t(i, j, k, l);
           } else {
             input_grad_t(i, in_k, in_l, j) += output_grad_t(i, k, l, j);
@@ -218,7 +218,7 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
                                       static_cast<int64_t>(0));
               int access_y = std::max(std::min(input_y - 1 + jj, in_h - 1),
                                       static_cast<int64_t>(0));
-              if (data_layout == DataLayout::kNCHW) {
+              if (data_layout == DataLayout::NCHW) {
                 MT grad = static_cast<MT>(output_grad_t(i, j, k, l));
                 input_grad_t(i, j, access_y, access_x) +=
                     static_cast<T>(grad * y_coeffs[jj] * x_coeffs[ii]);
@@ -298,7 +298,7 @@ static void TrilinearInterpolationGrad(const DenseTensor& output_grad,
         for (int b = 0; b < n; b++) {    // loop for batches
           for (int i = 0; i < c; i++) {  // loop for channels
             // trilinear interpolation grad
-            if (data_layout == DataLayout::kNCHW) {
+            if (data_layout == DataLayout::NCHW) {
               const MT grad = static_cast<MT>(output_grad_t(b, i, j, k, l));
               input_grad_t(b, i, t_f, y_n, x_w) +=
                   static_cast<T>(grad * d_b * d_s * d_e);
@@ -377,7 +377,7 @@ static void NearestNeighbor3DInterpolateGrad(const DenseTensor& output_grad,
 
         for (int i = 0; i < n; i++) {    // loop for batches
           for (int j = 0; j < c; j++) {  // loop for channels
-            if (data_layout == DataLayout::kNCHW) {
+            if (data_layout == DataLayout::NCHW) {
               input_grad_t(i, j, in_d, in_k, in_l) +=
                   output_grad_t(i, j, d, k, l);
             } else {
@@ -401,7 +401,7 @@ static void Interpolate1DCPUBwd(
     const DenseTensor& output_grad,
     const std::string& data_layout_str,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -410,7 +410,7 @@ static void Interpolate1DCPUBwd(
   int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  float scale_w = -1.0;
+  double scale_w = -1.0;
   if (scale_tensor) {
     auto scale_data =
         funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
@@ -449,7 +449,7 @@ static void Interpolate1DCPUBwd(
   }
 
   phi::DDim dim_grad;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_w};
   } else {
     dim_grad = {n, in_w, c};
@@ -458,7 +458,7 @@ static void Interpolate1DCPUBwd(
   input_grad->Resize(dim_grad);
   dev_ctx.template Alloc<T>(input_grad);
 
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_w == out_w) {
@@ -502,7 +502,7 @@ static void Interpolate2DCPUBwd(
     const std::string& data_layout_str,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -511,8 +511,8 @@ static void Interpolate2DCPUBwd(
   int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  float scale_h = -1;
-  float scale_w = -1;
+  double scale_h = -1;
+  double scale_w = -1;
   if (scale_tensor) {
     auto scale_data =
         funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
@@ -575,7 +575,7 @@ static void Interpolate2DCPUBwd(
   }
 
   phi::DDim dim_grad;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_h, in_w};
   } else {
     dim_grad = {n, in_h, in_w, c};
@@ -584,7 +584,7 @@ static void Interpolate2DCPUBwd(
   input_grad->Resize(dim_grad);
   dev_ctx.template Alloc<T>(input_grad);
 
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_h == out_h && in_w == out_w) {
@@ -659,7 +659,7 @@ static void Interpolate3DCPUBwd(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -668,9 +668,9 @@ static void Interpolate3DCPUBwd(
   int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  float scale_d = -1;
-  float scale_h = -1;
-  float scale_w = -1;
+  double scale_d = -1;
+  double scale_h = -1;
+  double scale_w = -1;
   if (scale_tensor) {
     auto scale_data =
         funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
@@ -753,7 +753,7 @@ static void Interpolate3DCPUBwd(
   }
 
   phi::DDim dim_grad;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_d, in_h, in_w};
   } else {
     dim_grad = {n, in_d, in_h, in_w, c};
@@ -761,7 +761,7 @@ static void Interpolate3DCPUBwd(
   input_grad->Resize(dim_grad);
   dev_ctx.template Alloc<T>(input_grad);
 
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_d == out_d && in_h == out_h && in_w == out_w) {
@@ -822,7 +822,7 @@ void InterpolateGradKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -893,7 +893,7 @@ void BilinearInterpGradKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -933,7 +933,7 @@ void LegacyBilinearInterpGradKernel(
     int align_mode,
     DenseTensor* x_grad) {
   const auto& dim_x = x.dims();
-  std::vector<float> scale_vec;
+  std::vector<double> scale_vec;
   if (scale > 0) {
     for (int i = 0; i < dim_x.size() - 2; i++) {
       scale_vec.push_back(scale);
@@ -967,7 +967,7 @@ void NearestInterpGradKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1007,7 +1007,7 @@ void LegacyNearestInterpGradKernel(
     int align_mode,
     DenseTensor* x_grad) {
   const auto& dim_x = x.dims();
-  std::vector<float> scale_vec;
+  std::vector<double> scale_vec;
   if (scale > 0) {
     for (int i = 0; i < dim_x.size() - 2; i++) {
       scale_vec.push_back(scale);
@@ -1042,7 +1042,7 @@ void TrilinearInterpGradKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1076,7 +1076,7 @@ void LinearInterpGradKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1110,7 +1110,7 @@ void BicubicInterpGradKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,

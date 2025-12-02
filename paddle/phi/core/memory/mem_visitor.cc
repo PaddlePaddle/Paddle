@@ -26,6 +26,10 @@
 namespace paddle {
 namespace memory {
 
+void allocation::Allocator::Accept(AllocatorVisitor* visitor) {
+  visitor->Visit(this);
+}
+
 void AllocatorVisitor::Visit(RetryAllocator* allocator) {
   allocator->GetUnderLyingAllocator()->Accept(this);
 }
@@ -50,8 +54,10 @@ void AllocatorVisitor::Visit(
 
 void AllocatorVisitor::Visit(
     VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) {
-  allocator->GetSmallAllocator()->Accept(this);
-  allocator->GetLargeAllocator()->Accept(this);
+  if (allocator->GetSmallAllocator())
+    allocator->GetSmallAllocator()->Accept(this);
+  if (allocator->GetLargeAllocator())
+    allocator->GetLargeAllocator()->Accept(this);
 }
 
 void AllocatorComputeStreamVisitor::Visit(StreamSafeCUDAAllocator* allocator) {
@@ -94,6 +100,44 @@ void VMMFreeBlocksInfoVisitor::Visit(
   if (!keys.empty()) {
     free_blocks_info_.push_back(keys);
   }
+}
+
+void VMMAllBlocksInfoVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitAllocator* allocator) {
+  std::vector<std::tuple<size_t, uintptr_t, bool>> info;
+  for (const auto& item : allocator->GetAllBlocks()) {
+    size_t size = item.size_;
+    uintptr_t addr = reinterpret_cast<uintptr_t>(item.ptr_);
+    bool is_free = item.is_free_;
+    info.emplace_back(size, addr, is_free);
+  }
+  if (!info.empty()) {
+    all_blocks_info_.push_back(info);
+  }
+}
+
+void VMMAllocateRecordEventsVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) {
+  allocate_record_event_ = allocator->GetEvents();
+}
+
+void VMMAllocateCompactSizeVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) {
+  allocate_compact_size_ = allocator->GetCompactSize();
+}
+
+void VmmTensorPartsVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitAllocator* allocator) {
+  if (found_) {
+    return;
+  }
+  std::vector<BlockPart> parts;
+  if (allocator->CollectTensorParts(target_ptr_, &parts)) {
+    found_ = true;
+    parts_ = std::move(parts);
+    return;
+  }
+  allocator->GetUnderLyingAllocator()->Accept(this);
 }
 #endif
 }  // namespace memory

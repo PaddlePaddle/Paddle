@@ -29,21 +29,21 @@
 #include "paddle/fluid/eager/tensor_wrapper.h"
 
 #include "paddle/common/layout.h"
-#include "paddle/phi/api/all.h"
-#include "paddle/phi/api/lib/data_transform.h"
-#include "paddle/phi/core/compat/convert_utils.h"
-#include "paddle/phi/core/tensor_meta.h"
-#include "paddle/phi/kernels/funcs/tensor_formatter.h"
-
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/api/all.h"
+#include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/common/logging_utils.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
 #include "paddle/utils/md5.h"
 COMMON_DECLARE_bool(enable_unique_name);
 COMMON_DECLARE_int32(tensor_md5_checksum_precision);
-
+COMMON_DECLARE_bool(tensor_md5_checksum_use_binary_format);
 #ifdef _WIN32
 #define getprocessid GetCurrentProcessId
 typedef int pid_t;
@@ -824,6 +824,67 @@ std::string EagerUtils::GradNodeStr(const paddle::Tensor& t) {
     return "None";
   }
 }
+
+template <typename T>
+std::string FormatData(const phi::DenseTensor& print_tensor,
+                       int precision,
+                       bool use_binary = false) {
+  int64_t print_size = print_tensor.numel();
+  std::stringstream data_stream;
+  const T* data = nullptr;
+  phi::DenseTensor cpu_tensor;
+  if (print_tensor.place().GetType() == phi::AllocationType::CPU) {
+    data = print_tensor.data<T>();
+  } else {
+    phi::CPUPlace cpu_place;
+
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    auto dev_ctx = pool.Get(print_tensor.place());
+
+    phi::Copy(*dev_ctx, print_tensor, cpu_place, true, &cpu_tensor);
+    data = cpu_tensor.data<T>();
+  }
+
+  if (print_size > 0) {
+    auto print_element =
+        [&data_stream, &precision, &use_binary](const auto& elem) {
+          auto to_binary = [](const auto& elem) {
+            const unsigned char* bytes =
+                reinterpret_cast<const unsigned char*>(&elem);
+            std::ostringstream oss;
+            for (size_t i = 0; i < sizeof(elem); ++i) {
+              oss << bytes[i];
+            }
+            return oss.str();
+          };
+          if constexpr (std::is_same_v<T, phi::complex64> ||
+                        std::is_same_v<T, phi::complex128>) {
+            if (use_binary) {
+              data_stream << to_binary(elem.real) << to_binary(elem.imag);
+            } else {
+              data_stream << std::fixed << std::setprecision(precision)
+                          << static_cast<double>(elem.real) << "+" << std::fixed
+                          << std::setprecision(precision)
+                          << static_cast<double>(elem.imag) << "j";
+            }
+          } else {
+            if (use_binary) {
+              data_stream << to_binary(elem);
+            } else {
+              data_stream << std::fixed << std::setprecision(precision)
+                          << static_cast<double>(elem);
+            }
+          }
+        };
+
+    print_element(data[0]);
+    for (int64_t i = 1; i < print_size; ++i) {
+      print_element(data[i]);
+    }
+  }
+  return data_stream.str();
+}
+
 std::string GetTensorMD5Checksum(const paddle::Tensor& t) {
   if (!t.defined() || !t.has_allocation()) {
     return "None";
@@ -842,33 +903,34 @@ std::string GetTensorMD5Checksum(const paddle::Tensor& t) {
   auto& dense_tensor = *(dense_tensor_ptr);
   auto dtype = dense_tensor.dtype();
   int precision = FLAGS_tensor_md5_checksum_precision;
-
+  bool use_binary = FLAGS_tensor_md5_checksum_use_binary_format;
+  std::string data_str = "";
   if (dtype == phi::DataType::FLOAT32) {
-    formatter.FormatData<float>(dense_tensor, data_stream, precision);
+    data_str = FormatData<float>(dense_tensor, precision, use_binary);
   } else if (dtype == phi::DataType::FLOAT64) {
-    formatter.FormatData<double>(dense_tensor, data_stream, precision);
+    data_str = FormatData<double>(dense_tensor, precision, use_binary);
   } else if (dtype == phi::DataType::INT32) {
-    formatter.FormatData<int>(dense_tensor, data_stream, precision);
+    data_str = FormatData<int>(dense_tensor, precision, use_binary);
   } else if (dtype == phi::DataType::INT64) {
-    formatter.FormatData<int64_t>(dense_tensor, data_stream, precision);
+    data_str = FormatData<int64_t>(dense_tensor, precision, use_binary);
   } else if (dtype == phi::DataType::BOOL) {
-    formatter.FormatData<bool>(dense_tensor, data_stream, precision);
+    data_str = FormatData<bool>(dense_tensor, precision, use_binary);
   } else if (dtype == phi::DataType::FLOAT16) {
-    formatter.FormatData<phi::float16>(dense_tensor, data_stream, precision);
+    data_str = FormatData<phi::float16>(dense_tensor, precision, use_binary);
   } else if (dtype == phi::DataType::BFLOAT16) {
-    formatter.FormatData<phi::bfloat16>(dense_tensor, data_stream, precision);
+    data_str = FormatData<phi::bfloat16>(dense_tensor, precision, use_binary);
   } else if (dtype == phi::DataType::FLOAT8_E4M3FN) {
-    formatter.FormatData<phi::float8_e4m3fn>(
-        dense_tensor, data_stream, precision);
+    data_str =
+        FormatData<phi::float8_e4m3fn>(dense_tensor, precision, use_binary);
   } else if (dtype == phi::DataType::FLOAT8_E5M2) {
-    formatter.FormatData<phi::float8_e5m2>(
-        dense_tensor, data_stream, precision);
+    data_str =
+        FormatData<phi::float8_e5m2>(dense_tensor, precision, use_binary);
   } else if (dtype == phi::DataType::COMPLEX64) {
-    formatter.FormatData<phi::complex64>(dense_tensor, data_stream, precision);
+    data_str = FormatData<phi::complex64>(dense_tensor, precision, use_binary);
   } else if (dtype == phi::DataType::COMPLEX128) {
-    formatter.FormatData<phi::complex128>(dense_tensor, data_stream, precision);
+    data_str = FormatData<phi::complex128>(dense_tensor, precision, use_binary);
   }
-  return paddle::md5(data_stream.str());
+  return paddle::md5(data_str);
 }
 /**
  * Print Input Output (level 0 means least info, level 2 means most info)
@@ -1055,6 +1117,14 @@ std::string EagerUtils::TensorStr(const std::vector<paddle::Tensor>& tensors) {
   std::string tensors_str = "";
   for (const auto& tensor : tensors) {
     tensors_str += TensorStr(tensor) + ", ";
+  }
+  return "[ " + tensors_str + " ]";
+}
+
+std::string EagerUtils::TensorStr(const std::vector<paddle::Tensor*>& tensors) {
+  std::string tensors_str = "";
+  for (const auto& tensor : tensors) {
+    tensors_str += TensorStr(*tensor) + ", ";
   }
   return "[ " + tensors_str + " ]";
 }
@@ -1512,7 +1582,19 @@ TEST_API void SetTensorName(const std::string& unique_api_name,
     auto& t = (*tensors)[i];
     if (t.defined() && t.has_allocation()) {
       t.set_name(egr::GenerateUniqueTensorName(
-          unique_api_name, var_name + std::to_string(i), &t));
+          unique_api_name, var_name + "_" + std::to_string(i), &t));
+    }
+  }
+}
+
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            std::vector<paddle::Tensor*>* tensors) {
+  for (size_t i = 0; i < tensors->size(); i++) {
+    auto& t = (*tensors)[i];
+    if (t->defined() && t->has_allocation()) {
+      t->set_name(egr::GenerateUniqueTensorName(
+          unique_api_name, var_name + "_" + std::to_string(i), t));
     }
   }
 }
@@ -1536,8 +1618,11 @@ TEST_API void SetGradTensorName(
     const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
         bwd_out_meta) {
   const auto& metas = bwd_out_meta[slot];
+  if (metas.size() == 0) return;
   std::string name = GenerateGradTensorName(metas[0]);
-  tensor->set_name(name);
+  if (tensor != nullptr && tensor->defined() && tensor->has_allocation()) {
+    tensor->set_name(name);
+  }
 }
 TEST_API void SetGradTensorName(
     std::vector<paddle::Tensor>* tensors,
@@ -1545,7 +1630,7 @@ TEST_API void SetGradTensorName(
     const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
         bwd_out_meta) {
   const auto& metas = bwd_out_meta[slot];
-  for (size_t i = 0; i < tensors->size(); i++) {
+  for (size_t i = 0; i < tensors->size() && i < metas.size(); i++) {
     auto& t = (*tensors)[i];
     if (t.defined() && t.has_allocation()) {
       std::string name = GenerateGradTensorName(metas[i]);
@@ -1562,7 +1647,7 @@ std::string AddNodeToDebugBackwardGraph(Dot* dot,
   // EagerBackwardSubGraphNodeRecorder. If we need capture subgraph, the
   // gradnode not related subgraph will not be captured
   if (need_dump_backward_subgraph &&
-      !egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
+      !egr::EagerBackwardSubGraphNodeRecorder::Instance().IsGradNodeInVizGuard(
           node)) {
     // no need to add node to dot graph
   } else {
@@ -1584,9 +1669,9 @@ void AddEdgeToDebugBackwardGraph(Dot* dot,
                                  bool need_dump_backward_subgraph) {
   std::string dot_node_label = node_label;
   if (need_dump_backward_subgraph &&
-      !egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
+      !egr::EagerBackwardSubGraphNodeRecorder::Instance().IsGradNodeInVizGuard(
           node) &&
-      !egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
+      !egr::EagerBackwardSubGraphNodeRecorder::Instance().IsGradNodeInVizGuard(
           next_node)) {
     // if we need capture subgraph, the gradnode not related subgraph
     // will not be captured
@@ -1600,8 +1685,8 @@ void AddEdgeToDebugBackwardGraph(Dot* dot,
                      false);
       } else {
         if (need_dump_backward_subgraph == false ||
-            egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
-                next_node)) {
+            egr::EagerBackwardSubGraphNodeRecorder::Instance()
+                .IsGradNodeInVizGuard(next_node)) {
           dot->AddNode(dot_next_node_label,
                        paddle::inference::analysis::grey_box_attrs,
                        dot_next_node_label,
@@ -1619,10 +1704,10 @@ void AddEdgeToDebugBackwardGraph(Dot* dot,
     // if need_dump_backward_subgraph but next_node is in subgraph and node is
     // not in subgraph we will add node in subgraph and add edge
     if (need_dump_backward_subgraph &&
-        egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
+        egr::EagerBackwardSubGraphNodeRecorder::Instance().IsGradNodeInVizGuard(
             next_node) &&
-        !egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
-            node)) {
+        !egr::EagerBackwardSubGraphNodeRecorder::Instance()
+             .IsGradNodeInVizGuard(node)) {
       dot_node_label = CreateNodeLabelInDot(node);
       // The node is not in subgraph but the node_next node is in subgraph
       // we use orange_box to mark it too
@@ -1740,6 +1825,29 @@ void CheckGradNodeAccumulation(
     for (const auto& tensor : sub_tensors) {
       CheckGradNodeAccumulation(*tensor);
     }
+  }
+}
+
+LogLevelGuardBackward::LogLevelGuardBackward(bool need_backward_vlog_guard,
+                                             GradNodeBase* node) {
+  //
+  if (need_backward_vlog_guard &&
+      egr::EagerBackwardSubGraphNodeRecorder::Instance().IsGradNodeInVlogGuard(
+          node)) {
+    saved_level_ = FLAGS_v;
+    SetVLOGLevel(egr::EagerBackwardSubGraphNodeRecorder::Instance()
+                     .GetSubGraphBwdVlogLevel(node));
+    initialized_ = true;
+  }
+}
+void LogLevelGuardBackward::SetVLOGLevel(int level) {
+  FLAGS_v = level;
+  phi::set_phi_vlog_level(level);
+}
+LogLevelGuardBackward::~LogLevelGuardBackward() {
+  if (PD_UNLIKELY(initialized_)) {
+    // We should restore the log level
+    SetVLOGLevel(saved_level_);
   }
 }
 }  // namespace egr
