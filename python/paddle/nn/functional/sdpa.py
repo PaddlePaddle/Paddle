@@ -71,6 +71,26 @@ def init_config():
         }
 
 
+def _repeat_kv(key: Tensor, value: Tensor, num_repeats: int):
+    """
+    Repeat key and value tensors along the num_heads(3) dimension. The layout
+    of key and value should be [batch_size, seq_len, num_heads, head_dim].
+    """
+    if num_repeats == 1:
+        return key, value
+    # repeat_interleave does not support float16 on GPU, so we manually expand the tensor
+    key, value = key.unsqueeze(3), value.unsqueeze(3)
+    key, value = (
+        key.expand([-1, -1, -1, num_repeats, -1]),
+        value.expand([-1, -1, -1, num_repeats, -1]),
+    )
+    key, value = (
+        key.flatten(2, 3).contiguous(),
+        value.flatten(2, 3).contiguous(),
+    )
+    return key, value
+
+
 @dataclass
 class SDPParams:
     query_shape: paddle.Size
@@ -628,18 +648,8 @@ def scaled_dot_product_attention(
             memory_efficient_attention,
         )
 
-        # repeat_interleave does not support float16 on GPU, so we manually expand the tensor
-        if k_heads != q_heads:
-            repeats = q_heads // k_heads
-            key, value = key.unsqueeze(3), value.unsqueeze(3)
-            key, value = (
-                key.expand([-1, -1, -1, repeats, -1]),
-                value.expand([-1, -1, -1, repeats, -1]),
-            )
-            key, value = (
-                key.flatten(2, 3).contiguous(),
-                value.flatten(2, 3).contiguous(),
-            )
+        repeats = q_heads // k_heads
+        key, value = _repeat_kv(key, value, repeats)
 
         if is_causal:
             bias_input = LowerTriangularMask()
@@ -658,18 +668,8 @@ def scaled_dot_product_attention(
         )
 
     elif sdp_func_name == "math":
-        # repeat_interleave does not support float16 on GPU, so we manually expand the tensor
-        if k_heads != q_heads:
-            repeats = q_heads // k_heads
-            key, value = key.unsqueeze(3), value.unsqueeze(3)
-            key, value = (
-                key.expand([-1, -1, -1, repeats, -1]),
-                value.expand([-1, -1, -1, repeats, -1]),
-            )
-            key, value = (
-                key.flatten(2, 3).contiguous(),
-                value.flatten(2, 3).contiguous(),
-            )
+        repeats = q_heads // k_heads
+        key, value = _repeat_kv(key, value, repeats)
         out = _math_attention(
             query,
             key,
