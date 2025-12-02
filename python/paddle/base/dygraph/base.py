@@ -449,7 +449,7 @@ def is_grad_enabled() -> bool:
         bool: True if current dygraph gradient calculation mode is enabled, otherwise false.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -463,7 +463,7 @@ def is_grad_enabled() -> bool:
 
             >>> paddle.enable_static()
             >>> paddle.is_grad_enabled()
-            False
+            True
     """
     return core._has_grad()
 

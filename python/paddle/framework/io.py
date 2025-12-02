@@ -1109,7 +1109,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
         Object(Object): a target object can be used in paddle
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-1
 
             >>> # example 1: dynamic graph
@@ -1139,7 +1139,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
             >>> # load weight of emb
             >>> load_weight = paddle.load("emb.weight.pdtensor")
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-2
 
             >>> # example 2: Load multiple state_dict at the same time
@@ -1154,7 +1154,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
             >>> paddle.save(obj, path)
             >>> obj_load = paddle.load(path)
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-3
 
             >>> # example 3: static graph
@@ -1173,7 +1173,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
             >>> prog = paddle.static.default_main_program()
             >>> for var in prog.list_vars():
             ...     if list(var.shape) == [224, 10]:
-            ...         tensor = var.get_value()
+            ...         tensor = paddle.static.global_scope().find_var(var.name).get_tensor()
             ...         break
 
             >>> # save/load tensor
@@ -1186,7 +1186,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
             >>> paddle.save(prog.state_dict("param"), path_tensor)
             >>> load_state_dict = paddle.load(path_tensor)
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-4
 
             >>> # example 4: load program
@@ -1202,7 +1202,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
             >>> paddle.save(main_program, path)
             >>> load_main = paddle.load(path)
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-5
 
             >>> # example 5: save object to memory
