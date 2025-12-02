@@ -40,16 +40,14 @@ limitations under the License.
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_fp16.h>
 #include <hip/hip_runtime.h>
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
 #define GPU(str) hip##str
 #define GPUMultiProcessorCount hipDeviceAttributeMultiprocessorCount
 #define GPUMaxSharedMemoryPerBlockOptin hipDeviceAttributeSharedMemPerBlockOptin
 #else
-#include <cub/cub.cuh>
 #define GPU(str) cuda##str
 #define GPUMultiProcessorCount cudaDevAttrMultiProcessorCount
 #define GPUMaxSharedMemoryPerBlockOptin cudaDevAttrMaxSharedMemoryPerBlockOptin

@@ -18,15 +18,10 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#else
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
 #endif
 
 namespace phi {
@@ -212,9 +207,9 @@ __global__ void RenormElementwisePow(const T* x_data,
                                      T* pow_value,
                                      int64_t size,
                                      float p) {
-  int64_t i = ((int64_t) static_cast<int64_t>(blockIdx.x)) *
-                  static_cast<int64_t>(blockDim.x) +
-              static_cast<int64_t>(threadIdx.x);
+  int64_t i =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (i < size) {
     pow_value[i] = pow(abs(x_data[i]), (T)p);
   }

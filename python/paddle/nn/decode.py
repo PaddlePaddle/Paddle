@@ -1337,7 +1337,7 @@ def dynamic_decode(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.nn import BeamSearchDecoder, dynamic_decode
@@ -1356,7 +1356,7 @@ def dynamic_decode(
             ...                          inits=decoder_cell.get_initial_states(encoder_output),
             ...                          max_step_num=10)
             >>> print(outputs[0].shape)
-            [4, 11, 4]
+            paddle.Size([4, 11, 4])
     """
     if in_dynamic_mode():
         return _dynamic_decode_imperative(

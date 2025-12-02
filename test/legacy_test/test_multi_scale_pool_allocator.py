@@ -23,9 +23,7 @@ import paddle
 )
 class TestMultiScaleAllocator(unittest.TestCase):
     def setUp(self):
-        paddle.set_flags(
-            {'FLAGS_use_multi_scale_virtual_memory_auto_growth': True}
-        )
+        paddle.set_flags({'FLAGS_use_virtual_memory_auto_growth': True})
         self.GB = 1000**3
         self.MB = 1000**2
         self.cmds = [

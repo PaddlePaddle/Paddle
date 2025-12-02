@@ -212,4 +212,4 @@ TEST(CustomPluginCreator, DynamicShapePlugin) {
 }
 }  // namespace paddle::inference::tensorrt
 
-USE_TRT_CONVERTER(custom_plugin_creater)
+USE_TRT_CONVERTER(custom_plugin_creator)

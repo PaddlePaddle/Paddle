@@ -32,37 +32,27 @@ void UnStackKernel(const Context &dev_ctx,
   auto dx = outs;
   if (axis < 0) axis += dy->dims().size();
 
-  int n = dy->dims()[axis];
+  int64_t n = dy->dims()[axis];
+
   std::vector<T *> dx_datas(n);  // NOLINT
-  for (int i = 0; i < n; i++) {
+  for (int64_t i = 0; i < n; i++) {
     dx_datas[i] = dev_ctx.template Alloc<T>(dx[i]);
   }
   auto dy_data = dy->data<T>();
   if (dy->numel() == 0) {
-    for (int i = 0; i < n; i++) {
+    for (int64_t i = 0; i < n; i++) {
       dev_ctx.template Alloc<T>((outs)[i]);
       (outs)[i]->Resize((outs)[i]->dims());
     }
     return;
   }
-  int pre = 1;
+  int64_t pre = 1;
   for (int i = 0; i < axis; ++i) pre *= dy->dims()[i];
   int64_t total_num = dy->numel();
   int64_t post = total_num / (n * pre);
 
-  // TODO(large-tensor): StackGradFunctorForRange uses int for indexing, not
-  // int64_t
-  PADDLE_ENFORCE_LE(
-      total_num,
-      std::numeric_limits<int>::max(),
-      common::errors::InvalidArgument(
-          "The total number of elements in UnStack is %d, which exceeds the "
-          "maximum supported value %d. StackGradFunctorForRange uses int type "
-          "for indexing and does not support tensors with more than %d "
-          "elements.",
-          total_num,
-          std::numeric_limits<int>::max(),
-          std::numeric_limits<int>::max()));
+  // TODO(large-tensor): StackGradFunctorForRange not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(total_num, "total_num");
 
 #if defined(__NVCC__) || defined(__HIPCC__)
   thrust::device_vector<T *> device_dx_vec(dx_datas);

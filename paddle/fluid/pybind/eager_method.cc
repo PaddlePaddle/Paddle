@@ -358,11 +358,11 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                                       kind);
 #else
       PADDLE_THROW(
-          common::errors::Unavailable("The `numpy()` method of (Dist)Tensor "
+          common::errors::Unavailable("The numpy() method of DistTensor "
                                       "is not supported in the current "
-                                      "PaddlePaddle, please recompile and "
-                                      "installPaddlePaddle with the option "
-                                      "of `WITH_DISTRIBUTE=ON`."));
+                                      "Paddle, please recompile and "
+                                      "install Paddle with the option "
+                                      "of WITH_DISTRIBUTE=ON."));
 #endif
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
@@ -417,11 +417,11 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                            dense_tensor.Holder()->size());
 #else
       PADDLE_THROW(
-          common::errors::Unavailable("The `numpy()` method of (Dist)Tensor "
+          common::errors::Unavailable("The numpy() method of DistTensor "
                                       "is not supported in the current "
-                                      "PaddlePaddle, please recompile and "
-                                      "installPaddlePaddle with the option "
-                                      "of `WITH_DISTRIBUTE=ON`."));
+                                      "Paddle, please recompile and "
+                                      "install Paddle with the option "
+                                      "of WITH_DISTRIBUTE=ON."));
 #endif
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
@@ -1409,8 +1409,8 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
     return ToPyObject(tensor);
 #else
     PADDLE_THROW(common::errors::Unavailable(
-        "The `get_tensor()` method of (Dist)Tensor is not supported in the "
-        "current PaddlePaddle, please recompile and installPaddlePaddle "
+        "The get_tensor() method of DistTensor is not supported in the "
+        "current Paddle, please recompile and install Paddle "
         "with the option of `WITH_DISTRIBUTE=ON`."));
 #endif
   } else {
@@ -1426,7 +1426,7 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
   auto& value = GetTensorFromArgs("set_tensor", "value", args, 0, false);
   if (!value.defined()) {
     PADDLE_THROW(
-        common::errors::Unavailable("The `set_tensor()` method of (Dist)Tensor "
+        common::errors::Unavailable("The set_tensor() method of DistTensor "
                                     "get a non initialized src value"));
   } else if (value.is_dense_tensor()) {
     auto* src_tensor = static_cast<phi::DenseTensor*>(value.impl().get());
@@ -1455,7 +1455,7 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
       } else {
         if (!dst_tensor->meta().is_contiguous()) {
           PADDLE_THROW(common::errors::Fatal(
-              "dst_tensor is not contiguous and src_tesnor has different place "
+              "dst_tensor is not contiguous and src_tensor has different place "
               "with dst_tensor, so Strided kernel "
               "can't be called, please change src_tensor'place as same as "
               "dst_tensor'place or change dst_tensor to be contiguous"));
@@ -1471,14 +1471,14 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
           framework::TensorCopy(*src_tensor, src_tensor->place(), dst_tensor);
         } else {
           PADDLE_THROW(common::errors::Unavailable(
-              "The `set_tensor()` method of (Dist)Tensor get a src value with "
+              "The set_tensor() method of DistTensor get a src value with "
               "undefined place"));
         }
       }
 
     } else {
       PADDLE_THROW(common::errors::Unavailable(
-          "The `set_tensor()` method of non DenseTensor get a DenseTensor src "
+          "The set_tensor() method of non DenseTensor get a DenseTensor src "
           "value"));
     }
   } else if (value.is_dist_tensor()) {
@@ -1499,24 +1499,24 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
                               dst_tensor->unsafe_mutable_value());
       } else {
         PADDLE_THROW(common::errors::Unavailable(
-            "The `set_tensor()` method of (Dist)Tensor get a src value with "
+            "The set_tensor() method of DistTensor get a src value with "
             "undefined place"));
       }
 
     } else {
       PADDLE_THROW(
-          common::errors::Unavailable("The `set_tensor()` method of non "
+          common::errors::Unavailable("The set_tensor() method of non "
                                       "DistTensor get a DistTensor src value"));
     }
 #else
     PADDLE_THROW(common::errors::Unavailable(
-        "The `set_tensor()` method of (Dist)Tensor is not supported in the "
-        "current PaddlePaddle, please recompile and installPaddlePaddle "
-        "with the option of `WITH_DISTRIBUTE=ON`."));
+        "The set_tensor() method of DistTensor is not supported in the "
+        "current Paddle, please recompile and install Paddle "
+        "with the option of WITH_DISTRIBUTE=ON."));
 #endif
   } else {
     PADDLE_THROW(common::errors::Unavailable(
-        "The `set_tensor()` method of (Dist)Tensor get a non "
+        "The set_tensor() method of DistTensor get a non "
         "DenseTensor/DistTensor src value"));
   }
   RETURN_PY_NONE

@@ -169,7 +169,7 @@ valid:
                         for e in range(10):
                             consume(a, b, c, d, e)
 
-  # 5 levels breaked by extra code - OK
+  # 5 levels broken by extra code - OK
   - |
     for i in range(10):
         for j in range(10):

@@ -818,6 +818,18 @@ class TestTrilinearInterpScale3(TestTrilinearInterpOp):
         self.align_mode = 1
 
 
+class TestTrilinearInterpScale4(TestTrilinearInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'trilinear'
+        self.input_shape = [2, 3, 5, 7, 9]
+        self.out_d = 30
+        self.out_h = 20
+        self.out_w = 25
+        self.scale = 1.5
+        self.align_corners = False
+        self.align_mode = 0
+
+
 class TestTrilinearInterpZero(TestTrilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'trilinear'

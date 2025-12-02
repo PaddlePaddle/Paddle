@@ -935,7 +935,7 @@ def index_add_decorator() -> Callable[
                     kwargs["index"] = args[2]
                 if len(args) > 3:
                     kwargs["value"] = args[3]
-                args = args[4:]
+                args = ()
 
             return func(*args, **kwargs)
 

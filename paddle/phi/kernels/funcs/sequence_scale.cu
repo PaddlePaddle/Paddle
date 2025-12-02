@@ -30,7 +30,7 @@ __global__ void SequenceScaleKernel(T* seq,
   for (size_t i = threadIdx.x;
        i < (lod[blockIdx.x + 1] - lod[blockIdx.x]) * seq_width;
        i += BlockSize) {
-    size_t idx = lod[blockIdx.x] * seq_width + i;
+    size_t idx = lod[static_cast<size_t>(blockIdx.x)] * seq_width + i;
     seq[idx] *= scales[blockIdx.x];
   }
 }

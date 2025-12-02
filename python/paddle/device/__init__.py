@@ -21,7 +21,7 @@ import os
 import re
 import sys
 import types
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, overload
 
 from typing_extensions import TypeAlias
 
@@ -203,6 +203,7 @@ __all__ = [
     'reset_peak_memory_stats',
     'ipc_collect',
     'get_stream_from_external',
+    'StreamContext',
 ]
 
 _cudnn_version = None
@@ -632,7 +633,15 @@ def set_device(device: PlaceLike | int) -> PlaceLike:
     return place
 
 
-def get_device(input: paddle.Tensor = None) -> str | int:
+@overload
+def get_device(input: None = None) -> str: ...
+
+
+@overload
+def get_device(input: paddle.Tensor) -> int: ...
+
+
+def get_device(input: paddle.Tensor | None = None) -> str | int:
     """
 
     This function can get the current global device of the program is running.

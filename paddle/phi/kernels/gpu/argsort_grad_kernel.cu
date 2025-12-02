@@ -17,17 +17,10 @@
 #include <thrust/sequence.h>
 #include <thrust/sort.h>
 
-#include "paddle/phi/kernels/argsort_kernel.h"
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/argsort_kernel.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
@@ -153,7 +146,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
                        bool stable,
                        DenseTensor* in_grad) {
   dev_ctx.template Alloc<T>(in_grad);
-  phi::funcs::set_constant(dev_ctx, in_grad, static_cast<T>(0.0));
+  funcs::set_constant(dev_ctx, in_grad, static_cast<T>(0.0));
   if (out_grad.numel() == 0) return;
   auto in_dims = in_grad->dims();
   auto rank = in_dims.size();

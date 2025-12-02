@@ -75,7 +75,7 @@ void TopkKernel(const Context& dev_ctx,
   if (in_dims.size() == 0) {
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     dev_ctx.template Alloc<int64_t>(indices);
-    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
+    funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
   // calculate the real axis
@@ -122,14 +122,14 @@ void TopkKernel(const Context& dev_ctx,
     // statistics
     if (input_width >= 128 && k >= input_width * 0.25) {
       auto* ctx = reinterpret_cast<const phi::GPUContext*>(&dev_ctx);
-      if (phi::funcs::SortTopk<T>(*ctx,
-                                  input,
-                                  input_width,
-                                  input_height,
-                                  k,
-                                  out,
-                                  indices,
-                                  largest)) {
+      if (funcs::SortTopk<T>(*ctx,
+                             input,
+                             input_width,
+                             input_height,
+                             k,
+                             out,
+                             indices,
+                             largest)) {
         // Succeed, return.
         return;
       } else {
@@ -143,7 +143,7 @@ void TopkKernel(const Context& dev_ctx,
       // 1. Gather TopK, but without sorting
       constexpr int max_num_threads = 1024;
       if (largest) {
-        phi::funcs::RadixTopK<T, true>
+        funcs::RadixTopK<T, true>
             <<<input_height, max_num_threads, 0, dev_ctx.stream()>>>(
                 input_data,
                 k,
@@ -152,7 +152,7 @@ void TopkKernel(const Context& dev_ctx,
                 output_data,
                 indices_data);
       } else {
-        phi::funcs::RadixTopK<T, false>
+        funcs::RadixTopK<T, false>
             <<<input_height, max_num_threads, 0, dev_ctx.stream()>>>(
                 input_data,
                 k,
@@ -173,14 +173,14 @@ void TopkKernel(const Context& dev_ctx,
         dev_ctx.template Alloc<int64_t>(&sorted_indices);
         dev_ctx.template Alloc<int64_t>(&gather_indices);
         auto* ctx = reinterpret_cast<const phi::GPUContext*>(&dev_ctx);
-        if (phi::funcs::SortTopk<T>(*ctx,
-                                    out,
-                                    k,
-                                    input_height,
-                                    k,
-                                    &sorted_output,
-                                    &sorted_indices,
-                                    largest)) {
+        if (funcs::SortTopk<T>(*ctx,
+                               out,
+                               k,
+                               input_height,
+                               k,
+                               &sorted_output,
+                               &sorted_indices,
+                               largest)) {
           funcs::GPUGather<int64_t, int64_t>(
               dev_ctx, *indices, sorted_indices, &gather_indices);
           Copy(dev_ctx, gather_indices, indices->place(), false, indices);
@@ -205,7 +205,7 @@ void TopkKernel(const Context& dev_ctx,
     switch (config.thread_per_block.x) {
 #ifdef PADDLE_WITH_HIP
       FIXED_BLOCK_DIM(
-          phi::funcs::KeMatrixTopK<T, 20, kBlockDim>
+          funcs::KeMatrixTopK<T, 20, kBlockDim>
           <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(output_data,
                                                       k,
                                                       indices_data,
@@ -217,9 +217,9 @@ void TopkKernel(const Context& dev_ctx,
                                                       input_height,
                                                       largest));
 #else
-      FIXED_BLOCK_DIM(switch (phi::funcs::getMaxLength(k)) {
+      FIXED_BLOCK_DIM(switch (funcs::getMaxLength(k)) {
         FIXED_MAXLENGTH(
-            phi::funcs::KeMatrixTopK<T, maxLength, kBlockDim>
+            funcs::KeMatrixTopK<T, maxLength, kBlockDim>
             <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(output_data,
                                                         k,
                                                         indices_data,
@@ -287,14 +287,14 @@ void TopkKernel(const Context& dev_ctx,
     // statistics
     if (input_width >= 128 && k >= input_width * 0.75) {
       auto* ctx = reinterpret_cast<const phi::GPUContext*>(&dev_ctx);
-      if (phi::funcs::SortTopk<T>(*ctx,
-                                  &trans_input,
-                                  input_width,
-                                  input_height,
-                                  k,
-                                  &trans_out,
-                                  &trans_ind,
-                                  largest)) {
+      if (funcs::SortTopk<T>(*ctx,
+                             &trans_input,
+                             input_width,
+                             input_height,
+                             k,
+                             &trans_out,
+                             &trans_ind,
+                             largest)) {
         // last step, transpose back the indices and output
         funcs::TransCompute<phi::GPUContext, int64_t>(
             ndims, dev_ctx, trans_ind, indices, trans);
@@ -314,7 +314,7 @@ void TopkKernel(const Context& dev_ctx,
     switch (config.thread_per_block.x) {
 #ifdef PADDLE_WITH_HIP
       FIXED_BLOCK_DIM(
-          phi::funcs::KeMatrixTopK<T, 20, kBlockDim>
+          funcs::KeMatrixTopK<T, 20, kBlockDim>
           <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(trans_out.data<T>(),
                                                       k,
                                                       trans_ind.data<int64_t>(),
@@ -326,8 +326,8 @@ void TopkKernel(const Context& dev_ctx,
                                                       input_height,
                                                       largest));
 #else
-      FIXED_BLOCK_DIM(switch (phi::funcs::getMaxLength(k)) {
-        FIXED_MAXLENGTH(phi::funcs::KeMatrixTopK<T, maxLength, kBlockDim>
+      FIXED_BLOCK_DIM(switch (funcs::getMaxLength(k)) {
+        FIXED_MAXLENGTH(funcs::KeMatrixTopK<T, maxLength, kBlockDim>
                         <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
                             trans_out.data<T>(),
                             k,
