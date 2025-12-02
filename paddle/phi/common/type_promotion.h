@@ -212,9 +212,6 @@ inline bool NeedTypePromotion(
       return false;
     }
 #endif
-    if (op_name == "equal_all") {
-      return false;
-    }
 
     if ((is_support_float(x_dtype) && is_support_float(y_dtype)) ||
         (is_support_complex(x_dtype) || is_support_complex(y_dtype))) {

@@ -86,6 +86,27 @@ def equal(
             >>> print(result1)
             False
     """
+    if input.dtype == other.dtype:
+        return paddle.equal_all(input, other).item()
+
+    _DTYPE_RANK_MAP = {
+        'paddle.bool': 0,
+        'paddle.uint8': 1,
+        'paddle.int8': 2,
+        'paddle.int16': 3,
+        'paddle.int32': 4,
+        'paddle.int64': 5,
+        'paddle.float16': 6,
+        'paddle.float32': 7,
+        'paddle.float64': 8,
+    }
+    rank_input = _DTYPE_RANK_MAP.get(str(input.dtype), -1)
+    rank_other = _DTYPE_RANK_MAP.get(str(other.dtype), -1)
+
+    if rank_input > rank_other:
+        other = other.cast(input.dtype)
+    elif rank_other > rank_input:
+        input = input.cast(other.dtype)
 
     return paddle.equal_all(input, other).item()
 
