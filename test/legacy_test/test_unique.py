@@ -517,13 +517,13 @@ class TestUniqueAPI_Compatibility(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
-        x = paddle.static.data(name='x', shape=[-1, 5], dtype='float32')
+        x = paddle.static.data(name='x1', shape=[-1, 5], dtype='float32')
         out1 = paddle.unique(x)
-        out2 = paddle.unique(input=x)
+        out2 = paddle.unique(x=x)
         exe = paddle.static.Executor(self.place)
         res = exe.run(
             feed={
-                'x': self.x_np.reshape(3, 5),
+                'x1': self.x_np.reshape(3, 5),
             },
             fetch_list=[out1, out2],
         )
@@ -540,7 +540,7 @@ class TestUniqueAPI_Compatibility(unittest.TestCase):
 
     def test_dygraph_axis(self):
         paddle.disable_static()
-        out = paddle.unique(paddle.to_tensor(self.x_np), sorted=True, dim=1)
+        out = paddle.unique(paddle.to_tensor(self.x_np), sorted=True, axis=1)
         expected_out = np.unique(self.x_np, axis=1)
         np.testing.assert_allclose(out.numpy(), expected_out)
 
