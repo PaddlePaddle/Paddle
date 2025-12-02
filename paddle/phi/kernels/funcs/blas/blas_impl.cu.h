@@ -28,7 +28,7 @@
 
 COMMON_DECLARE_bool(enable_cublas_tensor_op_math);
 COMMON_DECLARE_bool(gemm_use_half_precision_compute_type);
-COMMON_DECLARE_bool(use_legacy_gemm);
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 namespace funcs {
@@ -2581,7 +2581,8 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   } else {
 #endif  // CUDA_VERSION >= 9010
     dev_ctx_.CublasCall([&](cublasHandle_t handle) {
-      if (N == 1 && ldc >= std::max<int64_t>(1, M) && !FLAGS_use_legacy_gemm) {
+      if (N == 1 && ldc >= std::max<int64_t>(1, M) &&
+          FLAGS_use_accuracy_compatible_kernel) {
         // No transpose result in these case, align with torch's behaviour.
         // TODO(Pan Zhaowu): Integrate proper stride support for arbitrary input
         // tensor.

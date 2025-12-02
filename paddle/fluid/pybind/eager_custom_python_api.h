@@ -21,7 +21,7 @@
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/core/enforce.h"
 
-COMMON_DECLARE_bool(use_legacy_gemm);
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 using egr::ConvertAllInputsToDistTensor;
 using egr::InputsContainDistTensor;
 
@@ -46,7 +46,7 @@ static PyObject *eager_api_linear(PyObject *self,
       }
 #if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000 && \
      !(defined(_WIN32) || defined(WIN32)))
-      if (!FLAGS_use_legacy_gemm &&  // NOLINT
+      if (FLAGS_use_accuracy_compatible_kernel &&  // NOLINT
           x.place().GetType() == phi::AllocationType::GPU &&
           weight.place().GetType() == phi::AllocationType::GPU &&
           bias.place().GetType() == phi::AllocationType::GPU &&
