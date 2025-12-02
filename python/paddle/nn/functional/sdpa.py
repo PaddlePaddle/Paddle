@@ -41,34 +41,26 @@ _config = {}
 
 def init_config():
     global _config
-    with paddle.base.dygraph.guard():
-        is_bf16_natively_supported = False
-        if paddle.base.is_compiled_with_cuda():
-            is_bf16_natively_supported = (
-                paddle.cuda.get_device_capability()[0] >= 8
+    _config = {
+        "flash_attn": {
+            "MINIMUM_SM_VERSION": (8, 0),
+            "MAXIMUM_SM_VERSION": (12, 1),
+            "support_dtypes": (paddle.float16, paddle.bfloat16)
+            if paddle.device.is_bf16_supported(including_emulation=False)
+            else (paddle.float16,),
+        },
+        "mem_efficient_attn": {
+            "MINIMUM_SM_VERSION": (5, 0),
+            "MAXIMUM_SM_VERSION": (12, 1),
+            "support_dtypes": (
+                paddle.float16,
+                paddle.bfloat16,
+                paddle.float,
             )
-        else:
-            is_bf16_natively_supported = paddle.device.is_bf16_supported()
-        _config = {
-            "flash_attn": {
-                "MINIMUM_SM_VERSION": (8, 0),
-                "MAXIMUM_SM_VERSION": (12, 1),
-                "support_dtypes": (paddle.float16, paddle.bfloat16)
-                if is_bf16_natively_supported
-                else (paddle.float16,),
-            },
-            "mem_efficient_attn": {
-                "MINIMUM_SM_VERSION": (5, 0),
-                "MAXIMUM_SM_VERSION": (12, 1),
-                "support_dtypes": (
-                    paddle.float16,
-                    paddle.bfloat16,
-                    paddle.float,
-                )
-                if is_bf16_natively_supported
-                else (paddle.float16, paddle.float),
-            },
-        }
+            if paddle.device.is_bf16_supported(including_emulation=False)
+            else (paddle.float16, paddle.float),
+        },
+    }
 
 
 def _repeat_kv(key: Tensor, value: Tensor, num_repeats: int):
