@@ -1058,11 +1058,10 @@ void LaunchNormalSoftmaxBackward(const GPUContext& dev_ctx,
 }
 
 template <typename T = int>
-static std::vector<T> GetSoftmaxTensorDims(const phi::DDim& dims,
-                                           const int axis) {
+static std::vector<T> GetSoftmaxTensorDims(const DDim& dims, const int axis) {
   auto dim = static_cast<T>(dims[axis]);
-  auto N = phi::funcs::SizeToAxis<T>(axis, dims);
-  auto D = phi::funcs::SizeOutAxis<T>(axis, dims);
+  auto N = funcs::SizeToAxis<T>(axis, dims);
+  auto D = funcs::SizeOutAxis<T>(axis, dims);
   return {N, dim, D, 1};
 }
 
@@ -2533,7 +2532,7 @@ void SoftmaxForwardCUDAKernelCompatible(const GPUContext& dev_ctx,
   auto* out_data = out->data<T>();
   auto* input_data = x.data<T>();
   int rank = x.dims().size();
-  int axis = phi::funcs::CanonicalAxis(input_axis, rank);
+  int axis = funcs::CanonicalAxis(input_axis, rank);
   std::vector<IndexType> tensor_dims =
       GetSoftmaxTensorDims<IndexType>(x.dims(), axis);
   IndexType N = tensor_dims[0];
@@ -2593,7 +2592,7 @@ void SoftmaxBackwardCUDAKernelCompatible(const GPUContext& dev_ctx,
   auto* out_data = out.data<T>();
   auto* dout_data = dout.data<T>();
   int rank = out.dims().size();
-  int axis = phi::funcs::CanonicalAxis(input_axis, rank);
+  int axis = funcs::CanonicalAxis(input_axis, rank);
   std::vector<IndexType> tensor_dims =
       GetSoftmaxTensorDims<IndexType>(out.dims(), axis);
   IndexType N = tensor_dims[0];
@@ -2650,7 +2649,7 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
   auto* out_data = out->data<T>();
 
   int rank = x.dims().size();
-  int axis = phi::funcs::CanonicalAxis(input_axis, rank);
+  int axis = funcs::CanonicalAxis(input_axis, rank);
   std::vector<IndexType> tensor_dims =
       GetSoftmaxTensorDims<IndexType>(x.dims(), axis);
   IndexType N = tensor_dims[0];
@@ -2789,7 +2788,7 @@ void SoftmaxBackwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
   auto* dx_data = dx->data<T>();
 
   int rank = out.dims().size();
-  int axis = phi::funcs::CanonicalAxis(input_axis, rank);
+  int axis = funcs::CanonicalAxis(input_axis, rank);
   std::vector<IndexType> tensor_dims =
       GetSoftmaxTensorDims<IndexType>(out.dims(), axis);
   IndexType N = tensor_dims[0];

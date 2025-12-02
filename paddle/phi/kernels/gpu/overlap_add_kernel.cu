@@ -39,12 +39,12 @@ void OverlapAddKernel(const Context& dev_ctx,
   DenseTensor x_(x.type());
   x_ = x;
 
-  phi::DDim preserved_dims;
+  DDim preserved_dims;
   if (out_rank > 2) {
     // Save dims used to flatten both input and output tensors and restore
     // output tensor.
-    phi::DDim x_resized_dims;
-    phi::DDim out_resized_dims;
+    DDim x_resized_dims;
+    DDim out_resized_dims;
     if (axis == 0) {
       preserved_dims = common::slice_ddim(out->dims(), 1, out_rank);
       x_resized_dims = {
