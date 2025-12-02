@@ -79,7 +79,7 @@ void LerpKernel(const Context &dev_ctx,
     inputs.emplace_back(&x);
     inputs.emplace_back(&y);
     auto functor = LerpScalarDirectCUDAFunctor<T>(weight_ptr);
-    phi::funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, functor);
+    funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, functor);
   } else {
     inputs.reserve(3);
     auto functor = LerpElementWiseDirectCUDAFunctor<T>();
@@ -114,7 +114,7 @@ void LerpKernel(const Context &dev_ctx,
       inputs.emplace_back(&y);
       inputs.emplace_back(&weight);
     }
-    phi::funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, functor);
+    funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, functor);
   }
 }
 

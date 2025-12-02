@@ -115,7 +115,7 @@ void ConcatKernel(const Context& dev_ctx,
   EnforceLayouts(multi_input);
 
   int64_t axis = axis_.to<int64_t>();
-  axis = phi::funcs::ComputeAxis(axis, x[0]->dims().size());
+  axis = funcs::ComputeAxis(axis, x[0]->dims().size());
 
   auto out_dims_vec = common::vectorize(out->dims());
   if (std::any_of(out_dims_vec.begin(), out_dims_vec.end(), [](int64_t i) {

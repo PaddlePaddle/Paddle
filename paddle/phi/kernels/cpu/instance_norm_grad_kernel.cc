@@ -52,7 +52,7 @@ void InstanceNormGradKernel(const Context& dev_ctx,
                             DenseTensor* d_x,
                             DenseTensor* d_scale,
                             DenseTensor* d_bias) {
-  phi::funcs::SetConstant<CPUContext, T> set_constant;
+  funcs::SetConstant<CPUContext, T> set_constant;
   dev_ctx.template Alloc<T>(d_x);
   if (x.numel() == 0) {
     if (d_scale) {
@@ -179,7 +179,7 @@ void InstanceNormDoubleGradKernel(const Context& dev_ctx,
   const auto* ddScale = ddscale.get_ptr();
   const auto* ddX = ddx.get_ptr();
   const auto* ddBias = ddbias.get_ptr();
-  phi::funcs::SetConstant<CPUContext, T> set_constant;
+  funcs::SetConstant<CPUContext, T> set_constant;
   const auto& x_dims = x.dims();
   int N = 0, C = 0, H = 0, W = 0, D = 0;
   funcs::ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);

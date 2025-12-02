@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import platform
 import unittest
 
 import numpy as np
@@ -62,13 +63,16 @@ def eig_backward(w, v, grad_w, grad_v):
 class TestEigOp(OpTest):
     def setUp(self):
         paddle.enable_static()
-        paddle.device.set_device("cpu")
-        self.op_type = "eig"
-        self.python_api = paddle.linalg.eig
-        self.__class__.op_type = self.op_type
-        self.init_input()
-        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
-        self.outputs = {'Eigenvalues': self.out[0], 'Eigenvectors': self.out[1]}
+        with paddle.device("cpu"):
+            self.op_type = "eig"
+            self.python_api = paddle.linalg.eig
+            self.__class__.op_type = self.op_type
+            self.init_input()
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
+            self.outputs = {
+                'Eigenvalues': self.out[0],
+                'Eigenvectors': self.out[1],
+            }
 
     def init_input(self):
         self.set_dtype()
@@ -287,103 +291,107 @@ class TestEigDyGraph(unittest.TestCase):
         input_np = np.random.random([3, 3]).astype('complex')
         expect_val, expect_vec = np.linalg.eig(input_np)
 
-        paddle.set_device("cpu")
-        paddle.disable_static()
+        with paddle.device("cpu"):
+            paddle.disable_static()
 
-        input_tensor = paddle.to_tensor(input_np)
-        fetch_val, fetch_vec = paddle.linalg.eig(input_tensor)
+            input_tensor = paddle.to_tensor(input_np)
+            fetch_val, fetch_vec = paddle.linalg.eig(input_tensor)
 
-        np.testing.assert_allclose(
-            expect_val,
-            fetch_val.numpy(),
-            rtol=1e-06,
-            atol=1e-06,
-            err_msg='The eigen values have diff: \nExpected '
-            + str(expect_val)
-            + '\n'
-            + 'But got: '
-            + str(fetch_val),
-        )
-        np.testing.assert_allclose(
-            np.abs(expect_vec),
-            np.abs(fetch_vec.numpy()),
-            rtol=1e-06,
-            atol=1e-06,
-            err_msg='The eigen vectors have diff: \nExpected '
-            + str(np.abs(expect_vec))
-            + '\n'
-            + 'But got: '
-            + str(np.abs(fetch_vec.numpy())),
-        )
+            np.testing.assert_allclose(
+                expect_val,
+                fetch_val.numpy(),
+                rtol=1e-06,
+                atol=1e-06,
+                err_msg='The eigen values have diff: \nExpected '
+                + str(expect_val)
+                + '\n'
+                + 'But got: '
+                + str(fetch_val),
+            )
+            np.testing.assert_allclose(
+                np.abs(expect_vec),
+                np.abs(fetch_vec.numpy()),
+                rtol=1e-06,
+                atol=1e-06,
+                err_msg='The eigen vectors have diff: \nExpected '
+                + str(np.abs(expect_vec))
+                + '\n'
+                + 'But got: '
+                + str(np.abs(fetch_vec.numpy())),
+            )
 
     def test_check_grad(self):
         test_shape = [3, 3]
         test_type = 'float64'
-        paddle.set_device("cpu")
+        with paddle.device("cpu"):
+            np.random.seed(1024)
+            input_np = np.random.random(test_shape).astype(test_type)
+            real_w, real_v = np.linalg.eig(input_np)
 
-        np.random.seed(1024)
-        input_np = np.random.random(test_shape).astype(test_type)
-        real_w, real_v = np.linalg.eig(input_np)
+            grad_w = np.ones(real_w.shape, test_type)
+            grad_v = np.ones(real_v.shape, test_type)
+            grad_x = eig_backward(real_w, real_v, grad_w, grad_v)
 
-        grad_w = np.ones(real_w.shape, test_type)
-        grad_v = np.ones(real_v.shape, test_type)
-        grad_x = eig_backward(real_w, real_v, grad_w, grad_v)
+            with base.dygraph.guard():
+                x = paddle.to_tensor(input_np)
+                x.stop_gradient = False
+                w, v = paddle.linalg.eig(x)
+                (w.sum() + v.sum()).backward()
 
-        with base.dygraph.guard():
-            x = paddle.to_tensor(input_np)
-            x.stop_gradient = False
-            w, v = paddle.linalg.eig(x)
-            (w.sum() + v.sum()).backward()
-
-        np.testing.assert_allclose(
-            np.abs(x.grad.numpy()),
-            np.abs(grad_x),
-            rtol=1e-05,
-            atol=1e-05,
-            err_msg='The grad x have diff: \nExpected '
-            + str(np.abs(grad_x))
-            + '\n'
-            + 'But got: '
-            + str(np.abs(x.grad.numpy())),
-        )
+            np.testing.assert_allclose(
+                np.abs(x.grad.numpy()),
+                np.abs(grad_x),
+                rtol=1e-05,
+                atol=1e-05,
+                err_msg='The grad x have diff: \nExpected '
+                + str(np.abs(grad_x))
+                + '\n'
+                + 'But got: '
+                + str(np.abs(x.grad.numpy())),
+            )
 
 
 class TestEigWrongDimsError(unittest.TestCase):
     def test_error(self):
-        paddle.device.set_device("cpu")
-        paddle.disable_static()
-        a = np.random.random(3).astype('float32')
-        x = paddle.to_tensor(a)
-        self.assertRaises(ValueError, paddle.linalg.eig, x)
+        with paddle.device("cpu"):
+            paddle.disable_static()
+            a = np.random.random(3).astype('float32')
+            x = paddle.to_tensor(a)
+            self.assertRaises(ValueError, paddle.linalg.eig, x)
 
 
 class TestEigNotSquareError(unittest.TestCase):
     def test_error(self):
-        paddle.device.set_device("cpu")
-        paddle.disable_static()
-        a = np.random.random((1, 2, 3)).astype('float32')
-        x = paddle.to_tensor(a)
-        self.assertRaises(ValueError, paddle.linalg.eig, x)
+        with paddle.device("cpu"):
+            paddle.disable_static()
+            a = np.random.random((1, 2, 3)).astype('float32')
+            x = paddle.to_tensor(a)
+            self.assertRaises(ValueError, paddle.linalg.eig, x)
 
 
 class TestEigUnsupportedDtypeError(unittest.TestCase):
     def test_error(self):
-        paddle.device.set_device("cpu")
-        paddle.disable_static()
-        a = (np.random.random((3, 3)) * 10).astype('int64')
-        x = paddle.to_tensor(a)
-        self.assertRaises(RuntimeError, paddle.linalg.eig, x)
+        with paddle.device("cpu"):
+            paddle.disable_static()
+            a = (np.random.random((3, 3)) * 10).astype('int64')
+            x = paddle.to_tensor(a)
+            self.assertRaises(RuntimeError, paddle.linalg.eig, x)
 
 
 class TestOptionalGradInput(unittest.TestCase):
+    @unittest.skipIf(
+        not platform.system().lower().startswith("linux")
+        or not paddle.device.is_compiled_with_xpu(),
+        reason="enable only in linux+xpu now",
+    )
     def test_eager(self):
-        with dygraph_guard(), paddle.device.device_guard("cpu"):
+        with dygraph_guard(), paddle.device("xpu"):
             x = paddle.randn(3, 3, requires_grad=True)
             w, v = paddle.linalg.eig(x)
 
             np.testing.assert_allclose(
-                (x @ v),
-                w.unsqueeze(0) * v,
+                (x @ v).numpy(),
+                (w.unsqueeze(0) * v).numpy(),
                 atol=1e-5,
                 rtol=1e-5,
             )  # Aμ = λμ
@@ -398,8 +406,13 @@ class TestOptionalGradInput(unittest.TestCase):
                 rtol=1e-5,
             )
 
+    @unittest.skipIf(
+        not platform.system().lower().startswith("linux")
+        or not paddle.device.is_compiled_with_xpu(),
+        reason="enable only in linux+xpu now",
+    )
     def test_dy2st(self):
-        with dygraph_guard(), paddle.device.device_guard("cpu"):
+        with dygraph_guard(), paddle.device("xpu"):
             x = paddle.randn(3, 3, requires_grad=True)
 
             def f(x):
@@ -413,8 +426,8 @@ class TestOptionalGradInput(unittest.TestCase):
 
             w, v = st_f(x)
             np.testing.assert_allclose(
-                (x @ v),
-                w.unsqueeze(0) * v,
+                (x @ v).numpy(),
+                (w.unsqueeze(0) * v).numpy(),
                 atol=1e-5,
                 rtol=1e-5,
             )  # Aμ = λμ

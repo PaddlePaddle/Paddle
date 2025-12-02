@@ -106,6 +106,11 @@ if(WITH_MKLML)
   list(APPEND INFERENCE_DEPS dynload_mklml)
 endif()
 
+if(WITH_HML)
+  list(APPEND PHI_DEPS dynload_hml)
+  list(APPEND INFERENCE_DEPS dynload_hml)
+endif()
+
 if(WITH_XPU)
   list(APPEND PHI_DEPS xpulib)
   if(WITH_XPU_PLUGIN)
@@ -325,6 +330,9 @@ if(MKL_FOUND AND WITH_ONEMKL)
 endif()
 
 add_dependencies(phi extern_lapack)
+if(WITH_MAGMA)
+  add_dependencies(phi extern_magma)
+endif()
 if(WITH_CUTLASS)
   add_definitions("-DPADDLE_WITH_MEMORY_EFFICIENT_ATTENTION"
   )# for memory_efficient_attention.h

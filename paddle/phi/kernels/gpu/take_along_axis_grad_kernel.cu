@@ -40,12 +40,12 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
   }
 
   // Set to zero tensor.
-  phi::funcs::SetConstant<Context, T> functor;
+  funcs::SetConstant<Context, T> functor;
   functor(dev_ctx, x_grad, static_cast<T>(0));
   const auto& index_type = index.dtype();
 
   if (index_type == DataType::INT32) {
-    phi::funcs::gpu_scatter_add_kernel<T, int32_t>(
+    funcs::gpu_scatter_add_kernel<T, int32_t>(
         *x_grad,
         axis,
         index,
@@ -53,7 +53,7 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
         true,
         dev_ctx);  // the gradient of gather is scatter
   } else if (index_type == DataType::INT64) {
-    phi::funcs::gpu_scatter_add_kernel<T, int64_t>(
+    funcs::gpu_scatter_add_kernel<T, int64_t>(
         *x_grad, axis, index, out_grad, true, dev_ctx);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
