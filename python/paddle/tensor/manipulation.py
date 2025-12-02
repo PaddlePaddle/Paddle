@@ -3781,7 +3781,6 @@ def unique(
 ) -> Tensor | tuple[Tensor, ...]: ...
 
 
-@param_two_alias(["x", "input"], ["axis", "dim"])
 def unique(
     x,
     return_index=False,

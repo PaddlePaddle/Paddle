@@ -791,7 +791,7 @@ def sort(
 
 
 @ForbidKeywordsDecorator(
-    illegal_keys={"x", "axis", "name"},
+    illegal_keys={"x", "axis"},
     func_name="paddle.compat.unique",
     correct_name="paddle.unique",
 )
