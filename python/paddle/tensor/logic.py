@@ -986,8 +986,11 @@ def bitwise_and(
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [0, 2, 1])
     """
-    if in_dynamic_or_pir_mode() and out is None:
-        return _C_ops.bitwise_and(x, y)
+    if in_dynamic_or_pir_mode():
+        if out is None:
+            return _C_ops.bitwise_and(x, y)
+        else:
+            return _C_ops.bitwise_and(x, y, out)
     return _bitwise_op(
         op_name="bitwise_and", x=x, y=y, name=name, out=out, binary_op=True
     )
