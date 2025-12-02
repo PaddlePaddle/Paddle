@@ -144,6 +144,52 @@ class TestAtan2API(unittest.TestCase):
         for place in self.place:
             run(place)
 
+    def test_out_parameter(self):
+        """Test atan2 with out parameter"""
+        paddle.disable_static()
+
+        try:
+            # Test basic out parameter
+            x1 = paddle.to_tensor(self.x1)
+            x2 = paddle.to_tensor(self.x2)
+            out = paddle.empty_like(x1)
+            result = paddle.atan2(x1, x2, out=out)
+            out_ref = np.arctan2(self.x1, self.x2)
+
+            # Result should be the same as out tensor
+            np.testing.assert_allclose(out.numpy(), result.numpy(), rtol=1e-05)
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
+
+            # Test with gradient
+            x1 = paddle.to_tensor(self.x1, stop_gradient=False)
+            x2 = paddle.to_tensor(self.x2, stop_gradient=False)
+            out = paddle.empty_like(x1)
+            out.stop_gradient = False
+            result = paddle.atan2(x1, x2, out=out)
+            loss = paddle.sum(result)
+            loss.backward()
+
+            # Verify gradients exist
+            self.assertIsNotNone(x1.grad)
+            self.assertIsNotNone(x2.grad)
+
+            # Test without out parameter for comparison
+            x1_ref = paddle.to_tensor(self.x1, stop_gradient=False)
+            x2_ref = paddle.to_tensor(self.x2, stop_gradient=False)
+            result_ref = paddle.atan2(x1_ref, x2_ref)
+            loss_ref = paddle.sum(result_ref)
+            loss_ref.backward()
+
+            # Gradients should be the same
+            np.testing.assert_allclose(
+                x1.grad.numpy(), x1_ref.grad.numpy(), rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                x2.grad.numpy(), x2_ref.grad.numpy(), rtol=1e-05
+            )
+        finally:
+            paddle.enable_static()
+
 
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())

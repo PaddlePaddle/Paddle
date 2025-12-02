@@ -4961,7 +4961,10 @@ def negative(x: Tensor, name: str | None = None) -> Tensor:
     return -x
 
 
-def atan2(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@param_two_alias(["x", "input"], ["y", "other"])
+def atan2(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     r"""
     Element-wise arctangent of x/y with consideration of the quadrant.
 
@@ -4977,10 +4980,17 @@ def atan2(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             &\text{undefined} & x=0, y = 0
             \end{matrix}\right.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and the parameter name ``other`` can be used as an alias for ``y``.
+        For example, ``atan2(input=tensor_x, other=tensor_y)`` is equivalent to ``atan2(x=tensor_x, y=tensor_y)``.
+
     Args:
         x (Tensor): An N-D Tensor, the data type is int32, int64, float16, float32, float64.
+            Alias: ``input``.
         y (Tensor): An N-D Tensor, must have the same type as `x`.
+            Alias: ``other``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor. Default is None.
 
     Returns:
         out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float64 when the input data type is int).
@@ -5017,7 +5027,7 @@ def atan2(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             broadcast_x = paddle.broadcast_to(broadcast_x, broadcast_shape)
             broadcast_y = paddle.broadcast_to(broadcast_y, broadcast_shape)
 
-        return _C_ops.atan2(broadcast_x, broadcast_y)
+        return _C_ops.atan2(broadcast_x, broadcast_y, out=out)
     else:
         check_variable_and_dtype(
             x,
@@ -5034,7 +5044,10 @@ def atan2(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
         helper = LayerHelper('atan2', **locals())
         inputs = {'X1': x, 'X2': y}
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        if out is not None:
+            check_type(out, 'out', Variable, 'atan2')
+        else:
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(type='atan2', inputs=inputs, outputs={'Out': out})
         return out
 

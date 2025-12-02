@@ -13,6 +13,16 @@
   args_alias :
     use_default_mapping : True
 
+- op : asinh
+  name : [paddle.asinh,paddle.Tensor.asinh]
+  args_alias :
+    use_default_mapping : True
+
+- op : atan
+  name : [paddle.atan,paddle.Tensor.atan]
+  args_alias :
+    use_default_mapping : True
+
 - op : amax
   name : [paddle.amax,paddle.Tensor.amax]
   args_alias :
