@@ -1757,9 +1757,11 @@ def _load_state_dict_single_group(
         for dst_tensor in destination_tensors.values():
             if getattr(dst_tensor, 'need_cross_device_copy', False):
                 target_tensor = dst_tensor.target_tensor
+                delattr(dst_tensor, "target_tensor")
                 target_tensor.copy_(dst_tensor)
             else:
                 target_tensor = dst_tensor.target_tensor
+                delattr(dst_tensor, "target_tensor")
                 paddle.assign(dst_tensor, target_tensor)
             del dst_tensor
 
@@ -1867,9 +1869,11 @@ def _load_state_dict_multi_group(
         for dst_tensor in destination_tensors.values():
             if getattr(dst_tensor, 'need_cross_device_copy', False):
                 target_tensor = dst_tensor.target_tensor
+                delattr(dst_tensor, "target_tensor")
                 target_tensor.copy_(dst_tensor)
             else:
                 target_tensor = dst_tensor.target_tensor
+                delattr(dst_tensor, "target_tensor")
                 paddle.assign(dst_tensor, target_tensor)
             del dst_tensor
 
