@@ -19,7 +19,6 @@
 #include "paddle/pir/include/core/ir_printer.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 PD_DECLARE_bool(enable_cinn_compile_cache);
-
 namespace cinn::hlir::framework::pir {
 
 constexpr static char* kOpCallStack = "op_callstack";
@@ -260,9 +259,6 @@ std::size_t FusionInfo::hash() const {
   std::size_t seed = 2153;
   for (const auto& info : op_infos_) hash_combine(seed, info);
   for (const auto& dim_expr : input_dim_exprs_) hash_combine(seed, dim_expr);
-  // hash_combine(seed, *program_info_);
-  // TODO(xuyuhan) Maybe input_dim_exprs_ are not enough?
-  for (const auto& dim_expr : output_dim_exprs_) hash_combine(seed, dim_expr);
   if (!FLAGS_enable_cinn_compile_cache) hash_combine(seed, unique_fn_name_);
   return seed;
 }
