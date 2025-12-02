@@ -158,9 +158,9 @@ void CastToFp16(phi::DenseTensor* in, phi::DenseTensor* out) {
   CastTo(in, out, phi::DataType::FLOAT16);
 }
 
-static float FindMaxAbs(const float* data, int len) {
+static float FindMaxAbs(const float* data, int64_t len) {
   float max_f = 0.0f;
-  for (int i = 0; i < len; ++i) {
+  for (int64_t i = 0; i < len; ++i) {
     float max = std::abs(data[i]);
     if (max > max_f) {
       max_f = max;
