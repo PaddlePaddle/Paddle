@@ -53,15 +53,15 @@ void ScatterKernel(const Context &dev_ctx,
                         phi::DataType::INT64));
   if (overwrite) {
     if (index_type == phi::DataType::INT32) {
-      phi::funcs::ScatterAssign<T, int32_t>(dev_ctx, updates, index, out);
+      funcs::ScatterAssign<T, int32_t>(dev_ctx, updates, index, out);
     } else {
-      phi::funcs::ScatterAssign<T, int64_t>(dev_ctx, updates, index, out);
+      funcs::ScatterAssign<T, int64_t>(dev_ctx, updates, index, out);
     }
   } else {
     if (index_type == phi::DataType::INT32) {
-      phi::funcs::ScatterAssignAdd<T, int32_t>(dev_ctx, updates, index, out);
+      funcs::ScatterAssignAdd<T, int32_t>(dev_ctx, updates, index, out);
     } else {
-      phi::funcs::ScatterAssignAdd<T, int64_t>(dev_ctx, updates, index, out);
+      funcs::ScatterAssignAdd<T, int64_t>(dev_ctx, updates, index, out);
     }
   }
 }

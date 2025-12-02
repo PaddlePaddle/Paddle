@@ -35,7 +35,6 @@ COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 namespace phi {
 
 using ScopedTensorDescriptor = phi::backends::gpu::ScopedTensorDescriptor;
-using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
 
 // Vectorization trait 4 * sizeof(T)
 template <typename T>
@@ -1076,7 +1075,7 @@ void SoftmaxForwardCudnnKernel(const GPUContext& dev_ctx,
                                const std::vector<int>& tensor_dims,
                                T* out_data) {
   auto handle = dev_ctx.cudnn_handle();
-  GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
+  DataLayout layout = DataLayout::NCHW;
 
   ScopedTensorDescriptor scoped_desc;
 #ifdef PADDLE_WITH_HIP
@@ -1148,7 +1147,7 @@ void SoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
                                 const std::vector<int>& tensor_dims,
                                 T* dx_data) {
   auto handle = dev_ctx.cudnn_handle();
-  GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
+  DataLayout layout = DataLayout::NCHW;
 
   ScopedTensorDescriptor scoped_desc;
 #ifdef PADDLE_WITH_HIP

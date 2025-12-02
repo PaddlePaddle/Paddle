@@ -54,12 +54,12 @@ void HSigmoidLossGradKernelImpl(const Context& dev_ctx,
     is_custom = true;
   }
 
-  std::unique_ptr<phi::funcs::MatrixBitCodeFunctor<T>> bit_code;
+  std::unique_ptr<funcs::MatrixBitCodeFunctor<T>> bit_code;
   if (!is_custom) {
-    bit_code.reset(new phi::funcs::MatrixBitCodeFunctor<T>(
+    bit_code.reset(new funcs::MatrixBitCodeFunctor<T>(
         num_classes, label.template data<int64_t>()));
   } else {
-    bit_code.reset(new phi::funcs::MatrixBitCodeFunctor<T>(
+    bit_code.reset(new funcs::MatrixBitCodeFunctor<T>(
         *(path.get_ptr()), *(code.get_ptr()), label.template data<int64_t>()));
   }
 

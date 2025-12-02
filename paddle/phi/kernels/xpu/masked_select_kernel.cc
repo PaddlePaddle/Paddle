@@ -34,6 +34,13 @@ void MaskedSelectKernel(const Context& dev_ctx,
   auto* input_data = reinterpret_cast<const XPUType*>(input->data<T>());
   auto input_dim = input->dims();
   auto mask_dim = mask.dims();
+  auto numel = mask.numel();
+  if (numel == 0) {
+    out->Resize(common::make_ddim({0}));
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+
   PADDLE_ENFORCE_EQ(input_dim,
                     mask_dim,
                     common::errors::InvalidArgument(

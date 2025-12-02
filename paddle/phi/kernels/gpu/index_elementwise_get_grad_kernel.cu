@@ -390,7 +390,7 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                                    const bool is_combined,
                                    DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
-  phi::funcs::set_constant(dev_ctx, x_grad, static_cast<float>(0));
+  funcs::set_constant(dev_ctx, x_grad, static_cast<float>(0));
   if (out_grad.numel() == 0) return;
 
   const auto& index_type = index[0]->dtype();

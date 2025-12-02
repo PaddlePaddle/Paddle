@@ -28,7 +28,7 @@ void ReduceAsGradKernel(const Context& dev_ctx,
                         const DenseTensor& target,
                         const DenseTensor& out_grad,
                         DenseTensor* x_grad) {
-  auto reduce_dim = phi::funcs::GetReduceDims(x, target);
+  auto reduce_dim = funcs::GetReduceDims(x, target);
   dev_ctx.Alloc(x_grad, x.dtype());
 
   if (reduce_dim.size() == 0) {
