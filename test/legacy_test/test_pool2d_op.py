@@ -37,13 +37,6 @@ def adaptive_end_index(index, input_size, output_size):
 
 
 def normalize_paddings(paddings):
-    """
-    支持：
-      [pad_h, pad_w]
-      [pad_top, pad_bottom, pad_left, pad_right]
-    返回：
-      pad_top, pad_bottom, pad_left, pad_right
-    """
     if len(paddings) == 2:
         pad_top = pad_bottom = paddings[0]
         pad_left = pad_right = paddings[1]
@@ -52,11 +45,6 @@ def normalize_paddings(paddings):
     else:
         raise ValueError(f"paddings 必须为长度为 2 或 4，但收到 {paddings}")
     return pad_top, pad_bottom, pad_left, pad_right
-
-
-# ===========================================================
-#               MaxPool2D Naive (Dilation + SAME + VALID)
-# ===========================================================
 
 
 def max_pool2d_with_dilations_forward_naive(
@@ -78,23 +66,14 @@ def max_pool2d_with_dilations_forward_naive(
         raise ValueError("当前 naive 实现只支持 pool_type='max'")
 
     d_h, d_w = dilations
-
-    # ----------- 先把 paddings 做成 4 元格式 -----------
     pad_top, pad_bottom, pad_left, pad_right = normalize_paddings(paddings)
 
-    # ===========================================================
-    #                          NCHW
-    # ===========================================================
     if data_format == "NCHW":
         N, C, H, W = x.shape
 
-        # ----------- global pooling -----------
         if global_pool == 1:
             ksize = [H, W]
 
-        # ===========================================================
-        #                     SAME Padding
-        # ===========================================================
         if padding_algorithm == "SAME" and not adaptive and global_pool == 0:
             H_out = (H + strides[0] - 1) // strides[0]
             W_out = (W + strides[1] - 1) // strides[1]
@@ -108,22 +87,11 @@ def max_pool2d_with_dilations_forward_naive(
             pad_left = pad_w_total // 2
             pad_right = pad_w_total - pad_left
 
-        # ===========================================================
-        #                     VALID Padding
-        # ===========================================================
         if padding_algorithm == "VALID" and not adaptive and global_pool == 0:
             pad_top = pad_bottom = pad_left = pad_right = 0
 
-        # ===========================================================
-        #                     输出形状计算
-        # ===========================================================
         if adaptive:
             H_out, W_out = ksize
-
-        elif padding_algorithm == "SAME":
-            # SAME 的 H_out/W_out 已经在上面算好了
-            pass
-
         elif padding_algorithm == "VALID":
             if ceil_mode:
                 H_out = (H - ksize[0] + strides[0] - 1) // strides[0] + 1
@@ -131,8 +99,7 @@ def max_pool2d_with_dilations_forward_naive(
             else:
                 H_out = (H - ksize[0]) // strides[0] + 1
                 W_out = (W - ksize[1]) // strides[1] + 1
-
-        else:  # EXPLICIT
+        elif padding_algorithm == "EXPLICIT":
             if ceil_mode:
                 H_out = (
                     H - ksize[0] + pad_top + pad_bottom + strides[0] - 1
@@ -144,15 +111,10 @@ def max_pool2d_with_dilations_forward_naive(
                 H_out = (H - ksize[0] + pad_top + pad_bottom) // strides[0] + 1
                 W_out = (W - ksize[1] + pad_left + pad_right) // strides[1] + 1
 
-        # ----------- 分配输出 -----------
         out = np.zeros((N, C, H_out, W_out), dtype=x.dtype)
 
-        # ===========================================================
-        #                        窗口计算
-        # ===========================================================
         for oh in range(H_out):
             for ow in range(W_out):
-                # ----------- adaptive pooling（不支持 dilation）-----------
                 if adaptive:
                     r_start = adaptive_start_index(oh, H, ksize[0])
                     r_end = adaptive_end_index(oh, H, ksize[0])
@@ -164,13 +126,11 @@ def max_pool2d_with_dilations_forward_naive(
                     )
                     continue
 
-                # ----------- 计算窗口起点 -----------
                 base_h = oh * strides[0] - pad_top
                 base_w = ow * strides[1] - pad_left
 
                 vals = []
 
-                # ----------- dilation-aware pooling window -----------
                 for kh in range(ksize[0]):
                     h = base_h + kh * d_h
                     if h < 0 or h >= H:
@@ -187,17 +147,12 @@ def max_pool2d_with_dilations_forward_naive(
                     out[:, :, oh, ow] = np.max(np.stack(vals, axis=-1), axis=-1)
 
         return out
-
-    # ===========================================================
-    #                          NHWC
-    # ===========================================================
     elif data_format == "NHWC":
         N, H, W, C = x.shape
 
         if global_pool == 1:
             ksize = [H, W]
 
-        # ---------------- SAME ----------------
         if padding_algorithm == "SAME" and not adaptive and global_pool == 0:
             H_out = (H + strides[0] - 1) // strides[0]
             W_out = (W + strides[1] - 1) // strides[1]
@@ -210,17 +165,11 @@ def max_pool2d_with_dilations_forward_naive(
             pad_left = pad_w_total // 2
             pad_right = pad_w_total - pad_left
 
-        # ---------------- VALID ----------------
         if padding_algorithm == "VALID" and not adaptive and global_pool == 0:
             pad_top = pad_bottom = pad_left = pad_right = 0
 
-        # ---------------- shape ----------------
         if adaptive:
             H_out, W_out = ksize
-
-        elif padding_algorithm == "SAME":
-            pass
-
         elif padding_algorithm == "VALID":
             if ceil_mode:
                 H_out = (H - ksize[0] + strides[0] - 1) // strides[0] + 1
@@ -229,7 +178,7 @@ def max_pool2d_with_dilations_forward_naive(
                 H_out = (H - ksize[0]) // strides[0] + 1
                 W_out = (W - ksize[1]) // strides[1] + 1
 
-        else:
+        elif padding_algorithm == "EXPLICIT":
             if ceil_mode:
                 H_out = (
                     H - ksize[0] + pad_top + pad_bottom + strides[0] - 1
@@ -243,7 +192,6 @@ def max_pool2d_with_dilations_forward_naive(
 
         out = np.zeros((N, H_out, W_out, C), dtype=x.dtype)
 
-        # ---------------- pooling ----------------
         for oh in range(H_out):
             for ow in range(W_out):
                 if adaptive:
@@ -400,7 +348,6 @@ def pool2D_forward_naive(
     ksize,
     strides,
     paddings,
-    dilations,
     global_pool=0,
     ceil_mode=False,
     exclusive=True,
@@ -410,24 +357,6 @@ def pool2D_forward_naive(
     padding_algorithm="EXPLICIT",
     norm_type=0,
 ):
-    if dilations[0] > 1 or dilations[1] > 1:
-        out = max_pool2d_with_dilations_forward_naive(
-            x,
-            ksize,
-            strides,
-            paddings,
-            dilations,
-            global_pool,
-            ceil_mode,
-            exclusive,
-            adaptive,
-            data_format,
-            pool_type,
-            padding_algorithm,
-            norm_type,
-        )
-        return out
-
     if norm_type == float("inf"):
         pool_type = 'max'
 
@@ -595,7 +524,6 @@ def pool2d_wrapper_not_use_cudnn(
         X = X._use_gpudnn(False)
     if data_format == "AnyLayout":
         data_format = "NCDHW"
-
     return paddle._C_ops.pool2d(
         X,
         ksize,
@@ -749,7 +677,6 @@ class TestPool2D_Op_Mixin:
         self.init_test_case()
         self.padding_algorithm = "EXPLICIT"
         self.init_paddings()
-        self.init_dilations()
         self.init_global_pool()
         self.init_kernel_type()
         self.init_pool_type()
@@ -769,7 +696,6 @@ class TestPool2D_Op_Mixin:
             self.ksize,
             self.strides,
             self.paddings,
-            self.dilations,
             self.global_pool,
             self.ceil_mode,
             self.exclusive,
@@ -786,8 +712,6 @@ class TestPool2D_Op_Mixin:
             output = output.astype(self.dtype)
             self.inputs = {'X': OpTest.np_dtype_to_base_dtype(input)}
 
-        self.outputs = {'Out': output}
-
         self.attrs = {
             'strides': self.strides,
             'paddings': self.paddings,
@@ -802,6 +726,9 @@ class TestPool2D_Op_Mixin:
             'adaptive': self.adaptive,
             "padding_algorithm": self.padding_algorithm,
         }
+
+        self.outputs = {'Out': output}
+
         if self.use_cudnn:
             self.python_api = pool2d_wrapper_use_cudnn
         else:
@@ -816,7 +743,6 @@ class TestPool2D_Op_Mixin:
         # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.has_cudnn():
             place = get_device_place()
-            # place = paddle.base.CPUPlace()
             self.check_output_with_place(
                 place,
                 atol=1e-5,
@@ -831,13 +757,6 @@ class TestPool2D_Op_Mixin:
                 check_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
             )
-            # place = paddle.base.CPUPlace()
-            # self.check_output_with_place(
-            #     place,
-            #     check_dygraph=(not self.use_onednn),
-            #     check_pir=True,
-            #     check_pir_onednn=self.check_pir_onednn,
-            # )
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -845,7 +764,6 @@ class TestPool2D_Op_Mixin:
         # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.has_cudnn() and self.pool_type != "max":
             place = get_device_place()
-            # place = paddle.base.CPUPlace()
             self.check_grad_with_place(
                 place,
                 {'X'},
@@ -865,17 +783,6 @@ class TestPool2D_Op_Mixin:
                 check_pir_onednn=self.check_pir_onednn,
             )
 
-            # place = paddle.base.CPUPlace()
-            # self.check_grad_with_place(
-            #     place,
-            #     {'X'},
-            #     'Out',
-            #     check_dygraph=(not self.use_onednn),
-            #     check_cinn=True,
-            #     check_pir=True,
-            #     check_pir_onednn=self.check_pir_onednn,
-            # )
-
     def init_data_format(self):
         self.data_format = "NCHW"
 
@@ -889,9 +796,6 @@ class TestPool2D_Op_Mixin:
     def init_paddings(self):
         self.paddings = [0, 0]
         self.padding_algorithm = "EXPLICIT"
-
-    def init_dilations(self):
-        self.dilations = [1, 1]
 
     def init_kernel_type(self):
         self.use_cudnn = False
@@ -930,7 +834,6 @@ class TestLPPool2D_Op(TestPool2D_Op):
         self.init_test_case()
         self.padding_algorithm = "EXPLICIT"
         self.init_paddings()
-        self.init_dilations()
         self.init_global_pool()
         self.init_kernel_type()
         self.init_ceil_mode()
@@ -951,7 +854,6 @@ class TestLPPool2D_Op(TestPool2D_Op):
             self.ksize,
             self.strides,
             self.paddings,
-            self.dilations,
             self.global_pool,
             self.ceil_mode,
             self.exclusive,
@@ -1857,7 +1759,7 @@ class TestPool2D_Max_Dilation(TestPool2D_Op):
         else:
             input = np.random.random(self.shape).astype(self.dtype)
 
-        output = pool2D_forward_naive(
+        output = max_pool2d_with_dilations_forward_naive(
             input,
             self.ksize,
             self.strides,
