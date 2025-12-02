@@ -558,10 +558,11 @@ def scaled_dot_product_attention(
         )
         return out
 
-    qkv_place = (query.place, key.place, value.place)
     if not paddle.base.in_dygraph_mode():
         with paddle.base.dygraph.guard():
             qkv_place = (paddle.framework._current_expected_place(),) * 3
+    else:
+        qkv_place = (query.place, key.place, value.place)
 
     param = SDPParams(
         query_shape=query.shape,
@@ -580,6 +581,12 @@ def scaled_dot_product_attention(
     if len(_config) == 0:
         init_config()
 
+    is_zero_size = (
+        query.shape.numel() == 0
+        or key.shape.numel() == 0
+        or value.shape.numel() == 0
+    )
+
     if attn_mask is not None:
         if attn_mask.dtype == paddle.bool:
             attn_mask = paddle.where(
@@ -589,9 +596,14 @@ def scaled_dot_product_attention(
             )
         if attn_mask.ndim == 3:
             attn_mask = paddle.unsqueeze(attn_mask, axis=1)
-        mask_shape = (bs, num_heads_q, seq_len_q, seq_len_k)
-        attn_mask = attn_mask.expand(mask_shape)
-    sdp_func_name = select_sdp_for_sdpa(param)
+        if attn_mask.shape.numel() != 0:
+            mask_shape = (bs, num_heads_q, seq_len_q, seq_len_k)
+            attn_mask = attn_mask.expand(mask_shape)
+
+    if is_zero_size:
+        sdp_func_name = "math"
+    else:
+        sdp_func_name = select_sdp_for_sdpa(param)
 
     _logger.debug("Selected backend:" + sdp_func_name)
     if sdp_func_name == "flash_attn":
