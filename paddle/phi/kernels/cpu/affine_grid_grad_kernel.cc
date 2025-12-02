@@ -57,12 +57,12 @@ void AffineGridGrad4DKernel(const Context& dev_ctx,
   w = static_cast<int>(size_attr[3]);
   theta_grad->Resize(common::make_ddim({n, 2, 3}));
   dev_ctx.template Alloc<T>(theta_grad);
-  phi::funcs::SetConstant<Context, T>()(dev_ctx, theta_grad, static_cast<T>(0));
+  funcs::SetConstant<Context, T>()(dev_ctx, theta_grad, static_cast<T>(0));
   DenseTensor grid;
   GetIdxMap4D<Context, T>(n, h, w, align_corners, &grid, dev_ctx);
   // output = grid * theta.T
   // TODO(wanghaoshuang): Refine batched matrix multiply
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   for (int i = 0; i < n; ++i) {
     DenseTensor sliced_grid = grid.Slice(i, i + 1).Resize(
         {static_cast<int64_t>(h) * static_cast<int64_t>(w), 3});
@@ -96,10 +96,10 @@ void AffineGridGrad5DKernel(const Context& dev_ctx,
   w = static_cast<int>(size_attr[4]);
   theta_grad->Resize(common::make_ddim({n, 3, 4}));
   dev_ctx.template Alloc<T>(theta_grad);
-  phi::funcs::SetConstant<Context, T>()(dev_ctx, theta_grad, static_cast<T>(0));
+  funcs::SetConstant<Context, T>()(dev_ctx, theta_grad, static_cast<T>(0));
   DenseTensor grid;
   GetIdxMap5D<Context, T>(n, d, h, w, align_corners, &grid, dev_ctx);
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   for (int i = 0; i < n; ++i) {
     DenseTensor sliced_grid = grid.Slice(i, i + 1).Resize(
         {static_cast<int64_t>(d) * static_cast<int64_t>(h) *

@@ -64,7 +64,7 @@ void DistConcatKernel(const Context& dev_ctx,
     inputs.emplace_back(temp);
     offset += rows_per_tensor;
   }
-  phi::funcs::ConcatFunctor<Context, T> functor;
+  funcs::ConcatFunctor<Context, T> functor;
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
   functor(dev_ctx, inputs, axis, out);

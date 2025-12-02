@@ -576,3 +576,31 @@ def extend_torch_proxy_blocked_modules(modules: Iterable[str]):
             >>> import my_custom_module  # This import will not use torch proxy
     """
     TORCH_PROXY_BLOCKED_MODULES.update(modules)
+
+
+def paddle_triton_fun():
+    """
+    Enable the triton support and return triton module.
+    Args: None.
+    Returns: triton module
+
+    Example:
+        .. code-block:: python
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> from paddle.compat import paddle_triton_fun
+            >>> triton = paddle_triton_fun()
+            >>> import triton.language as tl
+
+            >>> @triton.jit
+            >>> def add_kernel(X, Y, Z, N, BLOCK: tl.constexpr):
+            ...     pid = tl.program_id(0)
+            ...     offs = pid * BLOCK + tl.arange(0, BLOCK)
+            ...     mask = offs < N
+            ...     x = tl.load(X + offs, mask=mask)
+            ...     y = tl.load(Y + offs, mask=mask)
+            ...     tl.store(Z + offs, x + y, mask=mask)
+    """
+    enable_torch_proxy(scope={"triton"})
+    import triton
+
+    return triton

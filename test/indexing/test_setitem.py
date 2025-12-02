@@ -1024,7 +1024,7 @@ class TestSetitemInStatic(unittest.TestCase):
         np.testing.assert_allclose(res, tensor_np)
 
     def test_index_elementwise_put_with_tensor(self):
-        with dygraph_guard(), paddle.device("cpu"):
+        with dygraph_guard():
             x = paddle.randn(10, 4, requires_grad=True)
             xx = x + 0
 

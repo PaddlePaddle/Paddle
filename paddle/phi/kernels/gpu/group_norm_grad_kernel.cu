@@ -340,8 +340,8 @@ void GroupNormGradKernel(const Context& dev_ctx,
   if (d_x) {
     dev_ctx.template Alloc<T>(d_x);
   }
-  phi::funcs::SetConstant<GPUContext, T> set_zero;
-  phi::funcs::SetConstant<GPUContext, AccT> set_zero_AccT;
+  funcs::SetConstant<GPUContext, T> set_zero;
+  funcs::SetConstant<GPUContext, AccT> set_zero_AccT;
   DenseTensor ds, db;
   ds.Resize({x_dims[0], C});
   AccT* ds_data = dev_ctx.template Alloc<AccT>(&ds);

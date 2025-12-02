@@ -1520,28 +1520,9 @@ PyObject* eager__for_test_check_cuda_error(PyObject* self,
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
-PyObject* eager__start_capture_debug_backward_subgraph(PyObject* self,
-                                                       PyObject* args,
-                                                       PyObject* kwargs) {
-  EAGER_TRY
-
-  egr::EagerBackwardSubGraphNodeRecorder::Instance().StartCaptureSubGraph();
-  RETURN_PY_NONE
-
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
-PyObject* eager__end_capture_debug_backward_subgraph(PyObject* self,
+PyObject* eager__start_capture_backward_viz_subgraph(PyObject* self,
                                                      PyObject* args,
                                                      PyObject* kwargs) {
-  EAGER_TRY
-  egr::EagerBackwardSubGraphNodeRecorder::Instance().EndCaptureSubGraph();
-  RETURN_PY_NONE
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-PyObject* eager__init_backward_subgraph_recorder(PyObject* self,
-                                                 PyObject* args,
-                                                 PyObject* kwargs) {
   EAGER_TRY
   std::string dump_dir_path =
       CastPyArg2AttrString(PyTuple_GET_ITEM(args, 0), 0);
@@ -1551,6 +1532,44 @@ PyObject* eager__init_backward_subgraph_recorder(PyObject* self,
       dump_dir_path);
   egr::EagerBackwardSubGraphNodeRecorder::Instance().SetNeedDumpGradTensors(
       need_dump_grad_tensors);
+  egr::EagerBackwardSubGraphNodeRecorder::Instance()
+      .StartCaptureSubGraphForViz();
+  RETURN_PY_NONE
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyObject* eager__stop_capture_backward_viz_subgraph(PyObject* self,
+                                                    PyObject* args,
+                                                    PyObject* kwargs) {
+  EAGER_TRY
+
+  egr::EagerBackwardSubGraphNodeRecorder::Instance()
+      .StopCaptureSubGraphForViz();
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+PyObject* eager__stop_capture_backward_vlog_subgraph(PyObject* self,
+                                                     PyObject* args,
+                                                     PyObject* kwargs) {
+  EAGER_TRY
+  egr::EagerBackwardSubGraphNodeRecorder::Instance()
+      .StopCaptureSubGraphForVlog();
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyObject* eager__start_capture_backward_vlog_subgraph(PyObject* self,
+                                                      PyObject* args,
+                                                      PyObject* kwargs) {
+  EAGER_TRY
+
+  int subgraph_vlog_level = CastPyArg2AttrInt(PyTuple_GET_ITEM(args, 0), 0);
+
+  egr::EagerBackwardSubGraphNodeRecorder::Instance().SetSubGraphBwdVlogLevel(
+      subgraph_vlog_level);
+  egr::EagerBackwardSubGraphNodeRecorder::Instance()
+      .StartCaptureSubGraphForVlog();
   RETURN_PY_NONE
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -1642,16 +1661,20 @@ PyMethodDef variable_functions[] = {  // NOLINT
      (PyCFunction)(void (*)())eager__add_doc_str,
      METH_VARARGS,
      nullptr},
-    {"_start_capture_debug_backward_subgraph",
-     (PyCFunction)(void (*)())eager__start_capture_debug_backward_subgraph,
+    {"_start_capture_backward_viz_subgraph",
+     (PyCFunction)(void (*)())eager__start_capture_backward_viz_subgraph,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
-    {"_end_capture_debug_backward_subgraph",
-     (PyCFunction)(void (*)())eager__end_capture_debug_backward_subgraph,
+    {"_stop_capture_backward_viz_subgraph",
+     (PyCFunction)(void (*)())eager__stop_capture_backward_viz_subgraph,
      METH_VARARGS,
      nullptr},
-    {"_init_backward_subgraph_recorder",
-     (PyCFunction)(void (*)())eager__init_backward_subgraph_recorder,
+    {"_start_capture_backward_vlog_subgraph",
+     (PyCFunction)(void (*)())eager__start_capture_backward_vlog_subgraph,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_stop_capture_backward_vlog_subgraph",
+     (PyCFunction)(void (*)())eager__stop_capture_backward_vlog_subgraph,
      METH_VARARGS,
      nullptr},
 /**sparse functions**/

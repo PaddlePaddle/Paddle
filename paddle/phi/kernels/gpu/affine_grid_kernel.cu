@@ -53,7 +53,7 @@ void AffineGrid4DCUDAKernel(const Context& dev_ctx,
   base_grid.Resize(common::make_ddim({n, h, w, 3}));
   T* base_grid_data = dev_ctx.template Alloc<T>(&base_grid);
 
-  phi::funcs::CreateBaseGridKernel_4D<T, Context>(
+  funcs::CreateBaseGridKernel_4D<T, Context>(
       dev_ctx, base_grid_data, n, h, w, align_corners);
 
   // Apply affine transformation
@@ -102,7 +102,7 @@ void AffineGrid5DCUDAKernel(const Context& dev_ctx,
   base_grid.Resize(common::make_ddim({n, d, h, w, 4}));
   T* base_grid_data = dev_ctx.template Alloc<T>(&base_grid);
 
-  phi::funcs::CreateBaseGridKernel_5D<T, Context>(
+  funcs::CreateBaseGridKernel_5D<T, Context>(
       dev_ctx, base_grid_data, n, d, h, w, align_corners);
 
   // Apply affine transformation

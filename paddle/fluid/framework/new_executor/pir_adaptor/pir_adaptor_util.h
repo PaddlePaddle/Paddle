@@ -375,6 +375,21 @@ void BuildPhiContext(pir::Operation* op,
         }
       }
       ctx->EmplaceBackAttr(vec_res);
+    } else if (attr_type_name == "pir::ArrayAttribute<pir::DoubleAttribute>") {
+      auto array_list = attr_map[t].dyn_cast<pir::ArrayAttribute>().AsVector();
+      std::vector<double> vec_res;
+      if (array_list.size() > 0) {
+        if (array_list[0].isa<pir::DoubleAttribute>()) {
+          for (size_t i = 0; i < array_list.size(); ++i) {
+            vec_res.push_back(
+                array_list[i].dyn_cast<pir::DoubleAttribute>().data());
+          }
+        } else {
+          PADDLE_THROW(common::errors::Unimplemented(
+              "attr type not support [%s] ", attr_type_name));
+        }
+      }
+      ctx->EmplaceBackAttr(vec_res);
     } else if (attr_type_name == "pir::ArrayAttribute<pir::Int64Attribute>") {
       auto array_list = attr_map[t].dyn_cast<pir::ArrayAttribute>().AsVector();
 

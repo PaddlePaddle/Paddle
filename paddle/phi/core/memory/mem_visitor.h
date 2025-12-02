@@ -16,6 +16,9 @@
 #include <cstdint>
 #include <vector>
 #include "paddle/phi/core/enforce.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/core/memory/allocation/vmm_ipc_allocation.h"
+#endif
 
 namespace paddle {
 namespace memory {
@@ -294,6 +297,52 @@ class VMMAllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
    */
   std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
       all_blocks_info_;
+};
+
+class VMMAllocateRecordEventsVisitor : public AllocatorComputeStreamVisitor {
+  using AllocatorComputeStreamVisitor::Visit;
+
+ public:
+  std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>>
+  GetAllocateRecordEvents() const {
+    return allocate_record_event_;
+  }
+
+  void Visit(VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator)
+      override;
+
+ private:
+  std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>>
+      allocate_record_event_;
+};
+
+class VMMAllocateCompactSizeVisitor : public AllocatorComputeStreamVisitor {
+  using AllocatorComputeStreamVisitor::Visit;
+
+ public:
+  std::vector<size_t> GetCompactSize() const { return allocate_compact_size_; }
+
+  void Visit(VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator)
+      override;
+
+ private:
+  std::vector<size_t> allocate_compact_size_;
+};
+
+class VmmTensorPartsVisitor : public AllocatorVisitor {
+ public:
+  using BlockPart = allocation::BlockPart;
+  explicit VmmTensorPartsVisitor(void* ptr) : target_ptr_(ptr) {}
+
+  void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;
+
+  bool Found() const { return found_; }
+  const std::vector<BlockPart>& Parts() const { return parts_; }
+
+ private:
+  void* target_ptr_{nullptr};
+  bool found_{false};
+  std::vector<BlockPart> parts_;
 };
 #endif
 

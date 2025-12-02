@@ -1199,7 +1199,8 @@ def get_paddle_extra_install_requirements():
                     "nvidia-nccl-cu12==2.27.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvtx-cu12==12.9.19; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvjitlink-cu12==12.9.41; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-cufile-cu12==1.14.0.30; platform_system == 'Linux' and platform_machine == 'x86_64'"
+                    "nvidia-cufile-cu12==1.14.0.30; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "cuda-python==12.9.4; platform_system == 'Linux' and platform_machine == 'x86_64'"
                 ),
                 "13.0": (
                     "nvidia-cuda-nvrtc==13.0.88; platform_system == 'Linux' and platform_machine == 'x86_64' | "
@@ -1215,7 +1216,8 @@ def get_paddle_extra_install_requirements():
                     "nvidia-nccl-cu13==2.28.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvtx==13.0.85; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvjitlink==13.0.88; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-cufile==1.15.1.6; platform_system == 'Linux' and platform_machine == 'x86_64'"
+                    "nvidia-cufile==1.15.1.6; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "cuda-python==13.0.3; platform_system == 'Linux' and platform_machine == 'x86_64'"
                 ),
             }
             if env_dict.get("WITH_CINN") == "ON":
@@ -1559,6 +1561,11 @@ def get_package_data_and_package_dir():
     shutil.copy(env_dict.get("LAPACK_LIB"), libs_path)
     shutil.copy(env_dict.get("GFORTRAN_LIB"), libs_path)
     shutil.copy(env_dict.get("GNU_RT_LIB_1"), libs_path)
+    if env_dict.get("WITH_MAGMA") == 'ON':
+        package_data['paddle.libs'] += [
+            os.path.basename('MAGMA_LIB'),
+        ]
+        shutil.copy(env_dict.get("MAGMA_LIB"), libs_path)
 
     if not sys.platform.startswith("linux"):
         package_data['paddle.libs'] += [
@@ -2577,6 +2584,9 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
     python_dependencies_module = []
     installed_packages = []
 
+    def normalize_package_name(package_name: str) -> str:
+        return package_name.replace("_", "-").lower()
+
     def eval_marker(marker_str):
         """Simple evaluation of PEP 508 environment markers."""
         if not marker_str:
@@ -2639,14 +2649,15 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
             r"==.*|>=.*|<=.*|~=.*|!=.*", '', dependency_spec
         ).strip()
 
-        # Normalize package name (remove _ and -)
-        python_dependencies_module.append(re.sub("_|-", '', dependency_name))
+        python_dependencies_module.append(
+            normalize_package_name(dependency_name)
+        )
 
     reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
 
     for r in reqs.split():
         installed_packages.append(
-            re.sub("_|-", '', r.decode().split('==')[0]).lower()
+            normalize_package_name(r.decode().split('==')[0])
         )
 
     for dependency in python_dependencies_module:

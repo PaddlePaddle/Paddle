@@ -47,7 +47,7 @@ struct IndexSelectAdd<
                   const T* src_pointer,
                   const T* p_pointer,
                   T* dist_pointer) {
-    auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+    auto blas = funcs::GetBlas<Context, T>(dev_ctx);
     blas.VADD(slice_size, src_pointer, p_pointer, dist_pointer);
   }
 };
@@ -144,7 +144,7 @@ void IndexSelectGradInner(const Context& dev_ctx,
   auto input_dim_size = input_dim.size();
   auto output_dim = x_grad->dims();
 
-  phi::funcs::SetConstant<Context, T> set_constant;
+  funcs::SetConstant<Context, T> set_constant;
   set_constant(dev_ctx, x_grad, static_cast<T>(0.0));
 
   auto slice_size = 1;
