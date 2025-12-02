@@ -579,8 +579,7 @@ def scaled_dot_product_attention(
         return out
 
     if not paddle.base.in_dygraph_mode():
-        with paddle.base.dygraph.guard():
-            qkv_place = (paddle.framework._current_expected_place(),) * 3
+        qkv_place = (paddle.framework._current_expected_place_(),) * 3
     else:
         qkv_place = (query.place, key.place, value.place)
 
