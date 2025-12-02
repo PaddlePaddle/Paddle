@@ -971,6 +971,7 @@ class TestStride(unittest.TestCase):
         self.call_view5()
         self.call_view6()
         self.call_view7()
+        self.call_view8()
         self.call_view9()
         self.call_view10()
         self.call_view11()
