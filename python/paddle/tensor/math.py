@@ -5411,6 +5411,7 @@ def deg2rad(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@param_two_alias(['x', 'input'], ['y', 'other'])
 def gcd(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Computes the element-wise greatest common divisor (GCD) of input |x| and |y|.
@@ -5496,6 +5497,7 @@ def gcd(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@inplace_apis_in_dygraph_only
 @param_two_alias(['x', 'input'], ['y', 'other'])
 def gcd_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
@@ -5540,6 +5542,7 @@ def gcd_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return x
 
 
+@param_two_alias(['x', 'input'], ['y', 'other'])
 def lcm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Computes the element-wise least common multiple (LCM) of input |x| and |y|.
@@ -5600,6 +5603,7 @@ def lcm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return out
 
 
+@inplace_apis_in_dygraph_only
 @param_two_alias(['x', 'input'], ['y', 'other'])
 def lcm_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
