@@ -69,6 +69,7 @@
 #include "paddle/cinn/utils/profiler.h"
 
 COMMON_DECLARE_bool(enable_cinn_kernel_cache);
+COMMON_DECLARE_string(cinn_kernel_cache_save_path);
 namespace cinn::backends {
 namespace {
 void InitializeLLVMPasses() {
@@ -235,7 +236,7 @@ std::string GetDeviceId() {
 
 // Use LLVM C++ API to compile .ll file to .o file
 bool ExecutionEngine::compileLLVMIR(llvm::Module *module,
-                                    std::string host_func_name) {
+                                    std::string output_path) {
   std::error_code EC;
 
   // 1. Find target for current platform
@@ -266,9 +267,8 @@ bool ExecutionEngine::compileLLVMIR(llvm::Module *module,
   }
 
   // 3. Set output file path and type
-  std::string output_path = "/tmp/cinn/" + GetDeviceId() + "/" + host_func_name;
   llvm::sys::fs::create_directories(output_path);
-  std::string output_file = output_path + "/module.o";
+  std::string output_file = output_path + "/" + CINN_HOST_MODULE_OBJ;
   llvm::raw_fd_ostream dest(output_file, EC, llvm::sys::fs::OF_None);
 
   // 4. Create PassManager and add "Emit Object File" Pass
@@ -285,17 +285,17 @@ bool ExecutionEngine::compileLLVMIR(llvm::Module *module,
 }
 
 bool ExecutionEngine::linkSharedLibrary(
-    const std::string host_func_name,
+    const std::string output_path,
     const std::vector<std::string> &cinn_runtime_include_path) {
-  std::string output_path = "/tmp/cinn/" + GetDeviceId() + "/" + host_func_name;
   llvm::sys::fs::create_directories(output_path);
 
-  std::string output_so = output_path + "/cinn_cache.so";
-  std::string cuda_obj = output_path + "/cinn_cuda_kernel.o";
-  std::string llvm_obj = output_path + "/module.o";
-  std::string cuda_lib_path = "/usr/local/cuda/lib64";
+  std::string output_so = output_path + "/" + CINN_CACHE_SO;
+  std::string cuda_obj = output_path + "/" + CINN_CUDA_KERNEL_OBJ;
+  std::string llvm_obj = output_path + "/" + CINN_HOST_MODULE_OBJ;
+  std::string cuda_lib_path = CUDA_TOOLKIT_ROOT_DIR;
   std::string link_cmd = "g++ -shared -o " + output_so + " " + cuda_obj + " " +
-                         llvm_obj + " -L" + cuda_lib_path + " -lcudart";
+                         llvm_obj + " -L" + cuda_lib_path + "/lib64" +
+                         " -lcudart";
 
   for (auto &header : cinn_runtime_include_path) {
     link_cmd += " -L " + header + " -lcinnapi";
@@ -330,32 +330,32 @@ bool ExecutionEngine::AddModule(
 
   if (FLAGS_enable_cinn_kernel_cache) {
     std::error_code EC;
-    std::string output_path =
-        "/tmp/cinn/" + GetDeviceId() + "/" + host_func_name;
+    std::string output_path = FLAGS_cinn_kernel_cache_save_path + "/" +
+                              GetDeviceId() + "/" + host_func_name;
     llvm::sys::fs::create_directories(output_path);
-    llvm::raw_fd_ostream out(output_path + "/module.ll", EC);
+    llvm::raw_fd_ostream out(output_path + "/" + CINN_HOST_MODULE_LLVM, EC);
     if (EC) {
       LOG(ERROR) << "Failed to open file: " << EC.message();
       return false;
     }
     module->print(out, {});
     out.close();
-    VLOG(5) << "LLVM IR dumped to module.ll";
+    VLOG(5) << "LLVM IR dumped to " << CINN_HOST_MODULE_LLVM;
 
-    std::string cache_so_path = output_path + "/" + "cinn_cache.so";
+    std::string cache_so_path = output_path + "/" + CINN_CACHE_SO;
     if (std::ifstream(cache_so_path).good()) {
       // Cache file already exists, do nothing
       // module will register through LoadAndRegisterFromCache
       return true;
     } else {
       // Compiling LLVM IR with LLVM API
-      if (!compileLLVMIR(module.get(), host_func_name)) {
+      if (!compileLLVMIR(module.get(), output_path)) {
         std::cerr << "Error: LLVM IR compilation failed.\n";
         return false;
       }
 
       // Linking object files into shared library
-      if (!linkSharedLibrary(host_func_name, cinn_runtime_include_path)) {
+      if (!linkSharedLibrary(output_path, cinn_runtime_include_path)) {
         std::cerr
             << "Error: Linking object files into shared library failed.\n";
         return false;

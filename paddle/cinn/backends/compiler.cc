@@ -56,6 +56,7 @@ PD_DECLARE_string(cinn_dump_group_ptx);
 PD_DECLARE_string(cinn_dump_group_instruction);
 PD_DECLARE_string(cinn_debug_custom_code_path);
 COMMON_DECLARE_bool(enable_cinn_kernel_cache);
+COMMON_DECLARE_string(cinn_kernel_cache_save_path);
 
 namespace {
 
@@ -272,14 +273,8 @@ void Compiler::EndCompile() {
   engine_->AddSelfModule(host_func_name_, cinn_runtime_include_path);
 }
 
-std::string Compiler::GetDeviceId() {
-  const auto device_id = cinn::runtime::GetArchDevice(target_);
-  return std::to_string(device_id.value());
-}
-
 void Compiler::LoadAndRegisterFromCache() {
-  std::string cache_so_path = "/tmp/cinn/" + GetDeviceId() + "/" +
-                              host_func_name_ + "/" + "cinn_cache.so";
+  std::string cache_so_path = GetCachePath() + CINN_CACHE_SO;
   // 1. Load metadata (restore Kernel name list)
   LoadKernelNamesFromMeta();
 
@@ -291,8 +286,7 @@ void Compiler::LoadAndRegisterFromCache() {
   }
 
   // 3. Load CUDA Fatbin (Device Code)
-  std::string fatbin_path = "/tmp/cinn/" + GetDeviceId() + "/" +
-                            host_func_name_ + "/cinn_cuda_kernel.fatbin";
+  std::string fatbin_path = GetCachePath() + CINN_CUDA_KERNEL_FATBIN;
   CUmodule cu_module;
   if (cuModuleLoad(&cu_module, fatbin_path.c_str()) != CUDA_SUCCESS) {
     LOG(FATAL) << "Failed to load CUDA Module from " << fatbin_path;
@@ -425,6 +419,14 @@ void Compiler::RegisterDeviceModuleSymbol() {
       [&](common::HygonDCUArchSYCL) { RegisterSyclModuleSymbol(); });
 }
 
+std::string Compiler::GetDeviceId() const {
+  const auto device_id = cinn::runtime::GetArchDevice(target_);
+  return std::to_string(device_id.value());
+}
+std::string Compiler::GetCachePath() const {
+  return FLAGS_cinn_kernel_cache_save_path + "/" + GetDeviceId() + "/" +
+         host_func_name_ + "/";
+}
 void Compiler::RegisterCudaModuleSymbol() {
 #ifdef CINN_WITH_CUDA
   nvrtc::Compiler compiler;
@@ -434,8 +436,7 @@ void Compiler::RegisterCudaModuleSymbol() {
       device_fn_code_;
 
   if (FLAGS_enable_cinn_kernel_cache) {
-    std::string cache_so_path = "/tmp/cinn/" + GetDeviceId() + "/" +
-                                host_func_name_ + "/" + "cinn_cache.so";
+    std::string cache_so_path = GetCachePath() + CINN_CACHE_SO;
 
     // Check if cache file exists
     if (std::ifstream(cache_so_path).good()) {
@@ -444,8 +445,8 @@ void Compiler::RegisterCudaModuleSymbol() {
                     "PIRCompiler.";
       LoadAndRegisterFromCache();
       return;
-    } else {  // .so doesn't exist, compile new cinn_cuda_kernel.o and
-              // cinn_cuda_kernel.fatbin
+    } else {  // .so doesn't exist, compile new CINN_CUDA_KERNEL_OBJ and
+              // CINN_CUDA_KERNEL_FATBIN
       // We must define in C++ (Host) code the [kernel_name]_ptr_ global
       // variables that LLVM IR (module.o) expects to link. These variables must
       // be compiled together with the CUDA Kernel functions themselves.
@@ -464,7 +465,7 @@ void Compiler::RegisterCudaModuleSymbol() {
 
       dynamic_library_path_ =
           GenerateObjectWithoutCache(full_source_to_compile);
-      GenerateFatbinWithoutCache(full_source_to_compile);
+      GenerateFatbinWithoutCache();
       SaveKernelNamesToMeta();
 
       // Register to JIT in normal way
@@ -743,8 +744,8 @@ std::string Compiler::GetDeviceArch() {
     return "sm_" + std::to_string(major) + std::to_string(minor);
   } else {
     LOG(WARNING) << "cannot detect compute capability from your device, "
-                 << "fall back to compute_30.";
-    return "sm_30";
+                 << "fall back to compute_80.";
+    return "sm_80";
   }
 }
 
@@ -764,12 +765,11 @@ std::string Compiler::GetComputeArch() {
 
 std::string Compiler::GenerateObjectWithoutCache(
     const std::string& source_code) {
-  std::string library_path =
-      "/tmp/cinn/" + GetDeviceId() + "/" + host_func_name_ + "/";
+  std::string library_path = GetCachePath();
   llvm::sys::fs::create_directories(library_path);
 
   // Generate a temporary .cu file, then compile it to .o file using nvcc
-  std::string cuda_source_file = library_path + "cinn_cuda_kernel.cu";
+  std::string cuda_source_file = library_path + CINN_CUDA_KERNEL;
   std::ofstream source_file(cuda_source_file);
 
   // Check if file opened successfully
@@ -798,7 +798,7 @@ std::string Compiler::GenerateObjectWithoutCache(
   }
 
   // Create .o file
-  std::string cuda_source_o = library_path + "cinn_cuda_kernel.o";
+  std::string cuda_source_o = library_path + CINN_CUDA_KERNEL_OBJ;
 
   // If cuda_source_o already exists, report an error
   if (llvm::sys::fs::exists(cuda_source_o)) {
@@ -825,54 +825,35 @@ std::string Compiler::GenerateObjectWithoutCache(
       "-Wno-deprecated-gpu-targets " +
       "--generate-code=arch=" + GetComputeArch() + ",code=" + GetDeviceArch();
 
-  int result = std::system((compile_cmd + " > compile.log 2>&1").c_str());
+  int result = std::system(
+      (compile_cmd + " > " + GetCachePath() + "compile_o.log 2>&1").c_str());
   if (result != 0) {
-    std::ifstream log_file("compile.log");
+    std::ifstream log_file(GetCachePath() + "compile_o.log");
     std::string log_content((std::istreambuf_iterator<char>(log_file)),
                             std::istreambuf_iterator<char>());
-    LOG(ERROR) << "Compilation failed with output:\n" << log_content;
+    LOG(ERROR) << "Compilation failed with output:\n"
+               << compile_cmd << "\n"
+               << log_content;
     return "";
   }
   return cuda_source_o;
 }
 
-std::string Compiler::GenerateFatbinWithoutCache(
-    const std::string& source_code) {
-  std::string library_path =
-      "/tmp/cinn/" + GetDeviceId() + "/" + host_func_name_ + "/";
+std::string Compiler::GenerateFatbinWithoutCache() {
+  std::string library_path = GetCachePath();
   llvm::sys::fs::create_directories(library_path);
 
-  // Generate a temporary .cu file, then compile it to fatbin file using nvcc
-  std::string cuda_source_file = library_path + "cinn_cuda_kernel.cu";
-  std::ofstream source_file(cuda_source_file);
-
-  // Check if file opened successfully
-  if (!source_file.is_open()) {
-    LOG(FATAL) << "Failed to open CUDA source file for writing: "
-               << cuda_source_file << ". Check file permissions.";
-    return "";
-  }
-
-  source_file << source_code;
-  source_file.flush();
-  source_file.close();
-
-  // Check file status
-  if (!source_file.good()) {
-    LOG(FATAL) << "Failed to write or close the CUDA source file: "
-               << cuda_source_file << ". Check disk space or permissions.";
-    return "";
-  }
+  std::string cuda_source_file = library_path + CINN_CUDA_KERNEL;
 
   if (!llvm::sys::fs::exists(cuda_source_file)) {
-    LOG(FATAL)
-        << "File successfully written but immediately missing/unreadable: "
-        << cuda_source_file;
+    LOG(FATAL) << "CUDA source file is missing. Expected file: "
+               << cuda_source_file
+               << ". Was GenerateObjectWithoutCache called first?";
     return "";
   }
 
   // Create fatbin file
-  std::string cuda_fatbin = library_path + "cinn_cuda_kernel.fatbin";
+  std::string cuda_fatbin = library_path + CINN_CUDA_KERNEL_FATBIN;
 
   // If cuda_source_o already exists, report an error
   if (llvm::sys::fs::exists(cuda_fatbin)) {
@@ -899,15 +880,15 @@ std::string Compiler::GenerateFatbinWithoutCache(
       "-Wno-deprecated-gpu-targets " +
       "--generate-code=arch=" + GetComputeArch() + ",code=" + GetDeviceArch();
 
-  int result =
-      std::system((compile_cmd + " > compile_fatbin.log 2>&1").c_str());
+  int result = std::system(
+      (compile_cmd + " > " + GetCachePath() + "compile_fatbin.log 2>&1")
+          .c_str());
   if (result != 0) {
-    std::ifstream log_file("compile_fatbin.log");
+    std::ifstream log_file(GetCachePath() + "compile_fatbin.log");
     std::string log_content((std::istreambuf_iterator<char>(log_file)),
                             std::istreambuf_iterator<char>());
     LOG(ERROR) << "Compilation failed with output:\n"
                << compile_cmd << "\n"
-               << source_code << "\n"
                << log_content;
     return "";
   }
@@ -916,9 +897,9 @@ std::string Compiler::GenerateFatbinWithoutCache(
 
 void Compiler::SaveKernelNamesToMeta() {
   // 1. Get metadata file path
-  std::string meta_path = "/tmp/cinn/" + GetDeviceId() + "/" + host_func_name_;
+  std::string meta_path = GetCachePath();
   llvm::sys::fs::create_directories(meta_path);
-  std::string meta_file = meta_path + "/cinn_cuda_kernel.meta";
+  std::string meta_file = meta_path + CINN_CUDA_KERNEL_META;
 
   // 2. Open file
   // 使用 std::ofstream 自动处理文件关闭
@@ -944,8 +925,7 @@ void Compiler::SaveKernelNamesToMeta() {
 
 void Compiler::LoadKernelNamesFromMeta() {
   // 1. Get metadata file path
-  std::string meta_path = "/tmp/cinn/" + GetDeviceId() + "/" + host_func_name_ +
-                          "/cinn_cuda_kernel.meta";
+  std::string meta_path = GetCachePath() + CINN_CUDA_KERNEL_META;
   VLOG(5) << "Loading CINN kernel names from meta file: " << meta_path;
 
   // 2. Open file

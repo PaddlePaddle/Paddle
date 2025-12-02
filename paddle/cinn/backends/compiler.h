@@ -141,7 +141,7 @@ class Compiler final {
    */
   std::string GetFuncName() const { return host_func_name_; }
 
-  std::string GetDeviceId();
+  std::string GetDeviceId() const;
 
   void LoadAndRegisterFromCache();
 
@@ -220,11 +220,12 @@ class Compiler final {
 
   // Dynamic library helper methods
 #ifdef CINN_WITH_CUDA
+  std::string GetCachePath() const;
   std::string ComputeSourceHash();
   std::string GetDeviceArch();
   std::string GetComputeArch();
   std::string GenerateObjectWithoutCache(const std::string& source_code);
-  std::string GenerateFatbinWithoutCache(const std::string& source_code);
+  std::string GenerateFatbinWithoutCache();
   void SaveKernelNamesToMeta();
   void LoadKernelNamesFromMeta();
 #endif

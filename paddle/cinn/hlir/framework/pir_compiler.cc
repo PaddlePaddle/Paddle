@@ -32,6 +32,7 @@
 PD_DECLARE_bool(enable_cinn_compile_cache);
 PD_DECLARE_int64(cinn_compile_thread_num);
 COMMON_DECLARE_bool(enable_cinn_kernel_cache);
+COMMON_DECLARE_string(cinn_kernel_cache_save_path);
 
 namespace cinn::hlir::framework {
 class CompilationContextMapper {
@@ -235,11 +236,12 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
           shape_analysis_manager.constraints_manager());
       runtime::SetArchDevice(target_, device_id);
       std::string cache_dir =
-          "/tmp/cinn/" + std::to_string(device_id.value()) + "/" +
+          FLAGS_cinn_kernel_cache_save_path + "/" +
+          std::to_string(device_id.value()) + "/" +
           group_compilation_contexts[index].GetGroup()->FuncName();
       llvm::sys::fs::create_directories(cache_dir);
-      std::string cache_so_path = cache_dir + "/cinn_cache.so";
-      std::string meta_filepath = cache_dir + "/cinn_cache.meta";
+      std::string cache_so_path = cache_dir + "/" + CINN_CACHE_SO;
+      std::string meta_filepath = cache_dir + "/" + CINN_CACHE_META;
       // Check if .so exists
       if (FLAGS_enable_cinn_kernel_cache &&
           std::ifstream(cache_so_path).good()) {

@@ -46,6 +46,7 @@
 #include "paddle/cinn/backends/llvm/codegen_x86.h"
 #include "paddle/cinn/backends/llvm/llvm_util.h"
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
+#include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/module.h"
 
 namespace cinn::backends {
@@ -80,10 +81,10 @@ class ExecutionEngine {
 
   void ExportObject(const std::string &path);
 
-  bool compileLLVMIR(llvm::Module *module, std::string host_func_name = "");
+  bool compileLLVMIR(llvm::Module *module, std::string output_path = "");
 
   bool linkSharedLibrary(
-      const std::string host_func_name = "",
+      const std::string output_path = "",
       const std::vector<std::string> &cinn_runtime_include_path = {});
 
   bool AddModule(

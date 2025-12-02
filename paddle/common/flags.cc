@@ -1842,6 +1842,11 @@ PHI_DEFINE_EXPORTED_bool(enable_cinn_kernel_cache,
                          false,
                          "Whether enable cinn kernel cache.");
 
+PHI_DEFINE_EXPORTED_string(
+    cinn_kernel_cache_save_path,
+    "/tmp/cinn/",
+    "Specify the directory path of generated cinn kernel cache.");
+
 PHI_DEFINE_EXPORTED_bool(
     comp_skip_default_ops,
     true,
