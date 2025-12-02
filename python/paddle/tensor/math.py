@@ -2569,10 +2569,7 @@ def baddbmm(
         )
 
     if in_dynamic_or_pir_mode():
-        if out is None:
-            return _C_ops.baddbmm(input, x, y, beta, alpha)
-        else:
-            return _C_ops.baddbmm(input, x, y, beta, alpha, out)
+        return _C_ops.baddbmm(input, x, y, beta, alpha, out)
     else:
         inputs = {'Input': input, "X": x, "Y": y}
         attrs = {'Alpha': alpha, 'Beta': beta}
