@@ -20,7 +20,6 @@ from op_test import (
     convert_float_to_uint16,
     get_device_place,
     is_custom_device,
-    skip_check_grad_ci,
 )
 
 import paddle
@@ -55,16 +54,9 @@ def max_pool2d_with_dilations_forward_naive(
     dilations,
     global_pool=0,
     ceil_mode=False,
-    exclusive=True,
-    adaptive=False,
     data_format='NCHW',
-    pool_type="max",
     padding_algorithm="EXPLICIT",
-    norm_type=0,
 ):
-    if pool_type != "max":
-        raise ValueError("当前 naive 实现只支持 pool_type='max'")
-
     d_h, d_w = dilations
     pad_top, pad_bottom, pad_left, pad_right = normalize_paddings(paddings)
 
@@ -74,7 +66,7 @@ def max_pool2d_with_dilations_forward_naive(
         if global_pool == 1:
             ksize = [H, W]
 
-        if padding_algorithm == "SAME" and not adaptive and global_pool == 0:
+        if padding_algorithm == "SAME" and global_pool == 0:
             H_out = (H + strides[0] - 1) // strides[0]
             W_out = (W + strides[1] - 1) // strides[1]
 
@@ -87,12 +79,10 @@ def max_pool2d_with_dilations_forward_naive(
             pad_left = pad_w_total // 2
             pad_right = pad_w_total - pad_left
 
-        if padding_algorithm == "VALID" and not adaptive and global_pool == 0:
+        if padding_algorithm == "VALID" and global_pool == 0:
             pad_top = pad_bottom = pad_left = pad_right = 0
 
-        if adaptive:
-            H_out, W_out = ksize
-        elif padding_algorithm == "VALID":
+        if padding_algorithm == "VALID":
             if ceil_mode:
                 H_out = (H - ksize[0] + strides[0] - 1) // strides[0] + 1
                 W_out = (W - ksize[1] + strides[1] - 1) // strides[1] + 1
@@ -115,17 +105,6 @@ def max_pool2d_with_dilations_forward_naive(
 
         for oh in range(H_out):
             for ow in range(W_out):
-                if adaptive:
-                    r_start = adaptive_start_index(oh, H, ksize[0])
-                    r_end = adaptive_end_index(oh, H, ksize[0])
-                    c_start = adaptive_start_index(ow, W, ksize[1])
-                    c_end = adaptive_end_index(ow, W, ksize[1])
-
-                    out[:, :, oh, ow] = np.max(
-                        x[:, :, r_start:r_end, c_start:c_end], axis=(2, 3)
-                    )
-                    continue
-
                 base_h = oh * strides[0] - pad_top
                 base_w = ow * strides[1] - pad_left
 
@@ -153,7 +132,7 @@ def max_pool2d_with_dilations_forward_naive(
         if global_pool == 1:
             ksize = [H, W]
 
-        if padding_algorithm == "SAME" and not adaptive and global_pool == 0:
+        if padding_algorithm == "SAME" and global_pool == 0:
             H_out = (H + strides[0] - 1) // strides[0]
             W_out = (W + strides[1] - 1) // strides[1]
 
@@ -165,12 +144,10 @@ def max_pool2d_with_dilations_forward_naive(
             pad_left = pad_w_total // 2
             pad_right = pad_w_total - pad_left
 
-        if padding_algorithm == "VALID" and not adaptive and global_pool == 0:
+        if padding_algorithm == "VALID" and global_pool == 0:
             pad_top = pad_bottom = pad_left = pad_right = 0
 
-        if adaptive:
-            H_out, W_out = ksize
-        elif padding_algorithm == "VALID":
+        if padding_algorithm == "VALID":
             if ceil_mode:
                 H_out = (H - ksize[0] + strides[0] - 1) // strides[0] + 1
                 W_out = (W - ksize[1] + strides[1] - 1) // strides[1] + 1
@@ -194,17 +171,6 @@ def max_pool2d_with_dilations_forward_naive(
 
         for oh in range(H_out):
             for ow in range(W_out):
-                if adaptive:
-                    r_start = adaptive_start_index(oh, H, ksize[0])
-                    r_end = adaptive_end_index(oh, H, ksize[0])
-                    c_start = adaptive_start_index(ow, W, ksize[1])
-                    c_end = adaptive_end_index(ow, W, ksize[1])
-
-                    out[:, oh, ow, :] = np.max(
-                        x[:, r_start:r_end, c_start:c_end, :], axis=(1, 2)
-                    )
-                    continue
-
                 base_h = oh * strides[0] - pad_top
                 base_w = ow * strides[1] - pad_left
 
@@ -576,11 +542,8 @@ def pool2d_wrapper_not_use_cudnn_with_dilations(
     paddings=[],
     dilations=[],
     ceil_mode=False,
-    exclusive=True,
     data_format="NCDHW",
-    pooling_type="max",
     global_pooling=False,
-    adaptive=False,
     padding_algorithm="EXPLICIT",
 ):
     if in_dynamic_mode():
@@ -594,11 +557,8 @@ def pool2d_wrapper_not_use_cudnn_with_dilations(
         paddings,
         dilations,
         ceil_mode,
-        exclusive,
         data_format,
-        pooling_type,
         global_pooling,
-        adaptive,
         padding_algorithm,
     )
 
@@ -610,11 +570,8 @@ def pool2d_wrapper_use_cudnn_with_dilations(
     paddings=[],
     dilations=[],
     ceil_mode=False,
-    exclusive=True,
     data_format="NCDHW",
-    pooling_type="max",
     global_pooling=False,
-    adaptive=False,
     padding_algorithm="EXPLICIT",
 ):
     if data_format == "AnyLayout":
@@ -627,11 +584,8 @@ def pool2d_wrapper_use_cudnn_with_dilations(
         paddings,
         dilations,
         ceil_mode,
-        exclusive,
         data_format,
-        pooling_type,
         global_pooling,
-        adaptive,
         padding_algorithm,
     )
 
@@ -1729,16 +1683,10 @@ create_test_padding_SAME_class(TestCase1_strides)
 create_test_cudnn_padding_SAME_class(TestCase1_strides)
 
 
-@skip_check_grad_ci(
-    reason="max_pool2d_with_dilations does not require check_grad."
-)
-class TestPool2D_Max_Dilation(TestPool2D_Op):
-    """Basic NCHW dilation test"""
-
+class TestMax_Pool2D_With_Dilations(TestPool2D_Op):
     def setUp(self):
         self.op_type = "max_pool2d_with_dilations"
         self.use_cudnn = False
-        self.init_kernel_type()
         self.use_onednn = False
         self.init_data_type()
         self.init_test_case()
@@ -1746,13 +1694,10 @@ class TestPool2D_Max_Dilation(TestPool2D_Op):
         self.init_paddings()
         self.init_dilations()
         self.init_global_pool()
-        self.init_kernel_type()
-        self.init_pool_type()
         self.init_ceil_mode()
-        self.init_exclusive()
-        self.init_adaptive()
         self.init_data_format()
         self.init_shape()
+        self.init_pool_type()
 
         if self.is_bfloat16_op():
             input = np.random.random(self.shape).astype(np.float32)
@@ -1767,10 +1712,7 @@ class TestPool2D_Max_Dilation(TestPool2D_Op):
             self.dilations,
             self.global_pool,
             self.ceil_mode,
-            self.exclusive,
-            self.adaptive,
             self.data_format,
-            self.pool_type,
             self.padding_algorithm,
         )
 
@@ -1788,24 +1730,17 @@ class TestPool2D_Max_Dilation(TestPool2D_Op):
             'paddings': self.paddings,
             'dilations': self.dilations,
             'ksize': self.ksize,
-            'pooling_type': self.pool_type,
             'global_pooling': self.global_pool,
             'use_cudnn': self.use_cudnn,
             'use_onednn': self.use_onednn,
             'ceil_mode': self.ceil_mode,
             'data_format': self.data_format,
-            'exclusive': self.exclusive,
-            'adaptive': self.adaptive,
             "padding_algorithm": self.padding_algorithm,
         }
         if self.use_cudnn:
             self.python_api = pool2d_wrapper_use_cudnn_with_dilations
         else:
             self.python_api = pool2d_wrapper_not_use_cudnn_with_dilations
-
-    def init_pool_type(self):
-        self.pool_type = "max"
-        self.pool2D_forward_naive = max_pool2d_with_dilations_forward_naive
 
     def init_dilations(self):
         self.dilations = [2, 2]
@@ -1826,114 +1761,59 @@ class TestPool2D_Max_Dilation(TestPool2D_Op):
     def init_ceil_mode(self):
         self.ceil_mode = False
 
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(
+            {'X'},
+            'Out',
+        )
 
-# ---------- dilation + NHWC ----------
-class TestPool2D_Max_Dilation_channel_last(TestPool2D_Max_Dilation):
+
+class TestMax_Pool2D_With_Dilations_Channel_Last(TestMax_Pool2D_With_Dilations):
     def init_data_format(self):
         self.data_format = "NHWC"
 
     def init_shape(self):
         self.shape = [2, 7, 7, 3]
 
-    def init_ceil_mode(self):
-        self.ceil_mode = False
 
-
-# ---------- dilation + asymmetric padding ----------
-class TestPool2D_Max_Dilation_AsyPadding(TestPool2D_Max_Dilation):
+class TestMax_Pool2D_With_Dilations_AsyPadding(TestMax_Pool2D_With_Dilations):
     def init_paddings(self):
         self.paddings = [1, 2, 1, 2]
 
     def init_shape(self):
         self.shape = [2, 3, 7, 7]
 
-    def init_ceil_mode(self):
-        self.ceil_mode = False
+
+create_test_cudnn_class(TestMax_Pool2D_With_Dilations)
+create_test_fp16_class(TestMax_Pool2D_With_Dilations)
+create_test_bf16_class(TestMax_Pool2D_With_Dilations)
+create_test_cudnn_fp16_class(TestMax_Pool2D_With_Dilations)
+create_test_cudnn_use_ceil_class(TestMax_Pool2D_With_Dilations)
+create_test_use_ceil_class(TestMax_Pool2D_With_Dilations)
+create_test_padding_SAME_class(TestMax_Pool2D_With_Dilations)
+create_test_padding_VALID_class(TestMax_Pool2D_With_Dilations)
 
 
-# ---------- dilation + ceil_mode ----------
-class TestPool2D_Max_Dilation_Ceil(TestPool2D_Max_Dilation):
-    def init_ceil_mode(self):
-        self.ceil_mode = True
+create_test_cudnn_class(TestMax_Pool2D_With_Dilations_Channel_Last)
+create_test_fp16_class(TestMax_Pool2D_With_Dilations_Channel_Last)
+create_test_bf16_class(TestMax_Pool2D_With_Dilations_Channel_Last)
+create_test_cudnn_fp16_class(TestMax_Pool2D_With_Dilations_Channel_Last)
+create_test_cudnn_use_ceil_class(TestMax_Pool2D_With_Dilations_Channel_Last)
+create_test_use_ceil_class(TestMax_Pool2D_With_Dilations_Channel_Last)
+create_test_padding_SAME_class(TestMax_Pool2D_With_Dilations_Channel_Last)
+create_test_padding_VALID_class(TestMax_Pool2D_With_Dilations_Channel_Last)
 
 
-# ---------- dilation + SAME padding ----------
-class TestPool2D_Max_Dilation_SAME(TestPool2D_Max_Dilation):
-    def init_paddings(self):
-        self.paddings = [0, 0]
-        self.padding_algorithm = "SAME"
-
-    def init_ceil_mode(self):
-        self.ceil_mode = False
-
-
-# ---------- dilation + VALID padding ----------
-class TestPool2D_Max_Dilation_VALID(TestPool2D_Max_Dilation):
-    def init_paddings(self):
-        self.paddings = [1, 1]
-        self.padding_algorithm = "VALID"
-
-    def init_ceil_mode(self):
-        self.ceil_mode = False
-
-
-# # =====================================================================
-# # Auto-generate full family of tests (CUDNN / fp16 / bf16 / ceil …)
-# # =====================================================================
-
-# # ---- base NCHW dilation ----
-create_test_cudnn_class(TestPool2D_Max_Dilation)
-create_test_fp16_class(TestPool2D_Max_Dilation)
-create_test_bf16_class(TestPool2D_Max_Dilation)
-create_test_cudnn_fp16_class(TestPool2D_Max_Dilation)
-create_test_cudnn_use_ceil_class(TestPool2D_Max_Dilation)
-create_test_use_ceil_class(TestPool2D_Max_Dilation)
-create_test_padding_SAME_class(TestPool2D_Max_Dilation)
-create_test_padding_VALID_class(TestPool2D_Max_Dilation)
-
-# ---- NHWC dilation ----
-create_test_cudnn_class(TestPool2D_Max_Dilation_channel_last)
-create_test_fp16_class(TestPool2D_Max_Dilation_channel_last)
-create_test_bf16_class(TestPool2D_Max_Dilation_channel_last)
-create_test_cudnn_fp16_class(TestPool2D_Max_Dilation_channel_last)
-create_test_cudnn_use_ceil_class(TestPool2D_Max_Dilation_channel_last)
-create_test_use_ceil_class(TestPool2D_Max_Dilation_channel_last)
-create_test_padding_SAME_class(TestPool2D_Max_Dilation_channel_last)
-create_test_padding_VALID_class(TestPool2D_Max_Dilation_channel_last)
-
-# ---- asymmetric padding dilation ----
-create_test_cudnn_class(TestPool2D_Max_Dilation_AsyPadding)
-create_test_fp16_class(TestPool2D_Max_Dilation_AsyPadding)
-create_test_bf16_class(TestPool2D_Max_Dilation_AsyPadding)
-create_test_cudnn_fp16_class(TestPool2D_Max_Dilation_AsyPadding)
-create_test_cudnn_use_ceil_class(TestPool2D_Max_Dilation_AsyPadding)
-create_test_use_ceil_class(TestPool2D_Max_Dilation_AsyPadding)
-create_test_padding_SAME_class(TestPool2D_Max_Dilation_AsyPadding)
-create_test_padding_VALID_class(TestPool2D_Max_Dilation_AsyPadding)
-
-# ---- ceil mode dilation ----
-create_test_cudnn_class(TestPool2D_Max_Dilation_Ceil)
-create_test_fp16_class(TestPool2D_Max_Dilation_Ceil)
-create_test_bf16_class(TestPool2D_Max_Dilation_Ceil)
-create_test_cudnn_fp16_class(TestPool2D_Max_Dilation_Ceil)
-create_test_padding_SAME_class(TestPool2D_Max_Dilation_Ceil)
-create_test_padding_VALID_class(TestPool2D_Max_Dilation_Ceil)
-
-# ---- SAME padding dilation ----
-create_test_cudnn_class(TestPool2D_Max_Dilation_SAME)
-create_test_fp16_class(TestPool2D_Max_Dilation_SAME)
-create_test_bf16_class(TestPool2D_Max_Dilation_SAME)
-create_test_cudnn_fp16_class(TestPool2D_Max_Dilation_SAME)
-create_test_cudnn_use_ceil_class(TestPool2D_Max_Dilation_SAME)
-create_test_use_ceil_class(TestPool2D_Max_Dilation_SAME)
-
-# ---- VALID padding dilation ----
-create_test_cudnn_class(TestPool2D_Max_Dilation_VALID)
-create_test_fp16_class(TestPool2D_Max_Dilation_VALID)
-create_test_bf16_class(TestPool2D_Max_Dilation_VALID)
-create_test_cudnn_fp16_class(TestPool2D_Max_Dilation_VALID)
-create_test_cudnn_use_ceil_class(TestPool2D_Max_Dilation_VALID)
-create_test_use_ceil_class(TestPool2D_Max_Dilation_VALID)
+create_test_cudnn_class(TestMax_Pool2D_With_Dilations_AsyPadding)
+create_test_fp16_class(TestMax_Pool2D_With_Dilations_AsyPadding)
+create_test_bf16_class(TestMax_Pool2D_With_Dilations_AsyPadding)
+create_test_cudnn_fp16_class(TestMax_Pool2D_With_Dilations_AsyPadding)
+create_test_cudnn_use_ceil_class(TestMax_Pool2D_With_Dilations_AsyPadding)
+create_test_use_ceil_class(TestMax_Pool2D_With_Dilations_AsyPadding)
+create_test_padding_SAME_class(TestMax_Pool2D_With_Dilations_AsyPadding)
+create_test_padding_VALID_class(TestMax_Pool2D_With_Dilations_AsyPadding)
 
 
 if __name__ == '__main__':

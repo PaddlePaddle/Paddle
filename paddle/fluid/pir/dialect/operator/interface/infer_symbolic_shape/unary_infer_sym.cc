@@ -216,6 +216,132 @@ symbol::ShapeOrDataDimExprs Pool2dRawInferSymbolicShape(
 
   return output_shape_or_data;
 }
+
+symbol::ShapeOrDataDimExprs MaxPool2dWithDilationsRawInferSymbolicShape(
+    pir::Operation *op,
+    const std::vector<symbol::DimExpr> &kernel_size,
+    pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+
+  const auto &x_dims = x_shape_or_data.shape();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size() == 4 || x_dims.size() == 5,
+      true,
+      common::errors::InvalidArgument(
+          "the input of Op(pool) should be 4-D or 5-D Tensor. But "
+          "received: %u-D Tensor.",
+          x_dims.size()));
+
+  PADDLE_ENFORCE_EQ(x_dims.size() - kernel_size.size(),
+                    2U,
+                    common::errors::InvalidArgument(
+                        "the rank of input minus the size of kernel_size "
+                        "must be equal to 2 in Op(pool). "
+                        "But received: the rank of input is %d and the "
+                        "rank of kernel_size is %d.",
+                        x_dims.size(),
+                        kernel_size.size()));
+
+  std::vector<int> strides = [&]() {
+    std::vector<int> res;
+    const auto &stride_attr =
+        op->attributes().at("strides").dyn_cast<pir::ArrayAttribute>();
+    for (size_t i = 0; i < stride_attr.size(); i++) {
+      res.emplace_back(
+          stride_attr.at(i).dyn_cast<pir::Int64Attribute>().data());
+    }
+    return res;
+  }();
+
+  PADDLE_ENFORCE_EQ(
+      kernel_size.size(),
+      strides.size(),
+      common::errors::InvalidArgument(
+          "the rank of kernel_size and strides in Op(pool) must be equal. "
+          "But received: the rank of kernel_size is %d and the rank of stride "
+          "is %d.",
+          kernel_size.size(),
+          strides.size()));
+
+  const std::string &data_format =
+      op->attribute<pir::StrAttribute>("data_format").AsString();
+  const bool channel_last = data_format == "NHWC" || data_format == "NDHWC";
+
+  const auto &data_dims = [&]() -> std::vector<symbol::DimExpr> {
+    if (channel_last) {
+      return std::vector<symbol::DimExpr>(x_dims.begin() + 1, x_dims.end() - 1);
+    } else {
+      return std::vector<symbol::DimExpr>(x_dims.begin() + 2, x_dims.end());
+    }
+  }();
+
+  bool global_pooling =
+      op->attribute<pir::BoolAttribute>("global_pooling").data();
+  std::string padding_algorithm =
+      op->attribute<pir::StrAttribute>("padding_algorithm").AsString();
+
+  const auto &real_paddings = [&]() -> std::vector<symbol::DimExpr> {
+    std::vector<int> paddings;
+    const auto &padding_attr =
+        op->attributes().at("paddings").dyn_cast<pir::ArrayAttribute>();
+    for (size_t i = 0; i < padding_attr.size(); i++) {
+      paddings.emplace_back(
+          padding_attr.at(i).dyn_cast<pir::Int64Attribute>().data());
+    }
+    return GetRealPadding(paddings,
+                          global_pooling,
+                          false,
+                          padding_algorithm,
+                          data_dims,
+                          strides,
+                          kernel_size
+
+    );
+  }();
+
+  const auto &real_kernel_size = [&]() -> std::vector<symbol::DimExpr> {
+    if (global_pooling) {
+      return data_dims;
+    }
+    return kernel_size;
+  }();
+
+  const auto &output_shape_or_data = [&]() -> symbol::ShapeOrDataDimExprs {
+    std::vector<symbol::DimExpr> output_shape;
+    bool ceil_mode = op->attribute<pir::BoolAttribute>("ceil_mode").data();
+    for (size_t i = 0; i < data_dims.size(); ++i) {
+      symbol::DimExpr stride_dimexpr{strides[i]};
+      symbol::DimExpr one_dimexpr{1};
+      if (!ceil_mode) {
+        output_shape.emplace_back((data_dims[i] - real_kernel_size[i] +
+                                   real_paddings[2 * i] +
+                                   real_paddings[2 * i + 1]) /
+                                      stride_dimexpr +
+                                  one_dimexpr);
+      } else {
+        output_shape.emplace_back(
+            (data_dims[i] - real_kernel_size[i] + real_paddings[2 * i] +
+             real_paddings[2 * i + 1] + stride_dimexpr - one_dimexpr) /
+                stride_dimexpr +
+            one_dimexpr);
+      }
+    }
+
+    // output_N = input_N
+    output_shape.insert(output_shape.begin(), x_dims[0]);
+    // output_C = input_C
+    if (channel_last) {
+      output_shape.push_back(x_dims[x_dims.size() - 1]);
+    } else {
+      output_shape.insert(output_shape.begin() + 1, x_dims[1]);
+    }
+    return symbol::ShapeOrDataDimExprs{
+        symbol::TensorShapeOrDataDimExprs(output_shape)};
+  }();
+
+  return output_shape_or_data;
+}
 }  // namespace
 
 namespace paddle::dialect {
@@ -2898,7 +3024,8 @@ bool MaxPool2dWithDilationsOpInferSymbolicShape(
       paddle::dialect::details::GetExprVecFromData(kernel_size_shape_or_data);
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      Pool2dRawInferSymbolicShape(op, kernel_size, infer_context));
+      MaxPool2dWithDilationsRawInferSymbolicShape(
+          op, kernel_size, infer_context));
   return true;
 }
 

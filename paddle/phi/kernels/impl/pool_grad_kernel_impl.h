@@ -179,13 +179,9 @@ void MaxPool2DWithDilationsGradRawKernel(
     const std::vector<int64_t>& strides,
     const std::vector<int64_t>& paddings,
     const std::vector<int64_t>& dilations,
-    bool exclusive,
     const std::string& data_format,
-    const std::string& pooling_type,
     bool global_pooling,
-    bool adaptive,
     const std::string& padding_algorithm,
-    const float norm_type,
     DenseTensor* dx) {
   if (dx && dx->numel() == 0) {
     dev_ctx.template Alloc<T>(dx);
@@ -206,7 +202,7 @@ void MaxPool2DWithDilationsGradRawKernel(
   }
   funcs::UpdatePadding(&paddings_,
                        global_pooling,
-                       adaptive,
+                       false,
                        padding_algorithm,
                        data_dims,
                        strides,
@@ -226,98 +222,17 @@ void MaxPool2DWithDilationsGradRawKernel(
     funcs::SetConstant<Context, T> set_constant;
     set_constant(dev_ctx, dx, static_cast<T>(0.0));
 
-    std::string true_type;
-    if (norm_type == INFINITY)
-      true_type = "max";
-    else
-      true_type = pooling_type;
-
-    switch (kernel_size_.size()) {
-      case 2: {
-        if (true_type == "max") {
-          funcs::
-              MaxPool2DWithDilationsGradFunctor<Context, funcs::MaxPool<T>, T>
-                  pool2d_backward;
-          pool2d_backward(dev_ctx,
-                          x,
-                          out,
-                          dout,
-                          kernel_size_,
-                          strides,
-                          paddings_,
-                          dilations_,
-                          data_format,
-                          dx);
-        } else if (true_type == "avg") {
-          funcs::Pool2dGradFunctor<Context, funcs::AvgPoolGrad<T>, T>
-              pool2d_backward;
-          funcs::AvgPoolGrad<T> pool_process;
-          pool2d_backward(dev_ctx,
-                          x,
-                          out,
-                          dout,
-                          kernel_size_,
-                          strides,
-                          paddings_,
-                          data_format,
-                          exclusive,
-                          adaptive,
-                          dx,
-                          pool_process);
-        } else {  // lp_pool2d
-          funcs::Pool2dGradFunctor<Context, funcs::LPPoolGrad<T>, T>
-              pool2d_backward;
-          funcs::LPPoolGrad<T> pool_process;
-          pool_process.setNormType(norm_type);
-          pool2d_backward(dev_ctx,
-                          x,
-                          out,
-                          dout,
-                          kernel_size_,
-                          strides,
-                          paddings_,
-                          data_format,
-                          exclusive,
-                          adaptive,
-                          dx,
-                          pool_process);
-        }
-      } break;
-      case 3: {
-        if (pooling_type == "max") {
-          funcs::MaxPool3dGradFunctor<Context, T> pool3d_backward;
-          pool3d_backward(dev_ctx,
-                          x,
-                          out,
-                          dout,
-                          kernel_size_,
-                          strides,
-                          paddings_,
-                          data_format,
-                          dx);
-        } else if (pooling_type == "avg") {
-          funcs::Pool3dGradFunctor<Context, funcs::AvgPoolGrad<T>, T>
-              pool3d_backward;
-          funcs::AvgPoolGrad<T> pool_process;
-          pool3d_backward(dev_ctx,
-                          x,
-                          out,
-                          dout,
-                          kernel_size_,
-                          strides,
-                          paddings_,
-                          data_format,
-                          exclusive,
-                          adaptive,
-                          dx,
-                          pool_process);
-        }
-      } break;
-      default: {
-        PADDLE_THROW(
-            errors::InvalidArgument("Pool op only supports 2D and 3D input."));
-      }
-    }
+    funcs::MaxPool2DWithDilationsGradFunctor<Context, T> pool2d_backward;
+    pool2d_backward(dev_ctx,
+                    x,
+                    out,
+                    dout,
+                    kernel_size_,
+                    strides,
+                    paddings_,
+                    dilations_,
+                    data_format,
+                    dx);
   }
 }
 
@@ -425,11 +340,8 @@ void MaxPool2DWithDilationsGradKernel(const Context& dev_ctx,
                                       const std::vector<int64_t>& paddings,
                                       const std::vector<int64_t>& dilations,
                                       bool ceil_mode UNUSED,
-                                      bool exclusive,
                                       const std::string& data_format,
-                                      const std::string& pooling_type,
                                       bool global_pooling,
-                                      bool adaptive,
                                       const std::string& padding_algorithm,
                                       DenseTensor* dx) {
   MaxPool2DWithDilationsGradRawKernel<T, Context>(dev_ctx,
@@ -440,13 +352,9 @@ void MaxPool2DWithDilationsGradKernel(const Context& dev_ctx,
                                                   strides,
                                                   paddings,
                                                   dilations,
-                                                  exclusive,
                                                   data_format,
-                                                  pooling_type,
                                                   global_pooling,
-                                                  adaptive,
                                                   padding_algorithm,
-                                                  0,
                                                   dx);
 }
 

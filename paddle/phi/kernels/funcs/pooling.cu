@@ -226,7 +226,7 @@ __global__ void KernelPool2D(const IndexT nthreads,
   }
 }
 
-template <typename PoolProcess, typename T, typename IndexT>
+template <typename T, typename IndexT>
 __global__ void KernelMaxPool2DWithDilations(
     const IndexT nthreads,
     const T* input_data,
@@ -244,8 +244,6 @@ __global__ void KernelMaxPool2DWithDilations(
     const IndexT dilation_height,
     const IndexT dilation_width,
     FastDivModForPooling<IndexT> divmods,
-    PoolProcess pool_process,
-    bool exclusive,
     T* output_data,
     bool channel_last = false) {
   const IndexT start_index =
@@ -289,18 +287,15 @@ __global__ void KernelMaxPool2DWithDilations(
       wstart = max(wstart, static_cast<IndexT>(0));
     }
 
-    T ele = pool_process.initial();
+    T ele = static_cast<T>(-FLT_MAX);
     for (IndexT h = hstart; h < hend; h += dilation_height) {
       for (IndexT w = wstart; w < wend; w += dilation_width) {
         auto input_idx = channel_last
                              ? (h * input_width + w) * channels + c_offset
                              : h * input_width + w;
-        pool_process.compute(input_data[input_idx], &ele);
+        ele = input_data[input_idx] > ele ? input_data[input_idx] : ele;
       }
     }
-    IndexT pool_size = exclusive ? (hend - hstart) * (wend - wstart)
-                                 : ksize_height * ksize_width;
-    pool_process.finalize(static_cast<T>(pool_size), &ele);
     output_data[index] = ele;
   }
 }
@@ -1032,8 +1027,8 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
   }
 };
 
-template <typename PoolProcess, typename T>
-class MaxPool2DWithDilationsFunctor<phi::GPUContext, PoolProcess, T> {
+template <typename T>
+class MaxPool2DWithDilationsFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
@@ -1042,10 +1037,7 @@ class MaxPool2DWithDilationsFunctor<phi::GPUContext, PoolProcess, T> {
                   const std::vector<int64_t>& paddings,
                   const std::vector<int64_t>& dilations,
                   const std::string data_format,
-                  bool exclusive,
-                  bool adaptive,
-                  DenseTensor* output,
-                  PoolProcess pool_process) {
+                  DenseTensor* output) {
     bool channel_last = (data_format == "NHWC");
     const int64_t batch_size = input.dims()[0];
 
@@ -1081,122 +1073,57 @@ class MaxPool2DWithDilationsFunctor<phi::GPUContext, PoolProcess, T> {
     std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
     int64_t nthreads =
         batch_size * output_channels * output_height * output_width;
-    if (adaptive) {
-      int64_t max_threads = 512;
-      int64_t thread_num = std::min(
-          phi::funcs::details::GetLastPow2(output_height * output_width),
-          max_threads);
-      int64_t blocks = std::min(max_threads / thread_num,
-                                static_cast<int64_t>(output_channels));
-      dim3 threads(thread_num, blocks, 1);
-      dim3 grid(std::max((output_channels + blocks - 1) / blocks,
-                         static_cast<int64_t>(1)),
-                std::min(batch_size, static_cast<int64_t>(max_grid_dim[1])),
-                1);
-      if (input.numel() <= std::numeric_limits<int>::max()) {
-        auto pool_divmods = FastDivModForPooling<int>(
-            input_channels, output_width, output_height);
-        AdaptiveKernelPool2D<PoolProcess, T, int>
-            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
-                                                     input_data,
-                                                     input_channels,
-                                                     input_height,
-                                                     input_width,
-                                                     output_height,
-                                                     output_width,
-                                                     ksize_height,
-                                                     ksize_width,
-                                                     stride_height,
-                                                     stride_width,
-                                                     padding_height,
-                                                     padding_width,
-                                                     batch_size,
-                                                     pool_divmods,
-                                                     pool_process,
-                                                     exclusive,
-                                                     output_data,
-                                                     channel_last);
-      } else {
-        auto pool_divmods = FastDivModForPooling<int64_t>(
-            input_channels, output_width, output_height);
-        AdaptiveKernelPool2D<PoolProcess, T, int64_t>
-            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
-                                                     input_data,
-                                                     input_channels,
-                                                     input_height,
-                                                     input_width,
-                                                     output_height,
-                                                     output_width,
-                                                     ksize_height,
-                                                     ksize_width,
-                                                     stride_height,
-                                                     stride_width,
-                                                     padding_height,
-                                                     padding_width,
-                                                     batch_size,
-                                                     pool_divmods,
-                                                     pool_process,
-                                                     exclusive,
-                                                     output_data,
-                                                     channel_last);
-      }
-    } else {
-      int thread_num = 1024;
+    int thread_num = 1024;
 #ifdef WITH_NV_JETSON
-      backends::gpu::ChangeThreadNum(dev_ctx, &thread_num);
+    backends::gpu::ChangeThreadNum(dev_ctx, &thread_num);
 #endif
-      int64_t blocks = (nthreads + thread_num - 1) / thread_num;
-      dim3 threads(thread_num, 1);
-      dim3 grid(blocks, 1);
-      if (input.numel() <= std::numeric_limits<int>::max()) {
-        auto pool_divmods = FastDivModForPooling<int>(
-            input_channels, output_width, output_height);
-        KernelMaxPool2DWithDilations<PoolProcess, T, int>
-            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
-                                                     input_data,
-                                                     input_channels,
-                                                     input_height,
-                                                     input_width,
-                                                     output_height,
-                                                     output_width,
-                                                     ksize_height,
-                                                     ksize_width,
-                                                     stride_height,
-                                                     stride_width,
-                                                     padding_height,
-                                                     padding_width,
-                                                     dilation_height,
-                                                     dilation_width,
-                                                     pool_divmods,
-                                                     pool_process,
-                                                     exclusive,
-                                                     output_data,
-                                                     channel_last);
-      } else {
-        auto pool_divmods = FastDivModForPooling<int64_t>(
-            input_channels, output_width, output_height);
-        KernelMaxPool2DWithDilations<PoolProcess, T, int64_t>
-            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
-                                                     input_data,
-                                                     input_channels,
-                                                     input_height,
-                                                     input_width,
-                                                     output_height,
-                                                     output_width,
-                                                     ksize_height,
-                                                     ksize_width,
-                                                     stride_height,
-                                                     stride_width,
-                                                     padding_height,
-                                                     padding_width,
-                                                     dilation_height,
-                                                     dilation_width,
-                                                     pool_divmods,
-                                                     pool_process,
-                                                     exclusive,
-                                                     output_data,
-                                                     channel_last);
-      }
+    int64_t blocks = (nthreads + thread_num - 1) / thread_num;
+    dim3 threads(thread_num, 1);
+    dim3 grid(blocks, 1);
+    if (input.numel() <= std::numeric_limits<int>::max()) {
+      auto pool_divmods = FastDivModForPooling<int>(
+          input_channels, output_width, output_height);
+      KernelMaxPool2DWithDilations<T, int>
+          <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
+                                                   input_data,
+                                                   input_channels,
+                                                   input_height,
+                                                   input_width,
+                                                   output_height,
+                                                   output_width,
+                                                   ksize_height,
+                                                   ksize_width,
+                                                   stride_height,
+                                                   stride_width,
+                                                   padding_height,
+                                                   padding_width,
+                                                   dilation_height,
+                                                   dilation_width,
+                                                   pool_divmods,
+                                                   output_data,
+                                                   channel_last);
+    } else {
+      auto pool_divmods = FastDivModForPooling<int64_t>(
+          input_channels, output_width, output_height);
+      KernelMaxPool2DWithDilations<T, int64_t>
+          <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
+                                                   input_data,
+                                                   input_channels,
+                                                   input_height,
+                                                   input_width,
+                                                   output_height,
+                                                   output_width,
+                                                   ksize_height,
+                                                   ksize_width,
+                                                   stride_height,
+                                                   stride_width,
+                                                   padding_height,
+                                                   padding_width,
+                                                   dilation_height,
+                                                   dilation_width,
+                                                   pool_divmods,
+                                                   output_data,
+                                                   channel_last);
     }
   }
 };
@@ -1491,8 +1418,8 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
   }
 };
 
-template <typename PoolProcess, typename T>
-class MaxPool2DWithDilationsGradFunctor<phi::GPUContext, PoolProcess, T> {
+template <typename T>
+class MaxPool2DWithDilationsGradFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
@@ -1669,32 +1596,22 @@ template class MaxPool2dGradFunctor<phi::GPUContext, double>;
 template class MaxPool2dGradFunctor<phi::GPUContext, dtype::float16>;
 template class MaxPool2dGradFunctor<phi::GPUContext, dtype::bfloat16>;
 
+template class MaxPool2DWithDilationsGradFunctor<phi::GPUContext, float>;
+template class MaxPool2DWithDilationsGradFunctor<phi::GPUContext, double>;
 template class MaxPool2DWithDilationsGradFunctor<phi::GPUContext,
-                                                 MaxPool<float>,
-                                                 float>;
-template class MaxPool2DWithDilationsGradFunctor<phi::GPUContext,
-                                                 MaxPool<double>,
-                                                 double>;
-template class MaxPool2DWithDilationsGradFunctor<phi::GPUContext,
-                                                 MaxPool<dtype::float16>,
                                                  dtype::float16>;
 template class MaxPool2DWithDilationsGradFunctor<phi::GPUContext,
-                                                 MaxPool<dtype::bfloat16>,
                                                  dtype::bfloat16>;
 
 template class Pool2dFunctor<phi::GPUContext, MaxPool<float>, float>;
-template class MaxPool2DWithDilationsFunctor<phi::GPUContext,
-                                             MaxPool<float>,
-                                             float>;
+template class MaxPool2DWithDilationsFunctor<phi::GPUContext, float>;
 template class Pool2dFunctor<phi::GPUContext, AvgPool<float>, float>;
 template class Pool2dFunctor<phi::GPUContext, LPPool<float>, float>;
 template class Pool2dGradFunctor<phi::GPUContext, MaxPoolGrad<float>, float>;
 template class Pool2dGradFunctor<phi::GPUContext, AvgPoolGrad<float>, float>;
 template class Pool2dGradFunctor<phi::GPUContext, LPPoolGrad<float>, float>;
 template class Pool2dFunctor<phi::GPUContext, MaxPool<double>, double>;
-template class MaxPool2DWithDilationsFunctor<phi::GPUContext,
-                                             MaxPool<double>,
-                                             double>;
+template class MaxPool2DWithDilationsFunctor<phi::GPUContext, double>;
 template class Pool2dFunctor<phi::GPUContext, AvgPool<double>, double>;
 template class Pool2dFunctor<phi::GPUContext, LPPool<double>, double>;
 template class Pool2dGradFunctor<phi::GPUContext, MaxPoolGrad<double>, double>;
@@ -1704,9 +1621,7 @@ template class Pool2dGradFunctor<phi::GPUContext, LPPoolGrad<double>, double>;
 template class Pool2dFunctor<phi::GPUContext,
                              MaxPool<dtype::float16>,
                              dtype::float16>;
-template class MaxPool2DWithDilationsFunctor<phi::GPUContext,
-                                             MaxPool<dtype::float16>,
-                                             dtype::float16>;
+template class MaxPool2DWithDilationsFunctor<phi::GPUContext, dtype::float16>;
 template class Pool2dFunctor<phi::GPUContext,
                              AvgPool<dtype::float16>,
                              dtype::float16>;
@@ -1725,9 +1640,7 @@ template class Pool2dGradFunctor<phi::GPUContext,
 template class Pool2dFunctor<phi::GPUContext,
                              MaxPool<dtype::bfloat16>,
                              dtype::bfloat16>;
-template class MaxPool2DWithDilationsFunctor<phi::GPUContext,
-                                             MaxPool<dtype::bfloat16>,
-                                             dtype::bfloat16>;
+template class MaxPool2DWithDilationsFunctor<phi::GPUContext, dtype::bfloat16>;
 template class Pool2dFunctor<phi::GPUContext,
                              AvgPool<dtype::bfloat16>,
                              dtype::bfloat16>;

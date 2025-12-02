@@ -222,7 +222,7 @@ class Pool2dFunctor {
                   PoolProcess pool_compute);
 };
 
-template <typename Context, typename PoolProcess, typename T>
+template <typename Context, typename T>
 class MaxPool2DWithDilationsFunctor {
  public:
   void operator()(const Context& context,
@@ -232,10 +232,7 @@ class MaxPool2DWithDilationsFunctor {
                   const std::vector<int64_t>& paddings,
                   const std::vector<int64_t>& dilations,
                   const std::string data_format,
-                  bool exclusive,
-                  bool adaptive,
-                  DenseTensor* output,
-                  PoolProcess pool_compute);
+                  DenseTensor* output);
 };
 
 template <typename Context, typename PoolProcess, typename T>
@@ -255,7 +252,7 @@ class Pool2dGradFunctor {
                   PoolProcess pool_compute);
 };
 
-template <typename Context, typename PoolProcess, typename T>
+template <typename Context, typename T>
 class MaxPool2DWithDilationsGradFunctor {
  public:
   void operator()(const Context& context,
