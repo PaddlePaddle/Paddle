@@ -21,8 +21,8 @@ namespace phi {
 
 template <typename T>
 class LayerNormOneDNNHandler
-    : public phi::funcs::
-          OneDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward> {
+    : public funcs::OneDNNHandlerNoCachingT<T,
+                                            dnnl::layer_normalization_forward> {
  public:
   LayerNormOneDNNHandler(const std::vector<int64_t>& dims,
                          const float& epsilon,
@@ -31,8 +31,7 @@ class LayerNormOneDNNHandler
                          const phi::DenseTensor* x,
                          const dnnl::engine engine,
                          Place cpu_place)
-      : phi::funcs::OneDNNHandlerNoCachingT<T,
-                                            dnnl::layer_normalization_forward>(
+      : funcs::OneDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward>(
             engine, cpu_place) {
     const auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
                                        : dnnl::prop_kind::forward_training;
@@ -46,10 +45,10 @@ class LayerNormOneDNNHandler
                           const phi::DenseTensor* shift) {
     auto scale_memory = this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->weights_desc(),
-        phi::funcs::to_void_cast<float>(scale->data<float>()));
+        funcs::to_void_cast<float>(scale->data<float>()));
     auto shift_memory = this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->weights_desc(),
-        phi::funcs::to_void_cast<float>(shift->data<float>()));
+        funcs::to_void_cast<float>(shift->data<float>()));
 
     return std::make_tuple(scale_memory, shift_memory);
   }

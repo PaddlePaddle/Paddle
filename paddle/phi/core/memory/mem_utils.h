@@ -17,12 +17,16 @@
 #include <list>
 #include <map>
 #include <set>
+#include <vector>
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
+#include "paddle/phi/core/memory/allocation/vmm_ipc_allocation.h"
 
 namespace paddle {
-namespace memory::allocation {
+
+namespace memory {
+namespace allocation {
 
 struct BlockAllocation;
 struct Block {
@@ -36,6 +40,7 @@ struct Block {
   size_t size_;
   bool is_free_;
   BlockAllocation* allocation_;
+  std::vector<BlockPart> parts_;
 };
 
 struct BlockAllocation : public Allocation {
@@ -46,10 +51,10 @@ struct BlockAllocation : public Allocation {
   }
   std::list<Block>::iterator block_it_;
 };
-}  // namespace memory::allocation
+}  // namespace allocation
 
-namespace memory {
 using allocation::Block;
+using allocation::BlockAllocation;
 /*!
  * Author: liujinnan
  * Note: MemoryCompactionStrategy is an abstract class that defines the
@@ -98,8 +103,17 @@ PADDLE_API extern size_t VmmCompact(const phi::GPUPlace& place);
 PADDLE_API extern std::vector<std::vector<std::pair<size_t, uintptr_t>>>
 FreeBlockInfoOfVmmAllocator(const phi::GPUPlace& place);
 
+// Get VMM allocator all block info.
 PADDLE_API extern std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
 AllBlockInfoOfVmmAllocator(const phi::GPUPlace& place);
+
+// Get allocate event when start FLAGS_record_alloc_event.
+PADDLE_API extern std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>>
+GetAllocateEvent(const phi::GPUPlace& place);
+
+// Get compact count and size when start FLAGS_enable_compact_mem.
+PADDLE_API extern std::vector<size_t> GetCompactSize(
+    const phi::GPUPlace& place);
 #endif
 
 }  // namespace memory

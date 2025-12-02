@@ -99,7 +99,7 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
     x_grad_tmp = &x_grad_expand;
   }
 
-  phi::funcs::SelectKernel<bool, T, T, 2, Functor>(
+  funcs::SelectKernel<bool, T, T, 2, Functor>(
       dev_ctx, mask_expand, out_grad, x_grad_tmp, Functor());
 
   if (expand_x) {
