@@ -37,8 +37,8 @@ void DiagGradKernel(const Context& dev_ctx,
     int64_t dx_length = (dx_dims.size() == 1 ? dx_dims[0] : int64_t(1));
     int64_t dx_stride = 1;
 
-    int64_t dout_stride_0 = phi::funcs::ComputeStride(0, dout_dims);
-    int64_t dout_stride_1 = phi::funcs::ComputeStride(1, dout_dims);
+    int64_t dout_stride_0 = funcs::ComputeStride(0, dout_dims);
+    int64_t dout_stride_1 = funcs::ComputeStride(1, dout_dims);
     dout_data +=
         (offset >= 0 ? offset * dout_stride_1 : -offset * dout_stride_0);
 
@@ -46,12 +46,12 @@ void DiagGradKernel(const Context& dev_ctx,
       dx_data[i * dx_stride] = dout_data[i * (dout_stride_0 + dout_stride_1)];
     }
   } else {
-    phi::funcs::SetConstant<Context, T> set_padding_value;
+    funcs::SetConstant<Context, T> set_padding_value;
     set_padding_value(dev_ctx, x_grad, static_cast<T>(0));
 
-    int64_t dx_stride_0 = phi::funcs::ComputeStride(0, dx_dims);
-    int64_t dx_stride_1 = phi::funcs::ComputeStride(1, dx_dims);
-    int64_t dout_stride_0 = phi::funcs::ComputeStride(0, dout_dims);
+    int64_t dx_stride_0 = funcs::ComputeStride(0, dx_dims);
+    int64_t dx_stride_1 = funcs::ComputeStride(1, dx_dims);
+    int64_t dout_stride_0 = funcs::ComputeStride(0, dout_dims);
     dx_data += (offset >= 0 ? offset * dx_stride_1 : -offset * dx_stride_0);
 
     int64_t dout_length = dout_dims[0];

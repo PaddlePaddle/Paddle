@@ -102,6 +102,19 @@ class TestAllocatorVisitor(unittest.TestCase):
         paddle.device.cuda.allocate_record_table()
         paddle.device.cuda.memory_summary()
 
+    def test_memory_record_with_guard(self):
+        paddle.set_flags({'FLAGS_use_virtual_memory_auto_growth': True})
+        for _ in range(2):
+            with paddle.device.cuda.allocate_record_guard(True):
+                params = self.allocate_cmds(self.cmds)
+        paddle.set_flags({'FLAGS_record_alloc_event': True})
+        with paddle.device.cuda.allocate_record_guard(False):
+            params2 = self.allocate_cmds(self.cmds2)
+        paddle.device.cuda.allocate_record_plot()
+        paddle.device.cuda.allocate_record_plot(save_path="ana.png")
+        paddle.device.cuda.allocate_record_table()
+        paddle.device.cuda.memory_summary()
+
 
 if __name__ == '__main__':
     unittest.main()
