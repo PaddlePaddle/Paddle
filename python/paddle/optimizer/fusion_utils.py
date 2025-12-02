@@ -43,10 +43,6 @@ def _share_tensor_ipc_meta(tensor):
     if tensor is None:
         return None
     if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
-        if paddle.get_flags('FLAGS_use_virtual_memory_auto_growth')[
-            'FLAGS_use_virtual_memory_auto_growth'
-        ]:
-            return tensor.value().get_tensor()._share_vmm()
         return tensor.value().get_tensor()._share_cuda()
     return None
 
@@ -240,22 +236,15 @@ class FusionStorageHelper:
         ), "merged_model_params_meta must be a dict or None"
         self.merged_model_params_meta = merged_model_params_meta
 
-        if paddle.get_flags('FLAGS_use_virtual_memory_auto_growth')[
-            'FLAGS_use_virtual_memory_auto_growth'
-        ]:
-            assert (
-                isinstance(buffer_ipc_meta, tuple) and len(buffer_ipc_meta) == 5
-            ), "buffer_ipc_meta must be a tuple with length 5"
-            new_tensor = paddle.base.core.DenseTensor._new_shared_vmm(
-                buffer_ipc_meta
-            )
-        else:
-            assert (
-                isinstance(buffer_ipc_meta, tuple) and len(buffer_ipc_meta) == 7
-            ), "buffer_ipc_meta must be a tuple with length 7"
-            new_tensor = paddle.base.core.DenseTensor._new_shared_cuda(
-                buffer_ipc_meta
-            )
+        assert isinstance(buffer_ipc_meta, tuple), (
+            "buffer_ipc_meta must be a tuple"
+        )
+        assert len(buffer_ipc_meta) in (5, 7), (
+            "buffer_ipc_meta must be a tuple with length 5 when FLAGS_use_virtual_memory_auto_growth is True or 7 when FLAGS_use_virtual_memory_auto_growth is False."
+        )
+        new_tensor = paddle.base.core.DenseTensor._new_shared_cuda(
+            buffer_ipc_meta
+        )
 
         self.buffer = paddle.to_tensor(new_tensor)
         self.cpu_buffer = self.buffer.pin_memory()

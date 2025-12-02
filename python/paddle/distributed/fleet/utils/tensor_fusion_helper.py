@@ -35,10 +35,6 @@ def _share_tensor_ipc_meta(tensor):
     if tensor is None:
         return None
     if core.is_compiled_with_cuda() and not core.is_compiled_with_rocm():
-        if paddle.get_flags('FLAGS_use_virtual_memory_auto_growth')[
-            'FLAGS_use_virtual_memory_auto_growth'
-        ]:
-            return tensor.value().get_tensor()._share_vmm()
         return tensor.value().get_tensor()._share_cuda()
     return None
 
