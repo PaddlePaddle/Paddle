@@ -84,7 +84,6 @@ void BindFlashEPApi(pybind11::module *m) {
       .def("internode_dispatch", &flash_ep::Buffer::internode_dispatch_api)
       .def("internode_fused_notify",
            &flash_ep::Buffer::internode_fused_notify_api)
-      .def("clear_buffer", &flash_ep::Buffer::clear_buffer_api)
       .def("internode_combine", &flash_ep::Buffer::internode_combine_api);
 #endif
 }

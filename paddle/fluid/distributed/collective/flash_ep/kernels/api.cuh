@@ -252,7 +252,11 @@ void dispatch(void* recv_x,
               const int* asymm_recv_rdma_channel_prefix_matrix,
               const int* asymm_send_rdma_head,
               const int* asymm_send_nvl_head,
-              int* asymm_aggregated_nvl_head);
+              int* asymm_aggregated_nvl_head,
+              int num_pipeline_stages,
+              int pipeline_stage_id,
+              int64_t num_rdma_bytes,
+              int64_t num_nvl_bytes);
 
 void cached_notify(int hidden_int4,
                    int num_scales,
@@ -276,26 +280,9 @@ void cached_notify(int hidden_int4,
                    int64_t num_rdma_bytes,
                    int64_t num_nvl_bytes,
                    bool is_cached_dispatch,
-                   bool low_latency_mode);
-
-void clear_buffer(int hidden_int4,
-                  int num_scales,
-                  int num_topk_idx,
-                  int num_topk_weights,
-                  int num_ranks,
-                  int num_channels,
-                  void* rdma_buffer_ptr,
-                  int num_max_rdma_chunked_recv_tokens,
-                  void** buffer_ptrs,
-                  int num_max_nvl_chunked_recv_tokens,
-                  int** task_fifo_ptrs,
-                  int head,
-                  int rank,
-                  const bool is_start,
-                  const bool is_end,
-                  cudaStream_t stream,
-                  int64_t num_rdma_bytes,
-                  int64_t num_nvl_bytes);
+                   bool low_latency_mode,
+                   int num_pipeline_stages,
+                   int pipeline_stage_id);
 
 void combine(cudaDataType_t type,
              void* combined_x,
@@ -322,7 +309,11 @@ void combine(cudaDataType_t type,
              cudaStream_t stream,
              int num_channels,
              bool low_latency_mode,
-             bool inplace_float_combine);
+             bool inplace_float_combine,
+             int num_pipeline_stages,
+             int pipeline_stage_id,
+             int64_t num_rdma_bytes,
+             int64_t num_nvl_bytes);
 #endif  // PADDLE_WITH_NVSHMEM
 
 }  // namespace internode

@@ -80,10 +80,10 @@ __global__ void get_flash_ep_coalesce_rdma_schedule_kernel(
   int token_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (token_idx >= num_tokens) return;
 
-  int dispatch_rdma_schedule_map_fragment[kNumRDMARanks];  // 第一次在某rdma
-                                                           // rank出现的轮数
-  int combine_rdma_schedule_map_fragment[kNumRDMARanks];  // 最后一次在某rdma
-                                                          // rank出现的轮数
+  int rmem_dispatch_rdma_schedule_map[kNumRDMARanks];  // 第一次在某rdma
+                                                       // rank出现的轮数
+  int rmem_combine_rdma_schedule_map[kNumRDMARanks];   // 最后一次在某rdma
+                                                       // rank出现的轮数
 
   auto shifted_topk_idx = topk_idx + token_idx * num_topk;
 
@@ -92,8 +92,8 @@ __global__ void get_flash_ep_coalesce_rdma_schedule_kernel(
 
 #pragma unroll
   for (int i = 0; i < kNumRDMARanks; ++i) {
-    dispatch_rdma_schedule_map_fragment[i] = num_pipeline_stages;
-    combine_rdma_schedule_map_fragment[i] = -1;
+    rmem_dispatch_rdma_schedule_map[i] = num_pipeline_stages;
+    rmem_combine_rdma_schedule_map[i] = -1;
   }
 
   for (int i = 0; i < num_topk; ++i) {
@@ -111,16 +111,16 @@ __global__ void get_flash_ep_coalesce_rdma_schedule_kernel(
                      dispatch_stage_idx < num_pipeline_stages);
     EP_DEVICE_ASSERT(combine_stage_idx >= 0 &&
                      combine_stage_idx < num_pipeline_stages);
-    dispatch_rdma_schedule_map_fragment[rdma_rank_idx] = min(
-        dispatch_stage_idx, dispatch_rdma_schedule_map_fragment[rdma_rank_idx]);
-    combine_rdma_schedule_map_fragment[rdma_rank_idx] = max(
-        combine_stage_idx, combine_rdma_schedule_map_fragment[rdma_rank_idx]);
+    rmem_dispatch_rdma_schedule_map[rdma_rank_idx] =
+        min(dispatch_stage_idx, rmem_dispatch_rdma_schedule_map[rdma_rank_idx]);
+    rmem_combine_rdma_schedule_map[rdma_rank_idx] =
+        max(combine_stage_idx, rmem_combine_rdma_schedule_map[rdma_rank_idx]);
   }
   for (int i = 0; i < num_rdma_ranks; ++i) {
     dispatch_rdma_schedule_map[token_idx * num_rdma_ranks + i] =
-        dispatch_rdma_schedule_map_fragment[i];
+        rmem_dispatch_rdma_schedule_map[i];
     combine_rdma_schedule_map[token_idx * num_rdma_ranks + i] =
-        combine_rdma_schedule_map_fragment[i];
+        rmem_combine_rdma_schedule_map[i];
   }
 }
 
@@ -170,10 +170,11 @@ __global__ void __launch_bounds__(kNumThreads, 1)
       (num_pipeline_stages + stage_idx) * num_tokens * num_ranks;
 
   // 统计专家级别发送指标, 每个sm负责一些experts
-  __shared__ int dispatch_num_tokens_per_expert_per_thread
+  __shared__ int smem_dispatch_num_tokens_per_expert_per_thread
       [kNumThreads][kNumExpertsPerSM];  // 每个线程统计一部分token, 最后再聚合
-  __shared__ int combine_num_tokens_per_expert_per_thread[kNumThreads]
-                                                         [kNumExpertsPerSM];
+  __shared__ int
+      smem_combine_num_tokens_per_expert_per_thread[kNumThreads]
+                                                   [kNumExpertsPerSM];
 
   // 计算自己的这个block负责哪些目标expert
   int expert_begin_idx = sm_id_in_loop * kNumExpertsPerSM,
@@ -186,12 +187,12 @@ __global__ void __launch_bounds__(kNumThreads, 1)
 // Per-thread count
 #pragma unroll
     for (int i = 0; i < kNumExpertsPerSM; ++i) {
-      dispatch_num_tokens_per_expert_per_thread[thread_id][i] = 0;
-      combine_num_tokens_per_expert_per_thread[thread_id][i] = 0;
+      smem_dispatch_num_tokens_per_expert_per_thread[thread_id][i] = 0;
+      smem_combine_num_tokens_per_expert_per_thread[thread_id][i] = 0;
     }
 
-    int dispatch_schedule_map_fragment[kNumRDMARanks];
-    int combine_schedule_map_fragment[kNumRDMARanks];
+    int rmem_dispatch_schedule_map[kNumRDMARanks];
+    int rmem_combine_schedule_map[kNumRDMARanks];
 
 #pragma unroll
     for (int i = thread_id; i < num_tokens; i += kNumThreads) {
@@ -210,16 +211,16 @@ __global__ void __launch_bounds__(kNumThreads, 1)
               reinterpret_cast<const int4*>(shifted_combine_schedule_map) + j;
 #pragma unroll
           for (int k = 0; k < 4; k++) {
-            dispatch_schedule_map_fragment[j * 4 + k] =
+            rmem_dispatch_schedule_map[j * 4 + k] =
                 reinterpret_cast<const int*>(dispatch_schedule_map_vec)[k];
-            combine_schedule_map_fragment[j * 4 + k] =
+            rmem_combine_schedule_map[j * 4 + k] =
                 reinterpret_cast<const int*>(combine_schedule_map_vec)[k];
           }
         }
       } else {
         for (int j = 0; j < kNumRDMARanks; j++) {
-          dispatch_schedule_map_fragment[j] = shifted_dispatch_schedule_map[j];
-          combine_schedule_map_fragment[j] = shifted_combine_schedule_map[j];
+          rmem_dispatch_schedule_map[j] = shifted_dispatch_schedule_map[j];
+          rmem_combine_schedule_map[j] = shifted_combine_schedule_map[j];
         }
       }
 
@@ -235,16 +236,16 @@ __global__ void __launch_bounds__(kNumThreads, 1)
             expert_begin_idx <= expert_idx &&
             expert_idx < expert_end_idx;  // 表示这个专家是否是当前sm负责
         if (in_sm_range &&
-            dispatch_schedule_map_fragment[rdma_rank_idx] == stage_idx) {
-          ++dispatch_num_tokens_per_expert_per_thread[thread_id]
-                                                     [expert_idx -
-                                                      expert_begin_idx];
+            rmem_dispatch_schedule_map[rdma_rank_idx] == stage_idx) {
+          ++smem_dispatch_num_tokens_per_expert_per_thread[thread_id]
+                                                          [expert_idx -
+                                                           expert_begin_idx];
         }
         if (in_sm_range &&
-            combine_schedule_map_fragment[rdma_rank_idx] == stage_idx) {
-          ++combine_num_tokens_per_expert_per_thread[thread_id]
-                                                    [expert_idx -
-                                                     expert_begin_idx];
+            rmem_combine_schedule_map[rdma_rank_idx] == stage_idx) {
+          ++smem_combine_num_tokens_per_expert_per_thread[thread_id]
+                                                         [expert_idx -
+                                                          expert_begin_idx];
         }
       }
     }
@@ -259,8 +260,10 @@ __global__ void __launch_bounds__(kNumThreads, 1)
       int combine_sum = 0;
 #pragma unroll
       for (int i = 0; i < kNumThreads; ++i) {
-        dispatch_sum += dispatch_num_tokens_per_expert_per_thread[i][thread_id];
-        combine_sum += combine_num_tokens_per_expert_per_thread[i][thread_id];
+        dispatch_sum +=
+            smem_dispatch_num_tokens_per_expert_per_thread[i][thread_id];
+        combine_sum +=
+            smem_combine_num_tokens_per_expert_per_thread[i][thread_id];
       }
       dispatch_num_tokens_per_expert[expert_begin_idx + thread_id] =
           dispatch_sum;
@@ -275,16 +278,16 @@ __global__ void __launch_bounds__(kNumThreads, 1)
 
   // 统计rank级别发送指标, 每个sm负责一些ranks
   constexpr int kNumRDMARanksPerSM = kNumRanksPerSM / NUM_MAX_NVL_PEERS;
-  __shared__ int dispatch_num_tokens_per_rank_per_thread[kNumThreads]
-                                                        [kNumRanksPerSM];
+  __shared__ int smem_dispatch_num_tokens_per_rank_per_thread[kNumThreads]
+                                                             [kNumRanksPerSM];
   __shared__ int
-      dispatch_num_tokens_per_rdma_rank_per_thread[kNumThreads]
-                                                  [kNumRDMARanksPerSM];
-  __shared__ int combine_num_tokens_per_rank_per_thread[kNumThreads]
-                                                       [kNumRanksPerSM];
+      smem_dispatch_num_tokens_per_rdma_rank_per_thread[kNumThreads]
+                                                       [kNumRDMARanksPerSM];
+  __shared__ int smem_combine_num_tokens_per_rank_per_thread[kNumThreads]
+                                                            [kNumRanksPerSM];
   __shared__ int
-      combine_num_tokens_per_rdma_rank_per_thread[kNumThreads]
-                                                 [kNumRDMARanksPerSM];
+      smem_combine_num_tokens_per_rdma_rank_per_thread[kNumThreads]
+                                                      [kNumRDMARanksPerSM];
 
   auto sm_begin =
       (num_experts + kNumExpertsPerSM - 1) /
@@ -305,17 +308,17 @@ __global__ void __launch_bounds__(kNumThreads, 1)
 // 初始化置零
 #pragma unroll
     for (int i = 0; i < kNumRanksPerSM; ++i) {
-      dispatch_num_tokens_per_rank_per_thread[thread_id][i] = 0;
-      combine_num_tokens_per_rank_per_thread[thread_id][i] = 0;
+      smem_dispatch_num_tokens_per_rank_per_thread[thread_id][i] = 0;
+      smem_combine_num_tokens_per_rank_per_thread[thread_id][i] = 0;
     }
 #pragma unroll
     for (int i = 0; i < kNumRDMARanksPerSM; ++i) {
-      dispatch_num_tokens_per_rdma_rank_per_thread[thread_id][i] = 0;
-      combine_num_tokens_per_rdma_rank_per_thread[thread_id][i] = 0;
+      smem_dispatch_num_tokens_per_rdma_rank_per_thread[thread_id][i] = 0;
+      smem_combine_num_tokens_per_rdma_rank_per_thread[thread_id][i] = 0;
     }
 
-    int dispatch_schedule_map_fragment[kNumRDMARanks];
-    int combine_schedule_map_fragment[kNumRDMARanks];
+    int rmem_dispatch_schedule_map[kNumRDMARanks];
+    int rmem_combine_schedule_map[kNumRDMARanks];
 
 #pragma unroll
     // 遍历所有token
@@ -335,16 +338,16 @@ __global__ void __launch_bounds__(kNumThreads, 1)
               reinterpret_cast<const int4*>(shifted_combine_schedule_map) + j;
 #pragma unroll
           for (int k = 0; k < 4; k++) {
-            dispatch_schedule_map_fragment[j * 4 + k] =
+            rmem_dispatch_schedule_map[j * 4 + k] =
                 reinterpret_cast<const int*>(dispatch_schedule_map_vec)[k];
-            combine_schedule_map_fragment[j * 4 + k] =
+            rmem_combine_schedule_map[j * 4 + k] =
                 reinterpret_cast<const int*>(combine_schedule_map_vec)[k];
           }
         }
       } else {
         for (int j = 0; j < kNumRDMARanks; j++) {
-          dispatch_schedule_map_fragment[j] = shifted_dispatch_schedule_map[j];
-          combine_schedule_map_fragment[j] = shifted_combine_schedule_map[j];
+          rmem_dispatch_schedule_map[j] = shifted_dispatch_schedule_map[j];
+          rmem_combine_schedule_map[j] = shifted_combine_schedule_map[j];
         }
       }
 
@@ -363,12 +366,12 @@ __global__ void __launch_bounds__(kNumThreads, 1)
         int rdma_rank_idx =
             (expert_idx / num_experts_per_rank) / NUM_MAX_NVL_PEERS;
         if (in_sm_range &&
-            dispatch_schedule_map_fragment[rdma_rank_idx] == stage_idx) {
+            rmem_dispatch_schedule_map[rdma_rank_idx] == stage_idx) {
           dispatch_is_in_rank[rank_idx]++;
           dispatch_is_in_rdma_rank[rank_idx / NUM_MAX_NVL_PEERS]++;
         }
         if (in_sm_range &&
-            combine_schedule_map_fragment[rdma_rank_idx] == stage_idx) {
+            rmem_combine_schedule_map[rdma_rank_idx] == stage_idx) {
           combine_is_in_rank[rank_idx]++;
           combine_is_in_rdma_rank[rank_idx / NUM_MAX_NVL_PEERS]++;
         }
@@ -400,17 +403,17 @@ __global__ void __launch_bounds__(kNumThreads, 1)
 
 #pragma unroll
       for (int j = 0; j + rank_begin_idx < rank_end_idx; ++j) {
-        dispatch_num_tokens_per_rank_per_thread[thread_id][j] +=
+        smem_dispatch_num_tokens_per_rank_per_thread[thread_id][j] +=
             (dispatch_is_in_rank[j] > 0);
-        combine_num_tokens_per_rank_per_thread[thread_id][j] +=
+        smem_combine_num_tokens_per_rank_per_thread[thread_id][j] +=
             (combine_is_in_rank[j] > 0);
       }
 
 #pragma unroll
       for (int j = 0; j + rdma_rank_begin_idx < rdma_rank_end_idx; ++j) {
-        dispatch_num_tokens_per_rdma_rank_per_thread[thread_id][j] +=
+        smem_dispatch_num_tokens_per_rdma_rank_per_thread[thread_id][j] +=
             (dispatch_is_in_rdma_rank[j] > 0);
-        combine_num_tokens_per_rdma_rank_per_thread[thread_id][j] +=
+        smem_combine_num_tokens_per_rdma_rank_per_thread[thread_id][j] +=
             (combine_is_in_rdma_rank[j] > 0);
       }
     }
@@ -425,8 +428,10 @@ __global__ void __launch_bounds__(kNumThreads, 1)
       int combine_sum = 0;
 #pragma unroll
       for (int i = 0; i < kNumThreads; ++i) {
-        dispatch_sum += dispatch_num_tokens_per_rank_per_thread[i][thread_id];
-        combine_sum += combine_num_tokens_per_rank_per_thread[i][thread_id];
+        dispatch_sum +=
+            smem_dispatch_num_tokens_per_rank_per_thread[i][thread_id];
+        combine_sum +=
+            smem_combine_num_tokens_per_rank_per_thread[i][thread_id];
       }
       dispatch_num_tokens_per_rank[rank_begin_idx + thread_id] = dispatch_sum;
       combine_num_tokens_per_rank[rank_begin_idx + thread_id] = combine_sum;
@@ -439,9 +444,9 @@ __global__ void __launch_bounds__(kNumThreads, 1)
 #pragma unroll
       for (int i = 0; i < kNumThreads; ++i) {
         dispatch_sum +=
-            dispatch_num_tokens_per_rdma_rank_per_thread[i][thread_id];
+            smem_dispatch_num_tokens_per_rdma_rank_per_thread[i][thread_id];
         combine_sum +=
-            combine_num_tokens_per_rdma_rank_per_thread[i][thread_id];
+            smem_combine_num_tokens_per_rdma_rank_per_thread[i][thread_id];
       }
       int num_rdma_ranks = num_ranks / NUM_MAX_NVL_PEERS;
       dispatch_num_tokens_per_rdma_rank[rdma_rank_begin_idx + thread_id] =

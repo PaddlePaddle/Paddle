@@ -305,6 +305,9 @@ class FlashEPFunction(paddle.autograd.PyLayer):
         Raises:
             AssertionError: When input tensor dimensions do not meet requirements
         """
+        # Barrier head to avoid DeepEP timeout when training large models.
+        paddle.distributed.barrier(group)
+
         assert len(input.shape) == 2, "input must be 2D tensor."
         assert len(token_probs.shape) == 2, "token_probs must be 2D tensor."
         assert len(token_indices.shape) == 2, "token_indices must be 2D tensor."
@@ -369,6 +372,7 @@ class FlashEPFunction(paddle.autograd.PyLayer):
                 async_finish=True,
                 handle=dispatch_states["handle"],
                 asymmetric_handle=asymmetric_handle,
+                pipeline_stage_id=stage_idx,
                 num_pipeline_stages=ctx.num_pipeline_stages,
             )
 
@@ -472,6 +476,7 @@ class FlashEPFunction(paddle.autograd.PyLayer):
                     allocate_on_comm_stream=True,
                     output=output_tokens,
                     handle=combine_states["handle"],
+                    pipeline_stage_id=stage_idx,
                     num_pipeline_stages=ctx.num_pipeline_stages,
                 )
 
@@ -486,6 +491,9 @@ class FlashEPFunction(paddle.autograd.PyLayer):
 
     @staticmethod
     def backward(ctx, output_grad):
+        # Barrier head to avoid DeepEP timeout when training large models.
+        paddle.distributed.barrier(ctx.group)
+
         dispatch_stage_cumsum = ctx.pipeline_stage_infos[
             "dispatch_stage_cumsum"
         ]
@@ -503,6 +511,7 @@ class FlashEPFunction(paddle.autograd.PyLayer):
                 ctx.group,
                 async_finish=True,
                 handle=dispatch_states["handle"],
+                pipeline_stage_id=stage_idx,
                 num_pipeline_stages=ctx.num_pipeline_stages,
             )
             states["dispatched_indices"] = ctx.dispatched_indices[stage_idx]
@@ -626,6 +635,7 @@ class FlashEPFunction(paddle.autograd.PyLayer):
                     output=output_tokens,
                     output_topk_weights=output_topk_weights,
                     handle=combine_states["handle"],
+                    pipeline_stage_id=stage_idx,
                     num_pipeline_stages=ctx.num_pipeline_stages,
                 )
                 tokens, probs = None, None

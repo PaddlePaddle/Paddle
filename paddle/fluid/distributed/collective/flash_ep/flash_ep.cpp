@@ -78,11 +78,12 @@ Buffer::Buffer(int rank,
 
   // Common checks
   EP_HOST_ASSERT(num_nvl_bytes % NUM_BUFFER_ALIGNMENT_BYTES == 0 &&
-                 (num_nvl_bytes <= std::numeric_limits<int64_t>::max() ||
+                 (num_nvl_bytes * num_pipeline_stages <=
+                      std::numeric_limits<int64_t>::max() ||
                   num_rdma_bytes == 0));
-  EP_HOST_ASSERT(
-      num_rdma_bytes % NUM_BUFFER_ALIGNMENT_BYTES == 0 &&
-      (low_latency_mode || num_rdma_bytes <= std::numeric_limits<int>::max()));
+  EP_HOST_ASSERT(num_rdma_bytes % NUM_BUFFER_ALIGNMENT_BYTES == 0 &&
+                 (low_latency_mode || num_rdma_bytes * num_pipeline_stages <=
+                                          std::numeric_limits<int>::max()));
   EP_HOST_ASSERT(0 <= rank && rank < num_ranks &&
                  (num_ranks <= NUM_MAX_NVL_PEERS * NUM_MAX_RDMA_PEERS ||
                   low_latency_mode));
@@ -103,29 +104,31 @@ Buffer::Buffer(int rank,
 
   if (num_nvl_bytes > 0) {
     // Local IPC: alloc local memory and set local IPC handle
-    CUDA_CHECK(cudaMalloc(
-        &buffer_ptrs[nvl_rank],
-        num_nvl_bytes + fifo_bytes + buffer_ptr_bytes + task_ptr_bytes));
+    CUDA_CHECK(cudaMalloc(&buffer_ptrs[nvl_rank],
+                          num_nvl_bytes * num_pipeline_stages + fifo_bytes +
+                              buffer_ptr_bytes + task_ptr_bytes));
     CUDA_CHECK(
         cudaIpcGetMemHandle(&ipc_handles[nvl_rank], buffer_ptrs[nvl_rank]));
     buffer_ptrs_gpu = reinterpret_cast<void**>(
-        reinterpret_cast<uint8_t*>(buffer_ptrs[nvl_rank]) + num_nvl_bytes +
-        fifo_bytes);
+        reinterpret_cast<uint8_t*>(buffer_ptrs[nvl_rank]) +
+        num_nvl_bytes * num_pipeline_stages + fifo_bytes);
 
     // Set task fifo
     EP_HOST_ASSERT(NUM_MAX_FIFO_SLOTS % num_nvl_ranks == 0);
     task_fifo_ptrs[nvl_rank] = reinterpret_cast<int*>(
-        reinterpret_cast<uint8_t*>(buffer_ptrs[nvl_rank]) + num_nvl_bytes);
+        reinterpret_cast<uint8_t*>(buffer_ptrs[nvl_rank]) +
+        num_nvl_bytes * num_pipeline_stages);
     task_fifo_ptrs_gpu = reinterpret_cast<int**>(
-        reinterpret_cast<uint8_t*>(buffer_ptrs[nvl_rank]) + num_nvl_bytes +
-        fifo_bytes + buffer_ptr_bytes);
+        reinterpret_cast<uint8_t*>(buffer_ptrs[nvl_rank]) +
+        num_nvl_bytes * num_pipeline_stages + fifo_bytes + buffer_ptr_bytes);
 
     // No need to synchronize, will do a full device sync during `sync`
-    CUDA_CHECK(cudaMemsetAsync(
-        buffer_ptrs[nvl_rank],
-        0,
-        num_nvl_bytes + fifo_bytes + buffer_ptr_bytes + task_ptr_bytes,
-        comm_stream));
+    CUDA_CHECK(cudaMemsetAsync(buffer_ptrs[nvl_rank],
+                               0,
+                               num_nvl_bytes * num_pipeline_stages +
+                                   fifo_bytes + buffer_ptr_bytes +
+                                   task_ptr_bytes,
+                               comm_stream));
   }
 
   // Create 32 MiB workspace
@@ -288,8 +291,9 @@ void Buffer::sync(
             ipc_handles[i].reserved, handle_str.c_str(), CUDA_IPC_HANDLE_SIZE);
         CUDA_CHECK(cudaIpcOpenMemHandle(
             &buffer_ptrs[i], ipc_handles[i], cudaIpcMemLazyEnablePeerAccess));
-        task_fifo_ptrs[i] = reinterpret_cast<int*>(
-            reinterpret_cast<uint8_t*>(buffer_ptrs[i]) + num_nvl_bytes);
+        task_fifo_ptrs[i] =
+            reinterpret_cast<int*>(reinterpret_cast<uint8_t*>(buffer_ptrs[i]) +
+                                   num_nvl_bytes * num_pipeline_stages);
       } else {
         EP_HOST_ASSERT(std::memcmp(ipc_handles[i].reserved,
                                    handle_str.c_str(),
@@ -328,11 +332,12 @@ void Buffer::sync(
     internode::barrier();
 
     // Allocate
-    rdma_buffer_ptr =
-        internode::alloc(num_rdma_bytes, NUM_BUFFER_ALIGNMENT_BYTES);
+    rdma_buffer_ptr = internode::alloc(num_rdma_bytes * num_pipeline_stages,
+                                       NUM_BUFFER_ALIGNMENT_BYTES);
 
     // Clean buffer (mainly for low-latency mode)
-    CUDA_CHECK(cudaMemset(rdma_buffer_ptr, 0, num_rdma_bytes));
+    CUDA_CHECK(
+        cudaMemset(rdma_buffer_ptr, 0, num_rdma_bytes * num_pipeline_stages));
 
     // Barrier
     internode::barrier();
@@ -346,53 +351,6 @@ void Buffer::sync(
 #endif
 
 #ifdef PADDLE_WITH_NVSHMEM
-void Buffer::clear_buffer(
-    const flash_ep::detail::Tensor& x,
-    const std::optional<flash_ep::detail::Tensor>& x_scales,
-    const std::optional<flash_ep::detail::Tensor>& topk_idx,
-    const bool is_start,
-    const bool is_end,
-    const Config& config) {
-  int hidden_int4 =
-      static_cast<int>(x.size(1) * x.element_size() / sizeof(int4));
-  int num_scales = 0;
-  if (x_scales.has_value()) {
-    EP_HOST_ASSERT(x.element_size() == 1);
-    EP_HOST_ASSERT(x_scales->scalar_type() == flash_ep::detail::kFloat32);
-    EP_HOST_ASSERT(x_scales->dim() > 0 && x_scales->dim() < 3 &&
-                   x_scales->is_contiguous());
-    num_scales = x_scales->dim() == 1 ? 1 : static_cast<int>(x_scales->size(1));
-  }
-
-  int num_topk = 0;
-  if (topk_idx.has_value()) {
-    num_topk = static_cast<int>(topk_idx->size(1));
-  }
-
-  const int num_channels = config.num_sms / 2;
-
-  // Just a barrier and clean flags
-  internode::clear_buffer(
-      hidden_int4,
-      num_scales,
-      num_topk,
-      num_topk,
-      num_ranks,
-      num_channels,
-      rdma_buffer_ptr,
-      config.num_max_rdma_chunked_recv_tokens,
-      buffer_ptrs_gpu,
-      config.num_max_nvl_chunked_recv_tokens,
-      task_fifo_ptrs_gpu,
-      head,
-      rank,
-      is_start,
-      is_end,
-      comm_stream,
-      config.get_rdma_buffer_size_hint(hidden_int4 * sizeof(int4), num_ranks),
-      num_nvl_bytes);
-  move_fifo_slots(2);
-}
 
 std::tuple<flash_ep::detail::Tensor,
            std::optional<flash_ep::detail::Tensor>,
@@ -444,7 +402,8 @@ Buffer::internode_dispatch(
     std::optional<EventHandle>& previous_event,  // NOLINT
     bool async,
     bool allocate_on_comm_stream,
-    int num_experts) {
+    int num_experts,
+    int pipeline_stage_id) {
   // In dispatch, CPU will busy-wait until GPU receive tensor size metadata from
   // other ranks, which can be quite long. If users of DeepEP need to execute
   // other Python code on other threads, such as KV transfer, their code will
@@ -611,10 +570,13 @@ Buffer::internode_dispatch(
       head,
       rank,
       comm_stream,
-      config.get_rdma_buffer_size_hint(hidden_int4 * sizeof(int4), num_ranks),
+      num_rdma_bytes,  // config.get_rdma_buffer_size_hint(hidden_int4
+                       // * sizeof(int4), num_ranks),
       num_nvl_bytes,
       true,
-      low_latency_mode);
+      low_latency_mode,
+      num_pipeline_stages,
+      pipeline_stage_id);
   move_fifo_slots(2);
 
   // Allocate new tensors
@@ -737,7 +699,11 @@ Buffer::internode_dispatch(
                       : nullptr,
       asymmetric_mode ? asymm_send_rdma_head->data_ptr<int>() : nullptr,
       asymmetric_mode ? asymm_send_nvl_head->data_ptr<int>() : nullptr,
-      asymmetric_mode ? asymm_aggregated_nvl_head->data_ptr<int>() : nullptr);
+      asymmetric_mode ? asymm_aggregated_nvl_head->data_ptr<int>() : nullptr,
+      num_pipeline_stages,
+      pipeline_stage_id,
+      num_rdma_bytes,
+      num_nvl_bytes);
 
   // Wait streams
   std::optional<EventHandle> event;
@@ -818,7 +784,8 @@ Buffer::internode_combine(
     const Config& config,
     std::optional<EventHandle>& previous_event,  // NOLINT
     bool async,
-    bool allocate_on_comm_stream) {
+    bool allocate_on_comm_stream,
+    int pipeline_stage_id) {
   const int num_channels = config.num_sms / 2;
   EP_HOST_ASSERT(config.num_sms % 2 == 0);
 
@@ -916,30 +883,31 @@ Buffer::internode_combine(
                  config.num_max_nvl_chunked_recv_tokens / num_rdma_ranks);
 
   // Launch barrier and reset queue head and tail
-  internode::cached_notify(
-      hidden_int4,
-      0,
-      0,
-      num_topk,
-      num_ranks,
-      num_channels,
-      num_combined_tokens,
-      combined_rdma_head.data_ptr<int>(),
-      rdma_channel_prefix_matrix.data_ptr<int>(),
-      rdma_rank_prefix_sum.data_ptr<int>(),
-      combined_nvl_head.data_ptr<int>(),
-      rdma_buffer_ptr,
-      config.num_max_rdma_chunked_recv_tokens,
-      buffer_ptrs_gpu,
-      config.num_max_nvl_chunked_recv_tokens,
-      task_fifo_ptrs_gpu,
-      head,
-      rank,
-      comm_stream,
-      config.get_rdma_buffer_size_hint(hidden_int4 * sizeof(int4), num_ranks),
-      num_nvl_bytes,
-      false,
-      low_latency_mode);
+  internode::cached_notify(hidden_int4,
+                           0,
+                           0,
+                           num_topk,
+                           num_ranks,
+                           num_channels,
+                           num_combined_tokens,
+                           combined_rdma_head.data_ptr<int>(),
+                           rdma_channel_prefix_matrix.data_ptr<int>(),
+                           rdma_rank_prefix_sum.data_ptr<int>(),
+                           combined_nvl_head.data_ptr<int>(),
+                           rdma_buffer_ptr,
+                           config.num_max_rdma_chunked_recv_tokens,
+                           buffer_ptrs_gpu,
+                           config.num_max_nvl_chunked_recv_tokens,
+                           task_fifo_ptrs_gpu,
+                           head,
+                           rank,
+                           comm_stream,
+                           num_rdma_bytes,
+                           num_nvl_bytes,
+                           false,
+                           low_latency_mode,
+                           num_pipeline_stages,
+                           pipeline_stage_id);
   move_fifo_slots(2);
 
   // Launch data combine
@@ -985,7 +953,11 @@ Buffer::internode_combine(
       comm_stream,
       num_channels,
       low_latency_mode,
-      inplace_float_combine);
+      inplace_float_combine,
+      num_pipeline_stages,
+      pipeline_stage_id,
+      num_rdma_bytes,
+      num_nvl_bytes);
 
   // Wait streams
   std::optional<EventHandle> event;
@@ -1214,7 +1186,8 @@ Buffer::internode_fused_notify(
       head,
       rank,
       comm_stream,
-      config.get_rdma_buffer_size_hint(hidden_int4 * sizeof(int4), num_ranks),
+      num_rdma_bytes,  // config.get_rdma_buffer_size_hint(hidden_int4 *
+                       // sizeof(int4), num_ranks),
       num_nvl_bytes,
       low_latency_mode,
       num_pipeline_stages,
@@ -1357,7 +1330,8 @@ Buffer::internode_dispatch_api(
     std::optional<EventHandle>& previous_event,  // NOLINT
     bool async,
     bool allocate_on_comm_stream,
-    int num_experts) {
+    int num_experts,
+    int pipeline_stage_id) {
 #ifdef PADDLE_WITH_NVSHMEM
   const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
   std::optional<flash_ep::detail::Tensor> x_scales_ =
@@ -1436,7 +1410,8 @@ Buffer::internode_dispatch_api(
                                 previous_event,
                                 async,
                                 allocate_on_comm_stream,
-                                num_experts);
+                                num_experts,
+                                pipeline_stage_id);
 
   auto recv_x_ = ConvertDetailTensorToPaddleTensor(std::get<0>(res));
   std::optional<paddle::Tensor> recv_x_scales_ =
@@ -1513,7 +1488,8 @@ Buffer::internode_combine_api(
     const Config& config,
     std::optional<EventHandle>& previous_event,  // NOLINT
     bool async,
-    bool allocate_on_comm_stream) {
+    bool allocate_on_comm_stream,
+    int pipeline_stage_id) {
 #ifdef PADDLE_WITH_NVSHMEM
   const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
 
@@ -1549,7 +1525,8 @@ Buffer::internode_combine_api(
                                config,
                                previous_event,
                                async,
-                               allocate_on_comm_stream);
+                               allocate_on_comm_stream,
+                               pipeline_stage_id);
 
   auto res_combined_x_ =
       ConvertOptionalDetailTensorToPaddleTensor(std::get<0>(res));
@@ -1559,26 +1536,6 @@ Buffer::internode_combine_api(
   const auto& event = std::get<2>(res);
 
   return {res_combined_x_, res_combined_topk_weights_, event};
-#else
-  LOG(ERROR) << "NVSHMEM is not enabled. You can enable it by setting cmake "
-                "option WITH_NVSHMEM=ON.";
-  return {};
-#endif
-}
-
-void Buffer::clear_buffer_api(const paddle::Tensor& x,
-                              const std::optional<paddle::Tensor>& x_scales,
-                              const std::optional<paddle::Tensor>& topk_idx,
-                              const bool is_start,
-                              const bool is_end,
-                              const Config& config) {
-#ifdef PADDLE_WITH_NVSHMEM
-  const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
-  std::optional<flash_ep::detail::Tensor> x_scales_ =
-      ConvertOptionalPaddleTensorToDetailTensor(x_scales);
-  std::optional<flash_ep::detail::Tensor> topk_idx_ =
-      ConvertOptionalPaddleTensorToDetailTensor(topk_idx);
-  clear_buffer(x_, x_scales_, topk_idx_, is_start, is_end, config);
 #else
   LOG(ERROR) << "NVSHMEM is not enabled. You can enable it by setting cmake "
                 "option WITH_NVSHMEM=ON.";

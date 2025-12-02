@@ -154,13 +154,6 @@ struct Buffer {
 #endif
 
 #ifdef PADDLE_WITH_NVSHMEM
-  void clear_buffer(const flash_ep::detail::Tensor& x,
-                    const std::optional<flash_ep::detail::Tensor>& x_scales,
-                    const std::optional<flash_ep::detail::Tensor>& topk_idx,
-                    const bool is_start,
-                    const bool is_end,
-                    const Config& config);
-
   std::tuple<flash_ep::detail::Tensor,
              std::optional<flash_ep::detail::Tensor>,
              std::optional<flash_ep::detail::Tensor>,
@@ -211,7 +204,8 @@ struct Buffer {
       std::optional<EventHandle>& previous_event,  // NOLINT
       bool async,
       bool allocate_on_comm_stream,
-      int num_experts);
+      int num_experts,
+      int pipeline_stage_id);
 
   std::tuple<std::optional<flash_ep::detail::Tensor>,
              std::optional<flash_ep::detail::Tensor>,
@@ -229,7 +223,8 @@ struct Buffer {
       const Config& config,
       std::optional<EventHandle>& previous_event,  // NOLINT
       bool async,
-      bool allocate_on_comm_stream);
+      bool allocate_on_comm_stream,
+      int pipeline_stage_id);
 
 #endif  // PADDLE_WITH_NVSHMEM
 
@@ -277,7 +272,8 @@ struct Buffer {
       std::optional<EventHandle>& previous_event,  // NOLINT
       bool async,
       bool allocate_on_comm_stream,
-      int num_experts);
+      int num_experts,
+      int pipeline_stage_id);
 
   std::tuple<std::optional<paddle::Tensor>,
              std::optional<paddle::Tensor>,
@@ -295,7 +291,8 @@ struct Buffer {
       const Config& config,
       std::optional<EventHandle>& previous_event,  // NOLINT
       bool async,
-      bool allocate_on_comm_stream);
+      bool allocate_on_comm_stream,
+      int pipeline_stage_id);
 
   std::tuple<std::vector<std::vector<int>>,
              std::vector<int>,
@@ -359,13 +356,6 @@ struct Buffer {
       const paddle::Tensor& combine_is_token_in_rank,
       int expert_alignment,
       const Config& config);
-
-  void clear_buffer_api(const paddle::Tensor& x,
-                        const std::optional<paddle::Tensor>& x_scales,
-                        const std::optional<paddle::Tensor>& topk_idx,
-                        const bool is_start,
-                        const bool is_end,
-                        const Config& config);
 };
 
 std::tuple<paddle::Tensor,  // dispatch_rdma_schedule_map

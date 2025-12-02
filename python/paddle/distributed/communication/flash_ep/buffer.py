@@ -176,7 +176,7 @@ class Buffer:
         config_map = {
             2: Config(Buffer.num_sms, 16, 256, 6, 128),
             4: Config(Buffer.num_sms, 16, 256, 6, 128),
-            8: Config(Buffer.num_sms, 6, 256, 6, 128),
+            8: Config(Buffer.num_sms, 6, 64, 6, 128),
             16: Config(Buffer.num_sms, 16, 288, 20, 128),
             24: Config(Buffer.num_sms, 8, 288, 32, 128),
             32: Config(Buffer.num_sms, 8, 288, 32, 128),
@@ -204,7 +204,7 @@ class Buffer:
         config_map = {
             2: Config(Buffer.num_sms, 6, 256, 6, 128),
             4: Config(Buffer.num_sms, 6, 256, 6, 128),
-            8: Config(Buffer.num_sms, 6, 256, 6, 128),
+            8: Config(Buffer.num_sms, 6, 64, 6, 128),
             16: Config(Buffer.num_sms, 2, 288, 28, 128),
             24: Config(Buffer.num_sms, 1, 288, 20, 128),
             32: Config(Buffer.num_sms, 1, 288, 20, 128),
@@ -236,6 +236,7 @@ class Buffer:
         allocate_on_comm_stream: bool = False,
         num_experts: int = 0,
         asymmetric_handle: tuple | None = None,
+        pipeline_stage_id: int = 0,
     ) -> tuple[
         tuple[paddle.Tensor, paddle.Tensor] | paddle.Tensor,
         paddle.Tensor | None,
@@ -305,6 +306,7 @@ class Buffer:
             allocate_on_comm_stream,
             num_experts,
             asymmetric_handle=asymmetric_handle,
+            pipeline_stage_id=pipeline_stage_id,
         )
 
     # noinspection PyTypeChecker
@@ -319,6 +321,7 @@ class Buffer:
         previous_event: EventOverlap | None = None,
         async_finish: bool = False,
         allocate_on_comm_stream: bool = False,
+        pipeline_stage_id: int = 0,
     ) -> tuple[paddle.Tensor, paddle.Tensor | None, EventOverlap]:
         """
         Combine (reduce) tokens (addition **without** weights) from different ranks, both intranode and internode
@@ -360,6 +363,7 @@ class Buffer:
             previous_event,
             async_finish,
             allocate_on_comm_stream,
+            pipeline_stage_id,
         )
 
     # noinspection PyTypeChecker
@@ -380,6 +384,7 @@ class Buffer:
         allocate_on_comm_stream: bool = False,
         num_experts: int = 0,
         asymmetric_handle=None,
+        pipeline_stage_id: int = 0,
     ) -> tuple[
         tuple[paddle.Tensor, paddle.Tensor] | paddle.Tensor,
         paddle.Tensor | None,
@@ -476,6 +481,7 @@ class Buffer:
                 async_finish,
                 allocate_on_comm_stream,
                 num_experts,
+                pipeline_stage_id,
             )
             handle = (
                 is_token_in_rank,
@@ -708,6 +714,7 @@ class Buffer:
         previous_event: EventOverlap | None = None,
         async_finish: bool = False,
         allocate_on_comm_stream: bool = False,
+        pipeline_stage_id: int = 0,
     ) -> tuple[paddle.Tensor, paddle.Tensor | None, EventOverlap]:
         """
         Internode combine implementation, for more details, please refer to the `combine` docs.
@@ -745,23 +752,7 @@ class Buffer:
                 getattr(previous_event, 'event', None),
                 async_finish,
                 allocate_on_comm_stream,
+                pipeline_stage_id,
             )
         )
         return combined_x, combined_topk_weights, EventOverlap(event)
-
-    def clear_buffer(
-        self, x, x_scales, topk_idx, is_start=False, is_end=False, config=None
-    ):
-        config = (
-            self.get_dispatch_config(self.group_size)
-            if config is None
-            else config
-        )
-        self.runtime.clear_buffer(
-            x,
-            x_scales,
-            topk_idx,
-            is_start,
-            is_end,
-            config,
-        )

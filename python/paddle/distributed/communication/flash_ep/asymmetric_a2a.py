@@ -82,14 +82,6 @@ class FlashEPBuffer:
             )
         return self._buffer
 
-    def clear_buffer(self):
-        """
-        clear_buffer to remove memory allocation caused by flashep
-        """
-        if self._buffer is not None:
-            del self._buffer
-            self._buffer = None
-
 
 flashep_buffer = FlashEPBuffer()
 
@@ -417,6 +409,7 @@ def dispatch_func(
     async_finish=False,
     handle=None,
     asymmetric_handle=None,
+    pipeline_stage_id=0,
     num_pipeline_stages=1,
 ):
     assert handle is not None
@@ -442,6 +435,7 @@ def dispatch_func(
         topk_weights=token_probs,
         num_experts=num_experts,
         async_finish=async_finish,
+        pipeline_stage_id=pipeline_stage_id,
     )
 
     states = {}
@@ -471,6 +465,7 @@ def combine_func(
     previous_event=None,
     async_finish=False,
     allocate_on_comm_stream=False,
+    pipeline_stage_id=0,
     num_pipeline_stages=1,
 ):
     buffer = flashep_buffer.get_buffer(
@@ -485,6 +480,7 @@ def combine_func(
         async_finish=async_finish,
         previous_event=previous_event,
         allocate_on_comm_stream=allocate_on_comm_stream,
+        pipeline_stage_id=pipeline_stage_id,
     )
     if not async_finish:
         event = None
