@@ -435,18 +435,17 @@ class BuildExtension(build_ext):
         self._check_abi()
         current_extension_builder = self
 
-        # Check if RDC is enabled
+        # Check nvcc_dlink
         ext = self.extensions[0]
-        nvcc_flags = []
-        if isinstance(ext.extra_compile_args, dict):
-            nvcc_flags = ext.extra_compile_args.get('nvcc', [])
+        if (
+            isinstance(ext.extra_compile_args, dict)
+            and 'nvcc_dlink' in ext.extra_compile_args
+        ):
+            cuda_dlink_post_cflags = prepare_unix_cudaflags(
+                copy.deepcopy(ext.extra_compile_args['nvcc_dlink'])
+            )
         else:
-            nvcc_flags = ext.extra_compile_args
-
-        rdc_enabled = any(
-            x.strip() in ['-rdc=true', '--relocatable-device-code=true']
-            for x in nvcc_flags
-        )
+            cuda_dlink_post_cflags = None
 
         # Note(Aurelius84): If already compiling source before, we should check whether
         # cflags have changed and delete the built shared library to re-compile the source
@@ -591,20 +590,11 @@ class BuildExtension(build_ext):
             target_lang: str | None = None,
         ):
             # Get extension
-            extension = current_extension_builder.extensions[0]
-
-            # Get nvcc flags
-            nvcc_flags = []
-            if isinstance(extension.extra_compile_args, dict):
-                nvcc_flags = extension.extra_compile_args.get('nvcc', [])
-            else:
-                nvcc_flags = extension.extra_compile_args
-
             dlink_dir = os.path.dirname(objects[0])
             dlink_object = os.path.join(dlink_dir, 'dlink.o')
 
             # Construct command
-            # nvcc -dlink <objects> -o <dlink_object> <flags>
+            # nvcc <objects> -o <dlink_object> <cuda_dlink_post_cflags>
 
             if CUDA_HOME is None:
                 raise RuntimeError("CUDA_HOME is not found, please set it.")
@@ -616,12 +606,10 @@ class BuildExtension(build_ext):
                 cmd.append(CCACHE_HOME)
             cmd.append(nvcc_cmd)
 
-            cmd.append('-dlink')
             cmd.extend(objects)
             cmd.extend(['-o', dlink_object])
 
-            dlink_flags = prepare_unix_cudaflags(copy.deepcopy(nvcc_flags))
-            cmd.extend(dlink_flags)
+            cmd.extend(cuda_dlink_post_cflags)
 
             # Execute
             try:
@@ -848,7 +836,7 @@ class BuildExtension(build_ext):
         self._record_op_info()
 
         try:
-            if rdc_enabled and self.compiler.compiler_type != 'msvc':
+            if cuda_dlink_post_cflags and self.compiler.compiler_type != 'msvc':
                 original_link = self.compiler.__class__.link_shared_object
                 self.compiler.__class__.link_shared_object = (
                     unix_custom_link_shared_object
