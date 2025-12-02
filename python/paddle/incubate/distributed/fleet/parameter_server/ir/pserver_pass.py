@@ -329,8 +329,8 @@ def _get_output_map_from_op(varmap, op):
 
 def get_op_by_type(block, op_type):
     for op in block.ops:
-        if not hasattr(op, "type"):  # pragma: no cover
-            continue  # pragma: no cover
+        if not hasattr(op, "type"):
+            continue
         if op.type == op_type:
             return op
     raise ValueError("add_listen_and_serv_pass must at first")
@@ -353,8 +353,8 @@ def add_listen_and_serv_pass(program, config):
         "rpc_prefetch_thread_num": -1,
     }
 
-    if not hasattr(program.global_block(), "append_op"):  # pragma: no cover
-        return program  # pragma: no cover
+    if not hasattr(program.global_block(), "append_op"):
+        return program
 
     # step5 append the listen_and_serv op
     program.global_block().append_op(
@@ -370,8 +370,8 @@ def add_rpc_global_flags_pass(program, config):
     get_threads = server_runtime._rpc_get_thread_num
     pull_threads = server_runtime._rpc_prefetch_thread_num
 
-    if not hasattr(program.global_block(), "append_op"):  # pragma: no cover
-        return program  # pragma: no cover
+    if not hasattr(program.global_block(), "append_op"):
+        return program
 
     op = get_op_by_type(program.global_block(), "listen_and_serv")
 
@@ -624,8 +624,8 @@ def add_optimizer_pass(program, config):
 
 
 def large_scale_sparse_pass(program, main_program, config, is_startup=False):
-    if not hasattr(program.global_block(), "append_op"):  # pragma: no cover
-        return program  # pragma: no cover
+    if not hasattr(program.global_block(), "append_op"):
+        return program
 
     opt_value_map = {}
     opt_value_map["sgd"] = ["Param"]
@@ -944,8 +944,8 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
 
 
 def get_distributed_from_listen_and_serv(program, origin_program):
-    if not hasattr(program.global_block(), "append_op"):  # pragma: no cover
-        return []  # pragma: no cover
+    if not hasattr(program.global_block(), "append_op"):
+        return []
 
     op = get_op_by_type(program.global_block(), "listen_and_serv")
     sparse_varnames = get_sparse_tablenames(origin_program, True)
@@ -959,8 +959,8 @@ def get_distributed_from_listen_and_serv(program, origin_program):
 
 
 def delete_unused_in_main_pass(program, config):
-    if not hasattr(program.global_block(), "append_op"):  # pragma: no cover
-        return program  # pragma: no cover
+    if not hasattr(program.global_block(), "append_op"):
+        return program
 
     origin_program = config.get_origin_main_program()
     sparse_params = get_distributed_from_listen_and_serv(
@@ -974,8 +974,8 @@ def delete_unused_in_main_pass(program, config):
 
 
 def delete_unused_in_startup_pass(program, main_program, config):
-    if not hasattr(program.global_block(), "append_op"):  # pragma: no cover
-        return program  # pragma: no cover
+    if not hasattr(program.global_block(), "append_op"):
+        return program
 
     origin_program = config.get_origin_main_program()
     sparse_params = get_distributed_from_listen_and_serv(
@@ -1005,8 +1005,8 @@ def delete_unused_in_startup_pass(program, main_program, config):
 
 
 def build_pserver_startup_program_pass(program, p_main_program, config):
-    if not hasattr(program.global_block(), "append_op"):  # pragma: no cover
-        return program  # pragma: no cover
+    if not hasattr(program.global_block(), "append_op"):
+        return program
 
     ps_endpoint = config.get_ps_endpoint()
     o_startup_program = config.get_origin_startup_program()
@@ -1084,8 +1084,8 @@ def build_pserver_startup_program_pass(program, p_main_program, config):
 
 
 def add_geo_optimizer_pass(program, config):
-    if not hasattr(program.global_block(), "append_op"):  # pragma: no cover
-        return program  # pragma: no cover
+    if not hasattr(program.global_block(), "append_op"):
+        return program
 
     endpoint = config.get_ps_endpoint()
     params = list(config.param_grad_ep_mapping[endpoint]["params"])
