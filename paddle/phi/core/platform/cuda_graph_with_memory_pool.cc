@@ -153,6 +153,7 @@ std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
   auto place = CUDAGraph::CapturingPlace();
   auto pool_id = CUDAGraph::CapturingPoolID();
   auto* mutable_dev_ctx = SelectCUDAGraphDeviceContext(place, &pool_id);
+  std::cout << "all_capturing_dev_ctxs = " << all_capturing_dev_ctxs << std::endl;
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
 
   auto all_capturing_dev_ctxs =

@@ -182,6 +182,7 @@ struct XPUContext::Impl {
   void Init(int64_t gm_default_size = 1024,
             int64_t l3_default_size = 1024,
             bool is_comm_context = false) {
+    std::cout << "XPU Context Init : " << std::endl;
     owned_ = true;
     backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
     LOG_FIRST_N(WARNING, 1)
@@ -226,6 +227,8 @@ struct XPUContext::Impl {
 
     xpu_version_ = backends::xpu::get_xpu_version(place_.device);
     SetL3Cache(l3_default_size);
+    // 创建新的Stream
+    CreateStream();
   }
 
   void SetXContext(xpu::Context* context) {
@@ -250,6 +253,7 @@ struct XPUContext::Impl {
   void CreateStream() {
     if (context_->xpu_stream) {
       VLOG(3) << "xpu stream is already created for current context";
+      std::cout << "xpu stream is already created for current context" << std::endl;
       return;
     }
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&context_->xpu_stream));
@@ -381,6 +385,7 @@ XPUContext::XPUContext(const XPUPlace& place, bool is_comm_context)
     idle_stream_flags.push_back(false);
   } else {
     impls_.push_back(std::make_unique<Impl>(place));
+    std::cout << "[yw debug] XPUContext 开始调用Init" << std::endl;
     impls_[0]->Init(get_gm_size(0), get_l3_size(0));
     stream_pool.push_back(impls_[0]->context_->get_stream());
     idle_stream_flags.push_back(false);
@@ -389,6 +394,8 @@ XPUContext::XPUContext(const XPUPlace& place, bool is_comm_context)
   }
 
   current_stream_idx = 0;
+  // Print stream information after initialization
+  PrintStreamInfo();
 }
 
 XPUContext::~XPUContext() = default;
@@ -601,6 +608,46 @@ XPUStreamHandle* XPUContext::get_current_stream_handle() {
   return &current_stream_handle;
 }
 
+bool XPUContext::IsDefaultStream(XPUStream stream) const {
+  return stream == impls_[0]->context_->get_stream();
+}
+
+bool XPUContext::IsCurrentStreamDefault() const {
+  if (stream_pool.empty()) {
+    return true;
+  }
+  return IsDefaultStream(stream_pool[current_stream_idx]);
+}
+
+void XPUContext::PrintStreamInfo() const {
+  LOG(INFO) << "========== XPU Stream Information ==========";
+  LOG(INFO) << "Device ID: " << static_cast<int>(GetPlace().GetDeviceId());
+  LOG(INFO) << "Total Stream Number (impls_): " << GetStreamNum();
+  LOG(INFO) << "Stream Pool Size: " << stream_pool.size();
+  LOG(INFO) << "Current Stream Index: " << current_stream_idx;
+  LOG(INFO) << "Current Stream Handle ID: " << current_stream_handle.id();
+  LOG(INFO) << "Current Stream Handle Raw Stream: "
+            << static_cast<void*>(current_stream_handle.raw_stream());
+
+  LOG(INFO) << "--- Stream Pool Details ---";
+  for (size_t i = 0; i < stream_pool.size(); ++i) {
+    LOG(INFO) << "  Stream Pool[" << i << "]: "
+              << static_cast<void*>(stream_pool[i])
+              << (static_cast<int>(i) == current_stream_idx ? " [CURRENT]" : "")
+              << (i < idle_stream_flags.size() && idle_stream_flags[i]
+                      ? " [IDLE]"
+                      : " [BUSY]");
+  }
+
+  LOG(INFO) << "--- Impl Streams ---";
+  for (int64_t i = 0; i < GetStreamNum(); ++i) {
+    XPUStream impl_stream = stream(i);
+    LOG(INFO) << "  Impl[" << i << "] Stream: "
+              << static_cast<void*>(impl_stream);
+  }
+
+  LOG(INFO) << "===========================================";
+}
 void XPUContext::Init() { impls_[0]->Init(); }
 
 XPUContext* get_xpu_context(int device_id) {

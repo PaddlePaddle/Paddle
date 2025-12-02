@@ -45,7 +45,7 @@ static std::string ConcatPath(const std::string &dirname,
 
 XPUGraph::XPUGraph() {
   // ThrowErrorIfNotSupportXPUGraph();
-  // id_ = UniqueID();
+  id_ = UniqueID();
 }
 
 XPUGraph::~XPUGraph() {
@@ -62,7 +62,6 @@ int64_t XPUGraph::PoolID() const {
 
 void XPUGraph::Replay() {
   is_replayed_ = true;
-#if CUDA_VERSION >= 10010
   PADDLE_ENFORCE_EQ(is_reset_,
                     false,
                     common::errors::PermissionDenied(
@@ -77,12 +76,10 @@ void XPUGraph::Replay() {
     PADDLE_ENFORCE_XPU_SUCCESS(cudaGraphLaunch(exec_graphs_[i], static_cast<cudaStream_t>(stream_)));
   }
   is_first_run_ = false;
-#endif
 }
 
 void XPUGraph::Reset() {
   if (is_reset_) return;
-#if CUDA_VERSION >= 10010
   for (auto graph : graphs_) {
     PADDLE_ENFORCE_XPU_SUCCESS(cudaGraphDestroy(graph));
   }
@@ -91,7 +88,7 @@ void XPUGraph::Reset() {
     PADDLE_ENFORCE_XPU_SUCCESS(cudaGraphExecDestroy(exec_graph));
   }
   exec_graphs_.clear();
-#endif
+
   // callback should be called in reverse order because the latter added
   // callback may rely on the former added callback.
   for (auto iter = xpu_graph_post_reset_callbacks_.rbegin();
@@ -122,8 +119,7 @@ void XPUGraph::AddJoiningStream(XPUStream stream) {
 }
 
 void XPUGraph::PrintToDotFiles(const std::string &dirname, unsigned int flags){
-  // ThrowErrorIfNotSupportXPUGraph();
-#if CUDA_VERSION >= 11030
+  ThrowErrorIfNotSupportXPUGraph();
   for (size_t i = 0; i < graphs_.size(); ++i) {
     auto filename =
         ConcatPath(dirname, "segment_" + std::to_string(i) + ".dot");
@@ -132,11 +128,6 @@ void XPUGraph::PrintToDotFiles(const std::string &dirname, unsigned int flags){
     PADDLE_ENFORCE_XPU_SUCCESS(
         cudaGraphDebugDotPrint(graphs_[i], filename.c_str(), flags));
   }
-#else
-  PADDLE_THROW(common::errors::Unimplemented(
-      "The print_to_dot_files() method is only supported when CUDA version >= "
-      "11.3."));
-#endif
 }
 
 bool XPUGraph::IsReplayed() const {
@@ -165,8 +156,7 @@ int64_t XPUGraph::SetMemoryPoolID(int64_t pool_id) {
 
 
 void XPUGraph::BeginSegmentCapture() {
-  // ThrowErrorIfNotSupportXPUGraph();
-#if CUDA_VERSION >= 10010
+  ThrowErrorIfNotSupportXPUGraph();
   PADDLE_ENFORCE_EQ(IsCapturing(),
                     true,
                     common::errors::PermissionDenied(
@@ -194,7 +184,6 @@ void XPUGraph::BeginSegmentCapture() {
   VLOG(10) << "Begin to capture CUDA Graph with ID " << capturing_graph_->id_
            << ", segment id " << capturing_graph_->graphs_.size()
            << ", memory pool id " << capturing_graph_->pool_id_;
-#endif
 }
 
 inline void sync_streams(cudaStream_t to_record, cudaStream_t to_wait) {
@@ -208,8 +197,7 @@ inline void sync_streams(cudaStream_t to_record, cudaStream_t to_wait) {
 }
 
 void XPUGraph::EndSegmentCapture() {
-  // ThrowErrorIfNotSupportXPUGraph();
-#if CUDA_VERSION >= 10010
+  ThrowErrorIfNotSupportXPUGraph();
   PADDLE_ENFORCE_EQ(
       IsCapturing(),
       true,
@@ -242,8 +230,8 @@ void XPUGraph::EndSegmentCapture() {
   capturing_graph_->xpu_graph_post_capture_callbacks_.clear();
 
   // TODO(huzhida): whether need this logic or not ?
-//  capturing_graph_->cudagraph_pre_replay_callbacks_.emplace_back(
-//      XPUGraphNodeLauncher::Instance().GetParameterSettersForExecGraph(graph));
+ capturing_graph_->xpu_graph_pre_replay_callbacks_.emplace_back(
+     XPUGraphNodeLauncher::Instance().GetParameterSettersForExecGraph(graph));
 
   cudaGraphExec_t exec_graph;
   if (FLAGS_use_cuda_malloc_async_allocator &&
@@ -273,7 +261,6 @@ void XPUGraph::BeginCapture(phi::XPUPlace place,
                        XPUStream stream,
                        xpuStreamCaptureMode mode) {
   // ThrowErrorIfNotSupportXPUGraph();
-#if CUDA_VERSION >= 10010
   PADDLE_ENFORCE_EQ(IsCapturing(),
                     false,
                     common::errors::PermissionDenied(
@@ -292,7 +279,6 @@ void XPUGraph::BeginCapture(phi::XPUPlace place,
              << capturing_thread_id_;
   }
   BeginSegmentCapture();
-#endif
 }
 
 std::unique_ptr<XPUGraph> XPUGraph::EndCapture() {
@@ -328,25 +314,17 @@ phi::XPUPlace XPUGraph::CapturingPlace() {
 }
 
 bool XPUGraph::IsValidCapturing() {
-#if CUDA_VERSION >= 10010
   if (!IsCapturing()) return false;
   cudaStreamCaptureStatus status;
   XPUGraphID id;
   PADDLE_ENFORCE_XPU_SUCCESS(
       cudaStreamGetCaptureInfo(static_cast<cudaStream_t>(capturing_graph_->stream_), &status, &id));
   return status == cudaStreamCaptureStatusActive;
-#else
-  return false;
-#endif
 }
 
 bool XPUGraph::IsThreadLocalCapturing() {
-#if CUDA_VERSION >= 10010
   return IsCapturing() &&
          capturing_graph_->capture_mode_ == xpuStreamCaptureModeThreadLocal;
-#else
-  return false;
-#endif
 }
 
 bool XPUGraph::IsThisThreadCapturing() {
@@ -367,8 +345,76 @@ int64_t XPUGraph::UniqueMemoryPoolID() {
   return id.fetch_add(1);
 }
 
+XPUGraphID XPUGraph::UniqueID() {
+  static std::atomic<XPUGraphID> id;
+  return id.fetch_add(1);
+}
+
+void XPUGraphNodeLauncher::KernelNodeLaunch(
+    parameterSetter_t parameterSetter, xpuKernelCallback_t xpuKernelCallback) {
+  if (UNLIKELY(phi::backends::xpu::XPUGraph::IsThisThreadCapturing())) {
+    unsigned int id = GenerateIdentifier();
+    auto cudaFunc = xpuKernelCallback(id);
+
+    parameterSetters[cudaFunc][id] = parameterSetter;
+    VLOG(10) << "[KernelNodeLaunch] Launch kernel with cudaFunc = " << cudaFunc
+             << " id = " << id;
+  } else {
+    xpuKernelCallback(0);
+  }
+}
+
+std::vector<XPUGraphExecuterSetter_t>
+XPUGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
+  size_t num_nodes;
+  PADDLE_ENFORCE_XPU_SUCCESS(cudaGraphGetNodes(graph, nullptr, &num_nodes));
+  std::vector<cudaGraphNode_t> nodes(num_nodes);
+  PADDLE_ENFORCE_XPU_SUCCESS(
+      cudaGraphGetNodes(graph, nodes.data(), &num_nodes));
+
+  std::vector<std::function<void(cudaGraphExec_t)>> hooks;
+  for (auto node : nodes) {
+    cudaGraphNode_t cuNode = node;
+    cudaGraphNodeType pType;
+    PADDLE_ENFORCE_XPU_SUCCESS(cudaGraphNodeGetType(cuNode, &pType));
+    if (pType == CU_GRAPH_NODE_TYPE_KERNEL) {
+      cudaKernelNodeParams cuParams;
+    PADDLE_ENFORCE_XPU_SUCCESS(
+          cudaGraphKernelNodeGetParams(cuNode, &cuParams));
+      XPUKernelParams kernel_params(cuParams.kernelParams);
+      auto kernel =
+          parameterSetters.find(static_cast<cudaFunction_t>(cuParams.func));
+      VLOG(10) << "[GetParameterSettersForExecGraph] cuParams.func = "
+               << cuParams.func;
+      // There exists a parameter setter
+      if (kernel != parameterSetters.end()) {
+        auto launchSequence = kernel->second;
+        unsigned int id = kernel_params.As<int>(0);
+
+        VLOG(10) << "[GetParameterSettersForExecGraph] Find launch kernel id = "
+                 << id;
+        auto parameterSetter = launchSequence.find(id);
+        if (parameterSetter != launchSequence.end()) {
+          auto setter = parameterSetter->second;
+          hooks.emplace_back([setter, cuNode, cuParams](
+                                 cudaGraphExec_t exec_graph) {
+            XPUKernelParams kernel_params(cuParams.kernelParams);
+            setter(kernel_params);
+            PADDLE_ENFORCE_XPU_SUCCESS(cudaGraphExecKernelNodeSetParams(
+                static_cast<CUgraphExec>(exec_graph), cuNode, &cuParams));
+          });
+        } else {
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "Error: does not find launch id"));
+        }
+      }
+    }
+  }
+
+  return hooks;
+}
+
 } // namespace xpu
 } // namespace backends
 } // namespace phi
 
-#endif

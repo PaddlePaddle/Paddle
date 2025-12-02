@@ -46,8 +46,8 @@ class XPUGraphContextManager {
 
 
   static XPUGraphContextManager &Instance() {
-    static XPUGraphContextManager instance;
-    return instance;
+    static XPUGraphContextManager *xpu_graph_ctx_manager = new XPUGraphContextManager;
+    return *xpu_graph_ctx_manager;
   }
 
 
@@ -55,12 +55,14 @@ class XPUGraphContextManager {
     std::lock_guard<std::mutex> lk(ctx_mtx_);
     DeviceContextMap &ctxs = xpu_graph_ctx_pool_[pool_id];
     if (ctxs.find(place) == ctxs.end()) {
+      std::cout << "yw debug : ctxs.find(place) == ctxs.end()" << std::endl;
       phi::memory_utils::EmplaceDeviceContexts(
           &ctxs,
           {place},
           /*disable_setting_default_stream_for_allocator=*/true,
           stream_priority);
     }
+     std::cout << "yw debug : ============ctxs.find(place) == ctxs.end()==========" << std::endl;
     return ctxs[place].get().get();
   }
 
@@ -109,22 +111,71 @@ class XPUKernelParams {
   void **kernelParams;
 };
 
+using XPUGraphExecuterSetter_t = std::function<void(cudaGraphExec_t)>;  // 改用XPU图执行类型
 
 class XPUGraphNodeLauncher {
  public:
-  using parameterSetter_t = std::function<void(XPUKernelParams&)>;
+  //  [Parameter Setter Callback]
+  //  Sets the kernel's parameters BEFORE activating the CUDA graph. It enables
+  //  dynamic determination and setup of kernel arguments.
+  //
+  //  parameterSetter_t parameterSetter = [saved_state](gpuKernelParams
+  //  &param){
+  //      // Code to compute and the parameter values from the saved_state
+  //      // ...
+  //      param.As<type>(idx) = calculated_value;
+  //  };
+  using parameterSetter_t = std::function<void(XPUKernelParams &)>;
+
+  //  [CUDA Kernel Callback]
+  //  Acts as the launcher for the kernel. It accepts an `unsigned int`
+  //  identifier and uses it for the kernel launch.
+  //  The `cudaGetFuncBySymbol` method can be used to fetch the `cudaFunction_t`
+  //  reference of the kernel from the kernel pointer.
+  //  gpuKernelCallback_t cudaKernelCallback = [=](unsigned int id) {
+  //      // cudaFunction_t is REQUIRED to get here
+  //      cudaFunction_t cudaFunc;
+  //      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetFuncBySymbol(&cudaFunc, &kernel));
+  //
+  //      kernel<<<>>>(id, ...);  // Launching the kernel with id
+  //      return cudaFunc;
+  //  };
+  using xpuKernelCallback_t = std::function<cudaFunction_t(unsigned int)>;
+
+  //  [Kernel Launch]
+  //  With the callbacks defined and the CUDA function obtained, the kernel can
+  //  be launched using the `KernelNodeLaunch` method.
+  void KernelNodeLaunch(parameterSetter_t parameterSetter,
+                        xpuKernelCallback_t xpuKernelCallback);
+
+  std::vector<XPUGraphExecuterSetter_t> GetParameterSettersForExecGraph(
+      cudaGraph_t graph);
+
+  parameterSetter_t GetParameterSetter(const XPUKernelParams &params);
+
+  static XPUGraphNodeLauncher &Instance() {
+    static XPUGraphNodeLauncher *launcher = new XPUGraphNodeLauncher;
+    return *launcher;
+  }
+
  private:
+  XPUGraphNodeLauncher() : id(0) {}
   DISABLE_COPY_AND_ASSIGN(XPUGraphNodeLauncher);
+
+  unsigned int GenerateIdentifier() { return id++; }
+
+  unsigned int id;
+  std::unordered_map<cudaFunction_t, std::map<unsigned int, parameterSetter_t>>
+      parameterSetters;
 };
 
 
-using XPUGraphExecuterSetter_t = std::function<void(cudaGraphExec_t)>;  // 改用XPU图执行类型
 
 
-// static void ThrowErrorIfNotSupportXPUGraph() {
-//   PADDLE_THROW(common::errors::Unimplemented(
-//       "XPU Graph is not supported in current version"));
-// }
+static void ThrowErrorIfNotSupportXPUGraph() {
+  // PADDLE_THROW(common::errors::Unimplemented(
+  //     "XPU Graph is not supported in current version"));
+}
 
 
 enum xpuStreamCaptureMode {
@@ -228,6 +279,32 @@ class XPUGraph {
 
   static paddle::optional<std::thread::id> capturing_thread_id_;
   static std::unique_ptr<XPUGraph> capturing_graph_;  // 静态实例指向当前捕获的图
+};
+
+
+class XPUGraphCaptureModeGuard {
+  DISABLE_COPY_AND_ASSIGN(XPUGraphCaptureModeGuard);
+
+ public:
+  explicit XPUGraphCaptureModeGuard(cudaStreamCaptureMode mode = cudaStreamCaptureModeRelaxed) {
+    if (UNLIKELY(XPUGraph::IsCapturing())) {
+      PADDLE_ENFORCE_XPU_SUCCESS(cudaThreadExchangeStreamCaptureMode(&mode));
+      // After cudaThreadExchangeStreamCaptureMode is called,
+      // the variable "mode" would be set to the old capturing mode.
+      old_mode_ = mode;
+    }
+  }
+
+  ~XPUGraphCaptureModeGuard() PADDLE_MAY_THROW {
+    if (UNLIKELY(XPUGraph::IsCapturing())) {
+      PADDLE_ENFORCE_XPU_SUCCESS(
+          cudaThreadExchangeStreamCaptureMode(&old_mode_)
+          );
+    }
+  }
+
+ private:
+  cudaStreamCaptureMode old_mode_;
 };
 
 

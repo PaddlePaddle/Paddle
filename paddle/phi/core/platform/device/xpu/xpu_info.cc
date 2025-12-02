@@ -27,6 +27,7 @@
 #include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/platform/lock_guard_ptr.h"
+#include "paddle/phi/backends/xpu/xpu_graph.h"
 
 namespace paddle {
 namespace platform {
@@ -178,6 +179,7 @@ class RecordedXPUMallocHelper {
     }
 
     XPUDeviceGuard guard(dev_id_);
+    phi::backends::xpu::XPUGraphCaptureModeGuard capture_mode_guard;
     VLOG(10) << "Allocate " << size << " bytes with ptr = " << &(ptr);
     auto result = xpu_malloc(ptr, size);
     if (result == XPU_SUCCESS) {

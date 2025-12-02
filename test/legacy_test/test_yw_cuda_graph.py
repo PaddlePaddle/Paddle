@@ -51,123 +51,129 @@ class TestCUDAGraphInDygraphMode(unittest.TestCase):
         )
 
     def test_cuda_graph_dynamic_graph(self):
+        # 检查是否支持CUDA图功能
         if not can_use_cuda_graph():
             return
 
+        # 初始化张量
         shape = [2, 3]
         x = self.random_tensor(shape)
         z = self.random_tensor(shape)
 
+        # 创建CUDA图并捕获计算图
         g = CUDAGraph()
         g.capture_begin()
         y = x + 10
-        z.add_(x)
+        z.add_(x)   # 原地加法操作
         g.capture_end()
 
+        # # 多次重放测试图计算的正确性
         for _ in range(10):
-            z_np_init = z.numpy()
+            z_np_init = z.numpy()  # 记录z的初始状态
             x_new = self.random_tensor(shape)
-            x.copy_(x_new, False)
-            g.replay()
+            x.copy_(x_new, False)  # 更新输入张量
+            g.replay()  # 重放捕获的图
+            # 验证计算结果
             x_np = x_new.numpy()
             y_np = y.numpy()
             z_np = z.numpy()
             self.assertTrue((y_np - x_np == 10).all())
             self.assertTrue((z_np - z_np_init == x_np).all())
 
-        g.reset()
+        g.reset()  # 重置CUDA图
 
-    # def test_concat_and_split(self):
-    #     if not can_use_cuda_graph():
-    #         return
+    def test_concat_and_split(self):
+        if not can_use_cuda_graph():
+            return
 
-    #     concat_num = 100
-    #     xs = []
-    #     xs_np = []
+        concat_num = 100
+        xs = []
+        xs_np = []
 
-    #     for i in range(concat_num):
-    #         x_np = np.random.random(size=[1]).astype(np.float32)
-    #         xs.append(paddle.to_tensor(x_np))
-    #         xs_np.append(x_np)
+        for i in range(concat_num):
+            x_np = np.random.random(size=[1]).astype(np.float32)
+            xs.append(paddle.to_tensor(x_np))
+            xs_np.append(x_np)
 
-    #     graph = CUDAGraph()
-    #     graph.capture_begin()
-    #     y = paddle.concat(xs)
-    #     zs = paddle.split(y, len(xs))
-    #     graph.capture_end()
-    #     graph.replay()
+        graph = CUDAGraph()
+        graph.capture_begin()
+        y = paddle.concat(xs)
+        zs = paddle.split(y, len(xs))
+        graph.capture_end()
+        graph.replay()
 
-    #     y_np = y.numpy()
-    #     y_np_expected = np.concatenate(xs_np)
-    #     np.testing.assert_array_equal(y_np, y_np_expected)
-    #     self.assertEqual(len(zs), len(xs_np))
-    #     for i, z in enumerate(zs):
-    #         np.testing.assert_array_equal(z.numpy(), xs_np[i])
+        y_np = y.numpy()
+        y_np_expected = np.concatenate(xs_np)
+        np.testing.assert_array_equal(y_np, y_np_expected)
+        self.assertEqual(len(zs), len(xs_np))
+        for i, z in enumerate(zs):
+            np.testing.assert_array_equal(z.numpy(), xs_np[i])
 
-    #     output_dir = f'cuda_graph_dot_{os.getpid()}'
-    #     try:
-    #         graph.print_to_dot_files(pathlib.Path(output_dir))
-    #         graph.reset()
-    #         shutil.rmtree(output_dir)
-    #     except Exception as e:
-    #         msg = str(e)
-    #         sub_msg = "The print_to_dot_files() method is only supported when CUDA version >= 11.3"
-    #         self.assertTrue(sub_msg in msg)
-    #     finally:
-    #         graph.reset()
+        output_dir = f'cuda_graph_dot_{os.getpid()}'
+        try:
+            graph.print_to_dot_files(pathlib.Path(output_dir))
+            graph.reset()
+            shutil.rmtree(output_dir)
+        except Exception as e:
+            msg = str(e)
+            sub_msg = "The print_to_dot_files() method is only supported when CUDA version >= 11.3"
+            self.assertTrue(sub_msg in msg)
+        finally:
+            graph.reset()
 
-    # def test_dataloader(self):
-    #     if not can_use_cuda_graph():
-    #         return
+    def test_dataloader(self):
+        if not can_use_cuda_graph():
+            return
 
-    #     class AutoIncDataset(paddle.io.Dataset):
-    #         def __init__(self, n, dtype):
-    #             self.n = n
-    #             self.dtype = dtype
+        class AutoIncDataset(paddle.io.Dataset):
+            def __init__(self, n, dtype):
+                self.n = n
+                self.dtype = dtype
 
-    #         def __len__(self):
-    #             return self.n
+            def __len__(self):
+                return self.n
 
-    #         def __getitem__(self, idx):
-    #             return np.array([idx]).astype(self.dtype)
+            def __getitem__(self, idx):
+                return np.array([idx]).astype(self.dtype)
 
-    #     n = 100
-    #     dtype = 'int64'
-    #     dataset = AutoIncDataset(n, dtype)
-    #     data_loader = paddle.io.DataLoader(
-    #         dataset, batch_size=1, num_workers=2, use_buffer_reader=True
-    #     )
-    #     x = None
-    #     y = None
+        n = 100
+        dtype = 'int64'
+        dataset = AutoIncDataset(n, dtype)
+        data_loader = paddle.io.DataLoader(
+            dataset, batch_size=1, num_workers=2, use_buffer_reader=True
+        )
+        x = None
+        y = None
 
-    #     graph = None
-    #     for i, data in enumerate(data_loader):
-    #         if graph is None:
-    #             x = data
-    #             x = x.cuda()
-    #             graph = CUDAGraph()
-    #             graph.capture_begin()
-    #             y = x * x
-    #             graph.capture_end()
-    #         else:
-    #             x.copy_(data, False)
-    #             x = x.cuda()
+        graph = None
+        for i, data in enumerate(data_loader):
+            if graph is None: 
+                x = data
+                x = x.to("xpu")
+                graph = CUDAGraph()
+                graph.capture_begin()
+                y = x * x
+                graph.capture_end()
+            else:
+                x.copy_(data, False)
+                x = x.to("xpu")
 
-    #         graph.replay()
-    #         actual_x = np.array([[i]]).astype(dtype)
-    #         actual_y = np.array([[i * i]]).astype(dtype)
-    #         np.testing.assert_array_equal(actual_x, x.numpy())
-    #         np.testing.assert_array_equal(actual_y, y.numpy())
+            graph.replay()
+            actual_x = np.array([[i]]).astype(dtype)
+            actual_y = np.array([[i * i]]).astype(dtype)
+            np.testing.assert_array_equal(actual_x, x.numpy())
+            np.testing.assert_array_equal(actual_y, y.numpy())
 
-    # def test_dev_ctx_alloc(self):
-    #     if not can_use_cuda_graph():
-    #         return
 
-    #     x = paddle.to_tensor([2], dtype='float32')
-    #     graph = CUDAGraph()
-    #     graph.capture_begin()
-    #     y = paddle.cast(x, dtype='float16')
-    #     graph.capture_end()
+    def test_dev_ctx_alloc(self):
+        if not can_use_cuda_graph():
+            return
+
+        x = paddle.to_tensor([2], dtype='float32')
+        graph = CUDAGraph()
+        graph.capture_begin()
+        y = paddle.cast(x, dtype='float16')
+        graph.capture_end()
 
 
 if __name__ == "__main__":
