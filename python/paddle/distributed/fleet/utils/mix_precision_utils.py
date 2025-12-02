@@ -25,9 +25,6 @@ from paddle.base.dygraph import (
     base as imperative_base,
 )
 from paddle.distributed import fleet
-from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
-    DygraphShardingOptimizerV2,
-)
 from paddle.distributed.fleet.utils.hybrid_parallel_util import (
     obtain_optimizer_parameters_list,
 )
@@ -104,17 +101,21 @@ class MixPrecisionOptimizer:
 
         self.shard_opt = None
         hcg = fleet.fleet._hcg
-        self.sharding_world_size = hcg.get_sharding_parallel_world_size()
-        if self.sharding_world_size > 1:
+        sharding_world_size = hcg.get_sharding_parallel_world_size()
+        if sharding_world_size > 1:
             self.set_shard_opt(hcg)
 
     def set_shard_opt(self, hcg):
+        from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
+            DygraphShardingOptimizerV2,
+        )
+
         self.shard_opt = DygraphShardingOptimizerV2(self, hcg)
 
     @imperative_base.no_grad
     @framework.dygraph_only
     def step(self):
-        if self.sharding_world_size > 1:
+        if self.shard_opt is not None:
             self.shard_opt.step()
             return
         if not isinstance(self._parameter_list[0], dict):
@@ -186,7 +187,7 @@ class MixPrecisionOptimizer:
 
     @framework.dygraph_only
     def clear_grad(self, set_to_zero=True):
-        if self.sharding_world_size > 1:
+        if self.shard_opt is not None:
             self.shard_opt.clear_grad(set_to_zero)
             return
         param_list = []
