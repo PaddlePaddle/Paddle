@@ -12,7 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
+import types
+
 from paddle.nn import LayerDict, LayerList
 
 ModuleList = LayerList
 ModuleDict = LayerDict
+
+
+def replace_layer(text: str) -> str:
+    text = re.sub(r'\blayer\b', 'module', text)
+    text = re.sub(r'\bLayer\b', 'Module', text)
+    return text
+
+
+def patch_doc(cls, new_name: str):
+    cls.__name__ = cls.__qualname__ = new_name
+
+    if cls.__doc__:
+        cls.__doc__ = replace_layer(cls.__doc__)
+
+    for _, attr in cls.__dict__.items():
+        if isinstance(attr, (types.FunctionType, classmethod, staticmethod)):
+            func = (
+                attr.__func__
+                if isinstance(attr, (classmethod, staticmethod))
+                else attr
+            )
+            if func.__doc__:
+                func.__doc__ = replace_layer(func.__doc__)
+
+    return cls
+
+
+ModuleList = patch_doc(LayerList, "ModuleList")
+ModuleDict = patch_doc(LayerDict, "ModuleDict")
