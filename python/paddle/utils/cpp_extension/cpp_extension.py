@@ -26,7 +26,7 @@ import setuptools
 import sys
 import paddle
 import site
-from setuptools._distutils.errors import LinkError, DistutilsExecError
+from distutils.errors import DistutilsExecError, LinkError
 
 from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
