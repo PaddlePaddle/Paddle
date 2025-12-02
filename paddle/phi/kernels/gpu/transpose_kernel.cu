@@ -45,7 +45,7 @@ void TransposeKernel(const Context& dev_ctx,
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
-  phi::funcs::TransposeGPUKernelDriver<T>(dev_ctx, x, formatted_axis, out);
+  funcs::TransposeGPUKernelDriver<T>(dev_ctx, x, formatted_axis, out);
 }
 #ifdef _WIN32
 INSTANTIATE_TRANSPOSE_KERNEL(float, GPUContext)
@@ -65,6 +65,9 @@ PD_REGISTER_KERNEL(transpose,
                    int32_t,
                    int64_t,
                    uint8_t,
+                   uint16_t,
+                   uint32_t,
+                   uint64_t,
                    phi::float16,
                    phi::bfloat16,
                    phi::complex64,

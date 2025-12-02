@@ -221,6 +221,16 @@ class TestMultiplyApi_ZeroSize(unittest.TestCase):
         loss.backward()
         np.testing.assert_allclose(x.grad.shape, x.shape)
 
+    def test_multiply_dynamic1(self):
+        x_data = np.random.rand(0).astype(np.float32)
+        y_data = np.random.rand(1).astype(np.float32)
+        paddle.disable_static()
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+        res = paddle.outer(x, y)
+        np_res = np.outer(x_data, y_data)
+        np.testing.assert_allclose(res.numpy(), np_res, rtol=1e-05)
+
 
 class TestOuterOutAndParamDecorator(unittest.TestCase):
     def setUp(self):

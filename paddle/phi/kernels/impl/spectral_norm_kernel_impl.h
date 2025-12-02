@@ -73,8 +73,8 @@ static inline void CalcMatrixSigmaAndNormWeight(const Context& dev_ctx,
   auto u_t = EigenTensor<T, 2>::From(*u);
   auto v_t = EigenTensor<T, 2>::From(*v);
 
-  const int h = weight->dims()[0];
-  const int w = weight->dims()[1];
+  const int64_t h = weight->dims()[0];
+  const int64_t w = weight->dims()[1];
 
   for (int i = 0; i < power_iters; i++) {
     // V = W^T * U / ||W^T * U||_2
@@ -112,8 +112,8 @@ void SpectralNormKernel(const Context& dev_ctx,
                         int power_iters,
                         float eps,
                         DenseTensor* out) {
-  const int h = u.dims()[0];
-  const int w = v.dims()[0];
+  const int64_t h = u.dims()[0];
+  const int64_t w = v.dims()[0];
 
   DenseTensor weight_mat;
   auto dims = weight.dims();

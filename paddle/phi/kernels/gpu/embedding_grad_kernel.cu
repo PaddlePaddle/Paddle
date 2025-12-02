@@ -48,7 +48,9 @@ __global__ void EmbeddingGrad(T* table,
                               const int64_t K,
                               const int64_t D) {
   int idx = threadIdx.x;
-  int idy = blockIdx.x + threadIdx.y * gridDim.x;
+  int64_t idy =
+      static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.y) * static_cast<int64_t>(gridDim.x);
 
   while (idy < K) {
     auto id = static_cast<int64_t>(ids[idy]);
@@ -105,7 +107,7 @@ struct EmbeddingGradCUDAFunctor {
 #endif
 
       if (FLAGS_embedding_deterministic == 1) {
-        phi::funcs::LaunchEmbeddingGradDeterministicKernel<T, IdT>(
+        funcs::LaunchEmbeddingGradDeterministicKernel<T, IdT>(
             dev_ctx_, ids, d_output, d_table, N, D, K);
       } else {
         const int gridx = 2 * dev_ctx_.GetSMCount();

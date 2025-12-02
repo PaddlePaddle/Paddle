@@ -355,7 +355,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
   T* d_in_data = dev_ctx.template Alloc<T>(d_in);
   if (x.numel() == 0) return;
 
-  phi::funcs::SetConstant<Context, T>()(dev_ctx, d_in, static_cast<T>(0));
+  funcs::SetConstant<Context, T>()(dev_ctx, d_in, static_cast<T>(0));
 
   const int64_t pad_left = pads[0];
   const int64_t pad_top = pads[2];

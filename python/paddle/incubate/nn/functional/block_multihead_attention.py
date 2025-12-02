@@ -113,13 +113,15 @@ def block_multihead_attention(
         block_multihead_attention layers, qkv_out is inplace with input `qkv`, cache_k_out and cache_v_out are inplace with input `cache_k` and `cache_v`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('Need compile flash attention')
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import numpy as np
             >>> import paddle
-            >>> from paddle.incubate.nn.functional import block_multihead_attention
+            >>> from paddle.incubate.nn.functional import (
+            ...     block_multihead_attention,
+            ... )
             >>> paddle.device.set_device('gpu')
 
             >>> def get_padding_offset(bsz, max_seq_len, seq_lens_this_time):
@@ -138,11 +140,19 @@ def block_multihead_attention(
             ...         cum_seq_len = (i + 1) * max_seq_len - cum_offsets[i + 1]
             ...         cu_seqlens_q[i + 1] = cum_seq_len
             ...         cu_seqlens_k[i + 1] = cum_seq_len
-            ...     return padding_offsets, cum_offsets[:-1], cu_seqlens_q, cu_seqlens_k
+            ...     return (
+            ...         padding_offsets,
+            ...         cum_offsets[:-1],
+            ...         cu_seqlens_q,
+            ...         cu_seqlens_k,
+            ...     )
 
             >>> def remove_padding(seq_lens, cu_seq_lens, inputs, token_num):
             ...     bsz, num_head, seq_len, head_size = inputs.shape
-            ...     output = paddle.zeros(shape=[token_num, num_head * head_size], dtype=inputs.dtype)
+            ...     output = paddle.zeros(
+            ...         shape=[token_num, num_head * head_size],
+            ...         dtype=inputs.dtype,
+            ...     )
             ...     inputs = inputs.transpose([0, 2, 1, 3]).reshape([bsz, seq_len, -1])
             ...     for i in range(bsz):
             ...         seq_len_now = seq_lens[i]
@@ -165,13 +175,20 @@ def block_multihead_attention(
             ...     mask[:, :, :, :pre_cache_length] = 1
             ...     for i in range(batch_size):
             ...         seq_len = seq_lens[i]
-            ...         mask[i, 0, :seq_len, :seq_len] = (
-            ...             paddle.tril(paddle.ones(shape=(seq_len, seq_len), dtype=mask_type))
-            ...             - 1
-            ...         ) * 1e4
+            ...         mask[i, 0, :seq_len, :seq_len] = (paddle.tril(paddle.ones(shape=(seq_len, seq_len), dtype=mask_type)) - 1) * 1e4
             ...     return mask
 
-            >>> def naive_attention_impl(query, key, value, cache_k, cache_v, pre_cache_k, pre_cache_v, mask, scale=1.0):
+            >>> def naive_attention_impl(
+            ...     query,
+            ...     key,
+            ...     value,
+            ...     cache_k,
+            ...     cache_v,
+            ...     pre_cache_k,
+            ...     pre_cache_v,
+            ...     mask,
+            ...     scale=1.0,
+            ... ):
             ...     batch = query.shape[0]
             ...     heads = query.shape[1]
             ...     seq_len = query.shape[2]
@@ -221,10 +238,7 @@ def block_multihead_attention(
             ...     "int32",
             ... )
             >>> seq_lens_decoder = paddle.to_tensor(
-            ...     [
-            ...         0,
-            ...     ]
-            ...     * batch_size,
+            ...     [0] * batch_size,
             ...     "int32",
             ... )
             >>> seq_lens_this_time = seq_lens_encoder
@@ -237,9 +251,14 @@ def block_multihead_attention(
             >>> q = paddle.randn(shape=qkv_shape, dtype=dtype)
             >>> k = paddle.randn(shape=qkv_shape, dtype=dtype)
             >>> v = paddle.randn(shape=qkv_shape, dtype=dtype)
-            >>> qkv = paddle.stack([q.transpose([0, 2, 1, 3]).reshape([token_num, hid_dim]),
-            ...                     k.transpose([0, 2, 1, 3]).reshape([token_num, hid_dim]),
-            ...                     v.transpose([0, 2, 1, 3]).reshape([token_num, hid_dim])], axis=1).reshape([token_num, -1])
+            >>> qkv = paddle.stack(
+            ...     [
+            ...         q.transpose([0, 2, 1, 3]).reshape([token_num, hid_dim]),
+            ...         k.transpose([0, 2, 1, 3]).reshape([token_num, hid_dim]),
+            ...         v.transpose([0, 2, 1, 3]).reshape([token_num, hid_dim]),
+            ...     ],
+            ...     axis=1,
+            ... ).reshape([token_num, -1])
             >>> scale = 1.0 / np.sqrt(head_size)
             >>> cache_shape = (max_block_num, num_head, block_size, head_size)
             >>> cache_k = paddle.zeros(cache_shape, dtype=dtype)
@@ -250,7 +269,7 @@ def block_multihead_attention(
             ...     for j in range(need_block_num):
             ...         block_tables[i, j] = free_list.pop()
             >>> padding_offset, cum_offset, cu_seqlens_q, cu_seqlens_k = get_padding_offset(batch_size, seq_len, seq_lens_this_time)
-            >>> out  = block_multihead_attention(
+            >>> out = block_multihead_attention(
             ...     qkv,
             ...     cache_k,
             ...     cache_v,
@@ -262,23 +281,23 @@ def block_multihead_attention(
             ...     cu_seqlens_q,
             ...     cu_seqlens_k,
             ...     block_tables,
-            ...     None, # pre_key_cache
-            ...     None, # pre_value_cache
-            ...     None, # cache_k_quant_scales
-            ...     None, # cache_v_quant_scales
-            ...     None, # cache_k_dequant_scales
-            ...     None, # cache_v_dequant_scales
-            ...     None, # qkv_out_scale
-            ...     None, # qkv_bias
-            ...     None, # out_shift
-            ...     None, # out_smooth
-            ...     None, # max_enc_len_this_time
-            ...     None, # max_dec_len_this_time
-            ...     None, # rotary_embs
-            ...     None, # attn_mask
-            ...     None, # tgt_mask
+            ...     None,  # pre_key_cache
+            ...     None,  # pre_value_cache
+            ...     None,  # cache_k_quant_scales
+            ...     None,  # cache_v_quant_scales
+            ...     None,  # cache_k_dequant_scales
+            ...     None,  # cache_v_dequant_scales
+            ...     None,  # qkv_out_scale
+            ...     None,  # qkv_bias
+            ...     None,  # out_shift
+            ...     None,  # out_smooth
+            ...     None,  # max_enc_len_this_time
+            ...     None,  # max_dec_len_this_time
+            ...     None,  # rotary_embs
+            ...     None,  # attn_mask
+            ...     None,  # tgt_mask
             ...     seq_len,
-            ...     block_size
+            ...     block_size,
             ... )[0]
 
             >>> attention_mask = create_attn_mask(
@@ -294,8 +313,8 @@ def block_multihead_attention(
             >>> out_ref = remove_padding(seq_lens_this_time, cu_seqlens_q, out_ref, token_num)
             >>> # equals to: out_ref = out
 
-            >>> print(out.shape) # [token_num, hid_dim]
-            [128, 512]
+            >>> print(out.shape)  # [token_num, hid_dim]
+            paddle.Size([128, 512])
     """
 
     if in_dynamic_or_pir_mode():

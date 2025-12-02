@@ -24,6 +24,11 @@ from paddle.base.framework import (
     in_dygraph_mode,
     in_dynamic_or_pir_mode,
 )
+from paddle.utils.decorator_utils import (
+    lp_pool_function_decorator,
+    param_one_alias,
+    param_two_alias,
+)
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -232,7 +237,7 @@ def avg_pool1d(
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -241,7 +246,7 @@ def avg_pool1d(
             >>> AvgPool1D = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
             >>> pool_out = AvgPool1D(data)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
     """
     """NCL to NCHW"""
     data_format = "NCHW"
@@ -363,18 +368,16 @@ def avg_pool2d(
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
 
             >>> # avg pool2d
             >>> x = paddle.uniform([1, 3, 32, 32], paddle.float32)
-            >>> out = F.avg_pool2d(x,
-            ...                    kernel_size=2,
-            ...                    stride=2, padding=0)
+            >>> out = F.avg_pool2d(x, kernel_size=2, stride=2, padding=0)
             >>> print(out.shape)
-            [1, 3, 16, 16]
+            paddle.Size([1, 3, 16, 16])
     """
     kernel_size = convert_to_list(kernel_size, 2, 'pool_size')
     if stride is None:
@@ -493,18 +496,15 @@ def avg_pool3d(
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.uniform([1, 3, 32, 32, 32], paddle.float32)
             >>> # avg pool3d
-            >>> out = paddle.nn.functional.avg_pool3d(x,
-            ...                                       kernel_size = 2,
-            ...                                       stride = 2,
-            ...                                       padding=0)
+            >>> out = paddle.nn.functional.avg_pool3d(x, kernel_size=2, stride=2, padding=0)
             >>> print(out.shape)
-            [1, 3, 16, 16, 16]
+            paddle.Size([1, 3, 16, 16, 16])
     """
     kernel_size = convert_to_list(kernel_size, 3, 'pool_size')
     if stride is None:
@@ -611,7 +611,7 @@ def max_pool1d(
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -619,12 +619,12 @@ def max_pool1d(
             >>> data = paddle.uniform([1, 3, 32], paddle.float32)
             >>> pool_out = F.max_pool1d(data, kernel_size=2, stride=2, padding=0)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
             >>> pool_out, indices = F.max_pool1d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
             >>> print(indices.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
     """
     """NCL to NCHW"""
     data_format = "NCHW"
@@ -800,7 +800,7 @@ def max_unpool1d(
         Tensor: The output tensor of unpooling result.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -808,12 +808,12 @@ def max_unpool1d(
             >>> data = paddle.rand(shape=[1, 3, 16])
             >>> pool_out, indices = F.max_pool1d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> print(pool_out.shape)
-            [1, 3, 8]
+            paddle.Size([1, 3, 8])
             >>> print(indices.shape)
-            [1, 3, 8]
+            paddle.Size([1, 3, 8])
             >>> unpool_out = F.max_unpool1d(pool_out, indices, kernel_size=2, padding=0)
             >>> print(unpool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
 
     """
     """NCL to NCHW"""
@@ -929,25 +929,37 @@ def max_unpool2d(
 
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.nn.functional as F
 
                 >>> data = paddle.rand(shape=[1, 1, 6, 6])
-                >>> pool_out, indices = F.max_pool2d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
+                >>> pool_out, indices = F.max_pool2d(
+                ...     data,
+                ...     kernel_size=2,
+                ...     stride=2,
+                ...     padding=0,
+                ...     return_mask=True,
+                ... )
                 >>> print(pool_out.shape)
-                [1, 1, 3, 3]
+                paddle.Size([1, 1, 3, 3])
                 >>> print(indices.shape)
-                [1, 1, 3, 3]
+                paddle.Size([1, 1, 3, 3])
                 >>> unpool_out = F.max_unpool2d(pool_out, indices, kernel_size=2, padding=0)
                 >>> print(unpool_out.shape)
-                [1, 1, 6, 6]
+                paddle.Size([1, 1, 6, 6])
 
                 >>> # specify a different output size than input size
-                >>> unpool_out = F.max_unpool2d(pool_out, indices, kernel_size=2, padding=0, output_size=[7, 7])
+                >>> unpool_out = F.max_unpool2d(
+                ...     pool_out,
+                ...     indices,
+                ...     kernel_size=2,
+                ...     padding=0,
+                ...     output_size=[7, 7],
+                ... )
                 >>> print(unpool_out.shape)
-                [1, 1, 7, 7]
+                paddle.Size([1, 1, 7, 7])
 
     """
     if x.ndim != 4:
@@ -1063,7 +1075,7 @@ def max_unpool3d(
         Tensor: The output tensor of unpooling result.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1071,12 +1083,12 @@ def max_unpool3d(
             >>> data = paddle.rand(shape=[1, 1, 4, 4, 6])
             >>> pool_out, indices = F.max_pool3d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> print(pool_out.shape)
-            [1, 1, 2, 2, 3]
+            paddle.Size([1, 1, 2, 2, 3])
             >>> print(indices.shape)
-            [1, 1, 2, 2, 3]
+            paddle.Size([1, 1, 2, 2, 3])
             >>> unpool_out = F.max_unpool3d(pool_out, indices, kernel_size=2, padding=0)
             >>> print(unpool_out.shape)
-            [1, 1, 4, 4, 6]
+            paddle.Size([1, 1, 4, 4, 6])
 
     """
     if x.ndim != 5:
@@ -1176,7 +1188,7 @@ def max_pool2d(
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1185,13 +1197,13 @@ def max_pool2d(
             >>> x = paddle.uniform([1, 3, 32, 32], paddle.float32)
             >>> out = F.max_pool2d(x, kernel_size=2, stride=2, padding=0)
             >>> print(out.shape)
-            [1, 3, 16, 16]
+            paddle.Size([1, 3, 16, 16])
             >>> # for return_mask=True
             >>> out, max_indices = F.max_pool2d(x, kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> print(out.shape)
-            [1, 3, 16, 16]
+            paddle.Size([1, 3, 16, 16])
             >>> print(max_indices.shape)
-            [1, 3, 16, 16]
+            paddle.Size([1, 3, 16, 16])
     """
 
     kernel_size = convert_to_list(kernel_size, 2, 'pool_size')
@@ -1337,32 +1349,24 @@ def max_pool3d(
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
 
             >>> # max pool3d
             >>> x = paddle.uniform([1, 3, 32, 32, 32])
-            >>> output = F.max_pool3d(x,
-            ...                       kernel_size=2,
-            ...                       stride=2,
-            ...                       padding=0)
+            >>> output = F.max_pool3d(x, kernel_size=2, stride=2, padding=0)
             >>> print(output.shape)
-            [1, 3, 16, 16, 16]
+            paddle.Size([1, 3, 16, 16, 16])
 
             >>> # for return_mask=True
             >>> x = paddle.uniform([1, 3, 32, 32, 32])
-            >>> output, max_indices = paddle.nn.functional.max_pool3d(x,
-            ...                                                       kernel_size=2,
-            ...                                                       stride=2,
-            ...                                                       padding=0,
-            ...                                                       return_mask=True)
-            ...
+            >>> output, max_indices = paddle.nn.functional.max_pool3d(x, kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> print(output.shape)
-            [1, 3, 16, 16, 16]
+            paddle.Size([1, 3, 16, 16, 16])
             >>> print(max_indices.shape)
-            [1, 3, 16, 16, 16]
+            paddle.Size([1, 3, 16, 16, 16])
     """
 
     kernel_size = convert_to_list(kernel_size, 3, 'pool_size')
@@ -1435,6 +1439,7 @@ def max_pool3d(
         return (pool_out, mask) if return_mask else pool_out
 
 
+@param_one_alias(["x", "input"])
 def adaptive_avg_pool1d(
     x: Tensor, output_size: int, name: str | None = None
 ) -> Tensor:
@@ -1446,6 +1451,7 @@ def adaptive_avg_pool1d(
 
     Args:
         x (Tensor): The input Tensor of pooling, which is a 3-D tensor with shape :math:`[N, C, L]`, where :math:`N` is batch size, :math:`C` is the number of channels and :math:`L` is the length of the feature. The data type is float32 or float64.
+            Alias: ``input``.
         output_size (int): The target output size. Its data type must be int.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -1453,7 +1459,7 @@ def adaptive_avg_pool1d(
         Tensor: The result of 1D adaptive average pooling. Its data type is same as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # average adaptive pool1d
             >>> # suppose input data in shape of [N, C, L], `output_size` is m or [m],
@@ -1473,7 +1479,7 @@ def adaptive_avg_pool1d(
             >>> data = paddle.uniform([1, 3, 32])
             >>> pool_out = F.adaptive_avg_pool1d(data, output_size=16)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
     """
     pool_type = 'avg'
     _check_input(x, 3)
@@ -1522,6 +1528,7 @@ def adaptive_avg_pool1d(
         return squeeze(pool_out, [2])
 
 
+@param_one_alias(["x", "input"])
 def adaptive_avg_pool2d(
     x: Tensor,
     output_size: Size2,
@@ -1545,6 +1552,7 @@ def adaptive_avg_pool2d(
     Args:
         x (Tensor): The input tensor of adaptive avg pool2d operator, which is a 4-D tensor.
                           The data type can be float32 or float64.
+            Alias: ``input``.
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two element, (H, W). H and W can be either a int, or None which means
             the size will be the same as that of the input.
@@ -1559,7 +1567,7 @@ def adaptive_avg_pool2d(
         Tensor, The output tensor of avg adaptive pool2d result. The data type is same as input tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # adaptive avg pool2d
             >>> # suppose input data in shape of [N, C, H, W], `output_size` is [m, n],
@@ -1583,7 +1591,7 @@ def adaptive_avg_pool2d(
             >>> out = paddle.nn.functional.adaptive_avg_pool2d(x = x,
             ...                                                output_size=[3, 3])
             >>> print(out.shape)
-            [2, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3])
 
     """
     if data_format not in ["NCHW", "NHWC"]:
@@ -1658,6 +1666,7 @@ def adaptive_avg_pool2d(
         return pool_out
 
 
+@param_one_alias(["x", "input"])
 def adaptive_avg_pool3d(
     x: Tensor,
     output_size: Size3,
@@ -1684,6 +1693,7 @@ def adaptive_avg_pool3d(
     Args:
         x (Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor.
             The data type can be float32, float64.
+            Alias: ``input``.
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or
             list, it must contain three elements, (D, H, W). D, H and W can be either a int,
             or None which means the size will be the same as that of the input.
@@ -1697,7 +1707,7 @@ def adaptive_avg_pool3d(
         Tensor, The output tensor of avg adaptive pool3d result. The data type is same as input tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # adaptive avg pool3d
             >>> # suppose input data in shape of [N, C, D, H, W], `output_size` is [l, m, n],
@@ -1723,7 +1733,7 @@ def adaptive_avg_pool3d(
             >>> out = paddle.nn.functional.adaptive_avg_pool3d(x = input_data,
             ...                                                output_size=[3, 3, 3])
             >>> print(out.shape)
-            [2, 3, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3, 3])
 
     """
     if data_format not in ["NCDHW", "NDHWC"]:
@@ -1792,9 +1802,10 @@ def adaptive_avg_pool3d(
         return pool_out
 
 
+@param_two_alias(["x", "input"], ["return_mask", "return_indices"])
 def adaptive_max_pool1d(
     x: Tensor,
-    output_size: int,
+    output_size: Size1,
     return_mask: bool = False,
     name: str | None = None,
 ) -> Tensor:
@@ -1807,7 +1818,7 @@ def adaptive_max_pool1d(
                               with shape [N, C, L].  The format of input tensor is NCL,
                               where N is batch size, C is the number of channels, L is the
                               length of the feature. The data type is float32 or float64.
-        output_size (int): The pool kernel size. The value should be an integer.
+        output_size (int|list|tuple): The pool kernel size. It can be an integer, or a list or tuple containing a single integer.
         return_mask (bool): If true, the index of max pooling point will be returned along
                 with outputs. It cannot be set in average pooling type. Default False.
         name(str|None, optional): For detailed information, please refer
@@ -1818,7 +1829,7 @@ def adaptive_max_pool1d(
                       as input tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # max adaptive pool1d
             >>> # suppose input data in shape of [N, C, L], `output_size` is m or [m],
@@ -1838,12 +1849,12 @@ def adaptive_max_pool1d(
             >>> data = paddle.uniform([1, 3, 32], paddle.float32)
             >>> pool_out = F.adaptive_max_pool1d(data, output_size=16)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
             >>> pool_out, indices = F.adaptive_max_pool1d(data, output_size=16, return_mask=True)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
             >>> print(indices.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
     """
     _check_input(x, 3)
 
@@ -1894,6 +1905,7 @@ def adaptive_max_pool1d(
         )
 
 
+@param_two_alias(["x", "input"], ["return_mask", "return_indices"])
 def adaptive_max_pool2d(
     x: Tensor,
     output_size: Size2,
@@ -1914,7 +1926,7 @@ def adaptive_max_pool2d(
         Tensor: The output tensor of adaptive max pool2d result. The data type is same as input tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # max adaptive pool2d
             >>> # suppose input data in the shape of [N, C, H, W], `output_size` is [m, n]
@@ -1934,10 +1946,9 @@ def adaptive_max_pool2d(
             >>> import paddle
 
             >>> input_data = paddle.randn(shape=(2, 3, 32, 32))
-            >>> out = paddle.nn.functional.adaptive_max_pool2d(x = input_data,
-            ...                                                output_size=[3, 3])
+            >>> out = paddle.nn.functional.adaptive_max_pool2d(x=input_data, output_size=[3, 3])
             >>> print(out.shape)
-            [2, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3])
     """
     _check_input(x, 4)
 
@@ -1985,6 +1996,7 @@ def adaptive_max_pool2d(
         return (pool_out, mask) if return_mask else pool_out
 
 
+@param_two_alias(["x", "input"], ["return_mask", "return_indices"])
 def adaptive_max_pool3d(
     x: Tensor,
     output_size: Size3,
@@ -2005,7 +2017,7 @@ def adaptive_max_pool3d(
         Tensor: The output tensor of adaptive max pool3d result. The data type is same as input tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # adaptive max pool3d
             >>> # suppose input data in the shape of [N, C, D, H, W], `output_size` is [l, m, n]
@@ -2028,10 +2040,9 @@ def adaptive_max_pool3d(
             >>> import paddle
 
             >>> input_data = paddle.randn(shape=(2, 3, 8, 32, 32))
-            >>> out = paddle.nn.functional.adaptive_max_pool3d(x = input_data,
-            ...                                                output_size=[3, 3, 3])
+            >>> out = paddle.nn.functional.adaptive_max_pool3d(x=input_data, output_size=[3, 3, 3])
             >>> print(out.shape)
-            [2, 3, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3, 3])
     """
     _check_input(x, 5)
 
@@ -2139,7 +2150,7 @@ def fractional_max_pool2d(
         Tensor: The output tensor of fractional max pool2d result which is a 4-D tensor.. The data type is same as input tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # fractional max pool2d
             >>> # suppose input data in shape of [N, C, H, W], `output_size` is [m, n],
@@ -2154,18 +2165,18 @@ def fractional_max_pool2d(
             >>> # disjont: without `kernel_size`
             >>> pool_out = paddle.nn.functional.fractional_max_pool2d(x, output_size=3)
             >>> print(pool_out.shape)
-            [2, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3])
 
             >>> # overlapping: with `kernel_size`
             >>> pool_out = paddle.nn.functional.fractional_max_pool2d(x, kernel_size=2, output_size=3)
             >>> print(pool_out.shape)
-            [2, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3])
 
             >>> pool_out, indices = paddle.nn.functional.fractional_max_pool2d(x, output_size=[2, 3], return_mask=True)
             >>> print(pool_out.shape)
-            [2, 3, 2, 3]
+            paddle.Size([2, 3, 2, 3])
             >>> print(indices.shape)
-            [2, 3, 2, 3]
+            paddle.Size([2, 3, 2, 3])
     """
     _check_input(x, 4)
 
@@ -2294,7 +2305,7 @@ def fractional_max_pool3d(
         Tensor: The output tensor of fractional max pool3d result which is a 5-D tensor.. The data type is same as input tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # fractional max pool3d
             >>> # suppose input data in shape of [N, C, D, H, W], `output_size` is [l, m, n],
@@ -2309,18 +2320,18 @@ def fractional_max_pool3d(
             >>> # disjont: without `kernel_size`
             >>> pool_out = paddle.nn.functional.fractional_max_pool3d(x, output_size=3)
             >>> print(pool_out.shape)
-            [2, 3, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3, 3])
 
             >>> # overlapping: with `kernel_size`
             >>> pool_out = paddle.nn.functional.fractional_max_pool3d(x, kernel_size=2, output_size=3)
             >>> print(pool_out.shape)
-            [2, 3, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3, 3])
 
             >>> pool_out, indices = paddle.nn.functional.fractional_max_pool3d(x, output_size=[2, 3, 3], return_mask=True)
             >>> print(pool_out.shape)
-            [2, 3, 2, 3, 3]
+            paddle.Size([2, 3, 2, 3, 3])
             >>> print(indices.shape)
-            [2, 3, 2, 3, 3]
+            paddle.Size([2, 3, 2, 3, 3])
     """
     _check_input(x, 5)
 
@@ -2400,6 +2411,7 @@ def fractional_max_pool3d(
         return (pool_out, mask) if return_mask else pool_out
 
 
+@lp_pool_function_decorator
 def lp_pool1d(
     x: Tensor,
     norm_type: float,
@@ -2443,7 +2455,7 @@ def lp_pool1d(
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -2452,7 +2464,7 @@ def lp_pool1d(
             >>> LPPool1D = nn.LPPool1D(norm_type=3, kernel_size=2, stride=2, padding=0)
             >>> pool_out = LPPool1D(data)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
     """
     # NCL to NCHW
     ori_data_format = data_format
@@ -2531,6 +2543,7 @@ def lp_pool1d(
         return squeeze(pool_out, [axis])
 
 
+@lp_pool_function_decorator
 def lp_pool2d(
     x: Tensor,
     norm_type: float,
@@ -2577,19 +2590,16 @@ def lp_pool2d(
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
 
             >>> # lp pool2d
             >>> x = paddle.uniform([1, 3, 32, 32], paddle.float32)
-            >>> out = F.lp_pool2d(x,
-            ...                   norm_type=2,
-            ...                   kernel_size=2,
-            ...                   stride=2, padding=0)
+            >>> out = F.lp_pool2d(x, norm_type=2, kernel_size=2, stride=2, padding=0)
             >>> print(out.shape)
-            [1, 3, 16, 16]
+            paddle.Size([1, 3, 16, 16])
     """
 
     _check_input(x, 4)

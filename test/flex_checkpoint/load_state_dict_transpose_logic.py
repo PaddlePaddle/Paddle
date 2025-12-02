@@ -43,10 +43,10 @@ class ColumnParallelLinearTransWeight(ColumnParallelLinear):
 
 
 class SimpleMLP(Layer):
-    def __init__(self, hidden_size=1024):
+    def __init__(self, in_features=1024, out_features=1024):
         super().__init__()
         self.linear = ColumnParallelLinear(
-            hidden_size, hidden_size * 2, has_bias=True
+            in_features, out_features, has_bias=True
         )
 
     def forward(self, x):
@@ -55,10 +55,10 @@ class SimpleMLP(Layer):
 
 
 class SimpleMLPTransWeight(Layer):
-    def __init__(self, hidden_size=1024):
+    def __init__(self, in_features=1024, out_features=1024):
         super().__init__()
         self.linear = ColumnParallelLinearTransWeight(
-            hidden_size, hidden_size * 2, has_bias=True
+            in_features, out_features, has_bias=True
         )
 
     def forward(self, x):
@@ -70,6 +70,8 @@ class TestLoadStateDictTransposeLogic:
     def __init__(self):
         self.aoa_config = {"aoa_statements": [os.getenv("aoa_statements")]}
         self.ckpt_path = tempfile.TemporaryDirectory().name
+        self.in_features = 1024
+        self.out_features = 2048
 
     def run_test(self):
         self.run_save_state_dict()
@@ -99,5 +101,13 @@ class TestLoadStateDictTransposeLogic:
         dist.save_state_dict(sharded_state_dict, self.ckpt_path)
 
 
+class TestLoadStateDictTransposeLogic2(TestLoadStateDictTransposeLogic):
+    def __init__(self):
+        super().__init__()
+        self.in_features = 1024
+        self.out_features = 1024
+
+
 if __name__ == '__main__':
     TestLoadStateDictTransposeLogic().run_test()
+    TestLoadStateDictTransposeLogic2().run_test()

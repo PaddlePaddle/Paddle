@@ -181,7 +181,10 @@ __global__ void GetScaleBiasGradientCUDAKernel(int64_t N,
                                                const AccT* db,
                                                T* d_scale,
                                                T* d_bias) {
-  for (int64_t c = blockIdx.x * blockDim.x + threadIdx.x; c < C;
+  for (int64_t c =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       c < C;
        c += gridDim.x * blockDim.x) {
     if (c < C) {
       const int G = group;
@@ -328,18 +331,17 @@ void GroupNormGradKernel(const Context& dev_ctx,
 
   const auto& x_dims = x.dims();
   const int64_t C =
-      (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                        : x_dims[x_dims.size() - 1]);
+      (data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
   const int64_t group_size = C / groups;
   const int64_t W =
-      (data_layout == DataLayout::kNCHW ? x_dims[x_dims.size() - 1]
-                                        : x_dims[x_dims.size() - 2]);
+      (data_layout == DataLayout::NCHW ? x_dims[x_dims.size() - 1]
+                                       : x_dims[x_dims.size() - 2]);
 
   if (d_x) {
     dev_ctx.template Alloc<T>(d_x);
   }
-  phi::funcs::SetConstant<GPUContext, T> set_zero;
-  phi::funcs::SetConstant<GPUContext, AccT> set_zero_AccT;
+  funcs::SetConstant<GPUContext, T> set_zero;
+  funcs::SetConstant<GPUContext, AccT> set_zero_AccT;
   DenseTensor ds, db;
   ds.Resize({x_dims[0], C});
   AccT* ds_data = dev_ctx.template Alloc<AccT>(&ds);
@@ -370,7 +372,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
   if (bias_ptr) bias_data = bias_ptr->data<T>();
 
   int64_t imsize = 1;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     for (int i = 2; i < x_dims.size(); ++i) {
       imsize *= x_dims[i];
     }
@@ -390,7 +392,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
   dim3 threads(block_size, 1, 1);
   int flags =
       (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     const int max_num_threads = 1024;
     int max_block_size =
         std::min(imsize, static_cast<int64_t>(max_num_threads));

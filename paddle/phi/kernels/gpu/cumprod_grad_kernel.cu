@@ -194,12 +194,12 @@ void CumprodGradKernel(const Context &dev_ctx,
                  .Allocate(numel * sizeof(T));
     auto *y_data_conj = reinterpret_cast<T *>(y_conj->ptr());
 
-    phi::funcs::ForRange<Context> for_range_x(dev_ctx, numel);
-    phi::funcs::ConjFunctor<T> functor_x(x_data, numel, x_data_conj);
+    funcs::ForRange<Context> for_range_x(dev_ctx, numel);
+    funcs::ConjFunctor<T> functor_x(x_data, numel, x_data_conj);
     for_range_x(functor_x);
 
-    phi::funcs::ForRange<Context> for_range_y(dev_ctx, numel);
-    phi::funcs::ConjFunctor<T> functor_y(y_data, numel, y_data_conj);
+    funcs::ForRange<Context> for_range_y(dev_ctx, numel);
+    funcs::ConjFunctor<T> functor_y(y_data, numel, y_data_conj);
     for_range_y(functor_y);
     x_data_deal = x_data_conj;
     y_data_deal = y_data_conj;
@@ -228,16 +228,15 @@ void CumprodGradKernel(const Context &dev_ctx,
   auto zero_mask = const_cast<Allocator &>(dev_ctx.GetAllocator())
                        .Allocate(numel * sizeof(uint8_t));
   auto *zero_mask_data = reinterpret_cast<uint8_t *>(zero_mask->ptr());
-  phi::funcs::InclusiveScan<uint8_t, cub::Max>(
-      zero_mask_without_cummax_data,
-      zero_mask_data,
-      outer_dim,
-      mid_dim,
-      inner_dim,
-      static_cast<uint8_t>(0),
-      cub::Max(),
-      /*reverse=*/reverse,
-      dev_ctx);  // 计算结果是0的元素mask
+  funcs::InclusiveScan<uint8_t, cub::Max>(zero_mask_without_cummax_data,
+                                          zero_mask_data,
+                                          outer_dim,
+                                          mid_dim,
+                                          inner_dim,
+                                          static_cast<uint8_t>(0),
+                                          cub::Max(),
+                                          /*reverse=*/reverse,
+                                          dev_ctx);  // 计算结果是0的元素mask
   zero_mask_without_cummax = nullptr;
 
   // Step 2: calculate reversed cumsum(dy * y)
@@ -257,25 +256,25 @@ void CumprodGradKernel(const Context &dev_ctx,
   auto *dy_mul_y_reversed_cumsum_data =
       reinterpret_cast<T *>(dy_mul_y_reversed_cumsum->ptr());
   if (exclusive) {
-    phi::funcs::ExclusiveScan<T, cub::Sum>(dy_mul_y_data,
-                                           dy_mul_y_reversed_cumsum_data,
-                                           outer_dim,
-                                           mid_dim,
-                                           inner_dim,
-                                           static_cast<T>(0.0f),
-                                           cub::Sum(),
-                                           /*reverse=*/!reverse,
-                                           dev_ctx);
+    funcs::ExclusiveScan<T, cub::Sum>(dy_mul_y_data,
+                                      dy_mul_y_reversed_cumsum_data,
+                                      outer_dim,
+                                      mid_dim,
+                                      inner_dim,
+                                      static_cast<T>(0.0f),
+                                      cub::Sum(),
+                                      /*reverse=*/!reverse,
+                                      dev_ctx);
   } else {
-    phi::funcs::InclusiveScan<T, cub::Sum>(dy_mul_y_data,
-                                           dy_mul_y_reversed_cumsum_data,
-                                           outer_dim,
-                                           mid_dim,
-                                           inner_dim,
-                                           static_cast<T>(0.0f),
-                                           cub::Sum(),
-                                           /*reverse=*/!reverse,
-                                           dev_ctx);
+    funcs::InclusiveScan<T, cub::Sum>(dy_mul_y_data,
+                                      dy_mul_y_reversed_cumsum_data,
+                                      outer_dim,
+                                      mid_dim,
+                                      inner_dim,
+                                      static_cast<T>(0.0f),
+                                      cub::Sum(),
+                                      /*reverse=*/!reverse,
+                                      dev_ctx);
   }
 
   // Step 3: calculate the gradient value except the first zero position.
@@ -291,7 +290,7 @@ void CumprodGradKernel(const Context &dev_ctx,
   auto *first_zero_idx_data =
       reinterpret_cast<int64_t *>(first_zero_idx->ptr());
   auto *x_filled_one_data = dy_mul_y_data;  // reuse former allocated memory
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
   CumprodGradFunctorExceptFirstZero<T> functor_except_first_zero(
       x_data_deal,
       y_data_deal,
@@ -310,7 +309,7 @@ void CumprodGradKernel(const Context &dev_ctx,
   // Step 4: calculate cumprod of x_filled_one
   auto *x_filled_one_cumprod_data =
       dy_mul_y_reversed_cumsum_data;  // reuse former allocated memory
-  phi::funcs::InclusiveScan<T, funcs::MultiplyFunctor<T>>(
+  funcs::InclusiveScan<T, funcs::MultiplyFunctor<T>>(
       x_filled_one_data,
       x_filled_one_cumprod_data,
       outer_dim,
@@ -333,7 +332,7 @@ void CumprodGradKernel(const Context &dev_ctx,
                     funcs::MultiplyFunctor<T>());
   auto *dy_mul_x_filled_one_cumprod_reversed_cumsum =
       dy_mul_y_reversed_cumsum_data;  // reuse former allocated memory
-  phi::funcs::InclusiveScan<T, cub::Sum>(
+  funcs::InclusiveScan<T, cub::Sum>(
       dy_mul_x_filled_one_cumprod,
       dy_mul_x_filled_one_cumprod_reversed_cumsum,
       outer_dim,
@@ -345,8 +344,8 @@ void CumprodGradKernel(const Context &dev_ctx,
       dev_ctx);  // 反向累加 [1,1,1,1,4,20] -> [28,27,26,25,24,20]
 
   // Step 6: fill zero pos gradient value
-  phi::funcs::ForRange<Context> for_range_fill_zero_pos_grad(
-      dev_ctx, outer_dim * inner_dim);
+  funcs::ForRange<Context> for_range_fill_zero_pos_grad(dev_ctx,
+                                                        outer_dim * inner_dim);
   FillFirstZeroPositionGradFunctor<T> fill_first_zero_pos_grad_functor(
       first_zero_idx_data,
       dy_mul_x_filled_one_cumprod_reversed_cumsum,

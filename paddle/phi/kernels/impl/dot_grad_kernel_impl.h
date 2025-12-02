@@ -24,9 +24,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 namespace phi {
 
-template <typename DeviceContext, typename T, typename Enable = void>
+template <typename Context, typename T, typename Enable = void>
 struct DotGradFunction {
-  void operator()(const DeviceContext& dev_ctx,
+  void operator()(const Context& dev_ctx,
                   const DenseTensor* tensor_x,
                   const DenseTensor* tensor_y,
                   const DenseTensor* tensor_dout,
@@ -34,9 +34,9 @@ struct DotGradFunction {
                   DenseTensor* tensor_dy);
 };
 
-template <typename DeviceContext, typename T>
-struct DotGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
-  void operator()(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+struct DotGradFunction<Context, T, phi::funcs::EnableComplex<T>> {
+  void operator()(const Context& dev_ctx,
                   const DenseTensor* tensor_x,
                   const DenseTensor* tensor_y,
                   const DenseTensor* tensor_dout,
@@ -52,7 +52,7 @@ struct DotGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
         auto& dev = *dev_ctx.eigen_device();
         Eigen::DSizes<int, 1> size(tensor_dx->numel());
 
-        ConjKernel<T, DeviceContext>(dev_ctx, *tensor_y, tensor_dx);
+        ConjKernel<T, Context>(dev_ctx, *tensor_y, tensor_dx);
 
         auto dx = EigenVector<T>::Flatten(*tensor_dx);
         dx.device(dev) = dx * dout.broadcast(size);
@@ -63,7 +63,7 @@ struct DotGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
         auto& dev = *dev_ctx.eigen_device();
         Eigen::DSizes<int, 1> size(tensor_dy->numel());
 
-        ConjKernel<T, DeviceContext>(dev_ctx, *tensor_x, tensor_dy);
+        ConjKernel<T, Context>(dev_ctx, *tensor_x, tensor_dy);
 
         auto dy = EigenVector<T>::Flatten(*tensor_dy);
         dy.device(dev) = dy * dout.broadcast(size);
@@ -77,7 +77,7 @@ struct DotGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
         auto& dev = *dev_ctx.eigen_device();
         Eigen::DSizes<int, 2> size(1, tensor_dx->dims()[1]);
 
-        ConjKernel<T, DeviceContext>(dev_ctx, *tensor_y, tensor_dx);
+        ConjKernel<T, Context>(dev_ctx, *tensor_y, tensor_dx);
 
         auto dx = EigenMatrix<T>::From(*tensor_dx);
         dx.device(dev) = dx * dout.broadcast(size);
@@ -89,7 +89,7 @@ struct DotGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
         auto& dev = *dev_ctx.eigen_device();
         Eigen::DSizes<int, 2> size(1, tensor_dy->dims()[1]);
 
-        ConjKernel<T, DeviceContext>(dev_ctx, *tensor_x, tensor_dy);
+        ConjKernel<T, Context>(dev_ctx, *tensor_x, tensor_dy);
 
         auto dy = EigenMatrix<T>::From(*tensor_dy);
         dy.device(dev) = dy * dout.broadcast(size);
@@ -133,9 +133,9 @@ struct DotGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
   }
 };
 
-template <typename DeviceContext, typename T>
-struct DotGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
-  void operator()(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+struct DotGradFunction<Context, T, phi::funcs::DisableComplex<T>> {
+  void operator()(const Context& dev_ctx,
                   const DenseTensor* tensor_x,
                   const DenseTensor* tensor_y,
                   const DenseTensor* tensor_dout,
@@ -207,9 +207,9 @@ struct DotGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
   }
 };
 
-template <typename DeviceContext, typename T, typename Enable = void>
+template <typename Context, typename T, typename Enable = void>
 struct DotDoubleGradFunction {
-  void operator()(const DeviceContext& dev_ctx,
+  void operator()(const Context& dev_ctx,
                   const DenseTensor* tensor_x,
                   const DenseTensor* tensor_y,
                   const DenseTensor* tensor_dout,
@@ -220,9 +220,9 @@ struct DotDoubleGradFunction {
                   DenseTensor* tensor_ddout);
 };
 
-template <typename DeviceContext, typename T>
-struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
-  void operator()(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+struct DotDoubleGradFunction<Context, T, phi::funcs::EnableComplex<T>> {
+  void operator()(const Context& dev_ctx,
                   const DenseTensor* tensor_x,
                   const DenseTensor* tensor_y,
                   const DenseTensor* tensor_dout,
@@ -238,7 +238,7 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
       DenseTensor tensor_dout_help;
       auto& dev = *dev_ctx.eigen_device();
       if (tensor_dx || tensor_dy) {
-        tensor_dout_help = Conj<T, DeviceContext>(dev_ctx, *tensor_dout);
+        tensor_dout_help = Conj<T, Context>(dev_ctx, *tensor_dout);
       }
       if (tensor_dx && tensor_ddy) {
         dev_ctx.template Alloc<T>(tensor_dx);
@@ -248,11 +248,11 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
         auto dout = EigenVector<T>::Flatten(tensor_dout_help);
         dx.device(dev) = ddy * dout.broadcast(size);
       } else if (tensor_dx && !tensor_ddy) {
-        FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                         *tensor_x,
-                                         Scalar(T(0.0, 0.0)),
-                                         tensor_x->dtype(),
-                                         tensor_dx);
+        FullLikeKernel<T, Context>(dev_ctx,
+                                   *tensor_x,
+                                   Scalar(T(0.0, 0.0)),
+                                   tensor_x->dtype(),
+                                   tensor_dx);
       }
 
       if (tensor_dy && tensor_ddx) {
@@ -263,17 +263,17 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
         auto dout = EigenVector<T>::Flatten(tensor_dout_help);
         dy.device(dev) = ddx * dout.broadcast(size);
       } else if (tensor_dy && !tensor_ddx) {
-        FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                         *tensor_y,
-                                         Scalar(T(0.0, 0.0)),
-                                         tensor_y->dtype(),
-                                         tensor_dy);
+        FullLikeKernel<T, Context>(dev_ctx,
+                                   *tensor_y,
+                                   Scalar(T(0.0, 0.0)),
+                                   tensor_y->dtype(),
+                                   tensor_dy);
       }
 
       if (tensor_ddout && tensor_ddx && tensor_ddy) {
         dev_ctx.template Alloc<T>(tensor_ddout);
-        DenseTensor tensor_x_help = Conj<T, DeviceContext>(dev_ctx, *tensor_x);
-        DenseTensor tensor_y_help = Conj<T, DeviceContext>(dev_ctx, *tensor_y);
+        DenseTensor tensor_x_help = Conj<T, Context>(dev_ctx, *tensor_x);
+        DenseTensor tensor_y_help = Conj<T, Context>(dev_ctx, *tensor_y);
 
         auto x = EigenVector<T>::Flatten(tensor_x_help);
         auto y = EigenVector<T>::Flatten(tensor_y_help);
@@ -283,7 +283,7 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
         ddout.device(dev) = (x * ddy + y * ddx).sum();
       } else if (tensor_ddout && tensor_ddx && !tensor_ddy) {
         dev_ctx.template Alloc<T>(tensor_ddout);
-        DenseTensor tensor_y_help = Conj<T, DeviceContext>(dev_ctx, *tensor_y);
+        DenseTensor tensor_y_help = Conj<T, Context>(dev_ctx, *tensor_y);
 
         auto y = EigenVector<T>::Flatten(tensor_y_help);
         auto ddx = EigenVector<T>::Flatten(*tensor_ddx);
@@ -291,7 +291,7 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
         ddout.device(dev) = (y * ddx).sum();
       } else if (tensor_ddout && !tensor_ddx && tensor_ddy) {
         dev_ctx.template Alloc<T>(tensor_ddout);
-        DenseTensor tensor_x_help = Conj<T, DeviceContext>(dev_ctx, *tensor_x);
+        DenseTensor tensor_x_help = Conj<T, Context>(dev_ctx, *tensor_x);
 
         auto x = EigenVector<T>::Flatten(tensor_x_help);
         auto ddy = EigenVector<T>::Flatten(*tensor_ddy);
@@ -317,11 +317,11 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
         data_dx[i] = T(data_dout[s].real, -data_dout[s].imag) * data_ddy[i];
       }
     } else if (tensor_dx && !tensor_ddy) {
-      FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                       *tensor_x,
-                                       Scalar(T(0.0, 0.0)),
-                                       tensor_x->dtype(),
-                                       tensor_dx);
+      FullLikeKernel<T, Context>(dev_ctx,
+                                 *tensor_x,
+                                 Scalar(T(0.0, 0.0)),
+                                 tensor_x->dtype(),
+                                 tensor_dx);
     }
 
     if (tensor_dy && tensor_ddx) {
@@ -339,11 +339,11 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
         data_dy[i] = T(data_dout[s].real, -data_dout[s].imag) * data_ddx[i];
       }
     } else if (tensor_dy && !tensor_ddx) {
-      FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                       *tensor_y,
-                                       Scalar(T(0.0, 0.0)),
-                                       tensor_y->dtype(),
-                                       tensor_dy);
+      FullLikeKernel<T, Context>(dev_ctx,
+                                 *tensor_y,
+                                 Scalar(T(0.0, 0.0)),
+                                 tensor_y->dtype(),
+                                 tensor_dy);
     }
 
     if (tensor_ddout && tensor_ddx && tensor_ddy) {
@@ -427,9 +427,9 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
   }
 };
 
-template <typename DeviceContext, typename T>
-struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
-  void operator()(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+struct DotDoubleGradFunction<Context, T, phi::funcs::DisableComplex<T>> {
+  void operator()(const Context& dev_ctx,
                   const DenseTensor* tensor_x,
                   const DenseTensor* tensor_y,
                   const DenseTensor* tensor_dout,
@@ -453,7 +453,7 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
         auto dx = EigenVector<T>::Flatten(*tensor_dx);
         dx.device(dev) = ddy * dout.broadcast(size);
       } else if (tensor_dx && !tensor_ddy) {
-        FullLikeKernel<T, DeviceContext>(
+        FullLikeKernel<T, Context>(
             dev_ctx, *tensor_x, Scalar(0.0), tensor_x->dtype(), tensor_dx);
       }
 
@@ -464,7 +464,7 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
         auto dy = EigenVector<T>::Flatten(*tensor_dy);
         dy.device(dev) = ddx * dout.broadcast(size);
       } else if (tensor_dy && !tensor_ddx) {
-        FullLikeKernel<T, DeviceContext>(
+        FullLikeKernel<T, Context>(
             dev_ctx, *tensor_y, Scalar(0.0), tensor_y->dtype(), tensor_dy);
       }
 
@@ -504,7 +504,7 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
         data_dx[i] = data_dout[s] * data_ddy[i];
       }
     } else if (tensor_dx && !tensor_ddy) {
-      FullLikeKernel<T, DeviceContext>(
+      FullLikeKernel<T, Context>(
           dev_ctx, *tensor_x, Scalar(0.0), tensor_x->dtype(), tensor_dx);
     }
 
@@ -520,7 +520,7 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
         data_dy[i] = data_dout[s] * data_ddx[i];
       }
     } else if (tensor_dy) {
-      FullLikeKernel<T, DeviceContext>(
+      FullLikeKernel<T, Context>(
           dev_ctx, *tensor_y, Scalar(0.0), tensor_y->dtype(), tensor_dy);
     }
 
@@ -589,9 +589,9 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
   }
 };
 
-template <typename DeviceContext, typename T, typename Enable = void>
+template <typename Context, typename T, typename Enable = void>
 struct DotTripleGradFunction {
-  void operator()(const DeviceContext& dev_ctx,
+  void operator()(const Context& dev_ctx,
                   const DenseTensor* in_tensor_x,
                   const DenseTensor* in_tensor_y,
                   const DenseTensor* in_tensor_dout,
@@ -609,9 +609,9 @@ struct DotTripleGradFunction {
 
 // TODO(wuweilong): enable this function when the unittest framework for multi
 // grad is ok (dtype: complex64 or complex128).
-template <typename DeviceContext, typename T>
-struct DotTripleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
-  void operator()(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+struct DotTripleGradFunction<Context, T, phi::funcs::EnableComplex<T>> {
+  void operator()(const Context& dev_ctx,
                   const DenseTensor* in_tensor_x,
                   const DenseTensor* in_tensor_y,
                   const DenseTensor* in_tensor_dout,
@@ -633,19 +633,17 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
 #if defined(__NVCC__) || defined(__HIPCC__)
     if (1 >= in_tensor_dout->dims().size()) {
       auto& dev = *dev_ctx.eigen_device();
-      DenseTensor in_tensor_x_help =
-          Conj<T, DeviceContext>(dev_ctx, *in_tensor_x);
-      DenseTensor in_tensor_y_help =
-          Conj<T, DeviceContext>(dev_ctx, *in_tensor_y);
+      DenseTensor in_tensor_x_help = Conj<T, Context>(dev_ctx, *in_tensor_x);
+      DenseTensor in_tensor_y_help = Conj<T, Context>(dev_ctx, *in_tensor_y);
       DenseTensor in_tensor_dout_help =
-          Conj<T, DeviceContext>(dev_ctx, *in_tensor_dout);
+          Conj<T, Context>(dev_ctx, *in_tensor_dout);
       DenseTensor in_tensor_ddx_help;
       DenseTensor in_tensor_ddy_help;
       if (in_tensor_ddx) {
-        in_tensor_ddx_help = Conj<T, DeviceContext>(dev_ctx, *in_tensor_ddx);
+        in_tensor_ddx_help = Conj<T, Context>(dev_ctx, *in_tensor_ddx);
       }
       if (in_tensor_ddy) {
-        in_tensor_ddy_help = Conj<T, DeviceContext>(dev_ctx, *in_tensor_ddy);
+        in_tensor_ddy_help = Conj<T, Context>(dev_ctx, *in_tensor_ddy);
       }
 
       bool d_dout_flag = false;
@@ -744,39 +742,39 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
         }
       }
       if (out_tensor_d_x && !out_tensor_d_x->IsInitialized()) {
-        FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                         *in_tensor_x,
-                                         Scalar(T(0.0, 0.0)),
-                                         in_tensor_x->dtype(),
-                                         out_tensor_d_x);
+        FullLikeKernel<T, Context>(dev_ctx,
+                                   *in_tensor_x,
+                                   Scalar(T(0.0, 0.0)),
+                                   in_tensor_x->dtype(),
+                                   out_tensor_d_x);
       }
       if (out_tensor_d_y && !out_tensor_d_y->IsInitialized()) {
-        FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                         *in_tensor_y,
-                                         Scalar(T(0.0, 0.0)),
-                                         in_tensor_y->dtype(),
-                                         out_tensor_d_y);
+        FullLikeKernel<T, Context>(dev_ctx,
+                                   *in_tensor_y,
+                                   Scalar(T(0.0, 0.0)),
+                                   in_tensor_y->dtype(),
+                                   out_tensor_d_y);
       }
       if (out_tensor_d_dout && !out_tensor_d_dout->IsInitialized()) {
-        FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                         *in_tensor_dout,
-                                         Scalar(T(0.0, 0.0)),
-                                         in_tensor_dout->dtype(),
-                                         out_tensor_d_dout);
+        FullLikeKernel<T, Context>(dev_ctx,
+                                   *in_tensor_dout,
+                                   Scalar(T(0.0, 0.0)),
+                                   in_tensor_dout->dtype(),
+                                   out_tensor_d_dout);
       }
       if (out_tensor_d_ddx && !out_tensor_d_ddx->IsInitialized()) {
-        FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                         *in_tensor_x,
-                                         Scalar(T(0.0, 0.0)),
-                                         in_tensor_x->dtype(),
-                                         out_tensor_d_ddx);
+        FullLikeKernel<T, Context>(dev_ctx,
+                                   *in_tensor_x,
+                                   Scalar(T(0.0, 0.0)),
+                                   in_tensor_x->dtype(),
+                                   out_tensor_d_ddx);
       }
       if (out_tensor_d_ddy && !out_tensor_d_ddy->IsInitialized()) {
-        FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                         *in_tensor_y,
-                                         Scalar(T(0.0, 0.0)),
-                                         in_tensor_y->dtype(),
-                                         out_tensor_d_ddy);
+        FullLikeKernel<T, Context>(dev_ctx,
+                                   *in_tensor_y,
+                                   Scalar(T(0.0, 0.0)),
+                                   in_tensor_y->dtype(),
+                                   out_tensor_d_ddy);
       }
     }
 #else
@@ -966,48 +964,48 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
     }
 
     if (out_tensor_d_x && !out_tensor_d_x->IsInitialized()) {
-      FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                       *in_tensor_x,
-                                       Scalar(T(0.0, 0.0)),
-                                       in_tensor_x->dtype(),
-                                       out_tensor_d_x);
+      FullLikeKernel<T, Context>(dev_ctx,
+                                 *in_tensor_x,
+                                 Scalar(T(0.0, 0.0)),
+                                 in_tensor_x->dtype(),
+                                 out_tensor_d_x);
     }
     if (out_tensor_d_y && !out_tensor_d_y->IsInitialized()) {
-      FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                       *in_tensor_y,
-                                       Scalar(T(0.0, 0.0)),
-                                       in_tensor_y->dtype(),
-                                       out_tensor_d_y);
+      FullLikeKernel<T, Context>(dev_ctx,
+                                 *in_tensor_y,
+                                 Scalar(T(0.0, 0.0)),
+                                 in_tensor_y->dtype(),
+                                 out_tensor_d_y);
     }
     if (out_tensor_d_dout && !out_tensor_d_dout->IsInitialized()) {
-      FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                       *in_tensor_dout,
-                                       Scalar(T(0.0, 0.0)),
-                                       in_tensor_dout->dtype(),
-                                       out_tensor_d_dout);
+      FullLikeKernel<T, Context>(dev_ctx,
+                                 *in_tensor_dout,
+                                 Scalar(T(0.0, 0.0)),
+                                 in_tensor_dout->dtype(),
+                                 out_tensor_d_dout);
     }
     if (out_tensor_d_ddx && !out_tensor_d_ddx->IsInitialized()) {
-      FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                       *in_tensor_x,
-                                       Scalar(T(0.0, 0.0)),
-                                       in_tensor_x->dtype(),
-                                       out_tensor_d_ddx);
+      FullLikeKernel<T, Context>(dev_ctx,
+                                 *in_tensor_x,
+                                 Scalar(T(0.0, 0.0)),
+                                 in_tensor_x->dtype(),
+                                 out_tensor_d_ddx);
     }
     if (out_tensor_d_ddy && !out_tensor_d_ddy->IsInitialized()) {
-      FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                       *in_tensor_y,
-                                       Scalar(T(0.0, 0.0)),
-                                       in_tensor_y->dtype(),
-                                       out_tensor_d_ddy);
+      FullLikeKernel<T, Context>(dev_ctx,
+                                 *in_tensor_y,
+                                 Scalar(T(0.0, 0.0)),
+                                 in_tensor_y->dtype(),
+                                 out_tensor_d_ddy);
     }
 
 #endif
   }
 };
 
-template <typename DeviceContext, typename T>
-struct DotTripleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
-  void operator()(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+struct DotTripleGradFunction<Context, T, phi::funcs::DisableComplex<T>> {
+  void operator()(const Context& dev_ctx,
                   const DenseTensor* in_tensor_x,
                   const DenseTensor* in_tensor_y,
                   const DenseTensor* in_tensor_dout,
@@ -1125,39 +1123,39 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
         }
       }
       if (out_tensor_d_x && !out_tensor_d_x->IsInitialized()) {
-        FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                         *in_tensor_x,
-                                         Scalar(0.0),
-                                         in_tensor_x->dtype(),
-                                         out_tensor_d_x);
+        FullLikeKernel<T, Context>(dev_ctx,
+                                   *in_tensor_x,
+                                   Scalar(0.0),
+                                   in_tensor_x->dtype(),
+                                   out_tensor_d_x);
       }
       if (out_tensor_d_y && !out_tensor_d_y->IsInitialized()) {
-        FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                         *in_tensor_y,
-                                         Scalar(0.0),
-                                         in_tensor_y->dtype(),
-                                         out_tensor_d_y);
+        FullLikeKernel<T, Context>(dev_ctx,
+                                   *in_tensor_y,
+                                   Scalar(0.0),
+                                   in_tensor_y->dtype(),
+                                   out_tensor_d_y);
       }
       if (out_tensor_d_dout && !out_tensor_d_dout->IsInitialized()) {
-        FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                         *in_tensor_dout,
-                                         Scalar(0.0),
-                                         in_tensor_dout->dtype(),
-                                         out_tensor_d_dout);
+        FullLikeKernel<T, Context>(dev_ctx,
+                                   *in_tensor_dout,
+                                   Scalar(0.0),
+                                   in_tensor_dout->dtype(),
+                                   out_tensor_d_dout);
       }
       if (out_tensor_d_ddx && !out_tensor_d_ddx->IsInitialized()) {
-        FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                         *in_tensor_x,
-                                         Scalar(0.0),
-                                         in_tensor_x->dtype(),
-                                         out_tensor_d_ddx);
+        FullLikeKernel<T, Context>(dev_ctx,
+                                   *in_tensor_x,
+                                   Scalar(0.0),
+                                   in_tensor_x->dtype(),
+                                   out_tensor_d_ddx);
       }
       if (out_tensor_d_ddy && !out_tensor_d_ddy->IsInitialized()) {
-        FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                         *in_tensor_y,
-                                         Scalar(0.0),
-                                         in_tensor_y->dtype(),
-                                         out_tensor_d_ddy);
+        FullLikeKernel<T, Context>(dev_ctx,
+                                   *in_tensor_y,
+                                   Scalar(0.0),
+                                   in_tensor_y->dtype(),
+                                   out_tensor_d_ddy);
       }
     }
 #else
@@ -1331,39 +1329,39 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
     }
 
     if (out_tensor_d_x && !out_tensor_d_x->IsInitialized()) {
-      FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                       *in_tensor_x,
-                                       Scalar(0.0),
-                                       in_tensor_x->dtype(),
-                                       out_tensor_d_x);
+      FullLikeKernel<T, Context>(dev_ctx,
+                                 *in_tensor_x,
+                                 Scalar(0.0),
+                                 in_tensor_x->dtype(),
+                                 out_tensor_d_x);
     }
     if (out_tensor_d_y && !out_tensor_d_y->IsInitialized()) {
-      FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                       *in_tensor_y,
-                                       Scalar(0.0),
-                                       in_tensor_y->dtype(),
-                                       out_tensor_d_y);
+      FullLikeKernel<T, Context>(dev_ctx,
+                                 *in_tensor_y,
+                                 Scalar(0.0),
+                                 in_tensor_y->dtype(),
+                                 out_tensor_d_y);
     }
     if (out_tensor_d_dout && !out_tensor_d_dout->IsInitialized()) {
-      FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                       *in_tensor_dout,
-                                       Scalar(0.0),
-                                       in_tensor_dout->dtype(),
-                                       out_tensor_d_dout);
+      FullLikeKernel<T, Context>(dev_ctx,
+                                 *in_tensor_dout,
+                                 Scalar(0.0),
+                                 in_tensor_dout->dtype(),
+                                 out_tensor_d_dout);
     }
     if (out_tensor_d_ddx && !out_tensor_d_ddx->IsInitialized()) {
-      FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                       *in_tensor_x,
-                                       Scalar(0.0),
-                                       in_tensor_x->dtype(),
-                                       out_tensor_d_ddx);
+      FullLikeKernel<T, Context>(dev_ctx,
+                                 *in_tensor_x,
+                                 Scalar(0.0),
+                                 in_tensor_x->dtype(),
+                                 out_tensor_d_ddx);
     }
     if (out_tensor_d_ddy && !out_tensor_d_ddy->IsInitialized()) {
-      FullLikeKernel<T, DeviceContext>(dev_ctx,
-                                       *in_tensor_y,
-                                       Scalar(0.0),
-                                       in_tensor_y->dtype(),
-                                       out_tensor_d_ddy);
+      FullLikeKernel<T, Context>(dev_ctx,
+                                 *in_tensor_y,
+                                 Scalar(0.0),
+                                 in_tensor_y->dtype(),
+                                 out_tensor_d_ddy);
     }
 
 #endif

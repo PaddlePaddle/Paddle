@@ -48,7 +48,7 @@ SpmdInfo GroupNormInferSpmdBase(const DistMetaTensor& x,
       x_ndim,
       3,
       common::errors::InvalidArgument(
-          "The ndim of x in group_norm should grater than 2, but got [%d].",
+          "The ndim of x in group_norm should be greater than 2, but got [%d].",
           x_ndim));
 
   PADDLE_ENFORCE_LE(

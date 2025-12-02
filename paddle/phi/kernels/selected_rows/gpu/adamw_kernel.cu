@@ -68,7 +68,9 @@ __global__ void SparseAdamWCUDAKernelREG(MT beta1,
                                          bool lazy_mode,
                                          int ndim,
                                          bool amsgrad) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   MT lr = *lr_ * lr_ratio;
 
   for (; id < ndim; id += blockDim.x * gridDim.x) {
@@ -257,11 +259,13 @@ void AdamwDenseParamSparseGradKernel(
 
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
     int threads = 512;
-    int ndim = param.numel();
-    int blocks = (ndim + threads - 1) / threads;
+    int64_t ndim = param.numel();
+    int64_t blocks = (ndim + threads - 1) / threads;
 
+    // NOTE(large-tensor): Kernel launch requires int type for grid dimension
+    PADDLE_ENFORCE_LE_INT_MAX(blocks, "blocks");
     SparseAdamWCUDAKernelREG<T, MPDType>
-        <<<blocks, threads, 0, dev_ctx.stream()>>>(
+        <<<static_cast<int>(blocks), threads, 0, dev_ctx.stream()>>>(
             beta1_,
             beta2_,
             epsilon_,

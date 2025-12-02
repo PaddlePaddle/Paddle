@@ -1,0 +1,36 @@
+id: no-int64-type-cuda-index-without-cast
+language: cpp
+files:
+  - paddle/**
+severity: error
+message: CUDA indexing calculation assigned to int64_t variable may overflow due to intermediate 32-bit arithmetic. If it is a false positive, please contact zrr1999 (Recommend), wanghuancoder for more information.
+note: Add static_cast<int64_t> to each CUDA built-in variable in the expression to prevent integer overflow during calculation.
+rule:
+  any:
+    - pattern: $T $VAR = $EXPR
+constraints:
+  T:
+    regex: ^(int64_t|size_t|IndexType)$
+  EXPR:
+    kind: binary_expression
+    any:
+      - regex: \b(threadIdx|blockIdx|blockDim|gridDim)\.(x|y|z|w)?\b
+    # - regex: \b(THREAD_ID|BLOCK_NUM|BLOCK_ID)_(X|Y|Z|W)?\b
+    not:
+      any:
+        - regex: static_cast<(int64_t|size_t|IndexType)>
+        - regex: \[(threadIdx|blockIdx|blockDim|gridDim)\.(x|y|z|w)\]
+rewriters:
+  - id: add-static-cast
+    rule:
+      pattern: $IDENT.$ATTR
+    constraints:
+      IDENT:
+        regex: ^(threadIdx|blockIdx|blockDim|gridDim)$
+    fix: static_cast<$T>($IDENT.$ATTR)
+transform:
+  NEW_EXPR:
+    rewrite:
+      rewriters: [add-static-cast]
+      source: $EXPR
+fix: $T $VAR = $NEW_EXPR;

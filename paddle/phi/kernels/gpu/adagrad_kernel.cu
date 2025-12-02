@@ -36,7 +36,9 @@ __global__ void AdagradGPUKernel(const T* param,
                                  MT* moment_out,
                                  MT* master_param_out,
                                  int64_t num) {
-  auto idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   MT lr_data = static_cast<MT>(lr[0]);
 
   for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
@@ -161,7 +163,7 @@ struct SparseAdagradFunctor<phi::GPUContext, T> {
                   DenseTensor* param) {
     // 1. g_m.rows = set(g.rows)
     auto grad_width = grad.value().dims()[1];
-    phi::funcs::scatter::MergeAdd<phi::GPUContext, T> merge_func;
+    funcs::scatter::MergeAdd<phi::GPUContext, T> merge_func;
     auto grad_merge = merge_func(dev_ctx, grad);
     auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
     phi::Vector<int64_t> merge_rows(grad_merge.rows());
@@ -169,7 +171,7 @@ struct SparseAdagradFunctor<phi::GPUContext, T> {
     auto grad_square =
         SquareSelectedRows<phi::GPUContext, T>(dev_ctx, grad_merge);
 
-    phi::funcs::SelectedRowsAddToTensor<phi::GPUContext, T> functor;
+    funcs::SelectedRowsAddToTensor<phi::GPUContext, T> functor;
     functor(dev_ctx, grad_square, moment);
 
     // 3. update parameter

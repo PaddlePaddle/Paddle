@@ -31,7 +31,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/random.cuh"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 
-COMMON_DECLARE_bool(torch_compatible_kernel);
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 namespace funcs {
@@ -988,7 +988,7 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
         output.numel() <= std::numeric_limits<int>::max()) {
       auto pool_divmods = FastDivModForPooling<int>(
           input_channels, output_width, output_height);
-      if (FLAGS_torch_compatible_kernel) {
+      if (FLAGS_use_accuracy_compatible_kernel) {
         int64_t blocks =
             (input_width * input_height + kBlockThreads - 1) / kBlockThreads;
         dim3 grid(blocks, batch_size, input_channels);
@@ -1042,7 +1042,7 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
     } else {
       auto pool_divmods = FastDivModForPooling<int64_t>(
           input_channels, output_width, output_height);
-      if (FLAGS_torch_compatible_kernel) {
+      if (FLAGS_use_accuracy_compatible_kernel) {
         int64_t blocks =
             (input_width * input_height + kBlockThreads - 1) / kBlockThreads;
         dim3 grid(blocks, batch_size, input_channels);

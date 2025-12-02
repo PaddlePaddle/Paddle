@@ -63,13 +63,12 @@ void LookupTableKernel(const Context &dev_ctx,
     if (padding_idx != kNoPadding && ids[i] == padding_idx) {
       memset(output + i * row_width, 0, row_width * sizeof(T));
     } else {
-      PADDLE_ENFORCE_GE(
-          ids[i],
-          0,
-          common::errors::InvalidArgument(
-              "Variable value (input) of OP(fluid.layers.embedding) "
-              "expected >= 0. But received %ld",
-              ids[i]));
+      PADDLE_ENFORCE_GE(ids[i],
+                        0,
+                        common::errors::InvalidArgument(
+                            "Variable value (input) of OP(lookup_table) "
+                            "expected >= 0. But received %ld",
+                            ids[i]));
       if (is_test) {
         auto id_index = table_t.GetIndexFromId(ids[i]);
 
@@ -91,13 +90,12 @@ void LookupTableKernel(const Context &dev_ctx,
         }
       } else {
         auto id_index = table_t.Index(ids[i]);
-        PADDLE_ENFORCE_GE(
-            ids[i],
-            0,
-            common::errors::InvalidArgument(
-                "Variable value (input) of OP(fluid.layers.embedding) "
-                "expected >= 0. But received %ld",
-                ids[i]));
+        PADDLE_ENFORCE_GE(ids[i],
+                          0,
+                          common::errors::InvalidArgument(
+                              "Variable value (input) of OP(lookup_table) "
+                              "expected >= 0. But received %ld",
+                              ids[i]));
         PADDLE_ENFORCE_GE(
             id_index,
             0,

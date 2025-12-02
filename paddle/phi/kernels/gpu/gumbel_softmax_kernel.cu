@@ -19,16 +19,9 @@
 #include "paddle/phi/kernels/impl/gumbel_softmax_kernel_impl.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -122,7 +115,9 @@ __global__ void AddGumbelNoiseCUDAKernel(const T* input_data,
                                          MPType* noise,
                                          const float temperature,
                                          int64_t n) {
-  int index = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t index =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int step = blockDim.x * gridDim.x;
   for (int64_t i = index; i < n; i += step) {
     MPType gumbel_noise = -log(-log(noise[i]));

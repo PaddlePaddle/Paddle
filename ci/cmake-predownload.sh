@@ -151,6 +151,46 @@ fi
 mkdir -p ${TARGET_DIR}/lapack/Linux/
 cp ${PREDOWNLOAD_DIR}/${filename} ${TARGET_DIR}/lapack/Linux/${filename}
 
+# magma.cmake
+if command -v nvidia-smi &>/dev/null; then
+    # Default to sm_70
+    # Try to detect sm_80 if possible
+    MAGMA_ARCH="sm_70"
+    EXPECTED_MD5="md5_for_sm_70_here"
+
+    GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -n 1)
+    echo "Detected GPU: ${GPU_NAME}"
+
+    # Simple mapping, extend if needed
+    if [[ "${GPU_NAME}" == *A100* ]]; then
+        MAGMA_ARCH="sm_80"
+        EXPECTED_MD5="c16079b2eaf48f5af741d979c5090667"
+    elif [[ "${GPU_NAME}" == *V100* ]]; then
+        MAGMA_ARCH="sm_70"
+        EXPECTED_MD5="649b886f9df75face6aa98015ccb1885"
+    fi
+    echo "Selected MAGMA architecture: ${MAGMA_ARCH}"
+    echo "Selected expected MD5: ${EXPECTED_MD5}"
+
+    # Prepare filenames and URLs
+    FILENAME="magma_lnx_${MAGMA_ARCH}_v2.9.0.20250728.tar.gz"
+    FILEPATH="${PREDOWNLOAD_DIR}/${FILENAME}"
+    URL="https://paddlepaddledeps.bj.bcebos.com/${FILENAME}"
+
+    echo "Checking ${FILENAME}..."
+    if check_file_with_md5 "${FILEPATH}" "${EXPECTED_MD5}"; then
+    echo "Use cached file"
+    else
+    echo "No valid ${FILENAME} in cache, try to download"
+    download_and_verify "${URL}" "${EXPECTED_MD5}" "${FILENAME}" || exit 1
+    fi
+
+    mkdir -p "${TARGET_DIR}/magma/Linux/"
+    cp "${PREDOWNLOAD_DIR}/${FILENAME}" "${TARGET_DIR}/magma/Linux/${FILENAME}"
+else
+    echo "nvidia-smi not found, skip downloading magma lib..."
+fi
+
 # mklml.cmake
 filename=csrmm_mklml_lnx_2019.0.5.tgz
 filepath="${PREDOWNLOAD_DIR}/${filename}"

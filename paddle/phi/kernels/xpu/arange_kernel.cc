@@ -35,6 +35,11 @@ void ArangeTensorKernel(const Context& dev_ctx,
 
   int64_t size = 0;
   phi::funcs::GetSize(start_value, end_value, step_value, &size);
+  if (size == 0) {
+    out->Resize(common::make_ddim({0}));
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   out->Resize(common::make_ddim({size}));
   XPUType* out_data =
       reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));

@@ -18,16 +18,9 @@
 #include <cfloat>
 #include <string>
 #include <vector>
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 
 namespace phi {
 

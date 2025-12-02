@@ -18,14 +18,12 @@
 #include <hip/hip_fp16.h>
 #include <hip/hip_runtime.h>
 #include <hiprand_kernel.h>
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
 #else
 #include <cuda_fp16.h>
 #include <curand_kernel.h>
-#include <cub/cub.cuh>
 #endif
 
+#include "paddle/phi/kernels/funcs/cub.h"
 #if defined(__CUDACC__) && CUDA_VERSION >= 11060
 #define CUDA_BFLOAT16_AVAILABLE
 #include <cuda_bf16.h>
@@ -1035,7 +1033,9 @@ void DispatchTopPSampling(const Context& dev_ctx,
 __global__ void setup_kernel(GPU(randState_t) * state,
                              int64_t* seed,
                              const int bs) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   for (int i = idx; i < bs; i += gridDim.x * blockDim.x) {
     GPU(rand_init)(static_cast<uint64_t>(seed[i]), 0, 0, &state[i]);
   }
@@ -1046,7 +1046,9 @@ __global__ void setup_kernel(GPU(randState_t) * state,
                              const uint64_t offset,
                              const int bs,
                              const bool need_batch_random) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   for (int i = idx; i < bs; i += gridDim.x * blockDim.x) {
     if (need_batch_random) {
       GPU(rand_init)(seed, i, offset, &state[i]);
@@ -1077,7 +1079,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
                         const DenseTensor& ps,
                         const paddle::optional<DenseTensor>& threshold,
                         const paddle::optional<DenseTensor>& topp_seed,
-                        int seed,
+                        int64_t seed,
                         int k,
                         const std::string& mode,
                         DenseTensor* out,
@@ -1090,8 +1092,9 @@ void TopPSamplingKernel(const Context& dev_ctx,
   const auto* input = &x;
   // get the input dims
   const auto& in_dims = input->dims();
-  int p_num = ps.numel();
-  int bs = in_dims[0];
+  int64_t p_num = ps.numel();
+  int64_t bs = in_dims[0];
+  // TODO(large-tensor): downstream functors may still use int
   int vocab_size = in_dims[1];
   T* out_ptr = dev_ctx.template Alloc<T>(out);
   int64_t* ids_ptr = dev_ctx.template Alloc<int64_t>(ids);

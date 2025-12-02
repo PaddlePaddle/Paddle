@@ -151,12 +151,19 @@ class TestCDLPackExchangeAPI(unittest.TestCase):
 class TestDLPackDataType(unittest.TestCase):
     @staticmethod
     def _paddle_dtype_to_tvm_ffi_dtype(paddle_dtype: paddle.dtype):
+        # Currently, our paddle.uint16 shows as 'paddle.bfloat16' in str(),
+        # We should use ml_dtypes to avoid this hack in the future.
+        if paddle_dtype == paddle.uint16:
+            return tvm_ffi.dtype("uint16")
         dtype_str = str(paddle_dtype).split('.')[-1]
         return tvm_ffi.dtype(dtype_str)
 
     def test_dlpack_data_type_base_protocol(self):
         for dtype in [
             paddle.uint8,
+            paddle.uint16,
+            paddle.uint32,
+            paddle.uint64,
             paddle.int16,
             paddle.int32,
             paddle.int64,
@@ -177,8 +184,28 @@ class TestDLPackDataType(unittest.TestCase):
                 ),
             )
 
-    # TODO(SigureMo): add e2e test case pass a paddle.dtype to TVM FFI Function
-    # in tvm_ffi next release
+    def test_data_type_as_input(self):
+        cpp_source = r"""
+            void check_dtype(tvm::ffi::TensorView x, DLDataType expected_dtype) {
+                TVM_FFI_ICHECK(x.dtype() == expected_dtype) << "dtype mismatch";
+            }
+        """
+        mod: Module = tvm_ffi.cpp.load_inline(
+            name='mod', cpp_sources=cpp_source, functions='check_dtype'
+        )
+        for dtype in [
+            paddle.bool,
+            paddle.uint8,
+            paddle.int16,
+            paddle.int32,
+            paddle.int64,
+            paddle.float32,
+            paddle.float64,
+            paddle.float16,
+            paddle.bfloat16,
+        ]:
+            x = paddle.zeros((10,), dtype=dtype).cpu()
+            mod.check_dtype(x, dtype)
 
 
 class TestDLPackDeviceType(unittest.TestCase):
@@ -216,8 +243,23 @@ class TestDLPackDeviceType(unittest.TestCase):
                 (DLDeviceType.kDLCUDA.value, 0),
             )
 
-    # TODO(SigureMo): add e2e test case pass a paddle.base.core.Place to TVM FFI Function
-    # in tvm_ffi next release
+    def test_dlpack_device_type_as_input(self):
+        cpp_source = r"""
+            void check_device(tvm::ffi::TensorView x, DLDevice expected_device) {
+                TVM_FFI_ICHECK(x.device().device_type == expected_device.device_type) << "device type mismatch";
+                TVM_FFI_ICHECK(x.device().device_id == expected_device.device_id) << "device id mismatch";
+            }
+        """
+        mod: Module = tvm_ffi.cpp.load_inline(
+            name='mod', cpp_sources=cpp_source, functions='check_device'
+        )
+
+        x_cpu = paddle.zeros((10,), dtype='float32').cpu()
+        mod.check_device(x_cpu, x_cpu.place)
+
+        if paddle.is_compiled_with_cuda():
+            x_gpu = paddle.zeros((10,), dtype='float32').cuda()
+            mod.check_device(x_gpu, x_gpu.place)
 
 
 if __name__ == '__main__':

@@ -15,6 +15,7 @@
 #include "paddle/fluid/eager/backward.h"
 
 #include "paddle/fluid/eager/general_grad.h"
+#include "paddle/fluid/eager/pylayer/py_layer_node.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/phi/core/memory/stats.h"
@@ -91,8 +92,8 @@ void ConstructForwardDebugDotGraph(const std::deque<GradNodeBase*>& init_queue,
     }
     visited.insert(node);
     if (need_dump_backward_subgraph &&
-        !egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
-            node)) {
+        !egr::EagerBackwardSubGraphNodeRecorder::Instance()
+             .IsGradNodeInVizGuard(node)) {
       // if we enable the need_dump_backward_subgraph the gradnode which is not
       // related to subgraph will not be recorded
     } else {
@@ -127,9 +128,9 @@ void ConstructForwardDebugDotGraph(const std::deque<GradNodeBase*>& init_queue,
         // subgraph
         if (need_dump_backward_subgraph &&
             !egr::EagerBackwardSubGraphNodeRecorder::Instance()
-                 .ContainsGradNode(node) &&
+                 .IsGradNodeInVizGuard(node) &&
             !egr::EagerBackwardSubGraphNodeRecorder::Instance()
-                 .ContainsGradNode(next_node)) {
+                 .IsGradNodeInVizGuard(next_node)) {
           queue.push_back(next_node);
           continue;
         }
@@ -146,7 +147,7 @@ void ConstructForwardDebugDotGraph(const std::deque<GradNodeBase*>& init_queue,
           } else {
             if (need_dump_backward_subgraph &&
                 !egr::EagerBackwardSubGraphNodeRecorder::Instance()
-                     .ContainsGradNode(next_node)) {
+                     .IsGradNodeInVizGuard(next_node)) {
               dot->AddNode(dot_next_node_label,
                            paddle::inference::analysis::orange_box_attrs,
                            dot_next_node_label,
@@ -162,10 +163,10 @@ void ConstructForwardDebugDotGraph(const std::deque<GradNodeBase*>& init_queue,
         // if need_dump_backward_subgraph but next_node is in subgraph and node
         // is not in subgraph we will add node in subgraph and add edge
         if (need_dump_backward_subgraph &&
-            egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
-                next_node) &&
+            egr::EagerBackwardSubGraphNodeRecorder::Instance()
+                .IsGradNodeInVizGuard(next_node) &&
             !egr::EagerBackwardSubGraphNodeRecorder::Instance()
-                 .ContainsGradNode(node)) {
+                 .IsGradNodeInVizGuard(node)) {
           dot_node_label = CreateNodeLabelInDot(node);
           // The node is not in subgraph but the node_next node is in subgraph
           // we use orange_box to mark it too
@@ -243,7 +244,9 @@ std::vector<paddle::Tensor> RunBackward(
 
   // Control variables related to debugging
   bool need_dump_backward_subgraph =
-      egr::EagerBackwardSubGraphNodeRecorder::Instance().HasCapturedSubgraph();
+      egr::EagerBackwardSubGraphNodeRecorder::Instance().NeedDumpBwdSubGraph();
+  bool need_backward_vlog_guard =
+      egr::EagerBackwardSubGraphNodeRecorder::Instance().NeedBwdVlogGuard();
   bool need_debug_backward_graph =
       !dump_backward_graph_path.empty() || need_dump_backward_subgraph;
   //
@@ -321,8 +324,15 @@ std::vector<paddle::Tensor> RunBackward(
       VLOG(4) << "RunBackward: Create Value for grad input tensor " << i
               << " of grad node: " << grad_node->name() << "(" << grad_node
               << ")";
-      node_input_buffers_dict[grad_node] =
-          std::make_unique<GradTensorHolder>(grad_node->InputMeta());
+
+      if (typeid(*grad_node) == typeid(GradNodePyLayer)) {
+        auto pylayer_gradnode = dynamic_cast<GradNodePyLayer*>(grad_node);
+        node_input_buffers_dict[grad_node] = std::make_unique<GradTensorHolder>(
+            grad_node->InputMeta(), pylayer_gradnode->GradInDtypeConsistent());
+      } else {
+        node_input_buffers_dict[grad_node] =
+            std::make_unique<GradTensorHolder>(grad_node->InputMeta());
+      }
     }
 
     // copy grad tensor since we should totally run grad without affect forward
@@ -337,7 +347,7 @@ std::vector<paddle::Tensor> RunBackward(
               "size = 0 or same size as tensors."));
       // Feed given tensor if it's provided
       VLOG(4) << "RunBackward: Fill grad input tensor " << i
-              << "with give grad tensor";
+              << " with given grad tensor";
 
       bool use_shared_buffer = false;
       // Check if inputs and outputs are equal in size and share the same buffer
@@ -355,9 +365,8 @@ std::vector<paddle::Tensor> RunBackward(
         paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
             inputs_grad_tensors;
         inputs_grad_tensors.push_back({grad_tensors[i]});
-        auto grad_holder = GradTensorHolder(std::move(inputs_grad_tensors));
-        node_input_buffers_dict[grad_node] =
-            std::make_unique<GradTensorHolder>(grad_holder);
+        node_input_buffers_dict[grad_node]->SetBuffers(
+            std::move(inputs_grad_tensors));
       } else {
         // Deep copy
         node_input_buffers_dict[grad_node]->CopyValueFromTensor(
@@ -451,6 +460,7 @@ std::vector<paddle::Tensor> RunBackward(
             << " Preparing ";
     try {
       queue.pop_front();
+      egr::LogLevelGuardBackward log_guard(need_backward_vlog_guard, node);
 
       // Construct backward graph for debug
       std::string dot_node_label = "";
@@ -581,20 +591,32 @@ std::vector<paddle::Tensor> RunBackward(
                                              need_dump_backward_subgraph);
             if (need_dump_grad_tensors &&
                 (egr::EagerBackwardSubGraphNodeRecorder::Instance()
-                     .ContainsGradNode(node) ||
+                     .IsGradNodeInVizGuard(node) ||
                  egr::EagerBackwardSubGraphNodeRecorder::Instance()
-                     .ContainsGradNode(next_node))) {
+                     .IsGradNodeInVizGuard(next_node))) {
               debug_grad_tensors_str += egr::FormatTensor(grad_output_tensor);
             }
           }
 
           if (!node_input_buffers_dict.count(next_node)) {
             const auto& input_meta = next_node->InputMeta();
-            auto grad_tensor_holder =
-                std::make_unique<GradTensorHolder>(input_meta);
+
             VLOG(6) << "RunBackward: Construct GradTensorHolder for grad node: "
                     << next_node->name() << "(" << next_node << ") ";
-            node_input_buffers_dict[next_node] = std::move(grad_tensor_holder);
+
+            if (typeid(*next_node) == typeid(GradNodePyLayer)) {
+              auto pylayer_gradnode = dynamic_cast<GradNodePyLayer*>(next_node);
+              auto grad_tensor_holder = std::make_unique<GradTensorHolder>(
+                  next_node->InputMeta(),
+                  pylayer_gradnode->GradInDtypeConsistent());
+              node_input_buffers_dict[next_node] =
+                  std::move(grad_tensor_holder);
+            } else {
+              auto grad_tensor_holder =
+                  std::make_unique<GradTensorHolder>(input_meta);
+              node_input_buffers_dict[next_node] =
+                  std::move(grad_tensor_holder);
+            }
           }
 
           VLOG(7) << "RunBackward: Sum or Move grad inputs for edge slot: "
@@ -710,7 +732,7 @@ std::vector<paddle::Tensor> RunBackward(
     }
   }
   // Save Debug info to the dump_backward_graph_path
-  if (need_debug_backward_graph) {
+  if (need_debug_backward_graph && !dot.IsEmpty()) {
     SaveDebugInfo(dump_backward_graph_path,
                   forward_debug_dot_graph.Build(),
                   debug_call_stack,

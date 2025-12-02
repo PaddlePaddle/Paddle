@@ -1,0 +1,57 @@
+# DeepEP of 2025.05.19, commit: d5ca4495c0c068bc617102841b9322d378fac8ea
+# if(WITH_NVSHMEM)
+#   set(CMAKE_CUDA_FLAGS
+#       "${CMAKE_CUDA_FLAGS} -rdc=true --ptxas-options=--register-usage-level=10,--warn-on-local-memory-usage"
+#   )
+#   string(REGEX REPLACE "-gencode arch=compute_[0-8][0-9],code=sm_[0-8][0-9]" ""
+#                        CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")
+
+#   set(DEEPEP_KERNEL_SRCS
+#       kernels/intranode.cu
+#       kernels/runtime.cu
+#       kernels/internode.cu
+#       kernels/internode_ll.cu
+#       kernels/internode_ll_two_stage.cu
+#       kernels/internode_ll.cu
+#       kernels/m2n_ll_two_stage.cu)
+#   cc_library(
+#     deepep_kernels
+#     SRCS ${DEEPEP_KERNEL_SRCS}
+#     DEPS nvshmem cudadevrt)
+
+#   set_target_properties(deepep_kernels PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+#   set_target_properties(deepep_kernels PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS
+#                                                   ON)
+# else()
+#   set(DEEPEP_KERNEL_SRCS kernels/intranode.cu kernels/runtime.cu)
+#   cc_library(deepep_kernels SRCS ${DEEPEP_KERNEL_SRCS})
+# endif()
+
+# cc_library(
+#   deep_ep_xpu
+#   SRCS deep_ep.cpp src/event_pool.cc src/event.cc src/CUDAStream.cc
+#   DEPS phi common deepep_kernels)
+
+# set_target_properties(deep_ep PROPERTIES CUDA_SEPARABLE_COMPILATION OFF)
+# target_compile_options(deep_ep PRIVATE -Wno-reorder -Wno-unused-variable)
+
+# 永远不编译 .cu
+set(DEEPEP_KERNEL_SRCS) # 置空
+
+# 用一个空的 interface 目标占位，满足 DEPS 依赖
+add_library(deepep_kernels INTERFACE)
+
+# 主库不变
+cc_library(
+  deep_ep_xpu
+  SRCS deep_ep.cpp src/event_pool.cc src/event.cc src/CUDAStream.cc
+  DEPS phi common deepep_kernels)
+
+# 不设置任何 CUDA 属性（删除/注释下面两行）
+# set_target_properties(deepep_kernels PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+# set_target_properties(deepep_kernels PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+
+# 修正目标名
+# set_target_properties(deep_ep PROPERTIES CUDA_SEPARABLE_COMPILATION OFF)  # ← 删除
+# target_compile_options(deep_ep PRIVATE -Wno-reorder -Wno-unused-variable) # ← 删除
+target_compile_options(deep_ep_xpu PRIVATE -Wno-reorder -Wno-unused-variable)

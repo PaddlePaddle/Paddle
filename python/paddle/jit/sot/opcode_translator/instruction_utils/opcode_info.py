@@ -29,7 +29,7 @@ UNCONDITIONAL_JUMP = {"JUMP_ABSOLUTE", "JUMP_FORWARD"}
 if sys.version_info >= (3, 11):
     UNCONDITIONAL_JUMP.add("JUMP_BACKWARD")
 RETURN = {"RETURN_VALUE"}
-if sys.version_info >= (3, 12):
+if (3, 12) <= sys.version_info < (3, 14):
     RETURN.add("RETURN_CONST")
 
 
@@ -141,3 +141,27 @@ PYOPCODE_CACHE_SIZE = _get_pyopcode_cache_size()
 class ExceptionHandler:
     opcode = 257
     opname = "EXCEPT_HANDLER"
+
+
+def _get_binary_op_arg_map() -> dict[str, int]:
+    if sys.version_info < (3, 11):
+        return {}
+    res = {}
+    for i, op in enumerate(opcode._nb_ops):
+        res[op[0]] = i
+    return res
+
+
+BINARY_OP_ARG_MAP: dict[str, int] = _get_binary_op_arg_map()
+
+FUSED_INSTS: dict[str, tuple[str, str]] = {
+    "LOAD_FAST_LOAD_FAST": ("LOAD_FAST", "LOAD_FAST"),
+    "LOAD_FAST_BORROW_LOAD_FAST_BORROW": (
+        "LOAD_FAST_BORROW",
+        "LOAD_FAST_BORROW",
+    ),
+    "STORE_FAST_STORE_FAST": ("STORE_FAST", "STORE_FAST"),
+    "STORE_FAST_LOAD_FAST": ("STORE_FAST", "LOAD_FAST"),
+}
+
+TO_FUSED_INSTS = {v: k for k, v in FUSED_INSTS.items()}

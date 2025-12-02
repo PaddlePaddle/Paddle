@@ -1159,12 +1159,25 @@ def monkey_patch_tensor():
     def cuda(
         self: Tensor, device_id: int | None = None, blocking: bool = True
     ) -> Tensor:
+        device_type = paddle.device.get_all_device_type()
+        if (
+            len(device_type) > 0
+            and paddle.device.is_compiled_with_custom_device()
+        ):
+            res_place_class = core.CustomPlace
+        elif paddle.device.is_compiled_with_xpu():
+            res_place_class = core.XPUPlace
+        elif paddle.device.is_compiled_with_cuda():
+            res_place_class = core.CUDAPlace
+        else:
+            raise ValueError("No available device found.")
+
         if device_id is None:
             res_place = framework._current_expected_place()
-            if not isinstance(res_place, core.CUDAPlace):
-                res_place = core.CUDAPlace(0)
+            if not isinstance(res_place, res_place_class):
+                res_place = res_place_class(0)
         elif isinstance(device_id, int):
-            res_place = core.CUDAPlace(device_id)
+            res_place = res_place_class(device_id)
         else:
             raise ValueError("device_id must be int|None")
 
@@ -1256,7 +1269,9 @@ def monkey_patch_tensor():
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
-        Convert the current DenseTensor to SparseTensor in COO format.
+        Convert the current DenseTensor to SparseTensor in COO format. When the input is already a SparseCooTensor, this function will directly return
+        the input itself without performing any conversion.
+
 
         Returns:
             Tensor: A SparseCooTensor
@@ -1274,6 +1289,8 @@ def monkey_patch_tensor():
                                 [1, 3, 2, 3]],
                        values=[1., 2., 3., 4.])
         """
+        if self.is_sparse_coo():
+            return self
 
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
 
@@ -1368,6 +1385,32 @@ def monkey_patch_tensor():
             return DLDeviceType.kDLOneAPI, place.get_device_id()
         else:
             raise ValueError(f"Unsupported tensor place: {place}")
+
+    @property
+    def device(self: Tensor) -> str:
+        """
+        Return the device descriptor string indicating where the tensor is located.
+
+        Returns:
+            str: A string representing the device where the tensor resides.
+                 Possible formats include:
+                 - 'cpu' for CPU tensors
+                 - 'cuda:{device_id}' for GPU tensors (e.g., 'cuda:0')
+                 - 'xpu:{device_id}' for XPU tensors (e.g., 'xpu:0')
+                 - '{device_type}:{device_id}' for custom device tensors
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> # CPU tensor
+                >>> cpu_tensor = paddle.to_tensor([1, 2, 3]).to("cpu")
+                >>> print(cpu_tensor.device)
+                'cpu'
+        """
+        place = self.place
+        return paddle.device(place)
 
     @property
     def __cuda_array_interface__(self):
@@ -1537,6 +1580,30 @@ def monkey_patch_tensor():
                 "Currently, the __tvm_ffi_env_stream__ method is only supported for GPU tensors."
             )
 
+    def _get_c_dlpack_exchange_api():
+        """
+        Returns the C DLPack exchange API pointer for the current tensor.
+        This is used for interoperability with other libraries that support DLPack.
+
+        In tvm ffi 0.1.3 or below, this API returns the pointer directly.
+        In newer versions, it returns a python capsule containing the pointer.
+        """
+        try:
+            import tvm_ffi
+
+            tvm_ffi_version = tuple(
+                int(x) for x in tvm_ffi.__version__.split(".")
+            )
+            # We assume version format is like '0.1.3'.
+            # All supported releases are '0.1.0', '0.1.1', '0.1.2', '0.1.3'.
+            # We simply assume user will not use beta/rc versions here.
+            # TODO(dev): We should cleanup this after tvm ffi 0.1.3 is not supported.
+            if tvm_ffi_version <= (0, 1, 3):
+                return core.dlpack_exchange_api_ptr()
+        except Exception:
+            pass
+        return core.dlpack_exchange_api_pycapsule()
+
     if not hasattr(core, "eager"):
         return
 
@@ -1586,7 +1653,8 @@ def monkey_patch_tensor():
         ("__dlpack_device__", __dlpack_device__),
         ("get_device", get_device),
         ("__tvm_ffi_env_stream__", __tvm_ffi_env_stream__),
-        ("__c_dlpack_exchange_api__", core.dlpack_exchange_api_ptr()),
+        ("__c_dlpack_exchange_api__", _get_c_dlpack_exchange_api()),
+        ("device", device),
     ):
         setattr(core.eager.Tensor, method_name, method)
 
