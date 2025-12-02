@@ -1092,5 +1092,20 @@ class TestToStaticCheck(unittest.TestCase):
         func2()
 
 
+class TestViewGrad(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+        x = paddle.randn(2, 12, requires_grad=True)
+
+        y = x.view(2, 3, 4)
+        z = y.transpose(1, 2)
+
+        loss = z.sum()
+        loss.backward()
+
+        x_grad_expected = paddle.full_like(x, 1.0)
+        self.assertEqual((x.grad == x_grad_expected).all(), True)
+
+
 if __name__ == '__main__':
     unittest.main()
