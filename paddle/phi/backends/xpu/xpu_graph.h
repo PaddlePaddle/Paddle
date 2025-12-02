@@ -55,14 +55,12 @@ class XPUGraphContextManager {
     std::lock_guard<std::mutex> lk(ctx_mtx_);
     DeviceContextMap &ctxs = xpu_graph_ctx_pool_[pool_id];
     if (ctxs.find(place) == ctxs.end()) {
-      std::cout << "yw debug : ctxs.find(place) == ctxs.end()" << std::endl;
       phi::memory_utils::EmplaceDeviceContexts(
           &ctxs,
           {place},
           /*disable_setting_default_stream_for_allocator=*/true,
           stream_priority);
     }
-     std::cout << "yw debug : ============ctxs.find(place) == ctxs.end()==========" << std::endl;
     return ctxs[place].get().get();
   }
 
