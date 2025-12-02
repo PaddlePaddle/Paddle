@@ -331,6 +331,10 @@ class TestSDPKernelFlags(unittest.TestCase):
             pass
 
 
+@unittest.skipIf(
+    not paddle.device.is_available(),
+    "Skip test on CPU for cpu does not support fp16 matmul",
+)
 class TestZeroSizeBase(unittest.TestCase):
     def setUp(self) -> None:
         self.query_shape = [1, 0, 32, 128]
