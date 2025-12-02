@@ -108,7 +108,6 @@ GLOBAL_OVERRIDES: dict[str, OverriddenAttribute] = {
 
 TORCH_PROXY_BLOCKED_MODULES = {
     "tvm_ffi",
-    "transformers",
 }
 
 MAGIC_DISABLED_MODULE_ATTR: str = "__disable_torch_proxy__"
@@ -174,10 +173,11 @@ def _is_torch_proxy_blocked_module(name: str) -> bool:
 
 
 def _is_called_by_module_with_specific_dunder_attr(dunder_attr: str) -> bool:
-    stack = inspect.stack()
-    for frame_info in stack[1:]:
-        if frame_info.frame.f_globals.get(dunder_attr):
+    frame = inspect.currentframe()
+    while frame is not None:
+        if frame.f_globals.get(dunder_attr):
             return True
+        frame = frame.f_back
     return False
 
 
