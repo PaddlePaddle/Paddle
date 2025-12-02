@@ -33,6 +33,8 @@ import threading
 import warnings
 from importlib import machinery
 
+import paddle
+
 try:
     from subprocess import DEVNULL  # py3
 except ImportError:
@@ -627,6 +629,25 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
                 )
             extra_compile_args = copy.deepcopy(extra_compile_args)
             extra_compile_args["nvcc"] = nvcc_options
+
+    dlink_libraries = kwargs.get('dlink_libraries', [])
+    dlink = kwargs.get('dlink', False) or dlink_libraries
+    if dlink:
+        extra_compile_args = kwargs.get('extra_compile_args', {})
+
+        extra_compile_args_dlink = extra_compile_args.get('nvcc_dlink', [])
+        extra_compile_args_dlink += ['-dlink']
+        extra_compile_args_dlink += [f'-L{x}' for x in library_dirs]
+        extra_compile_args_dlink += [f'-l{x}' for x in dlink_libraries]
+        if (
+            paddle.version.cuda() != "False"
+            and float(paddle.version.cuda()) >= 11.2
+        ):
+            extra_compile_args_dlink += [
+                '-dlto'
+            ]  # Device Link Time Optimization started from cuda 11.2
+
+        extra_compile_args['nvcc_dlink'] = extra_compile_args_dlink
 
     kwargs['extra_compile_args'] = extra_compile_args
 
