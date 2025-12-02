@@ -31,7 +31,7 @@ void I1eKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   const T* x_data = x.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, size);
+  funcs::ForRange<Context> for_range(dev_ctx, size);
   I1eFunctor<T> functor(x_data, out_data, size);
   for_range(functor);
 }

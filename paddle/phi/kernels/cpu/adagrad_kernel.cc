@@ -74,7 +74,7 @@ struct SparseAdagradFunctor<phi::CPUContext, T> {
                   DenseTensor* param) {
     // 1. g_m.rows = set(g.rows)
     auto grad_width = grad.value().dims()[1];
-    phi::funcs::scatter::MergeAdd<phi::CPUContext, T> merge_func;
+    funcs::scatter::MergeAdd<phi::CPUContext, T> merge_func;
     auto grad_merge = merge_func(dev_ctx, grad);
     auto& merge_rows = grad_merge.rows();
     auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
@@ -83,7 +83,7 @@ struct SparseAdagradFunctor<phi::CPUContext, T> {
     auto grad_square =
         SquareSelectedRows<phi::CPUContext, T>(dev_ctx, grad_merge);
 
-    phi::funcs::SelectedRowsAddToTensor<phi::CPUContext, T> functor;
+    funcs::SelectedRowsAddToTensor<phi::CPUContext, T> functor;
     functor(dev_ctx, grad_square, moment);
 
     // 3. update parameter

@@ -65,12 +65,12 @@ void CumprodGradKernel(const Context& dev_ctx,
                    .Allocate(numel * sizeof(T));
     auto* out_data_conj = reinterpret_cast<T*>(out_conj->ptr());
 
-    phi::funcs::ForRange<Context> for_range_x(dev_ctx, numel);
-    phi::funcs::ConjFunctor<T> functor_x(x_data, numel, x_data_conj);
+    funcs::ForRange<Context> for_range_x(dev_ctx, numel);
+    funcs::ConjFunctor<T> functor_x(x_data, numel, x_data_conj);
     for_range_x(functor_x);
 
-    phi::funcs::ForRange<Context> for_range_out(dev_ctx, numel);
-    phi::funcs::ConjFunctor<T> functor_out(out_data, numel, out_data_conj);
+    funcs::ForRange<Context> for_range_out(dev_ctx, numel);
+    funcs::ConjFunctor<T> functor_out(out_data, numel, out_data_conj);
     for_range_out(functor_out);
 
     x_data_deal = x_data_conj;

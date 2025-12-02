@@ -147,7 +147,7 @@ void AddNKernel(const Context &dev_ctx,
 
   int start = in_place ? 1 : 0;
   if (!in_place) {
-    phi::funcs::SetConstant<phi::GPUContext, T> constant_functor;
+    funcs::SetConstant<phi::GPUContext, T> constant_functor;
     constant_functor(dev_ctx, out, static_cast<T>(0));
   }
 

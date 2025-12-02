@@ -91,7 +91,7 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         mask_dim));
 
   using Functor = MaskedSelectFunctor<bool, T, T>;
-  phi::funcs::SelectKernel<bool, T, T, 1, Functor>(
+  funcs::SelectKernel<bool, T, T, 1, Functor>(
       dev_ctx, mask_expand, x_expand, out, Functor());
 }
 

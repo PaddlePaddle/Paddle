@@ -161,19 +161,19 @@ void DGCKernel(const Context& dev_ctx,
 
     // v = u + v + grad
     dev_ctx.template Alloc<T>(v_out);
-    phi::funcs::ElementwiseCompute<phi::funcs::AddFunctor<T>, T>(
-        dev_ctx, u, v, phi::funcs::AddFunctor<T>(), v_out, 0);
+    funcs::ElementwiseCompute<funcs::AddFunctor<T>, T>(
+        dev_ctx, u, v, funcs::AddFunctor<T>(), v_out, 0);
 
-    phi::funcs::ElementwiseCompute<phi::funcs::AddFunctor<T>, T>(
-        dev_ctx, grad, v, phi::funcs::AddFunctor<T>(), v_out, 0);
+    funcs::ElementwiseCompute<funcs::AddFunctor<T>, T>(
+        dev_ctx, grad, v, funcs::AddFunctor<T>(), v_out, 0);
   } else {
     // u = m * u + grad
     u_out_e.device(eigen_ctx) = m * u_e + grad_out_e;
 
     // v = u + v
     dev_ctx.template Alloc<T>(v_out);
-    phi::funcs::ElementwiseCompute<phi::funcs::AddFunctor<T>, T>(
-        dev_ctx, u, v, phi::funcs::AddFunctor<T>(), v_out, 0);
+    funcs::ElementwiseCompute<funcs::AddFunctor<T>, T>(
+        dev_ctx, u, v, funcs::AddFunctor<T>(), v_out, 0);
   }
 
   T* v_out_data = dev_ctx.template Alloc<T>(v_out);
@@ -215,7 +215,7 @@ void DGCKernel(const Context& dev_ctx,
         "V_out numel error, V_out numel is %d.", v_out->numel()));
   }
 
-  phi::funcs::SetConstant<Context, T> tset;
+  funcs::SetConstant<Context, T> tset;
   tset(dev_ctx, grad_out, static_cast<T>(0));
 }
 

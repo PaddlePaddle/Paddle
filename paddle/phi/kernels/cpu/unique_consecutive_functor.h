@@ -130,7 +130,7 @@ static ForwardIt UniqueConsecutiveDimImpl(
   while (++first != last) {
     int64_t idx_first = std::distance(begin, first);
     int64_t idx_result = std::distance(begin, result);
-    if (!phi::funcs::Equal<InT>(*result, *first)) {
+    if (!funcs::Equal<InT>(*result, *first)) {
       if (++result != first) {
         *result = std::move(*first);
       }
@@ -163,7 +163,7 @@ static void UniqueConsecutiveDim(const Context& dev_ctx,
   DDim in_trans_dims = common::make_ddim(in_trans_dims_vec);
   in_trans.Resize(in_trans_dims);
   dev_ctx.template Alloc<InT>(&in_trans);
-  phi::funcs::TransCompute<Context, InT>(
+  funcs::TransCompute<Context, InT>(
       in.dims().size(), dev_ctx, in, &in_trans, permute);
   // reshape tensor: eg. [dim1, dim0, dim2] -> [dim1, dim0*dim2]
   DDim in_trans_flat_dims = common::flatten_to_2d(in_trans_dims, 1);
@@ -184,7 +184,7 @@ static void UniqueConsecutiveDim(const Context& dev_ctx,
            in_trans_data + static_cast<int64_t>(sorted_indices_vec[i]) * col,
            col * sizeof(InT));
   }
-  std::vector<DenseTensor> input_unbind = phi::funcs::Unbind(input_sorted);
+  std::vector<DenseTensor> input_unbind = funcs::Unbind(input_sorted);
   std::vector<IndexT> inverse_vec(sorted_indices_vec.size(), 0);
   std::vector<IndexT> counts_vec(sorted_indices_vec.size(), 0);
   auto last = UniqueConsecutiveDimImpl<Context,
@@ -198,7 +198,7 @@ static void UniqueConsecutiveDim(const Context& dev_ctx,
   input_unbind.erase(last, input_unbind.end());
   counts_vec.erase(counts_vec.begin() + input_unbind.size(), counts_vec.end());
 
-  phi::funcs::ConcatFunctor<Context, InT> concat_functor;
+  funcs::ConcatFunctor<Context, InT> concat_functor;
   DenseTensor out_trans;
   std::vector<int64_t> out_trans_dims_vec = in_trans_dims_vec;
   out_trans_dims_vec[0] = input_unbind.size();
@@ -208,7 +208,7 @@ static void UniqueConsecutiveDim(const Context& dev_ctx,
   out->Resize(common::make_ddim(out_trans_dims_vec));
   dev_ctx.template Alloc<InT>(out);
   concat_functor(dev_ctx, input_unbind, 0, &out_trans);
-  phi::funcs::TransCompute<Context, InT>(
+  funcs::TransCompute<Context, InT>(
       out_trans.dims().size(), dev_ctx, out_trans, out, permute);
   if (return_inverse) {
     phi::TensorFromVector(inverse_vec, dev_ctx, inverse);

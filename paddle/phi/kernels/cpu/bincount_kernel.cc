@@ -62,14 +62,14 @@ void BincountInner(const Context& dev_ctx,
     const T* weights_data = weights->data<T>();
     if (weights->dtype() == DataType::FLOAT32) {
       float* output_data = dev_ctx.template Alloc<float>(output);
-      phi::funcs::SetConstant<Context, float>()(
+      funcs::SetConstant<Context, float>()(
           dev_ctx, output, static_cast<float>(0));
       for (int64_t i = 0; i < input_numel; i++) {
         output_data[input_data[i]] += static_cast<float>(weights_data[i]);
       }
     } else {
       double* output_data = dev_ctx.template Alloc<double>(output);
-      phi::funcs::SetConstant<Context, double>()(
+      funcs::SetConstant<Context, double>()(
           dev_ctx, output, static_cast<double>(0));
       for (int64_t i = 0; i < input_numel; i++) {
         output_data[input_data[i]] += static_cast<double>(weights_data[i]);
@@ -78,7 +78,7 @@ void BincountInner(const Context& dev_ctx,
 
   } else {
     int64_t* output_data = dev_ctx.template Alloc<int64_t>(output);
-    phi::funcs::SetConstant<Context, int64_t>()(
+    funcs::SetConstant<Context, int64_t>()(
         dev_ctx, output, static_cast<int64_t>(0));
     for (int64_t i = 0; i < input_numel; i++) {
       output_data[input_data[i]] += 1L;

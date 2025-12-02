@@ -40,7 +40,7 @@ template <typename T>
 static __device__ __forceinline__ T Log(T x) {
   using AccT = typename dtype::MPTypeTrait<T>::Type;
   AccT logx = std::log(static_cast<AccT>(x));
-  return phi::funcs::TolerableValue<T>()(static_cast<T>(logx));
+  return funcs::TolerableValue<T>()(static_cast<T>(logx));
 }
 
 // Wrapper of exp function. Use exp(float32) for float16
@@ -48,7 +48,7 @@ template <typename T>
 static __device__ __forceinline__ T Exp(T x) {
   using AccT = typename dtype::MPTypeTrait<T>::Type;
   AccT expx = std::exp(static_cast<AccT>(x));
-  return phi::funcs::TolerableValue<T>()(static_cast<T>(expx));
+  return funcs::TolerableValue<T>()(static_cast<T>(expx));
 }
 
 template <typename Tx, typename Ty = Tx>
@@ -1248,16 +1248,16 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
     const DenseTensor& labels = label;
 
     const int rank = softmax->dims().size();
-    const int axis_v = phi::funcs::CanonicalAxis(axis, rank);
+    const int axis_v = funcs::CanonicalAxis(axis, rank);
     const int64_t axis_dim = softmax->dims()[axis_v];
 
-    const int64_t n = phi::funcs::SizeToAxis(axis_v, softmax->dims());
-    const int64_t d = phi::funcs::SizeFromAxis(axis_v, softmax->dims());
+    const int64_t n = funcs::SizeToAxis(axis_v, softmax->dims());
+    const int64_t d = funcs::SizeFromAxis(axis_v, softmax->dims());
 
     auto* softmax_out_data = dev_ctx.template Alloc<T>(softmax_out);
     auto* loss_data = dev_ctx.template Alloc<T>(loss);
 
-    phi::funcs::SetConstant<GPUContext, T> set_constant;
+    funcs::SetConstant<GPUContext, T> set_constant;
     set_constant(dev_ctx, loss, static_cast<T>(0));
     if (axis_dim == 1) {
       set_constant(dev_ctx, softmax_out, static_cast<T>(1));
@@ -1273,15 +1273,15 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
     DenseTensor softmax_out_2d(*softmax_out);
     softmax_out_2d.Resize({n, d});
 
-    // phi::funcs::CrossEntropyFunctor support axis is the last
+    // funcs::CrossEntropyFunctor support axis is the last
     if (axis_v == -1) {
-      phi::funcs::CrossEntropyFunctor<GPUContext, T>()(dev_ctx,
-                                                       &loss_2d,
-                                                       &softmax_2d,
-                                                       &labels_2d,
-                                                       soft_label,
-                                                       ignore_index,
-                                                       axis_dim);
+      funcs::CrossEntropyFunctor<GPUContext, T>()(dev_ctx,
+                                                  &loss_2d,
+                                                  &softmax_2d,
+                                                  &labels_2d,
+                                                  soft_label,
+                                                  ignore_index,
+                                                  axis_dim);
       return;
     }
 
@@ -1330,17 +1330,17 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
   }
 
   const int rank = logits.dims().size();
-  const int axis_v = phi::funcs::CanonicalAxis(axis, rank);
+  const int axis_v = funcs::CanonicalAxis(axis, rank);
   int64_t axis_dim = logits.dims()[axis_v];
 
-  const int64_t n = phi::funcs::SizeToAxis(axis_v, logits.dims());
-  const int64_t d = phi::funcs::SizeFromAxis(axis_v, logits.dims());
+  const int64_t n = funcs::SizeToAxis(axis_v, logits.dims());
+  const int64_t d = funcs::SizeFromAxis(axis_v, logits.dims());
 
   if (axis_dim == 1) {
     auto* softmax_data = dev_ctx.template Alloc<T>(softmax);
     auto* loss_data = dev_ctx.template Alloc<T>(loss);
 
-    phi::funcs::SetConstant<GPUContext, T> set_constant;
+    funcs::SetConstant<GPUContext, T> set_constant;
     set_constant(dev_ctx, softmax, static_cast<T>(1));
     set_constant(dev_ctx, loss, static_cast<T>(0));
     return;
@@ -1373,15 +1373,15 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
       labels_2d.Resize({n, label.numel() / n});
       DenseTensor loss_2d(*loss);
       loss_2d.Resize({n, 1});
-      phi::funcs::SoftmaxCUDNNFunctor<T, GPUContext>()(
+      funcs::SoftmaxCUDNNFunctor<T, GPUContext>()(
           dev_ctx, &logits_2d, &softmax_2d);
-      phi::funcs::CrossEntropyFunctor<GPUContext, T>()(dev_ctx,
-                                                       &loss_2d,
-                                                       &softmax_2d,
-                                                       &labels_2d,
-                                                       false,
-                                                       ignore_index,
-                                                       axis_dim);
+      funcs::CrossEntropyFunctor<GPUContext, T>()(dev_ctx,
+                                                  &loss_2d,
+                                                  &softmax_2d,
+                                                  &labels_2d,
+                                                  false,
+                                                  ignore_index,
+                                                  axis_dim);
     } else {
       // For bfloat16, we integrated mix-precision inside the kernel
       if constexpr (std::is_same_v<T, phi::bfloat16>) {
@@ -1435,8 +1435,8 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
                                    DenseTensor* softmax,
                                    DenseTensor* loss) {
   const int rank = logits.dims().size();
-  const int64_t axis_v = phi::funcs::CanonicalAxis(axis, rank);
-  const int64_t d = phi::funcs::SizeFromAxis<int64_t>(axis_v, logits.dims());
+  const int64_t axis_v = funcs::CanonicalAxis(axis, rank);
+  const int64_t d = funcs::SizeFromAxis<int64_t>(axis_v, logits.dims());
   PADDLE_ENFORCE_LE_INT_MAX(d, "d");
   if (softmax->numel() == 0) {
     // When soft_label is False, the axis column cannot be 0. Other dimensions

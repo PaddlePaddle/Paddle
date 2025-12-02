@@ -101,7 +101,7 @@ void CConcatKernel(const Context& dev_ctx,
     offset += rows_per_tensor;
   }
 
-  phi::funcs::ConcatFunctor<phi::GPUContext, T> functor;
+  funcs::ConcatFunctor<phi::GPUContext, T> functor;
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
   functor(dev_ctx, inputs, axis, out);
