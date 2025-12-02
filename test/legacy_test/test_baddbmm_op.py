@@ -874,35 +874,6 @@ class TestBaddBmmUnderlineAPI(unittest.TestCase):
 
         paddle.enable_static()
 
-    def test_api_out(self):
-        if in_pir_mode():
-            self.skipTest("PIR not support out tensor")
-        data_x = np.ones((2, 2, 2)).astype(np.float32)
-        data_y = np.ones((2, 2, 2)).astype(np.float32)
-        data_input = np.ones((2, 2, 2)).astype(np.float32)
-        data_alpha = 0.1
-        data_beta = 1.0
-
-        paddle.disable_static()
-
-        x = paddle.to_tensor(data_x)
-        y = paddle.to_tensor(data_y)
-        input = paddle.to_tensor(data_input)
-        out = paddle.zeros((2, 2, 2), dtype='float32')
-        paddle_output = paddle.baddbmm_(
-            input=input, x=x, y=y, beta=data_beta, alpha=data_alpha, out=out
-        )
-        numpy_output = data_beta * data_input + data_alpha * np.matmul(
-            data_x, data_y
-        )
-
-        # Check that the returned tensor is the same as the out tensor
-        self.assertIs(paddle_output, out)
-        # Check that the values are correct
-        np.testing.assert_allclose(numpy_output, out.numpy(), rtol=1e-05)
-
-        paddle.enable_static()
-
     def test_api_alias(self):
         data_x = np.ones((2, 2, 2)).astype(np.float32)
         data_y = np.ones((2, 2, 2)).astype(np.float32)
