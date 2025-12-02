@@ -411,7 +411,7 @@ if(WITH_XPU)
   endif()
 
   if(NOT WITH_MAGMA)
-    list(REMOVE_ITEM kernel_gpu "xpu/eig_kernel.cc")
+    list(REMOVE_ITEM kernel_xpu "xpu/eig_kernel.cc")
   endif()
 
   collect_srcs(kernels_srcs SRCS ${kernel_xpu})
