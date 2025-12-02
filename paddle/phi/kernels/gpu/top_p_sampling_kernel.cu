@@ -18,14 +18,12 @@
 #include <hip/hip_fp16.h>
 #include <hip/hip_runtime.h>
 #include <hiprand_kernel.h>
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
 #else
 #include <cuda_fp16.h>
 #include <curand_kernel.h>
-#include <cub/cub.cuh>
 #endif
 
+#include "paddle/phi/kernels/funcs/cub.h"
 #if defined(__CUDACC__) && CUDA_VERSION >= 11060
 #define CUDA_BFLOAT16_AVAILABLE
 #include <cuda_bf16.h>

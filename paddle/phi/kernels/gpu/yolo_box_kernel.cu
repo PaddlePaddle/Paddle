@@ -152,7 +152,7 @@ void YoloBoxKernel(const Context& dev_ctx,
   T* boxes_data = dev_ctx.template Alloc<T>(boxes);
   scores->Resize({n, box_num, class_num});
   T* scores_data = dev_ctx.template Alloc<T>(scores);
-  phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
+  funcs::SetConstant<phi::GPUContext, T> set_zero;
   set_zero(dev_ctx, boxes, static_cast<T>(0));
   set_zero(dev_ctx, scores, static_cast<T>(0));
   backends::gpu::GpuLaunchConfig config =

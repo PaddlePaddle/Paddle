@@ -240,7 +240,7 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
   if (out->numel() == 1) {
     auto raw_dims = out->dims();
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-    phi::funcs::SetConstant<Context, T2> set_zero;
+    funcs::SetConstant<Context, T2> set_zero;
     set_zero(dev_ctx, indices, static_cast<T2>(0.0));
     out->Resize(raw_dims);
     indices->Resize(raw_dims);

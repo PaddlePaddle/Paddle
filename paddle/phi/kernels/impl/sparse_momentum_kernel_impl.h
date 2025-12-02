@@ -21,17 +21,10 @@
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/utils/optional.h"
-
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
 
 namespace phi {
 

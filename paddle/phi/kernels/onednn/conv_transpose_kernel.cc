@@ -289,7 +289,7 @@ class ConvTransposeOneDNNHandlerT
                                  dnnl::memory::format_tag::x);
           auto scale_data_mem = dnnl::memory(scale_md, this->engine_);
           scale_data_mem.set_data_handle(
-              phi::funcs::to_void_cast(scale_data.data()));
+              funcs::to_void_cast(scale_data.data()));
           reorder_args.insert(
               {DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, scale_data_mem});
         }
@@ -347,14 +347,14 @@ void PrepareSrcMem(const std::shared_ptr<dnnl::deconvolution_forward>& fc_p
                    const dnnl::engine& engine) {
   auto x_md = x->mem_desc().reshape(src_mem->get_desc().get_dims());
   if (x_md != src_mem->get_desc()) {
-    dnnl::memory x_mem(x_md, engine, phi::funcs::to_void_cast<T>(x->data<T>()));
+    dnnl::memory x_mem(x_md, engine, funcs::to_void_cast<T>(x->data<T>()));
     auto reorder_p = dnnl::reorder(x_mem, *src_mem);
 
     auto& astream = OneDNNContext::tls().get_stream();
     reorder_p.execute(astream, x_mem, *src_mem);
     astream.wait();
   } else {
-    src_mem->set_data_handle(phi::funcs::to_void_cast<T>(x->data<T>()));
+    src_mem->set_data_handle(funcs::to_void_cast<T>(x->data<T>()));
   }
 }
 
@@ -381,7 +381,7 @@ void Execute(const OneDNNContext& dev_ctx,
   // fix issue https://github.com/PaddlePaddle/PaddleOCR/issues/15621
   // https://github.com/PaddlePaddle/PaddleOCR/issues/15393
   std::string cache_key = funcs::CreateKey(dev_ctx,
-                                           phi::funcs::ThreadIDasStr(),
+                                           funcs::ThreadIDasStr(),
                                            dev_ctx.GetInputsName("Input")[0],
                                            dev_ctx.GetInputsName("Filter")[0],
                                            common::vectorize(x->dims()),
