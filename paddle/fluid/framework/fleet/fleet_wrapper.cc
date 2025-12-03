@@ -1005,7 +1005,7 @@ void FleetWrapper::PushDenseVarsAsync(
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
-    int count = tensor->numel();
+    int64_t count = tensor->numel();
     float* g = tensor->data<float>();
     if (scale_datanorm >= 0) {
       if (t.find(".batch_size@GRAD") != std::string::npos ||
