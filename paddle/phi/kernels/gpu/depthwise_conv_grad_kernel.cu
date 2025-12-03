@@ -69,7 +69,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
   DWConvParams params(has_fuse_relu, data_format, strides, dilations);
   if (params.UseCudnnDepthwise<Context>(dev_ctx, input, filter)) {
     // Keep same with original kernel.
-    phi::funcs::SetConstant<Context, T> set_zero;
+    funcs::SetConstant<Context, T> set_zero;
     if (input_grad) {
       dev_ctx.template Alloc<T>(input_grad);
       set_zero(dev_ctx, input_grad, static_cast<T>(0));
@@ -100,7 +100,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
 
   DDim in_data_dims;
   const phi::DataLayout data_layout = common::StringToDataLayout(data_format);
-  if (data_layout != phi::DataLayout::kNHWC) {
+  if (data_layout != phi::DataLayout::NHWC) {
     in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   } else {
     in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
@@ -116,7 +116,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
       paddings.erase(paddings.begin() + i + 1);
     }
   }
-  phi::funcs::SetConstant<Context, T> set_zero;
+  funcs::SetConstant<Context, T> set_zero;
 
   if (input_grad) {
     dev_ctx.template Alloc<T>(input_grad);

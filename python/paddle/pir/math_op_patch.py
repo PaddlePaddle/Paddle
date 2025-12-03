@@ -207,7 +207,7 @@ def monkey_patch_value():
         if blocking is not True:
             warnings.warn("blocking is not supported, and it will be ignored.")
 
-        # 1 means cuda place, see paddle/phi/kernels/memcpy_kernel.cc
+        # 1 means cuda/xpu/custom_device place, see paddle/phi/kernels/memcpy_kernel.cc
         return _C_ops.memcpy(self, 1)
 
     @property

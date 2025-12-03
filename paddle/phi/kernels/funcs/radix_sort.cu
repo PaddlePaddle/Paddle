@@ -54,7 +54,7 @@ void RadixSortPairsImpl(const phi::GPUContext& dev_ctx,
   PADDLE_ENFORCE_LE(
       n,
       std::numeric_limits<int>::max(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "CUB sort does not support sorting more than INT_MAX elements"));
 
   using key_t_ = typename CudaType<key_t>::type;

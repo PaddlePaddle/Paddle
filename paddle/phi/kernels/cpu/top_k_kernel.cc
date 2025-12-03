@@ -151,7 +151,7 @@ void TopkKernel(const Context& dev_ctx,
   if (in_dims.size() == 0) {
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     dev_ctx.template Alloc<int64_t>(indices);
-    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
+    funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
   // axis < 0, calculate the real axis
@@ -210,8 +210,8 @@ void TopkKernel(const Context& dev_ctx,
     trans.emplace_back(axis);
 
     // get the trans input_dims, out_dims
-    phi::DDim trans_dims(in_dims);
-    phi::DDim trans_out_dims(out->dims());
+    DDim trans_dims(in_dims);
+    DDim trans_out_dims(out->dims());
     for (int i = 0; i < static_cast<int>(trans.size()); i++) {
       trans_dims[i] = in_dims[trans[i]];
     }

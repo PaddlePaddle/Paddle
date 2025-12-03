@@ -26,8 +26,8 @@ namespace phi {
 template <typename T>
 void set_zero_kernel(const int64_t N,
                      const int64_t** indices,
-                     const phi::DDim& stride,
-                     const phi::DDim& shape,
+                     const DDim& stride,
+                     const DDim& shape,
                      T* out) {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -51,8 +51,8 @@ template <typename T>
 void index_put_grad_kernel(const int64_t N,
                            const T* out_grad,
                            const int64_t** indices,
-                           const phi::DDim& stride,
-                           const phi::DDim& shape,
+                           const DDim& stride,
+                           const DDim& shape,
                            T* value_grad) {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for

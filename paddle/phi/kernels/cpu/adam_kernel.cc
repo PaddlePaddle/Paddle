@@ -279,7 +279,7 @@ void MergedAdamKernel(
     T* mom2_max_out_data =
         amsgrad ? dev_ctx.template Alloc<T>(moment2_max_out[idx]) : nullptr;
 
-    phi::funcs::AdamFunctor<T, phi::funcs::CPUAdam> functor(
+    funcs::AdamFunctor<T, funcs::CPUAdam> functor(
         beta1_,
         beta2_,
         epsilon_,

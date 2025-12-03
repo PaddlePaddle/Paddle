@@ -93,20 +93,20 @@ typename std::enable_if<std::is_floating_point<T>::value>::type LapackEigvals(
           work_mem));
 
   int info = 0;
-  phi::funcs::lapackEig<T>('N',
-                           'N',
-                           static_cast<int>(n_dim),
-                           a.template data<T>(),
-                           static_cast<int>(n_dim),
-                           w_data,
-                           nullptr,
-                           1,
-                           nullptr,
-                           1,
-                           work->template data<T>(),
-                           static_cast<int>(work_mem / sizeof(T)),
-                           static_cast<T*>(nullptr),
-                           &info);
+  funcs::lapackEig<T>('N',
+                      'N',
+                      static_cast<int>(n_dim),
+                      a.template data<T>(),
+                      static_cast<int>(n_dim),
+                      w_data,
+                      nullptr,
+                      1,
+                      nullptr,
+                      1,
+                      work->template data<T>(),
+                      static_cast<int>(work_mem / sizeof(T)),
+                      static_cast<T*>(nullptr),
+                      &info);
 
   std::string name = "phi::backend::dynload::dgeev_";
   if (input.dtype() == DataType::FLOAT64) {
@@ -157,21 +157,20 @@ LapackEigvals(const Context& dev_ctx,
           rwork_mem));
 
   int info = 0;
-  phi::funcs::lapackEig<T, dtype::Real<T>>(
-      'N',
-      'N',
-      static_cast<int>(n_dim),
-      a.template data<T>(),
-      static_cast<int>(n_dim),
-      output->template data<T>(),
-      nullptr,
-      1,
-      nullptr,
-      1,
-      work->template data<T>(),
-      static_cast<int>(work_mem / sizeof(T)),
-      rwork->template data<dtype::Real<T>>(),
-      &info);
+  funcs::lapackEig<T, dtype::Real<T>>('N',
+                                      'N',
+                                      static_cast<int>(n_dim),
+                                      a.template data<T>(),
+                                      static_cast<int>(n_dim),
+                                      output->template data<T>(),
+                                      nullptr,
+                                      1,
+                                      nullptr,
+                                      1,
+                                      work->template data<T>(),
+                                      static_cast<int>(work_mem / sizeof(T)),
+                                      rwork->template data<dtype::Real<T>>(),
+                                      &info);
 
   std::string name = "phi::backend::dynload::cgeev_";
   if (input.dtype() == DataType::COMPLEX128) {

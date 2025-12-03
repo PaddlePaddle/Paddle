@@ -262,6 +262,7 @@ class LayerDict(Layer):
         """
         return self._sub_layers.values()
 
+    @param_one_alias(["sublayers", "modules"])
     def update(
         self,
         sublayers: (
@@ -599,6 +600,7 @@ class LayerList(Layer):
         keys = [key for key in keys if not key.isdigit()]
         return keys
 
+    @param_one_alias(["sublayer", "module"])
     def append(self, sublayer: Layer) -> Self:
         """
         Appends a sublayer to the end of the list.
@@ -620,6 +622,7 @@ class LayerList(Layer):
         self.add_sublayer(str(len(self)), sublayer)
         return self
 
+    @param_one_alias(["sublayer", "module"])
     def insert(self, index: int, sublayer: Layer) -> None:
         """
         Insert a sublayer before a given index in the list.
@@ -655,6 +658,7 @@ class LayerList(Layer):
             self._sub_layers[str(i)] = self._sub_layers[str(i - 1)]
         self._sub_layers[str(index)] = sublayer
 
+    @param_one_alias(["sublayers", "modules"])
     def extend(self, sublayers: Iterable[Layer]) -> Self:
         """
         Appends sublayers to the end of the list.

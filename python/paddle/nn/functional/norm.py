@@ -56,9 +56,8 @@ def normalize(
     p: float = 2,
     axis: int = 1,
     epsilon: float = 1e-12,
-    name: str | None = None,
-    *,
     out: Tensor | None = None,
+    name: str | None = None,
 ) -> Tensor:
     r"""
     Normalize ``x`` along dimension ``axis`` using :math:`L_p` norm. This layer computes

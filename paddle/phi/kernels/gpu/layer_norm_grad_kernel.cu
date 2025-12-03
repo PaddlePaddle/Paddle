@@ -61,7 +61,7 @@ void LayerNormGradKernel(const Context &dev_ctx,
     }
     return;
   }
-  using U = phi::funcs::LayerNormParamType<T>;
+  using U = funcs::LayerNormParamType<T>;
   // d_x, d_scale, d_bias may be nullptr
   auto *d_x = x_grad;
   auto *d_scale = scale_grad;
@@ -111,19 +111,18 @@ void LayerNormGradKernel(const Context &dev_ctx,
                            : dev_ctx.template Alloc<ScaleBiasT>(d_bias));   \
     auto *d_x_data =                                                        \
         (d_x == nullptr ? nullptr : dev_ctx.template Alloc<T>(d_x));        \
-    phi::funcs::LayerNormBackward<T, U, IsScaleBiasSameDTypeWithX>(         \
-        x_data,                                                             \
-        d_y_data,                                                           \
-        scale_data,                                                         \
-        mean_data,                                                          \
-        var_data,                                                           \
-        d_x_data,                                                           \
-        d_scale_data,                                                       \
-        d_bias_data,                                                        \
-        epsilon,                                                            \
-        batch_size,                                                         \
-        feature_size,                                                       \
-        dev_ctx);                                                           \
+    funcs::LayerNormBackward<T, U, IsScaleBiasSameDTypeWithX>(x_data,       \
+                                                              d_y_data,     \
+                                                              scale_data,   \
+                                                              mean_data,    \
+                                                              var_data,     \
+                                                              d_x_data,     \
+                                                              d_scale_data, \
+                                                              d_bias_data,  \
+                                                              epsilon,      \
+                                                              batch_size,   \
+                                                              feature_size, \
+                                                              dev_ctx);     \
   } while (0)
 
   if (scale_bias_dtype == x_dtype) {

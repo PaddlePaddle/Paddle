@@ -7956,6 +7956,7 @@ def view_as(x: Tensor, other: Tensor, name: str | None = None) -> Tensor:
 
 
 @dygraph_only
+@param_one_alias(["axis", "dimension"])
 def unfold(
     x: Tensor, axis: int, size: int, step: int, name: str | None = None
 ) -> Tensor:
@@ -7967,7 +7968,7 @@ def unfold(
 
     Args:
         x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
-        axis (int): The axis along which the input is unfolded.
+        axis (int): The axis along which the input is unfolded. Alias: ``dimension``.
         size (int): The size of each slice that is unfolded.
         step (int): The step between each slice.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.

@@ -31,7 +31,7 @@ void TransposeKernel(const Context& dev_ctx,
   auto x_dims = x.dims();
   if ((x_dims.size() >= 3) &&
       (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-       phi::DataLayout::kNHWC)) {
+       phi::DataLayout::NHWC)) {
     int axis_size = static_cast<int>(axis.size());
     std::vector<int> formatted_axis = axis;
     std::vector<int> count(axis_size, 0);
@@ -47,7 +47,7 @@ void TransposeKernel(const Context& dev_ctx,
     VLOG(3)
         << "Rotating Shape in Transpose from: kMKLDNN to: kNHWC output_shape";
 
-    phi::DDim out_dims(x_dims);
+    DDim out_dims(x_dims);
     for (size_t i = 0; i < axis.size(); i++) {
       out_dims[i] = x_dims[formatted_axis[i]];  // NOLINT
     }

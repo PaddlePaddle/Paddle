@@ -165,7 +165,7 @@ void UnpoolGradKernel(const Context& dev_ctx,
     return;
   }
   const T* output_grad_data = out_grad.data<T>();
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, x_grad, static_cast<T>(0));
   const auto& indices_type = indices.dtype();
   if (indices_type == phi::DataType::INT32) {
@@ -194,7 +194,7 @@ void Unpool3dGradKernel(const Context& dev_ctx,
     return;
   }
   const T* output_grad_data = out_grad.data<T>();
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, x_grad, static_cast<T>(0));
   const auto& indices_type = indices.dtype();
   if (indices_type == phi::DataType::INT32) {
