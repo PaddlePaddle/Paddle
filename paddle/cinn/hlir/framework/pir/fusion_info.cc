@@ -176,7 +176,6 @@ std::ostream& operator<<(std::ostream& os, const ProgramInfo& info) {
 FusionInfo::FusionInfo(const OpLoweringGroup& group) {
   ParseOpInfos(group);
   ParseInputDimExprs(group);
-  ParseOutputDimExprs(group);
   ParseProgramInfo(group);
 }
 
@@ -240,14 +239,6 @@ void FusionInfo::ParseInputDimExprs(const OpLoweringGroup& group) {
   }
 }
 
-void FusionInfo::ParseOutputDimExprs(const OpLoweringGroup& group) {
-  for (const auto& value : group.GetOutputOpValues()) {
-    auto& shape_analysis =
-        ::pir::ShapeAnalysisManager::Instance().Get(group.GetParentProgram());
-    output_dim_exprs_.push_back(shape_analysis.GetShapeOrDataForValue(value));
-  }
-}
-
 void FusionInfo::ParseProgramInfo(const OpLoweringGroup& group) {
   program_info_ = std::make_shared<ProgramInfo>(*group.GetParentProgram());
 }
@@ -271,10 +262,6 @@ std::ostream& operator<<(std::ostream& os, const FusionInfo& fusion_info) {
       os << "fn_name: " << fusion_info.unique_fn_name_ << ", ";
     os << "input_dim_exprs: {";
     for (const auto& dim_expr : fusion_info.input_dim_exprs_)
-      os << " " << dim_expr;
-    os << " }\n";
-    os << "output_dim_exprs: {";
-    for (const auto& dim_expr : fusion_info.output_dim_exprs_)
       os << " " << dim_expr;
     os << " }\n";
     for (const auto& op_info : fusion_info.op_infos_) os << op_info << "\n";

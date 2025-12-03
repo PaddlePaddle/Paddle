@@ -744,7 +744,7 @@ std::string Compiler::GetDeviceArch() {
     return "sm_" + std::to_string(major) + std::to_string(minor);
   } else {
     LOG(WARNING) << "cannot detect compute capability from your device, "
-                 << "fall back to compute_80.";
+                 << "fall back to sm_80.";
     return "sm_80";
   }
 }
@@ -758,8 +758,8 @@ std::string Compiler::GetComputeArch() {
     return "compute_" + std::to_string(major) + std::to_string(minor);
   } else {
     LOG(WARNING) << "cannot detect compute capability from your device, "
-                 << "fall back to compute_30.";
-    return "compute_30";
+                 << "fall back to compute_80.";
+    return "compute_80";
   }
 }
 

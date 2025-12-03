@@ -122,7 +122,6 @@ class FusionInfo {
  private:
   void ParseOpInfos(const OpLoweringGroup &group);
   void ParseInputDimExprs(const OpLoweringGroup &group);
-  void ParseOutputDimExprs(const OpLoweringGroup &group);
   void ParseProgramInfo(const OpLoweringGroup &group);
 
   std::vector<FusionOpInfo> op_infos_;
