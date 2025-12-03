@@ -69,7 +69,7 @@ using cusparseHandle_t = struct cusparseContext *;
 
 #ifdef PADDLE_WITH_CUDA
 // Forward declaration of cuFFT types.
-using cufftHandle = int;
+using cufftHandle = unsigned int;
 #endif
 
 // Forward declaration of NCCL types.
