@@ -29,16 +29,16 @@
 #include "paddle/fluid/eager/tensor_wrapper.h"
 
 #include "paddle/common/layout.h"
-#include "paddle/phi/api/all.h"
-#include "paddle/phi/api/lib/data_transform.h"
-#include "paddle/phi/core/compat/convert_utils.h"
-#include "paddle/phi/core/tensor_meta.h"
-#include "paddle/phi/kernels/funcs/tensor_formatter.h"
-
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/api/all.h"
+#include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/common/logging_utils.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
 #include "paddle/utils/md5.h"
 COMMON_DECLARE_bool(enable_unique_name);
@@ -1647,7 +1647,7 @@ std::string AddNodeToDebugBackwardGraph(Dot* dot,
   // EagerBackwardSubGraphNodeRecorder. If we need capture subgraph, the
   // gradnode not related subgraph will not be captured
   if (need_dump_backward_subgraph &&
-      !egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
+      !egr::EagerBackwardSubGraphNodeRecorder::Instance().IsGradNodeInVizGuard(
           node)) {
     // no need to add node to dot graph
   } else {
@@ -1669,9 +1669,9 @@ void AddEdgeToDebugBackwardGraph(Dot* dot,
                                  bool need_dump_backward_subgraph) {
   std::string dot_node_label = node_label;
   if (need_dump_backward_subgraph &&
-      !egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
+      !egr::EagerBackwardSubGraphNodeRecorder::Instance().IsGradNodeInVizGuard(
           node) &&
-      !egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
+      !egr::EagerBackwardSubGraphNodeRecorder::Instance().IsGradNodeInVizGuard(
           next_node)) {
     // if we need capture subgraph, the gradnode not related subgraph
     // will not be captured
@@ -1685,8 +1685,8 @@ void AddEdgeToDebugBackwardGraph(Dot* dot,
                      false);
       } else {
         if (need_dump_backward_subgraph == false ||
-            egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
-                next_node)) {
+            egr::EagerBackwardSubGraphNodeRecorder::Instance()
+                .IsGradNodeInVizGuard(next_node)) {
           dot->AddNode(dot_next_node_label,
                        paddle::inference::analysis::grey_box_attrs,
                        dot_next_node_label,
@@ -1704,10 +1704,10 @@ void AddEdgeToDebugBackwardGraph(Dot* dot,
     // if need_dump_backward_subgraph but next_node is in subgraph and node is
     // not in subgraph we will add node in subgraph and add edge
     if (need_dump_backward_subgraph &&
-        egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
+        egr::EagerBackwardSubGraphNodeRecorder::Instance().IsGradNodeInVizGuard(
             next_node) &&
-        !egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
-            node)) {
+        !egr::EagerBackwardSubGraphNodeRecorder::Instance()
+             .IsGradNodeInVizGuard(node)) {
       dot_node_label = CreateNodeLabelInDot(node);
       // The node is not in subgraph but the node_next node is in subgraph
       // we use orange_box to mark it too
@@ -1825,6 +1825,29 @@ void CheckGradNodeAccumulation(
     for (const auto& tensor : sub_tensors) {
       CheckGradNodeAccumulation(*tensor);
     }
+  }
+}
+
+LogLevelGuardBackward::LogLevelGuardBackward(bool need_backward_vlog_guard,
+                                             GradNodeBase* node) {
+  //
+  if (need_backward_vlog_guard &&
+      egr::EagerBackwardSubGraphNodeRecorder::Instance().IsGradNodeInVlogGuard(
+          node)) {
+    saved_level_ = FLAGS_v;
+    SetVLOGLevel(egr::EagerBackwardSubGraphNodeRecorder::Instance()
+                     .GetSubGraphBwdVlogLevel(node));
+    initialized_ = true;
+  }
+}
+void LogLevelGuardBackward::SetVLOGLevel(int level) {
+  FLAGS_v = level;
+  phi::set_phi_vlog_level(level);
+}
+LogLevelGuardBackward::~LogLevelGuardBackward() {
+  if (PD_UNLIKELY(initialized_)) {
+    // We should restore the log level
+    SetVLOGLevel(saved_level_);
   }
 }
 }  // namespace egr

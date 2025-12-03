@@ -146,7 +146,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
                        bool stable,
                        DenseTensor* in_grad) {
   dev_ctx.template Alloc<T>(in_grad);
-  phi::funcs::set_constant(dev_ctx, in_grad, static_cast<T>(0.0));
+  funcs::set_constant(dev_ctx, in_grad, static_cast<T>(0.0));
   if (out_grad.numel() == 0) return;
   auto in_dims = in_grad->dims();
   auto rank = in_dims.size();

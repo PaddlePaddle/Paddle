@@ -75,7 +75,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
       data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
   const int group_size = C / groups;
 
-  phi::funcs::SetConstant<CPUContext, T> set_zero;
+  funcs::SetConstant<CPUContext, T> set_zero;
 
   auto* x_data = y.data<T>();
   auto* y_data = d_y.data<T>();

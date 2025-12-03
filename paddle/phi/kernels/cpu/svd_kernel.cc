@@ -44,21 +44,21 @@ void LapackSvd(const T* X,
   std::vector<T> work(lwork);
   std::vector<int> iwork(8 * mn);
   int info = 0;
-  phi::funcs::lapackSvd<T, phi::dtype::Real<T>>(jobz,
-                                                rows,
-                                                cols,
-                                                a,
-                                                lda,
-                                                S,
-                                                U,
-                                                ldu,
-                                                VH,
-                                                ldvt,
-                                                work.data(),
-                                                lwork,
-                                                rwork.data(),
-                                                iwork.data(),
-                                                &info);
+  funcs::lapackSvd<T, phi::dtype::Real<T>>(jobz,
+                                           rows,
+                                           cols,
+                                           a,
+                                           lda,
+                                           S,
+                                           U,
+                                           ldu,
+                                           VH,
+                                           ldvt,
+                                           work.data(),
+                                           lwork,
+                                           rwork.data(),
+                                           iwork.data(),
+                                           &info);
   if (info < 0) {
     PADDLE_THROW(common::errors::InvalidArgument(
         "This %s-th argument has an illegal value", info));

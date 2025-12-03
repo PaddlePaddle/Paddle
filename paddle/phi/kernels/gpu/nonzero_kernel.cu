@@ -66,7 +66,7 @@ void NonZeroKernel(const Context &dev_ctx,
   auto dims = condition.dims();
   using Functor = IndexFunctor<T, int64_t, int64_t>;
   Functor index_functor = Functor(dims);
-  phi::funcs::SelectKernel<T, T, int64_t, 0, Functor>(
+  funcs::SelectKernel<T, T, int64_t, 0, Functor>(
       dev_ctx, condition, in_data, out, index_functor);
 }
 
@@ -85,7 +85,7 @@ void RestrictNonZeroKernel(const Context &dev_ctx,
   using Functor = IndexFunctor<T, int64_t, int64_t>;
   Functor index_functor{dims};
 
-  phi::funcs::RestrictSelectKernel<T, T, int64_t, 0, Functor>(
+  funcs::RestrictSelectKernel<T, T, int64_t, 0, Functor>(
       dev_ctx, condition, in_data, total_true_num, out, index_functor);
 }
 

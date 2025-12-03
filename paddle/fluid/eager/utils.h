@@ -505,4 +505,17 @@ void CheckGradNodeAccumulation(
 void CheckGradNodeAccumulation(const std::vector<paddle::Tensor>& tensors);
 void CheckGradNodeAccumulation(
     const std::vector<std::vector<paddle::Tensor*>>& tensors);
+
+class LogLevelGuardBackward {
+ public:
+  explicit LogLevelGuardBackward(bool need_backward_vlog_guard,
+                                 GradNodeBase* node);
+  LogLevelGuardBackward() = delete;
+  ~LogLevelGuardBackward();
+
+ private:
+  void SetVLOGLevel(int level);
+  bool initialized_ = false;
+  int saved_level_ = 0;
+};
 }  // namespace egr

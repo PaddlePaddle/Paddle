@@ -54,8 +54,10 @@ void AllocatorVisitor::Visit(
 
 void AllocatorVisitor::Visit(
     VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) {
-  allocator->GetSmallAllocator()->Accept(this);
-  allocator->GetLargeAllocator()->Accept(this);
+  if (allocator->GetSmallAllocator())
+    allocator->GetSmallAllocator()->Accept(this);
+  if (allocator->GetLargeAllocator())
+    allocator->GetLargeAllocator()->Accept(this);
 }
 
 void AllocatorComputeStreamVisitor::Visit(StreamSafeCUDAAllocator* allocator) {
@@ -112,6 +114,16 @@ void VMMAllBlocksInfoVisitor::Visit(
   if (!info.empty()) {
     all_blocks_info_.push_back(info);
   }
+}
+
+void VMMAllocateRecordEventsVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) {
+  allocate_record_event_ = allocator->GetEvents();
+}
+
+void VMMAllocateCompactSizeVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) {
+  allocate_compact_size_ = allocator->GetCompactSize();
 }
 
 void VmmTensorPartsVisitor::Visit(

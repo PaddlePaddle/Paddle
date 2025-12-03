@@ -71,10 +71,9 @@ void ReQuantOpKernel(const Context& dev_ctx,
   attrs.set_scales_mask(DNNL_ARG_DST, mask);
   auto scales_md = dnnl::memory::desc(
       {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
-  auto scales_mem =
-      dnnl::memory(scales_md,
-                   dev_ctx.GetEngine(),
-                   phi::funcs::to_void_cast<float>(&reorder_scale));
+  auto scales_mem = dnnl::memory(scales_md,
+                                 dev_ctx.GetEngine(),
+                                 funcs::to_void_cast<float>(&reorder_scale));
 
   uint32_t reorder_shift =
       with_shift ? clip_to_uint8(shift_out - (1.0f / reorder_scale) * shift_in)
@@ -84,16 +83,16 @@ void ReQuantOpKernel(const Context& dev_ctx,
     attrs.set_zero_points_mask(DNNL_ARG_DST, mask);
   }
 
-  phi::funcs::ReorderOneDNNHandler reorder_handler(
+  funcs::ReorderOneDNNHandler reorder_handler(
       src_tz,
       src_paddle_dt,
-      phi::funcs::ToOneDNNDataType(src_paddle_dt),
+      funcs::ToOneDNNDataType(src_paddle_dt),
       dst_paddle_dt,
-      phi::funcs::ToOneDNNDataType(dst_paddle_dt),
+      funcs::ToOneDNNDataType(dst_paddle_dt),
       dev_ctx.GetEngine());
 
   auto src_memory_p = reorder_handler.AcquireSrcMemory(
-      input.mem_desc(), phi::funcs::to_void_cast(input.data<T>()));
+      input.mem_desc(), funcs::to_void_cast(input.data<T>()));
   auto dst_memory_p = reorder_handler.AcquireDstMemory(
       output, src_tz, xstrides, dev_ctx.GetPlace());
 

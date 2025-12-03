@@ -37,7 +37,7 @@ void EighKernel(const Context& dev_ctx,
     return;
   }
   bool is_lower = (uplo == "L");
-  phi::funcs::MatrixEighFunctor<Context, T> functor;
+  funcs::MatrixEighFunctor<Context, T> functor;
   functor(dev_ctx, x, out_w, out_v, is_lower, true);
 }
 
