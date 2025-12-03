@@ -47,7 +47,10 @@ void CreateMaskMatrix(const CPUContext& dev_ctx,
                       const bool& is_reverse,
                       int* min_seq_len) {
   const auto& seq_len_vec = phi::GetVectorFromTensor<int>(sequence_length);
-  const int table_width = mask_matrix->dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t table_width = mask_matrix->dims()[0];
+
   DenseTensor temp =
       Empty<T>(dev_ctx, {mask_matrix->dims()[1], mask_matrix->dims()[0]});
   T* data_temp = temp.data<T>();

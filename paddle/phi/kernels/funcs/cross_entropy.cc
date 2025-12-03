@@ -41,8 +41,14 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
 
   template <typename U>
   void apply() const {
-    const int batch_size = prob_->dims()[0];
-    const int num_classes = prob_->dims()[1];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t batch_size = prob_->dims()[0];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t num_classes = prob_->dims()[1];
+
     const int num_remain = num_classes / axis_dim_;
 
     const T* prob_data = prob_->template data<T>();
