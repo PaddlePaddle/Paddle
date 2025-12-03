@@ -499,5 +499,29 @@ class TestZeroSizeCase12(TestZeroSizeBase):
         self.dtype = 'float16'
 
 
+class TestZeroSizeCase13(TestZeroSizeBase):
+    def setUp(self):
+        # Case: Batch size is 0
+        self.query_shape = [0, 32, 8, 64]
+        self.key_shape = [0, 32, 8, 64]
+        self.value_shape = [0, 32, 8, 64]
+        self.attn_mask_shape = None
+        self.is_causal = True
+        self.expected_out_shape = [0, 32, 8, 64]
+        self.dtype = 'float16'
+
+
+class TestZeroSizeCase14(TestZeroSizeBase):
+    def setUp(self):
+        # Case: Batch size is 0, and NumHeads is 0
+        self.query_shape = [0, 32, 0, 64]
+        self.key_shape = [0, 32, 0, 64]
+        self.value_shape = [0, 32, 0, 64]
+        self.attn_mask_shape = None
+        self.is_causal = True
+        self.expected_out_shape = [0, 32, 0, 64]
+        self.dtype = 'float16'
+
+
 if __name__ == '__main__':
     unittest.main()
