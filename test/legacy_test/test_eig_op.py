@@ -395,8 +395,7 @@ class TestEigUnsupportedDtypeError(unittest.TestCase):
 
 class TestOptionalGradInput(unittest.TestCase):
     @unittest.skipIf(
-        not platform.system().lower().startswith("linux")
-        or (not is_xpu() and not is_cuda()),
+        not platform.system().lower().startswith("linux") or (not is_xpu()),
         reason="enable only in linux+xpu now",
     )
     def test_eager(self):
@@ -422,8 +421,7 @@ class TestOptionalGradInput(unittest.TestCase):
             )
 
     @unittest.skipIf(
-        not platform.system().lower().startswith("linux")
-        or (not is_xpu() and not is_cuda()),
+        not platform.system().lower().startswith("linux") or (not is_xpu()),
         reason="enable only in linux+xpu now",
     )
     def test_dy2st(self):
