@@ -1725,7 +1725,7 @@ class Model:
                 >>> label = paddle.randint(0, 10, (4, 1), dtype="int64")
                 >>> loss, acc = model.eval_batch([data], [label])
                 >>> print(loss, acc)
-                [array(2.8679318, dtype=float32)] [np.float64(0.0)]
+                [array(3.0039132, dtype=float32)] [np.float64(0.0)]
 
         """
         loss = self._adapter.eval_batch(inputs, labels)
