@@ -687,7 +687,7 @@ void GridSampleGradKernel(const Context& dev_ctx,
     const T* dy_data = out_grad.data<T>();
 
     T* dx_data = dev_ctx.template Alloc<T>(x_grad);
-    phi::funcs::SetConstant<Context, T>()(dev_ctx, x_grad, static_cast<T>(0));
+    funcs::SetConstant<Context, T>()(dev_ctx, x_grad, static_cast<T>(0));
 
     T* dgrid_data = nullptr;
     if (grid_grad) {
@@ -742,7 +742,7 @@ void GridSampleGradKernel(const Context& dev_ctx,
     const int64_t in_w = x.dims()[3];
 
     dev_ctx.template Alloc<T>(x_grad);
-    phi::funcs::SetConstant<Context, T>()(dev_ctx, x_grad, static_cast<T>(0));
+    funcs::SetConstant<Context, T>()(dev_ctx, x_grad, static_cast<T>(0));
 
     T* grid_grad_data = nullptr;
     if (grid_grad != nullptr) {
@@ -789,7 +789,7 @@ void GridSampleGradKernel(const Context& dev_ctx,
     const int64_t in_w = x.dims()[4];
 
     dev_ctx.template Alloc<T>(x_grad);
-    phi::funcs::SetConstant<Context, T>()(dev_ctx, x_grad, static_cast<T>(0));
+    funcs::SetConstant<Context, T>()(dev_ctx, x_grad, static_cast<T>(0));
 
     T* grid_grad_data = nullptr;
     if (grid_grad != nullptr) {

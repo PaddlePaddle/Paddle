@@ -69,7 +69,7 @@ void LogsumexpFallbackKernel(const Context& dev_ctx,
 
   max_x.Resize(keeped_outdim);
   DenseTensor temp_x = Subtract<T, Context>(dev_ctx, *in_x, max_x);
-  phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::ExpFunctor<T>>(
+  funcs::ReduceKernel<T, T, kps::AddFunctor, kps::ExpFunctor<T>>(
       dev_ctx, temp_x, out_y, kps::ExpFunctor<T>(), axis_vec);
 
   DenseTensor log_out;
@@ -152,7 +152,7 @@ void LogsumexpKernel(const Context& dev_ctx,
     } else {
       transpose_x.Resize(common::make_ddim(transpose_shape));
       dev_ctx.template Alloc<T>(&transpose_x);
-      phi::funcs::TransposeGPUKernelDriver<T>(dev_ctx, x, perm, &transpose_x);
+      funcs::TransposeGPUKernelDriver<T>(dev_ctx, x, perm, &transpose_x);
     }
     dev_ctx.template Alloc<T>(out);
     using compute_type = typename ComputeType<T>::type;

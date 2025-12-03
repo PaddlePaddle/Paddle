@@ -26,7 +26,7 @@
 
 namespace phi {
 
-using SegmentOffsetIter = phi::funcs::SegmentOffsetIter;
+using SegmentOffsetIter = funcs::SegmentOffsetIter;
 
 template <typename T>
 struct AttnMaskFunctor {
@@ -139,7 +139,7 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
   ins.emplace_back(&attn);
   ins.emplace_back(&mask);
   outs.emplace_back(&attn_tmp);
-  phi::funcs::LaunchElementwiseCudaKernel<T>(
+  funcs::LaunchElementwiseCudaKernel<T>(
       dev_ctx, ins, &outs, AttnMaskFunctor<T>());
 
   // 2. Reduce sum
@@ -214,12 +214,11 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
       sizeof(T) * 8,
       dev_ctx.stream()));
   // 5. Slice
-  auto slimmed_indices_tmp =
-      phi::funcs::Slice<int64_t>(dev_ctx,
-                                 sort_attn_accu_indices,
-                                 {1} /*axes*/,
-                                 {0} /*starts*/,
-                                 {slimmed_x_len} /*ends*/);
+  auto slimmed_indices_tmp = funcs::Slice<int64_t>(dev_ctx,
+                                                   sort_attn_accu_indices,
+                                                   {1} /*axes*/,
+                                                   {0} /*starts*/,
+                                                   {slimmed_x_len} /*ends*/);
   if (keep_order) {
     // 6. reorder
     num_items = bsz * slimmed_x_len;

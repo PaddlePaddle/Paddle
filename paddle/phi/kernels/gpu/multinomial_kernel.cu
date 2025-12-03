@@ -222,7 +222,7 @@ void MultinomialKernel(const Context& dev_ctx,
   cumulative_probs_tensor.Resize({num_distributions, num_categories});
   auto* cumulative_probs_data =
       dev_ctx.template Alloc<MT>(&cumulative_probs_tensor);
-  // 'phi::funcs::InclusiveScan' has higher accuracy than
+  // 'funcs::InclusiveScan' has higher accuracy than
   // 'thrust::inclusive_scan'
   funcs::InclusiveScan<MT, std::plus<MT>>(
       /*in*/ norm_probs_data,

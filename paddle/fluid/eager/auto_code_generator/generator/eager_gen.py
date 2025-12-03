@@ -94,6 +94,7 @@ prim_white_list = [
     "put_along_axis_double_grad",
     "masked_fill_double_grad",
     "index_elementwise_put_with_tensor_double_grad",
+    "view_shape_double_grad",
 ]
 
 # white ops list whose kernel can automatically do type promotion.
@@ -3170,12 +3171,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             )
 
             grad_api_args[grad_api_position] = name
-            if (
-                not is_invoke_forward_api
-                or name in self.grad_api_contents['invoke']
-            ):
-                # NOTE: attr 'dims' is not necessary for 'invoke: view_shape(out_grad, input.shape())'
-                get_grad_in_args_list.append(get_attr_str)
+            get_grad_in_args_list.append(get_attr_str)
 
         get_grad_in_args_str = "\n".join(get_grad_in_args_list)
 

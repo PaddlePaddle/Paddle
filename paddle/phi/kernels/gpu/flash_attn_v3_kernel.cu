@@ -619,7 +619,7 @@ void FlashAttnV3BaseKernel(
       tile_count_semaphore = phi::Empty<int32_t>(dev_ctx, {metadata_size});
     }
     if (scheduler_needs_semaphore && !use_dynamic_split) {
-      phi::funcs::SetConstant<Context, int32_t> set_zero;
+      funcs::SetConstant<Context, int32_t> set_zero;
       set_zero(dev_ctx,
                &tile_count_semaphore,
                int32_t{0});  // If varlen we'll manually do the zero-ing
@@ -927,23 +927,23 @@ void FlashAttnV3BaseKernel(
     // If seqlen_k == 0, then we have an empty tensor. We need to set the output
     // to 0.
     if (out->dtype() == phi::DataType::BFLOAT16) {
-      phi::funcs::SetConstant<Context, phi::bfloat16> set_zero;
+      funcs::SetConstant<Context, phi::bfloat16> set_zero;
       set_zero(dev_ctx,
                out,
                phi::bfloat16{0});  // If varlen we'll manually do the zero-ing
     } else if (out->dtype() == phi::DataType::FLOAT16) {
-      phi::funcs::SetConstant<Context, phi::float16> set_zero;
+      funcs::SetConstant<Context, phi::float16> set_zero;
       set_zero(dev_ctx,
                out,
                phi::float16{0});  // If varlen we'll manually do the zero-ing
     } else if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
-      phi::funcs::SetConstant<Context, phi::float8_e4m3fn> set_zero;
+      funcs::SetConstant<Context, phi::float8_e4m3fn> set_zero;
       set_zero(
           dev_ctx,
           out,
           phi::float8_e4m3fn{0});  // If varlen we'll manually do the zero-ing
     }
-    phi::funcs::SetConstant<Context, float> set_infinity;
+    funcs::SetConstant<Context, float> set_infinity;
     set_infinity(dev_ctx, softmax_lse, std::numeric_limits<float>::infinity());
   }
 
@@ -1791,7 +1791,7 @@ void FlashMaskV2BaseKernel(
       tile_count_semaphore = phi::Empty<int32_t>(dev_ctx, {metadata_size});
     }
     if (scheduler_needs_semaphore && !use_dynamic_split) {
-      phi::funcs::SetConstant<Context, int32_t> set_zero;
+      funcs::SetConstant<Context, int32_t> set_zero;
       set_zero(dev_ctx,
                &tile_count_semaphore,
                int32_t{0});  // If varlen we'll manually do the zero-ing
@@ -2265,23 +2265,23 @@ void FlashMaskV2BaseKernel(
     // If seqlen_k == 0, then we have an empty tensor. We need to set the output
     // to 0.
     if (out->dtype() == phi::DataType::BFLOAT16) {
-      phi::funcs::SetConstant<Context, phi::bfloat16> set_zero;
+      funcs::SetConstant<Context, phi::bfloat16> set_zero;
       set_zero(dev_ctx,
                out,
                phi::bfloat16{0});  // If varlen we'll manually do the zero-ing
     } else if (out->dtype() == phi::DataType::FLOAT16) {
-      phi::funcs::SetConstant<Context, phi::float16> set_zero;
+      funcs::SetConstant<Context, phi::float16> set_zero;
       set_zero(dev_ctx,
                out,
                phi::float16{0});  // If varlen we'll manually do the zero-ing
     } else if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
-      phi::funcs::SetConstant<Context, phi::float8_e4m3fn> set_zero;
+      funcs::SetConstant<Context, phi::float8_e4m3fn> set_zero;
       set_zero(
           dev_ctx,
           out,
           phi::float8_e4m3fn{0});  // If varlen we'll manually do the zero-ing
     }
-    phi::funcs::SetConstant<Context, float> set_infinity;
+    funcs::SetConstant<Context, float> set_infinity;
     set_infinity(dev_ctx, softmax_lse, std::numeric_limits<float>::infinity());
   }
 

@@ -32,7 +32,7 @@ void ConcatKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   int64_t axis = axis_scalar.to<int64_t>();
 
-  axis = phi::funcs::ComputeAxis(axis, x[0]->dims().size());
+  axis = funcs::ComputeAxis(axis, x[0]->dims().size());
 
   std::vector<phi::DDim> x_dims;
   x_dims.reserve(x.size());
@@ -40,7 +40,7 @@ void ConcatKernel(const Context& dev_ctx,
     x_dims.push_back(item->dims());
   }
 
-  phi::DDim out_dims = phi::funcs::ComputeAndCheckShape(true, x_dims, axis);
+  phi::DDim out_dims = funcs::ComputeAndCheckShape(true, x_dims, axis);
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) {
@@ -86,7 +86,7 @@ void ConcatKernel(const Context& dev_ctx,
       }
       auto in_stride = common::stride_numel(in->dims());
       auto out_stride = common::stride_numel(out->dims());
-      phi::funcs::StridedNumelCopyWithAxis<T, Context>(
+      funcs::StridedNumelCopyWithAxis<T, Context>(
           dev_ctx,
           axis,
           out->data<T>() + output_offset,
@@ -107,7 +107,7 @@ void ConcatKernel(const Context& dev_ctx,
         continue;
       }
     }
-    phi::funcs::ConcatFunctor<Context, T> functor;
+    funcs::ConcatFunctor<Context, T> functor;
     functor(dev_ctx, inputs, axis, out);
   }
 }

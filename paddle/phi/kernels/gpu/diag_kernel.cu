@@ -84,15 +84,15 @@ void DiagKernel(const Context& dev_ctx,
   };
 
   if (x_dims.size() <= 1) {
-    phi::funcs::SetConstant<Context, T> set_padding_value;
+    funcs::SetConstant<Context, T> set_padding_value;
     set_padding_value(dev_ctx, out, static_cast<T>(padding_value));
 
     int64_t x_length = (x_dims.size() == 1ULL ? x_dims[0] : int64_t(1));
     int64_t size = (offset > 0) ? x_length + offset : x_length - offset;
     const int64_t x_stride = 1;
     if (size > 0) {
-      const int64_t out_stride_0 = phi::funcs::ComputeStride(0, out_dims);
-      const int64_t out_stride_1 = phi::funcs::ComputeStride(1, out_dims);
+      const int64_t out_stride_0 = funcs::ComputeStride(0, out_dims);
+      const int64_t out_stride_1 = funcs::ComputeStride(1, out_dims);
       int64_t start =
           (offset >= 0 ? offset * out_stride_1 : -offset * out_stride_0);
 
@@ -109,8 +109,8 @@ void DiagKernel(const Context& dev_ctx,
                                                    x_stride);
     }
   } else {
-    const int64_t x_stride_0 = phi::funcs::ComputeStride(0, x_dims);
-    const int64_t x_stride_1 = phi::funcs::ComputeStride(1, x_dims);
+    const int64_t x_stride_0 = funcs::ComputeStride(0, x_dims);
+    const int64_t x_stride_1 = funcs::ComputeStride(1, x_dims);
 
     int64_t size;
     if (offset > 0) {
@@ -122,7 +122,7 @@ void DiagKernel(const Context& dev_ctx,
     if (size > 0) {
       int64_t start =
           (offset >= 0 ? offset * x_stride_1 : -offset * x_stride_0);
-      const int64_t out_stride_0 = phi::funcs::ComputeStride(0, out_dims);
+      const int64_t out_stride_0 = funcs::ComputeStride(0, out_dims);
 
       std::tuple<int64_t, int64_t> block_grid_size = GetBlockGridSize(size);
       ExtractDiagonalKernel<T><<<std::get<1>(block_grid_size),

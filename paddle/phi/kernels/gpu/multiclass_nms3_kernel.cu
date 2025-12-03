@@ -1153,7 +1153,7 @@ void MultiClassNMSGPUKernel(const Context& dev_ctx,
   DenseTensor raw_out;
   raw_out.Resize({batch_size * keep_top_k, 6});
   dev_ctx.template Alloc<T>(&raw_out);
-  phi::funcs::ConcatFunctor<Context, T> concat;
+  funcs::ConcatFunctor<Context, T> concat;
   concat(dev_ctx, {nmsed_classes, nmsed_scores, nmsed_boxes}, 1, &raw_out);
 
   // Output of NMS kernel may include invalid entries, which is
@@ -1167,10 +1167,10 @@ void MultiClassNMSGPUKernel(const Context& dev_ctx,
   const int64_t valid_samples = valid_indices.dims()[0];
   out->Resize({valid_samples, 6});
   dev_ctx.template Alloc<T>(out);
-  phi::funcs::GPUGatherNd<T, int64_t>(dev_ctx, raw_out, valid_indices, out);
+  funcs::GPUGatherNd<T, int64_t>(dev_ctx, raw_out, valid_indices, out);
   index->Resize({valid_samples, 1});
   dev_ctx.template Alloc<int>(index);
-  phi::funcs::GPUGatherNd<int, int64_t>(
+  funcs::GPUGatherNd<int, int64_t>(
       dev_ctx, nmsed_indices, valid_indices, index);
 }
 

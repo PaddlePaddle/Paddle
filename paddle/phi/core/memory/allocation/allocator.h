@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #pragma once
+#include <atomic>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -25,6 +27,7 @@
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/inlined_vector.h"
+#include "paddle/phi/core/memory/allocation/spin_lock.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -40,6 +43,7 @@
 COMMON_DECLARE_string(allocator_strategy);
 COMMON_DECLARE_bool(sync_after_alloc);
 COMMON_DECLARE_int64(alloc_fill_value);
+COMMON_DECLARE_bool(record_alloc_event);
 
 namespace paddle {
 namespace memory {
@@ -254,6 +258,9 @@ class PADDLE_API MultiScalePoolAllocator : public Allocator {
   // Allocate an allocation from small_allocator or large_allocator according to
   // size.
   AllocationPtr Allocate(size_t size) override {
+    if (FLAGS_record_alloc_event) {
+      RecordAlloc(size);
+    }
     return IsSmallRequest(size) ? small_allocator_->Allocate(size)
                                 : large_allocator_->Allocate(size);
   };
@@ -262,6 +269,11 @@ class PADDLE_API MultiScalePoolAllocator : public Allocator {
     IsSmallRequest(allocation->size()) ? small_allocator_->Free(allocation)
                                        : large_allocator_->Free(allocation);
   };
+  // Get allocate event when start FLAGS_record_alloc_event.
+  std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>> GetEvents() {
+    std::lock_guard<SpinLock> lock(spinlock_);
+    return allocation_records_;
+  }
   // Get small_allocator_ and large_allocator_.
   std::shared_ptr<Allocator>& GetSmallAllocator() { return small_allocator_; }
   std::shared_ptr<Allocator>& GetLargeAllocator() { return large_allocator_; }
@@ -273,6 +285,17 @@ class PADDLE_API MultiScalePoolAllocator : public Allocator {
   std::shared_ptr<Allocator> large_allocator_;
   size_t alignment_;
   phi::Place place_;
+
+  // Record event into `allocation_records_` when `FLAGS_record_alloc_event` is
+  // True.
+  void RecordAlloc(size_t size);
+
+  // Return tuple is <id, allocate_size, cur_allocated, max_reserved>, if more
+  // fields are added later, consider using a struct to combine them.
+  std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>>
+      allocation_records_;
+  SpinLock spinlock_;
+  static std::atomic<uint64_t> global_seq_counter_;
 };
 
 }  // namespace allocation

@@ -124,6 +124,22 @@ AllBlockInfoOfVmmAllocator(const phi::GPUPlace& place) {
                                                  &all_blocks_info_visitor);
   return all_blocks_info_visitor.GetAllBlocksInfo();
 }
+
+std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>> GetAllocateEvent(
+    const phi::GPUPlace& place) {
+  VMMAllocateRecordEventsVisitor allocate_record_event_visitor;
+  allocation::AllocatorFacade::Instance().Accept(
+      place, &allocate_record_event_visitor);
+  return allocate_record_event_visitor.GetAllocateRecordEvents();
+}
+
+std::vector<size_t> GetCompactSize(const phi::GPUPlace& place) {
+  VMMAllocateCompactSizeVisitor allocate_compact_visitor;
+  allocation::AllocatorFacade::Instance().Accept(place,
+                                                 &allocate_compact_visitor);
+  return allocate_compact_visitor.GetCompactSize();
+}
+
 #endif
 
 }  // namespace memory

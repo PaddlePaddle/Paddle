@@ -49,7 +49,7 @@ void Reduce(const Context& dev_ctx,
     // do reduce sum
     PD_VISIT_ALL_CPU_TYPES(
         x.dtype(), "ReduceKernelImpl", ([&] {
-          phi::funcs::ReduceKernelImpl<Context, T, data_t, Functor>(
+          funcs::ReduceKernelImpl<Context, T, data_t, Functor>(
               dev_ctx, x, out, dims, keep_dim, reduce_all);
         }));
 
@@ -60,7 +60,7 @@ void Reduce(const Context& dev_ctx,
     // do reduce sum
     PD_VISIT_ALL_CPU_TYPES(
         out_dtype, "ReduceKernelImpl", ([&] {
-          phi::funcs::ReduceKernelImpl<Context, T, data_t, Functor>(
+          funcs::ReduceKernelImpl<Context, T, data_t, Functor>(
               dev_ctx, tmp_tensor, out, dims, keep_dim, reduce_all);
         }));
   }

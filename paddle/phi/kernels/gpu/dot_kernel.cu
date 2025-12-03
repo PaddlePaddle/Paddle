@@ -58,7 +58,7 @@ void DotKernel(const Context& dev_ctx,
         incy = 1;
       }
 
-      auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+      auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
       blas.CUDOT(n, x_data, incx, y_data, incy, out_data);
     }
 #else

@@ -25,15 +25,14 @@
 namespace phi {
 
 template <typename T>
-__global__ void CrossGrad(
-    const T* x,
-    const T* y,
-    const T* out,
-    T* out_dx,
-    T* out_dy,
-    const int64_t stride,
-    const int64_t N,
-    phi::funcs::IndexCalculator<int64_t> index_calculator) {
+__global__ void CrossGrad(const T* x,
+                          const T* y,
+                          const T* out,
+                          T* out_dx,
+                          T* out_dy,
+                          const int64_t stride,
+                          const int64_t N,
+                          funcs::IndexCalculator<int64_t> index_calculator) {
   CUDA_KERNEL_LOOP_TYPE(i, N, int64_t) {
     int64_t offset = index_calculator(i);
 
@@ -174,7 +173,7 @@ void CrossGradKernel(const Context& dev_ctx,
   }
   backends::gpu::GpuLaunchConfig config =
       backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel / 3);
-  auto index_calculator = phi::funcs::IndexCalculator<int64_t>(
+  auto index_calculator = funcs::IndexCalculator<int64_t>(
       merged_dims.size() - 1, cal_dims, left_strides, full_strides);
   if (IsComplexType(x.dtype())) {
     DenseTensor x_conj, y_conj;
@@ -185,11 +184,9 @@ void CrossGradKernel(const Context& dev_ctx,
     auto* input_x_conj_data = dev_ctx.template Alloc<T>(&x_conj);
     auto* input_y_conj_data = dev_ctx.template Alloc<T>(&y_conj);
 
-    phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-    phi::funcs::ConjFunctor<T> functor_x(
-        input_x_data, numel, input_x_conj_data);
-    phi::funcs::ConjFunctor<T> functor_y(
-        input_y_data, numel, input_y_conj_data);
+    funcs::ForRange<Context> for_range(dev_ctx, numel);
+    funcs::ConjFunctor<T> functor_x(input_x_data, numel, input_x_conj_data);
+    funcs::ConjFunctor<T> functor_y(input_y_data, numel, input_y_conj_data);
     for_range(functor_x);
     for_range(functor_y);
     CrossGrad<<<config.block_per_grid,
