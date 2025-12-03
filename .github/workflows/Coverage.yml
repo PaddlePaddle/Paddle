@@ -151,6 +151,7 @@ jobs:
           echo "Pull upstream $BRANCH"
           source ${{ github.workspace }}/../../../proxy
           bash ci/git_pull.sh $BRANCH
+          git submodule update
           '
 
       - name: Check bypass

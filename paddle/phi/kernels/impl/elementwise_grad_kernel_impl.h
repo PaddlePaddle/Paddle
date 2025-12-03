@@ -515,11 +515,8 @@ void ComputeDDoutWithBroadcast(const GPUContext& dev_ctx UNUSED,
 
 #endif
 
-template <typename DeviceContext,
-          typename T,
-          typename DDout_OP,
-          typename Tout = T>
-void DivDoubleDDoutCompute(const DeviceContext& dev_ctx,
+template <typename Context, typename T, typename DDout_OP, typename Tout = T>
+void DivDoubleDDoutCompute(const Context& dev_ctx,
                            const phi::DenseTensor& ddx,
                            const phi::DenseTensor& ddy,
                            const phi::DenseTensor& y,

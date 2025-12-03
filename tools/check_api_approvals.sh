@@ -56,9 +56,9 @@ api_yaml_diff=`python ${PADDLE_ROOT}/tools/check_api_yaml_same.py ${PADDLE_ROOT}
 if [ "$api_yaml_diff" != "" ]; then
     echo_line="API's name and params should be consistent with op's name and params in yaml.
                 The API or Yaml file you changed may cause inconsistent.\n"
-    echo_line="${echo_line} please request one of the RD (YuanRisheng, zyfncg, phlrain) review and approve.\n"
+    echo_line="${echo_line} please request one of the RD (YuanRisheng, zyfncg, zhangbo9674) review and approve.\n"
     echo_line="${echo_line}\r\n ${api_yaml_diff}\n"
-    check_approval 1 YuanRisheng zyfncg phlrain
+    check_approval 1 YuanRisheng zyfncg zhangbo9674
 fi
 
 op_type_spec_diff=`python ${PADDLE_ROOT}/tools/check_op_register_type.py ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_PR.spec`
@@ -77,8 +77,8 @@ op_desc_diff=`python ${PADDLE_ROOT}/tools/check_op_desc.py ${PADDLE_ROOT}/paddle
 inference_approve=`echo "$op_desc_diff" | grep "need inference to review" -`
 slim_approve=`echo "$op_desc_diff" | grep "need slim to review" -`
 if [ "$op_desc_diff" != "" ]; then
-    echo_line="You must have one RD (inference[ vivienfanghuagood(Recommend), yuanlehome, qingqing01 ] or slim[ wanghaoshuang(Recommend), qingqing01 ] or train[ phlrain ]) approval for the changes of Inputs/Output/Attrs of OPs. The changes of OPs will cause that the new version inference fails to load model trained by the old version. Please modify your code. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${op_desc_diff}\n"
-    check_approval 1 vivienfanghuagood yuanlehome qingqing01 wanghaoshuang phlrain
+    echo_line="You must have one RD (inference[ vivienfanghuagood(Recommend), yuanlehome, qingqing01 ] or slim[ wanghaoshuang(Recommend), qingqing01 ] or train[ zhangbo9674 ]) approval for the changes of Inputs/Output/Attrs of OPs. The changes of OPs will cause that the new version inference fails to load model trained by the old version. Please modify your code. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${op_desc_diff}\n"
+    check_approval 1 vivienfanghuagood yuanlehome qingqing01 wanghaoshuang zhangbo9674
 fi
 
 if [ "$slim_approve" != "" ]; then
@@ -96,8 +96,8 @@ DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC=${PADDLE_ROOT}/paddle/fluid/op_use_default_gr
 PR_OP_USE_DEFAULT_GRAD_MAKER_SPEC=${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_PR.spec
 ADDED_OP_USE_DEFAULT_GRAD_MAKER=`python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py ${DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC} ${PR_OP_USE_DEFAULT_GRAD_MAKER_SPEC}`
 if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
-  echo_line="You must have one RD (zhiqiu (Recommend) or zhhsplendid) approval because you use DefaultGradOpMaker for ${ADDED_OP_USE_DEFAULT_GRAD_MAKER}, which manages the grad_op memory optimization.\n"
-  check_approval 1 zhiqiu zhhsplendid
+  echo_line="You must have one RD (xiaoguoguo626807 (Recommend) or zhhsplendid) approval because you use DefaultGradOpMaker for ${ADDED_OP_USE_DEFAULT_GRAD_MAKER}, which manages the grad_op memory optimization.\n"
+  check_approval 1 xiaoguoguo626807 zhhsplendid
 fi
 
 if [ -n "${echo_list}" ];then

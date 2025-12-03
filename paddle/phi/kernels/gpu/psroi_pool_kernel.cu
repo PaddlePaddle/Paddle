@@ -134,9 +134,6 @@ void PsroiPoolKernel(const Context& dev_ctx,
           pooled_width));
 
   int64_t rois_num_t = rois.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
   if (rois_num_t == 0) return;
   int rois_batch_size;
   DenseTensor rois_batch_id_list;
@@ -214,26 +211,26 @@ void PsroiPoolKernel(const Context& dev_ctx,
        &rois_batch_id_list_gpu);
 
   int64_t output_size = out->numel();
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
-  int blocks = NumBlocks(output_size);
+  int64_t blocks = NumBlocks(output_size);
   int threads = kNumCUDAThreads;
 
+  // NOTE(large-tensor): Kernel launch requires int type for grid dimension
+  PADDLE_ENFORCE_LE_INT_MAX(blocks, "blocks");
   // call cuda kernel function
-  GPUPSROIPoolForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
-      output_size,
-      x.data<T>(),
-      rois.data<T>(),
-      spatial_scale,
-      input_channels,
-      height,
-      width,
-      output_channels,
-      pooled_height,
-      pooled_width,
-      rois_batch_id_list_gpu.data<int>(),
-      dev_ctx.template Alloc<T>(out));
+  GPUPSROIPoolForward<T>
+      <<<static_cast<int>(blocks), threads, 0, dev_ctx.stream()>>>(
+          output_size,
+          x.data<T>(),
+          rois.data<T>(),
+          spatial_scale,
+          input_channels,
+          height,
+          width,
+          output_channels,
+          pooled_height,
+          pooled_width,
+          rois_batch_id_list_gpu.data<int>(),
+          dev_ctx.template Alloc<T>(out));
 }
 
 }  // namespace phi

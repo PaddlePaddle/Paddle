@@ -127,7 +127,7 @@ __launch_bounds__(BLOCK_SIZE) __global__
     bool topk_is_unique;
 
     using BlockRadixSelectT =
-        phi::funcs::BlockRadixTopKGlobalMemory<float, BLOCK_SIZE, true>;
+        funcs::BlockRadixTopKGlobalMemory<float, BLOCK_SIZE, true>;
     __shared__ typename BlockRadixSelectT::TempStorage share_storage;
 
     BlockRadixSelectT{share_storage}.radixTopKGetThreshold(
@@ -256,7 +256,7 @@ __launch_bounds__(BLOCK_SIZE) __global__
     RandomNumGen rng(gidx, random_seed);
     float weight_keys[ITEMS_PER_THREAD];
     int neighbor_idxs[ITEMS_PER_THREAD];
-    using BlockRadixTopKT = phi::funcs::
+    using BlockRadixTopKT = funcs::
         BlockRadixTopKRegister<float, BLOCK_SIZE, ITEMS_PER_THREAD, true, int>;
     __shared__ typename BlockRadixTopKT::TempStorage sort_tmp_storage;
 
@@ -332,8 +332,7 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
   auto* eids_data =
       (eids.get_ptr() == nullptr ? nullptr : eids.get_ptr()->data<T>());
   int64_t bs = x.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   thread_local std::random_device rd;
   thread_local std::mt19937 gen(rd());

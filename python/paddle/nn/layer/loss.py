@@ -1143,7 +1143,7 @@ class KLDivLoss(Layer):
         output (Tensor): tensor with shape: [] by default.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -1156,25 +1156,25 @@ class KLDivLoss(Layer):
             >>> kldiv_criterion = nn.KLDivLoss(reduction='batchmean')
             >>> pred_loss = kldiv_criterion(x, target)
             >>> print(pred_loss.shape)
-            []
+            paddle.Size([])
 
             >>> # 'mean' reduction, loss shape will be []
             >>> kldiv_criterion = nn.KLDivLoss(reduction='mean')
             >>> pred_loss = kldiv_criterion(x, target)
             >>> print(pred_loss.shape)
-            []
+            paddle.Size([])
 
             >>> # 'sum' reduction, loss shape will be []
             >>> kldiv_criterion = nn.KLDivLoss(reduction='sum')
             >>> pred_loss = kldiv_criterion(x, target)
             >>> print(pred_loss.shape)
-            []
+            paddle.Size([])
 
             >>> # 'none' reduction, loss shape is same with X shape
             >>> kldiv_criterion = nn.KLDivLoss(reduction='none')
             >>> pred_loss = kldiv_criterion(x, target)
             >>> print(pred_loss.shape)
-            [5, 20]
+            paddle.Size([5, 20])
 
             >>> # if label is in the log space, set log_target = True
             >>> target = paddle.uniform(shape, min=0, max=10).astype('float32')

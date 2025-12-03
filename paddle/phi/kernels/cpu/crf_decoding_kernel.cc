@@ -75,7 +75,7 @@ void CRFDecodingOpKernel(const Context& dev_ctx,
   auto* decoded_path = viterbi_path;
 
   int64_t* path = dev_ctx.template Alloc<int64_t>(decoded_path);
-  phi::funcs::SetConstant<Context, int64_t>()(dev_ctx, decoded_path, 0);
+  funcs::SetConstant<Context, int64_t>()(dev_ctx, decoded_path, 0);
 
   bool has_length = length.get_ptr() != nullptr;
   if (has_length) {

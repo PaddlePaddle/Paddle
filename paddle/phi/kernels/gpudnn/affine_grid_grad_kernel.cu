@@ -52,8 +52,7 @@ void AffineGridGradCudnnKernel(const Context& dev_ctx,
   auto& theta_grad = input_grad;
 
   int64_t n = output_grad.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   auto& size_attr = outputShape.GetData();
   int h_size_data[4] = {0};

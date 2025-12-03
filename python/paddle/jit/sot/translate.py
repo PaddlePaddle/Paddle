@@ -69,9 +69,7 @@ def symbolic_translate(fn: Callable[P, R], **kwargs) -> Callable[P, R]:
         >>> symbolic_translate_out
         Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
         2)
-        >>> np.testing.assert_allclose(
-        ...     dygraph_out.numpy(), symbolic_translate_out.numpy()
-        ... )
+        >>> np.testing.assert_allclose(dygraph_out.numpy(), symbolic_translate_out.numpy())
         >>> # For the false branch, the output is 0.
         >>> cond = paddle.to_tensor(False)
         >>> dygraph_out = foo(cond, x)
@@ -82,9 +80,7 @@ def symbolic_translate(fn: Callable[P, R], **kwargs) -> Callable[P, R]:
         >>> symbolic_translate_out
         Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
         0)
-        >>> np.testing.assert_allclose(
-        ...     dygraph_out.numpy(), symbolic_translate_out.numpy()
-        ... )
+        >>> np.testing.assert_allclose(dygraph_out.numpy(), symbolic_translate_out.numpy())
 
     """
 

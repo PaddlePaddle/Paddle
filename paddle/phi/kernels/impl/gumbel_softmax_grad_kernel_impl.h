@@ -45,18 +45,8 @@ void GumbelSoftmaxGradKernel(const Context& dev_ctx,
     return;
   }
 
-  // TODO(large-tensor): Softmax functor implementation still uses int for
-  // dimensions. Need to update Softmax functor to support dimensions >
-  // INT32_MAX.
-  PADDLE_ENFORCE_LE(
-      axis_dim,
-      std::numeric_limits<int>::max(),
-      common::errors::InvalidArgument(
-          "The axis dimension (%ld) exceeds the maximum value that int can "
-          "represent (%d). GumbelSoftmax gradient operation does not support "
-          "such large tensors yet.",
-          axis_dim,
-          std::numeric_limits<int>::max()));
+  // TODO(large-tensor): SoftmaxGradFunctor not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(axis_dim, "axis_dim");
 
   const int size_to_axis = funcs::SizeToAxis(axis, dx->dims());
   const int size_from_axis = funcs::SizeFromAxis(axis, dx->dims());

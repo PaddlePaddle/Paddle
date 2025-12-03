@@ -191,7 +191,7 @@ void SlogDeterminantV2GradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GE(
       x_rank,
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input tensor X's rank must be at least 2, but received %d.",
           x_rank));
 
@@ -199,7 +199,7 @@ void SlogDeterminantV2GradKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         grad_rank,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "For a 2D input tensor X, the gradient tensor (logdet_grad) "
             "should be a 0D tensor (scalar), but received rank %d.",
             grad_rank));
@@ -207,7 +207,7 @@ void SlogDeterminantV2GradKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         grad_rank + 2,
         x_rank,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The rank of gradient tensor (logdet_grad) should be 2 less than "
             "the input tensor X's rank, but received grad rank %d and X rank "
             "%d.",

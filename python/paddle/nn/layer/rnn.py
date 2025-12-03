@@ -109,7 +109,7 @@ def rnn(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -120,9 +120,9 @@ def rnn(
             >>> rnn = paddle.nn.RNN(cell)
             >>> outputs, final_states = rnn(inputs, prev_h)
             >>> print(outputs.shape)
-            [4, 23, 32]
+            paddle.Size([4, 23, 32])
             >>> print(final_states.shape)
-            [4, 32]
+            paddle.Size([4, 32])
 
     """
 
@@ -433,7 +433,7 @@ def birnn(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -443,9 +443,9 @@ def birnn(
             >>> inputs = paddle.rand((2, 23, 16))
             >>> outputs, final_states = rnn(inputs)
             >>> print(outputs.shape)
-            [2, 23, 64]
+            paddle.Size([2, 23, 64])
             >>> print(final_states[0][0].shape)
-            [2, 32]
+            paddle.Size([2, 32])
 
     """
 
@@ -791,7 +791,7 @@ class SimpleRNNCell(RNNCellBase):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -801,7 +801,7 @@ class SimpleRNNCell(RNNCellBase):
             >>> cell = paddle.nn.SimpleRNNCell(16, 32)
             >>> y, h = cell(x, prev_h)
             >>> print(y.shape)
-            [4, 32]
+            paddle.Size([4, 32])
 
     """
 
@@ -990,7 +990,7 @@ class LSTMCell(RNNCellBase):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1002,11 +1002,11 @@ class LSTMCell(RNNCellBase):
             >>> y, (h, c) = cell(x, (prev_h, prev_c))
 
             >>> print(y.shape)
-            [4, 32]
+            paddle.Size([4, 32])
             >>> print(h.shape)
-            [4, 32]
+            paddle.Size([4, 32])
             >>> print(c.shape)
-            [4, 32]
+            paddle.Size([4, 32])
 
     """
 
@@ -1202,7 +1202,7 @@ class GRUCell(RNNCellBase):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1213,9 +1213,9 @@ class GRUCell(RNNCellBase):
             >>> y, h = cell(x, prev_h)
 
             >>> print(y.shape)
-            [4, 32]
+            paddle.Size([4, 32])
             >>> print(h.shape)
-            [4, 32]
+            paddle.Size([4, 32])
 
 
     """
@@ -1368,7 +1368,7 @@ class RNN(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1380,9 +1380,9 @@ class RNN(Layer):
             >>> outputs, final_states = rnn(inputs, prev_h)
 
             >>> print(outputs.shape)
-            [4, 23, 32]
+            paddle.Size([4, 23, 32])
             >>> print(final_states.shape)
-            [4, 32]
+            paddle.Size([4, 32])
 
     """
 
@@ -1450,7 +1450,7 @@ class BiRNN(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1462,9 +1462,13 @@ class BiRNN(Layer):
             >>> outputs, final_states = rnn(inputs)
 
             >>> print(outputs.shape)
-            [2, 23, 64]
-            >>> print(final_states[0][0].shape,len(final_states),len(final_states[0]))
-            [2, 32] 2 2
+            paddle.Size([2, 23, 64])
+            >>> print(
+            ...     final_states[0][0].shape,
+            ...     len(final_states),
+            ...     len(final_states[0]),
+            ... )
+            paddle.Size([2, 32]) 2 2
 
     """
 
@@ -1926,7 +1930,7 @@ class SimpleRNN(RNNBase):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1937,9 +1941,9 @@ class SimpleRNN(RNNBase):
             >>> y, h = rnn(x, prev_h)
 
             >>> print(y.shape)
-            [4, 23, 32]
+            paddle.Size([4, 23, 32])
             >>> print(h.shape)
-            [2, 4, 32]
+            paddle.Size([2, 4, 32])
 
 
     """
@@ -2067,7 +2071,7 @@ class LSTM(RNNBase):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2079,11 +2083,11 @@ class LSTM(RNNBase):
             >>> y, (h, c) = rnn(x, (prev_h, prev_c))
 
             >>> print(y.shape)
-            [4, 23, 32]
+            paddle.Size([4, 23, 32])
             >>> print(h.shape)
-            [2, 4, 32]
+            paddle.Size([2, 4, 32])
             >>> print(c.shape)
-            [2, 4, 32]
+            paddle.Size([2, 4, 32])
 
 
     """
@@ -2191,7 +2195,7 @@ class GRU(RNNBase):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2202,9 +2206,9 @@ class GRU(RNNBase):
             >>> y, h = rnn(x, prev_h)
 
             >>> print(y.shape)
-            [4, 23, 32]
+            paddle.Size([4, 23, 32])
             >>> print(h.shape)
-            [2, 4, 32]
+            paddle.Size([2, 4, 32])
 
 
     """
