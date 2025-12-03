@@ -78,6 +78,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
   const size_t thread_size = GetThreadNum(task_size);
   VLOG(5) << "Found " << task_size << " new groups parsed from "
           << groups.size() << " and compiles with " << thread_size;
+  VLOG(5) << "YUHAN!! test CI!";
   cinn::ir::InitScheduleConfig();
   if (task_size > 0) {
     // See
