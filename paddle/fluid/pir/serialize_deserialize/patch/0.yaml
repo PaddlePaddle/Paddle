@@ -57,13 +57,13 @@ op_patches:
         data :
           - type: pir::DoubleAttribute
           - type: pir::DoubleAttribute
+          - type: pir::DoubleAttribute
   - op_name : pd_op.linear_interp
     actions:
       - action : modify_attr
         object : scale
         type : pir::ArrayAttribute
         data :
-          - type: pir::DoubleAttribute
           - type: pir::DoubleAttribute
   - op_name : pd_op.bilinear_interp
     actions:
@@ -79,5 +79,6 @@ op_patches:
         object : scale
         type : pir::ArrayAttribute
         data :
+          - type: pir::DoubleAttribute
           - type: pir::DoubleAttribute
           - type: pir::DoubleAttribute
