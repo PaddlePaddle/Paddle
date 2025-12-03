@@ -1120,11 +1120,8 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
             >>> # save state_dict of emb
             >>> paddle.save(layer_state_dict, "emb.pdparams")
 
-            >>> scheduler = paddle.optimizer.lr.NoamDecay(
-            ...     d_model=100, warmup_steps=100, verbose=True)
-            >>> adam = paddle.optimizer.Adam(
-            ...     learning_rate=scheduler,
-            ...     parameters=emb.parameters())
+            >>> scheduler = paddle.optimizer.lr.NoamDecay(d_model=100, warmup_steps=100, verbose=True)
+            >>> adam = paddle.optimizer.Adam(learning_rate=scheduler, parameters=emb.parameters())
             >>> opt_state_dict = adam.state_dict()
 
             >>> # save state_dict of optimizer
@@ -1194,8 +1191,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
 
             >>> paddle.enable_static()
 
-            >>> data = paddle.static.data(
-            ...     name='x_static_save', shape=(None, 224), dtype='float32')
+            >>> data = paddle.static.data(name='x_static_save', shape=(None, 224), dtype='float32')
             >>> y_static = z = paddle.static.nn.fc(data, 10)
             >>> main_program = paddle.static.default_main_program()
             >>> path = "example/main_program.pdmodel"
