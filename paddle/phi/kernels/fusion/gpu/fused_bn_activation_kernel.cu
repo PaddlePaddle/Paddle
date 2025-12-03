@@ -85,7 +85,7 @@ void FusedBatchNormActKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(y);
 
   int N, C, H, W, D;
-  const DataLayout data_layout = phi::DataLayout::kNHWC;
+  const DataLayout data_layout = phi::DataLayout::NHWC;
   phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
   if ((N * H * W * D) == 1) {

@@ -608,7 +608,7 @@ static void Interpolate1DCPUFwd(
       0,
       errors::InvalidArgument("out_w in Attr(out_shape) of Op(interpolate) "
                               "should be greater than 0."));
-  phi::DDim dim_out;
+  DDim dim_out;
   if (data_layout == DataLayout::NCHW) {
     dim_out = {n, c, out_w};
   } else {
@@ -740,7 +740,7 @@ static void Interpolate2DCPUFwd(
       0,
       errors::InvalidArgument("out_w in Attr(out_shape) of Op(interpolate) "
                               "should be greater than 0."));
-  phi::DDim dim_out;
+  DDim dim_out;
   if (data_layout == DataLayout::NCHW) {
     dim_out = {n, c, out_h, out_w};
   } else {
@@ -930,7 +930,7 @@ static void Interpolate3DCPUFwd(
       errors::InvalidArgument("out_w in Attr(out_shape) of Op(interpolate) "
                               "should be greater than 0."));
 
-  phi::DDim dim_out;
+  DDim dim_out;
   if (data_layout == DataLayout::NCHW) {
     dim_out = {n, c, out_d, out_h, out_w};
   } else {

@@ -167,7 +167,7 @@ struct VisitDataCudaArgMinMaxFunctor {
 
   template <typename IndType>
   void apply() const {
-    phi::DDim x_dims;
+    DDim x_dims;
     int new_axis = axis;
     if (flatten) {
       x_dims = common::make_ddim({x.numel()});
