@@ -23,10 +23,10 @@
 namespace phi {
 template <typename MaskT, typename IndexT, typename OutT>
 struct IndexFunctor {
-  IndexT strides[phi::DDim::kMaxRank];
+  IndexT strides[DDim::kMaxRank];
   int rank;
 
-  explicit IndexFunctor(const phi::DDim &in_dims) {
+  explicit IndexFunctor(const DDim &in_dims) {
     rank = in_dims.size();
     // Get strides according to in_dims
     strides[0] = 1;

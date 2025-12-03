@@ -327,5 +327,162 @@ class TestCompatSDPABF16(unittest.TestCase):
         return paddle.bfloat16
 
 
+@unittest.skipIf(
+    not is_flashattn_supported(),
+    "compat.sdpa test requires CUDA 11.4+ and SM 8.0+",
+)
+class TestCompatSDPAStaticFP16(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+        self.place = get_device_place()
+        self.dtype = "float16"
+        self.rtol = 1e-2
+        self.atol = 1e-2
+
+        self.B = 2
+        self.S = 128
+        self.H = 8
+        self.D = 16
+
+        self.shape_bnsd = (self.B, self.H, self.S, self.D)
+
+    def tearDown(self):
+        paddle.disable_static()
+
+    def _get_feed(self, shapes):
+        feed = {}
+        for name, shape in shapes.items():
+            feed[name] = np.random.randn(*shape).astype(self.dtype)
+        return feed
+
+    def test_static_bnsd(self):
+        """Test standard BNSD shape in static graph"""
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+
+        with paddle.static.program_guard(main_prog, startup_prog):
+            q = paddle.static.data(
+                name="q", shape=self.shape_bnsd, dtype=self.dtype
+            )
+            k = paddle.static.data(
+                name="k", shape=self.shape_bnsd, dtype=self.dtype
+            )
+            v = paddle.static.data(
+                name="v", shape=self.shape_bnsd, dtype=self.dtype
+            )
+
+            out_compat = compat_sdpa(q, k, v, scale=None, enable_gqa=False)
+            out_naive = _attention_naive_bnsd(
+                q, k, v, scale=None, enable_gqa=False
+            )
+
+            exe = paddle.static.Executor(self.place)
+            exe.run(startup_prog)
+
+            feed = self._get_feed(
+                {
+                    "q": self.shape_bnsd,
+                    "k": self.shape_bnsd,
+                    "v": self.shape_bnsd,
+                }
+            )
+
+            res_compat, res_naive = exe.run(
+                program=main_prog, feed=feed, fetch_list=[out_compat, out_naive]
+            )
+
+            np.testing.assert_allclose(
+                res_compat,
+                res_naive,
+                rtol=self.rtol,
+                atol=self.atol,
+                err_msg="Static graph BNSD output mismatch",
+            )
+
+    def test_static_gqa(self):
+        """Test GQA (Grouped Query Attention) in static graph"""
+        H_GQA = 2
+        shape_q = (self.B, self.H, self.S, self.D)
+        shape_kv = (self.B, H_GQA, self.S, self.D)
+
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+
+        with paddle.static.program_guard(main_prog, startup_prog):
+            q = paddle.static.data(name="q", shape=shape_q, dtype=self.dtype)
+            k = paddle.static.data(name="k", shape=shape_kv, dtype=self.dtype)
+            v = paddle.static.data(name="v", shape=shape_kv, dtype=self.dtype)
+
+            out_compat = compat_sdpa(q, k, v, scale=None, enable_gqa=True)
+            out_naive = _attention_naive_bnsd(
+                q, k, v, scale=None, enable_gqa=True
+            )
+
+            exe = paddle.static.Executor(self.place)
+            exe.run(startup_prog)
+
+            feed = self._get_feed({"q": shape_q, "k": shape_kv, "v": shape_kv})
+
+            res_compat, res_naive = exe.run(
+                program=main_prog, feed=feed, fetch_list=[out_compat, out_naive]
+            )
+
+            np.testing.assert_allclose(
+                res_compat,
+                res_naive,
+                rtol=self.rtol,
+                atol=self.atol,
+                err_msg="Static graph GQA output mismatch",
+            )
+
+    def test_static_mask_broadcast(self):
+        """Test 3D Mask Broadcasting in static graph"""
+        shape_mask = (self.B, self.S, self.S)
+
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+
+        with paddle.static.program_guard(main_prog, startup_prog):
+            q = paddle.static.data(
+                name="q", shape=self.shape_bnsd, dtype=self.dtype
+            )
+            k = paddle.static.data(
+                name="k", shape=self.shape_bnsd, dtype=self.dtype
+            )
+            v = paddle.static.data(
+                name="v", shape=self.shape_bnsd, dtype=self.dtype
+            )
+            mask = paddle.static.data(
+                name="mask", shape=shape_mask, dtype=self.dtype
+            )
+
+            out_compat = compat_sdpa(q, k, v, attn_mask=mask)
+            out_naive = _attention_naive_bnsd(q, k, v, attn_mask=mask)
+
+            exe = paddle.static.Executor(self.place)
+            exe.run(startup_prog)
+
+            feed = self._get_feed(
+                {
+                    "q": self.shape_bnsd,
+                    "k": self.shape_bnsd,
+                    "v": self.shape_bnsd,
+                    "mask": shape_mask,
+                }
+            )
+
+            res_compat, res_naive = exe.run(
+                program=main_prog, feed=feed, fetch_list=[out_compat, out_naive]
+            )
+
+            np.testing.assert_allclose(
+                res_compat,
+                res_naive,
+                rtol=self.rtol,
+                atol=self.atol,
+                err_msg="Static graph Mask output mismatch",
+            )
+
+
 if __name__ == '__main__':
     unittest.main()
