@@ -927,14 +927,8 @@ static void Interpolate1DCUDAFwd(
     return;
   }
 
-  float ratio_w = 0.f;
-  if (out_w > 1) {
-    float new_scale_w = 0.f;
-    new_scale_w = (scale_w > 0) ? static_cast<float>(1. / scale_w)
-                                : static_cast<float>(in_w) / out_w;
-    ratio_w = (align_corners) ? static_cast<float>(in_w - 1.0) / (out_w - 1.0)
-                              : static_cast<float>(new_scale_w);
-  }
+  float ratio_w =
+      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
 
   int64_t in_cw = static_cast<int64_t>(c) * in_w;
   int64_t out_cw = static_cast<int64_t>(c) * out_w;
