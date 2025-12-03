@@ -45,24 +45,40 @@ op_patches:
     actions:
       - action : modify_attr
         object : scale
-        type : pir::ArrayAttribute<pir::DoubleAttribute>
+        type : pir::ArrayAttribute
+        data :
+          - type: pir::DoubleAttribute
+          - type: pir::DoubleAttribute
   - op_name : pd_op.nearest_interp
     actions:
       - action : modify_attr
         object : scale
-        type : pir::ArrayAttribute<pir::DoubleAttribute>
+        type : pir::ArrayAttribute
+        data :
+          - type: pir::DoubleAttribute
+          - type: pir::DoubleAttribute
+          - type: pir::DoubleAttribute
   - op_name : pd_op.linear_interp
     actions:
       - action : modify_attr
         object : scale
-        type : pir::ArrayAttribute<pir::DoubleAttribute>
+        type : pir::ArrayAttribute
+        data :
+          - type: pir::DoubleAttribute
   - op_name : pd_op.bilinear_interp
     actions:
       - action : modify_attr
         object : scale
-        type : pir::ArrayAttribute<pir::DoubleAttribute>
+        type : pir::ArrayAttribute
+        data :
+          - type: pir::DoubleAttribute
+          - type: pir::DoubleAttribute
   - op_name : pd_op.trilinear_interp
     actions:
       - action : modify_attr
         object : scale
-        type : pir::ArrayAttribute<pir::DoubleAttribute>
+        type : pir::ArrayAttribute
+        data :
+          - type: pir::DoubleAttribute
+          - type: pir::DoubleAttribute
+          - type: pir::DoubleAttribute
