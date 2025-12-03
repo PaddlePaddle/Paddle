@@ -15,13 +15,13 @@
 # limitations under the License.
 
 """
-A minimal unit test for testing XPU IPC sharing (_share_xpu and _new_shared_xpu).
+A minimal unit test for testing XPU IPC sharing (_share_device_ipc and _new_from_ipc).
 
 This test uses the spawn start method to create two child processes
 before the parent creates an XPU tensor. The parent then creates an XPU
-tensor, calls _share_xpu to get IPC metadata, and sends that metadata to
+tensor, calls _share_device_ipc to get IPC metadata, and sends that metadata to
 the children via a multiprocessing.Queue. Each child sets its XPU device,
-reconstructs the shared tensor using _new_shared_xpu, and verifies that its
+reconstructs the shared tensor using _new_from_ipc, and verifies that its
 content matches the expected value.
 """
 
@@ -43,7 +43,7 @@ def child_reader(queue):
     Child process function:
       - Initializes the XPU device.
       - Reads the IPC metadata from the queue.
-      - Reconstructs the shared tensor via _new_shared_xpu.
+      - Reconstructs the shared tensor via _new_from_ipc.
       - Verifies that its content equals TEST_VALUE.
     """
     try:
@@ -63,9 +63,9 @@ def child_reader(queue):
 
     try:
         # Reconstruct the shared tensor.
-        # (Note: _new_shared_xpu is a private API; adjust accordingly for your version.)
+        # (Note: _new_from_ipc is a private API; adjust accordingly for your version.)
         shared_tensor = paddle.to_tensor(
-            paddle.base.core.DenseTensor._new_shared_xpu(ipc_meta)
+            paddle.base.core.DenseTensor._new_from_ipc(ipc_meta)
         )
         # print(
         #     "[Child] Reconstructed tensor on",
@@ -112,8 +112,8 @@ class TestXpuIpcSharing(unittest.TestCase):
         #     tensor.cpu().numpy(),
         # )
 
-        # Get the IPC metadata by calling _share_xpu on the tensor.
-        ipc_meta = tensor.value().get_tensor()._share_xpu()
+        # Get the IPC metadata by calling _share_device_ipc on the tensor.
+        ipc_meta = tensor.value().get_tensor()._share_device_ipc()
         # print("[Parent] IPC metadata:", ipc_meta)
 
         # Put the same metadata into the queue for each child.
