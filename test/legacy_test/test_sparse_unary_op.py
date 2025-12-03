@@ -105,7 +105,7 @@ class TestSparseUnary(unittest.TestCase):
             expect_grad = np.nan_to_num(dense_x.grad.numpy(), 0.0, 0.0, 0.0)
         else:
             expect_grad = (dense_x.grad * mask).numpy()
-        
+
         # Use looser tolerance for integer types due to precision differences from sparse_cast
         if dtype in ['int32', 'int64']:
             np.testing.assert_allclose(
