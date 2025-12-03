@@ -133,13 +133,13 @@ def _math_attention(
     query = paddle.transpose(query, [0, 2, 1, 3])
     key = paddle.transpose(key, [0, 2, 1, 3])
     value = paddle.transpose(value, [0, 2, 1, 3])
-    scale = scale or head_dim**-0.5
+    # head_dim may be 0 in zero size case
+    scale = scale or (head_dim**-0.5 if head_dim != 0 else 1.0)
     product = paddle.matmul(x=query * scale, y=key, transpose_y=True)
 
-    if mask is not None:
-        product = product + mask
-
     if not causal:
+        if mask is not None:
+            product = product + mask
         weights = F.softmax(product)
     else:
         # special for XPU device
@@ -148,6 +148,8 @@ def _math_attention(
             "xpu" in place
             or product.shape[-1] < 32
             or product.shape[-1] > 16384
+            or place == paddle.CPUPlace()
+            or product.shape[-1] != product.shape[-2]
         ):
             # softmax_mask_fuse_upper_triangle is not supported on XPU, use plain implementation
             mask = get_triangle_upper_mask(product)
