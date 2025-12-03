@@ -295,6 +295,7 @@ class Tensor : public TensorBase {
                                        /*decrease_axis=*/{0});
   }
 
+#ifdef PADDLE_WITH_CUDA
   void record_stream(const cudaStream_t& stream) const {
     paddle::memory::RecordStream(
         std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
@@ -304,6 +305,7 @@ class Tensor : public TensorBase {
   PaddleTensor _PD_GetInner() const { return tensor_; }
   PaddleTensor& _PD_GetInner() { return tensor_; }
 };
+#endif
 
 }  // namespace at
 namespace torch {

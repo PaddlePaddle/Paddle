@@ -52,6 +52,8 @@ namespace c10 {
  * See DeviceGuardImplInterface.h for a list of all supported flags.
  */
 
+#ifdef PADDLE_WITH_CUDA
+
 class EventPool {
  public:
   EventPool();
@@ -156,3 +158,5 @@ struct Event final {
 namespace torch {
 using c10::Event;
 }  // namespace torch
+
+#endif

@@ -32,15 +32,15 @@ using StreamId = int64_t;
 class CUDAStream {
  public:
   CUDAStream() = delete;
-  explicit CUDAStream(const cudaStream_t& stream) : raw_stream_(stream) {}
+  explicit CUDAStream(const gpuStream_t& stream) : raw_stream_(stream) {}
   StreamId id() const { return reinterpret_cast<StreamId>(raw_stream_); }
 
-  operator cudaStream_t() const { return raw_stream_; }
+  operator gpuStream_t() const { return raw_stream_; }
 
-  const cudaStream_t& raw_stream() const { return raw_stream_; }
+  const gpuStream_t& raw_stream() const { return raw_stream_; }
 
  private:
-  cudaStream_t raw_stream_;
+  gpuStream_t raw_stream_;
 };
 
 /**
@@ -59,7 +59,7 @@ inline CUDAStream getCurrentCUDAStream(DeviceIndex device_index = -1) {
       paddle::GetCurrentCUDAStream(phi::GPUPlace(device_index))->raw_stream());
 }
 
-inline void SetAllocatorStreamForGPUContext(cudaStream_t stream,
+inline void SetAllocatorStreamForGPUContext(gpuStream_t stream,
                                             phi::GPUContext* ctx) {
   ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                         .GetAllocator(ctx->GetPlace(), stream)

@@ -31,6 +31,10 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/framework/op_registry.h"
 
+#if !defined(PADDLE_WITH_XPU_KP) || defined(__xpu_on_host__)
+#include "unsupported/Eigen/CXX11/Tensor"
+#endif
+
 namespace paddle::framework {
 
 const uint32_t MAX_FEASIGN_NUM = 1024 * 100 * 100;
