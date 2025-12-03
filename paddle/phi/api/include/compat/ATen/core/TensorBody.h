@@ -301,11 +301,11 @@ class Tensor : public TensorBase {
         std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
         stream);
   }
+#endif
 
   PaddleTensor _PD_GetInner() const { return tensor_; }
   PaddleTensor& _PD_GetInner() { return tensor_; }
 };
-#endif
 
 }  // namespace at
 namespace torch {

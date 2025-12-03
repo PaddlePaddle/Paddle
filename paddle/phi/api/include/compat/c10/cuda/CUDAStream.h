@@ -37,6 +37,12 @@ class CUDAStream {
 
   operator gpuStream_t() const { return raw_stream_; }
 
+  // operator Stream() const { return unwrap(); }
+
+  DeviceType device_type() const { return DeviceType::CUDA; }
+
+  const gpuStream_t& stream() const { return raw_stream_; }
+
   const gpuStream_t& raw_stream() const { return raw_stream_; }
 
  private:
@@ -58,6 +64,8 @@ inline CUDAStream getCurrentCUDAStream(DeviceIndex device_index = -1) {
   return CUDAStream(
       paddle::GetCurrentCUDAStream(phi::GPUPlace(device_index))->raw_stream());
 }
+
+#define getDefaultCUDAStream getCurrentCUDAStream;
 
 inline void SetAllocatorStreamForGPUContext(gpuStream_t stream,
                                             phi::GPUContext* ctx) {
