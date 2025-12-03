@@ -579,7 +579,10 @@ class NaturalExpDecay(LRScheduler):
             ...     for batch_id in range(5):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             feed={
+            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
+            ...                 'y': np.random.randn(3, 4, 5).astype('float32'),
+            ...             },
             ...             fetch_list=[loss],
             ...         )
             ...         scheduler.step()  # If you update learning rate each step
@@ -673,7 +676,10 @@ class InverseTimeDecay(LRScheduler):
             ...     for batch_id in range(5):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             feed={
+            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
+            ...                 'y': np.random.randn(3, 4, 5).astype('float32'),
+            ...             },
             ...             fetch_list=[loss],
             ...         )
             ...         scheduler.step()  # If you update learning rate each step
@@ -780,7 +786,10 @@ class PolynomialDecay(LRScheduler):
             ...     for batch_id in range(5):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             feed={
+            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
+            ...                 'y': np.random.randn(3, 4, 5).astype('float32'),
+            ...             },
             ...             fetch_list=[loss],
             ...         )
             ...         scheduler.step()  # If you update learning rate each step
@@ -1056,7 +1065,10 @@ class ExponentialDecay(LRScheduler):
             ...     for batch_id in range(5):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             feed={
+            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
+            ...                 'y': np.random.randn(3, 4, 5).astype('float32'),
+            ...             },
             ...             fetch_list=[loss],
             ...         )
             ...         scheduler.step()  # If you update learning rate each step
@@ -1280,7 +1292,10 @@ class StepDecay(LRScheduler):
             ...     for batch_id in range(5):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             feed={
+            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
+            ...                 'y': np.random.randn(3, 4, 5).astype('float32'),
+            ...             },
             ...             fetch_list=[loss],
             ...         )
             ...         scheduler.step()  # If you update learning rate each step
