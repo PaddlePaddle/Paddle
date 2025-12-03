@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING, NoReturn, Union
 
 from typing_extensions import TypeAlias
@@ -34,6 +35,9 @@ if TYPE_CHECKING:
         str,  # some string like "gpu:0", "custom_device:0", etc.
         int,  # some int like 0, 1, etc.
     ]
+
+from .memory_analyzer import MemoryAnalysisTool
+
 __all__ = [
     'Stream',
     'Event',
@@ -51,6 +55,8 @@ __all__ = [
     'get_device_capability',
     'reset_max_memory_allocated',
     'reset_max_memory_reserved',
+    'memory_summary',
+    'vmm_compact',
 ]
 
 
@@ -809,3 +815,176 @@ def manual_seed(seed: int) -> None:
         core.default_cpu_generator().manual_seed(seed)
     else:
         core.default_cuda_generator(place.get_device_id()).manual_seed(seed)
+
+
+def vmm_compact(device: _CudaPlaceLike | None = None) -> int:
+    '''
+    Defragment the free memory blocks managed by the Virtual Memory Management (VMM)
+    allocator of the given device.
+
+    Args:
+        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
+            Default: None.
+
+    Returns:
+        int: The amount of memory (in bytes) that was moved during the compaction.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
+
+            >>> moved_bytes = paddle.device.cuda.vmm_compact(0)
+            >>> print(f"Bytes moved during compaction: {moved_bytes}")
+    '''
+    name = 'paddle.device.cuda.vmm_compact'
+    if not (core.is_compiled_with_cuda()):
+        raise ValueError(
+            f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support to call this API."
+        )
+    device_id = extract_cuda_device_id(device, op_name=name)
+    return core.vmm_compact(device_id)
+
+
+def memory_summary(device: _CudaPlaceLike | None = None) -> None:
+    '''
+    Get detailed summary of the CUDA memory usage
+    for the specified device, printed in three distinct sections: Global Summary,
+    Allocator Summary, and Distribution. This function prints the summary directly
+    to the terminal.
+
+    Args:
+        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
+            Default: None.
+
+    The summary includes:
+    1. Global Summary: GPU utilization rates and physical memory information (similar to nvidia-smi).
+    2. Allocator Summary: Memory allocated by the PaddlePaddle's allocator (Total, Used, Free),
+       including a Weighted Fragmentation Rate.
+    3. Distribution: A wide pivot table showing the size distribution of allocated blocks
+       (split by common sizes like 1M, 10M, ... 3G).
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
+
+            >>> paddle.device.cuda.memory_summary(0)
+    '''
+    device_id = extract_cuda_device_id(device, op_name='memory_summary')
+    MemoryAnalysisTool.memory_summary(device_id)
+
+
+def allocate_record_table(device: _CudaPlaceLike | None = None) -> None:
+    '''
+    Retrieve recorded Allocate events on the specified device and prints the events directly
+    to the terminal; these events are only counted when FLAGS_record_alloc_event is set to true.
+
+    Args:
+        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
+            Default: None.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
+
+            >>> paddle.device.cuda.allocate_record_table(0)
+    '''
+    device_id = extract_cuda_device_id(device, op_name='allocate_record_table')
+    data = paddle.core.get_allocate_record(device_id)
+    MemoryAnalysisTool.allocate_record_table(data)
+
+
+def allocate_record_plot(
+    device: _CudaPlaceLike | None = None, save_path: str | None = None
+) -> None:
+    '''
+    Retrieve recorded Allocate events on the specified device and plot the events, default name is 'memory_analysis.png', saved at current working directory;
+    these events are only counted when FLAGS_record_alloc_event is enabled.
+
+    Args:
+        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
+            Default: None.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
+
+            >>> paddle.device.cuda.allocate_record_plot(0)
+    '''
+    device_id = extract_cuda_device_id(device, op_name='allocate_record_plot')
+    data = paddle.core.get_allocate_record(device_id)
+    updated_save_path = save_path
+    if save_path is None or save_path == "":
+        updated_save_path = os.path.join(
+            os.getcwd(), f'memory_analysis_id{device_id}.png'
+        )
+    else:
+        dir_name = os.path.dirname(save_path)
+        base_name = os.path.basename(save_path)
+        file_name_without_ext, ext = os.path.splitext(base_name)
+        new_file_name = f"{file_name_without_ext}_id{device_id}{ext}"
+        updated_save_path = os.path.join(dir_name, new_file_name)
+
+    dir_name = os.path.dirname(updated_save_path)
+    if dir_name and not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+    MemoryAnalysisTool.allocate_record_plot(data, updated_save_path)
+
+
+@signature_safe_contextmanager
+def allocate_record_guard(flag: bool) -> NoReturn:
+    '''
+    Notes:
+        This API only supports dynamic graph mode currently.
+
+    A context manager that enables/disables allocate record guard.
+
+    Parameters:
+        flag(bool): whether to record allocate events.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+
+            >>> data1 = paddle.ones(shape=[20])
+            >>> data2 = paddle.ones(shape=[20])
+            >>> with paddle.device.cuda.allocate_record_guard(True):
+            ...     data3 = data1 + data2
+
+    '''
+    tmp_env = os.environ.get("FLAGS_record_alloc_event")
+    tmp_cpp = paddle.get_flags("FLAGS_record_alloc_event")[
+        "FLAGS_record_alloc_event"
+    ]
+    try:
+        if flag:
+            os.environ["FLAGS_record_alloc_event"] = 'True'
+            paddle.set_flags({"FLAGS_record_alloc_event": True})
+        else:
+            os.environ["FLAGS_record_alloc_event"] = 'False'
+            paddle.set_flags({"FLAGS_record_alloc_event": False})
+        yield
+    finally:
+        if tmp_env is None:
+            del os.environ["FLAGS_record_alloc_event"]
+        else:
+            os.environ["FLAGS_record_alloc_event"] = tmp_env
+        paddle.set_flags({"FLAGS_record_alloc_event": tmp_cpp})

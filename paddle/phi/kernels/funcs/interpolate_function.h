@@ -30,14 +30,14 @@ template <typename T>
 inline T AreaPixelComputeScale(int64_t input_size,
                                int64_t output_size,
                                bool align_corners,
-                               const T scale) {
+                               const double scale) {
   if (align_corners) {
     if (output_size > 1) {
       return static_cast<T>(input_size - 1) / (output_size - 1);
     }
   } else {
     if (scale > 0.) {
-      return static_cast<T>(1.0) / scale;
+      return static_cast<T>(1.0 / scale);
     }
     if (output_size > 0) {
       return static_cast<T>(input_size) / output_size;
@@ -92,20 +92,20 @@ inline void ExtractNCDWH(const DDim& dims,
   *N = dims[0];
 
   if (dims.size() == 3) {
-    *C = data_layout == DataLayout::kNCHW ? dims[1] : dims[2];
+    *C = data_layout == DataLayout::NCHW ? dims[1] : dims[2];
     *D = 1;
     *H = 1;
-    *W = data_layout == DataLayout::kNCHW ? dims[2] : dims[1];
+    *W = data_layout == DataLayout::NCHW ? dims[2] : dims[1];
   } else if (dims.size() == 4) {
-    *C = data_layout == DataLayout::kNCHW ? dims[1] : dims[3];
+    *C = data_layout == DataLayout::NCHW ? dims[1] : dims[3];
     *D = 1;
-    *H = data_layout == DataLayout::kNCHW ? dims[2] : dims[1];
-    *W = data_layout == DataLayout::kNCHW ? dims[3] : dims[2];
+    *H = data_layout == DataLayout::NCHW ? dims[2] : dims[1];
+    *W = data_layout == DataLayout::NCHW ? dims[3] : dims[2];
   } else {
-    *C = data_layout == DataLayout::kNCHW ? dims[1] : dims[4];
-    *D = data_layout == DataLayout::kNCHW ? dims[2] : dims[1];
-    *H = data_layout == DataLayout::kNCHW ? dims[3] : dims[2];
-    *W = data_layout == DataLayout::kNCHW ? dims[4] : dims[3];
+    *C = data_layout == DataLayout::NCHW ? dims[1] : dims[4];
+    *D = data_layout == DataLayout::NCHW ? dims[2] : dims[1];
+    *H = data_layout == DataLayout::NCHW ? dims[3] : dims[2];
+    *W = data_layout == DataLayout::NCHW ? dims[4] : dims[3];
   }
 }
 

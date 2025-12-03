@@ -1130,8 +1130,8 @@ std::pair<int64_t, int64_t> SimplifiedConstRational(int64_t num, int64_t dem) {
   return std::pair{num / gcd, dem / gcd};
 }
 
-DimExpr SetDivSimpliedRes(const List<DimExpr>& lhs_operands,
-                          const List<DimExpr>& rhs_operands) {
+DimExpr SetDivSimplifiedRes(const List<DimExpr>& lhs_operands,
+                            const List<DimExpr>& rhs_operands) {
   if (lhs_operands->empty() && rhs_operands->empty()) {
     return DimExpr{1};
   }
@@ -1193,7 +1193,7 @@ struct FoldConstants<Div> {
       if (rhs_int != 1) {
         rhs_no_int_list->emplace_back(rhs_int);
       }
-      return SetDivSimpliedRes(lhs_no_int_list, rhs_no_int_list);
+      return SetDivSimplifiedRes(lhs_no_int_list, rhs_no_int_list);
     } else {
       return expr;
     }
@@ -1243,7 +1243,7 @@ struct SimplifyDiv {
     auto [lhs_operands, rhs_operands] = GetDivExprNumAndDem(expr);
     auto [new_lhs_operands, new_rhs_operands] =
         FoldSameOperand(lhs_operands, rhs_operands);
-    return SetDivSimpliedRes(new_lhs_operands, new_rhs_operands);
+    return SetDivSimplifiedRes(new_lhs_operands, new_rhs_operands);
   }
 };
 

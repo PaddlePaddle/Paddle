@@ -66,7 +66,7 @@ void RangeKernel(const Context& dev_ctx,
   T step_value = step.to<T>();
   if constexpr (std::is_floating_point_v<T>) {
     if (std::isnan(end_value)) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The end value of range cannot be NaN. Please check your input."));
     }
   }

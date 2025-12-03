@@ -296,3 +296,33 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'Slice / Check bypass / Check bypass'
+
+      - name: Rerun Windows-GPU
+        if: ${{ contains(github.event.comment.body, 'win') && contains(github.event.comment.body, 'gpu') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Windows-GPU / Check bypass / Check bypass'
+
+      - name: Rerun Windows-Inference
+        if: ${{ contains(github.event.comment.body, 'win') && contains(github.event.comment.body, 'infer')}}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Windows-Inference / Check bypass / Check bypass'
+
+      - name: Rerun Windows-OPENBLAS
+        if: ${{ contains(github.event.comment.body, 'win') && contains(github.event.comment.body, 'openblas')}}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Windows-OPENBLAS / Check bypass / Check bypass'

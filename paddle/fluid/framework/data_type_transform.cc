@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/phi/common/transform.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 
 #if defined(PADDLE_WITH_XPU)
 #include "paddle/phi/core/platform/device/device_wrapper.h"
@@ -195,9 +196,24 @@ struct CastDataType {
             out_begin,
             CastDataTypeFunctor<InType, OutType>());
 #endif
+#if defined(PADDLE_WITH_XPU)
+    } else if (phi::is_xpu_place(in_.place())) {
+      if (in_.dtype() == phi::DataType::COMPLEX64 &&
+          out_->dtype() == phi::DataType::FLOAT32) {
+        auto* context = static_cast<const phi::XPUContext*>(ctx_);
+        phi::RealKernel<phi::dtype::complex<float>>(*context, in_, out_);
+      } else {
+        PADDLE_THROW(common::errors::Unimplemented(
+            "Place type is not supported when casting data type from %s to %s.",
+            in_.dtype(),
+            out_->dtype()));
+      }
+#endif
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
-          "Place type is not supported when casting data type."));
+          "Place type is not supported when casting data type from %s to %s.",
+          in_.dtype(),
+          out_->dtype()));
     }
   }
 };

@@ -26,7 +26,7 @@ void ReduceAsKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& target,
                     DenseTensor* out) {
-  auto reduce_dim = phi::funcs::GetReduceDims(x, target);
+  auto reduce_dim = funcs::GetReduceDims(x, target);
   dev_ctx.template Alloc<T>(out);
   if (reduce_dim.size() != 0) {
     phi::SumKernel<T, Context>(dev_ctx, x, reduce_dim, out->type(), false, out);

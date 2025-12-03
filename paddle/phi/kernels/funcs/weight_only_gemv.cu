@@ -1358,16 +1358,13 @@ void WeightOnlyGemvKernel(const Context& dev_ctx,
   const T* weight_scale_data = weight_scale.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
   int64_t m = x.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int64_t k = x.dims()[1];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int64_t n = weight.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   WeightOnlyGemvWrapper<T>(dev_ctx,
                            x_data,

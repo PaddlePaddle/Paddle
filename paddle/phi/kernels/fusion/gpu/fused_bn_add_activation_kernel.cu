@@ -85,7 +85,7 @@ void FusedBatchNormAddActKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(y, y->numel() * sizeof(T));
 
   int N, C, H, W, D;
-  const DataLayout data_layout = DataLayout::kNHWC;
+  const DataLayout data_layout = DataLayout::NHWC;
   phi::funcs::ExtractNCWHD(in_dims, data_layout, &N, &C, &H, &W, &D);
 
   // ------------------- cudnn descriptors ---------------------

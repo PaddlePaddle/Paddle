@@ -72,9 +72,10 @@ class TestVmmCompact(unittest.TestCase):
                 f"reserved = {paddle_reserved2} allocated = {paddle_allocated2} auto growth = {paddle_reserved2 - paddle_reserved1} max_allocated = {paddle_max_allocated} max_reserved = {paddle_max_reserved}"
             )
 
-        paddle.core.vmm_compact()
+        paddle.device.cuda.vmm_compact()
         new_tensor1 = params['0x100000001'].numpy()[0:100]
         np.testing.assert_array_equal(old_tensor1, new_tensor1)
+        assert len(paddle.core.get_compact_size(0)) == 1
 
 
 if __name__ == '__main__':

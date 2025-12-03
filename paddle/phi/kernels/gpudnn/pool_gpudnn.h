@@ -20,7 +20,6 @@ limitations under the License. */
 
 namespace phi {
 
-using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
 using PoolingMode = phi::backends::gpu::PoolingMode;
 using ScopedPoolingDescriptor = phi::backends::gpu::ScopedPoolingDescriptor;
 using ScopedTensorDescriptor = phi::backends::gpu::ScopedTensorDescriptor;
@@ -52,15 +51,15 @@ class CudnnIndexType<int8_t> {
 #endif
 };
 
-inline GPUDNNDataLayout GetLayoutFromStr(std::string data_format) {
+inline DataLayout GetLayoutFromStr(std::string data_format) {
   if (data_format == "NHWC") {
-    return GPUDNNDataLayout::kNHWC;
+    return DataLayout::NHWC;
   } else if (data_format == "NCHW") {
-    return GPUDNNDataLayout::kNCHW;
+    return DataLayout::NCHW;
   } else if (data_format == "NCDHW") {
-    return GPUDNNDataLayout::kNCDHW;
+    return DataLayout::NCDHW;
   } else {
-    return GPUDNNDataLayout::kNCDHW;
+    return DataLayout::NCDHW;
   }
 }
 
