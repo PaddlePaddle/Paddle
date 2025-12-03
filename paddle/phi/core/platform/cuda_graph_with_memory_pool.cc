@@ -14,11 +14,11 @@
 
 #include "paddle/phi/core/platform/cuda_graph_with_memory_pool.h"
 
+#include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
 #include "paddle/phi/core/platform/device_event.h"
-#include "glog/logging.h"
 
 PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 COMMON_DECLARE_bool(new_executor_use_cuda_graph);

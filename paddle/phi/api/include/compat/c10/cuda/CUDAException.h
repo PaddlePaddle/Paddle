@@ -18,23 +18,28 @@
 #include <string>
 
 class CompatException : public std::exception {
-private:
-    std::string message = {};
+ private:
+  std::string message = {};
 
-public:
-    explicit CompatException(const char* name, const char* file, const int line, const std::string& error) {
-        message = std::string("Failed: ") + name + " error " + file + ":" + std::to_string(line) + " '" + error + "'";
-    }
+ public:
+  explicit CompatException(const char* name,
+                           const char* file,
+                           const int line,
+                           const std::string& error) {
+    message = std::string("Failed: ") + name + " error " + file + ":" +
+              std::to_string(line) + " '" + error + "'";
+  }
 
-    const char* what() const noexcept override { return message.c_str(); }
+  const char* what() const noexcept override { return message.c_str(); }
 };
 
 #ifndef C10_CUDA_CHECK
-#define C10_CUDA_CHECK(cmd)                                                           \
-    do {                                                                          \
-        cudaError_t e = (cmd);                                                    \
-        if (e != cudaSuccess) {                                                   \
-            throw CompatException("CUDA", __FILE__, __LINE__, cudaGetErrorString(e)); \
-        }                                                                         \
-    } while (0)
+#define C10_CUDA_CHECK(cmd)                                   \
+  do {                                                        \
+    cudaError_t e = (cmd);                                    \
+    if (e != cudaSuccess) {                                   \
+      throw CompatException(                                  \
+          "CUDA", __FILE__, __LINE__, cudaGetErrorString(e)); \
+    }                                                         \
+  } while (0)
 #endif

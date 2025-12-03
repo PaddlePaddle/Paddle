@@ -16,13 +16,13 @@
 
 #include <c10/core/Device.h>
 #include <c10/cuda/CUDAException.h>
+#include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
-#include "paddle/phi/core/cuda_stream.h"
-#include "paddle/fluid/distributed/collective/process_group_nccl.h"
-#include "paddle/phi/core/memory/allocation/allocator_facade.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/cuda_stream.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
 
 namespace c10::cuda {
 
@@ -60,7 +60,7 @@ inline CUDAStream getCurrentCUDAStream(DeviceIndex device_index = -1) {
 }
 
 inline void SetAllocatorStreamForGPUContext(cudaStream_t stream,
-                                     phi::GPUContext* ctx) {
+                                            phi::GPUContext* ctx) {
   ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                         .GetAllocator(ctx->GetPlace(), stream)
                         .get());

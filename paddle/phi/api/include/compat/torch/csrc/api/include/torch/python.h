@@ -38,11 +38,12 @@ inline Dtype py_object_to_dtype(py::object object) {
 }
 
 inline PyObject* getTHPDtype(c10::ScalarType dtype) {
-  return paddle::pybind::ToPyObject(compat::_PD_AtenScalarTypeToPhiDataType(dtype));
+  return paddle::pybind::ToPyObject(
+      compat::_PD_AtenScalarTypeToPhiDataType(dtype));
 }
 
-}
-}
+}  // namespace detail
+}  // namespace torch::python
 
 namespace torch {
 using torch::python::detail::getTHPDtype;

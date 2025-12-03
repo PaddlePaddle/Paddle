@@ -23,11 +23,9 @@
 
 namespace at {
 
-inline at::Tensor transpose(
-    const at::Tensor& self,
-    const at::Scalar& dim0,
-    const at::Scalar& dim1) {
-  
+inline at::Tensor transpose(const at::Tensor& self,
+                            const at::Scalar& dim0,
+                            const at::Scalar& dim1) {
   int d0 = dim0.to<int>();
   int d1 = dim1.to<int>();
   int64_t ndim = self.dim();

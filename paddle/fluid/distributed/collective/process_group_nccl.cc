@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
+#include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
@@ -29,7 +30,6 @@
 #include "paddle/phi/core/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/utils/string/string_helper.h"
-#include "glog/logging.h"
 
 COMMON_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(benchmark_nccl);
@@ -1361,16 +1361,16 @@ phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetCommContext(
 }
 
 void ProcessGroupNCCL::EraseTensorHolders() {
-    for (const auto& allocation_stream : allocation_stream_pairs_) {
-      auto holder_ptr = allocation_stream.first.lock();
-      if (holder_ptr) {
-        memory::EraseStream(holder_ptr, allocation_stream.second);
-      }
+  for (const auto& allocation_stream : allocation_stream_pairs_) {
+    auto holder_ptr = allocation_stream.first.lock();
+    if (holder_ptr) {
+      memory::EraseStream(holder_ptr, allocation_stream.second);
     }
-    VLOG(5) << "After task wait/synchronize, total "
-            << allocation_stream_pairs_.size()
-            << " tensor(s) allocation stream have been removed.";
-    allocation_stream_pairs_.clear();
+  }
+  VLOG(5) << "After task wait/synchronize, total "
+          << allocation_stream_pairs_.size()
+          << " tensor(s) allocation stream have been removed.";
+  allocation_stream_pairs_.clear();
 }
 
 void ProcessGroupNCCL::StartCoalescing() {

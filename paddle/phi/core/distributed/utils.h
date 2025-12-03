@@ -20,8 +20,8 @@ namespace phi {
 namespace distributed {
 
 phi::DenseTensor GetPartialTensor(const phi::DenseTensor& tensor,
-                                         int64_t offset,
-                                         int64_t numel);
+                                  int64_t offset,
+                                  int64_t numel);
 
 inline void* GetPointerByOffset(void* raw_pointer,
                                 size_t offset,
