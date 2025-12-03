@@ -33,7 +33,7 @@ from ..aoa.aoa_engine import (
 )
 from .metadata import LocalTensorIndex, LocalTensorMetadata, Metadata
 from .metadata_manager import MetadataManager
-from .reshard_comm import SendRecvCommunicator
+from .reshard_comm import CommunicatorFactory
 from .resharder import StateDictResharder
 from .sharded_weight import (
     ShardedWeight,
@@ -60,6 +60,7 @@ if TYPE_CHECKING:
     from paddle.distributed.collective import Group
 
 PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list, list]] = {}
+_UNINIT_TENSOR_MODES = ["send_recv", "grouped_send_recv"]
 
 _metadata_manager = MetadataManager()
 
@@ -421,7 +422,7 @@ def _split_flat_shards(state_dict):
     return flat_shards, nonflat_shards
 
 
-def _unflatten_shards(flat_shards):
+def _unflatten_shards(flat_shards, comm_method):
     load_dict, padding_info = {}, {}
     for key, flat_shard in flat_shards.items():
         local_shape = flat_shard.local_shape
@@ -479,16 +480,22 @@ def _handle_aoa(
     destination_state_shard_info,
     path,
     process_group,
+    worker_groups,
     coordinator_rank,
     unique_id,
     offload,
     aoa_config,
     safetensors,
+    comm_method,
 ):
+    use_dist = paddle.distributed.get_world_size() > 1
     metadata_files, _ = get_checkpoint_files(path, unique_id=unique_id)
     assert len(metadata_files) == 1, "Only support one metadata file now."
     metadata = paddle.load(os.path.join(path, metadata_files[0]))
     state_dict_metadata = metadata.state_dict_metadata
+    using_not_init_tensor = (
+        True if comm_method in _UNINIT_TENSOR_MODES else False
+    )
 
     source_state_shard_info = {
         param_name: [
@@ -545,6 +552,8 @@ def _handle_aoa(
                 local_tensor = paddle.empty(
                     src_desc.local_shape, dtype=src_desc.dtype
                 )
+                if using_not_init_tensor:
+                    local_tensor._clear_to_zero_allocation()
                 force_gc.append(local_tensor)
                 if local_tensor.place != tgt_shard.local_tensor.place:
                     local_tensor = local_tensor.to(tgt_shard.local_tensor.place)
@@ -566,6 +575,8 @@ def _handle_aoa(
         unique_id=unique_id,
         offload=offload,
         safetensors=safetensors,
+        worker_groups=worker_groups,
+        comm_method=comm_method,
     )
 
     for dst_desc, src_desc in dst_to_src_desc_mapping.items():
@@ -606,6 +617,8 @@ def load_state_dict(
     mw_name_compatibility: bool = True,
     aoa_config: dict[str, list[str]] | None = None,
     safetensors: bool = False,
+    worker_groups: list[Group] | None = None,
+    comm_method: str = "broadcast",
 ) -> None:
     r"""
     Load the state_dict inplace from a checkpoint path.
@@ -620,6 +633,8 @@ def load_state_dict(
         mw_name_compatibility(bool): Enable name compatibility between dynamic and static graph semi-automatic parallel. Default is True.
         aoa_config(dict[str, list[str]]): AOA config to change parameters. Default is None.
         safetensors(bool): Whether to use safetensors format. Default is False.
+        worker_groups (list[paddle.distributed.collective.Group]): Communication groups used for tensor communications; if multiple are provided, an appropriate group is chosen; if None, the process_group group is used.
+        comm_method (str): Communication method for resharding. Choices are "send_recv", "broadcast", "multi_group_broadcast", and "grouped_send_recv". Default is "broadcast".
     Example:
         .. code-block:: python
 
@@ -646,6 +661,17 @@ def load_state_dict(
     """
     use_dist = paddle.distributed.get_world_size() > 1
 
+    valid_methods = [
+        "send_recv",
+        "broadcast",
+        "multi_group_broadcast",
+        "grouped_send_recv",
+    ]
+    assert comm_method in valid_methods, (
+        f"Invalid communication method '{comm_method}'. "
+        f"Please choose from {valid_methods}."
+    )
+
     if use_dist and process_group is None and not is_initialized():
         # Init the default global process group
         paddle.distributed.init_parallel_env()
@@ -663,6 +689,8 @@ def load_state_dict(
             offload=offload,
             mw_name_compatibility=mw_name_compatibility,
             safetensors=safetensors,
+            worker_groups=worker_groups,
+            comm_method=comm_method,
         )
         return
 
@@ -679,7 +707,7 @@ def load_state_dict(
             destination_state_shard_info[key].append(desc)
     else:
         flat_shards, nonflat_shards = _split_flat_shards(state_dict)
-        load_dict, padding_info = _unflatten_shards(flat_shards)
+        load_dict, padding_info = _unflatten_shards(flat_shards, comm_method)
         load_dict.update(nonflat_shards)
         destination_state_shard_info = build_global_state_shard_info(
             state_dict, process_group
@@ -691,11 +719,13 @@ def load_state_dict(
             destination_state_shard_info,
             path,
             process_group,
+            worker_groups,
             coordinator_rank,
             unique_id,
             offload,
             aoa_config,
             safetensors,
+            comm_method,
         )
     else:
         load_state_dict_impl(
@@ -707,6 +737,8 @@ def load_state_dict(
             offload=offload,
             mw_name_compatibility=mw_name_compatibility,
             safetensors=safetensors,
+            worker_groups=worker_groups,
+            comm_method=comm_method,
         )
     if use_dist:
         _finish_unflatten(flat_shards, padding_info)
@@ -719,9 +751,15 @@ def load_state_dict(
 def restore_unflattened_state_dict(
     source_state_dict: dict[str, dict[str, Tensor]],
     process_group,
+    weoker_groups,
+    comm_method,
+    offload,
 ):
     global _metadata_manager
     use_dist = paddle.distributed.get_world_size() > 1
+    using_not_init_tensor = (
+        True if comm_method in _UNINIT_TENSOR_MODES else False
+    ) and use_dist
 
     flattened_tensors = {}
     already_unflattened_tensors = {}
@@ -809,6 +847,9 @@ def restore_unflattened_state_dict(
         ] = file_name
 
         tmp_target_tensor = paddle.zeros((numel,), dtype=local_tensor.dtype)
+        if using_not_init_tensor:
+            tmp_target_tensor._clear_to_zero_allocation()
+
         global_offset_1d = (
             ravel_index(tuple(s[0] for s in slices), meta.local_shape),
         )
@@ -850,6 +891,8 @@ def restore_unflattened_state_dict(
         source_state_dict=source_state_dict_for_reshard,
         metadata_list=[tmp_metadata],
         process_group=process_group,
+        worker_groups=weoker_groups,
+        comm_method=comm_method,
     )
 
     for key in reshard_needed_tensors:
@@ -884,6 +927,7 @@ def restore_unflattened_state_dict(
 
     for key, tensor, meta in all_unflattened_tensors_with_meta:
         tensor_name, file_name = key
+        tensor = tensor.cpu() if offload else tensor
         final_unflattened_state_dict[file_name][tensor_name] = tensor
         final_local_tensor_meta[tensor_name].append(meta)
         final_storage_meta[
@@ -937,6 +981,8 @@ def load_state_dict_impl(
     offload: bool = False,
     mw_name_compatibility: bool = True,
     safetensors: bool = False,
+    worker_groups: list[Group] | None = None,
+    comm_method: str = 'broadcast',
 ) -> None:
     with paddle.base.dygraph.guard():
         global _metadata_manager
@@ -1042,7 +1088,11 @@ def load_state_dict_impl(
         if _metadata_manager.has_flattened_tensors:
             logger.info("Restoring unflattened state dict.")
             source_state_dict = restore_unflattened_state_dict(
-                source_state_dict, process_group
+                source_state_dict,
+                process_group,
+                worker_groups,
+                comm_method,
+                offload,
             )
             logger.info("Restored unflattened state dict.")
 
@@ -1053,6 +1103,8 @@ def load_state_dict_impl(
             process_group,
             coordinator_rank,
             offload,
+            worker_groups,
+            comm_method,
         )
 
         for file_name, state_dict in source_state_dict.items():
@@ -1081,9 +1133,13 @@ def _load_state_dict(
     process_group=None,
     coordinator_rank=0,
     offload=False,
+    worker_groups: list[Group] | None = None,
+    comm_method: str = 'broadcast',
 ):
-    communicator = SendRecvCommunicator()
     use_dist = True if paddle.distributed.get_world_size() > 1 else False
+    communicator = CommunicatorFactory.create(
+        comm_method, worker_groups=worker_groups
+    )
     resharder = StateDictResharder(
         target_state_dict=target_state_dict,
         source_state_dict=source_state_dict,
@@ -1092,7 +1148,6 @@ def _load_state_dict(
         process_group=process_group,
         offload=offload,
         use_dist=use_dist,
-        use_group=True,
     )
     resharder.reshard()
 
@@ -1206,20 +1261,19 @@ def load_merged_state_dict(
 
 
 def divide_positions(m, n):
-    """将总位置数均匀分配到n个处理器上，处理基数值和余数。
+    '''
+    Divide positions evenly among n processors with a base value and remainder handling.
 
-    根据总位置数m和处理器数n，计算每个处理器应分配的位置范围分割点。
-
-    Args:
-        m (int): 总位置数，即张量的总数量。
-        n (int): 处理器数量。
+    Parameters:
+    m (int): Total number of tensor positions.
+    n (int): Number of processors.
 
     Returns:
-        list[int]: 分割点列表，包含n+1个元素，表示每个处理器负责的范围边界。
+    list: A list of positions indicating where to split the tensors among processors.
 
     Raises:
-        ValueError: 当n为零或m小于n时抛出异常。
-    """
+    ValueError: If n is zero or if m is less than n.
+    '''
     if n == 0:
         raise ValueError("n should be greater than zero")
     if m < n:

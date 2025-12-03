@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -29,6 +28,8 @@ from .sharded_weight import (
 )
 from .utils import (
     compute_local_shape_and_global_offset,
+    get_target_tensor,
+    slice_tensor,
 )
 
 if TYPE_CHECKING:
@@ -68,75 +69,6 @@ class ReadItem:
     file_name: str
     dtype: str
     comm_group: Group | None = None
-
-
-def schedule_read_items(
-    comm_read_items: list[ReadItem],
-) -> dict[str, list[ReadItem]]:
-    order_rules = lambda read_item: (
-        read_item.tensor_name,
-        read_item.src_rank,
-        read_item.src_global_offset,
-        read_item.dst_rank,
-        read_item.dst_local_offset,
-        read_item.dst_global_offset
-        if read_item.dst_global_offset is not None
-        else (),
-        read_item.src_local_offset,
-        read_item.slice_shape,
-        read_item.file_name,
-        read_item.dtype,
-    )
-    # Step 1: Group by tensor_name
-    tensor_groups = defaultdict(list)
-    for item in comm_read_items:
-        tensor_groups[item.tensor_name].append(item)
-
-    scheduled_items = defaultdict(list)
-
-    # Step 2: For each tensor_name group, further group by all attributes except dst_rank
-    for tensor_name, items in tensor_groups.items():
-        grouped_items = defaultdict(list)
-        for item in items:
-            key = (
-                item.src_global_offset,
-                item.dst_global_offset,
-                item.src_rank,
-                item.dst_local_offset,
-                item.src_local_offset,
-                item.slice_shape,
-                item.file_name,
-                item.dtype,
-            )
-            grouped_items[key].append(item)
-
-        # Step 3: Combine items with the same key into a single ReadItem with all dst_ranks
-        for key, grouped_item in grouped_items.items():
-            combined_dst_rank = []
-            for item in grouped_item:
-                combined_dst_rank.extend(item.dst_rank)
-            combined_dst_rank = sorted(
-                set(combined_dst_rank)
-            )  # Remove duplicates
-
-            # Create a new ReadItem with combined dst_ranks
-            scheduled_item = ReadItem(
-                tensor_name=tensor_name,
-                src_global_offset=key[0],
-                dst_global_offset=key[1],
-                dst_rank=tuple(combined_dst_rank),
-                src_rank=key[2],
-                dst_local_offset=key[3],
-                src_local_offset=key[4],
-                slice_shape=key[5],
-                file_name=key[6],
-                dtype=key[7],
-            )
-            scheduled_items[tensor_name].append(scheduled_item)
-    for key, items in scheduled_items.items():
-        scheduled_items[key] = sorted(items, key=order_rules)
-
-    return dict(sorted(scheduled_items.items()))
 
 
 def get_load_infos(metadata_list, local_load_files, process_group, use_dist):
@@ -344,7 +276,6 @@ class StateDictResharder:
         process_group=None,
         offload=False,
         use_dist=True,
-        use_group=True,
     ):
         self.target_state_dict = target_state_dict
         self.source_state_dict = source_state_dict
@@ -353,7 +284,6 @@ class StateDictResharder:
         self.process_group = process_group
         self.offload = offload
         self.use_dist = use_dist
-        self.use_group = use_group
 
     def preprocess(self):
         if self.offload:
@@ -394,6 +324,24 @@ class StateDictResharder:
         )
         return processed_target_state_dict, read_items
 
+    def local_reshard(self, read_items, processed_target_state_dict):
+        for read_item in read_items:
+            src_tensor = self.source_state_dict[read_item.file_name][
+                read_item.tensor_name
+            ]
+            src_chunk_tensor = slice_tensor(
+                src_tensor, read_item.src_local_offset, read_item.slice_shape
+            ).contiguous()
+            dst_tensor = get_target_tensor(
+                processed_target_state_dict, read_item
+            )
+            dst_chunk_tensor = slice_tensor(
+                dst_tensor, read_item.dst_local_offset, read_item.slice_shape
+            )
+            if src_chunk_tensor.place != dst_chunk_tensor.place:
+                src_chunk_tensor = src_chunk_tensor.to(dst_chunk_tensor.place)
+            paddle.assign(src_chunk_tensor, dst_chunk_tensor)
+
     def reshard(self):
         cur_rank = paddle.distributed.get_rank()
         processed_target_state_dict, read_items = self.preprocess()
@@ -401,22 +349,23 @@ class StateDictResharder:
         logger.info(
             f"ReadItem generation completed, with a total of {len(read_items)}."
         )
-        comm_tasks = schedule_read_items(read_items)
         if not read_items:
             return processed_target_state_dict
 
         context = {
             'rank': cur_rank,
             'process_group': self.process_group,
-            'use_group': self.use_group,
         }
+
         state = {
             'source_state_dict': self.source_state_dict,
             'target_state_dict': processed_target_state_dict,
         }
 
-        self.communicator.communicate(comm_tasks, state, context)
+        if self.use_dist:
+            self.communicator.communicate(read_items, state, context)
+        else:
+            self.local_reshard(read_items, processed_target_state_dict)
 
         del self.source_state_dict
-        logger.info("All communication tasks completed.")
         return processed_target_state_dict
