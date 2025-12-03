@@ -21,7 +21,6 @@
 #include <utility>
 #include <vector>
 
-// #include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
