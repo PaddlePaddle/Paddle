@@ -22,12 +22,12 @@ limitations under the License. */
 
 namespace phi {
 
-template <typename DeviceContext,
+template <typename Context,
           typename T,
           typename D,
           int bits,
           typename ScaleT = T>
-void quant_compute(const DeviceContext& dev_ctx,
+void quant_compute(const Context& dev_ctx,
                    const DenseTensor& x,
                    DenseTensor* out,
                    DenseTensor* scale,
@@ -107,20 +107,20 @@ void quant_compute(const DeviceContext& dev_ctx,
   }
   if (algo == "llm.int8") {
     std::vector<int> axis = {1, 0};
-    funcs::Transpose<DeviceContext, int8_t, 2> trans;
+    funcs::Transpose<Context, int8_t, 2> trans;
     trans(dev_ctx, x_int, out, axis);
   } else {
 #ifdef PADDLE_WITH_HIP
     if (bits == 8) {
       std::vector<int> axis = {1, 0};
-      funcs::Transpose<DeviceContext, int8_t, 2> trans;
+      funcs::Transpose<Context, int8_t, 2> trans;
       trans(dev_ctx, x_int, out, axis);
     } else {
       for (int i = 0; i < out->numel(); ++i) {
         x_int_tmp_data[i] = x_int_data[i];
       }
       std::vector<int> axis = {1, 0};
-      funcs::Transpose<DeviceContext, int8_t, 2> trans;
+      funcs::Transpose<Context, int8_t, 2> trans;
       trans(dev_ctx, x_int_tmp, out, axis);
     }
 #else

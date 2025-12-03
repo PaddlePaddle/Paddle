@@ -62,19 +62,17 @@ void QKVAttentionXPUKernelImpl(const Context& dev_ctx,
       reinterpret_cast<XPUTypeOut*>(dev_ctx.template Alloc<T_QKV>(qkv));
   float* tmp_mask = nullptr;
   int64_t batch = q.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
   int64_t max_seq_len = q.dims()[1];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
 
-  int qkv_shape = 0;  // B x L x H x D
+  // TODO(large-tensor): XPU qkv_attention API not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(max_seq_len * batch, "max_seq_len*batch");
+
+  int64_t qkv_shape = 0;  // B x L x H x D
   int hidden_dim = head_num * head_dim;
   // no mask input, construct a fake LOD to compute via vsl
   std::vector<int> lod;
-  for (int i = 0; i < batch + 1; i++) {
-    lod.emplace_back(i * max_seq_len);
+  for (int64_t i = 0; i < batch + 1; i++) {
+    lod.emplace_back(static_cast<int>(i * max_seq_len));
   }
   xpu::VectorParam<int> query_lod = {
       lod.data(), static_cast<int>(lod.size()), nullptr};

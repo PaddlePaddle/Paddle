@@ -34,7 +34,7 @@ void ArgMaxMinMapper(PyObject* args,
                      bool* keepdims,
                      bool* flatten,
                      phi::DataType* dtype) {
-  // The python params are (x, axis,keepdim,dtype,name) which  haven't flatten
+  // The python params are (x, axis,keepdim,dtype,name) which haven't flatten
   // The _C_ops params are (x, axis,keepdim,flatten,dtype) which have flatten
   // but haven't name We should parse the python params and convert them to the
   // _C_ops params
@@ -86,13 +86,13 @@ void ArgMaxMinMapper(PyObject* args,
           raise ValueError(
          "the value of 'dtype' in argmax could not be None, but received None")
   */
-  PADDLE_ENFORCE_NE(
-      dtype_obj,
-      Py_None,
-      phi::errors::InvalidArgument("the value of 'dtype' in argmax and argmin "
-                                   "could not be None, but received None"));
+  PADDLE_ENFORCE_NE(dtype_obj,
+                    Py_None,
+                    common::errors::InvalidArgument(
+                        "the value of 'dtype' in argmax and argmin "
+                        "could not be None, but received None"));
   *dtype = CastPyArg2DataType(dtype_obj, "argmax", 3, phi::DataType::INT64);
-  // Check Reminding Params validity if needed
+  // Check Remaining Params validity if needed
   CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
 
   return;
@@ -145,14 +145,14 @@ void ArgMaxMinMapper(PyObject* args,
   }
   *keepdims = CastPyArg2Boolean(keepdims_obj, "argmax", 2, false);
 
-  PADDLE_ENFORCE_NE(
-      dtype_obj,
-      Py_None,
-      phi::errors::InvalidArgument("the value of 'dtype' in argmax and argmin "
-                                   "could not be None, but received None"));
+  PADDLE_ENFORCE_NE(dtype_obj,
+                    Py_None,
+                    common::errors::InvalidArgument(
+                        "the value of 'dtype' in argmax and argmin "
+                        "could not be None, but received None"));
   *dtype = CastPyArg2DataType(dtype_obj, "argmax", 3, phi::DataType::INT64);
 
-  // Check Reminding Params validity if needed
+  // Check Remaining Params validity if needed
   CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
   return;
 }
@@ -213,7 +213,7 @@ void ArgSumMapper(PyObject* args,
     }
   }
 
-  // Check Reminding Params validity if needed
+  // Check Remaining Params validity if needed
   CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
 }
 void ArgSumMapper(PyObject* args,
@@ -314,7 +314,7 @@ void GeluMapper(PyObject* args,
       approximate = nullptr;
       PADDLE_ENFORCE_NE(approximate,
                         nullptr,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "the value of approximate in gelu should be 'tanh' "
                             "or 'none', but received %s",
                             approximate_str.c_str()));
@@ -323,7 +323,7 @@ void GeluMapper(PyObject* args,
     *approximate = CastPyArg2Boolean(approximate_obj, "gelu", 1, false);
   }
 
-  // Check Reminding Params validity if needed
+  // Check Remaining Params validity if needed
   CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
 }
 void GeluMapper(PyObject* args,
@@ -357,7 +357,7 @@ void GeluMapper(PyObject* args,
       approximate = nullptr;
       PADDLE_ENFORCE_NE(approximate,
                         nullptr,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "the value of approximate in gelu should be 'tanh' "
                             "or 'none', but received %s",
                             approximate_str.c_str()));

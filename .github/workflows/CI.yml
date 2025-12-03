@@ -32,7 +32,7 @@ jobs:
     uses: ./.github/workflows/_SOT.yml
     needs: [clone, build-docker]
     with:
-      docker_cpu_image: ${{ needs.build-docker.outputs.docker_cpu_image }}
+      docker_sot_image: ${{ needs.build-docker.outputs.docker_sot_image }}
       clone-can-skip: ${{ needs.clone.outputs.can-skip }}
 
   mac:

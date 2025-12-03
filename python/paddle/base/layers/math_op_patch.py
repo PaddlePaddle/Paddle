@@ -598,6 +598,19 @@ def monkey_patch_variable():
             )
         self.stop_gradient = not value
 
+    def requires_grad_(self, value: bool) -> None:
+        """
+        Set whether this Tensor requires gradient computation.
+
+        Args:
+            value (bool): True to enable gradient computation, False to disable.
+        """
+        if not isinstance(value, bool):
+            raise TypeError(
+                f"requires_grad must be bool, but got {type(value)}"
+            )
+        self.stop_gradient = not value
+
     def _scalar_add_(var, value):
         return _scalar_op_(var, 1.0, value)
 
@@ -849,6 +862,7 @@ def monkey_patch_variable():
         ('ndimension', ndimension),
         ('ndim', _ndim),
         ("requires_grad", requires_grad),
+        ("requires_grad_", requires_grad_),
         (
             '__add__',
             _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_),

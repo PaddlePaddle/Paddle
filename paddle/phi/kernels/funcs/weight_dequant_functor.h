@@ -367,8 +367,12 @@ void WeightDequantize(const Context& dev_ctx,
                       DenseTensor* out) {
   using DataType = typename PDDataTypeTraits<T>::DataType;
 
-  int n = scale.dims()[0];
-  int k = x.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int
+  int64_t n = scale.dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int
+  int64_t k = x.dims()[1];
+
   dim3 block(512);
   dim3 grid(n / 32);
   auto stream = dev_ctx.stream();

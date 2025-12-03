@@ -43,7 +43,7 @@ struct SameDimsAddFunctor<
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    auto blas = phi::funcs::GetBlas<DevCtx, T>(dev_ctx);
+    auto blas = funcs::GetBlas<DevCtx, T>(dev_ctx);
     blas.VADD(
         x.numel(), x.data<T>(), y.data<T>(), dev_ctx.template Alloc<T>(z));
   }
@@ -85,7 +85,7 @@ struct SameDimsSubtractFunctor<
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    auto blas = phi::funcs::GetBlas<DevCtx, T>(dev_ctx);
+    auto blas = funcs::GetBlas<DevCtx, T>(dev_ctx);
     blas.VSUB(
         x.numel(), x.data<T>(), y.data<T>(), dev_ctx.template Alloc<T>(z));
   }
@@ -141,7 +141,7 @@ struct SameDimsDivideFunctor<
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    auto blas = phi::funcs::GetBlas<DevCtx, T>(dev_ctx);
+    auto blas = funcs::GetBlas<DevCtx, T>(dev_ctx);
     blas.VDIV(
         x.numel(), x.data<T>(), y.data<T>(), dev_ctx.template Alloc<T>(z));
   }
@@ -165,7 +165,7 @@ struct SameDimsMultiplyFunctor<
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    auto blas = phi::funcs::GetBlas<DevCtx, T>(dev_ctx);
+    auto blas = funcs::GetBlas<DevCtx, T>(dev_ctx);
     blas.VMUL(
         x.numel(), x.data<T>(), y.data<T>(), dev_ctx.template Alloc<T>(z));
   }

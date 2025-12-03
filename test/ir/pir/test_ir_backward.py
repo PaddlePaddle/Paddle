@@ -353,7 +353,7 @@ class TestBackward_6(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 ValueError,
-                r"The shape of grad_output\[0\] \[1, 3\] should be the same as the shape of output\[0\] \[4, 3\]",
+                r"The shape of grad_output\[0\] paddle.Size\(\[1, 3\]\) should be the same as the shape of output\[0\] paddle.Size\(\[4, 3\]\)",
             ):
                 x = paddle.randn(4, 2, requires_grad=True)
                 f = paddle.jit.to_static(
@@ -379,7 +379,7 @@ class TestBackward_6(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 ValueError,
-                r"The shape of grad_output\[0\] \[4\] should be the same as the shape of output\[0\] \[4, 3\]",
+                r"The shape of grad_output\[0\] paddle.Size\(\[4\]\) should be the same as the shape of output\[0\] paddle.Size\(\[4, 3\]\)",
             ):
                 x = paddle.randn(4, 2, requires_grad=True)
                 f = paddle.jit.to_static(

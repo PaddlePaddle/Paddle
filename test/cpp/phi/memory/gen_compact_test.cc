@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ PD_DECLARE_bool(enable_compact_mem);
 PD_DECLARE_int64(max_reserved_threshold_in_gb);
 PD_DECLARE_int64(cur_allocated_threshold_in_gb);
 PD_DECLARE_bool(try_allocate);
-PD_DECLARE_bool(use_multi_scale_virtual_memory_auto_growth);
+PD_DECLARE_bool(use_virtual_memory_auto_growth);
 PD_DECLARE_uint64(vmm_small_pool_size_in_mb);
 
 namespace paddle {
@@ -38,9 +38,9 @@ class CheckAndDoCompactTest : public ::testing::Test {
     // Set default flags
     FLAGS_enable_compact_mem = true;
     FLAGS_try_allocate = true;
-    FLAGS_use_multi_scale_virtual_memory_auto_growth = true;
+    FLAGS_use_virtual_memory_auto_growth = true;
     FLAGS_vmm_small_pool_size_in_mb = 2;
-    FLAGS_v = 4;
+    FLAGS_v = 10;
   }
 
   void TearDown() override { meta_tensors_.clear(); }

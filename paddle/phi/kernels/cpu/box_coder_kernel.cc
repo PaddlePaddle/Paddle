@@ -215,24 +215,24 @@ void BoxCoderKernel(const Context &dev_ctx,
                           variance.size()));
   }
 
-  auto code_type = phi::funcs::GetBoxCodeType(code_type_str);
+  auto code_type = funcs::GetBoxCodeType(code_type_str);
   auto row = target_box.dims()[0];
   auto col = prior_box.dims()[0];
-  if (code_type == phi::funcs::BoxCodeType::kDecodeCenterSize) {
+  if (code_type == funcs::BoxCodeType::kDecodeCenterSize) {
     col = target_box.dims()[1];
   }
   auto len = prior_box.dims()[1];
   output_box->Resize({row, col, len});
   dev_ctx.template Alloc<T>(output_box);
   T *output = output_box->data<T>();
-  if (code_type == phi::funcs::BoxCodeType::kEncodeCenterSize) {
+  if (code_type == funcs::BoxCodeType::kEncodeCenterSize) {
     EncodeCenterSize<T>(&target_box,
                         &prior_box,
                         prior_box_var.get_ptr(),
                         normalized,
                         variance,
                         output);
-  } else if (code_type == phi::funcs::BoxCodeType::kDecodeCenterSize) {
+  } else if (code_type == funcs::BoxCodeType::kDecodeCenterSize) {
     if (prior_box_var) {
       if (axis == 0) {
         DecodeCenterSize<T, 0, 2>(&target_box,

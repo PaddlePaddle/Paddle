@@ -40,6 +40,7 @@ endif()
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_sdpa_kernel)
   list(REMOVE_ITEM TEST_OPS test_vmmallocator)
+  list(REMOVE_ITEM TEST OPS test_allocator_visitor)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fractional_max_pool3d_op)
@@ -54,7 +55,6 @@ list(REMOVE_ITEM TEST_OPS test_matmul_v2_op)
 
 list(REMOVE_ITEM TEST_OPS test_allgather)
 list(REMOVE_ITEM TEST_OPS test_reducescatter)
-list(REMOVE_ITEM TEST_OPS test_flash_attention)
 
 #Note(risemeup1): Delete some unit tests related to the parameter server.
 list(REMOVE_ITEM TEST_OPS test_dist_fleet_trainer_desc_config)
@@ -120,6 +120,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_async_read_write)
   list(REMOVE_ITEM TEST_OPS test_fp8_gemm)
   list(REMOVE_ITEM TEST_OPS test_fp8_quant)
+  list(REMOVE_ITEM TEST_OPS test_incubate_fast_ln)
   list(REMOVE_ITEM TEST_OPS test_incubate_moe_gate_dispatch_and_quant)
 endif()
 
@@ -201,6 +202,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_masked_multihead_attention_op)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
+  list(REMOVE_ITEM TEST_OPS test_incubate_fast_ln)
   list(REMOVE_ITEM TEST_OPS test_fused_weighted_swiglu_act_quant_op)
   list(REMOVE_ITEM TEST_OPS test_fused_swiglu_weighted_bwd_op)
   list(REMOVE_ITEM TEST_OPS test_fused_act_dequant_op)
@@ -570,9 +572,18 @@ if(NOT WITH_GPU
    OR APPLE
    OR WITH_ROCM
    OR (${CUDA_ARCH_NAME} STREQUAL "Volta") # Affects the accuracy of op tests
-   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
+   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 11.8))
 )# Restrict the use of older versions of CUB
   list(REMOVE_ITEM TEST_OPS test_incubate_fused_rmsnorm_ext)
+endif()
+
+if(NOT WITH_GPU
+   OR APPLE
+   OR WITH_ROCM
+   OR (${CUDA_ARCH_NAME} STREQUAL "Volta") # Affects the accuracy of op tests
+   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
+)# Restrict the use of older versions of CUB
+  list(REMOVE_ITEM TEST_OPS test_incubate_fast_ln)
 endif()
 
 set(has_arch_ge80 FALSE)
@@ -1302,3 +1313,5 @@ if(NOT WIN32)
 endif()
 set_tests_properties(test_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_load_state_dict_from_url PROPERTIES TIMEOUT 40)
+set_tests_properties(test_flash_attention PROPERTIES TIMEOUT 240)
+set_tests_properties(test_eig_op PROPERTIES TIMEOUT 240)

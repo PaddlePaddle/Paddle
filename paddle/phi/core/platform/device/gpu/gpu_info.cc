@@ -34,6 +34,9 @@
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/miopen.h"
 #include "paddle/phi/backends/gpu/rocm/hip_graph.h"
+#elif PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/custom/cuda_graph.h"
+#include "paddle/phi/backends/dynload/cudnn.h"
 #else
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
@@ -614,8 +617,6 @@ void EmptyCache() {
     memory::Release(phi::GPUPlace(device));
   }
 }
-
-void VmmCompact() { memory::Compact(phi::GPUPlace(GetCurrentDeviceId())); }
 
 bool IsGPUManagedMemorySupported(int dev_id) {
   return phi::backends::gpu::IsGPUManagedMemorySupported(dev_id);

@@ -877,7 +877,7 @@ void Reducer::FusedAllReduceSchedule(const int run_order,
   } else {
     VLOG(3) << "dense group [" << curr_group_index
             << "] start allreduce in ring[" << run_order << "]";
-    // Select common commstream to concat tensors
+    // Select communication stream to concat tensors
     // group.dense_tensors ---> group.dense_contents_
     group.ConcatTensors(dev_context);
 

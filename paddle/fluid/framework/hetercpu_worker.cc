@@ -381,7 +381,7 @@ void HeterCpuWorker::FillSparseValue(std::shared_ptr<HeterTask> task,
                       common::errors::InvalidArgument(
                           "Tensor of var %s is null.", slot_name));
     int64_t* ids = tensor->data<int64_t>();
-    int len = tensor->numel();
+    int64_t len = tensor->numel();
     Variable* var_emb = scope->FindVar(emb_slot_name);
     if (var_emb == nullptr) {
       continue;

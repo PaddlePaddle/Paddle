@@ -69,16 +69,6 @@ void EraseStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 PADDLE_API gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation);
 #endif
 
-#if defined(PADDLE_WITH_CUDA)
-// return a pair of <largest_free_block_size, sum_of_n_largest_free_block_size>
-PADDLE_API extern std::pair<size_t, size_t> VmmMaxFreeSize(
-    const phi::GPUPlace& place, int32_t n);
-// Try using Allocator to simulate an allocation, simulating a request for
-// vector<size>.
-PADDLE_API extern bool TryAllocBatch(const phi::GPUPlace& place,
-                                     const std::vector<size_t>& sizes);
-#endif
-
 #ifdef PADDLE_WITH_XPU
 bool RecordStream(std::shared_ptr<Allocation> allocation, XPUStream stream);
 #endif
