@@ -16,17 +16,14 @@
 
 #include <c10/core/Device.h>
 #include <c10/cuda/CUDAException.h>
-#include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/cuda_stream.h"
-#include "paddle/phi/core/memory/allocation/allocator_facade.h"
 
 namespace c10::cuda {
 
-using DeviceIndex = int8_t;
 using StreamId = int64_t;
 
 class CUDAStream {
@@ -56,7 +53,7 @@ class CUDAStream {
  * be different if someone called 'setCurrentCUDAStream' or used 'StreamGuard'
  * or 'CUDAStreamGuard'.
  */
-inline CUDAStream getCurrentCUDAStream(DeviceIndex device_index = -1) {
+inline CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1) {
   if (device_index == -1) {
     device_index = phi::backends::gpu::GetCurrentDeviceId();
   }
@@ -67,17 +64,9 @@ inline CUDAStream getCurrentCUDAStream(DeviceIndex device_index = -1) {
 
 #define getDefaultCUDAStream getCurrentCUDAStream;
 
-inline void SetAllocatorStreamForGPUContext(gpuStream_t stream,
-                                            phi::GPUContext* ctx) {
-  ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                        .GetAllocator(ctx->GetPlace(), stream)
-                        .get());
-}
-
 }  // namespace c10::cuda
 
 namespace at::cuda {
 using c10::cuda::CUDAStream;
 using c10::cuda::getCurrentCUDAStream;
-using c10::cuda::SetAllocatorStreamForGPUContext;
 }  // namespace at::cuda
