@@ -136,6 +136,7 @@ jobs:
           git checkout test
           echo "Pull upstream develop"
           bash ci/git_pull.sh $BRANCH
+          git submodule update
           '
 
       - name: Check bypass

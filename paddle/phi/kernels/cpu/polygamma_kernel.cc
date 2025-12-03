@@ -30,7 +30,7 @@ void PolygammaKernel(const Context& dev_ctx,
   const T* x_data = x.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, size);
+  funcs::ForRange<Context> for_range(dev_ctx, size);
   PolygammaFunctor<T> functor(x_data, n, out_data, size);
   for_range(functor);
 }

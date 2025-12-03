@@ -151,7 +151,7 @@ void BincountCUDAInner(const Context& dev_ctx,
 
   if (!has_weights) {
     int64_t* output_data = dev_ctx.template Alloc<int64_t>(output);
-    phi::funcs::SetConstant<Context, int64_t>()(
+    funcs::SetConstant<Context, int64_t>()(
         dev_ctx, output, static_cast<int64_t>(0));
 
     KernelBincount<T, InputT, int64_t>
@@ -160,7 +160,7 @@ void BincountCUDAInner(const Context& dev_ctx,
   } else {
     if (weights->dtype() == DataType::FLOAT32) {
       float* output_data = dev_ctx.template Alloc<float>(output);
-      phi::funcs::SetConstant<Context, float>()(
+      funcs::SetConstant<Context, float>()(
           dev_ctx, output, static_cast<float>(0));
 
       KernelBincount<T, InputT, float>
@@ -168,7 +168,7 @@ void BincountCUDAInner(const Context& dev_ctx,
               input_data, input_numel, has_weights, weights_data, output_data);
     } else {
       double* output_data = dev_ctx.template Alloc<double>(output);
-      phi::funcs::SetConstant<Context, double>()(
+      funcs::SetConstant<Context, double>()(
           dev_ctx, output, static_cast<double>(0));
       KernelBincount<T, InputT, double>
           <<<num_blocks, PADDLE_CUDA_NUM_THREADS, 0, stream>>>(

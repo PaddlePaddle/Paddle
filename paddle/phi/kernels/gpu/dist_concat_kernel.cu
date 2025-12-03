@@ -56,10 +56,7 @@ void DistConcatKernel(const Context& dev_ctx,
   auto out_dims = x.dims();
   out_dims[out_dims.size() - 1] *= nranks;
   int64_t rows_per_tensor = x.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
-  int offset = 0;
+  int64_t offset = 0;
   for (int i = 0; i < nranks; i++) {
     DenseTensor temp =
         temp_out.Slice(static_cast<int64_t>(offset),
@@ -67,7 +64,7 @@ void DistConcatKernel(const Context& dev_ctx,
     inputs.emplace_back(temp);
     offset += rows_per_tensor;
   }
-  phi::funcs::ConcatFunctor<Context, T> functor;
+  funcs::ConcatFunctor<Context, T> functor;
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
   functor(dev_ctx, inputs, axis, out);

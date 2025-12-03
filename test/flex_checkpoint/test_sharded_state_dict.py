@@ -141,6 +141,15 @@ TEST_CONFIGS = {
             "has_bias": "True",
             "master_weight": "True",
         },
+        {
+            "test_type": "optimizer",
+            "layer_type": "GroupShardedStage3",
+            "world_size": 2,
+            "tp": 1,
+            "sharding_degree": 2,
+            "has_bias": "True",
+            "master_weight": "True",
+        },
     ],
     "4_card_tests": [
         {

@@ -129,7 +129,7 @@ void LstsqKernel(const Context& dev_ctx,
 
     DenseTensor trans_r = phi::TransposeLast2Dim<T>(dev_ctx, tmp_x);
     DenseTensor slice_r =
-        phi::funcs::Slice<T>(dev_ctx, trans_r, {-2}, {0}, {min_mn});
+        funcs::Slice<T>(dev_ctx, trans_r, {-2}, {0}, {min_mn});
     DenseTensor res_r;
     res_r.Resize(common::make_ddim({batch_count, min_mn, min_mn}));
     dev_ctx.template Alloc<T>(&res_r);
@@ -137,7 +137,7 @@ void LstsqKernel(const Context& dev_ctx,
 
     DenseTensor trans_y = phi::TransposeLast2Dim<T>(dev_ctx, tmp_y);
     DenseTensor slice_y =
-        phi::funcs::Slice<T>(dev_ctx, trans_y, {-2}, {0}, {min_mn});
+        funcs::Slice<T>(dev_ctx, trans_y, {-2}, {0}, {min_mn});
 
     // Step 3, solve R X = Y
     phi::TriangularSolveKernel<T, Context>(
@@ -154,7 +154,7 @@ void LstsqKernel(const Context& dev_ctx,
     // Step 2, solve R^H Z = Y
     DenseTensor trans_r = phi::TransposeLast2Dim<T>(dev_ctx, new_x);
     DenseTensor slice_r =
-        phi::funcs::Slice<T>(dev_ctx, trans_r, {-2}, {0}, {min_mn});
+        funcs::Slice<T>(dev_ctx, trans_r, {-2}, {0}, {min_mn});
     DenseTensor res_r;
     res_r.Resize(common::make_ddim({batch_count, min_mn, min_mn}));
     dev_ctx.template Alloc<T>(&res_r);
@@ -176,8 +176,7 @@ void LstsqKernel(const Context& dev_ctx,
                              tau_stride);
 
     DenseTensor trans_q = phi::TransposeLast2Dim<T>(dev_ctx, new_x);
-    DenseTensor slice_q =
-        phi::funcs::Slice<T>(dev_ctx, trans_q, {-1}, {0}, {m});
+    DenseTensor slice_q = funcs::Slice<T>(dev_ctx, trans_q, {-1}, {0}, {m});
     DenseTensor solu_tensor =
         phi::Matmul<T>(dev_ctx, slice_q, *solution, false, false);
     phi::Copy<Context>(

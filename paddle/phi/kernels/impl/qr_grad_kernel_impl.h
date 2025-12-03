@@ -88,7 +88,7 @@ void QrGradKernel(const Context& dev_ctx,
   }
 
   // m >= n case
-  auto m_gt_n_case = [](const Context& dev_ctx,
+  auto m_ge_n_case = [](const Context& dev_ctx,
                         const DenseTensor& dQ,
                         const DenseTensor& dR,
                         const DenseTensor& A UNUSED,
@@ -186,7 +186,7 @@ void QrGradKernel(const Context& dev_ctx,
   };
 
   if (m >= n) {
-    auto dA_tmp = m_gt_n_case(dev_ctx, dQ, dR, A, Q, R);
+    auto dA_tmp = m_ge_n_case(dev_ctx, dQ, dR, A, Q, R);
     phi::Copy(dev_ctx, dA_tmp, dA.place(), false, &dA);
   } else {
     // If m < n for input matrices A, we partition A = [X|Y] and R = [U|V]
@@ -214,7 +214,7 @@ void QrGradKernel(const Context& dev_ctx,
     if (dQ.initialized()) {
       dQ_prime = Add<T, Context>(dev_ctx, dQ, dQ_prime);
     }
-    dX = m_gt_n_case(dev_ctx, dQ_prime, dU, A, Q, U);
+    dX = m_ge_n_case(dev_ctx, dQ_prime, dU, A, Q, U);
     dY = Matmul<T, Context>(dev_ctx, Q, dV);
     // Concatenate dX and dY to get dA.
     auto dA_tmp = Concat<T, Context>(dev_ctx, {&dX, &dY}, -1);

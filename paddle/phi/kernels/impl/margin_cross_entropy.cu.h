@@ -13,18 +13,11 @@
 // limitations under the License.
 #pragma once
 
-// old op include, fluid should be removed
-#ifdef PADDLE_WITH_HIP
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#else
-#include <cub/cub.cuh>
-#endif
-
 #include <vector>
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/impl/softmax_kernel_impl.h"

@@ -80,7 +80,7 @@ void OverlapAddKernel(const Context& dev_ctx,
       }
       trans_x.Resize(common::make_ddim(x_dims_vec));
       dev_ctx.template Alloc<T>(&trans_x);
-      phi::funcs::TransCompute<Context, T>(
+      funcs::TransCompute<Context, T>(
           perm_x.size(), dev_ctx, x_, &trans_x, perm_x);
     } else {
       std::vector<int> perm_out{1, 0};
@@ -90,7 +90,7 @@ void OverlapAddKernel(const Context& dev_ctx,
       }
       trans_out.Resize(common::make_ddim(out_dims_vec));
       dev_ctx.template Alloc<T>(&trans_out);
-      phi::funcs::TransCompute<Context, T>(
+      funcs::TransCompute<Context, T>(
           perm_out.size(), dev_ctx, *out, &trans_out, perm_out);
 
       std::vector<int> perm_x{2, 1, 0};
@@ -100,7 +100,7 @@ void OverlapAddKernel(const Context& dev_ctx,
       }
       trans_x.Resize(common::make_ddim(x_dims_vec));
       dev_ctx.template Alloc<T>(&trans_x);
-      phi::funcs::TransCompute<Context, T>(
+      funcs::TransCompute<Context, T>(
           perm_x.size(), dev_ctx, x_, &trans_x, perm_x);
     }
   } else {
@@ -120,7 +120,7 @@ void OverlapAddKernel(const Context& dev_ctx,
   // Transpose output in case axis is 0.
   if (axis == 0 && out_rank > 1U) {
     std::vector<int> perm_out{1, 0};
-    phi::funcs::TransCompute<Context, T>(
+    funcs::TransCompute<Context, T>(
         perm_out.size(), dev_ctx, trans_out, out, perm_out);
   }
 
