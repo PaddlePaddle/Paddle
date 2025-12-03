@@ -44,6 +44,14 @@
 
 namespace deep_ep {
 
+using TYPE = std::tuple<paddle::Tensor, 
+                        paddle::Tensor, 
+                        paddle::Tensor,
+                        paddle::Tensor,
+                        paddle::Tensor,
+                        paddle::Tensor,
+                        paddle::Tensor,
+                        std::optional<paddle::Tensor>>;
 struct Buffer {
   EP_STATIC_ASSERT(NUM_MAX_NVL_PEERS == 8,
                    "The number of maximum NVLink peers must be 8");
@@ -225,6 +233,7 @@ struct Buffer {
       const std::optional<deep_ep::detail::Tensor>&
           cached_recv_gbl_rank_prefix_sum,
       int expert_alignment,
+      int num_worst_tokens,
       const Config& config,
       std::optional<EventHandle>& previous_event,  // NOLINT
       bool async,
@@ -331,6 +340,20 @@ struct Buffer {
       bool return_recv_hook,
       const std::optional<deep_ep::detail::Tensor>& out);
 
+
+std::tuple<paddle::Tensor, 
+                        paddle::Tensor, 
+                        paddle::Tensor,
+                        paddle::Tensor,
+                        paddle::Tensor,
+                        paddle::Tensor,
+                        paddle::Tensor,
+                        std::optional<paddle::Tensor>> m2n_get_pre_allocated_memory(int num_tokens, 
+                                     int num_topk, 
+                                     int hidden,
+                                     int num_max_dispatch_tokens_per_rank, 
+                                     bool use_fp8);
+
   std::tuple<deep_ep::detail::Tensor,
              std::optional<deep_ep::detail::Tensor>,
              deep_ep::detail::Tensor,
@@ -345,6 +368,7 @@ struct Buffer {
       const deep_ep::detail::Tensor& x,
       const deep_ep::detail::Tensor& topk_idx,
       const deep_ep::detail::Tensor& topk_weights,
+      const TYPE& pre_allocated_result_memory,
       int num_max_dispatch_tokens_per_rank,
       int num_experts,
       int a_start_rank,
@@ -411,6 +435,7 @@ struct Buffer {
       const std::optional<paddle::Tensor>& cached_gbl_channel_prefix_matrix,
       const std::optional<paddle::Tensor>& cached_recv_gbl_rank_prefix_sum,
       int expert_alignment,
+      int num_worst_tokens,
       const Config& config,
       std::optional<EventHandle>& previous_event,  // NOLINT
       bool async,
@@ -516,6 +541,7 @@ struct Buffer {
   m2n_low_latency_dispatch_two_stage_api(const paddle::Tensor& x,
                                          const paddle::Tensor& topk_idx,
                                          const paddle::Tensor& topk_weights,
+                                         const TYPE & pre_allocated_result_memory,
                                          int num_max_dispatch_tokens_per_rank,
                                          int num_experts,
                                          int a_start_rank,

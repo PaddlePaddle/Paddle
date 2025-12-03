@@ -103,6 +103,9 @@ __global__ __launch_bounds__(
                      int rank,
                      int num_ranks,
                      int phases) {
+
+//return;
+
   const auto sm_id = static_cast<int>(blockIdx.x);
   const auto thread_id = static_cast<int>(threadIdx.x);
   const auto warp_id = thread_id / 32, lane_id = get_lane_id();
@@ -655,6 +658,10 @@ __global__ __launch_bounds__(
                     int num_ranks,
                     int phases,
                     bool zero_copy) {
+
+
+//return;
+
   const auto sm_id = static_cast<int>(blockIdx.x);
   const auto num_sms = static_cast<int>(gridDim.x);
   const auto thread_id = static_cast<int>(threadIdx.x);

@@ -109,8 +109,8 @@
 
 #define SWITCH_HIDDEN(case_macro)                    \
   switch (hidden) {                                  \
-    case 2048:                                       \
-      case_macro(2048);                              \
+    case 6144:                                       \
+      case_macro(6144);                              \
     case 2560:                                       \
       case_macro(2560);                              \
     case 4096:                                       \
@@ -129,8 +129,8 @@
   while (false)
 
 #define DISPATCH_HIDDEN_SIZE(hidden, kHidden, ...) \
-  if (hidden == 1536) {                            \
-    constexpr size_t kHidden = 1536;               \
+  if (hidden == 5120) {                            \
+    constexpr size_t kHidden = 5120;               \
     __VA_ARGS__                                    \
   } else if (hidden == 4096) {                     \
     constexpr size_t kHidden = 4096;               \

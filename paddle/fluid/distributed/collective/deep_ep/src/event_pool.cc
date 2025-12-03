@@ -81,6 +81,8 @@ cudaEvent_t EventPool::CreateCudaEventFromPool() {
     return CreateNewEvent();
   };
 
+  // return CreateNewEvent();
+  
   if (incomplished_events_.empty()) {
     return CreateNewEvent();
   }

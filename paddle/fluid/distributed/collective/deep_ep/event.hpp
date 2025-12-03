@@ -72,6 +72,10 @@ inline deep_ep::detail::Event create_event(const cudaStream_t& s) {
 
 inline void stream_wait(const cudaStream_t& s_0, const cudaStream_t& s_1) {
   EP_HOST_ASSERT(s_0 != s_1);
+
+  // printf("%d\n", s_0);
+  // printf("%d\n", s_1);
+  
   CUDA_CHECK(cudaStreamWaitEvent(s_0, create_event(s_1).cuda_event(), 0));
 }
 

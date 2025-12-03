@@ -231,7 +231,12 @@ int Buffer::get_root_rdma_rank(bool global) const {
 
 int Buffer::get_local_device_id() const { return device_id; }
 
-cudaStream_t Buffer::get_comm_stream() const { return comm_stream; }
+cudaStream_t Buffer::get_comm_stream() const { 
+  auto compute_stream = calc_ctx->stream();
+  stream_wait(compute_stream, comm_stream);
+  stream_wait(comm_stream, compute_stream);
+  return comm_stream; 
+}
 
 #ifndef PADDLE_NO_PYTHON
 pybind11::bytearray Buffer::get_local_ipc_handle() const {
@@ -989,6 +994,7 @@ Buffer::internode_dispatch(
     const std::optional<deep_ep::detail::Tensor>&
         cached_recv_gbl_rank_prefix_sum,
     int expert_alignment,
+    int num_worst_tokens,
     const Config& config,
     std::optional<EventHandle>& previous_event,  // NOLINT
     bool async,
@@ -1198,6 +1204,7 @@ Buffer::internode_dispatch(
         num_experts,
         is_token_in_rank.data_ptr<bool>(),
         num_tokens,
+        num_worst_tokens,
         num_channels,
         hidden_int4,
         num_scales,
@@ -1219,34 +1226,40 @@ Buffer::internode_dispatch(
         low_latency_mode);
 
     // Synchronize total received tokens and tokens per expert
-    auto start_time = std::chrono::high_resolution_clock::now();
-    while (true) {
-      // Read total count
-      num_recv_tokens = static_cast<int>(*moe_recv_counter);
-      num_rdma_recv_tokens = static_cast<int>(*moe_recv_rdma_counter);
 
-      // Read per-expert count
-      bool ready = (num_recv_tokens >= 0) && (num_rdma_recv_tokens >= 0);
-      for (int i = 0; i < num_local_experts && ready; ++i)
-        ready &= moe_recv_expert_counter[i] >= 0;
+    if (num_worst_tokens > 0) {
+      num_recv_tokens = num_worst_tokens;
+      num_rdma_recv_tokens = num_worst_tokens;
+    } else {
+      auto start_time = std::chrono::high_resolution_clock::now();
+      while (true) {
+        // Read total count
+        num_recv_tokens = static_cast<int>(*moe_recv_counter);
+        num_rdma_recv_tokens = static_cast<int>(*moe_recv_rdma_counter);
 
-      if (ready) break;
+        // Read per-expert count
+        bool ready = (num_recv_tokens >= 0) && (num_rdma_recv_tokens >= 0);
+        for (int i = 0; i < num_local_experts && ready; ++i)
+          ready &= moe_recv_expert_counter[i] >= 0;
 
-      // Timeout check
-      if (std::chrono::duration_cast<std::chrono::seconds>(
-              std::chrono::high_resolution_clock::now() - start_time)
-              .count() > NUM_CPU_TIMEOUT_SECS) {
-        LOG(INFO) << "Global rank: " << rank
-                  << ", num_recv_tokens: " << num_recv_tokens
-                  << ", num_rdma_recv_tokens: " << num_rdma_recv_tokens;
-        for (int i = 0; i < num_local_experts; ++i)
-          LOG(INFO) << "moe_recv_expert_counter[" << i
-                    << "]: " << moe_recv_expert_counter[i];
-        throw std::runtime_error("DeepEP error: timeout (dispatch CPU)");
+        if (ready) break;
+
+        // Timeout check
+        if (std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::high_resolution_clock::now() - start_time)
+                .count() > NUM_CPU_TIMEOUT_SECS) {
+          LOG(INFO) << "Global rank: " << rank
+                    << ", num_recv_tokens: " << num_recv_tokens
+                    << ", num_rdma_recv_tokens: " << num_rdma_recv_tokens;
+          for (int i = 0; i < num_local_experts; ++i)
+            LOG(INFO) << "moe_recv_expert_counter[" << i
+                      << "]: " << moe_recv_expert_counter[i];
+          throw std::runtime_error("DeepEP error: timeout (dispatch CPU)");
+        }
       }
+      num_recv_tokens_per_expert_list = std::vector<int>(
+          moe_recv_expert_counter, moe_recv_expert_counter + num_local_experts);
     }
-    num_recv_tokens_per_expert_list = std::vector<int>(
-        moe_recv_expert_counter, moe_recv_expert_counter + num_local_experts);
   }
 
   // Allocate new tensors
@@ -1335,6 +1348,7 @@ Buffer::internode_dispatch(
       recv_gbl_rank_prefix_sum.data_ptr<int>(),
       is_token_in_rank.data_ptr<bool>(),
       num_tokens,
+      num_worst_tokens,
       hidden_int4,
       num_scales,
       num_topk,
@@ -2312,6 +2326,88 @@ Buffer::low_latency_combine_two_stage(
   return {combined_x, event, recv_hook};
 }
 
+std::tuple<paddle::Tensor, 
+                        paddle::Tensor, 
+                        paddle::Tensor,
+                        paddle::Tensor,
+                        paddle::Tensor,
+                        paddle::Tensor,
+                        paddle::Tensor,
+                        std::optional<paddle::Tensor>> Buffer::m2n_get_pre_allocated_memory(int num_tokens, 
+                                     int num_topk, 
+                                     int hidden,
+                                     int num_max_dispatch_tokens_per_rank, 
+                                     bool use_fp8) {
+  const int num_experts = 128;
+  const int num_local_experts = 8;
+  const int num_ranks = 24;
+  auto return_x_dtype = phi::DataType::FLOAT8_E4M3FN;
+  const int num_scales = hidden / 128;
+  // Allocate packed tensors
+  auto packed_recv_x = paddle::experimental::empty({num_local_experts,
+                                   num_ranks * num_max_dispatch_tokens_per_rank,
+                                   hidden},
+                                  return_x_dtype,
+                                  phi::GPUPlace(device_id));
+  
+  auto rdma_send_flags = paddle::experimental::empty({num_tokens, num_ranks / NUM_MAX_NVL_PEERS},
+                                  phi::DataType::BOOL,
+                                  phi::GPUPlace(device_id));
+
+  auto packed_recv_src_info = paddle::experimental::empty(
+          {num_local_experts, num_ranks * num_max_dispatch_tokens_per_rank},
+          phi::DataType::INT32,
+          phi::GPUPlace(device_id));
+
+  auto packed_recv_layout_range = paddle::experimental::empty({num_local_experts, num_ranks},
+                                  phi::DataType::INT64,
+                                  phi::GPUPlace(device_id));
+
+
+  auto packed_recv_count = paddle::experimental::empty({num_local_experts}, phi::DataType::INT32, phi::GPUPlace(device_id));
+
+
+  auto packed_rdma_recv_count = paddle::experimental::empty({num_ranks / NUM_MAX_NVL_PEERS},
+                                  phi::DataType::INT32,
+                                  phi::GPUPlace(device_id));
+
+  const size_t num_bytes_per_msg =
+      sizeof(int4) +
+      (num_ranks / NUM_MAX_NVL_PEERS * (num_topk * 3 + 1) * sizeof(int) +
+       sizeof(int4) - 1) /
+          sizeof(int4) * sizeof(int4) +
+      (use_fp8 ? (hidden + num_scales * sizeof(float))
+               : (hidden * sizeof(nv_bfloat16)));
+  auto packed_rdma_recv_x = paddle::experimental::empty({num_ranks / NUM_MAX_NVL_PEERS,
+                                   num_max_dispatch_tokens_per_rank,
+                                   num_bytes_per_msg},
+                                   phi::DataType::UINT8,
+                                   phi::GPUPlace(device_id));
+
+  auto packed_recv_x_scales = std::optional<paddle::Tensor>();
+  if (use_fp8) {
+    EP_HOST_ASSERT((num_ranks * num_max_dispatch_tokens_per_rank) % 4 == 0 &&
+                   "TMA requires the number of tokens to be multiple of 4");
+    packed_recv_x_scales = paddle::experimental::empty(
+            {num_local_experts,
+             num_scales,
+             num_ranks * num_max_dispatch_tokens_per_rank},
+            phi::DataType::FLOAT32,
+            phi::GPUPlace(device_id));
+  }
+
+  return {
+    packed_recv_x,
+    rdma_send_flags,
+    packed_recv_src_info,
+    packed_recv_layout_range,
+    packed_recv_count,
+    packed_rdma_recv_x,
+    packed_rdma_recv_count,
+    packed_recv_x_scales
+  };
+}
+
 std::tuple<deep_ep::detail::Tensor,
            std::optional<deep_ep::detail::Tensor>,
            deep_ep::detail::Tensor,
@@ -2326,6 +2422,9 @@ Buffer::m2n_low_latency_dispatch_two_stage(
     const deep_ep::detail::Tensor& x,
     const deep_ep::detail::Tensor& topk_idx,
     const deep_ep::detail::Tensor& topk_weights,
+
+    const TYPE& pre_allocated_result_memory,
+
     int num_max_dispatch_tokens_per_rank,
     int num_experts,
     int a_start_rank,
@@ -2352,8 +2451,13 @@ Buffer::m2n_low_latency_dispatch_two_stage(
   auto num_scales = hidden / 128, num_topk = static_cast<int>(topk_idx.size(1));
   int num_local_experts = num_experts / num_ranks;
 
+
+  static int ii = -1;
+  ii = (ii + 1) % 3;
+  ii = 0;
+
   // Buffer control
-  LowLatencyTwoStageLayout layout(rdma_buffer_ptr,
+  LowLatencyTwoStageLayout layout(rdma_buffer_ptr + 76500864 / 4 * ii,
                                   num_max_dispatch_tokens_per_rank,
                                   hidden,
                                   num_ranks,
@@ -2383,46 +2487,88 @@ Buffer::m2n_low_latency_dispatch_two_stage(
 
   auto compute_stream = calc_ctx->stream();
   auto launch_stream = comm_stream;
+  // launch_stream = compute_stream;
+
   if (rank >= a_start_rank && rank < a_start_rank + a_num_ranks) {
     stream_wait(launch_stream, compute_stream);
   }
-
-  if (rank >= a_start_rank && rank < a_start_rank + a_num_ranks) {
-    stream_wait(compute_stream, launch_stream);
-  }
-
+  
+  // if (rank >= a_start_rank && rank < a_start_rank + a_num_ranks) {
+  //   stream_wait(compute_stream, launch_stream);
+  // }
+  
   auto return_x_dtype = phi::DataType::BFLOAT16;
   if (use_fp8) {
     return_x_dtype = phi::DataType::FLOAT8_E4M3FN;
   }
 
   // Allocate packed tensors
-  auto packed_recv_x = ConvertPaddleTensorToDetailTensor(
-      paddle::experimental::empty({num_local_experts,
-                                   num_ranks * num_max_dispatch_tokens_per_rank,
-                                   hidden},
-                                  return_x_dtype,
-                                  x.place()));
-  auto rdma_send_flags = ConvertPaddleTensorToDetailTensor(
-      paddle::experimental::empty({num_tokens, num_ranks / NUM_MAX_NVL_PEERS},
-                                  phi::DataType::BOOL,
-                                  phi::GPUPlace(device_id)));
-  auto packed_recv_src_info =
-      ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {num_local_experts, num_ranks * num_max_dispatch_tokens_per_rank},
-          phi::DataType::INT32,
-          phi::GPUPlace(device_id)));
-  auto packed_recv_layout_range = ConvertPaddleTensorToDetailTensor(
-      paddle::experimental::empty({num_local_experts, num_ranks},
-                                  phi::DataType::INT64,
-                                  phi::GPUPlace(device_id)));
-  auto packed_recv_count =
-      ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {num_local_experts}, phi::DataType::INT32, phi::GPUPlace(device_id)));
-  auto packed_rdma_recv_count = ConvertPaddleTensorToDetailTensor(
-      paddle::experimental::empty({num_ranks / NUM_MAX_NVL_PEERS},
-                                  phi::DataType::INT32,
-                                  phi::GPUPlace(device_id)));
+  // auto packed_recv_x = ConvertPaddleTensorToDetailTensor(
+  //     paddle::experimental::empty({num_local_experts,
+  //                                  num_ranks * num_max_dispatch_tokens_per_rank,
+  //                                  hidden},
+  //                                 return_x_dtype,
+  //                                 x.place()));
+  
+  auto packed_recv_x = ConvertPaddleTensorToDetailTensor(std::get<0>(pre_allocated_result_memory));
+  EP_HOST_ASSERT(packed_recv_x.dim() == 3);
+  EP_HOST_ASSERT(packed_recv_x.size(0) == num_local_experts);
+  EP_HOST_ASSERT(packed_recv_x.size(1) == num_ranks * num_max_dispatch_tokens_per_rank);
+  EP_HOST_ASSERT(packed_recv_x.size(2) == hidden);
+  EP_HOST_ASSERT(packed_recv_x.scalar_type() == deep_ep::detail::kFloat8_e4m3fn);
+
+  // auto rdma_send_flags = ConvertPaddleTensorToDetailTensor(
+  //     paddle::experimental::empty({num_tokens, num_ranks / NUM_MAX_NVL_PEERS},
+  //                                 phi::DataType::BOOL,
+  //                                 phi::GPUPlace(device_id)));
+
+  auto rdma_send_flags = ConvertPaddleTensorToDetailTensor(std::get<1>(pre_allocated_result_memory));
+  EP_HOST_ASSERT(rdma_send_flags.dim() == 2);
+  EP_HOST_ASSERT(rdma_send_flags.size(0) >= num_tokens);
+  EP_HOST_ASSERT(rdma_send_flags.size(1) == num_ranks / NUM_MAX_NVL_PEERS);
+  EP_HOST_ASSERT(rdma_send_flags.scalar_type() == deep_ep::detail::kBool);
+
+  // auto packed_recv_src_info =
+  //     ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
+  //         {num_local_experts, num_ranks * num_max_dispatch_tokens_per_rank},
+  //         phi::DataType::INT32,
+  //         phi::GPUPlace(device_id)));
+
+  auto packed_recv_src_info = ConvertPaddleTensorToDetailTensor(std::get<2>(pre_allocated_result_memory));
+  EP_HOST_ASSERT(packed_recv_src_info.dim() == 2);
+  EP_HOST_ASSERT(packed_recv_src_info.size(0) == num_local_experts);
+  EP_HOST_ASSERT(packed_recv_src_info.size(1) == num_ranks * num_max_dispatch_tokens_per_rank);
+  EP_HOST_ASSERT(packed_recv_src_info.scalar_type() == deep_ep::detail::kInt32);
+
+  // auto packed_recv_layout_range = ConvertPaddleTensorToDetailTensor(
+  //     paddle::experimental::empty({num_local_experts, num_ranks},
+  //                                 phi::DataType::INT64,
+  //                                 phi::GPUPlace(device_id)));
+
+  auto packed_recv_layout_range = ConvertPaddleTensorToDetailTensor(std::get<3>(pre_allocated_result_memory));
+  EP_HOST_ASSERT(packed_recv_layout_range.dim() == 2);
+  EP_HOST_ASSERT(packed_recv_layout_range.size(0) == num_local_experts);
+  EP_HOST_ASSERT(packed_recv_layout_range.size(1) == num_ranks);
+  EP_HOST_ASSERT(packed_recv_layout_range.scalar_type() == phi::DataType::INT64);
+
+  // auto packed_recv_count =
+  //     ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
+  //         {num_local_experts}, phi::DataType::INT32, phi::GPUPlace(device_id)));
+
+  auto packed_recv_count = ConvertPaddleTensorToDetailTensor(std::get<4>(pre_allocated_result_memory));
+  EP_HOST_ASSERT(packed_recv_count.dim() == 1);
+  EP_HOST_ASSERT(packed_recv_count.size(0) == num_local_experts);
+  EP_HOST_ASSERT(packed_recv_count.scalar_type() == phi::DataType::INT32);
+
+  // auto packed_rdma_recv_count = ConvertPaddleTensorToDetailTensor(
+  //     paddle::experimental::empty({num_ranks / NUM_MAX_NVL_PEERS},
+  //                                 phi::DataType::INT32,
+  //                                 phi::GPUPlace(device_id)));
+
+  auto packed_rdma_recv_count = ConvertPaddleTensorToDetailTensor(std::get<5>(pre_allocated_result_memory));
+  EP_HOST_ASSERT(packed_rdma_recv_count.dim() == 1);
+  EP_HOST_ASSERT(packed_rdma_recv_count.size(0) == num_ranks / NUM_MAX_NVL_PEERS);
+  EP_HOST_ASSERT(packed_rdma_recv_count.scalar_type() == phi::DataType::INT32);
 
   const size_t num_bytes_per_msg =
       sizeof(int4) +
@@ -2431,12 +2577,20 @@ Buffer::m2n_low_latency_dispatch_two_stage(
           sizeof(int4) * sizeof(int4) +
       (use_fp8 ? (hidden + num_scales * sizeof(float))
                : (hidden * sizeof(nv_bfloat16)));
-  auto packed_rdma_recv_x = ConvertPaddleTensorToDetailTensor(
-      paddle::experimental::empty({num_ranks / NUM_MAX_NVL_PEERS,
-                                   num_max_dispatch_tokens_per_rank,
-                                   num_bytes_per_msg},
-                                  phi::DataType::UINT8,
-                                  phi::GPUPlace(device_id)));
+
+  // auto packed_rdma_recv_x = ConvertPaddleTensorToDetailTensor(
+  //     paddle::experimental::empty({num_ranks / NUM_MAX_NVL_PEERS,
+  //                                  num_max_dispatch_tokens_per_rank,
+  //                                  num_bytes_per_msg},
+  //                                  phi::DataType::UINT8,
+  //                                  phi::GPUPlace(device_id)));
+
+  auto packed_rdma_recv_x = ConvertPaddleTensorToDetailTensor(std::get<6>(pre_allocated_result_memory));
+  EP_HOST_ASSERT(packed_rdma_recv_x.dim() == 3);
+  EP_HOST_ASSERT(packed_rdma_recv_x.size(0) == num_ranks / NUM_MAX_NVL_PEERS);
+  EP_HOST_ASSERT(packed_rdma_recv_x.size(1) == num_max_dispatch_tokens_per_rank);
+  EP_HOST_ASSERT(packed_rdma_recv_x.size(2) == num_bytes_per_msg);
+  EP_HOST_ASSERT(packed_rdma_recv_x.scalar_type() == phi::DataType::UINT8);
 
   // Allocate column-majored scales
   auto packed_recv_x_scales = std::optional<deep_ep::detail::Tensor>();
@@ -2444,13 +2598,22 @@ Buffer::m2n_low_latency_dispatch_two_stage(
   if (use_fp8) {
     EP_HOST_ASSERT((num_ranks * num_max_dispatch_tokens_per_rank) % 4 == 0 &&
                    "TMA requires the number of tokens to be multiple of 4");
-    packed_recv_x_scales =
-        ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-            {num_local_experts,
-             num_scales,
-             num_ranks * num_max_dispatch_tokens_per_rank},
-            phi::DataType::FLOAT32,
-            phi::GPUPlace(device_id)));
+    // packed_recv_x_scales =
+    //     ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
+    //         {num_local_experts,
+    //          num_scales,
+    //          num_ranks * num_max_dispatch_tokens_per_rank},
+    //         phi::DataType::FLOAT32,
+    //         phi::GPUPlace(device_id)));
+
+
+  packed_recv_x_scales = ConvertPaddleTensorToDetailTensor(*std::get<7>(pre_allocated_result_memory));
+  EP_HOST_ASSERT(packed_recv_x_scales->dim() == 3);
+  EP_HOST_ASSERT(packed_recv_x_scales->size(0) == num_local_experts);
+  EP_HOST_ASSERT(packed_recv_x_scales->size(1) == num_scales);
+  EP_HOST_ASSERT(packed_recv_x_scales->size(2) == num_ranks * num_max_dispatch_tokens_per_rank);
+  EP_HOST_ASSERT(packed_recv_x_scales->scalar_type() == phi::DataType::FLOAT32);
+
     packed_recv_x_scales =
         ConvertPaddleTensorToDetailTensor(paddle::experimental::transpose(
             ConvertDetailTensorToPaddleTensor(packed_recv_x_scales.value()),
@@ -2528,11 +2691,13 @@ Buffer::m2n_low_latency_dispatch_two_stage(
 
   // Receiver callback
   std::optional<std::function<EventHandle()>> recv_hook = std::nullopt;
-  if (return_recv_hook)
-    recv_hook = [=]() {
-      // stream_wait(launch_stream, compute_stream);
-      launcher(LOW_LATENCY_RECV_PHASE);
-      // stream_wait(compute_stream, launch_stream);
+  if (return_recv_hook) recv_hook = [=]() {
+    // stream_wait(launch_stream, compute_stream); 
+    launcher(LOW_LATENCY_RECV_PHASE); 
+    
+    //launcher(LOW_LATENCY_SEND_PHASE | LOW_LATENCY_RECV_PHASE);
+
+    // stream_wait(compute_stream, launch_stream);
 
       // if (rank >= e_start_rank && rank < e_start_rank + e_num_ranks) {
       //   stream_wait(compute_stream, launch_stream);
@@ -2601,8 +2766,13 @@ Buffer::m2n_low_latency_combine_two_stage(
        num_topk = static_cast<int>(topk_weights.size(1));
   auto num_combined_tokens = static_cast<int>(topk_weights.size(0));
 
+
+  static int jj = -1;
+  jj = (jj + 1) % 3;
+  jj = 0;
+
   // Buffer control
-  LowLatencyTwoStageLayout layout(rdma_buffer_ptr,
+  LowLatencyTwoStageLayout layout(rdma_buffer_ptr + 76500864 / 4 * jj,
                                   num_max_dispatch_tokens_per_rank,
                                   hidden,
                                   num_ranks,
@@ -2633,13 +2803,14 @@ Buffer::m2n_low_latency_combine_two_stage(
 
   auto compute_stream = calc_ctx->stream();
   auto launch_stream = comm_stream;
+  // launch_stream = compute_stream;
   if (rank >= e_start_rank && rank < e_start_rank + e_num_ranks) {
     stream_wait(launch_stream, compute_stream);
   }
-
-  if (rank >= e_start_rank && rank < e_start_rank + e_num_ranks) {
-    stream_wait(compute_stream, launch_stream);
-  }
+  
+  // if (rank >= e_start_rank && rank < e_start_rank + e_num_ranks) {
+  //   stream_wait(compute_stream, launch_stream);
+  // }
 
   // Allocate output tensor
   deep_ep::detail::Tensor combined_x;
@@ -2720,17 +2891,16 @@ Buffer::m2n_low_latency_combine_two_stage(
   // }
   // Receiver callback
   std::optional<std::function<EventHandle()>> recv_hook = std::nullopt;
-  if (return_recv_hook)
-    recv_hook = [=]() {
-      // stream_wait(launch_stream, compute_stream);
-      launcher(LOW_LATENCY_RECV_PHASE);
-      // stream_wait(compute_stream, launch_stream);
-      // stream_wait(launch_stream, compute_stream);
-      // if (rank >= a_start_rank && rank < a_start_rank + a_num_ranks) {
-      //   stream_wait(compute_stream, launch_stream);
-      // }
-      return EventHandle(launch_stream);
-    };
+  if (return_recv_hook) recv_hook = [=]() { 
+    // stream_wait(launch_stream, compute_stream);
+    launcher(LOW_LATENCY_RECV_PHASE); 
+    // launcher(LOW_LATENCY_SEND_PHASE | LOW_LATENCY_RECV_PHASE); 
+    // stream_wait(compute_stream, launch_stream);
+    // stream_wait(launch_stream, compute_stream);
+    // if (rank >= a_start_rank && rank < a_start_rank + a_num_ranks) {
+    //   stream_wait(compute_stream, launch_stream);
+    // }
+    return EventHandle(launch_stream);};
 
   // Return values
   return {combined_x, event, recv_hook};
@@ -2769,6 +2939,7 @@ Buffer::internode_dispatch_api(
     const std::optional<paddle::Tensor>& cached_gbl_channel_prefix_matrix,
     const std::optional<paddle::Tensor>& cached_recv_gbl_rank_prefix_sum,
     int expert_alignment,
+    int num_worst_tokens,
     const Config& config,
     std::optional<EventHandle>& previous_event,  // NOLINT
     bool async,
@@ -2820,6 +2991,7 @@ Buffer::internode_dispatch_api(
                                 cached_gbl_channel_prefix_matrix_,
                                 cached_recv_gbl_rank_prefix_sum_,
                                 expert_alignment,
+                                num_worst_tokens,
                                 config,
                                 previous_event,
                                 async,
@@ -3209,37 +3381,39 @@ std::tuple<paddle::Tensor,
            paddle::Tensor,
            std::optional<EventHandle>,
            std::optional<std::function<EventHandle()>>>
-Buffer::m2n_low_latency_dispatch_two_stage_api(
-    const paddle::Tensor& x,
-    const paddle::Tensor& topk_idx,
-    const paddle::Tensor& topk_weights,
-    int num_max_dispatch_tokens_per_rank,
-    int num_experts,
-    int a_start_rank,
-    int a_num_ranks,
-    int e_start_rank,
-    int e_num_ranks,
-    bool use_fp8,
-    bool async,
-    bool return_recv_hook) {
+Buffer::m2n_low_latency_dispatch_two_stage_api(const paddle::Tensor& x,
+                                           const paddle::Tensor& topk_idx,
+                                           const paddle::Tensor& topk_weights,
+                                           
+                                           const TYPE& pre_allocated_result_memory,
+
+                                           int num_max_dispatch_tokens_per_rank,
+                                           int num_experts,
+                                           int a_start_rank,
+                                           int a_num_ranks,
+                                           int e_start_rank,
+                                           int e_num_ranks,
+                                           bool use_fp8,
+                                           bool async,
+                                           bool return_recv_hook) {
 #ifdef PADDLE_WITH_NVSHMEM
   const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
   const auto& topk_idx_ = ConvertPaddleTensorToDetailTensor(topk_idx);
   const auto& topk_weights_ = ConvertPaddleTensorToDetailTensor(topk_weights);
 
-  auto res =
-      m2n_low_latency_dispatch_two_stage(x_,
-                                         topk_idx_,
-                                         topk_weights_,
-                                         num_max_dispatch_tokens_per_rank,
-                                         num_experts,
-                                         a_start_rank,
-                                         a_num_ranks,
-                                         e_start_rank,
-                                         e_num_ranks,
-                                         use_fp8,
-                                         async,
-                                         return_recv_hook);
+  auto res = m2n_low_latency_dispatch_two_stage(x_,
+                                            topk_idx_,
+                                            topk_weights_,
+                                            pre_allocated_result_memory,
+                                            num_max_dispatch_tokens_per_rank,
+                                            num_experts,
+                                            a_start_rank,
+                                            a_num_ranks,
+                                            e_start_rank,
+                                            e_num_ranks,
+                                            use_fp8,
+                                            async,
+                                            return_recv_hook);
 
   auto packed_recv_x_ = ConvertDetailTensorToPaddleTensor(std::get<0>(res));
 
