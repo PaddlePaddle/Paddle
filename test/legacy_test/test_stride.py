@@ -992,6 +992,7 @@ class TestStride(unittest.TestCase):
         self.call_view14()
         self.call_view15()
         self.call_view16()
+        self.call_view_equal()
         self.call_view_alias1()
         self.call_view_alias2()
         self.call_view_as()
