@@ -1120,8 +1120,15 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
             >>> # save state_dict of emb
             >>> paddle.save(layer_state_dict, "emb.pdparams")
 
-            >>> scheduler = paddle.optimizer.lr.NoamDecay(d_model=100, warmup_steps=100, verbose=True)
-            >>> adam = paddle.optimizer.Adam(learning_rate=scheduler, parameters=emb.parameters())
+            >>> scheduler = paddle.optimizer.lr.NoamDecay(
+            ...     d_model=100,
+            ...     warmup_steps=100,
+            ...     verbose=True,
+            ... )
+            >>> adam = paddle.optimizer.Adam(
+            ...     learning_rate=scheduler,
+            ...     parameters=emb.parameters(),
+            ... )
             >>> opt_state_dict = adam.state_dict()
 
             >>> # save state_dict of optimizer
