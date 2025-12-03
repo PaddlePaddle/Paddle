@@ -953,6 +953,7 @@
     spmd_rule : CeluInfoSpmd
   kernel :
     func : celu
+  inplace: (x -> out)
   backward : celu_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
@@ -2518,7 +2519,20 @@
     spmd_rule : GeluInferSpmd
   kernel :
     func : gelu
+  inplace: (x -> out)
   backward : gelu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : glu
+  args : (Tensor x, int axis = -1)
+  output : Tensor(out)
+  infer_meta :
+    func : GLUInferMeta
+  kernel :
+    func : glu
+    data_type : x
+  inplace: (x -> out)
+  backward : glu_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : generate_proposals
@@ -2646,12 +2660,13 @@
 
 - op : hardshrink
   args : (Tensor x, float threshold = 0.5)
-  output : Tensor (out)
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
     func : hard_shrink
+  inplace: (x -> out)
   backward : hardshrink_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
@@ -2664,6 +2679,7 @@
     param : [x]
   kernel :
     func : hardsigmoid
+  inplace: (x -> out)
   backward : hardsigmoid_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
@@ -3349,6 +3365,7 @@
     spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : logsigmoid
+  inplace: (x -> out)
   backward : logsigmoid_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
@@ -3744,13 +3761,14 @@
 
 - op : mish
   args : (Tensor x, float lambda)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
     spmd_rule : MishInfoSpmd
   kernel :
     func : mish
+  inplace: (x -> out)
   backward : mish_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
@@ -4256,6 +4274,7 @@
   kernel :
     func : prelu
     data_type : x
+  inplace: (x -> out)
   backward : prelu_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
@@ -4726,6 +4745,7 @@
     func : rrelu
     data_type : x
   intermediate : noise
+  inplace: (x -> out)
   backward : rrelu_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
@@ -4814,6 +4834,7 @@
     spmd_rule : SeluInfoSpmd
   kernel :
     func : selu
+  inplace: (x -> out)
   backward : selu_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
@@ -5112,32 +5133,35 @@
     spmd_rule : SoftplusInfoSpmd
   kernel :
     func : softplus
+  inplace: (x -> out)
   backward : softplus_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
 
 - op : softshrink
   args : (Tensor x, float threshold = 0.5)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
     spmd_rule : SoftshrinkInfoSpmd
   kernel :
     func : softshrink
+  inplace: (x -> out)
   backward : softshrink_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
 
 - op : softsign
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     spmd_rule : ElementwiseUnaryInferSpmd
     param : [x]
   kernel :
     func : softsign
+  inplace: (x -> out)
   backward : softsign_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
@@ -5361,6 +5385,7 @@
     param : [x]
   kernel :
     func : swish
+  inplace: (x -> out)
   backward : swish_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
@@ -5430,12 +5455,13 @@
 
 - op : tanh_shrink
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : tanh_shrink
+  inplace: (x -> out)
   backward : tanh_shrink_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait

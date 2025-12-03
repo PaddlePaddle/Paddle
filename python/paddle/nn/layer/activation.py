@@ -40,6 +40,7 @@ class CELU(Layer):
 
     Parameters:
         alpha (float, optional): The 'alpha' value of the CELU formulation. Default is 1.0.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -61,17 +62,19 @@ class CELU(Layer):
              [ 1.        , 15.60000038]])
     """
 
-    def __init__(self, alpha: float = 1.0, name: str | None = None) -> None:
+    def __init__(self, alpha: float = 1.0, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
         self._alpha = alpha
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.celu(x, self._alpha, self._name)
+        return F.celu(x, self._alpha, self._inplace, self._name)
 
     def extra_repr(self) -> str:
+        inplace_str = f', inplace={self._inplace}' if self._inplace else ''
         name_str = f', name={self._name}' if self._name else ''
-        return f'alpha={self._alpha}{name_str}'
+        return f'alpha={self._alpha}{inplace_str}{name_str}'
 
 
 class ELU(Layer):
@@ -90,6 +93,7 @@ class ELU(Layer):
 
     Parameters:
         alpha (float, optional): The 'alpha' value of the ELU formulation. Default is 1.0.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -111,17 +115,19 @@ class ELU(Layer):
              [ 1.        , 15.60000038]])
     """
 
-    def __init__(self, alpha: float = 1.0, name: str | None = None) -> None:
+    def __init__(self, alpha: float = 1.0, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
         self._alpha = alpha
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.elu(x, self._alpha, self._name)
+        return F.elu(x, self._alpha, self._inplace, self._name)
 
     def extra_repr(self) -> str:
+        inplace_str = f', inplace={self._inplace}' if self._inplace else ''
         name_str = f', name={self._name}' if self._name else ''
-        return f'alpha={self._alpha}{name_str}'
+        return f'alpha={self._alpha}{inplace_str}{name_str}'
 
 
 class GLU(Layer):
@@ -137,6 +143,7 @@ class GLU(Layer):
             should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` < 0, it works the same way as :math:`axis + D` .
             Default is -1.
+        inplace (bool, optional): If set to True, the input Tensor will be modified in-place. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -161,18 +168,20 @@ class GLU(Layer):
     """
 
     @param_one_alias(["axis", "dim"])
-    def __init__(self, axis: int = -1, name: str | None = None) -> None:
+    def __init__(self, axis: int = -1, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
         self._axis = axis
         self._name = name
+        self._inplace = inplace
 
     @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
-        return F.glu(x, self._axis, self._name)
+        return F.glu(x, self._axis, self._name, inplace=self._inplace)
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'axis={self._axis}{name_str}'
+        inplace_str = f', inplace={self._inplace}' if self._inplace else ''
+        return f'axis={self._axis}{inplace_str}{name_str}'
 
     @property
     def dim(self) -> int:
@@ -203,6 +212,7 @@ class GELU(Layer):
 
     Parameters:
         approximate (str|bool, optional): Whether to enable approximation. Default is False.
+        inplace (bool, optional): If set to True, the input Tensor will be modified in-place. Default is False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -250,18 +260,21 @@ class GELU(Layer):
     def __init__(
         self,
         approximate: Literal["tanh", "none"] | bool = False,
+        inplace: bool = False,
         name: str | None = None,
     ) -> None:
         super().__init__()
         self._approximate = approximate
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.gelu(x, self._approximate, self._name)
+        return F.gelu(x, self._approximate, self._inplace, self._name)
 
     def extra_repr(self) -> str:
+        inplace_str = f', inplace={self._inplace}' if self._inplace else ''
         name_str = f', name={self._name}' if self._name else ''
-        return f'approximate={self._approximate}{name_str}'
+        return f'approximate={self._approximate}{inplace_str}{name_str}'
 
 
 class Hardshrink(Layer):
@@ -281,6 +294,7 @@ class Hardshrink(Layer):
 
     Parameters:
         threshold (float, optional): The value of threshold for hardthrink. Default is 0.5
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -303,18 +317,20 @@ class Hardshrink(Layer):
     """
 
     @param_one_alias(["threshold", "lambd"])
-    def __init__(self, threshold: float = 0.5, name: str | None = None) -> None:
+    def __init__(self, threshold: float = 0.5, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
         self._threshold = threshold
+        self._inplace = inplace
         self._name = name
 
     @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
-        return F.hardshrink(x, self._threshold, self._name)
+        return F.hardshrink(x, self._threshold, self._inplace, self._name)
 
     def extra_repr(self) -> str:
+        inplace_str = f', inplace={self._inplace}' if self._inplace else ''
         name_str = f', name={self._name}' if self._name else ''
-        return f'threshold={self._threshold}{name_str}'
+        return f'threshold={self._threshold}{inplace_str}{name_str}'
 
     @property
     def lambd(self) -> float:
@@ -345,6 +361,7 @@ class Hardswish(Layer):
 
 
     Parameters:
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -366,16 +383,18 @@ class Hardswish(Layer):
             [-0.       , 5.        , 0.66666669])
     """
 
-    def __init__(self, name: str | None = None) -> None:
+    def __init__(self, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.hardswish(x, self._name)
+        return F.hardswish(x, self._inplace, self._name)
 
     def extra_repr(self) -> str:
-        name_str = f'name={self._name}' if self._name else ''
-        return name_str
+        inplace_str = f'inplace={self._inplace}' if self._inplace else ''
+        name_str = f', name={self._name}' if self._name else ''
+        return f'{inplace_str}{name_str}'.lstrip(', ')
 
 
 class Tanh(Layer):
@@ -386,6 +405,7 @@ class Tanh(Layer):
         Tanh(x) = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
 
     Parameters:
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -405,18 +425,30 @@ class Tanh(Layer):
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.37994900, -0.19737528,  0.09966799,  0.29131261])
+
+            >>> m = paddle.nn.Tanh(True)
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.37994900, -0.19737528,  0.09966799,  0.29131261])
+            >>> print(x)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.37994900, -0.19737528,  0.09966799,  0.29131261])
     """
 
-    def __init__(self, name: str | None = None) -> None:
+    def __init__(self, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.tanh(x, self._name)
+        return F.tanh(x, self._inplace, self._name)
 
     def extra_repr(self) -> str:
-        name_str = f'name={self._name}' if self._name else ''
-        return name_str
+        inplace_str = f'inplace={self._inplace}' if self._inplace else ''
+        name_str = f', name={self._name}' if self._name else ''
+        return f'{inplace_str}{name_str}'.lstrip(', ')
 
 
 class Hardtanh(Layer):
@@ -438,6 +470,7 @@ class Hardtanh(Layer):
     Parameters:
         min (float, optional): The value of min for Hardtanh. Default is -1.
         max (float, optional): The value of max for Hardtanh. Default is 1.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -459,19 +492,21 @@ class Hardtanh(Layer):
     """
 
     def __init__(
-        self, min: float = -1.0, max: float = 1.0, name: str | None = None
+        self, min: float = -1.0, max: float = 1.0, inplace: bool = False, name: str | None = None
     ) -> None:
         super().__init__()
         self._min = min
         self._max = max
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.hardtanh(x, self._min, self._max, self._name)
+        return F.hardtanh(x, self._min, self._max, self._inplace, self._name)
 
     def extra_repr(self) -> str:
+        inplace_str = f', inplace={self._inplace}' if self._inplace else ''
         name_str = f', name={self._name}' if self._name else ''
-        return f'min={self._min}, max={self._max}{name_str}'
+        return f'min={self._min}, max={self._max}{inplace_str}{name_str}'
 
 
 class PReLU(Layer):
@@ -496,6 +531,7 @@ class PReLU(Layer):
             Default is None. For more information, please refer to :ref:`api_paddle_ParamAttr`.
         data_format(str, optional): Data format that specifies the layout of input.
             It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
+        inplace (bool, optional): If set to True, the input Tensor will be modified in-place. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -533,6 +569,7 @@ class PReLU(Layer):
         init: float = 0.25,
         weight_attr: ParamAttrLike | None = None,
         data_format: DataLayoutND = "NCHW",
+        inplace: bool = False,
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -541,6 +578,7 @@ class PReLU(Layer):
         self._weight_attr = weight_attr
         self._name = name
         self._data_format = data_format
+        self._inplace = inplace
 
         self._weight = self.create_parameter(
             attr=self._weight_attr,
@@ -551,11 +589,12 @@ class PReLU(Layer):
         )
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.prelu(x, self._weight, data_format=self._data_format)
+        return F.prelu(x, self._weight, data_format=self._data_format, inplace=self._inplace)
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'num_parameters={self._num_parameters}, data_format={self._data_format}, init={self._init}, dtype={self._dtype}{name_str}'
+        inplace_str = f', inplace={self._inplace}' if self._inplace else ''
+        return f'num_parameters={self._num_parameters}, data_format={self._data_format}, init={self._init}, dtype={self._dtype}{inplace_str}{name_str}'
 
 
 class RReLU(Layer):
@@ -599,6 +638,7 @@ class RReLU(Layer):
     Parameters:
         lower (float, optional): The lower bound of uniform distribution. Default: 1.0/8.0.
         upper (float, optional): The upper bound of uniform distribution. Default: 1.0/3.0.
+        inplace (bool, optional): If set to True, the input Tensor will be modified in-place. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -635,21 +675,24 @@ class RReLU(Layer):
         self,
         lower: float = 1.0 / 8.0,
         upper: float = 1.0 / 3.0,
+        inplace: bool = False,
         name: str | None = None,
     ) -> None:
         super().__init__()
         self._lower = lower
         self._upper = upper
         self._name = name
+        self._inplace = inplace
 
     def forward(self, x: Tensor) -> Tensor:
         return F.rrelu(
-            x, lower=self._lower, upper=self._upper, training=self.training
+            x, lower=self._lower, upper=self._upper, training=self.training, inplace=self._inplace
         )
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'lower={self._lower}, upper={self._upper}, training={self.training}, dtype={self._dtype}{name_str}'
+        inplace_str = f', inplace={self._inplace}' if self._inplace else ''
+        return f'lower={self._lower}, upper={self._upper}, training={self.training}, dtype={self._dtype}{inplace_str}{name_str}'
 
 
 class ReLU(Layer):
@@ -663,6 +706,7 @@ class ReLU(Layer):
     x is input Tensor.
 
     Parameters:
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -681,18 +725,29 @@ class ReLU(Layer):
             >>> print(out)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0., 0., 1.])
+
+            >>> m = paddle.nn.ReLU(True)
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0., 0., 1.])
+            >>> print(x)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0., 0., 1.])
     """
 
-    def __init__(self, name: str | None = None) -> None:
+    def __init__(self, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.relu(x, self._name)
+        return F.relu(x, self._inplace, self._name)
 
     def extra_repr(self) -> str:
-        name_str = f'name={self._name}' if self._name else ''
-        return name_str
+        inplace_str = f'inplace={self._inplace}'
+        name_str = f', name={self._name}' if self._name else ''
+        return inplace_str + name_str
 
 
 class ReLU6(Layer):
@@ -755,6 +810,7 @@ class SELU(Layer):
     Parameters:
         scale (float, optional): The value of scale(must be greater than 1.0) for SELU. Default is 1.0507009873554804934193349852946.
         alpha (float, optional): The value of alpha(must be no less than zero) for SELU. Default is 1.6732632423543772848170429916717.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -780,19 +836,22 @@ class SELU(Layer):
         self,
         scale: float = 1.0507009873554804934193349852946,
         alpha: float = 1.6732632423543772848170429916717,
+        inplace: bool = False,
         name: str | None = None,
     ) -> None:
         super().__init__()
         self._scale = scale
         self._alpha = alpha
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.selu(x, self._scale, self._alpha, self._name)
+        return F.selu(x, self._scale, self._alpha, self._inplace, self._name)
 
     def extra_repr(self) -> str:
+        inplace_str = f', inplace={self._inplace}' if self._inplace else ''
         name_str = f', name={self._name}' if self._name else ''
-        return f'scale={self._scale:.16f}, alpha={self._alpha:.16f}{name_str}'
+        return f'scale={self._scale:.16f}, alpha={self._alpha:.16f}{inplace_str}{name_str}'
 
 
 class LeakyReLU(Layer):
@@ -814,6 +873,7 @@ class LeakyReLU(Layer):
     Parameters:
         negative_slope (float, optional): Slope of the activation function at
             :math:`x < 0` . Default is 0.01.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -835,18 +895,20 @@ class LeakyReLU(Layer):
     """
 
     def __init__(
-        self, negative_slope: float = 0.01, name: str | None = None
+        self, negative_slope: float = 0.01, inplace: bool = False, name: str | None = None
     ) -> None:
         super().__init__()
         self._negative_slope = negative_slope
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.leaky_relu(x, self._negative_slope, self._name)
+        return F.leaky_relu(x, self._negative_slope, self._inplace, self._name)
 
     def extra_repr(self) -> str:
+        inplace_str = f', inplace={self._inplace}' if self._inplace else ''
         name_str = f', name={self._name}' if self._name else ''
-        return f'negative_slope={self._negative_slope}{name_str}'
+        return f'negative_slope={self._negative_slope}{inplace_str}{name_str}'
 
 
 class Sigmoid(Layer):
@@ -858,6 +920,7 @@ class Sigmoid(Layer):
         sigmoid(x) = \frac{1}{1 + e^{-x}}
 
     Parameters:
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Shape:
@@ -878,18 +941,30 @@ class Sigmoid(Layer):
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.73105860, 0.88079703, 0.95257413, 0.98201376])
+
+            >>> m = paddle.nn.Sigmoid(True)
+            >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.73105860, 0.88079703, 0.95257413, 0.98201376])
+            >>> print(x)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.73105860, 0.88079703, 0.95257413, 0.98201376])
     """
 
-    def __init__(self, name: str | None = None) -> None:
+    def __init__(self, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
-        self.name = name
+        self._inplace = inplace
+        self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.sigmoid(x, self.name)
+        return F.sigmoid(x, self._inplace, self._name)
 
     def extra_repr(self) -> str:
-        name_str = f'name={self.name}' if self.name else ''
-        return name_str
+        inplace_str = f'inplace={self._inplace}' if self._inplace else ''
+        name_str = f', name={self._name}' if self._name else ''
+        return f'{inplace_str}{name_str}'.lstrip(', ')
 
 
 class Hardsigmoid(Layer):
@@ -912,6 +987,7 @@ class Hardsigmoid(Layer):
             \right.
 
     Parameters:
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
@@ -934,16 +1010,18 @@ class Hardsigmoid(Layer):
             [0.        , 1.        , 0.66666669])
     """
 
-    def __init__(self, name: str | None = None) -> None:
+    def __init__(self, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
+        self._inplace = inplace
         self.name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.hardsigmoid(x, name=self.name)
+        return F.hardsigmoid(x, inplace=self._inplace, name=self.name)
 
     def extra_repr(self) -> str:
-        name_str = f'name={self.name}' if self.name else ''
-        return name_str
+        inplace_str = f'inplace={self._inplace}' if self._inplace else ''
+        name_str = f', name={self.name}' if self.name else ''
+        return f'{inplace_str}{name_str}'.lstrip(', ')
 
 
 class Softplus(Layer):
@@ -959,6 +1037,7 @@ class Softplus(Layer):
     Parameters:
         beta (float, optional): The value of :math:`\beta` for Softplus. Default is 1
         threshold (float, optional): The value of :math:`\varepsilon` for Softplus. Default is 20
+        inplace (bool, optional): If set to True, the input Tensor will be modified in-place. Default is False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Shape:
@@ -979,19 +1058,21 @@ class Softplus(Layer):
     """
 
     def __init__(
-        self, beta: float = 1, threshold: float = 20, name: str | None = None
+        self, beta: float = 1, threshold: float = 20, inplace: bool = False, name: str | None = None
     ) -> None:
         super().__init__()
         self._beta = beta
         self._threshold = threshold
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.softplus(x, self._beta, self._threshold, self._name)
+        return F.softplus(x, self._beta, self._threshold, self._inplace, self._name)
 
     def extra_repr(self) -> str:
+        inplace_str = f', inplace={self._inplace}' if self._inplace else ''
         name_str = f', name={self._name}' if self._name else ''
-        return f'beta={self._beta}, threshold={self._threshold}{name_str}'
+        return f'beta={self._beta}, threshold={self._threshold}{inplace_str}{name_str}'
 
 
 class Softshrink(Layer):
@@ -1012,6 +1093,7 @@ class Softshrink(Layer):
 
     Parameters:
         threshold (float, optional): The value of threshold(must be no less than zero) for softplus. Default is 0.5
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1033,18 +1115,20 @@ class Softshrink(Layer):
     """
 
     @param_one_alias(["threshold", "lambd"])
-    def __init__(self, threshold: float = 0.5, name: str | None = None) -> None:
+    def __init__(self, threshold: float = 0.5, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
         self._threshold = threshold
+        self._inplace = inplace
         self._name = name
 
     @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
-        return F.softshrink(x, self._threshold, self._name)
+        return F.softshrink(x, self._threshold, self._inplace, self._name)
 
     def extra_repr(self) -> str:
+        inplace_str = f', inplace={self._inplace}' if self._inplace else ''
         name_str = f', name={self._name}' if self._name else ''
-        return f'threshold={self._threshold}{name_str}'
+        return f'threshold={self._threshold}{inplace_str}{name_str}'
 
     @property
     def lambd(self) -> float:
@@ -1064,6 +1148,7 @@ class Softsign(Layer):
         Softsign(x) = \frac{x}{1 + |x|}
 
     Parameters:
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1084,16 +1169,18 @@ class Softsign(Layer):
             [-0.28571430, -0.16666666,  0.09090909,  0.23076925])
     """
 
-    def __init__(self, name: str | None = None) -> None:
+    def __init__(self, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.softsign(x, self._name)
+        return F.softsign(x, self._inplace, self._name)
 
     def extra_repr(self) -> str:
-        name_str = f'name={self._name}' if self._name else ''
-        return name_str
+        inplace_str = f'inplace={self._inplace}' if self._inplace else ''
+        name_str = f', name={self._name}' if self._name else ''
+        return f'{inplace_str}{name_str}'.lstrip(', ')
 
 
 class Swish(Layer):
@@ -1105,6 +1192,7 @@ class Swish(Layer):
         Swish(x) = \frac{x}{1 + e^{-x}}
 
     Parameters:
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1125,16 +1213,18 @@ class Swish(Layer):
             [-0.23840584,  0.        ,  0.73105860])
     """
 
-    def __init__(self, name: str | None = None) -> None:
+    def __init__(self, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.swish(x, self._name)
+        return F.swish(x, self._inplace, self._name)
 
     def extra_repr(self) -> str:
-        name_str = f'name={self._name}' if self._name else ''
-        return name_str
+        inplace_str = f'inplace={self._inplace}' if self._inplace else ''
+        name_str = f', name={self._name}' if self._name else ''
+        return f'{inplace_str}{name_str}'.lstrip(', ')
 
 
 class Mish(Layer):
@@ -1151,6 +1241,7 @@ class Mish(Layer):
         Mish(x) = x * \tanh(softplus(x))
 
     Parameters:
+        inplace (bool, optional): If set to True, the input Tensor will be modified in-place. Default is False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1173,16 +1264,18 @@ class Mish(Layer):
 
     """
 
-    def __init__(self, name: str | None = None) -> None:
+    def __init__(self, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.mish(x, self._name)
+        return F.mish(x, self._inplace, self._name)
 
     def extra_repr(self) -> str:
+        inplace_str = f'inplace={self._inplace}' if self._inplace else ''
         name_str = f'name={self._name}' if self._name else ''
-        return name_str
+        return ', '.join(filter(None, [inplace_str, name_str]))
 
 
 class Tanhshrink(Layer):
@@ -1194,6 +1287,7 @@ class Tanhshrink(Layer):
         Tanhshrink(x) = x - tanh(x)
 
     Parameters:
+        inplace (bool, optional): If set to True, the input Tensor will be modified in-place. Default is False.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1214,16 +1308,18 @@ class Tanhshrink(Layer):
             [-0.02005100, -0.00262472,  0.00033201,  0.00868741])
     """
 
-    def __init__(self, name: str | None = None) -> None:
+    def __init__(self, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.tanhshrink(x, self._name)
+        return F.tanhshrink(x, self._inplace, self._name)
 
     def extra_repr(self) -> str:
+        inplace_str = f'inplace={self._inplace}' if self._inplace else ''
         name_str = f'name={self._name}' if self._name else ''
-        return name_str
+        return ', '.join(filter(None, [inplace_str, name_str]))
 
 
 class ThresholdedReLU(Layer):
@@ -1244,6 +1340,7 @@ class ThresholdedReLU(Layer):
     Parameters:
         threshold (float, optional): The value of threshold for ThresholdedReLU. Default is 1.0
         value (float, optional): The value to replace with when x is less than threshold. Default is 0.0
+        inplace (bool, optional): If set to True, the input Tensor will be modified in-place. Default is False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1268,19 +1365,22 @@ class ThresholdedReLU(Layer):
         self,
         threshold: float = 1.0,
         value: float = 0.0,
+        inplace: bool = False,
         name: str | None = None,
     ) -> None:
         super().__init__()
         self._threshold = threshold
         self._value = value
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.thresholded_relu(x, self._threshold, self._value, self._name)
+        return F.thresholded_relu(x, self._threshold, self._value, self._inplace, self._name)
 
     def extra_repr(self) -> str:
+        inplace_str = f', inplace={self._inplace}' if self._inplace else ''
         name_str = f', name={self._name}' if self._name else ''
-        return f'threshold={self._threshold}, value={self._value}{name_str}'
+        return f'threshold={self._threshold}, value={self._value}{inplace_str}{name_str}'
 
 
 class Silu(Layer):
