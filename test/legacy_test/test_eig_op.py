@@ -81,16 +81,13 @@ def eig_backward(w, v, grad_w, grad_v):
 class TestEigOp(OpTest):
     def setUp(self):
         paddle.enable_static()
-        with paddle.device("cpu"):
-            self.op_type = "eig"
-            self.python_api = paddle.linalg.eig
-            self.__class__.op_type = self.op_type
-            self.init_input()
-            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
-            self.outputs = {
-                'Eigenvalues': self.out[0],
-                'Eigenvectors': self.out[1],
-            }
+        paddle.device.set_device("cpu")
+        self.op_type = "eig"
+        self.python_api = paddle.linalg.eig
+        self.__class__.op_type = self.op_type
+        self.init_input()
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
+        self.outputs = {'Eigenvalues': self.out[0], 'Eigenvectors': self.out[1]}
 
     def init_input(self):
         self.set_dtype()
