@@ -570,7 +570,7 @@ def is_bf16_supported(including_emulation: bool = True) -> bool:
 
     """
     # including_emulation is not used here, but kept for compatibility with the original implementation
-    if core.is_bfloat16_supported(paddle.framework._current_expected_place()):
+    if core.is_bfloat16_supported(paddle.framework._current_expected_place_()):
         return True
 
     # If CUDA is not available, than it does not support bf16 either
