@@ -52,6 +52,40 @@ __all__ = [
 ]
 
 
+_types = [
+    paddle.uint8,
+    paddle.int8,
+    paddle.int16,
+    paddle.int32,
+    paddle.int64,
+    paddle.float16,
+    paddle.float32,
+    paddle.float64,
+    paddle.bool,
+    paddle.bfloat16,
+]
+u1, i1, i2, i4, i8, f2, f4, f8, b1, bf = _types
+
+_promote_matrix = [
+    [u1, i2, i2, i4, i8, f2, f4, f8, u1, bf],  # u1
+    [i2, i1, i2, i4, i8, f2, f4, f8, i1, bf],  # i1
+    [i2, i2, i2, i4, i8, f2, f4, f8, i2, bf],  # i2
+    [i4, i4, i4, i4, i8, f2, f4, f8, i4, bf],  # i4
+    [i8, i8, i8, i8, i8, f2, f4, f8, i8, bf],  # i8
+    [f2, f2, f2, f2, f2, f2, f4, f8, f2, f4],  # f2
+    [f4, f4, f4, f4, f4, f4, f4, f8, f4, f4],  # f4
+    [f8, f8, f8, f8, f8, f8, f8, f8, f8, f8],  # f8
+    [u1, i1, i2, i4, i8, f2, f4, f8, b1, bf],  # b1
+    [bf, bf, bf, bf, bf, f4, f4, f8, bf, bf],  # bf
+]
+
+PROMOTE_DICT = {
+    (t1, t2): _promote_matrix[i][j]
+    for i, t1 in enumerate(_types)
+    for j, t2 in enumerate(_types)
+}
+
+
 @ForbidKeywordsDecorator(
     illegal_keys={"x", "y"},
     func_name="paddle.compat.equal",
@@ -89,24 +123,11 @@ def equal(
     if input.dtype == other.dtype:
         return paddle.equal_all(input, other).item()
 
-    _DTYPE_RANK_MAP = {
-        'paddle.bool': 0,
-        'paddle.uint8': 1,
-        'paddle.int8': 2,
-        'paddle.int16': 3,
-        'paddle.int32': 4,
-        'paddle.int64': 5,
-        'paddle.float16': 6,
-        'paddle.float32': 7,
-        'paddle.float64': 8,
-    }
-    rank_input = _DTYPE_RANK_MAP.get(str(input.dtype), -1)
-    rank_other = _DTYPE_RANK_MAP.get(str(other.dtype), -1)
-
-    if rank_input > rank_other:
-        other = other.cast(input.dtype)
-    elif rank_other > rank_input:
-        input = input.cast(other.dtype)
+    common_dtype = PROMOTE_DICT.get(input.dtype, other.dtype)
+    if input.dtype != common_dtype:
+        input = input.cast(common_dtype)
+    if other.dtype != common_dtype:
+        other = other.cast(common_dtype)
 
     return paddle.equal_all(input, other).item()
 
