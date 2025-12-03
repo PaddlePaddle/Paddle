@@ -269,6 +269,21 @@
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
 
+- backward_op : linear_interp_grad
+  forward : linear_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_format, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  optional: out_size, size_tensor, scale_tensor
+  no_need_buffer : x
+  kernel :
+    func : linear_interp_grad
+    data_type : output_grad
+  data_transform :
+    skip_transform : out_size, size_tensor, scale_tensor
+
 - backward_op : logit_grad
   forward : logit (Tensor x, float eps = 1e-6f) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float eps)
@@ -392,6 +407,21 @@
     func : minimum_grad
     data_type : out_grad
   composite : minimum_grad(x, y, out_grad, x_grad, y_grad)
+
+- backward_op : nearest_interp_grad
+  forward : nearest_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_format, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  optional: out_size, size_tensor, scale_tensor
+  no_need_buffer : x
+  kernel :
+    func : nearest_interp_grad
+    data_type : output_grad
+  data_transform :
+    skip_transform : out_size, size_tensor, scale_tensor
 
 - backward_op : norm_grad
   forward : norm (Tensor x, int axis, float epsilon=1.0e-10f, bool is_test=false) -> Tensor(out), Tensor(norm)
@@ -642,6 +672,49 @@
       param : [out_grad]
   kernel:
     func : tril_triu_grad
+
+- backward_op : trilinear_interp_grad
+  forward : trilinear_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_format, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  optional: out_size, size_tensor, scale_tensor
+  no_need_buffer : x
+  kernel :
+    func : trilinear_interp_grad
+    data_type : output_grad
+  data_transform :
+    skip_transform : out_size, size_tensor, scale_tensor
+- backward_op : bilinear_interp_grad
+  forward : bilinear_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_format, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  no_need_buffer : x
+  optional: out_size, size_tensor, scale_tensor
+  kernel :
+    func : bilinear_interp_grad
+    data_type : output_grad
+  data_transform :
+    skip_transform : out_size, size_tensor, scale_tensor
+- backward_op : bicubic_interp_grad
+  forward : bicubic_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_format, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  optional: out_size, size_tensor, scale_tensor
+  no_need_buffer : x
+  kernel :
+    func : bicubic_interp_grad
+    data_type : output_grad
+  data_transform :
+    skip_transform : out_size, size_tensor, scale_tensor
 
 - backward_op : unsqueeze_double_grad
   forward : unsqueeze_grad(Tensor xshape, Tensor grad_out, IntArray axis) -> Tensor(grad_x)

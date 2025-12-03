@@ -108,7 +108,6 @@ GLOBAL_OVERRIDES: dict[str, OverriddenAttribute] = {
 
 TORCH_PROXY_BLOCKED_MODULES = {
     "tvm_ffi",
-    "transformers",
 }
 
 MAGIC_DISABLED_MODULE_ATTR: str = "__disable_torch_proxy__"
@@ -174,10 +173,11 @@ def _is_torch_proxy_blocked_module(name: str) -> bool:
 
 
 def _is_called_by_module_with_specific_dunder_attr(dunder_attr: str) -> bool:
-    stack = inspect.stack()
-    for frame_info in stack[1:]:
-        if frame_info.frame.f_globals.get(dunder_attr):
+    frame = inspect.currentframe()
+    while frame is not None:
+        if frame.f_globals.get(dunder_attr):
             return True
+        frame = frame.f_back
     return False
 
 
@@ -393,7 +393,6 @@ def _swap_torch_modules_from_cache():
     for name in list(TORCH_MODULES_CACHE):
         assert _is_torch_module(name), f"`{name}` is not a PyTorch module"
         sys.modules[name] = TORCH_MODULES_CACHE[name]
-        del TORCH_MODULES_CACHE[name]
 
 
 def _modify_scope_of_torch_proxy(
@@ -577,3 +576,31 @@ def extend_torch_proxy_blocked_modules(modules: Iterable[str]):
             >>> import my_custom_module  # This import will not use torch proxy
     """
     TORCH_PROXY_BLOCKED_MODULES.update(modules)
+
+
+def paddle_triton_fun():
+    """
+    Enable the triton support and return triton module.
+    Args: None.
+    Returns: triton module
+
+    Example:
+        .. code-block:: python
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> from paddle.compat import paddle_triton_fun
+            >>> triton = paddle_triton_fun()
+            >>> import triton.language as tl
+
+            >>> @triton.jit
+            >>> def add_kernel(X, Y, Z, N, BLOCK: tl.constexpr):
+            ...     pid = tl.program_id(0)
+            ...     offs = pid * BLOCK + tl.arange(0, BLOCK)
+            ...     mask = offs < N
+            ...     x = tl.load(X + offs, mask=mask)
+            ...     y = tl.load(Y + offs, mask=mask)
+            ...     tl.store(Z + offs, x + y, mask=mask)
+    """
+    enable_torch_proxy(scope={"triton"})
+    import triton
+
+    return triton

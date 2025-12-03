@@ -85,7 +85,7 @@ void PNormGradKernel(const Context& dev_ctx,
   Eigen::DSizes<int, 3> bcast(1, n, 1);
 
   if (porder == 0) {
-    phi::funcs::SetConstant<Context, T> set_zero;
+    funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, out_dx, static_cast<T>(0));
   } else if (porder == INFINITY || porder == -INFINITY) {
     dx.device(*place) = (xr.abs() == norm.broadcast(bcast)).template cast<T>() *

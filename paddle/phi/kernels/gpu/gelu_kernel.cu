@@ -81,12 +81,10 @@ void GeluKernel(const Context& dev_ctx,
     }
 #endif
     using Functor = GeluWithApproximateFunctor<T>;
-    phi::funcs::ElementwiseKernel<T, Functor, 1>(
-        dev_ctx, ins, &outs, Functor());
+    funcs::ElementwiseKernel<T, Functor, 1>(dev_ctx, ins, &outs, Functor());
   } else {
     using Functor = GeluWithoutApproximateFunctor<T>;
-    phi::funcs::ElementwiseKernel<T, Functor, 1>(
-        dev_ctx, ins, &outs, Functor());
+    funcs::ElementwiseKernel<T, Functor, 1>(dev_ctx, ins, &outs, Functor());
   }
 }
 

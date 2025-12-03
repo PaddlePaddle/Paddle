@@ -795,8 +795,7 @@ void StridedCopyKernel(const Context& dev_ctx,
       }
       return;
     } else {
-      bool can_expand =
-          phi::funcs::CheckIsLastDimsMatch(input.dims(), out->dims());
+      bool can_expand = funcs::CheckIsLastDimsMatch(input.dims(), out->dims());
       if (can_expand && input.meta().is_contiguous()) {
         switch (VecSize) {
 #define CASE_VECSIZE(__Sz)                                                 \
