@@ -52,6 +52,7 @@ __all__ = [
     'seed',
 ]
 
+
 def __getattr__(name):
     if name == "paddle_triton":
         return paddle_triton_fun()
