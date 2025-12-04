@@ -488,8 +488,10 @@ __global__ void KeInterpAAFwNCHWNoSharedMem(const T* in,
                                             const InterpFilter& interp_filter) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
-  const int out_img_idx = threadIdx.x + blockIdx.x * blockDim.x;
-  const int out_img_idy = threadIdx.y + blockIdx.y * blockDim.y;
+  const int64_t out_img_idx =
+      static_cast<int64_t>(threadIdx.x) + blockIdx.x * blockDim.x;
+  const int64_t out_img_idy =
+      static_cast<int64_t>(threadIdx.y) + blockIdx.y * blockDim.y;
 
   if (out_img_idx >= out_img_w || out_img_idy >= out_img_h) {
     return;
@@ -565,8 +567,10 @@ __global__ void KeInterpAAFwNHWCNoSharedMem(const T* in,
                                             const InterpFilter& interp_filter) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
-  const int out_img_idx = threadIdx.x + blockIdx.x * blockDim.x;
-  const int out_img_idy = threadIdx.y + blockIdx.y * blockDim.y;
+  const int64_t out_img_idx =
+      static_cast<int64_t>(threadIdx.x) + blockIdx.x * blockDim.x;
+  const int64_t out_img_idy =
+      static_cast<int64_t>(threadIdx.y) + blockIdx.y * blockDim.y;
 
   if (out_img_idx >= out_img_w || out_img_idy >= out_img_h) {
     return;
