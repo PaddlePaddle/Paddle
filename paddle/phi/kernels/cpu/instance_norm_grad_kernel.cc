@@ -182,7 +182,7 @@ void InstanceNormDoubleGradKernel(const Context& dev_ctx,
   funcs::SetConstant<CPUContext, T> set_constant;
   const auto& x_dims = x.dims();
   int N = 0, C = 0, H = 0, W = 0, D = 0;
-  funcs::ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
+  funcs::ExtractNCWHD(x_dims, DataLayout::NCHW, &N, &C, &H, &W, &D);
   const int sample_size = static_cast<int>(x.numel() / N / C);
   const int NxC = N * C;
 
