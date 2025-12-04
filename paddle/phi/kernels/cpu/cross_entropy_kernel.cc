@@ -34,7 +34,7 @@ void CrossEntropy(const CPUContext& dev_ctx,
                   int axis,
                   DenseTensor* out) {
   const int rank = x.dims().size();
-  const int axis_v = phi::funcs::CanonicalAxis(axis, rank);
+  const int axis_v = funcs::CanonicalAxis(axis, rank);
   int axis_dim = static_cast<int>(x.dims()[axis_v]);
 
   PADDLE_ENFORCE_GT(
@@ -47,7 +47,7 @@ void CrossEntropy(const CPUContext& dev_ctx,
 
   dev_ctx.template Alloc<T>(out);
 
-  const int n = phi::funcs::SizeToAxis(axis_v, x.dims());
+  const int n = funcs::SizeToAxis(axis_v, x.dims());
   PADDLE_ENFORCE_GT(
       n,
       0,
@@ -56,7 +56,7 @@ void CrossEntropy(const CPUContext& dev_ctx,
           "SizeToAxis of softmax is %d.",
           n));
 
-  const int d = phi::funcs::SizeFromAxis(axis_v, x.dims());
+  const int d = funcs::SizeFromAxis(axis_v, x.dims());
 
   DenseTensor x_2d(x);
   x_2d.Resize({n, d});
@@ -65,7 +65,7 @@ void CrossEntropy(const CPUContext& dev_ctx,
   DenseTensor out_2d(*out);
   out_2d.Resize({n, d / axis_dim});
 
-  phi::funcs::CrossEntropyFunctor<CPUContext, T>()(
+  funcs::CrossEntropyFunctor<CPUContext, T>()(
       dev_ctx, &out_2d, &x_2d, &label_2d, soft_label, ignore_index, axis_dim);
 }
 

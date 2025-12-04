@@ -190,7 +190,7 @@ void CholeskyKernel(const Context& dev_ctx,
   // portf is inplace, thus copy the triangular part of the input matrices to
   // the output and set the other triangular part to 0 firstly
 
-  phi::funcs::ForRange<GPUContext> for_range(dev_ctx, tensor_size);
+  funcs::ForRange<GPUContext> for_range(dev_ctx, tensor_size);
   // Pre-processing
   if (upper) {
     MatrixBandPartFunctor<T> matrix_band_part_functor(

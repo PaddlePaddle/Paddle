@@ -145,19 +145,19 @@ void CPUMatchMatrixTensorOPKernel(const Context& dev_ctx,
   auto* bottom_l_trans_data = dev_ctx.template Alloc<T>(tmp);
   memset(bottom_l_trans_data, 0.0, tmp->dims()[0] * tmp->dims()[1] * sizeof(T));
 
-  auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
 
-  phi::funcs::call_gemm(blas,
-                        CblasNoTrans,
-                        CblasNoTrans,
-                        x->dims()[0],
-                        dim_t * dim_in,
-                        dim_in,
-                        1.0f,
-                        bottom_l_data,
-                        t_data,
-                        0.0f,
-                        bottom_l_trans_data);
+  funcs::call_gemm(blas,
+                   CblasNoTrans,
+                   CblasNoTrans,
+                   x->dims()[0],
+                   dim_t * dim_in,
+                   dim_in,
+                   1.0f,
+                   bottom_l_data,
+                   t_data,
+                   0.0f,
+                   bottom_l_trans_data);
 
   for (size_t b = 0; b < x->lod()[0].size() - 1; b++) {
     for (int t = 0; t < dim_t; t++) {
@@ -167,19 +167,19 @@ void CPUMatchMatrixTensorOPKernel(const Context& dev_ctx,
       const auto* l_t_data =
           bottom_l_trans_data + offset_l[b] * dim_t * dim_in + t * dim_in;
       const auto* r_data = bottom_r_data + offset_r[b] * dim_in;
-      auto blas_2 = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
-      phi::funcs::call_gemm_with_lda(blas_2,
-                                     CblasNoTrans,
-                                     CblasTrans,
-                                     len_l,
-                                     len_r,
-                                     dim_in,
-                                     1.0f,
-                                     l_t_data,
-                                     r_data,
-                                     0.0f,
-                                     top_data,
-                                     dim_t * dim_in);
+      auto blas_2 = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+      funcs::call_gemm_with_lda(blas_2,
+                                CblasNoTrans,
+                                CblasTrans,
+                                len_l,
+                                len_r,
+                                dim_in,
+                                1.0f,
+                                l_t_data,
+                                r_data,
+                                0.0f,
+                                top_data,
+                                dim_t * dim_in);
     }
   }
 
@@ -254,45 +254,45 @@ void CPUMatchMatrixTensorOPGradKernel(const Context& dev_ctx,
           auto* r_data = bottom_r_data + (offset_r[b] + j) * dim_in;
           auto* r_diff = bottom_r_diff + (offset_r[b] + j) * dim_in;
           if (diff != 0.0) {
-            phi::funcs::axpy(r_data, l_trans_diff, dim_in, diff);
-            phi::funcs::axpy(l_trans_data, r_diff, dim_in, diff);
+            funcs::axpy(r_data, l_trans_diff, dim_in, diff);
+            funcs::axpy(l_trans_data, r_diff, dim_in, diff);
           }
         }
       }
     }
   }
 
-  auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
 
   auto* t_data = w->data<T>();
   auto* d_w = w_grad;
   auto* t_diff = dev_ctx.template Alloc<T>(d_w);
   memset(t_diff, 0.0, w->dims()[0] * w->dims()[1] * w->dims()[2] * sizeof(T));
   // bottom_diff
-  phi::funcs::call_gemm(blas,
-                        CblasNoTrans,
-                        CblasTrans,
-                        x->dims()[0],
-                        dim_in,
-                        dim_t * dim_in,
-                        1.0f,
-                        bottom_l_trans_diff,
-                        t_data,
-                        1.0f,
-                        bottom_l_diff);
+  funcs::call_gemm(blas,
+                   CblasNoTrans,
+                   CblasTrans,
+                   x->dims()[0],
+                   dim_in,
+                   dim_t * dim_in,
+                   1.0f,
+                   bottom_l_trans_diff,
+                   t_data,
+                   1.0f,
+                   bottom_l_diff);
 
   // t_diff
-  phi::funcs::call_gemm(blas,
-                        CblasTrans,
-                        CblasNoTrans,
-                        dim_in,
-                        dim_t * dim_in,
-                        x->dims()[0],
-                        1.0f,
-                        bottom_l_data,
-                        bottom_l_trans_diff,
-                        1.0f,
-                        t_diff);
+  funcs::call_gemm(blas,
+                   CblasTrans,
+                   CblasNoTrans,
+                   dim_in,
+                   dim_t * dim_in,
+                   x->dims()[0],
+                   1.0f,
+                   bottom_l_data,
+                   bottom_l_trans_diff,
+                   1.0f,
+                   t_diff);
 }
 }  // namespace phi
 

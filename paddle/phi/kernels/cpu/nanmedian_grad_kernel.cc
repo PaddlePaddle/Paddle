@@ -90,7 +90,7 @@ void CalcNanMedianGradKernel_CPU(const Context& dev_ctx,
   T* dx_data = dev_ctx.template Alloc<T>(x_grad);
   if (!dx_data) return;
 
-  phi::funcs::SetConstant<Context, T> set_zero;
+  funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, x_grad, static_cast<T>(0));
 
   const int64_t* m_index = median_index.data<int64_t>();

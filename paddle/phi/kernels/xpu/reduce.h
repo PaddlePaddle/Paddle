@@ -96,8 +96,8 @@ int XPUReduce(const Context& dev_ctx,
   return r;
 }
 
-template <typename DeviceContext, typename T, typename OutT, typename Functor>
-void ReduceKernelImpl(const DeviceContext& dev_ctx,
+template <typename Context, typename T, typename OutT, typename Functor>
+void ReduceKernelImpl(const Context& dev_ctx,
                       const phi::DenseTensor& input,
                       phi::DenseTensor* output,
                       const std::vector<int64_t>& xdims,
@@ -118,8 +118,8 @@ void ReduceKernelImpl(const DeviceContext& dev_ctx,
   }
 }
 
-template <typename DeviceContext, typename T, typename Functor>
-void XPUReduce(const DeviceContext& dev_ctx,
+template <typename Context, typename T, typename Functor>
+void XPUReduce(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<int64_t>& dims,
                bool keep_dim,
@@ -142,17 +142,17 @@ void XPUReduce(const DeviceContext& dev_ctx,
     // do reduce sum
     PD_VISIT_XPU_REDUCE_TYPES(
         x.dtype(), "ReduceKernelImpl", ([&] {
-          phi::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
+          phi::ReduceKernelImpl<Context, T, data_t, Functor>(
               dev_ctx, x, out, xdims, reduce_dims);
         }));
   } else {
     // cast x tensor to out_dtype
-    auto tmp_tensor = phi::Cast<T, DeviceContext>(dev_ctx, x, out_dtype);
+    auto tmp_tensor = phi::Cast<T, Context>(dev_ctx, x, out_dtype);
 
     // do reduce sum
     PD_VISIT_XPU_REDUCE_TYPES(
         out_dtype, "ReduceKernelImpl", ([&] {
-          phi::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
+          phi::ReduceKernelImpl<Context, T, data_t, Functor>(
               dev_ctx, tmp_tensor, out, xdims, reduce_dims);
         }));
 

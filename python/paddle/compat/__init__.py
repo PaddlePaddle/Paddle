@@ -30,6 +30,7 @@ from .proxy import (  # noqa: F401
     disable_torch_proxy,
     enable_torch_proxy,
     extend_torch_proxy_blocked_modules,
+    paddle_triton_fun,
     use_torch_proxy_guard,
 )
 from .utils import _check_out_status
@@ -50,6 +51,11 @@ __all__ = [
     'nanmedian',
     'seed',
 ]
+
+
+def __getattr__(name):
+    if name == "paddle_triton":
+        return paddle_triton_fun()
 
 
 @ForbidKeywordsDecorator(

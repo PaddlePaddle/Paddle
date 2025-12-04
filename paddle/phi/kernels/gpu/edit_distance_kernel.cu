@@ -135,7 +135,7 @@ void EditDistanceKernel(const Context& dev_ctx,
   }
 
   const size_t num_strs = hyp_lod.size() - 1;
-  phi::funcs::SetConstant<GPUContext, int64_t> set_constant;
+  funcs::SetConstant<GPUContext, int64_t> set_constant;
   set_constant(dev_ctx, sequencenum, static_cast<int64_t>(num_strs));
 
   out->Resize({static_cast<int64_t>(num_strs), 1});

@@ -574,7 +574,15 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         # On Linux, GCC support '-l:xxx.so' to specify the library name
         # without `lib` prefix.
         if OS_NAME.startswith('linux'):
-            extra_link_args.append(f'-l:{_get_core_name()}')
+            # Force link libpaddle.so to avoid "as-needed" optimization
+            # when user only uses phi headers.
+            extra_link_args.extend(
+                [
+                    '-Wl,--no-as-needed',
+                    f'-l:{_get_core_name()}',
+                    '-Wl,--as-needed',
+                ]
+            )
         # ----------------------- MacOS Platform ----------------------- #
         else:
             # See _reset_so_rpath for details.

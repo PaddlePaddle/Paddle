@@ -38,11 +38,9 @@ void GatherKernel(const Context& dev_ctx,
   // gather at non-zero axis
   if (axis_v != 0) {
     if (index_type == phi::DataType::INT32) {
-      phi::funcs::GatherV2Function<T, int32_t>(
-          dev_ctx, &x, &index, axis_v, out);
+      funcs::GatherV2Function<T, int32_t>(dev_ctx, &x, &index, axis_v, out);
     } else if (index_type == phi::DataType::INT64) {
-      phi::funcs::GatherV2Function<T, int64_t>(
-          dev_ctx, &x, &index, axis_v, out);
+      funcs::GatherV2Function<T, int64_t>(dev_ctx, &x, &index, axis_v, out);
     }
     return;
   }
@@ -55,9 +53,9 @@ void GatherKernel(const Context& dev_ctx,
 
   // gather at axis 0
   if (index_type == phi::DataType::INT32) {
-    phi::funcs::CPUGather<T, int>(dev_ctx, x, index, out);
+    funcs::CPUGather<T, int>(dev_ctx, x, index, out);
   } else if (index_type == phi::DataType::INT64) {
-    phi::funcs::CPUGather<T, int64_t>(dev_ctx, x, index, out);
+    funcs::CPUGather<T, int64_t>(dev_ctx, x, index, out);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The data type of Input(Index) of gather "

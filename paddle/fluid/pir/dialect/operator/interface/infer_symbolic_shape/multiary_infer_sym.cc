@@ -448,7 +448,8 @@ bool BicubicInterpOpInferSymbolicShape(
   int out_d = attributes.at("out_d").dyn_cast<pir::Int32Attribute>().data();
   int out_h = attributes.at("out_h").dyn_cast<pir::Int32Attribute>().data();
   int out_w = attributes.at("out_w").dyn_cast<pir::Int32Attribute>().data();
-  const std::vector<float> &scale = details::GetVectorAttr<float>(op, "scale");
+  const std::vector<double> &scale =
+      details::GetVectorAttr<double>(op, "scale");
 
   const bool has_size_tensor = [&] {
     pir::Value size_tensor = op->operand_source(2);
@@ -772,11 +773,10 @@ bool BilinearInterpOpInferSymbolicShape(
   return BicubicInterpOpInferSymbolicShape(op, infer_context);
 }
 
-// TODO(zrr1999): add test
-// bool InterpAntialiasOpInferSymbolicShape(
-//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-//   return BicubicInterpOpInferSymbolicShape(op, infer_context);
-// }
+bool InterpAntialiasOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return BicubicInterpOpInferSymbolicShape(op, infer_context);
+}
 
 bool BoxCoderOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {

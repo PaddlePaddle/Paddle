@@ -60,8 +60,8 @@ void InstanceNormKernel(const Context &dev_ctx,
   DenseTensor x_tmp;
   x_tmp.ShareDataWith(x).Resize({1, NxC, H, W, D});
   dev_ctx.template Alloc<T>(y);
-  phi::funcs::SetConstant<GPUContext, BatchNormParamType<T>> functor;
-  phi::funcs::SetConstant<GPUContext, T> functor_y;
+  funcs::SetConstant<GPUContext, BatchNormParamType<T>> functor;
+  funcs::SetConstant<GPUContext, T> functor_y;
   if (x.numel() == 0) {
     functor_y(dev_ctx, y, static_cast<T>(0));
     if (saved_mean) {
@@ -141,7 +141,7 @@ void InstanceNormKernel(const Context &dev_ctx,
   const int max_blocks = std::max(max_threads / block, 1);
   const int grid = std::min((NxC + block - 1) / block, max_blocks);
 
-  phi::funcs::SetConstant<GPUContext, AccT> set_constant;
+  funcs::SetConstant<GPUContext, AccT> set_constant;
   if (scale_ptr) {
     repeat_param<AccT><<<grid, block, 0, dev_ctx.stream()>>>(
         scale_ptr->data<AccT>(), scale_tmp.data<AccT>(), N, C);

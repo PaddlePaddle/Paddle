@@ -15,6 +15,19 @@
 #pragma once
 #include <c10/core/DeviceType.h>
 
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime.h>
+using gpuStream_t = cudaStream_t;
+#endif
+
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+using gpuStream_t = hipStream_t;
+#endif
+
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device_event_base.h"
+
 namespace c10 {
 using DeviceIndex = int8_t;
 

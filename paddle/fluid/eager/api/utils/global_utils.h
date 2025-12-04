@@ -195,25 +195,57 @@ class EagerBackwardSubGraphNodeRecorder {
   }
 
  public:
-  void AddGradNode(const GradNodeBase* node) { set_.insert(node); }
-  void RemoveGradNode(const GradNodeBase* node) { set_.erase(node); }
-  bool ContainsGradNode(const GradNodeBase* node) { return set_.count(node); }
-  bool NeedCaptureSubGraph() { return need_capture_subgraph_; }
-  void StartCaptureSubGraph() { need_capture_subgraph_ = true; }
-  void EndCaptureSubGraph() { need_capture_subgraph_ = false; }
+  void AddGradNode(const GradNodeBase* node) {
+    if (need_capture_viz_subgraph_) viz_nodes_.insert(node);
+    if (need_capture_vlog_subgraph_) {
+      vlog_nodes_.insert(node);
+      // record the node's vlog level
+      node_to_vlog_level_[node] = subgraph_bwd_vlog_level_;
+    }
+  }
+
+  bool NeedCaptureSubGraph() {
+    return need_capture_viz_subgraph_ || need_capture_vlog_subgraph_;
+  }
+  void StartCaptureSubGraphForViz() { need_capture_viz_subgraph_ = true; }
+  void StopCaptureSubGraphForViz() { need_capture_viz_subgraph_ = false; }
+  void StartCaptureSubGraphForVlog() { need_capture_vlog_subgraph_ = true; }
+  void StopCaptureSubGraphForVlog() { need_capture_vlog_subgraph_ = false; }
   void SetDumpDirPath(const std::string& path) { dump_dir_path_ = path; }
   const std::string& GetDumpDirPath() { return dump_dir_path_; }
   void SetNeedDumpGradTensors(bool need_dump) {
     need_dump_grad_tensors_ = need_dump;
   }
   bool GetNeedDumpGradTensors() { return need_dump_grad_tensors_; }
-  bool HasCapturedSubgraph() { return !set_.empty(); }
+  int GetSubGraphBwdVlogLevel(const GradNodeBase* node) {
+    auto it = node_to_vlog_level_.find(node);
+    if (it != node_to_vlog_level_.end()) {
+      return it->second;
+    }
+    return 0;
+  }
+  void SetSubGraphBwdVlogLevel(int level) { subgraph_bwd_vlog_level_ = level; }
+  // Is Gradnode within the scope of backward vlog guard
+  bool IsGradNodeInVlogGuard(GradNodeBase* node) {
+    return vlog_nodes_.count(node);
+  }
+  bool IsGradNodeInVizGuard(const GradNodeBase* node) {
+    return viz_nodes_.count(node);
+  }
+  bool NeedDumpBwdSubGraph() {
+    return !viz_nodes_.empty() && !dump_dir_path_.empty();
+  }
+  bool NeedBwdVlogGuard() { return !vlog_nodes_.empty(); }
 
  private:
-  std::unordered_set<const GradNodeBase*> set_;
+  std::unordered_set<const GradNodeBase*> viz_nodes_;
+  std::unordered_set<const GradNodeBase*> vlog_nodes_;
+  std::unordered_map<const GradNodeBase*, int> node_to_vlog_level_;
   std::string dump_dir_path_;
+  bool need_capture_vlog_subgraph_ = false;
+  bool need_capture_viz_subgraph_ = false;
   bool need_dump_grad_tensors_ = false;
-  bool need_capture_subgraph_ = false;
+  int subgraph_bwd_vlog_level_ = 0;
 };
 
 /**
