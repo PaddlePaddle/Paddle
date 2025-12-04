@@ -446,7 +446,7 @@ void FlashAttnV3GradBaseKernel(
     if (dv_accum) {
       dev_ctx.template Alloc<float>(dv_accum);
     }
-    phi::funcs::SetConstant<Context, float> set_zero;
+    funcs::SetConstant<Context, float> set_zero;
 
     if (dk_accum) {
       set_zero(dev_ctx, dk_accum, float{0});
@@ -517,9 +517,9 @@ void FlashAttnV3GradBaseKernel(
       dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
   if (num_heads_k != num_heads &&
       dynload::fa3_bwd_params_get_deterministic(params_handle)) {
-    phi::funcs::SetConstant<Context, int32_t> set_zero_dk;
+    funcs::SetConstant<Context, int32_t> set_zero_dk;
     set_zero_dk(dev_ctx, &dk_semaphore, static_cast<int32_t>(0));
-    phi::funcs::SetConstant<Context, int32_t> set_zero_dv;
+    funcs::SetConstant<Context, int32_t> set_zero_dv;
     set_zero_dv(dev_ctx, &dv_semaphore, static_cast<int32_t>(0));
     dynload::fa3_bwd_params_set_dk_semaphore(params_handle,
                                              dk_semaphore.data<int>());
@@ -545,18 +545,18 @@ void FlashAttnV3GradBaseKernel(
   } else if (total_k > 0 && num_heads_k > 0) {
     // If seqlen_q == 0, then we have an empty tensor. We need to set the output
     // to 0.
-    phi::funcs::SetConstant<Context, T> set_zero;
+    funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, dk, T{0});
     set_zero(dev_ctx, dv, T{0});
     if (softmax_d) {
-      phi::funcs::SetConstant<Context, float> set_zero_fp32;
+      funcs::SetConstant<Context, float> set_zero_fp32;
       set_zero_fp32(dev_ctx, softmax_d, float{0});
     }
   } else if (total_q > 0 && num_heads_k > 0) {
-    phi::funcs::SetConstant<Context, T> set_zero;
+    funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, dq, T{0});
     if (softmax_d) {
-      phi::funcs::SetConstant<Context, float> set_zero_fp32;
+      funcs::SetConstant<Context, float> set_zero_fp32;
       set_zero_fp32(dev_ctx, softmax_d, float{0});
     }
   }
@@ -1358,7 +1358,7 @@ void FlashMaskV2GradBaseKernel(
     if (dv_accum) {
       dev_ctx.template Alloc<float>(dv_accum);
     }
-    phi::funcs::SetConstant<Context, float> set_zero;
+    funcs::SetConstant<Context, float> set_zero;
 
     if (dk_accum) {
       set_zero(dev_ctx, dk_accum, float{0});
@@ -1437,9 +1437,9 @@ void FlashMaskV2GradBaseKernel(
   if (num_heads_k != num_heads &&
       dynload::flashmaskv2_bwd_params_get_deterministic(params_handle)) {
     // xiangrui: we need to zero them out
-    phi::funcs::SetConstant<Context, int32_t> set_zero_dk;
+    funcs::SetConstant<Context, int32_t> set_zero_dk;
     set_zero_dk(dev_ctx, &dk_semaphore, static_cast<int32_t>(0));
-    phi::funcs::SetConstant<Context, int32_t> set_zero_dv;
+    funcs::SetConstant<Context, int32_t> set_zero_dv;
     set_zero_dv(dev_ctx, &dv_semaphore, static_cast<int32_t>(0));
     dynload::flashmaskv2_bwd_params_set_dk_semaphore(params_handle,
                                                      dk_semaphore.data<int>());
@@ -1519,18 +1519,18 @@ void FlashMaskV2GradBaseKernel(
   } else if (total_k > 0 && num_heads_k > 0) {
     // If seqlen_q == 0, then we have an empty tensor. We need to set the output
     // to 0.
-    phi::funcs::SetConstant<Context, T> set_zero;
+    funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, dk, T{0});
     set_zero(dev_ctx, dv, T{0});
     if (softmax_d) {
-      phi::funcs::SetConstant<Context, float> set_zero_fp32;
+      funcs::SetConstant<Context, float> set_zero_fp32;
       set_zero_fp32(dev_ctx, softmax_d, float{0});
     }
   } else if (total_q > 0 && num_heads_k > 0) {
-    phi::funcs::SetConstant<Context, T> set_zero;
+    funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, dq, T{0});
     if (softmax_d) {
-      phi::funcs::SetConstant<Context, float> set_zero_fp32;
+      funcs::SetConstant<Context, float> set_zero_fp32;
       set_zero_fp32(dev_ctx, softmax_d, float{0});
     }
   }

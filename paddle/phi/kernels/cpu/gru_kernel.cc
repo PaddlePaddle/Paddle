@@ -69,16 +69,16 @@ void GRUCPUKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(batch_reset_hidden_prev);
   dev_ctx.template Alloc<T>(batch_hidden);
 
-  phi::funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
+  funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
   to_batch(dev_ctx, input, batch_gate, true, is_reverse);
 
   if (bias) {
-    phi::funcs::RowwiseAdd<Context, T> add_bias;
+    funcs::RowwiseAdd<Context, T> add_bias;
     add_bias(dev_ctx, *batch_gate, bias.get(), batch_gate);
   }
 
   int frame_size = static_cast<int>(hidden_dims[1]);
-  phi::funcs::GRUMetaValue<T> gru_value;
+  funcs::GRUMetaValue<T> gru_value;
   gru_value.gate_weight = const_cast<T *>(weight_data);
   gru_value.state_weight =
       const_cast<T *>(weight_data + 2 * frame_size * frame_size);
@@ -97,13 +97,13 @@ void GRUCPUKernel(const Context &dev_ctx,
   }
   auto batch_starts = batch_gate->lod()[0];
   size_t seq_len = batch_starts.size() - 1;
-  auto active_node = phi::funcs::detail::GetActivationType(activation);
-  auto active_gate = phi::funcs::detail::GetActivationType(gate_activation);
+  auto active_node = funcs::detail::GetActivationType(activation);
+  auto active_gate = funcs::detail::GetActivationType(gate_activation);
 
 #ifdef PADDLE_WITH_MKLML
   // use MKL packed to speedup GEMM
   if (FLAGS_paddle_num_threads >= 4) {
-    auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+    auto blas = funcs::GetBlas<Context, T>(dev_ctx);
     T *packed_gate = blas.GEMM_ALLOC(CblasBMatrix,
                                      1 /*height of C*/,
                                      frame_size * 2 /*width of weight*/,
@@ -168,8 +168,8 @@ void GRUCPUKernel(const Context &dev_ctx,
                           frame_size * 3);
       }
 
-      phi::funcs::detail::forward_reset_output<Context>(
-          phi::funcs::detail::forward::gru_resetOutput<T>(),
+      funcs::detail::forward_reset_output<Context>(
+          funcs::detail::forward::gru_resetOutput<T>(),
           gru_value,
           frame_size,
           cur_batch_size,
@@ -190,8 +190,8 @@ void GRUCPUKernel(const Context &dev_ctx,
                           frame_size * 3);
       }
 
-      phi::funcs::detail::forward_final_output<Context>(
-          phi::funcs::detail::forward::gru_finalOutput<T>(),
+      funcs::detail::forward_final_output<Context>(
+          funcs::detail::forward::gru_finalOutput<T>(),
           gru_value,
           frame_size,
           cur_batch_size,
@@ -218,20 +218,20 @@ void GRUCPUKernel(const Context &dev_ctx,
       gru_value.gate_value = gate_t.data<T>();
       gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
 
-      phi::funcs::GRUUnitFunctor<Context, T>::compute(dev_ctx,  // NOLINT
-                                                      gru_value,
-                                                      frame_size,
-                                                      cur_batch_size,
-                                                      active_node,
-                                                      active_gate,
-                                                      origin_mode);
+      funcs::GRUUnitFunctor<Context, T>::compute(dev_ctx,  // NOLINT
+                                                 gru_value,
+                                                 frame_size,
+                                                 cur_batch_size,
+                                                 active_node,
+                                                 active_gate,
+                                                 origin_mode);
 
       gru_value.prev_out_value = gru_value.output_value;
     }
 #ifdef PADDLE_WITH_MKLML
   }
 #endif
-  phi::funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
+  funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
   batch_hidden->set_lod(batch_gate->lod());
   to_seq(dev_ctx, *batch_hidden, hidden);
 }

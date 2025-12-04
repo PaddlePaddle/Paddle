@@ -68,7 +68,7 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
                     common::errors::PreconditionNotMet(
                         "The Input dim size should be between 2 and 5"));
   int N, C, H, W, D;
-  const phi::DataLayout data_layout = phi::DataLayout::kNHWC;
+  const phi::DataLayout data_layout = phi::DataLayout::NHWC;
   phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
   // init output

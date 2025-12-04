@@ -69,7 +69,7 @@ void MvGradKernel(const Context& dev_ctx,
   if (dvec) {
     T* dvec_data = dev_ctx.template Alloc<T>(dvec);
 
-    auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+    auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
     blas.GEMV(true,
               dim_x[0],

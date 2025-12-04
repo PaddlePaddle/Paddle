@@ -119,6 +119,10 @@ if(NOT WITH_DGC)
   list(REMOVE_ITEM kernel_gpu "gpu/dgc_kernel.cu")
 endif()
 
+if(NOT WITH_MAGMA)
+  list(REMOVE_ITEM kernel_gpu "xpu/eig_kernel.cc")
+endif()
+
 if(WITH_CUTLASS)
   add_custom_target(
     gemm_epilogue_compile_script ALL

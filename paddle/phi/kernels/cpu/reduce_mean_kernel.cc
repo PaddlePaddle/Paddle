@@ -37,7 +37,7 @@ void MeanRawKernel(const Context& dev_ctx,
 
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
-  phi::Reduce<CPUContext, T, phi::funcs::MeanFunctor>(
+  phi::Reduce<CPUContext, T, funcs::MeanFunctor>(
       dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
 }
 

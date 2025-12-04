@@ -19,19 +19,11 @@
 #include <thrust/reduce.h>
 #include <thrust/scan.h>
 #include <thrust/sequence.h>
-
-#ifdef __NVCC__
-#include <cub/cub.cuh>
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/gpu/graph_reindex_funcs.h"
 
 namespace phi {
@@ -393,10 +385,8 @@ void GraphReindexKernel(const Context& dev_ctx,
   // Get reindex dst edge.
   // Add support for multi-type edges reindex.
   int64_t num_ac_count = count.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
-  int num_edge_types = num_ac_count / bs;
+  int64_t num_edge_types = num_ac_count / bs;
+  // TODO(large-tensor): downstream functors may still use int
   thrust::device_vector<int> unique_dst_reindex(bs);
   thrust::sequence(unique_dst_reindex.begin(), unique_dst_reindex.end());
   reindex_dst->Resize({num_edges});

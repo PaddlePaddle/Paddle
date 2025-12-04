@@ -43,25 +43,25 @@ void CumprodKernel(const Context &dev_ctx,
   const auto *x_data = x->data<T>();
   auto *y_data = dev_ctx.template Alloc<T>(y);
   if (!exclusive) {
-    phi::funcs::InclusiveScan(x_data,
-                              y_data,
-                              outer_dim,
-                              mid_dim,
-                              inner_dim,
-                              static_cast<T>(1),
-                              funcs::MultiplyFunctor<T>(),
-                              /*reverse=*/reverse,
-                              dev_ctx);
+    funcs::InclusiveScan(x_data,
+                         y_data,
+                         outer_dim,
+                         mid_dim,
+                         inner_dim,
+                         static_cast<T>(1),
+                         funcs::MultiplyFunctor<T>(),
+                         /*reverse=*/reverse,
+                         dev_ctx);
   } else {
-    phi::funcs::ExclusiveScan(x_data,
-                              y_data,
-                              outer_dim,
-                              mid_dim,
-                              inner_dim,
-                              static_cast<T>(1),
-                              funcs::MultiplyFunctor<T>(),
-                              /*reverse=*/reverse,
-                              dev_ctx);
+    funcs::ExclusiveScan(x_data,
+                         y_data,
+                         outer_dim,
+                         mid_dim,
+                         inner_dim,
+                         static_cast<T>(1),
+                         funcs::MultiplyFunctor<T>(),
+                         /*reverse=*/reverse,
+                         dev_ctx);
   }
 }
 

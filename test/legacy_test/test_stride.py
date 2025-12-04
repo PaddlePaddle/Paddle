@@ -971,6 +971,7 @@ class TestStride(unittest.TestCase):
         self.call_view5()
         self.call_view6()
         self.call_view7()
+        self.call_view8()
         self.call_view9()
         self.call_view10()
         self.call_view11()
@@ -1089,6 +1090,21 @@ class TestToStaticCheck(unittest.TestCase):
             xx.add_(z)
 
         func2()
+
+
+class TestViewGrad(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+        x = paddle.randn(2, 12, requires_grad=True)
+
+        y = x.view(2, 3, 4)
+        z = y.transpose(1, 2)
+
+        loss = z.sum()
+        loss.backward()
+
+        x_grad_expected = paddle.full_like(x, 1.0)
+        self.assertEqual((x.grad == x_grad_expected).all(), True)
 
 
 if __name__ == '__main__':

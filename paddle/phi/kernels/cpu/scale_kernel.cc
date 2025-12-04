@@ -41,7 +41,7 @@ void ScaleKernel(const Context& dev_ctx,
   if (x.numel() <= 0 || (!x.IsInitialized())) {
     return;
   }
-  phi::funcs::EigenScale<std::decay_t<decltype(dev)>, T>::Eval(
+  funcs::EigenScale<std::decay_t<decltype(dev)>, T>::Eval(
       dev, eigen_out, eigen_x, scale.to<T>(), bias.to<T>(), bias_after_scale);
 }
 #ifdef _WIN32

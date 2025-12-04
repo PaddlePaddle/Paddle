@@ -30,6 +30,7 @@ class RunCustomOpNode : public GradNodeBase {
                            const std::string& op_type)
       : GradNodeBase(bwd_in_slot_num, bwd_out_slot_num), op_type_(op_type) {
     VLOG(6) << "Construct RunCustomOpNode for op: " << op_type;
+    name_ = paddle::string::Sprintf("CustomOpGradNode: %s_grad", op_type_);
   }
 
   ~RunCustomOpNode() override {

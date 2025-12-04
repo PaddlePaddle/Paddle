@@ -216,14 +216,14 @@ inline std::vector<int64_t> ComputeOutputShape(
             "the size of filter at axis 0 should be greater than 0"));
   }
 
-  phi::DDim in_data_dims;
+  DDim in_data_dims;
   if (channel_last) {
     in_data_dims = common::slice_ddim(in_dims, 1, in_dims.size() - 1);
   } else {
     in_data_dims = common::slice_ddim(in_dims, 2, in_dims.size());
   }
 
-  phi::DDim filter_data_dims;
+  DDim filter_data_dims;
   if (channel_last) {
     filter_data_dims =
         common::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
