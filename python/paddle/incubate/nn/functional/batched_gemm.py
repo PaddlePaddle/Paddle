@@ -27,7 +27,7 @@ def _empty_tensor() -> Tensor:
     return Tensor()
 
 
-def legacy_batched_gemm(
+def batched_gemm(
     lhs: Tensor, rhs: Tensor, batch_sizes: list
 ) -> tuple[Tensor, Tensor]:
     """
@@ -44,4 +44,4 @@ def legacy_batched_gemm(
             - out (Tensor): The result of batched gemm operation.
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.legacy_batched_gemm(lhs, rhs, batch_sizes)
+        return _C_ops.batched_gemm(lhs, rhs, batch_sizes)

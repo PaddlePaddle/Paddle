@@ -20,7 +20,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.incubate.nn.functional import legacy_batched_gemm as grouped_gemm
+from paddle.incubate.nn.functional import batched_gemm as grouped_gemm
 
 os.environ["FLAGS_flash_attn_version"] = "v1"
 os.environ["FLAGS_cudnn_deterministic"] = "1"

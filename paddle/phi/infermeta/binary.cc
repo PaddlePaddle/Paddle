@@ -4787,10 +4787,10 @@ void FusedRMSNormInferMeta(const MetaTensor& x,
   invvar->set_dtype(DataType::FLOAT32);
 }
 
-void LegacyBatchedGemmInferMeta(const MetaTensor& lhs,
-                                const MetaTensor& rhs,
-                                const std::vector<int64_t>& batch_sizes,
-                                MetaTensor* output) {
+void BatchedGemmInferMeta(const MetaTensor& lhs,
+                          const MetaTensor& rhs,
+                          const std::vector<int64_t>& batch_sizes,
+                          MetaTensor* output) {
   const auto lhs_shape = lhs.dims();
   const auto rhs_shape = rhs.dims();
   PADDLE_ENFORCE_EQ(

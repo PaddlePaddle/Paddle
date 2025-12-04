@@ -170,11 +170,11 @@ void grouped_gemm_cuda_forward(const Context &dev_ctx,
 // b: [num_experts, input_hidden_size, output_hidden_size] or
 //    [num_experts, output_hidden_size, input_hidden_size] if trans_b is true
 template <typename T, typename Context>
-void LegacyBatchedGEMM(const Context &dev_ctx,
-                       const DenseTensor &lhs,
-                       const DenseTensor &rhs,
-                       const std::vector<int64_t> &batch_sizes,
-                       DenseTensor *output) {
+void BatchedGEMM(const Context &dev_ctx,
+                 const DenseTensor &lhs,
+                 const DenseTensor &rhs,
+                 const std::vector<int64_t> &batch_sizes,
+                 DenseTensor *output) {
   // Currently only support no transposed b.
   // TODO(Pan Zhaowu): extend to support other data types
   switch (lhs.dtype()) {
@@ -188,10 +188,10 @@ void LegacyBatchedGEMM(const Context &dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(legacy_batched_gemm,
+PD_REGISTER_KERNEL(batched_gemm,
                    GPU,
                    ALL_LAYOUT,
-                   phi::LegacyBatchedGEMM,
+                   phi::BatchedGEMM,
                    float,
                    double,
                    phi::bfloat16) {}

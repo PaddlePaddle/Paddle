@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .batched_gemm import batched_gemm
 from .blha_get_max_len import blha_get_max_len
 from .block_multihead_attention import (
     block_multihead_attention,
@@ -65,7 +66,6 @@ from .fused_transformer import (
     fused_multi_transformer,
 )
 from .int_bincount import int_bincount
-from .legacy_batched_gemm import legacy_batched_gemm
 from .masked_multihead_attention import masked_multihead_attention
 from .moe_combine import moe_combine
 from .moe_combine_no_weight import moe_combine_no_weight
