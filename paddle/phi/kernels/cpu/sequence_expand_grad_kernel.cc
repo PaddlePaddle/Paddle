@@ -49,7 +49,7 @@ struct SequenceExpandGradFunctor<phi::CPUContext, T> {
         int dout_end = dout_offset + repeat_num * x_seq_len;
         auto dout_sub = dout.Slice(dout_offset, dout_end);
         dout_sub.Resize({repeat_num, dx_sub.dims()[0]});
-        phi::funcs::ColwiseSum<phi::CPUContext, T> col_sum;
+        funcs::ColwiseSum<phi::CPUContext, T> col_sum;
         col_sum(dev_ctx, dout_sub, &dx_sub);
         dout_offset += repeat_num * x_seq_len;
       }

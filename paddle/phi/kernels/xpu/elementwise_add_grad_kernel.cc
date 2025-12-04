@@ -86,7 +86,7 @@ void MixedPrecisionAddGradKernel(const Context& dev_ctx,
       if (dx->IsSharedBufferWith(*dz)) {
         dx->clear();
         dx->Resize(x.dims());
-        dev_ctx.template Alloc<T>(dx);
+        dx_data = dev_ctx.template Alloc<T>(dx);
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(dx->dims(), dz_dims, axis);
@@ -208,7 +208,7 @@ void AddGradKernel(const Context& dev_ctx,
       if (dx->IsSharedBufferWith(*dz)) {
         dx->clear();
         dx->Resize(x.dims());
-        dev_ctx.template Alloc<T>(dx);
+        dx_data = dev_ctx.template Alloc<T>(dx);
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(dx->dims(), dz_dims, axis);

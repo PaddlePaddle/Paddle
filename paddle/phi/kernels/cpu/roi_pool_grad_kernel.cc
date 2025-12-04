@@ -70,7 +70,7 @@ void RoiPoolGradKernel(const Context& dev_ctx,
     const int64_t* arg_max_data = arg_max.data<int64_t>();
     T* dx_data = dev_ctx.template Alloc<T>(dx);
 
-    phi::funcs::SetConstant<Context, T> set_zero;
+    funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, dx, static_cast<T>(0));
 
     auto in_stride = common::stride(x.dims());

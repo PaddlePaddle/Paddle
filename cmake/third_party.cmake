@@ -400,6 +400,10 @@ list(
   extern_utf8proc)
 include(external/lapack) # download, build, install lapack
 
+if(WITH_MAGMA)
+  include(external/magma) # download, build, install magma
+endif()
+
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog
      extern_xxhash)
 list(
@@ -412,11 +416,17 @@ list(
   extern_threadpool
   extern_lapack)
 
+if(WITH_MAGMA)
+  list(APPEND third_party_deps extern_magma)
+endif()
+
 include(cblas) # find first, then download, build, install openblas
 
 message(STATUS "CBLAS_PROVIDER: ${CBLAS_PROVIDER}")
 if(${CBLAS_PROVIDER} STREQUAL MKLML)
   list(APPEND third_party_deps extern_mklml)
+elseif(${CBLAS_PROVIDER} STREQUAL HML)
+  list(APPEND third_party_deps extern_hml)
 elseif(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
   list(APPEND third_party_deps extern_openblas)
 endif()

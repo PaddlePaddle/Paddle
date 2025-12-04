@@ -207,7 +207,7 @@ def monkey_patch_value():
         if blocking is not True:
             warnings.warn("blocking is not supported, and it will be ignored.")
 
-        # 1 means cuda place, see paddle/phi/kernels/memcpy_kernel.cc
+        # 1 means cuda/xpu/custom_device place, see paddle/phi/kernels/memcpy_kernel.cc
         return _C_ops.memcpy(self, 1)
 
     @property
@@ -611,9 +611,7 @@ def monkey_patch_value():
                 >>> startup_prog = paddle.static.Program()
                 >>> main_prog = paddle.static.Program()
                 >>> with paddle.static.program_guard(startup_prog, main_prog):
-                ...     x = paddle.assign(
-                ...         np.random.rand(2, 3, 4).astype("float32")
-                ...     )
+                ...     x = paddle.assign(np.random.rand(2, 3, 4).astype("float32"))
                 ...     (output_x,) = exe.run(main_program, fetch_list=[x.size])
                 ...     print(f"value's size is: {output_x}")
                 value's size is: 24

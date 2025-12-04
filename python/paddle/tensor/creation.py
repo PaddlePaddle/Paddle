@@ -2629,7 +2629,7 @@ def meshgrid(*args, **kwargs):
          Tensor: k tensors. The shape of each tensor is (N1, N2, ..., Nk)
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2639,9 +2639,9 @@ def meshgrid(*args, **kwargs):
             >>> grid_x, grid_y = paddle.meshgrid(x, y)
 
             >>> print(grid_x.shape)
-            [100, 200]
+            paddle.Size([100, 200])
             >>> print(grid_y.shape)
-            [100, 200]
+            paddle.Size([100, 200])
 
     """
     name = kwargs.get("name", None)

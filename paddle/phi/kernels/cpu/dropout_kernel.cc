@@ -31,7 +31,7 @@ void ComputeDropoutInference(const Context& dev_ctx,
   if (upscale_in_train) {
     const auto* X_data = x.data<T>();
     T* Y_data = dev_ctx.template Alloc<T>(y);
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
 #pragma omp parallel for
 #endif
     for (int i = 0; i < x.numel(); i++) {

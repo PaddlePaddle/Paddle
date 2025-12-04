@@ -41,9 +41,9 @@ g_shard_param_with_color = int(
 )
 
 vocab_size = 20
-hidden_size = 10
+hidden_size = 256
 inner_size = 8
-output_size = 10
+output_size = 256
 seq_length = 2
 batch_size = 4
 STEPS = 10

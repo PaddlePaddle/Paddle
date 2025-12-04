@@ -45,8 +45,8 @@ void DeQuantKernel(const Context& dev_ctx,
   const bool with_shift = q_shift != 0;
 
   auto x_tz = common::vectorize<int64_t>(x.dims());
-  auto x_type = phi::funcs::ToOneDNNDataType(x.dtype());
-  auto out_type = phi::funcs::ToOneDNNDataType(out->dtype());
+  auto x_type = funcs::ToOneDNNDataType(x.dtype());
+  auto out_type = funcs::ToOneDNNDataType(out->dtype());
 
   dnnl::primitive_attr attrs;
   static constexpr int32_t mask = 0;  // same shift and scale for whole tensor
@@ -57,11 +57,11 @@ void DeQuantKernel(const Context& dev_ctx,
     attrs.set_zero_points_mask(DNNL_ARG_SRC, mask);
   }
 
-  phi::funcs::ReorderOneDNNHandler reorder_handler(
+  funcs::ReorderOneDNNHandler reorder_handler(
       x_tz, x.dtype(), x_type, out->dtype(), out_type, dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      x.mem_desc(), phi::funcs::to_void_cast(x.data<T>()));
+      x.mem_desc(), funcs::to_void_cast(x.data<T>()));
   auto reorder_dst_memory_p =
       reorder_handler.AcquireDstMemory(out, x.mem_desc(), dev_ctx.GetPlace());
 
@@ -75,14 +75,13 @@ void DeQuantKernel(const Context& dev_ctx,
   auto scales_mem =
       dnnl::memory(scales_md,
                    dev_ctx.GetEngine(),
-                   phi::funcs::to_void_cast<float>(&quantization_scale));
+                   funcs::to_void_cast<float>(&quantization_scale));
 
   auto zero_points_md = dnnl::memory::desc(
       {1}, dnnl::memory::data_type::s32, dnnl::memory::format_tag::x);
-  auto zero_points_mem =
-      dnnl::memory(zero_points_md,
-                   dev_ctx.GetEngine(),
-                   phi::funcs::to_void_cast<int32_t>(&q_shift));
+  auto zero_points_mem = dnnl::memory(zero_points_md,
+                                      dev_ctx.GetEngine(),
+                                      funcs::to_void_cast<int32_t>(&q_shift));
   std::unordered_map<int, dnnl::memory> reorder_args;
   reorder_args.insert({DNNL_ARG_SRC, *reorder_src_memory_p});
   reorder_args.insert({DNNL_ARG_DST, *reorder_dst_memory_p});

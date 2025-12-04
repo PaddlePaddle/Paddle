@@ -12,27 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/phi/kernels/distribute_fpn_proposals_kernel.h"
-
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/detection/bbox_util.h"
 #include "paddle/phi/kernels/funcs/distribute_fpn_proposals_functor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
-#include "paddle/common/enforce.h"
-#include "paddle/phi/common/memory_utils.h"
 
 namespace phi {
 
@@ -154,7 +145,7 @@ void DistributeFpnProposalsKernel(
   DenseTensor sub_lod_list;
   sub_lod_list.Resize({num_level, lod_size});
   int* sub_lod_list_data = dev_ctx.template Alloc<int>(&sub_lod_list);
-  phi::funcs::SetConstant<phi::GPUContext, int> set_zero;
+  funcs::SetConstant<phi::GPUContext, int> set_zero;
   set_zero(dev_ctx, &sub_lod_list, static_cast<int>(0));
 
   DenseTensor target_lvls;
@@ -260,7 +251,7 @@ void DistributeFpnProposalsKernel(
       start = end;
       multi_fpn_rois[i]->Resize({sub_rois_num, funcs::kBoxDim});
       dev_ctx.template Alloc<T>(multi_fpn_rois[i]);
-      phi::funcs::GPUGather<T>(dev_ctx, fpn_rois, sub_idx, multi_fpn_rois[i]);
+      funcs::GPUGather<T>(dev_ctx, fpn_rois, sub_idx, multi_fpn_rois[i]);
     } else {
       multi_fpn_rois[i]->Resize({sub_rois_num, funcs::kBoxDim});
       dev_ctx.template Alloc<T>(multi_fpn_rois[i]);

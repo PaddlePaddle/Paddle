@@ -84,8 +84,8 @@ void DiagGradKernel(const Context& dev_ctx,
     int64_t size = (offset > 0) ? dx_length + offset : dx_length - offset;
     int64_t dx_stride = 1;
     if (size > 0) {
-      int64_t dout_stride_0 = phi::funcs::ComputeStride(0, dout_dims);
-      int64_t dout_stride_1 = phi::funcs::ComputeStride(1, dout_dims);
+      int64_t dout_stride_0 = funcs::ComputeStride(0, dout_dims);
+      int64_t dout_stride_1 = funcs::ComputeStride(1, dout_dims);
       int64_t start =
           (offset >= 0 ? offset * dout_stride_1 : -offset * dout_stride_0);
 
@@ -102,11 +102,11 @@ void DiagGradKernel(const Context& dev_ctx,
                                  dx_stride);
     }
   } else {
-    phi::funcs::SetConstant<Context, T> set_padding_value;
+    funcs::SetConstant<Context, T> set_padding_value;
     set_padding_value(dev_ctx, x_grad, static_cast<T>(0));
 
-    int64_t dx_stride_0 = phi::funcs::ComputeStride(0, dx_dims);
-    int64_t dx_stride_1 = phi::funcs::ComputeStride(1, dx_dims);
+    int64_t dx_stride_0 = funcs::ComputeStride(0, dx_dims);
+    int64_t dx_stride_1 = funcs::ComputeStride(1, dx_dims);
     int64_t size;
     if (offset > 0) {
       size = std::min(dx_dims[0], dx_dims[1] - offset);
@@ -117,7 +117,7 @@ void DiagGradKernel(const Context& dev_ctx,
     if (size > 0) {
       int64_t start =
           (offset >= 0 ? offset * dx_stride_1 : -offset * dx_stride_0);
-      int64_t dout_stride_0 = phi::funcs::ComputeStride(0, dout_dims);
+      int64_t dout_stride_0 = funcs::ComputeStride(0, dout_dims);
       std::tuple<int64_t, int64_t> block_grid_size = GetBlockGridSize(size);
       PasteDiagonalKernel<T><<<std::get<1>(block_grid_size),
                                std::get<0>(block_grid_size),

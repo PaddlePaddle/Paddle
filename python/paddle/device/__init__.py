@@ -21,7 +21,7 @@ import os
 import re
 import sys
 import types
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, overload
 
 from typing_extensions import TypeAlias
 
@@ -203,6 +203,7 @@ __all__ = [
     'reset_peak_memory_stats',
     'ipc_collect',
     'get_stream_from_external',
+    'StreamContext',
 ]
 
 _cudnn_version = None
@@ -569,7 +570,7 @@ def is_bf16_supported(including_emulation: bool = True) -> bool:
 
     """
     # including_emulation is not used here, but kept for compatibility with the original implementation
-    if core.is_bfloat16_supported(paddle.framework._current_expected_place()):
+    if core.is_bfloat16_supported(paddle.framework._current_expected_place_()):
         return True
 
     # If CUDA is not available, than it does not support bf16 either
@@ -632,7 +633,15 @@ def set_device(device: PlaceLike | int) -> PlaceLike:
     return place
 
 
-def get_device(input: paddle.Tensor = None) -> str | int:
+@overload
+def get_device(input: None = None) -> str: ...
+
+
+@overload
+def get_device(input: paddle.Tensor) -> int: ...
+
+
+def get_device(input: paddle.Tensor | None = None) -> str | int:
     """
 
     This function can get the current global device of the program is running.

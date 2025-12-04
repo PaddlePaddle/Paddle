@@ -96,7 +96,7 @@ class MobileNetV1(nn.Layer):
         :ref:`api_paddle_nn_Layer`. An instance of MobileNetV1 model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import MobileNetV1
@@ -107,7 +107,7 @@ class MobileNetV1(nn.Layer):
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
 
     scale: float
@@ -308,7 +308,7 @@ def mobilenet_v1(
         :ref:`api_paddle_nn_Layer`. An instance of MobileNetV1 model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import mobilenet_v1
@@ -326,7 +326,7 @@ def mobilenet_v1(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     model = _mobilenet(
         'mobilenetv1_' + str(scale), pretrained, scale=scale, **kwargs
