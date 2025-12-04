@@ -426,7 +426,7 @@ def monkey_patch_math_tensor():
 
                 >>> import paddle
                 >>> x = paddle.ones([2, 2])
-                >>> y = x.new_empty(3, 3)
+                >>> y = x.new_empty(3, 3)  # type: ignore
                 >>> y.shape
                 paddle.Size([3, 3])
         """
