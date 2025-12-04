@@ -75,8 +75,7 @@ void FlashAttnUnpaddedBaseKernel(
     std::vector<const DenseTensor*> inputs{};
     std::vector<DenseTensor*> outputs{out};
 
-    phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, ZeroFunctor<T>());
+    funcs::ElementwiseKernel<T>(dev_ctx, inputs, &outputs, ZeroFunctor<T>());
   }
 #ifdef PADDLE_WITH_HIP
   hipStream_t stream = dev_ctx.stream();

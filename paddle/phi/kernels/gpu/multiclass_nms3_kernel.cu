@@ -16,19 +16,16 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
 #else
-#include <cub/cub.cuh>
 #include "cuda.h"  // NOLINT
 #endif
-
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/nonzero_kernel.h"
@@ -1156,7 +1153,7 @@ void MultiClassNMSGPUKernel(const Context& dev_ctx,
   DenseTensor raw_out;
   raw_out.Resize({batch_size * keep_top_k, 6});
   dev_ctx.template Alloc<T>(&raw_out);
-  phi::funcs::ConcatFunctor<Context, T> concat;
+  funcs::ConcatFunctor<Context, T> concat;
   concat(dev_ctx, {nmsed_classes, nmsed_scores, nmsed_boxes}, 1, &raw_out);
 
   // Output of NMS kernel may include invalid entries, which is
@@ -1170,10 +1167,10 @@ void MultiClassNMSGPUKernel(const Context& dev_ctx,
   const int64_t valid_samples = valid_indices.dims()[0];
   out->Resize({valid_samples, 6});
   dev_ctx.template Alloc<T>(out);
-  phi::funcs::GPUGatherNd<T, int64_t>(dev_ctx, raw_out, valid_indices, out);
+  funcs::GPUGatherNd<T, int64_t>(dev_ctx, raw_out, valid_indices, out);
   index->Resize({valid_samples, 1});
   dev_ctx.template Alloc<int>(index);
-  phi::funcs::GPUGatherNd<int, int64_t>(
+  funcs::GPUGatherNd<int, int64_t>(
       dev_ctx, nmsed_indices, valid_indices, index);
 }
 

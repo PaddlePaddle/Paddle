@@ -521,8 +521,7 @@ void FlashAttnVarlenQKVPackedGradKernel(
   {
     std::vector<const DenseTensor*> inputs{};
     std::vector<DenseTensor*> outputs{dqkv};
-    phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, ZeroFunctor<T>());
+    funcs::ElementwiseKernel<T>(dev_ctx, inputs, &outputs, ZeroFunctor<T>());
   }
   DenseTensor dq, dk, dv;
   sliceFlattenView(*dqkv, &dq, 1, 0, head_groupnum - 2);

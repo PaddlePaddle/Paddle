@@ -26,9 +26,9 @@ namespace funcs {
 template <class T>
 __global__ void vol2col(int64_t num_kernels,
                         const T* data_vol,
-                        int depth,
-                        int height,
-                        int width,
+                        int64_t depth,
+                        int64_t height,
+                        int64_t width,
                         int dilation_d,
                         int dilation_h,
                         int dilation_w,
@@ -41,50 +41,41 @@ __global__ void vol2col(int64_t num_kernels,
                         int padding_depth,
                         int padding_height,
                         int padding_width,
-                        int output_detph,
-                        int output_height,
-                        int output_width,
+                        int64_t output_detph,
+                        int64_t output_height,
+                        int64_t output_width,
                         T* data_col,
                         const DataLayout data_layout) {
-  int64_t input_channels =
+  int input_channels =
       num_kernels / output_detph / output_height / output_width;
-  int64_t channels_col =
-      input_channels * filter_depth * filter_height * filter_width;
   for (int64_t index =
-           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
-           static_cast<int64_t>(threadIdx.x);
+           static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
        index < num_kernels;
        index += blockDim.x * gridDim.x) {
-    int w_out = index % output_width;
-    int h_out = (index / output_width) % output_height;
-    int d_out = (index / output_width / output_height) % output_detph;
+    int64_t w_out = index % output_width;
+    int64_t h_out = (index / output_width) % output_height;
+    int64_t d_out = (index / output_width / output_height) % output_detph;
     int channel_in = index / output_width / output_height / output_detph;
     int channel_out = channel_in * filter_depth * filter_height * filter_width;
-    int w_in = w_out * stride_width - padding_width;
-    int h_in = h_out * stride_height - padding_height;
-    int d_in = d_out * stride_depth - padding_depth;
+    int64_t w_in = w_out * stride_width - padding_width;
+    int64_t h_in = h_out * stride_height - padding_height;
+    int64_t d_in = d_out * stride_depth - padding_depth;
 
-    data_col += ((static_cast<int64_t>(channel_out) * output_detph + d_out) *
-                     output_height +
-                 h_out) *
+    data_col += ((channel_out * output_detph + d_out) * output_height + h_out) *
                     output_width +
                 w_out;
     for (int k = 0; k < filter_depth; ++k) {
+      int64_t d = d_in + k * dilation_d;
       for (int i = 0; i < filter_height; ++i) {
+        int64_t h = h_in + i * dilation_h;
         for (int j = 0; j < filter_width; ++j) {
-          int d = d_in + k * dilation_d;
-          int h = h_in + i * dilation_h;
-          int w = w_in + j * dilation_w;
+          int64_t w = w_in + j * dilation_w;
           int64_t vol_idx;
           if (data_layout != DataLayout::NHWC) {
-            vol_idx =
-                ((static_cast<int64_t>(channel_in) * depth + d) * height + h) *
-                    width +
-                w;
+            vol_idx = ((channel_in * depth + d) * height + h) * width + w;
           } else {
-            vol_idx = ((static_cast<int64_t>(d) * height + h) * width + w) *
-                          input_channels +
-                      channel_in;
+            vol_idx =
+                ((d * height + h) * width + w) * input_channels + channel_in;
           }
           *data_col = (d >= 0 && d < depth && h >= 0 && h < height && w >= 0 &&
                        w < width)
@@ -129,37 +120,26 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
                         "The dimension of col should be 7, but received %d.",
                         col->dims().size()));
 
-  int input_channels =
+  int64_t input_channels =
       (data_layout != DataLayout::NHWC ? vol.dims()[0] : vol.dims()[3]);
-  int input_depth =
+  int64_t input_depth =
       (data_layout != DataLayout::NHWC ? vol.dims()[1] : vol.dims()[0]);
-  int input_height =
+  int64_t input_height =
       (data_layout != DataLayout::NHWC ? vol.dims()[2] : vol.dims()[1]);
-  int input_width =
+  int64_t input_width =
       (data_layout != DataLayout::NHWC ? vol.dims()[3] : vol.dims()[2]);
   int64_t filter_depth = col->dims()[1];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
   int64_t filter_height = col->dims()[2];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
   int64_t filter_width = col->dims()[3];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
   int64_t output_depth = col->dims()[4];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
   int64_t output_height = col->dims()[5];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
   int64_t output_width = col->dims()[6];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+
+  // NOTE(zrr1999): im_channels, filter_height, filter_width, filter_depth are
+  // usually small
+  PADDLE_ENFORCE_LE_INT_MAX(
+      input_channels * filter_depth * filter_height * filter_width,
+      "input_channels*filter_depth*filter_height*filter_width");
 
   bool paddings_size_is_6 = (paddings.size() == 6);
   int pad_d_forth = paddings_size_is_6 ? paddings[0] : paddings[0];
@@ -203,7 +183,7 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
   int64_t num_outputs =
       input_channels * output_depth * output_height * output_width;
 
-  int max_threads = 1024;
+  int max_threads = 512;
 #ifdef WITH_NV_JETSON
   phi::backends::gpu::ChangeThreadNum(dev_ctx, &max_threads);
 #endif
@@ -241,73 +221,75 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
 template <class T>
 __global__ void col2vol(int64_t num_kernels,
                         const T* data_col,
-                        int depth,
-                        int height,
-                        int width,
+                        int64_t depth,
+                        int64_t height,
+                        int64_t width,
                         int dilation_d,
                         int dilation_h,
                         int dilation_w,
-                        int filter_depth,
-                        int filter_height,
-                        int filter_width,
+                        int64_t filter_depth,
+                        int64_t filter_height,
+                        int64_t filter_width,
                         int stride_depth,
                         int stride_height,
                         int stride_width,
                         int padding_depth,
                         int padding_height,
                         int padding_width,
-                        int output_detph,
-                        int output_height,
-                        int output_width,
+                        int64_t output_detph,
+                        int64_t output_height,
+                        int64_t output_width,
                         T* data_vol,
                         const DataLayout data_layout) {
-  const int d_filter_depth = dilation_d * (filter_depth - 1) + 1;
-  const int d_filter_height = dilation_h * (filter_height - 1) + 1;
-  const int d_filter_width = dilation_w * (filter_width - 1) + 1;
+  const int64_t d_filter_depth = dilation_d * (filter_depth - 1) + 1;
+  const int64_t d_filter_height = dilation_h * (filter_height - 1) + 1;
+  const int64_t d_filter_width = dilation_w * (filter_width - 1) + 1;
 
-  int input_channels = num_kernels / depth / height / width;
+  int64_t input_channels = num_kernels / depth / height / width;
   for (int64_t index =
            static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
            static_cast<int64_t>(threadIdx.x);
        index < num_kernels;
        index += blockDim.x * gridDim.x) {
     T src_val = 0;
-    int w = (data_layout != DataLayout::NHWC
-                 ? index % width + padding_width
-                 : (index / input_channels) % width + padding_width);
-    int h = (data_layout != DataLayout::NHWC
-                 ? (index / width) % height + padding_height
-                 : (index / input_channels / width) % height + padding_height);
-    int d = (data_layout != DataLayout::NHWC
-                 ? (index / width / height) % depth + padding_depth
-                 : index / input_channels / width / height + padding_depth);
-    int c = (data_layout != DataLayout::NHWC ? index / width / height / depth
-                                             : index % input_channels);
+    int64_t w = (data_layout != DataLayout::NHWC
+                     ? index % width + padding_width
+                     : (index / input_channels) % width + padding_width);
+    int64_t h =
+        (data_layout != DataLayout::NHWC
+             ? (index / width) % height + padding_height
+             : (index / input_channels / width) % height + padding_height);
+    int64_t d = (data_layout != DataLayout::NHWC
+                     ? (index / width / height) % depth + padding_depth
+                     : index / input_channels / width / height + padding_depth);
+    int64_t c =
+        (data_layout != DataLayout::NHWC ? index / width / height / depth
+                                         : index % input_channels);
 
     // compute the start and end of the output
-    int w_col_start =
+    int64_t w_col_start =
         (w < d_filter_width) ? 0 : (w - d_filter_width) / stride_width + 1;
-    int w_col_end = min(w / stride_width + 1, output_width);
-    int h_col_start =
+    int64_t w_col_end = min(w / stride_width + 1, output_width);
+    int64_t h_col_start =
         (h < d_filter_height) ? 0 : (h - d_filter_height) / stride_height + 1;
-    int h_col_end = min(h / stride_height + 1, output_height);
-    int d_col_start =
+    int64_t h_col_end = min(h / stride_height + 1, output_height);
+    int64_t d_col_start =
         (d < d_filter_depth) ? 0 : (d - d_filter_depth) / stride_depth + 1;
-    int d_col_end = min(d / stride_depth + 1, output_detph);
+    int64_t d_col_end = min(d / stride_depth + 1, output_detph);
 
-    for (int d_col = d_col_start; d_col < d_col_end; ++d_col) {
-      for (int h_col = h_col_start; h_col < h_col_end; ++h_col) {
-        for (int w_col = w_col_start; w_col < w_col_end; ++w_col) {
-          int d_off = (d - d_col * stride_depth);
-          int h_off = (h - h_col * stride_height);
-          int w_off = (w - w_col * stride_width);
+    for (int64_t d_col = d_col_start; d_col < d_col_end; ++d_col) {
+      for (int64_t h_col = h_col_start; h_col < h_col_end; ++h_col) {
+        for (int64_t w_col = w_col_start; w_col < w_col_end; ++w_col) {
+          int64_t d_off = (d - d_col * stride_depth);
+          int64_t h_off = (h - h_col * stride_height);
+          int64_t w_off = (w - w_col * stride_width);
           if (d_off % dilation_d == 0 && h_off % dilation_h == 0 &&
               w_off % dilation_w == 0) {
             d_off /= dilation_d;
             h_off /= dilation_h;
             w_off /= dilation_w;
 
-            int data_col_index =
+            int64_t data_col_index =
                 (((((c * filter_depth + d_off) * filter_height + h_off) *
                        filter_width +
                    w_off)));
@@ -357,37 +339,20 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
                         "The dimension of col should be 7, but received %d.",
                         col.dims().size()));
 
-  int input_channels =
+  int64_t input_channels =
       (data_layout != DataLayout::NHWC ? vol->dims()[0] : vol->dims()[3]);
-  int input_depth =
+  int64_t input_depth =
       (data_layout != DataLayout::NHWC ? vol->dims()[1] : vol->dims()[0]);
-  int input_height =
+  int64_t input_height =
       (data_layout != DataLayout::NHWC ? vol->dims()[2] : vol->dims()[1]);
-  int input_width =
+  int64_t input_width =
       (data_layout != DataLayout::NHWC ? vol->dims()[3] : vol->dims()[2]);
   int64_t filter_depth = col.dims()[1];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
   int64_t filter_height = col.dims()[2];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
   int64_t filter_width = col.dims()[3];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
   int64_t output_depth = col.dims()[4];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
   int64_t output_height = col.dims()[5];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
   int64_t output_width = col.dims()[6];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
 
   bool paddings_size_is_6 = (paddings.size() == 6);
   int pad_d_forth = paddings_size_is_6 ? paddings[0] : paddings[0];
@@ -429,10 +394,10 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
                         input_width_tmp,
                         output_width));
 
-  int64_t num_kernels = static_cast<int64_t>(input_channels) * input_depth *
-                        input_height * input_width;
+  int64_t num_kernels =
+      input_channels * input_depth * input_height * input_width;
 
-  int max_threads = 1024;
+  int max_threads = 512;
 #ifdef WITH_NV_JETSON
   phi::backends::gpu::ChangeThreadNum(dev_ctx, &max_threads);
 #endif

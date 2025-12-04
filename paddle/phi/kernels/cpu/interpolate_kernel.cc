@@ -48,7 +48,7 @@ static void LinearInterpolation(const DenseTensor& input,
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   std::vector<int> vx_w, vx_e;
-  std::vector<float> vd_w, vd_e;
+  std::vector<MT> vd_w, vd_e;
   vx_w.reserve(out_w);
   vx_e.reserve(out_w);
   vd_w.reserve(out_w);
@@ -57,18 +57,15 @@ static void LinearInterpolation(const DenseTensor& input,
 #pragma omp parallel for
 #endif
   for (int l = 0; l < out_w; l++) {
-    int x_w = static_cast<int>(
-        align_flag ? (ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f)
-                   : ratio_w * static_cast<float>(l));
+    int x_w = static_cast<int>(align_flag ? (ratio_w * (l + 0.5) - 0.5)
+                                          : ratio_w * l);
     x_w = (x_w > 0) ? x_w : 0;                       // w
     int x_e = (x_w < (in_w - 1)) ? (x_w + 1) : x_w;  // w_id
 
-    float idx_src_x = ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f;
+    MT idx_src_x = ratio_w * (l + 0.5) - 0.5;
     idx_src_x = (idx_src_x > 0) ? idx_src_x : 0;
-    float d_w = align_flag ? idx_src_x - static_cast<float>(x_w)
-                           : ratio_w * static_cast<float>(l) -
-                                 static_cast<float>(x_w);  // w1lambda
-    float d_e = 1.f - d_w;                                 // w2lambda
+    MT d_w = align_flag ? idx_src_x - x_w : ratio_w * l - x_w;  // w1lambda
+    MT d_e = 1. - d_w;                                          // w2lambda
     {
       vx_w[l] = x_w;
       vx_e[l] = x_e;
@@ -85,7 +82,7 @@ static void LinearInterpolation(const DenseTensor& input,
       for (int l = 0; l < out_w; l++) {
         // linear interpolation
         T out_t;
-        if (data_layout == DataLayout::kNCHW) {
+        if (data_layout == DataLayout::NCHW) {
           out_t =
               static_cast<T>(static_cast<MT>(input_t(i, j, vx_w[l])) * vd_e[l] +
                              static_cast<MT>(input_t(i, j, vx_e[l])) * vd_w[l]);
@@ -134,7 +131,7 @@ static void BilinearInterpolation(const DenseTensor& input,
                                           : (ratio_h * static_cast<float>(k)));
     y_n = (y_n > 0) ? y_n : 0;
     int y_s = (y_n + 1) < (in_h - 1) ? (y_n + 1) : (in_h - 1);
-    float idx_src_y = ratio_h * (static_cast<float>(k) + 0.5f) - 0.5f;
+    float idx_src_y = ratio_h * (k + 0.5) - 0.5;
     idx_src_y = (idx_src_y > 0) ? idx_src_y : 0;
     float d_n = align_flag
                     ? idx_src_y - static_cast<float>(y_n)
@@ -186,7 +183,7 @@ static void BilinearInterpolation(const DenseTensor& input,
         for (int l = 0; l < out_w; l++) {
           // bilinear interpolation
           T out_t;
-          if (data_layout == DataLayout::kNCHW) {
+          if (data_layout == DataLayout::NCHW) {
             out_t = static_cast<T>(
                 static_cast<MT>(input_t(i, j, vy_n[k], vx_w[l])) * vd_s[k] *
                     vd_e[l] +
@@ -244,7 +241,7 @@ static void NearestNeighborInterpolate(const DenseTensor& input,
 
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
-          if (data_layout == DataLayout::kNCHW) {
+          if (data_layout == DataLayout::NCHW) {
             output_t(i, j, k, l) = input_t(i, j, in_k, in_l);
           } else {
             output_t(i, k, l, j) = input_t(i, in_k, in_l, j);
@@ -299,7 +296,7 @@ static void BicubicInterpolation(const DenseTensor& input,
                 std::max(std::min(input_x + 1, in_w - 1), static_cast<int>(0));
             int access_x_3 =
                 std::max(std::min(input_x + 2, in_w - 1), static_cast<int>(0));
-            if (data_layout == DataLayout::kNCHW) {
+            if (data_layout == DataLayout::NCHW) {
               coefficients[ii] = cubic_interp<MT>(
                   static_cast<MT>(input_t(i, j, access_y, access_x_0)),
                   static_cast<MT>(input_t(i, j, access_y, access_x_1)),
@@ -317,7 +314,7 @@ static void BicubicInterpolation(const DenseTensor& input,
           }
 
           // interp y direction
-          if (data_layout == DataLayout::kNCHW) {
+          if (data_layout == DataLayout::NCHW) {
             output_t(i, j, k, l) =
                 static_cast<T>(cubic_interp<MT>(coefficients[0],
                                                 coefficients[1],
@@ -454,7 +451,7 @@ static void TrilinearInterpolation(const DenseTensor& input,
         for (int k = 0; k < out_h; k++) {
           for (int l = 0; l < out_w; l++) {
             // trilinear interpolation
-            if (data_layout == DataLayout::kNCHW) {
+            if (data_layout == DataLayout::NCHW) {
               T out_t = static_cast<T>(
                   static_cast<MT>(input_t(b, i, vt_f[j], vy_n[k], vx_w[l])) *
                       vd_b[j] * vd_s[k] * vd_e[l] +
@@ -534,7 +531,7 @@ static void NearestNeighbor3DInterpolate(const DenseTensor& input,
 
         for (int i = 0; i < n; i++) {    // loop for batches
           for (int j = 0; j < c; j++) {  // loop for channels
-            if (data_layout == DataLayout::kNCHW) {
+            if (data_layout == DataLayout::NCHW) {
               output_t(i, j, d, k, l) = input_t(i, j, in_d, in_k, in_l);
             } else {  // NDHWC
               output_t(i, d, k, l, j) = input_t(i, in_d, in_k, in_l, j);
@@ -555,7 +552,7 @@ static void Interpolate1DCPUFwd(
     const paddle::optional<DenseTensor>& scale_tensor,
     const std::string& data_layout_str,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -564,7 +561,7 @@ static void Interpolate1DCPUFwd(
   int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  float scale_w = -1.;
+  double scale_w = -1.;
   if (size_tensor && !size_tensor->empty()) {
     // have size tensor
     auto new_size = funcs::get_new_shape(size_tensor.get());
@@ -608,8 +605,8 @@ static void Interpolate1DCPUFwd(
       0,
       errors::InvalidArgument("out_w in Attr(out_shape) of Op(interpolate) "
                               "should be greater than 0."));
-  phi::DDim dim_out;
-  if (data_layout == DataLayout::kNCHW) {
+  DDim dim_out;
+  if (data_layout == DataLayout::NCHW) {
     dim_out = {n, c, out_w};
   } else {
     dim_out = {n, out_w, c};
@@ -622,16 +619,8 @@ static void Interpolate1DCPUFwd(
     return;
   }
 
-  float ratio_w = 0.f;
-  if (out_w > 1) {
-    float new_scale_w = 0.f;
-    new_scale_w = (scale_w > 0)
-                      ? static_cast<float>(1. / scale_w)
-                      : static_cast<float>(in_w) / static_cast<float>(out_w);
-    ratio_w = (align_corners)
-                  ? static_cast<float>(in_w - 1) / static_cast<float>(out_w - 1)
-                  : static_cast<float>(new_scale_w);
-  }
+  float ratio_w =
+      funcs::AreaPixelComputeScale<double>(in_w, out_w, align_corners, scale_w);
   if ("linear" == interp_method) {
     LinearInterpolation<T>(x,
                            output,
@@ -656,7 +645,7 @@ static void Interpolate2DCPUFwd(
     const std::string& data_layout_str,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -665,8 +654,8 @@ static void Interpolate2DCPUFwd(
   int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  float scale_h = -1;
-  float scale_w = -1;
+  double scale_h = -1;
+  double scale_w = -1;
 
   if (size_tensor && !size_tensor->empty()) {
     // have size tensor
@@ -740,8 +729,8 @@ static void Interpolate2DCPUFwd(
       0,
       errors::InvalidArgument("out_w in Attr(out_shape) of Op(interpolate) "
                               "should be greater than 0."));
-  phi::DDim dim_out;
-  if (data_layout == DataLayout::kNCHW) {
+  DDim dim_out;
+  if (data_layout == DataLayout::NCHW) {
     dim_out = {n, c, out_h, out_w};
   } else {
     dim_out = {n, out_h, out_w, c};
@@ -819,7 +808,7 @@ static void Interpolate3DCPUFwd(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -828,9 +817,9 @@ static void Interpolate3DCPUFwd(
   int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  float scale_d = -1;
-  float scale_h = -1;
-  float scale_w = -1;
+  double scale_d = -1;
+  double scale_h = -1;
+  double scale_w = -1;
 
   if (size_tensor && !size_tensor->empty()) {
     // have size tensor
@@ -930,8 +919,8 @@ static void Interpolate3DCPUFwd(
       errors::InvalidArgument("out_w in Attr(out_shape) of Op(interpolate) "
                               "should be greater than 0."));
 
-  phi::DDim dim_out;
-  if (data_layout == DataLayout::kNCHW) {
+  DDim dim_out;
+  if (data_layout == DataLayout::NCHW) {
     dim_out = {n, c, out_d, out_h, out_w};
   } else {
     dim_out = {n, out_d, out_h, out_w, c};
@@ -996,7 +985,7 @@ void InterpolateKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1064,7 +1053,7 @@ void BilinearInterpKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1102,7 +1091,7 @@ void LegacyBilinearInterpKernel(
     int align_mode,
     DenseTensor* output) {
   const auto& dim_x = x.dims();
-  std::vector<float> scale_vec;
+  std::vector<double> scale_vec;
   if (scale > 0) {
     for (int i = 0; i < dim_x.size() - 2; i++) {
       scale_vec.push_back(scale);
@@ -1135,7 +1124,7 @@ void NearestInterpKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1173,7 +1162,7 @@ void LegacyNearestInterpKernel(
     int align_mode,
     DenseTensor* output) {
   const auto& dim_x = x.dims();
-  std::vector<float> scale_vec;
+  std::vector<double> scale_vec;
   if (scale > 0) {
     for (int i = 0; i < dim_x.size() - 2; i++) {
       scale_vec.push_back(scale);
@@ -1206,7 +1195,7 @@ void TrilinearInterpKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1238,7 +1227,7 @@ void LinearInterpKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -1270,7 +1259,7 @@ void BicubicInterpKernel(
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,

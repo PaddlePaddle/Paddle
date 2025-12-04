@@ -64,7 +64,7 @@ void SumRawKernel(const Context& dev_ctx,
       final_out_dtype = x.dtype();
     }
     if (final_out_dtype == DataType::FLOAT32) {
-      phi::Reduce<CPUContext, float, phi::funcs::SumFunctor>(
+      phi::Reduce<CPUContext, float, funcs::SumFunctor>(
           dev_ctx,
           x_fp32,
           reduce_all,
@@ -75,7 +75,7 @@ void SumRawKernel(const Context& dev_ctx,
     } else {
       DenseTensor intermediate_result;
       intermediate_result.set_meta(out->meta());
-      phi::Reduce<CPUContext, float, phi::funcs::SumFunctor>(
+      phi::Reduce<CPUContext, float, funcs::SumFunctor>(
           dev_ctx,
           x_fp32,
           reduce_all,
@@ -88,7 +88,7 @@ void SumRawKernel(const Context& dev_ctx,
           dev_ctx, intermediate_result, final_out_dtype, out);
     }
   } else {
-    phi::Reduce<CPUContext, T, phi::funcs::SumFunctor>(
+    phi::Reduce<CPUContext, T, funcs::SumFunctor>(
         dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
   }
 }

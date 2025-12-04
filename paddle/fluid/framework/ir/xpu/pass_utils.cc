@@ -152,9 +152,9 @@ void ConvertFromFp32ToFp16(phi::DenseTensor* weight,
     Transpose2D(&weight_fp32);
   }
 
-  auto FindMaxAbs = [](const float* data, int len) {
+  auto FindMaxAbs = [](const float* data, int64_t len) {
     float max_f = 0.0f;
-    for (int i = 0; i < len; ++i) {
+    for (int64_t i = 0; i < len; ++i) {
       float max = std::abs(data[i]);
       if (max > max_f) {
         max_f = max;
@@ -170,7 +170,7 @@ void ConvertFromFp32ToFp16(phi::DenseTensor* weight,
   CastToFp16(&weight_fp32, &weight_fp16);
   // Find max
   int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
-  int size = weight_fp32.numel();
+  int64_t size = weight_fp32.numel();
   float max_val = FindMaxAbs(weight_fp32.data<float>(), size);
   std::vector<float> max_vec(max_ptr_size, max_val);
   weight_max->set_type(phi::DataType::FLOAT32);

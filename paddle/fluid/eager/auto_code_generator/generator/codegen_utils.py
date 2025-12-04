@@ -86,6 +86,7 @@ yaml_types_mapping = {
     'str': 'std::string',
     'str[]': 'std::vector<std::string>',
     'float[]': 'std::vector<float>',
+    'double[]': 'std::vector<double>',
     'bool[]': 'std::vector<bool>',
     'Place': 'paddle::Place',
     'DataLayout': 'phi::DataLayout',

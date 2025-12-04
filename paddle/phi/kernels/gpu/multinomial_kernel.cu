@@ -96,8 +96,11 @@ __global__ void sampleMultinomialWithReplacement(
     uint64_t offset) {
   // use binary search to get the selected category sample id.
   // let cumulative_probs_data[id-1] < rng_number < cumulative_probs_data[id].
-  size_t idx = gridDim.x * blockDim.x * blockIdx.y + blockDim.x * blockIdx.x +
-               threadIdx.x;
+  size_t idx =
+      static_cast<size_t>(gridDim.x) * static_cast<size_t>(blockDim.x) *
+          static_cast<size_t>(blockIdx.y) +
+      static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) +
+      static_cast<size_t>(threadIdx.x);
 
 #if defined(__NVCC__)
   curandStatePhilox4_32_10_t state;
@@ -219,7 +222,7 @@ void MultinomialKernel(const Context& dev_ctx,
   cumulative_probs_tensor.Resize({num_distributions, num_categories});
   auto* cumulative_probs_data =
       dev_ctx.template Alloc<MT>(&cumulative_probs_tensor);
-  // 'phi::funcs::InclusiveScan' has higher accuracy than
+  // 'funcs::InclusiveScan' has higher accuracy than
   // 'thrust::inclusive_scan'
   funcs::InclusiveScan<MT, std::plus<MT>>(
       /*in*/ norm_probs_data,

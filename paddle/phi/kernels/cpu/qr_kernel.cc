@@ -205,7 +205,7 @@ void QrKernel(const Context& dev_ctx,
               DenseTensor* r) {
   bool compute_q = false;
   bool reduced_mode = false;
-  std::tie(compute_q, reduced_mode) = phi::funcs::ParseQrMode(mode);
+  std::tie(compute_q, reduced_mode) = funcs::ParseQrMode(mode);
   if (x.numel() == 0) {
     if (q->numel() == 0) {
       q->Resize(q->dims());

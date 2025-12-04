@@ -107,23 +107,23 @@ void PNormKernel(const Context& dev_ctx,
 
   using MT = typename dtype::MPTypeTrait<T>::Type;
   if (porder == 0) {
-    phi::funcs::ReduceKernel<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
+    funcs::ReduceKernel<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
         dev_ctx, *in_x, out_norm, NonzeroFunctor<T>(), reduce_axis);
   } else if (porder == INFINITY) {
-    phi::funcs::ReduceKernel<T, T, kps::MaxFunctor, AbsFunctor<T>>(
+    funcs::ReduceKernel<T, T, kps::MaxFunctor, AbsFunctor<T>>(
         dev_ctx, *in_x, out_norm, AbsFunctor<T>(), reduce_axis);
   } else if (porder == -INFINITY) {
-    phi::funcs::ReduceKernel<T, T, kps::MinFunctor, AbsFunctor<T>>(
+    funcs::ReduceKernel<T, T, kps::MinFunctor, AbsFunctor<T>>(
         dev_ctx, *in_x, out_norm, AbsFunctor<T>(), reduce_axis);
   } else {
 #ifdef _WIN32
-    phi::funcs::ReduceKernel<T, T, kps::AddFunctor, UnsignedPowFunctor<T>>(
+    funcs::ReduceKernel<T, T, kps::AddFunctor, UnsignedPowFunctor<T>>(
         dev_ctx, *in_x, out_norm, UnsignedPowFunctor<T>(porder), reduce_axis);
 
     const DenseTensor* tmp_norm = out_norm;
     std::vector<const DenseTensor*> ins = {tmp_norm};
     std::vector<DenseTensor*> outs = {out_norm};
-    phi::funcs::ElementwiseKernel<T>(
+    funcs::ElementwiseKernel<T>(
         dev_ctx, ins, &outs, UnsignedPowFunctor<T>(1. / porder));
 #else
     DenseTensor out_temp;
@@ -132,7 +132,7 @@ void PNormKernel(const Context& dev_ctx,
 
     if (porder == 1.0) {
       // fast 1-norm
-      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, FabsFunctor<T>>(
+      funcs::ReduceKernel<T, T, kps::AddFunctor, FabsFunctor<T>>(
           dev_ctx, *in_x, out_norm, FabsFunctor<T>(), reduce_axis);
       return;
     } else if (porder == 2.0) {
@@ -141,7 +141,7 @@ void PNormKernel(const Context& dev_ctx,
       phi::DenseTensor temp_sum_of_squares_hp;
       temp_sum_of_squares_hp.Resize(out_norm->dims());
       dev_ctx.template Alloc<MT>(&temp_sum_of_squares_hp);
-      phi::funcs::ReduceKernel<T, MT, kps::AddFunctor, SquareFunctor<T>>(
+      funcs::ReduceKernel<T, MT, kps::AddFunctor, SquareFunctor<T>>(
           dev_ctx,
           *in_x,
           &temp_sum_of_squares_hp,
@@ -156,11 +156,11 @@ void PNormKernel(const Context& dev_ctx,
       return;
     } else if (porder == 3.0) {
       // fast 3-norm
-      phi::funcs::ReduceKernel<T, MT, kps::AddFunctor, FabsCubicFunctor<MT>>(
+      funcs::ReduceKernel<T, MT, kps::AddFunctor, FabsCubicFunctor<MT>>(
           dev_ctx, *in_x, &out_temp, FabsCubicFunctor<MT>(), reduce_axis);
     } else {
       // vanilla norm
-      phi::funcs::ReduceKernel<T, MT, kps::AddFunctor, UnsignedPowFunctor<MT>>(
+      funcs::ReduceKernel<T, MT, kps::AddFunctor, UnsignedPowFunctor<MT>>(
           dev_ctx,
           *in_x,
           &out_temp,
@@ -170,7 +170,7 @@ void PNormKernel(const Context& dev_ctx,
     std::vector<const DenseTensor*> ins = {&out_temp};
     std::vector<DenseTensor*> outs = {out_norm};
     MT p_order_ = static_cast<MT>(1.f / porder);
-    phi::funcs::ElementwiseKernel<T>(
+    funcs::ElementwiseKernel<T>(
         dev_ctx, ins, &outs, UnsignedPowFunctor<MT>(p_order_));
 #endif
   }
