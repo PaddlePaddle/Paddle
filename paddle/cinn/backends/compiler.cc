@@ -902,7 +902,6 @@ void Compiler::SaveKernelNamesToMeta() {
   std::string meta_file = meta_path + CINN_CUDA_KERNEL_META;
 
   // 2. Open file
-  // 使用 std::ofstream 自动处理文件关闭
   std::ofstream outfile(meta_file);
   if (!outfile.is_open()) {
     // Theoretically the directory was created in GenerateFatbinWithoutCache,
