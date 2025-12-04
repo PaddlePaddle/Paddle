@@ -292,4 +292,4 @@
 - op : atanh
   name: [paddle.atanh, paddle.Tensor.atanh]
   args_alias :
-  use_default_mapping : True
+    use_default_mapping : True
