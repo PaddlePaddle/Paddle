@@ -98,6 +98,7 @@ from .variables import (
     IterVariable,
     ListVariable,
     MethodVariable,
+    ModuleVariable,
     NullVariable,
     NumPyArrayVariable,
     SequenceIterVariable,
@@ -1066,6 +1067,28 @@ class OpcodeExecutorBase:
     def LOAD_METHOD(self, instr: Instruction):
         method_name = self.vframe.code.co_names[instr.arg]
         self.load_method(method_name)
+
+    @call_break_graph_decorator(push_n=1)
+    def IMPORT_NAME(self, instr: Instruction):
+        module_name = self.vframe.code.co_names[instr.arg]
+        level = self.stack.pop().get_py_value()
+        fromlist = self.stack.pop().get_py_value()
+        if level is None:
+            level = 0
+        if fromlist is None:
+            fromlist = []
+        try:
+            value = __import__(
+                module_name,
+                fromlist=fromlist,
+                level=level,
+                globals=self.vframe.globals.get_value(),
+            )
+        except ImportError as e:
+            raise FallbackError(
+                f"Import module {module_name} failed: {e}"
+            ) from e
+        self.stack.push(ModuleVariable(value, self._graph, DummyTracker([])))
 
     @call_break_graph_decorator(push_n=0)
     def STORE_ATTR(self, instr: Instruction):
