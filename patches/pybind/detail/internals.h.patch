@@ -1,8 +1,8 @@
 diff --git a/include/pybind11/detail/internals.h b/include/pybind11/detail/internals.h
-index 4ea37486..2cbcb1c9 100644
+index 4ea37486..a4c72364 100644
 --- a/include/pybind11/detail/internals.h
 +++ b/include/pybind11/detail/internals.h
-@@ -129,7 +129,13 @@ public:
+@@ -129,7 +129,14 @@ public:
      }
  
  private:
@@ -11,6 +11,7 @@ index 4ea37486..2cbcb1c9 100644
 +#    pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 +#endif
      PYBIND11_TLS_KEY_INIT(mutable key_)
++#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ <= 8
 +#    pragma GCC diagnostic pop
 +#endif
  };
