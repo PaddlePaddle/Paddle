@@ -16,13 +16,17 @@ import unittest
 
 from test_case_base import TestCaseBase
 
+from paddle.jit.sot.psdb import check_no_breakgraph
 
+
+@check_no_breakgraph
 def import_math_model():
     import math
 
     return math.sqrt(4)
 
 
+@check_no_breakgraph
 def import_paddle_model(x: int):
     import paddle
 
