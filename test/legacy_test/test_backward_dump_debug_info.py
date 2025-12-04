@@ -144,6 +144,35 @@ paddle.base.core.set_vlog_level(4)
             text=True,
         )
 
+    def test_dump_call_stack(self):
+        code = """
+import os
+os.environ['FLAGS_dump_api_and_gradnode_python_stack_dir']="{dir}"
+import paddle
+x = paddle.randn([5, 5], dtype='float32')
+y = paddle.randn([5, 5], dtype='float32')
+x.stop_gradient = False
+y.stop_gradient = False
+z = x + y
+h = x * z
+w = h + y
+grads = paddle.autograd.backward(
+    [x, y],
+    [None, None],
+)
+paddle.base.core.set_vlog_level(4)
+        """
+        process = subprocess.run(
+            [sys.executable, '-c', code.format(dir="./")],
+            capture_output=True,
+            text=True,
+        )
+        process = subprocess.run(
+            [sys.executable, '-c', code.format(dir=".")],
+            capture_output=True,
+            text=True,
+        )
+
     def test_manual_vlog(self):
         if 'Windows' == platform.system():
             return
@@ -153,7 +182,7 @@ os.environ['GLOG_v'] = '6'
 os.environ['FLAGS_dump_grad_node_forward_stack_path']="call_stack.log"
 os.environ['FLAGS_call_stack_level']='3'
 os.environ['FLAGS_dump_api_python_stack_path']="forward_call_stack"
-os.environ['FLAGS_dump_api_and_gradnode_python_stack_dir']="./"
+
 import paddle
 import paddle.nn.functional as F
 import paddle.nn as nn
