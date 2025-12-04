@@ -213,8 +213,6 @@ struct Layer {
                   bool is_test,
                   DenseTensor* cache_input) {
     // create the temp input for the X * W_ih^T + Bias_ih
-    // TODO(large-tensor): downstream functors may still use int; guard until
-    // upgraded.
     int64_t& hidden_size = weight.dims()[0];
     // NOLINT
     cache_input->Resize(

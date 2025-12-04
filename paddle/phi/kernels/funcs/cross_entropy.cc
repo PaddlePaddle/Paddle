@@ -41,12 +41,8 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
 
   template <typename U>
   void apply() const {
-    // TODO(large-tensor): downstream functors may still use int; guard until
-    // upgraded.
     int64_t batch_size = prob_->dims()[0];
 
-    // TODO(large-tensor): downstream functors may still use int; guard until
-    // upgraded.
     int64_t num_classes = prob_->dims()[1];
 
     const int num_remain = num_classes / axis_dim_;
@@ -107,6 +103,9 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
     const int ignore_index,
     const int axis_dim) {
   if (softLabel) {
+    // TODO(large-tensor): Eigen::DSizes not support int64
+    PADDLE_ENFORCE_LE_INT_MAX(prob->dims()[0], "prob->dims()[0]");
+    PADDLE_ENFORCE_LE_INT_MAX(prob->dims()[1], "prob->dims()[1]");
     const int batch_size = static_cast<const int>(prob->dims()[0]);
     const int num_classes = static_cast<const int>(prob->dims()[1]);
     const int num_remain = num_classes / axis_dim;

@@ -165,7 +165,6 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
   const int rank = logit_grad->dims().size();
   const int axis_v = funcs::CanonicalAxis(axis, rank);
   int64_t axis_dim = logit_grad->dims()[axis_v];
-  // TODO(large-tensor): downstream functors may still use int
 
   const int64_t n = funcs::SizeToAxis(axis_v, logit_grad->dims());
   const int64_t d = funcs::SizeFromAxis(axis_v, logit_grad->dims());

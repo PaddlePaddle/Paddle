@@ -49,6 +49,9 @@ __global__ void RowConvGradInputSharedMemory(const T *dout,
 
   int current_timesteps = 0;
   for (int i = 0; i < num_sequence; i++) {
+    // TODO(large-tensor): array index not support int64
+    PADDLE_ENFORCE_LE_INT_MAX(batch_indices[i], "batch_indices[i]");
+    PADDLE_ENFORCE_LE_INT_MAX(batch_indices[i + 1], "batch_indices[i + 1]");
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
     current_timesteps = end - start;
@@ -277,7 +280,6 @@ void RowConvGradKernel(const Context &dev_ctx,
   int input_dim = 0;
   phi::Vector<size_t> batch_indices(batch_size + 1);
   int64_t timesteps = X->dims()[1];
-  // TODO(large-tensor): downstream functors may still use int
 
   if (is_tensor) {
     for (int i = 0; i < batch_size + 1; i++) {
@@ -291,7 +293,6 @@ void RowConvGradKernel(const Context &dev_ctx,
   // int input_dim = X->dims()[1];
   int num_sequence = batch_indices.size() - 1;
   int64_t future_context = Filter->dims()[0];
-  // TODO(large-tensor): downstream functors may still use int
 
   phi::MixVector<size_t> mixv_batch_indices(&batch_indices);
   size_t *idx = mixv_batch_indices.CUDAMutableData(dev_ctx.GetPlace());
