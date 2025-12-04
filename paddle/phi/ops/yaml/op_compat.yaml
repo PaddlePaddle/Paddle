@@ -4044,6 +4044,9 @@
   get_expected_kernel_type :
     update_loss_scaling_ : GetUpdateLossScalingExpectedKernelType
 
+- op : view_shape
+  backward : view_shape_grad, view_shape_double_grad
+
 - op : viterbi_decode
   inputs :
     {potentials : Input, transition_params : Transition, lengths : Length}

@@ -49,7 +49,7 @@ struct LogSoftmaxFunctor {
     int axis_dim = static_cast<int>(X->dims()[axis]);
     const int n = funcs::SizeToAxis(axis, X->dims());
     const int d = funcs::SizeFromAxis(axis, X->dims());
-    phi::DDim dim_2d{n, d};
+    DDim dim_2d{n, d};
 
     auto logits = EigenMatrixTemplate<T>::From(*X, dim_2d);
     auto log_softmax = EigenMatrixTemplate<T>::From(*Y, dim_2d);
@@ -112,7 +112,7 @@ void LogSoftmaxKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   // For 0D Tensor
   if (rank == 0) {
-    phi::funcs::set_constant(dev_ctx, out, static_cast<T>(0.0));
+    funcs::set_constant(dev_ctx, out, static_cast<T>(0.0));
     return;
   }
   if (x.numel() != 0) {

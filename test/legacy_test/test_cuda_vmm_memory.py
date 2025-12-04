@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 from paddle.base import core
 from paddle.distributed.fleet.utils.tensor_fusion_helper import (
+    FusedCommBuffer,
     build_reduce_scatter_buffer,
 )
 from paddle.incubate.multiprocessing import reductions
@@ -45,8 +46,8 @@ def _vmm_runtime_available() -> bool:
         return False
     try:
         tensor = paddle.randn([32], dtype="float32")
-        meta = tensor.get_tensor()._share_vmm()
-        rebuilt = paddle.base.core.DenseTensor._new_shared_vmm(meta)
+        meta = tensor.get_tensor()._share_cuda()
+        rebuilt = paddle.base.core.DenseTensor._new_shared_cuda(meta)
         _ = paddle.to_tensor(rebuilt)
         _VMM_RUNTIME_AVAILABLE = True
     except Exception:
@@ -114,7 +115,7 @@ class TestMemoryreserved(unittest.TestCase):
             buffer_size,
             param_storage,
             grad_storage,
-            param_buffer_ipc_meta,
+            _,
         ) = build_reduce_scatter_buffer(
             params,
             sharding_degree=1,
@@ -126,21 +127,61 @@ class TestMemoryreserved(unittest.TestCase):
         self.assertIsNotNone(param_storage)
         self.assertIsNone(grad_storage)
         self.assertGreater(buffer_size, 0)
-        self.assertIsNotNone(param_buffer_ipc_meta)
-        self.assertIsInstance(param_buffer_ipc_meta, tuple)
-        self.assertGreater(len(param_buffer_ipc_meta), 0)
+        fused_comm_buffer = object.__new__(FusedCommBuffer)
+        fused_comm_buffer._param_buffer_meta_tensor = param_storage
+        refreshed_meta = fused_comm_buffer.param_buffer_ipc_meta
+        self.assertIsNotNone(refreshed_meta)
+        self.assertIsInstance(refreshed_meta, tuple)
+        self.assertGreater(len(refreshed_meta), 0)
         self.assertEqual(len(sharding_views), len(params))
 
         values = paddle.arange(param_storage.numel(), dtype=param_storage.dtype)
         values_md5sum = values._md5sum()
         param_storage.set_value(values)
-        imported = paddle.base.core.DenseTensor._new_shared_vmm(
-            param_buffer_ipc_meta
-        )
+        imported = paddle.base.core.DenseTensor._new_shared_cuda(refreshed_meta)
         imported_tensor = paddle.to_tensor(imported)
         np.testing.assert_allclose(imported_tensor.numpy(), values.numpy())
         del imported_tensor
         self.assertEqual(values._md5sum(), values_md5sum)
+
+    def test_reduce_scatter_meta_refresh_after_tensor_swap(self):
+        if not _vmm_runtime_available():
+            self.skipTest(
+                "Virtual memory allocator is not available on this device."
+            )
+        params = self._simple_parameters()
+        (
+            _,
+            _,
+            param_storage,
+            _,
+            _,
+        ) = build_reduce_scatter_buffer(
+            params,
+            sharding_degree=1,
+            rank=0,
+            use_main_grad=False,
+            release_grad=True,
+        )
+        fused_comm_buffer = object.__new__(FusedCommBuffer)
+        fused_comm_buffer._param_buffer_meta_tensor = param_storage
+        meta_a = fused_comm_buffer.param_buffer_ipc_meta
+        imported_a = paddle.to_tensor(
+            paddle.base.core.DenseTensor._new_shared_cuda(meta_a)
+        )
+        np.testing.assert_allclose(
+            imported_a.numpy(), param_storage.numpy(), rtol=0, atol=0
+        )
+        new_storage = paddle.arange(param_storage.numel(), dtype="float32")
+        new_storage = new_storage.reshape(param_storage.shape)
+        fused_comm_buffer._param_buffer_meta_tensor = new_storage
+        meta_b = fused_comm_buffer.param_buffer_ipc_meta
+        imported_b = paddle.to_tensor(
+            paddle.base.core.DenseTensor._new_shared_cuda(meta_b)
+        )
+        np.testing.assert_allclose(
+            imported_b.numpy(), new_storage.numpy(), rtol=0, atol=0
+        )
 
     def test_fusion_storage_vmm_buffer(self):
         if not _vmm_runtime_available():
@@ -180,7 +221,6 @@ class TestMemoryreserved(unittest.TestCase):
         dense = tensor.value().get_tensor()
         rebuild, meta = reductions._reduce_lodtensor(dense)
 
-        self.assertIs(rebuild, reductions._rebuild_vmm_tensor)
         self.assertGreater(len(meta), 1)
         self.assertIs(meta[0], type(dense))
 

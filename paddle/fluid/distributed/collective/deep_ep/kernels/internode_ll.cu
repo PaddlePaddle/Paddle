@@ -251,6 +251,10 @@ __global__ __launch_bounds__(
       if (kUseFP8 && !use_expertwise_scale &&
           kNumPerChannels == -1) {  // fp8 per-token dynamic quant
         __shared__ float amax_cache[num_warps - 1];
+        for (int i = thread_id; i < num_warps - 1; i += num_threads) {
+          amax_cache[i] = 0.0f;
+        }
+        asm volatile("bar.sync 1, %0;" ::"r"(num_threads));
         float amax = kFP8Margin, scale, scale_inv;
 #pragma unroll
         for (int i = thread_id; i < hidden_bf16_int4; i += num_threads) {

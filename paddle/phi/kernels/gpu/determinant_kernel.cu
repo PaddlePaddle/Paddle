@@ -178,7 +178,7 @@ struct DeterminantCudaFunctor<phi::dtype::complex<T>, Context> {
     int* gpu_info_ptr = reinterpret_cast<int*>(gpu_mat_ptr + cpu_ptrs.size());
     int* pivot_data = gpu_info_ptr + batch_size;
 
-    auto blas = phi::funcs::GetBlas<Context, phi::dtype::complex<T>>(dev_ctx);
+    auto blas = funcs::GetBlas<Context, phi::dtype::complex<T>>(dev_ctx);
     // This function performs the LU factorization of each matrix A by the
     // equation P * A = L * U. L and U are written back to original matrix A,
     // and diagonal elements of L are discarded.

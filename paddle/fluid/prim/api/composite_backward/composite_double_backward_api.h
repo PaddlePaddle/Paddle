@@ -1296,5 +1296,16 @@ void index_elementwise_put_with_tensor_double_grad(
   }
 }
 
+template <typename T>
+void view_shape_double_grad(const Tensor& grad_input_grad,
+                            const std::vector<int64_t> dims,
+                            Tensor* grad_out_grad) {
+  if (grad_out_grad) {
+    Tensor grad_out_grad_tmp;
+    grad_out_grad_tmp = reshape<T>(grad_input_grad, dims);
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+}
+
 }  // namespace prim
 }  // namespace paddle

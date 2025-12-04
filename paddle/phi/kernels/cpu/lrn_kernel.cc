@@ -42,8 +42,8 @@ struct LRNFunctor<phi::CPUContext, T> {
                   T alpha,
                   T beta,
                   const DataLayout data_layout) {
-    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
-    phi::funcs::Transpose<phi::CPUContext, T, 4> transpose;
+    auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+    funcs::Transpose<phi::CPUContext, T, 4> transpose;
     phi::DenseTensor in_transpose, mid_transpose, out_transpose;
     // if channel_last, transpose to channel_first
     if (data_layout == DataLayout::NHWC) {

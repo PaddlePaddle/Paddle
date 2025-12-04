@@ -415,7 +415,7 @@ void BatchNormDoubleGradKernel(
   const int C = static_cast<int>(
       data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
   const int sample_size = static_cast<int>(X->numel() / C);
-  phi::funcs::SetConstant<Context, T> set_constant;
+  funcs::SetConstant<Context, T> set_constant;
 
   const T* mean_data = Saved_mean->data<T>();
   const T* inv_var_data = Saved_variance->data<T>();
