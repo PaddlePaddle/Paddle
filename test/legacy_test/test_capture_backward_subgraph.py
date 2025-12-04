@@ -111,7 +111,7 @@ class TestCaptureBackwardSubGraphGuard(unittest.TestCase):
             paddle.base.framework.capture_backward_subgraph_guard(
                 dump_dir_path, True
             ),
-            paddle.utils.capture_fwd_graph_guard("./dy2st_subraph"),
+            paddle.utils.capture_forward_subgraph_guard("./dy2st_subraph"),
         ):
             res = func(x, y)
             z = res + x

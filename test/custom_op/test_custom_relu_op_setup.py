@@ -343,7 +343,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             {"FLAGS_tensor_md5_checksum_output_path": "./tmp_md5.txt"}
         )
         with (
-            paddle.utils.capture_fwd_graph_guard("./tmp_subgraph"),
+            paddle.utils.capture_forward_subgraph_guard("./tmp_subgraph"),
             paddle.base.framework.capture_backward_subgraph_guard(
                 "./tmp_debug_info"
             ),
