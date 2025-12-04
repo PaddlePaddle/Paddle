@@ -145,7 +145,7 @@ void DistributeFpnProposalsKernel(
   DenseTensor sub_lod_list;
   sub_lod_list.Resize({num_level, lod_size});
   int* sub_lod_list_data = dev_ctx.template Alloc<int>(&sub_lod_list);
-  phi::funcs::SetConstant<phi::GPUContext, int> set_zero;
+  funcs::SetConstant<phi::GPUContext, int> set_zero;
   set_zero(dev_ctx, &sub_lod_list, static_cast<int>(0));
 
   DenseTensor target_lvls;
@@ -251,7 +251,7 @@ void DistributeFpnProposalsKernel(
       start = end;
       multi_fpn_rois[i]->Resize({sub_rois_num, funcs::kBoxDim});
       dev_ctx.template Alloc<T>(multi_fpn_rois[i]);
-      phi::funcs::GPUGather<T>(dev_ctx, fpn_rois, sub_idx, multi_fpn_rois[i]);
+      funcs::GPUGather<T>(dev_ctx, fpn_rois, sub_idx, multi_fpn_rois[i]);
     } else {
       multi_fpn_rois[i]->Resize({sub_rois_num, funcs::kBoxDim});
       dev_ctx.template Alloc<T>(multi_fpn_rois[i]);

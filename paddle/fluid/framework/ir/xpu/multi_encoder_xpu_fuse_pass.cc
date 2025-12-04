@@ -968,7 +968,7 @@ void MultiEncoderXPUFusePass::PrepareQKVBias(Graph* graph,
   CastToFp32(v_bias_tensor, &v_bias_fp32_tensor);
 
   phi::DenseTensor qkv_bias_tensor;
-  int q_bias_fp32_size = q_bias_fp32_tensor.numel();
+  int64_t q_bias_fp32_size = q_bias_fp32_tensor.numel();
   qkv_bias_tensor.Resize(DDim({q_bias_fp32_size * 3}));
   qkv_bias_tensor.set_type(phi::DataType::FLOAT32);
   auto* cpu_ctx = static_cast<phi::CPUContext*>(

@@ -27,6 +27,8 @@ extern "C" {
 #define PADDLE_CUSTOM_RUNTIME_MINOR_VERSION 1
 #define PADDLE_CUSTOM_RUNTIME_PATCH_VERSION 1
 
+#define MAX_HOOKS 1024
+
 typedef enum {
   UNDEFINED = 0,
   BOOL,
@@ -70,6 +72,18 @@ typedef struct C_Device_st {
   int id;
 } * C_Device;
 
+typedef enum {
+  C_StreamCaptureModeGlobal = 0,
+  C_StreamCaptureModeThreadLocal,
+  C_StreamCaptureModeRelaxed
+} C_StreamCaptureMode;
+
+typedef enum {
+  C_StreamCaptureStatusNone = 0,
+  C_StreamCaptureStatusActive,
+  C_StreamCaptureStatusInvalidated
+} C_StreamCaptureStatus;
+
 typedef struct C_Stream_st* C_Stream;
 
 typedef struct C_Event_st* C_Event;
@@ -84,10 +98,26 @@ typedef struct C_BLASHandle_st* C_BLASHandle;
 
 typedef struct C_BLASLtHandle_st* C_BLASLtHandle;
 
+typedef struct C_GraphExec_st* C_GraphExec;
+
+typedef struct C_CudaGraph_t_st* C_CudaGraph;
+
+typedef struct C_CudaGraphNode_st* C_CudaGraphNode;
+
+typedef void (*C_GraphExecuterSetter)(C_GraphExec exec_graph, void* user_data);
+
+typedef struct {
+  size_t size;
+  C_GraphExecuterSetter* hooks;
+  void** user_data;
+} C_GraphHookManager;
+
 typedef void (*C_Callback)(C_Device device,
                            C_Stream stream,
                            void* user_data,
                            C_Status* status);
+
+typedef void (*C_GraphExecHook)(C_GraphExec exec);
 
 typedef struct {
   size_t sz;
@@ -790,6 +820,50 @@ struct C_DeviceInterface {
 
   C_Status (*destroy_blaslt_handle)(const C_Device device,
                                     C_BLASLtHandle blaslt_handle);
+
+  C_Status (*cuda_stream_begin_capture)(const C_Device device,
+                                        C_Stream stream,
+                                        C_StreamCaptureMode mode);
+
+  C_Status (*cuda_stream_end_captrue)(const C_Device device,
+                                      C_Stream stream,
+                                      C_CudaGraph* pGraph);
+
+  C_Status (*cuda_graph_launch)(const C_Device device,
+                                C_GraphExec exec,
+                                C_Stream stream);
+
+  C_Status (*cuda_graph_destroy)(C_CudaGraph graph);
+
+  C_Status (*cuda_graph_exec_destroy)(C_GraphExec exec);
+
+  C_Status (*cuda_graph_instantiate)(C_GraphExec* pExec,
+                                     C_CudaGraph* pGraph,
+                                     void** pErrorNode,
+                                     char* pLogBuffer,
+                                     size_t bufferSize);
+
+  C_Status (*cuda_graph_get_nodes)(C_CudaGraph graph,
+                                   C_CudaGraphNode* pNode,
+                                   size_t* numNodes);
+
+  C_Status (*cuda_stream_capture_info)(const C_Device device,
+                                       C_Stream stream,
+                                       C_StreamCaptureStatus* captureStatus_out,
+                                       unsigned long long* id_out,  // NOLINT
+                                       C_CudaGraph* graph_out,
+                                       C_CudaGraphNode* dependencies_out,
+                                       void** edgeData_out,
+                                       size_t* numDependencies_out);
+
+  C_Status (*get_parameter_setter_for_exec_graph)(C_CudaGraph graph,
+                                                  C_GraphHookManager* c_hook);
+
+  C_Status (*cuda_graph_debug_dot_print)(C_CudaGraph graph,
+                                         const char* path,
+                                         unsigned int flags);
+  C_Status (*cuda_thread_exchange_stream_capthure_mode)(
+      C_StreamCaptureMode* mode);
 
   ///////////////
   // other api //

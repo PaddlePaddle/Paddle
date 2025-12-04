@@ -800,7 +800,7 @@ void ConvCudnnGradGradKernel(
   auto dX = input_grad;
   if (ddO) {
     dev_ctx.template Alloc<T>(ddO);
-    phi::funcs::SetConstant<Context, T> set_zero;
+    funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, ddO, static_cast<T>(0));
   }
   if (dW) {

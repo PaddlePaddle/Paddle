@@ -23,7 +23,6 @@ namespace phi {
 namespace funcs {
 
 using ScopedTensorDescriptor = phi::backends::gpu::ScopedTensorDescriptor;
-using GpuDataLayout = phi::backends::gpu::DataLayout;
 template <typename T>
 using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
 
@@ -36,9 +35,9 @@ void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
   ScopedTensorDescriptor xDesc;
   ScopedTensorDescriptor yDesc;
   std::vector<int> cudnn_tensor_dims = common::vectorize<int>(X->dims());
-  GpuDataLayout layout = GpuDataLayout::kNCHW;
+  DataLayout layout = DataLayout::NCHW;
   if (cudnn_tensor_dims.size() == 5) {
-    layout = GpuDataLayout::kNCDHW;
+    layout = DataLayout::NCDHW;
   }
   // NOTE(*) : cudnn softmax only support >= 4D phi::DenseTensor,
   // fill 1 at unused dims
@@ -89,9 +88,9 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
   ScopedTensorDescriptor dyDesc;
   ScopedTensorDescriptor dxDesc;
   std::vector<int> cudnn_tensor_dims = common::vectorize<int>(Y->dims());
-  GpuDataLayout layout = GpuDataLayout::kNCHW;
+  DataLayout layout = DataLayout::NCHW;
   if (cudnn_tensor_dims.size() == 5) {
-    layout = GpuDataLayout::kNCDHW;
+    layout = DataLayout::NCDHW;
   }
   // NOTE(*) : cudnn softmax only support >= 4D phi::DenseTensor,
   // fill 1 at unused dims

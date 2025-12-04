@@ -60,7 +60,7 @@ void AffineGridGrad4DCUDAKernel(const Context& dev_ctx,
   base_grid.Resize(common::make_ddim({n, h, w, 3}));
   T* base_grid_data = dev_ctx.template Alloc<T>(&base_grid);
 
-  phi::funcs::CreateBaseGridKernel_4D<T, Context>(
+  funcs::CreateBaseGridKernel_4D<T, Context>(
       dev_ctx, base_grid_data, n, h, w, align_corners);
 
   // 2. Reshaping base_grid to [N, H * W, 3]
@@ -122,7 +122,7 @@ void AffineGridGrad5DCUDAKernel(const Context& dev_ctx,
   base_grid.Resize(common::make_ddim({n, d, h, w, 4}));
   T* base_grid_data = dev_ctx.template Alloc<T>(&base_grid);
 
-  phi::funcs::CreateBaseGridKernel_5D<T, Context>(
+  funcs::CreateBaseGridKernel_5D<T, Context>(
       dev_ctx, base_grid_data, n, d, h, w, align_corners);
 
   // 2. Reshaping base_grid to [N, D * H * W, 4]
@@ -164,7 +164,7 @@ void AffineGridGradCUDAKernel(const Context& dev_ctx,
   auto theta_size = theta->dims().size();
   if (output->numel() == 0 || input.numel() == 0) {
     dev_ctx.template Alloc<T>(output);
-    phi::funcs::SetConstant<phi::GPUContext, T>()(
+    funcs::SetConstant<phi::GPUContext, T>()(
         dev_ctx, output, static_cast<T>(0));
     return;
   }

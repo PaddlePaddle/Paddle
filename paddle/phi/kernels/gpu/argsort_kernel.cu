@@ -337,7 +337,7 @@ void ArgsortKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(output);
     dev_ctx.template Alloc<int64_t>(indices);
     phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, output);
-    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
+    funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
 
@@ -423,7 +423,7 @@ void ArgsortKernel(const Context& dev_ctx,
       trans.push_back(i);
     }
     trans.push_back(axis);
-    phi::DDim trans_dims(in_dims);
+    DDim trans_dims(in_dims);
     for (int i = 0; i < trans.size(); i++) {
       trans_dims[i] = in_dims[trans[i]];
     }

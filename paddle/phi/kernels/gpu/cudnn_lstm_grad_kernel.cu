@@ -75,7 +75,7 @@ void CudnnLSTMGradKernel(
   }
 
   phi::DenseTensor weight_grad;
-  phi::funcs::SetConstant<phi::GPUContext, T> zero;
+  funcs::SetConstant<phi::GPUContext, T> zero;
   weight_grad.Resize({weight_numel});
   dev_ctx.template Alloc<T>(&weight_grad);
   zero(dev_ctx, &weight_grad, static_cast<T>(0.0));

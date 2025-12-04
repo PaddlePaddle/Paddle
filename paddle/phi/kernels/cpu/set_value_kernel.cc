@@ -51,12 +51,11 @@ void SetValueImpl(const Context& dev_ctx,
         dev_ctx, value, IntArray{phi::vectorize<int64_t>(in.dims())}, out);
     return;
   }
-  phi::funcs::CheckAndUpdateSliceAttrs(
+  funcs::CheckAndUpdateSliceAttrs(
       in_dims, axes, &starts_local, &ends_local, &steps_local);
-  auto slice_dims = phi::funcs::GetSliceDims(
+  auto slice_dims = funcs::GetSliceDims(
       in_dims, axes, starts_local, ends_local, &steps_local);
-  auto decrease_slice_dims =
-      phi::funcs::GetDecreasedDims(slice_dims, decrease_axes);
+  auto decrease_slice_dims = funcs::GetDecreasedDims(slice_dims, decrease_axes);
   auto slice_dims_for_assign = decrease_slice_dims;
   if (!none_axes.empty()) {
     std::vector<int64_t> slice_dims_with_none;
@@ -82,7 +81,7 @@ void SetValueImpl(const Context& dev_ctx,
 
     slice_dims_for_assign = common::make_ddim(slice_dims_with_none);
   }
-  phi::funcs::CheckIsDimsMatch(slice_dims_for_assign, value.dims());
+  funcs::CheckIsDimsMatch(slice_dims_for_assign, value.dims());
 
   auto value_shape = phi::vectorize<int64_t>(value.dims());
 
@@ -210,8 +209,7 @@ void SetValueKernel(const Context& dev_ctx,
   }
   if (is_full_set_one_value && std::is_same<T, float>::value) {
     dev_ctx.template Alloc<T>(out);
-    phi::funcs::set_constant(
-        dev_ctx, out, static_cast<float>(assign_values[0]));
+    funcs::set_constant(dev_ctx, out, static_cast<float>(assign_values[0]));
     return;
   }
 
