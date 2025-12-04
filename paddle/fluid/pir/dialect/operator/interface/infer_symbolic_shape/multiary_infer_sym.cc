@@ -2064,12 +2064,10 @@ bool FlashAttnQkvpackedOpInferSymbolicShape(
   return FlashAttnVarlenQkvpackedOpInferSymbolicShape(op, infer_context);
 }
 
-// bool FlashAttnUnpaddedOpInferSymbolicShape(pir::Operation *op,
-//                                            pir::InferSymbolicShapeContext
-//                                            *infer_context) {
-//   // pass
-//   return true;
-// }
+bool FlashAttnUnpaddedOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return FlashAttnOpInferSymbolicShape(op, infer_context);
+}
 
 bool FlashmaskAttentionOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
