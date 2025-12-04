@@ -194,9 +194,9 @@ Json GetAttrJson(const YAML::Node& action) {
 }
 
 std::string YamlStringToDataLayoutString(const std::string& layout) {
-  if (layout == "phi::DataLayout::kNHWC") {
+  if (layout == "phi::DataLayout::NHWC") {
     return "NHWC";
-  } else if (layout == "phi::DataLayout::kNCHW") {
+  } else if (layout == "phi::DataLayout::NCHW") {
     return "NCHW";
   } else if (layout == "phi::DataLayout::kAnyLayout") {
     return "Undefined(AnyLayout)";
