@@ -3805,7 +3805,7 @@ def unique(
             Default: None.
         dtype(str|paddle.dtype|np.dtype, optional): The date type of `indices` or `inverse` tensor: int32 or int64.
             Default: int64.
-        sorted(bool, optional): Does not affect the return result.
+        sorted(bool, optional): Does not affect the return result, same as PyTorch.
         name(str|None, optional): Name for the operation. For more information, please refer to
             :ref:`api_guide_Name`. Default: None.
 
