@@ -1498,7 +1498,7 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
       filter_hwc.Resize(filter_hwc_dims);
       dev_ctx.template Alloc<T>(&filter_hwc);
       std::vector<int> perm_axis({2, 3, 0, 1});
-      phi::funcs::TransposeNormal<phi::GPUContext, T> trans;
+      funcs::TransposeNormal<phi::GPUContext, T> trans;
       trans(dev_ctx, filter, &filter_hwc, perm_axis);
       filter_data = filter_hwc.data<T>();
     }
@@ -1666,7 +1666,7 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
       filter_hwc.Resize(filter_hwc_dims);
       dev_ctx.template Alloc<T>(&filter_hwc);
       std::vector<int> perm_axis({2, 3, 0, 1});
-      phi::funcs::TransposeNormal<phi::GPUContext, T> trans;
+      funcs::TransposeNormal<phi::GPUContext, T> trans;
       trans(dev_ctx, filter, &filter_hwc, perm_axis);
       filter_data = filter_hwc.data<T>();
     }
@@ -1905,7 +1905,7 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                                         filter_grad->dims()[1]});              \
         filter_grad_hwc.Resize(filter_grad_hwc_dims);                          \
         dev_ctx.template Alloc<T>(&filter_grad_hwc);                           \
-        phi::funcs::SetConstant<phi::GPUContext, T> set_zero;                  \
+        funcs::SetConstant<phi::GPUContext, T> set_zero;                       \
         set_zero(dev_ctx, &filter_grad_hwc, static_cast<T>(0));                \
         filter_grad_data = filter_grad_hwc.data<T>();                          \
       } else {                                                                 \
@@ -1947,7 +1947,7 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                                                    filter_grad_data);          \
       if (c_filter != -1) {                                                    \
         std::vector<int> perm_axis({2, 3, 0, 1});                              \
-        phi::funcs::TransposeNormal<phi::GPUContext, T> trans;                 \
+        funcs::TransposeNormal<phi::GPUContext, T> trans;                      \
         trans(dev_ctx, filter_grad_hwc, filter_grad, perm_axis);               \
       }                                                                        \
     }                                                                          \

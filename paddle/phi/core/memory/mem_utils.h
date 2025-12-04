@@ -103,8 +103,17 @@ PADDLE_API extern size_t VmmCompact(const phi::GPUPlace& place);
 PADDLE_API extern std::vector<std::vector<std::pair<size_t, uintptr_t>>>
 FreeBlockInfoOfVmmAllocator(const phi::GPUPlace& place);
 
+// Get VMM allocator all block info.
 PADDLE_API extern std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
 AllBlockInfoOfVmmAllocator(const phi::GPUPlace& place);
+
+// Get allocate event when start FLAGS_record_alloc_event.
+PADDLE_API extern std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>>
+GetAllocateEvent(const phi::GPUPlace& place);
+
+// Get compact count and size when start FLAGS_enable_compact_mem.
+PADDLE_API extern std::vector<size_t> GetCompactSize(
+    const phi::GPUPlace& place);
 #endif
 
 }  // namespace memory

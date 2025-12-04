@@ -117,9 +117,13 @@ class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator
   void PreAlloc() override;
   void Accept(AllocatorVisitor *visitor) override { visitor->Visit(this); }
   bool IsSmallRequest(size_t size) override;
+  std::vector<size_t> GetCompactSize() const { return compact_size_; }
 
  protected:
   size_t CompactImpl(const phi::Place &place) override;
+
+ private:
+  std::vector<size_t> compact_size_;
 };
 
 }  // namespace allocation

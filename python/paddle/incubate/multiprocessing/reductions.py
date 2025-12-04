@@ -95,7 +95,7 @@ def _rebuild_tensor(cls, lodtensor, metadata):
 def _rebuild_vmm_tensor(
     cls, blob: bytes, dtype_idx: int, dims: list[int], lod, device: int
 ):
-    lodtensor = cls._new_shared_vmm((blob, dtype_idx, dims, lod, device))
+    lodtensor = cls._new_shared_cuda((blob, dtype_idx, dims, lod, device))
     return lodtensor
 
 
@@ -260,13 +260,10 @@ def _reduce_lodtensor(lodtensor):
         if prev_id != cur_id:
             paddle.base.core.set_cuda_current_device_id(cur_id)
         try:
-            if paddle.get_flags('FLAGS_use_virtual_memory_auto_growth')[
-                'FLAGS_use_virtual_memory_auto_growth'
-            ]:
-                metadata = lodtensor._share_vmm()
+            metadata = lodtensor._share_cuda()
+            if len(metadata) == 5:
                 rebuild = _rebuild_vmm_tensor
             else:
-                metadata = lodtensor._share_cuda()
                 rebuild = _rebuild_cuda_tensor
         finally:
             if prev_id != cur_id:

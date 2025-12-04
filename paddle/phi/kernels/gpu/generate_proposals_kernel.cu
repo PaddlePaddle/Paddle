@@ -43,7 +43,7 @@ static void SortDescending(const phi::GPUContext &dev_ctx,
   DenseTensor index_in_t;
   index_in_t.Resize(common::make_ddim({num}));
   int *idx_in = dev_ctx.template Alloc<int>(&index_in_t);
-  phi::funcs::ForRange<phi::GPUContext> for_range(dev_ctx, num);
+  funcs::ForRange<phi::GPUContext> for_range(dev_ctx, num);
   for_range(funcs::RangeInitFunctor{0, 1, idx_in});
 
   index_out->Resize(common::make_ddim({num}));
@@ -367,7 +367,7 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   dev_ctx.template Alloc<T>(&proposals);
 
   {
-    phi::funcs::ForRange<phi::GPUContext> for_range(dev_ctx, pre_nms_num);
+    funcs::ForRange<phi::GPUContext> for_range(dev_ctx, pre_nms_num);
     for_range(BoxDecodeAndClipFunctor<T>{anchors.data<T>(),
                                          bbox_deltas.data<T>(),
                                          variances.data<T>(),
@@ -407,7 +407,7 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   DenseTensor scores_filter, proposals_filter;
   // Handle the case when there is no keep index left
   if (keep_num == 0) {
-    phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
+    funcs::SetConstant<phi::GPUContext, T> set_zero;
     proposals_filter.Resize(common::make_ddim({1, 4}));
     dev_ctx.template Alloc<T>(&proposals_filter);
     scores_filter.Resize(common::make_ddim({1, 1}));
@@ -420,8 +420,8 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   dev_ctx.template Alloc<T>(&proposals_filter);
   scores_filter.Resize(common::make_ddim({keep_num, 1}));
   dev_ctx.template Alloc<T>(&scores_filter);
-  phi::funcs::GPUGather<T>(dev_ctx, proposals, keep_index, &proposals_filter);
-  phi::funcs::GPUGather<T>(dev_ctx, scores_sort, keep_index, &scores_filter);
+  funcs::GPUGather<T>(dev_ctx, proposals, keep_index, &proposals_filter);
+  funcs::GPUGather<T>(dev_ctx, scores_sort, keep_index, &scores_filter);
 
   if (nms_thresh <= 0) {
     return std::make_pair(proposals_filter, scores_filter);
@@ -444,8 +444,8 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   dev_ctx.template Alloc<T>(&proposals_nms);
   scores_nms.Resize(common::make_ddim({keep_nms.numel(), 1}));
   dev_ctx.template Alloc<T>(&scores_nms);
-  phi::funcs::GPUGather<T>(dev_ctx, proposals_filter, keep_nms, &proposals_nms);
-  phi::funcs::GPUGather<T>(dev_ctx, scores_filter, keep_nms, &scores_nms);
+  funcs::GPUGather<T>(dev_ctx, proposals_filter, keep_nms, &proposals_nms);
+  funcs::GPUGather<T>(dev_ctx, scores_filter, keep_nms, &scores_nms);
 
   return std::make_pair(proposals_nms, scores_nms);
 }
@@ -508,7 +508,7 @@ void GenerateProposalsKernel(const Context &dev_ctx,
   scores_swap.Resize(common::make_ddim({num, h_score, w_score, c_score}));
   dev_ctx.template Alloc<T>(&scores_swap);
 
-  phi::funcs::Transpose<phi::GPUContext, T, 4> trans;
+  funcs::Transpose<phi::GPUContext, T, 4> trans;
   std::vector<int> axis = {0, 2, 3, 1};
   trans(dev_ctx, bbox_deltas, &bbox_deltas_swap, axis);
   trans(dev_ctx, scores, &scores_swap, axis);

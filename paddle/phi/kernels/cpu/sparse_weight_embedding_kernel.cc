@@ -69,7 +69,7 @@ struct EmbeddingCPUSparseFunctor {
                  table + id_index * row_width,
                  row_width * sizeof(T));
         } else {
-          auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx_);
+          auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx_);
           blas.VCOPY(
               row_width, table + id_index * row_width, output + i * row_width);
         }
