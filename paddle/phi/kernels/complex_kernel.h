@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/empty_kernel.h"
 
 namespace phi {
-
+namespace dtype {
 template <typename T, typename Context>
 void ConjKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out);
 
@@ -116,5 +116,5 @@ template <typename T,
 DenseTensor Imag(const Context& dev_ctx, const DenseTensor& x) {
   return x;
 }
-
+}  // namespace dtype
 }  // namespace phi
