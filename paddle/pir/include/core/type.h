@@ -127,6 +127,7 @@ class IR_API Type {
   bool IsIndex() const;
 
   std::size_t hash() const {
+    if (!storage_) return 0;
     std::size_t seed = std::hash<TypeId>()(storage_->abstract_type().type_id());
     return seed;
   }
