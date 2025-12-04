@@ -211,12 +211,29 @@ void BaddbmmInferMeta(const MetaTensor& input,
                               x_dims[2],
                               y_dims[1]));
 
-  std::vector<int64_t> output_dims;
-  output_dims.push_back(x_dims[0]);
-  output_dims.push_back(x_dims[1]);
-  output_dims.push_back(y_dims[2]);
+  std::vector<int64_t> matmul_dims;
+  matmul_dims.push_back(x_dims[0]);
+  matmul_dims.push_back(x_dims[1]);
+  matmul_dims.push_back(y_dims[2]);
 
-  out->set_dims(common::make_ddim(output_dims));
+  // Check if input and matmul result can be broadcast
+  auto matmul_ddim = common::make_ddim(matmul_dims);
+  int max_dim = std::max(input_dims.size(), matmul_ddim.size());
+  int axis = std::abs(static_cast<int>(input_dims.size()) -
+                      static_cast<int>(matmul_ddim.size()));
+  std::vector<int64_t> input_dims_array(max_dim);
+  std::vector<int64_t> matmul_dims_array(max_dim);
+  std::vector<int64_t> out_dims_array(max_dim);
+
+  funcs::GetBroadcastDimsArrays(input_dims,
+                                matmul_ddim,
+                                input_dims_array.data(),
+                                matmul_dims_array.data(),
+                                out_dims_array.data(),
+                                max_dim,
+                                axis);
+
+  out->set_dims(common::make_ddim(out_dims_array));
   out->share_lod(input);
   out->set_dtype(input.dtype());
 }
