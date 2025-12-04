@@ -40,6 +40,7 @@ if TYPE_CHECKING:
 __all__ = [
     'Unfold',
     'Linear',
+    'Softmax',
     'AvgPool1D',
     'AvgPool2D',
     'AvgPool3D',
@@ -106,7 +107,7 @@ class AvgPool1D(nn.Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.compat.nn as nn
@@ -115,7 +116,7 @@ class AvgPool1D(nn.Layer):
             >>> AvgPool1D = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
             >>> pool_out = AvgPool1D(data)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
 
     """
 
@@ -220,7 +221,7 @@ class AvgPool2D(nn.Layer):
         A callable object of AvgPool2D.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.compat.nn as nn
@@ -230,7 +231,7 @@ class AvgPool2D(nn.Layer):
             >>> AvgPool2D = nn.AvgPool2D(kernel_size=2, stride=2, padding=0)
             >>> output = AvgPool2D(input)
             >>> print(output.shape)
-            [1, 3, 16, 16]
+            paddle.Size([1, 3, 16, 16])
 
     """
 
@@ -328,7 +329,7 @@ class AvgPool3D(nn.Layer):
           The data type is same as input x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.compat.nn as nn
@@ -338,7 +339,7 @@ class AvgPool3D(nn.Layer):
             >>> AvgPool3D = nn.AvgPool3D(kernel_size=2, stride=2, padding=0)
             >>> output = AvgPool3D(input)
             >>> print(output.shape)
-            [1, 2, 1, 16, 16]
+            paddle.Size([1, 2, 1, 16, 16])
 
     """
 
@@ -400,9 +401,6 @@ class AvgPool3D(nn.Layer):
         self.__dict__.setdefault("count_include_pad", True)
 
 
-__all__ = ['Unfold', 'Linear', 'MultiheadAttention']
-
-
 class Unfold(nn.Unfold):
     """
     A compatible version of paddle.nn.Unfold:
@@ -425,14 +423,14 @@ class Unfold(nn.Unfold):
             For default, it will be [1, 1].
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.randn((100, 3, 224, 224))
             >>> unfold = paddle.compat.nn.Unfold(kernel_size=[3, 3])
             >>> result = unfold(x)
             >>> print(result.shape)
-            [100, 27, 49284]
+            paddle.Size([100, 27, 49284])
     """
 
     kernel_sizes: Size2
@@ -466,7 +464,6 @@ class Unfold(nn.Unfold):
             strides=to_list_if_necessary(self.strides),
             paddings=to_list_if_necessary(self.paddings),
             dilations=to_list_if_necessary(self.dilations),
-            name=self.name,
         )
 
 
@@ -611,6 +608,135 @@ class Linear(nn.Layer):
             fan_in = self.weight.shape[1]
             bound = 1 / sqrt(fan_in) if fan_in > 0 else 0
             nn.init.uniform_(self.bias, -bound, bound)
+
+
+class Softmax(nn.Layer):
+    r"""
+    Softmax Activation.
+
+    This operator implements the softmax layer. The calculation process is as follows:
+
+    1. The dimension :attr:`dim` of ``input`` will be permuted to the last.
+
+    2. Then ``input`` will be logically flattened to a 2-D matrix. The matrix's second
+    dimension(row length) is the same as the dimension :attr:`dim` of ``input``,
+    and the first dimension(column length) is the product of all other dimensions
+    of ``input``. For each row of the matrix, the softmax operator squashes the
+    K-dimensional(K is the width of the matrix, which is also the size of ``input``'s
+    dimension :attr:`dim`) vector of arbitrary real values to a K-dimensional
+    vector of real values in the range [0, 1] that add up to 1.
+
+    3. After the softmax operation is completed, the inverse operations of steps 1 and 2
+    are performed to restore the two-dimensional matrix to the same dimension as the ``input`` .
+
+    It computes the exponential of the given dimension and the sum of exponential
+    values of all the other dimensions in the K-dimensional vector input.
+    Then the ratio of the exponential of the given dimension and the sum of
+    exponential values of all the other dimensions is the output of the softmax
+    operator.
+
+    For each row :math:`i` and each column :math:`j` in the matrix, we have:
+
+    .. math::
+
+        Softmax[i, j] = \frac{\exp(x[i, j])}{\sum_j(exp(x[i, j])}
+
+    Example:
+
+    .. code-block:: text
+
+        Case 1:
+          Input:
+            x.shape = [2, 3, 4]
+            x.data = [[[2.0, 3.0, 4.0, 5.0],
+                       [3.0, 4.0, 5.0, 6.0],
+                       [7.0, 8.0, 8.0, 9.0]],
+                      [[1.0, 2.0, 3.0, 4.0],
+                       [5.0, 6.0, 7.0, 8.0],
+                       [6.0, 7.0, 8.0, 9.0]]]
+
+          Attrs:
+            dim = -1
+
+          Output:
+            out.shape = [2, 3, 4]
+            out.data = [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
+                        [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
+
+        Case 2:
+          Input:
+            x.shape = [2, 3, 4]
+            x.data = [[[2.0, 3.0, 4.0, 5.0],
+                       [3.0, 4.0, 5.0, 6.0],
+                       [7.0, 8.0, 8.0, 9.0]],
+                      [[1.0, 2.0, 3.0, 4.0],
+                       [5.0, 6.0, 7.0, 8.0],
+                       [6.0, 7.0, 8.0, 9.0]]]
+          Attrs:
+            dim = 1
+
+          Output:
+            out.shape = [2, 3, 4]
+            out.data = [[[0.00657326, 0.00657326, 0.01714783, 0.01714783],
+                         [0.01786798, 0.01786798, 0.04661262, 0.04661262],
+                         [0.97555875, 0.97555875, 0.93623955, 0.93623955]],
+                        [[0.00490169, 0.00490169, 0.00490169, 0.00490169],
+                         [0.26762315, 0.26762315, 0.26762315, 0.26762315],
+                         [0.72747516, 0.72747516, 0.72747516, 0.72747516]]]
+
+    Parameters:
+        dim (int, optional): The dim along which to perform log_softmax
+            calculations. It should be in range [-D, D), where D is the
+            dimensions of ``input`` . If ``dim`` < 0, it works the same way as
+            :math:`dim + D` . Default is None.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[[2.0, 3.0, 4.0, 5.0],
+            ...                        [3.0, 4.0, 5.0, 6.0],
+            ...                        [7.0, 8.0, 8.0, 9.0]],
+            ...                       [[1.0, 2.0, 3.0, 4.0],
+            ...                        [5.0, 6.0, 7.0, 8.0],
+            ...                        [6.0, 7.0, 8.0, 9.0]]], dtype='float32')
+            >>> m = paddle.compat.nn.Softmax()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[0.73105854, 0.73105854, 0.73105854, 0.73105854],
+              [0.11920292, 0.11920292, 0.11920292, 0.11920292],
+              [0.73105854, 0.73105854, 0.50000000, 0.50000000]],
+             [[0.26894143, 0.26894143, 0.26894143, 0.26894143],
+              [0.88079703, 0.88079703, 0.88079703, 0.88079703],
+              [0.26894143, 0.26894143, 0.50000000, 0.50000000]]])
+
+    """
+
+    @ForbidKeywordsDecorator(
+        illegal_keys={"axis"},
+        func_name="paddle.compat.nn.Softmax",
+        correct_name="paddle.nn.Softmax",
+    )
+    def __init__(self, dim: int | None = None) -> None:
+        super().__init__()
+        self._dim = dim
+        self._dtype = None
+
+    def forward(self, input: Tensor) -> Tensor:
+        return functional.softmax(input, self._dim)
+
+    def extra_repr(self) -> str:
+        return f"dim={self.dim}"
 
 
 AvgPool1d = AvgPool1D

@@ -259,7 +259,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
       gplace, roi_id_data, cplace, box_batch_size, bytes, dev_ctx.stream());
   dev_ctx.template Alloc<T>(dx);
 
-  phi::funcs::SetConstant<Context, T> set_zero;
+  funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, dx, static_cast<T>(0));
 
   int64_t output_grad_size = out_grad.numel();

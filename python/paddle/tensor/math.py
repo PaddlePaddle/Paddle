@@ -3514,7 +3514,7 @@ def trace(
         Tensor: the output data type is the same as input data type.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3523,13 +3523,13 @@ def trace(
             >>> case3 = paddle.randn([3, 10, 5, 10])
             >>> data1 = paddle.trace(case1)
             >>> data1.shape
-            []
+            paddle.Size([])
             >>> data2 = paddle.trace(case2, offset=1, axis1=1, axis2=2)
             >>> data2.shape
-            [3]
+            paddle.Size([3])
             >>> data3 = paddle.trace(case3, offset=-3, axis1=1, axis2=-1)
             >>> data3.shape
-            [3, 5]
+            paddle.Size([3, 5])
     """
 
     def __check_input(x, offset, axis1, axis2):
@@ -5884,11 +5884,7 @@ def angle(x: Tensor, name: str | None = None) -> Tensor:
 
             >>> import paddle
 
-            >>> x = (
-            ...     paddle.to_tensor([-2, -1, 0, 1])
-            ...     .unsqueeze(-1)
-            ...     .astype('float32')
-            ... )
+            >>> x = paddle.to_tensor([-2, -1, 0, 1]).unsqueeze(-1).astype('float32')
             >>> y = paddle.to_tensor([-2, -1, 0, 1]).astype('float32')
             >>> z = x + 1j * y
             >>> z
@@ -5988,13 +5984,17 @@ def heaviside(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-def frac(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def frac(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     """
     This API is used to return the fractional portion of each element in input.
 
     Args:
         x (Tensor): The input tensor, which data type should be int32, int64, float32, float64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. Default: None.
 
     Returns:
         Tensor: The output Tensor of frac.
@@ -6029,7 +6029,7 @@ def frac(x: Tensor, name: str | None = None) -> Tensor:
         )
     if in_dynamic_or_pir_mode():
         y = _C_ops.trunc(x)
-        return _C_ops.subtract(x, y)
+        return _C_ops.subtract(x, y, out=out)
     else:
         inputs = {"X": x}
         attrs = {}

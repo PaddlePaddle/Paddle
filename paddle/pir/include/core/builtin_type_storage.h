@@ -120,7 +120,7 @@ struct VectorTypeStorage : public TypeStorage {
     data_ = reinterpret_cast<Type*>(malloc(key.size() * sizeof(Type)));
     PADDLE_ENFORCE_NOT_NULL(
         data_,
-        phi::errors::ResourceExhausted(
+        common::errors::ResourceExhausted(
             "Failed to allocate memory for VectorTypeStorage::data_, "
             "requested size = %zu bytes.",
             size_ * sizeof(Type)));

@@ -26,10 +26,10 @@ namespace phi {
 template <typename T>
 inline void bias_relu(const int n, const T* x, const T* bias, T* y) {
   if (bias) {
-    phi::funcs::vec_add_bias<T, phi::backends::cpu::avx>(n, *bias, x, y);
-    phi::funcs::vec_relu<T, phi::backends::cpu::avx>(n, y, y);
+    funcs::vec_add_bias<T, phi::backends::cpu::avx>(n, *bias, x, y);
+    funcs::vec_relu<T, phi::backends::cpu::avx>(n, y, y);
   } else {
-    phi::funcs::vec_relu<T, phi::backends::cpu::avx>(n, x, y);
+    funcs::vec_relu<T, phi::backends::cpu::avx>(n, x, y);
   }
 }
 
@@ -40,15 +40,14 @@ inline void vec_softmax(const int n, const T* x, T* y) {
   for (int i = 1; i < n; ++i) {
     scalar = scalar < x[i] ? x[i] : scalar;
   }
-  phi::funcs::vec_add_bias<T, phi::backends::cpu::avx>(
-      n, -scalar, x, y);            // sub
-  phi::funcs::vec_exp<T>(n, y, y);  // exp
+  funcs::vec_add_bias<T, phi::backends::cpu::avx>(n, -scalar, x, y);  // sub
+  funcs::vec_exp<T>(n, y, y);                                         // exp
   // sum
   scalar = T(0);
   for (int i = 0; i < n; ++i) {
     scalar += y[i];
   }
-  phi::funcs::vec_scal<T>(n, static_cast<T>(1) / scalar, y);  // scale
+  funcs::vec_scal<T>(n, static_cast<T>(1) / scalar, y);  // scale
 }
 
 template <typename T, typename Context>
@@ -118,12 +117,12 @@ void AttentionLSTMKernel(
   auto& act_cell_str = cell_activation;
   auto& act_cand_str = candidate_activation;
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::avx)) {
-    phi::funcs::VecActivations<T, phi::backends::cpu::avx> act_functor;
+    funcs::VecActivations<T, phi::backends::cpu::avx> act_functor;
     act_gate = act_functor(act_gate_str);
     act_cell = act_functor(act_cell_str);
     act_cand = act_functor(act_cand_str);
   } else {
-    phi::funcs::VecActivations<T, phi::backends::cpu::isa_any> act_functor;
+    funcs::VecActivations<T, phi::backends::cpu::isa_any> act_functor;
     act_gate = act_functor(act_gate_str);
     act_cell = act_functor(act_cell_str);
     act_cand = act_functor(act_cand_str);
@@ -148,9 +147,9 @@ void AttentionLSTMKernel(
   T* lstm_out_data = dev_ctx.template Alloc<T>(lstm_out);
 
   // x(TxM) * fc (Mx1) part of atten_wgt(M+D)x1
-  auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
 
-  phi::funcs::FCFunctor<Context, T> fc;
+  funcs::FCFunctor<Context, T> fc;
   fc(dev_ctx, total_T, 1, M, x_data, atten_w_data, atted_x_data, atten_b_data);
 
   const T* cur_atten_x_data = atted_x_data;

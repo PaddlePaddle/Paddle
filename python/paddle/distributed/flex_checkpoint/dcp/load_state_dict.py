@@ -337,7 +337,11 @@ class CheckpointLoadBalancer:
         """
         # Sort items by number of candidates: process most constrained files first.
         sorted_items = sorted(
-            file_to_candidates.items(), key=lambda x: len(x[1])
+            file_to_candidates.items(),
+            key=lambda x: (
+                len(x[1]),
+                x[0],
+            ),  # When candidates are the same, use smaller file name
         )
 
         for file_name, candidates in sorted_items:
@@ -716,7 +720,7 @@ def _handle_aoa(
     src_desc_to_postprocess_list = {}
     force_gc = []
 
-    for param_name, tgt_shard in load_dict.items():
+    for param_name, tgt_shard in sorted(load_dict.items()):
         tgt_desc = build_shard_desc(tgt_shard)
         shard_mappings = aoa_engine.find_shard_sources(tgt_desc)
         for mapping in shard_mappings:
@@ -1204,8 +1208,6 @@ def load_state_dict_impl(
             logger.warning(
                 f"The following keys:{missing_keys} are not found in checkpoint path: {path}."
             )
-        if len(rank_to_files) <= 0:
-            return
 
         cur_rank = paddle.distributed.get_rank()
         global_local_data_files = []
@@ -1688,8 +1690,14 @@ def _load_state_dict_single_group(
         f"Communication tasks generated successfully, total {len(tasks)} tasks!"
     )
 
+    cnt = 0
+    total_task_len = len(tasks)
     for tensor_name, read_items in tasks.items():
-        logger.debug(f"Beginning to send/recv tasks for tensor {tensor_name}.")
+        cnt += 1
+        if cnt % 500 == 0 or cnt == total_task_len:
+            logger.info(
+                f"{cnt}/{total_task_len} tasks have been sent/received successfully!"
+            )
 
         source_tensors = {}
         destination_tensors = {}

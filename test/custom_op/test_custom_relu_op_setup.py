@@ -201,6 +201,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
     def test_all(self):
         self._test_static()
         self._test_dynamic()
+        self._test_debug_tools()
         self._test_static_save_and_load_inference_model()
         self._test_static_save_and_run_inference_predictor()
         self._test_double_grad_dynamic()
@@ -333,6 +334,29 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
 
                 if batch_id == 5:
                     break
+
+    def _test_debug_tools(self):
+        # Test the debug utils on custom op
+        # It is only necessary to test whether any error occur,
+        # and there is no need to verify the results
+        paddle.set_flags(
+            {"FLAGS_tensor_md5_checksum_output_path": "./tmp_md5.txt"}
+        )
+        with (
+            paddle.utils.capture_fwd_graph_guard("./tmp_subgraph"),
+            paddle.base.framework.capture_backward_subgraph_guard(
+                "./tmp_debug_info"
+            ),
+        ):
+            x = paddle.randn([5, 5])
+            x.stop_gradient = False
+            y = paddle.randn([5, 5])
+            y.stop_gradient = False
+            z = x + y
+            func = self.custom_ops[0]
+            out = func(z)
+        loss = out.sum()
+        loss.backward()
 
 
 if __name__ == '__main__':

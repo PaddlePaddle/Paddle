@@ -68,9 +68,9 @@ void LogspaceKernel(const Context& dev_ctx,
                     DenseTensor* out) {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
-  auto start_t = phi::funcs::TransDataType(dev_ctx, start, dtype);
-  auto stop_t = phi::funcs::TransDataType(dev_ctx, stop, dtype);
-  auto base_t = phi::funcs::TransDataType(dev_ctx, base, dtype);
+  auto start_t = funcs::TransDataType(dev_ctx, start, dtype);
+  auto stop_t = funcs::TransDataType(dev_ctx, stop, dtype);
+  auto base_t = funcs::TransDataType(dev_ctx, base, dtype);
 
   DenseTensor n_start;
   DenseTensor n_stop;

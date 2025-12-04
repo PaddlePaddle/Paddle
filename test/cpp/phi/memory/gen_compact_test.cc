@@ -25,7 +25,7 @@ PD_DECLARE_bool(enable_compact_mem);
 PD_DECLARE_int64(max_reserved_threshold_in_gb);
 PD_DECLARE_int64(cur_allocated_threshold_in_gb);
 PD_DECLARE_bool(try_allocate);
-PD_DECLARE_bool(use_multi_scale_virtual_memory_auto_growth);
+PD_DECLARE_bool(use_virtual_memory_auto_growth);
 PD_DECLARE_uint64(vmm_small_pool_size_in_mb);
 
 namespace paddle {
@@ -38,7 +38,7 @@ class CheckAndDoCompactTest : public ::testing::Test {
     // Set default flags
     FLAGS_enable_compact_mem = true;
     FLAGS_try_allocate = true;
-    FLAGS_use_multi_scale_virtual_memory_auto_growth = true;
+    FLAGS_use_virtual_memory_auto_growth = true;
     FLAGS_vmm_small_pool_size_in_mb = 2;
     FLAGS_v = 10;
   }
