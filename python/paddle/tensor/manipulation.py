@@ -4917,6 +4917,7 @@ def chunk(
         )
     return split(x, num_or_sections=chunks, axis=axis, name=name)
 
+
 @ParamAliasDecorator({"x": ["input"], "repeat_times": ["dims"]})
 def tile(
     x: Tensor,
@@ -4929,7 +4930,7 @@ def tile(
     After tiling, the value of the i'th dimension of the output is equal to ``x.shape[i]*repeat_times[i]``.
 
     Both the number of dimensions of ``x`` and the number of elements in ``repeat_times`` should be less than or equal to 6.
-    
+
     .. note::
         Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dims`` can be used as an alias for ``repeat_times``.
         For example, ``tile(input=x, dims=repeat_times)`` is equivalent to ``tile(x=x, repeat_times=repeat_times)``.
@@ -4968,7 +4969,7 @@ def tile(
             Tensor(shape=[1, 6], dtype=int32, place=Place(cpu), stop_gradient=True,
             [[1, 2, 3, 1, 2, 3]])
     """
-    
+
     def check_input(x, repeat_times):
         check_type(
             repeat_times,
