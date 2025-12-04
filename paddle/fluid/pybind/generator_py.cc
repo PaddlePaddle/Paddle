@@ -45,7 +45,7 @@ void BindGenerator(py::module* m_ptr) {
       // type, resulting in a problem with precision under the cpu.
       .def(py::pickle(
           [](const phi::Generator::GeneratorState& s) {  // __getstate__
-            // NOTE(zhangwl):because pickle cnnot serialize mt19937_64, so we
+            // NOTE(zhangwl):because pickle can not serialize mt19937_64, so we
             // need serialize mt19937_64 to bitstream before so that pickle can
             // dump
             std::stringstream ss;

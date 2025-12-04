@@ -56,7 +56,7 @@ void QuantOpKernel(const Context& dev_ctx,
     attrs.set_zero_points_mask(DNNL_ARG_DST, mask);
   }
 
-  auto x_type = phi::funcs::ToOneDNNDataType(input.dtype());
+  auto x_type = funcs::ToOneDNNDataType(input.dtype());
   DataType out_dtype;
 
   if (bfloat16) {
@@ -67,13 +67,13 @@ void QuantOpKernel(const Context& dev_ctx,
     out_dtype = DataType::UINT8;
   }
 
-  auto out_type = phi::funcs::ToOneDNNDataType(out_dtype);
+  auto out_type = funcs::ToOneDNNDataType(out_dtype);
 
-  phi::funcs::ReorderOneDNNHandler reorder_handler(
+  funcs::ReorderOneDNNHandler reorder_handler(
       x_tz, input.dtype(), x_type, out_dtype, out_type, dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      input.mem_desc(), phi::funcs::to_void_cast(input.data<T>()));
+      input.mem_desc(), funcs::to_void_cast(input.data<T>()));
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
       output, input.mem_desc(), dev_ctx.GetPlace());
 
@@ -85,13 +85,13 @@ void QuantOpKernel(const Context& dev_ctx,
   auto scales_md = dnnl::memory::desc(
       {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
   auto scales_mem = dnnl::memory(
-      scales_md, dev_ctx.GetEngine(), phi::funcs::to_void_cast<float>(&scale));
+      scales_md, dev_ctx.GetEngine(), funcs::to_void_cast<float>(&scale));
   auto zero_points_md = dnnl::memory::desc(
       {1}, dnnl::memory::data_type::s32, dnnl::memory::format_tag::x);
   auto zero_points_mem =
       dnnl::memory(zero_points_md,
                    dev_ctx.GetEngine(),
-                   phi::funcs::to_void_cast<int32_t>(&quantization_shift));
+                   funcs::to_void_cast<int32_t>(&quantization_shift));
 
   std::unordered_map<int, dnnl::memory> reorder_args;
   reorder_args.insert({DNNL_ARG_SRC, *reorder_src_memory_p});

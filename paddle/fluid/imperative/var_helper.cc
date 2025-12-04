@@ -28,7 +28,6 @@
 #include "paddle/phi/core/selected_rows.h"
 namespace paddle::imperative {
 
-/* GetVariableWrapper */
 template <>
 const std::shared_ptr<VariableWrapper> &GetVariableWrapper<VarBase>(
     const std::shared_ptr<VarBase> &var) {

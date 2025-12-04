@@ -50,7 +50,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
 
   // For 0D Tensor
   if (in_dims.size() == 0) {
-    phi::funcs::set_constant(dev_ctx, d_x, static_cast<T>(1.0));
+    funcs::set_constant(dev_ctx, d_x, static_cast<T>(1.0));
     return;
   }
 
@@ -59,7 +59,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
   const T* out_grad_data = d_out.data<T>();
   const int64_t* indices_data = indices.data<int64_t>();
   int64_t pre, n, post;
-  phi::funcs::GetDims(in_dims, axis, &pre, &n, &post);
+  funcs::GetDims(in_dims, axis, &pre, &n, &post);
 
   int block_size = getBlockSize(post * k);
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
@@ -68,7 +68,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
   int64_t grid_size =
       std::min(desired_grid_size,
                static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize()[0]));
-  phi::funcs::AssignGradWithAxis<T>
+  funcs::AssignGradWithAxis<T>
       <<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
           out_grad_data, indices_data, x_grad_data, pre, post, n, 1);
 }

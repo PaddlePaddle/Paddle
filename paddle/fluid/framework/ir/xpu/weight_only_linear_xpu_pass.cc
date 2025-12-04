@@ -157,22 +157,23 @@ void PermuteINT8WeightOnlyPass::ApplyPermuteINT8WeightOnly(
             tmp_tensor.Resize(curr_tensor->dims());
             cpu_ctx->Alloc<int8_t>(&tmp_tensor);
 
-            int k = curr_tensor->dims()[1];
-            for (int i = 0; i < curr_tensor->numel(); i += 8 * 16) {
-              int read_j_len = ((curr_tensor->numel() - i + 15) / 16) > 8
-                                   ? 8
-                                   : ((curr_tensor->numel() - i + 15) / 16);
-              for (int j = 0; j < read_j_len; ++j) {
-                int permuted_w_offset = i / (2 * k) * 2 * k +
-                                        ((j > 3) ? k : 0) + (i % (2 * k)) / 2 +
-                                        16 * (j % 4);
-                int w_offset = i + j * 16;
-                int read_l_len = (curr_tensor->numel() - i - j * 16) > 16
-                                     ? 16
-                                     : (curr_tensor->numel() - i - j * 16);
-                for (int l = 0; l < read_l_len; l++) {
+            int64_t k = curr_tensor->dims()[1];
+            for (int64_t i = 0; i < curr_tensor->numel(); i += 8 * 16) {
+              int64_t read_j_len = ((curr_tensor->numel() - i + 15) / 16) > 8
+                                       ? 8
+                                       : ((curr_tensor->numel() - i + 15) / 16);
+              for (int64_t j = 0; j < read_j_len; ++j) {
+                int64_t permuted_w_offset = i / (2 * k) * 2 * k +
+                                            ((j > 3) ? k : 0) +
+                                            (i % (2 * k)) / 2 + 16 * (j % 4);
+                int64_t w_offset = i + j * 16;
+                int64_t read_l_len = (curr_tensor->numel() - i - j * 16) > 16
+                                         ? 16
+                                         : (curr_tensor->numel() - i - j * 16);
+                for (int64_t l = 0; l < read_l_len; l++) {
                   // {0, 2, 4, 6, 8, 10, 12, 14, 1, 3, 5, 7, 9, 11, 13, 15}
-                  int offset_l = (l / 8) % 2 ? (l - 7 + (l % 8)) : l + (l % 8);
+                  int64_t offset_l =
+                      (l / 8) % 2 ? (l - 7 + (l % 8)) : l + (l % 8);
                   tmp_tensor.data<int8_t>()[permuted_w_offset + l] =
                       static_cast<int8_t>(
                           static_cast<int32_t>(reinterpret_cast<uint8_t*>(

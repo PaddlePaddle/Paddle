@@ -67,3 +67,8 @@
 - logit_grad
 - pad3d_grad
 - pad3d_double_grad
+- bicubic_interp_grad
+- nearest_interp_grad
+- linear_interp_grad
+- bilinear_interp_grad
+- trilinear_interp_grad

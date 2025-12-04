@@ -149,7 +149,7 @@ void UnpoolKernel(const Context& dev_ctx,
     return;
   }
   if (output_data) {
-    phi::funcs::SetConstant<Context, T> set_zero;
+    funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, out, static_cast<T>(0));
   }
 
@@ -178,7 +178,7 @@ void Unpool3dKernel(const Context& dev_ctx,
     return;
   }
   if (output_data) {
-    phi::funcs::SetConstant<Context, T> set_zero;
+    funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, out, static_cast<T>(0));
   }
 

@@ -38,7 +38,7 @@ void InstanceNormKernel(const Context& dev_ctx,
                         DenseTensor* y,
                         DenseTensor* saved_mean,
                         DenseTensor* saved_variance) {
-  phi::funcs::SetConstant<CPUContext, T> set_constant;
+  funcs::SetConstant<CPUContext, T> set_constant;
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(y);
     set_constant(dev_ctx, y, static_cast<T>(0));

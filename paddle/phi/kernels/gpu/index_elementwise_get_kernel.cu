@@ -67,15 +67,12 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& dev_ctx,
       desired_shape, strides_array);
 
   const int64_t N = output->numel();
-  PADDLE_ENFORCE_EQ(true,
-                    funcs::IsInUint32Range(N, input.numel()),
-                    common::errors::PreconditionNotMet(
-                        "the numel of input or output should be in [0, "
-                        "std::numeric_limits<int32_t>::max()]"));
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);
-  const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
+  const int64_t grid_x = (N + block.x * vt - 1) / (block.x * vt);
+  const int64_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  const dim3 grid(std::min(max_grid_dim, grid_x));
   auto stream = dev_ctx.stream();
 
   using dtype = funcs::OpaqueType<sizeof(T)>;
@@ -83,26 +80,65 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& dev_ctx,
   const char* in_ptr =
       reinterpret_cast<const char*>(input.data<T>()) + slice_offset;
   char* out_ptr = reinterpret_cast<char*>(output->data<T>());
-  funcs::index_elementwise_with_tensor_kernel<nt, vt>
-      <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
-        const auto offsets = offset_calc.get(idx);
-        char* const out_data = out_ptr + offsets[0];
-        const char* const in_data = in_ptr + offsets[1];
 
-        int64_t offset = 0;
+  if (grid_x <= max_grid_dim) {
+    funcs::index_elementwise_with_tensor_kernel<nt, vt>
+        <<<grid, block, 0, stream>>>(N, [=] __device__(int64_t idx) {
+          if (idx < N) {
+            const auto offsets = offset_calc.get(idx);
+            char* const out_data = out_ptr + offsets[0];
+            const char* const in_data = in_ptr + offsets[1];
+
+            int64_t offset = 0;
 #pragma unroll
-        for (int64_t i = 0; i < num_indices; i++) {
-          int64_t index =
-              *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
-          if (index < 0) {
-            index += sizes[i];
-          }
-          offset += index * strides[i];
-        }
+            for (int64_t i = 0; i < num_indices; i++) {
+              int64_t index =
+                  *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
+              if (index < 0) {
+                index += sizes[i];
+              }
+              offset += index * strides[i];
+            }
 
-        *reinterpret_cast<dtype*>(out_data) =
-            *reinterpret_cast<const dtype*>(in_data + offset);
-      });
+            *reinterpret_cast<dtype*>(out_data) =
+                *reinterpret_cast<const dtype*>(in_data + offset);
+          }
+        });
+  } else {
+    const int64_t chunks = (grid_x + max_grid_dim - 1) / max_grid_dim;
+    for (int64_t chunk = 0; chunk < chunks; ++chunk) {
+      const int64_t start_idx = chunk * max_grid_dim * nt * vt;
+      const int64_t end_idx = std::min((chunk + 1) * max_grid_dim * nt * vt, N);
+      const int64_t chunk_size = end_idx - start_idx;
+      const int64_t chunk_grid_x = (chunk_size + nt * vt - 1) / (nt * vt);
+      const dim3 chunk_grid(std::min(chunk_grid_x, max_grid_dim));
+
+      funcs::index_elementwise_with_tensor_kernel<nt, vt>
+          <<<chunk_grid, block, 0, stream>>>(
+              chunk_size, [=] __device__(int64_t local_idx) {
+                const int64_t idx = start_idx + local_idx;
+                if (idx < N) {
+                  const auto offsets = offset_calc.get(idx);
+                  char* const out_data = out_ptr + offsets[0];
+                  const char* const in_data = in_ptr + offsets[1];
+
+                  int64_t offset = 0;
+#pragma unroll
+                  for (int64_t i = 0; i < num_indices; i++) {
+                    int64_t index =
+                        *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
+                    if (index < 0) {
+                      index += sizes[i];
+                    }
+                    offset += index * strides[i];
+                  }
+
+                  *reinterpret_cast<dtype*>(out_data) =
+                      *reinterpret_cast<const dtype*>(in_data + offset);
+                }
+              });
+    }
+  }
 }
 
 template <typename T, typename Context>

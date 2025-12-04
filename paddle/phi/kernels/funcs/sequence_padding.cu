@@ -34,7 +34,9 @@ __global__ void SequencePaddingKernel(T* dst,
   size_t seq_idx = blockIdx.y;
   size_t seq_len = seq_offsets[seq_idx + 1] - seq_offsets[seq_idx];
 
-  size_t step_idx = blockIdx.x * blockDim.y + threadIdx.y;
+  size_t step_idx =
+      static_cast<size_t>(blockIdx.x) * static_cast<size_t>(blockDim.y) +
+      static_cast<size_t>(threadIdx.y);
   size_t seq_data_offset = (seq_offsets[seq_idx] + step_idx) * step_width;
   size_t pad_data_offset = layout == kBatchLengthWidth
                                ? (seq_idx * pad_seq_len + step_idx) * step_width

@@ -998,14 +998,14 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
       /*
         This function is used to get the index of input that need calculate
         gradient in forward op. For example: forward inputs : TensorA, TensorB,
-        TensorC, TensorD backward outputs: TensorC@Grad, TensorA@Grad So, we
+        TensorC, TensorD backward outputs: TensorC@GRAD, TensorA@GRAD So, we
         only need to calculate gradient of TensorA and TensorC and store them in
         res; In this example, the res size is 2, and the first element of res
-        should store TensorA@Grad, and the second element of res should store
-        TensorC@Grad.
+        should store TensorA@GRAD, and the second element of res should store
+        TensorC@GRAD.
 
-        So, This function will return 1 if we pass TensorC@Grad and return 0 if
-        we pass TensorA@Grad.
+        So, This function will return 1 if we pass TensorC@GRAD and return 0 if
+        we pass TensorA@GRAD.
       */
       size_t gradient_vec_index = 0;
       const auto& fwd_input =

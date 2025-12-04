@@ -350,7 +350,7 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
                     common::errors::NotFound(
                         "Output(Scale@GRAD) and Output(Bias@GRAD) must be null "
                         "or not be null at same time. But now, "
-                        "has Scale@Grad=[%d], has Bias@GRAD=[%d]",
+                        "has Scale@GRAD=[%d], has Bias@GRAD=[%d]",
                         has_scale_grad,
                         has_bias_grad));
 
