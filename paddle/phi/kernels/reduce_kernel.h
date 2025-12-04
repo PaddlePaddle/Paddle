@@ -20,6 +20,20 @@
 namespace phi {
 
 template <typename T, typename Context>
+void ReduceAMaxGradKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& out,
+                          const DenseTensor& out_grad,
+                          const std::vector<int64_t>& dims,
+                          bool keep_dim,
+                          bool reduce_all,
+                          DenseTensor* x_grad) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  ReduceCudaAMaxAMinGrad<T, Context>(
+      dev_ctx, x, out, out_grad, dims, keep_dim, reduce_all, x_grad);
+}
+
+template <typename T, typename Context>
 void ReduceKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int root_id,
