@@ -46,12 +46,12 @@ void OverlapAddGradKernel(const Context& dev_ctx,
   DenseTensor out_grad_(out_grad.type());
   out_grad_ = out_grad;
 
-  phi::DDim preserved_dims;
+  DDim preserved_dims;
   if (out_grad_rank > 2) {
     // Save dims used to flatten both input and output tensors and restore
     // output tensor.
-    phi::DDim x_grad_resized_dims;
-    phi::DDim out_grad_resized_dims;
+    DDim x_grad_resized_dims;
+    DDim out_grad_resized_dims;
     if (axis == 0) {
       preserved_dims = common::slice_ddim(
           out_grad_.dims(), 1, static_cast<int>(out_grad_rank));

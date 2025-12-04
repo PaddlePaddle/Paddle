@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from typing import Literal
 
     from paddle import Tensor
-    from paddle._typing import DTypeLike
+    from paddle._typing import DTypeLike, PlaceLike
 
     _NormalizeMode = Literal["forward", "backward", "ortho"]
 __all__ = [
@@ -1468,6 +1468,10 @@ def fftfreq(
     n: int,
     d: float = 1.0,
     dtype: DTypeLike | None = None,
+    *,
+    out: paddle.Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -1487,6 +1491,11 @@ def fftfreq(
         d (float, optional): Sample spacing (inverse of the sampling rate). Defaults is 1.
         dtype (str, optional): The data type of returns. Defaults is the data type of returns
             of ``paddle.get_default_dtype()``.
+        out(Tensor, optional): The output tensor.
+        device(PlaceLike|None, optional): The desired device of returned tensor.
+            if None, uses the current device for the default tensor type (see paddle.device.set_device()).
+            device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
+        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
         name (str, optional): The default value is None.  Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1508,19 +1517,34 @@ def fftfreq(
     if d * n == 0:
         raise ValueError("d or n should not be 0.")
 
-    dtype = paddle.framework.get_default_dtype()
+    if dtype is None:
+        dtype = paddle.framework.get_default_dtype()
     val = 1.0 / (n * d)
     pos_max = (n + 1) // 2
     neg_max = n // 2
-    indices = paddle.arange(-neg_max, pos_max, dtype=dtype, name=name)
+    indices = paddle.arange(
+        -neg_max,
+        pos_max,
+        dtype=dtype,
+        device=device,
+        requires_grad=requires_grad,
+        name=name,
+    )
     indices = paddle.roll(indices, -neg_max, name=name)
-    return indices * val
+    ret = indices * val
+    if out is not None:
+        paddle.assign(ret, out)
+    return ret
 
 
 def rfftfreq(
     n: int,
     d: float = 1.0,
     dtype: DTypeLike | None = None,
+    *,
+    out: paddle.Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -1541,6 +1565,11 @@ def rfftfreq(
         d (float, optional): Sample spacing (inverse of the sampling rate). Defaults is 1.
         dtype (str, optional): The data type of returns. Defaults is the data type of returns
             of ``paddle.get_default_dtype()``.
+        out(Tensor, optional): The output tensor.
+        device(PlaceLike|None, optional): The desired device of returned tensor.
+            if None, uses the current device for the default tensor type (see paddle.device.set_device()).
+            device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
+        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
         name (str, optional): The default value is None.  Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1563,11 +1592,22 @@ def rfftfreq(
     if d * n == 0:
         raise ValueError("d or n should not be 0.")
 
-    dtype = paddle.framework.get_default_dtype()
+    if dtype is None:
+        dtype = paddle.framework.get_default_dtype()
     val = 1.0 / (n * d)
     pos_max = 1 + n // 2
-    indices = paddle.arange(0, pos_max, dtype=dtype, name=name)
-    return indices * val
+    indices = paddle.arange(
+        0,
+        pos_max,
+        dtype=dtype,
+        device=device,
+        requires_grad=requires_grad,
+        name=name,
+    )
+    ret = indices * val
+    if out is not None:
+        paddle.assign(ret, out)
+    return ret
 
 
 @param_two_alias(["x", "input"], ["axes", "dim"])

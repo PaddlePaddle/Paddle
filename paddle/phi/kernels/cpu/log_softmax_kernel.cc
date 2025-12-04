@@ -49,7 +49,7 @@ struct LogSoftmaxFunctor {
     int axis_dim = static_cast<int>(X->dims()[axis]);
     const int n = funcs::SizeToAxis(axis, X->dims());
     const int d = funcs::SizeFromAxis(axis, X->dims());
-    phi::DDim dim_2d{n, d};
+    DDim dim_2d{n, d};
 
     auto logits = EigenMatrixTemplate<T>::From(*X, dim_2d);
     auto log_softmax = EigenMatrixTemplate<T>::From(*Y, dim_2d);

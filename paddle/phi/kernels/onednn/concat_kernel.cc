@@ -121,7 +121,7 @@ void ConcatKernel(const Context& dev_ctx,
   if (std::any_of(out_dims_vec.begin(), out_dims_vec.end(), [](int64_t i) {
         return i < 0;
       })) {
-    std::vector<phi::DDim> x_dims;
+    std::vector<DDim> x_dims;
     x_dims.reserve(x.size());
     for (auto item : x) {
       x_dims.push_back(item->dims());
