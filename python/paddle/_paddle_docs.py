@@ -3078,3 +3078,37 @@ def asin(
 ) -> Tensor
 """,
 )
+
+add_doc_and_signature(
+    "bitwise_left_shift_",
+    r"""
+     Inplace version of ``bitwise_left_shift`` API, the output Tensor will be inplaced with input ``x``.
+     Please refer to :ref:`api_paddle_bitwise_left_shift`.
+     """,
+    """
+def bitwise_left_shift(
+    x: Tensor,
+    y: Tensor,
+    is_arithmetic: bool = True,
+    out: Tensor | None = None,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "bitwise_right_shift_",
+    r"""
+    Inplace version of ``bitwise_right_shift`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_left_shift`.
+    """,
+    """
+def bitwise_right_shift(
+    x: Tensor,
+    y: Tensor,
+    is_arithmetic: bool = True,
+    out: Tensor | None = None,
+    name: str | None = None,
+) -> Tensor
+""",
+)

@@ -7095,27 +7095,6 @@ def bitwise_left_shift(
     )
 
 
-@inplace_apis_in_dygraph_only
-def bitwise_left_shift_(
-    x: Tensor,
-    y: Tensor,
-    is_arithmetic: bool = True,
-    out: Tensor | None = None,
-    name: str | None = None,
-) -> Tensor:
-    r"""
-    Inplace version of ``bitwise_left_shift`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_bitwise_left_shift`.
-    """
-    out_shape = broadcast_shape(x.shape, y.shape)
-    if out_shape != x.shape:
-        raise ValueError(
-            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
-        )
-    if in_dynamic_or_pir_mode():
-        return _C_ops.bitwise_left_shift_(x, y, is_arithmetic)
-
-
 def bitwise_right_shift(
     x: Tensor,
     y: Tensor,
@@ -7181,28 +7160,6 @@ def bitwise_right_shift(
         name=name,
         out=out,
     )
-
-
-@inplace_apis_in_dygraph_only
-def bitwise_right_shift_(
-    x: Tensor,
-    y: Tensor,
-    is_arithmetic: bool = True,
-    out: Tensor | None = None,
-    name: str | None = None,
-) -> Tensor:
-    r"""
-    Inplace version of ``bitwise_right_shift`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_bitwise_left_shift`.
-    """
-    out_shape = broadcast_shape(x.shape, y.shape)
-    if out_shape != x.shape:
-        raise ValueError(
-            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
-        )
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.bitwise_right_shift_(x, y, is_arithmetic)
 
 
 def __lshift__(
