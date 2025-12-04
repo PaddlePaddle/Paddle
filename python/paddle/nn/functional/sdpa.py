@@ -538,7 +538,7 @@ def scaled_dot_product_attention(
         value.shape[2],
     )
     if enable_gqa:
-        assert q_heads % k_heads == 0, (
+        assert k_heads == 0 or q_heads % k_heads == 0, (
             f"The number of groups in query({q_heads}) must be divisible by the number of groups in key({k_heads}) if GQA enabled."
         )
         assert k_heads == v_heads, (
@@ -659,7 +659,7 @@ def scaled_dot_product_attention(
         )
 
     elif sdp_func_name == "math":
-        repeats = q_heads // k_heads
+        repeats = q_heads // k_heads if k_heads != 0 else 1
         key, value = _repeat_kv(key, value, repeats)
         out = _math_attention(
             query,

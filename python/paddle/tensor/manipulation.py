@@ -7911,6 +7911,8 @@ def view(
             shape_or_dtype, (core.VarDesc.VarType, core.DataType)
         ):
             shape_or_dtype = convert_np_dtype_to_dtype_(shape_or_dtype)
+        if x.dtype == shape_or_dtype:
+            return x
         return _C_ops.view_dtype(x, shape_or_dtype)
 
 
