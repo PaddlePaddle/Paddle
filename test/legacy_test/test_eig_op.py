@@ -395,11 +395,12 @@ class TestEigUnsupportedDtypeError(unittest.TestCase):
 
 class TestOptionalGradInput(unittest.TestCase):
     @unittest.skipIf(
-        not platform.system().lower().startswith("linux") or (not is_xpu()),
+        not platform.system().lower().startswith("linux")
+        or not paddle.device.is_compiled_with_xpu(),
         reason="enable only in linux+xpu now",
     )
     def test_eager(self):
-        with dygraph_guard(), paddle.device("xpu" if is_xpu() else "cpu"):
+        with dygraph_guard(), paddle.device("xpu"):
             x = paddle.randn(3, 3, requires_grad=True)
             w, v = paddle.linalg.eig(x)
 
@@ -421,11 +422,12 @@ class TestOptionalGradInput(unittest.TestCase):
             )
 
     @unittest.skipIf(
-        not platform.system().lower().startswith("linux") or (not is_xpu()),
+        not platform.system().lower().startswith("linux")
+        or not paddle.device.is_compiled_with_xpu(),
         reason="enable only in linux+xpu now",
     )
     def test_dy2st(self):
-        with dygraph_guard(), paddle.device("xpu" if is_xpu() else "cpu"):
+        with dygraph_guard(), paddle.device("xpu"):
             x = paddle.randn(3, 3, requires_grad=True)
 
             def f(x):
