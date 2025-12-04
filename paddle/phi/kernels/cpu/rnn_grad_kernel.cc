@@ -38,14 +38,14 @@ void BackupTensor(const CPUContext& dev_ctx,
 }
 
 template <typename T>
-void CreateLstmValue(phi::funcs::LstmMetaValue<T>* lstm_value) {
+void CreateLstmValue(funcs::LstmMetaValue<T>* lstm_value) {
   lstm_value->check_ig = nullptr;
   lstm_value->check_fg = nullptr;
   lstm_value->check_og = nullptr;
 }
 
 template <typename T>
-void CreateLstmGrad(phi::funcs::LstmMetaGrad<T>* lstm_grad) {
+void CreateLstmGrad(funcs::LstmMetaGrad<T>* lstm_grad) {
   lstm_grad->check_ig_grad = nullptr;
   lstm_grad->check_fg_grad = nullptr;
   lstm_grad->check_og_grad = nullptr;
@@ -113,14 +113,13 @@ struct GradCell {
                                       DenseTensor* grad_pre_state_bak,
                                       const DenseTensor& mask_tensor,
                                       bool has_sequence_length) const {
-    auto blas = phi::funcs::GetBlas<CPUContext, T>(dev_ctx);
+    auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
     DenseTensor* grad_gate_tmp = grad_gate;
     auto mat_dim_a =
-        phi::funcs::CreateMatrixDescriptor(grad_gate_tmp->dims(), 0, false);
+        funcs::CreateMatrixDescriptor(grad_gate_tmp->dims(), 0, false);
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
     mat_dim_a.batch_size_ = 0;
-    auto mat_dim_b =
-        phi::funcs::CreateMatrixDescriptor(weight_hh->dims(), 0, false);
+    auto mat_dim_b = funcs::CreateMatrixDescriptor(weight_hh->dims(), 0, false);
     blas.MatMul(*grad_gate_tmp,
                 mat_dim_a,
                 *weight_hh,
@@ -141,13 +140,12 @@ struct GradCell {
                                      DenseTensor* grad_gate,
                                      DenseTensor* pre_hidden,
                                      DenseTensor* grad_weight_hh) const {
-    auto blas = phi::funcs::GetBlas<CPUContext, T>(dev_ctx);
-    auto mat_dim_c =
-        phi::funcs::CreateMatrixDescriptor(grad_gate->dims(), 0, true);
+    auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
+    auto mat_dim_c = funcs::CreateMatrixDescriptor(grad_gate->dims(), 0, true);
     mat_dim_c.height_ *= mat_dim_c.batch_size_;
     mat_dim_c.batch_size_ = 0;
     auto mat_dim_d =
-        phi::funcs::CreateMatrixDescriptor(pre_hidden->dims(), 0, false);
+        funcs::CreateMatrixDescriptor(pre_hidden->dims(), 0, false);
     mat_dim_d.height_ *= mat_dim_d.batch_size_;
     mat_dim_d.batch_size_ = 0;
     blas.MatMul(*grad_gate,
@@ -239,10 +237,10 @@ struct GRUGradCell : GradCell<T> {
       BackupTensor<T>(dev_ctx, &grad_pre_hidden_bak, grad_pre_hidden);
     }
     // zero pre_hidden
-    phi::funcs::SetConstant<CPUContext, T> zero;
+    funcs::SetConstant<CPUContext, T> zero;
     zero(dev_ctx, grad_pre_hidden, static_cast<T>(0.0));
-    phi::funcs::GRUMetaValue<T> gru_value;
-    phi::funcs::GRUMetaGrad<T> gru_grad;
+    funcs::GRUMetaValue<T> gru_value;
+    funcs::GRUMetaGrad<T> gru_grad;
     gru_value.gate_value = gate_tensor->data<T>();
     gru_value.prev_out_value = pre_hidden->data<T>();
     gru_value.reset_output_value = state_tensor->data<T>();
@@ -258,15 +256,15 @@ struct GRUGradCell : GradCell<T> {
         grad_weight_hh->data<T>() + 2 * frame_size * frame_size;
     gru_grad.bias_hh_grad = grad_bias_hh->data<T>();
 
-    auto act_gate = phi::funcs::detail::GetActivationType("sigmoid_v2");
-    auto act_node = phi::funcs::detail::GetActivationType("tanh_v2");
-    phi::funcs::GRUUnitGradFunctorV2<CPUContext, T>::compute(dev_ctx,
-                                                             gru_value,
-                                                             gru_grad,
-                                                             frame_size,
-                                                             batch_size,
-                                                             act_node,
-                                                             act_gate);
+    auto act_gate = funcs::detail::GetActivationType("sigmoid_v2");
+    auto act_node = funcs::detail::GetActivationType("tanh_v2");
+    funcs::GRUUnitGradFunctorV2<CPUContext, T>::compute(dev_ctx,
+                                                        gru_value,
+                                                        gru_grad,
+                                                        frame_size,
+                                                        batch_size,
+                                                        act_node,
+                                                        act_gate);
 
     this->postprocess_pre_hidden_grad(dev_ctx,
                                       grad_pre_hidden,
@@ -307,8 +305,8 @@ struct LSTMGradCell : GradCell<T> {
       BackupTensor<T>(dev_ctx, &grad_pre_state_bak, grad_pre_state);
     }
 
-    phi::funcs::LstmMetaValue<T> lstm_value;
-    phi::funcs::LstmMetaGrad<T> lstm_grad;
+    funcs::LstmMetaValue<T> lstm_value;
+    funcs::LstmMetaGrad<T> lstm_grad;
     CreateLstmValue(&lstm_value);
     CreateLstmGrad(&lstm_grad);
     lstm_value.gate_value = gate_tensor->data<T>();
@@ -324,21 +322,21 @@ struct LSTMGradCell : GradCell<T> {
     lstm_value.output_value = nullptr;
     lstm_grad.state_active_grad = nullptr;
 
-    auto gate_act = phi::funcs::detail::GetActivationType("sigmoid_v2");
-    auto state_act = phi::funcs::detail::GetActivationType("tanh_v2");
-    auto cand_act = phi::funcs::detail::GetActivationType("tanh_v2");
+    auto gate_act = funcs::detail::GetActivationType("sigmoid_v2");
+    auto state_act = funcs::detail::GetActivationType("tanh_v2");
+    auto cand_act = funcs::detail::GetActivationType("tanh_v2");
 
     T cell_clip = 0.0;
-    phi::funcs::LstmUnitGradFunctor<CPUContext, T>::compute(dev_ctx,
-                                                            lstm_value,
-                                                            lstm_grad,
-                                                            frame_size,
-                                                            batch_size,
-                                                            cell_clip,
-                                                            gate_act,
-                                                            state_act,
-                                                            cand_act,
-                                                            false);
+    funcs::LstmUnitGradFunctor<CPUContext, T>::compute(dev_ctx,
+                                                       lstm_value,
+                                                       lstm_grad,
+                                                       frame_size,
+                                                       batch_size,
+                                                       cell_clip,
+                                                       gate_act,
+                                                       state_act,
+                                                       cand_act,
+                                                       false);
     this->update_pre_hidden_grad(dev_ctx,
                                  grad_gate,
                                  weight_hh,
@@ -425,7 +423,7 @@ struct GradLayer {
     DenseTensor c, d;
     DenseTensor* dynamic_grad_pre_h = &c;
     DenseTensor* dynamic_grad_pre_c = &d;
-    phi::funcs::SetConstant<CPUContext, T> zero;
+    funcs::SetConstant<CPUContext, T> zero;
     if (!init_h_grad_unbind->empty()) {
       dynamic_grad_pre_h->ShareDataWith(
           (*init_h_grad_unbind)[current_layer_idx]);
@@ -636,13 +634,12 @@ struct GradLayer {
     if (is_reverse) {
       begin_idx = 4;
     }
-    auto blas = phi::funcs::GetBlas<CPUContext, T>(dev_ctx);
+    auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
 
     // calc the gradient for the w_hi
     auto mat_dim_out_grad =
-        phi::funcs::CreateMatrixDescriptor(grad_gate.dims(), 0, true);
-    auto mat_dim_input =
-        phi::funcs::CreateMatrixDescriptor(input.dims(), 0, false);
+        funcs::CreateMatrixDescriptor(grad_gate.dims(), 0, true);
+    auto mat_dim_input = funcs::CreateMatrixDescriptor(input.dims(), 0, false);
     mat_dim_out_grad.width_ *= mat_dim_out_grad.batch_size_;
     mat_dim_out_grad.batch_size_ = 0;
     mat_dim_input.height_ *= mat_dim_input.batch_size_;
@@ -657,11 +654,11 @@ struct GradLayer {
 
     // calc the gradient for the X
     auto mat_dim_out_grad_new =
-        phi::funcs::CreateMatrixDescriptor(grad_gate.dims(), 0, false);
+        funcs::CreateMatrixDescriptor(grad_gate.dims(), 0, false);
     mat_dim_out_grad_new.height_ *= mat_dim_out_grad_new.batch_size_;
     mat_dim_out_grad_new.batch_size_ = 0;
     auto mat_dim_parameter =
-        phi::funcs::CreateMatrixDescriptor(parameters[0].dims(), 0, false);
+        funcs::CreateMatrixDescriptor(parameters[0].dims(), 0, false);
     blas.MatMul(grad_gate,
                 mat_dim_out_grad_new,
                 parameters[begin_idx + 0],
@@ -671,7 +668,7 @@ struct GradLayer {
                 T(1));
 
     // calc the gradient of Bias_hi, Bias_hh
-    phi::funcs::ColwiseSum<CPUContext, T> col_sum;
+    funcs::ColwiseSum<CPUContext, T> col_sum;
     DenseTensor tmp_grad_gate;
     tmp_grad_gate.ShareDataWith(grad_gate);
     tmp_grad_gate.Resize(
@@ -714,7 +711,7 @@ struct SingleGradLayer : GradLayer<T, GradCellType> {
                   int hidden_size,
                   const std::string& mode,
                   int gate_num) {
-    phi::funcs::SetConstant<CPUContext, T> zero;
+    funcs::SetConstant<CPUContext, T> zero;
     zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
     int time_step = static_cast<int>(input->dims()[0]);
@@ -831,7 +828,7 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
     int batch_size = static_cast<int>(input->dims()[1]);
     int direction_num = is_bidirec ? 2 : 1;
     // split the output two tensor to output_forward, output_backward
-    phi::funcs::SetConstant<CPUContext, T> zero;
+    funcs::SetConstant<CPUContext, T> zero;
     zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
     std::vector<DenseTensor*> output_vec;

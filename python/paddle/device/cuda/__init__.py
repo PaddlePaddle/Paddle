@@ -944,3 +944,47 @@ def allocate_record_plot(
     if dir_name and not os.path.exists(dir_name):
         os.makedirs(dir_name)
     MemoryAnalysisTool.allocate_record_plot(data, updated_save_path)
+
+
+@signature_safe_contextmanager
+def allocate_record_guard(flag: bool) -> NoReturn:
+    '''
+    Notes:
+        This API only supports dynamic graph mode currently.
+
+    A context manager that enables/disables allocate record guard.
+
+    Parameters:
+        flag(bool): whether to record allocate events.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+
+            >>> data1 = paddle.ones(shape=[20])
+            >>> data2 = paddle.ones(shape=[20])
+            >>> with paddle.device.cuda.allocate_record_guard(True):
+            ...     data3 = data1 + data2
+
+    '''
+    tmp_env = os.environ.get("FLAGS_record_alloc_event")
+    tmp_cpp = paddle.get_flags("FLAGS_record_alloc_event")[
+        "FLAGS_record_alloc_event"
+    ]
+    try:
+        if flag:
+            os.environ["FLAGS_record_alloc_event"] = 'True'
+            paddle.set_flags({"FLAGS_record_alloc_event": True})
+        else:
+            os.environ["FLAGS_record_alloc_event"] = 'False'
+            paddle.set_flags({"FLAGS_record_alloc_event": False})
+        yield
+    finally:
+        if tmp_env is None:
+            del os.environ["FLAGS_record_alloc_event"]
+        else:
+            os.environ["FLAGS_record_alloc_event"] = tmp_env
+        paddle.set_flags({"FLAGS_record_alloc_event": tmp_cpp})

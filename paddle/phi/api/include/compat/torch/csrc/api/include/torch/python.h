@@ -22,8 +22,29 @@
 #include <ATen/ops/empty_strided.h>
 #include <c10/util/Exception.h>
 #include <torch/types.h>
+#include <utils/scalar_type_conversion.h>
 
 #if !defined(PADDLE_ON_INFERENCE) && !defined(PADDLE_NO_PYTHON)
 // Python bindings for the C++ frontend (includes Python.h)
 #include "paddle/utils/pybind.h"
 #endif
+
+namespace torch::python {
+namespace detail {
+
+inline Dtype py_object_to_dtype(py::object object) {
+  PyObject* obj = object.ptr();
+  return *reinterpret_cast<Dtype*>(obj);
+}
+
+inline PyObject* getTHPDtype(c10::ScalarType dtype) {
+  return paddle::pybind::ToPyObject(
+      compat::_PD_AtenScalarTypeToPhiDataType(dtype));
+}
+
+}  // namespace detail
+}  // namespace torch::python
+
+namespace torch {
+using torch::python::detail::getTHPDtype;
+}  // namespace torch

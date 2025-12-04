@@ -235,7 +235,7 @@ __inline__ __device__ T PartialBlockMin(T val,
 
   if (threadIdx.x < threshold) {
     shared_last_idx = (threshold >> 5) - 1;
-    val = phi::funcs::WarpReduceMin(val, mask);
+    val = funcs::WarpReduceMin(val, mask);
     if (lane == 0) {
       shared[wid] = val;
     }
@@ -250,7 +250,7 @@ __inline__ __device__ T PartialBlockMin(T val,
   if (threadIdx.x < threshold) {
     val = (lane <= shared_last_idx) ? shared[lane]
                                     : std::numeric_limits<T>::max();
-    val = phi::funcs::WarpReduceMin(val, mask);
+    val = funcs::WarpReduceMin(val, mask);
     shared_last_val = val;
   }
   __syncthreads();
@@ -316,13 +316,13 @@ __global__ void KeBilinearInterpBwShareMemory(T* in,
     s_data[1][threadIdx.x] = static_cast<MT>(0);
     int64_t remain = nthreads - (tid & (-static_cast<int64_t>(blockDim.x)));
     int64_t in_top_max_index =
-        phi::funcs::BlockReduceMax(top_right_index, FINAL_MASK);
+        funcs::BlockReduceMax(top_right_index, FINAL_MASK);
     int64_t in_bot_max_index =
-        phi::funcs::BlockReduceMax(bot_right_index, FINAL_MASK);
+        funcs::BlockReduceMax(bot_right_index, FINAL_MASK);
 
     if (remain > blockDim.x) {
-      in_top_min_index = phi::funcs::BlockReduceMin(input_index, FINAL_MASK);
-      in_bot_min_index = phi::funcs::BlockReduceMin(bot_left_index, FINAL_MASK);
+      in_top_min_index = funcs::BlockReduceMin(input_index, FINAL_MASK);
+      in_bot_min_index = funcs::BlockReduceMin(bot_left_index, FINAL_MASK);
     } else {
       in_top_min_index = PartialBlockMin(input_index, remain, FINAL_MASK);
       in_bot_min_index = PartialBlockMin(bot_left_index, remain, FINAL_MASK);
@@ -1126,7 +1126,7 @@ static void Interpolate1DCUDABwd(
   }
 
   auto* output_grad_data = output_grad.data<T>();
-  phi::DDim dim_grad;
+  DDim dim_grad;
   if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_w};
   } else {
@@ -1135,7 +1135,7 @@ static void Interpolate1DCUDABwd(
   input_grad->Resize(dim_grad);
   auto* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
 
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_w == out_w) {
@@ -1265,7 +1265,7 @@ static void Interpolate2DCUDABwd(
   }
 
   auto* output_grad_data = output_grad.data<T>();
-  phi::DDim dim_grad;
+  DDim dim_grad;
   if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_h, in_w};
   } else {
@@ -1273,7 +1273,7 @@ static void Interpolate2DCUDABwd(
   }
   input_grad->Resize(dim_grad);
   auto* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_h == out_h && in_w == out_w) {
@@ -1535,7 +1535,7 @@ static void InterpolateAA2DCUDABwd(
   }
 
   auto* output_grad_data = output_grad.data<T>();
-  phi::DDim dim_grad;
+  DDim dim_grad;
   if (data_layout == DataLayout::kNCHW) {
     dim_grad = {n, c, in_h, in_w};
   } else {
@@ -1543,7 +1543,7 @@ static void InterpolateAA2DCUDABwd(
   }
   input_grad->Resize(dim_grad);
   auto* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_h == out_h && in_w == out_w) {
@@ -1795,7 +1795,7 @@ static void Interpolate3DCUDABwd(
   }
 
   auto* output_grad_data = output_grad.data<T>();
-  phi::DDim dim_grad;
+  DDim dim_grad;
   if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_d, in_h, in_w};
   } else {
@@ -1803,7 +1803,7 @@ static void Interpolate3DCUDABwd(
   }
   input_grad->Resize(dim_grad);
   auto* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_d == out_d && in_h == out_h && in_w == out_w) {

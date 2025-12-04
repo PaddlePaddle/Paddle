@@ -13,17 +13,16 @@
 // limitations under the License.
 
 #include "paddle/phi/core/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
-
 #include <algorithm>
 #include <mutex>
+#include "glog/logging.h"
 #include "paddle/common/flags.h"
-
 #include "paddle/phi/core/memory/allocation/aligned_allocator.h"
 #include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator.h"
 
 PHI_DEFINE_EXPORTED_uint64(
     vmm_small_pool_size_in_mb,
-    0,
+    1,
     "Threshold (MiB) separating the small and large pools. "
     "0 disables the small pool and enables single-pool mode "
     "(all requests go to the large pool). When > 0, requests "

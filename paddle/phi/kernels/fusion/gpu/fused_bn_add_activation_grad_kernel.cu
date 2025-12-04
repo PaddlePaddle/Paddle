@@ -72,7 +72,7 @@ void FusedBatchNormAddActGradKernel(const Context &dev_ctx,
   const auto &in_dims = x_ptr->dims();
 
   int N, C, H, W, D;
-  const DataLayout data_layout = DataLayout::kNHWC;
+  const DataLayout data_layout = DataLayout::NHWC;
   phi::funcs::ExtractNCWHD(in_dims, data_layout, &N, &C, &H, &W, &D);
 
   // init output

@@ -49,7 +49,7 @@ void BCELossGradKernel(const Context& dev_ctx,
   std::vector<const DenseTensor*> ins = {&input, &label, &out_grad};
   std::vector<DenseTensor*> outs = {input_grad};
   auto functor = BCELossGradFunctor<T>();
-  phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+  funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
 }
 
 }  // namespace phi

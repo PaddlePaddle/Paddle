@@ -67,7 +67,7 @@ void MvGradKernel(const Context &dev_ctx,
   const T *vec_data = vec.data<T>();
   const T *dout_data = dout.data<T>();
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   auto stream = dev_ctx.stream();
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, m * n);
 
