@@ -629,7 +629,7 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.42364895, -0.20273255,  0.10033534,  0.30951962])
-"""
+""",
     """
 def atanh(
     x: Tensor,

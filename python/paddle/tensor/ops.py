@@ -20,6 +20,7 @@ from paddle._C_ops import (  # noqa: F401
     acos,
     acosh,
     asin,
+    atanh,
     ceil,
     cos,
     cosh,
