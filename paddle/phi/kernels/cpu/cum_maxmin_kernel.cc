@@ -37,7 +37,7 @@ bool isnan_(T x) {
 #endif
 
 template <typename T>
-T compute_stride(T axis, phi::DDim dims) {
+T compute_stride(T axis, DDim dims) {
   T size = 1;
   for (T i = axis + 1; i < dims.size(); i++) {
     size *= dims[i];
