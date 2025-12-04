@@ -23,7 +23,7 @@ import paddle.distributed as dist
 from paddle import framework, nn
 from paddle.autograd import PyLayer
 from paddle.base.framework import EagerParamBase
-from paddle.distributed import collective
+from paddle.distributed import collective, fleet
 from paddle.framework import core
 from paddle.nn import ClipGradByGlobalNorm
 
@@ -82,35 +82,6 @@ global CHECK_LAYER
 CHECK_LAYER = {}  # Help to check layer's id -> layer's name
 
 
-# for test
-class FullyShardOptimizerStage1:
-    def __init__(
-        self,
-        optimizer,
-    ):
-        from paddle.distributed import fleet
-        from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
-            DygraphShardingOptimizerV2,
-        )
-
-        hcg = fleet.fleet._hcg
-        self.optimizer = optimizer
-        self.shard_opt = DygraphShardingOptimizerV2(optimizer, hcg)
-        self.optimizer.reduce_gradients = self.shard_opt.reduce_gradients
-        self.optimizer._hcg = self.shard_opt._hcg
-        # Redefine optimizer step and clear function
-        self._redefine_opt_step()
-        self._redefine_opt_clear()
-
-    def _redefine_opt_step(self):
-        self.optimizer.step = MethodType(self.shard_opt.step, self.optimizer)
-
-    def _redefine_opt_clear(self):
-        self.optimizer.clear_grad = MethodType(
-            self.shard_opt.clear_grad, self.optimizer
-        )
-
-
 class FullyShardOptimizer:
     def __init__(
         self,
@@ -144,6 +115,8 @@ class FullyShardOptimizer:
         global param2dtype
         param2dtype = {}
 
+        hcg = fleet.get_hybrid_communicate_group()
+        group = hcg.get_sharding_parallel_group()
         # Communication group establishment
         self._group = (
             collective.new_group(collective._get_global_group().ranks)
@@ -161,10 +134,6 @@ class FullyShardOptimizer:
         ]  # picking ranks index 0 as the reference
 
         # Parameter segmentation for global ranks
-        # After flatten -> self._param2buffer_size, self._param2buffer, self._trainable_params
-        self._param2buffer_size = {}  # {param.name: size}
-        self._param2buffer = {}  # {param.name: [(start0, end0),(start1, end1), ...]}
-        self._trainable_params = {}  # {id(layer): [trainable_params]}
         self._unslice_params = OrderedSet()  # param's numel <= segment_size
         self._unslice_params2align = {}  # {param.name: param's align}
         self._grad_storages = {}  # {param.dtype: GradStorage}
@@ -211,14 +180,6 @@ class FullyShardOptimizer:
 
         # Add unslice params to master_weight in fp16
         self._handle_unslice_params()
-
-        # In the first step, record the execution order of the layer
-        self._order_tracer = OrderedDict()
-        self._order_tracer["order"] = 0
-        self._order_tracer["layer"] = []
-
-        # Register task flow
-        self._task_flow = TaskFlow()
 
         # Redefine optimizer step and clear function
         self._redefine_opt_step()
@@ -535,12 +496,9 @@ class FullyShard(nn.Layer):
         global param2dtype
         param2dtype = {}
 
-        # Communication group establishment
-        from paddle.distributed import fleet
-
         hcg = fleet.get_hybrid_communicate_group()
         group = hcg.get_sharding_parallel_group()
-        print("lzx debug gggoup:", group)
+
         self._group = (
             collective.new_group(collective._get_global_group().ranks)
             if group is None
@@ -566,8 +524,8 @@ class FullyShard(nn.Layer):
         self._grad_storages = {}  # {param.dtype: GradStorage}
 
         self._ori_parameter_list = self._layer.parameters()
-        # self._ori_param_groups = self._optim._param_groups
-
+        for param in self._ori_parameter_list:
+            param._need_shard = True
         # check main_grad
         self._check_main_grad()
 

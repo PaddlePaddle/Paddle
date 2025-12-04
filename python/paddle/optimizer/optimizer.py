@@ -1015,10 +1015,7 @@ class Optimizer:
         Returns:
             None
         """
-        if not isinstance(parameters_and_grads, list):
-            parameters_and_grads = parameters_and_grads['params']
-        for p, _ in parameters_and_grads:
-            p.main_grad = None
+        pass
 
     def _add_accumulator(
         self,
@@ -1326,59 +1323,24 @@ class Optimizer:
 
             if isinstance(parameters_and_grads, list):
                 with paddle.base.framework.dygraph_guard_if_declarative():
+                    _need_shard = False
                     for param, _ in parameters_and_grads:
-                        if (
-                            hasattr(param, '_need_shard')
-                            and not param.stop_gradient
-                        ):
-                            del param._need_shard
-                            self._create_accumulators(
-                                target_block,
-                                [param],
-                            )
-                            target_name = param.name
-                            if param.name in self._master_weights.keys():
-                                master_weight = self._master_weights[param.name]
-                                target_name = master_weight.name
-                            for key in self._accumulators.keys():
-                                accumulator = self._accumulators[key][
-                                    target_name
-                                ]
-                                if accumulator.is_dist():
-                                    continue
-                                origin_accumulator_name = accumulator.name
-                                import paddle.distributed as dist
-
-                                if 'beta' not in key:
-                                    placements = param.placements
-                                else:
-                                    placements = [
-                                        dist.Replicate()
-                                        for _ in range(
-                                            len(param.process_mesh.shape)
-                                        )
-                                    ]
-                                self._accumulators[key][target_name] = (
-                                    dist.shard_tensor(
-                                        accumulator,
-                                        mesh=param.process_mesh,
-                                        placements=placements,
-                                    )
-                                )
-                                self._accumulators[key][
-                                    target_name
-                                ].name = origin_accumulator_name
-                        else:
+                        if hasattr(param, '_need_shard'):
+                            _need_shard = True
                             break
-
-                    self._create_accumulators(
-                        target_block,
-                        [
-                            p[0]
-                            for p in parameters_and_grads
-                            if not p[0].stop_gradient
-                        ],
-                    )
+                    if _need_shard:
+                        paddle.distributed.auto_parallel.fully_shard.shard_accumulators(
+                            parameters_and_grads, self, target_block
+                        )
+                    else:
+                        self._create_accumulators(
+                            target_block,
+                            [
+                                p[0]
+                                for p in parameters_and_grads
+                                if not p[0].stop_gradient
+                            ],
+                        )
             else:
                 params_acc_dict = parameters_and_grads.copy()
                 params_acc_dict['params'] = [
