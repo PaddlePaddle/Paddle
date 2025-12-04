@@ -3294,7 +3294,6 @@ def asin(
 """,
 )
 
-
 add_doc_and_signature(
     "allclose",
     r"""
@@ -3407,6 +3406,51 @@ def baddbmm(
     beta: float = 1.0,
     alpha: float = 1.0,
     out_dtype: paddle.dtype | None = None,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "bitwise_and",
+    r"""
+    Apply ``bitwise_and`` on Tensor ``x`` and ``y`` .
+    .. math::
+        Out = X \& Y
+    Note:
+        ``paddle.bitwise_and`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+    Args:
+        x (Tensor): Input Tensor of ``bitwise_and`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+            Alias: ``input``.
+        y (Tensor): Input Tensor of ``bitwise_and`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+            Alias: ``other``.
+        out (Tensor|None, optional): Result of ``bitwise_and`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
+        name (str|None, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+    Returns:
+        Tensor: Result of ``bitwise_and`` . It is a N-D Tensor with the same data type of input Tensor.
+    Examples:
+        .. code-block:: python
+            >>> import paddle
+            >>> x = paddle.to_tensor([-5, -1, 1])
+            >>> y = paddle.to_tensor([4,  2, -3])
+            >>> res = paddle.bitwise_and(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 2, 1])
+            >>> # using alias 'input' and 'other'
+            >>> res = paddle.bitwise_and(input=x, other=y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 2, 1])
+    """,
+    """
+def bitwise_and(
+    x: Tensor,
+    y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
