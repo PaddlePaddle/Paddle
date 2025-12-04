@@ -632,6 +632,8 @@ class Testfp16TileOp(unittest.TestCase):
             exe = paddle.static.Executor(place)
             exe.run(paddle.static.default_startup_program())
             out = exe.run(feed={'x': input_x}, fetch_list=[out])
+
+
 # Test alias for 'input' and 'dims'
 class TestTileAlias(unittest.TestCase):
     def test_alias(self):
