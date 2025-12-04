@@ -14,10 +14,9 @@
 
 #include "paddle/extension.h"
 
-#define CHECK_INPUT(x)                                    \
-  PADDLE_ENFORCE_EQ(x.place() == paddle::PlaceType::kCPU, \
-                    true,                                 \
-                    common::errors::Fatal(#x " must be a CPU Tensor."))
+#define CHECK_INPUT(x) \
+  PADDLE_ENFORCE_EQ(   \
+      x.is_cpu(), true, common::errors::Fatal(#x " must be a CPU Tensor."))
 
 template <typename data_t>
 void leaky_relu_cpu_forward_kernel(const data_t* x_data,
@@ -54,7 +53,7 @@ std::vector<paddle::Tensor> LeakyReluCPUForward(const paddle::Tensor& x,
                                                 float alpha) {
   CHECK_INPUT(x);
 
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
+  auto out = paddle::Tensor(x);
 
   PD_DISPATCH_FLOATING_TYPES(x.type(), "relu_cpu_forward_kernel", ([&] {
                                leaky_relu_cpu_forward_kernel<data_t>(
@@ -75,7 +74,7 @@ std::vector<paddle::Tensor> LeakyReluCPUBackward(const paddle::Tensor& x,
   CHECK_INPUT(out);
   CHECK_INPUT(grad_out);
 
-  auto grad_x = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
+  auto grad_x = paddle::Tensor(x);
 
   PD_DISPATCH_FLOATING_TYPES(out.type(), "relu_cpu_backward_kernel", ([&] {
                                leaky_relu_cpu_backward_kernel<data_t>(

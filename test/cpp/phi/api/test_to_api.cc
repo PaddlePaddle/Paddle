@@ -92,21 +92,5 @@ TEST(Tensor, copy_to) {
   CheckOutputResult(out);
 }
 
-TEST(Tensor, old_copy_to) {
-  // 1. create tensor
-  auto x = CreateInputTensor();
-
-// 2. test API
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto tmp = x.copy_to<int64_t>(paddle::PlaceType::kGPU);
-  auto out = tmp.copy_to<int64_t>(paddle::PlaceType::kCPU);
-#else
-  auto out = x.copy_to<int64_t>(paddle::PlaceType::kCPU);
-#endif
-
-  // 3. check result
-  CheckOutputResult(out);
-}
-
 }  // namespace tests
 }  // namespace paddle

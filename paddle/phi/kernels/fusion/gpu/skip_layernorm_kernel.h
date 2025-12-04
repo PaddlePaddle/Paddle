@@ -12,28 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/fused_softmax_mask_grad_kernel.h"
+#pragma once
+
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/softmax_grad_kernel.h"
 
 namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void FusedSoftmaxMaskGradKernel(const Context& dev_ctx,
-                                const DenseTensor& out,
-                                const DenseTensor& out_grad,
-                                DenseTensor* x_grad) {
-  dev_ctx.template Alloc<T>(x_grad);
-  SoftmaxGradKernel<T, Context>(
-      dev_ctx, out, out_grad, 3, x_grad);  // axis for softmax
-}
+void SkipLayerNormKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& y,
+                         const DenseTensor& scale,
+                         const DenseTensor& bias,
+                         const float epsilon,
+                         const int begin_norm_axis,
+                         DenseTensor* out);
 
 }  // namespace fusion
 }  // namespace phi
-
-PD_REGISTER_KERNEL(fused_softmax_mask_grad,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::fusion::FusedSoftmaxMaskGradKernel,
-                   float) {}

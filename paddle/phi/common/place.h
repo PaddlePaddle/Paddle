@@ -269,6 +269,7 @@ The historical PlaceType using:
 - auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
 
 */
+// Change to not use PlaceType, please do not use paddle::PlaceType anymore.
 enum class PlaceType {
   kUNK = static_cast<int>(phi::AllocationType::UNDEFINED),
   kCPU = static_cast<int>(phi::AllocationType::CPU),
