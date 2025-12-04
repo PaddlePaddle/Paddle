@@ -1754,7 +1754,7 @@ void SaveStringToFileWithPID(const std::string& filename,
 
 void SavePythonCallStackToFile(const std::string& file_name,
                                const std::string& api_name) {
-  SaveStringToFileWithPID(
+  SaveStringToFile(
       file_name,
       api_name + " : \n" + egr::Controller::Instance().GetPythonStack(),
       "append");

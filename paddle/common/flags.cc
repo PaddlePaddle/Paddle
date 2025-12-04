@@ -760,6 +760,18 @@ PHI_DEFINE_EXPORTED_string(
     dump_api_python_stack_path,
     "",
     "Dump api forward python call stack to the dir path");
+/**
+ * Debug related FLAG
+ * Name: dump_api_and_gradnode_python_stack_dir
+ * Since Version: 3.3
+ * Value Range: string, default=""
+ * Example:
+ * Note: Dump api and gradnode forward python call stack to the dir path.
+ */
+PHI_DEFINE_EXPORTED_string(
+    dump_api_and_gradnode_python_stack_dir,
+    "",
+    "Dump api and gradnode forward python call stack to the dir path");
 
 /**
  * Debug related FLAG
