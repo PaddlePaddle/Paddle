@@ -266,6 +266,8 @@ class TestFlashMaskAttentionAPI(unittest.TestCase):
 
         startend_row_indices = self.get_flashmask()
         mask = self.get_densemask()
+        # Note(xhy): ci no supports test on sm90 and blockmask only supports sm >= sm90
+        blockmask = None
         out = flashmask_attention(
             q,
             k,
@@ -273,6 +275,7 @@ class TestFlashMaskAttentionAPI(unittest.TestCase):
             startend_row_indices=startend_row_indices,
             dropout=self.dropout,
             causal=self.causal,
+            block_mask=blockmask,
         )
         out_ = attention_naive_with_mask(q_, k_, v_, mask)
         out.backward(ograd)

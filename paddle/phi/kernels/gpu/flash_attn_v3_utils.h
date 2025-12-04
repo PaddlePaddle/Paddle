@@ -68,7 +68,7 @@ inline int get_max_headdim() {
   return 0;
 }
 
-inline int flashmaskv2_get_max_headdim() { return 128; }
+inline int flashmaskv2_get_max_headdim() { return 256; }
 
 inline int round_up_headdim(int head_size) {
 #ifndef FLASHATTENTION_DISABLE_HDIM64
