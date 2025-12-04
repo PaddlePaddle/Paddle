@@ -813,7 +813,7 @@ def unique(
 
     Args:
         input(Tensor): The input tensor, it's data type should be float32, float64, int32, int64.
-        sorted(bool, optional): Does not affect the return result, used for compatibility.
+        sorted(bool, optional): Does not affect the return result, same as PyTorch.
         return_inverse(bool, optional): If True, also return the indices for where elements in
             the original input ended up in the returned unique tensor.
         return_counts(bool, optional): If True, also return the counts for each unique element.
