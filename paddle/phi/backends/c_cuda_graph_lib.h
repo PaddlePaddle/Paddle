@@ -11,15 +11,32 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-// paddle/fluid/pybind/size.h
 #pragma once
-#include "pybind11/pybind11.h"
+#include <functional>
+#include <vector>
 
-namespace paddle::pybind {
-extern PyTypeObject Paddle_SizeType;
+namespace phi {
+namespace graph {
+typedef void* CUDAGraph_t;
+typedef void* CUDAGraphExec_t;
+typedef void* CUDAGraphNode_t;
+typedef void* CUDAKernelNodeParams_t;
 
-void BindSize(pybind11::module* m);
-PyObject* Paddle_Size_NewFromInt64Array(const int64_t* data, Py_ssize_t len);
+typedef struct {
+  std::vector<std::function<void(CUDAGraphExec_t)>> hooks;
+} GraphHookManager;
 
-}  // namespace paddle::pybind
+enum streamCaptureMode {
+  StreamCaptureModeGlobal = 0,
+  StreamCaptureModeThreadLocal,
+  StreamCaptureModeRelaxed
+};
+
+enum streamCaptureStatus {
+  StreamCaptureStatusNone = 0,
+  StreamCaptureStatusActive,
+  StreamCaptureStatusInvalidated
+};
+
+}  // namespace graph
+}  // namespace phi

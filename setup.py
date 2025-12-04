@@ -1688,10 +1688,22 @@ def get_package_data_and_package_dir():
             package_data['paddle.libs'] += ['float8e4m3.h']
 
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
-            command = (
-                f"patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_nvrtc/lib/:$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cublas/lib/:$ORIGIN/../../nvidia/cudnn/lib/:$ORIGIN/../../nvidia/curand/lib/:$ORIGIN/../../nvidia/cusolver/lib/:$ORIGIN/../../nvidia/nvtx/lib/:$ORIGIN/' {libs_path}/"
-                + env_dict.get("CINN_LIB_NAME")
-            )
+            if (
+                env_dict.get("WITH_GPU") == 'ON'
+                and tuple(map(int, env_dict.get("CUDA_VERSION").split('.')))
+                >= (13, 0)
+                and tuple(map(int, env_dict.get("CUDA_VERSION").split('.')))
+                < (14, 0)
+            ):
+                command = (
+                    f"patchelf --set-rpath '$ORIGIN/../../nvidia/cu13/lib/:$ORIGIN/../../nvidia/cudnn/lib/:$ORIGIN/' {libs_path}/"
+                    + env_dict.get("CINN_LIB_NAME")
+                )
+            else:
+                command = (
+                    f"patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_nvrtc/lib/:$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cublas/lib/:$ORIGIN/../../nvidia/cudnn/lib/:$ORIGIN/../../nvidia/curand/lib/:$ORIGIN/../../nvidia/cusolver/lib/:$ORIGIN/../../nvidia/nvtx/lib/:$ORIGIN/' {libs_path}/"
+                    + env_dict.get("CINN_LIB_NAME")
+                )
             if os.system(command) != 0:
                 raise Exception(
                     'patch '
@@ -1878,36 +1890,74 @@ def get_package_data_and_package_dir():
                         + env_dict.get("IR_NAME")
                     )
             else:
-                commands = [
-                    "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cuda_nvrtc/lib:$ORIGIN/../../nvidia/cublas/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/curand/lib:$ORIGIN/../../nvidia/cusparse/lib:$ORIGIN/../../nvidia/nvjitlink/lib:$ORIGIN/../../nvidia/cuda_cupti/lib:$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cusolver/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/nvtx/lib:$ORIGIN/../libs/' "
-                    + env_dict.get("PADDLE_BINARY_DIR")
-                    + '/python/paddle/base/'
-                    + env_dict.get("FLUID_CORE_NAME")
-                    + '.so'
-                ]
-                if env_dict.get("WITH_SHARED_PHI") == "ON":
-                    commands.append(
-                        "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' "
+                if (
+                    env_dict.get("WITH_GPU") == 'ON'
+                    and tuple(map(int, env_dict.get("CUDA_VERSION").split('.')))
+                    >= (13, 0)
+                    and tuple(map(int, env_dict.get("CUDA_VERSION").split('.')))
+                    < (14, 0)
+                ):
+                    commands = [
+                        "patchelf --set-rpath '$ORIGIN/../../nvidia/cu13/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/cusparselt/lib:$ORIGIN/../libs/' "
                         + env_dict.get("PADDLE_BINARY_DIR")
-                        + '/python/paddle/libs/'
-                        + env_dict.get("PHI_NAME")
-                    )
-                    commands.append(
-                        "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' "
+                        + '/python/paddle/base/'
+                        + env_dict.get("FLUID_CORE_NAME")
+                        + '.so'
+                    ]
+                    if env_dict.get("WITH_SHARED_PHI") == "ON":
+                        commands.append(
+                            "patchelf --set-rpath '$ORIGIN/../../nvidia/cu13/lib:$ORIGIN:$ORIGIN/../libs' "
+                            + env_dict.get("PADDLE_BINARY_DIR")
+                            + '/python/paddle/libs/'
+                            + env_dict.get("PHI_NAME")
+                        )
+                        commands.append(
+                            "patchelf --set-rpath '$ORIGIN/../../nvidia/cu13/lib:$ORIGIN:$ORIGIN/../libs' "
+                            + env_dict.get("PADDLE_BINARY_DIR")
+                            + '/python/paddle/libs/'
+                            + env_dict.get("PHI_CORE_NAME")
+                        )
+                        if (
+                            env_dict.get("WITH_GPU") == "ON"
+                            or env_dict.get("WITH_ROCM") == "ON"
+                        ):
+                            commands.append(
+                                "patchelf --set-rpath '$ORIGIN/../../nvidia/cu13/lib:$ORIGIN:$ORIGIN/../libs' "
+                                + env_dict.get("PADDLE_BINARY_DIR")
+                                + '/python/paddle/libs/'
+                                + env_dict.get("PHI_GPU_NAME")
+                            )
+                else:
+                    commands = [
+                        "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cuda_nvrtc/lib:$ORIGIN/../../nvidia/cublas/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/curand/lib:$ORIGIN/../../nvidia/cusparse/lib:$ORIGIN/../../nvidia/nvjitlink/lib:$ORIGIN/../../nvidia/cuda_cupti/lib:$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cusolver/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/nvtx/lib:$ORIGIN/../libs/' "
                         + env_dict.get("PADDLE_BINARY_DIR")
-                        + '/python/paddle/libs/'
-                        + env_dict.get("PHI_CORE_NAME")
-                    )
-                    if (
-                        env_dict.get("WITH_GPU") == "ON"
-                        or env_dict.get("WITH_ROCM") == "ON"
-                    ):
+                        + '/python/paddle/base/'
+                        + env_dict.get("FLUID_CORE_NAME")
+                        + '.so'
+                    ]
+                    if env_dict.get("WITH_SHARED_PHI") == "ON":
                         commands.append(
                             "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' "
                             + env_dict.get("PADDLE_BINARY_DIR")
                             + '/python/paddle/libs/'
-                            + env_dict.get("PHI_GPU_NAME")
+                            + env_dict.get("PHI_NAME")
                         )
+                        commands.append(
+                            "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' "
+                            + env_dict.get("PADDLE_BINARY_DIR")
+                            + '/python/paddle/libs/'
+                            + env_dict.get("PHI_CORE_NAME")
+                        )
+                        if (
+                            env_dict.get("WITH_GPU") == "ON"
+                            or env_dict.get("WITH_ROCM") == "ON"
+                        ):
+                            commands.append(
+                                "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' "
+                                + env_dict.get("PADDLE_BINARY_DIR")
+                                + '/python/paddle/libs/'
+                                + env_dict.get("PHI_GPU_NAME")
+                            )
 
                 if env_dict.get("WITH_SHARED_IR") == "ON":
                     commands.append(

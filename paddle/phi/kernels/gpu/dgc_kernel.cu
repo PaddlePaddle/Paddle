@@ -179,10 +179,10 @@ void DGCKernel(const Context& dev_ctx,
   T* v_out_data = dev_ctx.template Alloc<T>(v_out);
   T* u_out_data = dev_ctx.template Alloc<T>(u_out);
 
-  encode_grad_out->Resize(phi::DDim{2 * k});
+  encode_grad_out->Resize(DDim{2 * k});
   T* encode_grad_out_data = dev_ctx.template Alloc<T>(encode_grad_out);
 
-  gather_buff->Resize(phi::DDim{2 * k * nranks});
+  gather_buff->Resize(DDim{2 * k * nranks});
   dev_ctx.template Alloc<T>(gather_buff);
 
   int buf_size = paddle::communication::dgc::get_buffer_size(k);
