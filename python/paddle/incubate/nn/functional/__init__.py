@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .batched_gemm import batched_gemm
 from .blha_get_max_len import blha_get_max_len
 from .block_multihead_attention import (
     block_multihead_attention,

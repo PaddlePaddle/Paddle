@@ -1367,7 +1367,7 @@ static void InterpolateAA2DCUDAFwd(
                           shmem_size,
                           gpu_props.sharedMemPerBlock));
 
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       KeInterpAAFwNCHW<T>
           <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_data,
                                                           in_h,
@@ -1433,7 +1433,7 @@ static void InterpolateAA2DCUDAFwd(
                           shmem_size,
                           gpu_props.sharedMemPerBlock));
 
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       KeInterpAAFwNCHW<T>
           <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_data,
                                                           in_h,

@@ -89,13 +89,11 @@ class SDPParams:
     key_shape: paddle.Size
     value_shape: paddle.Size
     attn_mask_shape: paddle.Size | None
-    attn_strides: list[int] | None
     dropout: float
     is_causal: bool
     scale: float | None
     query_stop_gradient: bool
     dtype: tuple[dtype, dtype, dtype]
-    strides: tuple[list[int], list[int], list[int]]
     place: tuple[Place, Place, Place]
 
     @cached_property
@@ -580,12 +578,10 @@ def scaled_dot_product_attention(
         key_shape=key.shape,
         value_shape=value.shape,
         attn_mask_shape=attn_mask.shape if attn_mask is not None else None,
-        attn_strides=attn_mask.stride() if attn_mask is not None else None,
         dropout=dropout_p,
         is_causal=is_causal,
         scale=scale,
         query_stop_gradient=query.stop_gradient,
-        strides=(query.stride(), key.stride(), value.stride()),
         dtype=(query.dtype, key.dtype, value.dtype),
         place=qkv_place,
     )
