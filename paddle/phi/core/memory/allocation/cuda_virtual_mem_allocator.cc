@@ -19,6 +19,8 @@
 
 #include <string>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator.h"
 

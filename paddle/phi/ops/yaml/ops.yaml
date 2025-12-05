@@ -5986,6 +5986,15 @@
   output : Tensor(out)
   invoke : full_like(x, 0, dtype, place)
 
+- op: batched_gemm
+  args: (Tensor lhs, Tensor rhs, int64_t[] batch_sizes)
+  output: Tensor(output)
+  infer_meta:
+    func: BatchedGemmInferMeta
+  kernel:
+   func: batched_gemm
+   data_type: lhs
+
 - op: chunk_eval
   args: (Tensor inference, Tensor label, Tensor seq_length, int num_chunk_types, str
     chunk_scheme = "IOB", int[] excluded_chunk_types = {})

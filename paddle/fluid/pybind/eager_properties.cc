@@ -305,7 +305,6 @@ int tensor_properties_set_grad(TensorObject* self,
                                PyObject* value,
                                void* closure) {
   EAGER_TRY
-  auto& src = CastPyArg2Tensor(value, 0);
   PADDLE_ENFORCE(egr::EagerUtils::IsLeafTensor(self->tensor),
                  common::errors::Fatal("Only leaf Tensor can be set grad."));
 
@@ -315,7 +314,41 @@ int tensor_properties_set_grad(TensorObject* self,
       common::errors::Fatal("Detected NULL grad. "
                             "Please check if you have manually cleared "
                             "the grad inside autograd_meta"));
+
+  if (value == Py_None) {
+    if (grad->impl()) {
+      eager_gil_scoped_release guard;
+      if (grad->is_selected_rows()) {
+        VLOG(4) << "Gradient of " << self->tensor.name()
+                << " is SelectedRows, will be cleared.";
+        auto selected_rows =
+            std::dynamic_pointer_cast<phi::SelectedRows>(grad->impl());
+        if (selected_rows->mutable_value()->IsInitialized()) {
+          selected_rows->mutable_rows()->clear();
+          selected_rows->mutable_value()->clear();
+        }
+      } else if (grad->is_dense_tensor() || grad->is_dist_tensor()) {
+        if (grad->initialized()) {
+          phi::DenseTensor* grad_t = nullptr;
+          if (grad->is_dense_tensor()) {
+            grad_t = static_cast<phi::DenseTensor*>(grad->impl().get());
+            VLOG(4) << "Gradient of " << self->tensor.name()
+                    << " is DenseTensor, will be cleared.";
+          } else {
+            grad_t =
+                static_cast<phi::distributed::DistTensor*>(grad->impl().get())
+                    ->unsafe_mutable_value();
+          }
+          VLOG(4) << "Gradient of " << self->tensor.name()
+                  << " is initialized, will be released.";
+          grad_t->MoveMemoryHolder();
+        }
+      }
+    }
+    return 0;
+  }
   const phi::distributed::ProcessMesh* mesh = nullptr;
+  auto& src = CastPyArg2Tensor(value, 0);
   if (InputsContainDistTensor(&mesh, src, self->tensor, *grad)) {
     ConvertAllInputsToDistTensor(mesh, src, self->tensor, *grad);
   }

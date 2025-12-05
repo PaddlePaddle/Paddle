@@ -166,6 +166,7 @@ class TestFFTAliasBase(unittest.TestCase):
                     atol=1e-08,
                     err_msg=f"Static graph mismatch (Alias Args) for {self.paddle_api.__name__} on {place}",
                 )
+        paddle.disable_static()
 
 
 class TestFFT_Alias(TestFFTAliasBase):
@@ -360,6 +361,67 @@ class TestIFFTShift_Alias(TestFFTAliasBase):
         self.is_real_input = False
         self.is_nd_or_shift = True
         self.test_dim_val = (0, 1)
+
+
+class TestFftfreq(unittest.TestCase):
+    def test_basic_usage(self):
+        result = paddle.fft.fftfreq(n=10, d=1.0)
+        self.assertEqual(result.shape, [10])
+
+        expected = paddle.to_tensor(
+            [0.0, 0.1, 0.2, 0.3, 0.4, -0.5, -0.4, -0.3, -0.2, -0.1],
+            dtype='float32',
+        )
+        self.assertTrue(paddle.allclose(result, expected))
+
+    def test_all_parameters(self):
+        out = paddle.zeros([10], dtype='float32')
+
+        result = paddle.fft.fftfreq(
+            n=10,
+            d=2.0,
+            dtype='float64',
+            out=out,
+            device='cpu',
+            requires_grad=True,
+        )
+
+        self.assertTrue(result.place.is_cpu_place())
+        self.assertFalse(result.stop_gradient)
+        self.assertEqual(result.dtype, paddle.float64)
+
+        expected = paddle.to_tensor(
+            [0.0, 0.05, 0.1, 0.15, 0.2, -0.25, -0.2, -0.15, -0.1, -0.05],
+            dtype='float64',
+        )
+        self.assertTrue(paddle.allclose(result, expected))
+
+
+class TestRfftfreq(unittest.TestCase):
+    def test_basic_usage(self):
+        result = paddle.fft.rfftfreq(n=10, d=1.0)
+        self.assertEqual(result.shape, [6])  # 1 + n//2 = 6
+
+        expected = paddle.arange(0, 6) * (1.0 / (10 * 1.0))
+        self.assertTrue(paddle.allclose(result, expected))
+
+    def test_all_parameters(self):
+        out = paddle.zeros([6], dtype='float32')
+
+        result = paddle.fft.rfftfreq(
+            n=10,
+            d=2.0,
+            dtype='float64',
+            out=out,
+            device='cpu',
+            requires_grad=True,
+        )
+        self.assertTrue(result.place.is_cpu_place())
+        self.assertFalse(result.stop_gradient)
+        self.assertEqual(result.dtype, paddle.float64)
+
+        expected = paddle.arange(0, 6, dtype='float64') * (1.0 / (10 * 2.0))
+        self.assertTrue(paddle.allclose(result, expected))
 
 
 if __name__ == "__main__":

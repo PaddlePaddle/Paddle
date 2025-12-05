@@ -99,7 +99,7 @@ void BincountCUDAInner(const Context& dev_ctx,
   int64_t input_numel = static_cast<int64_t>(input->numel());
 
   if (input_data == nullptr) {
-    phi::DDim out_dim{minlength};
+    DDim out_dim{minlength};
     output->Resize(out_dim);
     phi::Full<int64_t, Context>(
         dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
@@ -141,7 +141,7 @@ void BincountCUDAInner(const Context& dev_ctx,
       static_cast<int64_t>(input_min_max_cpu.data<InputT>()[1]) + 1L;
 
   output_size = std::max(output_size, minlength);
-  phi::DDim out_dim{output_size};
+  DDim out_dim{output_size};
   output->Resize(out_dim);
 
   bool has_weights = weights.is_initialized();

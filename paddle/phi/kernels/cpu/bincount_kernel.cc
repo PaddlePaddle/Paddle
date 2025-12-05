@@ -34,7 +34,7 @@ void BincountInner(const Context& dev_ctx,
   auto input_numel = input->numel();
 
   if (input_data == nullptr) {
-    phi::DDim out_dim{minlength};
+    DDim out_dim{minlength};
     output->Resize(out_dim);
     // Since minlength may >0 , so fill with 0.
     phi::Full<int64_t, Context>(
@@ -53,7 +53,7 @@ void BincountInner(const Context& dev_ctx,
                         1L;
   output_size = std::max(output_size, minlength);
 
-  phi::DDim out_dim{output_size};
+  DDim out_dim{output_size};
   output->Resize(out_dim);
 
   bool has_weights = weights.is_initialized();
