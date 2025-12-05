@@ -14,6 +14,7 @@
 
 #include "paddle/phi/core/platform/cuda_graph_with_memory_pool.h"
 
+#include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"

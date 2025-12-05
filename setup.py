@@ -2276,6 +2276,12 @@ def get_headers():
                 paddle_source_dir + '/paddle/fluid/pir/transforms',
             )
         )
+        + list(
+            find_files(
+                '*.h',
+                paddle_source_dir + 'paddle/fluid/distributed/collective',
+            )
+        )
     )
 
     jit_layer_headers = [
