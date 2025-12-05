@@ -379,7 +379,7 @@
   outputs :
     out : Out
   attrs :
-    {alpha : Alpha, beta : Beta}
+    {alpha : Alpha, beta : Beta, out_dtype : OutDtype}
   extra :
     attrs : [bool use_mkldnn = false, bool use_onednn = false]
 

@@ -144,6 +144,7 @@ void BaddbmmInferMeta(const MetaTensor& input,
                       const MetaTensor& y,
                       float beta,
                       float alpha,
+                      phi::DataType out_dtype,
                       MetaTensor* out) {
   auto input_dims = input.dims();
   auto x_dims = x.dims();
@@ -235,7 +236,12 @@ void BaddbmmInferMeta(const MetaTensor& input,
 
   out->set_dims(common::make_ddim(out_dims_array));
   out->share_lod(input);
-  out->set_dtype(input.dtype());
+  // Set output dtype based on out_dtype parameter
+  if (out_dtype != phi::DataType::UNDEFINED) {
+    out->set_dtype(out_dtype);
+  } else {
+    out->set_dtype(input.dtype());
+  }
 }
 
 void AffineChannelInferMeta(const MetaTensor& x,
