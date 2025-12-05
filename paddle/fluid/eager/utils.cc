@@ -1745,7 +1745,7 @@ const std::string FormatTensor(const paddle::Tensor& t) {
 
 void SaveStringToFileWithPID(const std::string& filename,
                              const std::string& content,
-                             const std::string& mode = "trunc") {
+                             const std::string& mode) {
   pid_t pid = getprocessid();
   // Create the new filename with PID suffix
   std::string newFilename = filename + "." + std::to_string(pid);
@@ -1754,7 +1754,7 @@ void SaveStringToFileWithPID(const std::string& filename,
 
 void SavePythonCallStackToFile(const std::string& file_name,
                                const std::string& api_name) {
-  SaveStringToFile(
+  SaveStringToFileWithPID(
       file_name,
       api_name + " : \n" + egr::Controller::Instance().GetPythonStack(),
       "append");
