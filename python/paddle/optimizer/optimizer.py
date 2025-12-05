@@ -1325,7 +1325,7 @@ class Optimizer:
                 with paddle.base.framework.dygraph_guard_if_declarative():
                     _need_shard = False
                     for param, _ in parameters_and_grads:
-                        if hasattr(param, '_need_shard'):
+                        if hasattr(param, '_need_shard_auto'):
                             _need_shard = True
                             break
                     if _need_shard:

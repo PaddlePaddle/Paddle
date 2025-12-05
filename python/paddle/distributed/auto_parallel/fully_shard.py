@@ -21,7 +21,7 @@ from paddle.distributed import fleet
 
 def shard_accumulators(parameters_and_grads, optimizer, target_block):
     for param, _ in parameters_and_grads:
-        del param._need_shard
+        del param._need_shard_auto
         optimizer._create_accumulators(
             target_block,
             [param],
@@ -84,7 +84,7 @@ class FullyShardAuto:
         self._shard_fn._set_sharding_axis(self._sharding_axis)
         self.model = model
         for param in self.model.parameters():
-            param._need_shard = True
+            param._need_shard_auto = True
         for param in self.model.parameters():
             self._shard_fn._shard_parameter(param)
         for param in self.model.parameters():

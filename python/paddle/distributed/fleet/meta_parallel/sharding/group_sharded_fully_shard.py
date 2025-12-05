@@ -179,7 +179,7 @@ class FullyShardOptimizer:
                         item["grad_clip"] = self._optim._grad_clip
 
         # Add unslice params to master_weight in fp16
-        self._handle_unslice_params()
+        self._setup_master_weights_for_unslice()
 
         # Redefine optimizer step and clear function
         self._redefine_opt_step()
@@ -195,11 +195,7 @@ class FullyShardOptimizer:
                     "Params have different main grad attributes."
                 )
 
-    def _handle_unslice_params(self):
-        buffer_size = {}
-        buffer_size[Type.bf16.value] = 0
-        buffer_size[Type.fp32.value] = 0
-        buffer_size[Type.fp16.value] = 0
+    def _setup_master_weights_for_unslice(self):
         for param in self._unslice_params:
             # Update optimizer master weights
             if (
@@ -208,30 +204,6 @@ class FullyShardOptimizer:
                 master_tensor = paddle.cast(param, Type.fp32.value)
                 master_tensor.name = param.name
                 self._optim._master_weights[param.name] = master_tensor
-            if self._offload:
-                param.master_weight = paddle.cast(param, Type.fp32.value).cpu()
-            param2dtype[param.name] = param.dtype
-            p_align = self._param2align(param)
-            self._unslice_params2align[param.name] = p_align
-            buffer_size[param.dtype] += param._numel() + p_align
-
-        # Create unslice_params'grad
-        for param in sorted(self._unslice_params, key=lambda p: p.name):
-            if param.dtype not in self._grad_storages.keys():
-                self._grad_storages[param.dtype] = GradStorage(
-                    buffer_size[param.dtype],
-                    dtype=(
-                        param.dtype
-                        if not self.use_main_grad
-                        else paddle.float32
-                    ),
-                    device=self._default_device,
-                    destination=self._rank,
-                    param2align=self._unslice_params2align,
-                )
-            self._grad_storages[param.dtype].add_grad(
-                param, self._unslice_params2align[param.name]
-            )
 
     def _clear_gradients(self):
         current_layer_params = self._ori_parameter_list
@@ -256,10 +228,7 @@ class FullyShardOptimizer:
             param.bw_storage._clear()
             param.bw_storage = None
         # 2.Handle unslice param
-        if not self._offload:
-            for grad_storage in self._grad_storages.values():
-                grad_storage.buffer.zero_()
-        else:
+        if self._offload:
             for param in list(self._unslice_params):
                 if self.use_main_grad:
                     param.main_grad._clear()
@@ -292,9 +261,6 @@ class FullyShardOptimizer:
                     tmp_var = paddle.cast(tmp_var, Type.bf16.value)
                 tmp_var._share_buffer_to(param)
                 del tmp_var
-            for grad_storage in self._grad_storages.values():
-                grad_storage.manual_release()
-                grad_storage.rebuild()
 
     # Update param memory slice
     def _update_params_slice(self):
@@ -361,15 +327,6 @@ class FullyShardOptimizer:
                 assert param.fw_storage.grad is None
                 param.fw_storage._copy_gradient_from(param.bw_storage)
             update_list.append(param)
-        # 2.Handle unslice param
-        for grad_storage in self._grad_storages.values():
-            grad_storage.buffer.scale_(scale=self._world_size_scaling)
-            dist.all_reduce(tensor=grad_storage.buffer, group=self._group)
-            if self._dp_group is not None and self._dp_group.nranks > 1:
-                grad_storage.buffer.scale_(scale=(1.0 / self._dp_group.nranks))
-                dist.all_reduce(
-                    tensor=grad_storage.buffer, group=self._dp_group
-                )
 
         if self._offload:
             for param in list(self._unslice_params):
@@ -540,6 +497,9 @@ class FullyShard(nn.Layer):
         self._order_tracer["order"] = 0
         self._order_tracer["layer"] = []
 
+        # Add unslice params GradStorage
+        self._handle_unslice_params()
+
         # Register task flow
         self._task_flow = TaskFlow()
 
@@ -548,6 +508,37 @@ class FullyShard(nn.Layer):
 
         # Register backward parameter hooks
         self._register_backward_hooks()
+
+    def _handle_unslice_params(self):
+        buffer_size = {}
+        buffer_size[Type.bf16.value] = 0
+        buffer_size[Type.fp32.value] = 0
+        buffer_size[Type.fp16.value] = 0
+        for param in self._unslice_params:
+            if self._offload:
+                param.master_weight = paddle.cast(param, Type.fp32.value).cpu()
+            param2dtype[param.name] = param.dtype
+            p_align = self._param2align(param)
+            self._unslice_params2align[param.name] = p_align
+            buffer_size[param.dtype] += param._numel() + p_align
+
+        # Create unslice_params'grad
+        for param in sorted(self._unslice_params, key=lambda p: p.name):
+            if param.dtype not in self._grad_storages.keys():
+                self._grad_storages[param.dtype] = GradStorage(
+                    buffer_size[param.dtype],
+                    dtype=(
+                        param.dtype
+                        if not self.use_main_grad
+                        else paddle.float32
+                    ),
+                    device=self._default_device,
+                    destination=self._rank,
+                    param2align=self._unslice_params2align,
+                )
+            self._grad_storages[param.dtype].add_grad(
+                param, self._unslice_params2align[param.name]
+            )
 
     def _check_main_grad(self):
         self.use_main_grad = None
@@ -577,10 +568,27 @@ class FullyShard(nn.Layer):
                     sync_op=True,
                 )
 
+    def _sync_grad_storages_hook(self):
+        for grad_storage in self._grad_storages.values():
+            grad_storage.buffer.scale_(scale=self._world_size_scaling)
+            dist.all_reduce(tensor=grad_storage.buffer, group=self._group)
+            if self._dp_group is not None and self._dp_group.nranks > 1:
+                grad_storage.buffer.scale_(scale=(1.0 / self._dp_group.nranks))
+                dist.all_reduce(
+                    tensor=grad_storage.buffer, group=self._dp_group
+                )
+
     def forward(self, *inputs, **kwargs):
         """
         A wrapper for Sharding Stage3 layer.
         """
+        # add hook to sync grad storage
+        for grad_storage in self._grad_storages.values():
+            grad_storage.buffer.zero_()
+            grad_storage.manual_release()
+            grad_storage.rebuild()
+        core.eager._add_backward_final_hook(self._sync_grad_storages_hook)
+
         # 1.Sync layer's buffers state
         if self.__sync_buffers:
             self._sync_buffers()
