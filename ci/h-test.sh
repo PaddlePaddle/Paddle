@@ -164,7 +164,8 @@ concurrency_list="^test_fp8_deep_gemm$|\
 ^test_white_lists$|\
 ^test_scaled_dot_product_attention$|\
 ^test_compat_scaled_dot_product_attention$|\
-^test_flash_attention$"
+^test_flash_attention$|\
+^test_batched_gemm$"
 
 cd ${work_dir}/build
 tmp_dir=`mktemp -d`
