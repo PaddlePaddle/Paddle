@@ -875,7 +875,7 @@ void CheckAndDoCompact(const std::vector<phi::MetaTensor*>& meta_tensors,
         paddle::memory::VmmMaxFreeSize(phi::GPUPlace(current_device_id),
                                        meta_tensors.size());
     const auto& [req_total_size, size_vec] = CalTensorSize(meta_tensors);
-    VLOG(10) << "run api: " << api << "req_total_size: " << req_total_size
+    VLOG(10) << "run api: " << api << " req_total_size: " << req_total_size
              << ", max_free_size: " << max_free_size
              << ", large_N_free_size: " << large_N_free_size
              << ", max_reserved: " << max_reserved
