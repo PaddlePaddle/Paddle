@@ -28,6 +28,10 @@ from paddle._C_ops import (  # noqa: F401
     amax,
     amin,
     any,
+    bitwise_left_shift,
+    bitwise_left_shift_,
+    bitwise_right_shift,
+    bitwise_right_shift_,
     isfinite,
     isinf,
     isnan,
@@ -43,10 +47,6 @@ from paddle._C_ops import (  # noqa: F401
     sin,
     sum,
     tanh,
-    bitwise_left_shift_,
-    bitwise_right_shift_,
-    bitwise_left_shift,
-    bitwise_right_shift,
 )
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
