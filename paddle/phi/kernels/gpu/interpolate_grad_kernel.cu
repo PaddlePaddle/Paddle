@@ -1536,7 +1536,7 @@ static void InterpolateAA2DCUDABwd(
 
   auto* output_grad_data = output_grad.data<T>();
   DDim dim_grad;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_h, in_w};
   } else {
     dim_grad = {n, in_h, in_w, c};
@@ -1594,7 +1594,7 @@ static void InterpolateAA2DCUDABwd(
                           "Required shared memory size %d exceeds limit %d",
                           shmem_size,
                           gpu_props.sharedMemPerBlock));
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       KeInterpAABwNCHW<T>
           <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_grad_data,
                                                           in_h,
@@ -1656,7 +1656,7 @@ static void InterpolateAA2DCUDABwd(
                           "Required shared memory size %d exceeds limit %d",
                           shmem_size,
                           gpu_props.sharedMemPerBlock));
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       KeInterpAABwNCHW<T>
           <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_grad_data,
                                                           in_h,
