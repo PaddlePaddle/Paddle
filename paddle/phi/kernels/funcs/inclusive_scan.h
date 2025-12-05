@@ -14,16 +14,9 @@
 
 #pragma once
 
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include <thrust/device_ptr.h>
 #include <thrust/iterator/reverse_iterator.h>
+#include "paddle/phi/kernels/funcs/cub.h"
 
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/type_traits.h"
@@ -37,10 +30,10 @@ template <typename T>
 struct IsComplex : public std::false_type {};
 
 template <>
-struct IsComplex<::phi::complex64> : public std::true_type {};
+struct IsComplex<phi::complex64> : public std::true_type {};
 
 template <>
-struct IsComplex<::phi::complex128> : public std::true_type {};
+struct IsComplex<phi::complex128> : public std::true_type {};
 
 template <typename InputIterator, typename OutputIterator, typename BinaryOp>
 static void CubInclusiveScan(InputIterator x_iter,
@@ -136,7 +129,7 @@ static __global__ void InclusiveScanInnerDimCUDAKernel(
   size_t block_row = static_cast<size_t>(blockIdx.x * kThreadNumY);
   size_t block_row_stride = static_cast<size_t>(gridDim.x * kThreadNumY);
   for (; block_row < num_rows; block_row += block_row_stride) {
-    size_t row = block_row + threadIdx.y;
+    size_t row = block_row + static_cast<size_t>(threadIdx.y);
     T block_total = init;
 
     const T *row_x = x + row * row_size;
@@ -173,7 +166,7 @@ static __global__ void InclusiveScanInnerDimCUDAKernel(
 
       for (size_t s = kThreadNumX, d = 1; s >= 1; s >>= 1, d <<= 1) {
         if (row < num_rows && threadIdx.x < s) {
-          size_t offset = (2 * threadIdx.x + 1) * d - 1;
+          size_t offset = (2 * static_cast<size_t>(threadIdx.x) + 1) * d - 1;
           row_buf[offset + d] = op(row_buf[offset], row_buf[offset + d]);
         }
         __syncthreads();
@@ -181,7 +174,7 @@ static __global__ void InclusiveScanInnerDimCUDAKernel(
 
       for (size_t s = 2, d = kThreadNumX / 2; d >= 1; s <<= 1, d >>= 1) {
         if (row < num_rows && threadIdx.x < s - 1) {
-          size_t offset = 2 * (threadIdx.x + 1) * d - 1;
+          size_t offset = 2 * (static_cast<size_t>(threadIdx.x) + 1) * d - 1;
           row_buf[offset + d] = op(row_buf[offset], row_buf[offset + d]);
         }
         __syncthreads();

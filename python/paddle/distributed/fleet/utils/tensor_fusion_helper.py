@@ -31,6 +31,14 @@ from paddle.utils import strtobool
 from .log_util import logger
 
 
+def _share_tensor_ipc_meta(tensor):
+    if tensor is None:
+        return None
+    if core.is_compiled_with_cuda() and not core.is_compiled_with_rocm():
+        return tensor.value().get_tensor()._share_cuda()
+    return None
+
+
 class HOOK_ACTION:
     ALL_REDUCE = 0
     REDUCE = 1
@@ -94,6 +102,27 @@ def assign_group_by_size(parameters, group_size=128 * 1024 * 1024):
 
     logger.info(f"Tensor Fusion Group Info:\n{group_msg}\n")
     return var_groups
+
+
+def get_group_size(parameters, group_size=128 * 1024 * 1024):
+    is_sparse_gradient = [False] * len(parameters)
+
+    group_indices = core.eager_assign_group_by_size(
+        parameters, is_sparse_gradient, [group_size, group_size]
+    )
+
+    opt_states_sizes = []
+    for group_idx, indices in enumerate(group_indices):
+        group_size = 0
+        for index in indices:
+            group_size += np.prod(parameters[index].shape)
+        dtype = parameters[indices[0]].dtype
+        bytes = group_size * core.size_of_dtype(dtype)
+        param_size_G = bytes / 1024**3
+        opt_states_size_G = param_size_G * 12 / core.size_of_dtype(dtype)
+        opt_states_sizes.append(opt_states_size_G)
+
+    return opt_states_sizes
 
 
 def flatten_dense_tensors(
@@ -365,11 +394,7 @@ def build_reduce_scatter_buffer(
     grad_dtype = paddle.float32 if use_main_grad else dtype
 
     param_buffer = paddle.zeros(shape=[total_buffer_size], dtype=dtype)
-    # TODO(@gexiao): Currently only support gpus
-    if core.is_compiled_with_cuda() and not core.is_compiled_with_rocm():
-        param_buffer_ipc_meta = param_buffer.value().get_tensor()._share_cuda()
-    else:
-        param_buffer_ipc_meta = None
+    param_buffer_ipc_meta = _share_tensor_ipc_meta(param_buffer)
     grad_buffer = (
         paddle.zeros(shape=[total_buffer_size], dtype=grad_dtype)
         if not release_grad
@@ -484,7 +509,7 @@ class FusedCommBuffer:
         self._params_checked_in = 0
         self._grads_to_addr = {}
 
-        self.param_buffer_ipc_meta = None
+        self._param_buffer_meta_tensor = None
 
         self._act = act
         if self._act == HOOK_ACTION.ALL_REDUCE:
@@ -541,7 +566,7 @@ class FusedCommBuffer:
                 self.buffer_size,
                 self.param_storage,
                 self.grad_storage,
-                self.param_buffer_ipc_meta,
+                _,
             ) = build_reduce_scatter_buffer(
                 self._params,
                 self._comm_group.nranks,
@@ -553,8 +578,18 @@ class FusedCommBuffer:
             )
             # hack, for parameter sync in dygraph sharding optimizer after step
             self._params[0].comm_buffer_ref = weakref.ref(self)
+            self._param_buffer_meta_tensor = self.param_storage
         if not self._release_grads:
             self._record_addr()
+
+    def _refresh_param_buffer_ipc_meta(self):
+        if self._param_buffer_meta_tensor is None:
+            return None
+        return _share_tensor_ipc_meta(self._param_buffer_meta_tensor)
+
+    @property
+    def param_buffer_ipc_meta(self):
+        return self._refresh_param_buffer_ipc_meta()
 
     def _record_addr(self):
         for param in self._params:

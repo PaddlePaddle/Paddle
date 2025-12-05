@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -467,12 +472,14 @@ class TestPool2D_Op_Mixin:
             self.python_api = pool2d_wrapper_not_use_cudnn
 
     def has_cudnn(self):
-        return core.is_compiled_with_cuda() and self.use_cudnn
+        return (
+            core.is_compiled_with_cuda() or is_custom_device()
+        ) and self.use_cudnn
 
     def test_check_output(self):
         # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.has_cudnn():
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(
                 place,
                 atol=1e-5,
@@ -493,7 +500,7 @@ class TestPool2D_Op_Mixin:
             return
         # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.has_cudnn() and self.pool_type != "max":
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 {'X'},
@@ -694,7 +701,8 @@ class TestCase5(TestCase2):
 
 def create_test_cudnn_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestCUDNNCase(parent):
         def init_kernel_type(self):
@@ -717,7 +725,8 @@ create_test_cudnn_class(TestCase5)
 
 def create_test_cudnn_fp16_class(parent, check_grad=True):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestCUDNNFp16Case(parent):
         def init_kernel_type(self):
@@ -726,8 +735,8 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
 
         def test_check_output(self):
             # TODO(wangzhongpu): support onednn op in dygraph mode
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 if core.is_float16_supported(place):
                     self.check_output_with_place(
                         place,
@@ -738,7 +747,7 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
 
         def test_check_grad(self):
             # TODO(wangzhongpu): support onednn op in dygraph mode
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if (
                 core.is_float16_supported(place)
                 and self.pool_type != "max"
@@ -760,7 +769,8 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
 
 def create_test_fp16_class(parent, check_grad=True):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestFp16Case(parent):
         def init_kernel_type(self):
@@ -769,8 +779,8 @@ def create_test_fp16_class(parent, check_grad=True):
 
         def test_check_output(self):
             # TODO(wangzhongpu): support onednn op in dygraph mode
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 if core.is_float16_supported(place):
                     self.check_output_with_place(
                         place,
@@ -781,7 +791,7 @@ def create_test_fp16_class(parent, check_grad=True):
 
         def test_check_grad(self):
             # TODO(wangzhongpu): support onednn op in dygraph mode
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if (
                 core.is_float16_supported(place)
                 and self.pool_type != "max"
@@ -803,7 +813,8 @@ def create_test_fp16_class(parent, check_grad=True):
 
 def create_test_bf16_class(parent, check_grad=True):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestBf16Case(parent):
         def init_kernel_type(self):
@@ -811,8 +822,8 @@ def create_test_bf16_class(parent, check_grad=True):
             self.dtype = np.uint16
 
         def test_check_output(self):
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 self.check_output_with_place(
                     place,
                     check_dygraph=(not self.use_onednn),
@@ -821,7 +832,7 @@ def create_test_bf16_class(parent, check_grad=True):
                 )
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if self.pool_type != "max" and check_grad:
                 self.check_grad_with_place(
                     place,
@@ -862,7 +873,8 @@ create_test_bf16_class(TestCase5)
 
 def create_test_cudnn_use_ceil_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestPool2DUseCeilCase(parent):
         def init_kernel_type(self):
@@ -1157,7 +1169,7 @@ class TestCase5_Max(TestCase2):
         if self.dtype == np.float16:
             return
         if self.has_cudnn() and self.pool_type == "max":
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 {'X'},
@@ -1350,7 +1362,8 @@ create_test_padding_SAME_class(TestCase5_channel_last)
 
 def create_test_cudnn_padding_SAME_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestCUDNNPaddingSAMECase(parent):
         def init_kernel_type(self):
@@ -1408,7 +1421,8 @@ create_test_padding_VALID_class(TestCase5_channel_last)
 
 def create_test_cudnn_padding_VALID_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestCUDNNPaddingVALIDCase(parent):
         def init_kernel_type(self):

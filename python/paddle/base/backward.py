@@ -1049,13 +1049,6 @@ def _append_backward_ops_with_checkpoints_(
         _logger.info(
             f"segment end op: [{ops[idx2 - 1].desc.type()}]: [{ops[idx2 - 1].desc.input_arg_names()}]"
         )
-        _logger.info(f"recompute segment[{i}]")
-        _logger.info(
-            f"segment start op: [{ops[idx1].desc.type()}]: [{ops[idx1].desc.input_arg_names()}]"
-        )
-        _logger.info(
-            f"segment end op: [{ops[idx2 - 1].desc.type()}]: [{ops[idx2 - 1].desc.input_arg_names()}]"
-        )
 
     # 2) go through all forward ops and induct all variables that will be hold in memory
     vars_should_be_hold = []

@@ -32,6 +32,7 @@
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/soft_relu_grad_kernel.h"
 
 namespace phi {
 
@@ -69,7 +70,9 @@ void SoftmaxGradKernel(const Context& dev_ctx,
   functor.SetAttrs(threshold);
   // use 32bit index to speed up computation
   bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
-  bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
+  bool is_gpu_place =
+      (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) ||
+      (dev_ctx.GetPlace().GetType() == phi::AllocationType::CUSTOM);
   if (use_32bit_index && is_gpu_place) {
     functor(*eigen_dev,
             To32BitIndex(x),

@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/api/include/tensor.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -57,6 +58,13 @@ Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl)
                           common::errors::InvalidArgument(
                               "TensorImpl with nullptr is not supported"));
 }
+Tensor::Tensor() {
+  if (VLOG_IS_ON(6)) {
+    std::ostringstream oss;
+    oss << "Tensor_" << std::hex << reinterpret_cast<uintptr_t>(this);
+    name_ = oss.str();
+  }
+}
 
 Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
                std::shared_ptr<AbstractAutogradMeta> autograd_meta,
@@ -67,40 +75,6 @@ Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
   PADDLE_ENFORCE_NOT_NULL(impl_,
                           common::errors::InvalidArgument(
                               "TensorImpl with nullptr is not supported"));
-}
-
-Tensor::Tensor(const Place &place) {
-  LOG_FIRST_N(WARNING, 1)
-      << "The Tensor(place) constructor is deprecated since version "
-         "2.3, and will be removed in version 2.4! Please use "
-         "`paddle::empty/full` method to create a new "
-         "Tensor instead. "
-         "Reason: A legal tensor cannot be constructed only based on "
-         "the `place`, and datatype, shape, layout, etc. is also "
-         "required.";
-  DefaultAllocator alloc(place);
-  impl_ = std::make_shared<phi::DenseTensor>(
-      &alloc,
-      phi::DenseTensorMeta(phi::DataType::FLOAT32,
-                           common::make_ddim({}),
-                           phi::DataLayout::NCHW));
-}
-
-Tensor::Tensor(const Place &place, const std::vector<int64_t> &shape) {
-  LOG_FIRST_N(WARNING, 1)
-      << "The Tensor(place, shape) constructor is deprecated since "
-         "version 2.3, and will be removed in version 2.4! Please use "
-         "`paddle::empty/full` method to create a new "
-         "Tensor instead. "
-         "Reason: A legal tensor cannot be constructed only based on "
-         "the `place` and `shape`, and datatype, layout, etc. is also "
-         "required.";
-  DefaultAllocator alloc(place);
-  impl_ = std::make_shared<phi::DenseTensor>(
-      &alloc,
-      phi::DenseTensorMeta(phi::DataType::FLOAT32,
-                           common::make_ddim({shape}),
-                           phi::DataLayout::NCHW));
 }
 
 Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,

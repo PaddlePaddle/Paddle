@@ -302,7 +302,7 @@ static int GetVecSizeFromTensors(const std::vector<TensorT*>& tensors,
 }
 
 template <typename T, typename Context>
-void FusedAdamKernel(
+PADDLE_API void FusedAdamKernel(
     const Context& dev_ctx,
     const std::vector<const DenseTensor*>& params,
     const std::vector<const DenseTensor*>& grads,

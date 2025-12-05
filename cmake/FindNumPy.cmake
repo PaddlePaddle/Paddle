@@ -18,10 +18,11 @@ if(PYTHON_EXECUTABLE)
        "try: import numpy; print(numpy.get_include())\nexcept:pass\n")
 
   # execute the find script
-  exec_program(
-    "${PYTHON_EXECUTABLE}" ${PROJECT_BINARY_DIR}
-    ARGS "FindNumpyPath.py"
-    OUTPUT_VARIABLE NUMPY_PATH)
+  execute_process(
+    COMMAND "${PYTHON_EXECUTABLE}" "FindNumpyPath.py"
+    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+    OUTPUT_VARIABLE NUMPY_PATH
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
 elseif(_numpy_out)
   message(STATUS "Python executable not found.")
 endif()

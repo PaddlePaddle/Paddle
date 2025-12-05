@@ -17,7 +17,7 @@ import random
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -397,7 +397,8 @@ class LSTM(RNNMixin):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCUDNNLstmOp(OpTest):
     def get_weight_names(self):
@@ -515,7 +516,7 @@ class TestCUDNNLstmOp(OpTest):
         pass
 
     def test_output_with_place(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_compiled_with_rocm():
             self.check_output_with_place(
                 place, atol=1e-5, no_check_set=['Reserve', 'StateOut']
@@ -528,7 +529,7 @@ class TestCUDNNLstmOp(OpTest):
             paddle.disable_static()
 
     def test_grad_with_place(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         var_name_list = self.get_weight_names()
         for var_name in var_name_list:
             self.check_grad_with_place(

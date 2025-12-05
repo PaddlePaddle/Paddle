@@ -17,10 +17,9 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import get_places
+from op_test import get_device_place, get_places, is_custom_device
 
 import paddle
-from paddle import base
 from paddle.base import core
 
 paddle.enable_static()
@@ -456,8 +455,8 @@ class TestIndexSelectDoubleGradCheck(unittest.TestCase):
         places = []
         # free(): invalid next size (fast) may occurs when
         # execute in CPU
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func(p)
 

@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/backends/device_ext.h"
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/attribute.h"
 #include "paddle/phi/core/device_context.h"
 
 // Forward declaration of cuBLAS types.
@@ -144,6 +145,11 @@ class CustomContext : public DeviceContext,
 
   void TensorCoreCublasCallIfAvailable(
       const std::function<void(cublasHandle_t)>&) const;
+
+  bool HasDnnAttr(const std::string& attr_name) const;
+  const Attribute& GetDnnAttr(const std::string& attr_name) const;
+  void SetDnnAttr(const std::string& attr_name, Attribute attr);
+  void ClearDnnAttr();
 
  private:
   CustomContext();

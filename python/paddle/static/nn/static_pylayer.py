@@ -395,7 +395,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
             pylayer_op.update_output()
         if backward_fn is not None:
             if not callable(backward_fn):
-                raise ValueError("`bakcward_fn` should be callable")
+                raise ValueError("`backward_fn` should be callable")
 
             def hook_inputs_outputs_check_function(output_grads, input_grads):
                 # 1. Verify the number of `Value` inputs to ``forward_fn`` the same as the

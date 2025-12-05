@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16
+from op_test import convert_float_to_uint16, get_device_place, is_custom_device
 from scipy.special import erf, expit
 
 import paddle
@@ -67,7 +67,8 @@ def fake_quant(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not core.is_compiled_with_rocm(),
     "core is not compiled with CUDA or ROCm",
 )
 class TestFusedBiasActOp(unittest.TestCase):
@@ -106,7 +107,7 @@ class TestFusedBiasActOp(unittest.TestCase):
         return out
 
     def compute_paddle_output(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         x = paddle.to_tensor(self.x)
         bias = paddle.to_tensor(self.bias)
 
@@ -161,7 +162,7 @@ class TestFastGeluFP16(TestFusedBiasActOp):
         return out
 
     def compute_paddle_output(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         x = paddle.to_tensor(self.x)
         bias = paddle.to_tensor(self.bias)
         self.use_fast_math(True)
@@ -238,7 +239,7 @@ class TestQuantFP32(TestFusedBiasActOp):
         return out
 
     def compute_paddle_output(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         x = paddle.to_tensor(self.x)
         bias = paddle.to_tensor(self.bias)
         dequant_scales = paddle.to_tensor(self.dequant_scales)
@@ -288,7 +289,7 @@ class TestDequantFP32(TestQuantFP32):
         return out
 
     def compute_paddle_output(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         x = paddle.to_tensor(self.x)
         bias = paddle.to_tensor(self.bias)
         dequant_scales = paddle.to_tensor(self.dequant_scales)
@@ -363,8 +364,8 @@ class TestQuantGegluFP16(TestQuantFP32):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestFusedBiasActOpBF16(unittest.TestCase):
@@ -403,7 +404,7 @@ class TestFusedBiasActOpBF16(unittest.TestCase):
         return convert_float_to_uint16(out)
 
     def compute_paddle_output(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         x = paddle.to_tensor(convert_float_to_uint16(self.x))
         bias = paddle.to_tensor(convert_float_to_uint16(self.bias))
 
@@ -424,8 +425,8 @@ class TestFusedBiasActOpBF16(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestWithComTypeBF16(unittest.TestCase):
@@ -435,8 +436,8 @@ class TestWithComTypeBF16(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestGegluBF16(TestFusedBiasActOpBF16):
@@ -454,8 +455,8 @@ class TestGegluBF16(TestFusedBiasActOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16 ",
 )
 class TestSwigluBF16(TestFusedBiasActOpBF16):
@@ -473,8 +474,8 @@ class TestSwigluBF16(TestFusedBiasActOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestQuantBF16(TestFusedBiasActOpBF16):
@@ -521,7 +522,7 @@ class TestQuantBF16(TestFusedBiasActOpBF16):
         return out
 
     def compute_paddle_output(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         x = paddle.to_tensor(self.x)
         bias = paddle.to_tensor(convert_float_to_uint16(self.bias))
         dequant_scales = paddle.to_tensor(self.dequant_scales)
@@ -545,8 +546,8 @@ class TestQuantBF16(TestFusedBiasActOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestQuantGegluBF16(TestQuantBF16):
@@ -585,8 +586,8 @@ class TestQuantGegluBF16(TestQuantBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestQuantSwigluBF16(TestQuantBF16):
@@ -625,8 +626,8 @@ class TestQuantSwigluBF16(TestQuantBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestQuantSwigluFP8(TestQuantBF16):
@@ -665,7 +666,8 @@ class TestQuantSwigluFP8(TestQuantBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not core.is_compiled_with_rocm(),
     "core is not compiled with CUDA or ROCm",
 )
 class TestAssert(unittest.TestCase):
@@ -677,7 +679,7 @@ class TestAssert(unittest.TestCase):
         self.act_method = 'gelu'
 
     def test_assert_case1(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         x = np.random.randint(
             low=-16, high=16, size=(self.rows, self.cols)
         ).astype('int32')
@@ -693,7 +695,7 @@ class TestAssert(unittest.TestCase):
             pass
 
     def test_assert_case2(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         x = np.random.randint(
             low=-16, high=16, size=(self.rows, self.cols)
         ).astype('int32')
@@ -710,7 +712,7 @@ class TestAssert(unittest.TestCase):
             pass
 
     def test_assert_case3(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         x = np.random.randint(
             low=-16, high=16, size=(self.rows, self.cols)
         ).astype('int32')
@@ -729,7 +731,8 @@ class TestAssert(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not core.is_compiled_with_rocm(),
     "core is not compiled with CUDA or ROCm",
 )
 class TestWithoutBias(unittest.TestCase):
@@ -767,7 +770,7 @@ class TestWithoutBias(unittest.TestCase):
         return out
 
     def compute_paddle_output(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         x = paddle.to_tensor(self.x)
 
         return fused_bias_act(
@@ -785,7 +788,8 @@ class TestWithoutBias(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not core.is_compiled_with_rocm(),
     "core is not compiled with CUDA or ROCm",
 )
 class TestFusedBiasActOp_ZeroSize(TestWithoutBias):

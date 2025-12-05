@@ -6,6 +6,7 @@ if(WITH_PYTHON)
   add_custom_target(ps_py_proto_init)
   add_custom_command(
     TARGET ps_py_proto_init
+    POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory
             ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto)
   add_dependencies(ps_py_proto ps_py_proto_init)

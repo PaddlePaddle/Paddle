@@ -46,8 +46,8 @@ INSTANTIATE_ANY_KERNEL(bool, GPUContext)
 #endif
 }  // namespace phi
 
-using complex64 = ::phi::complex64;
-using complex128 = ::phi::complex128;
+using complex64 = phi::complex64;
+using complex128 = phi::complex128;
 
 PD_REGISTER_KERNEL(any,
                    CPU,
@@ -84,5 +84,8 @@ PD_REGISTER_KERNEL(any, KPS, ALL_LAYOUT, phi::AnyKernel, bool) {}
 #endif
 
 #if defined(PADDLE_WITH_XPU)
-PD_REGISTER_KERNEL(any, XPU, ALL_LAYOUT, phi::AnyKernel, bool) {}
+PD_REGISTER_KERNEL(
+    any, XPU, ALL_LAYOUT, phi::AnyKernel, float, int, int64_t, bool) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
 #endif

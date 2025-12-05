@@ -297,6 +297,8 @@ class TEST_API ResultPattern {
 
   Attribute Float32Attr(float value) const;
 
+  Attribute DoubleAttr(double value) const;
+
   Attribute VectorInt64Attr(const std::vector<int64_t>& value) const;
 
   Attribute VectorInt32Attr(const std::vector<int32_t>& value) const;

@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+#include "paddle/phi/kernels/gpu/moe_unpermute_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -226,8 +226,13 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
                         const bool MP,
                         DenseTensor *zipped_tokens,
                         DenseTensor *zipped_probs_topk) {
-  const int rows = unzipped_tokens.dims()[0];
-  const int cols = unzipped_tokens.dims()[1];
+  const int64_t cols = unzipped_tokens.dims()[1];
+  PADDLE_ENFORCE_LE(cols,
+                    std::numeric_limits<int32_t>::max(),
+                    common::errors::InvalidArgument(
+                        "unzipped_tokens.dims()[1] should be less than "
+                        "INT_MAX, received unzipped_tokens.dims()[1]: (%ld)",
+                        cols));
   PADDLE_ENFORCE_LE(
       num_experts,
       MAX_NUM_EXPERTS,
@@ -237,16 +242,22 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
           "value.",
           MAX_NUM_EXPERTS,
           num_experts));
-  const int topk = expert_routemap_topk.dims()[1];
+  const int64_t topk = expert_routemap_topk.dims()[1];
+  PADDLE_ENFORCE_LE(
+      topk,
+      std::numeric_limits<int32_t>::max(),
+      common::errors::InvalidArgument(
+          "topk should be less than INT_MAX, received topk: (%ld)", topk));
   dev_ctx.template Alloc<T>(zipped_tokens);
   dev_ctx.template Alloc<float>(zipped_probs_topk);
   if (unzipped_tokens.numel() == 0) return;  // 0-size tensor
   void *zipped_probs_topk_ptr =
       reinterpret_cast<void *>(zipped_probs_topk->data<float>());
-  cudaMemsetAsync(zipped_probs_topk_ptr,
-                  0,
-                  sizeof(float) * total_zipped_tokens_num * topk,
-                  dev_ctx.stream());
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaMemsetAsync(zipped_probs_topk_ptr,
+                      0,
+                      sizeof(float) * int64_t(total_zipped_tokens_num) * topk,
+                      dev_ctx.stream()));
 
   dispatch_tokens_zip<T, Context>(dev_ctx,
                                   unzipped_tokens,
@@ -257,8 +268,8 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
                                   zipped_probs_topk,
                                   total_zipped_tokens_num,
                                   num_experts,
-                                  cols,
-                                  topk,
+                                  static_cast<int>(cols),
+                                  static_cast<int>(topk),
                                   MP);
 }
 }  // namespace phi

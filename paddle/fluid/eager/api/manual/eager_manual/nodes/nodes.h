@@ -31,7 +31,7 @@ class Conv2dGradNodeFinal : public egr::GradNodeBase {
                                   egr::kSlotSmallVectorSize>& grads,  // NOLINT
              bool create_graph = false,                               // NOLINT
              bool is_new_grad = false) override;                      // NOLINT
-  std::string name() override { return "Conv2dGradNodeFinal"; }
+  std::string name() override { return name_; }
 
   void ClearTensorWrappers() override {
     input_.clear();
@@ -47,6 +47,7 @@ class Conv2dGradNodeFinal : public egr::GradNodeBase {
             << " to: " << copied_node.get();
     return copied_node;
   }
+  void SetNameFromAPI(const std::string& name) { name_ = name + "GradNode"; }
 
   // SetTensorWrapperX, SetTensorWrapperY, ...
   void SetTensorWrapper_input(const paddle::Tensor& input) {
@@ -80,6 +81,7 @@ class Conv2dGradNodeFinal : public egr::GradNodeBase {
   egr::TensorWrapper filter_;
 
   // Attributes
+  std::string name_{"Conv2dGradNodeFinal"};
   std::vector<int> strides_;
   std::vector<int> paddings_;
   std::string padding_algorithm_;
@@ -101,8 +103,8 @@ class Conv2dDoubleGradNodeFinal : public egr::GradNodeBase {
                                   egr::kSlotSmallVectorSize>& grads,  // NOLINT
              bool create_graph = false,                               // NOLINT
              bool is_new_grad = false) override;                      // NOLINT
-  std::string name() override { return "Conv2dDoubleGradNodeFinal"; }
-
+  std::string name() override { return name_; }
+  void SetNameFromAPI(const std::string& name) { name_ = name + "GradNode"; }
   void ClearTensorWrappers() override {
     input_.clear();
     filter_.clear();
@@ -153,6 +155,7 @@ class Conv2dDoubleGradNodeFinal : public egr::GradNodeBase {
   egr::TensorWrapper grad_out_;
 
   // Attributes
+  std::string name_{"Conv2dDoubleGradNodeFinal"};
   std::vector<int> strides_;
   std::vector<int> paddings_;
   std::string padding_algorithm_;
@@ -174,8 +177,8 @@ class AddNGradNodeFinal : public egr::GradNodeBase {
                                   egr::kSlotSmallVectorSize>& grads,  // NOLINT
              bool create_graph = false,
              bool is_new_grad = false) override;
-  std::string name() override { return "AddNGradNodeFinal"; }
-
+  std::string name() override { return name_; }
+  void SetNameFromAPI(const std::string& name) { name_ = name + "GradNode"; }
   void ClearTensorWrappers() override {
     for (auto& tw : x_) {
       tw.clear();
@@ -204,6 +207,7 @@ class AddNGradNodeFinal : public egr::GradNodeBase {
   std::vector<egr::TensorWrapper> x_;
 
   // Attributes
+  std::string name_{"AddNGradNodeFinal"};
 };
 class MultiplyGradNode : public egr::GradNodeBase {
  public:
@@ -218,8 +222,8 @@ class MultiplyGradNode : public egr::GradNodeBase {
                                   egr::kSlotSmallVectorSize>& grads,  // NOLINT
              bool create_graph = false,
              bool is_new_grad = false) override;
-  std::string name() override { return "MultiplyGradNode"; }
-
+  std::string name() override { return name_; }
+  void SetNameFromAPI(const std::string& name) { name_ = name + "GradNode"; }
   void ClearTensorWrappers() override {
     x_.clear();
     y_.clear();
@@ -257,6 +261,7 @@ class MultiplyGradNode : public egr::GradNodeBase {
   egr::TensorWrapper y_;
 
   // Attributes
+  std::string name_{"MultiplyGradNode"};
   int axis_ = -1;
 };
 
@@ -273,7 +278,8 @@ class MultiplyDoubleGradNode : public egr::GradNodeBase {
                                   egr::kSlotSmallVectorSize>& grads,  // NOLINT
              bool create_graph = false,
              bool is_new_grad = false) override;
-  std::string name() override { return "MultiplyDoubleGradNode"; }
+  std::string name() override { return name_; }
+  void SetNameFromAPI(const std::string& name) { name_ = name + "GradNode"; }
 
   void ClearTensorWrappers() override {
     x_.clear();
@@ -310,6 +316,7 @@ class MultiplyDoubleGradNode : public egr::GradNodeBase {
   egr::TensorWrapper grad_out_;
 
   // Attributes
+  std::string name_{"MultiplyDoubleGradNode"};
   int axis_ = -1;
 };
 
@@ -328,7 +335,8 @@ class SyncBatchNormGradNode : public egr::GradNodeBase {
                                   egr::kSlotSmallVectorSize>& grads,  // NOLINT
              bool create_graph = false,
              bool is_new_grad = false) override;
-  std::string name() override { return "SyncBatchNormGradNode"; }
+  std::string name() override { return name_; }
+  void SetNameFromAPI(const std::string& name) { name_ = name + "GradNode"; }
 
   void ClearTensorWrappers() override {
     x_.clear();
@@ -391,6 +399,7 @@ class SyncBatchNormGradNode : public egr::GradNodeBase {
   egr::TensorWrapper reserve_space_;
 
   // Attributes
+  std::string name_{"SyncBatchNormGradNode"};
   float momentum_;
   float epsilon_;
   std::string data_layout_;

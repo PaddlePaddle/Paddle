@@ -48,7 +48,7 @@ void check_type(const TensorBase& tensor,
   template <>                                                       \
   PADDLE_API T* TensorBase::mutable_data_ptr() const {              \
     check_type(*this, ScalarType::name, #name);                     \
-    return const_cast<PaddleTensor&>(tensor_).mutable_data<T>();    \
+    return const_cast<PaddleTensor&>(tensor_).data<T>();            \
   }                                                                 \
                                                                     \
   template <>                                                       \

@@ -55,7 +55,7 @@ void StridedElementwiseCopyKernel(const Context& dev_ctx,
     return;
   }
 
-  bool can_expand = phi::funcs::CheckIsLastDimsMatch(input.dims(), out->dims());
+  bool can_expand = funcs::CheckIsLastDimsMatch(input.dims(), out->dims());
   PADDLE_ENFORCE_EQ(can_expand || input.numel() == 1,
                     true,
                     common::errors::InvalidArgument(
@@ -114,9 +114,9 @@ PD_REGISTER_KERNEL(strided_elementwise_copy,
                    int64_t,
                    float,
                    double,
-                   ::phi::float16,
-                   ::phi::bfloat16,
-                   ::phi::complex64,
-                   ::phi::complex128,
-                   ::phi::dtype::float8_e4m3fn,
-                   ::phi::dtype::float8_e5m2) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2) {}

@@ -249,7 +249,7 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
 
     def test(self):
         # this fuse need to fix, now there's no program can ran successfully
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=50,
             passes=["trt_embedding_eltwise_layernorm_fuse_pass"],
@@ -540,7 +540,7 @@ class TestEmbeddingEltwiseLayerNormFusePassNoBroadcast(PassAutoScanTest):
 
     def test(self):
         # this fuse need to fix, now there's no program can ran successfully
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=50,
             passes=["trt_embedding_eltwise_layernorm_fuse_pass"],

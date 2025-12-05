@@ -43,6 +43,8 @@ void EmbeddingKernel(const Context &dev_ctx,
   auto *table = table_t->data<T>();
   auto *output = dev_ctx.template Alloc<T>(output_t);
 
+  if (ids_numel == 0) return;
+
   int64_t ym = ids_numel;
 
   int64_t xm = table_t->dims()[0];

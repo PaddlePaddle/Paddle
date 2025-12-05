@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/phi/kernels/gpu/cvm_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"

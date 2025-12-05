@@ -16,14 +16,14 @@ import unittest
 
 import numpy as np
 from numpy import linalg as LA
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 import paddle.distributed as dist
 from paddle import _C_ops
 
 
-def test_squared_l2_norm(x):
+def squared_l2_norm(x):
     return _C_ops.squared_l2_norm(x)
 
 
@@ -37,7 +37,7 @@ class TestSquaredL2NormF16Op(unittest.TestCase):
         x = paddle.to_tensor(x_np)
 
         x.stop_gradient = False
-        y = test_squared_l2_norm(x)
+        y = squared_l2_norm(x)
         x_g = paddle.grad(y, [x])
 
         paddle.enable_static()
@@ -76,8 +76,8 @@ class TestL2LossOp(OpTest):
 
     def setUp(self):
         self.config()
-        self.python_api = test_squared_l2_norm
-        self.public_python_api = test_squared_l2_norm
+        self.python_api = squared_l2_norm
+        self.public_python_api = squared_l2_norm
         self.op_type = "squared_l2_norm"
         self.prim_op_type = "comp"
         self.max_relative_error = 0.05
@@ -137,8 +137,8 @@ class TestL2LossDeterministic(unittest.TestCase):
 
     def test_main(self):
         self.check_place(paddle.CPUPlace())
-        if paddle.is_compiled_with_cuda():
-            self.check_place(paddle.CUDAPlace(0))
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.check_place(get_device_place())
 
 
 if __name__ == "__main__":

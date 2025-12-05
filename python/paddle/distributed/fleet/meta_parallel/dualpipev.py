@@ -34,6 +34,7 @@ from ..utils.log_util import logger
 from .pipeline_parallel import (
     FakeMicroDataset,
     HybridParallelOptimizer,
+    PipelineDatasetPreprocessor,
     PipelineParallel,
 )
 from .pp_utils.batch_comm_helper import BatchCommHelper
@@ -634,6 +635,9 @@ class DualPipeVParallel(PipelineParallel):
         """
         for backward compatibility, wrap data to Fake FakeMicroDataset if it is of type list or tuple
         """
+        if isinstance(data, PipelineDatasetPreprocessor):
+            data = data()
+
         if (not isinstance(data, tuple)) and (not isinstance(data, list)):
             return data
 

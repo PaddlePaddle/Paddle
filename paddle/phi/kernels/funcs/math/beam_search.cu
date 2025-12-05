@@ -534,7 +534,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
 
 template class BeamSearchFunctor<phi::GPUContext, int>;
 template class BeamSearchFunctor<phi::GPUContext, int64_t>;
-template class BeamSearchFunctor<phi::GPUContext, float>;
+template class PADDLE_API BeamSearchFunctor<phi::GPUContext, float>;
 template class BeamSearchFunctor<phi::GPUContext, double>;
 
 }  // namespace math

@@ -28,9 +28,8 @@ set(WARPCTC_PATCH_COMMAND "")
 set(WARPCTC_CCBIN_OPTION "")
 if(WIN32)
   set(WARPCTC_PATCH_CUDA_COMMAND
-      ${CMAKE_COMMAND} -E copy_if_different
-      ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.cuda.patch
-      "<SOURCE_DIR>/")
+      git checkout -- . && git checkout ${WARPCTC_TAG} && git apply
+      ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.cuda.patch)
 else()
   set(WARPCTC_PATCH_CUDA_COMMAND
       git checkout -- . && git checkout ${WARPCTC_TAG} && patch -Nd
@@ -50,7 +49,7 @@ if(NOT WIN32 AND WITH_GPU)
 endif()
 
 if(WITH_ROCM)
-  set(WARPCTC_PATHCH_ROCM_COMMAND
+  set(WARPCTC_PATCH_ROCM_COMMAND
       patch -p1 <
       ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.rocm.patch && patch
       -p1 < ${PADDLE_SOURCE_DIR}/patches/warpctc/devicetypes.cuh.patch && patch
@@ -102,6 +101,16 @@ else()
   set(WARPCTC_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
 endif()
 
+# For CMake >= 4.0.0, force policy compatibility for third-party warpctc's CMake.
+set(WARPCTC_POLICY_ARGS "")
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
+  message(
+    WARNING
+      "warpctc: forcing CMake policy compatibility for CMake >= 4.0 (CMAKE_POLICY_VERSION_MINIMUM=3.5)"
+  )
+  set(WARPCTC_POLICY_ARGS "-DCMAKE_POLICY_VERSION_MINIMUM=3.5")
+endif()
+
 ExternalProject_Add(
   extern_warpctc
   ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -111,7 +120,7 @@ ExternalProject_Add(
   PATCH_COMMAND
   COMMAND ${WARPCTC_PATCH_COMMAND}
   COMMAND ${WARPCTC_PATCH_CUDA_COMMAND}
-  COMMAND ${WARPCTC_PATHCH_ROCM_COMMAND}
+  COMMAND ${WARPCTC_PATCH_ROCM_COMMAND}
   #BUILD_ALWAYS    1
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
              -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
@@ -134,6 +143,7 @@ ExternalProject_Add(
              -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
              -DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}
              ${EXTERNAL_OPTIONAL_ARGS}
+             ${WARPCTC_POLICY_ARGS}
              ${WARPCTC_CCBIN_OPTION}
   CMAKE_CACHE_ARGS
     -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}

@@ -276,27 +276,24 @@ function(merge_static_libs TARGET_NAME)
     set(mri_file
         ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.mri
         CACHE INTERNAL "phi_static.mri file")
-    get_property(
-      ABS_MERGE_LIB_PATH
-      TARGET ${TARGET_NAME}
-      PROPERTY LOCATION)
-    file(WRITE ${mri_file} "create ${ABS_MERGE_LIB_PATH}\n")
 
+    set(mri_content "create $<TARGET_FILE:${TARGET_NAME}>\n")
     foreach(lib ${libs})
-      get_property(
-        ABS_LIB_PATH
-        TARGET ${lib}
-        PROPERTY LOCATION)
-      file(APPEND ${mri_file} "addlib ${ABS_LIB_PATH}\n")
+      string(APPEND mri_content "addlib $<TARGET_FILE:${lib}>\n")
     endforeach()
-    file(APPEND ${mri_file} "save\nend\n")
+    string(APPEND mri_content "save\nend\n")
+    file(
+      GENERATE
+      OUTPUT ${mri_file}
+      CONTENT "${mri_content}")
 
     add_custom_command(
       TARGET ${TARGET_NAME}
       POST_BUILD
       COMMENT "Merge and generate static lib: lib${TARGET_NAME}.a"
       COMMAND ${CMAKE_AR} -M < ${mri_file}
-      COMMAND ${CMAKE_RANLIB} "$<TARGET_FILE:${TARGET_NAME}>")
+      COMMAND ${CMAKE_RANLIB} "$<TARGET_FILE:${TARGET_NAME}>"
+      VERBATIM)
   endif()
 
   # Windows do not support gcc/nvcc combined compiling. Use msvc 'lib.exe' to merge libs.
@@ -457,6 +454,15 @@ function(cc_test_build TARGET_NAME)
   endif()
 endfunction()
 
+file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/python/paddle/libs" PADDLE_LIBS_PATH)
+file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/python/paddle/base" PADDLE_BASE_PATH)
+file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/paddle/fluid/pybind"
+     PADDLE_PYBIND_PATH)
+file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/paddle/fluid/inference"
+     PADDLE_INFERENCE_PATH)
+file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi_exp"
+     PADDLE_INFERENCE_C_PATH)
+
 function(cc_test_run TARGET_NAME)
   if(WITH_TESTING)
     set(oneValueArgs DIR)
@@ -472,25 +478,47 @@ function(cc_test_run TARGET_NAME)
       NAME ${TARGET_NAME}
       COMMAND ${cc_test_COMMAND} ${cc_test_ARGS}
       WORKING_DIRECTORY ${cc_test_DIR})
+    string(
+      REPLACE
+        ";"
+        "\;"
+        PATH
+        "${PADDLE_LIBS_PATH};${PADDLE_BASE_PATH};${PADDLE_PYBIND_PATH};${PADDLE_INFERENCE_PATH};${PADDLE_INFERENCE_C_PATH};$ENV{PATH}"
+    )
     if(NOT "${DEPRECATED_TARGET_NAME}" STREQUAL "")
-      set_property(
-        TEST ${TARGET_NAME}
-        PROPERTY
-          ENVIRONMENT
-          FLAGS_init_allocated_mem=true
-          FLAGS_cudnn_deterministic=true
-          FLAGS_enable_pir_api=0
-          LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
-      )
+      if(WIN32)
+        set_property(
+          TEST ${TARGET_NAME}
+          PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true
+                   FLAGS_cudnn_deterministic=true FLAGS_enable_pir_api=0
+                   "PATH=${PATH}")
+      else()
+        set_property(
+          TEST ${TARGET_NAME}
+          PROPERTY
+            ENVIRONMENT
+            FLAGS_init_allocated_mem=true
+            FLAGS_cudnn_deterministic=true
+            FLAGS_enable_pir_api=0
+            LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
+        )
+      endif()
     else()
-      set_property(
-        TEST ${TARGET_NAME}
-        PROPERTY
-          ENVIRONMENT
-          FLAGS_init_allocated_mem=true
-          FLAGS_cudnn_deterministic=true
-          LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
-      )
+      if(WIN32)
+        set_property(
+          TEST ${TARGET_NAME}
+          PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true
+                   FLAGS_cudnn_deterministic=true "PATH=${PATH}")
+      else()
+        set_property(
+          TEST ${TARGET_NAME}
+          PROPERTY
+            ENVIRONMENT
+            FLAGS_init_allocated_mem=true
+            FLAGS_cudnn_deterministic=true
+            LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
+        )
+      endif()
     endif()
     # No unit test should exceed 2 minutes.
     if(WIN32)
@@ -513,31 +541,13 @@ function(cc_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    # if(WIN32)
-    #   # NOTE(zhiqiu): on windows platform, the symbols should be exported
-    #   # explicitly by __declspec(dllexport), however, there are several
-    #   # symbols not exported, and link error occurs.
-    #   # so, the tests are not built against dynamic libraries now.
-    #   cc_test_old(
-    #     ${TARGET_NAME}
-    #     SRCS
-    #     ${cc_test_SRCS}
-    #     DEPS
-    #     ${cc_test_DEPS}
-    #     ARGS
-    #     ${cc_test_ARGS})
-    # else()
     list(LENGTH cc_test_SRCS len)
-    # message("cc_test_SRCS ${cc_test_SRCS}")
-    # message("cc_test_ARGS ${cc_test_ARGS}")
-
     if(${len} GREATER 1)
       message(
         SEND_ERROR
           "The number source file of cc_test should be 1, but got ${len}, the source files are: ${cc_test_SRCS}"
       )
     endif()
-
     list(LENGTH cc_test_ARGS len_arg)
     if(len_arg GREATER_EQUAL 1)
       set_property(GLOBAL PROPERTY "${TARGET_NAME}_ARGS" "${cc_test_ARGS}")
@@ -589,7 +599,7 @@ function(paddle_test_build TARGET_NAME)
     endif()
     if(WITH_SHARED_PHI)
       target_link_libraries(${TARGET_NAME} phi)
-      if(WITH_GPU)
+      if(WITH_GPU AND NOT WIN32)
         target_link_libraries(${TARGET_NAME} -Wl,--as-needed phi_core phi_gpu
                               -Wl,--no-as-needed)
       endif()
@@ -743,6 +753,18 @@ function(nv_test TARGET_NAME)
                                               FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_cudnn_deterministic=true)
+    if(WIN32)
+      string(
+        REPLACE
+          ";"
+          "\;"
+          PATH
+          "${PADDLE_LIBS_PATH};${PADDLE_BASE_PATH};${PADDLE_PYBIND_PATH};${PADDLE_INFERENCE_PATH};${PADDLE_INFERENCE_C_PATH};$ENV{PATH}"
+      )
+      set_property(
+        TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true
+                                     "PATH=${PATH}")
+    endif()
     if((CUDA_VERSION GREATER 9.2)
        AND (CUDA_VERSION LESS 11.0)
        AND (MSVC_VERSION LESS 1910))
@@ -1155,8 +1177,8 @@ function(py_proto_compile TARGET_NAME)
       COMMAND ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/cmake/replace_string.py
               ${py_src}
       COMMENT
-        "Replacing 'paddle.fluid' with 'paddle.base' generated by protobuf"
-      COMMENT "Replace ${py_src}")
+        "Replace ${py_src}: Replacing 'paddle.fluid' with 'paddle.base' generated by protobuf"
+    )
   endforeach()
 
   add_custom_target(${TARGET_NAME} ALL DEPENDS protobuf ${TARGET_NAME}_replace)

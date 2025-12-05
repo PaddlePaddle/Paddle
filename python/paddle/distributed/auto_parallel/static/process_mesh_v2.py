@@ -56,16 +56,15 @@ class ProcessMesh(core.ProcessMesh):
         self._shape = list(self._mesh.shape)
 
         self._process_ids = self._mesh.flatten().tolist()
-        assert all(isinstance(p, int) for p in self._process_ids), (
-            "All elements of the mesh must be integer"
-        )
-        assert min(self._process_ids) >= 0, (
-            'All elements of the mesh must be >= 0.'
-        )
+        if not all(isinstance(p, int) for p in self._process_ids):
+            raise ValueError("All elements of the mesh must be integer")
+
+        if min(self._process_ids) < 0:
+            raise ValueError('All elements of the mesh must be >= 0.')
+
         unique_process_ids = set(self._process_ids)
-        assert len(unique_process_ids) == len(self._process_ids), (
-            'All elements of the mesh must be unique.'
-        )
+        if len(unique_process_ids) != len(self._process_ids):
+            raise ValueError('All elements of the mesh must be unique.')
 
         if dim_names is not None:
             assert len(dim_names) == len(self._shape), (

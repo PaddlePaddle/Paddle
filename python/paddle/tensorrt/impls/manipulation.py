@@ -84,7 +84,7 @@ def reshape_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
-@converter_registry.register("pd_op.gather", trt_version="8.x")
+@converter_registry.register("pd_op.gather")
 def gather_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     index_tensor = inputs[1]
@@ -101,7 +101,7 @@ def gather_converter(network, paddle_op, inputs):
     return gather_layer.get_output(0)
 
 
-@converter_registry.register("pd_op.gather_nd", trt_version="8.x")
+@converter_registry.register("pd_op.gather_nd")
 def gather_nd_converter(network, paddle_op, inputs):
     input_tensor, indices_tensor = inputs
     non_zero_layer = network.add_gather_v2(
@@ -405,8 +405,8 @@ def expand_as_converter(network, paddle_op, inputs):
     )
 
 
-@converter_registry.register("pd_op.cast", trt_version="8.x")
-@converter_registry.register("pd_op.cast_", trt_version="8.x")
+@converter_registry.register("pd_op.cast")
+@converter_registry.register("pd_op.cast_")
 def cast_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     out_dtype = int(paddle_op.attrs().get("dtype"))
@@ -624,7 +624,7 @@ def slice_converter(network, paddle_op, inputs):
     return output_tensor
 
 
-@converter_registry.register("pd_op.split_with_num", trt_version="8.x")
+@converter_registry.register("pd_op.split_with_num")
 def split_with_num_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     input_shape_size = len(input_tensor.shape)
@@ -756,7 +756,7 @@ def split_with_num_converter(network, paddle_op, inputs):
     return outputs
 
 
-@converter_registry.register("pd_op.split", trt_version="8.x")
+@converter_registry.register("pd_op.split")
 def split_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     input_shape = input_tensor.shape
@@ -938,7 +938,7 @@ def split_converter(network, paddle_op, inputs):
     return outputs
 
 
-@converter_registry.register("pd_op.stack", trt_version="8.x")
+@converter_registry.register("pd_op.stack")
 def stack_converter(network, paddle_op, inputs):
     input_tensors = inputs[0]
     input_num = len(input_tensors)
@@ -1012,7 +1012,7 @@ def stack_converter(network, paddle_op, inputs):
     return output_tensor
 
 
-@converter_registry.register("pd_op.tile", trt_version="8.x")
+@converter_registry.register("pd_op.tile")
 def tile_converter(network, paddle_op, inputs):
     input = inputs[0]
     input_shape = input.shape
@@ -1120,7 +1120,7 @@ def take_along_axis_converter(network, paddle_op, inputs):
     return output_tensor
 
 
-@converter_registry.register("pd_op.strided_slice", trt_version="8.x")
+@converter_registry.register("pd_op.strided_slice")
 def strided_slice_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     axes = paddle_op.attrs()["axes"]
@@ -1228,7 +1228,7 @@ def strided_slice_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
-@converter_registry.register("pd_op.roll", trt_version="8.x")
+@converter_registry.register("pd_op.roll")
 def roll_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     axis = paddle_op.attrs()["axis"]
@@ -1373,7 +1373,7 @@ def roll_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
-@converter_registry.register("pd_op.pad", trt_version="8.x")
+@converter_registry.register("pd_op.pad")
 def pad_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     paddings = paddle_op.attrs()["paddings"]
@@ -1385,7 +1385,7 @@ def pad_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
-@converter_registry.register("pd_op.pad3d", trt_version="8.x")
+@converter_registry.register("pd_op.pad3d")
 def pad3d_converter(network, paddle_op, inputs):
     input_tensor, paddings = inputs
     value = paddle_op.attrs().get("pad_value", 0.0)
@@ -1501,7 +1501,7 @@ def pad3d_converter(network, paddle_op, inputs):
         return slice_layer.get_output(0)
 
 
-@converter_registry.register("pd_op.numel", trt_version="8.x")
+@converter_registry.register("pd_op.numel")
 def numel_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     shape_tensor = network.add_shape(input_tensor)
@@ -1514,7 +1514,7 @@ def numel_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
-@converter_registry.register("pd_op.index_put", trt_version="8.x")
+@converter_registry.register("pd_op.index_put")
 def index_put_converter(network, paddle_op, inputs):
     input_tensor, indices_list, value_tensor = inputs
     indices_tensor = indices_list[0]

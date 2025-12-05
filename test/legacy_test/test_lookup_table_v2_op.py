@@ -16,7 +16,13 @@ import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+    skip_check_grad_ci,
+)
 
 import paddle
 from paddle.base import core
@@ -231,8 +237,8 @@ class TestEmbeddingFP16OP(TestLookupTableOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestEmbeddingBF16OP(OpTest):
@@ -253,13 +259,13 @@ class TestEmbeddingBF16OP(OpTest):
         return "int64"
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_cinn=True, check_pir=True, check_prim_pir=True
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['W'],

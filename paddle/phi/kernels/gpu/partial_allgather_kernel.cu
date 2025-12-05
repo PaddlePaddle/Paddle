@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/gpu/partial_allgather_kernel.h"
 #include "glog/logging.h"
 #include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
@@ -67,12 +67,12 @@ void PartialAllGatherOpCUDAKernel(const Context& dev_ctx,
                         numel,
                         nranks));
 
-  phi::DDim dims = in->dims();
+  DDim dims = in->dims();
   out->Resize(dims);
   dev_ctx.template Alloc<T>(out);
 
   int64_t send_numel = numel / nranks;
-  int offset = send_numel * rank;
+  int64_t offset = send_numel * rank;
 
   auto send_buf = distributed::GetPartialTensor(*in, offset, send_numel);
   comm_ctx->AllGather(out, send_buf, stream);

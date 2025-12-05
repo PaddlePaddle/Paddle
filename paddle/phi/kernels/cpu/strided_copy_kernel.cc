@@ -13,10 +13,17 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/common/flags.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/contiguous_kernel.h"
+#include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/impl/transpose_grad_kernel_impl.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
+COMMON_DECLARE_bool(use_stride_compute_kernel);
 
 namespace phi {
 
@@ -27,6 +34,76 @@ void StridedCopyKernel(const Context& dev_ctx,
                        const std::vector<int64_t>& out_stride,
                        int64_t offset,
                        DenseTensor* out) {
+#if defined(PADDLE_WITH_CUDA)
+// not support Windows
+#if !defined(_WIN32)
+  if (FLAGS_use_stride_kernel &&
+      input.place().GetType() == phi::AllocationType::CPU &&
+      out->place().GetType() == phi::AllocationType::GPU &&
+      input.dtype() == out->dtype() &&
+      (!input.meta().is_contiguous() || !out->meta().is_contiguous())) {
+    phi::DenseTensor dst_gpu;
+    if (out->meta().is_contiguous()) {
+      dst_gpu = *out;
+    } else {
+      auto meta_dst = dst_gpu.meta();
+      meta_dst.dims = out->dims();
+      meta_dst.strides = meta_dst.calc_strides(out->dims());
+      dst_gpu.set_meta(meta_dst);
+      dev_ctx.Alloc(&dst_gpu, input.dtype());
+    }
+
+    auto src_cpu_place = input.place();
+    auto dst_gpu_place = out->place();
+    auto& pool = phi::DeviceContextPool::Instance();
+    auto* gpu_dev_ctx = static_cast<phi::GPUContext*>(pool.Get(out->place()));
+    auto stream = gpu_dev_ctx->stream();
+
+    if (input.meta().is_contiguous()) {
+      auto src_cpu_place = input.place();
+      auto dst_gpu_place = out->place();
+      auto size = phi::SizeOf(input.dtype()) * input.numel();
+      void* dst_ptr = gpu_dev_ctx->Alloc(
+          &dst_gpu,
+          dst_gpu.dtype(),
+          0,
+          dst_gpu_place.GetType() == AllocationType::GPUPINNED);
+
+      phi::memory_utils::Copy(
+          dst_gpu_place, dst_ptr, src_cpu_place, input.data<T>(), size, stream);
+
+    } else {
+      phi::DenseTensor cpu_out;
+      phi::ContiguousKernel<T, Context>(dev_ctx, input, &cpu_out);
+      auto* src_ptr = cpu_out.data<T>();
+      auto size = phi::SizeOf(input.dtype()) * cpu_out.numel();
+      void* dst_ptr = gpu_dev_ctx->Alloc(
+          &dst_gpu,
+          dst_gpu.dtype(),
+          0,
+          dst_gpu_place.GetType() == AllocationType::GPUPINNED);
+
+      phi::memory_utils::Copy(
+          dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
+    }
+    if (out != &dst_gpu) {
+      PD_VISIT_ALL_TYPES(
+          out->dtype(), "StridedCopyKernel", ([&] {
+            phi::StridedCopyKernel<data_t, phi::GPUContext>(
+                reinterpret_cast<const phi::GPUContext&>(*gpu_dev_ctx),
+                dst_gpu,
+                common::vectorize<int64_t>(out->dims()),
+                common::vectorize<int64_t>(out->strides()),
+                out->offset(),
+                out);
+          }));
+    }
+
+    return;
+  }
+#endif
+#endif
+
   phi::DenseTensorMeta meta = input.meta();
   meta.strides = common::make_ddim(out_stride);
   meta.dims = common::make_ddim(dims);
@@ -86,6 +163,9 @@ void StridedCopyKernel(const Context& dev_ctx,
 #ifdef _WIN32
 INSTANTIATE_STRIDEDCOPY_KERNEL(bool, CPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(uint8_t, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(uint16_t, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(uint32_t, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(uint64_t, CPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(int8_t, CPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(int16_t, CPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(int32_t, CPUContext)
@@ -107,15 +187,18 @@ PD_REGISTER_KERNEL(strided_copy,
                    phi::StridedCopyKernel,
                    bool,
                    uint8_t,
+                   uint16_t,
+                   uint32_t,
+                   uint64_t,
                    int8_t,
                    int16_t,
                    int32_t,
                    int64_t,
                    float,
                    double,
-                   ::phi::float16,
-                   ::phi::bfloat16,
-                   ::phi::complex64,
-                   ::phi::complex128,
-                   ::phi::dtype::float8_e4m3fn,
-                   ::phi::dtype::float8_e5m2) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2) {}

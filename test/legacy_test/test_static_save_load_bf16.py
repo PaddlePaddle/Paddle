@@ -13,14 +13,11 @@
 # limitations under the License.
 
 import os
-import sys
 import tempfile
 import unittest
 
 import numpy as np
 from test_imperative_base import new_program_scope
-
-sys.path.append("../deprecated/legacy_test")
 from test_static_save_load import PtbModel
 
 import paddle

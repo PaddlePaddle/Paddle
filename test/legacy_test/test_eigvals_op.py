@@ -343,8 +343,8 @@ class TestEigvalsAPI(unittest.TestCase):
 
     def test_cases(self):
         places = [core.CPUPlace()]
-        # if core.is_compiled_with_cuda():
-        #    places.append(core.CUDAPlace(0))
+        # if (core.is_compiled_with_cuda() or is_custom_device()):
+        #    places.append(get_device_place())
         for place in places:
             self.run_dygraph(place)
             self.run_static(place)

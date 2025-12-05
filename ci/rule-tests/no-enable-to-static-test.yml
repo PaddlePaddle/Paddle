@@ -1,0 +1,10 @@
+id: no-enable-to-static
+valid:
+  - |
+    with enable_to_static_guard(True):
+        # test code here
+  - enable_to_static_guard(False)
+invalid:
+  - paddle.jit.enable_to_static(True)
+  - jit.enable_to_static(False)
+  - enable_to_static(True)

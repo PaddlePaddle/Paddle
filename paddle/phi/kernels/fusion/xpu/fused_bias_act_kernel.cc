@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fused_bias_act_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -45,8 +46,13 @@ static void ComputeImpl(const phi::XPUContext *xpu_ctx,
                         const std::string &act_method,
                         DenseTensor *out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  int rows = x.dims()[0];
-  int cols = x.dims()[1];
+  int64_t rows = x.dims()[0];
+  int64_t cols = x.dims()[1];
+
+  // TODO(large-tensor): XPU broadcast_add API not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(rows, "rows");
+  PADDLE_ENFORCE_LE_INT_MAX(cols, "cols");
+
   int r = 0;
   if (bias) {
     r = baidu::xpu::api::broadcast_add<XPUType>(
@@ -54,7 +60,7 @@ static void ComputeImpl(const phi::XPUContext *xpu_ctx,
         reinterpret_cast<const XPUType *>(x.data<T>()),
         reinterpret_cast<const XPUType *>(bias.get().data<T>()),
         reinterpret_cast<XPUType *>(const_cast<T *>(x.data<T>())),
-        {rows, cols},
+        {static_cast<int>(rows), static_cast<int>(cols)},
         {1, cols});
     PADDLE_ENFORCE_EQ(
         r, 0, common::errors::Fatal("baidu::xpu::api::broadcast_add failed."));

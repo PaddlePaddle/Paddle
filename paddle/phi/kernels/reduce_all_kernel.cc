@@ -22,11 +22,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void AllKernel(const Context& dev_ctx,
-               const DenseTensor& x,
-               const std::vector<int64_t>& dims,
-               bool keep_dim,
-               DenseTensor* out) {
+PADDLE_API void AllKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const std::vector<int64_t>& dims,
+                          bool keep_dim,
+                          DenseTensor* out) {
   auto x_dim = x.dims();
   for (int i = 0; i < x_dim.size(); i++) {
     PADDLE_ENFORCE_LE(

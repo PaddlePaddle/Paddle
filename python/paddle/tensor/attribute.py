@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..base.framework import in_dynamic_or_pir_mode, use_pir_api
@@ -192,12 +192,17 @@ def is_complex(x: Tensor) -> bool:
     return is_complex_dtype
 
 
+@param_one_alias(["x", "input"])
 def is_floating_point(x: Tensor) -> bool:
     """
     Returns whether the dtype of `x` is one of paddle.float64, paddle.float32, paddle.float16, and paddle.bfloat16.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``is_floating_point(input=tensor_x)`` is equivalent to ``is_floating_point(x=tensor_x)``.
+
     Args:
-        x (Tensor): The input tensor.
+        x (Tensor): The input tensor. alias: ``input``.
 
     Returns:
         bool: True if the dtype of `x` is floating type, otherwise false.

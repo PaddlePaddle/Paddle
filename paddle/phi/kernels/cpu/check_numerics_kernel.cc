@@ -49,15 +49,15 @@ void CheckNumericsKernel(const Context& dev_ctx,
   }
 
   std::string cpu_hint_str =
-      phi::funcs::GetCpuHintString<T>(op_type, var_name, tensor.place());
-  phi::funcs::CheckNumericsCpuImpl(tensor.data<T>(),
-                                   tensor.numel(),
-                                   cpu_hint_str,
-                                   check_nan_inf_level,
-                                   "cpu",
-                                   output_dir,
-                                   stats_ptr,
-                                   values_ptr);
+      funcs::GetCpuHintString<T>(op_type, var_name, tensor.place());
+  funcs::CheckNumericsCpuImpl(tensor.data<T>(),
+                              tensor.numel(),
+                              cpu_hint_str,
+                              check_nan_inf_level,
+                              "cpu",
+                              output_dir,
+                              stats_ptr,
+                              values_ptr);
 }
 #ifdef _WIN32
 INSTANTIATE_CHECKNUMBERICS_KERNEL(float, CPUContext)
@@ -66,8 +66,8 @@ INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::float16, CPUContext)
 INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::bfloat16, CPUContext)
 INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::complex64, CPUContext)
 INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::complex128, CPUContext)
-INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::dtype::float8_e4m3fn, CPUContext)
-INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::dtype::float8_e5m2, CPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::float8_e4m3fn, CPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::float8_e5m2, CPUContext)
 #endif
 }  // namespace phi
 
@@ -81,5 +81,5 @@ PD_REGISTER_KERNEL(check_numerics,
                    phi::bfloat16,
                    phi::complex64,
                    phi::complex128,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float8_e5m2) {}
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2) {}

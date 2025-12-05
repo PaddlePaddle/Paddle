@@ -70,8 +70,8 @@ void StftGradKernel(const Context& dev_ctx,
   const size_t dy_rank = dy->dims().size();
   const size_t dx_rank = dx->dims().size();
 
-  const int n_frames = dy->dims()[dy_rank - 1];
-  const int seq_length = dx->dims()[dx_rank - 1];
+  const size_t n_frames = dy->dims()[dy_rank - 1];
+  const size_t seq_length = dx->dims()[dx_rank - 1];
 
   std::vector<int64_t> axes = {1};
   phi::DenseTensor d_frames_w;

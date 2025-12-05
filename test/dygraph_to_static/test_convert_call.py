@@ -506,5 +506,35 @@ class TestMarkerUnified(Dy2StTestBase):
         )
 
 
+class TestCaptureControlFlow(Dy2StTestBase):
+    def test_decorator(self):
+        def fn1(x):
+            return x
+
+        self.assertTrue(
+            not TransformOptions.check_fn_need_capture_control_flow(fn1)
+        )
+
+        @paddle.jit.marker.capture_control_flow()
+        def fn2(x):
+            return x
+
+        self.assertTrue(
+            TransformOptions.check_fn_need_capture_control_flow(fn2)
+        )
+
+    def test_decorator_no_arg(self):
+        def fn(x):
+            return x
+
+        self.assertTrue(
+            not TransformOptions.check_fn_need_capture_control_flow(fn)
+        )
+
+        fn = paddle.jit.marker.capture_control_flow(fn)
+
+        self.assertTrue(TransformOptions.check_fn_need_capture_control_flow(fn))
+
+
 if __name__ == '__main__':
     unittest.main()

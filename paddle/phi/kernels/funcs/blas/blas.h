@@ -26,6 +26,9 @@
 
 #if defined(PADDLE_USE_OPENBLAS) || defined(PADDLE_USE_REFERENCE_CBLAS)
 #include <cblas.h>
+#elif defined(PADDLE_WITH_HML)
+#include "paddle/phi/backends/dynload/hml.h"
+#define CBLAS_LAYOUT CBLAS_ORDER
 #elif defined(PADDLE_USE_ACCELERATE)
 #include <Accelerate/Accelerate.h>
 #define CBLAS_LAYOUT CBLAS_ORDER
@@ -204,6 +207,20 @@ class Blas {
 #endif
 #endif  // @} End Group MKLML: class Blas
 
+#if defined(PADDLE_WITH_HML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
+  template <typename T>
+  void MatMulWithHead(const phi::DenseTensor& mat_a,
+                      const MatDescriptor& dim_a,
+                      const phi::DenseTensor& mat_b,
+                      const MatDescriptor& dim_b,
+                      T alpha,
+                      int head_number,
+                      phi::DenseTensor* mat_out,
+                      T beta,
+                      bool mat_y_split_vertical) const;
+#endif
+
   template <typename T>
   void MatMul(const int M,
               const int N,
@@ -284,6 +301,10 @@ class Blas {
   T DOT(int n, const T* x, const T* y) const;
 
   template <typename T>
+  void CUDOT(
+      int n, const T* x, int incx, const T* y, int incy, T* result) const;
+
+  template <typename T>
   void SCAL(int n, const T a, T* x) const;
 
   template <typename T>
@@ -333,6 +354,27 @@ class Blas {
                    int batchCount) const;
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
+  template <typename T>
+  void BatchedGEMMWithHead(CBLAS_TRANSPOSE transA,
+                           CBLAS_TRANSPOSE transB,
+                           int W1,
+                           int H1,
+                           int W2,
+                           int H2,
+                           T alpha,
+                           const T* A,
+                           const T* B,
+                           T beta,
+                           T* C,
+                           int batchCount,
+                           int64_t strideA,
+                           int64_t strideB,
+                           int64_t head_number,
+                           bool split_b_vertical) const;
+#endif
+
+#if defined(PADDLE_WITH_HML) && !defined(PADDLE_WITH_CUDA) && \
     !defined(PADDLE_WITH_HIP)
   template <typename T>
   void BatchedGEMMWithHead(CBLAS_TRANSPOSE transA,
@@ -483,6 +525,14 @@ class BlasT : private Blas<DeviceContext> {
 #endif
 #endif  // @} End Group MKLML: class BlasT
 
+#if defined(PADDLE_WITH_HML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
+  template <typename... ARGS>
+  void MatMulWithHead(ARGS... args) const {
+    Base()->template MatMulWithHead<T>(args...);
+  }
+#endif
+
   template <typename... ARGS>
   void MatMul(ARGS... args) const {
     Base()->template MatMul<T>(args...);
@@ -541,6 +591,11 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   T DOT(ARGS... args) const {
     return Base()->template DOT<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void CUDOT(ARGS... args) const {
+    Base()->template CUDOT<T>(args...);
   }
 
   template <typename... ARGS>

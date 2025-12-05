@@ -16,9 +16,7 @@
 
 namespace compat {
 #ifndef TORCH_EXTENSION_NAME
-#define _EXPAND(x) x
-#define TORCH_EXTENSION_NAME _EXPAND(PADDLE_EXTENSION_NAME)
-#undef _EXPAND
+#define TORCH_EXTENSION_NAME PADDLE_EXTENSION_NAME
 #endif
 #define UNSUPPORTED_FEATURE_IN_PADDLE(feature) \
   std::cerr << "Unsupported feature in Paddle: " << feature << std::endl;

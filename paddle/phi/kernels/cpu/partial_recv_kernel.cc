@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/partial_recv_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 namespace phi {
 
 template <typename T, typename Context>

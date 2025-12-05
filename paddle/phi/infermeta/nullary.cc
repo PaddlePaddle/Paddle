@@ -97,7 +97,6 @@ void RangeInferMeta(const Scalar& start,
     out->set_dims({-1});
   } else {
     auto GetArangeSize = [](auto start, auto end, auto step) -> int64_t {
-      using ElementType = std::decay_t<decltype(start)>;
       PADDLE_ENFORCE_NE(step,
                         0,
                         ::common::errors::InvalidArgument(
@@ -323,6 +322,20 @@ void RandintInferMeta(
   }
   out->set_dims(common::make_ddim(tensor_shape));
   out->set_dtype(dtype);
+}
+
+void RandomInferMeta(const MetaTensor& x, MetaTensor* out) {
+  PADDLE_ENFORCE_NOT_NULL(
+      out, errors::InvalidArgument("Output(Out) of RandomOp is null."));
+  auto shape_vector = common::vectorize(x.dims());
+
+  std::vector<int64_t> tensor_shape;
+  tensor_shape.reserve(shape_vector.size());
+  for (auto dim : shape_vector) {
+    tensor_shape.push_back(static_cast<int64_t>(dim));
+  }
+  out->set_dims(common::make_ddim(tensor_shape));
+  out->set_dtype(x.dtype());
 }
 
 void PRecvInferMeta(const int peer,

@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import copy
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -221,12 +221,12 @@ class TestMedianAvg(unittest.TestCase):
             self.dygraph_single_test_median_cpu(lis_test)
 
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or not core.is_float16_supported(core.CUDAPlace(0)),
+        not (core.is_compiled_with_cuda() or is_custom_device())
+        or not core.is_float16_supported(get_device_place()),
         "core is not compiled with CUDA and do not support float16",
     )
     def test_float16(self):
-        paddle.disable_static(core.CUDAPlace(0))
+        paddle.disable_static(get_device_place())
         x = np.array(
             [[1, 2, 3, float('nan')], [1, 2, 3, 4], [float('nan'), 1, 2, 3]]
         ).astype('float16')
@@ -346,12 +346,12 @@ class TestMedianMin(unittest.TestCase):
             self.dygraph_single_test_median(lis_test)
 
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or not core.is_float16_supported(core.CUDAPlace(0)),
+        not (core.is_compiled_with_cuda() or is_custom_device())
+        or not core.is_float16_supported(get_device_place()),
         "core is not compiled with CUDA and do not support float16",
     )
     def test_float16(self):
-        paddle.disable_static(core.CUDAPlace(0))
+        paddle.disable_static(get_device_place())
         x = np.array(
             [[1, 2, 3, float('nan')], [1, 2, 3, 4], [float('nan'), 1, 2, 3]]
         ).astype('float16')
@@ -547,6 +547,138 @@ class TestMedianAlias(unittest.TestCase):
         y = paddle.median(x_tensor)
         np_y = np.array([np.nan])
         np.testing.assert_allclose(np_y, y, rtol=1e-05, equal_nan=True)
+
+
+class MedianOutTest(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        if core.is_compiled_with_cuda():
+            self.place = core.CUDAPlace(0)
+        else:
+            self.place = core.CPUPlace()
+
+    def test_median_api(self):
+        def run_median(test_type):
+            x = paddle.to_tensor(
+                [[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='float32'
+            )
+            a = paddle.ones([3], dtype="float32")
+            b = paddle.ones([3], dtype="int64")
+            x.stop_gradient = False
+            a.stop_gradient = False
+            b.stop_gradient = False
+
+            input = x + x
+            values = a + a
+            indices = b + b
+            out = (values, indices)
+
+            if test_type == "return":
+                out = paddle.median(input, dim=0, keepdim=False, mode='min')
+            elif test_type == "input_out":
+                paddle.median(input, dim=0, keepdim=False, mode='min', out=out)
+            elif test_type == "both_return":
+                out = paddle.median(
+                    input, dim=0, keepdim=False, mode='min', out=out
+                )
+            elif test_type == "both_input_out":
+                tmp = paddle.median(
+                    input, dim=0, keepdim=False, mode='min', out=out
+                )
+
+            ref_out = paddle._C_ops.median(input, 0, False, 'min')
+            np.testing.assert_allclose(
+                ref_out[0].numpy(),
+                out[0].numpy(),
+                1e-20,
+                1e-20,
+            )
+            np.testing.assert_allclose(
+                ref_out[1].numpy(),
+                out[1].numpy(),
+                1e-20,
+                1e-20,
+            )
+
+            out_0 = out[0] + out[0]
+            out_1 = out[1] + out[1]
+            (
+                paddle.sum(paddle.abs(out_0)) + paddle.sum(paddle.abs(out_1))
+            ).backward()
+
+            return out[0], out[1], x.grad, a.grad, b.grad
+
+        paddle.disable_static()
+        v1, i1, gx1, ga1, gb1 = run_median("return")
+        v2, i2, gx2, ga2, gb2 = run_median("input_out")
+        v3, i3, gx3, ga3, gb3 = run_median("both_return")
+        v4, i4, gx4, ga4, gb4 = run_median("both_input_out")
+
+        np.testing.assert_allclose(
+            v1.numpy(),
+            v2.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            v1.numpy(),
+            v3.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            v1.numpy(),
+            v4.numpy(),
+            1e-20,
+            1e-20,
+        )
+
+        np.testing.assert_allclose(
+            i1.numpy(),
+            i2.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            i1.numpy(),
+            i3.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            i1.numpy(),
+            i4.numpy(),
+            1e-20,
+            1e-20,
+        )
+
+        np.testing.assert_allclose(
+            gx1.numpy(),
+            gx2.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            gx1.numpy(),
+            gx3.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            gx1.numpy(),
+            gx4.numpy(),
+            1e-20,
+            1e-20,
+        )
+
+        np.testing.assert_equal(ga1, None)
+        np.testing.assert_equal(ga2, None)
+        np.testing.assert_equal(ga3, None)
+        np.testing.assert_equal(ga4, None)
+        np.testing.assert_equal(gb1, None)
+        np.testing.assert_equal(gb2, None)
+        np.testing.assert_equal(gb3, None)
+        np.testing.assert_equal(gb4, None)
 
 
 if __name__ == '__main__':

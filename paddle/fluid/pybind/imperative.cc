@@ -753,7 +753,7 @@ void BindImperative(py::module *m_ptr) {
              // c++
              // STL and python set/list/dict involve a copy operation that
              // prevents pass-by-reference semantics, so it is ok to swap.
-             // The reaseon why not directly pass
+             // The reason why not directly pass
              // std::shared_ptr<std::unordered_set<std::string>>
              // is that pybind11 forbid shared_ptr<T> where T is not custom
              // type.
@@ -761,7 +761,7 @@ void BindImperative(py::module *m_ptr) {
                  allow_ops);
              imperative::AmpOperators::Instance().GetMutableBlockOps()->swap(
                  block_ops);
-             VLOG(5) << "AMP operators changed, "
+             VLOG(7) << "AMP operators changed, "
                      << imperative::AmpOperators::Instance();
            })
       .def("_get_amp_op_list",
@@ -1103,7 +1103,7 @@ void BindImperative(py::module *m_ptr) {
         PADDLE_ENFORCE_EQ(offset_tensor.numel(),
                           count_tensor.numel(),
                           common::errors::InvalidArgument(
-                              "`offset` and `count` tensor size dismatch."));
+                              "`offset` and `count` tensor size mismatch."));
         PADDLE_ENFORCE_EQ(
             src_tensor.dims().size(),
             dst_tensor->dims().size(),
@@ -1302,7 +1302,7 @@ void BindImperative(py::module *m_ptr) {
           PADDLE_ENFORCE_EQ(offset_tensor.numel(),
                             count_tensor.numel(),
                             common::errors::InvalidArgument(
-                                "`offset` and `count` tensor size dismatch."));
+                                "`offset` and `count` tensor size mismatch."));
           auto *offset_data = offset_tensor.data<int64_t>();
           auto *count_data = count_tensor.data<int64_t>();
           for (int64_t i = 0; i < count_tensor.numel(); i++) {

@@ -22,8 +22,6 @@
 #include <limits>
 
 #include "paddle/phi/api/all.h"
-#include "paddle/phi/common/float8_e4m3fn.h"
-#include "paddle/phi/common/float8_e5m2.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
 #define DISPATCH_BOOL(condition, ConstName, ...) \

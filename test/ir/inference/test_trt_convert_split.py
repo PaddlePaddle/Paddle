@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import itertools
 import unittest
 from functools import partial
 from typing import Any
@@ -102,94 +103,99 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
         def generate_SectionsTensorList2(attrs: list[dict[str, Any]]):
             return np.array([14]).astype(np.int32)
 
-        for num_input in [0, 1]:
-            for dims in [1, 2, 3, 4]:
-                for batch in [3, 6, 9]:
-                    for Out in [
-                        ["output_var0", "output_var1"],
-                        ["output_var0", "output_var1", "output_var2"],
-                    ]:
-                        for sections in [
-                            [],
-                            [1, 2],
-                            [2, 1],
-                            [10, 14],
-                            [1, 1, 1],
-                            [2, 2, 2],
-                            [3, 3, 3],
-                            [3, 7, 14],
-                        ]:
-                            for num in [0, 3]:
-                                for axis in [0, 1, 2, 3]:
-                                    self.batch = batch
-                                    self.num_input = num_input
-                                    self.dims = dims
-                                    dics = [
-                                        {
-                                            "sections": sections,
-                                            "num": num,
-                                            "axis": axis,
-                                        },
-                                        {},
-                                    ]
+        for (
+            num_input,
+            dims,
+            batch,
+            out,
+            sections,
+            num,
+            axis,
+        ) in itertools.product(
+            [0, 1],
+            [1, 2, 3, 4],
+            [3, 6, 9],
+            [
+                ["output_var0", "output_var1"],
+                ["output_var0", "output_var1", "output_var2"],
+            ],
+            [
+                [],
+                [1, 2],
+                [2, 1],
+                [10, 14],
+                [1, 1, 1],
+                [2, 2, 2],
+                [3, 3, 3],
+                [3, 7, 14],
+            ],
+            [0, 3],
+            [0, 1, 2, 3],
+        ):
+            self.batch = batch
+            self.num_input = num_input
+            self.dims = dims
+            dics = [
+                {
+                    "sections": sections,
+                    "num": num,
+                    "axis": axis,
+                },
+                {},
+            ]
+            dics_input = [
+                {
+                    "X": ["split_input"],
+                    "AxisTensor": ["AxisTensor"],
+                    "SectionsTensorList": [
+                        "SectionsTensorList1",
+                        "SectionsTensorList2",
+                    ],
+                },
+                {"X": ["split_input"]},
+            ]
+            dics_inputs = [
+                {
+                    "AxisTensor": TensorConfig(
+                        data_gen=partial(generate_AxisTensor, dics)
+                    ),
+                    "SectionsTensorList1": TensorConfig(
+                        data_gen=partial(
+                            generate_SectionsTensorList1,
+                            dics,
+                        )
+                    ),
+                    "SectionsTensorList2": TensorConfig(
+                        data_gen=partial(
+                            generate_SectionsTensorList2,
+                            dics,
+                        )
+                    ),
+                },
+                {},
+            ]
 
-                                    dics_input = [
-                                        {
-                                            "X": ["split_input"],
-                                            "AxisTensor": ["AxisTensor"],
-                                            "SectionsTensorList": [
-                                                "SectionsTensorList1",
-                                                "SectionsTensorList2",
-                                            ],
-                                        },
-                                        {"X": ["split_input"]},
-                                    ]
-                                    dics_inputs = [
-                                        {
-                                            "AxisTensor": TensorConfig(
-                                                data_gen=partial(
-                                                    generate_AxisTensor, dics
-                                                )
-                                            ),
-                                            "SectionsTensorList1": TensorConfig(
-                                                data_gen=partial(
-                                                    generate_SectionsTensorList1,
-                                                    dics,
-                                                )
-                                            ),
-                                            "SectionsTensorList2": TensorConfig(
-                                                data_gen=partial(
-                                                    generate_SectionsTensorList2,
-                                                    dics,
-                                                )
-                                            ),
-                                        },
-                                        {},
-                                    ]
+            ops_config = [
+                {
+                    "op_type": "split",
+                    "op_inputs": dics_input[num_input],
+                    "op_outputs": {"Out": out},
+                    "op_attrs": dics[0],
+                }
+            ]
+            ops = self.generate_op_config(ops_config)
+            program_config = ProgramConfig(
+                ops=ops,
+                weights=dics_inputs[num_input],
+                inputs={
+                    "split_input": TensorConfig(
+                        data_gen=partial(generate_input1, dics, batch)
+                    )
+                },
+                outputs=out,
+            )
 
-                                    ops_config = [
-                                        {
-                                            "op_type": "split",
-                                            "op_inputs": dics_input[num_input],
-                                            "op_outputs": {"Out": Out},
-                                            "op_attrs": dics[0],
-                                        }
-                                    ]
-                                    ops = self.generate_op_config(ops_config)
-                                    program_config = ProgramConfig(
-                                        ops=ops,
-                                        weights=dics_inputs[num_input],
-                                        inputs={
-                                            "split_input": TensorConfig(
-                                                data_gen=partial(
-                                                    generate_input1, dics, batch
-                                                )
-                                            )
-                                        },
-                                        outputs=Out,
-                                    )
-
-                                    yield program_config
+            yield program_config
 
     def sample_predictor_configs(
         self, program_config

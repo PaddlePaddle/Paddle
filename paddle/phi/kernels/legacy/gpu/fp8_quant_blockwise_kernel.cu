@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/legacy/gpu/fp8_quant_blockwise_kernel.h"
 #include <cuda_fp8.h>
 #include <cstdint>
 #include <vector>
@@ -370,8 +371,8 @@ __global__ void __launch_bounds__(512)
   // 1. Load 128x128 block of input.
   bf16x4_t x[8];
   for (uint32_t i = 0; i < 8; i++) {
-    size_t col_idx = block_offset_y + threadIdx.y + i * 16;
-    size_t row_idx = block_offset_x + threadIdx.x * 4;
+    size_t col_idx = block_offset_y + static_cast<size_t>(threadIdx.y) + i * 16;
+    size_t row_idx = block_offset_x + static_cast<size_t>(threadIdx.x) * 4;
     size_t idx = col_idx * rows + row_idx;
     x[i] = *reinterpret_cast<const bf16x4_t *>(input + idx);
   }
@@ -384,7 +385,8 @@ __global__ void __launch_bounds__(512)
     // 3. Write 1x128 scale.
     if (threadIdx.y < 4) {
       float scale_out = 1.0f / block_scale[threadIdx.y * 32 + threadIdx.x];
-      size_t col_idx = block_offset_y + threadIdx.y * 32 + threadIdx.x;
+      size_t col_idx = block_offset_y + static_cast<size_t>(threadIdx.y) * 32 +
+                       static_cast<size_t>(threadIdx.x);
       size_t row_idx = blockIdx.x;
       if constexpr (output_scale_transpose) {
         scale[row_idx * quanted_rows + col_idx] = scale_out;
@@ -395,8 +397,9 @@ __global__ void __launch_bounds__(512)
 
     // 4. Do quantization on X and write 128x128 output.
     for (uint32_t i = 0; i < 8; i++) {
-      size_t col_idx = block_offset_y + threadIdx.y + i * 16;
-      size_t row_idx = block_offset_x + threadIdx.x * 4;
+      size_t col_idx =
+          block_offset_y + static_cast<size_t>(threadIdx.y) + i * 16;
+      size_t row_idx = block_offset_x + static_cast<size_t>(threadIdx.x) * 4;
       size_t idx = col_idx * rows + row_idx;
       float scale_val = block_scale[i * 16 + threadIdx.y];
       fp8x4_t data;
@@ -417,7 +420,8 @@ __global__ void __launch_bounds__(512)
     if (threadIdx.y < 4) {
       float scale_out = 1.0f / block_scale[threadIdx.y * 32 + threadIdx.x];
       size_t col_idx = blockIdx.y;
-      size_t row_idx = block_offset_x + threadIdx.y * 32 + threadIdx.x;
+      size_t row_idx = block_offset_x + static_cast<size_t>(threadIdx.y) * 32 +
+                       static_cast<size_t>(threadIdx.x);
       if constexpr (output_scale_transpose) {
         scale_transposed[col_idx * quanted_cols + row_idx] = scale_out;
       } else {
@@ -438,8 +442,9 @@ __global__ void __launch_bounds__(512)
 
     // 8. Write 128x128 transposed output.
     for (uint32_t i = 0; i < 8; i++) {
-      size_t row_idx = block_offset_x + threadIdx.y + i * 16;
-      size_t col_idx = block_offset_y + threadIdx.x * 4;
+      size_t row_idx =
+          block_offset_x + static_cast<size_t>(threadIdx.y) + i * 16;
+      size_t col_idx = block_offset_y + static_cast<size_t>(threadIdx.x) * 4;
       size_t idx = row_idx * cols + col_idx;
       fp8x4_t data;
       for (uint32_t j = 0; j < 4; j++) {
@@ -492,9 +497,9 @@ void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
                                               using_pow2_scale>;
   kernel<<<grid, block, 0, dev_ctx.stream()>>>(
       reinterpret_cast<const __nv_bfloat16 *>(X.data<phi::bfloat16>()),
-      reinterpret_cast<__nv_fp8_e4m3 *>(out->data<phi::dtype::float8_e4m3fn>()),
+      reinterpret_cast<__nv_fp8_e4m3 *>(out->data<phi::float8_e4m3fn>()),
       input_transpose ? reinterpret_cast<__nv_fp8_e4m3 *>(
-                            out_transposed->data<phi::dtype::float8_e4m3fn>())
+                            out_transposed->data<phi::float8_e4m3fn>())
                       : nullptr,
       reinterpret_cast<float *>(scale->data<float>()),
       input_transpose
@@ -525,10 +530,10 @@ void FP8QuantBlockWiseKernel(const Context &dev_ctx,
   PD_CHECK(X.dtype() == phi::DataType::BFLOAT16,
            "X datatype error, can only be bfloat16");
 
-  dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(out);
+  dev_ctx.template Alloc<phi::float8_e4m3fn>(out);
   dev_ctx.template Alloc<float>(scale);
   if (input_transpose) {
-    dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(out_transposed);
+    dev_ctx.template Alloc<phi::float8_e4m3fn>(out_transposed);
     dev_ctx.template Alloc<float>(scale_transposed);
   }
 

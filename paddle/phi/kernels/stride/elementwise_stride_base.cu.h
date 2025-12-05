@@ -314,6 +314,31 @@ void UnaryStrideElementwiseKernel(const Context &dev_ctx,
                                        offset_calc);
 }
 
+template <typename T, typename Context, typename Functor>
+void LaunchUnaryElementwiseStrideKernel(const Context &dev_ctx,
+                                        const DenseTensor &x,
+                                        Functor func,
+                                        DenseTensor *out) {
+  std::vector<const DenseTensor *> inputs = {&x};
+  std::vector<DenseTensor *> outputs = {out};
+  dev_ctx.template Alloc<T>(out);
+  UnaryStrideElementwiseKernel<T, Context>(dev_ctx, inputs, &outputs, func);
+}
+
+template <typename T, typename Context, typename Functor>
+void LaunchBinaryElementwiseStrideKernel(const Context &dev_ctx,
+                                         const DenseTensor &x,
+                                         const DenseTensor &y,
+                                         Functor func,
+                                         int axis,
+                                         DenseTensor *out) {
+  std::vector<const DenseTensor *> inputs = {&x, &y};
+  std::vector<DenseTensor *> outputs = {out};
+  dev_ctx.template Alloc<T>(out);
+  BinaryStrideBroadcastKernel<T, Context>(
+      dev_ctx, inputs, &outputs, func, axis);
+}
+
 template <typename Context>
 phi::DenseTensor Tensor2Contiguous(const Context &dev_ctx,
                                    const phi::DenseTensor &tensor) {

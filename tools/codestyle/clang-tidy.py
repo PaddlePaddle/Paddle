@@ -408,7 +408,7 @@ def main():
         check_clang_apply_replacements_binary(args)
         tmpdir = tempfile.mkdtemp()
 
-    # Build up a big regexy filter from all command line arguments.
+    # Build up a big regex filter from all command line arguments.
     file_name_re = re.compile('|'.join(args.files))
 
     return_code = 0

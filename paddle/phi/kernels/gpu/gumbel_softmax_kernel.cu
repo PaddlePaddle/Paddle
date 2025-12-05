@@ -19,16 +19,9 @@
 #include "paddle/phi/kernels/impl/gumbel_softmax_kernel_impl.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -65,15 +58,15 @@ __global__ void OneHotCUDAKernel(const int64_t height,
                                  const T init,
                                  const T* in,
                                  T* out) {
-  typedef cub::BlockReduce<KeyValuePair<int, T>, BlockDim> BlockReduce;
+  typedef cub::BlockReduce<KeyValuePair<int64_t, T>, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage;
 
   for (int64_t idx = blockIdx.x; idx < height; idx += gridDim.x) {
-    KeyValuePair<int, T> kv_pair = {-1, init};
+    KeyValuePair<int64_t, T> kv_pair = {-1, init};
     int h = idx / size_out_axis;
     int w = idx % size_out_axis;
     cub::ArgMax reducer;
-    for (int k = threadIdx.x; k < width; k += blockDim.x) {
+    for (int64_t k = threadIdx.x; k < width; k += blockDim.x) {
       kv_pair = reducer(
           {k, in[h * width * size_out_axis + k * size_out_axis + w]}, kv_pair);
     }
@@ -122,7 +115,9 @@ __global__ void AddGumbelNoiseCUDAKernel(const T* input_data,
                                          MPType* noise,
                                          const float temperature,
                                          int64_t n) {
-  int index = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t index =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int step = blockDim.x * gridDim.x;
   for (int64_t i = index; i < n; i += step) {
     MPType gumbel_noise = -log(-log(noise[i]));

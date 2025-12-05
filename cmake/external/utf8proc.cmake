@@ -28,6 +28,16 @@ endif()
 
 include_directories(${UTF8PROC_INSTALL_DIR}/include)
 
+# For CMake >= 4.0.0, set policy compatibility for utf8proc's CMake.
+set(UTF8PROC_POLICY_ARGS "")
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
+  message(
+    WARNING
+      "utf8proc: forcing CMake policy compatibility for CMake >= 4.0 (CMAKE_POLICY_VERSION_MINIMUM=3.5)"
+  )
+  set(UTF8PROC_POLICY_ARGS "-DCMAKE_POLICY_VERSION_MINIMUM=3.5")
+endif()
+
 ExternalProject_Add(
   extern_utf8proc
   ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -40,6 +50,7 @@ ExternalProject_Add(
              -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
              -DCMAKE_INSTALL_PREFIX:PATH=${UTF8PROC_INSTALL_DIR}
              -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
+             ${UTF8PROC_POLICY_ARGS}
   BUILD_BYPRODUCTS ${UTF8PROC_LIBRARIES})
 
 add_library(utf8proc STATIC IMPORTED GLOBAL)

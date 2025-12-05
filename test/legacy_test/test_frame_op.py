@@ -16,7 +16,12 @@ import unittest
 
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -149,8 +154,8 @@ class TestFrameFP16OP(TestFrameOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestFrameBF16OP(OpTest):
@@ -177,13 +182,13 @@ class TestFrameBF16OP(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place)
         paddle.disable_static()
 
     def test_check_grad_normal(self):
         paddle.enable_static()
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(place, ['X'], 'Out')
         paddle.disable_static()
 

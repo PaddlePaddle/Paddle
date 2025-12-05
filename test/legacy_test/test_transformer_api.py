@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from parameterized import parameterized
 from utils import static_guard
 
 import paddle
@@ -430,15 +431,10 @@ class TestTransformer(unittest.TestCase):
                 act_dropout,
                 sequence_length,
             ) = generate_basic_params(mode="encoder_layer")
-            # 2.generate input for encoder
-            src = np.random.rand(batch_size, sequence_length, d_model).astype(
-                "float32"
+            src, src_mask, d_model, n_head, dim_feedforward, dropout = (
+                self._prepare_encoder_inputs()
             )
             residual = src
-            src_mask = np.zeros(
-                (batch_size, n_head, sequence_length, sequence_length)
-            ).astype("float32")
-            src_mask[0][0][0][0] = -np.inf
 
             # paddle
             encoder_layer = TransformerEncoderLayer(
@@ -504,13 +500,9 @@ class TestTransformer(unittest.TestCase):
                 sequence_length,
             ) = generate_basic_params(mode="encoder_layer")
             # 2.generate input for encoder
-            src = np.random.rand(batch_size, sequence_length, d_model).astype(
-                "float32"
+            src, src_mask, d_model, n_head, dim_feedforward, dropout = (
+                self._prepare_encoder_inputs()
             )
-            src_mask = np.zeros(
-                (batch_size, n_head, sequence_length, sequence_length)
-            ).astype("float32")
-            src_mask[0][0][0][0] = -np.inf
 
             for cache in [True, False]:
                 # paddle
@@ -695,14 +687,9 @@ class TestTransformer(unittest.TestCase):
             sequence_length,
         ) = generate_basic_params(mode="encoder_layer")
 
-        src = np.random.rand(batch_size, sequence_length, d_model).astype(
-            "float32"
+        src, src_mask, d_model, n_head, dim_feedforward, dropout = (
+            self._prepare_encoder_inputs()
         )
-
-        src_mask = np.zeros(
-            (batch_size, n_head, sequence_length, sequence_length)
-        ).astype("float32")
-        src_mask[0][0][0][0] = -np.inf
         with base.dygraph.guard(base.CPUPlace()):
             encoder_layer = TransformerEncoderLayer(
                 d_model, n_head, dim_feedforward, dropout
@@ -714,44 +701,50 @@ class TestTransformer(unittest.TestCase):
                 paddle.to_tensor(src), paddle.to_tensor(src_mask)
             )
 
-    def test_encoder_attr_1(self):
+    def _prepare_encoder_inputs(self):
         (
             batch_size,
             d_model,
             n_head,
             dim_feedforward,
             dropout,
-            attn_dropout,
-            act_dropout,
+            _,
+            _,
             sequence_length,
         ) = generate_basic_params(mode="encoder_layer")
 
         src = np.random.rand(batch_size, sequence_length, d_model).astype(
             "float32"
         )
-
         src_mask = np.zeros(
-            (batch_size, n_head, sequence_length, sequence_length)
-        ).astype("float32")
+            (batch_size, n_head, sequence_length, sequence_length),
+            dtype="float32",
+        )
         src_mask[0][0][0][0] = -np.inf
-        with base.dygraph.guard(base.CPUPlace()):
-            for cache in [True, False]:
-                # paddle
-                encoder_layer = TransformerEncoderLayer(
-                    d_model, n_head, dim_feedforward, dropout
-                )
-                num_layers = 6
-                encoder = TransformerEncoder(encoder_layer, num_layers)
-                cache_objs = None
-                if cache:
-                    cache_objs = encoder.gen_cache(paddle.to_tensor(src))
 
-                # src, src_mask
-                enc_output = encoder(
-                    paddle.to_tensor(src),
-                    paddle.to_tensor(src_mask),
-                    cache_objs,
-                )
+        return src, src_mask, d_model, n_head, dim_feedforward, dropout
+
+    @parameterized.expand([(True,), (False,)])
+    def test_encoder_attr_1(self, cache):
+        src, src_mask, d_model, n_head, dim_feedforward, dropout = (
+            self._prepare_encoder_inputs()
+        )
+
+        with base.dygraph.guard(base.CPUPlace()):
+            encoder_layer = TransformerEncoderLayer(
+                d_model, n_head, dim_feedforward, dropout
+            )
+            encoder = TransformerEncoder(encoder_layer, num_layers=6)
+
+            cache_objs = (
+                encoder.gen_cache(paddle.to_tensor(src)) if cache else None
+            )
+
+            enc_output = encoder(
+                paddle.to_tensor(src),
+                paddle.to_tensor(src_mask),
+                cache_objs,
+            )
 
     def test_decoder(self):
         (

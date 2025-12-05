@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_device_place
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -169,7 +174,7 @@ def bicubic_interp_np(
     align_corners=True,
     data_layout='kNCHW',
 ):
-    """trilinear interpolation implement in shape [N, C, H, W]"""
+    """bicubic interpolation implement in shape [N, C, H, W]"""
     if data_layout == "NHWC":
         input = np.transpose(input, (0, 3, 1, 2))  # NHWC => NCHW
     if out_size is not None:
@@ -180,24 +185,25 @@ def bicubic_interp_np(
         out_w = actual_shape[1]
     batch_size, channel, in_h, in_w = input.shape
 
+    # Standard bicubic interpolation (no anti-aliasing)
     ratio_h = ratio_w = 0.0
-    if out_h > 1:
-        if align_corners:
+    if align_corners:
+        if out_h > 1:
             ratio_h = (in_h - 1.0) / (out_h - 1.0)
+    else:
+        if scale_h > 0:
+            ratio_h = 1.0 / scale_h
         else:
-            if scale_h > 0:
-                ratio_h = 1.0 / scale_h
-            else:
-                ratio_h = 1.0 * in_h / out_h
+            ratio_h = 1.0 * in_h / out_h
 
-    if out_w > 1:
-        if align_corners:
+    if align_corners:
+        if out_w > 1:
             ratio_w = (in_w - 1.0) / (out_w - 1.0)
+    else:
+        if scale_w > 0:
+            ratio_w = 1.0 / scale_w
         else:
-            if scale_w > 0:
-                ratio_w = 1.0 / scale_w
-            else:
-                ratio_w = 1.0 * in_w / out_w
+            ratio_w = 1.0 * in_w / out_w
 
     out = np.zeros((batch_size, channel, out_h, out_w))
 
@@ -410,8 +416,8 @@ class TestBicubicInterpCase6FP16(TestBicubicInterpOpFP16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBicubicInterpOpBF16(OpTest):
@@ -496,8 +502,8 @@ class TestBicubicInterpOpBF16(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBicubicInterpCase1BF16(TestBicubicInterpOpBF16):
@@ -506,8 +512,8 @@ class TestBicubicInterpCase1BF16(TestBicubicInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBicubicInterpCase2BF16(TestBicubicInterpOpBF16):
@@ -516,8 +522,8 @@ class TestBicubicInterpCase2BF16(TestBicubicInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBicubicInterpCase3BF16(TestBicubicInterpOpBF16):
@@ -526,8 +532,8 @@ class TestBicubicInterpCase3BF16(TestBicubicInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBicubicInterpCase4BF16(TestBicubicInterpOpBF16):
@@ -536,8 +542,8 @@ class TestBicubicInterpCase4BF16(TestBicubicInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBicubicInterpCase5BF16(TestBicubicInterpOpBF16):
@@ -546,8 +552,8 @@ class TestBicubicInterpCase5BF16(TestBicubicInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBicubicInterpCase6BF16(TestBicubicInterpOpBF16):
@@ -915,7 +921,8 @@ class TestBicubicOpError(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (base.core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestBicubicInterpOpForFloat16(unittest.TestCase):
     def init_test_case(self):

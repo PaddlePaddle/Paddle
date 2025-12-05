@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/pir.h"
-
 #include <Python.h>
 #include <algorithm>
 #include <iterator>
@@ -63,6 +62,7 @@
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/pir_utils.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
+#include "paddle/fluid/pybind/size.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
@@ -1445,7 +1445,16 @@ void BindValue(py::module *m) {
                              })
       .def_property(
           "shape",
-          [](Value self) { return phi::vectorize(GetValueDims(self)); },
+          [](Value self) {
+            auto array = phi::vectorize(GetValueDims(self));
+            auto ptr =
+                Paddle_Size_NewFromInt64Array(array.data(), array.size());
+            if (!ptr) {
+              throw py::error_already_set();
+            }
+
+            return py::reinterpret_steal<py::object>(ptr);
+          },
           [](Value self, const std::vector<int> &shape) {
             PADDLE_THROW(common::errors::InvalidArgument(
                 "can't set shape when building static graph"));
@@ -3284,6 +3293,12 @@ void BindDrrPatternContext(pybind11::module *m) {
           "Float32Attr",
           [](drr::ResultPattern &self, float value) {
             return self.Float32Attr(value);
+          },
+          pybind11::arg("value"))
+      .def(
+          "DoubleAttr",
+          [](drr::ResultPattern &self, double value) {
+            return self.DoubleAttr(value);
           },
           pybind11::arg("value"))
       .def(

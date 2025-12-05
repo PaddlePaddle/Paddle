@@ -37,7 +37,7 @@ struct alignas(N) OpaqueType {
 
 template <typename IndexT>
 std::array<char*, DDim::kMaxRank> GetIndexDataPtrs(
-    const std::vector<const DenseTensor*> index) {
+    const std::vector<const DenseTensor*>& index) {
   std::array<char*, DDim::kMaxRank> index_ptrs{};
 
   PADDLE_ENFORCE_LE(index.size(),

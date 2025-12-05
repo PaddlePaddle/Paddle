@@ -14,6 +14,11 @@
 
 #pragma once
 
+#include <ATen/Device.h>
+#include <ATen/Functions.h>
+#include <ATen/Tensor.h>
+#include <ATen/Utils.h>
+#include <ATen/indexing.h>
 #include <c10/core/Device.h>
 #include <c10/core/DeviceType.h>
 #include <c10/core/MemoryFormat.h>

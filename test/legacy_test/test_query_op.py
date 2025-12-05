@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
+
+from op_test import is_custom_device
 
 import paddle
 from paddle.base import core
@@ -21,7 +22,7 @@ from paddle.base import core
 class TestCudnnVersion(unittest.TestCase):
     def test_no_cudnn(self):
         cudnn_version = paddle.get_cudnn_version()
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             self.assertEqual((cudnn_version is None), True)
         else:
             self.assertEqual((isinstance(cudnn_version, int)), True)

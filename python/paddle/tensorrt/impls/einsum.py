@@ -17,7 +17,7 @@ from paddle.tensorrt.converter_utils import set_layer_name
 from paddle.tensorrt.register import converter_registry
 
 
-@converter_registry.register("pd_op.einsum", trt_version="8.x")
+@converter_registry.register("pd_op.einsum")
 def convert_einsum(network, paddle_op, inputs):
     equation = paddle_op.attrs().get("equation", "")
 

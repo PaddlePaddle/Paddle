@@ -17,7 +17,7 @@ import collections
 import re
 
 import yaml
-from api_base import PREFIX_TENSOR_NAME
+from api_base import PREFIX_TENSOR_NAME, IsUsePredefinedOut
 from api_gen import (
     BackwardAPI,
     ForwardAPI,
@@ -370,11 +370,11 @@ INFER_GLOBAL_SHAPE_TEMPLATE = """
 
 # 4. Select Kernel
 KERNEL_SELECTION_TEMPLATE = """
-      VLOG(6) << "{} API dist branch: kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
+      VLOG(4) << "{} API dist branch: kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
       auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
           "{}", {{kernel_backend, kernel_layout, kernel_data_type}});
       const auto& kernel = kernel_result.kernel;
-      VLOG(6) << "{} kernel: " << kernel;
+      VLOG(4) << "{} kernel: " << kernel;
       dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
 """
 
@@ -1227,9 +1227,26 @@ class DistForwardAPI(ForwardAPI):
                     )
                 )
             else:
-                output_creation_code += API_OUT_CREATION_TEMPLATE.format(
-                    return_type, ""
-                )
+                if IsUsePredefinedOut(self.outputs['types']):
+                    length = len(self.outputs['names'])
+                    if length == 1:
+                        output_creation_code += "Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"
+                    else:
+                        tuple_types = ", ".join(["Tensor"] * length)
+                        get_calls = ", ".join(
+                            f"*std::get<{i}>(*predefined_out)"
+                            for i in range(length)
+                        )
+                        output_creation_code += (
+                            f"std::tuple<{tuple_types}> out_tmp;"
+                            f"\n    paddle::optional<std::tuple<{tuple_types}>> predefined_out_value;"
+                            f"\n    if(predefined_out) {{ predefined_out_value = std::make_tuple({get_calls}); }}"
+                            f"\n    std::tuple<{tuple_types}>& api_output = predefined_out_value ? *predefined_out_value : out_tmp;"
+                        )
+                else:
+                    output_creation_code += API_OUT_CREATION_TEMPLATE.format(
+                        return_type, ""
+                    )
 
             # kernel output generate
             for i, out_type in enumerate(self.outputs['types']):
@@ -2122,8 +2139,7 @@ class DistForwardAPI(ForwardAPI):
         # 1. doesn't support initialize ops now
         # 2. doesn't support stride/view api
         # 3. only for general forward and backward
-        # 4. doesn't support double grad and triple grad
-        # 5. for multi kernels functions, doesn't support sparse kernel
+        # 4. for multi kernels functions, doesn't support sparse kernel
         if len(self.kernel['func']) > 1:
             kernel_dispatch_code = ''
             dist_branch_code = ""
@@ -2134,8 +2150,6 @@ class DistForwardAPI(ForwardAPI):
                     and '_sr' not in kernel_name
                     and len(self.inputs['names']) > 0
                     and self.check_argument_whether_support_auto_parallel()
-                    and not self.api.endswith("_double_grad")
-                    and not self.api.endswith("_triple_grad")
                 ):
                     dist_branch_code += self.generate_auto_parallel_branch()
             kernel_dispatch_code += dist_branch_code
@@ -2156,8 +2170,6 @@ class DistForwardAPI(ForwardAPI):
             if (
                 len(self.inputs['names']) > 0
                 and self.check_argument_whether_support_auto_parallel()
-                and not self.api.endswith("_double_grad")
-                and not self.api.endswith("_triple_grad")
             ):
                 dist_branch_code = self.generate_auto_parallel_branch()
             return API_IMPL_TEMPLATE.format(

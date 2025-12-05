@@ -231,8 +231,8 @@ void CrossEntropyGradInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(dy_dims.size(),
                     label_dims.size(),
                     common::errors::InvalidArgument(
-                        "Input(Y@Grad) and Input(Y) should have the same rank."
-                        "But received: Y@Grad's rank is [%d], Y's rank is [%d]",
+                        "Input(Y@GRAD) and Input(Y) should have the same rank."
+                        "But received: Y@GRAD's rank is [%d], Y's rank is [%d]",
                         dy_dims.size(),
                         label_dims.size()));
 
@@ -245,10 +245,10 @@ void CrossEntropyGradInferMeta(const MetaTensor& x,
     PADDLE_ENFORCE_EQ(common::slice_ddim(x_dims, 0, rank - 1),
                       common::slice_ddim(dy_dims, 0, rank - 1),
                       common::errors::InvalidArgument(
-                          "The Input(X) and Input(Y@Grad) should have the same "
+                          "The Input(X) and Input(Y@GRAD) should have the same "
                           "shape except the last dimension. but received: "
                           "the shape of Input(X) is [%s], "
-                          "the shape of Input(Y@Grad) is [%s].",
+                          "the shape of Input(Y@GRAD) is [%s].",
                           x_dims,
                           dy_dims));
   }
@@ -273,8 +273,8 @@ void CrossEntropyGrad2InferMeta(const MetaTensor& x_shape,
   PADDLE_ENFORCE_EQ(dy_dims.size(),
                     label_dims.size(),
                     common::errors::InvalidArgument(
-                        "Input(Y@Grad) and Input(Y) should have the same rank."
-                        "But received: Y@Grad's rank is [%d], Y's rank is [%d]",
+                        "Input(Y@GRAD) and Input(Y) should have the same rank."
+                        "But received: Y@GRAD's rank is [%d], Y's rank is [%d]",
                         dy_dims.size(),
                         label_dims.size()));
 
@@ -287,10 +287,10 @@ void CrossEntropyGrad2InferMeta(const MetaTensor& x_shape,
     PADDLE_ENFORCE_EQ(common::slice_ddim(x_dims, 0, rank - 1),
                       common::slice_ddim(dy_dims, 0, rank - 1),
                       common::errors::InvalidArgument(
-                          "The Input(X) and Input(Y@Grad) should have the same "
+                          "The Input(X) and Input(Y@GRAD) should have the same "
                           "shape except the last dimension. but received: "
                           "the shape of Input(X) is [%s], "
-                          "the shape of Input(Y@Grad) is [%s].",
+                          "the shape of Input(Y@GRAD) is [%s].",
                           x_dims,
                           dy_dims));
   }
@@ -740,10 +740,10 @@ void GruGradInferMeta(const MetaTensor& input,
                       MetaConfig config) {
   const auto& input_dims = input.dims();
   const auto& weight_dims = weight.dims();
-  int input_size = static_cast<int>(input_dims[1]);
-  int frame_size = static_cast<int>(weight_dims[0]);
-  int weight_height = static_cast<int>(weight_dims[0]);
-  int weight_width = static_cast<int>(weight_dims[1]);
+  int64_t input_size = input_dims[1];
+  int64_t frame_size = weight_dims[0];
+  int64_t weight_height = weight_dims[0];
+  int64_t weight_width = weight_dims[1];
   PADDLE_ENFORCE_EQ(
       input_size,
       frame_size * 3,
@@ -789,8 +789,8 @@ void GruGradInferMeta(const MetaTensor& input,
   }
   if (bias.initialized()) {
     const auto& bias_dims = bias.dims();
-    int bias_height = static_cast<int>(bias_dims[0]);
-    int bias_width = static_cast<int>(bias_dims[1]);
+    int64_t bias_height = bias_dims[0];
+    int64_t bias_width = bias_dims[1];
     PADDLE_ENFORCE_EQ(
         bias_height,
         1,
@@ -836,11 +836,10 @@ void GruUnitGradInferMeta(const MetaTensor& input,
   const auto& input_dims = input.dims();
   const auto& hidden_prev_dims = hidden_prev.dims();
   const auto& weight_dims = weight.dims();
-  // int batch_size = input_dims[0];
-  int input_size = static_cast<int>(input_dims[1]);
-  int frame_size = static_cast<int>(hidden_prev_dims[1]);
-  int weight_height = static_cast<int>(weight_dims[0]);
-  int weight_width = static_cast<int>(weight_dims[1]);
+  int64_t input_size = input_dims[1];
+  int64_t frame_size = hidden_prev_dims[1];
+  int64_t weight_height = weight_dims[0];
+  int64_t weight_width = weight_dims[1];
   if (config.is_runtime || input_size >= 0) {
     PADDLE_ENFORCE_EQ(
         input_size,
@@ -876,8 +875,8 @@ void GruUnitGradInferMeta(const MetaTensor& input,
           frame_size * 3));
   if (bias.initialized()) {
     const auto& bias_dims = bias.dims();
-    int bias_height = static_cast<int>(bias_dims[0]);
-    int bias_width = static_cast<int>(bias_dims[1]);
+    int64_t bias_height = bias_dims[0];
+    int64_t bias_width = bias_dims[1];
 
     PADDLE_ENFORCE_EQ(
         bias_height,
@@ -952,7 +951,7 @@ void InstanceNormGradInferMeta(const MetaTensor& x,
       common::errors::InvalidArgument(
           "The X@GRAD in InstanceNormGradInferMeta can't be nullptr."));
   const auto x_dims = x.dims();
-  const int C = static_cast<int>(x_dims[1]);
+  const int64_t C = x_dims[1];
   x_grad->set_dims(x_dims);
   x_grad->set_dtype(x.dtype());
   x_grad->set_layout(x.layout());
@@ -989,7 +988,7 @@ void InstanceNormDoubleGradInferMeta(const MetaTensor& x,
       common::errors::InvalidArgument(
           "The DX in InstanceNormDoubleGradInferMeta can't be nullptr."));
   const auto x_dims = x.dims();
-  const int C = static_cast<int>(x_dims[1]);
+  const int64_t C = x_dims[1];
   dx->set_dims(x_dims);
   dx->set_dtype(x.dtype());
   dx->set_layout(x.layout());
@@ -1248,8 +1247,8 @@ void MeshgridGradInferMeta(const std::vector<const MetaTensor*>& inputs,
   PADDLE_ENFORCE_GT(outputs_grad.size(),
                     1,
                     errors::InvalidArgument(
-                        "Number of Inputs(Out@Grad) should be larger than 1."
-                        "But received Inputs(Out@Grad)' size = %d .",
+                        "Number of Inputs(Out@GRAD) should be larger than 1."
+                        "But received Inputs(Out@GRAD)' size = %d .",
                         outputs_grad.size()));
   for (size_t i = 0; i < inputs.size(); i++) {
     inputs_grad[i]->share_meta(*inputs[i]);
@@ -1402,8 +1401,8 @@ void MultiDotGradInferMeta(const std::vector<const MetaTensor*>& x,
       x.size(),
       x_grad.size(),
       errors::InvalidArgument(
-          "Number of Inputs(X) should be equal with Outputs(X@Grad)."
-          "But received Inputs(X)' size = %d , Outputs(X@Grad)' size = %d.",
+          "Number of Inputs(X) should be equal with Outputs(X@GRAD)."
+          "But received Inputs(X)' size = %d , Outputs(X@GRAD)' size = %d.",
           x.size(),
           x_grad.size()));
   for (size_t i = 0; i < x.size(); i++) {
@@ -1420,7 +1419,7 @@ void MultiplexGradInferMeta(const MetaTensor& ids,
   PADDLE_ENFORCE_NE(
       ins_grad.empty(),
       true,
-      errors::InvalidArgument("Output(X@Grad) should not be null."));
+      errors::InvalidArgument("Output(X@GRAD) should not be null."));
   auto dout_dim = out_grad.dims();
   for (auto in_grad : ins_grad) {
     if (in_grad != nullptr) {
@@ -1512,18 +1511,18 @@ void NllLossGradInferMeta(const MetaTensor& x,
         PADDLE_ENFORCE_EQ(dout_dims.size(),
                           1,
                           common::errors::InvalidArgument(
-                              "The dimensions of Input(Out@Grad) must be 1"));
+                              "The dimensions of Input(Out@GRAD) must be 1"));
         PADDLE_ENFORCE_EQ(
             dout_dims[0],
             batch_size,
             common::errors::InvalidArgument(
-                "The unreduced size ofInput(Out@Grad) must be the "
+                "The unreduced size ofInput(Out@GRAD) must be the "
                 "same as batch_size."));
       } else {
         PADDLE_ENFORCE_EQ(dout_dims.size(),
                           0,
                           common::errors::InvalidArgument(
-                              "The dimensions of Input(Out@Grad) must be 0"));
+                              "The dimensions of Input(Out@GRAD) must be 0"));
       }
     } else if (x_dims.size() == 4) {
       if (reduction == "none") {
@@ -1531,20 +1530,20 @@ void NllLossGradInferMeta(const MetaTensor& x,
             dout_dims.size(),
             3,
             common::errors::InvalidArgument(
-                "The dimensions of Input(Out@Grad) must be 3,But got [%s].",
+                "The dimensions of Input(Out@GRAD) must be 3,But got [%s].",
                 dout_dims.size()));
         PADDLE_ENFORCE_EQ(dout_dims[0] == label_dims[0] &&
                               dout_dims[1] == label_dims[1] &&
                               dout_dims[2] == label_dims[2],
                           true,
                           common::errors::InvalidArgument(
-                              "The dimensions of Input(Out@Grad) must be match "
+                              "The dimensions of Input(Out@GRAD) must be match "
                               "to Input(Label) dimensions."));
       } else {
         PADDLE_ENFORCE_EQ(dout_dims.size(),
                           0,
                           common::errors::InvalidArgument(
-                              "The dimensions of Input(Out@Grad) must be 0"));
+                              "The dimensions of Input(Out@GRAD) must be 0"));
       }
     }
   }
@@ -1824,7 +1823,7 @@ void StackGradInferMeta(const MetaTensor& out_grad,
       x_grad.size(),
       static_cast<size_t>(dy_dim[axis]),
       common::errors::InvalidArgument(
-          "Number of Outputs(X@Grad) should be less than or equal to dy dim "
+          "Number of Outputs(X@GRAD) should be less than or equal to dy dim "
           "at axis, but received outputs size is:%d, dy dims is:%d.",
           x_grad.size(),
           static_cast<size_t>(dy_dim[axis])));
@@ -1897,6 +1896,16 @@ void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
   x_grad->set_dtype(out_grad.dtype());
 }
 
+void RandomGradInferMeta(const MetaTensor& out_grad, MetaTensor* x_grad) {
+  PADDLE_ENFORCE_NE(x_grad,
+                    nullptr,
+                    common::errors::InvalidArgument(
+                        "The X@GRAD in RandomGradInferMeta can't be nullptr."));
+  auto dims = out_grad.dims();
+  x_grad->set_dims(dims);
+  x_grad->set_dtype(out_grad.dtype());
+}
+
 void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
                           int axis,
                           MetaTensor* x_grad) {
@@ -1909,9 +1918,9 @@ void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
         input_dims[i],
         input_dims[0],
         common::errors::InvalidArgument(
-            "The dimensions of all Inputs(Y@Grad) must be the same,"
-            "but received Inputs(Y@Grad)'s %d-th dimension is %d, "
-            "Inputs(Y@Grad)'s 0-th to %d-th dimension is %d.",
+            "The dimensions of all Inputs(Y@GRAD) must be the same,"
+            "but received Inputs(Y@GRAD)'s %d-th dimension is %d, "
+            "Inputs(Y@GRAD)'s 0-th to %d-th dimension is %d.",
             i,
             input_dims[i],
             i - 1,
@@ -2264,6 +2273,70 @@ void FusedRMSNormGradInferMeta(const MetaTensor& x,
   }
 }
 
+PADDLE_API void FastLayerNormGradInfermeta(const MetaTensor& x,
+                                           const MetaTensor& scale,
+                                           const MetaTensor& mean,
+                                           const MetaTensor& invvar,
+                                           const MetaTensor& y_grad,
+                                           float epsilon,
+                                           MetaTensor* x_grad,
+                                           MetaTensor* scale_grad,
+                                           MetaTensor* bias_grad) {
+  PADDLE_ENFORCE_EQ(
+      x.dtype() == DataType::FLOAT32 || x.dtype() == DataType::FLOAT16 ||
+          x.dtype() == DataType::BFLOAT16,
+      true,
+      common::errors::InvalidArgument(
+          "The dtype of x must be FLOAT32, FLOAT16 or BFLOAT16, but got [%s]",
+          x.dtype()));
+  PADDLE_ENFORCE_EQ(
+      scale.dtype() == DataType::FLOAT32 ||
+          scale.dtype() == DataType::FLOAT16 ||
+          scale.dtype() == DataType::BFLOAT16,
+      true,
+      common::errors::InvalidArgument("The dtype of scale must be FLOAT32, "
+                                      "FLOAT16 or BFLOAT16, but got [%s]",
+                                      scale.dtype()));
+  if (x_grad && x) {
+    x_grad->share_meta(x);
+  }
+  if (scale_grad && scale) {
+    scale_grad->share_meta(scale);
+  }
+  if (bias_grad) {
+    bias_grad->share_meta(scale);
+  }
+}
+
+PADDLE_API void FastRMSNormGradInfermeta(const MetaTensor& x,
+                                         const MetaTensor& scale,
+                                         const MetaTensor& invvar,
+                                         const MetaTensor& y_grad,
+                                         float epsilon,
+                                         MetaTensor* x_grad,
+                                         MetaTensor* scale_grad) {
+  PADDLE_ENFORCE_EQ(
+      x.dtype() == DataType::FLOAT32 || x.dtype() == DataType::FLOAT16 ||
+          x.dtype() == DataType::BFLOAT16,
+      true,
+      common::errors::InvalidArgument(
+          "The dtype of x must be FLOAT32, FLOAT16 or BFLOAT16, but got [%s]",
+          x.dtype()));
+  PADDLE_ENFORCE_EQ(
+      scale.dtype() == DataType::FLOAT32 ||
+          scale.dtype() == DataType::FLOAT16 ||
+          scale.dtype() == DataType::BFLOAT16,
+      true,
+      common::errors::InvalidArgument("The dtype of scale must be FLOAT32, "
+                                      "FLOAT16 or BFLOAT16, but got [%s]",
+                                      scale.dtype()));
+  if (x_grad && x) {
+    x_grad->share_meta(x);
+  }
+  if (scale_grad && scale) {
+    scale_grad->share_meta(scale);
+  }
+}
 void IndexElementwiseGetGradInferMeta(
     const MetaTensor& x,
     const std::vector<const MetaTensor*>& index,

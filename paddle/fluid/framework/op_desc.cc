@@ -565,6 +565,14 @@ VariableNameMap OpDesc::Inputs(bool with_attr_var) const {
   return res;
 }
 
+std::vector<std::string> OpDesc::InputNames(bool with_attr_var) const {
+  return MapKeys(inputs_);
+}
+
+std::vector<std::string> OpDesc::OutputNames() const {
+  return MapKeys(outputs_);
+}
+
 std::vector<std::string> OpDesc::InputArgumentNames(bool with_attr_var) const {
   std::vector<std::string> retv;
   for (auto &ipt : this->Inputs(with_attr_var)) {

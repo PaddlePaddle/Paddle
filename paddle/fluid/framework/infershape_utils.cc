@@ -795,6 +795,11 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               infer_meta_context.EmplaceBackAttr(PADDLE_GET_CONST(float, attr));
               break;
             case phi::AttributeType::FLOAT64:
+              if (AttrTypeID(attr) == framework::proto::AttrType::FLOAT) {
+                const auto val = PADDLE_GET_CONST(float, attr);
+                infer_meta_context.EmplaceBackAttr(static_cast<double>(val));
+                break;
+              }
               infer_meta_context.EmplaceBackAttr(
                   PADDLE_GET_CONST(double, attr));
               break;
@@ -869,8 +874,25 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                   PADDLE_GET_CONST(std::vector<bool>, attr));
               break;
             case phi::AttributeType::FLOAT64S:
-              infer_meta_context.EmplaceBackAttr(
-                  PADDLE_GET_CONST(std::vector<double>, attr));
+              switch (AttrTypeID(attr)) {
+                case framework::proto::AttrType::FLOAT64S:
+                  infer_meta_context.EmplaceBackAttr(
+                      PADDLE_GET_CONST(std::vector<double>, attr));
+                  break;
+                case framework::proto::AttrType::FLOATS: {
+                  const auto& vector_float_attr =
+                      PADDLE_GET_CONST(std::vector<float>, attr);
+                  const std::vector<double> vector_double_attr(
+                      vector_float_attr.begin(), vector_float_attr.end());
+                  infer_meta_context.EmplaceBackAttr(vector_double_attr);
+                } break;
+                default:
+                  PADDLE_THROW(common::errors::Unimplemented(
+                      "Unsupported cast op attribute `%s` to vector<double> "
+                      "when "
+                      "construct KernelContext.",
+                      attr_names[i]));
+              }
               break;
             default:
               PADDLE_THROW(common::errors::Unimplemented(

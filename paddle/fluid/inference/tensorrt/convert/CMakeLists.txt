@@ -102,7 +102,7 @@ list(
   trans_layernorm_op.cc
   merge_layernorm_op.cc
   skip_merge_layernorm_op.cc
-  generic_and_custom_plugin_creater.cc
+  generic_and_custom_plugin_creator.cc
   lookup_table_op.cc
   elementwiseadd_transpose_op.cc
   skip_groupnorm_act_op.cc
@@ -122,12 +122,10 @@ list(
   dequantize_linear_op.cc
   share_data_op.cc)
 
-if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
-  list(APPEND CONVERT_FILES emb_eltwise_layernorm.cc
-       preln_emb_eltwise_layernorm.cc prompt_tuning_emb_eltwise_layernorm.cc)
-endif()
+list(APPEND CONVERT_FILES emb_eltwise_layernorm.cc
+     preln_emb_eltwise_layernorm.cc prompt_tuning_emb_eltwise_layernorm.cc)
 
-if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
+if(CUSPARSELT_FOUND)
   list(APPEND CONVERT_FILES sparse_fc_op.cc sparse_multihead_matmul_op.cc)
 endif()
 

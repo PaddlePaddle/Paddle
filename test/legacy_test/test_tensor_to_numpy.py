@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_places, is_custom_device
 
 from paddle import base
 
@@ -36,7 +36,7 @@ class TensorToNumpyTest(unittest.TestCase):
         ]
 
         places = get_places()
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             places.append(base.CUDAPinnedPlace())
 
         for p in places:

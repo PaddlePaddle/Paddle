@@ -18,8 +18,10 @@ import numpy as np
 from op_test import (
     OpTest,
     convert_float_to_uint16,
+    get_device_place,
     get_numeric_gradient,
     get_places,
+    is_custom_device,
 )
 from testsuite import create_op
 
@@ -436,15 +438,16 @@ class TestMatMulV2OpAutoParallel(OpTest):
 
 def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestMatMulOpFp16Case(parent):
         def init_kernel_type(self):
             self.dtype = np.float16
 
         def test_check_output(self):
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 if core.is_float16_supported(place):
                     self.check_output_with_place(
                         place,
@@ -458,7 +461,7 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
                     )
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
                     place,
@@ -502,9 +505,9 @@ create_test_fp16_class(TestMatMulOpBroadcast2)
 
 def create_test_bf16_class(parent, atol=0.01):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
+        not (core.is_compiled_with_cuda() or is_custom_device())
         or paddle.is_compiled_with_rocm()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        or not core.is_bfloat16_supported(get_device_place()),
         "core is not compiled with CUDA and not support the bfloat16",
     )
     class TestMatMulOpBf16Case(parent):
@@ -522,7 +525,7 @@ def create_test_bf16_class(parent, atol=0.01):
             self.dtype = np.uint16
 
         def test_check_output(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(
                 place,
                 atol=atol,
@@ -533,7 +536,7 @@ def create_test_bf16_class(parent, atol=0.01):
             )
 
         def test_check_grad_x(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             numeric_grads = self.get_numeric_grad(place, 'X')
             self.check_grad_with_place(
                 place,
@@ -551,7 +554,7 @@ def create_test_bf16_class(parent, atol=0.01):
             )
 
         def test_check_grad_y(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             numeric_grads = self.get_numeric_grad(place, 'Y')
             self.check_grad_with_place(
                 place,
@@ -638,8 +641,8 @@ class TestMatMulV2API(unittest.TestCase):
                 result = paddle.matmul(x, y)
 
     def test_dygraph_fp16(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 with base.dygraph.guard(place):
                     input_x = np.random.random([4, 3]).astype("float16")
@@ -649,8 +652,8 @@ class TestMatMulV2API(unittest.TestCase):
                     result = paddle.matmul(x, y)
 
     def test_compute_type_fp32(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 with base.dygraph.guard(place):
                     paddle.set_flags(
@@ -675,8 +678,8 @@ class TestMatMulV2API(unittest.TestCase):
                     )
 
     def test_compute_type_fp16_nan(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 with base.dygraph.guard(place):
                     paddle.set_flags(

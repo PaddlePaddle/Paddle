@@ -62,6 +62,7 @@ from ....utils import (
     log_do,
     magic_method_builtin_dispatch,
     map_if,
+    need_capture_control_flow,
 )
 from ....utils.exceptions import (
     BreakGraphError,
@@ -420,6 +421,15 @@ class PaddleApiVariable(FunctionVariable):
             value
         ):
             return PaddleApiVariable(value, graph, tracker)
+        if callable(value) and need_capture_control_flow(value):
+            # NOTE(SigureMo): We assume that if a function use AST transform,
+            # it already be already unified in dynamic and static graph.
+            to_unified_fn = (
+                paddle.jit.dy2static.program_translator.convert_to_static
+            )
+            unified_fn = to_unified_fn(value)
+            paddle.jit.marker.unified(unified_fn, for_sot=True)
+            return PaddleApiVariable(unified_fn, graph, tracker)
         return None
 
     @property

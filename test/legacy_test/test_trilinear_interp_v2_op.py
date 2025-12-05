@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -175,31 +180,16 @@ def trilinear_interp_np(
         out_w = actual_shape[2]
     batch_size, channel, in_d, in_h, in_w = input.shape
 
-    ratio_d = ratio_h = ratio_w = 0.0
-    if out_d > 1:
+    def compute_ratio(in_size, out_size, scale, align_corners):
         if align_corners:
-            ratio_d = (in_d - 1.0) / (out_d - 1.0)
-        else:
-            if scale_d > 0:
-                ratio_d = 1.0 / scale_d
-            else:
-                ratio_d = 1.0 * in_d / out_d
-    if out_h > 1:
-        if align_corners:
-            ratio_h = (in_h - 1.0) / (out_h - 1.0)
-        else:
-            if scale_h > 0:
-                ratio_h = 1.0 / scale_h
-            else:
-                ratio_h = 1.0 * in_h / out_h
-    if out_w > 1:
-        if align_corners:
-            ratio_w = (in_w - 1.0) / (out_w - 1.0)
-        else:
-            if scale_w > 0:
-                ratio_w = 1.0 / scale_w
-            else:
-                ratio_w = 1.0 * in_w / out_w
+            if out_size <= 1:
+                return 0.0
+            return (in_size - 1.0) / (out_size - 1.0)
+        return 1.0 / scale if scale > 0 else in_size / out_size
+
+    ratio_d = compute_ratio(in_d, out_d, scale_d, align_corners)
+    ratio_h = compute_ratio(in_h, out_h, scale_h, align_corners)
+    ratio_w = compute_ratio(in_w, out_w, scale_w, align_corners)
 
     out = np.zeros((batch_size, channel, out_d, out_h, out_w))
 
@@ -505,8 +495,8 @@ class TestTrilinearInterpCase6FP16(TestTrilinearInterpOpFP16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestNearestInterpOpBF16(OpTest):
@@ -607,8 +597,8 @@ class TestNearestInterpOpBF16(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestTrilinearInterpCase1BF16(TestNearestInterpOpBF16):
@@ -617,8 +607,8 @@ class TestTrilinearInterpCase1BF16(TestNearestInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestTrilinearInterpCase2BF16(TestNearestInterpOpBF16):
@@ -627,8 +617,8 @@ class TestTrilinearInterpCase2BF16(TestNearestInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestTrilinearInterpCase3BF16(TestNearestInterpOpBF16):
@@ -637,8 +627,8 @@ class TestTrilinearInterpCase3BF16(TestNearestInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestTrilinearInterpCase4BF16(TestNearestInterpOpBF16):
@@ -647,8 +637,8 @@ class TestTrilinearInterpCase4BF16(TestNearestInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestTrilinearInterpCase5BF16(TestNearestInterpOpBF16):
@@ -657,8 +647,8 @@ class TestTrilinearInterpCase5BF16(TestNearestInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestTrilinearInterpCase6BF16(TestNearestInterpOpBF16):
@@ -677,6 +667,7 @@ class TestTrilinearInterpOpUint8(OpTest):
             low=0, high=256, size=self.input_shape
         ).astype("uint8")
 
+        scale_d = scale_h = scale_w = 0
         if self.scale:
             if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
@@ -700,9 +691,9 @@ class TestTrilinearInterpOpUint8(OpTest):
             out_d,
             out_h,
             out_w,
-            0,
-            0,
-            0,
+            scale_d,
+            scale_h,
+            scale_w,
             self.out_size,
             self.actual_shape,
             self.align_corners,
@@ -827,6 +818,18 @@ class TestTrilinearInterpScale3(TestTrilinearInterpOp):
         self.align_mode = 1
 
 
+class TestTrilinearInterpScale4(TestTrilinearInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'trilinear'
+        self.input_shape = [2, 3, 5, 7, 9]
+        self.out_d = 30
+        self.out_h = 20
+        self.out_w = 25
+        self.scale = 1.5
+        self.align_corners = False
+        self.align_mode = 0
+
+
 class TestTrilinearInterpZero(TestTrilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'trilinear'
@@ -857,6 +860,7 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
         input_np = np.random.random(self.input_shape).astype("float32")
         self.inputs = {'X': input_np}
 
+        scale_d = scale_h = scale_w = 0
         if self.scale_by_1Dtensor:
             self.inputs['Scale'] = np.array([self.scale]).astype("float32")
         elif self.scale:
@@ -902,9 +906,9 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
             out_d,
             out_h,
             out_w,
-            0,
-            0,
-            0,
+            scale_d,
+            scale_h,
+            scale_w,
             self.out_size,
             self.actual_shape,
             self.align_corners,
@@ -977,7 +981,8 @@ class TestTrilinearInterp_attr_tensor_Case3(TestTrilinearInterpOp_attr_tensor):
 
 
 @unittest.skipIf(
-    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (base.core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestTrilinearInterpOpForFloat16(unittest.TestCase):
     def init_test_case(self):
@@ -1020,7 +1025,8 @@ class TestTrilinearInterpOpForFloat16(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (base.core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestTrilinearInterpDatalayoutForFloat16(TestTrilinearInterpOpForFloat16):
     def init_test_case(self):
@@ -1036,8 +1042,8 @@ class TestTrilinearInterpOpAPI(unittest.TestCase):
     def test_case(self):
         import paddle
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with base.dygraph.guard(place):
@@ -1059,8 +1065,8 @@ class TestTrilinearInterpOpAPI2(unittest.TestCase):
     def test_case(self):
         import paddle
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with base.dygraph.guard(place):

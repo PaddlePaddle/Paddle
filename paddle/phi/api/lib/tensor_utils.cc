@@ -36,17 +36,11 @@ PD_REGISTER_API(from_blob)
 PADDLE_API phi::Place GetPlaceFromPtr(void* data) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 10000
   cudaPointerAttributes attr = {};
   cudaError_t status = cudaPointerGetAttributes(&attr, data);
   if (status == cudaSuccess && attr.type == cudaMemoryTypeDevice) {
     return phi::GPUPlace(attr.device);
   }
-#else
-  PADDLE_THROW(
-      common::errors::Unimplemented("The GetPlaceFromPtr() method is only "
-                                    "supported when CUDA version >= 10.0."));
-#endif
 #else
   hipPointerAttribute_t attr = {};
   hipError_t status = hipPointerGetAttributes(&attr, data);

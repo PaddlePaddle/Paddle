@@ -75,7 +75,7 @@ void LaunchMultiTensorApplyKernel(
       InputNum - 1,
       errors::InvalidArgument(
           "input_vector.size() != InputNum - 1, the input vector's size is "
-          "unequal to InputNum - 1, please cheack grads, params, momemts1, "
+          "unequal to InputNum - 1, please cheack grads, params, moments1, "
           "moments2, moments2_max(if use amsgrad), and, master_params."));
   size_t length = input_vector[0].size();
   PADDLE_ENFORCE_GT(
@@ -85,7 +85,8 @@ void LaunchMultiTensorApplyKernel(
           "input_vector[0].size() is not > 0, please cheack params."));
   auto dev_ctx_place = dev_ctx.GetPlace();
   PADDLE_ENFORCE_EQ(
-      dev_ctx_place.GetType() == AllocationType::GPU,
+      dev_ctx_place.GetType() == AllocationType::GPU ||
+          dev_ctx_place.GetType() == AllocationType::CUSTOM,
       true,
       errors::PreconditionNotMet(
           "Context place error, excepted GPUPlace, but actually %s.",

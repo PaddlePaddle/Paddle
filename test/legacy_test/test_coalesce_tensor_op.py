@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -53,7 +53,8 @@ def coalesce_tensor_eager_api(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestAllocContinuousSpace(OpTest):
     def setUp(self):
@@ -163,16 +164,17 @@ class TestAllocContinuousSpace(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            place=core.CUDAPlace(0),
+            place=get_device_place(),
             no_check_set=["FusedOutput"],
             atol=1e-5,
             check_dygraph=False,
         )
-        self.verify_output(core.CUDAPlace(0))
+        self.verify_output(get_device_place())
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestAllocContinuousSpace2(TestAllocContinuousSpace):
     def init_attr(self):
@@ -186,12 +188,12 @@ class TestAllocContinuousSpace2(TestAllocContinuousSpace):
 
     def test_check_output(self):
         self.check_output_with_place(
-            place=core.CUDAPlace(0),
+            place=get_device_place(),
             no_check_set=["FusedOutput"],
             atol=1e-5,
             check_dygraph=False,
         )
-        self.verify_output(core.CUDAPlace(0))
+        self.verify_output(get_device_place())
 
 
 if __name__ == '__main__':

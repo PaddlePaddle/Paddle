@@ -300,15 +300,18 @@ void SegmentPoolCUDAGradFunctor(const phi::GPUContext& dev_ctx,
 }
 
 template <typename T>
-__global__ void SimpleDiv(T* x, const T* y, const int len, const int dim) {
-  for (int i = blockIdx.x; i < len; i += gridDim.x) {
+__global__ void SimpleDiv(T* x,
+                          const T* y,
+                          const int64_t len,
+                          const int64_t dim) {
+  for (int64_t i = blockIdx.x; i < len; i += gridDim.x) {
     __shared__ T y_i;
     auto base = i * dim;
     if (threadIdx.x == 0) {
       y_i = y[i];
     }
     __syncthreads();
-    for (int j = threadIdx.x; j < dim; j += blockDim.x) {
+    for (int64_t j = threadIdx.x; j < dim; j += blockDim.x) {
       x[base + j] /= y_i;
     }
   }
@@ -419,8 +422,8 @@ class SegmentPoolGradFunctor<phi::GPUContext, T, IndexT> {
       mean_grad.Resize(input.dims());
       dev_ctx.template Alloc<T>(&mean_grad);
       phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, &mean_grad);
-      int len = output.dims()[0];
-      int dim = output.numel() / len;
+      int64_t len = output.dims()[0];
+      int64_t dim = output.numel() / len;
       auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, len);
       SimpleDiv<T><<<config.block_per_grid.x,
                      config.thread_per_block.x,

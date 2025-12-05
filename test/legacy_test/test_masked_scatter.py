@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16, get_device_place, get_places
+from op_test import (
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -160,7 +165,8 @@ class TestMaskedScatterAPI3(TestMaskedScatterAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedScatterFP16API1(TestMaskedScatterAPI):
     def init(self):
@@ -171,7 +177,8 @@ class TestMaskedScatterFP16API1(TestMaskedScatterAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedScatterFP16API2(TestMaskedScatterAPI):
     def init(self):
@@ -182,7 +189,8 @@ class TestMaskedScatterFP16API2(TestMaskedScatterAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedScatterFP16API3(TestMaskedScatterAPI):
     def init(self):
@@ -233,7 +241,8 @@ class TestMaskedScatterAPIBroadcast5(TestMaskedScatterAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedScatterFP16APIBroadcast(TestMaskedScatterAPI):
     def init(self):
@@ -244,7 +253,8 @@ class TestMaskedScatterFP16APIBroadcast(TestMaskedScatterAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedScatterFP16APIBroadcast2(TestMaskedScatterAPI):
     def init(self):
@@ -255,7 +265,8 @@ class TestMaskedScatterFP16APIBroadcast2(TestMaskedScatterAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedScatterFP16APIBroadcast3(TestMaskedScatterAPI):
     def init(self):
@@ -266,8 +277,8 @@ class TestMaskedScatterFP16APIBroadcast3(TestMaskedScatterAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestMaskedScatterBF16(TestMaskedScatterAPI):
@@ -294,8 +305,8 @@ class TestMaskedScatterBF16(TestMaskedScatterAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestMaskedScatterBF16APIBroadcast2(TestMaskedScatterBF16):

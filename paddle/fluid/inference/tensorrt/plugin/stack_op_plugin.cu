@@ -23,7 +23,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#if IS_TRT_VERSION_GE(6000)
 StackPluginDynamic::StackPluginDynamic(int axis, int num_stack, bool with_fp16)
     : axis_(axis), num_stack_(num_stack) {
   with_fp16_ = with_fp16;
@@ -118,13 +117,7 @@ bool StackPluginDynamic::supportsFormatCombination(
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
   if (pos == 0) {
     if (with_fp16_) {
-      return (
-// It's workaround for ernie fix len model.
-// Enabling float, half on the same time will cause trt hang.
-#if IS_TRT_VERSION_LT(8000)
-                 in.type == nvinfer1::DataType::kFLOAT ||
-#endif
-                 in.type == nvinfer1::DataType::kHALF) &&
+      return (in.type == nvinfer1::DataType::kHALF) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
     } else {
       return (in.type == nvinfer1::DataType::kFLOAT) &&
@@ -284,8 +277,6 @@ void StackPluginDynamicCreator::setPluginNamespace(const char* lib_namespace)
 const char* StackPluginDynamicCreator::getPluginNamespace() const TRT_NOEXCEPT {
   return plugin_namespace_.c_str();
 }
-
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

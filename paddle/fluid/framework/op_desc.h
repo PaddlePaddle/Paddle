@@ -154,10 +154,9 @@ class TEST_API OpDesc {
 
   const AttributeMap &GetRuntimeAttrMap() const;
 
-  std::vector<std::string> InputNames(bool with_attr_var UNUSED = false) const {
-    return MapKeys(inputs_);
-  }
-  std::vector<std::string> OutputNames() const { return MapKeys(outputs_); }
+  std::vector<std::string> InputNames(bool with_attr_var = false) const;
+
+  std::vector<std::string> OutputNames() const;
 
   const VariableNameMap &Inputs() const { return inputs_; }
 

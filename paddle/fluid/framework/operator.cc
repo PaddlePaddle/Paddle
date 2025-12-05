@@ -3128,6 +3128,26 @@ static void SetDnnAttrIntoDeviceContext(
     }
   }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (phi::CustomContext::classof(dev_ctx) &&
+      attr_properties.Support(operators::ExtraAttrProperty::GPUDNN)) {
+    VLOG(4) << "Runtime attr `" << attr_name << "` is passed to CustomContext.";
+    phi::CustomContext* custom_dnn_ctx =
+        static_cast<phi::CustomContext*>(dev_ctx);
+    switch (AttrTypeID(attr)) {
+      case proto::AttrType::INT:
+        custom_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(int, attr));
+        break;
+      case proto::AttrType::BOOLEAN:
+        custom_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(bool, attr));
+        break;
+      default:
+        PADDLE_THROW(common::errors::Unimplemented(
+            "Unsupported Attribute value type `%s` for phi.",
+            common::demangle(attr.type().name())));
+    }
+  }
+#endif
 #ifdef PADDLE_WITH_CUDA
   if (phi::GPUContext::classof(dev_ctx) &&
       attr_properties.Support(operators::ExtraAttrProperty::GPUDNN)) {
@@ -3494,6 +3514,12 @@ void OperatorWithKernel::BuildPhiKernelContext(
                 PADDLE_GET_CONST(float, attr_iter->second));
             break;
           case phi::AttributeType::FLOAT64:
+            if (AttrTypeID(attr_iter->second) ==
+                framework::proto::AttrType::FLOAT) {
+              const auto val = PADDLE_GET_CONST(float, attr_iter->second);
+              phi_kernel_context->EmplaceBackAttr(static_cast<double>(val));
+              break;
+            }
             phi_kernel_context->EmplaceBackAttr(
                 PADDLE_GET_CONST(double, attr_iter->second));
             break;
@@ -3561,9 +3587,30 @@ void OperatorWithKernel::BuildPhiKernelContext(
                     attr_names[i]));
             }
             break;
-          case phi::AttributeType::FLOAT32S:  // NOLINT
+          case phi::AttributeType::FLOAT32S:
             phi_kernel_context->EmplaceBackAttr(
                 PADDLE_GET_CONST(std::vector<float>, attr_iter->second));
+            break;
+          case phi::AttributeType::FLOAT64S:
+            switch (AttrTypeID(attr_iter->second)) {
+              case proto::AttrType::FLOAT64S:
+                phi_kernel_context->EmplaceBackAttr(
+                    PADDLE_GET_CONST(std::vector<double>, attr_iter->second));
+                break;
+              case proto::AttrType::FLOATS: {
+                const auto& vector_float_attr =
+                    PADDLE_GET_CONST(std::vector<float>, attr_iter->second);
+                const std::vector<double> vector_double_attr(
+                    vector_float_attr.begin(), vector_float_attr.end());
+                phi_kernel_context->EmplaceBackAttr(vector_double_attr);
+              } break;
+              default:
+                PADDLE_THROW(common::errors::Unimplemented(
+                    "Unsupported cast op attribute `%s` to vector<int64_t> "
+                    "when "
+                    "construct KernelContext.",
+                    attr_names[i]));
+            }
             break;
           case phi::AttributeType::STRINGS:
             phi_kernel_context->EmplaceBackAttr(
@@ -3605,7 +3652,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
   #endif
   */
   // For compatible with Op with extra attrs for specific backend
-#if defined(PADDLE_WITH_DNNL) || defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_DNNL) || defined(PADDLE_WITH_CUDA) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   auto& runtime_attrs = RuntimeAttrs();
   for (const auto& attr_iter : runtime_attrs) {
     auto& attr_name = attr_iter.first;

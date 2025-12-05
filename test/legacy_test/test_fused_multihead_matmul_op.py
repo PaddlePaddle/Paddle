@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 from paddle.base import core
 
@@ -32,7 +32,8 @@ def stable_softmax(x):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Paddle core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "Paddle core is not compiled with CUDA",
 )
 class TestFusedMultiHeadMatmulOp_biasqk2(OpTest):
     def config(self):
@@ -132,12 +133,13 @@ class TestFusedMultiHeadMatmulOp_biasqk2(OpTest):
         self.outputs = {"Out": reshape_qkv}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, atol=2e-3, check_dygraph=False)
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Paddle core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "Paddle core is not compiled with CUDA",
 )
 class TestFusedMultiheadMatmulOp(OpTest):
     def config(self):
@@ -234,7 +236,7 @@ class TestFusedMultiheadMatmulOp(OpTest):
         self.outputs = {"Out": reshape_qkv}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, atol=2e-3, check_dygraph=False)
 
 

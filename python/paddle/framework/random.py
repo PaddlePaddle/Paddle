@@ -178,7 +178,7 @@ def set_rng_state(
     if device is None:
         place = paddle.framework._current_expected_place_()
     else:
-        place = device._convert_to_place(device)
+        place = paddle.device._convert_to_place(device)
 
     if isinstance(place, paddle.CUDAPlace):
         if not len(state_list) == core.get_cuda_device_count():
@@ -195,15 +195,12 @@ def set_rng_state(
         for i in range(core.get_xpu_device_count()):
             core.default_xpu_generator(i).set_state(state_list[i])
     elif isinstance(place, paddle.CustomPlace):
-        dev_cnt = sum(
-            [
-                place.get_device_type() == s.split(':')[0]
-                for s in core.get_available_custom_device()
-            ]
-        )
+        dev_types = core.get_all_custom_device_type()
+        dev_type = dev_types[0]
+        dev_cnt = core.get_custom_device_count(dev_type)
         if not len(state_list) == dev_cnt:
             raise ValueError(
-                f"Length of custom device state list should be equal to the {place.get_dtype_type()} device count"
+                f"Length of custom device state list should be equal to the {dev_cnt} device count"
             )
         for i in range(dev_cnt):
             core.default_custom_device_generator(
@@ -274,3 +271,32 @@ def set_random_seed_generator(name: str, seed: int) -> None:
 
 def get_random_seed_generator(name: str) -> paddle.base.core.Generator:
     return core.get_random_seed_generator(name)
+
+
+class Generator:
+    def __new__(
+        cls, device: str | int | paddle.core.Place = None
+    ) -> core.Generator:
+        """
+        Generator is a random number generator.
+
+        Args:
+            device(str|int|paddle.core.Place): The device type to create the generator on.
+                It can be ``cpu``, ``gpu``, ``xpu``, or a paddle.core.Place instance.
+                default is None, which means using current device.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> g_cpu = paddle.Generator()
+        """
+        place = paddle.device.device_to_place(device)
+        if isinstance(place, core.CPUPlace):
+            return core.default_cpu_generator()
+        elif isinstance(place, core.CUDAPlace):
+            return core.default_cuda_generator(place.gpu_device_id())
+        elif isinstance(place, core.XPUPlace):
+            return core.default_xpu_generator(place.gpu_device_id())
+        elif isinstance(place, core.CustomPlace):
+            return core.default_custom_device_generator(place)

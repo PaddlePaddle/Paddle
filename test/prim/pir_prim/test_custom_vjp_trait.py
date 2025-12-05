@@ -29,7 +29,7 @@ def get_gelu_program_pir():
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data('x', [2, 3, 3], dtype='float32')
         net = nn.GELU()
-        out = net(x)
+        net(x)
     return main_program
 
 
@@ -41,7 +41,7 @@ def get_multiply_program_pir():
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data('x', [2, 3, 3], dtype='float32')
         y = paddle.static.data('y', [2, 3, 3], dtype='float32')
-        out = x * y
+        _ = x * y
     return main_program
 
 

@@ -325,7 +325,7 @@ HOSTDEVICE inline bool(isnan)(const bfloat16& a) {
 }
 
 HOSTDEVICE inline bool(isinf)(const bfloat16& a) {
-  return (a.x & 0x7F80) == 0x7F80;
+  return (a.x & 0x7FFF) == 0x7F80;
 }
 
 HOSTDEVICE inline bool(isfinite)(const bfloat16& a) {

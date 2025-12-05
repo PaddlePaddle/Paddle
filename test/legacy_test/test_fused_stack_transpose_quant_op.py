@@ -14,6 +14,7 @@
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 import paddle.incubate.nn.functional as F
@@ -21,7 +22,8 @@ from paddle import core
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA "
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA ",
 )
 class TestFusedStackTransposeQuantOp(unittest.TestCase):
     def setUp(self):
@@ -55,7 +57,7 @@ class TestFusedStackTransposeQuantOp(unittest.TestCase):
             )
         paddle.enable_static()
 
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         np.testing.assert_allclose(
             x_fp32.numpy(),

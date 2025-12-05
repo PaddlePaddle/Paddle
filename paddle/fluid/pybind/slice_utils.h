@@ -245,11 +245,7 @@ inline T GetDenseTensorValue(const phi::DenseTensor* x) {
 static Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj);
 // Slice related methods
 static bool PyCheckInteger(PyObject* obj) {
-#if PY_VERSION_HEX < 0x03000000
-  return (PyLong_Check(obj) || PyInt_Check(obj)) && !PyBool_Check(obj);
-#else
   return PyLong_Check(obj) && !PyBool_Check(obj);
-#endif
 }
 
 static bool IsNumpyType(PyObject* obj) {
@@ -740,7 +736,7 @@ static std::vector<paddle::Tensor> PrepareIndices(
     const paddle::Tensor& bool_2_idx,
     const paddle::Tensor& bool_index) {
   std::vector<paddle::Tensor> indices;
-  for (int j = 0; j < bool_2_idx.shape()[1]; ++j) {
+  for (int64_t j = 0; j < bool_2_idx.shape()[1]; ++j) {
     paddle::Tensor sliced_tensor =
         slice_ad_func(bool_2_idx, {1}, {j}, {j + 1}, {1}, {});
     paddle::Tensor sliced_tensor_c = sliced_tensor.contiguous();
@@ -802,7 +798,7 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
   }
 
   auto bool_2_idx = nonzero_ad_func(bool_index);
-  if (FLAGS_use_stride_kernel) {
+  if (FLAGS_use_stride_kernel && self_tensor.is_contiguous()) {
     std::vector<paddle::Tensor> indices =
         PrepareIndices(tensor, bool_2_idx, bool_index);
     for (int i = 0; i < pos_of_new_dim; ++i) {
@@ -1302,7 +1298,8 @@ static void ApplyGetitem(const int index_size,
       }
     }
 
-    if (FLAGS_use_stride_kernel && !has_empty_index) {
+    if (FLAGS_use_stride_kernel && !has_empty_index &&
+        self_tensor->is_contiguous()) {
       const phi::distributed::ProcessMesh* mesh = nullptr;
       if (InputsContainDistTensor(
               &mesh, *self_tensor, *transed_tensor, *transed_index)) {

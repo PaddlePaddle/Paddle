@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
+
+from op_test import get_device, get_device_class, is_custom_device
 
 import paddle
 from paddle import base
@@ -21,6 +22,7 @@ from paddle.base import core, framework
 
 class TestStaticDeviceManage(unittest.TestCase):
     def _test_device(self, device_name, device_class):
+        paddle.enable_static()
         paddle.set_device(device_name)
 
         out1 = paddle.zeros(shape=[1, 3], dtype='float32')
@@ -34,17 +36,22 @@ class TestStaticDeviceManage(unittest.TestCase):
         device = paddle.get_device()
         self.assertEqual(isinstance(exe.place, device_class), True)
         self.assertEqual(device, device_name)
+        paddle.disable_static()
 
     def test_cpu_device(self):
         self._test_device("cpu", core.CPUPlace)
 
     def test_gpu_device(self):
         if core.is_compiled_with_cuda():
-            self._test_device("gpu:0", core.CUDAPlace)
+            self._test_device("gpu:0", get_device_class())
 
     def test_xpu_device(self):
         if core.is_compiled_with_xpu():
             self._test_device("xpu:0", core.XPUPlace)
+
+    def test_custom_device(self):
+        if is_custom_device():
+            self._test_device(get_device(True), get_device_class())
 
 
 class TestImperativeDeviceManage(unittest.TestCase):
@@ -71,7 +78,7 @@ class TestImperativeDeviceManage(unittest.TestCase):
                 device = paddle.get_device()
                 self.assertEqual(
                     isinstance(
-                        framework._current_expected_place(), core.CUDAPlace
+                        framework._current_expected_place(), get_device_class()
                     ),
                     True,
                 )
@@ -90,6 +97,22 @@ class TestImperativeDeviceManage(unittest.TestCase):
                 )
                 self.assertTrue(out.place.is_xpu_place())
                 self.assertEqual(device, "xpu:0")
+
+    def test_custom_device(self):
+        if is_custom_device():
+            with base.dygraph.guard():
+                paddle.set_device(get_device(True))
+                out1 = paddle.zeros(shape=[1, 3], dtype='float32')
+                out2 = paddle.ones(shape=[1, 3], dtype='float32')
+                out3 = paddle.concat(x=[out1, out2], axis=0)
+                device = paddle.get_device()
+                self.assertEqual(
+                    isinstance(
+                        framework._current_expected_place(), get_device_class()
+                    ),
+                    True,
+                )
+                self.assertEqual(device, get_device(True))
 
 
 if __name__ == '__main__':

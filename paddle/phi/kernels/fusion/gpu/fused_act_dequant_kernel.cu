@@ -98,7 +98,7 @@ void FusedActDequantKernel(const Context& dev_ctx,
   dim3 block(256);
 
   FusedActDequant<<<grid, block, 0, dev_ctx.stream()>>>(
-      x.data<phi::dtype::float8_e4m3fn>(),
+      x.data<phi::float8_e4m3fn>(),
       x_scale.data<float>(),
       out->data<phi::bfloat16>(),
       rows,
@@ -120,6 +120,6 @@ PD_REGISTER_KERNEL(fused_act_dequant,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float8_e4m3fn) {
+                   phi::float8_e4m3fn) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BFLOAT16);
 }

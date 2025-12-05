@@ -23,9 +23,9 @@ namespace phi {
 template <typename T, size_t RANK>
 __global__ void StridedCopyCaseZeroFunc(
     const T* input_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
+    phi::Array<int64_t, DDim::kMaxRank + 1> input_stride,
     T* output_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_stride) {
+    phi::Array<int64_t, DDim::kMaxRank + 1> output_stride) {
   int64_t input_offset = 0;
   int64_t output_offset = 0;
   int64_t coordinate[6] = {threadIdx.x,
@@ -48,10 +48,10 @@ template <typename T, typename Context>
 bool LaunchStridedCopyCaseZeroKernel(
     const Context& dev_ctx,
     const T* input_data,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& input_stride,
+    const phi::Array<int64_t, DDim::kMaxRank + 1>& input_stride,
     T* output_data,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& output_stride,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& dims,
+    const phi::Array<int64_t, DDim::kMaxRank + 1>& output_stride,
+    const phi::Array<int64_t, DDim::kMaxRank + 1>& dims,
     int rank) {
   if (rank > 6) {
     return false;
@@ -120,9 +120,9 @@ bool LaunchStridedCopyCaseZeroKernel(
 template <typename T, size_t N>
 __global__ void StridedCopyCaseOneFunc(
     const T* input_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
+    phi::Array<int64_t, DDim::kMaxRank + 1> input_stride,
     T* out_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_stride,
+    phi::Array<int64_t, DDim::kMaxRank + 1> output_stride,
     phi::Array<int64_t, 6> dims,
     const int64_t x_max) {
   int64_t x = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
@@ -132,7 +132,7 @@ __global__ void StridedCopyCaseOneFunc(
 
     int64_t reg_dims[6] = {
         dims[0], dims[1], dims[2], dims[3], dims[4], dims[5]};
-    int64_t coordinate[phi::DDim::kMaxRank + 1];
+    int64_t coordinate[DDim::kMaxRank + 1];
 
     switch (N) {
       case 1:
@@ -214,10 +214,10 @@ template <typename T, typename Context>
 bool LaunchStridedCopyCaseOneKernel(
     const Context& dev_ctx,
     const T* input_data,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& input_stride,
+    const phi::Array<int64_t, DDim::kMaxRank + 1>& input_stride,
     T* output_data,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& output_stride,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& dims,
+    const phi::Array<int64_t, DDim::kMaxRank + 1>& output_stride,
+    const phi::Array<int64_t, DDim::kMaxRank + 1>& dims,
     int rank,
     int64_t numel) {
   dim3 grid(1, 1, 1), block(1, 1, 1);
@@ -316,12 +316,14 @@ bool LaunchStridedCopyCaseOneKernel(
 template <typename T, size_t RANK>
 __global__ void StridedCopyDefaultFunc(
     const T* input_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
+    phi::Array<int64_t, DDim::kMaxRank + 1> input_stride,
     T* output_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_stride,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> dims,
+    phi::Array<int64_t, DDim::kMaxRank + 1> output_stride,
+    phi::Array<int64_t, DDim::kMaxRank + 1> dims,
     const int64_t numel) {
-  int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
 #pragma unroll
   for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x) {
     int64_t input_offset = 0;
@@ -346,10 +348,10 @@ template <typename T, typename Context>
 void LaunchStridedCopyDefaultKernel(
     const Context& dev_ctx,
     const T* input_data,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& input_stride,
+    const phi::Array<int64_t, DDim::kMaxRank + 1>& input_stride,
     T* output_data,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& output_stride,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& dims,
+    const phi::Array<int64_t, DDim::kMaxRank + 1>& output_stride,
+    const phi::Array<int64_t, DDim::kMaxRank + 1>& dims,
     int rank,
     int64_t numel) {
   int64_t block = 512;
@@ -380,14 +382,20 @@ void LaunchStridedCopyDefaultKernel(
 template <typename T, size_t RANK>
 __global__ void Strided2ContiguousCaseZeroFunc(
     const T* input_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
+    phi::Array<int64_t, DDim::kMaxRank + 1> input_stride,
     T* output_data) {
   int64_t input_offset = 0;
-  int64_t output_offset = (blockIdx.z * gridDim.y * gridDim.x +
-                           blockIdx.y * gridDim.x + blockIdx.x) *
-                              blockDim.z * blockDim.y * blockDim.x +
-                          threadIdx.z * blockDim.y * blockDim.x +
-                          threadIdx.y * blockDim.x + threadIdx.x;
+  int64_t output_offset =
+      (static_cast<int64_t>(blockIdx.z) * static_cast<int64_t>(gridDim.y) *
+           static_cast<int64_t>(gridDim.x) +
+       static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(gridDim.x) +
+       static_cast<int64_t>(blockIdx.x)) *
+          static_cast<int64_t>(blockDim.z) * static_cast<int64_t>(blockDim.y) *
+          static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.z) * static_cast<int64_t>(blockDim.y) *
+          static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.y) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int64_t coordinate[6] = {threadIdx.x,
                            threadIdx.y,
                            threadIdx.z,
@@ -407,9 +415,9 @@ template <typename T, typename Context>
 bool LaunchStrided2ContiguousCaseZeroKernel(
     const Context& dev_ctx,
     const T* input_data,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& input_stride,
+    const phi::Array<int64_t, DDim::kMaxRank + 1>& input_stride,
     T* output_data,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& dims,
+    const phi::Array<int64_t, DDim::kMaxRank + 1>& dims,
     int rank) {
   if (rank > 6) {
     return false;
@@ -467,18 +475,24 @@ bool LaunchStrided2ContiguousCaseZeroKernel(
 template <typename T, size_t N>
 __global__ void Strided2ContiguousCaseOneFunc(
     const T* input_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
+    phi::Array<int64_t, DDim::kMaxRank + 1> input_stride,
     T* out_data,
     phi::Array<int64_t, 6> dims,
     const int64_t x_max) {
-  int64_t x = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t x =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (x < x_max) {
     int64_t input_offset = 0;
-    int64_t output_offset = (blockIdx.z * gridDim.y + blockIdx.y) * x_max + x;
+    int64_t output_offset =
+        (static_cast<int64_t>(blockIdx.z) * static_cast<int64_t>(gridDim.y) +
+         static_cast<int64_t>(blockIdx.y)) *
+            x_max +
+        x;
 
     int64_t reg_dims[6] = {
         dims[0], dims[1], dims[2], dims[3], dims[4], dims[5]};
-    int64_t coordinate[phi::DDim::kMaxRank + 1];
+    int64_t coordinate[DDim::kMaxRank + 1];
 
     switch (N) {
       case 1:
@@ -559,9 +573,9 @@ template <typename T, typename Context>
 bool LaunchStrided2ContiguousCaseOneKernel(
     const Context& dev_ctx,
     const T* input_data,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& input_stride,
+    const phi::Array<int64_t, DDim::kMaxRank + 1>& input_stride,
     T* output_data,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& dims,
+    const phi::Array<int64_t, DDim::kMaxRank + 1>& dims,
     int rank,
     int64_t numel) {
   dim3 grid(1, 1, 1), block(1, 1, 1);
@@ -654,11 +668,13 @@ bool LaunchStrided2ContiguousCaseOneKernel(
 template <typename T, size_t IN_RANK>
 __global__ void Strided2ContiguousDefaultFunc(
     const T* input_data,
-    Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
+    Array<int64_t, DDim::kMaxRank + 1> input_stride,
     T* output_data,
-    Array<int64_t, phi::DDim::kMaxRank + 1> dims,
+    Array<int64_t, DDim::kMaxRank + 1> dims,
     const int64_t numel) {
-  int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
 #pragma unroll
   for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x) {
     int64_t input_offset = 0;
@@ -676,9 +692,9 @@ template <typename T, typename Context>
 void LaunchStrided2ContiguousDefaultKernel(
     const Context& dev_ctx,
     const T* input_data,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& input_stride,
+    const phi::Array<int64_t, DDim::kMaxRank + 1>& input_stride,
     T* output_data,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& dims,
+    const phi::Array<int64_t, DDim::kMaxRank + 1>& dims,
     int rank,
     int64_t numel) {
   int64_t block = 512;
@@ -727,8 +743,8 @@ void StridedCopyKernel(const Context& dev_ctx,
                           common::errors::InvalidArgument(
                               "StridedCopyKernel's out tensor must complete "
                               "mutable data before call kernel."));
-  Array<int64_t, phi::DDim::kMaxRank + 1> output_dims;
-  Array<int64_t, phi::DDim::kMaxRank + 1> output_stride;
+  Array<int64_t, DDim::kMaxRank + 1> output_dims;
+  Array<int64_t, DDim::kMaxRank + 1> output_stride;
   for (int i = 0; i < meta.dims.size(); i++) {
     output_dims[i] = meta.dims[i];
     output_stride[i] = meta.strides[i];
@@ -779,8 +795,7 @@ void StridedCopyKernel(const Context& dev_ctx,
       }
       return;
     } else {
-      bool can_expand =
-          phi::funcs::CheckIsLastDimsMatch(input.dims(), out->dims());
+      bool can_expand = funcs::CheckIsLastDimsMatch(input.dims(), out->dims());
       if (can_expand && input.meta().is_contiguous()) {
         switch (VecSize) {
 #define CASE_VECSIZE(__Sz)                                                 \
@@ -824,8 +839,8 @@ void StridedCopyKernel(const Context& dev_ctx,
                         input_numel,
                         output_numel));
 
-  Array<int64_t, phi::DDim::kMaxRank + 1> input_dims;
-  Array<int64_t, phi::DDim::kMaxRank + 1> input_stride;
+  Array<int64_t, DDim::kMaxRank + 1> input_dims;
+  Array<int64_t, DDim::kMaxRank + 1> input_stride;
   for (int i = 0; i < input.dims().size(); i++) {
     input_dims[i] = input.dims()[i];
     input_stride[i] = input.strides()[i];
@@ -938,6 +953,9 @@ void StridedCopyKernel(const Context& dev_ctx,
 #ifdef _WIN32
 INSTANTIATE_STRIDEDCOPY_KERNEL(bool, GPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(uint8_t, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(uint16_t, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(uint32_t, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(uint64_t, GPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(int8_t, GPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(int16_t, GPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(int32_t, GPUContext)
@@ -959,15 +977,18 @@ PD_REGISTER_KERNEL(strided_copy,
                    phi::StridedCopyKernel,
                    bool,
                    uint8_t,
+                   uint16_t,
+                   uint32_t,
+                   uint64_t,
                    int8_t,
                    int16_t,
                    int32_t,
                    int64_t,
                    float,
                    double,
-                   ::phi::float16,
-                   ::phi::bfloat16,
-                   ::phi::complex64,
-                   ::phi::complex128,
-                   ::phi::dtype::float8_e4m3fn,
-                   ::phi::dtype::float8_e5m2) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2) {}

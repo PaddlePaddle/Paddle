@@ -32,6 +32,10 @@ void Copy(const Context& dev_ctx,
           Place dst_place,
           bool blocking,
           DenseTensor* dst) {
+  VLOG(5) << "TensorCopy: "
+          << "src Tensor(" << &src << ")"
+          << " is_contiguous: " << src.meta().is_contiguous() << " dims "
+          << src.dims() << " from " << src.place() << " to " << dst_place;
   if (!src.meta().is_contiguous()) {
     DenseTensor src_copy = paddle::experimental::Trans2Contiguous(src);
     Copy(dev_ctx, src_copy, dst_place, blocking, dst);
@@ -43,19 +47,16 @@ void Copy(const Context& dev_ctx,
 
   if (&src == dst) {
     if (src_place.GetType() == dst_place.GetType()) {
-      VLOG(6) << "Skip copy the same data(" << src_ptr << ") from " << src_place
+      VLOG(7) << "Skip copy the same data(" << src_ptr << ") from " << src_place
               << " to " << dst_place;
     } else {
-      VLOG(6) << "Src and dst are the same Tensor, in-place copy data("
+      VLOG(7) << "Src and dst are the same Tensor, in-place copy data("
               << src_ptr << ") from " << src_place << " to " << dst_place;
       const DenseTensor src_copy = src;
       Copy(dev_ctx, src_copy, dst_place, blocking, dst);
     }
     return;
   }
-
-  VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
-          << dst_place;
 
   dst->Resize(src.dims());
 
@@ -72,8 +73,10 @@ void Copy(const Context& dev_ctx,
         dst, src.dtype(), 0, dst_place.GetType() == AllocationType::GPUPINNED);
 #endif
 #ifdef PADDLE_WITH_XPU
-  } else if (dst_place.GetType() == AllocationType::XPU) {
-    dst_ptr = dev_ctx.Alloc(dst, src.dtype());
+  } else if (dst_place.GetType() == AllocationType::XPU ||
+             dst_place.GetType() == AllocationType::XPUPINNED) {
+    dst_ptr = dev_ctx.Alloc(
+        dst, src.dtype(), 0, dst_place.GetType() == AllocationType::XPUPINNED);
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   } else if (dst_place.GetType() == AllocationType::CUSTOM) {
@@ -100,7 +103,7 @@ void Copy(const Context& dev_ctx,
             << dst_place;
     return;
   }
-  VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
+  VLOG(7) << "TensorCopy: src:" << src_ptr << ", dst:" << dst_ptr;
   PADDLE_ENFORCE_EQ(dst->layout(),
                     src.layout(),
                     common::errors::PreconditionNotMet(
@@ -223,6 +226,11 @@ void Copy(const Context& dev_ctx,
         dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
 #endif
 #ifdef PADDLE_WITH_XPU
+  } else if ((src_place.GetType() == AllocationType::CPU ||
+              src_place.GetType() == AllocationType::XPUPINNED) &&  // NOLINT
+             (dst_place.GetType() == AllocationType::CPU ||
+              dst_place.GetType() == AllocationType::XPUPINNED)) {
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   } else if (src_place.GetType() == AllocationType::XPU &&  // NOLINT
              dst_place.GetType() == AllocationType::CPU) {
     memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
@@ -237,6 +245,14 @@ void Copy(const Context& dev_ctx,
       return;
     }
     memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  } else if ((src_place.GetType() == AllocationType::XPU &&
+              dst_place.GetType() == AllocationType::XPUPINNED) ||
+             (src_place.GetType() == AllocationType::XPUPINNED &&
+              dst_place.GetType() == AllocationType::XPU)) {
+    auto stream =
+        blocking ? nullptr
+                 : reinterpret_cast<const phi::XPUContext&>(dev_ctx).stream();
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   } else if (src_place.GetType() == AllocationType::CUSTOM &&  // NOLINT
@@ -400,11 +416,11 @@ template void PADDLE_API Copy(const DeviceContext& dev_ctx,
                               TensorArray* dst);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-template void Copy(const GPUContext& dev_ctx,
-                   const DenseTensor& src,
-                   Place dst_place,
-                   bool blocking,
-                   DenseTensor* dst);
+template PADDLE_API void Copy(const GPUContext& dev_ctx,
+                              const DenseTensor& src,
+                              Place dst_place,
+                              bool blocking,
+                              DenseTensor* dst);
 template void Copy(const GPUContext& dev_ctx,
                    const SelectedRows& src,
                    Place dst_place,

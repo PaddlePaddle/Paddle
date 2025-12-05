@@ -141,7 +141,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
         acc5 = float(correct_5) / float(total)
         return acc1, acc5
 
-    def _prepare_for_fp32_mkldnn(self, graph):
+    def _prepare_for_fp32_onednn(self, graph):
         ops = graph.all_op_nodes()
         for op_node in ops:
             name = op_node.name()
@@ -220,7 +220,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
                 _debug=self._debug,
             )
             if target == 'quant':
-                graph = self._prepare_for_fp32_mkldnn(graph)
+                graph = self._prepare_for_fp32_onednn(graph)
             elif target == 'int8':
                 graph = quant_transform_pass.apply(graph)
             else:  # target == fp32
@@ -346,7 +346,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
         return set(map(int, string.split(',')))
 
     def test_graph_transformation(self):
-        if not core.is_compiled_with_mkldnn():
+        if not core.is_compiled_with_onednn():
             return
 
         quant_model_path = test_case_args.quant_model

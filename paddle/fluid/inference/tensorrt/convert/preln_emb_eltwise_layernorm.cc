@@ -21,7 +21,6 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-#if IS_TRT_VERSION_GE(7000)
     VLOG(4) << "convert PrelnEmbEltwiseLayerNorm op to tensorrt layer";
     // get the persistable var's data
     auto GetWeight = [&](const std::string& var_name,
@@ -225,12 +224,6 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
         ("shuffler_after_ManyEmbLayerNormPluginDynamic_V3(Output_1: " +
          op_desc.Output("Out_1")[0] + ")")
             .c_str());
-
-#else
-    PADDLE_THROW(common::errors::Fatal(
-        "PreInErnie want to use oss, must be with interleaved, "
-        "your TRT version is no less than 7.0"));
-#endif
   }
 };
 

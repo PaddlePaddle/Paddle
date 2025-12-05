@@ -707,6 +707,9 @@ PADDLE_API void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
                                                   float diag_val,
                                                   MetaTensor* x_grad);
 
+PADDLE_API void RandomGradInferMeta(const MetaTensor& out_grad,
+                                    MetaTensor* x_grad);
+
 PADDLE_API void UnStackGradInferMeta(
     const std::vector<const MetaTensor*>& out_grad,
     int axis,
@@ -839,4 +842,22 @@ PADDLE_API void IndexElementwiseGetGradInferMeta(
     const bool accumulate,
     const bool is_combined,
     MetaTensor* x_grad);
+
+PADDLE_API void FastLayerNormGradInfermeta(const MetaTensor& x,
+                                           const MetaTensor& scale,
+                                           const MetaTensor& mean,
+                                           const MetaTensor& invvar,
+                                           const MetaTensor& y_grad,
+                                           float epsilon,
+                                           MetaTensor* x_grad,
+                                           MetaTensor* scale_grad,
+                                           MetaTensor* bias_grad);
+
+PADDLE_API void FastRMSNormGradInfermeta(const MetaTensor& x,
+                                         const MetaTensor& scale,
+                                         const MetaTensor& invvar,
+                                         const MetaTensor& y_grad,
+                                         float epsilon,
+                                         MetaTensor* x_grad,
+                                         MetaTensor* scale_grad);
 }  // namespace phi

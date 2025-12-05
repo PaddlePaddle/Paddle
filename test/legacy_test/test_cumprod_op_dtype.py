@@ -16,7 +16,7 @@ import random
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16, get_places
+from op_test import convert_float_to_uint16, get_places, is_custom_device
 
 import paddle
 from paddle.device import get_device
@@ -104,7 +104,9 @@ def cumprod_grad(x, y, dy, dx, shape, dim, exclusive=False, reverse=False):
 def skip_if_not_cpu_or_gpu(func):
     def wrapper(self):
         device = get_device()
-        if not (device == 'cpu' or device.startswith('gpu:')):
+        if not (
+            device == 'cpu' or device.startswith('gpu:') or is_custom_device()
+        ):
             self.skipTest(f"Test skipped on device: {device}")
         return func(self)
 

@@ -15,7 +15,7 @@ if(WITH_GPU OR WITH_ROCM)
       nv_library(
         cuda_graph_lib static
         SRCS gpu/cuda/cuda_graph.cc
-        DEPS dynload_cuda)
+        DEPS dynload_cuda onednn)
       list(APPEND BACKENDS_SRCS gpu/cuda/cuda_info.cc)
     else()
       list(APPEND BACKENDS_SRCS gpu/cuda/cuda_info.cc gpu/cuda/cuda_graph.cc)
@@ -53,7 +53,8 @@ list(
   stream.cc
   event.cc
   device_manager.cc
-  context_pool.cc)
+  context_pool.cc
+  c_cuda_graph_lib.h)
 
 if(WITH_GPU
    OR WITH_ROCM
@@ -62,8 +63,14 @@ if(WITH_GPU
 endif()
 
 if(WITH_CUSTOM_DEVICE)
-  list(APPEND BACKENDS_SRCS custom/custom_context.cc custom/custom_device.cc
-       custom/custom_device_op_list.cc)
+  list(
+    APPEND
+    BACKENDS_SRCS
+    custom/custom_context.cc
+    custom/custom_device.cc
+    custom/custom_device_op_list.cc
+    custom/cuda_graph.h
+    custom/cuda_graph.cc)
 endif()
 
 collect_srcs(backends_srcs SRCS ${BACKENDS_SRCS})

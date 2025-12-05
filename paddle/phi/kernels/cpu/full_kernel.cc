@@ -124,6 +124,11 @@ template PADDLE_API void FullKernel<int64_t, CPUContext>(const CPUContext&,
                                                          const Scalar&,
                                                          DataType dtype UNUSED,
                                                          DenseTensor*);
+template PADDLE_API void FullKernel<float, CPUContext>(const CPUContext&,
+                                                       const IntArray&,
+                                                       const Scalar&,
+                                                       DataType dtype UNUSED,
+                                                       DenseTensor*);
 #endif
 }  // namespace phi
 
@@ -139,8 +144,8 @@ PD_REGISTER_KERNEL(full,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float8_e5m2,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2,
                    phi::float16,
                    phi::bfloat16,
                    phi::complex64,

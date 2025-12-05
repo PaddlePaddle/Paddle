@@ -417,7 +417,7 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
 }  // namespace fusion
 }  // namespace phi
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
+#if defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(multihead_matmul,
                    GPU,
                    ALL_LAYOUT,

@@ -22,6 +22,9 @@ limitations under the License. */
 #include <frameobject.h>
 #include <object.h>
 #include "pybind11/numpy.h"
+#if PY_3_14_PLUS
+#include <internal/pycore_interpframe.h>
+#endif
 
 #if !PY_3_10_PLUS
 #define Py_IsNone(x) ((x) == Py_None)

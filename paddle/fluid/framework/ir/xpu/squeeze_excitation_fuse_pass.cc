@@ -428,8 +428,8 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
           scope->FindVar(mul_1_bias_name)->GetMutable<phi::DenseTensor>();
       auto* mul_2_bias_t =
           scope->FindVar(mul_2_bias_name)->GetMutable<phi::DenseTensor>();
-      int mul_1_bias_numel = mul_1_bias_t->numel();
-      int mul_2_bias_numel = mul_2_bias_t->numel();
+      int64_t mul_1_bias_numel = mul_1_bias_t->numel();
+      int64_t mul_2_bias_numel = mul_2_bias_t->numel();
 
       std::vector<float> encode_bias;
       encode_bias.resize(mul_1_bias_numel + mul_2_bias_numel);

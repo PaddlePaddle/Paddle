@@ -41,17 +41,17 @@
       reduce_dims[i] = reduce_dims_vec[i];                \
     }                                                     \
     switch (reshape_size) {
-#define LOWER_SWITCH_REDUCE_DIMS                             \
-  default: {                                                 \
-    PADDLE_THROW(errors::InvalidArgument(                    \
-        "Detected reshape size: %d out of range"             \
-        "Minimum value should be larger than reduce size %d" \
-        "While maximum supported is: 5",                     \
-        reshape_size,                                        \
-        reduce_size));                                       \
-  }                                                          \
-    }                                                        \
-    break;                                                   \
+#define LOWER_SWITCH_REDUCE_DIMS                               \
+  default: {                                                   \
+    PADDLE_THROW(errors::InvalidArgument(                      \
+        "Detected reshape size: %d out of range. "             \
+        "Minimum value should be larger than reduce size %d. " \
+        "While maximum supported is: 5",                       \
+        reshape_size,                                          \
+        reduce_size));                                         \
+  }                                                            \
+    }                                                          \
+    break;                                                     \
     }
 
 namespace phi {

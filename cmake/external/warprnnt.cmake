@@ -97,6 +97,16 @@ else()
   set(WARPRNNT_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
   set(WARPRNNT_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
 endif()
+
+# For CMake >= 4.0.0, force policy compatibility for third-party warprnnt's CMake.
+set(WARPRNNT_POLICY_ARGS "")
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
+  message(
+    WARNING
+      "warprnnt: forcing CMake policy compatibility for CMake >= 4.0 (CMAKE_POLICY_VERSION_MINIMUM=3.5)"
+  )
+  set(WARPRNNT_POLICY_ARGS "-DCMAKE_POLICY_VERSION_MINIMUM=3.5")
+endif()
 ExternalProject_Add(
   extern_warprnnt
   ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -125,6 +135,7 @@ ExternalProject_Add(
              -DCMAKE_POSITION_INDEPENDENT_CODE=ON
              -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
              ${EXTERNAL_OPTIONAL_ARGS}
+             ${WARPRNNT_POLICY_ARGS}
              ${WARPCTC_CCBIN_OPTION}
   CMAKE_CACHE_ARGS
     -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}

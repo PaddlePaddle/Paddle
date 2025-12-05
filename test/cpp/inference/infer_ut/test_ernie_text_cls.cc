@@ -84,7 +84,7 @@ TEST(gpu_tester_ernie_text_cls, analysis_gpu_bz2_buffer) {
   std::cout << "finish test" << std::endl;
 }
 
-TEST(mkldnn_tester_ernie_text_cls, multi_thread4_mkl_fp32_bz2) {
+TEST(onednn_tester_ernie_text_cls, multi_thread4_mkl_fp32_bz2) {
   int thread_num = 4;
   // init input data
   auto my_input_data_map = PrepareInput(2);

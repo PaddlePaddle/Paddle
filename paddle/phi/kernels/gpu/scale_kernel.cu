@@ -56,7 +56,7 @@ void ScaleKernel(const Context& dev_ctx,
   if (x.numel() <= 0 || (!x.IsInitialized())) {
     return;
   }
-  phi::funcs::ElementwiseKernel<T>(
+  funcs::ElementwiseKernel<T>(
       dev_ctx,
       inputs,
       &outputs,
@@ -67,6 +67,10 @@ INSTANCE_SCALAR_KERNEL(int, GPUContext)
 INSTANCE_SCALAR_KERNEL(int64_t, GPUContext)
 INSTANCE_SCALAR_KERNEL(float, GPUContext)
 INSTANCE_SCALAR_KERNEL(double, GPUContext)
+INSTANCE_SCALAR_KERNEL(phi::float16, GPUContext)
+INSTANCE_SCALAR_KERNEL(int16_t, GPUContext)
+INSTANCE_SCALAR_KERNEL(uint8_t, GPUContext)
+INSTANCE_SCALAR_KERNEL(int8_t, GPUContext)
 #endif
 }  // namespace phi
 
@@ -79,8 +83,8 @@ PD_REGISTER_KERNEL(scale,
                    double,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float8_e5m2,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2,
                    uint8_t,
                    int8_t,
                    int16_t,

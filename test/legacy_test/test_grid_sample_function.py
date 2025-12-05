@@ -11,15 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 import paddle.base.dygraph as dg
 import paddle.nn.functional as F
 from paddle import base
+
+paddle.enable_static()
 
 
 class GridSampleTestCase(unittest.TestCase):
@@ -90,15 +92,46 @@ class GridSampleTestCase(unittest.TestCase):
         place = base.CPUPlace()
         self._test_equivalence(place)
 
-        if base.core.is_compiled_with_cuda():
-            place = base.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self._test_equivalence(place)
+
+
+class GridSampleTestCaseAlias(GridSampleTestCase):
+    def static_functional(self, place):
+        main = base.Program()
+        start = base.Program()
+        with (
+            base.unique_name.guard(),
+            base.program_guard(main, start),
+        ):
+            x = paddle.static.data("input", self.x_shape, dtype=self.dtype)
+            grid = paddle.static.data("grid", self.grid_shape, dtype=self.dtype)
+            y_var = F.grid_sample(
+                x,
+                grid,
+                mode=self.mode,
+                padding_mode=self.padding_mode,
+                align_corners=self.align_corners,
+            )
+        feed_dict = {"input": self.x, "grid": self.grid}
+        exe = base.Executor(place)
+        exe.run(start)
+        (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
+        return y_np
 
 
 class GridSampleErrorTestCase(GridSampleTestCase):
     def runTest(self):
         place = base.CPUPlace()
         with self.assertRaises(ValueError):
+            self.static_functional(place)
+
+
+class GridSampleTypeErrorTestCase(GridSampleTestCase):
+    def runTest(self):
+        place = base.CPUPlace()
+        with self.assertRaises(TypeError):
             self.static_functional(place)
 
 
@@ -120,6 +153,22 @@ def add_cases(suite):
             align_corners=True,
         )
     )
+    suite.addTest(
+        GridSampleTestCaseAlias(
+            methodName='runTest',
+            mode='bilinear',
+            padding_mode='reflection',
+            align_corners=True,
+        )
+    )
+    suite.addTest(
+        GridSampleTestCaseAlias(
+            methodName='runTest',
+            mode='bilinear',
+            padding_mode='zeros',
+            align_corners=True,
+        )
+    )
 
 
 def add_error_cases(suite):
@@ -127,7 +176,7 @@ def add_error_cases(suite):
         GridSampleErrorTestCase(methodName='runTest', padding_mode="VALID")
     )
     suite.addTest(
-        GridSampleErrorTestCase(methodName='runTest', align_corners="VALID")
+        GridSampleTypeErrorTestCase(methodName='runTest', align_corners="VALID")
     )
     suite.addTest(GridSampleErrorTestCase(methodName='runTest', mode="VALID"))
 

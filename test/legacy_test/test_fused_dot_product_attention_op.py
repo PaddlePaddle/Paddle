@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
-
-os.environ["FLAGS_cudnn_deterministic"] = "1"
 
 import numpy as np
 from op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
+    get_device_place,
+    is_custom_device,
 )
 
 import paddle
@@ -31,12 +30,12 @@ from paddle.incubate.nn.functional import (
     fused_dot_product_attention,
 )
 
-np.random.seed(2023)
+np.random.seed(2025)
 
 
 def skip_unit_test():
     return (
-        not paddle.is_compiled_with_cuda()
+        not (paddle.is_compiled_with_cuda() or is_custom_device())
         or paddle.device.cuda.get_device_capability()[0] < 8
         or paddle.get_cudnn_version() < 8906
     )
@@ -131,7 +130,7 @@ class TestFusedAttentionOpFP16(OpTest):
         self.dout = _random(dout_shape)
 
     def _get_reference_out(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         q_tensor = paddle.to_tensor(self.q, stop_gradient=False)
         # print(q_tensor)
         k_tensor = paddle.to_tensor(self.k, stop_gradient=False)
@@ -189,7 +188,7 @@ class TestFusedAttentionOpFP16(OpTest):
         )
 
     def _get_fused_attn_out(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         q_tensor = paddle.to_tensor(self.q, stop_gradient=False)
         k_tensor = paddle.to_tensor(self.k, stop_gradient=False)
         v_tensor = paddle.to_tensor(self.v, stop_gradient=False)
@@ -219,7 +218,7 @@ class TestFusedAttentionOpFP16(OpTest):
         )
 
     def _get_cudnn_flash_attn_out(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         q_tensor = paddle.to_tensor(self.q, stop_gradient=False)
         k_tensor = paddle.to_tensor(self.k, stop_gradient=False)
         v_tensor = paddle.to_tensor(self.v, stop_gradient=False)

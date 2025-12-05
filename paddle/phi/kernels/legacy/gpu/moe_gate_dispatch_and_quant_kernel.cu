@@ -210,13 +210,15 @@ __global__ void initialize_moe_routing_kernel(
 
   __shared__ float scale[ThreadNum * VecSize / TileSize];
 
-  for (int64_t element_id = threadIdx.x * VecSize; element_id < cols;
+  for (int64_t element_id = static_cast<int64_t>(threadIdx.x) * VecSize;
+       element_id < cols;
        element_id += blockDim.x * VecSize) {
     // Each thread reads VecSize elements, totaling ThreadNum*VecSize elements
     // read Note: A single thread can compute at most one scale value
     phi::Load<__nv_bfloat16, VecSize>(&source_row_ptr[element_id], &src_vec);
 
-    int64_t local_scale_id = VecSize * threadIdx.x / TileSize;
+    int64_t local_scale_id =
+        VecSize * static_cast<int64_t>(threadIdx.x) / TileSize;
 
     ComputeScaleAndWrite<VecSize, Power2Scaling>(src_vec.val,
                                                  scale,
@@ -350,14 +352,13 @@ void MoeDispatchAndQuantKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<int64_t>(expert_offset);
   dev_ctx.template Alloc<int>(scatter_index);
   dev_ctx.template Alloc<float>(combine_weights);
-  dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(out_fp8);
+  dev_ctx.template Alloc<phi::float8_e4m3fn>(out_fp8);
   dev_ctx.template Alloc<float>(scale);
 
-  cudaMemsetAsync(
-      reinterpret_cast<void *>(out_fp8->data<phi::dtype::float8_e4m3fn>()),
-      0,
-      sizeof(phi::dtype::float8_e4m3fn) * out_fp8->numel(),
-      dev_ctx.stream());
+  cudaMemsetAsync(reinterpret_cast<void *>(out_fp8->data<phi::float8_e4m3fn>()),
+                  0,
+                  sizeof(phi::float8_e4m3fn) * out_fp8->numel(),
+                  dev_ctx.stream());
 
   phi::Full<float, Context>(
       dev_ctx, phi::IntArray(common::vectorize(scale->dims())), 1, scale);
@@ -378,8 +379,7 @@ void MoeDispatchAndQuantKernel(const Context &dev_ctx,
       hidden_size,
       capacity,
       k,
-      reinterpret_cast<__nv_fp8_e4m3 *>(
-          out_fp8->data<phi::dtype::float8_e4m3fn>()),
+      reinterpret_cast<__nv_fp8_e4m3 *>(out_fp8->data<phi::float8_e4m3fn>()),
       scale->data<float>(),
       combine_weights->data<float>(),
       scatter_index->data<int>(),

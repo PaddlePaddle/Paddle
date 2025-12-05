@@ -53,7 +53,9 @@ __global__ void AdamKernelREG(MT beta1,
   MT beta1_pow = beta1_pow_;
   MT beta2_pow = beta2_pow_;
 
-  int64_t id = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
 
   for (; id < ndim; id += gridDim.x * blockDim.x) {
     MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
@@ -111,7 +113,9 @@ __global__ void AdamKernelMEM(MT beta1,
   MT beta1_pow = *beta1_pow_;
   MT beta2_pow = *beta2_pow_;
 
-  int64_t id = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
 
   for (; id < ndim; id += gridDim.x * blockDim.x) {
     MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
@@ -157,32 +161,33 @@ __global__ void UpdateBetaPow(T beta1,
 }
 
 template <typename T, typename Context>
-void AdamDenseKernel(const Context& dev_ctx,
-                     const DenseTensor& param,
-                     const DenseTensor& grad,
-                     const DenseTensor& learning_rate,
-                     const DenseTensor& moment1,
-                     const DenseTensor& moment2,
-                     const paddle::optional<DenseTensor>& moment2_max,
-                     const DenseTensor& beta1_pow,
-                     const DenseTensor& beta2_pow,
-                     const paddle::optional<DenseTensor>& master_param,
-                     const paddle::optional<DenseTensor>& skip_update,
-                     const Scalar& beta1,
-                     const Scalar& beta2,
-                     const Scalar& epsilon,
-                     bool lazy_mode,
-                     int64_t min_row_size_to_use_multithread,
-                     bool multi_precision,
-                     bool use_global_beta_pow,
-                     bool amsgrad,
-                     DenseTensor* param_out,
-                     DenseTensor* moment1_out,
-                     DenseTensor* moment2_out,
-                     DenseTensor* moment2_max_out,
-                     DenseTensor* beta1_pow_out,
-                     DenseTensor* beta2_pow_out,
-                     DenseTensor* master_param_outs) {
+PADDLE_API void AdamDenseKernel(
+    const Context& dev_ctx,
+    const DenseTensor& param,
+    const DenseTensor& grad,
+    const DenseTensor& learning_rate,
+    const DenseTensor& moment1,
+    const DenseTensor& moment2,
+    const paddle::optional<DenseTensor>& moment2_max,
+    const DenseTensor& beta1_pow,
+    const DenseTensor& beta2_pow,
+    const paddle::optional<DenseTensor>& master_param,
+    const paddle::optional<DenseTensor>& skip_update,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    bool lazy_mode,
+    int64_t min_row_size_to_use_multithread,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    bool amsgrad,
+    DenseTensor* param_out,
+    DenseTensor* moment1_out,
+    DenseTensor* moment2_out,
+    DenseTensor* moment2_max_out,
+    DenseTensor* beta1_pow_out,
+    DenseTensor* beta2_pow_out,
+    DenseTensor* master_param_outs) {
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
   const auto grad_type = grad.dtype();
 
@@ -254,7 +259,8 @@ void AdamDenseKernel(const Context& dev_ctx,
 
   // update param and moment
   int threads = 512;
-  int blocks = (param.numel() + threads - 1) / threads;
+  int64_t blocks_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int blocks = std::min((param.numel() + threads - 1) / threads, blocks_max);
 
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
     // Compute with betapow in REG
@@ -415,7 +421,9 @@ void MergedAdamKernel(
 
     // update param and moment
     int threads = 512;
-    int blocks = (param[idx]->numel() + threads - 1) / threads;
+    int64_t blocks_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    int blocks =
+        std::min((param[idx]->numel() + threads - 1) / threads, blocks_max);
 
     const auto grad_type = grad[idx]->dtype();
     if (beta1_pow[idx]->place() == CPUPlace() &&

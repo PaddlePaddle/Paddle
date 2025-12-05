@@ -131,7 +131,7 @@ void MemoryEfficientAttentionGradKernel(
         key.dims()[1],
         value.dims()[1],
         common::errors::InvalidArgument(
-            "The sequence length of key"
+            "The sequence length of key "
             "should be equal to value. But received key's sequence length = "
             "%d, value's sequence length = %d.",
             key.dims()[1],
@@ -139,7 +139,7 @@ void MemoryEfficientAttentionGradKernel(
     PADDLE_ENFORCE_EQ(query.dims()[1],
                       output_grad.dims()[1],
                       common::errors::InvalidArgument(
-                          "The sequence length of query"
+                          "The sequence length of query "
                           "should be equal to output grad. But received "
                           "query's sequence length = "
                           "%d, output grad's sequence length = %d.",
@@ -151,7 +151,7 @@ void MemoryEfficientAttentionGradKernel(
         query.dims()[2],
         key.dims()[2],
         common::errors::InvalidArgument(
-            "The head number of query"
+            "The head number of query "
             "should be equal to key. But received query's head number = "
             "%d, key's head number = %d.",
             query.dims()[2],
@@ -160,7 +160,7 @@ void MemoryEfficientAttentionGradKernel(
         query.dims()[2],
         value.dims()[2],
         common::errors::InvalidArgument(
-            "The head number of query"
+            "The head number of query "
             "should be equal to value. But received query's head number = "
             "%d, value's head number = %d.",
             query.dims()[2],
@@ -168,7 +168,7 @@ void MemoryEfficientAttentionGradKernel(
     PADDLE_ENFORCE_EQ(query.dims()[2],
                       output_grad.dims()[2],
                       common::errors::InvalidArgument(
-                          "The head number of query"
+                          "The head number of query "
                           "should be equal to output grad. But received "
                           "query's head number = "
                           "%d, output grad's head number = %d.",
@@ -180,7 +180,7 @@ void MemoryEfficientAttentionGradKernel(
         query.dims()[3],
         key.dims()[3],
         common::errors::InvalidArgument(
-            "The head size of query"
+            "The head size of query "
             "should be equal to key. But received query's head size = "
             "%d, key's head size = %d.",
             query.dims()[3],
@@ -189,7 +189,7 @@ void MemoryEfficientAttentionGradKernel(
         value.dims()[3],
         output_grad.dims()[3],
         common::errors::InvalidArgument(
-            "The head size of value"
+            "The head size of value "
             "should be equal to output grad. But received value's head size = "
             "%d, output grad's head size = %d.",
             value.dims()[3],
@@ -242,33 +242,33 @@ void MemoryEfficientAttentionGradKernel(
       PADDLE_ENFORCE_EQ(
           cu_seqlens_q.get().dims()[0],
           cu_seqlens_k.get().dims()[0],
-          common::errors::InvalidArgument("The first dimension of cu_seqlens_q"
+          common::errors::InvalidArgument("The first dimension of cu_seqlens_q "
                                           "should be equal to cu_seqlens_q."));
       PADDLE_ENFORCE_EQ(
           q_dims[0],
           1,
           common::errors::InvalidArgument(
-              "The batch number of query"
+              "The batch number of query "
               "should be one. But received batch number of query = %d.",
               q_dims[0]));
       PADDLE_ENFORCE_LT(0,
                         max_seqlen_q_tmp,
                         common::errors::InvalidArgument(
-                            "The max sequence length of query"
+                            "The max sequence length of query "
                             "should more than zero. But received the max "
                             "sequence length of query = %d.",
                             max_seqlen_q_tmp));
       PADDLE_ENFORCE_LT(0,
                         max_seqlen_k_tmp,
                         common::errors::InvalidArgument(
-                            "The max sequence length of key"
+                            "The max sequence length of key "
                             "should more than zero. But received the max "
                             "sequence length of key = %d.",
                             max_seqlen_k_tmp));
       PADDLE_ENFORCE_LE(max_seqlen_q_tmp,
                         q_dims[1],
                         common::errors::InvalidArgument(
-                            "The max sequence length of query"
+                            "The max sequence length of query "
                             "should larger than sequence length of query. But "
                             "received the max sequence length of query = %d,"
                             "the sequence length of query = %d",
@@ -277,7 +277,7 @@ void MemoryEfficientAttentionGradKernel(
       PADDLE_ENFORCE_LE(max_seqlen_k_tmp,
                         k_dims[1],
                         common::errors::InvalidArgument(
-                            "The max sequence length of key"
+                            "The max sequence length of key "
                             "should larger than sequence length of key. But "
                             "received the max sequence length of key = %d,"
                             "the sequence length of key = %d",
@@ -366,7 +366,7 @@ void MemoryEfficientAttentionGradKernel(
         delta.dims()[0],
         query.dims()[0],
         common::errors::InvalidArgument(
-            "The first dimension of delta"
+            "The first dimension of delta "
             "should be equal to query. But received delta's first dimension = "
             "%d, query's first dimension = %d.",
             delta.dims()[0],
@@ -374,7 +374,7 @@ void MemoryEfficientAttentionGradKernel(
     PADDLE_ENFORCE_EQ(delta.dims()[1],
                       query.dims()[2],
                       common::errors::InvalidArgument(
-                          "The second dimension of delta"
+                          "The second dimension of delta "
                           "should be equal to third dimension query. But "
                           "received delta's second dimension = "
                           "%d, query's third dimension = %d.",
@@ -383,7 +383,7 @@ void MemoryEfficientAttentionGradKernel(
     PADDLE_ENFORCE_EQ(delta.dims()[2],
                       query.dims()[1],
                       common::errors::InvalidArgument(
-                          "The third dimension of delta"
+                          "The third dimension of delta "
                           "should be equal to second dimension query. But "
                           "received delta's third dimension = "
                           "%d, query's second dimension = %d.",
@@ -483,19 +483,19 @@ void MemoryEfficientAttentionGradKernel(
     PADDLE_ENFORCE_EQ(q_dims[2] * q_dims[3],
                       DimStride(query_grad->dims(), 1),
                       common::errors::InvalidArgument(
-                          "The strideM of grad query"
+                          "The strideM of grad query "
                           "should be equal to the first dimension size of "
                           "query grad's stride"));
     PADDLE_ENFORCE_EQ(k_dims[2] * k_dims[3],
                       DimStride(key_grad->dims(), 1),
                       common::errors::InvalidArgument(
-                          "The strideM of grad key"
+                          "The strideM of grad key "
                           "should be equal to the first dimension size of key "
                           "grad's stride"));
     PADDLE_ENFORCE_EQ(v_dims[2] * v_dims[3],
                       DimStride(value_grad->dims(), 1),
                       common::errors::InvalidArgument(
-                          "The strideM of grad value"
+                          "The strideM of grad value "
                           "should be equal to the first dimension size of "
                           "value grad's stride"));
 

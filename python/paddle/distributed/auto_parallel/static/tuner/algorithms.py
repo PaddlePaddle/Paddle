@@ -124,8 +124,8 @@ class ShardingStageAlgorithm(AlgorithmBase):
             )
             stage_range.sort(reverse=True)
         else:
-            stage_range = list(range(self._max_stage + 1)).sort(reverse=True)
-
+            stage_range = list(range(self._max_stage + 1))
+            stage_range.sort(reverse=True)
         self._stage_range = stage_range[:]
         self._total_num_trial = len(self._stage_range)
 
@@ -173,8 +173,8 @@ class RecomputeCheckpointAlgorithm(AlgorithmBase):
 
         self._total_num_trial = len(segments)
         self._tuning_segments = list(range(len(segments)))
-        self._trail_left = 0
-        self._trail_right = len(segments) - 1
+        self._trial_left = 0
+        self._trial_right = len(segments) - 1
         self._trial_idx = int(0 + (len(segments) - 1) / 2)
 
     def _init_spaces(self):

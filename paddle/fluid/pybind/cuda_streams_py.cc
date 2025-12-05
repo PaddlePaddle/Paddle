@@ -13,10 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/cuda_streams_py.h"
-
 #include <string>
 #include <vector>
-
+#include "glog/logging.h"
 #include "paddle/phi/api/profiler/event.h"
 #include "paddle/phi/core/platform/device_event_base.h"
 
@@ -142,6 +141,22 @@ void BindCudaStream(py::module *m_ptr) {
 #else
     PADDLE_THROW(common::errors::Unavailable(
         "Paddle is not compiled with CUDA. Cannot visit device synchronize."));
+#endif
+  });
+
+  m.def("_get_current_raw_stream", [](int device_index) -> uintptr_t {
+    if (device_index == -1) {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "The device index must be a non-negative integer."));
+    }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
+    auto *current_stream = platform::get_current_stream(device_index);
+    return reinterpret_cast<std::uintptr_t>(current_stream->raw_stream());
+#else
+        PADDLE_THROW(common::errors::Unavailable(
+            "Paddle do not support _get_current_raw_stream "
+            "Cannot visit device synchronize."));
 #endif
   });
 
@@ -359,7 +374,7 @@ void BindCudaStream(py::module *m_ptr) {
             }
             if (device >= device_count) {
               PADDLE_THROW(common::errors::InvalidArgument(
-                  "The device id  must be inside [0, %d), but input device=%d.",
+                  "The device id must be inside [0, %d), but input device=%d.",
                   device_count,
                   device));
             }

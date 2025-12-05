@@ -22,7 +22,7 @@
 
 namespace paddle::framework::ir {
 
-void QuantDequantMkldnnPass::MarkSkipQuantizedOps(
+void QuantDequantOnednnPass::MarkSkipQuantizedOps(
     ir::Graph* graph, const std::unordered_set<std::string>& skip_ops) const {
   VLOG(3) << "mark skip quantized ops";
   for (auto* op_node :
@@ -53,7 +53,7 @@ void QuantDequantMkldnnPass::MarkSkipQuantizedOps(
   }
 }
 
-void QuantDequantMkldnnPass::CollectInfoFromFake(
+void QuantDequantOnednnPass::CollectInfoFromFake(
     ir::Graph* graph,
     Scope* scope,
     const std::unordered_set<std::string>& fake_dequantize_types,
@@ -94,7 +94,7 @@ void QuantDequantMkldnnPass::CollectInfoFromFake(
   }
 }
 
-void QuantDequantMkldnnPass::CollectWeightScalesInfoFromONNXFormatDequantize(
+void QuantDequantOnednnPass::CollectWeightScalesInfoFromONNXFormatDequantize(
     ir::Graph* graph,
     Scope* scope,
     std::unordered_map<std::string, std::vector<float>>* weight_thresholds,
@@ -143,7 +143,7 @@ void QuantDequantMkldnnPass::CollectWeightScalesInfoFromONNXFormatDequantize(
   }
 }
 
-void QuantDequantMkldnnPass::CollectInputScalesFromQuantize(
+void QuantDequantOnednnPass::CollectInputScalesFromQuantize(
     ir::Graph* graph,
     Scope* scope,
     const std::unordered_set<std::string>& fake_quantize_types,
@@ -203,7 +203,7 @@ void QuantDequantMkldnnPass::CollectInputScalesFromQuantize(
   }
 }
 
-void QuantDequantMkldnnPass::CollectOutputScalesFromAttr(
+void QuantDequantOnednnPass::CollectOutputScalesFromAttr(
     ir::Graph* graph,
     std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
     const {
@@ -230,7 +230,7 @@ void QuantDequantMkldnnPass::CollectOutputScalesFromAttr(
   }
 }
 
-void QuantDequantMkldnnPass::CollectFakeQuantizeOps(
+void QuantDequantOnednnPass::CollectFakeQuantizeOps(
     ir::Graph* graph,
     Node* op_node,
     std::unordered_set<const Node*>* nodes2rm) const {
@@ -284,7 +284,7 @@ void QuantDequantMkldnnPass::CollectFakeQuantizeOps(
   nodes2rm->insert(fake_quant_out_scale);
 }
 
-void QuantDequantMkldnnPass::CollectFakeDequantizeOps(
+void QuantDequantOnednnPass::CollectFakeDequantizeOps(
     ir::Graph* graph,
     Node* op_node,
     std::unordered_set<const Node*>* nodes2rm) const {
@@ -329,7 +329,7 @@ void QuantDequantMkldnnPass::CollectFakeDequantizeOps(
   nodes2rm->insert(fake_dequant_out);
 }
 
-void QuantDequantMkldnnPass::CollectQuantizeDequantizeOpsFromONNXFormat(
+void QuantDequantOnednnPass::CollectQuantizeDequantizeOpsFromONNXFormat(
     ir::Graph* graph,
     Node* op_node,
     std::unordered_set<const Node*>* nodes2rm) const {
@@ -382,7 +382,7 @@ void QuantDequantMkldnnPass::CollectQuantizeDequantizeOpsFromONNXFormat(
   nodes2rm->insert(fake_quant_out);
 }
 
-void QuantDequantMkldnnPass::RemoveFakeOps(
+void QuantDequantOnednnPass::RemoveFakeOps(
     ir::Graph* graph,
     const std::unordered_set<std::string>& fake_quantize_types,
     const std::unordered_set<std::string>& fake_dequantize_types,
@@ -409,7 +409,7 @@ void QuantDequantMkldnnPass::RemoveFakeOps(
   GraphSafeRemoveNodes(graph, nodes2rm);
 }
 
-void QuantDequantMkldnnPass::TransposeWeight(phi::DenseTensor* input) const {
+void QuantDequantOnednnPass::TransposeWeight(phi::DenseTensor* input) const {
   const auto in_dims = input->dims();
   std::vector<int> out_dim_v;
   std::vector<int> axis;
@@ -446,7 +446,7 @@ void QuantDequantMkldnnPass::TransposeWeight(phi::DenseTensor* input) const {
   }
 }
 
-bool QuantDequantMkldnnPass::IsInt8Weight(
+bool QuantDequantOnednnPass::IsInt8Weight(
     Node* op_node, Scope* scope, const std::string& weight_name) const {
   auto* op_desc = op_node->Op();
   auto var_name = op_desc->Input(weight_name)[0];
@@ -466,7 +466,7 @@ bool QuantDequantMkldnnPass::IsInt8Weight(
   return is_int8;
 }
 
-void QuantDequantMkldnnPass::ConvertFromINT8ToFP32(
+void QuantDequantOnednnPass::ConvertFromINT8ToFP32(
     const std::vector<float>& scales,
     phi::DenseTensor* weight_tensor,
     int8_t* int8_weight_data,
@@ -546,7 +546,7 @@ void QuantDequantMkldnnPass::ConvertFromINT8ToFP32(
   weight_tensor->Resize(weight_dims);
 }
 
-void QuantDequantMkldnnPass::DequantizeOpWeights(
+void QuantDequantOnednnPass::DequantizeOpWeights(
     Node* op_node,
     Scope* scope,
     const std::string& weight_name,
@@ -581,7 +581,7 @@ void QuantDequantMkldnnPass::DequantizeOpWeights(
       scales, weight_tensor, nullptr, fp32_weight_data, weight_var_name);
 }
 
-void QuantDequantMkldnnPass::DequantizeOpWeightsFromONNXFormat(
+void QuantDequantOnednnPass::DequantizeOpWeightsFromONNXFormat(
     Node* op_node,
     Scope* scope,
     const std::string& weight_name,
@@ -627,7 +627,7 @@ void QuantDequantMkldnnPass::DequantizeOpWeightsFromONNXFormat(
       scales, weight_tensor, int8_weight_data, nullptr, weight_var_name);
 }
 
-void QuantDequantMkldnnPass::DequantizeWeights(
+void QuantDequantOnednnPass::DequantizeWeights(
     ir::Graph* graph,
     Scope* scope,
     const std::unordered_map<std::string, std::vector<float>>&
@@ -668,7 +668,7 @@ void QuantDequantMkldnnPass::DequantizeWeights(
   }
 }
 
-void QuantDequantMkldnnPass::UpdateActivations(ir::Graph* graph) const {
+void QuantDequantOnednnPass::UpdateActivations(ir::Graph* graph) const {
   VLOG(3) << "update conv2d or depthwise_conv2d fused activation";
   for (auto* op_node :
        ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
@@ -687,7 +687,7 @@ void QuantDequantMkldnnPass::UpdateActivations(ir::Graph* graph) const {
   }
 }
 
-void QuantDequantMkldnnPass::RemoveCtrlVars(ir::Graph* graph) const {
+void QuantDequantOnednnPass::RemoveCtrlVars(ir::Graph* graph) const {
   VLOG(3) << "remove control flow variable";
   std::unordered_set<const Node*> nodes2rm = {};
   for (auto* op_node :
@@ -700,7 +700,7 @@ void QuantDequantMkldnnPass::RemoveCtrlVars(ir::Graph* graph) const {
   GraphSafeRemoveNodes(graph, nodes2rm);
 }
 
-void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
+void QuantDequantOnednnPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Convert paddle slim quantized model to onednn quantized model.";
   const std::string pattern_name = "quant_dequant_onednn_pass";
   FusePassBase::Init(pattern_name, graph);
@@ -759,7 +759,7 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace paddle::framework::ir
 
 REGISTER_PASS(quant_dequant_onednn_pass,
-              paddle::framework::ir::QuantDequantMkldnnPass);
+              paddle::framework::ir::QuantDequantOnednnPass);
 
 REGISTER_PASS_CAPABILITY(quant_dequant_onednn_pass)
     .AddCombination(

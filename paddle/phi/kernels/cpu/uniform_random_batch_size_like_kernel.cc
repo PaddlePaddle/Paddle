@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/funcs/uniform_random_functor.h"
-
+#include "paddle/phi/kernels/uniform_random_batch_size_like_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/uniform_random_functor.h"
 
 namespace phi {
 
@@ -38,7 +38,7 @@ void CPUUniformRandomKernel(const Context& dev_ctx,
                             DenseTensor* out) {
   T* data = dev_ctx.template Alloc<T>(out);
   int64_t size = out->numel();
-  phi::funcs::UniformRealDistribution<T>(
+  funcs::UniformRealDistribution<T>(
       data, size, min, max, static_cast<unsigned int>(seed));
 
   unsigned int diag_num_tmp = static_cast<unsigned int>(diag_num);

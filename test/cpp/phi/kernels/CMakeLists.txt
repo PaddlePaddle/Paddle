@@ -70,7 +70,7 @@ if(WIN32)
     SRCS test_memcpy_dev_api.cc
     DEPS type_info common)
   cc_test(
-    test_memcpy_dev_api
+    test_transfer_layout_dev_api
     SRCS test_memcpy_dev_api.cc
     DEPS type_info common)
 else()

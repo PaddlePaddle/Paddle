@@ -34,15 +34,16 @@
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/miopen.h"
 #include "paddle/phi/backends/gpu/rocm/hip_graph.h"
+#elif PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/custom/cuda_graph.h"
+#include "paddle/phi/backends/dynload/cudnn.h"
 #else
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #endif
 
 #ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 10020
 #include "paddle/phi/backends/dynload/cuda_driver.h"
-#endif
 #else  // PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/rocm_driver.h"
 #endif
@@ -258,8 +259,7 @@ class RecordedGpuMallocHelper {
    * would be clear.
    */
   gpuError_t MallocAsync(void **ptr, size_t size, gpuStream_t stream) {
-#if defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11020)
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA)
     LockGuardPtr<std::mutex> lock(mtx_);
     if (UNLIKELY(NeedRecord() && cur_size_.load() + size > limit_size_)) {
       return gpuErrorOutOfMemory;
@@ -362,8 +362,7 @@ class RecordedGpuMallocHelper {
   }
 
   void FreeAsync(void *ptr, size_t size, gpuStream_t stream) {
-#if defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11020)
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA)
     // Purposefully allow cudaErrorCudartUnloading, because
     // that is returned if you ever call cudaFree after the
     // driver has already shutdown. This happens only if the
@@ -451,7 +450,6 @@ class RecordedGpuMallocHelper {
   uint64_t LimitSize() const { return limit_size_; }
 
 #ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 10020
   CUresult MemCreate(CUmemGenericAllocationHandle *handle,
                      size_t size,
                      const CUmemAllocationProp *prop,
@@ -459,6 +457,11 @@ class RecordedGpuMallocHelper {
     auto result = phi::dynload::cuMemCreate(handle, size, prop, flags);
     if (result == CUDA_SUCCESS) {
       cur_size_.fetch_add(size);
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
+      platform::RecordMemEvent(handle,
+                               GPUPlace(dev_id_),
+                               size,
+                               phi::TracerMemEventType::ReservedAllocate);
     }
     return result;
   }
@@ -467,11 +470,15 @@ class RecordedGpuMallocHelper {
     auto result = phi::dynload::cuMemRelease(handle);
     if (result == CUDA_SUCCESS) {
       cur_size_.fetch_sub(size);
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, -size);
+      platform::RecordMemEvent(&handle,
+                               GPUPlace(dev_id_),
+                               size,
+                               phi::TracerMemEventType::ReservedFree);
     }
     return result;
   }
 
-#endif
 #else  // PADDLE_WITH_HIP
   hipError_t MemCreate(hipMemGenericAllocationHandle_t *handle,
                        size_t size,
@@ -480,6 +487,7 @@ class RecordedGpuMallocHelper {
     auto result = phi::dynload::hipMemCreate(handle, size, prop, flags);
     if (result == hipSuccess) {
       cur_size_.fetch_add(size);
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
     }
     return result;
   }
@@ -488,6 +496,7 @@ class RecordedGpuMallocHelper {
     auto result = phi::dynload::hipMemRelease(handle);
     if (result == hipSuccess) {
       cur_size_.fetch_sub(size);
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, -size);
     }
     return result;
   }
@@ -499,7 +508,7 @@ class RecordedGpuMallocHelper {
   const uint64_t limit_size_;
   std::atomic<uint64_t> cur_size_{0};
 
-#if defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11020)
+#if defined(PADDLE_WITH_CUDA)
   cudaMemPool_t memPool_ = nullptr;
   static std::once_flag set_cudamempoolattr_once_flag_;
 #endif
@@ -518,8 +527,7 @@ class RecordedGpuMallocHelper {
 
 std::once_flag RecordedGpuMallocHelper::once_flag_;
 
-#if defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11020)
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA)
 std::once_flag RecordedGpuMallocHelper::set_cudamempoolattr_once_flag_;
 #endif
 
@@ -551,7 +559,6 @@ void RecordedGpuFreeAsync(void *p,
 }
 
 #ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 10020
 CUresult RecordedGpuMemCreate(CUmemGenericAllocationHandle *handle,
                               size_t size,
                               const CUmemAllocationProp *prop,
@@ -566,7 +573,6 @@ CUresult RecordedGpuMemRelease(CUmemGenericAllocationHandle handle,
                                int dev_id) {
   return RecordedGpuMallocHelper::Instance(dev_id)->MemRelease(handle, size);
 }
-#endif
 #else  // PADDLE_WITH_HIP
 hipError_t RecordedGpuMemCreate(hipMemGenericAllocationHandle_t *handle,
                                 size_t size,

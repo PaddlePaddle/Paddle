@@ -11,29 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import os
-import re
 import unittest
 
 import numpy as np
+from op_test import get_cuda_version, is_custom_device
 
 import paddle
 from paddle.base.framework import in_pir_mode
 
 paddle.set_default_dtype('float64')
-
-
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
 
 
 class TestAddmm(unittest.TestCase):
@@ -90,7 +76,8 @@ class TestAddmm(unittest.TestCase):
             )
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
+        not (paddle.is_compiled_with_cuda() or is_custom_device())
+        or get_cuda_version() < 11000,
         "only support cuda>=11.0",
     )
     def test_addmm_2d(self):
@@ -98,7 +85,8 @@ class TestAddmm(unittest.TestCase):
         self.check_result([16, 10], [16, 12], [12, 10], 'csr')
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11080,
+        not (paddle.is_compiled_with_cuda() or is_custom_device())
+        or get_cuda_version() < 11080,
         "only support cuda>=11.8",
     )
     def test_addmm_3d(self):
@@ -181,7 +169,8 @@ class TestAddmmStatic(unittest.TestCase):
             paddle.disable_static()
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
+        not (paddle.is_compiled_with_cuda() or is_custom_device())
+        or get_cuda_version() < 11000,
         "only support cuda>=11.0",
     )
     def test_addmm_2d(self):
@@ -189,7 +178,8 @@ class TestAddmmStatic(unittest.TestCase):
             self.check_result([16, 10], [16, 12], [12, 10])
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11080,
+        not (paddle.is_compiled_with_cuda() or is_custom_device())
+        or get_cuda_version() < 11080,
         "only support cuda>=11.8",
     )
     def test_addmm_3d(self):

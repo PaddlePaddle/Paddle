@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 
@@ -99,10 +99,10 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
         self.run_static_check(place=paddle.CPUPlace())
 
     def test_gpu(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
-        self.run_dynamic_check(place=paddle.CUDAPlace(0))
-        self.run_static_check(place=paddle.CUDAPlace(0))
+        self.run_dynamic_check(place=get_device_place())
+        self.run_static_check(place=get_device_place())
 
     # test case the raise message
 
@@ -184,10 +184,10 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
         self.run_static_check(place=paddle.CPUPlace())
 
     def test_gpu(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
-        self.run_dynamic_check(place=paddle.CUDAPlace(0))
-        self.run_static_check(place=paddle.CUDAPlace(0))
+        self.run_dynamic_check(place=get_device_place())
+        self.run_static_check(place=get_device_place())
 
     # test case the raise message
 
@@ -235,9 +235,9 @@ class TestFunctionalHingeEmbeddingLoss_ZeroSize(unittest.TestCase):
         self.run_dynamic_check(place=paddle.CPUPlace())
 
     def test_gpu(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
-        self.run_dynamic_check(place=paddle.CUDAPlace(0))
+        self.run_dynamic_check(place=get_device_place())
 
 
 if __name__ == "__main__":

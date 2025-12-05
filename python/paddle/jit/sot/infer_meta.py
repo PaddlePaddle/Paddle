@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import copy
+from contextlib import nullcontext
 from typing import TYPE_CHECKING, Any, TypeVar
 
 import paddle
@@ -33,7 +34,11 @@ from paddle.distributed.auto_parallel.static.dist_input_spec import (
 from paddle.distributed.auto_parallel.static.utils import (
     convert_to_dims_mapping,
 )
-from paddle.jit.dy2static.utils import extract_tensor_dynamic_dims
+from paddle.jit.dy2static.utils import (
+    ALREADY_D2S,
+    extract_tensor_dynamic_dims,
+    graph_tracing_guard,
+)
 from paddle.pir import is_fake_value
 from paddle.static import InputSpec
 from paddle.utils import flatten, is_sequence
@@ -459,6 +464,7 @@ class VariableCreator(metaclass=Singleton):
                     convert_meta_to_variable(kwargs),
                 )
 
+            graph_tracing_context_manager = nullcontext()
             with paddle.static.program_guard(
                 self.main_program, self.startup_program
             ):
@@ -467,7 +473,12 @@ class VariableCreator(metaclass=Singleton):
                     # Do we need add condition check here?
                     func = getattr(args[0], func)
                     args = args[1:]
-                out = func(*args, **kwargs)
+                if hasattr(func, ALREADY_D2S):
+                    graph_tracing_context_manager = graph_tracing_guard(
+                        self.main_program
+                    )
+                with graph_tracing_context_manager:
+                    out = func(*args, **kwargs)
         return convert_variable_to_meta_info(out)
 
 

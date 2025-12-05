@@ -22,15 +22,17 @@
 namespace phi {
 
 template <typename T, typename Context>
-void AbsKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+PADDLE_API void AbsKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          DenseTensor* out) {
   auto numel = x.numel();
   auto* x_data = x.data<T>();
   dev_ctx.template Alloc<phi::dtype::Real<T>>(
       out, size_t(x.numel() * sizeof(phi::dtype::Real<T>)));
   auto* out_data = out->data<phi::dtype::Real<T>>();
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-  phi::funcs::AbsFunctor<T> functor(x_data, out_data, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::AbsFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);
 }
 

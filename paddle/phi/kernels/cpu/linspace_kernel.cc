@@ -44,8 +44,9 @@ void LinspaceKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(out);
     return;
   }
-  auto start_t = phi::funcs::TransDataType(dev_ctx, start, dtype);
-  auto stop_t = phi::funcs::TransDataType(dev_ctx, stop, dtype);
+  using StepT = std::conditional_t<std::is_integral_v<T>, double, T>;
+  auto start_t = funcs::TransDataType(dev_ctx, start, dtype);
+  auto stop_t = funcs::TransDataType(dev_ctx, stop, dtype);
 
   T start_data = start_t.template data<T>()[0];
   T stop_data = stop_t.template data<T>()[0];
@@ -54,8 +55,10 @@ void LinspaceKernel(const Context& dev_ctx,
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   if (num > 1) {
-    // step should be of double type for all types
-    double step = (static_cast<double>(stop_data - start_data)) / (num - 1);
+    // step should be of StepT type
+    StepT step =
+        (static_cast<StepT>(stop_data) - static_cast<StepT>(start_data)) /
+        (num - 1);
     int half_num = num / 2;
     for (int i = 0; i < num; ++i) {
       if (i < half_num) {

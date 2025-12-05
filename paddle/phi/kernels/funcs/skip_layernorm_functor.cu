@@ -179,8 +179,7 @@ __global__ void SkipLayerNormKernel2<half, half2, 256>(int num,
                                                        const half2 *scale,
                                                        const half2 *bias,
                                                        float eps) {
-// operator "+" of half only suppotted after cuda version 10.0
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__) && CUDA_VERSION >= 10000
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const half rld = half(0.5f / hidden);  // because hidden is hidden/2
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
@@ -403,9 +402,8 @@ void SkipLayerNormFunctor<T>::operator()(const int num,
 
 template class SkipLayerNormFunctor<float>;
 
-// device function 'operator()' is not supported until cuda 10.0
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
+#if defined(PADDLE_WITH_CUDA)
 template class SkipLayerNormFunctor<half>;
 #endif
 

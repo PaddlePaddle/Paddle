@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.compat import split
@@ -55,8 +55,8 @@ class TestCompatSplitStatic(unittest.TestCase):
             )
             assert len(pd_results) == len(origin_results), "length mismatched"
             place = (
-                paddle.CUDAPlace(0)
-                if paddle.is_compiled_with_cuda()
+                get_device_place()
+                if (paddle.is_compiled_with_cuda() or is_custom_device())
                 else paddle.CPUPlace()
             )
             exe = paddle.static.Executor(place)
@@ -114,8 +114,8 @@ class TestCompatSplitStatic(unittest.TestCase):
             output = result0 * 2.0 + paddle.sin(result1)
 
             place = (
-                paddle.CUDAPlace(0)
-                if paddle.is_compiled_with_cuda()
+                get_device_place()
+                if (paddle.is_compiled_with_cuda() or is_custom_device())
                 else paddle.CPUPlace()
             )
             exe = paddle.static.Executor(place)

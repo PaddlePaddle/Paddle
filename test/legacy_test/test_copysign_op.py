@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_device_place
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -61,8 +66,8 @@ class TestCopySignOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestCopySignBF16(OpTest):
@@ -79,13 +84,13 @@ class TestCopySignBF16(OpTest):
             'y': convert_float_to_uint16(y),
         }
         self.outputs = {'out': convert_float_to_uint16(out)}
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def init_dtype(self):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_pir=True, check_symbol_infer=False
         )
@@ -405,7 +410,8 @@ class TestCopySignNan8(TestCopySignAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCopySignOp_Stride(OpTest):
     no_need_check_grad = True
@@ -436,7 +442,7 @@ class TestCopySignOp_Stride(OpTest):
         self.val_dtype = np.float64
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_strided_forward = True
         self.check_output(
             place,

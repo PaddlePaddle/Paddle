@@ -19,6 +19,7 @@
 #pragma once
 
 #include <c10/core/Device.h>
+#include <optional>
 #include "paddle/phi/core/platform/cuda_device_guard.h"
 
 namespace c10::cuda {

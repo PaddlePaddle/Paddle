@@ -409,6 +409,24 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         np.testing.assert_allclose(y.numpy(), np_res)
 
+    def test_input_strided_tensor(self):
+        base = paddle.to_tensor(
+            [5.0, 5.0, 6.0, 5.0, 5.0, 6.0], dtype=paddle.float64
+        )
+        foo_strided = paddle.as_strided(base, shape=(2, 1), stride=(2, 1))
+
+        base2 = paddle.to_tensor(
+            [0, 0, 1, 0, 1, 0, 0, 5, 5, 5, 5], dtype=paddle.int64
+        )
+        atype = paddle.as_strided(base2, shape=(2, 3), stride=(4, 1))
+
+        result = foo_strided[atype]
+        expected_result = paddle.to_tensor(
+            [[[5.0], [5.0], [6.0]], [[6.0], [5.0], [5.0]]], dtype=paddle.float64
+        )
+
+        np.testing.assert_allclose(result.numpy(), expected_result.numpy())
+
 
 class TestMultipleIndexing(TestGetitemInDygraph):
     def test_indexing_with_all_possible_start_end_step_dygraph(self):

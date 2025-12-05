@@ -31,10 +31,7 @@ import sysconfig
 import textwrap
 import threading
 import warnings
-from contextlib import contextmanager
 from importlib import machinery
-
-from setuptools.command import bdist_egg
 
 try:
     from subprocess import DEVNULL  # py3
@@ -151,18 +148,6 @@ DEFAULT_OP_ATTR_NAMES = [
 ]
 
 
-@contextmanager
-def bootstrap_context():
-    """
-    Context to manage how to write `__bootstrap__` code in .egg
-    """
-    origin_write_stub = bdist_egg.write_stub
-    bdist_egg.write_stub = custom_write_stub
-    yield
-
-    bdist_egg.write_stub = origin_write_stub
-
-
 def load_op_meta_info_and_register_op(lib_filename: str) -> list[str]:
     new_list = core.load_op_meta_info_and_register_op(lib_filename)
     proto_sync_ops = OpProtoHolder.instance().update_op_proto(new_list)
@@ -237,7 +222,8 @@ def custom_write_stub(resource, pyfile):
     with open(pyfile, 'w') as f:
         f.write(
             _stub_template.format(
-                resource=resource, custom_api='\n\n'.join(api_content)
+                resource=os.path.basename(resource),
+                custom_api='\n\n'.join(api_content),
             )
         )
 
@@ -486,11 +472,9 @@ def _get_lib_core_path():
 
 def _get_dll_core_path():
     """
-    Return real path of libcore_(no)avx.dylib on Windows.
+    Return real path of libpaddle on Windows.
     """
-    raw_core_name = _get_core_name()
-    dll_core_name = "libpaddle.dll"
-    return os.path.join(_get_base_path(), dll_core_name)
+    return os.path.join(_get_base_path(), "libpaddle.dll")
 
 
 def _reset_so_rpath(so_path):
@@ -555,6 +539,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
 
     # append necessary include dir path of paddle
     include_dirs = list(kwargs.get('include_dirs', []))
+    include_dirs = [os.fsdecode(include_dir) for include_dir in include_dirs]
     include_dirs.extend(compile_include_dirs)
     include_dirs.extend(find_paddle_includes(use_cuda))
     include_dirs.extend(find_python_includes())
@@ -589,7 +574,15 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         # On Linux, GCC support '-l:xxx.so' to specify the library name
         # without `lib` prefix.
         if OS_NAME.startswith('linux'):
-            extra_link_args.append(f'-l:{_get_core_name()}')
+            # Force link libpaddle.so to avoid "as-needed" optimization
+            # when user only uses phi headers.
+            extra_link_args.extend(
+                [
+                    '-Wl,--no-as-needed',
+                    f'-l:{_get_core_name()}',
+                    '-Wl,--as-needed',
+                ]
+            )
         # ----------------------- MacOS Platform ----------------------- #
         else:
             # See _reset_so_rpath for details.
@@ -727,7 +720,7 @@ def find_cuda_home():
     # step 1. find in $CUDA_HOME or $CUDA_PATH
     cuda_home = os.environ.get('CUDA_HOME') or os.environ.get('CUDA_PATH')
 
-    # step 2.  find path by `which nvcc`
+    # step 2. find path by `which nvcc`
     if cuda_home is None:
         which_cmd = 'where' if IS_WINDOWS else 'which'
         try:
@@ -769,7 +762,7 @@ def find_rocm_home():
     # step 1. find in $ROCM_HOME or $ROCM_PATH
     rocm_home = os.environ.get('ROCM_HOME') or os.environ.get('ROCM_PATH')
 
-    # step 2.  find path by `which nvcc`
+    # step 2. find path by `which nvcc`
     if rocm_home is None:
         which_cmd = 'where' if IS_WINDOWS else 'which'
         try:
@@ -821,7 +814,9 @@ def find_rocm_includes():
     return [os.path.join(rocm_home, 'include')]
 
 
-def _get_all_paddle_includes_from_include_root(include_root: str) -> list[str]:
+def _get_all_paddle_includes_from_include_root(
+    include_root: os.PathLike[str] | str,
+) -> list[str]:
     """
     Get all paddle include directories from include root (packaged in wheel)
     """
@@ -1099,7 +1094,7 @@ def _generate_python_module(
 
     # NOTE: Use unique id as suffix to avoid write same file at same time in
     # both multi-thread and multi-process.
-    thread_id = str(threading.currentThread().ident)
+    thread_id = str(threading.current_thread().ident)
     api_file = os.path.join(
         build_directory, module_name + '_' + thread_id + '.py'
     )
@@ -1108,7 +1103,7 @@ def _generate_python_module(
     # delete the temp file before exit python process
     atexit.register(lambda: remove_if_exit(api_file))
 
-    # write into .py file with RWLockc
+    # write into .py file with RWLock
     api_content = [_custom_api_content(op_name) for op_name in op_names]
     with open(api_file, 'w') as f:
         f.write('\n\n'.join(api_content))

@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from scipy.special import erf
 
 import paddle
@@ -63,7 +63,7 @@ class TestGeluOp(unittest.TestCase):
         x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float32)
         y_ref = gelu(x, approximate)
 
-        place = base.CUDAPlace(0)
+        place = get_device_place()
         with dg.guard(place) as g:
             x_var = paddle.to_tensor(x)
             y_var1 = F.gelu(x_var, approximate)
@@ -78,11 +78,11 @@ class TestGeluOp(unittest.TestCase):
     def test_cases(self):
         for approximate in [True, False, "none", "tanh"]:
             self._test_case1_cpu(approximate)
-            if base.is_compiled_with_cuda():
+            if base.is_compiled_with_cuda() or is_custom_device():
                 self._test_case1_gpu(approximate)
 
     def test_fast_math(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
 
         def use_fast_math(enabled):
@@ -168,7 +168,7 @@ class TestGeluOp_ZeroSize(unittest.TestCase):
         x = np.random.uniform(-1, 1, size=(0, 17)).astype(np.float32)
         y_ref = gelu(x, approximate)
 
-        place = base.CUDAPlace(0)
+        place = get_device_place()
         with dg.guard(place) as g:
             x_var1 = paddle.to_tensor(x)
             x_var2 = paddle.to_tensor(x)
@@ -197,7 +197,7 @@ class TestGeluOp_ZeroSize(unittest.TestCase):
     def test_cases(self):
         for approximate in [True, False, "none", "tanh"]:
             self._test_case1_cpu(approximate)
-            if base.is_compiled_with_cuda():
+            if base.is_compiled_with_cuda() or is_custom_device():
                 self._test_case1_gpu(approximate)
 
 
@@ -213,7 +213,7 @@ class TestGeluError(unittest.TestCase):
         def test_type_error2():
             y = F.gelu(self.x, 1234)
 
-        self.assertRaises(TypeError, test_type_error1)
+        self.assertRaises(ValueError, test_type_error1)
         self.assertRaises(TypeError, test_type_error2)
 
     def test_gelu_class_error(self):
@@ -225,8 +225,95 @@ class TestGeluError(unittest.TestCase):
             func = nn.GELU(1234)
             y = func(self.x)
 
-        self.assertRaises(TypeError, test_type_error1)
+        self.assertRaises(ValueError, test_type_error1)
         self.assertRaises(TypeError, test_type_error2)
+
+
+class TestGeluOp_Compatibility(unittest.TestCase):
+    def _test_case1_cpu(self, approximate):
+        x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float32)
+        y_ref = gelu(x, approximate)
+
+        place = base.CPUPlace()
+        with dg.guard(place) as g:
+            x_var = paddle.to_tensor(x)
+            y_var1 = F.gelu(input=x_var, approximate=approximate)
+            y_test1 = y_var1.numpy()
+
+            func = nn.GELU(approximate)
+            y_var2 = func(x_var)
+            y_test2 = y_var2.numpy()
+        np.testing.assert_allclose(y_ref, y_test1, rtol=1e-05, atol=1e-08)
+        np.testing.assert_allclose(y_ref, y_test2, rtol=1e-05, atol=1e-08)
+
+    def _test_case1_gpu(self, approximate):
+        x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float64)
+        y_ref = gelu(x, approximate)
+
+        place = base.CUDAPlace(0)
+        with dg.guard(place) as g:
+            x_var = paddle.to_tensor(x)
+            y_var1 = F.gelu(input=x_var, approximate=approximate)
+            y_test1 = y_var1.numpy()
+
+            func = nn.GELU(approximate)
+            y_var2 = func(x_var)
+            y_test2 = y_var2.numpy()
+        np.testing.assert_allclose(y_ref, y_test1, rtol=1e-05, atol=1e-08)
+        np.testing.assert_allclose(y_ref, y_test2, rtol=1e-05, atol=1e-08)
+
+    def _test_case2_cpu(self, approximate):
+        x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float64)
+        y_ref = gelu(x, approximate)
+
+        place = base.CPUPlace()
+        with dg.guard(place) as g:
+            x_var = paddle.to_tensor(x)
+            y_var1 = F.gelu(x_var, approximate)
+            y_test1 = y_var1.numpy()
+
+            func = nn.GELU(approximate)
+            y_var2 = func(x_var)
+            y_test2 = y_var2.numpy()
+        np.testing.assert_allclose(y_ref, y_test1, rtol=1e-05, atol=1e-08)
+        np.testing.assert_allclose(y_ref, y_test2, rtol=1e-05, atol=1e-08)
+
+    def _test_case2_gpu(self, approximate):
+        x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float32)
+        y_ref = gelu(x, approximate)
+
+        place = base.CUDAPlace(0)
+        with dg.guard(place) as g:
+            x_var = paddle.to_tensor(x)
+            y_var1 = F.gelu(x_var, approximate)
+            y_test1 = y_var1.numpy()
+
+            func = nn.GELU(approximate)
+            y_var2 = func(x_var)
+            y_test2 = y_var2.numpy()
+        np.testing.assert_allclose(y_ref, y_test1, rtol=1e-05, atol=1e-08)
+        np.testing.assert_allclose(y_ref, y_test2, rtol=1e-05, atol=1e-08)
+
+    def test_gelu_op_error(self):
+        def test_type_error1():
+            x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float32)
+            y = F.gelu(approximate="tan", input=paddle.to_tensor(x))
+
+        def test_type_error2():
+            x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float32)
+            y = F.gelu(approximate=1234, input=paddle.to_tensor(x))
+
+        self.assertRaises(ValueError, test_type_error1)
+        self.assertRaises(TypeError, test_type_error2)
+
+    def test_cases(self):
+        for approximate in [True, False, "none", "tanh"]:
+            self._test_case1_cpu(approximate)
+            self._test_case2_cpu(approximate)
+            if base.is_compiled_with_cuda():
+                self._test_case1_gpu(approximate)
+                self._test_case2_gpu(approximate)
+        self.test_gelu_op_error()
 
 
 if __name__ == '__main__':

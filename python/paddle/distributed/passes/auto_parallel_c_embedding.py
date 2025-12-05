@@ -87,7 +87,7 @@ class AutoParallelCEmbeddingPass(PassBase):
             op.operand(1).source().type(), dist_attr_w
         )
         op.operand(1).source().set_type(dist_type_input0)
-        # update c_emebedding weight dynamic parameters
+        # update c_embedding weight dynamic parameters
         dy_params = concrete_program.parameters[0]
         pattern = re.compile(r'embedding_.*\.w_0\.dist')
         for index, param in enumerate(dy_params):

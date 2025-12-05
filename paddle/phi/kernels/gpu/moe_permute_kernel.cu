@@ -172,7 +172,6 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
   grid.x =
       (total_zipped_tokens_num + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
   block.x = 512;
-
 #define DTYPE_CASE(dtype, type) dtype == phi::DataType::type
 #define GET_DATA(tensor, type) tensor.data<type>()
 #define GET_PTR_DATA(tensor, type) tensor->data<type>()
@@ -246,8 +245,20 @@ void MoePermuteKernel(const Context &dev_ctx,
                       DenseTensor *zipped_expertwise_rowmap,
                       DenseTensor *token_prob_unzipped,
                       DenseTensor *XScale_unzipped) {
-  const int rows = X.dims()[0];
-  const int cols = X.dims()[1];
+  const int64_t rows = X.dims()[0];
+  const int64_t cols = X.dims()[1];
+  PADDLE_ENFORCE_LE(
+      rows,
+      std::numeric_limits<int32_t>::max(),
+      common::errors::InvalidArgument("X.dims()[0] should be less than "
+                                      "INT_MAX, received X.dims()[0]: (%ld)",
+                                      rows));
+  PADDLE_ENFORCE_LE(
+      cols,
+      std::numeric_limits<int32_t>::max(),
+      common::errors::InvalidArgument("X.dims()[1] should be less than "
+                                      "INT_MAX, received X.dims()[1]: (%ld)",
+                                      cols));
   PADDLE_ENFORCE_LE(
       num_experts,
       MAX_NUM_EXPERTS,
@@ -257,8 +268,15 @@ void MoePermuteKernel(const Context &dev_ctx,
           "value.",
           MAX_NUM_EXPERTS,
           num_experts));
+  const int64_t quanted_cols = (XScale) ? XScale.get_ptr()->dims()[1] : 0;
+  PADDLE_ENFORCE_LE(
+      quanted_cols,
+      std::numeric_limits<int32_t>::max(),
+      common::errors::InvalidArgument("quanted_cols should be less than "
+                                      "INT_MAX, received quanted_cols: (%ld)",
+                                      quanted_cols));
 
-  const int quanted_cols = (XScale) ? XScale.get_ptr()->dims()[1] : 0;
+  // Expert base offset initialization, tensor numeric range [0, max_token_num]
   int expert_offset[MAX_NUM_EXPERTS];
   int tokens_cumulated = 0;
   for (int i = 0; i < MAX_NUM_EXPERTS; i++) {
@@ -274,68 +292,66 @@ void MoePermuteKernel(const Context &dev_ctx,
   DenseTensor expert_offset_tensor;
   expert_offset_tensor.Resize({MAX_NUM_EXPERTS});
   dev_ctx.template Alloc<int>(&expert_offset_tensor);
-  cudaMemcpyAsync(expert_offset_tensor.data<int>(),
-                  expert_offset,
-                  sizeof(int) * MAX_NUM_EXPERTS,
-                  cudaMemcpyHostToDevice,
-                  dev_ctx.stream());
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(expert_offset_tensor.data<int>(),
+                                             expert_offset,
+                                             sizeof(int) * MAX_NUM_EXPERTS,
+                                             cudaMemcpyHostToDevice,
+                                             dev_ctx.stream()));
+  // ------------------- resource allocate -------------------------
   const int output_rows = tokens_cumulated;
-  const int topk_calculated = expert_routemap_topk.dims()[1];
-  X_unzipped->Resize({output_rows, cols});
+  const int64_t topk = expert_routemap_topk.dims()[1];
+  PADDLE_ENFORCE_LE(
+      topk,
+      std::numeric_limits<int32_t>::max(),
+      common::errors::InvalidArgument(
+          "topk should be less than INT_MAX, received topk: (%ld)", topk));
   token_prob_unzipped->Resize({output_rows});
-  if (XScale) {
-    const int quanted_cols = XScale.get_ptr()->dims()[1];
-    XScale_unzipped->Resize({output_rows, quanted_cols});
-  }
-  dev_ctx.template Alloc<float>(XScale_unzipped);
-  dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);
-  dev_ctx.template Alloc<T>(X_unzipped);
-  dev_ctx.template Alloc<float>(token_prob_unzipped);
-  auto X_unzipped_ptr = reinterpret_cast<void *>(X_unzipped->data<T>());
-
-  for (int i = 0; i < num_experts; i++) {
-    int next_expert_offset =
-        i < num_experts - 1 ? expert_offset[i + 1] : output_rows;
-    int invalid_rows =
-        next_expert_offset - expert_offset[i] - tokens_per_expert[i];
-    int cur_expert_end = expert_offset[i] + tokens_per_expert[i];
-    cudaMemsetAsync(X_unzipped_ptr + cur_expert_end * cols * sizeof(T),
-                    0,
-                    sizeof(T) * invalid_rows * cols,
-                    dev_ctx.stream());
-  }
-  if (XScale) {
-    auto XScale_unzipped_ptr =
-        reinterpret_cast<void *>(XScale_unzipped->data<float>());
-    for (int i = 0; i < num_experts; i++) {
-      int next_expert_offset =
-          i < num_experts - 1 ? expert_offset[i + 1] : output_rows;
-      int invalid_rows =
-          next_expert_offset - expert_offset[i] - tokens_per_expert[i];
-      int cur_expert_end = expert_offset[i] + tokens_per_expert[i];
-      cudaMemsetAsync(
-          XScale_unzipped_ptr + cur_expert_end * quanted_cols * sizeof(float),
-          0,
-          sizeof(float) * invalid_rows * quanted_cols,
-          dev_ctx.stream());
+  if (do_gather) {  // no gather, no resize.
+    X_unzipped->Resize({output_rows, cols});
+    if (XScale) {
+      const int quanted_cols = XScale.get_ptr()->dims()[1];
+      XScale_unzipped->Resize({output_rows, quanted_cols});
     }
   }
-
+  dev_ctx.template Alloc<T>(X_unzipped);
+  dev_ctx.template Alloc<float>(XScale_unzipped);
+  dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);
+  dev_ctx.template Alloc<float>(token_prob_unzipped);
+  auto X_unzipped_ptr = reinterpret_cast<void *>(X_unzipped->data<T>());
   auto token_prob_unzipped_ptr =
       reinterpret_cast<void *>(token_prob_unzipped->data<float>());
+  auto XScale_unzipped_ptr =
+      reinterpret_cast<void *>(XScale_unzipped->data<float>());
 
-  for (int i = 0; i < num_experts; i++) {
-    int next_expert_offset =
-        i < num_experts - 1 ? expert_offset[i + 1] : output_rows;
-    int invalid_rows =
-        next_expert_offset - expert_offset[i] - tokens_per_expert[i];
-    int cur_expert_end = expert_offset[i] + tokens_per_expert[i];
-    cudaMemsetAsync(token_prob_unzipped_ptr + cur_expert_end * sizeof(float),
-                    0,
-                    sizeof(float) * invalid_rows,
-                    dev_ctx.stream());
+  // -------- Memset all padding area to zero, with regard to do_gather
+  auto memset_invalid_rows =
+      [&](void *ptr, int64_t element_size, int64_t stride) {
+        for (int i = 0; i < num_experts; i++) {
+          int64_t next_expert_offset =
+              i < num_experts - 1 ? expert_offset[i + 1] : output_rows;
+          int64_t invalid_rows =
+              next_expert_offset - expert_offset[i] - tokens_per_expert[i];
+          int64_t cur_expert_end = expert_offset[i] + tokens_per_expert[i];
+          PADDLE_ENFORCE_GPU_SUCCESS(
+              cudaMemsetAsync(ptr + cur_expert_end * stride * element_size,
+                              0,
+                              element_size * invalid_rows * stride,
+                              dev_ctx.stream()));
+        }
+      };
+  if (do_gather) {  // no gather, no memset
+    memset_invalid_rows(X_unzipped_ptr, sizeof(T), cols);
+    if (XScale) {
+      memset_invalid_rows(XScale_unzipped_ptr, sizeof(float), quanted_cols);
+    }
   }
+  // Probs will be memset to zero whatsoever
+  memset_invalid_rows(token_prob_unzipped_ptr, sizeof(float), 1);
+
+  // Handle 0-size input
   if (X.numel() == 0) return;
+
+  // -------- Initialize semaphore for cumsum ---------------
   const int cumsum_blocknum =
       (rows + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
   DenseTensor global_expertwise_block_cumsum =
@@ -353,11 +369,11 @@ void MoePermuteKernel(const Context &dev_ctx,
                                            token_prob_unzipped,
                                            XScale_unzipped,
                                            &global_expertwise_block_cumsum,
-                                           rows,
-                                           cols,
-                                           topk_calculated,
+                                           static_cast<int>(rows),
+                                           static_cast<int>(cols),
+                                           static_cast<int>(topk),
                                            num_experts,
-                                           quanted_cols,
+                                           static_cast<int>(quanted_cols),
                                            do_gather);
 }
 #undef CUMSUM_BLOCK_SIZE
@@ -369,5 +385,5 @@ PD_REGISTER_KERNEL(moe_permute,
                    GPU,
                    ALL_LAYOUT,
                    phi::MoePermuteKernel,
-                   phi::dtype::float8_e4m3fn,
+                   phi::float8_e4m3fn,
                    phi::bfloat16) {}

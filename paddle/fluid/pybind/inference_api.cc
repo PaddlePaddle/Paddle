@@ -747,12 +747,20 @@ void BindPaddlePredictor(py::module *m) {
   paddle_predictor
       .def("run",
            [](PaddlePredictor &self, const std::vector<PaddleTensor> &inputs) {
-#if !defined(PADDLE_NO_PYTHON)
-             pybind11::gil_scoped_release release;
-#endif
-             std::vector<PaddleTensor> outputs;
-             self.Run(inputs, &outputs);
-             return outputs;
+             auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+             std::string release_gil_device = "npu";
+             if (std::find(device_types.begin(),
+                           device_types.end(),
+                           release_gil_device) != device_types.end()) {
+               pybind11::gil_scoped_release release;
+               std::vector<PaddleTensor> outputs;
+               self.Run(inputs, &outputs);
+               return outputs;
+             } else {
+               std::vector<PaddleTensor> outputs;
+               self.Run(inputs, &outputs);
+               return outputs;
+             }
            })
       .def("get_input_tensor", &PaddlePredictor::GetInputTensor)
       .def("get_output_tensor", &PaddlePredictor::GetOutputTensor)
@@ -761,10 +769,16 @@ void BindPaddlePredictor(py::module *m) {
       .def(
           "zero_copy_run",
           [](PaddlePredictor &self, bool switch_stream) {
-#if !defined(PADDLE_NO_PYTHON)
-            pybind11::gil_scoped_release release;
-#endif
-            return self.ZeroCopyRun(switch_stream);
+            auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+            std::string release_gil_device = "npu";
+            if (std::find(device_types.begin(),
+                          device_types.end(),
+                          release_gil_device) != device_types.end()) {
+              pybind11::gil_scoped_release release;
+              return self.ZeroCopyRun(switch_stream);
+            } else {
+              return self.ZeroCopyRun(switch_stream);
+            }
           },
           py::arg("switch_stream") = false)
       .def("clone", [](PaddlePredictor &self) { return self.Clone(nullptr); })
@@ -806,22 +820,36 @@ void BindNativePredictor(py::module *m) {
       .def("run",
            [](NativePaddlePredictor &self,
               const std::vector<PaddleTensor> &inputs) {
-#if !defined(PADDLE_NO_PYTHON)
-             pybind11::gil_scoped_release release;
-#endif
-             std::vector<PaddleTensor> outputs;
-             self.Run(inputs, &outputs);
-             return outputs;
+             auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+             std::string release_gil_device = "npu";
+             if (std::find(device_types.begin(),
+                           device_types.end(),
+                           release_gil_device) != device_types.end()) {
+               pybind11::gil_scoped_release release;
+               std::vector<PaddleTensor> outputs;
+               self.Run(inputs, &outputs);
+               return outputs;
+             } else {
+               std::vector<PaddleTensor> outputs;
+               self.Run(inputs, &outputs);
+               return outputs;
+             }
            })
       .def("get_input_tensor", &NativePaddlePredictor::GetInputTensor)
       .def("get_output_tensor", &NativePaddlePredictor::GetOutputTensor)
       .def(
           "zero_copy_run",
           [](NativePaddlePredictor &self, bool switch_stream) {
-#if !defined(PADDLE_NO_PYTHON)
-            pybind11::gil_scoped_release release;
-#endif
-            return self.ZeroCopyRun(switch_stream);
+            auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+            std::string release_gil_device = "npu";
+            if (std::find(device_types.begin(),
+                          device_types.end(),
+                          release_gil_device) != device_types.end()) {
+              pybind11::gil_scoped_release release;
+              return self.ZeroCopyRun(switch_stream);
+            } else {
+              return self.ZeroCopyRun(switch_stream);
+            }
           },
           py::arg("switch_stream") = false)
       .def("clone",
@@ -1178,12 +1206,20 @@ void BindAnalysisPredictor(py::module *m) {
       .def(
           "run",
           [](AnalysisPredictor &self, const std::vector<PaddleTensor> &inputs) {
-#if !defined(PADDLE_NO_PYTHON)
-            pybind11::gil_scoped_release release;
-#endif
-            std::vector<PaddleTensor> outputs;
-            self.Run(inputs, &outputs);
-            return outputs;
+            auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+            std::string release_gil_device = "npu";
+            if (std::find(device_types.begin(),
+                          device_types.end(),
+                          release_gil_device) != device_types.end()) {
+              pybind11::gil_scoped_release release;
+              std::vector<PaddleTensor> outputs;
+              self.Run(inputs, &outputs);
+              return outputs;
+            } else {
+              std::vector<PaddleTensor> outputs;
+              self.Run(inputs, &outputs);
+              return outputs;
+            }
           })
       .def("get_input_tensor", &AnalysisPredictor::GetInputTensor)
       .def("get_output_tensor", &AnalysisPredictor::GetOutputTensor)
@@ -1193,10 +1229,16 @@ void BindAnalysisPredictor(py::module *m) {
       .def(
           "zero_copy_run",
           [](AnalysisPredictor &self, bool switch_stream) {
-#if !defined(PADDLE_NO_PYTHON)
-            pybind11::gil_scoped_release release;
-#endif
-            return self.ZeroCopyRun(switch_stream);
+            auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+            std::string release_gil_device = "npu";
+            if (std::find(device_types.begin(),
+                          device_types.end(),
+                          release_gil_device) != device_types.end()) {
+              pybind11::gil_scoped_release release;
+              return self.ZeroCopyRun(switch_stream);
+            } else {
+              return self.ZeroCopyRun(switch_stream);
+            }
           },
           py::arg("switch_stream") = false)
       .def("clear_intermediate_tensor",
@@ -1237,20 +1279,34 @@ void BindPaddleInferPredictor(py::module *m) {
           "run",
           [](paddle_infer::Predictor &self,
              const std::vector<paddle::Tensor> &in_tensor_list) {
-#if !defined(PADDLE_NO_PYTHON)
-            pybind11::gil_scoped_release release;
-#endif
-            std::vector<paddle::Tensor> outputs;
-            self.Run(in_tensor_list, &outputs);
-            return outputs;
+            auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+            std::string release_gil_device = "npu";
+            if (std::find(device_types.begin(),
+                          device_types.end(),
+                          release_gil_device) != device_types.end()) {
+              pybind11::gil_scoped_release release;
+              std::vector<paddle::Tensor> outputs;
+              self.Run(in_tensor_list, &outputs);
+              return outputs;
+            } else {
+              std::vector<paddle::Tensor> outputs;
+              self.Run(in_tensor_list, &outputs);
+              return outputs;
+            }
           },
           py::arg("inputs"))
       .def("run",
            [](paddle_infer::Predictor &self) {
-#if !defined(PADDLE_NO_PYTHON)
-             pybind11::gil_scoped_release release;
-#endif
-             self.Run();
+             auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+             std::string release_gil_device = "npu";
+             if (std::find(device_types.begin(),
+                           device_types.end(),
+                           release_gil_device) != device_types.end()) {
+               pybind11::gil_scoped_release release;
+               self.Run();
+             } else {
+               self.Run();
+             }
            })
       .def("clone",
            [](paddle_infer::Predictor &self) { return self.Clone(nullptr); })

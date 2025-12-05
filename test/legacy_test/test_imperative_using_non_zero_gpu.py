@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -28,15 +28,15 @@ class TestImperativeUsingNonZeroGpu(unittest.TestCase):
             np.testing.assert_array_equal(np_arr, var.numpy())
 
     def test_non_zero_gpu(self):
-        if not base.is_compiled_with_cuda():
+        if not (base.is_compiled_with_cuda() or is_custom_device()):
             return
 
         np_arr = np.random.random([11, 13]).astype('float32')
         if paddle.device.cuda.device_count() > 1:
             # should use non zero gpu if there are more than 1 gpu
-            self.run_main(np_arr, base.CUDAPlace(1))
+            self.run_main(np_arr, get_device_place(1))
         else:
-            self.run_main(np_arr, base.CUDAPlace(0))
+            self.run_main(np_arr, get_device_place(0))
 
 
 if __name__ == '__main__':

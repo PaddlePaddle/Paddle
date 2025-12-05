@@ -16,7 +16,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    get_device_place,
+    is_custom_device,
+    skip_check_grad_ci,
+)
 
 import paddle
 from paddle.base import core
@@ -24,7 +29,7 @@ from paddle.base import core
 
 def skip_unit_test():
     return (
-        not paddle.is_compiled_with_cuda()
+        not (paddle.is_compiled_with_cuda() or is_custom_device())
         or paddle.device.cuda.get_device_capability()[0] < 8
     )
 
@@ -94,11 +99,11 @@ class TestFusedScaleBiasAddReluOp(OpTest):
         }
 
     def has_cuda(self):
-        return core.is_compiled_with_cuda()
+        return core.is_compiled_with_cuda() or is_custom_device()
 
     def test_check_output(self):
         if self.has_cuda():
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(place, check_dygraph=False, atol=2e-2)
 
     def init_test_case(self):

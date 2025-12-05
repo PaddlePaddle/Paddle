@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -34,7 +34,8 @@ def random_routing(topk_idx, topk_value, prob, topk=2):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestNumberCountAPIFp32(unittest.TestCase):
     def setUp(self):
@@ -51,7 +52,7 @@ class TestNumberCountAPIFp32(unittest.TestCase):
         self.out = random_routing(self.x, self.topk_value, self.prob).astype(
             self.dtype
         )
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_api_dygraph(self):
         paddle.disable_static()
@@ -63,7 +64,8 @@ class TestNumberCountAPIFp32(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestNumberCountAPIFp16(TestNumberCountAPIFp32):
     def setUp(self):

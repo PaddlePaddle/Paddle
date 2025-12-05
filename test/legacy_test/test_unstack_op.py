@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -169,8 +174,8 @@ class TestStackOp6_complex128(TestStackOp6):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestUnStackBF16Op(OpTest):
@@ -218,7 +223,7 @@ class TestUnStackBF16Op(OpTest):
         self.attrs = {'axis': self.axis, 'num': self.input_dim[self.axis]}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
@@ -277,8 +282,8 @@ class TestUnstackZeroInputOp(unittest.TestCase):
 class TestUnstackEmptyTensorInput(unittest.TestCase):
     def _get_places(self):
         places = [paddle.base.CPUPlace()]
-        if paddle.is_compiled_with_cuda():
-            places.append(paddle.base.CUDAPlace(0))
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         return places
 
     def _generate_empty_tensor(self, shape):

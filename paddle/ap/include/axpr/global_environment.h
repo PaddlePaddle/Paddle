@@ -43,7 +43,7 @@ class GlobalEnvironment : public Environment<ValueT> {
         ADT_CHECK(SerializableValue::IsSerializable(val)) << [&] {
           std::ostringstream ss;
           ss << "Only serializable values are supported insert into global "
-                "environment. " ss
+                "environment. "
              << "Builtin serializable types are: ";
           ss << SerializableValue::SerializableTypeNames();
           ss << " (not include '" << axpr::GetTypeName(val) << "').";

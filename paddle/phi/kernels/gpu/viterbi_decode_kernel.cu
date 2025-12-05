@@ -13,14 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/viterbi_decode_kernel.h"
-
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
+#include "paddle/phi/kernels/funcs/cub.h"
 #ifdef PADDLE_WITH_MKLML
 #include <omp.h>
 #endif
@@ -93,7 +86,7 @@ struct GetMask {
                   DenseTensor* mask) {
     std::vector<const DenseTensor*> ins = {&lhs, &rhs};
     std::vector<DenseTensor*> outs = {mask};
-    phi::funcs::ElementwiseKernel<T>(
+    funcs::ElementwiseKernel<T>(
         dev_ctx, ins, &outs, CompareFunctor<int64_t, T>());
   }
 };
@@ -105,15 +98,15 @@ __global__ void ArgmaxCUDAKernel(const int64_t height,     // n * h
                                  const T* in,
                                  IndType* out_idx,
                                  T* out) {
-  typedef cub::BlockReduce<cub::KeyValuePair<int, T>, BlockDim> BlockReduce;
+  typedef cub::BlockReduce<cub::KeyValuePair<int64_t, T>, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   cub::ArgMax reducer;
   T init = (std::numeric_limits<T>::lowest)();  // for windows compile
-  for (int idx = blockIdx.x; idx < height; idx += gridDim.x) {
-    cub::KeyValuePair<int, T> kv_pair = {-1, init};
-    int h = idx / post_size;
-    int w = idx % post_size;
-    for (int k = threadIdx.x; k < width; k += blockDim.x) {
+  for (int64_t idx = blockIdx.x; idx < height; idx += gridDim.x) {
+    cub::KeyValuePair<int64_t, T> kv_pair = {-1, init};
+    int64_t h = idx / post_size;
+    int64_t w = idx % post_size;
+    for (int64_t k = threadIdx.x; k < width; k += blockDim.x) {
       kv_pair =
           reducer({k, in[h * width * post_size + k * post_size + w]}, kv_pair);
     }
@@ -128,7 +121,9 @@ __global__ void ArgmaxCUDAKernel(const int64_t height,     // n * h
 }
 
 __global__ void ARangeKernel(int64_t* data, int num, int64_t scale) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   for (int start = idx; idx < num; idx += gridDim.x) {
     data[idx] = idx * scale;
   }
@@ -153,7 +148,7 @@ struct Argmax {
                   DenseTensor* out_idx,
                   DenseTensor* out,
                   int axis) {
-    phi::DDim input_dims = input.dims();
+    DDim input_dims = input.dims();
     int64_t numel = input.numel();
     int64_t groups = numel / input_dims[axis];
     int64_t pre = 1;
@@ -212,7 +207,7 @@ struct Gather {
                   const DenseTensor& src,
                   const DenseTensor& index,
                   DenseTensor* output) {
-    phi::funcs::GPUGather<T, IndexT>(dev_ctx, src, index, output);
+    funcs::GPUGather<T, IndexT>(dev_ctx, src, index, output);
   }
 };
 
@@ -228,8 +223,8 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   auto batch_size = static_cast<int>(input.dims()[0]);
   auto seq_len = static_cast<int>(input.dims()[1]);
   auto n_labels = static_cast<int>(input.dims()[2]);
-  phi::funcs::SetConstant<Context, T> float_functor;
-  phi::funcs::SetConstant<Context, int64_t> int_functor;
+  funcs::SetConstant<Context, T> float_functor;
+  funcs::SetConstant<Context, int64_t> int_functor;
   std::vector<DenseTensor> historys;
   // We create tensor buffer in order to avoid allocating memory frequently
   // 10 means allocate 10*batch_size bytes memory, such as int_mask, zero...
@@ -295,7 +290,7 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   DenseTensor gather_idx = int_tensor_buffer.GetBufferBlock({batch_size});
   std::vector<const DenseTensor*> shape{&rest_trans, &stop_trans, &start_trans};
   std::vector<DenseTensor*> outputs{&rest_trans, &stop_trans, &start_trans};
-  phi::funcs::SplitFunctor<Context, T> split_functor;
+  funcs::SplitFunctor<Context, T> split_functor;
   split_functor(dev_ctx, trans_exp, shape, 1, &outputs);
   stop_trans.Resize({1, n_labels});
   start_trans.Resize({1, n_labels});
@@ -303,7 +298,7 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   logit0.Resize({batch_size, n_labels});
   if (include_bos_eos_tag) {
     phi::AddKernel<T, Context>(dev_ctx, logit0, start_trans, &alpha);
-    GetMask<Context, phi::funcs::EqualFunctor, T>()(
+    GetMask<Context, funcs::EqualFunctor, T>()(
         dev_ctx, left_length, one, &float_mask);
     phi::MultiplyKernel<T, Context>(
         dev_ctx, stop_trans, float_mask, &alpha_nxt);
@@ -325,7 +320,7 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
     historys.emplace_back(alpha_argmax_temp);
     phi::AddKernel<T, Context>(dev_ctx, alpha_max, logit, &alpha_nxt);
     alpha.Resize({batch_size, n_labels});
-    GetMask<Context, phi::funcs::GreaterThanFunctor, T>()(
+    GetMask<Context, funcs::GreaterThanFunctor, T>()(
         dev_ctx, left_length, zero, &float_mask);
     phi::MultiplyKernel<T, Context>(dev_ctx, alpha_nxt, float_mask, &alpha_nxt);
     phi::SubtractKernel<T, Context>(
@@ -333,7 +328,7 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
     phi::MultiplyKernel<T, Context>(dev_ctx, alpha, float_mask, &alpha);
     phi::AddKernel<T, Context>(dev_ctx, alpha, alpha_nxt, &alpha);
     if (include_bos_eos_tag) {
-      GetMask<Context, phi::funcs::EqualFunctor, T>()(
+      GetMask<Context, funcs::EqualFunctor, T>()(
           dev_ctx, left_length, one, &float_mask);
       phi::MultiplyKernel<T, Context>(
           dev_ctx, stop_trans, float_mask, &alpha_nxt);
@@ -344,7 +339,7 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   }
   argmax(dev_ctx, alpha, &last_ids, scores, 1);
   left_length.Resize({batch_size});
-  GetMask<Context, phi::funcs::GreaterEqualFunctor, int64_t>()(
+  GetMask<Context, funcs::GreaterEqualFunctor, int64_t>()(
       dev_ctx, left_length, zero, &int_mask);
   // last_ids_update = last_ids * tag_mask
   int last_ids_index = 1;
@@ -364,11 +359,11 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
     DenseTensor& last_ids_update = batch_path[actual_len - last_ids_index];
     hist->Resize({batch_size * n_labels});
     gather(dev_ctx, *hist, gather_idx, &last_ids_update);
-    GetMask<Context, phi::funcs::GreaterThanFunctor, int64_t>()(
+    GetMask<Context, funcs::GreaterThanFunctor, int64_t>()(
         dev_ctx, left_length, zero, &int_mask);
     phi::MultiplyKernel<int64_t, Context>(
         dev_ctx, last_ids_update, int_mask, &last_ids_update);
-    GetMask<Context, phi::funcs::EqualFunctor, int64_t>()(
+    GetMask<Context, funcs::EqualFunctor, int64_t>()(
         dev_ctx, left_length, zero, &zero_len_mask);
     phi::MultiplyKernel<int64_t, Context>(
         dev_ctx, last_ids, zero_len_mask, &last_ids_tmp);
@@ -378,7 +373,7 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
         dev_ctx, last_ids_update, zero_len_mask, &last_ids_update);
     phi::AddKernel<int64_t, Context>(
         dev_ctx, last_ids_update, last_ids_tmp, &last_ids_update);
-    GetMask<Context, phi::funcs::LessThanFunctor, int64_t>()(
+    GetMask<Context, funcs::LessThanFunctor, int64_t>()(
         dev_ctx, left_length, zero, &int_mask);
     phi::MultiplyKernel<int64_t, Context>(
         dev_ctx, last_ids, int_mask, &last_ids);

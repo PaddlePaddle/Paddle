@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fused_bias_act_kernel.h"
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_bias_act_utils.h"
@@ -496,17 +497,17 @@ void DispatchWithDtype(const Context &dev_ctx,
                            out);
   } else {
     if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
-      DispatchComputeImpl<T, phi::dtype::float8_e4m3fn>(dev_ctx,
-                                                        x,
-                                                        bias_p,
-                                                        act_method,
-                                                        rows,
-                                                        cols,
-                                                        quant_scale,
-                                                        quant_round_type,
-                                                        quant_max_bound,
-                                                        quant_min_bound,
-                                                        out);
+      DispatchComputeImpl<T, phi::float8_e4m3fn>(dev_ctx,
+                                                 x,
+                                                 bias_p,
+                                                 act_method,
+                                                 rows,
+                                                 cols,
+                                                 quant_scale,
+                                                 quant_round_type,
+                                                 quant_max_bound,
+                                                 quant_min_bound,
+                                                 out);
     } else {
       DispatchComputeImpl<T>(dev_ctx,
                              x,

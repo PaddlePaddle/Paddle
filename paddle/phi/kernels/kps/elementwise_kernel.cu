@@ -26,10 +26,10 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SubtractKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    DenseTensor* out) {
+PADDLE_API void SubtractKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& y,
+                               DenseTensor* out) {
   if (out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
@@ -95,21 +95,22 @@ void AddKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
+#ifdef PADDLE_WITH_CUDA
+  if (x.dtype() == DataType::FLOAT32 &&
+      (y.dtype() == DataType::FLOAT16 || y.dtype() == DataType::BFLOAT16)) {
+    if (x.numel() == 0 || y.numel() == 0) {
+      dev_ctx.template Alloc<float>(out);
+      return;
+    }
+    MultiPrecisionAddKernelImpl<float, Context>(dev_ctx, x, y, out);
+    return;
+  }
+#endif
   if (x.numel() == 0 || y.numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
   }
-#ifdef PADDLE_WITH_CUDA
-  if (x.dtype() == phi::DataType::FLOAT32 &&
-      (y.dtype() == phi::DataType::BFLOAT16 ||
-       y.dtype() == phi::DataType::FLOAT16)) {
-    MultiPrecisionAddKernelImpl<float, Context>(dev_ctx, x, y, out);
-  } else {
-#endif
-    phi::AddRawKernel<T, Context>(dev_ctx, x, y, -1, out);
-#ifdef PADDLE_WITH_CUDA
-  }
-#endif
+  phi::AddRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
 template <typename T, typename Context>
@@ -154,6 +155,19 @@ void FloorDivideKernel(const Context& dev_ctx,
                        DenseTensor* out) {
   int axis = -1;
   FloorDivideRawKernel<T>(dev_ctx, x, y, axis, out);
+}
+
+template <typename T, typename Context>
+void TruncDivideKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       DenseTensor* out) {
+  int axis = -1;
+  std::vector<const DenseTensor*> inputs = {&x, &y};
+  std::vector<DenseTensor*> outputs = {out};
+  dev_ctx.template Alloc<T>(out);
+  funcs::BroadcastKernel<T>(
+      dev_ctx, inputs, &outputs, funcs::TruncDivideFunctor<T>(), axis);
 }
 
 // Create the definition of Heaviside
@@ -269,6 +283,19 @@ PD_REGISTER_KERNEL(floor_divide,
                    double,
                    phi::float16,
                    phi::bfloat16) {}
+PD_REGISTER_KERNEL(trunc_divide,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::TruncDivideKernel,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(elementwise_pow,
                    KPS,
                    ALL_LAYOUT,
@@ -315,8 +342,8 @@ PD_REGISTER_KERNEL(
 #else
 using float16 = phi::float16;
 using bfloat16 = phi::bfloat16;
-using complex64 = ::phi::complex64;
-using complex128 = ::phi::complex128;
+using complex64 = phi::complex64;
+using complex128 = phi::complex128;
 
 PD_REGISTER_KERNEL(fmax,
                    KPS,
@@ -363,8 +390,8 @@ PD_REGISTER_KERNEL(add,
                    uint8_t,
                    int8_t,
                    int64_t,
-                   phi::float16,
-                   phi::bfloat16,
+                   float16,
+                   bfloat16,
                    complex64,
                    complex128) {}
 
@@ -380,8 +407,8 @@ PD_REGISTER_KERNEL(grad_add,
                    uint8_t,
                    int8_t,
                    int64_t,
-                   phi::float16,
-                   phi::bfloat16,
+                   float16,
+                   bfloat16,
                    complex64,
                    complex128) {}
 

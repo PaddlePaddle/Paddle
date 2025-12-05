@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device, get_places
 
 import paddle
 from paddle import base
@@ -34,7 +34,7 @@ class TestTensorUnfold(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in self.typelist:
                 x_np = np.random.random(self.shape).astype(dtype)
                 x = paddle.to_tensor(x_np, place=p)
@@ -46,7 +46,7 @@ class TestTensorUnfold(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in self.typelist:
                 x_np = np.random.random(self.shape).astype(dtype)
                 x = paddle.to_tensor(x_np, place=p)
@@ -72,7 +72,7 @@ class TestTensorUnfold2(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in self.typelist:
                 x_np = np.random.random(self.shape).astype(dtype)
                 x = paddle.to_tensor(x_np, place=p)
@@ -85,7 +85,7 @@ class TestTensorUnfold2(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in self.typelist:
                 x_np = np.random.random(self.shape).astype(dtype)
                 x = paddle.to_tensor(x_np, place=p)
@@ -105,7 +105,7 @@ class TestTensorUnfold_ZeroSize(TestTensorUnfold):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in self.typelist:
                 x_np = np.random.random(self.shape).astype(dtype)
                 x = paddle.to_tensor(x_np, place=p)
@@ -118,7 +118,7 @@ class TestTensorUnfold_ZeroSize(TestTensorUnfold):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in self.typelist:
                 x_np = np.random.random(self.shape).astype(dtype)
                 x = paddle.to_tensor(x_np, place=p)
@@ -129,6 +129,35 @@ class TestTensorUnfold_ZeroSize(TestTensorUnfold):
                 loss = b.sum()
                 loss.backward()
                 self.assertEqual((b.grad.numpy() == 1).all().item(), True)
+
+
+class TestUnfoldAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shape = [10, 10]
+        self.dtype = "float32"
+        self.init_data()
+
+    def init_data(self):
+        self.axis = 1
+        self.size = 3
+        self.step = 2
+
+    def test_dygraph_compatibility(self):
+        x = paddle.randn(self.shape, dtype=self.dtype)
+        # Position args
+        out1 = paddle.unfold(x, self.axis, self.size, self.step)
+        # Key words args
+        out2 = paddle.unfold(x, axis=self.axis, size=self.size, step=self.step)
+        np.testing.assert_array_equal(out1.numpy(), out2.numpy())
+        # Key words args for Alias
+        out3 = paddle.unfold(
+            x, dimension=self.axis, size=self.size, step=self.step
+        )
+        np.testing.assert_array_equal(out1.numpy(), out3.numpy())
+        # Tensor method
+        out4 = x.unfold(dimension=self.axis, size=self.size, step=self.step)
+        np.testing.assert_array_equal(out1.numpy(), out4.numpy())
 
 
 if __name__ == '__main__':

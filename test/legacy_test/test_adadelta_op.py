@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_device_place, get_devices
+from op_test import (
+    OpTest,
+    get_device,
+    get_device_place,
+    get_devices,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -188,14 +194,12 @@ class TestAdadeltaV2(unittest.TestCase):
             rms_optimizer.minimize(avg_cost)
 
             fetch_list = [avg_cost]
-            train_reader = paddle.batch(
-                paddle.dataset.uci_housing.train(), batch_size=1
-            )
             feeder = base.DataFeeder(place=place, feed_list=[x, y])
             exe = base.Executor(place)
             exe.run(base.default_startup_program())
-            for data in train_reader():
-                exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+            uci_housing = paddle.text.datasets.UCIHousing(mode='train')
+            for data in uci_housing:
+                exe.run(main, feed=feeder.feed([data]), fetch_list=fetch_list)
 
     def test_raise_error(self):
         self.assertRaises(ValueError, paddle.optimizer.Adadelta, None)
@@ -273,11 +277,11 @@ class TestAdadeltaOpMultiPrecision(unittest.TestCase):
         optimizer._multi_precision = use_amp
 
         for idx in range(2):
-            if place == 'gpu' and use_amp:
+            if place == get_device() and use_amp:
                 model = paddle.amp.decorate(models=model, level='O2')
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
-            if place == 'gpu' and use_amp:
+            if place == get_device() and use_amp:
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)
@@ -304,7 +308,7 @@ class TestAdadeltaMultiPrecision2_0(unittest.TestCase):
     def dygraph_adadelta_mp(self, mp, use_amp):
         paddle.disable_static()
         paddle.seed(100)
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
         optimizer = paddle.optimizer.Adadelta(
@@ -384,7 +388,7 @@ class TestAdadeltaMultiPrecision2_0(unittest.TestCase):
         return out
 
     def test_main(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         "Test dygraph mode"
         output1_dy, params1_dy = self.dygraph_adadelta_mp(use_amp=True, mp=True)

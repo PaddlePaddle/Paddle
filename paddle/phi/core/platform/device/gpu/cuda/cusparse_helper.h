@@ -30,20 +30,15 @@ class CusparseHandleHolder {
   explicit CusparseHandleHolder(cudaStream_t stream) {
 // ROCM is not yet supported
 #if defined(PADDLE_WITH_CUDA)
-// The generic APIs is supported from CUDA10.1
-#if CUDA_VERSION >= 11000
     PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cusparseCreate(&handle_));
     PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cusparseSetStream(handle_, stream));
-#endif
 #endif
   }
   const cusparseHandle_t& GetCusparseHandle() const { return handle_; }
 
   ~CusparseHandleHolder() PADDLE_MAY_THROW {
 #if defined(PADDLE_WITH_CUDA)
-#if CUDA_VERSION >= 11000
     PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cusparseDestroy(handle_));
-#endif
 #endif
   }
 

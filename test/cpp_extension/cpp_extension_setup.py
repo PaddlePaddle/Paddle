@@ -28,7 +28,7 @@ paddle_includes = []
 for site_packages_path in getsitepackages():
     paddle_include_dir = Path(site_packages_path) / "paddle/include"
     paddle_includes.extend(
-        _get_all_paddle_includes_from_include_root(str(paddle_include_dir))
+        _get_all_paddle_includes_from_include_root(paddle_include_dir)
     )
 
 # Add current dir, search custom_power.h

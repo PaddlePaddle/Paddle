@@ -61,27 +61,23 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
   new_dout.Resize(common::make_ddim(update_dims));
   dev_ctx.Alloc(d_x, d_out->dtype());
 
-  auto new_in = std::make_unique<phi::DenseTensor>(*in_x);
-  auto new_in_tensor = new_in.get();
-
-  auto new_dx = std::make_unique<phi::DenseTensor>(*d_x);
-  auto new_dx_tensor = new_dx.get();
+  phi::DenseTensor new_in_tensor(*in_x);
+  phi::DenseTensor new_dx(*d_x);
 
   // make equal_out
-  phi::DenseTensor* equal_out = new phi::DenseTensor();
-  equal_out->Resize(in_x->dims());
-  dev_ctx.template Alloc<T>(equal_out);
-  auto equal_out_tensor = *equal_out;
+  phi::DenseTensor equal_out;
+  equal_out.Resize(in_x->dims());
+  dev_ctx.template Alloc<T>(&equal_out);
 
   // make new tensor equal_count
-  phi::DenseTensor* equal_count = new phi::DenseTensor();
-  equal_count->Resize(common::make_ddim(update_dims));
-  dev_ctx.template Alloc<T>(equal_count);
+  phi::DenseTensor equal_count;
+  equal_count.Resize(common::make_ddim(update_dims));
+  dev_ctx.template Alloc<T>(&equal_count);
 
   // compute
   // 1. equal_out = Equal(x, y)
-  std::vector<const phi::DenseTensor*> equal_inputs = {&new_y, new_in_tensor};
-  std::vector<phi::DenseTensor*> equal_outputs = {&equal_out_tensor};
+  std::vector<const phi::DenseTensor*> equal_inputs = {&new_y, &new_in_tensor};
+  std::vector<phi::DenseTensor*> equal_outputs = {&equal_out};
   if (NanEqual)
     funcs::BroadcastKernel<T>(
         dev_ctx, equal_inputs, &equal_outputs, funcs::NanEqualFunctor<T>(), 0);
@@ -89,20 +85,12 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
     funcs::BroadcastKernel<T>(
         dev_ctx, equal_inputs, &equal_outputs, funcs::EqualFunctor<T>(), 0);
   // 2. equal_count = reduceSum(equal_out)
-  phi::SumKernel<T, Context>(dev_ctx,
-                             equal_out_tensor,
-                             reduce_dims,
-                             equal_out_tensor.dtype(),
-                             false,
-                             equal_count);
+  phi::SumKernel<T, Context>(
+      dev_ctx, equal_out, reduce_dims, equal_out.dtype(), false, &equal_count);
   // 3. dx = dout * 1
-  phi::MultiplyKernel<T, Context>(
-      dev_ctx, new_dout, equal_out_tensor, &equal_out_tensor);
+  phi::MultiplyKernel<T, Context>(dev_ctx, new_dout, equal_out, &equal_out);
 
   // 4. dx = Div(dx, equal_out)
-  phi::DivideKernel<T, Context>(
-      dev_ctx, equal_out_tensor, *equal_count, new_dx_tensor);
-  delete equal_out;
-  delete equal_count;
+  phi::DivideKernel<T, Context>(dev_ctx, equal_out, equal_count, &new_dx);
 }
 }  // namespace phi

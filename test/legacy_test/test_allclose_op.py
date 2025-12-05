@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -180,7 +180,7 @@ class TestAllcloseError(unittest.TestCase):
 
 class TestAllcloseOpFp16(unittest.TestCase):
     def test_fp16(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             x_data = np.random.rand(10, 10).astype('float16')
             y_data = np.random.rand(10, 10).astype('float16')
             with paddle.static.program_guard(paddle.static.Program()):
@@ -191,7 +191,7 @@ class TestAllcloseOpFp16(unittest.TestCase):
                     shape=[10, 10], name='y', dtype='float16'
                 )
                 out = paddle.allclose(x, y, rtol=1e-05, atol=1e-08)
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
                 out = exe.run(feed={'x': x_data, 'y': y_data}, fetch_list=[out])
@@ -206,8 +206,8 @@ class TestAllcloseOpFloat16(TestAllcloseOp):
         self.equal_nan = False
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_output_with_place(place, check_pir=True)
 
@@ -233,8 +233,8 @@ class TestAllcloseOpFloat64(TestAllcloseOp):
 class TestAllcloseOpBool(unittest.TestCase):
     def test_close_True(self):
         places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for place in places:
             with dygraph_guard():
                 # absolute(a−b)≤(atol+rtol×absolute(b))
@@ -271,8 +271,8 @@ class TestAllcloseOpBool(unittest.TestCase):
 
     def test_close_False(self):
         places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for place in places:
             with dygraph_guard():
                 # absolute(a−b)≤(atol+rtol×absolute(b))
@@ -311,8 +311,8 @@ class TestAllcloseOpBool(unittest.TestCase):
 class TestAllcloseOpInt32(unittest.TestCase):
     def test_close_True(self):
         places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for place in places:
             with dygraph_guard():
                 # absolute(a−b)≤(atol+rtol×absolute(b))
@@ -349,8 +349,8 @@ class TestAllcloseOpInt32(unittest.TestCase):
 
     def test_close_False(self):
         places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for place in places:
             with dygraph_guard():
                 # absolute(a−b)≤(atol+rtol×absolute(b))
@@ -389,8 +389,8 @@ class TestAllcloseOpInt32(unittest.TestCase):
 class TestAllcloseOpInt64(unittest.TestCase):
     def test_close_True(self):
         places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for place in places:
             with dygraph_guard():
                 # absolute(a−b)≤(atol+rtol×absolute(b))
@@ -427,8 +427,8 @@ class TestAllcloseOpInt64(unittest.TestCase):
 
     def test_close_False(self):
         places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for place in places:
             with dygraph_guard():
                 # absolute(a−b)≤(atol+rtol×absolute(b))

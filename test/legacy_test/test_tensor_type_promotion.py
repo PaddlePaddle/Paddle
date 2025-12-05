@@ -11,9 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 import warnings
+
+from op_test import is_custom_device
 
 import paddle
 
@@ -106,7 +107,9 @@ create_test_case(
     TestOperatorOverloadAddInDygraph, 'float32', 'float64', 'float64'
 )
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestOperatorOverloadAddInDygraph, 'bfloat16', 'float16', 'float32'
     )
@@ -198,7 +201,9 @@ create_test_case(TestAPIAddInDygraph, 'float16', 'float64', 'float64')
 
 create_test_case(TestAPIAddInDygraph, 'float32', 'float64', 'float64')
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(TestAPIAddInDygraph, 'bfloat16', 'float16', 'float32')
     create_test_case(TestAPIAddInDygraph, 'bfloat16', 'float32', 'float32')
     create_test_case(TestAPIAddInDygraph, 'bfloat16', 'float64', 'float64')
@@ -245,7 +250,9 @@ create_test_case(TestAPIAddInplaceInDygraph, 'float16', 'float64', 'float64')
 
 create_test_case(TestAPIAddInplaceInDygraph, 'float32', 'float64', 'float64')
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestAPIAddInplaceInDygraph, 'bfloat16', 'float16', 'float32'
     )
@@ -327,7 +334,9 @@ create_test_case(
     TestOperatorOverloadSubInDygraph, 'float32', 'float64', 'float64'
 )
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestOperatorOverloadSubInDygraph, 'bfloat16', 'float16', 'float32'
     )
@@ -419,7 +428,9 @@ create_test_case(TestAPISubInDygraph, 'float16', 'float64', 'float64')
 
 create_test_case(TestAPISubInDygraph, 'float32', 'float64', 'float64')
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(TestAPISubInDygraph, 'bfloat16', 'float16', 'float32')
     create_test_case(TestAPISubInDygraph, 'bfloat16', 'float32', 'float32')
     create_test_case(TestAPISubInDygraph, 'bfloat16', 'float64', 'float64')
@@ -466,7 +477,9 @@ create_test_case(TestAPISubInplaceInDygraph, 'float16', 'float64', 'float64')
 
 create_test_case(TestAPISubInplaceInDygraph, 'float32', 'float64', 'float64')
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestAPISubInplaceInDygraph, 'bfloat16', 'float16', 'float32'
     )
@@ -548,7 +561,9 @@ create_test_case(
     TestOperatorOverloadMulInDygraph, 'float32', 'float64', 'float64'
 )
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestOperatorOverloadMulInDygraph, 'bfloat16', 'float16', 'float32'
     )
@@ -640,7 +655,9 @@ create_test_case(TestAPIMulInDygraph, 'float16', 'float64', 'float64')
 
 create_test_case(TestAPIMulInDygraph, 'float32', 'float64', 'float64')
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(TestAPIMulInDygraph, 'bfloat16', 'float16', 'float32')
     create_test_case(TestAPIMulInDygraph, 'bfloat16', 'float32', 'float32')
     create_test_case(TestAPIMulInDygraph, 'bfloat16', 'float64', 'float64')
@@ -687,7 +704,9 @@ create_test_case(TestAPIMulInplaceInDygraph, 'float16', 'float64', 'float64')
 
 create_test_case(TestAPIMulInplaceInDygraph, 'float32', 'float64', 'float64')
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestAPIMulInplaceInDygraph, 'bfloat16', 'float16', 'float32'
     )
@@ -769,7 +788,9 @@ create_test_case(
     TestOperatorOverloadDivInDygraph, 'float32', 'float64', 'float64'
 )
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestOperatorOverloadDivInDygraph, 'bfloat16', 'float16', 'float32'
     )
@@ -861,7 +882,9 @@ create_test_case(TestAPIDivInDygraph, 'float16', 'float64', 'float64')
 
 create_test_case(TestAPIDivInDygraph, 'float32', 'float64', 'float64')
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(TestAPIDivInDygraph, 'bfloat16', 'float16', 'float32')
     create_test_case(TestAPIDivInDygraph, 'bfloat16', 'float32', 'float32')
     create_test_case(TestAPIDivInDygraph, 'bfloat16', 'float64', 'float64')
@@ -908,7 +931,9 @@ create_test_case(TestAPIDivInplaceInDygraph, 'float16', 'float64', 'float64')
 
 create_test_case(TestAPIDivInplaceInDygraph, 'float32', 'float64', 'float64')
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestAPIDivInplaceInDygraph, 'bfloat16', 'float16', 'float32'
     )
@@ -1028,7 +1053,9 @@ create_test_case(
     TestOperatorOverloadFloorDivInDygraph, 'float32', 'float64', 'float64'
 )
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestOperatorOverloadFloorDivInDygraph, 'bfloat16', 'float16', 'float32'
     )
@@ -1055,7 +1082,9 @@ create_test_case(TestAPIFloorDivInDygraph, 'float16', 'float64', 'float64')
 
 create_test_case(TestAPIFloorDivInDygraph, 'float32', 'float64', 'float64')
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(TestAPIFloorDivInDygraph, 'bfloat16', 'float16', 'float32')
     create_test_case(TestAPIFloorDivInDygraph, 'bfloat16', 'float32', 'float32')
     create_test_case(TestAPIFloorDivInDygraph, 'bfloat16', 'float64', 'float64')
@@ -1083,7 +1112,9 @@ create_test_case(
     TestAPIFloorDivInplaceInDygraph, 'float32', 'float64', 'float64'
 )
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestAPIFloorDivInplaceInDygraph, 'bfloat16', 'float16', 'float32'
     )
@@ -1951,7 +1982,9 @@ create_test_case(
     TestAPIPoissonNllLossInDygraph, 'float32', 'float64', 'float64'
 )
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestAPIPoissonNllLossInDygraph, 'bfloat16', 'float16', 'float32'
     )
@@ -1996,7 +2029,9 @@ create_test_case(TestAPISmoothL1LossInDygraph, 'float16', 'float64', 'float64')
 
 create_test_case(TestAPISmoothL1LossInDygraph, 'float32', 'float64', 'float64')
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestAPISmoothL1LossInDygraph, 'bfloat16', 'float16', 'float32'
     )
@@ -2023,7 +2058,9 @@ create_test_case(TestAPIHuberLossInDygraph, 'float16', 'float64', 'float64')
 
 create_test_case(TestAPIHuberLossInDygraph, 'float32', 'float64', 'float64')
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestAPIHuberLossInDygraph, 'bfloat16', 'float16', 'float32'
     )
@@ -2092,7 +2129,9 @@ create_test_case(
 )
 
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestOperatorOverloadAddInStatic, 'bfloat16', 'float16', 'float32'
     )
@@ -2188,7 +2227,9 @@ create_test_case(TestAPIAddInStatic, 'float16', 'float64', 'float64')
 create_test_case(TestAPIAddInStatic, 'float32', 'float64', 'float64')
 
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(TestAPIAddInStatic, 'bfloat16', 'float16', 'float32')
     create_test_case(TestAPIAddInStatic, 'bfloat16', 'float32', 'float32')
     create_test_case(TestAPIAddInStatic, 'bfloat16', 'float64', 'float64')
@@ -2236,7 +2277,9 @@ create_test_case(
 )
 
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestOperatorOverloadSubInStatic, 'bfloat16', 'float16', 'float32'
     )
@@ -2332,7 +2375,9 @@ create_test_case(TestAPISubInStatic, 'float16', 'float64', 'float64')
 create_test_case(TestAPISubInStatic, 'float32', 'float64', 'float64')
 
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(TestAPISubInStatic, 'bfloat16', 'float16', 'float32')
     create_test_case(TestAPISubInStatic, 'bfloat16', 'float32', 'float32')
     create_test_case(TestAPISubInStatic, 'bfloat16', 'float64', 'float64')
@@ -2379,7 +2424,9 @@ create_test_case(
     TestOperatorOverloadMulInStatic, 'float32', 'float64', 'float64'
 )
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestOperatorOverloadMulInStatic, 'bfloat16', 'float16', 'float32'
     )
@@ -2474,7 +2521,9 @@ create_test_case(TestAPIMulInStatic, 'float16', 'float64', 'float64')
 
 create_test_case(TestAPIMulInStatic, 'float32', 'float64', 'float64')
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(TestAPIMulInStatic, 'bfloat16', 'float16', 'float32')
     create_test_case(TestAPIMulInStatic, 'bfloat16', 'float32', 'float32')
     create_test_case(TestAPIMulInStatic, 'bfloat16', 'float64', 'float64')
@@ -2515,7 +2564,9 @@ create_test_case(TestAPIDivInStatic, 'float16', 'float64', 'float64')
 
 create_test_case(TestAPIDivInStatic, 'float32', 'float64', 'float64')
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(TestAPIDivInStatic, 'bfloat16', 'float16', 'float32')
     create_test_case(TestAPIDivInStatic, 'bfloat16', 'float32', 'float32')
     create_test_case(TestAPIDivInStatic, 'bfloat16', 'float64', 'float64')
@@ -2563,7 +2614,9 @@ create_test_case(
 )
 
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestOperatorOverloadDivInStatic, 'bfloat16', 'float16', 'float32'
     )
@@ -2658,7 +2711,9 @@ create_test_case(TestAPIFloorDivInStatic, 'float16', 'float64', 'float64')
 
 create_test_case(TestAPIFloorDivInStatic, 'float32', 'float64', 'float64')
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(TestAPIFloorDivInStatic, 'bfloat16', 'float16', 'float32')
     create_test_case(TestAPIFloorDivInStatic, 'bfloat16', 'float32', 'float32')
     create_test_case(TestAPIFloorDivInStatic, 'bfloat16', 'float64', 'float64')
@@ -2689,7 +2744,9 @@ create_test_case(
 )
 
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestOperatorOverloadFloorDivInStatic, 'bfloat16', 'float16', 'float32'
     )
@@ -2720,7 +2777,9 @@ create_test_case(TestAPIPowInStatic, 'float16', 'float64', 'float64')
 create_test_case(TestAPIPowInStatic, 'float32', 'float64', 'float64')
 
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(TestAPIPowInStatic, 'bfloat16', 'float16', 'float32')
     create_test_case(TestAPIPowInStatic, 'bfloat16', 'float32', 'float32')
     create_test_case(TestAPIPowInStatic, 'bfloat16', 'float64', 'float64')
@@ -2751,7 +2810,9 @@ create_test_case(
 )
 
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestOperatorOverloadPowInStatic, 'bfloat16', 'float16', 'float32'
     )
@@ -2782,7 +2843,9 @@ create_test_case(TestAPIModInStatic, 'float16', 'float64', 'float64')
 create_test_case(TestAPIModInStatic, 'float32', 'float64', 'float64')
 
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(TestAPIModInStatic, 'bfloat16', 'float16', 'float32')
     create_test_case(TestAPIModInStatic, 'bfloat16', 'float32', 'float32')
     create_test_case(TestAPIModInStatic, 'bfloat16', 'float64', 'float64')
@@ -2813,7 +2876,9 @@ create_test_case(
 )
 
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestOperatorOverloadModInStatic, 'bfloat16', 'float16', 'float32'
     )
@@ -3373,7 +3438,9 @@ create_test_case(TestAPIPoissonNllLossInStatic, 'float16', 'float64', 'float64')
 create_test_case(TestAPIPoissonNllLossInStatic, 'float32', 'float64', 'float64')
 
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestAPIPoissonNllLossInStatic, 'bfloat16', 'float16', 'float32'
     )
@@ -3428,7 +3495,9 @@ create_test_case(TestAPISmoothL1LossInStatic, 'float16', 'float64', 'float64')
 
 create_test_case(TestAPISmoothL1LossInStatic, 'float32', 'float64', 'float64')
 
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+if (
+    paddle.is_compiled_with_cuda() or is_custom_device()
+) and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestAPISmoothL1LossInStatic, 'bfloat16', 'float16', 'float32'
     )

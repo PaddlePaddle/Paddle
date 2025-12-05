@@ -23,7 +23,7 @@ from get_test_cover_info import (
 )
 from op_test_xpu import XPUOpTest
 
-sys.path.append("../deprecated/legacy_test")
+sys.path.append("../legacy_test")
 from test_pool2d_op import adaptive_end_index, adaptive_start_index
 
 import paddle

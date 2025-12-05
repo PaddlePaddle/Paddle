@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest, get_device_place, get_places
+from op_test import OpTest, get_device_place, get_places, is_custom_device
 from utils import dygraph_guard
 
 import paddle
@@ -315,7 +315,7 @@ class TestSGDSimple(unittest.TestCase):
             return out
 
     def test_main(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         out1 = self.run_dygraph()
         out2 = self.run_static()

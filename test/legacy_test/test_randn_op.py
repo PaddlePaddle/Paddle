@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_device_place
+from op_test import get_device_place, is_custom_device
 from utils import dygraph_guard
 
 import paddle
@@ -82,8 +82,8 @@ class TestRandnOpError(unittest.TestCase):
 class TestRandnOpCompatibility(unittest.TestCase):
     def setUp(self):
         self.places = [paddle.CPUPlace()]
-        if paddle.base.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            self.places.append(get_device_place())
         self.expected_shape = [2, 3]
         self.dtype = paddle.float32
 

@@ -19,6 +19,11 @@
 namespace torch {
 
 // ClassRegistry
+ClassRegistry& ClassRegistry::instance() {
+  static ClassRegistry registry;
+  return registry;
+}
+
 void ClassRegistry::register_class(const std::string& namespace_name,
                                    const std::string& class_name) {
   std::string qualified_name = namespace_name + "::" + class_name;
@@ -216,6 +221,11 @@ void ClassRegistry::print_all_classes() const {
 }
 
 // OperatorRegistry
+OperatorRegistry& OperatorRegistry::instance() {
+  static OperatorRegistry registry;
+  return registry;
+}
+
 void OperatorRegistry::register_schema(const std::string& qualified_name,
                                        const std::string& schema) {
   auto& op = get_or_create_operator(qualified_name);

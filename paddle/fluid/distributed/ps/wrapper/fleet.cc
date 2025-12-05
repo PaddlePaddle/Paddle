@@ -488,7 +488,7 @@ void FleetWrapper::PushDenseVarsAsync(
     PADDLE_ENFORCE_NOT_NULL(
         var, common::errors::InvalidArgument("var[%s] not found", t));
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
-    int count = tensor->numel();
+    int64_t count = tensor->numel();
     float* g = tensor->mutable_data<float>(place);
     // TODO(zhaocaibei123): how to get batch_size in op?
     if (scale_datanorm >= 0) {
@@ -499,7 +499,7 @@ void FleetWrapper::PushDenseVarsAsync(
         mat *= scale;
       } else if (t.find(".batch_square_sum@GRAD") != std::string::npos) {
         VLOG(3) << "epsilon: " << scale_datanorm;
-        for (int i = 0; i < count; ++i) {
+        for (int64_t i = 0; i < count; ++i) {
           g[i] = (g[i] - batch_size * scale_datanorm) / batch_size +
                  batch_size * scale_datanorm;
         }

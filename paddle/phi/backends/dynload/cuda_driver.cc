@@ -21,10 +21,8 @@ void* cuda_dso_handle = nullptr;
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
-#if CUDA_VERSION >= 10020
 CUDA_ROUTINE_EACH_VVM(DEFINE_WRAP);
 CUDA_ROUTINE_EACH_CUDA_GRAPH(DEFINE_WRAP);
-#endif
 CUDA_ROUTINE_EACH(DEFINE_WRAP);
 
 bool HasCUDADriver() {

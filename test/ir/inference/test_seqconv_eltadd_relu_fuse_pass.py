@@ -115,7 +115,7 @@ class TestSeqconvEltaddReluFusePass(PassAutoScanTest):
         )
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False, passes=["seqconv_eltadd_relu_fuse_pass"]
         )
 

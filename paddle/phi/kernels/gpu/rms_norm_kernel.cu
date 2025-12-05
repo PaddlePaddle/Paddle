@@ -40,16 +40,14 @@ limitations under the License.
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_fp16.h>
 #include <hip/hip_runtime.h>
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
 #define GPU(str) hip##str
 #define GPUMultiProcessorCount hipDeviceAttributeMultiprocessorCount
 #define GPUMaxSharedMemoryPerBlockOptin hipDeviceAttributeSharedMemPerBlockOptin
 #else
-#include <cub/cub.cuh>
 #define GPU(str) cuda##str
 #define GPUMultiProcessorCount cudaDevAttrMultiProcessorCount
 #define GPUMaxSharedMemoryPerBlockOptin cudaDevAttrMaxSharedMemoryPerBlockOptin
@@ -1058,7 +1056,7 @@ struct AffineQuantStore {
       float normalized_val =
           normalized_i * static_cast<float>(gamma_pack.elem[i]) +
           static_cast<float>(beta_pack.elem[i]);
-      if constexpr (std::is_same_v<OutType, phi::dtype::float8_e4m3fn>) {
+      if constexpr (std::is_same_v<OutType, phi::float8_e4m3fn>) {
         y_pack.elem[i] = FP8QuantHelperFunc<float, OutType>(normalized_val,
                                                             quant_out_scale,
                                                             quant_round_type,
@@ -1187,17 +1185,17 @@ void RmsNormKernel(const Context& dev_ctx,
           dev_ctx.stream(), load, store, rows, cols, epsilon, inv_var_data);
     } else if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
       // Quantize and output float8_e4m3fn.
-      phi::dtype::float8_e4m3fn* out_data =
-          dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(out);
-      AffineQuantStore<phi::dtype::float8_e4m3fn, ComputeType, T, true, true>
-          store(out_data,
-                cols,
-                norm_weight_data,
-                norm_bias_data,
-                quant_scale,
-                quant_round_type,
-                quant_max_bound,
-                quant_min_bound);
+      phi::float8_e4m3fn* out_data =
+          dev_ctx.template Alloc<phi::float8_e4m3fn>(out);
+      AffineQuantStore<phi::float8_e4m3fn, ComputeType, T, true, true> store(
+          out_data,
+          cols,
+          norm_weight_data,
+          norm_bias_data,
+          quant_scale,
+          quant_round_type,
+          quant_max_bound,
+          quant_min_bound);
       DispatchRmsNorm<decltype(load), decltype(store), ComputeType>(
           dev_ctx.stream(), load, store, rows, cols, epsilon, inv_var_data);
     } else {
@@ -1226,17 +1224,17 @@ void RmsNormKernel(const Context& dev_ctx,
           dev_ctx.stream(), load, store, rows, cols, epsilon, inv_var_data);
     } else if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
       // Quantize and output float8_e4m3fn.
-      phi::dtype::float8_e4m3fn* out_data =
-          dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(out);
-      AffineQuantStore<phi::dtype::float8_e4m3fn, ComputeType, T, true, true>
-          store(out_data,
-                cols,
-                norm_weight_data,
-                norm_bias_data,
-                quant_scale,
-                quant_round_type,
-                quant_max_bound,
-                quant_min_bound);
+      phi::float8_e4m3fn* out_data =
+          dev_ctx.template Alloc<phi::float8_e4m3fn>(out);
+      AffineQuantStore<phi::float8_e4m3fn, ComputeType, T, true, true> store(
+          out_data,
+          cols,
+          norm_weight_data,
+          norm_bias_data,
+          quant_scale,
+          quant_round_type,
+          quant_max_bound,
+          quant_min_bound);
       DispatchRmsNorm<decltype(load), decltype(store), ComputeType>(
           dev_ctx.stream(), load, store, rows, cols, epsilon, inv_var_data);
     } else {

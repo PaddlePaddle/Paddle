@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/c_softmax_with_cross_entropy_grad_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
@@ -123,8 +124,8 @@ void CSoftmaxWithCrossEntropyGradKernel(const Context& dev_ctx,
   }
   const auto softmax_dims = softmax->dims();
   const int axis = softmax_dims.size() - 1;
-  const int64_t N = phi::funcs::SizeToAxis<int64_t>(axis, softmax_dims);
-  const int64_t D = phi::funcs::SizeFromAxis<int64_t>(axis, softmax_dims);
+  const int64_t N = funcs::SizeToAxis<int64_t>(axis, softmax_dims);
+  const int64_t D = funcs::SizeFromAxis<int64_t>(axis, softmax_dims);
 
   const auto label_dims = labels->dims();
   const int64_t C = label_dims[axis];

@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from test_imperative_base import new_program_scope
 
 import paddle
@@ -188,8 +188,8 @@ class TestDygraphMultiForward(unittest.TestCase):
                 paddle.framework.random._manual_program_seed(SEED)
             else:
                 paddle.framework.random._manual_program_seed(SEED)
-            if core.is_compiled_with_cuda():
-                exe = base.Executor(base.CUDAPlace(0))
+            if core.is_compiled_with_cuda() or is_custom_device():
+                exe = base.Executor(get_device_place())
             elif core.is_compiled_with_xpu():
                 exe = base.Executor(base.XPUPlace(0))
             else:

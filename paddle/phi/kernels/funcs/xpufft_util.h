@@ -82,7 +82,7 @@ class FFTConfig {
     // greater than 8 (XPU hardware requirement)
     for (int i = 0; i < signal_ndim; ++i) {
       if (signal_sizes[i] <= 8) {
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "XPU FFT requires all axes to have greater than 8 elements, "
             "but axis %d has size %d.Set XFFT_DEBUG=1 environment variable "
             "to inspect dimensions.",

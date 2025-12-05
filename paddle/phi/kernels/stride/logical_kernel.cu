@@ -24,6 +24,7 @@
 #endif
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
+COMMON_DECLARE_bool(force_stride_compute_contig_out);
 namespace phi {
 
 template <typename T, typename Context, typename Functor>
@@ -77,14 +78,13 @@ void InplaceLogicalKernelStrideImpl(const Context &dev_ctx,
     }                                                                         \
     DenseTensor x_;                                                           \
     DenseTensor y_;                                                           \
-    if (!FLAGS_use_stride_compute_kernel || x.offset() != 0 ||                \
-        y.offset() != 0) {                                                    \
-      if (!x.meta().is_contiguous() || x.offset() != 0) {                     \
+    if (!FLAGS_use_stride_compute_kernel) {                                   \
+      if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
         x_ = x;                                                               \
       }                                                                       \
-      if (!y.meta().is_contiguous() || y.offset() != 0) {                     \
+      if (!y.meta().is_contiguous()) {                                        \
         y_ = Tensor2Contiguous<Context>(dev_ctx, y);                          \
       } else {                                                                \
         y_ = y;                                                               \
@@ -105,6 +105,11 @@ void InplaceLogicalKernelStrideImpl(const Context &dev_ctx,
           common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. " \
                                 "Kernel using DenseTensorIterator "           \
                                 "be called, something wrong has happened!")); \
+    }                                                                         \
+    if (FLAGS_force_stride_compute_contig_out) {                              \
+      auto meta = out->meta();                                                \
+      meta.strides = meta.calc_strides(out->dims());                          \
+      out->set_meta(meta);                                                    \
     }                                                                         \
     if (out->IsSharedWith(x_)) {                                              \
       InplaceLogicalKernelStrideImpl<T,                                       \
@@ -131,8 +136,8 @@ void LogicalNotStrideKernel(const Context &dev_ctx,
         "be called, something wrong has happened!"));
   }
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
@@ -147,6 +152,19 @@ void LogicalNotStrideKernel(const Context &dev_ctx,
     out->set_meta(meta);
     phi::LogicalNotKernel<T, Context>(dev_ctx, x_, out);
     return;
+  }
+
+  if (!FLAGS_use_stride_compute_kernel) {
+    PADDLE_THROW(
+        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
+                              "Kernel using DenseTensorIterator "
+                              "be called, something wrong has happened!"));
+  }
+
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
   }
   if (!out->IsSharedWith(x_)) {
     LaunchLogicalNotStrideKernel<T, Context>(

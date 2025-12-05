@@ -53,5 +53,39 @@ class TestMemoryreserved(unittest.TestCase):
                 memory_reserved()
 
 
+class TestMemoryreserved_paddle_device(unittest.TestCase):
+    def func_test_memory_reserved(self, device=None):
+        if core.is_compiled_with_xpu():
+            tensor = paddle.zeros(shape=[256])
+            alloc_size = 4 * 256  # 256 float32 data, with 4 bytes for each one
+            memory_reserved_size = paddle.device.memory_reserved(device)
+            self.assertEqual(memory_reserved_size, alloc_size)
+
+    def test_memory_reserved_for_all_places(self):
+        if core.is_compiled_with_xpu():
+            xpu_num = paddle.device.device_count()
+            for i in range(xpu_num):
+                paddle.device.set_device("xpu:" + str(i))
+                self.func_test_memory_reserved(core.XPUPlace(i))
+                self.func_test_memory_reserved(i)
+                self.func_test_memory_reserved("xpu:" + str(i))
+
+    def test_memory_reserved_exception(self):
+        if core.is_compiled_with_xpu():
+            wrong_device = [
+                core.CPUPlace(),
+                paddle.device.device_count() + 1,
+                -2,
+                0.5,
+                "xpu1",
+            ]
+            for device in wrong_device:
+                with self.assertRaises(BaseException):  # noqa: B017
+                    paddle.device.memory_reserved(device)
+        else:
+            with self.assertRaises(ValueError):
+                paddle.device.memory_reserved()
+
+
 if __name__ == "__main__":
     unittest.main()

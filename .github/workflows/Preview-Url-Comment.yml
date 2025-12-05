@@ -1,0 +1,58 @@
+name: Comment Preview URLs
+
+on:
+  workflow_run:
+    workflows: ["Doc-Preview"]
+    types:
+      - completed
+
+jobs:
+  comment:
+    name: Post Preview URLs Comment
+    runs-on: ubuntu-latest
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Download artifacts
+        id: download
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: doc-preview-comment
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Read artifacts
+        id: artifacts-data
+        if: steps.download.outcome == 'success'
+        run: |
+          PR_NUMBER=$(cat pr_number.txt)
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          COMMENT_BODY=$(cat comment_body.txt)
+          {
+            echo 'comment_body<<EOF'
+            echo "$COMMENT_BODY"
+            echo EOF
+          } >> $GITHUB_OUTPUT
+
+      - name: Find existing comment
+        id: fc
+        if: steps.download.outcome == 'success'
+        uses: peter-evans/find-comment@v4
+        with:
+          issue-number: ${{ steps.artifacts-data.outputs.pr_number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: 'Preview documentation links for API changes in this PR'
+
+      - name: Create or update comment
+        if: steps.download.outcome == 'success'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ steps.artifacts-data.outputs.pr_number }}
+          body: ${{ steps.artifacts-data.outputs.comment_body }}
+          edit-mode: replace

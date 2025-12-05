@@ -77,10 +77,10 @@ class TestResnetWithPass(Dy2StTestBase):
         self.verify_predict()
 
     @test_default_mode_only
-    def test_in_static_mode_mkldnn(self):
+    def test_in_static_mode_onednn(self):
         paddle.set_flags({'FLAGS_use_onednn': True})
         try:
-            if paddle.base.core.is_compiled_with_mkldnn():
+            if paddle.base.core.is_compiled_with_onednn():
                 self.resnet_helper.train(True, self.build_strategy)
         finally:
             paddle.set_flags({'FLAGS_use_onednn': False})

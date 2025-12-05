@@ -250,7 +250,7 @@ class AddLayerNormFusePattern : public paddle::drr::DrrPatternBase {
       auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
       auto r_shape = pir::GetShapeFromValue(match_ctx.Tensor("residual"));
       if (x_shape.size() != r_shape.size()) return false;
-      for (int i = 0; i < x_shape.size(); i++) {
+      for (size_t i = 0; i < x_shape.size(); i++) {
         if (x_shape[i] != r_shape[i]) return false;
       }
       return true;

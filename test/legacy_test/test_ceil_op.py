@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -22,8 +22,8 @@ from paddle import base
 
 def get_places():
     places = []
-    if base.is_compiled_with_cuda():
-        places.append(paddle.CUDAPlace(0))
+    if base.is_compiled_with_cuda() or is_custom_device():
+        places.append(get_device_place())
     places.append(paddle.CPUPlace())
     return places
 
@@ -48,10 +48,10 @@ class TestCeilAPI_Compatibility(unittest.TestCase):
         # Position args (args)
         out1 = paddle.ceil(x)
         paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
+        # Keywords args (kwargs) for paddle
         out2 = paddle.ceil(x=x)
         paddle_dygraph_out.append(out2)
-        # Key words args for torch compatibility
+        # Keywords args for torch compatibility
         out3 = paddle.ceil(input=x)
         paddle_dygraph_out.append(out3)
         # Tensor method args
@@ -75,9 +75,9 @@ class TestCeilAPI_Compatibility(unittest.TestCase):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             # Position args (args)
             out1 = paddle.ceil(x)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle.ceil(x=x)
-            # Key words args for torch compatibility
+            # Keywords args for torch compatibility
             out3 = paddle.ceil(input=x)
             # Tensor method args
             out4 = x.ceil()

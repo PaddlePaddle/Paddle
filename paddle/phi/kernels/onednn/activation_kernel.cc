@@ -40,6 +40,17 @@ namespace phi {
     functor(dev_ctx, x, attr, 0, out);                                     \
   }
 
+#define DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_DOUBLE_ATTRS(    \
+    name, functor_class, attr)                             \
+  template <typename T, typename Context>                  \
+  void name##Kernel(const Context& dev_ctx,                \
+                    const DenseTensor& x,                  \
+                    double attr,                           \
+                    DenseTensor* out) {                    \
+    functor_class<T> functor;                              \
+    functor(dev_ctx, x, static_cast<float>(attr), 0, out); \
+  }
+
 template <typename T>
 void EltwiseForward(const OneDNNContext& dev_ctx,
                     const DenseTensor& x,
@@ -172,7 +183,9 @@ void RoundKernel(const Context& dev_ctx,
 }
 
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Elu, EluOneDNNFunctor, alpha)
-DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, ReluOneDNNFunctor, alpha)
+DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_DOUBLE_ATTRS(LeakyRelu,
+                                               ReluOneDNNFunctor,
+                                               alpha)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishOneDNNFunctor, threshold)
 
 template <typename T, typename Context>

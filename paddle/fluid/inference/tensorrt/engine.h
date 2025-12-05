@@ -256,14 +256,10 @@ class TensorRTEngine {
         infer_engine_,
         common::errors::InvalidArgument(
             "The TensorRT engine must be built first before serialization"));
-#if IS_TRT_VERSION_LT(8000)
-    ihost_memory_.reset(infer_engine_->serialize());
-#else
     PADDLE_ENFORCE_NOT_NULL(
         ihost_memory_,
         common::errors::InvalidArgument(
             "TensorRT >= 8.0 requires that buildSerializedNetwork is called"));
-#endif
     return ihost_memory_.get();
   }
 
@@ -516,7 +512,6 @@ class TensorRTEngine {
   int32_t get_max_batch_size() { return params_.max_batch_size; }
   phi::DataType precision() { return params_.precision; }
 
-#if IS_TRT_VERSION_GE(6000)
   nvinfer1::IPluginV2Layer* AddDynamicPlugin(
       nvinfer1::ITensor* const* inputs,
       int num_inputs,
@@ -524,7 +519,6 @@ class TensorRTEngine {
     owned_pluginv2_.emplace_back(plugin);
     return network()->addPluginV2(inputs, num_inputs, *plugin);
   }
-#endif
 
   void SetProfileNum(int num) { max_profile_num_ = num; }
 
@@ -605,12 +599,10 @@ class TensorRTEngine {
   // specify run on float to avoid overflow
   std::unordered_set<std::string> trt_ops_run_float_;
 
-#if IS_TRT_VERSION_GE(6000)
   int binding_num_;
   infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
   std::vector<nvinfer1::IOptimizationProfile*> optim_profiles_;
   std::vector<std::unique_ptr<plugin::DynamicPluginTensorRT>> owned_pluginv2_;
-#endif
   std::mutex mutex_;
 
  public:
@@ -710,19 +702,19 @@ class PADDLE_API TRTEngineManager {
                          const phi::Stream& stream) {
     std::lock_guard<std::mutex> lock(mutex_);
     static auto alignment = GetAlignmentSize(place);
-    if (context_memorys_.count(predictor_id) == 0) {
+    if (context_memories_.count(predictor_id) == 0) {
       auto context_memory =
           memory::Alloc(place, max_ctx_mem_size_ + alignment, stream);
-      context_memorys_[predictor_id] = std::move(context_memory);
+      context_memories_[predictor_id] = std::move(context_memory);
     }
-    return GetAlignedMemory(context_memorys_[predictor_id]->ptr(), alignment);
+    return GetAlignedMemory(context_memories_[predictor_id]->ptr(), alignment);
   }
 
   void ReleaseContextMemory(PredictorID predictor_id) {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (context_memorys_.count(predictor_id)) {
-      context_memorys_[predictor_id].reset(nullptr);
-      context_memorys_.erase(predictor_id);
+    if (context_memories_.count(predictor_id)) {
+      context_memories_[predictor_id].reset(nullptr);
+      context_memories_.erase(predictor_id);
     }
   }
 
@@ -738,7 +730,7 @@ class PADDLE_API TRTEngineManager {
 
   mutable std::mutex mutex_;
   size_t max_ctx_mem_size_{0};
-  std::unordered_map<PredictorID, AllocationPtr> context_memorys_;
+  std::unordered_map<PredictorID, AllocationPtr> context_memories_;
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
   infer_ptr<nvinfer1::IBuilder> holder_;
 };

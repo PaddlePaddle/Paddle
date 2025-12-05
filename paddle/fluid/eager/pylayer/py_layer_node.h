@@ -32,7 +32,13 @@ class GradNodePyLayer : public GradNodeBase {
                   size_t bwd_out_slot_num)
       : GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {
     ctx_ = ctx;
-    name_ = "GradNodePyLayer_" + std::string(Py_TYPE(ctx_)->tp_name);
+    std::string str = std::string(Py_TYPE(ctx_)->tp_name);
+    std::string suffix = "_backward";
+    if (str.size() >= suffix.size() &&
+        str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0) {
+      str.erase(str.size() - suffix.size(), suffix.size());
+    }
+    name_ = "GradNodePyLayer_" + str;
     Py_INCREF(ctx_);
   }
 
@@ -100,6 +106,10 @@ class GradNodePyLayer : public GradNodeBase {
         std::shared_ptr<GradNodePyLayer>(new GradNodePyLayer(*this));
     return copied_node;
   }
+  bool GradInDtypeConsistent() { return grad_in_dtype_consistent_; }
+  void SetGradInDtypeConsistent(bool value) {
+    grad_in_dtype_consistent_ = value;
+  }
 
  private:
   PyObject* ctx_{nullptr};
@@ -110,6 +120,7 @@ class GradNodePyLayer : public GradNodeBase {
       forward_outputs_dist_attr_;
   std::vector<std::vector<phi::DDim>> forward_outputs_global_dims_;
   std::vector<std::vector<bool>> forward_outputs_is_dist_meta_;
+  bool grad_in_dtype_consistent_;
 };
 
 }  // namespace egr

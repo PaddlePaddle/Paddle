@@ -19,7 +19,9 @@ from op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
+    get_device_place,
     get_places,
+    is_custom_device,
 )
 from scipy.special import erfinv
 
@@ -128,8 +130,8 @@ class TestErfinvFP16Op(TestErfinvOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestErfinvBF16Op(OpTest):
@@ -154,13 +156,13 @@ class TestErfinvBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out_ref)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_pir=True, check_symbol_infer=False
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
 

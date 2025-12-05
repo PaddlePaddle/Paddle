@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base, static
@@ -250,7 +255,7 @@ class TestDiagV2API(unittest.TestCase):
             result12 = paddle.diag(x5, offset=-1)
             result13 = paddle.diag(x6, offset=-1)
 
-        place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+        place = get_device_place() if use_gpu else base.CPUPlace()
         exe = static.Executor(place)
         exe.run(sp)
         [
@@ -316,10 +321,10 @@ class TestDiagV2API(unittest.TestCase):
         self.run_static()
 
     def test_gpu(self):
-        if not base.core.is_compiled_with_cuda():
+        if not (base.core.is_compiled_with_cuda() or is_custom_device()):
             return
 
-        paddle.disable_static(place=paddle.base.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         self.run_imperative()
         paddle.enable_static()
         self.run_static(use_gpu=True)
@@ -331,8 +336,8 @@ class TestDiagV2FP16OP(TestDiagV2Op):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestDiagV2BF16OP(OpTest):
@@ -356,12 +361,12 @@ class TestDiagV2BF16OP(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         paddle.enable_static()
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place, ['X'], 'Out', check_pir=True, check_prim_pir=True
         )

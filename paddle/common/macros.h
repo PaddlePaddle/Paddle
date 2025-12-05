@@ -26,6 +26,18 @@ limitations under the License. */
 #define PADDLE_API
 #endif  // _WIN32
 
+#if defined(_WIN32) && !defined(STATIC_PADDLE)
+#ifndef PADDLE_EXP_API
+#ifdef PADDLE_DLL_EXPORT
+#define PADDLE_EXP_API __declspec(dllexport)
+#else
+#define PADDLE_EXP_API
+#endif  // PADDLE_DLL_EXPORT
+#endif  // PADDLE_API
+#else
+#define PADDLE_EXP_API
+#endif  // _WIN32
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #define COMM_CONTEXT phi::distributed::NCCLCommContext
 #elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
@@ -86,15 +98,10 @@ namespace common {
 // For more details, please check https://stackoverflow.com/a/43870188/724872.
 #if !defined(_WIN32)
 #define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
-#else
-// there is no equivalent intrinsics in msvc.
-#define UNLIKELY(condition) (condition)
-#endif
-
-#if !defined(_WIN32)
 #define LIKELY(condition) __builtin_expect(static_cast<bool>(condition), 1)
 #else
 // there is no equivalent intrinsics in msvc.
+#define UNLIKELY(condition) (condition)
 #define LIKELY(condition) (condition)
 #endif
 

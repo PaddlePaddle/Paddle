@@ -32,6 +32,7 @@ from .auto_cast import (  # noqa: F401
     amp_decorate,
     amp_guard,
     auto_cast,
+    autocast,
     decorate,
     get_autocast_dtype,
     is_autocast_enabled,

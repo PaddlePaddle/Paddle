@@ -12,20 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
+#include "paddle/phi/kernels/gpu/collect_fpn_proposals_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/detection/bbox_util.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
@@ -146,8 +140,8 @@ void GPUCollectFpnProposalsOpKernel(
   phi::DenseTensor index_in_t;
   index_in_t.Resize({total_roi_num});
   int* idx_in = dev_ctx.template Alloc<int>(&index_in_t);
-  phi::funcs::ForRange<phi::GPUContext> for_range_total(dev_ctx, total_roi_num);
-  for_range_total(phi::funcs::RangeInitFunctor{0, 1, idx_in});
+  funcs::ForRange<phi::GPUContext> for_range_total(dev_ctx, total_roi_num);
+  for_range_total(funcs::RangeInitFunctor{0, 1, idx_in});
 
   phi::DenseTensor keys_out_t;
   keys_out_t.Resize({total_roi_num});
@@ -190,15 +184,15 @@ void GPUCollectFpnProposalsOpKernel(
   phi::DenseTensor sorted_batch_id;
   sorted_batch_id.Resize({real_post_num});
   dev_ctx.template Alloc<int>(&sorted_batch_id);
-  phi::funcs::GPUGather<T>(dev_ctx, concat_rois, index_out_t, &sorted_rois);
-  phi::funcs::GPUGather<int>(
+  funcs::GPUGather<T>(dev_ctx, concat_rois, index_out_t, &sorted_rois);
+  funcs::GPUGather<int>(
       dev_ctx, roi_batch_id_list_gpu, index_out_t, &sorted_batch_id);
 
   phi::DenseTensor batch_index_t;
   batch_index_t.Resize({real_post_num});
   int* batch_idx_in = dev_ctx.template Alloc<int>(&batch_index_t);
-  phi::funcs::ForRange<phi::GPUContext> for_range_post(dev_ctx, real_post_num);
-  for_range_post(phi::funcs::RangeInitFunctor{0, 1, batch_idx_in});
+  funcs::ForRange<phi::GPUContext> for_range_post(dev_ctx, real_post_num);
+  for_range_post(funcs::RangeInitFunctor{0, 1, batch_idx_in});
 
   phi::DenseTensor out_id_t;
   out_id_t.Resize({real_post_num});
@@ -231,12 +225,12 @@ void GPUCollectFpnProposalsOpKernel(
                                             sizeof(int) * 8,
                                             dev_ctx.stream());
 
-  phi::funcs::GPUGather<T>(dev_ctx, sorted_rois, index_out_t, fpn_rois);
+  funcs::GPUGather<T>(dev_ctx, sorted_rois, index_out_t, fpn_rois);
 
   phi::DenseTensor length_lod;
   length_lod.Resize({lod_size});
   int* length_lod_data = dev_ctx.template Alloc<int>(&length_lod);
-  phi::funcs::SetConstant<phi::GPUContext, int> set_zero;
+  funcs::SetConstant<phi::GPUContext, int> set_zero;
   set_zero(dev_ctx, &length_lod, static_cast<int>(0));
 
   int blocks = NumBlocks(real_post_num);

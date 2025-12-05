@@ -28,7 +28,7 @@ template <typename T, typename Enable = void>
 struct CudaAbsFunctor;
 
 template <typename T>
-struct CudaAbsFunctor<T, phi::funcs::Complex<T, phi::dtype::Real<T>>> {
+struct CudaAbsFunctor<T, funcs::Complex<T, phi::dtype::Real<T>>> {
   __device__ __forceinline__ phi::dtype::Real<T> operator()(const T x) const {
     return abs(x);
   }
@@ -53,7 +53,9 @@ struct CudaAbsFunctor<
 };
 
 template <typename T, typename Context>
-void AbsKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+PADDLE_API void AbsKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          DenseTensor* out) {
   dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};

@@ -23,7 +23,6 @@ void SwiGluKernel(const Context& dev_ctx,
                   const paddle::optional<DenseTensor>& y,
                   DenseTensor* z) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  using XPUTypefp32 = typename XPUTypeTrait<float>::Type;
   const auto* x_data = x.data<T>();
   auto* z_data = dev_ctx.template Alloc<T>(z);
   if (z->numel() == 0) return;

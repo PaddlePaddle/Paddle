@@ -28,7 +28,8 @@ limitations under the License. */
 
 namespace phi {
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
 PADDLE_API void SetAllowTF32Cublas(bool active);
 /*Get the global variable allow_tf32_cublas value*/
 PADDLE_API bool AllowTF32Cublas();

@@ -16,7 +16,13 @@ import sys
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 from utils import dygraph_guard
 
 import paddle
@@ -198,8 +204,8 @@ class TestTakeAlongAxisOp2(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestTakeAlongAxisBF16Op(OpTest):
@@ -225,7 +231,7 @@ class TestTakeAlongAxisBF16Op(OpTest):
 
         self.inputs['Input'] = convert_float_to_uint16(self.inputs['Input'])
         self.outputs['Result'] = convert_float_to_uint16(self.outputs['Result'])
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_check_output(self):
         self.check_output_with_place(
@@ -447,18 +453,21 @@ class TestTakeAlongAxis_ZeroSize(OpTest):
         self.check_output_with_place(
             paddle.CPUPlace(), check_pir=self.check_pir
         )
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             self.check_output_with_place(
-                core.CUDAPlace(0), check_pir=self.check_pir
+                get_device_place(), check_pir=self.check_pir
             )
 
     def test_check_grad(self):
         self.check_grad_with_place(
             paddle.CPUPlace(), ['Input'], 'Result', check_pir=self.check_pir
         )
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             self.check_grad_with_place(
-                core.CUDAPlace(0), ['Input'], 'Result', check_pir=self.check_pir
+                get_device_place(),
+                ['Input'],
+                'Result',
+                check_pir=self.check_pir,
             )
 
 

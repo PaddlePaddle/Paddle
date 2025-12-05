@@ -54,12 +54,18 @@ class TestStrategyFactor(unittest.TestCase):
 
         # test set_program_config exception
         program_config_dict['unknown'] = None
-        self.assertRaises(
-            Exception, strategy.set_program_config, program_config_dict
+        self.assertRaisesRegex(
+            ValueError,
+            "DistributeTranspilerConfig doesn't have key",
+            strategy.set_program_config,
+            program_config_dict,
         )
         program_config_illegal = None
-        self.assertRaises(
-            Exception, strategy.set_program_config, program_config_illegal
+        self.assertRaisesRegex(
+            TypeError,
+            "input type: dict or DistributeTranspilerConfig",
+            strategy.set_program_config,
+            program_config_illegal,
         )
 
         trainer_runtime_config = strategy.get_trainer_runtime_config()
@@ -97,12 +103,18 @@ class TestStrategyFactor(unittest.TestCase):
 
         # test set_build_strategy exception
         build_strategy_dict['unknown'] = None
-        self.assertRaises(
-            Exception, strategy.set_build_strategy, build_strategy_dict
+        self.assertRaisesRegex(
+            ValueError,
+            "BuildStrategy doesn't have key",
+            strategy.set_build_strategy,
+            build_strategy_dict,
         )
         build_strategy_illegal = None
-        self.assertRaises(
-            Exception, strategy.set_build_strategy, build_strategy_illegal
+        self.assertRaisesRegex(
+            TypeError,
+            "input type: dict or BuildStrategy",
+            strategy.set_build_strategy,
+            build_strategy_illegal,
         )
 
         os.environ["CPU_NUM"] = '100'
@@ -147,14 +159,16 @@ class TestStrategyFactor(unittest.TestCase):
 
         # test set_trainer_runtime_config exception
         trainer_runtime_config_dict['unknown'] = None
-        self.assertRaises(
-            Exception,
+        self.assertRaisesRegex(
+            ValueError,
+            "TrainerRuntimeConfig doesn't have key",
             strategy.set_trainer_runtime_config,
             trainer_runtime_config_dict,
         )
         trainer_runtime_config_illegal = None
-        self.assertRaises(
-            Exception,
+        self.assertRaisesRegex(
+            TypeError,
+            "input type: dict or TrainerRuntimeConfig",
             strategy.set_trainer_runtime_config,
             trainer_runtime_config_illegal,
         )
@@ -181,14 +195,16 @@ class TestStrategyFactor(unittest.TestCase):
 
         # test set_server_runtime_config exception
         server_runtime_config_dict['unknown'] = None
-        self.assertRaises(
-            Exception,
+        self.assertRaisesRegex(
+            ValueError,
+            "ServerRuntimeConfig doesn't have key",
             strategy.set_server_runtime_config,
             server_runtime_config_dict,
         )
         server_runtime_config_illegal = None
-        self.assertRaises(
-            Exception,
+        self.assertRaisesRegex(
+            TypeError,
+            "input type: dict or ServerRuntimeConfig",
             strategy.set_server_runtime_config,
             server_runtime_config_illegal,
         )

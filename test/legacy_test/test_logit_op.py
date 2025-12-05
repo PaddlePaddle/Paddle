@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_device_place
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -114,8 +119,8 @@ class TestLogitOpFp16(TestLogitOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestLogitOpBf16(OpTest):
@@ -136,15 +141,15 @@ class TestLogitOpBf16(OpTest):
         self.eps = 1e-8
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_output_with_place(
                 place, check_pir=True, check_symbol_infer=False
             )
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ['X'],
@@ -236,8 +241,8 @@ class TestLogitAPI_NAN_Val(unittest.TestCase):
     def setUp(self):
         self.init_input_output()
         self.place = [paddle.CPUPlace()]
-        if paddle.base.core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place.append(get_device_place())
 
     def init_input_output(self):
         self.x = [-0.1, 1.1, 2]

@@ -11,17 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import annotations
 
 import logging
-import os
 import random
-import re
 import unittest
 from typing import TYPE_CHECKING
 
 import numpy as np
+from op_test import get_cuda_version, get_device_place, is_custom_device
 
 import paddle
 import paddle.incubate.nn.attn_bias as ab
@@ -35,18 +33,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 paddle.seed(2023)
-
-
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
 
 
 def create_attn_bias(
@@ -149,13 +135,14 @@ def attention_naive(q, k, v, attn_bias, dropout_prob, scale, seed):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11030,
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or get_cuda_version() < 11030,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
 )
 class TestMemEffAttentionAPI(unittest.TestCase):
     def setUp(self):
         self.name = "MemEffAPI_fp32"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (1, 128, 8, 16)
         self.dtype = 'float32'
         self.dropout = 0.0
@@ -230,7 +217,7 @@ class TestMemEffAttentionAPI(unittest.TestCase):
 class TestMemEffAPIDtypeFp16(TestMemEffAttentionAPI):
     def setUp(self):
         self.name = "MemEffAPI_fp16"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (1, 32, 128, 128)
         self.dtype = paddle.float16
         self.dropout = 0.0
@@ -243,7 +230,7 @@ class TestMemEffAPIDtypeFp16(TestMemEffAttentionAPI):
 class TestMemEffAPIShape0(TestMemEffAttentionAPI):
     def setUp(self):
         self.name = "MemEffAPI_fp32"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (1, 32, 128, 32)
         self.dtype = paddle.float32
         self.dropout = 0.0
@@ -256,7 +243,7 @@ class TestMemEffAPIShape0(TestMemEffAttentionAPI):
 class TestMemEffAPIShape1(TestMemEffAttentionAPI):
     def setUp(self):
         self.name = "MemEffAPI_fp32"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (1, 32, 16, 16)
         self.dtype = paddle.float32
         self.dropout = 0.0
@@ -269,7 +256,7 @@ class TestMemEffAPIShape1(TestMemEffAttentionAPI):
 class TestMemEffAPIShape2(TestMemEffAttentionAPI):
     def setUp(self):
         self.name = "MemEffAPI_fp32"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (1, 32, 8, 8)
         self.dtype = paddle.float32
         self.dropout = 0.0
@@ -282,7 +269,7 @@ class TestMemEffAPIShape2(TestMemEffAttentionAPI):
 class TestMemEffAPIShape3(TestMemEffAttentionAPI):
     def setUp(self):
         self.name = "MemEffAPI_fp32"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (16, 32, 128, 128)
         self.dtype = paddle.float32
         self.dropout = 0.0
@@ -295,7 +282,7 @@ class TestMemEffAPIShape3(TestMemEffAttentionAPI):
 class TestMemEffAPIMask0(TestMemEffAttentionAPI):
     def setUp(self):
         self.name = "MemEffAPI_fp32_BlockDiagonalMask"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (1, 32, 128, 128)
         self.dtype = paddle.float32
         self.dropout = 0.0
@@ -318,7 +305,7 @@ class TestMemEffAPIMask0(TestMemEffAttentionAPI):
 class TestMemEffAPIMask1(TestMemEffAttentionAPI):
     def setUp(self):
         self.name = "MemEffAPI_fp32_BlockDiagonalCausalMask"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (1, 32, 128, 128)
         self.dtype = paddle.float32
         self.dropout = 0.0
@@ -341,7 +328,7 @@ class TestMemEffAPIMask1(TestMemEffAttentionAPI):
 class TestMemEffAPIMask2(TestMemEffAttentionAPI):
     def setUp(self):
         self.name = "MemEffAPI_fp32_LowerTriangularMask"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (1, 32, 128, 128)
         self.dtype = paddle.float32
         self.dropout = 0.0
@@ -364,7 +351,7 @@ class TestMemEffAPIMask2(TestMemEffAttentionAPI):
 class TestMemEffAPIMask3(TestMemEffAttentionAPI):
     def setUp(self):
         self.name = "MemEffAPI_fp32_AnyTensor"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (1, 32, 128, 128)
         self.dtype = paddle.float32
         self.dropout = 0.0
@@ -385,13 +372,14 @@ class TestMemEffAPIMask3(TestMemEffAttentionAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11030,
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or get_cuda_version() < 11030,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
 )
 class TestMemEffAttentionAPIWithStopGradient(unittest.TestCase):
     def setUp(self):
         self.name = "MemEffAttnQKV_FFF"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (1, 128, 8, 16)
         self.dtype = 'float32'
         self.dropout = 0.0
@@ -488,7 +476,7 @@ class TestMemEffAttentionAPIWithStopGradient(unittest.TestCase):
 class TestQKVFTT(TestMemEffAttentionAPIWithStopGradient):
     def setUp(self):
         self.name = "MemEffAttnQKV_TTT"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (1, 128, 8, 16)
         self.dtype = 'float32'
         self.dropout = 0.0

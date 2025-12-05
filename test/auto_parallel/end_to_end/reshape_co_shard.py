@@ -43,6 +43,7 @@ class ReshapeTestCase:
 class TestReshapeCoShard:
     def setUp(self):
         self.mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['x', 'y'])
+        mesh_coord = lambda idx: (idx // 2, idx % 2)
         self.test_cases = [
             # test flatten
             ReshapeTestCase(
@@ -50,7 +51,7 @@ class TestReshapeCoShard:
                 [dist.Shard(0), dist.Shard(1)],
                 [192],
                 [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
-                lambda idx: (idx,),
+                lambda idx: (idx, slice(None), slice(None)),
             ),
             ReshapeTestCase(
                 [4, 6, 8],
@@ -64,14 +65,14 @@ class TestReshapeCoShard:
                 [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
                 [192],
                 [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
-                lambda idx: (idx,),
+                lambda idx: (idx, slice(None), slice(None)),
             ),
             ReshapeTestCase(
                 [2, 12, 8],
                 [dist.Shard(0), dist.Shard(1)],
                 [192],
                 [dist.Shard(0), dist.Replicate()],
-                lambda idx: (idx // 2,),
+                lambda idx: (mesh_coord(idx)[0], slice(None), slice(None)),
             ),
             # test split
             ReshapeTestCase(
@@ -79,7 +80,7 @@ class TestReshapeCoShard:
                 [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
                 [4, 6, 8],
                 [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
-                lambda idx: (idx,),
+                lambda idx: slice(idx * 48, (idx + 1) * 48),
             ),
             ReshapeTestCase(
                 [192],
@@ -94,7 +95,11 @@ class TestReshapeCoShard:
                 [dist.Shard(0), dist.Shard(1)],
                 [2, 12, 8],
                 [dist.Shard(0), dist.Replicate()],
-                lambda idx: (idx // 2,),
+                lambda idx: (
+                    slice(mesh_coord(idx)[0] * 2, (mesh_coord(idx)[0] + 1) * 2),
+                    slice(None),
+                    slice(None),
+                ),
             ),
             ReshapeTestCase(
                 [4, 6, 8],
@@ -108,21 +113,21 @@ class TestReshapeCoShard:
                 [dist.Shard(0), dist.Shard(1)],
                 [12, 2, 8],
                 [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
-                lambda idx: slice(idx % 4 * 3, idx % 4 * 3 + 3),
+                lambda idx: (idx, slice(None), slice(None)),
             ),
             ReshapeTestCase(
                 [4, 6, 8],
                 [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
                 [12, 2, 8],
                 [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
-                lambda idx: slice(idx % 4 * 3, idx % 4 * 3 + 3),
+                lambda idx: (idx, slice(None), slice(None)),
             ),
             ReshapeTestCase(
                 [4, 6, 8],
                 [dist.Shard(0), dist.Shard(1)],
                 [8, 6, 4],
                 [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
-                lambda idx: slice(idx % 4 * 2, idx % 4 * 2 + 2),
+                lambda idx: (idx, slice(None), slice(None)),
             ),
             ReshapeTestCase(
                 [4, 6, 8],
@@ -136,14 +141,18 @@ class TestReshapeCoShard:
                 [dist.Shard(0), dist.Shard(2)],
                 [8, 6, 4],
                 [dist.Shard(0), dist.Replicate()],
-                lambda idx: (idx // 2, idx // 2 + 4),
+                lambda idx: (
+                    slice(mesh_coord(idx)[0] * 2, (mesh_coord(idx)[0] + 1) * 2),
+                    slice(None),
+                    slice(None),
+                ),
             ),
             ReshapeTestCase(
                 [4, 6, 8],
                 [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
                 [8, 6, 4],
                 [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
-                lambda idx: slice(idx % 4 * 2, idx % 4 * 2 + 2),
+                lambda idx: (idx, slice(None), slice(None)),
             ),
             ReshapeTestCase(
                 [4, 6, 8],
@@ -154,15 +163,21 @@ class TestReshapeCoShard:
             ),
             ReshapeTestCase(
                 [4, 6, 8],
-                [dist.Shard(2, shard_order=0), dist.Shard(1, shard_order=1)],
+                [dist.Shard(2, shard_order=0), dist.Shard(2, shard_order=1)],
                 [24, 4, 2],
-                [dist.Shard(2, shard_order=0), dist.Shard(1, shard_order=1)],
-                lambda idx: (slice(None), idx % 4, slice(None)),
+                [dist.Shard(1, shard_order=0), dist.Shard(1, shard_order=1)],
+                lambda idx: (
+                    slice(None),
+                    slice(None),
+                    slice(idx * 2, (idx + 1) * 2),
+                ),
             ),
         ]
 
     def run_test_case(self, test_case: ReshapeTestCase):
+        paddle.seed(2025)
         a = paddle.rand(test_case.input_shape, "float32")
+        a_numpy = a.numpy()
         input_placements = test_case.input_placements
         input = dist.shard_tensor(a, self.mesh, input_placements)
         out = paddle.reshape(input, test_case.target_shape)
@@ -187,9 +202,9 @@ class TestReshapeCoShard:
         # Verify local_value if given
         if test_case.slice_funtor:
             idx = dist.get_rank()
-            np.testing.assert_equal(
+            np.testing.assert_allclose(
                 out._local_value().numpy().flatten(),
-                a[test_case.slice_funtor(idx)].numpy().flatten(),
+                a_numpy[test_case.slice_funtor(idx)].flatten(),
                 err_msg=f"Local values mismatch when {case_info}.",
             )
 

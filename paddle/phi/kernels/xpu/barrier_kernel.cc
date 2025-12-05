@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/barrier_kernel.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
 #endif

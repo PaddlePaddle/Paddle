@@ -17,12 +17,13 @@ if(APPLE AND WITH_ARM)
   cmake_minimum_required(VERSION 3.19.2)
   cmake_policy(VERSION 3.19.2)
 else()
-  cmake_minimum_required(VERSION 3.15)
+  cmake_minimum_required(VERSION 3.18)
   cmake_policy(VERSION 3.10)
 endif()
-# use to get_property location of static lib
-# https://cmake.org/cmake/help/v3.0/policy/CMP0026.html?highlight=cmp0026
-cmake_policy(SET CMP0026 OLD)
+# use modern CMake target handling, disable deprecated LOCATION property
+# use $<TARGET_FILE> generator expression instead of get_property LOCATION
+# https://cmake.org/cmake/help/v4.0/policy/CMP0026.html#cmp0026
+cmake_policy(SET CMP0026 NEW)
 cmake_policy(SET CMP0079 NEW)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -57,6 +58,7 @@ option(WITH_XPU_XFT "Compile PaddlePaddle with BAIDU XPU-XFT" OFF)
 option(WITH_XPU_PLUGIN "Compile PaddlePaddle with BAIDU XPU plugin" OFF)
 option(WITH_XPU_XRE5 "Compile PaddlePaddle with BAIDU XPU XRE 5" OFF)
 option(WITH_XPU_FFT "Compile PaddlePaddle with BAIDU XPU FFT" ${WITH_XPU})
+option(WITH_MAGMA "Compile PaddlePaddle with Magma library" OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
 option(WITH_ROCM "Compile PaddlePaddle with ROCM platform" OFF)
 option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
@@ -101,6 +103,12 @@ if(WITH_GPU AND WITH_XPU_FFT)
 endif()
 if(WITH_GPU AND WITH_ROCM)
   message(FATAL_ERROR "Error when compile CUDA and ROCM at the same time")
+endif()
+if(NOT WITH_MAGMA
+   AND (WITH_GPU OR WITH_XPU)
+   AND CMAKE_SYSTEM_NAME STREQUAL "Linux"
+   AND NOT WITH_ARM)
+  set(WITH_MAGMA ON)
 endif()
 
 if(WITH_GPU AND NOT APPLE)
@@ -344,12 +352,18 @@ option(WITH_RECORD_BUILDTIME
 option(WITH_CUSTOM_DEVICE "Compile with custom device support" OFF)
 option(WITH_FLPS "FL PS mode" OFF)
 option(WITH_CUDNN_FRONTEND
-       "Compile with CUDNN Frontend API support (experimental)" OFF)
+       "Compile with CUDNN Frontend API support (experimental)" ON)
 option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
 option(WITH_NVCC_LAZY
        "Compile PaddlePaddle with nvcc lazy mode, used for CI-Inference only."
        ON)
 option(BUILD_WHL_PACKAGE "Build paddle whl package after compilation" ON)
+
+if(WIN32)
+  set(WITH_CUDNN_FRONTEND
+      OFF
+      CACHE BOOL "" FORCE)
+endif()
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
@@ -372,9 +386,9 @@ unset(WITH_RECORD_BUILDTIME CACHE)
 
 # PY_VERSION
 if(NOT PY_VERSION)
-  set(PY_VERSION 3.8)
-elseif(${PY_VERSION} VERSION_LESS 3.8)
-  message(FATAL_ERROR "Paddle only support Python version>=3.8 now")
+  set(PY_VERSION 3.9)
+elseif(${PY_VERSION} VERSION_LESS 3.9)
+  message(FATAL_ERROR "Paddle only support Python version>=3.9 now")
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 

@@ -38,7 +38,7 @@ __global__ void ASGDKernelGPUImpl(const T* param,
                                   MT* master_param_out) {
   MT learning_rate_MT = static_cast<MT>(learning_rate[0]);
   MT n_MT = static_cast<MT>(n[0]);
-  CUDA_KERNEL_LOOP(i, num) {
+  CUDA_KERNEL_LOOP_TYPE(i, num, int64_t) {
     MT param_data = master_param ? master_param[i] : static_cast<MT>(param[i]);
     MT grad_data = static_cast<MT>(grad[i]);
     MT d_data = static_cast<MT>(d[i]);
@@ -77,7 +77,8 @@ void ASGDKernel(const Context& dev_ctx,
                       : nullptr;
 
   int block = 512;
-  int grid = (param.numel() + block - 1) / block;
+  int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int grid = std::min((param.numel() + block - 1) / block, grid_max);
 
   ASGDKernelGPUImpl<T, MPDType><<<grid, block, 0, dev_ctx.stream()>>>(
       param.data<T>(),

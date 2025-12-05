@@ -23,7 +23,8 @@ void BatchFCKernel(const Context &dev_ctx,
                    const DenseTensor &bias,
                    DenseTensor *out) {
   PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
+      (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) ||
+          (dev_ctx.GetPlace().GetType() == phi::AllocationType::CUSTOM),
       true,
       common::errors::Unimplemented("BatchFC only supports GPU now."));
 }

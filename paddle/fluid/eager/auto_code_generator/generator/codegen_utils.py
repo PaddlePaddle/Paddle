@@ -86,6 +86,7 @@ yaml_types_mapping = {
     'str': 'std::string',
     'str[]': 'std::vector<std::string>',
     'float[]': 'std::vector<float>',
+    'double[]': 'std::vector<double>',
     'bool[]': 'std::vector<bool>',
     'Place': 'paddle::Place',
     'DataLayout': 'phi::DataLayout',
@@ -207,6 +208,20 @@ def IsVectorTensorType(string):
     if string in vector_tensor_types:
         return True
     return False
+
+
+def IsUsePredefinedOut(position_list: list) -> bool:
+    """
+    Determine whether all forwards are Tensors, including outputs and positions, And the length is between [1,7].
+    The number 7 represents that the multi out mechanism currently supports a maximum of 7 output tensors.
+    """
+    if not position_list:
+        return False
+
+    is_all_tensor = all(pos[0] == "Tensor" for pos in position_list)
+    length = len(position_list)
+
+    return is_all_tensor and 1 <= length <= 7
 
 
 def GetSavedName(string):

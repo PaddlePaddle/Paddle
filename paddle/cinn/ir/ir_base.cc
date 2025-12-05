@@ -222,10 +222,10 @@ bfloat16 Expr::as_bfloat16() const {
   return bfloat16(As<FloatImm>()->value);
 }
 float16 Expr::as_float16() const {
-  PADDLE_ENFORCE_EQ(type().is_bfloat16(),
+  PADDLE_ENFORCE_EQ(type().is_float16(),
                     true,
                     ::common::errors::InvalidArgument(
-                        "Invalid type. The type must be bfloat16() type."));
+                        "Invalid type. The type must be float16() type."));
   return float16(As<FloatImm>()->value);
 }
 float Expr::as_float() const {

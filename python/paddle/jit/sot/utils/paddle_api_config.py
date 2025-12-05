@@ -149,6 +149,7 @@ def is_directly_run_api(api):
         paddle.base.libpaddle.is_compiled_with_ipu,
         paddle.base.libpaddle.is_compiled_with_xpu,
         paddle.base.libpaddle.is_compiled_with_mkldnn,
+        paddle.base.libpaddle.is_compiled_with_onednn,
         paddle.base.libpaddle.is_compiled_with_nccl,
         paddle.base.libpaddle.is_compiled_with_mpi,
         paddle.base.libpaddle.is_compiled_with_mpi_aware,
@@ -158,4 +159,10 @@ def is_directly_run_api(api):
         paddle.base.libpaddle.is_compiled_with_dist,
         paddle.base.libpaddle.is_compiled_with_flagcx,
     }
+
+    if hasattr(paddle.base.libpaddle, "get_device_properties"):
+        NATIVE_CODE_PURE_FUNCTIONS.add(
+            paddle.base.libpaddle.get_device_properties
+        )
+
     return api in NATIVE_CODE_PURE_FUNCTIONS

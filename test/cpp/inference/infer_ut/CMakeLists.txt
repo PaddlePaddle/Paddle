@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5)
 project(cpp_inference_demo CXX C)
 option(WITH_MKL "Compile demo with MKL/OpenBlas support, default use MKL." ON)
 option(WITH_GPU "Compile demo with GPU/CPU, default use CPU." OFF)
@@ -97,13 +97,7 @@ if(WITH_GPU)
         ""
         CACHE STRING "CUDA_LIB")
     if("${CUDA_LIB}" STREQUAL "")
-      if(DEFINED ENV{CUDA_PATH})
-        set(CUDA_LIB "$ENV{CUDA_PATH}\\lib\\x64")
-      else()
-        set(CUDA_LIB
-            "C:\\Program\ Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v10.2\\lib\\x64"
-        )
-      endif()
+      set(CUDA_LIB "$ENV{CUDA_PATH}\\lib\\x64")
     endif()
     message(STATUS "Current CUDA lib path: ${CUDA_LIB}")
   endif()
