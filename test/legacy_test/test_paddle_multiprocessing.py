@@ -20,6 +20,8 @@ from op_test import get_device, is_custom_device
 
 import paddle
 import paddle.incubate.multiprocessing as mp
+from paddle.incubate.multiprocessing import reductions
+from paddle.optimizer.fusion_utils import FusionStorage, FusionStorageHelper
 
 REPEAT = 20
 HAS_SHM_FILES = os.path.isdir('/dev/shm')
@@ -71,6 +73,21 @@ def check_ipc_tensor(event, ipc_metas):
     # Step2: Check ipc tensor after update
     while not tensor_equal(ground_truth2, shared_ipc_tensor):
         time.sleep(0.1)
+    event.set()
+
+
+def check_ipc_reduce(event, rebuild, meta):
+    rebuilt_tensor = paddle.to_tensor(rebuild(*meta))
+    event.set()
+
+
+def check_fusion_storage(event, storage):
+    helper = FusionStorageHelper(
+        storage.accumulators_meta,
+        storage.master_weights_meta,
+        storage.merged_model_params_meta,
+        storage.buffer_ipc_meta,
+    )
     event.set()
 
 
@@ -254,6 +271,42 @@ class TestMultiprocessingGpu(TestMultiprocessingBase):
 
         process.join(10)
         self.assertFalse(process.is_alive())
+
+    def test_ipc_reduce(self):
+        tensor = paddle.arange(0, 64, dtype="float32").reshape([8, 8])
+        dense = tensor.value().get_tensor()
+        rebuild, meta = reductions._reduce_lodtensor(dense)
+        ctx = mp.get_context("spawn")
+        event = ctx.Event()
+        process = ctx.Process(
+            target=check_ipc_reduce, args=(event, rebuild, meta)
+        )
+        process.daemon = True
+        process.start()
+        event.wait(30)
+        self.assertTrue(event.is_set())
+        process.join(10)
+
+    def test_fusion_storage(self):
+        tensor_a = paddle.zeros([16], dtype="float32")
+        tensor_b = paddle.zeros([16], dtype="float32")
+        accumulators = {"momentum": {"param_a": tensor_a}}
+        master_weights = {"param_b": tensor_b}
+        storage = FusionStorage(
+            accumulators=accumulators, master_weights=master_weights
+        )
+        self.assertIsNotNone(storage.buffer_ipc_meta)
+
+        ctx = mp.get_context("spawn")
+        event = ctx.Event()
+        process = ctx.Process(
+            target=check_fusion_storage, args=(event, storage)
+        )
+        process.daemon = True
+        process.start()
+        event.wait(30)
+        self.assertTrue(event.is_set())
+        process.join(10)
 
 
 if __name__ == "__main__":
