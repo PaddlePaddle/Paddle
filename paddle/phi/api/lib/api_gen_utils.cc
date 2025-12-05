@@ -848,6 +848,7 @@ void CheckAndDoCompact(const std::vector<phi::MetaTensor*>& meta_tensors,
     std::vector<size_t> sizes;
 
     for (auto& meta_tensor : meta_tensors) {
+      if (meta_tensor == nullptr) continue;
       if (meta_tensor->numel() == 0) continue;
       if (meta_tensor->numel() < 0) {
         VLOG(1) << "meta_tensor->numel():" << meta_tensor->numel()
