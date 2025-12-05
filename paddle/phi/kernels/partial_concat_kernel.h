@@ -24,10 +24,10 @@ namespace phi {
 
 template <typename T, typename Context>
 void PartialConcatOpCUDAKernel(const Context& dev_ctx,
-                         const std::vector<const DenseTensor*>& x,
-                         int start_index,
-                         int length,
-                         DenseTensor* out);
+                               const std::vector<const DenseTensor*>& x,
+                               int start_index,
+                               int length,
+                               DenseTensor* out);
 
 template <typename T, typename Context>
 void PartialConcatGradientOpKernel(const Context& dev_ctx,
