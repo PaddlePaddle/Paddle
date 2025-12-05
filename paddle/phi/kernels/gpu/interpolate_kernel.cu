@@ -297,7 +297,7 @@ __global__ void KeBilinearInterpFw(const T* in,
   }
 }
 
-template <typename T, typename InterpFilter>
+template <typename T, typename MT, typename InterpFilter>
 __global__ void KeInterpAAFwNCHW(const T* in,
                                  const size_t in_img_h,
                                  const size_t in_img_w,
@@ -306,11 +306,9 @@ __global__ void KeInterpAAFwNCHW(const T* in,
                                  const size_t out_img_w,
                                  const size_t n,
                                  const size_t c,
-                                 const float ratio_h,
-                                 const float ratio_w,
+                                 const MT ratio_h,
+                                 const MT ratio_w,
                                  const InterpFilter& interp_filter) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-
   const int64_t out_img_idx =
       static_cast<int64_t>(threadIdx.x) + blockIdx.x * blockDim.x;
   const int64_t out_img_idy =
@@ -320,8 +318,8 @@ __global__ void KeInterpAAFwNCHW(const T* in,
     return;
   }
 
-  MT scale_h = static_cast<MT>(ratio_h);
-  MT scale_w = static_cast<MT>(ratio_w);
+  MT scale_h = ratio_h;
+  MT scale_w = ratio_w;
 
   const MT half = 0.5;
   const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * half) * scale_h
@@ -376,7 +374,7 @@ __global__ void KeInterpAAFwNCHW(const T* in,
   }
 }
 
-template <typename T, typename InterpFilter>
+template <typename T, typename MT, typename InterpFilter>
 __global__ void KeInterpAAFwNHWC(const T* in,
                                  const size_t in_img_h,
                                  const size_t in_img_w,
@@ -385,11 +383,9 @@ __global__ void KeInterpAAFwNHWC(const T* in,
                                  const size_t out_img_w,
                                  const size_t n,
                                  const size_t c,
-                                 const float ratio_h,
-                                 const float ratio_w,
+                                 const MT ratio_h,
+                                 const MT ratio_w,
                                  const InterpFilter& interp_filter) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-
   const int64_t out_img_idx =
       static_cast<int64_t>(threadIdx.x) + blockIdx.x * blockDim.x;
   const int64_t out_img_idy =
@@ -399,8 +395,8 @@ __global__ void KeInterpAAFwNHWC(const T* in,
     return;
   }
 
-  MT scale_h = static_cast<MT>(ratio_h);
-  MT scale_w = static_cast<MT>(ratio_w);
+  MT scale_h = ratio_h;
+  MT scale_w = ratio_w;
 
   const MT half = 0.5;
   const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * half) * scale_h
@@ -474,7 +470,7 @@ __global__ void KeInterpAAFwNHWC(const T* in,
 
 // No shared memory version of AA interpolation kernel for large ratio values
 // Each thread computes weights on-the-fly without using shared memory
-template <typename T, typename InterpFilter>
+template <typename T, typename MT, typename InterpFilter>
 __global__ void KeInterpAAFwNCHWNoSharedMem(const T* in,
                                             const size_t in_img_h,
                                             const size_t in_img_w,
@@ -483,11 +479,9 @@ __global__ void KeInterpAAFwNCHWNoSharedMem(const T* in,
                                             const size_t out_img_w,
                                             const size_t n,
                                             const size_t c,
-                                            const float ratio_h,
-                                            const float ratio_w,
+                                            const MT ratio_h,
+                                            const MT ratio_w,
                                             const InterpFilter& interp_filter) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-
   const int64_t out_img_idx =
       static_cast<int64_t>(threadIdx.x) + blockIdx.x * blockDim.x;
   const int64_t out_img_idy =
@@ -497,8 +491,8 @@ __global__ void KeInterpAAFwNCHWNoSharedMem(const T* in,
     return;
   }
 
-  MT scale_h = static_cast<MT>(ratio_h);
-  MT scale_w = static_cast<MT>(ratio_w);
+  MT scale_h = ratio_h;
+  MT scale_w = ratio_w;
 
   const MT half = 0.5;
   const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * half) * scale_h
@@ -553,7 +547,7 @@ __global__ void KeInterpAAFwNCHWNoSharedMem(const T* in,
   }
 }
 
-template <typename T, typename InterpFilter>
+template <typename T, typename MT, typename InterpFilter>
 __global__ void KeInterpAAFwNHWCNoSharedMem(const T* in,
                                             const size_t in_img_h,
                                             const size_t in_img_w,
@@ -562,11 +556,9 @@ __global__ void KeInterpAAFwNHWCNoSharedMem(const T* in,
                                             const size_t out_img_w,
                                             const size_t n,
                                             const size_t c,
-                                            const float ratio_h,
-                                            const float ratio_w,
+                                            const MT ratio_h,
+                                            const MT ratio_w,
                                             const InterpFilter& interp_filter) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-
   const int64_t out_img_idx =
       static_cast<int64_t>(threadIdx.x) + blockIdx.x * blockDim.x;
   const int64_t out_img_idy =
@@ -576,8 +568,8 @@ __global__ void KeInterpAAFwNHWCNoSharedMem(const T* in,
     return;
   }
 
-  MT scale_h = static_cast<MT>(ratio_h);
-  MT scale_w = static_cast<MT>(ratio_w);
+  MT scale_h = ratio_h;
+  MT scale_w = ratio_w;
 
   const MT half = 0.5;
   const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * half) * scale_h
@@ -1484,10 +1476,10 @@ static void InterpolateAA2DCUDAFwd(
   }
 
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  float ratio_h =
-      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
-  float ratio_w =
-      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
+  MT ratio_h =
+      funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
+  MT ratio_w =
+      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
 
   int64_t in_hw = static_cast<int64_t>(in_h) * in_w;
   int64_t out_hw = static_cast<int64_t>(out_h) * out_w;
