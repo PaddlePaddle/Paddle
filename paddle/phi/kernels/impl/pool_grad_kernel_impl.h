@@ -297,6 +297,45 @@ void MaxPoolWithIndexGradRawKernel(const Context& dev_ctx,
   }
 }
 
+template <typename Context, typename T1, typename T2 = int>
+void MaxPool2dWithDilationsAndIndexGradRawKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x UNUSED,
+    const DenseTensor& mask,
+    const DenseTensor& dout,
+    const std::vector<int>& kernel_size,
+    const std::vector<int>& strides,
+    const std::vector<int>& paddings,
+    const std::vector<int>& dilations,
+    bool global_pooling,
+    DenseTensor* dx) {
+  if (dx && dx->numel() == 0) {
+    dev_ctx.template Alloc<T1>(dx);
+    return;
+  }
+  std::vector<int64_t> paddings_(paddings.begin(), paddings.end());
+  std::vector<int64_t> kernel_size_(kernel_size.begin(), kernel_size.end());
+  std::vector<int64_t> strides_(strides.begin(), strides.end());
+  std::vector<int64_t> dilations_(dilations.begin(), dilations.end());
+
+  if (global_pooling) {
+    for (size_t i = 0; i < kernel_size_.size(); ++i) {
+      paddings_[i] = 0;
+      kernel_size_[i] = static_cast<int>(dx->dims()[i + 2]);
+    }
+  }
+
+  if (dx) {
+    dev_ctx.template Alloc<T1>(dx);
+    funcs::set_constant(dev_ctx, dx, static_cast<T1>(0));
+
+    funcs::MaxPool2dWithDilationsAndIndexGradFunctor<Context, T1, T2>
+        pool2d_backward;
+    pool2d_backward(
+        dev_ctx, dout, mask, kernel_size_, strides_, paddings_, dilations_, dx);
+  }
+}
+
 template <typename T, typename Context>
 void Pool2dGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
@@ -448,6 +487,31 @@ void MaxPool2dWithIndexGradKernel(const Context& dev_ctx,
                                             global_pooling,
                                             adaptive,
                                             dx);
+}
+
+template <typename T, typename Context>
+void MaxPool2dWithDilationsAndIndexGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& mask,
+    const DenseTensor& dout,
+    const std::vector<int>& kernel_size,
+    const std::vector<int>& strides,
+    const std::vector<int>& paddings,
+    const std::vector<int>& dilations,
+    bool global_pooling,
+    bool ceil_mode UNUSED,
+    DenseTensor* dx) {
+  MaxPool2dWithDilationsAndIndexGradRawKernel<Context, T>(dev_ctx,
+                                                          x,
+                                                          mask,
+                                                          dout,
+                                                          kernel_size,
+                                                          strides,
+                                                          paddings,
+                                                          dilations,
+                                                          global_pooling,
+                                                          dx);
 }
 
 template <typename T, typename Context>

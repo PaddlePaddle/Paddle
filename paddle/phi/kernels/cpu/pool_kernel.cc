@@ -26,6 +26,12 @@ PD_REGISTER_KERNEL(max_pool2d_with_dilations,
                    float,
                    double,
                    phi::float16) {}
+PD_REGISTER_KERNEL(max_pool2d_with_dilations_and_index,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MaxPool2dWithDilationsAndIndexKernel,
+                   float,
+                   double) {}
 PD_REGISTER_KERNEL(
     lp_pool2d, CPU, ALL_LAYOUT, phi::LPPool2dKernel, float, double) {}
 PD_REGISTER_KERNEL(max_pool2d_with_index,

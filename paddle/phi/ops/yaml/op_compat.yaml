@@ -2561,6 +2561,16 @@
               str mkldnn_data_type = "float32", str onednn_data_type = "", bool is_test = false,
               bool adaptive = false]
 
+- op : max_pool2d_with_dilations_and_index
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, mask : Mask}
+  attrs :
+    kernel_size : ksize
+  extra :
+    attrs : [bool adaptive = false]
+
 - op : max_pool2d_with_index
   inputs :
     {x : X}

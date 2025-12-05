@@ -2847,6 +2847,29 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
   mask->set_dtype(phi::CppTypeToDataType<int>::Type());
 }
 
+void MaxPool2dWithDilationsAndIndexInferMeta(
+    const MetaTensor& x,
+    const std::vector<int>& kernel_size,
+    const std::vector<int>& strides,
+    const std::vector<int>& paddings,
+    const std::vector<int>& dilations,
+    bool global_pooling,
+    bool ceil_mode,
+    MetaTensor* out,
+    MetaTensor* mask,
+    MetaConfig config) {
+  MaxPoolWithIndexInferMeta(x,
+                            kernel_size,
+                            strides,
+                            paddings,
+                            global_pooling,
+                            false,
+                            ceil_mode,
+                            out,
+                            mask,
+                            config);
+}
+
 void MaxPoolV2InferMeta(const MetaTensor& x,
                         const std::vector<int>& kernel_size,
                         const std::vector<int>& strides,

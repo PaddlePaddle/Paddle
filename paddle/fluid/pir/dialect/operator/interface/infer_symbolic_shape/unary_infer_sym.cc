@@ -2188,6 +2188,75 @@ bool MaxPoolWithIndexOpInferSymbolicShape(
   return true;
 }
 
+bool MaxPool2dWithDilationsAndIndexRawInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  std::vector<int> paddings =
+      paddle::dialect::details::GetVectorAttr<int>(op, "paddings");
+  std::vector<int> strides =
+      paddle::dialect::details::GetVectorAttr<int>(op, "strides");
+  std::vector<int> kernel_size =
+      paddle::dialect::details::GetVectorAttr<int>(op, "kernel_size");
+  bool ceil_mode = op->attribute<pir::BoolAttribute>("ceil_mode").data();
+  bool global_pooling =
+      op->attribute<pir::BoolAttribute>("global_pooling").data();
+
+  std::vector<symbol::DimExpr> kernel_size_;
+  for (size_t i = 0; i < kernel_size.size(); ++i) {
+    kernel_size_.emplace_back(kernel_size[i]);
+  }
+  if (global_pooling) {
+    kernel_size_.resize(x_shape.size() - 2);
+    for (size_t i = 0; i < kernel_size_.size(); ++i) {
+      paddings[i] = 0;
+      kernel_size_[i] = x_shape[i + 2];
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      x_shape.size() - kernel_size_.size(),
+      2U,
+      common::errors::InvalidArgument(
+          "The input size %d minus the kernel size %d should equal to 2.",
+          x_shape.size(),
+          kernel_size_.size()));
+
+  std::vector<symbol::DimExpr> out_shape = {x_shape[0], x_shape[1]};
+
+  for (size_t i = 0; i < kernel_size_.size(); ++i) {
+    PADDLE_ENFORCE_NE(
+        strides[i],
+        0,
+        common::errors::InvalidArgument(
+            "The stride of MaxPool shall not be 0, but received %d.",
+            strides[i]));
+
+    if (ceil_mode) {
+      out_shape.push_back(symbol::DimExpr((x_shape[i + 2] - kernel_size_[i] +
+                                           2 * paddings[i] + strides[i] - 1) /
+                                              strides[i] +
+                                          1));
+    } else {
+      out_shape.push_back(symbol::DimExpr(
+          (x_shape[i + 2] - kernel_size_[i] + 2 * paddings[i]) / strides[i] +
+          1));
+    }
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+
+  return true;
+}
+
 bool MaxPool2dWithIndexOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -3027,6 +3096,40 @@ bool MaxPool2dWithDilationsOpInferSymbolicShape(
       MaxPool2dWithDilationsRawInferSymbolicShape(
           op, kernel_size, infer_context));
   return true;
+}
+
+bool MaxPool2dWithDilationsAndIndexOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(
+      x_shape.size(),
+      4,
+      common::errors::InvalidArgument("Pooling input should be 4-D Tensor, "
+                                      "but received %dD-Tensor",
+                                      x_shape.size()));
+
+  std::vector<int> paddings =
+      paddle::dialect::details::GetVectorAttr<int>(op, "paddings");
+  std::vector<int> strides =
+      paddle::dialect::details::GetVectorAttr<int>(op, "strides");
+
+  PADDLE_ENFORCE_EQ(
+      paddings.size(),
+      2,
+      common::errors::InvalidArgument(
+          "It is expected paddings size equals to 2, but got size %d",
+          paddings.size()));
+  PADDLE_ENFORCE_EQ(
+      strides.size(),
+      2,
+      common::errors::InvalidArgument(
+          "It is expected strides_size equals to 2, but got size %d",
+          strides.size()));
+
+  return MaxPool2dWithDilationsAndIndexRawInferSymbolicShape(op, infer_context);
 }
 
 bool Pool3dOpInferSymbolicShape(pir::Operation *op,

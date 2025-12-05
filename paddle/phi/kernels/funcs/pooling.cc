@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include <algorithm>
 #include <vector>
+#include "glog/logging.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
 namespace phi::funcs {
@@ -1447,6 +1448,146 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
   }
 };
 
+template <typename Context, typename T>
+void PrintDenseTensorPython(const Context& dev_ctx,
+                            DenseTensor* out,
+                            const std::string& name) {
+  const auto& dims = out->dims();
+  // int64_t numel = t.numel();
+
+  T* ptr;
+
+  // if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
+  //   DenseTensor out_cpu;
+  //   phi::Copy(dev_ctx, *out, phi::CPUPlace(), true, &out_cpu);
+  //   ptr = out_cpu.data<double>();
+  // } else {
+  //   ptr = out->data<double>();
+  // }
+
+  ptr = out->data<double>();
+
+  VLOG(1) << "Tensor [" << name << "] dims=" << dims.to_str();
+
+  // 计算每个维度对应的步长（扁平化索引）
+  std::vector<int64_t> stride(dims.size(), 1);
+  for (int i = dims.size() - 2; i >= 0; --i) {
+    stride[i] = stride[i + 1] * dims[i + 1];
+  }
+
+  // 递归打印函数：Python 风格的多维数组
+  std::function<void(int, int64_t)> print_dim;
+  print_dim = [&](int dim, int64_t offset) {
+    std::string indent(dim * 2, ' ');
+
+    if (dim == dims.size()) {
+      // 打印单个元素
+      VLOG(1) << indent << (*(ptr + offset));
+      return;
+    }
+
+    VLOG(1) << indent << "[";
+
+    for (int i = 0; i < dims[dim]; ++i) {
+      int64_t sub_offset = offset + i * stride[dim];
+      if (dim == dims.size() - 1) {
+        // 最后一维, 打印成 [a, b, c]
+        std::string line = indent + "  [";
+        for (int j = 0; j < dims[dim]; ++j) {
+          line += std::to_string((*(ptr + offset + j)));
+          if (j + 1 < dims[dim]) line += ", ";
+        }
+        line += "]";
+        VLOG(1) << line;
+        break;
+      } else {
+        print_dim(dim + 1, sub_offset);
+      }
+    }
+
+    VLOG(1) << indent << "]";
+  };
+
+  print_dim(0, 0);
+}
+
+template <typename T1, typename T2>
+class MaxPool2dWithDilationsAndIndexFunctor<CPUContext, T1, T2> {
+ public:
+  void operator()(const CPUContext& context,
+                  const DenseTensor& input,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
+                  DenseTensor* output,
+                  DenseTensor* mask) {
+    const int64_t batch_size = input.dims()[0];
+    const int64_t input_height = input.dims()[2];
+    const int64_t input_width = input.dims()[3];
+    const int64_t output_channels = output->dims()[1];
+    const int64_t output_height = output->dims()[2];
+    const int64_t output_width = output->dims()[3];
+    const int64_t ksize_height = ksize[0];
+    const int64_t ksize_width = ksize[1];
+    const int64_t stride_height = strides[0];
+    const int64_t stride_width = strides[1];
+    const int64_t padding_height = paddings[0];
+    const int64_t padding_width = paddings[1];
+    const int64_t dilation_height = dilations[0];
+    const int64_t dilation_width = dilations[1];
+    const int64_t input_stride = input_height * input_width;
+    const int64_t output_stride = output_height * output_width;
+
+    VLOG(1) << "padding_height:" << padding_height;
+    VLOG(1) << "padding_width:" << padding_width;
+    VLOG(1) << "dilation_height:" << dilation_height;
+    VLOG(1) << "dilation_width:" << dilation_width;
+
+    const T1* input_data = input.data<T1>();
+    T1* output_data = context.template Alloc<T1>(output);
+    T2* mask_data = context.template Alloc<T2>(mask);
+
+    int64_t hstart = 0, hend = 0;
+    int64_t wstart = 0, wend = 0;
+    for (int64_t i = 0; i < batch_size; i++) {
+      for (int64_t c = 0; c < output_channels; ++c) {
+        for (int64_t ph = 0; ph < output_height; ++ph) {
+          hstart = ph * stride_height - padding_height;
+          hend = hstart + (ksize_height - 1) * dilation_height + 1;
+          while (hstart < static_cast<int64_t>(0)) hstart += dilation_height;
+          while (hend > input_height) hend -= dilation_height;
+          for (int64_t pw = 0; pw < output_width; ++pw) {
+            wstart = pw * stride_width - padding_width;
+            wend = wstart + (ksize_width - 1) * dilation_width + 1;
+            while (wstart < static_cast<int64_t>(0)) wstart += dilation_width;
+            while (wend > input_width) wend -= dilation_width;
+
+            T1 ele = static_cast<T1>(-FLT_MAX);
+            int64_t index = -1;
+            for (int64_t h = hstart; h < hend; h += dilation_height) {
+              for (int64_t w = wstart; w < wend; w += dilation_width) {
+                if (ele < input_data[h * input_width + w]) {
+                  ele = input_data[h * input_width + w];
+                  index = h * input_width + w;
+                }
+              }
+            }
+            output_data[ph * output_width + pw] = ele;
+            mask_data[ph * output_width + pw] = index;
+          }
+        }
+        // offset
+        input_data += input_stride;
+        output_data += output_stride;
+        mask_data += output_stride;
+      }
+    }
+    PrintDenseTensorPython<CPUContext, double>(
+        context, output, "MaxPool2dWithDilationsAndIndexFunctor");
+  }
+};
+
 /*
  * All tensors are in NCHW format.
  * Ksize, strides, paddings are two elements. These two elements represent
@@ -1495,10 +1636,61 @@ class MaxPool2dWithIndexGradFunctor<CPUContext, T1, T2> {
   }
 };
 
+template <typename T1, typename T2>
+class MaxPool2dWithDilationsAndIndexGradFunctor<CPUContext, T1, T2> {
+ public:
+  void operator()(const CPUContext& context,
+                  const DenseTensor& output_grad,
+                  const DenseTensor& mask,
+                  const std::vector<int64_t>& ksize UNUSED,
+                  const std::vector<int64_t>& strides UNUSED,
+                  const std::vector<int64_t>& paddings UNUSED,
+                  const std::vector<int64_t>& dilations UNUSED,
+                  DenseTensor* input_grad) {
+    const int64_t batch_size = input_grad->dims()[0];
+    const int64_t input_height = input_grad->dims()[2];
+    const int64_t input_width = input_grad->dims()[3];
+    const int64_t output_channels = output_grad.dims()[1];
+    const int64_t output_height = output_grad.dims()[2];
+    const int64_t output_width = output_grad.dims()[3];
+    const int64_t input_stride = input_height * input_width;
+    const int64_t output_stride = output_height * output_width;
+
+    const T2* mask_data = mask.data<T2>();
+    const T1* output_grad_data = output_grad.data<T1>();
+    T1* input_grad_data = context.template Alloc<T1>(input_grad);
+
+    for (int64_t n = 0; n < batch_size; ++n) {
+      for (int64_t c = 0; c < output_channels; ++c) {
+        for (int64_t ph = 0; ph < output_height; ++ph) {
+          for (int64_t pw = 0; pw < output_width; ++pw) {
+            const int64_t output_idx = ph * output_width + pw;
+            const int64_t input_idx =
+                static_cast<int64_t>(mask_data[output_idx]);
+            input_grad_data[input_idx] += output_grad_data[output_idx];
+          }
+        }
+        // offset
+        input_grad_data += input_stride;
+        output_grad_data += output_stride;
+        mask_data += output_stride;
+      }
+    }
+  }
+};
+
 template class MaxPool2dWithIndexFunctor<CPUContext, float, int>;
+template class MaxPool2dWithDilationsAndIndexFunctor<CPUContext, float, int>;
 template class MaxPool2dWithIndexGradFunctor<CPUContext, float, int>;
+template class MaxPool2dWithDilationsAndIndexGradFunctor<CPUContext,
+                                                         float,
+                                                         int>;
 template class MaxPool2dWithIndexFunctor<CPUContext, double, int>;
+template class MaxPool2dWithDilationsAndIndexFunctor<CPUContext, double, int>;
 template class MaxPool2dWithIndexGradFunctor<CPUContext, double, int>;
+template class MaxPool2dWithDilationsAndIndexGradFunctor<CPUContext,
+                                                         double,
+                                                         int>;
 
 /*
  * All tensors are in NCDHW format.

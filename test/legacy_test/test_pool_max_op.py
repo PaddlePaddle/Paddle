@@ -138,6 +138,61 @@ def max_pool2D_forward_naive(
     return out, mask
 
 
+def max_pool2d_with_dilations_and_index_forward_naive(
+    x, ksize, strides, paddings, dilations, global_pool=False
+):
+    N, C, H, W = x.shape
+    kh, kw = ksize
+    sh, sw = strides
+    dh, dw = dilations
+
+    if global_pool:
+        kh, kw = H, W
+        paddings = [0, 0, 0, 0]
+
+    if len(paddings) == 2:
+        pad_top = pad_bottom = paddings[0]
+        pad_left = pad_right = paddings[1]
+    else:
+        pad_top, pad_bottom, pad_left, pad_right = paddings
+
+    H_out = (H + pad_top + pad_bottom - kh) // sh + 1
+    W_out = (W + pad_left + pad_right - kw) // sw + 1
+
+    out = np.zeros((N, C, H_out, W_out), dtype=x.dtype)
+    mask = np.zeros((N, C, H_out, W_out), dtype=np.int32)
+
+    for oh in range(H_out):
+        for ow in range(W_out):
+            h_start = oh * sh - pad_top
+            w_start = ow * sw - pad_left
+
+            for n in range(N):
+                for c in range(C):
+                    max_val = -np.inf
+                    max_idx = -1
+
+                    for ih in range(kh):
+                        h = h_start + ih * dh
+                        if h < 0 or h >= H:
+                            continue
+
+                        for iw in range(kw):
+                            w = w_start + iw * dw
+                            if w < 0 or w >= W:
+                                continue
+
+                            v = x[n, c, h, w]
+                            if v > max_val:
+                                max_val = v
+                                max_idx = h * W + w
+
+                    out[n, c, oh, ow] = max_val
+                    mask[n, c, oh, ow] = max_idx
+
+    return out, mask
+
+
 def max_pool3d_with_index_wrapper(
     x,
     kernel_size=[],
@@ -473,6 +528,117 @@ create_test_bf16_class(TestCase5)
 create_test_bf16_class(TestCase6)
 create_test_bf16_class(TestCase7)
 create_test_bf16_class(TestCastAdaptive2d)
+
+
+# ----------------max_pool2d_with_dilations_and_index----------------
+def max_pool2d_with_dilations_and_index_wrapper(
+    x,
+    kernel_size=[],
+    strides=[],
+    paddings=[],
+    dilations=[],
+    global_pooling=False,
+    ceil_mode=False,
+):
+    return paddle._C_ops.max_pool2d_with_dilations_and_index(
+        x, kernel_size, strides, paddings, dilations, global_pooling, ceil_mode
+    )
+
+
+class TestMaxPool2dWithDilationsIndex_Op(OpTest):
+    def setUp(self):
+        self.init_test_case()
+        self.init_global()
+        self.init_dtype()
+
+        if self.is_bfloat16_op():
+            x = np.random.random(self.shape).astype(np.float32)
+            x = convert_uint16_to_float(
+                convert_float_to_uint16(np.round(x * 100.0, 2))
+            )
+        else:
+            x = np.random.random(self.shape).astype(self.dtype)
+            x = np.round(x * 100.0, 2)
+
+        out, mask = max_pool2d_with_dilations_and_index_forward_naive(
+            x,
+            self.ksize,
+            self.strides,
+            self.paddings,
+            self.dilations,
+            self.global_pool,
+        )
+
+        mask = mask.astype("int32")
+        if self.is_bfloat16_op():
+            out = out.astype(np.float32)
+        else:
+            out = out.astype(self.dtype)
+
+        self.attrs = {
+            'ksize': self.ksize,
+            'strides': self.strides,
+            'paddings': self.paddings,
+            'dilations': self.dilations,
+            'global_pooling': self.global_pool,
+            'ceil_mode': False,
+        }
+
+        if self.is_bfloat16_op():
+            self.inputs = {'X': convert_float_to_uint16(x)}
+            self.outputs = {
+                'Out': convert_float_to_uint16(out),
+                'Mask': mask,
+            }
+            self.inputs_fp32 = {'X': x}
+        else:
+            self.inputs = {'X': x}
+            self.outputs = {'Out': out, 'Mask': mask}
+
+        self.op_type = "max_pool2d_with_dilations_and_index"
+        self.python_api = max_pool2d_with_dilations_and_index_wrapper
+
+    def init_test_case(self):
+        self.shape = [10, 2, 3, 3]
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 1]
+        self.dilations = [2, 2]
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def init_global(self):
+        self.global_pool = False
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad({'X'}, ['Out'])
+
+
+class TestCaseDilation1(TestMaxPool2dWithDilationsIndex_Op):
+    def init_global(self):
+        self.global_pool = True
+
+
+class TestCaseDilation2(TestMaxPool2dWithDilationsIndex_Op):
+    def init_test_case(self):
+        self.shape = [2, 3, 7, 7]
+        self.ksize = [3, 3]
+        self.strides = [2, 2]
+        self.paddings = [0, 0]
+        self.dilations = [2, 2]
+
+
+create_test_bf16_class(TestMaxPool2dWithDilationsIndex_Op)
+create_test_bf16_class(TestCaseDilation1)
+create_test_bf16_class(TestCaseDilation2)
+
+create_test_fp16_class(TestMaxPool2dWithDilationsIndex_Op)
+create_test_fp16_class(TestCaseDilation1)
+create_test_fp16_class(TestCaseDilation2)
 
 
 def skip_unit_test():
