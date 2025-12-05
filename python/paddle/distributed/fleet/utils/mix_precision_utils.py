@@ -98,11 +98,6 @@ class MixPrecisionOptimizer:
     def __init__(self, optimizer):
         self._inner_opt = optimizer
         self._parameter_list = obtain_optimizer_parameters_list(optimizer)
-        from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_fully_shard import (
-            FullyShardOptimizer,
-        )
-
-        FullyShardOptimizer(self)
 
     @imperative_base.no_grad
     @framework.dygraph_only
@@ -112,12 +107,12 @@ class MixPrecisionOptimizer:
             if hasattr(param, '_need_shard'):
                 _need_shard = True
                 del param._need_shard
-        # if _need_shard:
-        #     fleet.meta_parallel.sharding.group_sharded_fully_shard.FullyShardOptimizer(
-        #         self
-        #     )
-        #     self.step()
-        #     return
+        if _need_shard:
+            fleet.meta_parallel.sharding.group_sharded_fully_shard.FullyShardOptimizer(
+                self
+            )
+            self.step()
+            return
 
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
