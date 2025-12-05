@@ -22,12 +22,8 @@
 
 namespace phi {
 
-inline void GetDims(const phi::DDim& dim,
-                    int axis,
-                    int* pre,
-                    int* n,
-                    int* post,
-                    bool asvector) {
+inline void GetDims(
+    const DDim& dim, int axis, int* pre, int* n, int* post, bool asvector) {
   *pre = 1;
   *post = 1;
   *n = static_cast<int>(dim[axis]);

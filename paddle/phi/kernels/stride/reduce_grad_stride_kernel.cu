@@ -125,12 +125,17 @@ void ReduceSumGradStrideKernel(const Context& dev_ctx,
 
   DenseTensor out_grad_;
 
-  if (FLAGS_use_stride_compute_kernel && out_grad.dims().size() > 0) {
+  bool invalid = false;
+  std::vector<int64_t> out_dims;
+  std::vector<int64_t> out_strides;
+
+  if (!FLAGS_use_stride_compute_kernel || !out_grad.dims().size() > 0) {
+    invalid = true;
+  }
+
+  if (!invalid) {
     phi::DenseTensor out_tmp = CheckMultipleUnsqueeze<Context>(
         dev_ctx, out_grad, dims, x.dims().size(), keep_dim);
-
-    std::vector<int64_t> out_dims;
-    std::vector<int64_t> out_strides;
 
     ExpandStrideKernel(common::vectorize<int64_t>(out_tmp.dims()),
                        common::vectorize<int64_t>(out_tmp.strides()),
@@ -138,6 +143,11 @@ void ReduceSumGradStrideKernel(const Context& dev_ctx,
                        &out_dims,
                        &out_strides);
 
+    invalid = std::find(out_strides.begin(), out_strides.end(), 0) !=
+              out_strides.end();
+  }
+
+  if (!invalid) {
     auto meta = out_grad.meta();
     meta.dims = DDim(out_dims.data(), static_cast<int>(out_dims.size()));
     meta.strides =
