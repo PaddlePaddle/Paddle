@@ -91,7 +91,7 @@ def shape(input: Tensor) -> Tensor:
         Tensor: The shape of the input variable.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> import paddle
@@ -107,7 +107,7 @@ def shape(input: Tensor) -> Tensor:
 
             >>> res = exe.run(paddle.static.default_main_program(), feed={'x': img}, fetch_list=[output])
             >>> print(res)
-            [array([  3, 100, 100], dtype=int64)]
+            [array([  3, 100, 100])]
     """
     if in_dynamic_or_pir_mode():
         out = _C_ops.shape64(input)  # type: ignore
