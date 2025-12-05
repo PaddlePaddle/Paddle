@@ -43,6 +43,10 @@ from paddle._C_ops import (  # noqa: F401
     sin,
     sum,
     tanh,
+    bitwise_left_shift_,
+    bitwise_right_shift_,
+    bitwise_left_shift,
+    bitwise_right_shift,
 )
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
@@ -7027,139 +7031,6 @@ def _bitwise_op(op_name, x, y, is_arithmetic, out=None, name=None):
     )
 
     return out
-
-
-def bitwise_left_shift(
-    x: Tensor,
-    y: Tensor,
-    is_arithmetic: bool = True,
-    out: Tensor | None = None,
-    name: str | None = None,
-) -> Tensor:
-    r"""
-    Apply ``bitwise_left_shift`` on Tensor ``X`` and ``Y`` .
-
-    .. math::
-
-        Out = X \ll Y
-
-    .. note::
-
-        ``paddle.bitwise_left_shift`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
-
-    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-
-    Args:
-        x (Tensor): Input Tensor of ``bitwise_left_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
-        y (Tensor): Input Tensor of ``bitwise_left_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
-        is_arithmetic (bool, optional): A boolean indicating whether to choose arithmetic shift, if False, means logic shift. Default True.
-        out (Tensor|None, optional): Result of ``bitwise_left_shift`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
-        name (str|None, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: Result of ``bitwise_left_shift`` . It is a N-D Tensor with the same data type of input Tensor.
-
-    Examples:
-        .. code-block:: python
-            :name: bitwise_left_shift_example1
-
-            >>> import paddle
-            >>> x = paddle.to_tensor([[1,2,4,8],[16,17,32,65]])
-            >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
-            >>> paddle.bitwise_left_shift(x, y, is_arithmetic=True)
-            Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-                   [[2  , 8  , 32 , 128],
-                    [64 , 136, 128, 130]])
-
-        .. code-block:: python
-            :name: bitwise_left_shift_example2
-
-            >>> import paddle
-            >>> x = paddle.to_tensor([[1,2,4,8],[16,17,32,65]])
-            >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
-            >>> paddle.bitwise_left_shift(x, y, is_arithmetic=False)
-            Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-                [[2  , 8  , 32 , 128],
-                    [64 , 136, 128, 130]])
-    """
-    if in_dynamic_or_pir_mode() and out is None:
-        return _C_ops.bitwise_left_shift(x, y, is_arithmetic)
-    return _bitwise_op(
-        op_name="bitwise_left_shift",
-        x=x,
-        y=y,
-        is_arithmetic=is_arithmetic,
-        name=name,
-        out=out,
-    )
-
-
-def bitwise_right_shift(
-    x: Tensor,
-    y: Tensor,
-    is_arithmetic: bool = True,
-    out: Tensor | None = None,
-    name: str | None = None,
-) -> Tensor:
-    r"""
-    Apply ``bitwise_right_shift`` on Tensor ``X`` and ``Y`` .
-
-    .. math::
-
-        Out = X \gg Y
-
-    .. note::
-
-        ``paddle.bitwise_right_shift`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
-
-    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-
-    Args:
-        x (Tensor): Input Tensor of ``bitwise_right_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
-        y (Tensor): Input Tensor of ``bitwise_right_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
-        is_arithmetic (bool, optional): A boolean indicating whether to choose arithmetic shift, if False, means logic shift. Default True.
-        out (Tensor|None, optional): Result of ``bitwise_right_shift`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
-        name (str|None, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: Result of ``bitwise_right_shift`` . It is a N-D Tensor with the same data type of input Tensor.
-
-    Examples:
-        .. code-block:: python
-            :name: bitwise_right_shift_example1
-
-            >>> import paddle
-            >>> x = paddle.to_tensor([[10,20,40,80],[16,17,32,65]])
-            >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
-            >>> paddle.bitwise_right_shift(x, y, is_arithmetic=True)
-            Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-                   [[5 , 5 , 5 , 5 ],
-                    [4 , 2 , 8 , 32]])
-
-        .. code-block:: python
-            :name: bitwise_right_shift_example2
-
-            >>> import paddle
-            >>> x = paddle.to_tensor([[-10,-20,-40,-80],[-16,-17,-32,-65]], dtype=paddle.int8)
-            >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]], dtype=paddle.int8)
-            >>> paddle.bitwise_right_shift(x, y, is_arithmetic=False)  # logic shift
-            Tensor(shape=[2, 4], dtype=int8, place=Place(gpu:0), stop_gradient=True,
-                [[123, 59 , 27 , 11 ],
-                    [60 , 29 , 56 , 95 ]])
-    """
-    if in_dynamic_or_pir_mode() and out is None:
-        return _C_ops.bitwise_right_shift(x, y, is_arithmetic)
-
-    return _bitwise_op(
-        op_name="bitwise_right_shift",
-        x=x,
-        y=y,
-        is_arithmetic=is_arithmetic,
-        name=name,
-        out=out,
-    )
 
 
 def __lshift__(

@@ -298,3 +298,13 @@
   name : [paddle.bitwise_right_shift_, paddle.Tensor.bitwise_right_shift_]
   args_alias:
     use_default_mapping: True
+
+- op : bitwise_left_shift
+  name : [paddle.bitwise_left_shift, paddle.Tensor.bitwise_left_shift]
+  args_alias:
+    use_default_mapping: True
+
+- op : bitwise_right_shift
+  name : [paddle.bitwise_right_shift, paddle.Tensor.bitwise_right_shift]
+  args_alias:
+    use_default_mapping: True
