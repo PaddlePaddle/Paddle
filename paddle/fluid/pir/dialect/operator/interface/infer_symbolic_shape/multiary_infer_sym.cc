@@ -2066,7 +2066,61 @@ bool FlashAttnQkvpackedOpInferSymbolicShape(
 
 bool FlashAttnUnpaddedOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return FlashAttnOpInferSymbolicShape(op, infer_context);
+  // Operand layout for flash_attn_unpadded:
+  // (q, k, v, cu_seqlens_q, cu_seqlens_k, fixed_seed_offset, attn_mask, ...)
+  const symbol::ShapeOrDataDimExprs &q =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const symbol::ShapeOrDataDimExprs &k =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const symbol::ShapeOrDataDimExprs &v =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const symbol::ShapeOrDataDimExprs &cu_seqlens_q =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3));
+  const symbol::ShapeOrDataDimExprs &cu_seqlens_k =
+      infer_context->GetShapeOrDataForValue(op->operand_source(4));
+  // fixed_seed_offset is at index 5, attn_mask at index 6
+  // Use q, k, v shapes for output shape inference
+  PADDLE_ENFORCE_EQ(q.shape().size(),
+                    3,
+                    common::errors::InvalidArgument(
+                        "flash_attn_unpadded expects input with dim "
+                        "[total_q, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(k.shape().size(),
+                    3,
+                    common::errors::InvalidArgument(
+                        "flash_attn_unpadded expects k with dim "
+                        "[total_k, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(v.shape().size(),
+                    3,
+                    common::errors::InvalidArgument(
+                        "flash_attn_unpadded expects v with dim "
+                        "[total_k, num_heads, head_dim]"));
+  // Output shape: same as q
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(q.shape()));
+  // Optionally infer other outputs if present (softmax, lse, etc.)
+  // For example, if op->result(1) exists, infer its shape
+  if (op->result(1)) {
+    // Typically [total_q, num_heads, total_k] or similar
+    std::vector<symbol::DimExpr> softmax_shape{
+        q.shape()[0], q.shape()[1], k.shape()[0]};
+    infer_context->SetShapeOrDataForValue(
+        op->result(1), symbol::TensorShapeOrDataDimExprs(softmax_shape));
+  }
+  if (op->result(2)) {
+    // Typically [total_q, num_heads]
+    std::vector<symbol::DimExpr> softmax_lse_shape{
+        q.shape()[0], q.shape()[1]};
+    infer_context->SetShapeOrDataForValue(
+        op->result(2), symbol::TensorShapeOrDataDimExprs(softmax_lse_shape));
+  }
+  if (op->result(3)) {
+    // Typically [2] for seed_offset
+    std::vector<symbol::DimExpr> seed_offset_shape{symbol::DimExpr{2}};
+    infer_context->SetShapeOrDataForValue(
+        op->result(3), symbol::TensorShapeOrDataDimExprs(seed_offset_shape));
+  }
+  return true;
 }
 
 bool FlashmaskAttentionOpInferSymbolicShape(
