@@ -64,7 +64,7 @@ TEST(CudnnHelper, ScopedTensorDescriptor) {
 }
 
 TEST(CudnnHelper, ScopedFilterDescriptor) {
-  using phi::backends::gpu::DataLayout;
+  using phi::DataLayout;
   using phi::backends::gpu::ScopedFilterDescriptor;
 
   ScopedFilterDescriptor filter_desc;
