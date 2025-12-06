@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/platform/device/gpu/gpu_dnn.h"
 
 TEST(CudnnHelper, ScopedTensorDescriptor) {
-  using phi::backends::gpu::DataLayout;
+  using phi::DataLayout;
   using phi::backends::gpu::ScopedTensorDescriptor;
 
   ScopedTensorDescriptor tensor_desc;
