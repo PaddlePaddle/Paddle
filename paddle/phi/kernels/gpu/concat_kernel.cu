@@ -34,12 +34,12 @@ void ConcatKernel(const Context& dev_ctx,
 
   axis = funcs::ComputeAxis(axis, x[0]->dims().size());
 
-  std::vector<phi::DDim> x_dims;
+  std::vector<DDim> x_dims;
   for (size_t i = 0; i < x.size(); ++i) {
     x_dims.push_back(x[i]->dims());
   }
 
-  phi::DDim out_dims = funcs::ComputeAndCheckShape(true, x_dims, axis);
+  DDim out_dims = funcs::ComputeAndCheckShape(true, x_dims, axis);
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
 

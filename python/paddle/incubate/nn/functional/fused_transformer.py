@@ -626,7 +626,7 @@ def fused_multi_head_attention(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -648,9 +648,8 @@ def fused_multi_head_attention(
 
             >>> # output: [batch_size, seq_len, embed_dim]
             >>> output = F.fused_multi_head_attention(
-            ...     x, qkv_weight, linear_weight, False,
-            ...     None, None, None, None, 1e-5, qkv_bias,
-            ...     linear_bias, None, attn_mask)
+            ...     x, qkv_weight, linear_weight, False, None, None, None, None, 1e-5, qkv_bias, linear_bias, None, attn_mask
+            ... )
             >>> print(output.shape)
             paddle.Size([2, 4, 128])
     """

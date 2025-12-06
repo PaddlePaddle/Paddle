@@ -148,7 +148,7 @@ struct Argmax {
                   DenseTensor* out_idx,
                   DenseTensor* out,
                   int axis) {
-    phi::DDim input_dims = input.dims();
+    DDim input_dims = input.dims();
     int64_t numel = input.numel();
     int64_t groups = numel / input_dims[axis];
     int64_t pre = 1;

@@ -655,7 +655,16 @@ def get_docstring(
     if len(docstrings_to_test) == 0 and len(whl_error) == 0:
         logger.warning("-----API_PR.spec is the same as API_DEV.spec-----")
         log_exit(0)
-    logger.info("API_PR is diff from API_DEV: %s", docstrings_to_test.keys())
+
+    if len(docstrings_to_test) > 50:
+        logger.info("::group::API_PR is diff from API_DEV")
+        logger.info(docstrings_to_test.keys())
+        logger.info("::endgroup::")
+    else:
+        logger.info(
+            "API_PR is diff from API_DEV: %s", docstrings_to_test.keys()
+        )
+
     logger.info("Total api: %s", len(docstrings_to_test.keys()))
 
     return docstrings_to_test, whl_error

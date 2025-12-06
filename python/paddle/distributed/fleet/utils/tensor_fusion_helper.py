@@ -31,6 +31,14 @@ from paddle.utils import strtobool
 from .log_util import logger
 
 
+def _share_tensor_ipc_meta(tensor):
+    if tensor is None:
+        return None
+    if core.is_compiled_with_cuda() and not core.is_compiled_with_rocm():
+        return tensor.value().get_tensor()._share_cuda()
+    return None
+
+
 class HOOK_ACTION:
     ALL_REDUCE = 0
     REDUCE = 1
@@ -386,18 +394,7 @@ def build_reduce_scatter_buffer(
     grad_dtype = paddle.float32 if use_main_grad else dtype
 
     param_buffer = paddle.zeros(shape=[total_buffer_size], dtype=dtype)
-    # TODO(@gexiao): Currently only support gpus
-    if core.is_compiled_with_cuda() and not core.is_compiled_with_rocm():
-        if paddle.get_flags('FLAGS_use_virtual_memory_auto_growth')[
-            'FLAGS_use_virtual_memory_auto_growth'
-        ]:
-            # vmm_meta: (blob: bytes, dtype_idx: int, dims: List[int], lod, device: int)
-            ipc_meta = param_buffer.value().get_tensor()._share_vmm()
-        else:
-            ipc_meta = param_buffer.value().get_tensor()._share_cuda()
-        param_buffer_ipc_meta = ipc_meta
-    else:
-        param_buffer_ipc_meta = None
+    param_buffer_ipc_meta = _share_tensor_ipc_meta(param_buffer)
     grad_buffer = (
         paddle.zeros(shape=[total_buffer_size], dtype=grad_dtype)
         if not release_grad
@@ -512,7 +509,7 @@ class FusedCommBuffer:
         self._params_checked_in = 0
         self._grads_to_addr = {}
 
-        self.param_buffer_ipc_meta = None
+        self._param_buffer_meta_tensor = None
 
         self._act = act
         if self._act == HOOK_ACTION.ALL_REDUCE:
@@ -569,7 +566,7 @@ class FusedCommBuffer:
                 self.buffer_size,
                 self.param_storage,
                 self.grad_storage,
-                self.param_buffer_ipc_meta,
+                _,
             ) = build_reduce_scatter_buffer(
                 self._params,
                 self._comm_group.nranks,
@@ -581,8 +578,18 @@ class FusedCommBuffer:
             )
             # hack, for parameter sync in dygraph sharding optimizer after step
             self._params[0].comm_buffer_ref = weakref.ref(self)
+            self._param_buffer_meta_tensor = self.param_storage
         if not self._release_grads:
             self._record_addr()
+
+    def _refresh_param_buffer_ipc_meta(self):
+        if self._param_buffer_meta_tensor is None:
+            return None
+        return _share_tensor_ipc_meta(self._param_buffer_meta_tensor)
+
+    @property
+    def param_buffer_ipc_meta(self):
+        return self._refresh_param_buffer_ipc_meta()
 
     def _record_addr(self):
         for param in self._params:

@@ -666,7 +666,6 @@ void FastLayerNormInfermeta(const MetaTensor& x,
                         "0.0 and 0.001, But received [%s].",
                         epsilon));
 
-  phi::DataType x_dtype = x.dtype();
   phi::DataType scale_dtype = scale.dtype();
   y->set_dims(x_dim);
   y->set_dtype(scale_dtype);

@@ -36,11 +36,11 @@ class TestAllocatorVisitor(unittest.TestCase):
         ]
         self.cmds2 = [
             ["Alloc", 1 * self.MB, "0x100000010"],
-            ["Alloc", 2 * self.GB, "0x100000011"],
+            ["Alloc", 2 * self.MB, "0x100000011"],
             ["Alloc", 1 * self.MB, "0x100000012"],
-            ["Alloc", 2 * self.GB, "0x100000013"],
-            ["Free", 1 * self.GB, "0x100000010"],
-            ["Free", 2 * self.GB, "0x100000013"],
+            ["Alloc", 2 * self.MB, "0x100000013"],
+            ["Free", 1 * self.MB, "0x100000010"],
+            ["Free", 2 * self.MB, "0x100000013"],
         ]
         paddle.set_flags({'FLAGS_use_virtual_memory_auto_growth': True})
 
@@ -106,7 +106,7 @@ class TestAllocatorVisitor(unittest.TestCase):
         paddle.set_flags({'FLAGS_use_virtual_memory_auto_growth': True})
         for _ in range(2):
             with paddle.device.cuda.allocate_record_guard(True):
-                params = self.allocate_cmds(self.cmds)
+                params = self.allocate_cmds(self.cmds2)
         paddle.set_flags({'FLAGS_record_alloc_event': True})
         with paddle.device.cuda.allocate_record_guard(False):
             params2 = self.allocate_cmds(self.cmds2)

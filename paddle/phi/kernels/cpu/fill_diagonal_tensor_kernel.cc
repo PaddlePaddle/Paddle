@@ -20,7 +20,7 @@
 
 namespace phi {
 
-void CalMatDims(phi::DDim out_dims,
+void CalMatDims(DDim out_dims,
                 int dim1,
                 int dim2,
                 int64_t *offset,

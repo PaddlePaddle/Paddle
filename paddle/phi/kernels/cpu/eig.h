@@ -68,7 +68,7 @@ inline int BatchCount(const DenseTensor& matrix) {
 }
 
 inline int MatrixStride(const DenseTensor& matrix) {
-  phi::DDim dims_list = matrix.dims();
+  DDim dims_list = matrix.dims();
   int num_dims = dims_list.size();
   return dims_list[num_dims - 1] * dims_list[num_dims - 2];
 }
