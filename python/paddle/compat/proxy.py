@@ -384,8 +384,9 @@ def _clear_torch_proxy_modules():
 
 def _swap_torch_modules_to_cache():
     for name, module in list(sys.modules.items()):
-        if _is_torch_module(name) and not isinstance(module, ProxyModule):
-            TORCH_MODULES_CACHE[name] = sys.modules[name]
+        if _is_torch_module(name):
+            if not isinstance(module, ProxyModule):
+                TORCH_MODULES_CACHE[name] = sys.modules[name]
             del sys.modules[name]
 
 
