@@ -27,8 +27,6 @@
 #include "paddle/utils/small_vector.h"
 #include "paddle/utils/test_macros.h"
 
-PD_DECLARE_int32(indentlevel);
-
 namespace egr {
 class UniqueNameGenerator {
  public:
