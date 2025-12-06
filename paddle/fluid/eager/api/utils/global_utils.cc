@@ -14,6 +14,9 @@
 //
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/common/flags.h"
+
+PD_DEFINE_int32(indentlevel, 0, "Indent level for logging");
 
 namespace egr {
 
