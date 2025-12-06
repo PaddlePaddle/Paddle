@@ -24,7 +24,7 @@ TEST(MIOpenHelper, ScopedTensorDescriptor) {
 
   ScopedTensorDescriptor tensor_desc;
   std::vector<int> shape = {2, 4, 6, 6};
-  auto desc = tensor_desc.descriptor<float>(DataLayout::kNCHW, shape);
+  auto desc = tensor_desc.descriptor<float>(DataLayout::NCHW, shape);
 
   miopenDataType_t type;
   int nd;
@@ -46,7 +46,7 @@ TEST(MIOpenHelper, ScopedTensorDescriptor) {
   // test tensor5d: ScopedTensorDescriptor
   ScopedTensorDescriptor tensor5d_desc;
   std::vector<int> shape_5d = {2, 4, 6, 6, 6};
-  auto desc_5d = tensor5d_desc.descriptor<float>(DataLayout::kNCDHW, shape_5d);
+  auto desc_5d = tensor5d_desc.descriptor<float>(DataLayout::NCDHW, shape_5d);
 
   std::vector<int> dims_5d(5);
   std::vector<int> strides_5d(5);
