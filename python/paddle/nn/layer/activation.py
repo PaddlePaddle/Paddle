@@ -40,6 +40,7 @@ class CELU(Layer):
 
     Parameters:
         alpha (float, optional): The 'alpha' value of the CELU formulation. Default is 1.0.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -59,19 +60,34 @@ class CELU(Layer):
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.19865242,  6.        ],
              [ 1.        , 15.60000038]])
+
+            >>> x = paddle.to_tensor([[-1. ,6.], [1., 15.6]])
+            >>> m = paddle.nn.CELU(alpha=0.2, inplace=True)
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.19865242,  6.        ],
+             [ 1.        , 15.60000038]])
+            >>> print(x)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.19865242,  6.        ],
+             [ 1.        , 15.60000038]])
     """
 
-    def __init__(self, alpha: float = 1.0, name: str | None = None) -> None:
+    def __init__(
+        self, alpha: float = 1.0, inplace: bool = False, name: str | None = None
+    ) -> None:
         super().__init__()
         self._alpha = alpha
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.celu(x, self._alpha, self._name)
+        return F.celu(x, self._alpha, self._inplace, self._name)
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'alpha={self._alpha}{name_str}'
+        return f'alpha={self._alpha}, inplace={self._inplace}{name_str}'
 
 
 class ELU(Layer):
