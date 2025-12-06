@@ -537,8 +537,9 @@ class SendRecvCommunicator(AbstractCommunicator):
         self.use_group = use_group
 
     def communicate(self, read_items, state, context):
-        rasie NotImplementedError
         comm_tasks = SendRecvCommunicator.schedule_read_items(read_items)
+        if len(comm_tasks) > 0:
+            raise ValueError("test ci")
         cur_rank = context['rank']
         process_group = context['process_group']
 

@@ -570,7 +570,6 @@ class HVCommGroupFullParamAssembler(BaseAssembler):
         idx: int = 0,
         memory_growth_threshold: int = 8 * (2**30),  # 8GB
     ):
-        raise NotImplementedError
         super().__init__(sharded_state_dict, aoa_config, num_splits, idx)
         self.h_group = horizontal_group
         self.v_group = vertical_group
@@ -581,6 +580,8 @@ class HVCommGroupFullParamAssembler(BaseAssembler):
         self.vertical_index: dict[int, int] = {}
         self.cur_horizontal_index: int = -1
         self.memory_growth_threshold = memory_growth_threshold
+        if memory_growth_threshold > 0:
+            raise ValueError("test ci.")
 
     def all_gather_fn(self, info, **kwargs):
         h_group = kwargs.get('h_group', self.h_group)
