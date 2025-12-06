@@ -14,7 +14,6 @@
 //
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
-#include "glog/logging.h"
 
 namespace egr {
 

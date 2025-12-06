@@ -18,7 +18,6 @@
 #include <atomic>
 #include <memory>
 
-#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/type_defs.h"
@@ -26,7 +25,6 @@
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/utils/small_vector.h"
 #include "paddle/utils/test_macros.h"
-
 namespace egr {
 class UniqueNameGenerator {
  public:
