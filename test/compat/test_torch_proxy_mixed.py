@@ -25,14 +25,6 @@ sys.path.append(str(pathlib.Path(__file__).parent / "fake_modules"))
 sys.path.append(str(pathlib.Path(__file__).parent / "fake_torch_modules"))
 
 
-def clear_torch_from_sys_modules():
-    modules_to_delete = [
-        name for name in sys.modules if name.startswith("torch")
-    ]
-    for name in modules_to_delete:
-        del sys.modules[name]
-
-
 class TestTorchProxyMixRealTorch(unittest.TestCase):
     def check_is_not_proxy(self):
         import torch
