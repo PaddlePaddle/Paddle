@@ -570,6 +570,7 @@ class HVCommGroupFullParamAssembler(BaseAssembler):
         idx: int = 0,
         memory_growth_threshold: int = 8 * (2**30),  # 8GB
     ):
+        raise NotImplementedError
         super().__init__(sharded_state_dict, aoa_config, num_splits, idx)
         self.h_group = horizontal_group
         self.v_group = vertical_group
