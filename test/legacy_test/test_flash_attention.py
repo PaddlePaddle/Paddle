@@ -209,7 +209,8 @@ class TestFlashAttentionAPI(unittest.TestCase):
         # test static
         paddle.enable_static()
 
-        with paddle.static.program_guard(paddle.static.Program()):
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
             qs = paddle.static.data(
                 name="q", shape=self.shape, dtype=self.dtype
             )
@@ -231,8 +232,13 @@ class TestFlashAttentionAPI(unittest.TestCase):
                 self.return_softmax,
             )
 
+            if not paddle.base.libpaddle.pir.all_ops_defined_symbol_infer(
+                main_program
+            ):
+                self.fail("flash_attn_unpadded op symbol infer failed.")
             exe = base.Executor(self.place)
             fetches_result = exe.run(
+                main_program,
                 feed={
                     "q": query.astype('float16'),
                     "k": query.astype('float16'),

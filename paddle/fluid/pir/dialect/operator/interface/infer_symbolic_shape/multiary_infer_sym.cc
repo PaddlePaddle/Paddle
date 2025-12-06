@@ -2078,44 +2078,74 @@ bool FlashAttnUnpaddedOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(3));
   const symbol::ShapeOrDataDimExprs &cu_seqlens_k =
       infer_context->GetShapeOrDataForValue(op->operand_source(4));
-  // fixed_seed_offset is at index 5, attn_mask at index 6
-  // Use q, k, v shapes for output shape inference
+
   PADDLE_ENFORCE_EQ(q.shape().size(),
                     3,
                     common::errors::InvalidArgument(
                         "flash_attn_unpadded expects input with dim "
                         "[total_q, num_heads, head_dim]"));
-  PADDLE_ENFORCE_EQ(k.shape().size(),
-                    3,
+  PADDLE_ENFORCE_EQ(
+      k.shape().size(),
+      3,
+      common::errors::InvalidArgument("flash_attn_unpadded expects k with dim "
+                                      "[total_k, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(
+      v.shape().size(),
+      3,
+      common::errors::InvalidArgument("flash_attn_unpadded expects v with dim "
+                                      "[total_k, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(cu_seqlens_q.shape().size(),
+                    1,
                     common::errors::InvalidArgument(
-                        "flash_attn_unpadded expects k with dim "
-                        "[total_k, num_heads, head_dim]"));
-  PADDLE_ENFORCE_EQ(v.shape().size(),
-                    3,
+                        "flash_attn_unpadded expects cu_seqlens_q with dim "
+                        "[batch_size + 1]"));
+  PADDLE_ENFORCE_EQ(cu_seqlens_k.shape().size(),
+                    1,
                     common::errors::InvalidArgument(
-                        "flash_attn_unpadded expects v with dim "
-                        "[total_k, num_heads, head_dim]"));
-  // Output shape: same as q
+                        "flash_attn_unpadded expects cu_seqlens_k with dim "
+                        "[batch_size + 1]"));
+
+  infer_context->AddEqualCstr(q.shape()[2], k.shape()[2]);
+  infer_context->AddEqualCstr(k.shape()[2], v.shape()[2]);
+  infer_context->AddEqualCstr(k.shape()[0], v.shape()[0]);
+  infer_context->AddEqualCstr(k.shape()[1], v.shape()[1]);
+
+  if (op->operand_source(5) &&
+      !paddle::dialect::details::IsFakeValue(op->operand_source(5))) {
+    const symbol::ShapeOrDataDimExprs &fixed_seed_offset =
+        infer_context->GetShapeOrDataForValue(op->operand_source(5));
+    PADDLE_ENFORCE_EQ(
+        fixed_seed_offset.shape().size(),
+        1,
+        common::errors::InvalidArgument(
+            "flash_attn_unpadded expects fixed_seed_offset with dim [2]"));
+    infer_context->AddEqualCstr(fixed_seed_offset.shape()[0],
+                                symbol::DimExpr{2});
+  }
+
   infer_context->SetShapeOrDataForValue(
       op->result(0), symbol::TensorShapeOrDataDimExprs(q.shape()));
-  // Optionally infer other outputs if present (softmax, lse, etc.)
-  // For example, if op->result(1) exists, infer its shape
-  if (op->result(1)) {
-    // Typically [total_q, num_heads, total_k] or similar
+
+  if (op->result(1) && !paddle::dialect::details::IsFakeValue(op->result(1))) {
+    symbol::DimExpr total_q = q.shape()[0];
+    symbol::DimExpr total_k = k.shape()[0];
+    symbol::DimExpr num_heads = q.shape()[1];
+    symbol::DimExpr seqlen_q_rounded = (total_q + 127) / 128 * 128;
+    symbol::DimExpr seqlen_k_rounded = (total_k + 127) / 128 * 128;
     std::vector<symbol::DimExpr> softmax_shape{
-        q.shape()[0], q.shape()[1], k.shape()[0]};
+        num_heads, seqlen_q_rounded, seqlen_k_rounded};
     infer_context->SetShapeOrDataForValue(
         op->result(1), symbol::TensorShapeOrDataDimExprs(softmax_shape));
   }
-  if (op->result(2)) {
-    // Typically [total_q, num_heads]
-    std::vector<symbol::DimExpr> softmax_lse_shape{
-        q.shape()[0], q.shape()[1]};
+  if (op->result(2) && !paddle::dialect::details::IsFakeValue(op->result(2))) {
+    symbol::DimExpr total_q = q.shape()[0];
+    symbol::DimExpr num_heads = q.shape()[1];
+    symbol::DimExpr seqlen_q_rounded = (total_q + 127) / 128 * 128;
+    std::vector<symbol::DimExpr> softmax_lse_shape{num_heads, seqlen_q_rounded};
     infer_context->SetShapeOrDataForValue(
         op->result(2), symbol::TensorShapeOrDataDimExprs(softmax_lse_shape));
   }
-  if (op->result(3)) {
-    // Typically [2] for seed_offset
+  if (op->result(3) && !paddle::dialect::details::IsFakeValue(op->result(3))) {
     std::vector<symbol::DimExpr> seed_offset_shape{symbol::DimExpr{2}};
     infer_context->SetShapeOrDataForValue(
         op->result(3), symbol::TensorShapeOrDataDimExprs(seed_offset_shape));
