@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include <algorithm>
 #include <vector>
-#include "glog/logging.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
 namespace phi::funcs {
@@ -1448,69 +1447,6 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
   }
 };
 
-template <typename Context, typename T>
-void PrintDenseTensorPython(const Context& dev_ctx,
-                            DenseTensor* out,
-                            const std::string& name) {
-  const auto& dims = out->dims();
-  // int64_t numel = t.numel();
-
-  T* ptr;
-
-  // if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
-  //   DenseTensor out_cpu;
-  //   phi::Copy(dev_ctx, *out, phi::CPUPlace(), true, &out_cpu);
-  //   ptr = out_cpu.data<double>();
-  // } else {
-  //   ptr = out->data<double>();
-  // }
-
-  ptr = out->data<double>();
-
-  VLOG(1) << "Tensor [" << name << "] dims=" << dims.to_str();
-
-  // 计算每个维度对应的步长（扁平化索引）
-  std::vector<int64_t> stride(dims.size(), 1);
-  for (int i = dims.size() - 2; i >= 0; --i) {
-    stride[i] = stride[i + 1] * dims[i + 1];
-  }
-
-  // 递归打印函数：Python 风格的多维数组
-  std::function<void(int, int64_t)> print_dim;
-  print_dim = [&](int dim, int64_t offset) {
-    std::string indent(dim * 2, ' ');
-
-    if (dim == dims.size()) {
-      // 打印单个元素
-      VLOG(1) << indent << (*(ptr + offset));
-      return;
-    }
-
-    VLOG(1) << indent << "[";
-
-    for (int i = 0; i < dims[dim]; ++i) {
-      int64_t sub_offset = offset + i * stride[dim];
-      if (dim == dims.size() - 1) {
-        // 最后一维, 打印成 [a, b, c]
-        std::string line = indent + "  [";
-        for (int j = 0; j < dims[dim]; ++j) {
-          line += std::to_string((*(ptr + offset + j)));
-          if (j + 1 < dims[dim]) line += ", ";
-        }
-        line += "]";
-        VLOG(1) << line;
-        break;
-      } else {
-        print_dim(dim + 1, sub_offset);
-      }
-    }
-
-    VLOG(1) << indent << "]";
-  };
-
-  print_dim(0, 0);
-}
-
 template <typename T1, typename T2>
 class MaxPool2dWithDilationsAndIndexFunctor<CPUContext, T1, T2> {
  public:
@@ -1538,11 +1474,6 @@ class MaxPool2dWithDilationsAndIndexFunctor<CPUContext, T1, T2> {
     const int64_t dilation_width = dilations[1];
     const int64_t input_stride = input_height * input_width;
     const int64_t output_stride = output_height * output_width;
-
-    VLOG(1) << "padding_height:" << padding_height;
-    VLOG(1) << "padding_width:" << padding_width;
-    VLOG(1) << "dilation_height:" << dilation_height;
-    VLOG(1) << "dilation_width:" << dilation_width;
 
     const T1* input_data = input.data<T1>();
     T1* output_data = context.template Alloc<T1>(output);
@@ -1583,8 +1514,6 @@ class MaxPool2dWithDilationsAndIndexFunctor<CPUContext, T1, T2> {
         mask_data += output_stride;
       }
     }
-    PrintDenseTensorPython<CPUContext, double>(
-        context, output, "MaxPool2dWithDilationsAndIndexFunctor");
   }
 };
 

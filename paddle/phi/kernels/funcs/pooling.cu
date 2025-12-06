@@ -748,7 +748,6 @@ __global__ void KernelMaxPool2DWithDilationsGradCompatible(
           for (int pw = pwstart; pw < pwend; ++pw) {
             IndexT hstart = ph * stride_height - padding_height;
             IndexT wstart = pw * stride_width - padding_width;
-            // TODO(WintersMontagne10335): 是否需要对范围做二次验证
             T output_data_value = output_data[ph * output_width + pw + offset];
             if (((h - hstart) % dilation_height == 0) &&
                 ((w - wstart) % dilation_width == 0) &&

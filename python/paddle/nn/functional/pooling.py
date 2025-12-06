@@ -1177,6 +1177,9 @@ def max_pool2d(
             4. A list[int] or tuple(int) whose length is 4. [pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
+        dilation(int|list|tuple): The dilation size. Dilation could be in one of the following forms.
+            1. An int, which specifies the same dilation size for both the height and width dimensions.
+            2. A list[int] or tuple(int) whose length is 2, [dilation_height, dilation_weight] whose value means the dilation size of each dimension.
         ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
         return_mask (bool): Whether to return the max indices along with the outputs. Default False, only support `"NCHW"` data format
         data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
@@ -1196,11 +1199,11 @@ def max_pool2d(
 
             >>> # max pool2d
             >>> x = paddle.uniform([1, 3, 32, 32], paddle.float32)
-            >>> out = F.max_pool2d(x, kernel_size=2, stride=2, padding=0)
+            >>> out = F.max_pool2d(x, kernel_size=2, stride=2, padding=0, dilation=1)
             >>> print(out.shape)
             paddle.Size([1, 3, 16, 16])
             >>> # for return_mask=True
-            >>> out, max_indices = F.max_pool2d(x, kernel_size=2, stride=2, padding=0, return_mask=True)
+            >>> out, max_indices = F.max_pool2d(x, kernel_size=2, stride=2, padding=0, dilation=1, return_mask=True)
             >>> print(out.shape)
             paddle.Size([1, 3, 16, 16])
             >>> print(max_indices.shape)
