@@ -21,7 +21,7 @@ import os
 import re
 import sys
 import types
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, overload
 
 from typing_extensions import TypeAlias
 
@@ -203,6 +203,7 @@ __all__ = [
     'reset_peak_memory_stats',
     'ipc_collect',
     'get_stream_from_external',
+    'StreamContext',
 ]
 
 _cudnn_version = None
@@ -569,7 +570,7 @@ def is_bf16_supported(including_emulation: bool = True) -> bool:
 
     """
     # including_emulation is not used here, but kept for compatibility with the original implementation
-    if core.is_bfloat16_supported(paddle.framework._current_expected_place()):
+    if core.is_bfloat16_supported(paddle.framework._current_expected_place_()):
         return True
 
     # If CUDA is not available, than it does not support bf16 either
@@ -632,7 +633,15 @@ def set_device(device: PlaceLike | int) -> PlaceLike:
     return place
 
 
-def get_device(input: paddle.Tensor = None) -> str | int:
+@overload
+def get_device(input: None = None) -> str: ...
+
+
+@overload
+def get_device(input: paddle.Tensor) -> int: ...
+
+
+def get_device(input: paddle.Tensor | None = None) -> str | int:
     """
 
     This function can get the current global device of the program is running.
@@ -697,9 +706,11 @@ def get_default_device() -> paddle.device:
     Returns:
         str: The default device for PaddlePaddle.
     Example:
-        .. code-block:: python
-            import paddle
-            print(paddle.get_default_device())
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> print(paddle.get_default_device())
     """
     return paddle.device(get_device().replace("gpu", "cuda"))
 
@@ -738,16 +749,16 @@ def get_all_device_type() -> list[str]:
             >>> paddle.device.get_all_device_type()
 
             >>> # Case 1: paddlepaddle-cpu package installed, and no custom device registered.
-            >>> # Output: ['cpu']
+            >>> # Output: []
 
             >>> # Case 2: paddlepaddle-gpu package installed, and no custom device registered.
-            >>> # Output: ['cpu', 'gpu']
+            >>> # Output: ['gpu']
 
             >>> # Case 3: paddlepaddle-cpu package installed, and custom device 'CustomCPU' is registered.
-            >>> # Output: ['cpu', 'CustomCPU']
+            >>> # Output: ['CustomCPU']
 
             >>> # Case 4: paddlepaddle-gpu package installed, and custom device 'CustomCPU' and 'CustomGPU' is registered.
-            >>> # Output: ['cpu', 'gpu', 'CustomCPU', 'CustomGPU']
+            >>> # Output: ['gpu', 'CustomCPU', 'CustomGPU']
 
     """
     return core.get_all_device_type()
@@ -792,16 +803,16 @@ def get_available_device() -> list[str]:
             >>> paddle.device.get_available_device()
 
             >>> # Case 1: paddlepaddle-cpu package installed, and no custom device registered.
-            >>> # Output: ['cpu']
+            >>> # Output: []
 
             >>> # Case 2: paddlepaddle-gpu package installed, and no custom device registered.
-            >>> # Output: ['cpu', 'gpu:0', 'gpu:1']
+            >>> # Output: ['gpu:0', 'gpu:1']
 
             >>> # Case 3: paddlepaddle-cpu package installed, and custom device 'CustomCPU' is registered.
-            >>> # Output: ['cpu', 'CustomCPU']
+            >>> # Output: ['CustomCPU']
 
             >>> # Case 4: paddlepaddle-gpu package installed, and custom device 'CustomCPU' and 'CustomGPU' is registered.
-            >>> # Output: ['cpu', 'gpu:0', 'gpu:1', 'CustomCPU', 'CustomGPU:0', 'CustomGPU:1']
+            >>> # Output: ['gpu:0', 'gpu:1', 'CustomCPU', 'CustomGPU:0', 'CustomGPU:1']
 
     """
     return core.get_available_device()
@@ -1093,7 +1104,7 @@ class Event:
         ```python
         # New usage
         paddle.set_device("gpu:0")  # Set device first
-        e = paddle.device.Event()   # Will use gpu:0
+        e = paddle.device.Event()  # Will use gpu:0
         ```
 
         paddle.device.Event is equivalent to paddle.cuda.Event.

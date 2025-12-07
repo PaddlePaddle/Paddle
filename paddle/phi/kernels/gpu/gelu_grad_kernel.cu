@@ -85,12 +85,10 @@ void GeluGradKernel(const Context& dev_ctx,
     }
 #endif
     using Functor = GeluWithApproximateGradFunctor<T>;
-    phi::funcs::ElementwiseKernel<T, Functor, 1>(
-        dev_ctx, ins, &outs, Functor());
+    funcs::ElementwiseKernel<T, Functor, 1>(dev_ctx, ins, &outs, Functor());
   } else {
     using Functor = GeluWithoutApproximateGradFunctor<T>;
-    phi::funcs::ElementwiseKernel<T, Functor, 1>(
-        dev_ctx, ins, &outs, Functor());
+    funcs::ElementwiseKernel<T, Functor, 1>(dev_ctx, ins, &outs, Functor());
   }
 }
 

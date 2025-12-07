@@ -55,7 +55,7 @@ void StridedElementwiseCopyKernel(const Context& dev_ctx,
     return;
   }
 
-  bool can_expand = phi::funcs::CheckIsLastDimsMatch(input.dims(), out->dims());
+  bool can_expand = funcs::CheckIsLastDimsMatch(input.dims(), out->dims());
   PADDLE_ENFORCE_EQ(can_expand || input.numel() == 1,
                     true,
                     common::errors::InvalidArgument(

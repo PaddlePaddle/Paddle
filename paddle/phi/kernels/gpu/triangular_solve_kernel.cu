@@ -71,7 +71,7 @@ void TriangularSolveKernel(const Context& dev_ctx,
     batch_size *= x_bst_dims_vec[i];
   }
 
-  auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<GPUContext, T>(dev_ctx);
   if (batch_size <= 8 && M >= 64) {
     for (int64_t i = 0; i < batch_size; i++) {
       blas.TRSM(CblasLeft,

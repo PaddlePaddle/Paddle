@@ -36,3 +36,49 @@ op_patches:
       - action : modify_attr
         object : pad_value
         type : pir::DoubleAttribute
+  - op_name : pd_op.top_p_sampling
+    actions:
+      - action : modify_attr
+        object : seed
+        type : pir::Int64Attribute
+  - op_name : pd_op.bicubic_interp
+    actions:
+      - action : modify_attr
+        object : scale
+        type : pir::ArrayAttribute
+        data :
+          - type: pir::DoubleAttribute
+          - type: pir::DoubleAttribute
+  - op_name : pd_op.nearest_interp
+    actions:
+      - action : modify_attr
+        object : scale
+        type : pir::ArrayAttribute
+        data :
+          - type: pir::DoubleAttribute
+          - type: pir::DoubleAttribute
+          - type: pir::DoubleAttribute
+  - op_name : pd_op.linear_interp
+    actions:
+      - action : modify_attr
+        object : scale
+        type : pir::ArrayAttribute
+        data :
+          - type: pir::DoubleAttribute
+  - op_name : pd_op.bilinear_interp
+    actions:
+      - action : modify_attr
+        object : scale
+        type : pir::ArrayAttribute
+        data :
+          - type: pir::DoubleAttribute
+          - type: pir::DoubleAttribute
+  - op_name : pd_op.trilinear_interp
+    actions:
+      - action : modify_attr
+        object : scale
+        type : pir::ArrayAttribute
+        data :
+          - type: pir::DoubleAttribute
+          - type: pir::DoubleAttribute
+          - type: pir::DoubleAttribute

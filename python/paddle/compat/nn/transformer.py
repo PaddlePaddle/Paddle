@@ -42,9 +42,7 @@ class MultiheadAttention(nn.Layer):
 
     .. note::
         This layer will use the optimized implementation
-        :func:`paddle.nn.functional.scaled_dot_product_attention` when possible.
-        The fast path is enabled only when ``need_weights`` is ``False`` and the input
-        data type is ``float16`` or ``bfloat16``.
+        :func:`paddle.nn.functional.scaled_dot_product_attention` if no need to return the attention weights.
 
     Parameters:
         embed_dim (int): Total dimension of the model.
@@ -117,6 +115,11 @@ class MultiheadAttention(nn.Layer):
         self.head_dim = embed_dim // num_heads
         assert self.head_dim * num_heads == self.embed_dim
 
+        self.in_proj_bias = None
+        self.q_proj_bias = None
+        self.k_proj_bias = None
+        self.v_proj_bias = None
+
         if self._qkv_same_embed_dim:
             self.in_proj_weight = self.create_parameter(
                 shape=[3 * embed_dim, embed_dim],
@@ -128,6 +131,14 @@ class MultiheadAttention(nn.Layer):
             self.q_proj_weight = None
             self.k_proj_weight = None
             self.v_proj_weight = None
+            if bias:
+                self.in_proj_bias = self.create_parameter(
+                    shape=[3 * embed_dim],
+                    dtype=self._dtype,
+                    is_bias=True,
+                    device=device,
+                )
+
         else:
             self.q_proj_weight = self.create_parameter(
                 shape=[embed_dim, embed_dim],
@@ -152,19 +163,7 @@ class MultiheadAttention(nn.Layer):
             )
             self.in_proj_weight = None
 
-        if bias:
-            if self._qkv_same_embed_dim:
-                self.in_proj_bias = self.create_parameter(
-                    shape=[3 * embed_dim],
-                    dtype=self._dtype,
-                    is_bias=True,
-                    device=device,
-                )
-                self.q_proj_bias = None
-                self.k_proj_bias = None
-                self.v_proj_bias = None
-            else:
-                self.in_proj_bias = None
+            if bias:
                 self.q_proj_bias = self.create_parameter(
                     shape=[embed_dim],
                     dtype=self._dtype,
@@ -183,11 +182,6 @@ class MultiheadAttention(nn.Layer):
                     is_bias=True,
                     device=device,
                 )
-        else:
-            self.in_proj_bias = None
-            self.q_proj_bias = None
-            self.k_proj_bias = None
-            self.v_proj_bias = None
 
         self.out_proj = paddle.compat.nn.Linear(
             embed_dim, embed_dim, bias=bias, dtype=self._dtype
@@ -266,15 +260,14 @@ class MultiheadAttention(nn.Layer):
         shape = mask.shape
         pad_shape = [*shape[:-1], pad_amt]
 
-        if mask.dtype == paddle.bool:
-            pad_tensor = paddle.zeros(pad_shape, dtype=paddle.bool)
-        else:
-            pad_tensor = paddle.zeros(pad_shape, dtype=mask.dtype)
+        pad_tensor = paddle.zeros(pad_shape, dtype=mask.dtype)
         return paddle.concat([mask, pad_tensor], axis=-1)
 
     def _project_qkv(
         self, query: Tensor, key: Tensor, value: Tensor
     ) -> tuple[Tensor, Tensor, Tensor]:
+        # in: [batch, seq_len, embed]
+        # out: [batch, seq_len, embed]
         if self._qkv_same_embed_dim:
             if id(query) == id(key) and id(key) == id(value):
                 qkv = F.linear(query, self.in_proj_weight.T, self.in_proj_bias)
@@ -303,6 +296,8 @@ class MultiheadAttention(nn.Layer):
         batch_size: int,
         target_seq_len: int,
     ) -> tuple[Tensor, Tensor, Tensor]:
+        # in: [batch, seq_len, num_head * dim]
+        # out: [batch, num_head, seq_len, dim]
         if self.add_bias_kv:
             k = paddle.concat(
                 [k, self.bias_k.expand([batch_size, -1, -1])], axis=1
@@ -341,55 +336,69 @@ class MultiheadAttention(nn.Layer):
         dtype: DTypeLike,
         batch_size: int,
         is_causal: bool,
-        can_use_sdpa: bool,
+        need_weights: bool,
     ) -> Tensor | None:
-        should_auto_gen_causal = is_causal and (not can_use_sdpa)
-        final_mask = None
+        # Do not generate attn_mask if is_causal is True and add_bias_kv is False
+        # and add_zero_attn is False. In such case, we pass attn_mask as None to
+        # select efficient implementation backend of sdpa.
+        if (
+            is_causal
+            and not self.add_bias_kv
+            and not self.add_zero_attn
+            and key_padding_mask is None
+            and not need_weights
+        ):
+            return None
 
-        if should_auto_gen_causal:
-            final_mask = paddle.triu(
-                paddle.ones(
-                    [target_seq_len, src_len_before_bias], dtype=paddle.bool
-                ),
-                diagonal=1,
-            )
-            if self.add_bias_kv:
-                final_mask = self._pad_mask(final_mask, pad_amt=1)
-            if self.add_zero_attn:
-                final_mask = self._pad_mask(final_mask, pad_amt=1)
+        if attn_mask is None and not is_causal and key_padding_mask is None:
+            return None
 
-        if attn_mask is not None:
-            if attn_mask.dim() == 2:
-                user_mask = attn_mask
-            elif attn_mask.dim() == 3:
-                user_mask = attn_mask.reshape(
-                    [batch_size, self.num_heads, target_seq_len, -1]
+        if attn_mask is None:
+            if is_causal:
+                attn_mask = paddle.triu(
+                    paddle.ones(
+                        [target_seq_len, src_len_before_bias], dtype=paddle.bool
+                    ),
+                    diagonal=1,
                 )
             else:
-                raise ValueError(f"attn_mask dim error: {attn_mask.dim()}")
+                attn_mask = paddle.zeros(
+                    [target_seq_len, src_len_before_bias], dtype=dtype
+                )
 
-            if self.add_bias_kv:
-                user_mask = self._pad_mask(user_mask)
-            if self.add_zero_attn:
-                user_mask = self._pad_mask(user_mask)
+        pad_count = int(self.add_zero_attn + self.add_bias_kv)
 
-            final_mask = user_mask
+        if pad_count > 0:
+            attn_mask = self._pad_mask(attn_mask, pad_amt=pad_count)
+            if key_padding_mask is not None:
+                key_padding_mask = self._pad_mask(
+                    key_padding_mask, pad_amt=pad_count
+                )
 
-        if key_padding_mask is not None:
-            kp_mask = key_padding_mask.unsqueeze(1).unsqueeze(2)
-
-            if self.add_bias_kv:
-                kp_mask = self._pad_mask(kp_mask)
-            if self.add_zero_attn:
-                kp_mask = self._pad_mask(kp_mask)
-
-            final_mask = (
-                kp_mask
-                if final_mask is None
-                else self._combine_masks(final_mask, kp_mask, dtype=dtype)
+        if attn_mask.dim() == 2:
+            attn_mask = attn_mask.expand(
+                [batch_size * self.num_heads, *attn_mask.shape]
+            )
+        if attn_mask.dim() == 3:
+            attn_mask = attn_mask.reshape(
+                [batch_size, self.num_heads, target_seq_len, -1]
             )
 
-        return final_mask
+        if key_padding_mask is not None:
+            # [N, len_k+pad_count] -> [N, 1, 1, len_k+pad_count]
+            key_padding_mask = key_padding_mask.unsqueeze(axis=[1, 2])
+            key_padding_mask = key_padding_mask.repeat(
+                [1, *attn_mask.shape[1:3], 1]
+            )
+            attn_mask = self._combine_masks(attn_mask, key_padding_mask, dtype)
+
+        if attn_mask.dtype != dtype:
+            if attn_mask.dtype == paddle.bool:
+                attn_mask = self._convert_bool_mask_to_float(attn_mask, dtype)
+            else:
+                attn_mask = attn_mask.astype(dtype)
+
+        return attn_mask
 
     def _attention_core(
         self,
@@ -399,31 +408,28 @@ class MultiheadAttention(nn.Layer):
         final_mask: Tensor | None,
         need_weights: bool,
         is_causal: bool,
-        can_use_sdpa: bool,
     ) -> tuple[Tensor, Tensor | None]:
+        # in: [batch, num_head, seq_len, head_dim]
+        # out: [batch, num_head, seq_len, head_dim]
         batch_size, _, target_seq_len, _ = q.shape
+        is_causal = is_causal and final_mask is None
 
-        if can_use_sdpa:
-            raise RuntimeError("Should not hit here, sdpa not enabled yet!")
-            # sdpa_is_causal = is_causal if final_mask is None else False
-            # if final_mask is not None and final_mask.dtype == paddle.bool:
-            #     final_mask = self._convert_bool_mask_to_float(
-            #         final_mask, q.dtype
-            #     )
-
-            # attn_output = F.scaled_dot_product_attention(
-            #     q.transpose([0, 2, 1, 3]),
-            #     k.transpose([0, 2, 1, 3]),
-            #     v.transpose([0, 2, 1, 3]),
-            #     attn_mask=final_mask,
-            #     dropout_p=self.dropout if self.training else 0.0,
-            #     is_causal=sdpa_is_causal,
-            #     training=self.training,
-            # )
-            # attn_output = attn_output.reshape(
-            #     [batch_size, target_seq_len, self.embed_dim]
-            # )
-            # return attn_output, None
+        if not need_weights:
+            attn_output = (
+                paddle.compat.nn.functional.scaled_dot_product_attention(
+                    q,
+                    k,
+                    v,
+                    attn_mask=final_mask,
+                    dropout_p=self.dropout if self.training else 0.0,
+                    is_causal=is_causal,
+                )
+            )
+            attn_output = attn_output.transpose([0, 2, 1, 3])
+            attn_output = attn_output.reshape(
+                [batch_size, target_seq_len, self.embed_dim]
+            )
+            return attn_output, None
         else:
             scores = paddle.matmul(q, k, transpose_y=True)
             scores = scores / (self.head_dim**0.5)
@@ -458,6 +464,14 @@ class MultiheadAttention(nn.Layer):
         r"""
         Forward pass of the MultiheadAttention layer.
 
+        .. note::
+            If ``need_weights`` is ``False``, this api will fallback to native math implementation,
+            otherwise it will call ``paddle.compat.nn.functional.scaled_dot_product_attention`` to
+            compute the attention score.
+
+            To achieve better performance, explicitly set ``need_weights=False``,
+            and set ``is_causal=True`` if the attn_mask is the causal mask.
+
         Parameters:
             query (Tensor): The query embeddings. Shape depends on `batch_first`.
                 If `batch_first` is False, shape is `[target_seq_len, batch_size, embed_dim]`.
@@ -481,7 +495,9 @@ class MultiheadAttention(nn.Layer):
             average_attn_weights (bool, optional): If True, indicates that the returned
                 `attn_weights` should be averaged across heads. Default: True.
             is_causal (bool, optional): If True, implies that a causal mask is applied to
-                the attention implementation. Default: False.
+                the attention implementation. If attn_mask is None and is_causal is True,
+                a causal mask is automatically created and used in the attention computation.
+                Default: False.
 
         Returns:
             tuple[Tensor, Tensor|None]:
@@ -498,6 +514,8 @@ class MultiheadAttention(nn.Layer):
             query = query.unsqueeze(0 if self.batch_first else 1)
             key = key.unsqueeze(0 if self.batch_first else 1)
             value = value.unsqueeze(0 if self.batch_first else 1)
+            if key_padding_mask is not None and key_padding_mask.dim() != 2:
+                key_padding_mask = key_padding_mask.unsqueeze(0)
 
         if not self.batch_first:
             query = query.transpose([1, 0, 2])
@@ -506,20 +524,12 @@ class MultiheadAttention(nn.Layer):
 
         batch_size, target_seq_len, _ = query.shape
         src_len_before_bias = key.shape[1]
+        if key_padding_mask is not None:
+            assert key_padding_mask.shape == (batch_size, src_len_before_bias)
 
         q, k, v = self._project_qkv(query, key, value)
 
         q, k, v = self._prepare_qkv_heads(q, k, v, batch_size, target_seq_len)
-
-        can_use_sdpa = not need_weights and q.dtype in [
-            paddle.float16,
-            paddle.bfloat16,
-        ]
-
-        # TODO(littleherozzzx): sdpa has computation error for certain case,
-        # force math implementation temporarily, expected to be fixed in
-        # https://github.com/PaddlePaddle/Paddle/pull/76446
-        can_use_sdpa = False
 
         final_mask = self._prepare_attn_mask(
             attn_mask=attn_mask,
@@ -529,11 +539,11 @@ class MultiheadAttention(nn.Layer):
             dtype=q.dtype,
             batch_size=batch_size,
             is_causal=is_causal,
-            can_use_sdpa=can_use_sdpa,
+            need_weights=need_weights,
         )
 
         attn_output, attn_weights = self._attention_core(
-            q, k, v, final_mask, need_weights, is_causal, can_use_sdpa
+            q, k, v, final_mask, need_weights, is_causal
         )
 
         attn_output = self.out_proj(attn_output)

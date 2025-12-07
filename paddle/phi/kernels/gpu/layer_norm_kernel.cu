@@ -470,9 +470,9 @@ void LayerNormDirectCUDAFunctor<T, U>::operator()(
   auto matrix_dim = common::flatten_to_2d(x_dims, begin_norm_axis);
   int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
-  switch (phi::funcs::GetDesiredBlockDim(feature_size)) {
+  switch (funcs::GetDesiredBlockDim(feature_size)) {
     FIXED_BLOCK_DIM_CASE(
-        phi::funcs::LayerNormForward<T, U, kBlockDim>
+        funcs::LayerNormForward<T, U, kBlockDim>
         <<<batch_size, kBlockDim, 0, stream>>>(
             input, scale, bias, output, mean, variance, eps, feature_size));
     default:
@@ -499,7 +499,7 @@ void LayerNormKernel(const Context &dev_ctx,
                      DenseTensor *y,
                      DenseTensor *mean,
                      DenseTensor *var) {
-  using U = phi::funcs::LayerNormParamType<T>;
+  using U = funcs::LayerNormParamType<T>;
   auto *scale = scale_opt.get_ptr();
   auto *bias = bias_opt.get_ptr();
 
@@ -543,26 +543,25 @@ void LayerNormKernel(const Context &dev_ctx,
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
   auto stream = dev_ctx.stream();
 
-#define PADDLE_LAUNCH_LAYERNORM_FWD(ScaleBiasT, IsScaleBiasSameDTypeWithX) \
-  do {                                                                     \
-    switch (phi::funcs::GetDesiredBlockDim(feature_size)) {                \
-      FIXED_BLOCK_DIM_CASE(                                                \
-          phi::funcs::                                                     \
-              LayerNormForward<T, U, kBlockDim, IsScaleBiasSameDTypeWithX> \
-          <<<batch_size, kBlockDim, 0, stream>>>(                          \
-              x_data,                                                      \
-              static_cast<const ScaleBiasT *>(void_scale_data),            \
-              static_cast<const ScaleBiasT *>(void_bias_data),             \
-              y_data,                                                      \
-              mean_data,                                                   \
-              var_data,                                                    \
-              epsilon,                                                     \
-              feature_size));                                              \
-      default:                                                             \
-        PADDLE_THROW(common::errors::InvalidArgument(                      \
-            "Product from begin_norm_axis to end must be larger than 1")); \
-        break;                                                             \
-    }                                                                      \
+#define PADDLE_LAUNCH_LAYERNORM_FWD(ScaleBiasT, IsScaleBiasSameDTypeWithX)    \
+  do {                                                                        \
+    switch (funcs::GetDesiredBlockDim(feature_size)) {                        \
+      FIXED_BLOCK_DIM_CASE(                                                   \
+          funcs::LayerNormForward<T, U, kBlockDim, IsScaleBiasSameDTypeWithX> \
+          <<<batch_size, kBlockDim, 0, stream>>>(                             \
+              x_data,                                                         \
+              static_cast<const ScaleBiasT *>(void_scale_data),               \
+              static_cast<const ScaleBiasT *>(void_bias_data),                \
+              y_data,                                                         \
+              mean_data,                                                      \
+              var_data,                                                       \
+              epsilon,                                                        \
+              feature_size));                                                 \
+      default:                                                                \
+        PADDLE_THROW(common::errors::InvalidArgument(                         \
+            "Product from begin_norm_axis to end must be larger than 1"));    \
+        break;                                                                \
+    }                                                                         \
   } while (0)
 
 #define PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, feature_size)          \
@@ -576,14 +575,14 @@ void LayerNormKernel(const Context &dev_ctx,
     const int ROWS_PER_CTA = WARPS_M;                                        \
     const int grid = static_cast<int>(                                       \
         std::ceil(batch_size / static_cast<float>(ROWS_PER_CTA)));           \
-    phi::funcs::fast_ln_fwd_kernel<T,                                        \
-                                   U,                                        \
-                                   ScaleT,                                   \
-                                   VecSize,                                  \
-                                   WARPS_M,                                  \
-                                   WARPS_N,                                  \
-                                   BYTES_PER_LDG,                            \
-                                   feature_size>                             \
+    funcs::fast_ln_fwd_kernel<T,                                             \
+                              U,                                             \
+                              ScaleT,                                        \
+                              VecSize,                                       \
+                              WARPS_M,                                       \
+                              WARPS_N,                                       \
+                              BYTES_PER_LDG,                                 \
+                              feature_size>                                  \
         <<<grid, THREADS_PER_CTA, 0, stream>>>(                              \
             batch_size,                                                      \
             feature_size,                                                    \

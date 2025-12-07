@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/memory/stats.h"
 
 namespace paddle::memory::allocation {
 
@@ -21,5 +23,19 @@ void Allocator::FreeImpl(phi::Allocation* allocation) {
       ->TopDecoratedAllocator()
       ->Free(allocation);
 }
+
+void MultiScalePoolAllocator::RecordAlloc(size_t size) {
+#if defined(PADDLE_WITH_CUDA)
+  uint64_t seq = global_seq_counter_.fetch_add(1, std::memory_order_relaxed);
+  std::lock_guard<SpinLock> lock(spinlock_);
+  const auto current_device_id = phi::backends::gpu::GetCurrentDeviceId();
+  const auto max_reserved =
+      paddle::memory::DeviceMemoryStatPeakValue("Reserved", current_device_id);
+  const auto cur_allocated = paddle::memory::DeviceMemoryStatCurrentValue(
+      "Allocated", current_device_id);
+  allocation_records_.emplace_back(seq, size, cur_allocated, max_reserved);
+#endif
+}
+std::atomic<uint64_t> MultiScalePoolAllocator::global_seq_counter_{0};
 
 }  // namespace paddle::memory::allocation

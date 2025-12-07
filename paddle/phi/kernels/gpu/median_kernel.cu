@@ -268,7 +268,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
   nan_counts_ptr = nan_counts.data<int64_t>();
   nan_indices.Resize(common::make_ddim({pre_dim}));
   dev_ctx.template Alloc<int64_t>(&nan_indices);
-  phi::funcs::SetConstant<phi::GPUContext, int64_t> set_const;
+  funcs::SetConstant<phi::GPUContext, int64_t> set_const;
   set_const(dev_ctx, &nan_indices, numel);
   nan_indices_ptr = nan_indices.data<int64_t>();
 
@@ -295,10 +295,10 @@ void ProcessMedianKernel(const Context& dev_ctx,
                      stream);
   T nan_val = std::numeric_limits<T>::quiet_NaN();
   if (nan_stat_cpu_ptr[0] == numel) {
-    phi::funcs::SetConstant<Context, T> set_nan;
+    funcs::SetConstant<Context, T> set_nan;
     set_nan(dev_ctx, out, nan_val);
 
-    phi::funcs::SetConstant<Context, int64_t> set_negatvie;
+    funcs::SetConstant<Context, int64_t> set_negatvie;
     set_negatvie(dev_ctx, median_index, static_cast<int64_t>(0));
     return;
   }

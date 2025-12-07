@@ -74,6 +74,8 @@ if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
     "legacy/gpu/moe_gate_dispatch_kernel.cu"
     "legacy/gpu/moe_gate_dispatch_grad_kernel.cu"
     "legacy/gpu/int_bincount.cu"
+    "legacy/gpu/batched_gemm.cu"
+    "legacy/gpu/fp8_gemm_blockwise_kernel.cu"
     "legacy/gpu/fp8_gemm_blockwise_kernel.cu"
     "legacy/gpu/fp8_quant_blockwise_kernel.cu"
     "legacy/gpu/fast_layernorm_kernel.cu"
@@ -91,7 +93,7 @@ if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
     "fusion/gpu/fused_weighted_swiglu_act_quant_kernel.cu")
 endif()
 
-if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
+if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 11.8))
    OR APPLE
    OR WITH_ROCM)
   list(REMOVE_ITEM kernel_cu "legacy/gpu/layer_norm_cuda_kernel.cu")
@@ -117,6 +119,10 @@ endif()
 
 if(NOT WITH_DGC)
   list(REMOVE_ITEM kernel_gpu "gpu/dgc_kernel.cu")
+endif()
+
+if(NOT WITH_MAGMA)
+  list(REMOVE_ITEM kernel_gpu "xpu/eig_kernel.cc")
 endif()
 
 if(WITH_CUTLASS)
