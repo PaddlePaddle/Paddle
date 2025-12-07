@@ -362,7 +362,10 @@ class NoamDecay(LRScheduler):
             ...     for batch_id in range(5):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             feed={
+            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
+            ...                 'y': np.random.randn(3, 4, 5).astype('float32'),
+            ...             },
             ...             fetch_list=[loss],
             ...         )
             ...         scheduler.step()  # If you update learning rate each step
@@ -471,7 +474,10 @@ class PiecewiseDecay(LRScheduler):
             ...     for batch_id in range(5):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             feed={
+            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
+            ...                 'y': np.random.randn(3, 4, 5).astype('float32'),
+            ...             },
             ...             fetch_list=[loss],
             ...         )
             ...         scheduler.step()  # If you update learning rate each step
@@ -918,7 +924,10 @@ class LinearWarmup(LRScheduler):
             ...     for batch_id in range(5):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             feed={
+            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
+            ...                 'y': np.random.randn(3, 4, 5).astype('float32'),
+            ...             },
             ...             fetch_list=[loss],
             ...         )
             ...         scheduler.step()  # If you update learning rate each step
@@ -1162,7 +1171,10 @@ class MultiStepDecay(LRScheduler):
             ...     for batch_id in range(5):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             feed={
+            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
+            ...                 'y': np.random.randn(3, 4, 5).astype('float32'),
+            ...             },
             ...             fetch_list=[loss],
             ...         )
             ...         scheduler.step()  # If you update learning rate each step
@@ -1391,7 +1403,10 @@ class LambdaDecay(LRScheduler):
             ...     for batch_id in range(5):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             feed={
+            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
+            ...                 'y': np.random.randn(3, 4, 5).astype('float32'),
+            ...             },
             ...             fetch_list=[loss],
             ...         )
             ...         scheduler.step()  # If you update learning rate each step
@@ -1502,7 +1517,10 @@ class ReduceOnPlateau(LRScheduler):
             ...     for batch_id in range(5):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             feed={
+            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
+            ...                 'y': np.random.randn(3, 4, 5).astype('float32'),
+            ...             },
             ...             fetch_list=[loss],
             ...         )
             ...         scheduler.step(out[0])  # If you update learning rate each step
@@ -1733,7 +1751,10 @@ class CosineAnnealingDecay(LRScheduler):
             ...     for batch_id in range(5):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             feed={
+            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
+            ...                 'y': np.random.randn(3, 4, 5).astype('float32'),
+            ...             },
             ...             fetch_list=[loss],
             ...         )
             ...         scheduler.step()  # If you update learning rate each step
@@ -1948,7 +1969,10 @@ class OneCycleLR(LRScheduler):
             ...     for batch_id in range(20):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             feed={
+            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
+            ...                 'y': np.random.randn(3, 4, 5).astype('float32'),
+            ...             },
             ...             fetch_list=[loss],
             ...         )
             ...         scheduler.step()  # You should update learning rate each step
@@ -2186,7 +2210,10 @@ class CyclicLR(LRScheduler):
             ...     for batch_id in range(20):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             feed={
+            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
+            ...                 'y': np.random.randn(3, 4, 5).astype('float32'),
+            ...             },
             ...             fetch_list=[loss],
             ...         )
             ...         scheduler.step()  # You should update learning rate each step
@@ -2381,7 +2408,10 @@ class LinearLR(LRScheduler):
             ...     for batch_id in range(20):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             feed={
+            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
+            ...                 'y': np.random.randn(3, 4, 5).astype('float32'),
+            ...             },
             ...             fetch_list=[loss],
             ...         )
             ...         scheduler.step()  # You should update learning rate each step
@@ -2505,7 +2535,10 @@ class CosineAnnealingWarmRestarts(LRScheduler):
             ...     for batch_id in range(10):
             ...         out = exe.run(
             ...             main_prog,
-            ...             feed={'x': np.random.randn(3, 4, 5).astype('float32'), 'y': np.random.randn(3, 4, 5).astype('float32')},
+            ...             feed={
+            ...                 'x': np.random.randn(3, 4, 5).astype('float32'),
+            ...                 'y': np.random.randn(3, 4, 5).astype('float32'),
+            ...             },
             ...             fetch_list=[loss],
             ...         )
             ...     scheduler.step(epoch)  # You should update learning rate each epoch
