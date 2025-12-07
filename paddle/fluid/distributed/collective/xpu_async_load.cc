@@ -25,6 +25,8 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
 
+#include "glog/logging.h"
+
 namespace paddle {
 namespace distributed {
 

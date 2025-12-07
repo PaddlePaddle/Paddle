@@ -1468,11 +1468,11 @@ def fftfreq(
     n: int,
     d: float = 1.0,
     dtype: DTypeLike | None = None,
+    name: str | None = None,
     *,
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
-    name: str | None = None,
 ) -> Tensor:
     """
     Return the Discrete Fourier Transform sample frequencies.
@@ -1541,11 +1541,11 @@ def rfftfreq(
     n: int,
     d: float = 1.0,
     dtype: DTypeLike | None = None,
+    name: str | None = None,
     *,
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
-    name: str | None = None,
 ) -> Tensor:
     """
     Return the Discrete Fourier Transform sample frequencies.

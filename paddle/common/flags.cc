@@ -1615,11 +1615,11 @@ PHI_DEFINE_EXPORTED_bool(npu_storage_format, false, "");
  * CUDNNv8 related FLAG
  * Name: enable_cudnn_frontend
  * Since Version: 2.5.0
- * Value Range: bool, default=false
+ * Value Range: bool, default=true
  * Example:
  * Note: Enable CUDNNv8 Frontend API for CUDNN kernels.
  */
-PHI_DEFINE_EXPORTED_bool(enable_cudnn_frontend, false, "");
+PHI_DEFINE_EXPORTED_bool(enable_cudnn_frontend, true, "");
 
 /**
  * CUDNNv8 related FLAG

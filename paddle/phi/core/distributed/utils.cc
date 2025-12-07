@@ -12,17 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/core/distributed/utils.h"
 
-#include <ATen/ops/abs.h>
-#include <ATen/ops/arange.h>
-#include <ATen/ops/cat.h>
-#include <ATen/ops/empty.h>
-#include <ATen/ops/empty_like.h>
-#include <ATen/ops/from_blob.h>
-#include <ATen/ops/full.h>
-#include <ATen/ops/ones.h>
-#include <ATen/ops/reshape.h>
-#include <ATen/ops/transpose.h>
-#include <ATen/ops/zeros.h>
-#include <ATen/ops/zeros_like.h>
+namespace phi {
+namespace distributed {
+
+phi::DenseTensor GetPartialTensor(const phi::DenseTensor& tensor,
+                                  int64_t offset,
+                                  int64_t numel) {
+  phi::DenseTensor tensor_flattened;
+  tensor_flattened.ShareDataWith(tensor);
+  tensor_flattened.Resize({tensor.numel()});
+  return tensor_flattened.Slice(offset, offset + numel);
+}
+
+}  //  namespace distributed
+}  // namespace phi
