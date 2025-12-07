@@ -29,7 +29,7 @@ function exec_samplecode_test() {
 
     cd ${PADDLE_ROOT}/tools
     if [ "$1" = "cpu" ] ; then
-        python sampcd_processor.py --mode cpu; example_error=$?
+        python sampcd_processor.py --mode cpu --full-test; example_error=$?
     elif [ "$1" = "gpu" ] ; then
         export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
         SAMPLE_CODE_EXEC_THREADS=${SAMPLE_CODE_EXEC_THREADS:-2}
