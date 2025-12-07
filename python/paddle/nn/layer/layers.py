@@ -1173,7 +1173,7 @@ class Layer:
                 >>> print(linear)
                 Linear(in_features=2, out_features=2, dtype=paddle.int8)
                 >>> print(linear.parameters())
-                >>> # doctest: +SKIP("API invalid")
+                >>> # doctest: +SKIP("There are bugs in the api(astype). For details, refer to the following webpage: [https://github.com/PaddlePaddle/Paddle/issues/76614]")
                 [Parameter containing:
                 Tensor(shape=[2, 2], dtype=int8, place=Place(cpu), stop_gradient=False,
                     [[1, 1],
@@ -3196,7 +3196,7 @@ class Layer:
                 ...         out = self.dropout(out)
                 ...         return out
                 >>> model = Model()
-                >>> print(model.float())
+                >>> model.float()
                 Model(
                     (linear): Linear(in_features=1, out_features=1, dtype=paddle.float32)
                     (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train, inplace=False)
