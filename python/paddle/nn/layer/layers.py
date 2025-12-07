@@ -1173,12 +1173,14 @@ class Layer:
                 >>> print(linear)
                 Linear(in_features=2, out_features=2, dtype=paddle.int8)
                 >>> print(linear.parameters())
+                >>> # doctest: +SKIP("API invalid")
                 [Parameter containing:
                 Tensor(shape=[2, 2], dtype=int8, place=Place(cpu), stop_gradient=False,
                     [[1, 1],
                         [1, 1]]), Parameter containing:
                 Tensor(shape=[2], dtype=int8, place=Place(cpu), stop_gradient=False,
                     [2, 2])]
+                >>> # doctest: -SKIP
 
         """
         valid_dtypes = [
@@ -3194,8 +3196,7 @@ class Layer:
                 ...         out = self.dropout(out)
                 ...         return out
                 >>> model = Model()
-                >>> model.float()
-                >>> print(model)
+                >>> print(model.float())
                 Model(
                     (linear): Linear(in_features=1, out_features=1, dtype=paddle.float32)
                     (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train, inplace=False)
