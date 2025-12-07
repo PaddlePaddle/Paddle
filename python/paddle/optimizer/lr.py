@@ -2178,7 +2178,11 @@ class CyclicLR(LRScheduler):
             >>> # train on default dynamic graph mode
             >>> linear = paddle.nn.Linear(10, 10)
             >>> scheduler = paddle.optimizer.lr.CyclicLR(
-            ...     base_learning_rate=0.5, max_learning_rate=1.0, step_size_up=15, step_size_down=5, verbose=True
+            ...     base_learning_rate=0.5,
+            ...     max_learning_rate=1.0,
+            ...     step_size_up=15,
+            ...     step_size_down=5,
+            ...     verbose=True,
             ... )
             >>> sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             >>> for epoch in range(5):
@@ -2206,7 +2210,11 @@ class CyclicLR(LRScheduler):
             ...     z = paddle.static.nn.fc(x, 100)
             ...     loss = paddle.mean(z)
             ...     scheduler = paddle.optimizer.lr.CyclicLR(
-            ...         base_learning_rate=0.5, max_learning_rate=1.0, step_size_up=15, step_size_down=5, verbose=True
+            ...         base_learning_rate=0.5,
+            ...         max_learning_rate=1.0,
+            ...         step_size_up=15,
+            ...         step_size_down=5,
+            ...         verbose=True,
             ...     )
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
