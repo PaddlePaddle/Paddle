@@ -886,7 +886,13 @@ class LinearWarmup(LRScheduler):
 
             >>> # train on default dynamic graph mode
             >>> linear = paddle.nn.Linear(10, 10)
-            >>> scheduler = paddle.optimizer.lr.LinearWarmup(learning_rate=0.5, warmup_steps=20, start_lr=0, end_lr=0.5, verbose=True,)
+            >>> scheduler = paddle.optimizer.lr.LinearWarmup(
+            ...     learning_rate=0.5,
+            ...     warmup_steps=20,
+            ...     start_lr=0,
+            ...     end_lr=0.5,
+            ...     verbose=True,
+            ... )
             >>> sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             >>> for epoch in range(20):
             ...     for batch_id in range(5):
