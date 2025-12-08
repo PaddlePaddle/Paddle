@@ -54,7 +54,10 @@ class DeformableConvOpConverter : public OpConverter {
     // upgraded.
     int64_t k_w = filter_tensor->dims()[3];
 
-    std::vector<int> kernel_dims = {c_o, c_i, k_h, k_w};
+    std::vector<int> kernel_dims = {static_cast<int>(c_o),
+                                    static_cast<int>(c_i),
+                                    static_cast<int>(k_h),
+                                    static_cast<int>(k_w)};
 
     auto strides =
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
