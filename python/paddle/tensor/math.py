@@ -5497,7 +5497,6 @@ def gcd(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-@inplace_apis_in_dygraph_only
 @param_two_alias(['x', 'input'], ['y', 'other'])
 def gcd_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
@@ -5603,7 +5602,6 @@ def lcm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return out
 
 
-@inplace_apis_in_dygraph_only
 @param_two_alias(['x', 'input'], ['y', 'other'])
 def lcm_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
