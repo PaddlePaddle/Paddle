@@ -240,7 +240,19 @@ int tensor_properties_set_data(TensorObject* self,
                                void* closure) {
   EAGER_TRY
   auto src = CastPyArg2Tensor(value, 0);
-  self->tensor = src;
+  auto grad_meta = egr::EagerUtils::autograd_meta(&self->tensor);
+  if (grad_meta) {
+    bool device_changed = self->tensor.place() != src.place();
+    bool dtype_changed = self->tensor.dtype() != src.dtype();
+    if (device_changed || dtype_changed) {
+      VLOG(4)
+          << "New tensor's place or dtype has changed, clear the old grad_node "
+             "info.";
+      grad_meta->ResetGradNode();
+    }
+  }
+  self->tensor.set_impl(src.impl());
+
   phi::DenseTensor tmp;
   if (self->tensor.is_dense_tensor()) {
     auto dense_tensor =
