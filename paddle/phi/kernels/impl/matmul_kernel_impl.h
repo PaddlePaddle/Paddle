@@ -451,7 +451,7 @@ void MatMulFunctionImplWithBlas(
         DenseTensor transposedOut = phi::TransposeLast2Dim<T>(dev_ctx, *Out);
         *Out = transposedOut;
         Out->Resize(out_original_shape);
-      } else  // NOLINT
+      } else {  // NOLINT
 #else
       {  // NOLINT
         blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
@@ -469,6 +469,7 @@ void MatMulFunctionImplWithBlas(
                          K * N);
       }
 #endif
+      }
     }
   } else if (y_batch_size == 1) {
     if (!trans_x) {
