@@ -33,7 +33,6 @@ from .group_sharded_stage3 import (
     _allgather_buffer,
     _current_layer_params,
     _device2cpu,
-    _OptimizerWrapper,
     _PartitionParam,
     _TensorWrapper,
     _UnsliceParam,
@@ -42,6 +41,16 @@ from .group_sharded_stage3 import (
 )
 from .group_sharded_storage import GradStorage
 from .group_sharded_utils import GroupShardedClipGrad, Type, device_guard
+
+
+def _OptimizerWrapper(optimizer, offload, group, update_params_slice):
+    if not hasattr(optimizer, "_optim"):
+        optimizer._optim = optimizer
+        optimizer.offload = offload
+        optimizer._group = group
+        optimizer.update_scaler = None
+        optimizer.update_slice = update_params_slice
+    return optimizer
 
 
 class FullyShardOptimizer:
@@ -104,7 +113,10 @@ class FullyShardOptimizer:
             "Multiple optimizers are not supported now."
         )
         self._optim = _OptimizerWrapper(
-            optimizer, self._offload, self._group, self._update_params_slice
+            optimizer,
+            self._offload,
+            self._group,
+            self._update_params_slice,
         )
         self._ori_parameter_list = self._optim._parameter_list
         self._ori_param_groups = self._optim._param_groups
