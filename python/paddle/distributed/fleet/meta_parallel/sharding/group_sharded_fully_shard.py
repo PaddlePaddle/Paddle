@@ -148,6 +148,7 @@ class FullyShardOptimizer:
         self._ori_param_groups = self._optim._param_groups
 
         for p in self._ori_parameter_list:
+            del p._need_shard
             if p._numel() > self._segment_size:
                 pass
             elif p.trainable:
