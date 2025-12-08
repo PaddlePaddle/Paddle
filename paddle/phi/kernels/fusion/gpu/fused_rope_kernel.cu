@@ -23,6 +23,86 @@
 namespace phi {
 namespace fusion {
 
+template <typename T>
+__device__ void fused_rope_block_forward(const T *src, const T *sin,
+                                         const T *cos,
+                                         const int64_t *position_ids, T *dst,
+                                         const bool interleaved, const int s_id,
+                                         const int b_id, const int offset_block,
+                                         const int offset_block_dst,
+                                         const int h, const int d,
+                                         const int stride_h, const int stride_d,
+                                         const int o_stride_h,
+                                         const int o_stride_d,
+                                         const float rotary_emb_base,
+                                         const int seq_len_for_pos) {
+  extern __shared__ float shared_mem_cos_sin[];
+  float *shared_mem_cos = shared_mem_cos_sin;
+  float *shared_mem_sin = shared_mem_cos_sin + d;
+  int tid = threadIdx.x * blockDim.y + threadIdx.y;
+  for (int i = tid; i < d; i += blockDim.x * blockDim.y) {
+    int64_t pos = s_id;
+    if (position_ids) {
+      pos = position_ids[b_id * seq_len_for_pos + s_id];
+    }
+
+    if (sin && cos) {
+      shared_mem_sin[i] = static_cast<float>(sin[pos * d + i]);
+      shared_mem_cos[i] = static_cast<float>(cos[pos * d + i]);
+    } else {
+      float idx = (float)((i / 2) * 2);
+      float inv_freq = 1.0f / powf(rotary_emb_base, idx / (float)d);
+      float freq = (float)pos * inv_freq;
+      sincosf(freq, &shared_mem_sin[i], &shared_mem_cos[i]);
+    }
+  }
+  __syncthreads();
+
+#pragma unroll
+  for (int h_id = threadIdx.y; h_id < h; h_id += blockDim.y) {
+#pragma unroll
+    for (int d_id = threadIdx.x; d_id < d; d_id += blockDim.x) {
+      float v_cos = shared_mem_cos[d_id];
+      float v_sin = shared_mem_sin[d_id];
+      int offset_src = offset_block + h_id * stride_h + d_id * stride_d;
+      int offset_dst = offset_block_dst + h_id * o_stride_h + d_id * o_stride_d;
+      float v_src = static_cast<float>(src[offset_src]);
+      float v_src_rotate;
+      if (!interleaved) {
+        v_src_rotate =
+            (d_id + d / 2 < d)
+                ? -static_cast<float>(src[offset_src + (d / 2) * stride_d])
+                : static_cast<float>(src[offset_src + (d / 2 - d) * stride_d]);
+      } else {
+        v_src_rotate = (d_id % 2 == 0)
+                           ? -static_cast<float>(src[offset_src + stride_d])
+                           : static_cast<float>(src[offset_src - stride_d]);
+      }
+      dst[offset_dst] = static_cast<T>(v_src * v_cos + v_src_rotate * v_sin);
+    }
+  }
+}
+
+template <typename T>
+__global__ void fused_rope_forward_kernel(
+    const T *src, const T *sin, const T *cos, const int64_t *position_ids,
+    T *dst, const bool interleaved, const int h, const int d,
+    const int stride_s, const int stride_b, const int stride_h,
+    const int stride_d, const int o_stride_s, const int o_stride_b,
+    const int o_stride_h, const int o_stride_d, const float rotary_emb_base,
+    const int seq_len_for_pos) {
+  int s_id = blockIdx.x;
+  int b_id = blockIdx.y;
+
+  int offset_block = s_id * stride_s + b_id * stride_b;
+  int offset_block_dst = s_id * o_stride_s + b_id * o_stride_b;
+
+  fused_rope_block_forward(src, sin, cos, position_ids, dst, interleaved, s_id,
+                           b_id, offset_block, offset_block_dst, h, d, stride_h,
+                           stride_d, o_stride_h, o_stride_d, rotary_emb_base,
+                           seq_len_for_pos);
+}
+
 template <typename T, typename Context>
 void FusedRopeKernel(const Context& dev_ctx,
                      const DenseTensor& q,
@@ -43,13 +123,9 @@ void FusedRopeKernel(const Context& dev_ctx,
   if (v) dev_ctx.template Alloc<T>(out_v);
   if (numel <= 0) return;
 
-  phi::Array<int64_t, 3> inputs_num_heads;
-
-  // q.shape: [seq_len, batch_size, num_heads, head_dim] if time_major else
-  // [batch_size, seq_len, num_heads, head_dim]
   auto batch_size = time_major ? q.dims()[1] : q.dims()[0];
   auto seq_len = time_major ? q.dims()[0] : q.dims()[1];
-  inputs_num_heads[0] = q.dims()[2];
+  auto num_heads = q.dims()[2];
   auto head_dim = q.dims()[3];
 
   PADDLE_ENFORCE_EQ(head_dim % 2,
@@ -57,248 +133,71 @@ void FusedRopeKernel(const Context& dev_ctx,
                     common::errors::InvalidArgument(
                         "The head_dim of input must be a multiple of 2."));
 
-  constexpr const int vec_size = 2;
-
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
-
-  int64_t grid = config.block_per_grid.x;
-  int64_t block = config.thread_per_block.x;
   auto stream = dev_ctx.stream();
+  const T* sin_data = sin.get_ptr() ? sin.get_ptr()->data<T>() : nullptr;
+  const T* cos_data = cos.get_ptr() ? cos.get_ptr()->data<T>() : nullptr;
+  const int64_t* position_ids_data =
+      position_ids.get_ptr() ? position_ids.get_ptr()->data<int64_t>() : nullptr;
 
-  phi::Array<T*, 3> outs_data;
-  phi::Array<const T*, 3> ins_data;
-  phi::Array<const T*, 2> sin_cos_data;
-  const int64_t* position_ids_data = NULL;
+  dim3 grid(seq_len, batch_size);
+  dim3 block(32, 4); // 32 threads per warp, 4 warps per block
+  size_t shared_mem_size = 2 * head_dim * sizeof(float);
 
-  ins_data[0] = q.data<T>();
-  outs_data[0] = out_q->data<T>();
-  int num_inputs = 1;
+  // Q
+  int stride_s_q = time_major ? q.strides()[0] : q.strides()[1];
+  int stride_b_q = time_major ? q.strides()[1] : q.strides()[0];
+  int stride_h_q = q.strides()[2];
+  int stride_d_q = q.strides()[3];
 
+  int o_stride_s_q = time_major ? out_q->strides()[0] : out_q->strides()[1];
+  int o_stride_b_q = time_major ? out_q->strides()[1] : out_q->strides()[0];
+  int o_stride_h_q = out_q->strides()[2];
+  int o_stride_d_q = out_q->strides()[3];
+
+  fused_rope_forward_kernel<<<grid, block, shared_mem_size, stream>>>(
+      q.data<T>(), sin_data, cos_data, position_ids_data, out_q->data<T>(),
+      use_neox_rotary_style, num_heads, head_dim, stride_s_q, stride_b_q,
+      stride_h_q, stride_d_q, o_stride_s_q, o_stride_b_q, o_stride_h_q,
+      o_stride_d_q, rotary_emb_base, seq_len);
+
+  // K
   if (k) {
-    auto k_dims = k->dims();
-    auto k_batch_size = time_major ? k_dims[1] : k_dims[0];
-    PADDLE_ENFORCE_LE(
-        batch_size,
-        k_batch_size,
-        common::errors::InvalidArgument("The batch_size of q (%d) must be less "
-                                        "than or equal to k's (%d).",
-                                        batch_size,
-                                        k_batch_size));
+    auto k_num_heads = k->dims()[2];
+    int stride_s_k = time_major ? k->strides()[0] : k->strides()[1];
+    int stride_b_k = time_major ? k->strides()[1] : k->strides()[0];
+    int stride_h_k = k->strides()[2];
+    int stride_d_k = k->strides()[3];
 
-    dev_ctx.template Alloc<T>(out_k);
-    ins_data[num_inputs] = k->data<T>();
-    outs_data[num_inputs] = out_k->data<T>();
-    inputs_num_heads[num_inputs] = k->dims()[2];
-    num_inputs++;
+    int o_stride_s_k = time_major ? out_k->strides()[0] : out_k->strides()[1];
+    int o_stride_b_k = time_major ? out_k->strides()[1] : out_k->strides()[0];
+    int o_stride_h_k = out_k->strides()[2];
+    int o_stride_d_k = out_k->strides()[3];
+
+    fused_rope_forward_kernel<<<grid, block, shared_mem_size, stream>>>(
+        k->data<T>(), sin_data, cos_data, position_ids_data, out_k->data<T>(),
+        use_neox_rotary_style, k_num_heads, head_dim, stride_s_k, stride_b_k,
+        stride_h_k, stride_d_k, o_stride_s_k, o_stride_b_k, o_stride_h_k,
+        o_stride_d_k, rotary_emb_base, seq_len);
   }
 
+  // V
   if (v) {
-    auto v_dims = v->dims();
-    auto v_batch_size = time_major ? v_dims[1] : v_dims[0];
-    PADDLE_ENFORCE_LE(
-        batch_size,
-        v_batch_size,
-        common::errors::InvalidArgument("The batch_size of q (%d) must be less "
-                                        "than or equal to v's (%d).",
-                                        batch_size,
-                                        v_batch_size));
+    auto v_num_heads = v->dims()[2];
+    int stride_s_v = time_major ? v->strides()[0] : v->strides()[1];
+    int stride_b_v = time_major ? v->strides()[1] : v->strides()[0];
+    int stride_h_v = v->strides()[2];
+    int stride_d_v = v->strides()[3];
 
-    dev_ctx.template Alloc<T>(out_v);
-    ins_data[num_inputs] = v->data<T>();
-    outs_data[num_inputs] = out_v->data<T>();
-    inputs_num_heads[num_inputs] = v->dims()[2];
-    num_inputs++;
-  }
+    int o_stride_s_v = time_major ? out_v->strides()[0] : out_v->strides()[1];
+    int o_stride_b_v = time_major ? out_v->strides()[1] : out_v->strides()[0];
+    int o_stride_h_v = out_v->strides()[2];
+    int o_stride_d_v = out_v->strides()[3];
 
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MPType div_c = static_cast<MPType>(1.0f / head_dim);
-
-  bool flag_sin_cos = false;
-
-  if (sin.get_ptr() && cos.get_ptr()) {
-    PADDLE_ENFORCE_EQ(sin.get_ptr()->dims(),
-                      cos.get_ptr()->dims(),
-                      common::errors::InvalidArgument(
-                          "The dims of sin and cos must be the same. But "
-                          "received sin's dims is {%s}, cos's dims is {%s}.",
-                          sin.get_ptr()->dims(),
-                          cos.get_ptr()->dims()));
-
-    auto sin_dims = sin.get_ptr()->dims();
-    int dims_size = sin_dims.size();
-    PADDLE_ENFORCE_EQ((dims_size == 2 || dims_size == 4),
-                      true,
-                      common::errors::InvalidArgument(
-                          "The dims of sin and cos is expected to "
-                          "be 2 or 4, but received %d.",
-                          dims_size));
-    if (dims_size == 4) {
-      // sin.shape: [1, seq_len, 1, head_dim]
-      PADDLE_ENFORCE_EQ(
-          (sin_dims[0] == 1 && sin_dims[2] == 1),
-          true,
-          common::errors::InvalidArgument(
-              "The batch_size and num_heads of sin and cos must be 1."));
-    }
-    int sin_seq_len_dim = (dims_size) == 4 ? 1 : 0;
-
-    if (position_ids) {
-      PADDLE_ENFORCE_EQ(
-          (sin_dims[dims_size - 1] == head_dim &&
-           sin_dims[sin_seq_len_dim] >= seq_len),
-          true,
-          common::errors::InvalidArgument(
-              "The seq_len of sin and cos must be greater than or equal to "
-              "this of q. The head_dim of sin and cos must be the same as this "
-              "of q. But received sin's "
-              "shape is {%s}, q's shape is {%s}.",
-              sin_dims,
-              q.dims()));
-
-      auto position_ids_dims = position_ids.get_ptr()->dims();
-      PADDLE_ENFORCE_EQ(position_ids_dims.size(),
-                        2,
-                        common::errors::InvalidArgument(
-                            "The dims of position_ids is expected to "
-                            "be 2, but received %d.",
-                            position_ids_dims.size()));
-
-      PADDLE_ENFORCE_EQ(
-          (position_ids_dims[0] == batch_size &&
-           position_ids_dims[1] == seq_len),
-          true,
-          common::errors::InvalidArgument(
-              "The batch_size and seq_len of position_ids must be the same as "
-              "those of q. But received position_ids's "
-              "shape is {%s}, q's shape is {%s}.",
-              position_ids_dims,
-              q.dims()));
-
-      position_ids_data = position_ids->data<int64_t>();
-    } else {
-      PADDLE_ENFORCE_EQ(
-          (sin_dims[dims_size - 1] == head_dim &&
-           sin_dims[sin_seq_len_dim] == seq_len),
-          true,
-          common::errors::InvalidArgument(
-              "The seq_len and head_dim of sin and cos "
-              "must be the same as those of q. But received sin's "
-              "shape is {%s}, q's shape is {%s}.",
-              sin_dims,
-              q.dims()));
-    }
-
-    sin_cos_data[0] = sin->data<T>();
-    sin_cos_data[1] = cos->data<T>();
-
-    flag_sin_cos = true;
-  }
-
-  bool is_same_num_heads = true;
-  auto prev_num_heads = inputs_num_heads[0];
-  for (int i = 1; i < num_inputs; ++i) {
-    if (prev_num_heads != inputs_num_heads[i]) {
-      is_same_num_heads = false;
-      break;
-    }
-    prev_num_heads = inputs_num_heads[i];
-  }
-
-  int sign = 1;
-  VectorizedFusedRopeCudaKernelFunc<T, MPType, vec_size> kernel_func =
-      use_neox_rotary_style
-          ? VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
-          : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>;
-
-  if (is_same_num_heads) {
-    int64_t batch_stride = time_major ? q.strides()[1] : q.strides()[0];
-    int64_t seq_stride = time_major ? q.strides()[0] : q.strides()[1];
-    kernel_func<<<grid, block, 0, stream>>>(ins_data,
-                                            sin_cos_data,
-                                            position_ids_data,
-                                            flag_sin_cos,
-                                            sign,
-                                            batch_size,
-                                            seq_len,
-                                            inputs_num_heads[0],
-                                            head_dim,
-                                            batch_stride,
-                                            seq_stride,
-                                            num_inputs,
-                                            div_c,
-                                            rotary_emb_base,
-                                            outs_data);
-  } else {
-    // Multi Query Attention (MQA) or Group Query Attention (GQA)
-    PADDLE_ENFORCE_EQ(
-        (inputs_num_heads[0] != inputs_num_heads[num_inputs - 1]) &&
-            (inputs_num_heads[0] % inputs_num_heads[num_inputs - 1] == 0),
-        true,
-        common::errors::InvalidArgument(
-            "The MQA or GQA mode is entered, when the number of heads of qkv "
-            "is not exactly the same two by two. This mode requires "
-            "num_heads of q to be divisible by k,v."
-            "But received num_heads of q is %d, num_heads of k,v is %d",
-            inputs_num_heads[0],
-            inputs_num_heads[num_inputs - 1]));
-
-    if (k.get_ptr() && v.get_ptr()) {
-      PADDLE_ENFORCE_EQ(
-          inputs_num_heads[1] == inputs_num_heads[2],
-          true,
-          common::errors::InvalidArgument(
-              "The num_heads of k must be equal to the num_heads of v when v "
-              "is not none."
-              "But received num_heads of k is %d, num_heads of v is %d",
-              inputs_num_heads[1],
-              inputs_num_heads[2]));
-    }
-    // rotary position embedding Q
-    int64_t batch_stride_q = time_major ? q.strides()[1] : q.strides()[0];
-    int64_t seq_stride_q = time_major ? q.strides()[0] : q.strides()[1];
-
-    kernel_func<<<grid, block, 0, stream>>>(ins_data,
-                                            sin_cos_data,
-                                            position_ids_data,
-                                            flag_sin_cos,
-                                            sign,
-                                            batch_size,
-                                            seq_len,
-                                            inputs_num_heads[0],
-                                            head_dim,
-                                            batch_stride_q,
-                                            seq_stride_q,
-                                            1,
-                                            div_c,
-                                            rotary_emb_base,
-                                            outs_data);
-
-    // rotary position embedding K,V
-    phi::Array<const T*, 3> input_kv{ins_data[1], ins_data[2], nullptr};
-    phi::Array<T*, 3> out_kv{outs_data[1], outs_data[2], nullptr};
-    int64_t batch_stride_kv = time_major
-                                  ? inputs_num_heads[1] * head_dim
-                                  : seq_len * inputs_num_heads[1] * head_dim;
-    int64_t seq_stride_kv = time_major
-                                ? batch_size * inputs_num_heads[1] * head_dim
-                                : inputs_num_heads[1] * head_dim;
-
-    kernel_func<<<grid, block, 0, stream>>>(input_kv,
-                                            sin_cos_data,
-                                            position_ids_data,
-                                            flag_sin_cos,
-                                            sign,
-                                            batch_size,
-                                            seq_len,
-                                            inputs_num_heads[1],
-                                            head_dim,
-                                            batch_stride_kv,
-                                            seq_stride_kv,
-                                            num_inputs - 1,
-                                            div_c,
-                                            rotary_emb_base,
-                                            out_kv);
+    fused_rope_forward_kernel<<<grid, block, shared_mem_size, stream>>>(
+        v->data<T>(), sin_data, cos_data, position_ids_data, out_v->data<T>(),
+        use_neox_rotary_style, v_num_heads, head_dim, stride_s_v, stride_b_v,
+        stride_h_v, stride_d_v, o_stride_s_v, o_stride_b_v, o_stride_h_v,
+        o_stride_d_v, rotary_emb_base, seq_len);
   }
 }
 }  // namespace fusion
