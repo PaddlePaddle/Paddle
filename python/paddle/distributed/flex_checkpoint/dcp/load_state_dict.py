@@ -65,7 +65,7 @@ _metadata_manager = MetadataManager()
 
 
 def get_checkpoint_files(
-    path, use_cache=True, unique_id=None, process_group=None
+    path, use_cache=True, unique_id=None, process_group=None, safetensors=False
 ):
     # if unique_id is None, all file ends with .metadata and .distcp is returned
     if unique_id is None:
@@ -84,7 +84,7 @@ def get_checkpoint_files(
         file for file in accessible_files if file.endswith(".safetensors")
     ]
 
-    if len(safetensors_files) > 0:
+    if safetensors:
         logger.info(
             f"Found HuggingFace-format checkpoint with files: {', '.join(safetensors_files)}"
         )
@@ -484,7 +484,10 @@ def _handle_aoa(
 ):
     use_dist = paddle.distributed.get_world_size() > 1
     metadata_files, _ = get_checkpoint_files(
-        path, unique_id=unique_id, process_group=process_group
+        path,
+        unique_id=unique_id,
+        process_group=process_group,
+        safetensors=safetensors,
     )
     assert len(metadata_files) == 1, "Only support one metadata file now."
     metadata = paddle.load(os.path.join(path, metadata_files[0]))
@@ -1013,7 +1016,10 @@ def load_state_dict_impl(
             check_unique_id(unique_id, process_group)
 
         metadata_files, local_data_files = get_checkpoint_files(
-            path, unique_id=unique_id, process_group=process_group
+            path,
+            unique_id=unique_id,
+            process_group=process_group,
+            safetensors=safetensors,
         )
 
         metadata_list = []
@@ -1211,7 +1217,7 @@ def load_merged_state_dict(
         assert unique_id >= 0, f'{unique_id} should be >= 0'
 
     metadata_files, local_data_files = get_checkpoint_files(
-        path, unique_id=unique_id
+        path, unique_id=unique_id, safetensors=safetensors
     )
 
     metadata_list = []
@@ -1369,7 +1375,7 @@ def merge_sharded_state_dict(
         paddle.distributed.barrier(process_group)
 
     metadata_files, local_data_files = get_checkpoint_files(
-        load_path, unique_id=unique_id
+        load_path, unique_id=unique_id, safetensors=safetensors
     )
 
     metadata_list = []
