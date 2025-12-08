@@ -2530,7 +2530,6 @@ def linear(
              [-0.67769694, -0.67769694, -0.67769694, -0.67769694]])
     """
     if in_dynamic_mode():
-        # TODO(jiabin): using addmm for fast forward route
         return _C_ops.linear(x, weight, bias)
 
     elif in_pir_mode():
