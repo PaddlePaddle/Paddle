@@ -297,7 +297,7 @@ __global__ void KeBilinearInterpFw(const T* in,
   }
 }
 
-template <typename T, typename InterpFilter>
+template <typename T, typename MT, typename InterpFilter>
 __global__ void KeInterpAAFwNCHW(const T* in,
                                  const size_t in_img_h,
                                  const size_t in_img_w,
@@ -306,20 +306,20 @@ __global__ void KeInterpAAFwNCHW(const T* in,
                                  const size_t out_img_w,
                                  const size_t n,
                                  const size_t c,
-                                 const float ratio_h,
-                                 const float ratio_w,
+                                 const MT ratio_h,
+                                 const MT ratio_w,
                                  const InterpFilter& interp_filter) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-
-  const int out_img_idx = threadIdx.x + blockIdx.x * blockDim.x;
-  const int out_img_idy = threadIdx.y + blockIdx.y * blockDim.y;
+  const int64_t out_img_idx =
+      static_cast<int64_t>(threadIdx.x) + blockIdx.x * blockDim.x;
+  const int64_t out_img_idy =
+      static_cast<int64_t>(threadIdx.y) + blockIdx.y * blockDim.y;
 
   if (out_img_idx >= out_img_w || out_img_idy >= out_img_h) {
     return;
   }
 
-  MT scale_h = static_cast<MT>(ratio_h);
-  MT scale_w = static_cast<MT>(ratio_w);
+  MT scale_h = ratio_h;
+  MT scale_w = ratio_w;
 
   const MT half = 0.5;
   const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * half) * scale_h
@@ -374,7 +374,7 @@ __global__ void KeInterpAAFwNCHW(const T* in,
   }
 }
 
-template <typename T, typename InterpFilter>
+template <typename T, typename MT, typename InterpFilter>
 __global__ void KeInterpAAFwNHWC(const T* in,
                                  const size_t in_img_h,
                                  const size_t in_img_w,
@@ -383,20 +383,20 @@ __global__ void KeInterpAAFwNHWC(const T* in,
                                  const size_t out_img_w,
                                  const size_t n,
                                  const size_t c,
-                                 const float ratio_h,
-                                 const float ratio_w,
+                                 const MT ratio_h,
+                                 const MT ratio_w,
                                  const InterpFilter& interp_filter) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-
-  const int out_img_idx = threadIdx.x + blockIdx.x * blockDim.x;
-  const int out_img_idy = threadIdx.y + blockIdx.y * blockDim.y;
+  const int64_t out_img_idx =
+      static_cast<int64_t>(threadIdx.x) + blockIdx.x * blockDim.x;
+  const int64_t out_img_idy =
+      static_cast<int64_t>(threadIdx.y) + blockIdx.y * blockDim.y;
 
   if (out_img_idx >= out_img_w || out_img_idy >= out_img_h) {
     return;
   }
 
-  MT scale_h = static_cast<MT>(ratio_h);
-  MT scale_w = static_cast<MT>(ratio_w);
+  MT scale_h = ratio_h;
+  MT scale_w = ratio_w;
 
   const MT half = 0.5;
   const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * half) * scale_h
@@ -464,6 +464,169 @@ __global__ void KeInterpAAFwNHWC(const T* in,
               c +
           ch;
       out[out_idx] = static_cast<T>(sum);
+    }
+  }
+}
+
+// No shared memory version of AA interpolation kernel for large ratio values
+// Each thread computes weights on-the-fly without using shared memory
+template <typename T, typename MT, typename InterpFilter>
+__global__ void KeInterpAAFwNCHWNoSharedMem(const T* in,
+                                            const size_t in_img_h,
+                                            const size_t in_img_w,
+                                            T* out,
+                                            const size_t out_img_h,
+                                            const size_t out_img_w,
+                                            const size_t n,
+                                            const size_t c,
+                                            const MT ratio_h,
+                                            const MT ratio_w,
+                                            const InterpFilter& interp_filter) {
+  const int64_t out_img_idx =
+      static_cast<int64_t>(threadIdx.x) + blockIdx.x * blockDim.x;
+  const int64_t out_img_idy =
+      static_cast<int64_t>(threadIdx.y) + blockIdx.y * blockDim.y;
+
+  if (out_img_idx >= out_img_w || out_img_idy >= out_img_h) {
+    return;
+  }
+
+  MT scale_h = ratio_h;
+  MT scale_w = ratio_w;
+
+  const MT half = 0.5;
+  const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * half) * scale_h
+                                        : interp_filter.size * half;
+  const MT support_w = (scale_w >= 1.0) ? (interp_filter.size * half) * scale_w
+                                        : interp_filter.size * half;
+
+  // Compute weights span
+  int xmin, xsize, ymin, ysize;
+  MT xcenter, ycenter;
+  ComputeWeightsSpan<MT>(
+      out_img_idx, in_img_w, scale_w, support_w, &xmin, &xsize, &xcenter);
+  ComputeWeightsSpan<MT>(
+      out_img_idy, in_img_h, scale_h, support_h, &ymin, &ysize, &ycenter);
+
+  // Compute weight normalization factors
+  MT total_wx =
+      ComputeWeightSum<MT>(scale_w, interp_filter, xmin - xcenter, xsize);
+  MT total_wy =
+      ComputeWeightSum<MT>(scale_h, interp_filter, ymin - ycenter, ysize);
+
+  for (size_t i = blockIdx.z; i < n * c; i += gridDim.z) {
+    MT final_sum = static_cast<MT>(0);
+
+    // Two-pass interpolation: first along x, then along y
+    for (int y = 0; y < ysize; y++) {
+      // Compute weight for y
+      MT wy =
+          ComputeSingleWeight<MT>(scale_h, interp_filter, ymin - ycenter, y);
+      if (total_wy != 0.0) {
+        wy /= total_wy;
+      }
+
+      // Interpolate along x for this row
+      MT row_sum = static_cast<MT>(0);
+      for (int x = 0; x < xsize; x++) {
+        MT wx =
+            ComputeSingleWeight<MT>(scale_w, interp_filter, xmin - xcenter, x);
+        if (total_wx != 0.0) {
+          wx /= total_wx;
+        }
+        const T* in_ptr =
+            &in[i * in_img_h * in_img_w + (ymin + y) * in_img_w + xmin + x];
+        row_sum += static_cast<MT>(*in_ptr) * wx;
+      }
+
+      final_sum += row_sum * wy;
+    }
+
+    out[i * out_img_h * out_img_w + out_img_idy * out_img_w + out_img_idx] =
+        static_cast<T>(final_sum);
+  }
+}
+
+template <typename T, typename MT, typename InterpFilter>
+__global__ void KeInterpAAFwNHWCNoSharedMem(const T* in,
+                                            const size_t in_img_h,
+                                            const size_t in_img_w,
+                                            T* out,
+                                            const size_t out_img_h,
+                                            const size_t out_img_w,
+                                            const size_t n,
+                                            const size_t c,
+                                            const MT ratio_h,
+                                            const MT ratio_w,
+                                            const InterpFilter& interp_filter) {
+  const int64_t out_img_idx =
+      static_cast<int64_t>(threadIdx.x) + blockIdx.x * blockDim.x;
+  const int64_t out_img_idy =
+      static_cast<int64_t>(threadIdx.y) + blockIdx.y * blockDim.y;
+
+  if (out_img_idx >= out_img_w || out_img_idy >= out_img_h) {
+    return;
+  }
+
+  MT scale_h = ratio_h;
+  MT scale_w = ratio_w;
+
+  const MT half = 0.5;
+  const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * half) * scale_h
+                                        : interp_filter.size * half;
+  const MT support_w = (scale_w >= 1.0) ? (interp_filter.size * half) * scale_w
+                                        : interp_filter.size * half;
+
+  // Compute weights span
+  int xmin, xsize, ymin, ysize;
+  MT xcenter, ycenter;
+  ComputeWeightsSpan<MT>(
+      out_img_idx, in_img_w, scale_w, support_w, &xmin, &xsize, &xcenter);
+  ComputeWeightsSpan<MT>(
+      out_img_idy, in_img_h, scale_h, support_h, &ymin, &ysize, &ycenter);
+
+  // Compute weight normalization factors
+  MT total_wx =
+      ComputeWeightSum<MT>(scale_w, interp_filter, xmin - xcenter, xsize);
+  MT total_wy =
+      ComputeWeightSum<MT>(scale_h, interp_filter, ymin - ycenter, ysize);
+
+  for (size_t i = blockIdx.z; i < n; i += gridDim.z) {
+    for (size_t ch = 0; ch < c; ch++) {
+      MT final_sum = static_cast<MT>(0);
+
+      // Two-pass interpolation: first along x, then along y
+      for (int y = 0; y < ysize; y++) {
+        // Compute weight for y
+        MT wy =
+            ComputeSingleWeight<MT>(scale_h, interp_filter, ymin - ycenter, y);
+        if (total_wy != 0.0) {
+          wy /= total_wy;
+        }
+
+        // Interpolate along x for this row
+        MT row_sum = static_cast<MT>(0);
+        for (int x = 0; x < xsize; x++) {
+          MT wx = ComputeSingleWeight<MT>(
+              scale_w, interp_filter, xmin - xcenter, x);
+          if (total_wx != 0.0) {
+            wx /= total_wx;
+          }
+          const int64_t in_idx =
+              (i * in_img_h * in_img_w + (ymin + y) * in_img_w + (xmin + x)) *
+                  c +
+              ch;
+          row_sum += static_cast<MT>(in[in_idx]) * wx;
+        }
+
+        final_sum += row_sum * wy;
+      }
+
+      const int64_t out_idx =
+          (i * out_img_h * out_img_w + out_img_idy * out_img_w + out_img_idx) *
+              c +
+          ch;
+      out[out_idx] = static_cast<T>(final_sum);
     }
   }
 }
@@ -1313,10 +1476,10 @@ static void InterpolateAA2DCUDAFwd(
   }
 
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  float ratio_h =
-      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
-  float ratio_w =
-      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
+  MT ratio_h =
+      funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
+  MT ratio_w =
+      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
 
   int64_t in_hw = static_cast<int64_t>(in_h) * in_w;
   int64_t out_hw = static_cast<int64_t>(out_h) * out_w;
@@ -1328,138 +1491,107 @@ static void InterpolateAA2DCUDAFwd(
   backends::gpu::GpuLaunchConfig config =
       backends::gpu::GetGpuLaunchConfig1D(dev_ctx, pixelNum);
 
+  // Lambda to launch AA interpolation kernel
+  auto launch_aa_kernel = [&](auto filter) {
+    int64_t nc = static_cast<int64_t>(n) * c;
+    int device_id = dev_ctx.GetPlace().GetDeviceId();
+    auto& gpu_props = phi::backends::gpu::GetDeviceProperties(device_id);
+
+    // Use AAInterpLaunchConfig to compute block/grid dimensions with dynamic
+    // adjustment for shared memory limits
+    funcs::antialias::AAInterpLaunchConfig launch_config(
+        out_h,
+        out_w,
+        nc,
+        ratio_h,
+        ratio_w,
+        decltype(filter)::size,
+        sizeof(T),
+        gpu_props.sharedMemPerBlock,
+        gpu_props.maxGridSize[2],
+        static_cast<int>(gpu_props.warpSize),
+        true /* need_buffer for forward */);
+
+    dim3 block(launch_config.block_x, launch_config.block_y);
+    dim3 grid(launch_config.grid_x, launch_config.grid_y, launch_config.grid_z);
+
+    // Check if shared memory is sufficient, otherwise use no-shared-mem kernel
+    if (launch_config.IsValid(gpu_props.sharedMemPerBlock)) {
+      // Use shared memory optimized kernel
+      if (data_layout == DataLayout::NCHW) {
+        KeInterpAAFwNCHW<T>
+            <<<grid, block, launch_config.shmem_size, dev_ctx.stream()>>>(
+                input_data,
+                in_h,
+                in_w,
+                output_data,
+                out_h,
+                out_w,
+                n,
+                c,
+                ratio_h,
+                ratio_w,
+                filter);
+      } else {
+        KeInterpAAFwNHWC<T>
+            <<<grid, block, launch_config.shmem_size, dev_ctx.stream()>>>(
+                input_data,
+                in_h,
+                in_w,
+                output_data,
+                out_h,
+                out_w,
+                n,
+                c,
+                ratio_h,
+                ratio_w,
+                filter);
+      }
+    } else {
+      // Shared memory insufficient, use on-the-fly weight computation kernel
+      // Use simpler block/grid config without shared memory constraints
+      int block_x = std::min(static_cast<int>(gpu_props.warpSize), 32);
+      int block_y = std::min(256 / block_x, 8);
+      int grid_x = (out_w + block_x - 1) / block_x;
+      int grid_y = (out_h + block_y - 1) / block_y;
+      int grid_z = std::min(static_cast<int>(nc), gpu_props.maxGridSize[2]);
+      dim3 block_noshmem(block_x, block_y);
+      dim3 grid_noshmem(grid_x, grid_y, grid_z);
+
+      if (data_layout == DataLayout::NCHW) {
+        KeInterpAAFwNCHWNoSharedMem<T>
+            <<<grid_noshmem, block_noshmem, 0, dev_ctx.stream()>>>(input_data,
+                                                                   in_h,
+                                                                   in_w,
+                                                                   output_data,
+                                                                   out_h,
+                                                                   out_w,
+                                                                   n,
+                                                                   c,
+                                                                   ratio_h,
+                                                                   ratio_w,
+                                                                   filter);
+      } else {
+        KeInterpAAFwNHWCNoSharedMem<T>
+            <<<grid_noshmem, block_noshmem, 0, dev_ctx.stream()>>>(input_data,
+                                                                   in_h,
+                                                                   in_w,
+                                                                   output_data,
+                                                                   out_h,
+                                                                   out_w,
+                                                                   n,
+                                                                   c,
+                                                                   ratio_h,
+                                                                   ratio_w,
+                                                                   filter);
+      }
+    }
+  };
+
   if ("bilinear" == interp_method) {
-    // Use anti-aliasing bilinear interpolation
-    int64_t nc = static_cast<int64_t>(n) * c;
-
-    // Compute block and grid dimensions
-    int device_id = dev_ctx.GetPlace().GetDeviceId();
-    auto& gpu_props = phi::backends::gpu::GetDeviceProperties(device_id);
-    int block_x = std::min(static_cast<int>(gpu_props.warpSize), 32);
-    int block_y = std::min(256 / block_x, 8);
-
-    int grid_x = (out_w + block_x - 1) / block_x;
-    int grid_y = (out_h + block_y - 1) / block_y;
-    int grid_z = std::min(static_cast<int>(nc), gpu_props.maxGridSize[2]);
-
-    dim3 block(block_x, block_y);
-    dim3 grid(grid_x, grid_y, grid_z);
-
-    // Compute shared memory size
-    funcs::antialias::BilinearFilterFunctor filter;
-    const int interp_height =
-        1 + 2 * static_cast<int>(ceilf((ratio_h >= 1.0)
-                                           ? filter.size * 0.5 * ratio_h
-                                           : filter.size * 0.5));
-    const int interp_width =
-        1 + 2 * static_cast<int>(ceilf((ratio_w >= 1.0)
-                                           ? filter.size * 0.5 * ratio_w
-                                           : filter.size * 0.5));
-
-    size_t weights_per_block = interp_width * block_x + interp_height * block_y;
-    weights_per_block += interp_height * block_y * block_x;  // buffer
-    size_t shmem_size = weights_per_block * sizeof(T);
-
-    PADDLE_ENFORCE_LE(shmem_size,
-                      gpu_props.sharedMemPerBlock,
-                      errors::InvalidArgument(
-                          "Required shared memory size %d exceeds limit %d",
-                          shmem_size,
-                          gpu_props.sharedMemPerBlock));
-
-    if (data_layout == DataLayout::NCHW) {
-      KeInterpAAFwNCHW<T>
-          <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_data,
-                                                          in_h,
-                                                          in_w,
-                                                          output_data,
-                                                          out_h,
-                                                          out_w,
-                                                          n,
-                                                          c,
-                                                          ratio_h,
-                                                          ratio_w,
-                                                          filter);
-    } else {
-      KeInterpAAFwNHWC<T>
-          <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_data,
-                                                          in_h,
-                                                          in_w,
-                                                          output_data,
-                                                          out_h,
-                                                          out_w,
-                                                          n,
-                                                          c,
-                                                          ratio_h,
-                                                          ratio_w,
-                                                          filter);
-    }
+    launch_aa_kernel(funcs::antialias::BilinearFilterFunctor{});
   } else if ("bicubic" == interp_method) {
-    // Use anti-aliasing bicubic interpolation
-    int64_t nc = static_cast<int64_t>(n) * c;
-
-    // Compute block and grid dimensions
-    int device_id = dev_ctx.GetPlace().GetDeviceId();
-    auto& gpu_props = phi::backends::gpu::GetDeviceProperties(device_id);
-    int block_x = std::min(static_cast<int>(gpu_props.warpSize), 32);
-    int block_y = std::min(256 / block_x, 8);
-
-    int grid_x = (out_w + block_x - 1) / block_x;
-    int grid_y = (out_h + block_y - 1) / block_y;
-    int grid_z = std::min(static_cast<int>(nc), gpu_props.maxGridSize[2]);
-
-    dim3 block(block_x, block_y);
-    dim3 grid(grid_x, grid_y, grid_z);
-
-    // Compute shared memory size
-    funcs::antialias::BicubicFilterFunctor filter;
-    const int interp_height =
-        1 + 2 * static_cast<int>(ceilf((ratio_h >= 1.0)
-                                           ? filter.size * 0.5 * ratio_h
-                                           : filter.size * 0.5));
-    const int interp_width =
-        1 + 2 * static_cast<int>(ceilf((ratio_w >= 1.0)
-                                           ? filter.size * 0.5 * ratio_w
-                                           : filter.size * 0.5));
-
-    size_t weights_per_block = interp_width * block_x + interp_height * block_y;
-    weights_per_block += interp_height * block_y * block_x;  // buffer
-    size_t shmem_size = weights_per_block * sizeof(T);
-
-    PADDLE_ENFORCE_LE(shmem_size,
-                      gpu_props.sharedMemPerBlock,
-                      errors::InvalidArgument(
-                          "Required shared memory size %d exceeds limit %d",
-                          shmem_size,
-                          gpu_props.sharedMemPerBlock));
-
-    if (data_layout == DataLayout::NCHW) {
-      KeInterpAAFwNCHW<T>
-          <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_data,
-                                                          in_h,
-                                                          in_w,
-                                                          output_data,
-                                                          out_h,
-                                                          out_w,
-                                                          n,
-                                                          c,
-                                                          ratio_h,
-                                                          ratio_w,
-                                                          filter);
-    } else {
-      KeInterpAAFwNHWC<T>
-          <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_data,
-                                                          in_h,
-                                                          in_w,
-                                                          output_data,
-                                                          out_h,
-                                                          out_w,
-                                                          n,
-                                                          c,
-                                                          ratio_h,
-                                                          ratio_w,
-                                                          filter);
-    }
+    launch_aa_kernel(funcs::antialias::BicubicFilterFunctor{});
   }
 }
 
