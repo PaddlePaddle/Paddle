@@ -22,11 +22,11 @@ PD_DECLARE_bool(enable_cinn_compile_cache);
 
 namespace cinn::hlir::framework::pir {
 
-constexpr static char* kOpCallStack = "op_callstack";
-constexpr static char* kSymShapeStr = "sym_shape_str";
-constexpr static char* kStructName = "struct_name";
-constexpr static char* kStopGradient = "stop_gradient";
-static std::unordered_set<std::string> kExcludedAttrs = {
+constexpr static const char* kOpCallStack = "op_callstack";
+constexpr static const char* kSymShapeStr = "sym_shape_str";
+constexpr static const char* kStructName = "struct_name";
+constexpr static const char* kStopGradient = "stop_gradient";
+static const std::unordered_set<std::string> kExcludedAttrs = {
     kOpCallStack, kSymShapeStr, kStructName, kStopGradient};
 
 std::size_t AttributeInfo::hash() const { return attr_.hash(); }
