@@ -429,7 +429,7 @@ void MatMulFunctionImplWithBlas(
                 dev_ctx.template Alloc<T>(Out));
     } else {
       VLOG(3) << "MatMul's case 10";
-#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
       if (!FLAGS_use_legacy_gemm) {
         // x batch == 1 and y batch > 1, transpose y and fold batch
         DenseTensor transposedY = phi::TransposeLast2Dim<T>(dev_ctx, Y);
