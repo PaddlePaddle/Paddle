@@ -162,8 +162,8 @@ void MatMulFunctionImplWithBlas(
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
       if (std::is_same<Context, phi::GPUContext>::value) {
         blas.CUDOT(M, X.data<T>(), 1, Y.data<T>(), 1, Out->data<T>());
-      } else {
-#else
+      } else  // NOLINT
+#endif
       {
         blas.GEMM(CblasNoTrans,
                   CblasTrans,
@@ -176,9 +176,7 @@ void MatMulFunctionImplWithBlas(
                   static_cast<T>(flag),
                   dev_ctx.template Alloc<T>(Out));
       }
-#endif
-        return;
-      }
+      return;
     }
   }
 
@@ -456,24 +454,22 @@ void MatMulFunctionImplWithBlas(
         DenseTensor transposedOut = phi::TransposeLast2Dim<T>(dev_ctx, *Out);
         *Out = transposedOut;
         Out->Resize(out_original_shape);
-      } else {  // NOLINT
-#else
-    {  // NOLINT
-      blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
-                       trans_y ? CblasTrans : CblasNoTrans,
-                       M,
-                       N,
-                       K,
-                       static_cast<T>(1),
-                       x_data,
-                       y_data,
-                       static_cast<T>(flag),
-                       dev_ctx.template Alloc<T>(Out),
-                       out_batch_size,
-                       0,
-                       K * N);
-    }
+      } else  // NOLINT
 #endif
+      {  // NOLINT
+        blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
+                         trans_y ? CblasTrans : CblasNoTrans,
+                         M,
+                         N,
+                         K,
+                         static_cast<T>(1),
+                         x_data,
+                         y_data,
+                         static_cast<T>(flag),
+                         dev_ctx.template Alloc<T>(Out),
+                         out_batch_size,
+                         0,
+                         K * N);
       }
     }
   } else if (y_batch_size == 1) {
