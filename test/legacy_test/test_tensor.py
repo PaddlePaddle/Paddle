@@ -667,4 +667,4 @@ class TestTensorDataSetter(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(argv=["", "TestTensorDataSetter"])
+    unittest.main()
