@@ -45,7 +45,6 @@ jobs:
           -e COMMIT_ID \
           -e BRANCH \
           -w /paddle $docker_image /bin/bash -c 'rm -rf * .[^.]*'
-          source ~/.bashrc
           set -e
           echo "Downloading Paddle.tar.gz"
           wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
@@ -168,7 +167,7 @@ jobs:
           git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           cd ..
           bash backends/iluvatar_gpu/build_paddle.sh
-          bash install_paddle.sh
+          bash backends/iluvatar_gpu/install_paddle.sh
           '
 
       - name: Terminate and delete the container
