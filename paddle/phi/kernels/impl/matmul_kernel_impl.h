@@ -160,7 +160,7 @@ void MatMulFunctionImplWithBlas(
       return;
     } else {
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-      if (dev_ctx.GetPlace().type() == phi::PlaceType::GPU) {
+      if (std::is_same<Context, phi::GPUContext>::value) {
         blas.CUDOT(M, X.data<T>(), 1, Y.data<T>(), 1, Out->data<T>());
       } else {
 #else
