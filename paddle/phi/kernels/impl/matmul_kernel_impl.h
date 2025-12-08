@@ -427,6 +427,20 @@ void MatMulFunctionImplWithBlas(
     } else {
       VLOG(3) << "MatMul's case 10";
       if (FLAGS_use_legacy_gemm) {
+        blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
+                         trans_y ? CblasTrans : CblasNoTrans,
+                         M,
+                         N,
+                         K,
+                         static_cast<T>(1),
+                         x_data,
+                         y_data,
+                         static_cast<T>(flag),
+                         dev_ctx.template Alloc<T>(Out),
+                         out_batch_size,
+                         0,
+                         K * N);
+      } else {
         // x batch == 1 and y batch > 1, transpose y and fold batch
         DenseTensor transposedY = phi::TransposeLast2Dim<T>(dev_ctx, Y);
         blas.GEMM(trans_x ? CblasTrans : CblasNoTrans,
@@ -449,20 +463,6 @@ void MatMulFunctionImplWithBlas(
         DenseTensor transposedOut = phi::TransposeLast2Dim<T>(dev_ctx, *Out);
         *Out = transposedOut;
         Out->Resize(out_original_shape);
-      } else {
-        blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
-                         trans_y ? CblasTrans : CblasNoTrans,
-                         M,
-                         N,
-                         K,
-                         static_cast<T>(1),
-                         x_data,
-                         y_data,
-                         static_cast<T>(flag),
-                         dev_ctx.template Alloc<T>(Out),
-                         out_batch_size,
-                         0,
-                         K * N);
       }
     }
   } else if (y_batch_size == 1) {
