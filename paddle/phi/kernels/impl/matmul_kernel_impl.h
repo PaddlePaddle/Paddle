@@ -160,20 +160,25 @@ void MatMulFunctionImplWithBlas(
       return;
     } else {
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-      blas.CUDOT(M, X.data<T>(), 1, Y.data<T>(), 1, Out->data<T>());
+      if (dev_ctx.GetPlace().type() == phi::PlaceType::GPU) {
+        blas.CUDOT(M, X.data<T>(), 1, Y.data<T>(), 1, Out->data<T>());
+      } else {
 #else
-      blas.GEMM(CblasNoTrans,
-                CblasTrans,
-                1,
-                1,
-                M,
-                static_cast<T>(1),
-                y_data,
-                x_data,
-                static_cast<T>(flag),
-                dev_ctx.template Alloc<T>(Out));
+      {
+        blas.GEMM(CblasNoTrans,
+                  CblasTrans,
+                  1,
+                  1,
+                  M,
+                  static_cast<T>(1),
+                  y_data,
+                  x_data,
+                  static_cast<T>(flag),
+                  dev_ctx.template Alloc<T>(Out));
+      }
 #endif
-      return;
+        return;
+      }
     }
   }
 
@@ -453,21 +458,21 @@ void MatMulFunctionImplWithBlas(
         Out->Resize(out_original_shape);
       } else {  // NOLINT
 #else
-      {  // NOLINT
-        blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
-                         trans_y ? CblasTrans : CblasNoTrans,
-                         M,
-                         N,
-                         K,
-                         static_cast<T>(1),
-                         x_data,
-                         y_data,
-                         static_cast<T>(flag),
-                         dev_ctx.template Alloc<T>(Out),
-                         out_batch_size,
-                         0,
-                         K * N);
-      }
+    {  // NOLINT
+      blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
+                       trans_y ? CblasTrans : CblasNoTrans,
+                       M,
+                       N,
+                       K,
+                       static_cast<T>(1),
+                       x_data,
+                       y_data,
+                       static_cast<T>(flag),
+                       dev_ctx.template Alloc<T>(Out),
+                       out_batch_size,
+                       0,
+                       K * N);
+    }
 #endif
       }
     }
