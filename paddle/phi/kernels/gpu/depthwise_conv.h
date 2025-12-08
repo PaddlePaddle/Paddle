@@ -1875,8 +1875,9 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
       grid = dim3(ksize_width, ksize_height, output_channels);
       threads = dim3(std::min(output_width, block_size), blocks, 1);
       if (output_height * output_width < WARP_SIZE) {
-        threads = dim3(
-            std::min(block_size, batch_size * output_height * output_width));
+        threads = dim3(std::min(
+            block_size,
+            static_cast<int>(batch_size * output_height * output_width)));
       }
     } else {
       // Large block size may cause atomic dependence, reduce block size here.

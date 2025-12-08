@@ -48,14 +48,11 @@ __global__ void RowConvForwardSharedMemory(const T *in,
   }
   __syncthreads();
   for (size_t i = 0; i < num_sequence; i++) {
-    // TODO(large-tensor): array index not support int64
-    PADDLE_ENFORCE_LE_INT_MAX(batch_indices[i], "batch_indices[i]");
-    PADDLE_ENFORCE_LE_INT_MAX(batch_indices[i + 1], "batch_indices[i + 1]");
-    int start = static_cast<int>(batch_indices[i]);
-    int end = static_cast<int>(batch_indices[i + 1]);
-    int current_timesteps = end - start;
+    size_t start = batch_indices[i];
+    size_t end = batch_indices[i + 1];
+    size_t current_timesteps = end - start;
 
-    for (int k = thy; k < current_timesteps; k += bly) {
+    for (size_t k = thy; k < current_timesteps; k += bly) {
       T sum = 0;
       for (int w = 0; (w < future_context) && ((k + w) < current_timesteps);
            w++) {
@@ -87,16 +84,13 @@ __global__ void RowConvForward(const T *in,
 
   if (d >= input_dim) return;
   for (size_t i = 0; i < num_sequence; i++) {
-    // TODO(large-tensor): array index not support int64
-    PADDLE_ENFORCE_LE_INT_MAX(batch_indices[i], "batch_indices[i]");
-    PADDLE_ENFORCE_LE_INT_MAX(batch_indices[i + 1], "batch_indices[i + 1]");
-    int start = static_cast<int>(batch_indices[i]);
-    int end = static_cast<int>(batch_indices[i + 1]);
-    int current_timesteps = end - start;
+    size_t start = batch_indices[i];
+    size_t end = batch_indices[i + 1];
+    size_t current_timesteps = end - start;
 
-    for (int k = thy; k < current_timesteps; k += bly) {
+    for (size_t k = thy; k < current_timesteps; k += bly) {
       T sum = 0;
-      for (int w = 0; (w < future_context) && ((k + w) < current_timesteps);
+      for (size_t w = 0; (w < future_context) && ((k + w) < current_timesteps);
            w++) {
         sum += (wt[w * input_dim + d] * in[(start + k + w) * input_dim + d]);
       }

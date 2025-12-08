@@ -166,7 +166,7 @@ void BinaryStrideBroadcastKernel(const Context &dev_ctx,
   DenseTensorIterator iter = config.build();
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  int64_t &numel = iter.numel();
+  const int64_t &numel = iter.numel();
 
   funcs::OffsetCalculator offset_calc = funcs::make_offset_calculator<3>(iter);
   constexpr int unroll_factor = sizeof(OutT) >= 4 ? 2 : 4;
@@ -234,7 +234,7 @@ void BinaryStrideElementwiseKernel(const Context &dev_ctx,
   DenseTensorIterator iter = config.build();
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  int64_t &numel = iter.numel();
+  const int64_t &numel = iter.numel();
 
   funcs::OffsetCalculator offset_calc = funcs::make_offset_calculator<3>(iter);
   constexpr int unroll_factor = sizeof(OutT) >= 4 ? 2 : 4;
@@ -301,7 +301,7 @@ void UnaryStrideElementwiseKernel(const Context &dev_ctx,
   DenseTensorIterator iter = config.build();
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  int64_t &numel = iter.numel();
+  const int64_t &numel = iter.numel();
 
   funcs::OffsetCalculator offset_calc = funcs::make_offset_calculator<2>(iter);
   constexpr int unroll_factor = sizeof(OutT) >= 4 ? 2 : 4;

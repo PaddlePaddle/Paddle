@@ -47,16 +47,13 @@ __global__ void RowConvGradInputSharedMemory(const T *dout,
   }
   __syncthreads();
 
-  int current_timesteps = 0;
+  size_t current_timesteps = 0;
   for (int i = 0; i < num_sequence; i++) {
-    // TODO(large-tensor): array index not support int64
-    PADDLE_ENFORCE_LE_INT_MAX(batch_indices[i], "batch_indices[i]");
-    PADDLE_ENFORCE_LE_INT_MAX(batch_indices[i + 1], "batch_indices[i + 1]");
-    int start = static_cast<int>(batch_indices[i]);
-    int end = static_cast<int>(batch_indices[i + 1]);
+    size_t start = batch_indices[i];
+    size_t end = batch_indices[i + 1];
     current_timesteps = end - start;
 
-    for (int k = thy; k < current_timesteps; k += bly) {
+    for (size_t k = thy; k < current_timesteps; k += bly) {
       T sum = 0;
       for (int w = 0; (w < future_context) && ((k - w) >= 0); w++) {
         sum += (d < input_dim)
@@ -86,14 +83,13 @@ __global__ void RowConvGradInput(const T *dout,
   int thy = threadIdx.y;
 
   if (d >= input_dim) return;
-  int current_timesteps = 0;
-
+  size_t current_timesteps = 0;
   for (int i = 0; i < num_sequence; i++) {
-    int start = static_cast<int>(batch_indices[i]);
-    int end = static_cast<int>(batch_indices[i + 1]);
+    size_t start = batch_indices[i];
+    size_t end = batch_indices[i + 1];
     current_timesteps = end - start;
 
-    for (int k = thy; k < current_timesteps; k += bly) {
+    for (size_t k = thy; k < current_timesteps; k += bly) {
       T sum = 0;
       for (int w = 0; (w < future_context) && ((k - w) >= 0); w++) {
         sum += (wt[w * input_dim + d] * dout[(k + start - w) * input_dim + d]);
@@ -143,15 +139,15 @@ __global__ void RowConvGradFilterImproved(const T *in,
   CREATE_SHFL_MASK(mask, true);
 
   for (int i = 0; i < num_sequence; i++) {
-    int start = static_cast<int>(batch_indices[i]);
-    int end = static_cast<int>(batch_indices[i + 1]);
-    int current_timesteps = end - start;
+    size_t start = batch_indices[i];
+    size_t end = batch_indices[i + 1];
+    size_t current_timesteps = end - start;
 
-    int scaled_cur_steps =
+    size_t scaled_cur_steps =
         ((current_timesteps + block_x - 1) / block_x) * block_x;
 
-    for (int k = thy; k < scaled_cur_steps; k += block_x) {
-      int pos = start + k;
+    for (size_t k = thy; k < scaled_cur_steps; k += block_x) {
+      size_t pos = start + k;
       sh_in[thx * ydim_sh_in + thy] =
           (d < input_dim && pos < end) ? in[pos * input_dim + d] : T(0);
       sh_dout[thx * ydim_sh_dout + thy + future_context - 1] =
@@ -159,7 +155,7 @@ __global__ void RowConvGradFilterImproved(const T *in,
       __syncthreads();
 
       if (thy < future_context - 1) {
-        int pos_offset = pos - future_context + 1;
+        size_t pos_offset = pos - future_context + 1;
         sh_dout[thx * ydim_sh_dout + thy] =
             (d < input_dim && pos_offset >= start)
                 ? dout[pos_offset * input_dim + d]
@@ -214,15 +210,15 @@ __global__ void RowConvGradFilter(const T *in,
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, true);
   for (int i = 0; i < num_sequence; i++) {
-    int start = static_cast<int>(batch_indices[i]);
-    int end = static_cast<int>(batch_indices[i + 1]);
-    int current_timesteps = end - start;
+    size_t start = batch_indices[i];
+    size_t end = batch_indices[i + 1];
+    size_t current_timesteps = end - start;
 
-    int scaled_cur_steps =
+    size_t scaled_cur_steps =
         ((current_timesteps + block_x - 1) / block_x) * block_x;
 
-    for (int k = thy; k < scaled_cur_steps; k += block_x) {
-      int pos = start + k;
+    for (size_t k = thy; k < scaled_cur_steps; k += block_x) {
+      size_t pos = start + k;
       sh_in[thx * block_y + thy] =
           (d < input_dim && pos < end) ? in[pos * input_dim + d] : 0.0;
       __syncthreads();
