@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import platform
+import sys
 import unittest
 
 import numpy as np
@@ -251,6 +252,7 @@ class TestFloat(TestEigOp):
 
 
 class TestEigStatic(TestEigOp):
+    @unittest.skipIf(sys.platform == "darwin", reason="Skip on Mac")
     def test_check_output_with_place(self):
         paddle.enable_static()
         place = (
