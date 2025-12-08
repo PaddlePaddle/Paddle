@@ -867,9 +867,6 @@ class FullyShard(nn.Layer):
         #  TODO(liuzhenhai):  set a flag here and release full param before forward pass of the first layer,
         #  when _allgather_buffer is called for get_all_parameters and convert2cpu is false
 
-        self._optim._parameter_list = self._ori_parameter_list
-        self._optim._param_groups = self._ori_param_groups
-
     def _register_backward_hooks(self):
         current_layer_params = self._layer.parameters(include_sublayers=True)
         trainable_params = list(
