@@ -108,7 +108,6 @@ type_promote_white_list = {
     "elementwise_pow": ["x", "y"],
     "where": ["x", "y"],
     "equal": ["x", "y"],
-    "equal_all": ["x", "y"],
     "not_equal": ["x", "y"],
     "less_than": ["x", "y"],
     "less_equal": ["x", "y"],

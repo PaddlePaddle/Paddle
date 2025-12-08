@@ -84,7 +84,7 @@ void TopkKernel(const Context& dev_ctx,
   int k = k_scalar.to<int>();
   // out shape [-1]
   if (k_scalar.FromTensor()) {
-    phi::DDim out_dims = out->dims();
+    DDim out_dims = out->dims();
     out_dims[axis] = k;
     out->Resize(out_dims);
     indices->Resize(out_dims);
@@ -255,8 +255,8 @@ void TopkKernel(const Context& dev_ctx,
     }
     trans.emplace_back(axis);
 
-    phi::DDim trans_dims(in_dims);
-    phi::DDim trans_out_dims(out->dims());
+    DDim trans_dims(in_dims);
+    DDim trans_out_dims(out->dims());
     for (int i = 0; i < trans.size(); i++) {
       trans_dims[i] = in_dims[trans[i]];
       trans_out_dims[i] = out_dims[trans[i]];

@@ -163,7 +163,7 @@ struct ConvArgsBase {
   }
 };
 
-static inline void GetNCDHW(const phi::DDim& dims,
+static inline void GetNCDHW(const DDim& dims,
                             const DataLayout& layout,
                             int* N,
                             int* C,
@@ -214,7 +214,7 @@ static void RemovePaddingSlice(const phi::GPUContext& dev_ctx,
   auto out_t = phi::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
       *out, new_out_dims);
 
-  phi::funcs::EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
+  funcs::EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
       place, out_t, in_t, offsets, extents);
 }
 

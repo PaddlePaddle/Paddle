@@ -1126,7 +1126,7 @@ static void Interpolate1DCUDABwd(
   }
 
   auto* output_grad_data = output_grad.data<T>();
-  phi::DDim dim_grad;
+  DDim dim_grad;
   if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_w};
   } else {
@@ -1265,7 +1265,7 @@ static void Interpolate2DCUDABwd(
   }
 
   auto* output_grad_data = output_grad.data<T>();
-  phi::DDim dim_grad;
+  DDim dim_grad;
   if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_h, in_w};
   } else {
@@ -1535,15 +1535,15 @@ static void InterpolateAA2DCUDABwd(
   }
 
   auto* output_grad_data = output_grad.data<T>();
-  phi::DDim dim_grad;
-  if (data_layout == DataLayout::kNCHW) {
+  DDim dim_grad;
+  if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_h, in_w};
   } else {
     dim_grad = {n, in_h, in_w, c};
   }
   input_grad->Resize(dim_grad);
   auto* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_h == out_h && in_w == out_w) {
@@ -1594,7 +1594,7 @@ static void InterpolateAA2DCUDABwd(
                           "Required shared memory size %d exceeds limit %d",
                           shmem_size,
                           gpu_props.sharedMemPerBlock));
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       KeInterpAABwNCHW<T>
           <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_grad_data,
                                                           in_h,
@@ -1656,7 +1656,7 @@ static void InterpolateAA2DCUDABwd(
                           "Required shared memory size %d exceeds limit %d",
                           shmem_size,
                           gpu_props.sharedMemPerBlock));
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       KeInterpAABwNCHW<T>
           <<<grid, block, shmem_size, dev_ctx.stream()>>>(input_grad_data,
                                                           in_h,
@@ -1795,7 +1795,7 @@ static void Interpolate3DCUDABwd(
   }
 
   auto* output_grad_data = output_grad.data<T>();
-  phi::DDim dim_grad;
+  DDim dim_grad;
   if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_d, in_h, in_w};
   } else {
