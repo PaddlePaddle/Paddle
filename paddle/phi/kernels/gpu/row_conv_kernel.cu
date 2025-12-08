@@ -140,23 +140,26 @@ void RowConvKernel(const Context &dev_ctx,
 
   int num_sequence = batch_indices.size() - 1;
   int64_t future_context = Filter->dims()[0];
+  // TODO(large-tensor): CUDA kernel future_context not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(future_context, "future_context");
+  int future_context_int = static_cast<int>(future_context);
 
   phi::MixVector<size_t> mix_vector(&batch_indices);
   size_t *idx = mix_vector.CUDAMutableData(dev_ctx.GetPlace());
   auto stream = dev_ctx.stream();
 
-  if (future_context <= 32) {
+  if (future_context_int <= 32) {
     dim3 block_dim = dim3(32, 32);
     dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
-    int mem_per_block = (future_context * block_dim.x) * sizeof(T);
+    int mem_per_block = (future_context_int * block_dim.x) * sizeof(T);
     RowConvForwardSharedMemory<T>
         <<<grid_dim, block_dim, mem_per_block, stream>>>(
-            in, weight, num_sequence, input_dim, future_context, idx, out);
+            in, weight, num_sequence, input_dim, future_context_int, idx, out);
   } else {
     dim3 block_dim = dim3(32, 32);
     dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
     RowConvForward<T><<<grid_dim, block_dim, 0, stream>>>(
-        in, weight, num_sequence, input_dim, future_context, idx, out);
+        in, weight, num_sequence, input_dim, future_context_int, idx, out);
   }
   mix_vector.CopyToCPU();
 }
