@@ -149,7 +149,7 @@ void CTCAlignOpCUDAKernel(const Context& dev_ctx,
     if (host_out_lod0.back() == 0) {
       output->Resize({1, 1});
       dev_ctx.template Alloc<T>(output);
-      phi::funcs::SetConstant<phi::GPUContext, T> set_constant;
+      funcs::SetConstant<phi::GPUContext, T> set_constant;
       set_constant(dev_ctx, output, -1);
     }
   }

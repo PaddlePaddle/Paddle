@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/common/macros.h"
+#include "paddle/phi/backends/c_cuda_graph_lib.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
@@ -24,18 +25,29 @@ namespace paddle {
 namespace platform {
 
 // NOTE: These APIs are not thread-safe.
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
 using CUDAGraph = phi::backends::gpu::CUDAGraph;
+PADDLE_API std::unique_ptr<CUDAGraph> EndCUDAGraphCapture();
+#endif
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PADDLE_API void BeginCUDAGraphCapture(
     phi::GPUPlace place,
     gpuStreamCaptureMode mode,
     int64_t pool_id = CUDAGraph::kInvalidPoolID);
-PADDLE_API std::unique_ptr<CUDAGraph> EndCUDAGraphCapture();
 #endif
 
-inline phi::GPUPlace CUDAGraphCapturingPlace() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+PADDLE_API void BeginCUDAGraphCapture(
+    phi::CustomPlace place,
+    phi::graph::streamCaptureMode mode,
+    int64_t pool_id = CUDAGraph::kInvalidPoolID);
+#endif
+
+inline phi::Place CUDAGraphCapturingPlace() {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   return CUDAGraph::CapturingPlace();
 #else
   PADDLE_THROW(common::errors::Unimplemented(
@@ -54,7 +66,8 @@ class SkipCUDAGraphCaptureGuard {
 
  public:
   SkipCUDAGraphCaptureGuard() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
     if (UNLIKELY(CUDAGraph::IsCapturing())) {
       CUDAGraph::EndSegmentCapture();
     }
@@ -62,7 +75,8 @@ class SkipCUDAGraphCaptureGuard {
   }
 
   ~SkipCUDAGraphCaptureGuard() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
     if (UNLIKELY(CUDAGraph::IsCapturing())) {
       CUDAGraph::BeginSegmentCapture();
     }

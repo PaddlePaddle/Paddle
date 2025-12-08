@@ -51,9 +51,9 @@ def fused_stack_transpose_quant(
             - scale (Tensor): A float32 tensor representing the quantization scale.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
-            >>> # doctest: +REQUIRES(env:GPU)
+            >>> # doctest: +SKIP('BF16 requires SM80 or higher env')
             >>> import paddle
             >>> import paddle.incubate.nn.functional as F
             >>> paddle.set_device('gpu')
@@ -69,9 +69,9 @@ def fused_stack_transpose_quant(
 
             >>> out, scale = F.fused_stack_transpose_quant(x_vec, transpose=True)
             >>> print(out.shape)
-            [128, 2048]
+            paddle.Size([128, 2048])
             >>> print(scale.shape)
-            [1, 16]
+            paddle.Size([1, 16])
     """
     if in_dynamic_or_pir_mode():
         if transpose:
@@ -147,9 +147,9 @@ def fused_swiglu_weighted_bwd(
               This avoids storing forward activations, trading computation for memory.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
-            >>> # doctest: +REQUIRES(env:GPU)
+            >>> # doctest: +SKIP('BF16 requires SM80 or higher env')
             >>> import paddle
             >>> import paddle.incubate.nn.functional as F
             >>> paddle.set_device('gpu')
@@ -157,17 +157,20 @@ def fused_swiglu_weighted_bwd(
             >>> batch_size, seq_len = 32, 128
             >>> intermediate_size = 2048
 
-            >>> o1 = paddle.randn([batch_size, seq_len, intermediate_size * 2], dtype='bfloat16')
+            >>> o1 = paddle.randn(
+            ...     [batch_size, seq_len, intermediate_size * 2],
+            ...     dtype='bfloat16',
+            ... )
             >>> do2_s = paddle.randn([batch_size, seq_len, intermediate_size], dtype='bfloat16')
             >>> expert_probs = paddle.rand([batch_size, seq_len, 1], dtype='float32')
 
             >>> do1, probs_grad, o2_s = F.fused_swiglu_weighted_bwd(o1, do2_s, expert_probs)
             >>> print(do1.shape)
-            [32, 128, 4096]
+            paddle.Size([32, 128, 4096])
             >>> print(probs_grad.shape)
-            [32, 128, 1]
+            paddle.Size([32, 128, 1])
             >>> print(o2_s.shape)
-            [32, 128, 2048]
+            paddle.Size([32, 128, 2048])
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.fused_swiglu_weighted_bwd(o1, do2_s, unzipped_probs)
@@ -207,9 +210,9 @@ def fused_transpose_split_quant(
               and dtype float32. These are the reciprocal of quantization scales.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
-            >>> # doctest: +REQUIRES(env:GPU)
+            >>> # doctest: +SKIP('BF16 requires SM80 or higher env')
             >>> import paddle
             >>> import paddle.incubate.nn.functional as F
             >>> paddle.set_device('gpu')
@@ -217,11 +220,11 @@ def fused_transpose_split_quant(
             >>> x = paddle.randn([384, 512], dtype='bfloat16')
             >>> x = paddle.clip(x, min=-50, max=50)
             >>> tokens_per_expert = [128, 128, 128]
-            >>> outs, scales = F.fused_transpose_split_quant(x,None, tokens_per_expert, pow_2_scales=True)
+            >>> outs, scales = F.fused_transpose_split_quant(x, None, tokens_per_expert, pow_2_scales=True)
             >>> print(outs[0].shape)
-            [512, 128]
+            paddle.Size([512, 128])
             >>> print(scales[0].shape)
-            [1, 512]
+            paddle.Size([1, 512])
     """
     tokens_per_expert = [int(t) for t in tokens_per_expert]
 
@@ -286,9 +289,9 @@ def fused_weighted_swiglu_act_quant(
               block in the output tensor. To dequantize: original_value = quantized_value / scale.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
-            >>> # doctest: +REQUIRES(env:GPU)
+            >>> # doctest: +SKIP('BF16 requires SM80 or higher env')
             >>> import paddle
             >>> import paddle.incubate.nn.functional as F
             >>> paddle.set_device('gpu')
@@ -297,11 +300,11 @@ def fused_weighted_swiglu_act_quant(
             >>> x = paddle.randn([batch_size, seq_len, expert_dim], dtype='bfloat16')
             >>> quantized_out, scales = F.fused_weighted_swiglu_act_quant(x)
             >>> print(x.shape)
-            [32, 128, 2048]
+            paddle.Size([32, 128, 2048])
             >>> print(quantized_out.shape)
-            [4096, 1024]
+            paddle.Size([4096, 1024])
             >>> print(scales.shape)
-            [4096, 8]
+            paddle.Size([4096, 8])
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.fused_weighted_swiglu_act_quant(

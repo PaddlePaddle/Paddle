@@ -144,6 +144,35 @@ paddle.base.core.set_vlog_level(4)
             text=True,
         )
 
+    def test_dump_call_stack(self):
+        code = """
+import os
+os.environ['FLAGS_dump_api_and_gradnode_python_stack_dir']="{dir}"
+import paddle
+x = paddle.randn([5, 5], dtype='float32')
+y = paddle.randn([5, 5], dtype='float32')
+x.stop_gradient = False
+y.stop_gradient = False
+z = x + y
+h = x * z
+w = h + y
+grads = paddle.autograd.backward(
+    [x, y],
+    [None, None],
+)
+paddle.base.core.set_vlog_level(4)
+        """
+        process = subprocess.run(
+            [sys.executable, '-c', code.format(dir="./")],
+            capture_output=True,
+            text=True,
+        )
+        process = subprocess.run(
+            [sys.executable, '-c', code.format(dir=".")],
+            capture_output=True,
+            text=True,
+        )
+
     def test_manual_vlog(self):
         if 'Windows' == platform.system():
             return
@@ -157,6 +186,28 @@ os.environ['FLAGS_dump_api_python_stack_path']="forward_call_stack"
 import paddle
 import paddle.nn.functional as F
 import paddle.nn as nn
+
+# Pylayer indent log
+from paddle.autograd import PyLayer
+class cus_tanh(PyLayer):
+    @staticmethod
+    def forward(ctx, x):
+        y = paddle.tanh(x)
+        # Pass tensors to backward.
+        ctx.save_for_backward(y)
+        return y
+    @staticmethod
+    def backward(ctx, dy):
+        # Get the tensors passed by forward.
+        y, = ctx.saved_tensor()
+        grad = dy * (1 - paddle.square(y))
+        return grad
+
+pylayer_input = paddle.rand([3, 4])
+pylayer_input.stop_gradient = False
+custom_tanh = cus_tanh.apply
+pylayer_output = custom_tanh(pylayer_input)
+pylayer_output.mean().backward()
 
 paddle.base.core.set_vlog_level({"backward":6, "*": 7})
 
@@ -268,6 +319,21 @@ class TestVlogGuard(unittest.TestCase):
                 x = paddle.randn([3, 3], dtype='float16')
 
         self.assertRaises(TypeError, test_invalid_input)
+
+
+class TestBackwardVlogGuard(unittest.TestCase):
+    def test_guard(self):
+        x = paddle.randn([3, 3], dtype='float32')
+        y = paddle.randn([3, 3], dtype='float32')
+        x.stop_gradient = False
+        y.stop_gradient = False
+
+        with paddle.base.framework.backward_vlog_guard(4):
+            z = x + y
+            h = x * z
+            w = h + y
+        loss = w.sum()
+        loss.backward()
 
 
 if __name__ == "__main__":

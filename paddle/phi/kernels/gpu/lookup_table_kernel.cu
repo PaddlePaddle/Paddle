@@ -42,13 +42,13 @@ __global__ void LookupTable(T *output,
     int64_t id = ids[idy];
     PADDLE_ENFORCE(
         id >= 0,
-        "Variable value (input) of OP(fluid.layers.embedding) "
+        "Variable value (input) of OP(lookup_table) "
         "expected >= 0 and < %ld, but got %ld. Please check input value.",
         N,
         id);
     PADDLE_ENFORCE(
         id < N,
-        "Variable value (input) of OP(fluid.layers.embedding) "
+        "Variable value (input) of OP(lookup_table) "
         "expected >= 0 and < %ld, but got %ld. Please check input value.",
         N,
         id);

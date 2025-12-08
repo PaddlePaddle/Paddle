@@ -182,7 +182,7 @@ void PReluGradKernel(const Context& dev_ctx,
     reduce_dims.push_back(i);
   }
 
-  phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+  funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
       static_cast<const phi::GPUContext&>(dev_ctx),
       alpha_grad_tmp,
       alpha_grad,

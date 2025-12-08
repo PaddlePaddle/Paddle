@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/memory/malloc.h"
+#include "paddle/phi/core/memory/mem_utils.h"
 #include "paddle/phi/core/memory/stats.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/strided_copy_kernel.h"
@@ -847,6 +848,7 @@ void CheckAndDoCompact(const std::vector<phi::MetaTensor*>& meta_tensors,
     std::vector<size_t> sizes;
 
     for (auto& meta_tensor : meta_tensors) {
+      if (meta_tensor == nullptr) continue;
       if (meta_tensor->numel() == 0) continue;
       if (meta_tensor->numel() < 0) {
         VLOG(1) << "meta_tensor->numel():" << meta_tensor->numel()
@@ -869,24 +871,37 @@ void CheckAndDoCompact(const std::vector<phi::MetaTensor*>& meta_tensors,
   auto NeedCompact = [&](const std::vector<phi::MetaTensor*>& meta_tensors) {
     if (max_reserved < FLAGS_max_reserved_threshold_in_gb << 30) return false;
     if (cur_allocated < FLAGS_cur_allocated_threshold_in_gb << 30) return false;
-    const auto [max_free_size, total_free_size] =
+    const auto [max_free_size, large_N_free_size] =
         paddle::memory::VmmMaxFreeSize(phi::GPUPlace(current_device_id),
                                        meta_tensors.size());
     const auto& [req_total_size, size_vec] = CalTensorSize(meta_tensors);
+    VLOG(10) << "run api: " << api << " req_total_size: " << req_total_size
+             << ", max_free_size: " << max_free_size
+             << ", large_N_free_size: " << large_N_free_size
+             << ", max_reserved: " << max_reserved
+             << ", max_allocated: " << max_allocated
+             << ", cur_allocated: " << cur_allocated;
     if (req_total_size < max_free_size) return false;
-    if (req_total_size > total_free_size) {
-      VLOG(1) << "Need Compact req_total_size: " << req_total_size
-              << ", total_free_size: " << total_free_size
-              << ", max_free_size: " << max_free_size;
+    if (req_total_size > large_N_free_size) {
+      VLOG(1) << "Need Compact in api: " << api
+              << " req_total_size: " << req_total_size
+              << ", large_N_free_size: " << large_N_free_size
+              << ", max_free_size: " << max_free_size
+              << ", max_reserved: " << max_reserved
+              << ", max_allocated: " << max_allocated
+              << ", cur_allocated: " << cur_allocated;
       return true;
     }
     if (FLAGS_try_allocate) {
       auto alloc_succ = paddle::memory::TryAllocBatch(
           phi::GPUPlace(current_device_id), size_vec);
-      VLOG(1) << "TryAllocBatch ret: " << !alloc_succ
+      VLOG(1) << "TryAllocBatch api: " << api << " ret: " << alloc_succ
               << ", req_total_size: " << req_total_size
-              << ", total_free_size: " << total_free_size
-              << ", max_free_size: " << max_free_size;
+              << ", large_N_free_size: " << large_N_free_size
+              << ", max_free_size: " << max_free_size
+              << ", max_reserved: " << max_reserved
+              << ", max_allocated: " << max_allocated
+              << ", cur_allocated: " << cur_allocated;
       return !alloc_succ;
     }
     return false;
@@ -894,7 +909,8 @@ void CheckAndDoCompact(const std::vector<phi::MetaTensor*>& meta_tensors,
 
   if (NeedCompact(meta_tensors)) {
     VLOG(1) << "Before Compact max_reserved: " << max_reserved / divisor
-            << ", max_allocated: " << max_allocated / divisor;
+            << "GB, max_allocated: " << max_allocated / divisor
+            << "GB, cur_allocated: " << cur_allocated / divisor << "GB";
     paddle::memory::Compact(phi::GPUPlace(current_device_id));
   }
 #endif

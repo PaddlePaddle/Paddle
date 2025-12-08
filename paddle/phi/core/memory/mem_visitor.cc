@@ -26,6 +26,10 @@
 namespace paddle {
 namespace memory {
 
+void allocation::Allocator::Accept(AllocatorVisitor* visitor) {
+  visitor->Visit(this);
+}
+
 void AllocatorVisitor::Visit(RetryAllocator* allocator) {
   allocator->GetUnderLyingAllocator()->Accept(this);
 }
@@ -50,8 +54,24 @@ void AllocatorVisitor::Visit(
 
 void AllocatorVisitor::Visit(
     VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) {
-  allocator->GetSmallAllocator()->Accept(this);
-  allocator->GetLargeAllocator()->Accept(this);
+  if (allocator->GetSmallAllocator())
+    allocator->GetSmallAllocator()->Accept(this);
+  if (allocator->GetLargeAllocator())
+    allocator->GetLargeAllocator()->Accept(this);
+}
+
+void AllocatorComputeStreamVisitor::Visit(StreamSafeCUDAAllocator* allocator) {
+  const std::vector<StreamSafeCUDAAllocator*>& allocators =
+      allocator->GetAllocatorByPlace();
+  assert(!allocators.empty());
+  // NOTE(liujinnan): Currently, the Allocator initialization sequence is as
+  // follows: the compute stream Allocator is initialized at program startup,
+  // and then, when multiple streams are encountered at runtime, additional
+  // Allocators are created and added to the end of the `allocator_map_` in
+  // `StreamSafeCUDAAllocator`. Therefore, we can use the first allocator in
+  // `allocator_map_` as the compute stream allocator. Although this approach is
+  // somewhat ugly and may not be robust, it is currently effective.
+  allocators[0]->GetUnderLyingAllocator()->Accept(this);
 }
 
 void FreeMemoryMetricsVisitor::Visit(
@@ -60,8 +80,6 @@ void FreeMemoryMetricsVisitor::Visit(
       allocator->SumLargestFreeBlockSizes(nums_blocks_);
   large_size_ = std::max(large_size_, large_size);
   sum_size_ = std::max(sum_size_, sum_size);
-  VLOG(1) << "Visit VirtualMemoryAutoGrowthBestFitAllocator large_free_size:"
-          << large_size_ << " sum_free_size:" << sum_size_;
 }
 
 void TryAllocVisitor::Visit(
@@ -69,8 +87,57 @@ void TryAllocVisitor::Visit(
   // TODO(liujinnan): More detailed handling of multi-stream and MultiScalePool
   // scenarios.
   is_try_alloc_success_ |= allocator->TryAllocateBatch(sizes_);
-  VLOG(1) << "Visit VirtualMemoryAutoGrowthBestFitAllocator try_alloc_result:"
-          << is_try_alloc_success_;
+}
+
+void VMMFreeBlocksInfoVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitAllocator* allocator) {
+  std::vector<std::pair<size_t, uintptr_t>> keys;
+  for (const auto& item : allocator->GetFreeBlocks()) {
+    size_t size = item.first.first;
+    uintptr_t addr = reinterpret_cast<uintptr_t>(item.first.second);
+    keys.emplace_back(size, addr);
+  }
+  if (!keys.empty()) {
+    free_blocks_info_.push_back(keys);
+  }
+}
+
+void VMMAllBlocksInfoVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitAllocator* allocator) {
+  std::vector<std::tuple<size_t, uintptr_t, bool>> info;
+  for (const auto& item : allocator->GetAllBlocks()) {
+    size_t size = item.size_;
+    uintptr_t addr = reinterpret_cast<uintptr_t>(item.ptr_);
+    bool is_free = item.is_free_;
+    info.emplace_back(size, addr, is_free);
+  }
+  if (!info.empty()) {
+    all_blocks_info_.push_back(info);
+  }
+}
+
+void VMMAllocateRecordEventsVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) {
+  allocate_record_event_ = allocator->GetEvents();
+}
+
+void VMMAllocateCompactSizeVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) {
+  allocate_compact_size_ = allocator->GetCompactSize();
+}
+
+void VmmTensorPartsVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitAllocator* allocator) {
+  if (found_) {
+    return;
+  }
+  std::vector<BlockPart> parts;
+  if (allocator->CollectTensorParts(target_ptr_, &parts)) {
+    found_ = true;
+    parts_ = std::move(parts);
+    return;
+  }
+  allocator->GetUnderLyingAllocator()->Accept(this);
 }
 #endif
 }  // namespace memory

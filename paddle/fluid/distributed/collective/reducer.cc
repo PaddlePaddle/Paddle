@@ -781,7 +781,7 @@ void EagerReducer::AddDistHook(size_t var_index) {
   }
 
   VLOG(3) << "Tensor[" << var_index << "] [" << tensors_[var_index].name()
-          << "@Grad] arrived and triggered disthook";
+          << "@GRAD] arrived and triggered DistHook";
 
   local_used_vars_[var_index] = 1;
 

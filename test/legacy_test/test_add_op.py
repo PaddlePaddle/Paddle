@@ -20,6 +20,33 @@ import paddle
 from paddle.base import core
 
 
+class TestPaddleAddZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.place = get_device_place()
+        self.shape = [0, 3]
+        self.dtype_pairs = [(paddle.float32, paddle.float32)]
+        if core.is_float16_supported(self.place):
+            self.dtype_pairs.append((paddle.float32, paddle.float16))
+        if core.is_bfloat16_supported(self.place):
+            self.dtype_pairs.append((paddle.float32, paddle.bfloat16))
+
+    def test_0size(self):
+        for x_dtype, y_dtype in self.dtype_pairs:
+            with self.subTest(msg=f"{x_dtype} + {y_dtype}"):
+                x = paddle.randn(self.shape, dtype=x_dtype)
+                y = paddle.randn(self.shape, dtype=y_dtype)
+                x.stop_gradient = False
+                y.stop_gradient = False
+
+                out = paddle.add(x, y)
+                out.backward()
+
+                self.assertEqual(out.shape, self.shape)
+                self.assertEqual(out.dtype, x_dtype)
+                self.assertEqual(x.grad.dtype, x_dtype)
+                self.assertEqual(y.grad.dtype, y_dtype)
+
+
 class TestPaddleAddBackward(unittest.TestCase):
     def setUp(self):
         self.place = get_device_place()
@@ -83,11 +110,19 @@ class TestPaddleAddBackward(unittest.TestCase):
         expected_y_grad = np.full(y_np.shape, 1.0 / N, dtype=np.float16)
 
         rtol, atol = 1e-3, 1e-3
+        actual_x_grad = x.grad.numpy()
         np.testing.assert_allclose(
-            x.grad.numpy(), expected_x_grad, rtol=rtol, atol=atol, strict=True
+            actual_x_grad, expected_x_grad, rtol=rtol, atol=atol
         )
+        assert actual_x_grad.dtype == expected_x_grad.dtype, (
+            f"x.grad dtype mismatch: expected {expected_x_grad.dtype}, got {actual_x_grad.dtype}"
+        )
+        actual_y_grad = y.grad.numpy()
         np.testing.assert_allclose(
-            y.grad.numpy(), expected_y_grad, rtol=rtol, atol=atol, strict=True
+            actual_y_grad, expected_y_grad, rtol=rtol, atol=atol
+        )
+        assert actual_y_grad.dtype == expected_y_grad.dtype, (
+            f"y.grad dtype mismatch: expected {expected_y_grad.dtype}, got {actual_y_grad.dtype}"
         )
 
     def test_backward_with_grad(self):

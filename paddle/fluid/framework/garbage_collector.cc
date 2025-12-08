@@ -20,6 +20,8 @@
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/phi/core/platform/device/device_wrapper.h"
 
+#include "glog/logging.h"
+
 COMMON_DECLARE_double(eager_delete_tensor_gb);
 COMMON_DECLARE_double(memory_fraction_of_eager_deletion);
 COMMON_DECLARE_bool(fast_eager_deletion_mode);

@@ -40,8 +40,7 @@ void AffineChannelXPUKernel(const Context& dev_ctx,
 
   auto dims = x->dims();
   int64_t N = dims[0];
-  int64_t C =
-      layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
+  int64_t C = layout == phi::DataLayout::NCHW ? dims[1] : dims[dims.size() - 1];
   int64_t HxW = x->numel() / N / C;
 
   auto* scale_d = scale->data<T>();
@@ -51,7 +50,7 @@ void AffineChannelXPUKernel(const Context& dev_ctx,
   auto* y_d = y->data<T>();
   std::vector<int64_t> x_shape;
   std::vector<int64_t> b_shape;
-  if (layout == phi::DataLayout::kNCHW) {
+  if (layout == phi::DataLayout::NCHW) {
     x_shape.push_back(N);
     x_shape.push_back(C);
     x_shape.push_back(HxW);

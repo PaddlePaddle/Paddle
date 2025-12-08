@@ -22,7 +22,7 @@ cc_library(
 # otherwise, there would be undefined reference to them in static library.
 add_subdirectory(analysis)
 add_subdirectory(utils)
-if(TENSORRT_FOUND)
+if(TENSORRT_FOUND AND WITH_GPU)
   add_subdirectory(tensorrt)
 endif()
 

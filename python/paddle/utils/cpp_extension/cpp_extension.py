@@ -26,6 +26,7 @@ import setuptools
 import sys
 import paddle
 import site
+from distutils.errors import DistutilsExecError, LinkError
 
 from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
@@ -434,6 +435,18 @@ class BuildExtension(build_ext):
         self._check_abi()
         current_extension_builder = self
 
+        # Check nvcc_dlink
+        ext = self.extensions[0]
+        if (
+            isinstance(ext.extra_compile_args, dict)
+            and 'nvcc_dlink' in ext.extra_compile_args
+        ):
+            cuda_dlink_post_cflags = prepare_unix_cudaflags(
+                copy.deepcopy(ext.extra_compile_args['nvcc_dlink'])
+            )
+        else:
+            cuda_dlink_post_cflags = None
+
         # Note(Aurelius84): If already compiling source before, we should check whether
         # cflags have changed and delete the built shared library to re-compile the source
         # even though source file content keep unchanged.
@@ -444,11 +457,17 @@ class BuildExtension(build_ext):
 
         # Consider .cu, .cu.cc as valid source extensions.
         self.compiler.src_extensions += ['.cu', '.cu.cc']
+
+        original_compile = None
+        original_link = None
+
         # Save the original _compile method for later.
         if self.compiler.compiler_type == 'msvc':
             self.compiler._cpp_extensions += ['.cu', '.cuh']
             original_compile = self.compiler.compile
             original_spawn = self.compiler.spawn
+        else:
+            original_compile = self.compiler.__class__.compile
 
         for extension in self.extensions:
             define_paddle_extension_name(extension)
@@ -554,6 +573,68 @@ class BuildExtension(build_ext):
             finally:
                 # restore original_compiler
                 self.set_executable('compiler_so', original_compiler)
+
+        def unix_custom_link_shared_object(
+            self,
+            objects: list[str] | tuple[str, ...],
+            output_filename: str,
+            output_dir: str | None = None,
+            libraries: list[str] | tuple[str, ...] | None = None,
+            library_dirs: list[str] | tuple[str, ...] | None = None,
+            runtime_library_dirs: list[str] | tuple[str, ...] | None = None,
+            export_symbols: Any | None = None,
+            debug: bool = False,
+            extra_preargs: list[str] | None = None,
+            extra_postargs: list[str] | None = None,
+            build_temp: str | os.PathLike[str] | None = None,
+            target_lang: str | None = None,
+        ):
+            # Get extension
+            dlink_dir = os.path.dirname(objects[0])
+            dlink_object = os.path.join(dlink_dir, 'dlink.o')
+
+            # Construct command
+            # nvcc <objects> -o <dlink_object> <cuda_dlink_post_cflags>
+
+            if CUDA_HOME is None:
+                raise RuntimeError("CUDA_HOME is not found, please set it.")
+
+            nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
+
+            cmd = []
+            if CCACHE_HOME:
+                cmd.append(CCACHE_HOME)
+            cmd.append(nvcc_cmd)
+
+            cmd.extend(objects)
+            cmd.extend(['-o', dlink_object])
+
+            cmd.extend(cuda_dlink_post_cflags)
+
+            # Execute
+            try:
+                self.spawn(cmd)
+            except DistutilsExecError as msg:
+                raise LinkError(msg)
+
+            # Add dlink object to objects
+            objects = [*list(objects), dlink_object]
+
+            return original_link(
+                self,
+                objects,
+                output_filename,
+                output_dir,
+                libraries,
+                library_dirs,
+                runtime_library_dirs,
+                export_symbols,
+                debug,
+                extra_preargs,
+                extra_postargs,
+                build_temp,
+                target_lang,
+            )
 
         def unix_custom_single_compiler(
             self,
@@ -745,10 +826,8 @@ class BuildExtension(build_ext):
 
         # customized compile process
         if self.compiler.compiler_type == 'msvc':
-            original_compile = self.compiler.compile
             self.compiler.compile = win_custom_single_compiler
         else:
-            original_compile = self.compiler.__class__.compile
             self.compiler.__class__.compile = unix_custom_single_compiler
 
         self.compiler.object_filenames = object_filenames_with_cuda(
@@ -756,13 +835,22 @@ class BuildExtension(build_ext):
         )
         self._record_op_info()
 
-        print("Compiling user custom op, it will cost a few seconds.....")
-        build_ext.build_extensions(self)
+        try:
+            if cuda_dlink_post_cflags and self.compiler.compiler_type != 'msvc':
+                original_link = self.compiler.__class__.link_shared_object
+                self.compiler.__class__.link_shared_object = (
+                    unix_custom_link_shared_object
+                )
 
-        if self.compiler.compiler_type == 'msvc':
-            self.compiler.compile = original_compile
-        else:
-            self.compiler.__class__.compile = original_compile
+            print("Compiling user custom op, it will cost a few seconds.....")
+            build_ext.build_extensions(self)
+        finally:
+            if self.compiler.compiler_type == 'msvc':
+                self.compiler.compile = original_compile
+            else:
+                self.compiler.__class__.compile = original_compile
+                if original_link:
+                    self.compiler.__class__.link_shared_object = original_link
 
         # Reset runtime library path on MacOS platform
         so_path = self.get_ext_fullpath(self.extensions[0]._full_name)
@@ -863,17 +951,19 @@ class BuildExtension(build_ext):
         write_stub mechanism that is no longer triggered in setuptools >= 80.
         """
         try:
-            outputs = self.get_outputs()
-            if not outputs:
+            if not self.extensions:
                 return
+
             # We only support a single extension per setup()
-            so_path = os.path.abspath(outputs[0])
+            ext = self.extensions[0]
+            # Use get_ext_fullpath to handle both standard and inplace builds correctly
+            so_path = os.path.abspath(self.get_ext_fullpath(ext.name))
             so_name = os.path.basename(so_path)
             build_dir = os.path.dirname(so_path)
 
             # Get the extension name from the extension module, not the distribution name
             # This ensures we use the correct package name from setup.py
-            ext_name = self.extensions[0].name
+            ext_name = ext.name
 
             # Extract the last part of the extension name for the Python file
             # For example, from "custom_setup_ops.my_ops.custom_relu" we get "custom_relu"
@@ -887,11 +977,52 @@ class BuildExtension(build_ext):
                 f"Failed to generate python api file: {e}"
             ) from e
 
+    def _rename_inplace_shared_library(self) -> None:
+        """
+        Rename the shared library to *_pd_.so if it is an inplace build.
+        This is necessary for editable installs to work correctly with the python stub.
+        """
+        # We only support a single extension per setup()
+        if not self.extensions:
+            return
+
+        ext = self.extensions[0]
+        fullpath = self.get_ext_fullpath(ext.name)
+
+        filename = os.path.basename(fullpath)
+        dirname = os.path.dirname(fullpath)
+        name, ext_suffix = os.path.splitext(filename)
+
+        will_rename = False
+        if OS_NAME.startswith('linux') and ext_suffix == '.so':
+            will_rename = True
+        elif OS_NAME.startswith('darwin') and (
+            ext_suffix == '.dylib' or ext_suffix == '.so'
+        ):
+            will_rename = True
+        elif IS_WINDOWS and ext_suffix == '.pyd':
+            will_rename = True
+
+        if will_rename:
+            new_name = f"{name}_pd_{ext_suffix}"
+            new_path = os.path.join(dirname, new_name)
+
+            if os.path.exists(fullpath):
+                if os.path.exists(new_path):
+                    os.remove(new_path)
+                os.rename(fullpath, new_path)
+                print(
+                    f"Renaming {fullpath} to {new_path} for editable install compatibility"
+                )
+
     def run(self):
         super().run()
 
         # Compatible with wheel installation via `pip install .`
         self._generate_python_api_file()
+
+        if self.inplace:
+            self._rename_inplace_shared_library()
 
         self._clean_intermediate_files()
 

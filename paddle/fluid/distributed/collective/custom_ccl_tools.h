@@ -13,13 +13,6 @@
 // limitations under the License.
 
 #pragma once
-
-#if defined(__APPLE__)
-#include <mach/error.h>
-#else
-#include <error.h>
-#endif
-
 #include <string>
 
 #include "paddle/phi/backends/device_guard.h"

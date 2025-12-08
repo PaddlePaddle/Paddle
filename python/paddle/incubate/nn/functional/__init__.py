@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .batched_gemm import batched_gemm
 from .blha_get_max_len import blha_get_max_len
 from .block_multihead_attention import (
     block_multihead_attention,
@@ -29,6 +30,8 @@ from .cross_entropy_with_softmax_bwd_w_downcast import (
 )
 from .embedding_grad_add_to import embedding_grad_add_to_
 from .expand_modality_expert_id import expand_modality_expert_id
+from .fast_ln import fast_ln
+from .fast_rms_norm import fast_rms_norm
 from .fp8 import (
     fp8_gemm_blockwise,
     fp8_quant_blockwise,
@@ -82,6 +85,8 @@ __all__ = [
     'fp8_gemm_blockwise',
     'cross_entropy_with_softmax_bwd_w_downcast',
     'fp8_quant_blockwise',
+    'fast_ln',
+    'fast_rms_norm',
     'fused_act_dequant',
     'fused_multi_head_attention',
     'fused_feedforward',

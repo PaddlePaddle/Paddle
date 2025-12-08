@@ -29,7 +29,8 @@ class GradTensorHolder {
  public:
   explicit GradTensorHolder(
       const paddle::small_vector<std::vector<GradSlotMeta>,
-                                 kSlotSmallVectorSize>& metas) {
+                                 kSlotSmallVectorSize>& metas,
+      bool record_input_dtypes = true) {
     VLOG(7) << "Init GradTensorHolder with meta size: " << metas.size();
     buffer_.resize(metas.size());
     input_dtypes_.resize(metas.size());
@@ -41,12 +42,13 @@ class GradTensorHolder {
       // Extract only dtype information from metas
       for (size_t j = 0; j < metas[i].size(); j++) {
         const auto& meta = metas[i][j];
-        if (meta.HasTensorMeta()) {
+        if (meta.HasTensorMeta() && record_input_dtypes) {
           const auto& tensor_meta = meta.GetTensorMeta();
           input_dtypes_[i][j] = tensor_meta.dtype;
           VLOG(7) << "Init GradTensorHolder with dtype: "
                   << phi::DataTypeToString(tensor_meta.dtype);
         } else {
+          VLOG(7) << "Init GradTensorHolder with UNDEFINED";
           input_dtypes_[i][j] = phi::DataType::UNDEFINED;
         }
       }

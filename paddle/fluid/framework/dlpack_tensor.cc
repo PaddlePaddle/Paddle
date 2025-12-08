@@ -125,7 +125,7 @@ template <typename T>
 
 template <>
 ::DLDataType GetDLDataTypeCode<phi::dtype::pstring>() {
-  ::DLDataType dtype;  // pstring is not supported in DLPack
+  ::DLDataType dtype = {};  // pstring is not supported in DLPack
   return dtype;
 }
 

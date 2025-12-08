@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include <algorithm>
+#include <cmath>
+
 #include "paddle/common/ddim.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/context_pool.h"
@@ -27,29 +30,59 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
+inline T AreaPixelComputeScale(int64_t input_size,
+                               int64_t output_size,
+                               bool align_corners,
+                               const double scale) {
+  if (align_corners) {
+    if (output_size > 1) {
+      return static_cast<T>(input_size - 1) / (output_size - 1);
+    }
+  } else {
+    if (scale > 0.) {
+      return static_cast<T>(1.0 / scale);
+    }
+    if (output_size > 0) {
+      return static_cast<T>(input_size) / output_size;
+    }
+  }
+  return static_cast<T>(0);
+}
+
+template <typename T>
+HOSTDEVICE inline T AreaPixelComputeSourceIndex(T scale,
+                                                int64_t dst_index,
+                                                bool align_corners,
+                                                T align_type_value = 0.5) {
+  if (align_corners) {
+    return scale * dst_index;
+  } else {
+    return scale * (dst_index + align_type_value) - align_type_value;
+  }
+}
+
+template <typename T>
 HOSTDEVICE inline T CubicConvolution1(T x, T A) {
-  return ((A + static_cast<T>(2)) * x - (A + static_cast<T>(3))) * x * x +
-         static_cast<T>(1);
+  return ((A + 2) * x - (A + 3)) * x * x + 1;
 }
 
 template <typename T>
 HOSTDEVICE inline T CubicConvolution2(T x, T A) {
-  return ((A * x - static_cast<T>(5) * A) * x + static_cast<T>(8) * A) * x -
-         static_cast<T>(4) * A;
+  return ((A * x - 5 * A) * x + 8 * A) * x - 4 * A;
 }
 
 template <typename T>
-HOSTDEVICE inline void get_cubic_upsample_coefficients(T coeffs[4], T t) {
+HOSTDEVICE inline void GetCubicUpsampleCoefficients(T coeffs[4], T t) {
   T A = static_cast<T>(-0.75);
 
   T x1 = t;
-  coeffs[0] = CubicConvolution2<T>(x1 + static_cast<T>(1.0), A);
+  coeffs[0] = CubicConvolution2<T>(x1 + 1.0, A);
   coeffs[1] = CubicConvolution1<T>(x1, A);
 
   // opposite coefficients
-  T x2 = static_cast<T>(1.0) - t;
+  T x2 = 1.0 - t;
   coeffs[2] = CubicConvolution1<T>(x2, A);
-  coeffs[3] = CubicConvolution2<T>(x2 + static_cast<T>(1.0), A);
+  coeffs[3] = CubicConvolution2<T>(x2 + 1.0, A);
 }
 
 inline void ExtractNCDWH(const DDim& dims,
@@ -62,20 +95,20 @@ inline void ExtractNCDWH(const DDim& dims,
   *N = dims[0];
 
   if (dims.size() == 3) {
-    *C = data_layout == DataLayout::kNCHW ? dims[1] : dims[2];
+    *C = data_layout == DataLayout::NCHW ? dims[1] : dims[2];
     *D = 1;
     *H = 1;
-    *W = data_layout == DataLayout::kNCHW ? dims[2] : dims[1];
+    *W = data_layout == DataLayout::NCHW ? dims[2] : dims[1];
   } else if (dims.size() == 4) {
-    *C = data_layout == DataLayout::kNCHW ? dims[1] : dims[3];
+    *C = data_layout == DataLayout::NCHW ? dims[1] : dims[3];
     *D = 1;
-    *H = data_layout == DataLayout::kNCHW ? dims[2] : dims[1];
-    *W = data_layout == DataLayout::kNCHW ? dims[3] : dims[2];
+    *H = data_layout == DataLayout::NCHW ? dims[2] : dims[1];
+    *W = data_layout == DataLayout::NCHW ? dims[3] : dims[2];
   } else {
-    *C = data_layout == DataLayout::kNCHW ? dims[1] : dims[4];
-    *D = data_layout == DataLayout::kNCHW ? dims[2] : dims[1];
-    *H = data_layout == DataLayout::kNCHW ? dims[3] : dims[2];
-    *W = data_layout == DataLayout::kNCHW ? dims[4] : dims[3];
+    *C = data_layout == DataLayout::NCHW ? dims[1] : dims[4];
+    *D = data_layout == DataLayout::NCHW ? dims[2] : dims[1];
+    *H = data_layout == DataLayout::NCHW ? dims[3] : dims[2];
+    *W = data_layout == DataLayout::NCHW ? dims[4] : dims[3];
   }
 }
 
@@ -196,6 +229,116 @@ struct FastDivModForInterpolate {
 };
 
 #endif
+
+namespace antialias {
+
+// taken from
+// https://github.com/pytorch/pytorch/blob/a527e816935957a164d74dd7c5069310b2857695/
+// aten/src/ATen/native/cuda/UpSample.cuh#L207-L305
+struct BilinearFilterFunctor {
+  template <typename T>
+  HOSTDEVICE T operator()(T x) const {
+    if (x < 0) {
+      x = -x;
+    }
+    if (x < 1) {
+      return 1 - x;
+    }
+    return 0;
+  }
+
+  static constexpr int size = 2;
+};
+struct BicubicFilterFunctor {
+  template <typename T>
+  HOSTDEVICE T operator()(T x) const {
+    // https://en.wikipedia.org/wiki/Bicubic_interpolation#Bicubic_convolution_algorithm
+    const T a = -0.5;
+    if (x < 0) {
+      x = -x;
+    }
+    if (x < 1) {
+      return ((a + 2) * x - (a + 3)) * x * x + 1;
+    }
+    if (x < 2) {
+      return (((x - 5) * x + 8) * x - 4) * a;
+    }
+    return 0;
+  }
+
+  static constexpr int size = 4;
+};
+
+// Helper function to compute interpolation kernel size
+inline int ComputeInterpSize(float ratio, int filter_size) {
+  float support =
+      (ratio >= 1.0f) ? (filter_size * 0.5f) * ratio : filter_size * 0.5f;
+  return 1 + 2 * static_cast<int>(ceilf(support));
+}
+
+// Structure to hold AA interpolation launch configuration
+struct AAInterpLaunchConfig {
+  int block_x;
+  int block_y;
+  int grid_x;
+  int grid_y;
+  int grid_z;
+  int interp_height;
+  int interp_width;
+  size_t shmem_size;
+
+  AAInterpLaunchConfig(int out_h,
+                       int out_w,
+                       int64_t nc,
+                       float ratio_h,
+                       float ratio_w,
+                       int filter_size,
+                       size_t element_size,
+                       size_t max_shmem,
+                       int max_grid_z,
+                       int warp_size,
+                       bool need_buffer = true) {
+    interp_height = ComputeInterpSize(ratio_h, filter_size);
+    interp_width = ComputeInterpSize(ratio_w, filter_size);
+
+    // Start with default block size
+    block_x = std::min(warp_size, 32);
+    block_y = std::min(256 / block_x, 8);
+
+    // Compute required shared memory
+    auto compute_shmem = [&]() -> size_t {
+      size_t weights_per_block = static_cast<size_t>(interp_width) * block_x +
+                                 static_cast<size_t>(interp_height) * block_y;
+      if (need_buffer) {
+        weights_per_block +=
+            static_cast<size_t>(interp_height) * block_y * block_x;
+      }
+      return weights_per_block * element_size;
+    };
+
+    shmem_size = compute_shmem();
+
+    // Dynamically reduce block size if shared memory exceeds limit
+    while (shmem_size > max_shmem && (block_x > 4 || block_y > 1)) {
+      // Reduce block_y first as it has larger impact on buffer size
+      if (block_y > 1) {
+        block_y = std::max(1, block_y / 2);
+      } else if (block_x > 4) {
+        block_x = std::max(4, block_x / 2);
+      }
+      shmem_size = compute_shmem();
+    }
+
+    // Compute grid dimensions
+    grid_x = (out_w + block_x - 1) / block_x;
+    grid_y = (out_h + block_y - 1) / block_y;
+    grid_z = std::min(static_cast<int>(nc), max_grid_z);
+  }
+
+  bool IsValid(size_t max_shmem) const { return shmem_size <= max_shmem; }
+};
+
+}  // namespace antialias
 
 }  // namespace funcs
 }  // namespace phi

@@ -12,22 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import platform
 import unittest
 
-import numpy as np
+from utils import dygraph_guard
 
 import paddle
 
 
-class TestEigAPIError(unittest.TestCase):
+class TestEigAPI0Size(unittest.TestCase):
+    @unittest.skipIf(
+        not platform.system().lower().startswith("linux")
+        or not paddle.device.is_compiled_with_xpu(),
+        reason="enable only in linux+xpu now",
+    )
     def test_errors(self):
-        # The size of input in Eig should not be 0.
-        def test_0_size():
-            array = np.array([], dtype=np.float32)
-            x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
-            paddle.linalg.eig(x)
+        with dygraph_guard():
+            for shape in [[0, 0], [0, 4, 4], [1, 0, 2, 3, 3]]:
+                x = paddle.randn(
+                    shape=shape, dtype='float32', requires_grad=True
+                )
+                w, v = paddle.linalg.eig(x)
+                self.assertEqual(w.shape, shape[:-1])
+                self.assertEqual(v.shape, shape)
 
-        self.assertRaises(ValueError, test_0_size)
+                (dw_dx,) = paddle.grad(w.abs().sum(), x, retain_graph=True)
+                self.assertEqual(dw_dx.shape, x.shape)
+                (dv_dx,) = paddle.grad(v.abs().sum(), x, retain_graph=True)
+                self.assertEqual(dv_dx.shape, x.shape)
+                (dwv_dx,) = paddle.grad(
+                    w.abs().sum() + v.abs().sum(), x, retain_graph=True
+                )
+                self.assertEqual(dwv_dx.shape, x.shape)
 
 
 if __name__ == '__main__':

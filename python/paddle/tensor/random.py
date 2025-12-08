@@ -31,6 +31,7 @@ from paddle.framework import (
 )
 from paddle.utils.decorator_utils import (
     param_one_alias,
+    param_two_alias,
     size_args_decorator,
 )
 
@@ -588,7 +589,7 @@ def uniform_random_batch_size_like(
     Returns:
         Tensor, A Tensor of the specified shape filled with uniform_random values. The shape of the Tensor is determined by the shape parameter and the specified dimension of the input Tensor.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.base as base
@@ -598,12 +599,12 @@ def uniform_random_batch_size_like(
             >>> input = paddle.static.data(name="input", shape=[1, 3], dtype='float32')
             >>> out_1 = random.uniform_random_batch_size_like(input, [2, 4])
             >>> print(out_1.shape)
-            [1, 4]
+            paddle.Size([1, 4])
 
             >>> # example 2:
             >>> out_2 = random.uniform_random_batch_size_like(input, [2, 4], input_dim_idx=1, output_dim_idx=1)
             >>> print(out_2.shape)
-            [2, 3]
+            paddle.Size([2, 3])
     """
     if in_dynamic_or_pir_mode():
         dtype = convert_np_dtype_to_dtype_(dtype)
@@ -1504,7 +1505,7 @@ def normal_(
 def uniform(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,
-    min: float = -1.0,
+    min: float = 0,
     max: float = 1.0,
     seed: int = 0,
     name: str | None = None,
@@ -1535,7 +1536,7 @@ def uniform(
             Default is None, use global default dtype (see ``get_default_dtype``
             for details).
         min(float|int, optional): The lower bound on the range of random values
-            to generate, ``min`` is included in the range. Default is -1.0.
+            to generate, ``min`` is included in the range. Default is 0.
         max(float|int, optional): The upper bound on the range of random values
             to generate, ``max`` is excluded in the range. Default is 1.0.
         seed(int, optional): Random seed used for generating samples. If seed is 0,
@@ -1681,10 +1682,11 @@ def uniform(
         return out
 
 
+@param_two_alias(["min", "from"], ["max", "to"])
 @dygraph_only
 def uniform_(
     x: Tensor,
-    min: float = -1.0,
+    min: float = 0,
     max: float = 1.0,
     seed: int = 0,
     name: str | None = None,
@@ -1697,9 +1699,11 @@ def uniform_(
     Args:
         x(Tensor): The input tensor to be filled with random values.
         min(float|int, optional): The lower bound on the range of random values
-            to generate, ``min`` is included in the range. Default is -1.0.
+            to generate, ``min`` is included in the range. Default is 0.
+            Alias: ``from``.
         max(float|int, optional): The upper bound on the range of random values
             to generate, ``max`` is excluded in the range. Default is 1.0.
+            Alias: ``to``.
         seed(int, optional): Random seed used for generating samples. If seed is 0,
             it will use the seed of the global default generator (which can be set by paddle.seed).
             Note that if seed is not 0, this operator will always generate the same random numbers every
@@ -1707,9 +1711,11 @@ def uniform_(
         name(str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
+
     Returns:
         Tensor, The input tensor x filled with random values sampled from a uniform
         distribution in the range [``min``, ``max``).
+
     Examples:
         .. code-block:: python
 

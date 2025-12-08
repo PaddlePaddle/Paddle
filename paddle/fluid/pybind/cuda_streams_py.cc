@@ -13,10 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/cuda_streams_py.h"
-
 #include <string>
 #include <vector>
-
+#include "glog/logging.h"
 #include "paddle/phi/api/profiler/event.h"
 #include "paddle/phi/core/platform/device_event_base.h"
 
@@ -375,7 +374,7 @@ void BindCudaStream(py::module *m_ptr) {
             }
             if (device >= device_count) {
               PADDLE_THROW(common::errors::InvalidArgument(
-                  "The device id  must be inside [0, %d), but input device=%d.",
+                  "The device id must be inside [0, %d), but input device=%d.",
                   device_count,
                   device));
             }

@@ -60,7 +60,7 @@ class CudnnFrontendConvHelper {
   static std::vector<int64_t> GenerateStrides(
       const std::vector<int64_t>& dim, cudnnTensorFormat_t filter_format) {
     // ref:
-    // https://github.com/NVIDIA/cudnn-frontend/blob/main/samples/helpers.cpp
+    // https://github.com/NVIDIA/cudnn-frontend/blob/main/samples/legacy_samples/helpers.cpp
     // For INT8x4 and INT8x32 we still compute standard strides here to input
     // into the cuDNN functions. We will manually scale by resizeFactor in the
     // cpu ref.

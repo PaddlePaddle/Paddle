@@ -344,7 +344,7 @@ def selected_rows_tensor_to_string(tensor, dtype, prefix='Tensor'):
         data = _format_dense_tensor(tensor, indent)
         return _template.format(
             prefix=prefix,
-            shape=tensor.shape,
+            shape=list(tensor.shape),
             dtype=dtype,
             place=tensor._place_str,
             stop_gradient=tensor.stop_gradient,
@@ -368,7 +368,7 @@ def sparse_tensor_to_string(tensor, prefix='Tensor'):
         )
         return _template.format(
             prefix=prefix,
-            shape=tensor.shape,
+            shape=list(tensor.shape),
             dtype=tensor.dtype,
             place=tensor._place_str,
             stop_gradient=tensor.stop_gradient,
@@ -393,7 +393,7 @@ def sparse_tensor_to_string(tensor, prefix='Tensor'):
 
         return _template.format(
             prefix=prefix,
-            shape=tensor.shape,
+            shape=list(tensor.shape),
             dtype=tensor.dtype,
             place=tensor._place_str,
             stop_gradient=tensor.stop_gradient,
@@ -416,7 +416,7 @@ def dist_tensor_to_string(tensor, prefix='Tensor'):
         _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, process_mesh={process_mesh}, placements={placements}, GlobalDenseTensor Not initialized)"
         return _template.format(
             prefix=prefix,
-            shape=tensor.shape,
+            shape=list(tensor.shape),
             dtype=dtype,
             place=tensor._place_str,
             stop_gradient=tensor.stop_gradient,
@@ -437,7 +437,7 @@ def dist_tensor_to_string(tensor, prefix='Tensor'):
         _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, process_mesh={process_mesh}, placements={placements}, GlobalDenseTensor=\n{indent}{data})"
         return _template.format(
             prefix=prefix,
-            shape=tensor.shape,
+            shape=list(tensor.shape),
             dtype=dtype,
             place=tensor._place_str,
             stop_gradient=tensor.stop_gradient,
@@ -472,7 +472,7 @@ def tensor_to_string(tensor, prefix='Tensor'):
         data = _format_dense_tensor(tensor, indent)
         return _template.format(
             prefix=prefix,
-            shape=tensor.shape,
+            shape=list(tensor.shape),
             dtype=dtype,
             place=tensor._place_str,
             stop_gradient=tensor.stop_gradient,
