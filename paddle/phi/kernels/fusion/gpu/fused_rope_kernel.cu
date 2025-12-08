@@ -59,11 +59,6 @@ void FusedRopeKernel(const Context& dev_ctx,
 
   constexpr const int vec_size = 2;
 
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
-
-  int64_t grid = config.block_per_grid.x;
-  int64_t block = config.thread_per_block.x;
   auto stream = dev_ctx.stream();
 
   phi::Array<T*, 3> outs_data;
@@ -211,24 +206,33 @@ void FusedRopeKernel(const Context& dev_ctx,
           ? VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
           : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>;
 
+  int64_t block_x = head_dim / vec_size;
+  int64_t max_threads = 1024;
+  int64_t block_y =
+      std::min<int64_t>(inputs_num_heads[0], max_threads / block_x);
+  block_y = std::max<int64_t>(block_y, 1);
+  dim3 block(block_x, block_y);
+  dim3 grid(seq_len, batch_size);
+  size_t shared_mem_size = head_dim * sizeof(MPType) * 2;
+
   if (is_same_num_heads) {
     int64_t batch_stride = time_major ? q.strides()[1] : q.strides()[0];
     int64_t seq_stride = time_major ? q.strides()[0] : q.strides()[1];
-    kernel_func<<<grid, block, 0, stream>>>(ins_data,
-                                            sin_cos_data,
-                                            position_ids_data,
-                                            flag_sin_cos,
-                                            sign,
-                                            batch_size,
-                                            seq_len,
-                                            inputs_num_heads[0],
-                                            head_dim,
-                                            batch_stride,
-                                            seq_stride,
-                                            num_inputs,
-                                            div_c,
-                                            rotary_emb_base,
-                                            outs_data);
+    kernel_func<<<grid, block, shared_mem_size, stream>>>(ins_data,
+                                                          sin_cos_data,
+                                                          position_ids_data,
+                                                          flag_sin_cos,
+                                                          sign,
+                                                          batch_size,
+                                                          seq_len,
+                                                          inputs_num_heads[0],
+                                                          head_dim,
+                                                          batch_stride,
+                                                          seq_stride,
+                                                          num_inputs,
+                                                          div_c,
+                                                          rotary_emb_base,
+                                                          outs_data);
   } else {
     // Multi Query Attention (MQA) or Group Query Attention (GQA)
     PADDLE_ENFORCE_EQ(
@@ -258,21 +262,21 @@ void FusedRopeKernel(const Context& dev_ctx,
     int64_t batch_stride_q = time_major ? q.strides()[1] : q.strides()[0];
     int64_t seq_stride_q = time_major ? q.strides()[0] : q.strides()[1];
 
-    kernel_func<<<grid, block, 0, stream>>>(ins_data,
-                                            sin_cos_data,
-                                            position_ids_data,
-                                            flag_sin_cos,
-                                            sign,
-                                            batch_size,
-                                            seq_len,
-                                            inputs_num_heads[0],
-                                            head_dim,
-                                            batch_stride_q,
-                                            seq_stride_q,
-                                            1,
-                                            div_c,
-                                            rotary_emb_base,
-                                            outs_data);
+    kernel_func<<<grid, block, shared_mem_size, stream>>>(ins_data,
+                                                          sin_cos_data,
+                                                          position_ids_data,
+                                                          flag_sin_cos,
+                                                          sign,
+                                                          batch_size,
+                                                          seq_len,
+                                                          inputs_num_heads[0],
+                                                          head_dim,
+                                                          batch_stride_q,
+                                                          seq_stride_q,
+                                                          1,
+                                                          div_c,
+                                                          rotary_emb_base,
+                                                          outs_data);
 
     // rotary position embedding K,V
     phi::Array<const T*, 3> input_kv{ins_data[1], ins_data[2], nullptr};
@@ -284,21 +288,26 @@ void FusedRopeKernel(const Context& dev_ctx,
                                 ? batch_size * inputs_num_heads[1] * head_dim
                                 : inputs_num_heads[1] * head_dim;
 
-    kernel_func<<<grid, block, 0, stream>>>(input_kv,
-                                            sin_cos_data,
-                                            position_ids_data,
-                                            flag_sin_cos,
-                                            sign,
-                                            batch_size,
-                                            seq_len,
-                                            inputs_num_heads[1],
-                                            head_dim,
-                                            batch_stride_kv,
-                                            seq_stride_kv,
-                                            num_inputs - 1,
-                                            div_c,
-                                            rotary_emb_base,
-                                            out_kv);
+    int64_t block_y_kv =
+        std::min<int64_t>(inputs_num_heads[1], max_threads / block_x);
+    block_y_kv = std::max<int64_t>(block_y_kv, 1);
+    dim3 block_kv(block_x, block_y_kv);
+
+    kernel_func<<<grid, block_kv, shared_mem_size, stream>>>(input_kv,
+                                                             sin_cos_data,
+                                                             position_ids_data,
+                                                             flag_sin_cos,
+                                                             sign,
+                                                             batch_size,
+                                                             seq_len,
+                                                             inputs_num_heads[1],
+                                                             head_dim,
+                                                             batch_stride_kv,
+                                                             seq_stride_kv,
+                                                             num_inputs - 1,
+                                                             div_c,
+                                                             rotary_emb_base,
+                                                             out_kv);
   }
 }
 }  // namespace fusion
