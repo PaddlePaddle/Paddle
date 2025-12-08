@@ -232,10 +232,14 @@ class TestFlashAttentionAPI(unittest.TestCase):
                 self.return_softmax,
             )
 
-            if not paddle.base.libpaddle.pir.all_ops_defined_symbol_infer(
-                main_program
-            ):
-                self.fail("flash_attn_unpadded op symbol infer failed.")
+            shape_analysis = (
+                paddle.base.libpaddle.pir.get_shape_constraint_ir_analysis(
+                    main_program
+                )
+            )
+            first_out_shape_or_data = shape_analysis.get_shape_or_data_for_var(
+                outs[0]
+            )
             exe = base.Executor(self.place)
             fetches_result = exe.run(
                 main_program,
@@ -247,6 +251,9 @@ class TestFlashAttentionAPI(unittest.TestCase):
                 fetch_list=[outs],
             )
 
+            self.assertTrue(
+                first_out_shape_or_data.is_equal(list(outs[0].shape))
+            )
             np.testing.assert_allclose(
                 fetches_result[0], out_, rtol=5e-03, atol=1e-03
             )
