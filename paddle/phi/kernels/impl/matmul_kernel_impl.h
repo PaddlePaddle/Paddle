@@ -453,8 +453,9 @@ void MatMulFunctionImplWithBlas(
                   x_data,
                   static_cast<T>(flag),
                   dev_ctx.template Alloc<T>(Out));
-        // TODO(Pan Zhaowu): the actual layout is (B, N, M), need to reshape and
-        // transpose to (B, M, N) ty -> (B,N,K)
+        // The actual layout is (B, N, M), need to reshape and
+        // transpose to (B, M, N) ty -> (B,N,K), this requires transpose kernel
+        // to be implemented in high efficiency.
         const auto out_original_shape = Out->dims();
         std::vector<int64_t> actual_dim = common::vectorize(transposedY.dims());
         actual_dim[actual_dim.size() - 1] =
