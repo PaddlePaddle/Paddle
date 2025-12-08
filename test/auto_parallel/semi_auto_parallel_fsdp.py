@@ -62,7 +62,7 @@ class TestSemiAutoParallelFSDP:
         opt = paddle.optimizer.AdamW(parameters=linear.parameters())
 
         # use FSDP
-        FullyShardAuto(linear)
+        FullyShardAuto(linear, self._mesh)
 
         stage_losses = []
         tr_loss_add = float(0)

@@ -16,7 +16,6 @@ import os
 from types import MethodType
 
 import paddle.distributed as dist
-from paddle.distributed import fleet
 
 
 def shard_accumulators(parameters_and_grads, optimizer, target_block):
@@ -35,7 +34,6 @@ def shard_accumulators(parameters_and_grads, optimizer, target_block):
             if accumulator.is_dist():
                 continue
             origin_accumulator_name = accumulator.name
-            import paddle.distributed as dist
 
             if 'beta' not in key:
                 placements = param.placements
@@ -63,30 +61,12 @@ def shard_accumulators(parameters_and_grads, optimizer, target_block):
 
 
 class FullyShardAuto:
-    def __init__(self, model, shard_fn=None, gradient_accumulation_steps=1):
-        mesh = fleet.auto.get_mesh()
-        sharding_mesh_dim = 'dp'
-        self._shard_fn = dist.ShardingStage3(sharding_mesh_dim, mesh)
-        self._sharding_axis = None
-        self._sharding_degree = None
-        self.gradient_accumulation_steps = gradient_accumulation_steps
-
-        global_mesh = fleet.auto.get_mesh()
-        if global_mesh:
-            self._sharding_degree = global_mesh.get_dim_size(
-                self._shard_fn._sharding_mesh_dim
-            )
-        elif self._shard_fn._mesh:
-            self._sharding_degree = self._shard_fn._mesh.get_dim_size(
-                self._shard_fn._sharding_mesh_dim
-            )
-        self._sharding_axis = 0
-        self._shard_fn._set_sharding_axis(self._sharding_axis)
+    def __init__(self, model, mesh):
         self.model = model
+        # use first dims as sharding axis
+        self._shard_fn = dist.ShardingStage3(0, mesh)
         for param in self.model.parameters():
             param._need_shard_auto = True
-        for param in self.model.parameters():
             self._shard_fn._shard_parameter(param)
-        for param in self.model.parameters():
             self._shard_fn._register_hook_for_param_grad(param)
         os.environ["skip_sharding3_output_reshard"] = "1"
