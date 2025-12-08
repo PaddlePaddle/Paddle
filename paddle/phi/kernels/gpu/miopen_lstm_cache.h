@@ -117,8 +117,7 @@ class ScopedRNNBase {
         common::errors::InvalidArgument(
             "The miopen lstm and setting weight size should be same."));
     // ------------------- miopen weight descriptors ---------------------
-    phi::backends::gpu::DataLayout layout =
-        phi::backends::gpu::DataLayout::kNCHW;
+    DataLayout layout = DataLayout::NCHW;
     int dim_tmp = weights_size_ / sizeof(T);
     std::vector<int> dim_w = {dim_tmp, 1, 1};
     weight_desc_.descriptor<T>(layout, dim_w);

@@ -732,6 +732,53 @@ class TestPyLayer(unittest.TestCase):
                 expect_msg, err_msg, expect_msg + " should in error message "
             )
 
+    def test_set_grad_in_dtype_consistent(self):
+        paddle.seed(2025)
+        cus_tanh_backward_input = paddle.empty([])
+
+        class cus_tanh(PyLayer):
+            @staticmethod
+            def forward(ctx, x):
+                y = paddle.tanh(x)
+                # Pass tensors to backward.
+                ctx.save_for_backward(y)
+                # The gradient input in the backward process
+                # will not be automatically cast to the dtype of the forward output.
+                ctx.set_grad_in_dtype_consistent(False)
+                return y
+
+            @staticmethod
+            def backward(ctx, dy):
+                nonlocal cus_tanh_backward_input
+                cus_tanh_backward_input = dy
+                # Get the tensors passed by forward.
+                (y,) = ctx.saved_tensor()
+                grad = dy * (1 - paddle.square(y))
+                return grad
+
+        class cus_tanh_cast_grad(PyLayer):
+            @staticmethod
+            def forward(ctx, x):
+                y = paddle.tanh(x)
+                # Pass tensors to backward.
+                ctx.save_for_backward(y)
+                return y
+
+            @staticmethod
+            def backward(ctx, dy):
+                # Get the tensors passed by forward.
+                (y,) = ctx.saved_tensor()
+                grad = dy * (1 - paddle.square(y))
+                grad = paddle.cast(grad, paddle.float16)
+                return grad
+
+        x = paddle.randn([3, 3]).astype("float32")
+        x.stop_gradient = False
+        y = cus_tanh.apply(x)
+        z = cus_tanh_cast_grad.apply(y)
+        z.backward()
+        self.assertEqual(cus_tanh_backward_input.dtype, paddle.float16)
+
 
 if __name__ == '__main__':
     unittest.main()

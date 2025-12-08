@@ -33,7 +33,7 @@ void hash_embedding_bp(const T* hash_id,
                        int _space_len) {
   for (int j = 0; j != _num_emb; j += _rand_len) {
     unsigned int pos = XXH32(hash_id, len * sizeof(T), j) % _space_len;
-    phi::funcs::axpy(top_pos + j, weights + pos, _rand_len, mlr);
+    funcs::axpy(top_pos + j, weights + pos, _rand_len, mlr);
   }
 }
 

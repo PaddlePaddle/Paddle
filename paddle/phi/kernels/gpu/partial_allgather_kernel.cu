@@ -67,7 +67,7 @@ void PartialAllGatherOpCUDAKernel(const Context& dev_ctx,
                         numel,
                         nranks));
 
-  phi::DDim dims = in->dims();
+  DDim dims = in->dims();
   out->Resize(dims);
   dev_ctx.template Alloc<T>(out);
 

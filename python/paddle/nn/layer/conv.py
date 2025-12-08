@@ -544,7 +544,7 @@ class Conv1DTranspose(_ConvNd):
         - output(Tensor): 3-D tensor with same shape as input x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.nn import Conv1DTranspose
@@ -553,13 +553,13 @@ class Conv1DTranspose(_ConvNd):
             >>> x = paddle.to_tensor([[[4, 0, 9, 7],
             ... [8, 0, 9, 2]]], dtype="float32")
             >>> print(x.shape)
-            [1, 2, 4]
+            paddle.Size([1, 2, 4])
 
             >>> # shape: (2, 1, 2)
             >>> w = paddle.to_tensor([[[7, 0]],
             ... [[4, 2]]], dtype="float32")
             >>> print(w.shape)
-            [2, 1, 2]
+            paddle.Size([2, 1, 2])
 
             >>> conv = Conv1DTranspose(2, 1, 2)
             >>> conv.weight.set_value(w)
@@ -713,19 +713,19 @@ class Conv2D(_ConvNd):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
 
             >>> paddle.disable_static()
 
-            >>> x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
+            >>> x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1.0, max=1.0)
 
             >>> conv = nn.Conv2D(4, 6, (3, 3))
             >>> y_var = conv(x_var)
             >>> print(y_var.shape)
-            [2, 6, 6, 6]
+            paddle.Size([2, 6, 6, 6])
     """
 
     def __init__(
@@ -924,19 +924,19 @@ class Conv2DTranspose(_ConvNd):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
 
             >>> paddle.disable_static()
 
-            >>> x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
+            >>> x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1.0, max=1.0)
 
             >>> conv = nn.Conv2DTranspose(4, 6, (3, 3))
             >>> y_var = conv(x_var)
             >>> print(y_var.shape)
-            [2, 6, 10, 10]
+            paddle.Size([2, 6, 10, 10])
     """
 
     def __init__(
@@ -1085,19 +1085,19 @@ class Conv3D(_ConvNd):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
 
             >>> paddle.disable_static()
 
-            >>> x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1., max=1.)
+            >>> x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1.0, max=1.0)
 
             >>> conv = nn.Conv3D(4, 6, (3, 3, 3))
             >>> y_var = conv(x_var)
             >>> print(y_var.shape)
-            [2, 6, 6, 6, 6]
+            paddle.Size([2, 6, 6, 6, 6])
     """
 
     def __init__(
@@ -1274,19 +1274,19 @@ class Conv3DTranspose(_ConvNd):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
 
             >>> paddle.disable_static()
 
-            >>> x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1., max=1.)
+            >>> x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1.0, max=1.0)
 
             >>> conv = nn.Conv3DTranspose(4, 6, (3, 3, 3))
             >>> y_var = conv(x_var)
             >>> print(y_var.shape)
-            [2, 6, 10, 10, 10]
+            paddle.Size([2, 6, 10, 10, 10])
     """
 
     def __init__(

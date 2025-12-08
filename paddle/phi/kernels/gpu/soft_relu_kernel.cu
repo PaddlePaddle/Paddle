@@ -49,8 +49,7 @@ void SoftReluCudaKernel(const Context& dev_ctx,
   std::vector<phi::DenseTensor*> outs = {out};
   CudaSoftReluFunctor<T> functor;
   functor.SetAttrs(threshold);
-  phi::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
-      dev_ctx, ins, &outs, functor);
+  funcs::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins, &outs, functor);
 }
 }  // namespace phi
 

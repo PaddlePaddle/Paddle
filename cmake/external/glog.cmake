@@ -47,7 +47,10 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
   )
   set(GLOG_POLICY_ARGS "-DCMAKE_POLICY_VERSION_MINIMUM=3.5")
 endif()
-
+# patch
+file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/glog/indent.patch log_indent)
+set(GLOG_PATCH_COMMAND git checkout -- . && git apply --check ${log_indent} &&
+                       git apply ${log_indent})
 ExternalProject_Add(
   extern_glog
   ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
@@ -55,6 +58,8 @@ ExternalProject_Add(
   DEPENDS gflags
   PREFIX ${GLOG_PREFIX_DIR}
   UPDATE_COMMAND ""
+  PATCH_COMMAND
+  COMMAND ${GLOG_PATCH_COMMAND}
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
              -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
              -DCMAKE_CXX_FLAGS=${GLOG_CMAKE_CXX_FLAGS}

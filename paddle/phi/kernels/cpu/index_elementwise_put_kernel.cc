@@ -127,8 +127,8 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
   std::vector<int64_t> shape_tmp;
   std::vector<int64_t> stride_tmp;
   funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
-  auto sizes = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
-  auto strides = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
+  auto sizes = std::array<int64_t, DDim::kMaxRank + 1>{};
+  auto strides = std::array<int64_t, DDim::kMaxRank + 1>{};
   for (int64_t i = 0; i < num_indices; i++) {
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];

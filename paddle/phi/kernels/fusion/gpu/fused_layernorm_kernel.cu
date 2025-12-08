@@ -39,17 +39,15 @@ limitations under the License.
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_fp16.h>
 #include <hip/hip_runtime.h>
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
 #define GPU(str) hip##str
 #define GPUMultiProcessorCount hipDeviceAttributeMultiprocessorCount
 #else
-#include <cub/cub.cuh>
 #define GPU(str) cuda##str
 #define GPUMultiProcessorCount cudaDevAttrMultiProcessorCount
 #endif

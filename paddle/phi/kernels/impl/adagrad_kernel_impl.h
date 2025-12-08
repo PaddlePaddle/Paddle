@@ -20,9 +20,9 @@
 
 namespace phi {
 
-template <typename DeviceContext, typename T>
+template <typename Context, typename T>
 struct SparseAdagradFunctor {
-  void operator()(const DeviceContext& dev_ctx,
+  void operator()(const Context& dev_ctx,
                   const phi::SelectedRows& grad,
                   const DenseTensor& learning_rate,
                   T epsilon,
@@ -30,9 +30,9 @@ struct SparseAdagradFunctor {
                   DenseTensor* param);
 };
 
-template <typename DeviceContext, typename T>
+template <typename Context, typename T>
 struct DenseAdagradFunctor {
-  void operator()(const DeviceContext& dev_ctx,
+  void operator()(const Context& dev_ctx,
                   const DenseTensor& param_t,
                   const DenseTensor& grad_t,
                   const DenseTensor& moment_t,
@@ -45,8 +45,8 @@ struct DenseAdagradFunctor {
                   DenseTensor* master_param_outs);
 };
 
-template <typename DeviceContext, typename T>
-phi::SelectedRows SquareSelectedRows(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+phi::SelectedRows SquareSelectedRows(const Context& dev_ctx,
                                      const phi::SelectedRows& input) {
   phi::SelectedRows out;
   out.set_rows(input.rows());

@@ -16,18 +16,21 @@
 
 #include <list>
 #include <map>
+#include <memory>
 #include <optional>
 #include <set>
+#include <vector>
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
+#include "paddle/phi/core/memory/allocation/vmm_ipc_allocation.h"
 #include "paddle/phi/core/memory/mem_utils.h"
 #include "paddle/phi/core/memory/mem_visitor.h"
 
 namespace paddle {
 namespace memory {
-namespace allocation {
 
+namespace allocation {
 /**
  * Like AutoGrowthBestFitAllocator, VirtualMemoryAutoGrowthBestFitAllocator will
  * gradually apply to GPU for video memory as the model uses more video memory.
@@ -37,6 +40,7 @@ namespace allocation {
  * the two video memories later. This combination can greatly reduce
  * fragmentation.
  */
+
 class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
  public:
   VirtualMemoryAutoGrowthBestFitAllocator(
@@ -47,6 +51,13 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   std::shared_ptr<Allocator> &GetUnderLyingAllocator() {
     return underlying_allocator_;
   }
+  const std::map<std::pair<size_t, void *>, std::list<Block>::iterator>
+      &GetFreeBlocks() const {
+    return free_blocks_;
+  }
+
+  const std::list<Block> &GetAllBlocks() const { return all_blocks_; }
+
   std::pair<size_t, size_t> SumLargestFreeBlockSizes(int32_t n) const;
   void Accept(AllocatorVisitor *visitor) override { visitor->Visit(this); }
 
@@ -56,6 +67,8 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   // Try to simulate an allocation, simulating a request for vector<size>.
 
   bool TryAllocateBatch(const std::vector<size_t> &sizes);
+
+  bool CollectTensorParts(void *ptr, std::vector<BlockPart> *parts);
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;
@@ -104,9 +117,13 @@ class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator
   void PreAlloc() override;
   void Accept(AllocatorVisitor *visitor) override { visitor->Visit(this); }
   bool IsSmallRequest(size_t size) override;
+  std::vector<size_t> GetCompactSize() const { return compact_size_; }
 
  protected:
   size_t CompactImpl(const phi::Place &place) override;
+
+ private:
+  std::vector<size_t> compact_size_;
 };
 
 }  // namespace allocation

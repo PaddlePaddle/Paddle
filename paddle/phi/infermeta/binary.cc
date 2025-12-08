@@ -521,8 +521,6 @@ void CompareInferMeta(const MetaTensor& x,
 void CompareAllInferMeta(const MetaTensor& x,
                          const MetaTensor& y,
                          MetaTensor* out) {
-  auto dim_x = x.dims();
-  auto dim_y = y.dims();
   out->share_lod(x);
   out->set_dims(common::make_ddim({}));
 }
@@ -833,8 +831,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
             "should be the same."));
 
   const int64_t C =
-      (data_layout != DataLayout::kNHWC ? x_dims[1]
-                                        : x_dims[x_dims.size() - 1]);
+      (data_layout != DataLayout::NHWC ? x_dims[1] : x_dims[x_dims.size() - 1]);
   PADDLE_ENFORCE_EQ(
       C,
       filter_dims[0],
@@ -851,7 +848,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
           data_format));
 
   DDim x_data_dims;
-  if (data_layout != DataLayout::kNHWC) {
+  if (data_layout != DataLayout::NHWC) {
     x_data_dims = slice_ddim(x_dims, 2, x_dims.size());
   } else {
     x_data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
@@ -862,10 +859,10 @@ void ConvTransposeInferMeta(const MetaTensor& x,
       &paddings_, &dilations_, padding_algorithm, x_data_dims, strides, ksize);
 
   std::vector<int64_t> output_shape({x_dims[0]});
-  if (data_layout != DataLayout::kNHWC) {
+  if (data_layout != DataLayout::NHWC) {
     output_shape.push_back(filter_dims[1] * groups);
   }
-  const int offset = (data_layout != DataLayout::kNHWC ? 2 : 1);
+  const int offset = (data_layout != DataLayout::NHWC ? 2 : 1);
   for (int i = 0; i < static_cast<int>(strides.size()); ++i) {
     auto filter_extent = dilations_[i] * (filter_dims[i + 2] - 1) + 1;
     auto infer_shape = (config.is_runtime || x_dims[i + offset] > 0)
@@ -934,7 +931,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
       output_shape.push_back(infer_shape);
     }
   }
-  if (data_layout == DataLayout::kNHWC) {
+  if (data_layout == DataLayout::NHWC) {
     output_shape.push_back(filter_dims[1] * groups);
   }
 
@@ -1702,7 +1699,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     bool should_rotate =
         config.is_run_onednn_kernel &&
         (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-         phi::DataLayout::kNHWC) &&
+         phi::DataLayout::NHWC) &&
         (x_dims.size() >= 3 || y_dims.size() >= 3);
     if (should_rotate) {
       // Pick bigger shape and rotate this one
@@ -1745,10 +1742,10 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
   }
   out->set_dtype(promote_result);
 
-  // layout need change when meet input layout contain kNHWC
+  // layout need change when meet input layout contain NHWC
   auto layout = [&]() {
-    if (x.layout() == DataLayout::kNHWC || y.layout() == DataLayout::kNHWC)
-      return DataLayout::kNHWC;
+    if (x.layout() == DataLayout::NHWC || y.layout() == DataLayout::NHWC)
+      return DataLayout::NHWC;
     return x.layout();
   }();
 
@@ -1843,6 +1840,55 @@ void ExpandAsInferMeta(const MetaTensor& x,
   out->set_dims(common::make_ddim(target_shape));
   out->set_dtype(x.dtype());
 #undef MAX_RANK_SUPPORTED
+}
+
+void FastRMSNormInfermeta(const MetaTensor& x,
+                          const MetaTensor& scale,
+                          float epsilon,
+                          MetaTensor* y,
+                          MetaTensor* invvar) {
+  auto x_dim = x.dims();
+  auto x_ndim = x_dim.size();
+
+  auto matrix_dim = common::flatten_to_2d(x_dim, x_ndim - 1);
+
+  int64_t right = matrix_dim[1];
+  if (scale) {
+    PADDLE_ENFORCE_EQ(scale.dims().size(),
+                      1,
+                      common::errors::InvalidArgument(
+                          "The dimensions of Input(Scale) must be 1, but "
+                          "received dimensions of "
+                          "Input(Scale) is [%d]",
+                          scale.dims().size()));
+  }
+
+  PADDLE_ENFORCE_EQ(
+      scale.dims()[0],
+      right,
+      common::errors::InvalidArgument(
+          "The first dimension value of Input(Scale) must equal to be the "
+          "second dimension value of the flattened 2D matrix of Input(X), "
+          "But received the first dimension value of Input(Scale) is "
+          "[%d], the second dimension value of the flattened 2D matrix of "
+          " Input(Scale) is [%d].",
+          scale.dims()[0],
+          right));
+
+  PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f,
+                    true,
+                    common::errors::InvalidArgument(
+                        "'epsilon' in Op(LayerNorm) should be between"
+                        "0.0 and 0.001, But received [%s].",
+                        epsilon));
+
+  phi::DataType scale_dtype = scale.dtype();
+  y->set_dims(x_dim);
+  y->set_dtype(scale_dtype);
+
+  auto row_shape = slice_ddim(x_dim, 0, x_dim.size() - 1);
+  invvar->set_dims({row_shape});
+  invvar->set_dtype(paddle::DataType::FLOAT32);
 }
 
 void FakeDequantizeMaxAbsInferMeta(const MetaTensor& x,
@@ -4738,6 +4784,48 @@ void FusedRMSNormInferMeta(const MetaTensor& x,
 
   invvar->set_dims({-1});
   invvar->set_dtype(DataType::FLOAT32);
+}
+
+void BatchedGemmInferMeta(const MetaTensor& lhs,
+                          const MetaTensor& rhs,
+                          const std::vector<int64_t>& batch_sizes,
+                          MetaTensor* output) {
+  const auto lhs_shape = lhs.dims();
+  const auto rhs_shape = rhs.dims();
+  PADDLE_ENFORCE_EQ(
+      lhs_shape.size(),
+      2,
+      common::errors::InvalidArgument(
+          "The lhs's dimension must be 2, but got[%d]", lhs_shape.size()));
+  PADDLE_ENFORCE_EQ(
+      rhs_shape.size(),
+      3,
+      common::errors::InvalidArgument(
+          "The rhs's dimension must be 3, but got[%d]", rhs_shape.size()));
+
+  // We expect shape below:
+  // [M_total, input_hidden_size] x [num_experts, input_hidden_size,
+  // output_hidden_size]
+  const int64_t num_experts = rhs_shape[0];
+  const int64_t total_tokens = lhs_shape[0];
+  const int64_t input_hidden_size = lhs_shape[1];
+  const int64_t output_hidden_size = rhs_shape[2];
+  PADDLE_ENFORCE_EQ(input_hidden_size,
+                    rhs_shape[1],
+                    common::errors::InvalidArgument(
+                        "The lhs's last dim must be equal to the rhs's "
+                        "dim[-2], but got[%d] instead of [%d]",
+                        input_hidden_size,
+                        rhs_shape[1]));
+  PADDLE_ENFORCE_EQ(
+      lhs.dtype() == DataType::BFLOAT16 && rhs.dtype() == DataType::BFLOAT16,
+      true,
+      common::errors::InvalidArgument(
+          "The dtype of lhs and rhs must be BFLOAT16, but got [%s] and [%s]",
+          lhs.dtype(),
+          rhs.dtype()));
+  output->set_dims(common::make_ddim({total_tokens, output_hidden_size}));
+  output->set_dtype(DataType::BFLOAT16);
 }
 
 }  // namespace phi

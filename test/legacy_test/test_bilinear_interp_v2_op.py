@@ -151,15 +151,79 @@ def bilinear_interp_test(
         interp_method,
         align_corners,
         align_mode,
+        False,
     )
 
 
-def bilinear_interp_np(
+def _bilinear_kernel_1d(x):
+    """Bilinear filter kernel for anti-aliasing"""
+    x = np.abs(x)
+    return np.maximum(0.0, 1.0 - x)
+
+
+def _compute_weights_and_indices_aa(in_size, out_size, align_corners, scale):
+    """Compute anti-aliasing weights and indices for one dimension"""
+    if align_corners:
+        if out_size > 1:
+            scale = (in_size - 1.0) / (out_size - 1.0)
+        else:
+            scale = 0.0
+    else:
+        if scale > 0:
+            scale = 1.0 / scale
+        else:
+            scale = float(in_size) / float(out_size)
+
+    # Filter support
+    filter_scale = max(1.0, scale)
+    support = 1.0 * filter_scale  # bilinear support is 2 * 0.5 = 1
+
+    weights_list = []
+    indices_list = []
+
+    for out_idx in range(out_size):
+        # Compute center
+        if align_corners:
+            center = out_idx * scale
+        else:
+            center = (out_idx + 0.5) * scale - 0.5
+
+        # Compute support region
+        left = int(np.floor(center - support))
+        right = int(np.ceil(center + support))
+
+        # Clip to valid range
+        left = max(0, left)
+        right = min(in_size - 1, right)
+
+        # Compute weights
+        weights = []
+        indices = []
+        total_weight = 0.0
+
+        for i in range(left, right + 1):
+            w = _bilinear_kernel_1d((i - center) / filter_scale)
+            if w > 0:
+                weights.append(w)
+                indices.append(i)
+                total_weight += w
+
+        # Normalize weights
+        if total_weight > 0:
+            weights = [w / total_weight for w in weights]
+
+        weights_list.append(weights)
+        indices_list.append(indices)
+
+    return weights_list, indices_list
+
+
+def bilinear_interp_np_old(
     input,
     out_h,
     out_w,
-    scale_w=0,
     scale_h=0,
+    scale_w=0,
     out_size=None,
     actual_shape=None,
     align_corners=True,
@@ -239,6 +303,109 @@ def bilinear_interp_np(
     return out.astype(input.dtype)
 
 
+def bilinear_interp_np(
+    input,
+    out_h,
+    out_w,
+    scale_h=0,
+    scale_w=0,
+    out_size=None,
+    actual_shape=None,
+    align_corners=True,
+    align_mode=0,
+    data_layout='NCHW',
+):
+    """bilinear interpolation implement in shape [N, C, H, W]"""
+
+    # TODO(zrr1999): The CPU has modified its implementation for alignment with the XPU, but it cannot align with the GPU
+    if not (core.is_compiled_with_cuda() or core.is_compiled_with_rocm()):
+        return bilinear_interp_np_old(
+            input,
+            out_h,
+            out_w,
+            scale_h,
+            scale_w,
+            out_size,
+            actual_shape,
+            align_corners,
+            align_mode,
+            data_layout,
+        )
+
+    if data_layout == "NHWC":
+        input = np.transpose(input, (0, 3, 1, 2))  # NHWC => NCHW
+    if out_size is not None:
+        out_h = out_size[0]
+        out_w = out_size[1]
+    if actual_shape is not None:
+        out_h = actual_shape[0]
+        out_w = actual_shape[1]
+    batch_size, channel, in_h, in_w = input.shape
+
+    # Standard bilinear interpolation (no anti-aliasing)
+    ratio_h = ratio_w = 0.0
+    if align_corners:
+        if out_h > 1:
+            ratio_h = (in_h - 1.0) / (out_h - 1.0)
+    else:
+        if scale_h > 0:
+            ratio_h = 1.0 / scale_h
+        else:
+            ratio_h = in_h / out_h
+
+    if align_corners:
+        if out_w > 1:
+            ratio_w = (in_w - 1.0) / (out_w - 1.0)
+    else:
+        if scale_w > 0:
+            ratio_w = 1.0 / scale_w
+        else:
+            ratio_w = in_w / out_w
+
+    out = np.zeros((batch_size, channel, out_h, out_w))
+
+    for i in range(out_h):
+        if align_mode == 0 and not align_corners:
+            src_h = ratio_h * (i + 0.5) - 0.5
+        else:
+            src_h = ratio_h * i
+
+        h = int(np.floor(src_h))
+        h = max(0, min(h, in_h - 1))
+        hid = 1 if h < in_h - 1 else 0
+
+        h1lambda = max(0.0, min(1.0, src_h - h))
+        h2lambda = 1.0 - h1lambda
+
+        for j in range(out_w):
+            if align_mode == 0 and not align_corners:
+                src_w = ratio_w * (j + 0.5) - 0.5
+            else:
+                src_w = ratio_w * j
+
+            w = int(np.floor(src_w))
+            w = max(0, min(w, in_w - 1))
+            wid = 1 if w < in_w - 1 else 0
+
+            w1lambda = max(0.0, min(1.0, src_w - w))
+            w2lambda = 1.0 - w1lambda
+
+            h_next = min(h + hid, in_h - 1)
+            w_next = min(w + wid, in_w - 1)
+
+            out[:, :, i, j] = h2lambda * (
+                w2lambda * input[:, :, h, w] + w1lambda * input[:, :, h, w_next]
+            ) + h1lambda * (
+                w2lambda * input[:, :, h_next, w]
+                + w1lambda * input[:, :, h_next, w_next]
+            )
+
+    if data_layout == "NHWC":
+        out = np.transpose(out, (0, 2, 3, 1))  # NCHW => NHWC
+
+    return out.astype(input.dtype)
+
+
 class TestBilinearInterpOp(OpTest):
     def setUp(self):
         self.python_api = bilinear_interp_test
@@ -277,8 +444,8 @@ class TestBilinearInterpOp(OpTest):
             input_np,
             out_h,
             out_w,
-            0,
-            0,
+            scale_h,
+            scale_w,
             self.out_size,
             self.actual_shape,
             self.align_corners,

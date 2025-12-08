@@ -57,7 +57,7 @@ def fused_bias_act(
         Tensor: the output Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -68,7 +68,7 @@ def fused_bias_act(
             >>> bias = paddle.randn([5])
             >>> out = fused_bias_act(x, bias)
             >>> print(out.shape)
-            [3, 5]
+            paddle.Size([3, 5])
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.fused_bias_act(

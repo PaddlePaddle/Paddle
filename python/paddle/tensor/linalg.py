@@ -28,6 +28,7 @@ from paddle.tensor.math import broadcast_shape
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
+    param_two_alias,
     transpose_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -127,14 +128,14 @@ def transpose(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.randn([2, 3, 4])
             >>> x_transposed = paddle.transpose(x, perm=[1, 0, 2])
             >>> print(x_transposed.shape)
-            [3, 2, 4]
+            paddle.Size([3, 2, 4])
 
     """
     if in_dynamic_or_pir_mode():
@@ -216,18 +217,18 @@ def permute(input: Tensor, dims: Sequence[int]) -> Tensor:
         Tensor: A tensor with permuted dimensions.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.randn([2, 3, 4])
             >>> y = paddle.permute(x, (1, 0, 2))
             >>> print(y.shape)
-            [3, 2, 4]
+            paddle.Size([3, 2, 4])
 
             >>> y = x.permute([1, 0, 2])
             >>> print(y.shape)
-            [3, 2, 4]
+            paddle.Size([3, 2, 4])
     """
     return transpose(x=input, perm=dims)
 
@@ -250,13 +251,13 @@ def matrix_transpose(
         Tensor: A new tensor with the same shape as `x`, except that the last two dimensions are transposed.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.ones(shape=[2, 3, 5])
             >>> x_transposed = paddle.matrix_transpose(x)
             >>> print(x_transposed.shape)
-            [2, 5, 3]
+            paddle.Size([2, 5, 3])
     """
     return x.mT
 
@@ -1918,7 +1919,7 @@ def t(input: Tensor, name: str | None = None) -> Tensor:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example
 
             >>> import paddle
@@ -1937,13 +1938,12 @@ def t(input: Tensor, name: str | None = None) -> Tensor:
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.79000002, 0.83999997, 0.31999999])
             >>> print(paddle.t(x).shape)
-            [3]
+            paddle.Size([3])
 
             >>> # Example 3 (2-D tensor)
-            >>> x = paddle.to_tensor([[0.79, 0.84, 0.32],
-            ...                       [0.64, 0.14, 0.57]])
+            >>> x = paddle.to_tensor([[0.79, 0.84, 0.32], [0.64, 0.14, 0.57]])
             >>> print(x.shape)
-            [2, 3]
+            paddle.Size([2, 3])
             >>> out3 = paddle.t(x)
             >>> print(out3)
             Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1951,7 +1951,7 @@ def t(input: Tensor, name: str | None = None) -> Tensor:
              [0.83999997, 0.14000000],
              [0.31999999, 0.56999999]])
             >>> print(paddle.t(x).shape)
-            [3, 2]
+            paddle.Size([3, 2])
 
     """
     if len(input.shape) > 2:
@@ -2210,23 +2210,23 @@ def matrix_rank(
         Tensor: Rank of tensor x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> a = paddle.eye(10)
             >>> b = paddle.linalg.matrix_rank(a)
             >>> print(b)
-            Tensor(shape=[], dtype=int32, place=Place(cpu), stop_gradient=True,
-            10)
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+                   10)
 
             >>> c = paddle.ones(shape=[3, 4, 5, 5])
             >>> d = paddle.linalg.matrix_rank(c, tol=0.01, hermitian=True)
             >>> print(d)
-            Tensor(shape=[3, 4], dtype=int32, place=Place(cpu), stop_gradient=True,
-            [[1, 1, 1, 1],
-             [1, 1, 1, 1],
-             [1, 1, 1, 1]])
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+                   [[1, 1, 1, 1],
+                    [1, 1, 1, 1],
+                    [1, 1, 1, 1]])
 
     """
     target_dtype = (
@@ -3769,7 +3769,7 @@ def multi_dot(x: list[Tensor], name: str | None = None) -> Tensor:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3778,7 +3778,7 @@ def multi_dot(x: list[Tensor], name: str | None = None) -> Tensor:
             >>> B = paddle.rand([4, 5])
             >>> out = paddle.linalg.multi_dot([A, B])
             >>> print(out.shape)
-            [3, 5]
+            paddle.Size([3, 5])
 
             >>> # A * B * C
             >>> A = paddle.rand([10, 5])
@@ -3786,7 +3786,7 @@ def multi_dot(x: list[Tensor], name: str | None = None) -> Tensor:
             >>> C = paddle.rand([8, 7])
             >>> out = paddle.linalg.multi_dot([A, B, C])
             >>> print(out.shape)
-            [10, 7]
+            paddle.Size([10, 7])
 
     """
     if in_dynamic_or_pir_mode():
@@ -3838,7 +3838,7 @@ def eigh(
           complex64 and complex128. The eigenvectors of eigh op.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3849,8 +3849,8 @@ def eigh(
             [0.17157286, 5.82842731])
             >>> print(out_vector)
             Tensor(shape=[2, 2], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[(-0.9238795042037964+0j), (-0.3826833963394165+0j)],
-             [ 0.3826833963394165j    , -0.9238795042037964j    ]])
+                   [[(-0.92387950+0.00000000j), (-0.38268340+0.00000000j)],
+                    [ (0.00000000+0.38268340j), (0.00000000-0.92387950j) ]])
 
     """
 
@@ -4178,8 +4178,14 @@ def _transpose_last_2dim(x):
     return x
 
 
+@param_two_alias(["x", "A"], ["y", "B"])
 def solve(
-    x: Tensor, y: Tensor, left: bool = True, name: str | None = None
+    x: Tensor,
+    y: Tensor,
+    left: bool = True,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
 
@@ -4199,12 +4205,13 @@ def solve(
 
     Args:
         x (Tensor): A square matrix or a batch of square matrices. Its shape should be ``[*, M, M]``, where ``*`` is zero or
-            more batch dimensions. Its data type should be float32 or float64.
+            more batch dimensions. Its data type should be float32 or float64. Alias: ``A``.
         y (Tensor): A vector/matrix or a batch of vectors/matrices. Its shape should be ``[*, M, K]``, where ``*`` is zero or
-            more batch dimensions. Its data type should be float32 or float64.
+            more batch dimensions. Its data type should be float32 or float64. Alias: ``B``.
         left (bool, optional): Whether to solve the system :math:`X * Out = Y` or :math:`Out * X = Y`. Default: True.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor: The solution of a square system of linear equations with a unique solution for input 'x' and 'y'.
@@ -4234,7 +4241,7 @@ def solve(
         y = _transpose_last_2dim(y)
 
     if in_dynamic_or_pir_mode():
-        out = _C_ops.solve(x, y)
+        ret = _C_ops.solve(x, y)
     else:
         inputs = {"X": [x], "Y": [y]}
         helper = LayerHelper("solve", **locals())
@@ -4247,8 +4254,10 @@ def solve(
         )
 
     if not left:
-        out = _transpose_last_2dim(out)
-    return out
+        ret = _transpose_last_2dim(ret)
+    if out is not None:
+        paddle.assign(ret, out)
+    return ret
 
 
 def triangular_solve(

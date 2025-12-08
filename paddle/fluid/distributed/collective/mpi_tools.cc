@@ -36,7 +36,7 @@ MPI_Op ToMPIType(ReduceOp reduction) {
   return it->second;
 }
 
-// NOTE: MPI dose not support CUDA aware now.
+// NOTE: MPI does not support CUDA aware now.
 bool CheckMpiCudaAware() { return false; }
 
 void CheckValidInputs(const std::vector<phi::DenseTensor>& tensors) {

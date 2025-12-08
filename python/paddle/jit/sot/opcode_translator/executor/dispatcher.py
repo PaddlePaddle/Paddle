@@ -200,9 +200,7 @@ class Dispatcher:
 
     Examples:
 
-        >>> def builtin_add(a: int, b: int) -> int:
-        ...     ...
-        ...
+        >>> def builtin_add(a: int, b: int) -> int: ...
         >>> Dispatcher.register(builtin_add, ("int", "int"), lambda a, b: a + b)
         >>> handler = Dispatcher.dispatch(builtin_add, 1, 2)
         >>> handler(1, 2)
@@ -250,13 +248,10 @@ class Dispatcher:
             fn: The function to be registered.
 
         Examples:
-            >>> def builtin_add(a: int, b: int) -> int:
-            ...     ...
-            ...
+            >>> def builtin_add(a: int, b: int) -> int: ...
             >>> @Dispatcher.register_decorator(builtin_add)
             ... def builtin_add_dispatcher(a: int, b: int) -> int:
             ...     return a + b
-            ...
             >>> handler = Dispatcher.dispatch(builtin_add, 1, 2)
             >>> handler(1, 2)
             3

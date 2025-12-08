@@ -87,7 +87,7 @@ void DeserializeFromStream(std::istream &is,
     auto &lod = *tensor->mutable_lod();
     lod.resize(lod_level);
   }
-  // the 3rd filed, Tensor
+  // the 3rd field, Tensor
   TensorFromStream(
       is, static_cast<phi::DenseTensor *>(tensor), dev_ctx, seek, shape);
 }
@@ -123,7 +123,7 @@ void DeserializeFromStream(std::istream &is,
       lod[i] = tmp;
     }
   }
-  // the 3rd filed, Tensor
+  // the 3rd field, Tensor
   TensorFromStream(is, static_cast<phi::DenseTensor *>(tensor), dev_ctx);
 }
 

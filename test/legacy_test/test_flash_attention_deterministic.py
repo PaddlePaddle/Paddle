@@ -19,9 +19,9 @@ from op_test import get_cuda_version, get_device_place, is_custom_device
 import paddle
 import paddle.nn.functional as F
 from paddle.device import core
+from paddle.nn.functional import scaled_dot_product_attention
 from paddle.nn.functional.flash_attention import (
     flash_attention,
-    scaled_dot_product_attention,
 )
 
 
