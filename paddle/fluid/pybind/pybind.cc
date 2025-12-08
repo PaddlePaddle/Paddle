@@ -122,7 +122,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/gloo_context_py.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
 #include "paddle/fluid/pybind/graph.h"
-#include "paddle/fluid/pybind/heter_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/io.h"
@@ -131,7 +130,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/jit.h"
 #include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/pir.h"
-#include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/fluid/pybind/python_callable_registry.h"
 #include "paddle/fluid/pybind/xpu_streams_py.h"
@@ -415,13 +413,7 @@ bool IsCompiledWithCINN() {
 #endif
 }
 
-bool IsCompiledWithHETERPS() {
-#ifndef PADDLE_WITH_HETERPS
-  return false;
-#else
-  return true;
-#endif
-}
+bool IsCompiledWithHETERPS() { return false; }
 
 bool SupportsBfloat16() {
 #ifndef PADDLE_WITH_DNNL
