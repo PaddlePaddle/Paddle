@@ -64,7 +64,9 @@ _UNINIT_TENSOR_MODES = ["send_recv", "grouped_send_recv"]
 _metadata_manager = MetadataManager()
 
 
-def get_checkpoint_files(path, use_cache=True, unique_id=None):
+def get_checkpoint_files(
+    path, use_cache=True, unique_id=None, process_group=None
+):
     # if unique_id is None, all file ends with .metadata and .distcp is returned
     if unique_id is None:
         unique_id = ''
@@ -95,7 +97,7 @@ def get_checkpoint_files(path, use_cache=True, unique_id=None):
             logger.info(
                 f"No metadata file found in the checkpoint directory: {path}. Creating one now."
             )
-            create_hf_ckpt_metadata(path)
+            create_hf_ckpt_metadata(path, process_group=process_group)
             accessible_files = os.listdir(path)
             metadata_files = [
                 file
@@ -481,7 +483,9 @@ def _handle_aoa(
     comm_method,
 ):
     use_dist = paddle.distributed.get_world_size() > 1
-    metadata_files, _ = get_checkpoint_files(path, unique_id=unique_id)
+    metadata_files, _ = get_checkpoint_files(
+        path, unique_id=unique_id, process_group=process_group
+    )
     assert len(metadata_files) == 1, "Only support one metadata file now."
     metadata = paddle.load(os.path.join(path, metadata_files[0]))
     state_dict_metadata = metadata.state_dict_metadata
