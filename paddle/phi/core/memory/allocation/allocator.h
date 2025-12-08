@@ -310,7 +310,7 @@ class PADDLE_API MultiScalePoolAllocator : public Allocator {
   std::vector<std::tuple<uintptr_t, bool, uint64_t, size_t, int64_t, int64_t>>
       allocation_records_;
   SpinLock spinlock_;
-  static std::atomic<uint64_t> global_seq_counter_;
+  static inline std::atomic<uint64_t> global_seq_counter_{0};
 };
 
 }  // namespace allocation

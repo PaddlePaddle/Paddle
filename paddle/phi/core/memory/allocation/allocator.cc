@@ -53,6 +53,5 @@ void MultiScalePoolAllocator::RecordFree(uintptr_t allocator,
       allocator, false, id, size, cur_allocated, max_reserved);
 #endif
 }
-std::atomic<uint64_t> MultiScalePoolAllocator::global_seq_counter_{0};
 
 }  // namespace paddle::memory::allocation
