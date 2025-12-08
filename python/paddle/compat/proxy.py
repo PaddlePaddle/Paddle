@@ -447,13 +447,33 @@ def enable_torch_proxy(
     Enable the PyTorch proxy by adding the TorchProxyMetaFinder to sys.meta_path.
     This allows importing 'torch' modules that are actually proxies to PaddlePaddle.
 
+    Args:
+        scope (str or Iterable[str], optional): Specific module or modules to enable
+            PyTorch proxy for. If None, enables PyTorch proxy globally. Defaults to None.
+        silent (bool, optional): If True, suppresses warnings about scope changes.
+            Defaults to False.
+
     Example:
         .. code-block:: pycon
+            :name: enable-torch-proxy-in-global-scope
 
             >>> import paddle
             >>> paddle.compat.enable_torch_proxy()  # Enable torch proxy globally
             >>> import torch  # This will import paddle as torch
             >>> assert torch.sin is paddle.sin
+            >>> paddle.compat.disable_torch_proxy()  # Disable torch proxy
+
+        .. code-block:: pycon
+            :name: enable-torch-proxy-in-specific-scope
+
+            >>> import paddle
+            >>> paddle.compat.enable_torch_proxy(scope={"triton"})  # Enable torch proxy for 'triton' module only
+            >>> import triton  # All `import torch` inside `triton` will proxy to paddle
+            >>> try:
+            ...     import torch  # This will raise ModuleNotFoundError
+            ... except ModuleNotFoundError:
+            ...     print("PyTorch proxy is not enabled globally.")
+            >>> paddle.compat.disable_torch_proxy()  # Disable torch proxy
     """
     scope = _parse_scope(scope)
     _register_compat_override()
@@ -506,6 +526,11 @@ def use_torch_proxy_guard(
     Args:
         enable (bool, optional): Whether to enable or disable the PyTorch proxy
             within the context. Defaults to True.
+        scope (str or Iterable[str], optional): Specific module or modules to enable
+            PyTorch proxy for. If None, uses the current global/local scope.
+            Defaults to None.
+        silent (bool, optional): If True, suppresses warnings about scope changes.
+            Defaults to False.
 
     Example:
         .. code-block:: pycon
