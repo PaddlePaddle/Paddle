@@ -588,3 +588,28 @@ def create_hf_ckpt_metadata(
 
     if use_dist:
         paddle.distributed.barrier(process_group)
+
+
+def get_target_tensor(target_state_dict, read_item):
+    use_dist = paddle.distributed.get_world_size() > 1
+    if any(isinstance(k, tuple) for k in target_state_dict):
+        key = (read_item.tensor_name, read_item.dst_global_offset)
+    else:
+        key = read_item.tensor_name
+
+    tensor = target_state_dict[key]
+    return tensor._local_value() if use_dist and tensor.is_dist() else tensor
+
+
+def slice_tensor(tensor, slice_begin, slice_shape):
+    if not slice_shape:
+        assert not tensor.shape, (
+            "Only 0-dimensional tensor supports empty slice_shape."
+        )
+        return tensor
+
+    slice_end = [
+        start + length for start, length in zip(slice_begin, slice_shape)
+    ]
+    axes = list(range(tensor.ndim))
+    return paddle.slice(tensor, axes=axes, starts=slice_begin, ends=slice_end)

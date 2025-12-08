@@ -253,6 +253,13 @@ TEST_F(CheckAndDoCompactTest, TryAllocFail) {
   CheckAndDoCompact(meta_tensors_, "test_api");
 }
 
+TEST_F(CheckAndDoCompactTest, MetaNullptr) {
+  FLAGS_cur_allocated_threshold_in_gb = 0;
+  FLAGS_max_reserved_threshold_in_gb = 0;
+  meta_tensors_.push_back(nullptr);
+  CheckAndDoCompact(meta_tensors_, "test_api");
+}
+
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
