@@ -41,6 +41,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/full_kernel.h"
 
 COMMON_DECLARE_bool(cuda_core_int8_gemm);
+COMMON_DECLARE_bool(use_legacy_gemm);
 
 namespace phi {
 
@@ -145,9 +146,7 @@ void MatMulFunctionImplWithBlas(
     VLOG(3) << "MatMul's case 1";
     Out->Resize(common::make_ddim({}));
     dev_ctx.template Alloc<T>(Out);
-    if constexpr (std::is_same<Context, phi::GPUContext>::value) {
-      blas.CUDOT(M, X.data<T>(), 1, Y.data<T>(), 1, Out->data<T>());
-    } else {
+    if (FLAGS_use_legacy_gemm) {
       blas.GEMM(CblasNoTrans,
                 CblasTrans,
                 1,
@@ -158,8 +157,24 @@ void MatMulFunctionImplWithBlas(
                 x_data,
                 static_cast<T>(flag),
                 dev_ctx.template Alloc<T>(Out));
+      return;
+    } else {
+      if constexpr (std::is_same<Context, phi::GPUContext>::value) {
+        blas.CUDOT(M, X.data<T>(), 1, Y.data<T>(), 1, Out->data<T>());
+      } else {
+        blas.GEMM(CblasNoTrans,
+                  CblasTrans,
+                  1,
+                  1,
+                  M,
+                  static_cast<T>(1),
+                  y_data,
+                  x_data,
+                  static_cast<T>(flag),
+                  dev_ctx.template Alloc<T>(Out));
+      }
+      return;
     }
-    return;
   }
 
   if (x_ndim == 1) {
@@ -411,28 +426,44 @@ void MatMulFunctionImplWithBlas(
                 dev_ctx.template Alloc<T>(Out));
     } else {
       VLOG(3) << "MatMul's case 10";
-      // x batch == 1 and y batch > 1, transpose y and fold batch
-      DenseTensor transposedY = phi::TransposeLast2Dim<T>(dev_ctx, Y);
-      blas.GEMM(trans_x ? CblasTrans : CblasNoTrans,
-                trans_y ? CblasNoTrans : CblasTrans,
-                Y.numel() / K,
-                M,
-                K,
-                static_cast<T>(1),
-                transposedY.data<T>(),
-                x_data,
-                static_cast<T>(flag),
-                dev_ctx.template Alloc<T>(Out));
-      // TODO(Pan Zhaowu): the actual layout is (B, N, M), need to reshape and
-      // transpose to (B, M, N) ty -> (B,N,K)
-      const auto out_original_shape = Out->dims();
-      std::vector<int64_t> actual_dim = common::vectorize(transposedY.dims());
-      actual_dim[actual_dim.size() - 1] =
-          out_original_shape[out_original_shape.size() - 2];
-      Out->Resize(common::make_ddim(actual_dim));
-      DenseTensor transposedOut = phi::TransposeLast2Dim<T>(dev_ctx, *Out);
-      *Out = transposedOut;
-      Out->Resize(out_original_shape);
+      if (FLAGS_use_legacy_gemm) {
+        // x batch == 1 and y batch > 1, transpose y and fold batch
+        DenseTensor transposedY = phi::TransposeLast2Dim<T>(dev_ctx, Y);
+        blas.GEMM(trans_x ? CblasTrans : CblasNoTrans,
+                  trans_y ? CblasNoTrans : CblasTrans,
+                  Y.numel() / K,
+                  M,
+                  K,
+                  static_cast<T>(1),
+                  transposedY.data<T>(),
+                  x_data,
+                  static_cast<T>(flag),
+                  dev_ctx.template Alloc<T>(Out));
+        // TODO(Pan Zhaowu): the actual layout is (B, N, M), need to reshape and
+        // transpose to (B, M, N) ty -> (B,N,K)
+        const auto out_original_shape = Out->dims();
+        std::vector<int64_t> actual_dim = common::vectorize(transposedY.dims());
+        actual_dim[actual_dim.size() - 1] =
+            out_original_shape[out_original_shape.size() - 2];
+        Out->Resize(common::make_ddim(actual_dim));
+        DenseTensor transposedOut = phi::TransposeLast2Dim<T>(dev_ctx, *Out);
+        *Out = transposedOut;
+        Out->Resize(out_original_shape);
+      } else {
+        blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
+                         trans_y ? CblasTrans : CblasNoTrans,
+                         M,
+                         N,
+                         K,
+                         static_cast<T>(1),
+                         x_data,
+                         y_data,
+                         static_cast<T>(flag),
+                         dev_ctx.template Alloc<T>(Out),
+                         out_batch_size,
+                         0,
+                         K * N);
+      }
     }
   } else if (y_batch_size == 1) {
     if (!trans_x) {
