@@ -190,10 +190,7 @@ void dispatch_gemm_to_cutlass(const T* A,
   // fpA_intB. We also only instantiate configs here where threadblockShapeM ==
   // warpShapeM since those usually perform the best for mixed type gemms.
   switch (gemm_config.tile_config) {
-#if defined(USE_FPAINTB_GEMM_WITH_SM80) || \
-    defined(USE_FPAINTB_GEMM_WITH_SM86) || \
-    defined(USE_FPAINTB_GEMM_WITH_SM90) || \
-    defined(USE_FPAINTB_GEMM_WITH_SM100)
+#if defined(USE_FPAINTB_GEMM_WITH_SM80) || defined(USE_FPAINTB_GEMM_WITH_SM86)
     case CutlassTileConfig::CtaShape16x128x64_WarpShape16x32x64:
       dispatch_gemm_config<T,
                            WeightType,
@@ -264,10 +261,7 @@ void dispatch_gemm_to_cutlass(const T* A,
           stream,
           occupancy);
       break;
-#if defined(USE_FPAINTB_GEMM_WITH_SM80) || \
-    defined(USE_FPAINTB_GEMM_WITH_SM86) || \
-    defined(USE_FPAINTB_GEMM_WITH_SM90) || \
-    defined(USE_FPAINTB_GEMM_WITH_SM100)
+#if defined(USE_FPAINTB_GEMM_WITH_SM80) || defined(USE_FPAINTB_GEMM_WITH_SM86)
     case CutlassTileConfig::CtaShape128x128x64_WarpShape64x64x64:
       dispatch_gemm_config<T,
                            WeightType,
@@ -551,9 +545,7 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag,
         "CUTLASS mixed type GEMM");
 #endif
   } else if (sm_ >= 80 && sm_ < 101) {
-#if defined(USE_FPAINTB_GEMM_WITH_SM80) || \
-    defined(USE_FPAINTB_GEMM_WITH_SM90) || \
-    defined(USE_FPAINTB_GEMM_WITH_SM100)
+#if defined(USE_FPAINTB_GEMM_WITH_SM80)
     dispatch_gemm_to_cutlass<T,
                              WeightType,
                              cutlass::arch::Sm80,

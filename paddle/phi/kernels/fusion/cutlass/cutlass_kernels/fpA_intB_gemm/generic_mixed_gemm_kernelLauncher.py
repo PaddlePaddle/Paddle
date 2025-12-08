@@ -160,11 +160,7 @@ def find_arch_range(archs):
             compile_archs.append(70)
         elif arch >= 75 and arch < 80:
             compile_archs.append(75)
-        elif arch >= 80 and arch < 90:
-            compile_archs.append(80)
-        elif arch >= 90 and arch < 100:
-            compile_archs.append(80)
-        elif arch >= 100 and arch < 110:
+        elif arch >= 80 and arch < 110:
             compile_archs.append(80)
     compile_archs = list(set(compile_archs))
     compile_archs.sort()
