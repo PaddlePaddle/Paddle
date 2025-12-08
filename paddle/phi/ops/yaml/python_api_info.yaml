@@ -8,6 +8,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : acosh
+  name : [paddle.acosh,paddle.Tensor.acosh]
+  args_alias :
+    use_default_mapping : True
+
 - op : amax
   name : [paddle.amax,paddle.Tensor.amax]
   args_alias :

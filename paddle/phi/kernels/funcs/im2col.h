@@ -24,8 +24,6 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-using DataLayout = phi::DataLayout;
-
 /* The storage format of the coldata in the Im2ColFunctor and Col2ImFunctor. */
 enum class ColFormat { kCFO = 0, kOCF = 1 };
 
@@ -92,7 +90,7 @@ class Im2ColFunctor {
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
                   phi::DenseTensor* col,
-                  const DataLayout data_layout = DataLayout::kNCHW);
+                  const DataLayout data_layout = DataLayout::NCHW);
 };
 
 template <ColFormat Format, typename DeviceContext, typename T>
@@ -104,7 +102,7 @@ class Col2ImFunctor {
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
                   phi::DenseTensor* im,
-                  const DataLayout data_layout = DataLayout::kNCHW);
+                  const DataLayout data_layout = DataLayout::NCHW);
 };
 
 }  // namespace funcs

@@ -86,11 +86,11 @@ void ArgMaxMinMapper(PyObject* args,
           raise ValueError(
          "the value of 'dtype' in argmax could not be None, but received None")
   */
-  PADDLE_ENFORCE_NE(
-      dtype_obj,
-      Py_None,
-      phi::errors::InvalidArgument("the value of 'dtype' in argmax and argmin "
-                                   "could not be None, but received None"));
+  PADDLE_ENFORCE_NE(dtype_obj,
+                    Py_None,
+                    common::errors::InvalidArgument(
+                        "the value of 'dtype' in argmax and argmin "
+                        "could not be None, but received None"));
   *dtype = CastPyArg2DataType(dtype_obj, "argmax", 3, phi::DataType::INT64);
   // Check Remaining Params validity if needed
   CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
@@ -145,11 +145,11 @@ void ArgMaxMinMapper(PyObject* args,
   }
   *keepdims = CastPyArg2Boolean(keepdims_obj, "argmax", 2, false);
 
-  PADDLE_ENFORCE_NE(
-      dtype_obj,
-      Py_None,
-      phi::errors::InvalidArgument("the value of 'dtype' in argmax and argmin "
-                                   "could not be None, but received None"));
+  PADDLE_ENFORCE_NE(dtype_obj,
+                    Py_None,
+                    common::errors::InvalidArgument(
+                        "the value of 'dtype' in argmax and argmin "
+                        "could not be None, but received None"));
   *dtype = CastPyArg2DataType(dtype_obj, "argmax", 3, phi::DataType::INT64);
 
   // Check Remaining Params validity if needed
@@ -314,7 +314,7 @@ void GeluMapper(PyObject* args,
       approximate = nullptr;
       PADDLE_ENFORCE_NE(approximate,
                         nullptr,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "the value of approximate in gelu should be 'tanh' "
                             "or 'none', but received %s",
                             approximate_str.c_str()));
@@ -357,7 +357,7 @@ void GeluMapper(PyObject* args,
       approximate = nullptr;
       PADDLE_ENFORCE_NE(approximate,
                         nullptr,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "the value of approximate in gelu should be 'tanh' "
                             "or 'none', but received %s",
                             approximate_str.c_str()));

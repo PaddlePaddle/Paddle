@@ -101,7 +101,7 @@ void IndexSelectGradKernel(const Context& dev_ctx,
   dim3 grid_dim = dim3((out_nums + block_dim - 1) / block_dim);
   phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
-  phi::funcs::SetConstant<phi::GPUContext, T> index_select_grad_init;
+  funcs::SetConstant<phi::GPUContext, T> index_select_grad_init;
   index_select_grad_init(dev_ctx, x_grad, static_cast<T>(0));
 
   if (FLAGS_cudnn_deterministic) {

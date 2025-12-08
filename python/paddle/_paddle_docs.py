@@ -102,6 +102,45 @@ def acos(
     ) -> Tensor
 """,
 )
+
+add_doc_and_signature(
+    "acosh",
+    r"""
+Acosh Activation Operator.
+
+    .. math::
+       out = acosh(x)
+
+    Args:
+        x (Tensor): Input of Acosh operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Output of Acosh operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([1., 3., 4., 5.])
+            >>> out = paddle.acosh(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 1.76274717, 2.06343699, 2.29243159])
+""",
+    """
+def acosh(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+    ) -> Tensor
+""",
+)
+
 add_doc_and_signature(
     "amin",
     r"""

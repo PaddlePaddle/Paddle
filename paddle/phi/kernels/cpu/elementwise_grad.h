@@ -90,7 +90,7 @@ ElementwiseAddGrad(const CPUContext& dev_ctx,
                    DenseTensor* dx,
                    DenseTensor* dy,
                    int axis = -1) {
-  auto blas = phi::funcs::GetBlas<CPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
   if (dx) {
     blas.VCOPY(dout.numel(), dout.data<T>(), dev_ctx.template Alloc<T>(dx));
   }

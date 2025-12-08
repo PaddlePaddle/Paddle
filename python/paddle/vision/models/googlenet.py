@@ -152,7 +152,7 @@ class GoogLeNet(nn.Layer):
             >>> out, out1, out2 = model(x)
 
             >>> print(out.shape, out1.shape, out2.shape)
-            [1, 1000] [1, 1000] [1, 1000]
+            paddle.Size([1, 1000]) paddle.Size([1, 1000]) paddle.Size([1, 1000])
     """
 
     num_classes: int
@@ -286,7 +286,7 @@ def googlenet(
             >>> out, out1, out2 = model(x)
 
             >>> print(out.shape, out1.shape, out2.shape)
-            [1, 1000] [1, 1000] [1, 1000]
+            paddle.Size([1, 1000]) paddle.Size([1, 1000]) paddle.Size([1, 1000])
     """
     model = GoogLeNet(**kwargs)
     arch = "googlenet"

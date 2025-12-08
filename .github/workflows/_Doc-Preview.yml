@@ -52,7 +52,7 @@ jobs:
           UPLOAD_DOC: "true"
           BOSBUCKET: "paddle-site-web-dev"
           PREVIEW_SITE: "paddle-docs-preview.paddlepaddle.org.cn"
-          AGILE_COMPILE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          AGILE_COMPILE_BRANCH: ${{ startsWith(github.event.pull_request.base.ref, 'fleety_') && 'develop' || github.event.pull_request.base.ref }}
           BOS_CREDENTIAL_AK: "paddle"
           BOS_CREDENTIAL_SK: "paddle"
           PADDLE_WHL: https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl

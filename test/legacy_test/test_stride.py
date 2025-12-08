@@ -889,6 +889,19 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(out_c._is_shared_buffer_with(out))
 
+    def call_view_equal(self):
+        x_np = np.random.random(size=[16, 12, 8]).astype('float16')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        out = paddle.view(x, paddle.float16)
+
+        np.testing.assert_allclose(out.numpy(), x_np)
+
+        self.assertTrue(out.is_contiguous())
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
     def call_view_alias1(self):
         x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
         x = paddle.to_tensor(x_np)
@@ -971,6 +984,7 @@ class TestStride(unittest.TestCase):
         self.call_view5()
         self.call_view6()
         self.call_view7()
+        self.call_view8()
         self.call_view9()
         self.call_view10()
         self.call_view11()
@@ -979,6 +993,7 @@ class TestStride(unittest.TestCase):
         self.call_view14()
         self.call_view15()
         self.call_view16()
+        self.call_view_equal()
         self.call_view_alias1()
         self.call_view_alias2()
         self.call_view_as()
@@ -1089,6 +1104,21 @@ class TestToStaticCheck(unittest.TestCase):
             xx.add_(z)
 
         func2()
+
+
+class TestViewGrad(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+        x = paddle.randn(2, 12, requires_grad=True)
+
+        y = x.view(2, 3, 4)
+        z = y.transpose(1, 2)
+
+        loss = z.sum()
+        loss.backward()
+
+        x_grad_expected = paddle.full_like(x, 1.0)
+        self.assertEqual((x.grad == x_grad_expected).all(), True)
 
 
 if __name__ == '__main__':
