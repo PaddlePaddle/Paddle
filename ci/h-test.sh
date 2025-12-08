@@ -14,11 +14,11 @@
 
 failuretest=''
 function collect_failed_tests() {
-    for file in `ls $tmp_dir`; do
+    for file in $(ls $tmp_dir); do
         exit_code=0
-        grep -q 'The following tests FAILED:' $tmp_dir/$file||exit_code=$?
+        grep -q 'The following tests FAILED:' $tmp_dir/$file || exit_code=$?
         if [ $exit_code -eq 0 ]; then
-            failuretest=`grep -A 10000 'The following tests FAILED:' $tmp_dir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'|grep -v 'Passed'`
+            failuretest=$(grep -A 10000 'The following tests FAILED:' $tmp_dir/$file | sed 's/The following tests FAILED://g' | sed '/^$/d' | grep -v 'Passed')
             failed_test_lists="${failuretest}
             ${failed_test_lists}"
         fi
@@ -164,17 +164,18 @@ concurrency_list="^test_fp8_deep_gemm$|\
 ^test_white_lists$|\
 ^test_scaled_dot_product_attention$|\
 ^test_compat_scaled_dot_product_attention$|\
-^test_flash_attention$"
+^test_flash_attention$|\
+^test_batched_gemm$"
 
 cd ${work_dir}/build
-tmp_dir=`mktemp -d`
-tmpfile_rand=`date +%s%N`
-tmpfile1_rand=`date +%s%N`
+tmp_dir=$(mktemp -d)
+tmpfile_rand=$(date +%s%N)
+tmpfile1_rand=$(date +%s%N)
 tmpfile=$tmp_dir/$tmpfile_rand"_"$i
 tmpfile1=$tmp_dir/$tmpfile1_rand"_"$i
 set +e
 
-get_quickly_disable_ut||disable_ut_quickly='disable_ut'
+get_quickly_disable_ut || disable_ut_quickly='disable_ut'
 disable_ut_quickly="$disable_ut_quickly|\
 ^test_parallel_dygraph_sparse_embedding$|\
 ^test_parallel_dygraph_unused_variables$|\
@@ -193,8 +194,11 @@ disable_ut_quickly="$disable_ut_quickly|\
 NUM_PROC=4
 EXIT_CODE=0
 pids=()
-for (( i = 0; i < $NUM_PROC; i++ )); do
-    (ctest -I $i,,$NUM_PROC --output-on-failure -R "($concurrency_list)" -E "($disable_ut_quickly)" --timeout 120 -j1 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0)&
+for ((i = 0; i < $NUM_PROC; i++)); do
+    (
+        ctest -I $i,,$NUM_PROC --output-on-failure -R "($concurrency_list)" -E "($disable_ut_quickly)" --timeout 120 -j1 | tee -a $tmpfile
+        test ${PIPESTATUS[0]} -eq 0
+    ) &
     pids+=($!)
 done
 
@@ -208,8 +212,11 @@ done
 
 NUM_PROC=1
 pids=()
-for (( i = 0; i < $NUM_PROC; i++ )); do
-    (ctest -I $i,,$NUM_PROC --output-on-failure -R "($serial_list)" -E "($disable_ut_quickly)" --timeout 120 -j1 | tee -a $tmpfile1; test ${PIPESTATUS[0]} -eq 0)&
+for ((i = 0; i < $NUM_PROC; i++)); do
+    (
+        ctest -I $i,,$NUM_PROC --output-on-failure -R "($serial_list)" -E "($disable_ut_quickly)" --timeout 120 -j1 | tee -a $tmpfile1
+        test ${PIPESTATUS[0]} -eq 0
+    ) &
     pids+=($!)
 done
 
@@ -223,12 +230,12 @@ done
 
 set -e
 
-if [ "${EXIT_CODE}" != "0" ];then
-  echo "Sorry, some tests failed."
-  collect_failed_tests
-  echo "Summary Failed Tests... "
-  echo "========================================"
-  echo "The following tests FAILED: "
-  echo "${failed_test_lists}"| sort -u
-  exit 8
+if [ "${EXIT_CODE}" != "0" ]; then
+    echo "Sorry, some tests failed."
+    collect_failed_tests
+    echo "Summary Failed Tests... "
+    echo "========================================"
+    echo "The following tests FAILED: "
+    echo "${failed_test_lists}" | sort -u
+    exit 8
 fi

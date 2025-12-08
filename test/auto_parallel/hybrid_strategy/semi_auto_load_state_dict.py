@@ -165,7 +165,7 @@ class TestLoadShardedStateDict:
     def __init__(self):
         self._ckpt_path = os.getenv("ckpt_path_2")
 
-    def test_load_state_dict_with_one_device(self):
+    def test_load_state_dict_with_one_device(self, comm_method):
         # Construct a 4x4 integer tensor as expected result:
         # [[ 0,  1,  2,  3],
         #  [ 4,  5,  6,  7],
@@ -177,10 +177,12 @@ class TestLoadShardedStateDict:
         )
         t = paddle.zeros_like(expect_tensor)
         sharded_weight = make_replicated_sharded_weight("t", t)
-        load_state_dict({"t": sharded_weight}, self._ckpt_path)
+        load_state_dict(
+            {"t": sharded_weight}, self._ckpt_path, comm_method=comm_method
+        )
         self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
 
-    def test_load_state_dict_with_four_devices(self):
+    def test_load_state_dict_with_four_devices(self, comm_method):
         if dist.get_rank() == 0:
             # On rank 0:
             # The global tensor (4x4) is distributed as:
@@ -260,11 +262,13 @@ class TestLoadShardedStateDict:
                 flattened_range=slice(1, 4),
             )
 
-        load_state_dict({"t": sharded_weight}, self._ckpt_path)
+        load_state_dict(
+            {"t": sharded_weight}, self._ckpt_path, comm_method=comm_method
+        )
         paddle.distributed.barrier()
         self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
 
-    def test_load_state_dict_with_two_devices(self):
+    def test_load_state_dict_with_two_devices(self, comm_method):
         if dist.get_rank() == 0:
             # On rank 0:
             # The global 4x4 tensor is distributed as:
@@ -305,11 +309,13 @@ class TestLoadShardedStateDict:
                 global_offset=(2, 0),
                 is_flattened=False,
             )
-        load_state_dict({"t": sharded_weight}, self._ckpt_path)
+        load_state_dict(
+            {"t": sharded_weight}, self._ckpt_path, comm_method=comm_method
+        )
         paddle.distributed.barrier()
         self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
 
-    def test_load_state_dict_with_eight_devices(self):
+    def test_load_state_dict_with_eight_devices(self, comm_method):
         if dist.get_rank() == 0:
             # On rank 0:
             # The global 4x4 tensor is distributed as:
@@ -467,7 +473,9 @@ class TestLoadShardedStateDict:
                 flattened_range=slice(3, 8),
             )
 
-        load_state_dict({"t": sharded_weight}, self._ckpt_path)
+        load_state_dict(
+            {"t": sharded_weight}, self._ckpt_path, comm_method=comm_method
+        )
         paddle.distributed.barrier()
         self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
 
@@ -478,16 +486,17 @@ class TestLoadShardedStateDict:
 
     def run_test_case(self):
         device_num = int(os.getenv("device_num"))
-        if device_num == 1:
-            self.test_load_state_dict_with_one_device()
-        elif device_num == 2:
-            self.test_load_state_dict_with_two_devices()
-        elif device_num == 4:
-            self.test_load_state_dict_with_four_devices()
-        elif device_num == 8:
-            self.test_load_state_dict_with_eight_devices()
-        else:
-            raise ValueError("device_num should be 1, 2, 4 or 8")
+        for comm_method in ["broadcast", "send_recv", "grouped_send_recv"]:
+            if device_num == 1:
+                self.test_load_state_dict_with_one_device(comm_method)
+            elif device_num == 2:
+                self.test_load_state_dict_with_two_devices(comm_method)
+            elif device_num == 4:
+                self.test_load_state_dict_with_four_devices(comm_method)
+            elif device_num == 8:
+                self.test_load_state_dict_with_eight_devices(comm_method)
+            else:
+                raise ValueError("device_num should be 1, 2, 4 or 8")
 
 
 class TestLoadShardedStateDictWithAOA:
@@ -502,7 +511,7 @@ class TestLoadShardedStateDictWithAOA:
             ]
         }
 
-    def test_load_state_dict_with_four_devices(self):
+    def test_load_state_dict_with_four_devices(self, comm_method):
         if dist.get_rank() == 0:
             # On rank 0:
             # The global tensor (2x8) is distributed as:
@@ -571,12 +580,15 @@ class TestLoadShardedStateDictWithAOA:
             )
 
         load_state_dict(
-            {"T": sharded_weight}, self._ckpt_path, aoa_config=self.aoa_config
+            {"T": sharded_weight},
+            self._ckpt_path,
+            aoa_config=self.aoa_config,
+            comm_method=comm_method,
         )
         paddle.distributed.barrier()
         self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
 
-    def test_load_state_dict_with_two_devices(self):
+    def test_load_state_dict_with_two_devices(self, comm_method):
         if dist.get_rank() == 0:
             # On rank 0:
             # The global 4x4 tensor is distributed as:
@@ -612,12 +624,15 @@ class TestLoadShardedStateDictWithAOA:
                 is_flattened=False,
             )
         load_state_dict(
-            {"T": sharded_weight}, self._ckpt_path, aoa_config=self.aoa_config
+            {"T": sharded_weight},
+            self._ckpt_path,
+            aoa_config=self.aoa_config,
+            comm_method=comm_method,
         )
         paddle.distributed.barrier()
         self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
 
-    def test_load_state_dict_with_eight_devices(self):
+    def test_load_state_dict_with_eight_devices(self, comm_method):
         if dist.get_rank() == 0:
             # On rank 0:
             # The global tensor (2x8) is distributed as:
@@ -752,7 +767,10 @@ class TestLoadShardedStateDictWithAOA:
             )
 
         load_state_dict(
-            {"T": sharded_weight}, self._ckpt_path, aoa_config=self.aoa_config
+            {"T": sharded_weight},
+            self._ckpt_path,
+            aoa_config=self.aoa_config,
+            comm_method=comm_method,
         )
         paddle.distributed.barrier()
         self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
@@ -764,16 +782,17 @@ class TestLoadShardedStateDictWithAOA:
 
     def run_test_case(self):
         device_num = int(os.getenv("device_num"))
-        if device_num == 1:
-            pass
-        elif device_num == 2:
-            self.test_load_state_dict_with_two_devices()
-        elif device_num == 4:
-            self.test_load_state_dict_with_four_devices()
-        elif device_num == 8:
-            self.test_load_state_dict_with_eight_devices()
-        else:
-            raise ValueError("device_num should be 2, 4 or 8")
+        for comm_method in ["broadcast", "send_recv", "grouped_send_recv"]:
+            if device_num == 1:
+                pass
+            elif device_num == 2:
+                self.test_load_state_dict_with_two_devices(comm_method)
+            elif device_num == 4:
+                self.test_load_state_dict_with_four_devices(comm_method)
+            elif device_num == 8:
+                self.test_load_state_dict_with_eight_devices(comm_method)
+            else:
+                raise ValueError("device_num should be 2, 4 or 8")
 
 
 class TestLoadShardedStateDictMultiCommGroup:
@@ -864,6 +883,7 @@ class TestLoadShardedStateDictMultiCommGroup:
             state_dict={"t": sharded_weight},
             path=self._ckpt_path,
             worker_groups=worker_groups,
+            comm_method="multi_group_broadcast",
         )
         paddle.distributed.barrier()
         self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
@@ -1030,6 +1050,7 @@ class TestLoadShardedStateDictMultiCommGroup:
             state_dict={"t": sharded_weight},
             path=self._ckpt_path,
             worker_groups=worker_groups,
+            comm_method="multi_group_broadcast",
         )
         paddle.distributed.barrier()
         self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)

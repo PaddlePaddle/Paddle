@@ -1160,10 +1160,9 @@ def monkey_patch_tensor():
         self: Tensor, device_id: int | None = None, blocking: bool = True
     ) -> Tensor:
         device_type = paddle.device.get_all_device_type()
-        if (
-            len(device_type) > 0
-            and paddle.device.is_compiled_with_custom_device()
-        ):
+        if len(
+            device_type
+        ) > 0 and paddle.device.is_compiled_with_custom_device(device_type[-1]):
             res_place_class = core.CustomPlace
         elif paddle.device.is_compiled_with_xpu():
             res_place_class = core.XPUPlace

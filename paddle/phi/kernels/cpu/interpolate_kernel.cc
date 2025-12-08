@@ -48,7 +48,7 @@ static void LinearInterpolation(const DenseTensor& input,
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   std::vector<int> vx_w, vx_e;
-  std::vector<float> vd_w, vd_e;
+  std::vector<MT> vd_w, vd_e;
   vx_w.reserve(out_w);
   vx_e.reserve(out_w);
   vd_w.reserve(out_w);
@@ -57,18 +57,15 @@ static void LinearInterpolation(const DenseTensor& input,
 #pragma omp parallel for
 #endif
   for (int l = 0; l < out_w; l++) {
-    int x_w = static_cast<int>(
-        align_flag ? (ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f)
-                   : ratio_w * static_cast<float>(l));
+    int x_w = static_cast<int>(align_flag ? (ratio_w * (l + 0.5) - 0.5)
+                                          : ratio_w * l);
     x_w = (x_w > 0) ? x_w : 0;                       // w
     int x_e = (x_w < (in_w - 1)) ? (x_w + 1) : x_w;  // w_id
 
-    float idx_src_x = ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f;
+    MT idx_src_x = ratio_w * (l + 0.5) - 0.5;
     idx_src_x = (idx_src_x > 0) ? idx_src_x : 0;
-    float d_w = align_flag ? idx_src_x - static_cast<float>(x_w)
-                           : ratio_w * static_cast<float>(l) -
-                                 static_cast<float>(x_w);  // w1lambda
-    float d_e = 1.f - d_w;                                 // w2lambda
+    MT d_w = align_flag ? idx_src_x - x_w : ratio_w * l - x_w;  // w1lambda
+    MT d_e = 1. - d_w;                                          // w2lambda
     {
       vx_w[l] = x_w;
       vx_e[l] = x_e;
@@ -134,7 +131,7 @@ static void BilinearInterpolation(const DenseTensor& input,
                                           : (ratio_h * static_cast<float>(k)));
     y_n = (y_n > 0) ? y_n : 0;
     int y_s = (y_n + 1) < (in_h - 1) ? (y_n + 1) : (in_h - 1);
-    float idx_src_y = ratio_h * (static_cast<float>(k) + 0.5f) - 0.5f;
+    float idx_src_y = ratio_h * (k + 0.5) - 0.5;
     idx_src_y = (idx_src_y > 0) ? idx_src_y : 0;
     float d_n = align_flag
                     ? idx_src_y - static_cast<float>(y_n)
@@ -622,16 +619,8 @@ static void Interpolate1DCPUFwd(
     return;
   }
 
-  float ratio_w = 0.f;
-  if (out_w > 1) {
-    float new_scale_w = 0.f;
-    new_scale_w = (scale_w > 0)
-                      ? static_cast<float>(1. / scale_w)
-                      : static_cast<float>(in_w) / static_cast<float>(out_w);
-    ratio_w = (align_corners)
-                  ? static_cast<float>(in_w - 1) / static_cast<float>(out_w - 1)
-                  : static_cast<float>(new_scale_w);
-  }
+  float ratio_w =
+      funcs::AreaPixelComputeScale<double>(in_w, out_w, align_corners, scale_w);
   if ("linear" == interp_method) {
     LinearInterpolation<T>(x,
                            output,
