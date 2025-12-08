@@ -276,12 +276,6 @@ void BindGraphPyClient(py::module* m) {
 using paddle::distributed::IndexNode;
 using paddle::distributed::IndexWrapper;
 using paddle::distributed::TreeIndex;
-#ifdef PADDLE_WITH_HETERPS
-using paddle::framework::GraphGpuWrapper;
-using paddle::framework::NeighborSampleQuery;
-using paddle::framework::NeighborSampleResult;
-using paddle::framework::NodeQueryResult;
-#endif
 
 void BindIndexNode(py::module* m) {
   py::class_<IndexNode>(*m, "IndexNode")
@@ -332,111 +326,6 @@ void BindIndexWrapper(py::module* m) {
       .def("get_tree_index", &IndexWrapper::get_tree_index)
       .def("clear_tree", &IndexWrapper::clear_tree);
 }
-
-#ifdef PADDLE_WITH_HETERPS
-void BindNodeQueryResult(py::module* m) {
-  py::class_<NodeQueryResult>(*m, "NodeQueryResult")
-      .def(py::init<>())
-      .def("initialize", &NodeQueryResult::initialize)
-      .def("display", &NodeQueryResult::display)
-      .def("get_val", &NodeQueryResult::get_val)
-      .def("get_len", &NodeQueryResult::get_len);
-}
-void BindNeighborSampleQuery(py::module* m) {
-  py::class_<NeighborSampleQuery>(*m, "NeighborSampleQuery")
-      .def(py::init<>())
-      .def("initialize", &NeighborSampleQuery::initialize)
-      .def("display", &NeighborSampleQuery::display);
-}
-
-void BindNeighborSampleResult(py::module* m) {
-  py::class_<NeighborSampleResult>(*m, "NeighborSampleResult")
-      .def(py::init<>())
-      .def("initialize", &NeighborSampleResult::initialize)
-      .def("get_len", &NeighborSampleResult::get_len)
-      .def("get_val", &NeighborSampleResult::get_actual_val)
-      .def("get_sampled_graph", &NeighborSampleResult::get_sampled_graph)
-      .def("display", &NeighborSampleResult::display);
-}
-
-void BindGraphGpuWrapper(py::module* m) {
-  py::class_<GraphGpuWrapper, std::shared_ptr<GraphGpuWrapper>>(
-      *m, "GraphGpuWrapper")
-      .def(py::init([]() { return GraphGpuWrapper::GetInstance(); }))
-      .def("neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample_v3)
-      .def("graph_neighbor_sample",
-           py::overload_cast<int, uint64_t*, int, int>(
-               &GraphGpuWrapper::graph_neighbor_sample))
-      .def("graph_neighbor_sample",
-           py::overload_cast<int, int, std::vector<uint64_t>&, int>(
-               &GraphGpuWrapper::graph_neighbor_sample))
-      .def("set_device", &GraphGpuWrapper::set_device)
-      .def("set_feature_separator", &GraphGpuWrapper::set_feature_separator)
-      .def("set_infer_mode", &GraphGpuWrapper::set_infer_mode)
-      .def("set_slot_feature_separator",
-           &GraphGpuWrapper::set_slot_feature_separator)
-      .def("init_service", &GraphGpuWrapper::init_service)
-      .def("set_up_types", &GraphGpuWrapper::set_up_types)
-      .def("query_node_list", &GraphGpuWrapper::query_node_list)
-      .def("add_table_feat_conf", &GraphGpuWrapper::add_table_feat_conf)
-      .def("load_edge_file",
-           py::overload_cast<std::string, std::string, bool>(
-               &GraphGpuWrapper::load_edge_file))
-      .def("load_edge_file",
-           py::overload_cast<std::string,
-                             std::string,
-                             int,
-                             bool,
-                             const std::vector<bool>&,
-                             bool>(&GraphGpuWrapper::load_edge_file))
-      .def("load_node_and_edge", &GraphGpuWrapper::load_node_and_edge)
-      .def("calc_edge_type_limit", &GraphGpuWrapper::calc_edge_type_limit)
-      .def("show_mem", &GraphGpuWrapper::show_mem)
-      .def("upload_batch",
-           py::overload_cast<int, int, const std::string&>(
-               &GraphGpuWrapper::upload_batch))
-      .def(
-          "upload_batch",
-          py::overload_cast<int, int, int, int>(&GraphGpuWrapper::upload_batch))
-      .def(
-          "get_all_id",
-          py::overload_cast<int, int, int, std::vector<std::vector<uint64_t>>*>(
-              &GraphGpuWrapper::get_all_id))
-      .def("get_all_id",
-           py::overload_cast<int, int, std::vector<std::vector<uint64_t>>*>(
-               &GraphGpuWrapper::get_all_id))
-      .def("init_metapath", &GraphGpuWrapper::init_metapath)
-      .def("get_node_type_size", &GraphGpuWrapper::get_node_type_size)
-      .def("get_edge_type_size", &GraphGpuWrapper::get_edge_type_size)
-      .def("clear_metapath_state", &GraphGpuWrapper::clear_metapath_state)
-      .def("load_next_partition", &GraphGpuWrapper::load_next_partition)
-      .def("make_partitions", &GraphGpuWrapper::make_partitions)
-      .def("make_complementary_graph",
-           &GraphGpuWrapper::make_complementary_graph)
-      .def("set_search_level", &GraphGpuWrapper::set_search_level)
-      .def("init_search_level", &GraphGpuWrapper::init_search_level)
-      .def("get_partition_num", &GraphGpuWrapper::get_partition_num)
-      .def("get_partition", &GraphGpuWrapper::get_partition)
-      .def("load_node_weight", &GraphGpuWrapper::load_node_weight)
-      .def("export_partition_files", &GraphGpuWrapper::export_partition_files)
-      .def("load_node_file",
-           py::overload_cast<std::string, std::string>(
-               &GraphGpuWrapper::load_node_file))
-      .def("load_node_file",
-           py::overload_cast<std::string, std::string, int>(
-               &GraphGpuWrapper::load_node_file))
-      .def("release_graph", &GraphGpuWrapper::release_graph)
-      .def("release_graph_edge", &GraphGpuWrapper::release_graph_edge)
-      .def("release_graph_node", &GraphGpuWrapper::release_graph_node)
-      .def("finalize", &GraphGpuWrapper::finalize)
-      .def("set_node_iter_from_file",
-           py::overload_cast<std::string, std::string, int, bool, bool>(
-               &GraphGpuWrapper::set_node_iter_from_file))
-      .def("set_node_iter_from_graph",
-           py::overload_cast<bool, bool>(
-               &GraphGpuWrapper::set_node_iter_from_graph));
-}
-#endif
 
 using paddle::distributed::IndexSampler;
 using paddle::distributed::LayerWiseSampler;

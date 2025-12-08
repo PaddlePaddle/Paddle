@@ -37,7 +37,6 @@ from typing_extensions import ParamSpec
 import paddle
 
 from .. import pir
-from ..utils.download import check_and_create_dir
 from . import core, unique_name
 from .libpaddle import DataType
 from .proto import (
@@ -8625,22 +8624,6 @@ def pir_op_name_guard(op_name: str) -> Generator[None, None, None]:
     finally:
         if paddle.framework.in_pir_mode() and core._is_bwd_prim_enabled():
             pir.set_comp_op_name(original_comp_op_name)
-
-
-@signature_safe_contextmanager
-def capture_backward_subgraph_guard(
-    dump_dir_path: str, need_dump_grad_tensors: bool = False
-) -> Generator[None, None, None]:
-    assert dump_dir_path is not None, "The dump_dir_path should not be None"
-    # for multi process
-    check_and_create_dir(dump_dir_path)
-    paddle.base.core.eager._start_capture_backward_viz_subgraph(
-        dump_dir_path, need_dump_grad_tensors
-    )
-    try:
-        yield
-    finally:
-        paddle.base.core.eager._stop_capture_backward_viz_subgraph()
 
 
 @signature_safe_contextmanager

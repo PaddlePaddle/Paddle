@@ -15,9 +15,11 @@
 #pragma once
 
 #include <c10/core/Device.h>
+#include <c10/cuda/CUDAException.h>
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/cuda_stream.h"
 
 namespace c10::cuda {
@@ -38,10 +40,19 @@ class CUDAStream {
 
   const gpuStream_t& stream() const { return raw_stream_; }
 
+  const gpuStream_t& raw_stream() const { return raw_stream_; }
+
  private:
   gpuStream_t raw_stream_;
 };
 
+/**
+ * Get the current CUDA stream, for the passed CUDA device, or for the
+ * current device if no device index is passed.  The current CUDA stream
+ * will usually be the default CUDA stream for the device, but it may
+ * be different if someone called 'setCurrentCUDAStream' or used 'StreamGuard'
+ * or 'CUDAStreamGuard'.
+ */
 inline CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1) {
   if (device_index == -1) {
     device_index = phi::backends::gpu::GetCurrentDeviceId();
