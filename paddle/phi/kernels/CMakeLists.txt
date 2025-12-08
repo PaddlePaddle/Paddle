@@ -74,6 +74,8 @@ if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
     "legacy/gpu/moe_gate_dispatch_kernel.cu"
     "legacy/gpu/moe_gate_dispatch_grad_kernel.cu"
     "legacy/gpu/int_bincount.cu"
+    "legacy/gpu/batched_gemm.cu"
+    "legacy/gpu/fp8_gemm_blockwise_kernel.cu"
     "legacy/gpu/fp8_gemm_blockwise_kernel.cu"
     "legacy/gpu/fp8_quant_blockwise_kernel.cu"
     "legacy/gpu/fast_layernorm_kernel.cu"

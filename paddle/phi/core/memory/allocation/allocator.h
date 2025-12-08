@@ -21,7 +21,6 @@
 #include <utility>
 #include <vector>
 
-#include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
@@ -160,9 +159,6 @@ static T&& FillValue(T&& allocation) {
         PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
       }
       if (FLAGS_alloc_fill_value >= 0) {
-        VLOG(10) << "Set " << FLAGS_alloc_fill_value << " on "
-                 << allocation->ptr() << " " << allocation->place() << " "
-                 << allocation->size();
         if (phi::is_gpu_place(allocation->place())) {
           PADDLE_ENFORCE_GPU_SUCCESS(cudaMemset(
               allocation->ptr(), FLAGS_alloc_fill_value, allocation->size()));
@@ -214,7 +210,7 @@ class PADDLE_API Allocator : public phi::Allocator {
   virtual void FreeImpl(phi::Allocation* allocation);
   virtual uint64_t ReleaseImpl(const phi::Place& place UNUSED) { return 0; }
   virtual size_t CompactImpl(const phi::Place& place UNUSED) {
-    LOG(INFO) << "Compact is not supported";
+    PADDLE_THROW(phi::errors::Unimplemented("Compact is not supported"));
     return 0;
   }
 };

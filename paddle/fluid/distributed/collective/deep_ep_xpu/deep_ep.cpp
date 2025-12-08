@@ -146,8 +146,10 @@ void Buffer::sync(
     const std::vector<int>& device_ids,
     const std::vector<std::optional<pybind11::bytearray>>& all_gathered_handles,
     const std::optional<pybind11::bytearray>& root_unique_id_opt) {
-  int ret = bkcl_xshmem_init(comm_ctx->GetBKCLComm());
-  EP_HOST_ASSERT(ret == 0 && "bkcl_xshmem_init failed");
+  if (num_rdma_ranks > 1 || low_latency_mode) {
+    int ret = bkcl_xshmem_init(comm_ctx->GetBKCLComm());
+    EP_HOST_ASSERT(ret == 0 && "bkcl_xshmem_init failed");
+  }
 }
 #endif
 
@@ -961,11 +963,12 @@ Buffer::low_latency_dispatch(
     int num_experts,
     bool use_fp8,
     bool async,
-    bool return_recv_hook) {
+    bool return_recv_hook,
+    int num_per_channel) {
   EP_HOST_ASSERT(low_latency_mode);
   auto num_tokens = static_cast<int>(x.size(0)),
        hidden_size = static_cast<int>(x.size(1));
-  auto num_scales = hidden_size / 128,
+  auto num_scales = num_per_channel == -1 ? 1 : hidden_size / 128,
        num_topk = static_cast<int>(topk_idx.size(1));
   int num_local_experts = num_experts / num_ranks;
 
@@ -1500,7 +1503,8 @@ Buffer::low_latency_dispatch_api(
     int num_experts,
     bool use_fp8,
     bool async,
-    bool return_recv_hook) {
+    bool return_recv_hook,
+    int num_per_channel) {
   const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
   const auto& topk_idx_ = ConvertPaddleTensorToDetailTensor(topk_idx);
 
@@ -1517,7 +1521,8 @@ Buffer::low_latency_dispatch_api(
                                   num_experts,
                                   use_fp8,
                                   async,
-                                  return_recv_hook);
+                                  return_recv_hook,
+                                  num_per_channel);
 
   auto packed_recv_x_ = ConvertDetailTensorToPaddleTensor(std::get<0>(res));
 
