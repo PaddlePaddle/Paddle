@@ -35,6 +35,7 @@ def shard_accumulators(parameters_and_grads, optimizer, target_block):
             if accumulator.is_dist():
                 continue
             origin_accumulator_name = accumulator.name
+            import paddle.distributed as dist
 
             if 'beta' not in key:
                 placements = param.placements

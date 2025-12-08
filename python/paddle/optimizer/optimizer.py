@@ -1323,12 +1323,11 @@ class Optimizer:
 
             if isinstance(parameters_and_grads, list):
                 with paddle.base.framework.dygraph_guard_if_declarative():
-                    _need_shard = False
-                    for param, _ in parameters_and_grads:
-                        if hasattr(param, '_need_shard_auto'):
-                            _need_shard = True
-                            break
-                    if _need_shard:
+                    need_shard = any(
+                        hasattr(p, '_need_shard_auto')
+                        for p in self._parameter_list
+                    )
+                    if need_shard:
                         paddle.distributed.auto_parallel.fully_shard.shard_accumulators(
                             parameters_and_grads, self, target_block
                         )
