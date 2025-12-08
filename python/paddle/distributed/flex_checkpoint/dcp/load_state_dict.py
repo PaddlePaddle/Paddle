@@ -1013,7 +1013,7 @@ def load_state_dict_impl(
             check_unique_id(unique_id, process_group)
 
         metadata_files, local_data_files = get_checkpoint_files(
-            path, unique_id=unique_id
+            path, unique_id=unique_id, process_group=process_group
         )
 
         metadata_list = []
