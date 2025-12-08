@@ -45,7 +45,7 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& dev_ctx,
                                              DenseTensor* dst_count = nullptr) {
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  int64_t& index_size = src_index.dims()[0];
+  const int64_t& index_size = src_index.dims()[0];
 
   auto out_dims = out->dims();
   int64_t memset_size = 1;

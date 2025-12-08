@@ -372,7 +372,7 @@ void GraphSendUERecvGradOpKernelLaunchHelper(
     const DenseTensor* out = nullptr) {
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  int64_t& index_size = dst_index.dims()[0];
+  const int64_t& index_size = dst_index.dims()[0];
   // NOLINT
 
   dev_ctx.template Alloc<T>(x_grad);
