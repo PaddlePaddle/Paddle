@@ -51,16 +51,12 @@ def get_device_properties(
 
     Examples:
         .. code-block:: pycon
-
+            >>> # doctest: +REQUIRES(env:METAX_GPU)
             >>> import paddle
-            >>> try:
-            ...     paddle.device.default_backend.get_device_properties('metax_gpu:0')
-            ...     paddle.device.default_backend.get_device_properties(0)
-            ...     paddle.device.default_backend.get_device_properties(paddle.CustomPlace('metax_gpu',0))
-            >>> except RuntimeError as e:
-            ...     print("Error:", e)
-            get_device_properties is not supported for this device type.
-            This function is only available for gpgpu devices.
+            >>> paddle.device.get_device_properties('metax_gpu:0')
+            >>> paddle.device.get_device_properties(0)
+            >>> paddle.device.get_device_properties(paddle.CustomPlace('metax_gpu', 0))
+
     """
     raise RuntimeError(
         "get_device_properties is not supported for this device type. "
