@@ -527,8 +527,7 @@ def use_torch_proxy_guard(
         enable (bool, optional): Whether to enable or disable the PyTorch proxy
             within the context. Defaults to True.
         scope (str or Iterable[str], optional): Specific module or modules to enable
-            PyTorch proxy for. If None, uses the current global/local scope.
-            Defaults to None.
+            PyTorch proxy for. If None, uses the global scope. Defaults to None.
         silent (bool, optional): If True, suppresses warnings about scope changes.
             Defaults to False.
 
@@ -555,7 +554,7 @@ def use_torch_proxy_guard(
     """
     scope = _parse_scope(scope)
     already_has_torch_proxy = TORCH_PROXY_FINDER in sys.meta_path
-    original_local_enabled_scope = TORCH_PROXY_FINDER._local_enabled_scope
+    original_local_enabled_scope = set(TORCH_PROXY_FINDER._local_enabled_scope)
     original_globally_enabled = TORCH_PROXY_FINDER._globally_enabled
     if enable == already_has_torch_proxy and (
         (original_globally_enabled and scope is None)
