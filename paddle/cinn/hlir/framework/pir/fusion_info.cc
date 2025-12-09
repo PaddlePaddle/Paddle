@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/pir/fusion_info.h"
+#include <unordered_set>
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/pir/include/core/ir_printer.h"
@@ -21,8 +22,12 @@ PD_DECLARE_bool(enable_cinn_compile_cache);
 
 namespace cinn::hlir::framework::pir {
 
-constexpr static char* kOpCallStack = "op_callstack";
-constexpr static char* kSymShapeStr = "sym_shape_str";
+constexpr static const char* kOpCallStack = "op_callstack";
+constexpr static const char* kSymShapeStr = "sym_shape_str";
+constexpr static const char* kStructName = "struct_name";
+constexpr static const char* kStopGradient = "stop_gradient";
+static const std::unordered_set<std::string> kExcludedAttrs = {
+    kOpCallStack, kSymShapeStr, kStructName, kStopGradient};
 
 std::size_t AttributeInfo::hash() const { return attr_.hash(); }
 
@@ -66,8 +71,7 @@ OperationInfo::OperationInfo(const ::pir::Operation& op) {
       attributes.begin(), attributes.end());
   attr_infos_.reserve(attributes.size());
   for (const auto& [attr_name, attr_value] : order_attributes) {
-    if (!attr_value || attr_name == kOpCallStack || attr_name == kSymShapeStr)
-      continue;
+    if (!attr_value || kExcludedAttrs.count(attr_name)) continue;
     attr_infos_.emplace_back(attr_name, attr_value);
   }
 }

@@ -1173,12 +1173,14 @@ class Layer:
                 >>> print(linear)
                 Linear(in_features=2, out_features=2, dtype=paddle.int8)
                 >>> print(linear.parameters())
+                >>> # doctest: +SKIP("There are bugs in the `Layer.astype`. For details, refer to the following webpage: https://github.com/PaddlePaddle/Paddle/issues/76614")
                 [Parameter containing:
                 Tensor(shape=[2, 2], dtype=int8, place=Place(cpu), stop_gradient=False,
                     [[1, 1],
                         [1, 1]]), Parameter containing:
                 Tensor(shape=[2], dtype=int8, place=Place(cpu), stop_gradient=False,
                     [2, 2])]
+                >>> # doctest: -SKIP
 
         """
         valid_dtypes = [
@@ -1280,7 +1282,7 @@ class Layer:
             list of Layer, a list of sub layers.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1294,10 +1296,9 @@ class Layer:
                 ...         temp = self._linear(input)
                 ...         temp = self._dropout(temp)
                 ...         return temp
-                ...
                 >>> mylayer = MyLayer()
                 >>> print(mylayer.sublayers())
-                [Linear(in_features=1, out_features=1, dtype=float32), Dropout(p=0.5, axis=None, mode=upscale_in_train)]
+                [Linear(in_features=1, out_features=1, dtype=float32), Dropout(p=0.5, axis=None, mode=upscale_in_train, inplace=False)]
 
         """
         ret = [
@@ -3180,7 +3181,7 @@ class Layer:
             Layer: self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -3194,12 +3195,11 @@ class Layer:
                 ...         out = self.linear(input)
                 ...         out = self.dropout(out)
                 ...         return out
-                ...
                 >>> model = Model()
                 >>> model.float()
                 Model(
                     (linear): Linear(in_features=1, out_features=1, dtype=paddle.float32)
-                    (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train)
+                    (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train, inplace=False)
                 )
         '''
 
