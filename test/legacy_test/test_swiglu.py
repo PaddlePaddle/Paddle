@@ -32,6 +32,7 @@ from paddle.distributed.auto_parallel.static.dist_attribute import (
     TensorDistAttr,
 )
 from paddle.incubate.nn.functional import swiglu as fused_swiglu_impl
+from paddle.nn.functional import swiglu as swiglu_activation
 
 
 def swiglu(x, y, out_grad):
@@ -71,13 +72,13 @@ def swiglu(x, y, out_grad):
     return ret
 
 
-def fused_swiglu(x, y, out_grad):
+def fused_swiglu(x, y, out_grad, swiglu_func=fused_swiglu_impl):
     x = x.detach().clone()
     x.stop_gradient = False
     if y is not None:
         y = y.detach().clone()
         y.stop_gradient = False
-    out = fused_swiglu_impl(x, y)
+    out = swiglu_func(x, y)
     out.backward(out_grad)
 
     output_dtype = x.dtype
@@ -106,14 +107,20 @@ tol_map = {
 
 
 class TestSwiGLUDygraph(unittest.TestCase):
+    def fused_swiglu(self, x, y, out_grad):
+        return fused_swiglu(x, y, out_grad)
+
+    def fused_swiglu_impl(self, x, y=None):
+        return fused_swiglu_impl(x, y)
+
     def check_dygraph_impl(self, device, shape, dtype):
         x = paddle.randn(shape, dtype=dtype)
         y = paddle.randn(shape, dtype=dtype)
         out_grad = paddle.randn(shape, dtype=dtype)
 
         ret1 = swiglu(x, y, out_grad)
-        ret2 = fused_swiglu(x, y, out_grad)
-        ret3 = fused_swiglu(paddle.concat([x, y], axis=-1), None, out_grad)
+        ret2 = self.fused_swiglu(x, y, out_grad)
+        ret3 = self.fused_swiglu(paddle.concat([x, y], axis=-1), None, out_grad)
 
         atol, rtol = tol_map[dtype]
         err_msg = (
@@ -152,8 +159,8 @@ class TestSwiGLUDygraph(unittest.TestCase):
             shape=[*shape[:-1], shape[-1] * 2],
             dtype=dtype,
         )
-        out1 = fused_swiglu_impl(x, y)
-        out2 = fused_swiglu_impl(concated_x)
+        out1 = self.fused_swiglu_impl(x, y)
+        out2 = self.fused_swiglu_impl(concated_x)
 
         concated_x_np = np.random.random(concated_x.shape).astype(dtype)
         x_np, y_np = np.split(concated_x_np, 2, axis=-1)
@@ -177,6 +184,14 @@ class TestSwiGLUDygraph(unittest.TestCase):
     def test_main(self):
         self.check_main([8, 100])
         self.check_main([4, 101])
+
+
+class TestNNActivationSwiGLUDygraph(unittest.TestCase):
+    def fused_swiglu(self, x, y, out_grad):
+        return fused_swiglu(x, y, out_grad, swiglu_func=swiglu_activation)
+
+    def fused_swiglu_impl(self, x, y=None):
+        return swiglu_activation(x, y)
 
 
 class TestSwigluOp(OpTest):
@@ -213,6 +228,26 @@ class TestSwigluOp(OpTest):
             check_dygraph=1,
             check_prim_pir=True,
         )
+
+
+class TestNNActivationSwigluOp(TestSwigluOp):
+    def setUp(self):
+        self.config()
+        self.op_type = "swiglu"
+        self.prim_op_type = "comp"
+        self.python_api = swiglu_activation
+        self.public_python_api = swiglu_activation
+        x = np.random.uniform(-1, 1, self.x_shape).astype("float64")
+        y = np.random.uniform(-1, 1, self.x_shape).astype("float64")
+        out_grad = np.random.uniform(-1, 1, self.x_shape).astype("float64")
+        res = swiglu(x, y, out_grad)
+        self.inputs = {'x': x, 'y': y}
+        self.outputs = {'out': res[0].numpy()}
+        self.placements = {
+            'x': [dist.Shard(1)],
+            'y': [dist.Shard(1)],
+            'out': [dist.Shard(1)],
+        }
 
 
 class TestSwigluOp2(TestSwigluOp):

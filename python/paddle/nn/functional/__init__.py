@@ -46,6 +46,7 @@ from .activation import (
     softplus,
     softshrink,
     softsign,
+    swiglu,  # noqa: F401
     swish,
     tanh,
     tanh_,
