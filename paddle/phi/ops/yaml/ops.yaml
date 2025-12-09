@@ -2519,7 +2519,6 @@
     spmd_rule : GeluInferSpmd
   kernel :
     func : gelu
-  inplace: (x -> out)
   backward : gelu_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
@@ -2654,7 +2653,6 @@
     param : [x]
   kernel :
     func : hard_shrink
-  inplace: (x -> out)
   backward : hardshrink_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
@@ -4262,7 +4260,6 @@
   kernel :
     func : prelu
     data_type : x
-  inplace: (x -> out)
   backward : prelu_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
@@ -5004,19 +5001,6 @@
     func : shuffle_channel
   backward : shuffle_channel_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
-
-- op : sigmoid
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    spmd_rule : ElementwiseUnaryInferSpmd
-  kernel :
-    func : sigmoid
-  inplace : (x -> out)
-  backward : sigmoid_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
-  traits: pir::UnaryElementWiseTrait
 
 - op : sigmoid_cross_entropy_with_logits
   args : (Tensor x, Tensor label, Tensor pos_weight, bool normalize=false, int ignore_index=-100)
