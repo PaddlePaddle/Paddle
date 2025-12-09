@@ -27,7 +27,7 @@ from functools import cache
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Generator, Iterable
 
     from typing_extensions import TypeAlias
 
@@ -514,7 +514,7 @@ def use_torch_proxy_guard(
     enable: bool = True,
     scope: _ScopeType = None,
     silent: bool = False,
-):
+) -> Generator[None, None, None]:
     """
     Context manager to temporarily enable or disable the PyTorch proxy.
 
@@ -584,7 +584,7 @@ def use_torch_proxy_guard(
             TORCH_PROXY_FINDER._globally_enabled = original_globally_enabled
 
 
-def extend_torch_proxy_blocked_modules(modules: Iterable[str]):
+def extend_torch_proxy_blocked_modules(modules: Iterable[str]) -> None:
     """Add modules to the PyTorch proxy blocked list.
 
     Modules in the blocked list will not use PyTorch proxy when imported,
