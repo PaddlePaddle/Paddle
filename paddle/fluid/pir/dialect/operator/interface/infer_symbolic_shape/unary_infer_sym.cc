@@ -839,7 +839,7 @@ bool CIdentityOpInferSymbolicShape(
 
 bool CIdentity_OpInferSymbolicShape()
 pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return CIdentityOpInferSymbolicShape(op, infer_context)
+  return CIdentityOpInferSymbolicShape(op, infer_context);
 }
 
 bool CropOpInferSymbolicShape(pir::Operation *op,
@@ -1953,7 +1953,7 @@ bool Lu_OpInferSymbolicShape(pir::Operation *op,
 
 bool MpAllreduceSumOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return AllreduceOpInferSymbolicShape(op, infer_context);
+  return AllReduceOpInferSymbolicShape(op, infer_context);
 }
 
 bool MpAllreduceSum_OpInferSymbolicShape(
