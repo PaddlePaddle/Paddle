@@ -47,6 +47,7 @@ void FusedRopeKernel(const Context& dev_ctx,
   auto seq_len = time_major ? q.dims()[0] : q.dims()[1];
   auto num_heads = q.dims()[2];
   auto head_dim = q.dims()[3];
+  auto freqs_head_dim = head_dim;
 
   PADDLE_ENFORCE_EQ(head_dim % 2,
                     0,
@@ -90,18 +91,6 @@ void FusedRopeKernel(const Context& dev_ctx,
     int sin_seq_len_dim = (dims_size) == 4 ? 1 : 0;
 
     if (position_ids_data) {
-      PADDLE_ENFORCE_EQ(
-          (sin_dims[dims_size - 1] == head_dim &&
-           sin_dims[sin_seq_len_dim] >= seq_len),
-          true,
-          common::errors::InvalidArgument(
-              "The seq_len of sin and cos must be greater than or equal to "
-              "this of q. The head_dim of sin and cos must be the same as this "
-              "of q. But received sin's "
-              "shape is {%s}, q's shape is {%s}.",
-              sin_dims,
-              q.dims()));
-
       auto position_ids_dims = position_ids.get_ptr()->dims();
       PADDLE_ENFORCE_EQ(position_ids_dims.size(),
                         2,
@@ -120,19 +109,9 @@ void FusedRopeKernel(const Context& dev_ctx,
               "shape is {%s}, q's shape is {%s}.",
               position_ids_dims,
               q.dims()));
-    } else {
-      PADDLE_ENFORCE_EQ(
-          (sin_dims[dims_size - 1] == head_dim &&
-           sin_dims[sin_seq_len_dim] == seq_len),
-          true,
-          common::errors::InvalidArgument(
-              "The seq_len and head_dim of sin and cos "
-              "must be the same as those of q. But received sin's "
-              "shape is {%s}, q's shape is {%s}.",
-              sin_dims,
-              q.dims()));
     }
 
+    freqs_head_dim = sin_dims[dims_size - 1];
     flag_sin_cos = true;
   }
 
@@ -158,6 +137,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                           use_neox_rotary_style,
                           num_heads,
                           head_dim,
+                          freqs_head_dim,
                           stride_s_q,
                           stride_b_q,
                           stride_h_q,
@@ -208,6 +188,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                             use_neox_rotary_style,
                             k_num_heads,
                             head_dim,
+                            freqs_head_dim,
                             stride_s_k,
                             stride_b_k,
                             stride_h_k,
@@ -281,6 +262,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                             use_neox_rotary_style,
                             v_num_heads,
                             head_dim,
+                            freqs_head_dim,
                             stride_s_v,
                             stride_b_v,
                             stride_h_v,

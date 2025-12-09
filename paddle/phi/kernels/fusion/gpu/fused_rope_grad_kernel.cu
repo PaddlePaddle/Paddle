@@ -47,6 +47,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   auto seq_len = time_major ? dout_q.dims()[0] : dout_q.dims()[1];
   auto num_heads = dout_q.dims()[2];
   auto head_dim = dout_q.dims()[3];
+  auto freqs_head_dim = head_dim;
   PADDLE_ENFORCE_NE(head_dim % 2,
                     1,
                     common::errors::InvalidArgument(
@@ -60,6 +61,10 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                              : nullptr;
 
   bool flag_sin_cos = (sin_data && cos_data);
+  if (flag_sin_cos) {
+    auto sin_dims = sin.get_ptr()->dims();
+    freqs_head_dim = sin_dims[sin_dims.size() - 1];
+  }
 
   const int64_t warps_per_block = std::min(num_heads, static_cast<int64_t>(8));
   dim3 grid(seq_len, batch_size);
@@ -88,6 +93,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                           use_neox_rotary_style,
                           num_heads,
                           head_dim,
+                          freqs_head_dim,
                           stride_s_q,
                           stride_b_q,
                           stride_h_q,
@@ -128,6 +134,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                             use_neox_rotary_style,
                             k_num_heads,
                             head_dim,
+                            freqs_head_dim,
                             stride_s_k,
                             stride_b_k,
                             stride_h_k,
@@ -169,6 +176,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                             use_neox_rotary_style,
                             v_num_heads,
                             head_dim,
+                            freqs_head_dim,
                             stride_s_v,
                             stride_b_v,
                             stride_h_v,
