@@ -32,7 +32,6 @@ from .group_sharded_stage3 import (
     TaskFlow,
     _allgather_buffer,
     _current_layer_params,
-    _device2cpu,
     _PartitionParam,
     _TensorWrapper,
     _UnsliceParam,
@@ -202,40 +201,6 @@ class FullyShardOptimizer:
                 param.fw_storage.clear_gradient(False)
             param.bw_storage._clear()
             param.bw_storage = None
-        # 2.Handle unslice param
-        if self._offload:
-            for param in list(self._unslice_params):
-                if self.use_main_grad:
-                    param.main_grad._clear()
-                    param.main_grad = None
-                else:
-                    param.clear_gradient(False)
-
-                if (
-                    self._default_device
-                    in paddle.device.get_all_custom_device_type()
-                ):
-                    tmp_var = param._copy_to(
-                        paddle.CustomPlace(self._default_device, DEV_ID), True
-                    )
-                else:
-                    # both GPU and XPU
-                    tmp_var = param.to(
-                        self._default_device + ":" + (str)(DEV_ID)
-                    )
-
-                if (
-                    tmp_var.dtype == Type.fp32.value
-                    and param2dtype[param.name] == Type.fp16.value
-                ):
-                    tmp_var = paddle.cast(tmp_var, Type.fp16.value)
-                elif (
-                    tmp_var.dtype == Type.fp32.value
-                    and param2dtype[param.name] == Type.bf16.value
-                ):
-                    tmp_var = paddle.cast(tmp_var, Type.bf16.value)
-                tmp_var._share_buffer_to(param)
-                del tmp_var
 
     # Update param memory slice
     def _update_params_slice(self):
@@ -303,38 +268,7 @@ class FullyShardOptimizer:
                 param.fw_storage._copy_gradient_from(param.bw_storage)
             update_list.append(param)
 
-        if self._offload:
-            for param in list(self._unslice_params):
-                param._clear_data()
-                param.master_weight._share_buffer_to(param)
-
-            for grad_storage in self._grad_storages.values():
-                for p in grad_storage._params:
-                    if self.use_main_grad:
-                        tmp_g = _device2cpu(p.main_grad, convert_dtype=True)
-                        p.main_grad = tmp_g
-                    else:
-                        tmp_g = _device2cpu(p.grad, convert_dtype=True)
-                        p.clear_gradient(False)
-                        p._copy_gradient_from(tmp_g)
-                    del tmp_g
-                grad_storage.buffer._clear()
-
         return update_list
-
-    def _param2align(self, param):
-        # CUDA alignment 256 bytes
-        size = param._numel() * align[param.dtype]
-        if self._default_device in core.get_all_custom_device_type():
-            device_alignment = core.libpaddle._get_device_min_chunk_size(
-                self._default_device
-            )
-        else:
-            device_alignment = alignment[self._default_device]
-        remaining = size % device_alignment
-        ali = 0 if remaining == 0 else device_alignment - remaining
-        align_ = ali // align[param.dtype]
-        return align_
 
     def _redefine_opt_step(self):
         params_slice_func = self._update_params_slice
@@ -349,13 +283,7 @@ class FullyShardOptimizer:
             else:
                 opt_step()
 
-        def _opt_minimize(self):
-            raise RuntimeError(
-                "optimizer.minimize() not support now, please use optimizer.step()"
-            )
-
         self._optim.step = MethodType(_opt_step, self._optim)
-        self._optim.minimize = MethodType(_opt_minimize, self._optim)
 
     def _redefine_opt_clear(self):
         clear_func = self._clear_gradients
@@ -490,8 +418,6 @@ class FullyShard(nn.Layer):
         buffer_size[Type.fp32.value] = 0
         buffer_size[Type.fp16.value] = 0
         for param in self._unslice_params:
-            if self._offload:
-                param.master_weight = paddle.cast(param, Type.fp32.value).cpu()
             param2dtype[param.name] = param.dtype
             p_align = self._param2align(param)
             self._unslice_params2align[param.name] = p_align
@@ -692,23 +618,9 @@ class FullyShard(nn.Layer):
         param.get_tensor()._set_dims(param_shape)
 
         # Current rank param_storage
-        if self._offload:
-            with device_guard():
-                tmp_tensor = buffer._slice(start, end)
-            param.fw_storage = core.eager.Tensor(
-                value=tmp_tensor,
-                place=core.CPUPlace(),
-                name="slice@" + param.name,
-            )
-            if param.trainable:
-                with device_guard():
-                    param.master_weight = paddle.cast(
-                        param.fw_storage, Type.fp32.value
-                    )
-        else:
-            param.fw_storage = core.eager.Tensor(
-                value=buffer._slice(start, end), name="slice@" + param.name
-            )
+        param.fw_storage = core.eager.Tensor(
+            value=buffer._slice(start, end), name="slice@" + param.name
+        )
         param.status = "part"
 
         # Update optimizer master weights
@@ -873,22 +785,11 @@ class FullyShard(nn.Layer):
                     param.bw_storage = (
                         full_grad._slice(start, end).detach().clone()
                     )
-                    if self._offload:
-                        param.bw_storage = _device2cpu(param.bw_storage, True)
                 else:
-                    if self._offload:
-                        cpu_grad = _device2cpu(
-                            full_grad._slice(start, end).detach().clone(), True
-                        )
-                        with device_guard():
-                            param.bw_storage = paddle.add(
-                                param.bw_storage, cpu_grad
-                            )
-                    else:
-                        param.bw_storage = paddle.add(
-                            param.bw_storage,
-                            full_grad._slice(start, end).detach().clone(),
-                        )
+                    param.bw_storage = paddle.add(
+                        param.bw_storage,
+                        full_grad._slice(start, end).detach().clone(),
+                    )
 
                 if self.use_main_grad:
                     param.main_grad = None
@@ -909,11 +810,6 @@ class FullyShard(nn.Layer):
                     )
                     param.status = "part"
                     del self._task_flow.full_param[param.name]
-
-                    if self._offload:
-                        # revert back to cpu for offload update
-                        param.fw_storage._clear_data()
-                        param.master_weight._share_buffer_to(param.fw_storage)
 
         return allreduce_
 

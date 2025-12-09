@@ -21,6 +21,7 @@ from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_fully_shard import (
     FullyShard,
 )
+from paddle.distributed.fleet.utils import mix_precision_utils
 from paddle.distributed.sharding import group_sharded_parallel
 
 
@@ -54,10 +55,16 @@ def train_mlp(
     use_fsdp=True,
     data=None,
 ):
+    model = mix_precision_utils.MixPrecisionLayer(model, dtype="bfloat16")
+    clip = paddle.nn.ClipGradByGlobalNorm(0.5)
+    use_pure_bf16 = True
     optimizer = optimizer = paddle.optimizer.AdamW(
         learning_rate=0.001,
         parameters=model.parameters(),
+        grad_clip=clip,
+        multi_precision=use_pure_bf16,
     )
+    optimizer = mix_precision_utils.MixPrecisionOptimizer(optimizer)
 
     if use_fsdp:
         model = FullyShard(model)
