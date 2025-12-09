@@ -23,94 +23,6 @@
 namespace phi {
 namespace fusion {
 
-template <typename T>
-__device__ void fused_rope_block_backward(const T *src, const T *sin,
-                                          const T *cos,
-                                          const int64_t *position_ids, T *dst,
-                                          const bool interleaved, const int s_id,
-                                          const int b_id, const int offset_block,
-                                          const int offset_block_dst,
-                                          const int h, const int d,
-                                          const int stride_h, const int stride_d,
-                                          const int o_stride_h,
-                                          const int o_stride_d,
-                                          const float rotary_emb_base,
-                                          const int seq_len_for_pos) {
-  extern __shared__ float shared_mem_cos_sin[];
-  float *shared_mem_cos = shared_mem_cos_sin;
-  float *shared_mem_sin = shared_mem_cos_sin + d;
-  int tid = threadIdx.x * blockDim.y + threadIdx.y;
-  for (int i = tid; i < d; i += blockDim.x * blockDim.y) {
-    int64_t pos = s_id;
-    if (position_ids) {
-      pos = position_ids[b_id * seq_len_for_pos + s_id];
-    }
-
-    if (sin && cos) {
-      shared_mem_sin[i] = static_cast<float>(sin[pos * d + i]);
-      shared_mem_cos[i] = static_cast<float>(cos[pos * d + i]);
-    } else {
-      float idx = (float)((i / 2) * 2);
-      float inv_freq = 1.0f / powf(rotary_emb_base, idx / (float)d);
-      float freq = (float)pos * inv_freq;
-      sincosf(freq, &shared_mem_sin[i], &shared_mem_cos[i]);
-    }
-  }
-  __syncthreads();
-
-#pragma unroll
-  for (int h_id = threadIdx.y; h_id < h; h_id += blockDim.y) {
-#pragma unroll
-    for (int d_id = threadIdx.x; d_id < d; d_id += blockDim.x) {
-      int offset_src = offset_block + h_id * stride_h + d_id * stride_d;
-      int offset_dst = offset_block_dst + h_id * o_stride_h + d_id * o_stride_d;
-      float v_src = static_cast<float>(src[offset_src]);
-      float v_cos = shared_mem_cos[d_id];
-      float v_src_rotate, v_sin;
-      if (!interleaved) {
-        if (d_id + d / 2 < d) {
-          v_src_rotate =
-              static_cast<float>(src[offset_src + (d / 2) * stride_d]);
-          v_sin = shared_mem_sin[d_id + d / 2];
-        } else {
-          v_src_rotate =
-              static_cast<float>(src[offset_src + (d / 2 - d) * stride_d]);
-          v_sin = -shared_mem_sin[d_id + d / 2 - d];
-        }
-      } else {
-        if (d_id % 2 == 0) {
-          v_src_rotate = static_cast<float>(src[offset_src + stride_d]);
-          v_sin = shared_mem_sin[d_id + 1];
-        } else {
-          v_src_rotate = static_cast<float>(src[offset_src - stride_d]);
-          v_sin = -shared_mem_sin[d_id - 1];
-        }
-      }
-      dst[offset_dst] = static_cast<T>(v_src * v_cos + v_src_rotate * v_sin);
-    }
-  }
-}
-
-template <typename T>
-__global__ void fused_rope_backward_kernel(
-    const T *src, const T *sin, const T *cos, const int64_t *position_ids,
-    T *dst, const bool interleaved, const int h, const int d,
-    const int stride_s, const int stride_b, const int stride_h,
-    const int stride_d, const int o_stride_s, const int o_stride_b,
-    const int o_stride_h, const int o_stride_d, const float rotary_emb_base,
-    const int seq_len_for_pos) {
-  int s_id = blockIdx.x;
-  int b_id = blockIdx.y;
-
-  int offset_block = s_id * stride_s + b_id * stride_b;
-  int offset_block_dst = s_id * o_stride_s + b_id * o_stride_b;
-
-  fused_rope_block_backward(src, sin, cos, position_ids, dst, interleaved, s_id,
-                            b_id, offset_block, offset_block_dst, h, d, stride_h,
-                            stride_d, o_stride_h, o_stride_d, rotary_emb_base,
-                            seq_len_for_pos);
-}
-
 template <typename T, typename Context>
 void FusedRopeGradKernel(const Context& dev_ctx,
                          const paddle::optional<DenseTensor>& sin,
@@ -131,7 +43,6 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   if (dout_v) dev_ctx.template Alloc<T>(dv);
   if (numel <= 0) return;
 
-  // small size for broadcast
   auto batch_size = time_major ? dout_q.dims()[1] : dout_q.dims()[0];
   auto seq_len = time_major ? dout_q.dims()[0] : dout_q.dims()[1];
   auto num_heads = dout_q.dims()[2];
@@ -145,67 +56,121 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   const T* sin_data = sin.get_ptr() ? sin.get_ptr()->data<T>() : nullptr;
   const T* cos_data = cos.get_ptr() ? cos.get_ptr()->data<T>() : nullptr;
   const int64_t* position_ids_data =
-      position_ids.get_ptr() ? position_ids.get_ptr()->data<int64_t>() : nullptr;
+      position_ids.get_ptr() ? position_ids.get_ptr()->data<int64_t>()
+                             : nullptr;
 
+  bool flag_sin_cos = (sin_data && cos_data);
+
+  const int64_t thread_nums = 1024;
+  const int64_t warps_per_block = std::min(num_heads, thread_nums / 32);
   dim3 grid(seq_len, batch_size);
-  dim3 block(32, 4); // 32 threads per warp, 4 warps per block
+  dim3 block(32, warps_per_block);  // 32 threads per warp
   size_t shared_mem_size = 2 * head_dim * sizeof(float);
 
   // Q
-  int stride_s_q = time_major ? dout_q.strides()[0] : dout_q.strides()[1];
-  int stride_b_q = time_major ? dout_q.strides()[1] : dout_q.strides()[0];
-  int stride_h_q = dout_q.strides()[2];
-  int stride_d_q = dout_q.strides()[3];
+  int64_t stride_s_q = time_major ? dout_q.strides()[0] : dout_q.strides()[1];
+  int64_t stride_b_q = time_major ? dout_q.strides()[1] : dout_q.strides()[0];
+  int64_t stride_h_q = dout_q.strides()[2];
+  int64_t stride_d_q = dout_q.strides()[3];
 
-  int o_stride_s_q = time_major ? dq->strides()[0] : dq->strides()[1];
-  int o_stride_b_q = time_major ? dq->strides()[1] : dq->strides()[0];
-  int o_stride_h_q = dq->strides()[2];
-  int o_stride_d_q = dq->strides()[3];
+  int64_t o_stride_s_q = time_major ? dq->strides()[0] : dq->strides()[1];
+  int64_t o_stride_b_q = time_major ? dq->strides()[1] : dq->strides()[0];
+  int64_t o_stride_h_q = dq->strides()[2];
+  int64_t o_stride_d_q = dq->strides()[3];
 
-  fused_rope_backward_kernel<<<grid, block, shared_mem_size, stream>>>(
-      dout_q.data<T>(), sin_data, cos_data, position_ids_data, dq->data<T>(),
-      use_neox_rotary_style, num_heads, head_dim, stride_s_q, stride_b_q,
-      stride_h_q, stride_d_q, o_stride_s_q, o_stride_b_q, o_stride_h_q,
-      o_stride_d_q, rotary_emb_base, seq_len);
+  FusedRopeGradKernelImpl<<<grid, block, shared_mem_size, stream>>>(
+      dout_q.data<T>(),
+      sin_data,
+      cos_data,
+      position_ids_data,
+      flag_sin_cos,
+      use_neox_rotary_style,
+      num_heads,
+      head_dim,
+      stride_s_q,
+      stride_b_q,
+      stride_h_q,
+      stride_d_q,
+      o_stride_s_q,
+      o_stride_b_q,
+      o_stride_h_q,
+      o_stride_d_q,
+      rotary_emb_base,
+      seq_len,
+      dq->data<T>());
 
   // K
   if (dk && dk->numel() > 0) {
     auto k_num_heads = dk->dims()[2];
-    int stride_s_k = time_major ? dout_k->strides()[0] : dout_k->strides()[1];
-    int stride_b_k = time_major ? dout_k->strides()[1] : dout_k->strides()[0];
-    int stride_h_k = dout_k->strides()[2];
-    int stride_d_k = dout_k->strides()[3];
+    int64_t stride_s_k =
+        time_major ? dout_k->strides()[0] : dout_k->strides()[1];
+    int64_t stride_b_k =
+        time_major ? dout_k->strides()[1] : dout_k->strides()[0];
+    int64_t stride_h_k = dout_k->strides()[2];
+    int64_t stride_d_k = dout_k->strides()[3];
 
-    int o_stride_s_k = time_major ? dk->strides()[0] : dk->strides()[1];
-    int o_stride_b_k = time_major ? dk->strides()[1] : dk->strides()[0];
-    int o_stride_h_k = dk->strides()[2];
-    int o_stride_d_k = dk->strides()[3];
+    int64_t o_stride_s_k = time_major ? dk->strides()[0] : dk->strides()[1];
+    int64_t o_stride_b_k = time_major ? dk->strides()[1] : dk->strides()[0];
+    int64_t o_stride_h_k = dk->strides()[2];
+    int64_t o_stride_d_k = dk->strides()[3];
 
-    fused_rope_backward_kernel<<<grid, block, shared_mem_size, stream>>>(
-        dout_k->data<T>(), sin_data, cos_data, position_ids_data, dk->data<T>(),
-        use_neox_rotary_style, k_num_heads, head_dim, stride_s_k, stride_b_k,
-        stride_h_k, stride_d_k, o_stride_s_k, o_stride_b_k, o_stride_h_k,
-        o_stride_d_k, rotary_emb_base, seq_len);
+    FusedRopeGradKernelImpl<<<grid, block, shared_mem_size, stream>>>(
+        dout_k->data<T>(),
+        sin_data,
+        cos_data,
+        position_ids_data,
+        flag_sin_cos,
+        use_neox_rotary_style,
+        k_num_heads,
+        head_dim,
+        stride_s_k,
+        stride_b_k,
+        stride_h_k,
+        stride_d_k,
+        o_stride_s_k,
+        o_stride_b_k,
+        o_stride_h_k,
+        o_stride_d_k,
+        rotary_emb_base,
+        seq_len,
+        dk->data<T>());
   }
 
   // V
   if (dv && dv->numel() > 0) {
     auto v_num_heads = dv->dims()[2];
-    int stride_s_v = time_major ? dout_v->strides()[0] : dout_v->strides()[1];
-    int stride_b_v = time_major ? dout_v->strides()[1] : dout_v->strides()[0];
-    int stride_h_v = dout_v->strides()[2];
-    int stride_d_v = dout_v->strides()[3];
+    int64_t stride_s_v =
+        time_major ? dout_v->strides()[0] : dout_v->strides()[1];
+    int64_t stride_b_v =
+        time_major ? dout_v->strides()[1] : dout_v->strides()[0];
+    int64_t stride_h_v = dout_v->strides()[2];
+    int64_t stride_d_v = dout_v->strides()[3];
 
-    int o_stride_s_v = time_major ? dv->strides()[0] : dv->strides()[1];
-    int o_stride_b_v = time_major ? dv->strides()[1] : dv->strides()[0];
-    int o_stride_h_v = dv->strides()[2];
-    int o_stride_d_v = dv->strides()[3];
+    int64_t o_stride_s_v = time_major ? dv->strides()[0] : dv->strides()[1];
+    int64_t o_stride_b_v = time_major ? dv->strides()[1] : dv->strides()[0];
+    int64_t o_stride_h_v = dv->strides()[2];
+    int64_t o_stride_d_v = dv->strides()[3];
 
-    fused_rope_backward_kernel<<<grid, block, shared_mem_size, stream>>>(
-        dout_v->data<T>(), sin_data, cos_data, position_ids_data, dv->data<T>(),
-        use_neox_rotary_style, v_num_heads, head_dim, stride_s_v, stride_b_v,
-        stride_h_v, stride_d_v, o_stride_s_v, o_stride_b_v, o_stride_h_v,
-        o_stride_d_v, rotary_emb_base, seq_len);
+    FusedRopeGradKernelImpl<<<grid, block, shared_mem_size, stream>>>(
+        dout_v->data<T>(),
+        sin_data,
+        cos_data,
+        position_ids_data,
+        flag_sin_cos,
+        use_neox_rotary_style,
+        v_num_heads,
+        head_dim,
+        stride_s_v,
+        stride_b_v,
+        stride_h_v,
+        stride_d_v,
+        o_stride_s_v,
+        o_stride_b_v,
+        o_stride_h_v,
+        o_stride_d_v,
+        rotary_emb_base,
+        seq_len,
+        dv->data<T>());
   }
 }
 
