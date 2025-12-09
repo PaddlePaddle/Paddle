@@ -597,11 +597,11 @@ def extend_torch_proxy_blocked_modules(modules: Iterable[str]):
     Example:
         .. code-block:: pycon
 
-            >>> # doctest: +SKIP('my_custom_module is not available')
             >>> import paddle
             >>> paddle.compat.enable_torch_proxy()  # Enable torch proxy globally
             >>> # Add 'my_custom_module' to the blocked list
             >>> paddle.compat.extend_torch_proxy_blocked_modules(['my_custom_module'])
+            >>> # doctest: +SKIP('my_custom_module is not available')
             >>> import my_custom_module  # This import will not use torch proxy  # type: ignore[import-not-found]
     """
     TORCH_PROXY_BLOCKED_MODULES.update(modules)
