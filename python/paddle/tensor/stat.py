@@ -232,6 +232,17 @@ def var(
         actual_correction = 1.0 if unbiased else 0.0
     else:
         actual_correction = float(correction)
+
+    if x.is_cuda:
+        return _C_ops.var(
+            x,
+            axis if axis is not None else [],
+            keepdim,
+            unbiased,
+            actual_correction,
+            out=out,
+        )
+
     if not in_dynamic_mode():
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'var'
@@ -291,6 +302,9 @@ def std(
     unbiased: bool = True,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    correction: float = 1,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Computes the standard-deviation of ``x`` along ``axis`` .
@@ -319,6 +333,9 @@ def std(
             the output Tensor is squeezed in ``axis`` . Default is False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        correction (int|float, optional): Difference between the sample size and sample degrees of freedom.
+            Defaults to 1 (Bessel's correction). If unbiased is specified, this parameter is ignored.
+        out (Tensor|None, optional): Output tensor. Default is None.
 
     Returns:
         Tensor, results of standard-deviation along ``axis`` of ``x``, with the
@@ -345,8 +362,20 @@ def std(
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'std'
         )
-    out = var(**locals())
-    return paddle.sqrt(out)
+
+    if x.is_cuda:
+        axis = axis if axis is not None else []
+        correction = 1.0 if unbiased else 0.0
+        return _C_ops.std(x, axis, keepdim, unbiased, correction, out=out)
+
+    result = var(**locals())
+    result = paddle.sqrt(result)
+
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+
+    return result
 
 
 def numel(x: Tensor, name: str | None = None) -> Tensor:

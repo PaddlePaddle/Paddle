@@ -23,6 +23,7 @@
 namespace phi {
 struct DenseTensorIteratorConfig;
 struct DenseTensorIterator;
+struct SplitUntil32Bit;
 
 enum struct FastSetupType : uint8_t { NONE, CONTIGUOUS };
 
@@ -79,9 +80,14 @@ struct DenseTensorIteratorBase {
   const std::vector<int64_t>& strides(int64_t arg) const {
     return operands_[arg].stride_bytes;
   }
-  const void* data_ptr(int64_t arg) const;
+  DataType dtype(int64_t arg = 0) const { return operands_[arg].current_dtype; }
+  std::vector<int64_t> view_offsets() const { return view_offsets_; }
+  void* data_ptr(int64_t arg) const;
   bool should_accumulate() const { return accumulate_; }
   bool is_final_output() const { return final_output_; }
+  int get_dim_to_split() const;
+  bool is_dim_reduced(int dim) const;
+  std::unique_ptr<DenseTensorIterator> split(int dim);
 
  protected:
   void populate_operands(DenseTensorIteratorConfig&);
@@ -93,10 +99,12 @@ struct DenseTensorIteratorBase {
   bool fast_set_up(const DenseTensorIteratorConfig&);
   FastSetupType compute_fast_setup_type(const DenseTensorIteratorConfig&);
   void coalesce_dimensions();
+  void narrow(int dim, int64_t start, int64_t size);
 
  protected:
   std::vector<int64_t> shape_;
   std::vector<int64_t> perm_;
+  std::vector<int64_t> view_offsets_;
   bool has_coalesced_dimensions_ = false;
   size_t num_outputs_ = 0;
   bool all_ops_same_shape_ = false;
@@ -106,6 +114,8 @@ struct DenseTensorIteratorBase {
   std::vector<DenseOperandInfo> operands_;
   std::vector<int64_t> compatible_stride(int64_t element_size) const;
   std::vector<int64_t> invert_perm(std::vector<int64_t> input) const;
+  bool can_use_32bit_indexing() const;
+  SplitUntil32Bit with_32bit_indexing() const;
   virtual void set_output_raw_strided(int64_t output_idx,
                                       std::vector<int64_t> sizes,
                                       std::vector<int64_t> strides);
@@ -207,6 +217,7 @@ struct DenseTensorIteratorConfig final {
   std::optional<std::vector<int64_t>> static_shape_ = std::nullopt;
   bool is_reduction_ = false;
   bool resize_outputs_ = false;
+  bool is_tensor_const(size_t idx);
 };
 
 struct DimIter {
@@ -221,6 +232,34 @@ struct DimIter {
   int64_t end;
   paddle::small_vector<int64_t, 4> values;
   int64_t offset;
+};
+
+struct SplitUntil32Bit {
+  struct iterator {
+    iterator() = default;
+    explicit iterator(const DenseTensorIteratorBase& iter);
+    iterator(iterator&&) = default;
+    iterator& operator=(iterator&&) = default;
+    ~iterator() = default;
+
+    DenseTensorIterator& operator*() const;
+    iterator& operator++();
+    bool operator==(const iterator& other) const {
+      return this == &other || (vec.empty() && other.vec.empty());
+    }
+
+    bool operator!=(const iterator& other) const { return !(*this == other); }
+
+    std::vector<std::unique_ptr<DenseTensorIterator>> vec;
+  };
+
+  explicit SplitUntil32Bit(const DenseTensorIteratorBase& iter) : iter(iter) {}
+
+  iterator begin() const;
+  iterator end() const;
+
+ private:
+  const DenseTensorIteratorBase& iter;
 };
 
 }  // namespace phi

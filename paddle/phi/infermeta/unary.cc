@@ -6725,6 +6725,34 @@ void IntBincountInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void VarInferMeta(const MetaTensor& x,
+                  const IntArray& axis,
+                  bool keepdim,
+                  bool unbiased,
+                  double correction,
+                  MetaTensor* out,
+                  MetaConfig config) {
+  bool reduce_all = false;
+  if (axis.size() == 0) {
+    reduce_all = true;
+  }
+  ReduceIntArrayAxisInferMetaBase(x, axis, keepdim, reduce_all, out, config);
+}
+
+void StdInferMeta(const MetaTensor& x,
+                  const IntArray& axis,
+                  bool keepdim,
+                  bool unbiased,
+                  double correction,
+                  MetaTensor* out,
+                  MetaConfig config) {
+  bool reduce_all = false;
+  if (axis.size() == 0) {
+    reduce_all = true;
+  }
+  ReduceIntArrayAxisInferMetaBase(x, axis, keepdim, reduce_all, out, config);
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);
