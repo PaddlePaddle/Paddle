@@ -155,7 +155,7 @@ def bernoulli_(
         Tensor, A Tensor filled with random values sampled from the bernoulli distribution with success probability ``p`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.set_device('cpu')
@@ -164,9 +164,9 @@ def bernoulli_(
             >>> x.bernoulli_()
             >>> print(x)
             Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0., 1., 0., 1.],
-             [1., 1., 0., 1.],
-             [0., 1., 0., 0.]])
+            [[1., 0., 1., 0.],
+             [0., 0., 1., 0.],
+             [1., 0., 1., 1.]])
 
             >>> x = paddle.randn([3, 4])
             >>> p = paddle.randn([3, 1])
