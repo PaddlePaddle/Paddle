@@ -504,7 +504,7 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
   if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} (\"+egr::GetGradNodeHexAddress(this)+\") finish\");
   }}
-    VLOG(4) << \"\\n\"<<separator<<\"Finish_AD_API_GRAD: {}\"<<separator;
+    VLOG(3) << \"\\n\"<<separator<<\"Finish_AD_API_GRAD: {}\"<<separator;
 
 
   // Return

@@ -359,7 +359,7 @@ option(WITH_NVCC_LAZY
        ON)
 option(BUILD_WHL_PACKAGE "Build paddle whl package after compilation" ON)
 
-if(WIN32)
+if(WIN32 OR NOT WITH_GPU)
   set(WITH_CUDNN_FRONTEND
       OFF
       CACHE BOOL "" FORCE)

@@ -219,8 +219,7 @@ class Tensor : public TensorBase {
 
   at::Tensor bitwise_right_shift(const Scalar& other) const {
     return Tensor(paddle::experimental::bitwise_right_shift(
-        tensor_,
-        paddle::experimental::full({}, other, paddle::DataType::INT64)));
+        tensor_, paddle::experimental::full({}, other, other.dtype())));
   }
 
   at::Tensor slice(int64_t dim = 0,
