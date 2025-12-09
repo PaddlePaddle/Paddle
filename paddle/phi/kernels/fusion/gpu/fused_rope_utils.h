@@ -20,7 +20,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename IndexT>
-__device__ void set_cin_cos_shared_mem(const T* sin,
+__device__ void set_sin_cos_shared_mem(const T* sin,
                                        const T* cos,
                                        const int64_t* position_ids,
                                        const bool flag_sin_cos,
@@ -78,11 +78,11 @@ __global__ void FusedRopeKernelImpl(const T* src,
   IndexT offset_block = s_id * stride_s + b_id * stride_b;
   IndexT offset_block_dst = s_id * o_stride_s + b_id * o_stride_b;
 
-  extern __shared__ float shared_mem_cos_sin[];
-  float* shared_mem_cos = shared_mem_cos_sin;
-  float* shared_mem_sin = shared_mem_cos_sin + d;
+  extern __shared__ float shared_mem[];
+  float* shared_mem_cos = shared_mem;
+  float* shared_mem_sin = shared_mem + d;
 
-  set_cin_cos_shared_mem<T>(sin,
+  set_sin_cos_shared_mem<T>(sin,
                             cos,
                             position_ids,
                             flag_sin_cos,
@@ -146,11 +146,11 @@ __global__ void FusedRopeGradKernelImpl(const T* src,
   IndexT offset_block = s_id * stride_s + b_id * stride_b;
   IndexT offset_block_dst = s_id * o_stride_s + b_id * o_stride_b;
 
-  extern __shared__ float shared_mem_cos_sin[];
-  float* shared_mem_cos = shared_mem_cos_sin;
-  float* shared_mem_sin = shared_mem_cos_sin + d;
+  extern __shared__ float shared_mem[];
+  float* shared_mem_cos = shared_mem;
+  float* shared_mem_sin = shared_mem + d;
 
-  set_cin_cos_shared_mem<T>(sin,
+  set_sin_cos_shared_mem<T>(sin,
                             cos,
                             position_ids,
                             flag_sin_cos,
@@ -193,6 +193,102 @@ __global__ void FusedRopeGradKernelImpl(const T* src,
       }
       dst[offset_dst] = static_cast<T>(v_src * v_cos + v_src_rotate * v_sin);
     }
+  }
+}
+
+template <typename T, typename IndexT>
+using FusedRopeKernelFunc = void (*)(const T*,
+                                     const T*,
+                                     const T*,
+                                     T*,
+                                     const int64_t*,
+                                     const bool,
+                                     const bool,
+                                     const IndexT,
+                                     const IndexT,
+                                     const IndexT,
+                                     const IndexT,
+                                     const IndexT,
+                                     const IndexT,
+                                     const IndexT,
+                                     const IndexT,
+                                     const IndexT,
+                                     const IndexT,
+                                     const float,
+                                     const IndexT);
+
+template <typename T>
+void FusedRopeKernelLauncher(const T* src,
+                             const T* sin,
+                             const T* cos,
+                             T* dst,
+                             FusedRopeKernelFunc<T, int> kernel_int32,
+                             FusedRopeKernelFunc<T, int64_t> kernel_int64,
+                             const int64_t* position_ids,
+                             const bool flag_sin_cos,
+                             const bool use_neox_rotary_style,
+                             const int64_t num_heads,
+                             const int64_t head_dim,
+                             const int64_t stride_s,
+                             const int64_t stride_b,
+                             const int64_t stride_h,
+                             const int64_t stride_d,
+                             const int64_t o_stride_s,
+                             const int64_t o_stride_b,
+                             const int64_t o_stride_h,
+                             const int64_t o_stride_d,
+                             const float rotary_emb_base,
+                             const int64_t seq_len,
+                             const int64_t batch_size,
+                             const int64_t numel,
+                             cudaStream_t stream) {
+  const int64_t warps_per_block = std::min(num_heads, static_cast<int64_t>(8));
+  dim3 grid(seq_len, batch_size);
+  dim3 block(32, warps_per_block);  // 32 threads per warp
+  size_t shared_mem_size = 2 * head_dim * sizeof(float);
+
+  if (numel <= std::numeric_limits<int>::max()) {
+    kernel_int32<<<grid, block, shared_mem_size, stream>>>(
+        src,
+        sin,
+        cos,
+        dst,
+        position_ids,
+        flag_sin_cos,
+        use_neox_rotary_style,
+        num_heads,
+        head_dim,
+        stride_s,
+        stride_b,
+        stride_h,
+        stride_d,
+        o_stride_s,
+        o_stride_b,
+        o_stride_h,
+        o_stride_d,
+        rotary_emb_base,
+        seq_len);
+  } else {
+    kernel_int64<<<grid, block, shared_mem_size, stream>>>(
+        src,
+        sin,
+        cos,
+        dst,
+        position_ids,
+        flag_sin_cos,
+        use_neox_rotary_style,
+        num_heads,
+        head_dim,
+        stride_s,
+        stride_b,
+        stride_h,
+        stride_d,
+        o_stride_s,
+        o_stride_b,
+        o_stride_h,
+        o_stride_d,
+        rotary_emb_base,
+        seq_len);
   }
 }
 
