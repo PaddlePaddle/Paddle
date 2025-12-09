@@ -1238,56 +1238,52 @@ def max_pool2d(
 
     if in_dynamic_or_pir_mode():
         if return_mask:
-            if dilation_greater_than_one:
-                output = _C_ops.max_pool2d_with_dilations_and_index(
-                    x, kernel_size, stride, padding, dilation, False, ceil_mode
-                )
-            else:
-                output = _C_ops.max_pool2d_with_index(
-                    x, kernel_size, stride, padding, False, False, ceil_mode
-                )
-            return output if return_mask else output[0]
-        else:
-            return _C_ops.pool2d(
+            # if dilation_greater_than_one:
+            #     output = _C_ops.max_pool2d_with_dilations_and_index(
+            #         x, kernel_size, stride, padding, dilation, False, ceil_mode
+            #     )
+            # else:
+            #     output = _C_ops.max_pool2d_with_index(
+            #         x, kernel_size, stride, padding, False, False, ceil_mode
+            #     )
+            output = _C_ops.max_pool2d_with_index(
                 x,
                 kernel_size,
                 stride,
                 padding,
                 dilation,
+                False,
+                False,
                 ceil_mode,
-                True,
-                data_format,
-                'max',
-                False,
-                False,
-                padding_algorithm,
             )
-            # if dilation_greater_than_one:
-            #     return _C_ops.max_pool2d_with_dilations(
-            #         x,
-            #         kernel_size,
-            #         stride,
-            #         padding,
-            #         dilation,
-            #         ceil_mode,
-            #         data_format,
-            #         False,
-            #         padding_algorithm,
-            #     )
-            # else:
-            #     return _C_ops.pool2d(
-            #         x,
-            #         kernel_size,
-            #         stride,
-            #         padding,
-            #         ceil_mode,
-            #         True,
-            #         data_format,
-            #         'max',
-            #         False,
-            #         False,
-            #         padding_algorithm,
-            #     )
+            return output if return_mask else output[0]
+        else:
+            if dilation_greater_than_one:
+                return _C_ops.max_pool2d_with_dilations(
+                    x,
+                    kernel_size,
+                    stride,
+                    padding,
+                    dilation,
+                    ceil_mode,
+                    data_format,
+                    False,
+                    padding_algorithm,
+                )
+            else:
+                return _C_ops.pool2d(
+                    x,
+                    kernel_size,
+                    stride,
+                    padding,
+                    ceil_mode,
+                    True,
+                    data_format,
+                    'max',
+                    False,
+                    False,
+                    padding_algorithm,
+                )
 
     else:
         if return_mask:
