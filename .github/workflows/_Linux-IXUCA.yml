@@ -58,7 +58,7 @@ jobs:
           git checkout test
           echo "Pull upstream develop"
           # source ${{ github.workspace }}/../../../proxy
-          bash ci/git_pull.sh $BRANCH
+          # bash ci/git_pull.sh $BRANCH
 
       - name: Determine the runner
         run: |
@@ -71,7 +71,9 @@ jobs:
       - name: Clone PaddleCustomDevice repository
         run: |
           # source ~/.bashrc
-          git clone --depth=1000 -b develop https://github.com/PaddlePaddle/PaddleCustomDevice.git
+          wget -q https://xly-devops.bj.bcebos.com/PaddleTest/PaddleCustomDevice/PaddleCustomDevice-develop.tar.gz
+          tar -zxf PaddleCustomDevice-develop.tar.gz
+          mv PaddleCustomDevice-develop PaddleCustomDevice
           cd PaddleCustomDevice
           cp -r ../Paddle .
 
