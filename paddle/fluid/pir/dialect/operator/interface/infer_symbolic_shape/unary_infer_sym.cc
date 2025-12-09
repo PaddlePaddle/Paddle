@@ -445,18 +445,18 @@ bool AssignOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-// bool AllReduceOpInferSymbolicShape(pir::Operation *op,
-//                                    pir::InferSymbolicShapeContext
-//                                    *infer_context) {
-//   // pass
-//   return true;
-// }
+bool AllReduceOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+  return true;
+}
 
-// bool AllReduce_OpInferSymbolicShape(pir::Operation *op,
-//                                     pir::InferSymbolicShapeContext
-//                                     *infer_context) {
-//   return AllReduceOpInferSymbolicShape(op, infer_context);
-// }
+bool AllReduce_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return AllReduceOpInferSymbolicShape(op, infer_context);
+}
 
 // bool BarrierOpInferSymbolicShape(pir::Operation *op,
 //                                  pir::InferSymbolicShapeContext
@@ -793,6 +793,11 @@ bool ChannelShuffleOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
 
   return true;
+}
+
+bool CAllreduceSumOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return AllreduceOpInferSymbolicShape(op, infer_context);
 }
 
 bool CConcatOpInferSymbolicShape(
@@ -1938,10 +1943,7 @@ bool Lu_OpInferSymbolicShape(pir::Operation *op,
 
 bool MpAllreduceSumOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto &x_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
-  return true;
+  return AllreduceOpInferSymbolicShape(op, infer_context);
 }
 
 bool MaxOpInferSymbolicShape(pir::Operation *op,
