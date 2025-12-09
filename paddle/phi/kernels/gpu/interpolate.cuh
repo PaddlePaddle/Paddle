@@ -30,4 +30,45 @@ __device__ __forceinline__ void ComputeWeightsSpan(const int i,
            *xmin;
 }
 
+// Compute single weight on-the-fly without storing all weights
+// This is used when shared memory is insufficient for large ratio values
+template <typename MT, typename InterpFilter>
+__device__ __forceinline__ MT ComputeSingleWeight(const MT scale,
+                                                  const InterpFilter& filter,
+                                                  const MT xmin_m_center,
+                                                  int idx) {
+  MT invscale = (scale >= 1.0) ? 1.0 / scale : 1.0;
+  return filter((idx + xmin_m_center + static_cast<MT>(0.5)) * invscale);
+}
+
+// Compute weight normalization factor (sum of all weights)
+template <typename MT, typename InterpFilter>
+__device__ __forceinline__ MT ComputeWeightSum(const MT scale,
+                                               const InterpFilter& filter,
+                                               const MT xmin_m_center,
+                                               int xsize) {
+  MT invscale = (scale >= 1.0) ? 1.0 / scale : 1.0;
+  MT total_w = 0.0;
+  for (int j = 0; j < xsize; j++) {
+    total_w += filter((j + xmin_m_center + static_cast<MT>(0.5)) * invscale);
+  }
+  return total_w;
+}
+
+// Compute single normalized weight for backward pass on-the-fly
+template <typename MT, typename InterpFilter>
+__device__ __forceinline__ MT
+ComputeSingleWeightBwNormalized(const MT scale,
+                                const InterpFilter& filter,
+                                const MT xmin_m_center,
+                                int idx,
+                                const MT total_w) {
+  MT invscale = (scale >= 1.0) ? 1.0 / scale : 1.0;
+  MT w = filter((idx + xmin_m_center + static_cast<MT>(0.5)) * invscale);
+  if (total_w != 0.0) {
+    w /= total_w;
+  }
+  return w;
+}
+
 }  // namespace phi

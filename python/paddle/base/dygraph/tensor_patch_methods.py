@@ -1160,10 +1160,9 @@ def monkey_patch_tensor():
         self: Tensor, device_id: int | None = None, blocking: bool = True
     ) -> Tensor:
         device_type = paddle.device.get_all_device_type()
-        if (
-            len(device_type) > 0
-            and paddle.device.is_compiled_with_custom_device()
-        ):
+        if len(
+            device_type
+        ) > 0 and paddle.device.is_compiled_with_custom_device(device_type[-1]):
             res_place_class = core.CustomPlace
         elif paddle.device.is_compiled_with_xpu():
             res_place_class = core.XPUPlace
@@ -1602,6 +1601,7 @@ def monkey_patch_tensor():
                 return core.dlpack_exchange_api_ptr()
         except Exception:
             pass
+        # For tvm ffi 0.1.4 only, in tvm ffi 0.1.5+, replaced by `__dlpack_c_exchange_api__`
         return core.dlpack_exchange_api_pycapsule()
 
     if not hasattr(core, "eager"):
@@ -1653,7 +1653,9 @@ def monkey_patch_tensor():
         ("__dlpack_device__", __dlpack_device__),
         ("get_device", get_device),
         ("__tvm_ffi_env_stream__", __tvm_ffi_env_stream__),
+        # For TVM FFI 0.1.0-0.1.4, replaced by `__dlpack_c_exchange_api__` in TVM FFI 0.1.5+
         ("__c_dlpack_exchange_api__", _get_c_dlpack_exchange_api()),
+        ("__dlpack_c_exchange_api__", core.dlpack_exchange_api_pycapsule()),
         ("device", device),
     ):
         setattr(core.eager.Tensor, method_name, method)

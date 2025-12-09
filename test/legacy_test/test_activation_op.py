@@ -6369,6 +6369,7 @@ class TestActivationAPI_Compatibility(unittest.TestCase):
         ("paddle.acos", np.arccos, {'min_val': -1.0, 'max_val': 1.0}),
         ("paddle.acosh", np.arccosh, {'min_val': 2.0, 'max_val': 3.0}),
         ("paddle.asin", np.arcsin, {'min_val': -1.0, 'max_val': 1.0}),
+        ("paddle.atanh", np.arctanh, {'min_val': -1.0, 'max_val': 1.0}),
         ("paddle.log2", np.log2, {'min_val': 0.0, 'max_val': 8.0}),
         ("paddle.exp", np.exp, {'min_val': -1.0, 'max_val': 1.0}),
         ("paddle.expm1", np.expm1, {'min_val': -1.0, 'max_val': 1.0}),

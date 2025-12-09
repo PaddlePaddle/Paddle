@@ -24,18 +24,34 @@ void Allocator::FreeImpl(phi::Allocation* allocation) {
       ->Free(allocation);
 }
 
-void MultiScalePoolAllocator::RecordAlloc(size_t size) {
+void MultiScalePoolAllocator::RecordAlloc(uintptr_t allocator,
+                                          uint64_t id,
+                                          size_t size) {
 #if defined(PADDLE_WITH_CUDA)
-  uint64_t seq = global_seq_counter_.fetch_add(1, std::memory_order_relaxed);
   std::lock_guard<SpinLock> lock(spinlock_);
   const auto current_device_id = phi::backends::gpu::GetCurrentDeviceId();
   const auto max_reserved =
       paddle::memory::DeviceMemoryStatPeakValue("Reserved", current_device_id);
   const auto cur_allocated = paddle::memory::DeviceMemoryStatCurrentValue(
       "Allocated", current_device_id);
-  allocation_records_.emplace_back(seq, size, cur_allocated, max_reserved);
+  allocation_records_.emplace_back(
+      allocator, true, id, size, cur_allocated, max_reserved);
 #endif
 }
-std::atomic<uint64_t> MultiScalePoolAllocator::global_seq_counter_{0};
+
+void MultiScalePoolAllocator::RecordFree(uintptr_t allocator,
+                                         uint64_t id,
+                                         size_t size) {
+#if defined(PADDLE_WITH_CUDA)
+  std::lock_guard<SpinLock> lock(spinlock_);
+  const auto current_device_id = phi::backends::gpu::GetCurrentDeviceId();
+  const auto max_reserved =
+      paddle::memory::DeviceMemoryStatPeakValue("Reserved", current_device_id);
+  const auto cur_allocated = paddle::memory::DeviceMemoryStatCurrentValue(
+      "Allocated", current_device_id);
+  allocation_records_.emplace_back(
+      allocator, false, id, size, cur_allocated, max_reserved);
+#endif
+}
 
 }  // namespace paddle::memory::allocation
