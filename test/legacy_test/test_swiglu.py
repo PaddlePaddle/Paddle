@@ -31,8 +31,7 @@ from paddle.distributed.auto_parallel.static.dist_attribute import (
     DistTensorSpec,
     TensorDistAttr,
 )
-from paddle.incubate.nn.functional import swiglu as fused_swiglu_impl
-from paddle.nn.functional import swiglu as swiglu_activation
+from paddle.nn.functional import swiglu as fused_swiglu_impl
 
 
 def swiglu(x, y, out_grad):
@@ -186,14 +185,6 @@ class TestSwiGLUDygraph(unittest.TestCase):
         self.check_main([4, 101])
 
 
-class TestNNActivationSwiGLUDygraph(unittest.TestCase):
-    def fused_swiglu(self, x, y, out_grad):
-        return fused_swiglu(x, y, out_grad, swiglu_func=swiglu_activation)
-
-    def fused_swiglu_impl(self, x, y=None):
-        return swiglu_activation(x, y)
-
-
 class TestSwigluOp(OpTest):
     def config(self):
         self.x_shape = (8, 128)
@@ -228,26 +219,6 @@ class TestSwigluOp(OpTest):
             check_dygraph=1,
             check_prim_pir=True,
         )
-
-
-class TestNNActivationSwigluOp(TestSwigluOp):
-    def setUp(self):
-        self.config()
-        self.op_type = "swiglu"
-        self.prim_op_type = "comp"
-        self.python_api = swiglu_activation
-        self.public_python_api = swiglu_activation
-        x = np.random.uniform(-1, 1, self.x_shape).astype("float64")
-        y = np.random.uniform(-1, 1, self.x_shape).astype("float64")
-        out_grad = np.random.uniform(-1, 1, self.x_shape).astype("float64")
-        res = swiglu(x, y, out_grad)
-        self.inputs = {'x': x, 'y': y}
-        self.outputs = {'out': res[0].numpy()}
-        self.placements = {
-            'x': [dist.Shard(1)],
-            'y': [dist.Shard(1)],
-            'out': [dist.Shard(1)],
-        }
 
 
 class TestSwigluOp2(TestSwigluOp):
