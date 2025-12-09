@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include <algorithm>
+#include <cmath>
+
 #include "paddle/common/ddim.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/context_pool.h"
@@ -264,6 +267,75 @@ struct BicubicFilterFunctor {
   }
 
   static constexpr int size = 4;
+};
+
+// Helper function to compute interpolation kernel size
+inline int ComputeInterpSize(float ratio, int filter_size) {
+  float support =
+      (ratio >= 1.0f) ? (filter_size * 0.5f) * ratio : filter_size * 0.5f;
+  return 1 + 2 * static_cast<int>(ceilf(support));
+}
+
+// Structure to hold AA interpolation launch configuration
+struct AAInterpLaunchConfig {
+  int block_x;
+  int block_y;
+  int grid_x;
+  int grid_y;
+  int grid_z;
+  int interp_height;
+  int interp_width;
+  size_t shmem_size;
+
+  AAInterpLaunchConfig(int out_h,
+                       int out_w,
+                       int64_t nc,
+                       float ratio_h,
+                       float ratio_w,
+                       int filter_size,
+                       size_t element_size,
+                       size_t max_shmem,
+                       int max_grid_z,
+                       int warp_size,
+                       bool need_buffer = true) {
+    interp_height = ComputeInterpSize(ratio_h, filter_size);
+    interp_width = ComputeInterpSize(ratio_w, filter_size);
+
+    // Start with default block size
+    block_x = std::min(warp_size, 32);
+    block_y = std::min(256 / block_x, 8);
+
+    // Compute required shared memory
+    auto compute_shmem = [&]() -> size_t {
+      size_t weights_per_block = static_cast<size_t>(interp_width) * block_x +
+                                 static_cast<size_t>(interp_height) * block_y;
+      if (need_buffer) {
+        weights_per_block +=
+            static_cast<size_t>(interp_height) * block_y * block_x;
+      }
+      return weights_per_block * element_size;
+    };
+
+    shmem_size = compute_shmem();
+
+    // Dynamically reduce block size if shared memory exceeds limit
+    while (shmem_size > max_shmem && (block_x > 4 || block_y > 1)) {
+      // Reduce block_y first as it has larger impact on buffer size
+      if (block_y > 1) {
+        block_y = std::max(1, block_y / 2);
+      } else if (block_x > 4) {
+        block_x = std::max(4, block_x / 2);
+      }
+      shmem_size = compute_shmem();
+    }
+
+    // Compute grid dimensions
+    grid_x = (out_w + block_x - 1) / block_x;
+    grid_y = (out_h + block_y - 1) / block_y;
+    grid_z = std::min(static_cast<int>(nc), max_grid_z);
+  }
+
+  bool IsValid(size_t max_shmem) const { return shmem_size <= max_shmem; }
 };
 
 }  // namespace antialias

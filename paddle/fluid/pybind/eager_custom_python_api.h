@@ -35,7 +35,7 @@ static PyObject *eager_api_linear(PyObject *self,
     auto &bias = GetTensorFromArgs("linear", "Bias", args, 2, true);
 
     tstate = PyEval_SaveThread();
-
+    SetPythonStack();
     if (bias.is_dist_tensor() || bias.has_allocation()) {
       const phi::distributed::ProcessMesh *mesh = nullptr;
       if (InputsContainDistTensor(&mesh, x, weight, bias)) {
