@@ -172,7 +172,7 @@ def elu_(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
 
 @param_two_alias(["x", "input"], ["threshold", "lambd"])
 def hardshrink(
-    x: Tensor, threshold: float = 0.5, inplace: bool = False, name: str | None = None
+    x: Tensor, threshold: float = 0.5, name: str | None = None
 ) -> Tensor:
     r"""
     hard shrinkage activation
@@ -211,12 +211,8 @@ def hardshrink(
 
 
     """
-
     if in_dynamic_or_pir_mode():
-        if inplace:
-            return _C_ops.hardshrink_(x, threshold)
-        else:
-            return _C_ops.hardshrink(x, threshold)
+        return _C_ops.hardshrink(x, threshold)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'hardshrink'
@@ -513,67 +509,10 @@ def leaky_relu_(
         return _C_ops.leaky_relu_(x, negative_slope)
 
 
-def gelu(x: Tensor, approximate: bool = False, inplace: bool = False, name: str | None = None) -> Tensor:
-    r"""
-    gelu activation
-
-    .. math::
-
-        gelu(x) = \frac{x}{2} \cdot \left(1 + \erf\left(\frac{x}{\sqrt{2}}\right)\right)
-
-    When ``approximate`` is True, the approximation formula is used:
-
-    .. math::
-
-        gelu(x) = \frac{x}{2} \cdot \left(1 + \tanh\left(\sqrt{\frac{2}{\pi}} \cdot \left(x + 0.044715 \cdot x^{3}\right)\right)\right)
-
-    Parameters:
-        x (Tensor): The input Tensor with data type float16, float32, float64.
-        approximate (bool, optional): Whether to use the approximation formula. Default is False.
-        inplace (bool, optional): If set to True, the input Tensor will be modified in-place. Default is False.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        A Tensor with the same data type and shape as ``x`` .
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> import paddle.nn.functional as F
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = F.gelu(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-0.15865526, -0.08399013,  0.05398274,  0.18598911])
-    """
-
-    if in_dynamic_or_pir_mode():
-        if inplace:
-            return _C_ops.gelu_(x, approximate)
-        else:
-            return _C_ops.gelu(x, approximate)
-    else:
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'gelu'
-        )
-        helper = LayerHelper('gelu', **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(
-            type='gelu',
-            inputs={'X': x},
-            outputs={'Out': out},
-            attrs={'approximate': approximate},
-        )
-        return out
-
-
 def prelu(
     x: Tensor,
     weight: Tensor,
     data_format: DataLayout2D = "NCHW",
-    inplace: bool = False,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -592,7 +531,6 @@ def prelu(
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
         data_format(str, optional): Data format that specifies the layout of input.
             It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
-        inplace (bool, optional): If set to True, the input Tensor will be modified in-place. Default is False.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -660,10 +598,7 @@ def prelu(
         mode = 'channel'
 
     if in_dynamic_or_pir_mode():
-        if inplace:
-            return _C_ops.prelu_(x, weight, data_format, mode)
-        else:
-            return _C_ops.prelu(x, weight, data_format, mode)
+        return _C_ops.prelu(x, weight, data_format, mode)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'prelu'
@@ -871,61 +806,8 @@ def relu_(x: Tensor, name: str | None = None) -> Tensor:
     return _C_ops.relu_(x)
 
 
-def sigmoid(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
-    r"""
-    sigmoid activation.
-
-    .. math::
-
-        sigmoid(x) = \frac{1}{1 + e^{-x}}
-
-    Parameters:
-        x (Tensor): The input Tensor with data type float16, float32, float64.
-        inplace (bool, optional): Whether to use inplace operation. Default: False.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        A Tensor with the same data type and shape as ``x`` .
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> import paddle.nn.functional as F
-
-            >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
-            >>> out = F.sigmoid(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.73105860, 0.88079703, 0.95257413, 0.98201376])
-
-            >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
-            >>> out = F.sigmoid(x, inplace=True)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.73105860, 0.88079703, 0.95257413, 0.98201376])
-            >>> print(x)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.73105860, 0.88079703, 0.95257413, 0.98201376])
-    """
-
-    if in_dynamic_or_pir_mode():
-        if inplace:
-            return _C_ops.sigmoid_(x)
-        else:
-            return _C_ops.sigmoid(x)
-    else:
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'sigmoid'
-        )
-        helper = LayerHelper('sigmoid', **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(type='sigmoid', inputs={'X': x}, outputs={'Out': out})
-        return out
-
-
 @param_one_alias(["x", "input"])
-def log_sigmoid(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
+def log_sigmoid(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     log_sigmoid activation.
 
@@ -956,10 +838,7 @@ def log_sigmoid(x: Tensor, inplace: bool = False, name: str | None = None) -> Te
     """
 
     if in_dynamic_or_pir_mode():
-        if inplace:
-            return _C_ops.logsigmoid_(x)
-        else:
-            return _C_ops.logsigmoid(x)
+        return _C_ops.logsigmoid(x)
     else:
         check_variable_and_dtype(
             x,
@@ -972,59 +851,6 @@ def log_sigmoid(x: Tensor, inplace: bool = False, name: str | None = None) -> Te
         helper.append_op(
             type='logsigmoid', inputs={'X': x}, outputs={'Out': out}
         )
-        return out
-
-
-def tanh(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
-    r"""
-    tanh activation.
-
-    .. math::
-
-        tanh(x) = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
-
-    Parameters:
-        x (Tensor): The input Tensor with data type float16, float32, float64, complex64, complex128.
-        inplace (bool, optional): Whether to use inplace operation. Default: False.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        A Tensor with the same data type and shape as ``x`` .
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> import paddle.nn.functional as F
-
-            >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
-            >>> out = F.tanh(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.76159418, 0.96402756, 0.99505478, 0.99932933])
-
-            >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
-            >>> out = F.tanh(x, inplace=True)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.76159418, 0.96402756, 0.99505478, 0.99932933])
-            >>> print(x)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.76159418, 0.96402756, 0.99505478, 0.99932933])
-    """
-
-    if in_dynamic_or_pir_mode():
-        if inplace:
-            return _C_ops.tanh_(x)
-        else:
-            return _C_ops.tanh(x)
-    else:
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'complex64', 'complex128'], 'tanh'
-        )
-        helper = LayerHelper('tanh', **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(type='tanh', inputs={'X': x}, outputs={'Out': out})
         return out
 
 
@@ -1498,71 +1324,9 @@ def softmax_(
     return _C_ops.softmax_(outs_cast, axis)
 
 
-def softplus(
-    x: Tensor,
-    beta: float = 1.0,
-    threshold: float = 20.0,
-    inplace: bool = False,
-    name: str | None = None,
-) -> Tensor:
-    r"""
-    softplus activation
-
-    .. math::
-        softplus(x)=\begin{cases}
-                \frac{1}{\beta} * \log(1 + e^{\beta * x}),&x\leqslant\frac{\varepsilon}{\beta};\\
-                x,&x>\frac{\varepsilon}{\beta}.
-            \end{cases}
-
-    Parameters:
-        x (Tensor): The input Tensor with data type float32, float64, complex64, complex128.
-        beta (float, optional): The value of :math:`\beta` for softplus. Default is 1
-        threshold (float, optional): The value of :math:`\varepsilon` for softplus. Default is 20
-        inplace (bool, optional): If set to True, the input Tensor will be modified in-place. Default is False.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        A Tensor with the same data type and shape as ``x`` .
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> import paddle.nn.functional as F
-
-            >>> x = paddle.to_tensor([-0.9, -0.2, 0.1, 0.8])
-            >>> out = F.softplus(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.34115386, 0.47502083, 0.54487890, 0.84556866])
-    """
-
-    if in_dynamic_or_pir_mode():
-        if inplace:
-            return _C_ops.softplus_(x, beta, threshold)
-        else:
-            return _C_ops.softplus(x, beta, threshold)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            ['float16', 'uint16', 'float32', 'float64', 'complex64', 'complex128'],
-            'softplus',
-        )
-        helper = LayerHelper('softplus', **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(
-            type='softplus',
-            inputs={'X': x},
-            outputs={'Out': out},
-            attrs={'beta': beta, 'threshold': threshold},
-        )
-        return out
-
-
 @param_two_alias(["x", "input"], ["threshold", "lambd"])
 def softshrink(
-    x: Tensor, threshold: float = 0.5, inplace: bool = False, name: str | None = None
+    x: Tensor, threshold: float = 0.5, name: str | None = None
 ) -> Tensor:
     r"""
     softshrink activation
@@ -1581,7 +1345,6 @@ def softshrink(
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         threshold (float, optional): The value of threshold(must be no less than zero) for softplus. Default is 0.5
-        inplace (bool, optional): If set to True, the input Tensor will be modified in-place. Default is False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1605,10 +1368,7 @@ def softshrink(
         )
 
     if in_dynamic_or_pir_mode():
-        if inplace:
-            return _C_ops.softshrink_(x, threshold)
-        else:
-            return _C_ops.softshrink(x, threshold)
+        return _C_ops.softshrink(x, threshold)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'softshrink'
@@ -1624,7 +1384,7 @@ def softshrink(
         return out
 
 
-def softsign(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
+def softsign(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     softsign activation
 
@@ -1653,10 +1413,7 @@ def softsign(x: Tensor, inplace: bool = False, name: str | None = None) -> Tenso
             [-0.28571430, -0.16666666,  0.09090909,  0.23076925])
     """
     if in_dynamic_or_pir_mode():
-        if inplace:
-            return _C_ops.softsign_(x)
-        else:
-            return _C_ops.softsign(x)
+        return _C_ops.softsign(x)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'softsign'
@@ -2006,7 +1763,7 @@ def log_softmax(
 
 
 @param_two_alias(["x", "input"], ["axis", "dim"])
-def glu(x: Tensor, axis: int = -1, inplace: bool = False, name: str | None = None) -> Tensor:
+def glu(x: Tensor, axis: int = -1, name: str | None = None) -> Tensor:
     r"""
     The gated linear unit. The input is evenly splited into 2 parts along a
     given axis. The first part is used as the content, and the second part is
@@ -2023,7 +1780,6 @@ def glu(x: Tensor, axis: int = -1, inplace: bool = False, name: str | None = Non
             should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` < 0, it works the same way as :math:`axis + D` .
             Default is -1.
-        inplace (bool, optional): If set to True, the input Tensor will be modified in-place. Default is False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -2053,7 +1809,6 @@ def glu(x: Tensor, axis: int = -1, inplace: bool = False, name: str | None = Non
         raise ValueError(
             f"Expected value range of `axis` is [{-rank}, {rank}), but received axis: {axis}"
         )
-    
     a, b = chunk(x, 2, axis=axis, name=name)
     gate = sigmoid(b, name=name)
     out = paddle.multiply(a, gate, name=name)
