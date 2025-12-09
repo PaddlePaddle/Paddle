@@ -800,6 +800,11 @@ bool CAllreduceSumOpInferSymbolicShape(
   return AllreduceOpInferSymbolicShape(op, infer_context);
 }
 
+bool CAllreduceSum_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return CAllreduceSumOpInferSymbolicShape(op, infer_context);
+}
+
 bool CConcatOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -830,6 +835,11 @@ bool CIdentityOpInferSymbolicShape(
           "The ring_id (%d) for c_identity must be non-negative.", ring_id));
   infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
   return true;
+}
+
+bool CIdentity_OpInferSymbolicShape()
+pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return CIdentityOpInferSymbolicShape(op, infer_context)
 }
 
 bool CropOpInferSymbolicShape(pir::Operation *op,
@@ -1944,6 +1954,11 @@ bool Lu_OpInferSymbolicShape(pir::Operation *op,
 bool MpAllreduceSumOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return AllreduceOpInferSymbolicShape(op, infer_context);
+}
+
+bool MpAllreduceSum_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return MpAllreduceSumOpInferSymbolicShape(op, infer_context);
 }
 
 bool MaxOpInferSymbolicShape(pir::Operation *op,
