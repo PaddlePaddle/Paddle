@@ -719,7 +719,7 @@ static void Internal_take_ownership(PyFrameObject *f,
     PyErr_SetRaisedException(exc);
   }
   if (!_PyObject_GC_IS_TRACKED((PyObject *)f)) {
-    _PyObject_GC_TRACK((PyObject *)f);
+    // _PyObject_GC_TRACK((PyObject *)f);
   }
   Py_END_CRITICAL_SECTION();
 }
