@@ -837,8 +837,8 @@ bool CIdentityOpInferSymbolicShape(
   return true;
 }
 
-bool CIdentity_OpInferSymbolicShape()
-pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+bool CIdentity_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return CIdentityOpInferSymbolicShape(op, infer_context);
 }
 
