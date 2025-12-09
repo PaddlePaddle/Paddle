@@ -91,7 +91,6 @@ class TestBinaryCrossEntropyWithLogits1Compatible(
         paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': True})
         super().setUp()
         self.weight = None
-        self.pos_weight = None
 
 
 class TestBinaryCrossEntropyWithLogits2Compatible(
