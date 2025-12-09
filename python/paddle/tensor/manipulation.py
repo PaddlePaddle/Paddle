@@ -6555,15 +6555,15 @@ def as_complex(x: Tensor, name: str | None = None) -> Tensor:
         Tensor, The output. Data type is 'complex64' or 'complex128', with the same precision as the input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
             >>> y = paddle.as_complex(x)
             >>> print(y)
             Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[1j      , (2+3j)  , (4+5j)  ],
-             [(6+7j)  , (8+9j)  , (10+11j)]])
+            [[(0.00000000+1.00000000j) , (2.00000000+3.00000000j)  , (4.00000000+5.00000000j)  ],
+             [(6.00000000+7.00000000j) , (8.00000000+9.00000000j)  , (10.00000000+11.00000000j)]])
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.as_complex(x)
