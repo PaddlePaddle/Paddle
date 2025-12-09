@@ -473,10 +473,25 @@ void MaxPool2dWithIndexGradKernel(const Context& dev_ctx,
                                   const std::vector<int>& kernel_size,
                                   const std::vector<int>& strides,
                                   const std::vector<int>& paddings,
+                                  const std::vector<int>& dilations,
                                   bool global_pooling,
                                   bool adaptive,
                                   bool ceil_mode UNUSED,
                                   DenseTensor* dx) {
+  if (dilations[0] > 1 || dilations[1] > 1) {
+    MaxPool2dWithDilationsAndIndexGradRawKernel<Context, T>(dev_ctx,
+                                                            x,
+                                                            mask,
+                                                            dout,
+                                                            kernel_size,
+                                                            strides,
+                                                            paddings,
+                                                            dilations,
+                                                            global_pooling,
+                                                            dx);
+    return;
+  }
+
   MaxPoolWithIndexGradRawKernel<Context, T>(dev_ctx,
                                             x,
                                             mask,

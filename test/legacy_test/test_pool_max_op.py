@@ -399,12 +399,20 @@ def max_pool2d_with_index_wrapper(
     kernel_size=[],
     strides=[],
     paddings=[],
+    dilations=[],
     global_pooling=False,
     adaptive=False,
     ceil_mode=False,
 ):
     return paddle._C_ops.max_pool2d_with_index(
-        x, kernel_size, strides, paddings, global_pooling, adaptive, ceil_mode
+        x,
+        kernel_size,
+        strides,
+        paddings,
+        dilations,
+        global_pooling,
+        adaptive,
+        ceil_mode,
     )
 
 
@@ -417,6 +425,7 @@ class TestCase4(TestMaxPoolWithIndex_Op):
         self.ksize = [3, 3]
         self.strides = [1, 1]
         self.paddings = [1, 1]
+        self.dilations = [1, 1]
 
     def init_global(self):
         self.global_pool = True
@@ -436,6 +445,7 @@ class TestCase6(TestMaxPoolWithIndex_Op):
         self.ksize = [3, 3]
         self.strides = [2, 2]
         self.paddings = [0, 0]
+        self.dilations = [1, 1]
 
     def init_global(self):
         self.global_pool = True

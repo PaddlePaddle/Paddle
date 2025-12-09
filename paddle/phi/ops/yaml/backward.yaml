@@ -2326,11 +2326,11 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - backward_op : max_pool2d_with_index_grad
-  forward : max_pool2d_with_index(Tensor x, int[] kernel_size, int[] strides = {1, 1}, int[] paddings = {0, 0}, bool global_pooling = false, bool adaptive = false, bool ceil_mode = false) -> Tensor(out), Tensor(mask)
-  args : (Tensor x, Tensor mask, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive, bool ceil_mode = false)
+  forward : max_pool2d_with_index(Tensor x, int[] kernel_size, int[] strides = {1, 1}, int[] paddings = {0, 0}, int[] dilations = {1, 1}, bool global_pooling = false, bool adaptive = false, bool ceil_mode = false) -> Tensor(out), Tensor(mask)
+  args : (Tensor x, Tensor mask, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, int[] dilations, bool global_pooling, bool adaptive, bool ceil_mode = false)
   output : Tensor(x_grad)
   infer_meta :
-    func : MaxPoolWithIndexGradInferMeta
+    func : MaxPool2dWithIndexGradInferMeta
   kernel :
     func : max_pool2d_with_index_grad
 

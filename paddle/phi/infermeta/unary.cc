@@ -2770,6 +2770,29 @@ void MaxOutInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void MaxPool2dWithIndexInferMeta(const MetaTensor& x,
+                                 const std::vector<int>& kernel_size,
+                                 const std::vector<int>& strides,
+                                 const std::vector<int>& paddings,
+                                 const std::vector<int>& dilations,
+                                 bool global_pooling,
+                                 bool adaptive,
+                                 bool ceil_mode,
+                                 MetaTensor* out,
+                                 MetaTensor* mask,
+                                 MetaConfig config) {
+  MaxPoolWithIndexInferMeta(x,
+                            kernel_size,
+                            strides,
+                            paddings,
+                            global_pooling,
+                            adaptive,
+                            ceil_mode,
+                            out,
+                            mask,
+                            config);
+}
+
 void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                const std::vector<int>& kernel_size,
                                const std::vector<int>& strides,

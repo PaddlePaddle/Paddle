@@ -1248,39 +1248,54 @@ def max_pool2d(
                 )
             return output if return_mask else output[0]
         else:
-            if dilation_greater_than_one:
-                return _C_ops.max_pool2d_with_dilations(
-                    x,
-                    kernel_size,
-                    stride,
-                    padding,
-                    dilation,
-                    ceil_mode,
-                    data_format,
-                    False,
-                    padding_algorithm,
-                )
-            else:
-                return _C_ops.pool2d(
-                    x,
-                    kernel_size,
-                    stride,
-                    padding,
-                    ceil_mode,
-                    True,
-                    data_format,
-                    'max',
-                    False,
-                    False,
-                    padding_algorithm,
-                )
+            return _C_ops.pool2d(
+                x,
+                kernel_size,
+                stride,
+                padding,
+                dilation,
+                ceil_mode,
+                True,
+                data_format,
+                'max',
+                False,
+                False,
+                padding_algorithm,
+            )
+            # if dilation_greater_than_one:
+            #     return _C_ops.max_pool2d_with_dilations(
+            #         x,
+            #         kernel_size,
+            #         stride,
+            #         padding,
+            #         dilation,
+            #         ceil_mode,
+            #         data_format,
+            #         False,
+            #         padding_algorithm,
+            #     )
+            # else:
+            #     return _C_ops.pool2d(
+            #         x,
+            #         kernel_size,
+            #         stride,
+            #         padding,
+            #         ceil_mode,
+            #         True,
+            #         data_format,
+            #         'max',
+            #         False,
+            #         False,
+            #         padding_algorithm,
+            #     )
 
     else:
         if return_mask:
-            if dilation_greater_than_one:
-                op_type = 'max_pool2d_with_dilations_and_index'
-            else:
-                op_type = 'max_pool2d_with_index'
+            op_type = 'max_pool2d_with_index'
+            # if dilation_greater_than_one:
+            #     op_type = 'max_pool2d_with_dilations_and_index'
+            # else:
+            #     op_type = 'max_pool2d_with_index'
         elif dilation_greater_than_one:
             op_type = 'max_pool2d_with_dilations'
         else:
@@ -1296,38 +1311,55 @@ def max_pool2d(
         if return_mask:
             mask = helper.create_variable_for_type_inference("int32")
             outputs = {"Out": pool_out, "Mask": mask}
-            if dilation_greater_than_one:
-                helper.append_op(
-                    type="max_pool2d_with_dilations_and_index",
-                    inputs={"X": x},
-                    outputs=outputs,
-                    attrs={
-                        "ksize": kernel_size,
-                        "global_pooling": False,
-                        "strides": stride,
-                        "paddings": padding,
-                        "dilations": dilation,
-                        "ceil_mode": ceil_mode,
-                    },
-                )
-            else:
-                helper.append_op(
-                    type="max_pool2d_with_index",
-                    inputs={"X": x},
-                    outputs=outputs,
-                    attrs={
-                        "pooling_type": 'max',
-                        "ksize": kernel_size,
-                        "global_pooling": False,
-                        "strides": stride,
-                        "paddings": padding,
-                        "padding_algorithm": padding_algorithm,
-                        "use_cudnn": True,
-                        "ceil_mode": ceil_mode,
-                        "exclusive": True,
-                        "data_format": data_format,
-                    },
-                )
+            helper.append_op(
+                type="max_pool2d_with_index",
+                inputs={"X": x},
+                outputs=outputs,
+                attrs={
+                    "pooling_type": 'max',
+                    "ksize": kernel_size,
+                    "global_pooling": False,
+                    "strides": stride,
+                    "paddings": padding,
+                    "padding_algorithm": padding_algorithm,
+                    "use_cudnn": True,
+                    "ceil_mode": ceil_mode,
+                    "exclusive": True,
+                    "data_format": data_format,
+                },
+            )
+            # if dilation_greater_than_one:
+            #     helper.append_op(
+            #         type="max_pool2d_with_dilations_and_index",
+            #         inputs={"X": x},
+            #         outputs=outputs,
+            #         attrs={
+            #             "ksize": kernel_size,
+            #             "global_pooling": False,
+            #             "strides": stride,
+            #             "paddings": padding,
+            #             "dilations": dilation,
+            #             "ceil_mode": ceil_mode,
+            #         },
+            #     )
+            # else:
+            #     helper.append_op(
+            #         type="max_pool2d_with_index",
+            #         inputs={"X": x},
+            #         outputs=outputs,
+            #         attrs={
+            #             "pooling_type": 'max',
+            #             "ksize": kernel_size,
+            #             "global_pooling": False,
+            #             "strides": stride,
+            #             "paddings": padding,
+            #             "padding_algorithm": padding_algorithm,
+            #             "use_cudnn": True,
+            #             "ceil_mode": ceil_mode,
+            #             "exclusive": True,
+            #             "data_format": data_format,
+            #         },
+            #     )
             return (pool_out, mask)
 
         else:
