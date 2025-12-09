@@ -42,6 +42,7 @@ limitations under the License. */
 
 COMMON_DECLARE_bool(cuda_core_int8_gemm);
 COMMON_DECLARE_bool(use_legacy_gemm);
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -430,7 +431,10 @@ void MatMulFunctionImplWithBlas(
     } else {
       VLOG(3) << "MatMul's case 10";
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
-      if (!FLAGS_use_legacy_gemm) {
+      // NOTE(Pan Zhaowu): This change may cause performance degrade on current
+      // low-efficiency implementation of batched transpose. So enable with flag
+      // "use_accuracy_compatible_kernel"
+      if (!FLAGS_use_legacy_gemm && FLAGS_use_accuracy_compatible_kernel) {
         // x_batch_size == 1 && M != 1 || !transy
         DenseTensor processedY =
             trans_y ? Y : phi::TransposeLast2Dim<T>(dev_ctx, Y);
