@@ -797,7 +797,7 @@ bool ChannelShuffleOpInferSymbolicShape(
 
 bool CAllreduceSumOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return AllreduceOpInferSymbolicShape(op, infer_context);
+  return AllReduceOpInferSymbolicShape(op, infer_context);
 }
 
 bool CAllreduceSum_OpInferSymbolicShape(
