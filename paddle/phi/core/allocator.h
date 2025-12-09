@@ -60,8 +60,10 @@ class Allocation {
   // memory compact func for VirtualMemoryAutoGrowthBestFitAllocator. it will
   // change ptr_ for defragmentation.
   virtual void* ptr() const noexcept { return ptr_; }
-
   void set_ptr(void* new_ptr) noexcept { ptr_ = new_ptr; }
+
+  uint64_t id() const noexcept { return id_; }
+  void set_id(uint64_t id) noexcept { id_ = id; }
 
   // Returns the size of this memory buffer, i.e., ptr() + size() - 1 is the
   // last valid element.
@@ -86,6 +88,7 @@ class Allocation {
   DeleterFnPtr deleter_{nullptr};
   // TODO(Shixiaowei02): Enum needs to be used instead to reduce
   // the construction overhead by more than 50%.
+  uint64_t id_{0};  // for debug
   Place place_;
 };
 
