@@ -2654,6 +2654,7 @@
     param : [x]
   kernel :
     func : hard_shrink
+  inplace: (x -> out)
   backward : hardshrink_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
@@ -5003,6 +5004,19 @@
   backward : shuffle_channel_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
+- op : sigmoid
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
+  kernel :
+    func : sigmoid
+  inplace : (x -> out)
+  backward : sigmoid_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+  traits: pir::UnaryElementWiseTrait
+
 - op : sigmoid_cross_entropy_with_logits
   args : (Tensor x, Tensor label, Tensor pos_weight, bool normalize=false, int ignore_index=-100)
   output : Tensor
@@ -5106,7 +5120,6 @@
     spmd_rule : SoftplusInfoSpmd
   kernel :
     func : softplus
-  inplace: (x -> out)
   backward : softplus_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
@@ -5120,7 +5133,6 @@
     spmd_rule : SoftshrinkInfoSpmd
   kernel :
     func : softshrink
-  inplace: (x -> out)
   backward : softshrink_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
@@ -5134,7 +5146,7 @@
     param : [x]
   kernel :
     func : softsign
-  inplace: (x -> out)
+  inplace : (x -> out)
   backward : softsign_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
