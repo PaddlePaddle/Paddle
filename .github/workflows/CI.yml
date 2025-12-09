@@ -76,7 +76,7 @@ jobs:
   ixuca:
     name: Linux-IXUCA
     uses: ./.github/workflows/_Linux-IXUCA.yml
-    needs: [clone, cpu, build-docker]
+    needs: [clone, cpu]
     with:
       can-skip: ${{ needs.cpu.outputs.can-skip }}
 
