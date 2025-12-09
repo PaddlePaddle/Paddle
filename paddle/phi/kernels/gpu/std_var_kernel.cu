@@ -21,7 +21,7 @@
 #include "paddle/phi/kernels/full_kernel.h"
 
 #include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
-#include "paddle/phi/kernels/reduce_gpu_kernel.h"
+#include "paddle/phi/kernels/funcs/reduce_gpu_kernel2.h"
 
 #define C10_HOST_DEVICE __host__ __device__
 #define C10_DEVICE __device__

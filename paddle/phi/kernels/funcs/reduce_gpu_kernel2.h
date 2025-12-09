@@ -36,6 +36,7 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #endif
 
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"

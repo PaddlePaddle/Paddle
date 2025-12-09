@@ -85,6 +85,38 @@ inline std::bitset<64> DimListToBitset(std::vector<int> opt_dims,
   return dim_mask;
 }
 
+inline std::vector<int> ConvertToPositiveDims(
+    const std::vector<int>& origin_reduce_dims, int64_t ndim) {
+  std::vector<int> positive_reduce_dims = origin_reduce_dims;
+  for (size_t i = 0; i < origin_reduce_dims.size(); ++i) {
+    PADDLE_ENFORCE_GE(
+        origin_reduce_dims[i],
+        -ndim,
+        common::errors::InvalidArgument(
+            "ReduceOp: invalid axis, when x_dims is %d, "
+            "axis[i] should be in the range of [-%d, %d), but got %d.",
+            ndim,
+            ndim,
+            ndim,
+            origin_reduce_dims[i]));
+    PADDLE_ENFORCE_LT(
+        origin_reduce_dims[i],
+        ndim,
+        common::errors::InvalidArgument(
+            "ReduceOp: invalid axis, when x_dims is %d, "
+            "axis[i] should be in the range of [-%d, %d), but got %d.",
+            ndim,
+            ndim,
+            ndim,
+            origin_reduce_dims[i]));
+
+    if (origin_reduce_dims[i] < 0) {
+      positive_reduce_dims[i] = ndim + origin_reduce_dims[i];
+    }
+  }
+  return positive_reduce_dims;
+}
+
 inline std::bitset<64> MakeDimMask(std::vector<int> opt_dims,
                                    int64_t ndim,
                                    bool allow_empty_dims = false) {
@@ -112,13 +144,9 @@ inline DenseTensor ReviewReduceResult(const DenseTensor& src,
       shape.insert(shape.begin(), src_dims[dim]);
       stride.insert(stride.begin(), cal_stride);
       cal_stride *= src_dims[dim];
-    }
-  }
-
-  for (int dim = 0; dim < ndim; dim++) {
-    if (mask[dim]) {
-      shape.insert(shape.begin() + dim, 1);
-      stride.insert(stride.begin() + dim, 0);
+    } else {
+      shape.insert(shape.begin(), 1);
+      stride.insert(stride.begin(), cal_stride);
     }
   }
 
@@ -570,11 +598,11 @@ ReduceConfig SetReduceConfig(const DenseTensorIterator& iter) {
 }
 
 template <typename ScalarT,
-          typename OpT,
+          typename ReduceOp,
           typename OutScalarT = ScalarT,
           int kVecSize = 4,
           int kInputVecSize = kVecSize>
-struct ReduceOp {
+struct ReduceExecutor {
   using MPType = typename phi::dtype::MPTypeTrait<OutScalarT>::Type;
 
   using InputCalculator = funcs::OffsetCalculator<1, IndexType>;
@@ -585,7 +613,7 @@ struct ReduceOp {
       std::is_convertible_v<OutScalarT, MPType>;
 
   // Core reduction algorithm configuration.
-  OpT reducer;
+  ReduceOp reducer;
   ReduceConfig config;
   MPType ident;
   MPType factor;
@@ -609,22 +637,22 @@ struct ReduceOp {
   bool final_output;
   int noutputs;
 
-  ReduceOp(OpT reducer,
-           ReduceConfig config,
-           MPType ident,
-           MPType factor,
-           InputCalculator input_calc,
-           OutputCalculator output_calc,
-           const void* src,
-           char* dst0,
-           std::optional<char*> dst1,
-           void* acc_buf,
-           void* cta_buf,
-           int* semaphores,
-           int base_idx,
-           bool accumulate,
-           bool final_output,
-           int64_t noutputs)
+  ReduceExecutor(ReduceOp reducer,
+                 ReduceConfig config,
+                 MPType ident,
+                 MPType factor,
+                 InputCalculator input_calc,
+                 OutputCalculator output_calc,
+                 const void* src,
+                 char* dst0,
+                 std::optional<char*> dst1,
+                 void* acc_buf,
+                 void* cta_buf,
+                 int* semaphores,
+                 int base_idx,
+                 bool accumulate,
+                 bool final_output,
+                 int64_t noutputs)
       : reducer(reducer),
         config(config),
         ident(ident),
@@ -1162,28 +1190,28 @@ class AccumulationBuffer {
 };
 
 template <int max_threads, typename R>
-static void LaunchReduceKernel(const ReduceConfig& config,
-                               const R& reduction,
-                               cudaStream_t stream) {
+static void LaunchReduceKernel(const KPDevice& dev_ctx,
+                               const ReduceConfig& config,
+                               const R& reduction) {
   dim3 block = config.GetBlockDim();
   dim3 grid = config.GetGridDim();
   int shared_memory = config.SharedMemorySize();
+
+  auto stream = dev_ctx.stream();
 
   switch (config.output_vec_size) {
     case 4:
       VecReduceKernel<max_threads / 4, 4, R>
           <<<grid, block, shared_memory, stream>>>(reduction);
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
       break;
     case 2:
       VecReduceKernel<max_threads / 2, 2, R>
           <<<grid, block, shared_memory, stream>>>(reduction);
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
       break;
     default:
       VecReduceKernel<max_threads / 1, 1, R>
           <<<grid, block, shared_memory, stream>>>(reduction);
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+      break;
   }
 }
 
@@ -1191,12 +1219,12 @@ template <typename Tx,
           typename Ty,
           int kVecSize = 4,
           int kInputVecSize = kVecSize,
-          typename reduce_op,
+          typename ReduceOp,
           typename ident_t = double>
 inline void GPUReduceScheduler(
     const KPDevice& dev_ctx,
     const DenseTensorIterator& iter,
-    const reduce_op& reducer,
+    const ReduceOp& reducer,
     ident_t ident = 0,
     typename phi::dtype::MPTypeTrait<Ty>::Type factor = 1,
     AccumulationBuffer* acc_buf_ptr = nullptr,
@@ -1241,7 +1269,7 @@ inline void GPUReduceScheduler(
   if (!can_use_32bit_indexing) {
     for (auto& sub_iter : iter.with_32bit_indexing()) {
       int64_t sub_iter_base_idx = sub_iter.view_offsets()[0];
-      GPUReduceScheduler<Tx, Ty, kVecSize, kInputVecSize, reduce_op>(
+      GPUReduceScheduler<Tx, Ty, kVecSize, kInputVecSize, ReduceOp>(
           dev_ctx,
           sub_iter,
           reducer,
@@ -1283,8 +1311,8 @@ inline void GPUReduceScheduler(
     buffer_ptr = buffer->ptr();
     semaphores_ptr = semaphores->ptr();
 
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaMemsetAsync(semaphores_ptr, 0, config.SemaphoreSize(), stream));
+    phi::backends::gpu::GpuMemsetAsync(
+        semaphores_ptr, 0, config.SemaphoreSize(), stream);
   }
 
   auto output_calc = MakeOutputOffsetCalculator<uint32_t>(iter);
@@ -1292,7 +1320,7 @@ inline void GPUReduceScheduler(
   auto should_accumulate = iter.should_accumulate();
   auto is_final_output = iter.is_final_output();
 
-  auto reduce = ReduceOp<Tx, reduce_op, Ty, kVecSize, kInputVecSize>(
+  auto reduce = ReduceExecutor<Tx, ReduceOp, Ty, kVecSize, kInputVecSize>(
       reducer,
       config,
       ident,
@@ -1311,7 +1339,7 @@ inline void GPUReduceScheduler(
       noutputs);
 
   LaunchReduceKernel<MaxThreadsConfig<Tx>::MAX_NUM_THREADS>(
-      config, reduce, stream);
+      dev_ctx, config, reduce);
 
   return;
 }
@@ -1320,7 +1348,7 @@ namespace funcs {
 template <typename Tx,
           typename Ty,
           template <typename>
-          class reduce_op,
+          class ReduceOp,
           typename TransformOp,
           bool IsMean = false>
 void ReduceGpuKernel(const KPDevice& dev_ctx,
@@ -1336,8 +1364,10 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
   dev_ctx.Alloc<Ty>(y);
 
   int64_t ndim = x.dims().size();
-  auto mask = MakeDimMask(origin_reduce_dims, ndim);
+  auto positive_reduce_dims = ConvertToPositiveDims(origin_reduce_dims, ndim);
+  auto mask = MakeDimMask(positive_reduce_dims, ndim);
   auto viewed_result = ReviewReduceResult(x, *(y), ndim, mask);
+
   auto x_dim = common::vectorize<int64_t>(x.dims());
 
   if (x_dim.size() == 0) {
@@ -1353,11 +1383,11 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
   dense_iter_config.add_const_input(x);
   DenseTensorIterator iter = dense_iter_config.build();
 
-  // TODO(baoqiwen): When reduce_op is WelfordOps, kVecSize is 2.
+  // TODO(baoqiwen): When ReduceOp is WelfordOps, kVecSize is 2.
   constexpr int kVecSize = 4;
   constexpr int kInputVecSize = kVecSize;
   using MPType = typename phi::dtype::MPTypeTrait<Ty>::Type;
-  auto reducer = reduce_op<MPType>();
+  auto reducer = ReduceOp<MPType>();
 
   MPType factor = 1.0f;
   if (IsMean) {
@@ -1366,20 +1396,20 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
   }
 
   Tx ident = []() {
-    if constexpr (std::is_same_v<reduce_op<MPType>, kps::MaxFunctor<MPType>>) {
+    if constexpr (std::is_same_v<ReduceOp<MPType>, kps::MaxFunctor<MPType>>) {
       return std::numeric_limits<Tx>::lowest();
     }
 
-    if constexpr (std::is_same_v<reduce_op<MPType>, kps::MinFunctor<MPType>>) {
+    if constexpr (std::is_same_v<ReduceOp<MPType>, kps::MinFunctor<MPType>>) {
       return std::numeric_limits<Tx>::max();
     }
 
-    if constexpr (std::is_same_v<reduce_op<MPType>,
+    if constexpr (std::is_same_v<ReduceOp<MPType>,
                                  kps::LogicalAndFunctor<MPType>>) {
       return Tx{1};
     }
 
-    if constexpr (std::is_same_v<reduce_op<MPType>, kps::MulFunctor<MPType>>) {
+    if constexpr (std::is_same_v<ReduceOp<MPType>, kps::MulFunctor<MPType>>) {
       return Tx{1};
     }
 
@@ -1387,7 +1417,7 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
     return Tx{0};
   }();
 
-  GPUReduceScheduler<Tx, Ty, kVecSize, kInputVecSize, reduce_op<MPType>>(
+  GPUReduceScheduler<Tx, Ty, kVecSize, kInputVecSize, ReduceOp<MPType>>(
       dev_ctx, iter, reducer, ident, factor);
 
   return;
