@@ -795,6 +795,38 @@ bool ChannelShuffleOpInferSymbolicShape(
   return true;
 }
 
+bool CConcatOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+  int nranks = op->attribute<pir::Int32Attribute>("nranks").data();
+
+  std::vector<symbol::DimExpr> out_dims = x_dims;
+  if (!out_dims.empty()) {
+    out_dims.back() = out_dims.back() * nranks;
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+  return true;
+}
+
+bool CIdentityOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  int ring_id = op->attribute<pir::Int32Attribute>("ring_id").data();
+  PADDLE_ENFORCE_GE(
+      ring_id,
+      0,
+      common::errors::InvalidArgument(
+          "The ring_id (%d) for c_identity must be non-negative.", ring_id));
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+  return true;
+}
+
 bool CropOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -1902,6 +1934,14 @@ bool LuOpInferSymbolicShape(pir::Operation *op,
 bool Lu_OpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   return LuOpInferSymbolicShape(op, infer_context);
+}
+
+bool MpAllreduceSumOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+  return true;
 }
 
 bool MaxOpInferSymbolicShape(pir::Operation *op,
