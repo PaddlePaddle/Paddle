@@ -459,7 +459,7 @@ def enable_torch_proxy(
 
             >>> import paddle
             >>> paddle.compat.enable_torch_proxy()  # Enable torch proxy globally
-            >>> import torch  # This will import paddle as torch
+            >>> import torch  # This will import paddle as torch  # type: ignore[import-not-found]
             >>> assert torch.sin is paddle.sin
             >>> paddle.compat.disable_torch_proxy()  # Disable torch proxy
 
@@ -468,9 +468,9 @@ def enable_torch_proxy(
 
             >>> import paddle
             >>> paddle.compat.enable_torch_proxy(scope={"triton"})  # Enable torch proxy for 'triton' module only
-            >>> import triton  # All `import torch` inside `triton` will proxy to paddle
+            >>> import triton  # All `import torch` inside `triton` will proxy to paddle  # type: ignore[import-untyped]
             >>> try:
-            ...     import torch  # This will raise ModuleNotFoundError
+            ...     import torch  # This will raise ModuleNotFoundError  # type: ignore[import-not-found]
             ... except ModuleNotFoundError:
             ...     print("PyTorch proxy is not enabled globally.")
             >>> paddle.compat.disable_torch_proxy()  # Disable torch proxy
@@ -492,11 +492,11 @@ def disable_torch_proxy() -> None:
 
             >>> import paddle
             >>> paddle.compat.enable_torch_proxy()  # Enable torch proxy globally
-            >>> import torch  # This will import paddle as torch
+            >>> import torch  # This will import paddle as torch  # type: ignore[import-not-found]
             >>> assert torch.sin is paddle.sin
             >>> paddle.compat.disable_torch_proxy()  # Disable torch proxy
             >>> try:
-            ...     import torch  # This will raise ModuleNotFoundError
+            ...     import torch  # This will raise ModuleNotFoundError  # type: ignore[import-not-found]
             ... except ModuleNotFoundError:
             ...     print("PyTorch proxy is disabled.")
     """
@@ -539,17 +539,17 @@ def use_torch_proxy_guard(
 
             >>> with paddle.compat.use_torch_proxy_guard():
             ...     # code that requires the Torch proxy to be enabled
-            ...     import torch
+            ...     import torch  # type: ignore[import-not-found]
             ...
             ...     assert torch.sin is paddle.sin
             ...     # Temporarily disable the Torch proxy
             ...     with paddle.compat.use_torch_proxy_guard(enable=False):
             ...         try:
-            ...             import torch
+            ...             import torch  # type: ignore[import-not-found]
             ...         except ModuleNotFoundError:
             ...             print("Torch proxy is disabled within this block.")
             ...     # Torch proxy is re-enabled here
-            ...     import torch
+            ...     import torch  # type: ignore[import-not-found]
             ...
             ...     assert torch.sin is paddle.sin
     """
@@ -597,11 +597,12 @@ def extend_torch_proxy_blocked_modules(modules: Iterable[str]):
     Example:
         .. code-block:: pycon
 
+            >>> # doctest: +SKIP('my_custom_module is not available')
             >>> import paddle
             >>> paddle.compat.enable_torch_proxy()  # Enable torch proxy globally
             >>> # Add 'my_custom_module' to the blocked list
             >>> paddle.compat.extend_torch_proxy_blocked_modules(['my_custom_module'])
-            >>> import my_custom_module  # This import will not use torch proxy
+            >>> import my_custom_module  # This import will not use torch proxy  # type: ignore[import-not-found]
     """
     TORCH_PROXY_BLOCKED_MODULES.update(modules)
 
