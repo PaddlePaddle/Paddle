@@ -78,16 +78,11 @@ def celu(x: Tensor, alpha: float = 1.0, inplace: bool = False, name: str | None 
     if alpha == 0:
         raise ZeroDivisionError("alpha cannot be 0 for celu")
     
-    if inplace:
-        if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
+        if inplace:
             return _C_ops.celu_(x, alpha)
         else:
-            raise RuntimeError(
-                "celu with inplace=True is only supported in dynamic mode."
-            )
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.celu(x, alpha)
+            return _C_ops.celu(x, alpha)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'celu'
@@ -216,16 +211,12 @@ def hardshrink(
 
 
     """
-    if inplace:
-        if in_dynamic_mode():
-            return _C_ops.hardshrink_(x, threshold)
-        else:
-            raise RuntimeError(
-                "hardshrink with inplace=True is only supported in dynamic mode."
-            )
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.hardshrink(x, threshold)
+        if inplace:
+            return _C_ops.hardshrink_(x, threshold)
+        else:
+            return _C_ops.hardshrink(x, threshold)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'hardshrink'
@@ -281,16 +272,11 @@ def hardtanh(
             [-1.       , 0.30000001,  1.       ])
     """
 
-    if inplace:
-        if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
+        if inplace:
             return _C_ops.hardtanh_(x, min, max)
         else:
-            raise RuntimeError(
-                "hardtanh with inplace=True is only supported in dynamic mode."
-            )
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.hardtanh(x, min, max)
+            return _C_ops.hardtanh(x, min, max)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'hardtanh'
@@ -365,16 +351,11 @@ def hardsigmoid(
             [0.        , 1.        , 0.66666669])
     """
 
-    if inplace:
-        if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
+        if inplace:
             return _C_ops.hardsigmoid_(x, slope, offset)
         else:
-            raise RuntimeError(
-                "hardsigmoid with inplace=True is only supported in dynamic mode."
-            )
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.hardsigmoid(x, slope, offset)
+            return _C_ops.hardsigmoid(x, slope, offset)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'hardsigmoid'
@@ -428,16 +409,11 @@ def hardswish(x: Tensor, inplace: bool = False, name: str | None = None) -> Tens
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.       , 5.        , 0.66666669])
     """
-    if inplace:
-        if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
+        if inplace:
             return _C_ops.hardswish_(x)
         else:
-            raise RuntimeError(
-                "hardswish with inplace=True is only supported in dynamic mode."
-            )
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.hardswish(x)
+            return _C_ops.hardswish(x)
     else:
         check_variable_and_dtype(
             x,
@@ -573,16 +549,11 @@ def gelu(x: Tensor, approximate: bool = False, inplace: bool = False, name: str 
             [-0.15865526, -0.08399013,  0.05398274,  0.18598911])
     """
 
-    if inplace:
-        if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
+        if inplace:
             return _C_ops.gelu_(x, approximate)
         else:
-            raise RuntimeError(
-                "gelu with inplace=True is only supported in dynamic mode."
-            )
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.gelu(x, approximate)
+            return _C_ops.gelu(x, approximate)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'gelu'
@@ -688,16 +659,11 @@ def prelu(
             )
         mode = 'channel'
 
-    if inplace:
-        if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
+        if inplace:
             return _C_ops.prelu_(x, weight, data_format, mode)
         else:
-            raise RuntimeError(
-                "prelu with inplace=True is only supported in dynamic mode."
-            )
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.prelu(x, weight, data_format, mode)
+            return _C_ops.prelu(x, weight, data_format, mode)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'prelu'
@@ -819,16 +785,11 @@ def rrelu(
 
     is_test = not training
 
-    if inplace:
-        if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
+        if inplace:
             return _C_ops.rrelu_(x, lower, upper, is_test)
         else:
-            raise RuntimeError(
-                "rrelu with inplace=True is only supported in dynamic mode."
-            )
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.rrelu(x, lower, upper, is_test)
+            return _C_ops.rrelu(x, lower, upper, is_test)
     else:
         check_variable_and_dtype(
             x, 'X', ['float16', 'uint16', 'float32', 'float64'], 'rrelu'
@@ -994,16 +955,11 @@ def log_sigmoid(x: Tensor, inplace: bool = False, name: str | None = None) -> Te
             [-0.31326166, -0.12692805, -0.04858733, -0.01814996])
     """
 
-    if inplace:
-        if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
+        if inplace:
             return _C_ops.logsigmoid_(x)
         else:
-            raise RuntimeError(
-                "log_sigmoid with inplace=True is only supported in dynamic mode."
-            )
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.logsigmoid(x)
+            return _C_ops.logsigmoid(x)
     else:
         check_variable_and_dtype(
             x,
@@ -1256,16 +1212,11 @@ def selu(
             f"The alpha must be no less than zero. Received: {alpha}."
         )
 
-    if inplace:
-        if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
+        if inplace:
             return _C_ops.selu_(x, scale, alpha)
         else:
-            raise RuntimeError(
-                "selu with inplace=True is only supported in dynamic mode."
-            )
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.selu(x, scale, alpha)
+            return _C_ops.selu(x, scale, alpha)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'selu'
@@ -1586,16 +1537,11 @@ def softplus(
             [0.34115386, 0.47502083, 0.54487890, 0.84556866])
     """
 
-    if inplace:
-        if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
+        if inplace:
             return _C_ops.softplus_(x, beta, threshold)
         else:
-            raise RuntimeError(
-                "softplus with inplace=True is only supported in dynamic mode."
-            )
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.softplus(x, beta, threshold)
+            return _C_ops.softplus(x, beta, threshold)
     else:
         check_variable_and_dtype(
             x,
@@ -1658,16 +1604,11 @@ def softshrink(
             f"The threshold must be no less than zero. Received: {threshold}."
         )
 
-    if inplace:
-        if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
+        if inplace:
             return _C_ops.softshrink_(x, threshold)
         else:
-            raise RuntimeError(
-                "softshrink with inplace=True is only supported in dynamic mode."
-            )
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.softshrink(x, threshold)
+            return _C_ops.softshrink(x, threshold)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'softshrink'
@@ -1711,16 +1652,11 @@ def softsign(x: Tensor, inplace: bool = False, name: str | None = None) -> Tenso
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.28571430, -0.16666666,  0.09090909,  0.23076925])
     """
-    if inplace:
-        if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
+        if inplace:
             return _C_ops.softsign_(x)
         else:
-            raise RuntimeError(
-                "softsign with inplace=True is only supported in dynamic mode."
-            )
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.softsign(x)
+            return _C_ops.softsign(x)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'softsign'
@@ -1759,16 +1695,11 @@ def swish(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.23840584,  0.        ,  0.73105860])
     """
-    if inplace:
-        if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
+        if inplace:
             return _C_ops.swish_(x)
         else:
-            raise RuntimeError(
-                "swish with inplace=True is only supported in dynamic mode."
-            )
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.swish(x)
+            return _C_ops.swish(x)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'swish'
@@ -1817,16 +1748,11 @@ def mish(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.03357624,  0.        ,  4.99955177])
     """
-    if inplace:
-        if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
+        if inplace:
             return _C_ops.mish_(x, 20)
         else:
-            raise RuntimeError(
-                "mish with inplace=True is only supported in dynamic mode."
-            )
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.mish(x, 20)
+            return _C_ops.mish(x, 20)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'mish'
@@ -1865,16 +1791,12 @@ def tanhshrink(x: Tensor, inplace: bool = False, name: str | None = None) -> Ten
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.02005100, -0.00262472,  0.00033201,  0.00868741])
     """
-    if inplace:
-        if in_dynamic_mode():
-            return _C_ops.tanh_shrink_(x)
-        else:
-            raise RuntimeError(
-                "tanhshrink with inplace=True is only supported in dynamic mode."
-            )
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.tanh_shrink(x)
+        if inplace:
+            return _C_ops.tanh_shrink_(x)
+        else:
+            return _C_ops.tanh_shrink(x)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'tanhshrink'
@@ -1931,16 +1853,11 @@ def thresholded_relu(
             [2., 0., 0.])
     """
 
-    if inplace:
-        if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
+        if inplace:
             return _C_ops.thresholded_relu_(x, threshold, value)
         else:
-            raise RuntimeError(
-                "thresholded_relu with inplace=True is only supported in dynamic mode."
-            )
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.thresholded_relu(x, threshold, value)
+            return _C_ops.thresholded_relu(x, threshold, value)
     else:
         check_variable_and_dtype(
             x,
@@ -2136,14 +2053,6 @@ def glu(x: Tensor, axis: int = -1, inplace: bool = False, name: str | None = Non
         raise ValueError(
             f"Expected value range of `axis` is [{-rank}, {rank}), but received axis: {axis}"
         )
-    
-    if inplace:
-        if in_dynamic_mode():
-            return _C_ops.glu_(x, axis)
-        else:
-            raise RuntimeError(
-                "glu with inplace=True is only supported in dynamic mode."
-            )
     
     a, b = chunk(x, 2, axis=axis, name=name)
     gate = sigmoid(b, name=name)
