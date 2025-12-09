@@ -1653,7 +1653,7 @@ def monkey_patch_tensor():
         ("__dlpack_device__", __dlpack_device__),
         ("get_device", get_device),
         ("__tvm_ffi_env_stream__", __tvm_ffi_env_stream__),
-        # For TVM FFI 0.1.0-0.1.4, Replaced by `__c_dlpack_exchange_api__` in TVM FFI 0.1.5+
+        # For TVM FFI 0.1.0-0.1.4, replaced by `__dlpack_c_exchange_api__` in TVM FFI 0.1.5+
         ("__c_dlpack_exchange_api__", _get_c_dlpack_exchange_api()),
         ("__dlpack_c_exchange_api__", core.dlpack_exchange_api_pycapsule()),
         ("device", device),
