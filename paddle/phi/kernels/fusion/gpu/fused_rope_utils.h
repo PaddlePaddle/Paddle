@@ -241,7 +241,7 @@ void FusedRopeKernelLauncher(const T* src,
                              const int64_t seq_len,
                              const int64_t batch_size,
                              const int64_t numel,
-                             cudaStream_t stream) {
+                             gpuStream_t stream) {
   const int64_t warps_per_block = std::min(num_heads, static_cast<int64_t>(8));
   dim3 grid(seq_len, batch_size);
   dim3 block(32, warps_per_block);  // 32 threads per warp
