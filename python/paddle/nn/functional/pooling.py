@@ -642,11 +642,19 @@ def max_pool1d(
 
     # use 2d to implement 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
+    dilation = convert_to_list(1, 2, 'pool_dilation')
 
     if in_dynamic_or_pir_mode():
         if return_mask:
             pool_out = _C_ops.max_pool2d_with_index(
-                x, kernel_size, stride, padding, False, False, ceil_mode
+                x,
+                kernel_size,
+                stride,
+                padding,
+                dilation,
+                False,
+                False,
+                ceil_mode,
             )
             return (
                 (squeeze(pool_out[0], [2]), squeeze(pool_out[1], [2]))
@@ -678,23 +686,43 @@ def max_pool1d(
         mask = helper.create_variable_for_type_inference('int32')
         outputs = {"Out": pool_out, "Mask": mask}
 
-        helper.append_op(
-            type=op_type,
-            inputs={"X": x},
-            outputs=outputs,
-            attrs={
-                "pooling_type": 'max',
-                "ksize": kernel_size,
-                "global_pooling": False,
-                "strides": stride,
-                "paddings": padding,
-                "padding_algorithm": padding_algorithm,
-                "use_cudnn": True,
-                "ceil_mode": ceil_mode,
-                "exclusive": True,
-                "data_format": data_format,
-            },
-        )
+        if return_mask:
+            helper.append_op(
+                type=op_type,
+                inputs={"X": x},
+                outputs=outputs,
+                attrs={
+                    "pooling_type": 'max',
+                    "ksize": kernel_size,
+                    "global_pooling": False,
+                    "strides": stride,
+                    "paddings": padding,
+                    "dilations": dilation,
+                    "padding_algorithm": padding_algorithm,
+                    "use_cudnn": True,
+                    "ceil_mode": ceil_mode,
+                    "exclusive": True,
+                    "data_format": data_format,
+                },
+            )
+        else:
+            helper.append_op(
+                type=op_type,
+                inputs={"X": x},
+                outputs=outputs,
+                attrs={
+                    "pooling_type": 'max',
+                    "ksize": kernel_size,
+                    "global_pooling": False,
+                    "strides": stride,
+                    "paddings": padding,
+                    "padding_algorithm": padding_algorithm,
+                    "use_cudnn": True,
+                    "ceil_mode": ceil_mode,
+                    "exclusive": True,
+                    "data_format": data_format,
+                },
+            )
 
         return (
             (squeeze(pool_out, [2]), squeeze(mask, [2]))
@@ -1953,9 +1981,10 @@ def adaptive_max_pool1d(
     pool_size = [1, *convert_to_list(output_size, 1, "pool_size")]
 
     x = unsqueeze(x, [2])
+    dilation = convert_to_list(1, 2, 'pool_dilation')
     if in_dynamic_or_pir_mode():
         pool_out = _C_ops.max_pool2d_with_index(
-            x, pool_size, [1, 1], [0, 0], False, True, False
+            x, pool_size, [1, 1], [0, 0], dilation, False, True, False
         )
         return (
             (squeeze(pool_out[0], [2]), squeeze(pool_out[1], [2]))
@@ -1985,6 +2014,7 @@ def adaptive_max_pool1d(
             attrs={
                 "pooling_type": 'max',
                 "ksize": pool_size,
+                "dilations": dilation,
                 "adaptive": True,
                 "ceil_mode": False,
             },
@@ -2045,6 +2075,7 @@ def adaptive_max_pool2d(
     _check_input(x, 4)
 
     in_h, in_w = x.shape[2:4]
+    dilation = convert_to_list(1, 2, 'pool_dilation')
     if isinstance(output_size, int):
         output_size = convert_to_list(output_size, 2, 'output_size')
     else:
@@ -2055,7 +2086,7 @@ def adaptive_max_pool2d(
             output_size[1] = in_w
     if in_dynamic_or_pir_mode():
         pool_out = _C_ops.max_pool2d_with_index(
-            x, output_size, [1, 1], [0, 0], False, True, False
+            x, output_size, [1, 1], [0, 0], dilation, False, True, False
         )
         return pool_out if return_mask else pool_out[0]
     else:
@@ -2081,6 +2112,7 @@ def adaptive_max_pool2d(
             attrs={
                 "pooling_type": 'max',
                 "ksize": output_size,
+                "dilations": dilation,
                 "adaptive": True,
                 "ceil_mode": False,
             },
