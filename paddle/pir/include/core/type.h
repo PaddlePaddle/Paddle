@@ -128,7 +128,10 @@ class IR_API Type {
 
   std::size_t hash() const {
     if (!storage_) return 0;
-    std::size_t seed = std::hash<TypeId>()(storage_->abstract_type().type_id());
+    std::ostringstream oss;
+    Print(oss);
+    std::string type_representation = oss.str();
+    std::size_t seed = std::hash<std::string>{}(type_representation);
     return seed;
   }
 
