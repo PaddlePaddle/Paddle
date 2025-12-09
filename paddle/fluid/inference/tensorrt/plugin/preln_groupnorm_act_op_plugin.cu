@@ -140,7 +140,7 @@ __global__ void prelnGroupNormNDHWCSumKernel(
   int32_t ci = blockIdx.x * params.cPerBlock + threadIdx.x * 2;
 
   // The first activation loaded by that block.
-  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = static_cast<int64_t>(blockIdx.y) * params.dhwPerBlock;
   // The last activation loaded by that block.
   int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
@@ -309,7 +309,7 @@ __global__ void prelnGroupNormNDHWCScaleKernel(
   float invStdDev = rsqrtf(var + params.eps);
 
   // The first activation loaded by that block.
-  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = static_cast<int64_t>(blockIdx.y) * params.dhwPerBlock;
   // The last activation loaded by that block.
   int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 

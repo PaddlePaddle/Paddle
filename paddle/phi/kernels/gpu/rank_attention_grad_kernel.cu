@@ -70,7 +70,7 @@ void RankAttentionGradOpCUDAKernel(const Context &dev_ctx,
   const T *ins_rank_data = ins_rank.data<T>();
   T *param_grad_data = param_grad.data<T>();
 
-  auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
   T alpha = 1;
   T beta = 0;
 

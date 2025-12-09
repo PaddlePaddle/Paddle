@@ -67,8 +67,8 @@ void GRUUnitKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(reset_hidden_prev);
   dev_ctx.template Alloc<T>(hidden);
 
-  int batch_size = input_p->dims()[0];
-  int frame_size = hidden_prev_p->dims()[1];
+  int64_t batch_size = input_p->dims()[0];
+  int64_t frame_size = hidden_prev_p->dims()[1];
 
   auto x = phi::EigenMatrix<T>::From(input);
   auto h_p = phi::EigenMatrix<T>::From(hidden_prev);
@@ -81,8 +81,8 @@ void GRUUnitKernel(const Context& dev_ctx,
   if (bias) {
     auto b = phi::EigenMatrix<T>::From(bias.get());
     g.device(place) =
-        x + b.reshape(Eigen::array<int, 2>({{1, frame_size * 3}}))
-                .broadcast(Eigen::array<int, 2>({{batch_size, 1}}));
+        x + b.reshape(Eigen::array<int64_t, 2>({{1, frame_size * 3}}))
+                .broadcast(Eigen::array<int64_t, 2>({{batch_size, 1}}));
   } else {
     g.device(place) = x;
   }
@@ -106,15 +106,15 @@ void GRUUnitKernel(const Context& dev_ctx,
             frame_size * 3);
 
   // calculate activated gate
-  Eigen::array<int, 2> extents{{batch_size, frame_size}};
-  Eigen::array<int, 2> u_offsets{{0, 0}};
+  Eigen::array<int64_t, 2> extents{{batch_size, frame_size}};
+  Eigen::array<int64_t, 2> u_offsets{{0, 0}};
   ACT_COMPUTE(gate_activation,
               place,
               g.slice(u_offsets, extents),
               g.slice(u_offsets, extents),
               dev_ctx.GetPlace());
   auto u = g.slice(u_offsets, extents);  // update gate
-  Eigen::array<int, 2> r_offsets{{0, frame_size}};
+  Eigen::array<int64_t, 2> r_offsets{{0, frame_size}};
   ACT_COMPUTE(gate_activation,
               place,
               g.slice(r_offsets, extents),
@@ -136,7 +136,7 @@ void GRUUnitKernel(const Context& dev_ctx,
             gate_data + frame_size * 2,
             frame_size * 3);
 
-  Eigen::array<int, 2> c_offsets{{0, frame_size * 2}};
+  Eigen::array<int64_t, 2> c_offsets{{0, frame_size * 2}};
   ACT_COMPUTE(activation,
               place,
               g.slice(c_offsets, extents),
@@ -212,15 +212,15 @@ void GRUUnitGradKernel(const Context& dev_ctx,
   auto d_r_h_p = phi::EigenMatrix<T>::From(reset_hidden_prev_grad);
   auto& place = *dev_ctx.eigen_device();
 
-  int batch_size = input.dims()[0];
-  int frame_size = hidden_prev.dims()[1];
+  int64_t batch_size = input.dims()[0];
+  int64_t frame_size = hidden_prev.dims()[1];
 
-  Eigen::array<int, 2> extents{{batch_size, frame_size}};
-  Eigen::array<int, 2> u_offsets{{0, 0}};
+  Eigen::array<int64_t, 2> extents{{batch_size, frame_size}};
+  Eigen::array<int64_t, 2> u_offsets{{0, 0}};
   auto u = g.slice(u_offsets, extents);  // update gate
-  Eigen::array<int, 2> r_offsets{{0, frame_size}};
+  Eigen::array<int64_t, 2> r_offsets{{0, frame_size}};
   auto r = g.slice(r_offsets, extents);  // reset gate
-  Eigen::array<int, 2> c_offsets{{0, frame_size * 2}};
+  Eigen::array<int64_t, 2> c_offsets{{0, frame_size * 2}};
   auto c = g.slice(c_offsets, extents);  // output candidate
 
   // backward for unactivated update gate
@@ -333,7 +333,7 @@ void GRUUnitGradKernel(const Context& dev_ctx,
   if (bias_grad) {
     dev_ctx.template Alloc<T>(bias_grad);
     auto d_b = phi::EigenVector<T>::Flatten(*bias_grad);
-    d_b.device(place) = d_g.sum(Eigen::array<int, 1>({{0}}));
+    d_b.device(place) = d_g.sum(Eigen::array<int64_t, 1>({{0}}));
   }
 }
 }  // namespace phi

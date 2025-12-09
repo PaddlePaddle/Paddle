@@ -200,10 +200,10 @@ void BoxCoderKernel(const Context &dev_ctx,
                           " supports LoD with one level."));
   }
   const int var_size = static_cast<int>(variance.size());
-  auto code_type = phi::funcs::GetBoxCodeType(code_type_str);
+  auto code_type = funcs::GetBoxCodeType(code_type_str);
   int64_t row = target_box.dims()[0];
   int64_t col = prior_box.dims()[0];
-  if (code_type == phi::funcs::BoxCodeType::kDecodeCenterSize) {
+  if (code_type == funcs::BoxCodeType::kDecodeCenterSize) {
     col = target_box.dims()[1];
   }
   int64_t len = prior_box.dims()[1];
@@ -225,7 +225,7 @@ void BoxCoderKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(output_box);
   T *output = output_box->data<T>();
 
-  if (code_type == phi::funcs::BoxCodeType::kEncodeCenterSize) {
+  if (code_type == funcs::BoxCodeType::kEncodeCenterSize) {
     EncodeCenterSizeKernel<T>
         <<<grid, block, 0, dev_ctx.stream()>>>(prior_box_data,
                                                prior_box_var_data,
@@ -238,7 +238,7 @@ void BoxCoderKernel(const Context &dev_ctx,
                                                dev_var_data,
                                                var_size,
                                                output);
-  } else if (code_type == phi::funcs::BoxCodeType::kDecodeCenterSize) {
+  } else if (code_type == funcs::BoxCodeType::kDecodeCenterSize) {
     DecodeCenterSizeKernel<T>
         <<<grid, block, 0, dev_ctx.stream()>>>(prior_box_data,
                                                prior_box_var_data,

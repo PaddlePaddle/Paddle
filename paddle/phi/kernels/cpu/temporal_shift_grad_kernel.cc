@@ -99,13 +99,13 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
   const DataLayout data_layout = common::StringToDataLayout(data_format_str);
 
   const int nt = static_cast<int>(output_grad->dims()[0]);
-  const int c = static_cast<int>(data_layout == DataLayout::kNCHW
+  const int c = static_cast<int>(data_layout == DataLayout::NCHW
                                      ? output_grad->dims()[1]
                                      : output_grad->dims()[3]);
-  const int h = static_cast<int>(data_layout == DataLayout::kNCHW
+  const int h = static_cast<int>(data_layout == DataLayout::NCHW
                                      ? output_grad->dims()[2]
                                      : output_grad->dims()[1]);
-  const int w = static_cast<int>(data_layout == DataLayout::kNCHW
+  const int w = static_cast<int>(data_layout == DataLayout::NCHW
                                      ? output_grad->dims()[3]
                                      : output_grad->dims()[2]);
 
@@ -118,14 +118,14 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
   const int c2 = static_cast<int>(static_cast<float>(c) * 2.f * shift_ratio);
 
   DDim in_grad_dims =
-      (data_layout == DataLayout::kNCHW ? common::make_ddim({nt, c, h, w})
-                                        : common::make_ddim({nt, h, w, c}));
+      (data_layout == DataLayout::NCHW ? common::make_ddim({nt, c, h, w})
+                                       : common::make_ddim({nt, h, w, c}));
   const T* output_grad_data = output_grad->data<T>();
   input_grad->Resize(in_grad_dims);
 
   T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
 
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     TemporalShiftBwNCHW<T>(
         output_grad_data, input_grad_data, ntchw, tchw, chw, hw, t, c1, c2);
   } else {

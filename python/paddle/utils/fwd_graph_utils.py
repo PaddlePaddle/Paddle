@@ -247,7 +247,7 @@ def capture_stderr():
 
 
 @signature_safe_contextmanager
-def capture_fwd_graph_guard(file_path: str):
+def capture_forward_subgraph_guard(file_path: str):
     log = ""
     stderr_buffer = io.StringIO()
     origin_enable_unique_name_status = paddle.framework.get_flags(
@@ -267,8 +267,15 @@ def capture_fwd_graph_guard(file_path: str):
         )
         log = stderr_buffer.getvalue()
         builder = GraphBuilder()
+
+        def get_first_indent(s):
+            match = re.match(r'^\t*', s)
+            return match.group(0)
+
         # Find the parts describing the input and output of the API in the massive logs
-        pattern = re.compile(r'Forward Debug Info \{.*? ] } ', re.DOTALL)
+        indent = get_first_indent(log.lstrip('\n'))
+        pattern_str = r'\n' + indent + r'Forward Debug Info \{.*? ] } '
+        pattern = re.compile(pattern_str, re.DOTALL)
         matches = pattern.findall(log)
         # Build the forward graph
         builder.build_graph(matches)

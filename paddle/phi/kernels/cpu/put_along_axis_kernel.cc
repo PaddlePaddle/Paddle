@@ -36,50 +36,50 @@ void PutAlongAxisKernel(const Context& dev_ctx,
   const auto& index_type = index.dtype();
   if (reduce == "add") {
     if (index_type == DataType::INT32) {
-      phi::funcs::cpu_scatter_add_kernel<T, int32_t>(
+      funcs::cpu_scatter_add_kernel<T, int32_t>(
           *out, axis, index, value, include_self, dev_ctx);
     } else if (index_type == DataType::INT64) {
-      phi::funcs::cpu_scatter_add_kernel<T, int64_t>(
+      funcs::cpu_scatter_add_kernel<T, int64_t>(
           *out, axis, index, value, include_self, dev_ctx);
     }
   } else if (reduce == "multiply" || reduce == "mul") {
     if (index_type == DataType::INT32) {
-      phi::funcs::cpu_scatter_mul_kernel<T, int32_t>(
+      funcs::cpu_scatter_mul_kernel<T, int32_t>(
           *out, axis, index, value, include_self, dev_ctx);
     } else if (index_type == DataType::INT64) {
-      phi::funcs::cpu_scatter_mul_kernel<T, int64_t>(
+      funcs::cpu_scatter_mul_kernel<T, int64_t>(
           *out, axis, index, value, include_self, dev_ctx);
     }
   } else if (reduce == "assign") {
     if (index_type == DataType::INT32) {
-      phi::funcs::cpu_scatter_assign_kernel<T, int32_t>(
+      funcs::cpu_scatter_assign_kernel<T, int32_t>(
           *out, axis, index, value, include_self, dev_ctx);
     } else if (index_type == DataType::INT64) {
-      phi::funcs::cpu_scatter_assign_kernel<T, int64_t>(
+      funcs::cpu_scatter_assign_kernel<T, int64_t>(
           *out, axis, index, value, include_self, dev_ctx);
     }
   } else if (reduce == "mean") {
     if (index_type == DataType::INT32) {
-      phi::funcs::cpu_scatter_mean_kernel<T, int32_t>(
+      funcs::cpu_scatter_mean_kernel<T, int32_t>(
           *out, axis, index, value, include_self, dev_ctx);
     } else if (index_type == DataType::INT64) {
-      phi::funcs::cpu_scatter_mean_kernel<T, int64_t>(
+      funcs::cpu_scatter_mean_kernel<T, int64_t>(
           *out, axis, index, value, include_self, dev_ctx);
     }
   } else if (reduce == "amax") {
     if (index_type == DataType::INT32) {
-      phi::funcs::cpu_scatter_max_kernel<T, int32_t>(
+      funcs::cpu_scatter_max_kernel<T, int32_t>(
           *out, axis, index, value, include_self, dev_ctx);
     } else if (index_type == DataType::INT64) {
-      phi::funcs::cpu_scatter_max_kernel<T, int64_t>(
+      funcs::cpu_scatter_max_kernel<T, int64_t>(
           *out, axis, index, value, include_self, dev_ctx);
     }
   } else if (reduce == "amin") {
     if (index_type == DataType::INT32) {
-      phi::funcs::cpu_scatter_min_kernel<T, int32_t>(
+      funcs::cpu_scatter_min_kernel<T, int32_t>(
           *out, axis, index, value, include_self, dev_ctx);
     } else if (index_type == DataType::INT64) {
-      phi::funcs::cpu_scatter_min_kernel<T, int64_t>(
+      funcs::cpu_scatter_min_kernel<T, int64_t>(
           *out, axis, index, value, include_self, dev_ctx);
     }
   } else {

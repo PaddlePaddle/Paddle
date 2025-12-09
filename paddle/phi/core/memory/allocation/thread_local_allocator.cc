@@ -14,6 +14,8 @@
 
 #include "paddle/phi/core/memory/allocation/thread_local_allocator.h"
 
+#include "glog/logging.h"
+
 namespace paddle::memory::allocation {
 
 ThreadLocalAllocatorImpl::ThreadLocalAllocatorImpl(const phi::Place& p)

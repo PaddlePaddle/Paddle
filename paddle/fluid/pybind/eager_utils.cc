@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/pir.h"
+#include "paddle/fluid/pybind/size.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/common/data_type.h"
@@ -48,7 +49,6 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/pir/include/core/attribute.h"
 #include "paddle/pir/include/core/value.h"
-
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_int32(check_nan_inf_level);
 COMMON_DECLARE_int32(call_stack_level);
@@ -2644,29 +2644,35 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
     return paddle::experimental::IntArray({});
   }
 
-  // obj could be: int, float, bool, paddle.Tensor
+  if (PyObject_CheckLong(obj)) {
+    return paddle::experimental::IntArray({PyObject_ToInt64(obj)});
+  }
+
+  if (PyList_Check(obj) || PyTuple_Check(obj) ||
+      Py_TYPE(obj) == &paddle::pybind::Paddle_SizeType) {
+    std::vector<int64_t> value = CastPyArg2Longs(obj, op_type, arg_pos);
+    return paddle::experimental::IntArray(value);
+  }
+
   PyTypeObject* type = obj->ob_type;
-  auto type_name = std::string(type->tp_name);
-  if (type_name == "list" || type_name == "tuple" ||
-      type_name == "numpy.ndarray" ||
-      type_name == "paddle.base.libpaddle.Size") {
+  std::string type_name(type->tp_name);
+
+  if (type_name == "numpy.ndarray") {
     std::vector<int64_t> value = CastPyArg2Longs(obj, op_type, arg_pos);
     return paddle::experimental::IntArray(value);
   } else if (type_name == "paddle.Tensor" || type_name == "Tensor") {
     paddle::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
     return paddle::experimental::IntArray(value);
-  } else if (PyObject_CheckLong(obj)) {
-    return paddle::experimental::IntArray({PyObject_ToInt64(obj)});
-  } else {
-    PADDLE_THROW(common::errors::InvalidType(
-        "%s(): argument (position %d) must be "
-        "list or int, but got %s",
-        op_type,
-        arg_pos + 1,
-        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
-  // Fake a IntArray
+
+  PADDLE_THROW(
+      common::errors::InvalidType("%s(): argument (position %d) must be "
+                                  "list, tuple, int, or Tensor, but got %s",
+                                  op_type,
+                                  arg_pos + 1,
+                                  type_name.c_str()));  // NOLINT
+
   return paddle::experimental::IntArray({1});
 }
 paddle::experimental::IntArray CastPyArg2IntArray(

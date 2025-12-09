@@ -46,8 +46,10 @@ __global__ void GPURoiPoolForward(const IndexType nthreads,
                                   T* output_data,
                                   int64_t* arg_max_data) {
   IndexType index =
-      static_cast<IndexType>(blockIdx.x) * blockDim.x + threadIdx.x;
-  IndexType offset = static_cast<IndexType>(blockDim.x) * gridDim.x;
+      static_cast<IndexType>(blockIdx.x) * static_cast<IndexType>(blockDim.x) +
+      static_cast<IndexType>(threadIdx.x);
+  IndexType offset =
+      static_cast<IndexType>(blockDim.x) * static_cast<IndexType>(gridDim.x);
   for (size_t i = index; i < nthreads; i += offset) {
     IndexType pw = i % pooled_width;
     IndexType ph = (i / pooled_width) % pooled_height;

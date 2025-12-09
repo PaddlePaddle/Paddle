@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,16 +14,17 @@
 
 #pragma once
 
-#include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
-namespace py = pybind11;
+namespace phi {
+template <typename T, typename Context>
+void MoeCombineKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& combine_weights,
+                      const DenseTensor& scatter_index,
+                      DenseTensor* y);
 
-namespace paddle {
-namespace pybind {
-
-#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
-void BindHeterWrapper(py::module* m);
-#endif
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace phi

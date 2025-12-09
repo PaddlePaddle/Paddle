@@ -82,7 +82,7 @@ void NonZeroKernel(const Context& dev_ctx,
 
   WhereIndexFunctor<int64_t> functor(
       true_index.data(), true_num, stride.data(), rank, out_ptr);
-  phi::funcs::ForRange<phi::CPUContext> for_range(dev_ctx, true_num);
+  funcs::ForRange<phi::CPUContext> for_range(dev_ctx, true_num);
   for_range(functor);
 }
 

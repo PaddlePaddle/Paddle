@@ -97,8 +97,8 @@ __global__ void CalculateSoftLoss(T* loss,
   CUDA_KERNEL_LOOP_TYPE(i, N, int64_t) {
     T tmp_loss = static_cast<T>(0);
     loss[i] = static_cast<T>(0);
-    T log_sum_exp_logits = phi::funcs::TolerableValue<T>()(
-        phi::funcs::real_log(sum_exp_logits[i]));
+    T log_sum_exp_logits =
+        funcs::TolerableValue<T>()(funcs::real_log(sum_exp_logits[i]));
     for (int j = 0; j < C; ++j) {
       int64_t label_idx = i * C + j;
       auto real_label = static_cast<int64_t>(label[label_idx]);
@@ -106,7 +106,7 @@ __global__ void CalculateSoftLoss(T* loss,
       tmp_loss =
           ignore_index == real_label
               ? static_cast<T>(0)
-              : phi::funcs::TolerableValue<T>()(
+              : funcs::TolerableValue<T>()(
                     (log_sum_exp_logits - predict_logits[label_idx]) * prob);
       if (sum_multi_label_loss) {
         loss[i] += tmp_loss;
@@ -179,9 +179,9 @@ struct CSoftmaxWithMultiLabelCrossEntropyFunctor<phi::GPUContext, T> {
     const auto& labels_dims = labels->dims();
 
     const int axis = logits_dims.size() - 1;
-    const int64_t N = phi::funcs::SizeToAxis<int64_t>(axis, logits_dims);
-    const int64_t D = phi::funcs::SizeFromAxis<int64_t>(axis, logits_dims);
-    const int64_t C = phi::funcs::SizeFromAxis<int64_t>(axis, labels_dims);
+    const int64_t N = funcs::SizeToAxis<int64_t>(axis, logits_dims);
+    const int64_t D = funcs::SizeFromAxis<int64_t>(axis, logits_dims);
+    const int64_t C = funcs::SizeFromAxis<int64_t>(axis, labels_dims);
 
     phi::DenseTensor logits_2d, softmax_2d, loss_2d;
     logits_2d.ShareDataWith(*logits).Resize({N, D});
@@ -189,15 +189,15 @@ struct CSoftmaxWithMultiLabelCrossEntropyFunctor<phi::GPUContext, T> {
     int64_t loss_last_dim = sum_multi_label_loss ? 1 : C;
     loss_2d.ShareDataWith(*loss).Resize({N, loss_last_dim});
 
-    auto eigen_logits = phi::funcs::EigenMatrix<T>::From(logits_2d);
-    auto eigen_softmax = phi::funcs::EigenMatrix<T>::From(softmax_2d);
+    auto eigen_logits = funcs::EigenMatrix<T>::From(logits_2d);
+    auto eigen_softmax = funcs::EigenMatrix<T>::From(softmax_2d);
 
     // step 1, obtain logit_max
     phi::DenseTensor logits_max;
     logits_max.Resize({N, 1});
     dev_ctx.template Alloc<T>(&logits_max);
 
-    auto eigen_logits_max = phi::funcs::EigenMatrix<T>::From(logits_max);
+    auto eigen_logits_max = funcs::EigenMatrix<T>::From(logits_max);
     Eigen::DSizes<int, 1> along_axis(1);
     eigen_logits_max.device(*dev_ctx.eigen_device()) =
         eigen_logits.maximum(along_axis);
@@ -296,8 +296,7 @@ struct CSoftmaxWithMultiLabelCrossEntropyFunctor<phi::GPUContext, T> {
                                                      sum_multi_label_loss);
     }
 
-    auto eigen_sum_exp_logits =
-        phi::funcs::EigenMatrix<T>::From(sum_exp_logits);
+    auto eigen_sum_exp_logits = funcs::EigenMatrix<T>::From(sum_exp_logits);
     eigen_softmax.device(*dev_ctx.eigen_device()) =
         (eigen_softmax *
          eigen_sum_exp_logits.inverse().broadcast(one_by_class));
