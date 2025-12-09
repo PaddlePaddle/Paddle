@@ -23,6 +23,79 @@
 namespace phi {
 namespace fusion {
 
+template <typename T>
+void FusedRopeKernelLauncher(const T* src,
+                             const T* sin,
+                             const T* cos,
+                             T* dst,
+                             const int64_t* position_ids,
+                             const bool flag_sin_cos,
+                             const bool use_neox_rotary_style,
+                             const int64_t num_heads,
+                             const int64_t head_dim,
+                             const int64_t stride_s,
+                             const int64_t stride_b,
+                             const int64_t stride_h,
+                             const int64_t stride_d,
+                             const int64_t o_stride_s,
+                             const int64_t o_stride_b,
+                             const int64_t o_stride_h,
+                             const int64_t o_stride_d,
+                             const float rotary_emb_base,
+                             const int64_t seq_len,
+                             const int64_t batch_size,
+                             const int64_t numel,
+                             cudaStream_t stream) {
+  const int64_t warps_per_block = std::min(num_heads, static_cast<int64_t>(8));
+  dim3 grid(seq_len, batch_size);
+  dim3 block(32, warps_per_block);  // 32 threads per warp
+  size_t shared_mem_size = 2 * head_dim * sizeof(float);
+
+  if (numel <= std::numeric_limits<int>::max()) {
+    FusedRopeKernelImpl<T, int>
+        <<<grid, block, shared_mem_size, stream>>>(src,
+                                                   sin,
+                                                   cos,
+                                                   dst,
+                                                   position_ids,
+                                                   flag_sin_cos,
+                                                   use_neox_rotary_style,
+                                                   num_heads,
+                                                   head_dim,
+                                                   stride_s,
+                                                   stride_b,
+                                                   stride_h,
+                                                   stride_d,
+                                                   o_stride_s,
+                                                   o_stride_b,
+                                                   o_stride_h,
+                                                   o_stride_d,
+                                                   rotary_emb_base,
+                                                   seq_len);
+  } else {
+    FusedRopeKernelImpl<T, int64_t>
+        <<<grid, block, shared_mem_size, stream>>>(src,
+                                                   sin,
+                                                   cos,
+                                                   dst,
+                                                   position_ids,
+                                                   flag_sin_cos,
+                                                   use_neox_rotary_style,
+                                                   num_heads,
+                                                   head_dim,
+                                                   stride_s,
+                                                   stride_b,
+                                                   stride_h,
+                                                   stride_d,
+                                                   o_stride_s,
+                                                   o_stride_b,
+                                                   o_stride_h,
+                                                   o_stride_d,
+                                                   rotary_emb_base,
+                                                   seq_len);
+  }
+}
+
 template <typename T, typename Context>
 void FusedRopeKernel(const Context& dev_ctx,
                      const DenseTensor& q,
@@ -136,11 +209,6 @@ void FusedRopeKernel(const Context& dev_ctx,
     flag_sin_cos = true;
   }
 
-  const int64_t warps_per_block = std::min(num_heads, static_cast<int64_t>(8));
-  dim3 grid(seq_len, batch_size);
-  dim3 block(32, warps_per_block);  // 32 threads per warp
-  size_t shared_mem_size = 2 * head_dim * sizeof(float);
-
   // Q
   int64_t stride_s_q = time_major ? q.strides()[0] : q.strides()[1];
   int64_t stride_b_q = time_major ? q.strides()[1] : q.strides()[0];
@@ -152,26 +220,28 @@ void FusedRopeKernel(const Context& dev_ctx,
   int64_t o_stride_h_q = out_q->strides()[2];
   int64_t o_stride_d_q = out_q->strides()[3];
 
-  FusedRopeKernelImpl<<<grid, block, shared_mem_size, stream>>>(
-      q.data<T>(),
-      sin_data,
-      cos_data,
-      position_ids_data,
-      flag_sin_cos,
-      use_neox_rotary_style,
-      num_heads,
-      head_dim,
-      stride_s_q,
-      stride_b_q,
-      stride_h_q,
-      stride_d_q,
-      o_stride_s_q,
-      o_stride_b_q,
-      o_stride_h_q,
-      o_stride_d_q,
-      rotary_emb_base,
-      seq_len,
-      out_q->data<T>());
+  FusedRopeKernelLauncher(q.data<T>(),
+                          sin_data,
+                          cos_data,
+                          out_q->data<T>(),
+                          position_ids_data,
+                          flag_sin_cos,
+                          use_neox_rotary_style,
+                          num_heads,
+                          head_dim,
+                          stride_s_q,
+                          stride_b_q,
+                          stride_h_q,
+                          stride_d_q,
+                          o_stride_s_q,
+                          o_stride_b_q,
+                          o_stride_h_q,
+                          o_stride_d_q,
+                          rotary_emb_base,
+                          seq_len,
+                          batch_size,
+                          numel,
+                          stream);
 
   // K
   if (k) {
@@ -197,26 +267,28 @@ void FusedRopeKernel(const Context& dev_ctx,
     int64_t o_stride_h_k = out_k->strides()[2];
     int64_t o_stride_d_k = out_k->strides()[3];
 
-    FusedRopeKernelImpl<<<grid, block, shared_mem_size, stream>>>(
-        k->data<T>(),
-        sin_data,
-        cos_data,
-        position_ids_data,
-        flag_sin_cos,
-        use_neox_rotary_style,
-        k_num_heads,
-        head_dim,
-        stride_s_k,
-        stride_b_k,
-        stride_h_k,
-        stride_d_k,
-        o_stride_s_k,
-        o_stride_b_k,
-        o_stride_h_k,
-        o_stride_d_k,
-        rotary_emb_base,
-        seq_len,
-        out_k->data<T>());
+    FusedRopeKernelLauncher(k->data<T>(),
+                            sin_data,
+                            cos_data,
+                            out_k->data<T>(),
+                            position_ids_data,
+                            flag_sin_cos,
+                            use_neox_rotary_style,
+                            k_num_heads,
+                            head_dim,
+                            stride_s_k,
+                            stride_b_k,
+                            stride_h_k,
+                            stride_d_k,
+                            o_stride_s_k,
+                            o_stride_b_k,
+                            o_stride_h_k,
+                            o_stride_d_k,
+                            rotary_emb_base,
+                            seq_len,
+                            batch_size,
+                            numel,
+                            stream);
   }
 
   // V
@@ -243,26 +315,28 @@ void FusedRopeKernel(const Context& dev_ctx,
     int64_t o_stride_h_v = out_v->strides()[2];
     int64_t o_stride_d_v = out_v->strides()[3];
 
-    FusedRopeKernelImpl<<<grid, block, shared_mem_size, stream>>>(
-        v->data<T>(),
-        sin_data,
-        cos_data,
-        position_ids_data,
-        flag_sin_cos,
-        use_neox_rotary_style,
-        v_num_heads,
-        head_dim,
-        stride_s_v,
-        stride_b_v,
-        stride_h_v,
-        stride_d_v,
-        o_stride_s_v,
-        o_stride_b_v,
-        o_stride_h_v,
-        o_stride_d_v,
-        rotary_emb_base,
-        seq_len,
-        out_v->data<T>());
+    FusedRopeKernelLauncher(v->data<T>(),
+                            sin_data,
+                            cos_data,
+                            out_v->data<T>(),
+                            position_ids_data,
+                            flag_sin_cos,
+                            use_neox_rotary_style,
+                            v_num_heads,
+                            head_dim,
+                            stride_s_v,
+                            stride_b_v,
+                            stride_h_v,
+                            stride_d_v,
+                            o_stride_s_v,
+                            o_stride_b_v,
+                            o_stride_h_v,
+                            o_stride_d_v,
+                            rotary_emb_base,
+                            seq_len,
+                            batch_size,
+                            numel,
+                            stream);
   }
 }
 }  // namespace fusion

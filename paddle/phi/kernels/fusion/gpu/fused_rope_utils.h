@@ -19,23 +19,23 @@
 namespace phi {
 namespace fusion {
 
-template <typename T>
+template <typename T, typename IndexT>
 __device__ void set_cin_cos_shared_mem(const T* sin,
                                        const T* cos,
                                        const int64_t* position_ids,
                                        const bool flag_sin_cos,
                                        const float rotary_emb_base,
-                                       const int seq_len_for_pos,
-                                       const int s_id,
-                                       const int b_id,
-                                       const int d,
+                                       const IndexT seq_len,
+                                       const IndexT s_id,
+                                       const IndexT b_id,
+                                       const IndexT d,
                                        float* shared_mem_sin,
                                        float* shared_mem_cos) {
-  int tid = threadIdx.x * blockDim.y + threadIdx.y;
-  for (int i = tid; i < d; i += blockDim.x * blockDim.y) {
+  IndexT tid = static_cast<IndexT>(threadIdx.x) * blockDim.y + threadIdx.y;
+  for (IndexT i = tid; i < d; i += blockDim.x * blockDim.y) {
     int64_t pos = s_id;
     if (position_ids) {
-      pos = position_ids[b_id * seq_len_for_pos + s_id];
+      pos = position_ids[b_id * seq_len + s_id];
     }
 
     if (flag_sin_cos) {
@@ -52,31 +52,31 @@ __device__ void set_cin_cos_shared_mem(const T* sin,
   __syncthreads();
 }
 
-template <typename T>
+template <typename T, typename IndexT>
 __global__ void FusedRopeKernelImpl(const T* src,
                                     const T* sin,
                                     const T* cos,
+                                    T* dst,
                                     const int64_t* position_ids,
                                     const bool flag_sin_cos,
                                     const bool use_neox_rotary_style,
-                                    const int h,
-                                    const int d,
-                                    const int stride_s,
-                                    const int stride_b,
-                                    const int stride_h,
-                                    const int stride_d,
-                                    const int o_stride_s,
-                                    const int o_stride_b,
-                                    const int o_stride_h,
-                                    const int o_stride_d,
+                                    const IndexT h,
+                                    const IndexT d,
+                                    const IndexT stride_s,
+                                    const IndexT stride_b,
+                                    const IndexT stride_h,
+                                    const IndexT stride_d,
+                                    const IndexT o_stride_s,
+                                    const IndexT o_stride_b,
+                                    const IndexT o_stride_h,
+                                    const IndexT o_stride_d,
                                     const float rotary_emb_base,
-                                    const int seq_len_for_pos,
-                                    T* dst) {
-  int s_id = blockIdx.x;
-  int b_id = blockIdx.y;
+                                    const IndexT seq_len) {
+  IndexT s_id = blockIdx.x;
+  IndexT b_id = blockIdx.y;
 
-  int offset_block = s_id * stride_s + b_id * stride_b;
-  int offset_block_dst = s_id * o_stride_s + b_id * o_stride_b;
+  IndexT offset_block = s_id * stride_s + b_id * stride_b;
+  IndexT offset_block_dst = s_id * o_stride_s + b_id * o_stride_b;
 
   extern __shared__ float shared_mem_cos_sin[];
   float* shared_mem_cos = shared_mem_cos_sin;
@@ -87,7 +87,7 @@ __global__ void FusedRopeKernelImpl(const T* src,
                             position_ids,
                             flag_sin_cos,
                             rotary_emb_base,
-                            seq_len_for_pos,
+                            seq_len,
                             s_id,
                             b_id,
                             d,
@@ -95,13 +95,14 @@ __global__ void FusedRopeKernelImpl(const T* src,
                             shared_mem_cos);
 
 #pragma unroll
-  for (int h_id = threadIdx.y; h_id < h; h_id += blockDim.y) {
+  for (IndexT h_id = threadIdx.y; h_id < h; h_id += blockDim.y) {
 #pragma unroll
-    for (int d_id = threadIdx.x; d_id < d; d_id += blockDim.x) {
+    for (IndexT d_id = threadIdx.x; d_id < d; d_id += blockDim.x) {
       float v_cos = shared_mem_cos[d_id];
       float v_sin = shared_mem_sin[d_id];
-      int offset_src = offset_block + h_id * stride_h + d_id * stride_d;
-      int offset_dst = offset_block_dst + h_id * o_stride_h + d_id * o_stride_d;
+      IndexT offset_src = offset_block + h_id * stride_h + d_id * stride_d;
+      IndexT offset_dst =
+          offset_block_dst + h_id * o_stride_h + d_id * o_stride_d;
       float v_src = static_cast<float>(src[offset_src]);
       float v_src_rotate;
       if (!use_neox_rotary_style) {
@@ -119,31 +120,31 @@ __global__ void FusedRopeKernelImpl(const T* src,
   }
 }
 
-template <typename T>
+template <typename T, typename IndexT>
 __global__ void FusedRopeGradKernelImpl(const T* src,
                                         const T* sin,
                                         const T* cos,
+                                        T* dst,
                                         const int64_t* position_ids,
                                         const bool flag_sin_cos,
                                         const bool use_neox_rotary_style,
-                                        const int h,
-                                        const int d,
-                                        const int stride_s,
-                                        const int stride_b,
-                                        const int stride_h,
-                                        const int stride_d,
-                                        const int o_stride_s,
-                                        const int o_stride_b,
-                                        const int o_stride_h,
-                                        const int o_stride_d,
+                                        const IndexT h,
+                                        const IndexT d,
+                                        const IndexT stride_s,
+                                        const IndexT stride_b,
+                                        const IndexT stride_h,
+                                        const IndexT stride_d,
+                                        const IndexT o_stride_s,
+                                        const IndexT o_stride_b,
+                                        const IndexT o_stride_h,
+                                        const IndexT o_stride_d,
                                         const float rotary_emb_base,
-                                        const int seq_len_for_pos,
-                                        T* dst) {
-  int s_id = blockIdx.x;
-  int b_id = blockIdx.y;
+                                        const IndexT seq_len) {
+  IndexT s_id = blockIdx.x;
+  IndexT b_id = blockIdx.y;
 
-  int offset_block = s_id * stride_s + b_id * stride_b;
-  int offset_block_dst = s_id * o_stride_s + b_id * o_stride_b;
+  IndexT offset_block = s_id * stride_s + b_id * stride_b;
+  IndexT offset_block_dst = s_id * o_stride_s + b_id * o_stride_b;
 
   extern __shared__ float shared_mem_cos_sin[];
   float* shared_mem_cos = shared_mem_cos_sin;
@@ -154,7 +155,7 @@ __global__ void FusedRopeGradKernelImpl(const T* src,
                             position_ids,
                             flag_sin_cos,
                             rotary_emb_base,
-                            seq_len_for_pos,
+                            seq_len,
                             s_id,
                             b_id,
                             d,
@@ -162,11 +163,12 @@ __global__ void FusedRopeGradKernelImpl(const T* src,
                             shared_mem_cos);
 
 #pragma unroll
-  for (int h_id = threadIdx.y; h_id < h; h_id += blockDim.y) {
+  for (IndexT h_id = threadIdx.y; h_id < h; h_id += blockDim.y) {
 #pragma unroll
-    for (int d_id = threadIdx.x; d_id < d; d_id += blockDim.x) {
-      int offset_src = offset_block + h_id * stride_h + d_id * stride_d;
-      int offset_dst = offset_block_dst + h_id * o_stride_h + d_id * o_stride_d;
+    for (IndexT d_id = threadIdx.x; d_id < d; d_id += blockDim.x) {
+      IndexT offset_src = offset_block + h_id * stride_h + d_id * stride_d;
+      IndexT offset_dst =
+          offset_block_dst + h_id * o_stride_h + d_id * o_stride_d;
       float v_src = static_cast<float>(src[offset_src]);
       float v_cos = shared_mem_cos[d_id];
       float v_src_rotate, v_sin;
