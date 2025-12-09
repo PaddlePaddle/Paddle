@@ -202,8 +202,8 @@ def save_state_dict(
             assert unique_id >= 0, f'{unique_id} should be >= 0'
         if use_dist:
             check_unique_id(unique_id, process_group)
-
-        file_name = f"{paddle.distributed.get_rank()}_{unique_id}.distcp"
+        file_suffix = "distcp" if not safetensors else "safetensors"
+        file_name = f"{paddle.distributed.get_rank()}_{unique_id}.{file_suffix}"
         logger.debug(f"The checkpoint is saved to file_name:{file_name}")
 
         metadata = Metadata()

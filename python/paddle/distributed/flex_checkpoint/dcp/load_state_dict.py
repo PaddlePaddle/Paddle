@@ -84,7 +84,7 @@ def get_checkpoint_files(
         file for file in accessible_files if file.endswith(".safetensors")
     ]
 
-    if safetensors:
+    if safetensors and len(metadata_files) == 0:
         logger.info(
             f"Found HuggingFace-format checkpoint with files: {', '.join(safetensors_files)}"
         )
@@ -116,7 +116,15 @@ def get_checkpoint_files(
         file
         for file in accessible_files
         if file.endswith(f"{unique_id}.distcp")
+        or file.endswith(f"{unique_id}.safetensors")
     ]
+    # Check that local_data_files does not contain both .distcp and .safetensors files at the same time
+    if any(file.endswith('.distcp') for file in local_data_files) and any(
+        file.endswith('.safetensors') for file in local_data_files
+    ):
+        raise ValueError(
+            f"Checkpoint directory cannot contain both .distcp and .safetensors files simultaneously in {path}."
+        )
     assert len(local_data_files) > 0, (
         f"No data file ends with '{unique_id}.distcp' found in the checkpoint directory:{path}."
     )
