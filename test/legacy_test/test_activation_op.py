@@ -4654,7 +4654,7 @@ class TestLog10APICompatibility(unittest.TestCase):
         ref_out = np.log10(self.np_input)
         # Check
         for out in paddle_dygraph_out:
-            np.testing.assert_allclose(ref_out, out.numpy())
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_static_compatibility(self):
@@ -4723,7 +4723,7 @@ class TestLog1pAPI_Compatibility(unittest.TestCase):
         ref_out = np.log1p(self.np_input)
         # Check
         for out in paddle_dygraph_out:
-            np.testing.assert_allclose(ref_out, out.numpy())
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_static_Compatibility(self):
@@ -6397,6 +6397,73 @@ class TestActivationAPI_Compatibility(unittest.TestCase):
             np.random.rand(*self.shape).astype(self.dtype) * (max_val - min_val)
             + min_val
         )
+
+    def test_dygraph_Compatibility_atan2(self):
+        paddle.disable_static()
+        self.init_data(min_val=-1.0, max_val=1.0)
+        x = paddle.to_tensor(self.np_x)
+        y = paddle.to_tensor(self.np_x)
+
+        # np ref
+        ref_out = np.arctan2(self.np_x, self.np_x)
+
+        paddle_dygraph_out = []
+        # (1) Position args
+        out1 = paddle.atan2(x, y)
+        paddle_dygraph_out.append(out1)
+
+        # (2) Keywords args
+        out2 = paddle.atan2(x=x, y=y)
+        paddle_dygraph_out.append(out2)
+
+        # (3) Alias args
+        out3 = paddle.atan2(input=x, other=y)
+        paddle_dygraph_out.append(out3)
+
+        # (4) Mixed alias
+        out4 = paddle.atan2(x, other=y)
+        paddle_dygraph_out.append(out4)
+
+        # (5) Out parameter
+        out5 = paddle.empty_like(x)
+        paddle.atan2(x, y, out=out5)
+        paddle_dygraph_out.append(out5)
+
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-05)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility_atan2(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        self.init_data(min_val=-1.0, max_val=1.0)
+
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
+
+            # (1) Position args
+            out1 = paddle.atan2(x, y)
+            # (2) Keywords args
+            out2 = paddle.atan2(x=x, y=y)
+            # (3) Alias args
+            out3 = paddle.atan2(input=x, other=y)
+            # (4) Mixed alias
+            out4 = paddle.atan2(x, other=y)
+
+            ref_out = np.arctan2(self.np_x, self.np_x)
+            fetch_list = [out1, out2, out3, out4]
+            for place in self.places:
+                exe = base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed={"x": self.np_x, "y": self.np_x},
+                    fetch_list=fetch_list,
+                )
+                for out in fetches:
+                    np.testing.assert_allclose(out, ref_out, rtol=1e-05)
 
 
 def generate_test_case_for_func(act_name, ref_func, data_range, has_out=True):

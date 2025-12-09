@@ -3117,6 +3117,8 @@ add_doc_and_signature(
     def asinh(
         x: Tensor,
         name: str | None = None,
+        *,
+        out: Tensor | None = None,
     ) -> Tensor
     """,
 )
@@ -3160,6 +3162,8 @@ add_doc_and_signature(
     def atan(
         x: Tensor,
         name: str | None = None,
+        *,
+        out: Tensor | None = None,
     ) -> Tensor
     """,
 )
