@@ -1551,19 +1551,24 @@ def monkey_patch_tensor():
                 # For ROCm, stream=0 means default stream
                 or (is_rocm and stream == 0)
             ):
-                dlpack_stream = (
-                    paddle.device.current_stream()
-                )  # TODO: This should be the default stream
+                consumer_stream = paddle.device.Stream(
+                    stream_base=core._get_legacy_default_stream(
+                        paddle.framework._current_expected_place_().get_device_id()
+                    )
+                )
             else:
                 assert stream > 2, "stream should be a valid stream pointer."
-                dlpack_stream = paddle.device.get_stream_from_external(stream)
+                consumer_stream = paddle.device.get_stream_from_external(stream)
 
             current_stream = paddle.device.current_stream()
 
-            if dlpack_stream != current_stream:
+            if (
+                consumer_stream.stream_base.raw_stream
+                != current_stream.stream_base.raw_stream
+            ):
                 event = paddle.device.Event()
                 event.record(current_stream)
-                current_stream.synchronize()
+                consumer_stream.wait_event(event)
         elif self.place.is_cpu_place():
             assert stream is None, "CPU tensor stream must be None."
 
