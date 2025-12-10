@@ -2580,6 +2580,7 @@ def get_setup_parameters():
         'paddle._typing',
         'paddle._typing.libs',
         'paddle.api_tracer',
+        'paddle.testing',
     ]
 
     if (

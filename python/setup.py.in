@@ -1054,6 +1054,7 @@ packages=['paddle',
           'paddle._typing',
           'paddle._typing.libs',
           'paddle.api_tracer',
+          'paddle.testing',
         ]
 
 if (
