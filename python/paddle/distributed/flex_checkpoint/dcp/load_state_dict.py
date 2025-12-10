@@ -502,12 +502,12 @@ def _handle_aoa(
 
     use_dist = paddle.distributed.get_world_size() > 1
     if _metadata_manager.is_metadata_list_empty():
-       metadata_files, _ = get_checkpoint_files(
-          path,
-          unique_id=unique_id,
-          process_group=process_group,
-          safetensors=safetensors,
-        ) 
+        metadata_files, _ = get_checkpoint_files(
+            path,
+            unique_id=unique_id,
+            process_group=process_group,
+            safetensors=safetensors,
+        )
         assert len(metadata_files) == 1, "Only support one metadata file now."
         metadata = paddle.load(os.path.join(path, metadata_files[0]))
         _metadata_manager.set_metadata_list([metadata])
