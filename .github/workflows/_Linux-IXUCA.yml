@@ -76,6 +76,8 @@ jobs:
           mv PaddleCustomDevice-develop PaddleCustomDevice
           cd PaddleCustomDevice
           cp -r ../Paddle .
+          git add Paddle
+          git commit -m "add Paddle to nightly"
 
       - name: Check docker image and run container
         env:
