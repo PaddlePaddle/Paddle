@@ -30,6 +30,7 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
         # save with 1 device
         ckpt_path = tempfile.TemporaryDirectory()
         ckpt_path_2 = tempfile.TemporaryDirectory()
+        ckpt_path_3 = tempfile.TemporaryDirectory()
         super().setUp(num_of_devices=1, timeout=120, nnode=1)
         self.run_test_case(
             "semi_auto_save_state_dict.py",
@@ -37,6 +38,7 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
                 "device_num": "1",
                 "ckpt_path": ckpt_path.name,
                 "ckpt_path_2": ckpt_path_2.name,
+                "ckpt_path_3": ckpt_path_3.name,
             },
         )
 
@@ -47,6 +49,7 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
         for envs in envs_list:
             envs["ckpt_path"] = ckpt_path.name
             envs["ckpt_path_2"] = ckpt_path_2.name
+            envs["ckpt_path_3"] = ckpt_path_3.name
             super().setUp(
                 num_of_devices=int(envs["device_num"]),
                 timeout=180,
