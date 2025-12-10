@@ -1529,9 +1529,6 @@ def monkey_patch_tensor():
         elif self.place.is_gpu_place() and stream != -1:
             is_rocm = paddle.is_compiled_with_rocm()
             is_cuda = paddle.is_compiled_with_cuda()
-            consumer_stream: paddle.device.Stream | None = (
-                None  # None indicates the legacy default stream
-            )
             if not (is_rocm or is_cuda):
                 raise RuntimeError(
                     "DLPack with stream synchronization is only supported "
@@ -1547,27 +1544,23 @@ def monkey_patch_tensor():
                 )
             if is_rocm and stream in {1, 2}:
                 raise ValueError("For ROCm, stream=1 or 2 is not supported.")
-            if not (
+            if (
                 stream is None
                 # For CUDA, stream=1 means default stream
                 or (is_cuda and stream == 1)
                 # For ROCm, stream=0 means default stream
                 or (is_rocm and stream == 0)
             ):
+                dlpack_stream = (
+                    paddle.device.current_stream()
+                )  # TODO: This should be the default stream
+            else:
                 assert stream > 2, "stream should be a valid stream pointer."
-                consumer_stream = paddle.device.get_stream_from_external(stream)
+                dlpack_stream = paddle.device.get_stream_from_external(stream)
 
             current_stream = paddle.device.current_stream()
 
-            if (
-                # All paddle created stream is not legacy default stream,
-                # so we need to synchronize explicitly.
-                consumer_stream is None
-                or (
-                    consumer_stream.stream_base.raw_stream
-                    != current_stream.stream_base.raw_stream
-                )
-            ):
+            if dlpack_stream != current_stream:
                 event = paddle.device.Event()
                 event.record(current_stream)
                 current_stream.synchronize()
