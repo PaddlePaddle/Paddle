@@ -235,10 +235,11 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
       cinn::common::ShapeConstraintManager::Instance().Init(
           shape_analysis_manager.constraints_manager());
       runtime::SetArchDevice(target_, device_id);
-      std::string cache_dir =
-          FLAGS_cinn_kernel_cache_save_path + "/" +
-          std::to_string(device_id.value()) + "/" +
-          group_compilation_contexts[index].GetGroup()->FuncName();
+      auto fusion_info_hash = group_compilation_contexts[index].GetFusionHash();
+      std::string source_hash = std::to_string(fusion_info_hash);
+      std::string cache_dir = FLAGS_cinn_kernel_cache_save_path + "/" +
+                              std::to_string(device_id.value()) + "/" +
+                              source_hash;
       llvm::sys::fs::create_directories(cache_dir);
       std::string cache_so_path = cache_dir + "/" + CINN_CACHE_SO;
       std::string meta_filepath = cache_dir + "/" + CINN_CACHE_META;
@@ -264,9 +265,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
 
         // 3. Construct CompilationResult
         auto result = std::make_shared<pir::CompilationResult>(
-            target_,
-            false,
-            group_compilation_contexts[index].GetGroup()->FuncName());
+            target_, false, fusion_info_hash);
 
         // 4. Construct BackendResource (using loaded data!)
         auto resource = std::make_shared<pir::BackendResource>(
@@ -279,8 +278,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
         );
 
         // 5. Load .so
-        resource->GetBackendCompiler()->SetFuncName(
-            group_compilation_contexts[index].GetGroup()->FuncName());
+        resource->GetBackendCompiler()->SetFusionHash(fusion_info_hash);
         resource->GetBackendCompiler()->LoadAndRegisterFromCache();
 
         result->SetBackendResource(resource);
@@ -326,6 +324,7 @@ std::shared_ptr<pir::CompilationResult> PirCompiler::Compile(
     std::vector<GroupCompilationContext> switch_group_ctxs;
     for (const auto& group : broadcast_switch_case_groups) {
       switch_group_ctxs.emplace_back(target_, group);
+      switch_group_ctxs.back().SetFusionHash(ctx->GetFusionHash());
     }
 
     const auto& ParallelLowering = [&]() {
@@ -354,7 +353,7 @@ std::shared_ptr<pir::CompilationResult> PirCompiler::Compile(
   } else {
     compile_result = task();
   }
-  compile_result->SetFuncName(ctx->GetGroup()->FuncName());
+  compile_result->SetFusionHash(ctx->GetFusionHash());
 
   // Triggering llvm compilation in thread
   compile_result->GetKernelInfo();
@@ -448,17 +447,19 @@ void CompilationContextMapper::Construct(
     const auto device_id = runtime::GetArchDevice(target);
     groups[i]->RenewFuncName(new_func_name + "__" +
                              std::to_string(fusion_info_hash));
+
     // If FLAGS_enable_cinn_compile_cache=False, Cache strategy will not take
     // effects.
     if (IsNewAndUnique(fusion_infos_[i]) || !FLAGS_enable_cinn_compile_cache) {
       mapper_index_.push_back(i);
       auto fusion_info_hash = fusion_infos_[i].hash();
       group_compilation_contexts_.emplace_back(target, groups[i]);
+      group_compilation_contexts_.back().SetFusionHash(fusion_info_hash);
       VLOG(5) << "CompilerCache hashKey is " << fusion_info_hash;
       VLOG(5) << "CompilerCache FuncName is "
               << group_compilation_contexts_.back().GetGroup()->FuncName();
       compilation_results_.push_back(std::make_shared<pir::CompilationResult>(
-          target, false, new_func_name));
+          target, false, fusion_info_hash));
     }
     unique_infos.insert(fusion_infos_[i].hash());
   }
