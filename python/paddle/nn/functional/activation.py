@@ -1855,10 +1855,3 @@ def swiglu(
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.swiglu(x, y)
-    else:
-        helper = LayerHelper("swiglu", **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type="swiglu", inputs={"x": x, "y": y}, outputs={"out": out}
-        )
-        return out
