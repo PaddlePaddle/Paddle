@@ -1850,6 +1850,23 @@ PHI_DEFINE_EXPORTED_int32(
 
 PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
 
+// Whether to enable CINN kernel cache
+// When enabled, generated files will be saved under:
+// FLAGS_cinn_kernel_cache_save_path/virtual_device_id/HostFuncName__fushionHashKey
+// Files:
+// - cinn_cuda_kernel.fatbin (CUDA kernels)
+// - cinn_cache.so (host modules)
+// This cache can accelerate subsequent CINN compilations
+PHI_DEFINE_EXPORTED_bool(enable_cinn_kernel_cache,
+                         false,
+                         "Whether enable cinn kernel cache.");
+
+// Specify the directory path of generated cinn kernel cache
+PHI_DEFINE_EXPORTED_string(
+    cinn_kernel_cache_save_path,
+    "/tmp/cinn/",
+    "Specify the directory path of generated cinn kernel cache.");
+
 PHI_DEFINE_EXPORTED_bool(
     comp_skip_default_ops,
     true,
@@ -2350,6 +2367,17 @@ PHI_DEFINE_EXPORTED_bool(
 PHI_DEFINE_EXPORTED_bool(use_accuracy_compatible_kernel,
                          false,
                          "Whether use torch compatible version kernel.");
+/**
+ * Legacy gemm related FLAG
+ * Name: FLAGS_use_legacy_gemm
+ * Since Version: 3.2.2
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use legacy gemm kernel.
+ */
+PHI_DEFINE_EXPORTED_bool(use_legacy_gemm,
+                         false,
+                         "Whether use legacy gemm dispatch logics.");
 
 /**
  * Allocator Compact related FLAG

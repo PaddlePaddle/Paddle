@@ -843,10 +843,30 @@ void ReduceStrideImpl(const Context& dev_ctx,
   DenseTensor reduce_buf_tensor;
   DenseTensor reduce_sem_tensor;
 
+  PADDLE_ENFORCE_LT(
+      reduce_stride_conf.gm_size(),
+      std::numeric_limits<int32_t>::max(),
+      ::common::errors::InvalidArgument(
+          "reduce_stride_conf.gm_size() should be less than int32_t"));
+
+  PADDLE_ENFORCE_LT(
+      reduce_stride_conf.sem_size(),
+      std::numeric_limits<int32_t>::max(),
+      ::common::errors::InvalidArgument(
+          "reduce_stride_conf.sem_size() should be less than int32_t"));
+
   std::vector<int> reduce_buf_size = {
       static_cast<int>(reduce_stride_conf.gm_size() / phi::SizeOf(x.dtype()))};
   std::vector<int> reduce_sem_size = {
       static_cast<int>(reduce_stride_conf.sem_size() / phi::SizeOf(x.dtype()))};
+
+  if (reduce_buf_size[0] == 0) {
+    reduce_buf_size[0] = phi::SizeOf(x.dtype());
+  }
+
+  if (reduce_sem_size[0] == 0) {
+    reduce_sem_size[0] = phi::SizeOf(x.dtype());
+  }
 
   if (reduce_stride_conf.enable_g_reduce()) {
     reduce_buf_tensor.Resize(common::make_ddim(reduce_buf_size));

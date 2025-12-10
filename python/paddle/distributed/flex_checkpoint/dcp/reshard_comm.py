@@ -28,7 +28,7 @@ from .utils import (
     slice_tensor,
 )
 
-GROUPED_BATCH_SIZE = 30
+GROUPED_BATCH_SIZE = 10
 
 
 class CommunicatorFactory:
@@ -264,7 +264,6 @@ class BroadcastCommunicator(AbstractCommunicator):
 
                 else:
                     buffer_tensor = paddle.zeros(item.slice_shape, item.dtype)
-
                 paddle.distributed.broadcast(
                     buffer_tensor, src=item.src_rank, group=process_group
                 )
@@ -536,6 +535,31 @@ class SendRecvCommunicator(AbstractCommunicator):
     def __init__(self, use_group):
         self.use_group = use_group
 
+    @staticmethod
+    def schedule_read_items(
+        read_items: list[ReadItem],
+    ) -> dict[str, list[ReadItem]]:
+        order_rules = lambda read_item: (
+            read_item.tensor_name,
+            read_item.src_rank,
+            read_item.src_global_offset,
+            read_item.dst_rank,
+            read_item.dst_local_offset,
+            read_item.dst_global_offset
+            if read_item.dst_global_offset is not None
+            else (),
+            read_item.src_local_offset,
+            read_item.slice_shape,
+            read_item.file_name,
+            read_item.dtype,
+        )
+
+        tensor_groups = defaultdict(list)
+        for item in read_items:
+            tensor_groups[item.tensor_name].append(item)
+
+        return dict(sorted(tensor_groups.items()))
+
     def communicate(self, read_items, state, context):
         comm_tasks = SendRecvCommunicator.schedule_read_items(read_items)
         cur_rank = context['rank']
@@ -581,8 +605,6 @@ class SendRecvCommunicator(AbstractCommunicator):
     def _process_batches(self, comm_tasks, cur_rank, source_state_dict):
         total_items = sum(len(items) for items in comm_tasks.values())
         item_count = 0
-        op_count = defaultdict(int)
-        max_op = 0
 
         batch_read_items = []
         batch_source_slices = {}
@@ -593,11 +615,6 @@ class SendRecvCommunicator(AbstractCommunicator):
             tensors_to_clear = set()
             for item in read_items:
                 item_count += 1
-                op_count[item.src_rank] += 1
-                max_op = max(max_op, op_count[item.src_rank])
-                for dst_rank in item.dst_rank:
-                    op_count[dst_rank] += 1
-                    max_op = max(max_op, op_count[dst_rank])
                 batch_read_items.append(item)
                 if cur_rank == item.src_rank:
                     src_tensor = source_state_dict[item.file_name][
@@ -622,7 +639,7 @@ class SendRecvCommunicator(AbstractCommunicator):
                         )
                         batch_target_slices[item] = dst_slice
 
-                if (max_op >= GROUPED_BATCH_SIZE) or (
+                if ((item_count % GROUPED_BATCH_SIZE) == 0) or (
                     item_count == total_items
                 ):
                     batch_data = types.SimpleNamespace(
@@ -636,8 +653,6 @@ class SendRecvCommunicator(AbstractCommunicator):
                     batch_source_slices = {}
                     batch_target_slices = {}
                     batch_local_copy_tasks = set()
-                    max_op = 0
-                    op_count = defaultdict(int)
 
             for tensor in tensors_to_clear:
                 tensor._clear_to_zero_allocation()

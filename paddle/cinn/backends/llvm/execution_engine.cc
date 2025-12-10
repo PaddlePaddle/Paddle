@@ -48,6 +48,7 @@
 #include <llvm/Transforms/Scalar/SimplifyCFG.h>
 
 #include <cmath>
+#include <fstream>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
@@ -61,10 +62,14 @@
 #include "paddle/cinn/backends/llvm/llvm_optimizer.h"
 #include "paddle/cinn/backends/llvm/llvm_util.h"
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
+#include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/runtime/arch_device.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/profiler.h"
 
+COMMON_DECLARE_bool(enable_cinn_kernel_cache);
+COMMON_DECLARE_string(cinn_kernel_cache_save_path);
 namespace cinn::backends {
 namespace {
 void InitializeLLVMPasses() {
@@ -223,8 +228,94 @@ void ExecutionEngine::Link<CodeGenGpuHost>(const ir::Module &module) {
   ir_emitter->Compile(module);
 }
 
-bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
-                                std::unique_ptr<llvm::LLVMContext> context) {
+std::string GetDeviceId() {
+  const auto device_id =
+      cinn::runtime::GetArchDevice(common::DefaultDeviceTarget());
+  return std::to_string(device_id.value());
+}
+
+// Use LLVM C++ API to compile .ll file to .o file
+bool ExecutionEngine::compileLLVMIR(llvm::Module *module,
+                                    std::string output_path) {
+  std::error_code EC;
+
+  // 1. Find target for current platform
+  std::string Error;
+  const llvm::Target *TheTarget =
+      llvm::TargetRegistry::lookupTarget(module->getTargetTriple(), Error);
+  if (!TheTarget) {
+    llvm::errs() << Error;
+    return false;
+  }
+
+  // 2. Create TargetMachine (this is the core)
+  llvm::TargetOptions TargetOpts;
+  // **Core:** Must be set to PIC (Position Independent Code)
+  llvm::Reloc::Model RelocModel = llvm::Reloc::Model::PIC_;
+  std::string CPU = "generic";
+  std::string Features = "";
+  llvm::TargetMachine *TM = TheTarget->createTargetMachine(
+      module->getTargetTriple(), CPU, Features, TargetOpts, RelocModel);
+  module->setDataLayout(TM->createDataLayout());
+  module->setTargetTriple(TM->getTargetTriple().str());
+
+  // Remove dso_local for stderr
+  for (llvm::GlobalVariable &GV : module->globals()) {
+    if (GV.getName() == "stderr" || GV.isDeclaration()) {
+      GV.setDSOLocal(false);
+    }
+  }
+
+  // 3. Set output file path and type
+  llvm::sys::fs::create_directories(output_path);
+  std::string output_file = output_path + "/" + CINN_HOST_MODULE_OBJ;
+  llvm::raw_fd_ostream dest(output_file, EC, llvm::sys::fs::OF_None);
+
+  // 4. Create PassManager and add "Emit Object File" Pass
+  llvm::legacy::PassManager pass_manager;
+  llvm::CodeGenFileType FileType = llvm::CodeGenFileType::CGFT_ObjectFile;
+  TM->addPassesToEmitFile(pass_manager, dest, nullptr, FileType);
+
+  // 5. Run Pass to generate .o file!
+  pass_manager.run(*module);
+  dest.flush();
+
+  VLOG(5) << "LLVM API: Successfully compiled to '" << output_file;
+  return true;
+}
+
+bool ExecutionEngine::linkSharedLibrary(
+    const std::string output_path,
+    const std::vector<std::string> &cinn_runtime_include_path) {
+  llvm::sys::fs::create_directories(output_path);
+
+  std::string output_so = output_path + "/" + CINN_CACHE_SO;
+  std::string cuda_obj = output_path + "/" + CINN_CUDA_KERNEL_OBJ;
+  std::string llvm_obj = output_path + "/" + CINN_HOST_MODULE_OBJ;
+  std::string cuda_lib_path = CUDA_TOOLKIT_ROOT_DIR;
+  std::string link_cmd = "g++ -shared -o " + output_so + " " + cuda_obj + " " +
+                         llvm_obj + " -L" + cuda_lib_path + "/lib64" +
+                         " -lcudart";
+
+  for (auto &header : cinn_runtime_include_path) {
+    link_cmd += " -L " + header + " -lcinnapi";
+  }
+
+  VLOG(5) << "Linker command: " << link_cmd << "\n";
+
+  int link_ret = system(link_cmd.c_str());
+  if (link_ret != 0) {
+    std::cerr << "Error: Final linking failed.\n";
+    return false;
+  }
+  return true;
+}
+
+bool ExecutionEngine::AddModule(
+    std::unique_ptr<llvm::Module> module,
+    std::unique_ptr<llvm::LLVMContext> context,
+    const std::string host_func_name,
+    const std::vector<std::string> &cinn_runtime_include_path) {
   utils::RecordEvent("ExecutionEngine AddModule", utils::EventType::kOrdinary);
   module->setDataLayout(jit_->getDataLayout());
   if (VLOG_IS_ON(5)) {
@@ -235,6 +326,41 @@ bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
     // main_jd_->dump(os);
     os.flush();
     VLOG(5) << buffer;
+  }
+
+  if (FLAGS_enable_cinn_kernel_cache) {
+    std::error_code EC;
+    std::string output_path = FLAGS_cinn_kernel_cache_save_path + "/" +
+                              GetDeviceId() + "/" + host_func_name;
+    llvm::sys::fs::create_directories(output_path);
+    llvm::raw_fd_ostream out(output_path + "/" + CINN_HOST_MODULE_LLVM, EC);
+    if (EC) {
+      LOG(ERROR) << "Failed to open file: " << EC.message();
+      return false;
+    }
+    module->print(out, {});
+    out.close();
+    VLOG(5) << "LLVM IR dumped to " << CINN_HOST_MODULE_LLVM;
+
+    std::string cache_so_path = output_path + "/" + CINN_CACHE_SO;
+    if (std::ifstream(cache_so_path).good()) {
+      // Cache file already exists, do nothing
+      // module will register through LoadAndRegisterFromCache
+      return true;
+    } else {
+      // Compiling LLVM IR with LLVM API
+      if (!compileLLVMIR(module.get(), output_path)) {
+        std::cerr << "Error: LLVM IR compilation failed.\n";
+        return false;
+      }
+
+      // Linking object files into shared library
+      if (!linkSharedLibrary(output_path, cinn_runtime_include_path)) {
+        std::cerr
+            << "Error: Linking object files into shared library failed.\n";
+        return false;
+      }
+    }
   }
   llvm::orc::ThreadSafeContext tsc(std::move(context));
   llvm::orc::ThreadSafeModule tsm(std::move(module), std::move(tsc));
@@ -255,8 +381,11 @@ void ExecutionEngine::RegisterModuleRuntimeSymbols(
   }
 }
 
-bool ExecutionEngine::AddSelfModule() {
-  return AddModule(std::move(m), std::move(ctx));
+bool ExecutionEngine::AddSelfModule(
+    const std::string host_func_name,
+    const std::vector<std::string> &cinn_runtime_include_path) {
+  return AddModule(
+      std::move(m), std::move(ctx), host_func_name, cinn_runtime_include_path);
 }
 
 void ExecutionEngine::ExportObject(const std::string &path) {
