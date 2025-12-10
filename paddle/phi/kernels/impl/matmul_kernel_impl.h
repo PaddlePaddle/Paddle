@@ -41,6 +41,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/full_kernel.h"
 
 COMMON_DECLARE_bool(cuda_core_int8_gemm);
+COMMON_DECLARE_bool(use_legacy_gemm);
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -145,17 +147,38 @@ void MatMulFunctionImplWithBlas(
     VLOG(3) << "MatMul's case 1";
     Out->Resize(common::make_ddim({}));
     dev_ctx.template Alloc<T>(Out);
-    blas.GEMM(CblasNoTrans,
-              CblasTrans,
-              1,
-              1,
-              M,
-              static_cast<T>(1),
-              y_data,
-              x_data,
-              static_cast<T>(flag),
-              dev_ctx.template Alloc<T>(Out));
-    return;
+    if (FLAGS_use_legacy_gemm) {
+      blas.GEMM(CblasNoTrans,
+                CblasTrans,
+                1,
+                1,
+                M,
+                static_cast<T>(1),
+                y_data,
+                x_data,
+                static_cast<T>(flag),
+                dev_ctx.template Alloc<T>(Out));
+      return;
+    } else {
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+      if (std::is_same<Context, phi::GPUContext>::value) {
+        blas.CUDOT(M, X.data<T>(), 1, Y.data<T>(), 1, Out->data<T>());
+      } else  // NOLINT
+#endif
+      {
+        blas.GEMM(CblasNoTrans,
+                  CblasTrans,
+                  1,
+                  1,
+                  M,
+                  static_cast<T>(1),
+                  y_data,
+                  x_data,
+                  static_cast<T>(flag),
+                  dev_ctx.template Alloc<T>(Out));
+      }
+      return;
+    }
   }
 
   if (x_ndim == 1) {
@@ -407,19 +430,53 @@ void MatMulFunctionImplWithBlas(
                 dev_ctx.template Alloc<T>(Out));
     } else {
       VLOG(3) << "MatMul's case 10";
-      blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
-                       trans_y ? CblasTrans : CblasNoTrans,
-                       M,
-                       N,
-                       K,
-                       static_cast<T>(1),
-                       x_data,
-                       y_data,
-                       static_cast<T>(flag),
-                       dev_ctx.template Alloc<T>(Out),
-                       out_batch_size,
-                       0,
-                       K * N);
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+      // NOTE(Pan Zhaowu): This change may cause performance degrade on current
+      // low-efficiency implementation of batched transpose. So enable with flag
+      // "use_accuracy_compatible_kernel"
+      if (!FLAGS_use_legacy_gemm && FLAGS_use_accuracy_compatible_kernel) {
+        // x_batch_size == 1 && M != 1 || !transy
+        DenseTensor processedY =
+            trans_y ? Y : phi::TransposeLast2Dim<T>(dev_ctx, Y);
+        DenseTensor processedX = X;
+        blas.GEMM(CblasNoTrans,
+                  trans_x ? CblasNoTrans : CblasTrans,
+                  Y.numel() / K,
+                  M,
+                  K,
+                  static_cast<T>(1),
+                  processedY.data<T>(),
+                  processedX.data<T>(),
+                  static_cast<T>(flag),
+                  dev_ctx.template Alloc<T>(Out));
+        // The actual layout is (B, N, M), need to reshape and
+        // transpose to (B, M, N), this requires batched transpose kernel
+        // to be implemented in high efficiency.
+        const auto out_original_shape = Out->dims();
+        std::vector<int64_t> actual_dim = common::vectorize(processedY.dims());
+        actual_dim[actual_dim.size() - 1] =
+            out_original_shape[out_original_shape.size() - 2];
+        Out->Resize(common::make_ddim(actual_dim));
+        DenseTensor transposedOut = phi::TransposeLast2Dim<T>(dev_ctx, *Out);
+        *Out = transposedOut;
+        Out->Resize(out_original_shape);
+      } else  // NOLINT
+#endif
+      {  // NOLINT
+        blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
+                         trans_y ? CblasTrans : CblasNoTrans,
+                         M,
+                         N,
+                         K,
+                         static_cast<T>(1),
+                         x_data,
+                         y_data,
+                         static_cast<T>(flag),
+                         dev_ctx.template Alloc<T>(Out),
+                         out_batch_size,
+                         0,
+                         K * N);
+      }
     }
   } else if (y_batch_size == 1) {
     if (!trans_x) {
