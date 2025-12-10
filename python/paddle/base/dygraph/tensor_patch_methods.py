@@ -1562,10 +1562,14 @@ def monkey_patch_tensor():
 
             current_stream = paddle.device.current_stream()
 
-            if (
-                consumer_stream.stream_base.raw_stream
-                != current_stream.stream_base.raw_stream
-            ):
+            def is_same_stream(
+                lhs: paddle.device.Stream, rhs: paddle.device.Stream
+            ) -> bool:
+                return (
+                    lhs.stream_base.raw_stream == rhs.stream_base.raw_stream
+                ) and (lhs.device == rhs.device)
+
+            if not is_same_stream(consumer_stream, current_stream):
                 event = paddle.device.Event()
                 event.record(current_stream)
                 consumer_stream.wait_event(event)
