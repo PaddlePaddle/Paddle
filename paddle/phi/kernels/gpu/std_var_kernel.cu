@@ -100,9 +100,9 @@ struct WelfordOps {
                                  index_t /*idx*/) const {
     index_t new_n = acc.n + 1;
     acc_scalar_t new_nf = static_cast<acc_scalar_t>(new_n);
-    acc_scalar_t delta = data - acc.mean;
+    acc_scalar_t delta = static_cast<acc_scalar_t>(data) - acc.mean;
     acc_scalar_t new_mean = acc.mean + delta / new_nf;
-    acc_scalar_t new_delta = data - new_mean;
+    acc_scalar_t new_delta = static_cast<acc_scalar_t>(data) - new_mean;
     return {
         new_mean,
         acc.m2 + delta * new_delta,
@@ -128,8 +128,10 @@ struct WelfordOps {
   inline C10_DEVICE res_t project(acc_t acc) const {
     const auto mean = static_cast<scalar_t>(acc.mean);
     const auto divisor = acc.nf > correction ? acc.nf - correction : 0;
-    const auto var = acc.m2 / divisor;
-    res_t results(take_sqrt ? device_sqrt(var) : var, mean);
+    const auto var = static_cast<scalar_t>(acc.m2 / divisor);
+    const auto var_sqrt =
+        static_cast<scalar_t>(device_sqrt(static_cast<acc_scalar_t>(var)));
+    res_t results(take_sqrt ? var_sqrt : var, mean);
     return results;
   }
 
@@ -210,5 +212,19 @@ void StdKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(var, GPU, ALL_LAYOUT, phi::VarKernel, float, double) {}
-PD_REGISTER_KERNEL(std, GPU, ALL_LAYOUT, phi::StdKernel, float, double) {}
+PD_REGISTER_KERNEL(var,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::VarKernel,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16) {}
+PD_REGISTER_KERNEL(std,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::StdKernel,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16) {}

@@ -127,7 +127,19 @@ void StdGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    var_grad, GPU, ALL_LAYOUT, phi::VarGradKernel, float, double) {}
-PD_REGISTER_KERNEL(
-    std_grad, GPU, ALL_LAYOUT, phi::StdGradKernel, float, double) {}
+PD_REGISTER_KERNEL(var_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::VarGradKernel,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16) {}
+PD_REGISTER_KERNEL(std_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::StdGradKernel,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16) {}
