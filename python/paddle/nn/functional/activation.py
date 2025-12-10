@@ -1845,7 +1845,7 @@ def swiglu(
         .. code-block:: python
 
             >>> import paddle
-            >>> import paddle.incubate.nn.functional as F
+            >>> import paddle.nn.functional as F
             >>> x = paddle.to_tensor([1, 2], dtype='float32')
             >>> out1, out2 = F.swiglu(x), F.swiglu(x, x)
             >>> print(out1, out2)
