@@ -108,7 +108,6 @@ __all__ = [
     "masked_multihead_attention",
     "blha_get_max_len",
     "block_multihead_attention",
-    "swiglu",
     "moe_combine",
     "expand_modality_expert_id",
     "cal_aux_loss",
