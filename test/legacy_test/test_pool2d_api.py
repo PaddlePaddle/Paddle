@@ -152,6 +152,40 @@ class TestPool2D_API(unittest.TestCase):
             )
             np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
+    def check_max_with_index_static_results(self, place):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            input = paddle.static.data(
+                name="input", shape=[2, 3, 32, 32], dtype="float32"
+            )
+            out, mask = max_pool2d(
+                input,
+                kernel_size=2,
+                stride=2,
+                padding=1,
+                dilation=2,
+                return_mask=True,
+            )
+
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            out_np, mask_np = max_pool2d_with_dilations_and_index_forward_naive(
+                input_np,
+                ksize=[2, 2],
+                strides=[2, 2],
+                paddings=[1, 1],
+                dilations=[2, 2],
+                global_pool=False,
+            )
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                feed={"input": input_np},
+                fetch_list=[out, mask],
+            )
+            np.testing.assert_allclose(fetches[0], out_np, rtol=1e-05)
+            np.testing.assert_allclose(fetches[1], mask_np, rtol=1e-05)
+
     def check_max_dygraph_results(self, place):
         with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
@@ -792,6 +826,7 @@ class TestPool2D_API(unittest.TestCase):
         paddle.enable_static()
         for place in self.places:
             self.check_max_static_results(place)
+            self.check_max_with_index_static_results(place)
             self.check_avg_static_results(place)
             self.check_lp_static_results(place)
             self.check_lp_float64_static(place)
@@ -803,6 +838,7 @@ class TestPool2D_API(unittest.TestCase):
         paddle.enable_static()
         for place in self.places:
             self.check_max_static_results(place)
+            self.check_max_with_index_static_results(place)
         paddle.disable_static()
 
     def check_max_dygraph_with_dilations(self, place):

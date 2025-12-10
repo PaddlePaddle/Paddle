@@ -29,7 +29,6 @@ NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST = [
     'lstm',
     'max_pool2d_with_index',
     'max_pool2d_with_dilations',
-    'max_pool2d_with_dilations_and_index',
     'max_pool3d_with_index',
     'fractional_max_pool2d',
     'fractional_max_pool3d',

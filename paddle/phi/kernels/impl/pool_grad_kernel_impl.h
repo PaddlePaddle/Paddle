@@ -505,31 +505,6 @@ void MaxPool2dWithIndexGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void MaxPool2dWithDilationsAndIndexGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& x,
-    const DenseTensor& mask,
-    const DenseTensor& dout,
-    const std::vector<int>& kernel_size,
-    const std::vector<int>& strides,
-    const std::vector<int>& paddings,
-    const std::vector<int>& dilations,
-    bool global_pooling,
-    bool ceil_mode UNUSED,
-    DenseTensor* dx) {
-  MaxPool2dWithDilationsAndIndexGradRawKernel<Context, T>(dev_ctx,
-                                                          x,
-                                                          mask,
-                                                          dout,
-                                                          kernel_size,
-                                                          strides,
-                                                          paddings,
-                                                          dilations,
-                                                          global_pooling,
-                                                          dx);
-}
-
-template <typename T, typename Context>
 void Pool3dGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out,

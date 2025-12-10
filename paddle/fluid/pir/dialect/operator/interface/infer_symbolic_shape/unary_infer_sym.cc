@@ -3098,40 +3098,6 @@ bool MaxPool2dWithDilationsOpInferSymbolicShape(
   return true;
 }
 
-bool MaxPool2dWithDilationsAndIndexOpInferSymbolicShape(
-    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto &x_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
-
-  PADDLE_ENFORCE_EQ(
-      x_shape.size(),
-      4,
-      common::errors::InvalidArgument("Pooling input should be 4-D Tensor, "
-                                      "but received %dD-Tensor",
-                                      x_shape.size()));
-
-  std::vector<int> paddings =
-      paddle::dialect::details::GetVectorAttr<int>(op, "paddings");
-  std::vector<int> strides =
-      paddle::dialect::details::GetVectorAttr<int>(op, "strides");
-
-  PADDLE_ENFORCE_EQ(
-      paddings.size(),
-      2,
-      common::errors::InvalidArgument(
-          "It is expected paddings size equals to 2, but got size %d",
-          paddings.size()));
-  PADDLE_ENFORCE_EQ(
-      strides.size(),
-      2,
-      common::errors::InvalidArgument(
-          "It is expected strides_size equals to 2, but got size %d",
-          strides.size()));
-
-  return MaxPool2dWithDilationsAndIndexRawInferSymbolicShape(op, infer_context);
-}
-
 bool Pool3dOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   std::vector<int64_t> kernel_size_ =

@@ -95,18 +95,6 @@ void MaxPool2dWithIndexKernel(const Context& dev_ctx,
                               DenseTensor* mask);
 
 template <typename T, typename Context>
-void MaxPool2dWithDilationsAndIndexKernel(const Context& dev_ctx,
-                                          const DenseTensor& x,
-                                          const std::vector<int>& kernel_size,
-                                          const std::vector<int>& strides,
-                                          const std::vector<int>& paddings,
-                                          const std::vector<int>& dilations,
-                                          bool global_pooling,
-                                          bool ceil_mode,
-                                          DenseTensor* out,
-                                          DenseTensor* mask);
-
-template <typename T, typename Context>
 void Pool3dKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const std::vector<int64_t>& kernel_size,
