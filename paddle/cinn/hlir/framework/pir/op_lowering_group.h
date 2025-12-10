@@ -60,6 +60,7 @@ class OpLoweringGroup {
         fusion_tracker_ptr(fusion_tracker_ptr) {}
 
   const std::string& FuncName() const { return this->fn_name_; }
+  void RenewFuncName(std::string new_fn_name) { this->fn_name_ = new_fn_name; }
   ::pir::Block* GetParentBlock() const;
   ::pir::Program* GetParentProgram() const;
   std::vector<::pir::Value> GetGroupOutputValues() const;

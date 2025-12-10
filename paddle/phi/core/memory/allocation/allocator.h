@@ -143,6 +143,7 @@ class Allocation : public phi::Allocation {
   DecoratedAllocatorStack decorated_allocators_;
 
   friend class Allocator;
+  friend class MultiScalePoolAllocator;
 };
 
 using AllocationPtr = phi::Allocator::AllocationPtr;
@@ -254,19 +255,32 @@ class PADDLE_API MultiScalePoolAllocator : public Allocator {
   // Allocate an allocation from small_allocator or large_allocator according to
   // size.
   AllocationPtr Allocate(size_t size) override {
+    auto allocation = IsSmallRequest(size) ? small_allocator_->Allocate(size)
+                                           : large_allocator_->Allocate(size);
+    static_cast<Allocation*>(allocation.get())
+        ->RegisterDecoratedAllocator(this);
     if (FLAGS_record_alloc_event) {
-      RecordAlloc(size);
+      uint64_t id = global_seq_counter_.fetch_add(1, std::memory_order_relaxed);
+      uintptr_t allocator_instance = reinterpret_cast<uintptr_t>(this);
+      RecordAlloc(allocator_instance, id, size);
+      allocation->set_id(id);
     }
-    return IsSmallRequest(size) ? small_allocator_->Allocate(size)
-                                : large_allocator_->Allocate(size);
+    return allocation;
   };
   // Free an allocation from small_allocator or large_allocator.
   void Free(phi::Allocation* allocation) override {
+    if (FLAGS_record_alloc_event) {
+      uint64_t id = allocation->id();
+      uintptr_t allocator_instance = reinterpret_cast<uintptr_t>(this);
+      RecordFree(allocator_instance, id, allocation->size());
+    }
+    static_cast<Allocation*>(allocation)->PopDecoratedAllocator();
     IsSmallRequest(allocation->size()) ? small_allocator_->Free(allocation)
                                        : large_allocator_->Free(allocation);
   };
   // Get allocate event when start FLAGS_record_alloc_event.
-  std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>> GetEvents() {
+  std::vector<std::tuple<uintptr_t, bool, uint64_t, size_t, int64_t, int64_t>>
+  GetEvents() {
     std::lock_guard<SpinLock> lock(spinlock_);
     return allocation_records_;
   }
@@ -282,16 +296,21 @@ class PADDLE_API MultiScalePoolAllocator : public Allocator {
   size_t alignment_;
   phi::Place place_;
 
-  // Record event into `allocation_records_` when `FLAGS_record_alloc_event` is
-  // True.
-  void RecordAlloc(size_t size);
+  // Record allocate event into `allocation_records_` when
+  // `FLAGS_record_alloc_event` is True.
+  void RecordAlloc(uintptr_t allocator, uint64_t id, size_t size);
 
-  // Return tuple is <id, allocate_size, cur_allocated, max_reserved>, if more
-  // fields are added later, consider using a struct to combine them.
-  std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>>
+  // Record free event into `allocation_records_` when
+  // `FLAGS_record_alloc_event` is True.
+  void RecordFree(uintptr_t allocator, uint64_t id, size_t size);
+
+  // Return tuple is <allocator_instance, is_allocate, id, allocate_size,
+  // cur_allocated, max_reserved>, if more fields are added later, consider
+  // using a struct to combine them.
+  std::vector<std::tuple<uintptr_t, bool, uint64_t, size_t, int64_t, int64_t>>
       allocation_records_;
   SpinLock spinlock_;
-  static std::atomic<uint64_t> global_seq_counter_;
+  static inline std::atomic<uint64_t> global_seq_counter_{0};
 };
 
 }  // namespace allocation

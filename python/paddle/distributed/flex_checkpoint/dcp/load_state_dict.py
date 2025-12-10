@@ -64,7 +64,9 @@ _UNINIT_TENSOR_MODES = ["send_recv", "grouped_send_recv"]
 _metadata_manager = MetadataManager()
 
 
-def get_checkpoint_files(path, use_cache=True, unique_id=None):
+def get_checkpoint_files(
+    path, use_cache=True, unique_id=None, process_group=None, safetensors=False
+):
     # if unique_id is None, all file ends with .metadata and .distcp is returned
     if unique_id is None:
         unique_id = ''
@@ -82,7 +84,7 @@ def get_checkpoint_files(path, use_cache=True, unique_id=None):
         file for file in accessible_files if file.endswith(".safetensors")
     ]
 
-    if len(safetensors_files) > 0:
+    if safetensors and len(metadata_files) == 0:
         logger.info(
             f"Found HuggingFace-format checkpoint with files: {', '.join(safetensors_files)}"
         )
@@ -95,7 +97,7 @@ def get_checkpoint_files(path, use_cache=True, unique_id=None):
             logger.info(
                 f"No metadata file found in the checkpoint directory: {path}. Creating one now."
             )
-            create_hf_ckpt_metadata(path)
+            create_hf_ckpt_metadata(path, process_group=process_group)
             accessible_files = os.listdir(path)
             metadata_files = [
                 file
@@ -114,7 +116,15 @@ def get_checkpoint_files(path, use_cache=True, unique_id=None):
         file
         for file in accessible_files
         if file.endswith(f"{unique_id}.distcp")
+        or file.endswith(f"{unique_id}.safetensors")
     ]
+    # Check that local_data_files does not contain both .distcp and .safetensors files at the same time
+    if any(file.endswith('.distcp') for file in local_data_files) and any(
+        file.endswith('.safetensors') for file in local_data_files
+    ):
+        raise ValueError(
+            f"Checkpoint directory cannot contain both .distcp and .safetensors files simultaneously in {path}."
+        )
     assert len(local_data_files) > 0, (
         f"No data file ends with '{unique_id}.distcp' found in the checkpoint directory:{path}."
     )
@@ -481,7 +491,12 @@ def _handle_aoa(
     comm_method,
 ):
     use_dist = paddle.distributed.get_world_size() > 1
-    metadata_files, _ = get_checkpoint_files(path, unique_id=unique_id)
+    metadata_files, _ = get_checkpoint_files(
+        path,
+        unique_id=unique_id,
+        process_group=process_group,
+        safetensors=safetensors,
+    )
     assert len(metadata_files) == 1, "Only support one metadata file now."
     metadata = paddle.load(os.path.join(path, metadata_files[0]))
     state_dict_metadata = metadata.state_dict_metadata
@@ -1009,7 +1024,10 @@ def load_state_dict_impl(
             check_unique_id(unique_id, process_group)
 
         metadata_files, local_data_files = get_checkpoint_files(
-            path, unique_id=unique_id
+            path,
+            unique_id=unique_id,
+            process_group=process_group,
+            safetensors=safetensors,
         )
 
         metadata_list = []
@@ -1207,7 +1225,7 @@ def load_merged_state_dict(
         assert unique_id >= 0, f'{unique_id} should be >= 0'
 
     metadata_files, local_data_files = get_checkpoint_files(
-        path, unique_id=unique_id
+        path, unique_id=unique_id, safetensors=safetensors
     )
 
     metadata_list = []
@@ -1365,7 +1383,7 @@ def merge_sharded_state_dict(
         paddle.distributed.barrier(process_group)
 
     metadata_files, local_data_files = get_checkpoint_files(
-        load_path, unique_id=unique_id
+        load_path, unique_id=unique_id, safetensors=safetensors
     )
 
     metadata_list = []

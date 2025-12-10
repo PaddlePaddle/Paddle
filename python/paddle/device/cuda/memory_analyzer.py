@@ -309,28 +309,41 @@ class MemoryAnalysisTool:
         print_table("Block Size Distribution", dist_headers, dist_rows)
 
     @classmethod
-    def allocate_record_table(self, data):
+    def allocate_record_table(self, data, output_filepath: str = ""):
         if not data:
             print("No data to display.")
             return
 
         print(f"Record data size: {len(data)}, start printing...")
-        data_rows = []
+        headers = [
+            'Allocator_Instance',
+            'Is_Allocate',
+            'Seq_ID',
+            'Req_Size',
+            'Cur_Alloc',
+            'Cur_Rsrv',
+        ]
+        formatted_row = []
+        all_lines = []
+        all_lines.append("\t".join(headers))
         for row in data:
-            # row[0]=ID, row[1]=Size, row[2]=Allocated, row[3]=Reserved
-            data_rows.append(
-                [
-                    row[0],
-                    format_size(row[1]),
-                    format_size(row[2]),
-                    format_size(row[3]),
-                ]
-            )
+            formatted_row = [
+                str(row[0]),
+                "Allocate" if row[1] else "Free",
+                str(row[2]),
+                str(row[3]),
+                str(row[4]),
+                str(row[5]),
+            ]
+            line = "\t".join(formatted_row)
+            all_lines.append(line)
 
-        headers = ['Seq ID', 'Req Size', 'Cur Alloc', 'Cur Rsrv']
-        title = "Allocate Event Table"
-
-        print_table(title, headers, data_rows)
+        try:
+            with open(output_filepath, 'w', encoding='utf-8') as f:
+                f.write("\n".join(all_lines))
+            print(f"Data successfully written to: {output_filepath}")
+        except OSError as e:
+            print(f"Error writing to file {output_filepath}: {e}")
 
     @classmethod
     def allocate_record_plot(self, data, save_path: str = ""):
@@ -347,10 +360,14 @@ class MemoryAnalysisTool:
             return
         print(f"Record data size: {len(data)}, start plotting...")
         data_np = np.array(data)
-        ids = data_np[:, 0]
-        sizes = data_np[:, 1]
-        allocated = data_np[:, 2]
-        reserved = data_np[:, 3]
+        is_allocate = data_np[:, 1]
+        filter_mask = is_allocate == 1
+        data_np = data_np[filter_mask]
+        allocator_instance = data_np[:, 0]  # allocator_instance not used
+        ids = data_np[:, 2]
+        sizes = data_np[:, 3]
+        allocated = data_np[:, 4]
+        reserved = data_np[:, 5]
 
         LOG_START_VALUE = 1
         plt.style.use('seaborn-v0_8-whitegrid')
