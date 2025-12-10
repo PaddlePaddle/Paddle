@@ -44,9 +44,9 @@ void ScatterNdAddKernel(const Context &dev_ctx,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
   if (index_type == phi::DataType::INT32) {
-    phi::funcs::GPUScatterNdAdd<T, int32_t>(dev_ctx, updates, index, out);
+    funcs::GPUScatterNdAdd<T, int32_t>(dev_ctx, updates, index, out);
   } else {
-    phi::funcs::GPUScatterNdAdd<T, int64_t>(dev_ctx, updates, index, out);
+    funcs::GPUScatterNdAdd<T, int64_t>(dev_ctx, updates, index, out);
   }
 }
 

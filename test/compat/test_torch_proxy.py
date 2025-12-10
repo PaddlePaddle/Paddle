@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pathlib
 import sys
 import unittest
 from unittest.mock import MagicMock
@@ -20,6 +21,8 @@ import numpy as np
 
 import paddle
 from paddle.compat.proxy import create_fake_class, create_fake_function
+
+sys.path.append(str(pathlib.Path(__file__).parent / "fake_modules"))
 
 
 def use_torch_inside_inner_function():

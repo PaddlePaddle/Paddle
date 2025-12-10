@@ -15,6 +15,7 @@
 #include <sstream>
 
 #include "gtest/gtest.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
@@ -24,6 +25,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "test/cpp/eager/data_structure_tests/grad_node_test.h"
 #include "test/cpp/eager/test_utils.h"
+COMMON_DECLARE_bool(tensor_md5_checksum_use_binary_format);
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 
@@ -527,6 +529,10 @@ TEST(EagerUtils, SaveTensorMD5CheckSumToFile) {
       CreateTestCPUTensor<phi::float16>(static_cast<phi::float16>(1), ddim))
   EXPECT_SAVE_TENSOR_MD5_CHECKSUM_FAILURE(
       CreateTestCPUTensor<int32_t>(static_cast<int32_t>(1), ddim))
+  paddle::Tensor complex64_t =
+      CreateTestCPUTensor(phi::complex64(1.0f, 2.0f), ddim);
+  paddle::Tensor complex128_t =
+      CreateTestCPUTensor(phi::complex128(1.0f, 2.0f), ddim);
 #if defined(PADDLE_WITH_CUDA)
   EXPECT_SAVE_TENSOR_MD5_CHECKSUM_FAILURE(
       CreateTestCPUTensor<phi::bfloat16>(static_cast<phi::bfloat16>(1), ddim))
@@ -543,6 +549,16 @@ TEST(EagerUtils, SaveTensorMD5CheckSumToFile) {
   EXPECT_SAVE_TENSOR_MD5_CHECKSUM_SUCCESS(optional_t)
   EXPECT_SAVE_TENSOR_MD5_CHECKSUM_SUCCESS(tensors)
   EXPECT_SAVE_TENSOR_MD5_CHECKSUM_SUCCESS(opt_tensors)
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_SUCCESS(complex64_t)
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_SUCCESS(complex128_t)
+  // test  using binary format
+  FLAGS_tensor_md5_checksum_use_binary_format = true;
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_SUCCESS(t)
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_SUCCESS(optional_t)
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_SUCCESS(tensors)
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_SUCCESS(opt_tensors)
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_SUCCESS(complex64_t)
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_SUCCESS(complex128_t)
   // test Fake dist tensor
   t.set_impl(std::make_shared<phi::distributed::DistTensor>());
   EXPECT_SAVE_TENSOR_MD5_CHECKSUM_SUCCESS(t)

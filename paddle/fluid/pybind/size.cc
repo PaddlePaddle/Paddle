@@ -20,8 +20,6 @@
 
 namespace paddle::pybind {
 
-extern PyTypeObject Paddle_SizeType;
-
 static const char* paddle_size_doc =
     R"DOC(The result type of a call to ``paddle.Tensor.size()``.
 It describes the size of all dimensions of the original tensor. As a subclass of `list`,

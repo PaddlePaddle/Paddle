@@ -38,7 +38,7 @@ void Reduce(const KPDevice& dev_ctx,
             DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   std::vector<int> reduce_dims =
-      phi::funcs::details::GetReduceDim(dims, x.dims().size(), reduce_all);
+      funcs::details::GetReduceDim(dims, x.dims().size(), reduce_all);
 
   int64_t reduce_num = 1;
   for (auto i : reduce_dims) {
@@ -56,25 +56,24 @@ void Reduce(const KPDevice& dev_ctx,
         "ReduceKernel",
         ([&] {
           using MPType = typename phi::dtype::MPTypeTrait<data_t>::Type;
-          phi::funcs::ReduceKernel<data_t,
-                                   data_t,
-                                   ReduceOp,
-                                   TransformOp<data_t, MPType>,
-                                   IsMean>(
-              dev_ctx,
-              tmp_tensor,
-              out,
-              TransformOp<data_t, MPType>(reduce_num),
-              reduce_dims);
+          funcs::ReduceKernel<data_t,
+                              data_t,
+                              ReduceOp,
+                              TransformOp<data_t, MPType>,
+                              IsMean>(dev_ctx,
+                                      tmp_tensor,
+                                      out,
+                                      TransformOp<data_t, MPType>(reduce_num),
+                                      reduce_dims);
         }));
   } else {
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-    phi::funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>, IsMean>(
+    funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>, IsMean>(
         dev_ctx, x, out, TransformOp<T, MPType>(reduce_num), reduce_dims);
   }
 #else
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  phi::funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>, IsMean>(
+  funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>, IsMean>(
       dev_ctx, x, out, TransformOp<T, MPType>(reduce_num), reduce_dims);
 #endif
 }

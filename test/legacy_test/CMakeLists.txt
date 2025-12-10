@@ -40,6 +40,7 @@ endif()
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_sdpa_kernel)
   list(REMOVE_ITEM TEST_OPS test_vmmallocator)
+  list(REMOVE_ITEM TEST OPS test_allocator_visitor)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fractional_max_pool3d_op)
@@ -118,6 +119,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_hapi_model")
   list(REMOVE_ITEM TEST_OPS test_async_read_write)
   list(REMOVE_ITEM TEST_OPS test_fp8_gemm)
+  list(REMOVE_ITEM TEST_OPS test_batched_gemm)
   list(REMOVE_ITEM TEST_OPS test_fp8_quant)
   list(REMOVE_ITEM TEST_OPS test_incubate_fast_ln)
   list(REMOVE_ITEM TEST_OPS test_incubate_moe_gate_dispatch_and_quant)
@@ -163,6 +165,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_ps_dispatcher)
   list(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_nlp)
   list(REMOVE_ITEM TEST_OPS test_nvprof)
+  list(REMOVE_ITEM TEST_OPS test_batched_gemm)
 
   # TODO: Fix these unittests failed on Windows
   list(REMOVE_ITEM TEST_OPS test_debugger)
@@ -298,8 +301,6 @@ if(WITH_COVERAGE
    OR WITH_NV_JETSON)
   list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
 endif()
-
-list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
 
 if((WITH_ROCM OR WITH_GPU) OR NOT WITH_MKLML)
   # matmul with multiple heads need MKL support
@@ -583,6 +584,7 @@ if(NOT WITH_GPU
    OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
 )# Restrict the use of older versions of CUB
   list(REMOVE_ITEM TEST_OPS test_incubate_fast_ln)
+  list(REMOVE_ITEM TEST_OPS test_batched_gemm)
 endif()
 
 set(has_arch_ge80 FALSE)
@@ -600,6 +602,7 @@ if(NOT WITH_GPU
    OR APPLE
    OR WITH_ROCM)
   list(REMOVE_ITEM TEST_OPS test_moe_permute_unpermute)
+  list(REMOVE_ITEM TEST_OPS test_batched_gemm)
 endif()
 
 if(NOT WITH_CUDNN_FRONTEND)
@@ -1313,3 +1316,4 @@ endif()
 set_tests_properties(test_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_load_state_dict_from_url PROPERTIES TIMEOUT 40)
 set_tests_properties(test_flash_attention PROPERTIES TIMEOUT 240)
+set_tests_properties(test_eig_op PROPERTIES TIMEOUT 240)

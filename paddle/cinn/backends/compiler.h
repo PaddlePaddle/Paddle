@@ -14,12 +14,12 @@
 
 #pragma once
 
-#include <string_view>
-
+#include <dlfcn.h>
 #include <fstream>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <string_view>
 
 #include "paddle/cinn/backends/llvm/codegen_llvm.h"
 #include "paddle/cinn/backends/llvm/execution_engine.h"
@@ -131,6 +131,43 @@ class Compiler final {
 
   std::vector<void*> GetFnPtr() const { return fn_ptr_; }
 
+  /**
+   * Set pir host_func_name_
+   */
+  void SetFuncName(std::string func_name) { host_func_name_ = func_name; }
+
+  /**
+   * Get pir host_func_name_
+   */
+  std::string GetFuncName() const { return host_func_name_; }
+
+  std::string GetDeviceId() const;
+
+  void LoadAndRegisterFromCache();
+
+  ~Compiler() {
+#ifdef CINN_WITH_CUDA
+    // Release GPU Resource: CUDA module handle
+    if (cuda_module_handle_) {
+      CUresult result =
+          cuModuleUnload(static_cast<CUmodule>(cuda_module_handle_));
+      if (result != CUDA_SUCCESS) {
+        LOG(WARNING) << "Failed to unload CUDA module. Error code: " << result;
+      }
+      cuda_module_handle_ = nullptr;
+    }
+#endif
+    // Release CPU Resource: dynamic library handle
+    if (dynamic_library_handle_) {
+      int result = dlclose(dynamic_library_handle_);
+      if (result != 0) {
+        LOG(WARNING) << "Error closing dynamic library handle for "
+                     << dynamic_library_path_ << ". Error: " << dlerror();
+      }
+      dynamic_library_handle_ = nullptr;
+    }
+  }
+
  private:
   // do not register device symbol until end=true for build function
   void RegisterDeviceModuleSymbol();
@@ -164,14 +201,33 @@ class Compiler final {
   // only heterogeneous systems need to record device func and module
   std::vector<std::string> device_fn_name_;
   std::string device_fn_code_;
+  // kernel cache control
+  std::string host_func_name_;
+
 #ifdef CINN_WITH_CUDA
   std::unique_ptr<runtime::cuda::CUDAModule> cuda_module_;
+  // dynamic library support
+  std::string dynamic_library_path_;
+  void* dynamic_library_handle_{nullptr};
+  void* cuda_module_handle_{nullptr};
 #endif
 #ifdef CINN_WITH_HIP
   std::unique_ptr<runtime::hip::HIPModule> hip_module_;
 #endif
 #ifdef CINN_WITH_SYCL
   std::unique_ptr<runtime::sycl::SYCLModule> sycl_module_;
+#endif
+
+  // Dynamic library helper methods
+#ifdef CINN_WITH_CUDA
+  std::string GetCachePath() const;
+  std::string ComputeSourceHash();
+  std::string GetDeviceArch();
+  std::string GetComputeArch();
+  std::string GenerateObjectWithoutCache(const std::string& source_code);
+  std::string GenerateFatbinWithoutCache();
+  void SaveKernelNamesToMeta();
+  void LoadKernelNamesFromMeta();
 #endif
 };
 

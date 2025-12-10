@@ -49,11 +49,9 @@ void ScatterNdAddGradKernel(const Context &dev_ctx,
     // Gradient by Gather: dUpdates = dO[Ids]
     const auto &index_type = index.dtype();
     if (index_type == phi::DataType::INT32) {
-      phi::funcs::CPUGatherNd<T, int32_t>(
-          dev_ctx, out_grad, index, updates_grad);
+      funcs::CPUGatherNd<T, int32_t>(dev_ctx, out_grad, index, updates_grad);
     } else {
-      phi::funcs::CPUGatherNd<T, int64_t>(
-          dev_ctx, out_grad, index, updates_grad);
+      funcs::CPUGatherNd<T, int64_t>(dev_ctx, out_grad, index, updates_grad);
     }
   }
 }

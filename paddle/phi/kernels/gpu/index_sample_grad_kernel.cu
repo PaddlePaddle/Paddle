@@ -89,7 +89,7 @@ void IndexSampleGradKernel(const Context& dev_ctx,
   size_t input_length = input_dim[1];
   size_t index_length = index_dim[1];
 
-  phi::funcs::SetConstant<Context, T> set_zero;
+  funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, x_grad, static_cast<T>(0));
   if (batch_size == 0 || input_length == 0 || index_length == 0) {
     return;

@@ -760,6 +760,18 @@ PHI_DEFINE_EXPORTED_string(
     dump_api_python_stack_path,
     "",
     "Dump api forward python call stack to the dir path");
+/**
+ * Debug related FLAG
+ * Name: dump_api_and_gradnode_python_stack_dir
+ * Since Version: 3.3
+ * Value Range: string, default=""
+ * Example:
+ * Note: Dump api and gradnode forward python call stack to the dir path.
+ */
+PHI_DEFINE_EXPORTED_string(
+    dump_api_and_gradnode_python_stack_dir,
+    "",
+    "Dump api and gradnode forward python call stack to the dir path");
 
 /**
  * Debug related FLAG
@@ -795,7 +807,7 @@ PHI_DEFINE_EXPORTED_bool(share_tensor_for_grad_tensor_holder,
 /**
  * Debug related FLAG
  * Name: tensor_md5_checksum_precision
- * Since Version: 3.2.1
+ * Since Version: 3.3
  * Value Range: int32, default=3
  * Example:
  * Note: The precision of the tensor data used for computing the MD5 checksum
@@ -805,6 +817,20 @@ PHI_DEFINE_EXPORTED_bool(share_tensor_for_grad_tensor_holder,
 PHI_DEFINE_EXPORTED_int32(tensor_md5_checksum_precision,
                           3,
                           "The precision of tensor md5 checksum.");
+/**
+ * Debug related FLAG
+ * Name: tensor_md5_checksum_use_binary_input
+ * Since Version: 3.3
+ * Value Range: bool, default=false
+ * Example:
+ * Note: The data format used for calculating the md5 checksum. If true, the md5
+ * checksum will be calculated based on the binary format of the stored data.
+ *
+ */
+PHI_DEFINE_EXPORTED_bool(
+    tensor_md5_checksum_use_binary_format,
+    false,
+    "Whether to use binary format when computing tensor md5 checksum.");
 
 /**
  * Debug related FLAG
@@ -1601,11 +1627,11 @@ PHI_DEFINE_EXPORTED_bool(npu_storage_format, false, "");
  * CUDNNv8 related FLAG
  * Name: enable_cudnn_frontend
  * Since Version: 2.5.0
- * Value Range: bool, default=false
+ * Value Range: bool, default=true
  * Example:
  * Note: Enable CUDNNv8 Frontend API for CUDNN kernels.
  */
-PHI_DEFINE_EXPORTED_bool(enable_cudnn_frontend, false, "");
+PHI_DEFINE_EXPORTED_bool(enable_cudnn_frontend, true, "");
 
 /**
  * CUDNNv8 related FLAG
@@ -1824,6 +1850,23 @@ PHI_DEFINE_EXPORTED_int32(
 
 PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
 
+// Whether to enable CINN kernel cache
+// When enabled, generated files will be saved under:
+// FLAGS_cinn_kernel_cache_save_path/virtual_device_id/HostFuncName__fushionHashKey
+// Files:
+// - cinn_cuda_kernel.fatbin (CUDA kernels)
+// - cinn_cache.so (host modules)
+// This cache can accelerate subsequent CINN compilations
+PHI_DEFINE_EXPORTED_bool(enable_cinn_kernel_cache,
+                         false,
+                         "Whether enable cinn kernel cache.");
+
+// Specify the directory path of generated cinn kernel cache
+PHI_DEFINE_EXPORTED_string(
+    cinn_kernel_cache_save_path,
+    "/tmp/cinn/",
+    "Specify the directory path of generated cinn kernel cache.");
+
 PHI_DEFINE_EXPORTED_bool(
     comp_skip_default_ops,
     true,
@@ -1964,6 +2007,12 @@ PHI_DEFINE_EXPORTED_string(hml_dir,
 PHI_DEFINE_EXPORTED_string(lapack_dir,
                            "",
                            "Specify path for loading liblapack.so.");  // NOLINT
+
+#ifdef PADDLE_WITH_MAGMA
+PHI_DEFINE_EXPORTED_string(magma_dir,
+                           "",
+                           "Specify path for loading libmagma.so.");  // NOLINT
+#endif
 
 /**
  * Apply check infer symbolic pass FLAG
@@ -2318,6 +2367,17 @@ PHI_DEFINE_EXPORTED_bool(
 PHI_DEFINE_EXPORTED_bool(use_accuracy_compatible_kernel,
                          false,
                          "Whether use torch compatible version kernel.");
+/**
+ * Legacy gemm related FLAG
+ * Name: FLAGS_use_legacy_gemm
+ * Since Version: 3.2.2
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use legacy gemm kernel.
+ */
+PHI_DEFINE_EXPORTED_bool(use_legacy_gemm,
+                         false,
+                         "Whether use legacy gemm dispatch logics.");
 
 /**
  * Allocator Compact related FLAG
@@ -2371,3 +2431,15 @@ PHI_DEFINE_EXPORTED_int64(
 PHI_DEFINE_EXPORTED_bool(try_allocate,
                          false,
                          "whether use try allocate in memory compact.");
+
+/**
+ * Allocator Compact related FLAG
+ * Name: FLAGS_record_alloc_event
+ * Since Version: 3.3
+ * Value Range: bool, default=false
+ * Example:
+ * Note: whether record allocate event.
+ */
+PHI_DEFINE_EXPORTED_bool(record_alloc_event,
+                         false,
+                         "whether record allocate event.");

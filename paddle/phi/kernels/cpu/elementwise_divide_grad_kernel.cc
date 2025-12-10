@@ -33,7 +33,7 @@ void DivideGradKernel(const Context& dev_ctx,
                       DenseTensor* dx,
                       DenseTensor* dy) {
   funcs::ElementwiseGradPreProcess(dout, dx);
-  phi::funcs::ElemwiseGradCompute<Context, T, DivGradDX<T>, DivGradDY<T>>(
+  funcs::ElemwiseGradCompute<Context, T, DivGradDX<T>, DivGradDY<T>>(
       dev_ctx, x, y, out, dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
 }
 

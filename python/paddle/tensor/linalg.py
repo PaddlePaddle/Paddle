@@ -2210,23 +2210,23 @@ def matrix_rank(
         Tensor: Rank of tensor x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> a = paddle.eye(10)
             >>> b = paddle.linalg.matrix_rank(a)
             >>> print(b)
-            Tensor(shape=[], dtype=int32, place=Place(cpu), stop_gradient=True,
-            10)
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+                   10)
 
             >>> c = paddle.ones(shape=[3, 4, 5, 5])
             >>> d = paddle.linalg.matrix_rank(c, tol=0.01, hermitian=True)
             >>> print(d)
-            Tensor(shape=[3, 4], dtype=int32, place=Place(cpu), stop_gradient=True,
-            [[1, 1, 1, 1],
-             [1, 1, 1, 1],
-             [1, 1, 1, 1]])
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+                   [[1, 1, 1, 1],
+                    [1, 1, 1, 1],
+                    [1, 1, 1, 1]])
 
     """
     target_dtype = (
@@ -3838,7 +3838,7 @@ def eigh(
           complex64 and complex128. The eigenvectors of eigh op.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3849,8 +3849,8 @@ def eigh(
             [0.17157286, 5.82842731])
             >>> print(out_vector)
             Tensor(shape=[2, 2], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[(-0.9238795042037964+0j), (-0.3826833963394165+0j)],
-             [ 0.3826833963394165j    , -0.9238795042037964j    ]])
+                   [[(-0.92387950+0.00000000j), (-0.38268340+0.00000000j)],
+                    [ (0.00000000+0.38268340j), (0.00000000-0.92387950j) ]])
 
     """
 
