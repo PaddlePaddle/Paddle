@@ -634,6 +634,30 @@ class Testfp16TileOp(unittest.TestCase):
             out = exe.run(feed={'x': input_x}, fetch_list=[out])
 
 
+# Test alias for 'input' and 'dims'
+class TestTileAlias(unittest.TestCase):
+    def test_alias(self):
+        with base.dygraph.guard():
+            x_np = np.random.random((2, 3)).astype("float32")
+            x = paddle.to_tensor(x_np)
+            repeat_times = [2, 3]
+
+            # 1. Standard call (Benchmark)
+            out_ref = paddle.tile(x, repeat_times=repeat_times)
+
+            # 2. Test alias: input -> x
+            out_input = paddle.tile(input=x, repeat_times=repeat_times)
+            np.testing.assert_array_equal(out_ref.numpy(), out_input.numpy())
+
+            # 3. Test alias: dims -> repeat_times
+            out_dims = paddle.tile(x=x, dims=repeat_times)
+            np.testing.assert_array_equal(out_ref.numpy(), out_dims.numpy())
+
+            # 4. Test both aliases: input -> x, dims -> repeat_times
+            out_both = paddle.tile(input=x, dims=repeat_times)
+            np.testing.assert_array_equal(out_ref.numpy(), out_both.numpy())
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
