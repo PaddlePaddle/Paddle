@@ -19,14 +19,9 @@
 namespace phi {
 namespace distributed {
 
-inline phi::DenseTensor GetPartialTensor(const phi::DenseTensor& tensor,
-                                         int64_t offset,
-                                         int64_t numel) {
-  phi::DenseTensor tensor_flattened;
-  tensor_flattened.ShareDataWith(tensor);
-  tensor_flattened.Resize({tensor.numel()});
-  return tensor_flattened.Slice(offset, offset + numel);
-}
+phi::DenseTensor GetPartialTensor(const phi::DenseTensor& tensor,
+                                  int64_t offset,
+                                  int64_t numel);
 
 inline void* GetPointerByOffset(void* raw_pointer,
                                 size_t offset,

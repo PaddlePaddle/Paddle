@@ -308,3 +308,7 @@
   name : [paddle.bitwise_right_shift, paddle.Tensor.bitwise_right_shift]
   args_alias:
     use_default_mapping: True
+- op : atanh
+  name: [paddle.atanh, paddle.Tensor.atanh]
+  args_alias :
+    use_default_mapping : True

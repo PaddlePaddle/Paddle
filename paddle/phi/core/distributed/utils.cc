@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/core/distributed/utils.h"
 
-#include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
+namespace phi {
+namespace distributed {
 
-namespace py = pybind11;
+phi::DenseTensor GetPartialTensor(const phi::DenseTensor& tensor,
+                                  int64_t offset,
+                                  int64_t numel) {
+  phi::DenseTensor tensor_flattened;
+  tensor_flattened.ShareDataWith(tensor);
+  tensor_flattened.Resize({tensor.numel()});
+  return tensor_flattened.Slice(offset, offset + numel);
+}
 
-namespace paddle {
-namespace pybind {
-
-#ifdef PADDLE_WITH_HETERPS
-void BindPSGPUWrapper(py::module* m);
-void BindAfsWrapper(py::module* m);
-#endif
-}  // namespace pybind
-}  // namespace paddle
+}  //  namespace distributed
+}  // namespace phi

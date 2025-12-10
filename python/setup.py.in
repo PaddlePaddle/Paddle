@@ -1482,6 +1482,7 @@ headers = (
     list(find_files('*.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape'))+
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/ir')) +  # operator init headers
     list(find_files('sub_graph_detector.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/transforms/')) +
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/distributed/collective/')) +
     list(find_files('general_functions.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/utils'))+
     list(find_files('interface.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/serialize_deserialize/include'))+
     list(find_files('dense_tensor.inl','@PADDLE_SOURCE_DIR@/paddle/phi/core'))+
