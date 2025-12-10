@@ -1487,7 +1487,7 @@ def monkey_patch_tensor():
     def __dlpack__(
         self,
         *,
-        stream: int | None = None,
+        stream: int | None = -1,
         max_version: tuple[int, int] | None = None,
         dl_device: tuple[IntEnum, int] | None = None,
         copy: bool | None = None,
@@ -1523,7 +1523,10 @@ def monkey_patch_tensor():
                 "If gradients aren't required, use tensor.detach() to get a tensor without gradient."
             )
 
-        if stream is not None:
+        if stream is not None and type(stream) is not int:
+            raise TypeError("stream must be ``int`` or ``none``")
+
+        if stream != -1:
             if self.place.is_gpu_place():
                 current_stream = paddle.device.cuda.current_stream()
                 if stream != current_stream:
