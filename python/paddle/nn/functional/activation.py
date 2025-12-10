@@ -45,7 +45,10 @@ from paddle._C_ops import (  # noqa: F401
 
 @param_one_alias(["x", "input"])
 def celu(
-    x: Tensor, alpha: float = 1.0, inplace: bool = False, name: str | None = None
+    x: Tensor,
+    alpha: float = 1.0,
+    inplace: bool = False,
+    name: str | None = None,
 ) -> Tensor:
     r"""
     celu activation.
