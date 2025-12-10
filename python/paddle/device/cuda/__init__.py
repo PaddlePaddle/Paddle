@@ -881,7 +881,9 @@ def memory_summary(device: _CudaPlaceLike | None = None) -> None:
     MemoryAnalysisTool.memory_summary(device_id)
 
 
-def allocate_record_table(device: _CudaPlaceLike | None = None) -> None:
+def allocate_record_table(
+    device: _CudaPlaceLike | None = None, save_path: str | None = None
+) -> None:
     '''
     Retrieve recorded Allocate events on the specified device and prints the events directly
     to the terminal; these events are only counted when FLAGS_record_alloc_event is set to true.
@@ -902,7 +904,22 @@ def allocate_record_table(device: _CudaPlaceLike | None = None) -> None:
     '''
     device_id = extract_cuda_device_id(device, op_name='allocate_record_table')
     data = paddle.core.get_allocate_record(device_id)
-    MemoryAnalysisTool.allocate_record_table(data)
+    updated_save_path = save_path
+    if save_path is None or save_path == "":
+        updated_save_path = os.path.join(
+            os.getcwd(), f'memory_analysis_id{device_id}.txt'
+        )
+    else:
+        dir_name = os.path.dirname(save_path)
+        base_name = os.path.basename(save_path)
+        file_name_without_ext, ext = os.path.splitext(base_name)
+        new_file_name = f"{file_name_without_ext}_id{device_id}{ext}"
+        updated_save_path = os.path.join(dir_name, new_file_name)
+
+    dir_name = os.path.dirname(updated_save_path)
+    if dir_name and not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+    MemoryAnalysisTool.allocate_record_table(data, updated_save_path)
 
 
 def allocate_record_plot(

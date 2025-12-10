@@ -436,6 +436,9 @@ void SaveDebugInfo(std::string dir_path,
 void SaveStringToFile(const std::string& file_path,
                       const std::string& str,
                       const std::string& mode = "trunc");
+void SaveStringToFileWithPID(const std::string& filename,
+                             const std::string& content,
+                             const std::string& mode = "trunc");
 TEST_API void SaveTensorMD5CheckSumToFile(const std::string& file_path,
                                           const paddle::Tensor& t);
 TEST_API void SaveTensorMD5CheckSumToFile(
