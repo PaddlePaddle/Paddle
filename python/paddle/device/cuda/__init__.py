@@ -617,7 +617,7 @@ def get_device_properties(
 
             >>> import paddle
             >>> paddle.device.set_device('gpu')
-            >>> paddle.device.cuda.get_device_properties()
+            >>> paddle.device.cuda.get_device_properties('gpu')
             >>> # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
 
             >>> paddle.device.cuda.get_device_properties(0)
@@ -684,7 +684,7 @@ def get_device_name(device: _CudaPlaceLike | None = None) -> str:
             >>> import paddle
             >>> paddle.device.set_device('gpu')
 
-            >>> paddle.device.cuda.get_device_name()
+            >>> paddle.device.cuda.get_device_name('gpu')
 
             >>> paddle.device.cuda.get_device_name(0)
 
@@ -717,7 +717,7 @@ def get_device_capability(
 
             >>> paddle.device.set_device('gpu')
 
-            >>> paddle.device.cuda.get_device_capability()
+            >>> paddle.device.cuda.get_device_capability('gpu')
 
             >>> paddle.device.cuda.get_device_capability(0)
 
