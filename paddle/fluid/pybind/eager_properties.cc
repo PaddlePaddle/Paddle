@@ -14,6 +14,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
@@ -27,6 +28,7 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/memcpy.h"
 
@@ -240,34 +242,8 @@ int tensor_properties_set_data(TensorObject* self,
                                void* closure) {
   EAGER_TRY
   auto src = CastPyArg2Tensor(value, 0);
-  auto grad_meta = egr::EagerUtils::autograd_meta(&self->tensor);
-  if (grad_meta) {
-    bool device_changed = self->tensor.place() != src.place();
-    bool dtype_changed = self->tensor.dtype() != src.dtype();
-    if (device_changed || dtype_changed) {
-      VLOG(4)
-          << "New tensor's place or dtype has changed, clear the old grad_node "
-             "info.";
-      grad_meta->ResetGradNode();
-    }
-  }
   self->tensor.set_impl(src.impl());
 
-  phi::DenseTensor tmp;
-  if (self->tensor.is_dense_tensor()) {
-    auto dense_tensor =
-        static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-    if (dense_tensor) {
-      dense_tensor->ShareInplaceVersionCounterWith(tmp);
-    }
-  } else if (self->tensor.is_dist_tensor()) {
-    auto dist_tensor =
-        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
-            ->unsafe_mutable_value();
-    if (dist_tensor) {
-      dist_tensor->ShareInplaceVersionCounterWith(tmp);
-    }
-  }
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
