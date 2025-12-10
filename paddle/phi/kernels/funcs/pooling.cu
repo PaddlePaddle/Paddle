@@ -22,6 +22,7 @@ limitations under the License. */
 #include <hiprand_kernel.h>
 #endif
 
+#include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -655,6 +656,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
                   bool adaptive,
                   DenseTensor* output,
                   PoolProcess pool_process) {
+    VLOG(1) << "Pool2dFunctor";
     bool channel_last = (data_format == "NHWC");
     const int64_t batch_size = input.dims()[0];
 
