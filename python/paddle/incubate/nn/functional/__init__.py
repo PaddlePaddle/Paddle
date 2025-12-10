@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ....nn.functional import swiglu
 from .batched_gemm import batched_gemm
 from .blha_get_max_len import blha_get_max_len
 from .block_multihead_attention import (
@@ -76,8 +75,6 @@ from .moe_gate_dispatch_partial_nosoftmaxtopk import (
     moe_gate_dispatch_partial_nosoftmaxtopk,
 )
 from .moe_gate_dispatch_permute import moe_gate_dispatch_permute
-
-# from .swiglu import swiglu
 from .variable_length_memory_efficient_attention import (
     variable_length_memory_efficient_attention,
 )
