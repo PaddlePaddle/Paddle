@@ -804,63 +804,63 @@ class TestLPPool2D_Op(TestPool2D_Op):
         )
 
 
-# class TestCase1(TestPool2D_Op):
-#     def init_test_case(self):
-#         self.ksize = [3, 3]
-#         self.strides = [1, 1]
+class TestCase1(TestPool2D_Op):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
 
-#     def init_paddings(self):
-#         self.paddings = [0, 0]
+    def init_paddings(self):
+        self.paddings = [0, 0]
 
-#     def init_pool_type(self):
-#         self.pool_type = "avg"
-#         self.pool2D_forward_naive = avg_pool2D_forward_naive
+    def init_pool_type(self):
+        self.pool_type = "avg"
+        self.pool2D_forward_naive = avg_pool2D_forward_naive
 
-#     def init_global_pool(self):
-#         self.global_pool = False
+    def init_global_pool(self):
+        self.global_pool = False
 
-#     def init_shape(self):
-#         self.shape = [2, 3, 7, 7]
-
-
-# class TestCase2(TestPool2D_Op):
-#     def init_test_case(self):
-#         self.ksize = [3, 3]
-#         self.strides = [1, 1]
-
-#     def init_paddings(self):
-#         self.paddings = [1, 1]
-
-#     def init_pool_type(self):
-#         self.pool_type = "avg"
-#         self.pool2D_forward_naive = avg_pool2D_forward_naive
-
-#     def init_global_pool(self):
-#         self.global_pool = False
-
-#     def init_shape(self):
-#         self.shape = [2, 3, 7, 7]
+    def init_shape(self):
+        self.shape = [2, 3, 7, 7]
 
 
-# class TestCase3(TestPool2D_Op):
-#     def init_pool_type(self):
-#         self.pool_type = "max"
-#         self.pool2D_forward_naive = max_pool2D_forward_naive
+class TestCase2(TestPool2D_Op):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+
+    def init_paddings(self):
+        self.paddings = [1, 1]
+
+    def init_pool_type(self):
+        self.pool_type = "avg"
+        self.pool2D_forward_naive = avg_pool2D_forward_naive
+
+    def init_global_pool(self):
+        self.global_pool = False
+
+    def init_shape(self):
+        self.shape = [2, 3, 7, 7]
 
 
-# class TestCase4(TestCase1):
-#     def init_pool_type(self):
-#         self.pool_type = "max"
-#         self.pool2D_forward_naive = max_pool2D_forward_naive
+class TestCase3(TestPool2D_Op):
+    def init_pool_type(self):
+        self.pool_type = "max"
+        self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
-# class TestCase5(TestCase2):
-#     def init_pool_type(self):
-#         self.pool_type = "max"
-#         self.pool2D_forward_naive = max_pool2D_forward_naive
+class TestCase4(TestCase1):
+    def init_pool_type(self):
+        self.pool_type = "max"
+        self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
-# # --------------------test pool2d cudnn--------------------
+class TestCase5(TestCase2):
+    def init_pool_type(self):
+        self.pool_type = "max"
+        self.pool2D_forward_naive = max_pool2D_forward_naive
+
+
+# --------------------test pool2d cudnn--------------------
 
 
 def create_test_cudnn_class(parent):
@@ -877,14 +877,15 @@ def create_test_cudnn_class(parent):
     globals()[cls_name] = TestCUDNNCase
 
 
-# create_test_cudnn_class(TestPool2D_Op)
-# create_test_cudnn_class(TestCase1)
-# create_test_cudnn_class(TestCase2)
-# create_test_cudnn_class(TestCase3)
-# create_test_cudnn_class(TestCase4)
-# create_test_cudnn_class(TestCase5)
+create_test_cudnn_class(TestPool2D_Op)
+create_test_cudnn_class(TestCase1)
+create_test_cudnn_class(TestCase2)
+create_test_cudnn_class(TestCase3)
+create_test_cudnn_class(TestCase4)
+create_test_cudnn_class(TestCase5)
 
-# # --------------------test pool2d cudnn_fp16--------------------
+
+# --------------------test pool2d cudnn_fp16--------------------
 
 
 def create_test_cudnn_fp16_class(parent, check_grad=True):
@@ -1012,27 +1013,29 @@ def create_test_bf16_class(parent, check_grad=True):
     globals()[cls_name] = TestBf16Case
 
 
-# create_test_cudnn_fp16_class(TestPool2D_Op)
-# create_test_cudnn_fp16_class(TestCase1)
-# create_test_cudnn_fp16_class(TestCase2)
-# create_test_cudnn_fp16_class(TestCase3)
-# create_test_cudnn_fp16_class(TestCase4)
-# create_test_cudnn_fp16_class(TestCase5)
+create_test_cudnn_fp16_class(TestPool2D_Op)
+create_test_cudnn_fp16_class(TestCase1)
+create_test_cudnn_fp16_class(TestCase2)
+create_test_cudnn_fp16_class(TestCase3)
+create_test_cudnn_fp16_class(TestCase4)
+create_test_cudnn_fp16_class(TestCase5)
 
-# create_test_fp16_class(TestPool2D_Op)
-# create_test_fp16_class(TestCase1)
-# create_test_fp16_class(TestCase2)
-# create_test_fp16_class(TestCase3)
-# create_test_fp16_class(TestCase4)
-# create_test_fp16_class(TestCase5)
+create_test_fp16_class(TestPool2D_Op)
+create_test_fp16_class(TestCase1)
+create_test_fp16_class(TestCase2)
+create_test_fp16_class(TestCase3)
+create_test_fp16_class(TestCase4)
+create_test_fp16_class(TestCase5)
 
-# create_test_bf16_class(TestPool2D_Op)
-# create_test_bf16_class(TestCase1)
-# create_test_bf16_class(TestCase2)
-# create_test_bf16_class(TestCase3)
-# create_test_bf16_class(TestCase4)
-# create_test_bf16_class(TestCase5)
-# # --------------------test pool2d use ceil mode--------------------
+create_test_bf16_class(TestPool2D_Op)
+create_test_bf16_class(TestCase1)
+create_test_bf16_class(TestCase2)
+create_test_bf16_class(TestCase3)
+create_test_bf16_class(TestCase4)
+create_test_bf16_class(TestCase5)
+
+
+# --------------------test pool2d use ceil mode--------------------
 
 
 def create_test_cudnn_use_ceil_class(parent):
@@ -1052,8 +1055,8 @@ def create_test_cudnn_use_ceil_class(parent):
     globals()[cls_name] = TestPool2DUseCeilCase
 
 
-# create_test_cudnn_use_ceil_class(TestPool2D_Op)
-# create_test_cudnn_use_ceil_class(TestCase1)
+create_test_cudnn_use_ceil_class(TestPool2D_Op)
+create_test_cudnn_use_ceil_class(TestCase1)
 
 
 def create_test_use_ceil_class(parent):
@@ -1066,436 +1069,438 @@ def create_test_use_ceil_class(parent):
     globals()[cls_name] = TestPool2DUseCeilCase
 
 
-# create_test_use_ceil_class(TestCase1)
-# create_test_use_ceil_class(TestCase2)
+create_test_use_ceil_class(TestCase1)
+create_test_use_ceil_class(TestCase2)
 
 
-# class TestAvgInclude(TestCase2):
-#     def init_exclusive(self):
-#         self.exclusive = False
+class TestAvgInclude(TestCase2):
+    def init_exclusive(self):
+        self.exclusive = False
 
 
-# class TestCUDNNAvgInclude(TestCase2):
-#     def init_kernel_type(self):
-#         self.use_cudnn = True
+class TestCUDNNAvgInclude(TestCase2):
+    def init_kernel_type(self):
+        self.use_cudnn = True
 
-#     def init_exclusive(self):
-#         self.exclusive = False
+    def init_exclusive(self):
+        self.exclusive = False
 
 
-# class TestAvgPoolAdaptive(TestCase1):
-#     def init_adaptive(self):
-#         self.adaptive = True
+class TestAvgPoolAdaptive(TestCase1):
+    def init_adaptive(self):
+        self.adaptive = True
 
 
-# class TestAvgPoolAdaptiveAsyOutSize(TestCase1):
-#     def init_adaptive(self):
-#         self.adaptive = True
+class TestAvgPoolAdaptiveAsyOutSize(TestCase1):
+    def init_adaptive(self):
+        self.adaptive = True
 
-#     def init_shape(self):
-#         self.shape = [8, 3, 6, 6]
+    def init_shape(self):
+        self.shape = [8, 3, 6, 6]
 
-#     def init_test_case(self):
-#         self.ksize = [2, 3]
-#         self.strides = [1, 1]
-#         self.paddings = [0, 0, 0, 0]
+    def init_test_case(self):
+        self.ksize = [2, 3]
+        self.strides = [1, 1]
+        self.paddings = [0, 0, 0, 0]
 
 
-# # -------test pool2d with asymmetric padding-----
+# -------test pool2d with asymmetric padding-----
 
 
-# class TestPool2D_AsyPadding(TestPool2D_Op):
-#     def init_test_case(self):
-#         self.ksize = [3, 3]
-#         self.strides = [1, 1]
-#         self.paddings = [1, 0, 1, 2]
+class TestPool2D_AsyPadding(TestPool2D_Op):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 0, 1, 2]
 
-#     def init_shape(self):
-#         self.shape = [2, 3, 5, 5]
+    def init_shape(self):
+        self.shape = [2, 3, 5, 5]
 
 
-# class TestCase1_AsyPadding(TestCase1):
-#     def init_test_case(self):
-#         self.ksize = [3, 3]
-#         self.strides = [1, 1]
-#         self.paddings = [1, 0, 1, 0]
+class TestCase1_AsyPadding(TestCase1):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 0, 1, 0]
 
-#     def init_shape(self):
-#         self.shape = [2, 3, 7, 7]
+    def init_shape(self):
+        self.shape = [2, 3, 7, 7]
 
 
-# class TestCase2_AsyPadding(TestCase2):
-#     def init_test_case(self):
-#         self.ksize = [3, 3]
-#         self.strides = [1, 1]
-#         self.paddings = [1, 2, 1, 2]
+class TestCase2_AsyPadding(TestCase2):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 2, 1, 2]
 
-#     def init_shape(self):
-#         self.shape = [2, 3, 7, 7]
+    def init_shape(self):
+        self.shape = [2, 3, 7, 7]
 
 
-# class TestCase3_AsyPadding(TestCase3):
-#     def init_test_case(self):
-#         self.ksize = [3, 3]
-#         self.strides = [1, 1]
-#         self.paddings = [1, 0, 1, 2]
+class TestCase3_AsyPadding(TestCase3):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 0, 1, 2]
 
-#     def init_shape(self):
-#         self.shape = [2, 3, 5, 5]
+    def init_shape(self):
+        self.shape = [2, 3, 5, 5]
 
 
-# class TestCase4_AsyPadding(TestCase4):
-#     def init_test_case(self):
-#         self.ksize = [3, 3]
-#         self.strides = [1, 1]
-#         self.paddings = [1, 0, 1, 0]
+class TestCase4_AsyPadding(TestCase4):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 0, 1, 0]
 
-#     def init_shape(self):
-#         self.shape = [2, 3, 7, 7]
+    def init_shape(self):
+        self.shape = [2, 3, 7, 7]
 
 
-# class TestCase5_AsyPadding(TestCase5):
-#     def init_test_case(self):
-#         self.ksize = [3, 3]
-#         self.strides = [1, 1]
-#         self.paddings = [2, 2, 1, 2]
+class TestCase5_AsyPadding(TestCase5):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [2, 2, 1, 2]
 
-#     def init_shape(self):
-#         self.shape = [2, 3, 7, 7]
+    def init_shape(self):
+        self.shape = [2, 3, 7, 7]
 
 
-# create_test_cudnn_class(TestPool2D_AsyPadding)
-# create_test_cudnn_class(TestCase1_AsyPadding)
-# create_test_cudnn_class(TestCase2_AsyPadding)
-# create_test_cudnn_class(TestCase3_AsyPadding)
-# create_test_cudnn_class(TestCase4_AsyPadding)
-# create_test_cudnn_class(TestCase5_AsyPadding)
+create_test_cudnn_class(TestPool2D_AsyPadding)
+create_test_cudnn_class(TestCase1_AsyPadding)
+create_test_cudnn_class(TestCase2_AsyPadding)
+create_test_cudnn_class(TestCase3_AsyPadding)
+create_test_cudnn_class(TestCase4_AsyPadding)
+create_test_cudnn_class(TestCase5_AsyPadding)
 
-# create_test_cudnn_fp16_class(TestPool2D_AsyPadding)
-# create_test_cudnn_fp16_class(TestCase1_AsyPadding)
-# create_test_cudnn_fp16_class(TestCase2_AsyPadding)
-# create_test_cudnn_fp16_class(TestCase3_AsyPadding)
-# create_test_cudnn_fp16_class(TestCase4_AsyPadding)
-# create_test_cudnn_fp16_class(TestCase5_AsyPadding)
+create_test_cudnn_fp16_class(TestPool2D_AsyPadding)
+create_test_cudnn_fp16_class(TestCase1_AsyPadding)
+create_test_cudnn_fp16_class(TestCase2_AsyPadding)
+create_test_cudnn_fp16_class(TestCase3_AsyPadding)
+create_test_cudnn_fp16_class(TestCase4_AsyPadding)
+create_test_cudnn_fp16_class(TestCase5_AsyPadding)
 
-# create_test_fp16_class(TestPool2D_AsyPadding)
-# create_test_fp16_class(TestCase1_AsyPadding)
-# create_test_fp16_class(TestCase2_AsyPadding)
-# create_test_fp16_class(TestCase3_AsyPadding)
-# create_test_fp16_class(TestCase4_AsyPadding)
-# create_test_fp16_class(TestCase5_AsyPadding)
+create_test_fp16_class(TestPool2D_AsyPadding)
+create_test_fp16_class(TestCase1_AsyPadding)
+create_test_fp16_class(TestCase2_AsyPadding)
+create_test_fp16_class(TestCase3_AsyPadding)
+create_test_fp16_class(TestCase4_AsyPadding)
+create_test_fp16_class(TestCase5_AsyPadding)
 
-# create_test_bf16_class(TestPool2D_AsyPadding)
-# create_test_bf16_class(TestCase1_AsyPadding)
-# create_test_bf16_class(TestCase2_AsyPadding)
-# create_test_bf16_class(TestCase3_AsyPadding)
-# create_test_bf16_class(TestCase4_AsyPadding)
-# create_test_bf16_class(TestCase5_AsyPadding)
+create_test_bf16_class(TestPool2D_AsyPadding)
+create_test_bf16_class(TestCase1_AsyPadding)
+create_test_bf16_class(TestCase2_AsyPadding)
+create_test_bf16_class(TestCase3_AsyPadding)
+create_test_bf16_class(TestCase4_AsyPadding)
+create_test_bf16_class(TestCase5_AsyPadding)
 
-# create_test_cudnn_use_ceil_class(TestPool2D_AsyPadding)
-# create_test_cudnn_use_ceil_class(TestCase1_AsyPadding)
+create_test_cudnn_use_ceil_class(TestPool2D_AsyPadding)
+create_test_cudnn_use_ceil_class(TestCase1_AsyPadding)
 
-# create_test_use_ceil_class(TestCase1_AsyPadding)
-# create_test_use_ceil_class(TestCase2_AsyPadding)
+create_test_use_ceil_class(TestCase1_AsyPadding)
+create_test_use_ceil_class(TestCase2_AsyPadding)
 
 
-# class TestAvgInclude_AsyPadding(TestCase2):
-#     def init_exclusive(self):
-#         self.exclusive = False
+class TestAvgInclude_AsyPadding(TestCase2):
+    def init_exclusive(self):
+        self.exclusive = False
 
-#     def init_test_case(self):
-#         self.ksize = [3, 3]
-#         self.strides = [1, 1]
-#         self.paddings = [1, 2, 1, 2]
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 2, 1, 2]
 
-#     def init_shape(self):
-#         self.shape = [2, 3, 7, 7]
+    def init_shape(self):
+        self.shape = [2, 3, 7, 7]
 
 
-# class TestCUDNNAvgInclude_AsyPadding(TestCase2):
-#     def init_kernel_type(self):
-#         self.use_cudnn = True
+class TestCUDNNAvgInclude_AsyPadding(TestCase2):
+    def init_kernel_type(self):
+        self.use_cudnn = True
 
-#     def init_exclusive(self):
-#         self.exclusive = False
+    def init_exclusive(self):
+        self.exclusive = False
 
-#     def init_test_case(self):
-#         self.ksize = [3, 3]
-#         self.strides = [1, 1]
-#         self.paddings = [2, 1, 1, 1]
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [2, 1, 1, 1]
 
-#     def init_shape(self):
-#         self.shape = [2, 3, 7, 7]
+    def init_shape(self):
+        self.shape = [2, 3, 7, 7]
 
 
-# class TestAvgPoolAdaptive_AsyPadding(TestCase1):
-#     def init_adaptive(self):
-#         self.adaptive = True
+class TestAvgPoolAdaptive_AsyPadding(TestCase1):
+    def init_adaptive(self):
+        self.adaptive = True
 
-#     def init_test_case(self):
-#         self.ksize = [3, 3]
-#         self.strides = [1, 1]
-#         self.paddings = [1, 1, 0, 2]
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 1, 0, 2]
 
-#     def init_shape(self):
-#         self.shape = [2, 3, 7, 7]
+    def init_shape(self):
+        self.shape = [2, 3, 7, 7]
 
 
-# # ----------- test channel_last --------------
-# class TestPool2D_channel_last(TestPool2D_Op):
-#     def init_data_format(self):
-#         self.data_format = "NHWC"
+# ----------- test channel_last --------------
 
-#     def init_shape(self):
-#         self.shape = [2, 5, 5, 3]
 
+class TestPool2D_channel_last(TestPool2D_Op):
+    def init_data_format(self):
+        self.data_format = "NHWC"
 
-# class TestCase1_channel_last(TestCase1):
-#     def init_data_format(self):
-#         self.data_format = "NHWC"
+    def init_shape(self):
+        self.shape = [2, 5, 5, 3]
 
-#     def init_shape(self):
-#         self.shape = [2, 7, 7, 3]
 
+class TestCase1_channel_last(TestCase1):
+    def init_data_format(self):
+        self.data_format = "NHWC"
 
-# class TestCase2_channel_last(TestCase2):
-#     def init_data_format(self):
-#         self.data_format = "NHWC"
+    def init_shape(self):
+        self.shape = [2, 7, 7, 3]
 
-#     def init_shape(self):
-#         self.shape = [2, 7, 7, 3]
 
+class TestCase2_channel_last(TestCase2):
+    def init_data_format(self):
+        self.data_format = "NHWC"
 
-# class TestCase3_channel_last(TestCase3):
-#     def init_data_format(self):
-#         self.data_format = "NHWC"
+    def init_shape(self):
+        self.shape = [2, 7, 7, 3]
 
-#     def init_shape(self):
-#         self.shape = [2, 5, 5, 3]
 
+class TestCase3_channel_last(TestCase3):
+    def init_data_format(self):
+        self.data_format = "NHWC"
 
-# class TestCase4_channel_last(TestCase4):
-#     def init_data_format(self):
-#         self.data_format = "NHWC"
+    def init_shape(self):
+        self.shape = [2, 5, 5, 3]
 
-#     def init_shape(self):
-#         self.shape = [2, 7, 7, 3]
 
+class TestCase4_channel_last(TestCase4):
+    def init_data_format(self):
+        self.data_format = "NHWC"
 
-# class TestCase5_channel_last(TestCase5):
-#     def init_data_format(self):
-#         self.data_format = "NHWC"
+    def init_shape(self):
+        self.shape = [2, 7, 7, 3]
 
-#     def init_shape(self):
-#         self.shape = [2, 7, 7, 3]
 
+class TestCase5_channel_last(TestCase5):
+    def init_data_format(self):
+        self.data_format = "NHWC"
 
-# create_test_cudnn_class(TestPool2D_channel_last)
-# create_test_cudnn_class(TestCase1_channel_last)
-# create_test_cudnn_class(TestCase2_channel_last)
-# create_test_cudnn_class(TestCase3_channel_last)
-# create_test_cudnn_class(TestCase4_channel_last)
-# create_test_cudnn_class(TestCase5_channel_last)
+    def init_shape(self):
+        self.shape = [2, 7, 7, 3]
 
-# create_test_cudnn_fp16_class(TestPool2D_channel_last)
-# create_test_cudnn_fp16_class(TestCase1_channel_last)
-# create_test_cudnn_fp16_class(TestCase2_channel_last)
-# create_test_cudnn_fp16_class(TestCase3_channel_last)
-# create_test_cudnn_fp16_class(TestCase4_channel_last)
-# create_test_cudnn_fp16_class(TestCase5_channel_last)
 
-# create_test_fp16_class(TestPool2D_channel_last)
-# create_test_fp16_class(TestCase1_channel_last)
-# create_test_fp16_class(TestCase2_channel_last)
-# create_test_fp16_class(TestCase3_channel_last)
-# create_test_fp16_class(TestCase4_channel_last)
-# create_test_fp16_class(TestCase5_channel_last)
+create_test_cudnn_class(TestPool2D_channel_last)
+create_test_cudnn_class(TestCase1_channel_last)
+create_test_cudnn_class(TestCase2_channel_last)
+create_test_cudnn_class(TestCase3_channel_last)
+create_test_cudnn_class(TestCase4_channel_last)
+create_test_cudnn_class(TestCase5_channel_last)
 
-# create_test_bf16_class(TestPool2D_channel_last)
-# create_test_bf16_class(TestCase1_channel_last)
-# create_test_bf16_class(TestCase2_channel_last)
-# create_test_bf16_class(TestCase3_channel_last)
-# create_test_bf16_class(TestCase4_channel_last)
-# create_test_bf16_class(TestCase5_channel_last)
+create_test_cudnn_fp16_class(TestPool2D_channel_last)
+create_test_cudnn_fp16_class(TestCase1_channel_last)
+create_test_cudnn_fp16_class(TestCase2_channel_last)
+create_test_cudnn_fp16_class(TestCase3_channel_last)
+create_test_cudnn_fp16_class(TestCase4_channel_last)
+create_test_cudnn_fp16_class(TestCase5_channel_last)
 
-# create_test_cudnn_use_ceil_class(TestPool2D_channel_last)
-# create_test_cudnn_use_ceil_class(TestCase1_channel_last)
+create_test_fp16_class(TestPool2D_channel_last)
+create_test_fp16_class(TestCase1_channel_last)
+create_test_fp16_class(TestCase2_channel_last)
+create_test_fp16_class(TestCase3_channel_last)
+create_test_fp16_class(TestCase4_channel_last)
+create_test_fp16_class(TestCase5_channel_last)
 
-# create_test_use_ceil_class(TestCase1_channel_last)
-# create_test_use_ceil_class(TestCase2_channel_last)
+create_test_bf16_class(TestPool2D_channel_last)
+create_test_bf16_class(TestCase1_channel_last)
+create_test_bf16_class(TestCase2_channel_last)
+create_test_bf16_class(TestCase3_channel_last)
+create_test_bf16_class(TestCase4_channel_last)
+create_test_bf16_class(TestCase5_channel_last)
 
+create_test_cudnn_use_ceil_class(TestPool2D_channel_last)
+create_test_cudnn_use_ceil_class(TestCase1_channel_last)
 
-# class TestCase5_Max(TestCase2):
-#     def init_pool_type(self):
-#         self.pool_type = "max"
+create_test_use_ceil_class(TestCase1_channel_last)
+create_test_use_ceil_class(TestCase2_channel_last)
 
-#     def test_check_grad(self):
-#         if self.dtype == np.float16:
-#             return
-#         if self.has_cudnn() and self.pool_type == "max":
-#             place = get_device_place()
-#             self.check_grad_with_place(
-#                 place,
-#                 {'X'},
-#                 'Out',
-#                 max_relative_error=1.00,
-#                 check_cinn=True,
-#                 check_pir=True,
-#                 check_pir_onednn=self.check_pir_onednn,
-#             )
-#         elif self.pool_type == "max":
-#             self.check_grad(
-#                 {'X'},
-#                 'Out',
-#                 max_relative_error=1.00,
-#                 check_cinn=True,
-#                 check_pir=True,
-#                 check_pir_onednn=self.check_pir_onednn,
-#             )
 
+class TestCase5_Max(TestCase2):
+    def init_pool_type(self):
+        self.pool_type = "max"
 
-# class TestCase5_channel_last_Max(TestCase5_Max):
-#     def init_data_format(self):
-#         self.data_format = "NHWC"
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        if self.has_cudnn() and self.pool_type == "max":
+            place = get_device_place()
+            self.check_grad_with_place(
+                place,
+                {'X'},
+                'Out',
+                max_relative_error=1.00,
+                check_cinn=True,
+                check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
+            )
+        elif self.pool_type == "max":
+            self.check_grad(
+                {'X'},
+                'Out',
+                max_relative_error=1.00,
+                check_cinn=True,
+                check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
+            )
 
-#     def init_shape(self):
-#         self.shape = [2, 7, 7, 3]
 
+class TestCase5_channel_last_Max(TestCase5_Max):
+    def init_data_format(self):
+        self.data_format = "NHWC"
 
-# create_test_cudnn_class(TestCase5_Max)
-# create_test_cudnn_class(TestCase5_channel_last_Max)
+    def init_shape(self):
+        self.shape = [2, 7, 7, 3]
 
 
-# class TestAvgInclude_channel_last(TestCase2_channel_last):
-#     def init_exclusive(self):
-#         self.exclusive = False
+create_test_cudnn_class(TestCase5_Max)
+create_test_cudnn_class(TestCase5_channel_last_Max)
 
 
-# class TestCUDNNAvgInclude_channel_last(TestCase2_channel_last):
-#     def init_kernel_type(self):
-#         self.use_cudnn = True
+class TestAvgInclude_channel_last(TestCase2_channel_last):
+    def init_exclusive(self):
+        self.exclusive = False
 
-#     def init_exclusive(self):
-#         self.exclusive = False
 
+class TestCUDNNAvgInclude_channel_last(TestCase2_channel_last):
+    def init_kernel_type(self):
+        self.use_cudnn = True
 
-# class TestAvgPoolAdaptive_channel_last(TestCase1_channel_last):
-#     def init_adaptive(self):
-#         self.adaptive = True
+    def init_exclusive(self):
+        self.exclusive = False
 
 
-# class TestPool2D_AsyPadding_channel_last(TestPool2D_AsyPadding):
-#     def init_data_format(self):
-#         self.data_format = "NHWC"
+class TestAvgPoolAdaptive_channel_last(TestCase1_channel_last):
+    def init_adaptive(self):
+        self.adaptive = True
 
-#     def init_shape(self):
-#         self.shape = [2, 5, 5, 3]
 
+class TestPool2D_AsyPadding_channel_last(TestPool2D_AsyPadding):
+    def init_data_format(self):
+        self.data_format = "NHWC"
 
-# class TestCase1_AsyPadding_channel_last(TestCase1_AsyPadding):
-#     def init_data_format(self):
-#         self.data_format = "NHWC"
+    def init_shape(self):
+        self.shape = [2, 5, 5, 3]
 
-#     def init_shape(self):
-#         self.shape = [2, 7, 7, 3]
 
+class TestCase1_AsyPadding_channel_last(TestCase1_AsyPadding):
+    def init_data_format(self):
+        self.data_format = "NHWC"
 
-# class TestCase2_AsyPadding_channel_last(TestCase2_AsyPadding):
-#     def init_data_format(self):
-#         self.data_format = "NHWC"
+    def init_shape(self):
+        self.shape = [2, 7, 7, 3]
 
-#     def init_shape(self):
-#         self.shape = [2, 7, 7, 3]
 
+class TestCase2_AsyPadding_channel_last(TestCase2_AsyPadding):
+    def init_data_format(self):
+        self.data_format = "NHWC"
 
-# class TestCase3_AsyPadding_channel_last(TestCase3_AsyPadding):
-#     def init_data_format(self):
-#         self.data_format = "NHWC"
+    def init_shape(self):
+        self.shape = [2, 7, 7, 3]
 
-#     def init_shape(self):
-#         self.shape = [2, 5, 5, 3]
 
+class TestCase3_AsyPadding_channel_last(TestCase3_AsyPadding):
+    def init_data_format(self):
+        self.data_format = "NHWC"
 
-# class TestCase4_AsyPadding_channel_last(TestCase4_AsyPadding):
-#     def init_data_format(self):
-#         self.data_format = "NHWC"
+    def init_shape(self):
+        self.shape = [2, 5, 5, 3]
 
-#     def init_shape(self):
-#         self.shape = [2, 7, 7, 3]
 
+class TestCase4_AsyPadding_channel_last(TestCase4_AsyPadding):
+    def init_data_format(self):
+        self.data_format = "NHWC"
 
-# class TestCase5_AsyPadding_channel_last(TestCase5_AsyPadding):
-#     def init_data_format(self):
-#         self.data_format = "NHWC"
+    def init_shape(self):
+        self.shape = [2, 7, 7, 3]
 
-#     def init_shape(self):
-#         self.shape = [2, 7, 7, 3]
 
+class TestCase5_AsyPadding_channel_last(TestCase5_AsyPadding):
+    def init_data_format(self):
+        self.data_format = "NHWC"
 
-# create_test_cudnn_class(TestPool2D_AsyPadding_channel_last)
-# create_test_cudnn_class(TestCase1_AsyPadding_channel_last)
-# create_test_cudnn_class(TestCase2_AsyPadding_channel_last)
-# create_test_cudnn_class(TestCase3_AsyPadding_channel_last)
-# create_test_cudnn_class(TestCase4_AsyPadding_channel_last)
-# create_test_cudnn_class(TestCase5_AsyPadding_channel_last)
+    def init_shape(self):
+        self.shape = [2, 7, 7, 3]
 
-# create_test_cudnn_fp16_class(TestPool2D_AsyPadding_channel_last)
-# create_test_cudnn_fp16_class(TestCase1_AsyPadding_channel_last)
-# create_test_cudnn_fp16_class(TestCase2_AsyPadding_channel_last)
-# create_test_cudnn_fp16_class(TestCase3_AsyPadding_channel_last)
-# create_test_cudnn_fp16_class(TestCase4_AsyPadding_channel_last)
-# create_test_cudnn_fp16_class(TestCase5_AsyPadding_channel_last)
 
-# create_test_fp16_class(TestPool2D_AsyPadding_channel_last)
-# create_test_fp16_class(TestCase1_AsyPadding_channel_last)
-# create_test_fp16_class(TestCase2_AsyPadding_channel_last)
-# create_test_fp16_class(TestCase3_AsyPadding_channel_last)
-# create_test_fp16_class(TestCase4_AsyPadding_channel_last)
-# create_test_fp16_class(TestCase5_AsyPadding_channel_last)
+create_test_cudnn_class(TestPool2D_AsyPadding_channel_last)
+create_test_cudnn_class(TestCase1_AsyPadding_channel_last)
+create_test_cudnn_class(TestCase2_AsyPadding_channel_last)
+create_test_cudnn_class(TestCase3_AsyPadding_channel_last)
+create_test_cudnn_class(TestCase4_AsyPadding_channel_last)
+create_test_cudnn_class(TestCase5_AsyPadding_channel_last)
 
-# create_test_bf16_class(TestPool2D_AsyPadding_channel_last)
-# create_test_bf16_class(TestCase1_AsyPadding_channel_last)
-# create_test_bf16_class(TestCase2_AsyPadding_channel_last)
-# create_test_bf16_class(TestCase3_AsyPadding_channel_last)
-# create_test_bf16_class(TestCase4_AsyPadding_channel_last)
-# create_test_bf16_class(TestCase5_AsyPadding_channel_last)
+create_test_cudnn_fp16_class(TestPool2D_AsyPadding_channel_last)
+create_test_cudnn_fp16_class(TestCase1_AsyPadding_channel_last)
+create_test_cudnn_fp16_class(TestCase2_AsyPadding_channel_last)
+create_test_cudnn_fp16_class(TestCase3_AsyPadding_channel_last)
+create_test_cudnn_fp16_class(TestCase4_AsyPadding_channel_last)
+create_test_cudnn_fp16_class(TestCase5_AsyPadding_channel_last)
 
-# create_test_cudnn_use_ceil_class(TestPool2D_AsyPadding_channel_last)
-# create_test_cudnn_use_ceil_class(TestCase1_AsyPadding_channel_last)
+create_test_fp16_class(TestPool2D_AsyPadding_channel_last)
+create_test_fp16_class(TestCase1_AsyPadding_channel_last)
+create_test_fp16_class(TestCase2_AsyPadding_channel_last)
+create_test_fp16_class(TestCase3_AsyPadding_channel_last)
+create_test_fp16_class(TestCase4_AsyPadding_channel_last)
+create_test_fp16_class(TestCase5_AsyPadding_channel_last)
 
-# create_test_use_ceil_class(TestCase1_AsyPadding_channel_last)
-# create_test_use_ceil_class(TestCase2_AsyPadding_channel_last)
+create_test_bf16_class(TestPool2D_AsyPadding_channel_last)
+create_test_bf16_class(TestCase1_AsyPadding_channel_last)
+create_test_bf16_class(TestCase2_AsyPadding_channel_last)
+create_test_bf16_class(TestCase3_AsyPadding_channel_last)
+create_test_bf16_class(TestCase4_AsyPadding_channel_last)
+create_test_bf16_class(TestCase5_AsyPadding_channel_last)
 
+create_test_cudnn_use_ceil_class(TestPool2D_AsyPadding_channel_last)
+create_test_cudnn_use_ceil_class(TestCase1_AsyPadding_channel_last)
 
-# class TestAvgInclude_AsyPadding_channel_last(TestAvgInclude_AsyPadding):
-#     def init_data_format(self):
-#         self.data_format = "NHWC"
+create_test_use_ceil_class(TestCase1_AsyPadding_channel_last)
+create_test_use_ceil_class(TestCase2_AsyPadding_channel_last)
 
-#     def init_shape(self):
-#         self.shape = [2, 7, 7, 3]
 
+class TestAvgInclude_AsyPadding_channel_last(TestAvgInclude_AsyPadding):
+    def init_data_format(self):
+        self.data_format = "NHWC"
 
-# class TestCUDNNAvgInclude_AsyPadding_channel_last(
-#     TestCUDNNAvgInclude_AsyPadding
-# ):
-#     def init_data_format(self):
-#         self.data_format = "NHWC"
+    def init_shape(self):
+        self.shape = [2, 7, 7, 3]
 
-#     def init_shape(self):
-#         self.shape = [2, 7, 7, 3]
 
+class TestCUDNNAvgInclude_AsyPadding_channel_last(
+    TestCUDNNAvgInclude_AsyPadding
+):
+    def init_data_format(self):
+        self.data_format = "NHWC"
 
-# class TestAvgPoolAdaptive_AsyPadding_channel_last(
-#     TestAvgPoolAdaptive_AsyPadding
-# ):
-#     def init_data_format(self):
-#         self.data_format = "NHWC"
+    def init_shape(self):
+        self.shape = [2, 7, 7, 3]
 
-#     def init_shape(self):
-#         self.shape = [2, 7, 7, 3]
 
+class TestAvgPoolAdaptive_AsyPadding_channel_last(
+    TestAvgPoolAdaptive_AsyPadding
+):
+    def init_data_format(self):
+        self.data_format = "NHWC"
 
-# test paddings: SAME VALID
+    def init_shape(self):
+        self.shape = [2, 7, 7, 3]
+
+
+# --------------------test paddings: SAME VALID--------------------
 
 
 def create_test_padding_SAME_class(parent):
@@ -1509,19 +1514,19 @@ def create_test_padding_SAME_class(parent):
     globals()[cls_name] = TestPaddingSAMECase
 
 
-# create_test_padding_SAME_class(TestPool2D_Op)
-# create_test_padding_SAME_class(TestCase1)
-# create_test_padding_SAME_class(TestCase2)
-# create_test_padding_SAME_class(TestCase3)
-# create_test_padding_SAME_class(TestCase4)
-# create_test_padding_SAME_class(TestCase5)
+create_test_padding_SAME_class(TestPool2D_Op)
+create_test_padding_SAME_class(TestCase1)
+create_test_padding_SAME_class(TestCase2)
+create_test_padding_SAME_class(TestCase3)
+create_test_padding_SAME_class(TestCase4)
+create_test_padding_SAME_class(TestCase5)
 
-# create_test_padding_SAME_class(TestPool2D_channel_last)
-# create_test_padding_SAME_class(TestCase1_channel_last)
-# create_test_padding_SAME_class(TestCase2_channel_last)
-# create_test_padding_SAME_class(TestCase3_channel_last)
-# create_test_padding_SAME_class(TestCase4_channel_last)
-# create_test_padding_SAME_class(TestCase5_channel_last)
+create_test_padding_SAME_class(TestPool2D_channel_last)
+create_test_padding_SAME_class(TestCase1_channel_last)
+create_test_padding_SAME_class(TestCase2_channel_last)
+create_test_padding_SAME_class(TestCase3_channel_last)
+create_test_padding_SAME_class(TestCase4_channel_last)
+create_test_padding_SAME_class(TestCase5_channel_last)
 
 
 def create_test_cudnn_padding_SAME_class(parent):
@@ -1542,19 +1547,19 @@ def create_test_cudnn_padding_SAME_class(parent):
     globals()[cls_name] = TestCUDNNPaddingSAMECase
 
 
-# create_test_cudnn_padding_SAME_class(TestPool2D_Op)
-# create_test_cudnn_padding_SAME_class(TestCase1)
-# create_test_cudnn_padding_SAME_class(TestCase2)
-# create_test_cudnn_padding_SAME_class(TestCase3)
-# create_test_cudnn_padding_SAME_class(TestCase4)
-# create_test_cudnn_padding_SAME_class(TestCase5)
+create_test_cudnn_padding_SAME_class(TestPool2D_Op)
+create_test_cudnn_padding_SAME_class(TestCase1)
+create_test_cudnn_padding_SAME_class(TestCase2)
+create_test_cudnn_padding_SAME_class(TestCase3)
+create_test_cudnn_padding_SAME_class(TestCase4)
+create_test_cudnn_padding_SAME_class(TestCase5)
 
-# create_test_cudnn_padding_SAME_class(TestPool2D_channel_last)
-# create_test_cudnn_padding_SAME_class(TestCase1_channel_last)
-# create_test_cudnn_padding_SAME_class(TestCase2_channel_last)
-# create_test_cudnn_padding_SAME_class(TestCase3_channel_last)
-# create_test_cudnn_padding_SAME_class(TestCase4_channel_last)
-# create_test_cudnn_padding_SAME_class(TestCase5_channel_last)
+create_test_cudnn_padding_SAME_class(TestPool2D_channel_last)
+create_test_cudnn_padding_SAME_class(TestCase1_channel_last)
+create_test_cudnn_padding_SAME_class(TestCase2_channel_last)
+create_test_cudnn_padding_SAME_class(TestCase3_channel_last)
+create_test_cudnn_padding_SAME_class(TestCase4_channel_last)
+create_test_cudnn_padding_SAME_class(TestCase5_channel_last)
 
 
 def create_test_padding_VALID_class(parent):
@@ -1568,19 +1573,19 @@ def create_test_padding_VALID_class(parent):
     globals()[cls_name] = TestPaddingVALIDCase
 
 
-# create_test_padding_VALID_class(TestPool2D_Op)
-# create_test_padding_VALID_class(TestCase1)
-# create_test_padding_VALID_class(TestCase2)
-# create_test_padding_VALID_class(TestCase3)
-# create_test_padding_VALID_class(TestCase4)
-# create_test_padding_VALID_class(TestCase5)
+create_test_padding_VALID_class(TestPool2D_Op)
+create_test_padding_VALID_class(TestCase1)
+create_test_padding_VALID_class(TestCase2)
+create_test_padding_VALID_class(TestCase3)
+create_test_padding_VALID_class(TestCase4)
+create_test_padding_VALID_class(TestCase5)
 
-# create_test_padding_VALID_class(TestPool2D_channel_last)
-# create_test_padding_VALID_class(TestCase1_channel_last)
-# create_test_padding_VALID_class(TestCase2_channel_last)
-# create_test_padding_VALID_class(TestCase3_channel_last)
-# create_test_padding_VALID_class(TestCase4_channel_last)
-# create_test_padding_VALID_class(TestCase5_channel_last)
+create_test_padding_VALID_class(TestPool2D_channel_last)
+create_test_padding_VALID_class(TestCase1_channel_last)
+create_test_padding_VALID_class(TestCase2_channel_last)
+create_test_padding_VALID_class(TestCase3_channel_last)
+create_test_padding_VALID_class(TestCase4_channel_last)
+create_test_padding_VALID_class(TestCase5_channel_last)
 
 
 def create_test_cudnn_padding_VALID_class(parent):
@@ -1601,33 +1606,33 @@ def create_test_cudnn_padding_VALID_class(parent):
     globals()[cls_name] = TestCUDNNPaddingVALIDCase
 
 
-# create_test_cudnn_padding_VALID_class(TestPool2D_Op)
-# create_test_cudnn_padding_VALID_class(TestCase1)
-# create_test_cudnn_padding_VALID_class(TestCase2)
-# create_test_cudnn_padding_VALID_class(TestCase3)
-# create_test_cudnn_padding_VALID_class(TestCase4)
-# create_test_cudnn_padding_VALID_class(TestCase5)
+create_test_cudnn_padding_VALID_class(TestPool2D_Op)
+create_test_cudnn_padding_VALID_class(TestCase1)
+create_test_cudnn_padding_VALID_class(TestCase2)
+create_test_cudnn_padding_VALID_class(TestCase3)
+create_test_cudnn_padding_VALID_class(TestCase4)
+create_test_cudnn_padding_VALID_class(TestCase5)
 
-# create_test_cudnn_padding_VALID_class(TestPool2D_channel_last)
-# create_test_cudnn_padding_VALID_class(TestCase1_channel_last)
-# create_test_cudnn_padding_VALID_class(TestCase2_channel_last)
-# create_test_cudnn_padding_VALID_class(TestCase3_channel_last)
-# create_test_cudnn_padding_VALID_class(TestCase4_channel_last)
-# create_test_cudnn_padding_VALID_class(TestCase5_channel_last)
-
-
-# class TestCase1_strides(TestCase1):
-#     def init_test_case(self):
-#         self.ksize = [3, 3]
-#         self.strides = [1, 2]
-
-#     def init_shape(self):
-#         self.shape = [2, 3, 4, 5]
+create_test_cudnn_padding_VALID_class(TestPool2D_channel_last)
+create_test_cudnn_padding_VALID_class(TestCase1_channel_last)
+create_test_cudnn_padding_VALID_class(TestCase2_channel_last)
+create_test_cudnn_padding_VALID_class(TestCase3_channel_last)
+create_test_cudnn_padding_VALID_class(TestCase4_channel_last)
+create_test_cudnn_padding_VALID_class(TestCase5_channel_last)
 
 
-# create_test_cudnn_class(TestCase1_strides)
-# create_test_padding_SAME_class(TestCase1_strides)
-# create_test_cudnn_padding_SAME_class(TestCase1_strides)
+class TestCase1_strides(TestCase1):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 2]
+
+    def init_shape(self):
+        self.shape = [2, 3, 4, 5]
+
+
+create_test_cudnn_class(TestCase1_strides)
+create_test_padding_SAME_class(TestCase1_strides)
+create_test_cudnn_padding_SAME_class(TestCase1_strides)
 
 
 @skip_check_grad_ci(
