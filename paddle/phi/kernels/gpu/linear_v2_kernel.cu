@@ -206,6 +206,9 @@ void LinearV2Kernel(const Context& dev_ctx,
   PADDLE_ENFORCE_LE(bias.dims().size(),
                     1,
                     platform::errors::InvalidArgument("Bias must be 1D"));
+  PADDLE_ENFORCE_LE(weight.dims().size(),
+                    2,
+                    platform::errors::InvalidArgument("Weight must be 2D"));
   if (out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
@@ -222,6 +225,7 @@ void LinearV2Kernel(const Context& dev_ctx,
   if (bias.numel() != N) {
     // only broadcast to 1D bias whatsoever
     // pass1: scalar to 1D
+    phi::Tile(dev_ctx, bias, {N}, out);
   }
   if (N > 1 && K > 1) {
     // CublasLt path with bias add epilogue
