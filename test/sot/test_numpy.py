@@ -98,6 +98,7 @@ class TestNumPy(TestCaseBase):
             "symbolic_translate x:",
             symbolic_translate(large_numpy_array_to_tensor)(x),
         )
+        print(f"numpy version: {np.__version__}")
         self.assert_results(large_numpy_array_to_tensor, x)
 
     def test_numpy_array_guard(self):
