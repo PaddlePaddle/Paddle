@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .fully_shard import fully_shard
 from .group_sharded import group_sharded_parallel, save_group_sharded_model
 
-__all__ = ['group_sharded_parallel', 'save_group_sharded_model']
+__all__ = ['group_sharded_parallel', 'save_group_sharded_model', "fully_shard"]
