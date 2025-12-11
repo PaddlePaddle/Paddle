@@ -201,13 +201,15 @@ void CudnnLSTMKernel(
   auto handle = dev_ctx.cudnn_handle();
 
   int64_t seq_length = x.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int
-
   int64_t batch_size = x.dims()[1];
-  // TODO(large-tensor): downstream functors may still use int
-
   int64_t input_size = x.dims()[2];
-  // TODO(large-tensor): downstream functors may still use int
+  // TODO(large-tensor): cudnn rnn dims not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(seq_length, "seq_length");
+  PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
+  PADDLE_ENFORCE_LE_INT_MAX(input_size, "input_size");
+  int seq_length_int = static_cast<int>(seq_length);
+  int batch_size_int = static_cast<int>(batch_size);
+  int input_size_int = static_cast<int>(input_size);
 
   bool state_initialized = state_out->initialized() ? true : false;
 
@@ -259,9 +261,9 @@ void CudnnLSTMKernel(
     w_data = const_cast<T *>(running_w->data<T>());
   }
 
-  ScopedRNNBase rnn(seq_length,
-                    batch_size,
-                    input_size,
+  ScopedRNNBase rnn(seq_length_int,
+                    batch_size_int,
+                    input_size_int,
                     hidden_size,
                     num_layers,
                     dropout_prob,

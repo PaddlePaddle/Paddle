@@ -412,7 +412,7 @@ std::vector<paddle::Tensor> RunBackward(
   // Dump the all call stack into
   // FLAGS_dump_grad_node_forward_stack_path
   if (need_dump_forward_stack) {
-    SaveStringToFile(
+    SaveStringToFileWithPID(
         FLAGS_dump_grad_node_forward_stack_path, debug_call_stack, "append");
   }
   std::deque<GradNodeBase*> ready_queue;

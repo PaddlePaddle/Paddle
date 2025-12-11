@@ -209,7 +209,8 @@ class TestFlashAttentionAPI(unittest.TestCase):
         # test static
         paddle.enable_static()
 
-        with paddle.static.program_guard(paddle.static.Program()):
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
             qs = paddle.static.data(
                 name="q", shape=self.shape, dtype=self.dtype
             )
@@ -231,8 +232,17 @@ class TestFlashAttentionAPI(unittest.TestCase):
                 self.return_softmax,
             )
 
+            shape_analysis = (
+                paddle.base.libpaddle.pir.get_shape_constraint_ir_analysis(
+                    main_program
+                )
+            )
+            first_out_shape_or_data = shape_analysis.get_shape_or_data_for_var(
+                outs[0]
+            )
             exe = base.Executor(self.place)
             fetches_result = exe.run(
+                main_program,
                 feed={
                     "q": query.astype('float16'),
                     "k": query.astype('float16'),
@@ -241,6 +251,9 @@ class TestFlashAttentionAPI(unittest.TestCase):
                 fetch_list=[outs],
             )
 
+            self.assertTrue(
+                first_out_shape_or_data.is_equal(list(outs[0].shape))
+            )
             np.testing.assert_allclose(
                 fetches_result[0], out_, rtol=5e-03, atol=1e-03
             )
@@ -1976,6 +1989,31 @@ class TestFlashAttentionAlignment(unittest.TestCase):
             rtol=self.rtol,
             atol=self.atol,
             err_msg='Memory efficient attention output does not match expected values',
+        )
+
+    def test_auto_attention(self):
+        paddle.disable_static()
+        query = paddle.to_tensor(self.query)
+        key = paddle.to_tensor(self.key)
+        value = paddle.to_tensor(self.value)
+        mask = None
+
+        # auto-select the attention implementation
+        output = paddle.nn.functional.scaled_dot_product_attention(
+            query,
+            key,
+            value,
+            attn_mask=mask,
+            dropout_p=0.0,
+            is_causal=False,
+        )
+
+        np.testing.assert_allclose(
+            output.numpy(),
+            self.expected_output_without_mask,
+            rtol=self.rtol,
+            atol=self.atol,
+            err_msg='Auto attention output does not match expected values',
         )
 
 

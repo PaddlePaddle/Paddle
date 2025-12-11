@@ -213,7 +213,8 @@ struct Layer {
                   bool is_test,
                   DenseTensor* cache_input) {
     // create the temp input for the X * W_ih^T + Bias_ih
-    const int& hidden_size = weight.dims()[0];  // NOLINT
+    const int64_t& hidden_size = weight.dims()[0];
+    // NOLINT
     cache_input->Resize(
         common::make_ddim({input.dims()[0], input.dims()[1], hidden_size}));
     if (is_test) {

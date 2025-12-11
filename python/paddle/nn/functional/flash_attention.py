@@ -185,12 +185,6 @@ def _select_sdp(head_dim: int) -> str:
     if "xpu" in place:
         return "flash_attn"
 
-    if "iluvatar_gpu" in place:
-        return "flash_attn"
-
-    if "metax_gpu" in place:
-        return "flash_attn"
-
     enabled_backends = _get_enabled_backends()
     if not enabled_backends:
         raise AssertionError(
