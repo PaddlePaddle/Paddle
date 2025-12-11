@@ -766,29 +766,6 @@ void SolveLinearSystemGPU<phi::dtype::complex<double>>(
 }
 #endif  // PADDLE_WITH_HIP
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-template <typename T, typename Context>
-void EigGradKernel(const Context& dev_ctx,
-                   const DenseTensor& out_w,
-                   const DenseTensor& out_v,
-                   const paddle::optional<DenseTensor>& dout_w,
-                   const paddle::optional<DenseTensor>& dout_v,
-                   DenseTensor* dx) {
-  auto* dx_data = dev_ctx.template Alloc<phi::dtype::Complex<T>>(dx);
-  if (dx->numel() == 0) {
-    return;
-  }
-  auto& dims = out_v.dims();
-  phi::DDim dim_origin = dims;
-  int num_dims = dim_origin.size();
-  int batch_count = BatchCount(out_v);
-  const int order = static_cast<int>(dim_origin[num_dims - 1]);
-
-  ComputeBackwardForComplexInputGPU<phi::dtype::Complex<T>, Context>(
-      out_w, out_v, dout_w, dout_v, dx_data, batch_count, order, dev_ctx);
-}
-#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
-
 template <typename T, typename Context>
 void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
                                        const DenseTensor& V,
@@ -867,8 +844,8 @@ void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
   // Vh: matrix with shape [m,m]
   // rhs: rhs with shape [m,k]
   // x_grad: out
-  int64_t m = Vh.dims()[Vh.dims().size() - 1];
-  int64_t k = rhs.dims()[rhs.dims().size() - 1];
+  int64_t m = Vh.dims(-1);
+  int64_t k = rhs.dims(-1);
   auto* matrix_data = Vh.data<T>();
   auto* rhs_data = rhs.data<T>();
 
@@ -876,6 +853,27 @@ void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
       dev_ctx, matrix_data, rhs_data, x_grad_data, m, k, batch_count);
 }
 #endif  // PADDLE_WITH_MAGMA
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <typename T, typename Context>
+void EigGradKernel(const Context& dev_ctx,
+                   const DenseTensor& out_w,
+                   const DenseTensor& out_v,
+                   const paddle::optional<DenseTensor>& dout_w,
+                   const paddle::optional<DenseTensor>& dout_v,
+                   DenseTensor* dx) {
+  auto* dx_data = dev_ctx.template Alloc<phi::dtype::Complex<T>>(dx);
+  if (dx->numel() == 0) {
+    return;
+  }
+  auto& dims = out_v.dims();
+  int batch_count = BatchCount(out_v);
+  const int64_t order = out_v.dims(-1);
+
+  ComputeBackwardForComplexInputGPU<phi::dtype::Complex<T>, Context>(
+      out_w, out_v, dout_w, dout_v, dx_data, batch_count, order, dev_ctx);
+}
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
 
 }  // namespace phi
 
