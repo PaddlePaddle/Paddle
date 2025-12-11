@@ -128,9 +128,7 @@ def get_checkpoint_files(
         raise ValueError(
             f"Checkpoint directory cannot contain both .distcp and .safetensors files simultaneously in {path}."
         )
-    assert len(local_data_files) > 0, (
-        f"No data file ends with '{unique_id}.distcp' found in the checkpoint directory:{path}."
-    )
+
     if use_cache:
         PATH_TO_CHECKPOINT_FILES[path] = (metadata_files, local_data_files)
     return (metadata_files, local_data_files)

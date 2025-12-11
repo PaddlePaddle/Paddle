@@ -152,7 +152,7 @@ def unflatten_state_dict(flat_state_dict, mapping):
 
 
 def get_max_id(path):
-    numbers = []
+    numbers = [0]
     pattern = re.compile(r"^(\d+)_(\d+)\.distcp$")
     files = os.listdir(path)
     for file in files:
