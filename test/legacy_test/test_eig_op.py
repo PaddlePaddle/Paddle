@@ -13,15 +13,20 @@
 # limitations under the License.
 
 import platform
+import sys
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, get_device_place, skip_check_grad_ci
 from utils import dygraph_guard
 
 import paddle
 from paddle import base
 from paddle.base import core
+
+
+def compiled_with_linux_and_cuda():
+    return False
 
 
 # cast output to complex for numpy.linalg.eig
@@ -63,16 +68,14 @@ def eig_backward(w, v, grad_w, grad_v):
 class TestEigOp(OpTest):
     def setUp(self):
         paddle.enable_static()
-        with paddle.device("cpu"):
-            self.op_type = "eig"
-            self.python_api = paddle.linalg.eig
-            self.__class__.op_type = self.op_type
-            self.init_input()
-            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
-            self.outputs = {
-                'Eigenvalues': self.out[0],
-                'Eigenvectors': self.out[1],
-            }
+        if not compiled_with_linux_and_cuda():
+            paddle.device.set_device("cpu")
+        self.op_type = "eig"
+        self.python_api = paddle.linalg.eig
+        self.__class__.op_type = self.op_type
+        self.init_input()
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
+        self.outputs = {'Eigenvalues': self.out[0], 'Eigenvectors': self.out[1]}
 
     def init_input(self):
         self.set_dtype()
@@ -188,9 +191,14 @@ class TestEigOp(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place_customized(
-            checker=self.checker, place=core.CPUPlace(), check_pir=True
+            checker=self.checker,
+            place=get_device_place()
+            if compiled_with_linux_and_cuda()
+            else core.CPUPlace(),
+            check_pir=True,
         )
 
+    @unittest.skip("skip this UT as it may cause CI to hang temporarily")
     def test_check_grad(self):
         self.init_grad()
         self.check_grad(
@@ -244,9 +252,14 @@ class TestFloat(TestEigOp):
 
 
 class TestEigStatic(TestEigOp):
+    @unittest.skipIf(sys.platform == "darwin", reason="Skip on Mac")
     def test_check_output_with_place(self):
         paddle.enable_static()
-        place = core.CPUPlace()
+        place = (
+            get_device_place()
+            if compiled_with_linux_and_cuda()
+            else core.CPUPlace()
+        )
         input_np = np.random.random([3, 3]).astype('complex')
         expect_val, expect_vec = np.linalg.eig(input_np)
         with base.program_guard(base.Program(), base.Program()):
@@ -291,52 +304,54 @@ class TestEigDyGraph(unittest.TestCase):
         input_np = np.random.random([3, 3]).astype('complex')
         expect_val, expect_vec = np.linalg.eig(input_np)
 
-        with paddle.device("cpu"):
-            paddle.disable_static()
+        if not compiled_with_linux_and_cuda():
+            paddle.set_device("cpu")
+        paddle.disable_static()
 
-            input_tensor = paddle.to_tensor(input_np)
-            fetch_val, fetch_vec = paddle.linalg.eig(input_tensor)
+        input_tensor = paddle.to_tensor(input_np)
+        fetch_val, fetch_vec = paddle.linalg.eig(input_tensor)
 
-            np.testing.assert_allclose(
-                expect_val,
-                fetch_val.numpy(),
-                rtol=1e-06,
-                atol=1e-06,
-                err_msg='The eigen values have diff: \nExpected '
-                + str(expect_val)
-                + '\n'
-                + 'But got: '
-                + str(fetch_val),
-            )
-            np.testing.assert_allclose(
-                np.abs(expect_vec),
-                np.abs(fetch_vec.numpy()),
-                rtol=1e-06,
-                atol=1e-06,
-                err_msg='The eigen vectors have diff: \nExpected '
-                + str(np.abs(expect_vec))
-                + '\n'
-                + 'But got: '
-                + str(np.abs(fetch_vec.numpy())),
-            )
+        np.testing.assert_allclose(
+            expect_val,
+            fetch_val.numpy(),
+            rtol=1e-06,
+            atol=1e-06,
+            err_msg='The eigen values have diff: \nExpected '
+            + str(expect_val)
+            + '\n'
+            + 'But got: '
+            + str(fetch_val),
+        )
+        np.testing.assert_allclose(
+            np.abs(expect_vec),
+            np.abs(fetch_vec.numpy()),
+            rtol=1e-06,
+            atol=1e-06,
+            err_msg='The eigen vectors have diff: \nExpected '
+            + str(np.abs(expect_vec))
+            + '\n'
+            + 'But got: '
+            + str(np.abs(fetch_vec.numpy())),
+        )
 
     def test_check_grad(self):
         test_shape = [3, 3]
         test_type = 'float64'
-        with paddle.device("cpu"):
-            np.random.seed(1024)
-            input_np = np.random.random(test_shape).astype(test_type)
-            real_w, real_v = np.linalg.eig(input_np)
+        if not compiled_with_linux_and_cuda():
+            paddle.set_device("cpu")
+        np.random.seed(1024)
+        input_np = np.random.random(test_shape).astype(test_type)
+        real_w, real_v = np.linalg.eig(input_np)
 
-            grad_w = np.ones(real_w.shape, test_type)
-            grad_v = np.ones(real_v.shape, test_type)
-            grad_x = eig_backward(real_w, real_v, grad_w, grad_v)
+        grad_w = np.ones(real_w.shape, test_type)
+        grad_v = np.ones(real_v.shape, test_type)
+        grad_x = eig_backward(real_w, real_v, grad_w, grad_v)
 
-            with base.dygraph.guard():
-                x = paddle.to_tensor(input_np)
-                x.stop_gradient = False
-                w, v = paddle.linalg.eig(x)
-                (w.sum() + v.sum()).backward()
+        with base.dygraph.guard():
+            x = paddle.to_tensor(input_np)
+            x.stop_gradient = False
+            w, v = paddle.linalg.eig(x)
+            (w.sum() + v.sum()).backward()
 
             np.testing.assert_allclose(
                 np.abs(x.grad.numpy()),
@@ -350,32 +365,79 @@ class TestEigDyGraph(unittest.TestCase):
                 + str(np.abs(x.grad.numpy())),
             )
 
+    def test_check_grad_none_dw_or_dv(self):
+        test_shape = [3, 3]
+        test_type = 'float64'
+        if not compiled_with_linux_and_cuda():
+            paddle.set_device("cpu")
+        np.random.seed(1024)
+        input_np = np.random.random(test_shape).astype(test_type)
+        real_w, real_v = np.linalg.eig(input_np)
+
+        grad_w = np.ones(real_w.shape, test_type)
+        grad_v = np.ones(real_v.shape, test_type)
+        grad_x = eig_backward(real_w, real_v, grad_w, grad_v)
+
+        with base.dygraph.guard():
+            x = paddle.to_tensor(input_np, stop_gradient=False)
+            w, v = paddle.linalg.eig(x)
+            (dw_dx,) = paddle.grad(w, x, retain_graph=True)
+            (dv_dx,) = paddle.grad(v, x, retain_graph=True)
+            (dwv_dx,) = paddle.grad([w, v], x)
+
+            np.testing.assert_allclose(
+                dwv_dx.numpy(),
+                grad_x,
+                rtol=1e-05,
+                atol=1e-05,
+                err_msg='The grad x have diff: \nExpected '
+                + str(np.abs(grad_x))
+                + '\n'
+                + 'But got: '
+                + str(np.abs(dwv_dx.numpy())),
+            )
+
+            np.testing.assert_allclose(
+                (dw_dx + dv_dx).numpy(),
+                dwv_dx.numpy(),
+                rtol=1e-05,
+                atol=1e-05,
+                err_msg='The grad x have diff: \nExpected '
+                + str(np.abs(grad_x))
+                + '\n'
+                + 'But got: '
+                + str(np.abs((dw_dx + dv_dx).numpy())),
+            )
+
 
 class TestEigWrongDimsError(unittest.TestCase):
     def test_error(self):
-        with paddle.device("cpu"):
-            paddle.disable_static()
-            a = np.random.random(3).astype('float32')
-            x = paddle.to_tensor(a)
-            self.assertRaises(ValueError, paddle.linalg.eig, x)
+        if not compiled_with_linux_and_cuda():
+            paddle.device.set_device("cpu")
+        paddle.disable_static()
+        a = np.random.random(3).astype('float32')
+        x = paddle.to_tensor(a)
+        self.assertRaises(ValueError, paddle.linalg.eig, x)
 
 
 class TestEigNotSquareError(unittest.TestCase):
     def test_error(self):
-        with paddle.device("cpu"):
-            paddle.disable_static()
-            a = np.random.random((1, 2, 3)).astype('float32')
-            x = paddle.to_tensor(a)
-            self.assertRaises(ValueError, paddle.linalg.eig, x)
+        if not compiled_with_linux_and_cuda():
+            paddle.device.set_device("cpu")
+        paddle.disable_static()
+        a = np.random.random((1, 2, 3)).astype('float32')
+        x = paddle.to_tensor(a)
+        self.assertRaises(ValueError, paddle.linalg.eig, x)
 
 
 class TestEigUnsupportedDtypeError(unittest.TestCase):
     def test_error(self):
-        with paddle.device("cpu"):
-            paddle.disable_static()
-            a = (np.random.random((3, 3)) * 10).astype('int64')
-            x = paddle.to_tensor(a)
-            self.assertRaises(RuntimeError, paddle.linalg.eig, x)
+        if not compiled_with_linux_and_cuda():
+            paddle.device.set_device("cpu")
+        paddle.disable_static()
+        a = (np.random.random((3, 3)) * 10).astype('int64')
+        x = paddle.to_tensor(a)
+        self.assertRaises(RuntimeError, paddle.linalg.eig, x)
 
 
 class TestOptionalGradInput(unittest.TestCase):

@@ -1287,6 +1287,15 @@ def get_paddle_extra_install_requirements():
                     "nvidia-cusolver-cu12==11.7.4.40 | "
                     "nvidia-cusparse-cu12==12.5.9.5 "
                 ),
+                "13.0": (
+                    "nvidia-cuda-runtime==13.0.88 | "
+                    "nvidia-cudnn-cu13==9.13.0.50 | "
+                    "nvidia-cublas==13.0.2.14 | "
+                    "nvidia-cufft==12.0.0.61 | "
+                    "nvidia-curand==10.4.0.35 | "
+                    "nvidia-cusolver==12.0.4.66 | "
+                    "nvidia-cusparse==12.6.3.3 "
+                ),
             }
         try:
             output = subprocess.check_output(['nvcc', '--version']).decode(

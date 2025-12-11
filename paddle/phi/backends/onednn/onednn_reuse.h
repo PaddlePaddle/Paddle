@@ -1921,7 +1921,10 @@ static void SetOutMemDescWithReshape2FuseSupport(
   std::vector<int64_t> fused_reshape2_shape(fused_reshape2_shape_.begin(),
                                             fused_reshape2_shape_.end());
 
-  const int out_shape_numel = out->numel();
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_shape_numel = out->numel();
+
   const int new_shape_numel = std::accumulate(fused_reshape2_shape.begin(),
                                               fused_reshape2_shape.end(),
                                               1,
