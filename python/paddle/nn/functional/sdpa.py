@@ -145,9 +145,11 @@ def check_all_tensors_on_device(params: SDPParams):
     """
     Check all input tensors are placed on the GPU device.
     """
-    if not params.place[0].is_gpu_place():
+    if not (
+        params.place[0].is_gpu_place() or params.place[0].is_custom_place()
+    ):
         _logger.debug(
-            "All input tensors should be placed on GPU place, but "
+            "All input tensors should be placed on GPU or custom place, but "
             f"query place: {params.place[0]}, key place: "
             f"{params.place[1]}, value place: {params.place[2]}"
         )
@@ -191,6 +193,11 @@ def check_flash_attention_hardware_support(device_id: int):
     """
     Check flash attention requires CUDA support and SM between 8.0 and 12.1.
     """
+    if SDPBackend.FLASH_ATTENTION and paddle.is_compiled_with_custom_device(
+        paddle.device.get_all_device_type()[0]
+    ):
+        return True
+
     if not check_cuda_is_available():
         _logger.debug("Flash attention requires CUDA support.")
         return False
@@ -406,12 +413,6 @@ def select_sdp_for_sdpa(param: SDPParams) -> str:
 
     place = paddle.get_device()
     if "xpu" in place:
-        return "flash_attn"
-
-    if "iluvatar_gpu" in place:
-        return "flash_attn"
-
-    if "metax_gpu" in place:
         return "flash_attn"
 
     enabled_backends = _get_enabled_backends()

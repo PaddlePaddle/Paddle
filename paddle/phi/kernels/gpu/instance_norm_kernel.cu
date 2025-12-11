@@ -135,7 +135,10 @@ void InstanceNormKernel(const Context &dev_ctx,
   bias_tmp.Resize({NxC});
   dev_ctx.template Alloc<AccT>(&bias_tmp);
 
-  const int n = x.numel();
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t n = x.numel();
+
   const int block = 512;
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   const int max_blocks = std::max(max_threads / block, 1);
