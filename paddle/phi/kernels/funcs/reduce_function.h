@@ -1316,7 +1316,7 @@ void TensorReduceImpl(const phi::GPUContext& dev_ctx,
 #endif
 
 template <typename Context, typename T, size_t D, size_t R_D, typename Functor>
-void ReduceFunctor(const Context& context,
+void ReduceFunctor(const Context& dev_ctx,
                    const phi::DenseTensor& input,
                    phi::DenseTensor* output,
                    const std::vector<int64_t>& dims,
@@ -1341,7 +1341,7 @@ void ReduceFunctor(const Context& context,
                       dims_vector.end());
     out_dims = common::make_ddim(dims_vector);
   }
-  auto& place = *context.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   Functor functor;
 
   if (D == 1) {

@@ -114,27 +114,28 @@ void SpatialTransformerResblockXPUKernel(
   // prepare conv params
   for (size_t i = 0; i < conv_filter.size(); i++) {
     int64_t xn = conv_filter[i]->dims()[0];
-    // TODO(large-tensor): downstream functors may still use int; guard until
-    // upgraded.
-
     int64_t nc = conv_filter[i]->dims()[1];
-    // TODO(large-tensor): downstream functors may still use int; guard until
-    // upgraded.
-
     int64_t nh = conv_filter[i]->dims()[2];
-    // TODO(large-tensor): downstream functors may still use int; guard until
-    // upgraded.
-
     int64_t nw = conv_filter[i]->dims()[3];
-    // TODO(large-tensor): downstream functors may still use int; guard until
-    // upgraded.
+
+    // TODO(large-tensor): XPU xftTensor not support int64
+    PADDLE_ENFORCE_LE_INT_MAX(xn, "xn");
+    PADDLE_ENFORCE_LE_INT_MAX(nc, "nc");
+    PADDLE_ENFORCE_LE_INT_MAX(nh, "nh");
+    PADDLE_ENFORCE_LE_INT_MAX(nw, "nw");
 
     xft_conv_weights_.emplace_back(
         const_cast<int16_t*>(
             reinterpret_cast<const int16_t*>(conv_filter[i]->data<int16_t>())),
         const_cast<float*>(conv_filter_max[i]->data<float>()),
-        xft::xftTensor<int16_t, 4>::dim_t{channel, xn, nh, nw});
-    kernel_dims_2d.emplace_back(std::vector<int>{xn, nc, nh, nw});
+        xft::xftTensor<int16_t, 4>::dim_t{channel,
+                                          static_cast<int>(xn),
+                                          static_cast<int>(nh),
+                                          static_cast<int>(nw)});
+    kernel_dims_2d.emplace_back(std::vector<int>{static_cast<int>(xn),
+                                                 static_cast<int>(nc),
+                                                 static_cast<int>(nh),
+                                                 static_cast<int>(nw)});
   }
 
   // prepare bias

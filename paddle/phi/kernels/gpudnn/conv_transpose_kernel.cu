@@ -45,8 +45,6 @@ limitations under the License. */
 
 namespace phi {
 
-using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
-
 template <typename T, typename Context>
 void ConvTransposeCudnnKernelImplV7(const DenseTensor* transformed_x,
                                     const DenseTensor* filter,
@@ -54,8 +52,8 @@ void ConvTransposeCudnnKernelImplV7(const DenseTensor* transformed_x,
                                     const std::vector<int>& strides,
                                     const std::vector<int>& padding_common,
                                     const std::vector<int>& dilations_,
-                                    GPUDNNDataLayout data_layout,
-                                    GPUDNNDataLayout layout,
+                                    DataLayout data_layout,
+                                    DataLayout layout,
                                     bool exhaustive_search,
                                     bool deterministic,
                                     int groups,
@@ -165,8 +163,8 @@ void ConvTransposeCudnnKernelImplV8(const DenseTensor* transformed_x,
                                     const std::vector<int>& strides,
                                     const std::vector<int>& padding_common,
                                     const std::vector<int>& dilations_,
-                                    GPUDNNDataLayout data_layout,
-                                    GPUDNNDataLayout layout,
+                                    DataLayout data_layout,
+                                    DataLayout layout,
                                     bool exhaustive_search,
                                     bool deterministic,
                                     int groups,
@@ -269,14 +267,13 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
 
   std::vector<int> paddings_ = paddings;
   std::vector<int> dilations_ = dilations;
-  const GPUDNNDataLayout data_layout =
-      (data_format != "NHWC" ? GPUDNNDataLayout::kNCHW
-                             : GPUDNNDataLayout::kNHWC);
+  const DataLayout data_layout =
+      (data_format != "NHWC" ? DataLayout::NCHW : DataLayout::NHWC);
   std::vector<int64_t> x_vec = common::vectorize<int64_t>(x.dims());
   std::vector<int64_t> out_vec = common::vectorize<int64_t>(out->dims());
   // if channel_last, transpose to channel_first
   DenseTensor x_transpose;
-  if (data_layout == GPUDNNDataLayout::kNHWC) {
+  if (data_layout == DataLayout::NHWC) {
     if (strides.size() == 2U) {
       std::vector<int> axis = {0, 3, 1, 2};
       for (size_t i = 0; i < axis.size(); ++i) {
@@ -385,11 +382,11 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
     transformed_out.Resize(common::make_ddim(transformed_out_vec));
   }
 
-  GPUDNNDataLayout layout;
+  DataLayout layout;
   if (strides.size() == 2U) {
-    layout = GPUDNNDataLayout::kNCHW;
+    layout = DataLayout::NCHW;
   } else {
-    layout = GPUDNNDataLayout::kNCDHW;
+    layout = DataLayout::NCDHW;
   }
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
@@ -442,7 +439,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
         dev_ctx, &transformed_out, out, starts, ends, axes);
   }
 
-  if (data_layout == GPUDNNDataLayout::kNHWC) {
+  if (data_layout == DataLayout::NHWC) {
     DenseTensor out_transpose;
     DenseTensor out_nchw;
     out_nchw.ShareDataWith(*out);

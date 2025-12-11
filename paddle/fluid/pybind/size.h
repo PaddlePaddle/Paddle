@@ -17,6 +17,7 @@
 #include "pybind11/pybind11.h"
 
 namespace paddle::pybind {
+extern PyTypeObject Paddle_SizeType;
 
 void BindSize(pybind11::module* m);
 PyObject* Paddle_Size_NewFromInt64Array(const int64_t* data, Py_ssize_t len);

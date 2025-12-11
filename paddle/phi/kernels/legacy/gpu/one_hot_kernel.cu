@@ -40,17 +40,17 @@ __global__ void FillOutputKernel(const InT* p_in_data,
   }
 }
 
-template <typename DeviceContext, typename InT>
+template <typename Context, typename InT>
 struct OneHotV2OpCUDAFunctor {
   const DenseTensor* in_;
   DenseTensor* out_;
-  const DeviceContext& dev_ctx_;
+  const Context& dev_ctx_;
   int depth_;
 
   OneHotV2OpCUDAFunctor(const DenseTensor* in,
                         DenseTensor* out,
                         int depth,
-                        const DeviceContext& dev_ctx)
+                        const Context& dev_ctx)
       : in_(in), out_(out), depth_(depth), dev_ctx_(dev_ctx) {}
 
   template <typename OutT>

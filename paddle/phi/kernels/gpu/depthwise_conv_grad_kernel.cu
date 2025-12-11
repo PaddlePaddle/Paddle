@@ -69,7 +69,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
   DWConvParams params(has_fuse_relu, data_format, strides, dilations);
   if (params.UseCudnnDepthwise<Context>(dev_ctx, input, filter)) {
     // Keep same with original kernel.
-    phi::funcs::SetConstant<Context, T> set_zero;
+    funcs::SetConstant<Context, T> set_zero;
     if (input_grad) {
       dev_ctx.template Alloc<T>(input_grad);
       set_zero(dev_ctx, input_grad, static_cast<T>(0));
@@ -116,7 +116,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
       paddings.erase(paddings.begin() + i + 1);
     }
   }
-  phi::funcs::SetConstant<Context, T> set_zero;
+  funcs::SetConstant<Context, T> set_zero;
 
   if (input_grad) {
     dev_ctx.template Alloc<T>(input_grad);

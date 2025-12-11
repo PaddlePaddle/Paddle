@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "paddle/phi/backends/c_comm_lib.h"
+#include "paddle/phi/backends/c_cuda_graph_lib.h"
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/place.h"
@@ -332,6 +333,53 @@ class DeviceInterface {  // Driver / Runtime
   virtual void DestroyBlasHandle(size_t dev_id, void* blas_handle);
 
   virtual void DestroyBlasLtHandle(size_t dev_id, void* blaslt_handle);
+
+  // CudaGraph
+  virtual void CUDAStreamBeginCapture(size_t dev_id,
+                                      stream::stream_t stream,
+                                      graph::streamCaptureMode mode);
+
+  virtual void CudaStreamEndCapture(size_t dev_id,
+                                    stream::stream_t stream,
+                                    graph::CUDAGraph_t* pGraph);
+
+  virtual void CudaGraphLaunch(size_t dev_id,
+                               graph::CUDAGraphExec_t exec,
+                               stream::stream_t stream);
+
+  virtual void CudaGraphDestroy(graph::CUDAGraph_t graph);
+
+  virtual void CudaGraphExecDestroy(graph::CUDAGraphExec_t graphExec);
+
+  virtual void CudaGraphInstantiate(graph::CUDAGraphExec_t* pGraphExec,
+                                    graph::CUDAGraph_t* pGraph,
+                                    void** pErrorNode,
+                                    char* pLogBuffer,
+                                    size_t bufferSize);
+
+  virtual void CudaGraphGetNodes(graph::CUDAGraph_t graph,
+                                 graph::CUDAGraphNode_t* pNodes,
+                                 size_t* numNodes);
+
+  virtual void CudaStreamGetCaptureInfo(
+      size_t dev_id,
+      stream::stream_t stream,
+      graph::streamCaptureStatus* captureStatus_out,
+      unsigned long long* id_out = nullptr,  // NOLINT
+      graph::CUDAGraph_t* graph_out = nullptr,
+      graph::CUDAGraphNode_t* dependencies_out = nullptr,
+      void** edgeData_out = nullptr,
+      size_t* numDependencies_out = nullptr);
+
+  virtual void GetParameterSetterForExecGraph(graph::CUDAGraph_t graph,
+                                              graph::GraphHookManager* hook);
+
+  virtual void CudaGraphDebugDotPrint(graph::CUDAGraph_t graph,
+                                      const char* path,
+                                      unsigned flags);
+
+  virtual void CudaThreadExchangeStreamCaptureMode(
+      graph::streamCaptureMode* mode);
 
  private:
   const std::string type_;

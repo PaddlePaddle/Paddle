@@ -26,6 +26,10 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 
+#if !defined(PADDLE_WITH_XPU_KP) || defined(__xpu_on_host__)
+#include "unsupported/Eigen/CXX11/Tensor"
+#endif
+
 namespace phi {
 class DenseTensor;
 }  // namespace phi

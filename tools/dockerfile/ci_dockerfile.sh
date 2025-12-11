@@ -42,6 +42,21 @@ function make_cpu_dockerfile(){
 }
 
 
+function make_sot_dockerfile(){
+  dockerfile_name="Dockerfile.gcc133_ubuntu24_cpu_sot"
+  sed "s#<baseimg>#ubuntu:24.04#g" ./Dockerfile.ubuntu24 >${dockerfile_name}
+  sed -i "s#<setcuda>##g" ${dockerfile_name}
+  sed -i "s#WITH_GPU:-ON#WITH_GPU:-OFF#g" ${dockerfile_name}
+  sed -i "/\/etc\/apt\/sources.list.d\/cuda/ d" ${dockerfile_name}
+  sed -i '/RUN curl https:\/\/developer.download.nvidia.cn/ d' ${dockerfile_name}
+  sed -i "s#RUN apt-key adv --fetch-keys https://developer.download.nvidia.cn/compute/cuda/repos/ubuntu2404/x86_64/3bf863cc.pub##g" ${dockerfile_name}
+  dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
+  sed -i 's#RUN bash /build_scripts/install_trt.sh##g' ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN pip install wheel PyGithub distro" ${dockerfile_name}
+  sed -i 's#<install_cpu_package>#RUN apt-get install -y gcc g++ make libcurl4-openssl-dev gettext ninja-build#g' ${dockerfile_name}
+}
+
+
 function make_ce_framework_dockerfile(){
   dockerfile_name="Dockerfile.cuda11.2_cudnn8_gcc82_trt8"
   sed "s#<baseimg>#nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
@@ -134,6 +149,7 @@ function make_ubuntu20_cu123_dockerfile(){
 
 function main() {
   make_cpu_dockerfile
+  make_sot_dockerfile
   make_ce_framework_dockerfile
   make_ubuntu20_cu12_dockerfile
   make_ubuntu20_cu123_dockerfile

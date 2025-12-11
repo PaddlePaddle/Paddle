@@ -47,12 +47,11 @@ static void ComputeImpl(const phi::XPUContext *xpu_ctx,
                         DenseTensor *out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   int64_t rows = x.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-
   int64_t cols = x.dims()[1];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+
+  // TODO(large-tensor): XPU broadcast_add API not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(rows, "rows");
+  PADDLE_ENFORCE_LE_INT_MAX(cols, "cols");
 
   int r = 0;
   if (bias) {
@@ -61,7 +60,7 @@ static void ComputeImpl(const phi::XPUContext *xpu_ctx,
         reinterpret_cast<const XPUType *>(x.data<T>()),
         reinterpret_cast<const XPUType *>(bias.get().data<T>()),
         reinterpret_cast<XPUType *>(const_cast<T *>(x.data<T>())),
-        {rows, cols},
+        {static_cast<int>(rows), static_cast<int>(cols)},
         {1, cols});
     PADDLE_ENFORCE_EQ(
         r, 0, common::errors::Fatal("baidu::xpu::api::broadcast_add failed."));

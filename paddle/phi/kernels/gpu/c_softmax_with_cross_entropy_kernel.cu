@@ -126,9 +126,9 @@ __global__ void CalculateLoss(T* loss,
     auto real_label = static_cast<int64_t>(label[i]);
     loss[i] = ignore_index == real_label
                   ? static_cast<T>(0)
-                  : phi::funcs::TolerableValue<T>()(
-                        phi::funcs::TolerableValue<T>()(
-                            phi::funcs::real_log(sum_exp_logits[i])) -
+                  : funcs::TolerableValue<T>()(
+                        funcs::TolerableValue<T>()(
+                            funcs::real_log(sum_exp_logits[i])) -
                         predict_logits[i]);
   }
 }
@@ -150,9 +150,9 @@ __global__ void CalculateSoftLoss(T* loss,
       auto real_label = static_cast<int64_t>(label[i * C + j]);
       tmp_loss += ignore_index == real_label
                       ? static_cast<T>(0)
-                      : phi::funcs::TolerableValue<T>()(
-                            (phi::funcs::TolerableValue<T>()(
-                                 phi::funcs::real_log(sum_exp_logits[i])) -
+                      : funcs::TolerableValue<T>()(
+                            (funcs::TolerableValue<T>()(
+                                 funcs::real_log(sum_exp_logits[i])) -
                              predict_logits[i * C + j]) *
                             prob);
       ignore_num += ignore_index == real_label ? 1 : 0;
@@ -209,9 +209,9 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     const auto& labels_dims = labels->dims();
 
     const int axis = logits_dims.size() - 1;
-    const int64_t N = phi::funcs::SizeToAxis<int64_t>(axis, logits_dims);
-    const int64_t D = phi::funcs::SizeFromAxis<int64_t>(axis, logits_dims);
-    const int64_t C = phi::funcs::SizeFromAxis<int64_t>(axis, labels_dims);
+    const int64_t N = funcs::SizeToAxis<int64_t>(axis, logits_dims);
+    const int64_t D = funcs::SizeFromAxis<int64_t>(axis, logits_dims);
+    const int64_t C = funcs::SizeFromAxis<int64_t>(axis, labels_dims);
 
     phi::DenseTensor logits_2d, softmax_2d, loss_2d;
     logits_2d.ShareDataWith(*logits).Resize({N, D});
@@ -231,8 +231,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     // step 2, obtain logit - logit_max
     std::vector<const phi::DenseTensor*> inputs = {&logits_2d, &logits_max};
     std::vector<phi::DenseTensor*> outputs = {&softmax_2d};
-    phi::funcs::BroadcastKernel<T>(
-        dev_ctx, inputs, &outputs, phi::funcs::SubtractFunctor<T>());
+    funcs::BroadcastKernel<T>(
+        dev_ctx, inputs, &outputs, funcs::SubtractFunctor<T>());
 
     // step 3, obtain predict target
     phi::DenseTensor predicted_logits;
@@ -369,8 +369,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
 
     inputs = std::vector<const phi::DenseTensor*>{&softmax_2d, &sum_exp_logits};
     outputs = std::vector<phi::DenseTensor*>{&softmax_2d};
-    phi::funcs::BroadcastKernel<T>(
-        dev_ctx, inputs, &outputs, phi::funcs::MultiplyFunctor<T>());
+    funcs::BroadcastKernel<T>(
+        dev_ctx, inputs, &outputs, funcs::MultiplyFunctor<T>());
 #endif
   }
 };
