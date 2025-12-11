@@ -2048,7 +2048,8 @@ Buffer::low_latency_dispatch_two_stage(
     int num_experts,
     bool use_fp8,
     bool async,
-    bool return_recv_hook) {
+    bool return_recv_hook,
+    int num_per_channel) {
   EP_HOST_ASSERT(low_latency_mode);
 
   // Tensor checks
@@ -2181,7 +2182,8 @@ Buffer::low_latency_dispatch_two_stage(
         workspace,
         launch_stream,
         phases,
-        low_latency_buffer_idx);
+        low_latency_buffer_idx,
+        num_per_channel);
   };
   launcher(return_recv_hook
                ? LOW_LATENCY_SEND_PHASE
@@ -3098,7 +3100,8 @@ Buffer::low_latency_dispatch_two_stage_api(const paddle::Tensor& x,
                                            int num_experts,
                                            bool use_fp8,
                                            bool async,
-                                           bool return_recv_hook) {
+                                           bool return_recv_hook,
+                                           int num_per_channel) {
 #ifdef PADDLE_WITH_NVSHMEM
   const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
   const auto& topk_idx_ = ConvertPaddleTensorToDetailTensor(topk_idx);
@@ -3111,7 +3114,8 @@ Buffer::low_latency_dispatch_two_stage_api(const paddle::Tensor& x,
                                             num_experts,
                                             use_fp8,
                                             async,
-                                            return_recv_hook);
+                                            return_recv_hook,
+                                            num_per_channel);
 
   auto packed_recv_x_ = ConvertDetailTensorToPaddleTensor(std::get<0>(res));
 

@@ -1055,6 +1055,7 @@ class Buffer:
         use_fp8: bool = True,
         async_finish: bool = False,
         return_recv_hook: bool = False,
+        num_per_channel: int = 128,
     ) -> tuple[
         tuple[paddle.Tensor, paddle.Tensor],
         paddle.Tensor,
@@ -1121,6 +1122,7 @@ class Buffer:
             use_fp8,
             async_finish,
             return_recv_hook,
+            num_per_channel,
         )
         handle = (
             packed_recv_rdma_x,

@@ -376,7 +376,8 @@ void dispatch(void* packed_recv_x,
               void* workspace,
               cudaStream_t stream,
               int phases,
-              int next_buffer_id);
+              int next_buffer_id,
+              int num_per_channel);
 
 void combine(void* combined_x,
              void* rdma_recv_x,
