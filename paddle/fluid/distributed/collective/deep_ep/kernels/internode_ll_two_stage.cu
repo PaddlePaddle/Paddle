@@ -248,11 +248,11 @@ __global__ __launch_bounds__(
 
       if constexpr (kUseFP8 && kNumPerChannels == -1) {  // fp8 per-token dynamic quant
         const auto warp_nums = kNumWarpGroups * kNumWarpsPerGroup;
-        __shared__ float amax_cache[warp_nums - 1];
-        for (int i = thread_id; i < warp_nums - 1; i += num_threads) {
+        __shared__ float amax_cache[warp_nums];
+        for (int i = thread_id; i < warp_nums; i += num_threads) {
           amax_cache[i] = 0.0f;
         }
-        asm volatile("bar.sync 1, %0;" ::"r"(num_threads));
+        __syncthreads();
         float amax = kFP8Margin, scale, scale_inv;
 #pragma unroll
         for (int i = thread_id; i < hidden_bf16_int4; i += num_threads) {
@@ -278,16 +278,16 @@ __global__ __launch_bounds__(
             amax_cache[warp_id] = amax;
           }
         }
-        asm volatile("bar.sync 1, %0;" ::"r"(num_threads));
+        __syncthreads();
         if (warp_id == 0) {
           float thread_amax =
-              lane_id < (warp_nums - 1) ? amax_cache[lane_id] : 0.0f;
+              lane_id < warp_nums ? amax_cache[lane_id] : 0.0f;
           thread_amax = warp_reduce_max(thread_amax);
           if (lane_id == 0) {
             amax_cache[0] = thread_amax;
           }
         }
-        asm volatile("bar.sync 1, %0;" ::"r"(num_threads));
+        __syncthreads();
         amax = amax_cache[0];
         scale = 440.f / amax;
         // scale_inv = amax * kFP8AmaxInv;
