@@ -717,6 +717,7 @@ def get_device_capability(
             >>> import paddle
             >>> paddle.device.set_device('gpu')
             >>> paddle.device.cuda.get_device_capability()
+
             >>> paddle.device.cuda.get_device_capability(0)
 
             >>> paddle.device.cuda.get_device_capability(paddle.CUDAPlace(0))
