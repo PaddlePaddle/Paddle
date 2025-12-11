@@ -44,7 +44,7 @@ if(LINUX)
 
   if(WITH_ROCM)
     set(MAGMA_ARCH "hip")
-    set(MAGMA_URL_MD5 "35bb7d1d8641dc7fc3be96b02f32645b")
+    set(MAGMA_URL_MD5 "f4fbe46c665819f6ae86d1aa447d07b5")
   endif()
 
   message(STATUS "Selected MAGMA architecture: ${MAGMA_ARCH}")
