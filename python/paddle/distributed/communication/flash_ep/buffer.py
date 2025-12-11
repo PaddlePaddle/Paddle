@@ -756,3 +756,73 @@ class Buffer:
             )
         )
         return combined_x, combined_topk_weights, EventOverlap(event)
+
+    def all_in_one_internode_combine(
+        self,
+        x_list: paddle.Tensor,
+        handle_list: tuple | list,
+        topk_weights_list: paddle.Tensor | None = None,
+        output: paddle.Tensor | None = None,
+        output_topk_weights: paddle.Tensor | None = None,
+        config: Config | None = None,
+        previous_event: EventOverlap | None = None,
+        async_finish: bool = False,
+        allocate_on_comm_stream: bool = False,
+        num_pipeline_stages: int = 1,
+        is_tokens_ready: paddle.Tensor | None = None,
+    ) -> tuple[paddle.Tensor, paddle.Tensor | None, EventOverlap]:
+        """
+        Internode combine implementation, for more details, please refer to the `combine` docs.
+        Normally, you should not directly call this function.
+        """
+        config = (
+            self.get_dispatch_config(self.group_size)
+            if config is None
+            else config
+        )
+
+        rdma_channel_prefix_matrix_list = []
+        rdma_rank_prefix_sum_list = []
+        gbl_channel_prefix_matrix_list = []
+        gbl_rank_prefix_sum_list = []
+        send_rdma_head_list = []
+        send_nvl_head_list = []
+        for pipeline_stage_id in range(num_pipeline_stages):
+            # Unpack handle
+            (
+                _,
+                _,
+                _,
+                rdma_channel_prefix_matrix,
+                rdma_rank_prefix_sum,
+                gbl_channel_prefix_matrix,
+                gbl_rank_prefix_sum,
+                _,
+                send_rdma_head,
+                send_nvl_head,
+            ) = handle_list[pipeline_stage_id]
+            rdma_channel_prefix_matrix_list.append(rdma_channel_prefix_matrix)
+            rdma_rank_prefix_sum_list.append(rdma_rank_prefix_sum)
+            gbl_channel_prefix_matrix_list.append(gbl_channel_prefix_matrix)
+            gbl_rank_prefix_sum_list.append(gbl_rank_prefix_sum)
+            send_rdma_head_list.append(send_rdma_head)
+            send_nvl_head_list.append(send_nvl_head)
+
+        # Launch the kernel
+        event = self.runtime.internode_combine(
+            x_list,
+            topk_weights_list,
+            rdma_channel_prefix_matrix_list,
+            rdma_rank_prefix_sum_list,
+            gbl_channel_prefix_matrix_list,
+            send_rdma_head_list,
+            send_nvl_head_list,
+            output,
+            output_topk_weights,
+            is_tokens_ready,
+            config,
+            getattr(previous_event, 'event', None),
+            async_finish,
+            allocate_on_comm_stream,
+        )
+        return EventOverlap(event)

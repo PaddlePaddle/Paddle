@@ -62,6 +62,7 @@ void BindFlashEPApi(pybind11::module *m) {
   m->def("local_dispatch_backward", &flash_ep::local_dispatch_backward_api);
   m->def("local_combine_forward", &flash_ep::local_combine_forward_api);
   m->def("local_combine_backward", &flash_ep::local_combine_backward_api);
+  m->def("set_tokens_ready", &flash_ep::set_tokens_ready_api);
 
   pybind11::class_<flash_ep::Buffer>(*m, "FEBuffer")
       .def(pybind11::init<int, int, int, int64_t, int64_t, bool, int>())

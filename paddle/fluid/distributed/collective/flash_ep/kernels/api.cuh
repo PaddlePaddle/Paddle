@@ -287,15 +287,15 @@ void cached_notify(int hidden_int4,
 void combine(cudaDataType_t type,
              void* combined_x,
              float* combined_topk_weights,
-             const void* x,
-             const float* topk_weights,
-             const int* combined_rdma_head,
-             const int* combined_nvl_head,
-             const int* rdma_channel_prefix_matrix,
-             const int* rdma_rank_prefix_sum,
-             const int* gbl_channel_prefix_matrix,
-             int num_tokens,
-             int num_combined_tokens,
+             const void** x,
+             const float** topk_weights,
+             const int** combined_rdma_head,
+             const int** combined_nvl_head,
+             const int** rdma_channel_prefix_matrix,
+             const int** rdma_rank_prefix_sum,
+             const int** gbl_channel_prefix_matrix,
+             const int* num_tokens,
+             const int* num_combined_tokens,
              int hidden,
              int num_topk,
              void* rdma_buffer_ptr,
@@ -311,10 +311,14 @@ void combine(cudaDataType_t type,
              bool low_latency_mode,
              bool inplace_float_combine,
              int num_pipeline_stages,
-             int pipeline_stage_id,
              int64_t num_rdma_bytes,
-             int64_t num_nvl_bytes);
+             int64_t num_nvl_bytes,
+             const int* is_tokens_ready);
 #endif  // PADDLE_WITH_NVSHMEM
+
+void set_tokens_ready(int* is_tokens_ready,
+                      int pipeline_stage_id,
+                      cudaStream_t stream);
 
 }  // namespace internode
 

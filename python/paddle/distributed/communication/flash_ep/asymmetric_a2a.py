@@ -21,6 +21,7 @@ from paddle.base.core import (
     local_combine_forward,
     local_dispatch_backward,
     local_dispatch_forward,
+    set_tokens_ready,
 )
 
 from .buffer import Buffer
@@ -485,3 +486,44 @@ def combine_func(
     if not async_finish:
         event = None
     return combined_x, combined_weight, event
+
+
+def all_in_one_combine_func(
+    x_list,
+    group,
+    handle_list,
+    topk_weights_list=None,
+    output=None,
+    output_topk_weights=None,
+    previous_event=None,
+    async_finish=False,
+    allocate_on_comm_stream=False,
+    num_pipeline_stages=1,
+    is_tokens_ready=None,
+):
+    buffer = flashep_buffer.get_buffer(
+        group, get_hidden_bytes(x_list[0]), num_pipeline_stages
+    )
+
+    event = buffer.all_in_one_internode_combine(
+        x_list,
+        topk_weights_list=topk_weights_list,
+        handle_list=handle_list,
+        output=output,
+        output_topk_weights=output_topk_weights,
+        async_finish=async_finish,
+        previous_event=previous_event,
+        allocate_on_comm_stream=allocate_on_comm_stream,
+        num_pipeline_stages=num_pipeline_stages,
+        is_tokens_ready=is_tokens_ready,
+    )
+    if not async_finish:
+        event = None
+    return event
+
+
+def set_tokens_ready_func(
+    is_tokens_ready,
+    pipeline_stage_id,
+):
+    set_tokens_ready(is_tokens_ready, pipeline_stage_id)

@@ -19,7 +19,7 @@ from itertools import accumulate
 import paddle
 
 from .asymmetric_a2a import (
-    combine_func,
+    all_in_one_combine_func,
     dispatch_func,
     get_flashep_rowmap_func,
     local_combine_backward_func,
@@ -27,6 +27,7 @@ from .asymmetric_a2a import (
     local_dispatch_backward_func,
     local_dispatch_forward_func,
     notify_dispatch_and_combine_func,
+    set_tokens_ready_func,
 )
 from .utils import (
     get_event_from_calc_stream,
@@ -398,9 +399,15 @@ class FlashEPFunction(paddle.autograd.PyLayer):
             combine_stage_cumsum,
         )
 
+        previous_event = get_event_from_calc_stream(group.id)
+
         ctx.probs = []
         ctx.output_rowmap_list = []
         ctx.output_rowmap_offset_list = []
+        token_list = []
+        probs_list = []
+        handle_list = []
+        is_tokens_ready = paddle.zeros([ctx.num_pipeline_stages], dtype="int32")
         for local_expert_id in range(ctx.num_local_experts):
             # Identify prior data dependencies and perform multi-stream synchronization.
             dispatch_stage_idx = _get_expert_dependencies(
@@ -454,10 +461,6 @@ class FlashEPFunction(paddle.autograd.PyLayer):
             )
             tokens, scale_, probs, details_metas = None, None, None, None
 
-            # Phase 6: Global Combine A2A Communication Pipeline.
-            # To prevent the CPU from being too busy to initiate combine communication
-            # in a timely manner, it is necessary to launch the communication operator
-            # promptly after the expert computation is completed.
             if is_buffer_ready[local_expert_id] != -1:
                 # When a buffer is scheduled for all-to-all communication,
                 # update the combine-related control signals.
@@ -468,17 +471,24 @@ class FlashEPFunction(paddle.autograd.PyLayer):
                     [0, tokens.shape[1]], combine_buffers[stage_idx].dtype
                 )  # TODO: Set None
                 combine_states = combine_notify_infos[stage_idx]
-                _, _, event = combine_func(
-                    tokens,
-                    group,
-                    previous_event=get_event_from_calc_stream(group.id),
-                    async_finish=True,
-                    allocate_on_comm_stream=True,
-                    output=output_tokens,
-                    handle=combine_states["handle"],
-                    pipeline_stage_id=stage_idx,
-                    num_pipeline_stages=ctx.num_pipeline_stages,
-                )
+                token_list.append(tokens)
+                probs_list.append(None)
+                handle_list.append(combine_states["handle"])
+                set_tokens_ready_func(is_tokens_ready, stage_idx)
+
+        event = all_in_one_combine_func(
+            token_list,
+            group,
+            handle_list,
+            topk_weights_list=probs_list,
+            output=output_tokens,
+            output_topk_weights=None,
+            previous_event=previous_event,
+            async_finish=True,
+            allocate_on_comm_stream=True,
+            num_pipeline_stages=ctx.num_pipeline_stages,
+            is_tokens_ready=is_tokens_ready,
+        )
 
         if ctx.flash_ep_recompute_local_dispatch:
             ctx.dispatch_history = dispatch_history
@@ -538,7 +548,13 @@ class FlashEPFunction(paddle.autograd.PyLayer):
             has_prob=True,
         )
 
+        previous_event = get_event_from_calc_stream(ctx.group.id)
+
+        token_list = []
+        probs_list = []
+        handle_list = []
         backward_w_callbacks = []
+        is_tokens_ready = paddle.zeros([ctx.num_pipeline_stages], dtype="int32")
         for local_expert_id in range(ctx.num_local_experts):
             dispatch_stage_idx = _get_expert_dependencies(
                 local_expert_id, dispatch_stage_cumsum
@@ -614,8 +630,9 @@ class FlashEPFunction(paddle.autograd.PyLayer):
             tokens, probs, indices, details_metas = None, None, None, None
 
             if is_buffer_ready[local_expert_id] != -1:
+                # When a buffer is scheduled for all-to-all communication,
+                # update the combine-related control signals.
                 stage_idx = is_buffer_ready[local_expert_id]
-                is_buffer_active[stage_idx] = 0
                 tokens = combine_buffers[stage_idx].astype("bfloat16")
                 probs = combine_probs[stage_idx]
                 combine_buffers[stage_idx] = paddle.empty(
@@ -625,20 +642,24 @@ class FlashEPFunction(paddle.autograd.PyLayer):
                     [0, probs.shape[1]], combine_probs[stage_idx].dtype
                 )
                 combine_states = ctx.combine_notify_infos[stage_idx]
-                _, _, event = combine_func(
-                    tokens,
-                    ctx.group,
-                    topk_weights=probs,
-                    previous_event=get_event_from_calc_stream(ctx.group.id),
-                    async_finish=True,
-                    allocate_on_comm_stream=True,
-                    output=output_tokens,
-                    output_topk_weights=output_topk_weights,
-                    handle=combine_states["handle"],
-                    pipeline_stage_id=stage_idx,
-                    num_pipeline_stages=ctx.num_pipeline_stages,
-                )
-                tokens, probs = None, None
+                token_list.append(tokens)
+                probs_list.append(probs)
+                handle_list.append(combine_states["handle"])
+                set_tokens_ready_func(is_tokens_ready, stage_idx)
+
+        event = all_in_one_combine_func(
+            token_list,
+            ctx.group,
+            handle_list,
+            topk_weights_list=probs_list,
+            output=output_tokens,
+            output_topk_weights=output_topk_weights,
+            previous_event=previous_event,
+            async_finish=True,
+            allocate_on_comm_stream=True,
+            num_pipeline_stages=ctx.num_pipeline_stages,
+            is_tokens_ready=is_tokens_ready,
+        )
 
         ctx.dispatch_history = None
 
@@ -646,6 +667,7 @@ class FlashEPFunction(paddle.autograd.PyLayer):
             for cb in backward_w_callbacks:
                 cb()
 
+        # paddle.device.synchronize()
         if event:
             event.calc_stream_wait(ctx.group.id)
 

@@ -1276,5 +1276,17 @@ void finalize() {
 }
 #endif  // PADDLE_WITH_NVSHMEM
 
+__global__ void set_tokens_ready_kernel(int* is_tokens_ready,
+                                        int pipeline_stage_id) {
+  is_tokens_ready[pipeline_stage_id] = 1;
+}
+
+void set_tokens_ready(int* is_tokens_ready,
+                      int pipeline_stage_id,
+                      cudaStream_t stream) {
+  set_tokens_ready_kernel<<<1, 1, 0, stream>>>(is_tokens_ready,
+                                               pipeline_stage_id);
+}
+
 }  // namespace internode
 }  // namespace flash_ep

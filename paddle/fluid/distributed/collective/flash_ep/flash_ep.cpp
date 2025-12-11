@@ -768,63 +768,96 @@ Buffer::internode_dispatch(
           event};
 }
 
-std::tuple<std::optional<flash_ep::detail::Tensor>,
-           std::optional<flash_ep::detail::Tensor>,
-           std::optional<EventHandle>>
-Buffer::internode_combine(
-    const flash_ep::detail::Tensor& x,
-    const std::optional<flash_ep::detail::Tensor>& topk_weights,
-    const flash_ep::detail::Tensor& rdma_channel_prefix_matrix,
-    const flash_ep::detail::Tensor& rdma_rank_prefix_sum,
-    const flash_ep::detail::Tensor& gbl_channel_prefix_matrix,
-    const flash_ep::detail::Tensor& combined_rdma_head,
-    const flash_ep::detail::Tensor& combined_nvl_head,
+std::tuple<std::optional<EventHandle>> Buffer::internode_combine(
+    const std::vector<flash_ep::detail::Tensor>& x_list,
+    const std::vector<std::optional<flash_ep::detail::Tensor>>&
+        topk_weights_list,
+    const std::vector<flash_ep::detail::Tensor>&
+        rdma_channel_prefix_matrix_list,
+    const std::vector<flash_ep::detail::Tensor>& rdma_rank_prefix_sum_list,
+    const std::vector<flash_ep::detail::Tensor>& gbl_channel_prefix_matrix_list,
+    const std::vector<flash_ep::detail::Tensor>& combined_rdma_head_list,
+    const std::vector<flash_ep::detail::Tensor>& combined_nvl_head_list,
     const std::optional<flash_ep::detail::Tensor>& combined_x,
     const std::optional<flash_ep::detail::Tensor>& combined_topk_weights,
+    const flash_ep::detail::Tensor& is_tokens_ready,
     const Config& config,
     std::optional<EventHandle>& previous_event,  // NOLINT
     bool async,
-    bool allocate_on_comm_stream,
-    int pipeline_stage_id) {
+    bool allocate_on_comm_stream) {
   const int num_channels = config.num_sms / 2;
   EP_HOST_ASSERT(config.num_sms % 2 == 0);
 
-  // Shape and contiguous checks
-  EP_HOST_ASSERT(x.dim() == 2 && x.is_contiguous());
-  EP_HOST_ASSERT(rdma_channel_prefix_matrix.dim() == 2 &&
-                 rdma_channel_prefix_matrix.is_contiguous() &&
-                 rdma_channel_prefix_matrix.scalar_type() ==
-                     flash_ep::detail::kInt32);
-  EP_HOST_ASSERT(
-      rdma_rank_prefix_sum.dim() == 1 && rdma_rank_prefix_sum.is_contiguous() &&
-      rdma_rank_prefix_sum.scalar_type() == flash_ep::detail::kInt32);
-  EP_HOST_ASSERT(gbl_channel_prefix_matrix.dim() == 2 &&
-                 gbl_channel_prefix_matrix.is_contiguous() &&
-                 gbl_channel_prefix_matrix.scalar_type() ==
-                     flash_ep::detail::kInt32);
-  EP_HOST_ASSERT(combined_rdma_head.dim() == 2 &&
-                 combined_rdma_head.is_contiguous() &&
-                 combined_rdma_head.scalar_type() == flash_ep::detail::kInt32);
-  EP_HOST_ASSERT(combined_nvl_head.dim() == 2 &&
-                 combined_nvl_head.is_contiguous() &&
-                 combined_nvl_head.scalar_type() == flash_ep::detail::kInt32);
+  EP_HOST_ASSERT(x_list.size() == num_pipeline_stages);
+  EP_HOST_ASSERT(topk_weights_list.size() == num_pipeline_stages);
+  EP_HOST_ASSERT(rdma_channel_prefix_matrix_list.size() == num_pipeline_stages);
+  EP_HOST_ASSERT(rdma_rank_prefix_sum_list.size() == num_pipeline_stages);
+  EP_HOST_ASSERT(gbl_channel_prefix_matrix_list.size() == num_pipeline_stages);
+  EP_HOST_ASSERT(combined_rdma_head_list.size() == num_pipeline_stages);
+  EP_HOST_ASSERT(combined_nvl_head_list.size() == num_pipeline_stages);
 
-  auto num_tokens = static_cast<int>(x.size(0)),
-       hidden = static_cast<int>(x.size(1)),
-       hidden_int4 =
-           static_cast<int>(x.size(1) * x.element_size() / sizeof(int4));
-  auto num_combined_tokens = static_cast<int>(combined_rdma_head.size(0));
-  EP_HOST_ASSERT((hidden * x.element_size()) % sizeof(int4) == 0);
-  EP_HOST_ASSERT(rdma_channel_prefix_matrix.size(0) == num_rdma_ranks &&
-                 rdma_channel_prefix_matrix.size(1) == num_channels);
-  EP_HOST_ASSERT(rdma_rank_prefix_sum.size(0) == num_rdma_ranks);
-  EP_HOST_ASSERT(gbl_channel_prefix_matrix.size(0) == num_ranks &&
-                 gbl_channel_prefix_matrix.size(1) == num_channels);
-  EP_HOST_ASSERT(combined_rdma_head.dim() == 2 &&
-                 combined_rdma_head.size(0) == num_combined_tokens &&
-                 combined_rdma_head.size(1) == num_rdma_ranks);
-  EP_HOST_ASSERT(combined_nvl_head.dim() == 2 &&
-                 combined_nvl_head.size(1) == NUM_MAX_NVL_PEERS);
+  auto hidden = static_cast<int>(x_list[0].size(1)),
+       hidden_int4 = static_cast<int>(x_list[0].size(1) *
+                                      x_list[0].element_size() / sizeof(int4));
+  std::vector<int> h_num_combined_tokens = {};
+  std::vector<int> h_num_tokens = {};
+  // Shape and contiguous checks
+  for (int pipeline_stage_id = 0; pipeline_stage_id < num_pipeline_stages;
+       ++pipeline_stage_id) {
+    auto num_combined_tokens =
+        static_cast<int>(combined_rdma_head_list[pipeline_stage_id].size(0));
+    h_num_combined_tokens.push_back(num_combined_tokens);
+    auto num_tokens = static_cast<int>(x_list[pipeline_stage_id].size(0));
+    h_num_tokens.push_back(num_tokens);
+
+    EP_HOST_ASSERT(x_list[pipeline_stage_id].dim() == 2 &&
+                   x_list[pipeline_stage_id].is_contiguous());
+    EP_HOST_ASSERT(
+        rdma_channel_prefix_matrix_list[pipeline_stage_id].dim() == 2 &&
+        rdma_channel_prefix_matrix_list[pipeline_stage_id].is_contiguous() &&
+        rdma_channel_prefix_matrix_list[pipeline_stage_id].scalar_type() ==
+            flash_ep::detail::kInt32);
+    EP_HOST_ASSERT(
+        rdma_rank_prefix_sum_list[pipeline_stage_id].dim() == 1 &&
+        rdma_rank_prefix_sum_list[pipeline_stage_id].is_contiguous() &&
+        rdma_rank_prefix_sum_list[pipeline_stage_id].scalar_type() ==
+            flash_ep::detail::kInt32);
+    EP_HOST_ASSERT(
+        gbl_channel_prefix_matrix_list[pipeline_stage_id].dim() == 2 &&
+        gbl_channel_prefix_matrix_list[pipeline_stage_id].is_contiguous() &&
+        gbl_channel_prefix_matrix_list[pipeline_stage_id].scalar_type() ==
+            flash_ep::detail::kInt32);
+    EP_HOST_ASSERT(combined_rdma_head_list[pipeline_stage_id].dim() == 2 &&
+                   combined_rdma_head_list[pipeline_stage_id].is_contiguous() &&
+                   combined_rdma_head_list[pipeline_stage_id].scalar_type() ==
+                       flash_ep::detail::kInt32);
+    EP_HOST_ASSERT(combined_nvl_head_list[pipeline_stage_id].dim() == 2 &&
+                   combined_nvl_head_list[pipeline_stage_id].is_contiguous() &&
+                   combined_nvl_head_list[pipeline_stage_id].scalar_type() ==
+                       flash_ep::detail::kInt32);
+
+    EP_HOST_ASSERT((hidden * x_list[pipeline_stage_id].element_size()) %
+                       sizeof(int4) ==
+                   0);
+    EP_HOST_ASSERT(rdma_channel_prefix_matrix_list[pipeline_stage_id].size(0) ==
+                       num_rdma_ranks &&
+                   rdma_channel_prefix_matrix_list[pipeline_stage_id].size(1) ==
+                       num_channels);
+    EP_HOST_ASSERT(rdma_rank_prefix_sum_list[pipeline_stage_id].size(0) ==
+                   num_rdma_ranks);
+    EP_HOST_ASSERT(gbl_channel_prefix_matrix_list[pipeline_stage_id].size(0) ==
+                       num_ranks &&
+                   gbl_channel_prefix_matrix_list[pipeline_stage_id].size(1) ==
+                       num_channels);
+    EP_HOST_ASSERT(combined_rdma_head_list[pipeline_stage_id].dim() == 2 &&
+                   combined_rdma_head_list[pipeline_stage_id].size(0) ==
+                       num_combined_tokens &&
+                   combined_rdma_head_list[pipeline_stage_id].size(1) ==
+                       num_rdma_ranks);
+    EP_HOST_ASSERT(combined_nvl_head_list[pipeline_stage_id].dim() == 2 &&
+                   combined_nvl_head_list[pipeline_stage_id].size(1) ==
+                       NUM_MAX_NVL_PEERS);
+  }
 
   // Allocate all tensors on comm stream if set
   // NOTES: do not allocate tensors upfront!
@@ -841,105 +874,155 @@ Buffer::internode_combine(
     stream_wait(comm_stream, compute_stream);
   }
 
-  if (combined_topk_weights.has_value()) {
-    EP_HOST_ASSERT(combined_x.has_value());
-  }
-
-  if (combined_x.has_value()) {
-    EP_HOST_ASSERT(combined_topk_weights.has_value() ||
-                   !topk_weights.has_value());
-  }
-
   // Top-k checks
   int num_topk = 0;
   float* topk_weights_ptr = nullptr;
   float* combined_topk_weights_ptr = nullptr;
-  auto in_combined_topk_weights = std::optional<flash_ep::detail::Tensor>();
-  auto res_combined_topk_weights = std::optional<flash_ep::detail::Tensor>();
-  if (topk_weights.has_value()) {
-    EP_HOST_ASSERT(topk_weights->dim() == 2 && topk_weights->is_contiguous());
-    EP_HOST_ASSERT(topk_weights->size(0) == num_tokens);
-    EP_HOST_ASSERT(topk_weights->scalar_type() == flash_ep::detail::kFloat32);
-    num_topk = static_cast<int>(topk_weights->size(1));
-    topk_weights_ptr = topk_weights->data_ptr<float>();
-    if (!combined_topk_weights.has_value()) {
-      in_combined_topk_weights = ConvertPaddleTensorToDetailTensor(
-          paddle::experimental::empty({num_combined_tokens, num_topk},
-                                      topk_weights->dtype(),
-                                      topk_weights->place()));
-      res_combined_topk_weights = in_combined_topk_weights;
-    } else {
+
+  for (int pipeline_stage_id = 0; pipeline_stage_id < num_pipeline_stages;
+       ++pipeline_stage_id) {
+    if (topk_weights_list[pipeline_stage_id].has_value()) {
+      EP_HOST_ASSERT(topk_weights_list[pipeline_stage_id]->dim() == 2 &&
+                     topk_weights_list[pipeline_stage_id]->is_contiguous());
+      EP_HOST_ASSERT(topk_weights_list[pipeline_stage_id]->size(0) ==
+                     h_num_tokens[pipeline_stage_id]);
+      EP_HOST_ASSERT(topk_weights_list[pipeline_stage_id]->scalar_type() ==
+                     flash_ep::detail::kFloat32);
+      num_topk =
+          static_cast<int>(topk_weights_list[pipeline_stage_id]->size(1));
+      topk_weights_ptr =
+          topk_weights_list[pipeline_stage_id]->data_ptr<float>();
+      EP_HOST_ASSERT(combined_topk_weights.has_value());
       EP_HOST_ASSERT(combined_topk_weights->dim() == 2 &&
                      combined_topk_weights->is_contiguous());
-      EP_HOST_ASSERT(combined_topk_weights->dtype() == topk_weights->dtype());
-      in_combined_topk_weights = combined_topk_weights;
+      EP_HOST_ASSERT(combined_topk_weights->dtype() ==
+                     topk_weights_list[pipeline_stage_id]->dtype());
+      combined_topk_weights_ptr = combined_topk_weights->data_ptr<float>();
     }
-    combined_topk_weights_ptr = in_combined_topk_weights->data_ptr<float>();
+
+    // Extra check for avoid-dead-lock design
+    EP_HOST_ASSERT(config.num_max_nvl_chunked_recv_tokens % num_rdma_ranks ==
+                   0);
+    EP_HOST_ASSERT(config.num_max_nvl_chunked_send_tokens <=
+                   config.num_max_nvl_chunked_recv_tokens / num_rdma_ranks);
+
+    // Launch barrier and reset queue head and tail
+    internode::cached_notify(
+        hidden_int4,
+        0,
+        0,
+        num_topk,
+        num_ranks,
+        num_channels,
+        h_num_combined_tokens[pipeline_stage_id],
+        combined_rdma_head_list[pipeline_stage_id].data_ptr<int>(),
+        rdma_channel_prefix_matrix_list[pipeline_stage_id].data_ptr<int>(),
+        rdma_rank_prefix_sum_list[pipeline_stage_id].data_ptr<int>(),
+        combined_nvl_head_list[pipeline_stage_id].data_ptr<int>(),
+        rdma_buffer_ptr,
+        config.num_max_rdma_chunked_recv_tokens,
+        buffer_ptrs_gpu,
+        config.num_max_nvl_chunked_recv_tokens,
+        task_fifo_ptrs_gpu,
+        head,
+        rank,
+        comm_stream,
+        num_rdma_bytes,
+        num_nvl_bytes,
+        false,
+        low_latency_mode,
+        num_pipeline_stages,
+        pipeline_stage_id);
+    move_fifo_slots(2);
   }
-
-  // Extra check for avoid-dead-lock design
-  EP_HOST_ASSERT(config.num_max_nvl_chunked_recv_tokens % num_rdma_ranks == 0);
-  EP_HOST_ASSERT(config.num_max_nvl_chunked_send_tokens <=
-                 config.num_max_nvl_chunked_recv_tokens / num_rdma_ranks);
-
-  // Launch barrier and reset queue head and tail
-  internode::cached_notify(hidden_int4,
-                           0,
-                           0,
-                           num_topk,
-                           num_ranks,
-                           num_channels,
-                           num_combined_tokens,
-                           combined_rdma_head.data_ptr<int>(),
-                           rdma_channel_prefix_matrix.data_ptr<int>(),
-                           rdma_rank_prefix_sum.data_ptr<int>(),
-                           combined_nvl_head.data_ptr<int>(),
-                           rdma_buffer_ptr,
-                           config.num_max_rdma_chunked_recv_tokens,
-                           buffer_ptrs_gpu,
-                           config.num_max_nvl_chunked_recv_tokens,
-                           task_fifo_ptrs_gpu,
-                           head,
-                           rank,
-                           comm_stream,
-                           num_rdma_bytes,
-                           num_nvl_bytes,
-                           false,
-                           low_latency_mode,
-                           num_pipeline_stages,
-                           pipeline_stage_id);
-  move_fifo_slots(2);
 
   // Launch data combine
-  bool inplace_float_combine = false;
-  auto in_combined_x = std::optional<flash_ep::detail::Tensor>();
-  auto res_combined_x = std::optional<flash_ep::detail::Tensor>();
-  if (combined_x.has_value()) {
-    inplace_float_combine = true;
-    in_combined_x = combined_x;
-    EP_HOST_ASSERT(in_combined_x->dim() == 2 &&
-                   in_combined_x->is_contiguous() &&
-                   in_combined_x->scalar_type() == flash_ep::detail::kFloat32 &&
-                   in_combined_x->size(1) == hidden);
-  } else {
-    in_combined_x =
-        ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-            {num_combined_tokens, hidden}, x.dtype(), x.place()));
-    res_combined_x = in_combined_x;
+  EP_HOST_ASSERT(combined_x.has_value());
+  EP_HOST_ASSERT(combined_x->dim() == 2 && combined_x->is_contiguous() &&
+                 combined_x->scalar_type() == flash_ep::detail::kFloat32 &&
+                 combined_x->size(1) == hidden);
+
+  char* device_base_ptr;
+  int ptr_array_size = num_pipeline_stages * sizeof(void*);
+  int total_size = 7 * ptr_array_size;
+  cudaMallocAsync(&device_base_ptr, total_size, comm_stream);
+
+  std::vector<const void*> host_ptrs;
+  for (int32_t i = 0; i < num_pipeline_stages; ++i) {
+    host_ptrs.push_back(x_list[i].data_ptr());
   }
+  for (int32_t i = 0; i < num_pipeline_stages; ++i) {
+    if (topk_weights_list[i].has_value()) {
+      host_ptrs.push_back(topk_weights_list[i]->data_ptr());
+    } else {
+      host_ptrs.push_back(nullptr);
+    }
+  }
+  for (int32_t i = 0; i < num_pipeline_stages; ++i) {
+    host_ptrs.push_back(rdma_channel_prefix_matrix_list[i].data_ptr());
+  }
+  for (int32_t i = 0; i < num_pipeline_stages; ++i) {
+    host_ptrs.push_back(rdma_rank_prefix_sum_list[i].data_ptr());
+  }
+  for (int32_t i = 0; i < num_pipeline_stages; ++i) {
+    host_ptrs.push_back(gbl_channel_prefix_matrix_list[i].data_ptr());
+  }
+  for (int32_t i = 0; i < num_pipeline_stages; ++i) {
+    host_ptrs.push_back(combined_rdma_head_list[i].data_ptr());
+  }
+  for (int32_t i = 0; i < num_pipeline_stages; ++i) {
+    host_ptrs.push_back(combined_nvl_head_list[i].data_ptr());
+  }
+
+  cudaMemcpyAsync(device_base_ptr,
+                  host_ptrs.data(),
+                  total_size,
+                  cudaMemcpyHostToDevice,
+                  comm_stream);
+
+  const void** d_x_ptr = reinterpret_cast<const void**>(device_base_ptr);
+  const float** d_topk_weights_ptr =
+      reinterpret_cast<const float**>(device_base_ptr + 1 * ptr_array_size);
+  const int** d_rdma_channel_prefix_matrix_ptr =
+      reinterpret_cast<const int**>(device_base_ptr + 2 * ptr_array_size);
+  const int** d_rdma_rank_prefix_sum_ptr =
+      reinterpret_cast<const int**>(device_base_ptr + 3 * ptr_array_size);
+  const int** d_gbl_channel_prefix_matrix_ptr =
+      reinterpret_cast<const int**>(device_base_ptr + 4 * ptr_array_size);
+  const int** d_combined_rdma_head_ptr =
+      reinterpret_cast<const int**>(device_base_ptr + 5 * ptr_array_size);
+  const int** d_combined_nvl_head_ptr =
+      reinterpret_cast<const int**>(device_base_ptr + 6 * ptr_array_size);
+
+  int* d_num_combined_list_ptr;
+  ptr_array_size = num_pipeline_stages * sizeof(int);
+  cudaMallocAsync(&d_num_combined_list_ptr, ptr_array_size, comm_stream);
+  cudaMemcpyAsync(d_num_combined_list_ptr,
+                  h_num_combined_tokens.data(),
+                  ptr_array_size,
+                  cudaMemcpyHostToDevice,
+                  comm_stream);
+  int* d_num_tokens_ptr;
+  cudaMallocAsync(&d_num_tokens_ptr, ptr_array_size, comm_stream);
+  cudaMemcpyAsync(d_num_tokens_ptr,
+                  h_num_tokens.data(),
+                  ptr_array_size,
+                  cudaMemcpyHostToDevice,
+                  comm_stream);
+
   internode::combine(
-      flash_ep::detail::ScalarTypeToCudaDataType(x.scalar_type()),
-      in_combined_x->data_ptr(),
+      flash_ep::detail::ScalarTypeToCudaDataType(x_list[0].scalar_type()),
+      combined_x->data_ptr(),
       combined_topk_weights_ptr,
-      x.data_ptr(),
-      topk_weights_ptr,
-      combined_rdma_head.data_ptr<int>(),
-      combined_nvl_head.data_ptr<int>(),
-      rdma_channel_prefix_matrix.data_ptr<int>(),
-      rdma_rank_prefix_sum.data_ptr<int>(),
-      gbl_channel_prefix_matrix.data_ptr<int>(),
-      num_tokens,
-      num_combined_tokens,
+      d_x_ptr,
+      d_topk_weights_ptr,
+      d_combined_rdma_head_ptr,
+      d_combined_nvl_head_ptr,
+      d_rdma_channel_prefix_matrix_ptr,
+      d_rdma_rank_prefix_sum_ptr,
+      d_gbl_channel_prefix_matrix_ptr,
+      d_num_tokens_ptr,
+      d_num_combined_list_ptr,
       hidden,
       num_topk,
       rdma_buffer_ptr,
@@ -953,34 +1036,42 @@ Buffer::internode_combine(
       comm_stream,
       num_channels,
       low_latency_mode,
-      inplace_float_combine,
+      true,  // inplace_float_combine,
       num_pipeline_stages,
-      pipeline_stage_id,
       num_rdma_bytes,
-      num_nvl_bytes);
+      num_nvl_bytes,
+      is_tokens_ready.data_ptr<int>());
 
   // Wait streams
   std::optional<EventHandle> event;
   if (async) {
     event = EventHandle(comm_stream);
-    for (auto& t : {x,
-                    rdma_channel_prefix_matrix,
-                    rdma_rank_prefix_sum,
-                    gbl_channel_prefix_matrix,
-                    combined_rdma_head,
-                    combined_nvl_head}) {
+    for (auto& t_list : {x_list,
+                         rdma_channel_prefix_matrix_list,
+                         rdma_rank_prefix_sum_list,
+                         gbl_channel_prefix_matrix_list,
+                         combined_rdma_head_list,
+                         combined_nvl_head_list}) {
+      for (auto& t : t_list) {
+        t.record_stream(comm_stream);
+        if (allocate_on_comm_stream) t.record_stream(compute_stream);
+      }
+    }
+    for (auto& t : {is_tokens_ready}) {
       t.record_stream(comm_stream);
       if (allocate_on_comm_stream) t.record_stream(compute_stream);
     }
-    for (auto& to : {topk_weights,
-                     combined_topk_weights,
-                     in_combined_x,
-                     res_combined_x,
-                     in_combined_topk_weights,
-                     res_combined_topk_weights}) {
+    for (auto& to : {combined_topk_weights}) {
       to.has_value() ? to->record_stream(comm_stream) : void();
       if (allocate_on_comm_stream)
         to.has_value() ? to->record_stream(compute_stream) : void();
+    }
+    for (auto& to_list : {topk_weights_list}) {
+      for (auto& to : to_list) {
+        to.has_value() ? to->record_stream(comm_stream) : void();
+        if (allocate_on_comm_stream)
+          to.has_value() ? to->record_stream(compute_stream) : void();
+      }
     }
   } else {
     stream_wait(compute_stream, comm_stream);
@@ -992,7 +1083,7 @@ Buffer::internode_combine(
   }
 
   // Return values
-  return {res_combined_x, res_combined_topk_weights, event};
+  return {event};
 }
 
 std::tuple<std::vector<std::vector<int>>,
@@ -1472,46 +1563,46 @@ Buffer::internode_dispatch_api(
 #endif
 }
 
-std::tuple<std::optional<paddle::Tensor>,
-           std::optional<paddle::Tensor>,
-           std::optional<EventHandle>>
-Buffer::internode_combine_api(
-    const paddle::Tensor& x,
-    const std::optional<paddle::Tensor>& topk_weights,
-    const paddle::Tensor& rdma_channel_prefix_matrix,
-    const paddle::Tensor& rdma_rank_prefix_sum,
-    const paddle::Tensor& gbl_channel_prefix_matrix,
-    const paddle::Tensor& combined_rdma_head,
-    const paddle::Tensor& combined_nvl_head,
+std::optional<EventHandle> Buffer::internode_combine_api(
+    const std::vector<paddle::Tensor>& x,
+    const std::vector<std::optional<paddle::Tensor>>& topk_weights,
+    const std::vector<paddle::Tensor>& rdma_channel_prefix_matrix,
+    const std::vector<paddle::Tensor>& rdma_rank_prefix_sum,
+    const std::vector<paddle::Tensor>& gbl_channel_prefix_matrix,
+    const std::vector<paddle::Tensor>& combined_rdma_head,
+    const std::vector<paddle::Tensor>& combined_nvl_head,
     const std::optional<paddle::Tensor>& combined_x,
     const std::optional<paddle::Tensor>& combined_topk_weights,
+    const paddle::Tensor& is_tokens_ready,
     const Config& config,
     std::optional<EventHandle>& previous_event,  // NOLINT
     bool async,
-    bool allocate_on_comm_stream,
-    int pipeline_stage_id) {
+    bool allocate_on_comm_stream) {
 #ifdef PADDLE_WITH_NVSHMEM
-  const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
+  const auto& x_ = ListConvertPaddleTensorToDetailTensor(x);
 
-  std::optional<flash_ep::detail::Tensor> topk_weights_ =
-      ConvertOptionalPaddleTensorToDetailTensor(topk_weights);
+  std::vector<std::optional<flash_ep::detail::Tensor>> topk_weights_ =
+      ListConvertOptionalPaddleTensorToDetailTensor(topk_weights);
 
   const auto& rdma_channel_prefix_matrix_ =
-      ConvertPaddleTensorToDetailTensor(rdma_channel_prefix_matrix);
+      ListConvertPaddleTensorToDetailTensor(rdma_channel_prefix_matrix);
   const auto& rdma_rank_prefix_sum_ =
-      ConvertPaddleTensorToDetailTensor(rdma_rank_prefix_sum);
+      ListConvertPaddleTensorToDetailTensor(rdma_rank_prefix_sum);
   const auto& gbl_channel_prefix_matrix_ =
-      ConvertPaddleTensorToDetailTensor(gbl_channel_prefix_matrix);
+      ListConvertPaddleTensorToDetailTensor(gbl_channel_prefix_matrix);
 
   const auto& combined_rdma_head_ =
-      ConvertPaddleTensorToDetailTensor(combined_rdma_head);
+      ListConvertPaddleTensorToDetailTensor(combined_rdma_head);
   const auto& combined_nvl_head_ =
-      ConvertPaddleTensorToDetailTensor(combined_nvl_head);
+      ListConvertPaddleTensorToDetailTensor(combined_nvl_head);
 
   std::optional<flash_ep::detail::Tensor> combined_x_ =
       ConvertOptionalPaddleTensorToDetailTensor(combined_x);
   std::optional<flash_ep::detail::Tensor> combined_topk_weights_ =
       ConvertOptionalPaddleTensorToDetailTensor(combined_topk_weights);
+
+  const auto& is_tokens_ready_ =
+      ConvertPaddleTensorToDetailTensor(is_tokens_ready);
 
   auto res = internode_combine(x_,
                                topk_weights_,
@@ -1522,20 +1613,15 @@ Buffer::internode_combine_api(
                                combined_nvl_head_,
                                combined_x_,
                                combined_topk_weights_,
+                               is_tokens_ready_,
                                config,
                                previous_event,
                                async,
-                               allocate_on_comm_stream,
-                               pipeline_stage_id);
+                               allocate_on_comm_stream);
 
-  auto res_combined_x_ =
-      ConvertOptionalDetailTensorToPaddleTensor(std::get<0>(res));
-  std::optional<paddle::Tensor> res_combined_topk_weights_ =
-      ConvertOptionalDetailTensorToPaddleTensor(std::get<1>(res));
+  const auto& event = std::get<0>(res);
 
-  const auto& event = std::get<2>(res);
-
-  return {res_combined_x_, res_combined_topk_weights_, event};
+  return event;
 #else
   LOG(ERROR) << "NVSHMEM is not enabled. You can enable it by setting cmake "
                 "option WITH_NVSHMEM=ON.";
@@ -2271,4 +2357,33 @@ std::optional<paddle::Tensor> ConvertOptionalDetailTensorToPaddleTensor(
   return res;
 }
 
+std::vector<flash_ep::detail::Tensor> ListConvertPaddleTensorToDetailTensor(
+    const std::vector<paddle::Tensor>& tensors) {
+  std::vector<flash_ep::detail::Tensor> res;
+  for (const auto& tensor : tensors) {
+    res.push_back(ConvertPaddleTensorToDetailTensor(tensor));
+  }
+  return res;
+}
+
+std::vector<std::optional<flash_ep::detail::Tensor>>
+ListConvertOptionalPaddleTensorToDetailTensor(
+    const std::vector<std::optional<paddle::Tensor>>& tensors) {
+  std::vector<std::optional<flash_ep::detail::Tensor>> res;
+  for (const auto& tensor : tensors) {
+    std::optional<flash_ep::detail::Tensor> tmp;
+    if (tensor.has_value()) {
+      tmp = ConvertPaddleTensorToDetailTensor(tensor.value());
+    }
+    res.push_back(tmp);
+  }
+  return res;
+}
+
+void set_tokens_ready_api(paddle::Tensor& is_tokens_ready,  // NOLINT
+                          int pipeline_stage_id) {
+  auto stream = is_tokens_ready.stream();
+  flash_ep::internode::set_tokens_ready(
+      is_tokens_ready.data<int>(), pipeline_stage_id, stream);
+}
 }  // namespace flash_ep

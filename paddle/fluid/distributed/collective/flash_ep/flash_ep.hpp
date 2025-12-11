@@ -207,24 +207,24 @@ struct Buffer {
       int num_experts,
       int pipeline_stage_id);
 
-  std::tuple<std::optional<flash_ep::detail::Tensor>,
-             std::optional<flash_ep::detail::Tensor>,
-             std::optional<EventHandle>>
-  internode_combine(
-      const flash_ep::detail::Tensor& x,
-      const std::optional<flash_ep::detail::Tensor>& topk_weights,
-      const flash_ep::detail::Tensor& rdma_channel_prefix_matrix,
-      const flash_ep::detail::Tensor& rdma_rank_prefix_sum,
-      const flash_ep::detail::Tensor& gbl_channel_prefix_matrix,
-      const flash_ep::detail::Tensor& combined_rdma_head,
-      const flash_ep::detail::Tensor& combined_nvl_head,
+  std::tuple<std::optional<EventHandle>> internode_combine(
+      const std::vector<flash_ep::detail::Tensor>& x_list,
+      const std::vector<std::optional<flash_ep::detail::Tensor>>&
+          topk_weights_list,
+      const std::vector<flash_ep::detail::Tensor>&
+          rdma_channel_prefix_matrix_list,
+      const std::vector<flash_ep::detail::Tensor>& rdma_rank_prefix_sum_list,
+      const std::vector<flash_ep::detail::Tensor>&
+          gbl_channel_prefix_matrix_list,
+      const std::vector<flash_ep::detail::Tensor>& combined_rdma_head_list,
+      const std::vector<flash_ep::detail::Tensor>& combined_nvl_head_list,
       const std::optional<flash_ep::detail::Tensor>& combined_x,
       const std::optional<flash_ep::detail::Tensor>& combined_topk_weights,
+      const flash_ep::detail::Tensor& is_tokens_ready,
       const Config& config,
       std::optional<EventHandle>& previous_event,  // NOLINT
       bool async,
-      bool allocate_on_comm_stream,
-      int pipeline_stage_id);
+      bool allocate_on_comm_stream);
 
 #endif  // PADDLE_WITH_NVSHMEM
 
@@ -275,24 +275,21 @@ struct Buffer {
       int num_experts,
       int pipeline_stage_id);
 
-  std::tuple<std::optional<paddle::Tensor>,
-             std::optional<paddle::Tensor>,
-             std::optional<EventHandle>>
-  internode_combine_api(
-      const paddle::Tensor& x,
-      const std::optional<paddle::Tensor>& topk_weights,
-      const paddle::Tensor& rdma_channel_prefix_matrix,
-      const paddle::Tensor& rdma_rank_prefix_sum,
-      const paddle::Tensor& gbl_channel_prefix_matrix,
-      const paddle::Tensor& combined_rdma_head,
-      const paddle::Tensor& combined_nvl_head,
+  std::optional<EventHandle> internode_combine_api(
+      const std::vector<paddle::Tensor>& x,
+      const std::vector<std::optional<paddle::Tensor>>& topk_weights,
+      const std::vector<paddle::Tensor>& rdma_channel_prefix_matrix,
+      const std::vector<paddle::Tensor>& rdma_rank_prefix_sum,
+      const std::vector<paddle::Tensor>& gbl_channel_prefix_matrix,
+      const std::vector<paddle::Tensor>& combined_rdma_head,
+      const std::vector<paddle::Tensor>& combined_nvl_head,
       const std::optional<paddle::Tensor>& combined_x,
       const std::optional<paddle::Tensor>& combined_topk_weights,
+      const paddle::Tensor& is_tokens_ready,
       const Config& config,
       std::optional<EventHandle>& previous_event,  // NOLINT
       bool async,
-      bool allocate_on_comm_stream,
-      int pipeline_stage_id);
+      bool allocate_on_comm_stream);
 
   std::tuple<std::vector<std::vector<int>>,
              std::vector<int>,
@@ -444,5 +441,15 @@ ConvertOptionalPaddleTensorToDetailTensor(
     const std::optional<paddle::Tensor>& tensor);
 std::optional<paddle::Tensor> ConvertOptionalDetailTensorToPaddleTensor(
     const std::optional<flash_ep::detail::Tensor>& tensor);
+
+std::vector<flash_ep::detail::Tensor> ListConvertPaddleTensorToDetailTensor(
+    const std::vector<paddle::Tensor>& tensors);
+
+std::vector<std::optional<flash_ep::detail::Tensor>>
+ListConvertOptionalPaddleTensorToDetailTensor(
+    const std::vector<std::optional<paddle::Tensor>>& tensors);
+
+void set_tokens_ready_api(paddle::Tensor& is_tokens_ready,  // NOLINT
+                          int pipeline_stage_id);
 
 }  // namespace flash_ep
