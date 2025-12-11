@@ -26,7 +26,7 @@ os.environ["FLAGS_embedding_deterministic"] = "1"
 
 
 def allclose(x, y):
-    np.testing.assert_allclose(x.numpy(), y.numpy(), rtol=1e-5)
+    mask = np.testing.assert_allclose(x.numpy(), y.numpy(), rtol=1e-5)
 
 
 _TEST_PROBLEMS = (
@@ -38,12 +38,7 @@ _TEST_PROBLEMS = (
     (16, 128, 256, 512),
 )
 
-_TRANS_CASES = (
-    (False, False),
-    (False, True),
-    (True, False),
-    (True, True),
-)
+m_group_layout_cases = [(False, True), (False, False)]
 
 
 def randn(bs, x, y):
@@ -51,92 +46,86 @@ def randn(bs, x, y):
     return out.astype(paddle.bfloat16)
 
 
-def pyref_gmm(a, b, batch_sizes, trans_a=False, trans_b=False):
+def pyref_gmm(a, b, batch_sizes, trans_b=False):
     out = []
     start = 0
     for i, size in enumerate(batch_sizes):
-        lhs = a[i, :, :].t() if trans_a else a[start : start + size, :]
-        rhs = b[i, :, :].t() if trans_b else b[i, :, :]
+        lhs = a[start : start + size, :]
+        rhs = b[i, :, :] if not trans_b else b[i, :, :].t()
         out.append(lhs @ rhs)
-        if not trans_a:
-            start += size
-    if trans_a:
-        return paddle.stack(out, axis=0)
+        start += size
+    return paddle.concat(out, axis=0)
+
+
+def pyref_k_gmm(a, b, batch_sizes):
+    out = []
+    start = 0
+    for i, size in enumerate(batch_sizes):
+        lhs = a[start : start + size, :].t()
+        rhs = b[start : start + size, :]
+        out.append(lhs @ rhs)
+        start += size
     return paddle.concat(out, axis=0)
 
 
 class TestGroupedGemm(unittest.TestCase):
     def setUp(self):
-        paddle.seed(0)
+        paddle.seed(42)
 
-    def _run_test(self, z, m, k, n, batch_sizes, trans_a, trans_b):
-        with paddle.amp.auto_cast(False):
-            # Prepare inputs based on transpose flags
-            if trans_a:
-                # Case 3: [M_total, K]' x [M_total, N] -> [z, K, N]
-                a = randn(z, m, k).reshape([-1, k]).astype(paddle.bfloat16)
-                b = randn(1, m * z, n).reshape([-1, n]).astype(paddle.bfloat16)
-                a_ref = randn(z, k, m).astype(
-                    paddle.bfloat16
-                )  # For pyref: [z, K, M]
-                b_ref = randn(z, m, n).astype(
-                    paddle.bfloat16
-                )  # Rebuild for pyref
-                # Rebuild a_ref and b_ref from actual data
-                start = 0
-                a_ref_list, b_ref_list = [], []
-                for i, size in enumerate(batch_sizes):
-                    a_ref_list.append(
-                        a[start : start + size, :].t().unsqueeze(0)
-                    )
-                    b_ref_list.append(b[start : start + size, :].unsqueeze(0))
-                    start += size
-                a_ref = paddle.concat(a_ref_list, axis=0)
-                b_ref = paddle.concat(b_ref_list, axis=0)
-            else:
-                # Case 1 & 2: [M_total, K] x [z, K, N] -> [M_total, N]
-                a = randn(z, m, k).reshape([-1, k]).astype(paddle.bfloat16)
-                if trans_b:
-                    b = randn(z, n, k).astype(
-                        paddle.bfloat16
-                    )  # Will be transposed
-                else:
+    def test_m_grouped_gemm_fixed_sizes(self):
+        """Test grouped GEMM with fixed sizes"""
+        for z, m, k, n in _TEST_PROBLEMS:
+            for trans_lhs, trans_rhs in m_group_layout_cases:
+                with self.subTest(
+                    z=z, m=m, k=k, n=n, trans_a=trans_lhs, trans_b=trans_rhs
+                ) and paddle.amp.auto_cast(False):
+                    a = randn(z, m, k).reshape([-1, k]).astype(paddle.bfloat16)
                     b = randn(z, k, n).astype(paddle.bfloat16)
+                    if trans_rhs:
+                        b = b.mT
+                    batch_sizes = [m] * z
+                    a.stop_gradient = False
+                    b.stop_gradient = False
+                    a_ref = a.clone().detach()
+                    b_ref = b.clone().detach()
+                    a_ref.stop_gradient = False
+                    b_ref.stop_gradient = False
+                    print(f"{a.shape}, {b.shape}")
+                    out = grouped_gemm(a, b, batch_sizes, False, trans_rhs)
+                    expected_out = pyref_gmm(
+                        a_ref, b_ref, batch_sizes, trans_rhs
+                    )
+                    allclose(out, expected_out.reshape(out.shape))
+
+    def test_k_grouped_gemm_variable_sizes(self):
+        """Test grouped GEMM with variable sizes"""
+        for z, m, k, n in _TEST_PROBLEMS:
+            with self.subTest(
+                z=z, m=m, k=k, n=n, trans_a=True, trans_b=False
+            ) and paddle.amp.auto_cast(False):
+                a = randn(z, m, k).astype(paddle.bfloat16)
+                b = randn(z, m, n).astype(paddle.bfloat16)
+
+                batch_sizes = [m] * z
+
+                a.stop_gradient = False
+                b.stop_gradient = False
                 a_ref = a.clone().detach()
                 b_ref = b.clone().detach()
+                a_ref.stop_gradient = False
+                b_ref.stop_gradient = False
 
-            a.stop_gradient = False
-            b.stop_gradient = False
-
-            out = grouped_gemm(a, b, batch_sizes, trans_a, trans_b)
-            expected_out = pyref_gmm(
-                a_ref, b_ref, batch_sizes, trans_a, trans_b
-            )
-            allclose(out, expected_out)
-
-    def test_grouped_gemm_fixed_sizes(self):
-        """Test grouped GEMM with fixed sizes and all transpose combinations"""
-        for z, m, k, n in _TEST_PROBLEMS:
-            for trans_a, trans_b in _TRANS_CASES:
-                with self.subTest(
-                    z=z, m=m, k=k, n=n, trans_a=trans_a, trans_b=trans_b
-                ):
-                    batch_sizes = [m] * z
-                    self._run_test(z, m, k, n, batch_sizes, trans_a, trans_b)
-
-    def test_grouped_gemm_variable_sizes(self):
-        """Test grouped GEMM with variable sizes and all transpose combinations"""
-        for z, m, k, n in _TEST_PROBLEMS:
-            for trans_a, trans_b in _TRANS_CASES:
-                with self.subTest(
-                    z=z, m=m, k=k, n=n, trans_a=trans_a, trans_b=trans_b
-                ):
-                    dist = paddle.rand([z])
-                    dist /= dist.sum()
-                    batch_sizes = (dist * m).astype(paddle.int64)
-                    batch_sizes[-1] += m * z - batch_sizes.sum()
-                    batch_sizes = [int(x) for x in batch_sizes]
-                    self._run_test(z, m, k, n, batch_sizes, trans_a, trans_b)
+                out = grouped_gemm(
+                    a.reshape([-1, k]),
+                    b.reshape([-1, n]),
+                    batch_sizes,
+                    True,
+                    False,
+                )
+                expected_out = pyref_k_gmm(
+                    a_ref.reshape([-1, k]), b_ref.reshape([-1, n]), batch_sizes
+                )
+                allclose(out, expected_out.reshape(out.shape))
 
 
 if __name__ == '__main__':

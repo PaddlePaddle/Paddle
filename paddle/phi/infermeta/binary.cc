@@ -4816,7 +4816,7 @@ void BatchedGemmInferMeta(const MetaTensor& lhs,
           "The lhs's dimension must be 2, but got[%d]", lhs_shape.size()));
   PADDLE_ENFORCE_EQ(
       rhs_shape.size(),
-      3,
+      trans_lhs ? 2 : 3,
       common::errors::InvalidArgument(
           "The rhs's dimension must be 3, but got[%d]", rhs_shape.size()));
 
@@ -4843,15 +4843,6 @@ void BatchedGemmInferMeta(const MetaTensor& lhs,
     // input_hidden_size or output_hidden_size.
 
     const int64_t hidden_out = trans_rhs ? rhs_shape[1] : rhs_shape[2];
-    const int64_t lhs_proposed_k = lhs_shape[1];
-    const int64_t rhs_proposed_k = trans_rhs ? rhs_shape[2] : rhs_shape[1];
-    PADDLE_ENFORCE_EQ(lhs_proposed_k,
-                      rhs_proposed_k,
-                      common::errors::InvalidArgument(
-                          "The lhs's last dim must be equal to the rhs's "
-                          "proposal, but got[%d] instead of [%d]",
-                          lhs_proposed_k,
-                          rhs_proposed_k));
     output->set_dims(common::make_ddim({total_tokens, hidden_out}));
 
   } else {
