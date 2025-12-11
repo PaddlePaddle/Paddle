@@ -71,18 +71,13 @@ _DTYPE_PRECISIONS = {
     paddle.complex128: (1e-7, 1e-7),
 }
 
-# Add bfloat16 if available in current paddle version
 if hasattr(paddle, "bfloat16"):
     _DTYPE_PRECISIONS[paddle.bfloat16] = (0.016, 1e-5)
 
-# Handle quantized types if they map to standard dtypes in comparison logic
-# For simplicity, we default integers to exact match (rtol=0, atol=0) usually,
-# but if handled as floats (e.g. dequantized), we use float32 rules.
 _QUANTIZED_TYPES = [
     getattr(paddle, t) for t in ["int8", "int16", "uint8"] if hasattr(paddle, t)
 ]
 for q_type in _QUANTIZED_TYPES:
-    # Using float32 tolerances as a fallback if they are compared as floats
     _DTYPE_PRECISIONS[q_type] = _DTYPE_PRECISIONS[paddle.float32]
 
 
@@ -252,8 +247,6 @@ def make_tensor_mismatch_msg(
         f"Mismatched elements: {total_mismatches} / {number_of_elements} "
         f"({total_mismatches / number_of_elements:.1%})"
     )
-
-    # Floating point low precision checks (skipped for brevity/paddle specifics, using standard logic)
 
     actual_flat = actual.flatten()
     expected_flat = expected.flatten()
@@ -511,7 +504,7 @@ class NumberPair(Pair):
         if HAS_NUMPY and isinstance(number_like, np.number):
             return number_like.item()
         elif isinstance(number_like, self._NUMBER_TYPES):
-            return number_like  # type: ignore[return-value]
+            return number_like
         else:
             raise ErrorMeta(
                 TypeError, f"Unknown number type {type(number_like)}.", id=id
@@ -628,8 +621,6 @@ class TensorLikePair(Pair):
         actual, expected = self.actual, self.expected
 
         self._compare_attributes(actual, expected)
-        # Skip value check for meta tensors? Paddle doesn't strictly have a 'meta' device type exposed like Torch
-        # but if shapes mismatch we already raised.
 
         actual, expected = self._equalize_attributes(actual, expected)
         self._compare_values(actual, expected)
@@ -659,8 +650,6 @@ class TensorLikePair(Pair):
                 raise_mismatch_error("layout", actual.layout, expected.layout)
 
         if self.check_device:
-            # Paddle places (CPUPlace, CUDAPlace) compare strictly.
-            # Note: str(actual.place) helps debugging
             if str(actual.place) != str(expected.place):
                 raise_mismatch_error("place", actual.place, expected.place)
 
@@ -670,17 +659,11 @@ class TensorLikePair(Pair):
     def _equalize_attributes(
         self, actual: paddle.Tensor, expected: paddle.Tensor
     ) -> tuple[paddle.Tensor, paddle.Tensor]:
-        # Normalize places to CPU if they mismatch or if we need to do numpy/scalar ops
-        # Simplification: if places mismatch, move both to CPU
         if str(actual.place) != str(expected.place):
             actual = actual.cpu()
             expected = expected.cpu()
 
         if actual.dtype != expected.dtype:
-            # Basic manual type promotion
-            # If one is float64 and other is float32, go to float64
-            # If complex involved, go to complex
-            # This is a simplification compared to torch.promote_types
             actual_is_fp = actual.dtype in [
                 paddle.float32,
                 paddle.float64,
@@ -718,7 +701,6 @@ class TensorLikePair(Pair):
             ):
                 target_dtype = paddle.float32
 
-            # Simple cast
             actual = actual.astype(target_dtype)
             expected = expected.astype(target_dtype)
 
@@ -727,9 +709,6 @@ class TensorLikePair(Pair):
     def _compare_values(
         self, actual: paddle.Tensor, expected: paddle.Tensor
     ) -> None:
-        # For simplicity in this port, we stick to standard regular value comparison.
-        # Specialized checks for Sparse/Quantized are routed here after conversion in PyTorch,
-        # but Paddle's ecosystem handles these differently.
         self._compare_regular_values_close(
             actual,
             expected,
@@ -798,15 +777,14 @@ def originate_pairs(
     id: tuple[Any, ...] = (),
     **options: Any,
 ) -> list[Pair]:
-    # We explicitly exclude str's here since they are self-referential
     if (
         isinstance(actual, sequence_types)
         and not isinstance(actual, str)
         and isinstance(expected, sequence_types)
         and not isinstance(expected, str)
     ):
-        actual_len = len(actual)  # type: ignore[arg-type]
-        expected_len = len(expected)  # type: ignore[arg-type]
+        actual_len = len(actual)
+        expected_len = len(expected)
         if actual_len != expected_len:
             raise ErrorMeta(
                 AssertionError,
@@ -818,8 +796,8 @@ def originate_pairs(
         for idx in range(actual_len):
             pairs.extend(
                 originate_pairs(
-                    actual[idx],  # type: ignore[index]
-                    expected[idx],  # type: ignore[index]
+                    actual[idx],
+                    expected[idx],
                     pair_types=pair_types,
                     sequence_types=sequence_types,
                     mapping_types=mapping_types,
@@ -832,8 +810,8 @@ def originate_pairs(
     elif isinstance(actual, mapping_types) and isinstance(
         expected, mapping_types
     ):
-        actual_keys = set(actual.keys())  # type: ignore[attr-defined]
-        expected_keys = set(expected.keys())  # type: ignore[attr-defined]
+        actual_keys = set(actual.keys())
+        expected_keys = set(expected.keys())
         if actual_keys != expected_keys:
             missing_keys = expected_keys - actual_keys
             additional_keys = actual_keys - expected_keys
@@ -855,8 +833,8 @@ def originate_pairs(
         for key in keys:
             pairs.extend(
                 originate_pairs(
-                    actual[key],  # type: ignore[index]
-                    expected[key],  # type: ignore[index]
+                    actual[key],
+                    expected[key],
                     pair_types=pair_types,
                     sequence_types=sequence_types,
                     mapping_types=mapping_types,
@@ -927,7 +905,6 @@ def not_close_error_metas(
                 f"resulted in the unexpected exception above."
             ) from error
 
-    # Break cycles
     error_metas = [error_metas]
     return error_metas.pop()
 
@@ -945,27 +922,187 @@ def assert_close(
     check_layout: bool = True,
     msg: str | Callable[[str], str] | None = None,
 ):
-    r"""Asserts that ``actual`` and ``expected`` are close.
+    r"""
+    Asserts that ``actual`` and ``expected`` are close.
 
-    This is a PaddlePaddle implementation inspired by ``torch.testing.assert_close``.
-
-    If ``actual`` and ``expected`` are tensors, they are considered close if:
+    If ``actual`` and ``expected`` are strided, non-quantized, real-valued, and finite, they are considered close if
 
     .. math::
 
         \lvert \text{actual} - \text{expected} \rvert \le \texttt{atol} + \texttt{rtol} \cdot \lvert \text{expected} \rvert
 
+    Non-finite values (``-inf`` and ``inf``) are only considered close if and only if they are equal. ``NaN``'s are
+    only considered equal to each other if ``equal_nan`` is ``True``.
+
+    In addition, they are only considered close if they have the same
+
+    - :attr:`~paddle.Tensor.place` (if ``check_place`` is ``True``),
+    - ``dtype`` (if ``check_dtype`` is ``True``),
+    - ``layout`` (if ``check_layout`` is ``True``), and
+    - stride (if ``check_stride`` is ``True``).
+
+    If either ``actual`` or ``expected`` is a meta tensor, only the attribute checks will be performed.
+
+    If ``actual`` and ``expected`` are sparse (having COO, CSR, CSC, BSR, or BSC layout), their strided members are
+    checked individually. Indices are always checked for equality whereas the values are checked for closeness according to the definition above.
+
+    If ``actual`` and ``expected`` are quantized, they are considered close if they have the same quantization parameters and the result of :meth:`~paddle.Tensor.dequantize` is close according to the definition above.
+
+    ``actual`` and ``expected`` can be :class:`~paddle.Tensor`'s or any tensor-or-scalar-likes from which
+    :class:`paddle.Tensor`'s can be constructed with :func:`paddle.to_tensor`. Except for Python scalars the input types
+    have to be directly related. In addition, ``actual`` and ``expected`` can be :class:`~collections.abc.Sequence`'s
+    or :class:`~collections.abc.Mapping`'s in which case they are considered close if their structure matches and all
+    their elements are considered close according to the above definition.
+
+    .. note::
+
+        Python scalars are an exception to the type relation requirement, because their :func:`type`, i.e.
+        :class:`int`, :class:`float`, and :class:`complex`, is equivalent to the ``dtype`` of a tensor-like. Thus,
+        Python scalars of different types can be checked, but require ``check_dtype=False``.
+
     Args:
         actual (Any): Actual input.
         expected (Any): Expected input.
-        allow_subclasses (bool): If ``True`` (default), inputs of directly related types are allowed.
-        rtol (Optional[float]): Relative tolerance.
-        atol (Optional[float]): Absolute tolerance.
-        equal_nan (Union[bool, str]): If ``True``, two ``NaN`` values will be considered equal.
-        check_device (bool): If ``True`` (default), asserts that corresponding tensors are on the same Place.
-        check_dtype (bool): If ``True`` (default), asserts that corresponding tensors have the same ``dtype``.
-        check_layout (bool): If ``True`` (default), asserts layout matches (if attribute exists).
-        msg (Optional[Union[str, Callable[[str], str]]]): Optional error message.
+        allow_subclasses (bool): If ``True`` (default) and except for Python scalars, inputs of directly related types
+            are allowed. Otherwise type equality is required.
+        rtol (float, optional): Relative tolerance. If specified ``atol`` must also be specified. If omitted, default
+            values based on the :attr:`~paddle.Tensor.dtype` are selected with the below table.
+        atol (float, optional): Absolute tolerance. If specified ``rtol`` must also be specified. If omitted, default
+            values based on the :attr:`~paddle.Tensor.dtype` are selected with the below table.
+        equal_nan (bool|str, optional): If ``True``, two ``NaN`` values will be considered equal.
+        check_place (bool): If ``True`` (default), asserts that corresponding tensors are on the same
+            :attr:`~paddle.Tensor.place`. If this check is disabled, tensors on different
+            :attr:`~paddle.Tensor.place`'s are moved to the CPU before being compared.
+        check_dtype (bool): If ``True`` (default), asserts that corresponding tensors have the same ``dtype``. If this
+            check is disabled, tensors with different ``dtype``'s are promoted to a common ``dtype`` before being compared.
+        check_layout (bool): If ``True`` (default), asserts that corresponding tensors have the same ``layout``. If this
+            check is disabled, tensors with different ``layout``'s are converted to strided tensors before being
+            compared.
+        check_stride (bool): If ``True`` and corresponding tensors are strided, asserts that they have the same stride.
+        msg (str|Callable[[str], str], optional): Optional error message to use in case a failure occurs during
+            the comparison. Can also passed as callable in which case it will be called with the generated message and
+            should return the new message.
+
+    Raises:
+        ValueError: If no :class:`paddle.Tensor` can be constructed from an input.
+        ValueError: If only ``rtol`` or ``atol`` is specified.
+        AssertionError: If corresponding inputs are not Python scalars and are not directly related.
+        AssertionError: If ``allow_subclasses`` is ``False``, but corresponding inputs are not Python scalars and have
+            different types.
+        AssertionError: If the inputs are :class:`~collections.abc.Sequence`'s, but their length does not match.
+        AssertionError: If the inputs are :class:`~collections.abc.Mapping`'s, but their set of keys do not match.
+        AssertionError: If corresponding tensors do not have the same :attr:`~paddle.Tensor.shape`.
+        AssertionError: If ``check_layout`` is ``True``, but corresponding tensors do not have the same
+            :attr:`~paddle.Tensor.layout`.
+        AssertionError: If only one of corresponding tensors is quantized.
+        AssertionError: If ``check_place`` is ``True``, but corresponding tensors are not on the same
+            :attr:`~paddle.Tensor.place`.
+        AssertionError: If ``check_dtype`` is ``True``, but corresponding tensors do not have the same ``dtype``.
+        AssertionError: If ``check_stride`` is ``True``, but corresponding strided tensors do not have the same stride.
+        AssertionError: If the values of corresponding tensors are not close according to the definition above.
+
+    The following table displays the default ``rtol`` and ``atol`` for different ``dtype``'s. In case of mismatching
+    ``dtype``'s, the maximum of both tolerances is used.
+
+    +---------------------------+------------+----------+
+    | ``dtype``                 | ``rtol``   | ``atol`` |
+    +===========================+============+==========+
+    | :attr:`~paddle.float16`   | ``1e-3``   | ``1e-5`` |
+    +---------------------------+------------+----------+
+    | :attr:`~paddle.bfloat16`  | ``1.6e-2`` | ``1e-5`` |
+    +---------------------------+------------+----------+
+    | :attr:`~paddle.float32`   | ``1.3e-6`` | ``1e-5`` |
+    +---------------------------+------------+----------+
+    | :attr:`~paddle.float64`   | ``1e-7``   | ``1e-7`` |
+    +---------------------------+------------+----------+
+    | :attr:`~paddle.complex64` | ``1.3e-6`` | ``1e-5`` |
+    +---------------------------+------------+----------+
+    | :attr:`~paddle.complex128`| ``1e-7``   | ``1e-7`` |
+    +---------------------------+------------+----------+
+    | other                     | ``0.0``    | ``0.0``  |
+    +---------------------------+------------+----------+
+
+    .. note::
+
+        This function is highly configurable with strict default settings. Users are encouraged
+        to :func:`~functools.partial` it to fit their use case.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import numpy as np
+            >>> import functools
+
+            >>> # tensor to tensor comparison
+            >>> expected = paddle.to_tensor([1e0, 1e-1, 1e-2])
+            >>> actual = paddle.acos(paddle.cos(expected))
+            >>> paddle.testing.assert_close(actual, expected)
+
+            >>> # scalar to scalar comparison
+            >>> import math
+            >>> expected = math.sqrt(2.0)
+            >>> actual = 2.0 / math.sqrt(2.0)
+            >>> paddle.testing.assert_close(actual, expected)
+
+            >>> # numpy array to numpy array comparison
+            >>> expected = np.array([1e0, 1e-1, 1e-2])
+            >>> actual = np.arccos(np.cos(expected))
+            >>> paddle.testing.assert_close(actual, expected)
+
+            >>> # sequence to sequence comparison
+            >>> # The types of the sequences do not have to match. They only have to have the same
+            >>> # length and their elements have to match.
+            >>> expected = [paddle.to_tensor([1.0]), 2.0, np.array(3.0)]
+            >>> actual = tuple(expected)
+            >>> paddle.testing.assert_close(actual, expected)
+
+            >>> # mapping to mapping comparison
+            >>> from collections import OrderedDict
+            >>> foo = paddle.to_tensor(1.0)
+            >>> bar = 2.0
+            >>> baz = np.array(3.0)
+            >>> # The types and a possible ordering of mappings do not have to match. They only
+            >>> # have to have the same set of keys and their elements have to match.
+            >>> expected = OrderedDict([("foo", foo), ("bar", bar), ("baz", baz)])
+            >>> actual = {"baz": baz, "bar": bar, "foo": foo}
+            >>> paddle.testing.assert_close(actual, expected)
+
+            >>> # Customize the error message
+            >>> expected = paddle.to_tensor([1.0, 2.0, 3.0])
+            >>> actual = paddle.to_tensor([1.0, 4.0, 5.0])
+            >>> try:
+            ...     paddle.testing.assert_close(
+            ...         actual, expected, msg="Argh, the tensors are not close!"
+            ...     )
+            ... except AssertionError as e:
+            ...     print(e)
+            Argh, the tensors are not close!
+
+            >>> # Using functools to create strict equality check
+            >>> assert_equal = functools.partial(paddle.testing.assert_close, rtol=0, atol=0)
+            >>> try:
+            ...     assert_equal(1e-9, 1e-10)
+            ... except AssertionError as e:
+            ...     print(e)
+            Scalars are not equal!
+            <BLANKLINE>
+            Expected 1e-10 but got 1e-09.
+            Absolute difference: 9.000000000000001e-10
+            Relative difference: 9.0
+
+            >>> # NaN check
+            >>> expected = paddle.to_tensor(float("Nan"))
+            >>> actual = expected.clone()
+            >>> # NaN != NaN by default, so this raises AssertionError
+            >>> try:
+            ...     paddle.testing.assert_close(actual, expected)
+            ... except AssertionError as e:
+            ...     print("Assertion Failed")
+            Assertion Failed
+            >>> # Pass equal_nan=True to succeed
+            >>> paddle.testing.assert_close(actual, expected, equal_nan=True)
     """
     # Hide this function from `pytest`'s traceback
     __tracebackhide__ = True
