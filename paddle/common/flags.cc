@@ -2370,7 +2370,7 @@ PHI_DEFINE_EXPORTED_bool(use_accuracy_compatible_kernel,
 /**
  * Legacy gemm related FLAG
  * Name: FLAGS_use_legacy_gemm
- * Since Version: 3.2.2
+ * Since Version: 3.3.0
  * Value Range: bool, default=false
  * Example:
  * Note: Whether use legacy gemm kernel.
