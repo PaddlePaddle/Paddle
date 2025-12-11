@@ -3479,7 +3479,7 @@ def clip_(
         return _C_ops.clip_(x, min, max)
 
 
-@ParamAliasDecorator({"x": ["input"]})
+@param_one_alias(["x", "input"])
 def trace(
     x: Tensor,
     offset: int = 0,
