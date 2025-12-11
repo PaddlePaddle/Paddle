@@ -174,7 +174,7 @@ def bicubic_interp_np(
     align_corners=True,
     data_layout='kNCHW',
 ):
-    """trilinear interpolation implement in shape [N, C, H, W]"""
+    """bicubic interpolation implement in shape [N, C, H, W]"""
     if data_layout == "NHWC":
         input = np.transpose(input, (0, 3, 1, 2))  # NHWC => NCHW
     if out_size is not None:
@@ -185,24 +185,25 @@ def bicubic_interp_np(
         out_w = actual_shape[1]
     batch_size, channel, in_h, in_w = input.shape
 
+    # Standard bicubic interpolation (no anti-aliasing)
     ratio_h = ratio_w = 0.0
-    if out_h > 1:
-        if align_corners:
+    if align_corners:
+        if out_h > 1:
             ratio_h = (in_h - 1.0) / (out_h - 1.0)
+    else:
+        if scale_h > 0:
+            ratio_h = 1.0 / scale_h
         else:
-            if scale_h > 0:
-                ratio_h = 1.0 / scale_h
-            else:
-                ratio_h = 1.0 * in_h / out_h
+            ratio_h = 1.0 * in_h / out_h
 
-    if out_w > 1:
-        if align_corners:
+    if align_corners:
+        if out_w > 1:
             ratio_w = (in_w - 1.0) / (out_w - 1.0)
+    else:
+        if scale_w > 0:
+            ratio_w = 1.0 / scale_w
         else:
-            if scale_w > 0:
-                ratio_w = 1.0 / scale_w
-            else:
-                ratio_w = 1.0 * in_w / out_w
+            ratio_w = 1.0 * in_w / out_w
 
     out = np.zeros((batch_size, channel, out_h, out_w))
 

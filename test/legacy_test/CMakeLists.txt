@@ -39,6 +39,8 @@ endif()
 
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_sdpa_kernel)
+  list(REMOVE_ITEM TEST_OPS test_vmmallocator)
+  list(REMOVE_ITEM TEST OPS test_allocator_visitor)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fractional_max_pool3d_op)
@@ -53,7 +55,6 @@ list(REMOVE_ITEM TEST_OPS test_matmul_v2_op)
 
 list(REMOVE_ITEM TEST_OPS test_allgather)
 list(REMOVE_ITEM TEST_OPS test_reducescatter)
-list(REMOVE_ITEM TEST_OPS test_flash_attention)
 
 #Note(risemeup1): Delete some unit tests related to the parameter server.
 list(REMOVE_ITEM TEST_OPS test_dist_fleet_trainer_desc_config)
@@ -118,7 +119,9 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_hapi_model")
   list(REMOVE_ITEM TEST_OPS test_async_read_write)
   list(REMOVE_ITEM TEST_OPS test_fp8_gemm)
+  list(REMOVE_ITEM TEST_OPS test_batched_gemm)
   list(REMOVE_ITEM TEST_OPS test_fp8_quant)
+  list(REMOVE_ITEM TEST_OPS test_incubate_fast_ln)
   list(REMOVE_ITEM TEST_OPS test_incubate_moe_gate_dispatch_and_quant)
 endif()
 
@@ -126,7 +129,6 @@ list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op)
-list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op_static)
 list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
@@ -163,6 +165,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_ps_dispatcher)
   list(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_nlp)
   list(REMOVE_ITEM TEST_OPS test_nvprof)
+  list(REMOVE_ITEM TEST_OPS test_batched_gemm)
 
   # TODO: Fix these unittests failed on Windows
   list(REMOVE_ITEM TEST_OPS test_debugger)
@@ -201,6 +204,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_masked_multihead_attention_op)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
+  list(REMOVE_ITEM TEST_OPS test_incubate_fast_ln)
   list(REMOVE_ITEM TEST_OPS test_fused_weighted_swiglu_act_quant_op)
   list(REMOVE_ITEM TEST_OPS test_fused_swiglu_weighted_bwd_op)
   list(REMOVE_ITEM TEST_OPS test_fused_act_dequant_op)
@@ -297,8 +301,6 @@ if(WITH_COVERAGE
    OR WITH_NV_JETSON)
   list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
 endif()
-
-list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
 
 if((WITH_ROCM OR WITH_GPU) OR NOT WITH_MKLML)
   # matmul with multiple heads need MKL support
@@ -570,9 +572,19 @@ if(NOT WITH_GPU
    OR APPLE
    OR WITH_ROCM
    OR (${CUDA_ARCH_NAME} STREQUAL "Volta") # Affects the accuracy of op tests
-   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
+   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 11.8))
 )# Restrict the use of older versions of CUB
   list(REMOVE_ITEM TEST_OPS test_incubate_fused_rmsnorm_ext)
+endif()
+
+if(NOT WITH_GPU
+   OR APPLE
+   OR WITH_ROCM
+   OR (${CUDA_ARCH_NAME} STREQUAL "Volta") # Affects the accuracy of op tests
+   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
+)# Restrict the use of older versions of CUB
+  list(REMOVE_ITEM TEST_OPS test_incubate_fast_ln)
+  list(REMOVE_ITEM TEST_OPS test_batched_gemm)
 endif()
 
 set(has_arch_ge80 FALSE)
@@ -590,6 +602,7 @@ if(NOT WITH_GPU
    OR APPLE
    OR WITH_ROCM)
   list(REMOVE_ITEM TEST_OPS test_moe_permute_unpermute)
+  list(REMOVE_ITEM TEST_OPS test_batched_gemm)
 endif()
 
 if(NOT WITH_CUDNN_FRONTEND)
@@ -873,6 +886,7 @@ endif()
 
 set_tests_properties(test_profiler PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cross_entropy_loss PROPERTIES TIMEOUT 180)
+set_tests_properties(test_legacy_loss_args PROPERTIES TIMEOUT 10)
 set_tests_properties(test_activation_nn_grad PROPERTIES TIMEOUT 250)
 set_tests_properties(test_empty_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_div_op PROPERTIES TIMEOUT 120)
@@ -1301,4 +1315,5 @@ if(NOT WIN32)
 endif()
 set_tests_properties(test_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_load_state_dict_from_url PROPERTIES TIMEOUT 40)
-set_tests_properties(test_eig_op PROPERTIES TIMEOUT 500)
+set_tests_properties(test_flash_attention PROPERTIES TIMEOUT 240)
+set_tests_properties(test_eig_op PROPERTIES TIMEOUT 240)

@@ -31,10 +31,7 @@ import sysconfig
 import textwrap
 import threading
 import warnings
-from contextlib import contextmanager
 from importlib import machinery
-
-from setuptools.command import bdist_egg
 
 try:
     from subprocess import DEVNULL  # py3
@@ -151,18 +148,6 @@ DEFAULT_OP_ATTR_NAMES = [
 ]
 
 
-@contextmanager
-def bootstrap_context():
-    """
-    Context to manage how to write `__bootstrap__` code in .egg
-    """
-    origin_write_stub = bdist_egg.write_stub
-    bdist_egg.write_stub = custom_write_stub
-    yield
-
-    bdist_egg.write_stub = origin_write_stub
-
-
 def load_op_meta_info_and_register_op(lib_filename: str) -> list[str]:
     new_list = core.load_op_meta_info_and_register_op(lib_filename)
     proto_sync_ops = OpProtoHolder.instance().update_op_proto(new_list)
@@ -237,7 +222,8 @@ def custom_write_stub(resource, pyfile):
     with open(pyfile, 'w') as f:
         f.write(
             _stub_template.format(
-                resource=resource, custom_api='\n\n'.join(api_content)
+                resource=os.path.basename(resource),
+                custom_api='\n\n'.join(api_content),
             )
         )
 
@@ -588,7 +574,15 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         # On Linux, GCC support '-l:xxx.so' to specify the library name
         # without `lib` prefix.
         if OS_NAME.startswith('linux'):
-            extra_link_args.append(f'-l:{_get_core_name()}')
+            # Force link libpaddle.so to avoid "as-needed" optimization
+            # when user only uses phi headers.
+            extra_link_args.extend(
+                [
+                    '-Wl,--no-as-needed',
+                    f'-l:{_get_core_name()}',
+                    '-Wl,--as-needed',
+                ]
+            )
         # ----------------------- MacOS Platform ----------------------- #
         else:
             # See _reset_so_rpath for details.
@@ -803,8 +797,12 @@ def find_cuda_includes():
         raise ValueError(
             "Not found CUDA runtime, please use `export CUDA_HOME=XXX` to specific it."
         )
+    base_include = os.path.join(cuda_home, 'include')
 
-    return [os.path.join(cuda_home, 'include')]
+    sub_dirs = ['', 'cccl', 'nvtx3']
+
+    paths = [os.path.join(base_include, sub) for sub in sub_dirs]
+    return [p for p in paths if os.path.exists(p)]
 
 
 def find_rocm_includes():

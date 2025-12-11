@@ -49,6 +49,7 @@ void* GetOpDsoHandle(const std::string& dso_name);
 void* GetNvtxDsoHandle();
 void* GetCUFFTDsoHandle();
 void* GetMKLRTDsoHandle();
+void* GetHMLDsoHandle();
 void* GetROCFFTDsoHandle();
 void* GetCusparseLtDsoHandle();
 void* GetXPTIDsoHandle();

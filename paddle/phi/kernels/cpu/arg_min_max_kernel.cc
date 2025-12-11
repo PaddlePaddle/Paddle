@@ -38,8 +38,8 @@ struct ArgMinMaxFunctor {};
     void operator()(const Context& dev_ctx,                                   \
                     const DenseTensor& in,                                    \
                     DenseTensor* out,                                         \
-                    phi::DDim x_dims,                                         \
-                    phi::DDim out_dims,                                       \
+                    DDim x_dims,                                              \
+                    DDim out_dims,                                            \
                     int64_t axis,                                             \
                     bool keepdims,                                            \
                     bool flatten) {                                           \
@@ -91,8 +91,8 @@ struct VisitDataArgMinMaxFunctor {
     dev_ctx.template Alloc<Tout>(out);
     if (x.numel() == 0) return;
     // if flatten, will construct the new dims for the calculation
-    phi::DDim x_dims;
-    phi::DDim out_dims;
+    DDim x_dims;
+    DDim out_dims;
     int new_axis = axis;
     if (flatten) {
       // always reduce 1D -> 0D
@@ -111,7 +111,7 @@ struct VisitDataArgMinMaxFunctor {
 
     switch (x_dims.size()) {
       case 0:
-        phi::funcs::set_constant(dev_ctx, out, static_cast<Tout>(0));
+        funcs::set_constant(dev_ctx, out, static_cast<Tout>(0));
         return;
       case 1:
         CALL_ARG_MINMAX_FUNCTOR(1);

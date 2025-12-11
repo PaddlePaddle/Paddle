@@ -42,7 +42,7 @@ COMMON_DECLARE_bool(check_cuda_error);
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_int32(call_stack_level);
 COMMON_DECLARE_int64(offload_retry_times);
-
+COMMON_DECLARE_bool(enable_unique_name);
 using egr::ConvertToDistTensor;
 namespace paddle::pybind {
 
@@ -85,6 +85,7 @@ PyObject* PyLayerNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
     v->container = nullptr;
     v->materialize_grads = true;
     v->container_be_packed = false;
+    v->grad_in_dtype_consistent = true;
     new (&v->grad_node) std::weak_ptr<egr::GradNodePyLayer>();
     new (&v->forward_input_tensor_is_duplicable) std::vector<bool>();
     new (&v->forward_output_tensor_is_duplicable) std::vector<bool>();
@@ -168,7 +169,7 @@ static void PyLayerAddOffloadActivation(PyLayerObject* ctx,
                                         const std::string& name) {
   PADDLE_ENFORCE_NOT_NULL(
       ctx,
-      phi::errors::InvalidArgument("PyLayerObject should not be nullptr."));
+      common::errors::InvalidArgument("PyLayerObject should not be nullptr."));
   if (ctx->container_be_packed) {
     VLOG(10) << "Return directly because of packed value";
     return;
@@ -195,11 +196,18 @@ PyObject* pylayer_method_apply(PyObject* cls,
   std::string classname =
       std::string(reinterpret_cast<PyTypeObject*>(cls)->tp_name);
   std::string forward_stack;
+  VLOG(3) << classname << ":Running PyLayer Apply ";
+  if (VLOG_IS_ON(2)) egr::LogIndent::Instance().IncreaseIndentLevel();
   if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {
     // record the forward stack
     forward_stack = egr::Controller::Instance().GetPythonStack();
   }
-  VLOG(3) << classname << ":Running PyLayer Apply ";
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3) || FLAGS_enable_unique_name) {
+    static int64_t call_count = 0;
+    call_count++;
+    unique_api_name = egr::GenerateUniqueApiName(classname, call_count);
+  }
   VLOG(4) << classname << ":"
           << "Construct PyLayerContext";
   PyObject* backward_function =
@@ -383,6 +391,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
     }
   }
 
+  // Check LeafTensor if its GradNodeAccumulation TensorMeta is consistent with
+  // its TensorMeta
+  egr::CheckGradNodeAccumulation(inputs_tensor);
+
   VLOG(6)
       << classname << ":"
       << "PyLayer forward args is ready, begin call user's forward function...";
@@ -508,10 +520,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
       }
     }
   }
-
   if (outputs_tensor.empty()) {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "At least one output of `PyLayer.forward` is a `Tensor`."));
+        "%s : At least one output of `PyLayer.forward` is a `Tensor`.",
+        classname));
   }
   VLOG(6) << classname << ":"
           << "PyLayer forward function finish...";
@@ -539,8 +551,9 @@ PyObject* pylayer_method_apply(PyObject* cls,
                             egr::EagerUtils::IsLeafTensor(*inplace_tensor),
                         false,
                         common::errors::InvalidArgument(
-                            "Leaf Var (%s) that doesn't stop gradient "
+                            "%s : Leaf Var (%s) that doesn't stop gradient "
                             "can't use inplace strategy.",
+                            classname,
                             inplace_tensor->name()));
       inplace_tensor->bump_inplace_version();
       VLOG(3) << "Tensor(" << inplace_tensor->name()
@@ -558,6 +571,15 @@ PyObject* pylayer_method_apply(PyObject* cls,
     if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {
       grad_node->SetForwardTrace(forward_stack);
     }
+    // Set for Record Subgraph
+    if (egr::EagerBackwardSubGraphNodeRecorder::Instance()
+            .NeedCaptureSubGraph()) {
+      VLOG(3) << "Capture the grad node" << grad_node->name() << "("
+              << grad_node.get() << ")"
+              << "for subgraph.";
+      egr::EagerBackwardSubGraphNodeRecorder::Instance().AddGradNode(
+          grad_node.get());
+    }
 
 #ifdef PADDLE_WITH_CUDA
     has_grad = true;
@@ -568,6 +590,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
     if (ctx->materialize_grads) {
       grad_node->SaveForwardOutputsMeta(outputs_tensor);
     }
+    grad_node->SetGradInDtypeConsistent(ctx->grad_in_dtype_consistent);
 
     for (size_t i = 0; i < inputs_autograd_meta.size(); i++) {
       if (ctx->forward_input_tensor_is_duplicable[i]) {
@@ -619,8 +642,9 @@ PyObject* pylayer_method_apply(PyObject* cls,
 #ifdef PADDLE_WITH_CUDA
   if (has_grad && FLAGS_offload_retry_times > 0) {
     auto grad_node = ctx->grad_node.lock();
-    PADDLE_ENFORCE_NOT_NULL(grad_node,
-                            phi::errors::InvalidArgument("Cannot be null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        grad_node,
+        common::errors::InvalidArgument("%s : Cannot be null", classname));
     PyLayerAddOffloadActivation(ctx, grad_node->name());
   }
 #endif
@@ -632,6 +656,32 @@ PyObject* pylayer_method_apply(PyObject* cls,
   }
   VLOG(3) << classname << ":"
           << "Finish PyLayer Apply";
+  if (VLOG_IS_ON(2)) egr::LogIndent::Instance().DecreaseIndentLevel();
+  if (VLOG_IS_ON(3) || FLAGS_enable_unique_name) {
+    const char* INPUT_PRINT_TEMPLATE =
+        "\nForward Debug Info {\nAPI_Name: %s \nInput: [%s]  \nOutput: [%s] } ";
+    std::string input_str = "";
+    std::string output_str = "";
+    int i = 0;
+    for (auto& tensors : inputs_tensor) {
+      const char* TENSOR_INPUT_TEMPLATE = " \n( input%d , %s), ";
+      std::string input_x_str = paddle::string::Sprintf(
+          TENSOR_INPUT_TEMPLATE, i, egr::EagerUtils::TensorStr(tensors));
+      input_str += input_x_str;
+      i++;
+    }
+    i = 0;
+    for (auto& tensors : outputs_tensor) {
+      egr::SetTensorName(unique_api_name, "out" + std::to_string(i), &tensors);
+      const char* TENSOR_OUT_TEMPLATE = " \n( out%d , %s), ";
+      std::string output_out_str = paddle::string::Sprintf(
+          TENSOR_OUT_TEMPLATE, i, egr::EagerUtils::TensorStr(tensors));
+      output_str += output_out_str;
+      i++;
+    }
+    VLOG(3) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
+  }
   return outputs;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -849,6 +899,14 @@ int tensor_properties_set_materialize_grads(PyLayerObject* self,
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
+int tensor_properties_set_grad_in_dtype_consistent(PyLayerObject* self,
+                                                   PyObject* value,
+                                                   void* closure) {
+  EAGER_TRY
+  self->grad_in_dtype_consistent = CastPyArg2AttrBoolean(value, 0);
+  return 0;
+  EAGER_CATCH_AND_THROW_RETURN_NEG
+}
 
 PyMethodDef pylayer_methods[] = {{"name",  // NOLINT
                                   (PyCFunction)(void (*)())pylayer_method_name,
@@ -881,6 +939,11 @@ struct PyGetSetDef pylayer_properties[] {  // NOLINT
        (setter)tensor_properties_set_materialize_grads,
        nullptr,
        nullptr},
+      {"grad_in_dtype_consistent",
+       nullptr,
+       (setter)tensor_properties_set_grad_in_dtype_consistent,
+       nullptr,
+       nullptr},
   {
     nullptr, nullptr, nullptr, nullptr, nullptr
   }
@@ -902,9 +965,7 @@ void BindEagerPyLayer(PyObject* module) {
   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
   type->tp_flags |=
       Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;  // NOLINT
-#if PY_VERSION_HEX >= 0x03050000
   type->tp_as_async = &heap_type->as_async;
-#endif
   p_pylayer_type = type;
 
   if (PyType_Ready(type) < 0) {

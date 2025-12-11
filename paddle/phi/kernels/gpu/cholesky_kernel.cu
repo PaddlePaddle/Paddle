@@ -176,7 +176,9 @@ void CholeskyKernel(const Context& dev_ctx,
   for (int i = 0; i < dims.size() - 2; i++) {
     batch_count *= dims[i];
   }
-  int m = dims[dims.size() - 1];
+  int64_t m = dims[dims.size() - 1];
+  // TODO(large-tensor): downstream functors may still use int
+
   int64_t tensor_size = batch_count * static_cast<int64_t>(m) * m;
 
   const auto* x_data = x.data<T>();
@@ -188,7 +190,7 @@ void CholeskyKernel(const Context& dev_ctx,
   // portf is inplace, thus copy the triangular part of the input matrices to
   // the output and set the other triangular part to 0 firstly
 
-  phi::funcs::ForRange<GPUContext> for_range(dev_ctx, tensor_size);
+  funcs::ForRange<GPUContext> for_range(dev_ctx, tensor_size);
   // Pre-processing
   if (upper) {
     MatrixBandPartFunctor<T> matrix_band_part_functor(

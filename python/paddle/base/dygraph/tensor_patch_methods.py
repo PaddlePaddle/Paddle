@@ -49,6 +49,8 @@ from .math_op_patch import monkey_patch_math_tensor
 if TYPE_CHECKING:
     from enum import IntEnum
 
+    from typing_extensions import CapsuleType
+
     from paddle import Tensor
     from paddle._typing import DTypeLike, PlaceLike, TensorIndex
 
@@ -1159,12 +1161,24 @@ def monkey_patch_tensor():
     def cuda(
         self: Tensor, device_id: int | None = None, blocking: bool = True
     ) -> Tensor:
+        device_type = paddle.device.get_all_device_type()
+        if len(
+            device_type
+        ) > 0 and paddle.device.is_compiled_with_custom_device(device_type[-1]):
+            res_place_class = core.CustomPlace
+        elif paddle.device.is_compiled_with_xpu():
+            res_place_class = core.XPUPlace
+        elif paddle.device.is_compiled_with_cuda():
+            res_place_class = core.CUDAPlace
+        else:
+            raise ValueError("No available device found.")
+
         if device_id is None:
             res_place = framework._current_expected_place()
-            if not isinstance(res_place, core.CUDAPlace):
-                res_place = core.CUDAPlace(0)
+            if not isinstance(res_place, res_place_class):
+                res_place = res_place_class(0)
         elif isinstance(device_id, int):
-            res_place = core.CUDAPlace(device_id)
+            res_place = res_place_class(device_id)
         else:
             raise ValueError("device_id must be int|None")
 
@@ -1374,6 +1388,32 @@ def monkey_patch_tensor():
             raise ValueError(f"Unsupported tensor place: {place}")
 
     @property
+    def device(self: Tensor) -> str:
+        """
+        Return the device descriptor string indicating where the tensor is located.
+
+        Returns:
+            str: A string representing the device where the tensor resides.
+                 Possible formats include:
+                 - 'cpu' for CPU tensors
+                 - 'cuda:{device_id}' for GPU tensors (e.g., 'cuda:0')
+                 - 'xpu:{device_id}' for XPU tensors (e.g., 'xpu:0')
+                 - '{device_type}:{device_id}' for custom device tensors
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> # CPU tensor
+                >>> cpu_tensor = paddle.to_tensor([1, 2, 3]).to("cpu")
+                >>> print(cpu_tensor.device)
+                'cpu'
+        """
+        place = self.place
+        return paddle.device(place)
+
+    @property
     def __cuda_array_interface__(self):
         """Array view description for cuda tensors.
 
@@ -1453,7 +1493,7 @@ def monkey_patch_tensor():
         max_version: tuple[int, int] | None = None,
         dl_device: tuple[IntEnum, int] | None = None,
         copy: bool | None = None,
-    ):
+    ) -> CapsuleType:
         """
         Creates a DLPack capsule of the current tensor to be exported to other libraries.
         Args:
@@ -1474,24 +1514,67 @@ def monkey_patch_tensor():
         """
 
         if self.is_sparse():
-            raise AttributeError(
-                "Can't get __dlpack__ from a Tensor that requires gradients, "
-                "use tensor.detach() if gradients are not required."
+            raise BufferError(
+                "Can't get __dlpack__ from a Tensor from sparse storage."
             )
 
         if not self.stop_gradient:
-            raise RuntimeError(
+            raise BufferError(
                 "Can't get __dlpack__ from Tensor that requires gradients. "
                 "If gradients aren't required, use tensor.detach() to get a tensor without gradient."
             )
 
-        if stream is not None:
-            if self.place.is_gpu_place():
-                current_stream = paddle.device.cuda.current_stream()
-                if stream != current_stream:
-                    event = paddle.device.cuda.Event()
-                    event.record(current_stream)
-                    current_stream.synchronize()
+        if stream is not None and not isinstance(stream, int):
+            raise TypeError("stream must be an integer or None.")
+        elif self.place.is_gpu_place() and stream != -1:
+            is_rocm = paddle.is_compiled_with_rocm()
+            is_cuda = paddle.is_compiled_with_cuda()
+            if not (is_rocm or is_cuda):
+                raise RuntimeError(
+                    "DLPack with stream synchronization is only supported "
+                    "when Paddle is compiled with CUDA or ROCm."
+                )
+            if is_cuda and stream == 0:
+                raise ValueError(
+                    "For CUDA, stream=0 is ambiguityous, please use None for default stream."
+                )
+            if is_cuda and stream == 2:
+                raise ValueError(
+                    "For CUDA, stream=2 means per-thread default stream, which is not supported."
+                )
+            if is_rocm and stream in {1, 2}:
+                raise ValueError("For ROCm, stream=1 or 2 is not supported.")
+            if (
+                stream is None
+                # For CUDA, stream=1 means default stream
+                or (is_cuda and stream == 1)
+                # For ROCm, stream=0 means default stream
+                or (is_rocm and stream == 0)
+            ):
+                consumer_stream = paddle.device.Stream(
+                    stream_base=core._get_legacy_default_stream(
+                        paddle.framework._current_expected_place_().get_device_id()
+                    )
+                )
+            else:
+                assert stream > 2, "stream should be a valid stream pointer."
+                consumer_stream = paddle.device.get_stream_from_external(stream)
+
+            current_stream = paddle.device.current_stream()
+
+            def is_same_stream(
+                lhs: paddle.device.Stream, rhs: paddle.device.Stream
+            ) -> bool:
+                return (
+                    lhs.stream_base.raw_stream == rhs.stream_base.raw_stream
+                ) and (lhs.device == rhs.device)
+
+            if not is_same_stream(consumer_stream, current_stream):
+                event = paddle.device.Event()
+                event.record(current_stream)
+                consumer_stream.wait_event(event)
+        elif self.place.is_cpu_place():
+            assert stream is None, "CPU tensor stream must be None."
 
         if max_version is None or max_version[0] < 1:
             return self.get_tensor()._to_dlpack(dl_device=dl_device, copy=copy)
@@ -1540,6 +1623,31 @@ def monkey_patch_tensor():
             raise RuntimeError(
                 "Currently, the __tvm_ffi_env_stream__ method is only supported for GPU tensors."
             )
+
+    def _get_c_dlpack_exchange_api():
+        """
+        Returns the C DLPack exchange API pointer for the current tensor.
+        This is used for interoperability with other libraries that support DLPack.
+
+        In tvm ffi 0.1.3 or below, this API returns the pointer directly.
+        In newer versions, it returns a python capsule containing the pointer.
+        """
+        try:
+            import tvm_ffi
+
+            tvm_ffi_version = tuple(
+                int(x) for x in tvm_ffi.__version__.split(".")
+            )
+            # We assume version format is like '0.1.3'.
+            # All supported releases are '0.1.0', '0.1.1', '0.1.2', '0.1.3'.
+            # We simply assume user will not use beta/rc versions here.
+            # TODO(dev): We should cleanup this after tvm ffi 0.1.3 is not supported.
+            if tvm_ffi_version <= (0, 1, 3):
+                return core.dlpack_exchange_api_ptr()
+        except Exception:
+            pass
+        # For tvm ffi 0.1.4 only, in tvm ffi 0.1.5+, replaced by `__dlpack_c_exchange_api__`
+        return core.dlpack_exchange_api_pycapsule()
 
     if not hasattr(core, "eager"):
         return
@@ -1590,7 +1698,10 @@ def monkey_patch_tensor():
         ("__dlpack_device__", __dlpack_device__),
         ("get_device", get_device),
         ("__tvm_ffi_env_stream__", __tvm_ffi_env_stream__),
-        ("__c_dlpack_exchange_api__", core.dlpack_exchange_api_ptr()),
+        # For TVM FFI 0.1.0-0.1.4, replaced by `__dlpack_c_exchange_api__` in TVM FFI 0.1.5+
+        ("__c_dlpack_exchange_api__", _get_c_dlpack_exchange_api()),
+        ("__dlpack_c_exchange_api__", core.dlpack_exchange_api_pycapsule()),
+        ("device", device),
     ):
         setattr(core.eager.Tensor, method_name, method)
 

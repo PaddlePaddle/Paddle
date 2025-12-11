@@ -75,8 +75,8 @@ void CScatterOpCUDAKernel(const Context& dev_ctx,
     stream = dev_ctx.stream();
   }
 
-  phi::DDim x_dims = x->dims();
-  phi::DDim out_dims(x_dims);
+  DDim x_dims = x->dims();
+  DDim out_dims(x_dims);
   phi::DenseTensor temp;
   temp.Resize(out_dims);
   auto out_ptr = dev_ctx.template Alloc<T>(&temp);

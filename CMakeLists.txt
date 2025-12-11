@@ -105,7 +105,9 @@ if(WITH_GPU AND WITH_ROCM)
   message(FATAL_ERROR "Error when compile CUDA and ROCM at the same time")
 endif()
 if(NOT WITH_MAGMA
-   AND (WITH_GPU OR WITH_ROCM)
+   AND (WITH_GPU
+        OR WITH_XPU
+        OR WITH_ROCM)
    AND CMAKE_SYSTEM_NAME STREQUAL "Linux"
    AND NOT WITH_ARM)
   set(WITH_MAGMA ON)
@@ -352,12 +354,18 @@ option(WITH_RECORD_BUILDTIME
 option(WITH_CUSTOM_DEVICE "Compile with custom device support" OFF)
 option(WITH_FLPS "FL PS mode" OFF)
 option(WITH_CUDNN_FRONTEND
-       "Compile with CUDNN Frontend API support (experimental)" OFF)
+       "Compile with CUDNN Frontend API support (experimental)" ON)
 option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
 option(WITH_NVCC_LAZY
        "Compile PaddlePaddle with nvcc lazy mode, used for CI-Inference only."
        ON)
 option(BUILD_WHL_PACKAGE "Build paddle whl package after compilation" ON)
+
+if(WIN32 OR NOT WITH_GPU)
+  set(WITH_CUDNN_FRONTEND
+      OFF
+      CACHE BOOL "" FORCE)
+endif()
 
 if(WITH_RECORD_BUILDTIME)
   set_property(

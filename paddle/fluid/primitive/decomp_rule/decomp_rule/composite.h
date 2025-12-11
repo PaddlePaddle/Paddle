@@ -1240,7 +1240,24 @@ Tensor lerp_decomp(const Tensor& x, const Tensor& y, const Tensor& weight) {
   Tensor x_cast = ConvertToMT<T>(x);
   Tensor y_cast = ConvertToMT<T>(y);
   Tensor weight_cast = ConvertToMT<T>(weight);
-  Tensor res = x_cast + weight_cast * (y_cast - x_cast);
+  Tensor half = full_scalar<T>((0.5), x_cast.dtype(), x_cast.place());
+  Tensor one = full_scalar<T>(1.0, x_cast.dtype(), x_cast.place());
+  Tensor zero;
+  Tensor weight_expended;
+
+  if (has_dynamic_shape(x.shape())) {
+    Tensor zero_x = backend::full_with_tensor<T>(shape64<T>(x), 0.0, x.dtype());
+    Tensor zero_y = backend::full_with_tensor<T>(shape64<T>(y), 0.0, x.dtype());
+    zero = zero_x + zero_y;
+    weight_expended = backend::expand<T>(weight_cast, shape64<T>(zero));
+  } else {
+    auto out_dims = phi::funcs::BroadcastTwoDims(x.dims(), y.dims());
+    weight_expended = expand<T>(weight_cast, phi::vectorize(out_dims));
+  }
+
+  Tensor res = where<T>(weight_expended.abs() < half,
+                        x_cast + weight_expended * (y_cast - x_cast),
+                        y_cast - (y_cast - x_cast) * (one - weight_expended));
   return ConvertToOrig<T>(res, x.dtype());
 }
 

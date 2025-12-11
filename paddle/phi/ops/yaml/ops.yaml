@@ -214,6 +214,7 @@
     param: [x, reduce_type]
   inplace : (x -> out)
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : all_to_all
   args : (Tensor x, int ring_id = 0)
@@ -623,7 +624,7 @@
   traits : paddle::dialect::ForwardOnlyTrait, pir::UnaryElementWiseTrait
 
 - op : bicubic_interp
-  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, double[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
   output : Tensor(output)
   infer_meta :
     func : InterpolateInferMeta
@@ -648,7 +649,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : bilinear_interp
-  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, double[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
   output : Tensor(output)
   infer_meta :
     func : InterpolateInferMeta
@@ -841,6 +842,7 @@
     func : c_allreduce_sum
   inplace : (x -> out)
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : c_concat
   args : (Tensor x, int rank, int nranks, int ring_id, bool use_calc_stream, bool use_model_parallel)
@@ -851,6 +853,7 @@
   kernel :
     func : c_concat
   backward: c_concat_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : c_identity
   args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
@@ -861,6 +864,7 @@
     func : c_identity
   inplace : (x -> out)
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : c_scatter
   args : (Tensor x, int ring_id = 0, int root = 0, int nranks = 0, bool use_calc_stream = false)
@@ -1628,6 +1632,7 @@
   kernel :
     func : dropout
     data_type : x
+  inplace : (x -> out)
   optional : seed_tensor
   intermediate : mask
   backward : dropout_grad
@@ -2099,6 +2104,7 @@
     data_type : q
   intermediate : softmax_lse, seed_offset
   backward : flash_attn_unpadded_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flash_attn_v3
   args : (Tensor q, Tensor k, Tensor v, Tensor q_v_, Tensor q_descale_, Tensor k_descale_, Tensor v_descale_, float softmax_scale, bool is_causal, int window_size_left, int window_size_right, float softcap, int num_splits, bool manual_set_pack_gqa, bool pack_gqa_, int sm_margin)
@@ -2153,8 +2159,9 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flashmask_attention_v2
-  args : (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices, float softmax_scale, bool is_causal)
+  args : (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices, Tensor block_mask, float softmax_scale, bool is_causal)
   output : Tensor(out), Tensor(softmax_lse)
+  optional : block_mask
   infer_meta :
     func : FlashMaskV2InferMeta
     param : [q, k, v]
@@ -2934,6 +2941,20 @@
   backward : instance_norm_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
+- op : interp_antialias
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, double[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
+  output : Tensor(output)
+  infer_meta :
+    func : InterpolateInferMeta
+  optional: out_size, size_tensor, scale_tensor
+  kernel :
+    func : interp_antialias
+    data_type : x
+  backward : interp_antialias_grad
+  data_transform :
+    skip_transform : out_size, size_tensor, scale_tensor
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : inverse
   args : (Tensor x)
   output : Tensor(out)
@@ -3132,7 +3153,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : linear_interp
-  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, double[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
   output : Tensor(output)
   infer_meta :
     func : InterpolateInferMeta
@@ -3878,6 +3899,7 @@
     param: [x]
   backward: mp_allreduce_sum_grad
   inplace: (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : multi_dot
   args : (Tensor[] x)
@@ -3958,7 +3980,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : nearest_interp
-  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, double[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
   output : Tensor(output)
   infer_meta :
     func : InterpolateInferMeta
@@ -5473,7 +5495,7 @@
   traits: pir::UnaryElementWiseTrait
 
 - op : top_p_sampling
-  args : (Tensor x, Tensor ps, Tensor threshold, Tensor topp_seed, int seed=-1, int k=0, str mode="truncate")
+  args : (Tensor x, Tensor ps, Tensor threshold, Tensor topp_seed, int64_t seed=-1, int k=0, str mode="truncate")
   output : Tensor (out), Tensor(ids), Tensor(topk_scores), Tensor(topk_ids)
   infer_meta :
     func : TopPSamplingInferMeta
@@ -5565,7 +5587,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : trilinear_interp
-  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, double[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
   output : Tensor(output)
   infer_meta :
     func : InterpolateInferMeta
@@ -5801,6 +5823,15 @@
   no_need_buffer : input
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : view_shape
+  args : (Tensor input, int64_t[] dims = {})
+  output : Tensor(out)
+  infer_meta :
+    func : ViewShapeInferMeta
+  kernel :
+    func : view_shape
+  backward : view_shape_grad
+
 - op : view_slice
   args : (Tensor input, int64_t begin_idx, int64_t end_idx)
   output : Tensor
@@ -5961,6 +5992,15 @@
   output : Tensor(out)
   invoke : full_like(x, 0, dtype, place)
 
+- op: batched_gemm
+  args: (Tensor lhs, Tensor rhs, int64_t[] batch_sizes)
+  output: Tensor(output)
+  infer_meta:
+    func: BatchedGemmInferMeta
+  kernel:
+   func: batched_gemm
+   data_type: lhs
+
 - op: chunk_eval
   args: (Tensor inference, Tensor label, Tensor seq_length, int num_chunk_types, str
     chunk_scheme = "IOB", int[] excluded_chunk_types = {})
@@ -5974,6 +6014,26 @@
   optional: seq_length
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
+
+- op: fast_ln
+  args: (Tensor x, Tensor scale, Tensor bias, float epsilon)
+  output: Tensor(y), Tensor(mean), Tensor(invvar)
+  infer_meta:
+    func: FastLayerNormInfermeta
+  kernel:
+    func: fast_ln
+    data_type: scale
+  backward: fast_ln_grad
+
+- op: fast_rms_norm
+  args: (Tensor x, Tensor scale, float epsilon)
+  output: Tensor(y), Tensor(invvar)
+  infer_meta:
+    func: FastRMSNormInfermeta
+  kernel:
+    func: fast_rms_norm
+    data_type: scale
+  backward: fast_rms_norm_grad
 
 - op: fp8_gemm_blockwise_
   args: (Tensor A, Tensor A_scale, Tensor B, Tensor B_scale, Tensor input_result, Tensor bias, Tensor pre_gelu, Tensor workspace, bool transa, bool transb, bool grad, bool accumulate, bool use_split_accumulator, int math_sm_count, bool is_A_1d_scaled, bool is_B_1d_scaled)

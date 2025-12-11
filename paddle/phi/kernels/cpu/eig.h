@@ -62,13 +62,13 @@ inline int BatchCount(const DenseTensor& matrix) {
   int count = 1;
   int num_dims = matrix.dims().size();
   for (int i = 0; i < num_dims - 2; ++i) {
-    count *= matrix.dims()[i];
+    count *= matrix.dims(i);
   }
   return count;
 }
 
 inline int MatrixStride(const DenseTensor& matrix) {
-  phi::DDim dims_list = matrix.dims();
+  DDim dims_list = matrix.dims();
   int num_dims = dims_list.size();
   return dims_list[num_dims - 1] * dims_list[num_dims - 2];
 }
@@ -134,8 +134,12 @@ void TransposeTwoAxis(const DenseTensor& input,
   transposed_input->Resize(input.dims());
   dev_ctx.template Alloc<T>(transposed_input);
 
+#ifdef PADDLE_WITH_XPU
+  phi::TransposeKernel<T, Context>(dev_ctx, input, permute, transposed_input);
+#else
   funcs::TransCompute<Context, T>(
       input.dims().size(), dev_ctx, input, transposed_input, permute);
+#endif
 }
 
 // Apply eig to a batch of matrices, values, vectors and (intermediate
@@ -149,7 +153,7 @@ void LapackEig(DenseTensor* input,
   char jobvl = 'N';
   char jobvr = 'V';  // only right eigenvectors are computed
   int num_dims = input->dims().size();
-  int order = input->dims()[num_dims - 1];
+  int order = static_cast<int>(input->dims(-1));
 
   T* input_data = input->data<T>();
   int lda = std::max<int>(1, order);
@@ -163,7 +167,7 @@ void LapackEig(DenseTensor* input,
 
   int batch_count = BatchCount(*input);
   int matrix_stride = MatrixStride(*input);
-  int values_stride = values->dims()[values->dims().size() - 1];
+  int values_stride = static_cast<int>(values->dims(-1));
 
   DenseTensor rwork;
   phi::dtype::Real<T>* rwork_data = nullptr;
@@ -173,20 +177,20 @@ void LapackEig(DenseTensor* input,
 
   // call lapackEig once to compute the size of work;
   T computed_work_size;
-  phi::funcs::lapackEig<T, phi::dtype::Real<T>>(jobvl,
-                                                jobvr,
-                                                order,
-                                                input_data,
-                                                lda,
-                                                values_data,
-                                                lvector_data,
-                                                ldvl,
-                                                rvector_data,
-                                                ldvr,
-                                                &computed_work_size,
-                                                lwork,
-                                                rwork_data,
-                                                &info);
+  funcs::lapackEig<T, phi::dtype::Real<T>>(jobvl,
+                                           jobvr,
+                                           order,
+                                           input_data,
+                                           lda,
+                                           values_data,
+                                           lvector_data,
+                                           ldvl,
+                                           rvector_data,
+                                           ldvr,
+                                           &computed_work_size,
+                                           lwork,
+                                           rwork_data,
+                                           &info);
 
   lwork = std::max<int>(
       1, static_cast<int>(phi::dtype::Real<T>(computed_work_size)));
@@ -199,20 +203,20 @@ void LapackEig(DenseTensor* input,
     T* current_values = &values_data[i * values_stride];
     T* current_rvectors = &rvector_data[i * matrix_stride];
 
-    phi::funcs::lapackEig<T, phi::dtype::Real<T>>(jobvl,
-                                                  jobvr,
-                                                  order,
-                                                  current_matrix,
-                                                  lda,
-                                                  current_values,
-                                                  lvector_data,
-                                                  ldvl,
-                                                  current_rvectors,
-                                                  ldvr,
-                                                  work_data,
-                                                  lwork,
-                                                  rwork_data,
-                                                  &info);
+    funcs::lapackEig<T, phi::dtype::Real<T>>(jobvl,
+                                             jobvr,
+                                             order,
+                                             current_matrix,
+                                             lda,
+                                             current_values,
+                                             lvector_data,
+                                             ldvl,
+                                             current_rvectors,
+                                             ldvr,
+                                             work_data,
+                                             lwork,
+                                             rwork_data,
+                                             &info);
     PADDLE_ENFORCE_EQ(
         info,
         0,
@@ -236,6 +240,13 @@ void MagmaEig(const Context& dev_ctx,
               const DenseTensor& input,
               DenseTensor* values,
               DenseTensor* vectors) {
+  int64_t numel = input.numel();
+  PADDLE_ENFORCE_EQ(
+      true,
+      (numel >= 0 && numel <= std::numeric_limits<int32_t>::max()),
+      common::errors::PreconditionNotMet(
+          "the numel of input should be in [0, "
+          "std::numeric_limits<int32_t>::max()]"));
   auto num_dims = input.dims().size();
   // magma will modify original input, so copy to cpu at any case
   DenseTensor input_copy_cpu;
@@ -245,8 +256,7 @@ void MagmaEig(const Context& dev_ctx,
   using RealT = typename phi::dtype::Real<T>;
   magma_vec_t jobvr = MagmaVec;
   magma_vec_t jobvl = MagmaNoVec;
-  magma_int_t order =
-      static_cast<magma_int_t>(input_copy_cpu.dims()[num_dims - 1]);
+  magma_int_t order = static_cast<magma_int_t>(input_copy_cpu.dims(-1));
 
   auto* input_data = input_copy_cpu.data<T>();
   magma_int_t lda = std::max<magma_int_t>(1, order);
@@ -260,7 +270,7 @@ void MagmaEig(const Context& dev_ctx,
 
   int batch_count = BatchCount(input_copy_cpu);
   int matrix_stride = MatrixStride(input_copy_cpu);
-  int values_stride = values->dims()[values->dims().size() - 1];
+  int values_stride = static_cast<int>(values->dims(-1));
 
   DenseTensor rwork;
   phi::dtype::Real<T>* rwork_data = nullptr;
@@ -444,14 +454,12 @@ void ComputeBackwardForComplexInput(const DenseTensor& L,
   DenseTensor trans_v = phi::TransposeLast2Dim<T>(dev_ctx, V);
   DenseTensor Vh = phi::Conj<T>(dev_ctx, trans_v);
   DenseTensor Lconj = phi::Conj<T>(dev_ctx, L);
-  DenseTensor Econj = phi::Subtract<T>(dev_ctx,
-                                       phi::funcs::Unsqueeze(Lconj, -2),
-                                       phi::funcs::Unsqueeze(Lconj, -1));
+  DenseTensor Econj = phi::Subtract<T>(
+      dev_ctx, funcs::Unsqueeze(Lconj, -2), funcs::Unsqueeze(Lconj, -1));
   DenseTensor VhgV = phi::Matmul<T>(dev_ctx, Vh, gV_maybe_zero);
   DenseTensor diag_real = phi::Real<T>(dev_ctx, VhgV);
-  DenseTensor diag_res =
-      phi::funcs::BatchDiag<T>(dev_ctx, diag_real, batch_count);
-  DenseTensor diag_unsqueezed = phi::funcs::Unsqueeze(diag_res, -2);
+  DenseTensor diag_res = funcs::BatchDiag<T>(dev_ctx, diag_real, batch_count);
+  DenseTensor diag_unsqueezed = funcs::Unsqueeze(diag_res, -2);
 
   // turn diag_unsqueezed into complex
   auto numel = diag_unsqueezed.numel();
@@ -461,9 +469,8 @@ void ComputeBackwardForComplexInput(const DenseTensor& L,
   auto* data_diag_un_com = dev_ctx.template Alloc<T>(
       &diag_unsqueezed_complex, static_cast<size_t>(numel * sizeof(T)));
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-  phi::funcs::RealToComplexFunctor<T> functor(
-      data_diag_un, data_diag_un_com, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::RealToComplexFunctor<T> functor(data_diag_un, data_diag_un_com, numel);
   for_range(functor);
   // real tensor multiply complex tensor in broadcast manner
   DenseTensor res1 = phi::Multiply<T>(dev_ctx, V, diag_unsqueezed_complex);
@@ -473,7 +480,7 @@ void ComputeBackwardForComplexInput(const DenseTensor& L,
   result.Resize(V.dims());
   dev_ctx.template Alloc<T>(&result);
   result = phi::Divide<T>(dev_ctx, result, Econj);
-  result = phi::funcs::DiagFill<T, T>(
+  result = funcs::DiagFill<T, T>(
       dev_ctx, order, order, order, 0, gL_maybe_zero, result);
   DenseTensor rhs = phi::Matmul<T>(dev_ctx, result, Vh);
 
@@ -482,8 +489,14 @@ void ComputeBackwardForComplexInput(const DenseTensor& L,
   // Vh: matrix with shape [m,m]
   // rhs: rhs with shape [m,k]
   // x_grad: out
-  int m = Vh.dims()[Vh.dims().size() - 1];
-  int k = rhs.dims()[rhs.dims().size() - 1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t m = Vh.dims(-1);
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t k = rhs.dims(-1);
+
   auto* matrix_data = Vh.data<T>();
   auto* rhs_data = rhs.data<T>();
 

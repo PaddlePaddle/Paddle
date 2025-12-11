@@ -43,16 +43,16 @@ def _npu_identity(x, format=-1):
         Tensor: A Tensor with acl storage format on Ascend NPU.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:NPU)
             >>> import paddle
             >>> paddle.device.set_device('npu')
 
             >>> x = paddle.ones(shape=[6])
-            >>> y = paddle.incubate._npu_identity(x, 3) # ACL_FORMAT_NC1HWC0 = 3
+            >>> y = paddle.incubate._npu_identity(x, 3)  # ACL_FORMAT_NC1HWC0 = 3
             >>> print(y.shape)
-            [1, 1, 1, 1, 16]
+            paddle.Size([1, 1, 1, 1, 16])
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.npu_identity(x, format)

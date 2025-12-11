@@ -1161,7 +1161,7 @@ class TestSliceApiWithDenseTensorArray(unittest.TestCase):
 
 
 class TestSliceOpError(unittest.TestCase):
-    def test_dismatch_shape(self):
+    def test_mismatch_shape(self):
         with base.dygraph.guard():
             with self.assertRaises(ValueError):
                 array = np.array([], dtype=np.float32)

@@ -386,7 +386,7 @@ struct FlowGraph {
     // Since VarDesc doesn't store layout, in pir we set all layout to
     // NCHW after translation. However, we need the real layout to decide
     // if we need to alter the operation and value. Here we start from the
-    // operation who have a dertermined layout and spread its layout to
+    // operation who have a determined layout and spread its layout to
     // its output and inputs recursively.
     std::queue<Node> q;
     for (auto& n : mutable_nodes) {

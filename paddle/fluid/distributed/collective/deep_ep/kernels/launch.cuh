@@ -126,6 +126,9 @@
   } else if (hidden == 4096) {                     \
     constexpr size_t kHidden = 4096;               \
     __VA_ARGS__                                    \
+  } else if (hidden == 5120) {                     \
+    constexpr size_t kHidden = 5120;               \
+    __VA_ARGS__                                    \
   } else if (hidden == 7168) {                     \
     constexpr size_t kHidden = 7168;               \
     __VA_ARGS__                                    \
@@ -134,6 +137,17 @@
     __VA_ARGS__                                    \
   } else {                                         \
     EP_HOST_ASSERT(false && "Unsupported hidden"); \
+  }
+
+#define DISPATCH_NUM_PER_CHANNEL(num_per_channel, kNumPerChannels, ...) \
+  if (num_per_channel == -1) {                                          \
+    constexpr int kNumPerChannels = -1;                                 \
+    __VA_ARGS__                                                         \
+  } else if (num_per_channel == 128) {                                  \
+    constexpr int kNumPerChannels = 128;                                \
+    __VA_ARGS__                                                         \
+  } else {                                                              \
+    EP_HOST_ASSERT(false && "Unsupported num_per_channel");             \
   }
 
 #define DISPATCH_NUM_TOPK(num_topk, kTopk, ...)      \

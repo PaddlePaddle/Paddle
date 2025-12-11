@@ -228,7 +228,7 @@ PDNode* TrtQKMultiHeadMatmulPattern::operator()() {
       .LinksTo({matmul_qk_out_var});
   scale->LinksFrom({matmul_qk_out_var}).LinksTo({scale_out_var});
   softmax_qk->LinksFrom({scale_out_var}).LinksTo({softmax_qk_out_var});
-  // V  path
+  // V path
   mul2->LinksFrom({input1, mul2_w_var}).LinksTo({mul2_out_var});
   elementwise2->LinksFrom({mul2_out_var, elementwise2_w})
       .LinksTo({elementwise2_out});
@@ -305,8 +305,8 @@ int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
     auto* bk_tensor =
         scope->FindVar(elementwise1_w->Name())->GetMutable<phi::DenseTensor>();
 
-    int hidden_out = wq_tensor->dims()[1];
-    int head_size = hidden_out / head_number;
+    int64_t hidden_out = wq_tensor->dims()[1];
+    int64_t head_size = hidden_out / head_number;
     if (abs(scale_attr - 1.0f / sqrt(static_cast<float>(head_size))) > 1e-5) {
       VLOG(3) << "scale of multi-head matmul do not fit the requirement of "
                  "qk attention plugin, Stop fusing.";

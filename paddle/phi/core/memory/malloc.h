@@ -41,6 +41,9 @@ PADDLE_API extern AllocationPtr Alloc(const phi::Place& place, size_t size);
 
 PADDLE_API extern uint64_t Release(const phi::Place& place);
 
+// Compact memory of free blocks held by the VmmAllocator.
+PADDLE_API extern size_t Compact(const phi::GPUPlace& place);
+
 PADDLE_API extern std::shared_ptr<Allocation> AllocShared(
     const phi::Place& place, size_t size, const phi::Stream& stream);
 
@@ -87,13 +90,11 @@ template <typename StreamType>
 struct ThrustAllocator {
   typedef char value_type;
   ThrustAllocator(phi::Place place, StreamType stream) {
-    VLOG(2) << "construct allocator";
     place_ = place;
     stream_ = stream;
   }
-  ~ThrustAllocator() { VLOG(2) << "destroy allocator"; }
+  ~ThrustAllocator() {}
   char* allocate(std::ptrdiff_t num_bytes) {
-    VLOG(2) << "allocate " << num_bytes << " bytes";
     auto storage = memory::AllocShared(
         place_,
         num_bytes,
@@ -103,7 +104,6 @@ struct ThrustAllocator {
     return ptr;
   }
   void deallocate(char* ptr, size_t) {
-    VLOG(2) << "deallocate ";
     allocation_map_type::iterator iter = busy_allocation_.find(ptr);
     PADDLE_ENFORCE_NE(iter,
                       busy_allocation_.end(),

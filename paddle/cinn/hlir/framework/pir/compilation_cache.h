@@ -71,6 +71,12 @@ class CompilationResult final {
  public:
   explicit CompilationResult(const Target& target, bool need_x86_kernel = false)
       : target_(target), have_cx86_kernel_(need_x86_kernel) {}
+  explicit CompilationResult(const Target& target,
+                             bool need_x86_kernel,
+                             std::string host_func_name)
+      : target_(target),
+        have_cx86_kernel_(need_x86_kernel),
+        host_func_name_(host_func_name) {}
   const std::shared_ptr<BackendResource>& GetBackendResource() const {
     return backend_resource_;
   }
@@ -95,10 +101,14 @@ class CompilationResult final {
     return backend_resource_->GenerateKernelInfo(have_cx86_kernel_);
   }
 
+  std::string GetFuncName() const { return host_func_name_; }
+  void SetFuncName(std::string host_fn_name) { host_func_name_ = host_fn_name; }
+
  private:
   Target target_;
   std::shared_ptr<BackendResource> backend_resource_{nullptr};
   bool have_cx86_kernel_{false};
+  std::string host_func_name_ = "";
 };
 
 }  // namespace pir

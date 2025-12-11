@@ -120,7 +120,9 @@ void RowConvKernel(const Context &dev_ctx,
   }
   int input_dim = 0;
   phi::Vector<size_t> batch_indices(batch_size + 1);
-  int timesteps = X->dims()[1];
+  int64_t timesteps = X->dims()[1];
+  // TODO(large-tensor): downstream functors may still use int
+
   if (is_tensor) {
     for (int i = 0; i < batch_size + 1; i++) {
       batch_indices[i] = i * timesteps;
@@ -132,7 +134,9 @@ void RowConvKernel(const Context &dev_ctx,
   }
 
   int num_sequence = batch_indices.size() - 1;
-  int future_context = Filter->dims()[0];
+  int64_t future_context = Filter->dims()[0];
+  // TODO(large-tensor): downstream functors may still use int
+
   phi::MixVector<size_t> mix_vector(&batch_indices);
   size_t *idx = mix_vector.CUDAMutableData(dev_ctx.GetPlace());
   auto stream = dev_ctx.stream();

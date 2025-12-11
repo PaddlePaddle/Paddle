@@ -448,7 +448,8 @@ bool BicubicInterpOpInferSymbolicShape(
   int out_d = attributes.at("out_d").dyn_cast<pir::Int32Attribute>().data();
   int out_h = attributes.at("out_h").dyn_cast<pir::Int32Attribute>().data();
   int out_w = attributes.at("out_w").dyn_cast<pir::Int32Attribute>().data();
-  const std::vector<float> &scale = details::GetVectorAttr<float>(op, "scale");
+  const std::vector<double> &scale =
+      details::GetVectorAttr<double>(op, "scale");
 
   const bool has_size_tensor = [&] {
     pir::Value size_tensor = op->operand_source(2);
@@ -768,6 +769,11 @@ bool BroadcastTensorsOpInferSymbolicShape(
 }
 
 bool BilinearInterpOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return BicubicInterpOpInferSymbolicShape(op, infer_context);
+}
+
+bool InterpAntialiasOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return BicubicInterpOpInferSymbolicShape(op, infer_context);
 }
@@ -2058,12 +2064,78 @@ bool FlashAttnQkvpackedOpInferSymbolicShape(
   return FlashAttnVarlenQkvpackedOpInferSymbolicShape(op, infer_context);
 }
 
-// bool FlashAttnUnpaddedOpInferSymbolicShape(pir::Operation *op,
-//                                            pir::InferSymbolicShapeContext
-//                                            *infer_context) {
-//   // pass
-//   return true;
-// }
+bool FlashAttnUnpaddedOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  // Operand layout for flash_attn_unpadded:
+  // (q, k, v, cu_seqlens_q, cu_seqlens_k, fixed_seed_offset, attn_mask, ...)
+  const symbol::ShapeOrDataDimExprs &q =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const symbol::ShapeOrDataDimExprs &k =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const symbol::ShapeOrDataDimExprs &v =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const symbol::ShapeOrDataDimExprs &cu_seqlens_q =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3));
+  const symbol::ShapeOrDataDimExprs &cu_seqlens_k =
+      infer_context->GetShapeOrDataForValue(op->operand_source(4));
+
+  PADDLE_ENFORCE_EQ(q.shape().size(),
+                    3,
+                    common::errors::InvalidArgument(
+                        "flash_attn_unpadded expects input with dim "
+                        "[total_q, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(
+      k.shape().size(),
+      3,
+      common::errors::InvalidArgument("flash_attn_unpadded expects k with dim "
+                                      "[total_k, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(
+      v.shape().size(),
+      3,
+      common::errors::InvalidArgument("flash_attn_unpadded expects v with dim "
+                                      "[total_k, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(cu_seqlens_q.shape().size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "flash_attn_unpadded expects cu_seqlens_q with dim "
+                        "[batch_size + 1]"));
+  PADDLE_ENFORCE_EQ(cu_seqlens_k.shape().size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "flash_attn_unpadded expects cu_seqlens_k with dim "
+                        "[batch_size + 1]"));
+
+  infer_context->AddEqualCstr(q.shape()[2], k.shape()[2]);
+  infer_context->AddEqualCstr(k.shape()[2], v.shape()[2]);
+  infer_context->AddEqualCstr(k.shape()[0], v.shape()[0]);
+  infer_context->AddEqualCstr(k.shape()[1], v.shape()[1]);
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(q.shape()));
+
+  const symbol::DimExpr &total_q = q.shape()[0];
+  const symbol::DimExpr &num_heads = q.shape()[1];
+  symbol::DimExpr seqlen_q_rounded = (total_q + 127) / 128 * 128;
+  symbol::DimExpr seqlen_k_rounded = seqlen_q_rounded;
+
+  if (op->result(1) && !paddle::dialect::details::IsFakeValue(op->result(1))) {
+    std::vector<symbol::DimExpr> softmax_shape{
+        num_heads, seqlen_q_rounded, seqlen_k_rounded};
+    infer_context->SetShapeOrDataForValue(
+        op->result(1), symbol::TensorShapeOrDataDimExprs(softmax_shape));
+  }
+  if (op->result(2) && !paddle::dialect::details::IsFakeValue(op->result(2))) {
+    std::vector<symbol::DimExpr> softmax_lse_shape{num_heads, seqlen_q_rounded};
+    infer_context->SetShapeOrDataForValue(
+        op->result(2), symbol::TensorShapeOrDataDimExprs(softmax_lse_shape));
+  }
+  if (op->result(3) && !paddle::dialect::details::IsFakeValue(op->result(3))) {
+    std::vector<symbol::DimExpr> seed_offset_shape{symbol::DimExpr{2}};
+    infer_context->SetShapeOrDataForValue(
+        op->result(3), symbol::TensorShapeOrDataDimExprs(seed_offset_shape));
+  }
+  return true;
+}
 
 bool FlashmaskAttentionOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {

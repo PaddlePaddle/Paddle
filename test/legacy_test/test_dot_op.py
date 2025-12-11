@@ -537,10 +537,10 @@ class TestDotAPI_Compatibility(unittest.TestCase):
         # Position args (args)
         out1 = paddle.dot(x, y)
         paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
+        # Keywords args (kwargs) for paddle
         out2 = paddle.dot(x=x, y=y)
         paddle_dygraph_out.append(out2)
-        # Key words args for torch compatibility
+        # Keywords args for torch compatibility
         out3 = paddle.dot(input=x, tensor=y)
         paddle_dygraph_out.append(out3)
         # Combined args and kwargs
@@ -573,9 +573,9 @@ class TestDotAPI_Compatibility(unittest.TestCase):
             y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
             # Position args (args)
             out1 = paddle.dot(x, y)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle.dot(x=x, y=y)
-            # Key words args for torch compatibility
+            # Keywords args for torch compatibility
             out3 = paddle.dot(input=x, tensor=y)
             # Combined args and kwargs
             out4 = paddle.dot(x, tensor=y)

@@ -45,7 +45,6 @@ enum class DataLayout {  // Not use
   kNCHW,
   kNCDHW,
   kNDHWC,  // add, liyamei
-  kNCHW_VECT_C,
 };
 
 enum class PoolingMode {
@@ -210,6 +209,22 @@ inline cudnnTensorFormat_t GetCudnnTensorFormat(
   return CUDNN_TENSOR_NCHW;
 }
 
+inline cudnnTensorFormat_t GetCudnnTensorFormat(const phi::DataLayout& order) {
+  switch (order) {
+    case phi::DataLayout::NHWC:
+      return CUDNN_TENSOR_NHWC;
+    case phi::DataLayout::NCHW:
+      return CUDNN_TENSOR_NCHW;
+    case phi::DataLayout::NCDHW:
+      return CUDNN_TENSOR_NCHW;  // NOTE: cudnn treat NdTensor as the same
+    case phi::DataLayout::NDHWC:
+      return CUDNN_TENSOR_NHWC;
+    default:
+      PADDLE_THROW(common::errors::Unimplemented(
+          "CUDNN has no equivalent dataLayout for input order."));
+  }
+  return CUDNN_TENSOR_NCHW;
+}
 class ScopedTensorDescriptor {
  public:
   ScopedTensorDescriptor() {
@@ -274,6 +289,14 @@ class ScopedTensorDescriptor {
         GetCudnnTensorFormat(order), CudnnDataType<T>::type, dims, groups);
   }
 
+  template <typename T>
+  inline cudnnTensorDescriptor_t descriptor(const phi::DataLayout& order,
+                                            const std::vector<int>& dims,
+                                            const int groups = 1) {
+    return descriptor(
+        GetCudnnTensorFormat(order), CudnnDataType<T>::type, dims, groups);
+  }
+
   inline cudnnTensorDescriptor_t descriptor(const cudnnDataType_t cudnn_type,
                                             const std::vector<int>& dim,
                                             const std::vector<int>& stride) {
@@ -295,7 +318,6 @@ class ScopedTensorDescriptor {
   DISABLE_COPY_AND_ASSIGN(ScopedTensorDescriptor);
 };
 
-#if CUDNN_VERSION >= 7201
 class ScopedRNNTensorDescriptor {
  public:
   ScopedRNNTensorDescriptor() {
@@ -358,7 +380,6 @@ class ScopedRNNTensorDescriptor {
   cudnnRNNDataDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedRNNTensorDescriptor);
 };
-#endif
 
 class ScopedDropoutDescriptor {
  public:
@@ -459,6 +480,14 @@ class ScopedFilterDescriptor {
 
   template <typename T>
   inline cudnnFilterDescriptor_t descriptor(const DataLayout& order,
+                                            const std::vector<int>& kernel,
+                                            const int groups = 1) {
+    return descriptor(
+        GetCudnnTensorFormat(order), CudnnDataType<T>::type, kernel, groups);
+  }
+
+  template <typename T>
+  inline cudnnFilterDescriptor_t descriptor(const phi::DataLayout& order,
                                             const std::vector<int>& kernel,
                                             const int groups = 1) {
     return descriptor(
@@ -623,11 +652,9 @@ class ScopedActivationDescriptor {
     ActivationMode activation_mode = StringToActivationMode(act);
     cudnnActivationMode_t mode;
     switch (activation_mode) {
-#if CUDNN_VERSION >= 7100
       case ActivationMode::kNone:
         mode = CUDNN_ACTIVATION_IDENTITY;
         break;
-#endif
       case ActivationMode::kRelu6:
         relu_ceiling = 6.0;
         mode = CUDNN_ACTIVATION_CLIPPED_RELU;
@@ -660,7 +687,6 @@ class ScopedActivationDescriptor {
   DISABLE_COPY_AND_ASSIGN(ScopedActivationDescriptor);
 };
 
-#if CUDNN_VERSION >= 7001
 class ScopedCTCLossDescriptor {
  public:
   ScopedCTCLossDescriptor() {
@@ -683,7 +709,6 @@ class ScopedCTCLossDescriptor {
   cudnnCTCLossDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedCTCLossDescriptor);
 };
-#endif
 
 }  // namespace gpu
 }  // namespace backends

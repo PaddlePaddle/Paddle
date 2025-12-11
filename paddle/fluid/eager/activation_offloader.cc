@@ -103,10 +103,10 @@ void ActivationOffloaderWithPlace::SetSkipTensors(
   for (auto &t : tensors) {
     auto dense_tensor = GetDenseTensorImpl(t);
     if (dense_tensor != nullptr && dense_tensor->place() == place_) {
-      PADDLE_ENFORCE_EQ(
-          dense_tensor->meta().is_contiguous(),
-          true,
-          phi::errors::InvalidArgument("Only contiguous tensor is supported."));
+      PADDLE_ENFORCE_EQ(dense_tensor->meta().is_contiguous(),
+                        true,
+                        common::errors::InvalidArgument(
+                            "Only contiguous tensor is supported."));
       VLOG(10) << "SetSkip " << GetTensorMetaString(dense_tensor);
       skip_tensors_.insert(std::move(dense_tensor));
     }
@@ -161,7 +161,7 @@ size_t ActivationOffloaderWithPlace::Offload(size_t size) {
     PADDLE_ENFORCE_GE(
         cnt,
         1,
-        phi::errors::InvalidArgument("Invalid reference count %d", cnt));
+        common::errors::InvalidArgument("Invalid reference count %d", cnt));
     if (ref_cnt > cnt) {
       VLOG(7) << "Cannot offload tensor because its reference is not unique: "
               << GetTensorMetaString(dense_tensor)

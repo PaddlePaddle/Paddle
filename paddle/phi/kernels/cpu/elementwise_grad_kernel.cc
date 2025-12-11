@@ -52,7 +52,7 @@ void MaximumGradKernel(const Context& dev_ctx,
   }
   funcs::ElementwiseGradPreProcess(dout, dx);
   int axis = -1;
-  phi::funcs::ElemwiseGradCompute<Context, T, MaxGradDx<T>, MaxGradDy<T>>(
+  funcs::ElemwiseGradCompute<Context, T, MaxGradDx<T>, MaxGradDy<T>>(
       dev_ctx, x, y, dout, dout, axis, dx, dy, MaxGradDx<T>(), MaxGradDy<T>());
 }
 
@@ -84,7 +84,7 @@ void MinimumGradKernel(const Context& dev_ctx,
   }
   funcs::ElementwiseGradPreProcess(dout, dx);
   int axis = -1;
-  phi::funcs::ElemwiseGradCompute<Context, T, MinGradDx<T>, MinGradDy<T>>(
+  funcs::ElemwiseGradCompute<Context, T, MinGradDx<T>, MinGradDy<T>>(
       dev_ctx, x, y, dout, dout, axis, dx, dy, MinGradDx<T>(), MinGradDy<T>());
 }
 
@@ -116,7 +116,7 @@ void RemainderGradKernel(const Context& dev_ctx,
   }
   funcs::ElementwiseGradPreProcess(dout, dx);
   int axis = -1;
-  phi::funcs::
+  funcs::
       ElemwiseGradCompute<Context, T, RemainderGradDx<T>, RemainderGradDy<T>>(
           dev_ctx,
           x,
@@ -139,18 +139,17 @@ void CopySignGradKernel(const Context& dev_ctx,
                         DenseTensor* y_grad) {
   funcs::ElementwiseGradPreProcess(out_grad, x_grad);
   int axis = -1;
-  phi::funcs::
-      ElemwiseGradCompute<Context, T, CopySignGradDX<T>, CopySignGradDY<T>>(
-          dev_ctx,
-          x,
-          y,
-          out_grad,
-          out_grad,
-          axis,
-          x_grad,
-          y_grad,
-          CopySignGradDX<T>(),
-          CopySignGradDY<T>());
+  funcs::ElemwiseGradCompute<Context, T, CopySignGradDX<T>, CopySignGradDY<T>>(
+      dev_ctx,
+      x,
+      y,
+      out_grad,
+      out_grad,
+      axis,
+      x_grad,
+      y_grad,
+      CopySignGradDX<T>(),
+      CopySignGradDY<T>());
 }
 }  // namespace phi
 

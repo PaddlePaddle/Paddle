@@ -94,8 +94,8 @@ __global__ void KernelMinMax(const T* input,
   }
   if (max_ptr && min_ptr) {
     __syncthreads();
-    T block_min_value = phi::funcs::BlockReduceMin<T>(min_value, FINAL_MASK);
-    T block_max_value = phi::funcs::BlockReduceMax<T>(max_value, FINAL_MASK);
+    T block_min_value = funcs::BlockReduceMin<T>(min_value, FINAL_MASK);
+    T block_max_value = funcs::BlockReduceMax<T>(max_value, FINAL_MASK);
 
     if (threadIdx.x == 0) {
       min_ptr[blockIdx.x] = block_min_value;
@@ -223,7 +223,7 @@ void HistogramKernel(const Context& dev_ctx,
 
   if (!density && weight_data == nullptr) {
     int64_t* out_data = dev_ctx.template Alloc<int64_t>(output);
-    phi::funcs::SetConstant<Context, int64_t>()(dev_ctx, output, 0);
+    funcs::SetConstant<Context, int64_t>()(dev_ctx, output, 0);
     KernelHistogram<T, IndexType, int64_t>
         <<<block_num, PADDLE_CUDA_NUM_THREADS, nbins * sizeof(float), stream>>>(
             input_data,
@@ -235,7 +235,7 @@ void HistogramKernel(const Context& dev_ctx,
             out_data);
   } else {
     float* out_data = dev_ctx.template Alloc<float>(output);
-    phi::funcs::SetConstant<Context, float>()(
+    funcs::SetConstant<Context, float>()(
         dev_ctx, output, static_cast<float>(0));
     KernelHistogram<T, IndexType, float>
         <<<block_num, PADDLE_CUDA_NUM_THREADS, nbins * sizeof(float), stream>>>(
@@ -261,8 +261,8 @@ void HistogramKernel(const Context& dev_ctx,
       std::vector<const DenseTensor*> ins = {output};
       std::vector<DenseTensor*> outs = {output};
       float scale = gap / sum_cpu;
-      auto functor = phi::funcs::ScaleFunctor<float>(scale);
-      phi::funcs::ElementwiseKernel<float>(dev_ctx, ins, &outs, functor);
+      auto functor = funcs::ScaleFunctor<float>(scale);
+      funcs::ElementwiseKernel<float>(dev_ctx, ins, &outs, functor);
     }
   }
 }

@@ -35,6 +35,7 @@ from .attn_bias import (
 SUPPORTED_ATTN_BIAS_TYPES = {
     type(None),
     paddle.Tensor,
+    paddle.pir.Value,
     LowerTriangularMask,
     LowerTriangularMaskWithTensorBias,
     BlockDiagonalMask,
@@ -59,7 +60,7 @@ def _get_seqlen_info(attn_bias):
 
 
 def _get_tensor_bias(attn_bias):
-    if isinstance(attn_bias, paddle.Tensor):
+    if isinstance(attn_bias, (paddle.Tensor, paddle.pir.Value)):
         return attn_bias
     elif isinstance(attn_bias, LowerTriangularMaskWithTensorBias):
         return attn_bias._bias

@@ -164,6 +164,23 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
             np.testing.assert_array_equal(out_use_state_dict, out_no_state_dict)
 
 
+class TestOptimizerAPI(unittest.TestCase):
+    def test_weight_decay_int(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+        adam = paddle.optimizer.SGD(
+            learning_rate=0.01,
+            parameters=linear.parameters(),
+            weight_decay=1,
+        )
+        out = linear(a)
+        out.backward()
+        adam.step()
+        adam.zero_grad(False)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

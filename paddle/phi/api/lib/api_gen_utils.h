@@ -188,5 +188,10 @@ void SetReplicatedDistAttrForOutput(
     phi::distributed::DistTensor* out,
     const phi::distributed::ProcessMesh& process_mesh);
 
+/* ------------------ for Allocator ----------------------- */
+// Check whether need to compact by current memory stat info and api output
+// Tensor's meta info.
+void CheckAndDoCompact(const std::vector<phi::MetaTensor*>& meta_tensors,
+                       std::string api = "");
 }  // namespace experimental
 }  // namespace paddle

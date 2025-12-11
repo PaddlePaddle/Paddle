@@ -762,6 +762,11 @@ bool DropoutOpInferSymbolicShape(
   return true;
 }
 
+bool Dropout_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return DropoutOpInferSymbolicShape(op, infer_context);
+}
+
 bool EmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const std::vector<symbol::DimExpr> &x_dims =
@@ -785,17 +790,6 @@ bool EmbeddingOpInferSymbolicShape(
 
 bool EqualAllOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto &x_dims =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
-  const auto &y_dims =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
-
-  PADDLE_ENFORCE_GE(
-      x_dims.size(),
-      y_dims.size(),
-      common::errors::InvalidArgument(
-          "The size of dim_y should not be greater than dim_x's."));
-
   std::vector<symbol::DimExpr> out_dims =
       {};  // Adjust the dimensions as necessary
   infer_context->SetShapeOrDataForValue(
