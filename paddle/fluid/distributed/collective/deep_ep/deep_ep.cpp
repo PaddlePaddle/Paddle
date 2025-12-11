@@ -2064,7 +2064,7 @@ Buffer::low_latency_dispatch_two_stage(
 
   auto num_tokens = static_cast<int>(x.size(0)),
        hidden = static_cast<int>(x.size(1));
-  auto num_scales = hidden / 128, num_topk = static_cast<int>(topk_idx.size(1));
+  auto num_scales = num_per_channel == -1 ? 1 : hidden / 128, num_topk = static_cast<int>(topk_idx.size(1));
   int num_local_experts = num_experts / num_ranks;
 
   // Buffer control
@@ -2121,7 +2121,7 @@ Buffer::low_latency_dispatch_two_stage(
       (num_ranks / NUM_MAX_NVL_PEERS * (num_topk * 3 + 1) * sizeof(int) +
        sizeof(int4) - 1) /
           sizeof(int4) * sizeof(int4) +
-      (use_fp8 ? (hidden + num_scales * sizeof(float))
+      (use_fp8 ? (hidden + (num_scales + 3) / 4 * 4 * sizeof(float))
                : (hidden * sizeof(nv_bfloat16)));
   auto packed_rdma_recv_x = ConvertPaddleTensorToDetailTensor(
       paddle::experimental::empty({num_ranks / NUM_MAX_NVL_PEERS,
