@@ -20,7 +20,6 @@ from op_test import (
     convert_float_to_uint16,
     get_device_place,
     is_custom_device,
-    skip_check_grad_ci,
 )
 
 import paddle
@@ -1635,17 +1634,6 @@ create_test_padding_SAME_class(TestCase1_strides)
 create_test_cudnn_padding_SAME_class(TestCase1_strides)
 
 
-@skip_check_grad_ci(
-    reason=(
-        "The max_pool2d_with_dilations operator cannot pass numeric gradient checking. "
-        "OpTest uses finite-difference gradients, but max pooling is a non-smooth "
-        "selection operation where tiny perturbations may change the argmax index, "
-        "causing discontinuous outputs and invalid numeric gradients. Dilation further "
-        "amplifies this instability by sparsely sampling input positions, making the "
-        "finite-difference method unsuitable for this operator. Note: the standard "
-        "pool2d operator also skips test_grad for max_pool for the same reason."
-    )
-)
 class TestMax_Pool2D_With_Dilations(TestPool2D_Op):
     def setUp(self):
         self.op_type = "max_pool2d_with_dilations"
@@ -1725,7 +1713,15 @@ class TestMax_Pool2D_With_Dilations(TestPool2D_Op):
         self.ceil_mode = False
 
     def test_check_grad(self):
-        pass
+        if self.dtype == np.float16:
+            return
+        self.check_grad(
+            {'X'},
+            'Out',
+            max_relative_error=1.00,
+            check_cinn=True,
+            check_pir=True,
+        )
 
 
 class TestMax_Pool2D_With_Dilations_Channel_Last(TestMax_Pool2D_With_Dilations):
@@ -1842,6 +1838,18 @@ def create_test_cpu_class(parent):
         def test_check_output(self):
             self.check_output_with_place(
                 paddle.base.CPUPlace(), check_pir=True, check_cinn=True
+            )
+
+        def test_check_grad(self):
+            if self.dtype == np.float16:
+                return
+            self.check_grad_with_place(
+                paddle.base.CPUPlace(),
+                {'X'},
+                'Out',
+                max_relative_error=1.00,
+                check_cinn=True,
+                check_pir=True,
             )
 
     cls_name = "{}_{}".format(parent.__name__, "CPU")
