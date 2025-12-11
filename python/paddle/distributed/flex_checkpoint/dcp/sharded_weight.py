@@ -118,7 +118,7 @@ def shard_weight(
     world_size = group.nranks
 
     # Calculate shapes and offsets
-    local_shape = tuple(weight.shape)
+    local_shape = weight.shape
     global_shape = deepcopy(local_shape)
     global_shape[axis] = local_shape[axis] * world_size
     global_shape = tuple(global_shape)
