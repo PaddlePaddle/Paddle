@@ -555,11 +555,13 @@ def _handle_aoa(
                     mapping.postprocess_list
                 )
             if len(shard_mappings) == 1 and mapping.postprocess_list is None:
-                assert src_desc.global_shape == dst_desc.global_shape, (
-                    f"Shape mismatch for parameter '{param_name}': "
-                    f"source global_shape={src_desc.global_shape}, "
-                    f"destination global_shape={dst_desc.global_shape}"
-                )
+                if src_desc.global_shape == dst_desc.global_shape:
+                    logger.warning(
+                        f"Shape mismatch for parameter '{param_name}': "
+                        f"source global_shape={src_desc.global_shape}, "
+                        f"destination global_shape={dst_desc.global_shape}, "
+                        "Please check if this is caused by an AOA configuration."
+                    )
             if (len(shard_mappings) == 1) and (
                 src_desc.local_shape == dst_desc.local_shape
                 and src_desc.global_shape == dst_desc.global_shape
