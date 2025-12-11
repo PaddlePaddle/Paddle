@@ -21,6 +21,7 @@ from test_case_base import (
 )
 
 import paddle
+from paddle.jit.sot import symbolic_translate
 from paddle.jit.sot.psdb import check_no_breakgraph
 from paddle.jit.sot.utils import strict_mode_guard
 
@@ -92,6 +93,11 @@ class TestNumPy(TestCaseBase):
         print("[test_large_numpy_array_to_tensor] debug info:")
         print("x: ", x)
         print("paddle x: ", paddle.to_tensor(x))
+        print("no symbolic_translate x:", large_numpy_array_to_tensor(x))
+        print(
+            "symbolic_translate x:",
+            symbolic_translate(large_numpy_array_to_tensor)(x),
+        )
         self.assert_results(large_numpy_array_to_tensor, x)
 
     def test_numpy_array_guard(self):
