@@ -946,7 +946,7 @@ class TestSumOp_Compatibility(unittest.TestCase):
             np.int32,
             np.int64,
             np.float64,
-            np.bool,
+            np.bool_,
         ]
 
     def test_dygraph(self):
