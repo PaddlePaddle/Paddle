@@ -1756,8 +1756,14 @@ void instance_norm_grad(const Tensor& x,
                         Tensor* x_grad,
                         Tensor* scale_grad,
                         Tensor* bias_grad) {
-  const int n = x.dims()[0];
-  const int c = x.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t n = x.dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t c = x.dims()[1];
+
   InstanceNormDecompHelper<T> decomp_helper(x);
 
   std::vector<int64_t> reduce_axes = decomp_helper.GetReduceAxis();

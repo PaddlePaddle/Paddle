@@ -348,6 +348,9 @@ void ConvertWithQuant(phi::DenseTensor* weight,
     int64_t n = weight_fp32.dims()[0];
     int64_t data_count = weight_fp32.numel() / n;
     auto* weight_fp32_data = weight_fp32.data<float>();
+    // TODO(large-tensor): GetQuantScales and QuantFP32ToIntX not support int64
+    PADDLE_ENFORCE_LE_INT_MAX(n, "n");
+    PADDLE_ENFORCE_LE_INT_MAX(data_count, "data_count");
     quant_scales = GetQuantScales(
         weight_fp32_data, static_cast<int>(n), static_cast<int>(data_count));
     weight->set_type(phi::CppTypeToDataType<Txpu>::Type());
