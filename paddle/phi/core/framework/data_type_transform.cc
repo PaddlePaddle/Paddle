@@ -31,17 +31,15 @@ template <typename InType, typename OutType>
 struct CastDataTypeFunctor {
   HOSTDEVICE inline OutType operator()(InType in) const {
 #if defined(_MSC_VER)
-    // Avoid unsupported convert of float/bfloat8/float16 -> complex
+    // Avoid unsupported convert of float8/bfloat16/float16 -> complex
     if constexpr (
-        (std::is_same_v<OutType, phi::dtype::complex<float>> ||
+        (std::is_same_v<OutType, phi::complex64> ||
          std::is_same_v<
              OutType,
-             phi::dtype::complex<
-                 double>>)&&(std::is_same_v<InType,
-                                            phi::dtype::float8_e4m3fn> ||
-                             std::is_same_v<InType, phi::dtype::float8_e5m2> ||
-                             std::is_same_v<InType, phi::dtype::bfloat16> ||
-                             std::is_same_v<InType, phi::dtype::float16>)) {
+             phi::complex128>)&&(std::is_same_v<InType, phi::float8_e4m3fn> ||
+                                 std::is_same_v<InType, phi::float8_e5m2> ||
+                                 std::is_same_v<InType, phi::bfloat16> ||
+                                 std::is_same_v<InType, phi::float16>)) {
       // default value，only to avoid compile error
       return OutType(0);
     } else {
@@ -181,7 +179,7 @@ void TransDataType(const phi::DenseTensor& in,
   if (phi::is_xpu_place(in.place())) {
     switch (src_type) {
       case proto::VarType::FP16:
-        XPUTransDataType<phi::dtype::float16>(in, out, dst_type, ctx);
+        XPUTransDataType<phi::float16>(in, out, dst_type, ctx);
         break;
       case proto::VarType::FP32:
         XPUTransDataType<float>(in, out, dst_type, ctx);
@@ -211,20 +209,18 @@ void TransDataType(const phi::DenseTensor& in,
 #endif
   switch (src_type) {
     case proto::VarType::FP16:
-      phi::VisitDataType(dst_type,
-                         CastDataType<phi::dtype::float16>(in, out, ctx));
+      phi::VisitDataType(dst_type, CastDataType<phi::float16>(in, out, ctx));
       break;
     case proto::VarType::BF16:
-      phi::VisitDataType(dst_type,
-                         CastDataType<phi::dtype::bfloat16>(in, out, ctx));
+      phi::VisitDataType(dst_type, CastDataType<phi::bfloat16>(in, out, ctx));
       break;
     case proto::VarType::FP8_E4M3FN:
-      phi::VisitDataType(
-          dst_type, CastDataType<::phi::dtype::float8_e4m3fn>(in, out, ctx));
+      phi::VisitDataType(dst_type,
+                         CastDataType<phi::float8_e4m3fn>(in, out, ctx));
       break;
     case proto::VarType::FP8_E5M2:
       phi::VisitDataType(dst_type,
-                         CastDataType<::phi::dtype::float8_e5m2>(in, out, ctx));
+                         CastDataType<phi::float8_e5m2>(in, out, ctx));
       break;
     case proto::VarType::FP32:
       phi::VisitDataType(dst_type, CastDataType<float>(in, out, ctx));

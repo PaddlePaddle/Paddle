@@ -1159,12 +1159,24 @@ def monkey_patch_tensor():
     def cuda(
         self: Tensor, device_id: int | None = None, blocking: bool = True
     ) -> Tensor:
+        device_type = paddle.device.get_all_device_type()
+        if len(
+            device_type
+        ) > 0 and paddle.device.is_compiled_with_custom_device(device_type[-1]):
+            res_place_class = core.CustomPlace
+        elif paddle.device.is_compiled_with_xpu():
+            res_place_class = core.XPUPlace
+        elif paddle.device.is_compiled_with_cuda():
+            res_place_class = core.CUDAPlace
+        else:
+            raise ValueError("No available device found.")
+
         if device_id is None:
             res_place = framework._current_expected_place()
-            if not isinstance(res_place, core.CUDAPlace):
-                res_place = core.CUDAPlace(0)
+            if not isinstance(res_place, res_place_class):
+                res_place = res_place_class(0)
         elif isinstance(device_id, int):
-            res_place = core.CUDAPlace(device_id)
+            res_place = res_place_class(device_id)
         else:
             raise ValueError("device_id must be int|None")
 
@@ -1567,6 +1579,31 @@ def monkey_patch_tensor():
                 "Currently, the __tvm_ffi_env_stream__ method is only supported for GPU tensors."
             )
 
+    def _get_c_dlpack_exchange_api():
+        """
+        Returns the C DLPack exchange API pointer for the current tensor.
+        This is used for interoperability with other libraries that support DLPack.
+
+        In tvm ffi 0.1.3 or below, this API returns the pointer directly.
+        In newer versions, it returns a python capsule containing the pointer.
+        """
+        try:
+            import tvm_ffi
+
+            tvm_ffi_version = tuple(
+                int(x) for x in tvm_ffi.__version__.split(".")
+            )
+            # We assume version format is like '0.1.3'.
+            # All supported releases are '0.1.0', '0.1.1', '0.1.2', '0.1.3'.
+            # We simply assume user will not use beta/rc versions here.
+            # TODO(dev): We should cleanup this after tvm ffi 0.1.3 is not supported.
+            if tvm_ffi_version <= (0, 1, 3):
+                return core.dlpack_exchange_api_ptr()
+        except Exception:
+            pass
+        # For tvm ffi 0.1.4 only, in tvm ffi 0.1.5+, replaced by `__dlpack_c_exchange_api__`
+        return core.dlpack_exchange_api_pycapsule()
+
     if not hasattr(core, "eager"):
         return
 
@@ -1616,7 +1653,9 @@ def monkey_patch_tensor():
         ("__dlpack_device__", __dlpack_device__),
         ("get_device", get_device),
         ("__tvm_ffi_env_stream__", __tvm_ffi_env_stream__),
-        ("__c_dlpack_exchange_api__", core.dlpack_exchange_api_ptr()),
+        # For TVM FFI 0.1.0-0.1.4, replaced by `__dlpack_c_exchange_api__` in TVM FFI 0.1.5+
+        ("__c_dlpack_exchange_api__", _get_c_dlpack_exchange_api()),
+        ("__dlpack_c_exchange_api__", core.dlpack_exchange_api_pycapsule()),
         ("device", device),
     ):
         setattr(core.eager.Tensor, method_name, method)

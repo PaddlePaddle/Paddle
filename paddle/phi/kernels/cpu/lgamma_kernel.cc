@@ -46,7 +46,7 @@ void LgammaKernel(const Context& dev_ctx,
   if (out && out->numel() == 0) {
     return;
   }
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
   LgammaFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);
 }

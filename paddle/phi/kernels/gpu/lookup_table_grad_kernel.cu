@@ -84,16 +84,13 @@ void LookupTableGradCUDAKernel(
   auto d_table_t = w_grad;
 
   int64_t N = d_table_t->dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int64_t D = d_table_t->dims()[1];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int64_t K = ids_t->numel();
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   const int64_t *ids = ids_t->data<int64_t>();
   const T *d_output = d_output_t->data<T>();

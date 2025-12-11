@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,17 +14,10 @@
 
 #pragma once
 
-#include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
-
-namespace py = pybind11;
-
-namespace paddle {
-namespace pybind {
-
-#ifdef PADDLE_WITH_HETERPS
-void BindPSGPUWrapper(py::module* m);
-void BindAfsWrapper(py::module* m);
+#ifdef __NVCC__
+#include "cub/cub.cuh"
 #endif
-}  // namespace pybind
-}  // namespace paddle
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif

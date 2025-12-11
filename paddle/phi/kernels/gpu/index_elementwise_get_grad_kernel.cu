@@ -34,8 +34,8 @@ __global__ void IndexEleGetGradAccKernel(
     const char* in_ptr,
     char* out_ptr,
     const std::array<char*, DDim::kMaxRank> index_ptrs,
-    const std::array<int64_t, phi::DDim::kMaxRank + 1> sizes,
-    const std::array<int64_t, phi::DDim::kMaxRank + 1> strides,
+    const std::array<int64_t, DDim::kMaxRank + 1> sizes,
+    const std::array<int64_t, DDim::kMaxRank + 1> strides,
     int num_indices,
     offset_calc_t offset_calc) {
   const int tid = threadIdx.x;
@@ -82,8 +82,8 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& dev_ctx,
   std::vector<int64_t> stride_tmp;
   funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
 
-  auto sizes = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
-  auto strides = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
+  auto sizes = std::array<int64_t, DDim::kMaxRank + 1>{};
+  auto strides = std::array<int64_t, DDim::kMaxRank + 1>{};
   for (int64_t i = 0; i < num_indices; i++) {
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
@@ -246,7 +246,7 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
   DenseTensor& self = *output;
 
   if (indices.size() > static_cast<size_t>(self.dims().size())) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Too many indices for tensor of dimension %d (got %d).",
         self.dims().size(),
         indices.size()));
@@ -390,7 +390,7 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                                    const bool is_combined,
                                    DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
-  phi::funcs::set_constant(dev_ctx, x_grad, static_cast<float>(0));
+  funcs::set_constant(dev_ctx, x_grad, static_cast<float>(0));
   if (out_grad.numel() == 0) return;
 
   const auto& index_type = index[0]->dtype();

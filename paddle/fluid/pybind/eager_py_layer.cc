@@ -169,7 +169,7 @@ static void PyLayerAddOffloadActivation(PyLayerObject* ctx,
                                         const std::string& name) {
   PADDLE_ENFORCE_NOT_NULL(
       ctx,
-      phi::errors::InvalidArgument("PyLayerObject should not be nullptr."));
+      common::errors::InvalidArgument("PyLayerObject should not be nullptr."));
   if (ctx->container_be_packed) {
     VLOG(10) << "Return directly because of packed value";
     return;
@@ -644,7 +644,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
     auto grad_node = ctx->grad_node.lock();
     PADDLE_ENFORCE_NOT_NULL(
         grad_node,
-        phi::errors::InvalidArgument("%s : Cannot be null", classname));
+        common::errors::InvalidArgument("%s : Cannot be null", classname));
     PyLayerAddOffloadActivation(ctx, grad_node->name());
   }
 #endif
