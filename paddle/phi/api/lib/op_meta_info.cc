@@ -450,6 +450,16 @@ OpMetaInfo& OpMetaInfo::SetInferSpmdFn(InferSpmdFunc&& func) {
   infer_spmd_fn_ = std::forward<InferSpmdFunc>(func);
   return *this;
 }
+OpMetaInfo& OpMetaInfo::SetCustomPyOpFunction(WrapPythonFunction&& func) {
+  pyop_func_ = std::forward<WrapPythonFunction>(func);
+  return *this;
+}
+
+OpMetaInfo& OpMetaInfo::SetCustomPyOpInferMetaFunction(
+    WrapInferMetaPythonFunction&& func) {
+  pyop_func_infer_meta_ = std::forward<WrapInferMetaPythonFunction>(func);
+  return *this;
+}
 
 bool OpMetaInfo::IsDoubleGradOp() const {
   if (name_.find("_grad_grad") != name_.npos) {
@@ -517,6 +527,18 @@ const InferDtypeFunc& OpMetaInfoHelper::GetInferDtypeFn(
 const InferSpmdFunc& OpMetaInfoHelper::GetInferSpmdFn(
     const paddle::OpMetaInfo& info) {
   return info.infer_spmd_fn_;
+}
+
+// Python Custom Op
+const WrapPythonFunction& OpMetaInfoHelper::GetPyCustomPyOpFunction(
+    const paddle::OpMetaInfo& info) {
+  return info.pyop_func_;
+}
+
+const WrapInferMetaPythonFunction&
+OpMetaInfoHelper::GetPyCustomPyOpInferMetaFunction(
+    const paddle::OpMetaInfo& info) {
+  return info.pyop_func_infer_meta_;
 }
 
 #ifdef PADDLE_WITH_TENSORRT
@@ -675,6 +697,19 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc func) {
 
 OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferSpmdFn(InferSpmdFunc func) {
   info_ptr_->SetInferSpmdFn(std::forward<InferSpmdFunc>(func));
+  return *this;
+}
+
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetPyCustomPyOpFunction(
+    WrapPythonFunction func) {
+  info_ptr_->SetCustomPyOpFunction(std::forward<WrapPythonFunction>(func));
+  return *this;
+}
+
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetPyCustomPyOpInferMetaFunction(
+    WrapInferMetaPythonFunction func) {
+  info_ptr_->SetCustomPyOpInferMetaFunction(
+      std::forward<WrapInferMetaPythonFunction>(func));
   return *this;
 }
 
