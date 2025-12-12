@@ -4918,6 +4918,7 @@ def chunk(
     return split(x, num_or_sections=chunks, axis=axis, name=name)
 
 
+@ParamAliasDecorator({"x": ["input"], "repeat_times": ["dims"]})
 def tile(
     x: Tensor,
     repeat_times: TensorOrTensors | Sequence[int],
@@ -4930,10 +4931,15 @@ def tile(
 
     Both the number of dimensions of ``x`` and the number of elements in ``repeat_times`` should be less than or equal to 6.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dims`` can be used as an alias for ``repeat_times``.
+        For example, ``tile(input=x, dims=repeat_times)`` is equivalent to ``tile(x=x, repeat_times=repeat_times)``.
     Args:
         x (Tensor): The input tensor, its data type should be bool, float16, float32, float64, int32, int64, complex64 or complex128.
+            alias: ``input``.
         repeat_times (list|tuple|Tensor): The number of repeating times. If repeat_times is a list or tuple, all its elements
             should be integers or 1-D Tensors with the data type int32. If repeat_times is a Tensor, it should be an 1-D Tensor with the data type int32.
+            alias: ``dims``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:

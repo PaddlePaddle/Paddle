@@ -31,6 +31,7 @@ from paddle._C_ops import (  # noqa: F401
     rsqrt,
     sigmoid,
     sin,
+    sinh,
     sqrt,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -256,60 +257,6 @@ def round_(x, decimals=0, name=None):
     Please refer to :ref:`api_paddle_round`.
     """
     return _C_ops.round_(x, decimals)
-
-
-def sinh(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    Sinh Activation Operator.
-
-    .. math::
-       out = sinh(x)
-
-    Args:
-        x (Tensor): Input of Sinh operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64, complex64 or complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Sinh operator, a Tensor with shape same as input
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = paddle.sinh(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-0.41075233, -0.20133601,  0.10016675,  0.30452031])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.sinh(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-                'complex64',
-                'complex128',
-            ],
-            'sinh',
-        )
-        helper = LayerHelper('sinh', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='sinh', inputs={"X": x}, outputs={"Out": out})
-        return out
 
 
 def square(x: Tensor, name: str | None = None) -> Tensor:
