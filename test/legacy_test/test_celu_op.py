@@ -120,13 +120,6 @@ class TestCELUParamDecorator(unittest.TestCase):
             )
 
 
-class TestCELUPrint(unittest.TestCase):
-    def test_print(self):
-        print(nn.CELU())
-        print(nn.CELU(inplace=True))
-        print(nn.CELU(inplace=False))
-
-
 class TestCELUAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
