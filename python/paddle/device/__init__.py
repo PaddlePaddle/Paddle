@@ -102,6 +102,7 @@ elif core.is_compiled_with_xpu():
         create_stream as _create_stream_base,
         device_count,
         empty_cache,
+        get_device_properties as _get_device_properties,
         get_rng_state,
         manual_seed,
         max_memory_allocated,

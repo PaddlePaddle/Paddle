@@ -421,6 +421,17 @@ void XPUContext::CheckValidStreamId(int i) const {
                               "of stream used (%d), but got %d",
                               GetStreamNum(),
                               i));
+  // auto s = static_cast<int64_t>(impls_.size());
+  // if (s <= 0 || s > 128) {  // 假设你不可能搞 128 个以上的 stream
+  //   std::cout << "XPUContext::GetStreamNum abnormal impls_.size() = " << s
+  //             << ", this=" << this
+  //             << ", stream_pool.size()=" << stream_pool.size()
+  //             << ", idle_stream_flags.size()=" << idle_stream_flags.size() <<
+  //             std::endl;
+  // 为了不再因为 -69 这种值把训练挂死，可以兜个底
+  // return std::max<int64_t>(1, std::min<int64_t>(s, 128));
+  // }
+  // return s;
 }
 
 void XPUContext::CheckValidIdxInRange(int i, int i_max) const {

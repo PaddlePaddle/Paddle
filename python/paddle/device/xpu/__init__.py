@@ -25,6 +25,7 @@ from .streams import Event, Stream, create_event, create_stream  # noqa: F401
 
 if TYPE_CHECKING:
     from paddle import XPUPlace
+    from paddle.base.libpaddle import _gpuDeviceProperties
 
     _XPUPlaceLike: TypeAlias = Union[
         XPUPlace,
@@ -47,6 +48,7 @@ __all__ = [
     'memory_reserved',
     'memory_total',  # memory managed by runtime, not paddle
     'memory_used',  # memory managed by runtime, not paddle
+    'get_device_properties',
 ]
 
 
@@ -263,6 +265,80 @@ def empty_cache() -> None:
         )
     else:
         core.xpu_empty_cache()
+
+
+def get_device_properties(
+    device: _XPUPlaceLike | None = None,
+) -> _gpuDeviceProperties:
+    '''
+    Return the properties of given device.
+
+    Args:
+        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
+            the string name of device like 'gpu:x' which to get the properties of the
+            device from. If device is None, the device is the current device.
+            Default: None.
+
+    Returns:
+        _gpuDeviceProperties: The properties of the device which include ASCII string
+        identifying device, major compute capability, minor compute capability, global
+        memory available and the number of multiprocessors on the device.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> paddle.device.cuda.get_device_properties()
+            >>> # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+
+            >>> paddle.device.cuda.get_device_properties(0)
+            >>> # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+
+            >>> paddle.device.cuda.get_device_properties('gpu:0')
+            >>> # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+
+            >>> paddle.device.cuda.get_device_properties(paddle.CUDAPlace(0))
+            >>> # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+
+    '''
+
+    if not core.is_compiled_with_xpu():
+        raise ValueError(
+            "The API paddle.device.cuda.get_device_properties is not supported in "
+            "CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support "
+            "to call this API."
+        )
+
+    if device is not None:
+        if isinstance(device, int):
+            device_id = device
+        elif isinstance(device, core.XPUPlace):
+            device_id = device.get_device_id()
+        elif isinstance(device, str):
+            if device.startswith('xpu:'):
+                device_id = int(device[4:])
+            elif device == 'xpu':
+                device_id = 0
+            else:
+                raise ValueError(
+                    f"The current string {device} is not expected. Because paddle.device."
+                    "cuda.get_device_properties only support string which is like 'gpu:x' or 'gpu'. "
+                    "Please input appropriate string again!"
+                )
+        else:
+            raise ValueError(
+                f"The device type {device} is not expected. Because paddle.device.cuda."
+                "get_device_properties only support int, str or paddle.CUDAPlace. "
+                "Please input appropriate device again!"
+            )
+    else:
+        device_id = -1
+
+    return core.get_device_properties(device_id)
 
 
 def max_memory_allocated(device: _XPUPlaceLike | None = None) -> int:

@@ -352,6 +352,8 @@ static int _PySlice_GetIndices(PySliceObject* r,
   return 0;
 }
 
+// 除了tensor和index外，其他都是输出（advanced_index_dim已经做过初始化，
+// has_advanced_index和use_strided_slice也做过初始化为false）
 static void ParseIndex(const paddle::Tensor& tensor,
                        PyObject* index,
                        std::vector<int64_t>* slice_axes,
@@ -366,14 +368,44 @@ static void ParseIndex(const paddle::Tensor& tensor,
                        bool* has_advanced_index,
                        bool* use_strided_slice) {
   // for case 0-size tensor in slice
+  // 基本检查：Tensor 是否有效
   PADDLE_ENFORCE_EQ(
       tensor.defined(),
       true,
       common::errors::InvalidArgument("tensor has not been defined"));
+  // 获取 rank、index 元素数
   const auto& shape = tensor.dims();
   const int rank = shape.size();
   const int size = PyTuple_GET_SIZE(index);
+
   // Check Ellipsis is valid
+  // ellipsis(省略号对象) 只能出现一次。specified_dims 是除了 None/bool
+  // 之外的“真实维度消耗数”。 比如：x = np.arange(2*3*4).reshape(2, 3, 4)
+  // print(x[1, ...])      # 等价于 x[1, :, :]
+  // None对象：
+  /*
+  import numpy as np
+
+  x = np.array([1, 2, 3])
+  print("x.shape:", x.shape)
+
+  y = x[None, :]
+  print("y.shape:", y.shape)
+  print(y)
+  x.shape: (3,)
+  y.shape: (1, 3)
+  [[1 2 3]]
+  在最前面插入了一个维度，等价于 unsqueeze(0)。
+
+  z = x[:, None]
+  print("z.shape:", z.shape)
+  print(z)
+  (3, 1)
+  [[1]
+  [2]
+  [3]]
+  在最后加一个维度，等价于 unsqueeze(1)。
+  */
   int specified_dims = 0;
   int ell_count = 0;
   for (int dim = 0; dim < size; ++dim) {
@@ -390,18 +422,24 @@ static void ParseIndex(const paddle::Tensor& tensor,
                         "An index can only have a single ellipsis ('...')"));
 
   // deal with indexing_item
+  // 开始核心循环：解析每个 index item
   int none_count = 0;
   for (int64_t i = 0, current_dim = 0, estimated_dim = 0; i < size; ++i) {
     PyObject* slice_item = PyTuple_GetItem(index, i);
 
+    // index 是否处理的标志位
     infer_flags->push_back(1);
+    // shape是tensor的shape，current_dim是当前tensor的维度
     int64_t dim_len = shape[current_dim];
+    // 整数索引：x[3]
     if (PyCheckInteger(slice_item) || IsNumpyType(slice_item)) {
       // integer, PyLong_AsLong supports both int and long
       int64_t start = static_cast<int64_t>(PyLong_AsLong(slice_item));
       auto s_t = start;
+      // 负数支持：-1 → dim_len-1
       start = start < 0 ? start + dim_len : start;
 
+      // 越界检查。
       PADDLE_ENFORCE(
           0 <= start && start < dim_len,
           common::errors::OutOfRange("The starting index %d of slice is out "
@@ -412,12 +450,14 @@ static void ParseIndex(const paddle::Tensor& tensor,
                                      -dim_len,
                                      dim_len));
 
+      // 设置切片参数
       slice_axes->push_back(current_dim);
       slice_starts->push_back(start);
       slice_ends->push_back(start + 1);
       slice_strides->push_back(1);
       decrease_axis->push_back(current_dim);
       current_dim++;
+      // 如果是标准切片 x[2:5:1]
     } else if (PySlice_Check(slice_item)) {
       // slice item
       Py_ssize_t start, end, step;
@@ -425,11 +465,13 @@ static void ParseIndex(const paddle::Tensor& tensor,
       _PySlice_GetIndices(p, dim_len, &start, &end, &step);
 
       // :: or : or 0:dim_len:1
+      // 完整维度，不产生实际切片
       if (start == 0 && end == dim_len && step == 1) {
         current_dim++;
         estimated_dim++;
         continue;
       }
+      // 设置切片参数
       slice_axes->push_back(current_dim);
       slice_starts->push_back(start);
       slice_ends->push_back(end);
@@ -437,9 +479,11 @@ static void ParseIndex(const paddle::Tensor& tensor,
       estimated_dim++;
       current_dim++;
 
+      // 如果 step != 1：说明需要用 strided_slice kernel。
       if (step != 1) {
         *use_strided_slice = true;
       }
+      //
     } else if (slice_item == Py_Ellipsis) {
       current_dim += rank - specified_dims;
       estimated_dim += rank - specified_dims;

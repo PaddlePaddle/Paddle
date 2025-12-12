@@ -3785,6 +3785,40 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("get_xpu_current_device_id", &platform::GetXPUCurrentDeviceId);
   m.def("xpu_empty_cache", platform::EmptyCache);
+  m.def(
+      "get_device_properties",
+      [](int id) -> const gpuDeviceProp & {
+        return platform::GetDeviceProperties(id);
+      },
+      py::return_value_policy::reference);
+
+  py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties", py::module_local())
+      .def_property_readonly(
+          "name", [](const gpuDeviceProp &prop) { return prop.name; })
+      .def_property_readonly(
+          "major", [](const gpuDeviceProp &prop) { return prop.major; })
+      .def_property_readonly(
+          "minor", [](const gpuDeviceProp &prop) { return prop.minor; })
+      .def_property_readonly(
+          "total_memory",
+          [](const gpuDeviceProp &prop) { return prop.totalGlobalMem; })
+      .def_property_readonly(
+          "multi_processor_count",
+          [](const gpuDeviceProp &prop) { return prop.multiProcessorCount; })
+      .def_property_readonly(
+          "is_multi_gpu_board",
+          [](const gpuDeviceProp &prop) { return prop.isMultiGpuBoard; })
+      .def_property_readonly(
+          "is_integrated",
+          [](const gpuDeviceProp &prop) { return prop.integrated; })
+      .def("__repr__", [](const gpuDeviceProp &prop) {
+        std::stringstream ostr;
+        ostr << "_gpuDeviceProperties(name='" << prop.name
+             << "', major=" << prop.major << ", minor=" << prop.minor
+             << ", total_memory=" << prop.totalGlobalMem / (1024 * 1024)
+             << "MB, multi_processor_count=" << prop.multiProcessorCount << ")";
+        return ostr.str();
+      });
   m.def("get_xpu_device_utilization_rate",
         platform::GetXPUDeviceUtilizationRate);
   m.def("get_xpu_device_total_memory", platform::GetXPUDeviceTotalMemory);
