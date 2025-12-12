@@ -496,7 +496,7 @@ def disable_torch_proxy() -> None:
             >>> assert torch.sin is paddle.sin
             >>> paddle.compat.disable_torch_proxy()  # Disable torch proxy
             >>> try:
-            ...     import torch  # type: ignore[import-not-found] # This will raise ModuleNotFoundError
+            ...     import torch  # This will raise ModuleNotFoundError
             ... except ModuleNotFoundError:
             ...     print("PyTorch proxy is disabled.")
     """
