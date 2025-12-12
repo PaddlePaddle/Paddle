@@ -341,8 +341,8 @@ jobs:
 
   fleet_single_card_test:
     name: Fleet Unit test (single card)
-    needs: [clone]
-    if: needs.clone.outputs.can-skip != 'true'
+    needs: [build]
+    if: needs.build.outputs.can-skip != 'true'
     runs-on:
       group: Fleet-H-single-card
     env:
@@ -450,8 +450,8 @@ jobs:
 
   fleet-multi-card_test:
     name: Fleet Unit test (multi-card)
-    needs: [clone]
-    if: needs.clone.outputs.can-skip != 'true'
+    needs: [build]
+    if: needs.build.outputs.can-skip != 'true'
     runs-on:
       group: Fleet-H-multi-card
     env:
