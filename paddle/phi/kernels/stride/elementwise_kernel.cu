@@ -52,7 +52,9 @@ inline bool FastContiguous(const int64_t &numel,
     return false;
   }
 
-  if (numel < 16777216) {
+  // For large tensors (>16M elements), transpose + contiguous elementwise
+  // is faster than direct strided elementwise kernel
+  if (numel < 16777216LL) {
     return false;
   }
 
