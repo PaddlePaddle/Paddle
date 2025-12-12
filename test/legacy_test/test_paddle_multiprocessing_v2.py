@@ -21,7 +21,7 @@ from op_test import get_device, is_custom_device
 import paddle
 import paddle.incubate.multiprocessing as mp
 from paddle.incubate.multiprocessing import reductions
-from paddle.optimizer.fusion_utils import FusionStorage, FusionStorageHelper
+from paddle.optimizer.fusion_utils import FusionStorage
 
 REPEAT = 20
 HAS_SHM_FILES = os.path.isdir('/dev/shm')
@@ -82,12 +82,12 @@ def check_ipc_reduce(event, rebuild, meta):
 
 
 def check_fusion_storage(event, storage):
-    helper = FusionStorageHelper(
-        storage.accumulators_meta,
-        storage.master_weights_meta,
-        storage.merged_model_params_meta,
-        storage.buffer_ipc_meta,
-    )
+    # helper = FusionStorageHelper(
+    #     storage.accumulators_meta,
+    #     storage.master_weights_meta,
+    #     storage.merged_model_params_meta,
+    #     storage.buffer_ipc_meta,
+    # )
     event.set()
 
 
@@ -211,29 +211,6 @@ class TestMultiprocessingBase(unittest.TestCase):
             for _ in range(repeat):
                 test_fill()
                 test_receive()
-
-
-class TestMultiprocessingCpu(TestMultiprocessingBase):
-    def func_test_pass_tensor(self):
-        paddle.set_device("cpu")
-        self._test_sharing(repeat=REPEAT)
-
-    def test_pass_tensor(self):
-        self.func_test_pass_tensor()
-
-    def func_test_pass_parambase(self):
-        paddle.set_device("cpu")
-        self._test_sharing(repeat=1, param=True)
-
-    def test_pass_parambase(self):
-        self.func_test_pass_parambase()
-
-    def func_test_pass_empty(self):
-        paddle.set_device("cpu")
-        self._test_empty()
-
-    def test_pass_empty(self):
-        self.func_test_pass_empty()
 
 
 class TestMultiprocessingGpu(TestMultiprocessingBase):

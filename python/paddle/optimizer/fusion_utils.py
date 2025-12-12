@@ -42,7 +42,10 @@ __current_device_type__ = None
 def _share_tensor_ipc_meta(tensor):
     if tensor is None:
         return None
-    if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
+    if (
+        paddle.core.is_compiled_with_cuda()
+        or paddle.core.is_compiled_with_xpu()
+    ) and not paddle.core.is_compiled_with_rocm():
         return tensor.value().get_tensor()._share_device_ipc()
     return None
 
