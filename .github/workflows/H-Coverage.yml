@@ -405,7 +405,7 @@ jobs:
           echo "uv sync"
           uv sync --group ci -v > /dev/null
           '
-    
+
       - name: Download paddle.tar.gz and install paddle whl
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
