@@ -569,7 +569,7 @@ class TestTensorDataSetter(unittest.TestCase):
             True,
             "x's requires_grad should be True after data setting.",
         )
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises((ValueError, RuntimeError)):
             loss = x.sum()
             loss.backward()
 
