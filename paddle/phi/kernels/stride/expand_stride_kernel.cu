@@ -163,7 +163,7 @@ void ExpandStrideKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(expand_stride,
+PD_REGISTER_KERNEL(expand,
                    GPU,
                    STRIDED,
                    phi::ExpandStrideKernel,
