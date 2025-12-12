@@ -662,13 +662,9 @@ class BuildExtension(build_ext):
             cc_args = self._get_cc_args(pp_opts, debug, extra_preargs)
             # Create a thread pool
             requested_workers = _get_num_workers(verbose=bool(self.verbose))
-            cpu_count = os.cpu_count() or 1
-            if requested_workers is None:
-                worker_number = min(cpu_count, len(objects))
-            else:
-                worker_number = max(
-                    1, min(requested_workers, cpu_count, len(objects))
-                )
+            worker_number = _compute_worker_number(
+                requested_workers, os.cpu_count(), len(objects)
+            )
             print(f"Using {worker_number} workers for compilation...")
             with ThreadPoolExecutor(max_workers=worker_number) as executor:
                 # Submit all compilation tasks to the thread pool.
@@ -1606,3 +1602,14 @@ def _get_num_workers(verbose: bool) -> int | None:
             file=sys.stderr,
         )
     return None
+
+
+def _compute_worker_number(
+    requested_workers: int | None, cpu_count: int | None, num_objects: int
+) -> int:
+    cpu_count = cpu_count or 1
+    if requested_workers is None:
+        worker_number = min(cpu_count, num_objects)
+    else:
+        worker_number = max(1, min(requested_workers, cpu_count, num_objects))
+    return worker_number
