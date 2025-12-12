@@ -16,12 +16,14 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/fast_ln_v2_api.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
-
 COMMON_DECLARE_bool(use_fast_math);
 
 namespace phi {
+
+enum class LayerNormKernelVariant { FAST_LN_V1, FAST_LN_V2, GENERIC };
 
 #ifdef PADDLE_WITH_CUDA
 template <typename U>
@@ -488,6 +490,28 @@ template class PADDLE_API LayerNormDirectCUDAFunctor<double, double>;
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
 template class PADDLE_API LayerNormDirectCUDAFunctor<half, float>;
 #endif
+LayerNormKernelVariant LayerNormKernelDispatch(
+    const paddle::DataType weight_type,
+    const paddle::DataType input_type,
+    const paddle::DataType output_type,
+    const uint32_t hidden_size,
+    const DenseTensor *scale,
+    const DenseTensor *bias) {
+  if (input_type != paddle::DataType::FLOAT32 && hidden_size != 4096) {
+    auto compute_type = paddle::DataType::FLOAT32;
+    if (funcs::fast_ln_v2::has_fast_ln_v2_kernel(
+            weight_type, input_type, output_type, compute_type, hidden_size)) {
+      return LayerNormKernelVariant::FAST_LN_V2;
+    }
+  }
+  if ((hidden_size >= 768 && hidden_size <= 2048 && hidden_size % 256 == 0 ||
+       hidden_size == 4096) &&
+      scale != nullptr && bias != nullptr) {
+    return LayerNormKernelVariant::FAST_LN_V1;
+  }
+
+  return LayerNormKernelVariant::GENERIC;
+}
 
 template <typename T, typename Context>
 void LayerNormKernel(const Context &dev_ctx,
@@ -516,6 +540,7 @@ void LayerNormKernel(const Context &dev_ctx,
   auto *void_bias_data = valid_bias ? bias->data() : nullptr;
 
   auto x_dtype = x.dtype();
+  auto y_dtype = y->dtype();
   phi::DataType scale_bias_dtype;
   if (valid_scale) {
     scale_bias_dtype = scale->dtype();
@@ -542,6 +567,25 @@ void LayerNormKernel(const Context &dev_ctx,
   int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
   auto stream = dev_ctx.stream();
+  auto place = x.place();
+  // x_data, y_data, mean_data, var_data,
+
+  // LaunchNormFwd<T,Context>(dev_ctx,\
+  //     stream, \
+  //     place, \
+  //     x_data, \
+  //     void_scale_data, \
+  //     void_bias_data, \
+  //     y_data, mean_data, \
+  //     var_data, \
+  //     scale_bias_dtype, \
+  //     scale_bias_dtype, \
+  //     scale_bias_dtype, \
+  //     scale_bias_dtype, \
+  //     feature_size,\
+  //     feature_size,\
+  //     feature_size,\
+  //     epsilon);
 
 #define PADDLE_LAUNCH_LAYERNORM_FWD(ScaleBiasT, IsScaleBiasSameDTypeWithX)    \
   do {                                                                        \
@@ -564,7 +608,7 @@ void LayerNormKernel(const Context &dev_ctx,
     }                                                                         \
   } while (0)
 
-#define PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, feature_size)          \
+#define PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, feature_size)       \
   case (feature_size): {                                                     \
     constexpr int WARPS_N = feature_size < 1024 ? 1 : (feature_size / 1024); \
     constexpr int WARPS_M = 4 / WARPS_N;                                     \
@@ -575,14 +619,14 @@ void LayerNormKernel(const Context &dev_ctx,
     const int ROWS_PER_CTA = WARPS_M;                                        \
     const int grid = static_cast<int>(                                       \
         std::ceil(batch_size / static_cast<float>(ROWS_PER_CTA)));           \
-    funcs::fast_ln_fwd_kernel<T,                                             \
-                              U,                                             \
-                              ScaleT,                                        \
-                              VecSize,                                       \
-                              WARPS_M,                                       \
-                              WARPS_N,                                       \
-                              BYTES_PER_LDG,                                 \
-                              feature_size>                                  \
+    funcs::fast_ln_v1::fast_ln_v1_fwd_kernel<T,                              \
+                                             U,                              \
+                                             ScaleT,                         \
+                                             VecSize,                        \
+                                             WARPS_M,                        \
+                                             WARPS_N,                        \
+                                             BYTES_PER_LDG,                  \
+                                             feature_size>                   \
         <<<grid, THREADS_PER_CTA, 0, stream>>>(                              \
             batch_size,                                                      \
             feature_size,                                                    \
@@ -595,76 +639,87 @@ void LayerNormKernel(const Context &dev_ctx,
             y_data);                                                         \
   } break
 
-#define PADDLE_LAUNCH_FAST_LAYERNORM_FWD(ScaleT)       \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 768);  \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1024); \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1280); \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1536); \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1792); \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 2048); \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 4096)
+#define PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD(ScaleT)       \
+  PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 768);  \
+  PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 1024); \
+  PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 1280); \
+  PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 1536); \
+  PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 1792); \
+  PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 2048); \
+  PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 4096)
 
-#ifdef PADDLE_WITH_CUDA
-  bool can_call_fast_kernel = false;
-  if ((feature_size >= 768 && feature_size <= 2048 && feature_size % 256 == 0 ||
-       feature_size == 4096) &&
-      scale != nullptr && bias != nullptr) {
-    can_call_fast_kernel = true;
-  }
+  auto kernel_variant = LayerNormKernelDispatch(
+      scale_bias_dtype, x_dtype, y_dtype, feature_size, scale, bias);
 
-  if (can_call_fast_kernel) {
-    if (is_scale_bias_same_dtype_with_x) {
-      switch (feature_size) {
-        PADDLE_LAUNCH_FAST_LAYERNORM_FWD(T);
-        default:
-          PADDLE_THROW(common::errors::InvalidArgument(
-              "Only when feature_size is from 256 to 4096 and is diviaible by "
-              "256 is supported "
-              "now"));
-          break;
-      }
-    } else {
-      switch (feature_size) {
-        PADDLE_LAUNCH_FAST_LAYERNORM_FWD(U);
-        default:
-          PADDLE_THROW(common::errors::InvalidArgument(
-              "Only when feature_size is from 256 to 4096 and is diviaible by "
-              "is supported "
-              "now"));
-          break;
-      }
-    }
-  } else {
-    // WarpShuffle intrinsics is involved in LaunchLayerNormKernel.
-    if (FLAGS_use_fast_math && feature_size <= 1024 &&
-        (!std::is_same<T, int8_t>::value)) {
-      LaunchLayerNormKernel<Context, T, U>(dev_ctx,
-                                           x_data,
-                                           y_data,
-                                           void_scale_data,
-                                           void_bias_data,
-                                           mean_data,
-                                           var_data,
-                                           epsilon,
-                                           batch_size,
-                                           feature_size,
-                                           valid_scale,
-                                           valid_bias,
-                                           is_scale_bias_same_dtype_with_x);
-    } else {
-#endif
+  switch (kernel_variant) {
+    case LayerNormKernelVariant::FAST_LN_V2:
+      funcs::fast_ln_v2::LaunchNormFwd<T, Context>(dev_ctx,
+                                                   stream,
+                                                   place,
+                                                   x_data,
+                                                   void_scale_data,
+                                                   void_bias_data,
+                                                   y_data,
+                                                   mean_data,
+                                                   var_data,
+                                                   scale_bias_dtype,
+                                                   x_dtype,
+                                                   y_dtype,
+                                                   paddle::DataType::FLOAT32,
+                                                   feature_size,
+                                                   batch_size,
+                                                   feature_size,
+                                                   epsilon);
+      break;
+    case LayerNormKernelVariant::FAST_LN_V1:
       if (is_scale_bias_same_dtype_with_x) {
-        PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
+        switch (feature_size) {
+          PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD(T);
+          default:
+            break;
+        }
       } else {
-        PADDLE_LAUNCH_LAYERNORM_FWD(U, false);
+        switch (feature_size) {
+          PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD(U);
+          default:
+            break;
+        }
       }
+      break;
+    case LayerNormKernelVariant::GENERIC:
+    default:
 #ifdef PADDLE_WITH_CUDA
-    }
-  }
+      // WarpShuffle intrinsics is involved in LaunchLayerNormKernel.
+      if (FLAGS_use_fast_math && feature_size <= 1024 &&
+          (!std::is_same<T, int8_t>::value)) {
+        LaunchLayerNormKernel<Context, T, U>(dev_ctx,
+                                             x_data,
+                                             y_data,
+                                             void_scale_data,
+                                             void_bias_data,
+                                             mean_data,
+                                             var_data,
+                                             epsilon,
+                                             batch_size,
+                                             feature_size,
+                                             valid_scale,
+                                             valid_bias,
+                                             is_scale_bias_same_dtype_with_x);
+      } else {
 #endif
+        if (is_scale_bias_same_dtype_with_x) {
+          PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
+        } else {
+          PADDLE_LAUNCH_LAYERNORM_FWD(U, false);
+        }
+#ifdef PADDLE_WITH_CUDA
+      }
+#endif
+      break;
+  }
 
 #undef PADDLE_LAUNCH_LAYERNORM_FWD
-#undef PADDLE_LAUNCH_FAST_LAYERNORM_FWD
+#undef PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD
 }
 #ifdef _WIN32
 template PADDLE_API void LayerNormKernel<float, GPUContext>(
