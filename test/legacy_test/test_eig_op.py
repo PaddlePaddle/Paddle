@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import platform
 import sys
 import unittest
 
@@ -441,11 +440,7 @@ class TestEigUnsupportedDtypeError(unittest.TestCase):
 
 
 class TestOptionalGradInput(unittest.TestCase):
-    @unittest.skipIf(
-        not platform.system().lower().startswith("linux")
-        or not paddle.device.is_compiled_with_xpu(),
-        reason="enable only in linux+xpu now",
-    )
+    @unittest.skip("magma is disabled by default")
     def test_eager(self):
         with dygraph_guard(), paddle.device("xpu"):
             x = paddle.randn(3, 3, requires_grad=True)
@@ -468,11 +463,7 @@ class TestOptionalGradInput(unittest.TestCase):
                 rtol=1e-5,
             )
 
-    @unittest.skipIf(
-        not platform.system().lower().startswith("linux")
-        or not paddle.device.is_compiled_with_xpu(),
-        reason="enable only in linux+xpu now",
-    )
+    @unittest.skip("magma is disabled by default")
     def test_dy2st(self):
         with dygraph_guard(), paddle.device("xpu"):
             x = paddle.randn(3, 3, requires_grad=True)
