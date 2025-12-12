@@ -90,13 +90,13 @@ class ExecutionEngine {
   bool AddModule(
       std::unique_ptr<llvm::Module> module,
       std::unique_ptr<llvm::LLVMContext> context,
-      const std::string host_func_name = "",
+      const size_t fusionHash = 0,
       const std::vector<std::string> &cinn_runtime_include_path = {});
 
   void RegisterModuleRuntimeSymbols(RuntimeSymbols &&module_symbols);
 
   bool AddSelfModule(
-      const std::string host_func_name = "",
+      const size_t fusionHash = 0,
       const std::vector<std::string> &cinn_runtime_include_path = {});
 
  protected:
