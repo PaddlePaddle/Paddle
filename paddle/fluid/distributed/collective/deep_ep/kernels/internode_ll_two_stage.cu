@@ -158,10 +158,10 @@ __global__ __launch_bounds__(
   }
 
   // FP8 staffs
-  // constexpr int kNumPerChannels = 128;
   constexpr float kFP8Margin = 1e-4, kFP8Amax = 448,
                   kFP8AmaxInv = 1.0f / 448.0f;
-  constexpr int kNumScales = kNumPerChannels == -1 ? 1 : kHidden / kNumPerChannels;
+  constexpr int kNumScales =
+      kNumPerChannels == -1 ? 1 : kHidden / kNumPerChannels;
   const size_t hidden_bytes =
       kHidden * (kUseFP8 ? sizeof(__nv_fp8_storage_t) : sizeof(nv_bfloat16));
   const size_t hidden_int4 = hidden_bytes / sizeof(int4);
@@ -177,8 +177,9 @@ __global__ __launch_bounds__(
                : (kHidden * sizeof(nv_bfloat16)));
   // rdma_index_source, hidden, (scale)
   const size_t num_bytes_per_msg_rdma_revecier_and_nvl_sender =
-      sizeof(int4) + (kUseFP8 ? (kHidden + (kNumScales + 3) / 4 * 4 * sizeof(float))
-                              : (kHidden * sizeof(nv_bfloat16)));
+      sizeof(int4) + (kUseFP8
+                          ? (kHidden + (kNumScales + 3) / 4 * 4 * sizeof(float))
+                          : (kHidden * sizeof(nv_bfloat16)));
   constexpr size_t combine_num_bytes_per_msg = kHidden * sizeof(nv_bfloat16);
   const size_t DISPATCH_NVL_BUFFER_X_BYTES =
       kNumLocalExperts * kNumRanks * num_max_dispatch_tokens_per_rank *
@@ -241,12 +242,13 @@ __global__ __launch_bounds__(
       const auto rdma_x_scales = reinterpret_cast<float*>(
           reinterpret_cast<uint8_t*>(rdma_x_vec) + hidden_bytes);
       const auto index_source = rdma_x_src_idx;
-      const auto nvl_rank_meta =
-          reinterpret_cast<int*>(rdma_x_scales + (kUseFP8 ? 4 : 0));
+      const auto nvl_rank_meta = reinterpret_cast<int*>(
+          rdma_x_scales + (kUseFP8 ? (kNumScales + 3) / 4 * 4 : 0));
 
       thread_id == 0 ? (*index_source = token_idx) : 0;
 
-      if constexpr (kUseFP8 && kNumPerChannels == -1) {  // fp8 per-token dynamic quant
+      if constexpr (kUseFP8 &&
+                    kNumPerChannels == -1) {  // fp8 per-token dynamic quant
         const auto warp_nums = kNumWarpGroups * kNumWarpsPerGroup;
         __shared__ float amax_cache[warp_nums];
         for (int i = thread_id; i < warp_nums; i += num_threads) {
@@ -275,8 +277,7 @@ __global__ __launch_bounds__(
         }
         __syncthreads();
         if (warp_id == 0) {
-          float thread_amax =
-              lane_id < warp_nums ? amax_cache[lane_id] : 0.0f;
+          float thread_amax = lane_id < warp_nums ? amax_cache[lane_id] : 0.0f;
           thread_amax = warp_reduce_max(thread_amax);
           if (lane_id == 0) {
             amax_cache[0] = thread_amax;
@@ -329,7 +330,7 @@ __global__ __launch_bounds__(
 
             // Reduce amax and scale
             EP_STATIC_ASSERT(kNumElemsPerRead * 32 / kNumPerChannels == 2,
-                            "Invalid vectorization");
+                             "Invalid vectorization");
             amax = half_warp_reduce_max(amax), scale = kFP8Amax / amax,
             scale_inv = amax * kFP8AmaxInv;
             if (lane_id == 0 || lane_id == 16)
@@ -342,7 +343,7 @@ __global__ __launch_bounds__(
 #pragma unroll
             for (int j = 0; j < kNumElemsPerRead; j += 2) {
               float2 fp32x2 = {fp32_values[j] * scale,
-                              fp32_values[j + 1] * scale};
+                               fp32_values[j + 1] * scale};
               fp8x2_values[j / 2] =
                   __nv_cvt_float2_to_fp8x2(fp32x2, __NV_SATFINITE, __NV_E4M3);
             }
@@ -544,7 +545,7 @@ LOW_LATENCY_DISPATCH_RECV:
         const auto rdma_recv_x_scales = reinterpret_cast<float*>(
             reinterpret_cast<uint8_t*>(src_data) + sizeof(int4) + hidden_bytes);
         const auto rdma_recv_nvl_rank_meta = reinterpret_cast<int*>(
-            rdma_recv_x_scales + (kUseFP8 ? 4 : 0));
+            rdma_recv_x_scales + (kUseFP8 ? (kNumScales + 3) / 4 * 4 : 0));
         const int dst_nvl_experts =
             *(rdma_recv_nvl_rank_meta + rdma_rank * (kTopk * 3 + 1));
         const auto rdma_recv_nvl_rank_meta_now =
@@ -727,10 +728,10 @@ LOW_LATENCY_DISPATCH_RECV:
           auto scale_0 =
               lane_id < kNumScales ? ld_nc_global(src_scales + lane_id) : 0;
           auto scale_1 = (lane_id + 32) < kNumScales
-                            ? ld_nc_global(src_scales + lane_id + 32)
-                            : 0;
+                             ? ld_nc_global(src_scales + lane_id + 32)
+                             : 0;
           lane_id < kNumScales ? dst_scales[lane_id * scale_stride] = scale_0
-                              : 0.0f;
+                               : 0.0f;
           (lane_id + 32) < kNumScales
               ? dst_scales[(lane_id + 32) * scale_stride] = scale_1
               : 0.0f;
@@ -812,71 +813,72 @@ void dispatch(void* packed_recv_x,
                   num_experts,
                   kNumExperts,
                   {DISPATCH_NUM_WARP_GROUPS(
-                    num_warp_groups,
-                    kNumWarpGroups, 
-                    {DISPATCH_NUM_PER_CHANNEL(
-                      num_per_channel,
-                      kNumPerChannels,{
-                    constexpr int kNumWarpsPerGroup =
-                        NUM_WARPS / kNumWarpGroups;
-                    assert(num_rdma_ranks <=
-                           kNumWarpGroups * kNumWarpsPerGroup);
-                    EP_STATIC_ASSERT(
-                        kNumMaxTopK + 1 <= kNumWarpGroups * kNumWarpsPerGroup,
-                        "Too many top-k selections");
-                    auto dispatch_func =
-                        use_fp8 ? dispatch_kernel<true,
-                                                  kNumWarpGroups,
-                                                  kNumWarpsPerGroup,
-                                                  kHidden,
-                                                  kNumRdmaRanks,
-                                                  kNumExperts,
-                                                  kTopk,
-                                                  kNumQPs,
-                                                  kNumPerChannels>
-                                : dispatch_kernel<false,
-                                                  kNumWarpGroups,
-                                                  kNumWarpsPerGroup,
-                                                  kHidden,
-                                                  kNumRdmaRanks,
-                                                  kNumExperts,
-                                                  kTopk,
-                                                  kNumQPs,
-                                                  kNumPerChannels>;
-                    SETUP_LAUNCH_CONFIG(num_sms,
-                                        kNumWarpGroups * kNumWarpsPerGroup * 32,
-                                        stream);
-                    LAUNCH_KERNEL(&cfg,
-                                  dispatch_func,
-                                  packed_recv_x,
-                                  packed_recv_x_scales,
-                                  packed_rdma_recv_x,
-                                  packed_recv_src_info,
-                                  packed_recv_layout_range,
-                                  packed_recv_count,
-                                  packed_rdma_recv_count,
-                                  rdma_send_flags,
-                                  rdma_recv_x,
-                                  rdma_recv_count,
-                                  rdma_x,
-                                  nvl_recv_x,
-                                  x,
-                                  topk_idx,
-                                  topk_weights,
-                                  atomic_counter_per_expert,
-                                  atomic_counter_per_rdma,
-                                  atomic_finished_counter_per_rdma,
-                                  atomic_recv_tokens_per_rdma_expert,
-                                  atomic_nvl_sender_multi_sms,
-                                  atomic_counter_per_qp,
-                                  next_clean,
-                                  num_next_clean_int,
-                                  num_tokens,
-                                  num_max_dispatch_tokens_per_rank,
-                                  rank,
-                                  phases,
-                                  next_buffer_id);
-                  })})})})})});
+                      num_warp_groups,
+                      kNumWarpGroups,
+                      {DISPATCH_NUM_PER_CHANNEL(
+                          num_per_channel, kNumPerChannels, {
+                            constexpr int kNumWarpsPerGroup =
+                                NUM_WARPS / kNumWarpGroups;
+                            assert(num_rdma_ranks <=
+                                   kNumWarpGroups * kNumWarpsPerGroup);
+                            EP_STATIC_ASSERT(
+                                kNumMaxTopK + 1 <=
+                                    kNumWarpGroups * kNumWarpsPerGroup,
+                                "Too many top-k selections");
+                            auto dispatch_func =
+                                use_fp8 ? dispatch_kernel<true,
+                                                          kNumWarpGroups,
+                                                          kNumWarpsPerGroup,
+                                                          kHidden,
+                                                          kNumRdmaRanks,
+                                                          kNumExperts,
+                                                          kTopk,
+                                                          kNumQPs,
+                                                          kNumPerChannels>
+                                        : dispatch_kernel<false,
+                                                          kNumWarpGroups,
+                                                          kNumWarpsPerGroup,
+                                                          kHidden,
+                                                          kNumRdmaRanks,
+                                                          kNumExperts,
+                                                          kTopk,
+                                                          kNumQPs,
+                                                          kNumPerChannels>;
+                            SETUP_LAUNCH_CONFIG(
+                                num_sms,
+                                kNumWarpGroups * kNumWarpsPerGroup * 32,
+                                stream);
+                            LAUNCH_KERNEL(&cfg,
+                                          dispatch_func,
+                                          packed_recv_x,
+                                          packed_recv_x_scales,
+                                          packed_rdma_recv_x,
+                                          packed_recv_src_info,
+                                          packed_recv_layout_range,
+                                          packed_recv_count,
+                                          packed_rdma_recv_count,
+                                          rdma_send_flags,
+                                          rdma_recv_x,
+                                          rdma_recv_count,
+                                          rdma_x,
+                                          nvl_recv_x,
+                                          x,
+                                          topk_idx,
+                                          topk_weights,
+                                          atomic_counter_per_expert,
+                                          atomic_counter_per_rdma,
+                                          atomic_finished_counter_per_rdma,
+                                          atomic_recv_tokens_per_rdma_expert,
+                                          atomic_nvl_sender_multi_sms,
+                                          atomic_counter_per_qp,
+                                          next_clean,
+                                          num_next_clean_int,
+                                          num_tokens,
+                                          num_max_dispatch_tokens_per_rank,
+                                          rank,
+                                          phases,
+                                          next_buffer_id);
+                          })})})})})});
 }
 
 template <int kNumWarpGroups,
@@ -886,7 +888,8 @@ template <int kNumWarpGroups,
           int kNumExperts,
           int kTopk,
           bool kDispatchUseFP8,
-          int kNumQPs>
+          int kNumQPs,
+          int kNumPerChannels = 128>
 __global__ __launch_bounds__(
     kNumWarpGroups* kNumWarpsPerGroup * 32,
     1) void combine_kernel(void* combined_x,
@@ -919,19 +922,20 @@ __global__ __launch_bounds__(
   constexpr int kNumRanks = kNumRdmaRanks * NUM_MAX_NVL_PEERS;
   constexpr int kNumLocalExperts = kNumExperts / kNumRanks;
   constexpr int kNumRdmaExperts = kNumLocalExperts * NUM_MAX_NVL_PEERS;
-  constexpr int kNumPerChannels = 128;
-  constexpr int kNumScales = 1;
+  constexpr int kNumScales =
+      kNumPerChannels == -1 ? 1 : kHidden / kNumPerChannels;
   const int nvl_buffer_id = next_buffer_id ^ 1;
 
   const size_t num_bytes_per_msg_dispatch =
       sizeof(int4) +
       (kNumRdmaRanks * (kTopk * 3 + 1) * sizeof(int) + sizeof(int4) - 1) /
           sizeof(int4) * sizeof(int4) +
-      (kDispatchUseFP8 ? (kHidden + 4 * sizeof(float))
+      (kDispatchUseFP8 ? (kHidden + (kNumScales + 3) / 4 * 4 * sizeof(float))
                        : (kHidden * sizeof(nv_bfloat16)));
   const size_t num_bytes_per_msg_rdma_revecier_and_nvl_sender_dispatch =
-      sizeof(int4) + (kDispatchUseFP8 ? (kHidden + 4 * sizeof(float))
-                                      : (kHidden * sizeof(nv_bfloat16)));
+      sizeof(int4) + (kDispatchUseFP8
+                          ? (kHidden + (kNumScales + 3) / 4 * 4 * sizeof(float))
+                          : (kHidden * sizeof(nv_bfloat16)));
 
   const size_t dispatch_hidden_bytes =
       kHidden *
@@ -1114,7 +1118,7 @@ __global__ __launch_bounds__(
             reinterpret_cast<const int*>(dispatch_rdma_recv_x_now)[0];
         const int* nvl_rank_meta = reinterpret_cast<const int*>(
             dispatch_rdma_recv_x_now + sizeof(int4) + dispatch_hidden_bytes +
-            (kDispatchUseFP8 ? 4 * sizeof(float) : 0));
+            (kDispatchUseFP8 ? (kNumScales + 3) / 4 * 4 * sizeof(float) : 0));
         const int nvl_rank_nums =
             *(nvl_rank_meta + rdma_rank * (kTopk * 3 + 1));
         const int* nvl_rank_meta_now =
@@ -1297,7 +1301,8 @@ void combine(void* combined_x,
              cudaStream_t stream,
              int phases,
              bool dispatch_use_fp8,
-             int next_buffer_id) {
+             int next_buffer_id,
+             int num_per_channel) {
   constexpr int kNumMaxTopk = 8;
   constexpr int kNumQPs = 4;
   constexpr int NUM_WARPS = 32;
@@ -1327,58 +1332,66 @@ void combine(void* combined_x,
               {DISPATCH_NUM_EXPERTS(
                   num_experts,
                   kNumExperts,
-                  {DISPATCH_NUM_WARP_GROUPS(num_warp_groups, kNumWarpGroups, {
-                    constexpr int kNumWarpsPerGroup =
-                        NUM_WARPS / kNumWarpGroups;
-                    auto combine_func = dispatch_use_fp8
-                                            ? combine_kernel<kNumWarpGroups,
-                                                             kNumWarpsPerGroup,
-                                                             kHidden,
-                                                             kNumRdmaRanks,
-                                                             kNumExperts,
-                                                             kTopk,
-                                                             true,
-                                                             kNumQPs>
-                                            : combine_kernel<kNumWarpGroups,
-                                                             kNumWarpsPerGroup,
-                                                             kHidden,
-                                                             kNumRdmaRanks,
-                                                             kNumExperts,
-                                                             kTopk,
-                                                             false,
-                                                             kNumQPs>;
-                    SETUP_LAUNCH_CONFIG(num_sms,
-                                        kNumWarpGroups * kNumWarpsPerGroup * 32,
-                                        stream);
-                    LAUNCH_KERNEL(&cfg,
-                                  combine_func,
-                                  combined_x,
-                                  rdma_recv_x,
-                                  rdma_recv_flag,
-                                  rdma_send_x,
-                                  dispatch_rdma_recv_x,
-                                  dispatch_rdma_recv_count,
-                                  nvl_buffer,
-                                  x,
-                                  topk_idx,
-                                  topk_weights,
-                                  src_info,
-                                  layout_range,
-                                  rdma_send_flags,
-                                  next_clean,
-                                  num_next_clean_int,
-                                  atomic_clean_flag,
-                                  atomic_nvl_sender_multi_sms,
-                                  num_combined_tokens,
-                                  hidden,
-                                  num_topk,
-                                  num_max_dispatch_tokens_per_rank,
-                                  num_experts,
-                                  rank,
-                                  num_ranks,
-                                  phases,
-                                  next_buffer_id);
-                  })})})})})
+                  {DISPATCH_NUM_WARP_GROUPS(
+                      num_warp_groups,
+                      kNumWarpGroups,
+                      {DISPATCH_NUM_PER_CHANNEL(
+                          num_per_channel, kNumPerChannels, {
+                            constexpr int kNumWarpsPerGroup =
+                                NUM_WARPS / kNumWarpGroups;
+                            auto combine_func =
+                                dispatch_use_fp8
+                                    ? combine_kernel<kNumWarpGroups,
+                                                     kNumWarpsPerGroup,
+                                                     kHidden,
+                                                     kNumRdmaRanks,
+                                                     kNumExperts,
+                                                     kTopk,
+                                                     true,
+                                                     kNumQPs,
+                                                     kNumPerChannels>
+                                    : combine_kernel<kNumWarpGroups,
+                                                     kNumWarpsPerGroup,
+                                                     kHidden,
+                                                     kNumRdmaRanks,
+                                                     kNumExperts,
+                                                     kTopk,
+                                                     false,
+                                                     kNumQPs,
+                                                     kNumPerChannels>;
+                            SETUP_LAUNCH_CONFIG(
+                                num_sms,
+                                kNumWarpGroups * kNumWarpsPerGroup * 32,
+                                stream);
+                            LAUNCH_KERNEL(&cfg,
+                                          combine_func,
+                                          combined_x,
+                                          rdma_recv_x,
+                                          rdma_recv_flag,
+                                          rdma_send_x,
+                                          dispatch_rdma_recv_x,
+                                          dispatch_rdma_recv_count,
+                                          nvl_buffer,
+                                          x,
+                                          topk_idx,
+                                          topk_weights,
+                                          src_info,
+                                          layout_range,
+                                          rdma_send_flags,
+                                          next_clean,
+                                          num_next_clean_int,
+                                          atomic_clean_flag,
+                                          atomic_nvl_sender_multi_sms,
+                                          num_combined_tokens,
+                                          hidden,
+                                          num_topk,
+                                          num_max_dispatch_tokens_per_rank,
+                                          num_experts,
+                                          rank,
+                                          num_ranks,
+                                          phases,
+                                          next_buffer_id);
+                          })})})})})})
 }
 
 }  // namespace internode_ll_two_stage

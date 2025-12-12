@@ -335,6 +335,7 @@ struct Buffer {
       bool dispatch_use_fp8,
       bool async,
       bool return_recv_hook,
+      int num_per_channel,
       const std::optional<deep_ep::detail::Tensor>& out);
 
   std::tuple<deep_ep::detail::Tensor,
@@ -509,6 +510,7 @@ struct Buffer {
       bool dispatch_use_fp8,
       bool async,
       bool return_recv_hook,
+      int num_per_channel,
       const std::optional<paddle::Tensor>& out);
 
   std::tuple<paddle::Tensor,
