@@ -34,7 +34,9 @@ __global__ void SequencePaddingKernel(T* dst,
   size_t seq_idx = blockIdx.y;
   size_t seq_len = seq_offsets[seq_idx + 1] - seq_offsets[seq_idx];
 
-  size_t step_idx = blockIdx.x * blockDim.y + threadIdx.y;
+  size_t step_idx =
+      static_cast<size_t>(blockIdx.x) * static_cast<size_t>(blockDim.y) +
+      static_cast<size_t>(threadIdx.y);
   size_t seq_data_offset = (seq_offsets[seq_idx] + step_idx) * step_width;
   size_t pad_data_offset = layout == kBatchLengthWidth
                                ? (seq_idx * pad_seq_len + step_idx) * step_width
@@ -86,7 +88,7 @@ class PaddingDenseTensorFunctor<phi::GPUContext, T> {
             max_seq_len,
             pad_seq_len,
             max_seq_len));
-    int step_width = seq_tensor.numel() / seq_tensor_dims[0];
+    int64_t step_width = seq_tensor.numel() / seq_tensor_dims[0];
     int seq_num = seq_offsets.size() - 1;
 
     CheckDims(seq_tensor_dims,
@@ -105,7 +107,7 @@ class PaddingDenseTensorFunctor<phi::GPUContext, T> {
             pad_value.numel(),
             step_width));
 
-    const int kBlockSize = 512;
+    const int64_t kBlockSize = 512;
 
     /* At least use 32 threads to copy sequence_width elements,
      * and at least 8 elements for each thread.
@@ -155,7 +157,7 @@ class UnpaddingDenseTensorFunctor<phi::GPUContext, T> {
     if (pad_seq_len == -1) {
       pad_seq_len = max_seq_len;
     }
-    int step_width = seq_tensor->numel() / seq_tensor_dims[0];
+    int64_t step_width = seq_tensor->numel() / seq_tensor_dims[0];
     int seq_num = seq_offsets.size() - 1;
 
     CheckDims(seq_tensor_dims,
@@ -165,7 +167,7 @@ class UnpaddingDenseTensorFunctor<phi::GPUContext, T> {
               step_width,
               layout);
 
-    const int kBlockSize = 512;
+    const int64_t kBlockSize = 512;
 
     /* At least use 32 threads to copy sequence_width elements,
      * and at least 8 elements for each thread.

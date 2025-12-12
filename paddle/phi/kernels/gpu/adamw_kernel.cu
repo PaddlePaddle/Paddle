@@ -84,7 +84,9 @@ __global__ void AdamWKernel(MT beta1,
                             BetaAccessor beta_accessor,
                             int64_t ndim,
                             bool amsgrad) {
-  int64_t id = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   MT lr = *lr_ * lr_ratio;
   // Get beta powers
   MT beta1_pow = beta_accessor.GetBeta1();
@@ -242,7 +244,8 @@ PADDLE_API void AdamwDenseKernel(
 
   // update param and moment
   int threads = 512;
-  int blocks = (param.numel() + threads - 1) / threads;
+  int64_t blocks_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int blocks = std::min((param.numel() + threads - 1) / threads, blocks_max);
 
   // Determine BetaPow location
   const bool beta_pow_on_cpu =

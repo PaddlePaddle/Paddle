@@ -11,34 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-import re
 import unittest
 
 import numpy as np
-from op_test import is_custom_device
+from op_test import get_cuda_version, is_custom_device
 
 import paddle
 from paddle.base.framework import in_pir_mode
 
 paddle.set_default_dtype('float64')
-
-
-def get_cuda_version():
-    if paddle.is_compiled_with_cuda():
-        result = os.popen("nvcc --version").read()
-        regex = r'release (\S+),'
-        match = re.search(regex, result)
-        if match:
-            num = str(match.group(1))
-            integer, decimal = num.split('.')
-            return int(integer) * 1000 + int(float(decimal) * 10)
-        else:
-            return -1
-    elif is_custom_device():
-        return 13000
-    else:
-        return -1
 
 
 class TestAddmm(unittest.TestCase):

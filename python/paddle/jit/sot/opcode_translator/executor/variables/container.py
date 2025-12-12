@@ -1117,3 +1117,35 @@ class DictVariable(ContainerVariable):
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if type(value) in (dict, OrderedDict):
             return DictVariable(value, graph=graph, tracker=tracker)
+
+
+class SizeVariable(ListVariable):
+    def get_py_type(self):
+        return paddle.Size
+
+    def getitem(self, key):
+        self.graph.add_global_guarded_variable(key)
+        key_val = key.get_py_value()
+
+        if isinstance(key_val, int):
+            res = self.proxy.get(key_val)
+            if self.proxy.is_empty(res):
+                raise InnerError(f"Size {self} out of range (index={key_val})")
+            return res
+
+        elif isinstance(key_val, slice):
+            items = self.proxy.get_all()
+            sliced_items = items[key_val]
+
+            return SizeVariable(
+                sliced_items,
+                self.graph,
+                tracker=GetItemTracker(
+                    self, key_val, changed=self.proxy.check_changed(key_val)
+                ),
+            )
+
+        else:
+            raise InnerError(
+                f"Unsupported key type {key.__class__.__name__} for SizeVariable"
+            )

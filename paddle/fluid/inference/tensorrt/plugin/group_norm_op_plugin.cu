@@ -93,7 +93,7 @@ __global__ void groupNormNCHW32SumKernelQDQ(
   int32_t ci = blockIdx.x * params.cPerBlock + threadIdx.x * 2;
 
   // The first activation loaded by that block.
-  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = static_cast<int64_t>(blockIdx.y) * params.dhwPerBlock;
   // The last activation loaded by that block.
   int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
@@ -235,7 +235,7 @@ __global__ void groupNormNCHW32ScaleKernelQDQ(
   float invStdDev = rsqrtf(var + params.eps);
 
   // The first activation loaded by that block.
-  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = static_cast<int64_t>(blockIdx.y) * params.dhwPerBlock;
   // The last activation loaded by that block.
   int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
@@ -381,13 +381,8 @@ nvinfer1::Dims GroupNormPlugin::getOutputDimensions(
 
 int GroupNormPlugin::enqueue(int batch_size,
                              const void *const *inputs,
-#if IS_TRT_VERSION_LT(8000)
-                             void **outputs,
-                             void *workspace,
-#else
                              void *const *outputs,
                              void *workspace,
-#endif
                              cudaStream_t stream) TRT_NOEXCEPT {
   const auto &input_dims = this->getInputDims(0);
   int groups = groups_;

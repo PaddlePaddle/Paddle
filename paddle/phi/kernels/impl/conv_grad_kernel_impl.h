@@ -85,7 +85,7 @@ void ConvGradKernel(const Context& dev_ctx,
   UpdatePaddingAndDilation<int>(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
-  const int batch_size = static_cast<int>(transformed_input.dims()[0]);
+  const int64_t batch_size = transformed_input.dims()[0];
 
   // filter_shape_vec: {k_o, k_i, k_h, k_w} or {k_o, k_i, k_d, k_h, k_w}
   std::vector<int64_t> filter_shape_vec(common::vectorize(filter.dims()));
@@ -125,8 +125,8 @@ void ConvGradKernel(const Context& dev_ctx,
 
   // convolution backward input operator:  gemm + col2im(or col2vol)
   // convolution backward weight operator: im2col(or vol2col) + gemm
-  int in_step = static_cast<int>(transformed_input.dims()[1]) / groups;
-  int out_step = static_cast<int>(transformed_output_grad.dims()[1]) / groups;
+  int64_t in_step = transformed_input.dims()[1] / groups;
+  int64_t out_step = transformed_output_grad.dims()[1] / groups;
 
   bool is_expand = IsExpand(filter_shape_vec, strides, paddings, dilations);
 
@@ -163,7 +163,7 @@ void ConvGradKernel(const Context& dev_ctx,
     phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
     phi::funcs::Col2VolFunctor<Context, T> col2vol;
 
-    for (int i = 0; i < batch_size; i++) {
+    for (int64_t i = 0; i < batch_size; i++) {
       DenseTensor out_grad_batch =
           transformed_output_grad.Slice(i, i + 1).Resize(output_matrix_shape);
       DenseTensor in_grad_batch =
@@ -327,7 +327,7 @@ void ConvGradGradKernel(const Context& dev_ctx,
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
-  const int batch_size = static_cast<int>(transformed_X.dims()[0]);
+  const int64_t batch_size = transformed_X.dims()[0];
   std::vector<int64_t> filter_shape_vec(common::vectorize(W.dims()));
   std::vector<int64_t> output_shape_vec(
       common::vectorize(transformed_dY.dims()));
@@ -354,8 +354,8 @@ void ConvGradGradKernel(const Context& dev_ctx,
       transformed_dY.dims()[1],
       transformed_dY.numel() /
           (transformed_dY.dims()[0] * transformed_dY.dims()[1])};
-  int in_step = static_cast<int>(transformed_X.dims()[1]) / groups;
-  int out_step = static_cast<int>(transformed_dY.dims()[1]) / groups;
+  int64_t in_step = transformed_X.dims()[1] / groups;
+  int64_t out_step = transformed_dY.dims()[1] / groups;
 
   bool is_expand = IsExpand(filter_shape_vec, strides, paddings, dilations);
   DenseTensor col;
@@ -394,7 +394,7 @@ void ConvGradGradKernel(const Context& dev_ctx,
     phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
     phi::funcs::Col2VolFunctor<Context, T> col2vol;
 
-    for (int i = 0; i < batch_size; i++) {
+    for (int64_t i = 0; i < batch_size; i++) {
       DenseTensor dy_batch =
           transformed_dY.Slice(i, i + 1).Resize(output_matrix_shape);
       DenseTensor dx_batch = transformed_dX.Slice(i, i + 1).Resize(input_shape);

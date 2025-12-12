@@ -167,13 +167,11 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
 
   const std::unordered_map<std::string, CinnOpHandler>& op_handler_map() const {
     static std::unordered_map<std::string, CinnOpHandler> handler_map = {
-      {cinn::dialect::ReshapeOp::name(), &FusionOpPattern::ReshapeOpPattern},
-      {paddle::dialect::AssignOut_Op::name(),
-       &FusionOpPattern::AssignOutOpPattern},
-      {paddle::dialect::CastOp::name(), &FusionOpPattern::CastOpPattern},
-#if defined(PADDLE_WITH_HIP)
-      {cinn::dialect::ConcatOp::name(), &FusionOpPattern::ConcatOpPattern},
-#endif
+        {cinn::dialect::ReshapeOp::name(), &FusionOpPattern::ReshapeOpPattern},
+        {paddle::dialect::AssignOut_Op::name(),
+         &FusionOpPattern::AssignOutOpPattern},
+        {paddle::dialect::CastOp::name(), &FusionOpPattern::CastOpPattern},
+        {cinn::dialect::ConcatOp::name(), &FusionOpPattern::ConcatOpPattern},
     };
     return handler_map;
   }

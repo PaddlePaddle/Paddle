@@ -21,7 +21,7 @@ __all__ = ["initial_seed"]
 
 def initial_seed() -> int:
     """
-    Returns the initial seed for generating random numbers as a Python `long`.
+    Returns the initial seed for generating random numbers as a Python `int`.
 
     Returns:
         int: The 64-bit initial seed of the default generator on CPU place only.

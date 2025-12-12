@@ -215,8 +215,8 @@ void FlashAttnV3BaseKernel(
   const int batch_size = !is_varlen_q ? sizes[0] : cu_seqlens_q.dims()[0] - 1;
   int seqlen_q = !is_varlen_q ? sizes[1] : max_seqlen_q_;
   int total_q = !is_varlen_q ? batch_size * sizes[1] : sizes[0];
-  int num_heads = q.dims()[q.dims().size() - 2];
-  int const head_size = q.dims()[q.dims().size() - 1];
+  int64_t num_heads = q.dims()[q.dims().size() - 2];
+  int64_t const head_size = q.dims()[q.dims().size() - 1];
   int const head_size_v = v.dims()[v.dims().size() - 1];
   int const max_num_pages_per_seq = !paged_KV ? 0 : page_table.dims()[1];
   int const num_pages = !paged_KV ? 0 : k.dims()[0];
@@ -619,7 +619,7 @@ void FlashAttnV3BaseKernel(
       tile_count_semaphore = phi::Empty<int32_t>(dev_ctx, {metadata_size});
     }
     if (scheduler_needs_semaphore && !use_dynamic_split) {
-      phi::funcs::SetConstant<Context, int32_t> set_zero;
+      funcs::SetConstant<Context, int32_t> set_zero;
       set_zero(dev_ctx,
                &tile_count_semaphore,
                int32_t{0});  // If varlen we'll manually do the zero-ing
@@ -700,7 +700,10 @@ void FlashAttnV3BaseKernel(
         0,
         common::errors::InvalidArgument(
             "Only rotary dimensions divisible by 16 are currently supported"));
-    const int seqlen_ro = rotary_cos.dims()[0];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t seqlen_ro = rotary_cos.dims()[0];
+
     if (paged_KV) {
       PADDLE_ENFORCE_GE(
           seqlen_ro,
@@ -927,23 +930,23 @@ void FlashAttnV3BaseKernel(
     // If seqlen_k == 0, then we have an empty tensor. We need to set the output
     // to 0.
     if (out->dtype() == phi::DataType::BFLOAT16) {
-      phi::funcs::SetConstant<Context, phi::bfloat16> set_zero;
+      funcs::SetConstant<Context, phi::bfloat16> set_zero;
       set_zero(dev_ctx,
                out,
                phi::bfloat16{0});  // If varlen we'll manually do the zero-ing
     } else if (out->dtype() == phi::DataType::FLOAT16) {
-      phi::funcs::SetConstant<Context, phi::float16> set_zero;
+      funcs::SetConstant<Context, phi::float16> set_zero;
       set_zero(dev_ctx,
                out,
                phi::float16{0});  // If varlen we'll manually do the zero-ing
     } else if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
-      phi::funcs::SetConstant<Context, phi::float8_e4m3fn> set_zero;
+      funcs::SetConstant<Context, phi::float8_e4m3fn> set_zero;
       set_zero(
           dev_ctx,
           out,
           phi::float8_e4m3fn{0});  // If varlen we'll manually do the zero-ing
     }
-    phi::funcs::SetConstant<Context, float> set_infinity;
+    funcs::SetConstant<Context, float> set_infinity;
     set_infinity(dev_ctx, softmax_lse, std::numeric_limits<float>::infinity());
   }
 
@@ -1082,8 +1085,8 @@ void FlashAttnV3VarlenKernel(const Context &dev_ctx,
                              const paddle::optional<DenseTensor> &q_descale,
                              const paddle::optional<DenseTensor> &k_descale,
                              const paddle::optional<DenseTensor> &v_descale,
-                             const int max_seqlen_q,
-                             const int max_seqlen_k,
+                             const Scalar &max_seqlen_q,
+                             const Scalar &max_seqlen_k,
                              const float softmax_scale,
                              const bool causal,
                              const int window_size_left,
@@ -1150,6 +1153,8 @@ void FlashAttnV3VarlenKernel(const Context &dev_ctx,
 
   DenseTensor out_accum;
   DenseTensor softmax_lse_accum;
+  const int64_t max_seqlen_q_ = max_seqlen_q.to<int64_t>();
+  const int64_t max_seqlen_k_ = max_seqlen_k.to<int64_t>();
   FlashAttnV3BaseKernel<T, Context>(dev_ctx,
                                     q,
                                     k,
@@ -1171,9 +1176,9 @@ void FlashAttnV3VarlenKernel(const Context &dev_ctx,
                                     q_descale,
                                     k_descale,
                                     v_descale,
-                                    paddle::none,  // scheduler_metadata
-                                    max_seqlen_q,  // max_seqlen_q_
-                                    max_seqlen_k,  // max_seqlen_k_
+                                    paddle::none,   // scheduler_metadata
+                                    max_seqlen_q_,  // max_seqlen_q_
+                                    max_seqlen_k_,  // max_seqlen_k_
                                     softmax_scale,
                                     causal,
                                     window_size_left,
@@ -1233,7 +1238,10 @@ void FlashMaskV2BaseKernel(
     const paddle::optional<DenseTensor> &k_descale_,  // (b, h_k)
     const paddle::optional<DenseTensor> &v_descale_,  // (b, h_k)
     const paddle::optional<DenseTensor> &scheduler_metadata_,  // (b + 1)
-    const paddle::optional<DenseTensor> &startend_row_indices_,
+    const paddle::optional<DenseTensor>
+        &startend_row_indices_,  // （b,h,s_1,[1,2,4])
+    const paddle::optional<DenseTensor>
+        &block_mask_,  // （(b,h,s// 128,s // 128)
     const int
         max_seqlen_q_,  // if max_seqlen_q_ is set to 0, it indicates that it is
                         // uninitialized and should not be referenced
@@ -1373,8 +1381,8 @@ void FlashMaskV2BaseKernel(
   const int batch_size = !is_varlen_q ? sizes[0] : cu_seqlens_q.dims()[0] - 1;
   int seqlen_q = !is_varlen_q ? sizes[1] : max_seqlen_q_;
   int total_q = !is_varlen_q ? batch_size * sizes[1] : sizes[0];
-  int num_heads = q.dims()[q.dims().size() - 2];
-  int const head_size = q.dims()[q.dims().size() - 1];
+  int64_t num_heads = q.dims()[q.dims().size() - 2];
+  int64_t const head_size = q.dims()[q.dims().size() - 1];
   int const head_size_v = v.dims()[v.dims().size() - 1];
   int const max_num_pages_per_seq = !paged_KV ? 0 : page_table.dims()[1];
   int const num_pages = !paged_KV ? 0 : k.dims()[0];
@@ -1394,7 +1402,7 @@ void FlashMaskV2BaseKernel(
                       common::errors::InvalidArgument(
                           "batch_size must be equal to batch_size_k"));
   }
-  int const max_headdim = std::min(flashmaskv2_get_max_headdim(), 128);
+  int const max_headdim = flashmaskv2_get_max_headdim();
   PADDLE_ENFORCE_LE(
       head_size,
       max_headdim,
@@ -1430,6 +1438,7 @@ void FlashMaskV2BaseKernel(
   }
 
   bool const is_flashmask = startend_row_indices_.is_initialized();
+  bool const is_blockmask = block_mask_.is_initialized();
 
   // This needs to go before kBlockM & kBlockN since we rely on the correct
   // window_size and is_causal to set kBlockM
@@ -1697,10 +1706,10 @@ void FlashMaskV2BaseKernel(
                                                          seqlen_k_new);
     phi::dynload::flashmaskv2_fwd_params_set_total_knew(params_handle,
                                                         total_k_new);
-    phi::dynload::flashmaskv2_fwd_params_set_knew_ptr(
-        params_handle, const_cast<void *>(k_new.data()));
-    phi::dynload::flashmaskv2_fwd_params_set_vnew_ptr(
-        params_handle, const_cast<void *>(v_new.data()));
+    phi::dynload::flashmaskv2_fwd_params_set_knew_ptr(params_handle,
+                                                      (k_new.data()));
+    phi::dynload::flashmaskv2_fwd_params_set_vnew_ptr(params_handle,
+                                                      (v_new.data()));
     // All stride are in elements, not bytes.
     phi::dynload::flashmaskv2_fwd_params_set_knew_row_stride(
         params_handle, k_new.strides()[k_new.strides().size() - 3]);
@@ -1762,9 +1771,7 @@ void FlashMaskV2BaseKernel(
   const int params_arch =
       phi::dynload::flashmaskv2_fwd_params_get_arch(params_handle);
   bool const scheduler_needs_semaphore =
-      params_arch >= 90 ? (((params_is_causal || params_is_local) &&
-                            (params_num_splits == 1)) ||
-                           is_varlen)
+      params_arch >= 90 ? true
                         : ((params_is_causal && !is_varlen) ||
                            (is_varlen && params_num_splits > 1));
   if (scheduler_needs_semaphore || use_dynamic_split) {
@@ -1787,21 +1794,18 @@ void FlashMaskV2BaseKernel(
       tile_count_semaphore = phi::Empty<int32_t>(dev_ctx, {metadata_size});
     }
     if (scheduler_needs_semaphore && !use_dynamic_split) {
-      phi::funcs::SetConstant<Context, int32_t> set_zero;
+      funcs::SetConstant<Context, int32_t> set_zero;
       set_zero(dev_ctx,
                &tile_count_semaphore,
                int32_t{0});  // If varlen we'll manually do the zero-ing
     }
     phi::dynload::flashmaskv2_fwd_params_set_tile_count_semaphore(
         params_handle,
-        scheduler_needs_semaphore
-            ? const_cast<int *>(tile_count_semaphore.data<int>())
-            : nullptr);
+        scheduler_needs_semaphore ? (tile_count_semaphore.data<int>())
+                                  : nullptr);
     phi::dynload::flashmaskv2_fwd_params_set_num_splits_dynamic_ptr(
         params_handle,
-        use_dynamic_split
-            ? const_cast<int *>(tile_count_semaphore.data<int>()) + 1
-            : nullptr);
+        use_dynamic_split ? (tile_count_semaphore.data<int>()) + 1 : nullptr);
   }
 
   if (q_v_.is_initialized()) {
@@ -1833,8 +1837,8 @@ void FlashMaskV2BaseKernel(
     } else {
       CHECK_SHAPE(q_v, total_q, num_heads, head_size_v);
     }
-    phi::dynload::flashmaskv2_fwd_params_set_qv_ptr(
-        params_handle, const_cast<void *>(q_v.data()));
+    phi::dynload::flashmaskv2_fwd_params_set_qv_ptr(params_handle,
+                                                    (q_v.data()));
     // All stride are in elements, not bytes.
     phi::dynload::flashmaskv2_fwd_params_set_qv_row_stride(
         params_handle, q_v.strides()[q_v.strides().size() - 3]);
@@ -1868,7 +1872,10 @@ void FlashMaskV2BaseKernel(
         0,
         common::errors::InvalidArgument(
             "Only rotary dimensions divisible by 16 are currently supported"));
-    const int seqlen_ro = rotary_cos.dims()[0];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t seqlen_ro = rotary_cos.dims()[0];
+
     if (paged_KV) {
       PADDLE_ENFORCE_GE(
           seqlen_ro,
@@ -1897,9 +1904,9 @@ void FlashMaskV2BaseKernel(
                           "rotary_cos must have the same dtype as query"));
 
     phi::dynload::flashmaskv2_fwd_params_set_rotary_cos_ptr(
-        params_handle, const_cast<void *>(rotary_cos.data()));
+        params_handle, (rotary_cos.data()));
     phi::dynload::flashmaskv2_fwd_params_set_rotary_sin_ptr(
-        params_handle, const_cast<void *>(rotary_sin.data()));
+        params_handle, (rotary_sin.data()));
     dynload::flashmaskv2_fwd_params_set_is_rotary_interleaved(
         params_handle, is_rotary_interleaved);
   } else {
@@ -1955,10 +1962,10 @@ void FlashMaskV2BaseKernel(
       dev_ctx.template Alloc<float>(softmax_lse_accum);
     }
     phi::dynload::flashmaskv2_fwd_params_set_is_fp32(params_handle, false);
-    phi::dynload::flashmaskv2_fwd_params_set_oaccum_ptr(
-        params_handle, const_cast<void *>(out_accum->data()));
+    phi::dynload::flashmaskv2_fwd_params_set_oaccum_ptr(params_handle,
+                                                        (out_accum->data()));
     phi::dynload::flashmaskv2_fwd_params_set_softmax_lseaccum_ptr(
-        params_handle, const_cast<void *>(softmax_lse_accum->data()));
+        params_handle, (softmax_lse_accum->data()));
     phi::dynload::flashmaskv2_fwd_params_set_oaccum_split_stride(
         params_handle, out_accum->strides()[0]);
     phi::dynload::flashmaskv2_fwd_params_set_oaccum_row_stride(
@@ -1978,7 +1985,7 @@ void FlashMaskV2BaseKernel(
       CHECK_DEVICE(q_descale);
       CHECK_SHAPE(q_descale, batch_size, num_heads_k);
       phi::dynload::flashmaskv2_fwd_params_set_q_descale_ptr(
-          params_handle, const_cast<float *>(q_descale.data<float>()));
+          params_handle, (q_descale.data<float>()));
       phi::dynload::flashmaskv2_fwd_params_set_q_descale_batch_stride(
           params_handle, q_descale.strides()[0]);
       phi::dynload::flashmaskv2_fwd_params_set_q_descale_head_stride(
@@ -1992,7 +1999,7 @@ void FlashMaskV2BaseKernel(
       CHECK_DEVICE(k_descale);
       CHECK_SHAPE(k_descale, batch_size, num_heads_k);
       phi::dynload::flashmaskv2_fwd_params_set_k_descale_ptr(
-          params_handle, const_cast<float *>(k_descale.data<float>()));
+          params_handle, (k_descale.data<float>()));
       phi::dynload::flashmaskv2_fwd_params_set_k_descale_batch_stride(
           params_handle, k_descale.strides()[0]);
       phi::dynload::flashmaskv2_fwd_params_set_k_descale_head_stride(
@@ -2006,7 +2013,7 @@ void FlashMaskV2BaseKernel(
       CHECK_DEVICE(v_descale);
       CHECK_SHAPE(v_descale, batch_size, num_heads_k);
       phi::dynload::flashmaskv2_fwd_params_set_v_descale_ptr(
-          params_handle, const_cast<float *>(v_descale.data<float>()));
+          params_handle, (v_descale.data<float>()));
       phi::dynload::flashmaskv2_fwd_params_set_v_descale_batch_stride(
           params_handle, v_descale.strides()[0]);
       phi::dynload::flashmaskv2_fwd_params_set_v_descale_head_stride(
@@ -2068,6 +2075,8 @@ void FlashMaskV2BaseKernel(
   // flashmask
   DenseTensor startend_row_indices;
   if (is_flashmask) startend_row_indices = startend_row_indices_.get();
+  DenseTensor block_mask;
+  if (is_blockmask) block_mask = block_mask_.get();
   DenseTensor flashmask_maxmin, lt_start_row_indices, lt_end_row_indices,
       ut_start_row_indices, ut_end_row_indices;
   if (is_flashmask) {
@@ -2089,8 +2098,32 @@ void FlashMaskV2BaseKernel(
     // TODO(umiswing): refine this block constraint (kBlockN % 32), since some
     // of kBlockN is not divisible by 32 flashmask_maxmin_shape[2] =
     // (flashmask_maxmin_shape[2] + 31) / 32 * 8;
-    flashmask_maxmin_shape[2] =
-        ((flashmask_maxmin_shape[2] + 31) / 32 + 3) / 4 * 4;
+
+    int device_id = dev_ctx.GetPlace().GetDeviceId();
+    auto dprops = paddle::platform::GetDeviceProperties(device_id);
+    const bool is_sm90 = dprops.major == 9 && dprops.minor == 0;
+
+    if (is_sm90) {
+      // seqlen_k to nblock_seqlen, here we use kBlockN = 64
+      // as a conservative estimation (reduce allocation size)
+      flashmask_maxmin_shape[2] =
+          ((flashmask_maxmin_shape[2] + 63) / 64 + 3) / 4 * 4;
+      // make sure this is the same with FlashMaskV3 fwd main loop
+      static constexpr int flashmask_buffer_length = 16 * 1024;
+      // estimate the upper bound of the possible chunk size
+      static constexpr int chunk_padded_length =
+          ((flashmask_buffer_length + 63) / 64 + 31) & 0xffffffe0;
+      static constexpr int chunk_valid_length =
+          ((flashmask_buffer_length + 63) / 64 + 3) & 0xfffffffc;
+      const int num_chunk =
+          (flashmask_maxmin_shape[2] + chunk_valid_length - 1) /
+          chunk_valid_length;
+      flashmask_maxmin_shape[2] = num_chunk * chunk_padded_length;
+    } else {
+      // seqlen_k to nblock_seqlen
+      flashmask_maxmin_shape[2] =
+          ((flashmask_maxmin_shape[2] + 31) / 32 + 3) / 4 * 4;
+    }
     flashmask_maxmin_shape[3] = 8;
 
     flashmask_maxmin.set_type(phi::DataType::INT32);
@@ -2118,39 +2151,72 @@ void FlashMaskV2BaseKernel(
     }
   }
 
+  if (is_blockmask) {
+    PADDLE_ENFORCE_EQ(
+        is_flashmask,
+        true,
+        common::errors::InvalidArgument(
+            "blockmask should be used with flashmask at the same time "));
+
+    PADDLE_ENFORCE_EQ(block_mask.dims().size(),
+                      4,
+                      common::errors::InvalidArgument(
+                          "blockmask receive blockmask_indices with dim "
+                          "[batch_size, num_heads, blocklen_q, blocklen_k]"));
+
+    PADDLE_ENFORCE_EQ(block_mask.dims()[2],
+                      (seqlen_q + 127) / 128,
+                      common::errors::InvalidArgument(
+                          "blockmask is now only support blockdim_q = 128 "));
+
+    PADDLE_ENFORCE_EQ(block_mask.dims()[3],
+                      (seqlen_k + 127) / 128,
+                      common::errors::InvalidArgument(
+                          "blockmask is now only support blockdim_k = 128 "));
+
+    PADDLE_ENFORCE_EQ(
+        block_mask.dims()[1],
+        startend_row_indices.dims()[1],
+        common::errors::InvalidArgument("blockmask is now only support same "
+                                        "dim num_heads with flashmask "));
+  }
+
+  if (is_blockmask) {
+    // xhy: blockmask is now only support blockdim_q k = 128
+    dynload::flashmaskv2_fwd_params_set_m_block_dim(params_handle, 128);
+    dynload::flashmaskv2_fwd_params_set_n_block_dim(params_handle, 128);
+    dynload::flashmaskv2_fwd_params_set_block_mask_ptr(
+        params_handle, (block_mask.data<int32_t>()));
+  }
+
   if (is_flashmask) {
     if (lt_start_row_indices.initialized())
       dynload::flashmaskv2_fwd_params_set_lt_start_ptr(
-          params_handle,
-          const_cast<int32_t *>(lt_start_row_indices.data<int32_t>()));
+          params_handle, (lt_start_row_indices.data<int32_t>()));
     else
       dynload::flashmaskv2_fwd_params_set_lt_start_ptr(params_handle, nullptr);
 
     if (lt_end_row_indices.initialized())
       dynload::flashmaskv2_fwd_params_set_lt_end_ptr(
-          params_handle,
-          const_cast<int32_t *>(lt_end_row_indices.data<int32_t>()));
+          params_handle, (lt_end_row_indices.data<int32_t>()));
     else
       dynload::flashmaskv2_fwd_params_set_lt_end_ptr(params_handle, nullptr);
 
     if (ut_start_row_indices.initialized())
       dynload::flashmaskv2_fwd_params_set_ut_start_ptr(
-          params_handle,
-          const_cast<int32_t *>(ut_start_row_indices.data<int32_t>()));
+          params_handle, (ut_start_row_indices.data<int32_t>()));
     else
       dynload::flashmaskv2_fwd_params_set_ut_start_ptr(params_handle, nullptr);
 
     if (ut_end_row_indices.initialized())
       dynload::flashmaskv2_fwd_params_set_ut_end_ptr(
-          params_handle,
-          const_cast<int32_t *>(ut_end_row_indices.data<int32_t>()));
+          params_handle, (ut_end_row_indices.data<int32_t>()));
     else
       dynload::flashmaskv2_fwd_params_set_ut_end_ptr(params_handle, nullptr);
 
     if (flashmask_maxmin.initialized())
       dynload::flashmaskv2_fwd_params_set_flashmask_maxmin_ptr(
-          params_handle,
-          const_cast<int32_t *>(flashmask_maxmin.data<int32_t>()));
+          params_handle, (flashmask_maxmin.data<int32_t>()));
     else
       dynload::flashmaskv2_fwd_params_set_flashmask_maxmin_ptr(params_handle,
                                                                nullptr);
@@ -2205,23 +2271,23 @@ void FlashMaskV2BaseKernel(
     // If seqlen_k == 0, then we have an empty tensor. We need to set the output
     // to 0.
     if (out->dtype() == phi::DataType::BFLOAT16) {
-      phi::funcs::SetConstant<Context, phi::bfloat16> set_zero;
+      funcs::SetConstant<Context, phi::bfloat16> set_zero;
       set_zero(dev_ctx,
                out,
                phi::bfloat16{0});  // If varlen we'll manually do the zero-ing
     } else if (out->dtype() == phi::DataType::FLOAT16) {
-      phi::funcs::SetConstant<Context, phi::float16> set_zero;
+      funcs::SetConstant<Context, phi::float16> set_zero;
       set_zero(dev_ctx,
                out,
                phi::float16{0});  // If varlen we'll manually do the zero-ing
     } else if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
-      phi::funcs::SetConstant<Context, phi::float8_e4m3fn> set_zero;
+      funcs::SetConstant<Context, phi::float8_e4m3fn> set_zero;
       set_zero(
           dev_ctx,
           out,
           phi::float8_e4m3fn{0});  // If varlen we'll manually do the zero-ing
     }
-    phi::funcs::SetConstant<Context, float> set_infinity;
+    funcs::SetConstant<Context, float> set_infinity;
     set_infinity(dev_ctx, softmax_lse, std::numeric_limits<float>::infinity());
   }
 
@@ -2236,6 +2302,7 @@ void FlashMaskV2Kernel(const Context &dev_ctx,
                        const DenseTensor &k,
                        const DenseTensor &v,
                        const DenseTensor &startend_row_indices,
+                       const paddle::optional<DenseTensor> &block_mask,
                        const float softmax_scale,
                        bool is_causal,
                        DenseTensor *out,
@@ -2266,6 +2333,7 @@ void FlashMaskV2Kernel(const Context &dev_ctx,
                                     paddle::none,  // v_descale_
                                     paddle::none,  // scheduler_metadata_
                                     startend_row_indices,
+                                    block_mask,
                                     0,  // max_seqlen_q_
                                     0,  // max_seqlen_k_
                                     softmax_scale,
@@ -2309,4 +2377,6 @@ PD_REGISTER_KERNEL(flashmask_attention_v2,
                    ALL_LAYOUT,
                    phi::FlashMaskV2Kernel,
                    phi::float16,
-                   phi::bfloat16) {}
+                   phi::bfloat16) {
+  kernel->InputAt(4).SetBackend(phi::Backend::ALL_BACKEND);  // block_mask
+}

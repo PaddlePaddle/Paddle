@@ -40,7 +40,7 @@ struct SigmoidBwdFunctor {
       counts = 0;
     } else {
       T simoid_x =
-          static_cast<T>(1) / (static_cast<T>(1) + phi::funcs::real_exp(-x));
+          static_cast<T>(1) / (static_cast<T>(1) + funcs::real_exp(-x));
       T diff = simoid_x - label;
       dx_data = dout * diff;
       counts = 1;
@@ -75,8 +75,8 @@ struct SigmoidBwdPosWeightFunctor {
     } else {
       T max_val = x < 0 ? -x : 0;
       T term1 = (x < 0) ? static_cast<T>(-1) : static_cast<T>(0);
-      T down1 = phi::funcs::real_exp(-max_val);
-      T down2 = phi::funcs::real_exp(-x - max_val);
+      T down1 = funcs::real_exp(-max_val);
+      T down2 = funcs::real_exp(-x - max_val);
       T term2 = down1 * (-term1) + down2 * (-1 - term1);
       T term3 = (static_cast<T>(1.) - label);
       T diff = pos_weight * (term2 / (down1 + down2) + term1) + term3;
@@ -105,39 +105,39 @@ void SigmoidCrossEntropyWithLogitsGradKernel(
   auto dx_data = dev_ctx.template Alloc<T>(in_grad);
 
   // Temporary memory
-  DenseTensor *counts_tensor = new DenseTensor();
+  DenseTensor counts_tensor;
 
   int64_t out_dims = label.numel() * sizeof(T);
-  counts_tensor->Resize({out_dims});
-  dev_ctx.template Alloc<T>(counts_tensor);
-  counts_tensor->Resize(in_grad->dims());
+  counts_tensor.Resize({out_dims});
+  dev_ctx.template Alloc<T>(&counts_tensor);
+  counts_tensor.Resize(in_grad->dims());
 
-  std::vector<DenseTensor *> outs = {in_grad, counts_tensor};
+  std::vector<DenseTensor *> outs = {in_grad, &counts_tensor};
   if (pos_weight.get_ptr() == nullptr) {
     std::vector<const DenseTensor *> ins = {&x, &label, &out_grad};
     auto functor = SigmoidBwdFunctor<T>(ignore_index);
-    phi::funcs::ElementwiseKernel<T, decltype(functor), 2>(
+    funcs::ElementwiseKernel<T, decltype(functor), 2>(
         dev_ctx, ins, &outs, functor);
   } else {
     std::vector<const DenseTensor *> ins = {
         &x, &label, pos_weight.get_ptr(), &out_grad};
     auto functor = SigmoidBwdPosWeightFunctor<T>(ignore_index);
-    phi::funcs::ElementwiseKernel<T, decltype(functor), 2>(
+    funcs::ElementwiseKernel<T, decltype(functor), 2>(
         dev_ctx, ins, &outs, functor);
   }
   if (normalize) {
-    DenseTensor *norm_tensor = new DenseTensor();
-    norm_tensor->Resize({sizeof(T)});
-    dev_ctx.template Alloc<T>(norm_tensor);
-    auto dims = common::vectorize(counts_tensor->dims());
+    DenseTensor norm_tensor;
+    norm_tensor.Resize({sizeof(T)});
+    dev_ctx.template Alloc<T>(&norm_tensor);
+    auto dims = common::vectorize(counts_tensor.dims());
     std::vector<int> reduce_dim = {};
     for (int i = 0; i < dims.size(); i++) {
       reduce_dim.push_back(i);
     }
 
     funcs::ReduceKernel<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
-        dev_ctx, *counts_tensor, norm_tensor, NonzeroFunctor<T>(), reduce_dim);
-    T *norm = dev_ctx.template Alloc<T>(norm_tensor);
+        dev_ctx, counts_tensor, &norm_tensor, NonzeroFunctor<T>(), reduce_dim);
+    T *norm = dev_ctx.template Alloc<T>(&norm_tensor);
     auto norm_cpu_mem = phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(T));
     T *norm_cpu_ptr = reinterpret_cast<T *>(norm_cpu_mem->ptr());
     memory_utils::Copy(phi::CPUPlace(),
@@ -152,10 +152,7 @@ void SigmoidCrossEntropyWithLogitsGradKernel(
 
     phi::ScaleKernel<T>(
         dev_ctx, *in_grad, (1.0 / *norm_cpu_ptr), 0.0f, false, in_grad);
-
-    delete norm_tensor;
   }
-  delete counts_tensor;
 }
 
 }  // namespace phi

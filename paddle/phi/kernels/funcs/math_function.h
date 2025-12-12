@@ -120,7 +120,7 @@ struct TensorSetConstantXPU {
   void apply() const {
     auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place_);
     auto begin = dev_ctx->Alloc<T>(tensor_);
-    int numel = tensor_->numel();
+    int64_t numel = tensor_->numel();
     if (std::is_same<T, phi::complex64>::value ||
         std::is_same<T, phi::complex128>::value) {
       std::unique_ptr<T[]> data_cpu(new T[numel]);

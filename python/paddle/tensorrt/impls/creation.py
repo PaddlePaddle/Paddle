@@ -65,8 +65,8 @@ def full_converter(network, paddle_op, inputs):
     return full_layer.get_output(0)
 
 
-@converter_registry.register("pd_op.assign", trt_version="8.x")
-@converter_registry.register("pd_op.assign_out_", trt_version="8.x")
+@converter_registry.register("pd_op.assign")
+@converter_registry.register("pd_op.assign_out_")
 def assign_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     identity_layer = network.add_identity(input_tensor)
@@ -74,8 +74,8 @@ def assign_converter(network, paddle_op, inputs):
     return identity_layer.get_output(0)
 
 
-@converter_registry.register("pd_op.assign_value", trt_version="8.x")
-@converter_registry.register("pd_op.assign_value_", trt_version="8.x")
+@converter_registry.register("pd_op.assign_value")
+@converter_registry.register("pd_op.assign_value_")
 def assign_value_converter(network, paddle_op, inputs):
     attrs = paddle_op.attrs()
     shape = attrs['shape']
@@ -108,7 +108,7 @@ def assign_value_converter(network, paddle_op, inputs):
     return const_layer.get_output(0)
 
 
-@converter_registry.register("pd_op.arange", trt_version="8.x")
+@converter_registry.register("pd_op.arange")
 def arange_converter(network, paddle_op, inputs):
     start, end, step = inputs
     zero_tensor = add_1D_constant_layer(
@@ -163,7 +163,7 @@ def arange_converter(network, paddle_op, inputs):
     return output_tensor
 
 
-@converter_registry.register("pd_op.full_like", trt_version="8.x")
+@converter_registry.register("pd_op.full_like")
 def full_like_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     shape = input_tensor.shape
@@ -273,7 +273,7 @@ def full_like_converter(network, paddle_op, inputs):
     return output
 
 
-@converter_registry.register("pd_op.full_with_tensor", trt_version="8.x")
+@converter_registry.register("pd_op.full_with_tensor")
 def full_with_tensor_converter(network, paddle_op, inputs):
     value_input = inputs[0]
 
@@ -373,7 +373,7 @@ def full_with_tensor_converter(network, paddle_op, inputs):
     return output_tensor
 
 
-@converter_registry.register("pd_op.meshgrid", trt_version="8.x")
+@converter_registry.register("pd_op.meshgrid")
 def meshgrid_converter(network, paddle_op, vec_inputs):
     inputs = vec_inputs[0]
     n = len(inputs)

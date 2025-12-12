@@ -47,7 +47,8 @@ void RankAttentionGradOpCUDAKernel(const Context &dev_ctx,
   auto rank_offset_dims = rank_offset.dims();
   auto rank_offset_max_rank =
       (rank_offset_dims[1] - 1) / 2;  // Not use param max_rank
-  int block_matrix_row = rank_offset_max_rank * x_fea_dim;
+  int64_t block_matrix_row =
+      static_cast<int64_t>(rank_offset_max_rank) * x_fea_dim;
   auto &place = *dev_ctx.eigen_device();
 
   int max_ins = std::max(ins_num, static_cast<int64_t>(max_size));
@@ -69,7 +70,7 @@ void RankAttentionGradOpCUDAKernel(const Context &dev_ctx,
   const T *ins_rank_data = ins_rank.data<T>();
   T *param_grad_data = param_grad.data<T>();
 
-  auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
   T alpha = 1;
   T beta = 0;
 

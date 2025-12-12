@@ -52,10 +52,10 @@ static const std::initializer_list<std::string> conv_variable_names{
 static const std::initializer_list<std::string> rnn_variable_names{
     "x", "wx", "wh", "b", "h", "c"};
 
-class ComputePropagateScalesMkldnnPassTest : public testing::Test {
+class ComputePropagateScalesOnednnPassTest : public testing::Test {
  public:
-  ComputePropagateScalesMkldnnPassTest() {  // NOLINT
-    pass = std::make_unique<ComputePropagateScalesMkldnnPass>();
+  ComputePropagateScalesOnednnPassTest() {  // NOLINT
+    pass = std::make_unique<ComputePropagateScalesOnednnPass>();
   }
 
   std::vector<float> GetScales(phi::DenseTensor* tensor, int axis) const {
@@ -195,7 +195,7 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
   }
 
  private:
-  std::unique_ptr<ComputePropagateScalesMkldnnPass> pass;
+  std::unique_ptr<ComputePropagateScalesOnednnPass> pass;
 };
 
 void SetOp(ProgramDesc* prog,
@@ -272,7 +272,7 @@ ProgramDesc BuildFusionLstmProgramDesc() {
   return prog;
 }
 
-TEST_F(ComputePropagateScalesMkldnnPassTest, get_scales_function) {
+TEST_F(ComputePropagateScalesOnednnPassTest, get_scales_function) {
   const auto& values = positive_and_negative_values;
   float max_val = *std::max_element(values.begin(), values.end());
 
@@ -287,7 +287,7 @@ TEST_F(ComputePropagateScalesMkldnnPassTest, get_scales_function) {
   ASSERT_EQ(results[0], (1.f / max_val));
 }
 
-TEST_F(ComputePropagateScalesMkldnnPassTest, compute_var_scales) {
+TEST_F(ComputePropagateScalesOnednnPassTest, compute_var_scales) {
   auto prog = BuildConv2dProgramDesc();
   const auto& values = positive_and_negative_values;
   ir::Graph* graph(new ir::Graph(prog));
@@ -323,15 +323,15 @@ TEST_F(ComputePropagateScalesMkldnnPassTest, compute_var_scales) {
   ASSERT_FLOAT_EQ(result_tensor.data<float>()[0], (1.0 / max_val));
 }
 
-TEST_F(ComputePropagateScalesMkldnnPassTest, compute_gru_weight_scales) {
+TEST_F(ComputePropagateScalesOnednnPassTest, compute_gru_weight_scales) {
   ComputeRnnWeightScalesTest("gru", BuildFusionGruProgramDesc(), gru_scales);
 }
 
-TEST_F(ComputePropagateScalesMkldnnPassTest, compute_lstm_weight_scales) {
+TEST_F(ComputePropagateScalesOnednnPassTest, compute_lstm_weight_scales) {
   ComputeRnnWeightScalesTest("lstm", BuildFusionLstmProgramDesc(), lstm_scales);
 }
 
-TEST_F(ComputePropagateScalesMkldnnPassTest, update_relu_output_scales) {
+TEST_F(ComputePropagateScalesOnednnPassTest, update_relu_output_scales) {
   StringPairMap var_quant_scales;
   for (auto& var_name : conv_variable_names) {
     phi::DenseTensor tensor;

@@ -36,6 +36,7 @@ jobs:
     runs-on:
       group: win-openblas
     env:
+      PADDLE_VERSION: 0.0.0
       NIGHTLY_MODE: "OFF"
       WITH_UNITY_BUILD: "ON"
       WITH_CACHE: "OFF"

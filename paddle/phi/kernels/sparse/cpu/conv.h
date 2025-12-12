@@ -195,9 +195,9 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
   const bool is2D = out_dims.size() == 4 ? true : false;
 
   std::set<IntT> tmp_indices;
-  int n = rulebook->dims()[1];
+  int64_t n = rulebook->dims()[1];
   IntT* rulebook_ptr = rulebook->data<IntT>();
-  for (int i = 0; i < n; i++) {
+  for (int64_t i = 0; i < n; i++) {
     tmp_indices.insert(rulebook_ptr[i + n * 2]);
   }
 
@@ -211,7 +211,7 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
   phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
   phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
   IntT* out_indices_ptr = out_indices.data<IntT>();
-  int i = 0;
+  int64_t idx = 0;
 
   int odim0, odim1, odim2, odim3;
   odim0 = out_dims[0];
@@ -220,22 +220,22 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
   odim3 = is2D ? 1 : out_dims[1];
   const Dims4D c_out_dims(odim0, odim1, odim2, odim3);
 
-  for (auto it = tmp_indices.begin(); it != tmp_indices.end(); it++, i++) {
+  for (auto it = tmp_indices.begin(); it != tmp_indices.end(); it++, idx++) {
     const IntT index = *it;
     IntT batch, x, y, z;
     phi::funcs::sparse::IndexToPoint<Dims4D>(
         index, c_out_dims, &batch, &x, &y, &z);
-    out_indices_ptr[i] = batch;
+    out_indices_ptr[idx] = batch;
     if (is2D) {
-      out_indices_ptr[i + out_non_zero_num] = y;
-      out_indices_ptr[i + out_non_zero_num * 2] = x;
+      out_indices_ptr[idx + out_non_zero_num] = y;
+      out_indices_ptr[idx + out_non_zero_num * 2] = x;
     } else {
-      out_indices_ptr[i + out_non_zero_num] = z;
-      out_indices_ptr[i + out_non_zero_num * 2] = y;
-      out_indices_ptr[i + out_non_zero_num * 3] = x;
+      out_indices_ptr[idx + out_non_zero_num] = z;
+      out_indices_ptr[idx + out_non_zero_num * 2] = y;
+      out_indices_ptr[idx + out_non_zero_num * 3] = x;
     }
   }
-  for (i = 0; i < n; i++) {
+  for (int64_t i = 0; i < n; i++) {
     IntT out_index = rulebook_ptr[i + n * 2];
     rulebook_ptr[i + n * 2] =
         std::distance(tmp_indices.begin(), tmp_indices.find(out_index));

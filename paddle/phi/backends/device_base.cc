@@ -83,6 +83,11 @@ bool DeviceInterface::IsBFloat16Supported(size_t dev_id) {
   return false;
 }
 
+bool DeviceInterface::IsDnnAvailable(size_t dev_id) {
+  VLOG(10) << Type() << " is dnn available: " << false;
+  return false;
+}
+
 void* DeviceInterface::InitEigenDevice(const Place& place,
                                        phi::stream::stream_t stream,
                                        phi::Allocator* allocator) {
@@ -482,6 +487,75 @@ void DeviceInterface::DestroyBlasHandle(size_t dev_id, void* blas_handle) {
 }
 
 void DeviceInterface::DestroyBlasLtHandle(size_t dev_id, void* blaslt_handle) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+// CudaGraph
+void DeviceInterface::CUDAStreamBeginCapture(size_t dev_id,
+                                             stream::stream_t stream,
+                                             graph::streamCaptureMode mode) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CudaStreamEndCapture(size_t dev_id,
+                                           stream::stream_t stream,
+                                           graph::CUDAGraph_t* pGraph) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CudaGraphLaunch(size_t dev_id,
+                                      graph::CUDAGraphExec_t exec,
+                                      stream::stream_t stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CudaGraphDestroy(graph::CUDAGraph_t graph) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CudaGraphExecDestroy(graph::CUDAGraphExec_t graphExec) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CudaGraphInstantiate(graph::CUDAGraphExec_t* pGraphExec,
+                                           graph::CUDAGraph_t* pGraph,
+                                           void** pErrorNode,
+                                           char* pLogBuffer,
+                                           size_t bufferSize) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CudaGraphGetNodes(graph::CUDAGraph_t graph,
+                                        graph::CUDAGraphNode_t* pNodes,
+                                        size_t* numNodes) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CudaStreamGetCaptureInfo(
+    size_t dev_id,
+    stream::stream_t stream,
+    graph::streamCaptureStatus* captureStatus_out,
+    unsigned long long* id_out,  // NOLINT
+    graph::CUDAGraph_t* graph_out,
+    graph::CUDAGraphNode_t* dependencies_out,
+    void** edgeData_out,
+    size_t* numDependencies_out) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::GetParameterSetterForExecGraph(
+    graph::CUDAGraph_t graph, graph::GraphHookManager* hook) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CudaGraphDebugDotPrint(graph::CUDAGraph_t graph,
+                                             const char* path,
+                                             unsigned flags) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CudaThreadExchangeStreamCaptureMode(
+    graph::streamCaptureMode* mode) {
   INTERFACE_UNIMPLEMENT;
 }
 

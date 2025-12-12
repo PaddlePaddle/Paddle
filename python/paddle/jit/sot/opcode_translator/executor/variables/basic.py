@@ -804,10 +804,10 @@ class TensorVariable(VariableBase):
                     f"Getting shape for a dynamic shape tensor causes graph break. shape = {meta.shape}"
                 )
             )
-        from .container import ListVariable
+        from .container import SizeVariable
 
         tracker = GetAttrTracker(self, "shape")
-        return ListVariable(meta.shape, self.graph, tracker=tracker)
+        return SizeVariable(meta.shape, self.graph, tracker=tracker)
 
     def len(self):
         meta = self.meta.unwrap_or_breakgraph()

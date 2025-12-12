@@ -25,6 +25,9 @@
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_string(tensor_operants_mode);
 COMMON_DECLARE_bool(check_cuda_error);
+COMMON_DECLARE_bool(enable_unique_name);
+COMMON_DECLARE_string(tensor_md5_checksum_output_path);
+COMMON_DECLARE_string(dump_api_python_stack_path);
 
 std::tuple<paddle::Tensor,
            paddle::Tensor&,
@@ -128,6 +131,13 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
       egr::EagerUtils::nullable_autograd_meta(scale);
   egr::AutogradMeta* bias_autograd_meta =
       egr::EagerUtils::nullable_autograd_meta(bias);
+  // Check LeafTensor if its GradNodeAccumulation TensorMeta is consistent with
+  // its TensorMeta
+  egr::CheckGradNodeAccumulation(x);
+  egr::CheckGradNodeAccumulation(mean);
+  egr::CheckGradNodeAccumulation(variance);
+  egr::CheckGradNodeAccumulation(scale);
+  egr::CheckGradNodeAccumulation(bias);
 
   // Before log info
 
@@ -158,9 +168,22 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
     input_str += input_bias_str;
     VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
   }
+
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3) || FLAGS_enable_unique_name) {
+    static int64_t call_count = 0;
+    call_count++;
+    unique_api_name =
+        egr::GenerateUniqueApiName("sync_batch_norm_", call_count);
+  }
+  // Save forward call stack to file for debug
+  if (FLAGS_call_stack_level == 3 &&
+      !FLAGS_dump_api_python_stack_path.empty()) {
+    egr::SavePythonCallStackToFile(FLAGS_dump_api_python_stack_path,
+                                   unique_api_name);
+  }
   VLOG(3) << "\n"
-          << SEPARATOR << "Running_C++_API: "
-          << "sync_batch_norm_" << SEPARATOR;
+          << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
   // Forward API Call
   auto api_result =
       paddle::experimental::sync_batch_norm_(x,
@@ -175,8 +198,7 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
                                              use_global_stats,
                                              trainable_statistics);
   VLOG(3) << "\n"
-          << SEPARATOR << "Finishi_C++_API: "
-          << "sync_batch_norm_" << SEPARATOR;
+          << SEPARATOR << "Finishi_C++_API: " << unique_api_name << SEPARATOR;
   // Check NaN and Inf if needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("sync_batch_norm_", api_result);
@@ -189,7 +211,29 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
   auto& saved_mean = std::get<3>(api_result);
   auto& saved_variance = std::get<4>(api_result);
   auto& reserve_space = std::get<5>(api_result);
-
+  if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
+    egr::SetTensorName(unique_api_name, "out", &out);
+    egr::SetTensorName(unique_api_name, "mean_out", &mean_out);
+    egr::SetTensorName(unique_api_name, "variance_out", &variance_out);
+    egr::SetTensorName(unique_api_name, "saved_mean", &saved_mean);
+    egr::SetTensorName(unique_api_name, "saved_variance", &saved_variance);
+    egr::SetTensorName(unique_api_name, "reserve_space", &reserve_space);
+  }
+  // Save the tensors checksum to file_path
+  if (!FLAGS_tensor_md5_checksum_output_path.empty()) {
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path,
+                                     out);
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path,
+                                     mean_out);
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path,
+                                     variance_out);
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path,
+                                     saved_mean);
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path,
+                                     saved_variance);
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path,
+                                     reserve_space);
+  }
   // Get Output AutoGradMeta
   egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
   egr::AutogradMeta* mean_out_autograd_meta =
@@ -231,10 +275,22 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
     // Node Construction
     auto grad_node = std::shared_ptr<SyncBatchNormGradNode>(  // NOLINT
         new SyncBatchNormGradNode(6, 5));
-
+    // Set GradNodeName
+    if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
+      grad_node->SetNameFromAPI(unique_api_name);
+    }
     // Set forward's stack
     if (FLAGS_check_nan_inf) {
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
+    }
+    // Set for Record Subgraph
+    if (egr::EagerBackwardSubGraphNodeRecorder::Instance()
+            .NeedCaptureSubGraph()) {
+      VLOG(3) << "Capture the grad node" << grad_node->name() << "("
+              << grad_node.get() << ")"
+              << "for subgraph.";
+      egr::EagerBackwardSubGraphNodeRecorder::Instance().AddGradNode(
+          grad_node.get());
     }
 
     egr::Controller::Instance().PushBackForceSequentialNodes(grad_node.get());
@@ -304,60 +360,60 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
 
   // LOG IF DEBUG
 
-  if (VLOG_IS_ON(4)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+  if (VLOG_IS_ON(3)) {
+    const char* INPUT_PRINT_TEMPLATE =
+        "\nForward Debug Info {\nAPI_Name: %s \nInput: [%s]  \nOutput: [%s] } ";
 
     std::string input_str = "";
     std::string output_str = "";
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    const char* TENSOR_X_TEMPLATE = " \n( x , %s), ";
     std::string input_x_str = paddle::string::Sprintf(
         TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
     input_str += input_x_str;
-    const char* TENSOR_MEAN_TEMPLATE = " \n( mean , [%s]), ";
+    const char* TENSOR_MEAN_TEMPLATE = " \n( mean , %s), ";
     std::string input_mean_str = paddle::string::Sprintf(
         TENSOR_MEAN_TEMPLATE, egr::EagerUtils::TensorStr(mean));
     input_str += input_mean_str;
-    const char* TENSOR_VARIANCE_TEMPLATE = " \n( variance , [%s]), ";
+    const char* TENSOR_VARIANCE_TEMPLATE = " \n( variance , %s), ";
     std::string input_variance_str = paddle::string::Sprintf(
         TENSOR_VARIANCE_TEMPLATE, egr::EagerUtils::TensorStr(variance));
     input_str += input_variance_str;
-    const char* TENSOR_SCALE_TEMPLATE = " \n( scale , [%s]), ";
+    const char* TENSOR_SCALE_TEMPLATE = " \n( scale , %s), ";
     std::string input_scale_str = paddle::string::Sprintf(
         TENSOR_SCALE_TEMPLATE, egr::EagerUtils::TensorStr(scale));
     input_str += input_scale_str;
-    const char* TENSOR_BIAS_TEMPLATE = " \n( bias , [%s]), ";
+    const char* TENSOR_BIAS_TEMPLATE = " \n( bias , %s), ";
     std::string input_bias_str = paddle::string::Sprintf(
         TENSOR_BIAS_TEMPLATE, egr::EagerUtils::TensorStr(bias));
     input_str += input_bias_str;
-    const char* TENSOR_OUT_TEMPLATE = " \n( out , [%s]), ";
+    const char* TENSOR_OUT_TEMPLATE = " \n( out , %s), ";
     std::string output_out_str = paddle::string::Sprintf(
         TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
     output_str += output_out_str;
-    const char* TENSOR_MEAN_OUT_TEMPLATE = " \n( mean_out , [%s]), ";
+    const char* TENSOR_MEAN_OUT_TEMPLATE = " \n( mean_out , %s), ";
     std::string output_mean_out_str = paddle::string::Sprintf(
         TENSOR_MEAN_OUT_TEMPLATE, egr::EagerUtils::TensorStr(mean_out));
     output_str += output_mean_out_str;
-    const char* TENSOR_VARIANCE_OUT_TEMPLATE = " \n( variance_out , [%s]), ";
+    const char* TENSOR_VARIANCE_OUT_TEMPLATE = " \n( variance_out , %s), ";
     std::string output_variance_out_str = paddle::string::Sprintf(
         TENSOR_VARIANCE_OUT_TEMPLATE, egr::EagerUtils::TensorStr(variance_out));
     output_str += output_variance_out_str;
-    const char* TENSOR_SAVED_MEAN_TEMPLATE = " \n( saved_mean , [%s]), ";
+    const char* TENSOR_SAVED_MEAN_TEMPLATE = " \n( saved_mean , %s), ";
     std::string output_saved_mean_str = paddle::string::Sprintf(
         TENSOR_SAVED_MEAN_TEMPLATE, egr::EagerUtils::TensorStr(saved_mean));
     output_str += output_saved_mean_str;
-    const char* TENSOR_SAVED_VARIANCE_TEMPLATE =
-        " \n( saved_variance , [%s]), ";
+    const char* TENSOR_SAVED_VARIANCE_TEMPLATE = " \n( saved_variance , %s), ";
     std::string output_saved_variance_str =
         paddle::string::Sprintf(TENSOR_SAVED_VARIANCE_TEMPLATE,
                                 egr::EagerUtils::TensorStr(saved_variance));
     output_str += output_saved_variance_str;
-    const char* TENSOR_RESERVE_SPACE_TEMPLATE = " \n( reserve_space , [%s]), ";
+    const char* TENSOR_RESERVE_SPACE_TEMPLATE = " \n( reserve_space , %s), ";
     std::string output_reserve_space_str =
         paddle::string::Sprintf(TENSOR_RESERVE_SPACE_TEMPLATE,
                                 egr::EagerUtils::TensorStr(reserve_space));
     output_str += output_reserve_space_str;
-    VLOG(4) << paddle::string::Sprintf(
-        INPUT_PRINT_TEMPLATE, input_str, output_str);
+    VLOG(3) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
   }
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("sync_batch_norm__ad_func finish");

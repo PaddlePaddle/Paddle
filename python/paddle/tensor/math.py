@@ -32,7 +32,9 @@ from paddle._C_ops import (  # noqa: F401
     isinf,
     isnan,
     log,
+    log1p,
     log2,
+    log10,
     logsumexp,
     maximum,
     minimum,
@@ -40,6 +42,7 @@ from paddle._C_ops import (  # noqa: F401
     sign,
     sin,
     sum,
+    tanh,
 )
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
@@ -2875,29 +2878,15 @@ def outer(
     xshape = x.shape
     yshape = y.shape
     if math.prod(xshape) == 0:  # If the size is 0
-        nx = x.reshape((0, 0))
+        nx = x.reshape((0, 1))
     else:
         nx = x.reshape((-1, 1))
     if math.prod(yshape) == 0:  # If the size is 0
-        ny = y.reshape((0, 0))
+        ny = y.reshape((1, 0))
     else:
         ny = y.reshape((1, -1))
 
-    if in_dynamic_mode():
-        return _C_ops.multiply(nx, ny, out=out)
-
-    def __check_input(x, y):
-        var_names = {'x': x, 'y': y}
-        for name, val in var_names.items():
-            check_variable_and_dtype(
-                val,
-                name,
-                ['float16', 'float32', 'float64', 'int32', 'int64'],
-                'outer',
-            )
-
-    __check_input(nx, ny)
-    if in_pir_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.multiply(nx, ny, out=out)
     else:
         helper = LayerHelper('outer', **locals())
@@ -2969,7 +2958,7 @@ def inverse(x: Tensor, name: str | None = None) -> Tensor:
     illegal_keys={"input", "dim", "other"},
     func_name="paddle.max",
     correct_name="paddle.compat.max",
-    url_suffix="torch/torch.max",
+    url_suffix="torch.max",
 )
 def max(
     x: Tensor,
@@ -3134,7 +3123,7 @@ def max(
     illegal_keys={"input", "dim", "other"},
     func_name="paddle.min",
     correct_name="paddle.compat.min",
-    url_suffix="torch/torch.min",
+    url_suffix="torch.min",
 )
 def min(
     x: Tensor,
@@ -3281,59 +3270,6 @@ def min(
             return out
 
 
-def log1p(x: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Calculates the natural log of the given input tensor, element-wise.
-
-    .. math::
-        Out = \ln(x+1)
-
-    Args:
-        x (Tensor): Input Tensor. Must be one of the following types: int32, int64, float16, bfloat16, float32, float64, complex64, complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor, the natural log of the input Tensor computed element-wise.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> data = paddle.to_tensor([[0], [1]], dtype='float32')
-            >>> res = paddle.log1p(data)
-            >>> res
-            Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.        ],
-             [0.69314718]])
-    """
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.log1p(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'int32',
-                'int64',
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            "log1p",
-        )
-        inputs = {'X': [x]}
-        helper = LayerHelper('log1p', **locals())
-        dtype = helper.input_dtype(input_param_name='x')
-        out = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(type="log1p", inputs={"X": x}, outputs={"Out": out})
-        return out
-
-
 @inplace_apis_in_dygraph_only
 def log1p_(x: Tensor, name: str | None = None) -> None:
     r"""
@@ -3354,78 +3290,6 @@ def log2_(x: Tensor, name: str | None = None) -> Tensor:
 
     if in_dynamic_mode():
         return _C_ops.log2_(x)
-
-
-def log10(x: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Calculates the log to the base 10 of the given input tensor, element-wise.
-
-    .. math::
-
-        Out = \log_10_x
-
-    Args:
-        x (Tensor): Input tensor must be one of the following types: int32, int64, float16, bfloat16, float32, float64, complex64, complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-
-    Returns:
-        Tensor: The log to the base 10 of the input Tensor computed element-wise.
-
-    Examples:
-
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> # example 1: x is a float
-            >>> x_i = paddle.to_tensor([[1.0], [10.0]])
-            >>> res = paddle.log10(x_i)
-            >>> res
-            Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.],
-             [1.]])
-
-            >>> # example 2: x is float32
-            >>> x_i = paddle.full(shape=[1], fill_value=10, dtype='float32')
-            >>> paddle.to_tensor(x_i)
-            >>> res = paddle.log10(x_i)
-            >>> res
-            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [1.])
-
-            >>> # example 3: x is float64
-            >>> x_i = paddle.full(shape=[1], fill_value=10, dtype='float64')
-            >>> paddle.to_tensor(x_i)
-            >>> res = paddle.log10(x_i)
-            >>> res
-            Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
-            [1.])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.log10(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'int32',
-                'int64',
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            "log10",
-        )
-        inputs = {'X': [x]}
-        helper = LayerHelper('log10', **locals())
-        dtype = helper.input_dtype(input_param_name='x')
-        out = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(type="log10", inputs={"X": x}, outputs={"Out": out})
-        return out
 
 
 @inplace_apis_in_dygraph_only
@@ -3650,7 +3514,7 @@ def trace(
         Tensor: the output data type is the same as input data type.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3659,13 +3523,13 @@ def trace(
             >>> case3 = paddle.randn([3, 10, 5, 10])
             >>> data1 = paddle.trace(case1)
             >>> data1.shape
-            []
+            paddle.Size([])
             >>> data2 = paddle.trace(case2, offset=1, axis1=1, axis2=2)
             >>> data2.shape
-            [3]
+            paddle.Size([3])
             >>> data3 = paddle.trace(case3, offset=-3, axis1=1, axis2=-1)
             >>> data3.shape
-            [3, 5]
+            paddle.Size([3, 5])
     """
 
     def __check_input(x, offset, axis1, axis2):
@@ -4203,17 +4067,21 @@ def logcumsumexp(
         return out
 
 
+@param_one_alias(["x", "input"])
 def cumprod(
     x: Tensor,
     dim: int | None = None,
+    *,
     dtype: DTypeLike | None = None,
+    out: Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
     Compute the cumulative product of the input tensor x along a given dimension dim.
 
-    Note:
+    .. note::
         The first element of the result is the same as the first element of the input.
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
 
     Args:
         x (Tensor): the input tensor need to be cumproded.
@@ -4222,6 +4090,7 @@ def cumprod(
         dtype (str|core.VarDesc.VarType|core.DataType|np.dtype, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64, int32, int64,
                     complex64, complex128. If specified, the input tensor is casted to dtype before the operation is performed.
                     This is useful for preventing data type overflows. The default value is None.
+        out (Tensor|None, optional): The output tensor. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information,
                     please refer to :ref:`api_guide_Name`.
 
@@ -4276,7 +4145,7 @@ def cumprod(
             x = cast(x, dtype)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.cumprod(x, dim, False, False)
+        return _C_ops.cumprod(x, dim, False, False, out=out)
     else:
         check_variable_and_dtype(
             x,
@@ -4465,60 +4334,6 @@ def prod(
             outputs={'Out': out},
             attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
         )
-        return out
-
-
-def tanh(x: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Tanh Activation Operator.
-
-    .. math::
-        out = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
-
-    Args:
-        x (Tensor): Input of Tanh operator, an N-D Tensor, with data type bfloat16, float32, float64,
-            float16, uint8, int8, int16, int32, int64.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Output of Tanh operator, a Tensor with same data type and shape as input
-            (integer types are autocasted into float32).
-
-    Examples:
-
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = paddle.tanh(x)
-            >>> out
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-0.37994900, -0.19737528,  0.09966799,  0.29131261])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.tanh(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'uint16',
-                'float16',
-                'float32',
-                'float64',
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-            ],
-            'tanh',
-        )
-        check_type(x, 'x', (Variable), 'tanh')
-        helper = LayerHelper('tanh', **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(type='tanh', inputs={'X': x}, outputs={'Out': out})
         return out
 
 
@@ -6065,7 +5880,7 @@ def angle(x: Tensor, name: str | None = None) -> Tensor:
         Tensor: An N-D Tensor of real data type with the same precision as that of x's data type.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -6074,10 +5889,14 @@ def angle(x: Tensor, name: str | None = None) -> Tensor:
             >>> z = x + 1j * y
             >>> z
             Tensor(shape=[4, 4], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[(-2-2j), (-2-1j), (-2+0j), (-2+1j)],
-             [(-1-2j), (-1-1j), (-1+0j), (-1+1j)],
-             [-2j    , -1j    ,  0j    ,  1j    ],
-             [ (1-2j),  (1-1j),  (1+0j),  (1+1j)]])
+            [[(-2.00000000-2.00000000j), (-2.00000000-1.00000000j),
+              (-2.00000000+0.00000000j), (-2.00000000+1.00000000j)],
+             [(-1.00000000-2.00000000j), (-1.00000000-1.00000000j),
+              (-1.00000000+0.00000000j), (-1.00000000+1.00000000j)],
+             [(0.00000000-2.00000000j) , (0.00000000-1.00000000j) ,
+               (0.00000000+0.00000000j),  (0.00000000+1.00000000j)],
+             [ (1.00000000-2.00000000j),  (1.00000000-1.00000000j),
+               (1.00000000+0.00000000j),  (1.00000000+1.00000000j)]])
 
             >>> theta = paddle.angle(z)
             >>> theta
@@ -6165,13 +5984,17 @@ def heaviside(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-def frac(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def frac(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     """
     This API is used to return the fractional portion of each element in input.
 
     Args:
         x (Tensor): The input tensor, which data type should be int32, int64, float32, float64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. Default: None.
 
     Returns:
         Tensor: The output Tensor of frac.
@@ -6206,7 +6029,7 @@ def frac(x: Tensor, name: str | None = None) -> Tensor:
         )
     if in_dynamic_or_pir_mode():
         y = _C_ops.trunc(x)
-        return _C_ops.subtract(x, y)
+        return _C_ops.subtract(x, y, out=out)
     else:
         inputs = {"X": x}
         attrs = {}

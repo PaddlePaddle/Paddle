@@ -60,11 +60,7 @@ class YoloBoxHeadPlugin : public PluginTensorRT {
 
   int enqueue(int batch_size,
               const void* const* inputs,
-#if IS_TRT_VERSION_LT(8000)
-              void** outputs,
-#else
               void* const* outputs,
-#endif
               void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
 

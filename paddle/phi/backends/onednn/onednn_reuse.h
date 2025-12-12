@@ -979,7 +979,7 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
                       src_y_tz.end());
       // For broadcasting for NHWC we need rotate extended shape
       if (OneDNNContext::tls().get_cur_paddle_data_layout() ==
-          DataLayout::kNHWC) {
+          DataLayout::NHWC) {
         std::rotate(dims1_ex.begin() + 1, dims1_ex.end() - 1, dims1_ex.end());
       }
       src1_md = src1_md.reshape(dims1_ex);
@@ -990,7 +990,7 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
                       src_x_tz.end());
       // For broadcasting for NHWC we need rotate extended shape
       if (OneDNNContext::tls().get_cur_paddle_data_layout() ==
-          DataLayout::kNHWC) {
+          DataLayout::NHWC) {
         std::rotate(dims0_ex.begin() + 1, dims0_ex.end() - 1, dims0_ex.end());
       }
       src0_md = src0_md.reshape(dims0_ex);
@@ -1921,7 +1921,10 @@ static void SetOutMemDescWithReshape2FuseSupport(
   std::vector<int64_t> fused_reshape2_shape(fused_reshape2_shape_.begin(),
                                             fused_reshape2_shape_.end());
 
-  const int out_shape_numel = out->numel();
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_shape_numel = out->numel();
+
   const int new_shape_numel = std::accumulate(fused_reshape2_shape.begin(),
                                               fused_reshape2_shape.end(),
                                               1,

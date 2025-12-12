@@ -58,6 +58,7 @@ def check_ipc_tensor(event, ipc_metas):
     shared_ipc_tensor = paddle.to_tensor(
         paddle.base.core.DenseTensor._new_shared_cuda(ipc_metas)
     )
+    paddle.cuda.ipc_collect()
 
     def tensor_equal(t1, t2):
         return (t1 == t2).all().item()

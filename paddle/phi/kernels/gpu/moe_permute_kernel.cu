@@ -245,8 +245,20 @@ void MoePermuteKernel(const Context &dev_ctx,
                       DenseTensor *zipped_expertwise_rowmap,
                       DenseTensor *token_prob_unzipped,
                       DenseTensor *XScale_unzipped) {
-  const int rows = X.dims()[0];
-  const int cols = X.dims()[1];
+  const int64_t rows = X.dims()[0];
+  const int64_t cols = X.dims()[1];
+  PADDLE_ENFORCE_LE(
+      rows,
+      std::numeric_limits<int32_t>::max(),
+      common::errors::InvalidArgument("X.dims()[0] should be less than "
+                                      "INT_MAX, received X.dims()[0]: (%ld)",
+                                      rows));
+  PADDLE_ENFORCE_LE(
+      cols,
+      std::numeric_limits<int32_t>::max(),
+      common::errors::InvalidArgument("X.dims()[1] should be less than "
+                                      "INT_MAX, received X.dims()[1]: (%ld)",
+                                      cols));
   PADDLE_ENFORCE_LE(
       num_experts,
       MAX_NUM_EXPERTS,
@@ -256,7 +268,13 @@ void MoePermuteKernel(const Context &dev_ctx,
           "value.",
           MAX_NUM_EXPERTS,
           num_experts));
-  const int quanted_cols = (XScale) ? XScale.get_ptr()->dims()[1] : 0;
+  const int64_t quanted_cols = (XScale) ? XScale.get_ptr()->dims()[1] : 0;
+  PADDLE_ENFORCE_LE(
+      quanted_cols,
+      std::numeric_limits<int32_t>::max(),
+      common::errors::InvalidArgument("quanted_cols should be less than "
+                                      "INT_MAX, received quanted_cols: (%ld)",
+                                      quanted_cols));
 
   // Expert base offset initialization, tensor numeric range [0, max_token_num]
   int expert_offset[MAX_NUM_EXPERTS];
@@ -281,12 +299,20 @@ void MoePermuteKernel(const Context &dev_ctx,
                                              dev_ctx.stream()));
   // ------------------- resource allocate -------------------------
   const int output_rows = tokens_cumulated;
-  const int topk = expert_routemap_topk.dims()[1];
+  const int64_t topk = expert_routemap_topk.dims()[1];
+  PADDLE_ENFORCE_LE(
+      topk,
+      std::numeric_limits<int32_t>::max(),
+      common::errors::InvalidArgument(
+          "topk should be less than INT_MAX, received topk: (%ld)", topk));
   token_prob_unzipped->Resize({output_rows});
   if (do_gather) {  // no gather, no resize.
     X_unzipped->Resize({output_rows, cols});
     if (XScale) {
-      const int quanted_cols = XScale.get_ptr()->dims()[1];
+      // TODO(large-tensor): downstream functors may still use int; guard until
+      // upgraded.
+      int64_t quanted_cols = XScale.get_ptr()->dims()[1];
+
       XScale_unzipped->Resize({output_rows, quanted_cols});
     }
   }
@@ -302,7 +328,7 @@ void MoePermuteKernel(const Context &dev_ctx,
 
   // -------- Memset all padding area to zero, with regard to do_gather
   auto memset_invalid_rows =
-      [&](auto *ptr, int64_t element_size, int64_t stride) {
+      [&](void *ptr, int64_t element_size, int64_t stride) {
         for (int i = 0; i < num_experts; i++) {
           int64_t next_expert_offset =
               i < num_experts - 1 ? expert_offset[i + 1] : output_rows;
@@ -346,11 +372,11 @@ void MoePermuteKernel(const Context &dev_ctx,
                                            token_prob_unzipped,
                                            XScale_unzipped,
                                            &global_expertwise_block_cumsum,
-                                           rows,
-                                           cols,
-                                           topk,
+                                           static_cast<int>(rows),
+                                           static_cast<int>(cols),
+                                           static_cast<int>(topk),
                                            num_experts,
-                                           quanted_cols,
+                                           static_cast<int>(quanted_cols),
                                            do_gather);
 }
 #undef CUMSUM_BLOCK_SIZE

@@ -330,7 +330,7 @@ static inline void CopyStride(
 
   coalesce_dimensions<N>(ndim, strides_array, &stride_size, desired_shape);
 
-  int num = 1;
+  int64_t num = 1;
   for (size_t i = 0; i < desired_shape->size(); i++) {
     num *= (*desired_shape)[i];
   }
@@ -385,7 +385,7 @@ static inline void IndexPutStride(
 
   coalesce_dimensions<N>(ndim, strides_array, &stride_size, desired_shape);
 
-  int num = 1;
+  int64_t num = 1;
   for (size_t i = 0; i < desired_shape->size(); i++) {
     num *= (*desired_shape)[i];
   }
@@ -444,7 +444,7 @@ static inline void IndexGetStride(
 
   coalesce_dimensions<N>(ndim, strides_array, &stride_size, desired_shape);
 
-  int num = 1;
+  int64_t num = 1;
   for (size_t i = 0; i < desired_shape->size(); i++) {
     num *= (*desired_shape)[i];
   }
@@ -539,8 +539,8 @@ static inline void ScatterAddStride(
 
   coalesce_dimensions<N>(ndim, strides_array, &stride_size, desired_shape);
 
-  int num = 1;
-  for (int i = 0; i < desired_shape->size(); i++) {
+  int64_t num = 1;
+  for (size_t i = 0; i < desired_shape->size(); i++) {
     num *= (*desired_shape)[i];
   }
   *numel = num;

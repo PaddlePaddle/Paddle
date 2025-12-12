@@ -92,11 +92,11 @@ void SyncBatchNormKernel(const Context& dev_ctx,
     auto* stats = reinterpret_cast<BatchNormParamType<T>*>(stats_data);
     const int threads = 512;
     int grid = std::min(C, (max_threads + threads - 1) / threads);
-    if (layout == phi::DataLayout::kNCHW) {
-      KeLocalStats<T, threads, phi::DataLayout::kNCHW>
+    if (layout == phi::DataLayout::NCHW) {
+      KeLocalStats<T, threads, phi::DataLayout::NCHW>
           <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     } else {
-      KeLocalStats<T, threads, phi::DataLayout::kNHWC>
+      KeLocalStats<T, threads, phi::DataLayout::NHWC>
           <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     }
 
@@ -119,8 +119,9 @@ void SyncBatchNormKernel(const Context& dev_ctx,
         dev_ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
 
     int64_t reserve_space_size = 0;
+    phi::DenseTensor tmp_reserve_space;
     if (reserve_space == nullptr) {
-      reserve_space = new DenseTensor();
+      reserve_space = &tmp_reserve_space;
     }
     reserve_space->Resize({reserve_space_size});
     dev_ctx.template Alloc<T>(reserve_space);
@@ -146,8 +147,8 @@ void SyncBatchNormKernel(const Context& dev_ctx,
   int grid2 =
       (std::min(x_numel, static_cast<int64_t>(max_threads)) + block - 1) /
       block;
-  if (layout == phi::DataLayout::kNCHW) {
-    KeNormAffine<T, phi::DataLayout::kNCHW>
+  if (layout == phi::DataLayout::NCHW) {
+    KeNormAffine<T, phi::DataLayout::NCHW>
         <<<grid2, block, 0, stream>>>(x_d,
                                       s_d,
                                       b_d,
@@ -159,7 +160,7 @@ void SyncBatchNormKernel(const Context& dev_ctx,
                                       x_numel,
                                       y_d);
   } else {
-    KeNormAffine<T, phi::DataLayout::kNHWC>
+    KeNormAffine<T, phi::DataLayout::NHWC>
         <<<grid2, block, 0, stream>>>(x_d,
                                       s_d,
                                       b_d,

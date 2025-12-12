@@ -14,6 +14,7 @@
 
 from .cpp_extension import (
     CUDA_HOME,  # noqa: F401
+    IS_WINDOWS,  # noqa: F401
     BuildExtension,  # noqa: F401
     CppExtension,
     CUDAExtension,

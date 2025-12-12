@@ -371,8 +371,8 @@ __global__ void __launch_bounds__(512)
   // 1. Load 128x128 block of input.
   bf16x4_t x[8];
   for (uint32_t i = 0; i < 8; i++) {
-    size_t col_idx = block_offset_y + threadIdx.y + i * 16;
-    size_t row_idx = block_offset_x + threadIdx.x * 4;
+    size_t col_idx = block_offset_y + static_cast<size_t>(threadIdx.y) + i * 16;
+    size_t row_idx = block_offset_x + static_cast<size_t>(threadIdx.x) * 4;
     size_t idx = col_idx * rows + row_idx;
     x[i] = *reinterpret_cast<const bf16x4_t *>(input + idx);
   }
@@ -385,7 +385,8 @@ __global__ void __launch_bounds__(512)
     // 3. Write 1x128 scale.
     if (threadIdx.y < 4) {
       float scale_out = 1.0f / block_scale[threadIdx.y * 32 + threadIdx.x];
-      size_t col_idx = block_offset_y + threadIdx.y * 32 + threadIdx.x;
+      size_t col_idx = block_offset_y + static_cast<size_t>(threadIdx.y) * 32 +
+                       static_cast<size_t>(threadIdx.x);
       size_t row_idx = blockIdx.x;
       if constexpr (output_scale_transpose) {
         scale[row_idx * quanted_rows + col_idx] = scale_out;
@@ -396,8 +397,9 @@ __global__ void __launch_bounds__(512)
 
     // 4. Do quantization on X and write 128x128 output.
     for (uint32_t i = 0; i < 8; i++) {
-      size_t col_idx = block_offset_y + threadIdx.y + i * 16;
-      size_t row_idx = block_offset_x + threadIdx.x * 4;
+      size_t col_idx =
+          block_offset_y + static_cast<size_t>(threadIdx.y) + i * 16;
+      size_t row_idx = block_offset_x + static_cast<size_t>(threadIdx.x) * 4;
       size_t idx = col_idx * rows + row_idx;
       float scale_val = block_scale[i * 16 + threadIdx.y];
       fp8x4_t data;
@@ -418,7 +420,8 @@ __global__ void __launch_bounds__(512)
     if (threadIdx.y < 4) {
       float scale_out = 1.0f / block_scale[threadIdx.y * 32 + threadIdx.x];
       size_t col_idx = blockIdx.y;
-      size_t row_idx = block_offset_x + threadIdx.y * 32 + threadIdx.x;
+      size_t row_idx = block_offset_x + static_cast<size_t>(threadIdx.y) * 32 +
+                       static_cast<size_t>(threadIdx.x);
       if constexpr (output_scale_transpose) {
         scale_transposed[col_idx * quanted_cols + row_idx] = scale_out;
       } else {
@@ -439,8 +442,9 @@ __global__ void __launch_bounds__(512)
 
     // 8. Write 128x128 transposed output.
     for (uint32_t i = 0; i < 8; i++) {
-      size_t row_idx = block_offset_x + threadIdx.y + i * 16;
-      size_t col_idx = block_offset_y + threadIdx.x * 4;
+      size_t row_idx =
+          block_offset_x + static_cast<size_t>(threadIdx.y) + i * 16;
+      size_t col_idx = block_offset_y + static_cast<size_t>(threadIdx.x) * 4;
       size_t idx = row_idx * cols + col_idx;
       fp8x4_t data;
       for (uint32_t j = 0; j < 4; j++) {

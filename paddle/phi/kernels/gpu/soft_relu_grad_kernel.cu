@@ -55,8 +55,7 @@ void SoftReluGradCudaKernel(const Context& dev_ctx,
 
   // Only need forward output Out
   ins.push_back(&out_in);
-  phi::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
-      dev_ctx, ins, &outs, functor);
+  funcs::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins, &outs, functor);
 }
 }  // namespace phi
 

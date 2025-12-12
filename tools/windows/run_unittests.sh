@@ -127,7 +127,6 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_fused_matmul_bias$|\
 ^test_tensordot$|\
 ^test_cuda_graph$|\
-^test_cuda_graph_partial_graph_static_run$|\
 ^test_cuda_graph_static_mode$|\
 ^test_matrix_rank_op$|\
 ^test_sparse_pca_lowrank$|\
@@ -171,6 +170,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_conv3d_layer$|\
 ^test_decorator$|\
 ^test_flash_attention$|\
+^test_compat_scaled_dot_product_attention$|\
 ^test_flash_attention_deterministic$|\
 ^test_conv3d_onednn_op$|\
 ^test_functional_conv2d$|\
@@ -288,6 +288,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_trt_convert_p_norm$|\
 ^new_profiler_test$|\
 ^save_load_version_compat_test$|\
+^test_weight_decay$|\
 ^disable_wingpu_cuda12_test$"
 
 # /*=================Fixed Disabled Windows TRT MKL unittests=======================*/
@@ -418,7 +419,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^disable_win_inference_test$|\
 ^test_imperative_double_grad$|\
 ^test_comp_eager_matmul_double_grad$|\
-^test_cuda_graph_partial_graph_static_run$|\
 ^test_imperative_triple_grad$|\
 ^test_mul_op$|\
 ^test_quant_linear_op$|\
@@ -453,6 +453,8 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_memory_efficient_attention$|\
 ^test_fused_flash_attn_pass$|\
 ^test_convert_mea_2_fa_pass$|\
+^test_flash_attention$|\
+^test_compat_scaled_dot_product_attention$|\
 ^test_flash_attention_deterministic$|\
 ^test_map_op_another_pass$|\
 ^test_conv2d_add_fuse_pass$|\

@@ -83,6 +83,34 @@
     func: beam_search_decode
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : bicubic_interp
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
+  output : Tensor(output)
+  infer_meta :
+    func : InterpolateInferMeta
+  optional: out_size, size_tensor, scale_tensor
+  kernel :
+    func : bicubic_interp
+    data_type : x
+  backward : bicubic_interp_grad
+  data_transform :
+    skip_transform : out_size, size_tensor, scale_tensor
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : bilinear_interp
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
+  output : Tensor(output)
+  infer_meta :
+    func : InterpolateInferMeta
+  optional: out_size, size_tensor, scale_tensor
+  kernel :
+    func : bilinear_interp
+    data_type : x
+  backward : bilinear_interp_grad
+  data_transform :
+    skip_transform : out_size, size_tensor, scale_tensor
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
 - op : comm_init_all
   args : (int[] devices={}, int ring_id=0)
   output :
@@ -342,6 +370,15 @@
     data_type : dtype > x
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : fused_softplus
+  args : (Tensor x, float beta=1.0, float threshold=20.0, str fuse_activation="", float fuse_alpha=0.0, float fuse_beta=0.0)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedExceptDtypeInferMeta
+    param : [x]
+  kernel :
+    func : fused_softplus
+
 - op : gaussian
   args : (IntArray shape = {}, float mean = .0f, float std = 1.0f, int seed = 0, DataType dtype = DataType::FLOAT32)
   output: Tensor(out)
@@ -412,6 +449,19 @@
     func : kthvalue
   backward : kthvalue_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
+- op : leaky_relu
+  args : (Tensor x, float negative_slope = 0.02)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : leaky_relu
+  inplace: (x -> out)
+  backward : leaky_relu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+  traits: pir::UnaryElementWiseTrait
 
 - op : legacy_bilinear_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float scale=0.0, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
@@ -501,6 +551,20 @@
     force_backend : force_cpu
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : linear_interp
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
+  output : Tensor(output)
+  infer_meta :
+    func : InterpolateInferMeta
+  optional: out_size, size_tensor, scale_tensor
+  kernel :
+    func : linear_interp
+    data_type : x
+  backward : linear_interp_grad
+  data_transform :
+    skip_transform : out_size, size_tensor, scale_tensor
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : linspace
   args : (Tensor start, Tensor stop, Tensor number, DataType dtype)
   output : Tensor(out)
@@ -512,6 +576,20 @@
     param: [start, stop, number, dtype]
     data_type : dtype
   traits : paddle::dialect::ForwardOnlyTrait
+
+- op : logit
+  args : (Tensor x, float eps = 1e-6f)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+    spmd_rule : LogitInfoSpmd
+  kernel :
+    func : logit
+  inplace: (x -> out)
+  backward : logit_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+  traits: pir::UnaryElementWiseTrait
 
 - op : lp_pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", float norm_type = 0.0f)
@@ -608,6 +686,20 @@
     func : minimum
   backward : minimum_grad
 
+- op : nearest_interp
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
+  output : Tensor(output)
+  infer_meta :
+    func : InterpolateInferMeta
+  optional: out_size, size_tensor, scale_tensor
+  kernel :
+    func : nearest_interp
+    data_type : x
+  backward : nearest_interp_grad
+  data_transform :
+    skip_transform : out_size, size_tensor, scale_tensor
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
 - op : norm
   args : (Tensor x, int axis, float epsilon=1.0e-10f, bool is_test=false)
   output : Tensor(out), Tensor(norm)
@@ -687,6 +779,16 @@
     param : [x, peer, dynamic_shape]
     data_type : x
   traits : paddle::dialect::ForwardOnlyTrait
+
+- op : pad3d
+  args : (Tensor x, IntArray paddings, str mode = "constant", float pad_value = 0.0, str data_format = "NCDHW")
+  output : Tensor(out)
+  infer_meta :
+    func : Pad3dInferMeta
+  kernel :
+    func : pad3d
+  backward : pad3d_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", bool use_cudnn = false)
@@ -853,6 +955,19 @@
   inplace : (x -> out)
   backward : softmax_grad
 
+- op : softplus
+  args : (Tensor x, float beta = 1.0, float threshold = 20.0f)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+    spmd_rule : SoftplusInfoSpmd
+  kernel :
+    func : softplus
+  backward : softplus_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+  traits: pir::UnaryElementWiseTrait
+
 - op : sparse_momentum
   args: (Tensor param, Tensor grad, Tensor velocity, Tensor index, Tensor learning_rate, Tensor master_param,float mu, Scalar axis=0, bool use_nesterov=false,str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f)
   output: Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
@@ -912,6 +1027,17 @@
     func : swish
   backward : swish_grad
 
+- op : top_p_sampling
+  args : (Tensor x, Tensor ps, Tensor threshold, Tensor topp_seed, int seed=-1, int k=0, str mode="truncate")
+  output : Tensor (out), Tensor(ids), Tensor(topk_scores), Tensor(topk_ids)
+  infer_meta :
+    func : TopPSamplingInferMeta
+  kernel :
+    func : top_p_sampling
+    data_type : x
+  optional : threshold, topp_seed, topk_scores, topk_ids
+  traits : paddle::dialect::ForwardOnlyTrait
+
 - op : topk_v1
   args : (Tensor x, Scalar(int) k = 1)
   output : Tensor(out), Tensor(indices)
@@ -952,6 +1078,20 @@
   kernel :
     func : tril_triu
   backward : tril_triu_grad
+
+- op : trilinear_interp
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
+  output : Tensor(output)
+  infer_meta :
+    func : InterpolateInferMeta
+  optional: out_size, size_tensor, scale_tensor
+  kernel :
+    func : trilinear_interp
+    data_type : x
+  backward : trilinear_interp_grad
+  data_transform :
+    skip_transform : out_size, size_tensor, scale_tensor
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : triu_indices
   args : (int row = 0, int col = 0, int offset = 0, DataType dtype = DataType::INT64)

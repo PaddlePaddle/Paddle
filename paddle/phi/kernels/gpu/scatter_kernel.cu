@@ -51,10 +51,10 @@ void ScatterKernel(const Context &dev_ctx,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
   if (index_type == phi::DataType::INT32) {
-    phi::funcs::GPUScatterAssign<T, int32_t>(
+    funcs::GPUScatterAssign<T, int32_t>(
         dev_ctx, updates, index, out, overwrite);
   } else {
-    phi::funcs::GPUScatterAssign<T, int64_t>(
+    funcs::GPUScatterAssign<T, int64_t>(
         dev_ctx, updates, index, out, overwrite);
   }
 }

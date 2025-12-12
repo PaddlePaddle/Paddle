@@ -58,15 +58,15 @@ void LuSolveKernel(const Context& dev_ctx,
     auto* out_data_item = &out_data[i * lda * nrhs_int];
     auto* lu_data_item = &lu_data[i * ldb * n_int];
     auto* pivots_data_item = &pivots_data[i * n_int];
-    phi::funcs::lapackLuSolve<T>(trans_char,
-                                 n_int,
-                                 nrhs_int,
-                                 lu_data_item,
-                                 lda,
-                                 pivots_data_item,
-                                 out_data_item,
-                                 ldb,
-                                 &info);
+    funcs::lapackLuSolve<T>(trans_char,
+                            n_int,
+                            nrhs_int,
+                            lu_data_item,
+                            lda,
+                            pivots_data_item,
+                            out_data_item,
+                            ldb,
+                            &info);
     PADDLE_ENFORCE_EQ(
         info,
         0,

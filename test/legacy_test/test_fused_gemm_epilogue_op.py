@@ -82,7 +82,7 @@ class TestFuseGemmBase(OpTest):
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or not is_rocm_gfx928(),
+    or is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMMFP16(TestFuseGemmBase):
@@ -120,7 +120,7 @@ class TestFuseGemmEpilogueOpReluMMFP16(TestFuseGemmBase):
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or not is_rocm_gfx928(),
+    or is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMMFP32(TestFuseGemmEpilogueOpReluMMFP16):
@@ -144,7 +144,7 @@ class TestFuseGemmEpilogueOpReluMMFP64(TestFuseGemmEpilogueOpReluMMFP16):
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or not is_rocm_gfx928(),
+    or is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMTMFP16(TestFuseGemmBase):
@@ -185,7 +185,7 @@ class TestFuseGemmEpilogueOpReluMTMFP16(TestFuseGemmBase):
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or not is_rocm_gfx928(),
+    or is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMTMFP32(TestFuseGemmEpilogueOpReluMTMFP16):
@@ -209,7 +209,7 @@ class TestFuseGemmEpilogueOpReluMTMFP64(TestFuseGemmEpilogueOpReluMTMFP16):
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or not is_rocm_gfx928(),
+    or is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMMTFP16(TestFuseGemmBase):
@@ -250,7 +250,7 @@ class TestFuseGemmEpilogueOpReluMMTFP16(TestFuseGemmBase):
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or not is_rocm_gfx928(),
+    or is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMMTFP32(TestFuseGemmEpilogueOpReluMMTFP16):
@@ -274,7 +274,7 @@ class TestFuseGemmEpilogueOpReluMMTFP64(TestFuseGemmEpilogueOpReluMMTFP16):
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or not is_rocm_gfx928(),
+    or is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMTMTFP16(TestFuseGemmBase):
@@ -315,7 +315,7 @@ class TestFuseGemmEpilogueOpReluMTMTFP16(TestFuseGemmBase):
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or not is_rocm_gfx928(),
+    or is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMTMTFP32(TestFuseGemmEpilogueOpReluMTMTFP16):
@@ -339,7 +339,7 @@ class TestFuseGemmEpilogueOpReluMTMTFP64(TestFuseGemmEpilogueOpReluMTMTFP16):
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or not is_rocm_gfx928(),
+    or is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMMFP16MultiDimX(TestFuseGemmBase):
@@ -380,7 +380,7 @@ class TestFuseGemmEpilogueOpReluMMFP16MultiDimX(TestFuseGemmBase):
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or not is_rocm_gfx928(),
+    or is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMMFP32MultiDimX(
@@ -408,7 +408,7 @@ class TestFuseGemmEpilogueOpReluMMFP64MultiDimX(
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or not is_rocm_gfx928(),
+    or is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMTMFP16MultiDimX(TestFuseGemmBase):
@@ -418,19 +418,19 @@ class TestFuseGemmEpilogueOpReluMTMFP16MultiDimX(TestFuseGemmBase):
         self.init_dtype_type()
 
         self.inputs = {
-            'X': np.random.random((4, 2, 2, 8)).astype(self.dtype) - 0.5,
+            'X': np.random.random((2, 2, 8, 4)).astype(self.dtype) - 0.5,
             'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
             'Bias': np.random.random((128,)).astype(self.dtype) - 0.5,
         }
         self.outputs = {
             'Out': get_output(
-                self.inputs['X'].reshape((4, -1)).T,
+                self.inputs['X'].reshape((-1, 4)),
                 self.inputs['Y'],
                 self.inputs['Bias'],
                 'relu',
             ).reshape((2, 2, 8, 128))
         }
-        self.attrs = {'trans_x': True, "activation": 'relu'}
+        self.attrs = {"activation": 'relu'}
 
     def init_dtype_type(self):
         self.dtype = np.float16
@@ -449,7 +449,7 @@ class TestFuseGemmEpilogueOpReluMTMFP16MultiDimX(TestFuseGemmBase):
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or not is_rocm_gfx928(),
+    or is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMTMFP32MultiDimX(
@@ -477,7 +477,7 @@ class TestFuseGemmEpilogueOpReluMTMFP64MultiDimX(
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or not is_rocm_gfx928(),
+    or is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpGeluMMFP16(TestFuseGemmBase):
@@ -517,7 +517,7 @@ class TestFuseGemmEpilogueOpGeluMMFP16(TestFuseGemmBase):
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or not is_rocm_gfx928(),
+    or is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpGeluMMFP32(TestFuseGemmEpilogueOpGeluMMFP16):
@@ -541,7 +541,7 @@ class TestFuseGemmEpilogueOpGeluMMFP64(TestFuseGemmEpilogueOpGeluMMFP16):
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or not is_rocm_gfx928(),
+    or is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpNoneMMFP16(TestFuseGemmBase):
@@ -581,7 +581,7 @@ class TestFuseGemmEpilogueOpNoneMMFP16(TestFuseGemmBase):
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
-    or not is_rocm_gfx928(),
+    or is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpNoneMMFP32(TestFuseGemmEpilogueOpNoneMMFP16):

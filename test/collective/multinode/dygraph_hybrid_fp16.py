@@ -24,8 +24,8 @@ from paddle.distributed import fleet
 
 
 def weight_init(mp, shape, col=True, seed=1024):
-    np.random.seed(seed)
-    w = np.random.normal(0, 0.02, size=shape)
+    rng = np.random.RandomState(seed)
+    w = rng.normal(0, 0.02, size=shape)
     if mp is None:
         _w = w
     else:

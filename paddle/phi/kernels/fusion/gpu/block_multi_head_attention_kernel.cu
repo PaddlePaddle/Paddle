@@ -149,8 +149,13 @@ __global__ void QuantKernel(const data_t* input,
                             const int round_type,
                             const float max_bound,
                             const float min_bound) {
-  int n_id = (blockIdx.x * blockDim.x + threadIdx.x) << 2;
-  int m_id = blockIdx.y * blockDim.y + threadIdx.y;
+  int64_t n_id =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       static_cast<int64_t>(threadIdx.x))
+      << 2;
+  int64_t m_id =
+      static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(blockDim.y) +
+      static_cast<int64_t>(threadIdx.y);
   bool check = ((m_id < m) && (n_id < n));
 
   if (check) {
@@ -177,8 +182,13 @@ __global__ void FP8QuantKernel(const data_t* input,
                                const int round_type,
                                const float max_bound,
                                const float min_bound) {
-  int n_id = (blockIdx.x * blockDim.x + threadIdx.x) << 2;
-  int m_id = blockIdx.y * blockDim.y + threadIdx.y;
+  int64_t n_id =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       static_cast<int64_t>(threadIdx.x))
+      << 2;
+  int64_t m_id =
+      static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(blockDim.y) +
+      static_cast<int64_t>(threadIdx.y);
   bool check = ((m_id < m) && (n_id < n));
 
   if (check) {
@@ -207,8 +217,13 @@ __global__ void QuantKernel(const data_t* input,
                             const int round_type,
                             const float max_bound,
                             const float min_bound) {
-  int n_id = (blockIdx.x * blockDim.x + threadIdx.x) << 2;
-  int m_id = blockIdx.y * blockDim.y + threadIdx.y;
+  int64_t n_id =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       static_cast<int64_t>(threadIdx.x))
+      << 2;
+  int64_t m_id =
+      static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(blockDim.y) +
+      static_cast<int64_t>(threadIdx.y);
   bool check = ((m_id < m) && (n_id < n));
 
   if (check) {
@@ -253,8 +268,12 @@ __global__ void DequantKernel(T* output,
                               const int64_t n,  // hidden
                               const float* dequant_out_scale_data) {
   int64_t numel = m * n;
-  int64_t stride = blockDim.x * gridDim.x * VecSize;
-  int64_t idx = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  int64_t stride = static_cast<int64_t>(blockDim.x) *
+                   static_cast<int64_t>(gridDim.x) * VecSize;
+  int64_t idx =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       static_cast<int64_t>(threadIdx.x)) *
+      VecSize;
   int64_t col_id = idx % n;
 
   phi::AlignedVector<int32_t, VecSize> in_vec;
@@ -342,17 +361,23 @@ void DispatchWithDtype(
   const int dim_head = key_cache_dims[3];
   const int total_num_head = qkv.dims()[qkv.dims().size() - 1] / dim_head;
   const int q_num_head = total_num_head - 2 * kv_num_head;
-  const int bsz = cum_offsets.dims()[0];
-  const int max_block_per_seq = block_tables.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t bsz = cum_offsets.dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t max_block_per_seq = block_tables.dims()[1];
+
   VLOG(3) << "bsz: " << bsz << " token_num: " << token_num
           << " q_num_head: " << q_num_head << " kv_num_head: " << kv_num_head
           << " dim_head: " << dim_head
           << " max_block_per_seq: " << max_block_per_seq;
   VLOG(3) << "fmha_out_dims: " << fmha_out->dims();
 
-  bool causual = true;
+  bool causal = true;
   if (mask) {
-    causual = false;
+    causal = false;
   }
 
   bool use_pre_cache = false;
@@ -516,7 +541,7 @@ void DispatchWithDtype(
     //     qkv_buf.data<T>(), qkv_buf.numel(), "qkv_buf after",
     //     qkv_buf.numel());
     VLOG(3) << "rope end";
-    VLOG(3) << "causual: " << causual;
+    VLOG(3) << "causal: " << causal;
     if (!use_pre_cache && sm >= 80) {
       qkv_transpose_split<T>(dev_ctx,
                              unpadding_q.data<T>(),
@@ -555,12 +580,12 @@ void DispatchWithDtype(
                                       cu_seqlens_q,
                                       cu_seqlens_k,
                                       paddle::none /*fixed_seed_offset*/,
-                                      causual ? paddle::none : mask,
+                                      causal ? paddle::none : mask,
                                       max_enc_len_this_time_data,
                                       max_enc_len_this_time_data,
                                       1.0f / sqrt(static_cast<float>(dim_head)),
                                       0.0,
-                                      causual,
+                                      causal,
                                       false,
                                       true /* is_test*/,
                                       "" /*rng_name*/,
@@ -620,7 +645,7 @@ void DispatchWithDtype(
           seq_lens_encoder,
           (sm < 80 && !use_pre_cache) ? paddle::none : mask,
           1.0f / sqrt(static_cast<float>(dim_head)),
-          (sm < 80 && !use_pre_cache) ? causual : false,
+          (sm < 80 && !use_pre_cache) ? causal : false,
           pre_cache_length,
           &qktv_out);
 #elif defined(PADDLE_WITH_HIP)
@@ -653,7 +678,7 @@ void DispatchWithDtype(
           paddle::none /*fixed_seed_offset*/,
           paddle::none /*mask*/,
           0.0,
-          is_precache_infer ? false : causual /*precache_infer_casual*/,
+          is_precache_infer ? false : causal /*precache_infer_causal*/,
           false,
           is_precache_infer /*is_test*/,
           "" /*rng_name*/,
@@ -796,8 +821,12 @@ void DispatchWithDtype(
   // VLOGMatrix(
   //     fmha_buf.data<T>(), fmha_buf.numel(), "fmha_buf", fmha_buf.numel());
   if (out_scale > 0) {
-    int m = fmha_out->dims()[0];
-    int n = fmha_out->dims()[1];
+    int m = static_cast<int>(fmha_out->dims()[0]);
+    // TODO(large-tensor): use static_cast<int> for some test
+
+    int n = static_cast<int>(fmha_out->dims()[1]);
+    // TODO(large-tensor): use static_cast<int> for some test
+
 #ifdef PADDLE_WITH_HIP
     dim3 grid(((n >> 2) + 63) / 64, (m + 7) / 8);
     dim3 block(64, 8);

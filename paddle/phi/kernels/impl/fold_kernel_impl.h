@@ -33,7 +33,7 @@ void FoldKernel(const Context& dev_ctx,
                 const std::vector<int>& paddings,
                 const std::vector<int>& dilations,
                 DenseTensor* out) {
-  const int batch_size = static_cast<int>(x.dims()[0]);
+  const int64_t batch_size = x.dims()[0];
   dev_ctx.template Alloc<T>(out);
 
   phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
@@ -48,8 +48,8 @@ void FoldKernel(const Context& dev_ctx,
                          strides[1] +
                      1;
 
-  int n_input_plane = x_dims[1];
-  int n_output_plane = n_input_plane / (kernel_sizes[0] * kernel_sizes[1]);
+  int64_t n_input_plane = x_dims[1];
+  int64_t n_output_plane = n_input_plane / (kernel_sizes[0] * kernel_sizes[1]);
 
   DDim output_shape =
       common::make_ddim({n_output_plane, output_sizes[0], output_sizes[1]});
@@ -60,7 +60,7 @@ void FoldKernel(const Context& dev_ctx,
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, out, static_cast<T>(0));
 
-  for (int i = 0; i < batch_size; i++) {
+  for (int64_t i = 0; i < batch_size; i++) {
     DenseTensor out_batch =
         out->Slice(i, i + 1).Resize(output_shape);  // im size=3
 

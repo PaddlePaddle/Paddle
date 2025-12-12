@@ -73,19 +73,24 @@ static inline common::DDim InferSizeSymdimvector(const common::DDim& a,
 
 template <typename T, typename Context>
 std::vector<phi::DenseTensor*> ExpandTensors(
-    const Context& dev_ctx, const std::vector<phi::DenseTensor*>& indices) {
+    const Context& dev_ctx,
+    const std::vector<std::unique_ptr<phi::DenseTensor>>& indices) {
   std::vector<phi::DenseTensor*> result;
   for (auto& index : indices) {
     if (index->dtype() == paddle::DataType::BOOL) {
       phi::DenseTensor bool_2_idx(phi::DataType::INT64);
       NonZeroKernel<bool, Context>(dev_ctx, *index, &bool_2_idx);
+      if (bool_2_idx.numel() == 0) {
+        std::vector<phi::DenseTensor*> empty_result;
+        return empty_result;
+      }
       for (int j = 0; j < index->dims().size(); j++) {
         SliceKernel<int64_t, Context>(
-            dev_ctx, bool_2_idx, {1}, {j}, {j + 1}, {1}, {1}, index);
-        result.emplace_back(index);
+            dev_ctx, bool_2_idx, {1}, {j}, {j + 1}, {1}, {1}, index.get());
+        result.emplace_back(index.get());
       }
     } else {
-      result.emplace_back(index);
+      result.emplace_back(index.get());
     }
   }
   return result;
@@ -146,16 +151,16 @@ struct AdvancedIndex {
   AdvancedIndex(const Context& dev_ctx,
                 const phi::DenseTensor& self,
                 const std::vector<const phi::DenseTensor*>& orig);
-  ~AdvancedIndex();
-  // this is the view, do not confused with origin input
+  ~AdvancedIndex() = default;
   phi::DenseTensor src;
-  std::vector<phi::DenseTensor*> tmp_indices;
+  std::vector<std::unique_ptr<phi::DenseTensor>> tmp_indices;
   std::vector<const phi::DenseTensor*> indices;
   std::vector<int64_t> indexed_sizes;
   std::vector<int64_t> indexed_strides;
   int64_t dims_before;
   int64_t dims_after;
   bool bool_case;
+  bool empty_index = false;
 };
 
 inline static void RestrideSrc(const phi::DenseTensor& self,
@@ -196,24 +201,21 @@ inline static void ReshapeIndexer(phi::DenseTensor* index,
 }
 
 template <typename T, typename Context>
-inline AdvancedIndex<T, Context>::~AdvancedIndex() {
-  for (const phi::DenseTensor* ptr : tmp_indices) {
-    delete ptr;
-  }
-}
-
-template <typename T, typename Context>
 inline AdvancedIndex<T, Context>::AdvancedIndex(
     const Context& dev_ctx,
     const phi::DenseTensor& self,
     const std::vector<const phi::DenseTensor*>& orig) {
   for (int i = 0; i < orig.size(); i++) {
-    phi::DenseTensor* tmp = new phi::DenseTensor();
-    *tmp = *(const_cast<phi::DenseTensor*>(orig[i]));
-    this->tmp_indices.push_back(tmp);
+    tmp_indices.emplace_back(std::make_unique<phi::DenseTensor>());
+    *(tmp_indices.back()) = *(const_cast<phi::DenseTensor*>(orig[i]));
   }
 
   auto indices = ExpandTensors<T, Context>(dev_ctx, this->tmp_indices);
+  if (indices.empty()) {
+    empty_index = true;
+    return;
+  }
+
   indices = ExpandOutplace<T, Context>(dev_ctx, indices);
   while (indices.size() < static_cast<size_t>(self.dims().size())) {
     indices.emplace_back();

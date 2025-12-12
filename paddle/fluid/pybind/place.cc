@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/dense_tensor_array.h"
+#include "paddle/fluid/framework/dlpack_tensor.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/executor_cache.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -85,12 +86,10 @@ limitations under the License. */
 #include "paddle/fluid/pybind/gloo_context_py.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
 #include "paddle/fluid/pybind/graph.h"
-#include "paddle/fluid/pybind/heter_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/io.h"
 #include "paddle/fluid/pybind/metrics_py.h"
-#include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
@@ -144,10 +143,6 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CRYPTO
 #include "paddle/fluid/pybind/crypto.h"
-#endif
-
-#if defined PADDLE_WITH_PSCORE
-#include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
 #include "paddle/common/flags.h"
@@ -268,6 +263,12 @@ void BindPlace(pybind11::module &m) {  // NOLINT
            [](phi::Place &self, const phi::CustomPlace &plug_place) {
              self = plug_place;
            })
+      .def("__dlpack_device__",
+           [](const phi::Place &self) {
+             ::DLDevice dl_device = paddle::framework::PlaceToDLDevice(self);
+             return py::make_tuple(static_cast<int32_t>(dl_device.device_type),
+                                   dl_device.device_id);
+           })
       .def("__repr__", string::to_string<const phi::Place &>)
       .def("__str__", string::to_string<const phi::Place &>);
 
@@ -308,12 +309,23 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                    phi::DeviceManager::GetDeviceCount(device_type));
                if (UNLIKELY(dev_id >= dev_count)) {
                  if (dev_count == 0) {
+#if defined(PADDLE_WITH_CUDA)
+                   LOG(ERROR)
+                       << "Cannot use " << device_type
+                       << " because there is no " << device_type
+                       << " detected on your machine."
+                       << "Please check your environment variables "
+                          "and device configuration. "
+                       << "Device type: " << device_type
+                       << ", CUDA_VISIBLE_DEVICES: "
+                       << std::getenv("CUDA_VISIBLE_DEVICES")
+#else
                    LOG(ERROR) << "Cannot use " << device_type
                               << " because there is no " << device_type
-                              << " detected on your "
-                                 "machine.";
-                   PADDLE_THROW(::common::errors::InvalidArgument(
-                       "use wrong place, Please check."));
+                              << " detected on your machine.";
+#endif
+                              PADDLE_THROW(::common::errors::InvalidArgument(
+                                  "use wrong place, Please check."));
                  } else {
                    LOG(ERROR) << string::Sprintf(
                        "Invalid CustomPlace(%s, %d), dev_id must "

@@ -14,14 +14,12 @@
 
 #include <string>
 #include <vector>
-
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
@@ -66,7 +64,7 @@ void LookupTableKernel(const Context &dev_ctx,
           ids[i],
           row_number,
           common::errors::InvalidArgument(
-              "Variable value (input) of OP(fluid.layers.embedding) "
+              "Variable value (input) of OP(lookup_table) "
               "expected >= 0 and < %ld, but got %ld. Please check input "
               "value.",
               row_number,
@@ -75,7 +73,7 @@ void LookupTableKernel(const Context &dev_ctx,
           ids[i],
           0,
           common::errors::InvalidArgument(
-              "Variable value (input) of OP(fluid.layers.embedding) "
+              "Variable value (input) of OP(lookup_table) "
               "expected >= 0 and < %ld, but got %ld. Please check input "
               "value.",
               row_number,

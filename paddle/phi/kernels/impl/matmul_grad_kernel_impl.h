@@ -333,10 +333,26 @@ void MatmulGradKernel(const Context& dev_ctx,
       if (dx_dims != x_help.dims()) {
         dx->Resize(dx_dims);
       }
+      // Ensure output shape matches original input shape
+      if (x.dims().size() == 1 && dx->dims().size() == 2) {
+        if (dx->dims()[1] == 1) {
+          dx->Resize({dx->dims()[0]});
+        } else if (dx->dims()[0] == 1) {
+          dx->Resize({dx->dims()[1]});
+        }
+      }
     }
     if (dy) {
       if (dy_dims != y_help.dims()) {
         dy->Resize(dy_dims);
+      }
+      // Ensure output shape matches original input shape
+      if (y.dims().size() == 1 && dy->dims().size() == 2) {
+        if (dy->dims()[1] == 1) {
+          dy->Resize({dy->dims()[0]});
+        } else if (dy->dims()[0] == 1) {
+          dy->Resize({dy->dims()[1]});
+        }
       }
     }
   } else {
@@ -476,6 +492,14 @@ void MatmulGradKernel(const Context& dev_ctx,
             dev_ctx, dx_help, dx, dx_reduce_dims);
       }
       dx->Resize(x.dims());
+      // Ensure output shape matches original input shape
+      if (x.dims().size() == 1 && dx->dims().size() == 2) {
+        if (dx->dims()[1] == 1) {
+          dx->Resize({dx->dims()[0]});
+        } else if (dx->dims()[0] == 1) {
+          dx->Resize({dx->dims()[1]});
+        }
+      }
     }
     if (dy) {
       if (dy_reduce_dims.empty()) {
@@ -485,6 +509,14 @@ void MatmulGradKernel(const Context& dev_ctx,
             dev_ctx, dy_help, dy, dy_reduce_dims);
       }
       dy->Resize(y.dims());
+      // Ensure output shape matches original input shape
+      if (y.dims().size() == 1 && dy->dims().size() == 2) {
+        if (dy->dims()[1] == 1) {
+          dy->Resize({dy->dims()[0]});
+        } else if (dy->dims()[0] == 1) {
+          dy->Resize({dy->dims()[1]});
+        }
+      }
     }
     // Get the OutputGrad(out)
   }

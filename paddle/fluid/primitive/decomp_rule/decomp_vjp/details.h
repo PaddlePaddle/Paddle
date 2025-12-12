@@ -1390,6 +1390,16 @@ void matmul_grad(const Tensor& x,
     } else {
       set_output<T>(x_grad_out, x_grad);
     }
+
+    // Ensure output shape matches original input shape for 1-D inputs
+    if (x_rank == 1 && x_grad_out.dims().size() == 2) {
+      if (x_grad_out.dims()[1] == 1) {
+        x_grad_out = squeeze<T>(x_grad_out, {1});
+      } else if (x_grad_out.dims()[0] == 1) {
+        x_grad_out = squeeze<T>(x_grad_out, {0});
+      }
+      set_output<T>(x_grad_out, x_grad);
+    }
   }
 
   if (y_grad) {
@@ -1413,6 +1423,16 @@ void matmul_grad(const Tensor& x,
       y_grad_out = reduce_as<T>(y_grad_out, temp_y_unsqueeze);
       set_output<T>(y_grad_out, y_grad);
     } else {
+      set_output<T>(y_grad_out, y_grad);
+    }
+
+    // Ensure output shape matches original input shape for 1-D inputs
+    if (y_rank == 1 && y_grad_out.dims().size() == 2) {
+      if (y_grad_out.dims()[1] == 1) {
+        y_grad_out = squeeze<T>(y_grad_out, {1});
+      } else if (y_grad_out.dims()[0] == 1) {
+        y_grad_out = squeeze<T>(y_grad_out, {0});
+      }
       set_output<T>(y_grad_out, y_grad);
     }
   }
@@ -1736,8 +1756,14 @@ void instance_norm_grad(const Tensor& x,
                         Tensor* x_grad,
                         Tensor* scale_grad,
                         Tensor* bias_grad) {
-  const int n = x.dims()[0];
-  const int c = x.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t n = x.dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t c = x.dims()[1];
+
   InstanceNormDecompHelper<T> decomp_helper(x);
 
   std::vector<int64_t> reduce_axes = decomp_helper.GetReduceAxis();
@@ -2102,12 +2128,14 @@ void hardswish_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
 template <typename T>
 void leaky_relu_grad(const Tensor& out,
                      const Tensor& out_grad,
-                     float negative_slope,
+                     double negative_slope,
                      Tensor* x_grad) {
   if (x_grad) {
     auto zero = full_scalar<T>(0.0, out.dtype());
+    // to avoid negative_slope from being converted to float by scale operation
+    auto negative_slope_tensor = full_scalar<T>(negative_slope, out.dtype());
     auto condition = greater_than<T>(out, zero);
-    auto res = where<T>(condition, out_grad, out_grad * negative_slope);
+    auto res = where<T>(condition, out_grad, out_grad * negative_slope_tensor);
     set_output<T>(res, x_grad);
   }
 }

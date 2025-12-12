@@ -36,7 +36,8 @@ void TDMChildInner(const Context &dev_ctx,
   int node_nums = info_dims[0];
   int length = info_dims[1];
 
-  int input_ids_num = input.numel();
+  int64_t input_ids_num = input.numel();
+
   VLOG(4) << "TDM child op: input numel ->  " << input_ids_num;
 
   std::vector<OutT> child_vec{};
@@ -46,7 +47,7 @@ void TDMChildInner(const Context &dev_ctx,
   auto *tree_info_data = tree_info.data<InfoT>();
 
   // TreeInfo: node_id : item_id; layer_id; ancestor_id; child_id
-  for (int input_ids = 0; input_ids < input_ids_num; ++input_ids) {
+  for (int64_t input_ids = 0; input_ids < input_ids_num; ++input_ids) {
     PADDLE_ENFORCE_LT(
         input_data[input_ids],
         node_nums,
@@ -66,6 +67,8 @@ void TDMChildInner(const Context &dev_ctx,
             node_nums,
             input_data[input_ids]));
 
+    // TODO(large-tensor): array index not support int64
+    PADDLE_ENFORCE_LE_INT_MAX(input_data[input_ids], "input_data[input_ids]");
     bool has_child =
         (input_data[input_ids] == 0 ||
          tree_info_data[static_cast<int>(input_data[input_ids]) * length + 3] ==
@@ -79,6 +82,8 @@ void TDMChildInner(const Context &dev_ctx,
             tree_info_data[static_cast<int>(input_data[input_ids]) * length +
                            3 + child_ids]);
         child_vec.push_back(child_id);
+        // TODO(large-tensor): array index not support int64
+        PADDLE_ENFORCE_LE_INT_MAX(child_id, "child_id");
         OutT child_is_item = static_cast<OutT>(
             tree_info_data[static_cast<int>(child_id) * length] == 0 ? 0 : 1);
         item_mask_vec.push_back(child_is_item);

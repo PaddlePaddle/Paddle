@@ -255,5 +255,43 @@ class TestUniformRandomInplaceGrad(unittest.TestCase):
         self.run_()
 
 
+class TestUniformInplaceAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shape = [10, 10]
+        self.dtype = "float32"
+        self.init_data()
+
+    def init_data(self):
+        self.min_v = 0.0
+        self.max_v = 1.0
+        self.seed = 123
+
+    def _check_range(self, tensor, min_val, max_val):
+        np_res = tensor.numpy()
+        self.assertTrue(np.all(np_res >= min_val))
+        self.assertTrue(np.all(np_res <= max_val))
+        self.assertNotEqual(np.std(np_res), 0)
+
+    def test_dygraph_Compatibility(self):
+        # Position args
+        x1 = paddle.zeros(self.shape, dtype=self.dtype)
+        out1 = x1.uniform_(self.min_v, self.max_v, self.seed)
+        self._check_range(out1, self.min_v, self.max_v)
+        # Key words args
+        x2 = paddle.zeros(self.shape, dtype=self.dtype)
+        out2 = x2.uniform_(min=self.min_v, max=self.max_v, seed=self.seed)
+        self._check_range(out2, self.min_v, self.max_v)
+        # Key words args for Alias
+        x3 = paddle.zeros(self.shape, dtype=self.dtype)
+        kwargs_alias = {"from": self.min_v, "to": self.max_v, "seed": self.seed}
+        out3 = x3.uniform_(**kwargs_alias)
+        self._check_range(out3, self.min_v, self.max_v)
+        # Default parameters
+        x4 = paddle.zeros(self.shape, dtype=self.dtype)
+        out4 = x4.uniform_()
+        self._check_range(out4, 0, 1)
+
+
 if __name__ == '__main__':
     unittest.main()

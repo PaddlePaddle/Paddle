@@ -46,10 +46,6 @@ MIOPEN_DNN_ROUTINE_EACH_R6(DEFINE_WRAP);
 MIOPEN_DNN_ROUTINE_EACH_R7(DEFINE_WRAP);
 #endif
 
-#ifdef MIOPEN_DNN_ROUTINE_EACH_AFTER_R7
-MIOPEN_DNN_ROUTINE_EACH_AFTER_R7(DEFINE_WRAP);
-#endif
-
 bool HasCUDNN() {
   std::call_once(miopen_dso_flag,
                  []() { miopen_dso_handle = GetCUDNNDsoHandle(); });

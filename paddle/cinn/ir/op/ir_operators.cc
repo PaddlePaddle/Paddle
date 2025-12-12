@@ -377,7 +377,7 @@ static IndexExpr SimplifyAdd(const IndexExpr &lhs, const IndexExpr &rhs) {
 
   // 3 + d0 ===> d0 + 3.
   // d0 + (d1 + d2) ===> (d1 + d2) + d0.
-  if (!optim::ComparePriority(lhs, rhs)) {
+  if (optim::ComparePriority(lhs, rhs) == -1) {
     return rhs + lhs;
   }
 
@@ -525,7 +525,7 @@ static IndexExpr SimplifyMul(const IndexExpr &lhs, const IndexExpr &rhs) {
 
   // 3 * d0 ===> d0 * 3.
   // d0 * (d1 + d2) ===> (d1 + d2) * d0.
-  if (!optim::ComparePriority(lhs, rhs)) {
+  if (optim::ComparePriority(lhs, rhs) == -1) {
     return rhs * lhs;
   }
 

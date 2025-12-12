@@ -41,7 +41,7 @@
 #include <hip/hip_runtime.h>
 #endif
 
-#if defined(__CUDACC__) && CUDA_VERSION >= 7050
+#if defined(__CUDACC__)
 #define PADDLE_CUDA_FP16
 #include <cuda_fp16.h>
 #endif

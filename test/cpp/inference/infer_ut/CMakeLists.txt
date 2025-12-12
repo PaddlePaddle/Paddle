@@ -97,13 +97,7 @@ if(WITH_GPU)
         ""
         CACHE STRING "CUDA_LIB")
     if("${CUDA_LIB}" STREQUAL "")
-      if(DEFINED ENV{CUDA_PATH})
-        set(CUDA_LIB "$ENV{CUDA_PATH}\\lib\\x64")
-      else()
-        set(CUDA_LIB
-            "C:\\Program\ Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v10.2\\lib\\x64"
-        )
-      endif()
+      set(CUDA_LIB "$ENV{CUDA_PATH}\\lib\\x64")
     endif()
     message(STATUS "Current CUDA lib path: ${CUDA_LIB}")
   endif()

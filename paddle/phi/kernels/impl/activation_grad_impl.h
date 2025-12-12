@@ -143,7 +143,7 @@ template <typename T, typename Context>
 void LeakyReluDoubleGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& ddx,
-                               float alpha,
+                               double alpha,
                                DenseTensor* ddout) {
   funcs::LeakyReluGradGradFunctor<T> leaky_relu_double_grad_functor;
   leaky_relu_double_grad_functor.alpha = alpha;
@@ -235,7 +235,7 @@ template <typename T, typename Context>
 void LogitGradKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& out_grad,
-                     float eps,
+                     double eps,
                      DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
 
@@ -607,8 +607,8 @@ void SoftplusDoubleGradKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const DenseTensor& dout,
                               const DenseTensor& ddx,
-                              float beta,
-                              float threshold,
+                              double beta,
+                              double threshold,
                               DenseTensor* dx,
                               DenseTensor* ddout) {
   if (dx) {

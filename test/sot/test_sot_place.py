@@ -41,7 +41,7 @@ def run_diff_logic_by_check_expected_place(x: paddle.Tensor):
     expected_place_str = paddle.get_device()
     if "cpu" in expected_place_str:
         return x + 1
-    elif "gpu" in expected_place_str:
+    elif expected_place_str.startswith("gpu"):
         return x + 2
     elif "xpu" in expected_place_str:
         return x + 3

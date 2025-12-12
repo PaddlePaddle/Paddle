@@ -232,8 +232,6 @@ void CudaGraphInstruction::Run() {
     cuda_graph_ = platform::EndCUDAGraphCapture();
     VLOG(4) << "Finish capturing cuda graph @" << cuda_graph_.get();
 
-    // compute the right result
-    cuda_graph_->Replay();
   } else {
     VLOG(4) << "Run interpreter without cuda graph";
     interpreter_->Run({}, false);

@@ -67,6 +67,21 @@ void ActivationGradXPUImpl(const Context& dev_ctx,
         dev_ctx, &x, nullptr, &dout, dx, functor);       \
   }
 
+#define DEFINE_XPU_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX( \
+    name, functor_class, attr)                                 \
+  template <typename T, typename Context>                      \
+  void name##GradKernel(const Context& dev_ctx,                \
+                        const DenseTensor& x,                  \
+                        const DenseTensor& dout,               \
+                        double attr,                           \
+                        DenseTensor* dx) {                     \
+    functor_class<T> functor;                                  \
+    auto attrs = functor.GetAttrs();                           \
+    *(attrs[0].second) = static_cast<float>(attr);             \
+    ActivationGradXPUImpl<T, Context, functor_class<T>>(       \
+        dev_ctx, &x, nullptr, &dout, dx, functor);             \
+  }
+
 #define DEFINE_XPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(  \
     name, functor_class, attr1, attr2)                   \
   template <typename T, typename Context>                \
@@ -660,18 +675,29 @@ DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Cos, XPUCosGradFunctor);
 DEFINE_XPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Mish,
                                                XPUMishGradFunctor,
                                                threshold);
-DEFINE_XPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
-                                               XPULeakyReluGradFunctor,
-                                               alpha);
+DEFINE_XPU_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX(LeakyRelu,
+                                                      XPULeakyReluGradFunctor,
+                                                      alpha);
 
-DEFINE_XPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(Softplus,
-                                               XPUSoftPlusGradFunctor,
-                                               beta,
-                                               threshold)
 DEFINE_XPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPOUT(HardSigmoid,
                                                  XPUHardSigmoidGradFunctor,
                                                  slope,
                                                  offset)
+
+template <typename T, typename Context>
+void SoftplusGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& dout,
+                        double beta,
+                        double threshold,
+                        DenseTensor* dx) {
+  XPUSoftPlusGradFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = static_cast<float>(beta);
+  *(attrs[1].second) = static_cast<float>(threshold);
+  ActivationGradXPUImpl<T, Context, XPUSoftPlusGradFunctor<T>>(
+      dev_ctx, &x, nullptr, &dout, dx, functor);
+}
 
 template <typename T, typename Context>
 void HardSwishGradKernel(const Context& dev_ctx,

@@ -46,7 +46,14 @@ void DequantizeLogKernel(const Context& dev_ctx,
   const float* dict_data = dict.data<float>();
   float* out_data = dev_ctx.template Alloc<float>(out);
 
-  int num = x.numel();
+  int64_t num = x.numel();
+  // big tensor currently not supported
+  PADDLE_ENFORCE_LE(num,
+                    (1LL << 31) - 1,
+                    ::common::errors::PreconditionNotMet(
+                        "x's numel too large, allowed size is 2 ^ 31 - 1 "
+                        "elements, but got %lld",
+                        num));
   int block = 512;
   int grid = (num + block - 1) / block;
 

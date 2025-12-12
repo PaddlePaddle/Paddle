@@ -232,7 +232,8 @@ class TestMaxOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+    not core.is_bfloat16_supported(get_device_place()),
+    "place does not support BF16 evaluation",
 )
 class TestMaxBfloat16(unittest.TestCase):
     def init_data(self):

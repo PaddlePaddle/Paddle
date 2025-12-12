@@ -25,7 +25,11 @@ namespace phi {
 template <typename T>
 struct LerpElementWiseDirectCUDAFunctor {
   HOSTDEVICE inline T operator()(const T x, const T y, const T weight) const {
-    return x + weight * (y - x);
+    if (abs(static_cast<float>(weight)) < 0.5f) {
+      return x + weight * (y - x);
+    } else {
+      return y - (y - x) * (static_cast<T>(1) - weight);
+    }
   }
 };
 
@@ -37,7 +41,11 @@ struct LerpScalarDirectCUDAFunctor {
       : weight_(weight) {}
 
   HOSTDEVICE inline T operator()(const T x, const T y) const {
-    return x + weight_[0] * (y - x);
+    if (abs(static_cast<float>(weight_[0])) < 0.5f) {
+      return x + weight_[0] * (y - x);
+    } else {
+      return y - (y - x) * (static_cast<T>(1) - weight_[0]);
+    }
   }
 };
 
@@ -71,7 +79,7 @@ void LerpKernel(const Context &dev_ctx,
     inputs.emplace_back(&x);
     inputs.emplace_back(&y);
     auto functor = LerpScalarDirectCUDAFunctor<T>(weight_ptr);
-    phi::funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, functor);
+    funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, functor);
   } else {
     inputs.reserve(3);
     auto functor = LerpElementWiseDirectCUDAFunctor<T>();
@@ -106,7 +114,7 @@ void LerpKernel(const Context &dev_ctx,
       inputs.emplace_back(&y);
       inputs.emplace_back(&weight);
     }
-    phi::funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, functor);
+    funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, functor);
   }
 }
 

@@ -270,13 +270,8 @@ int AnchorGeneratorPlugin::enqueue_impl(int batch_size,
 
 int AnchorGeneratorPlugin::enqueue(int batch_size,
                                    const void* const* inputs,
-#if IS_TRT_VERSION_LT(8000)
-                                   void** outputs,
-                                   void* workspace,
-#else
                                    void* const* outputs,
                                    void* workspace,
-#endif
                                    cudaStream_t stream) TRT_NOEXCEPT {
   return enqueue_impl<float>(batch_size, inputs, outputs, workspace, stream);
 }
@@ -456,7 +451,6 @@ nvinfer1::IPluginV2Ext* AnchorGeneratorPluginCreator::deserializePlugin(
   return plugin;
 }
 
-#if IS_TRT_VERSION_GE(6000)
 AnchorGeneratorPluginDynamic::AnchorGeneratorPluginDynamic(
     const nvinfer1::DataType data_type,
     const std::vector<float>& anchor_sizes,
@@ -550,11 +544,7 @@ bool AnchorGeneratorPluginDynamic::supportsFormatCombination(
   // anchor generator doesn't read input raw data, only need the shape info
   auto type = inOut[pos].type;
   auto format = inOut[pos].format;
-#if IS_TRT_VERSION_GE(7234)
   if (pos == 0) return true;
-#else
-  if (pos == 0) return format == nvinfer1::TensorFormat::kLINEAR;
-#endif
   return (type == nvinfer1::DataType::kFLOAT &&
           format == nvinfer1::TensorFormat::kLINEAR);
 }
@@ -757,7 +747,6 @@ nvinfer1::IPluginV2Ext* AnchorGeneratorPluginDynamicCreator::deserializePlugin(
   plugin->setPluginNamespace(namespace_.c_str());
   return plugin;
 }
-#endif
 
 PIRAnchorGeneratorPluginDynamic::PIRAnchorGeneratorPluginDynamic(
     const nvinfer1::DataType data_type,
@@ -852,11 +841,7 @@ bool PIRAnchorGeneratorPluginDynamic::supportsFormatCombination(
   // anchor generator doesn't read input raw data, only need the shape info
   auto type = inOut[pos].type;
   auto format = inOut[pos].format;
-#if IS_TRT_VERSION_GE(7234)
   if (pos == 0) return true;
-#else
-  if (pos == 0) return format == nvinfer1::TensorFormat::kLINEAR;
-#endif
   return (type == nvinfer1::DataType::kFLOAT &&
           format == nvinfer1::TensorFormat::kLINEAR);
 }

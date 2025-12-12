@@ -28,7 +28,7 @@ void ShapeKernel(const Context& dev_ctx,
   // Output of shape op is often fed as x to fill_constant ops
   // and we need to rotate a shape otherwise Tensors of wrong shape may be
   // allocated
-  if (OneDNNContext::tls().get_cur_paddle_data_layout() == DataLayout::kNHWC &&
+  if (OneDNNContext::tls().get_cur_paddle_data_layout() == DataLayout::NHWC &&
       x_dims.size() >= 3) {
     auto rdims = common::vectorize<int>(x_dims);
     std::rotate(rdims.begin() + 1, rdims.begin() + 2, rdims.end());

@@ -75,6 +75,7 @@ class DLDeviceType(enum.IntEnum):
     kDLWebGPU = (15,)
     kDLHexagon = (16,)
     kDLMAIA = (17,)
+    kDLTrn = (18,)
 
 
 def to_dlpack(x: Tensor) -> CapsuleType:
@@ -215,7 +216,7 @@ def from_dlpack(
 
     if hasattr(dlpack, "__dlpack__"):
         kwargs = {}
-        kwargs["max_version"] = (1, 1)
+        kwargs["max_version"] = (1, 2)
         if copy is not None:
             kwargs["copy"] = copy
 

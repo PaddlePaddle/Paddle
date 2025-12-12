@@ -34,19 +34,20 @@ class CopyMatrixRowsFunctor<phi::CPUContext, T> {
                           "got the source tensor rank is %lu. "
                           "Please check the rank of the source tensor",
                           src_dims.size()));
-    PADDLE_ENFORCE_EQ(dst_dims.size(),
-                      2UL,
-                      common::errors::InvalidArgument(
-                          "The destination tensor must be a matrix with rank, "
-                          "but got the destination tensor rank is %lu. "
-                          "Please check the rank of the destination tensor",
-                          dst_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        dst_dims.size(),
+        2UL,
+        common::errors::InvalidArgument(
+            "The destination tensor must be a matrix with rank 2, "
+            "but got the destination tensor rank is %lu. "
+            "Please check the rank of the destination tensor",
+            dst_dims.size()));
     PADDLE_ENFORCE_EQ(
         src_dims[1],
         dst_dims[1],
         common::errors::InvalidArgument(
             "The width of the source tensor and the destination tensor must be "
-            "same. But got %lu != %lu.Please check the rank of the source "
+            "same. But got %lu != %lu. Please check the rank of the source "
             "tensor",
             src_dims.size(),
             dst_dims.size()));

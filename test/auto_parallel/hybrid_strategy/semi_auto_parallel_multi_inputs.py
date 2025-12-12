@@ -57,7 +57,8 @@ class MlpModel(paddle.nn.Layer):
             )
         self.run_single_process = run_single_process
 
-    def forward(self, input1, input2):
+    def forward(self, input1, input2, extra_input1=None, extra_input2=None):
+        # extra_input1 and extra_input2 only used for test non_tensor input in shard_dataloader
         x = input1 + input2
         # x: [bs, seq_len, hidden]
         # forward on mesh0
@@ -101,7 +102,7 @@ class RandomDataset(Dataset):
         return self.num_samples
 
 
-def create_dataloader():
+def create_dataloader(collate_fn=None):
     dataset = RandomDataset(SEQ_LEN, HIDDEN_SIZE)
     sampler = BatchSampler(
         dataset,
@@ -110,6 +111,7 @@ def create_dataloader():
     dataloader = DataLoader(
         dataset,
         batch_sampler=sampler,
+        collate_fn=collate_fn,
     )
     return dataloader
 
@@ -205,8 +207,48 @@ class TestSemiAutoParallelMultiInputs:
                 loss.numpy(), self.single_process_loss, rtol=1e-06, verbose=True
             )
 
+    def test_non_tensor_input(self):
+        model = MlpModel(variable_initial_values=self.variable_initial_values)
+        opt = paddle.optimizer.AdamW(
+            learning_rate=0.001, parameters=model.parameters()
+        )
+
+        def custom_collate_fn(batch):
+            collated_batch = {
+                "inputs": [
+                    paddle.to_tensor([item["inputs"][0] for item in batch]),
+                    paddle.to_tensor([item["inputs"][1] for item in batch]),
+                    12.0,
+                ],
+                "extra_input": 12,
+                "label": paddle.to_tensor([item["label"] for item in batch]),
+            }
+            return collated_batch
+
+        self.dataloader = create_dataloader(custom_collate_fn)
+
+        dist_dataloader = dist.shard_dataloader(
+            dataloader=self.dataloader,
+            meshes=[mesh0, mesh0, mesh1],
+            shard_dims="dp",
+            input_keys=["inputs", "extra_input", "label"],
+        )
+
+        dist_opt = dist.shard_optimizer(opt)
+        for step, data in enumerate(dist_dataloader()):
+            input1, input2, extra_input1 = data["inputs"]
+            extra_input2 = data["extra_input"]
+            logits = model(input1, input2, extra_input1, extra_input2)
+            label = data["label"]
+            loss = loss_fn(logits, label)
+            loss.backward()
+            dist_opt.step()
+            dist_opt.clear_grad()
+
     def run_test_case(self):
         self.test_basic()
+        if not self._run_static:
+            self.test_non_tensor_input()
 
 
 if __name__ == '__main__':

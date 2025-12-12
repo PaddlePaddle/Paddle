@@ -198,5 +198,51 @@ class TestBoolTensor(TestFloatTensor):
         self.api = paddle.BoolTensor
 
 
+dtype_map = {
+    "Bool": ("bool", paddle.bool),
+    "Byte": ("uint8", paddle.uint8),
+    "Short": ("int16", paddle.int16),
+    "Int": ("int32", paddle.int32),
+    "Long": ("int64", paddle.int64),
+    "Half": ("float16", paddle.float16),
+    "Float": ("float32", paddle.float32),
+    "Double": ("float64", paddle.float64),
+}
+
+prefixes = [
+    "paddle.device",  # paddle.device.BoolTensor
+    "paddle.cuda",  # paddle.cuda.BoolTensor
+]
+
+
+for prefix in prefixes:
+    for name, (np_dtype, paddle_dtype) in dtype_map.items():
+        class_name = f"Test_{prefix.replace('.', '_')}_{name}Tensor"
+
+        def make_set_api_and_type(
+            api_path, np_dtype=np_dtype, paddle_dtype=paddle_dtype
+        ):
+            def _func(self):
+                self.dtype = paddle_dtype
+                self.np_dtype = np_dtype
+
+                components = api_path.split('.')
+                mod = __import__(
+                    '.'.join(components[:-1]), fromlist=[components[-1]]
+                )
+                self.api = getattr(mod, components[-1])
+
+            return _func
+
+        api_path = f"{prefix}.{name}Tensor"
+
+        test_cls = type(
+            class_name,
+            (TestFloatTensor,),
+            {"set_api_and_type": make_set_api_and_type(api_path)},
+        )
+
+        globals()[class_name] = test_cls
+
 if __name__ == "__main__":
     unittest.main()

@@ -110,7 +110,9 @@ __global__ void GetDetFromLUComplex(const T* lu_data,
                                     int64_t n,
                                     int64_t batch_size,
                                     T* out_data) {
-  int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t idx =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   if (idx < batch_size) {
     int offset_lu = idx * n * n;
     int offset_ipiv = idx * n;
@@ -176,7 +178,7 @@ struct DeterminantCudaFunctor<phi::dtype::complex<T>, Context> {
     int* gpu_info_ptr = reinterpret_cast<int*>(gpu_mat_ptr + cpu_ptrs.size());
     int* pivot_data = gpu_info_ptr + batch_size;
 
-    auto blas = phi::funcs::GetBlas<Context, phi::dtype::complex<T>>(dev_ctx);
+    auto blas = funcs::GetBlas<Context, phi::dtype::complex<T>>(dev_ctx);
     // This function performs the LU factorization of each matrix A by the
     // equation P * A = L * U. L and U are written back to original matrix A,
     // and diagonal elements of L are discarded.

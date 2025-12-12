@@ -15,20 +15,15 @@
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
-
-#include <cub/cub.cuh>  // NOLINT
 #endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
-
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
 #endif
 
-#include "paddle/phi/kernels/funcs/multihead_matmul_functor.h"
-
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
+#include "paddle/phi/kernels/funcs/multihead_matmul_functor.h"
 
 namespace phi {
 namespace funcs {
@@ -79,7 +74,7 @@ __global__ void SoftmaxKernelWithEltadd<half>(
     const int head_num,
     const int seq_len,
     const phi::funcs::warp_mask_t mask) {
-#if defined(PADDLE_WITH_CUDA) && CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+#if defined(PADDLE_WITH_CUDA)
   int qk_offset = blockIdx.x * seq_len;
   assert(blockDim.x % WARP_SIZE == 0);
 
@@ -133,9 +128,9 @@ __global__ void SoftmaxKernelWithEltadd2<half2>(
     const int head_num,
     const int seq_len,
     const phi::funcs::warp_mask_t mask) {
-// operator "+" of half only suppotted after cuda version 10.0
+// operator "+" of half only supported after cuda version 10.0
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
-#if defined(PADDLE_WITH_CUDA) && CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+#if defined(PADDLE_WITH_CUDA)
   int qk_offset = blockIdx.x * seq_len;
   int idx = threadIdx.x;
   assert(blockDim.x % WARP_SIZE == 0);
@@ -203,7 +198,7 @@ __global__ void SoftmaxKernelWithEltaddForLarge(
     const int head_num,
     const int seq_len,
     const phi::funcs::warp_mask_t mask) {
-#if defined(PADDLE_WITH_CUDA) && CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+#if defined(PADDLE_WITH_CUDA)
   int qk_offset = blockIdx.x * seq_len;
   assert(blockDim.x % WARP_SIZE == 0);
 
@@ -283,7 +278,7 @@ __global__ void SoftmaxKernelWithEltaddForLarge2(
     const int seq_len,
     const phi::funcs::warp_mask_t mask) {
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
-#if defined(PADDLE_WITH_CUDA) && CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+#if defined(PADDLE_WITH_CUDA)
 
   int qk_offset = blockIdx.x * seq_len;
   assert(blockDim.x % WARP_SIZE == 0);

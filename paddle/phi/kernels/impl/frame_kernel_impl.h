@@ -28,8 +28,9 @@ void FrameKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   const size_t x_rank = x.dims().size();
   const size_t out_rank = out->dims().size();
-  const int n_frames = (axis == 0) ? out->dims()[0] : out->dims()[out_rank - 1];
-  const int seq_length = (axis == 0) ? x.dims()[0] : x.dims()[x_rank - 1];
+  const int64_t n_frames =
+      (axis == 0) ? out->dims()[0] : out->dims()[out_rank - 1];
+  const int64_t seq_length = (axis == 0) ? x.dims()[0] : x.dims()[x_rank - 1];
   // When the number of input dims is larger than 2, it needs to copy
   // from x to resize input into 2d and output into 3d. Moreover, output
   // dims will be restored at the last step.

@@ -40,7 +40,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#if IS_TRT_VERSION_GE(6000)
 class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit QkvToContextPluginDynamic(
@@ -172,7 +171,6 @@ class QkvToContextPluginDynamicCreator : public nvinfer1::IPluginCreator {
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
 REGISTER_TRT_PLUGIN_V2(QkvToContextPluginDynamicCreator);
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

@@ -33,7 +33,7 @@ void MeanAllGradKernel(const Context& dev_ctx,
                     1UL,
                     common::errors::InvalidArgument(
                         "Mean Gradient should be scalar. But received "
-                        "Out@Grad's elements num is %d.",
+                        "Out@GRAD's elements num is %d.",
                         out_grad.numel()));
   dev_ctx.template Alloc<T>(x_grad);
 

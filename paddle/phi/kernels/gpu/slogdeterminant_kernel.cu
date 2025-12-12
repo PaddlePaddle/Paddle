@@ -159,7 +159,7 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
     int* gpu_info_ptr = reinterpret_cast<int*>(gpu_mat_ptr + cpu_ptrs.size());
     int* pivot_data = gpu_info_ptr + batch_count;
 
-    auto blas = phi::funcs::GetBlas<Context, phi::dtype::complex<T>>(dev_ctx);
+    auto blas = funcs::GetBlas<Context, phi::dtype::complex<T>>(dev_ctx);
     // This function performs the LU factorization of each matrix A by the
     // equation P * A = L * U. L and U are written back to original matrix A,
     // and diagonal elements of L are discarded.
@@ -266,7 +266,9 @@ __global__ void GetSlogDetV2FromLU(const T* lu_data,
                                    int64_t batch_size,
                                    T* sign_data,
                                    T* logdet_data) {
-  int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t idx =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   if (idx < batch_size) {
     int offset_lu = idx * n * n;
     int offset_ipiv = idx * n;
@@ -348,7 +350,7 @@ struct SlogDeterminantV2Functor {
     int* gpu_info_ptr = reinterpret_cast<int*>(gpu_mat_ptr + cpu_ptrs.size());
     int* pivot_data = gpu_info_ptr + batch_count;
 
-    auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+    auto blas = funcs::GetBlas<Context, T>(dev_ctx);
     // This function performs the LU factorization of each matrix A by the
     // equation P * A = L * U. L and U are written back to original matrix A,
     // and diagonal elements of L are discarded.
@@ -505,7 +507,7 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
     int* gpu_info_ptr = reinterpret_cast<int*>(gpu_mat_ptr + cpu_ptrs.size());
     int* pivot_data = gpu_info_ptr + batch_count;
 
-    auto blas = phi::funcs::GetBlas<Context, phi::dtype::complex<T>>(dev_ctx);
+    auto blas = funcs::GetBlas<Context, phi::dtype::complex<T>>(dev_ctx);
     // This function performs the LU factorization of each matrix A by the
     // equation P * A = L * U. L and U are written back to original matrix A,
     // and diagonal elements of L are discarded.

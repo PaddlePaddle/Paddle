@@ -121,7 +121,7 @@
 
 代码检查服从的样式，如 `google`, `freeform`。
 
-注意，Paddle 目前的代码块是在 `.. code-block:: python` 中，而 `doctest` 或 `xdoctest` 只关心是否有 PS1 (>>> ) 的包裹，`google` 样式则是只检查 `Examples:` 中的代码。这是目前主流的代码检查工具与 Paddle 不同的地方，所以，需要沿用 Paddle 目前的 `codeblock` 抽取过程。
+注意，Paddle 目前的代码块是在 `.. code-block:: pycon` 中，而 `doctest` 或 `xdoctest` 只关心是否有 PS1 (>>> ) 的包裹，`google` 样式则是只检查 `Examples:` 中的代码。这是目前主流的代码检查工具与 Paddle 不同的地方，所以，需要沿用 Paddle 目前的 `codeblock` 抽取过程。
 
 #### `target`
 
@@ -143,7 +143,7 @@
 
 - 为什么不能用 `style = google` `target = docstring` 的模式
 
-    因为，目前 Paddle 在 `Examples:` 之外的部分，也存在 `.. code-block:: python` 需要检查的代码。
+    因为，目前 Paddle 在 `Examples:` 之外的部分，也存在 `.. code-block:: pycon` 需要检查的代码。
 
 - 为什么不能用 `style = google` `target = codeblock` 的模式
 
@@ -159,7 +159,7 @@
 
 这里说明一下后续建议的示例代码书写格式。
 
-- 示例代码写在 `.. code-block:: python` 内部。
+- 示例代码写在 `.. code-block:: pycon` 内部。
 
 - 以 `>>> ` 表示代码开始，以 `... ` 表示代码的延续。
 
@@ -180,7 +180,7 @@ def something():
     """ Function summary ...
     Some description ...
 
-    .. code-block:: python
+    .. code-block:: pycon
         :name: code-example-0
 
         this is some blabla...
@@ -191,7 +191,7 @@ def something():
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-1
 
             this is some blabla...
@@ -204,9 +204,9 @@ def something():
     """
 ```
 
-错误的代码段，如， 没有正确使用 `.. code-block:: python`：
+错误的代码段，如， 没有正确使用 `.. code-block:: pycon`：
 
-``` python
+```python
 def something():
     """ Function summary ...
     Some description ...
@@ -217,7 +217,7 @@ def something():
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-1
 
             this is some blabla...
@@ -237,7 +237,7 @@ def something():
     """ Function summary ...
     Some description ...
 
-    .. code-block:: python
+    .. code-block:: pycon
         :name: code-example-0
 
         this is some blabla...
@@ -248,7 +248,7 @@ def something():
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-1
 
             this is some blabla...
@@ -269,7 +269,7 @@ def something():
     """ Function summary ...
     Some description ...
 
-    .. code-block:: python
+    .. code-block:: pycon
         :name: code-example-0
 
         this is some blabla...
@@ -280,7 +280,7 @@ def something():
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-1
 
             this is some blabla...

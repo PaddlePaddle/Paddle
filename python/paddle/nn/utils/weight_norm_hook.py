@@ -205,7 +205,7 @@ def weight_norm(layer: Layer, name: str = 'weight', dim: int = 0) -> Layer:
         Origin layer with weight norm hook.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
           >>> from paddle.nn import Conv2D
           >>> from paddle.nn.utils import weight_norm
@@ -213,9 +213,9 @@ def weight_norm(layer: Layer, name: str = 'weight', dim: int = 0) -> Layer:
           >>> conv = Conv2D(3, 5, 3)
           >>> wn = weight_norm(conv)
           >>> print(conv.weight_g.shape)
-          [5]
+          paddle.Size([5])
           >>> print(conv.weight_v.shape)
-          [5, 3, 3, 3]
+          paddle.Size([5, 3, 3, 3])
     """
     WeightNorm.apply(layer, name, dim)
     return layer

@@ -119,7 +119,7 @@ void AddStrideKernel(const Context &dev_ctx,
   }
   DenseTensor x_;
   DenseTensor y_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  if (!FLAGS_use_stride_compute_kernel || x.dtype() != y.dtype()) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -154,28 +154,8 @@ void AddStrideKernel(const Context &dev_ctx,
     out->set_meta(meta);
   }
 
-  if (x_.dtype() == phi::DataType::FLOAT32 &&
-      y_.dtype() == phi::DataType::BFLOAT16) {
-    LaunchBinaryElementwiseStrideKernel<T, Context>(
-        dev_ctx,
-        x_,
-        y_,
-        funcs::MultiPrecisionAddFunctor<T, phi::bfloat16>(),
-        -1,
-        out);
-  } else if (x_.dtype() == phi::DataType::FLOAT32 &&
-             y_.dtype() == phi::DataType::FLOAT16) {
-    LaunchBinaryElementwiseStrideKernel<T, Context>(
-        dev_ctx,
-        x_,
-        y_,
-        funcs::MultiPrecisionAddFunctor<T, phi::float16>(),
-        -1,
-        out);
-  } else {
-    LaunchBinaryElementwiseStrideKernel<T, Context>(
-        dev_ctx, x_, y_, funcs::AddFunctor<T>(), -1, out);
-  }
+  LaunchBinaryElementwiseStrideKernel<T, Context>(
+      dev_ctx, x_, y_, funcs::AddFunctor<T>(), -1, out);
 }
 
 template <typename DataT, typename ParamT>

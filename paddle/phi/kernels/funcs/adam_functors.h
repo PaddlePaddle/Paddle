@@ -34,7 +34,7 @@ using float16 = dtype::float16;
 template <typename Context, typename T1, typename T2>
 static int ConvertDataByType(const T1* x,
                              T2** y,
-                             int len,
+                             int64_t len,
                              bool allocateFlag,
                              const Context& dev_ctx,
                              xpu::ctx_guard* ctx_guard) {
@@ -69,7 +69,7 @@ static void GetDataPointer(const phi::DenseTensor& tensorData,
                            xpu::ctx_guard* ctx_guard) {
   if (tensorData.dtype() == DataType::FLOAT16) {
     const float16* real_data = tensorData.template data<float16>();
-    int len = tensorData.numel();
+    int64_t len = tensorData.numel();
 
     int r = ConvertDataByType<Context, float16, T>(
         real_data, result, len, true, dev_ctx, ctx_guard);
@@ -97,7 +97,7 @@ static void CopyOutData(const DenseTensor& srcTensor,
   if (dstTensor->dtype() == DataType::FLOAT16) {
     const T* xpu_out_data = srcTensor.template data<T>();
     float16* out_data = dev_ctx.template Alloc<float16>(dstTensor);
-    int len = srcTensor.numel();
+    int64_t len = srcTensor.numel();
 
     int r = ConvertDataByType<Context, T, float16>(
         xpu_out_data, &out_data, len, false, dev_ctx, ctx_guard);
@@ -147,7 +147,7 @@ static void Scale(phi::DenseTensor* beta_pow_out,
 
   const float* xpu_beta_pow_out_data =
       dev_ctx.template Alloc<T>(&xpu_beta_pow_out);
-  int len = xpu_beta_pow_out.numel();
+  int64_t len = xpu_beta_pow_out.numel();
 
   r = ConvertDataByType<Context, T, float16>(
       xpu_beta_pow_out_data, &beta_pow_out_p2, len, false, dev_ctx, ctx_guard);

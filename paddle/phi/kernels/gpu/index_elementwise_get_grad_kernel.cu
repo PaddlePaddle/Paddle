@@ -34,13 +34,13 @@ __global__ void IndexEleGetGradAccKernel(
     const char* in_ptr,
     char* out_ptr,
     const std::array<char*, DDim::kMaxRank> index_ptrs,
-    const std::array<int64_t, phi::DDim::kMaxRank + 1> sizes,
-    const std::array<int64_t, phi::DDim::kMaxRank + 1> strides,
+    const std::array<int64_t, DDim::kMaxRank + 1> sizes,
+    const std::array<int64_t, DDim::kMaxRank + 1> strides,
     int num_indices,
     offset_calc_t offset_calc) {
   const int tid = threadIdx.x;
   const int nv = nt * vt;
-  int idx = nv * blockIdx.x + tid;
+  int64_t idx = nv * static_cast<int64_t>(blockIdx.x) + tid;
 #pragma unroll
   for (int i = 0; i < vt; i++) {
     if (idx < N) {
@@ -63,7 +63,7 @@ __global__ void IndexEleGetGradAccKernel(
   }
 }
 
-template <typename T, typename IndexT>
+template <typename T, typename IndexT, typename OffsetT = uint32_t>
 void GPUIndexElementwiseGetGrad(const phi::GPUContext& dev_ctx,
                                 const DenseTensor& input,
                                 const DenseTensor& value,
@@ -82,8 +82,8 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& dev_ctx,
   std::vector<int64_t> stride_tmp;
   funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
 
-  auto sizes = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
-  auto strides = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
+  auto sizes = std::array<int64_t, DDim::kMaxRank + 1>{};
+  auto strides = std::array<int64_t, DDim::kMaxRank + 1>{};
   for (int64_t i = 0; i < num_indices; i++) {
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
@@ -107,14 +107,15 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& dev_ctx,
                            &strides_array,
                            &numel,
                            strides_vec);
-  auto offset_calc =
-      funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
+  auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
+      desired_shape, strides_array);
 
   const int64_t N = numel;
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);
-  const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
+  const dim3 grid((N + static_cast<int64_t>(block.x) * vt - 1) /
+                  (static_cast<int64_t>(block.x) * vt));
   auto stream = dev_ctx.stream();
 
   using dtype = funcs::OpaqueType<sizeof(T)>;
@@ -171,11 +172,12 @@ __global__ void IndexingBackwardKernel(const int64_t* sorted_indices,
   using opmath_t = typename phi::dtype::MPTypeTrait<scalar_t>::Type;
 
   for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
-    int64_t idx = blockIdx.x * blockDim.y + threadIdx.y;
+    int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.y + threadIdx.y;
     if (idx < numel &&
         (idx == 0 || sorted_indices[idx] != sorted_indices[idx - 1])) {
       do {
-        int64_t start_feature = threadIdx.x + blockIdx.y * blockDim.x * SZ;
+        int64_t start_feature =
+            threadIdx.x + static_cast<int64_t>(blockIdx.y) * blockDim.x * SZ;
         if (!accumulate && (idx < numel - 1) &&
             sorted_indices[idx] == sorted_indices[idx + 1]) {
           idx++;
@@ -221,7 +223,7 @@ __global__ void IndexingBackwardKernel(const int64_t* sorted_indices,
                   static_cast<scalar_t>(weight[ii]);
             }
           }
-          start_feature += gridDim.y * blockDim.x * SZ;
+          start_feature += static_cast<int64_t>(gridDim.y) * blockDim.x * SZ;
         }
         idx++;
       } while (idx < numel && sorted_indices[idx] == sorted_indices[idx - 1]);
@@ -244,7 +246,7 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
   DenseTensor& self = *output;
 
   if (indices.size() > static_cast<size_t>(self.dims().size())) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Too many indices for tensor of dimension %d (got %d).",
         self.dims().size(),
         indices.size()));
@@ -388,7 +390,7 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                                    const bool is_combined,
                                    DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
-  phi::funcs::set_constant(dev_ctx, x_grad, static_cast<float>(0));
+  funcs::set_constant(dev_ctx, x_grad, static_cast<float>(0));
   if (out_grad.numel() == 0) return;
 
   const auto& index_type = index[0]->dtype();
@@ -417,18 +419,31 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
     return;
 #endif
   }
-
-  GPUIndexElementwiseGetGrad<T, int64_t>(dev_ctx,
-                                         x,
-                                         out_grad,
-                                         index,
-                                         input_dims,
-                                         input_strides,
-                                         index_dims,
-                                         index_strides,
-                                         slice_offset,
-                                         accumulate,
-                                         x_grad);
+  if (funcs::IsInUint32Range(x_grad->numel(), out_grad.numel())) {
+    GPUIndexElementwiseGetGrad<T, int64_t>(dev_ctx,
+                                           x,
+                                           out_grad,
+                                           index,
+                                           input_dims,
+                                           input_strides,
+                                           index_dims,
+                                           index_strides,
+                                           slice_offset,
+                                           accumulate,
+                                           x_grad);
+  } else {
+    GPUIndexElementwiseGetGrad<T, int64_t, uint64_t>(dev_ctx,
+                                                     x,
+                                                     out_grad,
+                                                     index,
+                                                     input_dims,
+                                                     input_strides,
+                                                     index_dims,
+                                                     index_strides,
+                                                     slice_offset,
+                                                     accumulate,
+                                                     x_grad);
+  }
 }
 
 }  // namespace phi

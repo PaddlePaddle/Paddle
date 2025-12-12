@@ -41,10 +41,10 @@ void SoftmaxGradKernel(const Context& dev_ctx,
   }
 
   const int calc_axis = phi::funcs::CanonicalAxis(axis, rank);
-  int axis_dim = x_grad->dims()[calc_axis];
+  int64_t axis_dim = x_grad->dims()[calc_axis];
 
-  const int n = phi::funcs::SizeToAxis(calc_axis, x_grad->dims());
-  const int d = phi::funcs::SizeFromAxis(calc_axis, x_grad->dims());
+  const int64_t n = phi::funcs::SizeToAxis(calc_axis, x_grad->dims());
+  const int64_t d = phi::funcs::SizeFromAxis(calc_axis, x_grad->dims());
   DenseTensor dX_2d, Out_2d, dOut_2d;
   dX_2d.ShareDataWith(*x_grad).Resize({n, d});
   Out_2d.ShareDataWith(out).Resize({n, d});

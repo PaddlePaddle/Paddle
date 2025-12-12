@@ -196,18 +196,30 @@ void BlockMultiheadAttentionXPUKernel(
   const int dim_head = key_cache_dims[3];
   const int total_num_head = qkv.dims()[qkv.dims().size() - 1] / dim_head;
   const int q_num_head = total_num_head - 2 * kv_num_head;
-  const int bsz = cum_offsets.dims()[0];
-  const int max_block_per_seq = block_tables.dims()[1];
-  const int out_row = fmha_out->dims()[0];
-  const int out_col = fmha_out->dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t bsz = cum_offsets.dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t max_block_per_seq = block_tables.dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_row = fmha_out->dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_col = fmha_out->dims()[1];
+
   VLOG(3) << "bsz: " << bsz << " token_num: " << token_num
           << " q_num_head: " << q_num_head << " kv_num_head: " << kv_num_head
           << " dim_head: " << dim_head
           << " max_block_per_seq: " << max_block_per_seq;
   VLOG(3) << "fmha_out_dims: " << fmha_out->dims();
-  bool causual = true;
+  bool causal = true;
   if (mask) {
-    causual = false;
+    causal = false;
   }
   bool use_pre_cache = false;
   int pre_cache_length = 0;
@@ -324,7 +336,7 @@ void BlockMultiheadAttentionXPUKernel(
                                       &unpadding_v);
 
     VLOG(3) << "rope end";
-    VLOG(3) << "causual: " << causual;
+    VLOG(3) << "causal: " << causal;
     if (!use_pre_cache) {
       phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
                                       unpadding_q,
@@ -333,12 +345,12 @@ void BlockMultiheadAttentionXPUKernel(
                                       cu_seqlens_q,
                                       cu_seqlens_k,
                                       paddle::none /*fixed_seed_offset*/,
-                                      causual ? paddle::none : mask,
+                                      causal ? paddle::none : mask,
                                       max_enc_len_this_time_data,
                                       max_enc_len_this_time_data,
                                       1.0f / sqrt(static_cast<float>(dim_head)),
                                       0.0,
-                                      causual,
+                                      causal,
                                       false,
                                       true /* is_test*/,
                                       "" /*rng_name*/,

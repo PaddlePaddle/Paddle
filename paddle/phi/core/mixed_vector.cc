@@ -33,7 +33,21 @@ template <typename T>
 void CopyToCPUHelper(std::vector<T> *cpu_,
                      phi::Allocator::AllocationPtr *gpu_,
                      size_t *gpu_memory_size_) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  // COPY Custom Device Data To CPU
+  auto *dev_ctx = static_cast<phi::CustomContext *>(
+      phi::DeviceContextPool::Instance().Get((*gpu_)->place()));
+  auto stream = dev_ctx->stream();
+  void *src = (*gpu_)->ptr();
+  void *dst = cpu_->data();
+  memory_utils::Copy(phi::CPUPlace(),
+                     dst,
+                     OptionalCustomPlace(*gpu_).get(),
+                     src,
+                     *gpu_memory_size_,
+                     stream);
+  dev_ctx->Wait();
+#elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // COPY GPU Data To CPU
   auto *dev_ctx = static_cast<phi::GPUContext *>(
       phi::DeviceContextPool::Instance().Get((*gpu_)->place()));
@@ -55,7 +69,22 @@ void CopyCPUDataToCUDAHelper(std::vector<T> *cpu_,
                              phi::Allocator::AllocationPtr *gpu_,
                              size_t *gpu_memory_size_,
                              const phi::Place &place) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  void *src = cpu_->data();
+  *gpu_memory_size_ = cpu_->size() * sizeof(T);  // sizeof(T)
+  (*gpu_) = memory_utils::Alloc(place, *gpu_memory_size_);
+  void *dst = (*gpu_)->ptr();
+  auto *dev_ctx = static_cast<phi::CustomContext *>(
+      phi::DeviceContextPool::Instance().Get(place));
+  auto stream = dev_ctx->stream();
+  memory_utils::Copy(OptionalCustomPlace(*gpu_).get(),
+                     dst,
+                     phi::CPUPlace(),
+                     src,
+                     *gpu_memory_size_,
+                     stream);
+  dev_ctx->Wait();
+#elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void *src = cpu_->data();
   *gpu_memory_size_ = cpu_->size() * sizeof(T);  // sizeof(T)
   (*gpu_) = memory_utils::Alloc(place, *gpu_memory_size_);

@@ -152,15 +152,9 @@ class MatmulPlugin : public nvinfer1::IPluginV2IOExt {
   int initialize() TRT_NOEXCEPT { return 0; }
   void terminate() TRT_NOEXCEPT;
 
-#if IS_TRT_VERSION_LT(8000)
-  int enqueue(int batch_size,
-              const void* const* inputs,
-              void** outputs,
-#else
   int enqueue(int batch_size,
               const void* const* inputs,
               void* const* outputs,
-#endif
               void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
 
@@ -282,7 +276,6 @@ class MatmulPluginCreator : public nvinfer1::IPluginCreator {
 };
 REGISTER_TRT_PLUGIN_V2(MatmulPluginCreator);
 
-#if IS_TRT_VERSION_GE(6000)
 class MatmulPluginDynamic : public DynamicPluginTensorRT {
  public:
   MatmulPluginDynamic(bool transA, bool transB, float alpha)
@@ -446,7 +439,6 @@ class MatmulPluginDynamicCreator : public nvinfer1::IPluginCreator {
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
 REGISTER_TRT_PLUGIN_V2(MatmulPluginDynamicCreator);
-#endif
 }  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference

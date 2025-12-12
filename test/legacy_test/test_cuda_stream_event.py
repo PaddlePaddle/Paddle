@@ -87,6 +87,25 @@ class TestCUDAStream(unittest.TestCase):
 
             self.assertTrue(e1.query() and s1.query() and s2.query())
 
+    def test_cuda_stream_protocol(self):
+        if paddle.cuda.is_available() and paddle.is_compiled_with_cuda():
+            stream = paddle.cuda.Stream()
+
+            self.assertTrue(hasattr(stream, "__cuda_stream__"))
+
+            result = stream.__cuda_stream__()
+
+            self.assertIsInstance(result, tuple)
+            self.assertEqual(len(result), 2)
+            self.assertEqual(result[0], 0)  # Protocol version
+            self.assertEqual(
+                result[1], stream.stream_base.cuda_stream
+            )  # Stream handle
+
+            external_stream = paddle.cuda.get_stream_from_external(result[1], 0)
+            external_result = external_stream.__cuda_stream__()
+            self.assertEqual(result, external_result)
+
 
 class TestCUDAEvent(unittest.TestCase):
     def test_cuda_event(self):

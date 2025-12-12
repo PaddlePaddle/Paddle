@@ -41,15 +41,17 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
 
   template <typename U>
   void apply() const {
-    const int batch_size = prob_->dims()[0];
-    const int num_classes = prob_->dims()[1];
+    int64_t batch_size = prob_->dims()[0];
+
+    int64_t num_classes = prob_->dims()[1];
+
     const int num_remain = num_classes / axis_dim_;
 
     const T* prob_data = prob_->template data<T>();
     T* loss_data = out_->template data<T>();
 
     const auto* label_data = labels_->template data<U>();
-    for (int i = 0; i < batch_size; ++i) {
+    for (int64_t i = 0; i < batch_size; ++i) {
       for (int j = 0; j < num_remain; j++) {
         int lbl = static_cast<int>(label_data[i * num_remain + j]);  // NOLINT
         if (lbl != ignore_index_) {
@@ -73,8 +75,8 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
                   lbl,
                   axis_dim_));
         }
-        int index = i * num_classes + lbl * num_remain + j;
-        int loss_idx = i * num_remain + j;
+        int64_t index = i * num_classes + lbl * num_remain + j;
+        int64_t loss_idx = i * num_remain + j;
         loss_data[loss_idx] =
             lbl == ignore_index_
                 ? 0
@@ -101,6 +103,9 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
     const int ignore_index,
     const int axis_dim) {
   if (softLabel) {
+    // TODO(large-tensor): Eigen::DSizes not support int64
+    PADDLE_ENFORCE_LE_INT_MAX(prob->dims()[0], "prob->dims()[0]");
+    PADDLE_ENFORCE_LE_INT_MAX(prob->dims()[1], "prob->dims()[1]");
     const int batch_size = static_cast<const int>(prob->dims()[0]);
     const int num_classes = static_cast<const int>(prob->dims()[1]);
     const int num_remain = num_classes / axis_dim;

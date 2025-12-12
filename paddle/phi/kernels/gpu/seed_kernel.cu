@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/gpu/seed_kernel.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -19,6 +20,7 @@
 #include "paddle/phi/kernels/impl/seed_kernel_impl.h"
 
 namespace phi {
+
 template <typename T, typename Context>
 void GPUSeedKernel(const Context &dev_ctx,
                    int seed_in,
@@ -33,7 +35,7 @@ void GPUSeedKernel(const Context &dev_ctx,
     phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &dev_ctx_cpu = *pool.Get(phi::CPUPlace());
     dev_ctx_cpu.Alloc<T>(out);
-    phi::funcs::SetConstant<phi::CPUContext, T> functor;
+    funcs::SetConstant<phi::CPUContext, T> functor;
     functor(reinterpret_cast<const phi::CPUContext &>(dev_ctx_cpu),
             out,
             static_cast<T>(seed));
