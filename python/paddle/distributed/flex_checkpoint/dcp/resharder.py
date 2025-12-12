@@ -235,6 +235,7 @@ def get_read_items(
             storage_local_tensor_index = LocalTensorIndex(
                 tensor_name,
                 tuple(storage_local_tensor_metadata.global_offset),
+                local_shape=tuple(storage_local_tensor_metadata.local_shape),
             )
             src_rank, file_name = load_infos[storage_local_tensor_index]
             read_items.append(
