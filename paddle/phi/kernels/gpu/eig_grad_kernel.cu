@@ -17,6 +17,11 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/backends/dynload/cublas.h"
+#include "paddle/phi/backends/dynload/cusolver.h"
+#endif  // PADDLE_WITH_CUDA
+
 #ifdef PADDLE_WITH_HIP
 #include "hip/hip_runtime.h"
 #include "paddle/phi/backends/dynload/rocblas.h"
@@ -24,11 +29,6 @@
 #include "rocblas/rocblas.h"
 #include "rocsolver/rocsolver.h"
 #endif  // PADDLE_WITH_HIP
-
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/phi/backends/dynload/cublas.h"
-#include "paddle/phi/backends/dynload/cusolver.h"
-#endif  // PADDLE_WITH_CUDA
 
 #endif  // PADDLE_WITH_MAGMA
 
