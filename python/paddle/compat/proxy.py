@@ -590,6 +590,8 @@ def extend_torch_proxy_blocked_modules(modules: Iterable[str]) -> None:
     Modules in the blocked list will not use PyTorch proxy when imported,
     and their functions will not trigger PyTorch proxy when called.
 
+    By default, some modules are already in the blocked list, such as 'tvm_ffi'.
+
     Args:
         modules(Iterable[str]): An iterable of module names to block from PyTorch proxy.
 
