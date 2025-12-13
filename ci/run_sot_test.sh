@@ -44,7 +44,7 @@ function run_sot_test() {
     # see: https://github.com/opencv/opencv-python/issues/1155
     if [ "$PY_VERSION" == "3.14" ]; then
         echo "::group::uninstalling opencv-python for Python 3.14..."
-        output=$($PYTHON_WITH_SPECIFY_VERSION -m pip uninstall "opencv-python" 2>&1)
+        output=$($PYTHON_WITH_SPECIFY_VERSION -m pip uninstall -y "opencv-python" 2>&1)
         exit_code=$?
         echo "${output}"
         echo "::endgroup::"
