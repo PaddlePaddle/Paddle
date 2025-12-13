@@ -43,13 +43,13 @@ function run_sot_test() {
     # Only python3.14 needs to install numpy>=2.3.5, because opencv-python will downgrade numpy to 2.2.6
     # see: https://github.com/opencv/opencv-python/issues/1155
     if [ "$PY_VERSION" == "3.14" ]; then
-        echo "::group::Installing numpy for Python 3.14..."
-        output=$($PYTHON_WITH_SPECIFY_VERSION -m pip install "numpy>=2.3.5" 2>&1)
+        echo "::group::uninstalling opencv-python for Python 3.14..."
+        output=$($PYTHON_WITH_SPECIFY_VERSION -m pip uninstall "opencv-python" 2>&1)
         exit_code=$?
         echo "${output}"
         echo "::endgroup::"
         if [ $exit_code -ne 0 ]; then
-            echo "pip install numpy failed with exit code $exit_code"
+            echo "pip uninstall opencv-python failed with exit code $exit_code"
             exit $exit_code
         fi
     fi
