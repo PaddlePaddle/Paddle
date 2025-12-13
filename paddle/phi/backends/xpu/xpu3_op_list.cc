@@ -1962,6 +1962,8 @@ XPUOpMap& get_kl3_ops() {
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
                      phi::DataType::BFLOAT16})},
+      {"moe_permute", XPUKernelSet({phi::DataType::BFLOAT16})},
+      {"moe_unpermute", XPUKernelSet({phi::DataType::BFLOAT16})},
       {"fused_rms_norm_ext",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
