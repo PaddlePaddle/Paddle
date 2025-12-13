@@ -89,7 +89,6 @@ class TestNumPy(TestCaseBase):
         # size should be larger than 1024*1024, because we throw an exception
         # when the size is larger than 1024*1024 in assign API (to_tensor static branch)
         x = np.random.rand(1024, 1024, 2).astype(np.float32)
-        print("numpy version:", np.__version__)
         self.assert_results(large_numpy_array_to_tensor, x)
 
     def test_numpy_array_guard(self):
