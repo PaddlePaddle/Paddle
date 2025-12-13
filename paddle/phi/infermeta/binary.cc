@@ -4789,34 +4789,19 @@ void FusedRMSNormInferMeta(const MetaTensor& x,
 void BatchedGemmInferMeta(const MetaTensor& lhs,
                           const MetaTensor& rhs,
                           const std::vector<int64_t>& batch_sizes,
+                          const bool trans_lhs,
+                          const bool trans_rhs,
                           MetaTensor* output) {
+  const bool is_layout_invalid = (trans_lhs == true) && (trans_rhs == true);
   const auto lhs_shape = lhs.dims();
   const auto rhs_shape = rhs.dims();
-  PADDLE_ENFORCE_EQ(
-      lhs_shape.size(),
-      2,
-      common::errors::InvalidArgument(
-          "The lhs's dimension must be 2, but got[%d]", lhs_shape.size()));
-  PADDLE_ENFORCE_EQ(
-      rhs_shape.size(),
-      3,
-      common::errors::InvalidArgument(
-          "The rhs's dimension must be 3, but got[%d]", rhs_shape.size()));
-
-  // We expect shape below:
-  // [M_total, input_hidden_size] x [num_experts, input_hidden_size,
-  // output_hidden_size]
-  const int64_t num_experts = rhs_shape[0];
   const int64_t total_tokens = lhs_shape[0];
-  const int64_t input_hidden_size = lhs_shape[1];
-  const int64_t output_hidden_size = rhs_shape[2];
-  PADDLE_ENFORCE_EQ(input_hidden_size,
-                    rhs_shape[1],
-                    common::errors::InvalidArgument(
-                        "The lhs's last dim must be equal to the rhs's "
-                        "dim[-2], but got[%d] instead of [%d]",
-                        input_hidden_size,
-                        rhs_shape[1]));
+  const int64_t num_experts = batch_sizes.size();
+  PADDLE_ENFORCE_EQ(
+      is_layout_invalid,
+      false,
+      common::errors::InvalidArgument(
+          "We don't support both lhs and rhs are transposed at the same time"));
   PADDLE_ENFORCE_EQ(
       lhs.dtype() == DataType::BFLOAT16 && rhs.dtype() == DataType::BFLOAT16,
       true,
@@ -4824,7 +4809,61 @@ void BatchedGemmInferMeta(const MetaTensor& lhs,
           "The dtype of lhs and rhs must be BFLOAT16, but got [%s] and [%s]",
           lhs.dtype(),
           rhs.dtype()));
-  output->set_dims(common::make_ddim({total_tokens, output_hidden_size}));
+  PADDLE_ENFORCE_EQ(
+      lhs_shape.size(),
+      2,
+      common::errors::InvalidArgument(
+          "The lhs's dimension must be 2, but got[%d]", lhs_shape.size()));
+  PADDLE_ENFORCE_EQ(
+      rhs_shape.size(),
+      trans_lhs ? 2 : 3,
+      common::errors::InvalidArgument(
+          "The rhs's dimension must be 3, but got[%d]", rhs_shape.size()));
+
+  // We expect layout below:
+  // 1. trans_lhs = false && trans_rhs = false (group forward) :
+  //    [M_total, input_hidden_size] x [num_experts, input_hidden_size,
+  //    output_hidden_size] output: [M_total, output_hidden_size]
+  //
+  // 2. trans_lhs = false && trans_rhs = true (backward for lhs_grad, or
+  // specialized forward):
+  //    [M_total, output_hidden_size] x [num_experts, input_hidden_size,
+  //    output_hidden_size]' output: [M_total, input_hidden_size]
+  //
+  // 3. trans_lhs = true && trans_rhs = false (backward for rhs_grad) :
+  //    [M_total, input_hidden_size]' x [M_total, output_hidden_size]
+  //    output: [num_experts, input_hidden_size, output_hidden_size]
+
+  if (!trans_lhs) {
+    // =============================================================================
+    // Case 1 and 2: group forward or lhs_grad (input_grad)
+    // Note that this case implements grouped gemm, mapping hidden_lhs to
+    // hidden_out For each expert i, This case views lhs as [Mi x K] and rhs as
+    // [E x K x N] or [E x N x K], so the output is [Mtotal x N], N could be
+    // input_hidden_size or output_hidden_size.
+
+    const int64_t hidden_out = trans_rhs ? rhs_shape[1] : rhs_shape[2];
+    output->set_dims(common::make_ddim({total_tokens, hidden_out}));
+
+  } else {
+    // =============================================================================
+    // Case 3: group backward for rhs_grad (weight_grad)
+    // Note that this case implements k-grouped gemm
+    // For each expert i, this case views lhs as [K x Mi] and rhs as [Mi x N],
+    // so the output is [E x K x N].
+
+    PADDLE_ENFORCE_EQ(lhs_shape[0],
+                      rhs_shape[0],
+                      common::errors::InvalidArgument(
+                          "The lhs's first dim must be equal to the rhs's "
+                          "proposal, but got[%d] instead of [%d]",
+                          lhs_shape[0],
+                          rhs_shape[0]));
+
+    const int64_t hidden_in = lhs_shape[1];
+    const int64_t hidden_out = rhs_shape[1];
+    output->set_dims(common::make_ddim({num_experts, hidden_in, hidden_out}));
+  }
   output->set_dtype(DataType::BFLOAT16);
 }
 
