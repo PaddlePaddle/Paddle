@@ -2591,22 +2591,30 @@ __global__ void KernelMaxPool2dWithDilationsAndIdx(
     hstart = h_offset * stride_height - padding_height;
     wstart = w_offset * stride_width - padding_width;
 
-    if (dilation_width > static_cast<IndexT>(1) ||
-        dilation_height > static_cast<IndexT>(1)) {
-      hend = hstart + (ksize_height - 1) * dilation_height + 1;
-      while (hstart < static_cast<IndexT>(0)) hstart += dilation_height;
-      while (hend > input_height) hend -= dilation_height;
+    hend = hstart + (ksize_height - 1) * dilation_height + 1;
+    while (hstart < static_cast<IndexT>(0)) hstart += dilation_height;
+    while (hend > input_height) hend -= dilation_height;
 
-      wend = wstart + (ksize_width - 1) * dilation_width + 1;
-      while (wstart < static_cast<IndexT>(0)) wstart += dilation_width;
-      while (wend > input_width) wend -= dilation_width;
-    } else {
-      hend = min(hstart + ksize_height, input_height);
-      hstart = max(hstart, static_cast<IndexT>(0));
+    wend = wstart + (ksize_width - 1) * dilation_width + 1;
+    while (wstart < static_cast<IndexT>(0)) wstart += dilation_width;
+    while (wend > input_width) wend -= dilation_width;
 
-      wend = min(wstart + ksize_width, input_width);
-      wstart = max(wstart, static_cast<IndexT>(0));
-    }
+    // if (dilation_width > static_cast<IndexT>(1) ||
+    //     dilation_height > static_cast<IndexT>(1)) {
+    //   hend = hstart + (ksize_height - 1) * dilation_height + 1;
+    //   while (hstart < static_cast<IndexT>(0)) hstart += dilation_height;
+    //   while (hend > input_height) hend -= dilation_height;
+
+    //   wend = wstart + (ksize_width - 1) * dilation_width + 1;
+    //   while (wstart < static_cast<IndexT>(0)) wstart += dilation_width;
+    //   while (wend > input_width) wend -= dilation_width;
+    // } else {
+    //   hend = min(hstart + ksize_height, input_height);
+    //   hstart = max(hstart, static_cast<IndexT>(0));
+
+    //   wend = min(wstart + ksize_width, input_width);
+    //   wstart = max(wstart, static_cast<IndexT>(0));
+    // }
 
     // hend = min(hstart + ksize_height, input_height);
     // hstart = max(hstart, static_cast<IndexT>(0));
