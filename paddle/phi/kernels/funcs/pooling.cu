@@ -2591,8 +2591,8 @@ __global__ void KernelMaxPool2dWithDilationsAndIdx(
     hstart = h_offset * stride_height - padding_height;
     wstart = w_offset * stride_width - padding_width;
 
-    if (dilation_height > static_cast<IndexT>(1) ||
-        dilation_width > static_cast<IndexT>(1)) {
+    if (dilation_width > static_cast<IndexT>(1) ||
+        dilation_height > static_cast<IndexT>(1)) {
       hend = hstart + (ksize_height - 1) * dilation_height + 1;
       while (hstart < static_cast<IndexT>(0)) hstart += dilation_height;
       while (hend > input_height) hend -= dilation_height;
