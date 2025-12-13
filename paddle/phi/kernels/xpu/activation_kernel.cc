@@ -795,7 +795,5 @@ PD_REGISTER_KERNEL(ceil,
                    ALL_LAYOUT,
                    phi::CeilKernel,
                    float,
-                   int,
-                   int64_t,
                    phi::float16,
                    phi::bfloat16) {}
