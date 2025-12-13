@@ -267,25 +267,29 @@ __global__ void KernelMaxPool2DWithDilations(
     input_data += input_offset;
 
     hstart = h_offset * stride_height - padding_height;
+    hend = hstart + (ksize_height - 1) * dilation_height + 1;
+
+    hstart =
+        (hstart < static_cast<IndexT>(0))
+            ? hstart + ((-hstart + dilation_height - 1) / dilation_height) *
+                           dilation_height
+            : hstart;
+
+    hend = (hend > input_height)
+               ? input_height - ((hend - input_height) % dilation_height)
+               : hend;
+
     wstart = w_offset * stride_width - padding_width;
+    wend = wstart + (ksize_width - 1) * dilation_width + 1;
 
-    if (dilation_height > static_cast<IndexT>(1)) {
-      hend = hstart + (ksize_height - 1) * dilation_height + 1;
-      while (hstart < static_cast<IndexT>(0)) hstart += dilation_height;
-      while (hend > input_height) hend -= dilation_height;
-    } else {
-      hend = min(hstart + ksize_height, input_height);
-      hstart = max(hstart, static_cast<IndexT>(0));
-    }
+    wstart = (wstart < static_cast<IndexT>(0))
+                 ? wstart + ((-wstart + dilation_width - 1) / dilation_width) *
+                                dilation_width
+                 : wstart;
 
-    if (dilation_width > static_cast<IndexT>(1)) {
-      wend = wstart + (ksize_width - 1) * dilation_width + 1;
-      while (wstart < static_cast<IndexT>(0)) wstart += dilation_width;
-      while (wend > input_width) wend -= dilation_width;
-    } else {
-      wend = min(wstart + ksize_width, input_width);
-      wstart = max(wstart, static_cast<IndexT>(0));
-    }
+    wend = (wend > input_width)
+               ? input_width - ((wend - input_width) % dilation_width)
+               : wend;
 
     T ele = static_cast<T>(-FLT_MAX);
     for (IndexT h = hstart; h < hend; h += dilation_height) {
@@ -664,25 +668,31 @@ __global__ void KernelMaxPool2DWithDilationsGrad(
     input_data += input_offset;
     input_grad += input_offset;
     IndexT hstart, hend, wstart, wend;
-    hstart = h_offset * stride_height - padding_height;
-    wstart = w_offset * stride_width - padding_width;
 
-    if (dilation_height > static_cast<IndexT>(1)) {
-      hend = hstart + (ksize_height - 1) * dilation_height + 1;
-      while (hstart < static_cast<IndexT>(0)) hstart += dilation_height;
-      while (hend > input_height) hend -= dilation_height;
-    } else {
-      hend = min(hstart + ksize_height, input_height);
-      hstart = max(hstart, static_cast<IndexT>(0));
-    }
-    if (dilation_width > static_cast<IndexT>(1)) {
-      wend = wstart + (ksize_width - 1) * dilation_width + 1;
-      while (wstart < static_cast<IndexT>(0)) wstart += dilation_width;
-      while (wend > input_width) wend -= dilation_width;
-    } else {
-      wend = min(wstart + ksize_width, input_width);
-      wstart = max(wstart, static_cast<IndexT>(0));
-    }
+    hstart = h_offset * stride_height - padding_height;
+    hend = hstart + (ksize_height - 1) * dilation_height + 1;
+
+    hstart =
+        (hstart < static_cast<IndexT>(0))
+            ? hstart + ((-hstart + dilation_height - 1) / dilation_height) *
+                           dilation_height
+            : hstart;
+
+    hend = (hend > input_height)
+               ? input_height - ((hend - input_height) % dilation_height)
+               : hend;
+
+    wstart = w_offset * stride_width - padding_width;
+    wend = wstart + (ksize_width - 1) * dilation_width + 1;
+
+    wstart = (wstart < static_cast<IndexT>(0))
+                 ? wstart + ((-wstart + dilation_width - 1) / dilation_width) *
+                                dilation_width
+                 : wstart;
+
+    wend = (wend > input_width)
+               ? input_width - ((wend - input_width) % dilation_width)
+               : wend;
 
     T ele = output_data[index];
     IndexT maxIndex = -1;
@@ -2589,23 +2599,29 @@ __global__ void KernelMaxPool2dWithDilationsAndIdx(
     input_data += input_offset;
 
     hstart = h_offset * stride_height - padding_height;
+    hend = hstart + (ksize_height - 1) * dilation_height + 1;
+
+    hstart =
+        (hstart < static_cast<IndexT>(0))
+            ? hstart + ((-hstart + dilation_height - 1) / dilation_height) *
+                           dilation_height
+            : hstart;
+
+    hend = (hend > input_height)
+               ? input_height - ((hend - input_height) % dilation_height)
+               : hend;
+
     wstart = w_offset * stride_width - padding_width;
-    if (dilation_height > static_cast<IndexT>(1)) {
-      hend = hstart + (ksize_height - 1) * dilation_height + 1;
-      while (hstart < static_cast<IndexT>(0)) hstart += dilation_height;
-      while (hend > input_height) hend -= dilation_height;
-    } else {
-      hend = min(hstart + ksize_height, input_height);
-      hstart = max(hstart, static_cast<IndexT>(0));
-    }
-    if (dilation_width > static_cast<IndexT>(1)) {
-      wend = wstart + (ksize_width - 1) * dilation_width + 1;
-      while (wstart < static_cast<IndexT>(0)) wstart += dilation_width;
-      while (wend > input_width) wend -= dilation_width;
-    } else {
-      wend = min(wstart + ksize_width, input_width);
-      wstart = max(wstart, static_cast<IndexT>(0));
-    }
+    wend = wstart + (ksize_width - 1) * dilation_width + 1;
+
+    wstart = (wstart < static_cast<IndexT>(0))
+                 ? wstart + ((-wstart + dilation_width - 1) / dilation_width) *
+                                dilation_width
+                 : wstart;
+
+    wend = (wend > input_width)
+               ? input_width - ((wend - input_width) % dilation_width)
+               : wend;
 
     T1 ele = static_cast<T1>(-FLT_MAX);
     IndexT max_index = -1;
