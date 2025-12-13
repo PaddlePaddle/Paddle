@@ -246,58 +246,58 @@ __global__ void KernelMaxPool2DWithDilations(
     FastDivModForPooling<IndexT> divmods,
     T* output_data,
     bool channel_last = false) {
-  // const IndexT start_index =
-  //     static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
-  // const IndexT step = static_cast<IndexT>(blockDim.x) * gridDim.x;
-  // for (IndexT index = start_index; index < nthreads; index += step) {
-  //   IndexT hstart, hend, wstart, wend;
-  //   IndexT w_offset, h_offset, c_offset, input_offset;
-  //   OffsetPreparationFor4Dimension<FastDivModForPooling<IndexT>, IndexT>(
-  //       index,
-  //       channel_last,
-  //       divmods,
-  //       0,
-  //       0,
-  //       input_width,
-  //       input_height,
-  //       &w_offset,
-  //       &h_offset,
-  //       &c_offset,
-  //       &input_offset);
-  //   input_data += input_offset;
+  const IndexT start_index =
+      static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
+  const IndexT step = static_cast<IndexT>(blockDim.x) * gridDim.x;
+  for (IndexT index = start_index; index < nthreads; index += step) {
+    IndexT hstart, hend, wstart, wend;
+    IndexT w_offset, h_offset, c_offset, input_offset;
+    OffsetPreparationFor4Dimension<FastDivModForPooling<IndexT>, IndexT>(
+        index,
+        channel_last,
+        divmods,
+        0,
+        0,
+        input_width,
+        input_height,
+        &w_offset,
+        &h_offset,
+        &c_offset,
+        &input_offset);
+    input_data += input_offset;
 
-  //   hstart = h_offset * stride_height - padding_height;
-  //   wstart = w_offset * stride_width - padding_width;
+    hstart = h_offset * stride_height - padding_height;
+    wstart = w_offset * stride_width - padding_width;
 
-  //   if (dilation_height > static_cast<IndexT>(1)) {
-  //     hend = hstart + (ksize_height - 1) * dilation_height + 1;
-  //     while (hstart < static_cast<IndexT>(0)) hstart += dilation_height;
-  //     while (hend > input_height) hend -= dilation_height;
-  //   } else {
-  //     hend = min(hstart + ksize_height, input_height);
-  //     hstart = max(hstart, static_cast<IndexT>(0));
-  //   }
+    if (dilation_height > static_cast<IndexT>(1)) {
+      hend = hstart + (ksize_height - 1) * dilation_height + 1;
+      while (hstart < static_cast<IndexT>(0)) hstart += dilation_height;
+      while (hend > input_height) hend -= dilation_height;
+    } else {
+      hend = min(hstart + ksize_height, input_height);
+      hstart = max(hstart, static_cast<IndexT>(0));
+    }
 
-  //   if (dilation_width > static_cast<IndexT>(1)) {
-  //     wend = wstart + (ksize_width - 1) * dilation_width + 1;
-  //     while (wstart < static_cast<IndexT>(0)) wstart += dilation_width;
-  //     while (wend > input_width) wend -= dilation_width;
-  //   } else {
-  //     wend = min(wstart + ksize_width, input_width);
-  //     wstart = max(wstart, static_cast<IndexT>(0));
-  //   }
+    if (dilation_width > static_cast<IndexT>(1)) {
+      wend = wstart + (ksize_width - 1) * dilation_width + 1;
+      while (wstart < static_cast<IndexT>(0)) wstart += dilation_width;
+      while (wend > input_width) wend -= dilation_width;
+    } else {
+      wend = min(wstart + ksize_width, input_width);
+      wstart = max(wstart, static_cast<IndexT>(0));
+    }
 
-  //   T ele = static_cast<T>(-FLT_MAX);
-  //   for (IndexT h = hstart; h < hend; h += dilation_height) {
-  //     for (IndexT w = wstart; w < wend; w += dilation_width) {
-  //       auto input_idx = channel_last
-  //                            ? (h * input_width + w) * channels + c_offset
-  //                            : h * input_width + w;
-  //       ele = input_data[input_idx] > ele ? input_data[input_idx] : ele;
-  //     }
-  //   }
-  //   output_data[index] = ele;
-  // }
+    T ele = static_cast<T>(-FLT_MAX);
+    for (IndexT h = hstart; h < hend; h += dilation_height) {
+      for (IndexT w = wstart; w < wend; w += dilation_width) {
+        auto input_idx = channel_last
+                             ? (h * input_width + w) * channels + c_offset
+                             : h * input_width + w;
+        ele = input_data[input_idx] > ele ? input_data[input_idx] : ele;
+      }
+    }
+    output_data[index] = ele;
+  }
 }
 
 template <typename PoolProcess, typename T, typename IndexT>
@@ -2568,66 +2568,66 @@ __global__ void KernelMaxPool2dWithDilationsAndIdx(
     T1* output_data,
     T2* mask_data,
     FastDivModForPooling<IndexT> divmods) {
-  const IndexT start_index =
-      static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
-  const IndexT step = static_cast<IndexT>(blockDim.x) * gridDim.x;
-  for (IndexT index = start_index; index < nthreads; index += step) {
-    IndexT hstart, hend, wstart, wend;
-    IndexT w_offset, h_offset, c_offset, input_offset;
-    OffsetPreparationFor4Dimension<FastDivModForPooling<IndexT>, IndexT>(
-        index,
-        false,
-        divmods,
-        0,
-        0,
-        input_width,
-        input_height,
-        &w_offset,
-        &h_offset,
-        &c_offset,
-        &input_offset);
-    input_data += input_offset;
+  // const IndexT start_index =
+  //     static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
+  // const IndexT step = static_cast<IndexT>(blockDim.x) * gridDim.x;
+  // for (IndexT index = start_index; index < nthreads; index += step) {
+  //   IndexT hstart, hend, wstart, wend;
+  //   IndexT w_offset, h_offset, c_offset, input_offset;
+  //   OffsetPreparationFor4Dimension<FastDivModForPooling<IndexT>, IndexT>(
+  //       index,
+  //       false,
+  //       divmods,
+  //       0,
+  //       0,
+  //       input_width,
+  //       input_height,
+  //       &w_offset,
+  //       &h_offset,
+  //       &c_offset,
+  //       &input_offset);
+  //   input_data += input_offset;
 
-    hstart = h_offset * stride_height - padding_height;
-    wstart = w_offset * stride_width - padding_width;
+  //   hstart = h_offset * stride_height - padding_height;
+  //   wstart = w_offset * stride_width - padding_width;
 
-    if (dilation_height > static_cast<IndexT>(1)) {
-      hend = hstart + (ksize_height - 1) * dilation_height + 1;
-      while (hstart < static_cast<IndexT>(0)) hstart += dilation_height;
-      while (hend > input_height) hend -= dilation_height;
-    } else {
-      hend = min(hstart + ksize_height, input_height);
-      hstart = max(hstart, static_cast<IndexT>(0));
-    }
+  //   // if (dilation_height > static_cast<IndexT>(1)) {
+  //   //   hend = hstart + (ksize_height - 1) * dilation_height + 1;
+  //   //   while (hstart < static_cast<IndexT>(0)) hstart += dilation_height;
+  //   //   while (hend > input_height) hend -= dilation_height;
+  //   // } else {
+  //   //   hend = min(hstart + ksize_height, input_height);
+  //   //   hstart = max(hstart, static_cast<IndexT>(0));
+  //   // }
 
-    if (dilation_width > static_cast<IndexT>(1)) {
-      wend = wstart + (ksize_width - 1) * dilation_width + 1;
-      while (wstart < static_cast<IndexT>(0)) wstart += dilation_width;
-      while (wend > input_width) wend -= dilation_width;
-    } else {
-      wend = min(wstart + ksize_width, input_width);
-      wstart = max(wstart, static_cast<IndexT>(0));
-    }
+  //   // if (dilation_width > static_cast<IndexT>(1)) {
+  //   //   wend = wstart + (ksize_width - 1) * dilation_width + 1;
+  //   //   while (wstart < static_cast<IndexT>(0)) wstart += dilation_width;
+  //   //   while (wend > input_width) wend -= dilation_width;
+  //   // } else {
+  //   //   wend = min(wstart + ksize_width, input_width);
+  //   //   wstart = max(wstart, static_cast<IndexT>(0));
+  //   // }
 
-    // hend = min(hstart + ksize_height, input_height);
-    // hstart = max(hstart, static_cast<IndexT>(0));
-    // wend = min(wstart + ksize_width, input_width);
-    // wstart = max(wstart, static_cast<IndexT>(0));
+  //   // hend = min(hstart + ksize_height, input_height);
+  //   // hstart = max(hstart, static_cast<IndexT>(0));
+  //   // wend = min(wstart + ksize_width, input_width);
+  //   // wstart = max(wstart, static_cast<IndexT>(0));
 
-    T1 ele = static_cast<T1>(-FLT_MAX);
-    IndexT max_index = -1;
-    for (IndexT h = hstart; h < hend; h += dilation_height) {
-      for (IndexT w = wstart; w < wend; w += dilation_width) {
-        IndexT input_index = h * input_width + w;
-        if (ele < input_data[input_index]) {
-          max_index = input_index;
-          ele = input_data[input_index];
-        }
-      }
-    }
-    output_data[index] = ele;
-    mask_data[index] = max_index;
-  }
+  //   T1 ele = static_cast<T1>(-FLT_MAX);
+  //   IndexT max_index = -1;
+  //   for (IndexT h = hstart; h < hend; h += dilation_height) {
+  //     for (IndexT w = wstart; w < wend; w += dilation_width) {
+  //       IndexT input_index = h * input_width + w;
+  //       if (ele < input_data[input_index]) {
+  //         max_index = input_index;
+  //         ele = input_data[input_index];
+  //       }
+  //     }
+  //   }
+  //   output_data[index] = ele;
+  //   mask_data[index] = max_index;
+  // }
 }
 
 template <typename T1, typename T2, typename IndexT>
