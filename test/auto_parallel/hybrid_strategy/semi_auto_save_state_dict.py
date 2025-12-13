@@ -196,6 +196,52 @@ class TestSaveShardedStateDict:
             self.test_save_state_dict_with_four_devices()
 
 
+class TestSaveShardedStateDictWithReplica:
+    def __init__(self):
+        self._ckpt_path = os.getenv("ckpt_path_3")
+
+    def test_save_state_dict_with_one_device(self):
+        # Construct a 4x4 integer tensor as expected result:
+        # [[ 0,  1,  2,  3],
+        #  [ 4,  5,  6,  7],
+        #  [ 8,  9, 10, 11],
+        #  [12, 13, 14, 15]]
+        local_tensor = paddle.to_tensor(
+            [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15]],
+            dtype='int32',
+        )
+        sharded_state_dict = {}
+        sharded_state_dict["t"] = make_replicated_sharded_weight(
+            "t", local_tensor
+        )
+        save_state_dict(sharded_state_dict, self._ckpt_path, save_replicas=True)
+
+    def test_save_state_dict_with_four_devices(self):
+        # Construct a 4x4 integer tensor as expected result:
+        # [[ 0,  1,  2,  3],
+        #  [ 4,  5,  6,  7],
+        #  [ 8,  9, 10, 11],
+        #  [12, 13, 14, 15]]
+        local_tensor = paddle.to_tensor(
+            [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15]],
+            dtype='int32',
+        )
+        sharded_state_dict = {}
+        sharded_state_dict["t"] = make_replicated_sharded_weight(
+            "t", local_tensor
+        )
+        save_state_dict(sharded_state_dict, self._ckpt_path, save_replicas=True)
+        paddle.distributed.barrier()
+
+    def run_test_case(self):
+        device_num = int(os.getenv("device_num"))
+        if device_num == 1:
+            self.test_save_state_dict_with_one_device()
+        elif device_num == 4:
+            self.test_save_state_dict_with_four_devices()
+
+
 if __name__ == "__main__":
     TestSaveStateDict().run_test_case()
     TestSaveShardedStateDict().run_test_case()
+    TestSaveShardedStateDictWithReplica().run_test_case()

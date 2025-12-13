@@ -32,6 +32,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/legacy/gpu/batched_gemm.h"
 
 namespace phi {
 namespace {
@@ -86,16 +87,19 @@ void CublasGemm(cublasHandle_t cublas_handle,
                 phi::bfloat16 *c,
                 int64_t c_rows,
                 int64_t c_cols) {
-  int m = trans_b ? b_rows : b_cols;
-  int k = trans_b ? b_cols : b_rows;
-  int n = trans_a ? a_cols : a_rows;
+  // NOTE(Pan Zhaowu): We use int32_t because cuBLAS requires int32_t for
+  // arguments. and in most case the matrix's 1D size will not be larger than
+  // 2^31.
+  const int m = trans_b ? b_rows : b_cols;
+  const int k = trans_b ? b_cols : b_rows;
+  const int n = trans_a ? a_cols : a_rows;
 
-  int lda = trans_a ? n : k;
-  int ldb = trans_b ? k : m;
+  const int lda = trans_a ? n : k;
+  const int ldb = trans_b ? k : m;
   cublasOperation_t transpose_a = trans_a ? CUBLAS_OP_T : CUBLAS_OP_N;
   cublasOperation_t transpose_b = trans_b ? CUBLAS_OP_T : CUBLAS_OP_N;
 
-  float alpha = 1.0, beta = 0.0;
+  constexpr float alpha = 1.0f, beta = 0.0f;
   CUBLAS_CALL(phi::dynload::cublasGemmEx(cublas_handle,
                                          transpose_b,
                                          transpose_a,
@@ -119,29 +123,29 @@ void CublasGemm(cublasHandle_t cublas_handle,
 
 // Grouped GEMM forward kernel
 template <typename T, typename Context>
-void grouped_gemm_cuda_forward(const Context &dev_ctx,
-                               const DenseTensor &a,
-                               const DenseTensor &b,
-                               const std::vector<int64_t> &batch_sizes,
-                               DenseTensor *output) {
+void m_grouped_gemm_cuda_forward(const Context &dev_ctx,
+                                 const DenseTensor &a,
+                                 const DenseTensor &b,
+                                 const std::vector<int64_t> &batch_sizes,
+                                 const bool trans_rhs,
+                                 DenseTensor *output) {
   // Get handle according to input tensor, custom_op specific.
   cublasHandle_t handle = dev_ctx.cublas_handle();
 
   const auto &a_shape = a.dims();
   const auto &b_shape = b.dims();
 
-  const int64_t num_experts = b_shape[0];
+  const int64_t num_experts = batch_sizes.size();
   const int64_t total_tokens = a_shape[0];
   const int64_t input_hidden_size = a_shape[1];
-  const int64_t output_hidden_size = b_shape[2];
-
-  dev_ctx.template Alloc<T>(output);
+  const int64_t output_hidden_size = trans_rhs ? b_shape[1] : b_shape[2];
 
   if constexpr (std::is_same<T, paddle::bfloat16>::value) {
     T *a_data = const_cast<T *>(a.data<T>());  // alias for a.data
     T *b_data = const_cast<T *>(b.data<T>());  // alias for b.data
     T *output_data = output->data<T>();
 
+#pragma unroll
     for (int64_t i = 0; i < num_experts; ++i) {
       const int64_t expert_bs = batch_sizes[i];
       CublasGemm(handle,
@@ -152,13 +156,59 @@ void grouped_gemm_cuda_forward(const Context &dev_ctx,
                  b_data,
                  b_shape[1],
                  b_shape[2],
-                 false,
+                 trans_rhs,
                  output_data,
                  expert_bs,
                  output_hidden_size);
       a_data += expert_bs * input_hidden_size;
       b_data += b_shape[1] * b_shape[2];
       output_data += expert_bs * output_hidden_size;
+    }
+  } else {
+    PD_CHECK(false, "Unsupported data type");
+  }
+}
+
+template <typename T, typename Context>
+void k_grouped_gemm_cuda_forward(const Context &dev_ctx,
+                                 const DenseTensor &a,
+                                 const DenseTensor &b,
+                                 const std::vector<int64_t> &batch_sizes,
+                                 DenseTensor *output) {
+  // Get handle according to input tensor, custom_op specific.
+  cublasHandle_t handle = dev_ctx.cublas_handle();
+
+  const auto &a_shape = a.dims();
+  const auto &b_shape = b.dims();
+
+  const int64_t num_experts = batch_sizes.size();
+  const int64_t total_tokens = a_shape[0];
+  const int64_t input_hidden_size = a_shape[1];
+  const int64_t output_hidden_size = b_shape[1];
+
+  if constexpr (std::is_same<T, paddle::bfloat16>::value) {
+    T *a_data = const_cast<T *>(a.data<T>());  // alias for a.data
+    T *b_data = const_cast<T *>(b.data<T>());  // alias for b.data
+    T *output_data = output->data<T>();
+
+#pragma unroll
+    for (int64_t i = 0; i < num_experts; ++i) {
+      const int64_t expert_bs = batch_sizes[i];
+      CublasGemm(handle,
+                 a_data,
+                 expert_bs,
+                 input_hidden_size,
+                 true,  // trans_lhs
+                 b_data,
+                 expert_bs,
+                 output_hidden_size,
+                 false,  // trans_rhs
+                 output_data,
+                 input_hidden_size,
+                 output_hidden_size);
+      a_data += expert_bs * input_hidden_size;
+      b_data += expert_bs * output_hidden_size;
+      output_data += input_hidden_size * output_hidden_size;
     }
   } else {
     PD_CHECK(false, "Unsupported data type");
@@ -174,13 +224,56 @@ void BatchedGEMM(const Context &dev_ctx,
                  const DenseTensor &lhs,
                  const DenseTensor &rhs,
                  const std::vector<int64_t> &batch_sizes,
+                 const bool trans_lhs,
+                 const bool trans_rhs,
                  DenseTensor *output) {
-  // Currently only support no transposed b.
-  // TODO(Pan Zhaowu): extend to support other data types
+  // see Paddle/paddle/phi/infermeta/binary.cc:BatchedGemmInferMeta for shape
+  // infer logics.
+  dev_ctx.template Alloc<T>(output);
+  // handles 0-size
+  if (output->numel() == 0) {
+    return;
+  }
+
+  const auto lhs_shape = lhs.dims();
+  const auto rhs_shape = rhs.dims();
+  const int64_t total_tokens = lhs_shape[0];
+  const int64_t num_experts = batch_sizes.size();
+  // We expect layout below:
+  // 1. trans_lhs = false && trans_rhs = false (group forward) :
+  //    [M_total, input_hidden_size] x [num_experts, input_hidden_size,
+  //    output_hidden_size] output: [M_total, output_hidden_size]
+  //
+  // 2. trans_lhs = false && trans_rhs = true (backward for lhs_grad, or
+  // specialized forward):
+  //    [M_total, output_hidden_size] x [num_experts, input_hidden_size,
+  //    output_hidden_size]' output: [M_total, input_hidden_size]
+  //
+  // 3. trans_lhs = true && trans_rhs = false (backward for rhs_grad) :
+  //    [M_total, input_hidden_size]' x [M_total, output_hidden_size]
+  //    output: [num_experts, input_hidden_size, output_hidden_size]
+
+  // TODO(Pan Zhaowu): Using macros to support more dtypes.
   switch (lhs.dtype()) {
     case paddle::DataType::BFLOAT16:
-      grouped_gemm_cuda_forward<paddle::bfloat16>(
-          dev_ctx, lhs, rhs, batch_sizes, output);
+      if (!trans_lhs) {
+        // =============================================================================
+        // Case 1 and 2: group forward or lhs_grad (input_grad)
+        // Note that this case implements grouped gemm, mapping hidden_lhs to
+        // hidden_out For each expert i, This case views lhs as [Mi x K] and rhs
+        // as [E x K x N] or [E x N x K], so the output is [Mtotal x N], N could
+        // be input_hidden_size or output_hidden_size.
+        m_grouped_gemm_cuda_forward<paddle::bfloat16>(
+            dev_ctx, lhs, rhs, batch_sizes, trans_rhs, output);
+      } else {
+        // =============================================================================
+        // Case 3: group backward for rhs_grad (weight_grad)
+        // Note that this case implements k-grouped gemm
+        // For each expert i, this case views lhs as [K x Mi] and rhs as [Mi x
+        // N], so the output is [E x K x N].
+        k_grouped_gemm_cuda_forward<paddle::bfloat16>(
+            dev_ctx, lhs, rhs, batch_sizes, output);
+      }
       break;
     default:
       PD_CHECK(false, "Unsupported data type");
