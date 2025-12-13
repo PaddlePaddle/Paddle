@@ -2605,6 +2605,9 @@ __global__ void KernelMaxPool2dWithDilationsAndIdx(
       wend = wstart + (ksize_width - 1) * dilation_width + 1;
       while (wstart < static_cast<IndexT>(0)) wstart += dilation_width;
       // while (wend > input_width) wend -= dilation_width;
+      if (wend > input_width) {
+        wend = input_width - ((wend - input_width) % dilation_width);
+      }
     } else {
       wend = min(wstart + ksize_width, input_width);
       wstart = max(wstart, static_cast<IndexT>(0));
