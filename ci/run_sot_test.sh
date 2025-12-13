@@ -56,6 +56,10 @@ function run_sot_test() {
 
     $PYTHON_WITH_SPECIFY_VERSION -m pip install "numpy>=2.3.5"
 
+    echo "show pipdeptree: $($PYTHON_WITH_SPECIFY_VERSION -m pipdeptree)"
+    echo "show pip list: $($PYTHON_WITH_SPECIFY_VERSION -m pip list)"
+    echo "show pip -V: $($PYTHON_WITH_SPECIFY_VERSION -m pip -V)"
+
     # cd to sot test dir
     cd $PADDLE_ROOT/test/sot/
 
