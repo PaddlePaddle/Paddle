@@ -34,12 +34,6 @@ function run_sot_test() {
         exit $exit_code
     fi
 
-    echo "python version: $($PYTHON_WITH_SPECIFY_VERSION -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')"
-    echo "python which: $(which $PYTHON_WITH_SPECIFY_VERSION)"
-    echo "show pip list: $($PYTHON_WITH_SPECIFY_VERSION -m pip list)"
-    $PYTHON_WITH_SPECIFY_VERSION -m pip install pipdeptree
-    echo "show pipdeptree: $($PYTHON_WITH_SPECIFY_VERSION -m pipdeptree)"
-
     # Only python3.14 needs to install numpy>=2.3.5, because opencv-python will downgrade numpy to 2.2.6
     # see: https://github.com/opencv/opencv-python/issues/1155
     if [ "$PY_VERSION" == "3.14" ]; then
@@ -53,6 +47,14 @@ function run_sot_test() {
             exit $exit_code
         fi
     fi
+
+    echo "python version: $($PYTHON_WITH_SPECIFY_VERSION -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')"
+    echo "python which: $(which $PYTHON_WITH_SPECIFY_VERSION)"
+    echo "show pip list: $($PYTHON_WITH_SPECIFY_VERSION -m pip list)"
+    $PYTHON_WITH_SPECIFY_VERSION -m pip install pipdeptree
+    echo "show pipdeptree: $($PYTHON_WITH_SPECIFY_VERSION -m pipdeptree)"
+
+    $PYTHON_WITH_SPECIFY_VERSION -m pip install "numpy>=2.3.5"
 
     # cd to sot test dir
     cd $PADDLE_ROOT/test/sot/
