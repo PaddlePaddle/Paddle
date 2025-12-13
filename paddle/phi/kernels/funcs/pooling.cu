@@ -2600,21 +2600,25 @@ __global__ void KernelMaxPool2dWithDilationsAndIdx(
     }
 
     wstart = w_offset * stride_width - padding_width;
+    wend = wstart + (ksize_width - 1) * dilation_width + 1;
 
-    if (dilation_width > static_cast<IndexT>(1)) {
-      wend = wstart + (ksize_width - 1) * dilation_width + 1;
-      while (wstart < static_cast<IndexT>(0)) wstart += dilation_width;
-      // while (wend > input_width) wend -= dilation_width;
-      if (wend > input_width) {
-        wend = input_width - ((wend - input_width) % dilation_width);
-      }
-    } else {
-      wend = min(wstart + ksize_width, input_width);
-      wstart = max(wstart, static_cast<IndexT>(0));
+    if (wstart < 0) {
+      wstart +=
+          ((-wstart + dilation_width - 1) / dilation_width) * dilation_width;
     }
 
-    // wend = min(wstart + ksize_width, input_width);
-    // wstart = max(wstart, static_cast<IndexT>(0));
+    if (wend > input_width) {
+      wend = input_width - ((wend - input_width) % dilation_width);
+    }
+
+    // if (dilation_width > static_cast<IndexT>(1)) {
+    //   wend = wstart + (ksize_width - 1) * dilation_width + 1;
+    //   while (wstart < static_cast<IndexT>(0)) wstart += dilation_width;
+    //   while (wend > input_width) wend -= dilation_width;
+    // } else {
+    //   wend = min(wstart + ksize_width, input_width);
+    //   wstart = max(wstart, static_cast<IndexT>(0));
+    // }
 
     T1 ele = static_cast<T1>(-FLT_MAX);
     IndexT max_index = -1;
