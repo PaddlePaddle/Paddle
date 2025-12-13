@@ -62,7 +62,7 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
           expert_routemap_topk.data<INT_T>()), /* expert_routemap_topk */      \
       reinterpret_cast<const XPU_PROB_T *>(                                    \
           expert_prob_topk.data<PROB_T>()), /* expert_prob_topk */             \
-      reinterpret_cast<XPU_INT_T *>(                                           \
+      reinterpret_cast<const XPU_INT_T *>(                                     \
           expert_offsets.data<int>()), /* expert_base_offset */                \
       reinterpret_cast<XPU_TOKEN_T *>(                                         \
           X_unzipped->data<TOKEN_T>()), /* hidden_states_unzipped */           \
