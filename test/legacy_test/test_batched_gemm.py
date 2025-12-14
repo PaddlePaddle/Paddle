@@ -25,8 +25,12 @@ os.environ["FLAGS_cudnn_deterministic"] = "1"
 os.environ["FLAGS_embedding_deterministic"] = "1"
 
 
-def allclose(x, y):
-    mask = np.testing.assert_allclose(x.numpy(), y.numpy(), rtol=1e-5)
+def allclose(x, y, dtype):
+    if dtype == paddle.bfloat16:
+        rtol = 1e-5
+    else:
+        rtol = 1e-5
+    np.testing.assert_allclose(x.numpy(), y.numpy(), rtol=rtol)
 
 
 _TEST_PROBLEMS = (
@@ -41,9 +45,9 @@ _TEST_PROBLEMS = (
 m_group_layout_cases = [(False, True), (False, False)]
 
 
-def randn(bs, x, y):
+def randn(bs, x, y, dtype=paddle.bfloat16):
     out = (paddle.rand([bs, x, y]) - 0.5 * 2) / (y * x)
-    return out.astype(paddle.bfloat16)
+    return out.astype(dtype)
 
 
 def pyref_gmm(a, b, batch_sizes, trans_b=False):
@@ -74,58 +78,76 @@ class TestGroupedGemm(unittest.TestCase):
 
     def test_m_grouped_gemm_fixed_sizes(self):
         """Test grouped GEMM with fixed sizes"""
-        for z, m, k, n in _TEST_PROBLEMS:
-            for trans_lhs, trans_rhs in m_group_layout_cases:
+        # Test both bfloat16 and float32 dtypes
+        dtypes = [paddle.bfloat16, paddle.float32]
+
+        for dtype in dtypes:
+            for z, m, k, n in _TEST_PROBLEMS:
+                for trans_lhs, trans_rhs in m_group_layout_cases:
+                    with self.subTest(
+                        dtype=dtype,
+                        z=z,
+                        m=m,
+                        k=k,
+                        n=n,
+                        trans_a=trans_lhs,
+                        trans_b=trans_rhs,
+                    ) and paddle.amp.auto_cast(False):
+                        a = randn(z, m, k, dtype).reshape([-1, k]).astype(dtype)
+                        b = randn(z, k, n, dtype).astype(dtype)
+                        if trans_rhs:
+                            b = b.mT
+                        batch_sizes = [m] * z
+                        a.stop_gradient = False
+                        b.stop_gradient = False
+                        a_ref = a.clone().detach()
+                        b_ref = b.clone().detach()
+                        a_ref.stop_gradient = False
+                        b_ref.stop_gradient = False
+                        print(
+                            f"Testing dtype={dtype}, shape={a.shape}, {b.shape}"
+                        )
+                        out = grouped_gemm(a, b, batch_sizes, False, trans_rhs)
+                        expected_out = pyref_gmm(
+                            a_ref, b_ref, batch_sizes, trans_rhs
+                        )
+                        allclose(out, expected_out.reshape(out.shape), dtype)
+
+    def test_k_grouped_gemm_variable_sizes(self):
+        """Test grouped GEMM with variable sizes"""
+        # Test both bfloat16 and float32 dtypes
+        dtypes = [paddle.bfloat16, paddle.float32]
+
+        for dtype in dtypes:
+            for z, m, k, n in _TEST_PROBLEMS:
                 with self.subTest(
-                    z=z, m=m, k=k, n=n, trans_a=trans_lhs, trans_b=trans_rhs
+                    dtype=dtype, z=z, m=m, k=k, n=n, trans_a=True, trans_b=False
                 ) and paddle.amp.auto_cast(False):
-                    a = randn(z, m, k).reshape([-1, k]).astype(paddle.bfloat16)
-                    b = randn(z, k, n).astype(paddle.bfloat16)
-                    if trans_rhs:
-                        b = b.mT
+                    a = randn(z, m, k, dtype).astype(dtype)
+                    b = randn(z, m, n, dtype).astype(dtype)
+
                     batch_sizes = [m] * z
+
                     a.stop_gradient = False
                     b.stop_gradient = False
                     a_ref = a.clone().detach()
                     b_ref = b.clone().detach()
                     a_ref.stop_gradient = False
                     b_ref.stop_gradient = False
-                    print(f"{a.shape}, {b.shape}")
-                    out = grouped_gemm(a, b, batch_sizes, False, trans_rhs)
-                    expected_out = pyref_gmm(
-                        a_ref, b_ref, batch_sizes, trans_rhs
+
+                    out = grouped_gemm(
+                        a.reshape([-1, k]),
+                        b.reshape([-1, n]),
+                        batch_sizes,
+                        True,
+                        False,
                     )
-                    allclose(out, expected_out.reshape(out.shape))
-
-    def test_k_grouped_gemm_variable_sizes(self):
-        """Test grouped GEMM with variable sizes"""
-        for z, m, k, n in _TEST_PROBLEMS:
-            with self.subTest(
-                z=z, m=m, k=k, n=n, trans_a=True, trans_b=False
-            ) and paddle.amp.auto_cast(False):
-                a = randn(z, m, k).astype(paddle.bfloat16)
-                b = randn(z, m, n).astype(paddle.bfloat16)
-
-                batch_sizes = [m] * z
-
-                a.stop_gradient = False
-                b.stop_gradient = False
-                a_ref = a.clone().detach()
-                b_ref = b.clone().detach()
-                a_ref.stop_gradient = False
-                b_ref.stop_gradient = False
-
-                out = grouped_gemm(
-                    a.reshape([-1, k]),
-                    b.reshape([-1, n]),
-                    batch_sizes,
-                    True,
-                    False,
-                )
-                expected_out = pyref_k_gmm(
-                    a_ref.reshape([-1, k]), b_ref.reshape([-1, n]), batch_sizes
-                )
-                allclose(out, expected_out.reshape(out.shape))
+                    expected_out = pyref_k_gmm(
+                        a_ref.reshape([-1, k]),
+                        b_ref.reshape([-1, n]),
+                        batch_sizes,
+                    )
+                    allclose(out, expected_out.reshape(out.shape), dtype)
 
 
 if __name__ == '__main__':
