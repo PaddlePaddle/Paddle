@@ -202,10 +202,10 @@ class TestCeluOpClass_Inplace(unittest.TestCase):
             x_var1 = paddle.to_tensor(x)
             x_var2 = paddle.to_tensor(x)
 
-            y_var1 = F.celu(x_var1, alpha, inplace=True)
+            y_var1 = F.celu(x_var1, alpha, True)
             y_test1 = y_var1.numpy()
 
-            func = nn.CELU(alpha, inplace=True)
+            func = nn.CELU(alpha, True)
             y_var2 = func(x_var2)
             y_test2 = y_var2.numpy()
 
@@ -229,10 +229,10 @@ class TestCeluOpClass_Inplace(unittest.TestCase):
             x_var1 = paddle.to_tensor(x)
             x_var2 = paddle.to_tensor(x)
 
-            y_var1 = F.celu(x_var1, alpha, inplace=True)
+            y_var1 = F.celu(x_var1, alpha, True)
             y_test1 = y_var1.numpy()
 
-            func = nn.CELU(alpha, inplace=True)
+            func = nn.CELU(alpha, True)
             y_var2 = func(x_var2)
             y_test2 = y_var2.numpy()
 
