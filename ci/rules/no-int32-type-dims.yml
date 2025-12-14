@@ -13,14 +13,14 @@ message: |
 note: dims/shape/strides/numel/offset may be >= INT32_MAX; dims()/numel() return int64_t
 rule:
   any:
-    # int x = <RIGHT>;
     - pattern: int $VAR = $RIGHT
-    # int32_t x = <RIGHT>;
     - pattern: int32_t $VAR = $RIGHT
-    # direct-initializer: int x(<RIGHT>);
+    - pattern: const int $VAR = $RIGHT
+    - pattern: const int32_t $VAR = $RIGHT
     - pattern: int $VAR($RIGHT)
-    # direct-initializer: int32_t x(<RIGHT>);
     - pattern: int32_t $VAR($RIGHT)
+    - pattern: const int $VAR($RIGHT)
+    - pattern: const int32_t $VAR($RIGHT)
 constraints:
   RIGHT:
     any:

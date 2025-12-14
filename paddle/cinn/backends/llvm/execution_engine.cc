@@ -314,7 +314,7 @@ bool ExecutionEngine::linkSharedLibrary(
 bool ExecutionEngine::AddModule(
     std::unique_ptr<llvm::Module> module,
     std::unique_ptr<llvm::LLVMContext> context,
-    const std::string host_func_name,
+    const size_t fusionHash,
     const std::vector<std::string> &cinn_runtime_include_path) {
   utils::RecordEvent("ExecutionEngine AddModule", utils::EventType::kOrdinary);
   module->setDataLayout(jit_->getDataLayout());
@@ -330,8 +330,9 @@ bool ExecutionEngine::AddModule(
 
   if (FLAGS_enable_cinn_kernel_cache) {
     std::error_code EC;
+    std::string source_hash = std::to_string(fusionHash);
     std::string output_path = FLAGS_cinn_kernel_cache_save_path + "/" +
-                              GetDeviceId() + "/" + host_func_name;
+                              GetDeviceId() + "/" + source_hash;
     llvm::sys::fs::create_directories(output_path);
     llvm::raw_fd_ostream out(output_path + "/" + CINN_HOST_MODULE_LLVM, EC);
     if (EC) {
@@ -382,10 +383,10 @@ void ExecutionEngine::RegisterModuleRuntimeSymbols(
 }
 
 bool ExecutionEngine::AddSelfModule(
-    const std::string host_func_name,
+    const size_t fusionHash,
     const std::vector<std::string> &cinn_runtime_include_path) {
   return AddModule(
-      std::move(m), std::move(ctx), host_func_name, cinn_runtime_include_path);
+      std::move(m), std::move(ctx), fusionHash, cinn_runtime_include_path);
 }
 
 void ExecutionEngine::ExportObject(const std::string &path) {

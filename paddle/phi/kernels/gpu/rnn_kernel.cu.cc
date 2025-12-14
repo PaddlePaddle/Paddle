@@ -237,13 +237,15 @@ void RnnKernel(const Context &dev_ctx,
   auto handle = dev_ctx.cudnn_handle();
 
   int64_t seq_length = x.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int
-
   int64_t batch_size = x.dims()[1];
-  // TODO(large-tensor): downstream functors may still use int
-
   int64_t input_size_local = x.dims()[2];
-  // TODO(large-tensor): downstream functors may still use int
+  // TODO(large-tensor): cudnn rnn dims not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(seq_length, "seq_length");
+  PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
+  PADDLE_ENFORCE_LE_INT_MAX(input_size_local, "input_size_local");
+  int seq_length_int = static_cast<int>(seq_length);
+  int batch_size_int = static_cast<int>(batch_size);
+  int input_size_int = static_cast<int>(input_size_local);
 
   size_t workspace_size;
   size_t reserve_size;
@@ -298,9 +300,9 @@ void RnnKernel(const Context &dev_ctx,
     w_data = const_cast<T *>(weight_list[0]->data<T>());  // NOLINT
   }
 
-  RNNDescriptors rnn(seq_length,
-                     batch_size,
-                     input_size_local,
+  RNNDescriptors rnn(seq_length_int,
+                     batch_size_int,
+                     input_size_int,
                      hidden_size,
                      num_layers,
                      dropout_prob,
@@ -325,7 +327,7 @@ void RnnKernel(const Context &dev_ctx,
   if (is_test) {
     RNNInferece(has_seq_length,
                 handle,
-                seq_length,
+                seq_length_int,
                 &rnn,
                 x_data,
                 init_h_data,
@@ -368,7 +370,7 @@ void RnnKernel(const Context &dev_ctx,
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenRNNForwardTraining(
           handle,
           rnn.rnn_desc(),
-          seq_length,
+          seq_length_int,
           rnn.x_descs(),
           x_data,
           rnn.init_h_desc(),
@@ -391,7 +393,7 @@ void RnnKernel(const Context &dev_ctx,
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cudnnRNNForwardTraining(handle,
                                                 rnn.rnn_desc(),
-                                                seq_length,
+                                                seq_length_int,
                                                 rnn.x_descs(),
                                                 x_data,
                                                 rnn.init_h_desc(),
