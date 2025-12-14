@@ -576,6 +576,7 @@ create_test_cpu_class(TestCase7)
 create_test_cpu_class(TestCastAdaptive2d)
 create_test_cpu_class(TestDilationsCase1)
 create_test_cpu_class(TestDilationsCase2)
+create_test_cpu_class(TestDilationsCase3)
 
 
 # ----------------max_pool2d_with_index_fp16----------------
