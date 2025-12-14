@@ -690,7 +690,7 @@ def cross_validate(ops):
                     )
 
                 assert len(fw_call["attrs"]) <= len(fw_op["attrs"]), (
-                    f"{name}: forward call has more attrs than the op "
+                    f"{name}: forward call has more attrs than the op: {fw_call['attrs']} vs {fw_op['attrs']}"
                 )
                 for attr, attr_ in zip(fw_call["attrs"], fw_op["attrs"]):
                     if attr["typename"] == "Scalar":

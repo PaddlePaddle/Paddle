@@ -1297,6 +1297,29 @@ void index_elementwise_put_with_tensor_double_grad(
 }
 
 template <typename T>
+void index_elementwise_put_double_grad(
+    const std::vector<Tensor>& index,
+    const Tensor& grad_x_grad,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t& slice_offset,
+    Tensor* grad_out_grad) {
+  if (grad_out_grad) {
+    Tensor grad_out_grad_tmp = index_elementwise_put<T>(grad_x_grad,
+                                                        index,
+                                                        0,
+                                                        input_dims,
+                                                        input_strides,
+                                                        index_dims,
+                                                        index_strides,
+                                                        slice_offset);
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+}
+
+template <typename T>
 void view_shape_double_grad(const Tensor& grad_input_grad,
                             const std::vector<int64_t> dims,
                             Tensor* grad_out_grad) {
