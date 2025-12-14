@@ -4803,10 +4803,14 @@ void BatchedGemmInferMeta(const MetaTensor& lhs,
       common::errors::InvalidArgument(
           "We don't support both lhs and rhs are transposed at the same time"));
   PADDLE_ENFORCE_EQ(
-      lhs.dtype() == DataType::BFLOAT16 && rhs.dtype() == DataType::BFLOAT16,
+      (lhs.dtype() == DataType::BFLOAT16 || lhs.dtype() == DataType::FLOAT32) &&
+          (rhs.dtype() == DataType::BFLOAT16 ||
+           rhs.dtype() == DataType::FLOAT32) &&
+          lhs.dtype() == rhs.dtype(),
       true,
       common::errors::InvalidArgument(
-          "The dtype of lhs and rhs must be BFLOAT16, but got [%s] and [%s]",
+          "The dtype of lhs and rhs must both be BFLOAT16 or both be FLOAT32, "
+          "but got [%s] and [%s]",
           lhs.dtype(),
           rhs.dtype()));
   PADDLE_ENFORCE_EQ(
