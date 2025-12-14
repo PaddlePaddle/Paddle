@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -25,6 +26,12 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
                             const DenseTensor& mask,
                             const DenseTensor& out_grad,
                             DenseTensor* x_grad) {
+  if (out_grad.numel() == 0 && x_grad) {
+    // x = [1, 2], mask = [False, False], out = [], x_grad = [0, 0]
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto* mask_data = mask.data<bool>();
   auto* input_data = reinterpret_cast<const XPUType*>(out_grad.data<T>());
