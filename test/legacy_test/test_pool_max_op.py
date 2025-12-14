@@ -520,56 +520,56 @@ class TestCastAdaptive2d(TestCase6):
         self.adaptive = True
 
 
-# class TestDilationsCase1(TestCase4):
-#     def init_test_case(self):
-#         self.op_type = "max_pool2d_with_index"
-#         self.python_api = max_pool2d_with_index_wrapper
-#         self.pool_forward_naive = (
-#             max_pool2d_with_dilations_and_index_forward_naive
-#         )
-#         self.shape = [2, 3, 7, 7]
-#         self.ksize = [3, 3]
-#         self.strides = [1, 1]
-#         self.paddings = [1, 1]
-#         self.dilations = [2, 2]
+class TestDilationsCase1(TestCase4):
+    def init_test_case(self):
+        self.op_type = "max_pool2d_with_index"
+        self.python_api = max_pool2d_with_index_wrapper
+        self.pool_forward_naive = (
+            max_pool2d_with_dilations_and_index_forward_naive
+        )
+        self.shape = [2, 3, 7, 7]
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 1]
+        self.dilations = [2, 2]
 
 
-# class TestDilationsCase2(TestDilationsCase1):
-#     def init_global(self):
-#         self.global_pool = False
+class TestDilationsCase2(TestDilationsCase1):
+    def init_global(self):
+        self.global_pool = False
 
 
-# class TestDilationsCase3(TestDilationsCase1):
-#     def init_test_case(self):
-#         self.op_type = "max_pool2d_with_index"
-#         self.python_api = max_pool2d_with_index_wrapper
-#         self.pool_forward_naive = (
-#             max_pool2d_with_dilations_and_index_forward_naive
-#         )
-#         self.shape = [2, 3, 7, 7]
-#         self.ksize = [3, 3]
-#         self.strides = [2, 2]
-#         self.paddings = [0, 0]
-#         self.dilations = [2, 2]
+class TestDilationsCase3(TestDilationsCase1):
+    def init_test_case(self):
+        self.op_type = "max_pool2d_with_index"
+        self.python_api = max_pool2d_with_index_wrapper
+        self.pool_forward_naive = (
+            max_pool2d_with_dilations_and_index_forward_naive
+        )
+        self.shape = [2, 3, 7, 7]
+        self.ksize = [3, 3]
+        self.strides = [2, 2]
+        self.paddings = [0, 0]
+        self.dilations = [2, 2]
 
 
-# class TestDilationsCase4(TestDilationsCase3):
-#     def init_global(self):
-#         self.global_pool = False
+class TestDilationsCase4(TestDilationsCase3):
+    def init_global(self):
+        self.global_pool = False
 
 
-# class TestDilationsCase5(TestDilationsCase4):
-#     def init_test_case(self):
-#         self.op_type = "max_pool2d_with_index"
-#         self.python_api = max_pool2d_with_index_wrapper
-#         self.pool_forward_naive = (
-#             max_pool2d_with_dilations_and_index_forward_naive
-#         )
-#         self.shape = [0, 3, 7, 7]
-#         self.ksize = [3, 3]
-#         self.strides = [2, 2]
-#         self.paddings = [0, 0]
-#         self.dilations = [2, 2]
+class TestDilationsCase5(TestDilationsCase4):
+    def init_test_case(self):
+        self.op_type = "max_pool2d_with_index"
+        self.python_api = max_pool2d_with_index_wrapper
+        self.pool_forward_naive = (
+            max_pool2d_with_dilations_and_index_forward_naive
+        )
+        self.shape = [0, 3, 7, 7]
+        self.ksize = [3, 3]
+        self.strides = [2, 2]
+        self.paddings = [0, 0]
+        self.dilations = [2, 2]
 
 
 # ----------------max_pool2d_with_cpu_place----------------
@@ -593,11 +593,11 @@ create_test_cpu_class(TestCase5)
 create_test_cpu_class(TestCase6)
 create_test_cpu_class(TestCase7)
 create_test_cpu_class(TestCastAdaptive2d)
-# create_test_cpu_class(TestDilationsCase1)
-# create_test_cpu_class(TestDilationsCase2)
-# create_test_cpu_class(TestDilationsCase3)
-# create_test_cpu_class(TestDilationsCase4)
-# create_test_cpu_class(TestDilationsCase5)
+create_test_cpu_class(TestDilationsCase1)
+create_test_cpu_class(TestDilationsCase2)
+create_test_cpu_class(TestDilationsCase3)
+create_test_cpu_class(TestDilationsCase4)
+create_test_cpu_class(TestDilationsCase5)
 
 
 # ----------------max_pool2d_with_index_fp16----------------
@@ -631,11 +631,11 @@ create_test_fp16_class(TestCase5)
 create_test_fp16_class(TestCase6)
 create_test_fp16_class(TestCase7)
 create_test_fp16_class(TestCastAdaptive2d)
-# create_test_fp16_class(TestDilationsCase1)
-# create_test_fp16_class(TestDilationsCase2)
-# create_test_fp16_class(TestDilationsCase3)
-# create_test_fp16_class(TestDilationsCase4)
-# create_test_fp16_class(TestDilationsCase5)
+create_test_fp16_class(TestDilationsCase1)
+create_test_fp16_class(TestDilationsCase2)
+create_test_fp16_class(TestDilationsCase3)
+create_test_fp16_class(TestDilationsCase4)
+create_test_fp16_class(TestDilationsCase5)
 
 
 # ----------------max_pool2d_with_index_bf16----------------
@@ -682,11 +682,11 @@ create_test_bf16_class(TestCase5)
 create_test_bf16_class(TestCase6)
 create_test_bf16_class(TestCase7)
 create_test_bf16_class(TestCastAdaptive2d)
-# create_test_bf16_class(TestDilationsCase1)
-# create_test_bf16_class(TestDilationsCase2)
-# create_test_bf16_class(TestDilationsCase3)
-# create_test_bf16_class(TestDilationsCase4)
-# create_test_bf16_class(TestDilationsCase5)
+create_test_bf16_class(TestDilationsCase1)
+create_test_bf16_class(TestDilationsCase2)
+create_test_bf16_class(TestDilationsCase3)
+create_test_bf16_class(TestDilationsCase4)
+create_test_bf16_class(TestDilationsCase5)
 
 
 def skip_unit_test():
