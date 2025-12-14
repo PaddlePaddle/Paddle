@@ -253,7 +253,7 @@ Buffer::intranode_dispatch(
                    num_tokens_per_rank.has_value() &&
                    num_tokens_per_expert.has_value());
     last_topk_idx = ConvertPaddleTensorToDetailTensor(
-        assign_ad_func(topk_idx->raw_tensor()));
+        cast_ad_func(topk_idx->raw_tensor(), phi::DataType::INT32));
     last_topk_weights = ConvertPaddleTensorToDetailTensor(
         assign_ad_func(topk_weights->raw_tensor()));
     last_num_experts = static_cast<int>(num_tokens_per_expert->size(0));
@@ -595,7 +595,7 @@ Buffer::internode_dispatch(
                    num_tokens_per_rank.has_value() &&
                    num_tokens_per_expert.has_value());
     last_topk_idx = ConvertPaddleTensorToDetailTensor(
-        assign_ad_func(topk_idx->raw_tensor()));
+        cast_ad_func(topk_idx->raw_tensor(), phi::DataType::INT32));
     last_topk_weights = ConvertPaddleTensorToDetailTensor(
         assign_ad_func(topk_weights->raw_tensor()));
     last_num_experts = static_cast<int>(num_tokens_per_expert->size(0));
@@ -1506,7 +1506,8 @@ Buffer::low_latency_dispatch_api(
     bool return_recv_hook,
     int num_per_channel) {
   const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
-  const auto& topk_idx_ = ConvertPaddleTensorToDetailTensor(topk_idx);
+  const auto& topk_idx_ = ConvertPaddleTensorToDetailTensor(
+      cast_ad_func(topk_idx, phi::DataType::INT32));
 
   std::optional<deep_ep::detail::Tensor> expertwise_scale_;
   if (expertwise_scale.has_value()) {
@@ -1565,7 +1566,8 @@ Buffer::low_latency_combine_api(const paddle::Tensor& x,
                                 bool return_recv_hook,
                                 const std::optional<paddle::Tensor>& out) {
   const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
-  const auto& topk_idx_ = ConvertPaddleTensorToDetailTensor(topk_idx);
+  const auto& topk_idx_ = ConvertPaddleTensorToDetailTensor(
+      cast_ad_func(topk_idx, phi::DataType::INT32));
   const auto& topk_weights_ = ConvertPaddleTensorToDetailTensor(topk_weights);
   const auto& src_info_ = ConvertPaddleTensorToDetailTensor(src_info);
   const auto& layout_range_ = ConvertPaddleTensorToDetailTensor(layout_range);

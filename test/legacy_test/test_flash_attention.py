@@ -1991,6 +1991,31 @@ class TestFlashAttentionAlignment(unittest.TestCase):
             err_msg='Memory efficient attention output does not match expected values',
         )
 
+    def test_auto_attention(self):
+        paddle.disable_static()
+        query = paddle.to_tensor(self.query)
+        key = paddle.to_tensor(self.key)
+        value = paddle.to_tensor(self.value)
+        mask = None
+
+        # auto-select the attention implementation
+        output = paddle.nn.functional.scaled_dot_product_attention(
+            query,
+            key,
+            value,
+            attn_mask=mask,
+            dropout_p=0.0,
+            is_causal=False,
+        )
+
+        np.testing.assert_allclose(
+            output.numpy(),
+            self.expected_output_without_mask,
+            rtol=self.rtol,
+            atol=self.atol,
+            err_msg='Auto attention output does not match expected values',
+        )
+
 
 @unittest.skipIf(
     not is_flashattn_supported(),

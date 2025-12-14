@@ -40,6 +40,12 @@ inline paddle::optional<phi::GPUPlace> OptionalCUDAPlace(
                          : paddle::optional<phi::GPUPlace>(gpu_->place());
 }
 
+inline paddle::optional<phi::CustomPlace> OptionalCustomPlace(
+    const phi::Allocator::AllocationPtr &gpu_) {
+  return gpu_ == nullptr ? paddle::none
+                         : paddle::optional<phi::CustomPlace>(gpu_->place());
+}
+
 // Vector<T> implements the std::vector interface, and can get Data or
 // MutableData from any place. The data will be synced implicitly inside.
 template <typename T>
@@ -150,10 +156,11 @@ class MixVector {
     // get cuda ptr. immutable
     const T *CUDAData(phi::Place place) const {
       PADDLE_ENFORCE_EQ(
-          place.GetType() == phi::AllocationType::GPU,
+          place.GetType() == phi::AllocationType::GPU ||
+              place.GetType() == phi::AllocationType::CUSTOM,
           true,
           common::errors::Unavailable(
-              "Place mismatch, CUDA Data must be on CUDA place."));
+              "Place mismatch, CUDA Data must be on CUDA or Custom place."));
       ImmutableCUDA(place);
       return reinterpret_cast<T *>(gpu_->ptr());
     }
@@ -182,6 +189,10 @@ class MixVector {
 
     paddle::optional<phi::GPUPlace> CUDAPlace() const {
       return OptionalCUDAPlace(gpu_);
+    }
+
+    paddle::optional<phi::CustomPlace> CustomPlace() const {
+      return OptionalCustomPlace(gpu_);
     }
 
     void MutableCPU() {
@@ -375,7 +386,8 @@ class MixVector {
 
   // the unify method to access CPU or CUDA data. immutable.
   const T *Data(phi::Place place) const {
-    if (place.GetType() == phi::AllocationType::GPU) {
+    if ((place.GetType() == phi::AllocationType::GPU) ||
+        (place.GetType() == phi::AllocationType::CUSTOM)) {
       return CUDAData(place);
     } else {
       return data();
@@ -384,7 +396,8 @@ class MixVector {
 
   // the unify method to access CPU or CUDA data. mutable.
   T *MutableData(phi::Place place) {
-    if (place.GetType() == phi::AllocationType::GPU) {
+    if ((place.GetType() == phi::AllocationType::GPU) ||
+        (place.GetType() == phi::AllocationType::CUSTOM)) {
       return CUDAMutableData(place);
     } else {
       return data();

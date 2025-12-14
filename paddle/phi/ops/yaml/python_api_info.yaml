@@ -293,3 +293,8 @@
   name: [paddle.atanh, paddle.Tensor.atanh]
   args_alias :
     use_default_mapping : True
+
+- op : sinh
+  name: [paddle.sinh, paddle.Tensor.sinh]
+  args_alias :
+    use_default_mapping : True

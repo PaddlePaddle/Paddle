@@ -1409,10 +1409,10 @@ Tensor baddbmm_decomp(const Tensor& input,
                       const Tensor& y,
                       const float beta,
                       const float alpha) {
-  int batch_size = x.shape()[0];
+  int64_t batch_size = x.shape()[0];
   std::vector<Tensor> batch_results;
 
-  for (int i = 0; i < batch_size; ++i) {
+  for (int64_t i = 0; i < batch_size; ++i) {
     Tensor x_batch = get_slice<T>(x, i);
     Tensor y_batch = get_slice<T>(y, i);
     Tensor result = matmul<T>(x_batch, y_batch);
