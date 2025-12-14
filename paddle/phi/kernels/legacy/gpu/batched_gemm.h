@@ -24,5 +24,7 @@ void BatchedGEMM(const Context &dev_ctx,
                  const DenseTensor &lhs,
                  const DenseTensor &rhs,
                  const std::vector<int64_t> &batch_sizes,
+                 const bool trans_lhs,
+                 const bool trans_rhs,
                  DenseTensor *output);
-}
+}  // namespace phi

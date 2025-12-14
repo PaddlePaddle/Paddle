@@ -861,6 +861,8 @@ PADDLE_API void FusedRMSNormInferMeta(const MetaTensor& x,
 PADDLE_API void BatchedGemmInferMeta(const MetaTensor& lhs,
                                      const MetaTensor& rhs,
                                      const std::vector<int64_t>& batch_sizes,
+                                     const bool trans_lhs,
+                                     const bool trans_rhs,
                                      MetaTensor* output);
 
 }  // namespace phi

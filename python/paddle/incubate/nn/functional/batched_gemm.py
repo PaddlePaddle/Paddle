@@ -14,22 +14,17 @@
 
 from __future__ import annotations
 
-import functools
-
 from paddle import Tensor, _C_ops
 from paddle.framework import in_dynamic_or_pir_mode
 
 
-# special re-use of empty to reduce launch cost.
-@functools.cache
-def _empty_tensor() -> Tensor:
-    """Get tensor with no entries and no data"""
-    return Tensor()
-
-
 def batched_gemm(
-    lhs: Tensor, rhs: Tensor, batch_sizes: list
-) -> tuple[Tensor, Tensor]:
+    lhs: Tensor,
+    rhs: Tensor,
+    batch_sizes: list,
+    trans_lhs: bool = False,
+    trans_rhs: bool = False,
+) -> tuple[Tensor]:
     """
     Cluster launched gemm into one op, which can be further fused and optimized.
 
@@ -38,10 +33,12 @@ def batched_gemm(
         perform gemm operation according to batch range.
         rhs (Tensor): A tensor shaped in (num_batches, input_hidden_size, output_hidden_size).
         batch_sizes(list): A list of integers representing the number of rows in each batch.
+        trans_lhs (bool): Whether view lhs matrix as last 2D-transposed. Default: False.
+        trans_rhs (bool): Whether view rhs matrix as last 2D-transposed. Default: False.
 
     Returns:
         tuple:
             - out (Tensor): The result of batched gemm operation.
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.batched_gemm(lhs, rhs, batch_sizes)
+        return _C_ops.batched_gemm(lhs, rhs, batch_sizes, trans_lhs, trans_rhs)
