@@ -22,12 +22,12 @@ typedef hipDoubleComplex magmaDoubleComplex;
 typedef hipFloatComplex magmaFloatComplex;
 #endif  // PADDLE_WITH_HIP
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU)
 #include <cuComplex.h>
 #include <complex>
 typedef cuDoubleComplex magmaDoubleComplex;
 typedef cuFloatComplex magmaFloatComplex;
-#endif  // PADDLE_WITH_CUDA
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_XPU
 
 #include <mutex>
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
