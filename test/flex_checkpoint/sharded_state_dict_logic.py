@@ -171,7 +171,7 @@ class TestParallelLayersLogic:
 
             if self.has_bias:
                 # Bias is replicated, not sharded
-                assert bias_shard.global_shape == [out_f]
+                assert bias_shard.global_shape == (out_f,)
                 assert bias_shard.local_shape == bias_shard.global_shape
                 assert bias_shard.global_offset == (0,)
 
@@ -213,7 +213,7 @@ class TestParallelLayersLogic:
                 0,
             )
             if self.has_bias:
-                assert bias_shard.global_shape == [out_f]
+                assert bias_shard.global_shape == (out_f,)
                 assert bias_shard.local_shape == bias_shard.global_shape
                 assert bias_shard.global_offset == (0,)
 
