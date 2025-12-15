@@ -185,7 +185,6 @@ def bicubic_interp_np(
         out_w = actual_shape[1]
     batch_size, channel, in_h, in_w = input.shape
 
-    # Standard bicubic interpolation (no anti-aliasing)
     def compute_ratio(in_size, out_size, scale, align_corners):
         if align_corners:
             if out_size <= 1:

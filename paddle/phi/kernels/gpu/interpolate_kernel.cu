@@ -75,6 +75,7 @@ __forceinline__ __device__ void PreCalculatorForLinearInterpInputIndex(
     T* lambda2,
     T src_x,
     const size_t in_img_x) {
+  src_x = max(T(0), src_x);
   *in_img_idx = static_cast<int64_t>(src_x);
   *x_id = (*in_img_idx < in_img_x - 1) ? 1 : 0;
   *lambda1 = static_cast<T>(src_x - *in_img_idx);
