@@ -1597,7 +1597,6 @@ if '${WITH_CUSTOM_DEVICE}' == 'ON':
             '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/afs_api.h'
         ),
         os.path.join(
-            paddle_source_dir,
             '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/dynamic_loader.h',
         ),
         os.path.join(
