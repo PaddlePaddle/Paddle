@@ -20,6 +20,8 @@ namespace phi {
 namespace funcs {
 namespace fast_ln_v2 {
 
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+
 bool has_fast_ln_v2_kernel(phi::DataType weight_type,
                            phi::DataType input_type,
                            phi::DataType output_type,
@@ -174,6 +176,8 @@ void LaunchNormBwd(const Context& dev_ctx,
   params.barrier = barrier.data<int>();
   launcher(launch_params, false);
 }
+
+#endif
 
 }  // namespace fast_ln_v2
 }  // namespace funcs

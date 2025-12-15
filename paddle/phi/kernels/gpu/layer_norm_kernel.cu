@@ -16,7 +16,9 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
 #include "paddle/phi/kernels/funcs/fast_ln_v2_api.h"
+#endif
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 COMMON_DECLARE_bool(use_fast_math);
@@ -497,13 +499,16 @@ LayerNormKernelVariant LayerNormKernelDispatch(
     const uint32_t hidden_size,
     const DenseTensor *scale,
     const DenseTensor *bias) {
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   if (input_type != paddle::DataType::FLOAT32 && hidden_size != 4096) {
     auto compute_type = paddle::DataType::FLOAT32;
+
     if (funcs::fast_ln_v2::has_fast_ln_v2_kernel(
             weight_type, input_type, output_type, compute_type, hidden_size)) {
       return LayerNormKernelVariant::FAST_LN_V2;
     }
   }
+#endif
   if ((hidden_size >= 768 && hidden_size <= 2048 && hidden_size % 256 == 0 ||
        hidden_size == 4096) &&
       scale != nullptr && bias != nullptr) {
@@ -652,6 +657,7 @@ void LayerNormKernel(const Context &dev_ctx,
       scale_bias_dtype, x_dtype, y_dtype, feature_size, scale, bias);
 
   switch (kernel_variant) {
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
     case LayerNormKernelVariant::FAST_LN_V2:
       funcs::fast_ln_v2::LaunchNormFwd<T, Context>(dev_ctx,
                                                    stream,
@@ -671,6 +677,7 @@ void LayerNormKernel(const Context &dev_ctx,
                                                    feature_size,
                                                    epsilon);
       break;
+#endif
     case LayerNormKernelVariant::FAST_LN_V1:
       if (is_scale_bias_same_dtype_with_x) {
         switch (feature_size) {
