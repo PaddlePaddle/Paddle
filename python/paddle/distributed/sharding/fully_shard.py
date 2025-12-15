@@ -28,8 +28,9 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_fully_shard i
 
 
 def in_auto_parallel_mode() -> bool:
-    res = paddle.base.framework.global_var
-    return hasattr(res, '_in_auto_parallel_') and res._in_auto_parallel_
+    return getattr(
+        paddle.base.framework.global_var, '_in_auto_parallel_', False
+    )
 
 
 # @dataclass
