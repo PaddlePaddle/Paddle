@@ -463,9 +463,11 @@ XPUOpMap& get_kl3_ops() {
 #ifdef PADDLE_WITH_XPU_FFT
                      phi::DataType::COMPLEX64,
 #endif
-                     phi::DataType::BFLOAT16})},
+                     phi::DataType::BFLOAT16,
+                     phi::DataType::INT64})},
       {"elementwise_mul",
-       XPUKernelSet({phi::DataType::FLOAT32,
+       XPUKernelSet({phi::DataType::BOOL,
+                     phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
                      phi::DataType::BFLOAT16,
 #ifdef PADDLE_WITH_XPU_FFT
@@ -1034,8 +1036,10 @@ XPUOpMap& get_kl3_ops() {
       {"mul_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"multiply",
-       XPUKernelSet({phi::DataType::FLOAT32,
+       XPUKernelSet({phi::DataType::BOOL,
+                     phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
+                     phi::DataType::BFLOAT16,
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
       {"multi_encoder_xpu",
