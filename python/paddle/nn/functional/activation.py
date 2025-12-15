@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 import paddle
 from paddle import _C_ops, in_dynamic_mode
 from paddle.framework import core, in_dynamic_or_pir_mode
+from paddle.utils import deprecated
 from paddle.utils.decorator_utils import (
     param_one_alias,
     param_two_alias,
@@ -1822,6 +1823,12 @@ def gumbel_softmax(
     return out
 
 
+@deprecated(
+    since="3.3.0",
+    update_to="paddle.nn.functional.swiglu",
+    level=1,
+    reason="paddle.incubate.nn.functional.swiglu will be removed in future",
+)
 def swiglu(
     x: Tensor, y: Tensor | None = None, name: str | None = None
 ) -> Tensor:
