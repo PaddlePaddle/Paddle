@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
     import paddle
     import paddle.distributed as dist
+import paddle
 from paddle.distributed.auto_parallel.fully_shard import FullyShardAuto
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_fully_shard import (
     FullyShard,
@@ -27,7 +28,8 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_fully_shard i
 
 
 def in_auto_parallel_mode() -> bool:
-    return False
+    res = paddle.base.framework.global_var
+    return hasattr(res, '_in_auto_parallel_') and res._in_auto_parallel_
 
 
 # @dataclass
@@ -95,8 +97,8 @@ def fully_shard(
         offload_policy,
         ignored_params_set,
     )
-    # if in_auto_parallel_mode():
-    if mesh:
+
+    if in_auto_parallel_mode():
         return _fully_shard_auto_parallel(*args)
     else:
         return _fully_shard_manual_parallel(*args)
