@@ -28,6 +28,10 @@ namespace deep_ep {
 
 namespace internode_ll_two_stage {
 
+constexpr size_t AlignUpElems(size_t n, size_t elems) {
+  return (n + elems - 1) / elems * elems;
+}
+
 template <int kNumThreads>
 __launch_bounds__(kNumThreads, 1) __global__
     void clean_low_latency_buffer_two_stage(void** buffer_ptrs_gpu,
@@ -162,6 +166,7 @@ __global__ __launch_bounds__(
                   kFP8AmaxInv = 1.0f / 448.0f;
   constexpr int kNumScales =
       kNumPerChannels == -1 ? 1 : kHidden / kNumPerChannels;
+  constexpr int kAlignElems = sizeof(int4) / sizeof(float);
   const size_t hidden_bytes =
       kHidden * (kUseFP8 ? sizeof(__nv_fp8_storage_t) : sizeof(nv_bfloat16));
   const size_t hidden_int4 = hidden_bytes / sizeof(int4);
@@ -173,13 +178,15 @@ __global__ __launch_bounds__(
       sizeof(int4) +
       (kNumRdmaRanks * (kTopk * 3 + 1) * sizeof(int) + sizeof(int4) - 1) /
           sizeof(int4) * sizeof(int4) +
-      (kUseFP8 ? (kHidden + (kNumScales + 3) / 4 * 4 * sizeof(float))
-               : (kHidden * sizeof(nv_bfloat16)));
+      (kUseFP8
+           ? (kHidden + AlignUpElems(kNumScales, kAlignElems) * sizeof(float))
+           : (kHidden * sizeof(nv_bfloat16)));
   // rdma_index_source, hidden, (scale)
   const size_t num_bytes_per_msg_rdma_revecier_and_nvl_sender =
-      sizeof(int4) + (kUseFP8
-                          ? (kHidden + (kNumScales + 3) / 4 * 4 * sizeof(float))
-                          : (kHidden * sizeof(nv_bfloat16)));
+      sizeof(int4) +
+      (kUseFP8
+           ? (kHidden + AlignUpElems(kNumScales, kAlignElems) * sizeof(float))
+           : (kHidden * sizeof(nv_bfloat16)));
   constexpr size_t combine_num_bytes_per_msg = kHidden * sizeof(nv_bfloat16);
   const size_t DISPATCH_NVL_BUFFER_X_BYTES =
       kNumLocalExperts * kNumRanks * num_max_dispatch_tokens_per_rank *
@@ -202,8 +209,9 @@ __global__ __launch_bounds__(
   const size_t NVL_BUFFER_OFFSET =
       nvl_buffer_id * NVL_BUFFER_X_BYTES_PER_BUFFER;
   const size_t num_bytes_per_msg_rdma_to_nvl =
-      kUseFP8 ? (kHidden + (kNumScales + 3) / 4 * 4 * sizeof(float))
-              : (kHidden * sizeof(nv_bfloat16));
+      kUseFP8
+          ? (kHidden + AlignUpElems(kNumScales, kAlignElems) * sizeof(float))
+          : (kHidden * sizeof(nv_bfloat16));
   const size_t num_int4_per_msg = num_bytes_per_msg / sizeof(int4);
   const size_t num_int4_per_msg_rdma_revecier_and_nvl_sender =
       num_bytes_per_msg_rdma_revecier_and_nvl_sender / sizeof(int4);
@@ -243,7 +251,8 @@ __global__ __launch_bounds__(
           reinterpret_cast<uint8_t*>(rdma_x_vec) + hidden_bytes);
       const auto index_source = rdma_x_src_idx;
       const auto nvl_rank_meta = reinterpret_cast<int*>(
-          rdma_x_scales + (kUseFP8 ? (kNumScales + 3) / 4 * 4 : 0));
+          rdma_x_scales +
+          (kUseFP8 ? AlignUpElems(kNumScales, kAlignElems) : 0));
 
       thread_id == 0 ? (*index_source = token_idx) : 0;
 
@@ -545,7 +554,8 @@ LOW_LATENCY_DISPATCH_RECV:
         const auto rdma_recv_x_scales = reinterpret_cast<float*>(
             reinterpret_cast<uint8_t*>(src_data) + sizeof(int4) + hidden_bytes);
         const auto rdma_recv_nvl_rank_meta = reinterpret_cast<int*>(
-            rdma_recv_x_scales + (kUseFP8 ? (kNumScales + 3) / 4 * 4 : 0));
+            rdma_recv_x_scales +
+            (kUseFP8 ? AlignUpElems(kNumScales, kAlignElems) : 0));
         const int dst_nvl_experts =
             *(rdma_recv_nvl_rank_meta + rdma_rank * (kTopk * 3 + 1));
         const auto rdma_recv_nvl_rank_meta_now =
@@ -922,6 +932,7 @@ __global__ __launch_bounds__(
   constexpr int kNumRanks = kNumRdmaRanks * NUM_MAX_NVL_PEERS;
   constexpr int kNumLocalExperts = kNumExperts / kNumRanks;
   constexpr int kNumRdmaExperts = kNumLocalExperts * NUM_MAX_NVL_PEERS;
+  constexpr int kAlignElems = sizeof(int4) / sizeof(float);
   constexpr int kNumScales =
       kNumPerChannels == -1 ? 1 : kHidden / kNumPerChannels;
   const int nvl_buffer_id = next_buffer_id ^ 1;
@@ -930,12 +941,14 @@ __global__ __launch_bounds__(
       sizeof(int4) +
       (kNumRdmaRanks * (kTopk * 3 + 1) * sizeof(int) + sizeof(int4) - 1) /
           sizeof(int4) * sizeof(int4) +
-      (kDispatchUseFP8 ? (kHidden + (kNumScales + 3) / 4 * 4 * sizeof(float))
-                       : (kHidden * sizeof(nv_bfloat16)));
+      (kDispatchUseFP8
+           ? (kHidden + AlignUpElems(kNumScales, kAlignElems) * sizeof(float))
+           : (kHidden * sizeof(nv_bfloat16)));
   const size_t num_bytes_per_msg_rdma_revecier_and_nvl_sender_dispatch =
-      sizeof(int4) + (kDispatchUseFP8
-                          ? (kHidden + (kNumScales + 3) / 4 * 4 * sizeof(float))
-                          : (kHidden * sizeof(nv_bfloat16)));
+      sizeof(int4) +
+      (kDispatchUseFP8
+           ? (kHidden + AlignUpElems(kNumScales, kAlignElems) * sizeof(float))
+           : (kHidden * sizeof(nv_bfloat16)));
 
   const size_t dispatch_hidden_bytes =
       kHidden *
@@ -1118,7 +1131,9 @@ __global__ __launch_bounds__(
             reinterpret_cast<const int*>(dispatch_rdma_recv_x_now)[0];
         const int* nvl_rank_meta = reinterpret_cast<const int*>(
             dispatch_rdma_recv_x_now + sizeof(int4) + dispatch_hidden_bytes +
-            (kDispatchUseFP8 ? (kNumScales + 3) / 4 * 4 * sizeof(float) : 0));
+            (kDispatchUseFP8
+                 ? AlignUpElems(kNumScales, kAlignElems) * sizeof(float)
+                 : 0));
         const int nvl_rank_nums =
             *(nvl_rank_meta + rdma_rank * (kTopk * 3 + 1));
         const int* nvl_rank_meta_now =
