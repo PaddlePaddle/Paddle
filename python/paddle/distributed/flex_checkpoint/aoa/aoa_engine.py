@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 from ..dcp.sharded_weight import ShardedWeightDesc
 from .lexer import Lexer
 from .parser import Parser
+from .traceback import AOATraceback
 
 _ShardInfo = dict[str, list[ShardedWeightDesc]]
 
@@ -282,15 +283,18 @@ class AOAEngine:
         self.aoa_config_reverse = self.aoa_config.get(
             "aoa_config_reverse", False
         )
+        enable_traceback = self.aoa_config.get("enable_traceback", False)
+        self.traceback = AOATraceback() if enable_traceback else None
         self.context = AOAShardInfoContext(
             source_state_shard_info,
             destination_state_shard_info,
             self.aoa_config_reverse,
         )
-        self.lexer = Lexer(self.context)
-        self.parser = Parser(
-            self.lexer.all_tokens(self.aoa_config.get("aoa_statements", []))
+        self.lexer = Lexer(self.context, traceback=self.traceback)
+        tokens = self.lexer.all_tokens(
+            self.aoa_config.get("aoa_statements", [])
         )
+        self.parser = Parser(tokens)
         self.statements = self.parser.parse_program()
         if self.aoa_config_reverse:
             self.statements = list(reversed(self.statements))

@@ -256,10 +256,10 @@ def fused_qkv_old_macro(tokens, expression, context):
             right_var_end_pos = idx + 1
 
     assert attn_head_num and attn_head_num > 0, (
-        "num_heads must be positive.(got: {attn_head_num})."
+        f"num_heads must be positive.(got: {attn_head_num})."
     )
     assert num_key_value_groups and num_key_value_groups > 0, (
-        "num_key_value_groups must be positive.(got: {num_key_value_groups})."
+        f"num_key_value_groups must be positive.(got: {num_key_value_groups})."
     )
     assert fused_qkv_old_pos is not None, (
         f"No fused_qkv_old tag found in expression. The tag must be {FUSED_QKV_OLD_TAG}."
