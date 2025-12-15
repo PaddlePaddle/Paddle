@@ -38,7 +38,7 @@ __forceinline__ __device__ void PreCalculatorForLinearInterpInputIndex(
     T src_x,
     const int64_t in_img_x) {
   src_x = max(src_x, T(0));
-  *in_img_idx = min(static_cast<int64_t>(src_x), in_img_x - 1);
+  *in_img_idx = static_cast<int64_t>(src_x);
   *x_id = (*in_img_idx < in_img_x - 1) ? 1 : 0;
   *lambda1 = static_cast<T>(src_x - *in_img_idx);
   *lambda2 = static_cast<T>(1.0) - *lambda1;
@@ -265,7 +265,8 @@ __global__ void KeBilinearInterpBwShareMemory(T* in,
                                               const int64_t num_channels,
                                               MT ratio_h,
                                               MT ratio_w,
-                                              const bool align_flag,
+                                              const bool align_corners,
+                                              const int align_mode,
                                               bool is_nchw) {
   __shared__ MT s_data[2][1024];
   int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
@@ -273,6 +274,7 @@ __global__ void KeBilinearInterpBwShareMemory(T* in,
   int64_t in_chw = in_h * in_w * num_channels;
   int64_t out_chw = num_channels * out_h * out_w;
   int64_t nthreads = static_cast<int64_t>(n) * out_chw;
+  bool align_flag = (align_mode == 0 && !align_corners);
 
   for (; tid < nthreads; tid += stride) {
     int64_t out_id_h = tid / out_chw;
@@ -370,13 +372,14 @@ __global__ void KeBilinearInterpNCHWBw(T* in,
                                        MT ratio_h,
                                        MT ratio_w,
                                        const T* __restrict__ out,
-                                       const double align_type_value) {
+                                       const bool align_corners,
+                                       const int align_mode) {
   int64_t index = threadIdx.x + static_cast<int64_t>(blockDim.x) * blockIdx.x;
   const int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x;
   const int64_t num_out =
       static_cast<int64_t>(n) * num_channels * out_h * out_w;
   const int64_t num_in = static_cast<int64_t>(n) * num_channels * in_h * in_w;
-
+  MT align_type_value = (align_mode == 0 && !align_corners) ? 0.5 : 0;
   // Restricted parallelism if ratio_w is over threshold
   // to avoid atomic contention overhead.
   // This threshold 0.5f is come up with extensive quantitative analysis,
@@ -502,12 +505,14 @@ __global__ void KeBilinearInterpBw(T* in,
                                    const int64_t num_channels,
                                    MT ratio_h,
                                    MT ratio_w,
-                                   const bool align_flag,
+                                   const bool align_corners,
+                                   const int align_mode,
                                    funcs::FastDivModForInterpolate divmods) {
   int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x;
   int64_t in_chw = in_h * in_w * num_channels;
   int64_t nthreads = static_cast<int64_t>(n) * out_chw;
+  bool align_flag = (align_mode == 0 && !align_corners);
 
   for (; tid < nthreads; tid += stride) {
     auto out_id_divmod = divmods.output_w_div.Divmod(tid);
@@ -1483,8 +1488,6 @@ static void Interpolate2DCUDABwd(
                                                          interp_divmods);
     }
   } else if ("bilinear" == interp_method) {
-    const double align_type_value =
-        (align_mode == 0 && !align_corners) ? 0.5 : 0.;
     bool is_nchw = (data_layout == DataLayout::NCHW) ? true : false;
     bool optimize_flag = false;
 #ifndef __HIPCC__
@@ -1506,7 +1509,8 @@ static void Interpolate2DCUDABwd(
                                                              c,
                                                              ratio_h,
                                                              ratio_w,
-                                                             align_type_value,
+                                                             align_corners,
+                                                             align_mode,
                                                              is_nchw);
     } else if (!optimize_flag & is_nchw) {
       const int64_t num_kernels = static_cast<int64_t>(n) * c * out_h * out_w;
@@ -1526,7 +1530,8 @@ static void Interpolate2DCUDABwd(
                                  ratio_h,
                                  ratio_w,
                                  output_grad_data,
-                                 align_type_value);
+                                 align_corners,
+                                 align_mode);
     } else {
       int64_t cw = c * out_w;
       auto interp_divmods = funcs::FastDivModForInterpolate(c, out_chw, cw);
@@ -1544,7 +1549,8 @@ static void Interpolate2DCUDABwd(
                                                   c,
                                                   ratio_h,
                                                   ratio_w,
-                                                  align_type_value,
+                                                  align_corners,
+                                                  align_mode,
                                                   interp_divmods);
     }
   } else if ("bicubic" == interp_method) {
