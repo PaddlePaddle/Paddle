@@ -532,7 +532,8 @@ jobs:
       - name: Multi-card test
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
-          source .venv/bin/activate
+          source /paddle/.venv/bin/activate
+          export PYTHONPATH=$(pwd)
           python -c "import paddle; print(paddle.version.commit)"
           bash ci/multi-card_test.sh
           multi_card_exit_code=$?
