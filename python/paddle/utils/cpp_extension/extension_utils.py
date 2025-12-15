@@ -872,6 +872,10 @@ def find_paddle_custom_device_includes():
     """
     include_dirs = []
     devices = core.get_all_device_type()
+
+    if not devices:
+        return include_dirs
+
     device = devices[-1]
     if core.is_compiled_with_custom_device(device):
         custom_device_root = os.getenv("CUSTOM_DEVICE_ROOT")
