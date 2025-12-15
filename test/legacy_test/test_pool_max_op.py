@@ -625,6 +625,7 @@ class TestCase9(TestMaxPool2dV2Op):
 class TestCase10(TestCase9):
     def init_global(self):
         self.global_pool = False
+        print(1)
 
 
 def create_test_fp16_class(parent):
