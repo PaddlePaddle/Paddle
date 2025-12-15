@@ -587,6 +587,14 @@ GetPredefinedOutTupleTensorFromKwargs_7(PyObject* kwargs);
 
 void Check_PIR_not_support_out(PyObject* kwargs);
 
+int py_list_to_vector_string(PyObject* py_list,
+                             std::vector<std::string>* cpp_vec);
+int py_dict_to_unordered_map_string(
+    PyObject* py_dict, std::unordered_map<std::string, std::string>* cpp_map);
+
+int py_str_to_cpp_str(PyObject* py_str, std::string* cpp_str);
+int parse_attrs_dict(PyObject* py_attrs_dict,
+                     std::unordered_map<std::string, uintptr_t>* attrs);
 /*----------------------for arg parse-----------------------------*/
 paddle::Tensor& GetTensorFromArgsOrKWArgs(
     const std::string& op_type,

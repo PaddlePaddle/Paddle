@@ -62,6 +62,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/yield_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/cuda_graph_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/custom_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/custom_pyop_func_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
@@ -957,6 +958,10 @@ void PirInterpreter::BuildInstruction() {
     } else if (op.dialect()->name() == "custom_kernel") {
       vec_instruction_base_.emplace_back(
           std::make_unique<CustomKernelInstruction>(
+              op_idx++, place_, &op, *(value_exe_info_.get())));
+    } else if (op.dialect()->name() == "custom_py_func") {
+      vec_instruction_base_.emplace_back(
+          std::make_unique<CustomPyOpFuncInstruction>(
               op_idx++, place_, &op, *(value_exe_info_.get())));
     } else if (paddle::dialect::IsCustomEngineOp(&op)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -2038,7 +2043,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     exception_holder_.Catch(std::current_exception());
   } catch (std::exception& ex) {
     LOG(WARNING) << instr_node->Name() << " raises an exception "
-                 << common::demangle(typeid(ex).name());
+                 << common::demangle(typeid(ex).name()) << ": " << ex.what();
     exception_holder_.Catch(std::current_exception());
   } catch (...) {
     LOG(WARNING) << instr_node->Name() << " raises an unknown exception";

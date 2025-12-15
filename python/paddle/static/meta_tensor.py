@@ -12,15 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import wraps
+
 from ..base.libpaddle import IrMetaTensor, IrTensor
 
 
 class MetaTensor:
-    def __init__(self, shape=[], dtype="float32"):
-        self.ir_tensor = IrTensor()
+    def __init__(self, *, shape=None, dtype=None, ir_tensor=None):
+        self.ir_tensor = IrTensor() if ir_tensor is None else ir_tensor
         self.ir_meta_tensor = IrMetaTensor(self.ir_tensor)
-        self.ir_meta_tensor.set_shape(shape)
-        self.ir_meta_tensor.set_dtype(dtype)
+        if shape is not None:
+            self.ir_meta_tensor.set_shape(shape)
+        if dtype is not None:
+            self.ir_meta_tensor.set_dtype(dtype)
 
     def set_shape(self, shape):
         self.ir_meta_tensor.set_shape(shape)
@@ -41,3 +45,22 @@ class MetaTensor:
             self.ir_meta_tensor.dtype == other.ir_meta_tensor.dtype
             and self.ir_meta_tensor.shape == other.ir_meta_tensor.shape
         )
+
+
+def MetaTensorWrapper(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        # IrTensor -> MetaTensor
+        new_args = list(args)
+        for i, arg in enumerate(args):
+            if isinstance(arg, IrTensor):
+                new_args[i] = MetaTensor(ir_tensor=arg)
+        for key, value in kwargs.items():
+            if isinstance(value, IrTensor):
+                kwargs[key] = MetaTensor(ir_tensor=value)
+        outputs = fn(*new_args, **kwargs)
+        if isinstance(outputs, (list, tuple)):
+            return [output.ir_tensor for output in outputs]
+        return outputs.ir_tensor
+
+    return wrapper

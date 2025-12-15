@@ -622,7 +622,7 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
   CustomOpInfoInterfaceModel() : OpYamlInfoInterface::Concept(GetPirOpInfo) {}
 };
 
-struct CustomPyOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
+struct PythonOperatorInfoInterfaceModel : public OpYamlInfoInterface::Concept {
   static OpInfoTuple GetPirOpInfo(const std::string& pir_op_name) {
     const auto& op_meta =
         paddle::framework::detail::GetPythonOperatorInfoByPirName(pir_op_name);
@@ -700,7 +700,8 @@ struct CustomPyOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
         inputs_info, attributes_info, outputs_info, run_time_info, "");
   }
 
-  CustomPyOpInfoInterfaceModel() : OpYamlInfoInterface::Concept(GetPirOpInfo) {}
+  PythonOperatorInfoInterfaceModel()
+      : OpYamlInfoInterface::Concept(GetPirOpInfo) {}
 };
 
 struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
@@ -1273,7 +1274,7 @@ void PythonOperatorDialect::RegisterPythonOperator(
   std::set<pir::InterfaceValue> interface_values;
   pir::InterfaceValue op_info_interface =
       pir::InterfaceValue::Get<OpYamlInfoInterface,
-                               CustomPyOpInfoInterfaceModel>();
+                               PythonOperatorInfoInterfaceModel>();
   interface_values.insert(std::move(op_info_interface));
 
   // TODO(DrRyanHuang): Currently, we do not support vjp for customPyOp.

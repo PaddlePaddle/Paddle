@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <functional>
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
@@ -35,6 +36,7 @@
 #include "paddle/pir/include/core/attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
 
+#include "paddle/fluid/framework/python_operator.h"
 namespace paddle {
 
 namespace pybind {
@@ -990,6 +992,446 @@ static PyObject *run_custom_op(PyObject *self,
   }
 }
 
+template <typename T>
+std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec) {
+  os << "[";
+  for (size_t i = 0; i < vec.size(); ++i) {
+    os << vec[i];
+    if (i != vec.size() - 1) {
+      os << ", ";
+    }
+  }
+  os << "]";
+  return os;
+}
+
+using IrTensor = paddle::dialect::IrTensor;
+
+template <typename T>
+auto CreatePyFuncRunner(int64_t py_func_ptr, const std::string &op_name) {
+  static_assert(std::is_same_v<T, Tensor> || std::is_same_v<T, IrTensor>,
+                "T must be either Tensor or paddle::dialect::IrTensor");
+  using FuncInputType = std::vector<std::shared_ptr<T>>;
+  using FuncOutputType = std::vector<std::shared_ptr<T>>;
+
+  // 返回 Lambda
+  return [=](const FuncInputType &inputs) -> FuncOutputType {
+    py::gil_scoped_acquire acquire;  // 获取 GIL
+
+    py::handle func_handle =
+        py::handle(reinterpret_cast<PyObject *>(py_func_ptr));
+    if (!func_handle.ptr()) {
+      throw std::runtime_error("Python function pointer is null for op: " +
+                               op_name);
+    }
+    py::function py_func = py::reinterpret_borrow<py::function>(func_handle);
+
+    py::tuple py_args(inputs.size());
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      py_args[i] = py::cast(inputs[i]);
+    }
+
+    py::object result;
+    try {
+      result = py_func(*py_args);  // 解包调用
+    } catch (const py::error_already_set &e) {
+      throw std::runtime_error("Execution of customPythonOp (" + op_name +
+                               ") failed: " + e.what());
+    }
+
+    FuncOutputType outputs;
+    auto cast_to_shared = [&](const py::handle &h) -> std::shared_ptr<T> {
+      if (h.is_none()) return nullptr;
+      try {
+        return h.cast<std::shared_ptr<T>>();
+      } catch (const py::cast_error &) {
+        throw std::runtime_error("Output of customPythonOp (" + op_name +
+                                 ") is not of expected type.");
+      }
+    };
+
+    if (py::isinstance<py::tuple>(result)) {
+      py::tuple tuple_result = py::cast<py::tuple>(result);
+      outputs.reserve(tuple_result.size());
+      for (const auto &item : tuple_result) {
+        outputs.push_back(cast_to_shared(item));
+      }
+    } else {
+      outputs.push_back(cast_to_shared(result));
+    }
+
+    return outputs;
+  };
+}
+
+static PyObject *run_custom_pyop(PyObject *self,
+                                 PyObject *args,
+                                 PyObject *kwargs) {
+  VLOG(6) << "Call run_custom_pyop";
+
+  if (kwargs == NULL) {
+    PyErr_SetString(
+        PyExc_TypeError,
+        "kwargs cannot be NULL. Please add inputs/outputs/attr/inplace_map!");
+    return NULL;
+  }
+
+  PyObject *py_op_name = PyDict_GetItemString(kwargs, "name");
+  PyObject *py_input_names = PyDict_GetItemString(kwargs, "input_names");
+  PyObject *py_output_names = PyDict_GetItemString(kwargs, "output_names");
+  PyObject *py_attrs_dict = PyDict_GetItemString(kwargs, "attrs");
+  PyObject *py_inplace_dict = PyDict_GetItemString(kwargs, "inplace_map");
+
+  if (!py_op_name || !py_input_names || !py_output_names || !py_attrs_dict ||
+      !py_inplace_dict) {
+    PyErr_SetString(
+        PyExc_KeyError,
+        "Required key (inputs/outputs/attr/inplace_map) missing from kwargs.");
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+
+  std::string op_name;
+  std::vector<std::string> inputs_vec;
+  std::vector<std::string> outputs_vec;
+  std::unordered_map<std::string, uintptr_t> attrs_map;
+  std::unordered_map<std::string, std::string> op_inplace_map;
+
+  if (py_str_to_cpp_str(py_op_name, &op_name) == -1 ||
+      py_list_to_vector_string(py_input_names, &inputs_vec) == -1 ||
+      py_list_to_vector_string(py_output_names, &outputs_vec) == -1 ||
+      parse_attrs_dict(py_attrs_dict, &attrs_map) == -1 ||
+      py_dict_to_unordered_map_string(py_inplace_dict, &op_inplace_map) == -1) {
+    PyErr_SetString(PyExc_KeyError,
+                    "inputs/outputs/attr/inplace_map is Empty!");
+    return nullptr;
+  }
+
+  std::cout << "Get things from python for Custom PyOp: [" << op_name << "]"
+            << std::endl;
+  std::cout << "op_name: " << op_name << std::endl;
+  std::cout << "inputs: " << inputs_vec << std::endl;
+  std::cout << "outputs: " << outputs_vec << std::endl;
+  std::cout << "attrs[infer_meta_fn_ptr]: " << attrs_map["infer_meta_fn_ptr"]
+            << std::endl;
+  std::cout << "attrs[fn_ptr]: " << attrs_map["fn_ptr"] << std::endl;
+
+  const auto &meta_info_map = OpMetaInfoMap::Instance().GetMap();
+
+  auto py_func = CreatePyFuncRunner<Tensor>(attrs_map["fn_ptr"], op_name);
+  auto infer_meta_py_func =
+      CreatePyFuncRunner<IrTensor>(attrs_map["infer_meta_fn_ptr"], op_name);
+
+  if (meta_info_map.find(op_name) == meta_info_map.end()) {
+    std::cout << "We need to register this op first! " << op_name << std::endl;
+    // 不存在先注册一下
+    paddle::framework::RegisterPythonOperator(
+        op_name,
+        std::move(inputs_vec),
+        std::move(outputs_vec),
+        {"infer_meta_fn_ptr: int64_t", "fn_ptr: int64_t"},
+        std::move(op_inplace_map),
+        std::move(py_func),
+        std::move(infer_meta_py_func));
+  }
+
+  // 不知道为啥不能跑?
+  PADDLE_ENFORCE_NE(meta_info_map.find(op_name),
+                    meta_info_map.end(),
+                    common::errors::NotFound(
+                        "Can't find %s in Eager OpMetaInfoMap which should be "
+                        "created by LoadOpMetaInfoAndRegisterOp, please make "
+                        "sure you registered your op first and try again. ",
+                        op_name));
+
+  const auto &vec_map = meta_info_map.at(op_name);
+  const auto &inputs = paddle::OpMetaInfoHelper::GetInputs(vec_map[0]);
+  const auto &attrs = paddle::OpMetaInfoHelper::GetAttrs(vec_map[0]);
+  const auto &outputs = paddle::OpMetaInfoHelper::GetOutputs(vec_map[0]);
+  const auto &inplace_map = paddle::OpMetaInfoHelper::GetInplaceMap(vec_map[0]);
+  const auto &inplace_reverse_map =
+      paddle::OpMetaInfoHelper::GetInplaceReverseMap(vec_map[0]);
+  // auto infershape_func = OpMetaInfoHelper::GetInferShapeFn(vec_map[0]);
+  // auto inferdtype_func = OpMetaInfoHelper::GetInferDtypeFn(vec_map[0]);
+
+  std::string pir_op_name =
+      paddle::framework::kPythonOperatorDialectPrefix + op_name;
+  if (!inplace_map.empty()) {
+    pir_op_name += "_";
+  }
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::OpInfo pir_info = ctx->GetRegisteredOpInfo(pir_op_name);
+  pir::OperationArgument argument(pir_info);
+  std::vector<pir::Value> argument_inputs;
+  std::vector<pir::Type> argument_outputs;
+
+  std::vector<std::vector<int64_t>> input_shapes;
+  std::vector<DataType> input_dtypes;
+  std::unordered_map<std::string, int> input_name2id_map;
+  std::vector<std::vector<std::vector<int64_t>>> vec_input_shapes;
+  std::vector<std::vector<DataType>> vec_input_dtypes;
+  std::unordered_map<std::string, int> vec_input_name2id_map;
+  std::vector<paddle::any> custom_attrs;
+  int input_index = 0;
+  int vec_input_index = 0;
+
+  std::vector<std::shared_ptr<IrTensor>> inputs_ptr_vector;
+
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    const auto &input = inputs.at(i);
+    PyObject *obj = PyTuple_GET_ITEM(args, i);
+    // Emplace Py_None from python, this means optional inputs passed to C++,
+    // use one un-initialized tensor to indicate both Tensor and
+    // vector<Tensor> inputs.
+    if (obj == Py_None) {
+      std::cout << "Add un-initialized tensor "
+                   "because the optional input is None"
+                << std::endl;
+      if (paddle::framework::detail::IsDuplicableVar(input)) {
+        std::vector<std::vector<int64_t>> vec_input_shape;
+        std::vector<DataType> vec_input_dtype;
+        vec_input_shapes.emplace_back(vec_input_shape);
+        vec_input_dtypes.emplace_back(vec_input_dtype);
+        vec_input_name2id_map[inputs[i]] = vec_input_index;
+        vec_input_index++;
+      } else {
+        std::vector<int64_t> input_shape;
+        DataType input_dtype = DataType::UNDEFINED;
+        input_shapes.emplace_back(input_shape);
+        input_dtypes.emplace_back(input_dtype);
+        input_name2id_map[inputs[i]] = input_index;
+        input_index++;
+      }
+      argument_inputs.emplace_back();
+      continue;
+    }
+    if (paddle::framework::detail::IsDuplicableVar(input)) {
+      // std::vector<std::vector<int64_t>> tmp_input_shapes;
+      // std::vector<phi::DataType> tmp_input_dtypes;
+      // vec_input_name2id_map[inputs[i]] = vec_input_index;
+      // vec_input_index++;
+      // std::vector<pir::Value> input_values =
+      //     CastPyArg2VectorOfValue(obj, op_name, i, false);
+      // for (auto &input_value : input_values) {
+      //   paddle::dialect::DenseTensorType input_tensor =
+      //       input_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+      //   tmp_input_shapes.push_back(phi::vectorize(input_tensor.dims()));
+      //   tmp_input_dtypes.push_back(
+      //       paddle::dialect::TransToPhiDataType(input_tensor.dtype()));
+      // }
+      // vec_input_shapes.push_back(tmp_input_shapes);
+      // vec_input_dtypes.push_back(tmp_input_dtypes);
+      // auto combine_op = paddle::dialect::ApiBuilder::Instance()
+      //                       .GetBuilder()
+      //                       ->Build<pir::CombineOp>(input_values);
+      // argument_inputs.push_back(combine_op.out());
+    } else {
+      input_name2id_map[inputs[i]] = input_index;
+      input_index++;
+      pir::Value input_value =
+          CastPyArg2Value(obj, op_name, i, false);  // NOLINT
+      paddle::dialect::DenseTensorType input_tensor =
+          input_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+      // input_shapes.push_back(phi::vectorize(input_tensor.dims()));
+      // input_dtypes.push_back(
+      //     paddle::dialect::TransToPhiDataType(input_tensor.dtype()));
+      argument_inputs.push_back(input_value);
+
+      inputs_ptr_vector.push_back(std::make_shared<IrTensor>(
+          paddle::dialect::TransToPhiDataType(input_tensor.dtype()),
+          input_tensor.dims(),
+          input_tensor.data_layout(),
+          {}));
+    }
+  }
+  argument.AddInputs(argument_inputs);
+  std::cout << "finish argument.AddInputs(argument_inputs)! " << std::endl;
+
+  custom_attrs.push_back(attrs_map["infer_meta_fn_ptr"]);
+  custom_attrs.push_back(attrs_map["fn_ptr"]);
+  argument.AddAttribute(
+      "infer_meta_fn_ptr",
+      pir::Int64Attribute::get(pir::IrContext::Instance(),
+                               attrs_map["infer_meta_fn_ptr"]));
+  argument.AddAttribute("fn_ptr",
+                        pir::Int64Attribute::get(pir::IrContext::Instance(),
+                                                 attrs_map["fn_ptr"]));
+
+  // 做 infer_meta
+  std::vector<std::shared_ptr<IrTensor>> process_result =
+      infer_meta_py_func(inputs_ptr_vector);
+  PADDLE_ENFORCE_EQ(
+      process_result.size(),
+      outputs.size(),
+      common::errors::InvalidArgument(
+          "%d and %d not equal!", process_result.size(), outputs.size()));
+
+  dialect::ProcessMeshAttribute op_mesh;
+  bool run_auto_parallel = false;
+  std::vector<pir::Attribute> dist_result_attrs;
+  phi::distributed::SpmdInfo spmd_info;
+  if (dialect::HasDistInput(argument_inputs, &op_mesh)) {
+    VLOG(7) << "Custom Op: " << op_name << " InferSPMD";
+    run_auto_parallel = true;
+    spmd_info = paddle::framework::RunInferSpmd(
+        vec_map[0], op_name, op_mesh, argument_inputs, custom_attrs);
+  }
+
+  size_t all_values_num = 0;
+  // output name -> value num (that output should hold)
+  std::unordered_map<std::string, size_t> output_name2value_num;
+  for (size_t i = 0; i < outputs.size(); ++i) {
+    const auto &output = outputs.at(i);
+    if (paddle::framework::detail::IsDuplicableVar(output)) {
+      PADDLE_ENFORCE_NE(
+          inplace_reverse_map.find(output),
+          inplace_reverse_map.end(),
+          common::errors::InvalidArgument(
+              "Only support vector output that is set for inplace, Please use "
+              "`SetInplaceMap` in your output when registry custom operator."));
+      const auto &input = inplace_reverse_map.at(output);
+      auto index = vec_input_name2id_map[input];
+      auto &vec_input_shape = vec_input_shapes[index];
+      output_name2value_num[output] = vec_input_shape.size();
+    } else {
+      if (inplace_reverse_map.find(output) != inplace_reverse_map.end()) {
+        const auto &input = inplace_reverse_map.at(output);
+        auto index = input_name2id_map[input];
+        // input_shapes[index] is dim of tensor, if the dim doesn't have
+        // element, it must be a optional tensor that is None in custom operator
+        output_name2value_num[output] = input_shapes[index].size() == 0 ? 0 : 1;
+      } else {
+        ++(output_name2value_num[output]);
+      }
+    }
+    all_values_num += output_name2value_num[output];
+  }
+
+  std::cout << "all_values_num: " << all_values_num << std::endl;
+
+  if (run_auto_parallel) {
+    PADDLE_ENFORCE_EQ(
+        spmd_info.second.size(),
+        all_values_num,
+        common::errors::InvalidArgument(
+            "The number of output dist_attr after running custom operator's "
+            "InferSPMD is wrong, "
+            "expected contains %d Tensors' dist_attr, but actually contains %d "
+            "Tensors' dist_attr",
+            all_values_num,
+            spmd_info.second.size()));
+  }
+
+  size_t value_index = 0;
+  for (size_t i = 0; i < outputs.size(); ++i) {
+    const auto &output = outputs.at(i);
+    auto value_num = output_name2value_num[output];
+    if (value_num == 0) {
+      // Optional value condition
+      pir::Type out_type;
+      argument_outputs.push_back(out_type);
+      continue;
+    }
+    if (paddle::framework::detail::IsDuplicableVar(output)) {
+      std::vector<pir::Type> out_types;
+      std::vector<pir::Attribute> dist_attrs;
+      for (size_t j = 0; j < value_num; ++j) {
+        // auto ddims = phi::make_ddim(output_shapes[value_index]);
+        // auto dtype = output_dtypes[value_index];
+        // phi::DataLayout layout{DataLayout::NCHW};
+        // phi::LegacyLoD lod;
+        // auto type = paddle::dialect::DenseTensorType::get(
+        //     pir::IrContext::Instance(),
+        //     paddle::dialect::TransToIrDataType(dtype),
+        //     ddims,
+        //     layout,
+        //     lod,
+        //     0);
+
+        // if (run_auto_parallel) {
+        //   auto dist_attr =
+        //   dialect::CvtToPirAttr(spmd_info.second[value_index]);
+        //   out_types.push_back(dialect::CvtToPirDistType(type, dist_attr));
+        //   dist_attrs.push_back(dist_attr);
+        // } else {
+        //   out_types.push_back(std::move(type));
+        // }
+        // value_index++;
+      }
+      pir::Type out_vector_type =
+          pir::VectorType::get(pir::IrContext::Instance(), out_types);
+      argument_outputs.push_back(out_vector_type);
+      if (run_auto_parallel) {
+        dist_result_attrs.push_back(
+            pir::ArrayAttribute::get(pir::IrContext::Instance(), dist_attrs));
+      }
+    } else {
+      auto dense_out = *(process_result[value_index]);
+      auto out_type = paddle::dialect::DenseTensorType::get(
+          pir::IrContext::Instance(),
+          paddle::dialect::TransToIrDataType(dense_out.dtype()),
+          dense_out.dims(),
+          dense_out.layout(),
+          dense_out.lod(),
+          dense_out.offset());
+      if (run_auto_parallel) {
+        auto dist_attr = dialect::CvtToPirAttr(spmd_info.second[value_index]);
+        argument_outputs.push_back(
+            dialect::CvtToPirDistType(out_type, dist_attr));
+        dist_result_attrs.push_back(dist_attr);
+      } else {
+        argument_outputs.push_back(out_type);
+      }
+      value_index++;
+    }
+  }
+
+  // construct operator_dist_attr
+  if (run_auto_parallel) {
+    std::vector<pir::Attribute> dist_operand_attrs;
+    for (auto &arg_dist : spmd_info.first) {
+      dist_operand_attrs.push_back(dialect::CvtToPirAttr(arg_dist));
+    }
+    auto op_dist_attr = dialect::OperationDistAttribute::get(
+        ctx, op_mesh, dist_operand_attrs, dist_result_attrs);
+    std::ostringstream print_stream;
+    print_stream << op_dist_attr;
+    VLOG(7) << "Custom Op: " << op_name << " InferSPMD Operator dist attr"
+            << print_stream.str();
+    argument.AddAttribute(
+        kAttrOpDistAttr,
+        dialect::OperationDistAttribute::get(
+            ctx, op_mesh, dist_operand_attrs, dist_result_attrs));
+  }
+
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
+  CallStackRecorder callstack_recorder("_run_custom_pyop");
+  callstack_recorder.Record();
+  std::vector<pir::Value> op_results;
+  pir::Operation *op =
+      paddle::dialect::ApiBuilder::Instance().GetBuilder()->Build(
+          std::move(argument));
+  for (size_t i = 0; i < outputs.size(); ++i) {
+    const auto &output = outputs.at(i);
+    if (paddle::framework::detail::IsDuplicableVar(output)) {
+      if (op->result(i).type().dyn_cast<pir::VectorType>()) {
+        auto split_op = paddle::dialect::ApiBuilder::Instance()
+                            .GetBuilder()
+                            ->Build<pir::SplitOp>(op->result(i));
+        auto split_outputs = split_op.outputs();
+        op_results.insert(
+            op_results.end(), split_outputs.begin(), split_outputs.end());
+      }
+    } else {
+      op_results.push_back(op->result(i));
+    }
+  }
+  callstack_recorder.AttachToOps();
+  VLOG(0) << "return ToPyObject(op_results);";
+  return ToPyObject(op_results);
+}
+
 static PyObject *builtin_combine_op(PyObject *self,
                                     PyObject *args,
                                     PyObject *kwargs) {
@@ -1294,6 +1736,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))run_custom_op,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for run_custom_op."},
+    {"_run_custom_pyop",
+     (PyCFunction)(void (*)(void))run_custom_pyop,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for run_custom_pyop."},
     {"builtin_combine",
      (PyCFunction)(void (*)(void))builtin_combine_op,
      METH_VARARGS | METH_KEYWORDS,

@@ -996,10 +996,10 @@ using InferSpmdFunc = phi::distributed::SpmdInfo (*)(
     const std::vector<CustomSpmdInferAttrArg>& attrs);
 
 using PythonOperatorFunctionType =
-    std::function<std::vector<Tensor>(std::vector<Tensor>&)>;
+    std::function<std::vector<Tensor*>(std::vector<Tensor*>&)>;
 using IrTensor = paddle::dialect::IrTensor;
 using PythonOperatorInferMetaFunctionType =
-    std::function<std::vector<IrTensor>(const std::vector<IrTensor>&)>;
+    std::function<std::vector<IrTensor*>(const std::vector<IrTensor*>&)>;
 
 class PADDLE_API OpMetaInfo {
  public:
