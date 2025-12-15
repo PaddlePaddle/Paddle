@@ -113,8 +113,8 @@ void MvCsrGradKernel(const Context &dev_ctx,
     // InferMeta of SparseCsrTensor 'dx', CreateLikeInferMeta
     EmptyLikeCsrKernel<T, Context>(dev_ctx, x, dx);
 
-    int row_number = dx->dims()[0];
-    int col_number = dx->dims()[1];
+    int64_t row_number = dx->dims()[0];
+    int64_t col_number = dx->dims()[1];
     auto config = phi::backends::gpu::GetGpuLaunchConfig2D(
         dev_ctx, col_number, row_number);
     PD_VISIT_BASE_INTEGRAL_TYPES(dx->crows().dtype(), "MvCsrGradKernel", ([&] {

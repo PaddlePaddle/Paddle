@@ -142,6 +142,44 @@ def acosh(
 )
 
 add_doc_and_signature(
+    "sinh",
+    r"""
+    Sinh Activation Operator.
+
+    .. math::
+       out = sinh(x)
+
+    Args:
+        x (Tensor): Input of Sinh operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Output of Sinh operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.sinh(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.41075233, -0.20133601,  0.10016675,  0.30452031])
+    """,
+    """
+def sinh(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+    ) -> Tensor
+""",
+)
+
+add_doc_and_signature(
     "amin",
     r"""
     Computes the minimum of tensor elements over the given axis

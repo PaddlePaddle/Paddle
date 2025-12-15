@@ -23,18 +23,32 @@ set(MAGMA_LIB_DIR ${MAGMA_INSTALL_DIR}/lib)
 # Note(zhouwei): magma need fortran compiler which many machines don't have, so use precompiled library.
 # use magma tag v2.9.0 on 07/28/2025 https://github.com/icl-utk-edu/magma/tree/v2.9.0
 if(LINUX)
-  execute_process(
-    COMMAND ${CMAKE_CUDA_COMPILER} --list-gpu-arch
-    OUTPUT_VARIABLE CUDA_ARCH_LIST
-    OUTPUT_STRIP_TRAILING_WHITESPACE)
-  message(STATUS "Detected CUDA architectures: ${CUDA_ARCH_LIST}")
+  if(WITH_GPU)
+    execute_process(
+      COMMAND ${CMAKE_CUDA_COMPILER} --list-gpu-arch
+      OUTPUT_VARIABLE CUDA_ARCH_LIST
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+    message(STATUS "Detected CUDA architectures: ${CUDA_ARCH_LIST}")
 
-  set(MAGMA_ARCH "sm_70")
-  set(MAGMA_URL_MD5 "649b886f9df75face6aa98015ccb1885")
+    set(MAGMA_ARCH "sm_70")
+    set(MAGMA_URL_MD5 "649b886f9df75face6aa98015ccb1885")
 
-  if(CUDA_ARCH_LIST MATCHES "compute_80")
-    set(MAGMA_ARCH "sm_80")
-    set(MAGMA_URL_MD5 "c16079b2eaf48f5af741d979c5090667")
+    if(CUDA_ARCH_LIST MATCHES "compute_80")
+      set(MAGMA_ARCH "sm_80")
+      set(MAGMA_URL_MD5 "c16079b2eaf48f5af741d979c5090667")
+    endif()
+
+    execute_process(
+      COMMAND nvcc -V
+      OUTPUT_VARIABLE NVCC_VERSION_RAW
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+    string(REGEX MATCH "release ([0-9]+)\\.([0-9]+)" _ ${NVCC_VERSION_RAW})
+    set(CUDA_MAJOR ${CMAKE_MATCH_1})
+    set(CUDA_MINOR ${CMAKE_MATCH_2})
+    if(CUDA_MAJOR EQUAL 12 AND CUDA_MINOR EQUAL 0)
+      set(MAGMA_ARCH "cuda120")
+      set(MAGMA_URL_MD5 "a00f89aeb81f0373aac34684695847ab")
+    endif()
   endif()
 
   if(WITH_XPU)

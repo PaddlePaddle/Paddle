@@ -797,8 +797,12 @@ def find_cuda_includes():
         raise ValueError(
             "Not found CUDA runtime, please use `export CUDA_HOME=XXX` to specific it."
         )
+    base_include = os.path.join(cuda_home, 'include')
 
-    return [os.path.join(cuda_home, 'include')]
+    sub_dirs = ['', 'cccl', 'nvtx3']
+
+    paths = [os.path.join(base_include, sub) for sub in sub_dirs]
+    return [p for p in paths if os.path.exists(p)]
 
 
 def find_rocm_includes():
