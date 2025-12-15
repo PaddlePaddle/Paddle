@@ -1011,55 +1011,46 @@ template <typename T>
 auto CreatePyFuncRunner(int64_t py_func_ptr, const std::string &op_name) {
   static_assert(std::is_same_v<T, Tensor> || std::is_same_v<T, IrTensor>,
                 "T must be either Tensor or paddle::dialect::IrTensor");
-  using FuncInputType = std::vector<std::shared_ptr<T>>;
-  using FuncOutputType = std::vector<std::shared_ptr<T>>;
 
-  // 返回 Lambda
-  return [=](const FuncInputType &inputs) -> FuncOutputType {
-    py::gil_scoped_acquire acquire;  // 获取 GIL
+  using FuncInputType = std::conditional_t<std::is_same_v<T, IrTensor>,
+                                           const std::vector<IrTensor>,
+                                           std::vector<Tensor>>;
 
-    py::handle func_handle =
-        py::handle(reinterpret_cast<PyObject *>(py_func_ptr));
-    if (!func_handle.ptr()) {
-      throw std::runtime_error("Python function pointer is null for op: " +
-                               op_name);
-    }
-    py::function py_func = py::reinterpret_borrow<py::function>(func_handle);
+  using FuncOutputType = std::conditional_t<std::is_same_v<T, IrTensor>,
+                                            std::vector<IrTensor>,
+                                            std::vector<Tensor>>;
+
+  return [=](FuncInputType &inputs) -> FuncOutputType {
+    py::gil_scoped_acquire acquire;
+    PyObject *py_func = reinterpret_cast<PyObject *>(py_func_ptr);
 
     py::tuple py_args(inputs.size());
-    for (size_t i = 0; i < inputs.size(); ++i) {
-      py_args[i] = py::cast(inputs[i]);
+    size_t index = 0;
+    for (auto &tensor : inputs) {
+      py_args[index++] = py::cast(tensor);
     }
+    Py_INCREF(py_func);
+    PyObject *raw_result = PyObject_CallObject(py_func, py_args.ptr());
+    Py_DECREF(py_func);
 
-    py::object result;
-    try {
-      result = py_func(*py_args);  // 解包调用
-    } catch (const py::error_already_set &e) {
-      throw std::runtime_error("Execution of customPythonOp (" + op_name +
-                               ") failed: " + e.what());
-    }
+    PADDLE_ENFORCE_NOT_NULL(
+        raw_result,
+        common::errors::Fatal(
+            "Execution of the customPythonOp (%s) failed. Please review your "
+            "code, and you may use breakpoint() for debugging.",
+            op_name));
 
-    FuncOutputType outputs;
-    auto cast_to_shared = [&](const py::handle &h) -> std::shared_ptr<T> {
-      if (h.is_none()) return nullptr;
-      try {
-        return h.cast<std::shared_ptr<T>>();
-      } catch (const py::cast_error &) {
-        throw std::runtime_error("Output of customPythonOp (" + op_name +
-                                 ") is not of expected type.");
-      }
-    };
+    py::object result = py::reinterpret_steal<py::object>(raw_result);
+    std::vector<T> outputs;
 
     if (py::isinstance<py::tuple>(result)) {
       py::tuple tuple_result = py::cast<py::tuple>(result);
-      outputs.reserve(tuple_result.size());
       for (const auto &item : tuple_result) {
-        outputs.push_back(cast_to_shared(item));
+        outputs.push_back(py::cast<T>(item));
       }
     } else {
-      outputs.push_back(cast_to_shared(result));
+      outputs.push_back(py::cast<T>(result));
     }
-
     return outputs;
   };
 }
@@ -1176,6 +1167,7 @@ static PyObject *run_custom_pyop(PyObject *self,
   int vec_input_index = 0;
 
   std::vector<std::shared_ptr<IrTensor>> inputs_ptr_vector;
+  std::vector<IrTensor> vec_dense_inputs;
 
   for (size_t i = 0; i < inputs.size(); ++i) {
     const auto &input = inputs.at(i);
@@ -1237,7 +1229,7 @@ static PyObject *run_custom_pyop(PyObject *self,
       //     paddle::dialect::TransToPhiDataType(input_tensor.dtype()));
       argument_inputs.push_back(input_value);
 
-      inputs_ptr_vector.push_back(std::make_shared<IrTensor>(
+      vec_dense_inputs.push_back(paddle::dialect::IrTensor(
           paddle::dialect::TransToPhiDataType(input_tensor.dtype()),
           input_tensor.dims(),
           input_tensor.data_layout(),
@@ -1258,8 +1250,7 @@ static PyObject *run_custom_pyop(PyObject *self,
                                                  attrs_map["fn_ptr"]));
 
   // 做 infer_meta
-  std::vector<std::shared_ptr<IrTensor>> process_result =
-      infer_meta_py_func(inputs_ptr_vector);
+  std::vector<IrTensor> process_result = infer_meta_py_func(vec_dense_inputs);
   PADDLE_ENFORCE_EQ(
       process_result.size(),
       outputs.size(),
@@ -1366,7 +1357,7 @@ static PyObject *run_custom_pyop(PyObject *self,
             pir::ArrayAttribute::get(pir::IrContext::Instance(), dist_attrs));
       }
     } else {
-      auto dense_out = *(process_result[value_index]);
+      auto dense_out = process_result[value_index];
       auto out_type = paddle::dialect::DenseTensorType::get(
           pir::IrContext::Instance(),
           paddle::dialect::TransToIrDataType(dense_out.dtype()),

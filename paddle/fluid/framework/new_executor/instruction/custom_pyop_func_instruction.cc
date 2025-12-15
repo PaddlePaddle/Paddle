@@ -380,26 +380,20 @@ CustomPyOpFuncInstruction::CustomPyOpFuncInstruction(
   VLOG(6) << "finish process no need buffer";
 }
 
-using IrTensor = paddle::dialect::IrTensor;
-
 void CustomPyOpFuncInstruction::UpdateOutputMeta() {
   VLOG(0) << "enter CustomPyOpFuncInstruction::UpdateOutputMeta()";
 
-  std::vector<IrTensor> vec_dense_inputs;
+  std::vector<paddle::dialect::IrTensor> vec_dense_inputs;
   for (size_t i = 0; i < this->op_->operands().size(); ++i) {
-    vec_dense_inputs.emplace_back(IrTensor());
+    vec_dense_inputs.emplace_back(paddle::dialect::IrTensor());
     vec_dense_inputs.back().SetDims(phi::make_ddim(input_shapes_[i]));
     vec_dense_inputs.back().SetDtype(input_dtypes_[i]);
   }
 
-  std::vector<IrTensor*> vec_ptr_inputs_;
-  for (auto& x : vec_dense_inputs) {
-    vec_ptr_inputs_.push_back(&x);
-  }
-
   VLOG(0) << "CustomPyOpFuncInstruction finish vec_dense_inputs";
 
-  std::vector<IrTensor*> output = (*py_func_infer_meta_ptr_)(vec_ptr_inputs_);
+  std::vector<paddle::dialect::IrTensor> output =
+      (*py_func_infer_meta_ptr_)(vec_dense_inputs);
 
   VLOG(0) << "CustomPyOpFuncInstruction finish "
              "(*py_func_infer_meta_ptr_)(vec_dense_inputs);";
@@ -409,8 +403,8 @@ void CustomPyOpFuncInstruction::UpdateOutputMeta() {
     // update dims and dtype
     phi::DenseTensorMeta* out_meta =
         phi::DenseTensorUtils::GetMutableMeta(out_in_scope);
-    out_meta->dims = output[i]->dims();
-    out_meta->dtype = output[i]->dtype();
+    out_meta->dims = output[i].dims();
+    out_meta->dtype = output[i].dtype();
     out_meta->strides = out_meta->calc_strides(out_meta->dims);
   }
 
@@ -470,25 +464,18 @@ void CustomPyOpFuncInstruction::Run() {
       common::errors::InvalidArgument("Custom kernel function is nullptr."));
 
   // 这里假设只有俩参数
-  std::vector<Tensor*> vec_dense_inputs;
+  std::vector<Tensor> vec_dense_inputs;
   size_t num = op_->num_operands();
   VLOG(0) << "Op num_operands: " << num;
   for (size_t i = 0; i < num; ++i) {
-    vec_dense_inputs.push_back(&custom_kernel_ctx_.InputAt(i));
+    vec_dense_inputs.push_back(custom_kernel_ctx_.InputAt(i));
   }
 
   // VLOG(0) << "vec_dense_inputs[0]: " << vec_dense_inputs[0];
   // VLOG(0) << "vec_dense_inputs[1]: " << vec_dense_inputs[1];
 
   auto out = (*py_func_ptr_)(vec_dense_inputs);
-
-  std::vector<Tensor> out_tensor_vector;
-  for (auto& x : out) {
-    out_tensor_vector.emplace_back(*x);
-  }
-
-  custom_kernel_ctx_.ValidateAndAssignOutputs(
-      out_tensor_vector);  // 从宏里面扒出来
+  custom_kernel_ctx_.ValidateAndAssignOutputs(out);  // 从宏里面扒出来
   if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("CustomPyOpFuncInstruction " + custom_op_name_ + " finish");
   }
