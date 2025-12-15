@@ -24,14 +24,14 @@
 namespace paddle {
 namespace framework {
 
-void RegisterCustomPyOp(
+void RegisterPythonOperator(
     const std::string& op_name,
     std::vector<std::string>&& op_inputs,
     std::vector<std::string>&& op_outputs,
     std::vector<std::string>&& op_attrs,
     std::unordered_map<std::string, std::string>&& op_inplace_map,
-    WrapPythonFunction&& func,
-    WrapInferMetaPythonFunction&& infer_meta);
+    PythonOperatorFunctionType&& func,
+    PythonOperatorInferMetaFunctionType&& infer_meta);
 
 }  // namespace framework
 }  // namespace paddle

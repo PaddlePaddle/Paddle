@@ -450,14 +450,16 @@ OpMetaInfo& OpMetaInfo::SetInferSpmdFn(InferSpmdFunc&& func) {
   infer_spmd_fn_ = std::forward<InferSpmdFunc>(func);
   return *this;
 }
-OpMetaInfo& OpMetaInfo::SetCustomPyOpFunction(WrapPythonFunction&& func) {
-  pyop_func_ = std::forward<WrapPythonFunction>(func);
+OpMetaInfo& OpMetaInfo::SetCustomPyOpFunction(
+    PythonOperatorFunctionType&& func) {
+  pyop_func_ = std::forward<PythonOperatorFunctionType>(func);
   return *this;
 }
 
 OpMetaInfo& OpMetaInfo::SetCustomPyOpInferMetaFunction(
-    WrapInferMetaPythonFunction&& func) {
-  pyop_func_infer_meta_ = std::forward<WrapInferMetaPythonFunction>(func);
+    PythonOperatorInferMetaFunctionType&& func) {
+  pyop_func_infer_meta_ =
+      std::forward<PythonOperatorInferMetaFunctionType>(func);
   return *this;
 }
 
@@ -530,13 +532,13 @@ const InferSpmdFunc& OpMetaInfoHelper::GetInferSpmdFn(
 }
 
 // Python Custom Op
-const WrapPythonFunction& OpMetaInfoHelper::GetPyCustomPyOpFunction(
+const PythonOperatorFunctionType& OpMetaInfoHelper::GetPythonOperatorFunction(
     const paddle::OpMetaInfo& info) {
   return info.pyop_func_;
 }
 
-const WrapInferMetaPythonFunction&
-OpMetaInfoHelper::GetPyCustomPyOpInferMetaFunction(
+const PythonOperatorInferMetaFunctionType&
+OpMetaInfoHelper::GetPythonOperatorInferMetaFunction(
     const paddle::OpMetaInfo& info) {
   return info.pyop_func_infer_meta_;
 }
@@ -700,16 +702,17 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferSpmdFn(InferSpmdFunc func) {
   return *this;
 }
 
-OpMetaInfoBuilder& OpMetaInfoBuilder::SetPyCustomPyOpFunction(
-    WrapPythonFunction func) {
-  info_ptr_->SetCustomPyOpFunction(std::forward<WrapPythonFunction>(func));
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetPythonOperatorFunction(
+    PythonOperatorFunctionType func) {
+  info_ptr_->SetCustomPyOpFunction(
+      std::forward<PythonOperatorFunctionType>(func));
   return *this;
 }
 
-OpMetaInfoBuilder& OpMetaInfoBuilder::SetPyCustomPyOpInferMetaFunction(
-    WrapInferMetaPythonFunction func) {
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetPythonOperatorInferMetaFunction(
+    PythonOperatorInferMetaFunctionType func) {
   info_ptr_->SetCustomPyOpInferMetaFunction(
-      std::forward<WrapInferMetaPythonFunction>(func));
+      std::forward<PythonOperatorInferMetaFunctionType>(func));
   return *this;
 }
 

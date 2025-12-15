@@ -27,7 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 constexpr char kCustomDialectPrefix[] = "custom_op.";      // NOLINT
-constexpr char kCustomPyDialectPrefix[] = "custom_pyop.";  // NOLINT
+constexpr char kPythonOperatorDialectPrefix[] = "py_op.";  // NOLINT
 constexpr char kGradSuffix[] = "_grad";                    // NOLINT
 constexpr char kDoubleGradSuffix[] = "_grad_grad";         // NOLINT
 
@@ -158,9 +158,9 @@ inline static const OpMetaInfo& GetOpInfoByPirName(
   }
 }
 
-inline static const OpMetaInfo& GetCustomPyOpInfoByPirName(
+inline static const OpMetaInfo& GetPythonOperatorInfoByPirName(
     const std::string& pir_op_name) {
-  auto custom_name = pir_op_name.substr(strlen(kCustomPyDialectPrefix));
+  auto custom_name = pir_op_name.substr(strlen(kPythonOperatorDialectPrefix));
   int pos = custom_name.length();
 
   if (custom_name[pos - 1] == '_') {

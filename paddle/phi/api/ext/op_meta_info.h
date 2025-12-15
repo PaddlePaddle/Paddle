@@ -995,11 +995,11 @@ using InferSpmdFunc = phi::distributed::SpmdInfo (*)(
     const std::vector<CustomSpmdInferTensorArg>& inputs,
     const std::vector<CustomSpmdInferAttrArg>& attrs);
 
-using WrapPythonFunction =
+using PythonOperatorFunctionType =
     std::function<std::vector<Tensor>(std::vector<Tensor>&)>;
 using IrTensor = paddle::dialect::IrTensor;
-using WrapInferMetaPythonFunction = std::function<std::vector<IrTensor>(
-    const std::vector<paddle::dialect::IrTensor>&)>;
+using PythonOperatorInferMetaFunctionType =
+    std::function<std::vector<IrTensor>(const std::vector<IrTensor>&)>;
 
 class PADDLE_API OpMetaInfo {
  public:
@@ -1031,10 +1031,10 @@ class PADDLE_API OpMetaInfo {
   // format: PD_INFER_SPMD_RULE(...)
   OpMetaInfo& SetInferSpmdFn(InferSpmdFunc&& func);
 
-  // CustomPyOp
-  OpMetaInfo& SetCustomPyOpFunction(WrapPythonFunction&& func);
+  // PythonOperator
+  OpMetaInfo& SetCustomPyOpFunction(PythonOperatorFunctionType&& func);
   OpMetaInfo& SetCustomPyOpInferMetaFunction(
-      WrapInferMetaPythonFunction&& func);
+      PythonOperatorInferMetaFunctionType&& func);
 
   bool IsGradOp() const;
 
@@ -1064,8 +1064,8 @@ class PADDLE_API OpMetaInfo {
   InferDtypeFunc infer_dtype_fn_{nullptr};
   InferSpmdFunc infer_spmd_fn_{nullptr};
   // 3. custom pyop function
-  WrapPythonFunction pyop_func_{nullptr};
-  WrapInferMetaPythonFunction pyop_func_infer_meta_{nullptr};
+  PythonOperatorFunctionType pyop_func_{nullptr};
+  PythonOperatorInferMetaFunctionType pyop_func_infer_meta_{nullptr};
 #ifdef PADDLE_WITH_TENSORRT
   TrtGetOutputDimsFunc trt_infer_shape_fn_{nullptr};
   std::vector<std::string> trt_supports_format_config_;
@@ -1092,10 +1092,10 @@ class OpMetaInfoHelper {
   static const InferSpmdFunc& GetInferSpmdFn(const paddle::OpMetaInfo& info);
 
   // Python Custom Op
-  static const WrapPythonFunction& GetPyCustomPyOpFunction(
+  static const PythonOperatorFunctionType& GetPythonOperatorFunction(
       const paddle::OpMetaInfo& info);
-  static const WrapInferMetaPythonFunction& GetPyCustomPyOpInferMetaFunction(
-      const paddle::OpMetaInfo& info);
+  static const PythonOperatorInferMetaFunctionType&
+  GetPythonOperatorInferMetaFunction(const paddle::OpMetaInfo& info);
 
 #ifdef PADDLE_WITH_TENSORRT
   static const TrtGetOutputDimsFunc& GetTrtInferShapeFn(
@@ -1138,9 +1138,9 @@ class PADDLE_API OpMetaInfoBuilder {
   OpMetaInfoBuilder& SetInferDtypeFn(InferDtypeFunc func);
   OpMetaInfoBuilder& SetInferSpmdFn(InferSpmdFunc func);
 
-  OpMetaInfoBuilder& SetPyCustomPyOpFunction(WrapPythonFunction func);
-  OpMetaInfoBuilder& SetPyCustomPyOpInferMetaFunction(
-      WrapInferMetaPythonFunction func);
+  OpMetaInfoBuilder& SetPythonOperatorFunction(PythonOperatorFunctionType func);
+  OpMetaInfoBuilder& SetPythonOperatorInferMetaFunction(
+      PythonOperatorInferMetaFunctionType func);
 
 #ifdef PADDLE_WITH_TENSORRT
   OpMetaInfoBuilder& SetTrtInferShapeFn(TrtGetOutputDimsFunc func);

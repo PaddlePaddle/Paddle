@@ -625,9 +625,9 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
 struct CustomPyOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
   static OpInfoTuple GetPirOpInfo(const std::string& pir_op_name) {
     const auto& op_meta =
-        paddle::framework::detail::GetCustomPyOpInfoByPirName(pir_op_name);
+        paddle::framework::detail::GetPythonOperatorInfoByPirName(pir_op_name);
 
-    // TODO(DrRyanHuang): we may support custom_pyop's grad op in the future
+    // TODO(DrRyanHuang): we may support py_op's grad op in the future
     // const auto* grad_op_meta_ptr =
     //     paddle::framework::detail::GetGradOpInfoByFwdPirName(pir_op_name);
     std::vector<paddle::dialect::OpInputInfo> inputs_info;
@@ -653,14 +653,15 @@ struct CustomPyOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
     auto& op_attrs = OpMetaInfoHelper::GetAttrs(op_meta);
     for (const auto& op_attr : op_attrs) {
       auto attr_name_and_type = paddle::ParseAttrStr(op_attr);
-      // CustomPyOp only has int64_t attr
+      // PythonOperator only has int64_t attr
       const std::string& attr_name = attr_name_and_type[0];
       const std::string& attr_type_str = attr_name_and_type[1];
-      PADDLE_ENFORCE_EQ(attr_type_str,
-                        "int64_t",
-                        common::errors::InvalidArgument(
-                            "CustomPyOp only has two int64_t attributes, which "
-                            "are infer_meta_fn_ptr & fn_ptr."));
+      PADDLE_ENFORCE_EQ(
+          attr_type_str,
+          "int64_t",
+          common::errors::InvalidArgument(
+              "PythonOperator only has two int64_t attributes, which "
+              "are infer_meta_fn_ptr & fn_ptr."));
       param_names.push_back(attr_name);
       const std::string& attr_pir_type =
           CppTypeToAttrTypeMap().at(attr_type_str);
@@ -1221,26 +1222,28 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
                                verify_func);
 }
 
-CustomPyOpDialect::CustomPyOpDialect(pir::IrContext* context)
-    : pir::Dialect(name(), context, pir::TypeId::get<CustomPyOpDialect>()) {}
+PythonOperatorDialect::PythonOperatorDialect(pir::IrContext* context)
+    : pir::Dialect(name(), context, pir::TypeId::get<PythonOperatorDialect>()) {
+}
 
-void CustomPyOpDialect::PrintType(pir::Type type, std::ostream& os) const {
+void PythonOperatorDialect::PrintType(pir::Type type, std::ostream& os) const {
   PrintTypeImpl(type, os);
 }
 
-void CustomPyOpDialect::PrintAttribute(pir::Attribute attr,
-                                       std::ostream& os) const {
+void PythonOperatorDialect::PrintAttribute(pir::Attribute attr,
+                                           std::ostream& os) const {
   PrintAttributeImpl(attr, os);
 }
 
-pir::OpPrintFn CustomPyOpDialect::PrintOperation(
+pir::OpPrintFn PythonOperatorDialect::PrintOperation(
     const pir::Operation& op) const {
   return nullptr;
 }
 
-void CustomPyOpDialect::RegisterCustomPyOp(const paddle::OpMetaInfo& op_meta) {
+void PythonOperatorDialect::RegisterPythonOperator(
+    const paddle::OpMetaInfo& op_meta) {
   pir::TypeId id = IdManager::Instance().CreateId();
-  std::string op_name = paddle::framework::kCustomPyDialectPrefix +
+  std::string op_name = paddle::framework::kPythonOperatorDialectPrefix +
                         OpMetaInfoHelper::GetOpName(op_meta);
   std::vector<pir::TypeId> traits;
 
@@ -1323,5 +1326,5 @@ pir::OpPrintFn CustomEngineDialect::PrintOperation(
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OperatorDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomOpDialect)
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomPyOpDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::PythonOperatorDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomEngineDialect)

@@ -50,7 +50,7 @@ inline bool IsCustomOp(pir::Operation* op) {
 
 inline bool IsCustomPyOp(pir::Operation* op) {
   const std::string& op_name = op->name();
-  return op_name.find("custom_pyop") != op_name.npos;
+  return op_name.find("py_op") != op_name.npos;
 }
 
 inline bool IsCustomEngineOp(pir::Operation* op) {
@@ -94,11 +94,11 @@ class CustomOpDialect : public pir::Dialect {
   std::vector<const char*> op_names_;
 };
 
-class CustomPyOpDialect : public pir::Dialect {
+class PythonOperatorDialect : public pir::Dialect {
  public:
-  explicit CustomPyOpDialect(pir::IrContext* context);
+  explicit PythonOperatorDialect(pir::IrContext* context);
 
-  constexpr static const char* name() { return "custom_pyop"; }
+  constexpr static const char* name() { return "py_op"; }
 
   void PrintType(pir::Type type, std::ostream& os) const override;
   void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
@@ -106,7 +106,7 @@ class CustomPyOpDialect : public pir::Dialect {
   pir::OpPrintFn PrintOperation(
       const pir::Operation& op) const override;  // NOLINT
 
-  void RegisterCustomPyOp(const paddle::OpMetaInfo& op_meta);
+  void RegisterPythonOperator(const paddle::OpMetaInfo& op_meta);
 
   bool HasRegistered(const std::string& op_name) {
     if (std::find(op_names_.begin(), op_names_.end(), op_name) !=
@@ -152,5 +152,5 @@ class TEST_API CustomEngineDialect : public pir::Dialect {
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OperatorDialect)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CustomOpDialect)
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CustomPyOpDialect)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::PythonOperatorDialect)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CustomEngineDialect)
