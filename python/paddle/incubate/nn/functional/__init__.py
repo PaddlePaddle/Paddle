@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ....nn.functional import swiglu
 from .batched_gemm import batched_gemm
 from .blha_get_max_len import blha_get_max_len
 from .block_multihead_attention import (
@@ -113,6 +114,7 @@ __all__ = [
     "cal_aux_loss",
     "build_src_rank_and_local_expert_id",
     "int_bincount",
+    "swiglu",
     "fused_rms_norm_ext",
     "moe_gate_dispatch",
     "moe_gate_dispatch_permute",
