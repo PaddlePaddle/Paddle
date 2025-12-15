@@ -890,7 +890,7 @@ def unique(
     sorted: bool = True,
     return_inverse: bool = False,
     return_counts: bool = False,
-    dim=None,
+    dim: int | None = None,
 ) -> Tensor | tuple[Tensor, ...]:
     r"""
     Returns the unique elements of `input` in ascending order.
