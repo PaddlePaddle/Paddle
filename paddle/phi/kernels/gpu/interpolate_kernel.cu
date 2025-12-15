@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/interpolate_kernel.h"
+#include <cstdio>
+#include "paddle/common/flags.h"
 
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -73,21 +75,13 @@ __forceinline__ __device__ void PreCalculatorForLinearInterpInputIndex(
     T* lambda2,
     T src_x,
     const size_t in_img_x) {
-  src_x = max(src_x, T(0));
-  *in_img_idx = min(static_cast<size_t>(src_x), in_img_x - 1);
+  *in_img_idx = static_cast<int64_t>(src_x);
   *x_id = (*in_img_idx < in_img_x - 1) ? 1 : 0;
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  *lambda1 =
-      static_cast<T>(static_cast<MT>(src_x) - static_cast<MT>(*in_img_idx));
-  *lambda2 = static_cast<T>(1.0) - *lambda1;
+  *lambda1 = static_cast<T>(src_x - *in_img_idx);
+  *lambda2 = static_cast<T>(1) - *lambda1;
 }
 
-__device__ size_t ScaleIdxOut2In(size_t out_idx, float ratio, bool align_flag) {
-  float in_idx = align_flag ? ratio * (out_idx + 0.5) - 0.5 : ratio * out_idx;
-  return in_idx > 0 ? static_cast<size_t>(in_idx) : size_t(0);
-}
-
-template <typename T>
+template <typename T, typename MT>
 __global__ void KeLinearInterpFw(const T* in,
                                  const size_t in_img_w,
                                  const size_t input_w,
@@ -96,7 +90,7 @@ __global__ void KeLinearInterpFw(const T* in,
                                  const size_t output_h,
                                  const size_t output_w,
                                  const size_t num_channels,
-                                 const float ratio_w,
+                                 const MT ratio_w,
                                  const bool align_corners,
                                  const int align_mode,
                                  const DataLayout data_layout) {
@@ -119,14 +113,12 @@ __global__ void KeLinearInterpFw(const T* in,
       channel_id = tid % num_channels;
     }
 
-    size_t in_img_idx = ScaleIdxOut2In(out_img_idx, ratio_w, align_flag);  // w
-    size_t w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;  // w_id
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    MT src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
-    src_w = (src_w > 0) ? src_w : 0;
-    MT w1lambda = align_flag ? (src_w - in_img_idx)
-                             : (ratio_w * out_img_idx - in_img_idx);
-    MT w2lambda = 1.0 - w1lambda;
+    size_t in_img_idx, w_id;
+    MT w1lambda, w2lambda;
+    MT src_w = funcs::AreaPixelComputeSourceIndex<MT>(
+        ratio_w, out_img_idx, !align_flag);
+    PreCalculatorForLinearInterpInputIndex(
+        &in_img_idx, &w_id, &w1lambda, &w2lambda, src_w, in_img_w);
 
     if (data_layout == DataLayout::NCHW) {
       const T* in_pos =
@@ -147,7 +139,7 @@ __global__ void KeLinearInterpFw(const T* in,
   }
 }
 
-template <typename T>
+template <typename T, typename MT>
 __global__ void KeNearestNeighborInterpNCHWFw(const T* in,
                                               const size_t in_img_h,
                                               const size_t in_img_w,
@@ -155,8 +147,8 @@ __global__ void KeNearestNeighborInterpNCHWFw(const T* in,
                                               const size_t out_img_h,
                                               const size_t out_img_w,
                                               const size_t nc,
-                                              const float ratio_h,
-                                              const float ratio_w,
+                                              const MT ratio_h,
+                                              const MT ratio_w,
                                               const bool align_corners) {
   size_t out_img_idx =
       threadIdx.x + blockIdx.x * static_cast<size_t>(blockDim.x);
@@ -191,7 +183,7 @@ __global__ void KeNearestNeighborInterpNCHWFw(const T* in,
   }
 }
 
-template <typename T>
+template <typename T, typename MT>
 __global__ void KeNearestNeighborInterpFw(
     const T* in,
     const size_t in_img_h,
@@ -204,8 +196,8 @@ __global__ void KeNearestNeighborInterpFw(
     const size_t output_h,
     const size_t output_w,
     const size_t num_channels,
-    const float ratio_h,
-    const float ratio_w,
+    const MT ratio_h,
+    const MT ratio_w,
     const bool align_corners,
     funcs::FastDivModForInterpolate divmods) {
   size_t nthreads = output_h * output_w;
@@ -237,7 +229,7 @@ __global__ void KeNearestNeighborInterpFw(
   }
 }
 
-template <typename T>
+template <typename T, typename MT>
 __global__ void KeBilinearInterpFw(const T* in,
                                    const size_t in_img_h,
                                    const size_t in_img_w,
@@ -249,15 +241,16 @@ __global__ void KeBilinearInterpFw(const T* in,
                                    const size_t output_h,
                                    const size_t output_w,
                                    const size_t num_channels,
-                                   const float ratio_h,
-                                   const float ratio_w,
+                                   const MT ratio_h,
+                                   const MT ratio_w,
                                    const bool align_corners,
+                                   const int align_mode,
                                    funcs::FastDivModForInterpolate divmods) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   size_t nthreads = output_h * output_w;
   size_t tid = blockIdx.x * static_cast<size_t>(blockDim.x) + threadIdx.x;
   size_t stride = static_cast<size_t>(blockDim.x) * gridDim.x;
 
+  bool align_flag = (align_mode == 0 && !align_corners);
   for (; tid < nthreads; tid += stride) {
     auto out_id_divmod = divmods.output_w_div.Divmod(tid);
     size_t out_id_h = out_id_divmod.val[0];
@@ -272,10 +265,10 @@ __global__ void KeBilinearInterpFw(const T* in,
     size_t in_img_idx, in_img_idy, h_id, w_id;
     MT h1lambda, w1lambda, h2lambda, w2lambda;
 
-    MT src_w = funcs::AreaPixelComputeSourceIndex<float>(
-        ratio_w, out_img_idx, align_corners);
-    MT src_h = funcs::AreaPixelComputeSourceIndex<float>(
-        ratio_h, out_img_idy, align_corners);
+    MT src_w = funcs::AreaPixelComputeSourceIndex<MT>(
+        ratio_w, out_img_idx, !align_flag);
+    MT src_h = funcs::AreaPixelComputeSourceIndex<MT>(
+        ratio_h, out_img_idy, !align_flag);
 
     PreCalculatorForLinearInterpInputIndex(
         &in_img_idx, &w_id, &w1lambda, &w2lambda, src_w, in_img_w);
@@ -631,7 +624,7 @@ __global__ void KeInterpAAFwNHWCNoSharedMem(const T* in,
   }
 }
 
-template <typename T>
+template <typename T, typename MT>
 __global__ void KeBilinearInterpNCHWFw(const T* in,
                                        const size_t in_img_h,
                                        const size_t in_img_w,
@@ -639,10 +632,11 @@ __global__ void KeBilinearInterpNCHWFw(const T* in,
                                        const size_t out_img_h,
                                        const size_t out_img_w,
                                        const size_t nc,
-                                       const float ratio_h,
-                                       const float ratio_w,
-                                       const bool align_corners) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+                                       const MT ratio_h,
+                                       const MT ratio_w,
+                                       const bool align_corners,
+                                       const int align_mode) {
+  bool align_flag = (align_mode == 0 && !align_corners);
   size_t out_img_idx =
       threadIdx.x + blockIdx.x * static_cast<size_t>(blockDim.x);
   size_t out_img_idy =
@@ -653,10 +647,10 @@ __global__ void KeBilinearInterpNCHWFw(const T* in,
   size_t in_img_idx, in_img_idy, h_id, w_id;
   MT h1lambda, w1lambda, h2lambda, w2lambda;
 
-  MT src_w = funcs::AreaPixelComputeSourceIndex<float>(
-      ratio_w, out_img_idx, align_corners);
-  MT src_h = funcs::AreaPixelComputeSourceIndex<float>(
-      ratio_h, out_img_idy, align_corners);
+  MT src_w =
+      funcs::AreaPixelComputeSourceIndex<MT>(ratio_w, out_img_idx, !align_flag);
+  MT src_h =
+      funcs::AreaPixelComputeSourceIndex<MT>(ratio_h, out_img_idy, !align_flag);
 
   PreCalculatorForLinearInterpInputIndex(
       &in_img_idx, &w_id, &w1lambda, &w2lambda, src_w, in_img_w);
@@ -698,7 +692,7 @@ __device__ __forceinline__ static T Kecubic_interp(
       static_cast<MT>(x2) * coeffs[2] + static_cast<MT>(x3) * coeffs[3]);
 }
 
-template <typename T>
+template <typename T, typename MT>
 __global__ void KeBicubicInterpFw(const T* in,
                                   const size_t in_img_h,
                                   const size_t in_img_w,
@@ -710,8 +704,8 @@ __global__ void KeBicubicInterpFw(const T* in,
                                   const size_t output_h,
                                   const size_t output_w,
                                   const size_t num_channels,
-                                  const float ratio_h,
-                                  const float ratio_w,
+                                  const MT ratio_h,
+                                  const MT ratio_w,
                                   const bool align_corners,
                                   const DataLayout data_layout) {
   size_t nthreads = output_h * output_w;
@@ -720,7 +714,6 @@ __global__ void KeBicubicInterpFw(const T* in,
       static_cast<size_t>(threadIdx.x);
   size_t stride =
       static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x);
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   for (; tid < nthreads; tid += stride) {
     size_t out_id_h = tid / output_w;
@@ -740,14 +733,16 @@ __global__ void KeBicubicInterpFw(const T* in,
       channel_id = tid % num_channels;
     }
 
-    MT in_img_idy = funcs::AreaPixelComputeSourceIndex<float>(
+    MT in_img_idy = funcs::AreaPixelComputeSourceIndex<MT>(
         ratio_h, out_img_idy, align_corners);
-    int64_t input_y = floorf(in_img_idy);
-    const auto y_t = static_cast<MT>(in_img_idy - input_y);
-
-    MT in_img_idx = funcs::AreaPixelComputeSourceIndex<float>(
+    MT in_img_idx = funcs::AreaPixelComputeSourceIndex<MT>(
         ratio_w, out_img_idx, align_corners);
-    int64_t input_x = floorf(in_img_idx);
+    int64_t input_y;
+    int64_t input_x;
+    input_y = floorf(in_img_idy);
+    input_x = floorf(in_img_idx);
+
+    const auto y_t = static_cast<MT>(in_img_idy - input_y);
     const auto x_t = static_cast<MT>(in_img_idx - input_x);
 
     T coefficients[4];
@@ -773,13 +768,6 @@ __global__ void KeBicubicInterpFw(const T* in,
         coefficients[k] = Kecubic_interp<T, MT>(
             in_pos_0[0], in_pos_1[0], in_pos_2[0], in_pos_3[0], x_t);
       }
-
-      out[out_id_h * output_w + out_id_w] =
-          Kecubic_interp<T, MT>(coefficients[0],
-                                coefficients[1],
-                                coefficients[2],
-                                coefficients[3],
-                                y_t);
     } else {
       for (int k = 0; k < 4; k++) {
         size_t access_y = max(min(input_y - 1 + k, in_img_h_max), int64_t(0));
@@ -804,18 +792,16 @@ __global__ void KeBicubicInterpFw(const T* in,
         coefficients[k] = Kecubic_interp<T, MT>(
             in_pos_0[0], in_pos_1[0], in_pos_2[0], in_pos_3[0], x_t);
       }
-
-      out[out_id_h * output_w + out_id_w] =
-          Kecubic_interp<T, MT>(coefficients[0],
-                                coefficients[1],
-                                coefficients[2],
-                                coefficients[3],
-                                y_t);
     }
+    out[out_id_h * output_w + out_id_w] = Kecubic_interp<T, MT>(coefficients[0],
+                                                                coefficients[1],
+                                                                coefficients[2],
+                                                                coefficients[3],
+                                                                y_t);
   }
 }
 
-template <typename T>
+template <typename T, typename MT>
 __global__ void KeTrilinearInterpFw(const T* in,
                                     const size_t in_img_d,
                                     const size_t in_img_h,
@@ -829,9 +815,9 @@ __global__ void KeTrilinearInterpFw(const T* in,
                                     const size_t output_h,
                                     const size_t output_w,
                                     const size_t num_channels,
-                                    const float ratio_d,
-                                    const float ratio_h,
-                                    const float ratio_w,
+                                    const MT ratio_d,
+                                    const MT ratio_h,
+                                    const MT ratio_w,
                                     const bool align_corners,
                                     const int align_mode,
                                     const DataLayout data_layout) {
@@ -859,33 +845,22 @@ __global__ void KeTrilinearInterpFw(const T* in,
       channel_id = tid % num_channels;
     }
 
-    size_t in_img_idt = ScaleIdxOut2In(out_img_idt, ratio_d, align_flag);
-    size_t d_id = (in_img_idt + 1 < in_img_d) ? 1 : 0;
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    MT src_d = ratio_d * (static_cast<MT>(out_img_idt) + MT(0.5)) - MT(0.5);
-    src_d = src_d > MT(0) ? src_d : MT(0);
-    MT d1lambda = align_flag ? src_d - static_cast<MT>(in_img_idt)
-                             : ratio_d * static_cast<MT>(out_img_idt) -
-                                   static_cast<MT>(in_img_idt);
-    MT d2lambda = MT(1.0) - d1lambda;
+    size_t in_img_idx, in_img_idy, in_img_idt, h_id, w_id, d_id;
+    MT h1lambda, w1lambda, d1lambda, h2lambda, w2lambda, d2lambda;
 
-    size_t in_img_idy = ScaleIdxOut2In(out_img_idy, ratio_h, align_flag);
-    size_t h_id = (in_img_idy + 1 < in_img_h) ? 1 : 0;
-    MT src_h = ratio_h * (static_cast<MT>(out_img_idy) + MT(0.5)) - MT(0.5);
-    src_h = src_h > MT(0) ? src_h : MT(0);
-    MT h1lambda = align_flag ? src_h - static_cast<MT>(in_img_idy)
-                             : ratio_h * static_cast<MT>(out_img_idy) -
-                                   static_cast<MT>(in_img_idy);
-    MT h2lambda = MT(1.0) - h1lambda;
+    MT src_w = funcs::AreaPixelComputeSourceIndex<MT>(
+        ratio_w, out_img_idx, !align_flag);
+    MT src_h = funcs::AreaPixelComputeSourceIndex<MT>(
+        ratio_h, out_img_idy, !align_flag);
+    MT src_d = funcs::AreaPixelComputeSourceIndex<MT>(
+        ratio_d, out_img_idt, !align_flag);
 
-    size_t in_img_idx = ScaleIdxOut2In(out_img_idx, ratio_w, align_flag);
-    size_t w_id = (in_img_idx + 1 < in_img_w) ? 1 : 0;
-    MT src_w = ratio_w * (static_cast<MT>(out_img_idx) + MT(0.5)) - MT(0.5);
-    src_w = src_w > MT(0) ? src_w : MT(0);
-    MT w1lambda = align_flag ? src_w - static_cast<MT>(in_img_idx)
-                             : ratio_w * static_cast<MT>(out_img_idx) -
-                                   static_cast<MT>(in_img_idx);
-    MT w2lambda = MT(1.0) - w1lambda;
+    PreCalculatorForLinearInterpInputIndex(
+        &in_img_idx, &w_id, &w1lambda, &w2lambda, src_w, in_img_w);
+    PreCalculatorForLinearInterpInputIndex(
+        &in_img_idy, &h_id, &h1lambda, &h2lambda, src_h, in_img_h);
+    PreCalculatorForLinearInterpInputIndex(
+        &in_img_idt, &d_id, &d1lambda, &d2lambda, src_d, in_img_d);
 
     if (data_layout == DataLayout::NCHW) {
       size_t in_pos1_idx = out_id_h * input_w + channel_id * in_img_size +
@@ -946,7 +921,7 @@ __global__ void KeTrilinearInterpFw(const T* in,
   }
 }
 
-template <typename T>
+template <typename T, typename MT>
 __global__ void KeNearestNeighbor3DInterpFw(const T* in,
                                             const size_t in_img_d,
                                             const size_t in_img_h,
@@ -960,9 +935,9 @@ __global__ void KeNearestNeighbor3DInterpFw(const T* in,
                                             const size_t output_h,
                                             const size_t output_w,
                                             const size_t num_channels,
-                                            const float ratio_d,
-                                            const float ratio_h,
-                                            const float ratio_w,
+                                            const MT ratio_d,
+                                            const MT ratio_h,
+                                            const MT ratio_w,
                                             const bool align_corners,
                                             const DataLayout data_layout) {
   size_t nthreads = output_h * output_w;  // ncdhw
@@ -1090,8 +1065,11 @@ static void Interpolate1DCUDAFwd(
     return;
   }
 
-  float ratio_w =
-      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
+  using MT = std::conditional_t<std::is_integral<T>::value,
+                                float,
+                                typename phi::dtype::MPTypeTrait<T>::Type>;
+  MT ratio_w =
+      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
 
   int64_t in_cw = static_cast<int64_t>(c) * in_w;
   int64_t out_cw = static_cast<int64_t>(c) * out_w;
@@ -1232,11 +1210,13 @@ static void Interpolate2DCUDAFwd(
     return;
   }
 
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  float ratio_h =
-      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
-  float ratio_w =
-      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
+  using MT = std::conditional_t<std::is_integral<T>::value,
+                                float,
+                                typename phi::dtype::MPTypeTrait<T>::Type>;
+  MT ratio_h =
+      funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
+  MT ratio_w =
+      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
 
   int64_t in_hw = static_cast<int64_t>(in_h) * in_w;
   int64_t out_hw = static_cast<int64_t>(out_h) * out_w;
@@ -1301,20 +1281,20 @@ static void Interpolate2DCUDAFwd(
       int64_t nc = static_cast<int64_t>(n) * c;
       backends::gpu::GpuLaunchConfig config_3d =
           backends::gpu::GetGpuLaunchConfig3D(dev_ctx, nc, out_h, out_w);
-      KeBilinearInterpNCHWFw<T>
-          <<<config_3d.block_per_grid,
-             config_3d.thread_per_block,
-             0,
-             dev_ctx.stream()>>>(input_data,
-                                 in_h,
-                                 in_w,
-                                 output_data,
-                                 out_h,
-                                 out_w,
-                                 nc,
-                                 ratio_h,
-                                 ratio_w,
-                                 align_mode == 1 || align_corners);
+      KeBilinearInterpNCHWFw<T><<<config_3d.block_per_grid,
+                                  config_3d.thread_per_block,
+                                  0,
+                                  dev_ctx.stream()>>>(input_data,
+                                                      in_h,
+                                                      in_w,
+                                                      output_data,
+                                                      out_h,
+                                                      out_w,
+                                                      nc,
+                                                      ratio_h,
+                                                      ratio_w,
+                                                      align_corners,
+                                                      align_mode);
     } else {
       int64_t cw = static_cast<int64_t>(c) * out_w;
       auto interp_divmods = funcs::FastDivModForInterpolate(c, out_chw, cw);
@@ -1333,7 +1313,8 @@ static void Interpolate2DCUDAFwd(
               c,
               ratio_h,
               ratio_w,
-              align_mode == 1 || align_corners,
+              align_corners,
+              align_mode,
               interp_divmods);
     }
   } else if ("bicubic" == interp_method) {
@@ -1475,7 +1456,9 @@ static void InterpolateAA2DCUDAFwd(
     return;
   }
 
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = std::conditional_t<std::is_integral<T>::value,
+                                float,
+                                typename phi::dtype::MPTypeTrait<T>::Type>;
   MT ratio_h =
       funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
   MT ratio_w =
@@ -1734,12 +1717,15 @@ static void Interpolate3DCUDAFwd(
     return;
   }
 
-  float ratio_d =
-      funcs::AreaPixelComputeScale<double>(in_d, out_d, align_corners, scale_d);
-  float ratio_h =
-      funcs::AreaPixelComputeScale<double>(in_h, out_h, align_corners, scale_h);
-  float ratio_w =
-      funcs::AreaPixelComputeScale<double>(in_w, out_w, align_corners, scale_w);
+  using MT = std::conditional_t<std::is_integral<T>::value,
+                                float,
+                                typename phi::dtype::MPTypeTrait<T>::Type>;
+  MT ratio_d =
+      funcs::AreaPixelComputeScale<MT>(in_d, out_d, align_corners, scale_d);
+  MT ratio_h =
+      funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
+  MT ratio_w =
+      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
 
   int64_t in_dhw = in_d * in_h * in_w;
   int64_t out_dhw = out_d * out_h * out_w;
