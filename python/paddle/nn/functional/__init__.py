@@ -46,7 +46,7 @@ from .activation import (
     softplus,
     softshrink,
     softsign,
-    swiglu,  # noqa: F401
+    swiglu,
     swish,
     tanh,
     tanh_,
@@ -208,6 +208,7 @@ __all__ = [
     'softsign',
     'sigmoid',
     'silu',
+    'swiglu',
     'swish',
     'mish',
     'tanh',
