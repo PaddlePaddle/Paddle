@@ -1071,12 +1071,8 @@ class OpcodeExecutorBase:
     @call_break_graph_decorator(push_n=1)
     def IMPORT_NAME(self, instr: Instruction):
         module_name = self.vframe.code.co_names[instr.arg]
-        level = self.stack.pop().get_py_value()
         fromlist = self.stack.pop().get_py_value()
-        if level is None:
-            level = 0
-        if fromlist is None:
-            fromlist = []
+        level = self.stack.pop().get_py_value()
         try:
             value = __import__(
                 module_name,

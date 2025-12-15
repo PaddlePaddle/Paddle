@@ -27,6 +27,13 @@ def import_math_model():
 
 
 @check_no_breakgraph
+def import_relative():
+    from . import test_case_base
+
+    return test_case_base
+
+
+@check_no_breakgraph
 def import_paddle_model(x: int):
     import paddle
 
@@ -37,6 +44,7 @@ class TestImportModel(TestCaseBase):
     def test_import_model(self):
         self.assert_results(import_math_model)
         self.assert_results(import_paddle_model, 1)
+        # self.assert_results(import_relative)
 
 
 if __name__ == "__main__":
