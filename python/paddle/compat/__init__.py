@@ -887,10 +887,10 @@ def unique(
 )
 def unique(
     input,
-    sorted = True,
-    return_inverse = False,
-    return_counts = False,
-    dim = None,
+    sorted=True,
+    return_inverse=False,
+    return_counts=False,
+    dim=None,
 ):
     r"""
     Returns the unique elements of `input` in ascending order.
