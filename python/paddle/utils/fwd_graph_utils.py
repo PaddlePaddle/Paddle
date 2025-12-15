@@ -247,7 +247,7 @@ def capture_stderr():
 
 
 @signature_safe_contextmanager
-def capture_fwd_graph_guard(file_path: str):
+def capture_forward_subgraph_guard(file_path: str):
     log = ""
     stderr_buffer = io.StringIO()
     origin_enable_unique_name_status = paddle.framework.get_flags(

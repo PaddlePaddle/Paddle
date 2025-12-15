@@ -4929,6 +4929,7 @@ def chunk(
     return split(x, num_or_sections=chunks, axis=axis, name=name)
 
 
+@ParamAliasDecorator({"x": ["input"], "repeat_times": ["dims"]})
 def tile(
     x: Tensor,
     repeat_times: TensorOrTensors | Sequence[int],
@@ -4941,10 +4942,15 @@ def tile(
 
     Both the number of dimensions of ``x`` and the number of elements in ``repeat_times`` should be less than or equal to 6.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dims`` can be used as an alias for ``repeat_times``.
+        For example, ``tile(input=x, dims=repeat_times)`` is equivalent to ``tile(x=x, repeat_times=repeat_times)``.
     Args:
         x (Tensor): The input tensor, its data type should be bool, float16, float32, float64, int32, int64, complex64 or complex128.
+            alias: ``input``.
         repeat_times (list|tuple|Tensor): The number of repeating times. If repeat_times is a list or tuple, all its elements
             should be integers or 1-D Tensors with the data type int32. If repeat_times is a Tensor, it should be an 1-D Tensor with the data type int32.
+            alias: ``dims``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -6566,15 +6572,15 @@ def as_complex(x: Tensor, name: str | None = None) -> Tensor:
         Tensor, The output. Data type is 'complex64' or 'complex128', with the same precision as the input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
             >>> y = paddle.as_complex(x)
             >>> print(y)
             Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[1j      , (2+3j)  , (4+5j)  ],
-             [(6+7j)  , (8+9j)  , (10+11j)]])
+            [[(0.00000000+1.00000000j) , (2.00000000+3.00000000j)  , (4.00000000+5.00000000j)  ],
+             [(6.00000000+7.00000000j) , (8.00000000+9.00000000j)  , (10.00000000+11.00000000j)]])
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.as_complex(x)
@@ -7922,6 +7928,8 @@ def view(
             shape_or_dtype, (core.VarDesc.VarType, core.DataType)
         ):
             shape_or_dtype = convert_np_dtype_to_dtype_(shape_or_dtype)
+        if x.dtype == shape_or_dtype:
+            return x
         return _C_ops.view_dtype(x, shape_or_dtype)
 
 
