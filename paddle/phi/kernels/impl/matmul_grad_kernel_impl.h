@@ -273,6 +273,26 @@ void MatmulGradKernel(const Context& dev_ctx,
         x_dims.cbegin(), x_dims.cbegin() + x_ndim - 2, y_dims.cbegin());
   }
 
+  bool is_y_been_broadcasted = false;
+  bool is_x_been_broadcasted = false;
+  // NOTE(Pan Zhaowu): Figure out which tensor is been broadcasted,
+  // to combine the broadcasted dim of other tensor into aggregation dim,
+  // avoiding use batched gemm and saving reduction cost.
+  if (is_broadcast) {
+    if (x_ndim != y_ndim) {
+      is_x_been_broadcasted = x_ndim < y_ndim;
+      is_y_been_broadcasted = !is_x_been_broadcasted;
+    } else {
+#pragma unroll
+      for (int i = 0; i < ndim; i++) {
+        if (x_dims[i] != y_dims[i]) {
+          is_x_been_broadcasted = x_dims[i] < y_dims[i];
+          is_y_been_broadcasted = !is_x_been_broadcasted;
+        }
+      }
+    }
+  }
+
   // for complex
   DenseTensor x_conj;
   DenseTensor y_conj;
@@ -432,24 +452,101 @@ void MatmulGradKernel(const Context& dev_ctx,
                                      false);
       } else {
         // XY: dX = GY', dY = X'G
-        if (dx)
-          MatMulFunction<Context, T>(dev_ctx,
-                                     out_grad,
-                                     y_conj,
-                                     dout_dims,
-                                     y_dims,
-                                     &dx_help,
-                                     false,
-                                     true);
-        if (dy)
-          MatMulFunction<Context, T>(dev_ctx,
-                                     x_conj,
-                                     out_grad,
-                                     x_dims,
-                                     dout_dims,
-                                     &dy_help,
-                                     true,
-                                     false);
+        VLOG(3)
+            << "matmul grad case: transpose_x = false && transpose_y = false";
+        if (dx) {
+          if (is_x_been_broadcasted) {
+            // Once x been broadcasted, we introduce a new aggregate dim
+            // original: [B, M, N] x [B, K, N]' -> [B, M, K] -(reduceB)-> [M, K]
+            // new: [BN, M] x [BN, K] -> [M, K]
+            DenseTensor out_grad_processed =
+                phi::TransposeLast2Dim<T>(dev_ctx, out_grad);
+            DenseTensor y_conj_processed =
+                phi::TransposeLast2Dim<T>(dev_ctx, y_conj);
+            size_t BN = 1;
+            for (int i = 0; i < ndim - 1; i++) {
+              BN *= y_dims[i];
+            }
+            std::vector<std::int64_t> out_grad_2d_dim{BN, dout_dims[ndim - 2]};
+            std::vector<std::int64_t> y_conj_2d_dim{BN, y_dims[y_ndim - 2]};
+
+            out_grad_processed->Resize(common::make_ddim(out_grad_2d_dim));
+            y_conj_processed->Resize(common::make_ddim(y_conj_2d_dim));
+            // 2D x 2D -> 2D
+            MatMulFunction<Context, T>(dev_ctx,
+                                       out_grad_processed,
+                                       y_conj_processed,
+                                       out_grad_2d_dim,
+                                       y_conj_2d_dim,
+                                       &dx_help,
+                                       true,
+                                       false);
+
+            // make legacy reduce logic happy
+            std::vector<std::int64_t> x_grad_dim(ndim);
+            for (int i = 0; i < ndim - 2; i++) {
+              x_grad_dim[i] = 1;
+            }
+            x_grad_dims[ndim - 2] = dx_help.dims()[0];
+            x_grad_dims[ndim - 1] = dx_help.dims()[1];
+            dx_help->Resize(common::make_ddim(x_grad_dim));
+
+          } else {
+            MatMulFunction<Context, T>(dev_ctx,
+                                       out_grad,
+                                       y_conj,
+                                       dout_dims,
+                                       y_dims,
+                                       &dx_help,
+                                       false,
+                                       true);
+          }  // if is_x_been_broadcasted
+        }    // if dx
+        if (dy) {
+          if (is_y_been_broadcasted) {
+            // Once y been broadcasted, we introduce a new aggregate dim
+            // original: [B, M, K] x [B, M, N] -> [B, K, N] -(reduceB)-> [K, N]
+            // new: [BM, K]' x [BM, N] -> [K, N]
+            size_t BM = 1;
+            for (int i = 0; i < ndim - 1; i++) {
+              BM *= x_dims[i];
+            }
+            std::vector<std::int64_t> out_grad_2d_dim{BM, dout_dims[ndim - 1]};
+            std::vector<std::int64_t> x_conj_2d_dim{BM, x_dims[x_ndim - 1]};
+
+            DenseTensor out_grad_processed = out_grad;
+            DenseTensor x_conj_processed = x_conj;
+            out_grad_processed->Resize(common::make_ddim(out_grad_2d_dim));
+            x_conj_processed->Resize(common::make_ddim(x_conj_2d_dim));
+
+            MatMulFunction<Context, T>(dev_ctx,
+                                       x_conj_processed,
+                                       out_grad_processed,
+                                       x_conj_2d_dim,
+                                       out_grad_2d_dim,
+                                       &dy_help,
+                                       true,
+                                       false);
+            // make legacy reduce logic happy
+            std::vector<std::int64_t> x_grad_dim(ndim);
+            for (int i = 0; i < ndim - 2; i++) {
+              y_grad_dim[i] = 1;
+            }
+            y_grad_dims[ndim - 2] = dy_help.dims()[0];
+            y_grad_dims[ndim - 1] = dy_help.dims()[1];
+            dy_help->Resize(common::make_ddim(y_grad_dim));
+
+          } else {
+            MatMulFunction<Context, T>(dev_ctx,
+                                       x_conj,
+                                       out_grad,
+                                       x_dims,
+                                       dout_dims,
+                                       &dy_help,
+                                       true,
+                                       false);
+          }  // if is_y_been_broadcasted
+        }    // if dy
       }
     }
 
