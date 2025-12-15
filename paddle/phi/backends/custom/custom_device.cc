@@ -972,7 +972,9 @@ class CustomDevice : public DeviceInterface {
       }
       const phi::stream::Stream stream_wrapper(
           Place(AllocationType::CUSTOM, Type()), stream);
-      MemoryCopyD2D(rank,
+
+      int current_device_id = GetDevice();
+      MemoryCopyD2D(current_device_id,
                     recv_buf[rank],
                     send_buf[rank],
                     send_count[rank] * phi::SizeOf(send_dtype[rank]),

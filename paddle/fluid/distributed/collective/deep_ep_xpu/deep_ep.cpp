@@ -378,24 +378,26 @@ Buffer::intranode_dispatch(
           << " last_topk_idx dim " << last_topk_idx->dim()
           << " last_topk_weights dim " << last_topk_weights->dim();
 
-  ret = bkcl_normal_dispatch_standard(comm_ctx->GetBKCLComm(),
-                                      x.data_ptr(),  // sendbuf
-                                      x_scales_ptr,
-                                      last_topk_idx->data_ptr<int>(),
-                                      last_topk_weights->data_ptr<float>(),
-                                      recv_x.data_ptr(),
-                                      recv_x_scales_ptr,
-                                      recv_topk_idx->data_ptr<int>(),
-                                      recv_topk_weights->data_ptr<float>(),
-                                      num_scales,
-                                      -1,  // UNUSED
-                                      hidden_size,
-                                      num_tokens,
-                                      num_topk,
-                                      last_num_experts,
-                                      ToBKCLDataType(x.dtype()),
-                                      use_int8,
-                                      reinterpret_cast<XPUStream>(comm_stream));
+  ret = bkcl_normal_dispatch_standard(
+      comm_ctx->GetBKCLComm(),
+      x.data_ptr(),  // sendbuf
+      x_scales_ptr,
+      last_topk_idx->data_ptr<int>(),
+      last_topk_weights->data_ptr<float>(),
+      recv_x.data_ptr(),
+      recv_x_scales_ptr,
+      recv_topk_idx->data_ptr<int>(),
+      recv_topk_weights->data_ptr<float>(),
+      num_scales,
+      -1,  // UNUSED
+      hidden_size,
+      num_tokens,
+      num_topk,
+      last_num_experts,
+      ToBKCLDataType(x.dtype()),
+      use_int8,
+      async ? reinterpret_cast<XPUStream>(comm_stream)
+            : reinterpret_cast<XPUStream>(compute_stream));
   EP_HOST_ASSERT(ret == 0 && "bkcl_normal_dispatch_standard failed");
 
   // Wait streams
@@ -729,24 +731,26 @@ Buffer::internode_dispatch(
           << " num_tokens " << num_tokens << " last_num_experts "
           << last_num_experts << " num_recv_tokens " << num_recv_tokens;
 
-  ret = bkcl_normal_dispatch_standard(comm_ctx->GetBKCLComm(),
-                                      x.data_ptr(),  // sendbuf
-                                      x_scales_ptr,
-                                      last_topk_idx->data_ptr<int>(),
-                                      last_topk_weights->data_ptr<float>(),
-                                      recv_x.data_ptr(),
-                                      recv_x_scales_ptr,
-                                      recv_topk_idx->data_ptr<int>(),
-                                      recv_topk_weights->data_ptr<float>(),
-                                      num_scales,
-                                      -1,  // UNUSED
-                                      hidden_size,
-                                      num_tokens,
-                                      num_topk,
-                                      last_num_experts,
-                                      ToBKCLDataType(x.dtype()),
-                                      use_int8,
-                                      reinterpret_cast<XPUStream>(comm_stream));
+  ret = bkcl_normal_dispatch_standard(
+      comm_ctx->GetBKCLComm(),
+      x.data_ptr(),  // sendbuf
+      x_scales_ptr,
+      last_topk_idx->data_ptr<int>(),
+      last_topk_weights->data_ptr<float>(),
+      recv_x.data_ptr(),
+      recv_x_scales_ptr,
+      recv_topk_idx->data_ptr<int>(),
+      recv_topk_weights->data_ptr<float>(),
+      num_scales,
+      -1,  // UNUSED
+      hidden_size,
+      num_tokens,
+      num_topk,
+      last_num_experts,
+      ToBKCLDataType(x.dtype()),
+      use_int8,
+      async ? reinterpret_cast<XPUStream>(comm_stream)
+            : reinterpret_cast<XPUStream>(compute_stream));
   EP_HOST_ASSERT(ret == 0 && "bkcl_normal_dispatch_standard failed");
 
   // Wait streams

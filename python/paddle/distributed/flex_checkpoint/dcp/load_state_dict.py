@@ -19,6 +19,8 @@ import json
 import math
 import os
 from collections import defaultdict
+from copy import deepcopy
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -43,6 +45,7 @@ from .utils import (
     assign_sharded_slice,
     build_global_state_shard_info,
     build_shard_desc,
+    check_resumable_locally,
     check_unique_id,
     create_hf_ckpt_metadata,
     flat_range_in_min_slice,
@@ -125,9 +128,7 @@ def get_checkpoint_files(
         raise ValueError(
             f"Checkpoint directory cannot contain both .distcp and .safetensors files simultaneously in {path}."
         )
-    assert len(local_data_files) > 0, (
-        f"No data file ends with '{unique_id}.distcp' found in the checkpoint directory:{path}."
-    )
+
     if use_cache:
         PATH_TO_CHECKPOINT_FILES[path] = (metadata_files, local_data_files)
     return (metadata_files, local_data_files)
@@ -156,6 +157,11 @@ def get_rank_to_files(
 
     for metadata in metadata_list:
         for local_tensor_index, file_name in metadata.storage_metadata.items():
+            if (
+                local_tensor_index.replica_id is not None
+                and local_tensor_index.replica_id != 0
+            ):
+                continue
             tensor_key_list.append(local_tensor_index.tensor_key)
             if local_tensor_index.tensor_key in state_dict_param_names:
                 necessary_files.append(file_name)
@@ -490,15 +496,20 @@ def _handle_aoa(
     safetensors,
     comm_method,
 ):
+    global _metadata_manager
+
     use_dist = paddle.distributed.get_world_size() > 1
-    metadata_files, _ = get_checkpoint_files(
-        path,
-        unique_id=unique_id,
-        process_group=process_group,
-        safetensors=safetensors,
-    )
-    assert len(metadata_files) == 1, "Only support one metadata file now."
-    metadata = paddle.load(os.path.join(path, metadata_files[0]))
+    if _metadata_manager.is_metadata_list_empty():
+        metadata_files, _ = get_checkpoint_files(
+            path,
+            unique_id=unique_id,
+            process_group=process_group,
+            safetensors=safetensors,
+        )
+        assert len(metadata_files) == 1, "Only support one metadata file now."
+        metadata = paddle.load(os.path.join(path, metadata_files[0]))
+        _metadata_manager.set_metadata_list([metadata])
+    metadata = _metadata_manager.get_metadata_list()[0]
     state_dict_metadata = metadata.state_dict_metadata
     using_not_init_tensor = (
         True if comm_method in _UNINIT_TENSOR_MODES else False
@@ -541,6 +552,14 @@ def _handle_aoa(
                 src_desc_to_postprocess_list[src_desc] = (
                     mapping.postprocess_list
                 )
+            if len(shard_mappings) == 1 and mapping.postprocess_list is None:
+                if src_desc.global_shape == dst_desc.global_shape:
+                    logger.warning(
+                        f"Shape mismatch for parameter '{param_name}': "
+                        f"source global_shape={src_desc.global_shape}, "
+                        f"destination global_shape={dst_desc.global_shape}, "
+                        "Please check if this is caused by an AOA configuration."
+                    )
             if (len(shard_mappings) == 1) and (
                 src_desc.local_shape == dst_desc.local_shape
                 and src_desc.global_shape == dst_desc.global_shape
@@ -614,6 +633,41 @@ def _finish_unflatten(flat_shards, padding_info):
         flat_shard.local_tensor.flatten_()
 
 
+def local_load_state_dict(
+    state_dict: dict[str, Tensor] | dict[str, ShardedWeight],
+    path: str,
+    offload: bool = False,
+    use_dist: bool = True,
+):
+    cur_rank = paddle.distributed.get_rank() if use_dist else 0
+    expect_checkpoint_file = f"{cur_rank}_0.distcp"
+    ckpt_file = os.path.join(path, expect_checkpoint_file)
+    source_state_dict = {}
+    if offload:
+        state_dict_numpy = paddle.load(ckpt_file, return_numpy=True)
+        source_state_dict = {
+            key: paddle.to_tensor(value, place=paddle.CPUPlace())
+            for key, value in state_dict_numpy.items()
+        }
+    else:
+        source_state_dict = paddle.load(ckpt_file)
+    for key, value in state_dict.items():
+        if isinstance(value, ShardedWeight):
+            local_tensor = value.local_tensor
+        else:
+            if not value._is_initialized():
+                continue
+            if value.is_dist():
+                local_tensor = value._local_value()
+            else:
+                local_tensor = value
+
+        assert key in source_state_dict, f"{key} is not in source_state_dict."
+        source_tensor = source_state_dict[key]
+        source_tensor = source_tensor.to(local_tensor.place)
+        paddle.assign(source_tensor, local_tensor)
+
+
 def load_state_dict(
     state_dict: dict[str, Tensor] | dict[str, ShardedWeight],
     path: str,
@@ -666,6 +720,7 @@ def load_state_dict(
             [24, 25, 26, 27, 28, 29, 30, 31]])}
             >>> # doctest: -SKIP
     """
+    global _metadata_manager
     use_dist = paddle.distributed.get_world_size() > 1
 
     valid_methods = [
@@ -686,7 +741,28 @@ def load_state_dict(
     if use_dist:
         paddle.distributed.barrier(process_group)
 
-    if not is_sharded_state_dict(state_dict):
+    if not safetensors and aoa_config is None:
+        metadata_files, _ = get_checkpoint_files(path, unique_id=unique_id)
+        assert len(metadata_files) == 1, "Only support one metadata file now."
+        metadata = paddle.load(os.path.join(path, metadata_files[0]))
+        _metadata_manager.set_metadata_list([metadata])
+        resumable_locally = check_resumable_locally(
+            path, state_dict, _metadata_manager, use_dist, process_group
+        )
+        if resumable_locally:
+            logger.info(
+                f"Checkpoint '{path}' resumable locally, skipping reshard."
+            )
+            local_load_state_dict(
+                state_dict=state_dict,
+                path=path,
+                offload=offload,
+                use_dist=use_dist,
+            )
+            logger.info("Checkpoint successfully loaded locally!")
+            return
+
+    if not is_sharded_state_dict(state_dict, use_dist, process_group):
         load_state_dict_impl(
             state_dict=state_dict,
             path=path,
@@ -750,7 +826,6 @@ def load_state_dict(
     if use_dist:
         _finish_unflatten(flat_shards, padding_info)
 
-    global _metadata_manager
     _metadata_manager.clear()
     gc.collect()
 
@@ -835,12 +910,13 @@ def restore_unflattened_state_dict(
         tensor_name_expand = f"{tensor_name}.global_offset.{meta.global_offset}"
 
         flat_start, flat_end = meta.flattened_range
+        local_shape = (flat_end - flat_start,)
         source_state_dict_for_reshard[file_name][tensor_name_expand] = (
             local_tensor
         )
         source_local_tensor_meta[tensor_name_expand].append(
             LocalTensorMetadata(
-                local_shape=(flat_end - flat_start,),
+                local_shape=local_shape,
                 global_shape=(math.prod(meta.local_shape),),
                 dtype=meta.dtype,
                 global_offset=(flat_start,),
@@ -849,7 +925,9 @@ def restore_unflattened_state_dict(
         )
         source_storage_meta[
             LocalTensorIndex(
-                tensor_key=tensor_name_expand, global_offset=(flat_start,)
+                tensor_key=tensor_name_expand,
+                global_offset=(flat_start,),
+                local_shape=local_shape,
             )
         ] = file_name
 
@@ -943,6 +1021,7 @@ def restore_unflattened_state_dict(
                 global_offset=meta.global_offset,
                 is_flattened=False,
                 flattened_range=None,
+                local_shape=meta.local_shape,
             )
         ] = file_name
 
@@ -1030,12 +1109,11 @@ def load_state_dict_impl(
             safetensors=safetensors,
         )
 
-        metadata_list = []
-        for file in metadata_files:
-            metadata_list.append(paddle.load(os.path.join(path, file)))
-
-        global _metadata_manager
-        _metadata_manager.set_metadata_list(metadata_list)
+        if _metadata_manager.is_metadata_list_empty():
+            metadata_list = []
+            for file in metadata_files:
+                metadata_list.append(paddle.load(os.path.join(path, file)))
+            _metadata_manager.set_metadata_list(metadata_list)
 
         rank_to_files, missing_keys, mw_name_compatibility_mapping = (
             get_rank_to_files(
@@ -1089,6 +1167,43 @@ def load_state_dict_impl(
                 source_state_dict[file] = paddle.load(
                     os.path.join(path, file), safetensors=safetensors
                 )
+
+        metadata = _metadata_manager.get_metadata_list()[0]
+        storage_metadata = metadata.storage_metadata
+
+        replica_indexes = [
+            local_tensor_index
+            for local_tensor_index in storage_metadata
+            if local_tensor_index.replica_id is not None
+            and local_tensor_index.replica_id != 0
+        ]
+
+        for local_tensor_index in replica_indexes:
+            file_name = storage_metadata[local_tensor_index]
+            if file_name in source_state_dict:
+                tensor_key = local_tensor_index.tensor_key
+                state_dict = source_state_dict[file_name]
+                if tensor_key in state_dict:
+                    state_dict.pop(tensor_key)
+
+        metadata_copy = deepcopy(metadata)
+        storage_metadata_copy = metadata_copy.storage_metadata
+        for local_tensor_index in replica_indexes:
+            storage_metadata_copy.pop(local_tensor_index)
+
+        new_storage_metadata = {}
+        for local_tensor_index, value in storage_metadata_copy.items():
+            if local_tensor_index.replica_id == 0:
+                local_tensor_index_new = replace(
+                    local_tensor_index, replica_id=None
+                )
+                new_storage_metadata[local_tensor_index_new] = value
+            else:
+                new_storage_metadata[local_tensor_index] = value
+
+        metadata_copy.storage_metadata = new_storage_metadata
+
+        _metadata_manager.set_metadata_list([metadata_copy])
 
         if use_dist:
             paddle.distributed.barrier(process_group)

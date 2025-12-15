@@ -18,6 +18,7 @@ import copy
 import os
 import re
 from collections import defaultdict
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -151,7 +152,7 @@ def unflatten_state_dict(flat_state_dict, mapping):
 
 
 def get_max_id(path):
-    numbers = []
+    numbers = [0]
     pattern = re.compile(r"^(\d+)_(\d+)\.distcp$")
     files = os.listdir(path)
     for file in files:
@@ -210,21 +211,33 @@ def flat_range_in_min_slice(shape, min_slices, flat_start, flat_end):
     return flat_start - min_flat_start, flat_end - min_flat_start
 
 
-def is_sharded_state_dict(o):
-    if not isinstance(o, dict):
-        return False
+def is_sharded_state_dict(state_dict, use_dist=True, process_group=None):
+    values = list(state_dict.values())
+    is_all_sharded = all(isinstance(v, ShardedWeight) for v in values)
+    has_sharded = any(isinstance(v, ShardedWeight) for v in values)
 
-    values = list(o.values())
-    has_sharded_weight = any(isinstance(v, ShardedWeight) for v in values)
+    if has_sharded and not is_all_sharded:
+        raise TypeError(
+            "All values must be ShardedWeight if any value is ShardedWeight."
+        )
 
-    if has_sharded_weight:
-        if not all(isinstance(v, ShardedWeight) for v in values):
-            raise TypeError(
-                "All values must be ShardedWeight if any value is ShardedWeight."
-            )
-        return True
+    if not use_dist:
+        return is_all_sharded
+
+    if is_all_sharded:
+        flag = 1
+    elif len(values) == 0:
+        flag = 0
     else:
-        return False
+        flag = -1
+
+    all_flags = []
+    paddle.distributed.all_gather_object(all_flags, flag, process_group)
+
+    assert all(f >= 0 for f in all_flags) or all(f <= 0 for f in all_flags), (
+        "Not support mixed type of ShardedWeight and non-ShardedWeight in the same state_dict!"
+    )
+    return all(f >= 0 for f in all_flags)
 
 
 def get_overlap_region(desc_offset, desc_shape, shard_offset, shard_shape):
@@ -547,6 +560,7 @@ def create_hf_ckpt_metadata(
                     tensor_key=key,
                     global_offset=(0,) * len(shape),
                     is_flattened=False,
+                    local_shape=shape,
                 )
                 local_state_dict_metadata[key].add(ltm)
                 local_storage_metadata[lti] = file_name
@@ -613,3 +627,115 @@ def slice_tensor(tensor, slice_begin, slice_shape):
     ]
     axes = list(range(tensor.ndim))
     return paddle.slice(tensor, axes=axes, starts=slice_begin, ends=slice_end)
+
+
+def extract_tensor_metadata(val):
+    if isinstance(val, paddle.Tensor):
+        # Case1: not initialized means this tensor is placed in another mesh which do not contain this rank
+        if not val._is_initialized():
+            return None, None
+        if val.is_dist():
+            local_tensor = val._local_value()
+            # Note: The local_tensor must keep the same name with the original tensor. Otherwise, the StructuredToParameterName@@ mapping will be wrong.
+            local_tensor.name = val.name
+            # when val is scalar, the shape is []
+            (
+                local_shape,
+                global_offset,
+            ) = (
+                compute_local_shape_and_global_offset(
+                    val.shape,
+                    val.process_mesh,
+                    val.placements,
+                )
+                if len(val.shape) > 0
+                else ((), ())
+            )
+            global_shape = val.shape
+            if local_shape is None or global_offset is None:
+                return None, None
+        else:
+            local_shape = tuple(val.shape)
+            global_offset = (
+                tuple([0] * len(val.shape)) if len(val.shape) > 0 else ()
+            )
+            global_shape = local_shape
+            local_tensor = val
+        is_flattened = False
+        flattened_range = None
+    elif isinstance(val, ShardedWeight):
+        local_tensor = val.local_tensor
+        local_shape = val.local_shape
+        global_offset = val.global_offset
+        global_shape = val.global_shape
+        is_flattened = val.is_flattened
+        flattened_range = val.flattened_range
+    else:
+        raise ValueError(
+            f"The value of state_dict should be a paddle.Tensor, but got: {val}"
+        )
+
+    local_tensor_dtype = str(local_tensor.dtype).split('.')[1]
+    if flattened_range is not None:
+        flattened_range = (flattened_range.start, flattened_range.stop)
+    else:
+        flattened_range = None
+    local_tensor_metadata = LocalTensorMetadata(
+        tuple(global_offset),
+        tuple(local_shape),
+        local_tensor_dtype,
+        tuple(global_shape),
+        is_flattened,
+        flattened_range,
+    )
+    assert (local_tensor is None) == (local_tensor_metadata is None), (
+        "local_tensor and local_tensor_metadata must both be None or both not None!"
+    )
+    return local_tensor, local_tensor_metadata
+
+
+def check_resumable_locally(
+    path, state_dict, metadata_manager, use_dist, process_group
+):
+    local_load = True
+    rank = paddle.distributed.get_rank() if use_dist else 0
+    checkpoint_file = f"{rank}_0.distcp"
+    file_path = os.path.join(path, checkpoint_file)
+
+    if not os.path.isfile(file_path):
+        local_load = False
+
+    state_dict_metadata = {}
+    for key, value in state_dict.items():
+        _, local_tensor_metadata = extract_tensor_metadata(value)
+        if local_tensor_metadata is not None:
+            state_dict_metadata[key] = local_tensor_metadata
+
+    if local_load:
+        file_storage_info = metadata_manager.get_file_storage_info()
+        cur_file_storage = {
+            replace(index, replica_id=None)
+            for index in file_storage_info.get(checkpoint_file, [])
+        }
+
+        for key, local_tensor_metadata in state_dict_metadata.items():
+            local_tensor_index = LocalTensorIndex(
+                tensor_key=key,
+                global_offset=local_tensor_metadata.global_offset,
+                is_flattened=local_tensor_metadata.is_flattened,
+                flattened_range=local_tensor_metadata.flattened_range,
+                local_shape=local_tensor_metadata.local_shape,
+                replica_id=None,
+            )
+            if local_tensor_index not in cur_file_storage:
+                local_load = False
+                break
+
+    if use_dist:
+        global_local_loads = []
+        paddle.distributed.all_gather_object(
+            global_local_loads, local_load, process_group
+        )
+        return all(global_local_loads)
+    else:
+        return local_load

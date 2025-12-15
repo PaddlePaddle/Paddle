@@ -73,6 +73,13 @@ jobs:
       can-skip: ${{ needs.cpu.outputs.can-skip }}
       docker_npu_image: ${{ needs.build-docker.outputs.docker_npu_image }}
 
+  ixuca:
+    name: Linux-IXUCA
+    uses: ./.github/workflows/_Linux-IXUCA.yml
+    needs: [clone, cpu]
+    with:
+      can-skip: ${{ needs.cpu.outputs.can-skip }}
+
   distribute:
     name: Distribute-stable-build
     uses: ./.github/workflows/_Distribute-stable.yml
