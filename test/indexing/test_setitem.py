@@ -1099,20 +1099,17 @@ class TestSetitemInStatic(unittest.TestCase):
                 dtype=paddle.int64,
             )
             value = -3.14
-
             xx[index] = value
             y = xx
 
             dy = paddle.randn_like(y, requires_grad=True)
-
             (dx,) = paddle.autograd.grad(y, [x], dy, create_graph=True)
 
             ddx = paddle.randn_like(dx)
-
-            # ddx && ddv
             (ddy,) = paddle.autograd.grad([dx], dy, [ddx], retain_graph=True)
             ddy_ref = ddx.clone()
             ddy_ref[index] = 0.0
+
             np.testing.assert_allclose(
                 ddy.numpy(),
                 ddy_ref.numpy(),
