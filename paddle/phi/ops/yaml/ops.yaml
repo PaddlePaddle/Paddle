@@ -5828,6 +5828,7 @@
   output : Tensor(out)
   infer_meta :
     func : ViewShapeInferMeta
+    spmd_rule : ReshapeInferSpmd
   kernel :
     func : view_shape
   backward : view_shape_grad
