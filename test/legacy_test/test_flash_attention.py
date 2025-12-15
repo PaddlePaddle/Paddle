@@ -492,6 +492,20 @@ class TestFlashAttentionAPITest5(TestFlashAttentionAPI):
         self.use_sdp_kernel = False
 
 
+class TestFlashAttentionAPITest6(TestFlashAttentionAPI):
+    def setUp(self):
+        self.place = get_device_place()
+        self.shape = (0, 256, 8, 16)
+        self.dtype = 'float16'
+        self.dropout = 0.0
+        self.causal = True
+        self.return_softmax = False
+        self.use_sdp_kernel = False
+
+    def test_unpadded(self):
+        pass
+
+
 class TestMathAttentionAPITest(TestFlashAttentionAPI):
     def setUp(self):
         self.place = get_device_place()
@@ -564,6 +578,20 @@ class TestSDPAttentionWithMaskAPITest3(TestFlashAttentionWithMaskAPI):
         self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = False
+
+
+@unittest.skipIf(
+    is_sm_supported,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 7.5 or 8.x",
+)
+class TestSDPAttentionWithMaskAPITest4(TestFlashAttentionWithMaskAPI):
+    def setUp(self):
+        self.place = get_device_place()
+        self.shape = (0, 1024, 16, 128)
+        self.dtype = 'float32'
+        self.dropout = 0.0
+        self.causal = True
 
 
 @unittest.skipIf(
