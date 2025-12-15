@@ -22,7 +22,7 @@ limitations under the License. */
 
 #include "paddle/common/exception.h"
 #include "paddle/common/macros.h"
-#include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
+#include "paddle/phi/api/ext/native_meta_tensor.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
 #include "paddle/utils/any.h"
@@ -997,9 +997,9 @@ using InferSpmdFunc = phi::distributed::SpmdInfo (*)(
 
 using PythonOperatorFunctionType =
     std::function<std::vector<Tensor>(std::vector<Tensor>&)>;
-using IrTensor = paddle::dialect::IrTensor;
 using PythonOperatorInferMetaFunctionType =
-    std::function<std::vector<IrTensor>(const std::vector<IrTensor>&)>;
+    std::function<std::vector<phi::NativeMetaTensor>(
+        const std::vector<phi::NativeMetaTensor>&)>;
 
 class PADDLE_API OpMetaInfo {
  public:

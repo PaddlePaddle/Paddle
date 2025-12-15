@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
+#include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -364,36 +365,36 @@ PythonOperationFunctionInstruction::PythonOperationFunctionInstruction(
   VLOG(6) << "finish process no need buffer";
 }
 
-void PythonOperationFunctionInstruction::UpdateOutputMeta() {
-  VLOG(0) << "enter PythonOperationFunctionInstruction::UpdateOutputMeta()";
+// void PythonOperationFunctionInstruction::UpdateOutputMeta() {
+//   VLOG(0) << "enter PythonOperationFunctionInstruction::UpdateOutputMeta()";
 
-  std::vector<paddle::dialect::IrTensor> vec_dense_inputs;
-  for (size_t i = 0; i < this->op_->operands().size(); ++i) {
-    vec_dense_inputs.emplace_back(paddle::dialect::IrTensor());
-    vec_dense_inputs.back().SetDims(phi::make_ddim(input_shapes_[i]));
-    vec_dense_inputs.back().SetDtype(input_dtypes_[i]);
-  }
+//   std::vector<paddle::dialect::IrTensor> vec_dense_inputs;
+//   for (size_t i = 0; i < this->op_->operands().size(); ++i) {
+//     vec_dense_inputs.emplace_back(paddle::dialect::IrTensor());
+//     vec_dense_inputs.back().SetDims(phi::make_ddim(input_shapes_[i]));
+//     vec_dense_inputs.back().SetDtype(input_dtypes_[i]);
+//   }
 
-  VLOG(0) << "PythonOperationFunctionInstruction finish vec_dense_inputs";
+//   VLOG(0) << "PythonOperationFunctionInstruction finish vec_dense_inputs";
 
-  std::vector<paddle::dialect::IrTensor> output =
-      (*py_func_infer_meta_ptr_)(vec_dense_inputs);
+//   std::vector<paddle::dialect::IrTensor> output =
+//       (*py_func_infer_meta_ptr_)(vec_dense_inputs);
 
-  VLOG(0) << "PythonOperationFunctionInstruction finish "
-             "(*py_func_infer_meta_ptr_)(vec_dense_inputs);";
+//   VLOG(0) << "PythonOperationFunctionInstruction finish "
+//              "(*py_func_infer_meta_ptr_)(vec_dense_inputs);";
 
-  for (size_t i = 0; i < cache_out_ptrs_.size(); ++i) {
-    auto out_in_scope = cache_out_ptrs_.at(i);
-    // update dims and dtype
-    phi::DenseTensorMeta* out_meta =
-        phi::DenseTensorUtils::GetMutableMeta(out_in_scope);
-    out_meta->dims = output[i].dims();
-    out_meta->dtype = output[i].dtype();
-    out_meta->strides = out_meta->calc_strides(out_meta->dims);
-  }
+//   for (size_t i = 0; i < cache_out_ptrs_.size(); ++i) {
+//     auto out_in_scope = cache_out_ptrs_.at(i);
+//     // update dims and dtype
+//     phi::DenseTensorMeta* out_meta =
+//         phi::DenseTensorUtils::GetMutableMeta(out_in_scope);
+//     out_meta->dims = output[i].dims();
+//     out_meta->dtype = output[i].dtype();
+//     out_meta->strides = out_meta->calc_strides(out_meta->dims);
+//   }
 
-  VLOG(0) << "PythonOperationFunctionInstruction finish out_meta";
-}
+//   VLOG(0) << "PythonOperationFunctionInstruction finish out_meta";
+// }
 
 void PythonOperationFunctionInstruction::BuildShapeDtype() {
   input_shapes_.clear();
@@ -432,7 +433,7 @@ void PythonOperationFunctionInstruction::Run() {
   VLOG(3) << "Custom Operator: InferShape - calc output ddim.";
   BuildShapeDtype();
 
-  UpdateOutputMeta();
+  // UpdateOutputMeta();
   for (auto& pair : this->InplaceInfo()) {
     ShareVarBuffer(pair.first, pair.second);
   }

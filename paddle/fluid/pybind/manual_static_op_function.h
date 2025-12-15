@@ -30,6 +30,7 @@
 #include "paddle/fluid/pybind/op_callstack_utils.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/static_op_function.h"
+#include "paddle/phi/api/ext/native_meta_tensor.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
@@ -1009,16 +1010,20 @@ using IrTensor = paddle::dialect::IrTensor;
 
 template <typename T>
 auto CreatePyFuncRunner(int64_t py_func_ptr, const std::string &op_name) {
-  static_assert(std::is_same_v<T, Tensor> || std::is_same_v<T, IrTensor>,
-                "T must be either Tensor or paddle::dialect::IrTensor");
+  static_assert(
+      std::is_same_v<T, Tensor> || std::is_same_v<T, phi::NativeMetaTensor>,
+      "T must be either Tensor or phi::NativeMetaTensor");
 
-  using FuncInputType = std::conditional_t<std::is_same_v<T, IrTensor>,
-                                           const std::vector<IrTensor>,
-                                           std::vector<Tensor>>;
+  using FuncInputType =
+      std::conditional_t<std::is_same_v<T, phi::NativeMetaTensor>,
+                         const std::vector<phi::NativeMetaTensor>,
+                         std::vector<Tensor>>;
 
-  using FuncOutputType = std::conditional_t<std::is_same_v<T, IrTensor>,
-                                            std::vector<IrTensor>,
-                                            std::vector<Tensor>>;
+  // using FuncOutputType = std::conditional_t<std::is_same_v<T,
+  // phi::NativeMetaTensor>,
+  //                                           std::vector<phi::NativeMetaTensor>,
+  //                                           std::vector<Tensor>>;
+  using FuncOutputType = std::vector<T>;
 
   return [=](FuncInputType &inputs) -> FuncOutputType {
     py::gil_scoped_acquire acquire;
@@ -1110,8 +1115,8 @@ static PyObject *run_custom_pyop(PyObject *self,
   const auto &meta_info_map = OpMetaInfoMap::Instance().GetMap();
 
   auto py_func = CreatePyFuncRunner<Tensor>(attrs_map["fn_ptr"], op_name);
-  auto infer_meta_py_func =
-      CreatePyFuncRunner<IrTensor>(attrs_map["infer_meta_fn_ptr"], op_name);
+  auto infer_meta_py_func = CreatePyFuncRunner<phi::NativeMetaTensor>(
+      attrs_map["infer_meta_fn_ptr"], op_name);
 
   if (meta_info_map.find(op_name) == meta_info_map.end()) {
     std::cout << "We need to register this op first! " << op_name << std::endl;
@@ -1166,8 +1171,9 @@ static PyObject *run_custom_pyop(PyObject *self,
   int input_index = 0;
   int vec_input_index = 0;
 
-  std::vector<std::shared_ptr<IrTensor>> inputs_ptr_vector;
-  std::vector<IrTensor> vec_dense_inputs;
+  // std::vector<IrTensor> vec_dense_inputs;
+  std::vector<phi::NativeMetaTensor> inputs_meta;
+  inputs_meta.reserve(inputs.size());
 
   for (size_t i = 0; i < inputs.size(); ++i) {
     const auto &input = inputs.at(i);
@@ -1229,11 +1235,9 @@ static PyObject *run_custom_pyop(PyObject *self,
       //     paddle::dialect::TransToPhiDataType(input_tensor.dtype()));
       argument_inputs.push_back(input_value);
 
-      vec_dense_inputs.push_back(paddle::dialect::IrTensor(
+      inputs_meta.push_back(phi::NativeMetaTensor(
           paddle::dialect::TransToPhiDataType(input_tensor.dtype()),
-          input_tensor.dims(),
-          input_tensor.data_layout(),
-          {}));
+          input_tensor.dims()));
     }
   }
   argument.AddInputs(argument_inputs);
@@ -1250,7 +1254,14 @@ static PyObject *run_custom_pyop(PyObject *self,
                                                  attrs_map["fn_ptr"]));
 
   // 做 infer_meta
-  std::vector<IrTensor> process_result = infer_meta_py_func(vec_dense_inputs);
+  std::vector<phi::NativeMetaTensor> outputs_meta =
+      infer_meta_py_func(inputs_meta);
+  std::vector<IrTensor> process_result;
+  process_result.reserve(outputs.size());
+  for (auto &out_meta : outputs_meta) {
+    process_result.push_back(
+        IrTensor(out_meta.dtype(), out_meta.dims(), phi::DataLayout::NCHW, {}));
+  }
   PADDLE_ENFORCE_EQ(
       process_result.size(),
       outputs.size(),

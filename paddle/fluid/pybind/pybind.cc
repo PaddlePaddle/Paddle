@@ -129,6 +129,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/ir_tensor.h"
 #include "paddle/fluid/pybind/jit.h"
 #include "paddle/fluid/pybind/metrics_py.h"
+#include "paddle/fluid/pybind/native_meta_tensor.h"
 #include "paddle/fluid/pybind/pir.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/fluid/pybind/python_callable_registry.h"
@@ -1575,6 +1576,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindCustomDevicePy(&m);
   BindIrTensor(&m);
   BindIrMetaTensor(&m);
+  BindNativeMetaTensor(&m);
   BindEagerUtils(m.ptr());
   BindOpFunctionCommon(m.ptr());
 

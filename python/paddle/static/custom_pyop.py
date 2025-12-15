@@ -17,17 +17,12 @@ import inspect
 import types
 from collections.abc import Sequence
 from functools import partial, wraps
-from typing import (
-    Any,
-    Callable,
-    ParamSpec,
-    TypeVar,
-    overload,
-)
+from typing import Any, Callable, ParamSpec, TypeVar, overload
 
 import paddle
 from paddle import _C_ops
-from paddle.static.meta_tensor import MetaTensorWrapper
+
+# from paddle.static.meta_tensor import MetaTensorWrapper
 
 HAS_ARGS_OR_KWARGS: int = inspect.CO_VARARGS | inspect.CO_VARKEYWORDS
 
@@ -273,9 +268,10 @@ def register_op(
                 input_names=input_names,
                 output_names=output_names,
                 attrs={
-                    "infer_meta_fn_ptr": MetaTensorWrapper(
-                        bound_constants_infer_meta
-                    ),
+                    "infer_meta_fn_ptr": bound_constants_infer_meta,
+                    # MetaTensorWrapper(
+                    #     bound_constants_infer_meta
+                    # ),
                     "fn_ptr": run_in_dynamic_mode(bound_constants_fn),
                 },
                 inplace_map=inplace_map or {},

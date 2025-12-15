@@ -12,55 +12,64 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from functools import wraps
 
-from ..base.libpaddle import IrMetaTensor, IrTensor
+from ..base.libpaddle import NativeMetaTensor
 
+# class MetaTensor:
+#     def __init__(self, *, shape=None, dtype=None):
+#         self.native_meta_tensor = NativeMetaTensor()
+#         if shape is not None:
+#             self.native_meta_tensor.set_shape(shape)
+#         if dtype is not None:
+#             self.native_meta_tensor.set_dtype(dtype)
 
-class MetaTensor:
-    def __init__(self, *, shape=None, dtype=None, ir_tensor=None):
-        self.ir_tensor = IrTensor() if ir_tensor is None else ir_tensor
-        self.ir_meta_tensor = IrMetaTensor(self.ir_tensor)
-        if shape is not None:
-            self.ir_meta_tensor.set_shape(shape)
-        if dtype is not None:
-            self.ir_meta_tensor.set_dtype(dtype)
+#     def set_shape(self, shape):
+#         self.native_meta_tensor.set_shape(shape)
 
-    def set_shape(self, shape):
-        self.ir_meta_tensor.set_shape(shape)
+#     @property
+#     def shape(self):
+#         return self.native_meta_tensor.shape
 
-    @property
-    def shape(self):
-        return self.ir_meta_tensor.shape
+#     def set_dtype(self, dtype):
+#         self.native_meta_tensor.set_dtype(dtype)
 
-    def set_dtype(self, dtype):
-        self.ir_meta_tensor.set_dtype(dtype)
+#     @property
+#     def dtype(self):
+#         return self.native_meta_tensor.dtype
 
-    @property
-    def dtype(self):
-        return self.ir_meta_tensor.dtype
-
-    def __eq__(self, other):
-        return (
-            self.ir_meta_tensor.dtype == other.ir_meta_tensor.dtype
-            and self.ir_meta_tensor.shape == other.ir_meta_tensor.shape
-        )
+#     def __eq__(self, other):
+#         return (
+#             self.native_meta_tensor.dtype == other.native_meta_tensor.dtype
+#             and self.native_meta_tensor.shape == other.native_meta_tensor.shape
+#         )
 
 
-def MetaTensorWrapper(fn):
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        # IrTensor -> MetaTensor
-        new_args = list(args)
-        for i, arg in enumerate(args):
-            if isinstance(arg, IrTensor):
-                new_args[i] = MetaTensor(ir_tensor=arg)
-        for key, value in kwargs.items():
-            if isinstance(value, IrTensor):
-                kwargs[key] = MetaTensor(ir_tensor=value)
-        outputs = fn(*new_args, **kwargs)
-        if isinstance(outputs, (list, tuple)):
-            return [output.ir_tensor for output in outputs]
-        return outputs.ir_tensor
+MetaTensor = NativeMetaTensor
 
-    return wrapper
+# def map_type(fn, type_, structure):
+#     map_fn = lambda v: fn(v) if isinstance(v, type_) else v
+#     return map_structure(map_fn, structure)
+
+# def wrap_infer_meta(fn):
+#     @wraps(fn)
+#     def infer_meta(*args, **kwargs):
+#         args, kwargs = map_type((args, kwargs))
+
+
+# def MetaTensorWrapper(fn):
+#     @wraps(fn)
+#     def wrapper(*args, **kwargs):
+#         # IrTensor -> MetaTensor
+#         new_args = list(args)
+#         for i, arg in enumerate(args):
+#             if isinstance(arg, IrTensor):
+#                 new_args[i] = MetaTensor(ir_tensor=arg)
+#         for key, value in kwargs.items():
+#             if isinstance(value, IrTensor):
+#                 kwargs[key] = MetaTensor(ir_tensor=value)
+#         outputs = fn(*new_args, **kwargs)
+#         if isinstance(outputs, (list, tuple)):
+#             return [output.ir_tensor for output in outputs]
+#         return outputs.ir_tensor
+
+#     return wrapper
