@@ -125,15 +125,7 @@ class IR_API Type {
   ///
   bool IsIntOrIndex() const;
   bool IsIndex() const;
-
-  std::size_t hash() const {
-    if (!storage_) return 0;
-    std::ostringstream oss;
-    Print(oss);
-    std::string type_representation = oss.str();
-    std::size_t seed = std::hash<std::string>{}(type_representation);
-    return seed;
-  }
+  std::size_t hash() const { return std::hash<const void *>()(storage_); }
 
  protected:
   const Storage *storage_{nullptr};

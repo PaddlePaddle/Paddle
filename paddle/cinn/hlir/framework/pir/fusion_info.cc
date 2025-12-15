@@ -20,6 +20,7 @@
 #include "paddle/pir/include/core/ir_printer.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 PD_DECLARE_bool(enable_cinn_compile_cache);
+COMMON_DECLARE_bool(enable_cinn_kernel_cache);
 namespace cinn::hlir::framework::pir {
 
 constexpr static const char* kOpCallStack = "op_callstack";
@@ -30,6 +31,7 @@ static const std::unordered_set<std::string> kExcludedAttrs = {
     kOpCallStack, kSymShapeStr, kStructName, kStopGradient};
 
 std::size_t AttributeInfo::hash() const {
+  if (!FLAGS_enable_cinn_kernel_cache) return attr_.hash();
   // Use stable attribute information to calculate hash instead of pointer
   // addresses
   std::size_t seed = 0;
@@ -57,6 +59,7 @@ std::ostream& operator<<(std::ostream& os, const AttributeInfo& attr_info) {
 }
 
 std::size_t ValueInfo::hash() const {
+  if (!FLAGS_enable_cinn_kernel_cache) return type_.hash();
   // Use stable type information to calculate hash
   std::size_t seed = 0;
 
@@ -87,14 +90,17 @@ OperationInfo::OperationInfo(const ::pir::Operation& op) {
     input_infos_.emplace_back(value);
   }
   output_infos_.reserve(op.num_results());
-  output_infos_symbol_.reserve(op.num_results());
+  if (FLAGS_enable_cinn_kernel_cache)
+    output_infos_symbol_.reserve(op.num_results());
   for (const auto value : op.results()) {
     if (!value || !value.type()) continue;
     output_infos_.emplace_back(value);
-    auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(
-        const_cast<::pir::Operation&>(op).GetParentProgram());
-    output_infos_symbol_.push_back(
-        shape_analysis.GetShapeOrDataForValue(value));
+    if (FLAGS_enable_cinn_kernel_cache) {
+      auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(
+          const_cast<::pir::Operation&>(op).GetParentProgram());
+      output_infos_symbol_.push_back(
+          shape_analysis.GetShapeOrDataForValue(value));
+    }
   }
   // Keep attributes always in order.
   const auto& attributes = op.attributes();
@@ -114,8 +120,10 @@ std::size_t OperationInfo::hash() const {
     hash_combine(seed, info);
   }
   for (const auto& info : output_infos_) hash_combine(seed, info);
-  for (const auto& shape_or_data : output_infos_symbol_)
-    hash_combine(seed, shape_or_data);
+  if (FLAGS_enable_cinn_kernel_cache) {
+    for (const auto& shape_or_data : output_infos_symbol_)
+      hash_combine(seed, shape_or_data);
+  }
   for (const auto& info : attr_infos_) hash_combine(seed, info);
   return seed;
 }
@@ -254,6 +262,9 @@ std::size_t FusionInfo::hash() const {
   std::size_t seed = 2153;
   for (const auto& info : op_infos_) hash_combine(seed, info);
   for (const auto& dim_expr : input_dim_exprs_) hash_combine(seed, dim_expr);
+  if (!FLAGS_enable_cinn_kernel_cache) {
+    hash_combine(seed, *program_info_);
+  }
   if (!FLAGS_enable_cinn_compile_cache) hash_combine(seed, unique_fn_name_);
   return seed;
 }

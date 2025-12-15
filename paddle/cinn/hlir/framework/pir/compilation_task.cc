@@ -337,6 +337,7 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::BuildPirCINNKernelInfo(
       context_->group_->FuncName() + "_infer_shape",
       context_->group_->symbol_args_map(),
       context_->group_->temp_space_sizes());
+  VLOG(5) << "Start to compile module into cuda kernel...";
   backend_resource->GetBackendCompiler()->SetFusionHash(
       context_->GetFusionHash());
   backend_resource->GetBackendCompiler()->Build(module,

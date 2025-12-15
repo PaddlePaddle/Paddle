@@ -240,7 +240,6 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
       std::string cache_dir = FLAGS_cinn_kernel_cache_save_path + "/" +
                               std::to_string(device_id.value()) + "/" +
                               source_hash;
-      llvm::sys::fs::create_directories(cache_dir);
       std::string cache_so_path = cache_dir + "/" + CINN_CACHE_SO;
       std::string meta_filepath = cache_dir + "/" + CINN_CACHE_META;
       // Check if .so exists
@@ -285,6 +284,9 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
         compilation_results[index] = result;
 
       } else {
+        if (FLAGS_enable_cinn_kernel_cache) {
+          llvm::sys::fs::create_directories(cache_dir);
+        }
         // Compilation path
         compilation_results[index] =
             Compile(&group_compilation_contexts[index]);
