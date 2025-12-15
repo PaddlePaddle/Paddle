@@ -146,6 +146,12 @@ bool Pool2dGradOpInferSymbolicShape(
   return true;
 }
 
+bool MaxPool2dWithDilationsGradOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  SameShapeInfer(infer_context, op->result(0), op->operand_source(0));
+  return true;
+}
+
 bool BceLossGradOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   SameShapeInfer(infer_context, op->result(0), op->operand_source(0));

@@ -2541,6 +2541,26 @@
     max_grad : GetReduceGradExpectedKernelType
   manual_signature : [max]
 
+- op : max_pool2d_with_dilations
+  backward : max_pool2d_with_dilations_grad
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out}
+  attrs :
+    {kernel_size : ksize}
+  int_array:
+    kernel_size :
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    max_pool2d_with_dilations : GetPoolExpectedKernelType
+    max_pool2d_with_dilations_grad : GetPoolExpectedKernelType
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, bool use_quantizer = false,
+              str mkldnn_data_type = "float32", str onednn_data_type = "", bool is_test = false,
+              bool adaptive = false]
+
 - op : max_pool2d_with_index
   inputs :
     {x : X}

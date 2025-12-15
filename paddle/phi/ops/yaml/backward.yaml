@@ -2301,12 +2301,24 @@
     func : max_grad
   composite : max_grad(x, out, out_grad, axis, keepdim, reduce_all, x_grad)
 
-- backward_op : max_pool2d_with_index_grad
-  forward : max_pool2d_with_index(Tensor x, int[] kernel_size, int[] strides = {1, 1}, int[] paddings = {0, 0}, bool global_pooling = false, bool adaptive = false, bool ceil_mode = false) -> Tensor(out), Tensor(mask)
-  args : (Tensor x, Tensor mask, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive, bool ceil_mode = false)
+- backward_op : max_pool2d_with_dilations_grad
+  forward : max_pool2d_with_dilations(Tensor x, IntArray kernel_size, int64_t[] strides, int64_t[] paddings, int64_t[] dilations, bool ceil_mode, str data_format, bool global_pooling, str padding_algorithm) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray kernel_size, int64_t[] strides, int64_t[] paddings, int64_t[] dilations, bool ceil_mode, str data_format, bool global_pooling, str padding_algorithm)
   output : Tensor(x_grad)
   infer_meta :
-    func : MaxPoolWithIndexGradInferMeta
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : max_pool2d_with_dilations_grad
+    param : [x, out, out_grad, kernel_size, strides, paddings, dilations, ceil_mode, data_format, global_pooling, padding_algorithm]
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- backward_op : max_pool2d_with_index_grad
+  forward : max_pool2d_with_index(Tensor x, int[] kernel_size, int[] strides = {1, 1}, int[] paddings = {0, 0}, int[] dilations = {1, 1}, bool global_pooling = false, bool adaptive = false, bool ceil_mode = false) -> Tensor(out), Tensor(mask)
+  args : (Tensor x, Tensor mask, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, int[] dilations, bool global_pooling, bool adaptive, bool ceil_mode = false)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : MaxPool2dWithIndexGradInferMeta
   kernel :
     func : max_pool2d_with_index_grad
 
