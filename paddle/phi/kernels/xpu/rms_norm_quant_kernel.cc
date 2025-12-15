@@ -34,28 +34,28 @@ limitations under the License.
 // The following code modified from OneFlow's implementation, and change to use
 // single Pass algorithm. Support Int8 quant, dequant Load/Store implementation.
 
-#include "paddle/phi/kernels/rms_norm_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/rms_norm_kernel.h"
 namespace phi {
 
 template <typename T, typename Context>
-void RmsNormKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const paddle::optional<DenseTensor>& bias,
-                   const paddle::optional<DenseTensor>& residual,
-                   const DenseTensor& norm_weight,
-                   const paddle::optional<DenseTensor>& norm_bias,
-                   const float epsilon,
-                   const int begin_norm_axis,
-                   const float quant_scale,
-                   const int quant_round_type,
-                   const float quant_max_bound,
-                   const float quant_min_bound,
-                   DenseTensor* out,
-                   DenseTensor* residual_out,
-                   DenseTensor* inv_var) {
+void RmsNormQuantKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const paddle::optional<DenseTensor>& bias,
+                        const paddle::optional<DenseTensor>& residual,
+                        const DenseTensor& norm_weight,
+                        const paddle::optional<DenseTensor>& norm_bias,
+                        const float epsilon,
+                        const int begin_norm_axis,
+                        const float quant_scale,
+                        const int quant_round_type,
+                        const float quant_max_bound,
+                        const float quant_min_bound,
+                        DenseTensor* out,
+                        DenseTensor* residual_out,
+                        DenseTensor* inv_var) {
   if (x.numel() == 0) {
     if (out) dev_ctx.template Alloc<T>(out);
     if (residual_out) dev_ctx.template Alloc<T>(residual_out);
@@ -181,7 +181,7 @@ void RmsNormKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(rms_norm_quant,
                    XPU,
                    ALL_LAYOUT,
-                   phi::RmsNormKernel,
+                   phi::RmsNormQuantKernel,
                    float,
                    phi::float16,
                    phi::bfloat16) {}

@@ -18,21 +18,21 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RmsNormKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const paddle::optional<DenseTensor>& bias,
-                   const paddle::optional<DenseTensor>& residual,
-                   const DenseTensor& norm_weight,
-                   const paddle::optional<DenseTensor>& norm_bias,
-                   const float epsilon,
-                   const int begin_norm_axis,
-                   const float quant_scale,
-                   const int quant_round_type,
-                   const float quant_max_bound,
-                   const float quant_min_bound,
-                   DenseTensor* out,
-                   DenseTensor* residual_out,
-                   DenseTensor* inv_var);
+void RmsNormQuantKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const paddle::optional<DenseTensor>& bias,
+                        const paddle::optional<DenseTensor>& residual,
+                        const DenseTensor& norm_weight,
+                        const paddle::optional<DenseTensor>& norm_bias,
+                        const float epsilon,
+                        const int begin_norm_axis,
+                        const float quant_scale,
+                        const int quant_round_type,
+                        const float quant_max_bound,
+                        const float quant_min_bound,
+                        DenseTensor* out,
+                        DenseTensor* residual_out,
+                        DenseTensor* inv_var);
 
 template <typename T, typename Context>
 void ResidualAddRmsNormWrapper(const Context& dev_ctx,

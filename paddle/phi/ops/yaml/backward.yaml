@@ -3046,7 +3046,7 @@
   args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, Tensor inv_var, Tensor out_grad, float epsilon, int begin_norm_axis, float quant_scale)
   output : Tensor(x_grad), Tensor(norm_weight_grad), Tensor(norm_bias_grad)
   infer_meta :
-    func: RmsNormGradInferMeta
+    func: RmsNormQuantGradInferMeta
     param: [x, norm_weight, norm_bias]
   kernel :
     func : rms_norm_quant_grad
