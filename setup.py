@@ -2441,9 +2441,6 @@ def get_headers():
             os.path.join(
                 paddle_source_dir, 'paddle/phi/backends/dynload/hml.h'
             ),
-            os.path.join(
-                paddle_source_dir, 'paddle/phi/backends/dynload/magma.h'
-            ),
         ]
     # pybind headers
     headers += list(find_files('*.h', env_dict.get("PYBIND_INCLUDE_DIR"), True))
