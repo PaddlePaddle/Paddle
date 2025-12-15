@@ -2326,7 +2326,10 @@ def get_headers():
             find_files('*.h', paddle_source_dir + '/paddle/phi/backends/cpu')
         )
         headers += list(
-            find_files('*.h', paddle_source_dir + '/paddle/phi/backends/gpu')
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/phi/backends/gpu, recursive=True',
+            )
         )
         headers += list(
             find_files(
@@ -2414,7 +2417,38 @@ def get_headers():
             find_files('*.h', paddle_source_dir + '/paddle/phi/backends/custom')
         )
         headers += list(
-            find_files('*.h', paddle_source_dir + '/paddle/phi/backends/gpu')
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/phi/backends/gpu, recursive=True',
+            )
+        )
+        headers += list(
+            find_files('*.h', paddle_source_dir + '/paddle/phi/backends/onednn')
+        )
+        headers += [
+            os.path.join(
+                paddle_source_dir, 'paddle/phi/backends/dynload/afs_api.h'
+            ),
+            os.path.join(
+                paddle_source_dir,
+                'paddle/phi/backends/dynload/dynamic_loader.h',
+            ),
+            os.path.join(
+                paddle_source_dir, 'paddle/phi/backends/dynload/mklml.h'
+            ),
+            os.path.join(
+                paddle_source_dir, 'paddle/phi/backends/dynload/mklrt.h'
+            ),
+            os.path.join(
+                paddle_source_dir, 'paddle/phi/backends/dynload/lapack.h'
+            ),
+            os.path.join(
+                paddle_source_dir, 'paddle/phi/backends/dynload/hml.h'
+            ),
+        ]
+    else:
+        headers += list(
+            find_files('*.h', paddle_source_dir + '/paddle/phi/backends/cpu')
         )
         headers += list(
             find_files('*.h', paddle_source_dir + '/paddle/phi/backends/onednn')

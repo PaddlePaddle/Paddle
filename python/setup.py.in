@@ -1536,7 +1536,7 @@ if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
         find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/cpu')
     )
     headers += list(
-        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/gpu')
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/gpu, recursive=True')
     )
     headers += list(
         find_files(
@@ -1587,7 +1587,35 @@ if '${WITH_CUSTOM_DEVICE}' == 'ON':
         find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/custom')
     )
     headers += list(
-        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/gpu')
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/gpu', recursive=True)
+    )
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/onednn')
+    )
+    headers += [
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/afs_api.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/dynamic_loader.h',
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/mklml.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/mklrt.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/lapack.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/hml.h'
+        ),
+    ]
+else:
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/cpu')
+    )
     )
     headers += list(
         find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/onednn')
