@@ -14,7 +14,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple
+
+from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
@@ -836,6 +838,46 @@ def sort(
         paddle.assign(outputs, out[0])
         paddle.assign(indices, out[1])
     return SortRetType(values=outputs, indices=indices)
+
+
+@overload
+def unique(
+    input: Tensor,
+    sorted: bool = ...,
+    return_inverse: Literal[True] = ...,
+    return_counts: Literal[True] = ...,
+    dim: int | None = ...,
+) -> tuple[Tensor, Tensor, Tensor]: ...
+
+
+@overload
+def unique(
+    input: Tensor,
+    sorted: bool = ...,
+    return_inverse: Literal[False] = ...,
+    return_counts: Literal[True] = ...,
+    dim: int | None = ...,
+) -> tuple[Tensor, Tensor]: ...
+
+
+@overload
+def unique(
+    input: Tensor,
+    sorted: bool = ...,
+    return_inverse: Literal[True] = ...,
+    return_counts: Literal[False] = ...,
+    dim: int | None = ...,
+) -> tuple[Tensor, Tensor]: ...
+
+
+@overload
+def unique(
+    input: Tensor,
+    sorted: bool = ...,
+    return_inverse: Literal[False] = ...,
+    return_counts: Literal[False] = ...,
+    dim: int | None = ...,
+) -> Tensor: ...
 
 
 @ForbidKeywordsDecorator(
