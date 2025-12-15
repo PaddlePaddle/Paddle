@@ -22,11 +22,17 @@ namespace fast_ln_v2 {
 
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
 
-bool has_fast_ln_v2_kernel(phi::DataType weight_type,
-                           phi::DataType input_type,
-                           phi::DataType output_type,
-                           phi::DataType compute_type,
-                           uint32_t hidden_size);
+bool has_fast_ln_v2_fwd_kernel(phi::DataType weight_type,
+                               phi::DataType input_type,
+                               phi::DataType output_type,
+                               phi::DataType compute_type,
+                               uint32_t hidden_size);
+
+bool has_fast_ln_v2_bwd_kernel(phi::DataType weight_type,
+                               phi::DataType input_type,
+                               phi::DataType output_type,
+                               phi::DataType compute_type,
+                               uint32_t hidden_size);
 
 FwdFunction& get_fwd_launcher(phi::DataType weight_type,
                               phi::DataType input_type,

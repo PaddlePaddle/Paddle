@@ -226,6 +226,16 @@ __global__ __launch_bounds__(Ktraits::THREADS_PER_CTA) void ln_bwd_kernel(
 #endif
 }
 
+bool has_fast_ln_v2_bwd_kernel(phi::DataType weight_type,
+                               phi::DataType input_type,
+                               phi::DataType output_type,
+                               phi::DataType compute_type,
+                               uint32_t hidden_size) {
+  auto iter = FAST_LN_V2_BWD_FUNCS.find(
+      get_key(weight_type, input_type, output_type, compute_type, hidden_size));
+  return iter != FAST_LN_V2_BWD_FUNCS.end();
+}
+
 template <typename Kernel_traits>
 __global__
 __launch_bounds__(Kernel_traits::THREADS_PER_CTA) void ln_bwd_finalize_kernel(

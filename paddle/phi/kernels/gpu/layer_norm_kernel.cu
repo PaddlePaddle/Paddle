@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
-#include "paddle/phi/kernels/funcs/fast_ln_v2_api.h"
+#include "paddle/phi/kernels/funcs/fast_ln_v2.h"
 #endif
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
@@ -506,7 +506,7 @@ LayerNormKernelVariant LayerNormKernelDispatch(
     // using fast_ln_v2 only sm > 70
     auto prop = funcs::fast_ln_v2::GetDeviceProp();
     if (prop->major > 7 &&
-        funcs::fast_ln_v2::has_fast_ln_v2_kernel(
+        funcs::fast_ln_v2::has_fast_ln_v2_fwd_kernel(
             weight_type, input_type, output_type, compute_type, hidden_size)) {
       return LayerNormKernelVariant::FAST_LN_V2;
     }
