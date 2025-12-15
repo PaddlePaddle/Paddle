@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if defined(PADDLE_WITH_CUDA)
+
 #include "paddle/phi/kernels/expand_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -181,3 +183,5 @@ PD_REGISTER_KERNEL(expand,
                    phi::float8_e5m2,
                    phi::complex64,
                    phi::complex128) {}
+
+#endif
