@@ -2030,14 +2030,12 @@ def get_headers():
             find_files('*.h', paddle_source_dir + '/paddle/phi')
         )
         + list(  # phi include header
-            find_files('*.h', paddle_source_dir + '/paddle/phi/include')
+            find_files(
+                '*.h', paddle_source_dir + '/paddle/phi/include', recursive=True
+            )
         )
         + list(  # phi backends headers
-            find_files(
-                '*.h',
-                paddle_source_dir + '/paddle/phi/backends',
-                recursive=True,
-            )
+            find_files('*.h', paddle_source_dir + '/paddle/phi/backends')
         )
         + list(  # phi core headers
             find_files(
