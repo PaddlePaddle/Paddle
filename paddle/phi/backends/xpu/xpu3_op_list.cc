@@ -1306,7 +1306,7 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::INT32,
                      phi::DataType::INT64,
                      phi::DataType::BFLOAT16})},
-      {"rms_norm",
+      {"rms_norm_quant",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
                      phi::DataType::BFLOAT16})},

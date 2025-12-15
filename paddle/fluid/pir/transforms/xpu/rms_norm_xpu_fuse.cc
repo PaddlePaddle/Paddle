@@ -50,7 +50,7 @@ After the pass is applied:
                    x      w
                      \  /
                       |
-                   rms_norm
+                   rms_norm_quant
                       |
                       |
                     Output
@@ -153,17 +153,18 @@ class RmsNormFusePattern : public paddle::drr::DrrPatternBase {
                                : axis[0];
         });
 
-    const auto &rms_norm = res.Op(paddle::dialect::RmsNormOp::name(),
-                                  {{
-                                      {"epsilon", pat.Attr("bias")},
-                                      {"begin_norm_axis", begin_norm_axis},
-                                      {"quant_scale", res.Float32Attr(-1.0)},
-                                      {"quant_round_type", res.Int32Attr(0)},
-                                      {"quant_max_bound", res.Float32Attr(0.0)},
-                                      {"quant_min_bound", res.Float32Attr(0.0)},
-                                  }});
+    const auto &rms_norm_quant =
+        res.Op(paddle::dialect::RmsNormQuantOp::name(),
+               {{
+                   {"epsilon", pat.Attr("bias")},
+                   {"begin_norm_axis", begin_norm_axis},
+                   {"quant_scale", res.Float32Attr(-1.0)},
+                   {"quant_round_type", res.Int32Attr(0)},
+                   {"quant_max_bound", res.Float32Attr(0.0)},
+                   {"quant_min_bound", res.Float32Attr(0.0)},
+               }});
 
-    rms_norm(
+    rms_norm_quant(
         {
             &res.Tensor("x"),
             &res.InputNoneTensor(),

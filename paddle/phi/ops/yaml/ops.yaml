@@ -4616,17 +4616,17 @@
   backward : rint_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op : rms_norm
+- op : rms_norm_quant
   args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
   output : Tensor(out), Tensor(residual_out), Tensor(inv_var)
   infer_meta :
     func : RmsNormInferMeta
   kernel :
-    func : rms_norm
+    func : rms_norm_quant
     data_type : x
   optional : bias, residual, norm_bias, residual_out
   intermediate : inv_var
-  backward : rms_norm_grad
+  backward : rms_norm_quant_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : rmsprop_

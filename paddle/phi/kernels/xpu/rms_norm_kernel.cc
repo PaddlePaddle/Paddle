@@ -70,7 +70,7 @@ void RmsNormKernel(const Context& dev_ctx,
   }
   if (quant_scale > 0.0f) {
     PADDLE_THROW(common::errors::Unimplemented(
-        "Quantization is not supported in XPU rms_norm yet"));
+        "Quantization is not supported in XPU rms_norm_quant yet"));
   }
   PADDLE_ENFORCE_EQ(
       begin_norm_axis > 0 && begin_norm_axis <= x.dims().size(),
@@ -178,7 +178,7 @@ void RmsNormKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(rms_norm,
+PD_REGISTER_KERNEL(rms_norm_quant,
                    XPU,
                    ALL_LAYOUT,
                    phi::RmsNormKernel,
