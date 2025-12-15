@@ -35,7 +35,6 @@ COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 namespace phi {
 
 using ScopedTensorDescriptor = phi::backends::gpu::ScopedTensorDescriptor;
-using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
 
 // Vectorization trait 4 * sizeof(T)
 template <typename T>
@@ -1059,11 +1058,10 @@ void LaunchNormalSoftmaxBackward(const GPUContext& dev_ctx,
 }
 
 template <typename T = int>
-static std::vector<T> GetSoftmaxTensorDims(const phi::DDim& dims,
-                                           const int axis) {
+static std::vector<T> GetSoftmaxTensorDims(const DDim& dims, const int axis) {
   auto dim = static_cast<T>(dims[axis]);
-  auto N = phi::funcs::SizeToAxis<T>(axis, dims);
-  auto D = phi::funcs::SizeOutAxis<T>(axis, dims);
+  auto N = funcs::SizeToAxis<T>(axis, dims);
+  auto D = funcs::SizeOutAxis<T>(axis, dims);
   return {N, dim, D, 1};
 }
 
@@ -1076,7 +1074,7 @@ void SoftmaxForwardCudnnKernel(const GPUContext& dev_ctx,
                                const std::vector<int>& tensor_dims,
                                T* out_data) {
   auto handle = dev_ctx.cudnn_handle();
-  GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
+  DataLayout layout = DataLayout::NCHW;
 
   ScopedTensorDescriptor scoped_desc;
 #ifdef PADDLE_WITH_HIP
@@ -1148,7 +1146,7 @@ void SoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
                                 const std::vector<int>& tensor_dims,
                                 T* dx_data) {
   auto handle = dev_ctx.cudnn_handle();
-  GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
+  DataLayout layout = DataLayout::NCHW;
 
   ScopedTensorDescriptor scoped_desc;
 #ifdef PADDLE_WITH_HIP
@@ -2534,7 +2532,7 @@ void SoftmaxForwardCUDAKernelCompatible(const GPUContext& dev_ctx,
   auto* out_data = out->data<T>();
   auto* input_data = x.data<T>();
   int rank = x.dims().size();
-  int axis = phi::funcs::CanonicalAxis(input_axis, rank);
+  int axis = funcs::CanonicalAxis(input_axis, rank);
   std::vector<IndexType> tensor_dims =
       GetSoftmaxTensorDims<IndexType>(x.dims(), axis);
   IndexType N = tensor_dims[0];
@@ -2594,7 +2592,7 @@ void SoftmaxBackwardCUDAKernelCompatible(const GPUContext& dev_ctx,
   auto* out_data = out.data<T>();
   auto* dout_data = dout.data<T>();
   int rank = out.dims().size();
-  int axis = phi::funcs::CanonicalAxis(input_axis, rank);
+  int axis = funcs::CanonicalAxis(input_axis, rank);
   std::vector<IndexType> tensor_dims =
       GetSoftmaxTensorDims<IndexType>(out.dims(), axis);
   IndexType N = tensor_dims[0];
@@ -2651,7 +2649,7 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
   auto* out_data = out->data<T>();
 
   int rank = x.dims().size();
-  int axis = phi::funcs::CanonicalAxis(input_axis, rank);
+  int axis = funcs::CanonicalAxis(input_axis, rank);
   std::vector<IndexType> tensor_dims =
       GetSoftmaxTensorDims<IndexType>(x.dims(), axis);
   IndexType N = tensor_dims[0];
@@ -2790,7 +2788,7 @@ void SoftmaxBackwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
   auto* dx_data = dx->data<T>();
 
   int rank = out.dims().size();
-  int axis = phi::funcs::CanonicalAxis(input_axis, rank);
+  int axis = funcs::CanonicalAxis(input_axis, rank);
   std::vector<IndexType> tensor_dims =
       GetSoftmaxTensorDims<IndexType>(out.dims(), axis);
   IndexType N = tensor_dims[0];

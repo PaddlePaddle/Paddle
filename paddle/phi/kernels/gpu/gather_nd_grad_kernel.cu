@@ -47,9 +47,9 @@ void GatherNdGradKernel(const Context &dev_ctx,
                         phi::DataType::INT64));
 
   if (index_type == phi::DataType::INT32) {
-    phi::funcs::GPUScatterNdAdd<T, int>(dev_ctx, out_grad, index, x_grad);
+    funcs::GPUScatterNdAdd<T, int>(dev_ctx, out_grad, index, x_grad);
   } else if (index_type == phi::DataType::INT64) {
-    phi::funcs::GPUScatterNdAdd<T, int64_t>(dev_ctx, out_grad, index, x_grad);
+    funcs::GPUScatterNdAdd<T, int64_t>(dev_ctx, out_grad, index, x_grad);
   }
 }
 

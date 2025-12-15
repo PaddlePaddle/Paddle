@@ -516,5 +516,126 @@ class TestTensor(unittest.TestCase):
             )
 
 
+class TestTensorDataSetter(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_same_shape_same_dtype(self):
+        x = paddle.tensor([[1, 2], [3, 4]], dtype="float32")
+        y = paddle.rand_like(x)
+        x.requires_grad = True
+
+        loss = x.sum()
+        loss.backward(retain_graph=True)
+
+        x_grad_expected = paddle.ones_like(x)
+
+        np.testing.assert_equal(x.grad.numpy(), x_grad_expected.numpy())
+
+        x.data = y
+
+        self.assertEqual(x.data_ptr(), y.data_ptr())
+        np.testing.assert_allclose(x.numpy(), y.numpy())
+        self.assertEqual(
+            x.requires_grad,
+            True,
+            "x's requires_grad should be True after data setting.",
+        )
+
+        loss.backward()
+        x_grad_expected = paddle.ones_like(x) * 2
+
+        np.testing.assert_equal(x.grad.numpy(), x_grad_expected.numpy())
+
+    def test_new_shape_same_dtype_same_place(self):
+        x: paddle.Tensor = paddle.tensor([[1, 2], [3, 4]], dtype="float32")
+        y = paddle.tensor([2], dtype="float32")
+        x.requires_grad = True
+
+        loss = x.sum()
+        loss.backward()
+
+        x_grad_expected = paddle.ones_like(x)
+
+        np.testing.assert_equal(x.grad.numpy(), x_grad_expected.numpy())
+        assert x.grad.dtype == x_grad_expected.dtype
+
+        x.data = y
+
+        self.assertEqual(x.data_ptr(), y.data_ptr())
+        np.testing.assert_allclose(x.numpy(), y.numpy())
+        self.assertEqual(
+            x.requires_grad,
+            True,
+            "x's requires_grad should be True after data setting.",
+        )
+
+        with self.assertRaises(RuntimeError):
+            loss = x.sum()
+            loss.backward()
+
+        x.clear_gradient()
+        z = x.sum()
+        z.backward()
+        x_grad_expected = paddle.ones_like(x)
+        np.testing.assert_equal(x.grad.numpy(), x_grad_expected.numpy())
+        assert x.grad.dtype == x_grad_expected.dtype
+
+    def test_same_shape_new_dtype_same_place(self):
+        x = paddle.tensor([[1, 2], [3, 4]], dtype="float32")
+        x_grad_expected = paddle.ones_like(x)
+        y = x.to(paddle.float16)
+        x.requires_grad = True
+
+        loss = x.sum()
+
+        x.data = y
+
+        loss.backward()
+        np.testing.assert_equal(x.grad.numpy(), x_grad_expected.numpy())
+        assert x.grad.dtype == x_grad_expected.dtype
+
+        x.clear_gradient(set_to_zero=True)
+        # dtype changed, clear_gradient must set grad to None
+        assert x.grad is None
+        z = x.sum()
+        z.backward()
+        x_grad_expected = paddle.ones_like(x)
+        np.testing.assert_equal(x.grad.numpy(), x_grad_expected.numpy())
+        assert x.dtype == x.grad.dtype
+
+    def test_same_shape_same_dtype_new_place(self):
+        if not paddle.device.is_compiled_with_cuda():
+            return
+        x = paddle.tensor([[1, 2], [3, 4]], dtype="float32").cuda()
+        y = x.cpu()
+        x_grad_expected = paddle.ones_like(x)
+        x.requires_grad = True
+
+        loss = x.sum()
+        x.data = y.data
+
+        self.assertEqual(x.data_ptr(), y.data_ptr())
+        np.testing.assert_allclose(x.numpy(), y.numpy())
+        self.assertEqual(
+            x.requires_grad,
+            True,
+            "x's requires_grad should be True after data setting.",
+        )
+        loss.backward()
+        np.testing.assert_equal(x.grad.numpy(), x_grad_expected.numpy())
+        assert x.grad.dtype == x_grad_expected.dtype
+        assert x.grad.place == x_grad_expected.place
+
+        x.clear_gradient(set_to_zero=True)
+        # place changed, clear_gradient must set grad to None
+        assert x.grad is None
+        loss = x.sum()
+        loss.backward()
+        x_grad_expected = paddle.ones_like(x)
+        np.testing.assert_equal(x.grad.numpy(), x_grad_expected.numpy())
+        assert x.grad.place == x.place
+
+
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(argv=["", "TestTensorDataSetter"])

@@ -154,8 +154,8 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
   const auto& labels_dims = labels.dims();
 
   const int axis = logits_dims.size() - 1;
-  const int64_t N = phi::funcs::SizeToAxis(axis, logits_dims);
-  const int64_t D = phi::funcs::SizeFromAxis(axis, logits_dims);
+  const int64_t N = funcs::SizeToAxis(axis, logits_dims);
+  const int64_t D = funcs::SizeFromAxis(axis, logits_dims);
 
   int blocks = NumBlocks(N);
   int threads = kNumCUDAThreads;
@@ -230,13 +230,12 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(&logits_max);
   T* logits_max_buff = dev_ctx.template Alloc<T>(&logits_max);
 
-  phi::funcs::
-      ReduceKernel<T, T, phi::kps::MaxFunctor, phi::kps::IdentityFunctor<T>>(
-          static_cast<const phi::GPUContext&>(dev_ctx),
-          softmax_2d,
-          &logits_max,
-          phi::kps::IdentityFunctor<T>(),
-          {1});
+  funcs::ReduceKernel<T, T, phi::kps::MaxFunctor, phi::kps::IdentityFunctor<T>>(
+      static_cast<const phi::GPUContext&>(dev_ctx),
+      softmax_2d,
+      &logits_max,
+      phi::kps::IdentityFunctor<T>(),
+      {1});
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (nranks > 1) {
@@ -254,7 +253,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
   sum_exp_logits.Resize({N, 1});
   dev_ctx.template Alloc<T>(&sum_exp_logits);
   T* sum_exp_logits_buff = dev_ctx.template Alloc<T>(&sum_exp_logits);
-  phi::funcs::ReduceKernel<T, T, phi::kps::AddFunctor, phi::kps::ExpFunctor<T>>(
+  funcs::ReduceKernel<T, T, phi::kps::AddFunctor, phi::kps::ExpFunctor<T>>(
       static_cast<const phi::GPUContext&>(dev_ctx),
       softmax_2d,
       &sum_exp_logits,
@@ -276,7 +275,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
   // logit_max))))
   // loss = -((logit_i - logit_max) - log(sum(exp(logit - logit_max))))
 
-  phi::funcs::SetConstant<Context, T> functor;
+  funcs::SetConstant<Context, T> functor;
   functor(dev_ctx, loss, static_cast<T>(0.0));
   if (label_type == phi::DataType::INT32) {
     typedef int32_t LabelT;

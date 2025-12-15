@@ -69,7 +69,8 @@ void NCCLWrapper::SyncVar(const int root_rank,
   for (auto& name : var_names) {
     auto var = scope.FindVar(name);
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
-    int32_t total_size = tensor->numel();
+    int64_t total_size = tensor->numel();
+    // TODO(large-tensor): ncclBcast count not support int64
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::ncclBcast(reinterpret_cast<void*>(tensor->data<float>()),
                                 total_size,

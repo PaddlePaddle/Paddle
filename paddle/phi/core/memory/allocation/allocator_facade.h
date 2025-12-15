@@ -120,7 +120,8 @@ class AllocatorFacade {
   void SetDefaultStream(const phi::XPUPlace& place, XPUStream stream);
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   void PrepareMemoryPoolForCUDAGraph(int64_t id);
   void RemoveMemoryPoolOfCUDAGraph(int64_t id);
 #endif
@@ -142,7 +143,8 @@ class AllocatorFacade {
  private:
   AllocatorFacade();
   AllocatorFacadePrivate* m_;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   std::unordered_map<int64_t, std::unique_ptr<AllocatorFacadePrivate>>
       cuda_graph_map_;
   std::unordered_map<int64_t, int64_t> cuda_graph_ref_cnt_;

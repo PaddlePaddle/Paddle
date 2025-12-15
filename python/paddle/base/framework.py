@@ -37,7 +37,6 @@ from typing_extensions import ParamSpec
 import paddle
 
 from .. import pir
-from ..utils.download import check_and_create_dir
 from . import core, unique_name
 from .libpaddle import DataType
 from .proto import (
@@ -8628,20 +8627,13 @@ def pir_op_name_guard(op_name: str) -> Generator[None, None, None]:
 
 
 @signature_safe_contextmanager
-def capture_backward_subgraph_guard(
-    dump_dir_path: str, need_dump_grad_tensors: bool = False
-) -> Generator[None, None, None]:
-    assert dump_dir_path is not None, "The dump_dir_path should not be None"
-    # for multi process
-    check_and_create_dir(dump_dir_path)
-    paddle.base.core.eager._init_backward_subgraph_recorder(
-        dump_dir_path, need_dump_grad_tensors
-    )
-    paddle.base.core.eager._start_capture_debug_backward_subgraph()
+def backward_vlog_guard(level: int) -> Generator[None, None, None]:
+    assert isinstance(level, int), "vlog level is not an int"
+    paddle.base.core.eager._start_capture_backward_vlog_subgraph(level)
     try:
         yield
     finally:
-        paddle.base.core.eager._end_capture_debug_backward_subgraph()
+        paddle.base.core.eager._stop_capture_backward_vlog_subgraph()
 
 
 @signature_safe_contextmanager

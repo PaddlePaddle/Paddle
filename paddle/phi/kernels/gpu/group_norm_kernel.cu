@@ -1141,8 +1141,8 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
   DenseTensor temp_var;
   temp_var.Resize(var->dims());
   dev_ctx.template Alloc<AccT>(&temp_var);
-  phi::funcs::SetConstant<GPUContext, T> set_zero;
-  phi::funcs::SetConstant<GPUContext, AccT> set_zero_AccT;
+  funcs::SetConstant<GPUContext, T> set_zero;
+  funcs::SetConstant<GPUContext, AccT> set_zero_AccT;
   auto* x_data = x.data<T>();
   auto* y_data = y->data<T>();
   auto* mean_data = mean->data<AccT>();

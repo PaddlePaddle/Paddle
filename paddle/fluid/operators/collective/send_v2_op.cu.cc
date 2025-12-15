@@ -169,7 +169,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
     }
 
     auto x = ctx.Input<phi::DenseTensor>("X");
-    int numel = x->numel();
+    int64_t numel = x->numel();
 
     if (dynamic_shape) {
       VLOG(3) << "send_v2 will use dynamic shape with recv_v2";

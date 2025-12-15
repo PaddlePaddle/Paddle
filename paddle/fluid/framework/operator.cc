@@ -3587,9 +3587,30 @@ void OperatorWithKernel::BuildPhiKernelContext(
                     attr_names[i]));
             }
             break;
-          case phi::AttributeType::FLOAT32S:  // NOLINT
+          case phi::AttributeType::FLOAT32S:
             phi_kernel_context->EmplaceBackAttr(
                 PADDLE_GET_CONST(std::vector<float>, attr_iter->second));
+            break;
+          case phi::AttributeType::FLOAT64S:
+            switch (AttrTypeID(attr_iter->second)) {
+              case proto::AttrType::FLOAT64S:
+                phi_kernel_context->EmplaceBackAttr(
+                    PADDLE_GET_CONST(std::vector<double>, attr_iter->second));
+                break;
+              case proto::AttrType::FLOATS: {
+                const auto& vector_float_attr =
+                    PADDLE_GET_CONST(std::vector<float>, attr_iter->second);
+                const std::vector<double> vector_double_attr(
+                    vector_float_attr.begin(), vector_float_attr.end());
+                phi_kernel_context->EmplaceBackAttr(vector_double_attr);
+              } break;
+              default:
+                PADDLE_THROW(common::errors::Unimplemented(
+                    "Unsupported cast op attribute `%s` to vector<int64_t> "
+                    "when "
+                    "construct KernelContext.",
+                    attr_names[i]));
+            }
             break;
           case phi::AttributeType::STRINGS:
             phi_kernel_context->EmplaceBackAttr(

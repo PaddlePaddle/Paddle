@@ -29,6 +29,10 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    from typing_extensions import TypeAlias
+
+    _ScopeType: TypeAlias = str | Iterable[str] | None
+
 
 def warning_about_fake_interface(name: str):
     warnings.warn(
@@ -104,7 +108,6 @@ GLOBAL_OVERRIDES: dict[str, OverriddenAttribute] = {
 
 TORCH_PROXY_BLOCKED_MODULES = {
     "tvm_ffi",
-    "transformers",
 }
 
 MAGIC_DISABLED_MODULE_ATTR: str = "__disable_torch_proxy__"
@@ -170,10 +173,11 @@ def _is_torch_proxy_blocked_module(name: str) -> bool:
 
 
 def _is_called_by_module_with_specific_dunder_attr(dunder_attr: str) -> bool:
-    stack = inspect.stack()
-    for frame_info in stack[1:]:
-        if frame_info.frame.f_globals.get(dunder_attr):
+    frame = inspect.currentframe()
+    while frame is not None:
+        if frame.f_globals.get(dunder_attr):
             return True
+        frame = frame.f_back
     return False
 
 
@@ -372,24 +376,24 @@ TORCH_PROXY_FINDER = TorchProxyMetaFinder()
 TORCH_MODULES_CACHE: dict[str, types.ModuleType] = {}
 
 
-def _clear_torch_modules():
-    for name in list(sys.modules):
-        if _is_torch_module(name):
+def _clear_torch_proxy_modules():
+    for name, module in list(sys.modules.items()):
+        if _is_torch_module(name) and isinstance(module, ProxyModule):
             del sys.modules[name]
 
 
 def _swap_torch_modules_to_cache():
-    for name in list(sys.modules):
+    for name, module in list(sys.modules.items()):
         if _is_torch_module(name):
-            TORCH_MODULES_CACHE[name] = sys.modules[name]
+            if not isinstance(module, ProxyModule):
+                TORCH_MODULES_CACHE[name] = sys.modules[name]
             del sys.modules[name]
 
 
-def _swap_torch_modules_from_cache():
+def _copy_torch_modules_from_cache():
     for name in list(TORCH_MODULES_CACHE):
         assert _is_torch_module(name), f"`{name}` is not a PyTorch module"
         sys.modules[name] = TORCH_MODULES_CACHE[name]
-        del TORCH_MODULES_CACHE[name]
 
 
 def _modify_scope_of_torch_proxy(
@@ -426,9 +430,17 @@ def _modify_scope_of_torch_proxy(
     TORCH_PROXY_FINDER._local_enabled_scope |= scope
 
 
+def _parse_scope(scope: str | Iterable[str] | None) -> set[str] | None:
+    if scope is None:
+        return None
+    if isinstance(scope, str):
+        return {scope}
+    return set(scope)
+
+
 def enable_torch_proxy(
     *,
-    scope: set[str] | None = None,
+    scope: _ScopeType = None,
     silent: bool = False,
 ) -> None:
     """
@@ -436,13 +448,14 @@ def enable_torch_proxy(
     This allows importing 'torch' modules that are actually proxies to PaddlePaddle.
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.compat.enable_torch_proxy()  # Enable torch proxy globally
             >>> import torch  # This will import paddle as torch
             >>> assert torch.sin is paddle.sin
     """
+    scope = _parse_scope(scope)
     _register_compat_override()
     _swap_torch_modules_to_cache()
     _modify_scope_of_torch_proxy(scope, silent=silent)
@@ -455,7 +468,7 @@ def disable_torch_proxy() -> None:
     This prevents 'torch' imports from being proxied to PaddlePaddle.
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.compat.enable_torch_proxy()  # Enable torch proxy globally
@@ -469,8 +482,8 @@ def disable_torch_proxy() -> None:
     """
     if TORCH_PROXY_FINDER in sys.meta_path:
         sys.meta_path.remove(TORCH_PROXY_FINDER)
-        _clear_torch_modules()
-        _swap_torch_modules_from_cache()
+        _clear_torch_proxy_modules()
+        _copy_torch_modules_from_cache()
         return
     warnings.warn("torch proxy is not installed.")
 
@@ -479,7 +492,7 @@ def disable_torch_proxy() -> None:
 def use_torch_proxy_guard(
     *,
     enable: bool = True,
-    scope: set[str] | None = None,
+    scope: _ScopeType = None,
     silent: bool = False,
 ):
     """
@@ -495,13 +508,14 @@ def use_torch_proxy_guard(
             within the context. Defaults to True.
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> with paddle.compat.use_torch_proxy_guard():
             ...     # code that requires the Torch proxy to be enabled
             ...     import torch
+            ...
             ...     assert torch.sin is paddle.sin
             ...     # Temporarily disable the Torch proxy
             ...     with paddle.compat.use_torch_proxy_guard(enable=False):
@@ -511,8 +525,10 @@ def use_torch_proxy_guard(
             ...             print("Torch proxy is disabled within this block.")
             ...     # Torch proxy is re-enabled here
             ...     import torch
+            ...
             ...     assert torch.sin is paddle.sin
     """
+    scope = _parse_scope(scope)
     already_has_torch_proxy = TORCH_PROXY_FINDER in sys.meta_path
     original_local_enabled_scope = TORCH_PROXY_FINDER._local_enabled_scope
     original_globally_enabled = TORCH_PROXY_FINDER._globally_enabled
@@ -554,7 +570,7 @@ def extend_torch_proxy_blocked_modules(modules: Iterable[str]):
         modules(Iterable[str]): An iterable of module names to block from PyTorch proxy.
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.compat.enable_torch_proxy()  # Enable torch proxy globally
@@ -563,3 +579,32 @@ def extend_torch_proxy_blocked_modules(modules: Iterable[str]):
             >>> import my_custom_module  # This import will not use torch proxy
     """
     TORCH_PROXY_BLOCKED_MODULES.update(modules)
+
+
+def paddle_triton_fun():
+    """
+    Enable the triton support and return triton module.
+    Args: None.
+    Returns: triton module
+
+    Example:
+        .. code-block:: pycon
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> from paddle.compat import paddle_triton_fun
+            >>> triton = paddle_triton_fun()
+            >>> import triton.language as tl
+
+            >>> @triton.jit
+            >>> def add_kernel(X, Y, Z, N, BLOCK: tl.constexpr):
+            ...     pid = tl.program_id(0)
+            ...     offs = pid * BLOCK + tl.arange(0, BLOCK)
+            ...     mask = offs < N
+            ...     x = tl.load(X + offs, mask=mask)
+            ...     y = tl.load(Y + offs, mask=mask)
+            ...     tl.store(Z + offs, x + y, mask=mask)
+    """
+    enable_torch_proxy(scope={"triton"})
+    import triton
+
+    return triton

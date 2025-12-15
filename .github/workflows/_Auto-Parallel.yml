@@ -95,9 +95,12 @@ jobs:
           tar xf PaddleNLP.tar && rm -rf PaddleNLP.tar
           source ${{ github.workspace }}/../../../proxy
           cd PaddleNLP
+          git config --global user.name "PaddleCI"
+          git config --global user.email "paddle_ci@example.com"
           git pull
           git checkout 6ac04028757dfbcc089916997493611f62de81b2
           git switch -c 6ac04028757dfbcc089916997493611f62de81b2
+          git cherry-pick bc08aeec91d2c992c3d8d39755bea7c6213b0e82
           git submodule update --init --recursive --force
           '
 

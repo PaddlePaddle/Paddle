@@ -87,7 +87,7 @@ void ShuffleBatchKernel(const Context& dev_ctx,
   thrust::random::default_random_engine engine(seed_int);
   thrust::counting_iterator<int64_t> cnt_iter(0);
 #ifdef PADDLE_WITH_CUDA
-  phi::funcs::shuffle_copy_fixed(
+  funcs::shuffle_copy_fixed(
       thrust::detail::derived_cast(thrust::detail::strip_const(exec_policy)),
 #else
   thrust::shuffle_copy(exec_policy,
@@ -101,8 +101,7 @@ void ShuffleBatchKernel(const Context& dev_ctx,
   auto* out_data = dev_ctx.template Alloc<T>(out);
   ReorderFunctor<T, true> functor(
       x_data, shuffleidx_data, out_data, x_embed_size);
-  phi::funcs::ForRange<phi::GPUContext> for_range(dev_ctx,
-                                                  elem_size * x_embed_size);
+  funcs::ForRange<phi::GPUContext> for_range(dev_ctx, elem_size * x_embed_size);
   for_range(functor);
   seed_out->Resize(common::make_ddim({1}));
   auto* seed_out_data = dev_ctx.template HostAlloc<int64_t>(seed_out);

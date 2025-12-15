@@ -19,7 +19,8 @@ import json
 import math
 import os
 from collections import defaultdict
-from dataclasses import dataclass, replace
+from copy import deepcopy
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -33,6 +34,8 @@ from ..aoa.aoa_engine import (
 )
 from .metadata import LocalTensorIndex, LocalTensorMetadata, Metadata
 from .metadata_manager import MetadataManager
+from .reshard_comm import CommunicatorFactory
+from .resharder import StateDictResharder
 from .sharded_weight import (
     ShardedWeight,
     ShardedWeightDesc,
@@ -42,8 +45,8 @@ from .utils import (
     assign_sharded_slice,
     build_global_state_shard_info,
     build_shard_desc,
+    check_resumable_locally,
     check_unique_id,
-    compute_local_shape_and_global_offset,
     create_hf_ckpt_metadata,
     flat_range_in_min_slice,
     flatten_state_dict,
@@ -58,44 +61,15 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle.distributed.collective import Group
 
-
-@dataclass(frozen=True)
-class ReadItem:
-    """
-    A communication operation for a Tensor between ranks.
-
-    Attributes:
-        tensor_name (str): Name of the tensor.
-        src_global_offset (tuple[int]): Global offset in the source tensor.
-        dst_global_offset (tuple[int] | None): Global offset in the destination tensor.
-        dst_rank (list[int]): Destination ranks.
-        src_rank (int): Source rank.
-        dst_local_offset (tuple[int]): Local offset in the destination tensor partition.
-        src_local_offset (tuple[int]): Local offset in the source tensor partition.
-        slice_shape (tuple[int]): Shape of the slice to transfer.
-        file_name (str): The name of the file from which the source tensor is read on the source rank.
-        dtype (str): Data type of the tensor.
-    """
-
-    tensor_name: str
-    src_global_offset: tuple[int]
-    dst_global_offset: tuple[int] | None
-    dst_rank: tuple[int]
-    src_rank: int
-    dst_local_offset: tuple[int]
-    src_local_offset: tuple[int]
-    slice_shape: tuple[int]
-    file_name: str
-    dtype: str
-    comm_group: Group | None = None
-
-
 PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list, list]] = {}
+_UNINIT_TENSOR_MODES = ["send_recv", "grouped_send_recv"]
 
 _metadata_manager = MetadataManager()
 
 
-def get_checkpoint_files(path, use_cache=True, unique_id=None):
+def get_checkpoint_files(
+    path, use_cache=True, unique_id=None, process_group=None, safetensors=False
+):
     # if unique_id is None, all file ends with .metadata and .distcp is returned
     if unique_id is None:
         unique_id = ''
@@ -113,7 +87,7 @@ def get_checkpoint_files(path, use_cache=True, unique_id=None):
         file for file in accessible_files if file.endswith(".safetensors")
     ]
 
-    if len(safetensors_files) > 0:
+    if safetensors and len(metadata_files) == 0:
         logger.info(
             f"Found HuggingFace-format checkpoint with files: {', '.join(safetensors_files)}"
         )
@@ -126,7 +100,7 @@ def get_checkpoint_files(path, use_cache=True, unique_id=None):
             logger.info(
                 f"No metadata file found in the checkpoint directory: {path}. Creating one now."
             )
-            create_hf_ckpt_metadata(path)
+            create_hf_ckpt_metadata(path, process_group=process_group)
             accessible_files = os.listdir(path)
             metadata_files = [
                 file
@@ -145,10 +119,16 @@ def get_checkpoint_files(path, use_cache=True, unique_id=None):
         file
         for file in accessible_files
         if file.endswith(f"{unique_id}.distcp")
+        or file.endswith(f"{unique_id}.safetensors")
     ]
-    assert len(local_data_files) > 0, (
-        f"No data file ends with '{unique_id}.distcp' found in the checkpoint directory:{path}."
-    )
+    # Check that local_data_files does not contain both .distcp and .safetensors files at the same time
+    if any(file.endswith('.distcp') for file in local_data_files) and any(
+        file.endswith('.safetensors') for file in local_data_files
+    ):
+        raise ValueError(
+            f"Checkpoint directory cannot contain both .distcp and .safetensors files simultaneously in {path}."
+        )
+
     if use_cache:
         PATH_TO_CHECKPOINT_FILES[path] = (metadata_files, local_data_files)
     return (metadata_files, local_data_files)
@@ -177,6 +157,11 @@ def get_rank_to_files(
 
     for metadata in metadata_list:
         for local_tensor_index, file_name in metadata.storage_metadata.items():
+            if (
+                local_tensor_index.replica_id is not None
+                and local_tensor_index.replica_id != 0
+            ):
+                continue
             tensor_key_list.append(local_tensor_index.tensor_key)
             if local_tensor_index.tensor_key in state_dict_param_names:
                 necessary_files.append(file_name)
@@ -337,7 +322,11 @@ class CheckpointLoadBalancer:
         """
         # Sort items by number of candidates: process most constrained files first.
         sorted_items = sorted(
-            file_to_candidates.items(), key=lambda x: len(x[1])
+            file_to_candidates.items(),
+            key=lambda x: (
+                len(x[1]),
+                x[0],
+            ),  # When candidates are the same, use smaller file name
         )
 
         for file_name, candidates in sorted_items:
@@ -431,185 +420,6 @@ def get_rank_to_read_files(
     return my_files
 
 
-def get_load_infos(metadata_list, local_load_files, process_group, use_dist):
-    load_info = {}
-    cur_rank = paddle.distributed.get_rank()
-    for metadata in metadata_list:
-        for local_tensor_index, file_name in metadata.storage_metadata.items():
-            if file_name in local_load_files:
-                load_info[local_tensor_index] = (
-                    cur_rank,
-                    file_name,
-                )
-    load_info_list = []
-    if use_dist:
-        paddle.distributed.all_gather_object(
-            load_info_list, load_info, process_group
-        )
-    else:
-        load_info_list.append(load_info)
-    load_infos = {}
-    for load_info in load_info_list:
-        for local_tensor_index, (rank, file_name) in load_info.items():
-            assert local_tensor_index not in load_infos
-            load_infos[local_tensor_index] = (rank, file_name)
-    return load_infos
-
-
-def compute_overlap(
-    cur_chunk_metadata: LocalTensorMetadata,
-    storage_local_tensor_metadata: LocalTensorMetadata,
-):
-    cur_offsets = []
-    storage_offsets = []
-    lengths = []
-    for cur_len, cur_offset, storage_len, storage_offset in zip(
-        cur_chunk_metadata.local_shape,
-        cur_chunk_metadata.global_offset,
-        storage_local_tensor_metadata.local_shape,
-        storage_local_tensor_metadata.global_offset,
-    ):
-        begin_offset = max(cur_offset, storage_offset)
-        end_offset = min(cur_offset + cur_len, storage_offset + storage_len)
-        if begin_offset == cur_offset:
-            cur_offsets.append(0)
-            storage_offsets.append(begin_offset - storage_offset)
-        elif begin_offset == storage_offset:
-            cur_offsets.append(begin_offset - cur_offset)
-            storage_offsets.append(0)
-        else:
-            raise ValueError(
-                f"Invalid begin_offset:{begin_offset}, cur_offset:{cur_offset}, storage_offset:{storage_offset}"
-            )
-        lengths.append(end_offset - begin_offset)
-        assert lengths[-1] >= 0, (
-            f"Invalid length:{lengths[-1]}, end_offset:{end_offset}, begin_offset:{begin_offset}"
-        )
-    return cur_offsets, storage_offsets, lengths
-
-
-def not_overlap(
-    cur_chunk_metadata: LocalTensorMetadata,
-    storage_local_tensor_metadata: LocalTensorMetadata,
-):
-    for cur_len, cur_offset, storage_len, storage_offset in zip(
-        cur_chunk_metadata.local_shape,
-        cur_chunk_metadata.global_offset,
-        storage_local_tensor_metadata.local_shape,
-        storage_local_tensor_metadata.global_offset,
-    ):
-        if (
-            cur_offset >= (storage_offset + storage_len)
-            or (cur_offset + cur_len) <= storage_offset
-        ):
-            return True
-    return False
-
-
-def get_read_items(
-    metadata_list, state_dict, process_group, use_dist, load_infos
-):
-    storage_state_dict_metadata = {}
-    for metadata in metadata_list:
-        for (
-            tensor_key,
-            local_tensor_metadata,
-        ) in metadata.state_dict_metadata.items():
-            if tensor_key not in storage_state_dict_metadata:
-                storage_state_dict_metadata[tensor_key] = []
-            storage_state_dict_metadata[tensor_key] += local_tensor_metadata
-
-    read_items = []
-    global_shape = None
-    for tensor_key, val in state_dict.items():
-        tensor_name = None
-        if isinstance(val, paddle.Tensor):
-            if val.is_dist():
-                # when val is scalar, the shape is []
-                (
-                    local_shape,
-                    global_offset,
-                ) = (
-                    compute_local_shape_and_global_offset(
-                        val.shape,
-                        val.process_mesh,
-                        val.placements,
-                    )
-                    if len(val.shape) > 0
-                    else ((), ())
-                )
-                global_shape = tuple(val.shape)
-                if local_shape is None or global_offset is None:
-                    continue
-            else:
-                local_shape = tuple(val.shape)
-                global_offset = (
-                    tuple([0] * len(val.shape)) if len(val.shape) > 0 else ()
-                )
-                global_shape = local_shape
-            dtype = str(val.dtype).split(".")[1]
-            tensor_name = tensor_key
-        elif isinstance(val, ShardedWeight):
-            local_shape, global_offset = (
-                (val.local_shape, val.global_offset)
-                if len(val.global_shape) > 0
-                else ((), ())
-            )
-            dtype = str(val.local_tensor.dtype).split(".")[1]
-            tensor_name = (
-                tensor_key[0] if isinstance(tensor_key, tuple) else tensor_key
-            )
-        else:
-            raise ValueError(
-                f"Only support paddle.Tensor., val type:{type(val)}"
-            )
-
-        cur_chunk_metadata = LocalTensorMetadata(
-            global_offset, local_shape, dtype, global_shape
-        )
-
-        for storage_local_tensor_metadata in storage_state_dict_metadata[
-            tensor_name
-        ]:
-            if not_overlap(cur_chunk_metadata, storage_local_tensor_metadata):
-                continue
-            cur_offsets, storage_offsets, lengths = compute_overlap(
-                cur_chunk_metadata, storage_local_tensor_metadata
-            )
-            storage_local_tensor_index = LocalTensorIndex(
-                tensor_name,
-                tuple(storage_local_tensor_metadata.global_offset),
-            )
-            src_rank, file_name = load_infos[storage_local_tensor_index]
-            read_items.append(
-                ReadItem(
-                    tensor_name=tensor_name,
-                    src_global_offset=tuple(
-                        storage_local_tensor_metadata.global_offset
-                    ),
-                    dst_global_offset=global_offset,
-                    dst_rank=(paddle.distributed.get_rank(),),
-                    src_rank=src_rank,
-                    dst_local_offset=tuple(cur_offsets),
-                    src_local_offset=tuple(storage_offsets),
-                    slice_shape=tuple(lengths),
-                    file_name=file_name,
-                    dtype=storage_local_tensor_metadata.dtype,
-                ),
-            )
-
-    global_read_items = []
-    tmp = []
-    if use_dist:
-        paddle.distributed.all_gather_object(tmp, read_items, process_group)
-    else:
-        tmp.append(read_items)
-    for items in tmp:
-        for item in items:
-            global_read_items.append(item)
-    return global_read_items
-
-
 def _split_flat_shards(state_dict):
     flat_shards, nonflat_shards = {}, {}
     for key, shard in state_dict.items():
@@ -620,7 +430,7 @@ def _split_flat_shards(state_dict):
     return flat_shards, nonflat_shards
 
 
-def _unflatten_shards(flat_shards):
+def _unflatten_shards(flat_shards, comm_method):
     load_dict, padding_info = {}, {}
     for key, flat_shard in flat_shards.items():
         local_shape = flat_shard.local_shape
@@ -684,11 +494,26 @@ def _handle_aoa(
     offload,
     aoa_config,
     safetensors,
+    comm_method,
 ):
-    metadata_files, _ = get_checkpoint_files(path, unique_id=unique_id)
-    assert len(metadata_files) == 1, "Only support one metadata file now."
-    metadata = paddle.load(os.path.join(path, metadata_files[0]))
+    global _metadata_manager
+
+    use_dist = paddle.distributed.get_world_size() > 1
+    if _metadata_manager.is_metadata_list_empty():
+        metadata_files, _ = get_checkpoint_files(
+            path,
+            unique_id=unique_id,
+            process_group=process_group,
+            safetensors=safetensors,
+        )
+        assert len(metadata_files) == 1, "Only support one metadata file now."
+        metadata = paddle.load(os.path.join(path, metadata_files[0]))
+        _metadata_manager.set_metadata_list([metadata])
+    metadata = _metadata_manager.get_metadata_list()[0]
     state_dict_metadata = metadata.state_dict_metadata
+    using_not_init_tensor = (
+        True if comm_method in _UNINIT_TENSOR_MODES else False
+    )
 
     source_state_shard_info = {
         param_name: [
@@ -727,6 +552,14 @@ def _handle_aoa(
                 src_desc_to_postprocess_list[src_desc] = (
                     mapping.postprocess_list
                 )
+            if len(shard_mappings) == 1 and mapping.postprocess_list is None:
+                if src_desc.global_shape == dst_desc.global_shape:
+                    logger.warning(
+                        f"Shape mismatch for parameter '{param_name}': "
+                        f"source global_shape={src_desc.global_shape}, "
+                        f"destination global_shape={dst_desc.global_shape}, "
+                        "Please check if this is caused by an AOA configuration."
+                    )
             if (len(shard_mappings) == 1) and (
                 src_desc.local_shape == dst_desc.local_shape
                 and src_desc.global_shape == dst_desc.global_shape
@@ -745,6 +578,8 @@ def _handle_aoa(
                 local_tensor = paddle.empty(
                     src_desc.local_shape, dtype=src_desc.dtype
                 )
+                if using_not_init_tensor:
+                    local_tensor._clear_to_zero_allocation()
                 force_gc.append(local_tensor)
                 if local_tensor.place != tgt_shard.local_tensor.place:
                     local_tensor = local_tensor.to(tgt_shard.local_tensor.place)
@@ -767,6 +602,7 @@ def _handle_aoa(
         offload=offload,
         safetensors=safetensors,
         worker_groups=worker_groups,
+        comm_method=comm_method,
     )
 
     for dst_desc, src_desc in dst_to_src_desc_mapping.items():
@@ -797,6 +633,41 @@ def _finish_unflatten(flat_shards, padding_info):
         flat_shard.local_tensor.flatten_()
 
 
+def local_load_state_dict(
+    state_dict: dict[str, Tensor] | dict[str, ShardedWeight],
+    path: str,
+    offload: bool = False,
+    use_dist: bool = True,
+):
+    cur_rank = paddle.distributed.get_rank() if use_dist else 0
+    expect_checkpoint_file = f"{cur_rank}_0.distcp"
+    ckpt_file = os.path.join(path, expect_checkpoint_file)
+    source_state_dict = {}
+    if offload:
+        state_dict_numpy = paddle.load(ckpt_file, return_numpy=True)
+        source_state_dict = {
+            key: paddle.to_tensor(value, place=paddle.CPUPlace())
+            for key, value in state_dict_numpy.items()
+        }
+    else:
+        source_state_dict = paddle.load(ckpt_file)
+    for key, value in state_dict.items():
+        if isinstance(value, ShardedWeight):
+            local_tensor = value.local_tensor
+        else:
+            if not value._is_initialized():
+                continue
+            if value.is_dist():
+                local_tensor = value._local_value()
+            else:
+                local_tensor = value
+
+        assert key in source_state_dict, f"{key} is not in source_state_dict."
+        source_tensor = source_state_dict[key]
+        source_tensor = source_tensor.to(local_tensor.place)
+        paddle.assign(source_tensor, local_tensor)
+
+
 def load_state_dict(
     state_dict: dict[str, Tensor] | dict[str, ShardedWeight],
     path: str,
@@ -808,6 +679,7 @@ def load_state_dict(
     aoa_config: dict[str, list[str]] | None = None,
     safetensors: bool = False,
     worker_groups: list[Group] | None = None,
+    comm_method: str = "broadcast",
 ) -> None:
     r"""
     Load the state_dict inplace from a checkpoint path.
@@ -822,7 +694,8 @@ def load_state_dict(
         mw_name_compatibility(bool): Enable name compatibility between dynamic and static graph semi-automatic parallel. Default is True.
         aoa_config(dict[str, list[str]]): AOA config to change parameters. Default is None.
         safetensors(bool): Whether to use safetensors format. Default is False.
-        worker_groups (list[paddle.distributed.collective.Group]): Communication groups used for tensor communications; if multiple are provided, an appropriate group is chosen; if None, the global group (all cards) is used.
+        worker_groups (list[paddle.distributed.collective.Group]): Communication groups used for tensor communications; if multiple are provided, an appropriate group is chosen; if None, the process_group group is used.
+        comm_method (str): Communication method for resharding. Choices are "send_recv", "broadcast", "multi_group_broadcast", and "grouped_send_recv". Default is "broadcast".
     Example:
         .. code-block:: python
 
@@ -847,7 +720,19 @@ def load_state_dict(
             [24, 25, 26, 27, 28, 29, 30, 31]])}
             >>> # doctest: -SKIP
     """
+    global _metadata_manager
     use_dist = paddle.distributed.get_world_size() > 1
+
+    valid_methods = [
+        "send_recv",
+        "broadcast",
+        "multi_group_broadcast",
+        "grouped_send_recv",
+    ]
+    assert comm_method in valid_methods, (
+        f"Invalid communication method '{comm_method}'. "
+        f"Please choose from {valid_methods}."
+    )
 
     if use_dist and process_group is None and not is_initialized():
         # Init the default global process group
@@ -856,7 +741,28 @@ def load_state_dict(
     if use_dist:
         paddle.distributed.barrier(process_group)
 
-    if not is_sharded_state_dict(state_dict):
+    if not safetensors and aoa_config is None:
+        metadata_files, _ = get_checkpoint_files(path, unique_id=unique_id)
+        assert len(metadata_files) == 1, "Only support one metadata file now."
+        metadata = paddle.load(os.path.join(path, metadata_files[0]))
+        _metadata_manager.set_metadata_list([metadata])
+        resumable_locally = check_resumable_locally(
+            path, state_dict, _metadata_manager, use_dist, process_group
+        )
+        if resumable_locally:
+            logger.info(
+                f"Checkpoint '{path}' resumable locally, skipping reshard."
+            )
+            local_load_state_dict(
+                state_dict=state_dict,
+                path=path,
+                offload=offload,
+                use_dist=use_dist,
+            )
+            logger.info("Checkpoint successfully loaded locally!")
+            return
+
+    if not is_sharded_state_dict(state_dict, use_dist, process_group):
         load_state_dict_impl(
             state_dict=state_dict,
             path=path,
@@ -867,6 +773,7 @@ def load_state_dict(
             mw_name_compatibility=mw_name_compatibility,
             safetensors=safetensors,
             worker_groups=worker_groups,
+            comm_method=comm_method,
         )
         return
 
@@ -883,7 +790,7 @@ def load_state_dict(
             destination_state_shard_info[key].append(desc)
     else:
         flat_shards, nonflat_shards = _split_flat_shards(state_dict)
-        load_dict, padding_info = _unflatten_shards(flat_shards)
+        load_dict, padding_info = _unflatten_shards(flat_shards, comm_method)
         load_dict.update(nonflat_shards)
         destination_state_shard_info = build_global_state_shard_info(
             state_dict, process_group
@@ -901,6 +808,7 @@ def load_state_dict(
             offload,
             aoa_config,
             safetensors,
+            comm_method,
         )
     else:
         load_state_dict_impl(
@@ -913,11 +821,11 @@ def load_state_dict(
             mw_name_compatibility=mw_name_compatibility,
             safetensors=safetensors,
             worker_groups=worker_groups,
+            comm_method=comm_method,
         )
     if use_dist:
         _finish_unflatten(flat_shards, padding_info)
 
-    global _metadata_manager
     _metadata_manager.clear()
     gc.collect()
 
@@ -925,10 +833,15 @@ def load_state_dict(
 def restore_unflattened_state_dict(
     source_state_dict: dict[str, dict[str, Tensor]],
     process_group,
-    worker_groups,
+    weoker_groups,
+    comm_method,
+    offload,
 ):
     global _metadata_manager
     use_dist = paddle.distributed.get_world_size() > 1
+    using_not_init_tensor = (
+        True if comm_method in _UNINIT_TENSOR_MODES else False
+    ) and use_dist
 
     flattened_tensors = {}
     already_unflattened_tensors = {}
@@ -997,12 +910,13 @@ def restore_unflattened_state_dict(
         tensor_name_expand = f"{tensor_name}.global_offset.{meta.global_offset}"
 
         flat_start, flat_end = meta.flattened_range
+        local_shape = (flat_end - flat_start,)
         source_state_dict_for_reshard[file_name][tensor_name_expand] = (
             local_tensor
         )
         source_local_tensor_meta[tensor_name_expand].append(
             LocalTensorMetadata(
-                local_shape=(flat_end - flat_start,),
+                local_shape=local_shape,
                 global_shape=(math.prod(meta.local_shape),),
                 dtype=meta.dtype,
                 global_offset=(flat_start,),
@@ -1011,11 +925,16 @@ def restore_unflattened_state_dict(
         )
         source_storage_meta[
             LocalTensorIndex(
-                tensor_key=tensor_name_expand, global_offset=(flat_start,)
+                tensor_key=tensor_name_expand,
+                global_offset=(flat_start,),
+                local_shape=local_shape,
             )
         ] = file_name
 
         tmp_target_tensor = paddle.zeros((numel,), dtype=local_tensor.dtype)
+        if using_not_init_tensor:
+            tmp_target_tensor._clear_to_zero_allocation()
+
         global_offset_1d = (
             ravel_index(tuple(s[0] for s in slices), meta.local_shape),
         )
@@ -1057,7 +976,8 @@ def restore_unflattened_state_dict(
         source_state_dict=source_state_dict_for_reshard,
         metadata_list=[tmp_metadata],
         process_group=process_group,
-        worker_groups=worker_groups,
+        worker_groups=weoker_groups,
+        comm_method=comm_method,
     )
 
     for key in reshard_needed_tensors:
@@ -1092,6 +1012,7 @@ def restore_unflattened_state_dict(
 
     for key, tensor, meta in all_unflattened_tensors_with_meta:
         tensor_name, file_name = key
+        tensor = tensor.cpu() if offload else tensor
         final_unflattened_state_dict[file_name][tensor_name] = tensor
         final_local_tensor_meta[tensor_name].append(meta)
         final_storage_meta[
@@ -1100,6 +1021,7 @@ def restore_unflattened_state_dict(
                 global_offset=meta.global_offset,
                 is_flattened=False,
                 flattened_range=None,
+                local_shape=meta.local_shape,
             )
         ] = file_name
 
@@ -1146,6 +1068,7 @@ def load_state_dict_impl(
     mw_name_compatibility: bool = True,
     safetensors: bool = False,
     worker_groups: list[Group] | None = None,
+    comm_method: str = 'broadcast',
 ) -> None:
     with paddle.base.dygraph.guard():
         global _metadata_manager
@@ -1180,15 +1103,17 @@ def load_state_dict_impl(
             check_unique_id(unique_id, process_group)
 
         metadata_files, local_data_files = get_checkpoint_files(
-            path, unique_id=unique_id
+            path,
+            unique_id=unique_id,
+            process_group=process_group,
+            safetensors=safetensors,
         )
 
-        metadata_list = []
-        for file in metadata_files:
-            metadata_list.append(paddle.load(os.path.join(path, file)))
-
-        global _metadata_manager
-        _metadata_manager.set_metadata_list(metadata_list)
+        if _metadata_manager.is_metadata_list_empty():
+            metadata_list = []
+            for file in metadata_files:
+                metadata_list.append(paddle.load(os.path.join(path, file)))
+            _metadata_manager.set_metadata_list(metadata_list)
 
         rank_to_files, missing_keys, mw_name_compatibility_mapping = (
             get_rank_to_files(
@@ -1204,8 +1129,6 @@ def load_state_dict_impl(
             logger.warning(
                 f"The following keys:{missing_keys} are not found in checkpoint path: {path}."
             )
-        if len(rank_to_files) <= 0:
-            return
 
         cur_rank = paddle.distributed.get_rank()
         global_local_data_files = []
@@ -1245,13 +1168,54 @@ def load_state_dict_impl(
                     os.path.join(path, file), safetensors=safetensors
                 )
 
+        metadata = _metadata_manager.get_metadata_list()[0]
+        storage_metadata = metadata.storage_metadata
+
+        replica_indexes = [
+            local_tensor_index
+            for local_tensor_index in storage_metadata
+            if local_tensor_index.replica_id is not None
+            and local_tensor_index.replica_id != 0
+        ]
+
+        for local_tensor_index in replica_indexes:
+            file_name = storage_metadata[local_tensor_index]
+            if file_name in source_state_dict:
+                tensor_key = local_tensor_index.tensor_key
+                state_dict = source_state_dict[file_name]
+                if tensor_key in state_dict:
+                    state_dict.pop(tensor_key)
+
+        metadata_copy = deepcopy(metadata)
+        storage_metadata_copy = metadata_copy.storage_metadata
+        for local_tensor_index in replica_indexes:
+            storage_metadata_copy.pop(local_tensor_index)
+
+        new_storage_metadata = {}
+        for local_tensor_index, value in storage_metadata_copy.items():
+            if local_tensor_index.replica_id == 0:
+                local_tensor_index_new = replace(
+                    local_tensor_index, replica_id=None
+                )
+                new_storage_metadata[local_tensor_index_new] = value
+            else:
+                new_storage_metadata[local_tensor_index] = value
+
+        metadata_copy.storage_metadata = new_storage_metadata
+
+        _metadata_manager.set_metadata_list([metadata_copy])
+
         if use_dist:
             paddle.distributed.barrier(process_group)
 
         if _metadata_manager.has_flattened_tensors:
             logger.info("Restoring unflattened state dict.")
             source_state_dict = restore_unflattened_state_dict(
-                source_state_dict, process_group, worker_groups
+                source_state_dict,
+                process_group,
+                worker_groups,
+                comm_method,
+                offload,
             )
             logger.info("Restored unflattened state dict.")
 
@@ -1263,6 +1227,7 @@ def load_state_dict_impl(
             coordinator_rank,
             offload,
             worker_groups,
+            comm_method,
         )
 
         for file_name, state_dict in source_state_dict.items():
@@ -1284,278 +1249,6 @@ def load_state_dict_impl(
             tmp[keys[-1]] = flat_state_dict[flat_key]
 
 
-def slice_tensor(tensor, slice_begin, slice_shape):
-    # If slice_shape is empty, the tensor is 0-dimensional (scalar); return it as is.
-    if len(slice_shape) == 0:
-        assert len(tensor.shape) == 0, (
-            "Only 0-dimensional tensor supports empty slice_shape."
-        )
-        return tensor
-    slice_end = [
-        start + length for start, length in zip(slice_begin, slice_shape)
-    ]
-    axes = list(range(tensor.ndim))
-    return paddle.slice(tensor, axes=axes, starts=slice_begin, ends=slice_end)
-
-
-def get_target_tensor(target_state_dict, read_item):
-    use_dist = True if paddle.distributed.get_world_size() > 1 else False
-    if any(isinstance(k, tuple) for k in target_state_dict):
-        key = (read_item.tensor_name, read_item.dst_global_offset)
-    else:
-        key = read_item.tensor_name
-    target_tensor = (
-        target_state_dict[key]._local_value()
-        if use_dist and target_state_dict[key].is_dist()
-        else target_state_dict[key]
-    )
-    return target_tensor
-
-
-def process_local_copy_tasks(
-    local_tasks, cur_rank, source_state_dict, target_state_dict
-):
-    """
-    Complete local copy tasks.
-    """
-    logger.debug(
-        f"Rank {cur_rank} starting local copy for {len(local_tasks)} tasks."
-    )
-    for task in local_tasks:
-        if task.src_rank != cur_rank:
-            continue
-
-        src_tensor = source_state_dict[task.file_name][task.tensor_name]
-        dst_tensor = get_target_tensor(target_state_dict, task)
-        src_chunk_tensor = slice_tensor(
-            src_tensor, task.src_local_offset, task.slice_shape
-        )
-
-        dst_chunk_tensor = slice_tensor(
-            dst_tensor, task.dst_local_offset, task.slice_shape
-        )
-        if src_chunk_tensor.place == dst_chunk_tensor.place:
-            paddle.assign(src_chunk_tensor, dst_chunk_tensor)
-            logger.debug(f"Local copy (same device) for task {task}.")
-        else:
-            tmp = (
-                src_chunk_tensor.cuda()
-                if dst_chunk_tensor.place.is_gpu_place()
-                else src_chunk_tensor.cpu()
-            )
-            paddle.assign(tmp, dst_chunk_tensor)
-            del tmp
-            logger.debug(f"Local copy (cross device) for task {task}.")
-
-
-def split_read_items(
-    read_items: list[ReadItem],
-) -> (list[ReadItem], list[ReadItem]):
-    local_read_items = []
-    comm_read_items = []
-
-    for item in read_items:
-        assert len(item.dst_rank) == 1, (
-            "Before read_items is split, each ReadItem describes a communication task between one rank and another."
-        )
-        if item.src_rank == item.dst_rank[0]:
-            local_read_items.append(item)
-        else:
-            comm_read_items.append(item)
-
-    return local_read_items, comm_read_items
-
-
-def schedule_comm_read_items_single_group(
-    comm_read_items: list[ReadItem],
-) -> dict[str, list[ReadItem]]:
-    order_rules = lambda read_item: (
-        read_item.tensor_name,
-        read_item.src_rank,
-        read_item.src_global_offset,
-        read_item.dst_rank,
-        read_item.dst_local_offset,
-        read_item.dst_global_offset
-        if read_item.dst_global_offset is not None
-        else (),
-        read_item.src_local_offset,
-        read_item.slice_shape,
-        read_item.file_name,
-        read_item.dtype,
-    )
-    comm_read_items = sorted(comm_read_items, key=order_rules)
-    # Step 1: Group by tensor_name
-    tensor_groups = defaultdict(list)
-    for item in comm_read_items:
-        tensor_groups[item.tensor_name].append(item)
-
-    scheduled_items = defaultdict(list)
-
-    # Step 2: For each tensor_name group, further group by all attributes except dst_rank
-    for tensor_name, items in tensor_groups.items():
-        grouped_items = defaultdict(list)
-        for item in items:
-            key = (
-                item.src_global_offset,
-                item.dst_global_offset,
-                item.src_rank,
-                item.dst_local_offset,
-                item.src_local_offset,
-                item.slice_shape,
-                item.file_name,
-                item.dtype,
-            )
-            grouped_items[key].append(item)
-
-        # Step 3: Combine items with the same key into a single ReadItem with all dst_ranks
-        for key, grouped_item in grouped_items.items():
-            combined_dst_rank = []
-            for item in grouped_item:
-                combined_dst_rank.extend(item.dst_rank)
-            combined_dst_rank = sorted(
-                set(combined_dst_rank)
-            )  # Remove duplicates
-
-            # Create a new ReadItem with combined dst_ranks
-            scheduled_item = ReadItem(
-                tensor_name=tensor_name,
-                src_global_offset=key[0],
-                dst_global_offset=key[1],
-                dst_rank=tuple(combined_dst_rank),
-                src_rank=key[2],
-                dst_local_offset=key[3],
-                src_local_offset=key[4],
-                slice_shape=key[5],
-                file_name=key[6],
-                dtype=key[7],
-            )
-            scheduled_items[tensor_name].append(scheduled_item)
-    for key, items in scheduled_items.items():
-        scheduled_items[key] = sorted(items, key=order_rules)
-
-    return dict(sorted(scheduled_items.items()))
-
-
-def schedule_comm_read_items_multi_group(
-    comm_read_items: list[ReadItem],
-    worker_groups: list[Group],
-) -> list[list[ReadItem]]:
-    group_members = {}
-    name_to_groups = {}
-    read_items = []
-
-    order_rules = lambda read_item: (
-        read_item.tensor_name,
-        read_item.src_rank,
-        read_item.src_global_offset,
-        read_item.dst_rank,
-        read_item.dst_local_offset,
-        read_item.dst_global_offset
-        if read_item.dst_global_offset is not None
-        else (),
-        read_item.src_local_offset,
-        read_item.slice_shape,
-        read_item.file_name,
-        read_item.dtype,
-    )
-
-    def _find_min_group(need_ranks, group_members, name_to_groups):
-        min_group = None
-        min_size = None
-        for name, ranks in group_members.items():
-            if need_ranks <= ranks:
-                if (min_size is None) or (len(ranks) < min_size):
-                    min_size = len(ranks)
-                    min_group = name_to_groups[name]
-        assert min_group is not None, f"No group found for {need_ranks}!"
-        return min_group
-
-    for group in worker_groups:
-        if len(group.ranks) <= 1:
-            continue
-        group_members[group.name] = set(group.ranks)
-        name_to_groups[group.name] = group
-
-    for read_item in comm_read_items:
-        need_ranks = need_ranks = {*read_item.dst_rank, read_item.src_rank}
-        group = _find_min_group(
-            need_ranks,
-            group_members,
-            name_to_groups,
-        )
-        read_items.append(replace(read_item, comm_group=group))
-
-    read_items = sorted(read_items, key=order_rules)
-
-    def _build_group_conflict(group_members: dict[str, set]):
-        member_to_groups = defaultdict(set)
-        for g, members in group_members.items():
-            for m in members:
-                member_to_groups[m].add(g)
-        group_conflict = defaultdict(set)
-        for group_set in member_to_groups.values():
-            for g1 in group_set:
-                for g2 in group_set:
-                    if g1 != g2:
-                        group_conflict[g1].add(g2)
-        return group_conflict
-
-    def _dsatur_coloring(group_conflict: dict[str, set]) -> dict[str, int]:
-        import heapq
-
-        all_groups = sorted(group_conflict.keys())
-        sorted_conflict = {g: sorted(group_conflict[g]) for g in all_groups}
-
-        color_map = {}
-        neighbor_colors = {g: set() for g in all_groups}
-        uncolored = set(all_groups)
-
-        degree = {g: len(sorted_conflict[g]) for g in all_groups}
-
-        heap = []
-        for g in all_groups:
-            heapq.heappush(heap, (0, -degree[g], g))
-        saturation = dict.fromkeys(all_groups, 0)
-
-        while uncolored:
-            while True:
-                _, _, node = heapq.heappop(heap)
-                if node in uncolored:
-                    break
-            used = neighbor_colors[node]
-            color = 0
-            while color in used:
-                color += 1
-            color_map[node] = color
-            uncolored.remove(node)
-            for neighbor in sorted_conflict[node]:
-                if neighbor in uncolored:
-                    if color not in neighbor_colors[neighbor]:
-                        neighbor_colors[neighbor].add(color)
-                        saturation[neighbor] += 1
-                        heapq.heappush(
-                            heap,
-                            (
-                                -saturation[neighbor],
-                                -degree[neighbor],
-                                neighbor,
-                            ),
-                        )
-        return color_map
-
-    def _assign_batches(tasks, group_color_map):
-        batches = defaultdict(list)
-        for t in tasks:
-            g = t.comm_group.name
-            batches[group_color_map[g]].append(t)
-        return [sorted(batches[c], key=order_rules) for c in sorted(batches)]
-
-    group_conflict = _build_group_conflict(group_members)
-    group_color_map = _dsatur_coloring(group_conflict)
-    results = _assign_batches(read_items, group_color_map)
-    return results
-
-
 def _load_state_dict(
     target_state_dict: dict,
     source_state_dict: dict,
@@ -1563,312 +1256,23 @@ def _load_state_dict(
     process_group=None,
     coordinator_rank=0,
     offload=False,
-    worker_groups=None,
+    worker_groups: list[Group] | None = None,
+    comm_method: str = 'broadcast',
 ):
-    if worker_groups is None:
-        _load_state_dict_single_group(
-            target_state_dict,
-            source_state_dict,
-            metadata_list,
-            process_group,
-            coordinator_rank,
-            offload,
-        )
-    else:
-        _load_state_dict_multi_group(
-            target_state_dict,
-            source_state_dict,
-            metadata_list,
-            process_group,
-            coordinator_rank,
-            offload,
-            worker_groups,
-        )
-
-    del source_state_dict
-
-
-def pre_process_and_build_comm_read_items(
-    target_state_dict: dict,
-    source_state_dict: dict,
-    metadata_list,
-    process_group=None,
-    coordinator_rank=0,
-    offload=False,
-):
-    use_dist = paddle.distributed.get_world_size() > 1
-    cur_rank = paddle.distributed.get_rank() if use_dist else 0
-
-    if offload:
-        for file_name, state_dict in source_state_dict.items():
-            source_state_dict[file_name] = {
-                k: paddle.to_tensor(v, place=paddle.CPUPlace())
-                if isinstance(v, np.ndarray)
-                else v
-                for k, v in state_dict.items()
-            }
-
-    local_load_files = list(source_state_dict.keys())
-    logger.info("Start generating global ReadItems..")
-    load_infos = get_load_infos(
-        metadata_list, local_load_files, process_group, use_dist
+    use_dist = True if paddle.distributed.get_world_size() > 1 else False
+    communicator = CommunicatorFactory.create(
+        comm_method, worker_groups=worker_groups
     )
-
-    read_items = get_read_items(
-        metadata_list, target_state_dict, process_group, use_dist, load_infos
+    resharder = StateDictResharder(
+        target_state_dict=target_state_dict,
+        source_state_dict=source_state_dict,
+        metadata_list=metadata_list,
+        communicator=communicator,
+        process_group=process_group,
+        offload=offload,
+        use_dist=use_dist,
     )
-
-    local_read_items, comm_read_items = split_read_items(read_items)
-
-    logger.info(f"Generated {len(comm_read_items)} communication tasks.")
-    logger.info(f"Generated {len(local_read_items)} local tasks.")
-
-    processed_target_state_dict = {
-        k: v.local_tensor if isinstance(v, ShardedWeight) else v
-        for k, v in target_state_dict.items()
-    }
-    has_tuple_key = any(
-        isinstance(k, tuple) for k in processed_target_state_dict
-    )
-    has_non_tuple_key = any(
-        not isinstance(k, tuple) for k in processed_target_state_dict
-    )
-    assert not (has_tuple_key and has_non_tuple_key), (
-        "target_state_dict contains a mix of tuple and non-tuple keys. Please ensure key types are consistent."
-    )
-
-    if not use_dist:
-        assert len(comm_read_items) == 0, (
-            "No communication task is needed when not using distributed training."
-        )
-
-    process_local_copy_tasks(
-        local_read_items,
-        cur_rank,
-        source_state_dict,
-        processed_target_state_dict,
-    )
-
-    logger.info(
-        f"Rank {cur_rank} finished local copy and entered communication phase."
-    )
-
-    return processed_target_state_dict, comm_read_items
-
-
-def _load_state_dict_single_group(
-    target_state_dict: dict,
-    source_state_dict: dict,
-    metadata_list,
-    process_group=None,
-    coordinator_rank=0,
-    offload=False,
-):
-    use_dist = paddle.distributed.get_world_size() > 1
-    cur_rank = paddle.distributed.get_rank() if use_dist else 0
-
-    processed_target_state_dict, comm_read_items = (
-        pre_process_and_build_comm_read_items(
-            target_state_dict,
-            source_state_dict,
-            metadata_list,
-            process_group,
-            coordinator_rank,
-            offload,
-        )
-    )
-
-    if len(comm_read_items) == 0:
-        return
-    paddle.distributed.barrier(process_group)
-
-    tasks = schedule_comm_read_items_single_group(comm_read_items)
-
-    logger.info(
-        f"Communication tasks generated successfully, total {len(tasks)} tasks!"
-    )
-
-    for tensor_name, read_items in tasks.items():
-        logger.debug(f"Beginning to send/recv tasks for tensor {tensor_name}.")
-
-        source_tensors = {}
-        destination_tensors = {}
-        for item in read_items:
-            logger.debug(f"Beginning to send/recv task {item}.")
-            if item.src_rank == cur_rank:
-                src_tensor = source_state_dict[item.file_name][item.tensor_name]
-                if not src_tensor.place.is_gpu_place():
-                    src_tensor = src_tensor.cuda()
-                source_tensors[(tensor_name, item.file_name)] = src_tensor
-            elif cur_rank in item.dst_rank:
-                dst_tensor = get_target_tensor(
-                    processed_target_state_dict, item
-                )
-                if not dst_tensor.place.is_gpu_place():
-                    gpu_dst_tensor = dst_tensor.cuda()
-                    gpu_dst_tensor.need_cross_device_copy = True
-                    gpu_dst_tensor.target_tensor = dst_tensor
-                    destination_tensors[
-                        (tensor_name, cur_rank, item.dst_global_offset)
-                    ] = gpu_dst_tensor
-                else:
-                    gpu_dst_tensor = dst_tensor
-                    gpu_dst_tensor.target_tensor = dst_tensor
-                    destination_tensors[
-                        (tensor_name, cur_rank, item.dst_global_offset)
-                    ] = dst_tensor
-
-        for item in read_items:
-            logger.debug(f"Beginning to send/recv task {item}.")
-            if item.src_rank == cur_rank:
-                src_tensor = source_tensors[(tensor_name, item.file_name)]
-                src_chunk_tensor = slice_tensor(
-                    src_tensor, item.src_local_offset, item.slice_shape
-                )
-                buffer_tensor = src_chunk_tensor.contiguous()
-            elif cur_rank in item.dst_rank:
-                dst_tensor = destination_tensors[
-                    (tensor_name, cur_rank, item.dst_global_offset)
-                ]
-                dst_chunk_tensor = slice_tensor(
-                    dst_tensor, item.dst_local_offset, item.slice_shape
-                )
-                buffer_tensor = paddle.zeros_like(dst_chunk_tensor)
-                paddle.assign(dst_chunk_tensor, buffer_tensor)
-
-            else:
-                buffer_tensor = paddle.zeros(item.slice_shape, item.dtype)
-
-            paddle.distributed.broadcast(
-                buffer_tensor, src=item.src_rank, group=process_group
-            )
-            if cur_rank in item.dst_rank:
-                paddle.assign(buffer_tensor, dst_chunk_tensor)
-            del buffer_tensor
-
-        for dst_tensor in destination_tensors.values():
-            if getattr(dst_tensor, 'need_cross_device_copy', False):
-                target_tensor = dst_tensor.target_tensor
-                target_tensor.copy_(dst_tensor)
-            else:
-                target_tensor = dst_tensor.target_tensor
-                paddle.assign(dst_tensor, target_tensor)
-            del dst_tensor
-
-        del source_tensors
-
-        if use_dist:
-            paddle.distributed.barrier(process_group)
-
-    logger.info("All communication tasks completed.")
-
-
-def _load_state_dict_multi_group(
-    target_state_dict: dict,
-    source_state_dict: dict,
-    metadata_list,
-    process_group=None,
-    coordinator_rank=0,
-    offload=False,
-    worker_groups=None,
-):
-    assert paddle.distributed.get_world_size() > 1, (
-        "Multi-group loading is only supported in distributed training."
-    )
-    cur_rank = paddle.distributed.get_rank()
-
-    processed_target_state_dict, comm_read_items = (
-        pre_process_and_build_comm_read_items(
-            target_state_dict,
-            source_state_dict,
-            metadata_list,
-            process_group,
-            coordinator_rank,
-            offload,
-        )
-    )
-
-    results = schedule_comm_read_items_multi_group(
-        comm_read_items, worker_groups
-    )
-
-    logger.info(
-        f"Communication task scheduling completed, {len(results)}  batches in total."
-    )
-    for read_items in results:
-        source_tensors = {}
-        destination_tensors = {}
-        for item in read_items:
-            tensor_name = item.tensor_name
-            if item.src_rank == cur_rank:
-                src_tensor = source_state_dict[item.file_name][tensor_name]
-                if not src_tensor.place.is_gpu_place():
-                    src_tensor = src_tensor.cuda()
-                source_tensors[(tensor_name, item.file_name)] = src_tensor
-            elif cur_rank in item.dst_rank:
-                dst_tensor = get_target_tensor(
-                    processed_target_state_dict, item
-                )
-                if not dst_tensor.place.is_gpu_place():
-                    gpu_dst_tensor = dst_tensor.cuda()
-                    gpu_dst_tensor.need_cross_device_copy = True
-                    gpu_dst_tensor.target_tensor = dst_tensor
-                    destination_tensors[
-                        (tensor_name, cur_rank, item.dst_global_offset)
-                    ] = gpu_dst_tensor
-                else:
-                    gpu_dst_tensor = dst_tensor
-                    gpu_dst_tensor.target_tensor = dst_tensor
-                    destination_tensors[
-                        (tensor_name, cur_rank, item.dst_global_offset)
-                    ] = dst_tensor
-
-        for item in read_items:
-            logger.debug(f"Beginning to send/recv task {item}.")
-            tensor_name = item.tensor_name
-            if item.src_rank == cur_rank:
-                src_tensor = source_tensors[(tensor_name, item.file_name)]
-                src_chunk_tensor = slice_tensor(
-                    src_tensor, item.src_local_offset, item.slice_shape
-                )
-                buffer_tensor = src_chunk_tensor.contiguous()
-            elif cur_rank in item.dst_rank:
-                dst_tensor = destination_tensors[
-                    (tensor_name, cur_rank, item.dst_global_offset)
-                ]
-                dst_chunk_tensor = slice_tensor(
-                    dst_tensor, item.dst_local_offset, item.slice_shape
-                )
-                buffer_tensor = paddle.zeros_like(dst_chunk_tensor)
-                paddle.assign(dst_chunk_tensor, buffer_tensor)
-
-            elif cur_rank in item.comm_group.ranks:
-                buffer_tensor = paddle.zeros(item.slice_shape, item.dtype)
-            else:
-                buffer_tensor = None
-
-            if cur_rank in item.comm_group.ranks:
-                paddle.distributed.broadcast(
-                    buffer_tensor, src=item.src_rank, group=item.comm_group
-                )
-
-            if cur_rank in item.dst_rank:
-                paddle.assign(buffer_tensor, dst_chunk_tensor)
-            del buffer_tensor
-
-        for dst_tensor in destination_tensors.values():
-            if getattr(dst_tensor, 'need_cross_device_copy', False):
-                target_tensor = dst_tensor.target_tensor
-                target_tensor.copy_(dst_tensor)
-            else:
-                target_tensor = dst_tensor.target_tensor
-                paddle.assign(dst_tensor, target_tensor)
-            del dst_tensor
-
-        del source_tensors
-
-    paddle.distributed.barrier(process_group)
-    logger.info("All communication tasks completed.")
+    resharder.reshard()
 
 
 def compute_global_shape(local_tensor_indices):
@@ -1936,7 +1340,7 @@ def load_merged_state_dict(
         assert unique_id >= 0, f'{unique_id} should be >= 0'
 
     metadata_files, local_data_files = get_checkpoint_files(
-        path, unique_id=unique_id
+        path, unique_id=unique_id, safetensors=safetensors
     )
 
     metadata_list = []
@@ -2094,7 +1498,7 @@ def merge_sharded_state_dict(
         paddle.distributed.barrier(process_group)
 
     metadata_files, local_data_files = get_checkpoint_files(
-        load_path, unique_id=unique_id
+        load_path, unique_id=unique_id, safetensors=safetensors
     )
 
     metadata_list = []

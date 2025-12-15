@@ -977,6 +977,14 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::FLOAT16,
                      phi::DataType::BFLOAT16,
                      phi::DataType::FLOAT32})},
+      {"masked_fill",
+       XPUKernelSet({phi::DataType::FLOAT32,
+                     phi::DataType::INT32,
+                     phi::DataType::INT8,
+                     phi::DataType::INT64,
+                     phi::DataType::UINT8,
+                     phi::DataType::FLOAT16,
+                     phi::DataType::BFLOAT16})},
       {"max_pool2d_with_index",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"max_pool2d_with_index_grad",
@@ -1986,6 +1994,8 @@ XPUOpMap& get_kl3_ops() {
       {"fft_c2c_grad", XPUKernelSet({phi::DataType::COMPLEX64})},
       {"fft_c2r_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"fft_r2c_grad", XPUKernelSet({phi::DataType::COMPLEX64})},
+      {"eig", XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::COMPLEX64})},
+      {"eig_grad", XPUKernelSet({phi::DataType::COMPLEX64})},
 #endif
   };
 

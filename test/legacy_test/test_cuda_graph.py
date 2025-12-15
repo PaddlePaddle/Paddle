@@ -62,6 +62,7 @@ class TestCUDAGraphInDygraphMode(unittest.TestCase):
         g = CUDAGraph()
         g.capture_begin()
         y = x + 10
+        b = x.numel()
         z.add_(x)
         g.capture_end()
 
