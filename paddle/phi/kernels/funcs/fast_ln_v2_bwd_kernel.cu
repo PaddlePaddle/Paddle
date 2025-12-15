@@ -18,9 +18,9 @@
  *     https://github.com/NVIDIA/apex
  *     with minor changes. */
 
+#include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/kernels/funcs/fast_ln_v2_common.h"
 #include "paddle/phi/kernels/funcs/fast_ln_v2_utils.h"
-
 namespace phi {
 namespace funcs {
 namespace fast_ln_v2 {
@@ -30,6 +30,7 @@ BwdRegistry FAST_LN_V2_BWD_FUNCS;
 template <typename Ktraits>
 __global__ __launch_bounds__(Ktraits::THREADS_PER_CTA) void ln_bwd_kernel(
     fast_ln_v2::BwdParams params) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 700)
   enum { ROWS_PER_CTA = Ktraits::ROWS_PER_CTA };
   enum { WARPS_M = Ktraits::WARPS_M };
   enum { WARPS_N = Ktraits::WARPS_N };
@@ -222,6 +223,7 @@ __global__ __launch_bounds__(Ktraits::THREADS_PER_CTA) void ln_bwd_kernel(
       }
     }
   }
+#endif
 }
 
 template <typename Kernel_traits>
@@ -475,7 +477,7 @@ void launch_(LaunchParams<BwdParams> &launch_params,  // NOLINT
       reg_##HIDDEN_SIZE##_##WTYPE##_##ITYPE##_##OTYPE##_##CTYPE(             \
           ln_bwd_##HIDDEN_SIZE##_##WTYPE##_##ITYPE##_##OTYPE##_##CTYPE)
 
-#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 700
+#if CUDNN_VERSION_MIN(8, 1, 0) && CUDA_VERSION >= 12000
 REGISTER_BWD_LAUNCHER(768, fp32, fp32, fp32, fp32, 1, 4, 1, 16, 4);
 REGISTER_BWD_LAUNCHER(768, fp16, fp16, fp16, fp32, 1, 4, 1, 16, 4);
 REGISTER_BWD_LAUNCHER(768, fp16, fp32, fp16, fp32, 1, 4, 1, 16, 4);
@@ -631,7 +633,7 @@ REGISTER_BWD_LAUNCHER(65536, fp16, fp16, fp16, fp32, 8, 1, 8, 16, 4);
 REGISTER_BWD_LAUNCHER(65536, fp16, fp32, fp16, fp32, 8, 1, 8, 16, 4);
 REGISTER_BWD_LAUNCHER(65536, bf16, bf16, bf16, fp32, 8, 1, 8, 16, 4);
 REGISTER_BWD_LAUNCHER(65536, bf16, fp32, bf16, fp32, 8, 1, 8, 16, 4);
-#endif  // !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 700
+#endif  // CUDNN_VERSION_MIN(8, 1, 0) && CUDA_VERSION >= 12000
 
 BwdFunction &get_bwd_launcher(phi::DataType weight_type,
                               phi::DataType input_type,

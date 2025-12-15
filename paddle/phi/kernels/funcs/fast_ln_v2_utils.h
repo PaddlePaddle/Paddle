@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -295,6 +295,7 @@ struct InterCTASync {
   }  // The barrier for this group of CTAs.
 
   inline __device__ void spin_wait_(int *barrier, int step, int expected) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 700)
     asm volatile("red.release.gpu.global.add.s32 [%0], %1;" ::"l"(barrier),
                  "r"(step));
     for (int found = -1; found != expected;) {
@@ -302,6 +303,7 @@ struct InterCTASync {
                    : "=r"(found)
                    : "l"(barrier));
     }
+#endif
   }
 
   inline __device__ void sync() {

@@ -503,7 +503,10 @@ LayerNormKernelVariant LayerNormKernelDispatch(
   if (input_type != paddle::DataType::FLOAT32 && hidden_size != 4096) {
     auto compute_type = paddle::DataType::FLOAT32;
 
-    if (funcs::fast_ln_v2::has_fast_ln_v2_kernel(
+    // using fast_ln_v2 only sm > 70
+    auto prop = funcs::fast_ln_v2::GetDeviceProp();
+    if (prop->major > 7 &&
+        funcs::fast_ln_v2::has_fast_ln_v2_kernel(
             weight_type, input_type, output_type, compute_type, hidden_size)) {
       return LayerNormKernelVariant::FAST_LN_V2;
     }

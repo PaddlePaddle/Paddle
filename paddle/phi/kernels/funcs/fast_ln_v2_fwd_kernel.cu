@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,9 +18,9 @@
  *     https://github.com/NVIDIA/apex
  *     with minor changes. */
 
+#include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/kernels/funcs/fast_ln_v2_common.h"
 #include "paddle/phi/kernels/funcs/fast_ln_v2_utils.h"
-
 namespace phi {
 namespace funcs {
 namespace fast_ln_v2 {
@@ -59,6 +59,7 @@ bool has_fast_ln_v2_kernel(phi::DataType weight_type,
 template <typename Ktraits>
 __global__ __launch_bounds__(Ktraits::THREADS_PER_CTA) void ln_fwd_kernel(
     FwdParams params) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 700)
   enum { ROWS_PER_CTA = Ktraits::ROWS_PER_CTA };
   enum { WARPS_N = Ktraits::WARPS_N };
   enum { WARPS_M = Ktraits::WARPS_M };
@@ -171,6 +172,7 @@ __global__ __launch_bounds__(Ktraits::THREADS_PER_CTA) void ln_fwd_kernel(
       idx += VEC_COLS_PER_LDG;
     }
   }
+#endif
 }
 
 template <typename weight_t,
@@ -275,6 +277,7 @@ void launch_(LaunchParams<FwdParams> &launch_params,  // NOLINT
       reg_##HIDDEN_SIZE##_##WTYPE##_##ITYPE##_##OTYPE##_##CTYPE(             \
           ln_fwd_##HIDDEN_SIZE##_##WTYPE##_##ITYPE##_##OTYPE##_##CTYPE)
 
+#if CUDNN_VERSION_MIN(8, 1, 0) && CUDA_VERSION >= 12000
 REGISTER_FWD_LAUNCHER(768, fp32, fp32, fp32, fp32, 1, 4, 1, 16);
 REGISTER_FWD_LAUNCHER(768, fp16, fp16, fp16, fp32, 1, 4, 1, 16);
 REGISTER_FWD_LAUNCHER(768, fp16, fp32, fp16, fp32, 1, 4, 1, 16);
@@ -430,7 +433,7 @@ REGISTER_FWD_LAUNCHER(65536, fp16, fp16, fp16, fp32, 8, 1, 4, 16);
 REGISTER_FWD_LAUNCHER(65536, fp16, fp32, fp16, fp32, 8, 1, 4, 16);
 REGISTER_FWD_LAUNCHER(65536, bf16, bf16, bf16, fp32, 8, 1, 4, 16);
 REGISTER_FWD_LAUNCHER(65536, bf16, fp32, bf16, fp32, 8, 1, 4, 16);
-
+#endif  // CUDNN_VERSION_MIN(8, 1, 0) && CUDA_VERSION >= 12000
 }  // namespace fast_ln_v2
 }  // namespace funcs
 }  // namespace phi
