@@ -25,12 +25,12 @@ class Operation;
 namespace paddle {
 namespace framework {
 class Scope;
-class CustomPyOpFuncInstruction : public InstructionBase {
+class PythonOperationFunctionInstruction : public InstructionBase {
  public:
-  CustomPyOpFuncInstruction(size_t id,
-                            const phi::Place& place,
-                            ::pir::Operation* op,
-                            const ValueExecutionInfo& value_exec_info);
+  PythonOperationFunctionInstruction(size_t id,
+                                     const phi::Place& place,
+                                     ::pir::Operation* op,
+                                     const ValueExecutionInfo& value_exec_info);
 
   ::pir::Operation* Operation() const override { return op_; }
 
@@ -45,10 +45,9 @@ class CustomPyOpFuncInstruction : public InstructionBase {
       const paddle::dialect::OpYamlInfoParser& op_yaml_info);
 
   void BuildShapeDtype();
-
   void UpdateOutputMeta();
 
-  paddle::CustomOpKernelContext custom_kernel_ctx_;
+  paddle::CustomOpKernelContext python_operator_function_ctx_;
   paddle::KernelFunc kernel_func_ = nullptr;
 
   const paddle::PythonOperatorFunctionType* py_func_ptr_ = nullptr;

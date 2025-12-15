@@ -3687,7 +3687,6 @@ void ProcessBlock(
     auto kernel_name = GetKernelName(op_info_parser.get(), op_item);
     auto kernel_key = GetKernelKey(
         op_item, place, kernel_name, *map_value_pair, op_info_parser.get());
-    VLOG(0) << "kernel type " << kernel_key;
 
     if (paddle::dialect::IsCustomOp(op_item)) {
       HandleForCustomOp(ctx,

@@ -450,13 +450,13 @@ OpMetaInfo& OpMetaInfo::SetInferSpmdFn(InferSpmdFunc&& func) {
   infer_spmd_fn_ = std::forward<InferSpmdFunc>(func);
   return *this;
 }
-OpMetaInfo& OpMetaInfo::SetCustomPyOpFunction(
+OpMetaInfo& OpMetaInfo::SetPythonOperatorFunction(
     PythonOperatorFunctionType&& func) {
   pyop_func_ = std::forward<PythonOperatorFunctionType>(func);
   return *this;
 }
 
-OpMetaInfo& OpMetaInfo::SetCustomPyOpInferMetaFunction(
+OpMetaInfo& OpMetaInfo::SetPythonOperatorInferMetaFunction(
     PythonOperatorInferMetaFunctionType&& func) {
   pyop_func_infer_meta_ =
       std::forward<PythonOperatorInferMetaFunctionType>(func);
@@ -704,14 +704,14 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferSpmdFn(InferSpmdFunc func) {
 
 OpMetaInfoBuilder& OpMetaInfoBuilder::SetPythonOperatorFunction(
     PythonOperatorFunctionType func) {
-  info_ptr_->SetCustomPyOpFunction(
+  info_ptr_->SetPythonOperatorFunction(
       std::forward<PythonOperatorFunctionType>(func));
   return *this;
 }
 
 OpMetaInfoBuilder& OpMetaInfoBuilder::SetPythonOperatorInferMetaFunction(
     PythonOperatorInferMetaFunctionType func) {
-  info_ptr_->SetCustomPyOpInferMetaFunction(
+  info_ptr_->SetPythonOperatorInferMetaFunction(
       std::forward<PythonOperatorInferMetaFunctionType>(func));
   return *this;
 }

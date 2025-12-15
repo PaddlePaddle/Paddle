@@ -1032,8 +1032,8 @@ class PADDLE_API OpMetaInfo {
   OpMetaInfo& SetInferSpmdFn(InferSpmdFunc&& func);
 
   // PythonOperator
-  OpMetaInfo& SetCustomPyOpFunction(PythonOperatorFunctionType&& func);
-  OpMetaInfo& SetCustomPyOpInferMetaFunction(
+  OpMetaInfo& SetPythonOperatorFunction(PythonOperatorFunctionType&& func);
+  OpMetaInfo& SetPythonOperatorInferMetaFunction(
       PythonOperatorInferMetaFunctionType&& func);
 
   bool IsGradOp() const;
