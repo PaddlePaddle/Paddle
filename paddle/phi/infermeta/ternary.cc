@@ -711,6 +711,10 @@ void FlashAttnInferMeta(const MetaTensor& q,
   if (out_dims.size() == 4) {
     out_dims[3] = v.dims()[3];
   }
+  // for 0-size
+  if (q.dims()[0] == 0 || k.dims()[0] == 0 || v.dims()[0] == 0) {
+    out_dims[0] = 0;
+  }
   out->set_dims(out_dims);
   out->set_dtype(q.dtype());
   out->set_layout(q.layout());
