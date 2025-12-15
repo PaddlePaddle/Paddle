@@ -1745,6 +1745,11 @@ class TestMax_Pool2D_With_Dilations_Empty_Input(TestMax_Pool2D_With_Dilations):
         self.shape = [0, 7, 7, 3]
 
 
+class TestMax_Pool2D_With_Dilations_One_Dilation(TestMax_Pool2D_With_Dilations):
+    def init_dilations(self):
+        self.dilations = [1, 1]
+
+
 def create_test_bf16_class_v2(parent, check_grad=True):
     @unittest.skipIf(
         not (core.is_compiled_with_cuda() or is_custom_device()),
@@ -1899,6 +1904,17 @@ create_test_use_ceil_class(TestMax_Pool2D_With_Dilations_Empty_Input)
 create_test_padding_SAME_class(TestMax_Pool2D_With_Dilations_Empty_Input)
 create_test_padding_VALID_class(TestMax_Pool2D_With_Dilations_Empty_Input)
 create_test_cpu_class(TestMax_Pool2D_With_Dilations_Empty_Input)
+
+
+create_test_cudnn_class(TestMax_Pool2D_With_Dilations_One_Dilation)
+create_test_fp16_class_v2(TestMax_Pool2D_With_Dilations_One_Dilation)
+create_test_bf16_class_v2(TestMax_Pool2D_With_Dilations_One_Dilation)
+create_test_cudnn_fp16_class_v2(TestMax_Pool2D_With_Dilations_One_Dilation)
+create_test_cudnn_use_ceil_class(TestMax_Pool2D_With_Dilations_One_Dilation)
+create_test_use_ceil_class(TestMax_Pool2D_With_Dilations_One_Dilation)
+create_test_padding_SAME_class(TestMax_Pool2D_With_Dilations_One_Dilation)
+create_test_padding_VALID_class(TestMax_Pool2D_With_Dilations_One_Dilation)
+create_test_cpu_class(TestMax_Pool2D_With_Dilations_One_Dilation)
 
 
 if __name__ == '__main__':

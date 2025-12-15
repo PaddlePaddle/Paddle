@@ -1174,6 +1174,23 @@ class TestPool2DError_API(unittest.TestCase):
 
         self.assertRaises(ValueError, run_zero_norm_type)
 
+        def run_invalid_dilation():
+            with base.dygraph.guard():
+                input_np = np.random.uniform(-1, 1, [2, 3, 32, 32]).astype(
+                    np.float32
+                )
+                input_pd = paddle.to_tensor(input_np)
+                dilation = [-1, 1]
+                res_pd = max_pool2d(
+                    input_pd,
+                    kernel_size=2,
+                    stride=2,
+                    padding=0,
+                    dilation=dilation,
+                )
+
+        self.assertRaises(ValueError, run_invalid_dilation)
+
 
 class TestPool2D_API_ZeroSize(unittest.TestCase):
     def setUp(self):

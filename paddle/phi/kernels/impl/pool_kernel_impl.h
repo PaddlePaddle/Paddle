@@ -422,16 +422,41 @@ void MaxPool2DWithDilationsKernel(const Context& dev_ctx,
         dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     return;
   }
-  MaxPool2DWithDilationsRawKernel<T, Context>(dev_ctx,
-                                              x,
-                                              kernel_size.GetData(),
-                                              strides,
-                                              paddings,
-                                              dilations,
-                                              data_format,
-                                              global_pooling,
-                                              padding_algorithm,
-                                              out);
+
+  if (dilations[0] <= static_cast<int64_t>(0) ||
+      dilations[1] <= static_cast<int64_t>(0)) {
+    PADDLE_THROW(errors::InvalidArgument(
+        "The dilations of MaxPool2D op must be >= 0, but received dilations = "
+        "[%ld, %ld].",
+        dilations[0],
+        dilations[1]));
+  } else if (dilations[0] > static_cast<int64_t>(1) ||
+             dilations[1] > static_cast<int64_t>(1)) {
+    MaxPool2DWithDilationsRawKernel<T, Context>(dev_ctx,
+                                                x,
+                                                kernel_size.GetData(),
+                                                strides,
+                                                paddings,
+                                                dilations,
+                                                data_format,
+                                                global_pooling,
+                                                padding_algorithm,
+                                                out);
+  } else {
+    PoolRawKernel<T, Context>(dev_ctx,
+                              x,
+                              kernel_size.GetData(),
+                              strides,
+                              paddings,
+                              true,
+                              data_format,
+                              "max",
+                              false,
+                              false,
+                              padding_algorithm,
+                              0,
+                              out);
+  }
 }
 
 template <typename T, typename Context>
