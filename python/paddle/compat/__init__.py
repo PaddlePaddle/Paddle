@@ -886,12 +886,12 @@ def unique(
     correct_name="paddle.unique",
 )
 def unique(
-    input: Tensor,
-    sorted: bool = True,
-    return_inverse: bool = False,
-    return_counts: bool = False,
-    dim: int | None = None,
-) -> Tensor | tuple[Tensor, ...]:
+    input,
+    sorted = True,
+    return_inverse = False,
+    return_counts = False,
+    dim = None,
+):
     r"""
     Returns the unique elements of `input` in ascending order.
 
