@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import struct
 import unittest
 
 import numpy as np
@@ -21,6 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -28,15 +28,6 @@ from paddle import base
 from paddle.base import core
 
 paddle.enable_static()
-
-
-def convert_float_to_uint16(in_list):
-    in_list = np.asarray(in_list)
-    out = np.vectorize(
-        lambda x: struct.unpack('<I', struct.pack('<f', x))[0] >> 16,
-        otypes=[np.uint16],
-    )(in_list.flat)
-    return np.reshape(out, in_list.shape)
 
 
 def np_masked_fill(x, mask, value):
