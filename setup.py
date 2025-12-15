@@ -2030,9 +2030,7 @@ def get_headers():
             find_files('*.h', paddle_source_dir + '/paddle/phi')
         )
         + list(  # phi include header
-            find_files(
-                '*.h', paddle_source_dir + '/paddle/phi/include', recursive=True
-            )
+            find_files('*.h', paddle_source_dir + '/paddle/phi/include')
         )
         + list(  # phi backends headers
             find_files(
@@ -2326,6 +2324,20 @@ def get_headers():
         headers += list(
             find_files('*.pb', env_dict.get("externalError_INCLUDE_DIR"))
         )
+        headers += list(
+            find_files('*.h', paddle_source_dir + '/paddle/phi/backends/cpu')
+        )
+        headers += list(
+            find_files('*.h', paddle_source_dir + '/paddle/phi/backends/gpu')
+        )
+        headers += list(
+            find_files(
+                '*.h', paddle_source_dir + '/paddle/phi/backends/dynload'
+            )
+        )
+        headers += list(
+            find_files('*.h', paddle_source_dir + '/paddle/phi/backends/onednn')
+        )
 
     if env_dict.get("WITH_XPU") == 'ON':
         headers += [
@@ -2344,6 +2356,20 @@ def get_headers():
                 recursive=True,
             )
         )  # xre headers with .hpp extension
+        headers += list(
+            find_files('*.h', paddle_source_dir + '/paddle/phi/backends/cpu')
+        )
+        headers += list(
+            find_files('*.h', paddle_source_dir + '/paddle/phi/backends/xpu')
+        )
+        headers += list(
+            find_files(
+                '*.h', paddle_source_dir + '/paddle/phi/backends/dynload'
+            )
+        )
+        headers += list(
+            find_files('*.h', paddle_source_dir + '/paddle/phi/backends/onednn')
+        )
 
     if (
         env_dict.get("WITH_GPU") == 'ON'
@@ -2381,6 +2407,44 @@ def get_headers():
                 recursive=True,
             )
         )
+
+    if env_dict.get("WITH_CUSTOM_DEVICE") == 'ON':
+        headers += list(
+            find_files('*.h', paddle_source_dir + '/paddle/phi/backends/cpu')
+        )
+        headers += list(
+            find_files('*.h', paddle_source_dir + '/paddle/phi/backends/custom')
+        )
+        headers += list(
+            find_files('*.h', paddle_source_dir + '/paddle/phi/backends/gpu')
+        )
+        headers += list(
+            find_files('*.h', paddle_source_dir + '/paddle/phi/backends/onednn')
+        )
+        headers += [
+            os.path.join(
+                paddle_source_dir, 'paddle/phi/backends/dynload/afs_api.h'
+            ),
+            os.path.join(
+                paddle_source_dir,
+                'paddle/phi/backends/dynload/dynamic_loader.h',
+            ),
+            os.path.join(
+                paddle_source_dir, 'paddle/phi/backends/dynload/mklml.h'
+            ),
+            os.path.join(
+                paddle_source_dir, 'paddle/phi/backends/dynload/mklrt.h'
+            ),
+            os.path.join(
+                paddle_source_dir, 'paddle/phi/backends/dynload/lapack.h'
+            ),
+            os.path.join(
+                paddle_source_dir, 'paddle/phi/backends/dynload/hml.h'
+            ),
+            os.path.join(
+                paddle_source_dir, 'paddle/phi/backends/dynload/magma.h'
+            ),
+        ]
     # pybind headers
     headers += list(find_files('*.h', env_dict.get("PYBIND_INCLUDE_DIR"), True))
     return headers
