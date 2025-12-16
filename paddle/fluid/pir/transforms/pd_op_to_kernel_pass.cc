@@ -2505,7 +2505,7 @@ void HandleForCustomOp(
   block->push_back(op);
 }
 
-void HandleForCustomPyOp(
+void HandleForPythonOp(
     pir::IrContext* ctx,
     pir::Operation* op_item,
     const phi::KernelKey& kernel_key,
@@ -3701,14 +3701,14 @@ void ProcessBlock(
     }
 
     if (paddle::dialect::IsCustomPyOp(op_item)) {
-      HandleForCustomPyOp(ctx,
-                          op_item,
-                          kernel_key,
-                          place,
-                          op_info_parser.get(),
-                          map_op_pair,
-                          map_value_pair,
-                          new_block);
+      HandleForPythonOp(ctx,
+                        op_item,
+                        kernel_key,
+                        place,
+                        op_info_parser.get(),
+                        map_op_pair,
+                        map_value_pair,
+                        new_block);
       continue;
     }
 
