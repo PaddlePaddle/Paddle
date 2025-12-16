@@ -68,6 +68,7 @@ def _fully_shard_auto_parallel(
     ignored_params,
 ):
     FullyShardAuto(module, mesh)
+    return module
 
 
 def fully_shard(
@@ -100,7 +101,6 @@ def fully_shard(
     )
 
     if in_auto_parallel_mode():
-        _fully_shard_auto_parallel(*args)
-        return module
+        return _fully_shard_auto_parallel(*args)
     else:
         return _fully_shard_manual_parallel(*args)
