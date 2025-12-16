@@ -140,6 +140,7 @@ from .norm import (
     layer_norm,
     local_response_norm,
     normalize,
+    rms_norm_nzs,
 )
 from .pooling import (
     adaptive_avg_pool1d,
@@ -289,6 +290,7 @@ __all__ = [
     'temporal_shift',
     'batch_norm',
     'layer_norm',
+    "rms_norm_nzs",
     'instance_norm',
     'class_center_sample',
     'sparse_attention',

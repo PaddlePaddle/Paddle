@@ -665,6 +665,16 @@ BwdFunction &get_bwd_launcher(phi::DataType weight_type,
   }
 }
 
+bool has_fast_ln_bwd_v2_kernel(phi::DataType weight_type,
+                               phi::DataType input_type,
+                               phi::DataType output_type,
+                               phi::DataType compute_type,
+                               uint32_t hidden_size) {
+  auto iter = FAST_LN_V2_BWD_FUNCS.find(
+      get_key(weight_type, input_type, output_type, compute_type, hidden_size));
+  return iter != FAST_LN_V2_BWD_FUNCS.end();
+}
+
 }  // namespace  fast_ln_v2
 }  // namespace funcs
 }  // namespace phi

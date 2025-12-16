@@ -46,6 +46,7 @@ FwdFunction &get_fwd_launcher(phi::DataType weight_type,
              compute_type);
   }
 }
+
 bool has_fast_ln_v2_fwd_kernel(phi::DataType weight_type,
                                phi::DataType input_type,
                                phi::DataType output_type,

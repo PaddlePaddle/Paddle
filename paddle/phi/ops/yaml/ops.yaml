@@ -6082,3 +6082,13 @@
      data_type: numbers
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
+
+- op: rms_norm_nzs
+  args: (Tensor x, Tensor scale, float epsilon)
+  output: Tensor(y), Tensor(invvar)
+  infer_meta:
+    func: RmsNormNzsInferMeta
+  kernel:
+    func: rms_norm_nzs
+    data_type: x
+  backward: rms_norm_nzs_grad
