@@ -148,18 +148,9 @@ jobs:
           '
         continue-on-error: true
 
-      - name: Copy test results
-        if: always()
-        run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          if [ -f /workspace/deepmd-kit/pytest_output.log ]; then
-            cp /workspace/deepmd-kit/pytest_output.log /paddle/pytest_output.log
-          fi
-          '
-
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: deepmd-test-results-pr-${{ env.PR_ID }}
           path: pytest_output.log
