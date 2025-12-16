@@ -53,12 +53,13 @@ void RmsNormQuantGradKernel(const Context& dev_ctx,
     return;
   }
   if (bias || residual) {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "bias or residual is not supported in XPU rms_norm_quant_grad yet"));
+    PADDLE_THROW(
+        common::errors::Unimplemented("bias or residual is not supported in "
+                                      "XPU fused_rms_norm_quant_grad yet"));
   }
   if (quant_scale > 0.0f) {
     PADDLE_THROW(common::errors::Unimplemented(
-        "quantization is not supported in XPU rms_norm_quant_grad yet"));
+        "quantization is not supported in XPU fused_rms_norm_quant_grad yet"));
   }
   using XPUType = typename XPUTypeTrait<T>::Type;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
@@ -143,7 +144,7 @@ void RmsNormQuantGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(rms_norm_quant_grad,
+PD_REGISTER_KERNEL(fused_rms_norm_quant_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::RmsNormQuantGradKernel,

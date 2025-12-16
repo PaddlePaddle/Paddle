@@ -119,8 +119,8 @@ class RmsNormFusePattern : public paddle::drr::DrrPatternBase {
                                : axis[0];
         });
 
-    const auto &rms_norm_quant =
-        res.Op(paddle::dialect::RmsNormQuantOp::name(),
+    const auto &fused_rms_norm_quant =
+        res.Op(paddle::dialect::FusedRmsNormQuantOp::name(),
                {{
                    {"epsilon", pat.Attr("bias")},
                    {"begin_norm_axis", begin_norm_axis},
@@ -130,7 +130,7 @@ class RmsNormFusePattern : public paddle::drr::DrrPatternBase {
                    {"quant_min_bound", res.Float32Attr(0.0)},
                }});
 
-    rms_norm_quant(
+    fused_rms_norm_quant(
         {
             &res.Tensor("x"),
             &res.InputNoneTensor(),
@@ -161,7 +161,7 @@ class AddRmsNormFusePattern : public paddle::drr::DrrPatternBase {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
     const auto &pat_rms_norm =
-        pat.Op(paddle::dialect::RmsNormQuantOp::name(),
+        pat.Op(paddle::dialect::FusedRmsNormQuantOp::name(),
                {
                    {"epsilon", pat.Attr("epsilon")},
                    {"begin_norm_axis", pat.Attr("begin_norm_axis")},
@@ -190,7 +190,7 @@ class AddRmsNormFusePattern : public paddle::drr::DrrPatternBase {
     }
     paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &res_rms_norm =
-        res.Op(paddle::dialect::RmsNormQuantOp::name(),
+        res.Op(paddle::dialect::FusedRmsNormQuantOp::name(),
                {
                    {"epsilon", pat.Attr("epsilon")},
                    {"begin_norm_axis", pat.Attr("begin_norm_axis")},
@@ -429,14 +429,14 @@ class AddNormFusePass : public pir::PatternRewritePass {
     // x-pow-mean-scale->rsqrt-
     //                          mul--
     // x-----------------------
-    //                                mul --->rms_norm_quant
+    //                                mul --->fused_rms_norm_quant
     // w-----------------------------
     bool is_half_weight = true;
     bool extra_add = true;
     ps.Add(paddle::drr::Create<RmsNormFusePattern>(context, !is_half_weight));
     ps.Add(paddle::drr::Create<RmsNormFusePattern>(context, is_half_weight));
     // x--------
-    //           add-rms_norm_quant ---> rms_norm_quant
+    //           add-fused_rms_norm_quant ---> fused_rms_norm_quant
     // residual-
     ps.Add(
         paddle::drr::Create<AddRmsNormFusePattern>(context, !extra_add, false));

@@ -1350,7 +1350,7 @@ template void RmsNormWrapper(const phi::GPUContext& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(rms_norm_quant,
+PD_REGISTER_KERNEL(fused_rms_norm_quant,
                    GPU,
                    ALL_LAYOUT,
                    phi::RmsNormQuantKernel,
