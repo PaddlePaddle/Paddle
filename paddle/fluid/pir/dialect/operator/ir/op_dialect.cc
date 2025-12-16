@@ -1269,7 +1269,7 @@ void PythonOperatorDialect::RegisterPythonOperator(
       AttributeManager::Instance().ToCharPointers(attr_names);
   uint32_t attr_num = attr_names.size();
 
-  std::cout << "attr_num: " << attr_num << std::endl;
+
 
   std::set<pir::InterfaceValue> interface_values;
   pir::InterfaceValue op_info_interface =
