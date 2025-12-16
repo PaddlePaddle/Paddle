@@ -46,12 +46,6 @@ DenseTensorIteratorConfig& DenseTensorIteratorConfig::add_borrowed_const_input(
   return *this;
 }
 
-bool DenseTensorIteratorConfig::is_tensor_const(size_t idx) {
-  return std::find(const_tensor_indices_.begin(),
-                   const_tensor_indices_.end(),
-                   idx) != const_tensor_indices_.end();
-}
-
 void DenseTensorIteratorBase::reorder_dimensions() {
   perm_.resize(ndim());
   if (ndim() == 1) {
@@ -298,7 +292,6 @@ void DenseTensorIteratorBase::populate_operands(
     if (idx < static_cast<size_t>(config.num_outputs_)) {
       operands_[idx].is_output = true;
     }
-    operands_[idx].is_const = config.is_tensor_const(idx);
   }
   num_outputs_ = config.num_outputs_;
 }
@@ -383,9 +376,6 @@ void DenseTensorIteratorBase::compute_shape(
     if (!op.tensor().initialized() || !valid_stride) continue;
     if (config.resize_outputs_ && op.is_output) continue;
     auto shape = common::vectorize<int64_t>(op.tensor().dims());
-
-    // auto shape2 = tensor_base_.sizes();
-
     if (shape.empty()) {
       has_scalars = true;
     } else {
@@ -453,9 +443,7 @@ void DenseTensorIteratorBase::build(DenseTensorIteratorConfig& config) {
   is_reduction_ = config.is_reduction_;
   is_alloc_out_ = config.is_alloc_out_;
   populate_operands(config);
-
   compute_shape(config);
-
   if (!fast_set_up(config)) {
     compute_strides(config);
     reorder_dimensions();
@@ -520,7 +508,7 @@ void DimIter::iter_to_next(const std::array<int64_t, 2>& step) {
 std::array<int64_t, 2> DimIter::iter_for_step() const {
   int64_t step0 = std::min(shape[0] - values[0], end - offset);
   int64_t step1 = 1;
-  if (step0 == shape[0] && !shape.empty()) {
+  if (step0 == shape[0] && !shape.empty() && shape.size() > 1) {
     step1 = std::min(shape[1] - values[1], (end - offset) / shape[0]);
   }
   return {step0, step1};

@@ -218,7 +218,6 @@ struct DenseTensorIteratorConfig final {
   std::optional<std::vector<int64_t>> static_shape_ = std::nullopt;
   bool is_reduction_ = false;
   bool resize_outputs_ = false;
-  bool is_tensor_const(size_t idx);
 };
 
 struct DimIter {

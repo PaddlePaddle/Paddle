@@ -40,6 +40,7 @@ void Reduce(const KPDevice& dev_ctx,
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   std::vector<int> reduce_dims =
       funcs::details::GetReduceDim(dims, x.dims().size(), reduce_all);
+
   int64_t reduce_num = 1;
   for (auto i : reduce_dims) {
     reduce_num *= (x.dims())[i];
@@ -143,4 +144,5 @@ void Reduce(const KPDevice& dev_ctx,
 #endif
 }
 }  // namespace phi
+
 #endif
