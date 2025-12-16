@@ -1073,12 +1073,16 @@ class OpcodeExecutorBase:
         module_name = self.vframe.code.co_names[instr.arg]
         fromlist = self.stack.pop().get_py_value()
         level = self.stack.pop().get_py_value()
+        globals_dict = self.vframe.globals.get_value()
+        for key, val in globals_dict.items():
+            if isinstance(val, VariableBase):
+                globals_dict[key] = val.get_py_value()
         try:
             value = __import__(
                 module_name,
                 fromlist=fromlist,
                 level=level,
-                globals=self.vframe.globals.get_value(),
+                globals=globals_dict,
             )
         except ImportError as e:
             raise FallbackError(

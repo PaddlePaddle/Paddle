@@ -17,6 +17,7 @@ import unittest
 from test_case_base import TestCaseBase
 
 from paddle.jit.sot.psdb import check_no_breakgraph
+from paddle.jit.sot.utils.exceptions import FallbackError
 
 
 @check_no_breakgraph
@@ -26,7 +27,6 @@ def import_math_model():
     return math.sqrt(4)
 
 
-@check_no_breakgraph
 def import_relative():
     from . import test_case_base
 
@@ -44,7 +44,13 @@ class TestImportModel(TestCaseBase):
     def test_import_model(self):
         self.assert_results(import_math_model)
         self.assert_results(import_paddle_model, 1)
-        # self.assert_results(import_relative)
+
+    def test_relative_import_error(self):
+        self.assert_exceptions(
+            FallbackError,
+            "relative import with no known parent package",
+            import_relative,
+        )
 
 
 if __name__ == "__main__":
