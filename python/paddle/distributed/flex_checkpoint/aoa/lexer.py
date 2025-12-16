@@ -125,7 +125,10 @@ class Lexer:
                 results_list = list(results)
 
             if self.traceback:
-                self.traceback.record_children(expr, results_list, macro_name)
+                if results_list != [expr]:
+                    self.traceback.record_children(
+                        expr, results_list, macro_name
+                    )
 
             new_expressions.extend(results_list)
         return new_expressions

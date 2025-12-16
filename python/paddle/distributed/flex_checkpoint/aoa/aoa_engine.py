@@ -283,7 +283,7 @@ class AOAEngine:
         self.aoa_config_reverse = self.aoa_config.get(
             "aoa_config_reverse", False
         )
-        enable_traceback = self.aoa_config.get("enable_traceback", False)
+        enable_traceback = self.aoa_config.get("enable_traceback", True)
         self.traceback = AOATraceback() if enable_traceback else None
         self.context = AOAShardInfoContext(
             source_state_shard_info,
