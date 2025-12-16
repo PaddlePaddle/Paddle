@@ -229,6 +229,11 @@ FLASHMASK_V2_HANDLE_ROUTINE(m_block_dim)
 FLASHMASK_V2_HANDLE_ROUTINE(n_block_dim)
 FLASHMASK_V2_HANDLE_ROUTINE(block_mask_ptr)
 
+FLASHMASK_V2_HANDLE_ROUTINE(rank)
+FLASHMASK_V2_HANDLE_ROUTINE(nranks)
+FLASHMASK_V2_HANDLE_ROUTINE(cp_size)
+FLASHMASK_V2_HANDLE_ROUTINE(write_ptr)
+
 #define FLASHMASK_V2_BWD_HANDLE_ROUTINE(type, member)                          \
   DECLARE_DYNAMIC_LOAD_FLASHMASK_V2_WRAP(flashmaskv2_bwd_params_get_##member); \
   DECLARE_DYNAMIC_LOAD_FLASHMASK_V2_WRAP(flashmaskv2_bwd_params_set_##member);

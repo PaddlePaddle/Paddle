@@ -21,6 +21,7 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -2189,6 +2190,29 @@ void FlashMaskV2BaseKernel(
         params_handle, startend_row_indices.dims()[1]);
     dynload::flashmaskv2_fwd_params_set_h_h_flashmask_ratio(
         params_handle, num_heads / startend_row_indices.dims()[1]);
+
+    // distributed settings
+    static constexpr bool use_distributed_overlap = true;
+    if constexpr (use_distributed_overlap) {
+      phi::distributed::NCCLCommContext *comm_ctx = nullptr;
+      int real_nranks = 0;
+      int real_rank = 0;
+
+      comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
+          dev_ctx.GetCommContext());
+      PADDLE_ENFORCE_NE(
+          comm_ctx,
+          nullptr,
+          common::errors::Unavailable("NCCLCommContext is nullptr"));
+      real_nranks = comm_ctx->GetSize();
+      real_rank = comm_ctx->GetRank();
+
+      dynload::flashmaskv2_fwd_params_set_rank(params_handle, real_rank);
+      dynload::flashmaskv2_fwd_params_set_nranks(params_handle, real_nranks);
+      // TODO(heqianyue): cp_size and write_ptr are not set by this for now
+      VLOG(1) << "FlashMask overlap debug (rank and nranks): " << real_rank
+              << ", " << real_nranks;
+    }
   } else {
     dynload::flashmaskv2_fwd_params_set_lt_start_ptr(params_handle, nullptr);
     dynload::flashmaskv2_fwd_params_set_lt_end_ptr(params_handle, nullptr);
