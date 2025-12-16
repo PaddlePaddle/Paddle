@@ -157,7 +157,7 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           pip install -r python/requirements.txt
           mkdir build && cd build
-          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Hopper -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON -DON_INFER=OFF -DWITH_NVSHMEM=ON
+          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Manual -DCUDA_ARCH_BIN="90" -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON -DON_INFER=OFF -DWITH_NVSHMEM=ON
           make -j20
           '
 
@@ -413,16 +413,13 @@ jobs:
           mkdir -p /PaddlePaddle
           cd /PaddlePaddle
           echo "Downloading Paddle.tar.gz from cfs"
-          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
-          echo "Extracting Paddle.tar.gz"
-          tar --use-compress-program="pzstd -1" -xf Paddle.tar.gz --strip-components=1
-          rm Paddle.tar.gz
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --no-check-certificate
           source /root/proxy
           source /paddle/.venv/bin/activate
           export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
           export UV_HTTP_TIMEOUT=300
-          uv pip install /PaddlePaddle/build/python/dist/*.whl --force-reinstall
+          uv pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall
           '
 
       - name: Single card test
@@ -520,16 +517,13 @@ jobs:
           mkdir -p /PaddlePaddle
           cd /PaddlePaddle
           echo "Downloading Paddle.tar.gz from cfs"
-          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
-          echo "Extracting Paddle.tar.gz"
-          tar --use-compress-program="pzstd -1" -xf Paddle.tar.gz --strip-components=1
-          rm Paddle.tar.gz
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --no-check-certificate
           source /root/proxy
           source /paddle/.venv/bin/activate
           export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
           export UV_HTTP_TIMEOUT=300
-          uv pip install /PaddlePaddle/build/python/dist/*.whl --force-reinstall
+          uv pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall
           '
 
       - name: Multi-card test
