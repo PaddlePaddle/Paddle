@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import platform
 import unittest
 
 from utils import dygraph_guard
@@ -21,16 +20,11 @@ import paddle
 
 
 class TestEigAPI0Size(unittest.TestCase):
-    @unittest.skipIf(
-        not platform.system().lower().startswith("linux")
-        or not paddle.device.is_compiled_with_xpu(),
-        reason="enable only in linux+xpu now",
-    )
     def test_errors(self):
         with dygraph_guard():
             for shape in [[0, 0], [0, 4, 4], [1, 0, 2, 3, 3]]:
                 x = paddle.randn(
-                    shape=shape, dtype='float32', requires_grad=True
+                    shape=shape, dtype="float32", requires_grad=True
                 )
                 w, v = paddle.linalg.eig(x)
                 self.assertEqual(w.shape, shape[:-1])

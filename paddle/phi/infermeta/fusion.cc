@@ -28,9 +28,9 @@ limitations under the License. */
 
 namespace phi {
 
-static phi::DDim BroadCastInferShape(const DDim x_dims,
-                                     const DDim y_dims,
-                                     int axis) {
+static DDim BroadCastInferShape(const DDim x_dims,
+                                const DDim y_dims,
+                                int axis) {
   std::vector<int> out_dims_array(x_dims.size(), -1);
   if (x_dims != y_dims) {
     int max_dim = std::max(x_dims.size(), y_dims.size());
@@ -303,9 +303,9 @@ void BlhaGetMaxLenInferMeta(const MetaTensor& seq_lens_encoder,
                             MetaTensor* max_enc_len_this_time,
                             MetaTensor* max_dec_len_this_time) {
   max_enc_len_this_time->set_dims({1});
-  max_enc_len_this_time->set_dtype(phi::DataType::INT32);
+  max_enc_len_this_time->set_dtype(DataType::INT32);
   max_dec_len_this_time->set_dims({1});
-  max_dec_len_this_time->set_dtype(phi::DataType::INT32);
+  max_dec_len_this_time->set_dtype(DataType::INT32);
 }
 
 void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
@@ -389,21 +389,21 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
     if (compute_dtype == "bf16") {
       PADDLE_ENFORCE_EQ(
           check_tensor.dtype(),
-          phi::DataType::BFLOAT16,
+          DataType::BFLOAT16,
           common::errors::InvalidArgument(
               "Input(%s) dtype must be the same with Attr(compute_dtype)",
               tensor_name));
     } else if (compute_dtype == "fp16") {
       PADDLE_ENFORCE_EQ(
           check_tensor.dtype(),
-          phi::DataType::FLOAT16,
+          DataType::FLOAT16,
           common::errors::InvalidArgument(
               "Input(%s) dtype must be the same with Attr(compute_dtype)",
               tensor_name));
     } else if (compute_dtype == "fp32") {
       PADDLE_ENFORCE_EQ(
           check_tensor.dtype(),
-          phi::DataType::FLOAT32,
+          DataType::FLOAT32,
           common::errors::InvalidArgument(
               "Input(%s) dtype must be the same with Attr(compute_dtype)",
               tensor_name));
@@ -412,21 +412,21 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
 
   // In the case of quantization enabled, the dtype for computation is
   // determined based on compute_dtype.
-  if (qkv.dtype() == phi::DataType::INT32) {
+  if (qkv.dtype() == DataType::INT32) {
     PADDLE_ENFORCE_NE(
         compute_dtype,
         "default",
         common::errors::InvalidArgument(
             "If Input(x) dtype is INT32, Attr(compute_dtype) must be set."));
     if (out_scale > 0) {
-      fmha_out->set_dtype(phi::DataType::INT8);
+      fmha_out->set_dtype(DataType::INT8);
     } else {
       if (compute_dtype == "bf16") {
-        fmha_out->set_dtype(phi::DataType::BFLOAT16);
+        fmha_out->set_dtype(DataType::BFLOAT16);
       } else if (compute_dtype == "fp16") {
-        fmha_out->set_dtype(phi::DataType::FLOAT16);
+        fmha_out->set_dtype(DataType::FLOAT16);
       } else if (compute_dtype == "fp32") {
-        fmha_out->set_dtype(phi::DataType::FLOAT32);
+        fmha_out->set_dtype(DataType::FLOAT32);
       } else {
         PADDLE_THROW(common::errors::InvalidArgument(
             "In the case of quantization enabled with Input(x) INT32, "
@@ -441,9 +441,9 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
     }
     if (out_scale > 0) {
       if (fabs(quant_max_bound - 127.0f) < 0.000001) {
-        fmha_out->set_dtype(phi::DataType::INT8);
+        fmha_out->set_dtype(DataType::INT8);
       } else if (fabs(quant_max_bound - 448.0f) < 0.000001) {
-        fmha_out->set_dtype(phi::DataType::FLOAT8_E4M3FN);
+        fmha_out->set_dtype(DataType::FLOAT8_E4M3FN);
       }
     } else {
       fmha_out->set_dtype(qkv.dtype());
@@ -860,14 +860,14 @@ void FusedActDequantInferMeta(const MetaTensor& x,
 
   PADDLE_ENFORCE_EQ(
       x.dtype(),
-      phi::DataType::FLOAT8_E4M3FN,
+      DataType::FLOAT8_E4M3FN,
       common::errors::InvalidArgument(
           "The data type of X should be FLOAT8_E4M3FN, but received %s.",
           x.dtype()));
 
   PADDLE_ENFORCE_EQ(
       x_scale.dtype(),
-      phi::DataType::FLOAT32,
+      DataType::FLOAT32,
       common::errors::InvalidArgument(
           "The data type of X_scale should be FLOAT32, but received %s.",
           x_scale.dtype()));
@@ -894,7 +894,7 @@ void FusedActDequantInferMeta(const MetaTensor& x,
           "The cols of X should be positive, but received %d.", cols));
 
   out->set_dims(x_dims);
-  out->set_dtype(phi::DataType::BFLOAT16);
+  out->set_dtype(DataType::BFLOAT16);
   out->set_layout(x.layout());
 }
 
@@ -1581,7 +1581,7 @@ static bool InputXCanBeAbsent(const std::vector<std::string>& functor_list) {
          binary_fun.count(functor_list[1]) != 0;
 }
 
-static bool IsBcastY(const phi::DDim& x_dim, const phi::DDim& y_dim) {
+static bool IsBcastY(const DDim& x_dim, const DDim& y_dim) {
   bool bcast_y = x_dim.size() >= y_dim.size();
   if (x_dim.size() == y_dim.size()) {
     for (int i = 0; i < x_dim.size(); ++i) {
@@ -2698,16 +2698,16 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
   std::vector<int64_t> starts_l = {0};
   std::vector<int64_t> ends_l = {2};
   std::vector<int64_t> left_slice_out_dims_vector(x_dims_size, -1);
-  phi::funcs::StridedSliceOutDims(starts_l,
-                                  ends_l,
-                                  strides_,
-                                  axes_,
-                                  infer_flags_,
-                                  x_dims,
-                                  decrease_axis_,
-                                  left_slice_out_dims_vector.data(),
-                                  1,
-                                  true);
+  funcs::StridedSliceOutDims(starts_l,
+                             ends_l,
+                             strides_,
+                             axes_,
+                             infer_flags_,
+                             x_dims,
+                             decrease_axis_,
+                             left_slice_out_dims_vector.data(),
+                             1,
+                             true);
   auto left_slice_out_dims = common::make_ddim(left_slice_out_dims_vector);
   auto grid_dims = grid.dims();
   auto left_add_out_dims =
@@ -2720,16 +2720,16 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
   std::vector<int64_t> starts_m = {2};
   std::vector<int64_t> ends_m = {4};
   std::vector<int64_t> mid_slice_out_dims_vector(x_dims_size, -1);
-  phi::funcs::StridedSliceOutDims(starts_m,
-                                  ends_m,
-                                  strides_,
-                                  axes_,
-                                  infer_flags_,
-                                  x_dims,
-                                  decrease_axis_,
-                                  mid_slice_out_dims_vector.data(),
-                                  1,
-                                  true);
+  funcs::StridedSliceOutDims(starts_m,
+                             ends_m,
+                             strides_,
+                             axes_,
+                             infer_flags_,
+                             x_dims,
+                             decrease_axis_,
+                             mid_slice_out_dims_vector.data(),
+                             1,
+                             true);
   auto mid_slice_out_dims = common::make_ddim(mid_slice_out_dims_vector);
   auto anchor_grid_dims = anchor_grid.dims();
   auto mid_mul_out_dims =
@@ -2738,25 +2738,24 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
   std::vector<int64_t> starts_r = {4};
   std::vector<int64_t> ends_r = {2147483647};
   std::vector<int64_t> right_slice_out_dims_vector(x_dims_size, -1);
-  phi::funcs::StridedSliceOutDims(starts_r,
-                                  ends_r,
-                                  strides_,
-                                  axes_,
-                                  infer_flags_,
-                                  x_dims,
-                                  decrease_axis_,
-                                  right_slice_out_dims_vector.data(),
-                                  1,
-                                  true);
+  funcs::StridedSliceOutDims(starts_r,
+                             ends_r,
+                             strides_,
+                             axes_,
+                             infer_flags_,
+                             x_dims,
+                             decrease_axis_,
+                             right_slice_out_dims_vector.data(),
+                             1,
+                             true);
   auto right_slice_out_dims = common::make_ddim(right_slice_out_dims_vector);
   // compute concat out_dims
-  std::vector<phi::DDim> in_dims;
+  std::vector<DDim> in_dims;
   in_dims.reserve(3);
   in_dims.emplace_back(left_mul_out_dims);
   in_dims.emplace_back(mid_mul_out_dims);
   in_dims.emplace_back(right_slice_out_dims);
-  phi::DDim out_dim =
-      phi::funcs::ComputeAndCheckShape(false, in_dims, x_dims_size - 1);
+  DDim out_dim = funcs::ComputeAndCheckShape(false, in_dims, x_dims_size - 1);
 
   out->set_dims(out_dim);
   out->set_dtype(x.dtype());
@@ -2998,7 +2997,7 @@ void BNActXPUInferMeta(const MetaTensor& x,
           x_dims.size()));
 
   const int64_t C = ((config.is_run_onednn_kernel == true) ||
-                             (data_layout_str == DataLayout::kNCHW)
+                             (data_layout_str == DataLayout::NCHW)
                          ? x_dims[1]
                          : x_dims[x_dims.size() - 1]);
   auto scale_dim = scale.dims();
@@ -3508,12 +3507,12 @@ void FusionTransposeFlattenConcatInferMeta(
                         x_rank,
                         trans_axis_size));
 
-  auto dims0 = phi::funcs::GetFlattenShape(
-      flatten_axis, phi::funcs::GetPermuteShape(trans_axis, ins[0]));
+  auto dims0 = funcs::GetFlattenShape(
+      flatten_axis, funcs::GetPermuteShape(trans_axis, ins[0]));
   std::vector<int> out_dims(dims0);
   for (size_t i = 1; i < n; i++) {
-    auto dimsi = phi::funcs::GetFlattenShape(
-        flatten_axis, phi::funcs::GetPermuteShape(trans_axis, ins[i]));
+    auto dimsi = funcs::GetFlattenShape(
+        flatten_axis, funcs::GetPermuteShape(trans_axis, ins[i]));
     for (int j = 0; j < static_cast<int>(dims0.size()); j++) {
       if (j == concat_axis) {
         out_dims[concat_axis] += dimsi[j];
@@ -3756,9 +3755,9 @@ void FusedConv2dAddActInferMeta(const MetaTensor& input,
   output->set_dims(common::make_ddim(out_shape));
   output->set_dtype(input.dtype());
   if (data_format == "NHWC") {
-    output->set_layout(phi::DataLayout::NHWC);
+    output->set_layout(DataLayout::NHWC);
   } else if (data_format == "NDHWC") {
-    output->set_layout(phi::DataLayout::NDHWC);
+    output->set_layout(DataLayout::NDHWC);
   }
 
   output->share_lod(input);
@@ -3778,7 +3777,7 @@ void FusedConv2dAddActInferMeta(const MetaTensor& input,
             common::make_ddim(split_channels)));
 
     int64_t split_channels_sum = 0;
-    std::vector<phi::DDim> output_shapes(split_channels.size());
+    std::vector<DDim> output_shapes(split_channels.size());
     for (size_t i = 0; i < split_channels.size(); ++i) {
       split_channels_sum += split_channels[i];
       if (channel_last) {
@@ -3807,9 +3806,9 @@ void FusedConv2dAddActInferMeta(const MetaTensor& input,
         outputs[i]->set_dims(output_shapes[i]);
         outputs[i]->set_dtype(input.dtype());
         if (data_format == "NHWC") {
-          outputs[i]->set_layout(phi::DataLayout::NHWC);
+          outputs[i]->set_layout(DataLayout::NHWC);
         } else if (data_format == "NDHWC") {
-          outputs[i]->set_layout(phi::DataLayout::NDHWC);
+          outputs[i]->set_layout(DataLayout::NDHWC);
         }
 
         outputs[i]->share_lod(input);
@@ -4391,7 +4390,7 @@ void FCInferMeta(const MetaTensor& input,
           activation_type.c_str()));
 
   std::vector<int64_t> output_dims;
-  phi::funcs::FCOutputSize(
+  funcs::FCOutputSize(
       in_dims, w_dims, output_dims, in_num_col_dims, padding_weights);
 
   out->set_dims(common::make_ddim(output_dims));
@@ -4468,7 +4467,7 @@ void FCOneDNNInferMeta(const MetaTensor& input,
           activation_type.c_str()));
 
   std::vector<int64_t> output_dims;
-  phi::funcs::FCOutputSize(
+  funcs::FCOutputSize(
       in_dims, w_dims, output_dims, in_num_col_dims, padding_weights);
 
   auto out_dims = common::make_ddim(output_dims);
@@ -4702,7 +4701,7 @@ void SinePosXPUInferMeta(const MetaTensor& x,
           "x_dims_size should be 3, but received x_dims_size is %d",
           y_dims_size));
 
-  phi::DDim out_dim = phi::make_ddim({x_dims[0], x_dims[1], y_dims[0]});
+  DDim out_dim = phi::make_ddim({x_dims[0], x_dims[1], y_dims[0]});
 
   out->set_dims(out_dim);
   out->set_dtype(x.dtype());
@@ -4716,7 +4715,7 @@ void Pad2dXPUInferMeta(const MetaTensor& x,
                        MetaTensor* out) {
   auto x_dims = x.dims();
 
-  phi::DDim out_dim;
+  DDim out_dim;
   if (data_format == "NCHW") {
     out_dim = phi::make_ddim(
         {x_dims[0],
@@ -4734,9 +4733,9 @@ void Pad2dXPUInferMeta(const MetaTensor& x,
   }
 
   if (data_format == "NHWC") {
-    out->set_layout(phi::DataLayout::NHWC);
+    out->set_layout(DataLayout::NHWC);
   } else if (data_format == "NCHW") {
-    out->set_layout(phi::DataLayout::NCHW);
+    out->set_layout(DataLayout::NCHW);
   }
 
   out->set_dims(out_dim);
@@ -4846,9 +4845,9 @@ void MaskAdaptiveXPUInferMeta(const MetaTensor& mask,
   length->set_dims({mask_dims[0]});
   seq_lod->set_dims({mask_dims[0] + 1});
   pad_seq_len->set_dims({1});
-  length->set_dtype(phi::DataType::INT64);
-  seq_lod->set_dtype(phi::DataType::INT32);
-  pad_seq_len->set_dtype(phi::DataType::INT32);
+  length->set_dtype(DataType::INT64);
+  seq_lod->set_dtype(DataType::INT32);
+  pad_seq_len->set_dtype(DataType::INT32);
 }
 
 void SequenceUnpadXPUInferMeta(const MetaTensor& x,
@@ -4992,7 +4991,7 @@ void MultiGruInferMeta(
   }
 
   int64_t last_frame_size = weight_h.back()->dims()[0];
-  phi::DDim out_dims({x_mat_dims[0], 2 * last_frame_size});
+  DDim out_dims({x_mat_dims[0], 2 * last_frame_size});
   hidden->set_dims(out_dims);
   hidden->share_lod(x);
 }
@@ -5236,7 +5235,7 @@ void FusedSeqpoolCvmInferMeta(const std::vector<const MetaTensor*>& x,
                                                     "Input(CVM) should be 2."));
 
   const size_t num_inputs = x.size();
-  std::vector<phi::DDim> outs_dims;
+  std::vector<DDim> outs_dims;
   outs_dims.resize(num_inputs);
 
   PADDLE_ENFORCE_GT(num_inputs,
@@ -5298,8 +5297,8 @@ void FusedSeqpoolCvmGradInferMeta(
     std::vector<MetaTensor*> x_grad,
     MetaTensor* cvm_grad,
     MetaConfig config) {
-  std::vector<phi::DDim> og_dims;
-  std::vector<phi::DDim> x_dims;
+  std::vector<DDim> og_dims;
+  std::vector<DDim> x_dims;
   og_dims.resize(out_grad.size());
   x_dims.resize(x.size());
   for (size_t i = 0; i < out_grad.size(); ++i) {
@@ -5501,7 +5500,7 @@ void FusedElemwiseActivationInferMeta(
 
   // Whether the shape of Y is a continuous subsequence of X,
   // For more information please refer to the op's introduction.
-  bool bcast_y = phi::funcs::IsBcastY(x_dim, y_dim);
+  bool bcast_y = funcs::IsBcastY(x_dim, y_dim);
 
   const auto& out_dim = bcast_y ? x_dim : y_dim;
   const auto& out_lod = bcast_y ? x : y;
@@ -5515,7 +5514,7 @@ void FusedElemwiseActivationInferMeta(
             "Output(IntermediateOut) of FusedElemwiseActivationOp "
             "should not be null."));
 
-    if (phi::funcs::IsUnaryCompound(functor_list)) {
+    if (funcs::IsUnaryCompound(functor_list)) {
       // for Unary(Binary(X, Y)), the shape and lod of out and
       // intermediate_out are the same.
       intermediate_out->set_dims(out_dim);
@@ -5560,7 +5559,7 @@ void FusedElemwiseActivationGradInferMeta(
                       common::errors::InvalidArgument(
                           "Input(IntermediateOut) should not be null."));
   } else {
-    if (!phi::funcs::InputXCanBeAbsent(functor_list)) {
+    if (!funcs::InputXCanBeAbsent(functor_list)) {
       PADDLE_ENFORCE_EQ(
           x.initialized(),
           true,
@@ -5577,7 +5576,7 @@ void FusedElemwiseActivationGradInferMeta(
       // Currently, only when Binary is elementwise_add or elementwise_sub,
       // the "X" could be absent.
       PADDLE_ENFORCE_EQ(
-          phi::funcs::InputXCanBeAbsent(functor_list),
+          funcs::InputXCanBeAbsent(functor_list),
           true,
           common::errors::InvalidArgument(
               "Only when BinaryFunctor is elementwise_add, the 'X' "
@@ -5675,9 +5674,9 @@ void FP8OutHalfGemmFusedInferMeta(
   out->set_dims(ddim_out);
   out->set_layout(x.layout());
   if (output_dtype == "bfloat16") {
-    out->set_dtype(phi::DataType::BFLOAT16);
+    out->set_dtype(DataType::BFLOAT16);
   } else if (output_dtype == "float16") {
-    out->set_dtype(phi::DataType::FLOAT16);
+    out->set_dtype(DataType::FLOAT16);
   } else {
     PADDLE_THROW(common::errors::Fatal(
         "fp8_fp8_half_gemm_fused only support bfloat16 and float16 output"));
@@ -5795,7 +5794,7 @@ void FusedEmbeddingFcLstmInferMeta(const MetaTensor& ids,
           b_dims[1],
           use_peepholes));
 
-  phi::DDim out_dims({x_dims[0], frame_size});
+  DDim out_dims({x_dims[0], frame_size});
   hidden->set_dims(out_dims);
   cell->set_dims(out_dims);
   hidden->share_lod(ids);
@@ -5859,7 +5858,7 @@ void FusionSeqpoolConcatInferMeta(const std::vector<const MetaTensor*>& x,
 }
 
 // Shape of bitmask
-static phi::DDim GetBitmaskDims(std::vector<int64_t> out_shape) {
+static DDim GetBitmaskDims(std::vector<int64_t> out_shape) {
   int64_t c = out_shape.back();
   int64_t nhw = std::accumulate(out_shape.begin(),
                                 out_shape.end(),
@@ -5880,24 +5879,24 @@ void FusedSwigluWeightedBwdInferMeta(const MetaTensor& o1,
                                      MetaTensor* o2_s) {
   PADDLE_ENFORCE_EQ(
       o1.dtype(),
-      phi::DataType::BFLOAT16,
+      DataType::BFLOAT16,
       common::errors::InvalidArgument("The data type of o1 must be bfloat16. "
                                       "But received o1 dtype: %s",
-                                      phi::DataTypeToString(o1.dtype())));
+                                      DataTypeToString(o1.dtype())));
 
   PADDLE_ENFORCE_EQ(do2_s.dtype(),
-                    phi::DataType::BFLOAT16,
+                    DataType::BFLOAT16,
                     common::errors::InvalidArgument(
                         "The data type of do2_s must be bfloat16. "
                         "But received do2_s dtype: %s",
-                        phi::DataTypeToString(do2_s.dtype())));
+                        DataTypeToString(do2_s.dtype())));
 
   PADDLE_ENFORCE_EQ(unzipped_probs.dtype(),
-                    phi::DataType::FLOAT32,
+                    DataType::FLOAT32,
                     common::errors::InvalidArgument(
                         "The data type of unzipped_probs must be float32. "
                         "But received unzipped_probs dtype: %s",
-                        phi::DataTypeToString(unzipped_probs.dtype())));
+                        DataTypeToString(unzipped_probs.dtype())));
 
   auto o1_dims = o1.dims();
   auto do2_s_dims = do2_s.dims();
@@ -5966,7 +5965,7 @@ void FusedSwigluWeightedBwdInferMeta(const MetaTensor& o1,
   do1->set_layout(o1.layout());
 
   probs_grad->set_dims(probs_dims);
-  probs_grad->set_dtype(phi::DataType::FLOAT32);
+  probs_grad->set_dtype(DataType::FLOAT32);
   probs_grad->set_layout(unzipped_probs.layout());
 
   o2_s->set_dims(do2_s_dims);
@@ -6067,7 +6066,7 @@ void ResnetUnitInferMeta(const MetaTensor& x,
   if (1 == bn_param_shape.size()) {
     bn_param_shape = {1, 1, 1, bn_param_shape[0]};
   }
-  phi::DDim bn_param_dims = common::make_ddim(bn_param_shape);
+  DDim bn_param_dims = common::make_ddim(bn_param_shape);
   PADDLE_ENFORCE_EQ(
       x_dims.size(),
       4,
