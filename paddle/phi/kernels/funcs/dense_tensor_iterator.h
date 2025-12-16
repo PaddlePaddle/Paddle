@@ -21,9 +21,10 @@
 #include "paddle/utils/small_vector.h"
 
 namespace phi {
+
 struct DenseTensorIteratorConfig;
 struct DenseTensorIterator;
-struct SplitUntil32Bit;
+struct Tensor32BitSplitter;
 
 enum struct FastSetupType : uint8_t { NONE, CONTIGUOUS };
 
@@ -115,7 +116,7 @@ struct DenseTensorIteratorBase {
   std::vector<int64_t> compatible_stride(int64_t element_size) const;
   std::vector<int64_t> invert_perm(std::vector<int64_t> input) const;
   bool can_use_32bit_indexing() const;
-  SplitUntil32Bit with_32bit_indexing() const;
+  Tensor32BitSplitter with_32bit_indexing() const;
   virtual void set_output_raw_strided(int64_t output_idx,
                                       std::vector<int64_t> sizes,
                                       std::vector<int64_t> strides);
@@ -126,9 +127,9 @@ struct DenseTensorIteratorBase {
 };
 
 /**
- * DenseTensorIterator: Used for preprocessing metadata of tensors participating
- * in computation. Can be directly used as OffsetCalculator input parameter to
- * assist with index calculations.
+ * DenseTensorIterator: Used for preprocessing metadata of tensors
+ * participating in computation. Can be directly used as OffsetCalculator
+ * input parameter to assist with index calculations.
  */
 struct DenseTensorIterator final : public DenseTensorIteratorBase {
   DenseTensorIterator() : DenseTensorIteratorBase() {}
@@ -234,7 +235,7 @@ struct DimIter {
   int64_t offset;
 };
 
-struct SplitUntil32Bit {
+struct Tensor32BitSplitter {
   struct iterator {
     iterator() = default;
     explicit iterator(const DenseTensorIteratorBase& iter);
@@ -244,22 +245,25 @@ struct SplitUntil32Bit {
 
     DenseTensorIterator& operator*() const;
     iterator& operator++();
+
     bool operator==(const iterator& other) const {
-      return this == &other || (vec.empty() && other.vec.empty());
+      return this == &other ||
+             (iterator_stack_.empty() && other.iterator_stack_.empty());
     }
 
     bool operator!=(const iterator& other) const { return !(*this == other); }
 
-    std::vector<std::unique_ptr<DenseTensorIterator>> vec;
+    std::vector<std::unique_ptr<DenseTensorIterator>> iterator_stack_;
   };
 
-  explicit SplitUntil32Bit(const DenseTensorIteratorBase& iter) : iter(iter) {}
+  explicit Tensor32BitSplitter(const DenseTensorIteratorBase& iter)
+      : source_iterator_(iter) {}
 
   iterator begin() const;
   iterator end() const;
 
  private:
-  const DenseTensorIteratorBase& iter;
+  const DenseTensorIteratorBase& source_iterator_;
 };
 
 }  // namespace phi

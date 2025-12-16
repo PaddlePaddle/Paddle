@@ -16,10 +16,10 @@
 #include <unordered_set>
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
+#include "paddle/pir/include/core/dialect.h"
 #include "paddle/pir/include/core/ir_printer.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 PD_DECLARE_bool(enable_cinn_compile_cache);
-
 namespace cinn::hlir::framework::pir {
 
 constexpr static const char* kOpCallStack = "op_callstack";
@@ -29,7 +29,22 @@ constexpr static const char* kStopGradient = "stop_gradient";
 static const std::unordered_set<std::string> kExcludedAttrs = {
     kOpCallStack, kSymShapeStr, kStructName, kStopGradient};
 
-std::size_t AttributeInfo::hash() const { return attr_.hash(); }
+std::size_t AttributeInfo::hash() const {
+  // Use stable attribute information to calculate hash instead of pointer
+  // addresses
+  std::size_t seed = 0;
+
+  // Use attribute name and string representation as stable hash basis
+  hash_combine(seed, name_);
+
+  // Use attribute string representation
+  std::ostringstream oss;
+  ::pir::IrPrinter(oss).PrintAttribute(attr_);
+  std::string attr_str = oss.str();
+  hash_combine(seed, attr_str);
+
+  return seed;
+}
 
 std::ostream& operator<<(std::ostream& os, const AttributeInfo& attr_info) {
   os << "AttributeInfo - " << attr_info.name_ << ", " << attr_info.hash();
@@ -41,7 +56,18 @@ std::ostream& operator<<(std::ostream& os, const AttributeInfo& attr_info) {
   return os;
 }
 
-std::size_t ValueInfo::hash() const { return type_.hash(); }
+std::size_t ValueInfo::hash() const {
+  // Use stable type information to calculate hash
+  std::size_t seed = 0;
+
+  // Use type string representation as stable hash basis
+  std::ostringstream oss;
+  ::pir::IrPrinter(oss).PrintType(type_);
+  std::string type_str = oss.str();
+  hash_combine(seed, type_str);
+
+  return seed;
+}
 
 std::ostream& operator<<(std::ostream& os, const ValueInfo& value_info) {
   os << "ValueInfo - " << value_info.hash();
@@ -61,11 +87,16 @@ OperationInfo::OperationInfo(const ::pir::Operation& op) {
     input_infos_.emplace_back(value);
   }
   output_infos_.reserve(op.num_results());
+  output_infos_symbol_.reserve(op.num_results());
   for (const auto value : op.results()) {
     if (!value || !value.type()) continue;
     output_infos_.emplace_back(value);
+    auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(
+        const_cast<::pir::Operation&>(op).GetParentProgram());
+    output_infos_symbol_.push_back(
+        shape_analysis.GetShapeOrDataForValue(value));
   }
-  // Keep attribute always in order.
+  // Keep attributes always in order.
   const auto& attributes = op.attributes();
   std::map<std::string, ::pir::Attribute, std::less<>> order_attributes(
       attributes.begin(), attributes.end());
@@ -79,8 +110,12 @@ OperationInfo::OperationInfo(const ::pir::Operation& op) {
 std::size_t OperationInfo::hash() const {
   std::size_t seed = 1789;
   hash_combine(seed, name_);
-  for (const auto& info : input_infos_) hash_combine(seed, info);
+  for (const auto& info : input_infos_) {
+    hash_combine(seed, info);
+  }
   for (const auto& info : output_infos_) hash_combine(seed, info);
+  for (const auto& shape_or_data : output_infos_symbol_)
+    hash_combine(seed, shape_or_data);
   for (const auto& info : attr_infos_) hash_combine(seed, info);
   return seed;
 }
@@ -116,6 +151,11 @@ std::size_t FusionOpInfo::hash() const {
     hash_combine(seed, value_index);
     hash_combine(seed, op_info_hash);
   }
+  // TODO(xuyuhan) Maybe inner deps are not enough?
+  // for (const auto& [value_index, op_info_hash] : outer_deps_) {
+  //   hash_combine(seed, value_index);
+  //   hash_combine(seed, op_info_hash);
+  // }
   return seed;
 }
 
@@ -146,7 +186,6 @@ FusionInfo::FusionInfo(const OpLoweringGroup& group) {
 void FusionInfo::ParseOpInfos(const OpLoweringGroup& group) {
   std::unordered_map<const ::pir::Operation*, size_t> op_mapper;
   unique_fn_name_ = group.FuncName();
-
   const auto GetInnerUpstreamOps =
       [&](const ::pir::Operation* op) -> decltype(auto) {
     std::map<size_t, OpDepInfo> upstream_dep_infos;
@@ -215,9 +254,7 @@ std::size_t FusionInfo::hash() const {
   std::size_t seed = 2153;
   for (const auto& info : op_infos_) hash_combine(seed, info);
   for (const auto& dim_expr : input_dim_exprs_) hash_combine(seed, dim_expr);
-  hash_combine(seed, *program_info_);
   if (!FLAGS_enable_cinn_compile_cache) hash_combine(seed, unique_fn_name_);
-
   return seed;
 }
 

@@ -700,7 +700,10 @@ void FlashAttnV3BaseKernel(
         0,
         common::errors::InvalidArgument(
             "Only rotary dimensions divisible by 16 are currently supported"));
-    const int seqlen_ro = rotary_cos.dims()[0];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t seqlen_ro = rotary_cos.dims()[0];
+
     if (paged_KV) {
       PADDLE_ENFORCE_GE(
           seqlen_ro,
@@ -1869,7 +1872,10 @@ void FlashMaskV2BaseKernel(
         0,
         common::errors::InvalidArgument(
             "Only rotary dimensions divisible by 16 are currently supported"));
-    const int seqlen_ro = rotary_cos.dims()[0];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t seqlen_ro = rotary_cos.dims()[0];
+
     if (paged_KV) {
       PADDLE_ENFORCE_GE(
           seqlen_ro,

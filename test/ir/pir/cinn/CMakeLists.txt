@@ -27,6 +27,9 @@ if(WITH_GPU)
                                                           "RUN_TYPE=CINN")
   endforeach()
 
+  set_tests_properties(test_enable_cinn_kernel_cache_2
+                       PROPERTIES DEPENDS test_enable_cinn_kernel_cache)
+
   add_test(
     NAME test_cinn_multi_device
     COMMAND

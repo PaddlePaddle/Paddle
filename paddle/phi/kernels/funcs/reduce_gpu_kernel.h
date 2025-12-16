@@ -757,25 +757,25 @@ struct ReduceExecutor {
   DEVICE std::array<MPType, kOutputVecSize> ThreadReduce(
       const ScalarT* data) const {
     if (config.vectorize_input) {
-      return {input_vectorized_thread_reduce_impl(data)};
+      return {InVectorizedThreadReduceImpl(data)};
     } else {
       IndexType element_stride = input_calc.strides_[0][0] / sizeof(ScalarT);
       bool is_contiguous = (input_calc.dims == 1 && element_stride == 1);
       if (is_contiguous) {
-        return thread_reduce_impl<kOutputVecSize>(
+        return ThreadReduceImpl<kOutputVecSize>(
             data, [](IndexType idx) { return idx; });
       } else if (input_calc.dims == 1) {
-        return thread_reduce_impl<kOutputVecSize>(
+        return ThreadReduceImpl<kOutputVecSize>(
             data, [&](IndexType idx) { return idx * element_stride; });
       } else {
-        return thread_reduce_impl<kOutputVecSize>(data, [&](IndexType idx) {
+        return ThreadReduceImpl<kOutputVecSize>(data, [&](IndexType idx) {
           return input_calc.get(idx)[0] / sizeof(ScalarT);
         });
       }
     }
   }
 
-  DEVICE MPType input_vectorized_thread_reduce_impl(const ScalarT* data) const {
+  DEVICE MPType InVectorizedThreadReduceImpl(const ScalarT* data) const {
     IndexType end = config.num_inputs;
     MPType value = ident;
     constexpr int align_bytes =
@@ -839,7 +839,7 @@ struct ReduceExecutor {
   }
 
   template <int kOutputVecSize, typename offset_calc_t>
-  DEVICE std::array<MPType, kOutputVecSize> thread_reduce_impl(
+  DEVICE std::array<MPType, kOutputVecSize> ThreadReduceImpl(
       const ScalarT* data_, offset_calc_t calc) const {
     IndexType idx = config.GetInIdx();
     const IndexType end = config.num_inputs;
@@ -1167,7 +1167,7 @@ class AccumulationBuffer {
       phi::Allocator* allocator =
           const_cast<phi::Allocator*>(&(dev_ctx.GetAllocator()));  // NOLINT
       buffer_ = allocator->Allocate(size);
-      acc_ptr_ = reinterpret_cast<char*>(buffer_.get());
+      acc_ptr_ = reinterpret_cast<char*>(buffer_->ptr());
       numerator_ = acc_t_size;
       denominator_ = out_t_size;
       ReduceFraction(&numerator_, &denominator_);
@@ -1395,6 +1395,7 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
              static_cast<MPType>(iter.numel());
   }
 
+  // Initialize ident value.
   Tx ident = []() {
     if constexpr (std::is_same_v<ReduceOp<MPType>, kps::MaxFunctor<MPType>>) {
       return std::numeric_limits<Tx>::lowest();

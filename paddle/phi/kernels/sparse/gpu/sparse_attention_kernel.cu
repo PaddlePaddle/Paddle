@@ -490,7 +490,7 @@ void DotSdd(const phi::GPUContext& dev_ctx,
                                     gpu_type,
                                     CUSPARSE_ORDER_ROW);
   // Create sparse matrix C in CSR format
-  int c_nnz = c_columns->numel();
+  int64_t c_nnz = c_columns->numel();
   phi::dynload::cusparseCreateCsr(&mat_c,
                                   num_rows,
                                   num_rows,
@@ -574,7 +574,7 @@ void DotDsd(const phi::GPUContext& dev_ctx,
   phi::dynload::cusparseCreate(&handle);
 
   // Create sparse matrix A in CSR format
-  int a_nnz = a_columns->numel();
+  int64_t a_nnz = a_columns->numel();
   phi::dynload::cusparseCreateCsr(&mat_a,
                                   num_rows,
                                   num_rows,
@@ -856,7 +856,7 @@ void SparseAttentionGradCUDAKernel(const Context& dev_ctx,
                        false);
 
     // dSoftmax = dOut * transpose(Value)
-    int nnz_num = columns_lists[i].numel();
+    int64_t nnz_num = columns_lists[i].numel();
     phi::DenseTensor dsoftmax;
     dsoftmax.Resize({nnz_num});
     dev_ctx.template Alloc<T>(&dsoftmax);
