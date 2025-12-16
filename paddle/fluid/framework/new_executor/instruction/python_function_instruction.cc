@@ -28,7 +28,7 @@ COMMON_DECLARE_bool(check_cuda_error);
 
 namespace paddle::framework {
 
-void PythonFunctionInstruction::BuildCustomContext(
+void PythonFunctionInstruction::BuildPythonFunctionContext(
     const paddle::dialect::OpYamlInfoParser& op_yaml_info) {
   PADDLE_ENFORCE_NOT_NULL(
       custom_op_meta_,
@@ -92,12 +92,12 @@ void PythonFunctionInstruction::BuildCustomContext(
         // // tensor here.
         // std::vector<paddle::Tensor> custom_vec_in;
         // custom_vec_in.emplace_back(paddle::Tensor());
-        // python_operator_function_ctx_.EmplaceBackInputs(std::move(custom_vec_in));
+        // python_function_ctx_.EmplaceBackInputs(std::move(custom_vec_in));
       } else {
         input_name2id_map_[t] = input_index;
         input_index++;
         input_ptrs_.emplace_back(nullptr);
-        python_operator_function_ctx_.EmplaceBackInput(paddle::Tensor());
+        python_function_ctx_.EmplaceBackInput(paddle::Tensor());
       }
       continue;
     }
@@ -121,7 +121,7 @@ void PythonFunctionInstruction::BuildCustomContext(
       input_ptrs_.push_back(dense_tensor_in);
       paddle::Tensor custom_in;
       custom_in.set_impl(tensor_in);
-      python_operator_function_ctx_.EmplaceBackInput(std::move(custom_in));
+      python_function_ctx_.EmplaceBackInput(std::move(custom_in));
     } else if (var->IsType<VariableRefArray>()) {
       // std::vector<phi::DenseTensor*> vec_input_ptrs;
       // std::vector<paddle::Tensor> vec_custom_in;
@@ -147,7 +147,7 @@ void PythonFunctionInstruction::BuildCustomContext(
       // vec_input_name2id_map_[t] = vec_input_index;
       // vec_input_index++;
       // vec_input_ptrs_.push_back(vec_input_ptrs);
-      // python_operator_function_ctx_.EmplaceBackInputs(vec_custom_in);
+      // python_function_ctx_.EmplaceBackInputs(vec_custom_in);
     } else {
       PADDLE_THROW(common::errors::Unimplemented("Not support var type [%d] ",
                                                  var->Type()));
@@ -168,12 +168,12 @@ void PythonFunctionInstruction::BuildCustomContext(
     if (attr_type_name == "pir::Int32Attribute") {
       custom_attrs_.push_back(
           attr_map[t].dyn_cast<pir::Int32Attribute>().data());
-      python_operator_function_ctx_.EmplaceBackAttr(
+      python_function_ctx_.EmplaceBackAttr(
           attr_map[t].dyn_cast<pir::Int32Attribute>().data());
     } else if (attr_type_name == "pir::Int64Attribute") {
       custom_attrs_.push_back(
           attr_map[t].dyn_cast<pir::Int64Attribute>().data());
-      python_operator_function_ctx_.EmplaceBackAttr(
+      python_function_ctx_.EmplaceBackAttr(
           attr_map[t].dyn_cast<pir::Int64Attribute>().data());
     } else {
       PADDLE_THROW(common::errors::Unimplemented("attr type not support [%s] ",
@@ -204,7 +204,7 @@ void PythonFunctionInstruction::BuildCustomContext(
               out_name));
       VLOG(3) << "Custom Operator: BuildContext - inplace optional outputs : "
               << out_name << " is None.";
-      python_operator_function_ctx_.EmplaceBackOutput(paddle::Tensor());
+      python_function_ctx_.EmplaceBackOutput(paddle::Tensor());
 
       VLOG(8) << "ctx->EmplaceBackOutput : an optional output";
       continue;
@@ -222,7 +222,7 @@ void PythonFunctionInstruction::BuildCustomContext(
       // here only can copy the output tensor into context
       custom_out.set_impl(tensor_out);
 
-      python_operator_function_ctx_.EmplaceBackOutput(std::move(custom_out));
+      python_function_ctx_.EmplaceBackOutput(std::move(custom_out));
       VLOG(8) << "ctx->EmplaceBackOutput DenseTensor: "
               << value_exec_info_.GetVarName(out_ptr);
     } else if (out_ptr.type().isa<pir::VectorType>()) {
@@ -258,7 +258,7 @@ void PythonFunctionInstruction::BuildCustomContext(
       // }
       // VLOG(8) << "ctx->EmplaceBackOutput VariableRefArray: "
       //         << value_exec_info_.GetVarName(out_ptr);
-      // python_operator_function_ctx_.EmplaceBackOutputs(custom_vec_out);
+      // python_function_ctx_.EmplaceBackOutputs(custom_vec_out);
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
           "only support DenseTensor and vector "));
@@ -269,7 +269,7 @@ void PythonFunctionInstruction::BuildCustomContext(
   auto& op_outputs = OpMetaInfoHelper::GetOutputs(*custom_op_meta_);
 
   // handle inplace map
-  python_operator_function_ctx_.UpdatePlainOutputs(
+  python_function_ctx_.UpdatePlainOutputs(
       op_inputs, op_outputs, op_inplace_map);
 }
 
@@ -327,7 +327,7 @@ PythonFunctionInstruction::PythonFunctionInstruction(
   py_func_infer_meta_ptr_ =
       &(OpMetaInfoHelper::GetPythonOperatorInferMetaFunction(op_meta));
 
-  BuildCustomContext(yaml_info_parser);
+  BuildPythonFunctionContext(yaml_info_parser);
   VLOG(6) << "finish process custom context";
   auto kernel_key = op_attributes.at("kernel_key")
                         .dyn_cast<paddle::dialect::KernelAttribute>()
@@ -415,12 +415,11 @@ void PythonFunctionInstruction::Run() {
   size_t num = op_->num_operands();
   VLOG(0) << "Op num_operands: " << num;
   for (size_t i = 0; i < num; ++i) {
-    vec_dense_inputs.push_back(python_operator_function_ctx_.InputAt(i));
+    vec_dense_inputs.push_back(python_function_ctx_.InputAt(i));
   }
 
   auto out = (*py_func_ptr_)(vec_dense_inputs);
-  python_operator_function_ctx_.ValidateAndAssignOutputs(
-      out);  // 从宏里面扒出来
+  python_function_ctx_.ValidateAndAssignOutputs(out);  // 从宏里面扒出来
   if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("PythonFunctionInstruction " + custom_op_name_ + " finish");
   }

@@ -41,13 +41,13 @@ class PythonFunctionInstruction : public InstructionBase {
   void clear();
 
  private:
-  void BuildCustomContext(
+  void BuildPythonFunctionContext(
       const paddle::dialect::OpYamlInfoParser& op_yaml_info);
 
   void BuildShapeDtype();
   void UpdateOutputMeta();
 
-  paddle::CustomOpKernelContext python_operator_function_ctx_;
+  paddle::CustomOpKernelContext python_function_ctx_;
   paddle::KernelFunc kernel_func_ = nullptr;
 
   const paddle::PythonOperatorFunctionType* py_func_ptr_ = nullptr;
