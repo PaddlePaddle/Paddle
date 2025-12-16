@@ -1101,8 +1101,33 @@ class TestLoadShardedStateDictMultiCommGroup:
             raise ValueError("device_num should be 1, 2, 4 or 8")
 
 
+class TestLoadShardedStateDictWithReplica(TestLoadShardedStateDict):
+    def __init__(self):
+        super().__init__()
+        self._ckpt_path = os.getenv("ckpt_path_3")
+
+
+class TestLoadShardedStateDictWithAOAWithReplica(
+    TestLoadShardedStateDictWithAOA
+):
+    def __init__(self):
+        super().__init__()
+        self._ckpt_path = os.getenv("ckpt_path_3")
+
+
+class TestLoadShardedStateDictMultiCommGroupWithReplica(
+    TestLoadShardedStateDictMultiCommGroup
+):
+    def __init__(self):
+        super().__init__()
+        self._ckpt_path = os.getenv("ckpt_path_3")
+
+
 if __name__ == '__main__':
     TestLoadStateDict().run_test_case()
     TestLoadShardedStateDict().run_test_case()
     TestLoadShardedStateDictWithAOA().run_test_case()
     TestLoadShardedStateDictMultiCommGroup().run_test_case()
+    TestLoadShardedStateDictWithReplica().run_test_case()
+    TestLoadShardedStateDictWithAOAWithReplica().run_test_case()
+    TestLoadShardedStateDictMultiCommGroupWithReplica().run_test_case()

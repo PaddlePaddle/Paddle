@@ -5411,6 +5411,7 @@ def deg2rad(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@param_two_alias(['x', 'input'], ['y', 'other'])
 def gcd(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Computes the element-wise greatest common divisor (GCD) of input |x| and |y|.
@@ -5496,6 +5497,7 @@ def gcd(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@param_two_alias(['x', 'input'], ['y', 'other'])
 def gcd_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``gcd`` API, the output Tensor will be inplaced with input ``x``.
@@ -5539,6 +5541,7 @@ def gcd_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return x
 
 
+@param_two_alias(['x', 'input'], ['y', 'other'])
 def lcm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Computes the element-wise least common multiple (LCM) of input |x| and |y|.
@@ -5599,6 +5602,7 @@ def lcm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return out
 
 
+@param_two_alias(['x', 'input'], ['y', 'other'])
 def lcm_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``lcm`` API, the output Tensor will be inplaced with input ``x``.
@@ -6082,21 +6086,17 @@ def sgn(x: Tensor, name: str | None = None) -> Tensor:
         Tensor: A sign Tensor for real input, or normalized Tensor for complex input, shape and data type are same as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.to_tensor([[3 + 4j, 7 - 24j, 0, 1 + 2j], [6 + 8j, 3, 0, -2]])
             >>> paddle.sgn(x)
             Tensor(shape=[2, 4], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[ (0.6000000238418579+0.800000011920929j),
-              (0.2800000011920929-0.9599999785423279j),
-               0j                                     ,
-              (0.4472135901451111+0.8944271802902222j)],
-             [ (0.6000000238418579+0.800000011920929j),
-               (1+0j)                                 ,
-               0j                                     ,
-              (-1+0j)                                 ]])
+            [[ (0.60000002+0.80000001j),  (0.28000000-0.95999998j),
+               (0.00000000+0.00000000j),  (0.44721359+0.89442718j)],
+             [ (0.60000002+0.80000001j),  (1.00000000+0.00000000j),
+               (0.00000000+0.00000000j), (-1.00000000+0.00000000j)]])
 
     """
     if x.dtype not in [

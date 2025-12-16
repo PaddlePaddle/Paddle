@@ -275,6 +275,7 @@
   name : [paddle.nn.functional.softplus]
   args_alias :
     use_default_mapping : True
+
 - op : isclose
   name : [paddle.isclose, paddle.Tensor.isclose]
   args_alias :
@@ -288,3 +289,13 @@
     x : [input]
   pre_process:
     func : GridSamplePreProcess(x, grid, mode, padding_mode, align_corners)
+
+- op : atanh
+  name: [paddle.atanh, paddle.Tensor.atanh]
+  args_alias :
+    use_default_mapping : True
+
+- op : sinh
+  name: [paddle.sinh, paddle.Tensor.sinh]
+  args_alias :
+    use_default_mapping : True

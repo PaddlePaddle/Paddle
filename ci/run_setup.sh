@@ -234,7 +234,7 @@ EOF
     export WITH_CINN=${WITH_CINN:-OFF}
     export WITH_DISTRIBUTE=${distributed_flag}
     export WITH_MKL=${WITH_MKL:-ON}
-    export WITH_AVX=${WITH_AVX:-OFF}
+    export WITH_AVX=${WITH_AVX:-ON}
     export CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
     export NEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF}
     export NEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF}
