@@ -3129,9 +3129,9 @@ def bitwise_left_shift_(
     x: Tensor,
     y: Tensor,
     is_arithmetic: bool = True,
+    name: str | None = None,
     *,
     out: Tensor | None = None,
-    name: str | None = None,
 ) -> Tensor
 """,
 )
@@ -3147,9 +3147,9 @@ def bitwise_right_shift_(
     x: Tensor,
     y: Tensor,
     is_arithmetic: bool = True,
+    name: str | None = None,
     *,
     out: Tensor | None = None,
-    name: str | None = None,
 ) -> Tensor
 """,
 )
@@ -3208,9 +3208,9 @@ def bitwise_left_shift(
     x: Tensor,
     y: Tensor,
     is_arithmetic: bool = True,
+    name: str | None = None,
     *,
     out: Tensor | None = None,
-    name: str | None = None,
 ) -> Tensor
 """,
 )
@@ -3269,9 +3269,9 @@ def bitwise_right_shift(
     x: Tensor,
     y: Tensor,
     is_arithmetic: bool = True,
+    name: str | None = None,
     *,
     out: Tensor | None = None,
-    name: str | None = None,
 ) -> Tensor
 """,
 )
