@@ -584,6 +584,7 @@ if(NOT WITH_GPU
    OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
 )# Restrict the use of older versions of CUB
   list(REMOVE_ITEM TEST_OPS test_incubate_fast_ln)
+  list(REMOVE_ITEM TEST_OPS test_rms_norm)
   list(REMOVE_ITEM TEST_OPS test_batched_gemm)
 endif()
 

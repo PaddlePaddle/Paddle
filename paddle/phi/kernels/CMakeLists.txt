@@ -97,6 +97,7 @@ if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 11.8))
    OR APPLE
    OR WITH_ROCM)
   list(REMOVE_ITEM kernel_cu "legacy/gpu/layer_norm_cuda_kernel.cu")
+  list(REMOVE_ITEM kernel_cu "gpu/rms_norm_cuda_kernel.cu")
 endif()
 
 # Get flag for CUDA arch >= 80
