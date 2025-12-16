@@ -158,6 +158,8 @@ from collections.abc import Mapping
 
 
 def custom_hash(obj):
+    # TODO: Check a case
+    # hash(-1) == hash(-2)
     if isinstance(obj, (int, float, str, bool, bytes)):
         return hash(obj)
 
@@ -269,9 +271,6 @@ def register_op(
                 output_names=output_names,
                 attrs={
                     "infer_meta_fn_ptr": bound_constants_infer_meta,
-                    # MetaTensorWrapper(
-                    #     bound_constants_infer_meta
-                    # ),
                     "fn_ptr": run_in_dynamic_mode(bound_constants_fn),
                 },
                 inplace_map=inplace_map or {},

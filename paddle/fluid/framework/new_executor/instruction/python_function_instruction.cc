@@ -175,6 +175,11 @@ void PythonFunctionInstruction::BuildPythonFunctionContext(
           attr_map[t].dyn_cast<pir::Int64Attribute>().data());
       python_function_ctx_.EmplaceBackAttr(
           attr_map[t].dyn_cast<pir::Int64Attribute>().data());
+    } else if (attr_type_name == "pir::PointerAttribute") {
+      custom_attrs_.push_back(
+          attr_map[t].dyn_cast<pir::PointerAttribute>().data());
+      python_function_ctx_.EmplaceBackAttr(
+          attr_map[t].dyn_cast<pir::PointerAttribute>().data());
     } else {
       PADDLE_THROW(common::errors::Unimplemented("attr type not support [%s] ",
                                                  attr_type_name));

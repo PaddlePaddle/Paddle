@@ -3725,7 +3725,7 @@ int py_str_to_cpp_str(PyObject* py_str, std::string* cpp_str) {
 }
 
 int parse_attrs_dict(PyObject* py_attrs_dict,
-                     std::unordered_map<std::string, uintptr_t>* attrs) {
+                     std::unordered_map<std::string, void*>* attrs) {
   // 检查输入参数是否有效
   if (!py_attrs_dict || !attrs) {
     PyErr_SetString(PyExc_ValueError, "Invalid input parameters");
@@ -3763,8 +3763,8 @@ int parse_attrs_dict(PyObject* py_attrs_dict,
 
   // 将PyObject指针转换为uintptr_t存储
   // 注意：这里存储的是Python函数对象的地址
-  (*attrs)["infer_meta_fn_ptr"] = reinterpret_cast<uintptr_t>(py_infer_meta);
-  (*attrs)["fn_ptr"] = reinterpret_cast<uintptr_t>(py_real_fn);
+  (*attrs)["infer_meta_fn_ptr"] = reinterpret_cast<void*>(py_infer_meta);
+  (*attrs)["fn_ptr"] = reinterpret_cast<void*>(py_real_fn);
 
   return 0;
 }

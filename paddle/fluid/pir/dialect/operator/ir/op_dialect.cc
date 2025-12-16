@@ -576,7 +576,7 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
             "Supported data types include `bool`, `int`, `float`, "
             "`int64_t`, `std::string`, `std::vector<int>`, "
             "`std::vector<float>`, `std::vector<int64_t>`, "
-            "`std::vector<std::string>`, Please check whether "
+            "`std::vector<std::string>`, `void*`, Please check whether "
             "the attribute data type and data type string are matched.",
             attr_type_str));
       }
@@ -653,14 +653,14 @@ struct PythonOperatorInfoInterfaceModel : public OpYamlInfoInterface::Concept {
     auto& op_attrs = OpMetaInfoHelper::GetAttrs(op_meta);
     for (const auto& op_attr : op_attrs) {
       auto attr_name_and_type = paddle::ParseAttrStr(op_attr);
-      // PythonOperator only has int64_t attr
+      // PythonOperator only has void* attr
       const std::string& attr_name = attr_name_and_type[0];
       const std::string& attr_type_str = attr_name_and_type[1];
       PADDLE_ENFORCE_EQ(
           attr_type_str,
-          "int64_t",
+          "void*",
           common::errors::InvalidArgument(
-              "PythonOperator only has two int64_t attributes, which "
+              "PythonOperator only has two void* attributes, which "
               "are infer_meta_fn_ptr & fn_ptr."));
       param_names.push_back(attr_name);
       const std::string& attr_pir_type =

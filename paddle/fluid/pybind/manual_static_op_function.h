@@ -1009,7 +1009,7 @@ std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec) {
 using IrTensor = paddle::dialect::IrTensor;
 
 template <typename T>
-auto CreatePyFuncRunner(int64_t py_func_ptr, const std::string &op_name) {
+auto CreatePyFuncRunner(void *py_func_ptr, const std::string &op_name) {
   static_assert(
       std::is_same_v<T, Tensor> || std::is_same_v<T, phi::NativeMetaTensor>,
       "T must be either Tensor or phi::NativeMetaTensor");
@@ -1088,7 +1088,7 @@ static PyObject *run_custom_pyop(PyObject *self,
   std::string op_name;
   std::vector<std::string> inputs_vec;
   std::vector<std::string> outputs_vec;
-  std::unordered_map<std::string, uintptr_t> attrs_map;
+  std::unordered_map<std::string, void *> attrs_map;
   std::unordered_map<std::string, std::string> op_inplace_map;
 
   if (py_str_to_cpp_str(py_op_name, &op_name) == -1 ||
@@ -1106,9 +1106,11 @@ static PyObject *run_custom_pyop(PyObject *self,
   std::cout << "op_name: " << op_name << std::endl;
   std::cout << "inputs: " << inputs_vec << std::endl;
   std::cout << "outputs: " << outputs_vec << std::endl;
-  std::cout << "attrs[infer_meta_fn_ptr]: " << attrs_map["infer_meta_fn_ptr"]
+  std::cout << "attrs[infer_meta_fn_ptr]: "
+            << reinterpret_cast<uintptr_t>(attrs_map["infer_meta_fn_ptr"])
             << std::endl;
-  std::cout << "attrs[fn_ptr]: " << attrs_map["fn_ptr"] << std::endl;
+  std::cout << "attrs[fn_ptr]: "
+            << reinterpret_cast<uintptr_t>(attrs_map["fn_ptr"]) << std::endl;
 
   const auto &meta_info_map = OpMetaInfoMap::Instance().GetMap();
 
@@ -1123,7 +1125,7 @@ static PyObject *run_custom_pyop(PyObject *self,
         op_name,
         std::move(inputs_vec),
         std::move(outputs_vec),
-        {"infer_meta_fn_ptr: int64_t", "fn_ptr: int64_t"},
+        {"infer_meta_fn_ptr: void*", "fn_ptr: void*"},
         std::move(op_inplace_map),
         std::move(py_func),
         std::move(infer_meta_py_func));
@@ -1245,11 +1247,11 @@ static PyObject *run_custom_pyop(PyObject *self,
   custom_attrs.push_back(attrs_map["fn_ptr"]);
   argument.AddAttribute(
       "infer_meta_fn_ptr",
-      pir::Int64Attribute::get(pir::IrContext::Instance(),
-                               attrs_map["infer_meta_fn_ptr"]));
+      pir::PointerAttribute::get(pir::IrContext::Instance(),
+                                 attrs_map["infer_meta_fn_ptr"]));
   argument.AddAttribute("fn_ptr",
-                        pir::Int64Attribute::get(pir::IrContext::Instance(),
-                                                 attrs_map["fn_ptr"]));
+                        pir::PointerAttribute::get(pir::IrContext::Instance(),
+                                                   attrs_map["fn_ptr"]));
 
   // Run infer meta
   VLOG(4) << "Start to run infer meta for " << op_name;
