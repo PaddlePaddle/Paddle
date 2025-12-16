@@ -57,7 +57,7 @@ class PythonFunctionDialect : public pir::Dialect {
  public:
   explicit PythonFunctionDialect(pir::IrContext* context);
 
-  static const char* name() { return "custom_py_func"; }
+  static const char* name() { return "py_func"; }
 
   void PrintType(pir::Type type, std::ostream& os) const override;
 

@@ -56,10 +56,10 @@ class CustomKernelOp : public pir::Op<CustomKernelOp> {
   void VerifySig();
 };
 
-class CustomPyFuncOp : public pir::Op<CustomPyFuncOp> {
+class PythonFunctionOp : public pir::Op<PythonFunctionOp> {
  public:
   using Op::Op;
-  static const char *name() { return "custom_py_func"; }
+  static const char *name() { return "py_func"; }
   static constexpr uint32_t attributes_num = 3;
   static const char *attributes_name[attributes_num];
   std::string op_name();
@@ -112,7 +112,7 @@ class OneDNNLegacyKernelOp : public pir::Op<OneDNNLegacyKernelOp> {
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::PhiKernelOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::LegacyKernelOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CustomKernelOp)
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CustomPyFuncOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::PythonFunctionOp)
 #ifdef PADDLE_WITH_DNNL
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNPhiKernelOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNMixedPhiKernelOp)

@@ -959,7 +959,7 @@ void PirInterpreter::BuildInstruction() {
       vec_instruction_base_.emplace_back(
           std::make_unique<CustomKernelInstruction>(
               op_idx++, place_, &op, *(value_exe_info_.get())));
-    } else if (op.dialect()->name() == "custom_py_func") {
+    } else if (op.dialect()->name() == "py_func") {
       vec_instruction_base_.emplace_back(
           std::make_unique<PythonFunctionInstruction>(
               op_idx++, place_, &op, *(value_exe_info_.get())));

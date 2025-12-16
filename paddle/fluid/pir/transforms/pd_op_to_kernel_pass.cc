@@ -2584,14 +2584,14 @@ void HandleForCustomPyOp(
                        pir::Int64Attribute::get(ctx, op_item->id()));
 
   VLOG(6) << "Lower custom pyop: " << op_item->name()
-          << " to : " << CustomPyFuncOp::name();
+          << " to : " << PythonFunctionOp::name();
 
-  pir::OpInfo custom_py_func_op_info =
-      ctx->GetRegisteredOpInfo(CustomPyFuncOp::name());
+  pir::OpInfo py_func_op_info =
+      ctx->GetRegisteredOpInfo(PythonFunctionOp::name());
 
   pir::Operation* op = nullptr;
   op = pir::Operation::Create(
-      vec_inputs, op_attribute, op_output_types, custom_py_func_op_info);
+      vec_inputs, op_attribute, op_output_types, py_func_op_info);
   op->set_attribute("origin_id", pir::Int64Attribute::get(ctx, op->id()));
 
   (*map_op_pair)[op_item] = op;

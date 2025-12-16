@@ -199,7 +199,7 @@ PythonFunctionDialect::PythonFunctionDialect(pir::IrContext *context)
 }
 
 void PythonFunctionDialect::initialize() {
-  RegisterOps<dialect::CustomPyFuncOp>();
+  RegisterOps<dialect::PythonFunctionOp>();
 }
 
 void PythonFunctionDialect::PrintType(pir::Type type, std::ostream &os) const {
@@ -217,8 +217,8 @@ pir::OpPrintFn PythonFunctionDialect::PrintOperation(
     auto &os = printer.os;
     printer.PrintOpResult(op);
     os << " =";
-    auto custom_py_func = op.dyn_cast<CustomPyFuncOp>();
-    std::string kernel_name = custom_py_func.kernel_name();
+    auto py_func_op = op.dyn_cast<PythonFunctionOp>();
+    std::string kernel_name = py_func_op.kernel_name();
     if (op.attributes().count("is_inplace") != 0 &&
         op.attributes()
             .at("is_inplace")
