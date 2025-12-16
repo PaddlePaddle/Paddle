@@ -70,6 +70,7 @@ void RMSNormFwdKernel(const Context &dev_ctx,
                       float epsilon,
                       DenseTensor *y,
                       DenseTensor *invvar) {
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   auto input_type = x.type();
   auto weight_type = scale.type();
   auto output_type = weight_type;
@@ -114,6 +115,9 @@ void RMSNormFwdKernel(const Context &dev_ctx,
   } else {
     RMSLnFwd<T, Context>(dev_ctx, x, scale, epsilon, y, invvar);
   }
+#else
+  RMSLnFwd<T, Context>(dev_ctx, x, scale, epsilon, y, invvar);
+#endif
 }
 
 template <typename T, typename Context>
@@ -193,6 +197,7 @@ void RMSNormBwdKernel(const Context &dev_ctx,
                       float epsilon,
                       DenseTensor *x_grad,
                       DenseTensor *scale_grad) {
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   auto input_type = x.type();
   auto weight_type = scale.type();
   auto output_type = weight_type;
@@ -246,6 +251,10 @@ void RMSNormBwdKernel(const Context &dev_ctx,
     RMSLnBwd<T, Context>(
         dev_ctx, x, scale, invvar, y_grad, epsilon, x_grad, scale_grad);
   }
+#else
+  RMSLnBwd<T, Context>(
+      dev_ctx, x, scale, invvar, y_grad, epsilon, x_grad, scale_grad);
+#endif
 }
 
 }  // namespace phi
