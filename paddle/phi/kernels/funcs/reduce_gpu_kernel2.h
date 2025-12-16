@@ -1180,7 +1180,7 @@ class AccumulationBuffer {
       phi::Allocator* allocator =
           const_cast<phi::Allocator*>(&(dev_ctx.GetAllocator()));
       buffer_ = allocator->Allocate(size);
-      acc_ptr_ = reinterpret_cast<char*>(buffer_.get());
+      acc_ptr_ = reinterpret_cast<char*>(buffer_->ptr()());
       numerator_ = acc_t_size;
       denominator_ = out_t_size;
       reduce_fraction(&numerator_, &denominator_);
