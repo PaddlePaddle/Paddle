@@ -143,6 +143,7 @@ class Lexer:
                 current_expressions, macro
             )
 
+        self.final_expressions = list(current_expressions)
         tokens = []
         for expr in current_expressions:
             tokens.extend(self.tokenize(expr))

@@ -35,7 +35,16 @@ def create_shard_info(keys, shape=(4, 4), dtype="float32"):
 
 
 class TestMacroLayerOffsetError(unittest.TestCase):
-    def test_fused_qkv_old_error_chain(self):
+    def setUp(self):
+        self.source_keys = [f"model.layers.{i}.weight" for i in range(10)]
+        self.dest_keys = [f"model.layers.{i}.weight_out" for i in range(10)] + [
+            f"model.layers.{i}.weight_out2" for i in range(10)
+        ]
+
+        self.src_info = create_shard_info(self.source_keys)
+        self.dst_info = create_shard_info(self.dest_keys)
+
+    def test_macro_error_chain(self):
         """
         The statement contains fused_qkv_old and is missing a comma, expecting to trigger the assertion and print the chain.
         """
@@ -46,19 +55,14 @@ class TestMacroLayerOffsetError(unittest.TestCase):
             "enable_traceback": True,
         }
 
-        source_keys = [f"model.layers.{i}.weight" for i in range(10)]
-        dest_keys = [f"model.layers.{i}.weight_out" for i in range(10)]
-
-        src_info = create_shard_info(source_keys)
-        dst_info = create_shard_info(dest_keys)
-
         with self.assertRaises(AssertionError):
             AOAEngine(
                 aoa_config=aoa_config,
-                source_state_shard_info=src_info,
-                destination_state_shard_info=dst_info,
+                source_state_shard_info=self.src_info,
+                destination_state_shard_info=self.dst_info,
             )
 
+    def test_no_error_should_be_raised(self):
         # No error should be raised
         source_keys = ["model.layers.0.weight"]
         dest_keys = ["model.layers.0.weight_out"]
@@ -75,6 +79,24 @@ class TestMacroLayerOffsetError(unittest.TestCase):
             source_state_shard_info=src_info,
             destination_state_shard_info=dst_info,
         )
+
+    def test_shape_propagation_error_chain(self):
+        """
+        when split/concat, only support one attr named `axis`, but got multiple attrs.
+        """
+        aoa_config = {
+            "aoa_statements": [
+                "model.layers.0.weight -> model.layers.0.weight_out,model.layers.0.weight_out2,axis=0,axis=1",
+            ],
+            "enable_traceback": True,
+        }
+
+        with self.assertRaises(ValueError):
+            AOAEngine(
+                aoa_config=aoa_config,
+                source_state_shard_info=self.src_info,
+                destination_state_shard_info=self.dst_info,
+            )
 
 
 if __name__ == "__main__":

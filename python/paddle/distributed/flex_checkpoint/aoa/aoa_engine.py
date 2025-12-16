@@ -296,6 +296,15 @@ class AOAEngine:
         )
         self.parser = Parser(tokens)
         self.statements = self.parser.parse_program()
+
+        if self.traceback and getattr(self.lexer, "final_expressions", None):
+            final_exprs = self.lexer.final_expressions
+            if len(final_exprs) == len(self.statements):
+                for expr, stmt in zip(final_exprs, self.statements):
+                    self.traceback.record_children(
+                        expr, [repr(stmt)], macro_name="parser"
+                    )
+
         if self.aoa_config_reverse:
             self.statements = list(reversed(self.statements))
         self.input_vars = self.build_input_vars()
@@ -506,125 +515,153 @@ class AOAEngine:
                 raise ValueError(f"{var.name} should be assigned before!")
 
         for stmt in self.statements:
+            stmt_repr = repr(stmt)
             left_vars = stmt.left_vars
             right_vars = stmt.right_vars
             if self.aoa_config_reverse:
                 left_vars, right_vars = right_vars, left_vars
             attrs = stmt.attrs
-            if len(left_vars) > 1 or len(right_vars) > 1:
-                if not (len(attrs) == 1 and attrs[0].key == "axis"):
-                    raise ValueError(
-                        "When split/concat, only support one attr named `axis`"
-                    )
-                axis = attrs[0].value
 
-                if len(left_vars) == 1:
-                    in_name = left_vars[0].name
-                    in_ref = _get_var_ref(left_vars[0])
-                    assert in_ref.shape[axis] % len(right_vars) == 0, (
-                        f"when split, the shape of the input tensor {in_name} is {in_ref.shape}, the axis is {axis}, the number of right_vars is {len(right_vars)}, but the shape of the input tensor {in_name} is not divisible by the number of right_vars."
-                    )
-                    sizes = [
-                        in_ref.shape[axis] // len(right_vars)
-                        for var in right_vars
-                    ]
-                    result = self.split(in_ref, axis, sizes)
-                    for out_var, out_ref in zip(right_vars, result):
-                        self.intermediate_vars[out_var.name] = out_ref
-                        if (
-                            out_var.name
-                            in self.context.get_all_dst_state_keys()
-                        ):
-                            self.output_vars[out_var.name] = out_ref
-
-                elif len(right_vars) == 1:
-                    left_refs = [_get_var_ref(var) for var in left_vars]
-                    result = self.concat(left_refs, axis)
-                    out_name = right_vars[0].name
-                    self.intermediate_vars[out_name] = result
-                    if out_name in self.context.get_all_dst_state_keys():
-                        self.output_vars[out_name] = result
-
-                else:
-                    raise SyntaxError(
-                        f'Unexpected split/concat statement: {stmt}'
-                    )
-
-            elif len(left_vars) == 1 and len(right_vars) == 1:
-                lvar, rvar = left_vars[0], right_vars[0]
-                if rvar.name == "_":
-                    self.need_remove_input_vars.add(lvar.name)
-                elif lvar.name == "_":
-                    self.need_add_output_vars.add(rvar.name)
-                else:
-                    if len(attrs) > 0:
-                        assert len(attrs) == 1 or (
-                            len(attrs) == 2
-                            and {attr.key for attr in attrs}
-                            == {"src_dtype", "dst_dtype"}
-                        ), (
-                            "Only support:\n"
-                            " - One operator, OR\n"
-                            " - Two operators with keys {'src_dtype', 'dst_dtype'}."
+            try:
+                if len(left_vars) > 1 or len(right_vars) > 1:
+                    if not (len(attrs) == 1 and attrs[0].key == "axis"):
+                        raise ValueError(
+                            f"When split/concat, only support one attr named `axis`, but got {attrs}."
                         )
-                        attr = attrs[0]
-                        in_ref = _get_var_ref(lvar)
-                        if attr.key == "permute":
-                            if attr.value == "[]":
-                                ndim = len(in_ref.shape)
-                                perm = str(list(range(ndim - 1, -1, -1)))
-                            else:
-                                perm = attr.value
-                                if self.aoa_config_reverse:
-                                    perm = str(
-                                        invert_permutation(
-                                            ast.literal_eval(perm)
-                                        )
-                                    )
-                            result = self.transpose(in_ref, perm)
-                        elif attr.key == "dtype":
-                            assert not self.aoa_config_reverse, (
-                                "When `aoa_config_reverse=True`, the dtype must be specified as "
-                                "'src_dtype=...,dst_dtype=...'. Formats like 'dtype=xxx' are not supported."
-                            )
-                            assert attr.value in SUPPORTED_DTYPES, (
-                                f"Unsupported cast dtype: {attr.value}"
-                            )
-                            result = self.cast(in_ref, attr.value)
-                        elif (
-                            attrs[0].key == "src_dtype"
-                            and attrs[1].key == "dst_dtype"
-                        ):
-                            src_dtype, dst_dtype = (
-                                attrs[0].value,
-                                attrs[1].value,
-                            )
-                            assert src_dtype in SUPPORTED_DTYPES, (
-                                f"Unsupported cast dtype: {src_dtype}"
-                            )
-                            assert dst_dtype in SUPPORTED_DTYPES, (
-                                f"Unsupported cast dtype: {dst_dtype}"
-                            )
-                            if self.aoa_config_reverse:
-                                src_dtype, dst_dtype = dst_dtype, src_dtype
-                            result = self.cast(in_ref, dst_dtype)
-                        elif attr.key == "axis":
-                            result = in_ref
-                        else:
-                            raise ValueError(f"Unsupported attribute: {attr}")
+                    axis = attrs[0].value
 
-                        self.intermediate_vars[rvar.name] = result
-                        if rvar.name in self.context.get_all_dst_state_keys():
-                            self.output_vars[rvar.name] = result
+                    if len(left_vars) == 1:
+                        in_name = left_vars[0].name
+                        in_ref = _get_var_ref(left_vars[0])
+                        assert in_ref.shape[axis] % len(right_vars) == 0, (
+                            f"when split, the shape of the input tensor {in_name} is {in_ref.shape}, the axis is {axis}, the number of right_vars is {len(right_vars)}, but the shape of the input tensor {in_name} is not divisible by the number of right_vars."
+                        )
+                        sizes = [
+                            in_ref.shape[axis] // len(right_vars)
+                            for var in right_vars
+                        ]
+                        result = self.split(in_ref, axis, sizes)
+                        for out_var, out_ref in zip(right_vars, result):
+                            self.intermediate_vars[out_var.name] = out_ref
+                            if (
+                                out_var.name
+                                in self.context.get_all_dst_state_keys()
+                            ):
+                                self.output_vars[out_var.name] = out_ref
+
+                    elif len(right_vars) == 1:
+                        left_refs = [_get_var_ref(var) for var in left_vars]
+                        result = self.concat(left_refs, axis)
+                        out_name = right_vars[0].name
+                        self.intermediate_vars[out_name] = result
+                        if out_name in self.context.get_all_dst_state_keys():
+                            self.output_vars[out_name] = result
+
                     else:
-                        # rename operation
-                        in_ref = _get_var_ref(lvar)
-                        result = self.identity(in_ref)
-                        self.intermediate_vars[rvar.name] = result
-                        if rvar.name in self.context.get_all_dst_state_keys():
-                            self.output_vars[rvar.name] = result
-            else:
-                raise SyntaxError(f'Unexpected statement: {stmt}')
+                        raise SyntaxError(
+                            f'Unexpected split/concat statement: {stmt}'
+                        )
+
+                elif len(left_vars) == 1 and len(right_vars) == 1:
+                    lvar, rvar = left_vars[0], right_vars[0]
+                    if rvar.name == "_":
+                        self.need_remove_input_vars.add(lvar.name)
+                    elif lvar.name == "_":
+                        self.need_add_output_vars.add(rvar.name)
+                    else:
+                        if len(attrs) > 0:
+                            assert len(attrs) == 1 or (
+                                len(attrs) == 2
+                                and {attr.key for attr in attrs}
+                                == {"src_dtype", "dst_dtype"}
+                            ), (
+                                "Only support:\n"
+                                " - One operator, OR\n"
+                                " - Two operators with keys {'src_dtype', 'dst_dtype'}."
+                            )
+                            attr = attrs[0]
+                            in_ref = _get_var_ref(lvar)
+                            if attr.key == "permute":
+                                if attr.value == "[]":
+                                    ndim = len(in_ref.shape)
+                                    perm = str(list(range(ndim - 1, -1, -1)))
+                                else:
+                                    perm = attr.value
+                                    if self.aoa_config_reverse:
+                                        perm = str(
+                                            invert_permutation(
+                                                ast.literal_eval(perm)
+                                            )
+                                        )
+                                result = self.transpose(in_ref, perm)
+                            elif attr.key == "dtype":
+                                assert not self.aoa_config_reverse, (
+                                    "When `aoa_config_reverse=True`, the dtype must be specified as "
+                                    "'src_dtype=...,dst_dtype=...'. Formats like 'dtype=xxx' are not supported."
+                                )
+                                assert attr.value in SUPPORTED_DTYPES, (
+                                    f"Unsupported cast dtype: {attr.value}"
+                                )
+                                result = self.cast(in_ref, attr.value)
+                            elif (
+                                attrs[0].key == "src_dtype"
+                                and attrs[1].key == "dst_dtype"
+                            ):
+                                src_dtype, dst_dtype = (
+                                    attrs[0].value,
+                                    attrs[1].value,
+                                )
+                                assert src_dtype in SUPPORTED_DTYPES, (
+                                    f"Unsupported cast dtype: {src_dtype}"
+                                )
+                                assert dst_dtype in SUPPORTED_DTYPES, (
+                                    f"Unsupported cast dtype: {dst_dtype}"
+                                )
+                                if self.aoa_config_reverse:
+                                    src_dtype, dst_dtype = dst_dtype, src_dtype
+                                result = self.cast(in_ref, dst_dtype)
+                            elif attr.key == "axis":
+                                result = in_ref
+                            else:
+                                raise ValueError(
+                                    f"Unsupported attribute: {attr}"
+                                )
+
+                            self.intermediate_vars[rvar.name] = result
+                            if (
+                                rvar.name
+                                in self.context.get_all_dst_state_keys()
+                            ):
+                                self.output_vars[rvar.name] = result
+                        else:
+                            # rename operation
+                            in_ref = _get_var_ref(lvar)
+                            result = self.identity(in_ref)
+                            self.intermediate_vars[rvar.name] = result
+                            if (
+                                rvar.name
+                                in self.context.get_all_dst_state_keys()
+                            ):
+                                self.output_vars[rvar.name] = result
+                else:
+                    raise SyntaxError(f'Unexpected statement: {stmt}')
+            except (
+                AssertionError,
+                ValueError,
+                KeyError,
+                SyntaxError,
+                RuntimeError,
+            ) as e:
+                if self.traceback:
+                    chain = self.traceback.build_chain(stmt_repr)
+                    self.traceback.add_error(
+                        error_message=str(e),
+                        stage="shape_propagation",
+                        chain=chain,
+                        error_type=type(e).__name__,
+                    )
+                    self.traceback.print()
+                raise
         if self.destination_state_shard_info is not None:
             for name in self.destination_state_shard_info:
                 model_state_key, _ = split_optimizer_state_key(name)
