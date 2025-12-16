@@ -115,7 +115,6 @@ set(PYBIND_SRCS
     graph.cc
     ir_tensor.cc
     ir_meta_tensor.cc
-    native_meta_tensor.cc
     reader_py.cc
     protobuf.cc
     exception.cc
