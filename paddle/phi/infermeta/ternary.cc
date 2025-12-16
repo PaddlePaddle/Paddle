@@ -728,7 +728,7 @@ void FlashAttnInferMeta(const MetaTensor& q,
           {batch_size, num_heads, seqlen_q_rounded, seqlen_k_rounded});
     }
     if (softmax_lse) {
-      softmax_lse->set_dims({batch_size, num_heads, seqlen_q_rounded});
+      softmax_lse->set_dims({batch_size, num_heads, q.dims()[1]});
     }
   }
   if (out_dims.size() == 3) {  // when use flash_attn_unpadded
@@ -741,7 +741,7 @@ void FlashAttnInferMeta(const MetaTensor& q,
       softmax->set_dims({num_heads, seqlen_q_rounded, seqlen_k_rounded});
     }
     if (softmax_lse) {
-      softmax_lse->set_dims({num_heads, seqlen_q_rounded});
+      softmax_lse->set_dims({num_heads, batch_and_seq_size});
     }
   }
   if (seed_offset) {
@@ -804,14 +804,6 @@ void CalcReducedAttnScoresInferMeta(const MetaTensor& q,
                  common::errors::InvalidArgument(
                      "calc_reduced_attn_scores must receive input q and "
                      "softmax_lse with consistent batch_size!"));
-
-  auto round_multiple = [](int64_t x, int64_t m) {
-    return (x + m - 1) / m * m;
-  };
-  PADDLE_ENFORCE(round_multiple(q.dims()[1], 128) == softmax_lse.dims()[2],
-                 common::errors::InvalidArgument(
-                     "calc_reduced_attn_scores must receive input q and "
-                     "softmax_lse with corresponding seq_len!"));
 
   PADDLE_ENFORCE(q.dims()[2] == softmax_lse.dims()[1],
                  common::errors::InvalidArgument(
