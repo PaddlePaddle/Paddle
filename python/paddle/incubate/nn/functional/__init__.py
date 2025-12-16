@@ -115,7 +115,6 @@ __all__ = [
     "cal_aux_loss",
     "build_src_rank_and_local_expert_id",
     "int_bincount",
-    "swiglu",
     "fused_rms_norm_ext",
     "moe_gate_dispatch",
     "moe_gate_dispatch_permute",
