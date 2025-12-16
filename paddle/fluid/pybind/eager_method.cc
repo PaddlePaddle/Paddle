@@ -3761,7 +3761,10 @@ static PyObject* tensor_method__record_stream(TensorObject* self,
   auto* tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
   if (tensor) {
     const auto& device_id = paddle::platform::GetXPUCurrentDeviceId();
-    auto stream = paddle::platform::get_current_stream(device_id)->raw_stream();
+    auto place = phi::XPUPlace(device_id);
+    auto* dev_ctx = static_cast<phi::XPUContext*>(
+        phi::DeviceContextPool::Instance().Get(place));
+    auto stream = dev_ctx->get_current_stream_handle()->raw_stream();
     memory::RecordStream(tensor->Holder(), stream);
   }
   RETURN_PY_NONE
