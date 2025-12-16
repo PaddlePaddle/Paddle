@@ -585,13 +585,13 @@ Returns:
     List: shape.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
         >>> x = paddle.to_tensor(1.0, stop_gradient=False)
         >>> print(x.shape)
-        []
+        paddle.Size([])
 )DOC");
 
 PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
