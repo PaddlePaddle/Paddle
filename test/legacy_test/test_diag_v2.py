@@ -330,6 +330,110 @@ class TestDiagV2API(unittest.TestCase):
         self.run_static(use_gpu=True)
 
 
+class TestDiagV2Compatibility(unittest.TestCase):
+    def setUp(self):
+        # input arg
+        self.input_np1 = np.random.random(size=(10, 10)).astype(np.float32)
+        self.expected1 = np.diag(self.input_np1)
+
+        # diagonal arg
+        self.input_np2 = np.random.random(size=(10, 10)).astype(np.float32)
+        self.expected2 = np.diag(self.input_np, k=1)
+
+        # out arg
+        self.input_np3 = np.random.random(size=(10, 10)).astype(np.float32)
+        self.expected3 = np.diag(self.input_np3)
+        self.input_np4 = np.random.random(size=(10, 10)).astype(np.float32)
+        self.expected4 = np.diag(self.input_np4)
+
+    def run_imperative(self):
+        # input arg
+        x = paddle.to_tensor(self.input_np1)
+        y = paddle.diag(input=x)
+        np.testing.assert_allclose(y.numpy(), self.expected1, rtol=1e-05)
+
+        # diagonal arg
+        x = paddle.to_tensor(self.input_np2)
+        y = paddle.diag(x, diagonal=1)
+        np.testing.assert_allclose(y.numpy(), self.expected2, rtol=1e-05)
+
+        # out arg
+        x = paddle.to_tensor(self.input_np3)
+        out = paddle.empty([])
+        y = paddle.diag(x, out=out)
+        np.testing.assert_allclose(out.numpy(), self.expected3, rtol=1e-05)
+        np.testing.assert_allclose(y.numpy(), self.expected3, rtol=1e-05)
+
+        x = paddle.to_tensor(self.input_np4)
+        out = paddle.empty([])
+        paddle.diag(x, out=out)
+        np.testing.assert_allclose(out.numpy(), self.expected4, rtol=1e-05)
+
+    def run_static(self, use_gpu=False):
+        mp, sp = static.Program(), static.Program()
+        with static.program_guard(mp, sp):
+            x1 = paddle.static.data(
+                name='input', shape=[10, 10], dtype='float32'
+            )
+            x2 = paddle.static.data(
+                name='input', shape=[10, 10], dtype='float32'
+            )
+            x3 = paddle.static.data(
+                name='input', shape=[10, 10], dtype='float32'
+            )
+            x4 = paddle.static.data(
+                name='input', shape=[10, 10], dtype='float32'
+            )
+            # input arg
+            result1 = paddle.diag(input=x1)
+            # diagonal arg
+            result2 = paddle.diag(x2, diagonal=1)
+            # out arg
+            result3_1 = paddle.empty([])
+            result3_2 = paddle.diag(x3, out=result3_1)
+            result4 = paddle.empty([])
+            paddle.diag(x4, out=result4)
+
+        place = get_device_place() if use_gpu else base.CPUPlace()
+        exe = static.Executor(place)
+        exe.run(sp)
+        [res1, res2, res3_1, res3_2, res4] = exe.run(
+            mp,
+            feed={
+                "input1": self.input_np1,
+                "input2": self.input_np2,
+                'input3': self.input_np3,
+                'input4': self.input_np4,
+            },
+            fetch_list=[result1, result2, result3_1, result3_2, result4],
+        )
+        # input arg
+        np.testing.assert_allclose(res1, self.expected1, rtol=1e-05)
+        # diagonal arg
+        np.testing.assert_allclose(res2, self.expected2, rtol=1e-05)
+        # out arg
+        np.testing.assert_allclose(res3_1, self.expected3, rtol=1e-05)
+        np.testing.assert_allclose(res3_2, self.expected3, rtol=1e-05)
+
+        np.testing.assert_allclose(res4, self.expected4, rtol=1e-05)
+
+    def test_cpu(self):
+        paddle.disable_static(place=paddle.base.CPUPlace())
+        self.run_imperative()
+
+        paddle.enable_static()
+        self.run_static()
+
+    def test_gpu(self):
+        if not (base.core.is_compiled_with_cuda() or is_custom_device()):
+            return
+
+        paddle.disable_static(place=get_device_place())
+        self.run_imperative()
+        paddle.enable_static()
+        self.run_static(use_gpu=True)
+
+
 class TestDiagV2FP16OP(TestDiagV2Op):
     def init_dtype(self):
         self.dtype = np.float16
