@@ -65,10 +65,10 @@ __device__ __forceinline__ T WARP_SHFL(T value,
 }
 
 template <typename U>
-__device__ void cuWelfordOnlineSum(const U curr,
-                                   U& mu,       // NOLINT
-                                   U& sigma2,   // NOLINT
-                                   U& count) {  // NOLINT
+__device__ void cuWelfordOnlineSum_(const U curr,
+                                    U& mu,       // NOLINT
+                                    U& sigma2,   // NOLINT
+                                    U& count) {  // NOLINT
   count = count + U(1);
   U delta = curr - mu;
   U lmean = mu + delta / count;
@@ -78,12 +78,12 @@ __device__ void cuWelfordOnlineSum(const U curr,
 }
 
 template <typename U>
-__device__ void cuChanOnlineSum(const U muB,
-                                const U sigma2B,
-                                const U countB,
-                                U& mu,       // NOLINT
-                                U& sigma2,   // NOLINT
-                                U& count) {  // NOLINT
+__device__ void cuChanOnlineSum_(const U muB,
+                                 const U sigma2B,
+                                 const U countB,
+                                 U& mu,       // NOLINT
+                                 U& sigma2,   // NOLINT
+                                 U& count) {  // NOLINT
   U delta = muB - mu;
   U nA = count;
   U nB = countB;
@@ -101,24 +101,24 @@ __device__ void cuChanOnlineSum(const U muB,
 }
 
 template <typename U>
-__device__ void cuRMSOnlineSum(const U curr, U& sigma2) {  // NOLINT
+__device__ void cuRMSOnlineSum_(const U curr, U& sigma2) {  // NOLINT
   sigma2 = sigma2 + curr * curr;
 }
 
 template <typename U>
-__device__ void cuChanRMSOnlineSum(const U sigma2B, U& sigma2) {  // NOLINT
+__device__ void cuChanRMSOnlineSum_(const U sigma2B, U& sigma2) {  // NOLINT
   sigma2 = sigma2 + sigma2B;
 }
 
 template <typename T, typename U>
-__device__ void cuWelfordMuSigma2(const T* __restrict__ vals,
-                                  const int n1,
-                                  const int n2,
-                                  const int i1,
-                                  U& mu,      // NOLINT
-                                  U& sigma2,  // NOLINT
-                                  U* buf,
-                                  bool rms_only) {
+__device__ void cuWelfordMuSigma2_(const T* __restrict__ vals,
+                                   const int n1,
+                                   const int n2,
+                                   const int i1,
+                                   U& mu,      // NOLINT
+                                   U& sigma2,  // NOLINT
+                                   U* buf,
+                                   bool rms_only) {
   // Assumptions:
   // 1) blockDim.x == WARP_SIZE
   // 2) Tensor is contiguous
@@ -140,18 +140,18 @@ __device__ void cuWelfordMuSigma2(const T* __restrict__ vals,
       for (int k = 0; k < 4; ++k) {
         U curr = static_cast<U>(lvals[l + k]);
         if (!rms_only) {
-          cuWelfordOnlineSum<U>(curr, mu, sigma2, count);
+          cuWelfordOnlineSum_<U>(curr, mu, sigma2, count);
         } else {
-          cuRMSOnlineSum<U>(curr, sigma2);
+          cuRMSOnlineSum_<U>(curr, sigma2);
         }
       }
     }
     for (; l < n2; ++l) {
       U curr = static_cast<U>(lvals[l]);
       if (!rms_only) {
-        cuWelfordOnlineSum<U>(curr, mu, sigma2, count);
+        cuWelfordOnlineSum_<U>(curr, mu, sigma2, count);
       } else {
-        cuRMSOnlineSum<U>(curr, sigma2);
+        cuRMSOnlineSum_<U>(curr, sigma2);
       }
     }
     // intra-warp reductions
@@ -161,9 +161,9 @@ __device__ void cuWelfordMuSigma2(const T* __restrict__ vals,
       if (!rms_only) {
         U muB = WARP_SHFL(mu, srcLaneB);
         U countB = WARP_SHFL(count, srcLaneB);
-        cuChanOnlineSum<U>(muB, sigma2B, countB, mu, sigma2, count);
+        cuChanOnlineSum_<U>(muB, sigma2B, countB, mu, sigma2, count);
       } else {
-        cuChanRMSOnlineSum<U>(sigma2B, sigma2);
+        cuChanRMSOnlineSum_<U>(sigma2B, sigma2);
       }
     }
     // threadIdx.x == 0 has correct values for each warp
@@ -189,9 +189,9 @@ __device__ void cuWelfordMuSigma2(const T* __restrict__ vals,
           if (!rms_only) {
             U muB = ubuf[2 * threadIdx.y];
             U countB = ibuf[threadIdx.y];
-            cuChanOnlineSum<U>(muB, sigma2B, countB, mu, sigma2, count);
+            cuChanOnlineSum_<U>(muB, sigma2B, countB, mu, sigma2, count);
           } else {
-            cuChanRMSOnlineSum<U>(sigma2B, sigma2);
+            cuChanRMSOnlineSum_<U>(sigma2B, sigma2);
           }
         }
         __syncthreads();
@@ -220,14 +220,14 @@ __device__ void cuWelfordMuSigma2(const T* __restrict__ vals,
 }
 
 template <>
-__device__ void cuWelfordMuSigma2(const phi::float16* __restrict__ vals,
-                                  const int n1,
-                                  const int n2,
-                                  const int i1,
-                                  float& mu,      // NOLINT
-                                  float& sigma2,  // NOLINT
-                                  float* buf,
-                                  bool rms_only) {
+__device__ void cuWelfordMuSigma2_(const phi::float16* __restrict__ vals,
+                                   const int n1,
+                                   const int n2,
+                                   const int i1,
+                                   float& mu,      // NOLINT
+                                   float& sigma2,  // NOLINT
+                                   float* buf,
+                                   bool rms_only) {
   // Assumptions:
   // 1) blockDim.x == WARP_SIZE
   // 2) Tensor is contiguous
@@ -251,9 +251,9 @@ __device__ void cuWelfordMuSigma2(const phi::float16* __restrict__ vals,
       if (thrx == 0) {
         float curr = static_cast<float>(lvals[0]);
         if (!rms_only) {
-          cuWelfordOnlineSum(curr, mu, sigma2, count);
+          cuWelfordOnlineSum_(curr, mu, sigma2, count);
         } else {
-          cuRMSOnlineSum(curr, sigma2);
+          cuRMSOnlineSum_(curr, sigma2);
         }
       }
       ++l;
@@ -263,20 +263,20 @@ __device__ void cuWelfordMuSigma2(const phi::float16* __restrict__ vals,
       for (int k = 0; k < 8; k += 2) {
         float2 curr = __half22float2(*((__half2*)(lvals + l + k)));  // NOLINT
         if (!rms_only) {
-          cuWelfordOnlineSum(curr.x, mu, sigma2, count);
-          cuWelfordOnlineSum(curr.y, mu, sigma2, count);
+          cuWelfordOnlineSum_(curr.x, mu, sigma2, count);
+          cuWelfordOnlineSum_(curr.y, mu, sigma2, count);
         } else {
-          cuRMSOnlineSum(curr.x, sigma2);
-          cuRMSOnlineSum(curr.y, sigma2);
+          cuRMSOnlineSum_(curr.x, sigma2);
+          cuRMSOnlineSum_(curr.y, sigma2);
         }
       }
     }
     for (; l < n2; ++l) {
       float curr = static_cast<float>(lvals[l]);
       if (!rms_only) {
-        cuWelfordOnlineSum(curr, mu, sigma2, count);
+        cuWelfordOnlineSum_(curr, mu, sigma2, count);
       } else {
-        cuRMSOnlineSum(curr, sigma2);
+        cuRMSOnlineSum_(curr, sigma2);
       }
     }
     // intra-warp reductions
@@ -286,9 +286,9 @@ __device__ void cuWelfordMuSigma2(const phi::float16* __restrict__ vals,
       if (!rms_only) {
         float muB = WARP_SHFL(mu, srcLaneB);
         float countB = WARP_SHFL(count, srcLaneB);
-        cuChanOnlineSum(muB, sigma2B, countB, mu, sigma2, count);
+        cuChanOnlineSum_(muB, sigma2B, countB, mu, sigma2, count);
       } else {
-        cuChanRMSOnlineSum(sigma2B, sigma2);
+        cuChanRMSOnlineSum_(sigma2B, sigma2);
       }
     }
     // threadIdx.x == 0 has correct values for each warp
@@ -314,9 +314,9 @@ __device__ void cuWelfordMuSigma2(const phi::float16* __restrict__ vals,
           if (!rms_only) {
             float muB = ubuf[2 * threadIdx.y];
             float countB = ibuf[threadIdx.y];
-            cuChanOnlineSum(muB, sigma2B, countB, mu, sigma2, count);
+            cuChanOnlineSum_(muB, sigma2B, countB, mu, sigma2, count);
           } else {
-            cuChanRMSOnlineSum(sigma2B, sigma2);
+            cuChanRMSOnlineSum_(sigma2B, sigma2);
           }
         }
         __syncthreads();
@@ -404,7 +404,7 @@ __device__ void cuApplyLayerNorm_(V* __restrict__ output_vals,
     SharedMemory<U> shared;
     U* buf = shared.getPointer();
     U mu, sigma2;
-    cuWelfordMuSigma2(vals, n1, n2, i1, mu, sigma2, buf, rms_only);
+    cuWelfordMuSigma2_(vals, n1, n2, i1, mu, sigma2, buf, rms_only);
     const T* lvals = vals + i1 * n2;
     V* ovals = output_vals + i1 * n2;
     U c_invvar = rsqrt(sigma2 + epsilon);
@@ -442,46 +442,32 @@ __device__ void cuApplyLayerNorm_(V* __restrict__ output_vals,
 }
 
 template <typename T, typename U, typename V = T>
-__global__ void cuApplyLayerNorm(V* __restrict__ output_vals,
-                                 U* __restrict__ mean,
-                                 U* __restrict__ invvar,
-                                 const T* __restrict__ vals,
-                                 const int n1,
-                                 const int n2,
-                                 const U epsilon,
-                                 const V* __restrict__ gamma,
-                                 const V* __restrict__ beta) {
-  cuApplyLayerNorm_<T, U, V>(
-      output_vals, mean, invvar, vals, n1, n2, epsilon, gamma, beta, false);
-}
-
-template <typename T, typename U, typename V = T>
-__global__ void cuApplyRMSNorm(V* __restrict__ output_vals,
-                               U* __restrict__ invvar,
-                               const T* __restrict__ vals,
-                               const int n1,
-                               const int n2,
-                               const U epsilon,
-                               const V* __restrict__ gamma) {
+__global__ void cuApplyRMSNorm_(V* __restrict__ output_vals,
+                                U* __restrict__ invvar,
+                                const T* __restrict__ vals,
+                                const int n1,
+                                const int n2,
+                                const U epsilon,
+                                const V* __restrict__ gamma) {
   cuApplyLayerNorm_<T, U, V>(
       output_vals, NULL, invvar, vals, n1, n2, epsilon, gamma, NULL, true);
 }
 
 template <typename T, typename U, typename V>
-__device__ void cuLoadWriteStridedInputs(const int i1_block,
-                                         const int thr_load_row_off,
-                                         const int thr_load_col_off,
-                                         const int i2_off,
-                                         const int row_stride,
-                                         U* warp_buf1,
-                                         U* warp_buf2,
-                                         const T* input,
-                                         const V* dout,
-                                         const int i1_end,
-                                         const int n2,
-                                         const U* __restrict__ mean,
-                                         const U* __restrict__ invvar,
-                                         bool rms_only) {
+__device__ void cuLoadWriteStridedInputs_(const int i1_block,
+                                          const int thr_load_row_off,
+                                          const int thr_load_col_off,
+                                          const int i2_off,
+                                          const int row_stride,
+                                          U* warp_buf1,
+                                          U* warp_buf2,
+                                          const T* input,
+                                          const V* dout,
+                                          const int i1_end,
+                                          const int n2,
+                                          const U* __restrict__ mean,
+                                          const U* __restrict__ invvar,
+                                          bool rms_only) {
   int i1 = i1_block + thr_load_row_off;
   if (i1 < i1_end) {
     U curr_mean;
@@ -522,20 +508,20 @@ __device__ void cuLoadWriteStridedInputs(const int i1_block,
 }
 
 template <typename T, typename U, typename V>
-__device__ void cuLoadAddStridedInputs(const int i1_block,
-                                       const int thr_load_row_off,
-                                       const int thr_load_col_off,
-                                       const int i2_off,
-                                       const int row_stride,
-                                       U* warp_buf1,
-                                       U* warp_buf2,
-                                       const T* input,
-                                       const V* dout,
-                                       const int i1_end,
-                                       const int n2,
-                                       const U* __restrict__ mean,
-                                       const U* __restrict__ invvar,
-                                       bool rms_only) {
+__device__ void cuLoadAddStridedInputs_(const int i1_block,
+                                        const int thr_load_row_off,
+                                        const int thr_load_col_off,
+                                        const int i2_off,
+                                        const int row_stride,
+                                        U* warp_buf1,
+                                        U* warp_buf2,
+                                        const T* input,
+                                        const V* dout,
+                                        const int i1_end,
+                                        const int n2,
+                                        const U* __restrict__ mean,
+                                        const U* __restrict__ invvar,
+                                        bool rms_only) {
   int i1 = i1_block + thr_load_row_off;
   if (i1 < i1_end) {
     U curr_mean;
@@ -563,16 +549,16 @@ __device__ void cuLoadAddStridedInputs(const int i1_block,
 }
 
 template <typename T, typename U, typename V>
-__global__ void cuComputePartGradGammaBeta(const V* __restrict__ dout,
-                                           const T* __restrict__ input,
-                                           const int n1,
-                                           const int n2,
-                                           const U* __restrict__ mean,
-                                           const U* __restrict__ invvar,
-                                           U epsilon,
-                                           U* part_grad_gamma,
-                                           U* part_grad_beta,
-                                           bool rms_only) {
+__global__ void cuComputePartGradGammaBeta_(const V* __restrict__ dout,
+                                            const T* __restrict__ input,
+                                            const int n1,
+                                            const int n2,
+                                            const U* __restrict__ mean,
+                                            const U* __restrict__ invvar,
+                                            U epsilon,
+                                            U* part_grad_gamma,
+                                            U* part_grad_beta,
+                                            bool rms_only) {
   const int numsegs_n1 =
       (n1 + blockDim.y * blockDim.y - 1) / (blockDim.y * blockDim.y);
   const int segs_per_block = (numsegs_n1 + gridDim.y - 1) / gridDim.y;
@@ -593,36 +579,36 @@ __global__ void cuComputePartGradGammaBeta(const V* __restrict__ dout,
   U* warp_buf2 = warp_buf1 + blockDim.y * blockDim.y * row_stride;
   // compute partial sums from strided inputs
   // do this to increase number of loads in flight
-  cuLoadWriteStridedInputs(i1_beg,
-                           thr_load_row_off,
-                           thr_load_col_off,
-                           i2_off,
-                           row_stride,
-                           warp_buf1,
-                           warp_buf2,
-                           input,
-                           dout,
-                           i1_end,
-                           n2,
-                           mean,
-                           invvar,
-                           rms_only);
+  cuLoadWriteStridedInputs_(i1_beg,
+                            thr_load_row_off,
+                            thr_load_col_off,
+                            i2_off,
+                            row_stride,
+                            warp_buf1,
+                            warp_buf2,
+                            input,
+                            dout,
+                            i1_end,
+                            n2,
+                            mean,
+                            invvar,
+                            rms_only);
   for (int i1_block = i1_beg + blockDim.y * blockDim.y; i1_block < i1_end;
        i1_block += blockDim.y * blockDim.y) {
-    cuLoadAddStridedInputs(i1_block,
-                           thr_load_row_off,
-                           thr_load_col_off,
-                           i2_off,
-                           row_stride,
-                           warp_buf1,
-                           warp_buf2,
-                           input,
-                           dout,
-                           i1_end,
-                           n2,
-                           mean,
-                           invvar,
-                           rms_only);
+    cuLoadAddStridedInputs_(i1_block,
+                            thr_load_row_off,
+                            thr_load_col_off,
+                            i2_off,
+                            row_stride,
+                            warp_buf1,
+                            warp_buf2,
+                            input,
+                            dout,
+                            i1_end,
+                            n2,
+                            mean,
+                            invvar,
+                            rms_only);
   }
   __syncthreads();
   // inter-warp reductions
@@ -671,14 +657,14 @@ __global__ void cuComputePartGradGammaBeta(const V* __restrict__ dout,
 }
 
 template <typename U, typename V>
-__global__ void cuComputeGradGammaBeta(const U* part_grad_gamma,
-                                       const U* part_grad_beta,
-                                       const int part_size,
-                                       const int n1,
-                                       const int n2,
-                                       V* grad_gamma,
-                                       V* grad_beta,
-                                       bool rms_only) {
+__global__ void cuComputeGradGammaBeta_(const U* part_grad_gamma,
+                                        const U* part_grad_beta,
+                                        const int part_size,
+                                        const int n1,
+                                        const int n2,
+                                        V* grad_gamma,
+                                        V* grad_beta,
+                                        bool rms_only) {
   // sum partial gradients for gamma and beta
   SharedMemory<U> shared;
   U* buf = shared.getPointer();
@@ -732,16 +718,16 @@ __global__ void cuComputeGradGammaBeta(const U* part_grad_gamma,
 }
 
 template <typename T, typename U, typename V>
-__global__ void cuComputeGradInput(const V* __restrict__ dout,
-                                   const T* __restrict__ input,
-                                   const int n1,
-                                   const int n2,
-                                   const U* __restrict__ mean,
-                                   const U* __restrict__ invvar,
-                                   U epsilon,
-                                   const V* gamma,
-                                   T* grad_input,
-                                   bool rms_only) {
+__global__ void cuComputeGradInput_(const V* __restrict__ dout,
+                                    const T* __restrict__ input,
+                                    const int n1,
+                                    const int n2,
+                                    const U* __restrict__ mean,
+                                    const U* __restrict__ invvar,
+                                    U epsilon,
+                                    const V* gamma,
+                                    T* grad_input,
+                                    bool rms_only) {
   for (auto i1 = blockIdx.y; i1 < n1; i1 += gridDim.y) {
     U sum_loss1 = U(0);
     U sum_loss2 = U(0);
@@ -901,35 +887,15 @@ static cudaDeviceProp* GetDeviceProp() {
   return &prop;
 }
 
-template <typename T, typename U, typename V>
-void HostApplyLayerNorm(V* output,
-                        U* mean,
-                        U* invvar,
-                        const T* input,
-                        int n1,
-                        int n2,
-                        double epsilon,
-                        const V* gamma,
-                        const V* beta,
-                        cudaStream_t stream) {
-  const dim3 threads(32, 4, 1);
-  const uint64_t maxGridY = GetDeviceProp()->maxGridSize[1];
-  const dim3 blocks(1, std::min((uint64_t)n1, maxGridY), 1);
-  int nshared =
-      threads.y > 1 ? threads.y * sizeof(U) + (threads.y / 2) * sizeof(U) : 0;
-  cuApplyLayerNorm<<<blocks, threads, nshared, stream>>>(
-      output, mean, invvar, input, n1, n2, U(epsilon), gamma, beta);
-}
-
 template <typename T, typename U, typename V = T>
-void HostApplyRMSNorm(V* output,
-                      U* invvar,
-                      const T* input,
-                      int n1,
-                      int n2,
-                      double epsilon,
-                      const V* gamma,
-                      cudaStream_t stream) {
+void HostApplyRMSNorm_(V* output,
+                       U* invvar,
+                       const T* input,
+                       int n1,
+                       int n2,
+                       double epsilon,
+                       const V* gamma,
+                       cudaStream_t stream) {
   // auto stream = at::cuda::getCurrentCUDAStream().stream();
   const dim3 threads(32, 4, 1);
   // const uint64_t maxGridY =
@@ -938,7 +904,7 @@ void HostApplyRMSNorm(V* output,
   const dim3 blocks(1, std::min((uint64_t)n1, maxGridY), 1);
   int nshared =
       threads.y > 1 ? threads.y * sizeof(U) + (threads.y / 2) * sizeof(U) : 0;
-  cuApplyRMSNorm<<<blocks, threads, nshared, stream>>>(
+  cuApplyRMSNorm_<<<blocks, threads, nshared, stream>>>(
       output, invvar, input, n1, n2, U(epsilon), gamma);
 }
 
@@ -952,7 +918,7 @@ void cuda_rms_norm(const Context& dev_ctx,
                    DenseTensor* y,
                    DenseTensor* invvar) {
 #define DISPATCH_FWD_CASE(scalar_t_out)                      \
-  HostApplyRMSNorm<T, float, scalar_t_out>(                  \
+  HostApplyRMSNorm_<T, float, scalar_t_out>(                 \
       y->data<scalar_t_out>(),                               \
       invvar->data<float>(),                                 \
       const_cast<T*>(x.data<T>()),                           \
@@ -971,17 +937,17 @@ void cuda_rms_norm(const Context& dev_ctx,
 }
 
 template <typename T, typename U, typename V, typename Context>
-void HostRMSNormGradient(const Context& dev_ctx,
-                         const V* dout,
-                         const U* invvar,
-                         const DenseTensor& input,
-                         int n1,
-                         int n2,
-                         const V* gamma,
-                         double epsilon,
-                         T* grad_input,
-                         V* grad_gamma,
-                         cudaStream_t stream) {
+void HostRMSNormGradient_(const Context& dev_ctx,
+                          const V* dout,
+                          const U* invvar,
+                          const DenseTensor& input,
+                          int n1,
+                          int n2,
+                          const V* gamma,
+                          double epsilon,
+                          T* grad_input,
+                          V* grad_gamma,
+                          cudaStream_t stream) {
   if (gamma != NULL) {
     const int part_size = 16;
     const dim3 threads2(32, 4, 1);
@@ -993,7 +959,7 @@ void HostRMSNormGradient(const Context& dev_ctx,
     auto place = input.place();
     DenseTensor part_grad_gamma =
         phi::Empty<float, Context>(dev_ctx, {part_size, n2});
-    cuComputePartGradGammaBeta<<<blocks2, threads2, nshared2, stream>>>(
+    cuComputePartGradGammaBeta_<<<blocks2, threads2, nshared2, stream>>>(
         dout,
         input.data<T>(),
         n1,
@@ -1008,7 +974,7 @@ void HostRMSNormGradient(const Context& dev_ctx,
     const dim3 threads3(32, 8, 1);
     const dim3 blocks3((n2 + threads2.x - 1) / threads2.x, 1, 1);
     const int nshared3 = threads3.x * threads3.y * sizeof(U);
-    cuComputeGradGammaBeta<<<blocks3, threads3, nshared3, stream>>>(
+    cuComputeGradGammaBeta_<<<blocks3, threads3, nshared3, stream>>>(
         part_grad_gamma.data<U>(),
         part_grad_gamma.data<U>(), /* unused */
         part_size,
@@ -1024,7 +990,7 @@ void HostRMSNormGradient(const Context& dev_ctx,
   const dim3 blocks1(1, std::min((uint64_t)n1, maxGridY), 1);
   const dim3 threads1(32, 4, 1);
   int nshared = threads1.y > 1 ? threads1.y * threads1.x * sizeof(U) : 0;
-  cuComputeGradInput<<<blocks1, threads1, nshared, stream>>>(
+  cuComputeGradInput_<<<blocks1, threads1, nshared, stream>>>(
       dout,
       input.data<T>(),
       n1,
@@ -1048,18 +1014,18 @@ void cuda_rms_norm_gradient(const Context& dev_ctx,
                             float epsilon,
                             DenseTensor* grad_x,
                             DenseTensor* grad_scale) {
-#define DISPATCH_BWD_CASE(scalar_t_out)                 \
-  HostRMSNormGradient<T, float, scalar_t_out, Context>( \
-      dev_ctx,                                          \
-      dy.data<scalar_t_out>(),                          \
-      invvar.data<float>(),                             \
-      x,                                                \
-      rows,                                             \
-      cols,                                             \
-      scale.data<scalar_t_out>(),                       \
-      epsilon,                                          \
-      grad_x->data<T>(),                                \
-      grad_scale->data<scalar_t_out>(),                 \
+#define DISPATCH_BWD_CASE(scalar_t_out)                  \
+  HostRMSNormGradient_<T, float, scalar_t_out, Context>( \
+      dev_ctx,                                           \
+      dy.data<scalar_t_out>(),                           \
+      invvar.data<float>(),                              \
+      x,                                                 \
+      rows,                                              \
+      cols,                                              \
+      scale.data<scalar_t_out>(),                        \
+      epsilon,                                           \
+      grad_x->data<T>(),                                 \
+      grad_scale->data<scalar_t_out>(),                  \
       dev_ctx.stream())
   if (scale.dtype() == phi::DataType::FLOAT32) {
     DISPATCH_BWD_CASE(float);
