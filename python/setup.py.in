@@ -1616,7 +1616,6 @@ else:
     headers += list(
         find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/cpu')
     )
-    )
     headers += list(
         find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/onednn')
     )
