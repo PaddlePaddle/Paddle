@@ -1019,10 +1019,6 @@ auto CreatePyFuncRunner(int64_t py_func_ptr, const std::string &op_name) {
                          const std::vector<phi::NativeMetaTensor>,
                          std::vector<Tensor>>;
 
-  // using FuncOutputType = std::conditional_t<std::is_same_v<T,
-  // phi::NativeMetaTensor>,
-  //                                           std::vector<phi::NativeMetaTensor>,
-  //                                           std::vector<Tensor>>;
   using FuncOutputType = std::vector<T>;
 
   return [=](FuncInputType &inputs) -> FuncOutputType {
@@ -1038,12 +1034,14 @@ auto CreatePyFuncRunner(int64_t py_func_ptr, const std::string &op_name) {
     PyObject *raw_result = PyObject_CallObject(py_func, py_args.ptr());
     Py_DECREF(py_func);
 
-    PADDLE_ENFORCE_NOT_NULL(
-        raw_result,
-        common::errors::Fatal(
-            "Execution of the customPythonOp (%s) failed. Please review your "
-            "code, and you may use breakpoint() for debugging.",
-            op_name));
+    if (raw_result == nullptr) {
+      PyErr_Print();
+      PADDLE_THROW(
+          common::errors::Fatal("Execution of the customPythonOp (%s) failed.\n"
+                                "Please review your code, and you may use "
+                                "breakpoint() for debugging.",
+                                op_name));
+    }
 
     py::object result = py::reinterpret_steal<py::object>(raw_result);
     std::vector<T> outputs;
@@ -1253,9 +1251,11 @@ static PyObject *run_custom_pyop(PyObject *self,
                         pir::Int64Attribute::get(pir::IrContext::Instance(),
                                                  attrs_map["fn_ptr"]));
 
-  // 做 infer_meta
+  // Run infer meta
+  VLOG(4) << "Start to run infer meta for " << op_name;
   std::vector<phi::NativeMetaTensor> outputs_meta =
       infer_meta_py_func(inputs_meta);
+  VLOG(4) << "End to run infer meta for " << op_name;
   std::vector<IrTensor> process_result;
   process_result.reserve(outputs.size());
   for (auto &out_meta : outputs_meta) {

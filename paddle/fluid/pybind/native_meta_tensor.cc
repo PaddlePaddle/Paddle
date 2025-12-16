@@ -16,6 +16,7 @@
 
 #include "paddle/phi/api/ext/native_meta_tensor.h"
 #include "paddle/fluid/pybind/native_meta_tensor.h"
+#include "paddle/utils/pybind.h"
 #include "pybind11/functional.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
@@ -26,6 +27,31 @@ void BindNativeMetaTensor(py::module* m) {
   py::class_<phi::NativeMetaTensor>(*m, "NativeMetaTensor")
       .def(py::init<>())
       .def(py::init<const phi::NativeMetaTensor&>())
+      .def(py::init([](const py::object& dtype, const py::object& shape) {
+             phi::DataType dt = phi::DataType::FLOAT32;
+             if (!dtype.is_none()) {
+               dt = dtype.cast<phi::DataType>();
+             }
+             std::vector<int64_t> dims;
+             if (py::isinstance<py::list>(shape) ||
+                 py::isinstance<py::tuple>(shape)) {
+               dims = shape.cast<std::vector<int64_t>>();
+             } else {
+               PADDLE_THROW(common::errors::InvalidArgument(
+                   "The shape argument must be a list or tuple of integers "
+                   "or None, but got %s.",
+                   py::str(shape)));
+             }
+             return phi::NativeMetaTensor(dt, phi::make_ddim(dims));
+           }),
+           py::arg("dtype") = py::none(),
+           py::arg("shape") = py::list())
+      .def(
+          "copy",
+          [](const phi::NativeMetaTensor& self) {
+            return phi::NativeMetaTensor(self);
+          },
+          "Create a deep copy of this tensor")
       .def(
           "set_shape",
           [](phi::NativeMetaTensor& self, const std::vector<int64_t>& dims) {
