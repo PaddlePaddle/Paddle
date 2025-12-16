@@ -79,7 +79,7 @@ def celu(
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.19865242,  6.        ],
              [ 1.        , 15.60000038]])
-            >>> out = F.celu(x, True)
+            >>> out = F.celu(x, alpha=0.2, inplace=True)
             >>> print(out)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.19865242,  6.        ],

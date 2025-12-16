@@ -60,7 +60,7 @@ class CELU(Layer):
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.19865242,  6.        ],
              [ 1.        , 15.60000038]])
-            >>> m = paddle.nn.Silu(True)
+            >>> m = paddle.nn.CELU(0.2, True)
             >>> out = m(x)
             >>> print(out)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
