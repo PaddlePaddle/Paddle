@@ -100,6 +100,7 @@ def fully_shard(
     )
 
     if in_auto_parallel_mode():
-        return _fully_shard_auto_parallel(*args)
+        _fully_shard_auto_parallel(*args)
+        return module
     else:
         return _fully_shard_manual_parallel(*args)
