@@ -1091,7 +1091,7 @@ class OpMetaInfoHelper {
   static const InferDtypeFunc& GetInferDtypeFn(const paddle::OpMetaInfo& info);
   static const InferSpmdFunc& GetInferSpmdFn(const paddle::OpMetaInfo& info);
 
-  // Python Custom Op
+  // Python Op
   static const PythonOperatorFunctionType& GetPythonOperatorFunction(
       const paddle::OpMetaInfo& info);
   static const PythonOperatorInferMetaFunctionType&
