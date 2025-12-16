@@ -152,7 +152,7 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
     }
 #if PY_3_14_PLUS
     if (PyStackRef_IsNull(fastlocals_old[i])) {
-      fastlocals_new[PyLong_AsSize_t(index)] = PyStackRef_NULL;
+      fastlocals_new[PyLong_AsSize_t(index)] = fastlocals_old[i];
     } else {
       fastlocals_new[PyLong_AsSize_t(index)] =
           PyStackRef_DUP(fastlocals_old[i]);

@@ -977,9 +977,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
               static_cast<phi::distributed::DistTensor*>(grad->impl().get())
                   ->unsafe_mutable_value();
         }
-        bool is_mismatched = self->tensor.place() != grad_t->place() ||
-                             self->tensor.dtype() != grad_t->dtype();
-        if (set_to_zero && !is_mismatched) {
+        if (set_to_zero) {
           EagerSetDeviceId();
           auto* dev_ctx =
               phi::DeviceContextPool::Instance().Get(grad_t->place());

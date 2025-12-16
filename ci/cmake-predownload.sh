@@ -153,6 +153,7 @@ cp ${PREDOWNLOAD_DIR}/${filename} ${TARGET_DIR}/lapack/Linux/${filename}
 
 # magma.cmake
 if command -v nvidia-smi &>/dev/null; then
+    echo "[magma] Detected NVIDIA CUDA environment."
     # Default to sm_70
     # Try to detect sm_80 if possible
     MAGMA_ARCH="sm_70"
@@ -169,6 +170,54 @@ if command -v nvidia-smi &>/dev/null; then
         MAGMA_ARCH="sm_70"
         EXPECTED_MD5="649b886f9df75face6aa98015ccb1885"
     fi
+
+    echo "Selected MAGMA architecture: ${MAGMA_ARCH}"
+    echo "Selected expected MD5: ${EXPECTED_MD5}"
+
+    # Prepare filenames and URLs
+    FILENAME="magma_lnx_${MAGMA_ARCH}_v2.9.0.20250728.tar.gz"
+    FILEPATH="${PREDOWNLOAD_DIR}/${FILENAME}"
+    URL="https://paddlepaddledeps.bj.bcebos.com/${FILENAME}"
+
+    echo "Checking ${FILENAME}..."
+    if check_file_with_md5 "${FILEPATH}" "${EXPECTED_MD5}"; then
+    echo "Use cached file"
+    else
+    echo "No valid ${FILENAME} in cache, try to download"
+    download_and_verify "${URL}" "${EXPECTED_MD5}" "${FILENAME}" || exit 1
+    fi
+
+    mkdir -p "${TARGET_DIR}/magma/Linux/"
+    cp "${PREDOWNLOAD_DIR}/${FILENAME}" "${TARGET_DIR}/magma/Linux/${FILENAME}"
+elif command -v rocm-smi &>/dev/null; then
+    echo "[magma] Detected DCU environment."
+    vendor=$(lscpu | grep 'Vendor ID' | awk '{print $3}')
+    if [ "$vendor" == "HygonGenuine" ]; then
+        MAGMA_ARCH=hip
+        EXPECTED_MD5=f4fbe46c665819f6ae86d1aa447d07b5
+    fi
+    echo "Selected MAGMA architecture: ${MAGMA_ARCH}"
+    echo "Selected expected MD5: ${EXPECTED_MD5}"
+
+    # Prepare filenames and URLs
+    FILENAME="magma_lnx_${MAGMA_ARCH}_v2.9.0.20250728.tar.gz"
+    FILEPATH="${PREDOWNLOAD_DIR}/${FILENAME}"
+    URL="https://paddlepaddledeps.bj.bcebos.com/${FILENAME}"
+
+    echo "Checking ${FILENAME}..."
+    if check_file_with_md5 "${FILEPATH}" "${EXPECTED_MD5}"; then
+    echo "Use cached file"
+    else
+    echo "No valid ${FILENAME} in cache, try to download"
+    download_and_verify "${URL}" "${EXPECTED_MD5}" "${FILENAME}" || exit 1
+    fi
+
+    mkdir -p "${TARGET_DIR}/magma/Linux/"
+    cp "${PREDOWNLOAD_DIR}/${FILENAME}" "${TARGET_DIR}/magma/Linux/${FILENAME}"
+elif command -v xpu-smi &>/dev/null; then
+    echo "[magma] Detected XPU environment."
+    MAGMA_ARCH=xpu
+    EXPECTED_MD5=889f990bfd4a24c98831cfda0243674a
     echo "Selected MAGMA architecture: ${MAGMA_ARCH}"
     echo "Selected expected MD5: ${EXPECTED_MD5}"
 
