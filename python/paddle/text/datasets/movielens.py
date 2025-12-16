@@ -118,9 +118,8 @@ class Movielens(Dataset):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
-            >>> # doctest: +TIMEOUT(75)
             >>> import paddle
             >>> from paddle.text.datasets import Movielens
 
@@ -143,17 +142,16 @@ class Movielens(Dataset):
             ...     model = SimpleNet()
             ...     category, title, rating = model(category, title, rating)
             ...     print(category.shape, title.shape, rating.shape)
-            [] [] []
-            [] [] []
-            [] [] []
-            [] [] []
-            [] [] []
-            [] [] []
-            [] [] []
-            [] [] []
-            [] [] []
-            [] [] []
-
+            paddle.Size([]) paddle.Size([]) paddle.Size([])
+            paddle.Size([]) paddle.Size([]) paddle.Size([])
+            paddle.Size([]) paddle.Size([]) paddle.Size([])
+            paddle.Size([]) paddle.Size([]) paddle.Size([])
+            paddle.Size([]) paddle.Size([]) paddle.Size([])
+            paddle.Size([]) paddle.Size([]) paddle.Size([])
+            paddle.Size([]) paddle.Size([]) paddle.Size([])
+            paddle.Size([]) paddle.Size([]) paddle.Size([])
+            paddle.Size([]) paddle.Size([]) paddle.Size([])
+            paddle.Size([]) paddle.Size([]) paddle.Size([])
     """
 
     mode: _MovieLensDataSetMode
