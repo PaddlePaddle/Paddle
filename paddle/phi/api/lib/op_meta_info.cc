@@ -531,7 +531,7 @@ const InferSpmdFunc& OpMetaInfoHelper::GetInferSpmdFn(
   return info.infer_spmd_fn_;
 }
 
-// Python Custom Op
+// Python Op
 const PythonOperatorFunctionType& OpMetaInfoHelper::GetPythonOperatorFunction(
     const paddle::OpMetaInfo& info) {
   return info.pyop_func_;

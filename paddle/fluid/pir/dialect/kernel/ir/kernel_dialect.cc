@@ -193,25 +193,25 @@ pir::OpPrintFn CustomKernelDialect::PrintOperation(
   };
 }
 
-CustomPyFuncDialect::CustomPyFuncDialect(pir::IrContext *context)
-    : pir::Dialect(name(), context, pir::TypeId::get<CustomPyFuncDialect>()) {
+PythonFunctionDialect::PythonFunctionDialect(pir::IrContext *context)
+    : pir::Dialect(name(), context, pir::TypeId::get<PythonFunctionDialect>()) {
   initialize();
 }
 
-void CustomPyFuncDialect::initialize() {
+void PythonFunctionDialect::initialize() {
   RegisterOps<dialect::CustomPyFuncOp>();
 }
 
-void CustomPyFuncDialect::PrintType(pir::Type type, std::ostream &os) const {
+void PythonFunctionDialect::PrintType(pir::Type type, std::ostream &os) const {
   PrintKernelType(type, os);
 }
 
-void CustomPyFuncDialect::PrintAttribute(pir::Attribute attr,
-                                         std::ostream &os) const {
+void PythonFunctionDialect::PrintAttribute(pir::Attribute attr,
+                                           std::ostream &os) const {
   PrintKernelAttribute(attr, os);
 }
 
-pir::OpPrintFn CustomPyFuncDialect::PrintOperation(
+pir::OpPrintFn PythonFunctionDialect::PrintOperation(
     const pir::Operation &op) const {
   return [](const pir::Operation &op, pir::IrPrinter &printer) {
     auto &os = printer.os;
@@ -226,7 +226,7 @@ pir::OpPrintFn CustomPyFuncDialect::PrintOperation(
             .data()) {
       kernel_name = kernel_name + "_";
     }
-    os << " \"" << kernel_name << "(custom_py_func)\"";
+    os << " \"" << kernel_name << "(py_func)\"";
     printer.PrintOpOperands(op);
     printer.PrintAttributeMap(op);
     os << " :";
@@ -302,7 +302,7 @@ pir::OpPrintFn OneDNNKernelDialect::PrintOperation(
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::KernelDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomKernelDialect)
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomPyFuncDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::PythonFunctionDialect)
 #ifdef PADDLE_WITH_DNNL
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNKernelDialect)
 #endif

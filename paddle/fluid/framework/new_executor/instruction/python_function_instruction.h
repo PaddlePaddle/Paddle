@@ -25,12 +25,12 @@ class Operation;
 namespace paddle {
 namespace framework {
 class Scope;
-class PythonOperationFunctionInstruction : public InstructionBase {
+class PythonFunctionInstruction : public InstructionBase {
  public:
-  PythonOperationFunctionInstruction(size_t id,
-                                     const phi::Place& place,
-                                     ::pir::Operation* op,
-                                     const ValueExecutionInfo& value_exec_info);
+  PythonFunctionInstruction(size_t id,
+                            const phi::Place& place,
+                            ::pir::Operation* op,
+                            const ValueExecutionInfo& value_exec_info);
 
   ::pir::Operation* Operation() const override { return op_; }
 

@@ -1063,7 +1063,7 @@ class PADDLE_API OpMetaInfo {
   InferShapeFunc infer_shape_fn_{nullptr};
   InferDtypeFunc infer_dtype_fn_{nullptr};
   InferSpmdFunc infer_spmd_fn_{nullptr};
-  // 3. custom pyop function
+  // 3. pyop function info
   PythonOperatorFunctionType pyop_func_{nullptr};
   PythonOperatorInferMetaFunctionType pyop_func_infer_meta_{nullptr};
 #ifdef PADDLE_WITH_TENSORRT

@@ -3824,7 +3824,7 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
   ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<KernelDialect>();
   ctx->GetOrRegisterDialect<CustomKernelDialect>();
-  ctx->GetOrRegisterDialect<CustomPyFuncDialect>();
+  ctx->GetOrRegisterDialect<PythonFunctionDialect>();
 
 #ifdef PADDLE_WITH_DNNL
   ctx->GetOrRegisterDialect<OneDNNOperatorDialect>();

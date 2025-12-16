@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/instruction/python_operation_function_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/python_function_instruction.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
@@ -28,12 +28,12 @@ COMMON_DECLARE_bool(check_cuda_error);
 
 namespace paddle::framework {
 
-void PythonOperationFunctionInstruction::BuildCustomContext(
+void PythonFunctionInstruction::BuildCustomContext(
     const paddle::dialect::OpYamlInfoParser& op_yaml_info) {
   PADDLE_ENFORCE_NOT_NULL(
       custom_op_meta_,
       common::errors::PreconditionNotMet(
-          "PythonOperationFunctionInstruction: custom_op_meta_ is null"));
+          "PythonFunctionInstruction: custom_op_meta_ is null"));
 
   auto& op_inplace_map = OpMetaInfoHelper::GetInplaceMap(*custom_op_meta_);
   VLOG(6) << "op_inplace_map.size(): " << op_inplace_map.size();
@@ -273,7 +273,7 @@ void PythonOperationFunctionInstruction::BuildCustomContext(
       op_inputs, op_outputs, op_inplace_map);
 }
 
-PythonOperationFunctionInstruction::PythonOperationFunctionInstruction(
+PythonFunctionInstruction::PythonFunctionInstruction(
     size_t id,
     const phi::Place& place,
     pir::Operation* op,
@@ -290,8 +290,8 @@ PythonOperationFunctionInstruction::PythonOperationFunctionInstruction(
       vec_input_ptrs_(),
       cache_out_ptrs_(),
       value_exec_info_(value_exec_info) {
-  std::cout << "PythonOperationFunctionInstruction::"
-               "PythonOperationFunctionInstruction"
+  std::cout << "PythonFunctionInstruction::"
+               "PythonFunctionInstruction"
             << std::endl;
 
   // auto& op_inplace_map = OpMetaInfoHelper::GetInplaceMap(*custom_op_meta_);
@@ -365,38 +365,7 @@ PythonOperationFunctionInstruction::PythonOperationFunctionInstruction(
   VLOG(6) << "finish process no need buffer";
 }
 
-// void PythonOperationFunctionInstruction::UpdateOutputMeta() {
-//   VLOG(0) << "enter PythonOperationFunctionInstruction::UpdateOutputMeta()";
-
-//   std::vector<paddle::dialect::IrTensor> vec_dense_inputs;
-//   for (size_t i = 0; i < this->op_->operands().size(); ++i) {
-//     vec_dense_inputs.emplace_back(paddle::dialect::IrTensor());
-//     vec_dense_inputs.back().SetDims(phi::make_ddim(input_shapes_[i]));
-//     vec_dense_inputs.back().SetDtype(input_dtypes_[i]);
-//   }
-
-//   VLOG(0) << "PythonOperationFunctionInstruction finish vec_dense_inputs";
-
-//   std::vector<paddle::dialect::IrTensor> output =
-//       (*py_func_infer_meta_ptr_)(vec_dense_inputs);
-
-//   VLOG(0) << "PythonOperationFunctionInstruction finish "
-//              "(*py_func_infer_meta_ptr_)(vec_dense_inputs);";
-
-//   for (size_t i = 0; i < cache_out_ptrs_.size(); ++i) {
-//     auto out_in_scope = cache_out_ptrs_.at(i);
-//     // update dims and dtype
-//     phi::DenseTensorMeta* out_meta =
-//         phi::DenseTensorUtils::GetMutableMeta(out_in_scope);
-//     out_meta->dims = output[i].dims();
-//     out_meta->dtype = output[i].dtype();
-//     out_meta->strides = out_meta->calc_strides(out_meta->dims);
-//   }
-
-//   VLOG(0) << "PythonOperationFunctionInstruction finish out_meta";
-// }
-
-void PythonOperationFunctionInstruction::BuildShapeDtype() {
+void PythonFunctionInstruction::BuildShapeDtype() {
   input_shapes_.clear();
   input_dtypes_.clear();
   vec_input_shapes_.clear();
@@ -424,10 +393,9 @@ void PythonOperationFunctionInstruction::BuildShapeDtype() {
   }
 }
 
-void PythonOperationFunctionInstruction::Run() {
+void PythonFunctionInstruction::Run() {
   if (FLAGS_check_cuda_error) [[unlikely]] {
-    CUDAErrorCheck("PythonOperationFunctionInstruction " + custom_op_name_ +
-                   " begin");
+    CUDAErrorCheck("PythonFunctionInstruction " + custom_op_name_ + " begin");
   }
 
   VLOG(3) << "Custom Operator: InferShape - calc output ddim.";
@@ -454,8 +422,7 @@ void PythonOperationFunctionInstruction::Run() {
   python_operator_function_ctx_.ValidateAndAssignOutputs(
       out);  // 从宏里面扒出来
   if (FLAGS_check_cuda_error) [[unlikely]] {
-    CUDAErrorCheck("PythonOperationFunctionInstruction " + custom_op_name_ +
-                   " finish");
+    CUDAErrorCheck("PythonFunctionInstruction " + custom_op_name_ + " finish");
   }
 }
 }  // namespace paddle::framework

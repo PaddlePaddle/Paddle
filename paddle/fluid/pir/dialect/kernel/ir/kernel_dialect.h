@@ -53,9 +53,9 @@ class CustomKernelDialect : public pir::Dialect {
   void initialize();
 };
 
-class CustomPyFuncDialect : public pir::Dialect {
+class PythonFunctionDialect : public pir::Dialect {
  public:
-  explicit CustomPyFuncDialect(pir::IrContext* context);
+  explicit PythonFunctionDialect(pir::IrContext* context);
 
   static const char* name() { return "custom_py_func"; }
 
@@ -94,7 +94,7 @@ class OneDNNKernelDialect : public pir::Dialect {
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::KernelDialect)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CustomKernelDialect)
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CustomPyFuncDialect)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::PythonFunctionDialect)
 #ifdef PADDLE_WITH_DNNL
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNKernelDialect)
 #endif
