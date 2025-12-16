@@ -183,9 +183,8 @@ void LayerNormGradKernel(const Context &dev_ctx,
                                                  epsilon);                  \
   } while (0)
 
-  auto dx_grad = x_grad->dtype();
   auto kernel_variant = LayerNormGradKernelDispatch(
-      scale_bias_dtype, x_dtype, dx_grad, feature_size);
+      scale_bias_dtype, x_dtype, x_dtype, feature_size);
   switch (kernel_variant) {
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
     case LayerNormGadKernelVariant::FAST_LN_V2:
@@ -206,6 +205,7 @@ void LayerNormGradKernel(const Context &dev_ctx,
   }
 
 #undef PADDLE_LAUNCH_LAYERNORM_BWD
+#undef PADDLE_LAUNCH_FAST_LAYERNORM_V2_BWD
 }
 
 }  // namespace phi
