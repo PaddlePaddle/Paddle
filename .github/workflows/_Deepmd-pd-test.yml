@@ -108,7 +108,7 @@ jobs:
           rm -rf deepmd-kit
           echo "Cloning deepmd-kit repository..."
           source ${{ github.workspace }}/../../../proxy
-          git clone https://github.com/deepmodeling/deepmd-kit.git -b v3.1.2
+          git clone https://github.com/HydrogenSulfate/deepmd-kit.git -b paddle_ci_new
           ls -lah /paddle/deepmd-kit
           cd deepmd-kit
           '
