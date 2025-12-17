@@ -91,7 +91,7 @@ class PADDLE_API DenseTensor : public TensorBase,
   /// or [-ndim, -1]. \return The size of the tensor along the given dimension.
   /// \throws common::errors::OutOfRange if the tensor is empty or the index is
   /// out of range.
-  const int64_t dims(int dim) const {
+  int64_t dims(int dim) const {
     int ndim = meta_.dims.size();
 
     // Ensure the tensor has at least one dimension

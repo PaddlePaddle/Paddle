@@ -108,7 +108,8 @@ PADDLE_API extern std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
 AllBlockInfoOfVmmAllocator(const phi::GPUPlace& place);
 
 // Get allocate event when start FLAGS_record_alloc_event.
-PADDLE_API extern std::vector<std::tuple<uint64_t, size_t, int64_t, int64_t>>
+PADDLE_API extern std::vector<
+    std::tuple<uintptr_t, bool, uint64_t, size_t, int64_t, int64_t>>
 GetAllocateEvent(const phi::GPUPlace& place);
 
 // Get compact count and size when start FLAGS_enable_compact_mem.

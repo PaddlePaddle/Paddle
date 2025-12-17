@@ -965,7 +965,10 @@ void BatchNormKernel(const Context &dev_ctx,
       double this_factor = 1. - momentum;
 #ifdef PADDLE_WITH_HIP
       this_factor = momentum;
-      const int num = transformed_x.numel();
+      // TODO(large-tensor): downstream functors may still use int; guard until
+      // upgraded.
+      int64_t num = transformed_x.numel();
+
       const int block = 256;
       const int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
       const int max_blocks = std::max(max_threads / block, 1);
