@@ -813,7 +813,7 @@ class TestBitwiseLeftShiftOp_Stride_ZeroSize1(TestBitwiseLeftShiftOp_Stride):
         self.y_trans = np.transpose(self.y, self.perm)
 
 
-class TestBitwiseLeftShiftOp_Compatibility(unittest.TestCase):
+class TestBitwiseLeftShiftInplaceOp_Compatibility(unittest.TestCase):
     def setUp(self):
         self.x = np.random.randint(0, 256, [200, 300]).astype('uint8')
         self.y = np.random.randint(0, 256, [200, 300]).astype('uint8')
@@ -838,7 +838,7 @@ class TestBitwiseLeftShiftOp_Compatibility(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestBitwiseRightShiftOp_Compatibility(unittest.TestCase):
+class TestBitwiseRightShiftInplaceOp_Compatibility(unittest.TestCase):
     def setUp(self):
         self.x = np.random.randint(0, 256, [200, 300]).astype('uint8')
         self.y = np.random.randint(0, 256, [200, 300]).astype('uint8')
@@ -860,6 +860,138 @@ class TestBitwiseRightShiftOp_Compatibility(unittest.TestCase):
         paddle.bitwise_right_shift_(x, other=y, is_arithmetic=False)
         out_ref = ref_right_shift_logical(self.x, self.y)
         np.testing.assert_allclose(out_ref, x.numpy())
+        paddle.enable_static()
+
+
+class TestBitwiseLeftShiftAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        self.init_input()
+        self.place = get_device_place()
+
+    def init_input(self):
+        self.x = np.random.randint(0, 256, [200, 300]).astype('uint8')
+        self.y = np.random.randint(0, 256, [200, 300]).astype('uint8')
+
+    def test_static_api_arithmetic(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('x', self.x.shape, dtype=self.x.dtype)
+            y = paddle.static.data('y', self.y.shape, dtype=self.y.dtype)
+            out = paddle.bitwise_left_shift(
+                input=x,
+                other=y,
+            )
+            out_ = x << y
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'x': self.x, 'y': self.y}, fetch_list=[out])
+            res_ = exe.run(feed={'x': self.x, 'y': self.y}, fetch_list=[out_])
+            out_ref = ref_left_shift_arithmetic(self.x, self.y)
+            np.testing.assert_allclose(out_ref, res[0])
+            np.testing.assert_allclose(out_ref, res_[0])
+
+    def test_dygraph_api_arithmetic(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x)
+        y = paddle.to_tensor(self.y)
+        out = paddle.bitwise_left_shift(
+            input=x,
+            other=y,
+        )
+        out_ = x << y
+        out_ref = ref_left_shift_arithmetic(self.x, self.y)
+        np.testing.assert_allclose(out_ref, out.numpy())
+        np.testing.assert_allclose(out_ref, out_.numpy())
+        paddle.enable_static()
+
+    def test_static_api_logical(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('x', self.x.shape, dtype=self.x.dtype)
+            y = paddle.static.data('y', self.y.shape, dtype=self.y.dtype)
+            out = paddle.bitwise_left_shift(x, other=y, is_arithmetic=False)
+            out_ = x.__lshift__(y, False)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'x': self.x, 'y': self.y}, fetch_list=[out])
+            res_ = exe.run(feed={'x': self.x, 'y': self.y}, fetch_list=[out_])
+            out_ref = ref_left_shift_logical(self.x, self.y)
+            np.testing.assert_allclose(out_ref, res[0])
+            np.testing.assert_allclose(out_ref, res_[0])
+
+    def test_dygraph_api_logical(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x)
+        y = paddle.to_tensor(self.y)
+        out = paddle.bitwise_left_shift(x, other=y, is_arithmetic=False)
+        out_ = x.__lshift__(y, False)
+        out_ref = ref_left_shift_logical(self.x, self.y)
+        np.testing.assert_allclose(out_ref, out.numpy())
+        np.testing.assert_allclose(out_ref, out_.numpy())
+        paddle.enable_static()
+
+
+class TestBitwiseRightShiftAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        self.init_input()
+        self.place = get_device_place()
+
+    def init_input(self):
+        self.x = np.random.randint(0, 256, [200, 300]).astype('uint8')
+        self.y = np.random.randint(0, 256, [200, 300]).astype('uint8')
+
+    def test_static_api_arithmetic(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('x', self.x.shape, dtype=self.x.dtype)
+            y = paddle.static.data('y', self.y.shape, dtype=self.y.dtype)
+            out = paddle.bitwise_right_shift(
+                input=x,
+                other=y,
+            )
+            out_ = x >> y
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'x': self.x, 'y': self.y}, fetch_list=[out])
+            res_ = exe.run(feed={'x': self.x, 'y': self.y}, fetch_list=[out_])
+            out_ref = ref_right_shift_arithmetic(self.x, self.y)
+            np.testing.assert_allclose(out_ref, res[0])
+            np.testing.assert_allclose(out_ref, res_[0])
+
+    def test_dygraph_api_arithmetic(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x)
+        y = paddle.to_tensor(self.y)
+        out = paddle.bitwise_right_shift(
+            input=x,
+            other=y,
+        )
+        out_ = x >> y
+        out_ref = ref_right_shift_arithmetic(self.x, self.y)
+        np.testing.assert_allclose(out_ref, out.numpy())
+        np.testing.assert_allclose(out_ref, out_.numpy())
+        paddle.enable_static()
+
+    def test_static_api_logical(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('x', self.x.shape, dtype=self.x.dtype)
+            y = paddle.static.data('y', self.y.shape, dtype=self.y.dtype)
+            out = paddle.bitwise_right_shift(x, y, is_arithmetic=False)
+            out_ = x.__rshift__(y, False)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'x': self.x, 'y': self.y}, fetch_list=[out])
+            res_ = exe.run(feed={'x': self.x, 'y': self.y}, fetch_list=[out_])
+            out_ref = ref_right_shift_logical(self.x, self.y)
+            np.testing.assert_allclose(out_ref, res[0])
+            np.testing.assert_allclose(out_ref, res_[0])
+
+    def test_dygraph_api_logical(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x)
+        y = paddle.to_tensor(self.y)
+        out = paddle.bitwise_right_shift(x, y, is_arithmetic=False)
+        out_ = x.__rshift__(y, False)
+        out_ref = ref_right_shift_logical(self.x, self.y)
+        np.testing.assert_allclose(out_ref, out.numpy())
+        np.testing.assert_allclose(out_ref, out_.numpy())
         paddle.enable_static()
 
 
