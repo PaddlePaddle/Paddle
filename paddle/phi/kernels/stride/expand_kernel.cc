@@ -12,15 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_CUDA)
-
 #include "paddle/phi/kernels/expand_kernel.h"
-
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/scalar.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include <algorithm>
+#include "paddle/common/flags.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/stride/elementwise_stride_base.cu.h"
+#include "paddle/phi/kernels/contiguous_kernel.h"
+#include "paddle/phi/kernels/funcs/concat_funcs.h"
+#include "paddle/phi/kernels/funcs/strided_reshape_utils.h"
+#include "paddle/phi/kernels/funcs/strided_utils.h"
+#include "paddle/phi/kernels/slice_kernel.h"
 
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
@@ -33,17 +34,20 @@ void ExpandStrideKernel(const Context& dev_ctx,
                         const IntArray& shape,
                         DenseTensor* out) {
   bool invalid_stride = false;
-  if (x.numel() <= 0 || !x.IsInitialized() || x.dims().size() > 7) {
+  if (x.numel() <= 0 || !x.IsInitialized()) {
     invalid_stride = true;
   }
-  if (out->numel() <= 0 || out->dims().size() > 7) {
+  if (out->numel() <= 0) {
     invalid_stride = true;
   }
 
   DenseTensor x_;
   if (!FLAGS_use_stride_compute_kernel || invalid_stride) {
     if (!x.meta().is_contiguous()) {
-      x_ = Tensor2Contiguous<Context>(dev_ctx, x);
+      phi::MetaTensor meta_input(x);
+      phi::MetaTensor meta_out(&x_);
+      UnchangedInferMeta(meta_input, &meta_out);
+      phi::ContiguousKernel<T, Context>(dev_ctx, x, &x_);
     } else {
       x_ = x;
     }
@@ -154,9 +158,9 @@ void ExpandStrideKernel(const Context& dev_ctx,
 
   auto meta = out->meta();
   meta.dims =
-      DDim(expandedSizes.data(), static_cast<int>(expandedSizes.size()));
-  meta.strides =
-      DDim(expandedStrides.data(), static_cast<int>(expandedStrides.size()));
+      DDim(expandedSizes.data(), static_cast<int64_t>(expandedSizes.size()));
+  meta.strides = DDim(expandedStrides.data(),
+                      static_cast<int64_t>(expandedStrides.size()));
 
   out->set_meta(meta);
   out->ResetHolder(x.Holder());
@@ -165,6 +169,24 @@ void ExpandStrideKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+PD_REGISTER_KERNEL(expand,
+                   CPU,
+                   STRIDED,
+                   phi::ExpandStrideKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   int16_t,
+                   uint8_t,
+                   int8_t,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(expand,
                    GPU,
                    STRIDED,
@@ -183,5 +205,21 @@ PD_REGISTER_KERNEL(expand,
                    phi::float8_e5m2,
                    phi::complex64,
                    phi::complex128) {}
+#endif
 
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_WITH_CUDA)
+PD_REGISTER_KERNEL(expand,
+                   Custom,
+                   STRIDED,
+                   phi::ExpandStrideKernel,
+                   double,
+                   float,
+                   phi::float16,
+                   bool,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   phi::bfloat16) {}
 #endif
