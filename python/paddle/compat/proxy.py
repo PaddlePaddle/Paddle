@@ -454,10 +454,10 @@ def enable_torch_proxy(
             PyTorch compat for. If None, enables PyTorch compat globally. Defaults to None.
         blocked_modules (str or Iterable[str], optional): Specific module or modules to
             exclude from PyTorch compat. Defaults to None.
-        silent (bool, optional): If True, suppresses warnings about scope changes.
-            Defaults to False.
         backend (str, optional): The backend to enable compat for. Currently only
             "torch" is supported. Defaults to "torch".
+        silent (bool, optional): If True, suppresses warnings about scope changes.
+            Defaults to False.
 
     Example:
         .. code-block:: pycon
