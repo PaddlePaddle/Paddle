@@ -177,7 +177,7 @@ void LayerNormGradKernel(const Context &dev_ctx,
                                                  scale_bias_dtype,          \
                                                  x_dtype,                   \
                                                  x_grad->dtype(),           \
-                                                 paddle::DataType::FLOAT32, \
+                                                 compute_dtype,             \
                                                  feature_size,              \
                                                  batch_size,                \
                                                  feature_size,              \
