@@ -932,6 +932,9 @@ class TestLayerNormBF16OpByOpTest_ZeroSize(TestLayerNormOpByOpTest):
         self.check_pir = True
 
 
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda()), "core is not compiled with CUDA"
+)
 class TestFastLNV2(unittest.TestCase):
     """
     Tests the correctness of forward and backward propagation for fast_ln v2 in layernorn kernel.
