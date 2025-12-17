@@ -25,7 +25,8 @@ COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
 
 namespace phi {
-template <typename Context>
+
+template <typename T, typename Context>
 void StackGradStrideKernel(const Context& dev_ctx,
                            const DenseTensor& out_grad,
                            int axis,
@@ -50,10 +51,7 @@ void StackGradStrideKernel(const Context& dev_ctx,
       phi::MetaTensor meta_input(out_grad);
       phi::MetaTensor meta_out(&out_grad_);
       UnchangedInferMeta(meta_input, &meta_out);
-      PD_VISIT_ALL_TYPES(out_grad.dtype(), "Tensor2Contiguous", ([&] {
-                           phi::ContiguousKernel<data_t, Context>(
-                               dev_ctx, out_grad, &out_grad_);
-                         }));
+      phi::ContiguousKernel<T, Context>(dev_ctx, out_grad, &out_grad_);
     } else {
       out_grad_ = out_grad;
     }
@@ -65,10 +63,7 @@ void StackGradStrideKernel(const Context& dev_ctx,
         x_grad[i]->set_meta(meta);
       }
     }
-    PD_VISIT_ALL_TYPES(out_grad_.dtype(), "StackGradKernel", ([&] {
-                         phi::StackGradKernel<data_t, Context>(
-                             dev_ctx, out_grad_, axis, x_grad);
-                       }));
+    phi::StackGradKernel<T, Context>(dev_ctx, out_grad_, axis, x_grad);
     return;
   }
 
@@ -97,7 +92,55 @@ void StackGradStrideKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
+PD_REGISTER_KERNEL(stack_grad,
+                   CPU,
+                   STRIDED,
+                   phi::StackGradStrideKernel,
+                   bool,
+                   float,
+                   double,
+                   int,
+                   int8_t,
+                   int16_t,
+                   int64_t,
+                   uint8_t,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(stack_grad,
-                                         STRIDED,
-                                         phi::StackGradStrideKernel) {}
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(stack_grad,
+                   GPU,
+                   STRIDED,
+                   phi::StackGradStrideKernel,
+                   bool,
+                   float,
+                   double,
+                   int,
+                   int8_t,
+                   int64_t,
+                   uint8_t,
+                   int16_t,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2,
+                   phi::complex64,
+                   phi::complex128) {}
+#endif
+
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_WITH_CUDA)
+PD_REGISTER_KERNEL(stack_grad,
+                   Custom,
+                   STRIDED,
+                   phi::StackGradStrideKernel,
+                   float,
+                   phi::float16,
+                   phi::bfloat16,
+                   int64_t,
+                   int,
+                   int16_t,
+                   int8_t,
+                   uint8_t) {}
+#endif

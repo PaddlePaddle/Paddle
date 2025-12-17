@@ -50,9 +50,6 @@ PD_REGISTER_KERNEL(stack_grad,
                    float,
                    double,
                    int,
-                   uint16_t,  // UnTested
-                   uint32_t,  // UnTested
-                   uint64_t,  // UnTested
                    int8_t,
                    int64_t,
                    uint8_t,

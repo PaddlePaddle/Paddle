@@ -70,11 +70,6 @@ PD_REGISTER_KERNEL(stack_grad,
                    int16_t,
                    int64_t,
                    uint8_t,
-                   uint16_t,            // UnTested
-                   uint32_t,            // UnTested
-                   uint64_t,            // UnTested
-                   phi::float8_e4m3fn,  // UnTested
-                   phi::float8_e5m2,    // UnTested
                    phi::float16,
                    phi::bfloat16,
                    phi::complex64,
