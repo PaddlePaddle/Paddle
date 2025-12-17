@@ -931,7 +931,7 @@ void FleetWrapper::PushDenseVarsAsync(
         mat *= scale;
       } else if (t.find(".batch_square_sum@GRAD") != std::string::npos) {
         VLOG(3) << "epsilon: " << scale_datanorm;
-        for (int i = 0; i < t_count; ++i) {
+        for (int64_t i = 0; i < count; ++i) {
           g[i] = (g[i] - batch_size * scale_datanorm) / batch_size +
                  batch_size * scale_datanorm;
         }
@@ -987,7 +987,7 @@ void FleetWrapper::PushDenseVarsAsync(
         mat *= scale;
       } else if (t.find(".batch_square_sum@GRAD") != std::string::npos) {
         VLOG(3) << "epsilon: " << scale_datanorm;
-        for (int i = 0; i < t_count; ++i) {
+        for (int64_t i = 0; i < count; ++i) {
           g[i] = (g[i] - batch_size * scale_datanorm) / batch_size +
                  batch_size * scale_datanorm;
         }
@@ -1034,7 +1034,7 @@ void FleetWrapper::PushDenseVarsAsync(
         mat *= scale;
       } else if (t.find(".batch_square_sum@GRAD") != std::string::npos) {
         VLOG(3) << "epsilon: " << scale_datanorm;
-        for (int i = 0; i < t_count; ++i) {
+        for (int64_t i = 0; i < count; ++i) {
           g[i] = (g[i] - batch_size * scale_datanorm) / batch_size +
                  batch_size * scale_datanorm;
         }

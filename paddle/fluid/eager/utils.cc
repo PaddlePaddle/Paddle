@@ -1745,7 +1745,7 @@ const std::string FormatTensor(const paddle::Tensor& t) {
 
 void SaveStringToFileWithPID(const std::string& filename,
                              const std::string& content,
-                             const std::string& mode = "trunc") {
+                             const std::string& mode) {
   pid_t pid = getprocessid();
   // Create the new filename with PID suffix
   std::string newFilename = filename + "." + std::to_string(pid);

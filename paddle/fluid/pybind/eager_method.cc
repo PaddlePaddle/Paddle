@@ -828,7 +828,7 @@ static PyObject* tensor_method_clone(TensorObject* self,
             "We can only support initialized tensor in clone, however we got "
             "uninitialized tensor %s, please check your code.",
             self->tensor.name()));
-
+    SetPythonStack();
     out = assign_ad_func(self->tensor);
   }
   return ToPyObject(out);
