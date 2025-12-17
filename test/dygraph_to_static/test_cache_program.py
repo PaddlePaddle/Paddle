@@ -82,7 +82,7 @@ class TestCacheProgram2(TestCacheProgram):
 
 class TestCacheProgram3(TestCacheProgram):
     def setUp(self):
-        class DummpyModel(paddle.nn.Layer):
+        class DummyModel(paddle.nn.Layer):
             def __init__(self):
                 super().__init__()
                 self.linear = paddle.nn.Linear(3, 4)
