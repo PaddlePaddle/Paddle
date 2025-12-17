@@ -23,16 +23,10 @@ from typing import TYPE_CHECKING, Any, Callable, NoReturn
 if TYPE_CHECKING:
     from collections.abc import Collection, Sequence
 
+import numpy as np
+
 import paddle
 import paddle.framework
-
-try:
-    import numpy as np
-
-    HAS_NUMPY = True
-except ModuleNotFoundError:
-    HAS_NUMPY = False
-    np = None  # type: ignore[assignment]
 
 
 class ErrorMeta(Exception):
@@ -123,29 +117,6 @@ def get_tolerances(
         return rtol, atol
     else:
         return default_tolerances(*inputs)
-
-
-def _make_bitwise_mismatch_msg(
-    *,
-    default_identifier: str,
-    identifier: str | Callable[[str], str] | None = None,
-    extra: str | None = None,
-    first_mismatch_idx: tuple[int] | None = None,
-):
-    if identifier is None:
-        identifier = default_identifier
-    elif callable(identifier):
-        identifier = identifier(default_identifier)
-
-    msg = f"{identifier} are not 'equal'!\n\n"
-
-    if extra:
-        msg += f"{extra.strip()}\n"
-    if first_mismatch_idx is not None:
-        msg += (
-            f"The first mismatched element is at index {first_mismatch_idx}.\n"
-        )
-    return msg.strip()
 
 
 def _make_mismatch_msg(
@@ -264,22 +235,16 @@ def make_tensor_mismatch_msg(
         and hasattr(paddle, "bfloat16")
         and actual.dtype != paddle.bfloat16
     ):
-        # Cast to int64 for non-floating types to avoid overflow in diff calc
         actual_flat = actual_flat.astype("int64")
         expected_flat = expected_flat.astype("int64")
 
     abs_diff = paddle.abs(actual_flat - expected_flat)
-
-    # Ensure that only mismatches are used for the max_abs_diff computation
-    # Note: paddle doesn't support bool indexing assignment cleanly in all versions, using where
     abs_diff = paddle.where(matches_flat, paddle.zeros_like(abs_diff), abs_diff)
 
-    # max returns (value,), argsort or manual search for index
     max_abs_diff = paddle.max(abs_diff)
     max_abs_diff_flat_idx = paddle.argmax(abs_diff)
 
     rel_diff = abs_diff / paddle.abs(expected_flat)
-    # Ensure that only mismatches are used for the max_rel_diff computation
     rel_diff = paddle.where(matches_flat, paddle.zeros_like(rel_diff), rel_diff)
 
     max_rel_diff = paddle.max(rel_diff)
@@ -412,8 +377,7 @@ class BooleanPair(Pair):
     @property
     def _supported_types(self) -> tuple[type, ...]:
         cls: list[type] = [bool]
-        if HAS_NUMPY:
-            cls.append(np.bool_)
+        cls.append(np.bool_)
         return tuple(cls)
 
     def _process_inputs(
@@ -482,8 +446,7 @@ class NumberPair(Pair):
     @property
     def _supported_types(self) -> tuple[type, ...]:
         cls = list(self._NUMBER_TYPES)
-        if HAS_NUMPY:
-            cls.append(np.number)
+        cls.append(np.number)
         return tuple(cls)
 
     def _process_inputs(
@@ -501,7 +464,7 @@ class NumberPair(Pair):
     def _to_number(
         self, number_like: Any, *, id: tuple[Any, ...]
     ) -> int | float | complex:
-        if HAS_NUMPY and isinstance(number_like, np.number):
+        if isinstance(number_like, np.number):
             return number_like.item()
         elif isinstance(number_like, self._NUMBER_TYPES):
             return number_like
@@ -568,7 +531,6 @@ class TensorLikePair(Pair):
         equal_nan: bool = False,
         check_device: bool = True,
         check_dtype: bool = True,
-        check_layout: bool = False,
         check_stride: bool = False,
         **other_parameters: Any,
     ):
@@ -583,7 +545,6 @@ class TensorLikePair(Pair):
         self.equal_nan = equal_nan
         self.check_device = check_device
         self.check_dtype = check_dtype
-        self.check_layout = check_layout
         self.check_stride = check_stride
 
     def _process_inputs(
@@ -640,14 +601,6 @@ class TensorLikePair(Pair):
 
         if tuple(actual.shape) != tuple(expected.shape):
             raise_mismatch_error("shape", actual.shape, expected.shape)
-
-        if (
-            self.check_layout
-            and hasattr(actual, 'layout')
-            and hasattr(expected, 'layout')
-        ):
-            if actual.layout != expected.layout:
-                raise_mismatch_error("layout", actual.layout, expected.layout)
 
         if self.check_device:
             if str(actual.place) != str(expected.place):
@@ -728,7 +681,6 @@ class TensorLikePair(Pair):
         identifier: str | Callable[[str], str] | None = None,
     ) -> None:
         """Checks if the values of two tensors are close up to a desired tolerance."""
-        # paddle.isclose returns a boolean tensor
         matches = paddle.isclose(
             actual, expected, rtol=rtol, atol=atol, equal_nan=equal_nan
         )
@@ -762,7 +714,6 @@ class TensorLikePair(Pair):
             "equal_nan",
             "check_device",
             "check_dtype",
-            "check_layout",
             "check_stride",
         )
 
@@ -919,7 +870,6 @@ def assert_close(
     equal_nan: bool = False,
     check_device: bool = True,
     check_dtype: bool = True,
-    check_layout: bool = True,
     msg: str | Callable[[str], str] | None = None,
 ):
     r"""
@@ -938,7 +888,6 @@ def assert_close(
 
     - :attr:`~paddle.Tensor.place` (if ``check_place`` is ``True``),
     - ``dtype`` (if ``check_dtype`` is ``True``),
-    - ``layout`` (if ``check_layout`` is ``True``), and
     - stride (if ``check_stride`` is ``True``).
 
     If either ``actual`` or ``expected`` is a meta tensor, only the attribute checks will be performed.
@@ -975,9 +924,6 @@ def assert_close(
             :attr:`~paddle.Tensor.place`'s are moved to the CPU before being compared.
         check_dtype (bool): If ``True`` (default), asserts that corresponding tensors have the same ``dtype``. If this
             check is disabled, tensors with different ``dtype``'s are promoted to a common ``dtype`` before being compared.
-        check_layout (bool): If ``True`` (default), asserts that corresponding tensors have the same ``layout``. If this
-            check is disabled, tensors with different ``layout``'s are converted to strided tensors before being
-            compared.
         check_stride (bool): If ``True`` and corresponding tensors are strided, asserts that they have the same stride.
         msg (str|Callable[[str], str], optional): Optional error message to use in case a failure occurs during
             the comparison. Can also passed as callable in which case it will be called with the generated message and
@@ -992,8 +938,6 @@ def assert_close(
         AssertionError: If the inputs are :class:`~collections.abc.Sequence`'s, but their length does not match.
         AssertionError: If the inputs are :class:`~collections.abc.Mapping`'s, but their set of keys do not match.
         AssertionError: If corresponding tensors do not have the same :attr:`~paddle.Tensor.shape`.
-        AssertionError: If ``check_layout`` is ``True``, but corresponding tensors do not have the same
-            :attr:`~paddle.Tensor.layout`.
         AssertionError: If only one of corresponding tensors is quantized.
         AssertionError: If ``check_place`` is ``True``, but corresponding tensors are not on the same
             :attr:`~paddle.Tensor.place`.
@@ -1122,7 +1066,6 @@ def assert_close(
         equal_nan=equal_nan,
         check_device=check_device,
         check_dtype=check_dtype,
-        check_layout=check_layout,
         msg=msg,
     )
 

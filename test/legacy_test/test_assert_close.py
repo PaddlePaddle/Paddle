@@ -73,7 +73,7 @@ class TestAssertClose(unittest.TestCase):
         ):
             assert_close(t1, t3)
 
-        # assert_close(t1, t3, atol=1e-3, rtol=0)
+        assert_close(t1, t3, atol=1e-3, rtol=0.0)
 
     def test_tensor_shape_mismatch(self):
         t1 = paddle.zeros([2, 2])
@@ -147,12 +147,11 @@ class TestAssertClose(unittest.TestCase):
             msg = str(e)
             self.assertIn("data", msg)
             self.assertIn("val", msg)
-            # ErrorMeta logic: ''.join(str([item]) for item in self.id) -> "['data'][0]['val']"
             self.assertIn("['data']", msg)
 
     def test_tensor_mismatch_msg_details(self):
         t1 = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0]])
-        t2 = paddle.to_tensor([[1.0, 2.0], [3.0, 5.0]])  # index (1, 1) mismatch
+        t2 = paddle.to_tensor([[1.0, 2.0], [3.0, 5.0]])
 
         try:
             assert_close(t1, t2)
@@ -178,8 +177,8 @@ class TestAssertClose(unittest.TestCase):
 
     def test_complex_numbers(self):
         c1 = 1 + 1j
-        c2 = 1 + 1j + 1e-10j  # close
-        c3 = 1 + 2j  # not close
+        c2 = 1 + 1j + 1e-10j
+        c3 = 1 + 2j
 
         assert_close(c1, c2)
         with self.assertRaises(AssertionError):
@@ -193,6 +192,106 @@ class TestAssertClose(unittest.TestCase):
     #         assert_close(t1, t2)
 
     #     assert_close(t1, t1)
+
+    def test_tolerance_validation_logic(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "Both 'rtol' and 'atol' must be either specified or omitted",
+        ):
+            assert_close(1.0, 1.0, rtol=1e-5)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "Both 'rtol' and 'atol' must be either specified or omitted",
+        ):
+            assert_close(1.0, 1.0, atol=1e-5)
+
+    def test_msg_callable(self):
+        def custom_formatter(orig_msg):
+            return f"PREFIX -> {orig_msg} <- SUFFIX"
+
+        with self.assertRaisesRegex(
+            AssertionError, "PREFIX -> Scalars are not equal!"
+        ):
+            assert_close(1, 2, msg=custom_formatter)
+
+    def test_zero_dim_tensor_mismatch(self):
+        t1 = paddle.to_tensor(1.0)
+        t2 = paddle.to_tensor(2.0)
+
+        with self.assertRaisesRegex(AssertionError, "Scalars"):
+            assert_close(t1, t2)
+
+        try:
+            assert_close(t1, t2)
+        except AssertionError as e:
+            self.assertNotIn("Tensor-likes", str(e))
+
+    def test_type_promotion_logic(self):
+        t_real = paddle.to_tensor([1.0], dtype='float32')
+        t_complex = paddle.to_tensor([1.0 + 0j], dtype='complex64')
+        assert_close(t_real, t_complex, check_dtype=False)
+
+        t_c64 = paddle.to_tensor([1 + 1j], dtype='complex64')
+        t_c128 = paddle.to_tensor([1 + 1j], dtype='complex128')
+        assert_close(t_c64, t_c128, check_dtype=False)
+
+    def test_object_pair_broken_eq(self):
+        from paddle.testing._comparison import ErrorMeta, ObjectPair
+
+        class BrokenObj:
+            def __eq__(self, other):
+                raise RuntimeError("Comparison crashed internal error!")
+
+            def __repr__(self):
+                return "BrokenObj"
+
+        obj = BrokenObj()
+        pair = ObjectPair(obj, obj)
+
+        try:
+            pair.compare()
+        except ErrorMeta as e:
+            actual_error = e.to_error()
+
+            self.assertIsInstance(actual_error, ValueError)
+            self.assertIn(
+                "failed with:\nComparison crashed internal error!",
+                str(actual_error),
+            )
+        else:
+            self.fail("ObjectPair.compare() should have raised an ErrorMeta")
+
+    def test_pair_repr_and_extra_repr(self):
+        from paddle.testing._comparison import NumberPair, ObjectPair, Pair
+
+        obj_pair = ObjectPair(actual=10, expected=20, id=("test_id",))
+        rep_str = repr(obj_pair)
+
+        self.assertIn("ObjectPair(", rep_str)
+        self.assertIn("id=('test_id',),", rep_str)
+        self.assertIn("actual=10,", rep_str)
+        self.assertIn("expected=20,", rep_str)
+
+        num_pair = NumberPair(1.0, 1.0, rtol=0.5, atol=0.1)
+        rep_str_num = repr(num_pair)
+
+        self.assertIn("NumberPair(", rep_str_num)
+        self.assertIn("rtol=0.5,", rep_str_num)
+        self.assertIn("atol=0.1,", rep_str_num)
+
+        class MockTuplePair(Pair):
+            def compare(self):
+                pass
+
+            def extra_repr(self):
+                return [("custom_key", "custom_value")]
+
+        mock_pair = MockTuplePair("act", "exp")
+        rep_str_mock = repr(mock_pair)
+
+        self.assertIn("MockTuplePair(", rep_str_mock)
+        self.assertIn("custom_key=custom_value,", rep_str_mock)
 
 
 if __name__ == '__main__':
