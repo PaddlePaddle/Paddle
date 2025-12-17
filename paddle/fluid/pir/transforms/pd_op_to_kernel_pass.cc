@@ -3700,7 +3700,7 @@ void ProcessBlock(
       continue;
     }
 
-    if (paddle::dialect::IsCustomPyOp(op_item)) {
+    if (paddle::dialect::IsPythonOp(op_item)) {
       HandleForPythonOp(ctx,
                         op_item,
                         kernel_key,
