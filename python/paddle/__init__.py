@@ -243,6 +243,11 @@ from .autograd import (
     set_grad_enabled,
 )
 from .base.core import Size
+from .compat import (
+    disable_torch_proxy as disable_compat,
+    enable_torch_proxy as enable_compat,
+    use_torch_proxy_guard as use_compat_guard,  # noqa: F401
+)
 from .device import (  # noqa: F401
     Event,
     Stream,
@@ -1499,6 +1504,8 @@ __all__ = [
     'Generator',
     'adaptive_avg_pool1d',
     'autocast',
+    'enable_compat',
+    'disable_compat',
 ]
 import os
 
