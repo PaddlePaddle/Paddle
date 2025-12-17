@@ -85,6 +85,7 @@ PD_REGISTER_KERNEL(multiply,
                    XPU,
                    ALL_LAYOUT,
                    phi::MultiplyKernel,
+                   bool,
                    phi::float16,
                    phi::bfloat16,
 #ifdef PADDLE_WITH_XPU_FFT

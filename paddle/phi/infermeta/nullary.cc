@@ -195,7 +195,7 @@ void CreateInferMetaBase(const std::vector<int64_t>& shape,
 
 void DataInferMeta(const std::string& name,
                    const phi::IntArray& shape,
-                   phi::DataType data_type,
+                   DataType data_type,
                    MetaTensor* out) {
   auto out_dims = common::make_ddim(shape.GetData());
   out->set_dims(out_dims);
@@ -519,7 +519,7 @@ void TriuIndicesInferMeta(
 void ReadFileInferMeta(const std::string& filename, MetaTensor* out) {
   auto out_dims = std::vector<int>(1, -1);
   out->set_dims(phi::make_ddim(out_dims));
-  out->set_dtype(phi::DataType::UINT8);
+  out->set_dtype(DataType::UINT8);
 }
 
 }  // namespace phi

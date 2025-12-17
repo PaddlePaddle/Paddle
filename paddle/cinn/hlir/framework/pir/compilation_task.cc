@@ -337,8 +337,8 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::BuildPirCINNKernelInfo(
       context_->group_->FuncName() + "_infer_shape",
       context_->group_->symbol_args_map(),
       context_->group_->temp_space_sizes());
-  backend_resource->GetBackendCompiler()->SetFuncName(
-      context_->group_->FuncName());
+  backend_resource->GetBackendCompiler()->SetFusionHash(
+      context_->GetFusionHash());
   backend_resource->GetBackendCompiler()->Build(module,
                                                 "");  // Generate device Code
   backend_resource->GetBackendCompiler()->AppendCX86(CX86module);
@@ -371,8 +371,8 @@ CompilationTask::CompileBroadcastModules(
     broadcast_conditions.emplace_back(context.broadcast_condition_);
     ir::Module ir_module = context.module_builder_.Build();
     ir::Module ir_moduleCX86 = context.CX86_module_builder_.Build();
-    backend_resource->GetBackendCompiler()->SetFuncName(
-        context.group_->FuncName());
+    backend_resource->GetBackendCompiler()->SetFusionHash(
+        context.GetFusionHash());
     backend_resource->GetBackendCompiler()->Build(ir_module, "");
     backend_resource->GetBackendCompiler()->AppendCX86(ir_moduleCX86);
   }

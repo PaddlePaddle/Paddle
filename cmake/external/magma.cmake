@@ -56,6 +56,11 @@ if(LINUX)
     set(MAGMA_URL_MD5 "889f990bfd4a24c98831cfda0243674a")
   endif()
 
+  if(WITH_ROCM)
+    set(MAGMA_ARCH "hip")
+    set(MAGMA_URL_MD5 "f4fbe46c665819f6ae86d1aa447d07b5")
+  endif()
+
   message(STATUS "Selected MAGMA architecture: ${MAGMA_ARCH}")
   message(STATUS "Selected MAGMA URL MD5: ${MAGMA_URL_MD5}")
 
