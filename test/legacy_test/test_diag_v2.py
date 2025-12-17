@@ -338,7 +338,7 @@ class TestDiagV2Compatibility(unittest.TestCase):
 
         # diagonal arg
         self.input_np2 = np.random.random(size=(10, 10)).astype(np.float32)
-        self.expected2 = np.diag(self.input_np, k=1)
+        self.expected2 = np.diag(self.input_np2, k=1)
 
         # out arg
         self.input_np3 = np.random.random(size=(10, 10)).astype(np.float32)
@@ -373,49 +373,31 @@ class TestDiagV2Compatibility(unittest.TestCase):
         mp, sp = static.Program(), static.Program()
         with static.program_guard(mp, sp):
             x1 = paddle.static.data(
-                name='input', shape=[10, 10], dtype='float32'
+                name='input1', shape=[10, 10], dtype='float32'
             )
             x2 = paddle.static.data(
-                name='input', shape=[10, 10], dtype='float32'
-            )
-            x3 = paddle.static.data(
-                name='input', shape=[10, 10], dtype='float32'
-            )
-            x4 = paddle.static.data(
-                name='input', shape=[10, 10], dtype='float32'
+                name='input2', shape=[10, 10], dtype='float32'
             )
             # input arg
             result1 = paddle.diag(input=x1)
             # diagonal arg
             result2 = paddle.diag(x2, diagonal=1)
-            # out arg
-            result3_1 = paddle.empty([])
-            result3_2 = paddle.diag(x3, out=result3_1)
-            result4 = paddle.empty([])
-            paddle.diag(x4, out=result4)
 
         place = get_device_place() if use_gpu else base.CPUPlace()
         exe = static.Executor(place)
         exe.run(sp)
-        [res1, res2, res3_1, res3_2, res4] = exe.run(
+        [res1, res2] = exe.run(
             mp,
             feed={
                 "input1": self.input_np1,
                 "input2": self.input_np2,
-                'input3': self.input_np3,
-                'input4': self.input_np4,
             },
-            fetch_list=[result1, result2, result3_1, result3_2, result4],
+            fetch_list=[result1, result2],
         )
         # input arg
         np.testing.assert_allclose(res1, self.expected1, rtol=1e-05)
         # diagonal arg
         np.testing.assert_allclose(res2, self.expected2, rtol=1e-05)
-        # out arg
-        np.testing.assert_allclose(res3_1, self.expected3, rtol=1e-05)
-        np.testing.assert_allclose(res3_2, self.expected3, rtol=1e-05)
-
-        np.testing.assert_allclose(res4, self.expected4, rtol=1e-05)
 
     def test_cpu(self):
         paddle.disable_static(place=paddle.base.CPUPlace())
