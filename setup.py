@@ -2288,7 +2288,7 @@ def get_headers():
         + list(
             find_files(
                 '*.h',
-                paddle_source_dir + 'paddle/fluid/distributed/collective',
+                paddle_source_dir + '/paddle/fluid/distributed/collective',
             )
         )
     )

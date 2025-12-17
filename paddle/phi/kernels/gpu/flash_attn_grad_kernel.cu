@@ -248,6 +248,7 @@ void FlashAttnUnpaddedGradBaseKernel(
   const int64_t head_size = dims[2];
   const int64_t total_k = k.dims()[0];
   const int64_t num_heads_k = k.dims()[1];
+  const int64_t total_q = dims[0];
 
   bool is_mha = (num_heads == num_heads_k);
 
@@ -310,7 +311,9 @@ void FlashAttnUnpaddedGradBaseKernel(
                            q.dtype(),
                            attn_mask,
                            nullptr,  // startend_row_indices,
-                           seed_offset.data<int64_t>());
+                           seed_offset.data<int64_t>(),
+                           /*unpadded_lse*/ true,
+                           total_q);
 
   VLOG(10) << "FlashAttn bwd seed: " << params.seed
            << ", offset: " << params.offset;
@@ -373,7 +376,13 @@ void FlashAttnUnpaddedGradBaseKernel(
       max_seqlen_k * kdk->strides()[0],
       max_seqlen_k * kdv->strides()[0],
       max_seqlen_q * dout.strides()[0],
-      varlen_padded);
+#ifdef PADDLE_WITH_CUDA
+      varlen_padded,
+      params.total_q
+#else
+      varlen_padded
+#endif
+  );
   CheckFlashAttnStatus(succ);
   if (!is_mha) {
     if (dk) {
@@ -643,7 +652,9 @@ void FlashAttnGradBaseKernel(
                            q.dtype(),
                            attn_mask,
                            startend_row_indices,
-                           seed_offset.data<int64_t>());
+                           seed_offset.data<int64_t>(),
+                           /*unpadded_lse*/ false,
+                           /*total_q*/ 0);
 
   VLOG(10) << "[FlashAttn Backward" << version << "] q.shape=[" << q.dims()
            << "], k.shape=[" << k.dims() << "], v.shape=[" << v.dims() << "]";

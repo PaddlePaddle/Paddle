@@ -13,11 +13,24 @@
 // limitations under the License.
 
 #ifdef PADDLE_WITH_MAGMA
-#include "paddle/phi/backends/dynload/cublas.h"
-#include "paddle/phi/backends/dynload/cusolver.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
-#endif
+
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/backends/dynload/cublas.h"
+#include "paddle/phi/backends/dynload/cusolver.h"
+#endif  // PADDLE_WITH_CUDA
+
+#ifdef PADDLE_WITH_HIP
+#include "hip/hip_runtime.h"
+#include "paddle/phi/backends/dynload/rocblas.h"
+#include "paddle/phi/backends/dynload/rocsolver.h"
+#include "rocblas/rocblas.h"
+#include "rocsolver/rocsolver.h"
+#endif  // PADDLE_WITH_HIP
+
+#endif  // PADDLE_WITH_MAGMA
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/complex_kernel.h"
@@ -39,6 +52,7 @@ void SolveLinearSystemGPU(const GPUContext& dev_ctx,
                           int rhs_cols,
                           int batch_count);
 
+#ifdef PADDLE_WITH_CUDA
 template <>
 void SolveLinearSystemGPU<phi::dtype::complex<float>>(
     const phi::GPUContext& dev_ctx,
@@ -394,6 +408,363 @@ void SolveLinearSystemGPU<phi::dtype::complex<double>>(
             "cuSOLVER getrf/getrs failed at batch %d, info: %d", i, h_info[i]));
   }
 }
+#endif  // PADDLE_WITH_CUDA
+
+#ifdef PADDLE_WITH_HIP
+template <>
+void SolveLinearSystemGPU<phi::dtype::complex<float>>(
+    const phi::GPUContext& dev_ctx,
+    const phi::dtype::complex<float>*
+        matrix_data,  // device ptr, row-major, size batch*order*order
+    const phi::dtype::complex<float>*
+        rhs_data,  // device ptr, row-major, size batch*order*rhs_cols
+    phi::dtype::complex<float>*
+        out_data,  // device ptr, row-major, size batch*order*rhs_cols
+    int order,
+    int rhs_cols,
+    int batch_count) {
+  // handles
+  rocblas_handle rocblas_handle = dev_ctx.cusolver_dn_handle();
+  auto stream = phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream()));
+
+  // rocblas_float_complex constants
+  const rocblas_float_complex kAlpha = rocblas_float_complex{1.0f, 0.0f};
+  const rocblas_float_complex kZero = rocblas_float_complex{0.0f, 0.0f};
+
+  // Sizes
+  const size_t A_one_bytes =
+      static_cast<size_t>(order) * order * sizeof(rocblas_float_complex);
+  const size_t B_one_bytes =
+      static_cast<size_t>(order) * rhs_cols * sizeof(rocblas_float_complex);
+  const size_t A_batch_bytes = A_one_bytes * batch_count;
+  const size_t B_batch_bytes = B_one_bytes * batch_count;
+
+  const rocblas_float_complex* A_row_all =
+      reinterpret_cast<const rocblas_float_complex*>(matrix_data);
+  const rocblas_float_complex* B_row_all =
+      reinterpret_cast<const rocblas_float_complex*>(rhs_data);
+  rocblas_float_complex* X_row_all =
+      reinterpret_cast<rocblas_float_complex*>(out_data);
+
+  auto dA_col_alloc =
+      phi::memory_utils::Alloc(dev_ctx.GetPlace(), A_batch_bytes, stream);
+  auto dB_col_alloc =
+      phi::memory_utils::Alloc(dev_ctx.GetPlace(), B_batch_bytes, stream);
+  rocblas_float_complex* dA_col =
+      reinterpret_cast<rocblas_float_complex*>(dA_col_alloc->ptr());
+  rocblas_float_complex* dB_col =
+      reinterpret_cast<rocblas_float_complex*>(dB_col_alloc->ptr());
+
+  auto d_pivots_alloc = phi::memory_utils::Alloc(
+      dev_ctx.GetPlace(),
+      static_cast<size_t>(batch_count) * order * sizeof(rocblas_int),
+      stream);
+  rocblas_int* d_pivots = reinterpret_cast<rocblas_int*>(d_pivots_alloc->ptr());
+
+  auto d_info_alloc = phi::memory_utils::Alloc(
+      dev_ctx.GetPlace(),
+      static_cast<size_t>(batch_count) * sizeof(rocblas_int),
+      stream);
+  rocblas_int* d_info = reinterpret_cast<rocblas_int*>(d_info_alloc->ptr());
+
+  // A_row layout: row-major (order x order), B_row layout: row-major (order x
+  // rhs_cols)
+  for (int i = 0; i < batch_count; ++i) {
+    const rocblas_float_complex* A_row =
+        A_row_all + static_cast<size_t>(i) * order * order;
+    rocblas_float_complex* A_col =
+        dA_col + static_cast<size_t>(i) * order * order;
+    const rocblas_float_complex* B_row =
+        B_row_all + static_cast<size_t>(i) * order * rhs_cols;
+    rocblas_float_complex* B_col =
+        dB_col + static_cast<size_t>(i) * order * rhs_cols;
+
+    // transpose A_row (row-major) -> A_col (column-major) via C = A^T
+    PADDLE_ENFORCE_GPU_SUCCESS(rocblas_cgeam(
+        rocblas_handle,
+        rocblas_operation_transpose,
+        rocblas_operation_none,
+        order,
+        order,
+        &kAlpha,
+        A_row,
+        order,  // lda: when interpreting A_row as (order x order) row-major
+        &kZero,
+        nullptr,
+        order,
+        A_col,
+        order));  // ldc = order (column-major leading dim)
+
+    // transpose B_row (row-major order x rhs_cols) -> B_col (column-major order
+    // x rhs_cols)
+    PADDLE_ENFORCE_GPU_SUCCESS(rocblas_cgeam(
+        rocblas_handle,
+        rocblas_operation_transpose,
+        rocblas_operation_none,
+        order,
+        rhs_cols,
+        &kAlpha,
+        B_row,
+        rhs_cols,  // lda when A_row is viewed row-major: leading = rhs_cols
+        &kZero,
+        nullptr,
+        rhs_cols,
+        B_col,
+        order));  // ldc = order
+  }
+
+  // LU factorization and solve for each batch
+  for (int i = 0; i < batch_count; ++i) {
+    rocblas_float_complex* A_col =
+        dA_col + static_cast<size_t>(i) * order * order;
+    rocblas_float_complex* B_col =
+        dB_col + static_cast<size_t>(i) * order * rhs_cols;
+    rocblas_int* pivots_i = d_pivots + static_cast<size_t>(i) * order;
+    rocblas_int* info_i = d_info + i;
+
+    // getrf (LU factorization) on A_col (column-major)
+    PADDLE_ENFORCE_GPU_SUCCESS(rocsolver_cgetrf(
+        rocblas_handle, order, order, A_col, order, pivots_i, info_i));
+
+    // getrs: solve A_col * X_col = B_col
+    PADDLE_ENFORCE_GPU_SUCCESS(rocsolver_cgetrs(
+        rocblas_handle,
+        rocblas_operation_none,  // no transpose on column-major matrix
+        order,
+        rhs_cols,
+        A_col,
+        order,
+        pivots_i,
+        B_col,
+        order));
+  }
+
+  // Transpose results back to row-major
+  for (int i = 0; i < batch_count; ++i) {
+    rocblas_float_complex* B_col = dB_col + static_cast<size_t>(i) * order *
+                                                rhs_cols;  // X in column-major
+    rocblas_float_complex* X_row =
+        X_row_all +
+        static_cast<size_t>(i) * order * rhs_cols;  // target row-major
+
+    // transpose X_col -> X_row
+    PADDLE_ENFORCE_GPU_SUCCESS(rocblas_cgeam(
+        rocblas_handle,
+        rocblas_operation_transpose,
+        rocblas_operation_none,
+        rhs_cols,
+        order,  // rowsC = rhs_cols, colsC = order
+        &kAlpha,
+        B_col,
+        order,  // B_col lda = order (col-major)
+        &kZero,
+        nullptr,
+        order,
+        X_row,
+        rhs_cols));  // X_row ldc = rhs_cols (row-major leading dimension)
+  }
+
+  // Check error info
+  phi::CPUPlace cpu_place;
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
+
+  std::vector<rocblas_int> h_info(batch_count, 0);
+  phi::memory_utils::Copy(
+      phi::CPUPlace(),
+      h_info.data(),
+      dev_ctx.GetPlace(),
+      d_info,
+      static_cast<size_t>(batch_count) * sizeof(rocblas_int),
+      reinterpret_cast<void*>(dev_ctx.stream()));
+  dev_ctx.Wait();
+
+  for (int i = 0; i < batch_count; ++i) {
+    PADDLE_ENFORCE_EQ(
+        h_info[i],
+        0,
+        errors::External("rocSOLVER getrf/getrs failed at batch %d, info: %d",
+                         i,
+                         h_info[i]));
+  }
+}
+
+template <>
+void SolveLinearSystemGPU<phi::dtype::complex<double>>(
+    const phi::GPUContext& dev_ctx,
+    const phi::dtype::complex<double>*
+        matrix_data,  // device ptr, row-major, size batch*order*order
+    const phi::dtype::complex<double>*
+        rhs_data,  // device ptr, row-major, size batch*order*rhs_cols
+    phi::dtype::complex<double>*
+        out_data,  // device ptr, row-major, size batch*order*rhs_cols
+    int order,
+    int rhs_cols,
+    int batch_count) {
+  // handles
+  rocblas_handle rocblas_handle = dev_ctx.cusolver_dn_handle();
+  auto stream = phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream()));
+
+  // rocblas_double_complex constants
+  const rocblas_double_complex kAlpha = rocblas_double_complex{1.0, 0.0};
+  const rocblas_double_complex kZero = rocblas_double_complex{0.0, 0.0};
+
+  // Sizes
+  const size_t A_one_bytes =
+      static_cast<size_t>(order) * order * sizeof(rocblas_double_complex);
+  const size_t B_one_bytes =
+      static_cast<size_t>(order) * rhs_cols * sizeof(rocblas_double_complex);
+  const size_t A_batch_bytes = A_one_bytes * batch_count;
+  const size_t B_batch_bytes = B_one_bytes * batch_count;
+
+  const rocblas_double_complex* A_row_all =
+      reinterpret_cast<const rocblas_double_complex*>(matrix_data);
+  const rocblas_double_complex* B_row_all =
+      reinterpret_cast<const rocblas_double_complex*>(rhs_data);
+  rocblas_double_complex* X_row_all =
+      reinterpret_cast<rocblas_double_complex*>(out_data);
+
+  auto dA_col_alloc =
+      phi::memory_utils::Alloc(dev_ctx.GetPlace(), A_batch_bytes, stream);
+  auto dB_col_alloc =
+      phi::memory_utils::Alloc(dev_ctx.GetPlace(), B_batch_bytes, stream);
+  rocblas_double_complex* dA_col =
+      reinterpret_cast<rocblas_double_complex*>(dA_col_alloc->ptr());
+  rocblas_double_complex* dB_col =
+      reinterpret_cast<rocblas_double_complex*>(dB_col_alloc->ptr());
+
+  auto d_pivots_alloc = phi::memory_utils::Alloc(
+      dev_ctx.GetPlace(),
+      static_cast<size_t>(batch_count) * order * sizeof(rocblas_int),
+      stream);
+  rocblas_int* d_pivots = reinterpret_cast<rocblas_int*>(d_pivots_alloc->ptr());
+
+  auto d_info_alloc = phi::memory_utils::Alloc(
+      dev_ctx.GetPlace(),
+      static_cast<size_t>(batch_count) * sizeof(rocblas_int),
+      stream);
+  rocblas_int* d_info = reinterpret_cast<rocblas_int*>(d_info_alloc->ptr());
+
+  // A_row layout: row-major (order x order), B_row layout: row-major (order x
+  // rhs_cols)
+  for (int i = 0; i < batch_count; ++i) {
+    const rocblas_double_complex* A_row =
+        A_row_all + static_cast<size_t>(i) * order * order;
+    rocblas_double_complex* A_col =
+        dA_col + static_cast<size_t>(i) * order * order;
+    const rocblas_double_complex* B_row =
+        B_row_all + static_cast<size_t>(i) * order * rhs_cols;
+    rocblas_double_complex* B_col =
+        dB_col + static_cast<size_t>(i) * order * rhs_cols;
+
+    // transpose A_row (row-major) -> A_col (column-major) via C = A^T
+    PADDLE_ENFORCE_GPU_SUCCESS(rocblas_zgeam(
+        rocblas_handle,
+        rocblas_operation_transpose,
+        rocblas_operation_none,
+        order,
+        order,
+        &kAlpha,
+        A_row,
+        order,  // lda: when interpreting A_row as (order x order) row-major
+        &kZero,
+        nullptr,
+        order,
+        A_col,
+        order));  // ldc = order (column-major leading dim)
+
+    // transpose B_row (row-major order x rhs_cols) -> B_col (column-major order
+    // x rhs_cols)
+    PADDLE_ENFORCE_GPU_SUCCESS(rocblas_zgeam(
+        rocblas_handle,
+        rocblas_operation_transpose,
+        rocblas_operation_none,
+        order,
+        rhs_cols,
+        &kAlpha,
+        B_row,
+        rhs_cols,  // lda when A_row is viewed row-major: leading = rhs_cols
+        &kZero,
+        nullptr,
+        rhs_cols,
+        B_col,
+        order));  // ldc = order
+  }
+
+  // LU factorization and solve for each batch
+  for (int i = 0; i < batch_count; ++i) {
+    rocblas_double_complex* A_col =
+        dA_col + static_cast<size_t>(i) * order * order;
+    rocblas_double_complex* B_col =
+        dB_col + static_cast<size_t>(i) * order * rhs_cols;
+    rocblas_int* pivots_i = d_pivots + static_cast<size_t>(i) * order;
+    rocblas_int* info_i = d_info + i;
+
+    // getrf (LU factorization) on A_col (column-major)
+    PADDLE_ENFORCE_GPU_SUCCESS(rocsolver_zgetrf(
+        rocblas_handle, order, order, A_col, order, pivots_i, info_i));
+
+    // getrs: solve A_col * X_col = B_col
+    PADDLE_ENFORCE_GPU_SUCCESS(rocsolver_zgetrs(
+        rocblas_handle,
+        rocblas_operation_none,  // no transpose on column-major matrix
+        order,
+        rhs_cols,
+        A_col,
+        order,
+        pivots_i,
+        B_col,
+        order));
+  }
+
+  // Transpose results back to row-major
+  for (int i = 0; i < batch_count; ++i) {
+    rocblas_double_complex* B_col = dB_col + static_cast<size_t>(i) * order *
+                                                 rhs_cols;  // X in column-major
+    rocblas_double_complex* X_row =
+        X_row_all +
+        static_cast<size_t>(i) * order * rhs_cols;  // target row-major
+
+    // transpose X_col -> X_row
+    PADDLE_ENFORCE_GPU_SUCCESS(rocblas_zgeam(
+        rocblas_handle,
+        rocblas_operation_transpose,
+        rocblas_operation_none,
+        rhs_cols,
+        order,  // rowsC = rhs_cols, colsC = order
+        &kAlpha,
+        B_col,
+        order,  // B_col lda = order (col-major)
+        &kZero,
+        nullptr,
+        order,
+        X_row,
+        rhs_cols));  // X_row ldc = rhs_cols (row-major leading dimension)
+  }
+  phi::CPUPlace cpu_place;
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
+
+  std::vector<rocblas_int> h_info(batch_count, 0);
+  phi::memory_utils::Copy(
+      phi::CPUPlace(),
+      h_info.data(),
+      dev_ctx.GetPlace(),
+      d_info,
+      static_cast<size_t>(batch_count) * sizeof(rocblas_int),
+      reinterpret_cast<void*>(dev_ctx.stream()));
+  dev_ctx.Wait();
+
+  for (int i = 0; i < batch_count; ++i) {
+    PADDLE_ENFORCE_EQ(
+        h_info[i],
+        0,
+        errors::External("rocSOLVER getrf/getrs failed at batch %d, info: %d",
+                         i,
+                         h_info[i]));
+  }
+}
+#endif  // PADDLE_WITH_HIP
 
 template <typename T, typename Context>
 void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
@@ -473,8 +844,8 @@ void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
   // Vh: matrix with shape [m,m]
   // rhs: rhs with shape [m,k]
   // x_grad: out
-  int m = static_cast<int>(Vh.dims(-1));
-  int k = static_cast<int>(rhs.dims(-1));
+  int64_t m = Vh.dims(-1);
+  int64_t k = rhs.dims(-1);
   auto* matrix_data = Vh.data<T>();
   auto* rhs_data = rhs.data<T>();
 
@@ -483,6 +854,7 @@ void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
 }
 #endif  // PADDLE_WITH_MAGMA
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename T, typename Context>
 void EigGradKernel(const Context& dev_ctx,
                    const DenseTensor& out_w,
@@ -495,14 +867,13 @@ void EigGradKernel(const Context& dev_ctx,
     return;
   }
   auto& dims = out_v.dims();
-  phi::DDim dim_origin = dims;
-  int num_dims = dim_origin.size();
   int batch_count = BatchCount(out_v);
-  const int order = static_cast<int>(dim_origin[num_dims - 1]);
+  const int64_t order = out_v.dims(-1);
 
   ComputeBackwardForComplexInputGPU<phi::dtype::Complex<T>, Context>(
       out_w, out_v, dout_w, dout_v, dx_data, batch_count, order, dev_ctx);
 }
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
 
 }  // namespace phi
 
@@ -520,4 +891,4 @@ PD_REGISTER_KERNEL(eig_grad,
   kernel->InputAt(2).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
   kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
 }
-#endif
+#endif  // PADDLE_WITH_MAGMA
