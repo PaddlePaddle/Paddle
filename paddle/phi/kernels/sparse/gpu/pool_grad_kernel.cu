@@ -61,8 +61,11 @@ void MaxPoolCooGradGPUKernel(const GPUContext& dev_ctx,
                              const std::vector<int>& kernel_sizes,
                              SparseCooTensor* x_grad) {
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
-  const int in_channels = x.dims()[4];
-  int rulebook_len = rulebook.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t in_channels = x.dims()[4];
+
+  int64_t rulebook_len = rulebook.dims()[1];
   const IntT* rulebook_ptr = rulebook.data<IntT>();
   std::vector<int> offsets(kernel_size + 1);
   const int* counter_ptr = counter.data<int>();

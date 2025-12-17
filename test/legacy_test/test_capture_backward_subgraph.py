@@ -40,9 +40,7 @@ class TestCaptureBackwardSubGraphGuard(unittest.TestCase):
         z.stop_gradient = False
         w.stop_gradient = True
         y = y + y
-        with paddle.base.framework.capture_backward_subgraph_guard(
-            dump_dir_path, True
-        ):
+        with paddle.utils.capture_backward_subgraph_guard(dump_dir_path, True):
             conv_x = paddle.randn((2, 3, 8, 8), dtype='float32')
             conv_w = paddle.randn((6, 3, 3, 3), dtype='float16')
 
@@ -108,10 +106,8 @@ class TestCaptureBackwardSubGraphGuard(unittest.TestCase):
             {"FLAGS_tensor_md5_checksum_output_path": "./dy2st_md5.txt"}
         )
         with (
-            paddle.base.framework.capture_backward_subgraph_guard(
-                dump_dir_path, True
-            ),
-            paddle.utils.capture_fwd_graph_guard("./dy2st_subraph"),
+            paddle.utils.capture_backward_subgraph_guard(dump_dir_path, True),
+            paddle.utils.capture_forward_subgraph_guard("./dy2st_subraph"),
         ):
             res = func(x, y)
             z = res + x

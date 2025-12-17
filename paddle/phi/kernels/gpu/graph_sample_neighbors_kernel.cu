@@ -374,7 +374,6 @@ void GraphSampleNeighborsKernel(
   auto* col_ptr_data = col_ptr.data<T>();
   auto* x_data = x.data<T>();
   int64_t bs = x.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int
 
   int64_t len_col_ptr = col_ptr.dims()[0];
 
@@ -387,13 +386,13 @@ void GraphSampleNeighborsKernel(
   int total_sample_size = GetTotalSampleNum<T, Context>(
       input, col_ptr_data, len_col_ptr, output_count, sample_size, bs);
 
-  out->Resize({static_cast<int>(total_sample_size)});
+  out->Resize({total_sample_size});
   T* out_data = dev_ctx.template Alloc<T>(out);
   thrust::device_ptr<T> output(out_data);
 
   if (return_eids) {
     auto* eids_data = eids.get_ptr()->data<T>();
-    out_eids->Resize({static_cast<int>(total_sample_size)});
+    out_eids->Resize({total_sample_size});
     T* out_eids_data = dev_ctx.template Alloc<T>(out_eids);
     thrust::device_ptr<T> output_eids(out_eids_data);
     if (!flag_perm_buffer) {
