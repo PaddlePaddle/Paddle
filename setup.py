@@ -2409,11 +2409,7 @@ def get_headers():
             )
         )
 
-    if (
-        env_dict.get("WITH_GPU") == 'OFF'
-        and env_dict.get("WITH_ROCM") == 'OFF'
-        and env_dict.get("WITH_XPU") == 'OFF'
-    ):  # Custom Device
+    if True:  # Custom Device
         headers += list(
             find_files('*.h', paddle_source_dir + '/paddle/phi/backends/cpu')
         )
