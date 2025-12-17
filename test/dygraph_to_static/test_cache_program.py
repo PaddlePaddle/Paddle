@@ -92,7 +92,7 @@ class TestCacheProgram3(TestCacheProgram):
                 return (x * y).sum()
 
         self.batch_num = 2
-        self.dygraph_class = DummpyModel
+        self.dygraph_class = DummyModel
         self.data = [
             {"x": paddle.randn(7, 3), "y": paddle.randn(1, 3)},
             {"y": paddle.randn(1, 3), "x": paddle.randn(7, 3)},
