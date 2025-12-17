@@ -403,6 +403,7 @@ jobs:
           echo "Install uv"
           pip install uv
           echo "uv sync"
+          git submodule update --init --recursive
           uv sync --group ci -v > /dev/null
           '
 
@@ -505,6 +506,7 @@ jobs:
           echo "Install uv"
           pip install uv
           echo "uv sync"
+          git submodule update --init --recursive
           uv sync --group ci -v > /dev/null
           wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
           chmod +x /usr/local/bin/yq
