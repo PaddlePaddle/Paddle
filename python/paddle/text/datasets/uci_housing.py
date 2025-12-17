@@ -65,7 +65,7 @@ class UCIHousing(Dataset):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.text.datasets import UCIHousing
@@ -89,16 +89,16 @@ class UCIHousing(Dataset):
             ...     model = SimpleNet()
             ...     feature, target = model(feature, target)
             ...     print(feature.shape, target.numpy())
-            [] [24.]
-            [] [21.6]
-            [] [34.7]
-            [] [33.4]
-            [] [36.2]
-            [] [28.7]
-            [] [22.9]
-            [] [27.1]
-            [] [16.5]
-            [] [18.9]
+            paddle.Size([]) [24.]
+            paddle.Size([]) [21.6]
+            paddle.Size([]) [34.7]
+            paddle.Size([]) [33.4]
+            paddle.Size([]) [36.2]
+            paddle.Size([]) [28.7]
+            paddle.Size([]) [22.9]
+            paddle.Size([]) [27.1]
+            paddle.Size([]) [16.5]
+            paddle.Size([]) [18.9]
 
     """
 

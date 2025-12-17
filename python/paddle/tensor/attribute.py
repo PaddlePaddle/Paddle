@@ -91,7 +91,7 @@ def shape(input: Tensor) -> Tensor:
         Tensor: The shape of the input variable.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> import paddle
