@@ -21,7 +21,6 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -1241,6 +1240,8 @@ void FlashMaskV2BaseKernel(
                     // set to True; otherwise, the internal heuristic
                     // get_pack_gqa() from fa3 will decide whether to pack gqa
     const int sm_margin,
+    const int rank,
+    const int nranks,
     DenseTensor *out,
     DenseTensor *softmax_lse,
     DenseTensor *out_accum,
@@ -2194,24 +2195,11 @@ void FlashMaskV2BaseKernel(
     // distributed settings
     static constexpr bool use_distributed_overlap = true;
     if constexpr (use_distributed_overlap) {
-      phi::distributed::NCCLCommContext *comm_ctx = nullptr;
-      int real_nranks = 0;
-      int real_rank = 0;
-
-      comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
-          dev_ctx.GetCommContext());
-      PADDLE_ENFORCE_NE(
-          comm_ctx,
-          nullptr,
-          common::errors::Unavailable("NCCLCommContext is nullptr"));
-      real_nranks = comm_ctx->GetSize();
-      real_rank = comm_ctx->GetRank();
-
-      dynload::flashmaskv2_fwd_params_set_rank(params_handle, real_rank);
-      dynload::flashmaskv2_fwd_params_set_nranks(params_handle, real_nranks);
+      dynload::flashmaskv2_fwd_params_set_rank(params_handle, rank);
+      dynload::flashmaskv2_fwd_params_set_nranks(params_handle, nranks);
       // TODO(heqianyue): cp_size and write_ptr are not set by this for now
-      VLOG(1) << "FlashMask overlap debug (rank and nranks): " << real_rank
-              << ", " << real_nranks;
+      VLOG(1) << "FlashMask overlap debug (rank and nranks): " << rank << ", "
+              << nranks;
     }
   } else {
     dynload::flashmaskv2_fwd_params_set_lt_start_ptr(params_handle, nullptr);
@@ -2293,6 +2281,8 @@ void FlashMaskV2Kernel(const Context &dev_ctx,
                        const optional<DenseTensor> &block_mask,
                        const float softmax_scale,
                        bool is_causal,
+                       const int rank,
+                       const int nranks,
                        DenseTensor *out,
                        DenseTensor *softmax_lse) {
 #ifdef PADDLE_WITH_FLASHATTN_V3
@@ -2334,6 +2324,8 @@ void FlashMaskV2Kernel(const Context &dev_ctx,
                                     false,     // manual_set_pack_gqa
                                     false,     // pack_gqa_
                                     0,         // sm_margin
+                                    rank,      // dist CP settings
+                                    nranks,    // dist CP settings
                                     out,
                                     softmax_lse,
                                     &out_accum,

@@ -1266,6 +1266,8 @@ def flashmask_attention(
     name: str | None = None,
     softmax_scale: float | None = None,
     block_mask: Tensor | None = None,
+    rank: int = 0,
+    nranks: int = 1,
 ):
     r"""
     FlashMask: Official Implementation
@@ -1344,6 +1346,8 @@ def flashmask_attention(
             This argument must be provided together with flashmask.
             The mask will be applied at the block level: each [i, j] position in block_mask controls whether the corresponding [128 x 128] block in the attention matrix is masked.
             Any mismatch in expected shape or head dimension will raise an error.
+        rank (int, optional): self-rank. Used in distributed context parallelism. Informing the overlap communicator about the comm topology. Default: 0.
+        nranks (int, optional): number of PEs for the comm. Used in distributed context parallelism. Informing the overlap communicator about the comm topology. Default: 1.
 
 
     Returns
@@ -1955,13 +1959,11 @@ def flashmask_attention(
         )
 
         # for context parallel, seqlen of mask len can be cp_size * (local_key seqlen)
-        # TODO(heqianyue): double check this when the topology is more complex
-        world_size = paddle.distributed.get_world_size()
         assert (
             startend_row_indices.shape[2] == key.shape[1]
-            or startend_row_indices.shape[2] == key.shape[1] * world_size
+            or startend_row_indices.shape[2] == key.shape[1] * nranks
         ), (
-            f"startend_row_indices.shape[2] must be equal to seqlen_k or seqlen_k * world_size, but got {startend_row_indices.shape[2]} and {key.shape[2]}. World size: {world_size}"
+            f"startend_row_indices.shape[2] must be equal to seqlen_k or seqlen_k * world_size, but got {startend_row_indices.shape[2]} and {key.shape[2]}. World size: {nranks}"
         )
         assert startend_row_indices.shape[1] in [
             1,
@@ -2105,6 +2107,8 @@ def flashmask_attention(
                 block_mask,
                 softmax_scale,
                 causal,
+                rank,
+                nranks,
             )
         else:
             raise ValueError(f"Invalid flash attention version: {fa_version}")
