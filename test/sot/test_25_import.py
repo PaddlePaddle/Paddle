@@ -40,10 +40,83 @@ def import_paddle_model(x: int):
     return paddle.zeros([2, 3]) + x
 
 
+@check_no_breakgraph
+def import_os_model():
+    import os
+
+    return os.name
+
+
+@check_no_breakgraph
+def import_sys_version():
+    from sys import version
+
+    return version[:5]  # Return first 5 chars to check import
+
+
+@check_no_breakgraph
+def import_paddle_nn():
+    import paddle.nn
+
+    return paddle.nn.Layer.__name__
+
+
+@check_no_breakgraph
+def import_paddle_nn_from():
+    from paddle import nn
+
+    return nn.Layer.__name__
+
+
+@check_no_breakgraph
+def import_paddle_nn_functional():
+    import paddle.nn.functional as F
+
+    return F.relu.__name__
+
+
+@check_no_breakgraph
+def import_paddle_nn_linear():
+    from paddle.nn import Linear
+
+    return Linear.__name__
+
+
+@check_no_breakgraph
+def import_collections():
+    import collections
+
+    return collections.defaultdict.__name__
+
+
+@check_no_breakgraph
+def import_collections_defaultdict():
+    from collections import defaultdict
+
+    return defaultdict.__name__
+
+
+@check_no_breakgraph
+def import_multiple_modules():
+    import os
+    import sys
+
+    return os.name + sys.version[:3]
+
+
 class TestImportModel(TestCaseBase):
     def test_import_model(self):
         self.assert_results(import_math_model)
         self.assert_results(import_paddle_model, 1)
+        self.assert_results(import_os_model)
+        self.assert_results(import_sys_version)
+        self.assert_results(import_paddle_nn)
+        self.assert_results(import_paddle_nn_from)
+        self.assert_results(import_paddle_nn_functional)
+        self.assert_results(import_paddle_nn_linear)
+        self.assert_results(import_collections)
+        self.assert_results(import_collections_defaultdict)
+        self.assert_results(import_multiple_modules)
 
     def test_relative_import_error(self):
         self.assert_exceptions(

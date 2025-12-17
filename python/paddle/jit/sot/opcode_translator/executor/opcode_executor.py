@@ -1090,6 +1090,16 @@ class OpcodeExecutorBase:
             ) from e
         self.stack.push(ModuleVariable(value, self._graph, DummyTracker([])))
 
+    def IMPORT_FROM(self, inst: Instruction) -> None:
+        self.DUP_TOP(inst)
+        obj = self.stack.pop()
+        name = self.vframe.code.co_names[inst.arg]
+        name_var = ConstantVariable.wrap_literal(name, self._graph)
+        attr = BuiltinVariable(
+            getattr, graph=self._graph, tracker=DanglingTracker()
+        )(obj, name_var)
+        self.stack.push(attr)
+
     @call_break_graph_decorator(push_n=0)
     def STORE_ATTR(self, instr: Instruction):
         obj = self.stack.pop()
