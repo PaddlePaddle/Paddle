@@ -277,11 +277,7 @@ class FullyShardOptimizer:
         def _opt_step(self):
             if not self.update_scaler:
                 params_slice_func()
-            if self.offload:
-                with device_guard():
-                    opt_step()
-            else:
-                opt_step()
+            opt_step()
 
         self._optim.step = MethodType(_opt_step, self._optim)
 
@@ -535,16 +531,6 @@ class FullyShard(nn.Layer):
         if id(layer) in self._trainable_params.keys():
             return
 
-        # the layer in self._exclude_layer will be unsliced.
-        if (
-            id(layer) in self._exclude_layer
-            or layer.__class__.__name__ in self._exclude_layer
-        ):
-            for p in current_layer_params:
-                if p.trainable:
-                    self._unslice_params.add(_UnsliceParam(p))
-            return
-
         def _add_manage_info(trainable_param):
             return _PartitionParam(trainable_param)
 
@@ -742,10 +728,6 @@ class FullyShard(nn.Layer):
             offload=self._offload,
             convert2cpu=convert2cpu,
         )
-        if convert2cpu:
-            for param in trainable_params:
-                t_flow.full_param[param.name][0]._share_buffer_to(param)
-                del t_flow.full_param[param.name]
 
         #  a _allgather_buffer call should be matched with a _release_param call later,
         #  but the _allgather_buffer call here has no match.
