@@ -23,7 +23,7 @@ class PADDLE_API NativeMetaTensor {
  public:
   NativeMetaTensor() = default;
   NativeMetaTensor(phi::DataType dtype, phi::DDim dims)
-      : dtype_(dtype), dims_(dims) {}
+      : dims_(dims), dtype_(dtype) {}
   DDim dims() const;
   DataType dtype() const;
   void set_dims(const DDim& dims);

@@ -643,7 +643,7 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
           "Supported data types include `bool`, `int`, `float`, `double`,  "
           "`int64_t`, `std::string`, `std::vector<int>`, "
           "`std::vector<float>`, `std::vector<int64_t>`, "
-          "`std::vector<std::string>`, `std::vector<bool>`, `void*`"
+          "`std::vector<std::string>`, `std::vector<bool>`, `void*`. "
           "Please check whether the attribute data type and "
           "data type string are matched.",
           attr_type_str));

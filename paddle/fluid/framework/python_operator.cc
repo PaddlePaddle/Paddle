@@ -45,7 +45,8 @@ void RegisterPythonOperator(
                     1,
                     common::errors::OutOfRange(
                         "Current op_name(%s) must not be registered more "
-                        "than one, because it don't support gradient op."));
+                        "than once, because it does not support gradient op.",
+                        op_name));
 
   const auto& op_meta_info = op_meta_info_vector.back();
 

@@ -2583,7 +2583,7 @@ void HandleForPythonOp(
   op_attribute.emplace("origin_id",
                        pir::Int64Attribute::get(ctx, op_item->id()));
 
-  VLOG(6) << "Lower custom pyop: " << op_item->name()
+  VLOG(6) << "Lower pyop: " << op_item->name()
           << " to : " << PythonFunctionOp::name();
 
   pir::OpInfo py_func_op_info =
@@ -3700,7 +3700,7 @@ void ProcessBlock(
       continue;
     }
 
-    if (paddle::dialect::IsCustomPyOp(op_item)) {
+    if (paddle::dialect::IsPythonOp(op_item)) {
       HandleForPythonOp(ctx,
                         op_item,
                         kernel_key,
