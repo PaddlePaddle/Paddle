@@ -1058,10 +1058,10 @@ auto CreatePyFuncRunner(void *py_func_ptr, const std::string &op_name) {
   };
 }
 
-static PyObject *run_custom_pyop(PyObject *self,
-                                 PyObject *args,
-                                 PyObject *kwargs) {
-  VLOG(6) << "Call run_custom_pyop";
+static PyObject *run_python_op(PyObject *self,
+                               PyObject *args,
+                               PyObject *kwargs) {
+  VLOG(6) << "Call run_python_op";
 
   if (kwargs == NULL) {
     PyErr_SetString(
@@ -1085,21 +1085,15 @@ static PyObject *run_custom_pyop(PyObject *self,
     return nullptr;
   }
 
-  std::string op_name;
-  std::vector<std::string> inputs_vec;
-  std::vector<std::string> outputs_vec;
-  std::unordered_map<std::string, void *> attrs_map;
-  std::unordered_map<std::string, std::string> op_inplace_map;
-
-  if (py_str_to_cpp_str(py_op_name, &op_name) == -1 ||
-      py_list_to_vector_string(py_input_names, &inputs_vec) == -1 ||
-      py_list_to_vector_string(py_output_names, &outputs_vec) == -1 ||
-      parse_attrs_dict(py_attrs_dict, &attrs_map) == -1 ||
-      py_dict_to_unordered_map_string(py_inplace_dict, &op_inplace_map) == -1) {
-    PyErr_SetString(PyExc_KeyError,
-                    "inputs/outputs/attr/inplace_map is Empty!");
-    return nullptr;
-  }
+  std::string op_name = CastPyArg2String(py_op_name, "run_python_op", 0);
+  std::vector<std::string> inputs_vec =
+      CastPyArg2Strings(py_input_names, "run_python_op", 0);
+  std::vector<std::string> outputs_vec =
+      CastPyArg2Strings(py_output_names, "run_python_op", 0);
+  std::unordered_map<std::string, void *> attrs_map =
+      ParsePythonOpAttrs(py_attrs_dict);
+  std::unordered_map<std::string, std::string> op_inplace_map =
+      ParseStringDict(py_inplace_dict);
 
   std::cout << "Get things from python for Custom PyOp: [" << op_name << "]"
             << std::endl;
@@ -1410,7 +1404,7 @@ static PyObject *run_custom_pyop(PyObject *self,
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
-  CallStackRecorder callstack_recorder("_run_custom_pyop");
+  CallStackRecorder callstack_recorder("run_python_op");
   callstack_recorder.Record();
   std::vector<pir::Value> op_results;
   pir::Operation *op =
@@ -1740,10 +1734,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))run_custom_op,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for run_custom_op."},
-    {"_run_custom_pyop",
-     (PyCFunction)(void (*)(void))run_custom_pyop,
+    {"_run_python_op",
+     (PyCFunction)(void (*)(void))run_python_op,
      METH_VARARGS | METH_KEYWORDS,
-     "C++ interface function for run_custom_pyop."},
+     "C++ interface function for run_python_op."},
     {"builtin_combine",
      (PyCFunction)(void (*)(void))builtin_combine_op,
      METH_VARARGS | METH_KEYWORDS,

@@ -263,7 +263,7 @@ def register_op(
             const_params_hash = custom_hash(const_params)
 
             # 调用底层算子运行逻辑
-            out = _C_ops._run_custom_pyop(
+            out = _C_ops._run_python_op(
                 *args,  # kwargs 还需要吗？
                 name=f"{op_name}_{const_params_hash}",  # 每次绑定一次，说明绑定的
                 # inputs=inputs,
