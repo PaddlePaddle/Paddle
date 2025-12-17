@@ -309,7 +309,10 @@ void MoePermuteKernel(const Context &dev_ctx,
   if (do_gather) {  // no gather, no resize.
     X_unzipped->Resize({output_rows, cols});
     if (XScale) {
-      const int quanted_cols = XScale.get_ptr()->dims()[1];
+      // TODO(large-tensor): downstream functors may still use int; guard until
+      // upgraded.
+      int64_t quanted_cols = XScale.get_ptr()->dims()[1];
+
       XScale_unzipped->Resize({output_rows, quanted_cols});
     }
   }

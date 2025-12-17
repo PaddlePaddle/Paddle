@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/api/ext/native_meta_tensor.h"
 
-#include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
-
-namespace py = pybind11;
-
-namespace paddle {
-namespace pybind {
-
-#ifdef PADDLE_WITH_HETERPS
-void BindPSGPUWrapper(py::module* m);
-void BindAfsWrapper(py::module* m);
-#endif
-}  // namespace pybind
-}  // namespace paddle
+namespace phi {
+DDim NativeMetaTensor::dims() const { return dims_; }
+DataType NativeMetaTensor::dtype() const { return dtype_; }
+void NativeMetaTensor::set_dims(const DDim& dims) { dims_ = dims; }
+void NativeMetaTensor::set_dtype(DataType dtype) { dtype_ = dtype; }
+}  // namespace phi

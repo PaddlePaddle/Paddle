@@ -616,6 +616,7 @@ def monkey_patch_variable():
                 f"requires_grad must be bool, but got {type(requires_grad)}"
             )
         self.stop_gradient = not requires_grad
+        return self
 
     def _scalar_add_(var, value):
         return _scalar_op_(var, 1.0, value)

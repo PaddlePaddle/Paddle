@@ -71,7 +71,7 @@ void RpropKernelCPUImpl(const Context& dev_ctx,
   T* eta_data = eta_tensor.data<T>();
   T zero = static_cast<T>(0);
   T one = static_cast<T>(1);
-  for (int i = 0, n = product_tensor.numel(); i < n; i++) {
+  for (int64_t i = 0, n = product_tensor.numel(); i < n; i++) {
     if (product_data[i] > zero) {
       eta_data[i] = eta_positive;
     } else if (product_data[i] == zero) {
@@ -84,7 +84,7 @@ void RpropKernelCPUImpl(const Context& dev_ctx,
 
   learning_rate_eigen = learning_rate_eigen * eta_eigen;
   T* learning_rate_data = learning_rate_tensor.data<T>();
-  for (int i = 0, n = learning_rate_tensor.numel(); i < n; i++) {
+  for (int64_t i = 0, n = learning_rate_tensor.numel(); i < n; i++) {
     if (learning_rate_data[i] > learning_rate_max) {
       learning_rate_data[i] = learning_rate_max;
     } else if (learning_rate_data[i] < learning_rate_min) {

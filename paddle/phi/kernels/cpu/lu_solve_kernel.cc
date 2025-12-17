@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/lu_solve_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/impl/lu_kernel_impl.h"
@@ -40,15 +41,28 @@ void LuSolveKernel(const Context& dev_ctx,
 
   // Prepare LAPACK parameters
   char trans_char = (trans == "N") ? 'N' : ((trans == "T") ? 'T' : 'C');
-  int n_int = lu_dims[lu_dims.size() - 1];
-  int nrhs_int = x_dims[x_dims.size() - 1];
+  auto n_last_dim = lu_dims[lu_dims.size() - 1];
+  PADDLE_ENFORCE_LE_INT_MAX(
+      n_last_dim,
+      "TODO(large-tensor): LAPACK input n does not support int64 overflow.");
+  int n_int = static_cast<int>(n_last_dim);
+
+  auto nrhs_last_dim = x_dims[x_dims.size() - 1];
+  PADDLE_ENFORCE_LE_INT_MAX(nrhs_last_dim,
+                            "TODO(large-tensor): LAPACK nrhs does not "
+                            "support int64 overflow.");
+  int nrhs_int = static_cast<int>(nrhs_last_dim);
   int lda = std::max(1, n_int);  // Leading dimension of A (LU matrix)
   int ldb = std::max(1, n_int);  // Leading dimension of B (RHS/solution matrix)
   int info = 0;
 
   auto outdims = out->dims();
   auto outrank = outdims.size();
-  int batchsize = product(common::slice_ddim(outdims, 0, outrank - 2));
+  auto batchsize_64 = product(common::slice_ddim(outdims, 0, outrank - 2));
+  PADDLE_ENFORCE_LE_INT_MAX(
+      batchsize_64,
+      "TODO(large-tensor): LAPACK batch size does not support int64 overflow.");
+  int batchsize = static_cast<int>(batchsize_64);
   auto out_data = out->data<T>();
   auto lu_data = tem_lu.data<T>();
   auto pivots_data =

@@ -25,6 +25,7 @@ namespace {
 static inline int DivUp(int x, int y) { return (x + y - 1) / y; }
 
 // Compute input gradient (shared memory version, for small future_context)
+// TODO(large-tensor): to support large tensor
 template <typename T>
 __global__ void RowConvGradInputSharedMemory(const T *dout,
                                              const T *wt,
@@ -49,8 +50,8 @@ __global__ void RowConvGradInputSharedMemory(const T *dout,
 
   int current_timesteps = 0;
   for (int i = 0; i < num_sequence; i++) {
-    int start = static_cast<int>(batch_indices[i]);
-    int end = static_cast<int>(batch_indices[i + 1]);
+    int start = batch_indices[i];
+    int end = batch_indices[i + 1];
     current_timesteps = end - start;
 
     for (int k = thy; k < current_timesteps; k += bly) {
@@ -68,6 +69,7 @@ __global__ void RowConvGradInputSharedMemory(const T *dout,
 }
 
 // Compute input gradient (Naive version)
+// TODO(large-tensor): to support large tensor
 template <typename T>
 __global__ void RowConvGradInput(const T *dout,
                                  const T *wt,
@@ -84,10 +86,9 @@ __global__ void RowConvGradInput(const T *dout,
 
   if (d >= input_dim) return;
   int current_timesteps = 0;
-
   for (int i = 0; i < num_sequence; i++) {
-    int start = static_cast<int>(batch_indices[i]);
-    int end = static_cast<int>(batch_indices[i + 1]);
+    int start = batch_indices[i];
+    int end = batch_indices[i + 1];
     current_timesteps = end - start;
 
     for (int k = thy; k < current_timesteps; k += bly) {
@@ -101,6 +102,7 @@ __global__ void RowConvGradInput(const T *dout,
 }
 
 // Compute W gradient (small future_context version)
+// TODO(large-tensor): to support large tensor
 template <typename T>
 __global__ void RowConvGradFilterImproved(const T *in,
                                           const T *dout,
@@ -140,8 +142,8 @@ __global__ void RowConvGradFilterImproved(const T *in,
   CREATE_SHFL_MASK(mask, true);
 
   for (int i = 0; i < num_sequence; i++) {
-    int start = static_cast<int>(batch_indices[i]);
-    int end = static_cast<int>(batch_indices[i + 1]);
+    int start = batch_indices[i];
+    int end = batch_indices[i + 1];
     int current_timesteps = end - start;
 
     int scaled_cur_steps =
@@ -188,6 +190,7 @@ __global__ void RowConvGradFilterImproved(const T *in,
 }
 
 // Compute weight(filter) gradient
+// TODO(large-tensor): to support large tensor
 template <typename T>
 __global__ void RowConvGradFilter(const T *in,
                                   const T *dout,
@@ -211,8 +214,8 @@ __global__ void RowConvGradFilter(const T *in,
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, true);
   for (int i = 0; i < num_sequence; i++) {
-    int start = static_cast<int>(batch_indices[i]);
-    int end = static_cast<int>(batch_indices[i + 1]);
+    int start = batch_indices[i];
+    int end = batch_indices[i + 1];
     int current_timesteps = end - start;
 
     int scaled_cur_steps =
@@ -277,7 +280,6 @@ void RowConvGradKernel(const Context &dev_ctx,
   int input_dim = 0;
   phi::Vector<size_t> batch_indices(batch_size + 1);
   int64_t timesteps = X->dims()[1];
-  // TODO(large-tensor): downstream functors may still use int
 
   if (is_tensor) {
     for (int i = 0; i < batch_size + 1; i++) {
@@ -291,7 +293,9 @@ void RowConvGradKernel(const Context &dev_ctx,
   // int input_dim = X->dims()[1];
   int num_sequence = batch_indices.size() - 1;
   int64_t future_context = Filter->dims()[0];
-  // TODO(large-tensor): downstream functors may still use int
+  // TODO(large-tensor): CUDA kernel future_context not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(future_context, "future_context");
+  int future_context_int = static_cast<int>(future_context);
 
   phi::MixVector<size_t> mixv_batch_indices(&batch_indices);
   size_t *idx = mixv_batch_indices.CUDAMutableData(dev_ctx.GetPlace());
@@ -302,14 +306,14 @@ void RowConvGradKernel(const Context &dev_ctx,
     T *dfilter = dev_ctx.template Alloc<T>(dFilter);
     zero(dev_ctx, dFilter, static_cast<T>(0.0));
 
-    if (future_context <= 32) {
+    if (future_context_int <= 32) {
       dim3 block_dim = dim3(32, 32);
       dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
       int block_x = block_dim.x;
       int block_y = block_dim.y;
       int mem_per_block =
-          (block_y * block_x + block_y * (block_x + future_context - 1) +
-           future_context * block_y) *
+          (block_y * block_x + block_y * (block_x + future_context_int - 1) +
+           future_context_int * block_y) *
           sizeof(T);
       RowConvGradFilterImproved<T>
           <<<grid_dim, block_dim, mem_per_block, dev_ctx.stream()>>>(
@@ -317,7 +321,7 @@ void RowConvGradKernel(const Context &dev_ctx,
               dout,
               num_sequence,
               input_dim,
-              future_context,
+              future_context_int,
               block_x,
               block_y,
               idx,
@@ -335,7 +339,7 @@ void RowConvGradKernel(const Context &dev_ctx,
               dout,
               num_sequence,
               input_dim,
-              future_context,
+              future_context_int,
               block_x,
               block_y,
               idx,
@@ -345,18 +349,24 @@ void RowConvGradKernel(const Context &dev_ctx,
 
   if (dX) {
     T *din = dev_ctx.template Alloc<T>(dX);
-    if (future_context <= 32) {
+    if (future_context_int <= 32) {
       dim3 block_dim = dim3(32, 32);
       dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
-      int mem_per_block = (future_context * block_dim.x) * sizeof(T);
+      int mem_per_block = (future_context_int * block_dim.x) * sizeof(T);
       RowConvGradInputSharedMemory<T>
           <<<grid_dim, block_dim, mem_per_block, dev_ctx.stream()>>>(
-              dout, weights, num_sequence, input_dim, future_context, idx, din);
+              dout,
+              weights,
+              num_sequence,
+              input_dim,
+              future_context_int,
+              idx,
+              din);
     } else {
       dim3 block_dim = dim3(32, 32);
       dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
       RowConvGradInput<T><<<grid_dim, block_dim, 0, dev_ctx.stream()>>>(
-          dout, weights, num_sequence, input_dim, future_context, idx, din);
+          dout, weights, num_sequence, input_dim, future_context_int, idx, din);
     }
   }
   mixv_batch_indices.CopyToCPU();
