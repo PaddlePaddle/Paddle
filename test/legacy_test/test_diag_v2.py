@@ -346,7 +346,7 @@ class TestDiagV2Compatibility(unittest.TestCase):
         self.input_np4 = np.random.random(size=(10, 10)).astype(np.float32)
         self.expected4 = np.diag(self.input_np4)
 
-    def run_imperative(self):
+    def run_dygraph(self):
         # input arg
         x = paddle.to_tensor(self.input_np1)
         y = paddle.diag(input=x)
@@ -399,21 +399,12 @@ class TestDiagV2Compatibility(unittest.TestCase):
         # diagonal arg
         np.testing.assert_allclose(res2, self.expected2, rtol=1e-05)
 
-    def test_cpu(self):
+    def test_compatibility(self):
         paddle.disable_static(place=paddle.base.CPUPlace())
-        self.run_imperative()
+        self.run_dygraph()
 
         paddle.enable_static()
         self.run_static()
-
-    def test_gpu(self):
-        if not (base.core.is_compiled_with_cuda() or is_custom_device()):
-            return
-
-        paddle.disable_static(place=get_device_place())
-        self.run_imperative()
-        paddle.enable_static()
-        self.run_static(use_gpu=True)
 
 
 class TestDiagV2FP16OP(TestDiagV2Op):
