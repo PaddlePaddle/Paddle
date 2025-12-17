@@ -933,25 +933,33 @@ class TestLayerNormBF16OpByOpTest_ZeroSize(TestLayerNormOpByOpTest):
 
 
 @unittest.skipIf(
-    not (core.is_compiled_with_cuda()), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda()) or paddle.is_compiled_with_rocm(),
+    "core is not compiled with CUDA",
 )
 class TestFastLNV2(unittest.TestCase):
     """
     Tests the correctness of forward and backward propagation for fast_ln v2 in layernorn kernel.
     """
 
-    def _fast_ln_ref(self, x_in, scale_in, bias_in, epsilon):
+    def _fast_ln_ref(
+        self, x_in, scale_in, bias_in, epsilon, has_bias=True, has_scale=True
+    ):
         """
         High-precision (float64) reference implementation for LayerNorm.
         """
         x = paddle.cast(x_in, 'float64')
-        scale = paddle.cast(scale_in, 'float64')
-        bias = paddle.cast(bias_in, 'float64')
+        if has_scale:
+            scale = paddle.cast(scale_in, 'float64')
+        if has_bias:
+            bias = paddle.cast(bias_in, 'float64')
         mean = paddle.mean(x, axis=-1, keepdim=True)
         variance = paddle.mean(paddle.square(x - mean), axis=-1, keepdim=True)
         invvar = paddle.rsqrt(variance + epsilon)
         y = (x - mean) * invvar
-        y = y * scale + bias
+        if has_scale:
+            y = y * scale
+        if has_bias:
+            y = y + bias
         return y.astype(x_in.dtype), mean, invvar
 
     def _assert_allclose(self, a, b, atol, rtol, msg=""):
@@ -979,6 +987,7 @@ class TestFastLNV2(unittest.TestCase):
         Tests the forward and gradient correctness of fast_ln.
         """
         paddle.seed(114514)
+        paddle.disable_static()
 
         params = [
             (1, 100, 5120, "float16", 1e-2),
@@ -1062,6 +1071,76 @@ class TestFastLNV2(unittest.TestCase):
                     rtol=fixed_rtol,
                     msg=f"fast_ln v2 Bias gradient failed, dtype={dtype}",
                 )
+        paddle.enable_static()
+
+    def test_fast_ln_forward_backward_no_bias_scale(self):
+        """
+        Tests the forward and gradient correctness of fast_ln.
+        """
+        paddle.seed(114514)
+        paddle.disable_static()
+
+        params = [
+            (1, 100, 5120, "float16", 1e-2),
+            (1, 100, 3072, "float16", 1e-2),
+            (1, 100, 3840, "bfloat16", 1e-1),
+            (5, 128, 2304, "float16", 1e-2),
+            (5, 128, 2304, "float16", 1e-2),
+            (5, 128, 3840, "bfloat16", 1e-1),
+        ]
+
+        fixed_rtol = 1.0
+
+        for B, C, H, dtype, atol in params:
+            with self.subTest(shape=(B, C, H), dtype=dtype):
+                # 1. Initialize inputs
+                shape = [B, C, H]
+                x_ref = paddle.randn(shape=shape, dtype=dtype)
+                x_proposed = x_ref.clone()
+                x_ref.stop_gradient = False
+                x_proposed.stop_gradient = False
+
+                epsilon = 1e-5
+
+                # 2. Forward computation
+                y_ref, _, _ = self._fast_ln_ref(
+                    x_ref,
+                    None,
+                    None,
+                    epsilon=epsilon,
+                    has_bias=False,
+                    has_scale=False,
+                )
+                y_proposed = paddle.nn.functional.layer_norm(
+                    x_proposed,
+                    [H],
+                    None,
+                    None,
+                    epsilon=epsilon,
+                )
+
+                # 3. Gradient computation
+                y_ref.sum().backward()
+                y_proposed.sum().backward()
+
+                # 4. Verification (Forward)
+                self._assert_allclose(
+                    y_ref,
+                    y_proposed,
+                    atol=atol,
+                    rtol=fixed_rtol,
+                    msg=f"fast_ln v2  forward failed, dtype={dtype}",
+                )
+
+                # 5. Verification (Gradient)
+                self._assert_allclose(
+                    x_ref.grad,
+                    x_proposed.grad,
+                    atol=atol,
+                    rtol=fixed_rtol,
+                    msg=f"fast_ln v2 input gradient failed, dtype={dtype}",
+                )
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

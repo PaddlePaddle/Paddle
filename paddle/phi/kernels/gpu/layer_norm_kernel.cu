@@ -492,17 +492,20 @@ template class PADDLE_API LayerNormDirectCUDAFunctor<double, double>;
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
 template class PADDLE_API LayerNormDirectCUDAFunctor<half, float>;
 #endif
-LayerNormKernelVariant LayerNormKernelDispatch(
+static inline LayerNormKernelVariant LayerNormKernelDispatch(
     const paddle::DataType weight_type,
     const paddle::DataType input_type,
     const paddle::DataType output_type,
+    const paddle::DataType compute_type,
     const uint32_t hidden_size,
     const DenseTensor *scale,
     const DenseTensor *bias) {
+  if (scale == nullptr || bias == nullptr) {
+    return LayerNormKernelVariant::GENERIC;
+  }
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
-  if (input_type != paddle::DataType::FLOAT32 && hidden_size != 4096) {
-    auto compute_type = paddle::DataType::FLOAT32;
-
+  if (input_type != paddle::DataType::FLOAT32 && hidden_size != 4096 &&
+      hidden_size <= 102400) {
     // using fast_ln_v2 only sm > 70
     auto prop = funcs::fast_ln_v2::GetDeviceProp();
     if (prop->major > 7 &&
@@ -576,24 +579,6 @@ void LayerNormKernel(const Context &dev_ctx,
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
   auto stream = dev_ctx.stream();
   auto place = x.place();
-  // x_data, y_data, mean_data, var_data,
-
-  // LaunchNormFwd<T,Context>(dev_ctx,\
-  //     stream, \
-  //     place, \
-  //     x_data, \
-  //     void_scale_data, \
-  //     void_bias_data, \
-  //     y_data, mean_data, \
-  //     var_data, \
-  //     scale_bias_dtype, \
-  //     scale_bias_dtype, \
-  //     scale_bias_dtype, \
-  //     scale_bias_dtype, \
-  //     feature_size,\
-  //     feature_size,\
-  //     feature_size,\
-  //     epsilon);
 
 #define PADDLE_LAUNCH_LAYERNORM_FWD(ScaleBiasT, IsScaleBiasSameDTypeWithX)    \
   do {                                                                        \
@@ -655,9 +640,14 @@ void LayerNormKernel(const Context &dev_ctx,
   PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 1792); \
   PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 2048); \
   PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 4096)
-
-  auto kernel_variant = LayerNormKernelDispatch(
-      scale_bias_dtype, x_dtype, y_dtype, feature_size, scale, bias);
+  auto compute_dtype = phi::CppTypeToDataType<U>::Type();
+  auto kernel_variant = LayerNormKernelDispatch(scale_bias_dtype,
+                                                x_dtype,
+                                                y_dtype,
+                                                compute_dtype,
+                                                feature_size,
+                                                scale,
+                                                bias);
 
   switch (kernel_variant) {
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
@@ -674,7 +664,7 @@ void LayerNormKernel(const Context &dev_ctx,
                                                    scale_bias_dtype,
                                                    x_dtype,
                                                    y_dtype,
-                                                   paddle::DataType::FLOAT32,
+                                                   compute_dtype,
                                                    feature_size,
                                                    batch_size,
                                                    feature_size,
