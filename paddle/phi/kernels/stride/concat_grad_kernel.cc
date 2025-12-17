@@ -12,33 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
 #include "paddle/phi/kernels/concat_grad_kernel.h"
-#include <limits>
+#include <algorithm>
 #include "paddle/common/flags.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
-#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
-#include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
-#include "paddle/phi/kernels/funcs/stride_utils.h"
+#include "paddle/phi/kernels/funcs/strided_reshape_utils.h"
 #include "paddle/phi/kernels/funcs/strided_utils.h"
 #include "paddle/phi/kernels/slice_kernel.h"
-#include "paddle/phi/kernels/stride/elementwise_stride_base.cu.h"
-
-#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
-#include "paddle/phi/kernels/funcs/dims_simplifier.h"
-
-#endif
 
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
 
 namespace phi {
-
 template <typename Context>
 void NarrowStrideKernel(const Context& dev_ctx,
                         const DenseTensor& x,
@@ -62,7 +50,7 @@ void NarrowStrideKernel(const Context& dev_ctx,
                               out);
 }
 
-template <typename T, typename Context>
+template <typename Context>
 void ConcatGradStrideKernel(const Context& dev_ctx,
                             const std::vector<const DenseTensor*>& x,
                             const DenseTensor& out_grad,
@@ -92,7 +80,13 @@ void ConcatGradStrideKernel(const Context& dev_ctx,
   if (!FLAGS_use_stride_compute_kernel || invalid_stride) {
     DenseTensor out_grad_;
     if (!out_grad.meta().is_contiguous()) {
-      out_grad_ = Tensor2Contiguous<Context>(dev_ctx, out_grad);
+      phi::MetaTensor meta_input(out_grad);
+      phi::MetaTensor meta_out(&out_grad_);
+      UnchangedInferMeta(meta_input, &meta_out);
+      PD_VISIT_ALL_TYPES(out_grad.dtype(), "Tensor2Contiguous", ([&] {
+                           phi::ContiguousKernel<data_t, Context>(
+                               dev_ctx, out_grad, &out_grad_);
+                         }));
     } else {
       out_grad_ = out_grad;
     }
@@ -105,7 +99,10 @@ void ConcatGradStrideKernel(const Context& dev_ctx,
       }
     }
 
-    ConcatGradKernel<T, Context>(dev_ctx, x, out_grad_, axis_scalar, x_grad);
+    PD_VISIT_ALL_TYPES(out_grad_.dtype(), "ConcatGradKernel", ([&] {
+                         phi::ConcatGradKernel<data_t, Context>(
+                             dev_ctx, x, out_grad_, axis_scalar, x_grad);
+                       }));
     return;
   }
 
@@ -144,23 +141,6 @@ void ConcatGradStrideKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(concat_grad,
-                   GPU,
-                   STRIDED,
-                   phi::ConcatGradStrideKernel,
-                   float,
-                   double,
-                   bool,
-                   int64_t,
-                   int,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   phi::float16,
-                   phi::bfloat16,
-                   phi::float8_e4m3fn,
-                   phi::float8_e5m2,
-                   phi::complex64,
-                   phi::complex128) {}
-
-#endif
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(concat_grad,
+                                         STRIDED,
+                                         phi::ConcatGradStrideKernel) {}
