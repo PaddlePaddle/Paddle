@@ -14,7 +14,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple
+
+from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
@@ -47,6 +49,7 @@ __all__ = [
     'split',
     'min',
     'max',
+    'unique',
     'median',
     'nanmedian',
     'seed',
@@ -835,6 +838,115 @@ def sort(
         paddle.assign(outputs, out[0])
         paddle.assign(indices, out[1])
     return SortRetType(values=outputs, indices=indices)
+
+
+@overload
+def unique(
+    input: Tensor,
+    sorted: bool = ...,
+    return_inverse: Literal[True] = ...,
+    return_counts: Literal[True] = ...,
+    dim: int | None = ...,
+) -> tuple[Tensor, Tensor, Tensor]: ...
+
+
+@overload
+def unique(
+    input: Tensor,
+    sorted: bool = ...,
+    return_inverse: Literal[False] = ...,
+    return_counts: Literal[True] = ...,
+    dim: int | None = ...,
+) -> tuple[Tensor, Tensor]: ...
+
+
+@overload
+def unique(
+    input: Tensor,
+    sorted: bool = ...,
+    return_inverse: Literal[True] = ...,
+    return_counts: Literal[False] = ...,
+    dim: int | None = ...,
+) -> tuple[Tensor, Tensor]: ...
+
+
+@overload
+def unique(
+    input: Tensor,
+    sorted: bool = ...,
+    return_inverse: Literal[False] = ...,
+    return_counts: Literal[False] = ...,
+    dim: int | None = ...,
+) -> Tensor: ...
+
+
+@ForbidKeywordsDecorator(
+    illegal_keys={"x", "axis"},
+    func_name="paddle.compat.unique",
+    correct_name="paddle.unique",
+)
+def unique(
+    input,
+    sorted=True,
+    return_inverse=False,
+    return_counts=False,
+    dim=None,
+):
+    r"""
+    Returns the unique elements of `input` in ascending order.
+
+    Args:
+        input(Tensor): The input tensor, it's data type should be float32, float64, int32, int64.
+        sorted(bool, optional): Does not affect the return result, same as PyTorch.
+        return_inverse(bool, optional): If True, also return the indices for where elements in
+            the original input ended up in the returned unique tensor.
+        return_counts(bool, optional): If True, also return the counts for each unique element.
+        dim(int, optional): The axis to apply unique. If None, the input will be flattened.
+            Default: None.
+
+    Returns:
+        tuple (output, inverse_indices, counts). `output` is the unique tensor for `input`. \
+            `inverse_indices` is provided only if `return_inverse` \
+            is True. `counts` is provided only if `return_counts` is True.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([2, 3, 3, 1, 5, 3])
+            >>> unique = paddle.compat.unique(x)
+            >>> print(unique)
+            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1, 2, 3, 5])
+
+            >>> _, inverse_indices, counts = paddle.compat.unique(x, return_inverse=True, return_counts=True)
+            >>> print(inverse_indices)
+            Tensor(shape=[6], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1, 2, 2, 0, 3, 2])
+            >>> print(counts)
+            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1, 1, 3, 1])
+
+            >>> x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3]])
+            >>> unique = paddle.compat.unique(x)
+            >>> print(unique)
+            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 1, 2, 3])
+
+            >>> unique = paddle.compat.unique(x, dim=0)
+            >>> print(unique)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[2, 1, 3],
+             [3, 0, 1]])
+    """
+    return paddle.unique(
+        input,
+        return_inverse=return_inverse,
+        return_counts=return_counts,
+        axis=dim,
+        sorted=sorted,
+    )
 
 
 @ForbidKeywordsDecorator(
