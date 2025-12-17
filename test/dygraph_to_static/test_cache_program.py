@@ -80,7 +80,7 @@ class TestCacheProgram2(TestCacheProgram):
         self.data = np.random.random((4, 10)).astype('float32')
 
 
-class TestCacheProgram3(TestCacheProgram):
+class TestCacheProgramWithDictInput(TestCacheProgram):
     def setUp(self):
         class DummyModel(paddle.nn.Layer):
             def __init__(self):
