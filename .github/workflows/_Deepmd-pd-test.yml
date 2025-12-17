@@ -75,6 +75,7 @@ jobs:
       - name: Print PR information
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -e
           echo "Testing PR #${{ env.PR_ID }}"
           echo "Commit: ${{ env.COMMIT_ID }}"
           echo "Branch: ${{ env.BRANCH }}"
@@ -83,6 +84,7 @@ jobs:
       - name: Install PaddlePaddle
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -e
           mkdir -p ${{ github.workspace }}/../../../.cache/pip
           source ${{ github.workspace }}/../../../proxy
           python3.10 -m pip config set global.cache-dir ${{ github.workspace }}/../../../.cache/pip
@@ -101,18 +103,21 @@ jobs:
       - name: Clone and setup deepmd-kit
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          cd /workspace
+          set -e
+          cd /paddle
           rm -rf deepmd-kit
           echo "Cloning deepmd-kit repository..."
           source ${{ github.workspace }}/../../../proxy
           git clone https://github.com/deepmodeling/deepmd-kit.git -b v3.1.2
+          ls -lah /paddle/deepmd-kit
           cd deepmd-kit
           '
 
       - name: Install deepmd-kit dependencies
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          cd /workspace/deepmd-kit
+          set -e
+          cd /paddle/deepmd-kit
           echo "Installing deepmd-kit..."
           source ${{ github.workspace }}/../../../proxy
           DP_ENABLE_TENSORFLOW=0 DP_ENABLE_PYTORCH=0 python3.10 -m pip install -v -e . -i https://pypi.tuna.tsinghua.edu.cn/simple
@@ -121,6 +126,7 @@ jobs:
       - name: Install test dependencies
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -e
           echo "Installing pytest..."
           python3.10 -m pip install pytest pytest-xdist -i https://pypi.tuna.tsinghua.edu.cn/simple
           '
@@ -129,7 +135,8 @@ jobs:
         id: pytest_run
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          cd /workspace/deepmd-kit
+          set -e
+          cd /paddle/deepmd-kit
           echo "=========================================="
           echo "Running DeepMD-Kit Integration Tests"
           echo "=========================================="
@@ -185,5 +192,5 @@ jobs:
         if: always()
         run: |
           set +e
-          docker exec -t ${{ env.container_name }} /bin/bash -c 'cd /workspace && rm -rf deepmd-kit'
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'cd /paddle && rm -rf deepmd-kit'
           docker rm -f ${{ env.container_name }}
