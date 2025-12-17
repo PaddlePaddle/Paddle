@@ -43,6 +43,44 @@ COMMON_DECLARE_bool(use_stride_compute_kernel);
 COMMON_DECLARE_bool(force_stride_compute_contig_out);
 
 namespace phi {
+
+inline bool FastContiguous(const int64_t &numel,
+                           const DDim &shape,
+                           const DDim &stride,
+                           const uint64_t &offset) {
+  if (offset != 0) {
+    return false;
+  }
+
+  // For large tensors (>16M elements), transpose + contiguous elementwise
+  // is faster than direct strided elementwise kernel
+  if (numel < 16777216LL) {
+    return false;
+  }
+
+  if (shape.size() < 2 || stride.size() < 2) {
+    return false;
+  }
+
+  auto tmp_shape = shape;
+  auto tmp_stride = stride;
+  auto vec_size = tmp_shape.size();
+
+  std::swap(tmp_shape[vec_size - 1], tmp_shape[vec_size - 2]);
+  std::swap(tmp_stride[vec_size - 1], tmp_stride[vec_size - 2]);
+
+  if (!(tmp_stride[vec_size - 1] == 1) ||
+      !(tmp_stride[vec_size - 2] == tmp_shape[vec_size - 1])) {
+    return false;
+  }
+
+  if (DenseTensorMeta::calc_strides(tmp_shape) == tmp_stride) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 #define DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(name, functor_name)          \
   template <typename T, typename Context>                                     \
   void name##StrideKernel(const Context &dev_ctx,                             \
@@ -56,7 +94,17 @@ namespace phi {
     }                                                                         \
     DenseTensor x_;                                                           \
     DenseTensor y_;                                                           \
-    if (!FLAGS_use_stride_compute_kernel) {                                   \
+                                                                              \
+    bool fast_contiguous = false;                                             \
+    if (FLAGS_force_stride_compute_contig_out) {                              \
+      bool x_fast =                                                           \
+          FastContiguous(x.numel(), x.dims(), x.strides(), x.offset());       \
+      bool y_fast =                                                           \
+          FastContiguous(y.numel(), y.dims(), y.strides(), y.offset());       \
+      fast_contiguous = x_fast || y_fast;                                     \
+    }                                                                         \
+                                                                              \
+    if (!FLAGS_use_stride_compute_kernel || fast_contiguous) {                \
       if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \

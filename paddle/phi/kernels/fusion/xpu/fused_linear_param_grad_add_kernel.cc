@@ -271,4 +271,5 @@ PD_REGISTER_KERNEL(fused_linear_param_grad_add,
                    ALL_LAYOUT,
                    phi::fusion::FusedLinearParamGradAdd,
                    float,
+                   phi::bfloat16,
                    phi::float16) {}
