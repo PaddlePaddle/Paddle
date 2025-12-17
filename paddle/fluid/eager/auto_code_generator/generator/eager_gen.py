@@ -977,7 +977,7 @@ CHECK_BACKWARD_INPLACE_TEMPLATE = """
   bool can_be_inplaced = false;
   if ({}.has_allocation()) {{
     VLOG(10) << {}.name() << "({}) use_count: " << {}.impl().use_count();
-    if ({}.impl().use_count() == 1 || ({}.impl().use_count() == 2 && {}.impl().get() == {}.impl().get())) {{
+    if (std::dynamic_pointer_cast<phi::DenseTensor>({}.impl())->Holder().use_count() == 1 && ({}.impl().use_count() == 1 || ({}.impl().use_count() == 2 && {}.impl().get() == {}.impl().get()))) {{
       if ({}.is_dense_tensor() && !std::dynamic_pointer_cast<phi::DenseTensor>({}.impl())->meta().is_contiguous()) {{
         auto tmp = paddle::experimental::Trans2Contiguous(*(std::dynamic_pointer_cast<phi::DenseTensor>({}.impl())));
         auto holder = tmp.MoveMemoryHolder();
@@ -3059,6 +3059,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                     transformed_tensor_name,
                     transformed_tensor_name,
                     transformed_tensor_name,
+                    transformed_tensor_name,
                     tensor_wrapper_intermediate_tensor_str,
                     transformed_tensor_name,
                     transformed_tensor_name,
@@ -3130,6 +3131,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                         transformed_tensor_name,
                         transformed_tensor_name,
                         name,
+                        transformed_tensor_name,
                         transformed_tensor_name,
                         transformed_tensor_name,
                         transformed_tensor_name,

@@ -186,7 +186,11 @@ void GradTensorHolder::add(size_t slot_id,
 
     if (grad_tensor.is_dense_tensor()) {
       if (buffer_tensor.is_dense_tensor()) {
-        if (create_graph || grad_tensor.is_custom_device()) {
+        if (create_graph || grad_tensor.is_custom_device() ||
+            !(std::dynamic_pointer_cast<phi::DenseTensor>(buffer_tensor.impl())
+                      ->Holder()
+                      .use_count() == 1 &&
+              buffer_tensor.impl().use_count() == 1)) {
           buffer_tensor = add_ad_func(grad_tensor, buffer_tensor);
         } else {
           paddle::imperative::TensorAdd<paddle::Tensor>(grad_tensor,
