@@ -104,6 +104,13 @@ def import_multiple_modules():
     return os.name + sys.version[:3]
 
 
+@check_no_breakgraph
+def import_paddle_nn_linear_as():
+    from paddle.nn import Linear as Lin
+
+    return Lin.__name__
+
+
 class TestImportModel(TestCaseBase):
     def test_import_model(self):
         self.assert_results(import_math_model)
@@ -117,6 +124,7 @@ class TestImportModel(TestCaseBase):
         self.assert_results(import_collections)
         self.assert_results(import_collections_defaultdict)
         self.assert_results(import_multiple_modules)
+        self.assert_results(import_paddle_nn_linear_as)
 
     def test_relative_import_error(self):
         self.assert_exceptions(
