@@ -1090,10 +1090,10 @@ class OpcodeExecutorBase:
             ) from e
         self.stack.push(ModuleVariable(value, self._graph, DummyTracker([])))
 
-    def IMPORT_FROM(self, inst: Instruction) -> None:
-        self.DUP_TOP(inst)
+    def IMPORT_FROM(self, instr: Instruction) -> None:
+        self.DUP_TOP(instr)
         obj = self.stack.pop()
-        name = self.vframe.code.co_names[inst.arg]
+        name = self.vframe.code.co_names[instr.arg]
         name_var = ConstantVariable.wrap_literal(name, self._graph)
         attr = BuiltinVariable(
             getattr, graph=self._graph, tracker=DanglingTracker()
