@@ -302,8 +302,6 @@ if(WITH_COVERAGE
   list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
 endif()
 
-list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
-
 if((WITH_ROCM OR WITH_GPU) OR NOT WITH_MKLML)
   # matmul with multiple heads need MKL support
   list(REMOVE_ITEM TEST_OPS test_matmul_op_with_head)

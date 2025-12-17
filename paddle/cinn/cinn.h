@@ -54,4 +54,14 @@ using lang::logic_or;
 
 using common::Target;
 
+// cinn kernel cache file name constants
+constexpr char CINN_CACHE_SO[] = "cinn_cache.so";
+constexpr char CINN_CACHE_META[] = "cinn_cache.meta";
+constexpr char CINN_HOST_MODULE_LLVM[] = "module.ll";
+constexpr char CINN_HOST_MODULE_OBJ[] = "module.o";
+constexpr char CINN_CUDA_KERNEL[] = "cinn_cuda_kernel.cu";
+constexpr char CINN_CUDA_KERNEL_OBJ[] = "cinn_cuda_kernel.o";
+constexpr char CINN_CUDA_KERNEL_META[] = "cinn_cuda_kernel.meta";
+constexpr char CINN_CUDA_KERNEL_FATBIN[] = "cinn_cuda_kernel.fatbin";
+
 }  // namespace cinn
