@@ -2248,3 +2248,15 @@ PHI_DEFINE_EXPORTED_bool(torch_compatible_kernel,
 PHI_DEFINE_EXPORTED_bool(use_legacy_gemm,
                          false,
                          "Whether use legacy gemm dispatch logics.");
+
+/**
+ * Torch Compatible related FLAG
+ * Name: FLAGS_use_accuracy_compatible_kernel
+ * Since Version: 3.2.2
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use torch compatible version kernel.
+ */
+PHI_DEFINE_EXPORTED_bool(use_accuracy_compatible_kernel,
+                         false,
+                         "Whether use torch compatible version kernel.");
