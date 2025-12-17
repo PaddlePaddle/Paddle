@@ -73,10 +73,10 @@ class CompilationResult final {
       : target_(target), have_cx86_kernel_(need_x86_kernel) {}
   explicit CompilationResult(const Target& target,
                              bool need_x86_kernel,
-                             std::string host_func_name)
+                             size_t fusion_hash)
       : target_(target),
         have_cx86_kernel_(need_x86_kernel),
-        host_func_name_(host_func_name) {}
+        fusion_hash_(fusion_hash) {}
   const std::shared_ptr<BackendResource>& GetBackendResource() const {
     return backend_resource_;
   }
@@ -101,14 +101,14 @@ class CompilationResult final {
     return backend_resource_->GenerateKernelInfo(have_cx86_kernel_);
   }
 
-  std::string GetFuncName() const { return host_func_name_; }
-  void SetFuncName(std::string host_fn_name) { host_func_name_ = host_fn_name; }
+  size_t GetFusionHash() const { return fusion_hash_; }
+  void SetFusionHash(size_t hash) { fusion_hash_ = hash; }
 
  private:
   Target target_;
   std::shared_ptr<BackendResource> backend_resource_{nullptr};
   bool have_cx86_kernel_{false};
-  std::string host_func_name_ = "";
+  size_t fusion_hash_{0};
 };
 
 }  // namespace pir

@@ -284,11 +284,32 @@ class TestDLPack(unittest.TestCase):
             s2.wait_event(e)
             x = paddle.to_tensor([1, 2, 3], dtype='float32')
             s1.synchronize()
-            dlpack_capsule = x.__dlpack__(stream=s1)
+            dlpack_capsule = x.__dlpack__(stream=s1.stream_base.raw_stream)
             y = paddle.from_dlpack(dlpack_capsule)
             np.testing.assert_array_equal(x.numpy(), y.numpy())
             self.assertTrue(s1.query(), "Stream s1 did not complete all tasks.")
             self.assertTrue(s2.query(), "Stream s2 did not complete all tasks.")
+
+    def test_dlpack_with_custom_stream_error(self):
+        if not (paddle.is_compiled_with_cuda()):
+            self.skipTest("Test requires CUDA support.")
+        with dygraph_guard():
+            x = paddle.to_tensor([1, 2, 3], dtype='float32')
+            with self.assertRaisesRegex(
+                TypeError, "stream must be an integer or None."
+            ):
+                dlpack_capsule = x.__dlpack__(stream=object())
+
+            with self.assertRaisesRegex(
+                ValueError, "For CUDA, stream=0 is ambiguityous"
+            ):
+                dlpack_capsule = x.__dlpack__(stream=0)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "For CUDA, stream=2 means per-thread default stream, which is not supported.",
+            ):
+                dlpack_capsule = x.__dlpack__(stream=2)
 
 
 @unittest.skipIf(
@@ -300,14 +321,14 @@ class TestRaiseError(unittest.TestCase):
         sparse_tensor = paddle.sparse.sparse_coo_tensor(
             indices=[[0]], values=[1], shape=[3]
         )
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(BufferError):
             sparse_tensor.__dlpack__()
 
     def test_dlpack_requires_grad(self):
         tensor_with_grad = paddle.to_tensor(
             [1.0, 2.0, 3.0], stop_gradient=False
         )
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(BufferError):
             tensor_with_grad.__dlpack__()
 
 

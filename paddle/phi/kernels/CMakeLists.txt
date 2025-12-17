@@ -122,7 +122,7 @@ if(NOT WITH_DGC)
 endif()
 
 if(NOT WITH_MAGMA)
-  list(REMOVE_ITEM kernel_gpu "xpu/eig_kernel.cc")
+  list(REMOVE_ITEM kernel_gpu "gpu/eig_kernel.cu" "gpu/eig_grad_kernel.cu")
 endif()
 
 if(WITH_CUTLASS)
@@ -410,6 +410,10 @@ if(WITH_XPU)
       "xpu/fft_grad_kernel.cc"
       "xpu/as_real_kernel.cc"
       "xpu/as_complex_kernel.cc")
+  endif()
+
+  if(NOT WITH_MAGMA)
+    list(REMOVE_ITEM kernel_xpu "xpu/eig_kernel.cc")
   endif()
 
   collect_srcs(kernels_srcs SRCS ${kernel_xpu})

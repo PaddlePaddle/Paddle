@@ -343,12 +343,14 @@ void GraphReindexKernel(const Context& dev_ctx,
   const T* x_data = x.data<T>();
   const T* neighbors_data = neighbors.data<T>();
   const int* count_data = count.data<int>();
-  const int bs = x.dims()[0];
+  int64_t bs = x.dims()[0];
+
   PADDLE_ENFORCE_NE(
       0,
       bs,
       errors::InvalidArgument("The first of dims should not be equal to 0."));
-  const int num_edges = neighbors.dims()[0];
+  int64_t num_edges = neighbors.dims()[0];
+
   reindex_src->Resize({num_edges});
 
   T* reindex_src_data = dev_ctx.template Alloc<T>(reindex_src);
@@ -398,6 +400,8 @@ void GraphReindexKernel(const Context& dev_ctx,
                          count_data,
                          num_edge_types,
                          bs);
+  // TODO(large-tensor): Resize not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(unique_nodes.size(), "unique_nodes.size()");
   out_nodes->Resize({static_cast<int>(unique_nodes.size())});
   T* out_nodes_data = dev_ctx.template Alloc<T>(out_nodes);
   thrust::copy(unique_nodes.begin(), unique_nodes.end(), out_nodes_data);

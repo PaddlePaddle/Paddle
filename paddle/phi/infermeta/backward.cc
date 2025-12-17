@@ -266,7 +266,7 @@ void CrossEntropyGrad2InferMeta(const MetaTensor& x_shape,
                                 MetaTensor* x_grad,
                                 MetaConfig config) {
   const auto& x_shape_dims = x_shape.dims();
-  const auto& x_dims = phi::DDim(x_shape_dims.Get(), x_shape_dims.size() - 1);
+  const auto& x_dims = DDim(x_shape_dims.Get(), x_shape_dims.size() - 1);
   const auto& label_dims = label.dims();
   const auto& dy_dims = out_grad.dims();
   int rank = x_dims.size();
@@ -431,7 +431,7 @@ void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
                         "Attr(axis) value should be in range [-R, R-1], "
                         "R is the rank of Input(Logits)."));
 
-  axis = phi::funcs::CanonicalAxis(axis, softmax_rank);
+  axis = funcs::CanonicalAxis(axis, softmax_rank);
   for (int i = 0; i < softmax_rank; i++) {
     if (i != axis) {
       if (config.is_runtime || (softmax_dims[i] > 0 && labels_dims[i] > 0)) {
@@ -586,7 +586,7 @@ void FFTC2RGradInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_NOT_NULL(out,
                           common::errors::InvalidArgument(
                               "Output of fft_c2r _grad should not be null."));
-  const phi::DDim x_dim = x.dims();
+  const DDim x_dim = x.dims();
 
   // only ensure that fft axes' size greater than zero at runtime
   // they might be -1 to indicate unknown size ar compile time
@@ -602,7 +602,7 @@ void FFTC2RGradInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
   out->set_dtype(ToComplexType(x.dtype()));
 
-  phi::DDim out_dim = x.dims();
+  DDim out_dim = x.dims();
   const int last_fft_axis = static_cast<int>(axes.back());
   if (last_dim_size > 0) {
     out_dim.at(last_fft_axis) = last_dim_size / 2 + 1;
@@ -1270,7 +1270,7 @@ void MoeCombineGradInferMeta(const MetaTensor& x,
                               "But received X's dimension = %d",
                               x_dim.size()));
   PADDLE_ENFORCE_EQ(
-      (scatter_index.dtype() == phi::DataType::INT32),
+      (scatter_index.dtype() == DataType::INT32),
       true,
       errors::InvalidArgument("The input scatter_index type should be int32. "
                               "But received scatter_index type = %s",
@@ -1299,7 +1299,7 @@ void MoeCombineAutoGradInferMeta(const MetaTensor& x,
                               "But received X's dimension = %d",
                               x_dim.size()));
   PADDLE_ENFORCE_EQ(
-      (scatter_index.dtype() == phi::DataType::INT32),
+      (scatter_index.dtype() == DataType::INT32),
       true,
       errors::InvalidArgument("The input scatter_index type should be int32."
                               "But received scatter_index type = %s",
@@ -1318,7 +1318,7 @@ void MoeCombineAutoGradInferMeta(const MetaTensor& x,
           "set scatter_index.stop_gradient = False."));
 
   grad_scatter_index->set_dims(scatter_index_dim);
-  grad_scatter_index->set_dtype(phi::DataType::INT32);
+  grad_scatter_index->set_dtype(DataType::INT32);
 }
 
 void MoeGateDispatchPartialNoSoftmaxTopkGradInferMeta(
@@ -1343,7 +1343,7 @@ void MoeGateDispatchPartialNoSoftmaxTopkGradInferMeta(
                     0,
                     common::errors::InvalidArgument(
                         "Input num_experts should be greater than 0"));
-  PADDLE_ENFORCE_EQ((expert_offset.dtype() == phi::DataType::INT64),
+  PADDLE_ENFORCE_EQ((expert_offset.dtype() == DataType::INT64),
                     true,
                     common::errors::InvalidArgument(
                         "Input expert_offset type should be int64"));
@@ -1360,7 +1360,7 @@ void MoeGateDispatchPartialNoSoftmaxTopkGradInferMeta(
                           "Input y_grad.dims()[0] should be greater than 0"));
   }
   combine_weights_grad->set_dims(combine_weights_out_grad.dims());
-  combine_weights_grad->set_dtype(phi::DataType::FLOAT32);
+  combine_weights_grad->set_dtype(DataType::FLOAT32);
   x_grad->set_dims({num_rows, hidden_size});
   x_grad->set_dtype(y_grad.dtype());
 }
@@ -1391,7 +1391,7 @@ void MoeGateDispatchPermuteGradInferMeta(const MetaTensor& combine_weights,
   x_grad->set_dims({num_rows, hidden_size});
   x_grad->set_dtype(y_grad.dtype());
   gate_logits_grad->set_dims({num_rows, num_experts});
-  gate_logits_grad->set_dtype(phi::DataType::FLOAT32);
+  gate_logits_grad->set_dtype(DataType::FLOAT32);
 }
 
 void MultiDotGradInferMeta(const std::vector<const MetaTensor*>& x,
@@ -1909,7 +1909,7 @@ void RandomGradInferMeta(const MetaTensor& out_grad, MetaTensor* x_grad) {
 void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
                           int axis,
                           MetaTensor* x_grad) {
-  std::vector<phi::DDim> input_dims(out_grad.size());
+  std::vector<DDim> input_dims(out_grad.size());
   for (size_t i = 0; i < out_grad.size(); ++i) {
     input_dims[i] = out_grad[i]->dims();
   }
@@ -2188,7 +2188,7 @@ void MoeGateDispatchGradInferMeta(const MetaTensor& combine_weights,
   x_grad->set_dtype(y_grad.dtype());
 
   gate_logits_grad->set_dims(common::make_ddim({num_rows, num_experts}));
-  gate_logits_grad->set_dtype(phi::DataType::FLOAT32);
+  gate_logits_grad->set_dtype(DataType::FLOAT32);
 }
 
 void MoeGateDispatchAutoGradInferMeta(const MetaTensor& combine_weights,
@@ -2241,7 +2241,7 @@ void MoeGateDispatchAutoGradInferMeta(const MetaTensor& combine_weights,
   x_grad->set_dtype(y_grad.dtype());
 
   gate_logits_grad->set_dims(common::make_ddim({num_rows, num_experts}));
-  gate_logits_grad->set_dtype(phi::DataType::FLOAT32);
+  gate_logits_grad->set_dtype(DataType::FLOAT32);
 }
 void FusedRMSNormGradInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
