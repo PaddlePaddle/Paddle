@@ -901,7 +901,6 @@ add_doc_and_signature(
             >>> z = paddle.matmul(x, y)
             >>> print(z.shape)
             paddle.Size([10, 3, 5, 5])
-
     """,
     """    def matmul(
     x: Tensor,
