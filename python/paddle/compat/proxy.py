@@ -24,7 +24,7 @@ import types
 import warnings
 from contextlib import contextmanager
 from functools import cache
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable
@@ -419,13 +419,13 @@ def _modify_scope_of_torch_proxy(
         return
     if scope is None:
         _warn_or_not(
-            "Enabling PyTorch proxy globally, previous scope will be ignored."
+            "Enabling PyTorch compat globally, previous scope will be ignored."
         )
         TORCH_PROXY_FINDER._globally_enabled = True
         return
     if scope != TORCH_PROXY_FINDER._local_enabled_scope:
         _warn_or_not(
-            f"Extending PyTorch proxy scope, previous scope: {TORCH_PROXY_FINDER._local_enabled_scope}, new scope: {scope}."
+            f"Extending PyTorch compat scope, previous scope: {TORCH_PROXY_FINDER._local_enabled_scope}, new scope: {scope}."
         )
     TORCH_PROXY_FINDER._local_enabled_scope |= scope
 
@@ -441,40 +441,50 @@ def _parse_scope(scope: str | Iterable[str] | None) -> set[str] | None:
 def enable_torch_proxy(
     *,
     scope: _ScopeType = None,
+    exclude_scope: _ScopeType = None,
+    backend: Literal["torch"] = "torch",
     silent: bool = False,
 ) -> None:
     """
-    Enable the PyTorch proxy by adding the TorchProxyMetaFinder to sys.meta_path.
+    Enable the PyTorch compat by adding the TorchProxyMetaFinder to sys.meta_path.
     This allows importing 'torch' modules that are actually proxies to PaddlePaddle.
 
     Args:
         scope (str or Iterable[str], optional): Specific module or modules to enable
-            PyTorch proxy for. If None, enables PyTorch proxy globally. Defaults to None.
+            PyTorch compat for. If None, enables PyTorch compat globally. Defaults to None.
+        exclude_scope (str or Iterable[str], optional): Specific module or modules to
+            exclude from PyTorch compat. Defaults to None.
         silent (bool, optional): If True, suppresses warnings about scope changes.
             Defaults to False.
+        backend (str, optional): The backend to enable compat for. Currently only
+            "torch" is supported. Defaults to "torch".
 
     Example:
         .. code-block:: pycon
-            :name: enable-torch-proxy-in-global-scope
+            :name: enable-compat-in-global-scope
 
             >>> import paddle
-            >>> paddle.compat.enable_torch_proxy()  # Enable torch proxy globally
+            >>> paddle.enable_compat()  # Enable torch compat globally
             >>> import torch  # type: ignore[import-not-found] # This will import paddle as torch
             >>> assert torch.sin is paddle.sin
-            >>> paddle.compat.disable_torch_proxy()  # Disable torch proxy
+            >>> paddle.disable_compat()  # Disable torch compat
 
         .. code-block:: pycon
-            :name: enable-torch-proxy-in-specific-scope
+            :name: enable-compat-in-specific-scope
 
             >>> import paddle
-            >>> paddle.compat.enable_torch_proxy(scope={"triton"})  # Enable torch proxy for 'triton' module only
+            >>> paddle.enable_compat(scope={"triton"})  # Enable torch compat for 'triton' module only
             >>> import triton  # type: ignore[import-untyped] # All `import torch` inside `triton` will proxy to paddle
             >>> try:
             ...     import torch  # type: ignore[import-not-found] # This will raise ModuleNotFoundError
             ... except ModuleNotFoundError:
-            ...     print("PyTorch proxy is not enabled globally.")
-            >>> paddle.compat.disable_torch_proxy()  # Disable torch proxy
+            ...     print("PyTorch compat is not enabled globally.")
+            >>> paddle.disable_compat()  # Disable torch compat
     """
+    assert backend == "torch", f"Unsupported backend: {backend}"
+    exclude_scope = _parse_scope(exclude_scope)
+    if exclude_scope is not None:
+        extend_torch_proxy_blocked_modules(exclude_scope)
     scope = _parse_scope(scope)
     _register_compat_override()
     _swap_torch_modules_to_cache()
@@ -491,21 +501,21 @@ def disable_torch_proxy() -> None:
         .. code-block:: pycon
 
             >>> import paddle
-            >>> paddle.compat.enable_torch_proxy()  # Enable torch proxy globally
+            >>> paddle.enable_compat()  # Enable torch compat globally
             >>> import torch  # type: ignore[import-not-found] # This will import paddle as torch
             >>> assert torch.sin is paddle.sin
-            >>> paddle.compat.disable_torch_proxy()  # Disable torch proxy
+            >>> paddle.disable_compat()  # Disable torch compat
             >>> try:
             ...     import torch  # This will raise ModuleNotFoundError
             ... except ModuleNotFoundError:
-            ...     print("PyTorch proxy is disabled.")
+            ...     print("PyTorch compat is disabled.")
     """
     if TORCH_PROXY_FINDER in sys.meta_path:
         sys.meta_path.remove(TORCH_PROXY_FINDER)
         _clear_torch_proxy_modules()
         _copy_torch_modules_from_cache()
         return
-    warnings.warn("torch proxy is not installed.")
+    warnings.warn("torch compat is not installed.")
 
 
 @contextmanager
@@ -516,18 +526,18 @@ def use_torch_proxy_guard(
     silent: bool = False,
 ) -> Generator[None, None, None]:
     """
-    Context manager to temporarily enable or disable the PyTorch proxy.
+    Context manager to temporarily enable or disable the PyTorch compat.
 
-    When `enable` is True (default), the PyTorch proxy is enabled for the duration
+    When `enable` is True (default), the PyTorch compat is enabled for the duration
     of the context and restored to its previous state afterwards. When `enable`
-    is False, the PyTorch proxy is disabled for the duration of the context and
+    is False, the PyTorch compat is disabled for the duration of the context and
     restored afterwards.
 
     Args:
-        enable (bool, optional): Whether to enable or disable the PyTorch proxy
+        enable (bool, optional): Whether to enable or disable the PyTorch compat
             within the context. Defaults to True.
         scope (str or Iterable[str], optional): Specific module or modules to enable
-            PyTorch proxy for. If None, uses the global scope. Defaults to None.
+            PyTorch compat for. If None, uses the global scope. Defaults to None.
         silent (bool, optional): If True, suppresses warnings about scope changes.
             Defaults to False.
 
@@ -537,17 +547,17 @@ def use_torch_proxy_guard(
             >>> import paddle
 
             >>> with paddle.compat.use_torch_proxy_guard():
-            ...     # code that requires the Torch proxy to be enabled
+            ...     # code that requires the Torch compat to be enabled
             ...     import torch  # type: ignore[import-not-found]
             ...
             ...     assert torch.sin is paddle.sin
-            ...     # Temporarily disable the Torch proxy
+            ...     # Temporarily disable the Torch compat
             ...     with paddle.compat.use_torch_proxy_guard(enable=False):
             ...         try:
             ...             import torch
             ...         except ModuleNotFoundError:
-            ...             print("Torch proxy is disabled within this block.")
-            ...     # Torch proxy is re-enabled here
+            ...             print("Torch compat is disabled within this block.")
+            ...     # Torch compat is re-enabled here
             ...     import torch
             ...
             ...     assert torch.sin is paddle.sin
@@ -587,23 +597,23 @@ def use_torch_proxy_guard(
 def extend_torch_proxy_blocked_modules(modules: Iterable[str]) -> None:
     """Add modules to the PyTorch proxy blocked list.
 
-    Modules in the blocked list will not use PyTorch proxy when imported,
-    and their functions will not trigger PyTorch proxy when called.
+    Modules in the blocked list will not use PyTorch compat when imported,
+    and their functions will not trigger PyTorch compat when called.
 
     By default, some modules are already in the blocked list, such as 'tvm_ffi'.
 
     Args:
-        modules(Iterable[str]): An iterable of module names to block from PyTorch proxy.
+        modules(Iterable[str]): An iterable of module names to block from PyTorch compat.
 
     Example:
         .. code-block:: pycon
 
             >>> import paddle
-            >>> paddle.compat.enable_torch_proxy()  # Enable torch proxy globally
+            >>> paddle.enable_compat()  # Enable torch compat globally
             >>> # Add 'my_custom_module' to the blocked list
             >>> paddle.compat.extend_torch_proxy_blocked_modules(['my_custom_module'])
             >>> # doctest: +SKIP('my_custom_module is not available')
-            >>> import my_custom_module  # type: ignore[import-not-found] # This import will not use torch proxy
+            >>> import my_custom_module  # type: ignore[import-not-found] # This import will not use torch compat
     """
     TORCH_PROXY_BLOCKED_MODULES.update(modules)
 
