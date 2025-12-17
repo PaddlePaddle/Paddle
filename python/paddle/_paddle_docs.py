@@ -1339,11 +1339,12 @@ add_doc_and_signature(
     "sum",
     """
     Computes the sum of tensor elements over the given dimension.
-     .. note::
-        Parameter order support: When passing positional parameters, it is possible to support swapping the positional order of dtype and axis.
-        For example, ``sum(x, axis, keepdim, dtype)`` is equivalent to ``sum(x, axis, dtype, keepdim)``.
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x`` and the parameter name ``dim`` can be used as an alias for ``axis``.
-        For example, ``sum(input=tensor_x, dim=1)`` is equivalent to ``sum(x=tensor_x, axis=1)``.
+
+    .. note::
+        | Parameter order support: When passing positional parameters, it is possible to support swapping the positional order of dtype and axis.
+        | For example, ``sum(x, axis, keepdim, dtype)`` is equivalent to ``sum(x, axis, dtype, keepdim)``.
+        | Alias Support: The parameter name ``input`` can be used as an alias for ``x`` and the parameter name ``dim`` can be used as an alias for ``axis``.
+        | For example, ``sum(input=tensor_x, dim=1)`` is equivalent to ``sum(x=tensor_x, axis=1)``.
 
     Args:
         x (Tensor): An N-D Tensor, the data type is bool, bfloat16, float16, float32, float64,
