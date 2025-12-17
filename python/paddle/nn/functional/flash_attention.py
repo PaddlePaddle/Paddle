@@ -1954,8 +1954,14 @@ def flashmask_attention(
             f"startend_row_indices.shape[0] must be equal to batch_size, but got {startend_row_indices.shape[0]} and {key.shape[0]}"
         )
 
-        assert startend_row_indices.shape[2] == key.shape[1], (
-            f"startend_row_indices.shape[2] must be equal to seqlen_k, but got {startend_row_indices.shape[2]} and {key.shape[2]}"
+        # for context parallel, seqlen of mask len can be cp_size * (local_key seqlen)
+        # TODO(heqianyue): double check this when the topology is more complex
+        world_size = paddle.distributed.get_world_size()
+        assert (
+            startend_row_indices.shape[2] == key.shape[1]
+            or startend_row_indices.shape[2] == key.shape[1] * world_size
+        ), (
+            f"startend_row_indices.shape[2] must be equal to seqlen_k or seqlen_k * world_size, but got {startend_row_indices.shape[2]} and {key.shape[2]}. World size: {world_size}"
         )
         assert startend_row_indices.shape[1] in [
             1,
