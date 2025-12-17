@@ -18,20 +18,74 @@ limitations under the License. */
 #include "paddle/phi/backends/c_comm_lib.h"
 #include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/backends/device_ext.h"
+#include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/attribute.h"
 #include "paddle/phi/core/device_context.h"
 
-// Forward declaration of cuBLAS types.
+// Forward declaration of BLAS and DNN types.
 using cublasHandle_t = struct cublasContext*;
 using cublasLtHandle_t = struct cublasLtContext*;
+using dnnHandle_t = struct cudnnContext*;
 
 namespace Eigen {
 struct GpuDevice;
 }  // namespace Eigen
 
 namespace phi {
+
+class DnnWorkspaceHandle {
+ public:
+  inline DnnWorkspaceHandle(Allocator* allocator,
+                            phi::stream::stream_t stream,
+                            const Place& place)
+      : allocator_(allocator), stream_(stream), place_(place) {
+    mtx_ = std::make_unique<std::mutex>();
+    device_ = DeviceManager::GetDeviceWithPlace(place_);
+  }
+
+  inline void RunFunc(const std::function<void(void*)>& cudnn_func,
+                      size_t required_workspace_bytes) {
+    if (required_workspace_bytes > WorkspaceSize()) {
+      ReallocWorkspace(required_workspace_bytes);
+    }
+    {
+      std::lock_guard<std::mutex> guard(*mtx_);
+      cudnn_func(allocation_ ? allocation_->ptr() : nullptr);
+    }
+  }
+
+  /*! \brief Thread which call RunFuncSync() would release gpu memory after
+   *  running the function. Currently this function is only used when cudnn
+   *  exhaustive searching and callers have to guarantee that the input function
+   *  is host blocking */
+  PADDLE_API void RunFuncSync(const std::function<void(void*)>& cudnn_func,
+                              size_t required_workspace_bytes,
+                              bool use_cached_allocation = true);
+
+  inline size_t WorkspaceSize() {
+    if (allocation_ == nullptr) {
+      return 0;
+    }
+    return allocation_->size();
+  }
+
+  PADDLE_API void ResetWorkspace();
+
+  TEST_API void ReallocWorkspace(size_t required_workspace_bytes);
+
+  DnnWorkspaceHandle(DnnWorkspaceHandle&&) = default;
+  DnnWorkspaceHandle& operator=(DnnWorkspaceHandle&&) = delete;
+
+ private:
+  Allocator::AllocationPtr allocation_{nullptr};
+  Allocator* allocator_{nullptr};          // Not owned
+  phi::stream::stream_t stream_{nullptr};  // Not owned
+  Place place_;
+  Device* device_;
+  std::unique_ptr<std::mutex> mtx_;
+};
 
 class CustomContext : public DeviceContext,
                       public TypeInfoTraits<DeviceContext, CustomContext> {
@@ -123,6 +177,8 @@ class CustomContext : public DeviceContext,
 
   void SetRuntimeVersion(int val);
 
+  dnnHandle_t cudnn_handle() const;
+
   cublasHandle_t cublas_handle() const;
 
   cublasLtHandle_t cublaslt_handle() const;
@@ -139,12 +195,19 @@ class CustomContext : public DeviceContext,
   void SetBlasLtHandle(cublasLtHandle_t);
   void SetBlasLtHandle(std::function<cublasLtHandle_t()>&&);
 
+  void SetDnnHandle(dnnHandle_t);
+  void SetDnnHandle(std::function<dnnHandle_t()>&&);
+
+  void SetDnnWorkspaceHandle(DnnWorkspaceHandle*);
+
   bool tensor_core_available() const;
 
   void CublasCall(const std::function<void(cublasHandle_t)>&) const;
 
   void TensorCoreCublasCallIfAvailable(
       const std::function<void(cublasHandle_t)>&) const;
+
+  DnnWorkspaceHandle cudnn_workspace_handle() const;
 
   bool HasDnnAttr(const std::string& attr_name) const;
   const Attribute& GetDnnAttr(const std::string& attr_name) const;
