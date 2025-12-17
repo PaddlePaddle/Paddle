@@ -441,7 +441,7 @@ def _parse_scope(scope: str | Iterable[str] | None) -> set[str] | None:
 def enable_torch_proxy(
     *,
     scope: _ScopeType = None,
-    exclude_scope: _ScopeType = None,
+    blocked_modules: _ScopeType = None,
     backend: Literal["torch"] = "torch",
     silent: bool = False,
 ) -> None:
@@ -452,7 +452,7 @@ def enable_torch_proxy(
     Args:
         scope (str or Iterable[str], optional): Specific module or modules to enable
             PyTorch compat for. If None, enables PyTorch compat globally. Defaults to None.
-        exclude_scope (str or Iterable[str], optional): Specific module or modules to
+        blocked_modules (str or Iterable[str], optional): Specific module or modules to
             exclude from PyTorch compat. Defaults to None.
         silent (bool, optional): If True, suppresses warnings about scope changes.
             Defaults to False.
@@ -482,9 +482,9 @@ def enable_torch_proxy(
             >>> paddle.disable_compat()  # Disable torch compat
     """
     assert backend == "torch", f"Unsupported backend: {backend}"
-    exclude_scope = _parse_scope(exclude_scope)
-    if exclude_scope is not None:
-        extend_torch_proxy_blocked_modules(exclude_scope)
+    blocked_modules = _parse_scope(blocked_modules)
+    if blocked_modules is not None:
+        extend_torch_proxy_blocked_modules(blocked_modules)
     scope = _parse_scope(scope)
     _register_compat_override()
     _swap_torch_modules_to_cache()
