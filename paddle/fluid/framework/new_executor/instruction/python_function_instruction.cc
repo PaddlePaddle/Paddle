@@ -108,10 +108,10 @@ void PythonFunctionInstruction::BuildPythonFunctionContext(
       python_in.set_impl(tensor_in);
       python_function_ctx_.EmplaceBackInput(std::move(python_in));
     } else if (var->IsType<VariableRefArray>()) {
-      PADDLE_THROW(
-          common::errors::Unimplemented("Only support Tensor input type for "
-                                        "now in PythonFunctionInstruction, "
-                                        "does not support Vector<DenseTensor>."));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Only support Tensor input type for "
+          "now in PythonFunctionInstruction, "
+          "does not support Vector<DenseTensor>."));
     } else {
       PADDLE_THROW(common::errors::Unimplemented("Not support var type [%d].",
                                                  var->Type()));

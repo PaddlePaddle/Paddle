@@ -1207,10 +1207,9 @@ static PyObject *run_python_op(PyObject *self,
   PADDLE_ENFORCE_EQ(
       process_result.size(),
       outputs.size(),
-      common::errors::InvalidArgument(
-          "Expected output size %d, but got %d.",
-          static_cast<int>(process_result.size()),
-          static_cast<int>(outputs.size())));
+      common::errors::InvalidArgument("Expected output size %d, but got %d.",
+                                      static_cast<int>(process_result.size()),
+                                      static_cast<int>(outputs.size())));
 
   dialect::ProcessMeshAttribute op_mesh;
   bool run_auto_parallel = false;
