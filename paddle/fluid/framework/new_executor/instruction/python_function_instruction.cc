@@ -168,10 +168,8 @@ void PythonFunctionInstruction::BuildPythonFunctionContext(
           paddle::framework::detail::IsOptionalVar(out_name) &&
               !inplace_id_map.empty(),
           common::errors::InvalidArgument(
-              "Custom operator couldn't find custom output for name %s. If "
-              "you "
-              "are using inplace optional inputs & outputs, please check "
-              "your "
+              "Custom operator couldn't find custom output for name %s. If you "
+              "are using inplace optional inputs & outputs, please check your "
               "InplaceMap and `Outputs` again and make sure %s is wrapped by "
               "`paddle::Optional`",
               out_name,
