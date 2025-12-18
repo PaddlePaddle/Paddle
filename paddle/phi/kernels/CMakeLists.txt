@@ -128,7 +128,7 @@ endif()
 if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 11.8))
    OR APPLE
    OR WITH_ROCM)
-  list(REMOVE_ITEM kernel_cu "gpu/rms_norm_cuda_kernel.cu")
+  list(REMOVE_ITEM kernel_gpu "gpu/rms_norm_cuda_kernel.cu")
 endif()
 
 if(WITH_CUTLASS)
