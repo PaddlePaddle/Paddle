@@ -535,12 +535,29 @@ class StaticPair(Pair):
                 f"The Python types do not match: {type(self.actual)} != {type(self.expected)}.",
             )
 
-        if self.check_dtype:
-            if self.actual.dtype != self.expected.dtype:
-                self._fail(
-                    AssertionError,
-                    f"The PIR dtypes do not match: {self.actual.dtype} != {self.expected.dtype}.",
-                )
+        if self.check_dtype and self.actual.dtype != self.expected.dtype:
+            self._fail(
+                AssertionError,
+                f"The values for attribute dtype do not match: {self.actual.dtype} != {self.expected.dtype}.",
+            )
+
+        act_shape = self.actual.shape
+        exp_shape = self.expected.shape
+        shape_match = True
+
+        if len(act_shape) != len(exp_shape):
+            shape_match = False
+        else:
+            for a_dim, e_dim in zip(act_shape, exp_shape):
+                if a_dim != -1 and e_dim != -1 and a_dim != e_dim:
+                    shape_match = False
+                    break
+
+        if not shape_match:
+            self._fail(
+                AssertionError,
+                f"The values for attribute shape do not match: {act_shape} != {exp_shape}.",
+            )
 
 
 class TensorLikePair(Pair):
@@ -624,12 +641,11 @@ class TensorLikePair(Pair):
                 f"The values for attribute '{attribute_name}' do not match: {actual_value} != {expected_value}.",
             )
 
-        if tuple(actual.shape) != tuple(expected.shape):
+        if actual.shape != expected.shape:
             raise_mismatch_error("shape", actual.shape, expected.shape)
 
-        if self.check_device:
-            if str(actual.place) != str(expected.place):
-                raise_mismatch_error("place", actual.place, expected.place)
+        if self.check_device and actual.place != expected.place:
+            raise_mismatch_error("device", actual.place, expected.place)
 
         if self.check_dtype and actual.dtype != expected.dtype:
             raise_mismatch_error("dtype", actual.dtype, expected.dtype)

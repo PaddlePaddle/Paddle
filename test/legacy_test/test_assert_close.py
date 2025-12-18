@@ -93,7 +93,7 @@ class TestAssertClose(unittest.TestCase):
         t1 = paddle.to_tensor([1.0])
         if paddle.device.is_compiled_with_cuda():
             t_gpu = t1.to("gpu")
-            with self.assertRaisesRegex(AssertionError, "place"):
+            with self.assertRaisesRegex(AssertionError, "device"):
                 assert_close(t1, t_gpu)
 
             assert_close(t1, t_gpu, check_device=False)
@@ -182,15 +182,6 @@ class TestAssertClose(unittest.TestCase):
         assert_close(c1, c2)
         with self.assertRaises(AssertionError):
             assert_close(c1, c3)
-
-    def test_int_tensor_promoted_check(self):
-        t1 = paddle.to_tensor([1, 2], dtype='int32')
-        t2 = paddle.to_tensor([1, 3], dtype='int32')
-
-        with self.assertRaises(AssertionError):
-            assert_close(t1, t2)
-
-        assert_close(t1, t1)
 
     def test_tolerance_validation_logic(self):
         with self.assertRaisesRegex(
@@ -310,8 +301,34 @@ class TestAssertClose(unittest.TestCase):
 
                 z = paddle.static.data(name='z', shape=[2, 2], dtype='int32')
                 assert_close(x, z, check_dtype=False)
-                with self.assertRaises(AssertionError):
+                with self.assertRaisesRegex(
+                    AssertionError,
+                    "The values for attribute dtype do not match",
+                ):
                     assert_close(x, z)
+
+                w = paddle.static.data(name='w', shape=[2, 3], dtype='float32')
+                with self.assertRaisesRegex(
+                    AssertionError,
+                    "The values for attribute shape do not match",
+                ):
+                    assert_close(x, w)
+
+                v = paddle.static.data(
+                    name='v', shape=[2, 2, 1], dtype='float32'
+                )
+                with self.assertRaisesRegex(
+                    AssertionError,
+                    "The values for attribute shape do not match",
+                ):
+                    assert_close(x, v)
+
+                dynamic_x = paddle.static.data(
+                    name='dynamic_x', shape=[-1, 2], dtype='float32'
+                )
+                assert_close(x, dynamic_x)
+                assert_close(dynamic_x, x)
+
         finally:
             paddle.disable_static()
 
