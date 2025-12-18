@@ -31,8 +31,8 @@ PADDLE_API void AbsKernel(const Context& dev_ctx,
       out, size_t(x.numel() * sizeof(phi::dtype::Real<T>)));
   auto* out_data = out->data<phi::dtype::Real<T>>();
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-  phi::funcs::AbsFunctor<T> functor(x_data, out_data, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::AbsFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);
 }
 

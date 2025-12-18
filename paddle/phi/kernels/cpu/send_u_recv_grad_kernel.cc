@@ -81,7 +81,10 @@ void GraphSendRecvGradOpKernelLaunchHelper(
     DenseTensor* x_grad,
     const DenseTensor* dst_count = nullptr,
     const DenseTensor* out = nullptr) {
-  const int& index_size = dst_index.dims()[0];  // NOLINT
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  const int64_t& index_size = dst_index.dims()[0];
+  // NOLINT
 
   dev_ctx.template Alloc<T>(x_grad);
   T* p_output = x_grad->data<T>();

@@ -112,6 +112,7 @@ void XPUIndexElementwisePutWithTensorKernel(
       reinterpret_cast<const XPUType*>(in_ptr),  // XPU ptr
       reinterpret_cast<XPUType*>(out_ptr),       // XPU ptr
       index_ptrs_vec,                            // vec of XPU ptrs
+      input_dims,                                // CPU vec
       index_numel_vec,                           // CPU vec
       desired_shape,                             // CPU vec
       sizes_vec,                                 // CPU vec
@@ -212,9 +213,10 @@ void XPUIndexElementwisePutKernel(const Context& dev_ctx,
   // bool and int64_t index will be handled in XPU's op wrapper
   int r = xpu::index_elementwise_scalar<XPUType, XPUTypeIndexT>(
       dev_ctx.x_context(),
-      value_T,                              // scalar
       reinterpret_cast<XPUType*>(out_ptr),  // XPU ptr
+      value_T,                              // scalar
       index_ptrs_vec,                       // vec of XPU ptrs
+      input_dims,                           // CPU vec
       index_numel_vec,                      // CPU vec
       desired_shape,                        // CPU vec
       sizes_vec,                            // CPU vec

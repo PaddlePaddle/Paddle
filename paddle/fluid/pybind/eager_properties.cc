@@ -14,6 +14,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
@@ -23,9 +24,11 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/size.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/memcpy.h"
 
@@ -239,22 +242,8 @@ int tensor_properties_set_data(TensorObject* self,
                                void* closure) {
   EAGER_TRY
   auto src = CastPyArg2Tensor(value, 0);
-  self->tensor = src;
-  phi::DenseTensor tmp;
-  if (self->tensor.is_dense_tensor()) {
-    auto dense_tensor =
-        static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-    if (dense_tensor) {
-      dense_tensor->ShareInplaceVersionCounterWith(tmp);
-    }
-  } else if (self->tensor.is_dist_tensor()) {
-    auto dist_tensor =
-        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
-            ->unsafe_mutable_value();
-    if (dist_tensor) {
-      dist_tensor->ShareInplaceVersionCounterWith(tmp);
-    }
-  }
+  self->tensor.set_impl(src.impl());
+
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
@@ -304,7 +293,6 @@ int tensor_properties_set_grad(TensorObject* self,
                                PyObject* value,
                                void* closure) {
   EAGER_TRY
-  auto& src = CastPyArg2Tensor(value, 0);
   PADDLE_ENFORCE(egr::EagerUtils::IsLeafTensor(self->tensor),
                  common::errors::Fatal("Only leaf Tensor can be set grad."));
 
@@ -314,7 +302,41 @@ int tensor_properties_set_grad(TensorObject* self,
       common::errors::Fatal("Detected NULL grad. "
                             "Please check if you have manually cleared "
                             "the grad inside autograd_meta"));
+
+  if (value == Py_None) {
+    if (grad->impl()) {
+      eager_gil_scoped_release guard;
+      if (grad->is_selected_rows()) {
+        VLOG(4) << "Gradient of " << self->tensor.name()
+                << " is SelectedRows, will be cleared.";
+        auto selected_rows =
+            std::dynamic_pointer_cast<phi::SelectedRows>(grad->impl());
+        if (selected_rows->mutable_value()->IsInitialized()) {
+          selected_rows->mutable_rows()->clear();
+          selected_rows->mutable_value()->clear();
+        }
+      } else if (grad->is_dense_tensor() || grad->is_dist_tensor()) {
+        if (grad->initialized()) {
+          phi::DenseTensor* grad_t = nullptr;
+          if (grad->is_dense_tensor()) {
+            grad_t = static_cast<phi::DenseTensor*>(grad->impl().get());
+            VLOG(4) << "Gradient of " << self->tensor.name()
+                    << " is DenseTensor, will be cleared.";
+          } else {
+            grad_t =
+                static_cast<phi::distributed::DistTensor*>(grad->impl().get())
+                    ->unsafe_mutable_value();
+          }
+          VLOG(4) << "Gradient of " << self->tensor.name()
+                  << " is initialized, will be released.";
+          grad_t->MoveMemoryHolder();
+        }
+      }
+    }
+    return 0;
+  }
   const phi::distributed::ProcessMesh* mesh = nullptr;
+  auto& src = CastPyArg2Tensor(value, 0);
   if (InputsContainDistTensor(&mesh, src, self->tensor, *grad)) {
     ConvertAllInputsToDistTensor(mesh, src, self->tensor, *grad);
   }
@@ -563,13 +585,13 @@ Returns:
     List: shape.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
         >>> x = paddle.to_tensor(1.0, stop_gradient=False)
         >>> print(x.shape)
-        []
+        paddle.Size([])
 )DOC");
 
 PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
@@ -637,7 +659,8 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
     }
   }
 
-  return ToPyObject(value);
+  return paddle::pybind::Paddle_Size_NewFromInt64Array(value.data(),
+                                                       value.size());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 

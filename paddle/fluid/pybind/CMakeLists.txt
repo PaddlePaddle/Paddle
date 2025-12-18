@@ -113,6 +113,7 @@ set(PYBIND_SRCS
     pir.cc
     pir_utils.cc
     graph.cc
+    native_meta_tensor.cc
     reader_py.cc
     protobuf.cc
     exception.cc
@@ -123,8 +124,6 @@ set(PYBIND_SRCS
     const_value.cc
     global_value_getter_setter.cc
     fleet_wrapper_py.cc
-    heter_wrapper_py.cc
-    ps_gpu_wrapper_py.cc
     gloo_wrapper_py.cc
     box_helper_py.cc
     metrics_py.cc
@@ -148,7 +147,8 @@ set(PYBIND_SRCS
     op_callstack_utils.cc
     python_callable_registry.cc
     arg_pre_process.cc
-    args_mapper.cc)
+    args_mapper.cc
+    size.cc)
 
 if(WITH_DISTRIBUTE)
   set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)

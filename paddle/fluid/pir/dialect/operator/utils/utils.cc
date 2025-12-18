@@ -494,7 +494,9 @@ const std::unordered_map<std::string, std::string>& CppTypeToAttrTypeMap() {
       {"std::vector<int>", "pir::ArrayAttribute<pir::Int32Attribute>"},
       {"std::vector<float>", "pir::ArrayAttribute<pir::FloatAttribute>"},
       {"std::vector<int64_t>", "pir::ArrayAttribute<pir::Int64Attribute>"},
-      {"std::vector<std::string>", "pir::ArrayAttribute<pir::StrAttribute>"}};
+      {"std::vector<std::string>", "pir::ArrayAttribute<pir::StrAttribute>"},
+      {"void*", "pir::PointerAttribute"},
+  };
   return attr_type_map;
 }
 

@@ -37,13 +37,13 @@ __global__ void LookupTableGrad(T *table,
     int64_t id = ids[idy];
     PADDLE_ENFORCE(
         id >= 0,
-        "Variable value (input) of OP(fluid.layers.embedding) "
+        "Variable value (input) of OP(lookup_table_grad) "
         "expected >= 0 and < %ld, but got %ld. Please check input value.",
         N,
         id);
     PADDLE_ENFORCE(
         id < N,
-        "Variable value (input) of OP(fluid.layers.embedding) "
+        "Variable value (input) of OP(lookup_table_grad) "
         "expected >= 0 and < %ld, but got %ld. Please check input value.",
         N,
         id);
@@ -84,16 +84,10 @@ void LookupTableGradCUDAKernel(
   auto d_table_t = w_grad;
 
   int64_t N = d_table_t->dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
 
   int64_t D = d_table_t->dims()[1];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
 
   int64_t K = ids_t->numel();
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
 
   const int64_t *ids = ids_t->data<int64_t>();
   const T *d_output = d_output_t->data<T>();

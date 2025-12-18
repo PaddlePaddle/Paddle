@@ -395,7 +395,13 @@ def make_hashable(x, error_msg=None):
             # means different value will lead to different hash code.
             return hash(x.tostring())
         elif isinstance(x, dict):
-            return tuple(map(make_hashable, x.values()))
+            # dict is order-insensitive
+            return tuple(
+                (make_hashable(k), make_hashable(v))
+                for k, v in sorted(
+                    x.items(), key=lambda kv: make_hashable(kv[0])
+                )
+            )
 
         error_msg = error_msg or "Requires a hashable object."
         raise ValueError(f"{error_msg} But received type: {type_name(x)}")
@@ -476,16 +482,18 @@ def wrap_as_closure(tree: gast.AST, closure_vars: list[str]) -> gast.AST:
 
     Before:
 
-        >>> def fn(x):
-        ...     ...
+        >>> def fn(x): ...
 
     After:
 
         >>> def create_fn():
         ...     closure_var_1 = None
-        ...     def fn(x):
-        ...         ...
+        ...
+        ...     def fn(x): ...
+        ...
         ...     return fn
+        ...
+        ...
         ... fn = create_fn()
     """
 

@@ -90,7 +90,7 @@ static std::unordered_set<std::string> support_promotion_ops = {
     "divide",    "elementwise_div", "truediv",         "floor_divide",
     "pow",       "elementwise_pow", "equal",           "not_equal",
     "less_than", "less_equal",      "greater_than",    "greater_equal",
-    "copysign",  "cross",           "trunc_divide",
+    "copysign",  "cross",           "trunc_divide",    "equal_all",
 };
 
 static std::unordered_set<std::string> support_autocast_ops = {
@@ -205,18 +205,10 @@ inline bool NeedTypePromotion(
   // floating-point numbers and between complex and real numbers.
   if (x_dtype != y_dtype) {
 // TODO(Xi Zhao): we got special case for add now, should remove it in future.
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU)
     if ((op_name == "add" || op_name == "add_") &&
         x_dtype == DataType::FLOAT32 &&
-        (y_dtype == phi::DataType::BFLOAT16 ||
-         y_dtype == phi::DataType::FLOAT16)) {
-      return false;
-    }
-#elif defined(PADDLE_WITH_XPU)
-    if ((op_name == "add" || op_name == "add_") &&
-        x_dtype == DataType::FLOAT32 &&
-        (y_dtype == phi::DataType::BFLOAT16 ||
-         y_dtype == phi::DataType::FLOAT16)) {
+        (y_dtype == DataType::FLOAT16 || y_dtype == DataType::BFLOAT16)) {
       return false;
     }
 #endif

@@ -825,8 +825,14 @@ void Internal_PyFrame_Clear(_PyInterpreterFrame *frame) {
 #endif
   /* It is the responsibility of the owning generator/coroutine
    * to have cleared the enclosing generator, if any. */
+#if PY_3_14_PLUS
+  assert(frame->owner != FRAME_OWNED_BY_GENERATOR ||
+         Internal_PyGen_GetGeneratorFromFrame(frame)->gi_frame_state ==
+             FRAME_CLEARED);
+#else
   assert(frame->owner != FRAME_OWNED_BY_GENERATOR ||
          _PyFrame_GetGenerator(frame)->gi_frame_state == FRAME_CLEARED);
+#endif
   // GH-99729: Clearing this frame can expose the stack (via finalizers). It's
   // crucial that this frame has been unlinked, and is no longer visible:
 #if PY_3_13_PLUS

@@ -28,14 +28,14 @@
 
 namespace phi {
 using Tensor = DenseTensor;
-template <typename DeviceContext, typename T>
+template <typename Context, typename T>
 struct GetTensorValue {
-  T operator()(const DeviceContext& dev_ctx, const DenseTensor& tensor) const;
+  T operator()(const Context& dev_ctx, const DenseTensor& tensor) const;
 };
 
-template <typename DeviceContext, typename T>
+template <typename Context, typename T>
 struct IscloseFunctor {
-  void operator()(const DeviceContext& dev_ctx,
+  void operator()(const Context& dev_ctx,
                   const DenseTensor& in,
                   const DenseTensor& other,
                   const float rtol,
@@ -129,7 +129,9 @@ __global__ void IscloseCUDAKernel(const T* in_data,
                                   bool equal_nan,
                                   IndexType num,
                                   bool* out_data) {
-  IndexType idx = static_cast<IndexType>(blockIdx.x) * blockDim.x + threadIdx.x;
+  IndexType idx =
+      static_cast<IndexType>(blockIdx.x) * static_cast<IndexType>(blockDim.x) +
+      static_cast<IndexType>(threadIdx.x);
   bool val;
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   for (IndexType i = idx; i < num; i += blockDim.x * gridDim.x) {

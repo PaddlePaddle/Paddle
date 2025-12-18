@@ -717,6 +717,7 @@ def _compute_quantile(
     keepdim: bool = False,
     interpolation: _Interpolation = "linear",
     ignore_nan: bool = False,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Compute the quantile of the input along the specified axis.
@@ -742,6 +743,7 @@ def _compute_quantile(
         ignore_nan: (bool, optional): Whether to ignore NaN of input Tensor.
             If ``ignore_nan`` is True, it will calculate nanquantile.
             Otherwise it will calculate quantile. Default is False.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, results of quantile along ``axis`` of ``x``.
@@ -865,7 +867,9 @@ def _compute_quantile(
             return tensor_upper
 
         if interpolation == "midpoint":
-            return (tensor_upper + tensor_below) / 2
+            return (
+                tensor_upper.astype(x.dtype) + tensor_below.astype(x.dtype)
+            ) / 2
 
         weights = (index - indices_below.astype(index.dtype)).astype(x.dtype)
         # "linear"
@@ -879,27 +883,34 @@ def _compute_quantile(
 
     # TODO(chenjianye): replace the for-loop to directly take elements.
     for index in indices:
-        out = _compute_index(index)
+        ret = _compute_index(index)
         if not keepdim:
-            out = paddle.squeeze(out, axis=axis)
+            ret = paddle.squeeze(ret, axis=axis)
         else:
-            out = out.reshape(out_shape)
-        outputs.append(out)
+            ret = ret.reshape(out_shape)
+        outputs.append(ret)
 
     if len(outputs) > 1:
         outputs = paddle.stack(outputs, 0)
     else:
         outputs = outputs[0]
-    # return outputs.astype(x.dtype)
+
+    if out is not None:
+        paddle.assign(outputs, out)
+        return out
     return outputs
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def quantile(
     x: Tensor,
     q: float | Sequence[float] | Tensor,
     axis: int | list[int] | None = None,
     keepdim: bool = False,
     interpolation: _Interpolation = "linear",
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Compute the quantile of the input along the specified axis.
@@ -925,6 +936,8 @@ def quantile(
             lower, midpoint and nearest. Default is linear.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
+
 
     Returns:
         Tensor, results of quantile along ``axis`` of ``x``.
@@ -975,6 +988,7 @@ def quantile(
         keepdim=keepdim,
         interpolation=interpolation,
         ignore_nan=False,
+        out=out,
     )
 
 

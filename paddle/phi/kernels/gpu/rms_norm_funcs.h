@@ -26,17 +26,15 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_fp16.h>
 #include <hip/hip_runtime.h>
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
 #include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
 #define GPU(str) hip##str
 #else
 #include <cuda.h>          // NOLINT
 #include <cuda_runtime.h>  // NOLINT
-#include <cub/cub.cuh>
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #define GPU(str) cuda##str
 #endif

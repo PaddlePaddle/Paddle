@@ -220,12 +220,14 @@ class QuantConfig:
             weight(QuanterFactory | None): Quanter used for weights. Default is None.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.nn import Linear
                 >>> from paddle.quantization import QuantConfig
-                >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+                >>> from paddle.quantization.quanters import (
+                ...     FakeQuanterWithAbsMaxObserver,
+                ... )
 
                 >>> class Model(paddle.nn.Layer):
                 ...     def __init__(self):
@@ -269,12 +271,14 @@ class QuantConfig:
             target(type[Layer]): The type of layers that will be converted to.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.nn import Conv2D
                 >>> from paddle.quantization import QuantConfig
-                >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+                >>> from paddle.quantization.quanters import (
+                ...     FakeQuanterWithAbsMaxObserver,
+                ... )
                 >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
                 >>> q_config = QuantConfig(activation=None, weight=None)
                 >>> class CustomizedQuantedConv2D(paddle.nn.Layer):

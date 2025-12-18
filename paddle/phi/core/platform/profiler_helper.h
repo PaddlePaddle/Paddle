@@ -40,6 +40,10 @@ limitations under the License. */
 
 #include "paddle/phi/api/profiler/profiler_helper.h"
 #include "paddle/phi/core/memory/memory.h"
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
+#endif
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
@@ -111,6 +115,15 @@ void SynchronizeAllDevice() {
     PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
   }
   SetDeviceId(pre_device_id);
+#endif
+#ifdef PADDLE_WITH_XPU
+  int pre_device_id = GetXPUCurrentDeviceId();
+  int count = GetXPUDeviceCount();
+  for (int i = 0; i < count; i++) {
+    SetXPUDeviceId(i);
+    PADDLE_ENFORCE_XPU_SUCCESS(cudaDeviceSynchronize());
+  }
+  SetXPUDeviceId(pre_device_id);
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();

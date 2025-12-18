@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/elementwise_grad_base.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
+
 namespace phi {
 
 template <typename T>
@@ -111,6 +112,144 @@ void GetGradXOrYOut(const GPUContext &dev_ctx,
     Add Grad
 ******************************
 */
+
+template <typename T>
+struct alignas(sizeof(T) * 4) Pack4 {
+  T val[4];
+};
+
+template <typename T_dy, typename IndexT = int>
+static __global__ void MixedPrecisionElemwiseAddGradCUDAKernel(
+    const float *__restrict__ dout,
+    IndexT size,
+    float *__restrict__ dx,
+    T_dy *__restrict__ dy) {
+  IndexT tid = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
+  IndexT stride = static_cast<IndexT>(gridDim.x) * blockDim.x;
+
+  constexpr int vec_size = 4;
+  IndexT loop = size / vec_size;
+  IndexT remainder = size % vec_size;
+
+  const float4 *__restrict__ dout_vec = reinterpret_cast<const float4 *>(dout);
+  float4 *__restrict__ dx_vec = reinterpret_cast<float4 *>(dx);
+  Pack4<T_dy> *__restrict__ dy_vec = reinterpret_cast<Pack4<T_dy> *>(dy);
+
+  for (IndexT i = tid; i < loop; i += stride) {
+    float4 val = __ldg(dout_vec + i);
+    dx_vec[i] = val;
+
+    Pack4<T_dy> dy_pack;
+    dy_pack.val[0] = static_cast<T_dy>(val.x);
+    dy_pack.val[1] = static_cast<T_dy>(val.y);
+    dy_pack.val[2] = static_cast<T_dy>(val.z);
+    dy_pack.val[3] = static_cast<T_dy>(val.w);
+    dy_vec[i] = dy_pack;
+  }
+
+  if (remainder != 0) {
+    IndexT tail_start = loop * vec_size;
+    for (IndexT i = tail_start + tid; i < size; i += stride) {
+      float val = __ldg(dout + i);
+      dx[i] = val;
+      dy[i] = static_cast<T_dy>(val);
+    }
+  }
+}
+
+template <typename T_dy>
+void ElementwiseMixedPrecisionAddGrad(const GPUContext &dev_ctx,
+                                      const DenseTensor &dout,
+                                      DenseTensor *dx,
+                                      DenseTensor *dy) {
+  using T_dout = float;
+  using T_dx = float;
+
+  auto *dx_data = dev_ctx.template Alloc<T_dx>(dx);
+  T_dy *dy_data = dev_ctx.template Alloc<T_dy>(dy);
+  auto *dout_data = dout.data<T_dout>();
+
+  if (dx_data == dout_data) {
+    VLOG(7) << "Special case when dx_data is the same as dout_data, "
+               "need cast dout to dy.";
+    phi::CastKernel<T_dout>(dev_ctx, dout, dy->dtype(), dy);
+    return;
+  }
+
+  auto size = dout.numel();
+  if (size == 0) return;
+
+  constexpr int vec_size = 4;
+  const int64_t main_size = (size / vec_size) * vec_size;
+  const int block_size = PREDEFINED_BLOCK_SIZE;
+  const int grid_size =
+      std::min(static_cast<int>((main_size + block_size - 1) / block_size),
+               (dev_ctx.GetMaxPhysicalThreadCount() / block_size));
+
+  dim3 grid_dim(grid_size, 1, 1);
+  dim3 block_dim(block_size, 1, 1);
+
+  if (size < std::numeric_limits<int>::max()) {
+    MixedPrecisionElemwiseAddGradCUDAKernel<T_dy, int>
+        <<<grid_dim, block_dim, 0, dev_ctx.stream()>>>(
+            dout_data, static_cast<int>(size), dx_data, dy_data);
+  } else {
+    MixedPrecisionElemwiseAddGradCUDAKernel<T_dy, int64_t>
+        <<<grid_dim, block_dim, 0, dev_ctx.stream()>>>(
+            dout_data, static_cast<int64_t>(size), dx_data, dy_data);
+  }
+}
+
+template <typename T_dy>
+void DefaultMixedPrecisionAddGrad(const GPUContext &dev_ctx,
+                                  const DenseTensor &x,
+                                  const DenseTensor &y,
+                                  const DenseTensor &dout,
+                                  DenseTensor *dx,
+                                  DenseTensor *dy,
+                                  int axis = -1) {
+  using T_dout = float;
+  using T_dx = float;
+
+  auto *dout_data = dout.data<T_dout>();
+
+  // dx
+  if (dx != nullptr) {
+    auto *dx_data = dev_ctx.template Alloc<T_dx>(dx);
+    if (dx->dims() == dout.dims()) {
+      if (dx_data != dout_data) {
+        phi::Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+      }
+    } else {
+      if (dx->IsSharedBufferWith(dout)) {
+        dx->clear();
+        dx->Resize(x.dims());
+        dev_ctx.template Alloc<T_dx>(dx);
+      }
+      std::vector<int> reduce_dims =
+          funcs::GetReduceDim(x.dims(), dout.dims(), axis);
+      phi::SumKernel<T_dout, GPUContext>(
+          dev_ctx, dout, reduce_dims, dout.dtype(), false, dx);
+    }
+  }
+
+  // dy
+  if (dy != nullptr) {
+    auto *dy_data = dev_ctx.template Alloc<T_dy>(dy);
+    if (dy->dims() == dout.dims()) {
+      phi::CastKernel<T_dout>(dev_ctx, dout, dy->dtype(), dy);
+    } else {
+      DenseTensor dy_fp32;
+      dy_fp32.Resize(dout.dims());
+      dev_ctx.template Alloc<float>(&dy_fp32);
+      std::vector<int> reduce_dims =
+          funcs::GetReduceDim(y.dims(), dout.dims(), axis);
+      phi::SumKernel<float, GPUContext>(
+          dev_ctx, dout, reduce_dims, dout.dtype(), false, &dy_fp32);
+      phi::CastKernel<float>(dev_ctx, dy_fp32, dy->dtype(), dy);
+    }
+  }
+}
 
 template <typename T, typename IndexT = int>
 static __global__ void SimpleElemwiseAddGradCUDAKernel(

@@ -77,12 +77,30 @@ class Unpool2dMaxGradFunctor {
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
                   DenseTensor* input_grad) {
-    const int batch_size = input.dims()[0];
-    const int input_height = input.dims()[2];
-    const int input_width = input.dims()[3];
-    const int output_channels = output.dims()[1];
-    const int output_height = output.dims()[2];
-    const int output_width = output.dims()[3];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t batch_size = input.dims()[0];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t input_height = input.dims()[2];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t input_width = input.dims()[3];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_channels = output.dims()[1];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_height = output.dims()[2];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_width = output.dims()[3];
+
     const T* input_data = input.data<T>();
     const IndT* indices_data = indices.data<IndT>();
     const T* output_data = output.data<T>();
@@ -115,14 +133,38 @@ class Unpool3dMaxGradFunctor {
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
                   DenseTensor* input_grad) {
-    const int batch_size = input.dims()[0];
-    const int input_depth = input.dims()[2];
-    const int input_height = input.dims()[3];
-    const int input_width = input.dims()[4];
-    const int output_channels = output.dims()[1];
-    const int output_depth = output.dims()[2];
-    const int output_height = output.dims()[3];
-    const int output_width = output.dims()[4];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t batch_size = input.dims()[0];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t input_depth = input.dims()[2];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t input_height = input.dims()[3];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t input_width = input.dims()[4];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_channels = output.dims()[1];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_depth = output.dims()[2];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_height = output.dims()[3];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_width = output.dims()[4];
+
     const T* input_data = input.data<T>();
     const IndT* indices_data = indices.data<IndT>();
     const T* output_data = output.data<T>();
@@ -165,7 +207,7 @@ void UnpoolGradKernel(const Context& dev_ctx,
     return;
   }
   const T* output_grad_data = out_grad.data<T>();
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, x_grad, static_cast<T>(0));
   const auto& indices_type = indices.dtype();
   if (indices_type == phi::DataType::INT32) {
@@ -194,7 +236,7 @@ void Unpool3dGradKernel(const Context& dev_ctx,
     return;
   }
   const T* output_grad_data = out_grad.data<T>();
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, x_grad, static_cast<T>(0));
   const auto& indices_type = indices.dtype();
   if (indices_type == phi::DataType::INT32) {

@@ -262,6 +262,7 @@ class LayerDict(Layer):
         """
         return self._sub_layers.values()
 
+    @param_one_alias(["sublayers", "modules"])
     def update(
         self,
         sublayers: (
@@ -335,7 +336,7 @@ class ParameterDict(Layer):
         parameters (iterable, optional): a mapping (dictionary) of (string : Any) or an iterable of key-value pairs of type (string, Any)
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -344,13 +345,13 @@ class ParameterDict(Layer):
             ...         super().__init__()
             ...         # create ParameterDict with iterable Parameters
             ...         self.params = paddle.nn.ParameterDict(
-            ...             {f"t{i}": paddle.create_parameter(shape=[2, 2], dtype='float32') for i in range(num_stacked_param)})
+            ...             {f"t{i}": paddle.create_parameter(shape=[2, 2], dtype='float32') for i in range(num_stacked_param)}
+            ...         )
             ...
             ...     def forward(self, x):
             ...         for i, key in enumerate(self.params):
             ...             x = paddle.matmul(x, self.params[key])
             ...         return x
-            ...
             >>> x = paddle.uniform(shape=[5, 2], dtype='float32')
             >>> num_stacked_param = 4
             >>> model = MyLayer(num_stacked_param)
@@ -358,19 +359,19 @@ class ParameterDict(Layer):
             4
             >>> res = model(x)
             >>> print(res.shape)
-            [5, 2]
+            paddle.Size([5, 2])
 
             >>> replaced_param = paddle.create_parameter(shape=[2, 3], dtype='float32')
             >>> model.params['t3'] = replaced_param  # replace t3 param
             >>> res = model(x)
             >>> print(res.shape)
-            [5, 3]
+            paddle.Size([5, 3])
             >>> model.params['t4'] = paddle.create_parameter(shape=[3, 4], dtype='float32')  # append param
             >>> print(len(model.params))
             5
             >>> res = model(x)
             >>> print(res.shape)
-            [5, 4]
+            paddle.Size([5, 4])
     """
 
     def __init__(
@@ -437,7 +438,7 @@ class ParameterList(Layer):
         parameters (iterable, optional): Iterable Parameters to be added.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -446,22 +447,13 @@ class ParameterList(Layer):
             ...         super().__init__()
             ...         # create ParameterList with iterable Parameters
             ...         self.params = paddle.nn.ParameterList(
-            ...             [paddle.create_parameter(
-            ...                 shape=[2, 2], dtype='float32')] * num_stacked_param)
+            ...             [paddle.create_parameter(shape=[2, 2], dtype='float32') for _ in range(num_stacked_param)]
+            ...         )
             ...
             ...     def forward(self, x):
             ...         for i, p in enumerate(self.params):
-            ...             tmp = self._helper.create_variable_for_type_inference('float32')
-            ...             self._helper.append_op(
-            ...                 type="mul",
-            ...                 inputs={"X": x,
-            ...                         "Y": p},
-            ...                 outputs={"Out": tmp},
-            ...                 attrs={"x_num_col_dims": 1,
-            ...                         "y_num_col_dims": 1})
-            ...             x = tmp
+            ...             x = paddle.matmul(x, p)
             ...         return x
-            ...
             >>> x = paddle.uniform(shape=[5, 2], dtype='float32')
             >>> num_stacked_param = 4
             >>> model = MyLayer(num_stacked_param)
@@ -469,19 +461,18 @@ class ParameterList(Layer):
             4
             >>> res = model(x)
             >>> print(res.shape)
-            [5, 2]
-
+            paddle.Size([5, 2])
             >>> replaced_param = paddle.create_parameter(shape=[2, 3], dtype='float32')
-            >>> model.params[num_stacked_param - 1] = replaced_param  # replace last param
+            >>> model.params[num_stacked_param - 1] = replaced_param
             >>> res = model(x)
             >>> print(res.shape)
-            [5, 3]
+            paddle.Size([5, 3])
             >>> model.params.append(paddle.create_parameter(shape=[3, 4], dtype='float32'))  # append param
             >>> print(len(model.params))
             5
             >>> res = model(x)
             >>> print(res.shape)
-            [5, 4]
+            paddle.Size([5, 4])
     """
 
     def __init__(self, parameters: Iterable[Tensor] | None = None) -> None:
@@ -609,6 +600,7 @@ class LayerList(Layer):
         keys = [key for key in keys if not key.isdigit()]
         return keys
 
+    @param_one_alias(["sublayer", "module"])
     def append(self, sublayer: Layer) -> Self:
         """
         Appends a sublayer to the end of the list.
@@ -630,6 +622,7 @@ class LayerList(Layer):
         self.add_sublayer(str(len(self)), sublayer)
         return self
 
+    @param_one_alias(["sublayer", "module"])
     def insert(self, index: int, sublayer: Layer) -> None:
         """
         Insert a sublayer before a given index in the list.
@@ -665,6 +658,7 @@ class LayerList(Layer):
             self._sub_layers[str(i)] = self._sub_layers[str(i - 1)]
         self._sub_layers[str(index)] = sublayer
 
+    @param_one_alias(["sublayers", "modules"])
     def extend(self, sublayers: Iterable[Layer]) -> Self:
         """
         Appends sublayers to the end of the list.

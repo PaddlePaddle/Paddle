@@ -17,6 +17,7 @@ from __future__ import annotations
 from enum import IntEnum
 from typing import TYPE_CHECKING
 
+import paddle
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 if TYPE_CHECKING:
@@ -47,8 +48,12 @@ class SDPBackend(IntEnum):
 
 _backend_enabled = {
     SDPBackend.MATH: True,
-    SDPBackend.FLASH_ATTENTION: True,
-    SDPBackend.EFFICIENT_ATTENTION: True,
+    SDPBackend.FLASH_ATTENTION: paddle.framework._global_flags().get(
+        "FLAGS_flash_attn_available", False
+    ),
+    SDPBackend.EFFICIENT_ATTENTION: paddle.framework._global_flags().get(
+        "FLAGS_mem_efficient_attn_available", False
+    ),
 }
 _current_priority = [
     SDPBackend.FLASH_ATTENTION,
@@ -164,7 +169,10 @@ def sdpa_kernel(
         >>> print(out.shape)
         [2, 4, 8, 16]
         >>> # Example 3: Set priority order for multiple backends
-        >>> with sdpa_kernel([SDPBackend.MATH, SDPBackend.EFFICIENT_ATTENTION], set_priority=True):
+        >>> with sdpa_kernel(
+        ...     [SDPBackend.MATH, SDPBackend.EFFICIENT_ATTENTION],
+        ...     set_priority=True,
+        ... ):
         ...     out = scaled_dot_product_attention(query, key, value)
         >>> print(out.shape)
         [2, 4, 8, 16]

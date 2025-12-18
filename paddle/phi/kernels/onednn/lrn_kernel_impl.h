@@ -20,7 +20,7 @@ namespace phi {
 
 template <typename T, typename Context>
 class LRNOneDNNHandler
-    : public phi::funcs::
+    : public funcs::
           OneDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward> {
  public:
   LRNOneDNNHandler(int n,
@@ -32,7 +32,7 @@ class LRNOneDNNHandler
                    phi::Place cpu_place,
                    const phi::DenseTensor* input)
 
-      : phi::funcs::
+      : funcs::
             OneDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward>(
                 onednn_engine, cpu_place) {
     // MKL-DNN implements LRN in a caffe way:
@@ -67,7 +67,7 @@ class LRNOneDNNHandler
                    const phi::DenseTensor* in_x,
                    const phi::DenseTensor* out_grad,
                    phi::DenseTensor* in_x_grad)
-      : phi::funcs::
+      : funcs::
             OneDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward>(
                 onednn_engine, cpu_place) {
     PADDLE_ENFORCE_EQ(
@@ -114,7 +114,7 @@ class LRNOneDNNHandler
     const T* workspace_data = workspace->data<T>();
     return this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->workspace_desc(),
-        phi::funcs::to_void_cast<T>(workspace_data));
+        funcs::to_void_cast<T>(workspace_data));
   }
 };
 

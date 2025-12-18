@@ -21,7 +21,7 @@ import os
 import re
 import sys
 import types
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, overload
 
 from typing_extensions import TypeAlias
 
@@ -203,6 +203,7 @@ __all__ = [
     'reset_peak_memory_stats',
     'ipc_collect',
     'get_stream_from_external',
+    'StreamContext',
 ]
 
 _cudnn_version = None
@@ -569,7 +570,7 @@ def is_bf16_supported(including_emulation: bool = True) -> bool:
 
     """
     # including_emulation is not used here, but kept for compatibility with the original implementation
-    if core.is_bfloat16_supported(paddle.framework._current_expected_place()):
+    if core.is_bfloat16_supported(paddle.framework._current_expected_place_()):
         return True
 
     # If CUDA is not available, than it does not support bf16 either
@@ -610,12 +611,21 @@ def set_device(device: PlaceLike | int) -> PlaceLike:
 
         .. code-block:: python
 
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
 
             >>> paddle.device.set_device("cpu")
             >>> x1 = paddle.ones(name='x1', shape=[1, 2], dtype='int32')
+            >>> print(x1.place)
+            Place(cpu)
+
+            >>> paddle.device.set_device("gpu:0")
             >>> x2 = paddle.zeros(name='x2', shape=[1, 2], dtype='int32')
-            >>> data = paddle.stack([x1,x2], axis=1)
+            >>> print(x2.place)
+            Place(gpu:0)
+            >>> # x1 is still on cpu
+            >>> print(x1.place)
+            Place(cpu)
 
     """
     place = device_to_place(device)
@@ -623,7 +633,15 @@ def set_device(device: PlaceLike | int) -> PlaceLike:
     return place
 
 
-def get_device(input: paddle.Tensor = None) -> str | int:
+@overload
+def get_device(input: None = None) -> str: ...
+
+
+@overload
+def get_device(input: paddle.Tensor) -> int: ...
+
+
+def get_device(input: paddle.Tensor | None = None) -> str | int:
     """
 
     This function can get the current global device of the program is running.
@@ -688,9 +706,11 @@ def get_default_device() -> paddle.device:
     Returns:
         str: The default device for PaddlePaddle.
     Example:
-        .. code-block:: python
-            import paddle
-            print(paddle.get_default_device())
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> print(paddle.get_default_device())
     """
     return paddle.device(get_device().replace("gpu", "cuda"))
 
@@ -729,16 +749,16 @@ def get_all_device_type() -> list[str]:
             >>> paddle.device.get_all_device_type()
 
             >>> # Case 1: paddlepaddle-cpu package installed, and no custom device registered.
-            >>> # Output: ['cpu']
+            >>> # Output: []
 
             >>> # Case 2: paddlepaddle-gpu package installed, and no custom device registered.
-            >>> # Output: ['cpu', 'gpu']
+            >>> # Output: ['gpu']
 
             >>> # Case 3: paddlepaddle-cpu package installed, and custom device 'CustomCPU' is registered.
-            >>> # Output: ['cpu', 'CustomCPU']
+            >>> # Output: ['CustomCPU']
 
             >>> # Case 4: paddlepaddle-gpu package installed, and custom device 'CustomCPU' and 'CustomGPU' is registered.
-            >>> # Output: ['cpu', 'gpu', 'CustomCPU', 'CustomGPU']
+            >>> # Output: ['gpu', 'CustomCPU', 'CustomGPU']
 
     """
     return core.get_all_device_type()
@@ -783,16 +803,16 @@ def get_available_device() -> list[str]:
             >>> paddle.device.get_available_device()
 
             >>> # Case 1: paddlepaddle-cpu package installed, and no custom device registered.
-            >>> # Output: ['cpu']
+            >>> # Output: []
 
             >>> # Case 2: paddlepaddle-gpu package installed, and no custom device registered.
-            >>> # Output: ['cpu', 'gpu:0', 'gpu:1']
+            >>> # Output: ['gpu:0', 'gpu:1']
 
             >>> # Case 3: paddlepaddle-cpu package installed, and custom device 'CustomCPU' is registered.
-            >>> # Output: ['cpu', 'CustomCPU']
+            >>> # Output: ['CustomCPU']
 
             >>> # Case 4: paddlepaddle-gpu package installed, and custom device 'CustomCPU' and 'CustomGPU' is registered.
-            >>> # Output: ['cpu', 'gpu:0', 'gpu:1', 'CustomCPU', 'CustomGPU:0', 'CustomGPU:1']
+            >>> # Output: ['gpu:0', 'gpu:1', 'CustomCPU', 'CustomGPU:0', 'CustomGPU:1']
 
     """
     return core.get_available_device()
@@ -1084,7 +1104,7 @@ class Event:
         ```python
         # New usage
         paddle.set_device("gpu:0")  # Set device first
-        e = paddle.device.Event()   # Will use gpu:0
+        e = paddle.device.Event()  # Will use gpu:0
         ```
 
         paddle.device.Event is equivalent to paddle.cuda.Event.
@@ -1867,8 +1887,9 @@ def get_stream_from_external(
         .. code-block:: python
 
             >>> import paddle
-            >>> # Suppose external_stream_ptr is from another CUDA library
-            >>> # s = paddle.device.get_stream_from_external(external_stream_ptr, "gpu:0")
+            >>> # doctest: +SKIP('original_raw_ptr not exist')
+            >>> original_raw_ptr = 77777
+            >>> external_stream = paddle.device.get_stream_from_external(original_raw_ptr,"cuda:0")
     '''
     if device is None:
         place = paddle.framework._current_expected_place_()
@@ -2076,8 +2097,26 @@ class Device(str):
     _DEFAULT_DEVICE_STACK = []
     _SUPPORTED_TYPES = {"cpu", "gpu", "cuda", "xpu"}
 
-    def __new__(cls, type: str | int | None = None, index: int | None = None):
-        if isinstance(type, str):
+    def __new__(
+        cls, type: PlaceLike | int | None = None, index: int | None = None
+    ):
+        if isinstance(type, paddle.base.libpaddle.Place):
+            if type.is_cpu_place():
+                dev_type = 'cpu'
+                dev_index = None
+            elif type.is_gpu_place():
+                dev_type = 'cuda'
+                dev_index = type.gpu_device_id()
+            elif type.is_xpu_place():
+                dev_type = 'xpu'
+                dev_index = type.gpu_device_id()
+            elif type.is_custom_place():
+                dev_type = type.get_device_type()
+                dev_index = type.get_device_id()
+            else:
+                raise ValueError(f"Unknown place type: {type}")
+
+        elif isinstance(type, str):
             t = type.lower()
             if t not in cls._SUPPORTED_TYPES and ":" not in t:
                 raise ValueError(f"Unsupported device type: {t}")

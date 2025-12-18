@@ -24,14 +24,7 @@ PaddlePaddle は、工業化に対するコミットメントを持つ工業的�
 私たちのビジョンは、PaddlePaddle を通じて、誰もが深層学習を行えるようにすることです。
 PaddlePaddle の最新機能を追跡するために、私たちの[リリースのお知らせ](https://github.com/PaddlePaddle/Paddle/releases)を参照してください。
 
-### 最新の安定版リリースのインストール
-
-``` sh
-# CPU
-pip install paddlepaddle
-# GPU
-pip install paddlepaddle-gpu
-```
+### 最新の安定版またはナイトリービルドをインストールする
 
 インストール方法については、[クイックインストール](https://www.paddlepaddle.org.cn/install/quick)をご覧ください
 

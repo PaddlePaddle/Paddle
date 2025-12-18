@@ -26,7 +26,7 @@ import numpy as np
 from typing_extensions import Self, overload
 
 import paddle
-from paddle import Tensor, nn, profiler
+from paddle import Tensor, dtype, nn, profiler
 from paddle.autograd.backward_utils import ValueSet
 from paddle.base import core, framework, unique_name
 from paddle.base.core import VarDesc
@@ -55,11 +55,6 @@ from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
     ShardedStateDict,
     build_sharded_state_dict,
 )
-
-if TYPE_CHECKING:
-    from paddle.distributed.communication.group import Group
-
-from paddle import dtype
 from paddle.framework import ParamAttr
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
@@ -1178,12 +1173,14 @@ class Layer:
                 >>> print(linear)
                 Linear(in_features=2, out_features=2, dtype=paddle.int8)
                 >>> print(linear.parameters())
+                >>> # doctest: +SKIP("There are bugs in the `Layer.astype`. For details, refer to the following webpage: https://github.com/PaddlePaddle/Paddle/issues/76614")
                 [Parameter containing:
                 Tensor(shape=[2, 2], dtype=int8, place=Place(cpu), stop_gradient=False,
                     [[1, 1],
                         [1, 1]]), Parameter containing:
                 Tensor(shape=[2], dtype=int8, place=Place(cpu), stop_gradient=False,
                     [2, 2])]
+                >>> # doctest: -SKIP
 
         """
         valid_dtypes = [
@@ -1285,7 +1282,7 @@ class Layer:
             list of Layer, a list of sub layers.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1299,10 +1296,9 @@ class Layer:
                 ...         temp = self._linear(input)
                 ...         temp = self._dropout(temp)
                 ...         return temp
-                ...
                 >>> mylayer = MyLayer()
                 >>> print(mylayer.sublayers())
-                [Linear(in_features=1, out_features=1, dtype=float32), Dropout(p=0.5, axis=None, mode=upscale_in_train)]
+                [Linear(in_features=1, out_features=1, dtype=float32), Dropout(p=0.5, axis=None, mode=upscale_in_train, inplace=False)]
 
         """
         ret = [
@@ -2602,31 +2598,39 @@ class Layer:
     def full(
         self,
         aoa_config: dict[str : list[str]] | None = None,
-        process_group: Group | None = None,
+        **kwargs,
     ):
         """
         Returns an iterator over the full, unsharded model parameters.
         The output parameters can be customized using the `aoa_config` argument.
 
         Args:
-            aoa_config (dict[str, list[str]], optional):
-                Optional. Specifies the Area of Application (AOA) customization configuration.
-                The dictionary keys are strings and the values are lists of strings.
-                If None, all parameters are returned.
-            process_group (Group, optional):
-                Optional. Specifies the process group for collective communication.
-                If None, the default process group is used.
+        sharded_state_dict (ShardedStateDict):
+            The state dict containing parameter shards local to the current process.
+        aoa_config (dict[str, list[str]] | None, optional):
+            AoA (Almost AllReduce) configuration. Default is None.
+        kwargs:
+            Optional keyword arguments:
+            - h_group: The horizontal communication group.
+                If using group communication, both h_group and v_group must be provided.
+            - v_group: The vertical communication group.
+            - process_group: The communication group in single-group setups (when h_group and v_group are not used).
+            - num_splits (int): The number of splits to divide the parameters.
+            - shard_idx (int): The index of the split handled by the current process. Default is 0.
+            - memory_growth_threshold (int): The memory threshold (in bytes) for controlling memory growth during parameter assembly.
+                Default is 8 * (2 ** 30), i.e., 8GB.
 
         Returns:
             Iterator:
                 An iterator over the full, unsharded model parameters, optionally filtered and customized according to `aoa_config`.
+
         """
 
         from paddle.distributed.flex_checkpoint.dcp.full_param import (
             full_param,
         )
 
-        return full_param(self, aoa_config, process_group)
+        return full_param(self.sharded_state_dict(), aoa_config, **kwargs)
 
     @framework.deprecate_stat_dict
     def set_state_dict(
@@ -3177,7 +3181,7 @@ class Layer:
             Layer: self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -3191,12 +3195,11 @@ class Layer:
                 ...         out = self.linear(input)
                 ...         out = self.dropout(out)
                 ...         return out
-                ...
                 >>> model = Model()
                 >>> model.float()
                 Model(
                     (linear): Linear(in_features=1, out_features=1, dtype=paddle.float32)
-                    (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train)
+                    (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train, inplace=False)
                 )
         '''
 
@@ -3442,10 +3445,7 @@ class Layer:
         """
         for p in self.parameters():
             if p.grad is not None:
-                if set_to_none:
-                    p.clear_gradient(set_to_zero=False)
-                else:
-                    p.clear_gradient(set_to_zero=True)
+                p.clear_gradient(not set_to_none)
 
     def _get_name(self):
         return self.__class__.__name__

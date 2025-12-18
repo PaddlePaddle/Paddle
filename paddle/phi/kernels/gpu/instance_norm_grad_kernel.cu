@@ -324,14 +324,14 @@ void InstanceNormGradKernel(const Context &dev_ctx,
   const auto &x_dims = x.dims();
 
   int N, C, H, W, D;
-  funcs::ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
+  funcs::ExtractNCWHD(x_dims, DataLayout::NCHW, &N, &C, &H, &W, &D);
   int NxC = N * C;
 
   DenseTensor x_tmp, d_y_tmp;
   x_tmp.ShareDataWith(x).Resize({1, NxC, H, W, D});
   d_y_tmp.ShareDataWith(d_y).Resize({1, NxC, H, W, D});
 
-  phi::funcs::SetConstant<GPUContext, AccT> set_constant;
+  funcs::SetConstant<GPUContext, AccT> set_constant;
 
   dev_ctx.template Alloc<T>(d_x);
   if (x.numel() == 0) {
@@ -557,12 +557,12 @@ void InstanceNormDoubleGradKernel(const Context &dev_ctx,
       (ddScale == nullptr ? nullptr : ddBias->data<AccT>());
   const AccT *mean_data = saved_mean.data<AccT>();
   const AccT *variance_data = saved_variance.data<AccT>();
-  phi::funcs::SetConstant<GPUContext, T> set_zero;
-  phi::funcs::SetConstant<GPUContext, AccT> set_zero_AccT;
+  funcs::SetConstant<GPUContext, T> set_zero;
+  funcs::SetConstant<GPUContext, AccT> set_zero_AccT;
 
   auto &x_dims = x.dims();
   int N, C, H, W, D;
-  funcs::ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
+  funcs::ExtractNCWHD(x_dims, DataLayout::NCHW, &N, &C, &H, &W, &D);
   int NxC = N * C;
   const int64_t n = x.numel();
   int64_t sample_size = n / N / C;

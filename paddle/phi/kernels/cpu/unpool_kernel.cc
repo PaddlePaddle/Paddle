@@ -30,7 +30,7 @@ void Unpool(const Context& dev_ctx,
             DenseTensor* out) {
   T* output_data = dev_ctx.template Alloc<T>(out);
   if (output_data) {
-    phi::funcs::SetConstant<Context, T> set_zero;
+    funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, out, static_cast<T>(0));
   }
   const int batch_size = static_cast<int>(x.dims()[0]);
@@ -96,7 +96,7 @@ void Unpool3d(const Context& dev_ctx,
               DenseTensor* out) {
   T* output_data = dev_ctx.template Alloc<T>(out);
   if (output_data) {
-    phi::funcs::SetConstant<Context, T> set_zero;
+    funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, out, static_cast<T>(0));
   }
   const int batch_size = static_cast<int>(x.dims()[0]);
