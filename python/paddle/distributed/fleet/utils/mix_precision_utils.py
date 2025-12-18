@@ -99,9 +99,25 @@ class MixPrecisionOptimizer:
         self._inner_opt = optimizer
         self._parameter_list = obtain_optimizer_parameters_list(optimizer)
 
+        self.shard_opt = None
+        hcg = fleet.fleet._hcg
+        sharding_world_size = hcg.get_sharding_parallel_world_size()
+        if sharding_world_size > 1:
+            self.set_shard_opt(hcg)
+
+    def set_shard_opt(self, hcg):
+        from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
+            DygraphShardingOptimizerV2,
+        )
+
+        self.shard_opt = DygraphShardingOptimizerV2(self, hcg)
+
     @imperative_base.no_grad
     @framework.dygraph_only
     def step(self):
+        if self.shard_opt is not None:
+            self.shard_opt.step()
+            return
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
             for param in self._parameter_list:
@@ -171,6 +187,9 @@ class MixPrecisionOptimizer:
 
     @framework.dygraph_only
     def clear_grad(self, set_to_zero=True):
+        if self.shard_opt is not None:
+            self.shard_opt.clear_grad(set_to_zero)
+            return
         param_list = []
         if self._parameter_list is None or not isinstance(
             self._parameter_list[0], dict
