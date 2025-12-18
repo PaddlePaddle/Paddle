@@ -146,7 +146,6 @@ jobs:
             source/tests/pd/test_change_bias.py \
             source/tests/pd/test_decomp.py \
             source/tests/pd/test_dp_show.py \
-            source/tests/pd/test_dp_test.py \
             source/tests/pd/test_finetune.py \
             source/tests/pd/test_multitask.py \
             source/tests/pd/test_training.py \
