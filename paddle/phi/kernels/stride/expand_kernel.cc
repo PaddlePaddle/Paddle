@@ -169,7 +169,24 @@ void ExpandStrideKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#if defined(PADDLE_WITH_CUDA)
+PD_REGISTER_KERNEL(expand,
+                   CPU,
+                   STRIDED,
+                   phi::ExpandStrideKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   int16_t,
+                   uint8_t,
+                   int8_t,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
+
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(expand,
                    GPU,
                    STRIDED,
