@@ -311,17 +311,13 @@ class TorchProxyMetaFinder:
         # Always treat cached modules as packages to allow submodules to be loaded.
         # This is necessary because some modules (e.g. torch._C) are not packages
         # but have submodules (e.g. torch._C._dynamo) attached to them.
-        is_pkg = True
         spec = importlib.util.spec_from_loader(
             fullname,
             CachedTorchModuleLoader(),
             origin=getattr(module, "__file__", None),
-            is_package=is_pkg,
+            is_package=True,
         )
-        if is_pkg:
-            spec.submodule_search_locations = list(
-                getattr(module, "__path__", [])
-            )
+        spec.submodule_search_locations = list(getattr(module, "__path__", []))
         return spec
 
     def _find_spec_for_torch_module(self, fullname: str):
