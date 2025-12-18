@@ -18,6 +18,7 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
 #include "paddle/fluid/framework/new_executor/instruction/custom_kernel_instruction.h"
+#include "paddle/fluid/framework/python_operator.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
@@ -37,7 +38,6 @@
 #include "paddle/pir/include/core/attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
 
-#include "paddle/fluid/framework/python_operator.h"
 namespace paddle {
 
 namespace pybind {

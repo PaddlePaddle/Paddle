@@ -11,20 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import annotations
 
 import inspect
+import sys
 import types
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from functools import partial, wraps
-from typing import Any, Callable, ParamSpec, TypeVar, overload
+from typing import Any, Callable, TypeVar, overload
+
+from typing_extensions import ParamSpec
 
 import paddle
 from paddle import _C_ops
 
-# from paddle.static.meta_tensor import MetaTensorWrapper
-
-HAS_ARGS_OR_KWARGS: int = inspect.CO_VARARGS | inspect.CO_VARKEYWORDS
+HAS_VAR_ARGS_OR_KWARGS: int = inspect.CO_VARARGS | inspect.CO_VARKEYWORDS
 
 
 P1 = ParamSpec("P1")
@@ -64,24 +66,46 @@ def get_fn_defaults_params(fn: Callable[P1, R1]) -> tuple:
     return tuple(fn_defaults_params)
 
 
-def eliminate_positional_only(fn: Callable[P1, R1]) -> Callable[P1, R1]:
+def eliminate_positional_or_keyword_only(
+    fn: Callable[P1, R1],
+) -> Callable[P1, R1]:
+    assert isinstance(fn, types.FunctionType), "Only support regular function"
     code = fn.__code__
-    co_flags: int = code.co_flags & ~HAS_ARGS_OR_KWARGS
+    co_flags: int = code.co_flags & ~HAS_VAR_ARGS_OR_KWARGS
     co_flags = code.co_flags
 
-    # TODO: currently, only support Python3.10
-    if hasattr(code, "co_posonlyargcount"):
-        argcount = (
-            code.co_argcount
-            + code.co_kwonlyargcount
-            + bool(code.co_flags & inspect.CO_VARARGS)
-            + bool(code.co_flags & inspect.CO_VARKEYWORDS)
-        )
-
+    argcount = (
+        code.co_argcount
+        + code.co_kwonlyargcount
+        + bool(code.co_flags & inspect.CO_VARARGS)
+        + bool(code.co_flags & inspect.CO_VARKEYWORDS)
+    )
+    if sys.version_info >= (3, 11):
         new_code = types.CodeType(
             argcount,  # co_argcount
-            0,  # posonlyargcount
-            0,  # kwonlyargcount
+            0,  # posonlyargcount, eliminated
+            0,  # kwonlyargcount, eliminated
+            code.co_nlocals,
+            code.co_stacksize,
+            co_flags,
+            code.co_code,
+            code.co_consts,
+            code.co_names,
+            code.co_varnames,
+            code.co_filename,
+            code.co_name,
+            code.co_qualname,
+            code.co_firstlineno,
+            code.co_linetable,
+            code.co_exceptiontable,
+            code.co_freevars,
+            code.co_cellvars,
+        )
+    else:
+        new_code = types.CodeType(
+            argcount,  # co_argcount
+            0,  # posonlyargcount, eliminated
+            0,  # kwonlyargcount, eliminated
             code.co_nlocals,
             code.co_stacksize,
             co_flags,
@@ -92,12 +116,12 @@ def eliminate_positional_only(fn: Callable[P1, R1]) -> Callable[P1, R1]:
             code.co_filename,
             code.co_name,
             code.co_firstlineno,
-            code.co_lnotab,
+            code.co_linetable
+            if sys.version_info >= (3, 10)
+            else code.co_lnotab,
             code.co_freevars,
             code.co_cellvars,
         )
-    else:
-        raise ValueError
 
     fn_defaults_params = get_fn_defaults_params(fn)
     new_fn = types.FunctionType(
@@ -110,17 +134,16 @@ def eliminate_positional_only(fn: Callable[P1, R1]) -> Callable[P1, R1]:
     new_fn.__name__ = fn.__name__
     new_fn.__doc__ = fn.__doc__
     new_fn.__annotations__ = fn.__annotations__
-    new_fn.__kwdefaults__ = None
+    new_fn.__kwdefaults__ = None  # already merged into defaults
     return new_fn
 
 
-def bind_constants(fn, infer_meta, input_names, *args, **kwargs):
+def bind_constants(fn, infer_meta, *args, **kwargs):
     sig = inspect.signature(fn)
     bound_args = sig.bind(*args, **kwargs)
     bound_args.apply_defaults()
     params = bound_args.arguments
 
-    # NOTE: dict 可以保留顺序
     mutable_params = {}
     const_params = {}
 
@@ -131,8 +154,8 @@ def bind_constants(fn, infer_meta, input_names, *args, **kwargs):
             const_params[k] = v
 
     mutable_arg_names = list(mutable_params.keys())
-    fn = eliminate_positional_only(fn)
-    infer_meta = eliminate_positional_only(infer_meta)
+    fn = eliminate_positional_or_keyword_only(fn)
+    infer_meta = eliminate_positional_or_keyword_only(infer_meta)
     return (
         mutable_arg_names,
         partial(fn, **const_params),
@@ -145,42 +168,37 @@ def bind_constants(fn, infer_meta, input_names, *args, **kwargs):
 def run_in_dynamic_mode(fn):
     def dynamic_mode_fn(*args, **kwargs):
         with paddle.base.dygraph.base.guard():
-            try:
-                return fn(*args, **kwargs)
-            except Exception as e:
-                print(e)
-                raise
+            return fn(*args, **kwargs)
 
     return dynamic_mode_fn
 
 
-from collections.abc import Mapping
-
-
 def custom_hash(obj):
-    # TODO: Check a case
+    # Compute a hash for various types of objects, including unhashable ones.
+    # This may not be collision-free, but should work for distinguishing different
+    # constant parameters in most practical scenarios.
+
+    # TODO: We should avoid hash collisions more strictly if necessary. For example,
     # hash(-1) == hash(-2)
     if isinstance(obj, (int, float, str, bool, bytes)):
         return hash(obj)
 
-    # 2. 已知可哈希容器 (如 tuple, frozenset)
+    # Hashing for common hashable types
     if isinstance(obj, (tuple, frozenset)):
         try:
             return hash(obj)
         except TypeError:
             pass
 
-    # 3. 不可哈希的 Sequence (如 list)
+    # Unhashable types
     if isinstance(obj, (Sequence, set)):
-        # 使用 (0, ...) 前缀是为了区分列表和元组的哈希值
         try:
             return hash((0, *tuple(custom_hash(item) for item in obj)))
         except TypeError:
             pass
 
-    # 4. 不可哈希的 Mapping (如 dict)
+    # Unhashable Mapping
     if isinstance(obj, Mapping):
-        # 使用 (1, ...) 前缀是为了区分字典和其他容器的哈希值
         try:
             items_hashed = tuple(
                 sorted((custom_hash(k), custom_hash(v)) for k, v in obj.items())
@@ -204,7 +222,7 @@ def register_op(
     infer_meta: Callable[..., Any] | None = None,
     input_names: list[str] | None = None,
     output_names: list[str] | None = None,
-    inplace_map: list[str, str] | None = None,
+    inplace_map: dict[str, str] | None = None,
 ) -> Callable[P1, R1]: ...
 
 
@@ -217,7 +235,7 @@ def register_op(
     infer_meta: Callable[..., Any] | None = None,
     input_names: list[str] | None = None,
     output_names: list[str] | None = None,
-    inplace_map: list[str, str] | None = None,
+    inplace_map: dict[str, str] | None = None,
 ) -> Callable[[Callable[P1, R1]], Callable[P1, R1]]: ...
 
 
@@ -229,13 +247,15 @@ def register_op(
     infer_meta: Callable[..., Any] | None = None,
     input_names: list[str] | None = None,
     output_names: list[str] | None = None,
-    inplace_map: list[str, str] | None = None,
+    inplace_map: dict[str, str] | None = None,
 ):
-    """
-    注册算子的装饰器，支持传入元数据推导函数和输入输出配置。
-    """
+    if input_names is None:
+        raise ValueError("Currently, input_names must be provided.")
+    if output_names is None:
+        raise ValueError("Currently, output_names must be provided.")
+    if infer_meta is None:
+        raise ValueError("Currently, infer_meta must be provided.")
 
-    # 内部装饰器逻辑
     def _register_op(
         real_fn: Callable[P1, R1],
     ) -> Callable[P1, R1]:
@@ -251,22 +271,19 @@ def register_op(
                 mutable_arg_names,
                 bound_constants_fn,
                 bound_constants_infer_meta,
-                args,
+                mutable_args,
                 const_params,
-            ) = bind_constants(
-                real_fn, infer_meta, input_names, *args, **kwargs
-            )
+            ) = bind_constants(real_fn, infer_meta, *args, **kwargs)
             assert len(mutable_arg_names) == len(input_names), (
-                f"{mutable_arg_names=} != {input_names=}"
+                f"Number of mutable arguments ({len(mutable_arg_names)}) does not match "
+                f"the number of input names ({len(input_names)})."
             )
 
             const_params_hash = custom_hash(const_params)
 
-            # 调用底层算子运行逻辑
             out = _C_ops._run_python_op(
-                *args,  # kwargs 还需要吗？
-                name=f"{op_name}_{const_params_hash}",  # 每次绑定一次，说明绑定的
-                # inputs=inputs,
+                *mutable_args,
+                name=f"{op_name}_{const_params_hash}",
                 input_names=input_names,
                 output_names=output_names,
                 attrs={
@@ -280,9 +297,8 @@ def register_op(
 
         return wrapped_fn
 
-    # 处理装饰器调用的两种方式：
-    # 1. @register_op(...) -> fn is None
-    # 2. @register_op -> fn is not None (不带括号，但在本例中不适用，因为必须传参)
+    # Handle @register_op(...)
     if fn is None:
         return _register_op
+    # Handle @register_op
     return _register_op(fn)
