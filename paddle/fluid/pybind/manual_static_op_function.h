@@ -1083,15 +1083,15 @@ static PyObject *run_python_op(PyObject *self,
       ParseStringDict(py_inplace_dict);
 
   VLOG(6) << "Building Python OP [" << op_name << "] with attrs:" << std::endl
-          << "op_name: " << op_name << std::endl
-          << "inputs: " << paddle::string::join_strings(inputs_vec, ", ")
+          << "    op_name: " << op_name << std::endl
+          << "    inputs: " << paddle::string::join_strings(inputs_vec, ", ")
           << std::endl
-          << "outputs: " << paddle::string::join_strings(outputs_vec, ", ")
+          << "    outputs: " << paddle::string::join_strings(outputs_vec, ", ")
           << std::endl
-          << "attrs[infer_meta_fn_ptr]: "
+          << "    attrs[infer_meta_fn_ptr]: "
           << reinterpret_cast<uintptr_t>(attrs_map["infer_meta_fn_ptr"])
           << std::endl
-          << "attrs[fn_ptr]: "
+          << "    attrs[fn_ptr]: "
           << reinterpret_cast<uintptr_t>(attrs_map["fn_ptr"]);
 
   const auto &meta_info_map = OpMetaInfoMap::Instance().GetMap();
