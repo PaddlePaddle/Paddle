@@ -141,7 +141,7 @@ jobs:
           echo "Running DeepMD-Kit Integration Tests"
           echo "=========================================="
 
-          pytest source/tests/pd -v --tb=long --color=yes 2>&1 | tee pytest_output.log
+          python3.10 -m pytest source/tests/pd -v --tb=long --color=yes 2>&1 | tee pytest_output.log
           TEST_RESULT=${PIPESTATUS[0]}
 
           echo ""
