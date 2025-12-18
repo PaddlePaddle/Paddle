@@ -36,7 +36,7 @@ class PythonFunctionInstruction : public InstructionBase {
 
   void Run() override;
 
-  const std::string& Name() const override { return custom_op_name_; }
+  const std::string& Name() const override { return python_op_name_; }
 
   void clear();
 
@@ -44,41 +44,21 @@ class PythonFunctionInstruction : public InstructionBase {
   void BuildPythonFunctionContext(
       const paddle::dialect::OpYamlInfoParser& op_yaml_info);
 
-  void BuildShapeDtype();
-  void UpdateOutputMeta();
-
   paddle::CustomOpKernelContext python_function_ctx_;
   paddle::KernelFunc kernel_func_ = nullptr;
 
   const paddle::PythonOperatorFunctionType* py_func_ptr_ = nullptr;
   const paddle::PythonOperatorInferMetaFunctionType* py_func_infer_meta_ptr_ =
-      nullptr;
-
-  // key is input name, value is a index in input_shapes_ or vec_input_shapes_
-  std::unordered_map<std::string, int> input_name2id_map_;
-  std::unordered_map<std::string, int> vec_input_name2id_map_;
-
-  // use for running infershape
-  std::vector<std::vector<int64_t>> input_shapes_;
-  std::vector<std::vector<std::vector<int64_t>>> vec_input_shapes_;
-  std::vector<paddle::any> custom_attrs_;
-
-  // use for running inferdtype
-  std::vector<DataType> input_dtypes_;
-  std::vector<std::vector<DataType>> vec_input_dtypes_;
-
-  // use for calculate input shapes and dtypes in runtime
-  std::vector<phi::DenseTensor*> input_ptrs_;
-  std::vector<std::vector<phi::DenseTensor*>> vec_input_ptrs_;
+      nullptr;  // Unused in runtime
 
   // use for update output
   std::vector<phi::DenseTensor*> cache_out_ptrs_;
 
-  std::string custom_op_name_;
+  std::string python_op_name_;
 
   ::pir::Operation* op_{nullptr};  // not owned
 
-  const paddle::OpMetaInfo* custom_op_meta_;   // not owned
+  const paddle::OpMetaInfo* python_op_meta_;   // not owned
   const ValueExecutionInfo& value_exec_info_;  // not owned
 };
 

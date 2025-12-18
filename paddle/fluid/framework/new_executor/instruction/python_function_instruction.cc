@@ -31,11 +31,11 @@ namespace paddle::framework {
 void PythonFunctionInstruction::BuildPythonFunctionContext(
     const paddle::dialect::OpYamlInfoParser& op_yaml_info) {
   PADDLE_ENFORCE_NOT_NULL(
-      custom_op_meta_,
+      python_op_meta_,
       common::errors::PreconditionNotMet(
-          "PythonFunctionInstruction: custom_op_meta_ is null"));
+          "PythonFunctionInstruction: python_op_meta_ is null"));
 
-  auto& op_inplace_map = OpMetaInfoHelper::GetInplaceMap(*custom_op_meta_);
+  auto& op_inplace_map = OpMetaInfoHelper::GetInplaceMap(*python_op_meta_);
   VLOG(6) << "op_inplace_map.size(): " << op_inplace_map.size();
 
   // check inplace
@@ -48,10 +48,9 @@ void PythonFunctionInstruction::BuildPythonFunctionContext(
       PADDLE_ENFORCE(
           paddle::framework::detail::IsOptionalVar(pair.second),
           common::errors::InvalidArgument(
-              "Custom operator couldn't find custom output name for %s. If "
+              "Python operator couldn't find output name for %s. If "
               "you are using inplace optional inputs & outputs, please "
-              "check "
-              "your InplaceMap and `Outputs` again and make sure %s is "
+              "check your InplaceMap and `Outputs` again and make sure %s is "
               "wrapped by `paddle::Optional`",
               pair.second,
               pair.second));
@@ -84,9 +83,7 @@ void PythonFunctionInstruction::BuildPythonFunctionContext(
             "PythonFunctionInstruction, "
             "not support VectorType<DenseTensorType>."));
       } else {
-        input_name2id_map_[t] = input_index;
         input_index++;
-        input_ptrs_.emplace_back(nullptr);
         python_function_ctx_.EmplaceBackInput(paddle::Tensor());
       }
       continue;
@@ -106,12 +103,10 @@ void PythonFunctionInstruction::BuildPythonFunctionContext(
           dense_tensor_in, [](phi::DenseTensor* ptr) {
             VLOG(6) << ptr << " ptr will not be deleted by shared_ptr";
           });
-      input_name2id_map_[t] = input_index;
       input_index++;
-      input_ptrs_.push_back(dense_tensor_in);
-      paddle::Tensor custom_in;
-      custom_in.set_impl(tensor_in);
-      python_function_ctx_.EmplaceBackInput(std::move(custom_in));
+      paddle::Tensor python_in;
+      python_in.set_impl(tensor_in);
+      python_function_ctx_.EmplaceBackInput(std::move(python_in));
     } else if (var->IsType<VariableRefArray>()) {
       PADDLE_THROW(
           common::errors::Unimplemented("Only support Tensor input type for "
@@ -135,18 +130,12 @@ void PythonFunctionInstruction::BuildPythonFunctionContext(
                           t));
     auto& attr_type_name = op_yaml_info.AttrTypeName(t);
     if (attr_type_name == "pir::Int32Attribute") {
-      custom_attrs_.push_back(
-          attr_map[t].dyn_cast<pir::Int32Attribute>().data());
       python_function_ctx_.EmplaceBackAttr(
           attr_map[t].dyn_cast<pir::Int32Attribute>().data());
     } else if (attr_type_name == "pir::Int64Attribute") {
-      custom_attrs_.push_back(
-          attr_map[t].dyn_cast<pir::Int64Attribute>().data());
       python_function_ctx_.EmplaceBackAttr(
           attr_map[t].dyn_cast<pir::Int64Attribute>().data());
     } else if (attr_type_name == "pir::PointerAttribute") {
-      custom_attrs_.push_back(
-          attr_map[t].dyn_cast<pir::PointerAttribute>().data());
       python_function_ctx_.EmplaceBackAttr(
           attr_map[t].dyn_cast<pir::PointerAttribute>().data());
     } else {
@@ -161,20 +150,18 @@ void PythonFunctionInstruction::BuildPythonFunctionContext(
   for (size_t i = 0; i < op_->num_results(); ++i) {
     pir::Value out_ptr = op_->result(i);
     auto out_name = op_yaml_info.OutputNames()[i];
-    VLOG(0) << "out_name: " << out_name;
-    VLOG(0) << "!IsInvalid(out_ptr)" << !IsInvalid(out_ptr);
     if (!IsInvalid(out_ptr)) {
       PADDLE_ENFORCE(
           paddle::framework::detail::IsOptionalVar(out_name) &&
               !inplace_id_map.empty(),
           common::errors::InvalidArgument(
-              "Custom operator couldn't find custom output for name %s. If you "
+              "Python operator couldn't find python output for name %s. If you "
               "are using inplace optional inputs & outputs, please check your "
               "InplaceMap and `Outputs` again and make sure %s is wrapped by "
               "`paddle::Optional`",
               out_name,
               out_name));
-      VLOG(3) << "Custom Operator: BuildContext - inplace optional outputs : "
+      VLOG(3) << "Python Operator: BuildContext - inplace optional outputs : "
               << out_name << " is None.";
       python_function_ctx_.EmplaceBackOutput(paddle::Tensor());
 
@@ -190,11 +177,11 @@ void PythonFunctionInstruction::BuildPythonFunctionContext(
           dense_tensor_out, [](phi::DenseTensor* ptr) {
             VLOG(6) << ptr << " ptr will not be deleted by shared_ptr";
           });
-      paddle::Tensor custom_out;
+      paddle::Tensor python_out;
       // here only can copy the output tensor into context
-      custom_out.set_impl(tensor_out);
+      python_out.set_impl(tensor_out);
 
-      python_function_ctx_.EmplaceBackOutput(std::move(custom_out));
+      python_function_ctx_.EmplaceBackOutput(std::move(python_out));
       VLOG(8) << "ctx->EmplaceBackOutput DenseTensor: "
               << value_exec_info_.GetVarName(out_ptr);
     } else if (out_ptr.type().isa<pir::VectorType>()) {
@@ -208,8 +195,8 @@ void PythonFunctionInstruction::BuildPythonFunctionContext(
     }
   }
 
-  auto& op_inputs = OpMetaInfoHelper::GetInputs(*custom_op_meta_);
-  auto& op_outputs = OpMetaInfoHelper::GetOutputs(*custom_op_meta_);
+  auto& op_inputs = OpMetaInfoHelper::GetInputs(*python_op_meta_);
+  auto& op_outputs = OpMetaInfoHelper::GetOutputs(*python_op_meta_);
 
   // handle inplace map
   python_function_ctx_.UpdatePlainOutputs(
@@ -222,25 +209,16 @@ PythonFunctionInstruction::PythonFunctionInstruction(
     pir::Operation* op,
     const ValueExecutionInfo& value_exec_info)
     : InstructionBase(id, place),
-      input_name2id_map_(),
-      vec_input_name2id_map_(),
-      input_shapes_(),
-      vec_input_shapes_(),
-      custom_attrs_(),
-      input_dtypes_(),
-      vec_input_dtypes_(),
-      input_ptrs_(),
-      vec_input_ptrs_(),
       cache_out_ptrs_(),
       value_exec_info_(value_exec_info) {
   auto op_attributes = op->attributes();
   auto op_name =
       op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
-  custom_op_name_ = op_name;
+  python_op_name_ = op_name;
   pir::OpInfo op_info =
       pir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
   op_ = op;
-  VLOG(6) << "construct custom kernel instruction for: " << op_name;
+  VLOG(6) << "construct python kernel instruction for: " << op_name;
 
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
@@ -257,14 +235,14 @@ PythonFunctionInstruction::PythonFunctionInstruction(
   VLOG(6) << "finish process yaml_info_parser";
   const auto& op_meta =
       paddle::framework::detail::GetPythonOperatorInfoByPirName(op_name);
-  custom_op_meta_ = &op_meta;
+  python_op_meta_ = &op_meta;
 
   py_func_ptr_ = &(OpMetaInfoHelper::GetPythonOperatorFunction(op_meta));
   py_func_infer_meta_ptr_ =
       &(OpMetaInfoHelper::GetPythonOperatorInferMetaFunction(op_meta));
 
   BuildPythonFunctionContext(yaml_info_parser);
-  VLOG(6) << "finish process custom context";
+  VLOG(6) << "finish process python context";
   auto kernel_key = op_attributes.at("kernel_key")
                         .dyn_cast<paddle::dialect::KernelAttribute>()
                         .data();
@@ -301,41 +279,10 @@ PythonFunctionInstruction::PythonFunctionInstruction(
   VLOG(6) << "finish process no need buffer";
 }
 
-void PythonFunctionInstruction::BuildShapeDtype() {
-  input_shapes_.clear();
-  input_dtypes_.clear();
-  vec_input_shapes_.clear();
-  vec_input_dtypes_.clear();
-  for (auto in_tensor : input_ptrs_) {
-    if (in_tensor) {
-      input_shapes_.push_back(phi::vectorize(in_tensor->dims()));
-      input_dtypes_.push_back(in_tensor->dtype());
-    } else {
-      input_shapes_.emplace_back();
-      input_dtypes_.emplace_back();
-    }
-  }
-  for (auto in_tensors : vec_input_ptrs_) {
-    std::vector<std::vector<int64_t>> input_shapes;
-    std::vector<phi::DataType> input_dtypes;
-    if (in_tensors.size() > 0) {
-      for (auto in_tensor : in_tensors) {
-        input_shapes.push_back(phi::vectorize(in_tensor->dims()));
-        input_dtypes.push_back(in_tensor->dtype());
-      }
-    }
-    vec_input_shapes_.push_back(input_shapes);
-    vec_input_dtypes_.push_back(input_dtypes);
-  }
-}
-
 void PythonFunctionInstruction::Run() {
   if (FLAGS_check_cuda_error) [[unlikely]] {
-    CUDAErrorCheck("PythonFunctionInstruction " + custom_op_name_ + " begin");
+    CUDAErrorCheck("PythonFunctionInstruction " + python_op_name_ + " begin");
   }
-
-  VLOG(3) << "Custom Operator: InferShape - calc output ddim.";
-  BuildShapeDtype();
 
   for (auto& pair : this->InplaceInfo()) {
     ShareVarBuffer(pair.first, pair.second);
@@ -343,7 +290,7 @@ void PythonFunctionInstruction::Run() {
 
   PADDLE_ENFORCE_NOT_NULL(
       py_func_ptr_,
-      common::errors::InvalidArgument("Custom kernel function is nullptr."));
+      common::errors::InvalidArgument("Python function pointer is nullptr."));
 
   std::vector<Tensor> vec_dense_inputs;
   size_t num = op_->num_operands();
@@ -354,7 +301,7 @@ void PythonFunctionInstruction::Run() {
   auto out = (*py_func_ptr_)(vec_dense_inputs);
   python_function_ctx_.ValidateAndAssignOutputs(out);
   if (FLAGS_check_cuda_error) [[unlikely]] {
-    CUDAErrorCheck("PythonFunctionInstruction " + custom_op_name_ + " finish");
+    CUDAErrorCheck("PythonFunctionInstruction " + python_op_name_ + " finish");
   }
 }
 }  // namespace paddle::framework
