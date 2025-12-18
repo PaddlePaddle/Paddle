@@ -993,18 +993,18 @@ static PyObject *run_custom_op(PyObject *self,
   }
 }
 
-template <typename T>
-std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec) {
-  os << "[";
-  for (size_t i = 0; i < vec.size(); ++i) {
-    os << vec[i];
-    if (i != vec.size() - 1) {
-      os << ", ";
-    }
-  }
-  os << "]";
-  return os;
-}
+// template <typename T>
+// std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec) {
+//   os << "[";
+//   for (size_t i = 0; i < vec.size(); ++i) {
+//     os << vec[i];
+//     if (i != vec.size() - 1) {
+//       os << ", ";
+//     }
+//   }
+//   os << "]";
+//   return os;
+// }
 
 using IrTensor = paddle::dialect::IrTensor;
 
@@ -1095,16 +1095,17 @@ static PyObject *run_python_op(PyObject *self,
   std::unordered_map<std::string, std::string> op_inplace_map =
       ParseStringDict(py_inplace_dict);
 
-  std::cout << "Get things from python for Custom PyOp: [" << op_name << "]"
-            << std::endl;
-  std::cout << "op_name: " << op_name << std::endl;
-  std::cout << "inputs: " << inputs_vec << std::endl;
-  std::cout << "outputs: " << outputs_vec << std::endl;
-  std::cout << "attrs[infer_meta_fn_ptr]: "
-            << reinterpret_cast<uintptr_t>(attrs_map["infer_meta_fn_ptr"])
-            << std::endl;
-  std::cout << "attrs[fn_ptr]: "
-            << reinterpret_cast<uintptr_t>(attrs_map["fn_ptr"]) << std::endl;
+  VLOG(6) << "Building Python OP [" << op_name << "] with attrs:" << std::endl
+          << "op_name: " << op_name << std::endl
+          << "inputs: " << paddle::string::join_strings(inputs_vec, ", ")
+          << std::endl
+          << "outputs: " << paddle::string::join_strings(outputs_vec, ", ")
+          << std::endl
+          << "attrs[infer_meta_fn_ptr]: "
+          << reinterpret_cast<uintptr_t>(attrs_map["infer_meta_fn_ptr"])
+          << std::endl
+          << "attrs[fn_ptr]: "
+          << reinterpret_cast<uintptr_t>(attrs_map["fn_ptr"]);
 
   const auto &meta_info_map = OpMetaInfoMap::Instance().GetMap();
 
