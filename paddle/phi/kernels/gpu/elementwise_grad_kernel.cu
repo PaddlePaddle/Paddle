@@ -187,6 +187,25 @@ void AddGradKernel(const Context& dev_ctx,
                    int axis,
                    DenseTensor* dx,
                    DenseTensor* dy) {
+  if (dx && dx->dims() == dout.dims() && dx->dtype() == dout.dtype() && dy &&
+      dy->dims() == dout.dims() && dy->dtype() == dout.dtype()) {
+    dx->ResetHolder(dout.Holder());
+    dy->ResetHolder(dout.Holder());
+    return;
+  } else if (dx && dx->dims() == dout.dims() && dx->dtype() == dout.dtype()) {
+    dx->ResetHolder(dout.Holder());
+    if (!dy) {
+      return;
+    }
+    dx = nullptr;
+  }
+  if (dy && dy->dims() == dout.dims() && dy->dtype() == dout.dtype()) {
+    dy->ResetHolder(dout.Holder());
+    if (!dx) {
+      return;
+    }
+    dy = nullptr;
+  }
 #ifdef PADDLE_WITH_CUDA
   if (x.dtype() == DataType::FLOAT32 &&
       (y.dtype() == DataType::FLOAT16 || y.dtype() == DataType::BFLOAT16)) {
