@@ -54,10 +54,10 @@ def train_mlp(
     model,
     use_fsdp=True,
     data=None,
+    use_pure_bf16=True,
 ):
     model = mix_precision_utils.MixPrecisionLayer(model, dtype="bfloat16")
     clip = paddle.nn.ClipGradByGlobalNorm(0.5)
-    use_pure_bf16 = True
     optimizer = optimizer = paddle.optimizer.AdamW(
         learning_rate=0.001,
         parameters=model.parameters(),
@@ -69,7 +69,7 @@ def train_mlp(
     if use_fsdp:
         model = FullyShard(model)
     else:
-        model, optimizer = group_sharded_parallel(
+        model, optimizer, _ = group_sharded_parallel(
             model=model,
             optimizer=optimizer,
             level="p_g_os",
@@ -97,14 +97,14 @@ def test_fsdp_api():
     np.random.seed(2025)
     data = [paddle.randn([8, 4096]) for i in range(20)]
     model = Model()
-    loss = train_mlp(model, use_fsdp=True, data=data)
+    loss_fsdp = train_mlp(model, use_fsdp=True, data=data)
 
     # test sharding with group_sharded_parallel
     paddle.seed(2025)
     np.random.seed(2025)
     data = [paddle.randn([8, 4096]) for i in range(20)]
     model = Model()
-    loss_fsdp = train_mlp(model, use_fsdp=True, data=data)
+    loss = train_mlp(model, use_fsdp=False, data=data)
     assert loss == loss_fsdp
 
     # test sharding with fsdp api with fp32
@@ -112,7 +112,7 @@ def test_fsdp_api():
     np.random.seed(2025)
     data = [paddle.randn([8, 4096]) for i in range(20)]
     model = Model()
-    loss = train_mlp(model, use_fsdp=False, data=data)
+    loss = train_mlp(model, use_fsdp=True, data=data, use_pure_bf16=False)
 
 
 if __name__ == '__main__':
