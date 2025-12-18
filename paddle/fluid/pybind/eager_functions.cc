@@ -579,7 +579,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
   const auto& attrs = paddle::OpMetaInfoHelper::GetAttrs(vec_map[0]);
   const auto& outputs = paddle::OpMetaInfoHelper::GetOutputs(vec_map[0]);
   const auto& inplace_map = paddle::OpMetaInfoHelper::GetInplaceMap(vec_map[0]);
-
+  SetPythonStack();
   for (size_t i = 0; i < inputs.size(); ++i) {
     const auto& input = inputs.at(i);
     // Parse op_type first, so that use i + 1

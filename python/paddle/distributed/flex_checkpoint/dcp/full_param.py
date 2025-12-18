@@ -27,7 +27,7 @@ from typing import (
 import paddle
 
 from ..aoa.aoa_engine import SUPPORTED_DTYPES, AOAEngine
-from .load_state_dict import (
+from .resharder import (
     ReadItem,
 )
 from .sharded_weight import (
@@ -810,7 +810,7 @@ def full_param(
     v_group = kwargs.pop("v_group", None)
     process_group = kwargs.pop("process_group", None)
     num_splits = kwargs.pop("num_splits", 1)
-    memory_growth_threshold = kwargs.pop("memory_growth_threshold", 8 * (2**32))
+    memory_growth_threshold = kwargs.pop("memory_growth_threshold", 8 * (2**30))
     idx = kwargs.pop("shard_idx", 0)
     assert (h_group and v_group) or not (h_group or v_group), (
         "Both horizontal and vertical groups must be provided when using FullParamAssembler."

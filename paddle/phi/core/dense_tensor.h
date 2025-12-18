@@ -230,6 +230,11 @@ class PADDLE_API DenseTensor : public TensorBase,
   void set_storage_properties(
       std::unique_ptr<StorageProperties>&& storage_properties);
 
+  const std::shared_ptr<phi::Allocation>& Holder() const { return holder_; }
+
+  /*! The internal of two tensors share the same memory block. */
+  DenseTensor& ShareDataWith(const DenseTensor& src);
+
   void clear() {
     holder_.reset();
     meta_.offset = 0;

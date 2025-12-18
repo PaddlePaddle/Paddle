@@ -4603,6 +4603,12 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
         true,
         common::errors::InvalidArgument(
             "The batch size of Query, Key, Value and Mask should be equal."));
+    PADDLE_ENFORCE_EQ(
+        mask.dims()[1],
+        1,
+        common::errors::InvalidArgument(
+            "The second dim of mask should be 1, but received mask dim is [%s]",
+            mask.dims()));
   }
 
   std::vector<int64_t> out_dims(

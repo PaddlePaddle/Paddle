@@ -89,13 +89,11 @@ class SDPParams:
     key_shape: paddle.Size
     value_shape: paddle.Size
     attn_mask_shape: paddle.Size | None
-    attn_strides: list[int] | None
     dropout: float
     is_causal: bool
     scale: float | None
     query_stop_gradient: bool
     dtype: tuple[dtype, dtype, dtype]
-    strides: tuple[list[int], list[int], list[int]]
     place: tuple[Place, Place, Place]
 
     @cached_property
@@ -147,9 +145,11 @@ def check_all_tensors_on_device(params: SDPParams):
     """
     Check all input tensors are placed on the GPU device.
     """
-    if not params.place[0].is_gpu_place():
+    if not (
+        params.place[0].is_gpu_place() or params.place[0].is_custom_place()
+    ):
         _logger.debug(
-            "All input tensors should be placed on GPU place, but "
+            "All input tensors should be placed on GPU or custom place, but "
             f"query place: {params.place[0]}, key place: "
             f"{params.place[1]}, value place: {params.place[2]}"
         )
@@ -193,6 +193,11 @@ def check_flash_attention_hardware_support(device_id: int):
     """
     Check flash attention requires CUDA support and SM between 8.0 and 12.1.
     """
+    if SDPBackend.FLASH_ATTENTION and paddle.is_compiled_with_custom_device(
+        paddle.device.get_all_device_type()[0]
+    ):
+        return True
+
     if not check_cuda_is_available():
         _logger.debug("Flash attention requires CUDA support.")
         return False
@@ -410,12 +415,6 @@ def select_sdp_for_sdpa(param: SDPParams) -> str:
     if "xpu" in place:
         return "flash_attn"
 
-    if "iluvatar_gpu" in place:
-        return "flash_attn"
-
-    if "metax_gpu" in place:
-        return "flash_attn"
-
     enabled_backends = _get_enabled_backends()
     priority_order = _get_backend_priority()
 
@@ -538,7 +537,7 @@ def scaled_dot_product_attention(
         value.shape[2],
     )
     if enable_gqa:
-        assert q_heads % k_heads == 0, (
+        assert k_heads == 0 or q_heads % k_heads == 0, (
             f"The number of groups in query({q_heads}) must be divisible by the number of groups in key({k_heads}) if GQA enabled."
         )
         assert k_heads == v_heads, (
@@ -580,12 +579,10 @@ def scaled_dot_product_attention(
         key_shape=key.shape,
         value_shape=value.shape,
         attn_mask_shape=attn_mask.shape if attn_mask is not None else None,
-        attn_strides=attn_mask.stride() if attn_mask is not None else None,
         dropout=dropout_p,
         is_causal=is_causal,
         scale=scale,
         query_stop_gradient=query.stop_gradient,
-        strides=(query.stride(), key.stride(), value.stride()),
         dtype=(query.dtype, key.dtype, value.dtype),
         place=qkv_place,
     )
@@ -659,7 +656,7 @@ def scaled_dot_product_attention(
         )
 
     elif sdp_func_name == "math":
-        repeats = q_heads // k_heads
+        repeats = q_heads // k_heads if k_heads != 0 else 1
         key, value = _repeat_kv(key, value, repeats)
         out = _math_attention(
             query,

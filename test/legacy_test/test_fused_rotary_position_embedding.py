@@ -36,6 +36,9 @@ def mult_qkv(value, cos_tensor, sin_tensor):
     if value is None:
         return None
 
+    rot_dim = cos_tensor.shape[-1]
+    value, value_pass = value[..., :rot_dim], value[..., rot_dim:]
+
     rotate_half_q = paddle.reshape(
         paddle.stack([-value[:, :, :, 1::2], value[:, :, :, 0::2]], axis=-1),
         paddle.shape(value),
@@ -44,12 +47,15 @@ def mult_qkv(value, cos_tensor, sin_tensor):
         paddle.multiply(value, cos_tensor),
         paddle.multiply(rotate_half_q, sin_tensor),
     )
-    return query
+    return paddle.cat([query, value_pass], axis=-1)
 
 
 def mult_qkv_rotate_half(value, cos_tensor, sin_tensor):
     if value is None:
         return None
+
+    rot_dim = cos_tensor.shape[-1]
+    value, value_pass = value[..., :rot_dim], value[..., rot_dim:]
 
     rotate_half_q = paddle.reshape(
         paddle.concat(
@@ -65,7 +71,7 @@ def mult_qkv_rotate_half(value, cos_tensor, sin_tensor):
         paddle.multiply(value, cos_tensor),
         paddle.multiply(rotate_half_q, sin_tensor),
     )
-    return query
+    return paddle.cat([query, value_pass], axis=-1)
 
 
 def get_sin_cos_tensor(seq_len, head_dim, sign=1, rotate_half=False):
@@ -227,7 +233,12 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         return tmp
 
     def get_inputs(
-        self, seed, with_sin_cos, with_grads=False, rotate_half=False
+        self,
+        seed,
+        with_sin_cos,
+        rotary_percent=1.0,
+        with_grads=False,
+        rotate_half=False,
     ):
         paddle.disable_static()
         paddle.seed(seed)
@@ -238,7 +249,10 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
 
         tensor_sin, tensor_cos = (
             get_sin_cos_tensor(
-                tensor_q.shape[1], tensor_q.shape[3], 1, rotate_half=rotate_half
+                tensor_q.shape[1],
+                int(tensor_q.shape[3] * rotary_percent),
+                1,
+                rotate_half=rotate_half,
             )
             if with_sin_cos
             else (None, None)
@@ -264,6 +278,7 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         rope_function,
         seed,
         with_sin_cos=True,
+        rotary_percent=1.0,
         use_neox_rotary_style=True,
         position_ids=None,
         test_time_major=False,
@@ -284,6 +299,7 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         ) = self.get_inputs(
             seed,
             with_sin_cos,
+            rotary_percent,
             with_grads=True,
             rotate_half=not use_neox_rotary_style,
         )
@@ -402,6 +418,33 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
             fused_rotary_position_embedding,
             seed=self.seed,
             with_sin_cos=True,
+            test_time_major=True,
+        )
+
+        self.check_results(p_fw, f_fw)
+        self.check_results(p_bw, f_bw)
+        self.check_results(p_fw, f_fw_time_major)
+        self.check_results(p_bw, f_bw_time_major)
+
+    def test_fused_rope_with_sin_cos_with_rotary_percent(self):
+        p_fw, p_bw = self.get_forward_backward(
+            paddle_fused_rotary_position_embedding,
+            seed=self.seed,
+            with_sin_cos=True,
+            rotary_percent=0.5,
+        )
+        f_fw, f_bw = self.get_forward_backward(
+            fused_rotary_position_embedding,
+            seed=self.seed,
+            with_sin_cos=True,
+            rotary_percent=0.5,
+            test_time_major=False,
+        )
+        f_fw_time_major, f_bw_time_major = self.get_forward_backward(
+            fused_rotary_position_embedding,
+            seed=self.seed,
+            with_sin_cos=True,
+            rotary_percent=0.5,
             test_time_major=True,
         )
 
