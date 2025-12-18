@@ -553,7 +553,7 @@ def _handle_aoa(
                     mapping.postprocess_list
                 )
             if len(shard_mappings) == 1 and mapping.postprocess_list is None:
-                if src_desc.global_shape == dst_desc.global_shape:
+                if src_desc.global_shape != dst_desc.global_shape:
                     logger.warning(
                         f"Shape mismatch for parameter '{param_name}': "
                         f"source global_shape={src_desc.global_shape}, "
