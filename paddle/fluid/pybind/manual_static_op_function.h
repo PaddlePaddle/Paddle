@@ -1114,8 +1114,7 @@ static PyObject *run_python_op(PyObject *self,
       attrs_map["infer_meta_fn_ptr"], op_name);
 
   if (meta_info_map.find(op_name) == meta_info_map.end()) {
-    std::cout << "We need to register this op first! " << op_name << std::endl;
-    // 不存在先注册一下
+    VLOG(6) << "Python OP " << op_name << " does not exist, registering...";
     paddle::framework::RegisterPythonOperator(
         op_name,
         std::move(inputs_vec),
@@ -1126,7 +1125,6 @@ static PyObject *run_python_op(PyObject *self,
         std::move(infer_meta_py_func));
   }
 
-  // 不知道为啥不能跑?
   PADDLE_ENFORCE_NE(meta_info_map.find(op_name),
                     meta_info_map.end(),
                     common::errors::NotFound(
@@ -1142,8 +1140,6 @@ static PyObject *run_python_op(PyObject *self,
   const auto &inplace_map = paddle::OpMetaInfoHelper::GetInplaceMap(vec_map[0]);
   const auto &inplace_reverse_map =
       paddle::OpMetaInfoHelper::GetInplaceReverseMap(vec_map[0]);
-  // auto infershape_func = OpMetaInfoHelper::GetInferShapeFn(vec_map[0]);
-  // auto inferdtype_func = OpMetaInfoHelper::GetInferDtypeFn(vec_map[0]);
 
   std::string pir_op_name =
       paddle::framework::kPythonOperatorDialectPrefix + op_name;
@@ -1166,7 +1162,6 @@ static PyObject *run_python_op(PyObject *self,
   int input_index = 0;
   int vec_input_index = 0;
 
-  // std::vector<IrTensor> vec_dense_inputs;
   std::vector<phi::NativeMetaTensor> inputs_meta;
   inputs_meta.reserve(inputs.size());
 
@@ -1177,47 +1172,14 @@ static PyObject *run_python_op(PyObject *self,
     // use one un-initialized tensor to indicate both Tensor and
     // vector<Tensor> inputs.
     if (obj == Py_None) {
-      std::cout << "Add un-initialized tensor "
-                   "because the optional input is None"
-                << std::endl;
-      if (paddle::framework::detail::IsDuplicableVar(input)) {
-        std::vector<std::vector<int64_t>> vec_input_shape;
-        std::vector<DataType> vec_input_dtype;
-        vec_input_shapes.emplace_back(vec_input_shape);
-        vec_input_dtypes.emplace_back(vec_input_dtype);
-        vec_input_name2id_map[inputs[i]] = vec_input_index;
-        vec_input_index++;
-      } else {
-        std::vector<int64_t> input_shape;
-        DataType input_dtype = DataType::UNDEFINED;
-        input_shapes.emplace_back(input_shape);
-        input_dtypes.emplace_back(input_dtype);
-        input_name2id_map[inputs[i]] = input_index;
-        input_index++;
-      }
-      argument_inputs.emplace_back();
-      continue;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Currently, optional Tensor input is not supported in "
+          "Python operator."));
     }
     if (paddle::framework::detail::IsDuplicableVar(input)) {
-      // std::vector<std::vector<int64_t>> tmp_input_shapes;
-      // std::vector<phi::DataType> tmp_input_dtypes;
-      // vec_input_name2id_map[inputs[i]] = vec_input_index;
-      // vec_input_index++;
-      // std::vector<pir::Value> input_values =
-      //     CastPyArg2VectorOfValue(obj, op_name, i, false);
-      // for (auto &input_value : input_values) {
-      //   paddle::dialect::DenseTensorType input_tensor =
-      //       input_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-      //   tmp_input_shapes.push_back(phi::vectorize(input_tensor.dims()));
-      //   tmp_input_dtypes.push_back(
-      //       paddle::dialect::TransToPhiDataType(input_tensor.dtype()));
-      // }
-      // vec_input_shapes.push_back(tmp_input_shapes);
-      // vec_input_dtypes.push_back(tmp_input_dtypes);
-      // auto combine_op = paddle::dialect::ApiBuilder::Instance()
-      //                       .GetBuilder()
-      //                       ->Build<pir::CombineOp>(input_values);
-      // argument_inputs.push_back(combine_op.out());
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Currently, optional vector<Tensor> input is not supported in "
+          "Python operator."));
     } else {
       input_name2id_map[inputs[i]] = input_index;
       input_index++;
@@ -1225,9 +1187,6 @@ static PyObject *run_python_op(PyObject *self,
           CastPyArg2Value(obj, op_name, i, false);  // NOLINT
       paddle::dialect::DenseTensorType input_tensor =
           input_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-      // input_shapes.push_back(phi::vectorize(input_tensor.dims()));
-      // input_dtypes.push_back(
-      //     paddle::dialect::TransToPhiDataType(input_tensor.dtype()));
       argument_inputs.push_back(input_value);
 
       inputs_meta.push_back(phi::NativeMetaTensor(
@@ -1236,7 +1195,6 @@ static PyObject *run_python_op(PyObject *self,
     }
   }
   argument.AddInputs(argument_inputs);
-  std::cout << "finish argument.AddInputs(argument_inputs)! " << std::endl;
 
   custom_attrs.push_back(attrs_map["infer_meta_fn_ptr"]);
   custom_attrs.push_back(attrs_map["fn_ptr"]);
@@ -1306,8 +1264,6 @@ static PyObject *run_python_op(PyObject *self,
     all_values_num += output_name2value_num[output];
   }
 
-  std::cout << "all_values_num: " << all_values_num << std::endl;
-
   if (run_auto_parallel) {
     PADDLE_ENFORCE_EQ(
         spmd_info.second.size(),
@@ -1332,38 +1288,9 @@ static PyObject *run_python_op(PyObject *self,
       continue;
     }
     if (paddle::framework::detail::IsDuplicableVar(output)) {
-      std::vector<pir::Type> out_types;
-      std::vector<pir::Attribute> dist_attrs;
-      for (size_t j = 0; j < value_num; ++j) {
-        // auto ddims = phi::make_ddim(output_shapes[value_index]);
-        // auto dtype = output_dtypes[value_index];
-        // phi::DataLayout layout{DataLayout::NCHW};
-        // phi::LegacyLoD lod;
-        // auto type = paddle::dialect::DenseTensorType::get(
-        //     pir::IrContext::Instance(),
-        //     paddle::dialect::TransToIrDataType(dtype),
-        //     ddims,
-        //     layout,
-        //     lod,
-        //     0);
-
-        // if (run_auto_parallel) {
-        //   auto dist_attr =
-        //   dialect::CvtToPirAttr(spmd_info.second[value_index]);
-        //   out_types.push_back(dialect::CvtToPirDistType(type, dist_attr));
-        //   dist_attrs.push_back(dist_attr);
-        // } else {
-        //   out_types.push_back(std::move(type));
-        // }
-        // value_index++;
-      }
-      pir::Type out_vector_type =
-          pir::VectorType::get(pir::IrContext::Instance(), out_types);
-      argument_outputs.push_back(out_vector_type);
-      if (run_auto_parallel) {
-        dist_result_attrs.push_back(
-            pir::ArrayAttribute::get(pir::IrContext::Instance(), dist_attrs));
-      }
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Currently, vector<Tensor> output is not supported in Python "
+          "operator."));
     } else {
       auto dense_out = process_result[value_index];
       auto out_type = paddle::dialect::DenseTensorType::get(
@@ -1427,7 +1354,6 @@ static PyObject *run_python_op(PyObject *self,
     }
   }
   callstack_recorder.AttachToOps();
-  VLOG(0) << "return ToPyObject(op_results);";
   return ToPyObject(op_results);
 }
 
