@@ -3631,12 +3631,12 @@ std::unordered_map<std::string, void*> ParsePythonOpAttrs(PyObject* py_dict) {
   PyObject* py_real_fn = PyDict_GetItemString(py_dict, "fn_ptr");
   if (!py_infer_meta || !py_real_fn) {
     PADDLE_THROW(common::errors::NotFound(
-        "Missing required keys 'infer_meta_fn_ptr' or 'fn_ptr' in op attrs"));
+        "Missing required keys 'infer_meta_fn_ptr' or 'fn_ptr' in op attrs."));
   }
 
   if (!PyCallable_Check(py_infer_meta) || !PyCallable_Check(py_real_fn)) {
     PADDLE_THROW(common::errors::InvalidType(
-        "Expected callable objects for 'infer_meta_fn_ptr' and 'fn_ptr'"));
+        "Expected callable objects for 'infer_meta_fn_ptr' and 'fn_ptr'."));
   }
 
   // Increase reference count to prevent garbage collection in C++

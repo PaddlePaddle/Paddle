@@ -31,9 +31,6 @@ HAS_VAR_ARGS_OR_KWARGS: int = inspect.CO_VARARGS | inspect.CO_VARKEYWORDS
 
 P1 = ParamSpec("P1")
 R1 = TypeVar("R1")
-P2 = ParamSpec("P2")
-R2 = TypeVar("R2")
-
 
 class MissingArgument:
     def __init__(self, fn: Callable[P1, R1], name: str):

@@ -93,7 +93,7 @@ class TestFnWithBreakgraph(unittest.TestCase, PythonOpTestMixin):
 
 class TestFnWithNumPyOperation(unittest.TestCase, PythonOpTestMixin):
     def setUp(self):
-        self.fn = fn_with_breakgraph
+        self.fn = fn_with_numpy_operation
         self.inputs = {
             "x": paddle.randn([7, 8, 9]),
             "y": paddle.randn([7, 8, 9]),

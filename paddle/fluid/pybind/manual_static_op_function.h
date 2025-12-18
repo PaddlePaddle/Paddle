@@ -1208,7 +1208,9 @@ static PyObject *run_python_op(PyObject *self,
       process_result.size(),
       outputs.size(),
       common::errors::InvalidArgument(
-          "%d and %d not equal!", process_result.size(), outputs.size()));
+          "Expected output size %d, but got %d.",
+          static_cast<int>(process_result.size()),
+          static_cast<int>(outputs.size())));
 
   dialect::ProcessMeshAttribute op_mesh;
   bool run_auto_parallel = false;

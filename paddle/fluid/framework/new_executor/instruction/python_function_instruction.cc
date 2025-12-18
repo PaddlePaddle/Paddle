@@ -81,7 +81,7 @@ void PythonFunctionInstruction::BuildPythonFunctionContext(
         PADDLE_THROW(common::errors::Unimplemented(
             "Only support Tensor input type for now in "
             "PythonFunctionInstruction, "
-            "not support VectorType<DenseTensorType>."));
+            "does not support VectorType<DenseTensorType>."));
       } else {
         input_index++;
         python_function_ctx_.EmplaceBackInput(paddle::Tensor());
@@ -113,7 +113,7 @@ void PythonFunctionInstruction::BuildPythonFunctionContext(
                                         "now in PythonFunctionInstruction, "
                                         "not support Vector<DenseTensor>."));
     } else {
-      PADDLE_THROW(common::errors::Unimplemented("Not support var type [%d] ",
+      PADDLE_THROW(common::errors::Unimplemented("Not support var type [%d].",
                                                  var->Type()));
     }
   }
@@ -188,10 +188,11 @@ void PythonFunctionInstruction::BuildPythonFunctionContext(
       PADDLE_THROW(
           common::errors::Unimplemented("Only support DenseTensor output type "
                                         "for now in PythonFunctionInstruction, "
-                                        "not support VectorType."));
+                                        "does not support VectorType."));
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
-          "only support DenseTensor and vector "));
+          "Only support DenseTensor and VectorType output types in "
+          "PythonFunctionInstruction."));
     }
   }
 
