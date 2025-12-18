@@ -150,7 +150,7 @@ jobs:
             source/tests/pd/test_multitask.py \
             source/tests/pd/test_training.py \
             source/tests/pd/test_update_sel.py \
-            source/tests/pd/test_utils.py -vvv --tb=long --color=yes 2>&1 | tee pytest_output.log
+            source/tests/pd/test_utils.py -vvv --tb=long --color=yes 2>&1 | tee /paddle/pytest_output.log
           TEST_RESULT=${PIPESTATUS[0]}
 
           echo ""
