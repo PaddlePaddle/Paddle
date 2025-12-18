@@ -443,14 +443,14 @@ __global__ void KeInterpAAFwNHWC(const T* in,
           const MT wx_val = static_cast<MT>(wx[x]);
           sum += static_cast<MT>(in[in_idx]) * wx_val;
         }
-        buffer2[y * c + ch] = static_cast<T>(sum);
+        buffer2[y] = static_cast<T>(sum);
       }
 
       // Interpolate on x-axis and write output
       MT sum = static_cast<MT>(0);
       for (int y = 0; y < ysize; y++) {
         const MT wy_val = static_cast<MT>(wy[y]);
-        sum += static_cast<MT>(buffer2[y * c + ch]) * wy_val;
+        sum += static_cast<MT>(buffer2[y]) * wy_val;
       }
 
       const int64_t out_idx =
@@ -488,7 +488,7 @@ __global__ void KeInterpAAFwNCHWNoSharedMem(const T* in,
   MT scale_h = ratio_h;
   MT scale_w = ratio_w;
 
-  const MT half = 0.5;
+  const MT half = static_cast<MT>(0.5);
   const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * half) * scale_h
                                         : interp_filter.size * half;
   const MT support_w = (scale_w >= 1.0) ? (interp_filter.size * half) * scale_w
@@ -502,42 +502,43 @@ __global__ void KeInterpAAFwNCHWNoSharedMem(const T* in,
   ComputeWeightsSpan<MT>(
       out_img_idy, in_img_h, scale_h, support_h, &ymin, &ysize, &ycenter);
 
-  // Compute weight normalization factors
+  static constexpr int kMaxInterpSize = 64;
+  T wx_local[kMaxInterpSize];
+  T wy_local[kMaxInterpSize];
+  T buffer2[kMaxInterpSize];
+
   MT total_wx =
       ComputeWeightSum<MT>(scale_w, interp_filter, xmin - xcenter, xsize);
+  for (int x = 0; x < xsize; x++) {
+    MT wx = ComputeSingleWeight<MT>(scale_w, interp_filter, xmin - xcenter, x);
+    if (total_wx != static_cast<MT>(0.0)) {
+      wx /= total_wx;
+    }
+    wx_local[x] = static_cast<T>(wx);
+  }
+
   MT total_wy =
       ComputeWeightSum<MT>(scale_h, interp_filter, ymin - ycenter, ysize);
+  for (int y = 0; y < ysize; y++) {
+    MT wy = ComputeSingleWeight<MT>(scale_h, interp_filter, ymin - ycenter, y);
+    if (total_wy != static_cast<MT>(0.0)) {
+      wy /= total_wy;
+    }
+    wy_local[y] = static_cast<T>(wy);
+  }
 
   for (size_t i = blockIdx.z; i < n * c; i += gridDim.z) {
-    MT final_sum = static_cast<MT>(0);
-
-    // Two-pass interpolation: first along x, then along y
+    // Interpolate on x-axis for this channel/batch combination
     for (int y = 0; y < ysize; y++) {
-      // Compute weight for y
-      MT wy =
-          ComputeSingleWeight<MT>(scale_h, interp_filter, ymin - ycenter, y);
-      if (total_wy != 0.0) {
-        wy /= total_wy;
-      }
-
-      // Interpolate along x for this row
-      MT row_sum = static_cast<MT>(0);
-      for (int x = 0; x < xsize; x++) {
-        MT wx =
-            ComputeSingleWeight<MT>(scale_w, interp_filter, xmin - xcenter, x);
-        if (total_wx != 0.0) {
-          wx /= total_wx;
-        }
-        const T* in_ptr =
-            &in[i * in_img_h * in_img_w + (ymin + y) * in_img_w + xmin + x];
-        row_sum += static_cast<MT>(*in_ptr) * wx;
-      }
-
-      final_sum += row_sum * wy;
+      const T* buffer1 =
+          &in[i * in_img_h * in_img_w + (ymin + y) * in_img_w + xmin];
+      buffer2[y] = static_cast<T>(
+          InterpolateAASingleDim<T, MT>(buffer1, wx_local, xsize));
     }
 
+    // Interpolate on y-axis and write output
     out[i * out_img_h * out_img_w + out_img_idy * out_img_w + out_img_idx] =
-        static_cast<T>(final_sum);
+        static_cast<T>(InterpolateAASingleDim<T, MT>(buffer2, wy_local, ysize));
   }
 }
 
@@ -565,7 +566,7 @@ __global__ void KeInterpAAFwNHWCNoSharedMem(const T* in,
   MT scale_h = ratio_h;
   MT scale_w = ratio_w;
 
-  const MT half = 0.5;
+  const MT half = static_cast<MT>(0.5);
   const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * half) * scale_h
                                         : interp_filter.size * half;
   const MT support_w = (scale_w >= 1.0) ? (interp_filter.size * half) * scale_w
@@ -579,48 +580,53 @@ __global__ void KeInterpAAFwNHWCNoSharedMem(const T* in,
   ComputeWeightsSpan<MT>(
       out_img_idy, in_img_h, scale_h, support_h, &ymin, &ysize, &ycenter);
 
-  // Compute weight normalization factors
+  static constexpr int kMaxInterpSize = 64;
+  T wx_local[kMaxInterpSize];
+  T wy_local[kMaxInterpSize];
+  T temp_row[kMaxInterpSize];
+  T buffer2[kMaxInterpSize];
+
   MT total_wx =
       ComputeWeightSum<MT>(scale_w, interp_filter, xmin - xcenter, xsize);
+  for (int x = 0; x < xsize; x++) {
+    MT wx = ComputeSingleWeight<MT>(scale_w, interp_filter, xmin - xcenter, x);
+    if (total_wx != static_cast<MT>(0.0)) {
+      wx /= total_wx;
+    }
+    wx_local[x] = static_cast<T>(wx);
+  }
+
   MT total_wy =
       ComputeWeightSum<MT>(scale_h, interp_filter, ymin - ycenter, ysize);
+  for (int y = 0; y < ysize; y++) {
+    MT wy = ComputeSingleWeight<MT>(scale_h, interp_filter, ymin - ycenter, y);
+    if (total_wy != static_cast<MT>(0.0)) {
+      wy /= total_wy;
+    }
+    wy_local[y] = static_cast<T>(wy);
+  }
 
   for (size_t i = blockIdx.z; i < n; i += gridDim.z) {
     for (size_t ch = 0; ch < c; ch++) {
-      MT final_sum = static_cast<MT>(0);
-
-      // Two-pass interpolation: first along x, then along y
+      // Interpolate on x-axis for this channel
       for (int y = 0; y < ysize; y++) {
-        // Compute weight for y
-        MT wy =
-            ComputeSingleWeight<MT>(scale_h, interp_filter, ymin - ycenter, y);
-        if (total_wy != 0.0) {
-          wy /= total_wy;
-        }
-
-        // Interpolate along x for this row
-        MT row_sum = static_cast<MT>(0);
         for (int x = 0; x < xsize; x++) {
-          MT wx = ComputeSingleWeight<MT>(
-              scale_w, interp_filter, xmin - xcenter, x);
-          if (total_wx != 0.0) {
-            wx /= total_wx;
-          }
           const int64_t in_idx =
               (i * in_img_h * in_img_w + (ymin + y) * in_img_w + (xmin + x)) *
                   c +
               ch;
-          row_sum += static_cast<MT>(in[in_idx]) * wx;
+          temp_row[x] = in[in_idx];
         }
-
-        final_sum += row_sum * wy;
+        buffer2[y] = static_cast<T>(
+            InterpolateAASingleDim<T, MT>(temp_row, wx_local, xsize));
       }
 
       const int64_t out_idx =
           (i * out_img_h * out_img_w + out_img_idy * out_img_w + out_img_idx) *
               c +
           ch;
-      out[out_idx] = static_cast<T>(final_sum);
+      out[out_idx] = static_cast<T>(
+          InterpolateAASingleDim<T, MT>(buffer2, wy_local, ysize));
     }
   }
 }
@@ -1457,9 +1463,7 @@ static void InterpolateAA2DCUDAFwd(
     return;
   }
 
-  using MT = std::conditional_t<std::is_integral<T>::value,
-                                float,
-                                typename phi::dtype::MPTypeTrait<T>::Type>;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   MT ratio_h =
       funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
   MT ratio_w =

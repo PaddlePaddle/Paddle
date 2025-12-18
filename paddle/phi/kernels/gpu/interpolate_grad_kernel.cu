@@ -920,11 +920,10 @@ __global__ void KeInterpAABwNCHW(T* in_grad,
   MT scale_h = ratio_h;
   MT scale_w = ratio_w;
 
-  const MT half = 0.5;
-  const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * half) * scale_h
-                                        : interp_filter.size * half;
-  const MT support_w = (scale_w >= 1.0) ? (interp_filter.size * half) * scale_w
-                                        : interp_filter.size * half;
+  const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * 0.5) * scale_h
+                                        : interp_filter.size * 0.5;
+  const MT support_w = (scale_w >= 1.0) ? (interp_filter.size * 0.5) * scale_w
+                                        : interp_filter.size * 0.5;
 
   const int interp_height = static_cast<int>(ceilf(support_h)) * 2 + 1;
   const int interp_width = static_cast<int>(ceilf(support_w)) * 2 + 1;
@@ -998,11 +997,10 @@ __global__ void KeInterpAABwNHWC(T* in_grad,
   MT scale_h = ratio_h;
   MT scale_w = ratio_w;
 
-  const MT half = 0.5;
-  const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * half) * scale_h
-                                        : interp_filter.size * half;
-  const MT support_w = (scale_w >= 1.0) ? (interp_filter.size * half) * scale_w
-                                        : interp_filter.size * half;
+  const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * 0.5) * scale_h
+                                        : interp_filter.size * 0.5;
+  const MT support_w = (scale_w >= 1.0) ? (interp_filter.size * 0.5) * scale_w
+                                        : interp_filter.size * 0.5;
 
   const int interp_height = static_cast<int>(ceilf(support_h)) * 2 + 1;
   const int interp_width = static_cast<int>(ceilf(support_w)) * 2 + 1;
@@ -1085,11 +1083,10 @@ __global__ void KeInterpAABwNCHWNoSharedMem(T* in_grad,
   MT scale_h = ratio_h;
   MT scale_w = ratio_w;
 
-  const MT half = 0.5;
-  const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * half) * scale_h
-                                        : interp_filter.size * half;
-  const MT support_w = (scale_w >= 1.0) ? (interp_filter.size * half) * scale_w
-                                        : interp_filter.size * half;
+  const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * 0.5) * scale_h
+                                        : interp_filter.size * 0.5;
+  const MT support_w = (scale_w >= 1.0) ? (interp_filter.size * 0.5) * scale_w
+                                        : interp_filter.size * 0.5;
 
   // Compute weights span
   int xmin, xsize, ymin, ysize;
@@ -1150,11 +1147,10 @@ __global__ void KeInterpAABwNHWCNoSharedMem(T* in_grad,
   MT scale_h = ratio_h;
   MT scale_w = ratio_w;
 
-  const MT half = 0.5;
-  const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * half) * scale_h
-                                        : interp_filter.size * half;
-  const MT support_w = (scale_w >= 1.0) ? (interp_filter.size * half) * scale_w
-                                        : interp_filter.size * half;
+  const MT support_h = (scale_h >= 1.0) ? (interp_filter.size * 0.5) * scale_h
+                                        : interp_filter.size * 0.5;
+  const MT support_w = (scale_w >= 1.0) ? (interp_filter.size * 0.5) * scale_w
+                                        : interp_filter.size * 0.5;
 
   // Compute weights span
   int xmin, xsize, ymin, ysize;
