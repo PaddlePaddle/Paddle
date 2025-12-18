@@ -630,12 +630,11 @@ def scaled_dot_product_attention(
         key, value = _repeat_kv(key, value, repeats)
 
         if is_causal:
-            bias_input = LowerTriangularMask()
+            attn_mask = LowerTriangularMask()
         elif attn_mask is not None:
             # memory_efficient_attention does not support broadcast num_heads dim when batch_size dim is not 1
             if (
-                attn_mask is not None
-                and attn_mask.dim() == 4
+                attn_mask.dim() == 4
                 and attn_mask.shape[0] != 1
                 and attn_mask.shape[1] != num_heads_q
             ):
@@ -647,14 +646,11 @@ def scaled_dot_product_attention(
                         attn_mask.shape[3],
                     ]
                 )
-            bias_input = attn_mask
-        else:
-            bias_input = None
         out = memory_efficient_attention(
             query,
             key,
             value,
-            attn_bias=bias_input,
+            attn_bias=attn_mask,
             p=dropout_p,
             scale=scale,
             training=training,
