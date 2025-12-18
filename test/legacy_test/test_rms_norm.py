@@ -40,7 +40,7 @@ class TestRMSNorm(unittest.TestCase):
         x = paddle.randn([rows, cols])
         scale = paddle.randn([cols])
 
-        y_fused, invvar_fused = rms_norm_nzs(x, scale)
+        y_fused, invvar_fused = rms_norm_nzs(x, (cols,), scale)
 
         y_ref, invvar_ref = self.rms_norm_reference(x, scale)
 
@@ -54,7 +54,7 @@ class TestRMSNorm(unittest.TestCase):
         x = paddle.randn([batch, rows, cols])
         scale = paddle.randn([cols])
 
-        y_fused, invvar_fused = rms_norm_nzs(x, scale)
+        y_fused, invvar_fused = rms_norm_nzs(x, (cols,), scale)
 
         y_ref, invvar_ref = self.rms_norm_reference(x, scale)
 
@@ -73,7 +73,7 @@ class TestRMSNorm(unittest.TestCase):
         x = paddle.randn([rows, cols])
         scale = paddle.randn([cols])
 
-        y_fused, invvar_fused = rms_norm_nzs(x, scale)
+        y_fused, invvar_fused = rms_norm_nzs(x, (cols,), scale)
 
         y_ref, invvar_ref = self.rms_norm_reference(x, scale)
 
@@ -89,7 +89,7 @@ class TestRMSNorm(unittest.TestCase):
         scale = paddle.randn([cols], dtype='float32')
         scale.stop_gradient = False
 
-        y_fused, invvar = rms_norm_nzs(x, scale)
+        y_fused, invvar = rms_norm_nzs(x, (cols,), scale)
 
         loss = paddle.mean(y_fused)
         loss.backward()
@@ -124,7 +124,7 @@ class TestRMSNorm(unittest.TestCase):
                 scale = paddle.randn([cols], dtype=scale_type)
                 scale.stop_gradient = False
 
-                y_fused, invvar = rms_norm_nzs(x, scale)
+                y_fused, invvar = rms_norm_nzs(x, (cols,), scale)
 
                 loss = paddle.mean(y_fused)
                 loss.backward()
@@ -228,7 +228,7 @@ class TestFastRMSNorm(unittest.TestCase):
                 # 2. Forward computation
                 y_ref, _ = self._fast_rms_ref(x_ref, scale_ref, epsilon=epsilon)
                 y_proposed, _ = rms_norm_nzs(
-                    x_proposed, scale_proposed, epsilon=epsilon
+                    x_proposed, (H,), scale_proposed, epsilon=epsilon
                 )
 
                 # 3. Gradient computation

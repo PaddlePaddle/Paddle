@@ -877,40 +877,109 @@ group_norm.__signature__ = inspect.signature(_group_norm_wrapper)
 
 
 def rms_norm_nzs(
-    x: Tensor,
-    scale: Tensor,
+    input: Tensor,
+    normalized_shape: int | Sequence[int],
+    weight: Tensor | None = None,
     epsilon: float = 1e-5,
     name: str | None = None,
 ) -> tuple[Tensor, Tensor]:
     """
     Applies Layer Normalization over the last dimension of the input tensor using CUDA implementation.
+
     Args:
-        x (Tensor): Input tensor of shape [rows, cols] or higher dimensions (flattened to 2D).
-        scale (Tensor): Scale tensor of shape [cols].
-        bias (Tensor, optional): Bias tensor of shape [cols]. If None, no bias is added.
-        epsilon (float): Small constant to avoid division by zero.
+        input (Tensor): Input tensor of shape [rows, cols] or higher dimensions (flattened to 2D).
+        normalized_shape(int|list|tuple): Input shape from an expected input of
+            size :math:`[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`.
+            If it is a single integer, this module will normalize over the last dimension
+            which is expected to be of that specific size.
+        weight(Tensor, optional): The weight tensor of rms_norm. Default: None.
+        epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-05.
         name (str, optional): Name of the operator.
+
     Returns:
-        y (Tensor): Normalized tensor of same shape as x.
-        mean (Tensor): Tensor of shape [rows], the mean of each row.
+        out (Tensor): Normalized tensor of same shape as input.
         invvar (Tensor): Tensor of shape [rows], the inverse standard deviation of each row.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.seed(2023)
+            >>> input = paddle.rand((2, 2, 2, 3))
+            >>> weight = paddle.rand(3)
+            >>> out, invvar = paddle.nn.functional.rms_norm(input, input.shape[-1], weight)
+
+            >>> print(out)
+            Tensor(shape=[2, 2, 2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [[[[0.00656056, 1.59749460, 0.33684930],
+            [0.25545901, 1.32124639, 0.22778045]],
+            [[0.35059106, 0.71675038, 0.41430289],
+            [0.36390519, 0.92316359, 0.09792893]]],
+            [[[0.06212470, 0.88866514, 0.82781523],
+            [0.10534675, 0.11984488, 0.95332414]],
+            [[0.36815676, 0.31728131, 0.49593782],
+            [0.32557520, 0.77431172, 0.47854698]]]])
+
+            >>> print(invvar)
+            Tensor(shape=[8], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [3.05103183, 2.21827126, 1.68399811, 1.66563344,
+             5.00298595, 1.69471145, 1.68923950, 1.72844732])
     """
+    input_shape = list(input.shape)
+    input_ndim = len(input_shape)
+    if isinstance(normalized_shape, numbers.Integral):
+        normalized_shape = [normalized_shape]
+    elif isinstance(normalized_shape, tuple):
+        normalized_shape = list(normalized_shape)
+    elif not isinstance(normalized_shape, list):
+        raise ValueError(
+            "`normalized_shape` should be int, list of ints or tuple of ints."
+        )
+
+    normalized_ndim = len(normalized_shape)
+    begin_norm_axis = input_ndim - normalized_ndim
+    if input_ndim < normalized_ndim or (
+        not paddle.utils.is_same_shape(
+            input_shape[begin_norm_axis:], normalized_shape
+        )
+    ):
+        str_normalized_shape = str(normalized_shape)
+        raise ValueError(
+            'Given normalized_shape is '
+            + str_normalized_shape
+            + ', expected input with shape [*, '
+            + str_normalized_shape[1:]
+            + ', but got input shape '
+            + str(input_shape)
+        )
+
+    if normalized_ndim != 1:
+        raise ValueError(
+            'Given len(normalized_shape) is '
+            + normalized_ndim
+            + ', expected len(normalized_shape) is 1.'
+        )
+
+    if weight is None:
+        raise ValueError("weight must not be None.")
+
     if in_dynamic_or_pir_mode():
-        return _C_ops.rms_norm_nzs(x, scale, epsilon)
+        return _C_ops.rms_norm_nzs(input, weight, epsilon)
 
     helper = LayerHelper('rms_norm_nzs', **locals())
     from paddle.base.data_feeder import convert_dtype
 
-    dtype = convert_dtype(x.dtype)
-    y = helper.create_variable_for_type_inference(dtype)
+    dtype = convert_dtype(input.dtype)
+    out = helper.create_variable_for_type_inference(dtype)
     invvar = helper.create_variable_for_type_inference('float32')
 
-    inputs = {'x': x, 'scale': scale}
+    inputs = {'input': input, 'weight': weight}
 
     helper.append_op(
         type='rms_norm_nzs',
         inputs=inputs,
-        outputs={'y': y, 'invvar': invvar},
+        outputs={'out': out, 'invvar': invvar},
         attrs={'epsilon': epsilon},
     )
-    return y, invvar
+    return out, invvar
