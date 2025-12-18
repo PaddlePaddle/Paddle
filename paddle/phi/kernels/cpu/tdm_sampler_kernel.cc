@@ -44,7 +44,6 @@ void TDMSamplerInner(const Context &dev_ctx,
                      phi::DenseTensor *mask) {
   // get dimension
   int64_t input_ids_num = input_tensor.numel();
-  // TODO(large-tensor): downstream functors may still use int
 
   VLOG(3) << "TDM: input ids nums: " << input_ids_num;
   auto layer_nums = neg_samples_num_list.size();
@@ -83,7 +82,7 @@ void TDMSamplerInner(const Context &dev_ctx,
   }
   VLOG(3) << "TDM: get sampler ";
 
-  for (int i = 0; i < input_ids_num; ++i) {
+  for (int64_t i = 0; i < input_ids_num; ++i) {
     // find leaf node travel path
     T input_id = input_data[i];
     PADDLE_ENFORCE_LT(
@@ -106,7 +105,10 @@ void TDMSamplerInner(const Context &dev_ctx,
             input_id));
 
     VLOG(3) << "TDM: input id: " << input_id;
-    int start_offset = static_cast<int>(input_id * layer_nums);
+    // TODO(large-tensor): array index not support int64
+    int64_t start_offset_val = input_id * layer_nums;
+    PADDLE_ENFORCE_LE_INT_MAX(start_offset_val, "input_id * layer_nums");
+    int start_offset = static_cast<int>(start_offset_val);
     VLOG(3) << "TDM: Start offset(input_id * layer_nums): " << start_offset;
     // nce sample, layer by layer
     int offset = 0;

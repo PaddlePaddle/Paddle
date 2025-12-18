@@ -47,12 +47,17 @@ void CreateMaskMatrix(const CPUContext& dev_ctx,
                       const bool& is_reverse,
                       int* min_seq_len) {
   const auto& seq_len_vec = phi::GetVectorFromTensor<int>(sequence_length);
-  const int table_width = mask_matrix->dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t table_width = mask_matrix->dims()[0];
+  // TODO(large-tensor): min_seq_len not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(table_width, "table_width");
+
   DenseTensor temp =
       Empty<T>(dev_ctx, {mask_matrix->dims()[1], mask_matrix->dims()[0]});
   T* data_temp = temp.data<T>();
   std::fill(data_temp, data_temp + mask_matrix->numel(), static_cast<T>(1.0));
-  *min_seq_len = table_width;
+  *min_seq_len = static_cast<int>(table_width);
   for (unsigned int i = 0; i < seq_len_vec.size(); i++) {
     // reset the mask matrix
     *min_seq_len = std::min(seq_len_vec[i], *min_seq_len);
@@ -170,8 +175,8 @@ void DropoutCpuFunctionInplace(const CPUContext& dev_ctx,
 template <typename Context, typename TensorType>
 void SplitReserveData(const Context& dev_ctx UNUSED,
                       int direction_num UNUSED,
-                      int time_step UNUSED,
-                      int batch_size UNUSED,
+                      int64_t time_step UNUSED,
+                      int64_t batch_size UNUSED,
                       int hidden_size UNUSED,
                       int gate_num,
                       int num_layers,
@@ -215,13 +220,9 @@ void AllocateReserveData(const Context& dev_ctx,
                          DenseTensor* hidden_data,
                          const DenseTensor* input) {
   int direction_num = is_bidirec ? 2 : 1;
-  // TODO(large-tensor): downstream functors may still use int
   int64_t time_step = input->dims()[0];
-
-  // TODO(large-tensor): downstream functors may still use int
   int64_t batch_size = input->dims()[1];
-
-  int block_size = direction_num * time_step * batch_size * hidden_size;
+  int64_t block_size = direction_num * time_step * batch_size * hidden_size;
   int hidden_data_idx = (num_layers - 1);
   if (is_lstm(mode)) {
     hidden_data_idx += (gate_num + 2) * num_layers;

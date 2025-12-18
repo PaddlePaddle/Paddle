@@ -26,7 +26,7 @@ class TestCaptureFwdGraph(unittest.TestCase):
             return
         x = paddle.rand([3, 9, 5])
         file_path = "./fwd_graph"
-        with paddle.utils.capture_fwd_graph_guard(file_path):
+        with paddle.utils.capture_forward_subgraph_guard(file_path):
             out0, out1, out2 = paddle.split(x, num_or_sections=3, axis=1)
             y = out0 + out1
             z = out1 - out2

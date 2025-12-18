@@ -828,7 +828,7 @@ static PyObject* tensor_method_clone(TensorObject* self,
             "We can only support initialized tensor in clone, however we got "
             "uninitialized tensor %s, please check your code.",
             self->tensor.name()));
-
+    SetPythonStack();
     out = assign_ad_func(self->tensor);
   }
   return ToPyObject(out);
@@ -977,7 +977,9 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
               static_cast<phi::distributed::DistTensor*>(grad->impl().get())
                   ->unsafe_mutable_value();
         }
-        if (set_to_zero) {
+        bool is_mismatched = self->tensor.place() != grad_t->place() ||
+                             self->tensor.dtype() != grad_t->dtype();
+        if (set_to_zero && !is_mismatched) {
           EagerSetDeviceId();
           auto* dev_ctx =
               phi::DeviceContextPool::Instance().Get(grad_t->place());

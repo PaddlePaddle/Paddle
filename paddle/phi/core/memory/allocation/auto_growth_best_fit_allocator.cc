@@ -18,6 +18,8 @@
 #include <mutex>  // NOLINT
 #include <utility>
 
+#include "glog/logging.h"
+
 #include "paddle/common/flags.h"
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/backends/device_manager.h"

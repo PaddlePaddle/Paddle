@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/process_group_flagcx.h"
+#include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
@@ -1061,6 +1062,20 @@ phi::distributed::FlagcxCommContext* ProcessGroupFlagcx::GetCommContext(
       nullptr,
       common::errors::Unavailable("FlagcxCommContext is nullptr"));
   return comm_context;
+}
+
+void ProcessGroupFlagcx::EraseTensorHolders() {
+  for (const auto& allocation_stream : allocation_stream_pairs_) {
+    auto holder_ptr = allocation_stream.first.lock();
+    if (holder_ptr) {
+      auto stream = reinterpret_cast<gpuStream_t*>(allocation_stream.second);
+      memory::EraseStream(holder_ptr, *stream);
+    }
+  }
+  VLOG(5) << "After task wait/synchronize, total "
+          << allocation_stream_pairs_.size()
+          << " tensor(s) allocation stream have been removed.";
+  allocation_stream_pairs_.clear();
 }
 
 void ProcessGroupFlagcx::StartCoalescing() {

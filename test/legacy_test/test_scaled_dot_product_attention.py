@@ -341,7 +341,7 @@ class TestZeroSizeBase(unittest.TestCase):
         self.key_shape = [1, 1024, 32, 128]
         self.value_shape = [1, 1024, 32, 128]
         self.attn_mask_shape = None
-        self.is_scausal = True
+        self.is_causal = True
         self.expected_out_shape = [1, 0, 32, 128]
         self.dtype = 'float16'
 
@@ -355,7 +355,7 @@ class TestZeroSizeBase(unittest.TestCase):
             )
             if self.attn_mask_shape
             else None,
-            "is_causal": self.is_scausal,
+            "is_causal": self.is_causal,
         }
         return kwargs
 
@@ -384,7 +384,7 @@ class TestZeroSizeCase2(TestZeroSizeBase):
         self.key_shape = [2, 64, 12, 64]
         self.value_shape = [2, 64, 12, 64]
         self.attn_mask_shape = None
-        self.is_scausal = True
+        self.is_causal = True
         self.expected_out_shape = [2, 0, 12, 64]
         self.dtype = 'float16'
 
@@ -395,7 +395,7 @@ class TestZeroSizeCase3(TestZeroSizeBase):
         self.key_shape = [1, 2048, 2, 0]
         self.value_shape = [1, 2048, 2, 0]
         self.attn_mask_shape = [1, 1, 2048, 0]
-        self.is_scausal = True
+        self.is_causal = True
         self.expected_out_shape = [1, 2048, 8, 0]
         self.dtype = 'float16'
 
@@ -406,7 +406,7 @@ class TestZeroSizeCase4(TestZeroSizeBase):
         self.key_shape = [1, 2048, 2, 16]
         self.value_shape = [1, 2048, 2, 0]
         self.attn_mask_shape = [1, 1, 2048, 2048]
-        self.is_scausal = True
+        self.is_causal = True
         self.expected_out_shape = [1, 2048, 8, 0]
         self.dtype = 'float16'
 
@@ -417,7 +417,7 @@ class TestZeroSizeCase5(TestZeroSizeBase):
         self.key_shape = [2, 100, 8, 96]
         self.value_shape = [2, 100, 8, 0]
         self.attn_mask_shape = None
-        self.is_scausal = False
+        self.is_causal = False
         self.expected_out_shape = [2, 1, 8, 0]
         self.dtype = 'float16'
 
@@ -428,8 +428,98 @@ class TestZeroSizeCase6(TestZeroSizeBase):
         self.key_shape = [2, 101, 8, 96]
         self.value_shape = [2, 101, 8, 0]
         self.attn_mask_shape = None
-        self.is_scausal = False
+        self.is_causal = False
         self.expected_out_shape = [2, 1, 8, 0]
+        self.dtype = 'float16'
+
+
+class TestZeroSizeCase7(TestZeroSizeBase):
+    def setUp(self):
+        self.query_shape = [1, 1024, 0, 128]
+        self.key_shape = [1, 1024, 0, 128]
+        self.value_shape = [1, 1024, 0, 128]
+        self.attn_mask_shape = None
+        self.is_causal = True
+        self.expected_out_shape = [1, 1024, 0, 128]
+        self.dtype = 'float16'
+
+
+class TestZeroSizeCase8(TestZeroSizeBase):
+    def setUp(self):
+        self.query_shape = [1, 1024, 0, 16]
+        self.key_shape = [1, 1024, 0, 16]
+        self.value_shape = [1, 1024, 0, 16]
+        self.attn_mask_shape = None
+        self.is_causal = True
+        self.expected_out_shape = [1, 1024, 0, 16]
+        self.dtype = 'float16'
+
+
+class TestZeroSizeCase9(TestZeroSizeBase):
+    def setUp(self):
+        self.query_shape = [1, 2048, 0, 16]
+        self.key_shape = [1, 2048, 0, 16]
+        self.value_shape = [1, 2048, 0, 16]
+        self.attn_mask_shape = [1, 1, 0, 2048]
+        self.is_causal = True
+        self.expected_out_shape = [1, 2048, 0, 16]
+        self.dtype = 'float16'
+
+
+class TestZeroSizeCase10(TestZeroSizeBase):
+    def setUp(self):
+        self.query_shape = [1, 2048, 0, 64]
+        self.key_shape = [1, 2048, 0, 64]
+        self.value_shape = [1, 2048, 0, 64]
+        self.attn_mask_shape = [1, 1, 0, 2048]
+        self.is_causal = True
+        self.expected_out_shape = [1, 2048, 0, 64]
+        self.dtype = 'float16'
+
+
+class TestZeroSizeCase11(TestZeroSizeBase):
+    def setUp(self):
+        self.query_shape = [2, 1, 0, 96]
+        self.key_shape = [2, 100, 0, 96]
+        self.value_shape = [2, 100, 0, 96]
+        self.attn_mask_shape = None
+        self.is_causal = False
+        self.expected_out_shape = [2, 1, 0, 96]
+        self.dtype = 'float16'
+
+
+class TestZeroSizeCase12(TestZeroSizeBase):
+    def setUp(self):
+        self.query_shape = [2, 1, 0, 96]
+        self.key_shape = [2, 101, 0, 96]
+        self.value_shape = [2, 101, 0, 96]
+        self.attn_mask_shape = None
+        self.is_causal = False
+        self.expected_out_shape = [2, 1, 0, 96]
+        self.dtype = 'float16'
+
+
+class TestZeroSizeCase13(TestZeroSizeBase):
+    def setUp(self):
+        # Case: Batch size is 0
+        self.query_shape = [0, 32, 8, 64]
+        self.key_shape = [0, 32, 8, 64]
+        self.value_shape = [0, 32, 8, 64]
+        self.attn_mask_shape = None
+        self.is_causal = True
+        self.expected_out_shape = [0, 32, 8, 64]
+        self.dtype = 'float16'
+
+
+class TestZeroSizeCase14(TestZeroSizeBase):
+    def setUp(self):
+        # Case: Batch size is 0, and NumHeads is 0
+        self.query_shape = [0, 32, 0, 64]
+        self.key_shape = [0, 32, 0, 64]
+        self.value_shape = [0, 32, 0, 64]
+        self.attn_mask_shape = None
+        self.is_causal = True
+        self.expected_out_shape = [0, 32, 0, 64]
         self.dtype = 'float16'
 
 
