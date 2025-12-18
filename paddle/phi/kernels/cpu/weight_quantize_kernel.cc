@@ -37,10 +37,10 @@ void quant_compute(const Context& dev_ctx,
 #ifndef PADDLE_WITH_HIP
   PADDLE_ENFORCE_EQ(
       ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
-       (arch == 89) || (arch == 90)),
+       (arch == 89) || (arch == 90) || (arch == 100)),
       true,
       common::errors::InvalidArgument(
-          "Currently, arch only support 70, 75, 80, 86, 89, 90."));
+          "Currently, arch only support 70, 75, 80, 86, 89, 90, 100."));
 
 #endif
   const auto x_dims = x.dims();
@@ -63,7 +63,7 @@ void quant_compute(const Context& dev_ctx,
   x_int.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
 #else
   if ((arch == 80) || (arch == 75) || (arch == 86) || (arch == 89) ||
-      (arch == 90)) {
+      (arch == 90) || (arch == 100)) {
     x_int.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
   } else {
     // phi::Copy may change tensor meta info, here we transpose the quanted
@@ -133,8 +133,8 @@ void quant_compute(const Context& dev_ctx,
       for (int i = 0; i < out->numel(); ++i) {
         out_data[i] = x_int_data[i];
       }
-    } else if ((arch == 90) || (arch == 89) || (arch == 86) || (arch == 80) ||
-               (arch == 75)) {
+    } else if ((arch == 100) || (arch == 90) || (arch == 89) || (arch == 86) ||
+               (arch == 80) || (arch == 75)) {
       permute_B_rows_for_mixed_gemm<bits>(
           int_processed_data, x_int_data, std::vector<size_t>{m, n});
       subbyte_transpose_impl<bits>(
