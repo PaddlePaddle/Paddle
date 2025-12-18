@@ -50,12 +50,11 @@ class TestAssertClose(unittest.TestCase):
             assert_close(1.0, 1.1, atol=0.05, rtol=0.0)
 
     def test_numpy_scalars(self):
-        if np:
-            assert_close(np.float32(1.0), np.float32(1.0))
-            assert_close(np.int32(1), np.int32(1))
-            assert_close(np.bool_(True), np.bool_(True))
+        assert_close(np.float32(1.0), np.float32(1.0))
+        assert_close(np.int32(1), np.int32(1))
+        assert_close(np.bool_(True), np.bool_(True))
 
-            assert_close(np.float64(1.0), 1.0)
+        assert_close(np.float64(1.0), 1.0)
 
     def test_tensor_exact_match(self):
         t1 = paddle.to_tensor([1.0, 2.0, 3.0])
@@ -93,7 +92,7 @@ class TestAssertClose(unittest.TestCase):
     def test_tensor_device_check(self):
         t1 = paddle.to_tensor([1.0])
         if paddle.device.is_compiled_with_cuda():
-            t_gpu = t1.cuda()
+            t_gpu = t1.to("gpu")
             with self.assertRaisesRegex(AssertionError, "place"):
                 assert_close(t1, t_gpu)
 
@@ -184,14 +183,14 @@ class TestAssertClose(unittest.TestCase):
         with self.assertRaises(AssertionError):
             assert_close(c1, c3)
 
-    # def test_int_tensor_promoted_check(self):
-    #     t1 = paddle.to_tensor([1, 2], dtype='int32')
-    #     t2 = paddle.to_tensor([1, 3], dtype='int32')
+    def test_int_tensor_promoted_check(self):
+        t1 = paddle.to_tensor([1, 2], dtype='int32')
+        t2 = paddle.to_tensor([1, 3], dtype='int32')
 
-    #     with self.assertRaises(AssertionError):
-    #         assert_close(t1, t2)
+        with self.assertRaises(AssertionError):
+            assert_close(t1, t2)
 
-    #     assert_close(t1, t1)
+        assert_close(t1, t1)
 
     def test_tolerance_validation_logic(self):
         with self.assertRaisesRegex(
@@ -292,6 +291,29 @@ class TestAssertClose(unittest.TestCase):
 
         self.assertIn("MockTuplePair(", rep_str_mock)
         self.assertIn("custom_key=custom_value,", rep_str_mock)
+
+    def test_static_graph_variable(self):
+        paddle.enable_static()
+        try:
+            main_prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+
+            with paddle.static.program_guard(main_prog, startup_prog):
+                x = paddle.static.data(name='x', shape=[2, 2], dtype='float32')
+                y = paddle.static.data(name='y', shape=[2, 2], dtype='float32')
+
+                assert_close(x, y)
+                with self.assertRaisesRegex(
+                    AssertionError, "Python types do not match"
+                ):
+                    assert_close(x, 1)
+
+                z = paddle.static.data(name='z', shape=[2, 2], dtype='int32')
+                assert_close(x, z, check_dtype=False)
+                with self.assertRaises(AssertionError):
+                    assert_close(x, z)
+        finally:
+            paddle.disable_static()
 
 
 if __name__ == '__main__':

@@ -20,13 +20,13 @@ import collections.abc
 import contextlib
 from typing import TYPE_CHECKING, Any, Callable, NoReturn
 
-if TYPE_CHECKING:
-    from collections.abc import Collection, Sequence
-
 import numpy as np
 
 import paddle
-import paddle.framework
+from paddle.base.data_feeder import promote_types
+
+if TYPE_CHECKING:
+    from collections.abc import Collection, Sequence
 
 
 class ErrorMeta(Exception):
@@ -84,9 +84,7 @@ def default_tolerances(
     for input in inputs:
         if isinstance(input, paddle.Tensor):
             dtypes.append(input.dtype)
-        elif isinstance(
-            input, (paddle.dtype, paddle.framework.core.VarDesc.VarType)
-        ):
+        elif isinstance(input, paddle.dtype):
             dtypes.append(input)
         else:
             raise TypeError(
@@ -512,12 +510,41 @@ class NumberPair(Pair):
         )
 
 
-class TensorLikePair(Pair):
-    """Pair for :class:`paddle.Tensor`-like inputs.
+class StaticPair(Pair):
+    def __init__(
+        self,
+        actual: Any,
+        expected: Any,
+        check_dtype: bool = True,
+        **other_parameters: Any,
+    ) -> None:
+        is_paddle_pir = isinstance(actual, paddle.pir.Value) or isinstance(
+            expected, paddle.pir.Value
+        )
 
-    Note: Paddle's sparse and quantized tensor APIs differ from PyTorch's.
-    This implementation focuses on standard Strided tensors.
-    """
+        if not is_paddle_pir:
+            self._inputs_not_supported()
+
+        super().__init__(actual, expected, **other_parameters)
+        self.check_dtype = check_dtype
+
+    def compare(self) -> None:
+        if type(self.actual) is not type(self.expected):
+            self._fail(
+                AssertionError,
+                f"The Python types do not match: {type(self.actual)} != {type(self.expected)}.",
+            )
+
+        if self.check_dtype:
+            if self.actual.dtype != self.expected.dtype:
+                self._fail(
+                    AssertionError,
+                    f"The PIR dtypes do not match: {self.actual.dtype} != {self.expected.dtype}.",
+                )
+
+
+class TensorLikePair(Pair):
+    """Pair for :class:`paddle.Tensor`-like inputs."""
 
     def __init__(
         self,
@@ -531,7 +558,6 @@ class TensorLikePair(Pair):
         equal_nan: bool = False,
         check_device: bool = True,
         check_dtype: bool = True,
-        check_stride: bool = False,
         **other_parameters: Any,
     ):
         actual, expected = self._process_inputs(
@@ -545,7 +571,6 @@ class TensorLikePair(Pair):
         self.equal_nan = equal_nan
         self.check_device = check_device
         self.check_dtype = check_dtype
-        self.check_stride = check_stride
 
     def _process_inputs(
         self,
@@ -617,45 +642,18 @@ class TensorLikePair(Pair):
             expected = expected.cpu()
 
         if actual.dtype != expected.dtype:
-            actual_is_fp = actual.dtype in [
-                paddle.float32,
-                paddle.float64,
-                paddle.float16,
-            ]
-            expected_is_fp = expected.dtype in [
-                paddle.float32,
-                paddle.float64,
-                paddle.float16,
-            ]
-
-            target_dtype = actual.dtype
-            if (
-                expected.dtype == paddle.complex128
-                or actual.dtype == paddle.complex128
-            ):
-                target_dtype = paddle.complex128
-            elif (
-                expected.dtype == paddle.complex64
-                or actual.dtype == paddle.complex64
-            ):
-                target_dtype = (
-                    paddle.complex64
-                    if target_dtype != paddle.complex128
-                    else paddle.complex128
-                )
-            elif (
-                expected.dtype == paddle.float64
-                or actual.dtype == paddle.float64
-            ):
-                target_dtype = paddle.float64
-            elif (
-                expected.dtype == paddle.float32
-                or actual.dtype == paddle.float32
-            ):
-                target_dtype = paddle.float32
-
-            actual = actual.astype(target_dtype)
-            expected = expected.astype(target_dtype)
+            actual_dtype = actual.dtype
+            expected_dtype = expected.dtype
+            # For uint64, this is not sound in general, which is why promote_types doesn't
+            # allow it, but for easy testing, we're unlikely to get confused
+            # by large uint64 overflowing into negative int64
+            if actual_dtype in [paddle.uint64, paddle.uint32, paddle.uint16]:
+                actual_dtype = paddle.int64
+            if expected_dtype in [paddle.uint64, paddle.uint32, paddle.uint16]:
+                expected_dtype = paddle.int64
+            dtype = promote_types(actual_dtype, expected_dtype)
+            actual = actual.astype(dtype)
+            expected = expected.astype(dtype)
 
         return actual, expected
 
@@ -714,7 +712,6 @@ class TensorLikePair(Pair):
             "equal_nan",
             "check_device",
             "check_dtype",
-            "check_stride",
         )
 
 
@@ -871,11 +868,11 @@ def assert_close(
     check_device: bool = True,
     check_dtype: bool = True,
     msg: str | Callable[[str], str] | None = None,
-):
+) -> None:
     r"""
     Asserts that ``actual`` and ``expected`` are close.
 
-    If ``actual`` and ``expected`` are strided, non-quantized, real-valued, and finite, they are considered close if
+    If ``actual`` and ``expected`` are real-valued, and finite, they are considered close if
 
     .. math::
 
@@ -886,16 +883,10 @@ def assert_close(
 
     In addition, they are only considered close if they have the same
 
-    - :attr:`~paddle.Tensor.place` (if ``check_place`` is ``True``),
+    - :attr:`~paddle.Tensor.place` (if ``check_device`` is ``True``),
     - ``dtype`` (if ``check_dtype`` is ``True``),
-    - stride (if ``check_stride`` is ``True``).
 
-    If either ``actual`` or ``expected`` is a meta tensor, only the attribute checks will be performed.
-
-    If ``actual`` and ``expected`` are sparse (having COO, CSR, CSC, BSR, or BSC layout), their strided members are
-    checked individually. Indices are always checked for equality whereas the values are checked for closeness according to the definition above.
-
-    If ``actual`` and ``expected`` are quantized, they are considered close if they have the same quantization parameters and the result of :meth:`~paddle.Tensor.dequantize` is close according to the definition above.
+    In static graph mode, only the check_dtype attribute verification will be performed.
 
     ``actual`` and ``expected`` can be :class:`~paddle.Tensor`'s or any tensor-or-scalar-likes from which
     :class:`paddle.Tensor`'s can be constructed with :func:`paddle.to_tensor`. Except for Python scalars the input types
@@ -919,31 +910,14 @@ def assert_close(
         atol (float, optional): Absolute tolerance. If specified ``rtol`` must also be specified. If omitted, default
             values based on the :attr:`~paddle.Tensor.dtype` are selected with the below table.
         equal_nan (bool|str, optional): If ``True``, two ``NaN`` values will be considered equal.
-        check_place (bool): If ``True`` (default), asserts that corresponding tensors are on the same
+        check_device (bool): If ``True`` (default), asserts that corresponding tensors are on the same
             :attr:`~paddle.Tensor.place`. If this check is disabled, tensors on different
             :attr:`~paddle.Tensor.place`'s are moved to the CPU before being compared.
         check_dtype (bool): If ``True`` (default), asserts that corresponding tensors have the same ``dtype``. If this
             check is disabled, tensors with different ``dtype``'s are promoted to a common ``dtype`` before being compared.
-        check_stride (bool): If ``True`` and corresponding tensors are strided, asserts that they have the same stride.
         msg (str|Callable[[str], str], optional): Optional error message to use in case a failure occurs during
-            the comparison. Can also passed as callable in which case it will be called with the generated message and
+            the comparison. Can also be passed as callable in which case it will be called with the generated message and
             should return the new message.
-
-    Raises:
-        ValueError: If no :class:`paddle.Tensor` can be constructed from an input.
-        ValueError: If only ``rtol`` or ``atol`` is specified.
-        AssertionError: If corresponding inputs are not Python scalars and are not directly related.
-        AssertionError: If ``allow_subclasses`` is ``False``, but corresponding inputs are not Python scalars and have
-            different types.
-        AssertionError: If the inputs are :class:`~collections.abc.Sequence`'s, but their length does not match.
-        AssertionError: If the inputs are :class:`~collections.abc.Mapping`'s, but their set of keys do not match.
-        AssertionError: If corresponding tensors do not have the same :attr:`~paddle.Tensor.shape`.
-        AssertionError: If only one of corresponding tensors is quantized.
-        AssertionError: If ``check_place`` is ``True``, but corresponding tensors are not on the same
-            :attr:`~paddle.Tensor.place`.
-        AssertionError: If ``check_dtype`` is ``True``, but corresponding tensors do not have the same ``dtype``.
-        AssertionError: If ``check_stride`` is ``True``, but corresponding strided tensors do not have the same stride.
-        AssertionError: If the values of corresponding tensors are not close according to the definition above.
 
     The following table displays the default ``rtol`` and ``atol`` for different ``dtype``'s. In case of mismatching
     ``dtype``'s, the maximum of both tolerances is used.
@@ -1058,6 +1032,7 @@ def assert_close(
             NonePair,
             BooleanPair,
             NumberPair,
+            StaticPair,
             TensorLikePair,
         ),
         allow_subclasses=allow_subclasses,
