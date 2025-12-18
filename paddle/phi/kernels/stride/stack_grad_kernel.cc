@@ -130,9 +130,9 @@ PD_REGISTER_KERNEL(stack_grad,
                    phi::complex128) {}
 #endif
 
-#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(stack_grad,
-                   Custom,
+                   XPU,
                    STRIDED,
                    phi::StackGradStrideKernel,
                    float,
