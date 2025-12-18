@@ -1024,7 +1024,7 @@ auto CreatePyFuncRunner(void *py_func_ptr, const std::string &op_name) {
     if (raw_result == nullptr) {
       PyErr_Print();
       PADDLE_THROW(
-          common::errors::Fatal("Execution of the customPythonOp (%s) failed.\n"
+          common::errors::Fatal("Execution of the Python OP (%s) failed.\n"
                                 "Please review your code, and you may use "
                                 "breakpoint() for debugging.",
                                 op_name));

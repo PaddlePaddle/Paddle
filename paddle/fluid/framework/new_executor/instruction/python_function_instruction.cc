@@ -111,7 +111,7 @@ void PythonFunctionInstruction::BuildPythonFunctionContext(
       PADDLE_THROW(
           common::errors::Unimplemented("Only support Tensor input type for "
                                         "now in PythonFunctionInstruction, "
-                                        "not support Vector<DenseTensor>."));
+                                        "does not support Vector<DenseTensor>."));
     } else {
       PADDLE_THROW(common::errors::Unimplemented("Not support var type [%d].",
                                                  var->Type()));
