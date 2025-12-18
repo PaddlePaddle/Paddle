@@ -322,11 +322,11 @@ PythonFunctionInstruction::PythonFunctionInstruction(
           "can not find OpYamlInfoInterface from [%s]", op_name));
   paddle::dialect::OpYamlInfoParser yaml_info_parser(
       yaml_interface->get_op_info_(op_name),
-      paddle::dialect::IsLegacyOp(op_name));
+      /*is_legacy_op=*/false);
   VLOG(6) << "finish process yaml_info_parser";
   const auto& op_meta =
       paddle::framework::detail::GetPythonOperatorInfoByPirName(op_name);
-  custom_op_meta_ = &op_meta;  // 后面把这个 custom_op_meta_ 删了吧啊？没啥用
+  custom_op_meta_ = &op_meta;
 
   py_func_ptr_ = &(OpMetaInfoHelper::GetPythonOperatorFunction(op_meta));
   py_func_infer_meta_ptr_ =
@@ -406,7 +406,6 @@ void PythonFunctionInstruction::Run() {
   VLOG(3) << "Custom Operator: InferShape - calc output ddim.";
   BuildShapeDtype();
 
-  // UpdateOutputMeta();
   for (auto& pair : this->InplaceInfo()) {
     ShareVarBuffer(pair.first, pair.second);
   }
@@ -415,16 +414,14 @@ void PythonFunctionInstruction::Run() {
       py_func_ptr_,
       common::errors::InvalidArgument("Custom kernel function is nullptr."));
 
-  // 这里假设只有俩参数
   std::vector<Tensor> vec_dense_inputs;
   size_t num = op_->num_operands();
-  VLOG(0) << "Op num_operands: " << num;
   for (size_t i = 0; i < num; ++i) {
     vec_dense_inputs.push_back(python_function_ctx_.InputAt(i));
   }
 
   auto out = (*py_func_ptr_)(vec_dense_inputs);
-  python_function_ctx_.ValidateAndAssignOutputs(out);  // 从宏里面扒出来
+  python_function_ctx_.ValidateAndAssignOutputs(out);
   if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("PythonFunctionInstruction " + custom_op_name_ + " finish");
   }
