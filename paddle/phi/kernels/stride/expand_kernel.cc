@@ -186,7 +186,7 @@ PD_REGISTER_KERNEL(expand,
                    phi::complex64,
                    phi::complex128) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(expand,
                    GPU,
                    STRIDED,
@@ -207,9 +207,9 @@ PD_REGISTER_KERNEL(expand,
                    phi::complex128) {}
 #endif
 
-#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(expand,
-                   Custom,
+                   XPU,
                    STRIDED,
                    phi::ExpandStrideKernel,
                    double,
