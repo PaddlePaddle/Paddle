@@ -116,7 +116,8 @@ PD_REGISTER_KERNEL(add_grad,
                    int8_t,
                    int64_t,
                    phi::complex64,
-                   phi::complex128) {}
+                   phi::complex128,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(add_double_grad,
                    CPU,
