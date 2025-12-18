@@ -665,7 +665,9 @@ class BuildExtension(build_ext):
             worker_number = _compute_worker_number(
                 requested_workers, os.cpu_count(), len(objects)
             )
-            print(f"Using {worker_number} workers for compilation. HINT: export MAX_JOBS=n to set the number of workers")
+            print(
+                f"Using {worker_number} workers for compilation. HINT: export MAX_JOBS=n to set the number of workers"
+            )
             with ThreadPoolExecutor(max_workers=worker_number) as executor:
                 # Submit all compilation tasks to the thread pool.
                 futures = {
