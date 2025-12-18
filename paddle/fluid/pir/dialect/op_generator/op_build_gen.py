@@ -135,6 +135,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'KthvalueInferMeta',
     'MaxPoolWithIndexInferMeta',
     'MaxPoolV2InferMeta',
+    'MaxPool2DWithDilationsInferMeta',
     'MinMaxWithIndexInferMeta',
     'MultinomialInferMeta',
     'OverlapAddInferMeta',
