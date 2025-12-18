@@ -868,6 +868,8 @@ class GroupShardedStage3(nn.Layer):
     def align_param_to_buffer_and_clear_slice_param(self):
         for layer_id, params in self._trainable_params.items():
             for param in params:
+                if not param._is_initialized():
+                    continue
                 param_shape = param.shape
                 origin_state = param.stop_gradient
                 param.stop_gradient = True
