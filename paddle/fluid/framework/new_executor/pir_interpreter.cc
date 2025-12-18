@@ -2043,7 +2043,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     exception_holder_.Catch(std::current_exception());
   } catch (std::exception& ex) {
     LOG(WARNING) << instr_node->Name() << " raises an exception "
-                 << common::demangle(typeid(ex).name()) << ": " << ex.what();
+                 << common::demangle(typeid(ex).name());
     exception_holder_.Catch(std::current_exception());
   } catch (...) {
     LOG(WARNING) << instr_node->Name() << " raises an unknown exception";
