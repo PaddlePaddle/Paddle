@@ -756,7 +756,7 @@ class MLP3Pattern(BasePattern):
     def apply(hidden_states, gate_weight, up_weight, down_weight):
         gate = paddle.matmul(hidden_states, gate_weight)
         up = paddle.matmul(hidden_states, up_weight)
-        tmp = paddle.incubate.nn.functional.swiglu(gate, up)
+        tmp = paddle.nn.functional.swiglu(gate, up)
         out = paddle.matmul(tmp, down_weight)
         return out
 

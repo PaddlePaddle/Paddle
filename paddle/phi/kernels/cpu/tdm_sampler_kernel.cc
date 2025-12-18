@@ -192,11 +192,11 @@ void TDMSamplerInner(const Context &dev_ctx,
                 << mask_vec[i * sample_res_length + offset];
         offset += 1;
       }
-      std::vector<int> sample_res_vec{};
+      std::vector<int64_t> sample_res_vec{};
       // Sampling at layer, until samples enough
       for (int sample_index = 0; sample_index < sample_num; ++sample_index) {
         // Avoid sampling to positive samples
-        int sample_res = 0;
+        int64_t sample_res = 0;
         do {
           sample_res = sampler_vec[layer_idx]->Sample();
         } while (positive_node_id ==

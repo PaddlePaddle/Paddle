@@ -5993,7 +5993,7 @@
   invoke : full_like(x, 0, dtype, place)
 
 - op: batched_gemm
-  args: (Tensor lhs, Tensor rhs, int64_t[] batch_sizes)
+  args: (Tensor lhs, Tensor rhs, int64_t[] batch_sizes, bool trans_lhs, bool trans_rhs)
   output: Tensor(output)
   infer_meta:
     func: BatchedGemmInferMeta
