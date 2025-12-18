@@ -350,7 +350,7 @@ InferSymbolicShapeContext::SimplifyBroadcastForShapeOrData(
         const auto& simplified_dim_expr = SimplifyBroadcast(
             dim_expr.Get<symbol::Broadcast<symbol::DimExpr>>());
         int64_t simplified_dim_expr_node_cnt =
-            symbol::CollectDimExprSymbolsCnt(simplified_dim_expr);
+            symbol::CountExprSymbols(simplified_dim_expr);
         if (simplified_dim_expr_node_cnt >= 30) {
           auto new_dim = symbol::DimExpr{GetNextSymName()};
           AddEqualCstr(simplified_dim_expr, new_dim);

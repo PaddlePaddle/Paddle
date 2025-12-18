@@ -1550,15 +1550,14 @@ void CollectListDimExprSymbolsImpl(const List<DimExpr>& dim_exprs,
   }
 }
 
-void CollectUnaryDimExprSymbolsCntImpl(const DimExpr& dim_expr, int64_t* cnt) {
-  int64_t cnt_result = CollectDimExprSymbolsCnt(dim_expr);
+void CountUnaryExprSymbolsImpl(const DimExpr& dim_expr, int64_t* cnt) {
+  int64_t cnt_result = CountExprSymbols(dim_expr);
   *cnt += cnt_result;
 }
 
-void CollectListDimExprSymbolsCntImpl(const List<DimExpr>& dim_exprs,
-                                      int64_t* cnt) {
+void CountListExprSymbolsImpl(const List<DimExpr>& dim_exprs, int64_t* cnt) {
   for (const auto& dim_expr : *dim_exprs) {
-    int64_t cnt_result = CollectDimExprSymbolsCnt(dim_expr);
+    int64_t cnt_result = CountExprSymbols(dim_expr);
     *cnt += cnt_result;
   }
 }
@@ -1598,33 +1597,39 @@ std::unordered_set<std::string> CollectDimExprSymbols(const DimExpr& dim_expr) {
   return symbols;
 }
 
-int64_t CollectDimExprSymbolsCnt(const DimExpr& dim_expr) {
+int64_t CountExprSymbols(const DimExpr& dim_expr) {
   int64_t cnt = 0;
   // clang-format off
   auto lambdas = common::Overloaded{
       [&](std::int64_t dim_expr) { return; },
       [&](const std::string& dim_expr) { cnt += 1; },
       [&](const Negative<DimExpr>& dim_expr) {
-        CollectUnaryDimExprSymbolsCntImpl(dim_expr->data, &cnt);
+        CountUnaryExprSymbolsImpl(dim_expr->data, &cnt);
       },
       [&](const Add<DimExpr>& dim_expr) {
-        CollectListDimExprSymbolsCntImpl(dim_expr.operands, &cnt);
+        cnt += 1;
+        CountListExprSymbolsImpl(dim_expr.operands, &cnt);
       },
       [&](const Mul<DimExpr>& dim_expr) {
-        CollectListDimExprSymbolsCntImpl(dim_expr.operands, &cnt);
+        cnt += 1;
+        CountListExprSymbolsImpl(dim_expr.operands, &cnt);
       },
       [&](const Div<DimExpr>& dim_expr) {
-        CollectUnaryDimExprSymbolsCntImpl(dim_expr->lhs, &cnt);
-        CollectUnaryDimExprSymbolsCntImpl(dim_expr->rhs, &cnt);
+        cnt += 1;
+        CountUnaryExprSymbolsImpl(dim_expr->lhs, &cnt);
+        CountUnaryExprSymbolsImpl(dim_expr->rhs, &cnt);
       },
       [&](const Max<DimExpr>& dim_expr) {
-        CollectListDimExprSymbolsCntImpl(dim_expr.operands, &cnt);
+        cnt += 1;
+        CountListExprSymbolsImpl(dim_expr.operands, &cnt);
       },
       [&](const Min<DimExpr>& dim_expr) {
-        CollectListDimExprSymbolsCntImpl(dim_expr.operands, &cnt);
+        cnt += 1;
+        CountListExprSymbolsImpl(dim_expr.operands, &cnt);
       },
       [&](const Broadcast<DimExpr>& dim_expr) {
-        CollectListDimExprSymbolsCntImpl(dim_expr.operands, &cnt);
+        cnt += 1;
+        CountListExprSymbolsImpl(dim_expr.operands, &cnt);
       }};
   // clang-format on
   std::visit(lambdas, dim_expr.variant());
