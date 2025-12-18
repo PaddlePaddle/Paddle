@@ -113,8 +113,7 @@ set(PYBIND_SRCS
     pir.cc
     pir_utils.cc
     graph.cc
-    ir_tensor.cc
-    ir_meta_tensor.cc
+    native_meta_tensor.cc
     reader_py.cc
     protobuf.cc
     exception.cc

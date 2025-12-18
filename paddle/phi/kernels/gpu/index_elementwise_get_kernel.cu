@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_elementwise_get_kernel.h"
+#include <cstdio>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -20,7 +21,7 @@
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 
 namespace phi {
-template <typename T, typename IndexT = int, typename OffsetT = uint32_t>
+template <typename T, typename OffsetT = uint32_t>
 void GPUIndexElementwiseGetKernel(const phi::GPUContext& dev_ctx,
                                   const DenseTensor& input,
                                   const std::vector<const DenseTensor*>& index,
@@ -36,7 +37,7 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& dev_ctx,
   std::vector<int64_t> stride_tmp;
   funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
 
-  auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
+  auto index_ptrs = funcs::GetIndexDataPtrs<int64_t>(index);
 
   auto sizes = std::array<int64_t, DDim::kMaxRank>{};
   auto strides = std::array<int64_t, DDim::kMaxRank>{};
@@ -171,26 +172,27 @@ void IndexElementwiseGetKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) return;
 
-  if (funcs::IsInUint32Range(out->numel())) {
-    GPUIndexElementwiseGetKernel<T, int64_t>(dev_ctx,
-                                             x,
-                                             index,
-                                             input_dims,
-                                             input_strides,
-                                             index_dims,
-                                             index_stride,
-                                             slice_offset,
-                                             out);
+  if (funcs::IsInUint32Range(x.numel()) &&
+      funcs::IsInUint32Range(out->numel())) {
+    GPUIndexElementwiseGetKernel<T>(dev_ctx,
+                                    x,
+                                    index,
+                                    input_dims,
+                                    input_strides,
+                                    index_dims,
+                                    index_stride,
+                                    slice_offset,
+                                    out);
   } else {
-    GPUIndexElementwiseGetKernel<T, int64_t, uint64_t>(dev_ctx,
-                                                       x,
-                                                       index,
-                                                       input_dims,
-                                                       input_strides,
-                                                       index_dims,
-                                                       index_stride,
-                                                       slice_offset,
-                                                       out);
+    GPUIndexElementwiseGetKernel<T, uint64_t>(dev_ctx,
+                                              x,
+                                              index,
+                                              input_dims,
+                                              input_strides,
+                                              index_dims,
+                                              index_stride,
+                                              slice_offset,
+                                              out);
   }
 }
 

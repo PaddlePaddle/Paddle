@@ -1055,6 +1055,7 @@ class Buffer:
         use_fp8: bool = True,
         async_finish: bool = False,
         return_recv_hook: bool = False,
+        num_per_channel: int = 128,
     ) -> tuple[
         tuple[paddle.Tensor, paddle.Tensor],
         paddle.Tensor,
@@ -1121,6 +1122,7 @@ class Buffer:
             use_fp8,
             async_finish,
             return_recv_hook,
+            num_per_channel,
         )
         handle = (
             packed_recv_rdma_x,
@@ -1163,6 +1165,7 @@ class Buffer:
         dispatch_use_fp8: bool = False,
         async_finish: bool = False,
         return_recv_hook: bool = False,
+        num_per_channel: int = 128,
         out: paddle.Tensor | None = None,
     ) -> tuple[paddle.Tensor, EventOverlap, Callable]:
         """
@@ -1218,6 +1221,7 @@ class Buffer:
             dispatch_use_fp8,
             async_finish,
             return_recv_hook,
+            num_per_channel,
             out,
         )
         tensors_to_record = (

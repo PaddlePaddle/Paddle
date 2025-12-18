@@ -57,7 +57,8 @@ PADDLE_API extern bool InSameStream(
 PADDLE_API extern void* GetBasePtr(
     const std::shared_ptr<Allocation>& allocation);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    !defined(PADDLE_WITH_CUSTOM_DEVICE)
 PADDLE_API extern uint64_t Release(const phi::GPUPlace& place,
                                    gpuStream_t stream);
 

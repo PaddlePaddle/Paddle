@@ -30,9 +30,9 @@ void AddPositionEncodingKernel(const Context& dev_ctx,
   auto* dst_ptr = dev_ctx.template Alloc<T>(out);
 
   auto x_dim = X->dims();
-  int batch_size = 0;
-  int max_seq_len = 0;
-  int enc_size = 0;
+  int64_t batch_size = 0;
+  int64_t max_seq_len = 0;
+  int64_t enc_size = 0;
 
   if (x_lod.empty()) {
     PADDLE_ENFORCE_EQ(x_dim.size(),
@@ -74,12 +74,12 @@ void AddPositionEncodingKernel(const Context& dev_ctx,
                         "but received an odd number: %d. ",
                         enc_size));
 
-  const int half_size = enc_size / 2;
-  for (int i = 0; i < batch_size; ++i) {
-    const int max_length =
+  const int64_t half_size = enc_size / 2;
+  for (int64_t i = 0; i < batch_size; ++i) {
+    const int64_t max_length =
         x_lod.empty() ? max_seq_len : x_lod[0][i + 1] - x_lod[0][i];
-    for (int j = 0; j < max_length; ++j) {
-      for (int k = 0; k < half_size; ++k) {
+    for (int64_t j = 0; j < max_length; ++j) {
+      for (int64_t k = 0; k < half_size; ++k) {
         const double val =
             (half_size > 1)
                 ? j / pow(10000.0, static_cast<double>(k) / (half_size - 1))
