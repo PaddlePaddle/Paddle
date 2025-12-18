@@ -223,6 +223,12 @@ def get_rank_to_files(
                 f"Missing keys:{missing_keys}, check whether the checkpoint is complete."
             )
 
+    unexpected_keys = set(tensor_key_list) - set(state_dict_param_names)
+    if len(unexpected_keys) > 0:
+        logger.warning(
+            f"Unexpected keys:{unexpected_keys}, these keys exist in checkpoint but not in state_dict."
+        )
+
     rank_to_files = {}
     for rank, need_files in enumerate(all_necessary_files):
         seen = set()
@@ -553,7 +559,7 @@ def _handle_aoa(
                     mapping.postprocess_list
                 )
             if len(shard_mappings) == 1 and mapping.postprocess_list is None:
-                if src_desc.global_shape == dst_desc.global_shape:
+                if src_desc.global_shape != dst_desc.global_shape:
                     logger.warning(
                         f"Shape mismatch for parameter '{param_name}': "
                         f"source global_shape={src_desc.global_shape}, "
@@ -1073,7 +1079,7 @@ def load_state_dict_impl(
     with paddle.base.dygraph.guard():
         global _metadata_manager
         assert isinstance(state_dict, dict), (
-            "The state_dict should be a dictionary."
+            f"The state_dict should be a dictionary.But now the type is {type(state_dict)}."
         )
         first_key = next(iter(state_dict), None)
         if isinstance(first_key, tuple):

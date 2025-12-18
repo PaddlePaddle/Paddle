@@ -27,7 +27,7 @@ from paddle.framework import (
 )
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
-from . import nn  # noqa: F401
+from . import nn as nn
 from .proxy import (  # noqa: F401
     disable_torch_proxy,
     enable_torch_proxy,
