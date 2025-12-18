@@ -30,7 +30,6 @@ from .group_sharded_stage3 import (
     ForwardPreHooks,
     OrderedSet,
     TaskFlow,
-    _allgather_buffer,
     _current_layer_params,
     _PartitionParam,
     _TensorWrapper,
@@ -224,23 +223,6 @@ class FullyShardOptimizer:
                         p_group.append(p)
 
                 param_group['params'] = p_group
-
-    def set_state_dict(self, state_dict, use_structured_name=True):
-        self._layer.set_state_dict(
-            state_dict, use_structured_name=use_structured_name
-        )
-
-    def state_dict(
-        self,
-        destination=None,
-        include_sublayers=True,
-        structured_name_prefix="",
-    ):
-        return self._layer.state_dict(
-            destination=destination,
-            include_sublayers=include_sublayers,
-            structured_name_prefix=structured_name_prefix,
-        )
 
     def _update_params(self):
         """
@@ -495,23 +477,6 @@ class FullyShard(nn.Layer):
 
         return fw
 
-    def set_state_dict(self, state_dict, use_structured_name=True):
-        self._layer.set_state_dict(
-            state_dict, use_structured_name=use_structured_name
-        )
-
-    def state_dict(
-        self,
-        destination=None,
-        include_sublayers=True,
-        structured_name_prefix="",
-    ):
-        return self._layer.state_dict(
-            destination=destination,
-            include_sublayers=include_sublayers,
-            structured_name_prefix=structured_name_prefix,
-        )
-
     def _segment_rank_params(self, layer, name="last_layer"):
         """
         Flatten parameters according to layer.
@@ -608,18 +573,6 @@ class FullyShard(nn.Layer):
             value=buffer._slice(start, end), name="slice@" + param.name
         )
         param.status = "part"
-
-        # Update optimizer master weights
-        if (
-            param.trainable
-            and (
-                param.dtype == Type.fp16.value or param.dtype == Type.bf16.value
-            )
-            and not self._offload
-        ):
-            master_tensor = paddle.cast(param.fw_storage, Type.fp32.value)
-            master_tensor.name = param.name
-            # self._optim._master_weights[param.fw_storage.name] = master_tensor
         param._clear_data()
 
     def _register_forward_hooks(self, layer):
@@ -706,34 +659,6 @@ class FullyShard(nn.Layer):
         except AttributeError:
             return getattr(self._layer, name)
 
-    def get_all_parameters(self, convert2cpu=False):
-        """
-        Get the full parameters and return the corresponding task flows.
-        """
-        assert len(self._trainable_params.keys()) > 0
-        current_layer_params = self._layer.parameters(include_sublayers=True)
-        trainable_params = list(
-            filter(
-                lambda p: p.trainable and p not in self._unslice_params,
-                current_layer_params,
-            )
-        )
-        t_flow = _allgather_buffer(
-            trainable_params,
-            self._group,
-            param2buffer_size=self._param2buffer_size,
-            use_calc_stream=True,
-            task_flow=TaskFlow(),
-            sync_wait=True,
-            offload=self._offload,
-            convert2cpu=convert2cpu,
-        )
-
-        #  a _allgather_buffer call should be matched with a _release_param call later,
-        #  but the _allgather_buffer call here has no match.
-        #  TODO(liuzhenhai):  set a flag here and release full param before forward pass of the first layer,
-        #  when _allgather_buffer is called for get_all_parameters and convert2cpu is false
-
     def _register_backward_hooks(self):
         current_layer_params = self._layer.parameters(include_sublayers=True)
         trainable_params = list(
@@ -798,12 +723,7 @@ class FullyShard(nn.Layer):
     def _param2align(self, param):
         # CUDA alignment 256 bytes
         size = param._numel() * align[param.dtype]
-        if self._default_device in core.get_all_custom_device_type():
-            device_alignment = core.libpaddle._get_device_min_chunk_size(
-                self._default_device
-            )
-        else:
-            device_alignment = alignment[self._default_device]
+        device_alignment = alignment[self._default_device]
         remaining = size % device_alignment
         ali = 0 if remaining == 0 else device_alignment - remaining
         align_ = ali // align[param.dtype]

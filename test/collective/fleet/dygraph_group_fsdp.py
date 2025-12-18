@@ -107,6 +107,13 @@ def test_fsdp_api():
     loss_fsdp = train_mlp(model, use_fsdp=True, data=data)
     assert loss == loss_fsdp
 
+    # test sharding with fsdp api with fp32
+    paddle.seed(2025)
+    np.random.seed(2025)
+    data = [paddle.randn([8, 4096]) for i in range(20)]
+    model = Model()
+    loss = train_mlp(model, use_fsdp=False, data=data)
+
 
 if __name__ == '__main__':
     test_fsdp_api()

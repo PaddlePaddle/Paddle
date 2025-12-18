@@ -21,7 +21,6 @@ from typing import TYPE_CHECKING
 import paddle
 from paddle import pir
 from paddle.base.libpaddle import DataType
-from paddle.distributed import fleet
 from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
     ShardedStateDict,
     ShardedWeight,
@@ -656,15 +655,6 @@ class AdamW(Optimizer):
                 >>> opt.step()
                 >>> opt.clear_grad()
         """
-        need_shard = any(
-            hasattr(p, '_need_shard') for p in self._parameter_list
-        )
-        if need_shard:
-            fleet.meta_parallel.sharding.group_sharded_fully_shard.FullyShardOptimizer(
-                self
-            )
-            self.step()
-            return
         if paddle.base.dygraph.base.in_to_static_mode():
             self._declarative_step()
             return
