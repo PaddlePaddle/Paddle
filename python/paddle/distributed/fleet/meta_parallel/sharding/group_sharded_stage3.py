@@ -868,24 +868,25 @@ class GroupShardedStage3(nn.Layer):
     def align_param_to_buffer_and_clear_slice_param(self):
         for layer_id, params in self._trainable_params.items():
             for param in params:
-                param_shape = param.shape
-                origin_state = param.stop_gradient
-                param.stop_gradient = True
-                start, end = self._param2buffer[param.name][self._rank]
-                param.flatten_()
-                param.stop_gradient = origin_state
-                param_numel = param.numel().item()
-                start = min(start, param_numel)
-                end = min(end, param_numel)
-                if end > start:
-                    tmp_tensor = param._slice(start, end).detach()
-                    buffer_slice = param.fw_storage._slice(
-                        0, end - start
-                    ).detach()
-                    buffer_slice.set_value(tmp_tensor)
-                    del buffer_slice
-                param.get_tensor()._set_dims(param_shape)
-                param._clear_data()
+                if param._is_initialized():
+                    param_shape = param.shape
+                    origin_state = param.stop_gradient
+                    param.stop_gradient = True
+                    start, end = self._param2buffer[param.name][self._rank]
+                    param.flatten_()
+                    param.stop_gradient = origin_state
+                    param_numel = param.numel().item()
+                    start = min(start, param_numel)
+                    end = min(end, param_numel)
+                    if end > start:
+                        tmp_tensor = param._slice(start, end).detach()
+                        buffer_slice = param.fw_storage._slice(
+                            0, end - start
+                        ).detach()
+                        buffer_slice.set_value(tmp_tensor)
+                        del buffer_slice
+                    param.get_tensor()._set_dims(param_shape)
+                    param._clear_data()
 
     def init_optimizer_for_slice_param(self):
         local_param_list = []
