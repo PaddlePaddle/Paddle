@@ -70,7 +70,6 @@ def eliminate_positional_or_keyword_only(
     assert isinstance(fn, types.FunctionType), "Only support regular function"
     code = fn.__code__
     co_flags: int = code.co_flags & ~HAS_VAR_ARGS_OR_KWARGS
-    co_flags = code.co_flags
 
     argcount = (
         code.co_argcount
