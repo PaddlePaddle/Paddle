@@ -31,6 +31,7 @@ limitations under the License. */
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/phi/kernels/gpu/reduce.h"
 #endif
+COMMON_DECLARE_bool(use_legacy_gemm);
 
 namespace phi {
 
@@ -225,15 +226,25 @@ void CalcInputGrad(const Context& dev_ctx,
   DenseTensor a_processed = a, b_processed = b;
   bool trans_a_processed = trans_a, trans_b_processed = trans_b;
   if (need_combine) {
-    a_processed = is_fold_init_dims_a
-                      ? FoldInitDims(a)
-                      : FoldBatchIntoAggregation<Context, T>(dev_ctx, a);
-    b_processed = is_fold_init_dims_b
-                      ? FoldInitDims(b)
-                      : FoldBatchIntoAggregation<Context, T>(dev_ctx, b);
-    // Once we try to combine aggregation dimension to batch dimension,
-    trans_a_processed = is_fold_init_dims_a ? trans_a : !trans_a;
-    trans_b_processed = is_fold_init_dims_b ? trans_b : !trans_b;
+    if (!FLAGS_use_legacy_gemm) {
+      a_processed = is_fold_init_dims_a
+                        ? FoldInitDims(a)
+                        : FoldBatchIntoAggregation<Context, T>(dev_ctx, a);
+      b_processed = is_fold_init_dims_b
+                        ? FoldInitDims(b)
+                        : FoldBatchIntoAggregation<Context, T>(dev_ctx, b);
+      // Once we try to combine aggregation dimension to batch dimension,
+      // we need to flip the transpose flag
+      trans_a_processed = is_fold_init_dims_a ? trans_a : !trans_a;
+      trans_b_processed = is_fold_init_dims_b ? trans_b : !trans_b;
+    } else {
+      a_processed = is_fold_init_dims_a
+                        ? FoldInitDims(a)
+                        : FoldHeadAndLastDims<Context, T>(dev_ctx, a);
+      b_processed = is_fold_init_dims_b
+                        ? FoldInitDims(b)
+                        : FoldHeadAndLastDims<Context, T>(dev_ctx, b);
+    }
   }
   std::vector<std::int64_t> a_dims = common::vectorize(a_processed.dims());
   std::vector<std::int64_t> b_dims = common::vectorize(b_processed.dims());
@@ -485,7 +496,8 @@ void MatmulGradKernel(const Context& dev_ctx,
         VLOG(3)
             << "matmul grad case: transpose_x = false && transpose_y = false";
         if (dx) {
-          if (is_x_been_broadcasted && x_ndim == 3 && ndim == 3) {
+          if (!FLAGS_use_legacy_gemm && is_x_been_broadcasted && x_ndim == 3 &&
+              ndim == 3) {
             // Once x been broadcasted, we introduce a new aggregate dim
             // original: [B, M, N] x [B, K, N]' -> [B, M, K] -(reduceB)-> [M, K]
             // new: [BN, M] x [BN, K] -> [M, K]
@@ -535,7 +547,8 @@ void MatmulGradKernel(const Context& dev_ctx,
           }  // if is_x_been_broadcasted
         }    // if dx
         if (dy) {
-          if (is_y_been_broadcasted && y_ndim == 3 && ndim == 3) {
+          if (!FLAGS_use_legacy_gemm && is_y_been_broadcasted && y_ndim == 3 &&
+              ndim == 3) {
             // Once y been broadcasted, we introduce a new aggregate dim
             // original: [B, M, K] x [B, M, N] -> [B, K, N] -(reduceB)-> [K, N]
             // new: [BM, K]' x [BM, N] -> [K, N]
