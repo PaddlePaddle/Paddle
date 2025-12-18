@@ -99,6 +99,7 @@ static DenseTensor FoldHeadAndLastDims(const Context& dev_ctx,
   return output;
 }
 
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
 // Reshape a rank-3 tensor from B x M x N to (B * N) x M.
 // In order to perform [M, BN] x [BN, K] -> [M, K] to save reduce cost
 // Avoiding [1,0,2] permute for better performance
@@ -115,6 +116,7 @@ static DenseTensor FoldBatchIntoAggregation(const Context& dev_ctx,
   output.Resize({in_dims[0] * in_dims[2], in_dims[1]});
   return output;
 }
+#endif
 
 template <typename Context, typename T>
 typename std::enable_if<!std::is_integral<T>::value>::type MatMul(
@@ -226,6 +228,7 @@ void CalcInputGrad(const Context& dev_ctx,
   DenseTensor a_processed = a, b_processed = b;
   bool trans_a_processed = trans_a, trans_b_processed = trans_b;
   if (need_combine) {
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
     if (!FLAGS_use_legacy_gemm) {
       a_processed = is_fold_init_dims_a
                         ? FoldInitDims(a)
@@ -237,7 +240,9 @@ void CalcInputGrad(const Context& dev_ctx,
       // we need to flip the transpose flag
       trans_a_processed = is_fold_init_dims_a ? trans_a : !trans_a;
       trans_b_processed = is_fold_init_dims_b ? trans_b : !trans_b;
-    } else {
+    } else  // NOLINT
+#endif
+    {  // NOLINT
       a_processed = is_fold_init_dims_a
                         ? FoldInitDims(a)
                         : FoldHeadAndLastDims<Context, T>(dev_ctx, a);
