@@ -50,7 +50,7 @@ void NarrowStrideKernel(const Context& dev_ctx,
                               out);
 }
 
-template <typename Context>
+template <typename T, typename Context>
 void ConcatGradStrideKernel(const Context& dev_ctx,
                             const std::vector<const DenseTensor*>& x,
                             const DenseTensor& out_grad,
@@ -83,10 +83,7 @@ void ConcatGradStrideKernel(const Context& dev_ctx,
       phi::MetaTensor meta_input(out_grad);
       phi::MetaTensor meta_out(&out_grad_);
       UnchangedInferMeta(meta_input, &meta_out);
-      PD_VISIT_ALL_TYPES(out_grad.dtype(), "Tensor2Contiguous", ([&] {
-                           phi::ContiguousKernel<data_t, Context>(
-                               dev_ctx, out_grad, &out_grad_);
-                         }));
+      phi::ContiguousKernel<T, Context>(dev_ctx, out_grad, &out_grad_);
     } else {
       out_grad_ = out_grad;
     }
@@ -99,10 +96,8 @@ void ConcatGradStrideKernel(const Context& dev_ctx,
       }
     }
 
-    PD_VISIT_ALL_TYPES(out_grad_.dtype(), "ConcatGradKernel", ([&] {
-                         phi::ConcatGradKernel<data_t, Context>(
-                             dev_ctx, x, out_grad_, axis_scalar, x_grad);
-                       }));
+    phi::ConcatGradKernel<T, Context>(
+        dev_ctx, x, out_grad_, axis_scalar, x_grad);
     return;
   }
 
@@ -140,7 +135,51 @@ void ConcatGradStrideKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
+PD_REGISTER_KERNEL(concat_grad,
+                   CPU,
+                   STRIDED,
+                   phi::ConcatGradStrideKernel,
+                   double,
+                   float,
+                   bool,
+                   int64_t,
+                   int,
+                   int8_t,
+                   int16_t,
+                   uint8_t,
+                   phi::float16,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2,
+                   phi::complex64,
+                   phi::complex128) {}
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(concat_grad,
-                                         STRIDED,
-                                         phi::ConcatGradStrideKernel) {}
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(concat_grad,
+                   GPU,
+                   STRIDED,
+                   phi::ConcatGradStrideKernel,
+                   float,
+                   double,
+                   bool,
+                   int64_t,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2,
+                   phi::complex64,
+                   phi::complex128) {}
+#endif
+
+#if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_CUDA)
+PD_REGISTER_KERNEL(concat_grad,
+                   XPU,
+                   STRIDED,
+                   phi::ConcatGradStrideKernel,
+                   float,
+                   phi::float16,
+                   phi::bfloat16) {}
+#endif

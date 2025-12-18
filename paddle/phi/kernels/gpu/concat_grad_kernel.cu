@@ -30,9 +30,6 @@ PD_REGISTER_KERNEL(concat_grad,
                    uint8_t,
                    int8_t,
                    int16_t,
-                   uint16_t,  // UnTested
-                   uint32_t,  // UnTested
-                   uint64_t,  // UnTested
                    phi::float16,
                    phi::bfloat16,
                    phi::float8_e4m3fn,
