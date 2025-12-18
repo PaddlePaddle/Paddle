@@ -24,6 +24,7 @@ from op_test import (
 )
 
 import paddle
+import paddle.pir
 from paddle.base import core
 
 paddle.enable_static()
@@ -36,12 +37,21 @@ def atan2_grad(x1, x2, dout):
     return dx1, dx2
 
 
+def atan2_wrapper(x, y):
+    if not isinstance(x, (paddle.Tensor, paddle.pir.Value)):
+        x = paddle.to_tensor(x)
+    if not isinstance(y, (paddle.Tensor, paddle.pir.Value)):
+        y = paddle.to_tensor(y)
+    return paddle.atan2(x, y)
+
+
 class TestAtan2(OpTest):
     def setUp(self):
         self.op_type = "atan2"
         self.prim_op_type = "prim"
-        self.python_api = paddle.atan2
-        self.public_python_api = paddle.atan2
+
+        self.python_api = atan2_wrapper
+        self.public_python_api = atan2_wrapper
         self.check_cinn = True
         self.init_dtype()
 
@@ -200,8 +210,8 @@ class TestAtan2BF16OP(OpTest):
     def setUp(self):
         self.op_type = 'atan2'
         self.prim_op_type = 'prim'
-        self.python_api = paddle.atan2
-        self.public_python_api = paddle.atan2
+        self.python_api = atan2_wrapper
+        self.public_python_api = atan2_wrapper
         self.dtype = np.uint16
         self.check_cinn = True
         x1 = np.random.uniform(-1, -0.1, [15, 17]).astype('float64')

@@ -15,9 +15,12 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/atan2_grad_kernel.h"
+#include "paddle/phi/kernels/broadcast_tensors_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
@@ -84,36 +87,128 @@ void Atan2GradKernel(const Context& dev_ctx,
                      const DenseTensor& out_grad,
                      DenseTensor* x_grad,
                      DenseTensor* y_grad) {
-  auto numel = x.numel();
-  auto x_data = x.data<T>();
-  auto y_data = y.data<T>();
-  auto out_grad_data = out_grad.data<T>();
-
   if (out_grad.numel() == 0) {
-    dev_ctx.template Alloc<T>(x_grad);
-    dev_ctx.template Alloc<T>(y_grad);
-    if (x_grad && x_grad->numel() != 0) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    if (x_grad) {
+      dev_ctx.template Alloc<T>(x_grad);
+      if (x_grad->numel() != 0) {
+        phi::Full<T, Context>(dev_ctx,
+                              phi::IntArray(common::vectorize(x_grad->dims())),
+                              0,
+                              x_grad);
+      }
     }
-    if (y_grad && y_grad->numel() != 0) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+    if (y_grad) {
+      dev_ctx.template Alloc<T>(y_grad);
+      if (y_grad->numel() != 0) {
+        phi::Full<T, Context>(dev_ctx,
+                              phi::IntArray(common::vectorize(y_grad->dims())),
+                              0,
+                              y_grad);
+      }
     }
     return;
   }
 
-  auto* x_grad_data =
-      x_grad ? dev_ctx.template Alloc<T>(x_grad, size_t(x.numel() * sizeof(T)))
-             : nullptr;
-  auto* y_grad_data =
-      y_grad ? dev_ctx.template Alloc<T>(y_grad, size_t(y.numel() * sizeof(T)))
-             : nullptr;
+  if (x.dims() == y.dims() && x.dims() == out_grad.dims()) {
+    auto numel = x.numel();
+    auto x_data = x.data<T>();
+    auto y_data = y.data<T>();
+    auto out_grad_data = out_grad.data<T>();
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-  phi::Atan2GradFunctor<T> functor(
-      x_data, y_data, out_grad_data, x_grad_data, y_grad_data, numel);
-  for_range(functor);
+    auto* x_grad_data = x_grad ? dev_ctx.template Alloc<T>(
+                                     x_grad, size_t(x.numel() * sizeof(T)))
+                               : nullptr;
+    auto* y_grad_data = y_grad ? dev_ctx.template Alloc<T>(
+                                     y_grad, size_t(y.numel() * sizeof(T)))
+                               : nullptr;
+
+    phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
+    phi::Atan2GradFunctor<T> functor(
+        x_data, y_data, out_grad_data, x_grad_data, y_grad_data, numel);
+    for_range(functor);
+  } else {
+    DenseTensor b_x, b_y;
+    b_x.Resize(out_grad.dims());
+    b_y.Resize(out_grad.dims());
+
+    std::vector<const DenseTensor*> inputs = {&x, &y};
+    std::vector<DenseTensor*> outputs = {&b_x, &b_y};
+    phi::BroadcastTensorsKernel<T, Context>(dev_ctx, inputs, outputs);
+
+    DenseTensor dx_b, dy_b;
+    dx_b.Resize(out_grad.dims());
+    dy_b.Resize(out_grad.dims());
+    dev_ctx.template Alloc<T>(&dx_b);
+    dev_ctx.template Alloc<T>(&dy_b);
+
+    auto numel = out_grad.numel();
+    phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
+    phi::Atan2GradFunctor<T> functor(b_x.data<T>(),
+                                     b_y.data<T>(),
+                                     out_grad.data<T>(),
+                                     dx_b.data<T>(),
+                                     dy_b.data<T>(),
+                                     numel);
+    for_range(functor);
+
+    if (x_grad) {
+      dev_ctx.template Alloc<T>(x_grad);
+      if (x_grad->dims() == out_grad.dims()) {
+        phi::Copy(dev_ctx, dx_b, dev_ctx.GetPlace(), false, x_grad);
+      } else {
+        std::vector<int64_t> axes;
+        int in_rank = x.dims().size();
+        int out_rank = out_grad.dims().size();
+        int diff = out_rank - in_rank;
+        for (int i = 0; i < diff; ++i) axes.push_back(i);
+        for (int i = 0; i < in_rank; ++i) {
+          if (x.dims()[i] == 1 && out_grad.dims()[i + diff] > 1) {
+            axes.push_back(i + diff);
+          }
+        }
+        if (axes.empty()) {
+          phi::Copy(dev_ctx, dx_b, dev_ctx.GetPlace(), false, x_grad);
+        } else {
+          phi::SumKernel<T, Context>(dev_ctx,
+                                     dx_b,
+                                     phi::IntArray(axes),
+                                     x_grad->dtype(),
+                                     true,
+                                     x_grad);
+          x_grad->Resize(x.dims());
+        }
+      }
+    }
+
+    if (y_grad) {
+      dev_ctx.template Alloc<T>(y_grad);
+      if (y_grad->dims() == out_grad.dims()) {
+        phi::Copy(dev_ctx, dy_b, dev_ctx.GetPlace(), false, y_grad);
+      } else {
+        std::vector<int64_t> axes;
+        int in_rank = y.dims().size();
+        int out_rank = out_grad.dims().size();
+        int diff = out_rank - in_rank;
+        for (int i = 0; i < diff; ++i) axes.push_back(i);
+        for (int i = 0; i < in_rank; ++i) {
+          if (y.dims()[i] == 1 && out_grad.dims()[i + diff] > 1) {
+            axes.push_back(i + diff);
+          }
+        }
+        if (axes.empty()) {
+          phi::Copy(dev_ctx, dy_b, dev_ctx.GetPlace(), false, y_grad);
+        } else {
+          phi::SumKernel<T, Context>(dev_ctx,
+                                     dy_b,
+                                     phi::IntArray(axes),
+                                     y_grad->dtype(),
+                                     true,
+                                     y_grad);
+          y_grad->Resize(y.dims());
+        }
+      }
+    }
+  }
 }
 
 }  // namespace phi

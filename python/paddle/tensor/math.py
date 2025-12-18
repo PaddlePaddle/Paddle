@@ -28,6 +28,7 @@ from paddle._C_ops import (  # noqa: F401
     amax,
     amin,
     any,
+    atan2,
     isfinite,
     isinf,
     isnan,
@@ -4959,97 +4960,6 @@ def negative(x: Tensor, name: str | None = None) -> Tensor:
     if x.dtype == paddle.bool:
         raise TypeError("The `-` operator, on a bool tensor is not supported.")
     return -x
-
-
-@param_two_alias(["x", "input"], ["y", "other"])
-def atan2(
-    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
-) -> Tensor:
-    r"""
-    Element-wise arctangent of x/y with consideration of the quadrant.
-
-    Equation:
-        .. math::
-
-            atan2(x,y)=\left\{\begin{matrix}
-            & tan^{-1}(\frac{x}{y}) & y > 0 \\
-            & tan^{-1}(\frac{x}{y}) + \pi & x>=0, y < 0 \\
-            & tan^{-1}(\frac{x}{y}) - \pi & x<0, y < 0 \\
-            & +\frac{\pi}{2} & x>0, y = 0 \\
-            & -\frac{\pi}{2} & x<0, y = 0 \\
-            &\text{undefined} & x=0, y = 0
-            \end{matrix}\right.
-
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and the parameter name ``other`` can be used as an alias for ``y``.
-        For example, ``atan2(input=tensor_x, other=tensor_y)`` is equivalent to ``atan2(x=tensor_x, y=tensor_y)``.
-
-    Args:
-        x (Tensor): An N-D Tensor, the data type is int32, int64, float16, float32, float64.
-            Alias: ``input``.
-        y (Tensor): An N-D Tensor, must have the same type as `x`.
-            Alias: ``other``.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor. Default is None.
-
-    Returns:
-        out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float64 when the input data type is int).
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-1, +1, +1, -1]).astype('float32')
-            >>> x
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-1,  1,  1, -1])
-
-            >>> y = paddle.to_tensor([-1, -1, +1, +1]).astype('float32')
-            >>> y
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-1,  -1,  1, 1])
-
-            >>> out = paddle.atan2(x, y)
-            >>> out
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-2.35619450,  2.35619450,  0.78539819, -0.78539819])
-
-    """
-
-    x_shape = list(x.shape)
-    y_shape = list(y.shape)
-    if in_dynamic_or_pir_mode():
-        broadcast_x = x
-        broadcast_y = y
-        if x_shape != y_shape:
-            broadcast_shape = paddle.broadcast_shape(x_shape, y_shape)
-            broadcast_x = paddle.broadcast_to(broadcast_x, broadcast_shape)
-            broadcast_y = paddle.broadcast_to(broadcast_y, broadcast_shape)
-
-        return _C_ops.atan2(broadcast_x, broadcast_y, out=out)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            ['int32', 'int64', 'float16', 'float32', 'float64'],
-            'atan2',
-        )
-        check_variable_and_dtype(
-            y,
-            'y',
-            ['int32', 'int64', 'float16', 'float32', 'float64'],
-            'atan2',
-        )
-
-        helper = LayerHelper('atan2', **locals())
-        inputs = {'X1': x, 'X2': y}
-        if out is not None:
-            check_type(out, 'out', Variable, 'atan2')
-        else:
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='atan2', inputs=inputs, outputs={'Out': out})
-        return out
 
 
 def logit(
