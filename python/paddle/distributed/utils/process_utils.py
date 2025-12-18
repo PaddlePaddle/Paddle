@@ -135,7 +135,7 @@ def _get_xpu_affinity_mask(xpu_id):
         # NOTE(lijin23): if CUDA_DEVICE_ORDER is set to OAM_ID,
         #  we need to get the cpu affinity using OAM_ID
         cmd = ["xpu-smi", "topo", "-mo"]
-    output = subprocess.check_output(cmd, timeout=30).decode("utf-8")
+    output = subprocess.check_output(cmd, timeout=60).decode("utf-8")
     cpu_affinity = output.splitlines()[xpu_id + 1].split()[-2]
     affinity_mask = []
     for affinity_range in cpu_affinity.split(','):

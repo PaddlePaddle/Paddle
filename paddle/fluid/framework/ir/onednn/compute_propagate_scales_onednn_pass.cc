@@ -153,7 +153,10 @@ void ComputePropagateScalesOnednnPass::ComputeSingleGruWeightScales(
 
   const auto* wx_tensor = wx_var->GetMutable<phi::DenseTensor>();
   const auto* wh_tensor = wh_var->GetMutable<phi::DenseTensor>();
-  const int OC = wh_tensor->dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t OC = wh_tensor->dims()[0];
+
   std::vector<float> scale_ur(2 * OC);
   std::vector<float> scale_o(OC);
   for (int row_id = 0; row_id < wx_tensor->dims()[0]; row_id++) {

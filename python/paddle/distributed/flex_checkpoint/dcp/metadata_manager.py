@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import defaultdict
 
 from .metadata import LocalTensorIndex, LocalTensorMetadata, Metadata
 
@@ -25,15 +26,20 @@ class MetadataManager:
             TensorLocation, LocalTensorMetadata
         ] = {}
         self.has_flattened_tensors: bool = False
+        self.file_storage_info: defaultdict[str, set[LocalTensorIndex]] = (
+            defaultdict(set)
+        )
 
     def set_metadata_list(self, metadata_list: list[Metadata]):
         assert len(metadata_list) == 1, "Only support single metadata list"
+        self.clear()
 
         self.local_tensor_metadata = {}
         self.has_flattened_tensors = False
 
         self._metadata_list = metadata_list
         self._extract_local_tensor_metadata()
+        self._extract_file_storage_info()
 
     def get_metadata_list(self) -> list[Metadata]:
         return self._metadata_list
@@ -48,6 +54,13 @@ class MetadataManager:
             )
         return self._metadata_list[0].flat_mapping
 
+    def get_file_storage_info(self) -> defaultdict:
+        if self.is_metadata_list_empty():
+            raise ValueError(
+                "Cannot get file_storage_info because metadata list is empty."
+            )
+        return self.file_storage_info
+
     def _extract_local_tensor_metadata(self):
         if self.is_metadata_list_empty():
             return
@@ -56,27 +69,58 @@ class MetadataManager:
         state_dict_metadata = metadata.state_dict_metadata
         storage_metadata = metadata.storage_metadata
 
+        storage_metadata_split_replica_id = {}
+        for local_tensor_index, file_name in storage_metadata.items():
+            local_tensor_index = LocalTensorIndex(
+                tensor_key=local_tensor_index.tensor_key,
+                global_offset=local_tensor_index.global_offset,
+                is_flattened=local_tensor_index.is_flattened,
+                flattened_range=local_tensor_index.flattened_range,
+                local_shape=local_tensor_index.local_shape,
+            )
+            replica_id = local_tensor_index.replica_id
+            storage_metadata_split_replica_id[local_tensor_index] = (
+                file_name,
+                replica_id,
+            )
+
         for k, local_tensor_meta_list in state_dict_metadata.items():
             for local_tensor_meta in local_tensor_meta_list:
                 local_tensor_index = LocalTensorIndex(
-                    k,
-                    local_tensor_meta.global_offset,
-                    local_tensor_meta.is_flattened,
-                    local_tensor_meta.flattened_range,
+                    tensor_key=k,
+                    global_offset=local_tensor_meta.global_offset,
+                    is_flattened=local_tensor_meta.is_flattened,
+                    flattened_range=local_tensor_meta.flattened_range,
+                    local_shape=local_tensor_meta.local_shape,
                 )
 
-                if local_tensor_index not in storage_metadata:
+                if local_tensor_meta.is_flattened:
+                    self.has_flattened_tensors = True
+
+                if local_tensor_index not in storage_metadata_split_replica_id:
                     continue
 
-                file_name = storage_metadata[local_tensor_index]
+                file_name, replica_id = storage_metadata_split_replica_id[
+                    local_tensor_index
+                ]
+                if replica_id is not None and replica_id > 0:
+                    continue
+
                 location_key: TensorLocation = (k, file_name)
 
                 self.local_tensor_metadata[location_key] = local_tensor_meta
 
-                if local_tensor_meta.is_flattened:
-                    self.has_flattened_tensors = True
+    def _extract_file_storage_info(self):
+        if self.is_metadata_list_empty():
+            return
+
+        metadata = self._metadata_list[0]
+        storage_metadata = metadata.storage_metadata
+        for local_tensor_index, file_name in storage_metadata.items():
+            self.file_storage_info[file_name].add(local_tensor_index)
 
     def clear(self):
         self._metadata_list = []
         self.local_tensor_metadata = {}
         self.has_flattened_tensors = False
+        self.file_storage_info = defaultdict(set)

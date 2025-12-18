@@ -58,7 +58,10 @@ void KLDivLossGradKernel(const Context& dev_ctx,
   auto* input_grad = d_x;
   auto* loss_grad = &d_out;
 
-  const int n = input_grad->dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t n = input_grad->dims()[0];
+
   const int64_t numel = input_grad->numel();
   const int64_t expand = numel / loss_grad->numel();
 

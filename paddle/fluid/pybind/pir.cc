@@ -3387,7 +3387,7 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
           "is_equal",
           [](symbol::ShapeOrDataDimExprs &self,
              std::vector<int64_t> expect_shape,
-             std::vector<int64_t> expect_data = {}) -> bool {
+             std::vector<int64_t> expect_data) -> bool {
             VLOG(3) << "Start compare shape and data.";
 
             const auto &CompareFunc =
@@ -3458,7 +3458,9 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
               return shape_status && data_status;
             }
             return shape_status;
-          });
+          },
+          py::arg("expect_shape"),
+          py::arg("expect_data") = py::list());
 }
 
 void BindShapeConstraintIRAnalysis(pybind11::module *m) {

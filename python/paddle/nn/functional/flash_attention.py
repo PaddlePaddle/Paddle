@@ -146,9 +146,9 @@ def _math_attention(
         place = paddle.get_device()
         if (
             "xpu" in place
+            or "cpu" in place
             or product.shape[-1] < 32
             or product.shape[-1] > 16384
-            or place == paddle.CPUPlace()
             or product.shape[-1] != product.shape[-2]
         ):
             # softmax_mask_fuse_upper_triangle is not supported on XPU, use plain implementation
@@ -183,12 +183,6 @@ def _select_sdp(head_dim: int) -> str:
     place = paddle.get_device()
 
     if "xpu" in place:
-        return "flash_attn"
-
-    if "iluvatar_gpu" in place:
-        return "flash_attn"
-
-    if "metax_gpu" in place:
         return "flash_attn"
 
     enabled_backends = _get_enabled_backends()
