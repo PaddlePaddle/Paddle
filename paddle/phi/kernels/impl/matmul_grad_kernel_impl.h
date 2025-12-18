@@ -98,6 +98,23 @@ static DenseTensor FoldHeadAndLastDims(const Context& dev_ctx,
   return output;
 }
 
+// Reshape a rank-3 tensor from B x M x N to (B * N) x M.
+// In order to perform [M, BN] x [BN, K] -> [M, K] to save reduce cost
+// Avoiding [1,0,2] permute for better performance
+// (Warning: This requires transposing data and writes into new memory.)
+// Identity op if the tensor is not of rank 3.
+template <typename Context, typename T>
+static DenseTensor FoldBatchIntoAggregation(const Context& dev_ctx,
+                                            const DenseTensor& input) {
+  auto in_dims = input.dims();
+  if (in_dims.size() != 3) {
+    return input;
+  }
+  DenseTensor output = phi::TransposeLast2Dim<T>(dev_ctx, input);
+  output.Resize({in_dims[0] * in_dims[2], in_dims[1]});
+  return output;
+}
+
 template <typename Context, typename T>
 typename std::enable_if<!std::is_integral<T>::value>::type MatMul(
     const Context& dev_ctx,
@@ -204,20 +221,30 @@ void CalcInputGrad(const Context& dev_ctx,
   if (out == nullptr) return;
   bool need_combine =
       (a.dims().size() == 3 || b.dims().size() == 3) && out->dims().size() == 2;
-  if (!need_combine) {
-    MatMul<Context, T>(dev_ctx, a, trans_a, b, trans_b, out, flag);
-  } else {
-    MatMul<Context, T>(
-        dev_ctx,
-        is_fold_init_dims_a ? FoldInitDims(a)
-                            : FoldHeadAndLastDims<Context, T>(dev_ctx, a),
-        trans_a,
-        is_fold_init_dims_b ? FoldInitDims(b)
-                            : FoldHeadAndLastDims<Context, T>(dev_ctx, b),
-        trans_b,
-        out,
-        flag);
+
+  DenseTensor a_processed = a, b_processed = b;
+  bool trans_a_processed = trans_a, trans_b_processed = trans_b;
+  if (need_combine) {
+    a_processed = is_fold_init_dims_a
+                      ? FoldInitDims(a)
+                      : FoldBatchIntoAggregation<Context, T>(dev_ctx, a);
+    b_processed = is_fold_init_dims_b
+                      ? FoldInitDims(b)
+                      : FoldBatchIntoAggregation<Context, T>(dev_ctx, b);
+    // Once we try to combine aggregation dimension to batch dimension,
+    trans_a_processed = is_fold_init_dims_a ? trans_a : !trans_a;
+    trans_b_processed = is_fold_init_dims_b ? trans_b : !trans_b;
   }
+  std::vector<std::int64_t> a_dims = common::vectorize(a_processed.dims());
+  std::vector<std::int64_t> b_dims = common::vectorize(b_processed.dims());
+  MatMulFunction<Context, T>(dev_ctx,
+                             a_processed,
+                             b_processed,
+                             a_dims,
+                             b_dims,
+                             out,
+                             trans_a_processed,
+                             trans_b_processed);
 }
 
 template <typename T, typename Context>
@@ -264,7 +291,7 @@ void MatmulGradKernel(const Context& dev_ctx,
   }
 
   bool is_broadcast = true;
-  if (x_ndim <= 2 || y_ndim <= 2) {
+  if (y_ndim <= 2 || x_ndim <= 2) {
     is_broadcast = false;
   } else if (x_ndim != y_ndim) {
     is_broadcast = true;
@@ -283,12 +310,16 @@ void MatmulGradKernel(const Context& dev_ctx,
       is_x_been_broadcasted = x_ndim < y_ndim;
       is_y_been_broadcasted = !is_x_been_broadcasted;
     } else {
-      for (int i = 0; i < ndim; i++) {
-        if (x_dims[i] != y_dims[i]) {
-          is_x_been_broadcasted = x_dims[i] < y_dims[i];
-          is_y_been_broadcasted = !is_x_been_broadcasted;
-        }
+      int64_t x_batch = 1;
+      int64_t y_batch = 1;
+      for (int i = 0; i < x_ndim - 2; ++i) {
+        x_batch *= x_dims[i];
       }
+      for (int i = 0; i < y_ndim - 2; ++i) {
+        y_batch *= y_dims[i];
+      }
+      is_x_been_broadcasted = x_batch < y_batch;
+      is_y_been_broadcasted = !is_x_been_broadcasted;
     }
   }
 
@@ -454,7 +485,7 @@ void MatmulGradKernel(const Context& dev_ctx,
         VLOG(3)
             << "matmul grad case: transpose_x = false && transpose_y = false";
         if (dx) {
-          if (is_x_been_broadcasted) {
+          if (is_x_been_broadcasted && x_ndim == 3 && ndim == 3) {
             // Once x been broadcasted, we introduce a new aggregate dim
             // original: [B, M, N] x [B, K, N]' -> [B, M, K] -(reduceB)-> [M, K]
             // new: [BN, M] x [BN, K] -> [M, K]
@@ -463,8 +494,10 @@ void MatmulGradKernel(const Context& dev_ctx,
             DenseTensor y_conj_processed =
                 phi::TransposeLast2Dim<T>(dev_ctx, y_conj);
             int64_t BN = 1;
+            std::vector<std::int64_t> y_processed_dims =
+                common::vectorize(y_conj_processed.dims());
             for (int i = 0; i < ndim - 1; i++) {
-              BN *= y_dims[i];
+              BN *= y_processed_dims[i];
             }
             std::vector<std::int64_t> out_grad_2d_dim{BN, dout_dims[ndim - 2]};
             std::vector<std::int64_t> y_conj_2d_dim{BN, y_dims[y_ndim - 2]};
@@ -502,7 +535,7 @@ void MatmulGradKernel(const Context& dev_ctx,
           }  // if is_x_been_broadcasted
         }    // if dx
         if (dy) {
-          if (is_y_been_broadcasted) {
+          if (is_y_been_broadcasted && y_ndim == 3 && ndim == 3) {
             // Once y been broadcasted, we introduce a new aggregate dim
             // original: [B, M, K] x [B, M, N] -> [B, K, N] -(reduceB)-> [K, N]
             // new: [BM, K]' x [BM, N] -> [K, N]
