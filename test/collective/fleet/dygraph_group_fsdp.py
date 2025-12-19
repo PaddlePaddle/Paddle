@@ -18,11 +18,9 @@ import numpy as np
 import paddle
 from paddle import nn
 from paddle.distributed import fleet
-from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_fully_shard import (
-    FullyShard,
-)
 from paddle.distributed.fleet.utils import mix_precision_utils
 from paddle.distributed.sharding import group_sharded_parallel
+from paddle.distributed.sharding.fully_shard import fully_shard
 
 
 class Model(nn.Layer):
@@ -67,7 +65,7 @@ def train_mlp(
     optimizer = mix_precision_utils.MixPrecisionOptimizer(optimizer)
 
     if use_fsdp:
-        model = FullyShard(model)
+        model = fully_shard(model)
     else:
         model, optimizer, _ = group_sharded_parallel(
             model=model,
