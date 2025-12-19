@@ -215,6 +215,6 @@ atexit.register(core.pir.clear_cinn_compilation_cache)
 # NOTE(Aganlengzi): clean up KernelFactory in advance manually.
 # NOTE(wangran16): clean up DeviceManager in advance manually.
 # Keep clear_kernel_factory running before clear_device_manager
-atexit.register(core.clear_device_manager)
+# atexit.register(core.clear_device_manager)
 atexit.register(core.clear_kernel_factory)
 atexit.register(core.ProcessGroupIdMap.destroy)
