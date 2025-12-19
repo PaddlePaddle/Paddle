@@ -174,10 +174,14 @@ __device__ __forceinline__ float ComputeScaleImpl(const float amax,
 
 template <bool Power2Scaling>
 __device__ __forceinline__ float RoundPower2Scale(float scale) {
+#ifdef __CUDA_ARCH__
   return __CUDA_ARCH__ != 900 && Power2Scaling &&
                  (scale == static_cast<float>(0x1.0p127))
              ? static_cast<float>(1.0f)
              : scale;
+#else
+  return scale;
+#endif
 }
 
 template <typename IType, typename OType, bool Power2Scaling = false>
