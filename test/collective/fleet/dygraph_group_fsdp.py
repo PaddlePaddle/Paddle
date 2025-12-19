@@ -19,8 +19,8 @@ import paddle
 from paddle import nn
 from paddle.distributed import fleet
 from paddle.distributed.fleet.utils import mix_precision_utils
+from paddle.distributed.fsdp.fully_shard import fully_shard
 from paddle.distributed.sharding import group_sharded_parallel
-from paddle.distributed.sharding.fully_shard import fully_shard
 
 
 class Model(nn.Layer):

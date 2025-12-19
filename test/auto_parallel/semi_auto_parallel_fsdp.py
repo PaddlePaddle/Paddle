@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle.distributed.sharding.fully_shard import fully_shard
+from paddle.distributed.fsdp.fully_shard import fully_shard
 from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 
 
