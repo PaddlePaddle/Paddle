@@ -17,12 +17,30 @@ import os
 from paddle.base.core import (
     XPUPlace,
     CUDAPlace,
+    CustomPlace,
+    get_all_custom_device_type,
     is_compiled_with_cuda,
+    is_compiled_with_custom_device,
     is_compiled_with_rocm,
     is_compiled_with_xpu
 )
 
-if is_compiled_with_cuda() or is_compiled_with_rocm():
+
+def check_compiled_with_custom_device():
+    custom_device_flag = False
+    custom_devices_types = get_all_custom_device_type()
+    for device_type in custom_devices_types:
+        if is_compiled_with_custom_device(device_type):
+            custom_device_flag = True
+            break
+    return custom_device_flag
+
+
+if (
+    is_compiled_with_cuda()
+    or is_compiled_with_rocm()
+    or check_compiled_with_custom_device()
+):
     from paddle.base.core import CUDAGraph as CoreCUDAGraph
 
     def is_cuda_graph_supported():
@@ -38,6 +56,16 @@ else:
         return False
 
 
+def current_expected_place():
+    for device in get_all_custom_device_type():
+        selected_devices = os.getenv(f"FLAGS_selected_{device}s", "0").split(
+            ","
+        )
+        device_id = int(selected_devices[0])
+        return CustomPlace(device, device_id)
+    return None
+
+
 ALL_MODES = ["global", "thread_local", "relaxed"]
 cuda_graph_id = 0
 
@@ -49,13 +77,16 @@ class CUDAGraph:
         )
 
         self._graph = None
-        if place is None:
+        if place is None and check_compiled_with_custom_device():
+            place = current_expected_place()
+        elif place is None:
             if is_compiled_with_xpu():
                 device_id = int(os.environ.get('FLAGS_selected_xpus', 0))
                 place = XPUPlace(device_id)
             else:
                 device_id = int(os.environ.get('FLAGS_selected_gpus', 0))
                 place = CUDAPlace(device_id)
+
         self._place = place
         assert mode in ALL_MODES
         self._mode = ALL_MODES.index(mode)

@@ -36,14 +36,12 @@ inline void ExtractNCWHD(const phi::DDim &dims,
     *W = 1;
     *D = 1;
   } else {
-    *C = data_layout == DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
-    *H = data_layout == DataLayout::kNCHW ? dims[2] : dims[1];
-    *W = dims.size() > 3
-             ? (data_layout == DataLayout::kNCHW ? dims[3] : dims[2])
-             : 1;
-    *D = dims.size() > 4
-             ? (data_layout == DataLayout::kNCHW ? dims[4] : dims[3])
-             : 1;
+    *C = data_layout == DataLayout::NCHW ? dims[1] : dims[dims.size() - 1];
+    *H = data_layout == DataLayout::NCHW ? dims[2] : dims[1];
+    *W = dims.size() > 3 ? (data_layout == DataLayout::NCHW ? dims[3] : dims[2])
+                         : 1;
+    *D = dims.size() > 4 ? (data_layout == DataLayout::NCHW ? dims[4] : dims[3])
+                         : 1;
   }
 }
 
@@ -61,14 +59,12 @@ inline void ExtractNCWHD(const phi::DDim &dims,
     *W = 1;
     *D = 1;
   } else {
-    *C = data_layout == DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
-    *H = data_layout == DataLayout::kNCHW ? dims[2] : dims[1];
-    *W = dims.size() > 3
-             ? (data_layout == DataLayout::kNCHW ? dims[3] : dims[2])
-             : 1;
-    *D = dims.size() > 4
-             ? (data_layout == DataLayout::kNCHW ? dims[4] : dims[3])
-             : 1;
+    *C = data_layout == DataLayout::NCHW ? dims[1] : dims[dims.size() - 1];
+    *H = data_layout == DataLayout::NCHW ? dims[2] : dims[1];
+    *W = dims.size() > 3 ? (data_layout == DataLayout::NCHW ? dims[3] : dims[2])
+                         : 1;
+    *D = dims.size() > 4 ? (data_layout == DataLayout::NCHW ? dims[4] : dims[3])
+                         : 1;
   }
 }
 

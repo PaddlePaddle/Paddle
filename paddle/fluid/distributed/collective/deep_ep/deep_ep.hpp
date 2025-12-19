@@ -279,7 +279,8 @@ struct Buffer {
       int num_experts,
       bool use_fp8,
       bool async,
-      bool return_recv_hook);
+      bool return_recv_hook,
+      int num_per_channel);
 
   std::tuple<deep_ep::detail::Tensor,
              std::optional<EventHandle>,
@@ -314,7 +315,8 @@ struct Buffer {
                                  int num_experts,
                                  bool use_fp8,
                                  bool async,
-                                 bool return_recv_hook);
+                                 bool return_recv_hook,
+                                 int num_per_channel);
 
   std::tuple<deep_ep::detail::Tensor,
              std::optional<EventHandle>,
@@ -333,6 +335,7 @@ struct Buffer {
       bool dispatch_use_fp8,
       bool async,
       bool return_recv_hook,
+      int num_per_channel,
       const std::optional<deep_ep::detail::Tensor>& out);
 
   std::tuple<deep_ep::detail::Tensor,
@@ -452,7 +455,8 @@ struct Buffer {
       int num_experts,
       bool use_fp8,
       bool async,
-      bool return_recv_hook);
+      bool return_recv_hook,
+      int num_per_channel);
 
   std::tuple<paddle::Tensor,
              std::optional<EventHandle>,
@@ -486,7 +490,8 @@ struct Buffer {
                                      int num_experts,
                                      bool use_fp8,
                                      bool async,
-                                     bool return_recv_hook);
+                                     bool return_recv_hook,
+                                     int num_per_channel);
 
   std::tuple<paddle::Tensor,
              std::optional<EventHandle>,
@@ -505,6 +510,7 @@ struct Buffer {
       bool dispatch_use_fp8,
       bool async,
       bool return_recv_hook,
+      int num_per_channel,
       const std::optional<paddle::Tensor>& out);
 
   std::tuple<paddle::Tensor,

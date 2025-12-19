@@ -61,10 +61,12 @@ class ShardedWeight:
         self.key = key
         if local_tensor.is_dist():
             self.local_tensor = local_tensor._local_value()
+            # Note: The local_tensor must keep the same name with the original tensor. Otherwise, the static_to_struct_mapping will be wrong.
+            self.local_tensor.name = local_tensor.name
             self.local_shape = local_tensor._local_shape
         else:
             self.local_tensor = local_tensor
-            self.local_shape = local_shape
+            self.local_shape = tuple(local_shape)
         self.global_shape = global_shape
         self.global_offset = global_offset
         self.is_flattened = is_flattened
@@ -182,8 +184,8 @@ def make_replicated_sharded_weight(
     return ShardedWeight(
         key=key,
         local_tensor=tensor,
-        local_shape=tensor.shape,
-        global_shape=tensor.shape,
+        local_shape=tuple(tensor.shape),
+        global_shape=tuple(tensor.shape),
         global_offset=zero_offset,
     )
 

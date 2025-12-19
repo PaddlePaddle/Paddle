@@ -113,6 +113,10 @@ paddle::Tensor conv2d_ad_func(
       egr::EagerUtils::nullable_autograd_meta(input);
   egr::AutogradMeta* filter_autograd_meta =
       egr::EagerUtils::nullable_autograd_meta(filter);
+  // Check LeafTensor if its GradNodeAccumulation TensorMeta is consistent with
+  // its TensorMeta
+  egr::CheckGradNodeAccumulation(input);
+  egr::CheckGradNodeAccumulation(filter);
   // Forward API Call
   std::string unique_api_name;
   if (VLOG_IS_ON(3) || FLAGS_enable_unique_name) {
@@ -212,7 +216,7 @@ paddle::Tensor conv2d_ad_func(
     grad_node->SetGradInMeta(out, 0);
     // Set TensorWrappers for Forward Outputs if needed
   }
-  if (VLOG_IS_ON(6)) {
+  if (VLOG_IS_ON(3)) {
     const char* INPUT_PRINT_TEMPLATE =
         "\nForward Debug Info {\nAPI_Name: %s \nInput: [%s]  \nOutput: [%s] } ";
 
@@ -230,7 +234,7 @@ paddle::Tensor conv2d_ad_func(
     std::string output_out_str = paddle::string::Sprintf(
         TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
     output_str += output_out_str;
-    VLOG(6) << paddle::string::Sprintf(
+    VLOG(3) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
   }
 

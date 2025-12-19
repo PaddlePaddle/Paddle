@@ -408,9 +408,10 @@ void YoloBoxPostKernel(const Context& dev_ctx,
       downsample_ratio0, downsample_ratio1, downsample_ratio2};
   // clip_bbox and scale_x_y is not used now!
 
-  int batch = image_shape.dims()[0];
+  int64_t batch = image_shape.dims()[0];
+
   TensorInfo* ts_info = new TensorInfo[batch * boxes_input.size()];
-  for (int i = 0; i < batch * static_cast<int>(boxes_input.size()); i++) {
+  for (int64_t i = 0; i < batch * boxes_input.size(); i++) {
 #ifdef PADDLE_WITH_HIP
     hipMalloc(
         reinterpret_cast<void**>(&ts_info[i].bboxes_dev_ptr),

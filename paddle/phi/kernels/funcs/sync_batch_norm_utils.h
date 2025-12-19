@@ -19,16 +19,10 @@ limitations under the License. */
 #include <cmath>
 #include <string>
 #include <vector>
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/norm_utils.cu.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -52,8 +46,8 @@ __global__ void KeLocalStats(
     BatchNormParamType<T> x2_sum = 0.;
     for (int64_t i = threadIdx.x; i < static_cast<int64_t>(N) * M;
          i += BlockDim) {
-      int64_t id = layout == DataLayout::kNCHW ? (i / M) * C * M + k * M + i % M
-                                               : i * C + k;
+      int64_t id = layout == DataLayout::NCHW ? (i / M) * C * M + k * M + i % M
+                                              : i * C + k;
       auto x_in = static_cast<BatchNormParamType<T>>(x[id]);
       x_sum += x_in;
       x2_sum += x_in * x_in;
@@ -124,7 +118,7 @@ static __global__ void KeNormAffine(const T *x,
       static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
   for (int64_t i = gid; i < num; i += stride) {
-    const int c = layout == DataLayout::kNCHW ? (i / M) % C : i % C;
+    const int c = layout == DataLayout::NCHW ? (i / M) % C : i % C;
     auto x_i = static_cast<BatchNormParamType<T>>(x[i]);
     auto y_i =
         (x_i - mean[c]) / sqrt(variance[c] + epsilon) * scale[c] + bias[c];
@@ -147,8 +141,8 @@ __global__ void KeBackwardLocalStats(const T *dy,
     BatchNormParamType<T> sum2 = 0.;
     auto mean = means[k];
     for (int i = threadIdx.x; i < N * M; i += blockDim.x) {
-      int id = layout == DataLayout::kNCHW ? (i / M) * C * M + k * M + i % M
-                                           : i * C + k;
+      int id = layout == DataLayout::NCHW ? (i / M) * C * M + k * M + i % M
+                                          : i * C + k;
       auto g = static_cast<BatchNormParamType<T>>(dy[id]);
       sum1 += g;
       auto x_i = static_cast<BatchNormParamType<T>>(x[id]);
@@ -197,8 +191,8 @@ __global__ void KeBackwardLocalStats2D(const T *dy,
                      static_cast<int64_t>(threadIdx.y);
          i < N * M;
          i += gridDim.y * blockDim.y) {
-      int id = layout == DataLayout::kNCHW ? (i / M) * C * M + k * M + i % M
-                                           : i * C + k;
+      int id = layout == DataLayout::NCHW ? (i / M) * C * M + k * M + i % M
+                                          : i * C + k;
       auto g = static_cast<BatchNormParamType<T>>(dy[id]);
       sum1 += g;
       auto x_i = static_cast<BatchNormParamType<T>>(x[id]);
@@ -257,7 +251,7 @@ static __global__ void KeBNBackwardScaleBias(
     auto inv_var_i = inv_variance[i];
     auto mean_i = mean[i];
     for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int id = layout == DataLayout::kNCHW
+      const int id = layout == DataLayout::NCHW
                          ? ((j / HxW) * C + i) * HxW + (j % HxW)
                          : j * outer_size + i;
       auto x_i = static_cast<BatchNormParamType<T>>(x[id]);
@@ -307,9 +301,12 @@ static __global__ void KeBNBackwardScaleBias2D(
 
     auto inv_var_i = inv_variance[i];
     auto mean_i = mean[i];
-    for (int64_t j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
+    for (int64_t j = static_cast<int64_t>(blockIdx.y) *
+                         static_cast<int64_t>(blockDim.y) +
+                     static_cast<int64_t>(threadIdx.y);
+         j < inner_size;
          j += gridDim.y * blockDim.y) {
-      const int64_t id = layout == DataLayout::kNCHW
+      const int64_t id = layout == DataLayout::NCHW
                              ? ((j / HxW) * C + i) * HxW + (j % HxW)
                              : j * outer_size + i;
       auto x_i = static_cast<BatchNormParamType<T>>(x[id]);
@@ -359,7 +356,7 @@ static __global__ void KeBNRestoreData(T *x,
       static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
   for (int64_t i = gid; i < num; i += stride) {
-    const int64_t c = layout == DataLayout::kNCHW ? (i / M) % C : i % C;
+    const int64_t c = layout == DataLayout::NCHW ? (i / M) % C : i % C;
     auto y_i = static_cast<BatchNormParamType<T>>(y[i]);
     auto x_i = (y_i - bias[c]) / scale[c] / sv_inv[c] + mean[c];
     x[i] = static_cast<T>(x_i);
@@ -388,7 +385,7 @@ static __global__ void KeBNBackwardData(
   auto scale = static_cast<BatchNormParamType<T>>(C) / num;
   auto dev_num = num_dev[0];
   for (int64_t i = gid; i < num; i += stride) {
-    const int64_t c = layout == DataLayout::kNCHW ? i / HxW % C : i % C;
+    const int64_t c = layout == DataLayout::NCHW ? i / HxW % C : i % C;
     auto inv_var = inv_variance[c];
     auto s_d = gamma[c];
     auto gvar =
@@ -478,7 +475,7 @@ void SyncBatchNormGradFunctor(
 
   std::vector<int64_t> dims;
   std::vector<int64_t> strides;
-  if (layout == DataLayout::kNCHW) {
+  if (layout == DataLayout::NCHW) {
     dims = {N, C, H, W, D};
     strides = {static_cast<int64_t>(C) * H * W * D,
                static_cast<int64_t>(H) * W * D,
@@ -519,8 +516,8 @@ void SyncBatchNormGradFunctor(
   int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
 
   if (is_inplace) {
-    if (layout == DataLayout::kNCHW) {
-      KeBNRestoreData<T, DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
+    if (layout == DataLayout::NCHW) {
+      KeBNRestoreData<T, DataLayout::NCHW><<<grid2, block, 0, stream>>>(
           dev_ctx.template Alloc<T>(&px),
           scale.template data<BatchNormParamType<T>>(),
           bias.template data<BatchNormParamType<T>>(),
@@ -532,7 +529,7 @@ void SyncBatchNormGradFunctor(
           x_numel,
           x->data<T>());
     } else {
-      KeBNRestoreData<T, DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
+      KeBNRestoreData<T, DataLayout::NHWC><<<grid2, block, 0, stream>>>(
           dev_ctx.template Alloc<T>(&px),
           scale.template data<BatchNormParamType<T>>(),
           bias.template data<BatchNormParamType<T>>(),
@@ -546,8 +543,8 @@ void SyncBatchNormGradFunctor(
     }
   }
 
-  if (layout == DataLayout::kNCHW) {
-    KeBackwardLocalStats<T, threads, DataLayout::kNCHW>
+  if (layout == DataLayout::NCHW) {
+    KeBackwardLocalStats<T, threads, DataLayout::NCHW>
         <<<grid, threads, 0, stream>>>(
             dy_d, x_d, saved_mean_ptr, N, fsize, C, stats);
   } else {
@@ -576,7 +573,7 @@ void SyncBatchNormGradFunctor(
           block_size,
           &block,
           &grid);
-      KeBackwardLocalStats2D<T, block_size, DataLayout::kNHWC>
+      KeBackwardLocalStats2D<T, block_size, DataLayout::NHWC>
           <<<grid, block, 0, stream>>>(dy_d,
                                        x_d,
                                        saved_mean_ptr,
@@ -587,7 +584,7 @@ void SyncBatchNormGradFunctor(
                                        flag_ptr,
                                        stats);
     } else {
-      KeBackwardLocalStats<T, threads, DataLayout::kNHWC>
+      KeBackwardLocalStats<T, threads, DataLayout::NHWC>
           <<<grid, threads, 0, stream>>>(
               dy_d, x_d, saved_mean_ptr, N, fsize, C, stats);
     }
@@ -602,9 +599,9 @@ void SyncBatchNormGradFunctor(
   }
 #endif
 
-  if (layout == DataLayout::kNCHW) {
+  if (layout == DataLayout::NCHW) {
     if (d_scale && d_bias) {
-      KeBNBackwardScaleBias<T, threads, DataLayout::kNCHW>
+      KeBNBackwardScaleBias<T, threads, DataLayout::NCHW>
           <<<grid, threads, 0, stream>>>(dy_d,
                                          x_d,
                                          saved_mean_ptr,
@@ -618,7 +615,7 @@ void SyncBatchNormGradFunctor(
     }
     if (d_x) {
       dev_ctx.template Alloc<T>(d_x);
-      KeBNBackwardData<T, DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
+      KeBNBackwardData<T, DataLayout::NCHW><<<grid2, block, 0, stream>>>(
           dy_d,
           x_d,
           scale.template data<BatchNormParamType<T>>(),
@@ -660,7 +657,7 @@ void SyncBatchNormGradFunctor(
             block_size,
             &block,
             &grid);
-        KeBNBackwardScaleBias2D<T, block_size, DataLayout::kNHWC>
+        KeBNBackwardScaleBias2D<T, block_size, DataLayout::NHWC>
             <<<grid, block, 0, stream>>>(dy_d,
                                          x_d,
                                          saved_mean_ptr,
@@ -674,7 +671,7 @@ void SyncBatchNormGradFunctor(
                                          d_scale->data<BatchNormParamType<T>>(),
                                          d_bias->data<BatchNormParamType<T>>());
       } else {
-        KeBNBackwardScaleBias<T, threads, DataLayout::kNHWC>
+        KeBNBackwardScaleBias<T, threads, DataLayout::NHWC>
             <<<grid, threads, 0, stream>>>(
                 dy_d,
                 x_d,
@@ -690,7 +687,7 @@ void SyncBatchNormGradFunctor(
     }
     if (d_x) {
       dev_ctx.template Alloc<T>(d_x);
-      KeBNBackwardData<T, DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
+      KeBNBackwardData<T, DataLayout::NHWC><<<grid2, block, 0, stream>>>(
           dy_d,
           x_d,
           scale.template data<BatchNormParamType<T>>(),

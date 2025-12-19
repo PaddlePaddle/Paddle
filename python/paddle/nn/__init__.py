@@ -194,6 +194,11 @@ from .layer.transformer import (
     TransformerEncoderLayer,
 )
 from .layer.vision import ChannelShuffle, PixelShuffle, PixelUnshuffle
+from .modules.container import (
+    ModuleDict,
+    ModuleList,
+)
+from .modules.module import Module
 from .parameter import Parameter
 from .utils.spectral_norm_hook import spectral_norm  # noqa: F401
 
@@ -225,7 +230,11 @@ CircularPad3d = CircularPad3D
 Conv1d = Conv1D
 Conv2d = Conv2D
 Conv3d = Conv3D
-
+AdaptiveMaxPool1d = AdaptiveMaxPool1D
+AdaptiveMaxPool2d = AdaptiveMaxPool2D
+AdaptiveMaxPool3d = AdaptiveMaxPool3D
+LPPool2d = LPPool2D
+LPPool1d = LPPool1D
 
 __all__ = [
     'BatchNorm',
@@ -252,15 +261,18 @@ __all__ = [
     'ConstantPad1D',
     'ConstantPad2D',
     'ConstantPad3D',
-    'CircularPad1d',
-    'CircularPad2d',
-    'CircularPad3d',
+    'CircularPad1D',
+    'CircularPad2D',
+    'CircularPad3D',
     'ReplicationPad1D',
     'ReplicationPad2D',
     'ReplicationPad3D',
     'ReflectionPad1D',
     'ReflectionPad2D',
     'ReflectionPad3D',
+    'CircularPad1d',
+    'CircularPad2d',
+    'CircularPad3d',
     'ConstantPad1d',
     'ConstantPad2d',
     'ConstantPad3d',
@@ -396,4 +408,12 @@ __all__ = [
     'ZeroPad1D',
     'ZeroPad3D',
     'Parameter',
+    'AdaptiveMaxPool1d',
+    'AdaptiveMaxPool2d',
+    'AdaptiveMaxPool3d',
+    'LPPool2d',
+    'LPPool1d',
+    'Module',
+    'ModuleDict',
+    'ModuleList',
 ]

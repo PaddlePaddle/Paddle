@@ -75,7 +75,7 @@ class alignas(8) Operation final : public DoubleLevelContainer<Operation> {
       const std::vector<pir::Value> &inputs,
       const AttributeMap &attributes,
       const std::vector<pir::Type> &output_types,
-      pir::OpInfo op_info,
+      const pir::OpInfo &op_info,
       size_t num_regions = 0,
       const std::vector<Block *> &successors = {},
       bool verify = true);

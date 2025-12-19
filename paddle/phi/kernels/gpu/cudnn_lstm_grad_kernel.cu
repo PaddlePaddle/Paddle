@@ -75,7 +75,7 @@ void CudnnLSTMGradKernel(
   }
 
   phi::DenseTensor weight_grad;
-  phi::funcs::SetConstant<phi::GPUContext, T> zero;
+  funcs::SetConstant<phi::GPUContext, T> zero;
   weight_grad.Resize({weight_numel});
   dev_ctx.template Alloc<T>(&weight_grad);
   zero(dev_ctx, &weight_grad, static_cast<T>(0.0));
@@ -116,15 +116,20 @@ void CudnnLSTMGradKernel(
   }
 
   int seq_length = input_dims[0];
-  int batch_size = x.dims()[1];
-  int input_size = x.dims()[2];
+  int64_t batch_size = x.dims()[1];
+  int64_t input_size = x.dims()[2];
+  // TODO(large-tensor): cudnn rnn dims not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
+  PADDLE_ENFORCE_LE_INT_MAX(input_size, "input_size");
+  int batch_size_int = static_cast<int>(batch_size);
+  int input_size_int = static_cast<int>(input_size);
 
   size_t workspace_size;
   size_t reserve_size;
 
   ScopedRNNBase rnn(seq_length,
-                    batch_size,
-                    input_size,
+                    batch_size_int,
+                    input_size_int,
                     hidden_size,
                     num_layers,
                     dropout_prob,

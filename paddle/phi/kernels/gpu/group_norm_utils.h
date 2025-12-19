@@ -14,16 +14,9 @@
 
 #pragma once
 
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace phi {
@@ -92,7 +85,7 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
       y += blockDim.x;
     }
   }
-  int64_t remain = size % (VecSize * blockDim.x);
+  int64_t remain = size % (VecSize * static_cast<int64_t>(blockDim.x));
 
   T ins_x[VecSize];
   T ins_y[VecSize];

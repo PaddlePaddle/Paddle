@@ -202,7 +202,7 @@ struct XPUContext::Impl {
       auto overload_alloc_fn =
           [&xhpc_buf_mgr = xhpc_buf_mgr_,
            &place = place_,
-           s = context_->get_stream()](size_t size) -> void* {
+           &s = context_->xpu_stream](size_t size) -> void* {
         return xhpc_buf_mgr.Alloc(place, size, s);
       };
       auto overload_save_fn = [&xhpc_buf_mgr = xhpc_buf_mgr_]() {
@@ -493,6 +493,12 @@ void XPUContext::SetBkclContext(xpu::BKCLContext_t context) {
 void XPUContext::CreateStream(int i) {
   CheckValidStreamId(i);
   impls_[i]->CreateStream();
+  // Update stream pool and handle after creating the stream
+  if (i == 0 && current_stream_idx == 0 && stream_pool.size() > 0) {
+    stream_pool[current_stream_idx] = impls_[i]->context_->get_stream();
+    current_stream_handle.set_stream(impls_[i]->context_->get_stream());
+    idle_stream_flags[current_stream_idx] = false;
+  }
 }
 
 void XPUContext::RecordEvent(XPUEvent event, int s) const {

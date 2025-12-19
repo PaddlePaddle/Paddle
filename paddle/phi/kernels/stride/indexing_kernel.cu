@@ -77,7 +77,7 @@ inline bool CheckIsDimsMatchBool(const DDim& first, const DDim& second) {
   return false;
 }
 
-template <typename T, typename Context>
+template <typename T, typename Context, typename OffsetT = uint32_t>
 void LaunchIndexPutKernel_V2(const Context& dev_ctx,
                              const DenseTensor& x,
                              const std::vector<const DenseTensor*>& indices,
@@ -119,6 +119,13 @@ void LaunchIndexPutKernel_V2(const Context& dev_ctx,
 
   funcs::AdvancedIndex ad =
       funcs::AdvancedIndex<T, Context>(dev_ctx, *out, indices);
+  if (ad.empty_index) {
+    if (!out->initialized()) {
+      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    }
+    return;
+  }
+
   if (!CheckIsDimsMatchBool(ad.src.dims(), value.dims())) {
     DenseTensor x_;
     DenseTensor value_;
@@ -248,8 +255,13 @@ void IndexPutKernel_V2(const Context& dev_ctx,
                               "Kernel using DenseTensorIterator "
                               "be called, something wrong has happened!"));
   }
-  LaunchIndexPutKernel_V2<T, Context>(
-      dev_ctx, x_, indices, value_, accumulate, out);
+  if (out && !funcs::IsInUint32Range(out->numel(), value_.numel())) {
+    LaunchIndexPutKernel_V2<T, Context, uint64_t>(
+        dev_ctx, x_, indices, value_, accumulate, out);
+  } else {
+    LaunchIndexPutKernel_V2<T, Context>(
+        dev_ctx, x_, indices, value_, accumulate, out);
+  }
 }
 
 template <typename T, typename Context>
@@ -327,8 +339,13 @@ void IndexPutGradKernel_V2(const Context& dev_ctx,
                             phi::IntArray(common::vectorize(value.dims())),
                             0,
                             &value_zero);
-      LaunchIndexPutKernel_V2<T, Context>(
-          dev_ctx, out_grad, indices, value_zero, false, x_grad);
+      if (funcs::IsInUint32Range(x_grad->numel(), value.numel())) {
+        LaunchIndexPutKernel_V2<T, Context>(
+            dev_ctx, out_grad, indices, value_zero, false, x_grad);
+      } else {
+        LaunchIndexPutKernel_V2<T, Context, uint64_t>(
+            dev_ctx, out_grad, indices, value_zero, false, x_grad);
+      }
     }
   }
 }

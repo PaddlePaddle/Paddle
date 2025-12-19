@@ -143,7 +143,7 @@ Buffer::Buffer(int rank,
 
   // Create 32 MiB workspace
   // Note(ZKK):  here we allocate more(2 * M2N_NUM_WORKSPACE) to support M2N!
-  // Later we will opitimize here!
+  // Later we will optimize here!
   CUDA_CHECK(
       cudaMalloc(&workspace, 2 * M2N_NUM_WORKSPACE * NUM_WORKSPACE_BYTES));
   CUDA_CHECK(cudaMemsetAsync(
@@ -1752,7 +1752,8 @@ Buffer::low_latency_dispatch(
     int num_experts,
     bool use_fp8,
     bool async,
-    bool return_recv_hook) {
+    bool return_recv_hook,
+    int num_per_channel) {
   EP_HOST_ASSERT(low_latency_mode);
 
   // Tensor checks
@@ -1768,7 +1769,8 @@ Buffer::low_latency_dispatch(
 
   auto num_tokens = static_cast<int>(x.size(0)),
        hidden = static_cast<int>(x.size(1));
-  auto num_scales = hidden / 128, num_topk = static_cast<int>(topk_idx.size(1));
+  auto num_scales = num_per_channel == -1 ? 1 : hidden / 128,
+       num_topk = static_cast<int>(topk_idx.size(1));
   int num_local_experts = num_experts / num_ranks;
 
   // Buffer control
@@ -1872,7 +1874,8 @@ Buffer::low_latency_dispatch(
                            use_fp8,
                            workspace,
                            launch_stream,
-                           phases);
+                           phases,
+                           num_per_channel);
   };
   launcher(return_recv_hook
                ? LOW_LATENCY_SEND_PHASE
@@ -2045,7 +2048,8 @@ Buffer::low_latency_dispatch_two_stage(
     int num_experts,
     bool use_fp8,
     bool async,
-    bool return_recv_hook) {
+    bool return_recv_hook,
+    int num_per_channel) {
   EP_HOST_ASSERT(low_latency_mode);
 
   // Tensor checks
@@ -2060,7 +2064,8 @@ Buffer::low_latency_dispatch_two_stage(
 
   auto num_tokens = static_cast<int>(x.size(0)),
        hidden = static_cast<int>(x.size(1));
-  auto num_scales = hidden / 128, num_topk = static_cast<int>(topk_idx.size(1));
+  auto num_scales = num_per_channel == -1 ? 1 : hidden / 128,
+       num_topk = static_cast<int>(topk_idx.size(1));
   int num_local_experts = num_experts / num_ranks;
 
   // Buffer control
@@ -2117,7 +2122,7 @@ Buffer::low_latency_dispatch_two_stage(
       (num_ranks / NUM_MAX_NVL_PEERS * (num_topk * 3 + 1) * sizeof(int) +
        sizeof(int4) - 1) /
           sizeof(int4) * sizeof(int4) +
-      (use_fp8 ? (hidden + num_scales * sizeof(float))
+      (use_fp8 ? (hidden + (num_scales + 3) / 4 * 4 * sizeof(float))
                : (hidden * sizeof(nv_bfloat16)));
   auto packed_rdma_recv_x = ConvertPaddleTensorToDetailTensor(
       paddle::experimental::empty({num_ranks / NUM_MAX_NVL_PEERS,
@@ -2178,7 +2183,8 @@ Buffer::low_latency_dispatch_two_stage(
         workspace,
         launch_stream,
         phases,
-        low_latency_buffer_idx);
+        low_latency_buffer_idx,
+        num_per_channel);
   };
   launcher(return_recv_hook
                ? LOW_LATENCY_SEND_PHASE
@@ -2219,6 +2225,7 @@ Buffer::low_latency_combine_two_stage(
     bool dispatch_use_fp8,
     bool async,
     bool return_recv_hook,
+    int num_per_channel,
     const std::optional<deep_ep::detail::Tensor>& out) {
   EP_HOST_ASSERT(low_latency_mode);
 
@@ -2305,7 +2312,8 @@ Buffer::low_latency_combine_two_stage(
                                     launch_stream,
                                     phases,
                                     dispatch_use_fp8,
-                                    low_latency_buffer_idx);
+                                    low_latency_buffer_idx,
+                                    num_per_channel);
   };
   launcher(return_recv_hook
                ? LOW_LATENCY_SEND_PHASE
@@ -2976,7 +2984,8 @@ Buffer::low_latency_dispatch_api(
     int num_experts,
     bool use_fp8,
     bool async,
-    bool return_recv_hook) {
+    bool return_recv_hook,
+    int num_per_channel) {
 #ifdef PADDLE_WITH_NVSHMEM
   const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
   const auto& topk_idx_ = ConvertPaddleTensorToDetailTensor(topk_idx);
@@ -2994,7 +3003,8 @@ Buffer::low_latency_dispatch_api(
                                   num_experts,
                                   use_fp8,
                                   async,
-                                  return_recv_hook);
+                                  return_recv_hook,
+                                  num_per_channel);
 
   auto packed_recv_x_ = ConvertDetailTensorToPaddleTensor(std::get<0>(res));
 
@@ -3093,7 +3103,8 @@ Buffer::low_latency_dispatch_two_stage_api(const paddle::Tensor& x,
                                            int num_experts,
                                            bool use_fp8,
                                            bool async,
-                                           bool return_recv_hook) {
+                                           bool return_recv_hook,
+                                           int num_per_channel) {
 #ifdef PADDLE_WITH_NVSHMEM
   const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
   const auto& topk_idx_ = ConvertPaddleTensorToDetailTensor(topk_idx);
@@ -3106,7 +3117,8 @@ Buffer::low_latency_dispatch_two_stage_api(const paddle::Tensor& x,
                                             num_experts,
                                             use_fp8,
                                             async,
-                                            return_recv_hook);
+                                            return_recv_hook,
+                                            num_per_channel);
 
   auto packed_recv_x_ = ConvertDetailTensorToPaddleTensor(std::get<0>(res));
 
@@ -3164,6 +3176,7 @@ Buffer::low_latency_combine_two_stage_api(
     bool dispatch_use_fp8,
     bool async,
     bool return_recv_hook,
+    int num_per_channel,
     const std::optional<paddle::Tensor>& out) {
 #ifdef PADDLE_WITH_NVSHMEM
   const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
@@ -3195,6 +3208,7 @@ Buffer::low_latency_combine_two_stage_api(
                                            dispatch_use_fp8,
                                            async,
                                            return_recv_hook,
+                                           num_per_channel,
                                            out_);
 
   auto combined_x_ = ConvertDetailTensorToPaddleTensor(std::get<0>(res));

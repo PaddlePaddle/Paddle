@@ -19,6 +19,8 @@
 
 #include <string>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator.h"
 
@@ -28,6 +30,10 @@
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 namespace paddle::memory::allocation {
+
+std::mutex CUDAVirtualMemAllocator::base_ptr_handle_mu_;
+std::unordered_map<void*, CUmemGenericAllocationHandle>
+    CUDAVirtualMemAllocator::base_ptr_handle_map_;
 
 CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(const phi::GPUPlace& place)
     : place_(place), virtual_mem_base_(0), prop_{} {
@@ -41,57 +47,55 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(const phi::GPUPlace& place)
   prop.type = CU_MEM_ALLOCATION_TYPE_PINNED;
   prop.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
   prop.location.id = place.device;  // NOLINT
+#if defined(_WIN32)
+  prop.requestedHandleTypes = CU_MEM_HANDLE_TYPE_NONE;
+#else
+  prop.requestedHandleTypes = CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR;
+#endif
   prop_ = prop;
 
   // Prepare the access descriptor array indicating where and how the backings
   // should be visible.
-  for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount(); ++dev_id) {
-    if (place.device != dev_id) {
-      int capable = 0;
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          cudaDeviceCanAccessPeer(&capable, place.device, dev_id));
-      if (!capable) {
-        VLOG(1) << "device(" << place.device
-                << ") can not access peer to device(" << dev_id << ")";
-        continue;
-      }
-    }
-    CUmemAccessDesc access_desc = {};
-    // Specify which device we are adding mappings for.
-    access_desc.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
-    access_desc.location.id = dev_id;
-
-    // Specify both read and write access.
-    access_desc.flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
-    access_desc_.push_back(access_desc);
+  access_desc_.clear();
+  {
+    CUmemAccessDesc self = {};
+    self.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
+    self.location.id = place.device;
+    self.flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
+    access_desc_.push_back(self);
   }
+}
 
-  // Get the minimum granularity needed for all devices
-  // (the max of the minimum granularity of each participating device)
-  granularity_ = 0;
-  for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount(); ++dev_id) {
-    size_t granularity;
-    prop.location.id = dev_id;
+void CUDAVirtualMemAllocator::InitOnce() {
+  std::call_once(init_flag_, [this] {
+    platform::SetDeviceId(place_.device);
+    paddle::platform::CUDADeviceGuard guard(place_.device);
+
+    // Get the minimum granularity.
+    size_t granularity = 0;
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemGetAllocationGranularity(
-        &granularity, &prop, CU_MEM_ALLOC_GRANULARITY_MINIMUM));
-    granularity_ = std::max(granularity, granularity_);
-  }
+        &granularity, &prop_, CU_MEM_ALLOC_GRANULARITY_MINIMUM));
+    granularity_ = granularity;
 
-  size_t actual_avail, actual_total;
-  paddle::platform::CUDADeviceGuard guard(place.device);
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemGetInfo(&actual_avail, &actual_total));
+    // total size & VA size
+    size_t actual_avail, actual_total;
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemGetInfo(&actual_avail, &actual_total));
+    VLOG(1) << "VMM InitOnce dev " << place_.device << " actual_avail: "
+            << static_cast<double>(actual_avail) / (1 << 20) << " MB, "
+            << "actual_total: " << static_cast<double>(actual_total) / (1 << 20)
+            << " MB";
 
-  virtual_mem_size_ = AlignedSize(actual_total, granularity_);
+    virtual_mem_size_ = AlignedSize(actual_total, granularity_);
 
-  // Reserve the required contiguous virtual address space for the allocations
-  // The maximum video memory size we can apply for is the video memory size of
-  // GPU,
-  // so the virtual address space size we reserve is equal to the GPU video
-  // memory size
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemAddressReserve(
-      &virtual_mem_base_, virtual_mem_size_, 0, 0, 0));
+    // Reserve the required contiguous virtual address space for the allocations
+    // The maximum video memory size we can apply for is the video memory size
+    // of GPU, so the virtual address space size we reserve is equal to the GPU
+    // video memory size
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemAddressReserve(
+        &virtual_mem_base_, virtual_mem_size_, 0, 0, 0));
 
-  virtual_mem_alloced_offset_ = 0;
+    virtual_mem_alloced_offset_ = 0;
+  });
 }
 
 bool CUDAVirtualMemAllocator::IsAllocThreadSafe() const { return false; }
@@ -130,12 +134,14 @@ void CUDAVirtualMemAllocator::FreeImpl(phi::Allocation* allocation) {
     cudaSetDevice(prev_id);
   }
 
+  UnregisterHandle(allocation->ptr());
   virtual_2_physical_map_.erase(iter);
 
   delete allocation;
 }
 
 phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
+  InitOnce();
   size = AlignedSize(size, granularity_);
 
   CUdeviceptr ptr = virtual_mem_base_ + virtual_mem_alloced_offset_;
@@ -216,9 +222,35 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
   virtual_2_physical_map_.emplace(ptr, std::make_pair(handle, size));
 
   virtual_mem_alloced_offset_ += size;
+  VLOG(10) << "AllocateImpl chunk handle: " << static_cast<int64_t>(handle)
+           << ", size=" << size
+           << ", device=" << static_cast<int>(place_.device);
+
+  RegisterHandle(reinterpret_cast<void*>(ptr), handle);
 
   return new Allocation(
       reinterpret_cast<void*>(ptr), size, phi::Place(place_));  // NOLINT
+}
+
+CUmemGenericAllocationHandle CUDAVirtualMemAllocator::GetHandleFromBasePtr(
+    void* base_ptr) {
+  std::lock_guard<std::mutex> guard(base_ptr_handle_mu_);
+  auto it = base_ptr_handle_map_.find(base_ptr);
+  if (it == base_ptr_handle_map_.end()) {
+    return 0;
+  }
+  return it->second;
+}
+
+void CUDAVirtualMemAllocator::RegisterHandle(
+    void* base_ptr, CUmemGenericAllocationHandle handle) {
+  std::lock_guard<std::mutex> guard(base_ptr_handle_mu_);
+  base_ptr_handle_map_.emplace(base_ptr, handle);
+}
+
+void CUDAVirtualMemAllocator::UnregisterHandle(void* base_ptr) {
+  std::lock_guard<std::mutex> guard(base_ptr_handle_mu_);
+  base_ptr_handle_map_.erase(base_ptr);
 }
 
 }  // namespace paddle::memory::allocation

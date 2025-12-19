@@ -20,6 +20,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
+#if !defined(PADDLE_WITH_XPU_KP) || defined(__xpu_on_host__)
+#include "unsupported/Eigen/CXX11/Tensor"
+#endif
+
 namespace paddle {
 namespace operators {
 

@@ -375,8 +375,8 @@ bool DecompProgram::enable_decomp_by_filter(const std::string& op_name) {
       flag = false;
     }
   }
-  std::set<std::string> default_comp_blacklist = {"pd_op.embedding",
-                                                  "pd_op.dropout"};
+  std::set<std::string> default_comp_blacklist = {
+      "pd_op.embedding", "pd_op.dropout", "pd_op.masked_fill"};
 
   auto from_flag_blacklist = StringSplit(FLAGS_prim_forward_blacklist);
   if (!from_flag_blacklist.empty())

@@ -1189,10 +1189,10 @@ class TestCumprodAPI_Compatibility(unittest.TestCase):
         # Position args (args)
         out1 = paddle.cumprod(x, self.dim)
         paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
+        # Keywords args (kwargs) for paddle
         out2 = paddle.cumprod(x=x, dim=self.dim)
         paddle_dygraph_out.append(out2)
-        # Key words args for torch compatibility
+        # Keywords args for torch compatibility
         out3 = paddle.cumprod(input=x, dim=self.dim)
         paddle_dygraph_out.append(out3)
         # Tensor method args
@@ -1217,9 +1217,9 @@ class TestCumprodAPI_Compatibility(unittest.TestCase):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             # Position args (args)
             out1 = paddle.cumprod(x, self.dim)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle.cumprod(x=x, dim=self.dim)
-            # Key words args for torch compatibility
+            # Keywords args for torch compatibility
             out3 = paddle.cumprod(input=x, dim=self.dim)
             # Tensor method args
             out4 = x.cumprod(dim=self.dim)

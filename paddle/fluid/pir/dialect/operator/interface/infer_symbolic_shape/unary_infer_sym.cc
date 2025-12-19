@@ -445,18 +445,18 @@ bool AssignOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-// bool AllReduceOpInferSymbolicShape(pir::Operation *op,
-//                                    pir::InferSymbolicShapeContext
-//                                    *infer_context) {
-//   // pass
-//   return true;
-// }
+bool AllReduceOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+  return true;
+}
 
-// bool AllReduce_OpInferSymbolicShape(pir::Operation *op,
-//                                     pir::InferSymbolicShapeContext
-//                                     *infer_context) {
-//   return AllReduceOpInferSymbolicShape(op, infer_context);
-// }
+bool AllReduce_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return AllReduceOpInferSymbolicShape(op, infer_context);
+}
 
 // bool BarrierOpInferSymbolicShape(pir::Operation *op,
 //                                  pir::InferSymbolicShapeContext
@@ -793,6 +793,53 @@ bool ChannelShuffleOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
 
   return true;
+}
+
+bool CAllreduceSumOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return AllReduceOpInferSymbolicShape(op, infer_context);
+}
+
+bool CAllreduceSum_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return CAllreduceSumOpInferSymbolicShape(op, infer_context);
+}
+
+bool CConcatOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+  int nranks = op->attribute<pir::Int32Attribute>("nranks").data();
+
+  std::vector<symbol::DimExpr> out_dims = x_dims;
+  if (!out_dims.empty()) {
+    out_dims.back() = out_dims.back() * nranks;
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+  return true;
+}
+
+bool CIdentityOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  int ring_id = op->attribute<pir::Int32Attribute>("ring_id").data();
+  PADDLE_ENFORCE_GE(
+      ring_id,
+      0,
+      common::errors::InvalidArgument(
+          "The ring_id (%d) for c_identity must be non-negative.", ring_id));
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+  return true;
+}
+
+bool CIdentity_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return CIdentityOpInferSymbolicShape(op, infer_context);
 }
 
 bool CropOpInferSymbolicShape(pir::Operation *op,
@@ -1904,6 +1951,16 @@ bool Lu_OpInferSymbolicShape(pir::Operation *op,
   return LuOpInferSymbolicShape(op, infer_context);
 }
 
+bool MpAllreduceSumOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return AllReduceOpInferSymbolicShape(op, infer_context);
+}
+
+bool MpAllreduceSum_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return MpAllreduceSumOpInferSymbolicShape(op, infer_context);
+}
+
 bool MaxOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   bool keepdim = GetBoolAttr(op, "keepdim");
@@ -2204,7 +2261,7 @@ bool MatrixPowerOpInferSymbolicShape(
 
 bool MatrixRankOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  // 获取输入x的符号形状
+  // Get the symbolic shape of input x
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
@@ -2218,16 +2275,17 @@ bool MatrixRankOpInferSymbolicShape(
   };
   const auto &x_numel = GetProduct(x_shape);
 
-  // 确保输入x的维度大于等于2
+  // Ensure the rank of input x is at least 2
   PADDLE_ENFORCE_GE(x_shape.size(),
                     2,
                     common::errors::InvalidArgument(
                         "The dims of input must be greater than 2."));
 
-  // 获取Hermitian属性
+  // Get the Hermitian attribute
   bool hermitian = op->attribute<pir::BoolAttribute>("hermitian").data();
 
-  // 如果hermitian为true，确保输入x是方阵,0-size Tensor不需要此检查
+  // If Hermitian is true, ensure input x is a square matrix (skip 0-size
+  // Tensors)
   if (hermitian && x_numel != 0) {
     infer_context->AddEqualCstr(x_shape[x_shape.size() - 2],
                                 x_shape[x_shape.size() - 1]);
@@ -2240,7 +2298,7 @@ bool MatrixRankOpInferSymbolicShape(
     x_batch_dims.erase(x_batch_dims.end() - 2, x_batch_dims.end());
   }
 
-  // 推断输出的形状，设置批次维度
+  // Infer output shape and set batch dimensions
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{

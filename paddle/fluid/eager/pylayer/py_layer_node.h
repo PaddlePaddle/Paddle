@@ -106,6 +106,10 @@ class GradNodePyLayer : public GradNodeBase {
         std::shared_ptr<GradNodePyLayer>(new GradNodePyLayer(*this));
     return copied_node;
   }
+  bool GradInDtypeConsistent() { return grad_in_dtype_consistent_; }
+  void SetGradInDtypeConsistent(bool value) {
+    grad_in_dtype_consistent_ = value;
+  }
 
  private:
   PyObject* ctx_{nullptr};
@@ -116,6 +120,7 @@ class GradNodePyLayer : public GradNodeBase {
       forward_outputs_dist_attr_;
   std::vector<std::vector<phi::DDim>> forward_outputs_global_dims_;
   std::vector<std::vector<bool>> forward_outputs_is_dist_meta_;
+  bool grad_in_dtype_consistent_;
 };
 
 }  // namespace egr

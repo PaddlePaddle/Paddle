@@ -33,20 +33,20 @@ struct LRNFunctor<phi::CPUContext, T> {
                   const phi::DenseTensor& input,
                   phi::DenseTensor* out,
                   phi::DenseTensor* mid,
-                  int N,
-                  int C,
-                  int H,
-                  int W,
+                  int64_t N,
+                  int64_t C,
+                  int64_t H,
+                  int64_t W,
                   int n,
                   T k,
                   T alpha,
                   T beta,
                   const DataLayout data_layout) {
-    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
-    phi::funcs::Transpose<phi::CPUContext, T, 4> transpose;
+    auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+    funcs::Transpose<phi::CPUContext, T, 4> transpose;
     phi::DenseTensor in_transpose, mid_transpose, out_transpose;
     // if channel_last, transpose to channel_first
-    if (data_layout == DataLayout::kNHWC) {
+    if (data_layout == DataLayout::NHWC) {
       auto in_dims = input.dims();
       std::vector<int64_t> shape(
           {in_dims[0], in_dims[3], in_dims[1], in_dims[2]});
@@ -76,22 +76,22 @@ struct LRNFunctor<phi::CPUContext, T> {
     squared.Resize({1, C + n - 1, H, W});
     T* sdata = dev_ctx.Alloc<T>(&squared);
     std::memset(sdata, 0, sizeof(T) * squared.numel());
-    for (int i = 0; i < mid->numel(); ++i) {
+    for (int64_t i = 0; i < mid->numel(); ++i) {
       mdata[i] = k;
     }
-    int img_size = H * W;
-    int fea_size = C * img_size;
+    int64_t img_size = H * W;
+    int64_t fea_size = C * img_size;
     int pre_pad = (n - 1) / 2;
     // compute batches one by one
-    for (int i = 0; i < N; ++i) {
+    for (int64_t i = 0; i < N; ++i) {
       blas.VSQUARE(fea_size, idata + i * fea_size, sdata + pre_pad * img_size);
       // init the first channel of mid
       for (int c = 0; c < n; ++c) {
         blas.AXPY(img_size, alpha, sdata + c * img_size, mdata + i * fea_size);
       }
-      for (int c = 1; c < C; ++c) {
+      for (int64_t c = 1; c < C; ++c) {
         // copy previous scale
-        int mid_offset = i * fea_size + c * img_size;
+        int64_t mid_offset = i * fea_size + c * img_size;
         std::memcpy(mdata + mid_offset,
                     mdata + mid_offset - img_size,
                     img_size * sizeof(T));
@@ -110,7 +110,7 @@ struct LRNFunctor<phi::CPUContext, T> {
     blas.VMUL(mid->numel(), odata, idata, odata);
 
     // if channel_last, transpose the output(NCHW) to channel_last
-    if (data_layout == DataLayout::kNHWC) {
+    if (data_layout == DataLayout::NHWC) {
       std::vector<int> axis = {0, 2, 3, 1};
       transpose(dev_ctx, mid_transpose, mid, axis);
       transpose(dev_ctx, out_transpose, out, axis);

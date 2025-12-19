@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
+#include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
@@ -1357,6 +1358,19 @@ phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetCommContext(
                     nullptr,
                     common::errors::Unavailable("NCCLCommContext is nullptr"));
   return comm_context;
+}
+
+void ProcessGroupNCCL::EraseTensorHolders() {
+  for (const auto& allocation_stream : allocation_stream_pairs_) {
+    auto holder_ptr = allocation_stream.first.lock();
+    if (holder_ptr) {
+      memory::EraseStream(holder_ptr, allocation_stream.second);
+    }
+  }
+  VLOG(5) << "After task wait/synchronize, total "
+          << allocation_stream_pairs_.size()
+          << " tensor(s) allocation stream have been removed.";
+  allocation_stream_pairs_.clear();
 }
 
 void ProcessGroupNCCL::StartCoalescing() {

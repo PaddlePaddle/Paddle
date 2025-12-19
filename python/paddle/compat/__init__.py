@@ -14,40 +14,131 @@
 
 from __future__ import annotations
 
-import sys
-import types
-import warnings
-from contextlib import contextmanager
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple
 
-from . import nn  # noqa: F401
-
-__all__ = [
-    'slogdet',
-    'sort',
-    'split',
-    'min',
-    'max',
-    'median',
-    'nanmedian',
-]
-
-
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
+from paddle.base import core
 from paddle.base.framework import Variable
 from paddle.framework import (
     in_dynamic_mode,
 )
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
+from . import nn as nn
+from .proxy import (  # noqa: F401
+    disable_torch_proxy,
+    enable_torch_proxy,
+    extend_torch_proxy_blocked_modules,
+    paddle_triton_fun,
+    use_torch_proxy_guard,
+)
 from .utils import _check_out_status
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from paddle import Tensor
+
+__all__ = [
+    'equal',
+    'slogdet',
+    'sort',
+    'split',
+    'min',
+    'max',
+    'unique',
+    'median',
+    'nanmedian',
+    'seed',
+]
+
+
+def __getattr__(name):
+    if name == "paddle_triton":
+        return paddle_triton_fun()
+
+
+_types = [
+    paddle.uint8,
+    paddle.int8,
+    paddle.int16,
+    paddle.int32,
+    paddle.int64,
+    paddle.float16,
+    paddle.float32,
+    paddle.float64,
+    paddle.bool,
+    paddle.bfloat16,
+]
+u1, i1, i2, i4, i8, f2, f4, f8, b1, bf = _types
+
+_promote_matrix = [
+    [u1, i2, i2, i4, i8, f2, f4, f8, u1, bf],  # u1
+    [i2, i1, i2, i4, i8, f2, f4, f8, i1, bf],  # i1
+    [i2, i2, i2, i4, i8, f2, f4, f8, i2, bf],  # i2
+    [i4, i4, i4, i4, i8, f2, f4, f8, i4, bf],  # i4
+    [i8, i8, i8, i8, i8, f2, f4, f8, i8, bf],  # i8
+    [f2, f2, f2, f2, f2, f2, f4, f8, f2, f4],  # f2
+    [f4, f4, f4, f4, f4, f4, f4, f8, f4, f4],  # f4
+    [f8, f8, f8, f8, f8, f8, f8, f8, f8, f8],  # f8
+    [u1, i1, i2, i4, i8, f2, f4, f8, b1, bf],  # b1
+    [bf, bf, bf, bf, bf, f4, f4, f8, bf, bf],  # bf
+]
+
+PROMOTE_DICT = {
+    (t1, t2): _promote_matrix[i][j]
+    for i, t1 in enumerate(_types)
+    for j, t2 in enumerate(_types)
+}
+
+
+@ForbidKeywordsDecorator(
+    illegal_keys={"x", "y"},
+    func_name="paddle.compat.equal",
+    correct_name="paddle.equal",
+)
+def equal(
+    input: Tensor,
+    other: Tensor,
+) -> bool:
+    """
+
+    ``True`` if two tensors have the same size and elements, ``False`` otherwise.
+
+    Note:
+        Tensors containing NaNs are never equal to each other. Additionally, this function does not differentiate between the data types of the tensors during comparison.
+
+    Args:
+        input (Tensor): Tensor, data type is bool, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+        other (Tensor): Tensor, data type is bool, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+
+    Returns:
+        Bool: ``True`` if two tensors have the same size and elements, ``False`` otherwise.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> y = paddle.to_tensor([1, 3, 2])
+            >>> result1 = paddle.compat.equal(x, y)
+            >>> print(result1)
+            False
+    """
+    if input.dtype == other.dtype:
+        return paddle.equal_all(input, other).item()
+
+    common_dtype = PROMOTE_DICT.get(input.dtype, other.dtype)
+    if input.dtype != common_dtype:
+        input = input.cast(common_dtype)
+    if other.dtype != common_dtype:
+        other = other.cast(common_dtype)
+
+    return paddle.equal_all(input, other).item()
 
 
 class MedianRetType(NamedTuple):
@@ -194,6 +285,22 @@ def nanmedian(
             paddle.assign(indices, out[1])
             return MedianRetType(values=out[0], indices=out[1])
         return MedianRetType(values=values, indices=indices)
+
+
+def seed() -> int:
+    r"""Sets the seed for generating random numbers to a non-deterministic
+    random number on all devices. Returns a 64 bit number used to seed the RNG.
+    Returns:
+        Returns: int64, the seed used to seed the RNG.
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> seed = paddle.compat.seed()
+    """
+    seed = core.default_cpu_generator().seed()
+    paddle.seed(seed)
+    return seed
 
 
 class MinMaxRetType(NamedTuple):
@@ -733,6 +840,115 @@ def sort(
     return SortRetType(values=outputs, indices=indices)
 
 
+@overload
+def unique(
+    input: Tensor,
+    sorted: bool = ...,
+    return_inverse: Literal[True] = ...,
+    return_counts: Literal[True] = ...,
+    dim: int | None = ...,
+) -> tuple[Tensor, Tensor, Tensor]: ...
+
+
+@overload
+def unique(
+    input: Tensor,
+    sorted: bool = ...,
+    return_inverse: Literal[False] = ...,
+    return_counts: Literal[True] = ...,
+    dim: int | None = ...,
+) -> tuple[Tensor, Tensor]: ...
+
+
+@overload
+def unique(
+    input: Tensor,
+    sorted: bool = ...,
+    return_inverse: Literal[True] = ...,
+    return_counts: Literal[False] = ...,
+    dim: int | None = ...,
+) -> tuple[Tensor, Tensor]: ...
+
+
+@overload
+def unique(
+    input: Tensor,
+    sorted: bool = ...,
+    return_inverse: Literal[False] = ...,
+    return_counts: Literal[False] = ...,
+    dim: int | None = ...,
+) -> Tensor: ...
+
+
+@ForbidKeywordsDecorator(
+    illegal_keys={"x", "axis"},
+    func_name="paddle.compat.unique",
+    correct_name="paddle.unique",
+)
+def unique(
+    input,
+    sorted=True,
+    return_inverse=False,
+    return_counts=False,
+    dim=None,
+):
+    r"""
+    Returns the unique elements of `input` in ascending order.
+
+    Args:
+        input(Tensor): The input tensor, it's data type should be float32, float64, int32, int64.
+        sorted(bool, optional): Does not affect the return result, same as PyTorch.
+        return_inverse(bool, optional): If True, also return the indices for where elements in
+            the original input ended up in the returned unique tensor.
+        return_counts(bool, optional): If True, also return the counts for each unique element.
+        dim(int, optional): The axis to apply unique. If None, the input will be flattened.
+            Default: None.
+
+    Returns:
+        tuple (output, inverse_indices, counts). `output` is the unique tensor for `input`. \
+            `inverse_indices` is provided only if `return_inverse` \
+            is True. `counts` is provided only if `return_counts` is True.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([2, 3, 3, 1, 5, 3])
+            >>> unique = paddle.compat.unique(x)
+            >>> print(unique)
+            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1, 2, 3, 5])
+
+            >>> _, inverse_indices, counts = paddle.compat.unique(x, return_inverse=True, return_counts=True)
+            >>> print(inverse_indices)
+            Tensor(shape=[6], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1, 2, 2, 0, 3, 2])
+            >>> print(counts)
+            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1, 1, 3, 1])
+
+            >>> x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3]])
+            >>> unique = paddle.compat.unique(x)
+            >>> print(unique)
+            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 1, 2, 3])
+
+            >>> unique = paddle.compat.unique(x, dim=0)
+            >>> print(unique)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[2, 1, 3],
+             [3, 0, 1]])
+    """
+    return paddle.unique(
+        input,
+        return_inverse=return_inverse,
+        return_counts=return_counts,
+        axis=dim,
+        sorted=sorted,
+    )
+
+
 @ForbidKeywordsDecorator(
     illegal_keys={"x", "num_or_sections", "axis", "name"},
     func_name="paddle.compat.split",
@@ -764,7 +980,7 @@ def split(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -773,28 +989,28 @@ def split(
 
             >>> out0, out1, out2 = paddle.compat.split(x, split_size_or_sections=3, dim=1)
             >>> print(out0.shape)
-            [3, 3, 5]
+            paddle.Size([3, 3, 5])
             >>> print(out1.shape)
-            [3, 3, 5]
+            paddle.Size([3, 3, 5])
             >>> print(out2.shape)
-            [3, 2, 5]
+            paddle.Size([3, 2, 5])
 
             >>> out0, out1, out2 = paddle.compat.split(x, split_size_or_sections=[1, 2, 5], dim=1)
             >>> print(out0.shape)
-            [3, 1, 5]
+            paddle.Size([3, 1, 5])
             >>> print(out1.shape)
-            [3, 2, 5]
+            paddle.Size([3, 2, 5])
             >>> print(out2.shape)
-            [3, 5, 5]
+            paddle.Size([3, 5, 5])
 
             >>> # dim is negative, the real dim is (rank(x) + dim)=1
             >>> out0, out1, out2 = paddle.compat.split(x, split_size_or_sections=3, dim=-2)
             >>> print(out0.shape)
-            [3, 3, 5]
+            paddle.Size([3, 3, 5])
             >>> print(out1.shape)
-            [3, 3, 5]
+            paddle.Size([3, 3, 5])
             >>> print(out2.shape)
-            [3, 2, 5]
+            paddle.Size([3, 2, 5])
     """
 
     def GetSplitSize(split_size, shape_on_dim):
@@ -911,170 +1127,3 @@ def split(
                     split_size_or_sections
                 )
             return tuple(_C_ops.split(tensor, split_size_or_sections, dim))
-
-
-def warning_about_fake_interface(name: str):
-    warnings.warn(
-        f"The interface '{name}' is a fake implementation for torch compatibility. "
-        "It does not have the actual functionality of PyTorch. "
-        "Please refer to the PaddlePaddle documentation for equivalent functionality.",
-        category=UserWarning,
-        stacklevel=2,
-    )
-
-
-def create_fake_class(name, attrs: dict[str, Any]):
-    """Create a fake class with the given name and attributes."""
-    new_fn = lambda *args, **kwargs: warning_about_fake_interface(name)
-    attrs["__init__"] = new_fn
-    return type(name, (), attrs)
-
-
-def create_fake_function(name):
-    """Create a fake function with the given name and implementation."""
-    fn = lambda *args, **kwargs: warning_about_fake_interface(name)
-    fn.__name__ = name
-    return fn
-
-
-class ProxyModule(types.ModuleType):
-    def __init__(
-        self,
-        original_module: types.ModuleType,
-        proxy_name: str,
-        overrides: dict[str, Any],
-    ):
-        super().__init__(proxy_name)
-        self._original_module = original_module
-        self._proxy_name = proxy_name
-        self._overrides = overrides
-
-    def __getattr__(self, name: str) -> Any:
-        if name in self._overrides:
-            return self._overrides[name]
-        return getattr(self._original_module, name)
-
-
-GLOBAL_OVERRIDES = {
-    "torch.Generator": create_fake_class(
-        "Generator", {"manual_seed": create_fake_function("manual_seed")}
-    ),
-}
-
-
-def _is_torch_module(name: str) -> bool:
-    return name == "torch" or name.startswith("torch.")
-
-
-class TorchProxyMetaFinder:
-    """
-    PyTorch compatibility layer for PaddlePaddle.
-
-    This class provides a way to `import torch` but actually loads PaddlePaddle.
-
-    Inspired by the setuptools _distutils_hack.
-    """
-
-    def find_spec(self, fullname, path, target=None):
-        if not _is_torch_module(fullname):
-            return None
-
-        import importlib
-        import importlib.abc
-        import importlib.util
-
-        # Map the requested torch fullname to the corresponding paddle fullname.
-        module_name = fullname.replace("torch", "paddle", 1)
-        source_module = importlib.import_module(module_name)
-        overrides = {
-            k.removeprefix(f"{fullname}."): v
-            for k, v in GLOBAL_OVERRIDES.items()
-            if k.startswith(f"{fullname}.")
-        }
-
-        is_pkg = hasattr(source_module, "__path__")
-
-        class TorchProxyLoader(importlib.abc.Loader):
-            def __init__(self, source, target_name):
-                self._source = source
-                self._target_name = target_name
-
-            def create_module(self, spec):
-                # Create a new module object that will act as the "torch..." module.
-                mod = ProxyModule(self._source, self._target_name, overrides)
-                # Preserve file/path information for tooling/debugging.
-                mod.__file__ = getattr(self._source, "__file__", None)
-                if is_pkg:
-                    # package must expose __path__ so import machinery can find submodules
-                    mod.__path__ = list(getattr(self._source, "__path__", []))
-                    mod.__package__ = self._target_name
-                else:
-                    mod.__package__ = self._target_name.rpartition('.')[0]
-                return mod
-
-            def exec_module(self, module):
-                # Populate the new module with attributes from the source paddle module.
-                # Skip a few special attributes that should reflect the new module name.
-                for k, v in self._source.__dict__.items():
-                    if k in ("__name__", "__package__", "__path__", "__spec__"):
-                        continue
-                    module.__dict__[k] = v
-
-        # Use fullname for the spec name and mark as package when appropriate so that
-        # statements like `import torch.nn.functional` work correctly.
-        return importlib.util.spec_from_loader(
-            fullname,
-            TorchProxyLoader(source_module, fullname),
-            is_package=is_pkg,
-            origin=getattr(source_module, "__file__", None),
-        )
-
-
-TORCH_PROXY_FINDER = TorchProxyMetaFinder()
-
-
-def _try_import_tvm_ffi():
-    try:
-        import tvm_ffi  # noqa: F401
-    except ModuleNotFoundError:
-        pass
-
-
-def _clear_torch_modules():
-    for name in list(sys.modules):
-        if _is_torch_module(name):
-            del sys.modules[name]
-
-
-def enable_torch_proxy():
-    # Import tvm_ffi without torch proxy to finalize all imported torch to None in tvm_ffi
-    _try_import_tvm_ffi()
-    _clear_torch_modules()
-    sys.meta_path.insert(0, TORCH_PROXY_FINDER)
-
-
-def disable_torch_proxy():
-    if TORCH_PROXY_FINDER in sys.meta_path:
-        sys.meta_path.remove(TORCH_PROXY_FINDER)
-        _clear_torch_modules()
-        return
-    warnings.warn("torch proxy is not installed.")
-
-
-@contextmanager
-def use_torch_proxy_guard(enable: bool = True):
-    already_has_torch_proxy = TORCH_PROXY_FINDER in sys.meta_path
-    if enable == already_has_torch_proxy:
-        return
-    if enable:
-        enable_torch_proxy()
-        try:
-            yield
-        finally:
-            disable_torch_proxy()
-    else:
-        disable_torch_proxy()
-        try:
-            yield
-        finally:
-            enable_torch_proxy()

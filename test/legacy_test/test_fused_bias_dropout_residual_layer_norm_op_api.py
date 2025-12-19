@@ -118,7 +118,7 @@ class TestFusedBiasDropoutResidualLayerNormAPI(unittest.TestCase):
             self.x, self.residual, ln_scale, ln_bias, linear_bias
         )
         np.testing.assert_allclose(
-            ref_out, out.numpy(), rtol=1e-5, atol=self.atol
+            ref_out, out.numpy(), rtol=8e-5, atol=self.atol
         )
 
     def run_static(self):

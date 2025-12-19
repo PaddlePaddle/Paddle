@@ -18,6 +18,8 @@
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #elif defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/rocm/hip_graph.h"
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+#include "paddle/phi/backends/custom/cuda_graph.h"
 #endif
 #if defined(PADDLE_WITH_XPU)
 #include "paddle/phi/backends/xpu/xpu_graph.h"
@@ -29,7 +31,6 @@
 #include "paddle/phi/core/string_tensor.h"
 
 namespace phi {
-using DataType = phi::DataType;
 
 struct DeviceContext::Impl {
   Impl() = default;
@@ -75,7 +76,8 @@ struct DeviceContext::Impl {
     pinned_allocator_ = allocator;
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_XPU)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
   void SetCUDAGraphAllocator(const Allocator* allocator) {
     // NOTE (Yuang): cuda graph allocator can be set to nullptr, so don't check
     // validation of the allocator here
@@ -194,6 +196,21 @@ struct DeviceContext::Impl {
         allocator = cuda_graph_allocator_;
     }
 #endif
+
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+    bool must_cuda_graph_allocator =
+        (!fake_alloc && tensor->numel() != 0) && !pinned;
+    if (must_cuda_graph_allocator &&
+        place.GetType() == phi::AllocationType::CUSTOM &&
+        phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
+      PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
+                              common::errors::InvalidArgument(
+                                  "Required cuda_graph_allocator_ shall not be "
+                                  "nullptr, but received nullptr."));
+      allocator = cuda_graph_allocator_;
+    }
+#endif
+
     return tensor->AllocateFrom(const_cast<Allocator*>(allocator),
                                 dtype,
                                 requested_size,
@@ -307,7 +324,9 @@ struct DeviceContext::Impl {
   const Allocator* zero_allocator_{nullptr};
   const Allocator* host_zero_allocator_{nullptr};
   const Allocator* pinned_allocator_{nullptr};
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_XPU)
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
   const Allocator* cuda_graph_allocator_{nullptr};
 #endif
   Generator* device_generator_{nullptr};
@@ -327,7 +346,8 @@ DeviceContext::DeviceContext(const DeviceContext& other) {
   impl_->SetPinnedAllocator(&other.GetPinnedAllocator());
   impl_->SetHostGenerator(other.GetHostGenerator());
   impl_->SetGenerator(other.GetGenerator());
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_XPU)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
   if (other.IsCUDAGraphAllocatorValid()) {
     impl_->SetCUDAGraphAllocator(&other.GetCUDAGraphAllocator());
   }
@@ -358,7 +378,8 @@ const Allocator& DeviceContext::GetHostAllocator() const {
   return impl_->GetHostAllocator();
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_XPU)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
 void DeviceContext::SetCUDAGraphAllocator(const Allocator* allocator) {
   impl_->SetCUDAGraphAllocator(allocator);
 }

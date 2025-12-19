@@ -117,10 +117,13 @@ void PsroiPoolGradKernel(const Context& dev_ctx,
                          int output_channels,
                          float spatial_scale,
                          DenseTensor* dx) {
-  int rois_num_t = rois.dims()[0];
-  int input_channels = x.dims()[1];
-  int height = x.dims()[2];
-  int width = x.dims()[3];
+  int64_t rois_num_t = rois.dims()[0];
+
+  int64_t input_channels = x.dims()[1];
+
+  int64_t height = x.dims()[2];
+
+  int64_t width = x.dims()[3];
 
   if (dx) {
     // set roi batch id

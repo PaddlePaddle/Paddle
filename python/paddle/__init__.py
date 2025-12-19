@@ -228,12 +228,25 @@ from .amp import (
     is_autocast_enabled,
 )
 from .amp.auto_cast import autocast
+from .audio.functional.window import (  # noqa: F401
+    bartlett_window,
+    blackman_window,
+    hamming_window,
+    hann_window,
+    kaiser_window,
+)
 from .autograd import (
     enable_grad,
     grad,
     is_grad_enabled,
     no_grad,
     set_grad_enabled,
+)
+from .base.core import Size
+from .compat import (
+    disable_torch_proxy as disable_compat,
+    enable_torch_proxy as enable_compat,
+    use_torch_proxy_guard as use_compat_guard,  # noqa: F401
 )
 from .device import (  # noqa: F401
     Event,
@@ -271,6 +284,7 @@ from .framework import (  # noqa: F401
     set_default_dtype,
 )
 from .framework.random import (
+    Generator,
     get_cuda_rng_state,
     get_rng_state,
     seed,
@@ -287,6 +301,8 @@ from .nn.functional import (
     conv1d,
     conv2d,
     conv3d,
+    group_norm,
+    layer_norm,
 )
 from .nn.functional.distance import (
     pdist,
@@ -726,7 +742,6 @@ from .tensor.search import (
     where,
     where_,
 )
-from .tensor.size import Size
 from .tensor.stat import (
     mean,
     median,
@@ -1482,10 +1497,15 @@ __all__ = [
     'conv1d',
     'conv2d',
     'conv3d',
+    'group_norm',
+    'layer_norm',
     'manual_seed',
     'softmax',
+    'Generator',
     'adaptive_avg_pool1d',
     'autocast',
+    'enable_compat',
+    'disable_compat',
 ]
 import os
 

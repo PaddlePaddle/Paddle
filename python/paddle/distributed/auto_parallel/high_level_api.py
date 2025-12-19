@@ -479,7 +479,7 @@ def to_distributed(
             ...         )
 
             ...     def forward(self, x):
-            ...         x = paddle.incubate.nn.functional.swiglu(
+            ...         x = paddle.nn.functional.swiglu(
             ...             self.gate_proj(x), self.up_proj(x)
             ...         )
             ...         out = self.down_proj(x)

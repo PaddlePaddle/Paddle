@@ -90,12 +90,10 @@ class TestEventStreamAPIs(unittest.TestCase):
         event1 = paddle.device.Event()
         self.assertIsInstance(event1, paddle.device.Event)
 
-        event2 = paddle.device.Event(device=device_str, enable_timing=True)
+        event2 = paddle.device.Event(enable_timing=True)
         self.assertIsInstance(event2, paddle.device.Event)
 
-        event3 = paddle.device.Event(
-            device=device_str, enable_timing=True, blocking=True
-        )
+        event3 = paddle.device.Event(enable_timing=True, blocking=True)
         self.assertIsInstance(event3, paddle.device.Event)
 
         # Test Stream creation with different parameters
@@ -159,12 +157,8 @@ class TestEventStreamAPIs(unittest.TestCase):
         # Test Event.elapsed_time()
         if hasattr(event1, 'event_base') and hasattr(event2, 'event_base'):
             # Create events with timing enabled
-            start_event = paddle.device.Event(
-                device=device_str, enable_timing=True
-            )
-            end_event = paddle.device.Event(
-                device=device_str, enable_timing=True
-            )
+            start_event = paddle.device.Event(enable_timing=True)
+            end_event = paddle.device.Event(enable_timing=True)
 
             # Record start event
             start_event.record()
@@ -243,7 +237,7 @@ class TestEventStreamAPIs(unittest.TestCase):
     def test_event_stream_error_handling(self):
         """Test Event and Stream error handling."""
         # Test with invalid device types
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             paddle.device.Event(device='invalid_device:0')
 
         with self.assertRaises(ValueError):
@@ -258,8 +252,8 @@ class TestEventStreamAPIs(unittest.TestCase):
             )
             paddle.device.set_device(device_str)
 
-            event1 = paddle.device.Event(device=device_str)
-            event2 = paddle.device.Event(device=device_str)
+            event1 = paddle.device.Event()
+            event2 = paddle.device.Event()
 
             # Should not raise exception even if events are not recorded
             try:
@@ -320,8 +314,8 @@ class TestEventStreamTimingFunctionality(unittest.TestCase):
         paddle.device.set_device(device_str)
 
         # Create events with timing enabled
-        start_event = paddle.device.Event(device=device_str, enable_timing=True)
-        end_event = paddle.device.Event(device=device_str, enable_timing=True)
+        start_event = paddle.device.Event(enable_timing=True)
+        end_event = paddle.device.Event(enable_timing=True)
 
         # Create a stream for work execution
         stream = paddle.device.Stream(device=device_str)

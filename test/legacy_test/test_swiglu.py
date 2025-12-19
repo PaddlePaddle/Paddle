@@ -31,7 +31,7 @@ from paddle.distributed.auto_parallel.static.dist_attribute import (
     DistTensorSpec,
     TensorDistAttr,
 )
-from paddle.incubate.nn.functional import swiglu as fused_swiglu_impl
+from paddle.nn.functional import swiglu as fused_swiglu_impl
 
 
 def swiglu(x, y, out_grad):
@@ -71,13 +71,13 @@ def swiglu(x, y, out_grad):
     return ret
 
 
-def fused_swiglu(x, y, out_grad):
+def fused_swiglu(x, y, out_grad, swiglu_func=fused_swiglu_impl):
     x = x.detach().clone()
     x.stop_gradient = False
     if y is not None:
         y = y.detach().clone()
         y.stop_gradient = False
-    out = fused_swiglu_impl(x, y)
+    out = swiglu_func(x, y)
     out.backward(out_grad)
 
     output_dtype = x.dtype
@@ -106,14 +106,20 @@ tol_map = {
 
 
 class TestSwiGLUDygraph(unittest.TestCase):
+    def fused_swiglu(self, x, y, out_grad):
+        return fused_swiglu(x, y, out_grad)
+
+    def fused_swiglu_impl(self, x, y=None):
+        return fused_swiglu_impl(x, y)
+
     def check_dygraph_impl(self, device, shape, dtype):
         x = paddle.randn(shape, dtype=dtype)
         y = paddle.randn(shape, dtype=dtype)
         out_grad = paddle.randn(shape, dtype=dtype)
 
         ret1 = swiglu(x, y, out_grad)
-        ret2 = fused_swiglu(x, y, out_grad)
-        ret3 = fused_swiglu(paddle.concat([x, y], axis=-1), None, out_grad)
+        ret2 = self.fused_swiglu(x, y, out_grad)
+        ret3 = self.fused_swiglu(paddle.concat([x, y], axis=-1), None, out_grad)
 
         atol, rtol = tol_map[dtype]
         err_msg = (
@@ -152,8 +158,8 @@ class TestSwiGLUDygraph(unittest.TestCase):
             shape=[*shape[:-1], shape[-1] * 2],
             dtype=dtype,
         )
-        out1 = fused_swiglu_impl(x, y)
-        out2 = fused_swiglu_impl(concated_x)
+        out1 = self.fused_swiglu_impl(x, y)
+        out2 = self.fused_swiglu_impl(concated_x)
 
         concated_x_np = np.random.random(concated_x.shape).astype(dtype)
         x_np, y_np = np.split(concated_x_np, 2, axis=-1)

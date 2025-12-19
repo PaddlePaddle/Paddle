@@ -664,10 +664,10 @@ class TestRemainderAPICompatibility(unittest.TestCase):
         # Position args (args)
         out1 = paddle.remainder(x, y)
         paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
+        # Keywords args (kwargs) for paddle
         out2 = paddle.remainder(x=x, y=y)
         paddle_dygraph_out.append(out2)
-        # Key words args for torch
+        # Keywords args for torch
         out3 = paddle.remainder(input=x, other=y)
         paddle_dygraph_out.append(out3)
         # Combined args and kwargs
@@ -698,9 +698,9 @@ class TestRemainderAPICompatibility(unittest.TestCase):
             )
             # Position args (args)
             out1 = paddle.remainder(x, y)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle.remainder(x=x, y=y)
-            # Key words args for torch
+            # Keywords args for torch
             out3 = paddle.remainder(input=x, other=y)
             # Combined args and kwargs
             out4 = paddle.remainder(x, other=y)
@@ -742,10 +742,10 @@ class TestRemainderAPICompatibility1(unittest.TestCase):
         # Position args (args)
         out1 = paddle.remainder(x, y)
         paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
+        # Keywords args (kwargs) for paddle
         out2 = paddle.remainder(x=x, y=y)
         paddle_dygraph_out.append(out2)
-        # Key words args for torch
+        # Keywords args for torch
         out3 = paddle.remainder(input=x, other=y)
         paddle_dygraph_out.append(out3)
         # Combined args and kwargs
@@ -777,9 +777,9 @@ class TestRemainderAPICompatibility1(unittest.TestCase):
             y = self.np_y_input
             # Position args (args)
             out1 = paddle.remainder(x, y)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle.remainder(x=x, y=y)
-            # Key words args for torch
+            # Keywords args for torch
             out3 = paddle.remainder(input=x, other=y)
             # Combined args and kwargs
             out4 = paddle.remainder(x, other=y)
