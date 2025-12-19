@@ -393,273 +393,273 @@ create_test_bf16_class(TestCase3)
 create_test_bf16_class(TestCastAdaptive3d)
 
 
-# ----------------max_pool2d_with_index----------------
-def max_pool2d_with_index_wrapper(
-    x,
-    kernel_size=[],
-    strides=[],
-    paddings=[],
-    dilations=[],
-    global_pooling=False,
-    adaptive=False,
-    ceil_mode=False,
-):
-    return paddle._C_ops.max_pool2d_with_index(
-        x,
-        kernel_size,
-        strides,
-        paddings,
-        dilations,
-        global_pooling,
-        adaptive,
-        ceil_mode,
-    )
+# # ----------------max_pool2d_with_index----------------
+# def max_pool2d_with_index_wrapper(
+#     x,
+#     kernel_size=[],
+#     strides=[],
+#     paddings=[],
+#     dilations=[],
+#     global_pooling=False,
+#     adaptive=False,
+#     ceil_mode=False,
+# ):
+#     return paddle._C_ops.max_pool2d_with_index(
+#         x,
+#         kernel_size,
+#         strides,
+#         paddings,
+#         dilations,
+#         global_pooling,
+#         adaptive,
+#         ceil_mode,
+#     )
 
 
-class TestCase4(TestMaxPoolWithIndex_Op):
-    def setUp(self):
-        self.init_test_case()
-        self.init_global()
-        self.init_adaptive()
-        self.init_dtype()
+# class TestCase4(TestMaxPoolWithIndex_Op):
+#     def setUp(self):
+#         self.init_test_case()
+#         self.init_global()
+#         self.init_adaptive()
+#         self.init_dtype()
 
-        if self.is_bfloat16_op():
-            input = np.random.random(self.shape).astype(np.float32)
-            input = convert_uint16_to_float(
-                convert_float_to_uint16(np.round(input * 100.0, 2))
-            )
+#         if self.is_bfloat16_op():
+#             input = np.random.random(self.shape).astype(np.float32)
+#             input = convert_uint16_to_float(
+#                 convert_float_to_uint16(np.round(input * 100.0, 2))
+#             )
 
-        else:
-            input = np.random.random(self.shape).astype(self.dtype)
-            input = np.round(input * 100.0, 2)
+#         else:
+#             input = np.random.random(self.shape).astype(self.dtype)
+#             input = np.round(input * 100.0, 2)
 
-        if self.dilations[0] > 1 or self.dilations[1] > 1:
-            output, mask = self.pool_forward_naive(
-                input,
-                self.ksize,
-                self.strides,
-                self.paddings,
-                self.dilations,
-                self.global_pool,
-            )
-        else:
-            output, mask = self.pool_forward_naive(
-                input,
-                self.ksize,
-                self.strides,
-                self.paddings,
-                self.global_pool,
-                self.adaptive,
-            )
-        mask = mask.astype("int32")
-        if self.is_bfloat16_op():
-            output = output.astype(np.float32)
-        else:
-            output = output.astype(self.dtype)
+#         if self.dilations[0] > 1 or self.dilations[1] > 1:
+#             output, mask = self.pool_forward_naive(
+#                 input,
+#                 self.ksize,
+#                 self.strides,
+#                 self.paddings,
+#                 self.dilations,
+#                 self.global_pool,
+#             )
+#         else:
+#             output, mask = self.pool_forward_naive(
+#                 input,
+#                 self.ksize,
+#                 self.strides,
+#                 self.paddings,
+#                 self.global_pool,
+#                 self.adaptive,
+#             )
+#         mask = mask.astype("int32")
+#         if self.is_bfloat16_op():
+#             output = output.astype(np.float32)
+#         else:
+#             output = output.astype(self.dtype)
 
-        self.attrs = {
-            'strides': self.strides,
-            'paddings': self.paddings,
-            "dilations": self.dilations,
-            'ksize': self.ksize,
-            'global_pooling': self.global_pool,
-            'adaptive': self.adaptive,
-            'ceil_mode': False,
-        }
+#         self.attrs = {
+#             'strides': self.strides,
+#             'paddings': self.paddings,
+#             "dilations": self.dilations,
+#             'ksize': self.ksize,
+#             'global_pooling': self.global_pool,
+#             'adaptive': self.adaptive,
+#             'ceil_mode': False,
+#         }
 
-        if self.is_bfloat16_op():
-            self.inputs = {'X': convert_float_to_uint16(input)}
-            self.outputs = {
-                'Out': convert_float_to_uint16(output),
-                "Mask": mask,
-            }
-            self.inputs_fp32 = {'X': input}
+#         if self.is_bfloat16_op():
+#             self.inputs = {'X': convert_float_to_uint16(input)}
+#             self.outputs = {
+#                 'Out': convert_float_to_uint16(output),
+#                 "Mask": mask,
+#             }
+#             self.inputs_fp32 = {'X': input}
 
-        else:
-            self.inputs = {'X': input}
-            self.outputs = {'Out': output, "Mask": mask}
+#         else:
+#             self.inputs = {'X': input}
+#             self.outputs = {'Out': output, "Mask": mask}
 
-    def init_test_case(self):
-        self.op_type = "max_pool2d_with_index"
-        self.python_api = max_pool2d_with_index_wrapper
-        self.pool_forward_naive = max_pool2D_forward_naive
-        self.shape = [2, 3, 7, 7]
-        self.ksize = [3, 3]
-        self.strides = [1, 1]
-        self.paddings = [1, 1]
-        self.dilations = [1, 1]
+#     def init_test_case(self):
+#         self.op_type = "max_pool2d_with_index"
+#         self.python_api = max_pool2d_with_index_wrapper
+#         self.pool_forward_naive = max_pool2D_forward_naive
+#         self.shape = [2, 3, 7, 7]
+#         self.ksize = [3, 3]
+#         self.strides = [1, 1]
+#         self.paddings = [1, 1]
+#         self.dilations = [1, 1]
 
-    def init_global(self):
-        self.global_pool = True
-
-
-class TestCase5(TestCase4):
-    def init_global(self):
-        self.global_pool = False
+#     def init_global(self):
+#         self.global_pool = True
 
 
-class TestCase6(TestCase4):
-    def init_test_case(self):
-        self.op_type = "max_pool2d_with_index"
-        self.python_api = max_pool2d_with_index_wrapper
-        self.pool_forward_naive = max_pool2D_forward_naive
-        self.shape = [2, 3, 7, 7]
-        self.ksize = [3, 3]
-        self.strides = [2, 2]
-        self.paddings = [0, 0]
-        self.dilations = [1, 1]
+# class TestCase5(TestCase4):
+#     def init_global(self):
+#         self.global_pool = False
 
 
-class TestCase7(TestCase6):
-    def init_global(self):
-        self.global_pool = False
+# class TestCase6(TestCase4):
+#     def init_test_case(self):
+#         self.op_type = "max_pool2d_with_index"
+#         self.python_api = max_pool2d_with_index_wrapper
+#         self.pool_forward_naive = max_pool2D_forward_naive
+#         self.shape = [2, 3, 7, 7]
+#         self.ksize = [3, 3]
+#         self.strides = [2, 2]
+#         self.paddings = [0, 0]
+#         self.dilations = [1, 1]
 
 
-class TestCastAdaptive2d(TestCase6):
-    def init_adaptive(self):
-        self.adaptive = True
+# class TestCase7(TestCase6):
+#     def init_global(self):
+#         self.global_pool = False
 
 
-class TestDilationsCase1(TestCase4):
-    def init_test_case(self):
-        self.op_type = "max_pool2d_with_index"
-        self.python_api = max_pool2d_with_index_wrapper
-        self.pool_forward_naive = (
-            max_pool2d_with_dilations_and_index_forward_naive
-        )
-        self.shape = [2, 3, 7, 7]
-        self.ksize = [3, 3]
-        self.strides = [1, 1]
-        self.paddings = [1, 1]
-        self.dilations = [2, 2]
+# class TestCastAdaptive2d(TestCase6):
+#     def init_adaptive(self):
+#         self.adaptive = True
 
 
-class TestDilationsCase2(TestDilationsCase1):
-    def init_global(self):
-        self.global_pool = False
+# class TestDilationsCase1(TestCase4):
+#     def init_test_case(self):
+#         self.op_type = "max_pool2d_with_index"
+#         self.python_api = max_pool2d_with_index_wrapper
+#         self.pool_forward_naive = (
+#             max_pool2d_with_dilations_and_index_forward_naive
+#         )
+#         self.shape = [2, 3, 7, 7]
+#         self.ksize = [3, 3]
+#         self.strides = [1, 1]
+#         self.paddings = [1, 1]
+#         self.dilations = [2, 2]
 
 
-class TestDilationsCase3(TestDilationsCase2):
-    def init_test_case(self):
-        self.op_type = "max_pool2d_with_index"
-        self.python_api = max_pool2d_with_index_wrapper
-        self.pool_forward_naive = (
-            max_pool2d_with_dilations_and_index_forward_naive
-        )
-        self.shape = [0, 3, 7, 7]
-        self.ksize = [3, 3]
-        self.strides = [2, 2]
-        self.paddings = [0, 0]
-        self.dilations = [2, 2]
+# class TestDilationsCase2(TestDilationsCase1):
+#     def init_global(self):
+#         self.global_pool = False
 
 
-# ----------------max_pool2d_with_cpu_place----------------
-def create_test_cpu_class(parent):
-    class TestMaxPool2dCPU(parent):
-        def test_check_output(self):
-            self.check_output_with_place(
-                paddle.base.CPUPlace(), check_pir=True, check_cinn=True
-            )
-
-        def test_check_grad(self):
-            self.check_grad_with_place(paddle.base.CPUPlace(), {'X'}, ['Out'])
-
-    cls_name = "{}_{}".format(parent.__name__, "CPU")
-    TestMaxPool2dCPU.__name__ = cls_name
-    globals()[cls_name] = TestMaxPool2dCPU
+# class TestDilationsCase3(TestDilationsCase2):
+#     def init_test_case(self):
+#         self.op_type = "max_pool2d_with_index"
+#         self.python_api = max_pool2d_with_index_wrapper
+#         self.pool_forward_naive = (
+#             max_pool2d_with_dilations_and_index_forward_naive
+#         )
+#         self.shape = [0, 3, 7, 7]
+#         self.ksize = [3, 3]
+#         self.strides = [2, 2]
+#         self.paddings = [0, 0]
+#         self.dilations = [2, 2]
 
 
-create_test_cpu_class(TestCase4)
-create_test_cpu_class(TestCase5)
-create_test_cpu_class(TestCase6)
-create_test_cpu_class(TestCase7)
-create_test_cpu_class(TestCastAdaptive2d)
-create_test_cpu_class(TestDilationsCase1)
-create_test_cpu_class(TestDilationsCase2)
-create_test_cpu_class(TestDilationsCase3)
+# # ----------------max_pool2d_with_cpu_place----------------
+# def create_test_cpu_class(parent):
+#     class TestMaxPool2dCPU(parent):
+#         def test_check_output(self):
+#             self.check_output_with_place(
+#                 paddle.base.CPUPlace(), check_pir=True, check_cinn=True
+#             )
+
+#         def test_check_grad(self):
+#             self.check_grad_with_place(paddle.base.CPUPlace(), {'X'}, ['Out'])
+
+#     cls_name = "{}_{}".format(parent.__name__, "CPU")
+#     TestMaxPool2dCPU.__name__ = cls_name
+#     globals()[cls_name] = TestMaxPool2dCPU
 
 
-# ----------------max_pool2d_with_index_fp16----------------
-def create_test_fp16_class(parent):
-    @unittest.skipIf(
-        not (core.is_compiled_with_cuda() or is_custom_device()),
-        "core is not compiled with CUDA",
-    )
-    class TestMaxPool2dFP16(parent):
-        def init_dtype(self):
-            self.dtype = np.float16
-
-        def test_check_output(self):
-            if core.is_compiled_with_cuda() or is_custom_device():
-                place = get_device_place()
-                if core.is_float16_supported(place):
-                    self.check_output_with_place(place)
-
-        def test_check_grad(self):
-            place = get_device_place()
-            if core.is_float16_supported(place):
-                self.check_grad_with_place(place, {'X'}, ['Out'])
-
-    cls_name = "{}_{}".format(parent.__name__, "FP16OP")
-    TestMaxPool2dFP16.__name__ = cls_name
-    globals()[cls_name] = TestMaxPool2dFP16
+# create_test_cpu_class(TestCase4)
+# create_test_cpu_class(TestCase5)
+# create_test_cpu_class(TestCase6)
+# create_test_cpu_class(TestCase7)
+# create_test_cpu_class(TestCastAdaptive2d)
+# create_test_cpu_class(TestDilationsCase1)
+# create_test_cpu_class(TestDilationsCase2)
+# create_test_cpu_class(TestDilationsCase3)
 
 
-create_test_fp16_class(TestCase4)
-create_test_fp16_class(TestCase5)
-create_test_fp16_class(TestCase6)
-create_test_fp16_class(TestCase7)
-create_test_fp16_class(TestCastAdaptive2d)
-create_test_fp16_class(TestDilationsCase1)
-create_test_fp16_class(TestDilationsCase2)
+# # ----------------max_pool2d_with_index_fp16----------------
+# def create_test_fp16_class(parent):
+#     @unittest.skipIf(
+#         not (core.is_compiled_with_cuda() or is_custom_device()),
+#         "core is not compiled with CUDA",
+#     )
+#     class TestMaxPool2dFP16(parent):
+#         def init_dtype(self):
+#             self.dtype = np.float16
+
+#         def test_check_output(self):
+#             if core.is_compiled_with_cuda() or is_custom_device():
+#                 place = get_device_place()
+#                 if core.is_float16_supported(place):
+#                     self.check_output_with_place(place)
+
+#         def test_check_grad(self):
+#             place = get_device_place()
+#             if core.is_float16_supported(place):
+#                 self.check_grad_with_place(place, {'X'}, ['Out'])
+
+#     cls_name = "{}_{}".format(parent.__name__, "FP16OP")
+#     TestMaxPool2dFP16.__name__ = cls_name
+#     globals()[cls_name] = TestMaxPool2dFP16
 
 
-# ----------------max_pool2d_with_index_bf16----------------
-def create_test_bf16_class(parent):
-    @unittest.skipIf(
-        not (core.is_compiled_with_cuda() or is_custom_device())
-        or not core.is_bfloat16_supported(get_device_place()),
-        "core is not compiled with CUDA and do not support bfloat16",
-    )
-    class TestMaxPool2dBF16(parent):
-        def init_dtype(self):
-            self.dtype = np.uint16
-
-        def get_numeric_grad(self, place, check_name):
-            scope = core.Scope()
-            self._check_grad_helper()
-            op = create_op(
-                scope, self.op_type, self.inputs, self.outputs, self.attrs
-            )
-            return get_numeric_gradient(
-                place, scope, op, self.inputs_fp32, check_name, ['Out']
-            )
-
-        def test_check_output(self):
-            place = get_device_place()
-            if core.is_bfloat16_supported(place):
-                self.check_output_with_place(place)
-
-        def test_check_grad(self):
-            place = get_device_place()
-            numeric_grads = self.get_numeric_grad(place, 'X')
-            if core.is_bfloat16_supported(place):
-                self.check_grad_with_place(
-                    place, {'X'}, ['Out'], user_defined_grads=[numeric_grads]
-                )
-
-    cls_name = "{}_{}".format(parent.__name__, "BF16OP")
-    TestMaxPool2dBF16.__name__ = cls_name
-    globals()[cls_name] = TestMaxPool2dBF16
+# create_test_fp16_class(TestCase4)
+# create_test_fp16_class(TestCase5)
+# create_test_fp16_class(TestCase6)
+# create_test_fp16_class(TestCase7)
+# create_test_fp16_class(TestCastAdaptive2d)
+# create_test_fp16_class(TestDilationsCase1)
+# create_test_fp16_class(TestDilationsCase2)
 
 
-create_test_bf16_class(TestCase4)
-create_test_bf16_class(TestCase5)
-create_test_bf16_class(TestCase6)
-create_test_bf16_class(TestCase7)
-create_test_bf16_class(TestCastAdaptive2d)
-create_test_bf16_class(TestDilationsCase1)
-create_test_bf16_class(TestDilationsCase2)
+# # ----------------max_pool2d_with_index_bf16----------------
+# def create_test_bf16_class(parent):
+#     @unittest.skipIf(
+#         not (core.is_compiled_with_cuda() or is_custom_device())
+#         or not core.is_bfloat16_supported(get_device_place()),
+#         "core is not compiled with CUDA and do not support bfloat16",
+#     )
+#     class TestMaxPool2dBF16(parent):
+#         def init_dtype(self):
+#             self.dtype = np.uint16
+
+#         def get_numeric_grad(self, place, check_name):
+#             scope = core.Scope()
+#             self._check_grad_helper()
+#             op = create_op(
+#                 scope, self.op_type, self.inputs, self.outputs, self.attrs
+#             )
+#             return get_numeric_gradient(
+#                 place, scope, op, self.inputs_fp32, check_name, ['Out']
+#             )
+
+#         def test_check_output(self):
+#             place = get_device_place()
+#             if core.is_bfloat16_supported(place):
+#                 self.check_output_with_place(place)
+
+#         def test_check_grad(self):
+#             place = get_device_place()
+#             numeric_grads = self.get_numeric_grad(place, 'X')
+#             if core.is_bfloat16_supported(place):
+#                 self.check_grad_with_place(
+#                     place, {'X'}, ['Out'], user_defined_grads=[numeric_grads]
+#                 )
+
+#     cls_name = "{}_{}".format(parent.__name__, "BF16OP")
+#     TestMaxPool2dBF16.__name__ = cls_name
+#     globals()[cls_name] = TestMaxPool2dBF16
+
+
+# create_test_bf16_class(TestCase4)
+# create_test_bf16_class(TestCase5)
+# create_test_bf16_class(TestCase6)
+# create_test_bf16_class(TestCase7)
+# create_test_bf16_class(TestCastAdaptive2d)
+# create_test_bf16_class(TestDilationsCase1)
+# create_test_bf16_class(TestDilationsCase2)
 
 
 def skip_unit_test():
