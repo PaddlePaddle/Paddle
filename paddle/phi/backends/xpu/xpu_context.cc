@@ -253,7 +253,8 @@ struct XPUContext::Impl {
   void CreateStream() {
     if (context_->xpu_stream) {
       VLOG(3) << "xpu stream is already created for current context";
-      std::cout << "xpu stream is already created for current context" << std::endl;
+      std::cout << "xpu stream is already created for current context"
+                << std::endl;
       return;
     }
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&context_->xpu_stream));
@@ -637,8 +638,8 @@ void XPUContext::PrintStreamInfo() const {
 
   LOG(INFO) << "--- Stream Pool Details ---";
   for (size_t i = 0; i < stream_pool.size(); ++i) {
-    LOG(INFO) << "  Stream Pool[" << i << "]: "
-              << static_cast<void*>(stream_pool[i])
+    LOG(INFO) << "  Stream Pool[" << i
+              << "]: " << static_cast<void*>(stream_pool[i])
               << (static_cast<int>(i) == current_stream_idx ? " [CURRENT]" : "")
               << (i < idle_stream_flags.size() && idle_stream_flags[i]
                       ? " [IDLE]"
@@ -648,8 +649,8 @@ void XPUContext::PrintStreamInfo() const {
   LOG(INFO) << "--- Impl Streams ---";
   for (int64_t i = 0; i < GetStreamNum(); ++i) {
     XPUStream impl_stream = stream(i);
-    LOG(INFO) << "  Impl[" << i << "] Stream: "
-              << static_cast<void*>(impl_stream);
+    LOG(INFO) << "  Impl[" << i
+              << "] Stream: " << static_cast<void*>(impl_stream);
   }
 
   LOG(INFO) << "===========================================";
