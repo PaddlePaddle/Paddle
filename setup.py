@@ -2323,21 +2323,11 @@ def get_headers():
             find_files('*.pb', env_dict.get("externalError_INCLUDE_DIR"))
         )
         headers += list(
-            find_files('*.h', paddle_source_dir + '/paddle/phi/backends/cpu')
-        )
-        headers += list(
             find_files(
                 '*.h',
-                paddle_source_dir + '/paddle/phi/backends/gpu, recursive=True',
+                paddle_source_dir + '/paddle/phi/backends',
+                recursive=True,
             )
-        )
-        headers += list(
-            find_files(
-                '*.h', paddle_source_dir + '/paddle/phi/backends/dynload'
-            )
-        )
-        headers += list(
-            find_files('*.h', paddle_source_dir + '/paddle/phi/backends/onednn')
         )
 
     if env_dict.get("WITH_XPU") == 'ON':

@@ -1533,21 +1533,8 @@ if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
     # externalErrorMsg.pb for External Error message
     headers += list(find_files('*.pb', '${externalError_INCLUDE_DIR}'))
     headers += list(
-        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/cpu')
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends', recursive=True)
     )
-    headers += list(
-        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/gpu, recursive=True')
-    )
-    headers += list(
-        find_files(
-            '*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload'
-        )
-    )
-    headers += list(
-        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/onednn')
-    )
-
-
 
 if '${WITH_XPU}' == 'ON':
     headers += [
