@@ -440,6 +440,20 @@
   backward: fused_partial_rope_grad
   support_dygraph_mode : true
 
+- op : fused_rms_norm_quant
+  args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
+  output : Tensor(out), Tensor(residual_out), Tensor(inv_var)
+  infer_meta :
+    func : FusedRmsNormQuantInferMeta
+  kernel :
+    func : fused_rms_norm_quant
+    data_type : x
+  optional : bias, residual, norm_bias, residual_out
+  intermediate : inv_var
+  backward : fused_rms_norm_quant_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  support_dygraph_mode : true
+
 - op : fused_rotary_position_embedding
   args : (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos, Tensor position_ids, bool use_neox_rotary_style = true, bool time_major = false, float rotary_emb_base = 10000.0)
   output : Tensor(out_q), Tensor(out_k), Tensor(out_v)

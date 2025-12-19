@@ -904,7 +904,7 @@ def rms_norm(
         .. code-block:: python
             >>> import paddle
             >>> paddle.seed(2023)
-            >>> paddle.set_device('cpu')
+            >>> paddle.set_device('gpu')
             >>> input = paddle.rand((2, 2, 2, 3))
             >>> weight = paddle.rand([3])
             >>> out, invvar = paddle.nn.functional.rms_norm(input, input.shape[-1], weight)

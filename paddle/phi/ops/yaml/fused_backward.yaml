@@ -76,6 +76,19 @@
     func : fused_partial_rope_grad
   support_dygraph_mode : true
 
+- backward_op : fused_rms_norm_quant_grad
+  forward : fused_rms_norm_quant (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound) -> Tensor(out), Tensor(residual_out), Tensor(inv_var)
+  args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, Tensor inv_var, Tensor out_grad, float epsilon, int begin_norm_axis, float quant_scale)
+  output : Tensor(x_grad), Tensor(norm_weight_grad), Tensor(norm_bias_grad)
+  infer_meta :
+    func: FusedRmsNormQuantGradInferMeta
+    param: [x, norm_weight, norm_bias]
+  kernel :
+    func : fused_rms_norm_quant_grad
+    data_type : x
+  optional : bias, residual, norm_bias, norm_bias_grad
+  support_dygraph_mode : true
+
 - backward_op : fused_rotary_position_embedding_grad
   forward: fused_rotary_position_embedding (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos, Tensor position_ids, bool use_neox_rotary_style, bool time_major, float rotary_emb_base) -> Tensor(out_q), Tensor(out_k), Tensor(out_v)
   args : (Tensor sin, Tensor cos, Tensor position_ids, Tensor out_q_grad, Tensor out_k_grad,Tensor out_v_grad, bool use_neox_rotary_style, bool time_major, float rotary_emb_base)
