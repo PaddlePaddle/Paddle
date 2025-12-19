@@ -1551,6 +1551,9 @@ if (
     headers += list(find_files('*.hpp', '@PADDLE_SOURCE_DIR@/paddle/fluid/fp8/deep_gemm/include/cutlass/', recursive=True))
     headers += list(find_files('*.cuh', '@PADDLE_SOURCE_DIR@/paddle/fluid/fp8/deep_gemm/include/deep_gemm', recursive=True))
 
+if platform.system() != 'Windows':
+    headers += list(find_files('logging.h', '@PADDLE_SOURCE_DIR@/third_party/src/glog', recursive=True))
+
 headers += list(find_files('*.h', '${PYBIND_INCLUDE_DIR}', True)) # pybind headers
 
 def get_header_install_dir(header):

@@ -2381,6 +2381,15 @@ def get_headers():
                 recursive=True,
             )
         )
+
+    if not IS_WINDOWS:
+        headers += list(
+            find_files(
+                'logging.h',
+                paddle_source_dir + '/third_party/src/glog/',
+                recursive=True,
+            )
+        )
     # pybind headers
     headers += list(find_files('*.h', env_dict.get("PYBIND_INCLUDE_DIR"), True))
     return headers
