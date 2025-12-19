@@ -3001,7 +3001,7 @@ add_doc_and_signature(
              [6, 2, 6],
              [6, 6, 3]])
 
-            >>> y = paddle.diag(input=x, diagonal=2)
+            >>> y = paddle.diag(input=x, diagonal=2)  # type: ignore[call-arg]
             >>> print(y)
             Tensor(shape=[5, 5], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[0, 0, 1, 0, 0],
@@ -3010,7 +3010,7 @@ add_doc_and_signature(
              [0, 0, 0, 0, 0],
              [0, 0, 0, 0, 0]])
 
-            >>> y = paddle.diag(x=x, diagonal=0, padding_value=-1)
+            >>> y = paddle.diag(x=x, diagonal=0, padding_value=-1)  # type: ignore[call-arg]
             >>> print(y)
             Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[ 1, -1, -1],
