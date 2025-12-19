@@ -211,22 +211,63 @@ void BaddbmmInferMeta(const MetaTensor& input,
                               "first dimension = [%d].",
                               x_dims[2],
                               y_dims[1]));
-
-  PADDLE_ENFORCE_EQ(
-      (ndim_input == 3 && (input_dims[0] == x_dims[0] || input_dims[0] == 1) &&
-       (input_dims[1] == x_dims[1] || input_dims[1] == 1) &&
-       (input_dims[2] == y_dims[2] || input_dims[2] == 1)) ||
-          (ndim_input == 2 &&
-           (input_dims[0] == x_dims[1] || input_dims[0] == 1) &&
-           (input_dims[1] == y_dims[2] || input_dims[1] == 1)),
-      true,
-      errors::InvalidArgument("The input tensor must be broadcastable with the "
-                              "multiplication of x and y."
-                              "But received input's shape = [%s], x's shape = "
-                              "[%s], y's shape = [%s].",
-                              input_dims,
-                              x_dims,
-                              y_dims));
+  if (ndim_input == 3) {
+    PADDLE_ENFORCE_EQ(input_dims[0] == x_dims[0] || input_dims[0] == 1,
+                      true,
+                      errors::InvalidArgument(
+                          "The first dimension of input must be equal to "
+                          "the first dimension of x when "
+                          "input is 3-D tensor. "
+                          "If not, the first dimension of input must be 1. "
+                          "But received input's first dimension = [%d], "
+                          "x's first dimension = [%d].",
+                          input_dims[0],
+                          x_dims[0]));
+    PADDLE_ENFORCE_EQ(input_dims[1] == x_dims[1] || input_dims[1] == 1,
+                      true,
+                      errors::InvalidArgument(
+                          "The second dimension of input must be equal to "
+                          "the second dimension of x when "
+                          "input is 3-D tensor. "
+                          "If not, the second dimension of input must be 1. "
+                          "But received input's second dimension = [%d], "
+                          "x's second dimension = [%d].",
+                          input_dims[1],
+                          x_dims[1]));
+    PADDLE_ENFORCE_EQ(input_dims[2] == y_dims[2] || input_dims[2] == 1,
+                      true,
+                      errors::InvalidArgument(
+                          "The third dimension of input must be equal to "
+                          "the third dimension of y when "
+                          "input is 3-D tensor. "
+                          "If not, the third dimension of input must be 1. "
+                          "But received input's third dimension = [%d], "
+                          "y's third dimension = [%d].",
+                          input_dims[2],
+                          y_dims[2]));
+  } else {
+    PADDLE_ENFORCE_EQ(input_dims[0] == x_dims[1] || input_dims[0] == 1,
+                      true,
+                      errors::InvalidArgument(
+                          "The first dimension of input must be equal to "
+                          "the second dimension of x when "
+                          "input is 2-D tensor. "
+                          "If not, the first dimension of input must be 1. "
+                          "But received input's first dimension = [%d], "
+                          "x's second dimension = [%d].",
+                          input_dims[0],
+                          x_dims[1]));
+    PADDLE_ENFORCE_EQ(input_dims[1] == y_dims[2],
+                      true,
+                      errors::InvalidArgument(
+                          "The second dimension of input must be equal to "
+                          "the third dimension of y when "
+                          "input is 2-D tensor. "
+                          "But received input's second dimension = [%d], "
+                          "y's third dimension = [%d].",
+                          input_dims[1],
+                          y_dims[2]));
+  }
 
   std::vector<int64_t> output_dims;
   output_dims.push_back(x_dims[0]);
