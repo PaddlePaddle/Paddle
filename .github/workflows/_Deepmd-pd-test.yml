@@ -152,6 +152,7 @@ jobs:
             source/tests/pd/test_multitask.py \
             source/tests/pd/test_training.py \
             source/tests/pd/test_update_sel.py \
+            source/tests/pd/test_utils.py \
             source/tests/pd/model/test_atomic_model_atomic_stat.py \
             source/tests/pd/model/test_atomic_model_global_stat.py \
             source/tests/pd/model/test_autodiff.py \
@@ -184,22 +185,11 @@ jobs:
             source/tests/pd/model/test_smooth.py \
             source/tests/pd/model/test_trans_denoise.py \
             source/tests/pd/model/test_trans.py \
-            source/tests/pd/model/test_unused_params.py
-            source/tests/pd/test_utils.py 2>&1 | tee /paddle/pytest_output.log
+            source/tests/pd/model/test_unused_params.py 2>&1 | tee /paddle/pytest_output.log
           TEST_RESULT=${PIPESTATUS[0]}
-
-          echo ""
-          echo "=========================================="
-          if [ $TEST_RESULT -eq 0 ]; then
-            echo "✅ All tests PASSED!"
-          else
-            echo "❌ Tests FAILED!"
-          fi
-          echo "=========================================="
 
           exit $TEST_RESULT
           '
-        continue-on-error: true
 
       - name: Upload test results
         if: always()
@@ -208,29 +198,6 @@ jobs:
           name: deepmd-test-results-pr-${{ env.PR_ID }}
           path: pytest_output.log
           retention-days: 30
-
-      - name: Check test status and report
-        if: always()
-        run: |
-          if [ -f pytest_output.log ]; then
-            echo "==================================="
-            echo "DeepMD-Kit Test Results Summary"
-            echo "==================================="
-
-            if grep -q "FAILED\|ERROR" pytest_output.log; then
-              echo ""
-              echo "❌ Tests FAILED! Check artifacts for details."
-              echo "==================================="
-              exit 1
-            else
-              echo ""
-              echo "✅ All tests PASSED!"
-              exit 0
-            fi
-          else
-            echo "⚠️ Test output file not found, assuming failure"
-            exit 1
-          fi
 
       - name: Terminate and delete the container
         if: always()
