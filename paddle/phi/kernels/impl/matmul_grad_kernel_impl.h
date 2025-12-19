@@ -501,6 +501,7 @@ void MatmulGradKernel(const Context& dev_ctx,
         VLOG(3)
             << "matmul grad case: transpose_x = false && transpose_y = false";
         if (dx) {
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
           if (!FLAGS_use_legacy_gemm && is_x_been_broadcasted && x_ndim == 3 &&
               ndim == 3) {
             // Once x been broadcasted, we introduce a new aggregate dim
@@ -540,7 +541,9 @@ void MatmulGradKernel(const Context& dev_ctx,
             x_grad_dim[ndim - 1] = dx_help.dims()[1];
             dx_help.Resize(common::make_ddim(x_grad_dim));
 
-          } else {
+          } else  // NOLINT
+#endif
+          {  // NOLINT
             MatMulFunction<Context, T>(dev_ctx,
                                        out_grad,
                                        y_conj,
@@ -552,6 +555,7 @@ void MatmulGradKernel(const Context& dev_ctx,
           }  // if is_x_been_broadcasted
         }    // if dx
         if (dy) {
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
           if (!FLAGS_use_legacy_gemm && is_y_been_broadcasted && y_ndim == 3 &&
               ndim == 3) {
             // Once y been broadcasted, we introduce a new aggregate dim
@@ -586,7 +590,9 @@ void MatmulGradKernel(const Context& dev_ctx,
             y_grad_dim[ndim - 1] = dy_help.dims()[1];
             dy_help.Resize(common::make_ddim(y_grad_dim));
 
-          } else {
+          } else  // NOLINT
+#endif
+          {  // NOLINT
             MatMulFunction<Context, T>(dev_ctx,
                                        x_conj,
                                        out_grad,
