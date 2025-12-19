@@ -94,7 +94,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'LegacyInterpolateInferMeta',
     'NceInferMeta',
     'PyramidHashInferMeta',
-    'RmsNormInferMeta',
+    'FusedRmsNormQuantInferMeta',
     'SigmoidCrossEntropyWithLogitsInferMeta',
     'StackInferMeta',
     'WeightOnlyLinearInferMeta',
