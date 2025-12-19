@@ -108,7 +108,7 @@ jobs:
           rm -rf deepmd-kit
           echo "Cloning deepmd-kit repository..."
           source ${{ github.workspace }}/../../../proxy
-          git clone https://github.com/HydrogenSulfate/deepmd-kit.git -b paddle_ci_new
+          git clone https://github.com/deepmodeling/deepmd-kit.git -b v3.1.2
           ls -lah /paddle/deepmd-kit
           cd deepmd-kit
           '
@@ -128,7 +128,9 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -e
           echo "Installing pytest..."
-          python3.10 -m pip install pytest pytest-xdist -i https://pypi.tuna.tsinghua.edu.cn/simple
+          python3.10 -m pip install \
+            pytest pytest-xdist pytest-json-report pytest-metadata pytest-mock pytest-rich pytest-sugar pytest-timeout \
+            -i https://pypi.tuna.tsinghua.edu.cn/simple
           '
 
       - name: Run deepmd-kit pytest
@@ -141,7 +143,7 @@ jobs:
           echo "Running DeepMD-Kit Integration Tests"
           echo "=========================================="
 
-          python3.10 -m pytest \
+          python3.10 -m pytest -vvv --tb=long --color=yes \
             source/tests/pd/test_auto_batch_size.py \
             source/tests/pd/test_change_bias.py \
             source/tests/pd/test_decomp.py \
@@ -150,21 +152,44 @@ jobs:
             source/tests/pd/test_multitask.py \
             source/tests/pd/test_training.py \
             source/tests/pd/test_update_sel.py \
-            source/tests/pd/test_utils.py -vvv --tb=long --color=yes 2>&1 | tee /paddle/pytest_output.log
+            source/tests/pd/test_utils.py \
+            source/tests/pd/model/test_atomic_model_atomic_stat.py \
+            source/tests/pd/model/test_atomic_model_global_stat.py \
+            source/tests/pd/model/test_autodiff.py \
+            source/tests/pd/model/test_deeppot.py \
+            source/tests/pd/model/test_descriptor_dpa1.py \
+            source/tests/pd/model/test_descriptor_dpa2.py \
+            source/tests/pd/model/test_dp_atomic_model.py \
+            source/tests/pd/model/test_dp_model.py \
+            source/tests/pd/model/test_dpa1.py \
+            source/tests/pd/model/test_dpa2.py \
+            source/tests/pd/model/test_dpa3.py \
+            source/tests/pd/model/test_dynamic_sel.py \
+            source/tests/pd/model/test_ener_fitting.py \
+            source/tests/pd/model/test_env_mat.py \
+            source/tests/pd/model/test_exclusion_mask.py \
+            source/tests/pd/model/test_force_grad.py \
+            source/tests/pd/model/test_forward_lower.py \
+            source/tests/pd/model/test_get_model.py \
+            source/tests/pd/model/test_jit.py \
+            source/tests/pd/model/test_mlp.py \
+            source/tests/pd/model/test_nlist.py \
+            source/tests/pd/model/test_null_input.py \
+            source/tests/pd/model/test_permutation_denoise.py \
+            source/tests/pd/model/test_permutation.py \
+            source/tests/pd/model/test_region.py \
+            source/tests/pd/model/test_rot_denoise.py \
+            source/tests/pd/model/test_rot.py \
+            source/tests/pd/model/test_rotation.py \
+            source/tests/pd/model/test_se_e2_a.py \
+            source/tests/pd/model/test_smooth.py \
+            source/tests/pd/model/test_trans_denoise.py \
+            source/tests/pd/model/test_trans.py \
+            source/tests/pd/model/test_unused_params.py 2>&1 | tee /paddle/pytest_output.log
           TEST_RESULT=${PIPESTATUS[0]}
-
-          echo ""
-          echo "=========================================="
-          if [ $TEST_RESULT -eq 0 ]; then
-            echo "✅ All tests PASSED!"
-          else
-            echo "❌ Tests FAILED!"
-          fi
-          echo "=========================================="
 
           exit $TEST_RESULT
           '
-        continue-on-error: true
 
       - name: Upload test results
         if: always()
@@ -173,29 +198,6 @@ jobs:
           name: deepmd-test-results-pr-${{ env.PR_ID }}
           path: pytest_output.log
           retention-days: 30
-
-      - name: Check test status and report
-        if: always()
-        run: |
-          if [ -f pytest_output.log ]; then
-            echo "==================================="
-            echo "DeepMD-Kit Test Results Summary"
-            echo "==================================="
-
-            if grep -q "FAILED\|ERROR" pytest_output.log; then
-              echo ""
-              echo "❌ Tests FAILED! Check artifacts for details."
-              echo "==================================="
-              exit 1
-            else
-              echo ""
-              echo "✅ All tests PASSED!"
-              exit 0
-            fi
-          else
-            echo "⚠️ Test output file not found, assuming failure"
-            exit 1
-          fi
 
       - name: Terminate and delete the container
         if: always()
