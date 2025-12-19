@@ -1654,12 +1654,12 @@ void ReshapeDoubleGradInferMeta(const MetaTensor& out_grad,
   }
 }
 
-void RmsNormGradInferMeta(const MetaTensor& x,
-                          const MetaTensor& norm_weight,
-                          const MetaTensor& norm_bias,
-                          MetaTensor* x_grad,
-                          MetaTensor* norm_weight_grad,
-                          MetaTensor* norm_bias_grad) {
+void FusedRmsNormQuantGradInferMeta(const MetaTensor& x,
+                                    const MetaTensor& norm_weight,
+                                    const MetaTensor& norm_bias,
+                                    MetaTensor* x_grad,
+                                    MetaTensor* norm_weight_grad,
+                                    MetaTensor* norm_bias_grad) {
   if (x_grad) {
     x_grad->share_meta(x);
   }

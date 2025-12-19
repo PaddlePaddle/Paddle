@@ -74,7 +74,9 @@ def extract_axis_and_clean_tokens(tokens):
             axis = int(tokens[idx + 2].value)
             end_idx = idx + 3
             if end_idx < len(tokens) - 1:
-                assert tokens[end_idx].value == ","
+                assert tokens[end_idx].value == ",", (
+                    f"The different attributes must split by a comma, but now the token is {tokens[end_idx].value}."
+                )
                 end_idx += 1
             tokens = tokens[:idx] + tokens[end_idx:]
             break
@@ -141,7 +143,9 @@ def layer_id_offset_macro(tokens, expression, context):
         ),
         None,
     )
-    assert name_with_layer_id_offset, "No $LAYER_ID_OFFSET found in NAME tokens"
+    assert name_with_layer_id_offset, (
+        "No $LAYER_ID_OFFSET found in NAME tokens.Please check the aoa_config."
+    )
     assert all(
         (t.type != TokenType.IDENTIFIER)
         or (LAYER_ID_OFFSET_MACRO_TAG in t.value)
@@ -197,6 +201,8 @@ def array_macro(tokens, expression, context):
                 and tokens[idx + 2].type == TokenType.COLON
                 and tokens[idx + 3].type == TokenType.NUMBER
                 and tokens[idx + 4].type == TokenType.RBRACKET
+            ), (
+                f"The array macro format is incorrect which is must be like: NAME[START:END], but now the format is {tokens[idx].value}{tokens[idx + 1].value}:{tokens[idx + 3].value}{tokens[idx + 4].value}."
             )
             new_tokens.pop()
             start = int(tokens[idx + 1].value)
@@ -249,16 +255,18 @@ def fused_qkv_old_macro(tokens, expression, context):
         ):
             right_var_end_pos = idx + 1
 
-    assert attn_head_num and attn_head_num > 0, "num_heads must be positive."
+    assert attn_head_num and attn_head_num > 0, (
+        f"num_heads must be positive.(got: {attn_head_num})."
+    )
     assert num_key_value_groups and num_key_value_groups > 0, (
-        "num_key_value_groups must be positive."
+        f"num_key_value_groups must be positive.(got: {num_key_value_groups})."
     )
     assert fused_qkv_old_pos is not None, (
-        "No fused_qkv_old tag found in expression."
+        f"No fused_qkv_old tag found in expression. The tag must be {FUSED_QKV_OLD_TAG}."
     )
     assert rarrow_pos is not None, "No -> found in expression."
     assert attn_head_num % num_key_value_groups == 0, (
-        "num_heads must be divisible by num_key_value_groups."
+        f"num_heads ({attn_head_num}) must be divisible by num_key_value_groups ({num_key_value_groups})."
     )
 
     results = []
@@ -413,7 +421,9 @@ def fused_ffn_macro(tokens, expression, context):
         ):
             fused_ffn_pos = idx
     assert rarrow_pos is not None, "No -> found in expression."
-    assert fused_ffn_pos is not None, "No fused_ffn tag found in expression."
+    assert fused_ffn_pos is not None, (
+        f"No fused_ffn tag found in expression. The tag must be {FUSED_FFN_TAG}."
+    )
     results = []
     if rarrow_pos == 1:
         src_ffn_weight_name = tokens[0].value
@@ -607,7 +617,9 @@ def fused_qkv_macro(tokens, expression, context):
     assert num_key_value_groups and num_key_value_groups > 0, (
         f"num_key_value_groups must be positive (got: {num_key_value_groups})"
     )
-    assert fused_qkv_pos is not None, "No fused_qkv tag found in expression."
+    assert fused_qkv_pos is not None, (
+        f"No fused_qkv tag found in expression. The tag must be {FUSED_QKV_TAG}."
+    )
     assert rarrow_pos is not None, "No -> found in expression."
     assert rarrow_pos == 1 or rarrow_pos == 5, (
         "Only support q,k,v -> fused_qkv or fused_qkv -> q,k,v patterns"
@@ -783,7 +795,7 @@ def id(tokens, expression, context):
 
     for token in IDENTIFIER_tokens:
         assert all(k in token.value for k in valid_keys), (
-            f"The token: {token.value} must contain all of the following keys: {valid_keys}"
+            f"The token: {token.value} must contain all of the following keys: {valid_keys}.When use the id macro all IDENTIFIER tokens must contain the same ID placeholders."
         )
 
     def dict_cartesian_tuples(d: dict[str, list[int]]):
@@ -837,7 +849,7 @@ def get_var_mapping_chain_macro(tokens, expression, context):
             else:
                 right_var_list.append(extra_suffix_removed_value)
     assert len(left_var_list) == 1 or len(right_var_list) == 1, (
-        "Left or right variable must have the only one element"
+        "Left or right variable must have the only one element,the aoa_statements not support 'multiple var -> multiple var' pattern."
     )
     if len(left_var_list) == 1:
         context.left_var_to_right_var_mapping[left_var_list[0]] = right_var_list

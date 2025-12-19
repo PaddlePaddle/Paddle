@@ -31,11 +31,13 @@ static inline LayerNormGadKernelVariant LayerNormGradKernelDispatch(
     const paddle::DataType output_type,
     const paddle::DataType compute_type,
     const uint32_t hidden_size,
+    const int64_t x_numel,
     const DenseTensor *scale) {
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   if (scale != nullptr && input_type != paddle::DataType::FLOAT32 &&
-      hidden_size != 4096 && hidden_size > 1024) {
-    // using fast_ln_v2 only sm > 70
+      hidden_size != 4096 && hidden_size > 1024 &&
+      x_numel <= std::numeric_limits<uint32_t>::max()) {
+    // using fast_ln_v2 only sm > 70 and x_numel <= uint32_max
     auto prop = funcs::fast_ln_v2::GetDeviceProp();
     if (prop->major > 7 &&
         funcs::fast_ln_v2::has_fast_ln_v2_bwd_kernel(
@@ -185,8 +187,13 @@ void LayerNormGradKernel(const Context &dev_ctx,
   } while (0)
 
   auto compute_dtype = phi::CppTypeToDataType<U>::Type();
-  auto kernel_variant = LayerNormGradKernelDispatch(
-      scale_bias_dtype, x_dtype, x_dtype, compute_dtype, feature_size, scale);
+  auto kernel_variant = LayerNormGradKernelDispatch(scale_bias_dtype,
+                                                    x_dtype,
+                                                    x_dtype,
+                                                    compute_dtype,
+                                                    feature_size,
+                                                    x.numel(),
+                                                    scale);
   switch (kernel_variant) {
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
     case LayerNormGadKernelVariant::FAST_LN_V2:

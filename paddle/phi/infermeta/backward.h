@@ -622,12 +622,12 @@ PADDLE_API void ReshapeDoubleGradInferMeta(const MetaTensor& out_grad,
                                            const MetaTensor& x_grad_grad,
                                            MetaTensor* out_grad_grad);
 
-PADDLE_API void RmsNormGradInferMeta(const MetaTensor& x,
-                                     const MetaTensor& norm_weight,
-                                     const MetaTensor& norm_bias,
-                                     MetaTensor* x_grad,
-                                     MetaTensor* norm_weight_grad,
-                                     MetaTensor* norm_bias_grad);
+PADDLE_API void FusedRmsNormQuantGradInferMeta(const MetaTensor& x,
+                                               const MetaTensor& norm_weight,
+                                               const MetaTensor& norm_bias,
+                                               MetaTensor* x_grad,
+                                               MetaTensor* norm_weight_grad,
+                                               MetaTensor* norm_bias_grad);
 
 PADDLE_API void RnnGradInferMeta(
     const MetaTensor& x,

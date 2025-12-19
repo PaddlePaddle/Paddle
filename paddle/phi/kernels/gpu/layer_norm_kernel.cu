@@ -498,6 +498,7 @@ static inline LayerNormKernelVariant LayerNormKernelDispatch(
     const paddle::DataType output_type,
     const paddle::DataType compute_type,
     const uint32_t hidden_size,
+    const int64_t x_numel,
     const DenseTensor *scale,
     const DenseTensor *bias) {
   if (scale == nullptr || bias == nullptr) {
@@ -505,8 +506,9 @@ static inline LayerNormKernelVariant LayerNormKernelDispatch(
   }
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   if (input_type != paddle::DataType::FLOAT32 && hidden_size != 4096 &&
-      hidden_size <= 102400) {
-    // using fast_ln_v2 only sm > 70
+      hidden_size <= 102400 &&
+      x_numel <= std::numeric_limits<uint32_t>::max()) {
+    // using fast_ln_v2 only sm > 70 and x_numel <= uint32_max
     auto prop = funcs::fast_ln_v2::GetDeviceProp();
     if (prop->major > 7 &&
         funcs::fast_ln_v2::has_fast_ln_v2_fwd_kernel(
@@ -646,6 +648,7 @@ void LayerNormKernel(const Context &dev_ctx,
                                                 y_dtype,
                                                 compute_dtype,
                                                 feature_size,
+                                                x.numel(),
                                                 scale,
                                                 bias);
 

@@ -3994,7 +3994,7 @@ bool RandomRouting_OpInferSymbolicShape(
   return RandomRoutingOpInferSymbolicShape(op, infer_context);
 }
 
-bool RmsNormOpInferSymbolicShape(
+bool FusedRmsNormQuantOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
