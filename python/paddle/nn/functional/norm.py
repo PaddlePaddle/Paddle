@@ -465,7 +465,7 @@ def rms_norm(
     input: Tensor,
     normalized_shape: int | Sequence[int],
     weight: Tensor | None = None,
-    epsilon: float = 1e-5,
+    eps: float = 1e-5,
     name: str | None = None,
 ) -> tuple[Tensor, Tensor]:
     """
@@ -477,7 +477,7 @@ def rms_norm(
             If it is a single integer, this module will normalize over the last dimension
             which is expected to be of that specific size.
         weight(Tensor, optional): The weight tensor of rms_norm. Default: None.
-        epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-05.
+        eps(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-05.
         name (str, optional): Name of the operator.
     Returns:
         out (Tensor): Normalized tensor of same shape as input.
@@ -522,9 +522,9 @@ def rms_norm(
         raise ValueError("weight must not be None.")
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.fused_rms_norm_ext(input, weight, epsilon)
+        return _C_ops.fused_rms_norm_ext(input, weight, eps)
 
-    helper = LayerHelper('rms_norm_nzs', **locals())
+    helper = LayerHelper('rms_norm', **locals())
     from paddle.base.data_feeder import convert_dtype
 
     dtype = convert_dtype(input.dtype)
@@ -534,10 +534,10 @@ def rms_norm(
     inputs = {'input': input, 'weight': weight}
 
     helper.append_op(
-        type='rms_norm_nzs',
+        type='rms_norm',
         inputs=inputs,
         outputs={'out': out, 'invvar': invvar},
-        attrs={'epsilon': epsilon},
+        attrs={'eps': eps},
     )
     return out, invvar
 
