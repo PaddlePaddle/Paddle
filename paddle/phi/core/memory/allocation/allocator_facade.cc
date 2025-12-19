@@ -60,11 +60,11 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/backends/xpu/xpu_graph.h"
 #include "paddle/phi/core/memory/allocation/stream_safe_xpu_allocator.h"
 #include "paddle/phi/core/memory/allocation/xpu_allocator.h"
 #include "paddle/phi/core/memory/allocation/xpu_pinned_allocator.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_info.h"
-#include "paddle/phi/backends/xpu/xpu_graph.h"
 #endif
 
 #ifdef PADDLE_WITH_IPU
@@ -687,8 +687,7 @@ class AllocatorFacadePrivate {
   void EraseStream(std::shared_ptr<phi::Allocation> allocation,
                    phi::stream::stream_t stream) {
     if (auto stream_safe_cuda_allocation =
-            std::dynamic_pointer_cast<StreamSafeXPUAllocation>(
-                allocation)) {
+            std::dynamic_pointer_cast<StreamSafeXPUAllocation>(allocation)) {
       stream_safe_cuda_allocation->EraseStream(stream);
     } else {
       VLOG(6) << "EraseStream for a non-StreamSafeCUDAAllocation";
@@ -1978,7 +1977,7 @@ void AllocatorFacade::RemoveMemoryPoolOfCUDAGraph(int64_t id) {
   }
 }
 #endif
-  
+
 #elif defined(PADDLE_WITH_XPU)
 void AllocatorFacade::PrepareMemoryPoolForXPUGraph(int64_t id) {
   PADDLE_ENFORCE_EQ(GetAllocatorStrategy(),
@@ -2001,7 +2000,6 @@ void AllocatorFacade::PrepareMemoryPoolForXPUGraph(int64_t id) {
     VLOG(10) << "Use created memory pool for CUDA Graph with memory ID " << id;
   }
 }
-
 
 void AllocatorFacade::RemoveMemoryPoolOfXPUGraph(int64_t id) {
   auto ref_cnt_iter = cuda_graph_ref_cnt_.find(id);

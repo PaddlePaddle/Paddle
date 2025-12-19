@@ -15,14 +15,14 @@
 import os
 
 from paddle.base.core import (
-    XPUPlace,
     CUDAPlace,
     CustomPlace,
+    XPUPlace,
     get_all_custom_device_type,
     is_compiled_with_cuda,
     is_compiled_with_custom_device,
     is_compiled_with_rocm,
-    is_compiled_with_xpu
+    is_compiled_with_xpu,
 )
 
 
@@ -47,6 +47,7 @@ if (
         return True
 elif is_compiled_with_xpu():
     from paddle.base.core import XPUGraph as CoreCUDAGraph
+
     def is_cuda_graph_supported():
         return True
 else:
