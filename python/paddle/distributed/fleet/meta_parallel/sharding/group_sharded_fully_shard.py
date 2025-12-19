@@ -30,6 +30,7 @@ from .group_sharded_stage3 import (
     ForwardPreHooks,
     OrderedSet,
     TaskFlow,
+    _allgather_buffer,
     _current_layer_params,
     _PartitionParam,
     _TensorWrapper,
@@ -728,3 +729,62 @@ class FullyShard(nn.Layer):
         ali = 0 if remaining == 0 else device_alignment - remaining
         align_ = ali // align[param.dtype]
         return align_
+
+    def get_all_parameters(self, convert2cpu=False):
+        """
+        Get the full parameters and return the corresponding task flows.
+        """
+        assert len(self._trainable_params.keys()) > 0
+        current_layer_params = self._layer.parameters(include_sublayers=True)
+        trainable_params = list(
+            filter(
+                lambda p: p.trainable and p not in self._unslice_params,
+                current_layer_params,
+            )
+        )
+        t_flow = _allgather_buffer(
+            trainable_params,
+            self._group,
+            param2buffer_size=self._param2buffer_size,
+            use_calc_stream=True,
+            task_flow=TaskFlow(),
+            sync_wait=True,
+            offload=self._offload,
+            convert2cpu=convert2cpu,
+        )
+        if convert2cpu:
+            for param in trainable_params:
+                t_flow.full_param[param.name][0]._share_buffer_to(param)
+                del t_flow.full_param[param.name]
+
+    def init_slice_param(self):
+        for layer_id, params in self._trainable_params.items():
+            for param in params:
+                value = paddle.zeros(param.shape, dtype=param.dtype)
+                value._share_buffer_to(param)
+
+    def align_param_to_buffer_and_clear_slice_param(self):
+        for layer_id, params in self._trainable_params.items():
+            for param in params:
+                if param._is_initialized():
+                    param_shape = param.shape
+                    origin_state = param.stop_gradient
+                    param.stop_gradient = True
+                    start, end = self._param2buffer[param.name][self._rank]
+                    param.flatten_()
+                    param.stop_gradient = origin_state
+                    param_numel = param.numel().item()
+                    start = min(start, param_numel)
+                    end = min(end, param_numel)
+                    if end > start:
+                        tmp_tensor = param._slice(start, end).detach()
+                        buffer_slice = param.fw_storage._slice(
+                            0, end - start
+                        ).detach()
+                        buffer_slice.set_value(tmp_tensor)
+                        del buffer_slice
+                    param.get_tensor()._set_dims(param_shape)
+                    param._clear_data()
+
+    def init_optimizer_for_slice_param(self):
+        pass
