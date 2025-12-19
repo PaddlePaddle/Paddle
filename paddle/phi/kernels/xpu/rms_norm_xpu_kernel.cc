@@ -36,12 +36,12 @@ static void GetRowsCols(const std::vector<int64_t> &shape,
 }
 
 template <typename T, typename Context>
-void RMSNormFwd(const Context &dev_ctx,
-                const DenseTensor &x,
-                const DenseTensor &scale,
-                float epsilon,
-                DenseTensor *y,
-                DenseTensor *invvar) {
+void RMSNormFwdKernel(const Context &dev_ctx,
+                      const DenseTensor &x,
+                      const DenseTensor &scale,
+                      float epsilon,
+                      DenseTensor *y,
+                      DenseTensor *invvar) {
   int64_t rows, cols;
   GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
 
@@ -121,14 +121,14 @@ void RMSNormFwd(const Context &dev_ctx,
 }
 
 template <typename T, typename Context>
-void RMSNormBwd(const Context &dev_ctx,
-                const DenseTensor &x,
-                const DenseTensor &scale,
-                const DenseTensor &invvar,
-                const DenseTensor &y_grad,
-                float epsilon,
-                DenseTensor *x_grad,
-                DenseTensor *scale_grad) {
+void RMSNormBwdKernel(const Context &dev_ctx,
+                      const DenseTensor &x,
+                      const DenseTensor &scale,
+                      const DenseTensor &invvar,
+                      const DenseTensor &y_grad,
+                      float epsilon,
+                      DenseTensor *x_grad,
+                      DenseTensor *scale_grad) {
   int64_t rows, cols;
   GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
   dev_ctx.template Alloc<T>(x_grad);
@@ -205,7 +205,7 @@ void RMSNormBwd(const Context &dev_ctx,
 PD_REGISTER_KERNEL(rms_norm_nzs,
                    XPU,
                    ALL_LAYOUT,
-                   phi::RMSNormFwd,
+                   phi::RMSNormFwdKernel,
                    float,
                    phi::float16,
                    phi::bfloat16) {}
@@ -213,7 +213,7 @@ PD_REGISTER_KERNEL(rms_norm_nzs,
 PD_REGISTER_KERNEL(rms_norm_nzs_grad,
                    XPU,
                    ALL_LAYOUT,
-                   phi::RMSNormBwd,
+                   phi::RMSNormBwdKernel,
                    float,
                    phi::float16,
                    phi::bfloat16) {}

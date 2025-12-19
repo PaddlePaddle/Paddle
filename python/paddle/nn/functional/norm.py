@@ -901,13 +901,12 @@ def rms_norm_nzs(
         invvar (Tensor): Tensor of shape [rows], the inverse standard deviation of each row.
 
     Examples:
-
         .. code-block:: python
-
             >>> import paddle
             >>> paddle.seed(2023)
+            >>> paddle.set_device('cpu')
             >>> input = paddle.rand((2, 2, 2, 3))
-            >>> weight = paddle.rand(3)
+            >>> weight = paddle.rand([3])
             >>> out, invvar = paddle.nn.functional.rms_norm(input, input.shape[-1], weight)
 
             >>> print(out)

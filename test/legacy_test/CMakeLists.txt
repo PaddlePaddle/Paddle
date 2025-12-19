@@ -122,7 +122,6 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_batched_gemm)
   list(REMOVE_ITEM TEST_OPS test_fp8_quant)
   list(REMOVE_ITEM TEST_OPS test_incubate_fast_ln)
-  list(REMOVE_ITEM TEST_OPS test_rms_norm)
   list(REMOVE_ITEM TEST_OPS test_incubate_moe_gate_dispatch_and_quant)
 endif()
 
@@ -206,7 +205,6 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
   list(REMOVE_ITEM TEST_OPS test_incubate_fast_ln)
-  list(REMOVE_ITEM TEST_OPS test_rms_norm)
   list(REMOVE_ITEM TEST_OPS test_fused_weighted_swiglu_act_quant_op)
   list(REMOVE_ITEM TEST_OPS test_fused_swiglu_weighted_bwd_op)
   list(REMOVE_ITEM TEST_OPS test_fused_act_dequant_op)
@@ -577,6 +575,7 @@ if(NOT WITH_GPU
    OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 11.8))
 )# Restrict the use of older versions of CUB
   list(REMOVE_ITEM TEST_OPS test_incubate_fused_rmsnorm_ext)
+  list(REMOVE_ITEM TEST_OPS test_rms_norm)
 endif()
 
 if(NOT WITH_GPU
@@ -586,7 +585,6 @@ if(NOT WITH_GPU
    OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
 )# Restrict the use of older versions of CUB
   list(REMOVE_ITEM TEST_OPS test_incubate_fast_ln)
-  list(REMOVE_ITEM TEST_OPS test_rms_norm)
   list(REMOVE_ITEM TEST_OPS test_batched_gemm)
 endif()
 
