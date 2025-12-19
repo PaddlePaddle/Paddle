@@ -1,0 +1,205 @@
+name: DeepMD-Kit Test
+
+on:
+  workflow_call:
+    inputs:
+      docker_build_image:
+        type: string
+        required: true
+      can-skip:
+        type: string
+        required: false
+      MANUALLY_PR_ID:
+        type: string
+        required: false
+      MANUALLY_COMMIT_ID:
+        type: string
+        required: false
+
+env:
+  PR_ID: ${{ github.event.pull_request.number || '0' }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha || github.sha }}
+  work_dir: /paddle
+  PADDLE_ROOT: /paddle
+  TASK: paddle-CI-${{ github.event.pull_request.number }}-deepmd
+  ci_scripts: /paddle/ci
+  BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
+  CI_name: deepmd
+  no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  check-bypass:
+    name: Check bypass
+    if: ${{ inputs.can-skip != 'true' }}
+    uses: ./.github/workflows/check-bypass-slice.yml
+    with:
+      workflow-name: "deepmd"
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  deepmd-test:
+    name: DeepMD-Kit Integration Test
+    needs: check-bypass
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    runs-on:
+      group: slice
+    steps:
+      - name: Check docker image and run container
+        env:
+          wheel_link: https://paddle-github-action.bj.bcebos.com/PR/build/${{ env.PR_ID }}/${{ env.COMMIT_ID }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          container_name="deepmd_test_ci_${RUN_ID}"
+          echo "container_name=${container_name}" >> $GITHUB_ENV
+          docker_image=${{ inputs.docker_build_image }}
+          docker run -d -t --gpus all --name ${container_name} --shm-size=128g \
+            -v "/home/data/cfs:/home/data/cfs" \
+            -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+            -v ${{ github.workspace }}:/paddle \
+            -e BRANCH \
+            -e PR_ID \
+            -e COMMIT_ID \
+            -e RUN_ID \
+            -e wheel_link \
+            -e work_dir \
+            -e PADDLE_ROOT \
+            -e ci_scripts \
+            -e no_proxy \
+            -e CI_name \
+            -w /paddle --network host ${docker_image}
+
+      - name: Print PR information
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -e
+          echo "Testing PR #${{ env.PR_ID }}"
+          echo "Commit: ${{ env.COMMIT_ID }}"
+          echo "Branch: ${{ env.BRANCH }}"
+          '
+
+      - name: Install PaddlePaddle
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -e
+          mkdir -p ${{ github.workspace }}/../../../.cache/pip
+          source ${{ github.workspace }}/../../../proxy
+          python3.10 -m pip config set global.cache-dir ${{ github.workspace }}/../../../.cache/pip
+
+          if [[ "${{ inputs.MANUALLY_PR_ID }}" == "" ]]; then
+            echo "Installing PaddlePaddle from: $wheel_link"
+            python3.10 -m pip install $wheel_link
+          else
+            echo "Installing PaddlePaddle from manual PR: ${{ inputs.MANUALLY_PR_ID }}"
+            python3.10 -m pip install https://paddle-github-action.bj.bcebos.com/PR/build/${{ inputs.MANUALLY_PR_ID }}/${{ inputs.MANUALLY_COMMIT_ID }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          fi
+
+          python3.10 -c "import paddle; print(f\"PaddlePaddle version: {paddle.__version__}\")"
+          '
+
+      - name: Clone and setup deepmd-kit
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -e
+          cd /paddle
+          rm -rf deepmd-kit
+          echo "Cloning deepmd-kit repository..."
+          source ${{ github.workspace }}/../../../proxy
+          git clone https://github.com/HydrogenSulfate/deepmd-kit.git -b paddle_ci_new
+          ls -lah /paddle/deepmd-kit
+          cd deepmd-kit
+          '
+
+      - name: Install deepmd-kit dependencies
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -e
+          cd /paddle/deepmd-kit
+          echo "Installing deepmd-kit..."
+          source ${{ github.workspace }}/../../../proxy
+          DP_ENABLE_TENSORFLOW=0 DP_ENABLE_PYTORCH=0 python3.10 -m pip install -v -e . -i https://pypi.tuna.tsinghua.edu.cn/simple
+          '
+
+      - name: Install test dependencies
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -e
+          echo "Installing pytest..."
+          python3.10 -m pip install pytest pytest-xdist -i https://pypi.tuna.tsinghua.edu.cn/simple
+          '
+
+      - name: Run deepmd-kit pytest
+        id: pytest_run
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -e
+          cd /paddle/deepmd-kit
+          echo "=========================================="
+          echo "Running DeepMD-Kit Integration Tests"
+          echo "=========================================="
+
+          python3.10 -m pytest \
+            source/tests/pd/test_auto_batch_size.py \
+            source/tests/pd/test_change_bias.py \
+            source/tests/pd/test_decomp.py \
+            source/tests/pd/test_dp_show.py \
+            source/tests/pd/test_finetune.py \
+            source/tests/pd/test_multitask.py \
+            source/tests/pd/test_training.py \
+            source/tests/pd/test_update_sel.py \
+            source/tests/pd/test_utils.py -vvv --tb=long --color=yes 2>&1 | tee /paddle/pytest_output.log
+          TEST_RESULT=${PIPESTATUS[0]}
+
+          echo ""
+          echo "=========================================="
+          if [ $TEST_RESULT -eq 0 ]; then
+            echo "✅ All tests PASSED!"
+          else
+            echo "❌ Tests FAILED!"
+          fi
+          echo "=========================================="
+
+          exit $TEST_RESULT
+          '
+        continue-on-error: true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deepmd-test-results-pr-${{ env.PR_ID }}
+          path: pytest_output.log
+          retention-days: 30
+
+      - name: Check test status and report
+        if: always()
+        run: |
+          if [ -f pytest_output.log ]; then
+            echo "==================================="
+            echo "DeepMD-Kit Test Results Summary"
+            echo "==================================="
+
+            if grep -q "FAILED\|ERROR" pytest_output.log; then
+              echo ""
+              echo "❌ Tests FAILED! Check artifacts for details."
+              echo "==================================="
+              exit 1
+            else
+              echo ""
+              echo "✅ All tests PASSED!"
+              exit 0
+            fi
+          else
+            echo "⚠️ Test output file not found, assuming failure"
+            exit 1
+          fi
+
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          set +e
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'cd /paddle && rm -rf deepmd-kit'
+          docker rm -f ${{ env.container_name }}

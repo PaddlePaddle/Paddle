@@ -55,7 +55,7 @@ class Lexer:
         ('MISMATCH', r'.'),
     ]
 
-    def __init__(self, context):
+    def __init__(self, context, traceback=None):
         from .macros import macro_registry
 
         self.macros = [list(d.values())[1] for d in macro_registry.macros]
@@ -66,6 +66,7 @@ class Lexer:
             )
         ).match
         self.context = context
+        self.traceback = traceback
 
     def tokenize(self, text):
         pos = 0
@@ -102,21 +103,47 @@ class Lexer:
 
     def apply_single_macro_to_all(self, expressions, macro):
         new_expressions = []
+        macro_name = getattr(macro, "__name__", "macro")
         for expr in expressions:
-            results = macro(self.tokenize(expr), expr, self.context)
+            try:
+                results = macro(self.tokenize(expr), expr, self.context)
+            except (AssertionError, ValueError, KeyError, RuntimeError) as e:
+                if self.traceback:
+                    chain = self.traceback.build_chain(expr)
+                    self.traceback.add_error(
+                        error_message=str(e),
+                        stage=f"{macro_name}",
+                        chain=chain,
+                        error_type=type(e).__name__,
+                    )
+                    self.traceback.print()
+                raise
+
             if isinstance(results, str):
-                new_expressions.append(results)
+                results_list = [results]
             else:
-                new_expressions.extend(results)
+                results_list = list(results)
+
+            if self.traceback:
+                if results_list != [expr]:
+                    self.traceback.record_children(
+                        expr, results_list, macro_name
+                    )
+
+            new_expressions.extend(results_list)
         return new_expressions
 
     def all_tokens(self, expressions):
+        if self.traceback:
+            self.traceback.register_roots(list(expressions))
+
         current_expressions = expressions
         for macro in self.macros:
             current_expressions = self.apply_single_macro_to_all(
                 current_expressions, macro
             )
 
+        self.final_expressions = list(current_expressions)
         tokens = []
         for expr in current_expressions:
             tokens.extend(self.tokenize(expr))

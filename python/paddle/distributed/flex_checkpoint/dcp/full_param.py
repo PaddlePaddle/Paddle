@@ -472,7 +472,7 @@ class SingleCommGroupFullParamAssembler(BaseAssembler):
         """Simple assembly path for a single GPU."""
         for k, v in self.filtered_sharded_state_dict.items():
             assert v.local_shape == v.global_shape, (
-                "Single card params must not be sharded."
+                "Single card params must not be sharded.But now the key is {k}, the local_shape is {v.local_shape}, the global_shape is {v.global_shape}."
             )
 
         for k, shard_mappings in self.destination_sharded_mappings.items():
