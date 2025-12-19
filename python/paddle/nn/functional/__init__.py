@@ -292,7 +292,7 @@ __all__ = [
     'temporal_shift',
     'batch_norm',
     'layer_norm',
-    "rms_norm",
+    'rms_norm',
     'instance_norm',
     'class_center_sample',
     'sparse_attention',

@@ -73,7 +73,8 @@ void CAllReduceKernel(const Context& dev_ctx,
                                                      red_type));
     }
 
-    auto task = pg->AllReduce(in_tensor, out_tensor, opts);
+    auto task =
+        pg->AllReduce(in_tensor, out_tensor, opts, use_calc_stream, false);
     task->Wait();
     return;
   }
