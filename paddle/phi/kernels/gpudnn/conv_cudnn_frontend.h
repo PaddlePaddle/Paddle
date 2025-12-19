@@ -212,7 +212,8 @@ class CudnnFrontendConvHelper {
         CalcWorkspaceLimitInBytes(UseFixedWorkspace());
     auto predicate_function =
         [=](cudnn_frontend::ExecutionPlan const& plan) -> bool {
-      return plan.getWorkspaceSize() > workspace_size_limit;
+      // remove restriction plan.getWorkspaceSize() > workspace_size_limit;
+      return false;
     };
     VLOG(6) << "[cudnn_frontend] Max workspace size: " << workspace_size_limit;
     cudnn_frontend::executionPlans_t plans;

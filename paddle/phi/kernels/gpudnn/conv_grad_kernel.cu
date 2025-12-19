@@ -354,12 +354,6 @@ void ConvCudnnGradKernelImplV8(
     int groups,
     DenseTensor* transformed_input_grad,
     DenseTensor* transformed_filter_grad_channel) {
-  PADDLE_ENFORCE_EQ(
-      groups,
-      1,
-      common::errors::Unimplemented(
-          "Group concolution using CUDNNv8 API is unsupported for now"));
-
   cudnnHandle_t handle = const_cast<cudnnHandle_t>(dev_ctx.cudnn_handle());
   auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
@@ -468,9 +462,7 @@ void ConvCudnnGradKernel(const Context& dev_ctx,
   auto compute_format = DataLayout::NCHW;
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
-  const bool compute_in_nhwc =
-      (dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLOAT16) &&
-      IsVoltaOrLater(dev_ctx);
+  const bool compute_in_nhwc = channel_last ? true : false;
 #else
   const bool compute_in_nhwc =
       dtype == CUDNN_DATA_HALF && IsVoltaOrLater(dev_ctx);
@@ -650,7 +642,7 @@ void ConvCudnnGradKernel(const Context& dev_ctx,
   CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_output_grad_channel);
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
-  if (dynload::IsCudnnFrontendEnabled() && (groups == 1))
+  if (dynload::IsCudnnFrontendEnabled())
     ConvCudnnGradKernelImplV8<T>(&transformed_input,
                                  &transformed_filter_channel,
                                  &transformed_output_grad_channel,

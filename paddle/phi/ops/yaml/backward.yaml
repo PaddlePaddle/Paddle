@@ -775,6 +775,19 @@
     data_type : x
   optional : mask
 
+- backward_op : depthwise_conv2d_bias_grad
+  forward : depthwise_conv2d_bias (Tensor input, Tensor filter, Tensor bias, int[] strides={1, 1}, int[] paddings={0, 0}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW") -> Tensor(out)
+  args : (Tensor input, Tensor filter, Tensor bias, Tensor out_grad, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
+  output : Tensor(input_grad), Tensor(filter_grad), Tensor(bias_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [input, filter, bias]
+  kernel :
+    func : depthwise_conv2d_bias_grad
+    data_type : input
+  optional : bias
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - backward_op : depthwise_conv2d_double_grad
   forward : depthwise_conv2d_grad (Tensor input, Tensor filter, Tensor grad_out, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(grad_input), Tensor(grad_filter)
   args : (Tensor input, Tensor filter, Tensor grad_out, Tensor grad_input_grad, Tensor grad_filter_grad, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
@@ -810,6 +823,19 @@
   kernel :
     func : depthwise_conv2d_transpose_grad
     data_type : x
+
+- backward_op : depthwise_conv3d_bias_grad
+  forward : depthwise_conv3d_bias (Tensor input, Tensor filter, Tensor bias, int[] strides={1, 1, 1}, int[] paddings={0, 0, 0}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1, 1}, str data_format="NCDHW") -> Tensor(out)
+  args : (Tensor input, Tensor filter, Tensor bias, Tensor out_grad, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
+  output : Tensor(input_grad), Tensor(filter_grad), Tensor(bias_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [input, filter, bias]
+  kernel :
+    func : depthwise_conv3d_bias_grad
+    data_type : input
+  optional : bias
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - backward_op : det_grad
   forward : det (Tensor x) -> Tensor(out)
