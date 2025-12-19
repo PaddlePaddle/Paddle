@@ -4212,14 +4212,14 @@
     func: pyramid_hash_grad
     data_type: w
 
-- backward_op: rms_norm_nzs_grad
-  forward: rms_norm_nzs (Tensor x, Tensor scale, float epsilon) -> Tensor(y), Tensor(invvar)
+- backward_op: rms_norm_grad
+  forward: rms_norm (Tensor x, Tensor scale, float epsilon) -> Tensor(y), Tensor(invvar)
   args: (Tensor x, Tensor scale,Tensor invvar, Tensor y_grad, float epsilon)
   output: Tensor(x_grad), Tensor(scale_grad)
   infer_meta:
-    func: RMSNormNzsGradInferMeta
+    func: RMSNormGradInferMeta
   kernel:
-    func: rms_norm_nzs_grad
+    func: rms_norm_grad
     data_type: x
 
 - backward_op: shuffle_batch_grad

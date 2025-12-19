@@ -365,11 +365,11 @@ PADDLE_API void FastRMSNormInfermeta(const MetaTensor& x,
                                      MetaTensor* y,
                                      MetaTensor* invvar);
 
-PADDLE_API void RmsNormNzsInferMeta(const MetaTensor& x,
-                                    const MetaTensor& scale,
-                                    float epsilon,
-                                    MetaTensor* y,
-                                    MetaTensor* invvar);
+PADDLE_API void RmsNormInferMeta(const MetaTensor& x,
+                                 const MetaTensor& scale,
+                                 float epsilon,
+                                 MetaTensor* y,
+                                 MetaTensor* invvar);
 
 PADDLE_API void FakeDequantizeMaxAbsInferMeta(const MetaTensor& x,
                                               const MetaTensor& scale,

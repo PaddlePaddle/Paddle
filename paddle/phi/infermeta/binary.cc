@@ -1891,11 +1891,11 @@ void FastRMSNormInfermeta(const MetaTensor& x,
   invvar->set_dtype(paddle::DataType::FLOAT32);
 }
 
-void RmsNormNzsInferMeta(const MetaTensor& x,
-                         const MetaTensor& scale,
-                         float epsilon,
-                         MetaTensor* y,
-                         MetaTensor* invvar) {
+void RmsNoInferMeta(const MetaTensor& x,
+                    const MetaTensor& scale,
+                    float epsilon,
+                    MetaTensor* y,
+                    MetaTensor* invvar) {
   auto x_dim = x.dims();
   auto x_ndim = x_dim.size();
 

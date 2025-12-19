@@ -2338,13 +2338,13 @@ PADDLE_API void FastRMSNormGradInfermeta(const MetaTensor& x,
   }
 }
 
-PADDLE_API void RMSNormNzsGradInferMeta(const MetaTensor& x,
-                                        const MetaTensor& scale,
-                                        const MetaTensor& invvar,
-                                        const MetaTensor& y_grad,
-                                        float epsilon,
-                                        MetaTensor* x_grad,
-                                        MetaTensor* scale_grad) {
+PADDLE_API void RMSNormGradInferMeta(const MetaTensor& x,
+                                     const MetaTensor& scale,
+                                     const MetaTensor& invvar,
+                                     const MetaTensor& y_grad,
+                                     float epsilon,
+                                     MetaTensor* x_grad,
+                                     MetaTensor* scale_grad) {
   PADDLE_ENFORCE_EQ(
       x.dtype() == DataType::FLOAT32 || x.dtype() == DataType::FLOAT16 ||
           x.dtype() == DataType::BFLOAT16,

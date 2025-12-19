@@ -129,7 +129,7 @@ void RMSNormBwdKernel(const Context &dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(rms_norm_nzs,
+PD_REGISTER_KERNEL(rms_norm,
                    GPU,
                    ALL_LAYOUT,
                    phi::RMSNormFwdKernel,
@@ -137,7 +137,7 @@ PD_REGISTER_KERNEL(rms_norm_nzs,
                    double,
                    phi::bfloat16) {}
 
-PD_REGISTER_KERNEL(rms_norm_nzs_grad,
+PD_REGISTER_KERNEL(rms_norm_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::RMSNormBwdKernel,

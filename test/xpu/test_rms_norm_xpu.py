@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.nn.functional import rms_norm_nzs
+from paddle.nn.functional import rms_norm
 
 
 class TestFusedRMSNorm(unittest.TestCase):
@@ -40,7 +40,7 @@ class TestFusedRMSNorm(unittest.TestCase):
         x = paddle.randn([rows, cols])
         scale = paddle.randn([cols])
 
-        y_fused, invvar_fused = rms_norm_nzs(x, (cols,), scale)
+        y_fused, invvar_fused = rms_norm(x, (cols,), scale)
 
         y_ref, invvar_ref = self.rms_norm_reference(x, scale)
 
@@ -54,7 +54,7 @@ class TestFusedRMSNorm(unittest.TestCase):
         x = paddle.randn([batch, rows, cols])
         scale = paddle.randn([cols])
 
-        y_fused, invvar_fused = rms_norm_nzs(x, (cols,), scale)
+        y_fused, invvar_fused = rms_norm(x, (cols,), scale)
 
         y_ref, invvar_ref = self.rms_norm_reference(x, scale)
 
@@ -73,7 +73,7 @@ class TestFusedRMSNorm(unittest.TestCase):
         x = paddle.randn([rows, cols])
         scale = paddle.randn([cols])
 
-        y_fused, invvar_fused = rms_norm_nzs(x, (cols,), scale)
+        y_fused, invvar_fused = rms_norm(x, (cols,), scale)
 
         y_ref, invvar_ref = self.rms_norm_reference(x, scale)
 
@@ -89,7 +89,7 @@ class TestFusedRMSNorm(unittest.TestCase):
         scale = paddle.randn([cols], dtype='float32')
         scale.stop_gradient = False
 
-        y_fused, invvar = rms_norm_nzs(x, (cols,), scale)
+        y_fused, invvar = rms_norm(x, (cols,), scale)
 
         loss = paddle.mean(y_fused)
         loss.backward()
@@ -126,7 +126,7 @@ class TestFusedRMSNorm(unittest.TestCase):
             scale = paddle.randn([cols], dtype=scale_type)
             scale.stop_gradient = False
 
-            y_fused, invvar = rms_norm_nzs(x, (cols,), scale)
+            y_fused, invvar = rms_norm(x, (cols,), scale)
 
             loss = paddle.mean(y_fused)
             loss.backward()

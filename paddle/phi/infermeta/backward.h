@@ -861,11 +861,11 @@ PADDLE_API void FastRMSNormGradInfermeta(const MetaTensor& x,
                                          MetaTensor* x_grad,
                                          MetaTensor* scale_grad);
 
-PADDLE_API void RMSNormNzsGradInferMeta(const MetaTensor& x,
-                                        const MetaTensor& scale,
-                                        const MetaTensor& invvar,
-                                        const MetaTensor& y_grad,
-                                        float epsilon,
-                                        MetaTensor* x_grad,
-                                        MetaTensor* scale_grad);
+PADDLE_API void RMSNormGradInferMeta(const MetaTensor& x,
+                                     const MetaTensor& scale,
+                                     const MetaTensor& invvar,
+                                     const MetaTensor& y_grad,
+                                     float epsilon,
+                                     MetaTensor* x_grad,
+                                     MetaTensor* scale_grad);
 }  // namespace phi
