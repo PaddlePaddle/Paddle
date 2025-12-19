@@ -2956,6 +2956,11 @@ add_doc_and_signature(
 
     If ``offset`` < 0, it is subdiagonal.
 
+    .. note::
+        Alias Support:
+        1. The parameter name ``input`` can be used as an alias for ``x``.
+        2. The parameter name ``diagonal`` can be used as an alias for ``offset``.
+
     Args:
         x (Tensor): The input tensor. Its shape is either 1-D or 2-D. Its data type should be float16, float32, float64, int32, int64, complex64, complex128.
         offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal.
@@ -2967,7 +2972,7 @@ add_doc_and_signature(
         Tensor, a square matrix or a vector. The output data type is the same as input data type.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: diag-example-1
 
             >>> import paddle
@@ -2995,6 +3000,22 @@ add_doc_and_signature(
             [[1, 6, 6],
              [6, 2, 6],
              [6, 6, 3]])
+
+            >>> y = paddle.diag(input=x, diagonal=2)
+            >>> print(y)
+            Tensor(shape=[5, 5], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0, 1, 0, 0],
+             [0, 0, 0, 2, 0],
+             [0, 0, 0, 0, 3],
+             [0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0]])
+
+            >>> y = paddle.diag(x=x, diagonal=0, padding_value=-1)
+            >>> print(y)
+            Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[ 1, -1, -1],
+             [-1,  2, -1],
+             [-1, -1,  3]])
 
         .. code-block:: python
             :name: diag-example-2
