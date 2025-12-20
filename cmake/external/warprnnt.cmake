@@ -29,6 +29,11 @@ if(WIN32)
     set(WARPCTC_PATCH_CUDA_COMMAND
         git checkout -- . && git checkout ${WARPRNNT_TAG} && git apply
         ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.cuda130.patch)
+  else()
+    set(WARPCTC_PATCH_CUDA_COMMAND
+        ${CMAKE_COMMAND} -E copy_if_different
+        ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.cuda.patch
+        "<SOURCE_DIR>/")
   endif()
 else()
   set(WARPCTC_PATCH_CUDA_COMMAND
