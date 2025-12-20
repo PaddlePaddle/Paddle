@@ -32,7 +32,7 @@ else()
   set(WARPCTC_PATCH_CUDA_COMMAND
       git checkout -- . && git checkout ${WARPRNNT_TAG} && patch -Nd
       ${SOURCE_DIR} <
-      ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.cuda.patch)
+      ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.cuda130.patch)
 endif()
 if(WITH_ROCM)
   set(WARPRNNT_PATCH_ROCM_COMMAND
