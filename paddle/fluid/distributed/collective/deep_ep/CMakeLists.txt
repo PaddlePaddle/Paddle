@@ -14,10 +14,17 @@ if(WITH_NVSHMEM)
       kernels/internode_ll_two_stage.cu
       kernels/internode_ll.cu
       kernels/m2n_ll_two_stage.cu)
-  cc_library(
-    deepep_kernels
-    SRCS ${DEEPEP_KERNEL_SRCS}
-    DEPS nvshmem cudadevrt onednn)
+  if(WITH_ONEDNN)
+    cc_library(
+      deepep_kernels
+      SRCS ${DEEPEP_KERNEL_SRCS}
+      DEPS nvshmem cudadevrt onednn)
+  else()
+    cc_library(
+      deepep_kernels
+      SRCS ${DEEPEP_KERNEL_SRCS}
+      DEPS nvshmem cudadevrt)
+  endif()
 
   set_target_properties(deepep_kernels PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
   set_target_properties(deepep_kernels PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS
