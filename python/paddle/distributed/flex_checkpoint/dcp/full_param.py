@@ -516,9 +516,15 @@ class SingleCommGroupFullParamAssembler(BaseAssembler):
             cur_src_rank = item.src_rank
 
             if self.cur_rank == cur_src_rank:
-                local_tensor = self.filtered_sharded_state_dict[
+                tmp = self.filtered_sharded_state_dict[
                     item.tensor_name
-                ].local_tensor.clone()
+                ].local_tensor
+                if tmp._is_initialized():
+                    local_tensor = tmp.clone()
+                else:
+                    local_tensor = paddle.empty(
+                        item.slice_shape, dtype=item.dtype
+                    )
             else:
                 local_tensor = paddle.empty(item.slice_shape, dtype=item.dtype)
 

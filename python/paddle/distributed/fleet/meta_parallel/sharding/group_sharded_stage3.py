@@ -709,13 +709,12 @@ class GroupShardedStage3(nn.Layer):
         Get the full parameters and return the corresponding task flows.
         """
         assert len(self._trainable_params.keys()) > 0
-        current_layer_params = self._layer.parameters(include_sublayers=True)
-        trainable_params = list(
-            filter(
-                lambda p: p.trainable and p not in self._unslice_params,
-                current_layer_params,
-            )
-        )
+        trainable_params = []
+        for param in trainable_params:
+            if param.name in self._param2buffer_size:
+                trainable_params.append(param)
+        convert2cpu = False
+
         t_flow = _allgather_buffer(
             trainable_params,
             self._group,
@@ -1307,7 +1306,7 @@ def _allgather_buffer(
         assert sync_wait
 
     for param in trainable_params:
-        if param.status == "all":
+        if hasattr(param, "status") and param.status == "all":
             param.use_count += 1
             continue
 
