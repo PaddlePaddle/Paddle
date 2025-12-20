@@ -188,7 +188,7 @@ def save_state_dict(
     """
     with paddle.base.dygraph.guard():
         assert isinstance(state_dict, dict), (
-            "The state_dict should be a dictionary."
+            f"The state_dict should be a dictionary.But now the type is {type(state_dict)}."
         )
         flat_state_dict, mapping = flatten_state_dict(state_dict)
         if len(flat_state_dict) > 0:

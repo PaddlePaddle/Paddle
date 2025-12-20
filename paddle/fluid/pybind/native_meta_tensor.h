@@ -16,7 +16,7 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
-void BindIrTensor(py::module* m);
+void BindNativeMetaTensor(py::module* m);
 
 }  // namespace pybind
 }  // namespace paddle

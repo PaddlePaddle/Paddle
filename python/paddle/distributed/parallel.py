@@ -30,6 +30,7 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops, framework
+from paddle.base.core import get_all_custom_device_type
 from paddle.distributed.collective import (
     Group,
     _default_group_name,
@@ -739,7 +740,10 @@ class ParallelEnv:
     def __init__(self):
         self._rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._world_size = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
-        self._device_type = str(os.getenv("PADDLE_XCCL_BACKEND", ""))
+        custom_device_types = get_all_custom_device_type()
+        self._device_type = (
+            str(custom_device_types[0]) if custom_device_types else ""
+        )
         self._pg_timeout = int(os.getenv("PADDLE_PG_TIMEOUT", "1800000"))
 
         # imperative only support one gpu or xpu
@@ -838,7 +842,7 @@ class ParallelEnv:
         """
         The type of custom device for parallel training.
 
-        Its value is equal to the value of the environment variable ``PADDLE_XCCL_BACKEND`` . The default value is None.
+        Its value is equal to the value of paddle.device.get_all_custom_device_type() . The default value is None.
 
         """
         return self._device_type

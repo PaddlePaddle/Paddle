@@ -94,6 +94,7 @@ prim_white_list = [
     "put_along_axis_double_grad",
     "masked_fill_double_grad",
     "index_elementwise_put_with_tensor_double_grad",
+    "index_elementwise_put_double_grad",
     "view_shape_double_grad",
 ]
 

@@ -2439,6 +2439,7 @@ def get_setup_parameters():
         'paddle.distribution',
         'paddle.distributed.utils',
         'paddle.distributed.sharding',
+        'paddle.distributed.fsdp',
         'paddle.distributed.fleet',
         'paddle.distributed.auto_tuner',
         'paddle.distributed.launch',

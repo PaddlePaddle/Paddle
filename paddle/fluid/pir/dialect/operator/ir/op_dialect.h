@@ -48,7 +48,7 @@ inline bool IsCustomOp(pir::Operation* op) {
   return op_name.find("custom_op") != op_name.npos;
 }
 
-inline bool IsCustomPyOp(pir::Operation* op) {
+inline bool IsPythonOp(pir::Operation* op) {
   const std::string& op_name = op->name();
   return op_name.find("py_op") != op_name.npos;
 }
