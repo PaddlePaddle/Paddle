@@ -176,7 +176,7 @@ endif()
 
 if(WIN32)
   nv_test(
-    test_custom_plugin_creator
+    test_custom_plugin_creater
     SRCS test_custom_plugin_creator.cc
     DEPS paddle_framework
          tensorrt_converter
@@ -187,7 +187,7 @@ if(WIN32)
          dynload_tensorrt)
 elseif(WITH_CINN)
   nv_test(
-    test_custom_plugin_creator
+    test_custom_plugin_creater
     SRCS test_custom_plugin_creator.cc
     DEPS paddle_framework
          tensorrt_converter
@@ -198,7 +198,7 @@ elseif(WITH_CINN)
          python)
 else()
   nv_test(
-    test_custom_plugin_creator
+    test_custom_plugin_creater
     SRCS test_custom_plugin_creator.cc
     DEPS paddle_framework
          tensorrt_converter
