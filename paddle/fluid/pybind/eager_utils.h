@@ -156,7 +156,6 @@ PyObject* ToPyObject(const phi::distributed::Placements& value);
 PyObject* ToPyObject(const phi::SelectedRows* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
-PyObject* ToPyObject(const phi::DataType& dtype);
 PyObject* ToPyObject(const std::vector<phi::DataType>& dtypes);
 PyObject* ToPyObject(const void* value);
 PyObject* ToPyObject(const std::unordered_map<int, int>& value);
@@ -588,6 +587,9 @@ GetPredefinedOutTupleTensorFromKwargs_7(PyObject* kwargs);
 
 void Check_PIR_not_support_out(PyObject* kwargs);
 
+std::unordered_map<std::string, std::string> ParseStringDict(PyObject* py_dict);
+
+std::unordered_map<std::string, void*> ParsePythonOpAttrs(PyObject* py_dict);
 /*----------------------for arg parse-----------------------------*/
 paddle::Tensor& GetTensorFromArgsOrKWArgs(
     const std::string& op_type,

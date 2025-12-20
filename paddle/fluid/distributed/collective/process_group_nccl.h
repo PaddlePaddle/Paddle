@@ -254,18 +254,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   phi::distributed::NCCLCommContext* GetCommContext(
       const std::string* key = nullptr);
 
-  void EraseTensorHolders() {
-    for (const auto& allocation_stream : allocation_stream_pairs_) {
-      auto holder_ptr = allocation_stream.first.lock();
-      if (holder_ptr) {
-        memory::EraseStream(holder_ptr, allocation_stream.second);
-      }
-    }
-    VLOG(5) << "After task wait/synchronize, total "
-            << allocation_stream_pairs_.size()
-            << " tensor(s) allocation stream have been removed.";
-    allocation_stream_pairs_.clear();
-  }
+  void EraseTensorHolders();
 
   virtual void StartCoalescing();
 

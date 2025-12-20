@@ -91,7 +91,7 @@ class PADDLE_API DenseTensor : public TensorBase,
   /// or [-ndim, -1]. \return The size of the tensor along the given dimension.
   /// \throws common::errors::OutOfRange if the tensor is empty or the index is
   /// out of range.
-  const int64_t dims(int dim) const {
+  int64_t dims(int dim) const {
     int ndim = meta_.dims.size();
 
     // Ensure the tensor has at least one dimension
@@ -229,6 +229,11 @@ class PADDLE_API DenseTensor : public TensorBase,
   /// \param storage_properties The storage_properties of the tensor.
   void set_storage_properties(
       std::unique_ptr<StorageProperties>&& storage_properties);
+
+  const std::shared_ptr<phi::Allocation>& Holder() const { return holder_; }
+
+  /*! The internal of two tensors share the same memory block. */
+  DenseTensor& ShareDataWith(const DenseTensor& src);
 
   void clear() {
     holder_.reset();

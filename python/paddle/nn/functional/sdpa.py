@@ -46,17 +46,41 @@ def init_config():
             "MINIMUM_SM_VERSION": (8, 0),
             "MAXIMUM_SM_VERSION": (12, 1),
             "support_dtypes": (paddle.float16, paddle.bfloat16)
-            if paddle.device.is_bf16_supported()
+            if paddle.device.is_bf16_supported(including_emulation=False)
             else (paddle.float16,),
         },
         "mem_efficient_attn": {
             "MINIMUM_SM_VERSION": (5, 0),
             "MAXIMUM_SM_VERSION": (12, 1),
-            "support_dtypes": (paddle.float16, paddle.bfloat16, paddle.float)
-            if paddle.device.is_bf16_supported()
+            "support_dtypes": (
+                paddle.float16,
+                paddle.bfloat16,
+                paddle.float,
+            )
+            if paddle.device.is_bf16_supported(including_emulation=False)
             else (paddle.float16, paddle.float),
         },
     }
+
+
+def _repeat_kv(key: Tensor, value: Tensor, num_repeats: int):
+    """
+    Repeat key and value tensors along the num_heads(3) dimension. The layout
+    of key and value should be [batch_size, seq_len, num_heads, head_dim].
+    """
+    if num_repeats == 1:
+        return key, value
+    # repeat_interleave does not support float16 on GPU, so we manually expand the tensor
+    key, value = key.unsqueeze(3), value.unsqueeze(3)
+    key, value = (
+        key.expand([-1, -1, -1, num_repeats, -1]),
+        value.expand([-1, -1, -1, num_repeats, -1]),
+    )
+    key, value = (
+        key.flatten(2, 3).contiguous(),
+        value.flatten(2, 3).contiguous(),
+    )
+    return key, value
 
 
 @dataclass
@@ -65,13 +89,11 @@ class SDPParams:
     key_shape: paddle.Size
     value_shape: paddle.Size
     attn_mask_shape: paddle.Size | None
-    attn_strides: list[int] | None
     dropout: float
     is_causal: bool
     scale: float | None
     query_stop_gradient: bool
     dtype: tuple[dtype, dtype, dtype]
-    strides: tuple[list[int], list[int], list[int]]
     place: tuple[Place, Place, Place]
 
     @cached_property
@@ -123,9 +145,11 @@ def check_all_tensors_on_device(params: SDPParams):
     """
     Check all input tensors are placed on the GPU device.
     """
-    if not params.place[0].is_gpu_place():
+    if not (
+        params.place[0].is_gpu_place() or params.place[0].is_custom_place()
+    ):
         _logger.debug(
-            "All input tensors should be placed on GPU place, but "
+            "All input tensors should be placed on GPU or custom place, but "
             f"query place: {params.place[0]}, key place: "
             f"{params.place[1]}, value place: {params.place[2]}"
         )
@@ -169,6 +193,11 @@ def check_flash_attention_hardware_support(device_id: int):
     """
     Check flash attention requires CUDA support and SM between 8.0 and 12.1.
     """
+    if SDPBackend.FLASH_ATTENTION and paddle.is_compiled_with_custom_device(
+        paddle.device.get_all_device_type()[0]
+    ):
+        return True
+
     if not check_cuda_is_available():
         _logger.debug("Flash attention requires CUDA support.")
         return False
@@ -386,12 +415,6 @@ def select_sdp_for_sdpa(param: SDPParams) -> str:
     if "xpu" in place:
         return "flash_attn"
 
-    if "iluvatar_gpu" in place:
-        return "flash_attn"
-
-    if "metax_gpu" in place:
-        return "flash_attn"
-
     enabled_backends = _get_enabled_backends()
     priority_order = _get_backend_priority()
 
@@ -423,7 +446,7 @@ def scaled_dot_product_attention(
     training: bool = True,
     backend: str | None = None,
     scale: float | None = None,
-    enable_gqa: bool = False,
+    enable_gqa: bool = True,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -480,7 +503,7 @@ def scaled_dot_product_attention(
                         Currently only support "p2p" for distribution usage.
         scale(float, optional): The scaling factor used in the calculation of attention weights.
                         If None, scale = 1 / sqrt(head_dim).
-        enable_gqa(bool, optional): Whether enable GQA(Generic Query Attention) mode.
+        enable_gqa(bool, optional): Whether enable GQA(Group Query Attention) mode. Default is True.
         name(str|None, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
@@ -508,32 +531,23 @@ def scaled_dot_product_attention(
         query = query.unsqueeze(0)
         key = key.unsqueeze(0)
         value = value.unsqueeze(0)
+    k_heads, q_heads, v_heads = (
+        key.shape[2],
+        query.shape[2],
+        value.shape[2],
+    )
     if enable_gqa:
-        k_heads, q_heads, v_heads = (
-            key.shape[2],
-            query.shape[2],
-            value.shape[2],
-        )
-
-        assert q_heads % k_heads == 0, (
+        assert k_heads == 0 or q_heads % k_heads == 0, (
             f"The number of groups in query({q_heads}) must be divisible by the number of groups in key({k_heads}) if GQA enabled."
         )
         assert k_heads == v_heads, (
             f"The number of groups in key({k_heads}) must be equal to the number of groups in value({v_heads}) if GQA enabled."
         )
-        # repeat_interleave does not support float16 on GPU, so we manually expand the tensor
-        if k_heads != q_heads:
-            repeats = q_heads // k_heads
-            key, value = key.unsqueeze(3), value.unsqueeze(3)
-            key, value = (
-                key.expand([-1, -1, -1, repeats, -1]),
-                value.expand([-1, -1, -1, repeats, -1]),
-            )
-            key, value = (
-                key.flatten(2, 3).contiguous(),
-                value.flatten(2, 3).contiguous(),
-            )
-
+    else:
+        assert q_heads == k_heads == v_heads, (
+            f"The number of groups in query({q_heads}) must be equal to the number of groups in key({k_heads}) "
+            f"and the number of groups in value({v_heads}) if GQA disabled."
+        )
     bs, seq_len_q, num_heads_q, head_dim_q = query.shape
     _, seq_len_k, num_heads_k, head_dim_k = key.shape
 
@@ -555,22 +569,31 @@ def scaled_dot_product_attention(
         )
         return out
 
+    if not paddle.base.in_dygraph_mode():
+        qkv_place = (paddle.framework._current_expected_place_(),) * 3
+    else:
+        qkv_place = (query.place, key.place, value.place)
+
     param = SDPParams(
         query_shape=query.shape,
         key_shape=key.shape,
         value_shape=value.shape,
         attn_mask_shape=attn_mask.shape if attn_mask is not None else None,
-        attn_strides=attn_mask.stride() if attn_mask is not None else None,
         dropout=dropout_p,
         is_causal=is_causal,
         scale=scale,
         query_stop_gradient=query.stop_gradient,
-        strides=(query.stride(), key.stride(), value.stride()),
         dtype=(query.dtype, key.dtype, value.dtype),
-        place=(query.place, key.place, value.place),
+        place=qkv_place,
     )
     if len(_config) == 0:
         init_config()
+
+    is_zero_size = (
+        query.shape.numel() == 0
+        or key.shape.numel() == 0
+        or value.shape.numel() == 0
+    )
 
     if attn_mask is not None:
         if attn_mask.dtype == paddle.bool:
@@ -581,9 +604,14 @@ def scaled_dot_product_attention(
             )
         if attn_mask.ndim == 3:
             attn_mask = paddle.unsqueeze(attn_mask, axis=1)
-        mask_shape = (bs, num_heads_q, seq_len_q, seq_len_k)
-        attn_mask = attn_mask.expand(mask_shape)
-    sdp_func_name = select_sdp_for_sdpa(param)
+        if attn_mask.shape.numel() != 0:
+            mask_shape = (bs, num_heads_q, seq_len_q, seq_len_k)
+            attn_mask = attn_mask.expand(mask_shape)
+
+    if is_zero_size:
+        sdp_func_name = "math"
+    else:
+        sdp_func_name = select_sdp_for_sdpa(param)
 
     _logger.debug("Selected backend:" + sdp_func_name)
     if sdp_func_name == "flash_attn":
@@ -608,6 +636,9 @@ def scaled_dot_product_attention(
             memory_efficient_attention,
         )
 
+        repeats = q_heads // k_heads
+        key, value = _repeat_kv(key, value, repeats)
+
         if is_causal:
             bias_input = LowerTriangularMask()
         elif attn_mask is not None:
@@ -625,6 +656,8 @@ def scaled_dot_product_attention(
         )
 
     elif sdp_func_name == "math":
+        repeats = q_heads // k_heads if k_heads != 0 else 1
+        key, value = _repeat_kv(key, value, repeats)
         out = _math_attention(
             query,
             key,

@@ -22,9 +22,10 @@ from . import (  # noqa: F401
     layers_utils,
     unique_name,
 )
+from .bwd_graph_utils import capture_backward_subgraph_guard  # noqa: F401
 from .deprecated import deprecated
 from .environments import strtobool as strtobool
-from .fwd_graph_utils import capture_fwd_graph_guard  # noqa: F401
+from .fwd_graph_utils import capture_forward_subgraph_guard  # noqa: F401
 from .install_check import run_check
 from .layers_utils import (  # noqa: F401
     _contain_var,

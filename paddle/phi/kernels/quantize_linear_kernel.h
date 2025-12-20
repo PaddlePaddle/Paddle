@@ -57,5 +57,47 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
                             DenseTensor* out_state,
                             DenseTensor* out_accum,
                             DenseTensor* out_scale);
+template <typename T, typename Context>
+void DeQuantizeLinearDeprecatedKernel(const Context& dev_ctx,
+                                      const DenseTensor& x,
+                                      const DenseTensor& in_scale,
+                                      const DenseTensor& zero_point,
+                                      int quant_axis,
+                                      int bit_length,
+                                      int qmin,
+                                      int qmax,
+                                      int round_type,
+                                      bool only_observer,
+                                      DenseTensor* out);
+template <typename T, typename Context>
+void QuantizeLinearDeprecatedTrainKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& in_scale,
+    const DenseTensor& zero_point,
+    const paddle::optional<DenseTensor>& in_accum,
+    const paddle::optional<DenseTensor>& in_state,
+    int quant_axis,
+    int bit_length,
+    int qmin,
+    int qmax,
+    int round_type,
+    bool only_observer,
+    DenseTensor* out,
+    DenseTensor* out_state,
+    DenseTensor* out_accum,
+    DenseTensor* out_scale);
+template <typename T, typename Context>
+void QuantizeLinearDeprecatedInferKernel(const Context& dev_ctx,
+                                         const DenseTensor& x,
+                                         const DenseTensor& in_scale,
+                                         const DenseTensor& zero_point,
+                                         int quant_axis,
+                                         int bit_length,
+                                         int qmin,
+                                         int qmax,
+                                         int round_type,
+                                         bool only_observer,
+                                         DenseTensor* out);
 
 }  // namespace phi

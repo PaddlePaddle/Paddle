@@ -41,8 +41,8 @@ constexpr int64_t WarpSize = 32;
           use_pad)
 
 template <bool Power2Scaling>
-__device__ __forceinline__ float ScaleWrapper(const float amax,
-                                              const float eps = 0.f) {
+__device__ __forceinline__ float ScaleWrapperImpl(const float amax,
+                                                  const float eps = 0.f) {
   constexpr float fp8_max = 448.0f;
   float amax_mod = fmaxf(amax, eps);
   if (amax_mod == 0.f) {
@@ -69,6 +69,13 @@ __device__ __forceinline__ float ScaleWrapper(const float amax,
     scale = ldexpf(1.0f, normal_biased_exp);
   }
   return scale;
+}
+
+template <bool Power2Scaling>
+__device__ __forceinline__ float ScaleWrapper(const float amax,
+                                              const float eps = 0.f) {
+  return RoundPower2Scale<Power2Scaling>(
+      ScaleWrapperImpl<Power2Scaling>(amax, eps));
 }
 
 template <int VecSize, bool Power2Scaling>
@@ -210,13 +217,15 @@ __global__ void initialize_moe_routing_kernel(
 
   __shared__ float scale[ThreadNum * VecSize / TileSize];
 
-  for (int64_t element_id = threadIdx.x * VecSize; element_id < cols;
+  for (int64_t element_id = static_cast<int64_t>(threadIdx.x) * VecSize;
+       element_id < cols;
        element_id += blockDim.x * VecSize) {
     // Each thread reads VecSize elements, totaling ThreadNum*VecSize elements
     // read Note: A single thread can compute at most one scale value
     phi::Load<__nv_bfloat16, VecSize>(&source_row_ptr[element_id], &src_vec);
 
-    int64_t local_scale_id = VecSize * threadIdx.x / TileSize;
+    int64_t local_scale_id =
+        VecSize * static_cast<int64_t>(threadIdx.x) / TileSize;
 
     ComputeScaleAndWrite<VecSize, Power2Scaling>(src_vec.val,
                                                  scale,

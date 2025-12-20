@@ -1024,7 +1024,7 @@ class TestSetitemInStatic(unittest.TestCase):
         np.testing.assert_allclose(res, tensor_np)
 
     def test_index_elementwise_put_with_tensor(self):
-        with dygraph_guard(), paddle.device("cpu"):
+        with dygraph_guard():
             x = paddle.randn(10, 4, requires_grad=True)
             xx = x + 0
 
@@ -1080,6 +1080,39 @@ class TestSetitemInStatic(unittest.TestCase):
             np.testing.assert_allclose(
                 ddy3.numpy(),
                 ddy3_ref.numpy(),
+                1e-6,
+                1e-6,
+            )
+
+    def test_index_elementwise_put(self):
+        with dygraph_guard():
+            x = paddle.randn(10, 4, requires_grad=True)
+            xx = x + 0
+
+            index = paddle.to_tensor(
+                [
+                    [0, 1],
+                    [2, 3],
+                    [9, 4],
+                    [7, 6],
+                ],
+                dtype=paddle.int64,
+            )
+            value = -3.14
+            xx[index] = value
+            y = xx
+
+            dy = paddle.randn_like(y, requires_grad=True)
+            (dx,) = paddle.autograd.grad(y, [x], dy, create_graph=True)
+
+            ddx = paddle.randn_like(dx)
+            (ddy,) = paddle.autograd.grad([dx], dy, [ddx], retain_graph=True)
+            ddy_ref = ddx.clone()
+            ddy_ref[index] = 0.0
+
+            np.testing.assert_allclose(
+                ddy.numpy(),
+                ddy_ref.numpy(),
                 1e-6,
                 1e-6,
             )

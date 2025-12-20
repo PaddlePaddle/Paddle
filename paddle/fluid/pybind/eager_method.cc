@@ -58,6 +58,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/tensor_py.h"
+#include "paddle/fluid/pybind/xpu_streams_py.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function_registry.h"
@@ -358,11 +359,11 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                                       kind);
 #else
       PADDLE_THROW(
-          common::errors::Unavailable("The `numpy()` method of (Dist)Tensor "
+          common::errors::Unavailable("The numpy() method of DistTensor "
                                       "is not supported in the current "
-                                      "PaddlePaddle, please recompile and "
-                                      "installPaddlePaddle with the option "
-                                      "of `WITH_DISTRIBUTE=ON`."));
+                                      "Paddle, please recompile and "
+                                      "install Paddle with the option "
+                                      "of WITH_DISTRIBUTE=ON."));
 #endif
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
@@ -417,11 +418,11 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                            dense_tensor.Holder()->size());
 #else
       PADDLE_THROW(
-          common::errors::Unavailable("The `numpy()` method of (Dist)Tensor "
+          common::errors::Unavailable("The numpy() method of DistTensor "
                                       "is not supported in the current "
-                                      "PaddlePaddle, please recompile and "
-                                      "installPaddlePaddle with the option "
-                                      "of `WITH_DISTRIBUTE=ON`."));
+                                      "Paddle, please recompile and "
+                                      "install Paddle with the option "
+                                      "of WITH_DISTRIBUTE=ON."));
 #endif
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
@@ -828,7 +829,7 @@ static PyObject* tensor_method_clone(TensorObject* self,
             "We can only support initialized tensor in clone, however we got "
             "uninitialized tensor %s, please check your code.",
             self->tensor.name()));
-
+    SetPythonStack();
     out = assign_ad_func(self->tensor);
   }
   return ToPyObject(out);
@@ -1409,8 +1410,8 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
     return ToPyObject(tensor);
 #else
     PADDLE_THROW(common::errors::Unavailable(
-        "The `get_tensor()` method of (Dist)Tensor is not supported in the "
-        "current PaddlePaddle, please recompile and installPaddlePaddle "
+        "The get_tensor() method of DistTensor is not supported in the "
+        "current Paddle, please recompile and install Paddle "
         "with the option of `WITH_DISTRIBUTE=ON`."));
 #endif
   } else {
@@ -1426,7 +1427,7 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
   auto& value = GetTensorFromArgs("set_tensor", "value", args, 0, false);
   if (!value.defined()) {
     PADDLE_THROW(
-        common::errors::Unavailable("The `set_tensor()` method of (Dist)Tensor "
+        common::errors::Unavailable("The set_tensor() method of DistTensor "
                                     "get a non initialized src value"));
   } else if (value.is_dense_tensor()) {
     auto* src_tensor = static_cast<phi::DenseTensor*>(value.impl().get());
@@ -1455,7 +1456,7 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
       } else {
         if (!dst_tensor->meta().is_contiguous()) {
           PADDLE_THROW(common::errors::Fatal(
-              "dst_tensor is not contiguous and src_tesnor has different place "
+              "dst_tensor is not contiguous and src_tensor has different place "
               "with dst_tensor, so Strided kernel "
               "can't be called, please change src_tensor'place as same as "
               "dst_tensor'place or change dst_tensor to be contiguous"));
@@ -1471,14 +1472,14 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
           framework::TensorCopy(*src_tensor, src_tensor->place(), dst_tensor);
         } else {
           PADDLE_THROW(common::errors::Unavailable(
-              "The `set_tensor()` method of (Dist)Tensor get a src value with "
+              "The set_tensor() method of DistTensor get a src value with "
               "undefined place"));
         }
       }
 
     } else {
       PADDLE_THROW(common::errors::Unavailable(
-          "The `set_tensor()` method of non DenseTensor get a DenseTensor src "
+          "The set_tensor() method of non DenseTensor get a DenseTensor src "
           "value"));
     }
   } else if (value.is_dist_tensor()) {
@@ -1499,24 +1500,24 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
                               dst_tensor->unsafe_mutable_value());
       } else {
         PADDLE_THROW(common::errors::Unavailable(
-            "The `set_tensor()` method of (Dist)Tensor get a src value with "
+            "The set_tensor() method of DistTensor get a src value with "
             "undefined place"));
       }
 
     } else {
       PADDLE_THROW(
-          common::errors::Unavailable("The `set_tensor()` method of non "
+          common::errors::Unavailable("The set_tensor() method of non "
                                       "DistTensor get a DistTensor src value"));
     }
 #else
     PADDLE_THROW(common::errors::Unavailable(
-        "The `set_tensor()` method of (Dist)Tensor is not supported in the "
-        "current PaddlePaddle, please recompile and installPaddlePaddle "
-        "with the option of `WITH_DISTRIBUTE=ON`."));
+        "The set_tensor() method of DistTensor is not supported in the "
+        "current Paddle, please recompile and install Paddle "
+        "with the option of WITH_DISTRIBUTE=ON."));
 #endif
   } else {
     PADDLE_THROW(common::errors::Unavailable(
-        "The `set_tensor()` method of (Dist)Tensor get a non "
+        "The set_tensor() method of DistTensor get a non "
         "DenseTensor/DistTensor src value"));
   }
   RETURN_PY_NONE
@@ -3749,6 +3750,28 @@ static PyObject* tensor_method__uva(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 #endif
+
+#if defined(PADDLE_WITH_XPU)
+static PyObject* tensor_method__record_stream(TensorObject* self,
+                                              PyObject* args,
+                                              PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4)
+      << "Running in tensor_method__record_stream: record stream for Tensor.";
+  auto* tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  if (tensor) {
+    const auto& device_id = paddle::platform::GetXPUCurrentDeviceId();
+    auto place = phi::XPUPlace(device_id);
+    auto* dev_ctx = static_cast<phi::XPUContext*>(
+        phi::DeviceContextPool::Instance().Get(place));
+    auto stream = dev_ctx->get_current_stream_handle()->raw_stream();
+    memory::RecordStream(tensor->Holder(), stream);
+  }
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+#endif
+
 static PyObject* tensor_method__is_string_tensor_hold_allocation(
     TensorObject* self, PyObject* args, PyObject* kwargs) {
   EAGER_TRY
@@ -4077,6 +4100,12 @@ PyMethodDef variable_methods[] = {  // NOLINT
      nullptr},
     {"_tensor_uva",
      (PyCFunction)(void (*)())tensor_method__uva,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+#endif
+#if defined(PADDLE_WITH_XPU)
+    {"_record_stream",
+     (PyCFunction)(void (*)())tensor_method__record_stream,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
 #endif

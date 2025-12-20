@@ -74,6 +74,8 @@ if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
     "legacy/gpu/moe_gate_dispatch_kernel.cu"
     "legacy/gpu/moe_gate_dispatch_grad_kernel.cu"
     "legacy/gpu/int_bincount.cu"
+    "legacy/gpu/batched_gemm.cu"
+    "legacy/gpu/fp8_gemm_blockwise_kernel.cu"
     "legacy/gpu/fp8_gemm_blockwise_kernel.cu"
     "legacy/gpu/fp8_quant_blockwise_kernel.cu"
     "legacy/gpu/fast_layernorm_kernel.cu"
@@ -117,6 +119,10 @@ endif()
 
 if(NOT WITH_DGC)
   list(REMOVE_ITEM kernel_gpu "gpu/dgc_kernel.cu")
+endif()
+
+if(NOT WITH_MAGMA)
+  list(REMOVE_ITEM kernel_gpu "gpu/eig_kernel.cu" "gpu/eig_grad_kernel.cu")
 endif()
 
 if(WITH_CUTLASS)
@@ -353,7 +359,7 @@ if(NOT
     AND WITH_MKL))
   list(REMOVE_ITEM kernel_cc "fusion/cpu/fused_layer_norm_avx_kernel.cc")
   list(REMOVE_ITEM kernel_cc "fusion/cpu/self_dp_attention_kernel.cc")
-  list(REMOVE_ITEM kernel_cc "fusion/cpu/rms_norm_avx_kernel.cc")
+  list(REMOVE_ITEM kernel_cc "fusion/cpu/fused_rms_norm_quant_avx_kernel.cc")
 endif()
 
 file(
@@ -404,6 +410,10 @@ if(WITH_XPU)
       "xpu/fft_grad_kernel.cc"
       "xpu/as_real_kernel.cc"
       "xpu/as_complex_kernel.cc")
+  endif()
+
+  if(NOT WITH_MAGMA)
+    list(REMOVE_ITEM kernel_xpu "xpu/eig_kernel.cc")
   endif()
 
   collect_srcs(kernels_srcs SRCS ${kernel_xpu})

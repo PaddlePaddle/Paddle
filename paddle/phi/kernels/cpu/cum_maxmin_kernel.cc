@@ -37,7 +37,7 @@ bool isnan_(T x) {
 #endif
 
 template <typename T>
-T compute_stride(T axis, phi::DDim dims) {
+T compute_stride(T axis, DDim dims) {
   T size = 1;
   for (T i = axis + 1; i < dims.size(); i++) {
     size *= dims[i];
@@ -126,7 +126,7 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
   if (x.numel() == 1) {
     auto raw_dims = out->dims();
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-    phi::funcs::SetConstant<Context, T2> set_zero;
+    funcs::SetConstant<Context, T2> set_zero;
     set_zero(dev_ctx, indices, static_cast<T2>(0.0));
     out->Resize(raw_dims);
     indices->Resize(raw_dims);

@@ -155,69 +155,6 @@ def bilinear_interp_test(
     )
 
 
-def _bilinear_kernel_1d(x):
-    """Bilinear filter kernel for anti-aliasing"""
-    x = np.abs(x)
-    return np.maximum(0.0, 1.0 - x)
-
-
-def _compute_weights_and_indices_aa(in_size, out_size, align_corners, scale):
-    """Compute anti-aliasing weights and indices for one dimension"""
-    if align_corners:
-        if out_size > 1:
-            scale = (in_size - 1.0) / (out_size - 1.0)
-        else:
-            scale = 0.0
-    else:
-        if scale > 0:
-            scale = 1.0 / scale
-        else:
-            scale = float(in_size) / float(out_size)
-
-    # Filter support
-    filter_scale = max(1.0, scale)
-    support = 1.0 * filter_scale  # bilinear support is 2 * 0.5 = 1
-
-    weights_list = []
-    indices_list = []
-
-    for out_idx in range(out_size):
-        # Compute center
-        if align_corners:
-            center = out_idx * scale
-        else:
-            center = (out_idx + 0.5) * scale - 0.5
-
-        # Compute support region
-        left = int(np.floor(center - support))
-        right = int(np.ceil(center + support))
-
-        # Clip to valid range
-        left = max(0, left)
-        right = min(in_size - 1, right)
-
-        # Compute weights
-        weights = []
-        indices = []
-        total_weight = 0.0
-
-        for i in range(left, right + 1):
-            w = _bilinear_kernel_1d((i - center) / filter_scale)
-            if w > 0:
-                weights.append(w)
-                indices.append(i)
-                total_weight += w
-
-        # Normalize weights
-        if total_weight > 0:
-            weights = [w / total_weight for w in weights]
-
-        weights_list.append(weights)
-        indices_list.append(indices)
-
-    return weights_list, indices_list
-
-
 def bilinear_interp_np_old(
     input,
     out_h,
@@ -314,7 +251,6 @@ def bilinear_interp_np(
     align_corners=True,
     align_mode=0,
     data_layout='NCHW',
-    antialias=False,
 ):
     """bilinear interpolation implement in shape [N, C, H, W]"""
 
@@ -343,46 +279,6 @@ def bilinear_interp_np(
         out_w = actual_shape[1]
     batch_size, channel, in_h, in_w = input.shape
 
-    # Use anti-aliasing implementation if requested and downsampling
-    if antialias and (out_h < in_h or out_w < in_w):
-        # For anti-aliasing, we only support align_mode=0 or align_corners
-        out = np.zeros((batch_size, channel, out_h, out_w), dtype=input.dtype)
-
-        # Compute weights for height
-        h_weights, h_indices = _compute_weights_and_indices_aa(
-            in_h, out_h, align_corners, max(0, scale_h)
-        )
-
-        # Compute weights for width
-        w_weights, w_indices = _compute_weights_and_indices_aa(
-            in_w, out_w, align_corners, max(0, scale_w)
-        )
-
-        # Apply separable convolution
-        for b in range(batch_size):
-            for c in range(channel):
-                # First interpolate along width
-                temp = np.zeros((in_h, out_w), dtype=input.dtype)
-                for j in range(out_w):
-                    for in_y in range(in_h):
-                        val = 0.0
-                        for w, idx in zip(w_weights[j], w_indices[j]):
-                            val += input[b, c, in_y, idx] * w
-                        temp[in_y, j] = val
-
-                # Then interpolate along height
-                for i in range(out_h):
-                    for j in range(out_w):
-                        val = 0.0
-                        for w, idx in zip(h_weights[i], h_indices[i]):
-                            val += temp[idx, j] * w
-                        out[b, c, i, j] = val
-
-        if data_layout == "NHWC":
-            out = np.transpose(out, (0, 2, 3, 1))  # NCHW => NHWC
-
-        return out.astype(input.dtype)
-
     # Standard bilinear interpolation (no anti-aliasing)
     ratio_h = ratio_w = 0.0
     if align_corners:
@@ -410,35 +306,26 @@ def bilinear_interp_np(
             src_h = ratio_h * (i + 0.5) - 0.5
         else:
             src_h = ratio_h * i
-
-        h = int(np.floor(src_h))
-        h = max(0, min(h, in_h - 1))
-        hid = 1 if h < in_h - 1 else 0
-
-        h1lambda = max(0.0, min(1.0, src_h - h))
+        in_h_idx = int(min(max(0, src_h), in_h - 1))
+        hid = 1 if in_h_idx < in_h - 1 else 0
+        h1lambda = min(max(src_h - in_h_idx, 0), 1)
         h2lambda = 1.0 - h1lambda
-
         for j in range(out_w):
             if align_mode == 0 and not align_corners:
                 src_w = ratio_w * (j + 0.5) - 0.5
             else:
                 src_w = ratio_w * j
-
-            w = int(np.floor(src_w))
-            w = max(0, min(w, in_w - 1))
-            wid = 1 if w < in_w - 1 else 0
-
-            w1lambda = max(0.0, min(1.0, src_w - w))
+            in_w_idx = int(min(max(0, src_w), in_w - 1))
+            wid = 1 if in_w_idx < in_w - 1 else 0
+            w1lambda = min(max(src_w - in_w_idx, 0), 1)
             w2lambda = 1.0 - w1lambda
 
-            h_next = min(h + hid, in_h - 1)
-            w_next = min(w + wid, in_w - 1)
-
             out[:, :, i, j] = h2lambda * (
-                w2lambda * input[:, :, h, w] + w1lambda * input[:, :, h, w_next]
+                w2lambda * input[:, :, in_h_idx, in_w_idx]
+                + w1lambda * input[:, :, in_h_idx, in_w_idx + wid]
             ) + h1lambda * (
-                w2lambda * input[:, :, h_next, w]
-                + w1lambda * input[:, :, h_next, w_next]
+                w2lambda * input[:, :, in_h_idx + hid, in_w_idx]
+                + w1lambda * input[:, :, in_h_idx + hid, in_w_idx + wid]
             )
 
     if data_layout == "NHWC":
@@ -1387,117 +1274,6 @@ class TestBilinearInterpOpAPI_0DTensorOutSize(unittest.TestCase):
                 align_corners=False,
             )
             np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Antialias only supported on GPU"
-)
-class TestBilinearInterpAntiAlias(unittest.TestCase):
-    """Test bilinear interpolation with anti-aliasing"""
-
-    def test_antialias_downsampling(self):
-        """Test anti-aliasing for downsampling"""
-        place = core.CUDAPlace(0)
-        with base.dygraph.guard(place):
-            input_data = np.random.random((2, 3, 64, 64)).astype("float32")
-            input_x = paddle.to_tensor(input_data)
-
-            # Test with anti-aliasing
-            out_aa = interpolate(
-                x=input_x,
-                size=(32, 32),
-                mode="bilinear",
-                align_corners=False,
-                antialias=True,
-            )
-
-            # Compute expected result
-            expect_res = bilinear_interp_np(
-                input_data,
-                out_h=32,
-                out_w=32,
-                align_corners=False,
-                antialias=True,
-            )
-
-            # Verify shapes
-            self.assertEqual(out_aa.shape, [2, 3, 32, 32])
-            # Check results are reasonable (not NaN or Inf)
-            self.assertFalse(np.isnan(out_aa.numpy()).any())
-            self.assertFalse(np.isinf(out_aa.numpy()).any())
-            # Relaxed tolerance for AA
-            np.testing.assert_allclose(
-                out_aa.numpy(), expect_res, rtol=1e-2, atol=1e-2
-            )
-
-    def test_antialias_vs_no_antialias(self):
-        """Compare with and without anti-aliasing"""
-        place = core.CUDAPlace(0)
-        with base.dygraph.guard(place):
-            input_data = np.random.random((1, 3, 64, 64)).astype("float32")
-            input_x = paddle.to_tensor(input_data)
-
-            out_no_aa = interpolate(
-                x=input_x,
-                size=(32, 32),
-                mode="bilinear",
-                align_corners=False,
-                antialias=False,
-            )
-
-            out_aa = interpolate(
-                x=input_x,
-                size=(32, 32),
-                mode="bilinear",
-                align_corners=False,
-                antialias=True,
-            )
-
-            # Both should have same shape
-            self.assertEqual(out_aa.shape, out_no_aa.shape)
-            # Both should be valid
-            self.assertFalse(np.isnan(out_aa.numpy()).any())
-            self.assertFalse(np.isnan(out_no_aa.numpy()).any())
-
-    def test_antialias_scale_factor(self):
-        """Test anti-aliasing with scale_factor"""
-        place = core.CUDAPlace(0)
-        with base.dygraph.guard(place):
-            input_data = np.random.random((2, 3, 32, 32)).astype("float32")
-            input_x = paddle.to_tensor(input_data)
-
-            out = interpolate(
-                x=input_x,
-                scale_factor=0.5,
-                mode="bilinear",
-                align_corners=False,
-                antialias=True,
-            )
-
-            self.assertEqual(out.shape, [2, 3, 16, 16])
-            self.assertFalse(np.isnan(out.numpy()).any())
-
-    def test_antialias_fp16(self):
-        """Test anti-aliasing with float16"""
-        if not core.is_compiled_with_cuda():
-            return
-
-        place = core.CUDAPlace(0)
-        with base.dygraph.guard(place):
-            input_data = np.random.random((2, 3, 64, 64)).astype("float16")
-            input_x = paddle.to_tensor(input_data)
-
-            out = interpolate(
-                x=input_x,
-                size=(32, 32),
-                mode="bilinear",
-                align_corners=False,
-                antialias=True,
-            )
-
-            self.assertEqual(out.shape, [2, 3, 32, 32])
-            self.assertEqual(out.dtype, paddle.float16)
-            self.assertFalse(np.isnan(out.numpy()).any())
 
 
 if __name__ == "__main__":

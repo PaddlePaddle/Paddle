@@ -46,9 +46,9 @@ void ScatterNdAddKernel(const Context &dev_ctx,
                         phi::DataType::INT64));
 
   if (index_type == phi::DataType::INT32) {
-    phi::funcs::ScatterNdAdd<T, int32_t>(dev_ctx, updates, index, out);
+    funcs::ScatterNdAdd<T, int32_t>(dev_ctx, updates, index, out);
   } else {
-    phi::funcs::ScatterNdAdd<T, int64_t>(dev_ctx, updates, index, out);
+    funcs::ScatterNdAdd<T, int64_t>(dev_ctx, updates, index, out);
   }
 }
 

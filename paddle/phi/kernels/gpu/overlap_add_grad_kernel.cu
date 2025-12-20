@@ -43,12 +43,12 @@ void OverlapAddGradKernel(const Context& dev_ctx,
   DenseTensor out_grad_(out_grad.type());
   out_grad_ = out_grad;
 
-  phi::DDim preserved_dims;
+  DDim preserved_dims;
   if (out_grad_rank > 2) {
     // Save dims used to flatten both input and output tensors and restore
     // output tensor.
-    phi::DDim x_grad_resized_dims;
-    phi::DDim out_grad_resized_dims;
+    DDim x_grad_resized_dims;
+    DDim out_grad_resized_dims;
     if (axis == 0) {
       preserved_dims = common::slice_ddim(out_grad_.dims(), 1, out_grad_rank);
       x_grad_resized_dims = {
@@ -80,7 +80,7 @@ void OverlapAddGradKernel(const Context& dev_ctx,
       }
       trans_x_grad.Resize(common::make_ddim(x_grad_dims_vec));
       dev_ctx.template Alloc<T>(&trans_x_grad);
-      phi::funcs::TransCompute<Context, T>(
+      funcs::TransCompute<Context, T>(
           perm_x_grad.size(), dev_ctx, *x_grad, &trans_x_grad, perm_x_grad);
     } else {
       std::vector<int> perm_d_out{1, 0};
@@ -90,7 +90,7 @@ void OverlapAddGradKernel(const Context& dev_ctx,
       }
       trans_out_grad.Resize(common::make_ddim(out_grad_dims_vec));
       dev_ctx.template Alloc<T>(&trans_out_grad);
-      phi::funcs::TransCompute<Context, T>(
+      funcs::TransCompute<Context, T>(
           perm_d_out.size(), dev_ctx, out_grad_, &trans_out_grad, perm_d_out);
 
       std::vector<int> perm_x_grad{2, 1, 0};
@@ -100,7 +100,7 @@ void OverlapAddGradKernel(const Context& dev_ctx,
       }
       trans_x_grad.Resize(common::make_ddim(x_grad_dims_vec));
       dev_ctx.template Alloc<T>(&trans_x_grad);
-      phi::funcs::TransCompute<Context, T>(
+      funcs::TransCompute<Context, T>(
           perm_x_grad.size(), dev_ctx, *x_grad, &trans_x_grad, perm_x_grad);
     }
   } else {
@@ -121,11 +121,11 @@ void OverlapAddGradKernel(const Context& dev_ctx,
   if (axis == 0) {
     if (out_grad_rank == 1U) {
       std::vector<int> perm_x_grad{1, 0};
-      phi::funcs::TransCompute<Context, T>(
+      funcs::TransCompute<Context, T>(
           perm_x_grad.size(), dev_ctx, trans_x_grad, x_grad, perm_x_grad);
     } else {
       std::vector<int> perm_x_grad{2, 1, 0};
-      phi::funcs::TransCompute<Context, T>(
+      funcs::TransCompute<Context, T>(
           perm_x_grad.size(), dev_ctx, trans_x_grad, x_grad, perm_x_grad);
     }
   }

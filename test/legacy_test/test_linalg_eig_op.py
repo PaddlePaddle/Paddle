@@ -14,15 +14,17 @@
 
 import unittest
 
+from utils import dygraph_guard
+
 import paddle
 
 
 class TestEigAPI0Size(unittest.TestCase):
     def test_errors(self):
-        with paddle.device("cpu"):
+        with dygraph_guard():
             for shape in [[0, 0], [0, 4, 4], [1, 0, 2, 3, 3]]:
                 x = paddle.randn(
-                    shape=shape, dtype='float32', requires_grad=True
+                    shape=shape, dtype="float32", requires_grad=True
                 )
                 w, v = paddle.linalg.eig(x)
                 self.assertEqual(w.shape, shape[:-1])

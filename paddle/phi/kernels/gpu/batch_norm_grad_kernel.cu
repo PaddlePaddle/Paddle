@@ -563,7 +563,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                         "True or False at the same time."));
 
   int N, C, H, W, D;
-  phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+  funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
   // init output
   if (d_x) {
@@ -680,7 +680,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
       if (d_x) {
         phi::Copy(dev_ctx, *d_y, dev_ctx.GetPlace(), false, d_x);
       }
-      phi::funcs::SetConstant<Context, BatchNormParamType<T>> functor;
+      funcs::SetConstant<Context, BatchNormParamType<T>> functor;
       functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
       functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));
       return;
@@ -1427,7 +1427,7 @@ void BatchNormDoubleGradKernel(
   }
   const auto &x_dims = x.dims();
   int N, C, H, W, D;
-  phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+  funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
   auto *Scale = scale.get_ptr();
   phi::DenseTensor new_scale;
   if (Scale) {
@@ -1435,23 +1435,23 @@ void BatchNormDoubleGradKernel(
   } else {
     new_scale = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
   }
-  phi::funcs::NormDoubleGradFunctor<Context, T>(dev_ctx,
-                                                data_layout,
-                                                &x,
-                                                &new_scale,
-                                                &y_grad,
-                                                &saved_mean,
-                                                &saved_variance,
-                                                running_mean,
-                                                running_variance,
-                                                epsilon,
-                                                use_global_stats,
-                                                x_grad_grad.get_ptr(),
-                                                scale_grad_grad.get_ptr(),
-                                                bias_grad_grad.get_ptr(),
-                                                x_grad,
-                                                scale_grad,
-                                                y_grad_grad);
+  funcs::NormDoubleGradFunctor<Context, T>(dev_ctx,
+                                           data_layout,
+                                           &x,
+                                           &new_scale,
+                                           &y_grad,
+                                           &saved_mean,
+                                           &saved_variance,
+                                           running_mean,
+                                           running_variance,
+                                           epsilon,
+                                           use_global_stats,
+                                           x_grad_grad.get_ptr(),
+                                           scale_grad_grad.get_ptr(),
+                                           bias_grad_grad.get_ptr(),
+                                           x_grad,
+                                           scale_grad,
+                                           y_grad_grad);
 }
 
 }  // namespace phi

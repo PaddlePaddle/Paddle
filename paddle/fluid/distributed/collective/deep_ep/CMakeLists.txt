@@ -17,7 +17,7 @@ if(WITH_NVSHMEM)
   cc_library(
     deepep_kernels
     SRCS ${DEEPEP_KERNEL_SRCS}
-    DEPS nvshmem cudadevrt)
+    DEPS nvshmem cudadevrt onednn)
 
   set_target_properties(deepep_kernels PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
   set_target_properties(deepep_kernels PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS

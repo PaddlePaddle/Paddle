@@ -53,7 +53,7 @@ void SetValueGradKernel(const Context& dev_ctx,
   if (ellipsis_flag) {
     if (x_grad) {
       dev_ctx.template Alloc<T>(x_grad);
-      phi::funcs::set_constant(dev_ctx, x_grad, static_cast<float>(0.0));
+      funcs::set_constant(dev_ctx, x_grad, static_cast<float>(0.0));
     }
     if (value_grad) {
       if (value_grad->numel() == out_grad.numel()) {
@@ -66,7 +66,7 @@ void SetValueGradKernel(const Context& dev_ctx,
           Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, value_grad);
         }
       } else {
-        auto reduce_dim = phi::funcs::GetReduceDims(out_grad, *value_grad);
+        auto reduce_dim = funcs::GetReduceDims(out_grad, *value_grad);
         SumKernel<T, Context>(
             dev_ctx, out_grad, reduce_dim, out_grad.dtype(), false, value_grad);
       }
@@ -121,8 +121,7 @@ void SetValueGradKernel(const Context& dev_ctx,
         value_grad_orig.Resize(value_grad->dims());
         Copy(dev_ctx, value_grad_orig, dev_ctx.GetPlace(), false, value_grad);
       } else {
-        auto reduce_dim =
-            phi::funcs::GetReduceDims(value_grad_orig, *value_grad);
+        auto reduce_dim = funcs::GetReduceDims(value_grad_orig, *value_grad);
         SumKernel<T, Context>(dev_ctx,
                               value_grad_orig,
                               reduce_dim,

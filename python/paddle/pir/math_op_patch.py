@@ -33,6 +33,7 @@ from paddle.utils.decorator_utils import (
 from . import Value
 
 if TYPE_CHECKING:
+    from paddle import Tensor
     from paddle._typing import DTypeLike, PlaceLike, ShapeLike
 
 
@@ -207,7 +208,7 @@ def monkey_patch_value():
         if blocking is not True:
             warnings.warn("blocking is not supported, and it will be ignored.")
 
-        # 1 means cuda place, see paddle/phi/kernels/memcpy_kernel.cc
+        # 1 means cuda/xpu/custom_device place, see paddle/phi/kernels/memcpy_kernel.cc
         return _C_ops.memcpy(self, 1)
 
     @property
@@ -1456,18 +1457,19 @@ def monkey_patch_value():
             )
         self.stop_gradient = not value
 
-    def requires_grad_(self, value: bool) -> None:
+    def requires_grad_(self, requires_grad: bool = True) -> Tensor:
         """
         Set whether this Tensor requires gradient computation.
 
         Args:
-            value (bool): True to enable gradient computation, False to disable.
+            requires_grad (bool): True to enable gradient computation, False to disable.
         """
-        if not isinstance(value, bool):
+        if not isinstance(requires_grad, bool):
             raise TypeError(
-                f"requires_grad must be bool, but got {type(value)}"
+                f"requires_grad must be bool, but got {type(requires_grad)}"
             )
-        self.stop_gradient = not value
+        self.stop_gradient = not requires_grad
+        return self
 
     @property
     def itemsize(self) -> int:
