@@ -37,12 +37,11 @@ struct SigmoidMultiplyFunctor {
 };
 
 template <typename T>
-void ComputeMergedQKVMatmulForward(
-    const GPUContext &dev_ctx,
-    const phi::funcs::GateAttentionConfig<T> &config,
-    const phi::DenseTensor *query,
-    phi::DenseTensor *qkv_out,
-    const phi::DenseTensor &qkv_weight_in) {
+void ComputeMergedQKVMatmulForward(const GPUContext &dev_ctx,
+                                   const funcs::GateAttentionConfig<T> &config,
+                                   const phi::DenseTensor *query,
+                                   phi::DenseTensor *qkv_out,
+                                   const phi::DenseTensor &qkv_weight_in) {
   // query: shape=[batch_size, seq_len_m, seq_len_r, qkv_dim]
   // qkv_weight: shape=[3, num_heads, head_dim, qkv_dim]
   // qkv_out: shape=[batch_size, seq_len_m, seq_len_r, 3, num_heads, head_dim]
@@ -60,7 +59,7 @@ void ComputeMergedQKVMatmulForward(
 template <typename T>
 void ComputeSeparatedQKVMatmulForward(
     const GPUContext &dev_ctx,
-    const phi::funcs::GateAttentionConfig<T> &config,
+    const funcs::GateAttentionConfig<T> &config,
     const phi::DenseTensor *query,
     const phi::DenseTensor *key,
     phi::DenseTensor *query_out,
@@ -100,15 +99,14 @@ void ComputeSeparatedQKVMatmulForward(
 }
 
 template <typename T>
-void ComputeGatingLinearForward(
-    const GPUContext &dev_ctx,
-    const phi::funcs::GateAttentionConfig<T> &config,
-    const phi::DenseTensor *query,
-    const phi::DenseTensor *fmha_out,
-    phi::DenseTensor *gate_bias_out,
-    bool use_fused_matmul_bias,
-    const phi::DenseTensor &gate_weight_in,
-    const phi::DenseTensor &gate_bias_in) {
+void ComputeGatingLinearForward(const GPUContext &dev_ctx,
+                                const funcs::GateAttentionConfig<T> &config,
+                                const phi::DenseTensor *query,
+                                const phi::DenseTensor *fmha_out,
+                                phi::DenseTensor *gate_bias_out,
+                                bool use_fused_matmul_bias,
+                                const phi::DenseTensor &gate_weight_in,
+                                const phi::DenseTensor &gate_bias_in) {
   auto *gate_weight = &gate_weight_in;
   auto *gate_bias = &gate_bias_in;
 
@@ -131,19 +129,17 @@ void ComputeGatingLinearForward(
   // gate_out = sigmoid(gate_out) * fmha_out
   std::vector<const phi::DenseTensor *> ins = {gate_bias_out, fmha_out};
   std::vector<phi::DenseTensor *> outs = {gate_bias_out};
-  phi::funcs::ElementwiseKernel<T>(
-      dev_ctx, ins, &outs, SigmoidMultiplyFunctor<T>());
+  funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, SigmoidMultiplyFunctor<T>());
 }
 
 template <typename T>
-void ComputeOutputLinearForward(
-    const GPUContext &dev_ctx,
-    const phi::funcs::GateAttentionConfig<T> &config,
-    const phi::DenseTensor *fmha_or_gate_out,
-    phi::DenseTensor *out,
-    bool use_fused_matmul_bias,
-    const phi::DenseTensor &out_linear_weight_in,
-    const phi::DenseTensor &out_linear_bias_in) {
+void ComputeOutputLinearForward(const GPUContext &dev_ctx,
+                                const funcs::GateAttentionConfig<T> &config,
+                                const phi::DenseTensor *fmha_or_gate_out,
+                                phi::DenseTensor *out,
+                                bool use_fused_matmul_bias,
+                                const phi::DenseTensor &out_linear_weight_in,
+                                const phi::DenseTensor &out_linear_bias_in) {
   const auto *out_linear_weight = &out_linear_weight_in;
   const auto *out_linear_bias = &out_linear_bias_in;
 
@@ -201,21 +197,21 @@ void FusedGateAttentionOpKernel(
   auto *v_transpose_out = value_transpose_out;
 
   bool use_fused_matmul_bias = true;
-  phi::funcs::AllocWithDebugInfo<T>(dev_ctx, "fmha_out", fmha_out);
+  funcs::AllocWithDebugInfo<T>(dev_ctx, "fmha_out", fmha_out);
   if (has_gating) {
-    phi::funcs::AllocWithDebugInfo<T>(dev_ctx, "gate_out", gate_out);
+    funcs::AllocWithDebugInfo<T>(dev_ctx, "gate_out", gate_out);
   }
-  phi::funcs::AllocWithDebugInfo<T>(dev_ctx, "out", out);
+  funcs::AllocWithDebugInfo<T>(dev_ctx, "out", out);
 
   // When seq_len_r = m_size, q_dim = kv_dim, QKV matmul can be merged.
-  phi::funcs::GateAttentionConfig<T> config(dev_ctx,
-                                            query,
-                                            key,
-                                            query_weight,
-                                            qkv_weight,
-                                            merge_qkv,
-                                            has_gating,
-                                            use_flash_attn);
+  funcs::GateAttentionConfig<T> config(dev_ctx,
+                                       query,
+                                       key,
+                                       query_weight,
+                                       qkv_weight,
+                                       merge_qkv,
+                                       has_gating,
+                                       use_flash_attn);
 
   if (merge_qkv) {
     PADDLE_ENFORCE_EQ(
@@ -239,7 +235,7 @@ void FusedGateAttentionOpKernel(
                                                    config.num_heads,
                                                    config.head_dim}));
     }
-    phi::funcs::AllocWithDebugInfo<T>(
+    funcs::AllocWithDebugInfo<T>(
         dev_ctx, "qkv_transpose_out", qkv_transpose_out);
   } else {
     // 1. Separated QKV Matmul
@@ -257,17 +253,14 @@ void FusedGateAttentionOpKernel(
                                         key_weight_in.get(),
                                         value_weight_in.get());
 
-    phi::funcs::AllocWithDebugInfo<T>(
-        dev_ctx, "q_transpose_out", q_transpose_out);
-    phi::funcs::AllocWithDebugInfo<T>(
-        dev_ctx, "k_transpose_out", k_transpose_out);
-    phi::funcs::AllocWithDebugInfo<T>(
-        dev_ctx, "v_transpose_out", v_transpose_out);
+    funcs::AllocWithDebugInfo<T>(dev_ctx, "q_transpose_out", q_transpose_out);
+    funcs::AllocWithDebugInfo<T>(dev_ctx, "k_transpose_out", k_transpose_out);
+    funcs::AllocWithDebugInfo<T>(dev_ctx, "v_transpose_out", v_transpose_out);
   }
 
   // 2. FMHA
   if (config.CanUseFlashAttn()) {
-    auto fmha_compute = phi::funcs::FlashAttnWithGating<T>(dev_ctx, merge_qkv);
+    auto fmha_compute = funcs::FlashAttnWithGating<T>(dev_ctx, merge_qkv);
     fmha_compute.ComputeForward(nonbatched_bias,
                                 src_mask,
                                 qkv_transpose_out,
@@ -275,9 +268,9 @@ void FusedGateAttentionOpKernel(
                                 fmha_out,
                                 &config);
   } else {
-    phi::funcs::AllocWithDebugInfo<T>(dev_ctx, "softmax_out", softmax_out);
+    funcs::AllocWithDebugInfo<T>(dev_ctx, "softmax_out", softmax_out);
 
-    auto fmha_compute = phi::funcs::FMHAGateRef<T>(dev_ctx, merge_qkv);
+    auto fmha_compute = funcs::FMHAGateRef<T>(dev_ctx, merge_qkv);
     fmha_compute.ComputeForward(nonbatched_bias,
                                 src_mask,
                                 q_transpose_out,

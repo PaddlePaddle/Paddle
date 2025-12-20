@@ -46,8 +46,8 @@ class BiasActHelper {
                const phi::DenseTensor *bias,
                phi::DenseTensor *output) {
     const T *bias_data = (bias == nullptr) ? nullptr : bias->data<T>();
-    phi::funcs::Load<T> load_func(x->data<T>());
-    phi::funcs::Store<T> store_func(output->data<T>());
+    funcs::Load<T> load_func(x->data<T>());
+    funcs::Store<T> store_func(output->data<T>());
     ComputeImpl(bias_data, load_func, store_func);
   }
 
