@@ -90,19 +90,19 @@ void LogsumexpGradKernel(const Context& dev_ctx,
     });
     switch (rank) {
       case 1:
-        phi::funcs::ReduceGradFunctor<Context, T, 1, LogsumexpGradFunctor<T>>(
+        funcs::ReduceGradFunctor<Context, T, 1, LogsumexpGradFunctor<T>>(
             dev_ctx, in, out, out_grad, in_grad, functor, axis32);
         break;
       case 2:
-        phi::funcs::ReduceGradFunctor<Context, T, 2, LogsumexpGradFunctor<T>>(
+        funcs::ReduceGradFunctor<Context, T, 2, LogsumexpGradFunctor<T>>(
             dev_ctx, in, out, out_grad, in_grad, functor, axis32);
         break;
       case 3:
-        phi::funcs::ReduceGradFunctor<Context, T, 3, LogsumexpGradFunctor<T>>(
+        funcs::ReduceGradFunctor<Context, T, 3, LogsumexpGradFunctor<T>>(
             dev_ctx, in, out, out_grad, in_grad, functor, axis32);
         break;
       case 4:
-        phi::funcs::ReduceGradFunctor<Context, T, 4, LogsumexpGradFunctor<T>>(
+        funcs::ReduceGradFunctor<Context, T, 4, LogsumexpGradFunctor<T>>(
             dev_ctx, in, out, out_grad, in_grad, functor, axis32);
         break;
       default:

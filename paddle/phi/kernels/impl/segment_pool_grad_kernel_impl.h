@@ -32,7 +32,7 @@ void SegmentPoolGradKernel(const Context& dev_ctx,
                            const std::string& pooltype,
                            DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
-  phi::funcs::SetConstant<Context, T> set_zero;
+  funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, x_grad, static_cast<T>(0));
   // return after allocation if x_grad is empty.
   if (x_grad && x_grad->numel() == 0) {
@@ -41,10 +41,10 @@ void SegmentPoolGradKernel(const Context& dev_ctx,
 
   auto index_type = segment_ids.type();
   if (index_type == DataType::INT32) {
-    phi::funcs::SegmentPoolGradFunctor<Context, T, int> pool;
+    funcs::SegmentPoolGradFunctor<Context, T, int> pool;
     pool(dev_ctx, x, out, out_grad, segment_ids, x_grad, summed_ids, pooltype);
   } else if (index_type == DataType::INT64) {
-    phi::funcs::SegmentPoolGradFunctor<Context, T, int64_t> pool;
+    funcs::SegmentPoolGradFunctor<Context, T, int64_t> pool;
     pool(dev_ctx, x, out, out_grad, segment_ids, x_grad, summed_ids, pooltype);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(

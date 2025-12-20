@@ -26,9 +26,9 @@
 
 namespace phi {
 
-static phi::DDim ValidateShape(const std::vector<int64_t>& shape,
-                               const std::vector<int64_t>& offsets,
-                               const phi::DDim& in_dims) {
+static DDim ValidateShape(const std::vector<int64_t>& shape,
+                          const std::vector<int64_t>& offsets,
+                          const DDim& in_dims) {
   auto in_dim_size = in_dims.size();
   auto shape_size = shape.size();
   PADDLE_ENFORCE_EQ(
@@ -132,7 +132,7 @@ void CropTensorFunction(const Context& dev_ctx,
     e_shape[i] = out->dims()[i];
   }
   auto& place = *dev_ctx.eigen_device();
-  phi::funcs::EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
+  funcs::EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
       place, out_tensor, x_tensor, e_offsets, e_shape);
 }
 

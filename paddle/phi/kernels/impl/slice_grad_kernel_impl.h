@@ -366,7 +366,7 @@ void SliceArrayGradKernel(const Context& dev_ctx,
   int64_t start = starts[0] < 0 ? (starts[0] + d_in_size) : starts[0];
   start = std::max(start, static_cast<int64_t>(0));
   // set zero
-  phi::funcs::SetConstant<Context, T> functor;
+  funcs::SetConstant<Context, T> functor;
   for (int i = 0; i < d_in_size; ++i) {
     const auto& dim = input.at(i).dims();
     auto* in_grad_tensor = &input_grad->at(i);
@@ -398,7 +398,7 @@ void SliceArrayDenseGradKernel(const Context& dev_ctx,
   int64_t start = starts[0] < 0 ? (starts[0] + d_in_size) : starts[0];
   start = std::max(start, static_cast<int64_t>(0));
   // set zero
-  phi::funcs::SetConstant<Context, T> functor;
+  funcs::SetConstant<Context, T> functor;
   for (int i = 0; i < d_in_size; ++i) {
     const auto& dim = input.at(i).dims();
     auto* in_grad_tensor = &input_grad->at(i);

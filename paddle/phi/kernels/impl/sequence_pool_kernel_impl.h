@@ -70,7 +70,7 @@ void SequencePoolKernel(const Context& dev_ctx,
     index->Resize({dims});
     dev_ctx.template Alloc<int32_t>(index);
   }
-  phi::funcs::SequencePoolFunctor<Context, T> pool;
+  funcs::SequencePoolFunctor<Context, T> pool;
   pool(dev_ctx, pooltype, pad_value_, x, out, is_test, index);
 }
 
