@@ -76,13 +76,13 @@ void BeamSearchDecodeXPUKernel(const Context& dev_ctx,
     sentenceScores->set_lod(sentenceScores_temp->lod());
   }
 
-  phi::funcs::BeamSearchDecodeXPUFunctor bs_xpu(
+  funcs::BeamSearchDecodeXPUFunctor bs_xpu(
       *ids, *scores, sentenceIds, sentenceScores, beam_size, end_id);
   bs_xpu.apply_xpu<T>();
 
   if (ids->at(0).place().GetType() == phi::AllocationType::XPU) {
     int r = 0;
-    r = phi::funcs::CopyTensorByXPU<int64_t>(
+    r = funcs::CopyTensorByXPU<int64_t>(
         *sentenceIds, sentenceIds_temp, 1, ids->at(0).place());
     PADDLE_ENFORCE_EQ(
         r,
@@ -90,7 +90,7 @@ void BeamSearchDecodeXPUKernel(const Context& dev_ctx,
         common::errors::External(
             "Execute function CopyTensorByXPU failed by [%d]", r));
 
-    r = phi::funcs::CopyTensorByType(
+    r = funcs::CopyTensorByType(
         *sentenceScores, sentenceScores_temp, 1, ids->at(0).place());
     PADDLE_ENFORCE_EQ(
         r,

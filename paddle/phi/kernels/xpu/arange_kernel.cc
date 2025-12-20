@@ -34,7 +34,7 @@ void ArangeTensorKernel(const Context& dev_ctx,
   MPType step_value = static_cast<MPType>(GetValue<T, Context>(dev_ctx, step));
 
   int64_t size = 0;
-  phi::funcs::GetSize(start_value, end_value, step_value, &size);
+  funcs::GetSize(start_value, end_value, step_value, &size);
   if (size == 0) {
     out->Resize(common::make_ddim({0}));
     dev_ctx.template Alloc<T>(out);
