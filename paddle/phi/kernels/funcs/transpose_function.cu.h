@@ -1551,7 +1551,7 @@ inline void PermuteAndTranspose(
     const int& rank,
     const phi::DenseTensor& in,
     phi::DenseTensor* out,
-    const phi::funcs::PermuteDimsSimplifier& simplifier) {
+    const funcs::PermuteDimsSimplifier& simplifier) {
   T* dst_data = out->data<T>();
   const T* src_data = in.data<T>();
   const auto count = simplifier.GetCount();
@@ -1590,15 +1590,14 @@ inline void PermuteAndTranspose(
 }
 
 template <typename T>
-inline void PermuteWithEigen(
-    const phi::GPUContext& dev_ctx,
-    const int& rank,
-    const phi::DenseTensor& in,
-    phi::DenseTensor* out,
-    const phi::funcs::PermuteDimsSimplifier& simplifier) {
+inline void PermuteWithEigen(const phi::GPUContext& dev_ctx,
+                             const int& rank,
+                             const phi::DenseTensor& in,
+                             phi::DenseTensor* out,
+                             const funcs::PermuteDimsSimplifier& simplifier) {
   bool not_same_dims = simplifier.GetRank() != rank;
   if (not_same_dims) {
-    phi::DDim dst_dims = out->dims();
+    DDim dst_dims = out->dims();
     phi::DenseTensor temp_in;
 
     temp_in.ShareBufferWith(in);
@@ -1623,7 +1622,7 @@ void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx,
   int64_t numel = in.numel();
   bool ret = TransposeSimple<T>::Run(dev_ctx, in, perm, out, numel);
   if (!ret) {
-    auto simplifier = phi::funcs::PermuteDimsSimplifier(
+    auto simplifier = funcs::PermuteDimsSimplifier(
         rank, numel, perm, common::vectorize<int64_t>(in.dims()));
     auto* tuner = phi::autotune::MakeTransposeTuner<T>(PermuteWithEigen<T>);
     tuner->AddCallBack(PermuteAndTranspose<T>);
