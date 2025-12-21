@@ -236,7 +236,7 @@ def monkey_patch_math_tensor():
         assert var._is_initialized(), "variable's tensor is not initialized"
         if not var.is_complex():
             var = var.astype('complex64')
-        return complex(np.array(var))
+        return complex(np.array(var).item())
 
     def _float_(var: Tensor) -> float:
         numel = np.prod(var.shape)
@@ -249,7 +249,7 @@ def monkey_patch_math_tensor():
             or var.dtype == core.DataType.BFLOAT16
         ):
             var = var.astype('float32')
-        return float(np.array(var))
+        return float(np.array(var).item())
 
     def _long_(var: Tensor) -> int:
         numel = np.prod(var.shape)
