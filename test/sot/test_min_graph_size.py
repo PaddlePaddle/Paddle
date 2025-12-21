@@ -93,6 +93,10 @@ def restore_same_arg_when_fallback(x):
     return add_with_breakgraph(x, x)
 
 
+def trim_trailing_to_bool(x, y):
+    return x and y
+
+
 class TestMinGraphSize(TestCaseBase):
     @strict_mode_guard(False)
     @min_graph_size_guard(10)
@@ -130,6 +134,12 @@ class TestMinGraphSize(TestCaseBase):
     def test_restore_same_arg_when_fallback(self):
         x = paddle.to_tensor(1)
         self.assert_results(restore_same_arg_when_fallback, x)
+
+    @min_graph_size_guard(10)
+    def test_trim_trailing_to_bool(self):
+        x = paddle.to_tensor(False)
+        y = paddle.to_tensor(False)
+        self.assert_results(trim_trailing_to_bool, x, y)
 
 
 if __name__ == "__main__":
