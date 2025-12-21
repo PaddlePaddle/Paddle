@@ -95,7 +95,7 @@ def restore_same_arg_when_fallback(x):
 
 
 @check_no_breakgraph
-def test_if(x):
+def test_load_fast_borrow_patch(x):
     if x is not None:
         x = x + 2
     if x is not None:
@@ -144,7 +144,7 @@ class TestMinGraphSize(TestCaseBase):
     @min_graph_size_guard(10)
     def test_if_none(self):
         x = paddle.to_tensor(1)
-        self.assert_results(test_if, x)
+        self.assert_results(test_load_fast_borrow_patch, x)
 
 
 if __name__ == "__main__":
