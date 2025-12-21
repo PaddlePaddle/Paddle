@@ -99,13 +99,20 @@ def convert_instruction(instr: dis.Instruction) -> Instruction:
     )
 
 
+def replace_jump_target(instrs, old_target, new_target):
+    """Replace all jump targets pointing to old_target with new_target in the given list of instructions.
+    Args:
+        instrs (list[Instruction]): The list of instructions to modify.
+        old_target (Instruction): The old jump target to be replaced.
+        new_target (Instruction): The new jump target to replace with.
+    """
+    for instr in instrs:
+        if instr.jump_to == old_target:
+            instr.jump_to = new_target
+
+
 def expand_super_instrs(instructions: list[Instruction]) -> list[Instruction]:
     expanded_instrs = []
-
-    def replace_jump_target(instrs, old_target, new_target):
-        for instr in instrs:
-            if instr.jump_to == old_target:
-                instr.jump_to = new_target
 
     def copy_instruction(
         instr, opname, argval, arg, is_jump_target, is_generated
@@ -172,6 +179,37 @@ def expand_super_instrs(instructions: list[Instruction]) -> list[Instruction]:
     return expanded_instrs
 
 
+def load_fast_borrow_patch(
+    instructions: list[Instruction],
+) -> list[Instruction]:
+    """
+    Patch LOAD_FAST_BORROW to LOAD_FAST for Python 3.14+
+
+    LOAD_FAST_BORROW is a borrowing reference that causes the store to fail to hold the variable,
+    affecting subsequent variable reading.
+    So here we replace LOAD_FAST_BORROW with LOAD_FAST to avoid this problem.
+    """
+    if sys.version_info < (3, 14):
+        return instructions
+    expanded_instrs = []
+    for instr in instructions:
+        if instr.opname == "LOAD_FAST_BORROW":
+            instr1 = Instruction(
+                dis.opmap["LOAD_FAST"],
+                "LOAD_FAST",
+                instr.arg,
+                instr.argval,
+                is_generated=instr.is_generated,
+                is_jump_target=instr.is_jump_target,
+                jump_to=instr.jump_to,
+            )
+            replace_jump_target(instructions, instr, instr1)
+            expanded_instrs.append(instr1)
+        else:
+            expanded_instrs.append(instr)
+    return expanded_instrs
+
+
 def get_instructions(code: types.CodeType) -> list[Instruction]:
     """
     Returns parsed instructions from the given code object and exclude
@@ -215,7 +253,8 @@ def get_instructions(code: types.CodeType) -> list[Instruction]:
     #         XX 388    <-  256 + 132
     # filter all EXTENDED_ARG here
     instrs = [x for x in instrs if x.opname != "EXTENDED_ARG"]
-    return expand_super_instrs(instrs)
+    instrs = expand_super_instrs(instrs)
+    return load_fast_borrow_patch(instrs)
 
 
 def modify_instrs(instructions: list[Instruction]) -> None:

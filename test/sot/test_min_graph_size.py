@@ -20,6 +20,7 @@ from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit import sot
+from paddle.jit.sot.psdb import check_no_breakgraph
 from paddle.jit.sot.utils import min_graph_size_guard, strict_mode_guard
 
 
@@ -93,9 +94,10 @@ def restore_same_arg_when_fallback(x):
     return add_with_breakgraph(x, x)
 
 
+@check_no_breakgraph
 def test_if(x):
     if x is not None:
-        x = x + 1
+        x = x + 2
     if x is not None:
         x = x - 1
     return x
