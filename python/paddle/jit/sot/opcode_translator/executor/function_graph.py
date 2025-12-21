@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import inspect
+import sys
 from collections import namedtuple
 from contextlib import contextmanager
 from copy import deepcopy
@@ -433,9 +434,12 @@ class FunctionGraph:
                 for _ in range(len(all_names) - 1):
                     self.pycode_gen.gen_dup_top()
                 for name in all_names:
-                    self.pycode_gen.gen_store(
-                        name, self.pycode_gen._origin_code
-                    )
+                    if sys.version_info >= (3, 14):
+                        self.pycode_gen.gen_pop_top()
+                    else:
+                        self.pycode_gen.gen_store(
+                            name, self.pycode_gen._origin_code
+                        )
 
         return VariableLoader(store_var_info, self.pycode_gen)
 

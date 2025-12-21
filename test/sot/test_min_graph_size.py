@@ -93,6 +93,14 @@ def restore_same_arg_when_fallback(x):
     return add_with_breakgraph(x, x)
 
 
+def test_if(x):
+    if x is not None:
+        x = x + 1
+    if x is not None:
+        x = x - 1
+    return x
+
+
 class TestMinGraphSize(TestCaseBase):
     @strict_mode_guard(False)
     @min_graph_size_guard(10)
@@ -130,6 +138,11 @@ class TestMinGraphSize(TestCaseBase):
     def test_restore_same_arg_when_fallback(self):
         x = paddle.to_tensor(1)
         self.assert_results(restore_same_arg_when_fallback, x)
+
+    @min_graph_size_guard(10)
+    def test_if_none(self):
+        x = paddle.to_tensor(1)
+        self.assert_results(test_if, x)
 
 
 if __name__ == "__main__":
