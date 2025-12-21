@@ -12,6 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Tool to check if the code-block directives in the given files follow proper format.
+
+The following format issues are checked:
+
+- The code under code-block directive should be indented properly.
+- The code-block directive should be followed by a blank line.
+
+You can run this script as follows:
+
+    python tools/check_code_block_format.py <file1> <file2> ...
+
+If you want to check all Python and C++ files under a directory, you can provide the directory path as an argument:
+
+    python tools/check_code_block_format.py <directory_path>
+
+For example:
+
+    python tools/check_code_block_format.py python paddle
+"""
+
 import argparse
 import io
 import re
