@@ -75,16 +75,17 @@ inline cublasComputeType_t GetCublasComputeType(paddle::DataType dtype) {
 }
 }  // namespace
 
+template <typename T>
 void CublasGemm(cublasHandle_t cublas_handle,
-                phi::bfloat16 *a,
+                T *a,
                 int64_t a_rows,
                 int64_t a_cols,
                 bool trans_a,
-                phi::bfloat16 *b,
+                T *b,
                 int64_t b_rows,
                 int64_t b_cols,
                 bool trans_b,
-                phi::bfloat16 *c,
+                T *c,
                 int64_t c_rows,
                 int64_t c_cols) {
   // NOTE(Pan Zhaowu): We use int32_t because cuBLAS requires int32_t for
@@ -100,25 +101,45 @@ void CublasGemm(cublasHandle_t cublas_handle,
   cublasOperation_t transpose_b = trans_b ? CUBLAS_OP_T : CUBLAS_OP_N;
 
   constexpr float alpha = 1.0f, beta = 0.0f;
-  CUBLAS_CALL(phi::dynload::cublasGemmEx(cublas_handle,
-                                         transpose_b,
-                                         transpose_a,
-                                         m,
-                                         n,
-                                         k,
-                                         &alpha,
-                                         b,
-                                         CUDA_R_16BF,
-                                         ldb,
-                                         a,
-                                         CUDA_R_16BF,
-                                         lda,
-                                         &beta,
-                                         c,
-                                         CUDA_R_16BF,
-                                         c_cols,
-                                         CUDA_R_32F,
-                                         CUBLAS_GEMM_DEFAULT));
+
+  if constexpr (std::is_same<T, phi::bfloat16>::value) {
+    CUBLAS_CALL(phi::dynload::cublasGemmEx(cublas_handle,
+                                           transpose_b,
+                                           transpose_a,
+                                           m,
+                                           n,
+                                           k,
+                                           &alpha,
+                                           b,
+                                           CUDA_R_16BF,
+                                           ldb,
+                                           a,
+                                           CUDA_R_16BF,
+                                           lda,
+                                           &beta,
+                                           c,
+                                           CUDA_R_16BF,
+                                           c_cols,
+                                           CUDA_R_32F,
+                                           CUBLAS_GEMM_DEFAULT));
+  } else if constexpr (std::is_same<T, float>::value) {
+    CUBLAS_CALL(phi::dynload::cublasSgemm(cublas_handle,
+                                          transpose_b,
+                                          transpose_a,
+                                          m,
+                                          n,
+                                          k,
+                                          &alpha,
+                                          b,
+                                          ldb,
+                                          a,
+                                          lda,
+                                          &beta,
+                                          c,
+                                          c_cols));
+  } else {
+    PD_CHECK(false, "Unsupported data type in CublasGemm");
+  }
 }
 
 // Grouped GEMM forward kernel
@@ -140,7 +161,8 @@ void m_grouped_gemm_cuda_forward(const Context &dev_ctx,
   const int64_t input_hidden_size = a_shape[1];
   const int64_t output_hidden_size = trans_rhs ? b_shape[1] : b_shape[2];
 
-  if constexpr (std::is_same<T, paddle::bfloat16>::value) {
+  if constexpr (std::is_same<T, paddle::bfloat16>::value ||
+                std::is_same<T, float>::value) {
     T *a_data = const_cast<T *>(a.data<T>());  // alias for a.data
     T *b_data = const_cast<T *>(b.data<T>());  // alias for b.data
     T *output_data = output->data<T>();
@@ -165,7 +187,7 @@ void m_grouped_gemm_cuda_forward(const Context &dev_ctx,
       output_data += expert_bs * output_hidden_size;
     }
   } else {
-    PD_CHECK(false, "Unsupported data type");
+    PD_CHECK(false, "Unsupported data type, only support bfloat16 and float32");
   }
 }
 
@@ -186,7 +208,8 @@ void k_grouped_gemm_cuda_forward(const Context &dev_ctx,
   const int64_t input_hidden_size = a_shape[1];
   const int64_t output_hidden_size = b_shape[1];
 
-  if constexpr (std::is_same<T, paddle::bfloat16>::value) {
+  if constexpr (std::is_same<T, paddle::bfloat16>::value ||
+                std::is_same<T, float>::value) {
     T *a_data = const_cast<T *>(a.data<T>());  // alias for a.data
     T *b_data = const_cast<T *>(b.data<T>());  // alias for b.data
     T *output_data = output->data<T>();
@@ -211,7 +234,7 @@ void k_grouped_gemm_cuda_forward(const Context &dev_ctx,
       output_data += input_hidden_size * output_hidden_size;
     }
   } else {
-    PD_CHECK(false, "Unsupported data type");
+    PD_CHECK(false, "Unsupported data type, only support bfloat16 and float32");
   }
 }
 
@@ -272,6 +295,15 @@ void BatchedGEMM(const Context &dev_ctx,
         // For each expert i, this case views lhs as [K x Mi] and rhs as [Mi x
         // N], so the output is [E x K x N].
         k_grouped_gemm_cuda_forward<paddle::bfloat16>(
+            dev_ctx, lhs, rhs, batch_sizes, output);
+      }
+      break;
+    case paddle::DataType::FLOAT32:
+      if (!trans_lhs) {
+        m_grouped_gemm_cuda_forward<float>(
+            dev_ctx, lhs, rhs, batch_sizes, trans_rhs, output);
+      } else {
+        k_grouped_gemm_cuda_forward<float>(
             dev_ctx, lhs, rhs, batch_sizes, output);
       }
       break;
