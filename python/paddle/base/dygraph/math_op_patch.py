@@ -519,15 +519,15 @@ def monkey_patch_math_tensor():
             Tensor: A new Tensor filled with zeros.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
-            >>> import paddle
-            >>> x = paddle.ones([2, 2])
-            >>> y = x.new_zeros(3, 3)  # type: ignore
-            >>> y.numpy()
-            array([[0., 0., 0.],
-                   [0., 0., 0.],
-                   [0., 0., 0.]], dtype=float32)
+                >>> import paddle
+                >>> x = paddle.ones([2, 2])
+                >>> y = x.new_zeros(3, 3)
+                >>> y.numpy()
+                array([[0., 0., 0.],
+                       [0., 0., 0.],
+                       [0., 0., 0.]], dtype=float32)
         """
 
         if dtype is None:

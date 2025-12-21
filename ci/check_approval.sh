@@ -90,6 +90,8 @@ for API_FILE in ${API_FILES[*]}; do
   fi
 done
 
+
+
 CI_OLD_SCRIPTS_PADDLE_BUILD=$(git diff --name-only upstream/$BRANCH | grep -E "paddle/scripts/paddle_build.*")
 CI_OLD_SCRIPTS_COVERAGE=$(git diff --name-only upstream/$BRANCH | grep -E "tools/coverage")
 CI_OLD_SCRIPTS_TOOLS=$(git diff --name-only upstream/$BRANCH | grep -E "tools" | grep "check_")
@@ -347,6 +349,20 @@ if [ "${HAS_MODIFIED_DY2ST_TEST_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
         echo_line=${echo_line}"    python test/dygraph_to_static/check_approval.py "$(echo ${HAS_MODIFIED_DY2ST_TEST_FILES} | tr "\n" " ")"\n"
         echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (SigureMo, DrRyanHuang, zrr1999 or gouzil) approval for the changes.\n"
         check_approval 1 SigureMo DrRyanHuang zrr1999 gouzil
+    fi
+fi
+
+HAS_MODIFIED_PY_OR_CPP_FILES=$(git diff --name-only upstream/$BRANCH | grep -E "(python|paddle)/.*\.(cc|h|py)" || true)
+if [ "${HAS_MODIFIED_PY_OR_CPP_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
+    error_lines=`python ${PADDLE_ROOT}/tools/check_code_block_format.py ${HAS_MODIFIED_PY_OR_CPP_FILES}`
+    if [ $? -ne 0 ]; then
+        echo_line="Your PR added code blocks are not in standard format, please check"
+        echo_line=${echo_line}"Errors are as follows:\n"
+        echo_line=${echo_line}${error_lines}"\n"
+        echo_line=${echo_line}"You can run following command to fix the errors:\n"
+        echo_line=${echo_line}"    python tools/check_code_block_format.py "$(echo ${HAS_MODIFIED_PY_OR_CPP_FILES} | tr "\n" " ")"\n"
+        echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (sunzhongkai588, SigureMo, ooooo-create) approval for the changes.\n"
+        check_approval 1 sunzhongkai588 SigureMo ooooo-create
     fi
 fi
 
