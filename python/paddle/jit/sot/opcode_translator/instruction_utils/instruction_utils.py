@@ -183,11 +183,14 @@ def load_fast_borrow_patch(
     instructions: list[Instruction],
 ) -> list[Instruction]:
     """
-    Patch LOAD_FAST_BORROW to LOAD_FAST for Python 3.14+
+    Patch LOAD_FAST_BORROW to LOAD_FAST for Python 3.14+.
 
-    LOAD_FAST_BORROW is a borrowing reference that causes the store to fail to hold the variable,
-    affecting subsequent variable reading.
-    So here we replace LOAD_FAST_BORROW with LOAD_FAST to avoid this problem.
+    LOAD_FAST_BORROW loads a value using a borrowing reference and does not
+    increment the reference count. In some cases this can cause subsequent
+    STORE_FAST or other operations to retain a reference that becomes invalid
+    once the borrowed value is released, leading to incorrect behavior or
+    crashes when the variable is accessed later.
+    To avoid these issues, we replace LOAD_FAST_BORROW with LOAD_FAST here.
     """
     if sys.version_info < (3, 14):
         return instructions
