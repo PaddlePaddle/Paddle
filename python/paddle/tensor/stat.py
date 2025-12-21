@@ -299,6 +299,11 @@ def std(
     """
     Computes the standard-deviation of ``x`` along ``axis`` .
 
+    .. note::
+        Alias Support:
+        1. The parameter name ``input`` can be used as an alias for ``x``.
+        2. The parameter name ``dim`` can be used as an alias for ``axis``.
+
     Args:
         x (Tensor): The input Tensor with data type float16, float32, float64.
         axis (int|list|tuple|None, optional): The axis along which to perform
