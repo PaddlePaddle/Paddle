@@ -339,7 +339,7 @@ void build_sparse_conv_kmap(const phi::GPUContext& dev_ctx,
       phi::DenseTensor* tmp_hashmap_keys = new phi::DenseTensor();
       tmp_hashmap_keys->Resize({2 * x.nnz()});
       dev_ctx.template Alloc<IntT>(tmp_hashmap_keys);
-      funcs::SetConstant<phi::GPUContext, IntT> set_zero;
+      phi::funcs::SetConstant<phi::GPUContext, IntT> set_zero;
       set_zero(dev_ctx, tmp_hashmap_keys, static_cast<IntT>(0));
       out_kmap_cache_ptr->hashmap_keys = tmp_hashmap_keys;
       to_insert = true;
@@ -348,7 +348,7 @@ void build_sparse_conv_kmap(const phi::GPUContext& dev_ctx,
       phi::DenseTensor* tmp_hashmap_values = new phi::DenseTensor();
       tmp_hashmap_values->Resize({2 * x.nnz()});
       dev_ctx.template Alloc<int32_t>(tmp_hashmap_values);
-      funcs::SetConstant<phi::GPUContext, int32_t> set_zero;
+      phi::funcs::SetConstant<phi::GPUContext, int32_t> set_zero;
       set_zero(dev_ctx, tmp_hashmap_values, static_cast<int32_t>(0));
       out_kmap_cache_ptr->hashmap_values = tmp_hashmap_values;
     }
@@ -359,7 +359,7 @@ void build_sparse_conv_kmap(const phi::GPUContext& dev_ctx,
       dev_ctx.template Alloc<int32_t>(tmp_indices);
       // transpose indices
       std::vector<int> perm = {1, 0};
-      funcs::TransposeGPUKernelDriver<int32_t>(
+      phi::funcs::TransposeGPUKernelDriver<int32_t>(
           dev_ctx, x.indices(), perm, tmp_indices);
       out_kmap_cache_ptr->coords = tmp_indices;
     }
@@ -380,7 +380,7 @@ void build_sparse_conv_kmap(const phi::GPUContext& dev_ctx,
         {(x.nnz() + divisor - 1) / divisor * divisor, kernel_volume});
     dev_ctx.template Alloc<int32_t>(tmp_out_in_map);
     out_kmap_cache_ptr->out_in_map = tmp_out_in_map;
-    funcs::SetConstant<phi::GPUContext, int32_t> set_neg_one;
+    phi::funcs::SetConstant<phi::GPUContext, int32_t> set_neg_one;
     set_neg_one(
         dev_ctx, out_kmap_cache_ptr->out_in_map, static_cast<int32_t>(-1));
 
