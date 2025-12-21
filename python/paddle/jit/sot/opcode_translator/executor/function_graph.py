@@ -400,7 +400,7 @@ class FunctionGraph:
         ]
         for seq in need_trim_opcode_sequences:
             seq_len = len(seq)
-            if len(restore_instr_names) < seq_len:
+            if len(restore_instrs) < seq_len:
                 continue
             if restore_instr_names[-seq_len:] == seq:
                 restore_instrs = restore_instrs[:-seq_len]
