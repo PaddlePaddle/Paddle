@@ -367,7 +367,8 @@ class nvtx:
         Pop the most recent NVTX range marker.
 
         Example:
-            .. code-block:: python
+            .. code-block:: pycon
+
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
                 >>> # paddle.device.nvtx.range_pop("test") is equivalent to paddle.cuda.nvtx.range_pop("test")
