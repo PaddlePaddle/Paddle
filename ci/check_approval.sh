@@ -354,7 +354,7 @@ HAS_MODIFIED_PY_OR_CPP_FILES=$(git diff --name-only upstream/$BRANCH | grep -E "
 if [ "${HAS_MODIFIED_PY_OR_CPP_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
     error_lines=`python ${PADDLE_ROOT}/tools/check_code_block_format.py ${HAS_MODIFIED_PY_OR_CPP_FILES}`
     if [ $? -ne 0 ]; then
-        echo_line="Your PR added code blocks are not in standard format, please check"
+        echo_line="Your PR added code blocks are not in standard format, please check:\n"
         echo_line=${echo_line}"Errors are as follows:\n"
         echo_line=${echo_line}${error_lines}"\n"
         echo_line=${echo_line}"You can run following command to fix the errors:\n"

@@ -1123,7 +1123,7 @@ add_doc_and_signature(
             ...     y,
             ...     rtol=1e-05,
             ...     atol=1e-08,
-            ...     atol=1e-08,
+
             ...     equal_nan=False,
             ...     name="ignore_nan"
             ...)
