@@ -1090,6 +1090,7 @@ class OpcodeExecutorBase:
             ) from e
         self.stack.push(ModuleVariable(value, self._graph, DummyTracker([])))
 
+    @call_break_graph_decorator(push_n=1)
     def IMPORT_FROM(self, instr: Instruction) -> None:
         self.DUP_TOP(instr)
         obj = self.stack.pop()
