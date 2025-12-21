@@ -285,12 +285,16 @@ def var(
     return result
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def std(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
-    unbiased: bool = True,
+    unbiased: bool | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    correction: float = 1,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Computes the standard-deviation of ``x`` along ``axis`` .
@@ -319,13 +323,16 @@ def std(
             the output Tensor is squeezed in ``axis`` . Default is False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        correction (int|float, optional): Difference between the sample size and sample degrees of freedom.
+            Defaults to 1 (Bessel's correction). If unbiased is specified, this parameter is ignored.
+        out (Tensor|None, optional): Output tensor. Default is None.
 
     Returns:
         Tensor, results of standard-deviation along ``axis`` of ``x``, with the
         same data type as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -333,20 +340,30 @@ def std(
             >>> out1 = paddle.std(x)
             >>> print(out1.numpy())
             1.6329932
+
             >>> out2 = paddle.std(x, unbiased=False)
             >>> print(out2.numpy())
             1.490712
+
             >>> out3 = paddle.std(x, axis=1)
             >>> print(out3.numpy())
             [1.       2.081666]
+
+            >>> out4 = paddle.std(x=x, keepdim=True, correction=1.5)
+            >>> print(out4.numpy())
+            [[1.721326]]
+
+            >>> out5 = paddle.std(input=x, dim=[0, 1])  # type: ignore[call-arg]
+            >>> print(out5.numpy())
+            1.6329932
 
     """
     if not in_dynamic_or_pir_mode():
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'std'
         )
-    out = var(**locals())
-    return paddle.sqrt(out)
+    variance = var(**locals())
+    return paddle.sqrt(variance, out=out)
 
 
 def numel(x: Tensor, name: str | None = None) -> Tensor:
