@@ -1101,7 +1101,7 @@ add_doc_and_signature(
             ...     atol=1e-08,
             ...     equal_nan=False,
             ...     name="ignore_nan"
-            ...)
+            ... )
             >>> print(result1)
             Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True , False])
@@ -1112,7 +1112,7 @@ add_doc_and_signature(
             ...     atol=1e-08,
             ...     equal_nan=True,
             ...     name="equal_nan"
-            ...)
+            ... )
             >>> print(result2)
             Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True , False])
@@ -1123,10 +1123,9 @@ add_doc_and_signature(
             ...     y,
             ...     rtol=1e-05,
             ...     atol=1e-08,
-
             ...     equal_nan=False,
             ...     name="ignore_nan"
-            ...)
+            ... )
             >>> print(result1)
             Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True , False])
@@ -1137,7 +1136,7 @@ add_doc_and_signature(
             ...     atol=1e-08,
             ...     equal_nan=True,
             ...     name="equal_nan"
-            ...)
+            ... )
             >>> print(result2)
             Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True, True])
