@@ -205,68 +205,79 @@ void BaddbmmInferMeta(const MetaTensor& input,
   PADDLE_ENFORCE_EQ(
       x_dims[2],
       y_dims[1],
-      errors::InvalidArgument("The second dimension of x must be equal to the "
-                              "first dimension of y. "
-                              "But received x's second dimension = [%d], y's "
-                              "first dimension = [%d].",
+      errors::InvalidArgument("The dimension 2 of x must be equal to the "
+                              "dimension 1 of y. "
+                              "But received x's dimension 2 = [%d], y's "
+                              "dimension 1 = [%d].",
                               x_dims[2],
                               y_dims[1]));
+  PADDLE_ENFORCE_EQ(
+      x_dims[0],
+      y_dims[0],
+      errors::InvalidArgument("The dimension 0 of x must be equal to the "
+                              "dimension 0 of y. "
+                              "But received x's dimension 0 = [%d], y's "
+                              "dimension 0 = [%d].",
+                              x_dims[0],
+                              y_dims[0]));
+
   if (ndim_input == 3) {
-    PADDLE_ENFORCE_EQ(input_dims[0] == x_dims[0] || input_dims[0] == 1,
-                      true,
-                      errors::InvalidArgument(
-                          "The first dimension of input must be equal to "
-                          "the first dimension of x when "
-                          "input is 3-D tensor. "
-                          "If not, the first dimension of input must be 1. "
-                          "But received input's first dimension = [%d], "
-                          "x's first dimension = [%d].",
-                          input_dims[0],
-                          x_dims[0]));
-    PADDLE_ENFORCE_EQ(input_dims[1] == x_dims[1] || input_dims[1] == 1,
-                      true,
-                      errors::InvalidArgument(
-                          "The second dimension of input must be equal to "
-                          "the second dimension of x when "
-                          "input is 3-D tensor. "
-                          "If not, the second dimension of input must be 1. "
-                          "But received input's second dimension = [%d], "
-                          "x's second dimension = [%d].",
-                          input_dims[1],
-                          x_dims[1]));
-    PADDLE_ENFORCE_EQ(input_dims[2] == y_dims[2] || input_dims[2] == 1,
-                      true,
-                      errors::InvalidArgument(
-                          "The third dimension of input must be equal to "
-                          "the third dimension of y when "
-                          "input is 3-D tensor. "
-                          "If not, the third dimension of input must be 1. "
-                          "But received input's third dimension = [%d], "
-                          "y's third dimension = [%d].",
-                          input_dims[2],
-                          y_dims[2]));
+    PADDLE_ENFORCE_EQ(
+        input_dims[0] == x_dims[0] || input_dims[0] == 1,
+        true,
+        errors::InvalidArgument("The dimension 0 of input must be equal to "
+                                "the dimension 0 of x when "
+                                "input is 3-D tensor. "
+                                "If not, the dimension 0 of input must be 1. "
+                                "But received input's dimension 0 = [%d], "
+                                "x's dimension 0 = [%d].",
+                                input_dims[0],
+                                x_dims[0]));
+    PADDLE_ENFORCE_EQ(
+        input_dims[1] == x_dims[1] || input_dims[1] == 1,
+        true,
+        errors::InvalidArgument("The dimension 1 of input must be equal to "
+                                "the dimension 1 of x when "
+                                "input is 3-D tensor. "
+                                "If not, the dimension 1 of input must be 1. "
+                                "But received input's dimension 1 = [%d], "
+                                "x's dimension 1 = [%d].",
+                                input_dims[1],
+                                x_dims[1]));
+    PADDLE_ENFORCE_EQ(
+        input_dims[2] == y_dims[2] || input_dims[2] == 1,
+        true,
+        errors::InvalidArgument("The dimension 2 of input must be equal to "
+                                "the dimension 2 of y when "
+                                "input is 3-D tensor. "
+                                "If not, the dimension 2 of input must be 1. "
+                                "But received input's dimension 2 = [%d], "
+                                "y's dimension 2 = [%d].",
+                                input_dims[2],
+                                y_dims[2]));
   } else {
-    PADDLE_ENFORCE_EQ(input_dims[0] == x_dims[1] || input_dims[0] == 1,
-                      true,
-                      errors::InvalidArgument(
-                          "The first dimension of input must be equal to "
-                          "the second dimension of x when "
-                          "input is 2-D tensor. "
-                          "If not, the first dimension of input must be 1. "
-                          "But received input's first dimension = [%d], "
-                          "x's second dimension = [%d].",
-                          input_dims[0],
-                          x_dims[1]));
-    PADDLE_ENFORCE_EQ(input_dims[1] == y_dims[2],
-                      true,
-                      errors::InvalidArgument(
-                          "The second dimension of input must be equal to "
-                          "the third dimension of y when "
-                          "input is 2-D tensor. "
-                          "But received input's second dimension = [%d], "
-                          "y's third dimension = [%d].",
-                          input_dims[1],
-                          y_dims[2]));
+    PADDLE_ENFORCE_EQ(
+        input_dims[0] == x_dims[1] || input_dims[0] == 1,
+        true,
+        errors::InvalidArgument("The dimension 0 of input must be equal to "
+                                "the dimension 1 of x when "
+                                "input is 2-D tensor. "
+                                "If not, the dimension 0 of input must be 1. "
+                                "But received input's dimension 0 = [%d], "
+                                "x's dimension 1 = [%d].",
+                                input_dims[0],
+                                x_dims[1]));
+    PADDLE_ENFORCE_EQ(
+        input_dims[1] == y_dims[2] || input_dims[1] == 1,
+        true,
+        errors::InvalidArgument("The dimension 1 of input must be equal to "
+                                "the dimension 2 of y when "
+                                "input is 2-D tensor. "
+                                "If not, the dimension 1 of input must be 1. "
+                                "But received input's dimension 1 = [%d], "
+                                "y's dimension 2 = [%d].",
+                                input_dims[1],
+                                y_dims[2]));
   }
 
   std::vector<int64_t> output_dims;
