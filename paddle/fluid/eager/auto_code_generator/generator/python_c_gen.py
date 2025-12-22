@@ -130,7 +130,7 @@ PARSE_PYTHON_C_ARGS_KWARGS_TEMPLATE = """
     PyObject* {}_obj = GetItemFromArgsOrKWArgs(args, {}, kwargs, {}, nargs,&remaining_kwargs,false);
     {} {} = {}({}_obj, \"{}\", {});"""
 
-CHECK_REMAINING_ARGS_VALID_TEMPLATE = """    CheckRemainingParamsValidity(args,kwargs,remaining_kwargs,nargs);
+CHECK_REMAINING_ARGS_VALID_TEMPLATE = """    CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs, {});
 """
 CALL_PRE_PROCESS_TEMPLATE = """    {};
 """
@@ -590,7 +590,9 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         check_remaining_params_validity_str = "    // NO NEED"
         if need_parse_python_api_args:
             check_remaining_params_validity_str = (
-                CHECK_REMAINING_ARGS_VALID_TEMPLATE
+                CHECK_REMAINING_ARGS_VALID_TEMPLATE.format(
+                    len(forward_inplace_map)
+                )
             )
         pre_process_str = "    // NO NEED"
         if need_parse_python_api_args and len(dygraph_pre_process) > 0:

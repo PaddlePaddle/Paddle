@@ -305,6 +305,12 @@ void CheckRemainingParamsValidity(PyObject* args,
                                   PyObject* kwargs,
                                   const int remaining_kwargs,
                                   const int nargs);
+void CheckRemainingParamsValidity(PyObject* args,
+                                  PyObject* kwargs,
+                                  const int remaining_kwargs,
+                                  const int nargs,
+                                  const int inplace_map_size);
+
 static inline void CheckParamsCount(const int nargs,
                                     const int remaining_kwargs,
                                     const int max_args) {
