@@ -484,33 +484,6 @@ def rms_norm(
     Returns:
         out (Tensor): Normalized tensor of same shape as input.
         invvar (Tensor): Tensor of shape [rows], the inverse standard deviation of each row.
-
-    Examples:
-        .. code-block:: python
-            >>> import paddle
-            >>> paddle.seed(2023)
-            >>> if not (paddle.is_compiled_with_cuda() and paddle.device.cuda.device_count() > 0):
-            ...     raise RuntimeError("paddle.nn.functional.rms_norm is only supported on GPU.")
-            >>> paddle.set_device('gpu')
-            >>> input = paddle.rand((2, 2, 2, 3))
-            >>> weight = paddle.rand([3])
-            >>> out, invvar = paddle.nn.functional.rms_norm(input, input.shape[-1], weight)
-
-            >>> print(out)
-            Tensor(shape=[2, 2, 2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            [[[[0.00656056, 1.59749460, 0.33684930],
-            [0.25545901, 1.32124639, 0.22778045]],
-            [[0.35059106, 0.71675038, 0.41430289],
-            [0.36390519, 0.92316359, 0.09792893]]],
-            [[[0.06212470, 0.88866514, 0.82781523],
-            [0.10534675, 0.11984488, 0.95332414]],
-            [[0.36815676, 0.31728131, 0.49593782],
-            [0.32557520, 0.77431172, 0.47854698]]]])
-
-            >>> print(invvar)
-            Tensor(shape=[8], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            [3.05103183, 2.21827126, 1.68399811, 1.66563344,
-             5.00298595, 1.69471145, 1.68923950, 1.72844732])
     """
     input_shape = list(input.shape)
     input_ndim = len(input_shape)
