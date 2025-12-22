@@ -40,6 +40,10 @@
 // clang-format on
 #endif
 
+#include "paddle/common/flags.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
+
 namespace phi {
 template <typename T, typename Context>
 void ConvCudnnGradKernelImplV7(
@@ -462,7 +466,11 @@ void ConvCudnnGradKernel(const Context& dev_ctx,
   auto compute_format = DataLayout::NCHW;
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
-  const bool compute_in_nhwc = channel_last ? true : false;
+  const bool compute_in_nhwc =
+      FLAGS_use_accuracy_compatible_kernel
+          ? channel_last
+          : ((dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLOAT16) &&
+             IsVoltaOrLater(dev_ctx));
 #else
   const bool compute_in_nhwc =
       dtype == CUDNN_DATA_HALF && IsVoltaOrLater(dev_ctx);
@@ -642,7 +650,8 @@ void ConvCudnnGradKernel(const Context& dev_ctx,
   CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_output_grad_channel);
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
-  if (dynload::IsCudnnFrontendEnabled())
+  if (dynload ::IsCudnnFrontendEnabled() &&
+      (FLAGS_use_accuracy_compatible_kernel || groups == 1))
     ConvCudnnGradKernelImplV8<T>(&transformed_input,
                                  &transformed_filter_channel,
                                  &transformed_output_grad_channel,

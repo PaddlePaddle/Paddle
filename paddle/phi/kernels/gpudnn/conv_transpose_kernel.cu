@@ -44,6 +44,10 @@ limitations under the License. */
 // clang-format on
 #endif
 
+#include "paddle/common/flags.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -504,7 +508,7 @@ void Conv2dTransposeGPUDNNKernel(const Context& dev_ctx,
                                  const std::string& data_format,
                                  DenseTensor* out) {
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
-  if (dynload::IsCudnnFrontendEnabled())
+  if (dynload::IsCudnnFrontendEnabled() && FLAGS_use_accuracy_compatible_kernel)
     ConvTransposeRawGPUDNNKernelV8<T, Context>(dev_ctx,
                                                x,
                                                filter,

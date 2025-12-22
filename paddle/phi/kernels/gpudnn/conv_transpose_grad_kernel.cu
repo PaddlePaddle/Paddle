@@ -38,6 +38,10 @@ limitations under the License. */
 #endif
 #include "paddle/phi/kernels/full_kernel.h"
 
+#include "paddle/common/flags.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -455,7 +459,7 @@ void Conv2dTransposeGradGPUDNNKernel(const Context& dev_ctx,
                                      DenseTensor* dx,
                                      DenseTensor* dfilter) {
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
-  if (dynload::IsCudnnFrontendEnabled())
+  if (dynload::IsCudnnFrontendEnabled() && FLAGS_use_accuracy_compatible_kernel)
     ConvTransposeGradRawGPUDNNKernelV8<T, Context>(dev_ctx,
                                                    x,
                                                    filter,
