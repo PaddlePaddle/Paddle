@@ -136,76 +136,67 @@ void Atan2GradKernel(const Context& dev_ctx,
     phi::BroadcastTensorsKernel<T, Context>(dev_ctx, inputs, outputs);
 
     DenseTensor dx_b, dy_b;
-    dx_b.Resize(out_grad.dims());
-    dy_b.Resize(out_grad.dims());
-    dev_ctx.template Alloc<T>(&dx_b);
-    dev_ctx.template Alloc<T>(&dy_b);
+    T* dx_b_data = nullptr;
+    T* dy_b_data = nullptr;
+
+    if (x_grad) {
+      dx_b.Resize(out_grad.dims());
+      dx_b_data = dev_ctx.template Alloc<T>(&dx_b);
+    }
+    if (y_grad) {
+      dy_b.Resize(out_grad.dims());
+      dy_b_data = dev_ctx.template Alloc<T>(&dy_b);
+    }
 
     auto numel = out_grad.numel();
     phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
     phi::Atan2GradFunctor<T> functor(b_x.data<T>(),
                                      b_y.data<T>(),
                                      out_grad.data<T>(),
-                                     dx_b.data<T>(),
-                                     dy_b.data<T>(),
+                                     dx_b_data,
+                                     dy_b_data,
                                      numel);
     for_range(functor);
 
     if (x_grad) {
       dev_ctx.template Alloc<T>(x_grad);
-      if (x_grad->dims() == out_grad.dims()) {
+      std::vector<int64_t> axes;
+      int in_rank = x.dims().size();
+      int out_rank = out_grad.dims().size();
+      int diff = out_rank - in_rank;
+      for (int i = 0; i < diff; ++i) axes.push_back(i);
+      for (int i = 0; i < in_rank; ++i) {
+        if (x.dims()[i] == 1 && out_grad.dims()[i + diff] > 1) {
+          axes.push_back(i + diff);
+        }
+      }
+      if (axes.empty()) {
         phi::Copy(dev_ctx, dx_b, dev_ctx.GetPlace(), false, x_grad);
       } else {
-        std::vector<int64_t> axes;
-        int in_rank = x.dims().size();
-        int out_rank = out_grad.dims().size();
-        int diff = out_rank - in_rank;
-        for (int i = 0; i < diff; ++i) axes.push_back(i);
-        for (int i = 0; i < in_rank; ++i) {
-          if (x.dims()[i] == 1 && out_grad.dims()[i + diff] > 1) {
-            axes.push_back(i + diff);
-          }
-        }
-        if (axes.empty()) {
-          phi::Copy(dev_ctx, dx_b, dev_ctx.GetPlace(), false, x_grad);
-        } else {
-          phi::SumKernel<T, Context>(dev_ctx,
-                                     dx_b,
-                                     phi::IntArray(axes),
-                                     x_grad->dtype(),
-                                     true,
-                                     x_grad);
-          x_grad->Resize(x.dims());
-        }
+        phi::SumKernel<T, Context>(
+            dev_ctx, dx_b, phi::IntArray(axes), x_grad->dtype(), true, x_grad);
+        x_grad->Resize(x.dims());
       }
     }
 
     if (y_grad) {
       dev_ctx.template Alloc<T>(y_grad);
-      if (y_grad->dims() == out_grad.dims()) {
+      std::vector<int64_t> axes;
+      int in_rank = y.dims().size();
+      int out_rank = out_grad.dims().size();
+      int diff = out_rank - in_rank;
+      for (int i = 0; i < diff; ++i) axes.push_back(i);
+      for (int i = 0; i < in_rank; ++i) {
+        if (y.dims()[i] == 1 && out_grad.dims()[i + diff] > 1) {
+          axes.push_back(i + diff);
+        }
+      }
+      if (axes.empty()) {
         phi::Copy(dev_ctx, dy_b, dev_ctx.GetPlace(), false, y_grad);
       } else {
-        std::vector<int64_t> axes;
-        int in_rank = y.dims().size();
-        int out_rank = out_grad.dims().size();
-        int diff = out_rank - in_rank;
-        for (int i = 0; i < diff; ++i) axes.push_back(i);
-        for (int i = 0; i < in_rank; ++i) {
-          if (y.dims()[i] == 1 && out_grad.dims()[i + diff] > 1) {
-            axes.push_back(i + diff);
-          }
-        }
-        if (axes.empty()) {
-          phi::Copy(dev_ctx, dy_b, dev_ctx.GetPlace(), false, y_grad);
-        } else {
-          phi::SumKernel<T, Context>(dev_ctx,
-                                     dy_b,
-                                     phi::IntArray(axes),
-                                     y_grad->dtype(),
-                                     true,
-                                     y_grad);
-          y_grad->Resize(y.dims());
-        }
+        phi::SumKernel<T, Context>(
+            dev_ctx, dy_b, phi::IntArray(axes), y_grad->dtype(), true, y_grad);
+        y_grad->Resize(y.dims());
       }
     }
   }
