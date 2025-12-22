@@ -290,7 +290,6 @@ class Dispatcher:
         """
         if not hashable(fn) or fn not in cls.handlers:
             return None
-
         for pattern, handler in cls.handlers[fn]:
             if pattern.match_inputs(*args, **kwargs):
                 return handler
