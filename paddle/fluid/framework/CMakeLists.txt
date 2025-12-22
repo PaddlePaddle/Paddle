@@ -577,7 +577,7 @@ configure_file(commit.h.in commit.h)
 
 cc_library(
   custom_operator
-  SRCS custom_operator.cc
+  SRCS custom_operator.cc python_operator.cc
   DEPS tensor
        attribute
        op_registry

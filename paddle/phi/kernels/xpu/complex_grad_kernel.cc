@@ -54,12 +54,15 @@ void RealGradKernel(const Context& dev_ctx,
       dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
   DenseTensor imag = Fill<phi::dtype::Real<T>, Context>(
       dev_ctx, common::vectorize<int>(dout.dims()), phi::dtype::Real<T>(0.0));
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
   int r = xfft_internal::xpu::combine_as_complex(
       numel,
       const_cast<phi::dtype::Real<T>*>(dout.data<phi::dtype::Real<T>>()),
       imag.data<phi::dtype::Real<T>>(),
       reinterpret_cast<cuFloatComplex*>(dx_data));
   PADDLE_ENFORCE_XPU_SUCCESS(r);
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
 }
 
 template <typename T, typename Context>
@@ -75,12 +78,15 @@ void ImagGradKernel(const Context& dev_ctx,
       dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
   DenseTensor real = Fill<phi::dtype::Real<T>, Context>(
       dev_ctx, common::vectorize<int>(dout.dims()), phi::dtype::Real<T>(0.0));
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
   int r = xfft_internal::xpu::combine_as_complex(
       numel,
       real.data<phi::dtype::Real<T>>(),
       const_cast<phi::dtype::Real<T>*>(dout.data<phi::dtype::Real<T>>()),
       reinterpret_cast<cuFloatComplex*>(dx_data));
   PADDLE_ENFORCE_XPU_SUCCESS(r);
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
 }
 
 template <typename T, typename Context>
@@ -116,14 +122,15 @@ void ComplexGradKernel(const Context& dev_ctx,
   imag_dout.Resize(dout.dims());
   T* real_data = dev_ctx.template Alloc<T>(&real_dout);
   T* imag_data = dev_ctx.template Alloc<T>(&imag_dout);
-
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
   int r = xfft_internal::xpu::complex_spilt_float(
       numel,
       reinterpret_cast<cuFloatComplex*>(const_cast<C*>(dout.data<C>())),
       real_data,
       imag_data);
   PADDLE_ENFORCE_XPU_SUCCESS(r);
-
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
   if (dx) {
     if (x.dims() == dout.dims()) {
       dx->ShareDataWith(real_dout);

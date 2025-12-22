@@ -40,9 +40,9 @@ namespace funcs {
 template <typename T>
 inline void StridedMemcpy(const phi::DeviceContext& dev_ctx,
                           const T* src,
-                          const phi::DDim& src_stride,
-                          const phi::DDim& dst_dim,
-                          const phi::DDim& dst_stride,
+                          const DDim& src_stride,
+                          const DDim& dst_dim,
+                          const DDim& dst_stride,
                           T* dst) {
   detail::StridedCopyDimVisitor<T> func(
       dev_ctx, src, src_stride, dst_stride, dst);
@@ -87,9 +87,9 @@ template <typename T, typename Context>
 inline void StridedNumelCopyWithAxis(const Context& dev_ctx,
                                      int64_t axis,
                                      T* dst,
-                                     const phi::DDim& dst_stride_numel,
+                                     const DDim& dst_stride_numel,
                                      const T* src,
-                                     const phi::DDim& src_stride_numel,
+                                     const DDim& src_stride_numel,
                                      int64_t size) {
   int64_t before = dst_stride_numel[0] / dst_stride_numel[axis];
   int64_t src_after = src_stride_numel[axis];
@@ -147,7 +147,7 @@ inline void StridedMemcpyWithAxis0(
     const phi::DenseTensor& input,
     const std::vector<const phi::DenseTensor*>& shape_refer,
     std::vector<phi::DenseTensor*>* outputs) {
-  const phi::DDim in_stride = common::stride_numel(input.dims());
+  const DDim in_stride = common::stride_numel(input.dims());
   const int axis = 0;
   size_t input_offset = 0;
 

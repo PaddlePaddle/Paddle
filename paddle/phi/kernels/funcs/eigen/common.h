@@ -22,7 +22,7 @@ limitations under the License. */
 
 namespace phi {
 
-// EigenDim converts phi::DDim into Eigen::DSizes.
+// EigenDim converts DDim into Eigen::DSizes.
 template <int D>
 struct EigenDim {
   using Type = Eigen::DSizes<Eigen::DenseIndex, D>;

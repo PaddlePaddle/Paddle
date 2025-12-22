@@ -85,8 +85,7 @@ class AttnMatmulINT8 {
       // bias_out = output + bias
       std::vector<const phi::DenseTensor*> ins = {output, bias};
       std::vector<phi::DenseTensor*> outs = {bias_out};
-      phi::funcs::BroadcastKernel<T>(
-          dev_ctx_, ins, &outs, phi::funcs::AddFunctor<T>());
+      funcs::BroadcastKernel<T>(dev_ctx_, ins, &outs, funcs::AddFunctor<T>());
       PADDLE_ENFORCE_EQ(
           cudaGetLastError(),
           cudaSuccess,
@@ -139,8 +138,7 @@ class AttnMatmulINT8 {
       // bias_out = output + bias
       std::vector<const phi::DenseTensor*> ins = {output, bias};
       std::vector<phi::DenseTensor*> outs = {bias_out};
-      phi::funcs::BroadcastKernel<T>(
-          dev_ctx_, ins, &outs, phi::funcs::AddFunctor<T>());
+      funcs::BroadcastKernel<T>(dev_ctx_, ins, &outs, funcs::AddFunctor<T>());
       PADDLE_ENFORCE_EQ(
           cudaGetLastError(),
           cudaSuccess,

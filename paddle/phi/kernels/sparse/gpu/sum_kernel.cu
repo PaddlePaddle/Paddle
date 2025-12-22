@@ -188,7 +188,7 @@ void SumCooGPU0Kernel(const Context& dev_ctx,
     out_dims = common::make_ddim({1});
     out_indices = Empty<IntT, Context>(dev_ctx, {1, 1});
   }
-  phi::funcs::SetConstant<Context, IntT> set_out_indices;
+  funcs::SetConstant<Context, IntT> set_out_indices;
   set_out_indices(dev_ctx, &out_indices, static_cast<IntT>(0));
   out_values = phi::Sum<T>(dev_ctx, x.values(), {}, dtype, keep_dim);
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
@@ -385,7 +385,7 @@ void SumCsr1Kernel(const Context& dev_ctx,
     DenseTensor x_crows_reshape =
         Reshape<int64_t, Context>(dev_ctx, x_crows, {x_dim0, x_dim1 + 1});
     DenseTensor last_indices = Empty<int64_t, Context>(dev_ctx, {1});
-    phi::funcs::SetConstant<Context, int64_t> set_constant;
+    funcs::SetConstant<Context, int64_t> set_constant;
     set_constant(dev_ctx, &last_indices, static_cast<int64_t>(x_dim1));
 
     DenseTensor x_crows_last = Empty<int64_t, Context>(dev_ctx, {x_dim0, 1});

@@ -565,8 +565,7 @@ void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
 
 struct BwdFusedEpilogueSetter {
  public:
-  static phi::funcs::MatmulFusedType SetForDx(
-      const std::string& activation_grad) {
+  static funcs::MatmulFusedType SetForDx(const std::string& activation_grad) {
     if (activation_grad == "none") {
       return kMatmulGrad;
     } else if (activation_grad == "relu_grad") {
@@ -587,8 +586,8 @@ struct BwdFusedEpilogueSetter {
   }
 
   template <typename DYT, bool TransY>
-  static phi::funcs::MatmulFusedType SetForDy(const phi::GPUContext& dev_ctx,
-                                              phi::DenseTensor* dbias) {
+  static funcs::MatmulFusedType SetForDy(const phi::GPUContext& dev_ctx,
+                                         phi::DenseTensor* dbias) {
     if (dbias != nullptr) {
       dev_ctx.Alloc<DYT>(dbias, dbias->numel() * sizeof(DYT));
       return TransY ? kMatmulBiasGradToB : kMatmulBiasGradToA;
@@ -628,7 +627,7 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
                              ? nullptr
                              : const_cast<void*>(reserve_space->data());
     dev_ctx.Alloc<DXT>(dx, dx->numel() * sizeof(DXT));
-    phi::funcs::LinearGradWithCublasLt<T, DXT, DYT, TransX, TransY>::Run(
+    funcs::LinearGradWithCublasLt<T, DXT, DYT, TransX, TransY>::Run(
         dev_ctx,
         dout,
         y,
@@ -650,7 +649,7 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
     constexpr auto kYGradAIsDZ = (Trait::kYGradA == FusedGEMMGradInType::kDZ);
     // Caution: DYT is in front of DXT in this template arguments.
     dev_ctx.Alloc<DYT>(dy, dy->numel() * sizeof(DYT));
-    phi::funcs::LinearGradWithCublasLt<T, DXT, DYT, TransX, TransY>::Run(
+    funcs::LinearGradWithCublasLt<T, DXT, DYT, TransX, TransY>::Run(
         dev_ctx,
         dout,
         x,

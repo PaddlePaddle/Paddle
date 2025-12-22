@@ -252,7 +252,7 @@ struct MatmulDescriptor {
               const int64_t K,
               const bool trans_x,
               const bool trans_y,
-              phi::funcs::MatmulPlanner* planner,
+              funcs::MatmulPlanner* planner,
               const int batch_size = 1,
               const int64_t stride_x = 0,
               const int64_t stride_y = 0,
@@ -305,7 +305,7 @@ struct MatmulDescriptor {
   }
 
   template <typename T>
-  void SetFusedEpiloguePtr(phi::funcs::MatmulPlanner* planner) {
+  void SetFusedEpiloguePtr(funcs::MatmulPlanner* planner) {
     if (planner->bias != nullptr) {
       const T* bias_data = static_cast<const T*>(planner->bias);
       PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescSetAttribute(
@@ -326,7 +326,7 @@ struct MatmulDescriptor {
   void ExchangeXYDesc(bool no_exchange) {}
 
  protected:
-  void SetFusedEpilogueOpDescriptor(phi::funcs::MatmulPlanner* planner,
+  void SetFusedEpilogueOpDescriptor(funcs::MatmulPlanner* planner,
                                     const bool trans_x,
                                     const bool trans_y,
                                     int64_t lead_dim) {
@@ -400,7 +400,7 @@ struct MatmulGradDescriptor : MatmulDescriptor {
               const int64_t K,
               const bool trans_x,
               const bool trans_y,
-              phi::funcs::MatmulPlanner* planner,
+              funcs::MatmulPlanner* planner,
               const int batch_size = 1,
               int64_t stride_x = 0,
               int64_t stride_y = 0,
@@ -458,7 +458,7 @@ struct CublasLtBase {
                       const T* x_ptr,
                       const T* y_ptr,
                       OutT* out_ptr,
-                      phi::funcs::MatmulPlanner* planner) {
+                      funcs::MatmulPlanner* planner) {
     MT alpha = static_cast<MT>(1);
     MT beta = planner->UseAddTo() ? static_cast<MT>(1) : static_cast<MT>(0);
     cublasLtHandle_t cublaslt_handle = dev_ctx.cublaslt_handle();
@@ -652,7 +652,7 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
                       const int8_t* x_ptr,
                       const int8_t* y_ptr,
                       int32_t* out_ptr,
-                      phi::funcs::MatmulPlanner* planner) {
+                      funcs::MatmulPlanner* planner) {
     int32_t alpha = 1;
     int32_t beta =
         planner->UseAddTo() ? static_cast<int32_t>(1) : static_cast<int32_t>(0);
@@ -929,7 +929,7 @@ struct DescriptorSetter {
   DescT desc;
   size_t sub_key{std::numeric_limits<size_t>::min()};
 
-  DescriptorSetter(phi::funcs::MatmulPlanner* planner,
+  DescriptorSetter(funcs::MatmulPlanner* planner,
                    const int64_t M,
                    const int64_t N,
                    const int64_t K,
@@ -1053,7 +1053,7 @@ struct MatmulWithCublasLt : public CublasLtBase<T, OutT> {
                   const int64_t K,
                   const bool trans_x,
                   const bool trans_y,
-                  phi::funcs::MatmulPlanner* planner = nullptr) {
+                  funcs::MatmulPlanner* planner = nullptr) {
     auto setter = DescriptorSetter<MatmulDescriptor, T>(
         planner, M, N, K, trans_x, trans_y);
     CublasLtBase<T, OutT>::RunImpl(dev_ctx,
@@ -1078,7 +1078,7 @@ struct MatmulWithCublasLt : public CublasLtBase<T, OutT> {
                            int64_t stride_x,
                            int64_t stride_y,
                            int64_t stride_out,
-                           phi::funcs::MatmulPlanner* planner = nullptr) {
+                           funcs::MatmulPlanner* planner = nullptr) {
     auto setter = DescriptorSetter<MatmulDescriptor, T>(planner,
                                                         M,
                                                         N,
@@ -1108,7 +1108,7 @@ struct MatmulWithCublasLt : public CublasLtBase<T, OutT> {
                            bool trans_x,
                            bool trans_y,
                            int batch_size,
-                           phi::funcs::MatmulPlanner* planner = nullptr) {
+                           funcs::MatmulPlanner* planner = nullptr) {
     for (int i = 0; i < batch_size; ++i) {
       Run(dev_ctx,
           x_data[i],
@@ -1139,14 +1139,14 @@ struct LinearWithCublasLt : public CublasLtBase<T> {
                   const bool trans_x,
                   const bool trans_y,
                   const MatmulFusedType fused_type) {
-    auto planner = phi::funcs::MatmulPlanner(common::vectorize(x->dims()),
-                                             common::vectorize(y->dims()),
-                                             trans_x,
-                                             trans_y,
-                                             phi::CppTypeToDataType<T>::Type(),
-                                             fused_type,
-                                             bias_data,
-                                             reserve_data);
+    auto planner = funcs::MatmulPlanner(common::vectorize(x->dims()),
+                                        common::vectorize(y->dims()),
+                                        trans_x,
+                                        trans_y,
+                                        phi::CppTypeToDataType<T>::Type(),
+                                        fused_type,
+                                        bias_data,
+                                        reserve_data);
     auto setter = DescriptorSetter<MatmulDescriptor, T>(
         &planner, M, N, K, trans_x, trans_y);
     CublasLtBase<T>::RunImpl(dev_ctx,
@@ -1177,16 +1177,16 @@ struct LinearGradWithCublasLt : public CublasLtBase<T> {
       const bool use_addto,
       const bool no_exchange,  // exchange x_desc and y_desc for grad.
       bool grad_for_dx = true) {
-    auto planner = phi::funcs::MatmulPlanner(common::vectorize(x->dims()),
-                                             common::vectorize(y->dims()),
-                                             trans_x,
-                                             trans_y,
-                                             phi::CppTypeToDataType<T>::Type(),
-                                             fused_type,
-                                             bias_data,
-                                             reserve_data,
-                                             use_addto,
-                                             no_exchange);
+    auto planner = funcs::MatmulPlanner(common::vectorize(x->dims()),
+                                        common::vectorize(y->dims()),
+                                        trans_x,
+                                        trans_y,
+                                        phi::CppTypeToDataType<T>::Type(),
+                                        fused_type,
+                                        bias_data,
+                                        reserve_data,
+                                        use_addto,
+                                        no_exchange);
     auto setter =
         DescriptorSetter<MatmulGradDescriptor, T, DXT, DYT, TransX, TransY>(
             &planner,

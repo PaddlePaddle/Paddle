@@ -94,6 +94,7 @@ prim_white_list = [
     "put_along_axis_double_grad",
     "masked_fill_double_grad",
     "index_elementwise_put_with_tensor_double_grad",
+    "index_elementwise_put_double_grad",
     "view_shape_double_grad",
 ]
 
@@ -108,7 +109,6 @@ type_promote_white_list = {
     "elementwise_pow": ["x", "y"],
     "where": ["x", "y"],
     "equal": ["x", "y"],
-    "equal_all": ["x", "y"],
     "not_equal": ["x", "y"],
     "less_than": ["x", "y"],
     "less_equal": ["x", "y"],
@@ -505,7 +505,7 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
   if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} (\"+egr::GetGradNodeHexAddress(this)+\") finish\");
   }}
-    VLOG(4) << \"\\n\"<<separator<<\"Finish_AD_API_GRAD: {}\"<<separator;
+    VLOG(3) << \"\\n\"<<separator<<\"Finish_AD_API_GRAD: {}\"<<separator;
 
 
   // Return

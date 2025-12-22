@@ -430,9 +430,9 @@ class SegmentPoolGradFunctor<phi::GPUContext, T, IndexT> {
                      0,
                      dev_ctx.stream()>>>(
           mean_grad.data<T>(), summed_ids->data<T>(), len, dim);
-      phi::funcs::GPUGather<T, IndexT>(dev_ctx, mean_grad, segments, in_grad);
+      funcs::GPUGather<T, IndexT>(dev_ctx, mean_grad, segments, in_grad);
     } else if (pooltype == "SUM") {
-      phi::funcs::GPUGather<T, IndexT>(dev_ctx, out_grad, segments, in_grad);
+      funcs::GPUGather<T, IndexT>(dev_ctx, out_grad, segments, in_grad);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported segment pooling operation, Only MEAN, SUM, MAX, MIN "

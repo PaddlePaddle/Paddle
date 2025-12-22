@@ -41,8 +41,8 @@ constexpr int64_t WarpSize = 32;
           use_pad)
 
 template <bool Power2Scaling>
-__device__ __forceinline__ float ScaleWrapper(const float amax,
-                                              const float eps = 0.f) {
+__device__ __forceinline__ float ScaleWrapperImpl(const float amax,
+                                                  const float eps = 0.f) {
   constexpr float fp8_max = 448.0f;
   float amax_mod = fmaxf(amax, eps);
   if (amax_mod == 0.f) {
@@ -69,6 +69,13 @@ __device__ __forceinline__ float ScaleWrapper(const float amax,
     scale = ldexpf(1.0f, normal_biased_exp);
   }
   return scale;
+}
+
+template <bool Power2Scaling>
+__device__ __forceinline__ float ScaleWrapper(const float amax,
+                                              const float eps = 0.f) {
+  return RoundPower2Scale<Power2Scaling>(
+      ScaleWrapperImpl<Power2Scaling>(amax, eps));
 }
 
 template <int VecSize, bool Power2Scaling>

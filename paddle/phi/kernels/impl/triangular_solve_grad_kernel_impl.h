@@ -61,8 +61,8 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
     DenseTensor x_conj;
     x_conj.Resize(x.dims());
 
-    phi::funcs::ForRange<Context> x_for_range(dev_ctx, x.numel());
-    phi::funcs::ConjFunctor<T> x_functor(
+    funcs::ForRange<Context> x_for_range(dev_ctx, x.numel());
+    funcs::ConjFunctor<T> x_functor(
         x.data<T>(), x.numel(), dev_ctx.template Alloc<T>(&x_conj));
     x_for_range(x_functor);
 
@@ -88,17 +88,15 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
     DenseTensor out_conj;
     out_conj.Resize(out.dims());
 
-    phi::funcs::ForRange<Context> out_for_range(dev_ctx, out.numel());
-    phi::funcs::ConjFunctor<T> out_functor(
+    funcs::ForRange<Context> out_for_range(dev_ctx, out.numel());
+    funcs::ConjFunctor<T> out_functor(
         out.data<T>(), out.numel(), dev_ctx.template Alloc<T>(&out_conj));
     out_for_range(out_functor);
 
-    auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+    auto blas = funcs::GetBlas<Context, T>(dev_ctx);
     if (transpose) {
-      auto mat_dim_a =
-          phi::funcs::CreateMatrixDescriptor(out_conj.dims(), 0, false);
-      auto mat_dim_b =
-          phi::funcs::CreateMatrixDescriptor(dy_bst.dims(), 0, true);
+      auto mat_dim_a = funcs::CreateMatrixDescriptor(out_conj.dims(), 0, false);
+      auto mat_dim_b = funcs::CreateMatrixDescriptor(dy_bst.dims(), 0, true);
       blas.MatMul(out_conj,
                   mat_dim_a,
                   dy_bst,
@@ -107,10 +105,8 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
                   &dx_bst,
                   static_cast<T>(0));
     } else {
-      auto mat_dim_a =
-          phi::funcs::CreateMatrixDescriptor(dy_bst.dims(), 0, false);
-      auto mat_dim_b =
-          phi::funcs::CreateMatrixDescriptor(out_conj.dims(), 0, true);
+      auto mat_dim_a = funcs::CreateMatrixDescriptor(dy_bst.dims(), 0, false);
+      auto mat_dim_b = funcs::CreateMatrixDescriptor(out_conj.dims(), 0, true);
       blas.MatMul(dy_bst,
                   mat_dim_a,
                   out_conj,
@@ -127,8 +123,8 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
     const auto& dims = dx_bst.dims();
     const auto H = dims[dims.size() - 2];
     const auto W = dims[dims.size() - 1];
-    phi::funcs::ForRange<Context> x_for_range(dev_ctx, dx_bst.numel());
-    phi::funcs::TrilTriuCompute<T> tril_triu_functor(
+    funcs::ForRange<Context> x_for_range(dev_ctx, dx_bst.numel());
+    funcs::TrilTriuCompute<T> tril_triu_functor(
         dx_bst.data<T>(), unitriangular, !upper, H, W, dx_bst_upper.data<T>());
     x_for_range(tril_triu_functor);
 

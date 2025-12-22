@@ -2047,6 +2047,9 @@
      out : Out
   attrs : {slice_offset : slice_offset, accumulate : accumulate, is_combined : is_combined}
 
+- op : index_elementwise_put
+  backward : index_elementwise_put_grad, index_elementwise_put_double_grad
+
 - op : index_elementwise_put_with_tensor
   backward : index_elementwise_put_with_tensor_grad, index_elementwise_put_with_tensor_double_grad
   outputs :

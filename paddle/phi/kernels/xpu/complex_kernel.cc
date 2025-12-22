@@ -40,11 +40,14 @@ void ConjKernel(const Context& dev_ctx,
   }
   dev_ctx.template Alloc<T>(out);
   if (std::is_same_v<T, phi::complex64>) {
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
     int r = xfft_internal::xpu::Conj(
         x.numel(),
         reinterpret_cast<cuFloatComplex*>(const_cast<T*>(x.data<T>())),
         reinterpret_cast<cuFloatComplex*>(out->data<T>()));
     PADDLE_ENFORCE_XPU_SUCCESS(r);
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
   } else {
     using XPUType = typename XPUCopyTypeTrait<T>::Type;
     const auto* input_data = x.data<T>();
@@ -69,12 +72,15 @@ void RealKernel(const Context& dev_ctx,
   phi::DenseTensor imag;
   imag.Resize(x.dims());
   dev_ctx.template Alloc<phi::dtype::Real<T>>(&imag);
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
   int r = xfft_internal::xpu::complex_spilt_float(
       out->numel(),
       reinterpret_cast<cuFloatComplex*>(const_cast<T*>(x.data<T>())),
       out->data<phi::dtype::Real<T>>(),
       imag.data<phi::dtype::Real<T>>());
   PADDLE_ENFORCE_XPU_SUCCESS(r);
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
 }
 
 template <typename T, typename Context>
@@ -90,12 +96,15 @@ void ImagKernel(const Context& dev_ctx,
   phi::DenseTensor real;
   real.Resize(x.dims());
   dev_ctx.template Alloc<phi::dtype::Real<T>>(&real);
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
   int r = xfft_internal::xpu::complex_spilt_float(
       out->numel(),
       reinterpret_cast<cuFloatComplex*>(const_cast<T*>(x.data<T>())),
       real.data<phi::dtype::Real<T>>(),
       out->data<phi::dtype::Real<T>>());
   PADDLE_ENFORCE_XPU_SUCCESS(r);
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
 }
 
 template <typename T, typename Context>
@@ -138,12 +147,15 @@ void ComplexKernel(const Context& dev_ctx,
   }
 
   dev_ctx.template Alloc<C>(out);
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
   int r = xfft_internal::xpu::combine_as_complex(
       out->numel(),
       x_data,
       y_data,
       reinterpret_cast<cuFloatComplex*>(out->data<C>()));
   PADDLE_ENFORCE_XPU_SUCCESS(r);
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
 }
 }  // namespace phi
 

@@ -465,7 +465,7 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
 
   inline HOSTDEVICE void operator()(size_t i) const {
     auto row_idx =
-        phi::funcs::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
+        funcs::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
     if (lazy_mode_ && row_idx < 0) {
       return;
     } else {
@@ -775,7 +775,7 @@ class SparseAdamWFunctor<T, GPUAdamW, MT> {
 
   inline HOSTDEVICE void operator()(size_t i) const {
     auto row_idx =
-        phi::funcs::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
+        funcs::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
     if (lazy_mode_ && row_idx < 0) {
       return;
     } else {

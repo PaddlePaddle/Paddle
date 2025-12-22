@@ -51,7 +51,7 @@ void LaunchSameDimsElementwiseCudaKernel(
   for (int i = 0; i < pt_outputs_tmp.size(); i++) {
     pt_outputs.push_back(pt_outputs_tmp[i].get());
   }
-  phi::funcs::ElementwiseKernel<OutT, Functor, NumOuts>(
+  funcs::ElementwiseKernel<OutT, Functor, NumOuts>(
       dev_ctx, pt_inputs, &pt_outputs, func);
 }
 

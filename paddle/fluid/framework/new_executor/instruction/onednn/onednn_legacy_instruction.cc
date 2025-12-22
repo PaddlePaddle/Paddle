@@ -281,14 +281,14 @@ void OneDNNLegacyKernelInstruction::Run() {
           //  Handle 'layout_transform' in
           //  ops_onednn_extra.yaml(GetKernelTypeForVar)
           if (data_format_tensors_.count(*input_name) &&
-              input_layout_ != phi::DataLayout::kAnyLayout) {
+              input_layout_ != phi::DataLayout::ANY) {
             from_layout = input_layout_;
           }
 
           auto transed_tensor = const_cast<phi::DenseTensor*>(input);
 
-          if (from_layout == DataLayout::kNHWC ||
-              from_layout == DataLayout::kNDHWC) {
+          if (from_layout == DataLayout::NHWC ||
+              from_layout == DataLayout::NDHWC) {
             phi::funcs::MatchShapeToLayout(
                 transed_tensor, from_layout, phi::DataLayout::ONEDNN);
             // We register only NHWC assuming that model is consistent e.g.
@@ -296,7 +296,7 @@ void OneDNNLegacyKernelInstruction::Run() {
             phi::OneDNNContext::tls().set_cur_paddle_data_layout(from_layout);
           }
 
-          if (from_layout == DataLayout::kAnyLayout) {
+          if (from_layout == DataLayout::ANY) {
             from_layout =
                 phi::OneDNNContext::tls().get_cur_paddle_data_layout();
           }

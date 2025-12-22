@@ -554,7 +554,7 @@ void SqrtDoubleGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(ddout);
   }
 
-  phi::funcs::SqrtGradGradFunctor<T> functor;
+  funcs::SqrtGradGradFunctor<T> functor;
   functor(dev_ctx, &out, &dx, &ddx, dout, ddout);
 }
 
@@ -576,7 +576,7 @@ void RsqrtDoubleGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(ddout);
   }
 
-  phi::funcs::RsqrtGradGradFunctor<T> functor;
+  funcs::RsqrtGradGradFunctor<T> functor;
   functor(dev_ctx, &out, &dx, &ddx, dout, ddout);
 }
 
@@ -596,7 +596,7 @@ void CeluDoubleGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(ddout);
   }
 
-  phi::funcs::CELUGradGradFunctor<T> functor;
+  funcs::CELUGradGradFunctor<T> functor;
   auto attrs = functor.GetAttrs();
   *(attrs[0].second) = alpha;
   functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
@@ -619,7 +619,7 @@ void SoftplusDoubleGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(ddout);
   }
 
-  phi::funcs::SoftplusDoubleGradFunctor<T> functor;
+  funcs::SoftplusDoubleGradFunctor<T> functor;
   auto attrs = functor.GetAttrs();
   *(attrs[0].second) = beta;
   *(attrs[1].second) = threshold;
@@ -641,7 +641,7 @@ void SquareDoubleGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(ddout);
   }
 
-  phi::funcs::SquareGradGradFunctor<T> functor;
+  funcs::SquareGradGradFunctor<T> functor;
   functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
 }
 
@@ -658,7 +658,7 @@ void SinDoubleGradKernel(const Context& dev_ctx,
   if (ddout) {
     dev_ctx.template Alloc<T>(ddout);
   }
-  phi::funcs::SinDoubleGradFunctor<T> functor;
+  funcs::SinDoubleGradFunctor<T> functor;
   functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
 }
 
@@ -706,7 +706,7 @@ void CosDoubleGradKernel(const Context& dev_ctx,
   if (ddout) {
     dev_ctx.template Alloc<T>(ddout);
   }
-  phi::funcs::CosDoubleGradFunctor<T> functor;
+  funcs::CosDoubleGradFunctor<T> functor;
   functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
 }
 

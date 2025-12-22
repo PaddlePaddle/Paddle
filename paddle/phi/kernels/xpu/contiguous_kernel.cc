@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/contiguous_kernel.h"
 
+#include <cstdint>
 #include <vector>
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
@@ -72,43 +73,37 @@ void ContiguousKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
     return;
   }
 
-  // The current complex number implementation uses separate real/imaginary
-  // parts,resulting in redundant operations and performance
-  // penalties.Optimization should address this in future iterations.
+  // For strided complex tensors, avoid using Real/Imag kernels that assume
+  // contiguous complex layout. Instead, materialize bytes with
+  // as_strided<int8_t> to preserve both real/imag parts and handle large
+  // strides safely.
   dev_ctx.template Alloc<T>(out);
-  const DenseTensor real = Real<T, XPUContext>(dev_ctx, input);
-  const DenseTensor imag = Imag<T, XPUContext>(dev_ctx, input);
-  DenseTensor real_out, imag_out;
-  real_out.Resize(out->dims());
-  imag_out.Resize(out->dims());
-  dev_ctx.template Alloc<float>(&real_out);
-  dev_ctx.template Alloc<float>(&imag_out);
+  auto bytes_shape = common::vectorize<int64_t>(input.dims());
+  auto bytes_strides = common::vectorize<int64_t>(input.strides());
+  const int64_t bytes_per_elem = static_cast<int64_t>(sizeof(T));
+  for (auto& s : bytes_strides) {
+    s *= bytes_per_elem;
+  }
+  bytes_shape.push_back(bytes_per_elem);
+  bytes_strides.push_back(1);
+
+  const auto* input_bytes = reinterpret_cast<const int8_t*>(input.data<T>());
+  auto* output_bytes = reinterpret_cast<int8_t*>(out->data<T>());
 
   int r = 0;
   if (input.numel() == 1) {
-    r = xpu::copy<float>(
-        dev_ctx.x_context(), real.data<float>(), real_out.data<float>(), 1);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
-    r = xpu::copy<float>(
-        dev_ctx.x_context(), imag.data<float>(), imag_out.data<float>(), 1);
+    r = xpu::copy<int8_t>(
+        dev_ctx.x_context(), input_bytes, output_bytes, bytes_per_elem);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   } else {
-    r = xpu::as_strided<float>(dev_ctx.x_context(),
-                               real.data<float>(),
-                               real_out.data<float>(),
-                               common::vectorize<int64_t>(input.dims()),
-                               common::vectorize<int64_t>(input.strides()),
-                               0);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "as_strided");
-    r = xpu::as_strided<float>(dev_ctx.x_context(),
-                               imag.data<float>(),
-                               imag_out.data<float>(),
-                               common::vectorize<int64_t>(input.dims()),
-                               common::vectorize<int64_t>(input.strides()),
-                               0);
+    r = xpu::as_strided<int8_t>(dev_ctx.x_context(),
+                                input_bytes,
+                                output_bytes,
+                                bytes_shape,
+                                bytes_strides,
+                                0);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "as_strided");
   }
-  phi::ComplexKernel<float>(dev_ctx, real_out, imag_out, out);
 }
 #endif
 
