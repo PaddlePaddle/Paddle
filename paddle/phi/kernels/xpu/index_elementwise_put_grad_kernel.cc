@@ -51,8 +51,7 @@ void XPUIndexElementwisePutGradKernel(
 
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
-  std::array<std::vector<int64_t>, 3>
-      strides_vec;  // 经过IndexPutStride，三个stride vec会存放于此
+  std::array<std::vector<int64_t>, 3> strides_vec;
   std::vector<int64_t> value_dims;
   std::vector<int64_t> value_strides;
   // default value_ele_size when value_grad is nullptr

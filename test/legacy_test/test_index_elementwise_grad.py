@@ -144,7 +144,6 @@ class TestIndexElementwiseGradFloat16(TestIndexElementwiseGrad):
 
     def setUp(self):
         self.init()
-        # float16需要特殊处理
         self.x_np = np.random.random(self.x_shape).astype("float16")
         self.index_np = np.random.randint(
             2, size=self.index_shape, dtype="bool"
