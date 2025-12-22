@@ -811,36 +811,27 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     inplace_returns_pos_map[inplace_output],
                     inplace_args_pos_map[inplace_input],
                 )
-            if len(forward_outputs_position_map) == 1:
-                # single output
-                # map of output position and input arg name
-                return_str += "    std::map<ssize_t, std::vector<std::string>> inplace_var_name_map;"
-                if not need_parse_python_api_args:
-                    for (
-                        inplace_input,
-                        inplace_output,
-                    ) in forward_inplace_map.items():
-                        return_str += (
-                            RETURN_INPLACE_NAME_PYOBJECT_TEMPLATE.format(
-                                inplace_returns_pos_map[inplace_output],
-                                '{"' + inplace_input + '"}',
-                            )
-                        )
-                else:
-                    for (
-                        inplace_input,
-                        inplace_output,
-                    ) in forward_inplace_map.items():
-                        return_str += (
-                            RETURN_INPLACE_NAME_PYOBJECT_TEMPLATE.format(
-                                inplace_returns_pos_map[inplace_output],
-                                _get_keywords(inplace_input, args_alias_map),
-                            )
-                        )
-                return_str += "    return ToPyObject(ad_func_out, args, kwargs, inplace_var_idx_map, inplace_var_name_map);"
+            # map of output position and input arg name
+            return_str += "    std::map<ssize_t, std::vector<std::string>> inplace_var_name_map;"
+            if not need_parse_python_api_args:
+                for (
+                    inplace_input,
+                    inplace_output,
+                ) in forward_inplace_map.items():
+                    return_str += RETURN_INPLACE_NAME_PYOBJECT_TEMPLATE.format(
+                        inplace_returns_pos_map[inplace_output],
+                        '{"' + inplace_input + '"}',
+                    )
             else:
-                # multiple output
-                return_str += "    return ToPyObject(ad_func_out, args, inplace_var_idx_map);"
+                for (
+                    inplace_input,
+                    inplace_output,
+                ) in forward_inplace_map.items():
+                    return_str += RETURN_INPLACE_NAME_PYOBJECT_TEMPLATE.format(
+                        inplace_returns_pos_map[inplace_output],
+                        _get_keywords(inplace_input, args_alias_map),
+                    )
+            return_str += "    return ToPyObject(ad_func_out, args, kwargs, inplace_var_idx_map, inplace_var_name_map);"
 
             # Generate Python-C Function Definition
             python_c_inplace_func_str = PYTHON_C_FUNCTION_TEMPLATE.format(
