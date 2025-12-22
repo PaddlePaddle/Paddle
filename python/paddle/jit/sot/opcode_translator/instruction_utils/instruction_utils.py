@@ -99,20 +99,24 @@ def convert_instruction(instr: dis.Instruction) -> Instruction:
     )
 
 
-def replace_jump_target(instrs, old_target, new_target):
-    """Replace all jump targets pointing to old_target with new_target in the given list of instructions.
+def replace_jump_target(
+    instrs: list[Instruction],
+    replacements: dict[Instruction, Instruction],
+) -> None:
+    """Replace jump targets based on the replacements dictionary.
+
     Args:
         instrs (list[Instruction]): The list of instructions to modify.
-        old_target (Instruction): The old jump target to be replaced.
-        new_target (Instruction): The new jump target to replace with.
+        replacements (dict[Instruction, Instruction]): Mapping from old jump targets to new ones.
     """
     for instr in instrs:
-        if instr.jump_to == old_target:
-            instr.jump_to = new_target
+        if instr.jump_to in replacements:
+            instr.jump_to = replacements[instr.jump_to]
 
 
 def expand_super_instrs(instructions: list[Instruction]) -> list[Instruction]:
     expanded_instrs = []
+    replacements = {}
 
     def copy_instruction(
         instr, opname, argval, arg, is_jump_target, is_generated
@@ -145,7 +149,7 @@ def expand_super_instrs(instructions: list[Instruction]) -> list[Instruction]:
                 False,
                 False,
             )
-            replace_jump_target(instructions, instr, instr1)
+            replacements[instr] = instr1
             expanded_instrs.append(instr1)
             expanded_instrs.append(instr2)
         # If the LOAD_ATTR opcode will lead to load_method in 3.13+, we manually split it into two instructions,
@@ -171,15 +175,17 @@ def expand_super_instrs(instructions: list[Instruction]) -> list[Instruction]:
                 None,
                 is_generated=True,
             )
-            replace_jump_target(instructions, instr, instr1)
+            replacements[instr] = instr1
             expanded_instrs.append(instr1)
             expanded_instrs.append(instr2)
         else:
             expanded_instrs.append(instr)
+
+    replace_jump_target(expanded_instrs, replacements)
     return expanded_instrs
 
 
-def load_fast_borrow_patch(
+def replace_load_fast_borrow_with_strong_ref(
     instructions: list[Instruction],
 ) -> list[Instruction]:
     """
@@ -192,8 +198,7 @@ def load_fast_borrow_patch(
     crashes when the variable is accessed later.
     To avoid these issues, we replace LOAD_FAST_BORROW with LOAD_FAST here.
     """
-    if sys.version_info < (3, 14):
-        return instructions
+    replacements = {}
     expanded_instrs = []
     for instr in instructions:
         if instr.opname == "LOAD_FAST_BORROW":
@@ -206,10 +211,12 @@ def load_fast_borrow_patch(
                 is_jump_target=instr.is_jump_target,
                 jump_to=instr.jump_to,
             )
-            replace_jump_target(instructions, instr, instr1)
+            replacements[instr] = instr1
             expanded_instrs.append(instr1)
         else:
             expanded_instrs.append(instr)
+
+    replace_jump_target(expanded_instrs, replacements)
     return expanded_instrs
 
 
@@ -256,8 +263,13 @@ def get_instructions(code: types.CodeType) -> list[Instruction]:
     #         XX 388    <-  256 + 132
     # filter all EXTENDED_ARG here
     instrs = [x for x in instrs if x.opname != "EXTENDED_ARG"]
-    instrs = expand_super_instrs(instrs)
-    return load_fast_borrow_patch(instrs)
+    prepare_passes = [expand_super_instrs]
+    if sys.version_info >= (3, 14):
+        prepare_passes.append(replace_load_fast_borrow_with_strong_ref)
+
+    for pass_fn in prepare_passes:
+        instrs = pass_fn(instrs)
+    return instrs
 
 
 def modify_instrs(instructions: list[Instruction]) -> None:
