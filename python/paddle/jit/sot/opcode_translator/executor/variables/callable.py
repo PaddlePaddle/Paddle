@@ -1316,6 +1316,31 @@ class PureClassVariable(ClassVariable):
         return None
 
 
+class PaddleSizeClassVariable(ClassVariable):
+    def __init__(self, class_: type, graph: FunctionGraph, tracker: Tracker):
+        super().__init__(class_, graph, tracker)
+
+    def call_function(self, /, *args, **kwargs):
+        from ..function_graph import convert_to_py_value
+
+        py_args = convert_to_py_value(args)
+        py_kwargs = convert_to_py_value(kwargs)
+
+        size_obj = self.value(*py_args, **py_kwargs)
+
+        return VariableFactory.from_value(
+            size_obj,
+            self.graph,
+            tracker=CreateLayerTracker(self, args, kwargs),
+        )
+
+    @VariableFactory.register_from_value(successor="ClassVariable")
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if value is paddle.Size:
+            return PaddleSizeClassVariable(value, graph, tracker)
+        return None
+
+
 class DataClassVariable(ClassVariable):
     def __init__(
         self, class_: type[Any], graph: FunctionGraph, tracker: Tracker

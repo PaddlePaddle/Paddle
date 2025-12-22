@@ -290,7 +290,48 @@ class Dispatcher:
         """
         if not hashable(fn) or fn not in cls.handlers:
             return None
+
+        candidates = []
         for pattern, handler in cls.handlers[fn]:
             if pattern.match_inputs(*args, **kwargs):
-                return handler
-        return None
+                candidates.append((pattern, handler))
+
+        if not candidates:
+            return None
+
+        if len(candidates) == 1:
+            return candidates[0][1]
+
+        def calculate_score(pattern):
+            score = 0
+            try:
+                bound_args = pattern.signature.bind(*args, **kwargs)
+                for name, value in bound_args.arguments.items():
+                    param = pattern.parameters.get(name)
+                    if not param:
+                        continue
+
+                    expected_types = param.type
+                    actual_type = type(value)
+
+                    min_distance = float('inf')
+                    for t in expected_types:
+                        try:
+                            mro = inspect.getmro(actual_type)
+                            if t in mro:
+                                distance = mro.index(t)
+                                if distance < min_distance:
+                                    min_distance = distance
+                        except:
+                            pass
+
+                    if min_distance != float('inf'):
+                        score += min_distance
+            except:
+                return float('inf')
+
+            return score
+
+        candidates.sort(key=lambda x: calculate_score(x[0]))
+
+        return candidates[0][1]
