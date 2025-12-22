@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 from ..dcp.sharded_weight import ShardedWeightDesc
 from .lexer import Lexer
 from .parser import Parser
+from .traceback import AOATraceback
 
 _ShardInfo = dict[str, list[ShardedWeightDesc]]
 
@@ -143,7 +144,7 @@ class AOAShardInfoContext:
         )
 
         assert opt_state_name is None, (
-            "AOA notions apply only to the model state, but are automatically propagated to the optimizer state."
+            "AOA notions apply only to the model state, but are automatically propagated to the optimizer state.Now the src_state_key is {src_state_key}, which is a optimizer state key."
         )
         reverse = True
         if self.aoa_config_reverse:
@@ -178,7 +179,7 @@ class AOAShardInfoContext:
             return 1
         if len(shard_nums) > 1:
             raise AssertionError(
-                f"Inconsistent shard numbers among keys in source_sharded_state_dict: {shard_nums}."
+                f"Inconsistent shard numbers among keys in source_sharded_state_dict for the key {src_state_key}: shard_nums={shard_nums}."
             )
         return shard_nums.pop()
 
@@ -191,7 +192,7 @@ class AOAShardInfoContext:
         )
 
         assert opt_state_name is None, (
-            "AOA notions apply only to the model state, but are automatically propagated to the optimizer state."
+            "AOA notions apply only to the model state, but are automatically propagated to the optimizer state.Now the dst_state_key is {dst_state_key}, which is a optimizer state key."
         )
         reverse = False
         if self.aoa_config_reverse:
@@ -226,7 +227,7 @@ class AOAShardInfoContext:
             return 1
         if len(shard_nums) > 1:
             raise AssertionError(
-                f"Inconsistent shard numbers among keys in destination_state_shard_info: {shard_nums}."
+                f"Inconsistent shard numbers among keys in destination_state_shard_info for the key {dst_state_key}: shard_nums={shard_nums}."
             )
         return shard_nums.pop()
 
@@ -252,7 +253,7 @@ class AOAShardInfoContext:
 
         while current_key in mapping_dict:
             assert current_key not in visited, (
-                "Infinite loop detected in resolve_mapping_chain,which means the start key is not src_key or the end key is not dst_key, the aoa_config is error"
+                f"Infinite loop detected in resolve_mapping_chain, which means the start key is not src_key or the end key is not dst_key, the aoa_config is error. current_key={current_key}, the loop is: {'->'.join(visited)}->{current_key}"
             )
             visited.add(current_key)
             if reverse and current_key in self.get_all_src_state_keys():
@@ -282,16 +283,28 @@ class AOAEngine:
         self.aoa_config_reverse = self.aoa_config.get(
             "aoa_config_reverse", False
         )
+        enable_traceback = self.aoa_config.get("enable_traceback", True)
+        self.traceback = AOATraceback() if enable_traceback else None
         self.context = AOAShardInfoContext(
             source_state_shard_info,
             destination_state_shard_info,
             self.aoa_config_reverse,
         )
-        self.lexer = Lexer(self.context)
-        self.parser = Parser(
-            self.lexer.all_tokens(self.aoa_config.get("aoa_statements", []))
+        self.lexer = Lexer(self.context, traceback=self.traceback)
+        tokens = self.lexer.all_tokens(
+            self.aoa_config.get("aoa_statements", [])
         )
+        self.parser = Parser(tokens)
         self.statements = self.parser.parse_program()
+
+        if self.traceback and getattr(self.lexer, "final_expressions", None):
+            final_exprs = self.lexer.final_expressions
+            if len(final_exprs) == len(self.statements):
+                for expr, stmt in zip(final_exprs, self.statements):
+                    self.traceback.record_children(
+                        expr, [repr(stmt)], macro_name="parser"
+                    )
+
         if self.aoa_config_reverse:
             self.statements = list(reversed(self.statements))
         self.input_vars = self.build_input_vars()
@@ -413,7 +426,7 @@ class AOAEngine:
         shape[axis] = sum(t.shape[axis] for t in tensors)
         dtype = tensors[0].dtype
         assert all(t.dtype == dtype for t in tensors), (
-            "All tensors must have the same dtype!"
+            f"All tensors must have the same dtype when concatenating multiple tensors!But the tensors {tensors} have different dtypes: {[t.dtype for t in tensors]}."
         )
         curr = 0
         for t in tensors:
@@ -502,123 +515,153 @@ class AOAEngine:
                 raise ValueError(f"{var.name} should be assigned before!")
 
         for stmt in self.statements:
+            stmt_repr = repr(stmt)
             left_vars = stmt.left_vars
             right_vars = stmt.right_vars
             if self.aoa_config_reverse:
                 left_vars, right_vars = right_vars, left_vars
             attrs = stmt.attrs
-            if len(left_vars) > 1 or len(right_vars) > 1:
-                if not (len(attrs) == 1 and attrs[0].key == "axis"):
-                    raise ValueError(
-                        "When split/concat, only support one attr named `axis`"
-                    )
-                axis = attrs[0].value
 
-                if len(left_vars) == 1:
-                    in_name = left_vars[0].name
-                    in_ref = _get_var_ref(left_vars[0])
-                    assert in_ref.shape[axis] % len(right_vars) == 0
-                    sizes = [
-                        in_ref.shape[axis] // len(right_vars)
-                        for var in right_vars
-                    ]
-                    result = self.split(in_ref, axis, sizes)
-                    for out_var, out_ref in zip(right_vars, result):
-                        self.intermediate_vars[out_var.name] = out_ref
-                        if (
-                            out_var.name
-                            in self.context.get_all_dst_state_keys()
-                        ):
-                            self.output_vars[out_var.name] = out_ref
-
-                elif len(right_vars) == 1:
-                    left_refs = [_get_var_ref(var) for var in left_vars]
-                    result = self.concat(left_refs, axis)
-                    out_name = right_vars[0].name
-                    self.intermediate_vars[out_name] = result
-                    if out_name in self.context.get_all_dst_state_keys():
-                        self.output_vars[out_name] = result
-
-                else:
-                    raise SyntaxError(
-                        f'Unexpected split/concat statement: {stmt}'
-                    )
-
-            elif len(left_vars) == 1 and len(right_vars) == 1:
-                lvar, rvar = left_vars[0], right_vars[0]
-                if rvar.name == "_":
-                    self.need_remove_input_vars.add(lvar.name)
-                elif lvar.name == "_":
-                    self.need_add_output_vars.add(rvar.name)
-                else:
-                    if len(attrs) > 0:
-                        assert len(attrs) == 1 or (
-                            len(attrs) == 2
-                            and {attr.key for attr in attrs}
-                            == {"src_dtype", "dst_dtype"}
-                        ), (
-                            "Only support:\n"
-                            " - One operator, OR\n"
-                            " - Two operators with keys {'src_dtype', 'dst_dtype'}."
+            try:
+                if len(left_vars) > 1 or len(right_vars) > 1:
+                    if not (len(attrs) == 1 and attrs[0].key == "axis"):
+                        raise ValueError(
+                            f"When split/concat, only support one attr named `axis`, but got {attrs}."
                         )
-                        attr = attrs[0]
-                        in_ref = _get_var_ref(lvar)
-                        if attr.key == "permute":
-                            if attr.value == "[]":
-                                ndim = len(in_ref.shape)
-                                perm = str(list(range(ndim - 1, -1, -1)))
-                            else:
-                                perm = attr.value
-                                if self.aoa_config_reverse:
-                                    perm = str(
-                                        invert_permutation(
-                                            ast.literal_eval(perm)
-                                        )
-                                    )
-                            result = self.transpose(in_ref, perm)
-                        elif attr.key == "dtype":
-                            assert not self.aoa_config_reverse, (
-                                "When `aoa_config_reverse=True`, the dtype must be specified as "
-                                "'src_dtype=...,dst_dtype=...'. Formats like 'dtype=xxx' are not supported."
-                            )
-                            assert attr.value in SUPPORTED_DTYPES, (
-                                f"Unsupported cast dtype: {attr.value}"
-                            )
-                            result = self.cast(in_ref, attr.value)
-                        elif (
-                            attrs[0].key == "src_dtype"
-                            and attrs[1].key == "dst_dtype"
-                        ):
-                            src_dtype, dst_dtype = (
-                                attrs[0].value,
-                                attrs[1].value,
-                            )
-                            assert src_dtype in SUPPORTED_DTYPES, (
-                                f"Unsupported cast dtype: {src_dtype}"
-                            )
-                            assert dst_dtype in SUPPORTED_DTYPES, (
-                                f"Unsupported cast dtype: {dst_dtype}"
-                            )
-                            if self.aoa_config_reverse:
-                                src_dtype, dst_dtype = dst_dtype, src_dtype
-                            result = self.cast(in_ref, dst_dtype)
-                        elif attr.key == "axis":
-                            result = in_ref
-                        else:
-                            raise ValueError(f"Unsupported attribute: {attr}")
+                    axis = attrs[0].value
 
-                        self.intermediate_vars[rvar.name] = result
-                        if rvar.name in self.context.get_all_dst_state_keys():
-                            self.output_vars[rvar.name] = result
+                    if len(left_vars) == 1:
+                        in_name = left_vars[0].name
+                        in_ref = _get_var_ref(left_vars[0])
+                        assert in_ref.shape[axis] % len(right_vars) == 0, (
+                            f"when split, the shape of the input tensor {in_name} is {in_ref.shape}, the axis is {axis}, the number of right_vars is {len(right_vars)}, but the shape of the input tensor {in_name} is not divisible by the number of right_vars."
+                        )
+                        sizes = [
+                            in_ref.shape[axis] // len(right_vars)
+                            for var in right_vars
+                        ]
+                        result = self.split(in_ref, axis, sizes)
+                        for out_var, out_ref in zip(right_vars, result):
+                            self.intermediate_vars[out_var.name] = out_ref
+                            if (
+                                out_var.name
+                                in self.context.get_all_dst_state_keys()
+                            ):
+                                self.output_vars[out_var.name] = out_ref
+
+                    elif len(right_vars) == 1:
+                        left_refs = [_get_var_ref(var) for var in left_vars]
+                        result = self.concat(left_refs, axis)
+                        out_name = right_vars[0].name
+                        self.intermediate_vars[out_name] = result
+                        if out_name in self.context.get_all_dst_state_keys():
+                            self.output_vars[out_name] = result
+
                     else:
-                        # rename operation
-                        in_ref = _get_var_ref(lvar)
-                        result = self.identity(in_ref)
-                        self.intermediate_vars[rvar.name] = result
-                        if rvar.name in self.context.get_all_dst_state_keys():
-                            self.output_vars[rvar.name] = result
-            else:
-                raise SyntaxError(f'Unexpected statement: {stmt}')
+                        raise SyntaxError(
+                            f'Unexpected split/concat statement: {stmt}'
+                        )
+
+                elif len(left_vars) == 1 and len(right_vars) == 1:
+                    lvar, rvar = left_vars[0], right_vars[0]
+                    if rvar.name == "_":
+                        self.need_remove_input_vars.add(lvar.name)
+                    elif lvar.name == "_":
+                        self.need_add_output_vars.add(rvar.name)
+                    else:
+                        if len(attrs) > 0:
+                            assert len(attrs) == 1 or (
+                                len(attrs) == 2
+                                and {attr.key for attr in attrs}
+                                == {"src_dtype", "dst_dtype"}
+                            ), (
+                                "Only support:\n"
+                                " - One operator, OR\n"
+                                " - Two operators with keys {'src_dtype', 'dst_dtype'}."
+                            )
+                            attr = attrs[0]
+                            in_ref = _get_var_ref(lvar)
+                            if attr.key == "permute":
+                                if attr.value == "[]":
+                                    ndim = len(in_ref.shape)
+                                    perm = str(list(range(ndim - 1, -1, -1)))
+                                else:
+                                    perm = attr.value
+                                    if self.aoa_config_reverse:
+                                        perm = str(
+                                            invert_permutation(
+                                                ast.literal_eval(perm)
+                                            )
+                                        )
+                                result = self.transpose(in_ref, perm)
+                            elif attr.key == "dtype":
+                                assert not self.aoa_config_reverse, (
+                                    "When `aoa_config_reverse=True`, the dtype must be specified as "
+                                    "'src_dtype=...,dst_dtype=...'. Formats like 'dtype=xxx' are not supported."
+                                )
+                                assert attr.value in SUPPORTED_DTYPES, (
+                                    f"Unsupported cast dtype: {attr.value}"
+                                )
+                                result = self.cast(in_ref, attr.value)
+                            elif (
+                                attrs[0].key == "src_dtype"
+                                and attrs[1].key == "dst_dtype"
+                            ):
+                                src_dtype, dst_dtype = (
+                                    attrs[0].value,
+                                    attrs[1].value,
+                                )
+                                assert src_dtype in SUPPORTED_DTYPES, (
+                                    f"Unsupported cast dtype: {src_dtype}"
+                                )
+                                assert dst_dtype in SUPPORTED_DTYPES, (
+                                    f"Unsupported cast dtype: {dst_dtype}"
+                                )
+                                if self.aoa_config_reverse:
+                                    src_dtype, dst_dtype = dst_dtype, src_dtype
+                                result = self.cast(in_ref, dst_dtype)
+                            elif attr.key == "axis":
+                                result = in_ref
+                            else:
+                                raise ValueError(
+                                    f"Unsupported attribute: {attr}"
+                                )
+
+                            self.intermediate_vars[rvar.name] = result
+                            if (
+                                rvar.name
+                                in self.context.get_all_dst_state_keys()
+                            ):
+                                self.output_vars[rvar.name] = result
+                        else:
+                            # rename operation
+                            in_ref = _get_var_ref(lvar)
+                            result = self.identity(in_ref)
+                            self.intermediate_vars[rvar.name] = result
+                            if (
+                                rvar.name
+                                in self.context.get_all_dst_state_keys()
+                            ):
+                                self.output_vars[rvar.name] = result
+                else:
+                    raise SyntaxError(f'Unexpected statement: {stmt}')
+            except (
+                AssertionError,
+                ValueError,
+                KeyError,
+                SyntaxError,
+                RuntimeError,
+            ) as e:
+                if self.traceback:
+                    chain = self.traceback.build_chain(stmt_repr)
+                    self.traceback.add_error(
+                        error_message=str(e),
+                        stage="shape_propagation",
+                        chain=chain,
+                        error_type=type(e).__name__,
+                    )
+                    self.traceback.print()
+                raise
         if self.destination_state_shard_info is not None:
             for name in self.destination_state_shard_info:
                 model_state_key, _ = split_optimizer_state_key(name)
@@ -648,12 +691,17 @@ class AOAEngine:
     def find_source_slices(
         self, key: str, local_slice: tuple[slice, ...]
     ) -> list[SliceRef]:
-        assert key in self.output_vars
+        assert key in self.output_vars, (
+            f"The key {key} is not in the output_vars (which is built during load_state_dict)."
+        )
         tensor = self.output_vars[key]
         if tensor is None:
             return []
         results = []
-        assert len(local_slice) == len(tensor.shape)
+        assert len(local_slice) == len(tensor.shape), (
+            f"For the key {key}, the target_tensor has {len(local_slice)} dimensions, "
+            f"but the tensor in output_vars has {len(tensor.shape)} dimensions (shape={tensor.shape}). "
+        )
         ndim = len(tensor.shape)
 
         def slice_intersect(a: slice, b: slice):
@@ -718,7 +766,9 @@ class AOAEngine:
         target_global_shape = target.global_shape
 
         if opt_state_name in [".beta1_pow_acc_0", ".beta2_pow_acc_0"]:
-            assert target_key in self.output_vars
+            assert target_key in self.output_vars, (
+                f"The key {target_key} is not in the output_vars (which is built during load_state_dict)."
+            )
             tensor = self.output_vars[target_key]
             target_local_shape = tensor.shape
             target_global_offset = (0,) * len(target_local_shape)
@@ -779,7 +829,9 @@ class AOAEngine:
                         pp_list
                     ), (
                         "Direct assignment of Tensors with different types is prohibited in AOA. "
-                        "If you want to achieve this functionality, please use the cast semantics provided by AOA."
+                        f"If you want to achieve this functionality, please use the cast semantics provided by AOA. "
+                        f"Now the src_var.dtype is {src_var.dtype}, the target.dtype is {target.dtype}, the pp_list is {pp_list}."
+                        f"The src_key is {src_key}, the target_key is {target.key}."
                     )
             else:
                 src_var.dtype = target.dtype

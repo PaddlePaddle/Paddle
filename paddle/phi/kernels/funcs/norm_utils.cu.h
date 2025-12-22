@@ -450,7 +450,7 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
   const T *ddscale_data = (ddScale == nullptr ? nullptr : ddScale->data<T>());
   const T *ddbias_data = (ddBias == nullptr ? nullptr : ddBias->data<T>());
 
-  phi::funcs::SetConstant<DeviceContext, T> set_constant;
+  funcs::SetConstant<DeviceContext, T> set_constant;
 
   auto &x_dims = X->dims();
   const int C =
@@ -754,12 +754,12 @@ void SetLaunchConfigInfoForChannelLast(const Context &dev_ctx,
   const int64_t MAX_GRID_SIZE = 128;
   const int64_t WARP_SIZE = 32;
 
-  int block_x = std::min(phi::funcs::details::GetLastPow2(C), WARP_SIZE);
-  int block_y = std::min(phi::funcs::details::GetLastPow2(
-                             static_cast<int64_t>(N) * H * W * D / 16),
-                         static_cast<int64_t>(block_size / block_x));
+  int block_x = std::min(funcs::details::GetLastPow2(C), WARP_SIZE);
+  int block_y = std::min(
+      funcs::details::GetLastPow2(static_cast<int64_t>(N) * H * W * D / 16),
+      static_cast<int64_t>(block_size / block_x));
   if (block_x * block_y != block_size) {
-    block_x = std::min(phi::funcs::details::GetLastPow2(C),
+    block_x = std::min(funcs::details::GetLastPow2(C),
                        static_cast<int64_t>(block_size / block_y));
   }
   int grid_x = (C + block_x - 1) / block_x;

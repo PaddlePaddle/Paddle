@@ -356,6 +356,20 @@ if [ "${HAS_MODIFIED_DY2ST_TEST_TENSOR_ATTR_CONSISTENCY}" != "" ] && [ "${PR_ID}
     check_approval 1 SigureMo DrRyanHuang zrr1999 gouzil
 fi
 
+HAS_MODIFIED_PY_OR_CPP_FILES=$(git diff --name-only upstream/$BRANCH | grep -E "(python|paddle)/.*\.(cc|h|py)" || true)
+if [ "${HAS_MODIFIED_PY_OR_CPP_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
+    error_lines=`python ${PADDLE_ROOT}/tools/check_code_block_format.py ${HAS_MODIFIED_PY_OR_CPP_FILES}`
+    if [ $? -ne 0 ]; then
+        echo_line="Your PR added code blocks are not in standard format, please check:\n"
+        echo_line=${echo_line}"Errors are as follows:\n"
+        echo_line=${echo_line}${error_lines}"\n"
+        echo_line=${echo_line}"You can run following command to fix the errors:\n"
+        echo_line=${echo_line}"    python tools/check_code_block_format.py "$(echo ${HAS_MODIFIED_PY_OR_CPP_FILES} | tr "\n" " ")"\n"
+        echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (sunzhongkai588, SigureMo, ooooo-create) approval for the changes.\n"
+        check_approval 1 sunzhongkai588 SigureMo ooooo-create
+    fi
+fi
+
 PY_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- python |grep "^+")
 PY_FILE_USE_TYPE_IGNORE=`echo $PY_FILE_ADDED_LINES | grep -B5 --no-group-separator ">>>\s*#\s*type:\s*ignore" || true`
 if [ "${PY_FILE_USE_TYPE_IGNORE}" != "" ] && [ "${PR_ID}" != "" ]; then

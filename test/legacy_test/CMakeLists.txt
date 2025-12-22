@@ -575,6 +575,7 @@ if(NOT WITH_GPU
    OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 11.8))
 )# Restrict the use of older versions of CUB
   list(REMOVE_ITEM TEST_OPS test_incubate_fused_rmsnorm_ext)
+  list(REMOVE_ITEM TEST_OPS test_rms_norm)
 endif()
 
 if(NOT WITH_GPU

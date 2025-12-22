@@ -538,7 +538,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                   (expected_kernel_key.data_layout_ != DataLayout::ONEDNN)) {
                 VLOG(7) << "Created reshaped dummy input based on MKL-DNN "
                            "phi::DenseTensor , "
-                           "but kNHWC layout"
+                           "but NHWC layout"
                         << parameter_name << " in Operator " << op_base->Type();
                 auto op = TransferLayout(
                     var_name,

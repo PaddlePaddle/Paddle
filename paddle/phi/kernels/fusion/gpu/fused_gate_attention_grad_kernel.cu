@@ -48,7 +48,7 @@ struct SigmoidMultiplyGradFunctor {
 template <typename T>
 void ComputeMergedQKVMatmulBackward(
     const GPUContext &dev_ctx,
-    const phi::funcs::GateAttentionGradConfig<T> &config,
+    const funcs::GateAttentionGradConfig<T> &config,
     const phi::DenseTensor *query,
     const phi::DenseTensor *qkv_out_grad,
     phi::DenseTensor *query_grad,
@@ -76,7 +76,7 @@ void ComputeMergedQKVMatmulBackward(
 template <typename T>
 void ComputeSeparatedQKVMatmulBackward(
     const phi::GPUContext &dev_ctx,
-    const phi::funcs::GateAttentionGradConfig<T> &config,
+    const funcs::GateAttentionGradConfig<T> &config,
     const phi::DenseTensor *query,
     const phi::DenseTensor *key,
     const phi::DenseTensor *query_out_grad,
@@ -136,7 +136,7 @@ void ComputeSeparatedQKVMatmulBackward(
 template <typename T>
 void ComputeGatingLinearBackward(
     const GPUContext &dev_ctx,
-    const phi::funcs::GateAttentionGradConfig<T> &config,
+    const funcs::GateAttentionGradConfig<T> &config,
     const phi::DenseTensor *query,
     const phi::DenseTensor *fmha_out,
     const phi::DenseTensor *gate_out_grad,
@@ -172,7 +172,7 @@ void ComputeGatingLinearBackward(
   std::vector<const phi::DenseTensor *> ins = {
       gate_out_grad, &gate_bias_out, fmha_out};
   std::vector<phi::DenseTensor *> outs = {&gate_bias_out, fmha_out_grad};
-  phi::funcs::ElementwiseKernel<T, SigmoidMultiplyGradFunctor<T>, 2>(
+  funcs::ElementwiseKernel<T, SigmoidMultiplyGradFunctor<T>, 2>(
       dev_ctx, ins, &outs, SigmoidMultiplyGradFunctor<T>());
 
   // Gradient of GEMM(query, gate_weight) + gate_bias
@@ -192,7 +192,7 @@ void ComputeGatingLinearBackward(
 template <typename T>
 void ComputeOutputLinearBackward(
     const GPUContext &dev_ctx,
-    const phi::funcs::GateAttentionGradConfig<T> &config,
+    const funcs::GateAttentionGradConfig<T> &config,
     const phi::DenseTensor *input,
     phi::DenseTensor *input_grad,
     bool use_fused_matmul_bias,
@@ -276,25 +276,25 @@ void FusedGateAttentionGradKernel(
   const auto *gate_out = gate_out_in.get_ptr();
 
   bool use_fused_matmul_bias = true;
-  phi::funcs::AllocWithDebugInfo<T>(dev_ctx, "query_grad", query_grad);
+  funcs::AllocWithDebugInfo<T>(dev_ctx, "query_grad", query_grad);
 
-  phi::funcs::GateAttentionGradConfig<T> config(dev_ctx,
-                                                query,
-                                                key,
-                                                query_weight,
-                                                qkv_weight,
-                                                merge_qkv,
-                                                has_gating,
-                                                use_flash_attn);
+  funcs::GateAttentionGradConfig<T> config(dev_ctx,
+                                           query,
+                                           key,
+                                           query_weight,
+                                           qkv_weight,
+                                           merge_qkv,
+                                           has_gating,
+                                           use_flash_attn);
 
   phi::DenseTensor fmha_out_grad;
   fmha_out_grad.Resize(config.gate_out_dims);
-  phi::funcs::AllocWithDebugInfo<T>(dev_ctx, "fmha_out_grad", &fmha_out_grad);
+  funcs::AllocWithDebugInfo<T>(dev_ctx, "fmha_out_grad", &fmha_out_grad);
   if (has_gating) {
     // 1. Gradient of Output Linear: out = Linear(gate_out)
     phi::DenseTensor gate_out_grad;
     gate_out_grad.Resize(config.gate_out_dims);
-    phi::funcs::AllocWithDebugInfo<T>(dev_ctx, "gate_out_grad", &gate_out_grad);
+    funcs::AllocWithDebugInfo<T>(dev_ctx, "gate_out_grad", &gate_out_grad);
     ComputeOutputLinearBackward<T>(dev_ctx,
                                    config,
                                    gate_out,
@@ -334,7 +334,7 @@ void FusedGateAttentionGradKernel(
 
   // 3. Gradient of FMHA
   if (nonbatched_bias_grad) {
-    phi::funcs::AllocWithDebugInfo<T>(
+    funcs::AllocWithDebugInfo<T>(
         dev_ctx, "nonbatched_bias_grad", nonbatched_bias_grad);
   }
 
@@ -343,7 +343,7 @@ void FusedGateAttentionGradKernel(
     const auto *src_mask = src_mask_in.get_ptr();
     const auto *softmax_lse = softmax_lse_in.get_ptr();
 
-    auto fmha_compute = phi::funcs::FlashAttnWithGating<T>(dev_ctx, merge_qkv);
+    auto fmha_compute = funcs::FlashAttnWithGating<T>(dev_ctx, merge_qkv);
     fmha_compute.ComputeBackward(qkv_transpose_out,
                                  src_mask,
                                  nonbatched_bias,
@@ -356,7 +356,7 @@ void FusedGateAttentionGradKernel(
   } else {
     const auto *softmax_out = softmax_out_in.get_ptr();
 
-    auto fmha_compute = phi::funcs::FMHAGateRef<T>(dev_ctx, merge_qkv);
+    auto fmha_compute = funcs::FMHAGateRef<T>(dev_ctx, merge_qkv);
     fmha_compute.ComputeBackward(q_transpose_out,
                                  k_transpose_out,
                                  v_transpose_out,
@@ -383,7 +383,7 @@ void FusedGateAttentionGradKernel(
   } else {
     // 4. Gradient of Separated QKV Matmul
     if (key_grad) {
-      phi::funcs::AllocWithDebugInfo<T>(dev_ctx, "key_grad", key_grad);
+      funcs::AllocWithDebugInfo<T>(dev_ctx, "key_grad", key_grad);
     }
     phi::DenseTensor *query_out_grad = config.GetQueryOutGrad();
     phi::DenseTensor *key_out_grad = config.GetKeyOutGrad();

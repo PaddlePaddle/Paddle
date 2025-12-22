@@ -104,10 +104,10 @@ void Expand(const Context& dev_ctx,
   // use 32-bit index to speed up
   bool use_32bit_index = y.size() < Eigen::NumTraits<int>::highest();
   if (use_32bit_index) {
-    phi::funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+    funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
         place, To32BitIndex(y), To32BitIndex(x0), bcast_dims);
   } else {
-    phi::funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+    funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
         place, y, x0, bcast_dims);
   }
 }

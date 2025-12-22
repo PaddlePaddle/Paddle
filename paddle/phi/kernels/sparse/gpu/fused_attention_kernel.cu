@@ -72,16 +72,16 @@ __global__ void AttnSoftmaxGpuKernel(const int64_t* x_crows,
       out_values[row_first + idx] = -std::numeric_limits<T>::infinity();
     }
   }
-  T row_max_val = phi::funcs::WarpReduceMax<T>(max_val, 0xFFFFFFFF);
+  T row_max_val = funcs::WarpReduceMax<T>(max_val, 0xFFFFFFFF);
 
   T exp_sum = 0;
   for (int idx = threadIdx.x; idx < row_nnz; idx += blockDim.x) {
-    auto functor = phi::funcs::CudaExpFunctor<T>();
+    auto functor = funcs::CudaExpFunctor<T>();
     T exp = functor(out_values[row_first + idx] - row_max_val);
     exp_sum += exp;
     out_values[row_first + idx] = exp;
   }
-  T row_exp_sum = phi::funcs::WarpReduceSum<T>(exp_sum, 0xFFFFFFFF);
+  T row_exp_sum = funcs::WarpReduceSum<T>(exp_sum, 0xFFFFFFFF);
 
   for (int idx = threadIdx.x; idx < row_nnz; idx += blockDim.x) {
     out_values[row_first + idx] = out_values[row_first + idx] / row_exp_sum;
@@ -187,7 +187,7 @@ void FusedAttentionCsrKernel(
   /* Step1: SDD Matmul, reuse matmul */
   SparseCsrTensor sdd_result;
   EmptyLikeCsrKernel<T, Context>(dev_ctx, sparse_mask, &sdd_result);
-  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SDDMM(false,
                     true,
                     static_cast<T>(1 / std::sqrt(N)),

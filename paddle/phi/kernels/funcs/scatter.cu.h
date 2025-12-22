@@ -195,7 +195,7 @@ void GPUScatterAssign(const phi::GPUContext& dev_ctx,
   int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
 
   auto src_dims = src.dims();
-  phi::DDim output_dims = output->dims();
+  DDim output_dims = output->dims();
 
   // slice size
   size_t slice_size = 1;
@@ -376,7 +376,7 @@ inline IdxVec ensure_nonempty_vec(IdxVec vec) {
   return vec;
 }
 
-inline phi::DDim ensure_nonempty_ddim(phi::DDim dim) {
+inline DDim ensure_nonempty_ddim(DDim dim) {
   if (dim.size() == 0) {
     return phi::make_ddim({1});
   }

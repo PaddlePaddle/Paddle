@@ -43,10 +43,10 @@ static void inline PrepareSamples(const Context &dev_ctx,
   auto sample_labels_dims = sample_labels->dims();
   int64_t *sample_labels_data = dev_ctx.template Alloc<int64_t>(sample_labels);
 
-  int num_label = label_dims.size() == 2 ? label_dims[1] : 1;
-  int index = 0;
+  int64_t num_label = label_dims.size() == 2 ? label_dims[1] : 1;
+  int64_t index = 0;
   for (int64_t i = 0; i < label_dims[0]; ++i) {
-    int j = 0;
+    int64_t j = 0;
     for (; j < num_label; ++j) {
       sample_labels_data[index++] = label_data[i * num_label + j];
     }
@@ -159,7 +159,7 @@ void NCEKernel(const Context &dev_ctx,
   phi::DenseTensor sample_labels_tmp, sample_out_tmp;
   if (is_test) {
     // set dims of output(SampleOut)
-    int num_true_classes = label->dims().size() == 2 ? label->dims()[1] : 1;
+    int64_t num_true_classes = label->dims().size() == 2 ? label->dims()[1] : 1;
     sample_out_dims.push_back(input_in.dims()[0]);
     sample_out_dims.push_back(
         (num_true_classes == -1) ? -1 : (num_neg_samples + num_true_classes));
@@ -178,7 +178,7 @@ void NCEKernel(const Context &dev_ctx,
       dev_ctx, sampler, sample_labels, label_in, custom_neg_classes);
   const int64_t *sample_labels_data = sample_labels->data<int64_t>();
 
-  for (int x = 0; x < sample_labels->numel(); x++) {
+  for (int64_t x = 0; x < sample_labels->numel(); x++) {
     PADDLE_ENFORCE_GE(sample_labels_data[x],
                       0,
                       common::errors::InvalidArgument(

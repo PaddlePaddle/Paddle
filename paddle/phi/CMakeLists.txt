@@ -150,7 +150,7 @@ if(WITH_AVX
    AND WITH_MKL)
   set_source_files_properties(
     kernels/fusion/cpu/fused_layer_norm_avx_kernel.cc
-    kernels/fusion/cpu/rms_norm_avx_kernel.cc
+    kernels/fusion/cpu/fused_rms_norm_quant_avx_kernel.cc
     PROPERTIES
       COMPILE_FLAGS
       "${Wno_Maybe_Uninitialized} ${FMA_FLAG} ${AVX512F_FLAG} ${NO_INLINE}")
@@ -189,6 +189,15 @@ elseif(WITH_ROCM)
     phi_gpu ${PHI_BUILD_TYPE}
     SRCS ${PHI_GPU_SRCS}
     DEPS ${PHI_DEPS} phi_core)
+  if(WITH_MAGMA
+     AND EXISTS "${ROCM_PATH}/lib/librocsolver.so"
+     AND EXISTS "${ROCM_PATH}/lib/librocblas.so")
+    target_link_libraries(
+      phi_gpu ${ROCM_PATH}/lib/librocsolver.so ${ROCM_PATH}/lib/librocblas.so
+      -Wl,--exclude-libs,libomp.so)
+  else()
+    message(WARNING "rocsolver.so or rocblas.so not found, skipping linking.")
+  endif()
 elseif(WITH_XPU_KP)
   xpu_library(
     phi_core ${PHI_BUILD_TYPE}

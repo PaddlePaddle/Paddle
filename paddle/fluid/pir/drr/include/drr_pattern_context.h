@@ -333,8 +333,8 @@ class TEST_API ResultPattern {
   // {"undefined", phi::Place{}}};
   Attribute PlaceAttr(const std::string& value) const;
 
-  // {"NHWC", phi::DataLayout::kNHWC},
-  // {"NCHW", phi::DataLayout::kNCHW},
+  // {"NHWC", phi::DataLayout::NHWC},
+  // {"NCHW", phi::DataLayout::NCHW},
   // {"Undefined", phi::DataLayout::kAnyLayout},
   // {"ONEDNN", phi::DataLayout::ONEDNN},
   // {"SPARSE_COO", phi::DataLayout::SPARSE_COO},

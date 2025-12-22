@@ -40,9 +40,9 @@ __global__ void CrossEntropyKernel(T* Y,
                    D,
                    ignore_index,
                    lbl);
-    Y[i] = ignore_index == lbl ? static_cast<T>(0)
-                               : -phi::funcs::TolerableValue<T>()(
-                                     phi::funcs::real_log(X[i * D + lbl]));
+    Y[i] = ignore_index == lbl
+               ? static_cast<T>(0)
+               : -funcs::TolerableValue<T>()(funcs::real_log(X[i * D + lbl]));
   }
 }
 
@@ -57,8 +57,7 @@ __global__ void SoftCrossEntropyKernel(T* Y,
   int64_t idx = static_cast<int64_t>(blockIdx.x) * class_num + tid;
   int64_t end = static_cast<int64_t>(blockIdx.x) * class_num + class_num;
   for (; idx < end; idx += blockDim.x) {
-    val += phi::funcs::TolerableValue<T>()(phi::funcs::real_log(X[idx])) *
-           label[idx];
+    val += funcs::TolerableValue<T>()(funcs::real_log(X[idx])) * label[idx];
   }
 
   val = phi::backends::gpu::reduceSum(val, tid, blockDim.x);

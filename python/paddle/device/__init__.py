@@ -488,7 +488,8 @@ class device:
         device (paddle.Place, int or str): device index to select.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
+
             >>> import paddle
 
             >>> print(paddle.device.get_device())  # gpu:0
@@ -895,12 +896,13 @@ def get_device_module(device: _CustomPlaceLike = None):
                       or if no matching device module is found.
 
     Example:
-        .. code-block:: python
-        >>> paddle.get_device_module("gpu:0")
-        <module 'paddle.cuda' ...>
+        .. code-block:: pycon
 
-        >>> # paddle.get_device_module(paddle.XPUPlace(0))
-        >>> # <module 'paddle.device.xpu' ...>
+            >>> paddle.get_device_module("gpu:0")
+            <module 'paddle.cuda' ...>
+
+            >>> # paddle.get_device_module(paddle.XPUPlace(0))
+            >>> # <module 'paddle.device.xpu' ...>
     """
     device = _device_to_paddle(device)
     if isinstance(device, str):
@@ -1801,12 +1803,15 @@ class device_guard:
 def synchronize(device: PlaceLike | None = None) -> None:
     """
     Wait for the compute on the given device to finish.
+
     Args:
         device(str|paddle.CUDAPlace(n)|paddle.XPUPlace(n)|paddle.CustomPlace(n)): The device which want to wait for.  If device is None, the device is the current device. Default: None.
             It can be ``gpu``, ``gpu:x``, ``xpu``, ``xpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevice,
             where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.XPUPlace(n) or paddle.CustomPlace(n).
+
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
+
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
             >>> import paddle
             >>> paddle.set_device('custom_cpu')

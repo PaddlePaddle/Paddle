@@ -461,6 +461,16 @@ class ProcessGroup {
     return AllReduce(outputs.data(), inputs.front(), options, sync_op);
   }
 
+  virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
+      std::vector<phi::DenseTensor>& inputs,   // NOLINT
+      std::vector<phi::DenseTensor>& outputs,  // NOLINT
+      const AllreduceOptions& options,
+      bool use_calc_stream,
+      bool sync_op) {
+    return AllReduce(
+        outputs.data(), inputs.front(), options, use_calc_stream, sync_op);
+  }
+
   // TODO(sunyilun): methods below will be removed later
   virtual std::shared_ptr<ProcessGroup::Task> Broadcast(
       std::vector<phi::DenseTensor>& inputs,   // NOLINT
@@ -498,6 +508,15 @@ class ProcessGroup {
       std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
       bool sync_op) {
     return AllGather(out_tensors.data(), in_tensors.front(), sync_op);
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> AllGather(
+      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
+      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
+      bool use_calc_stream,
+      bool sync_op) {
+    return AllGather(
+        out_tensors.data(), in_tensors.front(), use_calc_stream, sync_op);
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllToAll(

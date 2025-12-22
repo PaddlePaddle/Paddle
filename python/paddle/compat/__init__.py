@@ -21,13 +21,14 @@ from typing_extensions import overload
 import paddle
 from paddle import _C_ops
 from paddle.base import core
+from paddle.base.data_feeder import promote_types
 from paddle.base.framework import Variable
 from paddle.framework import (
     in_dynamic_mode,
 )
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
-from . import nn  # noqa: F401
+from . import nn as nn
 from .proxy import (  # noqa: F401
     disable_torch_proxy,
     enable_torch_proxy,
@@ -59,40 +60,6 @@ __all__ = [
 def __getattr__(name):
     if name == "paddle_triton":
         return paddle_triton_fun()
-
-
-_types = [
-    paddle.uint8,
-    paddle.int8,
-    paddle.int16,
-    paddle.int32,
-    paddle.int64,
-    paddle.float16,
-    paddle.float32,
-    paddle.float64,
-    paddle.bool,
-    paddle.bfloat16,
-]
-u1, i1, i2, i4, i8, f2, f4, f8, b1, bf = _types
-
-_promote_matrix = [
-    [u1, i2, i2, i4, i8, f2, f4, f8, u1, bf],  # u1
-    [i2, i1, i2, i4, i8, f2, f4, f8, i1, bf],  # i1
-    [i2, i2, i2, i4, i8, f2, f4, f8, i2, bf],  # i2
-    [i4, i4, i4, i4, i8, f2, f4, f8, i4, bf],  # i4
-    [i8, i8, i8, i8, i8, f2, f4, f8, i8, bf],  # i8
-    [f2, f2, f2, f2, f2, f2, f4, f8, f2, f4],  # f2
-    [f4, f4, f4, f4, f4, f4, f4, f8, f4, f4],  # f4
-    [f8, f8, f8, f8, f8, f8, f8, f8, f8, f8],  # f8
-    [u1, i1, i2, i4, i8, f2, f4, f8, b1, bf],  # b1
-    [bf, bf, bf, bf, bf, f4, f4, f8, bf, bf],  # bf
-]
-
-PROMOTE_DICT = {
-    (t1, t2): _promote_matrix[i][j]
-    for i, t1 in enumerate(_types)
-    for j, t2 in enumerate(_types)
-}
 
 
 @ForbidKeywordsDecorator(
@@ -132,7 +99,7 @@ def equal(
     if input.dtype == other.dtype:
         return paddle.equal_all(input, other).item()
 
-    common_dtype = PROMOTE_DICT.get(input.dtype, other.dtype)
+    common_dtype = promote_types(input.dtype, other.dtype)
     if input.dtype != common_dtype:
         input = input.cast(common_dtype)
     if other.dtype != common_dtype:

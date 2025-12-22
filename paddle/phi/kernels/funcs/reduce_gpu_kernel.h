@@ -37,7 +37,13 @@
 #include "paddle/phi/kernels/reduce_min_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
+#include "paddle/phi/kernels/primitive/reduce_primitives.h"
+
+#ifdef PADDLE_WITH_HIP
+#define WARP_SIZE 64
+#else
 #define WARP_SIZE 32
+#endif
 
 // The GPUReduceScheduler splits tensors with indices exceeding 32-bit range to
 // ensure that all incoming tensors can be addressed within 32-bit index space.
@@ -616,7 +622,6 @@ struct ReduceExecutor {
   ReduceOp reducer;
   ReduceConfig config;
   MPType ident;
-  MPType factor;
 
   // Data access calculators for input and output indexing.
   InputCalculator input_calc;
@@ -640,7 +645,6 @@ struct ReduceExecutor {
   ReduceExecutor(ReduceOp reducer,
                  ReduceConfig config,
                  MPType ident,
-                 MPType factor,
                  InputCalculator input_calc,
                  OutputCalculator output_calc,
                  const void* src,
@@ -656,7 +660,6 @@ struct ReduceExecutor {
       : reducer(reducer),
         config(config),
         ident(ident),
-        factor(factor),
         input_calc(input_calc),
         output_calc(output_calc),
         src(src),
@@ -741,7 +744,7 @@ struct ReduceExecutor {
         if (accumulate) {
 #pragma unroll
           for (int i = 0; i < kOutputVecSize; i++) {
-            value[i] = reducer((*acc)[i], value[i]);
+            value[i] = reducer.reduce((*acc)[i], value[i]);
           }
         }
         if (final_output) {
@@ -789,7 +792,7 @@ struct ReduceExecutor {
       end += shift;
       if (threadIdx.x >= shift && threadIdx.x < align_elements &&
           config.ShouldReduceTail()) {
-        value = reducer(value, LoadData(data + threadIdx.x));
+        value = reducer.compute(value, LoadData(data + threadIdx.x));
       }
       end -= align_elements;
       data += align_elements;
@@ -814,7 +817,7 @@ struct ReduceExecutor {
 
 #pragma unroll
       for (IndexType i = 0; i < kInputVecSize; i++) {
-        value_list[i] = reducer(value_list[i], values_vec.val[i]);
+        value_list[i] = reducer.compute(value_list[i], values_vec.val[i]);
       }
       idx += stride;
     }
@@ -826,13 +829,13 @@ struct ReduceExecutor {
       int idx = tail_start + threadIdx.x;
       if (idx < end) {
         const auto value = LoadData(data + idx);
-        value_list[0] = reducer(value_list[0], value);
+        value_list[0] = reducer.compute(value_list[0], value);
       }
     }
 
 #pragma unroll
     for (int i = 1; i < kInputVecSize; i++) {
-      value_list[0] = reducer(value_list[0], value_list[i]);
+      value_list[0] = reducer.reduce(value_list[0], value_list[i]);
     }
 
     return value_list[0];
@@ -870,7 +873,8 @@ struct ReduceExecutor {
       for (IndexType i = 0; i < kVecSize; i++) {
 #pragma unroll
         for (IndexType j = 0; j < kOutputVecSize; j++) {
-          value_list[i][j] = reducer(value_list[i][j], values[i].val[j]);
+          value_list[i][j] =
+              reducer.compute(value_list[i][j], values[i].val[j]);
         }
       }
       idx += stride * kVecSize;
@@ -895,7 +899,7 @@ struct ReduceExecutor {
       }
 #pragma unroll
       for (IndexType j = 0; j < kOutputVecSize; j++) {
-        value_list[i][j] = reducer(value_list[i][j], values[i].val[j]);
+        value_list[i][j] = reducer.compute(value_list[i][j], values[i].val[j]);
       }
       idx += stride;
     }
@@ -904,7 +908,7 @@ struct ReduceExecutor {
     for (int i = 1; i < kVecSize; i++) {
 #pragma unroll
       for (IndexType j = 0; j < kOutputVecSize; j++) {
-        value_list[0][j] = reducer(value_list[0][j], value_list[i][j]);
+        value_list[0][j] = reducer.reduce(value_list[0][j], value_list[i][j]);
       }
     }
     return value_list[0];
@@ -916,6 +920,10 @@ struct ReduceExecutor {
     using MPTypeVec = std::array<MPType, kOutputVecSize>;
     int dim_x = blockDim.x;
     MPTypeVec* shared = reinterpret_cast<MPTypeVec*>(shared_memory);
+
+    unsigned mask = 0u;
+    CREATE_SHFL_MASK(mask, true);
+
     if (dim_x > WARP_SIZE) {
       IndexType address_base = static_cast<IndexType>(threadIdx.x) +
                                static_cast<IndexType>(threadIdx.y) *
@@ -929,7 +937,7 @@ struct ReduceExecutor {
           MPTypeVec other = shared[address_base + offset];
 #pragma unroll
           for (int i = 0; i < kOutputVecSize; i++) {
-            value[i] = reducer(value[i], other[i]);
+            value[i] = reducer.reduce(value[i], other[i]);
           }
           shared[address_base] = value;
         }
@@ -939,14 +947,11 @@ struct ReduceExecutor {
 
     __syncthreads();
 
-    unsigned mask = 0u;
-    CREATE_SHFL_MASK(mask, true);
     for (int offset = 1; offset < dim_x; offset <<= 1) {
 #pragma unroll
       for (int i = 0; i < kOutputVecSize; i++) {
-        MPType other =
-            phi::backends::gpu::CudaShuffleDownSync(mask, value[i], offset);
-        value[i] = reducer(value[i], other);
+        MPType other = reducer.shfl_sync(mask, value[i], offset);
+        value[i] = reducer.reduce(value[i], other);
       }
     }
     return value;
@@ -965,7 +970,7 @@ struct ReduceExecutor {
         MPTypeVec other = shared[config.SharedMemoryOffset(offset)];
 #pragma unroll
         for (int i = 0; i < kOutputVecSize; i++) {
-          value[i] = reducer(value[i], other[i]);
+          value[i] = reducer.reduce(value[i], other[i]);
         }
         shared[config.SharedMemoryOffset(0)] = value;
       }
@@ -995,7 +1000,7 @@ struct ReduceExecutor {
       std::array<MPType, kOutputVecSize> ret;
 #pragma unroll
       for (int i = 0; i < kOutputVecSize; i++) {
-        ret[i] = reducer(*(out[i]), value[i]);
+        ret[i] = reducer.reduce(*(out[i]), value[i]);
       }
       return ret;
     } else {
@@ -1038,7 +1043,7 @@ struct ReduceExecutor {
       std::array<IndexType, kOutputVecSize> base_offset) const {
 #pragma unroll
     for (int i = 0; i < kOutputVecSize; i++) {
-      SetResults(static_cast<OutScalarT>(value[i] * factor), base_offset[i]);
+      SetResults(reducer.post_process(value[i]), base_offset[i]);
     }
   }
 
@@ -1093,7 +1098,7 @@ struct ReduceExecutor {
           MPTypeVec next = reduce_buffer[idx];
 #pragma unroll
           for (int i = 0; i < kOutputVecSize; i++) {
-            value[i] = reducer(value[i], next[i]);
+            value[i] = reducer.reduce(value[i], next[i]);
           }
         }
       } else {
@@ -1105,7 +1110,7 @@ struct ReduceExecutor {
           MPTypeVec next = reduce_buffer[idx];
 #pragma unroll
           for (int i = 0; i < kOutputVecSize; i++) {
-            value[i] = reducer(value[i], next[i]);
+            value[i] = reducer.reduce(value[i], next[i]);
           }
         }
       }
@@ -1133,7 +1138,7 @@ struct ReduceExecutor {
           if (accumulate) {
 #pragma unroll
             for (int i = 0; i < kOutputVecSize; i++) {
-              value[i] = reducer((*acc)[i], value[i]);
+              value[i] = reducer.reduce((*acc)[i], value[i]);
             }
           }
           if (final_output) {
@@ -1221,14 +1226,12 @@ template <typename Tx,
           int kInputVecSize = kVecSize,
           typename ReduceOp,
           typename ident_t = double>
-inline void GPUReduceScheduler(
-    const KPDevice& dev_ctx,
-    const DenseTensorIterator& iter,
-    const ReduceOp& reducer,
-    ident_t ident = 0,
-    typename phi::dtype::MPTypeTrait<Ty>::Type factor = 1,
-    AccumulationBuffer* acc_buf_ptr = nullptr,
-    int64_t base_idx = 0) {
+inline void GPUReduceScheduler(const KPDevice& dev_ctx,
+                               const DenseTensorIterator& iter,
+                               const ReduceOp& reducer,
+                               ident_t ident = 0,
+                               AccumulationBuffer* acc_buf_ptr = nullptr,
+                               int64_t base_idx = 0) {
   auto stream = dev_ctx.stream();
 
   using MPType = typename phi::dtype::MPTypeTrait<Ty>::Type;
@@ -1270,13 +1273,7 @@ inline void GPUReduceScheduler(
     for (auto& sub_iter : iter.with_32bit_indexing()) {
       int64_t sub_iter_base_idx = sub_iter.view_offsets()[0];
       GPUReduceScheduler<Tx, Ty, kVecSize, kInputVecSize, ReduceOp>(
-          dev_ctx,
-          sub_iter,
-          reducer,
-          ident,
-          factor,
-          acc_buf_ptr,
-          sub_iter_base_idx);
+          dev_ctx, sub_iter, reducer, ident, acc_buf_ptr, sub_iter_base_idx);
     }
     return;
   }
@@ -1324,7 +1321,6 @@ inline void GPUReduceScheduler(
       reducer,
       config,
       ident,
-      factor,
       input_calc,
       output_calc,
       in_data,
@@ -1347,14 +1343,11 @@ inline void GPUReduceScheduler(
 namespace funcs {
 template <typename Tx,
           typename Ty,
-          template <typename>
-          class ReduceOp,
-          typename TransformOp,
-          bool IsMean = false>
+          template <typename, typename, typename>
+          class ReduceOp>
 void ReduceGpuKernel(const KPDevice& dev_ctx,
                      const phi::DenseTensor& x,
                      phi::DenseTensor* y,
-                     const TransformOp& transform,
                      const std::vector<int>& origin_reduce_dims) {
   if (x.numel() == 0) {
     dev_ctx.Alloc<Ty>(y);
@@ -1370,13 +1363,6 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
 
   auto x_dim = common::vectorize<int64_t>(x.dims());
 
-  if (x_dim.size() == 0) {
-    std::vector<const DenseTensor*> inputs = {&x};
-    std::vector<DenseTensor*> outputs = {&viewed_result};
-    funcs::ElementwiseKernel<Ty>(dev_ctx, inputs, &outputs, transform);
-    return;
-  }
-
   DenseTensorIteratorConfig dense_iter_config;
   dense_iter_config.is_reduction(true);
   dense_iter_config.add_output(viewed_result);
@@ -1387,39 +1373,47 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
   constexpr int kVecSize = 4;
   constexpr int kInputVecSize = kVecSize;
   using MPType = typename phi::dtype::MPTypeTrait<Ty>::Type;
-  auto reducer = ReduceOp<MPType>();
 
-  MPType factor = 1.0f;
-  if (IsMean) {
-    factor = static_cast<MPType>(iter.num_output_elements()) /
-             static_cast<MPType>(iter.numel());
-  }
+  // Initialize reducer.
+  ReduceOp reducer = [&iter]() {
+    if constexpr (std::is_same_v<ReduceOp<Tx, MPType, Ty>,
+                                 kps::MeanOps<Tx, MPType, Ty>>) {
+      MPType factor = static_cast<MPType>(iter.num_output_elements()) /
+                      static_cast<MPType>(iter.numel());
+      return ReduceOp<Tx, MPType, Ty>{factor};
+    } else {
+      return ReduceOp<Tx, MPType, Ty>{};
+    }
+  }();
 
   // Initialize ident value.
   Tx ident = []() {
-    if constexpr (std::is_same_v<ReduceOp<MPType>, kps::MaxFunctor<MPType>>) {
+    if constexpr (std::is_same_v<ReduceOp<Tx, MPType, Ty>,
+                                 kps::MaxOps<Tx, MPType, Ty>>) {
       return std::numeric_limits<Tx>::lowest();
     }
 
-    if constexpr (std::is_same_v<ReduceOp<MPType>, kps::MinFunctor<MPType>>) {
+    if constexpr (std::is_same_v<ReduceOp<Tx, MPType, Ty>,
+                                 kps::MinOps<Tx, MPType, Ty>>) {
       return std::numeric_limits<Tx>::max();
     }
 
-    if constexpr (std::is_same_v<ReduceOp<MPType>,
-                                 kps::LogicalAndFunctor<MPType>>) {
+    if constexpr (std::is_same_v<ReduceOp<Tx, MPType, Ty>,
+                                 kps::LogicalAndOps<Tx, MPType, Ty>>) {
       return Tx{1};
     }
 
-    if constexpr (std::is_same_v<ReduceOp<MPType>, kps::MulFunctor<MPType>>) {
+    if constexpr (std::is_same_v<ReduceOp<Tx, MPType, Ty>,
+                                 kps::ProdOps<Tx, MPType, Ty>>) {
       return Tx{1};
     }
 
-    // AddFunctor, LogicalOrFunctor and others
+    // SumOps, MeanOps, LogicalOrOps and others
     return Tx{0};
   }();
 
-  GPUReduceScheduler<Tx, Ty, kVecSize, kInputVecSize, ReduceOp<MPType>>(
-      dev_ctx, iter, reducer, ident, factor);
+  GPUReduceScheduler<Tx, Ty, kVecSize, kInputVecSize, ReduceOp<Tx, MPType, Ty>>(
+      dev_ctx, iter, reducer, ident);
 
   return;
 }

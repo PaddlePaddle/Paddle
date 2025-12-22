@@ -63,7 +63,7 @@ phi::DenseTensor get_pad_lse(const phi::GPUContext& dev_ctx,
   if (pad_amount > 0) {
     phi::DenseTensor tmp = *lse;
     if (force_pad_inf) {
-      tmp = phi::funcs::Slice<T, phi::GPUContext>(
+      tmp = funcs::Slice<T, phi::GPUContext>(
           dev_ctx, *lse, {2}, {0}, {out_second_dim});
       pad_amount = (pad_to - (tmp.dims()[2] % pad_to)) % pad_to;
     }

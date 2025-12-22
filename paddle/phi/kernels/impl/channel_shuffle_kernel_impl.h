@@ -52,7 +52,7 @@ void ChannelShuffleKernel(const Context& dev_ctx,
   } else {
     o.Resize({in_dims[0], in_dims[1], in_dims[2], in_dims[3] / groups, groups});
   }
-  phi::funcs::Transpose<Context, T, 5> trans;
+  funcs::Transpose<Context, T, 5> trans;
   trans(dev_ctx, t, &o, axis);
   out->Resize(o_dims);
 }
