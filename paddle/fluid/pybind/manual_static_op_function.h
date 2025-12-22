@@ -1122,7 +1122,6 @@ static PyObject *run_python_op(PyObject *self,
 
   const auto &vec_map = meta_info_map.at(op_name);
   const auto &inputs = paddle::OpMetaInfoHelper::GetInputs(vec_map[0]);
-  const auto &attrs = paddle::OpMetaInfoHelper::GetAttrs(vec_map[0]);
   const auto &outputs = paddle::OpMetaInfoHelper::GetOutputs(vec_map[0]);
   const auto &inplace_map = paddle::OpMetaInfoHelper::GetInplaceMap(vec_map[0]);
   const auto &inplace_reverse_map =
@@ -1147,7 +1146,6 @@ static PyObject *run_python_op(PyObject *self,
   std::unordered_map<std::string, int> vec_input_name2id_map;
   std::vector<paddle::any> custom_attrs;
   int input_index = 0;
-  int vec_input_index = 0;
 
   std::vector<phi::NativeMetaTensor> inputs_meta;
   inputs_meta.reserve(inputs.size());

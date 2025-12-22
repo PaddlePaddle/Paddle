@@ -98,6 +98,7 @@ from .variables import (
     IterVariable,
     ListVariable,
     MethodVariable,
+    ModuleVariable,
     NullVariable,
     NumPyArrayVariable,
     SequenceIterVariable,
@@ -1066,6 +1067,39 @@ class OpcodeExecutorBase:
     def LOAD_METHOD(self, instr: Instruction):
         method_name = self.vframe.code.co_names[instr.arg]
         self.load_method(method_name)
+
+    @call_break_graph_decorator(push_n=1)
+    def IMPORT_NAME(self, instr: Instruction):
+        module_name = self.vframe.code.co_names[instr.arg]
+        fromlist = self.stack.pop().get_py_value()
+        level = self.stack.pop().get_py_value()
+        globals_dict = self.vframe.globals.get_value()
+        for key, val in globals_dict.items():
+            if isinstance(val, VariableBase):
+                globals_dict[key] = val.get_py_value()
+        try:
+            value = __import__(
+                module_name,
+                fromlist=fromlist,
+                level=level,
+                globals=globals_dict,
+            )
+        except ImportError as e:
+            raise FallbackError(
+                f"Import module {module_name} failed: {e}"
+            ) from e
+        self.stack.push(ModuleVariable(value, self._graph, DummyTracker([])))
+
+    @call_break_graph_decorator(push_n=1)
+    def IMPORT_FROM(self, instr: Instruction) -> None:
+        self.DUP_TOP(instr)
+        obj = self.stack.pop()
+        name = self.vframe.code.co_names[instr.arg]
+        name_var = ConstantVariable.wrap_literal(name, self._graph)
+        attr = BuiltinVariable(
+            getattr, graph=self._graph, tracker=DanglingTracker()
+        )(obj, name_var)
+        self.stack.push(attr)
 
     @call_break_graph_decorator(push_n=0)
     def STORE_ATTR(self, instr: Instruction):

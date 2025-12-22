@@ -30,7 +30,7 @@ limitations under the License. */
 
 namespace phi {
 namespace sparse {
-using Dims4D = phi::funcs::sparse::Dims4D;
+using Dims4D = funcs::sparse::Dims4D;
 
 inline __device__ uint32_t BitCount(const uint32_t data) {
   uint32_t count = data;
@@ -86,7 +86,7 @@ __global__ void UniqueKernel(const IntT* in_indices,
   if (i < rulebook_len_num) {
     // atomicOr only support int
     int index = static_cast<int>((in_indices + rulebook_len_num)[i]);
-    const bool flag = phi::funcs::sparse::SetBits(index, index_flags);
+    const bool flag = funcs::sparse::SetBits(index, index_flags);
     if (!flag) {
       int j = atomicAdd(&count, 1);
       cache[j] = index;
@@ -255,8 +255,7 @@ __global__ void GetOutIndexTable(int* indices,
     IntT index = static_cast<IntT>(indices[i]);
     out_index_table[index] = i;
     IntT batch, x, y, z;
-    phi::funcs::sparse::IndexToPoint<Dims4D>(
-        index, out_dims, &batch, &x, &y, &z);
+    funcs::sparse::IndexToPoint<Dims4D>(index, out_dims, &batch, &x, &y, &z);
     // get out indices
     out_indices[i] = batch;
     if (is2D) {
@@ -320,24 +319,24 @@ __global__ void ProductRuleBookKernel(const T* x_indices,
       for (int ky = 0; ky < kernel_dims[2]; ky++) {
         for (int kx = 0; kx < kernel_dims[3]; kx++) {
           int in_i = -1, out_index = -1, kernel_i = -1;
-          if (phi::funcs::sparse::Check(x_dims,
-                                        kernel_dims,
-                                        paddings,
-                                        dilations,
-                                        strides,
-                                        in_x,
-                                        in_y,
-                                        in_z,
-                                        kx,
-                                        ky,
-                                        kz)) {
+          if (funcs::sparse::Check(x_dims,
+                                   kernel_dims,
+                                   paddings,
+                                   dilations,
+                                   strides,
+                                   in_x,
+                                   in_y,
+                                   in_z,
+                                   kx,
+                                   ky,
+                                   kz)) {
             T out_z =
                 is2D ? 0
                      : (in_z + paddings[1] - kz * dilations[1]) / strides[1];
             T out_y = (in_y + paddings[2] - ky * dilations[2]) / strides[2];
             T out_x = (in_x + paddings[3] - kx * dilations[3]) / strides[3];
             in_i = i;
-            out_index = phi::funcs::sparse::PointToIndex<Dims4D>(
+            out_index = funcs::sparse::PointToIndex<Dims4D>(
                 batch, out_x, out_y, out_z, out_dims);
             atomicAdd(&counter_buf[kernel_index], 1);
             kernel_i = kernel_index;

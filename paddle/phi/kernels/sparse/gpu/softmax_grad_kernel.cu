@@ -67,7 +67,7 @@ __global__ void SoftmaxGradGpuKernel(const IntT* out_crows,
 
     mul_result += out_values[row_first + idx] * dout_values[row_first + idx];
   }
-  T sum = phi::funcs::WarpReduceSum<T>(mul_result, 0xFFFFFFFF);
+  T sum = funcs::WarpReduceSum<T>(mul_result, 0xFFFFFFFF);
 
   for (int i = 0; i < kIteration; ++i) {
     int idx = non_zero_idx + i * warpSize;
@@ -156,7 +156,7 @@ __global__ void SoftmaxCooGradGPURawKernel(IntT* sorted_pool_indices,
       mul_result += (*(cur_out_value + nval)) * (*(cur_grad_value + nval));
     }
   }
-  T sum = phi::funcs::WarpReduceSum<T>(mul_result, 0xFFFFFFFF);
+  T sum = funcs::WarpReduceSum<T>(mul_result, 0xFFFFFFFF);
 
   for (int k = 0; k < kIteration; ++k) {
     int idx = tid + k * warpSize;
@@ -203,13 +203,13 @@ void SoftmaxCooGradGPUKernel(const Context& dev_ctx,
   values->Resize(out_dims);
   values->set_meta(out_values.meta());
   dev_ctx.template Alloc<T>(values);
-  phi::funcs::SetConstant<GPUContext, T> set_zero;
+  funcs::SetConstant<GPUContext, T> set_zero;
   set_zero(dev_ctx, values, static_cast<T>(0.0f));
 
-  DenseTensor out_offsets = phi::funcs::sparse::GetOffsets<IntT, Context>(
+  DenseTensor out_offsets = funcs::sparse::GetOffsets<IntT, Context>(
       dev_ctx, out_indices, sizes, static_cast<IntT>(-1));
   auto out_offsets_ptr = out_offsets.data<IntT>();
-  DenseTensor grad_offsets = phi::funcs::sparse::GetOffsets<IntT, Context>(
+  DenseTensor grad_offsets = funcs::sparse::GetOffsets<IntT, Context>(
       dev_ctx, grad_indices, sizes, static_cast<IntT>(-1));
   auto grad_offsets_ptr = grad_offsets.data<IntT>();
 
@@ -250,7 +250,7 @@ void SoftmaxCooGradGPUKernel(const Context& dev_ctx,
   DenseTensor pool_sizes;
 
   std::tie(sorted_indices, pool_offsets, pool_sizes, std::ignore) =
-      phi::funcs::sparse::ComputePoolMax<T, IntT, Context, false>(
+      funcs::sparse::ComputePoolMax<T, IntT, Context, false>(
           dev_ctx, out_indices, values_2, sizes, nvalues, dim);
 
   DenseTensor bound =

@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include "paddle/phi/api/ext/native_meta_tensor.h"
 #include "paddle/fluid/pybind/native_meta_tensor.h"
 #include "paddle/utils/pybind.h"

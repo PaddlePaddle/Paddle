@@ -33,7 +33,7 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-using Dims4D = phi::funcs::sparse::Dims4D;
+using Dims4D = funcs::sparse::Dims4D;
 
 // TODO(zhangkaihuo): After the GatherCUDAKernel is migrated to phi, replace
 // this kernel with phi::GatherCUDAKernel;
@@ -129,8 +129,7 @@ __global__ void UpdateIndexKernel(const T* unique_keys,
   for (int i = tid; i < non_zero_num; i += gridDim.x * blockDim.x) {
     const T index = unique_keys[i];
     T batch, x, y, z;
-    phi::funcs::sparse::IndexToPoint<Dims4D>(
-        index, out_dims, &batch, &x, &y, &z);
+    funcs::sparse::IndexToPoint<Dims4D>(index, out_dims, &batch, &x, &y, &z);
     // get out indices
     out_indices[i] = batch;
     out_indices[i + non_zero_num] = z;
@@ -234,22 +233,22 @@ __global__ void ProductRuleBookKernel(const T* x_indices,
       for (int ky = 0; ky < kernel_dims[2]; ky++) {
         for (int kx = 0; kx < kernel_dims[3]; kx++) {
           int in_i = -1, out_index = -1, kernel_i = -1;
-          if (phi::funcs::sparse::Check(x_dims,
-                                        kernel_dims,
-                                        paddings,
-                                        dilations,
-                                        strides,
-                                        in_x,
-                                        in_y,
-                                        in_z,
-                                        kx,
-                                        ky,
-                                        kz)) {
+          if (funcs::sparse::Check(x_dims,
+                                   kernel_dims,
+                                   paddings,
+                                   dilations,
+                                   strides,
+                                   in_x,
+                                   in_y,
+                                   in_z,
+                                   kx,
+                                   ky,
+                                   kz)) {
             T out_z = (in_z + paddings[1] - kz * dilations[1]) / strides[1];
             T out_y = (in_y + paddings[2] - ky * dilations[2]) / strides[2];
             T out_x = (in_x + paddings[3] - kx * dilations[3]) / strides[3];
             in_i = i;
-            out_index = phi::funcs::sparse::PointToIndex<Dims4D>(
+            out_index = funcs::sparse::PointToIndex<Dims4D>(
                 batch, out_x, out_y, out_z, out_dims);
             atomicAdd(&counter_buf[kernel_index], 1);
             kernel_i = kernel_index;
@@ -324,7 +323,7 @@ int ProductRuleBook(const Context& dev_ctx,
   Dims4D d_strides(1, strides[2], strides[1], strides[0]);
   Dims4D d_dilations(1, dilations[2], dilations[1], dilations[0]);
   // 1. product rule book
-  phi::funcs::SetConstant<Context, int> set_zero;
+  funcs::SetConstant<Context, int> set_zero;
   set_zero(dev_ctx, counter_per_kernel, 0);
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
@@ -355,7 +354,7 @@ int ProductRuleBook(const Context& dev_ctx,
                               rulebook_ptr + rulebook_rows * rulebook_cols,
                               -1);
 
-  phi::funcs::sparse::DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
+  funcs::sparse::DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
       rulebook_ptr, last, rulebook_ptr + 3 * kernel_size * non_zero_num - 1);
   IntT rulebook_len = 0;
   phi::backends::gpu::GpuMemcpyAsync(
@@ -421,7 +420,7 @@ int ProductRuleBook(const Context& dev_ctx,
                                 rulebook_ptr,
                                 rulebook_ptr + 3 * rulebook_len,
                                 -1);
-    phi::funcs::sparse::DistanceKernel<IntT>
+    funcs::sparse::DistanceKernel<IntT>
         <<<1, 1, 0, dev_ctx.stream()>>>(rulebook_ptr, last, bound_ptr);
     phi::backends::gpu::GpuMemcpyAsync(&rulebook_len,
                                        bound_ptr,
@@ -489,7 +488,7 @@ int ProductRuleBook(const Context& dev_ctx,
     // thrust::distance doesn't support stream parameters
     // const int out_non_zero_num = thrust::distance(unique_key_ptr,
     // new_end.first);
-    phi::funcs::sparse::DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
+    funcs::sparse::DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
         unique_key_ptr,
         new_end,
         rulebook_ptr + rulebook_rows * rulebook_cols - 1);
