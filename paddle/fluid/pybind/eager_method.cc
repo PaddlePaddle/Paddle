@@ -1817,25 +1817,16 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
   EAGER_TRY
-  // 这是 Paddle 自己的宏：
-  // 把整个函数包在 C++ try/catch 中，自动把 C++ 异常转换为 Python 异常。
-  // 这个是 Paddle 的错误增强系统。
-  // 当 C++ 抛错时，它会记录 Python 层的调用栈，提升报错体验。
   SetPythonStack();
   VLOG(4) << "Call new indexing strategy _setitem_dygraph";
 
-  // 从 Python 获取参数
   PyObject* _index = PyTuple_GET_ITEM(args, 0);
   PyObject* value_obj = PyTuple_GET_ITEM(args, 1);
 
   // NOTE(zhiqiu): PyTuple_Pack increases refcount while PyTuple_New
   // https://github.com/python/cpython/blob/24b63c695ae0a95b06379eaadace66735abac1e2/Objects/tupleobject.c#L251
-  // index 标准化：确保 index 是 tuple,如 果 _index 不是 tuple → 用
-  // PyTuple_Pack(1, _index) 包成一个 tuple
   PyObject* index_ptr =
       !PyTuple_Check(_index) ? PyTuple_Pack(1, _index) : _index;
-  // 这是 C++ RAII：
-  // 如果 index 原来不是 tuple，前面创建了一个新 tuple，必须在函数结束时释放。
   DEFINE_PADDLE_SCOPE_GUARD([index_ptr, &_index]() {
     if (!PyTuple_Check(_index)) {
       Py_DECREF(index_ptr);
@@ -1843,10 +1834,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
     }
   });
 
-  // 获取 C++ Tensor 对象
   auto tensor = self->tensor;
-  // Autograd 相关检查：禁止某些 inplace 操作(如果这是一个 Leaf Tensor，而且没有
-  // stop_gradient，那么禁止 inplace 操作)
   if (egr::Controller::Instance().HasGrad()) {
     PADDLE_ENFORCE_EQ(
         egr::EagerUtils::IsLeafTensor(tensor) &&
@@ -1857,44 +1845,19 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
             "inplace strategy.",
             tensor.name()));
   }
-  // 得到tensor的维度的秩
   const int rank = tensor.shape().size();
-  // index 的维度数量, 或者说有几个index
-  // 这个 size 后续用于判断：
-  // •  索引数是否超过 rank？
-  // •  有无省略号？
-  // •  是否需要 broadcast index？
   const int size = PyTuple_GET_SIZE(index_ptr);
-  //  Slice 相关结构
   std::vector<int64_t> slice_starts, slice_ends, slice_strides;
   std::vector<int64_t> slice_axes, decrease_axis, infer_flags, none_axes;
 
-  // 高级索引控制字段
   bool has_advanced_index = false;
   bool use_strided_slice = false;
-  // 存放高级索引位置的数组 advanced_index_dim
-  // 0 tensor 就是 1个-1初始化
-  // 否则是rank * 2个-1初始化, 原因是
-  //  • None 不消耗维度
-  //  • Ellipsis 会展开
-  //  • 高级索引可能插入多个维度（比如 bool mask）
-
-  // 为了避免各种组合下 out-of-bound，就给了一个“大 buffer”，一般 GPU
-  // 代码不怕多一点 vector 空间。
   std::vector<int> advanced_index_dim(
       rank == 0 ? 1 : rank * 2,  // special case for zero dim tensor
       -1);  // content is dim, multiply 2 is to avoid all index are None
-  // 存放高级索引 Tensor 的 vector
   std::vector<paddle::Tensor> advanced_index;  // content is index tensor
 
   // step1: parsing the index and recording them
-  // 如果 index 是单个布尔值：
-  // •  True：代表 full set（相当于 x[...]），特殊处理
-  // •  False：代表 empty（不做任何事情）
-  // 例如：
-  // x[True] = v     # full slice
-  // x[False] = v    # do nothing
-  // 只有单个且是Bool的索引 不去判断
   if (size != 1 || !PyBool_Check(PyTuple_GetItem(index_ptr, 0))) {
     // single true uses set_value full_set branch
     // single false does nothing
@@ -3786,22 +3749,6 @@ static PyObject* tensor_method__uva(TensorObject* self,
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
-#elif defined(PADDLE_WITH_XPU)
-static PyObject* tensor_method__record_stream(TensorObject* self,
-                                              PyObject* args,
-                                              PyObject* kwargs) {
-  EAGER_TRY
-  VLOG(4)
-      << "Running in tensor_method__record_stream: record stream for Tensor.";
-  auto* tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-  if (tensor) {
-    const auto& device_id = paddle::platform::GetXPUCurrentDeviceId();
-    auto stream = paddle::platform::get_current_stream(device_id)->raw_stream();
-    memory::RecordStream(tensor->Holder(), stream);
-  }
-  RETURN_PY_NONE
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
 #endif
 
 #if defined(PADDLE_WITH_XPU)
@@ -4146,12 +4093,11 @@ PyMethodDef variable_methods[] = {  // NOLINT
      (PyCFunction)(void (*)())tensor_method__set_impl,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU)
+#if defined(PADDLE_WITH_CUDA)
     {"_record_stream",
      (PyCFunction)(void (*)())tensor_method__record_stream,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
-#if defined(PADDLE_WITH_CUDA)
     {"_tensor_uva",
      (PyCFunction)(void (*)())tensor_method__uva,
      METH_VARARGS | METH_KEYWORDS,
