@@ -251,17 +251,6 @@ def monkey_patch_math_tensor():
             var = var.astype('float32')
         return float(var.item())
 
-    def _long_(var: Tensor) -> int:
-        numel = np.prod(var.shape, dtype="int64")
-        assert numel == 1, "only one element variable can be converted to long."
-        assert var._is_initialized(), "variable's tensor is not initialized"
-        if (
-            var.dtype == core.VarDesc.VarType.BF16
-            or var.dtype == core.DataType.BFLOAT16
-        ):
-            var = var.astype('float32')
-        return int(var.item())
-
     def _int_(var: Tensor) -> int:
         numel = np.prod(var.shape, dtype="int64")
         assert numel == 1, "only one element variable can be converted to int."
@@ -624,7 +613,6 @@ def monkey_patch_math_tensor():
         ('__abs__', _abs_),
         ('__complex__', _complex_),
         ('__float__', _float_),
-        ('__long__', _long_),
         ('__int__', _int_),
         ('__len__', _len_),
         ('__index__', _index_),
