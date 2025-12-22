@@ -21,7 +21,7 @@
 #include "paddle/phi/kernels/full_kernel.h"
 
 #include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
-#include "paddle/phi/kernels/funcs/reduce_gpu_kernel2.h"
+#include "paddle/phi/kernels/gpu/reduce.h"
 
 #define C10_HOST_DEVICE __host__ __device__
 #define C10_DEVICE __device__
@@ -95,9 +95,7 @@ struct WelfordOps {
 
  public:
   using acc_t = WelfordData<acc_scalar_t, index_t>;
-  inline C10_DEVICE acc_t reduce(acc_t acc,
-                                 scalar_t data,
-                                 index_t /*idx*/) const {
+  inline C10_DEVICE acc_t compute(acc_t acc, scalar_t data) const {
     index_t new_n = acc.n + 1;
     acc_scalar_t new_nf = static_cast<acc_scalar_t>(new_n);
     acc_scalar_t delta = static_cast<acc_scalar_t>(data) - acc.mean;
@@ -110,7 +108,7 @@ struct WelfordOps {
         new_nf,
     };
   }
-  inline C10_DEVICE acc_t combine(acc_t a, acc_t b) const {
+  inline C10_DEVICE acc_t reduce(acc_t a, acc_t b) const {
     if (a.nf == 0) {
       return b;
     }
@@ -125,7 +123,7 @@ struct WelfordOps {
             -1,
             new_count};
   }
-  inline C10_DEVICE res_t project(acc_t acc) const {
+  inline C10_DEVICE res_t post_process(acc_t acc) const {
     const auto mean = static_cast<scalar_t>(acc.mean);
     const auto divisor = acc.nf > correction ? acc.nf - correction : 0;
     const auto var = static_cast<scalar_t>(acc.m2 / divisor);
@@ -135,12 +133,10 @@ struct WelfordOps {
     return results;
   }
 
-  static C10_DEVICE acc_t translate_idx(acc_t acc, int64_t /*base_idx*/) {
-    return acc;
-  }
-
 #if defined(__CUDACC__) || defined(__HIPCC__)
-  inline __device__ acc_t warp_shfl_down(acc_t acc, int offset) const {
+  inline __device__ acc_t shfl_sync(unsigned int mask,
+                                    acc_t acc,
+                                    int offset) const {
     return {WARP_SHFL_DOWN(acc.mean, offset),
             WARP_SHFL_DOWN(acc.m2, offset),
             WARP_SHFL_DOWN(acc.n, offset),
@@ -172,8 +168,9 @@ void Std_VarKernel(const Context& dev_ctx,
   int64_t ndim = x.dims().size();
   auto axis64 = axis.GetData();
   std::vector<int32_t> axis32(axis64.begin(), axis64.end());
-  auto mask = make_dim_mask(axis32, ndim);
-  auto viewed_result = review_reduce_result(*(out), ndim, mask, keepdim);
+  auto positive_reduce_dims = ConvertToPositiveDims(axis32, ndim);
+  auto mask = MakeDimMask(positive_reduce_dims, ndim);
+  auto viewed_result = ReviewReduceResult(x, *(out), ndim, mask);
 
   DenseTensorIteratorConfig dense_iter_config;
   dense_iter_config.is_reduction(true);
@@ -185,7 +182,7 @@ void Std_VarKernel(const Context& dev_ctx,
   using ops_t = WelfordOps<T, AccT, int32_t, thrust::pair<T, T>>;
   ops_t ops(static_cast<AccT>(correction), take_sqrt);
 
-  gpu_reduce_kernel<T, T, 2>(dev_ctx, iter, ops, typename ops_t::acc_t{});
+  GPUReduceScheduler<T, T, 2>(dev_ctx, iter, ops, typename ops_t::acc_t{});
 }
 
 template <typename T, typename Context>

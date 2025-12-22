@@ -5301,6 +5301,7 @@
     func : StdInferMeta
   kernel :
     func : std
+    data_type : x
   backward : std_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
@@ -5819,6 +5820,7 @@
     func : VarInferMeta
   kernel :
     func : var
+    data_type : x
   backward : var_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
