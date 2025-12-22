@@ -220,16 +220,19 @@ void CalcInputGrad(const Context& dev_ctx,
                    bool trans_b,
                    bool is_fold_init_dims_b,
                    DenseTensor* out,
-                   bool flag = false) {
+                   bool flag = false,
+                   bool using_optimized_gemm = false) {
+  // disabling optimized gemm for high-level derivative calculation, for better
+  // precision.
   if (out == nullptr) return;
   bool need_combine =
       (a.dims().size() == 3 || b.dims().size() == 3) && out->dims().size() == 2;
 
-  DenseTensor a_processed = a, b_processed = b;
-  bool trans_a_processed = trans_a, trans_b_processed = trans_b;
-  if (need_combine) {
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
-    if (!FLAGS_use_legacy_gemm) {
+  if (!FLAGS_use_legacy_gemm && using_optimized_gemm) {
+    DenseTensor a_processed = a, b_processed = b;
+    bool trans_a_processed = trans_a, trans_b_processed = trans_b;
+    if (need_combine) {
       a_processed = is_fold_init_dims_a
                         ? FoldInitDims(a)
                         : FoldBatchIntoAggregation<Context, T>(dev_ctx, a);
@@ -240,27 +243,36 @@ void CalcInputGrad(const Context& dev_ctx,
       // we need to flip the transpose flag
       trans_a_processed = is_fold_init_dims_a ? trans_a : !trans_a;
       trans_b_processed = is_fold_init_dims_b ? trans_b : !trans_b;
-    } else  // NOLINT
-#endif
-    {  // NOLINT
-      a_processed = is_fold_init_dims_a
-                        ? FoldInitDims(a)
-                        : FoldHeadAndLastDims<Context, T>(dev_ctx, a);
-      b_processed = is_fold_init_dims_b
-                        ? FoldInitDims(b)
-                        : FoldHeadAndLastDims<Context, T>(dev_ctx, b);
-    }
-  }
-  std::vector<std::int64_t> a_dims = common::vectorize(a_processed.dims());
-  std::vector<std::int64_t> b_dims = common::vectorize(b_processed.dims());
-  MatMulFunction<Context, T>(dev_ctx,
-                             a_processed,
-                             b_processed,
-                             a_dims,
-                             b_dims,
-                             out,
-                             trans_a_processed,
-                             trans_b_processed);
+    }  // if need_combine and in new gemm dispatch logic.
+    std::vector<std::int64_t> a_dims = common::vectorize(a_processed.dims());
+    std::vector<std::int64_t> b_dims = common::vectorize(b_processed.dims());
+    MatMulFunction<Context, T>(dev_ctx,
+                               a_processed,
+                               b_processed,
+                               a_dims,
+                               b_dims,
+                               out,
+                               trans_a_processed,
+                               trans_b_processed);
+  } else  // NOLINT
+#endif    // LINUX && CUDA GPU only
+  {       // NOLINT
+    // legacy no-broadcast matmul dispatch logic, using high-dim permute,
+    // which is suffer from low-performance, and using less optimized
+    // matmul-api.
+    if (!need_combine) {
+      MatMul<Context, T>(dev_ctx, a, trans_a, b, trans_b, out, flag);
+    } else {
+      DenseTensor a_processed =
+          is_fold_init_dims_a ? FoldInitDims(a)
+                              : FoldHeadAndLastDims<Context, T>(dev_ctx, a);
+      DenseTensor b_processed =
+          is_fold_init_dims_b ? FoldInitDims(b)
+                              : FoldHeadAndLastDims<Context, T>(dev_ctx, b);
+      MatMul<Context, T>(
+          dev_ctx, a_processed, trans_a, b_processed, trans_b, out, flag);
+    }  // if need_combine and in legacy gemm dispatch logic
+  }    // legacy matmul dispatch logic
 }
 
 template <typename T, typename Context>
@@ -374,25 +386,89 @@ void MatmulGradKernel(const Context& dev_ctx,
     }
 
     if (transpose_x && transpose_y) {
-      CalcInputGrad<T>(
-          dev_ctx, y_conj, true, true, out_grad_help, true, false, dx);
-      CalcInputGrad<T>(
-          dev_ctx, out_grad_help, true, true, x_conj, true, false, dy);
+      CalcInputGrad<T>(dev_ctx,
+                       y_conj,
+                       true,
+                       true,
+                       out_grad_help,
+                       true,
+                       false,
+                       dx,
+                       false,
+                       true);
+      CalcInputGrad<T>(dev_ctx,
+                       out_grad_help,
+                       true,
+                       true,
+                       x_conj,
+                       true,
+                       false,
+                       dy,
+                       false,
+                       true);
     } else if (transpose_x) {
-      CalcInputGrad<T>(
-          dev_ctx, y_conj, false, false, out_grad_help, true, false, dx);
-      CalcInputGrad<T>(
-          dev_ctx, x_conj, false, false, out_grad_help, false, true, dy);
+      CalcInputGrad<T>(dev_ctx,
+                       y_conj,
+                       false,
+                       false,
+                       out_grad_help,
+                       true,
+                       false,
+                       dx,
+                       false,
+                       true);
+      CalcInputGrad<T>(dev_ctx,
+                       x_conj,
+                       false,
+                       false,
+                       out_grad_help,
+                       false,
+                       true,
+                       dy,
+                       false,
+                       true);
     } else if (transpose_y) {
-      CalcInputGrad<T>(
-          dev_ctx, out_grad_help, false, false, y_conj, false, true, dx);
-      CalcInputGrad<T>(
-          dev_ctx, out_grad_help, true, true, x_conj, false, true, dy);
+      CalcInputGrad<T>(dev_ctx,
+                       out_grad_help,
+                       false,
+                       false,
+                       y_conj,
+                       false,
+                       true,
+                       dx,
+                       false,
+                       true);
+      CalcInputGrad<T>(dev_ctx,
+                       out_grad_help,
+                       true,
+                       true,
+                       x_conj,
+                       false,
+                       true,
+                       dy,
+                       false,
+                       true);
     } else {
-      CalcInputGrad<T>(
-          dev_ctx, out_grad_help, false, false, y_conj, true, false, dx);
-      CalcInputGrad<T>(
-          dev_ctx, x_conj, true, true, out_grad_help, false, true, dy);
+      CalcInputGrad<T>(dev_ctx,
+                       out_grad_help,
+                       false,
+                       false,
+                       y_conj,
+                       true,
+                       false,
+                       dx,
+                       false,
+                       true);
+      CalcInputGrad<T>(dev_ctx,
+                       x_conj,
+                       true,
+                       true,
+                       out_grad_help,
+                       false,
+                       true,
+                       dy,
+                       false,
+                       true);
     }
 
     if (dx) {
