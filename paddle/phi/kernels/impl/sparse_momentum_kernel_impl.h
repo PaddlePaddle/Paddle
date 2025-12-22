@@ -312,8 +312,8 @@ void InnerCompute(const Context& dev_ctx,
 
   auto grad = &grad_in;
 
-  phi::funcs::ForRange<Context> for_range(static_cast<const Context&>(dev_ctx),
-                                          param->numel());
+  funcs::ForRange<Context> for_range(static_cast<const Context&>(dev_ctx),
+                                     param->numel());
 
   auto param_dims = param->dims();
   auto grad_dims = grad->dims();
@@ -340,7 +340,7 @@ void InnerCompute(const Context& dev_ctx,
     sort_value.Resize({num_index});
     auto sort_value_ptr = dev_ctx.template Alloc<IndexT>(&sort_value);
 
-    phi::funcs::ForRange<Context> for_range_index(dev_ctx, num_index);
+    funcs::ForRange<Context> for_range_index(dev_ctx, num_index);
     RangeFunctor<IndexT> range_functor(sort_value_ptr);
     for_range_index(range_functor);
 

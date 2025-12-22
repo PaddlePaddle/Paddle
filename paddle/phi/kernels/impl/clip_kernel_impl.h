@@ -62,7 +62,7 @@ void ClipKernel(const Context& dev_ctx,
     std::vector<const DenseTensor*> ins = {&x};
     std::vector<DenseTensor*> outs = {out};
     auto functor = ClipFunctor<T>(min_, max_);
-    phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+    funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
 #endif
   } else {
     phi::Transform<Context> trans;

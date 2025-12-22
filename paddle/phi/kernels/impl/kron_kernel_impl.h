@@ -28,7 +28,7 @@
 namespace phi {
 
 inline DenseTensor UnsqueezeTo(const DenseTensor &src, int ndims) {
-  const phi::DDim &shape = src.dims();
+  const DDim &shape = src.dims();
   int rank = shape.size();
   DenseTensor res;
   res.ShareDataWith(src);
@@ -105,15 +105,15 @@ struct KronOpFunctor {
     int ndims = out->dims().size();
     int64_t numel = out->numel();
 
-    const phi::DDim &dim_x = x.dims();
-    const phi::DDim &dim_y = y.dims();
-    const phi::DDim &dim_out = out->dims();
-    const phi::DDim stride_x =
-        dim_x.size() == 0 ? phi::DDim(dim_x) : common::stride(dim_x);
-    const phi::DDim stride_y =
-        dim_y.size() == 0 ? phi::DDim(dim_y) : common::stride(dim_y);
-    const phi::DDim stride_out =
-        dim_out.size() == 0 ? phi::DDim(dim_out) : common::stride(dim_out);
+    const DDim &dim_x = x.dims();
+    const DDim &dim_y = y.dims();
+    const DDim &dim_out = out->dims();
+    const DDim stride_x =
+        dim_x.size() == 0 ? DDim(dim_x) : common::stride(dim_x);
+    const DDim stride_y =
+        dim_y.size() == 0 ? DDim(dim_y) : common::stride(dim_y);
+    const DDim stride_out =
+        dim_out.size() == 0 ? DDim(dim_out) : common::stride(dim_out);
 
     const int64_t *p_stride_x = nullptr, *p_stride_y = nullptr,
                   *p_stride_out = nullptr, *p_shape_y = nullptr;

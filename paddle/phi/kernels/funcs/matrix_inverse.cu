@@ -84,7 +84,7 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
   int* gpu_info_ptr =
       reinterpret_cast<int*>(gpu_inv_pivot_info + cpu_ptrs.size());
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   std::vector<int> info;  // only for singular checking
   info.resize(batch_size);
   // This functions in cuBLAS is intended to be used for matrices of small

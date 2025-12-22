@@ -124,18 +124,18 @@ struct GateAttentionConfig {
   int64_t m_size;
   int64_t num_heads;
 
-  phi::DDim qkv_out_dims;
-  phi::DDim qkv_transpose_out_dims;
+  DDim qkv_out_dims;
+  DDim qkv_transpose_out_dims;
 
-  phi::DDim q_out_dims;
-  phi::DDim kv_out_dims;
-  phi::DDim q_transpose_out_dims;
-  phi::DDim kv_transpose_out_dims;
+  DDim q_out_dims;
+  DDim kv_out_dims;
+  DDim q_transpose_out_dims;
+  DDim kv_transpose_out_dims;
 
-  phi::DDim qk_out_dims;
-  phi::DDim softmax_out_dims;
-  phi::DDim qktv_out_dims;
-  phi::DDim gate_out_dims;
+  DDim qk_out_dims;
+  DDim softmax_out_dims;
+  DDim qktv_out_dims;
+  DDim gate_out_dims;
 
   GateAttentionConfig(const phi::GPUContext& dev_ctx,
                       const phi::DenseTensor* query,
@@ -704,12 +704,9 @@ class FMHAGateRef {
                                   phi::DenseTensor* k_transpose_out,
                                   phi::DenseTensor* v_transpose_out) {
     std::vector<int> perm = {0, 1, 3, 2, 4};
-    phi::funcs::TransposeGPUKernelDriver<T>(
-        dev_ctx_, q_out, perm, q_transpose_out);
-    phi::funcs::TransposeGPUKernelDriver<T>(
-        dev_ctx_, k_out, perm, k_transpose_out);
-    phi::funcs::TransposeGPUKernelDriver<T>(
-        dev_ctx_, v_out, perm, v_transpose_out);
+    funcs::TransposeGPUKernelDriver<T>(dev_ctx_, q_out, perm, q_transpose_out);
+    funcs::TransposeGPUKernelDriver<T>(dev_ctx_, k_out, perm, k_transpose_out);
+    funcs::TransposeGPUKernelDriver<T>(dev_ctx_, v_out, perm, v_transpose_out);
   }
 
   void ComputeQKVTransposeBackward(const phi::DenseTensor& q_transpose_out_grad,
@@ -719,11 +716,11 @@ class FMHAGateRef {
                                    phi::DenseTensor* k_out_grad,
                                    phi::DenseTensor* v_out_grad) {
     std::vector<int> perm = {0, 1, 3, 2, 4};
-    phi::funcs::TransposeGPUKernelDriver<T>(
+    funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, q_transpose_out_grad, perm, q_out_grad);
-    phi::funcs::TransposeGPUKernelDriver<T>(
+    funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, k_transpose_out_grad, perm, k_out_grad);
-    phi::funcs::TransposeGPUKernelDriver<T>(
+    funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, v_transpose_out_grad, perm, v_out_grad);
   }
 
@@ -732,7 +729,7 @@ class FMHAGateRef {
   void ComputeQKVTransposeForward(const phi::DenseTensor& qkv_out,
                                   phi::DenseTensor* qkv_transpose_out) {
     std::vector<int> perm = {3, 0, 1, 4, 2, 5};
-    phi::funcs::TransposeGPUKernelDriver<T>(
+    funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, qkv_out, perm, qkv_transpose_out);
   }
 
@@ -740,7 +737,7 @@ class FMHAGateRef {
       const phi::DenseTensor& qkv_transpose_out_grad,
       phi::DenseTensor* qkv_out_grad) {
     std::vector<int> perm = {1, 2, 4, 0, 3, 5};
-    phi::funcs::TransposeGPUKernelDriver<T>(
+    funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, qkv_transpose_out_grad, perm, qkv_out_grad);
   }
 
@@ -749,13 +746,13 @@ class FMHAGateRef {
   void ComputeQKTVTransposeForward(const phi::DenseTensor& qktv_out,
                                    phi::DenseTensor* fmha_out) {
     std::vector<int> perm = {0, 1, 3, 2, 4};
-    phi::funcs::TransposeGPUKernelDriver<T>(dev_ctx_, qktv_out, perm, fmha_out);
+    funcs::TransposeGPUKernelDriver<T>(dev_ctx_, qktv_out, perm, fmha_out);
   }
 
   void ComputeQKTVTransposeBackward(const phi::DenseTensor& fmha_out_grad,
                                     phi::DenseTensor* qktv_out_grad) {
     std::vector<int> perm = {0, 1, 3, 2, 4};
-    phi::funcs::TransposeGPUKernelDriver<T>(
+    funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, fmha_out_grad, perm, qktv_out_grad);
   }
 
@@ -769,13 +766,11 @@ class FMHAGateRef {
       std::vector<const phi::DenseTensor*> ins = {
           qk_out, src_mask, nonbatched_bias};
       std::vector<phi::DenseTensor*> outs = {qk_out};
-      phi::funcs::BroadcastKernel<T>(
-          dev_ctx_, ins, &outs, TernaryAddFunctor<T>());
+      funcs::BroadcastKernel<T>(dev_ctx_, ins, &outs, TernaryAddFunctor<T>());
     } else {
       std::vector<const phi::DenseTensor*> ins = {qk_out, src_mask};
       std::vector<phi::DenseTensor*> outs = {qk_out};
-      phi::funcs::BroadcastKernel<T>(
-          dev_ctx_, ins, &outs, phi::funcs::AddFunctor<T>());
+      funcs::BroadcastKernel<T>(dev_ctx_, ins, &outs, funcs::AddFunctor<T>());
     }
     phi::SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *qk_out, -1, softmax_out);
   }
@@ -811,7 +806,7 @@ class FMHAGateRef {
     if (nonbatched_bias_grad) {
       // [batch_size, seq_len_m, num_heads, seq_len_r, m_size] ->
       //      [batch_size, 1, num_heads, seq_len_r, m_size]
-      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
           dev_ctx_,
           *qk_out_grad,
           nonbatched_bias_grad,
@@ -837,7 +832,7 @@ class FMHAGateRef {
 
     CBLAS_TRANSPOSE cblas_trans_a = trans_a ? CblasTrans : CblasNoTrans;
     CBLAS_TRANSPOSE cblas_trans_b = trans_b ? CblasTrans : CblasNoTrans;
-    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
+    auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
     blas.BatchedGEMM(cblas_trans_a,
                      cblas_trans_b,
                      m,
@@ -1117,7 +1112,7 @@ class FlashAttnWithGating {
                      temp_bias_dim[1],
                      temp_bias_dim[2],
                      temp_bias_dim[3]});
-      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
           dev_ctx_,
           bias_d,
           nonbatched_bias_grad,
@@ -1227,7 +1222,7 @@ class FlashAttnWithGating {
   void ComputeQKVTransposeForward(const phi::DenseTensor& qkv_out,
                                   phi::DenseTensor* qkv_transpose_out) {
     std::vector<int> perm = {3, 0, 1, 2, 4, 5};
-    phi::funcs::TransposeGPUKernelDriver<T>(
+    funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, qkv_out, perm, qkv_transpose_out);
   }
 
@@ -1237,7 +1232,7 @@ class FlashAttnWithGating {
       const phi::DenseTensor& qkv_transpose_out_grad,
       phi::DenseTensor* qkv_out_grad) {
     std::vector<int> perm = {1, 2, 3, 0, 4, 5};
-    phi::funcs::TransposeGPUKernelDriver<T>(
+    funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, qkv_transpose_out_grad, perm, qkv_out_grad);
   }
 

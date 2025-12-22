@@ -60,7 +60,7 @@ void UnStackKernel(const Context &dev_ctx,
 #else
   auto dx_data_arr = dx_datas.data();
 #endif
-  phi::funcs::StackGradFunctorForRange(
+  funcs::StackGradFunctorForRange(
       dev_ctx, dx_data_arr, dy_data, total_num, n, post);
 #if defined(__NVCC__) || defined(__HIPCC__)
   // Wait() must be called because device_dx_vec may be destructed before

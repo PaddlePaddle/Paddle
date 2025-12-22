@@ -95,13 +95,13 @@ void TraceGradKernel(const Context& dev_ctx,
   auto input_dims = in_grad->dims();
   auto input_stride = common::stride(input_dims);
   auto output_dims = out_grad.dims();
-  auto output_stride = output_dims.size() == 0 ? phi::DDim(output_dims)
-                                               : common::stride(output_dims);
+  auto output_stride =
+      output_dims.size() == 0 ? DDim(output_dims) : common::stride(output_dims);
 
   auto* out_data = out_grad.data<T>();
   T* x_data = dev_ctx.template Alloc<T>(in_grad);
 
-  phi::funcs::SetConstant<Context, T> set_zero;
+  funcs::SetConstant<Context, T> set_zero;
 
   set_zero(dev_ctx, in_grad, static_cast<T>(0.0));
   auto dim1 = axis1;
@@ -135,7 +135,7 @@ void TraceGradKernel(const Context& dev_ctx,
     const auto* input_arr = input_stride.Get();
 #endif
 
-    phi::funcs::ForRange<Context> for_range(dev_ctx, in_grad->numel());
+    funcs::ForRange<Context> for_range(dev_ctx, in_grad->numel());
     TraceGradFunctor<T> functor(out_data,
                                 output_arr,
                                 input_arr,

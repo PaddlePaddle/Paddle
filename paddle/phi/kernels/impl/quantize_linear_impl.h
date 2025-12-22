@@ -164,35 +164,35 @@ void QuantizeLinearTrainKernel(const Context& dev_ctx,
     tmp_scale.Resize(common::make_dim(1));
     T* cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
 
-    phi::funcs::FindAbsMaxFunctor<Context, T>()(
+    funcs::FindAbsMaxFunctor<Context, T>()(
         dev_ctx, in->data<T>(), in->numel(), cur_scale_data);
 
     dev_ctx.template Alloc<T>(out_state);
     dev_ctx.template Alloc<T>(out_accum);
     dev_ctx.template Alloc<T>(out_scale);
 
-    phi::funcs::FindMovingAverageAbsMaxFunctor<Context, T>()(dev_ctx,
-                                                             in_accum.get(),
-                                                             in_state.get(),
-                                                             cur_scale_data,
-                                                             0.9,
-                                                             out_state,
-                                                             out_accum,
-                                                             out_scale);
+    funcs::FindMovingAverageAbsMaxFunctor<Context, T>()(dev_ctx,
+                                                        in_accum.get(),
+                                                        in_state.get(),
+                                                        cur_scale_data,
+                                                        0.9,
+                                                        out_state,
+                                                        out_accum,
+                                                        out_scale);
     if (only_observer) {
       phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
     } else {
-      phi::funcs::ClipAndFakeQuantFunctor<Context, T>()(
+      funcs::ClipAndFakeQuantFunctor<Context, T>()(
           dev_ctx, *in, *out_scale, qmax, round_type, out);
     }
   } else {
     T* out_scale_data = dev_ctx.template Alloc<T>(out_scale);
-    phi::funcs::FindChannelAbsMaxFunctor<Context, T>()(
+    funcs::FindChannelAbsMaxFunctor<Context, T>()(
         dev_ctx, *in, quant_axis, out_scale_data);
     if (only_observer) {
       phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
     } else {
-      phi::funcs::ChannelClipAndFakeQuantFunctor<Context, T>()(
+      funcs::ChannelClipAndFakeQuantFunctor<Context, T>()(
           dev_ctx, *in, *out_scale, qmax, round_type, quant_axis, out);
     }
   }
@@ -222,14 +222,14 @@ void QuantizeLinearInferKernel(const Context& dev_ctx,
     if (only_observer) {
       phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
     } else {
-      phi::funcs::ClipAndFakeQuantFunctor<Context, T>()(
+      funcs::ClipAndFakeQuantFunctor<Context, T>()(
           dev_ctx, *in, *in_scale, qmax, round_type, out);
     }
   } else {
     if (only_observer) {
       phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
     } else {
-      phi::funcs::ChannelClipAndFakeQuantFunctor<Context, T>()(
+      funcs::ChannelClipAndFakeQuantFunctor<Context, T>()(
           dev_ctx, *in, *in_scale, qmax, round_type, quant_axis, out);
     }
   }

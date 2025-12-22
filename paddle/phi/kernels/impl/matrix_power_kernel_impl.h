@@ -44,7 +44,7 @@ void MatrixPowerFunction(const DenseTensor* X,
   const int x_ndim = x_dims.size();
   T* out_data = dev_ctx.template Alloc<T>(Out);
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, X->numel());
+  funcs::ForRange<Context> for_range(dev_ctx, X->numel());
 
   if (n == 0) {
     // Out = Identity Matrix
@@ -53,7 +53,7 @@ void MatrixPowerFunction(const DenseTensor* X,
     return;
   }
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
   DenseTensor new_x;
   new_x.Resize(X->dims());
@@ -64,7 +64,7 @@ void MatrixPowerFunction(const DenseTensor* X,
     phi::Copy(dev_ctx, *X, dev_ctx.GetPlace(), false, &new_x);
   } else {
     // newX = X^{-1}, n = -n
-    phi::funcs::MatrixInverseFunctor<Context, T> mat_inv;
+    funcs::MatrixInverseFunctor<Context, T> mat_inv;
     mat_inv(dev_ctx, *X, &new_x);
     new_n = -n;
   }
@@ -74,7 +74,7 @@ void MatrixPowerFunction(const DenseTensor* X,
     return;
   }
 
-  auto no_trans_desc = phi::funcs::CreateMatrixDescriptor(x_dims, 0, false);
+  auto no_trans_desc = funcs::CreateMatrixDescriptor(x_dims, 0, false);
 
   if (new_n == 2) {
     // Out = newX * newX

@@ -279,12 +279,12 @@ static void UniqueDim(const Context& dev_ctx,
   in_trans_dims_vec[axis] = in.dims()[0];
   in_trans_dims_vec[0] = in.dims()[axis];
   DenseTensor in_trans;
-  phi::DDim in_trans_dims = common::make_ddim(in_trans_dims_vec);
+  DDim in_trans_dims = common::make_ddim(in_trans_dims_vec);
   in_trans.Resize(in_trans_dims);
   dev_ctx.template Alloc<InT>(&in_trans);
   TransCompute<Context, InT>(in.dims().size(), dev_ctx, in, &in_trans, permute);
   // reshape tensor: eg. [dim1, dim0, dim2] -> [dim1, dim0*dim2]
-  phi::DDim in_trans_flat_dims = common::flatten_to_2d(in_trans_dims, 1);
+  DDim in_trans_flat_dims = common::flatten_to_2d(in_trans_dims, 1);
   in_trans.Resize(in_trans_flat_dims);
 
   // sort indices
@@ -335,7 +335,7 @@ static void UniqueDim(const Context& dev_ctx,
   indices_vec.erase(indices_vec.begin() + input_unbind.size(),
                     indices_vec.end());
 
-  phi::funcs::ConcatFunctor<Context, InT> concat_functor;
+  funcs::ConcatFunctor<Context, InT> concat_functor;
   DenseTensor out_trans;
   std::vector<int64_t> out_trans_dims_vec = in_trans_dims_vec;
   out_trans_dims_vec[0] = input_unbind.size();

@@ -77,7 +77,7 @@ struct NoMaskBwFunctor {
                                     const T2* rand,
                                     int num) const {
     static constexpr int kCount =
-        phi::funcs::uniform_distribution<T2>::kReturnsCount;
+        funcs::uniform_distribution<T2>::kReturnsCount;
 #pragma unroll
     for (int i = 0; i < kCount; i++) {
       dst[i + kCount] = src_val[i];
@@ -102,7 +102,7 @@ __global__ void VectorizedDropoutBackward(
     Functor functor) {
   size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X);
   static constexpr int kCount =
-      phi::funcs::uniform_distribution<float>::kReturnsCount;
+      funcs::uniform_distribution<float>::kReturnsCount;
   size_t stride = BLOCK_NUM_X * GRID_NUM_X * kCount;
 #ifdef PADDLE_WITH_HIP
   hiprandStatePhilox4_32_10_t state;
@@ -117,7 +117,7 @@ __global__ void VectorizedDropoutBackward(
   float rands[kCount];
   T x_y[kCount * 2];
 
-  using Rand = phi::funcs::uniform_distribution<float>;
+  using Rand = funcs::uniform_distribution<float>;
   using Cast = kps::IdentityFunctor<T>;
 
   int deal_size = BLOCK_NUM_X * kCount;

@@ -652,7 +652,7 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
     T beta = static_cast<T>(0.0);
 
     // (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
-    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+    auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
     blas.GEMM(transA,
               transB,
               m,
