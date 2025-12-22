@@ -57,7 +57,7 @@ static int64_t ComputeBlockSize(int64_t col) {
 }
 
 static inline void GetDims(
-    const phi::DDim& dim, int axis, int64_t* pre, int64_t* n, int64_t* post) {
+    const DDim& dim, int axis, int64_t* pre, int64_t* n, int64_t* post) {
   *pre = 1;
   *post = 1;
   *n = dim[axis];

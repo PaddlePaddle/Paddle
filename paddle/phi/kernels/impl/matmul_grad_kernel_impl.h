@@ -50,7 +50,7 @@ struct ReduceSumForMatmulGrad<CPUContext, T> {
                   const std::vector<int>& reduce_dims) {
     std::vector<int64_t> reduce_dims_tmp(reduce_dims.begin(),
                                          reduce_dims.end());
-    funcs::ReduceKernelImpl<CPUContext, T, T, phi::funcs::SumFunctor>(
+    funcs::ReduceKernelImpl<CPUContext, T, T, funcs::SumFunctor>(
         dev_ctx, input, output, reduce_dims_tmp, true, false);
   }
 };
@@ -108,9 +108,9 @@ typename std::enable_if<!std::is_integral<T>::value>::type MatMul(
     DenseTensor* out,
     bool flag = false) {
   dev_ctx.template Alloc<T>(out);
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
-  auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
-  auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
+  auto mat_dim_a = funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
+  auto mat_dim_b = funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
   if (a.dims().size() == 3 && b.dims().size() <= 2) {
     // the transpose_X must be false, if is true, the transpose cost much time
     if (!trans_a) {
@@ -156,7 +156,7 @@ static DDim ColumnMatrixFromVector(const DDim& y_dim) {
  * If transposed, `H,W` will be swapped.
  */
 static void ReshapeTensorIntoMatrixSequence(
-    DenseTensor* x, const phi::funcs::MatDescriptor& descriptor) {
+    DenseTensor* x, const funcs::MatDescriptor& descriptor) {
   int64_t h, w;
   h = descriptor.height_;
   w = descriptor.width_;
@@ -177,8 +177,8 @@ static void ReshapeXYOutIntoMatrixSequence(DenseTensor* x,
                                            bool trans_y) {
   auto x_dim = RowMatrixFromVector(x->dims());
   auto y_dim = ColumnMatrixFromVector(y->dims());
-  auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(x_dim, 0, trans_x);
-  auto mat_dim_y = phi::funcs::CreateMatrixDescriptor(y_dim, 0, trans_y);
+  auto mat_dim_x = funcs::CreateMatrixDescriptor(x_dim, 0, trans_x);
+  auto mat_dim_y = funcs::CreateMatrixDescriptor(y_dim, 0, trans_y);
   if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
     out->Resize({mat_dim_x.height_, mat_dim_y.width_});
   } else {
@@ -1948,7 +1948,7 @@ void MatmulWithFlattenGradKernel(const Context& dev_ctx,
     dy->set_lod(y.lod());
   }
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   if (dx) {
     dev_ctx.template Alloc<T>(dx);
     DenseTensor dx_matrix =
@@ -2007,7 +2007,7 @@ void MatmulWithFlattenDoubleGradKernel(
     ddout_mat.Resize({m, n});
   }
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   // a flag to specify whether ddout value has been set, if flag
   // is false, MatMul beta should be 0 to set ddout, if flag is
   // true, MatMul beta should be 1 to add result to ddout.

@@ -1884,10 +1884,21 @@ void gqa_write_cachekv(
   constexpr int block_sz = 128;
   constexpr int x = VEC_16B / sizeof(T);
 
-  const int cache_bsz = cache_kv_out->dims()[1];
-  const int gqa_group_size = cache_kv_out->dims()[2];
-  const int max_seq_len = cache_kv_out->dims()[3];
-  const int dim_head = cache_kv_out->dims()[4];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t cache_bsz = cache_kv_out->dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t gqa_group_size = cache_kv_out->dims()[2];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t max_seq_len = cache_kv_out->dims()[3];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t dim_head = cache_kv_out->dims()[4];
 
   assert(dim_head % x == 0);
   PADDLE_ENFORCE_EQ(

@@ -573,9 +573,8 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
       FastDivModForPooling<int>(input_channels, output_width, output_height);
   if (adaptive) {
     int64_t max_threads = 512;
-    int64_t thread_num =
-        std::min(phi::funcs::details::GetLastPow2(output_height * output_width),
-                 max_threads);
+    int64_t thread_num = std::min(
+        funcs::details::GetLastPow2(output_height * output_width), max_threads);
     int64_t blocks = std::min(max_threads / thread_num,
                               static_cast<int64_t>(output_channels));
     auto max_grid_dim = backends::gpu::GetGpuMaxGridDimSize(
@@ -689,9 +688,9 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
         batch_size * output_channels * output_height * output_width;
     if (adaptive) {
       int64_t max_threads = 512;
-      int64_t thread_num = std::min(
-          phi::funcs::details::GetLastPow2(output_height * output_width),
-          max_threads);
+      int64_t thread_num =
+          std::min(funcs::details::GetLastPow2(output_height * output_width),
+                   max_threads);
       int64_t blocks = std::min(max_threads / thread_num,
                                 static_cast<int64_t>(output_channels));
       dim3 threads(thread_num, blocks, 1);
@@ -2212,9 +2211,9 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
                        output_height * output_width;
     if (adaptive && output_height > 1 && output_width > 1) {
       int64_t max_threads = 512;
-      int64_t thread_num = std::min(
-          phi::funcs::details::GetLastPow2(output_height * output_width),
-          max_threads);
+      int64_t thread_num =
+          std::min(funcs::details::GetLastPow2(output_height * output_width),
+                   max_threads);
       int64_t blocks = std::min(max_threads / thread_num,
                                 static_cast<int64_t>(output_channels));
       dim3 threads(thread_num, blocks, 1);
@@ -2828,7 +2827,7 @@ __global__ void FractionalKernelMaxPool2d(
     hiprandStatePhilox4_32_10_t state;
     hiprand_init(seed, thread_idx, offset, &state);
 #endif
-    phi::funcs::uniform_distribution<float> dist;
+    funcs::uniform_distribution<float> dist;
     float4 rand = dist(&state);
     u = (&rand.x)[0];
   } else {
@@ -3185,7 +3184,7 @@ __global__ void FractionalKernelMaxPool3d(
     hiprandStatePhilox4_32_10_t state;
     hiprand_init(seed, thread_idx, offset, &state);
 #endif
-    phi::funcs::uniform_distribution<float> dist;
+    funcs::uniform_distribution<float> dist;
     float4 rand = dist(&state);
     u = (&rand.x)[0];
   } else {

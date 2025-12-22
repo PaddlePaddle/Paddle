@@ -66,7 +66,7 @@ void NCEGradKernel(const Context &dev_ctx,
   if (sample_weight != nullptr) {
     sample_weight_data = sample_weight->data<T>();
   }
-  int num_true_class = 1;
+  int64_t num_true_class = 1;
   if (label != nullptr) {
     num_true_class = label->dims()[1];
   }

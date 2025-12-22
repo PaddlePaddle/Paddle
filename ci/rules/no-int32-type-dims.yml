@@ -1,13 +1,11 @@
 id: no-int32-type-dims
 language: cpp
 files:
-  - paddle/phi/kernels/**
-  # - paddle/**
+  - paddle/**
 ignores:
   - paddle/phi/kernels/legacy/**
   - paddle/phi/kernels/xpu/**
   - paddle/phi/kernels/custom/**
-  - paddle/phi/kernels/sparse/**
 severity: error
 message: |
   Use int64_t instead of int/int32_t for dims/shape/strides/numel/offset (large tensor support).
@@ -15,14 +13,14 @@ message: |
 note: dims/shape/strides/numel/offset may be >= INT32_MAX; dims()/numel() return int64_t
 rule:
   any:
-    # int x = <RIGHT>;
     - pattern: int $VAR = $RIGHT
-    # int32_t x = <RIGHT>;
     - pattern: int32_t $VAR = $RIGHT
-    # direct-initializer: int x(<RIGHT>);
+    - pattern: const int $VAR = $RIGHT
+    - pattern: const int32_t $VAR = $RIGHT
     - pattern: int $VAR($RIGHT)
-    # direct-initializer: int32_t x(<RIGHT>);
     - pattern: int32_t $VAR($RIGHT)
+    - pattern: const int $VAR($RIGHT)
+    - pattern: const int32_t $VAR($RIGHT)
 constraints:
   RIGHT:
     any:

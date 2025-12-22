@@ -329,6 +329,8 @@ void FlagRegistry::InitLinkedFlags() {
       {"enable_unique_name", "true"}};
   linked_flags_["dump_grad_node_forward_stack_path"] = {
       {"enable_unique_name", "true"}, {"call_stack_level", "3"}};
+  linked_flags_["dump_api_and_gradnode_python_stack_dir"] = {
+      {"enable_unique_name", "true"}, {"call_stack_level", "3"}};
 }
 
 bool FlagRegistry::SetFlagValue(const std::string& name,
@@ -376,6 +378,20 @@ bool FlagRegistry::UpdateLinkedFlags(const std::string& name,
       } else {
         return false;
       }
+    }
+    // Custom rule for Flags
+    if (name == "dump_api_and_gradnode_python_stack_dir") {
+      std::string fwd_path;
+      std::string bwd_path;
+      if (value.back() == '/') {
+        fwd_path = value + "api_call_stack";
+        bwd_path = value + "gradnode_call_stack";
+      } else {
+        fwd_path = value + "/api_call_stack";
+        bwd_path = value + "/gradnode_call_stack";
+      }
+      flags_["dump_api_python_stack_path"]->SetValueFromString(fwd_path);
+      flags_["dump_grad_node_forward_stack_path"]->SetValueFromString(bwd_path);
     }
   } else {
     return false;

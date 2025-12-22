@@ -57,7 +57,7 @@ void FoldGradKernel(const Context& dev_ctx,
   DDim input_matrix_shape = common::make_ddim(
       {1, kernel_sizes[0], kernel_sizes[1], output_height, output_width});
 
-  phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, Context, T> im2col;
+  funcs::Im2ColFunctor<funcs::ColFormat::kCFO, Context, T> im2col;
 
   for (int64_t i = 0; i < batch_size; i++) {
     DenseTensor out_grad_batch = out_grad.Slice(i, i + 1).Resize(out_shape);

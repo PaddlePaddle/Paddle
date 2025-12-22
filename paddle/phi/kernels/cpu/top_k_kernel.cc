@@ -210,8 +210,8 @@ void TopkKernel(const Context& dev_ctx,
     trans.emplace_back(axis);
 
     // get the trans input_dims, out_dims
-    phi::DDim trans_dims(in_dims);
-    phi::DDim trans_out_dims(out->dims());
+    DDim trans_dims(in_dims);
+    DDim trans_out_dims(out->dims());
     for (int i = 0; i < static_cast<int>(trans.size()); i++) {
       trans_dims[i] = in_dims[trans[i]];
     }

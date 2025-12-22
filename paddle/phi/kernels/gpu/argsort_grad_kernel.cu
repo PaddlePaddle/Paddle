@@ -185,7 +185,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
       trans.push_back(i);
     }
     trans.push_back(axis);
-    phi::DDim trans_dims(in_dims);
+    DDim trans_dims(in_dims);
     for (int i = 0; i < trans.size(); i++) {
       trans_dims[i] = in_dims[trans[i]];
     }

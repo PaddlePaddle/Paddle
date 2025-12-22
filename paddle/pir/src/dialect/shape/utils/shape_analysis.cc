@@ -173,7 +173,7 @@ void InferSymbolicShapeContext::SetSymbolForValueByStaticShape(Value val) {
       [&](DenseTensorType type_info) -> symbol::TensorShapeOrDataDimExprs {
     std::vector<symbol::DimExpr> static_shape;
     for (int i = 0; i < type_info.dims().size(); ++i) {
-      int dim = type_info.dims()[i];
+      int64_t dim = type_info.dims()[i];
       if (dim >= 0) {
         static_shape.emplace_back(dim);
       } else {
@@ -349,7 +349,15 @@ InferSymbolicShapeContext::SimplifyBroadcastForShapeOrData(
       if (dim_expr.isa<symbol::Broadcast<symbol::DimExpr>>()) {
         const auto& simplified_dim_expr = SimplifyBroadcast(
             dim_expr.Get<symbol::Broadcast<symbol::DimExpr>>());
-        simplified_dim_exprs.push_back(simplified_dim_expr);
+        int64_t simplified_dim_expr_node_cnt =
+            symbol::CountExprSymbols(simplified_dim_expr);
+        if (simplified_dim_expr_node_cnt >= 30) {
+          auto new_dim = symbol::DimExpr{GetNextSymName()};
+          AddEqualCstr(simplified_dim_expr, new_dim);
+          simplified_dim_exprs.push_back(new_dim);
+        } else {
+          simplified_dim_exprs.push_back(simplified_dim_expr);
+        }
       } else {
         simplified_dim_exprs.push_back(dim_expr);
       }

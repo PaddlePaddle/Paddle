@@ -788,8 +788,8 @@ def get_paddle_extra_install_requirements():
                 ),
                 "13.0": (
                     "nvidia-cuda-runtime==13.0.88 | "
-                    "nvidia-cudnn-cu13==9.14.0.64 | "
-                    "nvidia-cublas==13.1.0.3 | "
+                    "nvidia-cudnn-cu13==9.13.0.50 | "
+                    "nvidia-cublas==13.0.2.14 | "
                     "nvidia-cufft==12.0.0.61 | "
                     "nvidia-curand==10.4.0.35 | "
                     "nvidia-cusolver==12.0.4.66 | "
@@ -902,6 +902,7 @@ packages=['paddle',
           'paddle.distribution',
           'paddle.distributed.utils',
           'paddle.distributed.sharding',
+          'paddle.distributed.fsdp',
           'paddle.distributed.fleet',
           'paddle.distributed.launch',
           'paddle.distributed.auto_tuner',
@@ -1054,6 +1055,7 @@ packages=['paddle',
           'paddle._typing',
           'paddle._typing.libs',
           'paddle.api_tracer',
+          'paddle.testing',
         ]
 
 if (
@@ -1283,9 +1285,14 @@ if '${WITH_CINN}' == 'ON':
         package_data['paddle.libs']+=['float8e4m3.h']
 
     if '${CMAKE_BUILD_TYPE}' == 'Release' and os.name != 'nt':
-        command = "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_nvrtc/lib/:$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cublas/lib/:$ORIGIN/../../nvidia/cudnn/lib/:$ORIGIN/../../nvidia/curand/lib/:$ORIGIN/../../nvidia/cusolver/lib/:$ORIGIN/../../nvidia/nvtx/lib/:$ORIGIN/' %s/${CINN_LIB_NAME}" % libs_path
-        if os.system(command) != 0:
-            raise Exception("patch %s/${CINN_LIB_NAME} failed, command: %s" % (libs_path, command))
+        if ('@WITH_GPU@' == 'ON' and tuple(map(int, '@CUDA_VERSION@'.split('.'))) >= (13, 0) and tuple(map(int, '@CUDA_VERSION@'.split('.'))) < (14, 0)):
+            command = "patchelf --set-rpath '$ORIGIN/../../nvidia/cu13/lib/:$ORIGIN/../../nvidia/cudnn/lib/:$ORIGIN/' %s/${CINN_LIB_NAME}" % libs_path
+            if os.system(command) != 0:
+                raise Exception("patch %s/${CINN_LIB_NAME} failed, command: %s" % (libs_path, command))
+        else:
+            command = "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_nvrtc/lib/:$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cublas/lib/:$ORIGIN/../../nvidia/cudnn/lib/:$ORIGIN/../../nvidia/curand/lib/:$ORIGIN/../../nvidia/cusolver/lib/:$ORIGIN/../../nvidia/nvtx/lib/:$ORIGIN/' %s/${CINN_LIB_NAME}" % libs_path
+            if os.system(command) != 0:
+                raise Exception("patch %s/${CINN_LIB_NAME} failed, command: %s" % (libs_path, command))
 
 
 if '${WITH_ONEDNN}' == 'ON':
@@ -1402,14 +1409,22 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
                 # change rpath of pir.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         else:
-            commands = ["patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cuda_nvrtc/lib:$ORIGIN/../../nvidia/cublas/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/curand/lib:$ORIGIN/../../nvidia/cusparse/lib:$ORIGIN/../../nvidia/nvjitlink/lib:$ORIGIN/../../nvidia/cuda_cupti/lib:$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cusolver/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/nvtx/lib:$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
-            if('${WITH_SHARED_PHI}' == 'ON'):
-                # change rpath of phi.ext for loading 3rd party lib
-                commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
-                commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_CORE_NAME}")
-                if('${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON'):
-                    commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_GPU_NAME}")
-
+            if ('@WITH_GPU@' == 'ON' and tuple(map(int, '@CUDA_VERSION@'.split('.'))) >= (13, 0) and tuple(map(int, '@CUDA_VERSION@'.split('.'))) < (14, 0)):
+                commands = ["patchelf --set-rpath '$ORIGIN/../../nvidia/cu13/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/cusparselt/lib:$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
+                if('${WITH_SHARED_PHI}' == 'ON'):
+                    # change rpath of phi.ext for loading 3rd party lib
+                    commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cu13/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
+                    commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cu13/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_CORE_NAME}")
+                    if('${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON'):
+                        commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cu13/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_GPU_NAME}")
+            else:
+                commands = ["patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cuda_nvrtc/lib:$ORIGIN/../../nvidia/cublas/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/curand/lib:$ORIGIN/../../nvidia/cusparse/lib:$ORIGIN/../../nvidia/nvjitlink/lib:$ORIGIN/../../nvidia/cuda_cupti/lib:$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cusolver/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/nvtx/lib:$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
+                if('${WITH_SHARED_PHI}' == 'ON'):
+                    # change rpath of phi.ext for loading 3rd party lib
+                    commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
+                    commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_CORE_NAME}")
+                    if('${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON'):
+                        commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_GPU_NAME}")
             if('${WITH_SHARED_IR}' == 'ON'):
                 # change rpath of pir.ext for loading 3rd party lib
                 commands.append("patchelf --set-rpath '$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
@@ -1450,7 +1465,7 @@ headers = (
     # phi level api headers (low level api, for training only)
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi')) +  # phi extension header
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/include', recursive=True)) +  # phi include headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends', recursive=True)) +  # phi backends headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends')) +  # phi backends headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/core', recursive=True)) +  # phi core headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/infermeta', recursive=True)) +  # phi infermeta headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels', recursive=True)) +  # phi kernels headers
@@ -1469,6 +1484,7 @@ headers = (
     list(find_files('*.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape'))+
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/ir')) +  # operator init headers
     list(find_files('sub_graph_detector.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/transforms/')) +
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/distributed/collective/')) +
     list(find_files('general_functions.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/utils'))+
     list(find_files('interface.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/serialize_deserialize/include'))+
     list(find_files('dense_tensor.inl','@PADDLE_SOURCE_DIR@/paddle/phi/core'))+
@@ -1518,7 +1534,9 @@ if '${WITH_OPENVINO}' == 'ON':
 if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
     # externalErrorMsg.pb for External Error message
     headers += list(find_files('*.pb', '${externalError_INCLUDE_DIR}'))
-
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends', recursive=True)
+    )
 
 if '${WITH_XPU}' == 'ON':
     headers += [
@@ -1526,6 +1544,20 @@ if '${WITH_XPU}' == 'ON':
         if '/include/xpu/kernel/' not in h
     ] # xdnn api headers
     headers += list(find_files('*.hpp', '@PADDLE_BINARY_DIR@/third_party/xpu/src/extern_xpu/xpu', recursive=True)) # xre headers with .hpp extension
+    headers += list(
+        find_files('*.h', '@PADDLE_BINARY_DIR@/paddle/phi/backends/cpu')
+    )
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/xpu')
+    )
+    headers += list(
+        find_files(
+            '*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload'
+        )
+    )
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/onednn')
+    )
 
 if (
     '@WITH_GPU@' == 'ON'
@@ -1536,6 +1568,70 @@ if (
     headers += list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/fp8/deep_gemm/include/cutlass/', recursive=True))
     headers += list(find_files('*.hpp', '@PADDLE_SOURCE_DIR@/paddle/fluid/fp8/deep_gemm/include/cutlass/', recursive=True))
     headers += list(find_files('*.cuh', '@PADDLE_SOURCE_DIR@/paddle/fluid/fp8/deep_gemm/include/deep_gemm', recursive=True))
+if (
+    '@WITH_GPU@' == 'OFF'
+    and '@WITH_ROCM@' == 'OFF'
+    and '@WITH_XPU@' == 'OFF'
+):  # Custom Device
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/cpu')
+    )
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/custom')
+    )
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/gpu', recursive=True)
+    )
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/onednn')
+    )
+    headers += [
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/afs_api.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/dynamic_loader.h',
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/mklml.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/mklrt.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/lapack.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/hml.h'
+        ),
+    ]
+else:
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/cpu')
+    )
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/onednn')
+    )
+    headers += [
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/afs_api.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/dynamic_loader.h',
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/mklml.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/mklrt.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/lapack.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/hml.h'
+        ),
+    ]
 
 headers += list(find_files('*.h', '${PYBIND_INCLUDE_DIR}', True)) # pybind headers
 

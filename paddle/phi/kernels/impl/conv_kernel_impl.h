@@ -140,10 +140,10 @@ void ConvKernelImpl(const Context& dev_ctx,
   int64_t in_step = transformed_input.dims()[1] / groups;
   int64_t out_step = transformed_output.dims()[1] / groups;
 
-  phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, Context, T> im2col;
-  phi::funcs::Vol2ColFunctor<Context, T> vol2col;
+  funcs::Im2ColFunctor<funcs::ColFormat::kCFO, Context, T> im2col;
+  funcs::Vol2ColFunctor<Context, T> vol2col;
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   for (int64_t i = 0; i < batch_size; i++) {
     DenseTensor in_batch =
         transformed_input.Slice(i, i + 1).Resize(in_matrix_shape);

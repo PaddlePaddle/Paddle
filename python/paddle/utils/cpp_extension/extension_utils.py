@@ -541,6 +541,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     include_dirs = list(kwargs.get('include_dirs', []))
     include_dirs = [os.fsdecode(include_dir) for include_dir in include_dirs]
     include_dirs.extend(compile_include_dirs)
+    include_dirs.extend(find_paddle_custom_device_includes())
     include_dirs.extend(find_paddle_includes(use_cuda))
     include_dirs.extend(find_python_includes())
 
@@ -574,7 +575,15 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         # On Linux, GCC support '-l:xxx.so' to specify the library name
         # without `lib` prefix.
         if OS_NAME.startswith('linux'):
-            extra_link_args.append(f'-l:{_get_core_name()}')
+            # Force link libpaddle.so to avoid "as-needed" optimization
+            # when user only uses phi headers.
+            extra_link_args.extend(
+                [
+                    '-Wl,--no-as-needed',
+                    f'-l:{_get_core_name()}',
+                    '-Wl,--as-needed',
+                ]
+            )
         # ----------------------- MacOS Platform ----------------------- #
         else:
             # See _reset_so_rpath for details.
@@ -789,8 +798,12 @@ def find_cuda_includes():
         raise ValueError(
             "Not found CUDA runtime, please use `export CUDA_HOME=XXX` to specific it."
         )
+    base_include = os.path.join(cuda_home, 'include')
 
-    return [os.path.join(cuda_home, 'include')]
+    sub_dirs = ['', 'cccl', 'nvtx3']
+
+    paths = [os.path.join(base_include, sub) for sub in sub_dirs]
+    return [p for p in paths if os.path.exists(p)]
 
 
 def find_rocm_includes():
@@ -850,6 +863,31 @@ def find_paddle_includes(use_cuda=False):
         if std_v1_includes is not None and os.path.exists(std_v1_includes):
             include_dirs.append(std_v1_includes)
 
+    return include_dirs
+
+
+def find_paddle_custom_device_includes():
+    """
+    Return Paddle Custom Device necessary include dir path.
+    """
+    include_dirs = []
+    devices = core.get_all_device_type()
+
+    if not devices:
+        return include_dirs
+
+    device = devices[-1]
+    if core.is_compiled_with_custom_device(device):
+        custom_device_root = os.getenv("CUSTOM_DEVICE_ROOT")
+        if custom_device_root:
+            include_dir = os.path.join(custom_device_root, "include")
+            if os.path.exists(include_dir):
+                include_dirs.append(include_dir)
+        else:
+            raise ValueError(
+                "Not found CUSTOM_DEVICE_ROOT, please use `export CUSTOM_DEVICE_ROOT=XXX` to specific it."
+            )
+        return include_dirs
     return include_dirs
 
 

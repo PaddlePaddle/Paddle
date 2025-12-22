@@ -33,7 +33,10 @@ void GetMaxLenTensor(const Context& dev_ctx,
   max_len_tensor.Resize({{1}});
   auto* max_len_tensor_data = dev_ctx.template Alloc<int>(
       &max_len_tensor, max_len_tensor.numel() * sizeof(int));
-  const int bsz = batch_size.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t bsz = batch_size.dims()[0];
+
   int r = baidu::xpu::api::reduce_max<int>(dev_ctx.x_context(),
                                            seq_lens_tensor.data<int>(),
                                            max_len_tensor_data,

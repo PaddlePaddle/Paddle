@@ -26,7 +26,7 @@ namespace fusion {
 template <typename T>
 struct LayerNormParamTypeGeluFunctor {
   inline __host__ __device__ T operator()(const T x) const {
-    using U = phi::funcs::LayerNormParamType<T>;
+    using U = funcs::LayerNormParamType<T>;
     const U casted_x = static_cast<U>(x);
     const U temp = erf(casted_x * static_cast<U>(M_SQRT1_2));
     const U out = (casted_x * static_cast<U>(0.5) * (static_cast<U>(1) + temp));
@@ -40,7 +40,7 @@ struct LayerNormParamTypeGeluFunctor {
 template <typename T>
 struct GeluGradFunctor {
   inline __host__ __device__ T UseOut(const T x) const {
-    using U = phi::funcs::LayerNormParamType<T>;
+    using U = funcs::LayerNormParamType<T>;
     auto casted_x = static_cast<U>(x);
 
     auto first =
@@ -179,11 +179,11 @@ __global__ void FusedActBias(Functor act,
         } else {
           tmp = static_cast<T>(act(tmp));
         }
-        out_vec[unroll_idx] = phi::funcs::quant_helper(tmp,
-                                                       quant_next_in_scale,
-                                                       quant_round_type,
-                                                       quant_max_bound,
-                                                       quant_min_bound);
+        out_vec[unroll_idx] = funcs::quant_helper(tmp,
+                                                  quant_next_in_scale,
+                                                  quant_round_type,
+                                                  quant_max_bound,
+                                                  quant_min_bound);
       } else {
         if (bias) {
           out_vec[unroll_idx] = static_cast<OutType>(

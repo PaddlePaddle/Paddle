@@ -41,7 +41,7 @@ void GumbelSoftmaxGradKernel(const Context& dev_ctx,
 
   // For 0D Tensor
   if (rank == 0) {
-    phi::funcs::set_constant(dev_ctx, dx, static_cast<T>(0.0));
+    funcs::set_constant(dev_ctx, dx, static_cast<T>(0.0));
     return;
   }
 
@@ -54,7 +54,7 @@ void GumbelSoftmaxGradKernel(const Context& dev_ctx,
   dx_2d.Resize({size_to_axis, size_from_axis});
   out_2d.Resize({size_to_axis, size_from_axis});
   dout_2d.Resize({size_to_axis, size_from_axis});
-  phi::funcs::SoftmaxGradFunctor<Context, T>()(
+  funcs::SoftmaxGradFunctor<Context, T>()(
       dev_ctx, axis_dim, &out_2d, &dout_2d, &dx_2d);
 }
 

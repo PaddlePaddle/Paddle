@@ -333,10 +333,10 @@ void RewriteByLayoutImpl<ReshapeOp>(pir::Operation* op,
                         "Reshape's shape size was expected as 4, but got %d",
                         value_attr.size()));
   std::vector<pir::Attribute> new_value_attr;
-  if (new_layout == common::DataLayout::kNHWC) {
+  if (new_layout == common::DataLayout::NHWC) {
     new_value_attr = std::vector<pir::Attribute>{
         value_attr[0], value_attr[2], value_attr[3], value_attr[1]};
-  } else if (new_layout == common::DataLayout::kNCHW) {
+  } else if (new_layout == common::DataLayout::NCHW) {
     new_value_attr = std::vector<pir::Attribute>{
         value_attr[0], value_attr[3], value_attr[1], value_attr[2]};
   } else {
@@ -420,11 +420,11 @@ common::DataLayout PreferLayoutImpl<Pool2dOp>(pir::Operation* op) {
 
   // get input dims h, w, c
   int32_t h, w, c;
-  if (origin_format == common::DataLayout::kNHWC) {
+  if (origin_format == common::DataLayout::NHWC) {
     h = input.dims().at(1);
     w = input.dims().at(2);
     c = input.dims().at(3);
-  } else if (origin_format == common::DataLayout::kNCHW) {
+  } else if (origin_format == common::DataLayout::NCHW) {
     h = input.dims().at(2);
     w = input.dims().at(3);
     c = input.dims().at(1);
@@ -453,61 +453,61 @@ common::DataLayout PreferLayoutImpl<Pool2dOp>(pir::Operation* op) {
     };
     // TODO(liujinnan): need to test the prefer layout if kernel_size is not
     // aligned.
-    if (!AllEqual(kernel_size)) return common::DataLayout::kNCHW;
+    if (!AllEqual(kernel_size)) return common::DataLayout::NCHW;
 
     int k = kernel_size[0];
     // kernel size is all 1, prefer NCHW.
-    if (k == 1 || k == 2) return common::DataLayout::kNCHW;
+    if (k == 1 || k == 2) return common::DataLayout::NCHW;
 
     if (pool_type == "max") {
       if (h * w <= 64 * 64) {
-        if (k <= 3) return common::DataLayout::kNHWC;
-        return common::DataLayout::kNCHW;
+        if (k <= 3) return common::DataLayout::NHWC;
+        return common::DataLayout::NCHW;
       } else {
         if (c <= 16) {
-          if (k <= 5) return common::DataLayout::kNHWC;
-          return common::DataLayout::kNCHW;
+          if (k <= 5) return common::DataLayout::NHWC;
+          return common::DataLayout::NCHW;
         }
         // when c > 16, all kernel_size return NHWC
-        return common::DataLayout::kNHWC;
+        return common::DataLayout::NHWC;
       }
     } else if (pool_type == "avg") {
       if (h * w <= 64 * 64) {
         if (c <= 16) {
           if (k < 7)
-            return common::DataLayout::kNCHW;
+            return common::DataLayout::NCHW;
           else
-            return common::DataLayout::kNHWC;
+            return common::DataLayout::NHWC;
         } else if (c > 16 && c <= 32) {
           if (k <= 7)
-            return common::DataLayout::kNHWC;
+            return common::DataLayout::NHWC;
           else
-            return common::DataLayout::kNCHW;
+            return common::DataLayout::NCHW;
         } else if (c > 32 && c <= 64) {
           if (k < 5)
-            return common::DataLayout::kNCHW;
+            return common::DataLayout::NCHW;
           else
-            return common::DataLayout::kNHWC;
+            return common::DataLayout::NHWC;
         } else if (c > 64 && c <= 128) {
           if (k < 7)
-            return common::DataLayout::kNHWC;
+            return common::DataLayout::NHWC;
           else
-            return common::DataLayout::kNCHW;
+            return common::DataLayout::NCHW;
         }
         // when c > 128, all kernel_size return NHWC
-        return common::DataLayout::kNHWC;
+        return common::DataLayout::NHWC;
       } else {
         if (c < 64) {
-          return common::DataLayout::kNHWC;
+          return common::DataLayout::NHWC;
         } else {
           if (k < 7)
-            return common::DataLayout::kNHWC;
+            return common::DataLayout::NHWC;
           else
-            return common::DataLayout::kNCHW;
+            return common::DataLayout::NCHW;
         }
       }
     }
-    return common::DataLayout::kNCHW;
+    return common::DataLayout::NCHW;
   };
   return PreferLayout(c, h, w, kernel_size, pool_type);
 }

@@ -302,6 +302,7 @@ try:
         _get_amp_op_list,
         _get_current_stream,
         _get_eager_deletion_vars,
+        _get_legacy_default_stream,
         _get_phi_kernel_name,
         _get_registered_phi_kernels,
         _get_stream_from_external,

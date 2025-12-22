@@ -36,11 +36,11 @@ class AttnLayerNorm {
   ~AttnLayerNorm() {}
 
   void ComputeForward(const InType* x_data,
-                      const phi::funcs::LayerNormParamType<T>* scale_data,
-                      const phi::funcs::LayerNormParamType<T>* bias_data,
+                      const funcs::LayerNormParamType<T>* scale_data,
+                      const funcs::LayerNormParamType<T>* bias_data,
                       OutType* y_data,
-                      phi::funcs::LayerNormParamType<T>* mean_data,
-                      phi::funcs::LayerNormParamType<T>* var_data,
+                      funcs::LayerNormParamType<T>* mean_data,
+                      funcs::LayerNormParamType<T>* var_data,
                       const float* dequant_out_scale_data = nullptr,
                       const int quant_out_scale_offset = 0,
                       const float quant_in_scale = 1.0,
@@ -49,14 +49,14 @@ class AttnLayerNorm {
                       const float quant_min_bound = -127.0) {
     auto stream = dev_ctx_.stream();
 
-    switch (phi::funcs::GetDesiredBlockDim(feature_size_)) {
+    switch (funcs::GetDesiredBlockDim(feature_size_)) {
       FIXED_BLOCK_DIM_CASE(
-          phi::funcs::LayerNormForward<T,
-                                       phi::funcs::LayerNormParamType<T>,
-                                       kBlockDim,
-                                       false,
-                                       InType,
-                                       OutType>
+          funcs::LayerNormForward<T,
+                                  funcs::LayerNormParamType<T>,
+                                  kBlockDim,
+                                  false,
+                                  InType,
+                                  OutType>
           <<<batch_size_, kBlockDim, 0, stream>>>(x_data,
                                                   scale_data,
                                                   bias_data,
@@ -80,25 +80,24 @@ class AttnLayerNorm {
 
   void ComputeBackward(const T* x_data,
                        const T* d_y_data,
-                       const phi::funcs::LayerNormParamType<T>* scale_data,
-                       const phi::funcs::LayerNormParamType<T>* mean_data,
-                       const phi::funcs::LayerNormParamType<T>* var_data,
+                       const funcs::LayerNormParamType<T>* scale_data,
+                       const funcs::LayerNormParamType<T>* mean_data,
+                       const funcs::LayerNormParamType<T>* var_data,
                        T* d_x_data,
-                       phi::funcs::LayerNormParamType<T>* d_scale_data,
-                       phi::funcs::LayerNormParamType<T>* d_bias_data) {
-    phi::funcs::LayerNormBackward<T, phi::funcs::LayerNormParamType<T>>(
-        x_data,
-        d_y_data,
-        scale_data,
-        mean_data,
-        var_data,
-        d_x_data,
-        d_scale_data,
-        d_bias_data,
-        epsilon_,
-        batch_size_,
-        feature_size_,
-        dev_ctx_);
+                       funcs::LayerNormParamType<T>* d_scale_data,
+                       funcs::LayerNormParamType<T>* d_bias_data) {
+    funcs::LayerNormBackward<T, funcs::LayerNormParamType<T>>(x_data,
+                                                              d_y_data,
+                                                              scale_data,
+                                                              mean_data,
+                                                              var_data,
+                                                              d_x_data,
+                                                              d_scale_data,
+                                                              d_bias_data,
+                                                              epsilon_,
+                                                              batch_size_,
+                                                              feature_size_,
+                                                              dev_ctx_);
   }
 
  private:

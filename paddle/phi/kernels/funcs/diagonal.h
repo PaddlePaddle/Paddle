@@ -120,7 +120,7 @@ DenseTensor Diagonal(const DeviceContext& dev_ctx,
 #endif
 
     // auto& dev_ctx2 = dev_ctx.template device_context<DeviceContext>();
-    phi::funcs::ForRange<DeviceContext> for_range(dev_ctx, diag.numel());
+    funcs::ForRange<DeviceContext> for_range(dev_ctx, diag.numel());
     DiagonalFunctor<T> functor(
         input_data, diag_arr, ret_arr, pos, dim_size, diag_data);
     for_range(functor);

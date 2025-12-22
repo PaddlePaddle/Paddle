@@ -284,7 +284,7 @@ void CholeskyGradKernel(const Context& dev_ctx,
   blas.MatMul(l, trans_desc, l_grad, no_trans_desc, T(1), &middle, T(0));
 
   /*! phi.tril_().diagonal(0, -2, -1).mul_(0.5) */
-  phi::funcs::ForRange<Context> for_range(dev_ctx, tensor_size);
+  funcs::ForRange<Context> for_range(dev_ctx, tensor_size);
   MatrixBandPartScaleEndFunctor<T> matrix_band_part_scale_end_functor(
       m,
       m,

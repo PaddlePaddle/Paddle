@@ -2208,8 +2208,13 @@ void CacheKernel(const phi::GPUContext &dev_ctx,
   typedef PDDataTypeTraits<T> traits_;
   typedef typename traits_::DataType DataType_;
 
-  const int max_blocks_per_seq = block_tables.dims()[1];
-  const int32_t block_size = key_cache_out->dims()[2];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t max_blocks_per_seq = block_tables.dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t block_size = key_cache_out->dims()[2];
 
   // stage 1: write qkv to cache [pre_cache_length:]
   int elem_nums = num_tokens * 2 * kv_num_heads * head_size;  // just k and v
@@ -2468,9 +2473,18 @@ void DynamicQuantCacheKernel(
   typedef PDDataTypeTraits<T> traits_;
   typedef typename traits_::DataType DataType_;
 
-  const int num_tokens = padding_offsets.dims()[0];
-  const int max_blocks_per_seq = block_tables.dims()[1];
-  const int32_t block_size = key_cache_out->dims()[2];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t num_tokens = padding_offsets.dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t max_blocks_per_seq = block_tables.dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t block_size = key_cache_out->dims()[2];
+
   constexpr int PackSize = 16 / sizeof(T);
 
   assert(head_size % PackSize == 0);
@@ -2494,7 +2508,9 @@ void DynamicQuantCacheKernel(
 
   constexpr int block_sz = 1024;
 
-  const int bsz = seq_lens.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t bsz = seq_lens.dims()[0];
 
   dim3 grid(kv_num_heads, bsz, 2);
 

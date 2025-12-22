@@ -41,7 +41,7 @@ void FusedBiasDropoutResidualLnKernel(
     DenseTensor* dropout_mask_out,
     DenseTensor* ln_mean,
     DenseTensor* ln_variance) {
-  using U = phi::funcs::LayerNormParamType<T>;
+  using U = funcs::LayerNormParamType<T>;
   auto* x_data = x.data<T>();
   auto* bias_data = (bias.get_ptr() == nullptr) ? nullptr : bias->data<T>();
   auto* residual_data = residual.data<T>();

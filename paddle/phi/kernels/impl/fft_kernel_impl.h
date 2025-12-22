@@ -91,7 +91,7 @@ void FFTR2CKernel(const Context& dev_ctx,
   if (onesided) {
     fft_r2c_func(dev_ctx, x, out, axes, norm_type, forward);
   } else {
-    phi::DDim onesided_out_shape = x.dims();
+    DDim onesided_out_shape = x.dims();
     const int64_t last_fft_axis = axes.back();
     const int64_t onesided_last_axis_size =
         out->dims().at(last_fft_axis) / 2 + 1;

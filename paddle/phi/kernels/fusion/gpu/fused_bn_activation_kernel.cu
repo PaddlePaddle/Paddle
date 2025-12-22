@@ -85,8 +85,8 @@ void FusedBatchNormActKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(y);
 
   int N, C, H, W, D;
-  const DataLayout data_layout = phi::DataLayout::kNHWC;
-  phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+  const DataLayout data_layout = phi::DataLayout::NHWC;
+  funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
   if ((N * H * W * D) == 1) {
     // Only 1 element in normalization dimension,
@@ -95,7 +95,7 @@ void FusedBatchNormActKernel(const Context &dev_ctx,
     auto y_v = phi::EigenVector<T>::Flatten(*y);
     auto &dev = *dev_ctx.eigen_device();
     if (act_type == "relu") {
-      phi::funcs::ReluCUDAFunctor<T>()(dev, x_v, y_v);
+      funcs::ReluCUDAFunctor<T>()(dev, x_v, y_v);
     } else {
       PADDLE_THROW(
           common::errors::Unimplemented("Unsupported activation type"));

@@ -494,7 +494,9 @@ const std::unordered_map<std::string, std::string>& CppTypeToAttrTypeMap() {
       {"std::vector<int>", "pir::ArrayAttribute<pir::Int32Attribute>"},
       {"std::vector<float>", "pir::ArrayAttribute<pir::FloatAttribute>"},
       {"std::vector<int64_t>", "pir::ArrayAttribute<pir::Int64Attribute>"},
-      {"std::vector<std::string>", "pir::ArrayAttribute<pir::StrAttribute>"}};
+      {"std::vector<std::string>", "pir::ArrayAttribute<pir::StrAttribute>"},
+      {"void*", "pir::PointerAttribute"},
+  };
   return attr_type_map;
 }
 
@@ -536,8 +538,8 @@ const std::unordered_map<std::string, phi::Place>& StringToPlaceMap() {
 const std::unordered_map<std::string, phi::DataLayout>&
 StringToDataLayoutMap() {
   static std::unordered_map<std::string, phi::DataLayout> data_layout_map{
-      {"NHWC", phi::DataLayout::kNHWC},
-      {"NCHW", phi::DataLayout::kNCHW},
+      {"NHWC", phi::DataLayout::NHWC},
+      {"NCHW", phi::DataLayout::NCHW},
       {"Undefined", phi::DataLayout::kAnyLayout},
       {"ONEDNN", phi::DataLayout::ONEDNN},
       {"SPARSE_COO", phi::DataLayout::SPARSE_COO},

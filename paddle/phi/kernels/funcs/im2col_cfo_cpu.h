@@ -66,7 +66,7 @@ inline void im2col_common(const phi::DenseTensor& im,
           *(col_data + col_idx64) = static_cast<T>(0);
         } else {
           int64_t im_idx64;
-          if (data_layout != DataLayout::kNHWC) {
+          if (data_layout != DataLayout::NHWC) {
             im_idx64 = (c_im * im_height + im_row_idx) * im_width + im_col_idx;
           } else {
             im_idx64 =
@@ -112,7 +112,7 @@ inline void im2col_sh1sw1dh1dw1ph0pw0(
       const T* src_data = src_data_ic;
       for (int64_t kh = 0; kh < filter_height; ++kh) {
         for (int64_t kw = 0; kw < filter_width; ++kw) {
-          if (data_layout != DataLayout::kNHWC) {
+          if (data_layout != DataLayout::NHWC) {
             std::memcpy(dst_data, src_data + kw, copy_size);
           } else {
             for (int64_t kow = 0; kow < output_width; ++kow) {

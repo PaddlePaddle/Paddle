@@ -214,6 +214,7 @@
     param: [x, reduce_type]
   inplace : (x -> out)
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : all_to_all
   args : (Tensor x, int ring_id = 0)
@@ -841,6 +842,7 @@
     func : c_allreduce_sum
   inplace : (x -> out)
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : c_concat
   args : (Tensor x, int rank, int nranks, int ring_id, bool use_calc_stream, bool use_model_parallel)
@@ -851,6 +853,7 @@
   kernel :
     func : c_concat
   backward: c_concat_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : c_identity
   args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
@@ -861,6 +864,7 @@
     func : c_identity
   inplace : (x -> out)
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : c_scatter
   args : (Tensor x, int ring_id = 0, int root = 0, int nranks = 0, bool use_calc_stream = false)
@@ -953,6 +957,7 @@
     spmd_rule : CeluInfoSpmd
   kernel :
     func : celu
+  inplace : (x -> out)
   backward : celu_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
@@ -1527,7 +1532,7 @@
 
 - op : diag
   args : (Tensor x, int offset = 0, float padding_value = 0.0)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : DiagInferMeta
   kernel :
@@ -2100,6 +2105,7 @@
     data_type : q
   intermediate : softmax_lse, seed_offset
   backward : flash_attn_unpadded_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flash_attn_v3
   args : (Tensor q, Tensor k, Tensor v, Tensor q_v_, Tensor q_descale_, Tensor k_descale_, Tensor v_descale_, float softmax_scale, bool is_causal, int window_size_left, int window_size_right, float softcap, int num_splits, bool manual_set_pack_gqa, bool pack_gqa_, int sm_margin)
@@ -2399,6 +2405,19 @@
     data_type : x
   view : (mean -> mean_out), (variance -> variance_out)
   backward : fused_bn_add_activation_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : fused_rms_norm_quant
+  args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
+  output : Tensor(out), Tensor(residual_out), Tensor(inv_var)
+  infer_meta :
+    func : FusedRmsNormQuantInferMeta
+  kernel :
+    func : fused_rms_norm_quant
+    data_type : x
+  optional : bias, residual, norm_bias, residual_out
+  intermediate : inv_var
+  backward : fused_rms_norm_quant_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fused_softmax_mask
@@ -3894,6 +3913,7 @@
     param: [x]
   backward: mp_allreduce_sum_grad
   inplace: (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : multi_dot
   args : (Tensor[] x)
@@ -4608,19 +4628,6 @@
     func : rint
   inplace : (x -> out)
   backward : rint_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-- op : rms_norm
-  args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
-  output : Tensor(out), Tensor(residual_out), Tensor(inv_var)
-  infer_meta :
-    func : RmsNormInferMeta
-  kernel :
-    func : rms_norm
-    data_type : x
-  optional : bias, residual, norm_bias, residual_out
-  intermediate : inv_var
-  backward : rms_norm_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : rmsprop_
@@ -5985,6 +5992,15 @@
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
   output : Tensor(out)
   invoke : full_like(x, 0, dtype, place)
+
+- op: batched_gemm
+  args: (Tensor lhs, Tensor rhs, int64_t[] batch_sizes, bool trans_lhs, bool trans_rhs)
+  output: Tensor(output)
+  infer_meta:
+    func: BatchedGemmInferMeta
+  kernel:
+   func: batched_gemm
+   data_type: lhs
 
 - op: chunk_eval
   args: (Tensor inference, Tensor label, Tensor seq_length, int num_chunk_types, str
