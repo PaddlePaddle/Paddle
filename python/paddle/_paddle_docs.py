@@ -322,7 +322,7 @@ def amin(
 
 add_doc_and_signature(
     "amax",
-    """
+    r"""
     Computes the maximum of tensor elements over the given axis.
 
     Note:
@@ -463,7 +463,7 @@ def amax(
 
 add_doc_and_signature(
     "all",
-    """
+    r"""
     Computes the ``logical and`` of tensor elements over the given dimension.
 
     Args:
@@ -535,9 +535,10 @@ def all(
 ) -> Tensor
 """,
 )
+
 add_doc_and_signature(
     "argmax",
-    """
+    r"""
     Computes the indices of the max elements of the input tensor's
     element along the provided axis.
 
@@ -576,16 +577,16 @@ add_doc_and_signature(
             >>> out4 = paddle.argmax(x, axis=0, keepdim=True)
             >>> print(out4.numpy())
             [[2 2 0 1]]
-    """,
+""",
     """
-    def argmax(
+def argmax(
     x: Tensor,
     axis: int | None = None,
     keepdim: bool = False,
     dtype: DTypeLike = "int64",
     name: str | None = None,
 ) -> Tensor
-    """,
+""",
 )
 
 add_doc_and_signature(
@@ -632,9 +633,9 @@ add_doc_and_signature(
              [-2.03444386, -2.35619450,  3.14159274,  2.35619450],
              [-1.57079637, -1.57079637,  0.        ,  1.57079637],
              [-1.10714877, -0.78539819,  0.        ,  0.78539819]])
-    """,
+""",
     """
-    def angle(
+def angle(
     x: Tensor,
     name: str | None = None,
     *,
@@ -645,7 +646,7 @@ add_doc_and_signature(
 
 add_doc_and_signature(
     "argmin",
-    """
+    r"""
     Computes the indices of the min elements of the input tensor's
     element along the provided axis.
 
@@ -684,16 +685,16 @@ add_doc_and_signature(
             >>> out4 = paddle.argmin(x, axis=0, keepdim=True)
             >>> print(out4.numpy())
             [[1 1 1 2]]
-    """,
+""",
     """
-    def argmin(
+def argmin(
     x: Tensor,
     axis: int | None = None,
     keepdim: bool = False,
     dtype: DTypeLike = "int64",
     name: str | None = None,
 ) -> Tensor
-    """,
+""",
 )
 
 add_doc_and_signature(
@@ -780,8 +781,15 @@ add_doc_and_signature(
             >>> res
             Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
             [1.])
-    """,
-    "def log2(x: Tensor, name: str | None = None, * , out: Tensor | None = None) -> Tensor",
+""",
+    """
+def log2(
+    x: Tensor,
+    name: str | None = None,
+    * ,
+    out: Tensor | None = None
+    ) -> Tensor
+""",
 )
 
 add_doc_and_signature(
@@ -868,7 +876,7 @@ add_doc_and_signature(
 )
 add_doc_and_signature(
     "matmul",
-    """
+    r"""
     Applies matrix multiplication to two tensors. `matmul` follows
     the complete broadcast rules,
     and its behavior is consistent with `np.matmul`.
@@ -959,8 +967,9 @@ add_doc_and_signature(
             >>> z = paddle.matmul(x, y)
             >>> print(z.shape)
             paddle.Size([10, 3, 5, 5])
-    """,
-    """    def matmul(
+""",
+    """
+def matmul(
     x: Tensor,
     y: Tensor,
     transpose_x: bool = False,
@@ -968,11 +977,13 @@ add_doc_and_signature(
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor""",
+) -> Tensor
+""",
 )
+
 add_doc_and_signature(
     "multiply",
-    """
+    r"""
     multiply two tensors element-wise. The equation is:
 
     .. math::
@@ -1015,18 +1026,22 @@ add_doc_and_signature(
             [[[2, 4, 6],
               [2, 4, 6]]])
 
-    """,
-    """def multiply(x: Tensor,
-                    y: Tensor,
-                    name: str | None = None,
-                    *,
-                    out: Tensor | None = None) -> Tensor""",
+""",
+    """
+def multiply(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None
+    ) -> Tensor
+""",
 )
 
 add_doc_and_signature(
     "logsumexp",
     r"""
-    Calculates the log of the sum of exponentials of ``x`` along ``axis`` .
+    Calculates the log of the sum of exponential of ``x`` along ``axis`` .
 
     .. math::
        logsumexp(x) = \log\sum exp(x)
@@ -1088,7 +1103,7 @@ def logsumexp(
 
 add_doc_and_signature(
     "softplus",
-    """
+    r"""
     softplus activation
 
     .. math::
@@ -1127,7 +1142,7 @@ add_doc_and_signature(
 
 add_doc_and_signature(
     "isclose",
-    """
+    r"""
      Check if all :math:`x` and :math:`y` satisfy the condition:
      .. math::
          \\left| x - y \right| \\leq atol + rtol \times \\left| y \right|
@@ -1188,7 +1203,7 @@ def isclose(
 # zhengsheng
 add_doc_and_signature(
     "isfinite",
-    """
+    r"""
     Return whether every element of input tensor is finite number or not.
 
     .. note::
@@ -1223,7 +1238,7 @@ def isfinite(
 
 add_doc_and_signature(
     "isinf",
-    """
+    r"""
     Return whether every element of input tensor is `+/-INF` or not.
 
     .. note::
@@ -1258,7 +1273,7 @@ def isinf(
 
 add_doc_and_signature(
     "isnan",
-    """
+    r"""
     Return whether every element of input tensor is `NaN` or not.
 
     .. note::
@@ -1294,7 +1309,7 @@ def isnan(
 
 add_doc_and_signature(
     "roll",
-    """
+    r"""
     Roll the `x` tensor along the given axis(axes). With specific 'shifts', Elements that
     roll beyond the last position are re-introduced at the first according to 'shifts'.
     If a axis is not specified,
@@ -1358,7 +1373,7 @@ def roll(
 
 add_doc_and_signature(
     "ceil",
-    """
+    r"""
     Ceil Operator. Computes ceil of x element-wise.
 
     .. math::
@@ -1398,7 +1413,7 @@ def ceil(
 
 add_doc_and_signature(
     "sum",
-    """
+    r"""
     Computes the sum of tensor elements over the given dimension.
      .. note::
         Parameter order support: When passing positional parameters, it is possible to support swapping the positional order of dtype and axis.

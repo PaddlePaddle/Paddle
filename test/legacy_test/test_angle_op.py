@@ -23,7 +23,7 @@ from op_test import (
 )
 
 import paddle
-from paddle import base, static
+from paddle import static
 from paddle.base import core, dygraph
 
 paddle.enable_static()
@@ -197,6 +197,7 @@ class TestAngleAPI_Compatibility(unittest.TestCase):
         self.x = np.random.randn(2, 3) + 1j * np.random.randn(2, 3)
         self.out = np.angle(self.x)
         self.dtype = "complex128"
+        self.place = get_device_place()
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -234,7 +235,7 @@ class TestAngleAPI_Compatibility(unittest.TestCase):
     def test_static_Compatibility(self):
         main = paddle.static.Program()
         startup = paddle.static.Program()
-        with base.program_guard(main, startup):
+        with paddle.static.program_guard(main, startup):
             x = static.data("x", shape=[2, 3], dtype=self.dtype)
             # Position args (args)
             out1 = paddle.angle(x)
@@ -245,7 +246,7 @@ class TestAngleAPI_Compatibility(unittest.TestCase):
             # Tensor method args
             out4 = x.angle()
 
-            exe = base.Executor(paddle.CPUPlace())
+            exe = paddle.static.Executor(self.place)
             fetches = exe.run(
                 main,
                 feed={"x": self.x},
