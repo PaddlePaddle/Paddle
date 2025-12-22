@@ -49,6 +49,33 @@ __global__ void index_add_cuda_kernel(const T* input,
   }
 }
 
+template <typename T, typename IndexT>
+__global__ void index_add_deterministic_cuda_kernel(const T* input,
+                                                    const IndexT* index,
+                                                    const T* add_value,
+                                                    int64_t index_size,
+                                                    int64_t stride,
+                                                    int64_t pre_size,
+                                                    int64_t output_dim_size,
+                                                    T* output) {
+  int64_t num_columns = pre_size * stride;
+  CUDA_KERNEL_LOOP_TYPE(col_idx, num_columns, int64_t) {
+    int64_t pre_idx = col_idx / stride;
+    int64_t post_idx = col_idx % stride;
+
+    for (int64_t k = 0; k < index_size; ++k) {
+      IndexT src_dim_idx = index[k];
+      IndexT actual_dim_idx =
+          (src_dim_idx < 0 ? src_dim_idx + output_dim_size : src_dim_idx);
+
+      int64_t val_idx = (pre_idx * index_size + k) * stride + post_idx;
+      int64_t out_idx =
+          (pre_idx * output_dim_size + actual_dim_idx) * stride + post_idx;
+      output[out_idx] += add_value[val_idx];
+    }
+  }
+}
+
 template <typename T, typename Context>
 void IndexAddKernel(const Context& dev_ctx,
                     const DenseTensor& x,
@@ -86,44 +113,73 @@ void IndexAddKernel(const Context& dev_ctx,
   int64_t numel = add_value.numel();
   auto stream = dev_ctx.stream();
 
-  unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
-  dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
-  phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
-
   // copy input to output.
   // todo(@limin29): inplace do not need copy.
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
 
-  if (FLAGS_cudnn_deterministic) {
-    VLOG(2) << "Run grad kernel of index_add with single thread.";
-    block_dim = 1;
-    grid_dim.x = 1;
-  }
   auto index_dim_size = input_dim[dim];
-  if (index_type == phi::DataType::INT64) {
-    const int64_t* index_data = index.data<int64_t>();
-    index_add_cuda_kernel<T, int64_t>
-        <<<grid_dim, block_dim, 0, stream>>>(in_data,
-                                             index_data,
-                                             add_value_data,
-                                             numel,
-                                             stride,
-                                             size,
-                                             delta,
-                                             out_data,
-                                             index_dim_size);
+
+  if (FLAGS_cudnn_deterministic) {
+    int64_t pre_size = numel / (size * stride);
+    int64_t num_columns = pre_size * stride;
+
+    unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
+    dim3 grid_dim = dim3((num_columns + block_dim - 1) / block_dim);
+    phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
+
+    if (index_type == phi::DataType::INT64) {
+      const int64_t* index_data = index.data<int64_t>();
+      index_add_deterministic_cuda_kernel<T, int64_t>
+          <<<grid_dim, block_dim, 0, stream>>>(in_data,
+                                               index_data,
+                                               add_value_data,
+                                               size,
+                                               stride,
+                                               pre_size,
+                                               index_dim_size,
+                                               out_data);
+    } else {
+      const int* index_data = index.data<int>();
+      index_add_deterministic_cuda_kernel<T, int>
+          <<<grid_dim, block_dim, 0, stream>>>(in_data,
+                                               index_data,
+                                               add_value_data,
+                                               size,
+                                               stride,
+                                               pre_size,
+                                               index_dim_size,
+                                               out_data);
+    }
   } else {
-    const int* index_data = index.data<int>();
-    index_add_cuda_kernel<T, int>
-        <<<grid_dim, block_dim, 0, stream>>>(in_data,
-                                             index_data,
-                                             add_value_data,
-                                             numel,
-                                             stride,
-                                             size,
-                                             delta,
-                                             out_data,
-                                             index_dim_size);
+    unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
+    dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
+    phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
+
+    if (index_type == phi::DataType::INT64) {
+      const int64_t* index_data = index.data<int64_t>();
+      index_add_cuda_kernel<T, int64_t>
+          <<<grid_dim, block_dim, 0, stream>>>(in_data,
+                                               index_data,
+                                               add_value_data,
+                                               numel,
+                                               stride,
+                                               size,
+                                               delta,
+                                               out_data,
+                                               index_dim_size);
+    } else {
+      const int* index_data = index.data<int>();
+      index_add_cuda_kernel<T, int>
+          <<<grid_dim, block_dim, 0, stream>>>(in_data,
+                                               index_data,
+                                               add_value_data,
+                                               numel,
+                                               stride,
+                                               size,
+                                               delta,
+                                               out_data,
+                                               index_dim_size);
+    }
   }
 }
 

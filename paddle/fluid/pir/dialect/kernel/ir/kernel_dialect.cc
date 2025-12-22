@@ -192,6 +192,50 @@ pir::OpPrintFn CustomKernelDialect::PrintOperation(
     printer.PrintOpReturnType(op);
   };
 }
+
+PythonFunctionDialect::PythonFunctionDialect(pir::IrContext *context)
+    : pir::Dialect(name(), context, pir::TypeId::get<PythonFunctionDialect>()) {
+  initialize();
+}
+
+void PythonFunctionDialect::initialize() {
+  RegisterOps<dialect::PythonFunctionOp>();
+}
+
+void PythonFunctionDialect::PrintType(pir::Type type, std::ostream &os) const {
+  PrintKernelType(type, os);
+}
+
+void PythonFunctionDialect::PrintAttribute(pir::Attribute attr,
+                                           std::ostream &os) const {
+  PrintKernelAttribute(attr, os);
+}
+
+pir::OpPrintFn PythonFunctionDialect::PrintOperation(
+    const pir::Operation &op) const {
+  return [](const pir::Operation &op, pir::IrPrinter &printer) {
+    auto &os = printer.os;
+    printer.PrintOpResult(op);
+    os << " =";
+    auto py_func_op = op.dyn_cast<PythonFunctionOp>();
+    std::string kernel_name = py_func_op.kernel_name();
+    if (op.attributes().count("is_inplace") != 0 &&
+        op.attributes()
+            .at("is_inplace")
+            .dyn_cast<pir::BoolAttribute>()
+            .data()) {
+      kernel_name = kernel_name + "_";
+    }
+    os << " \"" << kernel_name << "(py_func)\"";
+    printer.PrintOpOperands(op);
+    printer.PrintAttributeMap(op);
+    os << " :";
+    printer.PrintOperandsType(op);
+    os << " -> ";
+    printer.PrintOpReturnType(op);
+  };
+}
+
 #ifdef PADDLE_WITH_DNNL
 OneDNNKernelDialect::OneDNNKernelDialect(pir::IrContext *context)
     : pir::Dialect(name(), context, pir::TypeId::get<OneDNNKernelDialect>()) {
@@ -258,6 +302,7 @@ pir::OpPrintFn OneDNNKernelDialect::PrintOperation(
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::KernelDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomKernelDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::PythonFunctionDialect)
 #ifdef PADDLE_WITH_DNNL
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNKernelDialect)
 #endif

@@ -70,7 +70,7 @@ void GumbelSoftmaxKernelHelper(const Context& dev_ctx,
 
   // For 0D Tensor
   if (rank == 0) {
-    phi::funcs::set_constant(dev_ctx, out, static_cast<T>(1.0));
+    funcs::set_constant(dev_ctx, out, static_cast<T>(1.0));
     return;
   }
 
@@ -91,8 +91,7 @@ void GumbelSoftmaxKernelHelper(const Context& dev_ctx,
                                               size_to_axis,
                                               size_from_axis,
                                               temperature);
-  phi::funcs::SoftmaxFunctor<Context, T>()(
-      dev_ctx, axis_dim, &x_noise_2d, &out_2d);
+  funcs::SoftmaxFunctor<Context, T>()(dev_ctx, axis_dim, &x_noise_2d, &out_2d);
 
   if (hard) {
     OneHotGenerator<Context, T>::Transform(dev_ctx, x, out, axis);

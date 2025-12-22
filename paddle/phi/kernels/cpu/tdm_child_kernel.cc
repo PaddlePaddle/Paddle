@@ -33,8 +33,8 @@ void TDMChildInner(const Context &dev_ctx,
                    phi::DenseTensor *child,
                    phi::DenseTensor *mask) {
   auto info_dims = tree_info.dims();
-  int node_nums = info_dims[0];
-  int length = info_dims[1];
+  int64_t node_nums = info_dims[0];
+  int64_t length = info_dims[1];
 
   int64_t input_ids_num = input.numel();
 
@@ -71,21 +71,23 @@ void TDMChildInner(const Context &dev_ctx,
     PADDLE_ENFORCE_LE_INT_MAX(input_data[input_ids], "input_data[input_ids]");
     bool has_child =
         (input_data[input_ids] == 0 ||
-         tree_info_data[static_cast<int>(input_data[input_ids]) * length + 3] ==
-             0)
+         tree_info_data[static_cast<int64_t>(input_data[input_ids]) * length +
+                        3] == 0)
             ? false
             : true;
 
     if (has_child) {
       for (int child_ids = 0; child_ids < child_nums; ++child_ids) {
         OutT child_id = static_cast<OutT>(
-            tree_info_data[static_cast<int>(input_data[input_ids]) * length +
+            tree_info_data[static_cast<int64_t>(input_data[input_ids]) *
+                               length +
                            3 + child_ids]);
         child_vec.push_back(child_id);
         // TODO(large-tensor): array index not support int64
         PADDLE_ENFORCE_LE_INT_MAX(child_id, "child_id");
         OutT child_is_item = static_cast<OutT>(
-            tree_info_data[static_cast<int>(child_id) * length] == 0 ? 0 : 1);
+            tree_info_data[static_cast<int64_t>(child_id) * length] == 0 ? 0
+                                                                         : 1);
         item_mask_vec.push_back(child_is_item);
       }
     } else {

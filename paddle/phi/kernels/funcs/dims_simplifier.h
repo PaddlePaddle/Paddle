@@ -34,7 +34,7 @@ struct BroadcastDimsSimplifier {
 
  public:
   BroadcastDimsSimplifier(const std::vector<const DenseTensor *> &ins,
-                          const phi::DDim &dims,
+                          const DDim &dims,
                           int axis) {
     N = std::max(static_cast<int>(ins.size()), 2);
     in_dims.resize(N);
@@ -266,8 +266,8 @@ struct PermuteDimsSimplifier {
                            const std::vector<int32_t> &perm) {
     int start_perm_idx = 0;
     int valid_dim_idx = 0;
-    int valid_map[phi::DDim::kMaxRank];
-    int64_t combined_dims[phi::DDim::kMaxRank];
+    int valid_map[DDim::kMaxRank];
+    int64_t combined_dims[DDim::kMaxRank];
 
     // Merge consecutive dims to the first one dim and
     // leave original dim to be 1. Example below :

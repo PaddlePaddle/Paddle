@@ -1499,7 +1499,7 @@ Tensor diag_decomp(const Tensor& x,
 }
 
 template <typename T>
-std::tuple<Tensor, Tensor, Tensor> rms_norm_decomp(
+std::tuple<Tensor, Tensor, Tensor> fused_rms_norm_quant_decomp(
     const Tensor& x,
     const paddle::optional<Tensor>& bias,
     const paddle::optional<Tensor>& residual,

@@ -52,7 +52,7 @@ struct ReduceSumForSolveGrad<CPUContext, T> {
                   bool keep_dims) {
     std::vector<int64_t> reduce_dims_tmp(reduce_dims.begin(),
                                          reduce_dims.end());
-    funcs::ReduceKernelImpl<CPUContext, T, T, phi::funcs::SumFunctor>(
+    funcs::ReduceKernelImpl<CPUContext, T, T, funcs::SumFunctor>(
         dev_ctx, input, output, reduce_dims_tmp, keep_dims, false);
   }
 };
@@ -128,12 +128,12 @@ void SolveGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(&tmp_dy);
 
   DenseTensor tmp_input(x.dtype());
-  const auto& new_dims_vec = phi::funcs::getNewDimsVec(x.dims());
+  const auto& new_dims_vec = funcs::getNewDimsVec(x.dims());
   tmp_input.Resize(common::make_ddim(new_dims_vec));
   dev_ctx.template Alloc<T>(&tmp_input);
 
-  phi::funcs::TransposeNormal<Context, T> trans;
-  std::vector<int> new_axis = phi::funcs::getNewAxis(x.dims().size());
+  funcs::TransposeNormal<Context, T> trans;
+  std::vector<int> new_axis = funcs::getNewAxis(x.dims().size());
   trans(dev_ctx, x, &tmp_input, new_axis);
 
   if (dy) {
@@ -145,11 +145,10 @@ void SolveGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(dx);
 
     // to get dx
-    auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+    auto blas = funcs::GetBlas<Context, T>(dev_ctx);
     if (x.dims().size() == 2 && y.dims().size() == 2) {
-      auto mat_dim_a1 =
-          phi::funcs::CreateMatrixDescriptor(tmp_dy.dims(), 0, false);
-      auto mat_dim_b1 = phi::funcs::CreateMatrixDescriptor(out.dims(), 0, true);
+      auto mat_dim_a1 = funcs::CreateMatrixDescriptor(tmp_dy.dims(), 0, false);
+      auto mat_dim_b1 = funcs::CreateMatrixDescriptor(out.dims(), 0, true);
       blas.MatMul(tmp_dy, mat_dim_a1, out, mat_dim_b1, T(-1), &tmp_dx, T(0));
 
     } else if (is_vector_rhs(x, y)) {
@@ -171,17 +170,14 @@ void SolveGradKernel(const Context& dev_ctx,
                                  &tmp_out_,
                                  nullptr);
 
-      auto mat_dim_a1 =
-          phi::funcs::CreateMatrixDescriptor(tmp_dy_.dims(), 0, false);
-      auto mat_dim_b1 =
-          phi::funcs::CreateMatrixDescriptor(tmp_out_.dims(), 0, true);
+      auto mat_dim_a1 = funcs::CreateMatrixDescriptor(tmp_dy_.dims(), 0, false);
+      auto mat_dim_b1 = funcs::CreateMatrixDescriptor(tmp_out_.dims(), 0, true);
       blas.MatMul(
           tmp_dy_, mat_dim_a1, tmp_out_, mat_dim_b1, T(-1), &tmp_dx, T(0));
 
     } else {
-      auto mat_dim_a1 =
-          phi::funcs::CreateMatrixDescriptor(tmp_dy.dims(), 0, false);
-      auto mat_dim_b1 = phi::funcs::CreateMatrixDescriptor(out.dims(), 0, true);
+      auto mat_dim_a1 = funcs::CreateMatrixDescriptor(tmp_dy.dims(), 0, false);
+      auto mat_dim_b1 = funcs::CreateMatrixDescriptor(out.dims(), 0, true);
       blas.MatMul(tmp_dy, mat_dim_a1, out, mat_dim_b1, T(-1), &tmp_dx, T(0));
     }
   }

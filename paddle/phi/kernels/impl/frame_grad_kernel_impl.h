@@ -71,7 +71,7 @@ void FrameGradKernel(const Context& dev_ctx,
       }
       trans_dout.Resize(common::make_ddim(dout_dims_vec));
       dev_ctx.template Alloc<T>(&trans_dout);
-      phi::funcs::TransCompute<Context, T>(
+      funcs::TransCompute<Context, T>(
           perm_dout.size(), dev_ctx, dout_tmp, &trans_dout, perm_dout);
     } else {
       std::vector<int> perm_dx{1, 0};
@@ -81,7 +81,7 @@ void FrameGradKernel(const Context& dev_ctx,
       }
       trans_dx.Resize(common::make_ddim(dx_dims_vec));
       dev_ctx.template Alloc<T>(&trans_dx);
-      phi::funcs::TransCompute<Context, T>(
+      funcs::TransCompute<Context, T>(
           perm_dx.size(), dev_ctx, *dx, &trans_dx, perm_dx);
 
       std::vector<int> perm_dout{2, 1, 0};
@@ -91,7 +91,7 @@ void FrameGradKernel(const Context& dev_ctx,
       }
       trans_dout.Resize(common::make_ddim(dout_dims_vec));
       dev_ctx.template Alloc<T>(&trans_dout);
-      phi::funcs::TransCompute<Context, T>(
+      funcs::TransCompute<Context, T>(
           perm_dout.size(), dev_ctx, dout_tmp, &trans_dout, perm_dout);
     }
   } else {
@@ -99,19 +99,19 @@ void FrameGradKernel(const Context& dev_ctx,
     trans_dout = dout_tmp;
   }
 
-  phi::funcs::FrameFunctor<Context, T>()(dev_ctx,
-                                         &trans_dout,
-                                         &trans_dx,
-                                         seq_length,
-                                         frame_length,
-                                         n_frames,
-                                         hop_length,
-                                         /*is_grad*/ true);
+  funcs::FrameFunctor<Context, T>()(dev_ctx,
+                                    &trans_dout,
+                                    &trans_dx,
+                                    seq_length,
+                                    frame_length,
+                                    n_frames,
+                                    hop_length,
+                                    /*is_grad*/ true);
 
   // Transpose output in case axis is 0.
   if (axis == 0 && dx_rank > 1U) {
     std::vector<int> perm_dx{1, 0};
-    phi::funcs::TransCompute<Context, T>(
+    funcs::TransCompute<Context, T>(
         perm_dx.size(), dev_ctx, trans_dx, dx, perm_dx);
   }
 

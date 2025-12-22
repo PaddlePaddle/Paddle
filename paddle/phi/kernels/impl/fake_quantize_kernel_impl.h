@@ -36,7 +36,7 @@ void FakeQuantizeRangeAbsMaxKernel(const Context &dev_ctx,
 
   // testing
   if (is_test) {
-    phi::funcs::ClipAndFakeQuantFunctor<Context, T>()(
+    funcs::ClipAndFakeQuantFunctor<Context, T>()(
         dev_ctx, x, in_scale, bin_cnt, round_type, out);
     return;
   }
@@ -47,16 +47,16 @@ void FakeQuantizeRangeAbsMaxKernel(const Context &dev_ctx,
   DenseTensor cur_scale;
   cur_scale.Resize({1});
   T *cur_scale_data = dev_ctx.template Alloc<T>(&cur_scale);
-  phi::funcs::FindAbsMaxFunctor<Context, T>()(
+  funcs::FindAbsMaxFunctor<Context, T>()(
       dev_ctx, x.data<T>(), x.numel(), cur_scale_data);
-  phi::funcs::FindRangeAbsMaxFunctor<Context, T>()(dev_ctx,
-                                                   cur_scale,
-                                                   in_scale,
-                                                   iter.get(),
-                                                   window_size,
-                                                   out_scales,
-                                                   out_scale);
-  phi::funcs::ClipAndFakeQuantFunctor<Context, T>()(
+  funcs::FindRangeAbsMaxFunctor<Context, T>()(dev_ctx,
+                                              cur_scale,
+                                              in_scale,
+                                              iter.get(),
+                                              window_size,
+                                              out_scales,
+                                              out_scale);
+  funcs::ClipAndFakeQuantFunctor<Context, T>()(
       dev_ctx, x, *out_scale, bin_cnt, round_type, out);
 }
 
@@ -70,10 +70,10 @@ void FakeQuantizeAbsMaxKernel(const Context &dev_ctx,
   T *out_s = dev_ctx.template Alloc<T>(out_scale);
   int bin_cnt = std::pow(2, bit_length - 1) - 1;
   const T *in_data = x.data<T>();
-  phi::funcs::FindAbsMaxFunctor<Context, T> find_abs_max_functor;
+  funcs::FindAbsMaxFunctor<Context, T> find_abs_max_functor;
   find_abs_max_functor(dev_ctx, in_data, x.numel(), out_s);
 
-  phi::funcs::ClipAndFakeQuantFunctor<Context, T> clip_and_fake_quant_functor;
+  funcs::ClipAndFakeQuantFunctor<Context, T> clip_and_fake_quant_functor;
   clip_and_fake_quant_functor(dev_ctx, x, *out_scale, bin_cnt, round_type, out);
 }
 
@@ -96,7 +96,7 @@ void FakeQuantOrWithDequantMovingAverageAbsMaxKernel(
 
   // testing
   if (is_test) {
-    phi::funcs::ClipAndFakeQuantFunctor<Context, T>()(
+    funcs::ClipAndFakeQuantFunctor<Context, T>()(
         dev_ctx, x, in_scale, bin_cnt, round_type, out);
     return;
   }
@@ -106,19 +106,19 @@ void FakeQuantOrWithDequantMovingAverageAbsMaxKernel(
   tmp_scale.Resize(common::make_dim(1));
   T *cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
 
-  phi::funcs::FindAbsMaxFunctor<Context, T>()(
+  funcs::FindAbsMaxFunctor<Context, T>()(
       dev_ctx, x.data<T>(), x.numel(), cur_scale_data);
 
-  phi::funcs::FindMovingAverageAbsMaxFunctor<Context, T>()(dev_ctx,
-                                                           in_accum.get(),
-                                                           in_state.get(),
-                                                           cur_scale_data,
-                                                           moving_rate,
-                                                           out_state,
-                                                           out_accum,
-                                                           out_scale);
+  funcs::FindMovingAverageAbsMaxFunctor<Context, T>()(dev_ctx,
+                                                      in_accum.get(),
+                                                      in_state.get(),
+                                                      cur_scale_data,
+                                                      moving_rate,
+                                                      out_state,
+                                                      out_accum,
+                                                      out_scale);
 
-  phi::funcs::ClipAndFakeQuantFunctor<Context, T>()(
+  funcs::ClipAndFakeQuantFunctor<Context, T>()(
       dev_ctx, x, *out_scale, bin_cnt, round_type, out);
 }
 
@@ -136,10 +136,10 @@ void FakeChannelWiseQuantizeAbsMaxKernel(const Context &dev_ctx,
 
   if (!is_test) {
     T *out_scale_data = dev_ctx.template Alloc<T>(out_scale);
-    phi::funcs::FindChannelAbsMaxFunctor<Context, T>()(
+    funcs::FindChannelAbsMaxFunctor<Context, T>()(
         dev_ctx, x, quant_axis, out_scale_data);
   }
-  phi::funcs::ChannelClipAndFakeQuantFunctor<Context, T>()(
+  funcs::ChannelClipAndFakeQuantFunctor<Context, T>()(
       dev_ctx, x, *out_scale, bin_cnt, round_type, quant_axis, out);
 }
 
@@ -155,10 +155,10 @@ void FakeChannelWiseQuantizeDequantizeAbsMaxKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(out);
   int bin_cnt = std::pow(2, bit_length - 1) - 1;
 
-  phi::funcs::FindChannelAbsMaxFunctor<Context, T>()(
+  funcs::FindChannelAbsMaxFunctor<Context, T>()(
       dev_ctx, x, quant_axis, out_scale_data);
 
-  phi::funcs::ChannelClipFakeQuantDequantFunctor<Context, T>()(
+  funcs::ChannelClipFakeQuantDequantFunctor<Context, T>()(
       dev_ctx, x, *out_scale, bin_cnt, round_type, quant_axis, out);
 }
 
@@ -182,7 +182,7 @@ void FakeQuantizeDequantizeMovingAverageAbsMaxKernel(
 
   // testing
   if (is_test) {
-    phi::funcs::ClipAndFakeQuantDequantFunctor<Context, T>()(
+    funcs::ClipAndFakeQuantDequantFunctor<Context, T>()(
         dev_ctx, x, in_scale, bin_cnt, round_type, out);
     return;
   }
@@ -192,23 +192,23 @@ void FakeQuantizeDequantizeMovingAverageAbsMaxKernel(
   phi::DenseTensor tmp_scale;
   tmp_scale.Resize(common::make_dim(1));
   T *cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
-  phi::funcs::FindAbsMaxFunctor<Context, T>()(
+  funcs::FindAbsMaxFunctor<Context, T>()(
       dev_ctx, x.data<T>(), x.numel(), cur_scale_data);
 
   dev_ctx.template Alloc<T>(out_state);
   dev_ctx.template Alloc<T>(out_accum);
   dev_ctx.template Alloc<T>(out_scale);
 
-  phi::funcs::FindMovingAverageAbsMaxFunctor<Context, T>()(dev_ctx,
-                                                           in_accum.get(),
-                                                           in_state.get(),
-                                                           cur_scale_data,
-                                                           moving_rate,
-                                                           out_state,
-                                                           out_accum,
-                                                           out_scale);
+  funcs::FindMovingAverageAbsMaxFunctor<Context, T>()(dev_ctx,
+                                                      in_accum.get(),
+                                                      in_state.get(),
+                                                      cur_scale_data,
+                                                      moving_rate,
+                                                      out_state,
+                                                      out_accum,
+                                                      out_scale);
 
-  phi::funcs::ClipAndFakeQuantDequantFunctor<Context, T>()(
+  funcs::ClipAndFakeQuantDequantFunctor<Context, T>()(
       dev_ctx, x, *out_scale, bin_cnt, round_type, out);
 }
 
@@ -222,10 +222,9 @@ void FakeQuantizeDequantizeAbsMaxKernel(const Context &dev_ctx,
   T *out_s = dev_ctx.template Alloc<T>(out_scale);
   int bin_cnt = std::pow(2, bit_length - 1) - 1;
   const T *in_data = x.data<T>();
-  phi::funcs::FindAbsMaxFunctor<Context, T>()(
-      dev_ctx, in_data, x.numel(), out_s);
+  funcs::FindAbsMaxFunctor<Context, T>()(dev_ctx, in_data, x.numel(), out_s);
 
-  phi::funcs::ClipAndFakeQuantDequantFunctor<Context, T>()(
+  funcs::ClipAndFakeQuantDequantFunctor<Context, T>()(
       dev_ctx, x, *out_scale, bin_cnt, round_type, out);
 }
 

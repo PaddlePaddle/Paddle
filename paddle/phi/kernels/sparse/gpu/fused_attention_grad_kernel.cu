@@ -47,7 +47,7 @@ __global__ void AttnSoftmaxGpuGradKernel(const int64_t* out_crows,
   for (int idx = threadIdx.x; idx < row_nnz; idx += blockDim.x) {
     mul += out_values[row_first + idx] * dout_values[row_first + idx];
   }
-  T mul_sum = phi::funcs::WarpReduceSum<T>(mul, 0xFFFFFFFF);
+  T mul_sum = funcs::WarpReduceSum<T>(mul, 0xFFFFFFFF);
 
   for (int idx = threadIdx.x; idx < row_nnz; idx += blockDim.x) {
     dx_values[row_first + idx] = (dout_values[row_first + idx] - mul_sum) *
@@ -103,7 +103,7 @@ void FusedAttentionCsrGradKernel(const Context& dev_ctx,
       batch_nnz);
 
   /* Step3: Forward: query{Dense} * key'{Dense} -> sdd_result{SparseCsr} */
-  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   // dquery{Dense} = d_sdd_result{SparseCsr} * key{Dense} //
   dquery->Resize(query.dims());
   dev_ctx.template Alloc<T>(dquery);

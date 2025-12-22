@@ -45,7 +45,7 @@ void Expand(const Context& dev_ctx,
     bcast_dims[i] = expand_times[i];
   }
 
-  phi::DDim out_dims(in_dims);
+  DDim out_dims(in_dims);
   for (size_t i = 0; i < expand_times.size(); ++i) {
     out_dims[i] *= expand_times[i];
   }
@@ -58,10 +58,10 @@ void Expand(const Context& dev_ctx,
   // use 32-bit index to speed up
   bool use_32bit_index = y.size() < Eigen::NumTraits<int>::highest();
   if (use_32bit_index) {
-    phi::funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+    funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
         place, To32BitIndex(y), To32BitIndex(x), bcast_dims);
   } else {
-    phi::funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+    funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
         place, y, x, bcast_dims);
   }
 }
@@ -151,7 +151,7 @@ void ExpandBackward(const Context& dev_ctx,
   }
   auto out_grad = EigenVector<T>::Flatten(*in0);
   auto& place = *dev_ctx.eigen_device();
-  phi::funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
+  funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
       place, x_grad, out_grad, reduce_dims, reshape_dims);
 }
 

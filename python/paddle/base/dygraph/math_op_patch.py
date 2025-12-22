@@ -236,7 +236,7 @@ def monkey_patch_math_tensor():
         assert var._is_initialized(), "variable's tensor is not initialized"
         if not var.is_complex():
             var = var.astype('complex64')
-        return complex(np.array(var))
+        return complex(np.array(var).item())
 
     def _float_(var: Tensor) -> float:
         numel = np.prod(var.shape)
@@ -249,7 +249,7 @@ def monkey_patch_math_tensor():
             or var.dtype == core.DataType.BFLOAT16
         ):
             var = var.astype('float32')
-        return float(np.array(var))
+        return float(np.array(var).item())
 
     def _long_(var: Tensor) -> int:
         numel = np.prod(var.shape)
@@ -260,7 +260,7 @@ def monkey_patch_math_tensor():
             or var.dtype == core.DataType.BFLOAT16
         ):
             var = var.astype('float32')
-        return int(np.array(var))
+        return int(np.array(var).item())
 
     def _int_(var: Tensor) -> int:
         numel = np.prod(var.shape)
@@ -271,7 +271,7 @@ def monkey_patch_math_tensor():
             or var.dtype == core.DataType.BFLOAT16
         ):
             var = var.astype('float32')
-        return int(np.array(var))
+        return int(np.array(var).item())
 
     def _len_(var: Tensor) -> int:
         assert var.ndim > 0, "len() of a 0-D tensor is wrong"
@@ -293,7 +293,7 @@ def monkey_patch_math_tensor():
             or var.dtype == core.DataType.BFLOAT16
         ):
             var = var.astype('float32')
-        return int(np.array(var))
+        return int(np.array(var).item())
 
     @property
     def _ndim(var: Tensor) -> int:

@@ -94,7 +94,7 @@ class ContextProjectFunctor {
                   phi::DenseTensor* col) {
     auto lod_level_0 = in.lod()[0];
 
-    phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
+    funcs::Im2ColFunctor<funcs::ColFormat::kOCF, DeviceContext, float>
         im2col_ocf;
 
     std::vector<int> dilation({1, 1});
@@ -224,7 +224,7 @@ class ContextProjectGradFunctor {
                   phi::DenseTensor* col) {
     auto lod_level_0 = in.lod()[0];
 
-    phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
+    funcs::Col2ImFunctor<funcs::ColFormat::kOCF, DeviceContext, float>
         col2im_ocf;
 
     std::vector<int> dilation({1, 1});
@@ -234,7 +234,7 @@ class ContextProjectGradFunctor {
     int input_row_begin, input_row_end;
     int sequence_height, sequence_width;
     sequence_width = in.dims()[1];
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = funcs::GetBlas<DeviceContext, T>(dev_ctx);
 
     if (input_grad) {
       for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {

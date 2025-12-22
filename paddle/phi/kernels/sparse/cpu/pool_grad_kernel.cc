@@ -39,7 +39,7 @@ void MaxPoolCooGradCPUKernel(const CPUContext& dev_ctx,
   std::vector<int> offsets(kernel_size + 1);
   const int* counter_ptr = counter.data<int>();
 
-  phi::funcs::sparse::PrefixSum(counter_ptr, &offsets[0], kernel_size);
+  funcs::sparse::PrefixSum(counter_ptr, &offsets[0], kernel_size);
 
   const T* in_features_ptr = x.values().data<T>();
   const T* out_features_ptr = out.values().data<T>();
@@ -53,7 +53,7 @@ void MaxPoolCooGradCPUKernel(const CPUContext& dev_ctx,
   phi::Copy<CPUContext>(
       dev_ctx, x.indices(), dev_ctx.GetPlace(), false, &x_grad_indices);
 
-  phi::funcs::MaxPoolGrad<T> grad_functor;
+  funcs::MaxPoolGrad<T> grad_functor;
   for (int i = 0; i < kernel_size; i++) {
     for (int j = 0; j < counter_ptr[i]; j++) {
       IntT in_i = rulebook_ptr[rulebook_len + offsets[i] + j];

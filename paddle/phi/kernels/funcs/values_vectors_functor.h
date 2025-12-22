@@ -33,7 +33,7 @@
 namespace phi {
 namespace funcs {
 
-inline int64_t GetBatchSize(const phi::DDim &dims) {
+inline int64_t GetBatchSize(const DDim &dims) {
   int64_t batch_size = 1;
   auto dim_size = dims.size();
   for (int i = 0; i < dim_size - 2; ++i) {
@@ -261,19 +261,19 @@ struct MatrixEighFunctor<CPUContext, T> {
 
     int info = 0;
     // Call lapackEigh to get the optimal size of work data
-    phi::funcs::lapackEigh<T, ValueType>(jobz,
-                                         uplo,
-                                         n,
-                                         input_vector,
-                                         lda,
-                                         out_value,
-                                         &lwork_opt,
-                                         lwork,
-                                         &rwork_opt,
-                                         lrwork,
-                                         &iwork_opt,
-                                         liwork,
-                                         &info);
+    funcs::lapackEigh<T, ValueType>(jobz,
+                                    uplo,
+                                    n,
+                                    input_vector,
+                                    lda,
+                                    out_value,
+                                    &lwork_opt,
+                                    lwork,
+                                    &rwork_opt,
+                                    lrwork,
+                                    &iwork_opt,
+                                    liwork,
+                                    &info);
     lwork = std::max<int>(1, static_cast<int>(lwork_opt));
     liwork = std::max<int>(1, iwork_opt);
 
@@ -300,19 +300,19 @@ struct MatrixEighFunctor<CPUContext, T> {
     for (auto i = 0; i < batch_size; i++) {
       auto *value_data = out_value + i * values_stride;
       auto *input_data = input_vector + i * vector_stride;
-      phi::funcs::lapackEigh<T, ValueType>(jobz,
-                                           uplo,
-                                           n,
-                                           input_data,
-                                           lda,
-                                           value_data,
-                                           work_data,
-                                           lwork,
-                                           rwork_data,
-                                           lrwork,
-                                           iwork_data,
-                                           liwork,
-                                           &info);
+      funcs::lapackEigh<T, ValueType>(jobz,
+                                      uplo,
+                                      n,
+                                      input_data,
+                                      lda,
+                                      value_data,
+                                      work_data,
+                                      lwork,
+                                      rwork_data,
+                                      lrwork,
+                                      iwork_data,
+                                      liwork,
+                                      &info);
       CheckEighResult(i, info);
     }
     if (has_vectors) {

@@ -52,12 +52,12 @@ inline T AreaPixelComputeScale(int64_t input_size,
 template <typename T>
 HOSTDEVICE inline T AreaPixelComputeSourceIndex(T scale,
                                                 int64_t dst_index,
-                                                bool align_corners,
-                                                T align_type_value = 0.5) {
+                                                bool align_corners) {
   if (align_corners) {
     return scale * dst_index;
   } else {
-    return scale * (dst_index + align_type_value) - align_type_value;
+    T src_idx = scale * (dst_index + T(0.5)) - T(0.5);
+    return src_idx;
   }
 }
 

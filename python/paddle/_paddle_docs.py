@@ -2941,7 +2941,115 @@ def expm1(
 ) -> Tensor
 """,
 )
+add_doc_and_signature(
+    "diag",
+    """
+    If ``x`` is a vector (1-D tensor), a 2-D square tensor with the elements of ``x`` as the diagonal is returned.
 
+    If ``x`` is a matrix (2-D tensor), a 1-D tensor with the diagonal elements of ``x`` is returned.
+
+    The argument ``offset`` controls the diagonal offset:
+
+    If ``offset`` = 0, it is the main diagonal.
+
+    If ``offset`` > 0, it is superdiagonal.
+
+    If ``offset`` < 0, it is subdiagonal.
+
+    .. note::
+        Alias Support:
+        1. The parameter name ``input`` can be used as an alias for ``x``.
+        2. The parameter name ``diagonal`` can be used as an alias for ``offset``.
+
+    Args:
+        x (Tensor): The input tensor. Its shape is either 1-D or 2-D. Its data type should be float16, float32, float64, int32, int64, complex64, complex128.
+        offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal.
+        padding_value (int|float, optional): Use this value to fill the area outside the specified diagonal band. Only takes effect when the input is a 1-D Tensor. The default value is 0.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Returns:
+        Tensor, a square matrix or a vector. The output data type is the same as input data type.
+
+    Examples:
+        .. code-block:: pycon
+            :name: diag-example-1
+
+            >>> import paddle
+
+            >>> paddle.disable_static()
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> y = paddle.diag(x)
+            >>> print(y)
+            Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 0, 0],
+             [0, 2, 0],
+             [0, 0, 3]])
+
+            >>> y = paddle.diag(x, offset=1)
+            >>> print(y)
+            Tensor(shape=[4, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 1, 0, 0],
+             [0, 0, 2, 0],
+             [0, 0, 0, 3],
+             [0, 0, 0, 0]])
+
+            >>> y = paddle.diag(x, padding_value=6)
+            >>> print(y)
+            Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 6, 6],
+             [6, 2, 6],
+             [6, 6, 3]])
+
+            >>> y = paddle.diag(input=x, diagonal=2)  # type: ignore[call-arg]
+            >>> print(y)
+            Tensor(shape=[5, 5], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0, 1, 0, 0],
+             [0, 0, 0, 2, 0],
+             [0, 0, 0, 0, 3],
+             [0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0]])
+
+            >>> y = paddle.diag(x=x, diagonal=0, padding_value=-1)  # type: ignore[call-arg]
+            >>> print(y)
+            Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[ 1, -1, -1],
+             [-1,  2, -1],
+             [-1, -1,  3]])
+
+        .. code-block:: python
+            :name: diag-example-2
+
+            >>> import paddle
+
+            >>> paddle.disable_static()
+            >>> x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+            >>> y = paddle.diag(x)
+            >>> print(y)
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1, 5])
+
+            >>> y = paddle.diag(x, offset=1)
+            >>> print(y)
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [2, 6])
+
+            >>> y = paddle.diag(x, offset=-1)
+            >>> print(y)
+            Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [4])
+""",
+    """
+def diag(
+    x: Tensor,
+    offset: int = 0,
+    padding_value: int = 0,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None
+) -> Tensor
+""",
+)
 add_doc_and_signature(
     "diagonal",
     """

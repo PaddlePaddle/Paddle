@@ -67,7 +67,7 @@ void SliceCooGradKernel(const Context& dev_ctx,
                         const phi::IntArray& starts,
                         const phi::IntArray& ends,
                         SparseCooTensor* x_grad) {
-  const phi::DDim& x_dims = x.dims();
+  const DDim& x_dims = x.dims();
   std::vector<int64_t> axes_vec = axes.GetData();
   std::vector<int64_t> starts_vec = starts.GetData();
   std::vector<int64_t> ends_vec = ends.GetData();
@@ -202,7 +202,7 @@ void SliceCsrGradCompute(const Context& dev_ctx,
                          const std::vector<int64_t>& starts,
                          const std::vector<int64_t>& ends,
                          SparseCsrTensor* x_grad) {
-  const phi::DDim& x_dims = x.dims();
+  const DDim& x_dims = x.dims();
 
   // Construct new axes, starts, and ends
   std::vector<int64_t> new_axes(3), new_starts(3), new_ends(3);
@@ -233,7 +233,7 @@ void SliceCsrGradKernel(const Context& dev_ctx,
                         const phi::IntArray& starts,
                         const phi::IntArray& ends,
                         SparseCsrTensor* x_grad) {
-  const phi::DDim& x_dims = x.dims();
+  const DDim& x_dims = x.dims();
   std::vector<int64_t> axes_vec = axes.GetData();
   std::vector<int64_t> starts_vec = starts.GetData();
   std::vector<int64_t> ends_vec = ends.GetData();
