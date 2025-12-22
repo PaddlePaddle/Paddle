@@ -594,7 +594,7 @@ static inline std::vector<phi::DenseTensor> expand_outplace(
     const phi::GPUContext& dev_ctx,
     const std::vector<phi::DenseTensor>& to_expand) {
   bool first = true;
-  phi::DDim target_shape;
+  DDim target_shape;
   for (size_t i = 0; i < to_expand.size(); ++i) {
     if (!to_expand[i].initialized()) continue;
     if (first) {

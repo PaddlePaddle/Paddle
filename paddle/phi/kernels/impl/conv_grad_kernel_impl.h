@@ -142,8 +142,8 @@ void ConvGradKernel(const Context& dev_ctx,
     col_matrix.Resize(col_matrix_shape);
   }
 
-  phi::funcs::SetConstant<Context, T> set_zero;
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  funcs::SetConstant<Context, T> set_zero;
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
   if (input_grad) {
     dev_ctx.template Alloc<T>(input_grad);
@@ -160,8 +160,8 @@ void ConvGradKernel(const Context& dev_ctx,
     if (is_expand) {
       set_zero(dev_ctx, &transformed_input_grad, static_cast<T>(0));
     }
-    phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
-    phi::funcs::Col2VolFunctor<Context, T> col2vol;
+    funcs::Col2ImFunctor<funcs::ColFormat::kCFO, Context, T> col2im;
+    funcs::Col2VolFunctor<Context, T> col2vol;
 
     for (int64_t i = 0; i < batch_size; i++) {
       DenseTensor out_grad_batch =
@@ -214,8 +214,8 @@ void ConvGradKernel(const Context& dev_ctx,
     Tensor filter_grad_ = *filter_grad;
     filter_grad_.Resize(filter_matrix_shape);
     set_zero(dev_ctx, filter_grad, static_cast<T>(0));
-    phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, Context, T> im2col;
-    phi::funcs::Vol2ColFunctor<Context, T> vol2col;
+    funcs::Im2ColFunctor<funcs::ColFormat::kCFO, Context, T> im2col;
+    funcs::Vol2ColFunctor<Context, T> vol2col;
     for (int i = 0; i < batch_size; i++) {
       DenseTensor out_grad_batch =
           transformed_output_grad.Slice(i, i + 1).Resize(output_matrix_shape);
@@ -367,8 +367,8 @@ void ConvGradGradKernel(const Context& dev_ctx,
     col_matrix.Resize(col_matrix_shape);
   }
 
-  phi::funcs::SetConstant<Context, T> set_zero;
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  funcs::SetConstant<Context, T> set_zero;
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
   // dx convolution double grad:  gemm + col2im(col2vol)
   // dx = ddw * dy  ==> dx(N, Cin, H, W), ddw(Cout, Cin, kh, kw), dy(N, Cout,
@@ -391,8 +391,8 @@ void ConvGradGradKernel(const Context& dev_ctx,
     if (is_expand) {
       set_zero(dev_ctx, &transformed_dX, static_cast<T>(0));
     }
-    phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
-    phi::funcs::Col2VolFunctor<Context, T> col2vol;
+    funcs::Col2ImFunctor<funcs::ColFormat::kCFO, Context, T> col2im;
+    funcs::Col2VolFunctor<Context, T> col2vol;
 
     for (int64_t i = 0; i < batch_size; i++) {
       DenseTensor dy_batch =
@@ -436,8 +436,8 @@ void ConvGradGradKernel(const Context& dev_ctx,
     set_zero(dev_ctx, dW, static_cast<T>(0));
     DenseTensor dW_arr = *dW;
     dW_arr.Resize(filter_matrix_shape);
-    phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, Context, T> im2col;
-    phi::funcs::Vol2ColFunctor<Context, T> vol2col;
+    funcs::Im2ColFunctor<funcs::ColFormat::kCFO, Context, T> im2col;
+    funcs::Vol2ColFunctor<Context, T> vol2col;
     for (int i = 0; i < batch_size; ++i) {
       DenseTensor dy_batch =
           transformed_dY.Slice(i, i + 1).Resize(output_matrix_shape);
@@ -483,8 +483,8 @@ void ConvGradGradKernel(const Context& dev_ctx,
     }
 
     set_zero(dev_ctx, &transformed_ddY, static_cast<T>(0));
-    phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, Context, T> im2col;
-    phi::funcs::Vol2ColFunctor<Context, T> vol2col;
+    funcs::Im2ColFunctor<funcs::ColFormat::kCFO, Context, T> im2col;
+    funcs::Vol2ColFunctor<Context, T> vol2col;
     for (int i = 0; i < batch_size; ++i) {
       DenseTensor ddy_batch =
           transformed_ddY.Slice(i, i + 1).Resize(output_matrix_shape);

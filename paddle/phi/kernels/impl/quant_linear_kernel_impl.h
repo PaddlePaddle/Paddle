@@ -76,7 +76,7 @@ void QuantLinearKernel(const Context& dev_ctx,
           "The weight's datatype is expected to be int8 when use quant. But "
           "received weight's datatype is %d",
           static_cast<int>(w.dtype())));
-  phi::funcs::FCInt8Functor<Context, T> fc;
+  funcs::FCInt8Functor<Context, T> fc;
   fc(dev_ctx,
      M,
      w_dims1,

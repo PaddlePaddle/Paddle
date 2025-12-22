@@ -309,8 +309,7 @@ void WarprnntKernel(const Context& dev_ctx,
 
   warprnntgrad->Resize(input.dims());
   T* warprnntgrad_data = dev_ctx.template Alloc<T>(warprnntgrad);
-  phi::funcs::SetConstant<Context, T>()(
-      dev_ctx, warprnntgrad, static_cast<T>(0));
+  funcs::SetConstant<Context, T>()(dev_ctx, warprnntgrad, static_cast<T>(0));
 
   // loss on cpu (B,)
   auto loss_dims = common::make_ddim({static_cast<int64_t>(B)});

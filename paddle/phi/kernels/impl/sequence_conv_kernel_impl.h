@@ -56,13 +56,13 @@ void SequenceConvKernel(const Context& dev_ctx,
   int down_pad = std::max(0, context_start + context_length - 1);
   auto sequence_width = static_cast<int64_t>(in->dims()[1]);
 
-  phi::DDim col_shape = {in->dims()[0], context_length * sequence_width};
+  DDim col_shape = {in->dims()[0], context_length * sequence_width};
   phi::DenseTensor col;
   col.Resize(col_shape);
   dev_ctx.template Alloc<T>(&col);
   // Because if padding_trainable is false, padding data should be zeros.
-  phi::funcs::SetConstant<Context, T> set_zero;
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  funcs::SetConstant<Context, T> set_zero;
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   set_zero(dev_ctx, &col, static_cast<T>(0));
   phi::math::ContextProjectFunctor<Context, T> seq_project_functor;
 
@@ -112,10 +112,10 @@ void SequenceConvGradKernel(const Context& dev_ctx,
   int down_pad = std::max(0, context_start + context_length - 1);
   auto sequence_width = static_cast<int64_t>(in->dims()[1]);
 
-  phi::funcs::SetConstant<Context, T> set_zero;
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  funcs::SetConstant<Context, T> set_zero;
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   // use col_shape in the im2col calculation
-  phi::DDim col_shape = {in->dims()[0], sequence_width * context_length};
+  DDim col_shape = {in->dims()[0], sequence_width * context_length};
   phi::DenseTensor col;
 
   if (in_g || filter_g || (padding_trainable && padding_data_g)) {

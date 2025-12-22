@@ -120,7 +120,7 @@ void HandleLargeDimGrad(const Context& dev_ctx,
   phi::Copy(dev_ctx, *dx, dev_ctx.GetPlace(), false, &dx_tmp);
   dx_tmp.Resize(shuffled_dim);
   dx->Resize(x_dim);
-  phi::funcs::TransposeNormal<Context, T> trans;
+  funcs::TransposeNormal<Context, T> trans;
   trans(dev_ctx, dx_tmp, dx, origin_axis);
 }
 

@@ -231,7 +231,7 @@ void FusedSeqpoolCVMCUDAKernel(const Context &dev_ctx,
                                std::vector<DenseTensor *> out) {
   // from InferShape
   const size_t num_inputs = x.size();
-  std::vector<phi::DDim> outs_dims;
+  std::vector<DDim> outs_dims;
   outs_dims.resize(num_inputs);
   int batch_size_tmp = -1;
   for (size_t i = 0; i < num_inputs; ++i) {

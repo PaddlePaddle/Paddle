@@ -29,13 +29,13 @@ __global__ void FlattenIndicesKernel(const IntT* indices,
   int64_t tid =
       static_cast<int64_t>(threadIdx.x) +
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
-  phi::funcs::sparse::FlattenIndices<IntT>(indices,
-                                           sparse_offsets,
-                                           non_zero_num,
-                                           sparse_dim,
-                                           tid,
-                                           gridDim.x * blockDim.x,
-                                           out);
+  funcs::sparse::FlattenIndices<IntT>(indices,
+                                      sparse_offsets,
+                                      non_zero_num,
+                                      sparse_dim,
+                                      tid,
+                                      gridDim.x * blockDim.x,
+                                      out);
 }
 
 template <typename IntT>

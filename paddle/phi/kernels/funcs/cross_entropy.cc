@@ -80,7 +80,7 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
         loss_data[loss_idx] =
             lbl == ignore_index_
                 ? 0
-                : -phi::funcs::TolerableValue<T>()(std::log(prob_data[index]));
+                : -funcs::TolerableValue<T>()(std::log(prob_data[index]));
       }
     }
   }
@@ -116,7 +116,7 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
     auto loss = EigenMatrix<T>::From(*out);
 
     loss.device(*dev_ctx.eigen_device()) =
-        -((lbl * in.log().unaryExpr(phi::funcs::TolerableValue<T>()))
+        -((lbl * in.log().unaryExpr(funcs::TolerableValue<T>()))
               .reshape(batch_axis_remain)
               .sum(Eigen::DSizes<int, 1>(1)));
   } else {

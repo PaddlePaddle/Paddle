@@ -267,7 +267,7 @@ inline DDim GetOutputDimsForDynamicShape(const DDim &s_dims,
   return common::make_ddim(shapes);
 }
 
-inline int64_t CalStride(phi::DDim dim) {
+inline int64_t CalStride(DDim dim) {
   int rank = dim.size();
   int64_t dimsum = 1;
   int64_t strides = 0;

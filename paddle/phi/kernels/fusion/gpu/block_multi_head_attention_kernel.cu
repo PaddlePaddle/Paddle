@@ -498,8 +498,7 @@ void DispatchWithDtype(
     VLOG(1) << "has bias";
     std::vector<const phi::DenseTensor*> ins = {&qkv_buf, qkv_bias.get_ptr()};
     std::vector<phi::DenseTensor*> outs = {&qkv_buf};
-    phi::funcs::BroadcastKernel<T>(
-        dev_ctx, ins, &outs, phi::funcs::AddFunctor<T>());
+    funcs::BroadcastKernel<T>(dev_ctx, ins, &outs, funcs::AddFunctor<T>());
   }
 
   if (max_enc_len_this_time_data > 0) {

@@ -53,9 +53,9 @@ class LstmUnitFunctor {
                       int frame_size,
                       int batch_size,
                       T cell_clip,
-                      const phi::funcs::detail::ActivationType &gate_act,
-                      const phi::funcs::detail::ActivationType &cell_act,
-                      const phi::funcs::detail::ActivationType &cand_act,
+                      const funcs::detail::ActivationType &gate_act,
+                      const funcs::detail::ActivationType &cell_act,
+                      const funcs::detail::ActivationType &cand_act,
                       bool old_api_version = true);
 };
 
@@ -68,9 +68,9 @@ class LstmUnitGradFunctor {
                       int frame_size,
                       int batch_size,
                       T cell_clip,
-                      const phi::funcs::detail::ActivationType &gate_act,
-                      const phi::funcs::detail::ActivationType &cell_act,
-                      const phi::funcs::detail::ActivationType &cand_act,
+                      const funcs::detail::ActivationType &gate_act,
+                      const funcs::detail::ActivationType &cell_act,
+                      const funcs::detail::ActivationType &cand_act,
                       bool old_api_version = true);
 };
 

@@ -38,8 +38,8 @@ void MixedPrecisionAddGradImpl(const Context& dev_ctx,
                                DenseTensor* x_grad,
                                DenseTensor* y_grad,
                                GradFunc grad_func) {
-  phi::funcs::ElementwiseGradPreProcess(out_grad, x_grad);
-  phi::funcs::ElementwiseGradPreProcess(out_grad, y_grad);
+  funcs::ElementwiseGradPreProcess(out_grad, x_grad);
+  funcs::ElementwiseGradPreProcess(out_grad, y_grad);
   auto* out = &out_grad;
   if (x_grad != nullptr && y_grad == nullptr &&
       x_grad->dims() == out_grad.dims()) {
@@ -63,8 +63,8 @@ void AddGradImpl(const Context& dev_ctx,
                  DenseTensor* x_grad,
                  DenseTensor* y_grad,
                  GradFunc grad_func) {
-  phi::funcs::ElementwiseGradPreProcess(out_grad, x_grad);
-  phi::funcs::ElementwiseGradPreProcess(out_grad, y_grad);
+  funcs::ElementwiseGradPreProcess(out_grad, x_grad);
+  funcs::ElementwiseGradPreProcess(out_grad, y_grad);
   auto* out = &out_grad;
   // Special case when y_grad is not needed and x_grad doesn't reduce
   if (x_grad != nullptr && y_grad == nullptr &&
@@ -309,13 +309,13 @@ void ComputeDDoutWithBroadcast(const CPUContext& dev_ctx UNUSED,
   auto* ddout_data = ddout->data<T>();
   std::vector<int> index_array(max_dim, 0);
   for (int64_t i = 0; i < out_numel; i++) {
-    int x_index = phi::funcs::GetElementwiseIndex(
-        x_dims_array, max_dim, index_array.data());
-    int y_index = phi::funcs::GetElementwiseIndex(
-        y_dims_array, max_dim, index_array.data());
+    int x_index =
+        funcs::GetElementwiseIndex(x_dims_array, max_dim, index_array.data());
+    int y_index =
+        funcs::GetElementwiseIndex(y_dims_array, max_dim, index_array.data());
     ddout_data[i] = dout_op(
         ddx_data[x_index], ddy_data[y_index], y_data[y_index], out_data[i]);
-    phi::funcs::UpdateElementwiseIndexArray(
+    funcs::UpdateElementwiseIndexArray(
         out_dims_array, max_dim, index_array.data());
   }
 }
@@ -535,13 +535,13 @@ void DivDoubleDDoutCompute(const Context& dev_ctx,
     std::vector<int> x_dims_array(max_dim, 0);
     std::vector<int> y_dims_array(max_dim, 0);
     std::vector<int> out_dims_array(max_dim, 0);
-    phi::funcs::GetBroadcastDimsArrays(x_dims,
-                                       y_dims,
-                                       x_dims_array.data(),
-                                       y_dims_array.data(),
-                                       out_dims_array.data(),
-                                       max_dim,
-                                       axis);
+    funcs::GetBroadcastDimsArrays(x_dims,
+                                  y_dims,
+                                  x_dims_array.data(),
+                                  y_dims_array.data(),
+                                  out_dims_array.data(),
+                                  max_dim,
+                                  axis);
     ComputeDDoutWithBroadcast<T, DDout_OP, T>(dev_ctx,
                                               ddx,
                                               ddy,
@@ -611,10 +611,10 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
           dev_ctx, *dx_tensor, y, &tmp, axis);
       if (ddx_tensor && !ddy_tensor) {
         // dy = -dX * ddX / Y
-        phi::funcs::ElemwiseGradCompute<Context,
-                                        T,
-                                        DivGradDX<T>,
-                                        DivDoubleDY_Only_DDX<T>>(
+        funcs::ElemwiseGradCompute<Context,
+                                   T,
+                                   DivGradDX<T>,
+                                   DivDoubleDY_Only_DDX<T>>(
             dev_ctx,
             *ddx_tensor,  // ddx
             y,
@@ -627,10 +627,10 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
             DivDoubleDY_Only_DDX<T>());
       } else if (!ddx_tensor && ddy_tensor) {
         // dY = Out * dX * ddY / Y
-        phi::funcs::ElemwiseGradCompute<Context,
-                                        T,
-                                        DivGradDX<T>,
-                                        DivDoubleDY_Only_DDY<T>>(
+        funcs::ElemwiseGradCompute<Context,
+                                   T,
+                                   DivGradDX<T>,
+                                   DivDoubleDY_Only_DDY<T>>(
             dev_ctx,
             *dx_tensor,
             *ddy_tensor,  // ddy
@@ -649,18 +649,17 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
         // output tensor will not be activated, DivGradDx function will not
         // be called and can be ignored, the first branch has little effect
         // on running speed.
-        phi::funcs::
-            ElemwiseGradCompute<Context, T, DivGradDX<T>, DivDoubleDY<T>>(
-                dev_ctx,
-                *ddx_tensor,  // ddx
-                *ddy_tensor,  // ddy
-                out,          // out
-                tmp,          // dX / Y
-                axis,
-                nullptr,
-                dy,
-                DivGradDX<T>(),
-                DivDoubleDY<T>());
+        funcs::ElemwiseGradCompute<Context, T, DivGradDX<T>, DivDoubleDY<T>>(
+            dev_ctx,
+            *ddx_tensor,  // ddx
+            *ddy_tensor,  // ddy
+            out,          // out
+            tmp,          // dX / Y
+            axis,
+            nullptr,
+            dy,
+            DivGradDX<T>(),
+            DivDoubleDY<T>());
       }
     }
   }
@@ -999,7 +998,7 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
       without_ddx = (ddout->numel() > ddx.get_ptr()->numel());
     }
     if (without_ddx) {
-      phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
+      funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
           dev_ctx,
           ddx_safe,
           ddy_safe,
@@ -1045,7 +1044,7 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
         // output tensor will not be activated, DivGradDx function will not
         // be called and can be ignored, the first branch has little effect
         // on running speed.
-        phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
+        funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
             dev_ctx,
             ddx_safe,
             ddy_safe,
@@ -1100,7 +1099,7 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
         // output tensor will not be activated, DivGradDx function will not
         // be called and can be ignored, the first branch has little effect
         // on running speed.
-        phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
+        funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
             dev_ctx,
             ddx_safe,
             ddy_safe,
@@ -1137,7 +1136,7 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
     }
   } else {
     VLOG(3) << "Calculating here with dx: " << dx << ", dy: " << dy;
-    phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
+    funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
         dev_ctx,
         ddx_safe,
         ddy_safe,
@@ -1425,7 +1424,7 @@ void HeavisideGradKernel(const Context& dev_ctx,
                          DenseTensor* dx,
                          DenseTensor* dy) {
   funcs::ElementwiseGradPreProcess(dout, dx);
-  phi::funcs::
+  funcs::
       ElemwiseGradCompute<Context, T, HeavisideGradDx<T>, HeavisideGradDy<T>>(
           dev_ctx,
           x,
@@ -1566,7 +1565,7 @@ void ElementwisePowGradKernel(const Context& dev_ctx,
   }
   funcs::ElementwiseGradPreProcess(dout, dx);
   int axis = -1;
-  phi::funcs::ElemwiseGradCompute<Context, T, PowGradDX<T>, PowGradDY<T>>(
+  funcs::ElemwiseGradCompute<Context, T, PowGradDX<T>, PowGradDY<T>>(
       dev_ctx, x, y, dout, dout, axis, dx, dy, PowGradDX<T>(), PowGradDY<T>());
 }
 

@@ -43,8 +43,8 @@ namespace funcs {
 template <typename T, typename Context>
 phi::DenseTensor GetReshapeAndExpandTensor(const Context& dev_ctx,
                                            const phi::DenseTensor& tensor,
-                                           const phi::DDim& res_dim,
-                                           const phi::DDim& bd_dim,
+                                           const DDim& res_dim,
+                                           const DDim& bd_dim,
                                            int index) {
   std::vector<int64_t> before_dims = common::vectorize(tensor.dims());
   std::vector<int64_t> mid_dims(res_dim.size(), 1);
@@ -143,7 +143,7 @@ std::vector<const phi::DenseTensor*> DealWithBoolIndices(
   return res;
 }
 
-static phi::DDim BroadCastTensorsDims(
+static DDim BroadCastTensorsDims(
     const std::vector<const phi::DenseTensor*>& tensors) {
   int target_rank = 0;
   for (const auto& tensor : tensors) {
@@ -215,7 +215,7 @@ void DealWithIndices(const Context& dev_ctx,
                      std::vector<const phi::DenseTensor*>* res_indices_v,
                      std::vector<DenseTensor>* tmp_res_indices_v,
                      const std::vector<DenseTensor>& range_tensor_v,
-                     const phi::DDim& bd_dim,
+                     const DDim& bd_dim,
                      std::vector<int64_t>* res_dim_v) {
   size_t total_dims = x.dims().size();
   if (int_indices_v.size() < total_dims) {
@@ -224,7 +224,7 @@ void DealWithIndices(const Context& dev_ctx,
     res_dim_v->insert(res_dim_v->end(),
                       tmp_x_dims.begin() + int_indices_v.size(),
                       tmp_x_dims.end());
-    phi::DDim res_dim = common::make_ddim(*res_dim_v);
+    DDim res_dim = common::make_ddim(*res_dim_v);
     for (size_t i = 0; i < int_indices_v.size(); ++i) {
       phi::DenseTensor index_tensor;
       if (int_indices_v[i]->dtype() == phi::DataType::INT32) {
