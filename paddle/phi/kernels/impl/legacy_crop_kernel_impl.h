@@ -47,7 +47,7 @@ void CropFunction(const Context &dev_ctx,
     e_shape[i] = out->dims()[i];
   }
   auto &place = *dev_ctx.eigen_device();
-  phi::funcs::EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
+  funcs::EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
       place, out_tensor, x_tensor, e_offsets, e_shape);
 }
 
@@ -114,7 +114,7 @@ void CropGradFunction(const Context &dev_ctx,
     auto d_x_tensor = EigenTensor<T, D>::From(*d_x);
     auto d_out_tensor = EigenTensor<T, D>::From(*d_out);
     auto &place = *dev_ctx.eigen_device();
-    phi::funcs::EigenPad<std::decay_t<decltype(place)>, T, D>::Eval(
+    funcs::EigenPad<std::decay_t<decltype(place)>, T, D>::Eval(
         place, d_x_tensor, d_out_tensor, paddings, static_cast<T>(0));
   }
 }

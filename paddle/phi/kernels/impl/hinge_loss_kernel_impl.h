@@ -33,8 +33,7 @@ void HingeLossKernel(const Context& dev_ctx,
   auto y = phi::EigenVector<T>::Flatten(*label);
   dev_ctx.template Alloc<T>(loss);
   auto l = phi::EigenVector<T>::Flatten(*loss);
-  phi::funcs::EigenHingeLoss<std::decay_t<decltype(place)>, T>::Eval(
-      place, l, x, y);
+  funcs::EigenHingeLoss<std::decay_t<decltype(place)>, T>::Eval(place, l, x, y);
 }
 
 template <typename T, typename Context>
@@ -56,7 +55,7 @@ void HingeLossGradKernel(const Context& dev_ctx,
   if (dpred) {
     dev_ctx.template Alloc<T>(dpred);
     auto dx = phi::EigenVector<T>::Flatten(*dpred);
-    phi::funcs::EigenHingeLossGrad<std::decay_t<decltype(place)>, T>::Eval(
+    funcs::EigenHingeLossGrad<std::decay_t<decltype(place)>, T>::Eval(
         place, dx, dl, x, y);
   }
 }

@@ -69,7 +69,7 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
                         "The Input dim size should be between 2 and 5"));
   int N, C, H, W, D;
   const phi::DataLayout data_layout = phi::DataLayout::NHWC;
-  phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+  funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
   // init output
   auto *d_x = x_grad;
@@ -101,12 +101,12 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
       auto dx_v = phi::EigenVector<T>::Flatten(*d_x);
       auto dy_v = phi::EigenVector<T>::Flatten(*d_y);
       auto &dev = *dev_ctx.eigen_device();
-      phi::funcs::ReluGradFunctor<T>()(dev, x_v, y_v, dy_v, dx_v);
+      funcs::ReluGradFunctor<T>()(dev, x_v, y_v, dy_v, dx_v);
     } else {
       PADDLE_THROW(
           common::errors::Unimplemented("Unsupported activation type"));
     }
-    phi::funcs::SetConstant<phi::GPUContext, BatchNormParamType> functor;
+    funcs::SetConstant<phi::GPUContext, BatchNormParamType> functor;
     functor(dev_ctx, d_scale, static_cast<BatchNormParamType>(0));
     functor(dev_ctx, d_bias, static_cast<BatchNormParamType>(0));
     return;

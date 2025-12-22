@@ -257,6 +257,12 @@
   args_alias:
     use_default_mapping : True
 
+- op : diag
+  name : [paddle.diag, paddle.Tensor.diag]
+  args_alias:
+    x : [input]
+    offset: [diagonal]
+
 - op : diagonal
   name : [paddle.diagonal, paddle.Tensor.diagonal]
   args_alias:
@@ -290,6 +296,7 @@
   name : [paddle.nn.functional.softplus]
   args_alias :
     use_default_mapping : True
+
 - op : isclose
   name : [paddle.isclose, paddle.Tensor.isclose]
   args_alias :
@@ -306,5 +313,10 @@
 
 - op : atanh
   name: [paddle.atanh, paddle.Tensor.atanh]
+  args_alias :
+    use_default_mapping : True
+
+- op : sinh
+  name: [paddle.sinh, paddle.Tensor.sinh]
   args_alias :
     use_default_mapping : True

@@ -89,11 +89,11 @@ void exec_fft(const phi::XPUContext& dev_ctx,
               DenseTensor* out,
               const std::vector<int64_t>& axes,
               bool forward) {
-  const phi::DDim& in_sizes = x.dims();
+  const DDim& in_sizes = x.dims();
   const int ndim = in_sizes.size();
   const int signal_ndim = axes.size();
   const int batch_ndim = ndim - signal_ndim;
-  const phi::DDim& out_sizes = out->dims();
+  const DDim& out_sizes = out->dims();
 
   // make a dim permutation
   std::vector<int> dim_permute(ndim);
@@ -111,7 +111,7 @@ void exec_fft(const phi::XPUContext& dev_ctx,
   // transpose input according to the permutation
   DenseTensor transposed_input =
       Transpose<Ti, phi::XPUContext>(dev_ctx, x, dim_permute);
-  const phi::DDim transposed_input_shape = transposed_input.dims();
+  const DDim transposed_input_shape = transposed_input.dims();
 
   // batch size
   int64_t batch_size = 1L;
@@ -126,19 +126,19 @@ void exec_fft(const phi::XPUContext& dev_ctx,
   for (int i = 0; i < signal_ndim; i++) {
     collapsed_input_shape_.push_back(in_sizes[axes[i]]);
   }
-  phi::DDim collapsed_input_shape = common::make_ddim(collapsed_input_shape_);
+  DDim collapsed_input_shape = common::make_ddim(collapsed_input_shape_);
   transposed_input.Resize(collapsed_input_shape);
   DenseTensor& collapsed_input = transposed_input;
 
   // make a collapsed output
-  phi::DDim transposed_output_shape = out_sizes.transpose(dim_permute);
+  DDim transposed_output_shape = out_sizes.transpose(dim_permute);
   std::vector<int64_t> collapsed_output_shape_;
   collapsed_output_shape_.reserve(1 + signal_ndim);
   collapsed_output_shape_.emplace_back(batch_size);
   for (int i = 0; i < signal_ndim; i++) {
     collapsed_output_shape_.push_back(out_sizes[axes[i]]);
   }
-  phi::DDim collapsed_output_shape = common::make_ddim(collapsed_output_shape_);
+  DDim collapsed_output_shape = common::make_ddim(collapsed_output_shape_);
   DenseTensor collapsed_output;
   collapsed_output.Resize(collapsed_output_shape);
   dev_ctx.Alloc<To>(&collapsed_output);

@@ -163,5 +163,8 @@ void RmsNormAvxKernel(const Context& dev_ctx,
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    rms_norm, CPU, ALL_LAYOUT, phi::fusion::RmsNormAvxKernel, float) {}
+PD_REGISTER_KERNEL(fused_rms_norm_quant,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::fusion::RmsNormAvxKernel,
+                   float) {}

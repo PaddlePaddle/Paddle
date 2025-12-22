@@ -31,11 +31,11 @@ void MatMul(const phi::GPUContext& dev_ctx,
             const phi::DenseTensor& a,
             const phi::DenseTensor& b,
             phi::DenseTensor* c) {
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   auto a_2d = phi::FoldInitDims(a);
   auto b_2d = phi::FoldInitDims(b);
-  auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a_2d.dims(), 0, false);
-  auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b_2d.dims(), 0, false);
+  auto mat_dim_a = funcs::CreateMatrixDescriptor(a_2d.dims(), 0, false);
+  auto mat_dim_b = funcs::CreateMatrixDescriptor(b_2d.dims(), 0, false);
   T alpha = static_cast<T>(1.0);
   blas.MatMul(a, mat_dim_a, b, mat_dim_b, alpha, c, T(0));
 }
@@ -81,7 +81,7 @@ void FFN(const phi::GPUContext& dev_ctx,
       fused_dropout_layernorm_helper(
           dev_ctx, bsz_seq, d_model, dropout_param2, epsilon2);
 
-  using U = phi::funcs::LayerNormParamType<T>;
+  using U = funcs::LayerNormParamType<T>;
   const phi::DenseTensor* in = &x;
 
   const U* ln1_scale_ptr =
@@ -231,7 +231,7 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
                                            dropout2_seed_ptr,
                                            dropout2_seed_val);
 
-  using U = phi::funcs::LayerNormParamType<T>;
+  using U = funcs::LayerNormParamType<T>;
   dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
   dev_ctx.template Alloc<uint8_t>(dropout1_mask,
                                   dropout1_mask->numel() * sizeof(uint8_t));
@@ -255,8 +255,8 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
   }
 
   auto x_dim = x_ptr->dims();
-  auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
-      phi::RowMatrixFromVector(x_dim), 0, false);
+  auto mat_dim_x =
+      funcs::CreateMatrixDescriptor(phi::RowMatrixFromVector(x_dim), 0, false);
 
   auto dim = linear1_weight_ptr->dims();
   int d_model = dim[0];

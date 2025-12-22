@@ -22,7 +22,7 @@ namespace funcs {
 #define CUDNN_SPATIAL_THRESHOLD_TRAIN 880801
 #define CUDNN_SPATIAL_THRESHOLD_EVAL 65535
 
-inline void ExtractNCWHD(const phi::DDim &dims,
+inline void ExtractNCWHD(const DDim &dims,
                          const DataLayout &data_layout,
                          int *N,
                          int *C,
@@ -45,7 +45,7 @@ inline void ExtractNCWHD(const phi::DDim &dims,
   }
 }
 
-inline void ExtractNCWHD(const phi::DDim &dims,
+inline void ExtractNCWHD(const DDim &dims,
                          const DataLayout &data_layout,
                          int64_t *N,
                          int64_t *C,

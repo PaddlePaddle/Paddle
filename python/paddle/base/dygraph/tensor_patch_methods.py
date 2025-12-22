@@ -49,6 +49,8 @@ from .math_op_patch import monkey_patch_math_tensor
 if TYPE_CHECKING:
     from enum import IntEnum
 
+    from typing_extensions import CapsuleType
+
     from paddle import Tensor
     from paddle._typing import DTypeLike, PlaceLike, TensorIndex
 
@@ -1491,7 +1493,7 @@ def monkey_patch_tensor():
         max_version: tuple[int, int] | None = None,
         dl_device: tuple[IntEnum, int] | None = None,
         copy: bool | None = None,
-    ):
+    ) -> CapsuleType:
         """
         Creates a DLPack capsule of the current tensor to be exported to other libraries.
         Args:
@@ -1512,24 +1514,67 @@ def monkey_patch_tensor():
         """
 
         if self.is_sparse():
-            raise AttributeError(
-                "Can't get __dlpack__ from a Tensor that requires gradients, "
-                "use tensor.detach() if gradients are not required."
+            raise BufferError(
+                "Can't get __dlpack__ from a Tensor from sparse storage."
             )
 
         if not self.stop_gradient:
-            raise RuntimeError(
+            raise BufferError(
                 "Can't get __dlpack__ from Tensor that requires gradients. "
                 "If gradients aren't required, use tensor.detach() to get a tensor without gradient."
             )
 
-        if stream is not None:
-            if self.place.is_gpu_place():
-                current_stream = paddle.device.cuda.current_stream()
-                if stream != current_stream:
-                    event = paddle.device.cuda.Event()
-                    event.record(current_stream)
-                    current_stream.synchronize()
+        if stream is not None and not isinstance(stream, int):
+            raise TypeError("stream must be an integer or None.")
+        elif self.place.is_gpu_place() and stream != -1:
+            is_rocm = paddle.is_compiled_with_rocm()
+            is_cuda = paddle.is_compiled_with_cuda()
+            if not (is_rocm or is_cuda):
+                raise RuntimeError(
+                    "DLPack with stream synchronization is only supported "
+                    "when Paddle is compiled with CUDA or ROCm."
+                )
+            if is_cuda and stream == 0:
+                raise ValueError(
+                    "For CUDA, stream=0 is ambiguityous, please use None for default stream."
+                )
+            if is_cuda and stream == 2:
+                raise ValueError(
+                    "For CUDA, stream=2 means per-thread default stream, which is not supported."
+                )
+            if is_rocm and stream in {1, 2}:
+                raise ValueError("For ROCm, stream=1 or 2 is not supported.")
+            if (
+                stream is None
+                # For CUDA, stream=1 means default stream
+                or (is_cuda and stream == 1)
+                # For ROCm, stream=0 means default stream
+                or (is_rocm and stream == 0)
+            ):
+                consumer_stream = paddle.device.Stream(
+                    stream_base=core._get_legacy_default_stream(
+                        paddle.framework._current_expected_place_().get_device_id()
+                    )
+                )
+            else:
+                assert stream > 2, "stream should be a valid stream pointer."
+                consumer_stream = paddle.device.get_stream_from_external(stream)
+
+            current_stream = paddle.device.current_stream()
+
+            def is_same_stream(
+                lhs: paddle.device.Stream, rhs: paddle.device.Stream
+            ) -> bool:
+                return (
+                    lhs.stream_base.raw_stream == rhs.stream_base.raw_stream
+                ) and (lhs.device == rhs.device)
+
+            if not is_same_stream(consumer_stream, current_stream):
+                event = paddle.device.Event()
+                event.record(current_stream)
+                consumer_stream.wait_event(event)
+        elif self.place.is_cpu_place():
+            assert stream is None, "CPU tensor stream must be None."
 
         if max_version is None or max_version[0] < 1:
             return self.get_tensor()._to_dlpack(dl_device=dl_device, copy=copy)

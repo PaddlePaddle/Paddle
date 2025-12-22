@@ -957,6 +957,7 @@
     spmd_rule : CeluInfoSpmd
   kernel :
     func : celu
+  inplace : (x -> out)
   backward : celu_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
@@ -1531,7 +1532,7 @@
 
 - op : diag
   args : (Tensor x, int offset = 0, float padding_value = 0.0)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : DiagInferMeta
   kernel :
@@ -2404,6 +2405,19 @@
     data_type : x
   view : (mean -> mean_out), (variance -> variance_out)
   backward : fused_bn_add_activation_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : fused_rms_norm_quant
+  args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
+  output : Tensor(out), Tensor(residual_out), Tensor(inv_var)
+  infer_meta :
+    func : FusedRmsNormQuantInferMeta
+  kernel :
+    func : fused_rms_norm_quant
+    data_type : x
+  optional : bias, residual, norm_bias, residual_out
+  intermediate : inv_var
+  backward : fused_rms_norm_quant_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fused_softmax_mask
@@ -4616,19 +4630,6 @@
   backward : rint_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op : rms_norm
-  args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
-  output : Tensor(out), Tensor(residual_out), Tensor(inv_var)
-  infer_meta :
-    func : RmsNormInferMeta
-  kernel :
-    func : rms_norm
-    data_type : x
-  optional : bias, residual, norm_bias, residual_out
-  intermediate : inv_var
-  backward : rms_norm_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
 - op : rmsprop_
   args : (Tensor param, Tensor mean_square, Tensor grad, Tensor moment, Tensor learning_rate, Tensor mean_grad, Tensor master_param, float epsilon = 1.0e-10f, float decay = 0.9f, float momentum = 0.0f, bool centered = false, bool multi_precision = false)
   output : Tensor(param_out), Tensor(moment_out), Tensor(mean_square_out), Tensor(mean_grad_out), Tensor(master_param_outs)
@@ -5993,7 +5994,7 @@
   invoke : full_like(x, 0, dtype, place)
 
 - op: batched_gemm
-  args: (Tensor lhs, Tensor rhs, int64_t[] batch_sizes)
+  args: (Tensor lhs, Tensor rhs, int64_t[] batch_sizes, bool trans_lhs, bool trans_rhs)
   output: Tensor(output)
   infer_meta:
     func: BatchedGemmInferMeta

@@ -96,23 +96,23 @@ inline T IntFloorDiv(T a, T b) {
 template <bool compute_both = false>
 class CoordinateManager {
  private:
-  const phi::DDim& shape;
-  const phi::DDim& strides1;
+  const DDim& shape;
+  const DDim& strides1;
   const int ndim;
   const int src_dim;
   int64_t last_offset;
   std::vector<int64_t> indices;
-  const phi::DDim* strides2;
+  const DDim* strides2;
 
  public:
   int64_t offset1;
   int64_t offset2;
 
-  CoordinateManager(const phi::DDim& _shape,
-                    const phi::DDim& _strides1,
+  CoordinateManager(const DDim& _shape,
+                    const DDim& _strides1,
                     int _ndim,
                     int _src_dim,
-                    const phi::DDim* _strides2 = nullptr)
+                    const DDim* _strides2 = nullptr)
       : shape(_shape),
         strides1(_strides1),
         ndim(_ndim),
@@ -174,23 +174,23 @@ class CoordinateManager {
 template <bool compute_both = false>
 class ReversedCoordinateManager {
  private:
-  const phi::DDim& shape;
-  const phi::DDim& strides1;
+  const DDim& shape;
+  const DDim& strides1;
   const int ndim;
   const int src_dim;
   int64_t last_offset;
   std::vector<int64_t> indices;
-  const phi::DDim* strides2;
+  const DDim* strides2;
 
  public:
   int64_t offset1;
   int64_t offset2;
 
-  ReversedCoordinateManager(const phi::DDim& _shape,
-                            const phi::DDim& _strides1,
+  ReversedCoordinateManager(const DDim& _shape,
+                            const DDim& _strides1,
                             int _ndim,
                             int _src_dim,
-                            const phi::DDim* _strides2 = nullptr)
+                            const DDim* _strides2 = nullptr)
       : shape(_shape),
         strides1(_strides1),
         ndim(_ndim),
@@ -616,7 +616,7 @@ void cpu_scatter_add_mean_value_grad_kernel(phi::DenseTensor self,
 
   int64_t self_size = self.numel();
 
-  phi::funcs::set_constant(dev_ctx, &grad, 0);
+  funcs::set_constant(dev_ctx, &grad, 0);
 
   std::vector<int> num_elements;
   const int ndim = index.dims().size();

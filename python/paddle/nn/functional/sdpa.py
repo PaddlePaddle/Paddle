@@ -145,22 +145,14 @@ def check_all_tensors_on_device(params: SDPParams):
     """
     Check all input tensors are placed on the GPU device.
     """
-    if not params.place[0].is_gpu_place():
+    if not (
+        params.place[0].is_gpu_place() or params.place[0].is_custom_place()
+    ):
         _logger.debug(
-            "All input tensors should be placed on GPU place, but "
+            "All input tensors should be placed on GPU or custom place, but "
             f"query place: {params.place[0]}, key place: "
             f"{params.place[1]}, value place: {params.place[2]}"
         )
-        return False
-    return True
-
-
-def check_for_attn_mask(params: SDPParams):
-    """
-    Check flash attention does not support attn_mask.
-    """
-    if params.attn_mask_shape is not None:
-        _logger.debug("Flash attention does not support attn_mask.")
         return False
     return True
 
@@ -191,6 +183,11 @@ def check_flash_attention_hardware_support(device_id: int):
     """
     Check flash attention requires CUDA support and SM between 8.0 and 12.1.
     """
+    if SDPBackend.FLASH_ATTENTION and paddle.is_compiled_with_custom_device(
+        paddle.device.get_all_device_type()[0]
+    ):
+        return True
+
     if not check_cuda_is_available():
         _logger.debug("Flash attention requires CUDA support.")
         return False
@@ -365,7 +362,6 @@ def check_scale_is_None(params: SDPParams) -> bool:
 def can_use_flash_attention(params: SDPParams = False) -> bool:
     general_constraints = [
         check_all_tensors_on_device,
-        check_for_attn_mask,
         check_head_dim_size_flash,
         check_flash_causal_non_square_seqlens,
         check_dtypes_low_precision_fa,
@@ -406,12 +402,6 @@ def select_sdp_for_sdpa(param: SDPParams) -> str:
 
     place = paddle.get_device()
     if "xpu" in place:
-        return "flash_attn"
-
-    if "iluvatar_gpu" in place:
-        return "flash_attn"
-
-    if "metax_gpu" in place:
         return "flash_attn"
 
     enabled_backends = _get_enabled_backends()
@@ -601,11 +591,6 @@ def scaled_dot_product_attention(
                 paddle.to_tensor(0.0, dtype=query.dtype),
                 paddle.to_tensor(-float('inf'), dtype=query.dtype),
             )
-        if attn_mask.ndim == 3:
-            attn_mask = paddle.unsqueeze(attn_mask, axis=1)
-        if attn_mask.shape.numel() != 0:
-            mask_shape = (bs, num_heads_q, seq_len_q, seq_len_k)
-            attn_mask = attn_mask.expand(mask_shape)
 
     if is_zero_size:
         sdp_func_name = "math"
@@ -617,6 +602,12 @@ def scaled_dot_product_attention(
         fixed_seed_offset = None
         return_softmax = False
         rng_name = ""
+        if attn_mask is not None:
+            if attn_mask.ndim == 2:
+                attn_mask = attn_mask.expand([bs, 1, *attn_mask.shape])
+            elif attn_mask.ndim == 3:
+                attn_mask = paddle.unsqueeze(attn_mask, axis=1)
+
         out, _, _, _ = _C_ops.flash_attn(
             query,
             key,
@@ -639,16 +630,27 @@ def scaled_dot_product_attention(
         key, value = _repeat_kv(key, value, repeats)
 
         if is_causal:
-            bias_input = LowerTriangularMask()
+            attn_mask = LowerTriangularMask()
         elif attn_mask is not None:
-            bias_input = attn_mask
-        else:
-            bias_input = None
+            # memory_efficient_attention does not support broadcast num_heads dim when batch_size dim is not 1
+            if (
+                attn_mask.dim() == 4
+                and attn_mask.shape[0] != 1
+                and attn_mask.shape[1] != num_heads_q
+            ):
+                attn_mask = attn_mask.expand(
+                    [
+                        attn_mask.shape[0],
+                        num_heads_q,
+                        attn_mask.shape[2],
+                        attn_mask.shape[3],
+                    ]
+                )
         out = memory_efficient_attention(
             query,
             key,
             value,
-            attn_bias=bias_input,
+            attn_bias=attn_mask,
             p=dropout_p,
             scale=scale,
             training=training,

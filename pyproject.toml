@@ -197,3 +197,6 @@ module = [
     "xlsxwriter"
 ]
 ignore_missing_imports = true
+
+[tool.ty.environment]
+root = ["./python"]

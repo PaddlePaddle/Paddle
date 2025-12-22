@@ -170,24 +170,24 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
   std::vector<IntT> sparse_offsets(sparse_dim), x_indices(x.nnz()),
       y_indices(y.nnz());
 
-  phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
+  funcs::sparse::CalcOffsetsPerDim<IntT>(
       x.dims(), sparse_dim, sparse_offsets.data());
 
-  phi::funcs::sparse::FlattenIndices(x.indices().data<IntT>(),
-                                     sparse_offsets.data(),
-                                     x.nnz(),
-                                     sparse_dim,
-                                     0,
-                                     1,
-                                     x_indices.data());
+  funcs::sparse::FlattenIndices(x.indices().data<IntT>(),
+                                sparse_offsets.data(),
+                                x.nnz(),
+                                sparse_dim,
+                                0,
+                                1,
+                                x_indices.data());
 
-  phi::funcs::sparse::FlattenIndices(y.indices().data<IntT>(),
-                                     sparse_offsets.data(),
-                                     y.nnz(),
-                                     sparse_dim,
-                                     0,
-                                     1,
-                                     y_indices.data());
+  funcs::sparse::FlattenIndices(y.indices().data<IntT>(),
+                                sparse_offsets.data(),
+                                y.nnz(),
+                                sparse_dim,
+                                0,
+                                1,
+                                y_indices.data());
 
   std::vector<IntT> out_indices;
   std::vector<T> out_values_vec;

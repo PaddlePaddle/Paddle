@@ -57,7 +57,7 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
     out->Resize({dims});
     dev_ctx.template Alloc<T>(out);
 
-    phi::funcs::SetConstant<Context, T> set_zero;
+    funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, out, static_cast<T>(0));
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -98,7 +98,7 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
     } else if (pooltype == "MIN") {
       init_value = static_cast<T>(FLT_MAX);
     }
-    phi::funcs::SetConstant<Context, T> setconst;
+    funcs::SetConstant<Context, T> setconst;
     setconst(dev_ctx, out, static_cast<T>(init_value));
     // the gpu kernel of mean pool record the counts of segment_ids
     if (pooltype == "MEAN") {
@@ -113,7 +113,7 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
     return;
   }
 
-  phi::funcs::SegmentPoolFunctor<Context, T, IndexT> pool;
+  funcs::SegmentPoolFunctor<Context, T, IndexT> pool;
 
   pool(dev_ctx, x, segment_ids, out, summed_ids, pooltype);
 }

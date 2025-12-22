@@ -62,7 +62,7 @@ struct BroadcastTypeClassifier {
 
     InitBroadcastConfigs(ins, outs, axis);
 
-    using Traits = phi::funcs::FunctionTraits<Functor>;
+    using Traits = funcs::FunctionTraits<Functor>;
     using ArgsT = typename Traits::ArgsTuple;
     ArgsT arg;
     UnrollerWithoutVecSize<InputSetter, Arity>::step(ins, arg, &ins_data);
@@ -300,7 +300,7 @@ __device__ void VectorizedBroadcastKernelImpl(
     int block_offset,
     int read_lens,
     Functor func) {
-  using Traits = phi::funcs::FunctionTraits<Functor>;
+  using Traits = funcs::FunctionTraits<Functor>;
   using ArgsT = typename Traits::ArgsTuple;
   __simd__ ArgsT args[VecSize];
   __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
@@ -318,7 +318,7 @@ __device__ void VectorizedBroadcastKernelImpl(
       uint32_t idx = thread_offset + k;
       if (IsBoundary && idx == numel) break;
 #pragma unroll
-      for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
+      for (int i = 0; i < DDim::kMaxRank; ++i) {
         if (i == configs[0].rank) break;
         auto fast_divmoder = configs[0].divmoders[i].Divmod(idx);
         idx = fast_divmoder.val[0];
@@ -339,9 +339,8 @@ __device__ void VectorizedBroadcastKernelImpl(
                                      Functor,
                                      ArgsT,
                                      Arity>()(func, args, result, read_lens);
-  phi::funcs::
-      ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, NumOuts>()(
-          outs, result, block_offset, num, read_lens);
+  funcs::ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, NumOuts>()(
+      outs, result, block_offset, num, read_lens);
 }
 
 template <typename Functor,
@@ -766,7 +765,7 @@ void BroadcastKernel(const KPDevice &dev_ctx,
                      int axis = -1) {
   // When there are multiple inputs, the outputs's rank should be equal the
   // maximum rank of all inputs.
-  using Traits = phi::funcs::FunctionTraits<Functor>;
+  using Traits = funcs::FunctionTraits<Functor>;
   const int kArity = Traits::arity;
 
 #ifdef PADDLE_WITH_XPU_KP
@@ -813,7 +812,7 @@ void BroadcastKernel(const KPDevice &dev_ctx,
     return;
   }
   int max_rank = 0;
-  int min_rank = phi::DDim::kMaxRank;
+  int min_rank = DDim::kMaxRank;
   for (auto *in : ins) {
     max_rank = std::max(max_rank, in->dims().size());
     min_rank = std::min(min_rank, in->dims().size());

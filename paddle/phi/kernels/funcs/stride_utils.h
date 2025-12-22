@@ -594,7 +594,7 @@ static inline std::vector<phi::DenseTensor> expand_outplace(
     const phi::GPUContext& dev_ctx,
     const std::vector<phi::DenseTensor>& to_expand) {
   bool first = true;
-  phi::DDim target_shape;
+  DDim target_shape;
   for (size_t i = 0; i < to_expand.size(); ++i) {
     if (!to_expand[i].initialized()) continue;
     if (first) {
@@ -633,21 +633,21 @@ inline std::
   dims.reserve(self.dims().size());
   inv_perm.resize(self.dims().size());
 
-  for (int64_t i = 0; i < self.dims().size(); ++i) {
+  for (int i = 0; i < static_cast<int>(self.dims().size()); ++i) {
     if (indices[i].initialized()) {
-      dims.push_back(static_cast<int>(i));
+      dims.push_back(i);
       transposed_indices.emplace_back(indices[i]);
     }
   }
 
-  for (int64_t i = 0; i < self.dims().size(); ++i) {
+  for (int i = 0; i < static_cast<int>(self.dims().size()); ++i) {
     if (!indices[i].initialized()) {
-      dims.push_back(static_cast<int>(i));
+      dims.push_back(i);
       transposed_indices.emplace_back();
     }
   }
 
-  for (int64_t i = 0; i < self.dims().size(); ++i) {
+  for (int i = 0; i < static_cast<int>(self.dims().size()); ++i) {
     inv_perm[dims[i]] = i;
   }
 

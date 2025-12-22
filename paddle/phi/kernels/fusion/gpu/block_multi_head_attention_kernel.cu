@@ -361,8 +361,14 @@ void DispatchWithDtype(
   const int dim_head = key_cache_dims[3];
   const int total_num_head = qkv.dims()[qkv.dims().size() - 1] / dim_head;
   const int q_num_head = total_num_head - 2 * kv_num_head;
-  const int bsz = cum_offsets.dims()[0];
-  const int max_block_per_seq = block_tables.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t bsz = cum_offsets.dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t max_block_per_seq = block_tables.dims()[1];
+
   VLOG(3) << "bsz: " << bsz << " token_num: " << token_num
           << " q_num_head: " << q_num_head << " kv_num_head: " << kv_num_head
           << " dim_head: " << dim_head
@@ -492,8 +498,7 @@ void DispatchWithDtype(
     VLOG(1) << "has bias";
     std::vector<const phi::DenseTensor*> ins = {&qkv_buf, qkv_bias.get_ptr()};
     std::vector<phi::DenseTensor*> outs = {&qkv_buf};
-    phi::funcs::BroadcastKernel<T>(
-        dev_ctx, ins, &outs, phi::funcs::AddFunctor<T>());
+    funcs::BroadcastKernel<T>(dev_ctx, ins, &outs, funcs::AddFunctor<T>());
   }
 
   if (max_enc_len_this_time_data > 0) {

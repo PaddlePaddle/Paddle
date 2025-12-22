@@ -169,20 +169,20 @@ void cuda_rms_norm_gradient(const Context& dev_ctx,
 }  // namespace
 
 template <typename T, typename Context>
-void RmsNormGradKernel(const Context& dev_ctx,
-                       const DenseTensor& x,
-                       const paddle::optional<DenseTensor>& bias,
-                       const paddle::optional<DenseTensor>& residual,
-                       const DenseTensor& norm_weight,
-                       const paddle::optional<DenseTensor>& norm_bias,
-                       const DenseTensor& inv_var,
-                       const DenseTensor& out_grad,
-                       const float epsilon,
-                       const int begin_norm_axis,
-                       const float quant_scale,
-                       DenseTensor* x_grad,
-                       DenseTensor* norm_weight_grad,
-                       DenseTensor* norm_bias_grad) {
+void RmsNormQuantGradKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const paddle::optional<DenseTensor>& bias,
+                            const paddle::optional<DenseTensor>& residual,
+                            const DenseTensor& norm_weight,
+                            const paddle::optional<DenseTensor>& norm_bias,
+                            const DenseTensor& inv_var,
+                            const DenseTensor& out_grad,
+                            const float epsilon,
+                            const int begin_norm_axis,
+                            const float quant_scale,
+                            DenseTensor* x_grad,
+                            DenseTensor* norm_weight_grad,
+                            DenseTensor* norm_bias_grad) {
   if (bias || residual || norm_bias) {
     PADDLE_THROW(common::errors::Unimplemented(
         "bias or residual or norm_bias is not supported yet"));
@@ -205,29 +205,29 @@ void RmsNormGradKernel(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
 
-PD_REGISTER_KERNEL(rms_norm_grad,
+PD_REGISTER_KERNEL(fused_rms_norm_quant_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::RmsNormGradKernel,
+                   phi::RmsNormQuantGradKernel,
                    float,
                    phi::float16) {}
 
 #elif CUDNN_VERSION_MIN(8, 1, 0)
 
-PD_REGISTER_KERNEL(rms_norm_grad,
+PD_REGISTER_KERNEL(fused_rms_norm_quant_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::RmsNormGradKernel,
+                   phi::RmsNormQuantGradKernel,
                    float,
                    phi::float16,
                    phi::bfloat16) {}
 
 #else
 
-PD_REGISTER_KERNEL(rms_norm_grad,
+PD_REGISTER_KERNEL(fused_rms_norm_quant_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::RmsNormGradKernel,
+                   phi::RmsNormQuantGradKernel,
                    float,
                    phi::float16) {}
 #endif

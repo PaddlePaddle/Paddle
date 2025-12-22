@@ -52,20 +52,20 @@ void MovingAverageAbsMaxScaleKernel(
   tmp_scale.Resize(common::make_dim(1));
   T *cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
 
-  phi::funcs::FindAbsMaxFunctor<Context, T>()(
+  funcs::FindAbsMaxFunctor<Context, T>()(
       dev_ctx, in->data<T>(), in->numel(), cur_scale_data);
 
   dev_ctx.template Alloc<T>(out_state);
   dev_ctx.template Alloc<T>(out_accum);
   dev_ctx.template Alloc<T>(out_scale);
 
-  phi::funcs::FindMovingAverageAbsMaxFunctor<Context, T>()(dev_ctx,
-                                                           *in_accum,
-                                                           *in_state,
-                                                           cur_scale_data,
-                                                           moving_rate,
-                                                           out_state,
-                                                           out_accum,
-                                                           out_scale);
+  funcs::FindMovingAverageAbsMaxFunctor<Context, T>()(dev_ctx,
+                                                      *in_accum,
+                                                      *in_state,
+                                                      cur_scale_data,
+                                                      moving_rate,
+                                                      out_state,
+                                                      out_accum,
+                                                      out_scale);
 }
 }  // namespace phi
