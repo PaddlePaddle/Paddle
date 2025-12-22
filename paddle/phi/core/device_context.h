@@ -115,7 +115,7 @@ class PADDLE_API DeviceContext {
   const Allocator& GetHostZeroAllocator() const;
 
   const Allocator& GetPinnedAllocator() const;
-  
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
   /**

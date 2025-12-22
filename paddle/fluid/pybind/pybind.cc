@@ -187,10 +187,10 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/xpu_graph.h"
 #include "paddle/phi/core/memory/allocation/xpu_ipc_allocator.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_op_list.h"
-#include "paddle/phi/backends/xpu/xpu_graph.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_profiler.h"
 #endif
 
@@ -1834,12 +1834,14 @@ PYBIND11_MODULE(libpaddle, m) {
 #endif
 
 #ifdef PADDLE_WITH_XPU
- py::class_<phi::backends::xpu::XPUGraph>(m, "XPUGraph")
-      .def_static("begin_capture",
-                  [](phi::XPUPlace place, int mode) {
-                    platform::BeginCUDAGraphCapture(
-                        place, static_cast<phi::backends::xpu::xpuStreamCaptureMode>(mode));
-                  })
+  py::class_<phi::backends::xpu::XPUGraph>(m, "XPUGraph")
+      .def_static(
+          "begin_capture",
+          [](phi::XPUPlace place, int mode) {
+            platform::BeginCUDAGraphCapture(
+                place,
+                static_cast<phi::backends::xpu::xpuStreamCaptureMode>(mode));
+          })
       .def_static(
           "begin_capture_with_pool_id",
           [](phi::XPUPlace place, int mode, std::optional<int64_t> pool_id) {
@@ -1850,7 +1852,8 @@ PYBIND11_MODULE(libpaddle, m) {
                   pool_id.value());
             } else {
               platform::BeginCUDAGraphCapture(
-                  place, static_cast<phi::backends::xpu::xpuStreamCaptureMode>(mode));
+                  place,
+                  static_cast<phi::backends::xpu::xpuStreamCaptureMode>(mode));
             }
           })
       .def_static("end_capture", &platform::EndCUDAGraphCapture)
@@ -1860,7 +1863,7 @@ PYBIND11_MODULE(libpaddle, m) {
       .def("reset", &phi::backends::xpu::XPUGraph::Reset)
       .def("print_to_dot_files",
            &phi::backends::xpu::XPUGraph::PrintToDotFiles);
-  
+
 #endif
 
   m.def("wait_device", [](const phi::Place &place) {

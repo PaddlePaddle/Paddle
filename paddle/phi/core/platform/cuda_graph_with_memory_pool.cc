@@ -186,8 +186,7 @@ std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
 #endif
 
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-void InitCUDNNRelatedHandle(phi::CustomContext* dev_ctx) {
-}
+void InitCUDNNRelatedHandle(phi::CustomContext* dev_ctx) {}
 
 phi::DeviceContext* SelectCUDAGraphDeviceContext(phi::CustomPlace place,
                                                  int64_t* pool_id) {
@@ -333,9 +332,11 @@ std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
   dev_ctx->SetCUDAGraphAllocator(nullptr);
   return CUDAGraph::EndCapture();
 }
+#endif
+
 #if defined(PADDLE_WITH_XPU)
 phi::DeviceContext* SelectXPUGraphDeviceContext(phi::XPUPlace place,
-                                                 int64_t* pool_id) {
+                                                int64_t* pool_id) {
   phi::DeviceContext* mutable_dev_ctx;
   auto all_capturing_dev_ctxs =
       phi::backends::xpu::XPUGraphContextManager::Instance()
@@ -384,12 +385,12 @@ void BeginCUDAGraphCapture(phi::XPUPlace place,
       phi::backends::xpu::XPUGraphContextManager::Instance()
           .GetAllCapturingDeviceContexts();
   auto num_stream = all_capturing_dev_ctxs.size();
-  //if (num_stream > 1) {
-    //for (auto all_capturing_dev_ctx : all_capturing_dev_ctxs) {
-      //auto* capturing_dev_ctx =
-        //  reinterpret_cast<phi::XPUContext*>(all_capturing_dev_ctx);
-      //InitCUDNNRelatedHandle(capturing_dev_ctx);
-    //}
+  // if (num_stream > 1) {
+  // for (auto all_capturing_dev_ctx : all_capturing_dev_ctxs) {
+  // auto* capturing_dev_ctx =
+  //   reinterpret_cast<phi::XPUContext*>(all_capturing_dev_ctx);
+  // InitCUDNNRelatedHandle(capturing_dev_ctx);
+  //}
   //}
 
   auto stream = dev_ctx->stream();

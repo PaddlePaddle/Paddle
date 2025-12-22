@@ -16,8 +16,8 @@ import pathlib
 import shutil
 import unittest
 
+# from custom_ops.profiler import prof_start, prof_stop
 import numpy as np
-from op_test import is_custom_device
 
 import paddle
 from paddle.device.cuda.graphs import CUDAGraph
@@ -36,14 +36,14 @@ def can_use_cuda_graph():
 #     "only support cuda >= 11.0",
 # )
 class TestCUDAGraphInDygraphMode(unittest.TestCase):
-    def setUp(self):
-        if can_use_cuda_graph():
-            paddle.set_flags(
-                {
-                    'FLAGS_allocator_strategy': 'auto_growth',
-                    'FLAGS_use_stream_safe_cuda_allocator': False,
-                }
-            )
+    # def setUp(self):
+    #     if can_use_cuda_graph():
+    #         paddle.set_flags(
+    #             {
+    #                 'FLAGS_allocator_strategy': 'auto_growth',
+    #                 'FLAGS_use_stream_safe_cuda_allocator': False,
+    #             }
+    #         )
 
     def random_tensor(self, shape):
         return paddle.to_tensor(
@@ -52,11 +52,12 @@ class TestCUDAGraphInDygraphMode(unittest.TestCase):
 
     def test_cuda_graph_dynamic_graph(self):
         # 检查是否支持CUDA图功能
+        # prof_start()
         if not can_use_cuda_graph():
             return
 
         # 初始化张量
-        shape = [2, 3]
+        shape = [2000, 30000]
         x = self.random_tensor(shape)
         z = self.random_tensor(shape)
 
@@ -64,7 +65,7 @@ class TestCUDAGraphInDygraphMode(unittest.TestCase):
         g = CUDAGraph()
         g.capture_begin()
         y = x + 10
-        z.add_(x)   # 原地加法操作
+        z.add_(x)  # 原地加法操作
         g.capture_end()
 
         # # 多次重放测试图计算的正确性
@@ -81,6 +82,7 @@ class TestCUDAGraphInDygraphMode(unittest.TestCase):
             self.assertTrue((z_np - z_np_init == x_np).all())
 
         g.reset()  # 重置CUDA图
+        # prof_stop()
 
     def test_concat_and_split(self):
         if not can_use_cuda_graph():
@@ -147,7 +149,7 @@ class TestCUDAGraphInDygraphMode(unittest.TestCase):
 
         graph = None
         for i, data in enumerate(data_loader):
-            if graph is None: 
+            if graph is None:
                 x = data
                 x = x.to("xpu")
                 graph = CUDAGraph()
@@ -163,7 +165,6 @@ class TestCUDAGraphInDygraphMode(unittest.TestCase):
             actual_y = np.array([[i * i]]).astype(dtype)
             np.testing.assert_array_equal(actual_x, x.numpy())
             np.testing.assert_array_equal(actual_y, y.numpy())
-
 
     def test_dev_ctx_alloc(self):
         if not can_use_cuda_graph():
