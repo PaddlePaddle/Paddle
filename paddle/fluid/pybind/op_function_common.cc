@@ -1602,18 +1602,18 @@ void CheckRemainingParamsValidity(PyObject* args,
                                   PyObject* kwargs,
                                   int remaining_kwargs,
                                   int nargs,
-                                  int inplace_map_size) {
+                                  bool is_inplace) {
   const std::string ignored_arg_name = "name";
   const std::string ignored_arg_out = "out";
   if (remaining_kwargs == 0) return;
   PyObject* name = PyDict_GetItemString(kwargs, ignored_arg_name.c_str());
   PyObject* out = PyDict_GetItemString(kwargs, ignored_arg_out.c_str());
   // inplace api with name remaining
-  if (inplace_map_size > 0 && remaining_kwargs == 1 && name) return;
+  if (is_inplace && remaining_kwargs == 1 && name) return;
   // non-inplace api with name or out remaining
-  if (inplace_map_size == 0 && remaining_kwargs == 1 && (name || out)) return;
+  if (!is_inplace && remaining_kwargs == 1 && (name || out)) return;
   // non-inplace api with both name and out remaining
-  if (inplace_map_size == 0 && remaining_kwargs == 2 && (name && out)) return;
+  if (!is_inplace && remaining_kwargs == 2 && (name && out)) return;
   // too many args
   PADDLE_THROW(common::errors::InvalidArgument("has too many arguments"));
   return;

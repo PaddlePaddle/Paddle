@@ -590,9 +590,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         check_remaining_params_validity_str = "    // NO NEED"
         if need_parse_python_api_args:
             check_remaining_params_validity_str = (
-                CHECK_REMAINING_ARGS_VALID_TEMPLATE.format(
-                    len(forward_inplace_map)
-                )
+                CHECK_REMAINING_ARGS_VALID_TEMPLATE.format("false")
             )
         pre_process_str = "    // NO NEED"
         if need_parse_python_api_args and len(dygraph_pre_process) > 0:
@@ -805,6 +803,11 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     dygraph_function_call_str,
                 )
             )
+
+            if need_parse_python_api_args and args_mapper_func is None:
+                check_remaining_params_validity_str = (
+                    CHECK_REMAINING_ARGS_VALID_TEMPLATE.format("true")
+                )
 
             # map of output position and input position
             return_str = "    std::map<ssize_t, ssize_t> inplace_var_idx_map;"

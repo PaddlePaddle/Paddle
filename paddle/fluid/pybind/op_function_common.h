@@ -309,7 +309,7 @@ void CheckRemainingParamsValidity(PyObject* args,
                                   PyObject* kwargs,
                                   const int remaining_kwargs,
                                   const int nargs,
-                                  const int inplace_map_size);
+                                  const bool is_inplace);
 
 static inline void CheckParamsCount(const int nargs,
                                     const int remaining_kwargs,
