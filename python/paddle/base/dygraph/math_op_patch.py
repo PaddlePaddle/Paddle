@@ -283,7 +283,7 @@ def monkey_patch_math_tensor():
             return var.shape[0]
 
     def _index_(var: Tensor) -> int:
-        numel = np.prod(var.shape)
+        numel = np.prod(var.shape, dtype="int64")
         assert numel == 1, (
             "only one element variable can be converted to python index."
         )
@@ -293,7 +293,7 @@ def monkey_patch_math_tensor():
             or var.dtype == core.DataType.BFLOAT16
         ):
             var = var.astype('float32')
-        return int(np.array(var).item())
+        return int(var.item())
 
     @property
     def _ndim(var: Tensor) -> int:
