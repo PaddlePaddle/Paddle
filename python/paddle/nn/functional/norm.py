@@ -489,7 +489,7 @@ def rms_norm(
         .. code-block:: python
             >>> import paddle
             >>> paddle.seed(2023)
-            >>> if not paddle.is_compiled_with_cuda():
+            >>> if not (paddle.is_compiled_with_cuda() and paddle.device.cuda.device_count() > 0):
             ...     raise RuntimeError("paddle.nn.functional.rms_norm is only supported on GPU.")
             >>> paddle.set_device('gpu')
             >>> input = paddle.rand((2, 2, 2, 3))
