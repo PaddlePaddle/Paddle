@@ -159,7 +159,7 @@ class ConstantParams:
 
 
 @dataclass
-class OriginalFunction(FunctionPack[P1, R1]):
+class OriginalFunctionPack(FunctionPack[P1, R1]):
     def __post_init__(self):
         self._specialized_fns: dict[ConstantParams, FunctionPack[P1, R1]] = {}
 
@@ -212,7 +212,7 @@ class OriginalFunction(FunctionPack[P1, R1]):
 
 class FunctionRegistry:
     def __init__(self):
-        self._registry: dict[str, OriginalFunction[Any, Any]] = {}
+        self._registry: dict[str, OriginalFunctionPack[Any, Any]] = {}
 
     def register(
         self,
@@ -221,16 +221,16 @@ class FunctionRegistry:
         infer_meta: Callable[..., Any],
     ):
         if name not in self._registry:
-            self._registry[name] = OriginalFunction(fn, infer_meta)
+            self._registry[name] = OriginalFunctionPack(fn, infer_meta)
             return self._registry[name]
         fn_pack = self._registry[name]
-        if infer_meta is not fn_pack.infer_meta:
+        if fn is not fn_pack.fn or infer_meta is not fn_pack.infer_meta:
             raise ValueError(
-                f"Function '{name}' is already registered with a different infer_meta."
+                f"Function '{name}' is already registered with a different implementation."
             )
         return fn_pack
 
-    def get(self, name: str) -> OriginalFunction[Any, Any]:
+    def get(self, name: str) -> OriginalFunctionPack[Any, Any]:
         if name not in self._registry:
             raise KeyError(f"Function '{name}' is not registered.")
         return self._registry[name]
