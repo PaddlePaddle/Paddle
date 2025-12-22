@@ -616,6 +616,50 @@ class TestMemEffAttnMaskBroadcasting(unittest.TestCase):
             q.grad.numpy(), q_ref.grad.numpy(), rtol=5e-3, atol=1e-3
         )
 
+    def test_broadcast_mask_head_match_batch_broadcast(self):
+        paddle.disable_static()
+
+        query = np.random.random(self.q_shape).astype(self.dtype)
+        key = np.random.random(self.q_shape).astype(self.dtype)
+        value = np.random.random(self.q_shape).astype(self.dtype)
+        mask = np.random.random(
+            [1, self.num_heads, self.seq_len, self.seq_len]
+        ).astype(self.dtype)
+
+        q = paddle.to_tensor(query, place=self.place, stop_gradient=False)
+        k = paddle.to_tensor(key, place=self.place, stop_gradient=False)
+        v = paddle.to_tensor(value, place=self.place, stop_gradient=False)
+        m = paddle.to_tensor(mask, place=self.place, stop_gradient=False)
+
+        q_ref = paddle.to_tensor(query, place=self.place, stop_gradient=False)
+        k_ref = paddle.to_tensor(key, place=self.place, stop_gradient=False)
+        v_ref = paddle.to_tensor(value, place=self.place, stop_gradient=False)
+        m_ref = paddle.to_tensor(mask, place=self.place, stop_gradient=False)
+
+        with sdp_kernel(
+            enable_math=False, enable_flash=False, enable_mem_efficient=True
+        ):
+            out = scaled_dot_product_attention(
+                q,
+                k,
+                v,
+                attn_mask=m,
+                dropout_p=self.dropout,
+                is_causal=self.causal,
+            )
+
+        out_ref = attention_naive_with_mask(q_ref, k_ref, v_ref, m_ref)
+
+        np.testing.assert_allclose(
+            out.numpy(), out_ref.numpy(), rtol=5e-3, atol=1e-3
+        )
+
+        out.backward()
+        out_ref.backward()
+        np.testing.assert_allclose(
+            q.grad.numpy(), q_ref.grad.numpy(), rtol=5e-3, atol=1e-3
+        )
+
     def test_broadcast_mask_double_broadcast(self):
         """
         Test extreme case: [1, 1, S, S] -> [B, H, S, S]

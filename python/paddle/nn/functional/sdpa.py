@@ -632,15 +632,14 @@ def scaled_dot_product_attention(
         if is_causal:
             attn_mask = LowerTriangularMask()
         elif attn_mask is not None:
-            # memory_efficient_attention does not support broadcast num_heads dim when batch_size dim is not 1
-            if (
-                attn_mask.dim() == 4
-                and attn_mask.shape[0] != 1
-                and attn_mask.shape[1] != num_heads_q
+            # if need broadcast, memory_efficient_attention requires to
+            # broadcast first two dim simultaneously
+            if attn_mask.dim() == 4 and (
+                attn_mask.shape[0] != bs ^ attn_mask.shape[1] != num_heads_q
             ):
                 attn_mask = attn_mask.expand(
                     [
-                        attn_mask.shape[0],
+                        bs,
                         num_heads_q,
                         attn_mask.shape[2],
                         attn_mask.shape[3],
