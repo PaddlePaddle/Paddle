@@ -1,10 +1,10 @@
-- op : acos
-  name : [paddle.acos,paddle.Tensor.acos]
-  args_alias :
+- op : abs
+  name : [paddle.abs, paddle.Tensor.abs]
+  args_alias:
     use_default_mapping : True
 
-- op : amin
-  name : [paddle.amin,paddle.Tensor.amin]
+- op : acos
+  name : [paddle.acos,paddle.Tensor.acos]
   args_alias :
     use_default_mapping : True
 
@@ -13,10 +13,56 @@
   args_alias :
     use_default_mapping : True
 
+- op : all
+  name : [paddle.all,paddle.Tensor.all]
+  args_alias:
+    use_default_mapping : True
+
+- op : amin
+  name : [paddle.amin,paddle.Tensor.amin]
+  args_alias :
+    use_default_mapping : True
+
 - op : amax
   name : [paddle.amax,paddle.Tensor.amax]
   args_alias :
     use_default_mapping : True
+
+- op : angle
+  name : [paddle.angle,paddle.Tensor.angle]
+  args_alias :
+    use_default_mapping : True
+
+- op : any
+  name : [paddle.any, paddle.Tensor.any]
+  args_alias:
+    use_default_mapping : True
+
+- op : argmax
+  name : [paddle.argmax, paddle.Tensor.argmax]
+  args_mapper :
+    func : ArgMaxMinMapper
+
+- op : argmin
+  name : [paddle.argmin, paddle.Tensor.argmin]
+  args_mapper :
+    func : ArgMaxMinMapper
+
+- op : asin
+  name : [paddle.asin, paddle.Tensor.asin]
+  args_alias:
+    use_default_mapping : True
+
+- op : atanh
+  name: [paddle.atanh, paddle.Tensor.atanh]
+  args_alias :
+    use_default_mapping : True
+
+- op : bmm
+  name : [paddle.bmm, paddle.Tensor.bmm]
+  args_alias:
+    x : [input]
+    y : [mat2]
 
 - op : matmul
   name : [paddle.matmul,paddle.Tensor.matmul]
@@ -73,27 +119,17 @@
 - op : logical_or
   name : [paddle.logical_or, paddle.Tensor.logical_or]
   args_alias:
-   use_default_mapping : True
+    use_default_mapping : True
 
 - op : logical_xor
   name : [paddle.logical_xor, paddle.Tensor.logical_xor]
   args_alias:
-   use_default_mapping : True
+    use_default_mapping : True
 
 - op : logical_not
   name : [paddle.logical_not, paddle.Tensor.logical_not]
   args_alias:
-   use_default_mapping : True
-
-- op : argmax
-  name : [paddle.argmax, paddle.Tensor.argmax]
-  args_mapper :
-    func : ArgMaxMinMapper
-
-- op : argmin
-  name : [paddle.argmin, paddle.Tensor.argmin]
-  args_mapper :
-    func : ArgMaxMinMapper
+    use_default_mapping : True
 
 - op : ceil
   name : [paddle.ceil, paddle.Tensor.ceil]
@@ -106,16 +142,6 @@
     x : [input]
     y : [tensor]
 
-- op : all
-  name : [paddle.all,paddle.Tensor.all]
-  args_alias:
-    use_default_mapping : True
-
-- op : bmm
-  name : [paddle.bmm, paddle.Tensor.bmm]
-  args_alias:
-    x : [input]
-    y : [mat2]
 - op : cos
   name: [paddle.cos, paddle.Tensor.cos]
   args_alias:
@@ -186,16 +212,6 @@
   args_alias:
     use_default_mapping : True
 
-- op : asin
-  name : [paddle.asin, paddle.Tensor.asin]
-  args_alias:
-    use_default_mapping : True
-
-- op : any
-  name : [paddle.any, paddle.Tensor.any]
-  args_alias:
-    use_default_mapping : True
-
 - op : sqrt
   name : [paddle.sqrt,paddle.Tensor.sqrt]
   args_alias:
@@ -254,11 +270,6 @@
   args_alias:
     use_default_mapping : True
 
-- op : abs
-  name : [paddle.abs, paddle.Tensor.abs]
-  args_alias:
-    use_default_mapping : True
-
 - op : index_put
   name : [paddle.index_put,paddle.Tensor.index_put]
   args_alias :
@@ -289,11 +300,6 @@
     x : [input]
   pre_process:
     func : GridSamplePreProcess(x, grid, mode, padding_mode, align_corners)
-
-- op : atanh
-  name: [paddle.atanh, paddle.Tensor.atanh]
-  args_alias :
-    use_default_mapping : True
 
 - op : sinh
   name: [paddle.sinh, paddle.Tensor.sinh]
