@@ -319,7 +319,7 @@ def dispatch_size_sequence_eq(
 def dispatch_sequence_size_eq(
     lhs: TupleVariable | ListVariable | SizeVariable, rhs: SizeVariable
 ):
-    return dispatch_size_sequence_eq(rhs, lhs)
+    return Dispatcher.call(operator.eq, rhs, lhs)
 
 
 @Dispatcher.register_decorator(operator.ne)

@@ -102,15 +102,24 @@ def size_rmul(x: int):
 def size_compare_tuple(x: int):
     s = paddle.Size([x, 2])
     t = (x, 2)
-    t_diff = (x, 3)
-    return s == t, s == t_diff, s != t, s != t_diff
+    t_diff = (x, 3, 4)
+    return (
+        s == t,
+        s == t_diff,
+        s != t,
+        s != t_diff,
+        t == s,
+        t_diff == s,
+        t != s,
+        t_diff != s,
+    )
 
 
 @check_no_breakgraph
 def size_compare_list(x: int):
     s = paddle.Size([x, 2])
     l = [x, 2]
-    return s == l
+    return s == l, s != l, l == s, l != s
 
 
 # --- Common Methods ---
