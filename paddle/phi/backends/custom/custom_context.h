@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include <memory>
 #include "paddle/phi/backends/c_comm_lib.h"
 #include "paddle/phi/backends/device_base.h"
@@ -222,3 +222,4 @@ class CustomContext : public DeviceContext,
 };
 
 }  // namespace phi
+#endif  // PADDLE_WITH_CUSTOM_DEVICE

@@ -380,7 +380,7 @@ struct CustomContext::Impl {
   void InitDnnWorkspace() {
     PADDLE_ENFORCE_NOT_NULL(allocator_,
                             common::errors::InvalidArgument(
-                                "The device allocator for GPU context is "
+                                "The device allocator for Custom context is "
                                 "nullptr. It must not be null."));
     workspace_ = new DnnWorkspaceHandle(allocator_, stream(), place_);
   }
@@ -395,7 +395,7 @@ struct CustomContext::Impl {
   DnnWorkspaceHandle GetDnnWorkspace() {
     PADDLE_ENFORCE_NOT_NULL(allocator_,
                             common::errors::InvalidArgument(
-                                "The device allocator for GPU context is "
+                                "The device allocator for Custom context is "
                                 "nullptr. It must not be null."));
     return DnnWorkspaceHandle(allocator_, stream(), place_);
   }
@@ -414,7 +414,7 @@ struct CustomContext::Impl {
     PADDLE_ENFORCE_NOT_NULL(
         dnn_handle_,
         common::errors::InvalidArgument(
-            "The GPU dnn handle is nullptr. It must not be null."));
+            "The Custom dnn handle is nullptr. It must not be null."));
     return dnn_handle_;
   }
 
