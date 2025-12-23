@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
 
 import paddle
 import paddle.nn.functional as F
+from paddle.static import InputSpec
 
 
 @unittest.skipIf(
@@ -228,6 +230,126 @@ class TestDepthwiseConvBiasUnified(unittest.TestCase):
     def test_3d_fp16_backward(self):
         self._check_backward(3, 'float16', 'NCDHW', True)
         self._check_backward(3, 'float16', 'NDHWC', True)
+
+
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(), "Skipping tests: CUDA is not available."
+)
+class TestDepthwiseConvBiasSymbolicShape(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.old_flags = paddle.get_flags(
+            ['FLAGS_use_accuracy_compatible_kernel']
+        )
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
+
+        self.env_key = 'MIN_GRAPH_SIZE'
+        self.old_env_val = os.environ.get(self.env_key)
+        os.environ[self.env_key] = '0'
+
+        self.place = paddle.CUDAPlace(0)
+
+    def tearDown(self):
+        paddle.set_flags(self.old_flags)
+
+        if self.old_env_val is not None:
+            os.environ[self.env_key] = self.old_env_val
+        else:
+            if self.env_key in os.environ:
+                del os.environ[self.env_key]
+
+    def _run_symbolic_shape_check(self, dim, with_bias):
+        paddle.seed(2025)
+        groups = 4
+        C = groups
+
+        class ConvModel(paddle.nn.Layer):
+            def __init__(self, dim, groups):
+                super().__init__()
+                self.dim = dim
+                self.groups = groups
+
+            def forward(self, x, w, b=None):
+                if self.dim == 2:
+                    out = F.conv2d(
+                        x,
+                        w,
+                        b,
+                        groups=self.groups,
+                        padding=1,
+                        data_format="NCHW",
+                    )
+                else:
+                    out = F.conv3d(
+                        x,
+                        w,
+                        b,
+                        groups=self.groups,
+                        padding=1,
+                        data_format="NCDHW",
+                    )
+                return out
+
+        if dim == 2:
+            x_spec = InputSpec(
+                shape=[None, C, None, None], dtype='float32', name='x'
+            )
+            w_spec = InputSpec(shape=[C, 1, 3, 3], dtype='float32', name='w')
+        else:
+            x_spec = InputSpec(
+                shape=[None, C, None, None, None], dtype='float32', name='x'
+            )
+            w_spec = InputSpec(shape=[C, 1, 3, 3, 3], dtype='float32', name='w')
+
+        b_spec = (
+            InputSpec(shape=[C], dtype='float32', name='b')
+            if with_bias
+            else None
+        )
+        input_specs = [x_spec, w_spec]
+        if with_bias:
+            input_specs.append(b_spec)
+
+        model = ConvModel(dim, groups)
+        static_model = paddle.jit.to_static(
+            model, input_spec=input_specs, backend="CINN", full_graph=True
+        )
+
+        batch_size = 2
+        spatial_size = 16 if dim == 2 else 8
+        if dim == 2:
+            np_x = np.random.randn(
+                batch_size, C, spatial_size, spatial_size
+            ).astype('float32')
+        else:
+            np_x = np.random.randn(
+                batch_size, C, spatial_size, spatial_size, spatial_size
+            ).astype('float32')
+
+        np_w = np.random.randn(*w_spec.shape).astype('float32')
+
+        x_tensor = paddle.to_tensor(np_x, stop_gradient=False)
+        w_tensor = paddle.to_tensor(np_w, stop_gradient=False)
+        inputs = [x_tensor, w_tensor]
+        if with_bias:
+            b_tensor = paddle.to_tensor(
+                np.random.randn(C).astype('float32'), stop_gradient=False
+            )
+            inputs.append(b_tensor)
+
+        out = static_model(*inputs)
+
+        loss = out.mean()
+        loss.backward()
+
+        self.assertIsNotNone(out)
+        self.assertIsNotNone(x_tensor.grad)
+
+    def test_depthwise_conv2d_bias_symbolic_forward_backward(self):
+        self._run_symbolic_shape_check(dim=2, with_bias=True)
+
+    def test_depthwise_conv3d_bias_symbolic_forward_backward(self):
+        self._run_symbolic_shape_check(dim=3, with_bias=True)
 
 
 if __name__ == '__main__':
