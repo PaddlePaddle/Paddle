@@ -92,6 +92,7 @@ class Tensor : public TensorBase {
     } else {
       PD_CHECK(false, "Unsupported backend");
     }
+    return tensor_;
   }
 
   Tensor cpu() const {

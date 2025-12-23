@@ -16,7 +16,6 @@
 
 namespace c10 {
 
-
 /**
  * This legacy enum class defines the set of backends supported by old school,
  * code generated Type-based ATen.  A "backend" in this sense roughly
@@ -75,4 +74,4 @@ enum class Backend {
   NumOptions
 };
 
-} // namespace c10
+}  // namespace c10
