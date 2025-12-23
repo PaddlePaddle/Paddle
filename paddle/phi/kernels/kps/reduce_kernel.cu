@@ -66,14 +66,8 @@ void ProdKernel(const Context& dev_ctx,
   }
 
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
-
-#ifdef PADDLE_WITH_XPU_KP
   phi::Reduce<T, kps::MulFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
-#else
-  phi::Reduce<T, kps::ProdOps>(
-      dev_ctx, x, reduce_all, dims.GetData(), out_dtype, out);
-#endif
 }
 
 template <typename T, typename Context>
@@ -85,13 +79,8 @@ void AllRawKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = phi::DataType::BOOL;
-#ifdef PADDLE_WITH_XPU_KP
   phi::Reduce<T, kps::LogicalAndFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
-#else
-  phi::Reduce<T, kps::LogicalAndOps>(
-      dev_ctx, x, reduce_all, dims, out_dtype, out);
-#endif
 }
 
 template <typename T, typename Context>
@@ -103,12 +92,8 @@ void AMaxRawKernel(const Context& dev_ctx,
                    DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
-#ifdef PADDLE_WITH_XPU_KP
   phi::Reduce<T, kps::MaxFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
-#else
-  phi::Reduce<T, kps::MaxOps>(dev_ctx, x, reduce_all, dims, out_dtype, out);
-#endif
 }
 
 template <typename T, typename Context>
@@ -120,12 +105,8 @@ void AMinRawKernel(const Context& dev_ctx,
                    DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
-#ifdef PADDLE_WITH_XPU_KP
   phi::Reduce<T, kps::MinFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
-#else
-  phi::Reduce<T, kps::MinOps>(dev_ctx, x, reduce_all, dims, out_dtype, out);
-#endif
 }
 
 template <typename T, typename Context>
@@ -137,13 +118,8 @@ void AnyRawKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = phi::DataType::BOOL;
-#ifdef PADDLE_WITH_XPU_KP
   phi::Reduce<T, kps::LogicalOrFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
-#else
-  phi::Reduce<T, kps::LogicalOrOps>(
-      dev_ctx, x, reduce_all, dims, out_dtype, out);
-#endif
 }
 
 template <typename T, typename Context>
@@ -175,13 +151,8 @@ void MeanRawKernel(const Context& dev_ctx,
 
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
-#ifdef PADDLE_WITH_XPU_KP
   phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor, true>(
       dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
-#else
-  phi::Reduce<T, kps::MeanOps>(
-      dev_ctx, x, reduce_all, dims.GetData(), out_dtype, out);
-#endif
 }
 
 template <typename T, typename Context>
@@ -193,13 +164,8 @@ void MinRawKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
-#ifdef PADDLE_WITH_XPU_KP
   phi::Reduce<T, kps::MinFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
-#else
-  phi::Reduce<T, kps::MinOps>(
-      dev_ctx, x, reduce_all, dims.GetData(), out_dtype, out);
-#endif
 }
 
 #ifndef PADDLE_WITH_XPU_KP
@@ -283,13 +249,8 @@ void SumRawKernel(const Context& dev_ctx,
   }
 
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
-#ifdef PADDLE_WITH_XPU_KP
   phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
-#else
-  phi::Reduce<T, kps::SumOps>(
-      dev_ctx, x, reduce_all, dims.GetData(), out_dtype, out);
-#endif
 }
 }  // namespace phi
 
