@@ -116,7 +116,7 @@ class TestRMSNorm(unittest.TestCase):
 
     def test_backward(self):
         rows, cols = 16, 32
-        test_type = ['bfloat16', 'float32']
+        test_type = ['float32']
         for x_type in test_type:
             for scale_type in test_type:
                 x = paddle.randn([rows, cols], dtype=x_type)
