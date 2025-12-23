@@ -50,11 +50,13 @@ void CastXPUKernelImpl(const Context& dev_ctx,
   }
 
   if (std::is_same<InT, OutT>::value) {
-    int ret = xpu::copy(dev_ctx.x_context(),
-                        reinterpret_cast<const int8_t*>(in_data),
-                        reinterpret_cast<int8_t*>(out_data),
-                        x.numel() * phi::SizeOf(x.dtype()));
-    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
+    // int ret = xpu::copy(dev_ctx.x_context(),
+    //                     reinterpret_cast<const int8_t*>(in_data),
+    //                     reinterpret_cast<int8_t*>(out_data),
+    //                     x.numel() * phi::SizeOf(x.dtype()));
+    // PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
+    out->ResetHolder(x.Holder());
+    out->ShareInplaceVersionCounterWith(x);
     return;
   }
 

@@ -39,7 +39,12 @@ void CastKernel(const Context& dev_ctx,
   // same dtype)
   if (x.dtype() == out_dtype) {
     if (!out->IsSharedWith(x)) {
-      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      // phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      // out->set_lod(x.lod());
+      // out->set_mem_desc(x.mem_desc());
+      out->ResetHolder(x.Holder());
+      out->ShareInplaceVersionCounterWith(x);
+      out->set_meta(x.meta());
       out->set_lod(x.lod());
       out->set_mem_desc(x.mem_desc());
     }

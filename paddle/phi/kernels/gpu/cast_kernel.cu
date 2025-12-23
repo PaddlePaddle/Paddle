@@ -30,7 +30,10 @@ void CastKernel(const Context& dev_ctx,
       return;
     }
     if (!out->IsSharedWith(x)) {
-      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      // phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      out->ResetHolder(x.Holder());
+      out->ShareInplaceVersionCounterWith(x);
+      out->set_meta(x.meta());
     }
     return;
   }
