@@ -73,7 +73,7 @@ if(NOT DEFINED XPU_FFT_BASE_DATE)
   if(WITH_ARM)
     set(XPU_FFT_BASE_DATE "20251017")
   else()
-    set(XPU_FFT_BASE_DATE "20250704")
+    set(XPU_FFT_BASE_DATE "20251226")
   endif()
 endif()
 

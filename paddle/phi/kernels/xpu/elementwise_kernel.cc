@@ -24,7 +24,8 @@
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 namespace xfft_internal::xpu {
-int RemainderFunctor(int N, float2* input_x, float2* input_y, float2* output);
+template <typename T>  // T supports float2, double2
+int RemainderFunctor(int N, const T* input_x, const T* input_y, T* output);
 }
 #endif
 
