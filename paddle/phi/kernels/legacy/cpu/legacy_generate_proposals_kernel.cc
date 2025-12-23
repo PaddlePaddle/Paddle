@@ -70,26 +70,25 @@ std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
   dev_ctx.Alloc<T>(&anchor_sel);
   dev_ctx.Alloc<T>(&var_sel);
 
-  phi::funcs::CPUGather<T>(dev_ctx, scores_slice, index_t, &scores_sel);
-  phi::funcs::CPUGather<T>(dev_ctx, bbox_deltas_slice, index_t, &bbox_sel);
-  phi::funcs::CPUGather<T>(dev_ctx, anchors, index_t, &anchor_sel);
-  phi::funcs::CPUGather<T>(dev_ctx, variances, index_t, &var_sel);
+  funcs::CPUGather<T>(dev_ctx, scores_slice, index_t, &scores_sel);
+  funcs::CPUGather<T>(dev_ctx, bbox_deltas_slice, index_t, &bbox_sel);
+  funcs::CPUGather<T>(dev_ctx, anchors, index_t, &anchor_sel);
+  funcs::CPUGather<T>(dev_ctx, variances, index_t, &var_sel);
 
   phi::DenseTensor proposals;
   proposals.Resize({index_t.numel(), 4});
   dev_ctx.Alloc<T>(&proposals);
-  phi::funcs::BoxCoder<T>(
-      dev_ctx, &anchor_sel, &bbox_sel, &var_sel, &proposals);
+  funcs::BoxCoder<T>(dev_ctx, &anchor_sel, &bbox_sel, &var_sel, &proposals);
 
-  phi::funcs::ClipTiledBoxes<T>(
+  funcs::ClipTiledBoxes<T>(
       dev_ctx, im_info_slice, proposals, &proposals, false);
 
   phi::DenseTensor keep;
-  phi::funcs::FilterBoxes<T>(
+  funcs::FilterBoxes<T>(
       dev_ctx, &proposals, min_size, im_info_slice, true, &keep);
   // Handle the case when there is no keep index left
   if (keep.numel() == 0) {
-    phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
+    funcs::SetConstant<phi::CPUContext, T> set_zero;
     bbox_sel.Resize({1, 4});
     dev_ctx.Alloc<T>(&bbox_sel);
     set_zero(dev_ctx, &bbox_sel, static_cast<T>(0));
@@ -105,14 +104,14 @@ std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
   scores_filter.Resize({keep.numel(), 1});
   dev_ctx.Alloc<T>(&bbox_sel);
   dev_ctx.Alloc<T>(&scores_filter);
-  phi::funcs::CPUGather<T>(dev_ctx, proposals, keep, &bbox_sel);
-  phi::funcs::CPUGather<T>(dev_ctx, scores_sel, keep, &scores_filter);
+  funcs::CPUGather<T>(dev_ctx, proposals, keep, &bbox_sel);
+  funcs::CPUGather<T>(dev_ctx, scores_sel, keep, &scores_filter);
   if (nms_thresh <= 0) {
     return std::make_pair(bbox_sel, scores_filter);
   }
 
   phi::DenseTensor keep_nms =
-      phi::funcs::NMS<T>(dev_ctx, &bbox_sel, &scores_filter, nms_thresh, eta);
+      funcs::NMS<T>(dev_ctx, &bbox_sel, &scores_filter, nms_thresh, eta);
 
   if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
     keep_nms.Resize({post_nms_top_n});
@@ -122,8 +121,8 @@ std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
   scores_sel.Resize({keep_nms.numel(), 1});
   dev_ctx.Alloc<T>(&proposals);
   dev_ctx.Alloc<T>(&scores_sel);
-  phi::funcs::CPUGather<T>(dev_ctx, bbox_sel, keep_nms, &proposals);
-  phi::funcs::CPUGather<T>(dev_ctx, scores_filter, keep_nms, &scores_sel);
+  funcs::CPUGather<T>(dev_ctx, bbox_sel, keep_nms, &proposals);
+  funcs::CPUGather<T>(dev_ctx, scores_filter, keep_nms, &scores_sel);
 
   return std::make_pair(proposals, scores_sel);
 }
@@ -171,7 +170,7 @@ void GenerateProposalsKernel(const Context &dev_ctx,
   scores_swap.Resize({num, h_score, w_score, c_score});
   dev_ctx.template Alloc<T>(&scores_swap);
 
-  phi::funcs::Transpose<phi::CPUContext, T, 4> trans;
+  funcs::Transpose<phi::CPUContext, T, 4> trans;
   std::vector<int> axis = {0, 2, 3, 1};
   trans(dev_ctx, *bbox_deltas, &bbox_deltas_swap, axis);
   trans(dev_ctx, *scores, &scores_swap, axis);
@@ -208,8 +207,8 @@ void GenerateProposalsKernel(const Context &dev_ctx,
     phi::DenseTensor &proposals = tensor_pair.first;
     phi::DenseTensor &scores = tensor_pair.second;
 
-    phi::funcs::AppendProposals(rpn_rois, 4 * num_proposals, proposals);
-    phi::funcs::AppendProposals(rpn_roi_probs, num_proposals, scores);
+    funcs::AppendProposals(rpn_rois, 4 * num_proposals, proposals);
+    funcs::AppendProposals(rpn_roi_probs, num_proposals, scores);
     num_proposals += proposals.dims()[0];
     lod0.push_back(num_proposals);
     tmp_num.push_back(proposals.dims()[0]);  // NOLINT
