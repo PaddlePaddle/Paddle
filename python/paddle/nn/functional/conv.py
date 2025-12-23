@@ -182,11 +182,7 @@ def _conv_nd(
             return pre_bias
 
     if in_dynamic_or_pir_mode() and op_type == "depthwise_conv2d":
-        if (
-            use_accuracy_compatible
-            and is_compiled_with_cuda()
-            and x.place.is_gpu_place()
-        ):
+        if use_accuracy_compatible and is_compiled_with_cuda():
             return _C_ops.depthwise_conv2d_bias(
                 x,
                 weight,
@@ -1579,7 +1575,6 @@ def conv3d(
     if (
         use_accuracy_compatible
         and is_compiled_with_cuda()
-        and x.place.is_gpu_place()
         and num_channels == groups
         and num_channels != 1
         and num_filters % num_channels == 0
