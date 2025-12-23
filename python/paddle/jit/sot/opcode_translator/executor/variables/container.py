@@ -247,6 +247,7 @@ class ListVariable(ContainerVariable):
             return res
         elif isinstance(key, slice):
             items = self.proxy.get_all()
+            assert self.__class__ in {ListVariable, SizeVariable}
             return self.__class__(
                 items[key],
                 self.graph,
@@ -336,6 +337,7 @@ class ListVariable(ContainerVariable):
 
     def repeat(self, length):
         assert isinstance(length, ConstantVariable)
+        assert self.__class__ in {ListVariable, SizeVariable}
         return self.__class__(
             self.proxy.get_all() * length.value,
             self.graph,
@@ -351,7 +353,8 @@ class ListVariable(ContainerVariable):
         return res
 
     def copy(self):
-        return ListVariable(
+        assert self.__class__ in {ListVariable, SizeVariable}
+        return self.__class__(
             self.proxy.get_all(),
             self.graph,
             DummyTracker([self]),
@@ -1125,12 +1128,6 @@ class SizeVariable(ListVariable):
     def get_py_type(self):
         return paddle.Size
 
-    @VariableFactory.register_from_value()
-    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
-        if type(value) is paddle.Size:
-            return SizeVariable(value, graph=graph, tracker=tracker)
-        return None
-
     def getattr(self, name: str, default=None):
         if name == "numel":
             return UserDefinedFunctionVariable(
@@ -1161,3 +1158,16 @@ class SizeVariable(ListVariable):
         codegen.gen_load_method("Size")
         super()._reconstruct(codegen)
         codegen.gen_call_method(1)
+
+    @classmethod
+    def from_sequence_var(cls, data: ListVariable | TupleVariable):
+        assert isinstance(data, (ListVariable, TupleVariable))
+        return SizeVariable(
+            data.get_wrapped_items(), data.graph, DummyTracker([data])
+        )
+
+    @VariableFactory.register_from_value(successor="ListVariable")
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if type(value) is paddle.Size:
+            return SizeVariable(value, graph=graph, tracker=tracker)
+        return None

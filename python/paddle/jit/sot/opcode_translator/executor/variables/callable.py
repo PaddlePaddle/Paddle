@@ -1321,15 +1321,16 @@ class PaddleSizeClassVariable(ClassVariable):
         super().__init__(class_, graph, tracker)
 
     def call_function(self, /, *args, **kwargs):
-        from ..function_graph import convert_to_py_value
+        from .container import ListVariable, SizeVariable, TupleVariable
 
-        py_args = convert_to_py_value(args)
-        py_kwargs = convert_to_py_value(kwargs)
-
-        size_obj = self.value(*py_args, **py_kwargs)
-
-        return VariableFactory.from_value(
-            size_obj,
+        assert len(args) == 1 and len(kwargs) == 0, (
+            f"Size constructor takes one argument, got {len(args)} "
+            f"arguments and {len(kwargs)} keyword arguments."
+        )
+        arg0 = args[0]
+        assert isinstance(arg0, (ListVariable, TupleVariable))
+        return SizeVariable(
+            arg0.get_wrapped_items(),
             self.graph,
             tracker=CreateLayerTracker(self, args, kwargs),
         )

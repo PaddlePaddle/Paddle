@@ -291,9 +291,15 @@ Dispatcher.register(
     lambda var, other: var.concat(other),
 )
 
+Dispatcher.register(
+    operator.add,
+    ("ListVariable | TupleVariable | SizeVariable", "SizeVariable"),
+    lambda var, other: SizeVariable.from_sequence_var(var).concat(other),
+)
+
 
 @Dispatcher.register_decorator(operator.eq)
-def dispatch_size_tuple_eq(
+def dispatch_size_sequence_eq(
     lhs: SizeVariable, rhs: TupleVariable | ListVariable | SizeVariable
 ):
     if len(lhs) != len(rhs):
@@ -310,21 +316,21 @@ def dispatch_size_tuple_eq(
 
 
 @Dispatcher.register_decorator(operator.eq)
-def dispatch_tuple_size_eq(
+def dispatch_sequence_size_eq(
     lhs: TupleVariable | ListVariable | SizeVariable, rhs: SizeVariable
 ):
-    return dispatch_size_tuple_eq(rhs, lhs)
+    return dispatch_size_sequence_eq(rhs, lhs)
 
 
 @Dispatcher.register_decorator(operator.ne)
-def dispatch_size_tuple_ne(
+def dispatch_size_sequence_ne(
     lhs: SizeVariable, rhs: TupleVariable | ListVariable | SizeVariable
 ):
     return Dispatcher.call(operator.eq, lhs, rhs).bool_not()
 
 
 @Dispatcher.register_decorator(operator.ne)
-def dispatch_tuple_size_ne(
+def dispatch_sequence_size_ne(
     lhs: TupleVariable | ListVariable | SizeVariable, rhs: SizeVariable
 ):
     return Dispatcher.call(operator.eq, lhs, rhs).bool_not()

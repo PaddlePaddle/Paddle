@@ -19,38 +19,34 @@ import unittest
 from test_case_base import TestCaseBase
 
 import paddle
-from paddle.jit.sot.psdb import check_no_breakgraph, check_no_fallback
+from paddle.jit.sot.psdb import check_no_breakgraph
 
 
-@check_no_fallback
 @check_no_breakgraph
 def size_construct_from_list(x: int, y: int):
     s = paddle.Size([x, y, 3])
     return s
 
 
-@check_no_fallback
 @check_no_breakgraph
 def size_construct_from_tuple(x: int, y: int):
     s = paddle.Size((x, y, 3))
     return s
 
 
-@check_no_fallback
 @check_no_breakgraph
 def size_getitem_int(x: int, y: int):
     s = paddle.Size([x, y, 10])
     return s[1]
 
 
-@check_no_fallback
 @check_no_breakgraph
 def size_getitem_slice(x: int, y: int):
     s = paddle.Size([x, y, 10, 20])
+    # Slice of Size should return Size
     return s[1:3]
 
 
-@check_no_fallback
 @check_no_breakgraph
 def size_numel(x: int, y: int):
     s = paddle.Size([x, y, 2])
@@ -61,24 +57,19 @@ def size_numel(x: int, y: int):
 
 
 @check_no_breakgraph
-@check_no_fallback
 def size_add_list(x: int):
     s = paddle.Size([x, 2])
     l = [3, 4]
-    res = s + l
-    return res
+    return s + l, l + s
 
 
-@check_no_fallback
 @check_no_breakgraph
 def size_add_tuple(x: int):
     s = paddle.Size([x, 2])
     t = (3, 4)
-    res = s + t
-    return res
+    return s + t, t + s
 
 
-@check_no_fallback
 @check_no_breakgraph
 def size_add_size(x: int):
     s1 = paddle.Size([x, 2])
@@ -90,7 +81,6 @@ def size_add_size(x: int):
 # --- Mul Operations ---
 
 
-@check_no_fallback
 @check_no_breakgraph
 def size_mul(x: int):
     s = paddle.Size([x, 2])
@@ -98,7 +88,6 @@ def size_mul(x: int):
     return res
 
 
-@check_no_fallback
 @check_no_breakgraph
 def size_rmul(x: int):
     s = paddle.Size([x, 2])
@@ -109,7 +98,6 @@ def size_rmul(x: int):
 # --- Compare Operations ---
 
 
-@check_no_fallback
 @check_no_breakgraph
 def size_compare_tuple(x: int):
     s = paddle.Size([x, 2])
@@ -118,7 +106,6 @@ def size_compare_tuple(x: int):
     return s == t, s == t_diff, s != t, s != t_diff
 
 
-@check_no_fallback
 @check_no_breakgraph
 def size_compare_list(x: int):
     s = paddle.Size([x, 2])
@@ -129,28 +116,24 @@ def size_compare_list(x: int):
 # --- Common Methods ---
 
 
-@check_no_fallback
 @check_no_breakgraph
 def size_count(x: int):
     s = paddle.Size([x, x, 2, 3])
     return s.count(x)
 
 
-@check_no_fallback
 @check_no_breakgraph
 def size_index(x: int):
     s = paddle.Size([2, x, 3])
     return s.index(x)
 
 
-@check_no_fallback
 @check_no_breakgraph
 def size_len(x: int):
     s = paddle.Size([x, x, 2])
     return len(s)
 
 
-@check_no_fallback
 @check_no_breakgraph
 def size_iter(x: int):
     s = paddle.Size([x, 2, 3])
@@ -160,11 +143,19 @@ def size_iter(x: int):
     return res
 
 
-@check_no_fallback
 @check_no_breakgraph
 def size_contains(x: int):
     s = paddle.Size([x, 2, 3])
     return x in s, 99 in s
+
+
+# --- Symbolic shape---
+@check_no_breakgraph
+def symbolic_shape(x: int):
+    s = paddle.zeros(shape=[x, 2, 3])
+    s[0] = 1
+    res = s.unique(return_inverse=False)
+    return res.shape
 
 
 class TestSizeBasic(TestCaseBase):
@@ -198,6 +189,9 @@ class TestSizeBasic(TestCaseBase):
         self.assert_results(size_len, 5)
         self.assert_results(size_iter, 4)
         self.assert_results(size_contains, 1)
+
+    def test_symbolic_shape(self):
+        self.assert_results(symbolic_shape, 3)
 
 
 if __name__ == "__main__":
