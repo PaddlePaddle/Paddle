@@ -15,10 +15,13 @@
 
 #include <iostream>
 
+#include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/to_static/run_program_func.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/core/enforce.h"
 
+COMMON_DECLARE_bool(use_legacy_gemm);
 using egr::ConvertAllInputsToDistTensor;
 using egr::InputsContainDistTensor;
 
@@ -44,6 +47,7 @@ static PyObject *eager_api_linear(PyObject *self,
 
       auto mm_out = matmul_ad_func(x, weight, false, false);
       auto out = add_ad_func(mm_out, bias);
+
       PyEval_RestoreThread(tstate);
       tstate = nullptr;
       return ToPyObject(out);
