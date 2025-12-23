@@ -15,7 +15,6 @@
 #pragma once
 
 namespace c10 {
-
 /**
  * This legacy enum class defines the set of backends supported by old school,
  * code generated Type-based ATen.  A "backend" in this sense roughly
@@ -33,6 +32,7 @@ namespace c10 {
  * or "SparseCUDA"; backend in torch.backends is something like "MKL" or
  * "CUDNN".
  */
+
 enum class Backend {
   CPU,
   CUDA,

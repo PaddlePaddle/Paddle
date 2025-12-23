@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include <c10/core/Backend.h>
 #include <ATen/core/TensorBase.h>
 #include <ATen/indexing.h>
+#include <c10/core/Backend.h>
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
