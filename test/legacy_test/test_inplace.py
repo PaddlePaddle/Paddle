@@ -97,6 +97,82 @@ class TestInplace(unittest.TestCase):
             loss.backward()
 
 
+class TestInplaceCompatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2026)
+        self.shape = [10, 20, 1]
+        self.dtype = "float32"
+        self.x_np = np.random.uniform(-5, 5, self.shape).astype(self.dtype)
+
+    def numpy_api_processing(self, var):
+        return np.abs(var)
+
+    def inplace_api(self):
+        return paddle.abs_
+
+    def test_inplace_compatibility_dygraph(self):
+        paddle.disable_static()
+        ref_out = self.numpy_api_processing(self.x_np)
+        x = paddle.to_tensor(self.x_np)
+        out1 = self.inplace_api()(x=x)
+        out2 = self.inplace_api()(input=x)
+        np.testing.assert_allclose(out1.numpy(), ref_out, rtol=1e-05)
+        np.testing.assert_allclose(out2.numpy(), ref_out, rtol=1e-05)
+
+    def test_inplace_compatibility_static(self):
+        paddle.enable_static()
+        ref_out = self.numpy_api_processing(self.x_np)
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            out1 = self.inplace_api()(x=x)
+            out2 = self.inplace_api()(input=x)
+            fetch_list = [out1, out2]
+            exe = paddle.base.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.x_np},
+                fetch_list=fetch_list,
+            )
+            np.testing.assert_allclose(fetches[0], ref_out, rtol=1e-05)
+            np.testing.assert_allclose(fetches[1], ref_out, rtol=1e-05)
+
+
+class TestStaticInplace(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2026)
+        self.shape = [10, 20, 1]
+        self.dtype = "float32"
+        self.x_np = np.random.uniform(-5, 5, self.shape).astype(self.dtype)
+
+    def numpy_api_processing(self, var):
+        return np.abs(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.abs_(var)
+
+    def test_inplace_static(self):
+        paddle.enable_static()
+        ref_out = self.numpy_api_processing(self.x_np)
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            out = self.inplace_api_processing(x)
+            fetch_list = [out, x]
+            exe = paddle.base.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.x_np},
+                fetch_list=fetch_list,
+            )
+            # test inplace output value
+            np.testing.assert_allclose(fetches[0], ref_out, rtol=1e-05)
+            # test inplace behavior
+            np.testing.assert_allclose(fetches[1], fetches[0], rtol=1e-05)
+
+
 class TestDygraphInplace(unittest.TestCase):
     def setUp(self):
         self.init_data()
