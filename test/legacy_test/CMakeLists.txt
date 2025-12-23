@@ -580,6 +580,14 @@ endif()
 if(NOT WITH_GPU
    OR APPLE
    OR WITH_ROCM
+   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 11.8))
+)# Restrict the use of older versions of CUB
+  list(REMOVE_ITEM TEST_OPS test_rms_norm)
+endif()
+
+if(NOT WITH_GPU
+   OR APPLE
+   OR WITH_ROCM
    OR (${CUDA_ARCH_NAME} STREQUAL "Volta") # Affects the accuracy of op tests
    OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
 )# Restrict the use of older versions of CUB
