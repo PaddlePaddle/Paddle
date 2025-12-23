@@ -75,7 +75,7 @@ class AttnMatMul {
               "The output (= input * weight) is expected to be nullptr or the "
               "same as bias_out when fused is true."));
 
-      phi::funcs::LinearWithCublasLt<T>::Run(
+      funcs::LinearWithCublasLt<T>::Run(
           dev_ctx_,
           input,                                      // x
           weight,                                     // y
@@ -87,7 +87,7 @@ class AttnMatMul {
           input_size_,   // K
           transA_,
           transB_,
-          phi::funcs::MatmulFusedType::kMatmulBias);
+          funcs::MatmulFusedType::kMatmulBias);
       return;
     }
 #endif
@@ -100,7 +100,7 @@ class AttnMatMul {
     T beta = static_cast<T>(0.0);
 
     // (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
-    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
+    auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
     blas.GEMM(transA,
               transB,
               bsz_seq_,
@@ -115,8 +115,7 @@ class AttnMatMul {
       // bias_out = output + bias
       std::vector<const phi::DenseTensor*> ins = {output, bias};
       std::vector<phi::DenseTensor*> outs = {bias_out};
-      phi::funcs::BroadcastKernel<T>(
-          dev_ctx_, ins, &outs, phi::funcs::AddFunctor<T>());
+      funcs::BroadcastKernel<T>(dev_ctx_, ins, &outs, funcs::AddFunctor<T>());
     }
   }
 
@@ -130,21 +129,21 @@ class AttnMatMul {
                        bool fused = false) {
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
     if (compute_bias_ && fused) {
-      phi::funcs::ComputeFusedGemmEpilogueBackward<T>(dev_ctx_,
-                                                      d_output,
-                                                      input,
-                                                      weight,
-                                                      nullptr,
-                                                      bsz_seq_,      // M
-                                                      output_size_,  // N
-                                                      input_size_,   // K
-                                                      transA_,
-                                                      transB_,
-                                                      "none",
-                                                      d_input,
-                                                      d_weight,
-                                                      d_bias,
-                                                      use_addto);
+      funcs::ComputeFusedGemmEpilogueBackward<T>(dev_ctx_,
+                                                 d_output,
+                                                 input,
+                                                 weight,
+                                                 nullptr,
+                                                 bsz_seq_,      // M
+                                                 output_size_,  // N
+                                                 input_size_,   // K
+                                                 transA_,
+                                                 transB_,
+                                                 "none",
+                                                 d_input,
+                                                 d_weight,
+                                                 d_bias,
+                                                 use_addto);
       return;
     }
 #endif
@@ -153,7 +152,7 @@ class AttnMatMul {
     T beta_dA = use_addto ? static_cast<T>(1.0) : static_cast<T>(0.0);
     T beta_dB = static_cast<T>(0.0);
 
-    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
+    auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
     if (!transA_) {
       // forward: gemm-nt
       if (transB_) {

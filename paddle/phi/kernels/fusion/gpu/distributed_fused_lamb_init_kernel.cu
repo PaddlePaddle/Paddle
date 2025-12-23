@@ -24,8 +24,8 @@
 namespace phi {
 namespace fusion {
 
-using phi::funcs::FlattenToString;
-using phi::funcs::ToVector;
+using funcs::FlattenToString;
+using funcs::ToVector;
 
 struct ParamGradInfo {
   DenseTensor *param_t{nullptr};
@@ -184,7 +184,7 @@ static T *TensorFillConstant(const phi::GPUContext &dev_ctx,
                              T value) {
   tensor->Resize(dims);
   auto *ptr = dev_ctx.template Alloc<T>(tensor);
-  phi::funcs::SetConstant<phi::GPUContext, T> set_constant;
+  funcs::SetConstant<phi::GPUContext, T> set_constant;
   set_constant(dev_ctx, tensor, value);
   return ptr;
 }

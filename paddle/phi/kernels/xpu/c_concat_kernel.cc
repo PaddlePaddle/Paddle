@@ -56,7 +56,7 @@ void CConcatKernel(const Context& dev_ctx,
                         nranks));
 
   phi::DenseTensor temp_out;
-  phi::DDim temp_out_dims = x->dims();
+  DDim temp_out_dims = x->dims();
   temp_out_dims[0] *= nranks;
   temp_out.Resize(temp_out_dims);
   dev_ctx.Alloc(&temp_out, x->dtype());
@@ -85,7 +85,7 @@ void CConcatKernel(const Context& dev_ctx,
     offset += rows_per_tensor;
   }
 
-  phi::funcs::ConcatFunctor<phi::XPUContext, T> functor;
+  funcs::ConcatFunctor<phi::XPUContext, T> functor;
   out->Resize(out_dims);
   dev_ctx.Alloc(out, x->dtype());
   functor(dev_ctx, inputs, axis, out);

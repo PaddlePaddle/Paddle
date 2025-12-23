@@ -56,9 +56,9 @@ void Conv3dCooGradCPUKernel(const CPUContext& dev_ctx,
       static_cast<int>(is2D ? kernel_dims[3] : kernel_dims[4]);
 
   int rulebook_len = 0;
-  const IntT* rulebook_ptr = phi::funcs::sparse::GetRulebookPtr<IntT>(
-      out, rulebook, key, &rulebook_len);
-  const int* counter_ptr = phi::funcs::sparse::GetCounterPtr(out, counter, key);
+  const IntT* rulebook_ptr =
+      funcs::sparse::GetRulebookPtr<IntT>(out, rulebook, key, &rulebook_len);
+  const int* counter_ptr = funcs::sparse::GetCounterPtr(out, counter, key);
 
   DenseTensorMeta in_features_meta(
       x.dtype(), {rulebook_len, in_channels}, DataLayout::NCHW);
@@ -81,7 +81,7 @@ void Conv3dCooGradCPUKernel(const CPUContext& dev_ctx,
   memset(d_kernel_ptr, 0, sizeof(T) * kernel_grad->numel());
 
   int half_kernel_size = kernel_size / 2;
-  auto blas = phi::funcs::GetBlas<CPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
   DenseTensor x_grad_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
   DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.values());
   T* x_grad_values_ptr = x_grad_values.data<T>();
@@ -104,15 +104,15 @@ void Conv3dCooGradCPUKernel(const CPUContext& dev_ctx,
   offsets[kernel_size] = offset;
 
   if (subm) {
-    phi::funcs::sparse::SubmPreProcess<T, CPUContext>(dev_ctx,
-                                                      x,
-                                                      kernel,
-                                                      out_grad.values(),
-                                                      in_channels,
-                                                      out_channels,
-                                                      half_kernel_size,
-                                                      kernel_grad,
-                                                      &x_grad_values);
+    funcs::sparse::SubmPreProcess<T, CPUContext>(dev_ctx,
+                                                 x,
+                                                 kernel,
+                                                 out_grad.values(),
+                                                 in_channels,
+                                                 out_channels,
+                                                 half_kernel_size,
+                                                 kernel_grad,
+                                                 &x_grad_values);
     if (max_count == 0) {
       return;
     }

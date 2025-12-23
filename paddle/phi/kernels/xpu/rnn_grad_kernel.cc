@@ -106,7 +106,7 @@ void RnnGradKernel(const Context& dev_ctx,
   x_grad->Resize(x.dims());
   dev_ctx.template Alloc<T>(x_grad);
 
-  phi::funcs::SetConstant<phi::XPUContext, T> zero;
+  funcs::SetConstant<phi::XPUContext, T> zero;
   zero(dev_ctx, x_grad, static_cast<T>(0.0));
 
   DenseTensor a, b;

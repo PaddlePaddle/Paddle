@@ -134,11 +134,11 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
       *var_val += (tmp * tmp);
     }
     if (std::is_same<OutType, int8_t>::value) {
-      dest_vec_out_type[ii] = phi::funcs::quant_helper(dest_vec[ii],
-                                                       quant_next_in_scale,
-                                                       quant_round_type,
-                                                       quant_max_bound,
-                                                       quant_min_bound);
+      dest_vec_out_type[ii] = funcs::quant_helper(dest_vec[ii],
+                                                  quant_next_in_scale,
+                                                  quant_round_type,
+                                                  quant_max_bound,
+                                                  quant_min_bound);
     }
   }
 
@@ -301,7 +301,7 @@ __global__ void FusedResidualDropoutBias(
   } else {
     factor = static_cast<T>(1);
   }
-  phi::funcs::ReluFunctor<T> relu;
+  funcs::ReluFunctor<T> relu;
   for (int64_t r = row_id; r < rows; r += gridDim.y * gridDim.z) {
     for (int64_t i = col_id * VecSize; i < cols;
          i += blockDim.x * gridDim.x * VecSize) {
@@ -310,7 +310,7 @@ __global__ void FusedResidualDropoutBias(
                                         VecSize,
                                         false,
                                         false,
-                                        phi::funcs::ReluFunctor<T>,
+                                        funcs::ReluFunctor<T>,
                                         InType,
                                         OutType,
                                         HasDropout>(r,

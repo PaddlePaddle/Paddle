@@ -200,6 +200,7 @@ from paddle import (
     sparse as sparse,
     static as static,
     sysconfig as sysconfig,
+    testing as testing,
     vision as vision,
 )
 

@@ -162,7 +162,7 @@ __global__ void FusedLayernormResidualDropoutBias(
   __shared__ U shared_var[32];
 #endif
 
-  phi::funcs::ReluFunctor<T> relu;
+  funcs::ReluFunctor<T> relu;
   U mean_val = 0;
   U var_val = 0;
   for (int64_t i = col_id * VecSize; i < cols; i += blockDim.x * VecSize) {
@@ -171,7 +171,7 @@ __global__ void FusedLayernormResidualDropoutBias(
                                       VecSize,
                                       true,
                                       false,
-                                      phi::funcs::ReluFunctor<T>,
+                                      funcs::ReluFunctor<T>,
                                       T,
                                       T,
                                       HasDropout>(row_id,
@@ -192,8 +192,8 @@ __global__ void FusedLayernormResidualDropoutBias(
                                                   residual_alpha);
   }
 
-  mean_val = phi::funcs::BlockReduceSum<U>(mean_val, shared_mean);
-  var_val = phi::funcs::BlockReduceSum<U>(var_val, shared_var);
+  mean_val = funcs::BlockReduceSum<U>(mean_val, shared_mean);
+  var_val = funcs::BlockReduceSum<U>(var_val, shared_var);
   if (threadIdx.x == 0) {
     auto scale = static_cast<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>>(
         static_cast<float>(1.) / static_cast<float>(cols));
@@ -207,7 +207,7 @@ __global__ void FusedLayernormResidualDropoutBias(
   __syncthreads();
 
   mean_val = mean_share;
-  U invvar = phi::funcs::rsqrt_<U>(var_share + static_cast<U>(epsilon));
+  U invvar = funcs::rsqrt_<U>(var_share + static_cast<U>(epsilon));
 
   // calculate layernorm_dst
   CalcLayernormY<T, VecSize, U, ScaleBiasWithSameTypeX>(scale,
@@ -249,7 +249,7 @@ void LaunchFusedLayernormResidualDropoutBiasCUDAKernel(
     LayerNormParamType<T> *mean,
     LayerNormParamType<T> *var,
     const float residual_alpha = 1.0) {
-  auto kGridDim = phi::funcs::GetDesiredGridDim(grid_dim);
+  auto kGridDim = funcs::GetDesiredGridDim(grid_dim);
   if (dropout_prob != 0.0f) {
     FusedLayernormResidualDropoutBias<T,
                                       MaskType,
@@ -360,7 +360,7 @@ __global__ void FusedLayernormResidualDropoutBiasInfer(
   __shared__ U shared_var[32];
 #endif
 
-  phi::funcs::ReluFunctor<T> relu;
+  funcs::ReluFunctor<T> relu;
   U mean_val = 0;
   U var_val = 0;
   for (int i = col_id * VecSize; i < cols; i += blockDim.x * VecSize) {
@@ -369,25 +369,25 @@ __global__ void FusedLayernormResidualDropoutBiasInfer(
                                       VecSize,
                                       true,
                                       false,
-                                      phi::funcs::ReluFunctor<T>>(row_id,
-                                                                  i,
-                                                                  cols,
-                                                                  &state,
-                                                                  dropout_prob,
-                                                                  factor,
-                                                                  src,
-                                                                  residual,
-                                                                  bias,
-                                                                  dst,
-                                                                  mask,
-                                                                  is_test,
-                                                                  &mean_val,
-                                                                  &var_val,
-                                                                  relu);
+                                      funcs::ReluFunctor<T>>(row_id,
+                                                             i,
+                                                             cols,
+                                                             &state,
+                                                             dropout_prob,
+                                                             factor,
+                                                             src,
+                                                             residual,
+                                                             bias,
+                                                             dst,
+                                                             mask,
+                                                             is_test,
+                                                             &mean_val,
+                                                             &var_val,
+                                                             relu);
   }
 
-  mean_val = phi::funcs::BlockReduceSum<U>(mean_val, shared_mean);
-  var_val = phi::funcs::BlockReduceSum<U>(var_val, shared_var);
+  mean_val = funcs::BlockReduceSum<U>(mean_val, shared_mean);
+  var_val = funcs::BlockReduceSum<U>(var_val, shared_var);
   if (threadIdx.x == 0) {
     auto scale = static_cast<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>>(
         static_cast<float>(1.) / static_cast<float>(cols));
@@ -400,7 +400,7 @@ __global__ void FusedLayernormResidualDropoutBiasInfer(
   __syncthreads();
 
   mean_val = mean_share;
-  U invvar = phi::funcs::rsqrt_<U>(var_share + static_cast<U>(epsilon));
+  U invvar = funcs::rsqrt_<U>(var_share + static_cast<U>(epsilon));
 
   // calculate layernorm_dst
   CalcLayernormY<T, VecSize, U, ScaleBiasWithSameTypeX>(scale,
@@ -440,7 +440,7 @@ struct FusedLayernormResidualDropoutBiasFunctor {
       LayerNormParamType<T> *mean,
       LayerNormParamType<T> *var,
       GPU(Stream_t) stream) {
-    int blockDim = phi::funcs::GetDesiredBlockDim(cols / VecSize);
+    int blockDim = funcs::GetDesiredBlockDim(cols / VecSize);
     if (mean != nullptr && var != nullptr) {
       LaunchFusedLayernormResidualDropoutBiasCUDAKernel<T,
                                                         MaskType,
@@ -812,11 +812,11 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
                                    static_cast<U>(beta[it][jt]));
 
         if (std::is_same<OutType, int8_t>::value)
-          x_output[it][jt] = phi::funcs::quant_helper(x[it][jt],
-                                                      quant_next_in_scale,
-                                                      quant_round_type,
-                                                      quant_max_bound,
-                                                      quant_min_bound);
+          x_output[it][jt] = funcs::quant_helper(x[it][jt],
+                                                 quant_next_in_scale,
+                                                 quant_round_type,
+                                                 quant_max_bound,
+                                                 quant_min_bound);
       }
     }
 
@@ -896,11 +896,11 @@ void LaunchLayernormResidualDropoutBias(
       PADDLE_ENFORCE_GPU_SUCCESS(GPU(MemsetAsync)(
           mask_data, 0, rows * cols * sizeof(MaskType), dev_ctx.stream()));
     }
-    auto kGridDim = phi::funcs::GetDesiredGridDim(rows);
+    auto kGridDim = funcs::GetDesiredGridDim(rows);
     // call layernorm forward
-    switch (phi::funcs::GetDesiredBlockDim(cols)) {
+    switch (funcs::GetDesiredBlockDim(cols)) {
       FIXED_BLOCK_DIM_CASE(
-          phi::funcs::LayerNormForward<T, U, kBlockDim, ScaleBiasWithSameTypeX>
+          funcs::LayerNormForward<T, U, kBlockDim, ScaleBiasWithSameTypeX>
           <<<kGridDim, kBlockDim, 0, dev_ctx.stream()>>>(
               dst,
               scale,
@@ -1046,7 +1046,7 @@ void LaunchLayernormResidualDropoutBias(
 
   const int VecSize = MAX_CACHE_BYTES / sizeof(T);
   if (cols % VecSize != 0) {
-    int blockDim = phi::funcs::GetDesiredBlockDim(cols);
+    int blockDim = funcs::GetDesiredBlockDim(cols);
     LaunchFusedLayernormResidualDropoutBiasCUDAKernel<T,
                                                       uint8_t,
                                                       1,
@@ -1085,7 +1085,7 @@ void LaunchLayernormResidualDropoutBias(
           break;
       }
     } else {
-      int blockDim = phi::funcs::GetDesiredBlockDim(cols / VecSize);
+      int blockDim = funcs::GetDesiredBlockDim(cols / VecSize);
       LaunchFusedLayernormResidualDropoutBiasCUDAKernel<T,
                                                         uint8_t,
                                                         VecSize,
@@ -1145,7 +1145,7 @@ void LaunchLayernormResidualDropoutGrad(
   if (!is_upscale_in_train) {
     factor = static_cast<T>(1.0f);
   }
-  phi::funcs::ln_bwd_fast_kernel_driver<
+  funcs::ln_bwd_fast_kernel_driver<
       T,
       U,
       LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,

@@ -28,7 +28,7 @@
 namespace phi {
 // Multiply
 template <typename T>
-using MulFunctor = phi::funcs::MultiplyFunctor<T>;
+using MulFunctor = funcs::MultiplyFunctor<T>;
 
 // It is a common implementation to compute binary calculation with the support
 // of broadcast, supporting both CPU and GPU.
@@ -47,7 +47,7 @@ void ElementwiseComputeEx(const Context& dev_ctx,
                           Functor func,
                           phi::DenseTensor* z) {
   dev_ctx.template Alloc<OutType>(z);
-  phi::funcs::ElementwiseCompute<Functor, T, OutType>(
+  funcs::ElementwiseCompute<Functor, T, OutType>(
       dev_ctx, *x, *y, func, z, axis);
 }
 
@@ -75,7 +75,7 @@ void StftGradKernel(const Context& dev_ctx,
 
   std::vector<int64_t> axes = {1};
   phi::DenseTensor d_frames_w;
-  phi::DDim d_frames_dims(dy->dims());
+  DDim d_frames_dims(dy->dims());
   d_frames_dims.at(axes.back()) = n_fft;
   d_frames_w.Resize(d_frames_dims);
   dev_ctx.template Alloc<T>(&d_frames_w);
@@ -85,13 +85,13 @@ void StftGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<C>(&complex_d_frames_w);
 
   // dy -> d_frames_w
-  phi::funcs::FFTNormMode normalization;
+  funcs::FFTNormMode normalization;
   if (normalized) {
-    normalization = phi::funcs::get_norm_from_string("ortho", true);
+    normalization = funcs::get_norm_from_string("ortho", true);
   } else {
-    normalization = phi::funcs::get_norm_from_string("backward", true);
+    normalization = funcs::get_norm_from_string("backward", true);
   }
-  phi::funcs::FFTC2CFunctor<Context, C, C> fft_c2c_func;
+  funcs::FFTC2CFunctor<Context, C, C> fft_c2c_func;
 
   if (!onesided) {
     fft_c2c_func(dev_ctx, *dy, &complex_d_frames_w, axes, normalization, false);
@@ -106,7 +106,7 @@ void StftGradKernel(const Context& dev_ctx,
     std::vector<int> pads(rank * 2, 0);
     pads[axes.back() * 2 + 1] = zero_length;
 
-    phi::funcs::PaddingFunctor<Context, C>(
+    funcs::PaddingFunctor<Context, C>(
         rank, dev_ctx, pads, static_cast<C>(0), *dy, &full_dy);
     fft_c2c_func(
         dev_ctx, full_dy, &complex_d_frames_w, axes, normalization, false);
@@ -126,13 +126,13 @@ void StftGradKernel(const Context& dev_ctx,
                                                   &d_frames);
 
   // d_frames -> dx
-  phi::funcs::FrameFunctor<Context, T>()(dev_ctx,
-                                         &d_frames,
-                                         dx,
-                                         seq_length,
-                                         n_fft,
-                                         n_frames,
-                                         hop_length,
-                                         /*is_grad*/ true);
+  funcs::FrameFunctor<Context, T>()(dev_ctx,
+                                    &d_frames,
+                                    dx,
+                                    seq_length,
+                                    n_fft,
+                                    n_frames,
+                                    hop_length,
+                                    /*is_grad*/ true);
 }
 }  // namespace phi

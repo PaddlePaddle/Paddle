@@ -74,11 +74,11 @@ void SoftmaxCsrGradKernel(const Context& dev_ctx,
                                        out_crows_data[crow_idx]);
 
             T sum = 0;
-            phi::funcs::vec_mul_reduce<T, backends::cpu::avx>(
+            funcs::vec_mul_reduce<T, backends::cpu::avx>(
                 row_nnz, dout_data, out_data, &sum);
-            phi::funcs::vec_add_bias<T, backends::cpu::avx>(
+            funcs::vec_add_bias<T, backends::cpu::avx>(
                 row_nnz, static_cast<T>(-1) * sum, dout_data, dx_data);
-            phi::funcs::vec_mul<T, backends::cpu::avx>(
+            funcs::vec_mul<T, backends::cpu::avx>(
                 row_nnz, dx_data, out_data, dx_data);
 
             out_data = out_data + row_nnz;
@@ -110,8 +110,8 @@ void SoftmaxCooGradCPUKernel(const Context& dev_ctx,
   values->set_meta(out_values.meta());
   dev_ctx.template Alloc<T>(values);
 
-  auto out_offsets = phi::funcs::sparse::GetOffsets(out_indices, sizes, -1);
-  auto grad_offsets = phi::funcs::sparse::GetOffsets(grad_indices, sizes, -1);
+  auto out_offsets = funcs::sparse::GetOffsets(out_indices, sizes, -1);
+  auto grad_offsets = funcs::sparse::GetOffsets(grad_indices, sizes, -1);
 
   int dim = axis < 0 ? out_dims.size() + axis : axis;
 
@@ -143,7 +143,7 @@ void SoftmaxCooGradCPUKernel(const Context& dev_ctx,
   DenseTensor grad_values_2(grad_values);
   grad_values_2.Resize(common::make_ddim({nnz, nvalues}));
   std::map<IntT, std::vector<IntT>> pools;
-  phi::funcs::sparse::GetPoolsSoftmax(out_indices, sizes, dim, &pools);
+  funcs::sparse::GetPoolsSoftmax(out_indices, sizes, dim, &pools);
 
   for (size_t p = 0; p < pools.size(); p++) {
     auto pool_indices = pools[p];

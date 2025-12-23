@@ -84,11 +84,11 @@ void MatmulKernelImpl(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
 
 #ifdef PADDLE_WITH_HIP
-  phi::funcs::SetConstant<Context, T> set_zero;
+  funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, out, static_cast<T>(0.0f));
 #endif
 
-  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPMM(
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
 #else
@@ -159,7 +159,7 @@ void MatmulCsrCsrKernel(const Context& dev_ctx,
           "The shape of Input(x) and Input(y) is not suitable for matmul "
           "operation, x_dim[-1] must be equal to y_dim[-2]."));
 
-  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPGEMM(
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
 
@@ -259,7 +259,7 @@ void MaskedMatmulCsrKernel(const Context& dev_ctx,
   // InferMeta of SparseCsrTensor 'out', CreateLikeInferMeta
   EmptyLikeCsrKernel<T, Context>(dev_ctx, mask, out);
 
-  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SDDMM(
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
 #else

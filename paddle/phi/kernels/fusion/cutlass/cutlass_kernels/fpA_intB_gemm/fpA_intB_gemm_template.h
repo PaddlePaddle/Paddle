@@ -450,7 +450,7 @@ struct dispatch_stages<T,
   }
 };
 
-#if defined(USE_FPAINTB_GEMM_WITH_SM80) || defined(USE_FPAINTB_GEMM_WITH_SM90)
+#if defined(USE_FPAINTB_GEMM_WITH_SM80)
 template <typename T,
           typename WeightType,
           typename EpilogueTag,

@@ -170,7 +170,7 @@ void ComputeRowImpl(const Context& dev_ctx,
   auto beta2 = static_cast<MT>(beta2_f);
   auto epsilon = static_cast<MT>(epsilon_f);
   auto numel = param.numel();
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
   DenseTensor trust_ratio_div;
   trust_ratio_div.Resize(param.dims());
   /*auto trust_ratio_div =
@@ -221,7 +221,7 @@ void ComputeRowImpl(const Context& dev_ctx,
   } else {
     // merge duplicated rows if any.
     // The rows of grad_merge have been sorted inside MergeAdd functor
-    phi::funcs::scatter::MergeAdd<Context, T> merge_func;
+    funcs::scatter::MergeAdd<Context, T> merge_func;
     merge_func(dev_ctx, grad, &tmp_grad_merge, true);
     grad_merge_ptr = &tmp_grad_merge;
   }
@@ -316,22 +316,20 @@ void ComputeRowImpl(const Context& dev_ctx,
   // *skip_update == true.
   if (weight_decay > static_cast<MT>(0) || always_adapt) {
     memory_utils::Buffer buffer(dev_ctx.GetPlace());
-    phi::funcs::SquaredL2Norm(
-        dev_ctx,
-        reinterpret_cast<const MT*>(IsMultiPrecision ? master_param_ptr
-                                                     : param_ptr),
-        p_norm_ptr,
-        numel,
-        &buffer);
-    phi::funcs::SquaredL2Norm(
+    funcs::SquaredL2Norm(dev_ctx,
+                         reinterpret_cast<const MT*>(
+                             IsMultiPrecision ? master_param_ptr : param_ptr),
+                         p_norm_ptr,
+                         numel,
+                         &buffer);
+    funcs::SquaredL2Norm(
         dev_ctx, trust_ratio_div_ptr, trust_ratio_div_norm_ptr, numel, &buffer);
   }
 
   if (VLOG_IS_ON(1)) {
     const auto& name = "Param";
-    auto pn = phi::funcs::ToVector(p_norm_ptr, 1, dev_ctx.GetPlace());
-    auto tn =
-        phi::funcs::ToVector(trust_ratio_div_norm_ptr, 1, dev_ctx.GetPlace());
+    auto pn = funcs::ToVector(p_norm_ptr, 1, dev_ctx.GetPlace());
+    auto tn = funcs::ToVector(trust_ratio_div_norm_ptr, 1, dev_ctx.GetPlace());
     auto dtype = DataTypeToString(phi::CppTypeToDataType<T>::Type());
     VLOG(1) << "Param " << dtype << " " << name << " pn = " << pn[0]
             << " , tn = " << tn[0];

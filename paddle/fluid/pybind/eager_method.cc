@@ -58,6 +58,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/tensor_py.h"
+#include "paddle/fluid/pybind/xpu_streams_py.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function_registry.h"
@@ -3749,6 +3750,28 @@ static PyObject* tensor_method__uva(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 #endif
+
+#if defined(PADDLE_WITH_XPU)
+static PyObject* tensor_method__record_stream(TensorObject* self,
+                                              PyObject* args,
+                                              PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4)
+      << "Running in tensor_method__record_stream: record stream for Tensor.";
+  auto* tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  if (tensor) {
+    const auto& device_id = paddle::platform::GetXPUCurrentDeviceId();
+    auto place = phi::XPUPlace(device_id);
+    auto* dev_ctx = static_cast<phi::XPUContext*>(
+        phi::DeviceContextPool::Instance().Get(place));
+    auto stream = dev_ctx->get_current_stream_handle()->raw_stream();
+    memory::RecordStream(tensor->Holder(), stream);
+  }
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+#endif
+
 static PyObject* tensor_method__is_string_tensor_hold_allocation(
     TensorObject* self, PyObject* args, PyObject* kwargs) {
   EAGER_TRY
@@ -4077,6 +4100,12 @@ PyMethodDef variable_methods[] = {  // NOLINT
      nullptr},
     {"_tensor_uva",
      (PyCFunction)(void (*)())tensor_method__uva,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+#endif
+#if defined(PADDLE_WITH_XPU)
+    {"_record_stream",
+     (PyCFunction)(void (*)())tensor_method__record_stream,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
 #endif

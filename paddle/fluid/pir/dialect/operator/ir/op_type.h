@@ -57,7 +57,7 @@ class TEST_API SelectedRowsType
   static SelectedRowsType get(pir::IrContext *ctx,
                               Type dtype,
                               const phi::DDim &dims,
-                              DataLayout layout = DataLayout::kNCHW,
+                              DataLayout layout = DataLayout::NCHW,
                               const phi::LegacyLoD &lod = {},
                               size_t offset = 0u) {
     return Base::get(ctx, dtype, dims, layout, lod, offset);
@@ -90,7 +90,7 @@ class IR_API DenseTensorArrayType
   static DenseTensorArrayType get(pir::IrContext *ctx,
                                   Type dtype,
                                   const phi::DDim &dims,
-                                  DataLayout layout = DataLayout::kNCHW) {
+                                  DataLayout layout = DataLayout::NCHW) {
     return Base::get(ctx, dtype, dims, layout);
   }
 };

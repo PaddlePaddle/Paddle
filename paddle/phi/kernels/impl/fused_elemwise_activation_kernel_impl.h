@@ -58,14 +58,14 @@ void FusedElemwiseActivationKernel(const Context &dev_ctx,
     outputs.emplace_back(nullptr);
   }
 
-  phi::funcs::RunFunctors<Context, T>(dev_ctx,
-                                      in_x,
-                                      in_y,
-                                      &outputs,
-                                      functor_list,
-                                      scale,
-                                      axis,
-                                      save_intermediate_out);
+  funcs::RunFunctors<Context, T>(dev_ctx,
+                                 in_x,
+                                 in_y,
+                                 &outputs,
+                                 functor_list,
+                                 scale,
+                                 axis,
+                                 save_intermediate_out);
 }
 
 template <typename T, typename Context>
@@ -125,7 +125,7 @@ void FusedElemwiseActivationGradKernel(
                           "The option of 'save_intermediate_out' is opened,"
                           " so the number of 'Out' should be two."));
   } else {
-    if (!phi::funcs::InputXCanBeAbsent(functor_list_new)) {
+    if (!funcs::InputXCanBeAbsent(functor_list_new)) {
       PADDLE_ENFORCE_NE(
           in_x,
           nullptr,
@@ -142,7 +142,7 @@ void FusedElemwiseActivationGradKernel(
   } else {
     // If functor_list contains elementwise_add, the backward doesn't use
     // in_x, in_y and in_out.
-    PADDLE_ENFORCE_EQ(phi::funcs::InputXCanBeAbsent(functor_list_new),
+    PADDLE_ENFORCE_EQ(funcs::InputXCanBeAbsent(functor_list_new),
                       true,
                       common::errors::InvalidArgument(
                           "Only when the compoundfunctor contains "
@@ -159,7 +159,7 @@ void FusedElemwiseActivationGradKernel(
   } else {
     // If functor_list contains elementwise_add, the backward doesn't use
     // in_x, in_y and in_out.
-    PADDLE_ENFORCE_EQ(phi::funcs::InputXCanBeAbsent(functor_list_new),
+    PADDLE_ENFORCE_EQ(funcs::InputXCanBeAbsent(functor_list_new),
                       true,
                       common::errors::InvalidArgument(
                           "Only when the compoundfunctor contains "
@@ -167,35 +167,33 @@ void FusedElemwiseActivationGradKernel(
     in_out = const_cast<phi::DenseTensor *>(in_out_grad);
   }
 
-  bool has_in_place = phi::funcs::HasInPlaceUnary(functor_list_new);
+  bool has_in_place = funcs::HasInPlaceUnary(functor_list_new);
   if (has_in_place) {
-    phi::funcs::RunGradFunctors<Context, T, true /*InPlace*/>(
-        dev_ctx,
-        in_x,
-        in_y,
-        in_out,
-        in_intermediate_out,
-        in_out_grad,
-        x_grad,
-        y_grad,
-        d_intermediate_out,
-        functor_list_new,
-        scale,
-        axis);
+    funcs::RunGradFunctors<Context, T, true /*InPlace*/>(dev_ctx,
+                                                         in_x,
+                                                         in_y,
+                                                         in_out,
+                                                         in_intermediate_out,
+                                                         in_out_grad,
+                                                         x_grad,
+                                                         y_grad,
+                                                         d_intermediate_out,
+                                                         functor_list_new,
+                                                         scale,
+                                                         axis);
   } else {
-    phi::funcs::RunGradFunctors<Context, T, false /*InPlace*/>(
-        dev_ctx,
-        in_x,
-        in_y,
-        in_out,
-        in_intermediate_out,
-        in_out_grad,
-        x_grad,
-        y_grad,
-        d_intermediate_out,
-        functor_list_new,
-        scale,
-        axis);
+    funcs::RunGradFunctors<Context, T, false /*InPlace*/>(dev_ctx,
+                                                          in_x,
+                                                          in_y,
+                                                          in_out,
+                                                          in_intermediate_out,
+                                                          in_out_grad,
+                                                          x_grad,
+                                                          y_grad,
+                                                          d_intermediate_out,
+                                                          functor_list_new,
+                                                          scale,
+                                                          axis);
   }
 }
 

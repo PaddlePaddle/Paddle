@@ -167,14 +167,14 @@ __global__ void ClipAndQuantDequantKernel(const T *in,
   using ComputeDataType = typename QuantizeDataType<T>::type;
 
   ComputeDataType s = static_cast<ComputeDataType>(scale[0]);
-  ComputeDataType inv_s = phi::funcs::inverse(s);
+  ComputeDataType inv_s = funcs::inverse(s);
   ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
 
   for (int64_t i = bid; i < n; i += blockDim.x * gridDim.x) {
     ComputeDataType x = static_cast<ComputeDataType>(in[i]);
     if (round_type == 0) {
       x = bin_cnt_t * inv_s * x;
-      x = phi::funcs::roundWithTiesToEven(x);
+      x = funcs::roundWithTiesToEven(x);
       ComputeDataType max_bound = bin_cnt_t;
       ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
       x = x > max_bound ? max_bound : x;
@@ -704,7 +704,7 @@ void FindRangeAbsMaxFunctor<Context, T>::operator()(
                        sizeof(int),
                        dev_ctx.stream());
     dev_ctx.Wait();
-    phi::funcs::FindAbsMaxFunctor<phi::GPUContext, T>()(
+    funcs::FindAbsMaxFunctor<phi::GPUContext, T>()(
         dev_ctx, scale_arr, len, out_scale_data);
   }
 }

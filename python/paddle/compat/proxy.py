@@ -298,19 +298,27 @@ class TorchProxyMetaFinder:
         )
 
     def _find_spec_for_cached_torch_module(self, fullname: str):
+        module = TORCH_MODULES_CACHE[fullname]
+
         # Return cached module before enable proxy
         class CachedTorchModuleLoader(importlib.abc.Loader):
             def create_module(self, spec):
-                return TORCH_MODULES_CACHE[fullname]
+                return module
 
             def exec_module(self, module):
                 pass
 
-        return importlib.util.spec_from_loader(
+        # Always treat cached modules as packages to allow submodules to be loaded.
+        # This is necessary because some modules (e.g. torch._C) are not packages
+        # but have submodules (e.g. torch._C._dynamo) attached to them.
+        spec = importlib.util.spec_from_loader(
             fullname,
             CachedTorchModuleLoader(),
-            origin=getattr(TORCH_MODULES_CACHE[fullname], "__file__", None),
+            origin=getattr(module, "__file__", None),
+            is_package=True,
         )
+        spec.submodule_search_locations = list(getattr(module, "__path__", []))
+        return spec
 
     def _find_spec_for_torch_module(self, fullname: str):
         # Map the requested torch fullname to the corresponding paddle fullname.

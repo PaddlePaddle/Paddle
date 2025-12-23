@@ -38,14 +38,14 @@ void RenormKernel(const Context& dev_ctx,
   auto input_dims = x.dims();
   auto dimension_each = input_dims[dim];
 
-  phi::funcs::RenormFunc(dev_ctx,
-                         x_ptr,
-                         out->data<T>(),
-                         p,
-                         axis,
-                         max_norm,
-                         dimension_each,
-                         input_dims,
-                         numel);
+  funcs::RenormFunc(dev_ctx,
+                    x_ptr,
+                    out->data<T>(),
+                    p,
+                    axis,
+                    max_norm,
+                    dimension_each,
+                    input_dims,
+                    numel);
 }
 }  // namespace phi

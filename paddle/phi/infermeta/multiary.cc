@@ -4968,21 +4968,21 @@ void RAdamInferMeta(const MetaTensor& param,
   }
 }
 
-void RmsNormInferMeta(const MetaTensor& x,
-                      const MetaTensor& bias,
-                      const MetaTensor& residual,
-                      const MetaTensor& norm_weight,
-                      const MetaTensor& norm_bias,
-                      const float epsilon,
-                      const int begin_norm_axis,
-                      const float quant_scale,
-                      const int quant_round_type,
-                      const float quant_max_bound,
-                      const float quant_min_bound,
-                      MetaTensor* out,
-                      MetaTensor* residual_out,
-                      MetaTensor* inv_var,
-                      MetaConfig config) {
+void FusedRmsNormQuantInferMeta(const MetaTensor& x,
+                                const MetaTensor& bias,
+                                const MetaTensor& residual,
+                                const MetaTensor& norm_weight,
+                                const MetaTensor& norm_bias,
+                                const float epsilon,
+                                const int begin_norm_axis,
+                                const float quant_scale,
+                                const int quant_round_type,
+                                const float quant_max_bound,
+                                const float quant_min_bound,
+                                MetaTensor* out,
+                                MetaTensor* residual_out,
+                                MetaTensor* inv_var,
+                                MetaConfig config) {
   size_t x_dims_size = x.dims().size();
 
   size_t normalized_dims = 1;

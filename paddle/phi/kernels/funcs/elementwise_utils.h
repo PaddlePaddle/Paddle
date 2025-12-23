@@ -21,7 +21,7 @@ namespace phi {
 
 namespace funcs {
 
-using DDim = phi::DDim;
+using DDim = DDim;
 
 /*
  * Out = X ⊙ Y

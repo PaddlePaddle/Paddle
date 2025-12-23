@@ -78,7 +78,7 @@ void DenseToCooKernel(const Context& dev_ctx,
   int64_t non_zero_num = GetNonZeroNum<T>(x, sparse_dim);
 
   const auto values_dims =
-      phi::funcs::sparse::InferDenseDims(x_dims, sparse_dim, non_zero_num);
+      funcs::sparse::InferDenseDims(x_dims, sparse_dim, non_zero_num);
   DenseTensorMeta values_meta(x.meta().dtype, values_dims, x.meta().layout);
   phi::DenseTensor indices =
       phi::Empty<int64_t>(dev_ctx, {sparse_dim, non_zero_num});

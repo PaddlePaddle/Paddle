@@ -33,13 +33,12 @@ void MatMulGrad(const phi::GPUContext& dev_ctx,
                 const phi::DenseTensor& b,
                 phi::DenseTensor* d_a,
                 phi::DenseTensor* d_b) {
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   auto a_2d = phi::FoldInitDims(a);
   auto b_2d = phi::FoldInitDims(b);
-  auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a_2d.dims(), 0, true);
-  auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b_2d.dims(), 0, true);
-  auto mat_dim_dout =
-      phi::funcs::CreateMatrixDescriptor(d_out.dims(), 0, false);
+  auto mat_dim_a = funcs::CreateMatrixDescriptor(a_2d.dims(), 0, true);
+  auto mat_dim_b = funcs::CreateMatrixDescriptor(b_2d.dims(), 0, true);
+  auto mat_dim_dout = funcs::CreateMatrixDescriptor(d_out.dims(), 0, false);
   T alpha = static_cast<T>(1.0);
   blas.MatMul(d_out, mat_dim_dout, b, mat_dim_b, alpha, d_a, T(0));
   blas.MatMul(a, mat_dim_a, d_out, mat_dim_dout, alpha, d_b, T(0));
@@ -94,7 +93,7 @@ void FFNGrad(const phi::GPUContext& dev_ctx,
       fused_dropout_layernorm_helper(
           dev_ctx, bsz_seq, d_model, dropout_param2, epsilon2);
 
-  using U = phi::funcs::LayerNormParamType<T>;
+  using U = funcs::LayerNormParamType<T>;
   const U* ln1_gamma_ptr =
       ln1_gamma == nullptr ? nullptr : ln1_gamma->data<U>();
   const U* ln1_beta_ptr = ln1_beta == nullptr ? nullptr : ln1_beta->data<U>();
@@ -207,8 +206,7 @@ void FFNGrad(const phi::GPUContext& dev_ctx,
     // gradient accumulation
     std::vector<const phi::DenseTensor*> ins = {&d_residual, d_x};
     std::vector<phi::DenseTensor*> outs = {d_x};
-    phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, ins, &outs, phi::funcs::AddFunctor<T>());
+    funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, funcs::AddFunctor<T>());
   }
 }
 
@@ -259,7 +257,7 @@ void FusedFeedForwardGradKernel(
     DenseTensor* ln1_bias_grad,
     DenseTensor* ln2_scale_grad,
     DenseTensor* ln2_bias_grad) {
-  using U = phi::funcs::LayerNormParamType<T>;
+  using U = funcs::LayerNormParamType<T>;
 
   auto* ln1_out_ptr = pre_layer_norm ? ln1_out.get_ptr() : nullptr;
   auto* dropout2_out_ptr = dropout2_out.get_ptr();
@@ -382,8 +380,8 @@ void FusedFeedForwardGradKernel(
   }
 
   auto x_dim = x.dims();
-  auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
-      phi::RowMatrixFromVector(x_dim), 0, false);
+  auto mat_dim_x =
+      funcs::CreateMatrixDescriptor(phi::RowMatrixFromVector(x_dim), 0, false);
 
   auto linear1_weight_dim = linear1_weight.dims();
   int d_model = linear1_weight_dim[0];

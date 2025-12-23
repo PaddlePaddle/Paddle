@@ -76,8 +76,7 @@ void MaskCooGPUKernel(const GPUContext& dev_ctx,
       dev_ctx,
       DenseTensorMeta(DataType::INT64, {sparse_dim}, DataLayout::NCHW));
   std::vector<int64_t> h_sparse_offsets(sparse_dim);
-  phi::funcs::sparse::CalcOffsetsPerDim(
-      dims, sparse_dim, h_sparse_offsets.data());
+  funcs::sparse::CalcOffsetsPerDim(dims, sparse_dim, h_sparse_offsets.data());
 
   phi::backends::gpu::GpuMemcpyAsync(sparse_offsets.data<int64_t>(),
                                      &h_sparse_offsets[0],
@@ -162,8 +161,7 @@ void MaskCsr2DGPUKernel(const GPUContext& dev_ctx,
   int64_t sparse_dim = 2;
   DenseTensor sparse_offsets = phi::Empty<IntT>(dev_ctx, {sparse_dim});
   std::vector<int64_t> h_sparse_offsets(sparse_dim);
-  phi::funcs::sparse::CalcOffsetsPerDim(
-      dims, sparse_dim, h_sparse_offsets.data());
+  funcs::sparse::CalcOffsetsPerDim(dims, sparse_dim, h_sparse_offsets.data());
 
   phi::backends::gpu::GpuMemcpyAsync(sparse_offsets.data<int64_t>(),
                                      &h_sparse_offsets[0],
@@ -240,8 +238,7 @@ void MaskCsr3DGPUKernel(const GPUContext& dev_ctx,
   int64_t sparse_dim = 3;
   DenseTensor sparse_offsets = phi::Empty<IntT>(dev_ctx, {sparse_dim});
   std::vector<int64_t> h_sparse_offsets(sparse_dim);
-  phi::funcs::sparse::CalcOffsetsPerDim(
-      dims, sparse_dim, h_sparse_offsets.data());
+  funcs::sparse::CalcOffsetsPerDim(dims, sparse_dim, h_sparse_offsets.data());
 
   phi::backends::gpu::GpuMemcpyAsync(sparse_offsets.data<int64_t>(),
                                      &h_sparse_offsets[0],
@@ -339,7 +336,7 @@ void MaskAsCsrKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const SparseCsrTensor& mask,
                      SparseCsrTensor* out) {
-  const phi::DDim& x_dims = x.dims();
+  const DDim& x_dims = x.dims();
   if (x_dims.size() == 2) {
     PD_VISIT_BASE_INTEGRAL_TYPES(
         mask.crows().dtype(), "MaskCsr2DGPUKernel", ([&] {
@@ -366,7 +363,7 @@ __global__ void MaskTable(const IntT* x_indices,
                           int* table) {
   CUDA_KERNEL_LOOP_TYPE(i, n, int64_t) {
     int index = x_indices[i];
-    phi::funcs::sparse::SetBits(index, index_flags);
+    funcs::sparse::SetBits(index, index_flags);
     table[index] = i;
   }
 }
@@ -383,7 +380,7 @@ __global__ void MaskCopy(const IntT* mask_indices,
   using StoreT = phi::AlignedVector<T, VecSize>;
   CUDA_KERNEL_LOOP_TYPE(i, n, int64_t) {
     const int mask_index = mask_indices[i];
-    const bool flag = phi::funcs::sparse::TestBits(mask_index, index_flags);
+    const bool flag = funcs::sparse::TestBits(mask_index, index_flags);
     if (flag) {
       int j = table[mask_index];
       for (int k = 0; k < stride; k += VecSize) {
@@ -429,8 +426,7 @@ void MaskHelperCooGPUKernel(const GPUContext& dev_ctx,
   IntT* bound_out_ptr = bound_out.data<IntT>();
 
   // 1. calc the offsets of per dim
-  phi::funcs::sparse::CalcOffsetsPerDim(
-      x.dims(), sparse_dim, sparse_offsets.data());
+  funcs::sparse::CalcOffsetsPerDim(x.dims(), sparse_dim, sparse_offsets.data());
   // 2. copy sparse_offsets to device
   phi::backends::gpu::GpuMemcpyAsync(d_sparse_offsets.data<IntT>(),
                                      sparse_offsets.data(),
@@ -441,10 +437,10 @@ void MaskHelperCooGPUKernel(const GPUContext& dev_ctx,
   // 3. flatten x indices and mask indices
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_indices.numel(), 1);
-  phi::funcs::sparse::FlattenIndicesKernel<<<config.block_per_grid,
-                                             config.thread_per_block,
-                                             0,
-                                             dev_ctx.stream()>>>(
+  funcs::sparse::FlattenIndicesKernel<<<config.block_per_grid,
+                                        config.thread_per_block,
+                                        0,
+                                        dev_ctx.stream()>>>(
       x.indices().data<IntT>(),
       d_sparse_offsets.data<IntT>(),
       x_indices.numel(),
@@ -453,10 +449,10 @@ void MaskHelperCooGPUKernel(const GPUContext& dev_ctx,
 
   config = phi::backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, mask_meta_indices.numel(), 1);
-  phi::funcs::sparse::FlattenIndicesKernel<<<config.block_per_grid,
-                                             config.thread_per_block,
-                                             0,
-                                             dev_ctx.stream()>>>(
+  funcs::sparse::FlattenIndicesKernel<<<config.block_per_grid,
+                                        config.thread_per_block,
+                                        0,
+                                        dev_ctx.stream()>>>(
       mask_indices.data<IntT>(),
       d_sparse_offsets.data<IntT>(),
       mask_meta_indices.numel(),
@@ -477,7 +473,7 @@ void MaskHelperCooGPUKernel(const GPUContext& dev_ctx,
   const int64_t stride =
       x.dims().size() == sparse_dim ? 1 : x.values().dims()[1];
   *out = phi::EmptyLike<T>(dev_ctx, x.values());
-  phi::funcs::SetConstant<GPUContext, T> set_zero;
+  funcs::SetConstant<GPUContext, T> set_zero;
   set_zero(dev_ctx, out, static_cast<T>(0));
   T* out_ptr = out->data<T>();
   config =

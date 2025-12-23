@@ -184,11 +184,12 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
 
   phi::distributed::XCCLCommContext* GetOrCreateCommContext(const Place& place);
 
-  // TODO(liyurui): This API will be moved later
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
-      const AllreduceOptions& = AllreduceOptions()) override;
+      const AllreduceOptions& = AllreduceOptions(),
+      bool use_calc_stream = false,
+      bool sync_op = false) override;
 
   // TODO(sunyilun): methods below will be removed later
   std::shared_ptr<ProcessGroup::Task> Broadcast(
@@ -204,7 +205,9 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors) override;
+      std::vector<phi::DenseTensor>& out_tensors,
+      bool use_calc_stream = false,
+      bool sync_op = false) override;
 
   std::shared_ptr<ProcessGroup::Task> AllToAll(
       std::vector<phi::DenseTensor>& in_tensors,
@@ -259,6 +262,7 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
   std::shared_ptr<ProcessGroup::Task> Collective(
       std::vector<phi::DenseTensor>& inputs,   // NOLINT
       std::vector<phi::DenseTensor>& outputs,  // NOLINT
+      bool use_calc_stream,
       Fn fn,
       CommType op_type);
 

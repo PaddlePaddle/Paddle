@@ -61,9 +61,9 @@ void EigKernel(const Context& dev_ctx,
         dev_ctx, x, &real_w_cpu, &real_v_cpu);
 
     // 1. extract real part & imag part from real_w_cpu
-    DenseTensor real_part_cpu = phi::funcs::Slice<phi::dtype::Real<T>>(
+    DenseTensor real_part_cpu = funcs::Slice<phi::dtype::Real<T>>(
         (*cpu_ctx), real_w_cpu, {-1}, {0}, {order});
-    DenseTensor imag_part_cpu = phi::funcs::Slice<phi::dtype::Real<T>>(
+    DenseTensor imag_part_cpu = funcs::Slice<phi::dtype::Real<T>>(
         (*cpu_ctx), real_w_cpu, {-1}, {order}, {order * 2});
 
     // 2. construct complex values
@@ -71,8 +71,8 @@ void EigKernel(const Context& dev_ctx,
     auto* imag_part_data = imag_part_cpu.data<phi::dtype::Real<T>>();
     int64_t out_w_numel = static_cast<int64_t>(out_w->numel());
 
-    phi::funcs::ForRange<phi::CPUContext> for_range((*cpu_ctx), out_w_numel);
-    phi::funcs::RealImagToComplexFunctor<phi::dtype::Complex<T>> functor(
+    funcs::ForRange<phi::CPUContext> for_range((*cpu_ctx), out_w_numel);
+    funcs::RealImagToComplexFunctor<phi::dtype::Complex<T>> functor(
         real_part_data,
         imag_part_data,
         out_w_cpu.data<phi::dtype::Complex<T>>(),
