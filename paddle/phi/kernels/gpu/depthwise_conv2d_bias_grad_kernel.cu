@@ -326,6 +326,7 @@ void LaunchDepthwiseConv2dBackwardCompatible(const Context& dev_ctx,
     size_t smem = (block.x / CUDA_WARP_SIZE) *
                   sizeof(typename phi::dtype::MPTypeTrait<T>::Type);
 
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
     DWConv2dBwdWeightKernel<T, int>
         <<<grid, block, smem, stream>>>(out_grad_nchw.data<T>(),
                                         input_nchw.data<T>(),
@@ -346,6 +347,7 @@ void LaunchDepthwiseConv2dBackwardCompatible(const Context& dev_ctx,
                                         padH,
                                         dW,
                                         dH);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
   }
 
   // Launch Input Gradient Kernel (grad_input)
@@ -382,33 +384,61 @@ void LaunchDepthwiseConv2dBackwardCompatible(const Context& dev_ctx,
                                    dH);
 
     if (kW == 5 && kH == 5) {
-      if (dW == 1 && dH == 1)
+      if (dW == 1 && dH == 1) {
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
         LAUNCH_INPUT_KERNEL(5, 1)
-      else if (dW == 2 && dH == 2)
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+      } else if (dW == 2 && dH == 2) {
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
         LAUNCH_INPUT_KERNEL(5, 2)
-      else
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+      } else {
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
         LAUNCH_INPUT_KERNEL(5, 0)
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+      }
     } else if (kW == 3 && kH == 3) {
-      if (dW == 1 && dH == 1)
+      if (dW == 1 && dH == 1) {
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
         LAUNCH_INPUT_KERNEL(3, 1)
-      else if (dW == 2 && dH == 2)
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+      } else if (dW == 2 && dH == 2) {
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
         LAUNCH_INPUT_KERNEL(3, 2)
-      else
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+      } else {
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
         LAUNCH_INPUT_KERNEL(3, 0)
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+      }
     } else if (kW == 1 && kH == 1) {
-      if (dW == 1 && dH == 1)
+      if (dW == 1 && dH == 1) {
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
         LAUNCH_INPUT_KERNEL(1, 1)
-      else if (dW == 2 && dH == 2)
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+      } else if (dW == 2 && dH == 2) {
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
         LAUNCH_INPUT_KERNEL(1, 2)
-      else
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+      } else {
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
         LAUNCH_INPUT_KERNEL(1, 0)
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+      }
     } else {
-      if (dW == 1 && dH == 1)
+      if (dW == 1 && dH == 1) {
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
         LAUNCH_INPUT_KERNEL(0, 1)
-      else if (dW == 2 && dH == 2)
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+      } else if (dW == 2 && dH == 2) {
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
         LAUNCH_INPUT_KERNEL(0, 2)
-      else
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+      } else {
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
         LAUNCH_INPUT_KERNEL(0, 0)
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+      }
     }
 #undef LAUNCH_INPUT_KERNEL
   }

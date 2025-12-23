@@ -201,6 +201,7 @@ void LaunchDepthwiseConv3dCompatible(const Context& dev_ctx,
       (dilations[0] == 1 && dilations[1] == 1 && dilations[2] == 1);
 
   if (is_kernel_3x3x3 && is_dilation_1x1x1) {
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
     DWConv3dFwdKernel<T, AccT, 3, 3, 3, 1, 1, 1>
         <<<grid, block, 0, stream>>>(input_ptr,
                                      output_ptr,
@@ -227,7 +228,9 @@ void LaunchDepthwiseConv3dCompatible(const Context& dev_ctx,
                                      dilations[0],
                                      dilations[1],
                                      dilations[2]);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
   } else if (is_dilation_1x1x1) {
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
     DWConv3dFwdKernel<T, AccT, -1, -1, -1, 1, 1, 1>
         <<<grid, block, 0, stream>>>(input_ptr,
                                      output_ptr,
@@ -254,7 +257,9 @@ void LaunchDepthwiseConv3dCompatible(const Context& dev_ctx,
                                      dilations[0],
                                      dilations[1],
                                      dilations[2]);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
   } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
     DWConv3dFwdKernel<T, AccT, -1, -1, -1, -1, -1, -1>
         <<<grid, block, 0, stream>>>(input_ptr,
                                      output_ptr,
@@ -281,6 +286,7 @@ void LaunchDepthwiseConv3dCompatible(const Context& dev_ctx,
                                      dilations[0],
                                      dilations[1],
                                      dilations[2]);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
   }
 
   if (channel_last) {

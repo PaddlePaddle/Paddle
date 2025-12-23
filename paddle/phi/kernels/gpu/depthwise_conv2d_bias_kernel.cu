@@ -250,8 +250,8 @@ void LaunchDepthwiseConv2dCompatible(const Context& dev_ctx,
     bias_ptr = bias->data<T>();
     has_bias = true;
   }
-
   if (kW == 3 && kH == 3) {
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
     DWConv2dFwdKernel<3, T, int>
         <<<grid, block, 0, stream>>>(input_ptr,
                                      output_ptr,
@@ -273,7 +273,9 @@ void LaunchDepthwiseConv2dCompatible(const Context& dev_ctx,
                                      padH,
                                      dW,
                                      dH);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
   } else if (kW == 1 && kH == 1) {
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
     DWConv2dFwdKernel<1, T, int>
         <<<grid, block, 0, stream>>>(input_ptr,
                                      output_ptr,
@@ -295,7 +297,9 @@ void LaunchDepthwiseConv2dCompatible(const Context& dev_ctx,
                                      padH,
                                      dW,
                                      dH);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
   } else if (kW == 5 && kH == 5) {
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
     DWConv2dFwdKernel<5, T, int>
         <<<grid, block, 0, stream>>>(input_ptr,
                                      output_ptr,
@@ -317,7 +321,9 @@ void LaunchDepthwiseConv2dCompatible(const Context& dev_ctx,
                                      padH,
                                      dW,
                                      dH);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
   } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
     DWConv2dFwdKernelGeneric<T, int>
         <<<grid, block, 0, stream>>>(input_ptr,
                                      output_ptr,
@@ -339,6 +345,7 @@ void LaunchDepthwiseConv2dCompatible(const Context& dev_ctx,
                                      padH,
                                      dW,
                                      dH);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
   }
 
   if (channel_last) {

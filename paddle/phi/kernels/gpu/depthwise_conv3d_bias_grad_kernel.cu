@@ -375,6 +375,7 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
     bool is_s1 = (strides[0] == 1 && strides[1] == 1 && strides[2] == 1);
 
     if (is_k3 && is_d1 && is_s1) {
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
       DWConv3dBwdInputKernel<T, AccT, 3, 3, 3, 1, 1, 1, 1, 1, 1>
           <<<grid, block, 0, stream>>>(grad_output_ptr,
                                        grad_input_ptr,
@@ -400,7 +401,9 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
                                        dilations[0],
                                        dilations[1],
                                        dilations[2]);
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
     } else if (is_k3 && is_d1) {
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
       DWConv3dBwdInputKernel<T, AccT, 3, 3, 3, 1, 1, 1, -1, -1, -1>
           <<<grid, block, 0, stream>>>(grad_output_ptr,
                                        grad_input_ptr,
@@ -426,7 +429,9 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
                                        dilations[0],
                                        dilations[1],
                                        dilations[2]);
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
     } else if (is_k3 && is_s1) {
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
       DWConv3dBwdInputKernel<T, AccT, 3, 3, 3, -1, -1, -1, 1, 1, 1>
           <<<grid, block, 0, stream>>>(grad_output_ptr,
                                        grad_input_ptr,
@@ -452,7 +457,9 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
                                        dilations[0],
                                        dilations[1],
                                        dilations[2]);
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
     } else if (is_k3) {
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
       DWConv3dBwdInputKernel<T, AccT, 3, 3, 3, -1, -1, -1, -1, -1, -1>
           <<<grid, block, 0, stream>>>(grad_output_ptr,
                                        grad_input_ptr,
@@ -478,7 +485,9 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
                                        dilations[0],
                                        dilations[1],
                                        dilations[2]);
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
     } else {
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
       DWConv3dBwdInputKernel<T, AccT, -1, -1, -1, -1, -1, -1, -1, -1, -1>
           <<<grid, block, 0, stream>>>(grad_output_ptr,
                                        grad_input_ptr,
@@ -504,6 +513,7 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
                                        dilations[0],
                                        dilations[1],
                                        dilations[2]);
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
     }
   }
 
@@ -515,6 +525,7 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
     size_t smem = block * sizeof(T);
 
     if (strides[1] == 1 && strides[2] == 1) {
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
       DWConv3dBwdWeightKernel<T, AccT, 1, 1>
           <<<grid, block, smem, stream>>>(grad_output_ptr,
                                           input_ptr,
@@ -540,7 +551,9 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
                                           dilations[0],
                                           dilations[1],
                                           dilations[2]);
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
     } else if (strides[1] == 2 && strides[2] == 2) {
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
       DWConv3dBwdWeightKernel<T, AccT, 2, 2>
           <<<grid, block, smem, stream>>>(grad_output_ptr,
                                           input_ptr,
@@ -566,7 +579,9 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
                                           dilations[0],
                                           dilations[1],
                                           dilations[2]);
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
     } else {
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
       DWConv3dBwdWeightKernel<T, AccT, -1, -1>
           <<<grid, block, smem, stream>>>(grad_output_ptr,
                                           input_ptr,
@@ -592,6 +607,7 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
                                           dilations[0],
                                           dilations[1],
                                           dilations[2]);
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
     }
   }
 
