@@ -62,7 +62,7 @@ class Tree2ColFunctor<phi::GPUContext, T> {
     auto cpu_place = phi::CPUPlace();
     auto stream = dev_ctx.stream();
     auto feature_dims = node_features.dims();
-    phi::funcs::SetConstant<phi::GPUContext, T> constant;
+    funcs::SetConstant<phi::GPUContext, T> constant;
 
     phi::DenseTensor EdgeSet_cpu;
     phi::Copy(dev_ctx, EdgeSet, cpu_place, false, &EdgeSet_cpu);
@@ -139,7 +139,7 @@ class Col2TreeFunctor<phi::GPUContext, T> {
     auto cpu_place = phi::CPUPlace();
     auto stream = dev_ctx.stream();
     auto output_dims = patch_grad.dims();
-    phi::funcs::SetConstant<phi::GPUContext, T> constant;
+    funcs::SetConstant<phi::GPUContext, T> constant;
 
     phi::DenseTensor EdgeSet_cpu;
     phi::Copy(dev_ctx, EdgeSet, cpu_place, false, &EdgeSet_cpu);

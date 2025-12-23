@@ -88,11 +88,11 @@ void CholeskySolveGradKernel(const Context& dev_ctx,
   out_conj = phi::TransposeLast2Dim<T>(dev_ctx, out_conj);
 
   DenseTensor commonterm = phi::Empty<T, Context>(dev_ctx, y_bst_dims);
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   blas.MatMul(dx_bst,
-              phi::funcs::CreateMatrixDescriptor(dx_bst.dims(), 0, false),
+              funcs::CreateMatrixDescriptor(dx_bst.dims(), 0, false),
               out_conj,
-              phi::funcs::CreateMatrixDescriptor(out_conj.dims(), 0, false),
+              funcs::CreateMatrixDescriptor(out_conj.dims(), 0, false),
               static_cast<T>(1),
               &commonterm,
               static_cast<T>(0));
@@ -106,17 +106,17 @@ void CholeskySolveGradKernel(const Context& dev_ctx,
   DenseTensor dy_bst = phi::Empty<T, Context>(dev_ctx, y_bst_dims);
   if (upper) {
     blas.MatMul(y_bst,
-                phi::funcs::CreateMatrixDescriptor(y_bst.dims(), 0, false),
+                funcs::CreateMatrixDescriptor(y_bst.dims(), 0, false),
                 commonterm,
-                phi::funcs::CreateMatrixDescriptor(commonterm.dims(), 0, false),
+                funcs::CreateMatrixDescriptor(commonterm.dims(), 0, false),
                 static_cast<T>(-1),
                 &dy_bst,
                 static_cast<T>(0));
   } else {
     blas.MatMul(commonterm,
-                phi::funcs::CreateMatrixDescriptor(commonterm.dims(), 0, false),
+                funcs::CreateMatrixDescriptor(commonterm.dims(), 0, false),
                 y_bst,
-                phi::funcs::CreateMatrixDescriptor(y_bst.dims(), 0, false),
+                funcs::CreateMatrixDescriptor(y_bst.dims(), 0, false),
                 static_cast<T>(-1),
                 &dy_bst,
                 static_cast<T>(0));
@@ -128,8 +128,8 @@ void CholeskySolveGradKernel(const Context& dev_ctx,
   int y_bst_ndim = y_bst_dims_vec.size();
   const auto H = y_bst_dims_vec[y_bst_ndim - 2];
   const auto W = y_bst_dims_vec[y_bst_ndim - 1];
-  phi::funcs::ForRange<Context> y_for_range(dev_ctx, dy_bst.numel());
-  phi::funcs::TrilTriuCompute<T> tril_triu_functor(
+  funcs::ForRange<Context> y_for_range(dev_ctx, dy_bst.numel());
+  funcs::TrilTriuCompute<T> tril_triu_functor(
       dy_bst.data<T>(), 0, !upper, H, W, dy_bst_upper.data<T>());
   y_for_range(tril_triu_functor);
 

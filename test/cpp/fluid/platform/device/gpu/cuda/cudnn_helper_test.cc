@@ -19,12 +19,12 @@ limitations under the License. */
 #include "paddle/phi/core/platform/device/gpu/gpu_dnn.h"
 
 TEST(CudnnHelper, ScopedTensorDescriptor) {
-  using phi::backends::gpu::DataLayout;
+  using phi::DataLayout;
   using phi::backends::gpu::ScopedTensorDescriptor;
 
   ScopedTensorDescriptor tensor_desc;
   std::vector<int> shape = {2, 4, 6, 6};
-  auto desc = tensor_desc.descriptor<float>(DataLayout::kNCHW, shape);
+  auto desc = tensor_desc.descriptor<float>(DataLayout::NCHW, shape);
 
   cudnnDataType_t type;
   int nd;
@@ -45,7 +45,7 @@ TEST(CudnnHelper, ScopedTensorDescriptor) {
   // test tensor5d: ScopedTensorDescriptor
   ScopedTensorDescriptor tensor5d_desc;
   std::vector<int> shape_5d = {2, 4, 6, 6, 6};
-  auto desc_5d = tensor5d_desc.descriptor<float>(DataLayout::kNCDHW, shape_5d);
+  auto desc_5d = tensor5d_desc.descriptor<float>(DataLayout::NCDHW, shape_5d);
 
   std::vector<int> dims_5d(5);
   std::vector<int> strides_5d(5);
@@ -64,12 +64,13 @@ TEST(CudnnHelper, ScopedTensorDescriptor) {
 }
 
 TEST(CudnnHelper, ScopedFilterDescriptor) {
-  using phi::backends::gpu::DataLayout;
+  using phi::DataLayout;
+  using phi::backends::gpu::GetCudnnTensorFormat;
   using phi::backends::gpu::ScopedFilterDescriptor;
 
   ScopedFilterDescriptor filter_desc;
   std::vector<int> shape = {2, 3, 3};
-  auto desc = filter_desc.descriptor<float>(DataLayout::kNCHW, shape);
+  auto desc = filter_desc.descriptor<float>(DataLayout::NCHW, shape);
 
   cudnnDataType_t type;
   int nd;
@@ -78,7 +79,7 @@ TEST(CudnnHelper, ScopedFilterDescriptor) {
   phi::dynload::cudnnGetFilterNdDescriptor(
       desc, 3, &type, &format, &nd, kernel.data());
 
-  EXPECT_EQ(GetCudnnTensorFormat(DataLayout::kNCHW), format);
+  EXPECT_EQ(GetCudnnTensorFormat(DataLayout::NCHW), format);
   EXPECT_EQ(nd, 3);
   for (size_t i = 0; i < shape.size(); ++i) {
     EXPECT_EQ(kernel[i], shape[i]);
@@ -86,13 +87,13 @@ TEST(CudnnHelper, ScopedFilterDescriptor) {
 
   ScopedFilterDescriptor filter_desc_4d;
   std::vector<int> shape_4d = {2, 3, 3, 3};
-  auto desc_4d = filter_desc.descriptor<float>(DataLayout::kNCDHW, shape_4d);
+  auto desc_4d = filter_desc.descriptor<float>(DataLayout::NCDHW, shape_4d);
 
   std::vector<int> kernel_4d(4);
   phi::dynload::cudnnGetFilterNdDescriptor(
       desc_4d, 4, &type, &format, &nd, kernel_4d.data());
 
-  EXPECT_EQ(GetCudnnTensorFormat(DataLayout::kNCHW), format);
+  EXPECT_EQ(GetCudnnTensorFormat(DataLayout::NCHW), format);
   EXPECT_EQ(nd, 4);
   for (size_t i = 0; i < shape_4d.size(); ++i) {
     EXPECT_EQ(kernel_4d[i], shape_4d[i]);

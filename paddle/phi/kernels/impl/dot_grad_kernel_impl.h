@@ -35,7 +35,7 @@ struct DotGradFunction {
 };
 
 template <typename Context, typename T>
-struct DotGradFunction<Context, T, phi::funcs::EnableComplex<T>> {
+struct DotGradFunction<Context, T, funcs::EnableComplex<T>> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor* tensor_x,
                   const DenseTensor* tensor_y,
@@ -134,7 +134,7 @@ struct DotGradFunction<Context, T, phi::funcs::EnableComplex<T>> {
 };
 
 template <typename Context, typename T>
-struct DotGradFunction<Context, T, phi::funcs::DisableComplex<T>> {
+struct DotGradFunction<Context, T, funcs::DisableComplex<T>> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor* tensor_x,
                   const DenseTensor* tensor_y,
@@ -221,7 +221,7 @@ struct DotDoubleGradFunction {
 };
 
 template <typename Context, typename T>
-struct DotDoubleGradFunction<Context, T, phi::funcs::EnableComplex<T>> {
+struct DotDoubleGradFunction<Context, T, funcs::EnableComplex<T>> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor* tensor_x,
                   const DenseTensor* tensor_y,
@@ -428,7 +428,7 @@ struct DotDoubleGradFunction<Context, T, phi::funcs::EnableComplex<T>> {
 };
 
 template <typename Context, typename T>
-struct DotDoubleGradFunction<Context, T, phi::funcs::DisableComplex<T>> {
+struct DotDoubleGradFunction<Context, T, funcs::DisableComplex<T>> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor* tensor_x,
                   const DenseTensor* tensor_y,
@@ -610,7 +610,7 @@ struct DotTripleGradFunction {
 // TODO(wuweilong): enable this function when the unittest framework for multi
 // grad is ok (dtype: complex64 or complex128).
 template <typename Context, typename T>
-struct DotTripleGradFunction<Context, T, phi::funcs::EnableComplex<T>> {
+struct DotTripleGradFunction<Context, T, funcs::EnableComplex<T>> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor* in_tensor_x,
                   const DenseTensor* in_tensor_y,
@@ -1004,7 +1004,7 @@ struct DotTripleGradFunction<Context, T, phi::funcs::EnableComplex<T>> {
 };
 
 template <typename Context, typename T>
-struct DotTripleGradFunction<Context, T, phi::funcs::DisableComplex<T>> {
+struct DotTripleGradFunction<Context, T, funcs::DisableComplex<T>> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor* in_tensor_x,
                   const DenseTensor* in_tensor_y,

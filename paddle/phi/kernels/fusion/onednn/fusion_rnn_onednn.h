@@ -20,13 +20,13 @@
 namespace phi {
 namespace fusion {
 
-using phi::funcs::CreateKey;
-using phi::funcs::OneDNNGetDataType;
-using phi::funcs::RNNReorderType;
+using funcs::CreateKey;
+using funcs::OneDNNGetDataType;
+using funcs::RNNReorderType;
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
 template <typename T, typename T_alg, typename T_out = T>
-class RNNONEDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
+class RNNONEDNNHandler : public funcs::OneDNNHandlerT<T, T_alg> {
  public:
   RNNONEDNNHandler(const phi::OneDNNContext& dev_ctx,
                    const dnnl::engine onednn_engine UNUSED,
@@ -44,7 +44,7 @@ class RNNONEDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
                    float scale_data,
                    float shift_data,
                    std::vector<float> scale_weights)
-      : phi::funcs::OneDNNHandlerT<T, T_alg>(
+      : funcs::OneDNNHandlerT<T, T_alg>(
             dev_ctx,
             dev_ctx.GetEngine(),
             cpu_place,
@@ -56,7 +56,7 @@ class RNNONEDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
         G(G) {
     // Create memory key without Ti because weights, bias and h0 memories
     // do not depend on Ti size but primitive and input/output memory do
-    memory_key_ = phi::funcs::ExtendKeyWithThreadInfoIfNeeded(
+    memory_key_ = funcs::ExtendKeyWithThreadInfoIfNeeded(
         dev_ctx, CreateKey(dev_ctx, unique_name, OneDNNGetDataType<T>()));
 
     // Is it int8 kernel
@@ -162,7 +162,7 @@ class RNNONEDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
     }
 
     const auto& input_lod = input->lod()[0];
-    auto* x_data = phi::funcs::to_void_cast(input->data<T>());
+    auto* x_data = funcs::to_void_cast(input->data<T>());
 
     auto* x_onednn_data = memory_p->get_data_handle();
     memset(x_onednn_data, 0, sizeof(T) * N * Ti * IC);
@@ -203,7 +203,7 @@ class RNNONEDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
         user_h0_memory = dnnl::memory(
             {{1, 1, N, OC}, OneDNNGetDataType<U>(), OneDNNMemoryFormat::ldnc},
             this->engine_,
-            phi::funcs::to_void_cast(h0->data<U>()));
+            funcs::to_void_cast(h0->data<U>()));
       } else {
         user_h0_memory = dnnl::memory(
             {{1, 1, N, OC}, OneDNNGetDataType<U>(), OneDNNMemoryFormat::ldnc},

@@ -63,7 +63,7 @@ inline void GetIdxMap4D(int n,
   ones.Resize(common::make_ddim({h, w, 1}));
   dev_ctx.template Alloc<T>(&ones);
 
-  phi::funcs::SetConstant<Context, T>()(dev_ctx, &ones, static_cast<T>(1));
+  funcs::SetConstant<Context, T>()(dev_ctx, &ones, static_cast<T>(1));
   auto ones_t = EigenTensor<T, 3>::From(ones);
   // Get grid tensor with shape [n, h, w, 3] by concatenating h_idx, w_idx and
   // ones
@@ -131,7 +131,7 @@ inline void GetIdxMap5D(int n,
   ones.Resize(common::make_ddim({d, h, w, 1}));
   dev_ctx.template Alloc<T>(&ones);
 
-  phi::funcs::SetConstant<Context, T>()(dev_ctx, &ones, static_cast<T>(1));
+  funcs::SetConstant<Context, T>()(dev_ctx, &ones, static_cast<T>(1));
   auto ones_t = EigenTensor<T, 4>::From(ones);
   // Get grid tensor with shape [n, d, h, w, 4] by concatenating d_idx, h_idx,
   // w_idx and ones

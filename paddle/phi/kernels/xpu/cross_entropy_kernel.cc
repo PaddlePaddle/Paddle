@@ -48,11 +48,11 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
 
   using XPUType = typename XPUTypeTrait<T>::Type;
   const int rank = logits.dims().size();
-  const int axis = phi::funcs::CanonicalAxis(axis_in, rank);
+  const int axis = funcs::CanonicalAxis(axis_in, rank);
   dev_ctx.template Alloc<T>(softmax);
   dev_ctx.template Alloc<T>(loss);
-  const int64_t n = phi::funcs::SizeToAxis(axis, logits.dims());
-  const int64_t d = phi::funcs::SizeOutAxis(axis, logits.dims());
+  const int64_t n = funcs::SizeToAxis(axis, logits.dims());
+  const int64_t d = funcs::SizeOutAxis(axis, logits.dims());
   const int64_t t = logits.dims()[axis];
   int64_t len = logits.numel();
 

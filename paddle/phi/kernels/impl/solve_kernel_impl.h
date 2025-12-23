@@ -109,7 +109,7 @@ static void linalg_solve(const Context& dev_ctx,
                          const DenseTensor& y,
                          DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  phi::funcs::MatrixSolveFunctor<Context, T> mat_solve;
+  funcs::MatrixSolveFunctor<Context, T> mat_solve;
 
   // input y can be vector or matrix
   // but need to be unsqueezed if y is a vector

@@ -82,7 +82,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
     VLOG(3)
         << "Rotating Shape in Transpose from: kMKLDNN to: kNHWC output_shape";
 
-    phi::DDim out_dims(x_dims);
+    DDim out_dims(x_dims);
     for (size_t i = 0; i < axis.size(); i++) {
       out_dims[i] = x_dims[formatted_axis[i]];  // NOLINT
     }

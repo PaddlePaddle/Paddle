@@ -27,7 +27,7 @@ void SoftmaxKernel(const Context& dev_ctx,
                    int axis,
                    DenseTensor* out) {
   const int rank = x.dims().size();
-  const int calc_axis = phi::funcs::CanonicalAxis(axis, rank);
+  const int calc_axis = funcs::CanonicalAxis(axis, rank);
   int64_t axis_dim = x.dims()[calc_axis];
 
   // allocate memory on device.
@@ -38,16 +38,16 @@ void SoftmaxKernel(const Context& dev_ctx,
   }
   // For 0D Tensor
   if (rank == 0) {
-    phi::funcs::set_constant(dev_ctx, out, static_cast<T>(1.0));
+    funcs::set_constant(dev_ctx, out, static_cast<T>(1.0));
     return;
   }
 
-  const int64_t n = phi::funcs::SizeToAxis(calc_axis, x.dims());
-  const int64_t d = phi::funcs::SizeFromAxis(calc_axis, x.dims());
+  const int64_t n = funcs::SizeToAxis(calc_axis, x.dims());
+  const int64_t d = funcs::SizeFromAxis(calc_axis, x.dims());
   DenseTensor X_2d, Out_2d;
   X_2d.ShareDataWith(x).Resize({n, d});
   Out_2d.ShareDataWith(*out).Resize({n, d});
-  phi::funcs::SoftmaxFunctor<Context, T>()(dev_ctx, axis_dim, &X_2d, &Out_2d);
+  funcs::SoftmaxFunctor<Context, T>()(dev_ctx, axis_dim, &X_2d, &Out_2d);
 }
 
 }  // namespace phi

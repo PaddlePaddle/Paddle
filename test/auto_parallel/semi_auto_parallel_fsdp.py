@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle.distributed.auto_parallel.fully_shard import FullyShardAuto
+from paddle.distributed.fsdp.fully_shard import fully_shard
 from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 
 
@@ -98,7 +98,7 @@ class TestSemiAutoParallelFSDP:
         opt = paddle.optimizer.AdamW(parameters=model.parameters())
 
         # use FSDP
-        FullyShardAuto(model, mesh=self._mesh)
+        model = fully_shard(model, mesh=self._mesh)
 
         stage_losses = []
         tr_loss_add = float(0)

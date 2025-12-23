@@ -43,7 +43,12 @@ from paddle._C_ops import (  # noqa: F401
 )
 
 
-def celu(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
+def celu(
+    x: Tensor,
+    alpha: float = 1.0,
+    inplace: bool = False,
+    name: str | None = None,
+) -> Tensor:
     r"""
     celu activation.
 
@@ -56,6 +61,7 @@ def celu(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
     Parameters:
         x (Tensor): The input Tensor with data type float16, float32, or float64.
         alpha (float, optional): The 'alpha' value of the CELU formula. Default is 1.0.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -73,11 +79,23 @@ def celu(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.19865242,  6.        ],
              [ 1.        , 15.60000038]])
+            >>> out = F.celu(x, alpha=0.2, inplace=True)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.19865242,  6.        ],
+             [ 1.        , 15.60000038]])
+            >>> print(x)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.19865242,  6.        ],
+             [ 1.        , 15.60000038]])
     """
     if alpha == 0:
         raise ZeroDivisionError("alpha cannot be 0 for celu")
     if in_dynamic_or_pir_mode():
-        return _C_ops.celu(x, alpha)
+        if inplace:
+            return _C_ops.celu_(x, alpha)
+        else:
+            return _C_ops.celu(x, alpha)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'celu'

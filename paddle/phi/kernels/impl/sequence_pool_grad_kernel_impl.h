@@ -32,7 +32,7 @@ void SequencePoolGradKernel(const Context& dev_ctx,
     index = max_index.get_ptr();
   }
   dev_ctx.template Alloc<T>(x_grad);
-  phi::funcs::SequencePoolGradFunctor<Context, T> pool;
+  funcs::SequencePoolGradFunctor<Context, T> pool;
   pool(dev_ctx, pooltype, out_grad, x_grad, index);
 }
 

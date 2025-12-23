@@ -24,9 +24,9 @@
 
 namespace phi::fusion {
 
+using funcs::OneDNNGetDataType;
+using funcs::to_void_cast;
 using phi::OneDNNContext;
-using phi::funcs::OneDNNGetDataType;
-using phi::funcs::to_void_cast;
 
 struct InnerProductCache {
   dnnl::inner_product_forward inner_product_p;
@@ -62,8 +62,7 @@ GetDNNLScales(const float scale_in,
 
 template <typename T_in, typename T_w, typename T_out>
 class FCOneDNNHandler
-    : public phi::funcs::OneDNNHandlerNoCachingT<T_in,
-                                                 dnnl::inner_product_forward> {
+    : public funcs::OneDNNHandlerNoCachingT<T_in, dnnl::inner_product_forward> {
  public:
   FCOneDNNHandler(const OneDNNContext& dev_ctx,
                   const phi::DenseTensor* x,
@@ -78,7 +77,7 @@ class FCOneDNNHandler
                   const std::string& activation_type,
                   dnnl::engine onednn_engine,
                   phi::Place cpu_place)
-      : phi::funcs::OneDNNHandlerNoCachingT<T_in, dnnl::inner_product_forward>(
+      : funcs::OneDNNHandlerNoCachingT<T_in, dnnl::inner_product_forward>(
             onednn_engine, cpu_place),
         dev_ctx_(dev_ctx) {
     this->memory_key_ = dev_ctx.GetInputsName("W")[0];
@@ -138,7 +137,7 @@ class FCOneDNNHandler
     dnnl::post_ops post_operations;
 
     float activation_scale = 1.0f;
-    if (phi::funcs::is_int8<T_w>()) {
+    if (funcs::is_int8<T_w>()) {
       std::vector<float> src_scales, wei_scales, psum_scales, dst_scales;
       std::tie(src_scales, wei_scales, psum_scales, dst_scales) =
           GetDNNLScales(scale_in, scale_out, scale_weights);
@@ -213,7 +212,7 @@ class FCOneDNNHandler
         dev_ctx.HasDnnAttr("fuse_beta")
             ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_beta"))
             : 0.0f;
-    const auto activation_map = phi::funcs::OneDNNActivationMap();
+    const auto activation_map = funcs::OneDNNActivationMap();
     const auto& activation_type = activation_map.find(fuse_activation);
 
     PADDLE_ENFORCE_NE(
@@ -255,7 +254,7 @@ class FCOneDNNHandler
     auto scale_mem =
         dnnl::memory(scales_md,
                      this->engine_,
-                     phi::funcs::to_void_cast<float>(scale_data.data()));
+                     funcs::to_void_cast<float>(scale_data.data()));
 
     auto& astream = OneDNNContext::tls().get_stream();
     {
@@ -303,9 +302,9 @@ class FCOneDNNHandler
     const std::string weights_base_key = this->memory_key_ + "@weights";
     std::string weights_key;
     weights_key.reserve(128);
-    weights_key = phi::funcs::ExtendKeyWithThreadInfoIfNeeded(
+    weights_key = funcs::ExtendKeyWithThreadInfoIfNeeded(
         dev_ctx_,
-        phi::funcs::CreateKey(
+        funcs::CreateKey(
             dev_ctx_, weights_base_key, this->fwd_pd_->weights_desc()));
     auto memory_p = std::static_pointer_cast<dnnl::memory>(
         this->dev_ctx_.GetBlob(weights_key));
@@ -318,7 +317,7 @@ class FCOneDNNHandler
                                         OneDNNGetDataType<float>(),
                                         dnnl::memory::format_tag::io);
 
-      if (phi::funcs::is_int8<T_w>()) {
+      if (funcs::is_int8<T_w>()) {
         dnnl::primitive_attr attrs;
         int mask = CreateMask(0, scale_data.size() > 1);
         attrs.set_scales_mask(DNNL_ARG_SRC, mask);
@@ -376,11 +375,11 @@ void RecomputeOutputDims(const int in_num_col_dims,
                     common::errors::PermissionDenied(
                         "Weight padding in fc can not be used in oneDNN."));
   std::vector<int64_t> output_dims;
-  phi::funcs::FCOutputSize(x->dims(),
-                           weights->dims(),
-                           output_dims,
-                           in_num_col_dims,
-                           padding_weights);
+  funcs::FCOutputSize(x->dims(),
+                      weights->dims(),
+                      output_dims,
+                      in_num_col_dims,
+                      padding_weights);
   out->Resize(common::make_ddim(output_dims));
   out->set_lod(x->lod());
 }
@@ -430,13 +429,13 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
 
   std::string cache_key;
   cache_key.reserve(64);
-  cache_key = phi::funcs::ExtendKeyWithThreadInfoIfNeeded(
+  cache_key = funcs::ExtendKeyWithThreadInfoIfNeeded(
       dev_ctx,
-      phi::funcs::CreateKey(dev_ctx,
-                            dev_ctx.GetInputsName("Input")[0],
-                            dev_ctx.GetInputsName("W")[0],
-                            common::vectorize(input.dims()),
-                            common::vectorize(w.dims())));
+      funcs::CreateKey(dev_ctx,
+                       dev_ctx.GetInputsName("Input")[0],
+                       dev_ctx.GetInputsName("W")[0],
+                       common::vectorize(input.dims()),
+                       common::vectorize(w.dims())));
 
   auto inner_product_cache =
       std::static_pointer_cast<InnerProductCache>(dev_ctx.GetBlob(cache_key));
@@ -510,7 +509,7 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
       fc_args.insert({DNNL_ARG_BIAS, *bias_memory_p});
     }
 
-    if (phi::funcs::is_int8<T>()) {
+    if (funcs::is_int8<T>()) {
       handler.SetScalesIfNeeded(&fc_args);
     }
 
@@ -554,8 +553,7 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
         std::vector<int>, dev_ctx.GetDnnAttr("fused_reshape2_shape"));
   }
   if (!reshape2_shape.empty()) {
-    phi::funcs::SetOutMemDescWithReshape2FuseSupport(
-        reshape2_shape, out, out_md);
+    funcs::SetOutMemDescWithReshape2FuseSupport(reshape2_shape, out, out_md);
   } else {
     out->set_mem_desc(out_md);
   }
@@ -650,7 +648,7 @@ void FCKernel(const Context& dev_ctx,
                                                         scale_out,
                                                         force_fp32_output,
                                                         out);
-                             } else if (phi::funcs::is_int8<T>()) {
+                             } else if (funcs::is_int8<T>()) {
                                if (fuse_relu) {
                                  RunKernel<T, uint8_t, T_w>(dev_ctx,
                                                             input,

@@ -49,7 +49,7 @@ void LaunchElementwiseCudaKernel(
   for (int i = 0; i < pt_outputs_tmp.size(); i++) {
     pt_outputs.push_back(pt_outputs_tmp[i].get());
   }
-  phi::funcs::BroadcastKernel<OutT, Functor, NumOuts>(
+  funcs::BroadcastKernel<OutT, Functor, NumOuts>(
       dev_ctx, pt_inputs, &pt_outputs, func, axis);
 }
 

@@ -366,9 +366,8 @@ bool BatchNormOpInferSymbolicShape(
           x_dims,
           x_dims.size()));
 
-  symbol::DimExpr C = (data_layout == DataLayout::kNCHW)
-                          ? x_dims[1]
-                          : x_dims[x_dims.size() - 1];
+  symbol::DimExpr C =
+      (data_layout == DataLayout::NCHW) ? x_dims[1] : x_dims[x_dims.size() - 1];
 
   if (!scale_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
     std::vector<symbol::DimExpr> scale_dims = scale_shape_or_data.shape();
@@ -507,7 +506,7 @@ bool BicubicInterpOpInferSymbolicShape(
     if (!size_tensor.empty()) {
       // top priority size
       std::vector<symbol::DimExpr> dim_out;
-      if (data_layout == DataLayout::kNCHW) {
+      if (data_layout == DataLayout::NCHW) {
         dim_out = {x.shape()[0], x.shape()[1], symbol::DimExpr{out_w}};
       } else {
         dim_out = {x.shape()[0], symbol::DimExpr{out_w}, x.shape()[2]};
@@ -526,7 +525,7 @@ bool BicubicInterpOpInferSymbolicShape(
     out_w_tmp = symbol::DimExpr(next_sym);
 
     std::vector<symbol::DimExpr> dim_out;
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       dim_out = {x.shape()[0], x.shape()[1], out_w_tmp};
     } else {
       dim_out = {x.shape()[0], out_w_tmp, x.shape()[2]};
@@ -572,9 +571,9 @@ bool BicubicInterpOpInferSymbolicShape(
         float scale_h = scale[0];
         float scale_w = scale[1];
         const auto &in_h =
-            data_layout == DataLayout::kNCHW ? x.shape()[2] : x.shape()[1];
+            data_layout == DataLayout::NCHW ? x.shape()[2] : x.shape()[1];
         const auto &in_w =
-            data_layout == DataLayout::kNCHW ? x.shape()[3] : x.shape()[2];
+            data_layout == DataLayout::NCHW ? x.shape()[3] : x.shape()[2];
         return std::make_tuple(GetOutDimByScale(in_h, scale_h),
                                GetOutDimByScale(in_w, scale_w));
       }
@@ -584,7 +583,7 @@ bool BicubicInterpOpInferSymbolicShape(
 
     const std::vector<symbol::DimExpr> dim_out = [&] {
       const auto &[out_h_sym, out_w_sym] = GetOutHW();
-      if (data_layout == DataLayout::kNCHW) {
+      if (data_layout == DataLayout::NCHW) {
         return std::vector<symbol::DimExpr>{
             x.shape()[0], x.shape()[1], out_h_sym, out_w_sym};
       } else {
@@ -626,11 +625,11 @@ bool BicubicInterpOpInferSymbolicShape(
         float scale_h = scale[1];
         float scale_w = scale[2];
         const auto &in_d =
-            data_layout == DataLayout::kNCHW ? x.shape()[2] : x.shape()[1];
+            data_layout == DataLayout::NCHW ? x.shape()[2] : x.shape()[1];
         const auto &in_h =
-            data_layout == DataLayout::kNCHW ? x.shape()[3] : x.shape()[2];
+            data_layout == DataLayout::NCHW ? x.shape()[3] : x.shape()[2];
         const auto &in_w =
-            data_layout == DataLayout::kNCHW ? x.shape()[4] : x.shape()[3];
+            data_layout == DataLayout::NCHW ? x.shape()[4] : x.shape()[3];
         return std::make_tuple(GetOutDimByScale(in_d, scale_d),
                                GetOutDimByScale(in_h, scale_h),
                                GetOutDimByScale(in_w, scale_w));
@@ -643,7 +642,7 @@ bool BicubicInterpOpInferSymbolicShape(
 
     const std::vector<symbol::DimExpr> dim_out = [&] {
       const auto &[out_d_sym, out_h_sym, out_w_sym] = GetOutDHW();
-      if (data_layout == DataLayout::kNCHW) {
+      if (data_layout == DataLayout::NCHW) {
         return std::vector<symbol::DimExpr>{
             x.shape()[0], x.shape()[1], out_d_sym, out_h_sym, out_w_sym};
       } else {

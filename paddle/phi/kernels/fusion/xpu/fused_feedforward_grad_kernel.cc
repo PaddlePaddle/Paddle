@@ -490,8 +490,8 @@ void FusedFeedForwardGradKernel(
   dev_ctx.template Alloc<T>(d_linear2_weight);
 
   auto x_dim = x_ptr->dims();
-  auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
-      phi::RowMatrixFromVector(x_dim), 0, false);
+  auto mat_dim_x =
+      funcs::CreateMatrixDescriptor(phi::RowMatrixFromVector(x_dim), 0, false);
 
   auto linear1_weight_dim = linear1_weight_ptr->dims();
   int d_model = linear1_weight_dim[0];

@@ -49,7 +49,7 @@ struct SequenceMaskFunctor {
   void apply() const {
     dev_ctx_.template Alloc<Ty>(y_);
     auto *y_data = y_->data<Ty>();
-    phi::funcs::ForRange<DeviceContext> for_range(dev_ctx_, limits_);
+    funcs::ForRange<DeviceContext> for_range(dev_ctx_, limits_);
     for_range(SequenceMaskForRangeFunctor<Tx, Ty>(x_, y_data, maxlen_));
   }
 

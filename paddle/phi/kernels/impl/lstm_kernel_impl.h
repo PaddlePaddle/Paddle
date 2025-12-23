@@ -56,22 +56,22 @@ void LSTMKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(hidden);
   dev_ctx.template Alloc<T>(cell);
 
-  phi::funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
+  funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
   to_batch(dev_ctx, input, batch_gate_new, true, is_reverse);
 
   auto in_dims = input.dims();
   int64_t frame_size = in_dims[1] / 4;
-  phi::DDim dims({in_dims[0], frame_size});
+  DDim dims({in_dims[0], frame_size});
 
   if (bias.initialized()) {
     phi::DenseTensor b = bias;
     b.Resize({bias.numel(), 1});
     phi::DenseTensor gate_bias = b.Slice(0, 4 * frame_size);
-    phi::funcs::RowwiseAdd<Context, T> add_bias;
+    funcs::RowwiseAdd<Context, T> add_bias;
     add_bias(dev_ctx, *batch_gate_new, gate_bias, batch_gate_new);
   }
 
-  phi::funcs::LstmMetaValue<T> lstm_value;
+  funcs::LstmMetaValue<T> lstm_value;
   if (bias.initialized() && use_peepholes) {
     T* bias_data = const_cast<T*>(bias.data<T>());
     // the code style in LstmMetaValue will be updated later.
@@ -114,11 +114,11 @@ void LSTMKernel(const Context& dev_ctx,
 
   auto batch_starts = batch_gate_new->lod()[0];
   size_t num_batch = batch_starts.size() - 1;
-  auto gate_act = phi::funcs::detail::GetActivationType(gate_activation);
-  auto cell_act = phi::funcs::detail::GetActivationType(cell_activation);
-  auto cand_act = phi::funcs::detail::GetActivationType(candidate_activation);
+  auto gate_act = funcs::detail::GetActivationType(gate_activation);
+  auto cell_act = funcs::detail::GetActivationType(cell_activation);
+  auto cand_act = funcs::detail::GetActivationType(candidate_activation);
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   for (size_t n = 0; n < num_batch; n++) {
     int bstart = static_cast<int>(batch_starts[n]);
     int bend = static_cast<int>(batch_starts[n + 1]);
@@ -166,18 +166,18 @@ void LSTMKernel(const Context& dev_ctx,
     lstm_value.state_value = cell_t.data<T>();
     lstm_value.state_active_value = cell_pre_act_t.data<T>();
     T cell_clip = 0.0;
-    phi::funcs::LstmUnitFunctor<Context, T>::compute(dev_ctx,
-                                                     lstm_value,
-                                                     frame_size,
-                                                     cur_batch_size,
-                                                     cell_clip,
-                                                     gate_act,
-                                                     cell_act,
-                                                     cand_act);
+    funcs::LstmUnitFunctor<Context, T>::compute(dev_ctx,
+                                                lstm_value,
+                                                frame_size,
+                                                cur_batch_size,
+                                                cell_clip,
+                                                gate_act,
+                                                cell_act,
+                                                cand_act);
     lstm_value.prev_state_value = lstm_value.state_value;
   }
 
-  phi::funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
+  funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
   batch_hidden.set_lod(batch_gate_new->lod());
   // restore the output hidden in phi::DenseTensor from the batch hidden
   to_seq(dev_ctx, batch_hidden, hidden);
@@ -232,7 +232,7 @@ void LSTMGradKernel(const Context& dev_ctx,
   auto* h0_g = h0_grad;
   auto* c0_g = c0_grad;
 
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   if (weight_g) {
     dev_ctx.template Alloc<T>(weight_g);
     zero(dev_ctx, weight_g, static_cast<T>(0.0));
@@ -263,7 +263,7 @@ void LSTMGradKernel(const Context& dev_ctx,
                         frame_size,
                         out_dims[1]));
 
-  phi::funcs::LstmMetaValue<T> lstm_value;
+  funcs::LstmMetaValue<T> lstm_value;
   if (bias && use_peepholes) {
     T* bias_data = const_cast<T*>(bias->data<T>());
     lstm_value.check_ig = bias_data + 4 * frame_size;
@@ -275,7 +275,7 @@ void LSTMGradKernel(const Context& dev_ctx,
     lstm_value.check_og = nullptr;
   }
 
-  phi::funcs::LstmMetaGrad<T> lstm_grad;
+  funcs::LstmMetaGrad<T> lstm_grad;
 
   if (bias && bias_g) {
     dev_ctx.template Alloc<T>(bias_g);
@@ -292,11 +292,11 @@ void LSTMGradKernel(const Context& dev_ctx,
     lstm_grad.check_og_grad = nullptr;
   }
 
-  phi::funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
+  funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
 
   auto ToBatch = [&batch_gate, &to_batch](const Context& dev_ctx,
                                           const phi::DenseTensor& src,
-                                          const phi::DDim& dims,
+                                          const DDim& dims,
                                           phi::DenseTensor& dst) {
     dst.Resize(dims);
     dev_ctx.template Alloc<T>(&dst);
@@ -319,13 +319,13 @@ void LSTMGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(&batch_gate_g);
   batch_gate_g.set_lod(batch_gate->lod());
 
-  auto gate_act = phi::funcs::detail::GetActivationType(gate_activation);
-  auto cell_act = phi::funcs::detail::GetActivationType(cell_activation);
-  auto cand_act = phi::funcs::detail::GetActivationType(candidate_activation);
+  auto gate_act = funcs::detail::GetActivationType(gate_activation);
+  auto cell_act = funcs::detail::GetActivationType(cell_activation);
+  auto cand_act = funcs::detail::GetActivationType(candidate_activation);
 
   auto batch_starts = batch_gate->lod()[0];
   size_t num_batch = batch_starts.size() - 1;
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   for (int n = static_cast<int>(num_batch) - 1; n >= 0; n--) {
     int bstart = static_cast<int>(batch_starts[n]);
     int bend = static_cast<int>(batch_starts[n + 1]);
@@ -361,15 +361,15 @@ void LSTMGradKernel(const Context& dev_ctx,
     lstm_grad.state_active_grad = nullptr;
     int cur_batch_size = bend - bstart;
     T cell_clip = 0.0;
-    phi::funcs::LstmUnitGradFunctor<Context, T>::compute(dev_ctx,
-                                                         lstm_value,
-                                                         lstm_grad,
-                                                         frame_size,
-                                                         cur_batch_size,
-                                                         cell_clip,
-                                                         gate_act,
-                                                         cell_act,
-                                                         cand_act);
+    funcs::LstmUnitGradFunctor<Context, T>::compute(dev_ctx,
+                                                    lstm_value,
+                                                    lstm_grad,
+                                                    frame_size,
+                                                    cur_batch_size,
+                                                    cell_clip,
+                                                    gate_act,
+                                                    cell_act,
+                                                    cand_act);
 
     if (n > 0) {
       int pre_h_start = static_cast<int>(batch_starts[n - 1]);
@@ -418,7 +418,7 @@ void LSTMGradKernel(const Context& dev_ctx,
     }
   }
 
-  phi::funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
+  funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
   if (in_g) {
     /* backward data */
     dev_ctx.template Alloc<T>(in_g);
@@ -429,7 +429,7 @@ void LSTMGradKernel(const Context& dev_ctx,
     phi::DenseTensor b_g = *bias_g;
     b_g.Resize({bias_g->numel(), 1});
     phi::DenseTensor gate_bias_g = b_g.Slice(0, 4 * frame_size);
-    phi::funcs::ColwiseSum<Context, T> col_sum;
+    funcs::ColwiseSum<Context, T> col_sum;
     col_sum(dev_ctx, batch_gate_g, &gate_bias_g);
   }
 

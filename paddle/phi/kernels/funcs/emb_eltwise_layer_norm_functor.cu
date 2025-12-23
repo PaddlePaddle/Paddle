@@ -44,14 +44,14 @@ __device__ __forceinline__ half local_rsqrt(half num) { return hrsqrt(num); }
 #endif
 
 template <typename T, int TPB>
-__device__ inline void LayerNorm(const phi::funcs::kvp<T>& thread_data,
+__device__ inline void LayerNorm(const funcs::kvp<T>& thread_data,
                                  const int ld,
                                  const int64_t offset,
                                  const T* bias,
                                  const T* scale,
                                  T* output,
                                  T eps) {
-  using BlockReduce = cub::BlockReduce<phi::funcs::kvp<T>, TPB>;
+  using BlockReduce = cub::BlockReduce<funcs::kvp<T>, TPB>;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   __shared__ T mu;      // mean
   __shared__ T rsigma;  // 1 / std.dev.
@@ -102,7 +102,7 @@ __global__ void EmbEltwiseLayernormKernel(int hidden,
 
   const int64_t out_offset = seq_pos * hidden;
 
-  phi::funcs::kvp<T> thread_data(0, 0);
+  funcs::kvp<T> thread_data(0, 0);
 
 #pragma unroll
   for (int it = threadIdx.x; it < hidden; it += TPB) {
@@ -114,7 +114,7 @@ __global__ void EmbEltwiseLayernormKernel(int hidden,
     output[out_offset + it] = val;
     const T rhiddenval = rhidden * val;
     thread_data =
-        pair_sum(thread_data, phi::funcs::kvp<T>(rhiddenval, rhiddenval * val));
+        pair_sum(thread_data, funcs::kvp<T>(rhiddenval, rhiddenval * val));
   }
   LayerNorm<T, TPB>(thread_data, hidden, out_offset, bias, scale, output, eps);
 }
@@ -151,7 +151,7 @@ __global__ void EmbEltwiseLayernormKernel<half, 256>(int hidden,
 
   const int64_t out_offset = seq_pos * hidden;
 
-  phi::funcs::kvp<half> thread_data(0, 0);
+  funcs::kvp<half> thread_data(0, 0);
 
 #pragma unroll
   for (int it = threadIdx.x; it < hidden; it += 256) {
@@ -162,8 +162,8 @@ __global__ void EmbEltwiseLayernormKernel<half, 256>(int hidden,
 
     output[out_offset + it] = val;
     const half rhiddenval = rhidden * val;
-    thread_data = pair_sum(thread_data,
-                           phi::funcs::kvp<half>(rhiddenval, rhiddenval * val));
+    thread_data =
+        pair_sum(thread_data, funcs::kvp<half>(rhiddenval, rhiddenval * val));
   }
   LayerNorm<half, 256>(
       thread_data, hidden, out_offset, bias, scale, output, eps);
