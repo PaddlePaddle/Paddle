@@ -48,8 +48,8 @@ void CSoftmaxWithEntropyKernel(const Context& dev_ctx,
   auto loss_dims = loss->dims();
 
   const int axis = logits->dims().size() - 1;
-  const int N = phi::funcs::SizeToAxis(axis, logits->dims());
-  const int D = phi::funcs::SizeFromAxis(axis, logits->dims());
+  const int N = funcs::SizeToAxis(axis, logits->dims());
+  const int D = funcs::SizeFromAxis(axis, logits->dims());
 
   auto logits_2d = std::make_shared<phi::DenseTensor>();
   auto labels_1d = std::make_shared<phi::DenseTensor>();
