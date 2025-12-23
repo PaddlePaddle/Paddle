@@ -356,7 +356,7 @@ if [ "${HAS_MODIFIED_DY2ST_TEST_TENSOR_ATTR_CONSISTENCY}" != "" ] && [ "${PR_ID}
     check_approval 1 SigureMo DrRyanHuang zrr1999 gouzil
 fi
 
-HAS_MODIFIED_PY_OR_CPP_FILES=$(git diff --name-only upstream/$BRANCH | grep -E "(python|paddle)/.*\.(cc|h|py)" || true)
+HAS_MODIFIED_PY_OR_CPP_FILES=$(git diff --name-only --diff-filter=ACMR upstream/$BRANCH | grep -E "(python|paddle)/.*\.(cc|h|py)" || true)
 if [ "${HAS_MODIFIED_PY_OR_CPP_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
     error_lines=`python ${PADDLE_ROOT}/tools/check_code_block_format.py ${HAS_MODIFIED_PY_OR_CPP_FILES}`
     if [ $? -ne 0 ]; then
