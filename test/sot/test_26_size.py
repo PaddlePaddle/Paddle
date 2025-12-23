@@ -155,7 +155,7 @@ def symbolic_shape(x: int):
     s = paddle.zeros(shape=[x, 2, 3])
     s[0] = 1
     res = s.unique(return_inverse=False)
-    return res.shape
+    return res.shape, res.shape.numel()
 
 
 class TestSizeBasic(TestCaseBase):
@@ -169,6 +169,7 @@ class TestSizeBasic(TestCaseBase):
 
     def test_numel(self):
         self.assert_results(size_numel, 3, 4)
+        self.assert_results(size_numel, 0, 4)
 
     def test_add(self):
         self.assert_results(size_add_list, 1)

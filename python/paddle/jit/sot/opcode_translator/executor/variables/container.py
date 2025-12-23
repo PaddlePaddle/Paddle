@@ -1154,7 +1154,7 @@ class SizeVariable(ListVariable):
         )
 
     def _reconstruct(self, codegen: PyCodeGen):
-        codegen.gen_load_global("paddle", push_null=True)
+        codegen.gen_load_global("paddle", push_null=False)
         codegen.gen_load_method("Size")
         super()._reconstruct(codegen)
         codegen.gen_call_method(1)
