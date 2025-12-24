@@ -49,12 +49,12 @@ template <typename T>
 void ComputeMergedQKVMatmulBackward(
     const GPUContext &dev_ctx,
     const funcs::GateAttentionGradConfig<T> &config,
-    const phi::DenseTensor *query,
-    const phi::DenseTensor *qkv_out_grad,
-    phi::DenseTensor *query_grad,
+    const DenseTensor *query,
+    const DenseTensor *qkv_out_grad,
+    DenseTensor *query_grad,
     bool use_addto,
-    const phi::DenseTensor &qkv_weight_in,
-    phi::DenseTensor *qkv_weight_grad) {
+    const DenseTensor &qkv_weight_in,
+    DenseTensor *qkv_weight_grad) {
   auto *qkv_weight = &qkv_weight_in;
   dev_ctx.Alloc<T>(qkv_weight_grad, qkv_weight_grad->numel() * sizeof(T));
 
@@ -75,22 +75,22 @@ void ComputeMergedQKVMatmulBackward(
 
 template <typename T>
 void ComputeSeparatedQKVMatmulBackward(
-    const phi::GPUContext &dev_ctx,
+    const GPUContext &dev_ctx,
     const funcs::GateAttentionGradConfig<T> &config,
-    const phi::DenseTensor *query,
-    const phi::DenseTensor *key,
-    const phi::DenseTensor *query_out_grad,
-    const phi::DenseTensor *key_out_grad,
-    const phi::DenseTensor *value_out_grad,
-    phi::DenseTensor *query_grad,
-    phi::DenseTensor *key_grad,
+    const DenseTensor *query,
+    const DenseTensor *key,
+    const DenseTensor *query_out_grad,
+    const DenseTensor *key_out_grad,
+    const DenseTensor *value_out_grad,
+    DenseTensor *query_grad,
+    DenseTensor *key_grad,
     bool use_addto,
-    const phi::DenseTensor &query_weight_in,
-    const phi::DenseTensor &key_weight_in,
-    const phi::DenseTensor &value_weight_in,
-    phi::DenseTensor *query_weight_grad,
-    phi::DenseTensor *key_weight_grad,
-    phi::DenseTensor *value_weight_grad) {
+    const DenseTensor &query_weight_in,
+    const DenseTensor &key_weight_in,
+    const DenseTensor &value_weight_in,
+    DenseTensor *query_weight_grad,
+    DenseTensor *key_weight_grad,
+    DenseTensor *value_weight_grad) {
   // Gradient of GEMM(key, k_weight)
   const auto *key_weight = &key_weight_in;
   dev_ctx.Alloc<T>(key_weight_grad, key_weight_grad->numel() * sizeof(T));
@@ -137,21 +137,21 @@ template <typename T>
 void ComputeGatingLinearBackward(
     const GPUContext &dev_ctx,
     const funcs::GateAttentionGradConfig<T> &config,
-    const phi::DenseTensor *query,
-    const phi::DenseTensor *fmha_out,
-    const phi::DenseTensor *gate_out_grad,
-    phi::DenseTensor *query_grad,
-    phi::DenseTensor *fmha_out_grad,
+    const DenseTensor *query,
+    const DenseTensor *fmha_out,
+    const DenseTensor *gate_out_grad,
+    DenseTensor *query_grad,
+    DenseTensor *fmha_out_grad,
     bool use_fused_matmul_bias,
-    const phi::DenseTensor &gate_weight_in,
-    const phi::DenseTensor &gate_bias_in,
-    phi::DenseTensor *gate_weight_grad,
-    phi::DenseTensor *gate_bias_grad) {
+    const DenseTensor &gate_weight_in,
+    const DenseTensor &gate_bias_in,
+    DenseTensor *gate_weight_grad,
+    DenseTensor *gate_bias_grad) {
   const auto *gate_weight = &gate_weight_in;
   const auto *gate_bias = &gate_bias_in;
 
   // Re-compute gate_bias_out
-  phi::DenseTensor gate_bias_out;
+  DenseTensor gate_bias_out;
   gate_bias_out.Resize(config.gate_out_dims);
   dev_ctx.Alloc<T>(&gate_bias_out, gate_bias_out.numel() * sizeof(T));
 
@@ -169,9 +169,9 @@ void ComputeGatingLinearBackward(
 
   // Gradient of sigmoid(gate_bias_out) * fmha_out
   // Compute inplace and save gate_bias_out_grad to gate_bias_out.
-  std::vector<const phi::DenseTensor *> ins = {
+  std::vector<const DenseTensor *> ins = {
       gate_out_grad, &gate_bias_out, fmha_out};
-  std::vector<phi::DenseTensor *> outs = {&gate_bias_out, fmha_out_grad};
+  std::vector<DenseTensor *> outs = {&gate_bias_out, fmha_out_grad};
   funcs::ElementwiseKernel<T, SigmoidMultiplyGradFunctor<T>, 2>(
       dev_ctx, ins, &outs, SigmoidMultiplyGradFunctor<T>());
 
@@ -193,13 +193,13 @@ template <typename T>
 void ComputeOutputLinearBackward(
     const GPUContext &dev_ctx,
     const funcs::GateAttentionGradConfig<T> &config,
-    const phi::DenseTensor *input,
-    phi::DenseTensor *input_grad,
+    const DenseTensor *input,
+    DenseTensor *input_grad,
     bool use_fused_matmul_bias,
-    const phi::DenseTensor &out_grad_in,
-    const phi::DenseTensor &out_linear_weight_in,
-    phi::DenseTensor *out_linear_weight_grad,
-    phi::DenseTensor *out_linear_bias_grad) {
+    const DenseTensor &out_grad_in,
+    const DenseTensor &out_linear_weight_in,
+    DenseTensor *out_linear_weight_grad,
+    DenseTensor *out_linear_bias_grad) {
   const auto *out_grad = &out_grad_in;
   const auto *out_linear_weight = &out_linear_weight_in;
 
@@ -287,12 +287,12 @@ void FusedGateAttentionGradKernel(
                                            has_gating,
                                            use_flash_attn);
 
-  phi::DenseTensor fmha_out_grad;
+  DenseTensor fmha_out_grad;
   fmha_out_grad.Resize(config.gate_out_dims);
   funcs::AllocWithDebugInfo<T>(dev_ctx, "fmha_out_grad", &fmha_out_grad);
   if (has_gating) {
     // 1. Gradient of Output Linear: out = Linear(gate_out)
-    phi::DenseTensor gate_out_grad;
+    DenseTensor gate_out_grad;
     gate_out_grad.Resize(config.gate_out_dims);
     funcs::AllocWithDebugInfo<T>(dev_ctx, "gate_out_grad", &gate_out_grad);
     ComputeOutputLinearBackward<T>(dev_ctx,
@@ -371,7 +371,7 @@ void FusedGateAttentionGradKernel(
   bool use_addto = has_gating ? true : false;
   if (merge_qkv) {
     // 4. Gradient of Merged QKV Matmul
-    phi::DenseTensor *qkv_out_grad = config.GetQKVOutGrad();
+    DenseTensor *qkv_out_grad = config.GetQKVOutGrad();
     ComputeMergedQKVMatmulBackward<T>(dev_ctx,
                                       config,
                                       query,
@@ -385,9 +385,9 @@ void FusedGateAttentionGradKernel(
     if (key_grad) {
       funcs::AllocWithDebugInfo<T>(dev_ctx, "key_grad", key_grad);
     }
-    phi::DenseTensor *query_out_grad = config.GetQueryOutGrad();
-    phi::DenseTensor *key_out_grad = config.GetKeyOutGrad();
-    phi::DenseTensor *value_out_grad = config.GetValueOutGrad();
+    DenseTensor *query_out_grad = config.GetQueryOutGrad();
+    DenseTensor *key_out_grad = config.GetKeyOutGrad();
+    DenseTensor *value_out_grad = config.GetValueOutGrad();
     ComputeSeparatedQKVMatmulBackward<T>(dev_ctx,
                                          config,
                                          query,

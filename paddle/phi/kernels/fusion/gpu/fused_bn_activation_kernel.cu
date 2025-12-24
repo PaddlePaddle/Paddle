@@ -137,7 +137,7 @@ void FusedBatchNormActKernel(const Context &dev_ctx,
   size_t reserve_space_size = 0;
   void *reserve_space_ptr = nullptr;
   void *workspace_ptr = nullptr;
-  phi::DenseTensor workspace_tensor;
+  DenseTensor workspace_tensor;
 
   PADDLE_ENFORCE_NOT_NULL(
       reserve_space,

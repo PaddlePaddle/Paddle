@@ -122,7 +122,7 @@ SM = args.cuda_arch
 
 KERNEL_IMPL_TEMPLATE = """
 
-void  {NAME}({CPP_CLASS} default_fmha, Params &params, const phi::GPUContext& ctx) {{
+void  {NAME}({CPP_CLASS} default_fmha, Params &params, const GPUContext& ctx) {{
   using AttentionKernel = typename decltype(default_fmha)::FMHAKernel;
   using FMHA = cutlass::gemm::device::GemmGrouped<AttentionKernel>;
   using scalar_t = typename FMHA::GemmKernel::scalar_t;
@@ -220,7 +220,7 @@ void  {NAME}({CPP_CLASS} default_fmha, Params &params, const phi::GPUContext& ct
   FMHA fmha;
   cutlass::Status status;
   size_t workspace_size = fmha.get_workspace_size(args);
-  phi::DenseTensor workspace;
+  DenseTensor workspace;
   workspace.Resize(common::make_ddim({{static_cast<int64_t>(workspace_size)}}));
   ctx.template Alloc<uint8_t>(&workspace);
   status = fmha.initialize(args, workspace.data<uint8_t>());
@@ -395,7 +395,7 @@ def write_decl_impl(
 
     declarations += f"""
 template <typename PaddleT, typename T>
-void dispatch_{family_name}(const ::phi::GPUContext &ctx, T cb) {{
+void dispatch_{family_name}(const ::GPUContext &ctx, T cb) {{
     auto cc = ctx.GetComputeCapability();
     PADDLE_ENFORCE_GE(
         cc,

@@ -295,7 +295,7 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
   int batch = input_dims[0];
   int seq_len = input_dims[1];
   int hidden = input_dims[2];
-  phi::DenseTensor temp_bias_tensor;
+  DenseTensor temp_bias_tensor;
   // if bias_qk is[batch, 1, 1, seq_len], the bias_qk_d need to be broadcasted
   if (bias_qk && bias_qk->numel() == (batch * seq_len)) {
     VLOG(4) << "Do broadcasted bias_qk from [batch, 1, 1, seq_len]";
@@ -340,13 +340,12 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
   auto *output_d = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
   // (B*S, hidden)
-  const phi::DenseTensor input_matrix =
+  const DenseTensor input_matrix =
       phi::ReshapeToMatrix(input, 2 /*x_num_col_dims */);
   // (hidden, 3 * all_head_size)
-  const phi::DenseTensor w_matrix =
-      phi::ReshapeToMatrix(w, 1 /*y_num_col_dims*/);
+  const DenseTensor w_matrix = phi::ReshapeToMatrix(w, 1 /*y_num_col_dims*/);
 
-  phi::DenseTensor temp_out_tensor;
+  DenseTensor temp_out_tensor;
   auto temp_out_dims =
       common::make_ddim({batch, seq_len, 3, head_number, head_size});
   temp_out_tensor.Resize(
@@ -355,12 +354,12 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
       &temp_out_tensor, temp_out_tensor.numel() * sizeof(T));
 
   // (B * S, hidden) * (hidden, 3 * N * H) -> (B * S * 3 * N * H)
-  auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<GPUContext, T>(dev_ctx);
   blas.MatMul(input_matrix, w_matrix, &temp_out_tensor);
   VLOG(2) << "(B * S, hidden) * (hidden, 3 * N * H) -> (B * S * 3 * N * H)";
   // temp_out_tensor.Resize(temp_out_dims);
 
-  phi::DenseTensor multihead_temp_tensor;
+  DenseTensor multihead_temp_tensor;
   // B * head_number * S * S * 1 + B * S * 3 * N * H
   int scratch_size = batch * head_number * seq_len * seq_len * 1;
   multihead_temp_tensor.Resize({scratch_size + temp_out_tensor.numel()});

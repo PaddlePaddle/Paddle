@@ -23,10 +23,9 @@ namespace fusion {
 #if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060) || \
     defined(PADDLE_WITH_HIP)
 template <typename T>
-funcs::MatmulFusedType GetFwdFusedEpilogueType(
-    const phi::GPUContext& dev_ctx,
-    const std::string& activation,
-    phi::DenseTensor* reserve_space) {
+funcs::MatmulFusedType GetFwdFusedEpilogueType(const GPUContext& dev_ctx,
+                                               const std::string& activation,
+                                               DenseTensor* reserve_space) {
   using FusedType = funcs::MatmulFusedType;
 
   FusedType fused_type = FusedType::kMatmulBias;

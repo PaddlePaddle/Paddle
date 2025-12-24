@@ -106,7 +106,7 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
       PADDLE_THROW(
           common::errors::Unimplemented("Unsupported activation type"));
     }
-    funcs::SetConstant<phi::GPUContext, BatchNormParamType> functor;
+    funcs::SetConstant<GPUContext, BatchNormParamType> functor;
     functor(dev_ctx, d_scale, static_cast<BatchNormParamType>(0));
     functor(dev_ctx, d_bias, static_cast<BatchNormParamType>(0));
     return;
@@ -145,7 +145,7 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
 
   size_t workspace_size = 0;
   void *workspace_ptr = nullptr;
-  phi::DenseTensor workspace_tensor;
+  DenseTensor workspace_tensor;
   auto reserve_space_size = reserve_space.memory_size();
   cudnnBatchNormOps_t bnOps_ = CUDNN_BATCHNORM_OPS_BN_ACTIVATION;
   phi::backends::gpu::ScopedActivationDescriptor scope_act_desc;
