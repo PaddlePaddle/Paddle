@@ -327,7 +327,7 @@ void LaunchDepthwiseConv2dBackwardCompatible(const Context& dev_ctx,
                   sizeof(typename phi::dtype::MPTypeTrait<T>::Type);
 
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-    DWConv2dBwdWeightKernel<T, int>
+    DWConv2dBwdWeightKernel<T, int64_t>
         <<<grid, block, smem, stream>>>(out_grad_nchw.data<T>(),
                                         input_nchw.data<T>(),
                                         filter_grad_nchw_ptr->data<T>(),
@@ -362,7 +362,7 @@ void LaunchDepthwiseConv2dBackwardCompatible(const Context& dev_ctx,
     const T* weight_ptr = filter_nchw.data<T>();
 
 #define LAUNCH_INPUT_KERNEL(K, S)                                         \
-  DWConv2dBwdInputKernel<K, S, T, int>                                    \
+  DWConv2dBwdInputKernel<K, S, T, int64_t>                                \
       <<<grid, block, 0, stream>>>(grad_output_ptr,                       \
                                    grad_input_ptr,                        \
                                    weight_ptr,                            \

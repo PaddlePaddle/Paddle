@@ -33,9 +33,6 @@ class TestDepthwiseConvBiasUnified(unittest.TestCase):
         paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
         self.place = paddle.CUDAPlace(0)
 
-        np.random.seed(2025)
-        paddle.seed(2025)
-
     def tearDown(self):
         paddle.set_flags(self.old_flag)
 
@@ -72,11 +69,14 @@ class TestDepthwiseConvBiasUnified(unittest.TestCase):
         else:
             raise ValueError(f"Unsupported dim: {dim}")
 
-        np_x = np.random.uniform(-0.5, 0.5, input_shape).astype('float32')
-        np_w = np.random.uniform(-0.5, 0.5, weight_shape).astype('float32')
+        elem_x = np.prod(input_shape)
+        np_x = np.sin(np.arange(elem_x)).reshape(input_shape).astype('float32')
+
+        elem_w = np.prod(weight_shape)
+        np_w = np.cos(np.arange(elem_w)).reshape(weight_shape).astype('float32')
         np_b = None
         if with_bias:
-            np_b = np.random.uniform(-0.5, 0.5, [C]).astype('float32')
+            np_b = np.sin(np.arange(C)).astype('float32')
 
         return np_x, np_w, np_b, groups
 
@@ -259,7 +259,6 @@ class TestDepthwiseConvBiasSymbolicShape(unittest.TestCase):
                 del os.environ[self.env_key]
 
     def _run_symbolic_shape_check(self, dim, with_bias):
-        paddle.seed(2025)
         groups = 4
         C = groups
 
@@ -317,16 +316,21 @@ class TestDepthwiseConvBiasSymbolicShape(unittest.TestCase):
 
         batch_size = 2
         spatial_size = 16 if dim == 2 else 8
-        if dim == 2:
-            np_x = np.random.randn(
-                batch_size, C, spatial_size, spatial_size
-            ).astype('float32')
-        else:
-            np_x = np.random.randn(
-                batch_size, C, spatial_size, spatial_size, spatial_size
-            ).astype('float32')
+        elem_x = (
+            batch_size * C * spatial_size * spatial_size
+            if dim == 2
+            else batch_size * C * spatial_size * spatial_size * spatial_size
+        )
+        x_shape = (
+            (batch_size, C, spatial_size, spatial_size)
+            if dim == 2
+            else (batch_size, C, spatial_size, spatial_size, spatial_size)
+        )
 
-        np_w = np.random.randn(*w_spec.shape).astype('float32')
+        np_x = np.sin(np.arange(elem_x)).reshape(x_shape).astype('float32')
+
+        elem_w = np.prod(w_spec.shape)
+        np_w = np.cos(np.arange(elem_w)).reshape(w_spec.shape).astype('float32')
 
         x_tensor = paddle.to_tensor(np_x, stop_gradient=False)
         w_tensor = paddle.to_tensor(np_w, stop_gradient=False)

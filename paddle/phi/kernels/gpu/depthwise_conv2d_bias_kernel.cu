@@ -252,7 +252,7 @@ void LaunchDepthwiseConv2dCompatible(const Context& dev_ctx,
   }
   if (kW == 3 && kH == 3) {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-    DWConv2dFwdKernel<3, T, int>
+    DWConv2dFwdKernel<3, T, int64_t>
         <<<grid, block, 0, stream>>>(input_ptr,
                                      output_ptr,
                                      weight_ptr,
@@ -276,7 +276,7 @@ void LaunchDepthwiseConv2dCompatible(const Context& dev_ctx,
     PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
   } else if (kW == 1 && kH == 1) {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-    DWConv2dFwdKernel<1, T, int>
+    DWConv2dFwdKernel<1, T, int64_t>
         <<<grid, block, 0, stream>>>(input_ptr,
                                      output_ptr,
                                      weight_ptr,
@@ -300,7 +300,7 @@ void LaunchDepthwiseConv2dCompatible(const Context& dev_ctx,
     PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
   } else if (kW == 5 && kH == 5) {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-    DWConv2dFwdKernel<5, T, int>
+    DWConv2dFwdKernel<5, T, int64_t>
         <<<grid, block, 0, stream>>>(input_ptr,
                                      output_ptr,
                                      weight_ptr,
@@ -324,7 +324,7 @@ void LaunchDepthwiseConv2dCompatible(const Context& dev_ctx,
     PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
   } else {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-    DWConv2dFwdKernelGeneric<T, int>
+    DWConv2dFwdKernelGeneric<T, int64_t>
         <<<grid, block, 0, stream>>>(input_ptr,
                                      output_ptr,
                                      weight_ptr,
