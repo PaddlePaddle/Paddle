@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_elementwise_get_grad_kernel.h"
-#include <iostream>
 
 #include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
