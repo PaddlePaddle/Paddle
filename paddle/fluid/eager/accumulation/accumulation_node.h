@@ -74,8 +74,16 @@ class TEST_API GradNodeAccumulation : public GradNodeBase {
 
   std::shared_ptr<GradNodeBase> Copy() const override {
     // For accumulation node, don't need to real Copy
-    return std::shared_ptr<GradNodeAccumulation>(
+    auto node = std::shared_ptr<GradNodeAccumulation>(
         new GradNodeAccumulation(paddle::Tensor()));
+    auto src = InputMeta();
+    auto dst = node->MutableInputMeta();
+    dst.clear();
+    dst.reserve(src.size());
+    for (const auto& inner_vec : src) {
+      dst.emplace_back(inner_vec);
+    }
+    return node;
   }
 
   void SetFakeEmpty(bool is_fake_empty) { is_fake_empty_ = is_fake_empty; }
