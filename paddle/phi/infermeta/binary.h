@@ -365,12 +365,6 @@ PADDLE_API void FastRMSNormInfermeta(const MetaTensor& x,
                                      MetaTensor* y,
                                      MetaTensor* invvar);
 
-PADDLE_API void RmsNormInferMeta(const MetaTensor& x,
-                                 const MetaTensor& scale,
-                                 float epsilon,
-                                 MetaTensor* y,
-                                 MetaTensor* invvar);
-
 PADDLE_API void FakeDequantizeMaxAbsInferMeta(const MetaTensor& x,
                                               const MetaTensor& scale,
                                               float max_range,
@@ -752,6 +746,12 @@ PADDLE_API void ShuffleBatchInferMeta(const MetaTensor& x,
 PADDLE_API void ReduceAsInferMeta(const MetaTensor& x,
                                   const MetaTensor& target,
                                   MetaTensor* out);
+
+PADDLE_API void RmsNormInferMeta(const MetaTensor& x,
+                                 const MetaTensor& scale,
+                                 float epsilon,
+                                 MetaTensor* y,
+                                 MetaTensor* invvar);
 
 PADDLE_API void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
                                          const MetaTensor& mask,

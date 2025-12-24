@@ -6093,3 +6093,4 @@
     func: rms_norm
     data_type: x
   backward: rms_norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
