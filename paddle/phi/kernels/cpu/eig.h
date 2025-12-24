@@ -246,7 +246,6 @@ void MagmaEig(const Context& dev_ctx,
       common::errors::PreconditionNotMet(
           "the numel of input should be in [0, "
           "std::numeric_limits<int32_t>::max()]"));
-
   // magma will modify original input, so copy to cpu at any case
   DenseTensor input_copy_cpu;
   input_copy_cpu.Resize(input.dims());
