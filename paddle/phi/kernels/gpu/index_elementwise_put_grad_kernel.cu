@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_elementwise_put_grad_kernel.h"
+#include <iostream>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -94,7 +95,7 @@ void GPUIndexElementwisePutGradKernel(
     if (index.size() == 1 && index[0]->dtype() == phi::DataType::BOOL) {
       const bool* mask_data = index[0]->data<bool>();
       funcs::index_elementwise_with_tensor_kernel<nt, vt>
-          <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
+          <<<grid, block, 0, stream>>>(N, [=] __device__(int64_t idx) {
             const auto offsets = offset_calc.get(idx);
             char* const out_data = out_ptr + offsets[0] + slice_offset;
             if (mask_data[idx]) {
@@ -104,7 +105,7 @@ void GPUIndexElementwisePutGradKernel(
     } else {
       auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
       funcs::index_elementwise_with_tensor_kernel<nt, vt>
-          <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
+          <<<grid, block, 0, stream>>>(N, [=] __device__(int64_t idx) {
             const auto offsets = offset_calc.get(idx);
             char* const out_data = out_ptr + offsets[0] + slice_offset;
 
@@ -133,7 +134,7 @@ void GPUIndexElementwisePutGradKernel(
                           "the numel of input or output should be in [0, "
                           "std::numeric_limits<int32_t>::max()]"));
     funcs::index_elementwise_with_tensor_kernel<nt, vt>
-        <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
+        <<<grid, block, 0, stream>>>(N, [=] __device__(int64_t idx) {
           const auto offsets = offset_calc.get(idx);
           const char* const out_data = out_ptr + offsets[0] + slice_offset;
           char* const value_data = value_ptr + offsets[1];
@@ -161,7 +162,7 @@ void GPUIndexElementwisePutGradKernel(
                           "std::numeric_limits<int32_t>::max()]"));
     char* value_ptr = reinterpret_cast<char*>(value_grad->data<T>());
     funcs::index_elementwise_with_tensor_kernel<nt, vt>
-        <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
+        <<<grid, block, 0, stream>>>(N, [=] __device__(int64_t idx) {
           const auto offsets = offset_calc.get(idx);
           char* const out_data = out_ptr + offsets[0] + slice_offset;
           char* const value_data = value_ptr + offsets[1];
@@ -303,7 +304,8 @@ void LaunchIndexElementwisePutGradCudaKernel(
     DenseTensor* x_grad) {
   if (x_grad) {
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
-    if (funcs::IsInUint32Range(x_grad->numel())) {
+    if (funcs::IsInUint32Range(x_grad->numel() * sizeof(T),
+                               out_grad.numel() * sizeof(T))) {
       GPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
                                                    out_grad,
                                                    indices,
@@ -407,7 +409,8 @@ void IndexElementwisePutWithTensorGradKernel(
     }
     return;
   }
-  if (x_grad && funcs::IsInUint32Range(x_grad->numel())) {
+  if (funcs::IsInUint32Range(x_grad->numel() * sizeof(T),
+                             out_grad.numel() * sizeof(T))) {
     LaunchIndexElementwisePutWithTensorGradCudaKernel<T, Context>(dev_ctx,
                                                                   indices,
                                                                   out_grad,
