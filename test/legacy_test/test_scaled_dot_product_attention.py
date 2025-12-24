@@ -901,6 +901,10 @@ class TestFlashAttnMaskLogic(unittest.TestCase):
         self._run_test_with_mask_shape(mask_shape)
 
 
+@unittest.skipIf(
+    paddle.device.is_compiled_with_xpu(),
+    "SDPA on XPU force select FA backend, skip math broadcast test.",
+)
 class TestMathAttnMaskBroadcasting(unittest.TestCase):
     """
     Test case specifically for validating mask broadcasting logic in math_attention.
