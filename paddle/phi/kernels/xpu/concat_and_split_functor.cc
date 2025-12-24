@@ -28,9 +28,9 @@ template <typename T>
 class ConcatFunctor<XPUContext, T> {
  public:
   void operator()(const XPUContext& dev_ctx,
-                  const std::vector<phi::DenseTensor>& input,
+                  const std::vector<DenseTensor>& input,
                   int axis,
-                  phi::DenseTensor* output) {
+                  DenseTensor* output) {
     using XPUType = typename XPUTypeTrait<T>::Type;
     int dev_id = dev_ctx.GetPlace().GetDeviceId();
     XPUDeviceGuard guard(dev_id);
@@ -51,7 +51,7 @@ class ConcatFunctor<XPUContext, T> {
     for (int i = 0; i < num; ++i) {
       if (input[i].place() != dev_ctx.GetPlace()) {
         // data not on xpu, probably on cpu. move it now
-        phi::DenseTensor tmp_data = input[i];
+        DenseTensor tmp_data = input[i];
         dev_ctx.template Alloc<T>(&tmp_data);
         ptrs.push_back(reinterpret_cast<const XPUType*>(tmp_data.data<T>()));
       } else {
@@ -73,10 +73,10 @@ template <typename T>
 class SplitFunctor<XPUContext, T> {
  public:
   void operator()(const XPUContext& dev_ctx,
-                  const phi::DenseTensor& input,
-                  const std::vector<const phi::DenseTensor*>& ref_inputs,
+                  const DenseTensor& input,
+                  const std::vector<const DenseTensor*>& ref_inputs,
                   const int axis,
-                  std::vector<phi::DenseTensor*>* outputs) {
+                  std::vector<DenseTensor*>* outputs) {
     using XPUType = typename XPUTypeTrait<T>::Type;
     int dev_id = dev_ctx.GetPlace().GetDeviceId();
     XPUDeviceGuard guard(dev_id);
@@ -113,7 +113,7 @@ class SplitFunctor<XPUContext, T> {
       dev_ctx.template Alloc<T>(outputs->at(i));
       ptrs[i] = reinterpret_cast<XPUType*>(outputs->at(i)->data<T>());
     }
-    phi::DenseTensor tmp_data = input;
+    DenseTensor tmp_data = input;
     if (input.place() != dev_ctx.GetPlace()) {
       // data not on xpu, probably on cpu. move it now
       dev_ctx.template Alloc<T>(&tmp_data);

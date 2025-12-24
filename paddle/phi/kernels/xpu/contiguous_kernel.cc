@@ -25,7 +25,7 @@ template <typename T, typename Context>
 void ContiguousKernel(const Context& dev_ctx,
                       const DenseTensor& input,
                       DenseTensor* out) {
-  phi::DenseTensorMeta meta = input.meta();
+  DenseTensorMeta meta = input.meta();
   meta.strides = meta.calc_strides(meta.dims);
   meta.offset = 0;
   out->set_meta(meta);
@@ -63,7 +63,7 @@ void ContiguousKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
                                                   DenseTensor* out) {
   using T = phi::complex64;
 
-  phi::DenseTensorMeta meta = input.meta();
+  DenseTensorMeta meta = input.meta();
   meta.strides = meta.calc_strides(meta.dims);
   meta.offset = 0;
   out->set_meta(meta);
