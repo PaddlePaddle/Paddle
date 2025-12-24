@@ -172,61 +172,68 @@ __global__ void IndexingBackwardKernel(const int64_t* sorted_indices,
   using opmath_t = typename phi::dtype::MPTypeTrait<scalar_t>::Type;
 
   for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
-    int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.y + threadIdx.y;
-    if (idx < numel &&
-        (idx == 0 || sorted_indices[idx] != sorted_indices[idx - 1])) {
-      do {
-        int64_t start_feature =
-            threadIdx.x + static_cast<int64_t>(blockIdx.y) * blockDim.x * SZ;
-        if (!accumulate && (idx < numel - 1) &&
-            sorted_indices[idx] == sorted_indices[idx + 1]) {
-          idx++;
-          continue;
-        }
+    for (int64_t idx =
+             static_cast<int64_t>(blockIdx.x) * blockDim.y + threadIdx.y;
+         idx < numel;
+         idx += static_cast<int64_t>(gridDim.x) * blockDim.y) {
+      if (idx < numel &&
+          (idx == 0 || sorted_indices[idx] != sorted_indices[idx - 1])) {
+        int64_t curr_idx = idx;
+        do {
+          int64_t start_feature =
+              threadIdx.x + static_cast<int64_t>(blockIdx.y) * blockDim.x * SZ;
+          if (!accumulate && (curr_idx < numel - 1) &&
+              sorted_indices[curr_idx] == sorted_indices[curr_idx + 1]) {
+            curr_idx++;
+            continue;
+          }
 
-        const int64_t weight_row =
-            sorted_indices[idx] * stride + z * stride_before;
-        const int64_t grad_row = indices[idx] * stride + z * numel * stride;
-        const opmath_t scale = static_cast<opmath_t>(1.0);
+          const int64_t weight_row =
+              sorted_indices[curr_idx] * stride + z * stride_before;
+          const int64_t grad_row =
+              indices[curr_idx] * stride + z * numel * stride;
+          const opmath_t scale = static_cast<opmath_t>(1.0);
 
-        opmath_t gradient[SZ];
-        opmath_t weight[SZ];
+          opmath_t gradient[SZ];
+          opmath_t weight[SZ];
 
-        while (start_feature < stride) {
+          while (start_feature < stride) {
 #pragma unroll
-          for (int ii = 0; ii < SZ; ii++) {
-            int64_t feature_dim = start_feature + ii * WARP_SIZE;
-            if (feature_dim < stride) {
-              gradient[ii] =
-                  static_cast<opmath_t>(grad_output[grad_row + feature_dim]);
-              if (accumulate) {
-                weight[ii] = static_cast<opmath_t>(
-                    grad_weight[weight_row + feature_dim]);
+            for (int ii = 0; ii < SZ; ii++) {
+              int64_t feature_dim = start_feature + ii * WARP_SIZE;
+              if (feature_dim < stride) {
+                gradient[ii] =
+                    static_cast<opmath_t>(grad_output[grad_row + feature_dim]);
+                if (accumulate) {
+                  weight[ii] = static_cast<opmath_t>(
+                      grad_weight[weight_row + feature_dim]);
+                }
               }
             }
-          }
 
 #pragma unroll
-          for (int ii = 0; ii < SZ; ii++) {
-            if (accumulate) {
-              weight[ii] += gradient[ii] * scale;
-            } else {
-              weight[ii] = gradient[ii] * scale;
+            for (int ii = 0; ii < SZ; ii++) {
+              if (accumulate) {
+                weight[ii] += gradient[ii] * scale;
+              } else {
+                weight[ii] = gradient[ii] * scale;
+              }
             }
-          }
 
 #pragma unroll
-          for (int ii = 0; ii < SZ; ii++) {
-            int64_t feature_dim = start_feature + ii * WARP_SIZE;
-            if (feature_dim < stride) {
-              grad_weight[weight_row + feature_dim] =
-                  static_cast<scalar_t>(weight[ii]);
+            for (int ii = 0; ii < SZ; ii++) {
+              int64_t feature_dim = start_feature + ii * WARP_SIZE;
+              if (feature_dim < stride) {
+                grad_weight[weight_row + feature_dim] =
+                    static_cast<scalar_t>(weight[ii]);
+              }
             }
+            start_feature += static_cast<int64_t>(gridDim.y) * blockDim.x * SZ;
           }
-          start_feature += static_cast<int64_t>(gridDim.y) * blockDim.x * SZ;
-        }
-        idx++;
-      } while (idx < numel && sorted_indices[idx] == sorted_indices[idx - 1]);
+          curr_idx++;
+        } while (curr_idx < numel &&
+                 sorted_indices[curr_idx] == sorted_indices[curr_idx - 1]);
+      }
     }
   }
 }
@@ -304,8 +311,6 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
     dev_ctx.Alloc<IndexT>(&orig_indices);
 
     auto stream = dev_ctx.stream();
-    constexpr int blockSize = 256;
-    int gridSize = (num_indices + blockSize - 1) / blockSize;
 
     auto shape = phi::IntArray(common::vectorize<int64_t>(linearIndex.dims()));
     auto divisor = phi::Full<IndexT, phi::GPUContext>(
@@ -339,12 +344,13 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
     auto max_grid_size = phi::backends::gpu::GetGpuMaxGridDimSize(
         dev_ctx.GetPlace().GetDeviceId());
 
-    dim3 grid((num_indices + INDICES_PER_BLOCK - 1) / INDICES_PER_BLOCK,
-              std::min<int>(
-                  max_grid_size[1],
-                  (sliceSize + WARP_SIZE * UNROLL - 1) / (WARP_SIZE * UNROLL)),
-              std::min<int>(std::max<int>(1, static_cast<int>(nElemBefore)),
-                            max_grid_size[2]));
+    dim3 grid(
+        std::min(static_cast<int64_t>(max_grid_size[0]),
+                 (num_indices + INDICES_PER_BLOCK - 1) / INDICES_PER_BLOCK),
+        std::min(static_cast<int64_t>(max_grid_size[1]),
+                 (sliceSize + WARP_SIZE * UNROLL - 1) / (WARP_SIZE * UNROLL)),
+        std::min(std::max(1l, static_cast<int64_t>(nElemBefore)),
+                 static_cast<int64_t>(max_grid_size[2])));
     dim3 block(WARP_SIZE, INDICES_PER_BLOCK);
 
     IndexingBackwardKernel<T, UNROLL>
