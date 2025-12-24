@@ -2596,9 +2596,9 @@ Scope* OperatorWithKernel::PrepareData(
           out->Resize(tensor_in->dims());
           phi::funcs::MatchShapeToLayout(
               out, tensor_in->layout(), DataLayout::NHWC);
-          VLOG(7) << "Created reshaped dummy input based on oneDNN "
+          VLOG(7) << "Created reshaped dummy input based on ONEDNN "
                      "phi::DenseTensor , "
-                     "but kNHWC layout"
+                     "but NHWC layout"
                   << in_name << " in Operator " << type_;
         } else {
           VLOG(7) << "Skip scanning input " << in_name << " in Operator "
