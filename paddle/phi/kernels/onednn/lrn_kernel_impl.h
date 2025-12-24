@@ -30,7 +30,7 @@ class LRNOneDNNHandler
                    bool is_test,
                    const dnnl::engine onednn_engine,
                    phi::Place cpu_place,
-                   const phi::DenseTensor* input)
+                   const DenseTensor* input)
 
       : funcs::
             OneDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward>(
@@ -64,9 +64,9 @@ class LRNOneDNNHandler
                    bool is_test,
                    const dnnl::engine onednn_engine,
                    phi::Place cpu_place,
-                   const phi::DenseTensor* in_x,
-                   const phi::DenseTensor* out_grad,
-                   phi::DenseTensor* in_x_grad)
+                   const DenseTensor* in_x,
+                   const DenseTensor* out_grad,
+                   DenseTensor* in_x_grad)
       : funcs::
             OneDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward>(
                 onednn_engine, cpu_place) {
@@ -101,8 +101,8 @@ class LRNOneDNNHandler
         k);
   }
 
-  std::shared_ptr<dnnl::memory> AcquireWorkspaceMemory(
-      phi::DenseTensor* workspace, const Context& dev_ctx) {
+  std::shared_ptr<dnnl::memory> AcquireWorkspaceMemory(DenseTensor* workspace,
+                                                       const Context& dev_ctx) {
     T* ptr = dev_ctx.template HostAlloc<T>(
         workspace, this->fwd_pd_->workspace_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->workspace_desc(),
@@ -110,7 +110,7 @@ class LRNOneDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireBackwardWorkspaceMemory(
-      const phi::DenseTensor* workspace) {
+      const DenseTensor* workspace) {
     const T* workspace_data = workspace->data<T>();
     return this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->workspace_desc(),
