@@ -775,13 +775,6 @@ class DygraphShardingOptimizerV2:
         free_grads_in_comm = sharding_config.free_grads_in_comm
         self.offload_opt_buffer_size = sharding_config.offload_opt_buffer_size
 
-        self._enable_timer = strategy.hybrid_configs["enable_optimizer_timer"]
-
-        if self._enable_timer:
-            if not timer.is_timer_initialized():
-                timer.set_timers()
-            self.timers = timer.get_timers()
-
         # Setting pipeline parallelism overlap
         self.pp_overlap = pp_config.sharding_comm_overlap
         self.sd_release_grads = (
@@ -792,9 +785,6 @@ class DygraphShardingOptimizerV2:
         self.use_reduce_avg = sharding_config.use_reduce_avg
         if self.use_reduce_avg and (not is_avg_reduce_op_supported()):
             self.use_reduce_avg = False
-            warnings.warn(
-                "nccl reduce_avg requires paddle compiled with cuda and nccl>=2.10.0, please check compilation setups."
-            )
 
         self.enable_fuse_optimizer_states = (
             sharding_config.enable_fuse_optimizer_states
@@ -815,20 +805,6 @@ class DygraphShardingOptimizerV2:
         self._set_inner_opt_attr('_parameter_list', self._local_parameter_list)
         self._set_inner_opt_attr('_param_groups', self._local_parameter_list)
 
-        if (
-            paddle.is_compiled_with_xpu()
-            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
-        ):
-            assert not self.comm_overlap, (
-                "comm overlap not support when use xpu cdnn_cluster parallel."
-            )
-
-        # Ensure acc_steps is greater than 0 when comm_overlap is used
-        if self.comm_overlap:
-            assert acc_steps > 0, (
-                "acc_steps should be larger than 0 when using comm_overlap in sharding"
-            )
-
         # Ensure pp_overlap and comm_overlap are not both True
         assert not (self.pp_overlap and self.comm_overlap), (
             "pp_overlap and comm_overlap should not be True at the same time"
@@ -836,12 +812,6 @@ class DygraphShardingOptimizerV2:
 
         # Determine the use of pipeline parallelism
         self._use_pipeline_parallel = strategy.hybrid_configs["pp_degree"] > 1
-
-        # Ensure pipeline parallel and comm_overlap are not used together
-        if self._use_pipeline_parallel:
-            assert not self.comm_overlap, (
-                "You should not use pipeline parallel and comm_overlap at the same time"
-            )
 
         # Register reduce overlap hook if comm_overlap is used without pp_overlap
         if not self.pp_overlap and self.comm_overlap:
