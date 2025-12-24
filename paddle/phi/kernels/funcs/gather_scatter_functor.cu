@@ -557,7 +557,7 @@ struct gpu_gather_scatter_functor {
     if (method_name == "assign") {
       aux_tensor.Resize({self_size});
       dev_ctx.Alloc<int>(&aux_tensor);
-      phi::funcs::set_constant(dev_ctx, &aux_tensor, 0);
+      funcs::set_constant(dev_ctx, &aux_tensor, 0);
 
       int* winners = aux_tensor.data<int>();
       // Stage 1: Get the last index to be assigned the same dst.
@@ -590,7 +590,7 @@ struct gpu_gather_scatter_functor {
     if (method_name == "mean") {
       atomic_cnt_tensor.Resize({self_size});
       dev_ctx.Alloc<int>(&atomic_cnt_tensor);
-      phi::funcs::set_constant(dev_ctx, &atomic_cnt_tensor, 1);
+      funcs::set_constant(dev_ctx, &atomic_cnt_tensor, 1);
       atomic_cnt_buffer = atomic_cnt_tensor.data<int>();
     }
     if (!include_self) {
@@ -985,7 +985,7 @@ void gpu_scatter_mul_min_max_input_grad_kernel(
   size_t shared_mem_bytes = sizeof(int64_t) * ndim;
 
   if (reduce == "mul" || reduce == "multiply") {
-    phi::funcs::set_constant(dev_ctx, &aux_tensor, 0);
+    funcs::set_constant(dev_ctx, &aux_tensor, 0);
     shared_mem_bytes *= 2;  // 1 stride, 1 shape
 
     ScatterGradPrePassKernel<tensor_t, index_t, MulInputGrad>
@@ -1011,7 +1011,7 @@ void gpu_scatter_mul_min_max_input_grad_kernel(
                                                     index.numel(),
                                                     aux_buffer);
   } else if (reduce == "amin" || reduce == "amax") {
-    phi::funcs::set_constant(dev_ctx, &aux_tensor, 1);
+    funcs::set_constant(dev_ctx, &aux_tensor, 1);
     shared_mem_bytes *= 3;  // two strides, 1 shape
     ScatterGradPrePassKernel<tensor_t, index_t, MinMaxInputGrad>
         <<<grid, block, shared_mem_bytes, stream>>>(grad_data,
@@ -1082,7 +1082,7 @@ void gpu_scatter_mean_input_grad_kernel(phi::DenseTensor self,
   DenseTensor aux_tensor;
   aux_tensor.Resize({grad_size * 2});
   dev_ctx.Alloc<int>(&aux_tensor);
-  phi::funcs::set_constant(dev_ctx, &aux_tensor, 0);
+  funcs::set_constant(dev_ctx, &aux_tensor, 0);
   int* aux_buffer = aux_tensor.data<int>();
 
   constexpr int block = 512;
@@ -1183,7 +1183,7 @@ void gpu_scatter_value_grad_kernel(phi::DenseTensor self,
   DenseTensor aux_tensor;
   aux_tensor.Resize({self.numel()});
   dev_ctx.Alloc<int>(&aux_tensor);
-  phi::funcs::set_constant(dev_ctx, &aux_tensor, 0);
+  funcs::set_constant(dev_ctx, &aux_tensor, 0);
   int* aux_buffer = aux_tensor.data<int>();
 
   constexpr int block = 512;
@@ -1329,7 +1329,7 @@ void gpu_scatter_add_mean_value_grad_kernel(
     DenseTensor aux_tensor;
     aux_tensor.Resize({self.numel()});
     dev_ctx.Alloc<int>(&aux_tensor);
-    phi::funcs::set_constant(dev_ctx, &aux_tensor, include_self ? 1 : 0);
+    funcs::set_constant(dev_ctx, &aux_tensor, include_self ? 1 : 0);
     int* aux_buffer = aux_tensor.data<int>();
     ScatterGradPrePassKernel<tensor_t, index_t, MeanValueGrad>
         <<<grid, block, shared_mem_bytes, stream>>>(grad_data,
@@ -1477,7 +1477,7 @@ void gpu_scatter_mul_min_max_value_grad_kernel(
     DenseTensor aux_tensor;
     aux_tensor.Resize({self.numel()});
     dev_ctx.Alloc<int>(&aux_tensor);
-    phi::funcs::set_constant(dev_ctx, &aux_tensor, 0);
+    funcs::set_constant(dev_ctx, &aux_tensor, 0);
 
     int* aux_buffer = aux_tensor.data<int>();
     ScatterGradPrePassKernel<tensor_t, index_t, MinMaxValueGrad>

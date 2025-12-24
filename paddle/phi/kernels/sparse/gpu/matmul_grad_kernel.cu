@@ -38,7 +38,7 @@ void MatmulCooDenseGradKernel(const Context& dev_ctx,
                               SparseCooTensor* dx,
                               DenseTensor* dy) {
 #if CUDA_VERSION >= 11030 || HIP_VERSION >= 403
-  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
   // dx{SparseCoo} = dout{Dense} * y'{Dense}
   if (dx) {
@@ -47,7 +47,7 @@ void MatmulCooDenseGradKernel(const Context& dev_ctx,
     EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
     SparseCsrTensor dx_csr = CooToCsr<T, Context>(dev_ctx, *dx);
 #ifdef PADDLE_WITH_HIP
-    phi::funcs::SetConstant<Context, T> set_zero;
+    funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, dx_csr.mutable_non_zero_elements(), static_cast<T>(0.0f));
 #endif
     sparse_blas.SDDMM(
@@ -65,7 +65,7 @@ void MatmulCooDenseGradKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_HIP
     SparseCsrTensor x_csr = CooToCsr<T, Context>(dev_ctx, x);
-    phi::funcs::SetConstant<Context, T> set_zero;
+    funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, dy, static_cast<T>(0.0f));
     sparse_blas.SPMM(
         true, false, static_cast<T>(1), x_csr, dout, static_cast<T>(0), dy);
@@ -97,7 +97,7 @@ void MatmulCsrDenseGradKernel(const Context& dev_ctx,
                               SparseCsrTensor* dx,
                               DenseTensor* dy) {
 #if CUDA_VERSION >= 11030 || HIP_VERSION >= 403
-  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
   // dx{SparseCsr} = dout{Dense} * y'{Dense}
   if (dx) {
@@ -118,7 +118,7 @@ void MatmulCsrDenseGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(dy);
 
 #ifdef PADDLE_WITH_HIP
-    phi::funcs::SetConstant<Context, T> set_zero;
+    funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, dy, static_cast<T>(0.0f));
 #endif
 
@@ -148,7 +148,7 @@ void MatmulCsrCsrGradKernel(const Context& dev_ctx,
                             SparseCsrTensor* dx,
                             SparseCsrTensor* dy) {
 #if CUDA_VERSION >= 11000
-  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
   std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
   auto x_ndims = xdim_vec.size();
@@ -218,7 +218,7 @@ void MaskedMatmulCsrGradKernel(const Context& dev_ctx,
                                DenseTensor* dx,
                                DenseTensor* dy) {
 #if CUDA_VERSION >= 11000
-  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
   // dx{Dense} = dout{SparseCsr} * y'{Dense}
   if (dx) {

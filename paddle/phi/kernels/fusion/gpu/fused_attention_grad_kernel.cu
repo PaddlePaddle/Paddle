@@ -604,8 +604,7 @@ void FusedAttentionGradKernel(
     // gradient accumulation
     std::vector<const phi::DenseTensor *> ins = {&d_residual, x_grad};
     std::vector<phi::DenseTensor *> outs = {x_grad};
-    phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, ins, &outs, phi::funcs::AddFunctor<T>());
+    funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, funcs::AddFunctor<T>());
   }
 }
 

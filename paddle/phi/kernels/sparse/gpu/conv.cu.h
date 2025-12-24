@@ -35,7 +35,7 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-using Dims4D = phi::funcs::sparse::Dims4D;
+using Dims4D = funcs::sparse::Dims4D;
 
 // Vectorize load and store global memory
 // In the scene of 3D point cloud, the slice_size 4,8,16,32,64 are commonly
@@ -183,7 +183,7 @@ __global__ void UniqueKernel(const IntT* in_indices,
   if (i < rulebook_len) {
     // atomicOr only support int
     int index = static_cast<int>(in_indices[i]);
-    const bool flag = phi::funcs::sparse::SetBits(index, index_flags);
+    const bool flag = funcs::sparse::SetBits(index, index_flags);
     if (!flag) {
       int j = atomicAdd(&count, 1);
       cache[j] = index;
@@ -215,7 +215,7 @@ __global__ void GetOutIndexTable1(const IntT* indices,
     IntT in_x =
         is2D ? indices[i + 2 * non_zero_num] : indices[i + 3 * non_zero_num];
     IntT index = PointToIndex(batch, in_x, in_y, in_z, dims);
-    phi::funcs::sparse::SetBits(index, index_flags);
+    funcs::sparse::SetBits(index, index_flags);
     out_index_table[index] = i;
   }
 }
@@ -290,26 +290,25 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
       for (int ky = 0; ky < kernel_dims[2]; ky++) {
         for (int kx = 0; kx < kernel_dims[3]; kx++) {
           int in_i = -1, out_index = -1, kernel_i = -1;
-          if (phi::funcs::sparse::Check(x_dims,
-                                        kernel_dims,
-                                        paddings,
-                                        dilations,
-                                        strides,
-                                        in_x,
-                                        in_y,
-                                        in_z,
-                                        kx,
-                                        ky,
-                                        kz)) {
+          if (funcs::sparse::Check(x_dims,
+                                   kernel_dims,
+                                   paddings,
+                                   dilations,
+                                   strides,
+                                   in_x,
+                                   in_y,
+                                   in_z,
+                                   kx,
+                                   ky,
+                                   kz)) {
             T out_z =
                 is2D ? 0
                      : (in_z + paddings[1] - kz * dilations[1]) / strides[1];
             T out_y = (in_y + paddings[2] - ky * dilations[2]) / strides[2];
             T out_x = (in_x + paddings[3] - kx * dilations[3]) / strides[3];
-            out_index = phi::funcs::sparse::PointToIndex<Dims4D>(
+            out_index = funcs::sparse::PointToIndex<Dims4D>(
                 batch, out_x, out_y, out_z, out_dims);
-            const bool flag =
-                phi::funcs::sparse::TestBits(out_index, index_flags);
+            const bool flag = funcs::sparse::TestBits(out_index, index_flags);
             if (flag) {
               int real_out_index = out_index_table[out_index];
               in_i = i;

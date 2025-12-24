@@ -47,7 +47,7 @@ void SumCooGradCPUKernel(const Context& dev_ctx,
   const auto* dx_indices_data = dx_indices->data<int64_t>();
   auto* dx_values_data = dx_values->data<T>();
 
-  phi::funcs::SetConstant<Context, T> set_constant;
+  funcs::SetConstant<Context, T> set_constant;
   if (n_dim == 0) {
     T value = dout_values.data<T>()[0];
     set_constant(dev_ctx, dx_values, value);
@@ -129,7 +129,7 @@ void SumCsrGradKernel(const Context& dev_ctx,
   *dx_crows = x_crows;
   *dx_cols = x_cols;
 
-  phi::funcs::SetConstant<Context, T> set_constant;
+  funcs::SetConstant<Context, T> set_constant;
   if (n_dim == 0) {
     T value = dout_values.data<T>()[0];
     set_constant(dev_ctx, dx_values, value);

@@ -79,7 +79,7 @@ void SliceKernel(const Context& dev_ctx,
     }
   }
 
-  phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
+  funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
   slice_dims = funcs::GetSliceDims<int64_t>(
       in_dims, axes, starts, ends, nullptr, nullptr);
   out_dims = funcs::GetDecreasedDims(slice_dims, decrease_axis);
@@ -191,7 +191,7 @@ void SliceKernel<phi::complex64, XPUContext>(
     }
   }
 
-  phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
+  funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
   slice_dims = funcs::GetSliceDims<int64_t>(
       in_dims, axes, starts, ends, nullptr, nullptr);
   out_dims = funcs::GetDecreasedDims(slice_dims, decrease_axis);

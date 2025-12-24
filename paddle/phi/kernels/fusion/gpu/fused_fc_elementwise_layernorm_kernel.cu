@@ -419,7 +419,7 @@ void FusedFCElementwiseLayerNormKernel(
 
   auto* out_data = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
-  auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
   blas.GEMM(CblasNoTrans,
             CblasNoTrans,
             M,

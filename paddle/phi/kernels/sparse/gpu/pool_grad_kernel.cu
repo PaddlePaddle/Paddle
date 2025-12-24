@@ -37,7 +37,7 @@ __global__ void MaxPoolGradCudaKernel(const T* in_features_ptr,
                                       const int rulebook_len,
                                       const int channels,
                                       T* x_grad_ptr) {
-  phi::funcs::MaxPoolGrad<T> grad_functor;
+  funcs::MaxPoolGrad<T> grad_functor;
   CUDA_KERNEL_LOOP_TYPE(i, n * channels, int64_t) {
     int real_i = i / channels;
     int c = i - real_i * channels;
@@ -69,7 +69,7 @@ void MaxPoolCooGradGPUKernel(const GPUContext& dev_ctx,
   const IntT* rulebook_ptr = rulebook.data<IntT>();
   std::vector<int> offsets(kernel_size + 1);
   const int* counter_ptr = counter.data<int>();
-  phi::funcs::sparse::PrefixSum(counter_ptr, &offsets[0], kernel_size);
+  funcs::sparse::PrefixSum(counter_ptr, &offsets[0], kernel_size);
 
   const T* in_features_ptr = x.values().data<T>();
   const T* out_features_ptr = out.values().data<T>();
@@ -79,7 +79,7 @@ void MaxPoolCooGradGPUKernel(const GPUContext& dev_ctx,
   DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.values());
   x_grad->SetMember(x_grad_indices, x_grad_values, x.dims(), true);
   T* x_grad_ptr = x_grad_values.data<T>();
-  phi::funcs::SetConstant<GPUContext, T> set_zero;
+  funcs::SetConstant<GPUContext, T> set_zero;
   set_zero(dev_ctx, &x_grad_values, static_cast<T>(0.0f));
   phi::Copy<GPUContext>(
       dev_ctx, x.indices(), dev_ctx.GetPlace(), false, &x_grad_indices);

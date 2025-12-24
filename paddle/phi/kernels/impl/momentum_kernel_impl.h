@@ -296,7 +296,7 @@ class SparseMomentumFunctor<T, MT, UseNesterov> {
 
   inline HOSTDEVICE void operator()(size_t i) {
     auto row_idx =
-        phi::funcs::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
+        funcs::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
     MT grad =
         row_idx >= 0
             ? static_cast<MT>(grad_[row_idx * row_numel_ + i % row_numel_]) *
@@ -376,7 +376,7 @@ class SparseMomentumFunctor<T, MT, NoNesterov> {
 
   inline HOSTDEVICE void operator()(size_t i) {
     auto row_idx =
-        phi::funcs::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
+        funcs::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
     MT grad =
         row_idx >= 0
             ? static_cast<MT>(grad_[row_idx * row_numel_ + i % row_numel_]) *
@@ -568,7 +568,7 @@ void MomentumSparseImpl(const Context& dev_ctx,
 
   phi::SelectedRows tmp_merged_grad;
   phi::SelectedRows* merged_grad = &tmp_merged_grad;
-  phi::funcs::scatter::MergeAdd<Context, T> merge_func;
+  funcs::scatter::MergeAdd<Context, T> merge_func;
   merge_func(dev_ctx, grad, merged_grad);
 
   auto* grad_merge_rows = merged_grad->mutable_rows();

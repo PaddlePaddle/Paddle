@@ -170,8 +170,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     const auto& logits_dims = logits->dims();
 
     const int axis = logits_dims.size() - 1;
-    const int64_t N = phi::funcs::SizeToAxis(axis, logits_dims);
-    const int64_t D = phi::funcs::SizeFromAxis(axis, logits_dims);
+    const int64_t N = funcs::SizeToAxis(axis, logits_dims);
+    const int64_t D = funcs::SizeFromAxis(axis, logits_dims);
 
     phi::DenseTensor logits_2d, softmax_2d;
     logits_2d.ShareDataWith(*logits).Resize({N, D});

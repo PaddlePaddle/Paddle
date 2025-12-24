@@ -96,7 +96,7 @@ void DeformableConvKernel(const Context& dev_ctx,
   const T* mask_ptr = mask ? mask->data<T>() : nullptr;
   T* col_buffer_ptr = col_buffer.data<T>();
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
   bool using_int32_index =
       (x.numel() <= std::numeric_limits<int>::max()) &&

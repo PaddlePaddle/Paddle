@@ -73,10 +73,10 @@ void LUUnpackKernel(const Context& dev_ctx,
       if (columns == 0) return;
 
       T* pmat_data = pmat->data<T>();
-      phi::funcs::SetConstant<Context, T> set_zero;
+      funcs::SetConstant<Context, T> set_zero;
       set_zero(dev_ctx, pmat, static_cast<T>(0));
       int64_t rows = pmat->numel() / columns;
-      phi::funcs::ForRange<Context> for_range(dev_ctx, rows);
+      funcs::ForRange<Context> for_range(dev_ctx, rows);
       LuUnpackEyeFunctor<T> functor(columns, pmat_data);
       for_range(functor);
       return;

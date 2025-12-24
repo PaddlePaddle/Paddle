@@ -61,7 +61,7 @@ void SequenceConvXPUKernel(const Context& dev_ctx,
 
   auto* xpu_context = dev_ctx.x_context();
   auto sequence_width = static_cast<int64_t>(in->dims()[1]);
-  phi::DDim col_shape = {in->dims()[0], context_length * sequence_width};
+  DDim col_shape = {in->dims()[0], context_length * sequence_width};
   xpu::ctx_guard RAII_GUARD(xpu_context);
   int64_t col_numel = col_shape[0] * col_shape[1];
   T* col_data = RAII_GUARD.alloc_l3_or_gm<T>(col_numel);

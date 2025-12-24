@@ -338,8 +338,8 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(linear1_out);
 
   auto x_dim = x_ptr->dims();
-  auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
-      phi::RowMatrixFromVector(x_dim), 0, false);
+  auto mat_dim_x =
+      funcs::CreateMatrixDescriptor(phi::RowMatrixFromVector(x_dim), 0, false);
 
   auto dim = linear1_weight_ptr->dims();
   int d_model = dim[0];

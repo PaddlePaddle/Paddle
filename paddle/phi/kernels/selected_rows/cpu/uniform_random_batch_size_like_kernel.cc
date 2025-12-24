@@ -40,7 +40,7 @@ void CPUUniformRandomKernel(const Context& dev_ctx,
   T* data = dev_ctx.template Alloc<T>(tensor);
   int64_t size = tensor->numel();
 
-  phi::funcs::UniformRealDistribution<T>(
+  funcs::UniformRealDistribution<T>(
       data, size, min, max, static_cast<unsigned int>(seed));
 
   unsigned int diag_num_tmp = static_cast<unsigned int>(diag_num);

@@ -190,7 +190,7 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   DenseTensor scores_filter, proposals_filter;
   // Handle the case when there is no keep index left
   if (keep_num == 0) {
-    phi::funcs::SetConstant<phi::XPUContext, T> set_zero;
+    funcs::SetConstant<phi::XPUContext, T> set_zero;
     proposals_filter.Resize(common::make_ddim({1, 4}));
     dev_ctx.template Alloc<T>(&proposals_filter);
     scores_filter.Resize(common::make_ddim({1, 1}));

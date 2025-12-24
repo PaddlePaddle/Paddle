@@ -55,7 +55,7 @@ void ReshapeCooGPUKernel(const Context& dev_ctx,
                          SparseCooTensor* out) {
   int64_t x_nnz = x.nnz();
   std::vector<int> new_shape(shape.GetData().begin(), shape.GetData().end());
-  phi::DDim out_dims = x.dims().reshape(new_shape);
+  DDim out_dims = x.dims().reshape(new_shape);
   //  get sparse part dimensions of x and out
   std::vector<int64_t> x_sparse_part_dims;
   std::vector<int64_t> out_sparse_part_dims;
@@ -74,9 +74,9 @@ void ReshapeCooGPUKernel(const Context& dev_ctx,
   // compute values of out indices
   const auto* x_indices_data = x.indices().data<IntT>();
   auto* out_indices_data = out_indices.data<IntT>();
-  const phi::DDim& x_sparse_part_strides =
+  const DDim& x_sparse_part_strides =
       common::stride(common::make_ddim(x_sparse_part_dims));
-  const phi::DDim& out_sparse_part_strides =
+  const DDim& out_sparse_part_strides =
       common::stride(common::make_ddim(out_sparse_part_dims));
 
   int64_t *destination_x_sparse_part_strides,

@@ -245,8 +245,7 @@ void InclusiveScan(const T *x,
       CubInclusiveScan(x, y, mid_dim, op, dev_ctx);
     }
   } else if (inner_dim != 1) {
-    phi::funcs::ForRange<phi::GPUContext> for_range(dev_ctx,
-                                                    outer_dim * inner_dim);
+    funcs::ForRange<phi::GPUContext> for_range(dev_ctx, outer_dim * inner_dim);
     if (reverse) {
       for_range(
           InclusiveScanOuterOrMidDimFunctor<T, BinaryOp, /*kReverse=*/true>(

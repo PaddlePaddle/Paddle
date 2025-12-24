@@ -35,7 +35,7 @@ void Flatten2Kernel(const Context &dev_ctx,
   auto *in = &x;
   auto x_dims = in->dims();
 
-  auto out_dims = common::make_ddim(phi::funcs::GetOutputShape(axes, x_dims));
+  auto out_dims = common::make_ddim(funcs::GetOutputShape(axes, x_dims));
 
   dev_ctx.Alloc(out, x.dtype());
   phi::Copy(dev_ctx, *in, dev_ctx.GetPlace(), false, out);

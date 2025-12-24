@@ -239,7 +239,7 @@ class CudnnNormConvolution {
 
  private:
   CudnnFusionOp *GetForwardOp(const phi::GPUContext &dev_ctx) {
-    phi::funcs::AlgorithmsCache<CudnnFusionOp *> &cache =
+    funcs::AlgorithmsCache<CudnnFusionOp *> &cache =
         *(CudnnFusionOpCache::Instance().GetForward());
 
     CudnnFusionOp *fwd_op = cache.GetAlgorithm(
@@ -399,7 +399,7 @@ class CudnnNormConvolutionGrad {
   }
 
   CudnnFusionOp *GetBackwardFilterOp(const phi::GPUContext &dev_ctx) {
-    phi::funcs::AlgorithmsCache<CudnnFusionOp *> &cache =
+    funcs::AlgorithmsCache<CudnnFusionOp *> &cache =
         *(CudnnFusionOpCache::Instance().GetBackward());
 
     CudnnFusionOp *wgrad_op = cache.GetAlgorithm(

@@ -957,6 +957,7 @@
     spmd_rule : CeluInfoSpmd
   kernel :
     func : celu
+  inplace : (x -> out)
   backward : celu_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
@@ -1531,7 +1532,7 @@
 
 - op : diag
   args : (Tensor x, int offset = 0, float padding_value = 0.0)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : DiagInferMeta
   kernel :

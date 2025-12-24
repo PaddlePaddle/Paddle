@@ -1465,7 +1465,7 @@ headers = (
     # phi level api headers (low level api, for training only)
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi')) +  # phi extension header
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/include', recursive=True)) +  # phi include headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends', recursive=True)) +  # phi backends headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends')) +  # phi backends headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/core', recursive=True)) +  # phi core headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/infermeta', recursive=True)) +  # phi infermeta headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels', recursive=True)) +  # phi kernels headers
@@ -1534,7 +1534,9 @@ if '${WITH_OPENVINO}' == 'ON':
 if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
     # externalErrorMsg.pb for External Error message
     headers += list(find_files('*.pb', '${externalError_INCLUDE_DIR}'))
-
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends', recursive=True)
+    )
 
 if '${WITH_XPU}' == 'ON':
     headers += [
@@ -1542,6 +1544,20 @@ if '${WITH_XPU}' == 'ON':
         if '/include/xpu/kernel/' not in h
     ] # xdnn api headers
     headers += list(find_files('*.hpp', '@PADDLE_BINARY_DIR@/third_party/xpu/src/extern_xpu/xpu', recursive=True)) # xre headers with .hpp extension
+    headers += list(
+        find_files('*.h', '@PADDLE_BINARY_DIR@/paddle/phi/backends/cpu')
+    )
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/xpu')
+    )
+    headers += list(
+        find_files(
+            '*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload'
+        )
+    )
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/onednn')
+    )
 
 if (
     '@WITH_GPU@' == 'ON'
@@ -1552,6 +1568,70 @@ if (
     headers += list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/fp8/deep_gemm/include/cutlass/', recursive=True))
     headers += list(find_files('*.hpp', '@PADDLE_SOURCE_DIR@/paddle/fluid/fp8/deep_gemm/include/cutlass/', recursive=True))
     headers += list(find_files('*.cuh', '@PADDLE_SOURCE_DIR@/paddle/fluid/fp8/deep_gemm/include/deep_gemm', recursive=True))
+if (
+    '@WITH_GPU@' == 'OFF'
+    and '@WITH_ROCM@' == 'OFF'
+    and '@WITH_XPU@' == 'OFF'
+):  # Custom Device
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/cpu')
+    )
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/custom')
+    )
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/gpu', recursive=True)
+    )
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/onednn')
+    )
+    headers += [
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/afs_api.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/dynamic_loader.h',
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/mklml.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/mklrt.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/lapack.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/hml.h'
+        ),
+    ]
+else:
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/cpu')
+    )
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/onednn')
+    )
+    headers += [
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/afs_api.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/dynamic_loader.h',
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/mklml.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/mklrt.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/lapack.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/hml.h'
+        ),
+    ]
 
 headers += list(find_files('*.h', '${PYBIND_INCLUDE_DIR}', True)) # pybind headers
 

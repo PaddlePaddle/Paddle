@@ -93,6 +93,22 @@ def restore_same_arg_when_fallback(x):
     return add_with_breakgraph(x, x)
 
 
+def trim_trailing_to_bool(x, y):
+    return x and y
+
+
+def always_use_load_fast_with_strong_ref(x):
+    y = x + 1
+    # In this case, originally y will be load with LOAD_FAST_BORROW
+    # When breakgraph, the y on the stack, it will be stored and loaded with LOAD_FAST
+    # But since y is not a strong ref, it may be GCed before loaded again
+    # We add a pass to make sure y is a strong ref, so it will not be GCed
+    # when loaded again.
+    _stack_ref = (y, paddle.jit.sot.psdb.breakgraph())
+    x = y + 1
+    return x
+
+
 class TestMinGraphSize(TestCaseBase):
     @strict_mode_guard(False)
     @min_graph_size_guard(10)
@@ -130,6 +146,17 @@ class TestMinGraphSize(TestCaseBase):
     def test_restore_same_arg_when_fallback(self):
         x = paddle.to_tensor(1)
         self.assert_results(restore_same_arg_when_fallback, x)
+
+    @min_graph_size_guard(10)
+    def test_trim_trailing_to_bool(self):
+        x = paddle.to_tensor(False)
+        y = paddle.to_tensor(False)
+        self.assert_results(trim_trailing_to_bool, x, y)
+
+    @min_graph_size_guard(10)
+    def test_always_use_load_fast_with_strong_ref(self):
+        x = paddle.to_tensor(1)
+        self.assert_results(always_use_load_fast_with_strong_ref, x)
 
 
 if __name__ == "__main__":
