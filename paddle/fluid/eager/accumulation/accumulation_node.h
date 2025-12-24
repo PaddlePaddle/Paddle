@@ -27,11 +27,12 @@ namespace egr {
 class TEST_API GradNodeAccumulation : public GradNodeBase {
  public:
   // Constructor: configure fwd input tensors to grad node
-  explicit GradNodeAccumulation(const paddle::Tensor& fwd_tensor)
+  explicit GradNodeAccumulation(const paddle::Tensor& fwd_tensor,
+                                bool need_set_meta = true)
       : GradNodeBase(1, 1) {
     VLOG(5) << "Construct GradNodeAccumulation(" << this << ")";
     SetDefaultGradInOutMeta();
-    if (fwd_tensor.defined()) {
+    if (need_set_meta) {
       auto* meta = egr::EagerUtils::nullable_autograd_meta(fwd_tensor);
       if (meta) {
         weak_grad_ = meta->WeakGrad();
@@ -75,7 +76,7 @@ class TEST_API GradNodeAccumulation : public GradNodeBase {
   std::shared_ptr<GradNodeBase> Copy() const override {
     // For accumulation node, don't need to real Copy
     return std::shared_ptr<GradNodeAccumulation>(
-        new GradNodeAccumulation(paddle::Tensor()));
+        new GradNodeAccumulation(paddle::Tensor(), false));
   }
 
   void SetFakeEmpty(bool is_fake_empty) { is_fake_empty_ = is_fake_empty; }
