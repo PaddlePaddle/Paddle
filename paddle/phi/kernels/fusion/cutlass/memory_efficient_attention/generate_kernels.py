@@ -426,7 +426,7 @@ def write_decl_impl(
 
     declarations += f"""
 template <typename PaddleT, typename T>
-void dispatch_{family_name}(const ::GPUContext &ctx, T cb) {{
+void dispatch_{family_name}(const ::phi::GPUContext &ctx, T cb) {{
     auto cc = ctx.GetComputeCapability();
     using DT = typename ::phi::CutlassTrait<PaddleT>::Type;
 
