@@ -30,15 +30,17 @@ class TEST_API GradNodeAccumulation : public GradNodeBase {
   explicit GradNodeAccumulation(const paddle::Tensor& fwd_tensor)
       : GradNodeBase(1, 1) {
     VLOG(5) << "Construct GradNodeAccumulation(" << this << ")";
-    auto* meta = egr::EagerUtils::nullable_autograd_meta(fwd_tensor);
-    if (meta) {
-      weak_grad_ = meta->WeakGrad();
-    }
-    if (FLAGS_call_stack_level == 3) {
-      this->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
-    }
     SetDefaultGradInOutMeta();
-    SetGradInMeta(fwd_tensor, 0);
+    if (fwd_tensor.defined()) {
+      auto* meta = egr::EagerUtils::nullable_autograd_meta(fwd_tensor);
+      if (meta) {
+        weak_grad_ = meta->WeakGrad();
+      }
+      if (FLAGS_call_stack_level == 3) {
+        this->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
+      }
+      SetGradInMeta(fwd_tensor, 0);
+    }
   }
 
   GradNodeAccumulation(const GradNodeAccumulation& other) = default;
@@ -71,8 +73,9 @@ class TEST_API GradNodeAccumulation : public GradNodeBase {
   void ApplyReduceHooks();
 
   std::shared_ptr<GradNodeBase> Copy() const override {
+    // For accumulation node, don't need to real Copy
     return std::shared_ptr<GradNodeAccumulation>(
-        new GradNodeAccumulation(*this));
+        new GradNodeAccumulation(paddle::Tensor()));
   }
 
   void SetFakeEmpty(bool is_fake_empty) { is_fake_empty_ = is_fake_empty; }
