@@ -13,14 +13,88 @@
 # limitations under the License.
 
 import unittest
+from functools import reduce
+from operator import mul
 
 import numpy as np
+from op_test import OpTest
 
 import paddle
 from paddle.nn.functional import rms_norm
 
 
-class TestRMSNorm(unittest.TestCase):
+def rms_norm_reference(x, scale, bias=None, epsilon=1e-5):
+    x_shape = x.shape
+    begin_norm_axis = len(x.shape) - 1
+    N = reduce(mul, x_shape[0:begin_norm_axis], 1)
+    D = reduce(mul, x_shape[begin_norm_axis : len(x_shape)], 1)
+    x.shape = [N, D]
+
+    variance = np.mean(np.square(x), axis=-1)
+    rms = np.sqrt(variance + epsilon)
+    y = x / rms.reshape([N, 1])
+    y = y * scale.reshape([1, -1])
+    if bias is not None:
+        y = y + bias.reshape([1, -1])
+
+    return y, 1.0 / rms
+
+
+class TestRMSNormOp(OpTest):
+    def setUp(self):
+        self.op_type = "rms_norm"
+        self.init_dtype()
+        self.init_config()
+
+        np.random.seed(2023)
+        x = np.random.randn(*self.x_shape).astype(self.dtype)
+        scale = np.random.randn(self.x_shape[-1]).astype(self.dtype)
+
+        self.inputs = {'x': x, 'scale': scale}
+        self.attrs = {'epsilon': self.epsilon}
+        y_ref, invvar_ref = rms_norm_reference(x, scale, epsilon=self.epsilon)
+        self.outputs = {'y': y_ref, 'invvar': invvar_ref}
+
+        def rms_norm_wrapper(x, scale):
+            return rms_norm(x, scale.shape, scale, eps=self.epsilon)
+
+        self.python_api = rms_norm_wrapper
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def init_config(self):
+        self.epsilon = 1e-5
+        self.x_shape = (32, 64)
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(['x', 'scale'], ['y'], check_pir=True)
+
+    @classmethod
+    def tearDownClass(cls):
+        # Avoid AssertionError: This test of rms_norm op needs check_grad with fp64 precision.
+        pass
+
+
+class TestRMSNormOp3D(TestRMSNormOp):
+    def init_config(self):
+        self.epsilon = 1e-5
+        self.x_shape = (16, 32, 64)
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+
+class TestRMSNormOpEpsilon(TestRMSNormOp):
+    def init_config(self):
+        self.epsilon = 1e-4
+        self.x_shape = (32, 64)
+
+
+class TestRMSNormAPI(unittest.TestCase):
     def setUp(self):
         paddle.seed(2023)
         np.random.seed(2023)
@@ -35,67 +109,33 @@ class TestRMSNorm(unittest.TestCase):
 
         return y, paddle.flatten(1.0 / rms)
 
-    def test_2d_input(self):
+    def test_api_dygraph(self):
         rows, cols = 32, 64
-        x = paddle.randn([rows, cols])
-        scale = paddle.randn([cols])
+        x_np = np.random.randn(rows, cols).astype("float32")
+        scale_np = np.random.randn(cols).astype("float32")
 
-        y_fused, invvar_fused = rms_norm(x, (cols,), scale)
-
-        y_ref, invvar_ref = self.rms_norm_reference(x, scale)
-
-        np.testing.assert_allclose(y_fused, y_ref, rtol=1e-5, atol=1e-5)
-        np.testing.assert_allclose(
-            invvar_fused, invvar_ref, rtol=1e-5, atol=1e-5
-        )
-
-    def test_3d_input(self):
-        batch, rows, cols = 16, 32, 64
-        x = paddle.randn([batch, rows, cols])
-        scale = paddle.randn([cols])
-
-        y_fused, invvar_fused = rms_norm(x, (cols,), scale)
-
-        y_ref, invvar_ref = self.rms_norm_reference(x, scale)
-
-        np.testing.assert_allclose(
-            y_fused.astype("float32"),
-            y_ref.astype("float32"),
-            rtol=1e-5,
-            atol=1e-5,
-        )
-        np.testing.assert_allclose(
-            invvar_fused, invvar_ref, rtol=1e-5, atol=1e-5
-        )
-
-    def test_without_bias(self):
-        rows, cols = 32, 64
-        x = paddle.randn([rows, cols])
-        scale = paddle.randn([cols])
-
-        y_fused, invvar_fused = rms_norm(x, (cols,), scale)
-
-        y_ref, invvar_ref = self.rms_norm_reference(x, scale)
-
-        np.testing.assert_allclose(y_fused, y_ref, rtol=1e-5, atol=1e-5)
-        np.testing.assert_allclose(
-            invvar_fused, invvar_ref, rtol=1e-5, atol=1e-5
-        )
-
-    def test_3d_backward(self):
-        batch, rows, cols = 8, 16, 32
-        x = paddle.randn([batch, rows, cols], dtype='float32')
+        x = paddle.to_tensor(x_np)
         x.stop_gradient = False
-        scale = paddle.randn([cols], dtype='float32')
+        scale = paddle.to_tensor(scale_np)
         scale.stop_gradient = False
 
-        y_fused, invvar = rms_norm(x, (cols,), scale)
+        # Test forward
+        y_fused, invvar_fused = rms_norm(x, (cols,), scale)
+        y_ref, invvar_ref = self.rms_norm_reference(x, scale)
 
+        np.testing.assert_allclose(
+            y_fused.numpy(), y_ref.numpy(), rtol=1e-5, atol=1e-5
+        )
+        np.testing.assert_allclose(
+            invvar_fused.numpy(), invvar_ref.numpy(), rtol=1e-5, atol=1e-5
+        )
+
+        # Test backward
         loss = paddle.mean(y_fused)
         loss.backward()
 
-        x_grad_fused = x.grad.clone()
-        scale_grad_fused = scale.grad.clone()
+        x_grad_fused = x.grad.numpy()
+        scale_grad_fused = scale.grad.numpy()
 
         x.clear_gradient()
         scale.clear_gradient()
@@ -104,56 +144,12 @@ class TestRMSNorm(unittest.TestCase):
         loss_ref = paddle.mean(y_ref)
         loss_ref.backward()
 
-        x_grad_ref = x.grad
-        scale_grad_ref = scale.grad
-
         np.testing.assert_allclose(
-            x_grad_fused, x_grad_ref, rtol=1e-4, atol=1e-4
+            x_grad_fused, x.grad.numpy(), rtol=1e-5, atol=1e-5
         )
         np.testing.assert_allclose(
-            scale_grad_fused, scale_grad_ref, rtol=1e-4, atol=1e-4
+            scale_grad_fused, scale.grad.numpy(), rtol=1e-5, atol=1e-5
         )
-
-    def test_backward(self):
-        rows, cols = 16, 32
-        test_type = ['float32']
-        for x_type in test_type:
-            for scale_type in test_type:
-                x = paddle.randn([rows, cols], dtype=x_type)
-                x.stop_gradient = False
-                scale = paddle.randn([cols], dtype=scale_type)
-                scale.stop_gradient = False
-
-                y_fused, invvar = rms_norm(x, (cols,), scale)
-
-                loss = paddle.mean(y_fused)
-                loss.backward()
-
-                x_grad_fused = x.grad.clone()
-                scale_grad_fused = scale.grad.clone()
-
-                x.clear_gradient()
-                scale.clear_gradient()
-
-                y_ref, invvar_ref = self.rms_norm_reference(x, scale)
-                loss_ref = paddle.mean(y_ref)
-                loss_ref.backward()
-
-                x_grad_ref = x.grad
-                scale_grad_ref = scale.grad
-
-                np.testing.assert_allclose(
-                    x_grad_fused.astype("float32"),
-                    x_grad_ref.astype("float32"),
-                    rtol=1e-4,
-                    atol=1e-4,
-                )
-                np.testing.assert_allclose(
-                    scale_grad_fused.astype("float32"),
-                    scale_grad_ref.astype("float32"),
-                    rtol=1e-4,
-                    atol=1e-4,
-                )
 
 
 if __name__ == '__main__':
