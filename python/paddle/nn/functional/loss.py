@@ -845,24 +845,52 @@ def binary_cross_entropy_with_logits(
             logit.dtype,
             _current_expected_place(),
         )
+        if paddle.get_flags(["FLAGS_use_accuracy_compatible_kernel"]).get(
+            "FLAGS_use_accuracy_compatible_kernel", False
+        ):
+            log_sigmoid_input = paddle.nn.functional.log_sigmoid(logit)
+            if pos_weight is not None:
+                log_weight = _C_ops.add_(
+                    _C_ops.multiply(label, _C_ops.subtract(pos_weight, one)),
+                    one,
+                )
+                log_sigmoid_input = _C_ops.multiply_(
+                    log_sigmoid_input, log_weight
+                )
 
-        if pos_weight is not None:
-            pos_weight = _C_ops.add(
-                _C_ops.multiply(label, _C_ops.subtract(pos_weight, one)), one
+            loss = _C_ops.subtract_(
+                _C_ops.multiply_(_C_ops.subtract(one, label), logit),
+                log_sigmoid_input,
             )
-        out = _C_ops.sigmoid_cross_entropy_with_logits(
-            logit, label, pos_weight, False, -100
-        )
 
-        if weight is not None:
-            out = _C_ops.multiply(out, weight)
+            if weight is not None:
+                loss = _C_ops.multiply_(loss, weight)
 
-        if reduction == "sum":
-            return _C_ops.sum(out, [], None, False)
-        elif reduction == "mean":
-            return _C_ops.mean_all(out)
+            if reduction == "sum":
+                return _C_ops.sum(loss, [], None, False)
+            elif reduction == "mean":
+                return paddle.mean(loss, name=name)
+            else:
+                return loss
         else:
-            return out
+            if pos_weight is not None:
+                pos_weight = _C_ops.add(
+                    _C_ops.multiply(label, _C_ops.subtract(pos_weight, one)),
+                    one,
+                )
+            out = _C_ops.sigmoid_cross_entropy_with_logits(
+                logit, label, pos_weight, False, -100
+            )
+
+            if weight is not None:
+                out = _C_ops.multiply(out, weight)
+
+            if reduction == "sum":
+                return _C_ops.sum(out, [], None, False)
+            elif reduction == "mean":
+                return _C_ops.mean_all(out)
+            else:
+                return out
     else:
         check_variable_and_dtype(
             logit,
