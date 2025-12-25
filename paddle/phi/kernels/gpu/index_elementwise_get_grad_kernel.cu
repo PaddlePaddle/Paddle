@@ -360,7 +360,8 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
                  (num_indices + INDICES_PER_BLOCK - 1) / INDICES_PER_BLOCK),
         std::min(static_cast<int64_t>(max_grid_size[1]),
                  (sliceSize + WARP_SIZE * UNROLL - 1) / (WARP_SIZE * UNROLL)),
-        std::min(std::max(1l, static_cast<int64_t>(nElemBefore)),
+        std::min(std::max(static_cast<int64_t>(1),
+                          static_cast<int64_t>(nElemBefore)),
                  static_cast<int64_t>(max_grid_size[2])));
     dim3 block(WARP_SIZE, INDICES_PER_BLOCK);
 
