@@ -13,6 +13,7 @@
 # limitations under the License.
 import gc
 import os
+import platform
 import time
 import unittest
 
@@ -134,11 +135,6 @@ class leak_checker:
         return False
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda()
-    and not paddle.base.core.is_compiled_with_xpu(),
-    "Require compiled with CUDA or XPU.",
-)
 class TestMultiprocessingBase(unittest.TestCase):
     def get_tensor(self, device="cpu"):
         self.device = device.lower()
@@ -222,6 +218,10 @@ class TestMultiprocessingBase(unittest.TestCase):
     not paddle.base.core.is_compiled_with_cuda()
     and not paddle.base.core.is_compiled_with_xpu(),
     "Require compiled with CUDA or XPU.",
+)
+@unittest.skipIf(
+    platform.system().lower() == "windows",
+    "Skip: ipc function on Windows is not supported.",
 )
 class TestMultiprocessingGpu(TestMultiprocessingBase):
     def func_test_pass_tensor(self):
