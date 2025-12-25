@@ -21,7 +21,7 @@
 
 namespace phi {
 
-template <typename T, typename IndexT = int, typename OffsetT = uint32_t>
+template <typename T, typename OffsetT = uint32_t>
 void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
                                   const DenseTensor& input,
                                   const Scalar& value,
@@ -103,7 +103,7 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
           }
         });
   } else {
-    auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
+    auto index_ptrs = funcs::GetIndexDataPtrs<int64_t>(index);
     funcs::index_elementwise_kernel<nt, vt, T><<<grid, block, 0, stream>>>(
         N, value_T, [=] __device__(int idx, const T value_tmp) {
           const auto offsets = offset_calc.get(idx);
@@ -125,7 +125,7 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
   }
 }
 
-template <typename T, typename IndexT = int, typename OffsetT = uint32_t>
+template <typename T, typename OffsetT = uint32_t>
 void GPUIndexElementwisePutWithTensorKernel(
     const phi::GPUContext& dev_ctx,
     const DenseTensor& input,
@@ -160,7 +160,7 @@ void GPUIndexElementwisePutWithTensorKernel(
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
-  auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
+  auto index_ptrs = funcs::GetIndexDataPtrs<int64_t>(index);
 
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
@@ -289,28 +289,28 @@ void IndexElementwisePutWithTensorKernel(
 
   if (out->numel() == 0) return;
   if (funcs::IsInUint32Range(x.numel() * sizeof(T), out->numel() * sizeof(T))) {
-    GPUIndexElementwisePutWithTensorKernel<T, int64_t>(dev_ctx,
-                                                       x,
-                                                       value,
-                                                       index,
-                                                       input_dims,
-                                                       input_strides,
-                                                       index_dims,
-                                                       index_strides,
-                                                       slice_offset,
-                                                       out);
+    GPUIndexElementwisePutWithTensorKernel<T>(dev_ctx,
+                                              x,
+                                              value,
+                                              index,
+                                              input_dims,
+                                              input_strides,
+                                              index_dims,
+                                              index_strides,
+                                              slice_offset,
+                                              out);
 
   } else {
-    GPUIndexElementwisePutWithTensorKernel<T, int64_t, uint64_t>(dev_ctx,
-                                                                 x,
-                                                                 value,
-                                                                 index,
-                                                                 input_dims,
-                                                                 input_strides,
-                                                                 index_dims,
-                                                                 index_strides,
-                                                                 slice_offset,
-                                                                 out);
+    GPUIndexElementwisePutWithTensorKernel<T, uint64_t>(dev_ctx,
+                                                        x,
+                                                        value,
+                                                        index,
+                                                        input_dims,
+                                                        input_strides,
+                                                        index_dims,
+                                                        index_strides,
+                                                        slice_offset,
+                                                        out);
   }
 }
 
