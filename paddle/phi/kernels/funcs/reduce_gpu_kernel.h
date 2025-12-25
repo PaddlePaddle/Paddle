@@ -1348,7 +1348,8 @@ template <typename Tx,
 void ReduceGpuKernel(const KPDevice& dev_ctx,
                      const phi::DenseTensor& x,
                      phi::DenseTensor* y,
-                     const std::vector<int>& origin_reduce_dims) {
+                     const std::vector<int>& origin_reduce_dims,
+                     const float norm_p = 1.0f) {
   if (x.numel() == 0) {
     dev_ctx.Alloc<Ty>(y);
     return;
@@ -1375,12 +1376,15 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
   using MPType = typename phi::dtype::MPTypeTrait<Ty>::Type;
 
   // Initialize reducer.
-  ReduceOp reducer = [&iter]() {
+  ReduceOp reducer = [&iter, &norm_p]() {
     if constexpr (std::is_same_v<ReduceOp<Tx, MPType, Ty>,
                                  kps::MeanOps<Tx, MPType, Ty>>) {
       MPType factor = static_cast<MPType>(iter.num_output_elements()) /
                       static_cast<MPType>(iter.numel());
       return ReduceOp<Tx, MPType, Ty>{factor};
+    } else if constexpr (std::is_same_v<ReduceOp<Tx, MPType, Ty>,
+                                 kps::GenericPNormOps<Tx, MPType, Ty>>) {
+      return ReduceOp<Tx, MPType, Ty>{norm_p};
     } else {
       return ReduceOp<Tx, MPType, Ty>{};
     }
@@ -1388,18 +1392,17 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
 
   // Initialize ident value.
   Tx ident = []() {
-    if constexpr (std::is_same_v<ReduceOp<Tx, MPType, Ty>,
-                                 kps::MaxOps<Tx, MPType, Ty>>) {
+    if constexpr (std::is_same_v<ReduceOp<Tx, MPType, Ty>, kps::MaxOps<Tx, MPType, Ty>> || 
+                  std::is_same_v<ReduceOp<Tx, MPType, Ty>, kps::AbsMaxOps<Tx, MPType, Ty>>) {
       return std::numeric_limits<Tx>::lowest();
     }
 
-    if constexpr (std::is_same_v<ReduceOp<Tx, MPType, Ty>,
-                                 kps::MinOps<Tx, MPType, Ty>>) {
+    if constexpr (std::is_same_v<ReduceOp<Tx, MPType, Ty>, kps::MinOps<Tx, MPType, Ty>> || 
+                  std::is_same_v<ReduceOp<Tx, MPType, Ty>, kps::AbsMinOps<Tx, MPType, Ty>>) {
       return std::numeric_limits<Tx>::max();
     }
 
-    if constexpr (std::is_same_v<ReduceOp<Tx, MPType, Ty>,
-                                 kps::LogicalAndOps<Tx, MPType, Ty>>) {
+    if constexpr (std::is_same_v<ReduceOp<Tx, MPType, Ty>, kps::LogicalAndOps<Tx, MPType, Ty>>) {
       return Tx{1};
     }
 
