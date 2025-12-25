@@ -20,9 +20,9 @@ template <typename T>
 class CopyMatrixRowsFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& dev_ctx UNUSED,
-                  const phi::DenseTensor& src,
+                  const DenseTensor& src,
                   phi::Vector<size_t> index_lod,
-                  phi::DenseTensor* dst,
+                  DenseTensor* dst,
                   bool is_src_index) {
     size_t* index = index_lod.data();
     const auto& src_dims = common::vectorize<int>(src.dims());

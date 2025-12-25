@@ -136,8 +136,8 @@ template <typename T>
 struct SelectedRowsAddTensor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
                   const phi::SelectedRows& input1,
-                  const phi::DenseTensor& input2,
-                  phi::DenseTensor* output) {
+                  const DenseTensor& input2,
+                  DenseTensor* output) {
     auto in1_height = input1.height();
     auto in2_dims = input2.dims();
     auto out_dims = output->dims();
@@ -288,7 +288,7 @@ template <typename T>
 struct SelectedRowsAddToTensor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
                   const phi::SelectedRows& input1,
-                  phi::DenseTensor* input2) {
+                  DenseTensor* input2) {
     auto in1_height = input1.height();
     auto in2_dims = input2->dims();
     PADDLE_ENFORCE_EQ(
