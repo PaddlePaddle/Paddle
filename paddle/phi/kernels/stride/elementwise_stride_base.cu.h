@@ -380,7 +380,7 @@ void UnaryStrideElementwiseKernel(const Context &dev_ctx,
 
   bool is_big_tensor = false;
   int64_t max_stride = 0;
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 2; i++) {
     for (int j = 0; j < iter.ndim(); j++) {
       max_stride += iter.operands_[i].stride_bytes.data()[j] * iter.shape()[j];
     }
