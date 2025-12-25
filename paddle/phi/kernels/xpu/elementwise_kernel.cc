@@ -101,7 +101,7 @@ void RemainderKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
   }
   const auto& x_dims = x.dims();
   const auto& y_dims = y.dims();
-  auto out_dims = phi::funcs::BroadcastTwoDims(x_dims, y_dims);
+  auto out_dims = funcs::BroadcastTwoDims(x_dims, y_dims);
   std::vector<int64_t> out_dims_vec = phi::vectorize(out_dims);
 
   auto complex_expand = [](const XPUContext& dev_ctx,

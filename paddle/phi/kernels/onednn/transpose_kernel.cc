@@ -44,8 +44,7 @@ void TransposeKernel(const Context& dev_ctx,
 
     std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
     x_dims = x_dims.reshape(dims);
-    VLOG(3)
-        << "Rotating Shape in Transpose from: kMKLDNN to: kNHWC output_shape";
+    VLOG(3) << "Rotating Shape in Transpose from: ONEDNN to: NHWC output_shape";
 
     DDim out_dims(x_dims);
     for (size_t i = 0; i < axis.size(); i++) {

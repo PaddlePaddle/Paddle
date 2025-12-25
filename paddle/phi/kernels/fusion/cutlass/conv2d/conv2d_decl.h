@@ -50,7 +50,7 @@ typedef struct {
   int oh;
   int ow;
   int groups;
-  // const phi::GPUContext *ctx;
+  // const GPUContext *ctx;
   cudaStream_t stream;
   float alpha;  // for leaky_relu use
   int sm_version = 75;

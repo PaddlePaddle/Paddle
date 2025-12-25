@@ -37,35 +37,41 @@ def test_instruction_translator_cache_context():
 
 
 class TestCaseBase(unittest.TestCase):
-    def assert_nest_match(self, x, y):
-        cls_x = type(x)
-        cls_y = type(y)
-        msg = f"type mismatch, x is {cls_x}, y is {cls_y}"
-        self.assertIs(cls_x, cls_y, msg=msg)
+    def assert_nest_match(self, actual, expected):
+        cls_actual = type(actual)
+        cls_expected = type(expected)
+        msg = (
+            f"type mismatch, actual is {cls_actual}, expected is {cls_expected}"
+        )
+        self.assertIs(cls_actual, cls_expected, msg=msg)
 
         container_types = (tuple, list, dict, set)
-        if cls_x in container_types:
-            msg = f"length mismatch, x is {len(x)}, y is {len(y)}"
+        if cls_actual in container_types:
+            msg = f"length mismatch, actual is {len(actual)}, expected is {len(expected)}"
             self.assertEqual(
-                len(x),
-                len(y),
+                len(actual),
+                len(expected),
                 msg=msg,
             )
-            if cls_x in (tuple, list):
-                for x_item, y_item in zip(x, y):
-                    self.assert_nest_match(x_item, y_item)
-            elif cls_x is dict:
-                for x_key, y_key in zip(x.keys(), y.keys()):
-                    self.assert_nest_match(x_key, y_key)
-                    self.assert_nest_match(x[x_key], y[y_key])
-            elif cls_x is set:
+            if cls_actual in (tuple, list):
+                for actual_item, expected_item in zip(actual, expected):
+                    self.assert_nest_match(actual_item, expected_item)
+            elif cls_actual is dict:
+                for actual_key, expected_key in zip(
+                    actual.keys(), expected.keys()
+                ):
+                    self.assert_nest_match(actual_key, expected_key)
+                    self.assert_nest_match(
+                        actual[actual_key], expected[expected_key]
+                    )
+            elif cls_actual is set:
                 # TODO: Nested set is not supported yet
-                self.assertEqual(x, y)
-        elif cls_x in (np.ndarray, paddle.Tensor):
+                self.assertEqual(actual, expected)
+        elif cls_actual in (np.ndarray, paddle.Tensor):
             # TODO: support assert_allclose github error log
-            np.testing.assert_allclose(x, y, rtol=1e-6, atol=1e-8)
+            np.testing.assert_allclose(actual, expected, rtol=1e-6, atol=1e-8)
         else:
-            self.assertEqual(x, y)
+            self.assertEqual(actual, expected)
 
     def assert_results(self, func, *args, **kwargs):
         sym_output = symbolic_translate(func)(*args, **kwargs)

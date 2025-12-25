@@ -60,8 +60,7 @@ void NMSFast(const phi::DenseTensor& bbox,
   std::vector<T> scores_data(num_boxes);
   std::copy_n(scores.data<T>(), num_boxes, scores_data.begin());
   std::vector<std::pair<T, int>> sorted_indices;
-  phi::funcs::GetMaxScoreIndex(
-      scores_data, score_threshold, top_k, &sorted_indices);
+  funcs::GetMaxScoreIndex(scores_data, score_threshold, top_k, &sorted_indices);
 
   selected_indices->clear();
   T adaptive_threshold = nms_threshold;
@@ -75,18 +74,17 @@ void NMSFast(const phi::DenseTensor& bbox,
         T overlap = T(0.);
         // 4: [xmin ymin xmax ymax]
         if (box_size == 4) {
-          overlap =
-              phi::funcs::JaccardOverlap<T>(bbox_data + idx * box_size,
-                                            bbox_data + kept_idx * box_size,
-                                            normalized);
+          overlap = funcs::JaccardOverlap<T>(bbox_data + idx * box_size,
+                                             bbox_data + kept_idx * box_size,
+                                             normalized);
         }
         // 8: [x1 y1 x2 y2 x3 y3 x4 y4] or 16, 24, 32
         if (box_size == 8 || box_size == 16 || box_size == 24 ||
             box_size == 32) {
-          overlap = phi::funcs::PolyIoU<T>(bbox_data + idx * box_size,
-                                           bbox_data + kept_idx * box_size,
-                                           box_size,
-                                           normalized);
+          overlap = funcs::PolyIoU<T>(bbox_data + idx * box_size,
+                                      bbox_data + kept_idx * box_size,
+                                      box_size,
+                                      normalized);
         }
         keep = overlap <= adaptive_threshold;
       } else {
@@ -177,7 +175,7 @@ void MultiClassNMS(const Context& dev_ctx,
     // Keep top k results per image.
     std::stable_sort(score_index_pairs.begin(),
                      score_index_pairs.end(),
-                     phi::funcs::SortScorePairDescend<std::pair<int, int>>);
+                     funcs::SortScorePairDescend<std::pair<int, int>>);
     score_index_pairs.resize(keep_top_k);
 
     // Store the new indices.

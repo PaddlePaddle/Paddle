@@ -41,7 +41,7 @@ void MvKernel(const Context& dev_ctx,
     return;
   }
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
   blas.GEMV(false,
             dim_x[0],

@@ -63,14 +63,14 @@ void ResNetUnitGradXPUKernel(
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   bool is_nchw = (data_format == "NCHW");
-  const phi::DenseTensor *y_grad = &out_grad;
-  const phi::DenseTensor *x = &x_in;
-  const phi::DenseTensor *filter_x = &filter_x_in;
-  const phi::DenseTensor *scale_x = &scale_x_in;
-  const phi::DenseTensor *saved_mean_x = &saved_mean_x_in;
-  const phi::DenseTensor *saved_invstd_x = &saved_invstd_x_in;
-  const phi::DenseTensor *conv_out_x = &conv_x_in;
-  const phi::DenseTensor *output = &out;
+  const DenseTensor *y_grad = &out_grad;
+  const DenseTensor *x = &x_in;
+  const DenseTensor *filter_x = &filter_x_in;
+  const DenseTensor *scale_x = &scale_x_in;
+  const DenseTensor *saved_mean_x = &saved_mean_x_in;
+  const DenseTensor *saved_invstd_x = &saved_invstd_x_in;
+  const DenseTensor *conv_out_x = &conv_x_in;
+  const DenseTensor *output = &out;
 
   float eps = epsilon;
 
@@ -121,12 +121,12 @@ void ResNetUnitGradXPUKernel(
     //          ScaleBiasAddRelu
     //                  |
     //                  Y
-    const phi::DenseTensor *z = z_in.get_ptr();
-    const phi::DenseTensor *filter_z = filter_z_in.get_ptr();
-    const phi::DenseTensor *scale_z = scale_z_in.get_ptr();
-    const phi::DenseTensor *saved_mean_z = saved_mean_z_in.get_ptr();
-    const phi::DenseTensor *saved_invstd_z = saved_invstd_z_in.get_ptr();
-    const phi::DenseTensor *conv_out_z = conv_z_in.get_ptr();
+    const DenseTensor *z = z_in.get_ptr();
+    const DenseTensor *filter_z = filter_z_in.get_ptr();
+    const DenseTensor *scale_z = scale_z_in.get_ptr();
+    const DenseTensor *saved_mean_z = saved_mean_z_in.get_ptr();
+    const DenseTensor *saved_invstd_z = saved_invstd_z_in.get_ptr();
+    const DenseTensor *conv_out_z = conv_z_in.get_ptr();
 
     x_list.push_back(reinterpret_cast<const XPUType *>(z->data<T>()));
     w_list.push_back(reinterpret_cast<const XPUType *>(filter_z->data<T>()));

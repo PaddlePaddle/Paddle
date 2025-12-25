@@ -63,10 +63,10 @@ void ConcatGradKernel(const Context& dev_ctx,
   if (axis == 0 && outs.size() < 10) {
     std::vector<const DenseTensor*> ref_shape;
     ref_shape.insert(ref_shape.begin(), x.begin(), x.end());
-    phi::funcs::StridedMemcpyWithAxis0<T, Context>(
+    funcs::StridedMemcpyWithAxis0<T, Context>(
         dev_ctx, out_grad, ref_shape, &outputs);
   } else {
-    phi::funcs::SplitFunctor<Context, T> split_functor;
+    funcs::SplitFunctor<Context, T> split_functor;
     split_functor(dev_ctx, out_grad, x, static_cast<int>(axis), &outputs);
   }
 }

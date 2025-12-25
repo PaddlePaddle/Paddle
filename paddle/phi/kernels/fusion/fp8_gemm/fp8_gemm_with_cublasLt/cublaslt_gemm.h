@@ -62,17 +62,17 @@ inline cudaDataType_t GetCublasLtDataType<phi::bfloat16>() {
 }
 
 template <typename T>
-void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
+void CublasLtMatmulFP8(const GPUContext& dev_ctx,
                        const int batch_count,
                        const int m,
                        const int n,
                        const int k,
-                       const phi::DenseTensor& mat_a,
-                       const phi::DenseTensor& mat_b,
+                       const DenseTensor& mat_a,
+                       const DenseTensor& mat_b,
                        const float scale,
                        const paddle::optional<DenseTensor>& bias,
                        const std::string& activation_type,
-                       phi::DenseTensor* out) {
+                       DenseTensor* out) {
   // init data structure
   cublasStatus_t status;
   auto A_type = CUDA_R_8F_E4M3;

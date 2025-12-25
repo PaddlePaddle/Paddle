@@ -221,7 +221,7 @@ class MaxSeqPoolGradFunctor {
     const int* max_index = index.data<int>();
     T* ig_data = in_grad->data<T>();
 
-    phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
+    funcs::SetConstant<phi::CPUContext, T> set_zero;
     set_zero(dev_ctx, in_grad, static_cast<T>(0.0));
     int64_t num_seq = og_dims[0];
     int64_t dim = out_grad.numel() / num_seq;
@@ -325,7 +325,7 @@ class SumSeqPoolGradFunctor {
                           out_w));
     const T* out_g_data = out_grad.data<T>();
     T* in_g_data = dev_ctx.template Alloc<T>(in_grad);
-    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+    auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
       if (h == 0) continue;
@@ -352,21 +352,21 @@ class SequencePoolFunctor<phi::CPUContext, T> {
                   phi::DenseTensor* index = nullptr) {
     if (pooltype == "MAX") {
       if (is_test) {
-        phi::funcs::MaxSeqPoolFunctor<T, true> max_pool;
+        funcs::MaxSeqPoolFunctor<T, true> max_pool;
         max_pool(dev_ctx, input, pad_value, output, index);
       } else {
-        phi::funcs::MaxSeqPoolFunctor<T, false> max_pool;
+        funcs::MaxSeqPoolFunctor<T, false> max_pool;
         max_pool(dev_ctx, input, pad_value, output, index);
       }
       return;
     }
     if (pooltype == "LAST") {
-      phi::funcs::LastSeqPoolFunctor<T> last_pool;
+      funcs::LastSeqPoolFunctor<T> last_pool;
       last_pool(dev_ctx, input, pad_value, output);
       return;
     }
     if (pooltype == "FIRST") {
-      phi::funcs::FirstSeqPoolFunctor<T> first_pool;
+      funcs::FirstSeqPoolFunctor<T> first_pool;
       first_pool(dev_ctx, input, pad_value, output);
       return;
     }
@@ -441,19 +441,19 @@ class SequencePoolGradFunctor<phi::CPUContext, T> {
                   /* max pool has index */
                   const phi::DenseTensor* index = nullptr) {
     if (pooltype == "MAX") {
-      phi::funcs::MaxSeqPoolGradFunctor<T> max_pool_grad;
+      funcs::MaxSeqPoolGradFunctor<T> max_pool_grad;
       max_pool_grad(dev_ctx, out_grad, *index, in_grad);
       return;
     }
 
     if (pooltype == "LAST" || pooltype == "FIRST") {
       // set X@GRAD be zero at first when pooltype is LAST/FIRST
-      phi::funcs::SetConstant<phi::CPUContext, T> functor;
+      funcs::SetConstant<phi::CPUContext, T> functor;
       functor(dev_ctx, in_grad, 0);
     }
 
     if (pooltype == "SUM") {
-      phi::funcs::SumSeqPoolGradFunctor<T> sum_pool_grad;
+      funcs::SumSeqPoolGradFunctor<T> sum_pool_grad;
       sum_pool_grad(dev_ctx, out_grad, in_grad);
       return;
     }

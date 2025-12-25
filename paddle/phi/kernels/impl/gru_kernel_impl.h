@@ -30,7 +30,7 @@ void ReorderInitState(const Context &dev_ctx,
                       phi::Vector<size_t> index_lod,
                       phi::DenseTensor *dst,
                       bool indexed_src) {
-  phi::funcs::CopyMatrixRowsFunctor<Context, T> row_shuffle;
+  funcs::CopyMatrixRowsFunctor<Context, T> row_shuffle;
   dst->Resize(src.dims());
   dev_ctx.template Alloc<T>(dst);
   row_shuffle(dev_ctx, src, index_lod, dst, indexed_src);
@@ -63,7 +63,7 @@ void GRUGradKernel(const Context &dev_ctx,
   auto hidden_dims = hidden.dims();
   int frame_size = hidden_dims[1];
 
-  phi::funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
+  funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
   phi::DenseTensor batch_hidden_grad, batch_gate_grad,
       batch_reset_hidden_prev_grad;
   batch_hidden_grad.Resize(hidden_dims);
@@ -73,7 +73,7 @@ void GRUGradKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(&batch_gate_grad);
   dev_ctx.template Alloc<T>(&batch_reset_hidden_prev_grad);
 
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, &batch_hidden_grad, static_cast<T>(0.0));
   zero(dev_ctx, &batch_gate_grad, static_cast<T>(0.0));
   zero(dev_ctx, &batch_reset_hidden_prev_grad, static_cast<T>(0.0));
@@ -94,12 +94,12 @@ void GRUGradKernel(const Context &dev_ctx,
   batch_hidden_grad.set_lod(batch_hidden.lod());
   to_batch(dev_ctx, hidden_grad, &batch_hidden_grad, false, is_reverse);
 
-  phi::funcs::GRUMetaValue<T> gru_value;
+  funcs::GRUMetaValue<T> gru_value;
   gru_value.gate_weight = const_cast<T *>(weight_data);
   gru_value.state_weight =
       const_cast<T *>(weight_data + 2 * frame_size * frame_size);
 
-  phi::funcs::GRUMetaGrad<T> gru_grad;
+  funcs::GRUMetaGrad<T> gru_grad;
   if (weight_grad) {
     gru_grad.gate_weight_grad = dev_ctx.template Alloc<T>(weight_grad);
     zero(dev_ctx, weight_grad, static_cast<T>(0.0));
@@ -112,8 +112,8 @@ void GRUGradKernel(const Context &dev_ctx,
 
   auto batch_starts = batch_hidden_grad.lod()[0];
   size_t num_batch = batch_starts.size() - 1;
-  auto active_node = phi::funcs::detail::GetActivationType(activation);
-  auto active_gate = phi::funcs::detail::GetActivationType(gate_activation);
+  auto active_node = funcs::detail::GetActivationType(activation);
+  auto active_gate = funcs::detail::GetActivationType(gate_activation);
   for (int n = static_cast<int>(num_batch) - 1; n >= 0; n--) {
     int bstart = static_cast<int>(batch_starts[n]);
     int bend = static_cast<int>(batch_starts[n + 1]);
@@ -145,24 +145,24 @@ void GRUGradKernel(const Context &dev_ctx,
       gru_grad.prev_out_grad = hidden_prev_grad_t.data<T>();
     }
     gru_value.output_value = nullptr;
-    phi::funcs::GRUUnitGradFunctor<Context, T>::compute(dev_ctx,
-                                                        gru_value,
-                                                        gru_grad,
-                                                        frame_size,
-                                                        cur_batch_size,
-                                                        active_node,
-                                                        active_gate,
-                                                        origin_mode);
+    funcs::GRUUnitGradFunctor<Context, T>::compute(dev_ctx,
+                                                   gru_value,
+                                                   gru_grad,
+                                                   frame_size,
+                                                   cur_batch_size,
+                                                   active_node,
+                                                   active_gate,
+                                                   origin_mode);
   }
   if (input_grad) {
     dev_ctx.template Alloc<T>(input_grad);
-    phi::funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
+    funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
     batch_gate_grad.set_lod(batch_gate.lod());
     to_seq(dev_ctx, batch_gate_grad, input_grad);
   }
   if (bias_grad) {
     dev_ctx.template Alloc<T>(bias_grad);
-    phi::funcs::ColwiseSum<Context, T> col_sum;
+    funcs::ColwiseSum<Context, T> col_sum;
     col_sum(dev_ctx, batch_gate_grad, bias_grad);
   }
   if (h0_param && h0_grad) {

@@ -44,8 +44,8 @@ void CSoftmaxWithEntropyGradKernel(const Context& dev_ctx,
   }
   const auto softmax_dims = softmax->dims();
   const int axis = softmax_dims.size() - 1;
-  const int N = phi::funcs::SizeToAxis(axis, softmax_dims);
-  const int D = phi::funcs::SizeFromAxis(axis, softmax_dims);
+  const int N = funcs::SizeToAxis(axis, softmax_dims);
+  const int D = funcs::SizeFromAxis(axis, softmax_dims);
   const auto& label_type = labels->dtype();
 
   if (label_type == phi::DataType::INT32 ||

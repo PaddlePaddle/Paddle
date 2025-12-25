@@ -63,7 +63,7 @@ void SequenceMaskScalarKernel(const Context& dev_ctx,
   }
 
   phi::VisitDataType(out_dtype,
-                     phi::funcs::SequenceMaskFunctor<Context, T>(
+                     funcs::SequenceMaskFunctor<Context, T>(
                          dev_ctx, x_data, y, x_numel * maxlen, maxlen));
 }
 

@@ -46,7 +46,7 @@ inline CONTEXT_TYPE *GetCurrentContext() {
   return dev_ctx;
 #else
   PADDLE_THROW(common::errors::Unimplemented(
-      "Unsupported usage of phi::funcs::GetCurrentContext()! This function "
+      "Unsupported usage of funcs::GetCurrentContext()! This function "
       "only support CUDA and Custom Device."));
   return 0;
 #endif

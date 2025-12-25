@@ -125,6 +125,12 @@ if(NOT WITH_MAGMA)
   list(REMOVE_ITEM kernel_gpu "gpu/eig_kernel.cu" "gpu/eig_grad_kernel.cu")
 endif()
 
+if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 11.8))
+   OR APPLE
+   OR WITH_ROCM)
+  list(REMOVE_ITEM kernel_gpu "gpu/rms_norm_cuda_kernel.cu")
+endif()
+
 if(WITH_CUTLASS)
   add_custom_target(
     gemm_epilogue_compile_script ALL

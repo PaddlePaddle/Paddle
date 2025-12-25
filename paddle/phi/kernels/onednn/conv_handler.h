@@ -44,9 +44,9 @@ class ConvOneDNNHandlerT
   ConvOneDNNHandlerT(const OneDNNContext& dev_ctx,
                      const dnnl::engine onednn_engine,
                      Place cpu_place,
-                     const phi::DenseTensor* input,
-                     const phi::DenseTensor* filter,
-                     const phi::DenseTensor* bias,
+                     const DenseTensor* input,
+                     const DenseTensor* filter,
+                     const DenseTensor* bias,
                      const std::vector<int>& strides_in,
                      const std::vector<int>& paddings_in,
                      const std::string& padding_algorithm,
@@ -58,7 +58,7 @@ class ConvOneDNNHandlerT
                      const std::string& fuse_activation,
                      bool fuse_residual_conn,
                      bool force_fp32_output,
-                     phi::DenseTensor* output,
+                     DenseTensor* output,
                      const std::string& unique_name)
       : funcs::OneDNNHandlerT<T,
                               dnnl::convolution_forward,
@@ -249,10 +249,10 @@ class ConvOneDNNHandlerT
 
   ConvOneDNNHandlerT(const OneDNNContext& dev_ctx,
                      Place cpu_place,
-                     const phi::DenseTensor* in,
-                     const phi::DenseTensor* filter,
-                     const phi::DenseTensor* bias,
-                     const phi::DenseTensor* out_grad,
+                     const DenseTensor* in,
+                     const DenseTensor* filter,
+                     const DenseTensor* bias,
+                     const DenseTensor* out_grad,
                      const std::vector<int>& strides_in,
                      const std::vector<int>& paddings_in,
                      const std::string& padding_algorithm,
@@ -260,8 +260,8 @@ class ConvOneDNNHandlerT
                      int groups,
                      const std::string& data_format UNUSED,
                      bool is_test,
-                     phi::DenseTensor* filter_grad UNUSED,
-                     phi::DenseTensor* in_x_grad UNUSED,
+                     DenseTensor* filter_grad UNUSED,
+                     DenseTensor* in_x_grad UNUSED,
                      const std::string& unique_name)
       : funcs::OneDNNHandlerT<T,
                               dnnl::convolution_forward,
@@ -460,8 +460,9 @@ class ConvOneDNNHandlerT
   }
 
   std::shared_ptr<dnnl::memory>
-  AcquireWeightsMemoryWithReorderFromDataPrimitive(
-      const phi::DenseTensor* filter, const int groups, const bool is_conv3d) {
+  AcquireWeightsMemoryWithReorderFromDataPrimitive(const DenseTensor* filter,
+                                                   const int groups,
+                                                   const bool is_conv3d) {
     const K* filter_data = filter->data<K>();
     auto weights_tz = common::vectorize(filter->dims());
     funcs::GetGroupConvWeightsTz(weights_tz, groups);
@@ -479,7 +480,7 @@ class ConvOneDNNHandlerT
   }
 
   std::shared_ptr<dnnl::memory> AcquireSrcMemoryWithReorder(
-      const phi::DenseTensor* input) {
+      const DenseTensor* input) {
     return this->AcquireMemoryWithReorderPrimitive(input,
                                                    "@src_mem_p_user",
                                                    "@src_mem_p_target",
@@ -488,7 +489,7 @@ class ConvOneDNNHandlerT
   }
 
   std::shared_ptr<dnnl::memory> AcquireSrcMemoryWithReorderFromWeightsPrimitive(
-      const phi::DenseTensor* input) {
+      const DenseTensor* input) {
     return this->AcquireMemoryWithReorderPrimitive(input,
                                                    "@src_mem_w_p_user",
                                                    "@src_mem_w_p_target",
@@ -498,7 +499,7 @@ class ConvOneDNNHandlerT
 
   std::shared_ptr<dnnl::memory>
   AcquireDiffDstMemoryWithReorderFromWeightsPrimitive(
-      const phi::DenseTensor* out_grad) {
+      const DenseTensor* out_grad) {
     return this->AcquireMemoryWithReorderPrimitive(
         out_grad,
         "@diff_dst_mem_w_p_user",
@@ -509,7 +510,7 @@ class ConvOneDNNHandlerT
 
   std::shared_ptr<dnnl::memory>
   AcquireDiffDstMemoryWithReorderMemoryFromDataPrimitive(
-      const phi::DenseTensor* out_grad) {
+      const DenseTensor* out_grad) {
     return this->AcquireMemoryWithReorderPrimitive(
         out_grad,
         "@diff_dst_mem_p_user",
@@ -519,7 +520,7 @@ class ConvOneDNNHandlerT
   }
 
   std::shared_ptr<dnnl::memory> AcquireMemoryWithReorderPrimitive(
-      const phi::DenseTensor* in_mem,
+      const DenseTensor* in_mem,
       const char* key_mem_user,
       const char* key_mem_target,
       const char* key_mem,
@@ -545,7 +546,7 @@ class ConvOneDNNHandlerT
   }
 
   std::shared_ptr<dnnl::memory> AcquireWeightsMemoryWithReorder(
-      const phi::DenseTensor* filter,
+      const DenseTensor* filter,
       const int groups,
       const bool is_conv3d,
       const bool is_test,
@@ -596,7 +597,7 @@ class ConvOneDNNHandlerT
   }
 
   std::shared_ptr<dnnl::memory> AcquireBiasMemoryWithReorder(
-      const phi::DenseTensor* bias,
+      const DenseTensor* bias,
       const bool is_test,
       const std::vector<float>& scale_data = {1.0f},
       int mask = 0) {
@@ -634,7 +635,7 @@ class ConvOneDNNHandlerT
   }
 
   std::shared_ptr<dnnl::memory> AcquireResidualMemory(
-      const phi::DenseTensor* residual_param) {
+      const DenseTensor* residual_param) {
     void* residual_data =
         residual_param->dtype() == phi::CppTypeToDataType<T_out>::Type()
             ? funcs::to_void_cast<T_out>(residual_param->data<T_out>())
@@ -651,7 +652,7 @@ class ConvOneDNNHandlerT
   }
 
   std::shared_ptr<dnnl::memory> AcquireDstMemoryWithResidual(
-      phi::DenseTensor* output, const phi::DenseTensor* residual_param) {
+      DenseTensor* output, const DenseTensor* residual_param) {
     std::shared_ptr<dnnl::memory> dst_memory_p;
     auto residual_memory_p = this->AcquireResidualMemory(residual_param);
     dst_memory_p = this->template AcquireDstMemory<T_out>(output);

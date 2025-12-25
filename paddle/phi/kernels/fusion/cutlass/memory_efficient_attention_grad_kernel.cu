@@ -400,12 +400,12 @@ void MemoryEfficientAttentionGradKernel(
     bool force_pad_inf = (compute_capacity == 75);
     const std::string data_format = "NCHW";
     DenseTensor padded_lse =
-        phi::funcs::get_pad_lse<float>(dev_ctx,
-                                       const_cast<DenseTensor*>(&logsumexp),
-                                       static_cast<int>(output.dims()[1]),
-                                       32,
-                                       data_format,
-                                       force_pad_inf);
+        funcs::get_pad_lse<float>(dev_ctx,
+                                  const_cast<DenseTensor*>(&logsumexp),
+                                  static_cast<int>(output.dims()[1]),
+                                  32,
+                                  data_format,
+                                  force_pad_inf);
     p.logsumexp_ptr = phi::SafeGetTensorPtr<float>(padded_lse);
     VLOG(3) << "logsumexp_ptr" << p.logsumexp_ptr;
     p.output_ptr = phi::SafeGetTensorPtr<scalar_t>(output);

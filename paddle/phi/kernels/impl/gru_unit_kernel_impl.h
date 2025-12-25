@@ -31,14 +31,14 @@ void ActCompute(
   if (act_type == identity) {
     y.device(d) = x;
   } else if (act_type == sigmoid) {
-    phi::funcs::SigmoidFunctor<T>()(d, x, y);
+    funcs::SigmoidFunctor<T>()(d, x, y);
   } else if (act_type == tanh) {
-    phi::funcs::TanhFunctor<T>()(d, x, y);
+    funcs::TanhFunctor<T>()(d, x, y);
   } else if (act_type == relu) {
     if (place == phi::CPUPlace())
-      phi::funcs::ReluCPUFunctor<T>()(d, x, y);
+      funcs::ReluCPUFunctor<T>()(d, x, y);
     else
-      phi::funcs::ReluCUDAFunctor<T>()(d, x, y);
+      funcs::ReluCUDAFunctor<T>()(d, x, y);
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported activation type, only supports identity, sigmoid, tanh "
@@ -90,7 +90,7 @@ void GRUUnitKernel(const Context& dev_ctx,
   const T* weight_data = weight.data<T>();
   T* gate_data = gate->data<T>();
   T* reset_hidden_prev_data = reset_hidden_prev->data<T>();
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   blas.GEMM(false,
             false,
             batch_size,
@@ -164,11 +164,11 @@ void ActGradCompute(
   if (act_type == identity)
     dx.device(d) = dy;
   else if (act_type == sigmoid)
-    phi::funcs::SigmoidGradFunctor<T>()(d, x, y, dy, dx);
+    funcs::SigmoidGradFunctor<T>()(d, x, y, dy, dx);
   else if (act_type == tanh)
-    phi::funcs::TanhGradFunctor<T>()(d, x, y, dy, dx);
+    funcs::TanhGradFunctor<T>()(d, x, y, dy, dx);
   else if (act_type == relu)
-    phi::funcs::ReluGradFunctor<T>()(d, x, y, dy, dx);
+    funcs::ReluGradFunctor<T>()(d, x, y, dy, dx);
   else
     PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported activation type, only supports identity, sigmoid, tanh "
@@ -246,7 +246,7 @@ void GRUUnitGradKernel(const Context& dev_ctx,
         activation, place, c, c, d_g.slice(c_offsets, extents), d_h * u);
   }
   // backward for reset_hidden_prev
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   blas.GEMM(false,
             true,
             batch_size,

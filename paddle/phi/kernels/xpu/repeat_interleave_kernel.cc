@@ -104,11 +104,11 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     // infer out shape
     if (index_type == phi::DataType::INT32) {
-      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
+      funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
           dev_ctx, repeats_tensor, &index);
 
     } else if (index_type == phi::DataType::INT64) {
-      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
+      funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
           dev_ctx, repeats_tensor, &index);
     }
     auto output_dim = common::vectorize(x.dims());
@@ -131,7 +131,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     return;
   }
   if (index_type == phi::DataType::INT64) {
-    phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
+    funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
         dev_ctx, repeats_tensor, &index);
     if (output_size > 0) {
       PADDLE_ENFORCE_EQ(
@@ -159,7 +159,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
         dim);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "paddle_gather");
   } else {
-    phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
+    funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
         dev_ctx, repeats_tensor, &index);
     if (output_size > 0) {
       PADDLE_ENFORCE_EQ(

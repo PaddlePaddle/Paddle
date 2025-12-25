@@ -47,8 +47,7 @@ void BoxClipKernel(const Context& dev_ctx,
     phi::DenseTensor box_slice = input_box->Slice(box_lod[i], box_lod[i + 1]);
     phi::DenseTensor output_slice =
         output_box->Slice(box_lod[i], box_lod[i + 1]);
-    phi::funcs::ClipTiledBoxes<T>(
-        dev_ctx, im_info_slice, box_slice, &output_slice);
+    funcs::ClipTiledBoxes<T>(dev_ctx, im_info_slice, box_slice, &output_slice);
   }
 }
 }  // namespace phi

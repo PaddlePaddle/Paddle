@@ -66,7 +66,6 @@ void PythonFunctionInstruction::BuildPythonFunctionContext(
   auto& name2id = op_yaml_info.InputName2Id();
   auto inplace_id_map = op_yaml_info.GetInplaceIdMap();
   int input_index = 0;
-  int vec_input_index = 0;
 
   for (const std::string& t : vec_input_tensor_params) {
     PADDLE_ENFORCE_EQ(

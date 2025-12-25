@@ -184,7 +184,7 @@ void SequenceExpandGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(g_x);
   g_x->set_lod(x->lod());
 
-  phi::funcs::SetConstant<Context, T> set_zero;
+  funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, g_x, static_cast<T>(0));
 
   auto& y_lod = y->lod();

@@ -92,7 +92,7 @@ void AddmmKernelImpl(const Context& dev_ctx,
 
   phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
 
-  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPMM(
       false, false, static_cast<T>(alpha), x, y, static_cast<T>(beta), out);
 #else
