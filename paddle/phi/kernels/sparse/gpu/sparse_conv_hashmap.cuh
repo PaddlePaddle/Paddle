@@ -41,7 +41,7 @@ __inline__ __device__ int8_t atomicCAS(int8_t* address,
   int32_t* base_address = (int32_t*)((char*)address - ((size_t)address & 3));
   int32_t int_val = (int32_t)val << (((size_t)address & 3) * 8);
   int32_t int_comp = (int32_t)compare << (((size_t)address & 3) * 8);
-  return (int8_t)atomicCAS(base_address, int_comp, int_val);
+  return (int8_t)::atomicCAS(base_address, int_comp, int_val);
 }
 
 // TODO: can we do this more efficiently?
@@ -51,15 +51,15 @@ __inline__ __device__ int16_t atomicCAS(int16_t* address,
   int32_t* base_address = (int32_t*)((char*)address - ((size_t)address & 2));
   int32_t int_val = (int32_t)val << (((size_t)address & 2) * 8);
   int32_t int_comp = (int32_t)compare << (((size_t)address & 2) * 8);
-  return (int16_t)atomicCAS(base_address, int_comp, int_val);
+  return (int16_t)::atomicCAS(base_address, int_comp, int_val);
 }
 
 __inline__ __device__ int64_t atomicCAS(int64_t* address,
                                         int64_t compare,
                                         int64_t val) {
-  return (int64_t)atomicCAS((unsigned long long*)address,
-                            (unsigned long long)compare,
-                            (unsigned long long)val);
+  return (int64_t)::atomicCAS((unsigned long long*)address,
+                              (unsigned long long)compare,
+                              (unsigned long long)val);
 }
 
 template <typename dtype = int>
