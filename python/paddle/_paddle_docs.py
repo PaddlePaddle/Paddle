@@ -788,7 +788,7 @@ def log2(
     name: str | None = None,
     * ,
     out: Tensor | None = None
-    ) -> Tensor
+) -> Tensor
 """,
 )
 
