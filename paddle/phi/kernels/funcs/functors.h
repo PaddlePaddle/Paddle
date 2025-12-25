@@ -84,7 +84,7 @@ struct TanhFunctor {
     // y = 2 / (1 + e^-2x) - 1
     T t0 = static_cast<T>(2) * x;
     T t1 = (t0 < kMin) ? kMin : ((t0 > kMax) ? kMax : t0);
-    return static_cast<T>(2) / (static_cast<T>(1) + phi::funcs::real_exp(-t1)) -
+    return static_cast<T>(2) / (static_cast<T>(1) + funcs::real_exp(-t1)) -
            static_cast<T>(1);
   }
 };
@@ -105,7 +105,7 @@ struct SigmoidFunctor {
   inline HOSTDEVICE T operator()(T x) {
     // y = 1 / (1 + e^-x)
     T tmp = (x < kMin) ? kMin : ((x > kMax) ? kMax : x);
-    return static_cast<T>(1) / (static_cast<T>(1) + phi::funcs::real_exp(-tmp));
+    return static_cast<T>(1) / (static_cast<T>(1) + funcs::real_exp(-tmp));
   }
 };
 

@@ -101,7 +101,7 @@ void RemainderKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
   }
   const auto& x_dims = x.dims();
   const auto& y_dims = y.dims();
-  auto out_dims = phi::funcs::BroadcastTwoDims(x_dims, y_dims);
+  auto out_dims = funcs::BroadcastTwoDims(x_dims, y_dims);
   std::vector<int64_t> out_dims_vec = phi::vectorize(out_dims);
 
   auto complex_expand = [](const XPUContext& dev_ctx,
@@ -145,12 +145,15 @@ void RemainderKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
   }
 
   dev_ctx.template Alloc<T>(out);
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
   int r = xfft_internal::xpu::RemainderFunctor(
       out->numel(),
       reinterpret_cast<cuFloatComplex*>(x_data),
       reinterpret_cast<cuFloatComplex*>(y_data),
       reinterpret_cast<cuFloatComplex*>(out->data<T>()));
   PADDLE_ENFORCE_XPU_SUCCESS(r);
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
 }
 #endif
 

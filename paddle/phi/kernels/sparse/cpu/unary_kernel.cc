@@ -35,7 +35,7 @@ void DivScalarCooKernel(const Context& dev_ctx,
   auto eigen_x = phi::EigenVector<T>::Flatten(x.non_zero_elements());
   auto& dev = *dev_ctx.eigen_device();
 
-  phi::funcs::EigenDiv<std::decay_t<decltype(dev)>, T>::Eval(
+  funcs::EigenDiv<std::decay_t<decltype(dev)>, T>::Eval(
       dev, eigen_out, eigen_x, static_cast<T>(scalar));
 }
 
@@ -51,7 +51,7 @@ void DivScalarCsrKernel(const Context& dev_ctx,
   auto eigen_x = phi::EigenVector<T>::Flatten(x.non_zero_elements());
   auto& dev = *dev_ctx.eigen_device();
 
-  phi::funcs::EigenDiv<std::decay_t<decltype(dev)>, T>::Eval(
+  funcs::EigenDiv<std::decay_t<decltype(dev)>, T>::Eval(
       dev, eigen_out, eigen_x, static_cast<T>(scalar));
 }
 

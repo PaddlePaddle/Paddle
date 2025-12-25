@@ -150,7 +150,7 @@ if(WITH_AVX
    AND WITH_MKL)
   set_source_files_properties(
     kernels/fusion/cpu/fused_layer_norm_avx_kernel.cc
-    kernels/fusion/cpu/rms_norm_avx_kernel.cc
+    kernels/fusion/cpu/fused_rms_norm_quant_avx_kernel.cc
     PROPERTIES
       COMPILE_FLAGS
       "${Wno_Maybe_Uninitialized} ${FMA_FLAG} ${AVX512F_FLAG} ${NO_INLINE}")

@@ -204,9 +204,9 @@ void UniformRandom(const phi::GPUContext& dev_ctx,
   if (seed == 0) {
     // Use global Generator seed
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    phi::funcs::uniform_distribution<MT> dist;
-    phi::funcs::uniform_real_transform<MT> trans(min, max);
-    phi::funcs::distribution_and_transform<T>(dev_ctx, tensor, dist, trans);
+    funcs::uniform_distribution<MT> dist;
+    funcs::uniform_real_transform<MT> trans(min, max);
+    funcs::distribution_and_transform<T>(dev_ctx, tensor, dist, trans);
   } else {
     // Use OP seed
     auto func =

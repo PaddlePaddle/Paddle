@@ -20,10 +20,10 @@
 namespace phi {
 namespace fusion {
 
+using funcs::OneDNNGetDataType;
+using funcs::OneDNNMemDesc;
+using funcs::RNNReorderType;
 using phi::OneDNNContext;
-using phi::funcs::OneDNNGetDataType;
-using phi::funcs::OneDNNMemDesc;
-using phi::funcs::RNNReorderType;
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
 template <typename T, typename T_out = T>
@@ -299,12 +299,11 @@ class LSTMONEDNNHandler
     if (!memory_p) {
       auto user_c0_memory = dnnl::memory();
       if (c0) {
-        user_c0_memory =
-            dnnl::memory({{1, 1, this->N, this->OC},
-                          OneDNNGetDataType<float>(),
-                          OneDNNMemoryFormat::ldnc},
-                         this->engine_,
-                         phi::funcs::to_void_cast(c0->data<float>()));
+        user_c0_memory = dnnl::memory({{1, 1, this->N, this->OC},
+                                       OneDNNGetDataType<float>(),
+                                       OneDNNMemoryFormat::ldnc},
+                                      this->engine_,
+                                      funcs::to_void_cast(c0->data<float>()));
       } else {
         user_c0_memory = dnnl::memory({{1, 1, this->N, this->OC},
                                        OneDNNGetDataType<float>(),
@@ -459,8 +458,7 @@ void RunKernel(const Context& dev_ctx,
   astream.wait();
 
   auto* hidden_onednn_data = hidden_onednn_memory_p->get_data_handle();
-  auto* hidden_data =
-      phi::funcs::to_void_cast(dev_ctx.template Alloc<Tout>(hidden));
+  auto* hidden_data = funcs::to_void_cast(dev_ctx.template Alloc<Tout>(hidden));
   if (handler.is_NTC()) {
     handler.reorderRNNdata(hidden_onednn_data,
                            hidden_data,

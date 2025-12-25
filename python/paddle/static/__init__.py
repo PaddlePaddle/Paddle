@@ -68,6 +68,7 @@ from .io import (
 from .nn.common import ExponentialMovingAverage, py_func
 from .nn.control_flow import Print
 from .nn.metric import accuracy, auc, ctr_metric_bundle
+from .python_op import register_op  # noqa: F401
 
 __all__ = [
     'append_backward',

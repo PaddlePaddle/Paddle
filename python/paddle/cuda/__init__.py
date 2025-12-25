@@ -349,8 +349,10 @@ class nvtx:
 
         Args:
             msg (str): The name of the NVTX range.
+
         Example:
-            .. code-block:: python
+            .. code-block:: pycon
+
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
                 >>> # paddle.device.nvtx.range_push("test") is equivalent to paddle.cuda.nvtx.range_push("test")
@@ -363,8 +365,10 @@ class nvtx:
     def range_pop():
         """
         Pop the most recent NVTX range marker.
+
         Example:
-            .. code-block:: python
+            .. code-block:: pycon
+
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
                 >>> # paddle.device.nvtx.range_pop("test") is equivalent to paddle.cuda.nvtx.range_pop("test")
@@ -822,7 +826,8 @@ def get_stream_from_external(
         paddle.cuda.Stream: A Paddle Stream object that wraps the external CUDA stream.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
+
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
             >>> import paddle
 

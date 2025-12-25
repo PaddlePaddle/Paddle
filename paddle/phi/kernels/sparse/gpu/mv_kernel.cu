@@ -51,7 +51,7 @@ void MvKernelImpl(const Context& dev_ctx,
   std::vector<int64_t> out_dim = {x_dim[x_ndims - 2]};
   out->Resize(common::make_ddim(out_dim));
   dev_ctx.template Alloc<T>(out);
-  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPMV(false, static_cast<T>(1), x, vec, static_cast<T>(0), out);
 #else
   PADDLE_THROW(common::errors::Unimplemented(

@@ -355,7 +355,7 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
       &temp_out_tensor, temp_out_tensor.numel() * sizeof(T));
 
   // (B * S, hidden) * (hidden, 3 * N * H) -> (B * S * 3 * N * H)
-  auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
   blas.MatMul(input_matrix, w_matrix, &temp_out_tensor);
   VLOG(2) << "(B * S, hidden) * (hidden, 3 * N * H) -> (B * S * 3 * N * H)";
   // temp_out_tensor.Resize(temp_out_dims);
@@ -381,7 +381,7 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
                    tptr,
                    stream);
   if (std::is_same<T, phi::float16>::value) {
-    phi::funcs::MultiheadGPUComputeFunctor<half> multihead_compute_func;
+    funcs::MultiheadGPUComputeFunctor<half> multihead_compute_func;
     multihead_compute_func(dev_ctx,
                            batch,
                            seq_len,
@@ -394,7 +394,7 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
                            __float2half(static_cast<float>(scale)),
                            __float2half(0.0));
   } else {
-    phi::funcs::MultiheadGPUComputeFunctor<T> multihead_compute_func;
+    funcs::MultiheadGPUComputeFunctor<T> multihead_compute_func;
     multihead_compute_func(dev_ctx,
                            batch,
                            seq_len,

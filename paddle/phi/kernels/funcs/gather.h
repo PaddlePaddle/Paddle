@@ -266,7 +266,7 @@ void GatherV2GradFunction(const phi::CPUContext& dev_ctx,
   auto out_dim = out->dims();
   int64_t out_index_dim_size = out_dim[axis_index];
   // set_constant only supports input of type float value
-  phi::funcs::set_constant(dev_ctx, out, static_cast<float>(0.0));
+  funcs::set_constant(dev_ctx, out, static_cast<float>(0.0));
 
   for (int64_t i = 0; i < inner_dim_size; i++) {
     for (int64_t j = 0; j < input_index_dim_size; j++) {

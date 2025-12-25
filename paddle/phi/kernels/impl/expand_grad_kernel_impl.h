@@ -52,8 +52,8 @@ void ExpandBackward(const Context& dev_ctx,
     }
     const auto out_grad0 = EigenVector<float>::Flatten(out_grad_fp32);
     auto& place = *dev_ctx.eigen_device();
-    phi::funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, float, Dims>::
-        Eval(place, x_grad, out_grad0, reduce_dims, reshape_dims);
+    funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, float, Dims>::Eval(
+        place, x_grad, out_grad0, reduce_dims, reshape_dims);
 
     if constexpr (std::is_same_v<T, dtype::float16>) {
       phi::CastKernel<float, Context>(
@@ -74,8 +74,8 @@ void ExpandBackward(const Context& dev_ctx,
     }
     auto out_grad0 = EigenVector<T>::Flatten(out_grad);
     auto& place = *dev_ctx.eigen_device();
-    phi::funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::
-        Eval(place, x_grad, out_grad0, reduce_dims, reshape_dims);
+    funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
+        place, x_grad, out_grad0, reduce_dims, reshape_dims);
   }
 }
 

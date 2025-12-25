@@ -122,7 +122,7 @@ void MatMulFunctionImplWithBlas(
     bool trans_x,
     bool trans_y,
     bool flag = false,
-    phi::funcs::MatmulPlanner* matmul_planner UNUSED = nullptr) {
+    funcs::MatmulPlanner* matmul_planner UNUSED = nullptr) {
   const int x_ndim = x_dims.size();
   const int y_ndim = y_dims.size();
 
@@ -130,7 +130,7 @@ void MatMulFunctionImplWithBlas(
   const T* x_data = X.data<T>();
   const T* y_data = Y.data<T>();
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
   if (x_ndim == 1 && y_ndim == 1) {
     const int64_t M = X.numel();
@@ -569,12 +569,12 @@ void MatMulFunctionImplWithCublasLt(
     bool trans_x,
     bool trans_y,
     bool flag = false,
-    phi::funcs::MatmulPlanner* matmul_planner = nullptr) {
+    funcs::MatmulPlanner* matmul_planner = nullptr) {
   const int x_ndim = x_dims.size();
   const int y_ndim = y_dims.size();
   const T* x_data = X.data<T>();
   const T* y_data = Y.data<T>();
-  using blaslt = phi::funcs::MatmulWithCublasLt<T>;
+  using blaslt = funcs::MatmulWithCublasLt<T>;
 
   if (x_ndim == 1 && y_ndim == 1) {
     const int64_t M = X.numel();
@@ -994,16 +994,16 @@ struct MatMulDispatcher<phi::GPUContext, T> {
     auto* tuner = phi::autotune::MakeMatmulTuner<T>(
         MatMulFunctionImplWithBlas<phi::GPUContext, T>);
     tuner->AddCallBack(MatMulFunctionImplWithCublasLt<phi::GPUContext, T>);
-    phi::funcs::MatmulPlanner matmul_planner(x_dims,
-                                             y_dims,
-                                             trans_x,
-                                             trans_y,
-                                             phi::CppTypeToDataType<T>::Type(),
-                                             funcs::MatmulFusedType::kMatmul,
-                                             /* bias_data */ nullptr,
-                                             /* reserve_data */ nullptr,
-                                             /* use_addto */ flag,
-                                             /* no_exchange */ true);
+    funcs::MatmulPlanner matmul_planner(x_dims,
+                                        y_dims,
+                                        trans_x,
+                                        trans_y,
+                                        phi::CppTypeToDataType<T>::Type(),
+                                        funcs::MatmulFusedType::kMatmul,
+                                        /* bias_data */ nullptr,
+                                        /* reserve_data */ nullptr,
+                                        /* use_addto */ flag,
+                                        /* no_exchange */ true);
     tuner->Run(dev_ctx,
                matmul_planner.GetKey(),
                dev_ctx,
@@ -1069,19 +1069,18 @@ bool inline MatMulInt8Function(const phi::GPUContext& dev_ctx,
   const int64_t y_ndim = y_dims.size();
   const int8_t* x_data = x.data<int8_t>();
   const int8_t* y_data = y.data<int8_t>();
-  using blaslt = phi::funcs::MatmulWithCublasLt<int8_t, int32_t>;
+  using blaslt = funcs::MatmulWithCublasLt<int8_t, int32_t>;
 
-  phi::funcs::MatmulPlanner matmul_planner(
-      x_dims,
-      y_dims,
-      trans_x,
-      trans_y,
-      phi::CppTypeToDataType<int8_t>::Type(),
-      funcs::MatmulFusedType::kMatmul,
-      /* bias_data */ nullptr,
-      /* reserve_data */ nullptr,
-      /* use_addto */ false,
-      /* no_exchange */ true);
+  funcs::MatmulPlanner matmul_planner(x_dims,
+                                      y_dims,
+                                      trans_x,
+                                      trans_y,
+                                      phi::CppTypeToDataType<int8_t>::Type(),
+                                      funcs::MatmulFusedType::kMatmul,
+                                      /* bias_data */ nullptr,
+                                      /* reserve_data */ nullptr,
+                                      /* use_addto */ false,
+                                      /* no_exchange */ true);
 
   if (x_ndim == 1 && y_ndim == 1) {
     const int64_t M = x.numel();
@@ -1530,17 +1529,17 @@ bool inline MatMulInt8Function(const phi::GPUContext& dev_ctx,
     VLOG(3) << "MatMul's case 1";
     out->Resize(common::make_ddim({}));
     dev_ctx.template Alloc<int32_t>(out);
-    phi::funcs::Int8GEMM(dev_ctx,
-                         CblasNoTrans,
-                         CblasTrans,
-                         1,
-                         1,
-                         M,
-                         static_cast<int32_t>(1),
-                         y_data,
-                         x_data,
-                         static_cast<int32_t>(0),
-                         dev_ctx.template Alloc<int32_t>(out));
+    funcs::Int8GEMM(dev_ctx,
+                    CblasNoTrans,
+                    CblasTrans,
+                    1,
+                    1,
+                    M,
+                    static_cast<int32_t>(1),
+                    y_data,
+                    x_data,
+                    static_cast<int32_t>(0),
+                    dev_ctx.template Alloc<int32_t>(out));
     return true;
   }
 
@@ -1581,45 +1580,45 @@ bool inline MatMulInt8Function(const phi::GPUContext& dev_ctx,
     if (trans_y) {
       const int M = y.numel() / N;
       VLOG(3) << "MatMul's case 2";
-      phi::funcs::Int8GEMV(dev_ctx,
-                           false,
-                           M,
-                           N,
-                           static_cast<int32_t>(1),
-                           y_data,
-                           x_data,
-                           static_cast<int32_t>(0),
-                           dev_ctx.template Alloc<int32_t>(out));
+      funcs::Int8GEMV(dev_ctx,
+                      false,
+                      M,
+                      N,
+                      static_cast<int32_t>(1),
+                      y_data,
+                      x_data,
+                      static_cast<int32_t>(0),
+                      dev_ctx.template Alloc<int32_t>(out));
     } else {
       const int M = y_dims[y_ndim - 1];
       const int batch_size = y.numel() / (M * N);
       if (batch_size == 1) {
         VLOG(3) << "MatMul's case 3";
-        phi::funcs::Int8GEMV(dev_ctx,
-                             true,
-                             N,
-                             M,
-                             static_cast<int32_t>(1),
-                             y_data,
-                             x_data,
-                             static_cast<int32_t>(0),
-                             dev_ctx.template Alloc<int32_t>(out));
+        funcs::Int8GEMV(dev_ctx,
+                        true,
+                        N,
+                        M,
+                        static_cast<int32_t>(1),
+                        y_data,
+                        x_data,
+                        static_cast<int32_t>(0),
+                        dev_ctx.template Alloc<int32_t>(out));
       } else {
         VLOG(3) << "MatMul's case 4";
-        phi::funcs::Int8BatchedGEMM(dev_ctx,
-                                    CblasTrans,
-                                    CblasNoTrans,
-                                    M,
-                                    1,
-                                    N,
-                                    static_cast<int32_t>(1),
-                                    y_data,
-                                    x_data,
-                                    static_cast<int32_t>(0),
-                                    dev_ctx.template Alloc<int32_t>(out),
-                                    batch_size,
-                                    M * N,
-                                    0);
+        funcs::Int8BatchedGEMM(dev_ctx,
+                               CblasTrans,
+                               CblasNoTrans,
+                               M,
+                               1,
+                               N,
+                               static_cast<int32_t>(1),
+                               y_data,
+                               x_data,
+                               static_cast<int32_t>(0),
+                               dev_ctx.template Alloc<int32_t>(out),
+                               batch_size,
+                               M * N,
+                               0);
       }
     }
     return true;
@@ -1665,44 +1664,44 @@ bool inline MatMulInt8Function(const phi::GPUContext& dev_ctx,
       const int batch_size = x.numel() / (M * N);
       if (batch_size == 1) {
         VLOG(3) << "MatMul's case 5";
-        phi::funcs::Int8GEMV(dev_ctx,
-                             true,
-                             N,
-                             M,
-                             static_cast<int32_t>(1),
-                             x_data,
-                             y_data,
-                             static_cast<int32_t>(0),
-                             dev_ctx.template Alloc<int32_t>(out));
+        funcs::Int8GEMV(dev_ctx,
+                        true,
+                        N,
+                        M,
+                        static_cast<int32_t>(1),
+                        x_data,
+                        y_data,
+                        static_cast<int32_t>(0),
+                        dev_ctx.template Alloc<int32_t>(out));
       } else {
         VLOG(3) << "MatMul's case 6";
-        phi::funcs::Int8BatchedGEMM(dev_ctx,
-                                    CblasTrans,
-                                    CblasNoTrans,
-                                    M,
-                                    1,
-                                    N,
-                                    static_cast<int32_t>(1),
-                                    x_data,
-                                    y_data,
-                                    static_cast<int32_t>(0),
-                                    dev_ctx.template Alloc<int32_t>(out),
-                                    batch_size,
-                                    M * N,
-                                    0);
+        funcs::Int8BatchedGEMM(dev_ctx,
+                               CblasTrans,
+                               CblasNoTrans,
+                               M,
+                               1,
+                               N,
+                               static_cast<int32_t>(1),
+                               x_data,
+                               y_data,
+                               static_cast<int32_t>(0),
+                               dev_ctx.template Alloc<int32_t>(out),
+                               batch_size,
+                               M * N,
+                               0);
       }
     } else {
       const int M = x.numel() / N;
       VLOG(3) << "MatMul's case 7";
-      phi::funcs::Int8GEMV(dev_ctx,
-                           false,
-                           M,
-                           N,
-                           static_cast<int32_t>(1),
-                           x_data,
-                           y_data,
-                           static_cast<int32_t>(0),
-                           dev_ctx.template Alloc<int32_t>(out));
+      funcs::Int8GEMV(dev_ctx,
+                      false,
+                      M,
+                      N,
+                      static_cast<int32_t>(1),
+                      x_data,
+                      y_data,
+                      static_cast<int32_t>(0),
+                      dev_ctx.template Alloc<int32_t>(out));
     }
     return true;
   }
@@ -1776,93 +1775,93 @@ bool inline MatMulInt8Function(const phi::GPUContext& dev_ctx,
   if (out_batch_size == 0) return true;
   if (x_batch_size == 1 && y_batch_size == 1) {
     VLOG(3) << "MatMul's case 8";
-    phi::funcs::Int8GEMM(dev_ctx,
-                         trans_x ? CblasTrans : CblasNoTrans,
-                         trans_y ? CblasTrans : CblasNoTrans,
-                         M,
-                         N,
-                         K,
-                         static_cast<int32_t>(1),
-                         x_data,
-                         y_data,
-                         static_cast<int32_t>(0),
-                         dev_ctx.template Alloc<int32_t>(out));
+    funcs::Int8GEMM(dev_ctx,
+                    trans_x ? CblasTrans : CblasNoTrans,
+                    trans_y ? CblasTrans : CblasNoTrans,
+                    M,
+                    N,
+                    K,
+                    static_cast<int32_t>(1),
+                    x_data,
+                    y_data,
+                    static_cast<int32_t>(0),
+                    dev_ctx.template Alloc<int32_t>(out));
   } else if (x_batch_size == 1) {
     if (M == 1 && trans_y) {
       VLOG(3) << "MatMul's case 9";
-      phi::funcs::Int8GEMV(dev_ctx,
-                           false,
-                           y_batch_size * N,
-                           K,
-                           static_cast<int32_t>(1),
-                           y_data,
-                           x_data,
-                           static_cast<int32_t>(0),
-                           dev_ctx.template Alloc<int32_t>(out));
+      funcs::Int8GEMV(dev_ctx,
+                      false,
+                      y_batch_size * N,
+                      K,
+                      static_cast<int32_t>(1),
+                      y_data,
+                      x_data,
+                      static_cast<int32_t>(0),
+                      dev_ctx.template Alloc<int32_t>(out));
     } else {
       VLOG(3) << "MatMul's case 10";
-      phi::funcs::Int8BatchedGEMM(dev_ctx,
-                                  trans_x ? CblasTrans : CblasNoTrans,
-                                  trans_y ? CblasTrans : CblasNoTrans,
-                                  M,
-                                  N,
-                                  K,
-                                  static_cast<int32_t>(1),
-                                  x_data,
-                                  y_data,
-                                  static_cast<int32_t>(0),
-                                  dev_ctx.template Alloc<int32_t>(out),
-                                  out_batch_size,
-                                  0,
-                                  K * N);
+      funcs::Int8BatchedGEMM(dev_ctx,
+                             trans_x ? CblasTrans : CblasNoTrans,
+                             trans_y ? CblasTrans : CblasNoTrans,
+                             M,
+                             N,
+                             K,
+                             static_cast<int32_t>(1),
+                             x_data,
+                             y_data,
+                             static_cast<int32_t>(0),
+                             dev_ctx.template Alloc<int32_t>(out),
+                             out_batch_size,
+                             0,
+                             K * N);
     }
   } else if (y_batch_size == 1) {
     if (!trans_x) {
       VLOG(3) << "MatMul's case 11";
-      phi::funcs::Int8GEMM(dev_ctx,
-                           CblasNoTrans,
+      funcs::Int8GEMM(dev_ctx,
+                      CblasNoTrans,
+                      trans_y ? CblasTrans : CblasNoTrans,
+                      x_batch_size * M,
+                      N,
+                      K,
+                      static_cast<int32_t>(1),
+                      x_data,
+                      y_data,
+                      static_cast<int32_t>(0),
+                      dev_ctx.template Alloc<int32_t>(out));
+    } else {
+      VLOG(3) << "MatMul's case 12";
+      funcs::Int8BatchedGEMM(dev_ctx,
+                             CblasTrans,
+                             trans_y ? CblasTrans : CblasNoTrans,
+                             M,
+                             N,
+                             K,
+                             static_cast<int32_t>(1),
+                             x_data,
+                             y_data,
+                             static_cast<int32_t>(0),
+                             dev_ctx.template Alloc<int32_t>(out),
+                             out_batch_size,
+                             M * K,
+                             0);
+    }
+  } else if (!is_broadcast_dims) {
+    VLOG(3) << "MatMul's case 13";
+    funcs::Int8BatchedGEMM(dev_ctx,
+                           trans_x ? CblasTrans : CblasNoTrans,
                            trans_y ? CblasTrans : CblasNoTrans,
-                           x_batch_size * M,
+                           M,
                            N,
                            K,
                            static_cast<int32_t>(1),
                            x_data,
                            y_data,
                            static_cast<int32_t>(0),
-                           dev_ctx.template Alloc<int32_t>(out));
-    } else {
-      VLOG(3) << "MatMul's case 12";
-      phi::funcs::Int8BatchedGEMM(dev_ctx,
-                                  CblasTrans,
-                                  trans_y ? CblasTrans : CblasNoTrans,
-                                  M,
-                                  N,
-                                  K,
-                                  static_cast<int32_t>(1),
-                                  x_data,
-                                  y_data,
-                                  static_cast<int32_t>(0),
-                                  dev_ctx.template Alloc<int32_t>(out),
-                                  out_batch_size,
-                                  M * K,
-                                  0);
-    }
-  } else if (!is_broadcast_dims) {
-    VLOG(3) << "MatMul's case 13";
-    phi::funcs::Int8BatchedGEMM(dev_ctx,
-                                trans_x ? CblasTrans : CblasNoTrans,
-                                trans_y ? CblasTrans : CblasNoTrans,
-                                M,
-                                N,
-                                K,
-                                static_cast<int32_t>(1),
-                                x_data,
-                                y_data,
-                                static_cast<int32_t>(0),
-                                dev_ctx.template Alloc<int32_t>(out),
-                                out_batch_size,
-                                M * K,
-                                K * N);
+                           dev_ctx.template Alloc<int32_t>(out),
+                           out_batch_size,
+                           M * K,
+                           K * N);
   } else {
     // in the case, can't use stridedgemm
     std::vector<const int8_t*> x_ptr(out_batch_size);
@@ -1882,18 +1881,18 @@ bool inline MatMulInt8Function(const phi::GPUContext& dev_ctx,
       IndexIncreaseFromDims(batch_dim, out_broadcast_dims.data(), index.data());
     }
     VLOG(3) << "MatMul's case 14";
-    phi::funcs::Int8BatchedGEMM(dev_ctx,
-                                trans_x ? CblasTrans : CblasNoTrans,
-                                trans_y ? CblasTrans : CblasNoTrans,
-                                M,
-                                N,
-                                K,
-                                static_cast<int32_t>(1),
-                                x_ptr.data(),
-                                y_ptr.data(),
-                                static_cast<int32_t>(0),
-                                out_ptr.data(),
-                                out_batch_size);
+    funcs::Int8BatchedGEMM(dev_ctx,
+                           trans_x ? CblasTrans : CblasNoTrans,
+                           trans_y ? CblasTrans : CblasNoTrans,
+                           M,
+                           N,
+                           K,
+                           static_cast<int32_t>(1),
+                           x_ptr.data(),
+                           y_ptr.data(),
+                           static_cast<int32_t>(0),
+                           out_ptr.data(),
+                           out_batch_size);
   }
   return true;
 }
@@ -2103,7 +2102,7 @@ void MatmulWithFlattenKernelImpl(const Context& dev_ctx,
     out->Resize({x_matrix.dims()[0], y_matrix.dims()[1]});
   }
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
   blas.MatMul(x_matrix, y_matrix, out);
   if (z_dim.size() != 2) {
@@ -2176,24 +2175,23 @@ void MatmulWithFlattenKernelInt8Impl(const Context& dev_ctx,
   }
 
 #if CUDA_VERSION >= 11060
-  using blaslt = phi::funcs::MatmulWithCublasLt<int8_t, int32_t>;
+  using blaslt = funcs::MatmulWithCublasLt<int8_t, int32_t>;
 
   const int8_t* x_data = x_matrix.data<int8_t>();
   const int8_t* y_data = y_matrix.data<int8_t>();
 
   std::vector<std::int64_t> x_dims = {x_matrix.dims()[0], x_matrix.dims()[1]};
   std::vector<std::int64_t> y_dims = {y_matrix.dims()[0], y_matrix.dims()[1]};
-  phi::funcs::MatmulPlanner matmul_planner(
-      x_dims,
-      y_dims,
-      false,
-      false,
-      phi::CppTypeToDataType<int8_t>::Type(),
-      funcs::MatmulFusedType::kMatmul,
-      /* bias_data */ nullptr,
-      /* reserve_data */ nullptr,
-      /* use_addto */ false,
-      /* no_exchange */ true);
+  funcs::MatmulPlanner matmul_planner(x_dims,
+                                      y_dims,
+                                      false,
+                                      false,
+                                      phi::CppTypeToDataType<int8_t>::Type(),
+                                      funcs::MatmulFusedType::kMatmul,
+                                      /* bias_data */ nullptr,
+                                      /* reserve_data */ nullptr,
+                                      /* use_addto */ false,
+                                      /* no_exchange */ true);
 
   blaslt::Run(dev_ctx,
               x_data,

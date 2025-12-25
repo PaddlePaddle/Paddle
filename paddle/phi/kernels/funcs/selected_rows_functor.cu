@@ -183,7 +183,7 @@ struct SelectedRowsAddTensor<phi::GPUContext, T> {
     auto* in2_data = input2.data<T>();
     auto* out_data = output->data<T>();
 
-    phi::funcs::SetConstant<phi::GPUContext, T> functor;
+    funcs::SetConstant<phi::GPUContext, T> functor;
     functor(dev_ctx, output, static_cast<T>(0));
 
     const int block_size = 256;
@@ -399,7 +399,7 @@ struct MergeAddImpl {
         {static_cast<int64_t>(merge_rows.size()), input_width}));
     dev_ctx.template Alloc<T>(out_tensor);
 
-    phi::funcs::SetConstant<DeviceContext, T> constant_functor;
+    funcs::SetConstant<DeviceContext, T> constant_functor;
     constant_functor(dev_ctx, out.mutable_value(), static_cast<T>(0));
 
     auto* out_data = out.mutable_value()->data<T>();
@@ -471,7 +471,7 @@ struct MergeAddImpl {
         {static_cast<int64_t>(merge_rows.size()), input_width}));
     dev_ctx.template Alloc<T>(out_tensor);
 
-    phi::funcs::SetConstant<DeviceContext, T> constant_functor;
+    funcs::SetConstant<DeviceContext, T> constant_functor;
     constant_functor(dev_ctx, out.mutable_value(), static_cast<T>(0));
 
     auto* out_data = out.mutable_value()->data<T>();

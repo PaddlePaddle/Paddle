@@ -24,7 +24,7 @@
 namespace phi {
 namespace fusion {
 
-using FastDivMod = phi::funcs::FastDivMod<int64_t>;
+using FastDivMod = funcs::FastDivMod<int64_t>;
 
 template <typename ArrayT>
 __device__ void BlockLoad(ArrayT input_array,

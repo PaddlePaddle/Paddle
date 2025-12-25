@@ -46,7 +46,7 @@ void AddNKernel(const Context& dev_ctx,
   }
 
   std::vector<const XPUType*> ptrs;
-  phi::funcs::SelectedRowsAddToTensor<Context, float> functor;
+  funcs::SelectedRowsAddToTensor<Context, float> functor;
   for (size_t i = 0; i < in_num; ++i) {
     if (DenseTensor::classof(x[i])) {
       auto& in_t = *(static_cast<const DenseTensor*>(x[i]));

@@ -48,8 +48,8 @@ void CSoftmaxWithCrossEntropyGradKernel(const Context& dev_ctx,
   }
   const auto softmax_dims = softmax->dims();
   const int axis = softmax_dims.size() - 1;
-  const int64_t N = phi::funcs::SizeToAxis(axis, softmax_dims);
-  const int64_t D = phi::funcs::SizeFromAxis(axis, softmax_dims);
+  const int64_t N = funcs::SizeToAxis(axis, softmax_dims);
+  const int64_t D = funcs::SizeFromAxis(axis, softmax_dims);
 
   const int64_t start_index = rank * D;
   const int64_t end_index = start_index + D;

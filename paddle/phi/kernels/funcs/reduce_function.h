@@ -1111,7 +1111,7 @@ void ReduceKernel(const KPDevice& dev_ctx,
   // temp_output should be stored temp_data in output_data space or stored in
   // y_data;
 
-  phi::DDim tmp_ddim;
+  DDim tmp_ddim;
   phi::DenseTensor tmp;
 
   auto x_data = x.data<Tx>();
@@ -1404,7 +1404,7 @@ void GetShuffledInput(const Context& dev_ctx,
   shuffled_input->Resize(shuffled_dims);
   dev_ctx.template Alloc<OutT>(shuffled_input);
 
-  phi::funcs::TransposeNormal<Context, OutT> trans;
+  funcs::TransposeNormal<Context, OutT> trans;
   trans(dev_ctx, input, shuffled_input, perm_axis);
 }
 
