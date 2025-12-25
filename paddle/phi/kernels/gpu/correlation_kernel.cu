@@ -133,11 +133,11 @@ void CorrelationCUDAKernel(const Context &dev_ctx,
   int padded_input_height = H + 2 * pad_size;
   int padded_input_width = W + 2 * pad_size;
 
-  phi::DenseTensor rinput1;
+  DenseTensor rinput1;
   rinput1.Resize({N, padded_input_height, padded_input_width, C});
   dev_ctx.template Alloc<T>(&rinput1);
 
-  phi::DenseTensor rinput2;
+  DenseTensor rinput2;
   rinput2.Resize({N, padded_input_height, padded_input_width, C});
   dev_ctx.template Alloc<T>(&rinput2);
 

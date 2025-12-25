@@ -730,7 +730,7 @@ void StridedCopyKernel(const Context& dev_ctx,
                        const std::vector<int64_t>& out_stride,
                        int64_t offset,
                        DenseTensor* out) {
-  phi::DenseTensorMeta meta = input.meta();
+  DenseTensorMeta meta = input.meta();
   meta.strides = common::make_ddim(out_stride);
   meta.dims = common::make_ddim(dims);
   meta.offset = offset;

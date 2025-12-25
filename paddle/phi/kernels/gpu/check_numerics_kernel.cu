@@ -379,11 +379,11 @@ static void WriteToOutputDir(const phi::GPUContext& dev_ctx,
                              const std::string& output_dir,
                              const int check_nan_inf_level) {
   // Copy stats and values from GPU to CPU.
-  phi::DenseTensor cpu_stats;
+  DenseTensor cpu_stats;
   cpu_stats.Resize({static_cast<int64_t>(3)});
   phi::Copy(dev_ctx, stats, phi::CPUPlace(), false, &cpu_stats);
 
-  phi::DenseTensor cpu_values;
+  DenseTensor cpu_values;
   cpu_values.Resize({static_cast<int64_t>(3)});
   phi::Copy(dev_ctx, values, phi::CPUPlace(), false, &cpu_values);
   dev_ctx.Wait();
@@ -438,14 +438,14 @@ void CheckNumericsKernel(const Context& dev_ctx,
 
   int64_t numel_max_min = blocks;
 
-  phi::DenseTensor block_num_nan_inf_zero;
+  DenseTensor block_num_nan_inf_zero;
   block_num_nan_inf_zero.Resize({static_cast<int64_t>(3 * numel_max_min)});
   int64_t* block_num_nan_ptr =
       dev_ctx.template Alloc<int64_t>(&block_num_nan_inf_zero);
   int64_t* block_num_inf_ptr = block_num_nan_ptr + numel_max_min;
   int64_t* block_num_zero_ptr = block_num_inf_ptr + numel_max_min;
 
-  phi::DenseTensor tensor_block_max_min;
+  DenseTensor tensor_block_max_min;
   tensor_block_max_min.Resize({static_cast<int64_t>(3 * numel_max_min)});
   MT* tensor_block_max_ptr = dev_ctx.template Alloc<MT>(&tensor_block_max_min);
   MT* tensor_block_min_ptr = tensor_block_max_ptr + numel_max_min;

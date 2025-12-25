@@ -50,8 +50,8 @@ void SoftReluGradCudaKernel(const Context& dev_ctx,
   CudaSoftReluGradFunctor<T> functor;
   functor.SetAttrs(threshold);
 
-  std::vector<const phi::DenseTensor*> ins = {&out_grad};
-  std::vector<phi::DenseTensor*> outs = {x_grad};
+  std::vector<const DenseTensor*> ins = {&out_grad};
+  std::vector<DenseTensor*> outs = {x_grad};
 
   // Only need forward output Out
   ins.push_back(&out_in);

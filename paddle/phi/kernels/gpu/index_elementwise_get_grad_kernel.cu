@@ -359,7 +359,7 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
                                      true);
 
     if (permuted) {
-      phi::DenseTensor transposed_src;
+      DenseTensor transposed_src;
       std::vector<int> inversePerm_int(inversePerm.size());
       std::transform(inversePerm.begin(),
                      inversePerm.end(),
