@@ -2380,6 +2380,18 @@ PHI_DEFINE_EXPORTED_bool(use_legacy_gemm,
                          "Whether use legacy gemm dispatch logics.");
 
 /**
+ * Legacy gemm related FLAG
+ * Name: FLAGS_use_legacy_linear
+ * Since Version: 3.2.2
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use legacy linear kernel.
+ */
+PHI_DEFINE_EXPORTED_bool(use_legacy_linear,
+                         false,
+                         "Whether use legacy linear dispatch logics.");
+
+/**
  * Allocator Compact related FLAG
  * Name: FLAGS_enable_compact_mem
  * Since Version: 3.3
