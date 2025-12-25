@@ -466,12 +466,8 @@ class FlashEPFunction(paddle.autograd.PyLayer):
                 # update the combine-related control signals.
                 stage_idx = is_buffer_ready[local_expert_id]
                 is_buffer_active[stage_idx] = 0
-                tokens = combine_buffers[stage_idx].astype("bfloat16")
-                combine_buffers[stage_idx] = paddle.empty(
-                    [0, tokens.shape[1]], combine_buffers[stage_idx].dtype
-                )  # TODO: Set None
                 combine_states = combine_notify_infos[stage_idx]
-                token_list.append(tokens)
+                token_list.append(combine_buffers[stage_idx])
                 probs_list.append(None)
                 handle_list.append(combine_states["handle"])
                 set_tokens_ready_func(is_tokens_ready, stage_idx)
@@ -633,17 +629,9 @@ class FlashEPFunction(paddle.autograd.PyLayer):
                 # When a buffer is scheduled for all-to-all communication,
                 # update the combine-related control signals.
                 stage_idx = is_buffer_ready[local_expert_id]
-                tokens = combine_buffers[stage_idx].astype("bfloat16")
-                probs = combine_probs[stage_idx]
-                combine_buffers[stage_idx] = paddle.empty(
-                    [0, tokens.shape[1]], combine_buffers[stage_idx].dtype
-                )
-                combine_probs[stage_idx] = paddle.empty(
-                    [0, probs.shape[1]], combine_probs[stage_idx].dtype
-                )
                 combine_states = ctx.combine_notify_infos[stage_idx]
-                token_list.append(tokens)
-                probs_list.append(probs)
+                token_list.append(combine_buffers[stage_idx])
+                probs_list.append(combine_probs[stage_idx])
                 handle_list.append(combine_states["handle"])
                 set_tokens_ready_func(is_tokens_ready, stage_idx)
 
@@ -667,7 +655,6 @@ class FlashEPFunction(paddle.autograd.PyLayer):
             for cb in backward_w_callbacks:
                 cb()
 
-        # paddle.device.synchronize()
         if event:
             event.calc_stream_wait(ctx.group.id)
 

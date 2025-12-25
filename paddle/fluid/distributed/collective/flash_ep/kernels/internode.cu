@@ -2832,13 +2832,14 @@ __global__ void __launch_bounds__((NUM_MAX_NVL_PEERS + 1 + kNumForwarders) * 32,
             // Copy data
             auto shifted_x_buffers =
                 nvl_channel_x.buffer() + dst_slot_idx * hidden_int4;
-            auto shifted_x = x + token_idx * hidden_int4;
+            const int8* shifted_x =
+                reinterpret_cast<const int8*>(x) + token_idx * hidden_int4;
             UNROLLED_WARP_COPY(5,
                                lane_id,
                                hidden_int4,
                                shifted_x_buffers,
                                shifted_x,
-                               ld_nc_global,
+                               ld_nc_global_and_cast,
                                st_na_global);
 
             // Copy source meta
@@ -3411,7 +3412,7 @@ void combine(cudaDataType_t type,
   EP_HOST_ASSERT(num_max_nvl_chunked_recv_tokens / num_rdma_ranks >
                  std::max(num_max_rdma_chunked_send_tokens,
                           num_max_nvl_chunked_send_tokens));
-  EP_HOST_ASSERT(type == CUDA_R_16BF);
+  EP_HOST_ASSERT(type == CUDA_R_32F);
 
   SETUP_LAUNCH_CONFIG(num_channels * 2,
                       (NUM_MAX_NVL_PEERS + num_forwarder_warps + 1) * 32,

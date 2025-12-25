@@ -324,6 +324,34 @@ __device__ __forceinline__ int16 ld_nc_global(const int16 *ptr) {
   return ret;
 }
 
+__device__ __forceinline__ int4 ld_nc_global_and_cast(const int8 *ptr) {
+  int loaded_int_data[8];
+  const int4 *block_ptr = reinterpret_cast<const int4 *>(ptr);
+  asm volatile(LD_NC_FUNC ".v4.s32 {%0, %1, %2, %3}, [%4];"
+               : "=r"(loaded_int_data[0]),
+                 "=r"(loaded_int_data[1]),
+                 "=r"(loaded_int_data[2]),
+                 "=r"(loaded_int_data[3])
+               : "l"(block_ptr));
+  asm volatile(LD_NC_FUNC ".v4.s32 {%0, %1, %2, %3}, [%4];"
+               : "=r"(loaded_int_data[4]),
+                 "=r"(loaded_int_data[5]),
+                 "=r"(loaded_int_data[6]),
+                 "=r"(loaded_int_data[7])
+               : "l"(block_ptr + 1));
+
+  const float *loaded_float_data =
+      reinterpret_cast<const float *>(loaded_int_data);
+
+  __nv_bfloat16 bf16_result[8];
+
+  for (int i = 0; i < 8; i++) {
+    bf16_result[i] = __float2bfloat16(loaded_float_data[i]);
+  }
+
+  return *reinterpret_cast<int4 *>(bf16_result);
+}
+
 __device__ __forceinline__ void st_na_relaxed(const uint8_t *ptr, uint8_t val) {
 #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
   asm volatile("st.relaxed.gpu.global.L1::no_allocate.b8 [%0], %1;"

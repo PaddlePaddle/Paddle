@@ -796,9 +796,10 @@ std::tuple<std::optional<EventHandle>> Buffer::internode_combine(
   EP_HOST_ASSERT(combined_rdma_head_list.size() == num_pipeline_stages);
   EP_HOST_ASSERT(combined_nvl_head_list.size() == num_pipeline_stages);
 
+  // input x is float; will be cast to bf16 in combine kernel
   auto hidden = static_cast<int>(x_list[0].size(1)),
-       hidden_int4 = static_cast<int>(x_list[0].size(1) *
-                                      x_list[0].element_size() / sizeof(int4));
+       hidden_int4 = static_cast<int>(
+           x_list[0].size(1) * x_list[0].element_size() / 2 / sizeof(int4));
   std::vector<int> h_num_combined_tokens = {};
   std::vector<int> h_num_tokens = {};
   // Shape and contiguous checks
