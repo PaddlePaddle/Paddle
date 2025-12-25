@@ -296,8 +296,8 @@ __device__ void VectorizedBroadcastKernelImpl(
     const Array<bool, Arity> &use_broadcast,
     const uint32_t numel,
     const Array<kps::details::BroadcastConfig, Arity> &configs,
-    uint32_t num,
-    uint32_t block_offset,
+    int num,
+    int block_offset,
     int read_lens,
     Functor func) {
   using Traits = phi::funcs::FunctionTraits<Functor>;
@@ -356,8 +356,8 @@ __global__ void VectorizedBroadcastKernel(
     Array<bool, Arity> use_broadcast,
     uint32_t numel,
     Array<kps::details::BroadcastConfig, Arity> configs,
-    uint32_t main_offset,
-    uint32_t tail_tid,
+    int main_offset,
+    int tail_tid,
     int read_lens,
     Functor func) {
 #ifdef PADDLE_WITH_XPU_KP
@@ -447,8 +447,8 @@ void LaunchBroadcastKernel(
   const int blocks = 8;
   int read_lens = configs[0].buf_len;
   auto stream = dev_ctx.x_context()->xpu_stream;
-  uint32_t main_offset = (numel / (read_lens * threads)) * read_lens * threads;
-  uint32_t tail_tid = numel % (read_lens * threads);
+  int main_offset = (numel / (read_lens * threads)) * read_lens * threads;
+  int tail_tid = numel % (read_lens * threads);
 
   VectorizedBroadcastKernel<Functor, OutT, Arity, NumOuts, VecSize, false>
       <<<blocks, threads, 0, stream>>>(classifier.ins_data,
@@ -461,14 +461,14 @@ void LaunchBroadcastKernel(
                                        read_lens,
                                        func);
 #else
-  const int64_t &numel = classifier.numel;
+  const int &numel = classifier.numel;
   auto gpu_config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, VecSize);
   auto stream = dev_ctx.stream();
   auto threads = gpu_config.GetBlockSize();
   auto blocks = gpu_config.block_per_grid;
-  uint32_t main_offset = (numel / (VecSize * threads)) * VecSize * threads;
-  uint32_t tail_tid = numel % (VecSize * threads);
+  int main_offset = (numel / (VecSize * threads)) * VecSize * threads;
+  int tail_tid = numel % (VecSize * threads);
 
   if (classifier.all_elementwise) {
     VectorizedBroadcastKernel<Functor,
@@ -541,14 +541,10 @@ BroadcastKernelForDifferentVecSize(const KPDevice &dev_ctx,
   // Calculate the max vec_size for all ins and outs.
   int vec_size = GetVectorizedSizeForTensors(ins, *outs);
 #endif
+
   auto classifier =
       BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts>(ins, outs, axis);
   switch (vec_size) {
-    case VecSizeVL: {
-      LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeVL>(
-          dev_ctx, classifier, func);
-      break;
-    }
     case VecSizeL: {
       LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeL>(
           dev_ctx, classifier, func);
@@ -745,8 +741,7 @@ void BroadcastKernelApply(const KPDevice &dev_ctx,
                           int axis,
                           Functor func) {
 #ifndef PADDLE_WITH_XPU_KP
-  auto compute_size =
-      static_cast<int64_t>(std::numeric_limits<int32_t>::max()) + 1;
+  auto compute_size = std::numeric_limits<int32_t>::max();
   bool use_int64_index_kernel = false;
   for (auto *out : *outs) {
     if (out->numel() >= compute_size) {
