@@ -28,6 +28,7 @@ from paddle._C_ops import (  # noqa: F401
     amax,
     amin,
     any,
+    conj,
     isfinite,
     isinf,
     isnan,
