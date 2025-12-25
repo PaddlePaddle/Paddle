@@ -6109,7 +6109,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op: rms_norm
-  args: (Tensor x, Tensor scale, float epsilon)
+  args: (Tensor x, Tensor scale, double epsilon)
   output: Tensor(y), Tensor(invvar)
   infer_meta:
     func: RmsNormInferMeta

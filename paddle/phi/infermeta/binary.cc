@@ -3889,7 +3889,7 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
 
 void RmsNormInferMeta(const MetaTensor& x,
                       const MetaTensor& scale,
-                      float epsilon,
+                      double epsilon,
                       MetaTensor* y,
                       MetaTensor* invvar) {
   auto x_dim = x.dims();
@@ -3927,13 +3927,18 @@ void RmsNormInferMeta(const MetaTensor& x,
                         "0.0 and 0.001, But received [%s].",
                         epsilon));
 
-  phi::DataType scale_dtype = scale.dtype();
+  DataType x_dtype = x.dtype();
   y->set_dims(x_dim);
-  y->set_dtype(scale_dtype);
+  y->set_dtype(x_dtype);
+
+  DataType param_type =
+      (x_dtype == DataType::BFLOAT16 || x_dtype == DataType::FLOAT16)
+          ? DataType::FLOAT32
+          : x_dtype;
 
   auto row_shape = slice_ddim(x_dim, 0, x_dim.size() - 1);
   invvar->set_dims({row_shape});
-  invvar->set_dtype(paddle::DataType::FLOAT32);
+  invvar->set_dtype(param_type);
 }
 
 void RowConvInferMeta(const MetaTensor& x,

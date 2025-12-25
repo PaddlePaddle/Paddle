@@ -633,7 +633,7 @@ PADDLE_API void RMSNormGradInferMeta(const MetaTensor& x,
                                      const MetaTensor& scale,
                                      const MetaTensor& invvar,
                                      const MetaTensor& y_grad,
-                                     float epsilon,
+                                     double epsilon,
                                      MetaTensor* x_grad,
                                      MetaTensor* scale_grad);
 

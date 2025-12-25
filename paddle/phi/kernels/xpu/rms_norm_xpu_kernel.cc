@@ -39,7 +39,7 @@ template <typename T, typename Context>
 void RMSNormFwdKernel(const Context &dev_ctx,
                       const DenseTensor &x,
                       const DenseTensor &scale,
-                      float epsilon,
+                      double epsilon,
                       DenseTensor *y,
                       DenseTensor *invvar) {
   int64_t rows, cols;
@@ -126,7 +126,7 @@ void RMSNormBwdKernel(const Context &dev_ctx,
                       const DenseTensor &scale,
                       const DenseTensor &invvar,
                       const DenseTensor &y_grad,
-                      float epsilon,
+                      double epsilon,
                       DenseTensor *x_grad,
                       DenseTensor *scale_grad) {
   int64_t rows, cols;
