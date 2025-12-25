@@ -16,7 +16,7 @@ import os
 import time
 import unittest
 
-from op_test import get_device, is_custom_device
+from op_test import get_device
 
 import paddle
 import paddle.incubate.multiprocessing as mp
@@ -134,6 +134,11 @@ class leak_checker:
         return False
 
 
+@unittest.skipIf(
+    not paddle.base.core.is_compiled_with_cuda()
+    and not paddle.base.core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
+)
 class TestMultiprocessingBase(unittest.TestCase):
     def get_tensor(self, device="cpu"):
         self.device = device.lower()
@@ -213,11 +218,12 @@ class TestMultiprocessingBase(unittest.TestCase):
                 test_receive()
 
 
+@unittest.skipIf(
+    not paddle.base.core.is_compiled_with_cuda()
+    and not paddle.base.core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
+)
 class TestMultiprocessingGpu(TestMultiprocessingBase):
-    @unittest.skipIf(
-        not (paddle.base.core.is_compiled_with_cuda() or is_custom_device()),
-        "core is not compiled with CUDA",
-    )
     def func_test_pass_tensor(self):
         paddle.set_device(get_device())
         self._test_sharing(mp.get_context("spawn"), get_device())
