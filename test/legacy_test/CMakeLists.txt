@@ -520,7 +520,7 @@ if(APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_exception)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_iterable_dataset)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_dataset)
-  list(REMOVE_ITEM TEST_OPS test_paddle_multiprocessing_v2)
+  list(REMOVE_ITEM TEST_OPS test_paddle_multiprocessing)
 endif()
 
 if(NOT WITH_GLOO)
