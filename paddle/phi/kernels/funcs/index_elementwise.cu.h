@@ -215,7 +215,7 @@ static OffsetCalculator<N, OffsetT, signed_strides> make_offset_calculator(
 
 template <int N, bool signed_strides = false, typename OffsetT = uint32_t>
 static OffsetCalculator<N, OffsetT, signed_strides> make_offset_calculator(
-    const phi::DenseTensorIteratorBase& iter) {
+    const DenseTensorIteratorBase& iter) {
   PADDLE_ENFORCE_LE(N,
                     iter.ntensors(),
                     ::common::errors::InvalidArgument(

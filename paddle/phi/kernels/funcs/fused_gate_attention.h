@@ -38,7 +38,7 @@ __global__ void SimpleScaleKernel(int64_t numel, float scale, T* inout) {
   }
 }
 
-inline std::string MemoryDebugString(const phi::DenseTensor& t) {
+inline std::string MemoryDebugString(const DenseTensor& t) {
   int device_id = phi::backends::gpu::GetCurrentDeviceId();
   int64_t allocated =
       phi::memory_utils::DeviceMemoryStatCurrentValue("Allocated", device_id);
@@ -58,14 +58,14 @@ inline std::string MemoryDebugString(const phi::DenseTensor& t) {
 template <typename T>
 void AllocWithDebugInfo(const phi::GPUContext& dev_ctx,
                         const std::string& info,
-                        phi::DenseTensor* t) {
+                        DenseTensor* t) {
   dev_ctx.Alloc<T>(t, t->numel() * sizeof(T));
   if (VLOG_IS_ON(4)) {
     VLOG(4) << info << ": " << MemoryDebugString(*t);
   }
 }
 
-inline std::string TensorDebugString(const phi::DenseTensor* t,
+inline std::string TensorDebugString(const DenseTensor* t,
                                      const std::string& info) {
   std::stringstream ss;
   ss << info << ": ";
@@ -138,10 +138,10 @@ struct GateAttentionConfig {
   DDim gate_out_dims;
 
   GateAttentionConfig(const phi::GPUContext& dev_ctx,
-                      const phi::DenseTensor* query,
-                      const phi::DenseTensor* key,
-                      const phi::DenseTensor* query_weight,
-                      const phi::DenseTensor* qkv_weight,
+                      const DenseTensor* query,
+                      const DenseTensor* key,
+                      const DenseTensor* query_weight,
+                      const DenseTensor* qkv_weight,
                       bool merge_qkv,
                       bool has_gating,
                       bool use_flash_attn)
@@ -223,7 +223,7 @@ struct GateAttentionConfig {
     return batch_size * seq_len_m * seq_len_r * num_heads * head_dim;
   }
 
-  phi::DenseTensor* GetQKVOut() {
+  DenseTensor* GetQKVOut() {
     if (!qkv_out.IsInitialized()) {
       qkv_out.Resize(qkv_out_dims);
       AllocWithDebugInfo<T>(dev_ctx, "qkv_out", &qkv_out);
@@ -231,7 +231,7 @@ struct GateAttentionConfig {
     return &qkv_out;
   }
 
-  phi::DenseTensor* GetQueryOut() {
+  DenseTensor* GetQueryOut() {
     if (!query_out.IsInitialized()) {
       query_out.Resize(q_out_dims);
       AllocWithDebugInfo<T>(dev_ctx, "query_out", &query_out);
@@ -239,7 +239,7 @@ struct GateAttentionConfig {
     return &query_out;
   }
 
-  phi::DenseTensor* GetKeyOut() {
+  DenseTensor* GetKeyOut() {
     if (!key_out.IsInitialized()) {
       key_out.Resize(kv_out_dims);
       AllocWithDebugInfo<T>(dev_ctx, "key_out", &key_out);
@@ -247,7 +247,7 @@ struct GateAttentionConfig {
     return &key_out;
   }
 
-  phi::DenseTensor* GetValueOut() {
+  DenseTensor* GetValueOut() {
     if (!value_out.IsInitialized()) {
       value_out.Resize(kv_out_dims);
       AllocWithDebugInfo<T>(dev_ctx, "value_out", &value_out);
@@ -255,7 +255,7 @@ struct GateAttentionConfig {
     return &value_out;
   }
 
-  phi::DenseTensor* GetQKOut(phi::DenseTensor* softmax_out) {
+  DenseTensor* GetQKOut(DenseTensor* softmax_out) {
     // softmax_dim = qk_out_dim[-1] = qk_out_dim[rank - 1]
     int softmax_dim = m_size;
     if (!softmax_out || phi::UseCudnnSoftmax<T>(dev_ctx, softmax_dim, true)) {
@@ -271,7 +271,7 @@ struct GateAttentionConfig {
     }
   }
 
-  phi::DenseTensor* GetQKTVOut(phi::DenseTensor* gate_out) {
+  DenseTensor* GetQKTVOut(DenseTensor* gate_out) {
     if (has_gating && gate_out) {
       // Reuse gate_out.
       gate_out->Resize(qktv_out_dims);
@@ -304,27 +304,27 @@ struct GateAttentionConfig {
   }
 
  protected:
-  phi::DenseTensor qkv_out;
-  phi::DenseTensor query_out;
-  phi::DenseTensor key_out;
-  phi::DenseTensor value_out;
+  DenseTensor qkv_out;
+  DenseTensor query_out;
+  DenseTensor key_out;
+  DenseTensor value_out;
   // qk_out = BatchedGEMM(Q, K^T)
   // qk_out: shape=[batch_size, seq_len_m, num_heads, seq_len_r, m_size]
   // softmax_out = softmax(qk_out + nonbatched_bias + src_mask)
   // The shape of qk_out, softmax_out is the same, thus can be called inplace.
-  phi::DenseTensor qk_out;
+  DenseTensor qk_out;
   // qktv_out may reuse gate_out.
-  phi::DenseTensor qktv_out;
+  DenseTensor qktv_out;
 };
 
 template <typename T>
 struct GateAttentionGradConfig : public GateAttentionConfig<T> {
  public:
   GateAttentionGradConfig(const phi::GPUContext& dev_ctx,
-                          const phi::DenseTensor* query,
-                          const phi::DenseTensor* key,
-                          const phi::DenseTensor* query_weight,
-                          const phi::DenseTensor* qkv_weight,
+                          const DenseTensor* query,
+                          const DenseTensor* key,
+                          const DenseTensor* query_weight,
+                          const DenseTensor* qkv_weight,
                           bool merge_qkv,
                           bool has_gating,
                           bool use_flash_attn)
@@ -337,7 +337,7 @@ struct GateAttentionGradConfig : public GateAttentionConfig<T> {
                                has_gating,
                                use_flash_attn) {}
 
-  phi::DenseTensor* GetQKVOutGrad() {
+  DenseTensor* GetQKVOutGrad() {
     if (!qkv_out_grad.IsInitialized()) {
       qkv_out_grad.Resize(this->qkv_out_dims);
       AllocWithDebugInfo<T>(this->dev_ctx, "qkv_out_grad", &qkv_out_grad);
@@ -345,7 +345,7 @@ struct GateAttentionGradConfig : public GateAttentionConfig<T> {
     return &qkv_out_grad;
   }
 
-  phi::DenseTensor* GetQueryOutGrad() {
+  DenseTensor* GetQueryOutGrad() {
     if (!query_out_grad.IsInitialized()) {
       query_out_grad.Resize(this->q_out_dims);
       AllocWithDebugInfo<T>(this->dev_ctx, "query_out_grad", &query_out_grad);
@@ -353,7 +353,7 @@ struct GateAttentionGradConfig : public GateAttentionConfig<T> {
     return &query_out_grad;
   }
 
-  phi::DenseTensor* GetKeyOutGrad() {
+  DenseTensor* GetKeyOutGrad() {
     if (!key_out_grad.IsInitialized()) {
       key_out_grad.Resize(this->kv_out_dims);
       AllocWithDebugInfo<T>(this->dev_ctx, "key_out_grad", &key_out_grad);
@@ -361,7 +361,7 @@ struct GateAttentionGradConfig : public GateAttentionConfig<T> {
     return &key_out_grad;
   }
 
-  phi::DenseTensor* GetValueOutGrad() {
+  DenseTensor* GetValueOutGrad() {
     if (!value_out_grad.IsInitialized()) {
       value_out_grad.Resize(this->kv_out_dims);
       AllocWithDebugInfo<T>(this->dev_ctx, "value_out_grad", &value_out_grad);
@@ -369,7 +369,7 @@ struct GateAttentionGradConfig : public GateAttentionConfig<T> {
     return &value_out_grad;
   }
 
-  phi::DenseTensor* GetQKOutGrad(phi::DenseTensor* softmax_out_grad) {
+  DenseTensor* GetQKOutGrad(DenseTensor* softmax_out_grad) {
     // softmax_dim = qk_out_dim[-1] = qk_out_dim[rank - 1]
     int softmax_dim = this->m_size;
     if (!softmax_out_grad ||
@@ -385,11 +385,11 @@ struct GateAttentionGradConfig : public GateAttentionConfig<T> {
   }
 
  protected:
-  phi::DenseTensor qkv_out_grad;
-  phi::DenseTensor query_out_grad;
-  phi::DenseTensor key_out_grad;
-  phi::DenseTensor value_out_grad;
-  phi::DenseTensor qk_out_grad;
+  DenseTensor qkv_out_grad;
+  DenseTensor query_out_grad;
+  DenseTensor key_out_grad;
+  DenseTensor value_out_grad;
+  DenseTensor qk_out_grad;
 };
 
 template <typename T>
@@ -398,15 +398,15 @@ class FMHAGateRef {
   FMHAGateRef(const phi::GPUContext& dev_ctx, bool merge_qkv)
       : dev_ctx_(dev_ctx), merge_qkv_(merge_qkv) {}
 
-  void ComputeForward(const phi::DenseTensor* nonbatched_bias,
-                      const phi::DenseTensor* src_mask,
-                      phi::DenseTensor* q_transpose_out,
-                      phi::DenseTensor* k_transpose_out,
-                      phi::DenseTensor* v_transpose_out,
-                      phi::DenseTensor* qkv_transpose_out,
-                      phi::DenseTensor* softmax_out,
-                      phi::DenseTensor* fmha_out,
-                      phi::DenseTensor* gate_out,
+  void ComputeForward(const DenseTensor* nonbatched_bias,
+                      const DenseTensor* src_mask,
+                      DenseTensor* q_transpose_out,
+                      DenseTensor* k_transpose_out,
+                      DenseTensor* v_transpose_out,
+                      DenseTensor* qkv_transpose_out,
+                      DenseTensor* softmax_out,
+                      DenseTensor* fmha_out,
+                      DenseTensor* gate_out,
                       GateAttentionConfig<T>* config) {
     T* q_ptr = nullptr;
     T* k_ptr = nullptr;
@@ -419,7 +419,7 @@ class FMHAGateRef {
           common::errors::NotFound("The input qkv_transpose_out can not be "
                                    "nullptr when merge_qkv is true."));
 
-      phi::DenseTensor* qkv_out = config->GetQKVOut();
+      DenseTensor* qkv_out = config->GetQKVOut();
       ComputeQKVTransposeForward(*qkv_out, qkv_transpose_out);
       config->ClearQKVOut();
 
@@ -442,9 +442,9 @@ class FMHAGateRef {
           common::errors::NotFound("The input v_transpose_out can not be "
                                    "nullptr when merge_qkv is false."));
 
-      phi::DenseTensor* query_out = config->GetQueryOut();
-      phi::DenseTensor* key_out = config->GetKeyOut();
-      phi::DenseTensor* value_out = config->GetValueOut();
+      DenseTensor* query_out = config->GetQueryOut();
+      DenseTensor* key_out = config->GetKeyOut();
+      DenseTensor* value_out = config->GetValueOut();
       ComputeQKVTransposeForward(*query_out,
                                  *key_out,
                                  *value_out,
@@ -461,7 +461,7 @@ class FMHAGateRef {
     // [batch_size, seq_len_m, num_heads, seq_len_r, head_dim] *
     //                [batch_size, seq_len_m, num_heads, m_size, head_dim]
     // -> [batch_size, seq_len_m, num_heads, seq_len_r, m_size]
-    phi::DenseTensor* qk_out = config->GetQKOut(softmax_out);
+    DenseTensor* qk_out = config->GetQKOut(softmax_out);
     T* qk_out_ptr = qk_out->data<T>();
 
     int64_t gemm_batch_size =
@@ -492,7 +492,7 @@ class FMHAGateRef {
     // [batch_size, seq_len_m, num_heads, seq_len_r, m_size] *
     // [batch_size, seq_len_m, num_heads, m_size,    head_dim]
     // -> [batch_size, seq_len_m, num_heads, seq_len_r, head_dim]
-    phi::DenseTensor* qktv_out = config->GetQKTVOut(gate_out);
+    DenseTensor* qktv_out = config->GetQKTVOut(gate_out);
     T* qktv_out_ptr = qktv_out->data<T>();
 
     gemm_m = config->seq_len_r;
@@ -521,14 +521,14 @@ class FMHAGateRef {
     }
   }
 
-  void ComputeBackward(const phi::DenseTensor* q_transpose_out,
-                       const phi::DenseTensor* k_transpose_out,
-                       const phi::DenseTensor* v_transpose_out,
-                       const phi::DenseTensor* qkv_transpose_out,
-                       const phi::DenseTensor* softmax_out,
-                       const phi::DenseTensor* fmha_out_grad,
-                       phi::DenseTensor* src_mask_grad,
-                       phi::DenseTensor* nonbatched_bias_grad,
+  void ComputeBackward(const DenseTensor* q_transpose_out,
+                       const DenseTensor* k_transpose_out,
+                       const DenseTensor* v_transpose_out,
+                       const DenseTensor* qkv_transpose_out,
+                       const DenseTensor* softmax_out,
+                       const DenseTensor* fmha_out_grad,
+                       DenseTensor* src_mask_grad,
+                       DenseTensor* nonbatched_bias_grad,
                        GateAttentionGradConfig<T>* config) {
     const T* q_ptr = nullptr;
     const T* k_ptr = nullptr;
@@ -538,10 +538,10 @@ class FMHAGateRef {
     T* k_grad_ptr = nullptr;
     T* v_grad_ptr = nullptr;
 
-    phi::DenseTensor q_transpose_out_grad;
-    phi::DenseTensor k_transpose_out_grad;
-    phi::DenseTensor v_transpose_out_grad;
-    phi::DenseTensor qkv_transpose_out_grad;
+    DenseTensor q_transpose_out_grad;
+    DenseTensor k_transpose_out_grad;
+    DenseTensor v_transpose_out_grad;
+    DenseTensor qkv_transpose_out_grad;
 
     if (merge_qkv_) {
       PADDLE_ENFORCE_NOT_NULL(
@@ -591,7 +591,7 @@ class FMHAGateRef {
                                      v_transpose_out_grad.numel() * sizeof(T));
     }
 
-    phi::DenseTensor softmax_out_grad;
+    DenseTensor softmax_out_grad;
     softmax_out_grad.Resize(config->softmax_out_dims);
     AllocWithDebugInfo<T>(dev_ctx_, "softmax_out_grad", &softmax_out_grad);
 
@@ -599,7 +599,7 @@ class FMHAGateRef {
         config->batch_size * config->seq_len_m * config->num_heads;
     {
       // Forward: fmha_out = transpose(qktv_out)
-      phi::DenseTensor qktv_out_grad;
+      DenseTensor qktv_out_grad;
       qktv_out_grad.Resize(config->qktv_out_dims);
       AllocWithDebugInfo<T>(dev_ctx_, "qktv_out_grad", &qktv_out_grad);
       ComputeQKTVTransposeBackward(*fmha_out_grad, &qktv_out_grad);
@@ -640,7 +640,7 @@ class FMHAGateRef {
                          gemm_batch_size);
     }
 
-    phi::DenseTensor* qk_out_grad = config->GetQKOutGrad(&softmax_out_grad);
+    DenseTensor* qk_out_grad = config->GetQKOutGrad(&softmax_out_grad);
     ComputeBiasMaskSoftmaxBackward(&softmax_out_grad,
                                    softmax_out,
                                    src_mask_grad,
@@ -682,12 +682,12 @@ class FMHAGateRef {
                        alpha);
 
     if (merge_qkv_) {
-      phi::DenseTensor* qkv_out_grad = config->GetQKVOutGrad();
+      DenseTensor* qkv_out_grad = config->GetQKVOutGrad();
       ComputeQKVTransposeBackward(qkv_transpose_out_grad, qkv_out_grad);
     } else {
-      phi::DenseTensor* q_out_grad = config->GetQueryOutGrad();
-      phi::DenseTensor* k_out_grad = config->GetKeyOutGrad();
-      phi::DenseTensor* v_out_grad = config->GetValueOutGrad();
+      DenseTensor* q_out_grad = config->GetQueryOutGrad();
+      DenseTensor* k_out_grad = config->GetKeyOutGrad();
+      DenseTensor* v_out_grad = config->GetValueOutGrad();
       ComputeQKVTransposeBackward(q_transpose_out_grad,
                                   k_transpose_out_grad,
                                   v_transpose_out_grad,
@@ -697,24 +697,24 @@ class FMHAGateRef {
     }
   }
 
-  void ComputeQKVTransposeForward(const phi::DenseTensor& q_out,
-                                  const phi::DenseTensor& k_out,
-                                  const phi::DenseTensor& v_out,
-                                  phi::DenseTensor* q_transpose_out,
-                                  phi::DenseTensor* k_transpose_out,
-                                  phi::DenseTensor* v_transpose_out) {
+  void ComputeQKVTransposeForward(const DenseTensor& q_out,
+                                  const DenseTensor& k_out,
+                                  const DenseTensor& v_out,
+                                  DenseTensor* q_transpose_out,
+                                  DenseTensor* k_transpose_out,
+                                  DenseTensor* v_transpose_out) {
     std::vector<int> perm = {0, 1, 3, 2, 4};
     funcs::TransposeGPUKernelDriver<T>(dev_ctx_, q_out, perm, q_transpose_out);
     funcs::TransposeGPUKernelDriver<T>(dev_ctx_, k_out, perm, k_transpose_out);
     funcs::TransposeGPUKernelDriver<T>(dev_ctx_, v_out, perm, v_transpose_out);
   }
 
-  void ComputeQKVTransposeBackward(const phi::DenseTensor& q_transpose_out_grad,
-                                   const phi::DenseTensor& k_transpose_out_grad,
-                                   const phi::DenseTensor& v_transpose_out_grad,
-                                   phi::DenseTensor* q_out_grad,
-                                   phi::DenseTensor* k_out_grad,
-                                   phi::DenseTensor* v_out_grad) {
+  void ComputeQKVTransposeBackward(const DenseTensor& q_transpose_out_grad,
+                                   const DenseTensor& k_transpose_out_grad,
+                                   const DenseTensor& v_transpose_out_grad,
+                                   DenseTensor* q_out_grad,
+                                   DenseTensor* k_out_grad,
+                                   DenseTensor* v_out_grad) {
     std::vector<int> perm = {0, 1, 3, 2, 4};
     funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, q_transpose_out_grad, perm, q_out_grad);
@@ -726,16 +726,15 @@ class FMHAGateRef {
 
   // [batch_size, seq_len_m, seq_len_r, 3, num_heads, head_dim] ->
   //         [3, batch_size, seq_len_m, num_heads, seq_len_r, head_dim]
-  void ComputeQKVTransposeForward(const phi::DenseTensor& qkv_out,
-                                  phi::DenseTensor* qkv_transpose_out) {
+  void ComputeQKVTransposeForward(const DenseTensor& qkv_out,
+                                  DenseTensor* qkv_transpose_out) {
     std::vector<int> perm = {3, 0, 1, 4, 2, 5};
     funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, qkv_out, perm, qkv_transpose_out);
   }
 
-  void ComputeQKVTransposeBackward(
-      const phi::DenseTensor& qkv_transpose_out_grad,
-      phi::DenseTensor* qkv_out_grad) {
+  void ComputeQKVTransposeBackward(const DenseTensor& qkv_transpose_out_grad,
+                                   DenseTensor* qkv_out_grad) {
     std::vector<int> perm = {1, 2, 4, 0, 3, 5};
     funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, qkv_transpose_out_grad, perm, qkv_out_grad);
@@ -743,14 +742,14 @@ class FMHAGateRef {
 
   // [batch_size, seq_len_m, num_head, seq_len_r, c] ->
   //         [batch_size, seq_len_m, seq_len_r, num_head, c]
-  void ComputeQKTVTransposeForward(const phi::DenseTensor& qktv_out,
-                                   phi::DenseTensor* fmha_out) {
+  void ComputeQKTVTransposeForward(const DenseTensor& qktv_out,
+                                   DenseTensor* fmha_out) {
     std::vector<int> perm = {0, 1, 3, 2, 4};
     funcs::TransposeGPUKernelDriver<T>(dev_ctx_, qktv_out, perm, fmha_out);
   }
 
-  void ComputeQKTVTransposeBackward(const phi::DenseTensor& fmha_out_grad,
-                                    phi::DenseTensor* qktv_out_grad) {
+  void ComputeQKTVTransposeBackward(const DenseTensor& fmha_out_grad,
+                                    DenseTensor* qktv_out_grad) {
     std::vector<int> perm = {0, 1, 3, 2, 4};
     funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, fmha_out_grad, perm, qktv_out_grad);
@@ -758,18 +757,17 @@ class FMHAGateRef {
 
   // qk_out = qk_out + nonbatched_bias + src_mask
   // softmax_out = softmax(src_mask_out)
-  void ComputeBiasMaskSoftmaxForward(const phi::DenseTensor* nonbatched_bias,
-                                     const phi::DenseTensor* src_mask,
-                                     phi::DenseTensor* qk_out,
-                                     phi::DenseTensor* softmax_out) {
+  void ComputeBiasMaskSoftmaxForward(const DenseTensor* nonbatched_bias,
+                                     const DenseTensor* src_mask,
+                                     DenseTensor* qk_out,
+                                     DenseTensor* softmax_out) {
     if (nonbatched_bias) {
-      std::vector<const phi::DenseTensor*> ins = {
-          qk_out, src_mask, nonbatched_bias};
-      std::vector<phi::DenseTensor*> outs = {qk_out};
+      std::vector<const DenseTensor*> ins = {qk_out, src_mask, nonbatched_bias};
+      std::vector<DenseTensor*> outs = {qk_out};
       funcs::BroadcastKernel<T>(dev_ctx_, ins, &outs, TernaryAddFunctor<T>());
     } else {
-      std::vector<const phi::DenseTensor*> ins = {qk_out, src_mask};
-      std::vector<phi::DenseTensor*> outs = {qk_out};
+      std::vector<const DenseTensor*> ins = {qk_out, src_mask};
+      std::vector<DenseTensor*> outs = {qk_out};
       funcs::BroadcastKernel<T>(dev_ctx_, ins, &outs, funcs::AddFunctor<T>());
     }
     phi::SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *qk_out, -1, softmax_out);
@@ -777,11 +775,11 @@ class FMHAGateRef {
 
   // src_mask_out = qk_out + nonbatched_bias + src_mask
   // softmax_out = softmax(src_mask_out)
-  void ComputeBiasMaskSoftmaxBackward(const phi::DenseTensor* softmax_out_grad,
-                                      const phi::DenseTensor* softmax_out,
-                                      phi::DenseTensor* src_mask_grad,
-                                      phi::DenseTensor* qk_out_grad,
-                                      phi::DenseTensor* nonbatched_bias_grad) {
+  void ComputeBiasMaskSoftmaxBackward(const DenseTensor* softmax_out_grad,
+                                      const DenseTensor* softmax_out,
+                                      DenseTensor* src_mask_grad,
+                                      DenseTensor* qk_out_grad,
+                                      DenseTensor* nonbatched_bias_grad) {
     PADDLE_ENFORCE_NOT_NULL(
         qk_out_grad,
         common::errors::NotFound("The qk_out_grad can not be nullptr."));
@@ -858,11 +856,11 @@ class FlashAttnWithGating {
   FlashAttnWithGating(const phi::GPUContext& dev_ctx, bool merge_qkv)
       : dev_ctx_(dev_ctx), merge_qkv_(merge_qkv) {}
 
-  void ComputeForward(const phi::DenseTensor* nonbatched_bias,
-                      const phi::DenseTensor* src_mask,
-                      phi::DenseTensor* qkv_transpose_out,
-                      phi::DenseTensor* softmax_lse,
-                      phi::DenseTensor* fmha_out,
+  void ComputeForward(const DenseTensor* nonbatched_bias,
+                      const DenseTensor* src_mask,
+                      DenseTensor* qkv_transpose_out,
+                      DenseTensor* softmax_lse,
+                      DenseTensor* fmha_out,
                       GateAttentionConfig<T>* config) {
 #if defined(PADDLE_WITH_FLASHATTN) && !defined(PADDLE_WITH_HIP)
     bool is_bf16 =
@@ -875,7 +873,7 @@ class FlashAttnWithGating {
                                  "nullptr when merge_qkv is true."));
 
     // 1. Transpose qkv_out for flash_attn.
-    phi::DenseTensor* qkv_out = config->GetQKVOut();
+    DenseTensor* qkv_out = config->GetQKVOut();
     ComputeQKVTransposeForward(*qkv_out, qkv_transpose_out);
     config->ClearQKVOut();
 
@@ -889,8 +887,8 @@ class FlashAttnWithGating {
     ComputeScaleQ(q_size, config->head_dim, q_ptr);
 
     // 3. flash_attn parameter setting.
-    phi::DenseTensor cu_seq_q;
-    phi::DenseTensor cu_seq_k;
+    DenseTensor cu_seq_q;
+    DenseTensor cu_seq_k;
     InitArgumentsAndSeqTensors(config, &cu_seq_q, &cu_seq_k);
 
     std::vector<int64_t> temp_mask_dim = GetCompressedDim(src_mask);
@@ -913,7 +911,7 @@ class FlashAttnWithGating {
 
     // 4. Get workspace size and run the flash-attention kernel.
     uint64_t workspace_size = 0;
-    phi::DenseTensor workspace;
+    DenseTensor workspace;
     cudaStream_t stream = dev_ctx_.stream();
     for (bool need_calc : {false, true}) {
       // first calling, need_calc=false, set out_ptr to nullptr to calculate
@@ -972,14 +970,14 @@ class FlashAttnWithGating {
 #endif
   }
 
-  void ComputeBackward(const phi::DenseTensor* qkv_transpose_out,
-                       const phi::DenseTensor* src_mask,
-                       const phi::DenseTensor* nonbatched_bias,
-                       const phi::DenseTensor* softmax_lse,
-                       const phi::DenseTensor* fmha_out,
-                       const phi::DenseTensor* fmha_out_grad,
-                       phi::DenseTensor* src_mask_grad,
-                       phi::DenseTensor* nonbatched_bias_grad,
+  void ComputeBackward(const DenseTensor* qkv_transpose_out,
+                       const DenseTensor* src_mask,
+                       const DenseTensor* nonbatched_bias,
+                       const DenseTensor* softmax_lse,
+                       const DenseTensor* fmha_out,
+                       const DenseTensor* fmha_out_grad,
+                       DenseTensor* src_mask_grad,
+                       DenseTensor* nonbatched_bias_grad,
                        GateAttentionGradConfig<T>* config) {
 #if defined(PADDLE_WITH_FLASHATTN) && !defined(PADDLE_WITH_HIP)
     bool is_bf16 =
@@ -996,7 +994,7 @@ class FlashAttnWithGating {
     const T* k_ptr = q_ptr + q_size;
     const T* v_ptr = k_ptr + q_size;
 
-    phi::DenseTensor qkv_transpose_out_grad;
+    DenseTensor qkv_transpose_out_grad;
     qkv_transpose_out_grad.Resize(common::make_ddim({3,
                                                      config->batch_size,
                                                      config->seq_len_m,
@@ -1012,8 +1010,8 @@ class FlashAttnWithGating {
     WaitWithDebugInfo(dev_ctx_);
 
     // 1. flash_attn parameter setting.
-    phi::DenseTensor cu_seq_q;
-    phi::DenseTensor cu_seq_k;
+    DenseTensor cu_seq_q;
+    DenseTensor cu_seq_k;
     InitArgumentsAndSeqTensors(config, &cu_seq_q, &cu_seq_k);
     const int32_t* cu_seq_q_ptr = cu_seq_q.data<int32_t>();
     const int32_t* cu_seq_k_ptr = cu_seq_k.data<int32_t>();
@@ -1021,11 +1019,11 @@ class FlashAttnWithGating {
     std::vector<int64_t> temp_mask_dim = GetCompressedDim(src_mask);
     std::vector<int64_t> temp_bias_dim = GetCompressedDim(nonbatched_bias);
 
-    phi::DenseTensor softmax_d;
+    DenseTensor softmax_d;
     softmax_d.Resize(softmax_lse->dims());
     AllocWithDebugInfo<float>(dev_ctx_, "d_softmax_lse", &softmax_d);
 
-    phi::DenseTensor bias_d;
+    DenseTensor bias_d;
     if (nonbatched_bias) {
       bias_d.Resize(
           {fa_batch_size_, fa_num_heads_, fa_max_seqlen_q_, fa_max_seqlen_k_});
@@ -1043,7 +1041,7 @@ class FlashAttnWithGating {
 
     // 2. Get workspace size and run the flash-attention kernel.
     uint64_t workspace_size = 0;
-    phi::DenseTensor workspace;
+    DenseTensor workspace;
     cudaStream_t stream = dev_ctx_.stream();
     for (bool need_calc : {false, true}) {
       // first calling, need_calc=false, set out_ptr to nullptr to calculate
@@ -1124,7 +1122,7 @@ class FlashAttnWithGating {
     ComputeScaleQ(q_size, config->head_dim, q_grad_ptr);
 
     // 4. Compute the grad of qkv_out.
-    phi::DenseTensor* qkv_out_grad = config->GetQKVOutGrad();
+    DenseTensor* qkv_out_grad = config->GetQKVOutGrad();
     ComputeQKVTransposeBackward(qkv_transpose_out_grad, qkv_out_grad);
 #else
     PADDLE_THROW(common::errors::Unimplemented(
@@ -1133,7 +1131,7 @@ class FlashAttnWithGating {
   }
 
  private:
-  std::vector<int64_t> GetCompressedDim(const phi::DenseTensor* tensor) {
+  std::vector<int64_t> GetCompressedDim(const DenseTensor* tensor) {
     std::vector<int64_t> compressed_dims;
     if (tensor) {
       int64_t first_dim = 1;
@@ -1150,8 +1148,8 @@ class FlashAttnWithGating {
     return compressed_dims;
   }
 
-  phi::DenseTensor CreateWorkspace(uint64_t workspace_size) {
-    phi::DenseTensor workspace;
+  DenseTensor CreateWorkspace(uint64_t workspace_size) {
+    DenseTensor workspace;
     if (workspace_size > 0) {
       workspace = phi::Empty<float, phi::GPUContext>(
           dev_ctx_, {int64_t(workspace_size / sizeof(float))});
@@ -1169,8 +1167,8 @@ class FlashAttnWithGating {
   }
 
   void InitArgumentsAndSeqTensors(GateAttentionConfig<T>* config,
-                                  phi::DenseTensor* cu_seq_q,
-                                  phi::DenseTensor* cu_seq_k) {
+                                  DenseTensor* cu_seq_q,
+                                  DenseTensor* cu_seq_k) {
     fa_batch_size_ = static_cast<int>(config->batch_size) *
                      static_cast<int>(config->seq_len_m);
     fa_num_heads_ = static_cast<int>(config->num_heads);  // qkv_dims[2];
@@ -1219,8 +1217,8 @@ class FlashAttnWithGating {
 
   // [batch_size, seq_len_m, seq_len_r, 3, num_heads, head_dim] ->
   //         [3, batch_size, seq_len_m, seq_len_r, num_heads, head_dim]
-  void ComputeQKVTransposeForward(const phi::DenseTensor& qkv_out,
-                                  phi::DenseTensor* qkv_transpose_out) {
+  void ComputeQKVTransposeForward(const DenseTensor& qkv_out,
+                                  DenseTensor* qkv_transpose_out) {
     std::vector<int> perm = {3, 0, 1, 2, 4, 5};
     funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, qkv_out, perm, qkv_transpose_out);
@@ -1228,9 +1226,8 @@ class FlashAttnWithGating {
 
   // [3, batch_size, seq_len_m, seq_len_r, num_heads, head_dim] ->
   //        [batch_size, seq_len_m, seq_len_r, 3, num_heads, head_dim]
-  void ComputeQKVTransposeBackward(
-      const phi::DenseTensor& qkv_transpose_out_grad,
-      phi::DenseTensor* qkv_out_grad) {
+  void ComputeQKVTransposeBackward(const DenseTensor& qkv_transpose_out_grad,
+                                   DenseTensor* qkv_out_grad) {
     std::vector<int> perm = {1, 2, 3, 0, 4, 5};
     funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, qkv_transpose_out_grad, perm, qkv_out_grad);

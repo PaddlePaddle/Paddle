@@ -56,24 +56,24 @@ struct EigenTensor {
   using ConstType =
       Eigen::TensorMap<Eigen::Tensor<const T, D, MajorType, IndexType>>;
 
-  static Type From(phi::DenseTensor& tensor, DDim dims) {  // NOLINT
+  static Type From(DenseTensor& tensor, DDim dims) {  // NOLINT
     // why tensor.data<T>() not work?
     // return Type(const_cast<T*>(reinterpret_cast<const T*>(tensor.data())),
     // EigenDim<D>::From(dims));
     return Type(const_cast<T*>(tensor.data<T>()), EigenDim<D>::From(dims));
   }
 
-  static Type From(phi::DenseTensor& tensor) {  // NOLINT
+  static Type From(DenseTensor& tensor) {  // NOLINT
     return From(tensor, tensor.dims());
   }  // NOLINT
 
-  static ConstType From(const phi::DenseTensor& tensor, DDim dims) {
+  static ConstType From(const DenseTensor& tensor, DDim dims) {
     // return ConstType(reinterpret_cast<const T*>(tensor.data()),
     // EigenDim<D>::From(dims));
     return ConstType(tensor.data<T>(), EigenDim<D>::From(dims));
   }
 
-  static ConstType From(const phi::DenseTensor& tensor) {
+  static ConstType From(const DenseTensor& tensor) {
     return From(tensor, tensor.dims());
   }
 };
@@ -82,7 +82,7 @@ template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {
-  static typename EigenMatrix::Type Reshape(phi::DenseTensor& tensor,  // NOLINT
+  static typename EigenMatrix::Type Reshape(DenseTensor& tensor,  // NOLINT
                                             int num_col_dims) {
     int rank = tensor.dims().size();
     PADDLE_ENFORCE_EQ((num_col_dims > 0 && num_col_dims < rank),
@@ -96,7 +96,7 @@ struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {
                              flatten_to_2d(tensor.dims(), num_col_dims));
   }
 
-  static typename EigenMatrix::ConstType Reshape(const phi::DenseTensor& tensor,
+  static typename EigenMatrix::ConstType Reshape(const DenseTensor& tensor,
                                                  int num_col_dims) {
     int rank = tensor.dims().size();
     PADDLE_ENFORCE_EQ((num_col_dims > 0 && num_col_dims < rank),
@@ -116,13 +116,12 @@ template <typename T,
           typename IndexType = Eigen::DenseIndex>
 struct EigenVector : public EigenTensor<T, 1, MajorType, IndexType> {
   // Flatten reshapes a Tensor into an EigenVector.
-  static typename EigenVector::Type Flatten(
-      phi::DenseTensor& tensor) {  // NOLINT
+  static typename EigenVector::Type Flatten(DenseTensor& tensor) {  // NOLINT
     return EigenVector::From(tensor, {product(tensor.dims())});
   }
 
   static typename EigenVector::ConstType Flatten(
-      const phi::DenseTensor& tensor) {  // NOLINT
+      const DenseTensor& tensor) {  // NOLINT
     return EigenVector::From(tensor, {product(tensor.dims())});
   }
 };
@@ -137,11 +136,11 @@ struct EigenScalar {
   using ConstType = Eigen::TensorMap<
       Eigen::TensorFixedSize<const T, Eigen::Sizes<>, MajorType, IndexType>>;
 
-  static Type From(phi::DenseTensor& tensor) {  // NOLINT
+  static Type From(DenseTensor& tensor) {  // NOLINT
     return Type(const_cast<T*>(tensor.data<T>()));
   }
 
-  static ConstType From(const phi::DenseTensor& tensor) {
+  static ConstType From(const DenseTensor& tensor) {
     return ConstType(tensor.data<T>());
   }
 };

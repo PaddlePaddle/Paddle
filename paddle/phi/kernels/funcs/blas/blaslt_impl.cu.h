@@ -1128,9 +1128,9 @@ struct MatmulWithCublasLt : public CublasLtBase<T, OutT> {
 template <typename T>
 struct LinearWithCublasLt : public CublasLtBase<T> {
   static void Run(const phi::GPUContext& dev_ctx,
-                  const phi::DenseTensor* x,
-                  const phi::DenseTensor* y,
-                  phi::DenseTensor* out,
+                  const DenseTensor* x,
+                  const DenseTensor* y,
+                  DenseTensor* out,
                   const void* bias_data,
                   void* reserve_data,
                   const int64_t M,
@@ -1163,9 +1163,9 @@ template <typename T, typename DXT, typename DYT, bool TransX, bool TransY>
 struct LinearGradWithCublasLt : public CublasLtBase<T> {
   static void Run(
       const phi::GPUContext& dev_ctx,
-      const phi::DenseTensor* x,
-      const phi::DenseTensor* y,
-      phi::DenseTensor* out,
+      const DenseTensor* x,
+      const DenseTensor* y,
+      DenseTensor* out,
       const void* bias_data,
       void* reserve_data,
       const int64_t M,
