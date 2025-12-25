@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_desc.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -27,6 +28,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/phi/kernels/gpudnn/conv_gpudnn_base.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -212,7 +215,10 @@ class CudnnFrontendConvHelper {
         CalcWorkspaceLimitInBytes(UseFixedWorkspace());
     auto predicate_function =
         [=](cudnn_frontend::ExecutionPlan const& plan) -> bool {
-      return plan.getWorkspaceSize() > workspace_size_limit;
+      if (FLAGS_use_accuracy_compatible_kernel)
+        return false;
+      else
+        return plan.getWorkspaceSize() > workspace_size_limit;
     };
     VLOG(6) << "[cudnn_frontend] Max workspace size: " << workspace_size_limit;
     cudnn_frontend::executionPlans_t plans;
