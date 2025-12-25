@@ -2,7 +2,7 @@ name: Check PR Template
 
 on:
   pull_request:
-    branches: [develop]
+    branches: [develop, release/**]
     types: [opened, synchronize, reopened, edited]
 
 jobs:
