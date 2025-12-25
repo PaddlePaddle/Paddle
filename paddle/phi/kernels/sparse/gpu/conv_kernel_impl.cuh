@@ -1243,12 +1243,12 @@ __global__ void __launch_bounds__(128)
 }
 
 void conv_forward_implicit_gemm_cuda(const phi::GPUContext &dev_ctx,
-                                     const DenseTensor &_in_feats,
-                                     const DenseTensor &_kernel,
-                                     const DenseTensor &_out_in_map,
+                                     const phi::DenseTensor &_in_feats,
+                                     const phi::DenseTensor &_kernel,
+                                     const phi::DenseTensor &_out_in_map,
                                      int num_out_feats,
                                      int num_out_channels,
-                                     DenseTensor &_out_feats) {
+                                     phi::DenseTensor &_out_feats) {
   auto compute_capability = dev_ctx.GetComputeCapability();
   bool allow_fp16 = compute_capability >= 75;
   bool is_half = _in_feats.dtype() == phi::DataType::FLOAT16;

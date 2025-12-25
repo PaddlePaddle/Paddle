@@ -97,8 +97,8 @@ class GPUHashTable {
                           const int kernel_volume);
 
  public:
-  GPUHashTable(DenseTensor* table_keys,
-               DenseTensor* table_vals,
+  GPUHashTable(phi::DenseTensor* table_keys,
+               phi::DenseTensor* table_vals,
                const int divisor,
                const int width)
       : _capacity(table_keys->dims()[0]),
@@ -113,13 +113,14 @@ class GPUHashTable {
       cudaFree(table_vals);
     }
   };
-  void insert_coords(const phi::GPUContext& dev_ctx, const DenseTensor& coords);
+  void insert_coords(const phi::GPUContext& dev_ctx,
+                     const phi::DenseTensor& coords);
   void lookup_coords(const phi::GPUContext& dev_ctx,
-                     const DenseTensor& coords,
+                     const phi::DenseTensor& coords,
                      const int* kernel_sizes,
                      const int* tensor_strides,
                      int kernel_volume,
-                     DenseTensor* results);
+                     phi::DenseTensor* results);
   int get_divisor() { return _divisor; }
   int get_capacity() { return _capacity; }
 };
@@ -254,7 +255,7 @@ void GPUHashTable<key_type, val_type>::insert_many_coords(
 
 template <typename key_type, typename val_type>
 void GPUHashTable<key_type, val_type>::insert_coords(
-    const phi::GPUContext& dev_ctx, const DenseTensor& coords) {
+    const phi::GPUContext& dev_ctx, const phi::DenseTensor& coords) {
   insert_many_coords(dev_ctx, coords.data<int>(), coords.dims()[0]);
 }
 
@@ -302,11 +303,11 @@ void GPUHashTable<key_type, val_type>::lookup_many_coords(
 template <typename key_type, typename val_type>
 void GPUHashTable<key_type, val_type>::lookup_coords(
     const phi::GPUContext& dev_ctx,
-    const DenseTensor& coords,
+    const phi::DenseTensor& coords,
     const int* kernel_sizes,
     const int* strides,
     const int kernel_volume,
-    DenseTensor* results) {
+    phi::DenseTensor* results) {
   int32_t* results_data = results->data<int32_t>();
   lookup_many_coords(dev_ctx,
                      coords.data<int>(),
@@ -335,7 +336,7 @@ void build_sparse_conv_kmap(const phi::GPUContext& dev_ctx,
     phi::KmapCache kmap_cache;
     out_kmap_cache_ptr = out->SetKmapCache(key, kmap_cache);
     if (out_kmap_cache_ptr->hashmap_keys == nullptr) {
-      DenseTensor* tmp_hashmap_keys = new DenseTensor();
+      phi::DenseTensor* tmp_hashmap_keys = new phi::DenseTensor();
       tmp_hashmap_keys->Resize({2 * x.nnz()});
       dev_ctx.template Alloc<IntT>(tmp_hashmap_keys);
       phi::funcs::SetConstant<phi::GPUContext, IntT> set_zero;
@@ -344,7 +345,7 @@ void build_sparse_conv_kmap(const phi::GPUContext& dev_ctx,
       to_insert = true;
     }
     if (out_kmap_cache_ptr->hashmap_values == nullptr) {
-      DenseTensor* tmp_hashmap_values = new DenseTensor();
+      phi::DenseTensor* tmp_hashmap_values = new phi::DenseTensor();
       tmp_hashmap_values->Resize({2 * x.nnz()});
       dev_ctx.template Alloc<int32_t>(tmp_hashmap_values);
       phi::funcs::SetConstant<phi::GPUContext, int32_t> set_zero;
@@ -353,7 +354,7 @@ void build_sparse_conv_kmap(const phi::GPUContext& dev_ctx,
     }
 
     if (out_kmap_cache_ptr->coords == nullptr) {
-      DenseTensor* tmp_indices = new DenseTensor();
+      phi::DenseTensor* tmp_indices = new phi::DenseTensor();
       tmp_indices->Resize({x.indices().dims()[1], x.indices().dims()[0]});
       dev_ctx.template Alloc<int32_t>(tmp_indices);
       // transpose indices
@@ -374,7 +375,7 @@ void build_sparse_conv_kmap(const phi::GPUContext& dev_ctx,
       hashmap.insert_coords(dev_ctx, *(out_kmap_cache_ptr->coords));
     }
 
-    DenseTensor* tmp_out_in_map = new DenseTensor();
+    phi::DenseTensor* tmp_out_in_map = new phi::DenseTensor();
     tmp_out_in_map->Resize(
         {(x.nnz() + divisor - 1) / divisor * divisor, kernel_volume});
     dev_ctx.template Alloc<int32_t>(tmp_out_in_map);
