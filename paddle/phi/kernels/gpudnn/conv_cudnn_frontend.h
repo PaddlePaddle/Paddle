@@ -41,7 +41,7 @@ class CudnnFrontendConvHelper {
     return false;
   }
 
-  static uint8_t GetAlignment(const phi::DenseTensor* tensor) {
+  static uint8_t GetAlignment(const DenseTensor* tensor) {
     // alignment are in bytes
     uint8_t alignment = 1;
     uint64_t address = reinterpret_cast<uint64_t>(tensor->data());
@@ -84,7 +84,7 @@ class CudnnFrontendConvHelper {
   }
 
   static cudnn_frontend::Tensor GetTensorDescriptor(
-      const phi::DenseTensor* tensor,
+      const DenseTensor* tensor,
       int64_t id,
       cudnnTensorFormat_t layout_format) {
     auto transformed_dims = common::vectorize<int64_t>(tensor->dims());
@@ -154,9 +154,9 @@ class CudnnFrontendConvHelper {
 
   template <cudnnBackendDescriptorType_t op_mode>
   static cudnn_frontend::OperationGraph BuildConvOperationGraph(
-      const phi::DenseTensor* x_tensor,
-      const phi::DenseTensor* y_tensor,
-      const phi::DenseTensor* w_tensor,
+      const DenseTensor* x_tensor,
+      const DenseTensor* y_tensor,
+      const DenseTensor* w_tensor,
       cudnnTensorFormat_t layout_format,
       const std::vector<int>& strides,
       const std::vector<int>& padding_common,

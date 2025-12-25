@@ -22,21 +22,21 @@ TEST(DataTransform, DataLayoutFunction) {
   phi::DenseTensor in = phi::DenseTensor();
   phi::DenseTensor out = phi::DenseTensor();
   in.mutable_data<double>(common::make_ddim({2, 3, 1, 2}), place);
-  in.set_layout(phi::DataLayout::kNHWC);
+  in.set_layout(phi::DataLayout::NHWC);
 
   auto kernel_nhwc =
-      phi::KernelKey(place, phi::DataLayout::kNHWC, phi::DataType::FLOAT32);
+      phi::KernelKey(place, phi::DataLayout::NHWC, phi::DataType::FLOAT32);
   auto kernel_nchw =
-      phi::KernelKey(place, phi::DataLayout::kNCHW, phi::DataType::FLOAT32);
+      phi::KernelKey(place, phi::DataLayout::NCHW, phi::DataType::FLOAT32);
 
   paddle::framework::TransDataLayout(kernel_nhwc, kernel_nchw, in, &out, place);
 
-  EXPECT_TRUE(out.layout() == phi::DataLayout::kNCHW);
+  EXPECT_TRUE(out.layout() == phi::DataLayout::NCHW);
   EXPECT_TRUE(out.dims() == common::make_ddim({2, 2, 3, 1}));
 
   paddle::framework::TransDataLayout(kernel_nchw, kernel_nhwc, in, &out, place);
 
-  EXPECT_TRUE(in.layout() == phi::DataLayout::kNHWC);
+  EXPECT_TRUE(in.layout() == phi::DataLayout::NHWC);
   EXPECT_TRUE(in.dims() == common::make_ddim({2, 3, 1, 2}));
 }
 

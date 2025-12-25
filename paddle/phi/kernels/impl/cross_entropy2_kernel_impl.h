@@ -53,7 +53,7 @@ void CrossEntropyOpKernel(const Context& dev_ctx,
   // TODO(large-tensor): downstream functors may still use int
   int64_t axis_dim = x.dims()[rank - 1];
 
-  phi::funcs::CrossEntropyFunctor<Context, T>()(
+  funcs::CrossEntropyFunctor<Context, T>()(
       dev_ctx, &y_2d, &x_2d, &labels_2d, soft_label, ignore_index, axis_dim);
 }
 
@@ -139,8 +139,8 @@ void CrossEntropyGradientOpKernel(const Context& dev_ctx,
                                       x.data<T>(),
                                       label.data<T>(),
                                       static_cast<size_t>(class_num));
-    phi::funcs::ForRange<Context> for_range(dev_ctx,
-                                            static_cast<size_t>(dx->numel()));
+    funcs::ForRange<Context> for_range(dev_ctx,
+                                       static_cast<size_t>(dx->numel()));
     for_range(functor);
   } else {
     XeGradFunctor<T> functor(dx_data,
@@ -149,8 +149,8 @@ void CrossEntropyGradientOpKernel(const Context& dev_ctx,
                              label.data<int64_t>(),
                              static_cast<size_t>(class_num),
                              static_cast<size_t>(ignore_index));
-    phi::funcs::ForRange<Context> for_range(dev_ctx,
-                                            static_cast<size_t>(dy->numel()));
+    funcs::ForRange<Context> for_range(dev_ctx,
+                                       static_cast<size_t>(dy->numel()));
     for_range(functor);
   }
 }
@@ -183,7 +183,7 @@ struct HardLabelCrossEntropyForwardFunctor {
                      label);
 
       auto match_x = x_[idx * feature_size_ + label];
-      y_[idx] = -phi::funcs::TolerableValue<T>()(phi::funcs::real_log(match_x));
+      y_[idx] = -funcs::TolerableValue<T>()(funcs::real_log(match_x));
       match_x_[idx] = match_x;
     } else {
       y_[idx] = 0;
@@ -252,7 +252,7 @@ void CrossEntropyOpKernel2(const Context& dev_ctx,
   auto* p_y = dev_ctx.template Alloc<T>(y);
   auto* p_match_x = dev_ctx.template Alloc<T>(match_x);
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, batch_size);
+  funcs::ForRange<Context> for_range(dev_ctx, batch_size);
   for_range(HardLabelCrossEntropyForwardFunctor<T>(
       p_x, p_y, p_match_x, p_label, ignore_index, feature_size));
 }
@@ -277,7 +277,7 @@ void CrossEntropyGradientOpKernel2(const Context& dev_ctx,
   int64_t feature_size = dx->dims()[rank - 1];
   int64_t batch_size = common::product(dx->dims()) / feature_size;
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, batch_size * feature_size);
+  funcs::ForRange<Context> for_range(dev_ctx, batch_size * feature_size);
   for_range(HardLabelCrossEntropyBackwardFunctor<T>(
       p_dx, p_dy, p_match_x, p_label, ignore_index, feature_size));
 }

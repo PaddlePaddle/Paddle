@@ -41,8 +41,10 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
 
   template <typename U>
   void apply() const {
-    const int batch_size = prob_->dims()[0];
-    const int num_classes = prob_->dims()[1];
+    int64_t batch_size = prob_->dims()[0];
+
+    int64_t num_classes = prob_->dims()[1];
+
     const int num_remain = num_classes / axis_dim_;
 
     const T* prob_data = prob_->template data<T>();
@@ -78,7 +80,7 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
         loss_data[loss_idx] =
             lbl == ignore_index_
                 ? 0
-                : -phi::funcs::TolerableValue<T>()(std::log(prob_data[index]));
+                : -funcs::TolerableValue<T>()(std::log(prob_data[index]));
       }
     }
   }
@@ -101,6 +103,9 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
     const int ignore_index,
     const int axis_dim) {
   if (softLabel) {
+    // TODO(large-tensor): Eigen::DSizes not support int64
+    PADDLE_ENFORCE_LE_INT_MAX(prob->dims()[0], "prob->dims()[0]");
+    PADDLE_ENFORCE_LE_INT_MAX(prob->dims()[1], "prob->dims()[1]");
     const int batch_size = static_cast<const int>(prob->dims()[0]);
     const int num_classes = static_cast<const int>(prob->dims()[1]);
     const int num_remain = num_classes / axis_dim;
@@ -111,7 +116,7 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
     auto loss = EigenMatrix<T>::From(*out);
 
     loss.device(*dev_ctx.eigen_device()) =
-        -((lbl * in.log().unaryExpr(phi::funcs::TolerableValue<T>()))
+        -((lbl * in.log().unaryExpr(funcs::TolerableValue<T>()))
               .reshape(batch_axis_remain)
               .sum(Eigen::DSizes<int, 1>(1)));
   } else {

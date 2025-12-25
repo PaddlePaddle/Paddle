@@ -45,10 +45,10 @@ void EyeKernel(const Context& dev_ctx,
     columns = rows;
   }
   T* out_data = dev_ctx.template Alloc<T>(out);
-  phi::funcs::SetConstant<Context, T> set_zero;
+  funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, out, static_cast<T>(0));
   int64_t num_eyes = (std::min)(rows, columns);
-  phi::funcs::ForRange<Context> for_range(dev_ctx, num_eyes);
+  funcs::ForRange<Context> for_range(dev_ctx, num_eyes);
   EyeFunctor<T> functor(columns, out_data);
   for_range(functor);
 }

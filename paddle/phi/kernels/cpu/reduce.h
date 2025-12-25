@@ -68,11 +68,11 @@ void Reduce(const Context& dev_ctx,
 
 template <typename Context, typename T, typename Functor>
 void BoolReduceKernel(const Context& dev_ctx,
-                      const phi::DenseTensor& input,
+                      const DenseTensor& input,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
                       bool reduce_all,
-                      phi::DenseTensor* output) {
+                      DenseTensor* output) {
   reduce_all = recompute_reduce_all(input, dims, reduce_all);
   dev_ctx.template Alloc<bool>(output);
 

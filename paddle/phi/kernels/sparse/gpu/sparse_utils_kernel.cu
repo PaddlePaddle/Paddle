@@ -258,7 +258,7 @@ void DenseToCooKernel(const Context& dev_ctx,
   dev_ctx.Wait();  // wait the copy
 
   const auto values_dims =
-      phi::funcs::sparse::InferDenseDims(x_dims, sparse_dim, non_zero_num);
+      funcs::sparse::InferDenseDims(x_dims, sparse_dim, non_zero_num);
   phi::DenseTensor indices = phi::Empty<int64_t>(
       dev_ctx, {sparse_dim, static_cast<int64_t>(non_zero_num)});
   int64_t* indices_data = indices.data<int64_t>();
@@ -540,7 +540,7 @@ void CooToCsrGPUKernel(const GPUContext& dev_ctx,
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
     phi::DenseTensor batches_offset = phi::Empty<int>(dev_ctx, {batches});
     int* batches_offset_ptr = batches_offset.data<int>();
-    phi::funcs::SetConstant<GPUContext, int> set_zero;
+    funcs::SetConstant<GPUContext, int> set_zero;
     // set zero if the nnz=0 of batches[0]
     set_zero(dev_ctx, &batches_offset, static_cast<IntT>(0));
     GetBatchesOffset<IntT><<<config.block_per_grid.x,

@@ -38,19 +38,19 @@ static inline void TransCompute2DTo5D(const Context& dev_ctx,
 
   switch (rank) {
     case 2:
-      phi::funcs::Transpose<Context, T, 2> trans2;
+      funcs::Transpose<Context, T, 2> trans2;
       trans2(dev_ctx, in, out, perm);
       break;
     case 3:
-      phi::funcs::Transpose<Context, T, 3> trans3;
+      funcs::Transpose<Context, T, 3> trans3;
       trans3(dev_ctx, in, out, perm);
       break;
     case 4:
-      phi::funcs::Transpose<Context, T, 4> trans4;
+      funcs::Transpose<Context, T, 4> trans4;
       trans4(dev_ctx, in, out, perm);
       break;
     case 5:
-      phi::funcs::Transpose<Context, T, 5> trans5;
+      funcs::Transpose<Context, T, 5> trans5;
       trans5(dev_ctx, in, out, perm);
       break;
     default:

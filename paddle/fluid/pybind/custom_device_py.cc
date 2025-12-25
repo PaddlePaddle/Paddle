@@ -22,6 +22,8 @@
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/core/platform/device_context.h"
 
+#include "glog/logging.h"
+
 namespace py = pybind11;
 
 namespace paddle::pybind {

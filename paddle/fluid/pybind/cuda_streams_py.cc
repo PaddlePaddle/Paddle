@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/cuda_streams_py.h"
-
 #include <string>
+#include <utility>
 #include <vector>
-
+#include "glog/logging.h"
 #include "paddle/phi/api/profiler/event.h"
 #include "paddle/phi/core/platform/device_event_base.h"
 
@@ -62,6 +62,19 @@ PY_STREAM_TYPE set_current_stream(PY_STREAM_TYPE stream) {
   return original_stream;
 }
 
+PY_STREAM_TYPE get_legacy_default_stream(int device_id) {
+  static thread_local std::map<int, phi::CUDAStream> legacy_default_streams;
+  if (device_id == -1) {
+    device_id = phi::backends::gpu::GetCurrentDeviceId();
+  }
+  phi::GPUPlace place(device_id);
+
+  legacy_default_streams.try_emplace(
+      device_id, place, static_cast<gpuStream_t>(0));
+
+  return &legacy_default_streams.at(device_id);
+}
+
 #endif
 }  // namespace platform
 namespace pybind {
@@ -78,6 +91,19 @@ void BindCudaStream(py::module *m_ptr) {
 #else
         PADDLE_THROW(common::errors::Unavailable(
             "Paddle do not support _get_current_stream "
+            "Cannot visit device synchronize."));
+#endif
+      },
+      py::return_value_policy::reference);
+
+  m.def(
+      "_get_legacy_default_stream",
+      [](int device_id) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        return platform::get_legacy_default_stream(device_id);
+#else
+        PADDLE_THROW(common::errors::Unavailable(
+            "Paddle do not support _get_legacy_default_stream "
             "Cannot visit device synchronize."));
 #endif
       },

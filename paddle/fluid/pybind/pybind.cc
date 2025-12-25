@@ -122,16 +122,13 @@ limitations under the License. */
 #include "paddle/fluid/pybind/gloo_context_py.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
 #include "paddle/fluid/pybind/graph.h"
-#include "paddle/fluid/pybind/heter_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/io.h"
-#include "paddle/fluid/pybind/ir_meta_tensor.h"
-#include "paddle/fluid/pybind/ir_tensor.h"
 #include "paddle/fluid/pybind/jit.h"
 #include "paddle/fluid/pybind/metrics_py.h"
+#include "paddle/fluid/pybind/native_meta_tensor.h"
 #include "paddle/fluid/pybind/pir.h"
-#include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/fluid/pybind/python_callable_registry.h"
 #include "paddle/fluid/pybind/xpu_streams_py.h"
@@ -415,13 +412,7 @@ bool IsCompiledWithCINN() {
 #endif
 }
 
-bool IsCompiledWithHETERPS() {
-#ifndef PADDLE_WITH_HETERPS
-  return false;
-#else
-  return true;
-#endif
-}
+bool IsCompiledWithHETERPS() { return false; }
 
 bool SupportsBfloat16() {
 #ifndef PADDLE_WITH_DNNL
@@ -1581,8 +1572,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindJit(&m);
   BindSot(&m);
   BindCustomDevicePy(&m);
-  BindIrTensor(&m);
-  BindIrMetaTensor(&m);
+  BindNativeMetaTensor(&m);
   BindEagerUtils(m.ptr());
   BindOpFunctionCommon(m.ptr());
 
@@ -3795,6 +3785,40 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("get_xpu_current_device_id", &platform::GetXPUCurrentDeviceId);
   m.def("xpu_empty_cache", platform::EmptyCache);
+  m.def(
+      "get_device_properties",
+      [](int id) -> const gpuDeviceProp & {
+        return platform::GetDeviceProperties(id);
+      },
+      py::return_value_policy::reference);
+
+  py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties", py::module_local())
+      .def_property_readonly(
+          "name", [](const gpuDeviceProp &prop) { return prop.name; })
+      .def_property_readonly(
+          "major", [](const gpuDeviceProp &prop) { return prop.major; })
+      .def_property_readonly(
+          "minor", [](const gpuDeviceProp &prop) { return prop.minor; })
+      .def_property_readonly(
+          "total_memory",
+          [](const gpuDeviceProp &prop) { return prop.totalGlobalMem; })
+      .def_property_readonly(
+          "multi_processor_count",
+          [](const gpuDeviceProp &prop) { return prop.multiProcessorCount; })
+      .def_property_readonly(
+          "is_multi_gpu_board",
+          [](const gpuDeviceProp &prop) { return prop.isMultiGpuBoard; })
+      .def_property_readonly(
+          "is_integrated",
+          [](const gpuDeviceProp &prop) { return prop.integrated; })
+      .def("__repr__", [](const gpuDeviceProp &prop) {
+        std::stringstream ostr;
+        ostr << "_gpuDeviceProperties(name='" << prop.name
+             << "', major=" << prop.major << ", minor=" << prop.minor
+             << ", total_memory=" << prop.totalGlobalMem / (1024 * 1024)
+             << "MB, multi_processor_count=" << prop.multiProcessorCount << ")";
+        return ostr.str();
+      });
   m.def("get_xpu_device_utilization_rate",
         platform::GetXPUDeviceUtilizationRate);
   m.def("get_xpu_device_total_memory", platform::GetXPUDeviceTotalMemory);

@@ -117,11 +117,11 @@ void Conv3dImplicitGemmGPUKernel(const GPUContext& dev_ctx,
   if (subm) {
     // the out shape of subm_conv is same as input shape
     // reset the padding=kernel_size/2 and strides=1
-    phi::funcs::sparse::ResetSubmKernelSizeAndStrides(
+    funcs::sparse::ResetSubmKernelSizeAndStrides(
         kernel.dims(), &subm_paddings, &subm_strides);
   }
 
-  phi::funcs::sparse::GetOutShape(
+  funcs::sparse::GetOutShape(
       x_dims, kernel_sizes, subm_paddings, dilations, subm_strides, &out_dims);
 
   // Set the output tensor
@@ -149,8 +149,7 @@ void Conv3dImplicitGemmGPUKernel(const GPUContext& dev_ctx,
   } else {
     perm = {2, 1, 0, 3, 4};
   }
-  phi::funcs::TransposeGPUKernelDriver<T>(
-      dev_ctx, kernel, perm, &kernel_transpose);
+  funcs::TransposeGPUKernelDriver<T>(dev_ctx, kernel, perm, &kernel_transpose);
 
 #ifdef PADDLE_WITH_CUDA
   conv_forward_implicit_gemm_cuda(dev_ctx,

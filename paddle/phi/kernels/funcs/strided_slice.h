@@ -491,7 +491,7 @@ void StridedSliceGradCompute(const Context& dev_ctx,
   }
 
   dev_ctx.template Alloc<T>(x_grad);
-  phi::funcs::SetConstant<Context, T> set_zero;
+  funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, x_grad, static_cast<T>(0));
 
   auto out_grad_dims = out_grad.dims();
@@ -642,7 +642,7 @@ void StridedSliceGradCompute(const Context& dev_ctx,
         dev_ctx.template Alloc<T>(&d_out_tensor);
       }
 
-      phi::funcs::SetConstant<Context, T> set_zero;
+      funcs::SetConstant<Context, T> set_zero;
       set_zero(dev_ctx, &d_out_tensor, static_cast<T>(0));
     }
   }

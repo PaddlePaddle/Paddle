@@ -49,7 +49,7 @@ void ColwiseSum<phi::GPUContext, double>::operator()(
 
   SetConstant<phi::GPUContext, double> set;
   set(dev_ctx, &one, static_cast<double>(1.0));
-  phi::funcs::GetBlas<phi::GPUContext, double>(dev_ctx).GEMV(
+  funcs::GetBlas<phi::GPUContext, double>(dev_ctx).GEMV(
       true,
       static_cast<int>(in_dims[0]),
       static_cast<int>(in_dims[1]),
@@ -85,7 +85,7 @@ void RowwiseSum<phi::GPUContext, double>::operator()(
 
   SetConstant<phi::GPUContext, double> set;
   set(dev_ctx, &one, static_cast<double>(1.0));
-  phi::funcs::GetBlas<phi::GPUContext, double>(dev_ctx).GEMV(
+  funcs::GetBlas<phi::GPUContext, double>(dev_ctx).GEMV(
       true,
       static_cast<int>(in_dims[1]),
       static_cast<int>(in_dims[0]),

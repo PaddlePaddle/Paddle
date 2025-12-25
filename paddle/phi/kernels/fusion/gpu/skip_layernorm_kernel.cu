@@ -45,7 +45,7 @@ void SkipLayerNormKernel(const Context &dev_ctx,
   int64_t hidden = x.dims()[2];
   // TODO(large-tensor): downstream functors may still use int
 
-  phi::funcs::SkipLayerNormFunctor<T> skip_layer_norm_func;
+  funcs::SkipLayerNormFunctor<T> skip_layer_norm_func;
 
   if (std::is_same<T, phi::float16>::value) {
     const half *X_new = reinterpret_cast<const half *>(X_d);
@@ -53,7 +53,7 @@ void SkipLayerNormKernel(const Context &dev_ctx,
     const half *scale_new = reinterpret_cast<const half *>(scale_d);
     const half *bias_new = reinterpret_cast<const half *>(bias_d);
     half *output_new = reinterpret_cast<half *>(output_d);
-    phi::funcs::SkipLayerNormFunctor<half> skip_layer_norm_func;
+    funcs::SkipLayerNormFunctor<half> skip_layer_norm_func;
     skip_layer_norm_func(num,
                          hidden,
                          X_new,
@@ -64,7 +64,7 @@ void SkipLayerNormKernel(const Context &dev_ctx,
                          epsilon,
                          dev_ctx.stream());
   } else {
-    phi::funcs::SkipLayerNormFunctor<T> skip_layer_norm_func;
+    funcs::SkipLayerNormFunctor<T> skip_layer_norm_func;
     skip_layer_norm_func(num,
                          hidden,
                          X_d,

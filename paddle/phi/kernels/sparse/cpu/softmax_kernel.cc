@@ -70,14 +70,14 @@ void SoftmaxCsrKernel(const Context& dev_ctx,
                                        x_crows_data[crow_idx]);
 
             row_max_val = *std::max_element(x_data, x_data + row_nnz);
-            phi::funcs::vec_add_bias<T, backends::cpu::avx>(
+            funcs::vec_add_bias<T, backends::cpu::avx>(
                 row_nnz, static_cast<T>(-1) * row_max_val, x_data, out_data);
 
-            phi::funcs::vec_exp<T>(row_nnz, out_data, out_data);
+            funcs::vec_exp<T>(row_nnz, out_data, out_data);
 
             T sum = 0;
-            phi::funcs::vec_sum<T, backends::cpu::avx>(row_nnz, out_data, &sum);
-            phi::funcs::vec_scal<T, backends::cpu::avx>(
+            funcs::vec_sum<T, backends::cpu::avx>(row_nnz, out_data, &sum);
+            funcs::vec_scal<T, backends::cpu::avx>(
                 row_nnz, static_cast<T>(1) / sum, out_data, out_data);
 
             x_data = x_data + row_nnz;
@@ -116,7 +116,7 @@ void SoftmaxCooCPUKernel(const Context& dev_ctx,
                                  sizes.end(),
                                  static_cast<IntT>(1),
                                  std::multiplies<>());
-  phi::funcs::sparse::GetPoolsSoftmax(out_indices, sizes, dim, &pools);
+  funcs::sparse::GetPoolsSoftmax(out_indices, sizes, dim, &pools);
 
   auto values_ptr = values.data<T>();
   auto out_values_ptr = out_values.data<T>();

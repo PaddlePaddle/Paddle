@@ -747,6 +747,12 @@ PADDLE_API void ReduceAsInferMeta(const MetaTensor& x,
                                   const MetaTensor& target,
                                   MetaTensor* out);
 
+PADDLE_API void RmsNormInferMeta(const MetaTensor& x,
+                                 const MetaTensor& scale,
+                                 float epsilon,
+                                 MetaTensor* y,
+                                 MetaTensor* invvar);
+
 PADDLE_API void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
                                          const MetaTensor& mask,
                                          MetaTensor* out);
@@ -857,5 +863,12 @@ PADDLE_API void FusedRMSNormInferMeta(const MetaTensor& x,
                                       float epsilon,
                                       MetaTensor* y,
                                       MetaTensor* invvar);
+
+PADDLE_API void BatchedGemmInferMeta(const MetaTensor& lhs,
+                                     const MetaTensor& rhs,
+                                     const std::vector<int64_t>& batch_sizes,
+                                     const bool trans_lhs,
+                                     const bool trans_rhs,
+                                     MetaTensor* output);
 
 }  // namespace phi

@@ -65,6 +65,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/python_function_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/tensorrt_engine_instruction.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
@@ -957,6 +958,10 @@ void PirInterpreter::BuildInstruction() {
     } else if (op.dialect()->name() == "custom_kernel") {
       vec_instruction_base_.emplace_back(
           std::make_unique<CustomKernelInstruction>(
+              op_idx++, place_, &op, *(value_exe_info_.get())));
+    } else if (op.dialect()->name() == "py_func") {
+      vec_instruction_base_.emplace_back(
+          std::make_unique<PythonFunctionInstruction>(
               op_idx++, place_, &op, *(value_exe_info_.get())));
     } else if (paddle::dialect::IsCustomEngineOp(&op)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

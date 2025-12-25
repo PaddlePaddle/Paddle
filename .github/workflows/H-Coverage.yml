@@ -157,7 +157,7 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           pip install -r python/requirements.txt
           mkdir build && cd build
-          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Hopper -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON -DON_INFER=OFF
+          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Manual -DCUDA_ARCH_BIN="90" -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON -DON_INFER=OFF -DWITH_NVSHMEM=ON
           make -j20
           '
 
@@ -338,3 +338,218 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
           docker stop ${{ env.container_name }}
           docker rm ${{ env.container_name }}
+
+  fleet_single_card_test:
+    name: Fleet Unit test (single card)
+    needs: [build]
+    if: needs.build.outputs.can-skip != 'true'
+    runs-on:
+      group: Fleet-H-single-card
+    env:
+      PIP_CACHE_DIR: /root/.cache/pip
+      CACHE_DIR: /root/.cache
+      TASK: paddle-fleet-CI-${{ github.event.pull_request.number }}-single-card-test
+    steps:
+      - name: Determine the runner
+        run: |
+          gpu_id=$(( $(echo $PWD | awk -F'/' '{print $3}' | awk -F'-' '{print $2}') + 3 ))
+          echo GPU_DEVICES="$gpu_id" >> $GITHUB_ENV
+
+      - name: Check docker image and run container
+        env:
+          GPU_DEVICES: ${{ env.GPU_DEVICES }}
+          docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:cuda129-coverage-test"
+        run: |
+          container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
+          echo "container_name=${container_name}" >> ${{ github.env }}
+          docker pull $docker_image
+          docker run -d -t --name ${container_name} --gpus "\"device=${GPU_DEVICES}\"" --shm-size=32G \
+            -v "/dev/shm:/dev/shm"  \
+            -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+            -v ${{ github.workspace }}/../../../proxy:/root/proxy \
+            -v /ssd1/paddle-1/action_cache:/root/.cache \
+            -v ${{ github.workspace }}:/paddle \
+            -e BRANCH \
+            -e PR_ID \
+            -e COMMIT_ID \
+            -e PADDLE_ROOT \
+            -e ci_scripts \
+            -e CACHE_DIR \
+            -e no_proxy \
+            -e CI_name \
+            -e PIP_CACHE_DIR \
+            -e work_dir \
+            -e GITHUB_SHA="${{ github.event.pull_request.head.sha }}" \
+            -e GITHUB_HEAD_REF="${{ github.head_ref }}" \
+            -e GITHUB_BASE_SHA="${{ github.event.pull_request.base.sha }}" \
+            -e GITHUB_REPO_NAME="${{ github.repository }}" \
+            -e GITHUB_EVENT_PULL_REQUEST_NUMBER="${{ github.event.pull_request.number }}" \
+            -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
+            -e GITHUB_RUN_ID="${{ github.run_id }}" \
+            -w /paddle --network host ${docker_image}
+
+      - name: Clone PaddleFleet
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -ce '
+          rm -rf * .[^.]*
+          source /root/proxy
+          git clone https://github.com/PaddlePaddle/PaddleFleet.git .
+          git config --global --add safe.directory /paddle
+          git config user.name "PaddleCI"
+          git config user.email "paddle_ci@example.com"
+          git config pull.rebase false
+          mkdir -p /root/.cache/pip
+          pip cache dir
+          echo "Install uv"
+          pip install uv
+          echo "uv sync"
+          git submodule update --init --recursive
+          uv sync --group ci -v > /dev/null
+          '
+
+      - name: Download paddle.tar.gz and install paddle whl
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -e
+          mkdir -p /PaddlePaddle
+          cd /PaddlePaddle
+          echo "Downloading Paddle.tar.gz from cfs"
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --no-check-certificate
+          source /root/proxy
+          source /paddle/.venv/bin/activate
+          export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
+          export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
+          export UV_HTTP_TIMEOUT=300
+          uv pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall
+          '
+
+      - name: Single card test
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -xce '
+          pwd
+          source .venv/bin/activate
+          export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
+          export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
+          export UV_HTTP_TIMEOUT=300
+          python -c "import paddle; print(paddle.version.commit)"
+          bash ci/single_card_test.sh
+          single_card_exit_code=$?
+          if [[ "$single_card_exit_code" != "0" ]]; then
+            echo -e "::error:: \033[31mSingle card test failed.\033[0m"
+            exit 1
+          else
+            echo -e "\033[32mSingle card test succeeded.\033[0m"
+          fi
+          '
+
+      - name: Terminate and delete the container
+        if: ${{ always() }}
+        run: |
+          set +e
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker rm -f ${{ env.container_name }}
+
+  fleet-multi-card_test:
+    name: Fleet Unit test (multi-card)
+    needs: [build]
+    if: needs.build.outputs.can-skip != 'true'
+    runs-on:
+      group: Fleet-H-multi-card
+    env:
+      PIP_CACHE_DIR: /root/.cache/pip
+      TASK: paddle-fleet-CI-${{ github.event.pull_request.number }}-multi-card_test
+      docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:cuda129-coverage-test"
+    steps:
+      - name: Check docker image and run container
+        run: |
+          container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
+          echo "container_name=${container_name}" >> ${{ github.env }}
+          docker pull $docker_image
+          docker run -d -t --gpus all --name ${container_name} \
+            -v "/dev/shm:/dev/shm"  \
+            -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+            -v ${{ github.workspace }}/../../../proxy:/root/proxy \
+            -v ${{ github.workspace }}/../../../.cache:/root/.cache \
+            -v ${{ github.workspace }}:/paddle \
+            -e BRANCH \
+            -e PR_ID \
+            -e COMMIT_ID \
+            -e PADDLE_ROOT \
+            -e ci_scripts \
+            -e CACHE_DIR \
+            -e no_proxy \
+            -e CI_name \
+            -e PIP_CACHE_DIR \
+            -e work_dir \
+            -e GITHUB_SHA="${{ github.event.pull_request.head.sha }}" \
+            -e GITHUB_HEAD_REF="${{ github.head_ref }}" \
+            -e GITHUB_BASE_SHA="${{ github.event.pull_request.base.sha }}" \
+            -e GITHUB_REPO_NAME="${{ github.repository }}" \
+            -e GITHUB_EVENT_NAME="${{ github.event_name }}" \
+            -e GITHUB_EVENT_PULL_REQUEST_NUMBER="${{ github.event.pull_request.number }}" \
+            -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
+            -e GITHUB_RUN_ID="${{ github.run_id }}" \
+            -w /paddle --network host ${docker_image}
+
+      - name: Clone PaddleFleet
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -ce '
+          rm -rf * .[^.]*
+          source /root/proxy
+          git clone https://github.com/PaddlePaddle/PaddleFleet.git .
+          git config --global --add safe.directory /paddle
+          git config user.name "PaddleCI"
+          git config user.email "paddle_ci@example.com"
+          git config pull.rebase false
+          mkdir -p /root/.cache/pip
+          pip cache dir
+          echo "Install uv"
+          pip install uv
+          echo "uv sync"
+          git submodule update --init --recursive
+          uv sync --group ci -v > /dev/null
+          wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+          chmod +x /usr/local/bin/yq
+          '
+
+      - name: Download paddle.tar.gz and install paddle whl
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -e
+          mkdir -p /PaddlePaddle
+          cd /PaddlePaddle
+          echo "Downloading Paddle.tar.gz from cfs"
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --no-check-certificate
+          source /root/proxy
+          source /paddle/.venv/bin/activate
+          export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
+          export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
+          export UV_HTTP_TIMEOUT=300
+          uv pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall
+          '
+
+      - name: Multi-card test
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -ce '
+          source /paddle/.venv/bin/activate
+          export PYTHONPATH=$(pwd)
+          python -c "import paddle; print(paddle.version.commit)"
+          export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
+          export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
+          export UV_HTTP_TIMEOUT=300
+          bash ci/multi-card_test.sh
+          multi_card_exit_code=$?
+          if [[ "$multi_card_exit_code" != "0" ]]; then
+            echo -e "::error:: \033[31mMulti card test failed.\033[0m"
+            exit 1
+          else
+            echo -e "\033[32mMulti card test succeeded.\033[0m"
+          fi
+          '
+
+      - name: Terminate and delete the container
+        if: ${{ always() }}
+        run: |
+          set +e
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker rm -f ${{ env.container_name }}

@@ -110,7 +110,7 @@ void InterpolateGradKernel(
     out_w = new_size[1];
   }
 
-  phi::DDim dim_grad;
+  DDim dim_grad;
   if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_h, in_w};
   } else {

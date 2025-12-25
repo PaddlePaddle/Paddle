@@ -3587,4 +3587,66 @@ void Check_PIR_not_support_out(PyObject* kwargs) {
   }
 }
 
+std::unordered_map<std::string, std::string> ParseStringDict(
+    PyObject* py_dict) {
+  if (!PyDict_Check(py_dict)) {
+    PADDLE_THROW(common::errors::InvalidType(
+        "Expected a dictionary object, but got %s",
+        reinterpret_cast<PyTypeObject*>(py_dict->ob_type)->tp_name));
+  }
+
+  std::unordered_map<std::string, std::string> result;
+  PyObject *key, *value;
+  Py_ssize_t pos = 0;
+
+  while (PyDict_Next(py_dict, &pos, &key, &value)) {
+    if (!PyUnicode_Check(key) || !PyUnicode_Check(value)) {
+      PADDLE_THROW(common::errors::InvalidType(
+          "Both keys and values in the dictionary must be strings."));
+    }
+
+    Py_ssize_t key_len, value_len;
+    const char* c_key = PyUnicode_AsUTF8AndSize(key, &key_len);
+    const char* c_value = PyUnicode_AsUTF8AndSize(value, &value_len);
+
+    if (c_key == NULL || c_value == NULL) {
+      PADDLE_THROW(common::errors::External(
+          "Failed to convert Python string to C string."));
+    }
+
+    result.emplace(std::string(c_key, key_len),
+                   std::string(c_value, value_len));
+  }
+
+  return result;
+}
+std::unordered_map<std::string, void*> ParsePythonOpAttrs(PyObject* py_dict) {
+  if (!PyDict_Check(py_dict)) {
+    PADDLE_THROW(common::errors::InvalidType(
+        "Unknown python op attributes type, expected dict, but got %s",
+        reinterpret_cast<PyTypeObject*>(py_dict->ob_type)->tp_name));
+  }
+
+  PyObject* py_infer_meta = PyDict_GetItemString(py_dict, "infer_meta_fn_ptr");
+  PyObject* py_real_fn = PyDict_GetItemString(py_dict, "fn_ptr");
+  if (!py_infer_meta || !py_real_fn) {
+    PADDLE_THROW(common::errors::NotFound(
+        "Missing required keys 'infer_meta_fn_ptr' or 'fn_ptr' in op attrs."));
+  }
+
+  if (!PyCallable_Check(py_infer_meta) || !PyCallable_Check(py_real_fn)) {
+    PADDLE_THROW(common::errors::InvalidType(
+        "Expected callable objects for 'infer_meta_fn_ptr' and 'fn_ptr'."));
+  }
+
+  // Increase reference count to prevent garbage collection in C++
+  Py_INCREF(py_infer_meta);
+  Py_INCREF(py_real_fn);
+  std::unordered_map<std::string, void*> attrs;
+
+  attrs["infer_meta_fn_ptr"] = reinterpret_cast<void*>(py_infer_meta);
+  attrs["fn_ptr"] = reinterpret_cast<void*>(py_real_fn);
+  return attrs;
+}
+
 }  // namespace paddle::pybind

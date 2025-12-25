@@ -146,8 +146,10 @@ void Buffer::sync(
     const std::vector<int>& device_ids,
     const std::vector<std::optional<pybind11::bytearray>>& all_gathered_handles,
     const std::optional<pybind11::bytearray>& root_unique_id_opt) {
-  int ret = bkcl_xshmem_init(comm_ctx->GetBKCLComm());
-  EP_HOST_ASSERT(ret == 0 && "bkcl_xshmem_init failed");
+  if (num_rdma_ranks > 1 || low_latency_mode) {
+    int ret = bkcl_xshmem_init(comm_ctx->GetBKCLComm());
+    EP_HOST_ASSERT(ret == 0 && "bkcl_xshmem_init failed");
+  }
 }
 #endif
 
@@ -251,7 +253,7 @@ Buffer::intranode_dispatch(
                    num_tokens_per_rank.has_value() &&
                    num_tokens_per_expert.has_value());
     last_topk_idx = ConvertPaddleTensorToDetailTensor(
-        assign_ad_func(topk_idx->raw_tensor()));
+        cast_ad_func(topk_idx->raw_tensor(), phi::DataType::INT32));
     last_topk_weights = ConvertPaddleTensorToDetailTensor(
         assign_ad_func(topk_weights->raw_tensor()));
     last_num_experts = static_cast<int>(num_tokens_per_expert->size(0));
@@ -376,24 +378,26 @@ Buffer::intranode_dispatch(
           << " last_topk_idx dim " << last_topk_idx->dim()
           << " last_topk_weights dim " << last_topk_weights->dim();
 
-  ret = bkcl_normal_dispatch_standard(comm_ctx->GetBKCLComm(),
-                                      x.data_ptr(),  // sendbuf
-                                      x_scales_ptr,
-                                      last_topk_idx->data_ptr<int>(),
-                                      last_topk_weights->data_ptr<float>(),
-                                      recv_x.data_ptr(),
-                                      recv_x_scales_ptr,
-                                      recv_topk_idx->data_ptr<int>(),
-                                      recv_topk_weights->data_ptr<float>(),
-                                      num_scales,
-                                      -1,  // UNUSED
-                                      hidden_size,
-                                      num_tokens,
-                                      num_topk,
-                                      last_num_experts,
-                                      ToBKCLDataType(x.dtype()),
-                                      use_int8,
-                                      reinterpret_cast<XPUStream>(comm_stream));
+  ret = bkcl_normal_dispatch_standard(
+      comm_ctx->GetBKCLComm(),
+      x.data_ptr(),  // sendbuf
+      x_scales_ptr,
+      last_topk_idx->data_ptr<int>(),
+      last_topk_weights->data_ptr<float>(),
+      recv_x.data_ptr(),
+      recv_x_scales_ptr,
+      recv_topk_idx->data_ptr<int>(),
+      recv_topk_weights->data_ptr<float>(),
+      num_scales,
+      -1,  // UNUSED
+      hidden_size,
+      num_tokens,
+      num_topk,
+      last_num_experts,
+      ToBKCLDataType(x.dtype()),
+      use_int8,
+      async ? reinterpret_cast<XPUStream>(comm_stream)
+            : reinterpret_cast<XPUStream>(compute_stream));
   EP_HOST_ASSERT(ret == 0 && "bkcl_normal_dispatch_standard failed");
 
   // Wait streams
@@ -593,7 +597,7 @@ Buffer::internode_dispatch(
                    num_tokens_per_rank.has_value() &&
                    num_tokens_per_expert.has_value());
     last_topk_idx = ConvertPaddleTensorToDetailTensor(
-        assign_ad_func(topk_idx->raw_tensor()));
+        cast_ad_func(topk_idx->raw_tensor(), phi::DataType::INT32));
     last_topk_weights = ConvertPaddleTensorToDetailTensor(
         assign_ad_func(topk_weights->raw_tensor()));
     last_num_experts = static_cast<int>(num_tokens_per_expert->size(0));
@@ -727,24 +731,26 @@ Buffer::internode_dispatch(
           << " num_tokens " << num_tokens << " last_num_experts "
           << last_num_experts << " num_recv_tokens " << num_recv_tokens;
 
-  ret = bkcl_normal_dispatch_standard(comm_ctx->GetBKCLComm(),
-                                      x.data_ptr(),  // sendbuf
-                                      x_scales_ptr,
-                                      last_topk_idx->data_ptr<int>(),
-                                      last_topk_weights->data_ptr<float>(),
-                                      recv_x.data_ptr(),
-                                      recv_x_scales_ptr,
-                                      recv_topk_idx->data_ptr<int>(),
-                                      recv_topk_weights->data_ptr<float>(),
-                                      num_scales,
-                                      -1,  // UNUSED
-                                      hidden_size,
-                                      num_tokens,
-                                      num_topk,
-                                      last_num_experts,
-                                      ToBKCLDataType(x.dtype()),
-                                      use_int8,
-                                      reinterpret_cast<XPUStream>(comm_stream));
+  ret = bkcl_normal_dispatch_standard(
+      comm_ctx->GetBKCLComm(),
+      x.data_ptr(),  // sendbuf
+      x_scales_ptr,
+      last_topk_idx->data_ptr<int>(),
+      last_topk_weights->data_ptr<float>(),
+      recv_x.data_ptr(),
+      recv_x_scales_ptr,
+      recv_topk_idx->data_ptr<int>(),
+      recv_topk_weights->data_ptr<float>(),
+      num_scales,
+      -1,  // UNUSED
+      hidden_size,
+      num_tokens,
+      num_topk,
+      last_num_experts,
+      ToBKCLDataType(x.dtype()),
+      use_int8,
+      async ? reinterpret_cast<XPUStream>(comm_stream)
+            : reinterpret_cast<XPUStream>(compute_stream));
   EP_HOST_ASSERT(ret == 0 && "bkcl_normal_dispatch_standard failed");
 
   // Wait streams
@@ -961,11 +967,12 @@ Buffer::low_latency_dispatch(
     int num_experts,
     bool use_fp8,
     bool async,
-    bool return_recv_hook) {
+    bool return_recv_hook,
+    int num_per_channel) {
   EP_HOST_ASSERT(low_latency_mode);
   auto num_tokens = static_cast<int>(x.size(0)),
        hidden_size = static_cast<int>(x.size(1));
-  auto num_scales = hidden_size / 128,
+  auto num_scales = num_per_channel == -1 ? 1 : hidden_size / 128,
        num_topk = static_cast<int>(topk_idx.size(1));
   int num_local_experts = num_experts / num_ranks;
 
@@ -1500,9 +1507,11 @@ Buffer::low_latency_dispatch_api(
     int num_experts,
     bool use_fp8,
     bool async,
-    bool return_recv_hook) {
+    bool return_recv_hook,
+    int num_per_channel) {
   const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
-  const auto& topk_idx_ = ConvertPaddleTensorToDetailTensor(topk_idx);
+  const auto& topk_idx_ = ConvertPaddleTensorToDetailTensor(
+      cast_ad_func(topk_idx, phi::DataType::INT32));
 
   std::optional<deep_ep::detail::Tensor> expertwise_scale_;
   if (expertwise_scale.has_value()) {
@@ -1517,7 +1526,8 @@ Buffer::low_latency_dispatch_api(
                                   num_experts,
                                   use_fp8,
                                   async,
-                                  return_recv_hook);
+                                  return_recv_hook,
+                                  num_per_channel);
 
   auto packed_recv_x_ = ConvertDetailTensorToPaddleTensor(std::get<0>(res));
 
@@ -1560,7 +1570,8 @@ Buffer::low_latency_combine_api(const paddle::Tensor& x,
                                 bool return_recv_hook,
                                 const std::optional<paddle::Tensor>& out) {
   const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
-  const auto& topk_idx_ = ConvertPaddleTensorToDetailTensor(topk_idx);
+  const auto& topk_idx_ = ConvertPaddleTensorToDetailTensor(
+      cast_ad_func(topk_idx, phi::DataType::INT32));
   const auto& topk_weights_ = ConvertPaddleTensorToDetailTensor(topk_weights);
   const auto& src_info_ = ConvertPaddleTensorToDetailTensor(src_info);
   const auto& layout_range_ = ConvertPaddleTensorToDetailTensor(layout_range);

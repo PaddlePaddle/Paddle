@@ -182,7 +182,7 @@ struct SelectCaller {
                                     int64_t thread_fix,
                                     int64_t num) {
     int64_t in_data[VecSize];
-    OutT store_data[VecSize * phi::DDim::kMaxRank];
+    OutT store_data[VecSize * DDim::kMaxRank];
     // set index
     kps::InitWithDataIndex<int64_t, VecSize, 1>(&in_data[0], data_offset);
     // Get store data according to mask_idt
@@ -209,7 +209,7 @@ struct SelectCaller<OutT, MT, InT, Functor, VecSize, IsBoundary, 1> {
                                     int thread_fix,
                                     int num) {
     InT in_data[VecSize];
-    OutT store_data[VecSize * phi::DDim::kMaxRank];
+    OutT store_data[VecSize * DDim::kMaxRank];
     kps::ReadData<InT, VecSize, 1, IsBoundary>(&in_data[0], in, num);
     // Get store data according to mask_idt
     kps::OperatorTernary<MT, InT, OutT, Functor>(
@@ -235,7 +235,7 @@ struct SelectCaller<OutT, MT, InT, Functor, VecSize, IsBoundary, 2> {
                                     int thread_fix,
                                     int num) {
     InT in_data[VecSize];
-    OutT store_data[VecSize * phi::DDim::kMaxRank];
+    OutT store_data[VecSize * DDim::kMaxRank];
     kps::details::ReadData<InT>(&in_data[0], in + thread_fix, store_num);
     kps::OperatorTernary<MT, InT, OutT, Functor>(
         store_data, mask_data, &in_data[0], func, VecSize);

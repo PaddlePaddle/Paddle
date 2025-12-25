@@ -48,8 +48,8 @@ inline static size_t TotalSequenceLength(
   return total_seq_len;
 }
 
-inline static void CheckDims(const phi::DDim& seq_tensor_dims,
-                             const phi::DDim& pad_tensor_dims,
+inline static void CheckDims(const DDim& seq_tensor_dims,
+                             const DDim& pad_tensor_dims,
                              const phi::Vector<size_t>& seq_offset,
                              int64_t padded_seq_len UNUSED,
                              int64_t step_width UNUSED,

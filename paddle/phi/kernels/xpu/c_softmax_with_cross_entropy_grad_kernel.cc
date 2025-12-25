@@ -38,18 +38,18 @@ void CSoftmaxWithCrossEntropyGradKernel(const Context& dev_ctx,
                                         DenseTensor* logits_grad) {
 #if defined(PADDLE_WITH_XPU_BKCL)
   using XPUType = typename XPUTypeTrait<T>::Type;
-  const phi::DenseTensor* labels = &label_in;
-  const phi::DenseTensor* loss_grad = &loss_grad_in;
-  phi::DenseTensor* logit_grad = logits_grad;
-  const phi::DenseTensor* softmax = &softmax_in;
+  const DenseTensor* labels = &label_in;
+  const DenseTensor* loss_grad = &loss_grad_in;
+  DenseTensor* logit_grad = logits_grad;
+  const DenseTensor* softmax = &softmax_in;
 
   if (logit_grad != softmax) {
     phi::Copy(dev_ctx, *softmax, dev_ctx.GetPlace(), false, logit_grad);
   }
   const auto softmax_dims = softmax->dims();
   const int axis = softmax_dims.size() - 1;
-  const int64_t N = phi::funcs::SizeToAxis(axis, softmax_dims);
-  const int64_t D = phi::funcs::SizeFromAxis(axis, softmax_dims);
+  const int64_t N = funcs::SizeToAxis(axis, softmax_dims);
+  const int64_t D = funcs::SizeFromAxis(axis, softmax_dims);
 
   const int64_t start_index = rank * D;
   const int64_t end_index = start_index + D;

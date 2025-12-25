@@ -52,7 +52,7 @@ void LarsMomentumKernel(
         phi::EigenVector<T>::Flatten(*(grad[i]));
     auto rescale_g = static_cast<T>(rescale_grad) * g;
 
-    phi::DenseTensor p_norm_t, g_norm_t;
+    DenseTensor p_norm_t, g_norm_t;
     p_norm_t.Resize({1});
     g_norm_t.Resize({1});
     dev_ctx.template Alloc<T>(&p_norm_t);

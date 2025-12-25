@@ -28,7 +28,7 @@ inline void ReorderInitState(const Context& dev_ctx,
                              phi::Vector<size_t> index_lod,
                              phi::DenseTensor* dst,
                              bool indexed_src) {
-  phi::funcs::CopyMatrixRowsFunctor<Context, T> row_shuffle;
+  funcs::CopyMatrixRowsFunctor<Context, T> row_shuffle;
   dst->Resize(src.dims());
   dev_ctx.template Alloc<T>(dst);
   row_shuffle(dev_ctx, src, index_lod, dst, indexed_src);

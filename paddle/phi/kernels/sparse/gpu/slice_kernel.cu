@@ -91,7 +91,7 @@ void SliceCooGPUCompute(const Context& dev_ctx,
                         const std::vector<int64_t>& starts,
                         const std::vector<int64_t>& ends,
                         SparseCooTensor* out) {
-  const phi::DDim& x_dims = x.dims();
+  const DDim& x_dims = x.dims();
 
   // Step1: Infer output dims
   auto out_dims = funcs::GetSliceDims<int64_t>(
@@ -220,7 +220,7 @@ void SliceCooGPUKernel(const Context& dev_ctx,
                        const phi::IntArray& starts,
                        const phi::IntArray& ends,
                        SparseCooTensor* out) {
-  const phi::DDim& x_dims = x.dims();
+  const DDim& x_dims = x.dims();
   std::vector<int64_t> axes_vec = axes.GetData();
   std::vector<int64_t> starts_vec = starts.GetData();
   std::vector<int64_t> ends_vec = ends.GetData();
@@ -297,7 +297,7 @@ void SliceCsrTensor2D(const Context& dev_ctx,
                       const std::vector<int64_t>& axes,
                       const std::vector<int64_t>& starts,
                       const std::vector<int64_t>& ends,
-                      const phi::DDim& out_dims,
+                      const DDim& out_dims,
                       SparseCsrTensor* out) {
   const auto* x_crows_data = x.crows().data<int64_t>();
   const auto* x_cols_data = x.cols().data<int64_t>();
@@ -450,7 +450,7 @@ void SliceCsrTensor3D(const Context& dev_ctx,
                       const std::vector<int64_t>& axes,
                       const std::vector<int64_t>& starts,
                       const std::vector<int64_t>& ends,
-                      const phi::DDim& out_dims,
+                      const DDim& out_dims,
                       SparseCsrTensor* out) {
   const auto* x_crows_data = x.crows().data<int64_t>();
   const auto* x_cols_data = x.cols().data<int64_t>();
@@ -593,7 +593,7 @@ void SliceCsrCompute(const Context& dev_ctx,
                      const std::vector<int64_t>& starts,
                      const std::vector<int64_t>& ends,
                      SparseCsrTensor* out) {
-  const phi::DDim& x_dims = x.dims();
+  const DDim& x_dims = x.dims();
 
   // Step1: Infer output dims
   auto out_dims = funcs::GetSliceDims<int64_t>(
@@ -626,7 +626,7 @@ void SliceCsrKernel(const Context& dev_ctx,
                     const phi::IntArray& starts,
                     const phi::IntArray& ends,
                     SparseCsrTensor* out) {
-  const phi::DDim& x_dims = x.dims();
+  const DDim& x_dims = x.dims();
 
   std::vector<int64_t> axes_vec = axes.GetData();
   std::vector<int64_t> starts_vec = starts.GetData();

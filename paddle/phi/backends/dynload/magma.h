@@ -15,8 +15,20 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MAGMA
 #pragma once
 
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_complex.h>
+#include <thrust/complex.h>
+typedef hipDoubleComplex magmaDoubleComplex;
+typedef hipFloatComplex magmaFloatComplex;
+#endif  // PADDLE_WITH_HIP
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU)
 #include <cuComplex.h>
 #include <complex>
+typedef cuDoubleComplex magmaDoubleComplex;
+typedef cuFloatComplex magmaFloatComplex;
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_XPU
+
 #include <mutex>
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/common/port.h"
@@ -24,9 +36,6 @@ limitations under the License. */
 typedef int magma_int_t;
 
 typedef enum { MagmaNoVec = 301, MagmaVec = 302 } magma_vec_t;
-
-typedef cuDoubleComplex magmaDoubleComplex;
-typedef cuFloatComplex magmaFloatComplex;
 
 // geev
 extern "C" magma_int_t magma_dgeev(magma_vec_t jobvl,

@@ -93,7 +93,7 @@ struct BeamSearchDecodeFunctor {
           "beam search decode op does not support bool!"));
 
     } else {
-      phi::funcs::BeamSearchDecoder<T> beam_search_decoder(beam_size_, end_id_);
+      funcs::BeamSearchDecoder<T> beam_search_decoder(beam_size_, end_id_);
       // Check if the tensor is on GPU. If so, use the CPU copy instead
       if (tensor_on_gpu_) {
         beam_search_decoder.Backtrace(

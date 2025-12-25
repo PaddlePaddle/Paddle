@@ -49,51 +49,51 @@ void StftKernel(const Context& dev_ctx,
 
   // Frame
   phi::DenseTensor frames;
-  phi::DDim frames_dims(out->dims());
+  DDim frames_dims(out->dims());
   frames_dims.at(axes.back()) = n_fft;
   frames.Resize(frames_dims);
   dev_ctx.template Alloc<T>(&frames);
-  phi::funcs::FrameFunctor<Context, T>()(dev_ctx,
-                                         &x,
-                                         &frames,
-                                         seq_length,
-                                         n_fft,
-                                         n_frames,
-                                         hop_length,
-                                         /*is_grad*/ false);
+  funcs::FrameFunctor<Context, T>()(dev_ctx,
+                                    &x,
+                                    &frames,
+                                    seq_length,
+                                    n_fft,
+                                    n_frames,
+                                    hop_length,
+                                    /*is_grad*/ false);
 
   // Window
   phi::DenseTensor frames_w;
   frames_w.Resize(frames_dims);
   dev_ctx.template Alloc<T>(&frames_w);
-  phi::funcs::ElementwiseCompute<phi::funcs::MultiplyFunctor<T>, T, T>(
+  funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T, T>(
       dev_ctx,
       frames,
       window,
-      phi::funcs::MultiplyFunctor<T>(),
+      funcs::MultiplyFunctor<T>(),
       &frames_w,
       axes.back());
 
   // FFTR2C
-  phi::funcs::FFTNormMode normalization;
+  funcs::FFTNormMode normalization;
   if (normalized) {
-    normalization = phi::funcs::get_norm_from_string("ortho", true);
+    normalization = funcs::get_norm_from_string("ortho", true);
   } else {
-    normalization = phi::funcs::get_norm_from_string("backward", true);
+    normalization = funcs::get_norm_from_string("backward", true);
   }
-  phi::funcs::FFTR2CFunctor<Context, T, C> fft_r2c_func;
+  funcs::FFTR2CFunctor<Context, T, C> fft_r2c_func;
 
   if (onesided) {
     fft_r2c_func(dev_ctx, frames_w, out, axes, normalization, true);
   } else {
-    phi::DDim onesided_dims(out->dims());
+    DDim onesided_dims(out->dims());
     const int64_t onesided_axis_size = out->dims().at(axes.back()) / 2 + 1;
     onesided_dims.at(axes.back()) = onesided_axis_size;
     phi::DenseTensor onesided_out;
     onesided_out.Resize(onesided_dims);
     dev_ctx.template Alloc<T>(&onesided_out);
     fft_r2c_func(dev_ctx, frames_w, &onesided_out, axes, normalization, true);
-    phi::funcs::FFTFillConj<Context, C>(dev_ctx, &onesided_out, out, axes);
+    funcs::FFTFillConj<Context, C>(dev_ctx, &onesided_out, out, axes);
   }
 }
 }  // namespace phi

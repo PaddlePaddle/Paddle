@@ -34,8 +34,8 @@ void RealGradKernel(const Context& dev_ctx,
   auto* dx_data =
       dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-  phi::funcs::RealToComplexFunctor<T> functor(dout_data, dx_data, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::RealToComplexFunctor<T> functor(dout_data, dx_data, numel);
   for_range(functor);
 }
 
@@ -52,8 +52,8 @@ void ImagGradKernel(const Context& dev_ctx,
   auto* dx_data =
       dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-  phi::funcs::ImagToComplexFunctor<T> functor(dout_data, dx_data, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::ImagToComplexFunctor<T> functor(dout_data, dx_data, numel);
   for_range(functor);
 }
 
@@ -106,20 +106,20 @@ void ComplexGradKernel(const Context& dev_ctx,
   }
   // skip out in a hacky way
   auto out = dout;
-  phi::funcs::ElemwiseGradCompute<Context,
-                                  T,
-                                  ComplexGradForRealFunctor<T>,
-                                  ComplexGradForImagFunctor<T>,
-                                  C>(dev_ctx,
-                                     x,
-                                     y,
-                                     out,
-                                     dout,
-                                     /*axis*/ -1,
-                                     dx,
-                                     dy,
-                                     ComplexGradForRealFunctor<T>(),
-                                     ComplexGradForImagFunctor<T>());
+  funcs::ElemwiseGradCompute<Context,
+                             T,
+                             ComplexGradForRealFunctor<T>,
+                             ComplexGradForImagFunctor<T>,
+                             C>(dev_ctx,
+                                x,
+                                y,
+                                out,
+                                dout,
+                                /*axis*/ -1,
+                                dx,
+                                dy,
+                                ComplexGradForRealFunctor<T>(),
+                                ComplexGradForImagFunctor<T>());
 }
 
 }  // namespace phi

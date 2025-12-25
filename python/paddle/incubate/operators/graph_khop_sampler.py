@@ -110,7 +110,8 @@ def graph_khop_sampler(
         - edge_eids (Tensor), Return the id of the sample edges if `return_eids` is True.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
+
             >>> # doctest: +SKIP('Number of sample edges mismatch, the sample kernel has error.')
             >>> import paddle
 
@@ -122,7 +123,9 @@ def graph_khop_sampler(
             >>> colptr = paddle.to_tensor(colptr, dtype="int64")
             >>> nodes = paddle.to_tensor(nodes, dtype="int64")
 
-            >>> edge_src, edge_dst, sample_index, reindex_nodes = paddle.incubate.graph_khop_sampler(row, colptr, nodes, sample_sizes, False)   # type: ignore[operator]
+            >>> edge_src, edge_dst, sample_index, reindex_nodes = paddle.incubate.graph_khop_sampler(  # type: ignore[operator]
+            ...     row, colptr, nodes, sample_sizes, False
+            ... )
 
     """
 
