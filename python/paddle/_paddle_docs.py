@@ -3384,10 +3384,13 @@ add_doc_and_signature(
         Tensor: The output tensor should be a 3-D tensor with shape [b, n, m].
     Examples:
         .. code-block:: pycon
+
             >>> import paddle
+
             >>> x = paddle.ones([2, 2, 2])
             >>> y = paddle.ones([2, 2, 2])
             >>> input = paddle.ones([2, 2, 2])
+
             >>> out = paddle.baddbmm(input=input, x=x, y=y, beta=0.5, alpha=5.0)
             >>> out
             Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
