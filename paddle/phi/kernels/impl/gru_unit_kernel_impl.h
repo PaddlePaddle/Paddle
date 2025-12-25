@@ -193,8 +193,8 @@ void GRUUnitGradKernel(const Context& dev_ctx,
                        DenseTensor* hidden_prev_grad,
                        DenseTensor* weight_grad,
                        DenseTensor* bias_grad) {
-  phi::DenseTensor gate_grad;
-  phi::DenseTensor reset_hidden_prev_grad;
+  DenseTensor gate_grad;
+  DenseTensor reset_hidden_prev_grad;
 
   const T* hidden_prev_data = hidden_prev.data<T>();
   const T* weight_data = weight.data<T>();
