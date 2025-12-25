@@ -217,14 +217,11 @@ jobs:
           ret=$?
 
           if [ $ret -ne 0 ]; then
-            echo ""
             echo "============================================================"
             echo "IXUCA CI TEST FAILED"
-            echo ""
             echo "Please contact the following maintainers for help:"
             echo "  - YqGe585"
             echo "  - yongqiangma"
-            echo ""
             echo "============================================================"
             exit $ret
           fi
