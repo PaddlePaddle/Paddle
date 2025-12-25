@@ -37,7 +37,7 @@ jobs:
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews")
 
-          AUTHORIZED_REVIEWERS=("YqGe585" "yongqiangma")
+          AUTHORIZED_REVIEWERS=("YqGe585" "yongqiangma" "plusNew001")
 
           REVIEWER_REGEX=$(IFS="|"; echo "${AUTHORIZED_REVIEWERS[*]}")
 
@@ -56,6 +56,8 @@ jobs:
               > /dev/null 2>&1; then
               can_skip=true
               echo "Found approval from authorized reviewer, skipping IXUCA CI"
+            else
+              echo "No approval from authorized reviewer found, continuing IXUCA CI"
             fi
           else
             echo "Failed to parse GitHub API response, do not skip CI"
@@ -222,6 +224,7 @@ jobs:
             echo "Please contact the following maintainers for help:"
             echo "  - YqGe585"
             echo "  - yongqiangma"
+            echo "  - plusNew001"
             echo ""
             echo "============================================================"
             exit $ret
