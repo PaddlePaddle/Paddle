@@ -259,10 +259,10 @@ void DenseToCooKernel(const Context& dev_ctx,
 
   const auto values_dims =
       funcs::sparse::InferDenseDims(x_dims, sparse_dim, non_zero_num);
-  phi::DenseTensor indices = phi::Empty<int64_t>(
+  DenseTensor indices = phi::Empty<int64_t>(
       dev_ctx, {sparse_dim, static_cast<int64_t>(non_zero_num)});
   int64_t* indices_data = indices.data<int64_t>();
-  phi::DenseTensor values;
+  DenseTensor values;
   values.Resize(values_dims);
   T* sparse_data = dev_ctx.template Alloc<T>(&values);
 
@@ -515,9 +515,9 @@ void CooToCsrGPUKernel(const GPUContext& dev_ctx,
   int batches = x_dims.size() == 2 ? 1 : x_dims[0];
   int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
 
-  phi::DenseTensor crows = phi::Empty<IntT>(dev_ctx, {batches * (rows + 1)});
-  phi::DenseTensor cols = phi::Empty<IntT>(dev_ctx, {non_zero_num});
-  phi::DenseTensor values = phi::EmptyLike<T, GPUContext>(dev_ctx, x.values());
+  DenseTensor crows = phi::Empty<IntT>(dev_ctx, {batches * (rows + 1)});
+  DenseTensor cols = phi::Empty<IntT>(dev_ctx, {non_zero_num});
+  DenseTensor values = phi::EmptyLike<T, GPUContext>(dev_ctx, x.values());
   if (non_zero_num <= 0) {
     out->SetMember(crows, cols, values, x_dims);
     return;
@@ -538,7 +538,7 @@ void CooToCsrGPUKernel(const GPUContext& dev_ctx,
   if (batches > 1) {
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
-    phi::DenseTensor batches_offset = phi::Empty<int>(dev_ctx, {batches});
+    DenseTensor batches_offset = phi::Empty<int>(dev_ctx, {batches});
     int* batches_offset_ptr = batches_offset.data<int>();
     funcs::SetConstant<GPUContext, int> set_zero;
     // set zero if the nnz=0 of batches[0]
