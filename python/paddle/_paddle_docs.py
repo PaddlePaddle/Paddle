@@ -1034,7 +1034,7 @@ def multiply(
     name: str | None = None,
     *,
     out: Tensor | None = None
-    ) -> Tensor
+) -> Tensor
 """,
 )
 
