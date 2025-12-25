@@ -144,9 +144,13 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
 
   // 2. Reduce sum
   const std::vector<int64_t> reduce_dims{1, 2};
-  phi::Reduce<T, kps::SumOps>(
-      dev_ctx, attn_tmp, false, reduce_dims, attn_accu.dtype(), &attn_accu);
-
+  phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(dev_ctx,
+                                                        attn_tmp,
+                                                        false,
+                                                        reduce_dims,
+                                                        false,
+                                                        attn_accu.dtype(),
+                                                        &attn_accu);
   // 3. Prepare token indices
   phi::backends::gpu::GpuLaunchConfig config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, bsz * max_seq_len);
