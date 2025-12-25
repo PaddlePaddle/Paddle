@@ -20,8 +20,52 @@ env:
   CI_name: ixuca
 
 jobs:
+  check-approval:
+    name: Check approval for IXUCA
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      can-skip-by-approval: ${{ steps.check-approval.outputs.can-skip }}
+    steps:
+      - name: Check approval
+        id: check-approval
+        run: |
+          echo "Checking PR #${{ github.event.pull_request.number }} for approvals..."
+
+          response=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews")
+
+          AUTHORIZED_REVIEWERS=("YqGe585" "yongqiangma")
+
+          REVIEWER_REGEX=$(IFS="|"; echo "${AUTHORIZED_REVIEWERS[*]}")
+
+          response=$(curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews")
+
+          can_skip=false
+
+          if echo "$response" | jq -e . >/dev/null 2>&1; then
+            if echo "$response" | jq -e \
+              ".[]
+              | select(.state == \"APPROVED\")
+              | select(.user.login | test(\"^(${REVIEWER_REGEX})$\"))" \
+              > /dev/null 2>&1; then
+              can_skip=true
+              echo "Found approval from authorized reviewer, skipping IXUCA CI"
+            fi
+          else
+            echo "Failed to parse GitHub API response, do not skip CI"
+          fi
+
+          echo "can-skip=${can_skip}" >> $GITHUB_OUTPUT
+
   check-bypass:
     name: Check bypass
+    if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: 'ixuca'
@@ -30,8 +74,10 @@ jobs:
 
   test:
     name: Test
-    needs: check-bypass
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    needs: [check-bypass, check-approval]
+    if: |
+      needs.check-bypass.outputs.can-skip != 'true' &&
+      needs.check-approval.outputs.can-skip-by-approval != 'true'
     runs-on:
       group: test2
 
@@ -88,21 +134,8 @@ jobs:
           GIT_PR_ID: ${{ github.event.pull_request.number }}
           PYTHON_VERSION: 3.9
           no_proxy: bcebos.com
-          # USE_910B: 1
-          # FLAGS_set_to_1d: "False"
-          # NVIDIA_TF32_OVERRIDE: 0
-          # paddle_submodule: "ON"
-          # MC2: 1
-          # HCCL_OP_BASE_FFTS_MODE_ENABLE: "TRUE"
-          # PADDLE_XCCL_BACKEND: npu
-          # HCCL_SOCKET_IFNAME: =xgbe0
-          # FLAGS_eager_communication_connection: 1
-          # FLAGS_use_stride_kernel: 0
-          # FLAGS_allocator_strategy: naive_best_fit
-          # FLAGS_npu_storage_format: 0
-          # TEST_IMPORTANT: "ON"
           PADDLE_BRANCH: ${{ github.event.pull_request.base.ref }}
-          # home_dir: ${{ github.workspace }}/../../../..
+
         run: |
           # echo ${ASCEND_RT_VISIBLE_DEVICES}
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
@@ -179,6 +212,20 @@ jobs:
           cd tests/
           export FLAG_SKIP_FLOAT64=1
           bash run_test.sh
+          ret=$?
+
+          if [ $ret -ne 0 ]; then
+            echo ""
+            echo "============================================================"
+            echo "IXUCA CI TEST FAILED"
+            echo ""
+            echo "Please contact the following maintainers for help:"
+            echo "  - YqGe585"
+            echo "  - yongqiangma"
+            echo ""
+            echo "============================================================"
+            exit $ret
+          fi
           '
 
       - name: Terminate and delete the container
