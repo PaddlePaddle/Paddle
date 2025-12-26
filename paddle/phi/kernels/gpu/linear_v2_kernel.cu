@@ -141,11 +141,15 @@ void LinearV2Kernel(const Context& dev_ctx,
     } else {
       DenseTensor bias_processed;
       if (bias.numel() != (M * N)) {
-        VLOG(3) << "bias.numel(): " << bias.numel();
+        phi::ReshapeKernel<Context>(
+            dev_ctx, bias, {1, bias.numel()}, &bias_processed);
+        VLOG(3) << "bias.dim(): " << bias.dims();
         VLOG(3) << "M*N: " << M * N;
         VLOG(3) << "bias tiling and addmm calculating";
         // only broadcast to 1D bias whatsoever
-        phi::TileKernel<T, Context>(dev_ctx, bias, {M, N}, &bias_processed);
+        phi::TileKernel<T, Context>(
+            dev_ctx, bias_processed, {M, 1}, &bias_processed);
+        VLOG(3) << "bias_processed.dims(): " << bias_processed.dims();
       } else {
         bias_processed = bias;
       }
