@@ -1028,7 +1028,7 @@ class TestCastBf16Pass(PassTest):
                 self.fetch_list = [out]
                 self.valid_op_map = {
                     "onednn_op.cast": 0,
-                    "onednn_op.dequantize": 1,
+                    "onednn_op.dequantize": 0,
                 }
                 return [main_prog, start_prog]
 

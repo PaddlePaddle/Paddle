@@ -251,7 +251,8 @@ def cast(x: Tensor, dtype: DTypeLike) -> Tensor:
         dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dynamic_or_pir_mode():
         if hasattr(x, 'dtype') and x.dtype == dtype:
-            return x
+            if not getattr(x, 'is_leaf', False):
+                return x
 
         return _C_ops.cast(x, dtype)
     else:

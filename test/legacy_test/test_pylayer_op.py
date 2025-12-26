@@ -190,10 +190,8 @@ class TestPyLayer(unittest.TestCase):
             'int64',
         ]
         for dtype in dtypes:
-            root = paddle.randn([2, 3])
-            root.stop_gradient = False
-            input1 = root.clone()
-            input1.retain_grads()
+            input1 = paddle.randn([2, 3])
+            input1.stop_gradient = False
             self.assertIsNone(input1.grad)
 
             z = tanh.apply(input1, dtype)
