@@ -121,8 +121,8 @@ class SimpleCode {
 template <typename T>
 class CustomCode {
  public:
-  CustomCode(const phi::DenseTensor& path_table,
-             const phi::DenseTensor& path_code,
+  CustomCode(const DenseTensor& path_table,
+             const DenseTensor& path_code,
              const int64_t* ids,
              int index) {
     seq_len_ = path_table.dims()[1];
@@ -181,8 +181,8 @@ class SimpleCodeTable {
 template <typename T>
 class CustomCodeTable {
  public:
-  CustomCodeTable(const phi::DenseTensor& path_table,
-                  const phi::DenseTensor& path_code,
+  CustomCodeTable(const DenseTensor& path_table,
+                  const DenseTensor& path_code,
                   const int64_t* ids)
       : ptable_(path_table), pcode_(path_code), ids_(ids) {}
 
@@ -196,8 +196,8 @@ class CustomCodeTable {
   }
 
  private:
-  const phi::DenseTensor& ptable_;
-  const phi::DenseTensor& pcode_;
+  const DenseTensor& ptable_;
+  const DenseTensor& pcode_;
   const int64_t* ids_;
 };
 
@@ -211,8 +211,8 @@ class MatrixBitCodeFunctor {
         ids_(ids),
         code_table_(SimpleCodeTable(num_classes, ids)) {}
 
-  MatrixBitCodeFunctor(const phi::DenseTensor& path_table,
-                       const phi::DenseTensor& path_code,
+  MatrixBitCodeFunctor(const DenseTensor& path_table,
+                       const DenseTensor& path_code,
                        const int64_t* ids)
       : num_classes_(static_cast<size_t>(path_table.dims()[1])),
         ids_(ids),
@@ -220,47 +220,47 @@ class MatrixBitCodeFunctor {
   /* For j < code_length
        tmat(i, j) += vec(0, index(i, j))
   */
-  void Add(const phi::DenseTensor& vec, phi::DenseTensor* tmat);
+  void Add(const DenseTensor& vec, DenseTensor* tmat);
 
   /* For j < code_length
        vec(0, index(i, j)) += tmat(i, j)
   */
-  void AddGrad(const phi::DenseTensor& tmat, phi::DenseTensor* vec);
+  void AddGrad(const DenseTensor& tmat, DenseTensor* vec);
 
   /* For j < code_length
     sum(i, 0) = \sum_j bit(i, j) * tmat(i, j)
   */
-  void Sum(const phi::DenseTensor& tmat, phi::DenseTensor* sum, T scale_sum);
+  void Sum(const DenseTensor& tmat, DenseTensor* sum, T scale_sum);
 
   /* For j < code_length
        tmat(i, j) -= bit(i, j)
   */
-  void Sub(phi::DenseTensor* tmat);
+  void Sub(DenseTensor* tmat);
   /* For j < code_length
        input.row(i) += tmat(i, j) * weight.row(index(i, j))
   */
-  void Mul(phi::DenseTensor* tmat,
-           const phi::DenseTensor& weight,
-           const phi::DenseTensor& input);
+  void Mul(DenseTensor* tmat,
+           const DenseTensor& weight,
+           const DenseTensor& input);
 
   /* For index(i, j) >= 0:
       weight.row(index(i, j)) += tmat(i, j) * input.row(i)
   */
-  void MulGradWeight(const phi::DenseTensor& tmat,
-                     phi::DenseTensor* weight,
-                     const phi::DenseTensor& input);
+  void MulGradWeight(const DenseTensor& tmat,
+                     DenseTensor* weight,
+                     const DenseTensor& input);
   /* For SelectedRows Weight, For index(i, j) >= 0:
       weight.row(index(i, j)) += tmat(i, j) * input.row(i)
   */
-  void MulGradWeight(const phi::DenseTensor& tmat,
+  void MulGradWeight(const DenseTensor& tmat,
                      phi::SelectedRows* weight,
-                     const phi::DenseTensor& input);
+                     const DenseTensor& input);
   /* For j < code_length
     input.row(i) += tmat(i, j) * weight.row(index(i, j))
   */
-  void MulGradError(const phi::DenseTensor& tmat,
-                    const phi::DenseTensor& weight,
-                    phi::DenseTensor* input);
+  void MulGradError(const DenseTensor& tmat,
+                    const DenseTensor& weight,
+                    DenseTensor* input);
 
   size_t num_classes_;
   const int64_t* ids_;

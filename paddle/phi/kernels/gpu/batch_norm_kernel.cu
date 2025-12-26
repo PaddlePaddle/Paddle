@@ -555,7 +555,7 @@ void BatchNormKernel(const Context &dev_ctx,
                      DenseTensor *saved_mean,
                      DenseTensor *saved_variance,
                      DenseTensor *reserve_space) {
-  phi::DenseTensor tmp_reserve_space;
+  DenseTensor tmp_reserve_space;
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(y);
     if (mean_out) dev_ctx.template Alloc<T>(mean_out);
@@ -593,8 +593,8 @@ void BatchNormKernel(const Context &dev_ctx,
   auto *Scale = scale.get_ptr();
   auto *Bias = bias.get_ptr();
 
-  phi::DenseTensor new_scale;
-  phi::DenseTensor new_bias;
+  DenseTensor new_scale;
+  DenseTensor new_bias;
 
   if (Scale) {
     new_scale = scale.get();
@@ -1203,7 +1203,7 @@ void BatchNormKernel(const Context &dev_ctx,
         // Create tensor for each batchnorm op, it will be used in the
         // backward. Thus this tensor shouldn't be temp.
         // auto *reserve_space =
-        // dev_ctx.Output<phi::DenseTensor>("ReserveSpace");
+        // dev_ctx.Output<DenseTensor>("ReserveSpace");
         if (reserve_space == nullptr) {
           reserve_space = &tmp_reserve_space;
         }

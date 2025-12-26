@@ -57,14 +57,13 @@ void RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT>::operator()(
   auto *prefix_ptr = prefix.data<RepeatsT>();
 
   auto stream = dev_ctx.stream();
-  phi::funcs::
-      CubExclusiveScan<const RepeatsT *, RepeatsT *, cub::Sum, RepeatsT>(
-          repeats_ptr,
-          prefix_ptr,
-          num_reps,
-          static_cast<RepeatsT>(0),
-          cub::Sum(),
-          dev_ctx);
+  funcs::CubExclusiveScan<const RepeatsT *, RepeatsT *, cub::Sum, RepeatsT>(
+      repeats_ptr,
+      prefix_ptr,
+      num_reps,
+      static_cast<RepeatsT>(0),
+      cub::Sum(),
+      dev_ctx);
 
   // get last prefix and repeat to compute total size of index tensor
   RepeatsT last_prefix = 0;

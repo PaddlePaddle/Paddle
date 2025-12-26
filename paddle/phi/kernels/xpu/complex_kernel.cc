@@ -40,11 +40,14 @@ void ConjKernel(const Context& dev_ctx,
   }
   dev_ctx.template Alloc<T>(out);
   if (std::is_same_v<T, phi::complex64>) {
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
     int r = xfft_internal::xpu::Conj(
         x.numel(),
         reinterpret_cast<cuFloatComplex*>(const_cast<T*>(x.data<T>())),
         reinterpret_cast<cuFloatComplex*>(out->data<T>()));
     PADDLE_ENFORCE_XPU_SUCCESS(r);
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
   } else {
     using XPUType = typename XPUCopyTypeTrait<T>::Type;
     const auto* input_data = x.data<T>();
@@ -66,15 +69,18 @@ void RealKernel(const Context& dev_ctx,
   }
   dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
   // The allocation of imag here is redundant and could be optimized.
-  phi::DenseTensor imag;
+  DenseTensor imag;
   imag.Resize(x.dims());
   dev_ctx.template Alloc<phi::dtype::Real<T>>(&imag);
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
   int r = xfft_internal::xpu::complex_spilt_float(
       out->numel(),
       reinterpret_cast<cuFloatComplex*>(const_cast<T*>(x.data<T>())),
       out->data<phi::dtype::Real<T>>(),
       imag.data<phi::dtype::Real<T>>());
   PADDLE_ENFORCE_XPU_SUCCESS(r);
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
 }
 
 template <typename T, typename Context>
@@ -87,15 +93,18 @@ void ImagKernel(const Context& dev_ctx,
   }
   dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
   // The allocation of ‘real’ here is redundant and could be optimized.
-  phi::DenseTensor real;
+  DenseTensor real;
   real.Resize(x.dims());
   dev_ctx.template Alloc<phi::dtype::Real<T>>(&real);
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
   int r = xfft_internal::xpu::complex_spilt_float(
       out->numel(),
       reinterpret_cast<cuFloatComplex*>(const_cast<T*>(x.data<T>())),
       real.data<phi::dtype::Real<T>>(),
       out->data<phi::dtype::Real<T>>());
   PADDLE_ENFORCE_XPU_SUCCESS(r);
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
 }
 
 template <typename T, typename Context>
@@ -110,7 +119,7 @@ void ComplexKernel(const Context& dev_ctx,
   }
   auto x_dims = x.dims();
   auto y_dims = y.dims();
-  auto out_dims = phi::funcs::BroadcastTwoDims(x_dims, y_dims);
+  auto out_dims = funcs::BroadcastTwoDims(x_dims, y_dims);
   std::vector<int64_t> out_dims_vec = phi::vectorize(out_dims);
 
   DenseTensor broadcasted_x, broadcasted_y;
@@ -138,12 +147,15 @@ void ComplexKernel(const Context& dev_ctx,
   }
 
   dev_ctx.template Alloc<C>(out);
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
   int r = xfft_internal::xpu::combine_as_complex(
       out->numel(),
       x_data,
       y_data,
       reinterpret_cast<cuFloatComplex*>(out->data<C>()));
   PADDLE_ENFORCE_XPU_SUCCESS(r);
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
 }
 }  // namespace phi
 

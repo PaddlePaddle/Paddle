@@ -538,8 +538,8 @@ const std::unordered_map<std::string, phi::Place>& StringToPlaceMap() {
 const std::unordered_map<std::string, phi::DataLayout>&
 StringToDataLayoutMap() {
   static std::unordered_map<std::string, phi::DataLayout> data_layout_map{
-      {"NHWC", phi::DataLayout::kNHWC},
-      {"NCHW", phi::DataLayout::kNCHW},
+      {"NHWC", phi::DataLayout::NHWC},
+      {"NCHW", phi::DataLayout::NCHW},
       {"Undefined", phi::DataLayout::kAnyLayout},
       {"ONEDNN", phi::DataLayout::ONEDNN},
       {"SPARSE_COO", phi::DataLayout::SPARSE_COO},

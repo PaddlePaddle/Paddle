@@ -31,16 +31,16 @@ void CoalesceCooCPUKernel(const CPUContext& dev_ctx,
 
   const int64_t sparse_dim = x.indices().dims()[0];
   std::vector<IntT> sparse_offsets(sparse_dim), x_nnz(x.nnz());
-  phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
+  funcs::sparse::CalcOffsetsPerDim<IntT>(
       x.dims(), sparse_dim, sparse_offsets.data());
 
-  phi::funcs::sparse::FlattenIndices(x.indices().data<IntT>(),
-                                     sparse_offsets.data(),
-                                     x.nnz(),
-                                     sparse_dim,
-                                     0,
-                                     1,
-                                     x_nnz.data());
+  funcs::sparse::FlattenIndices(x.indices().data<IntT>(),
+                                sparse_offsets.data(),
+                                x.nnz(),
+                                sparse_dim,
+                                0,
+                                1,
+                                x_nnz.data());
 
   const T* x_values_ptr = x_values.data<T>();
   const int64_t stride =
@@ -77,7 +77,7 @@ void CoalesceCooCPUKernel(const CPUContext& dev_ctx,
   }
 
   for (int i = 0; iter != indices_to_nnz.end(); iter++, i++) {
-    phi::funcs::sparse::IndexToCoordinate(
+    funcs::sparse::IndexToCoordinate(
         iter->first, const_dims, out_nnz, sparse_dim, i, out_indices_ptr);
     memcpy(out_values_ptr + i * stride,
            x_values_ptr + iter->second[0] * stride,

@@ -2277,7 +2277,8 @@ class Layer:
         Return a list. Get all parameters, buffers(non-parameter tensors), sublayers, method and attr of Layer.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
+
                 >>> import paddle
                 >>> import numpy as np
 
@@ -2289,7 +2290,6 @@ class Layer:
                 ...         self.conv2d = paddle.nn.Conv2D(3, 2, 3)
                 ...         self.embedding = paddle.nn.Embedding(128, 16)
                 ...         self.h_0 = paddle.to_tensor(np.zeros([10, 10]).astype('float32'))
-                ...
                 >>> mylayer = Mylayer()
                 >>> print(dir(mylayer))
                 ['__call__', '__class__', '__delattr__', '__dict__', ..., 'training']

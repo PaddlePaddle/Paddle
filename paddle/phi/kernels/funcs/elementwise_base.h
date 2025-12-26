@@ -41,7 +41,7 @@ template <class T, int Num>
 using ConditionalT = typename std::conditional_t<Num == 1, T, Array<T, Num>>;
 
 namespace funcs {
-using DDim = phi::DDim;
+using DDim = DDim;
 
 template <typename T, typename DeviceContext>
 class RowwiseTransformIterator;
@@ -481,7 +481,7 @@ static inline void GetDoubleGradSafeTensor(const DeviceContext &dev_ctx,
   if (ddx) {
     *ddx_safe = *ddx;
   } else {
-    auto meta = phi::DenseTensorMeta(x.dtype(), x.dims(), x.layout());
+    auto meta = DenseTensorMeta(x.dtype(), x.dims(), x.layout());
     *ddx_safe = phi::Empty(dev_ctx, std::move(meta));
     dev_ctx.template Alloc<T>(ddx_safe);
     SetConstant<DeviceContext, T> set_zero;
@@ -680,7 +680,7 @@ __device__ void VectorizedElementwiseKernelImpl(
     int num,
     int read_lens,
     Functor func) {
-  using Traits = phi::funcs::FunctionTraits<Functor>;
+  using Traits = funcs::FunctionTraits<Functor>;
   using ArgsT = typename Traits::ArgsTuple;
   ArgsT args[VecSize];
   ConditionalT<OutT, NumOuts> result[VecSize];
@@ -744,7 +744,7 @@ void LaunchElementwiseKernel(const KPDevice &dev_ctx,
   Array<const _ptr_ char *__restrict__, Arity> ins_data;
   Array<_ptr_ OutT *, NumOuts> outs_data;
 
-  using Traits = phi::funcs::FunctionTraits<Functor>;
+  using Traits = funcs::FunctionTraits<Functor>;
   using ArgsT = typename Traits::ArgsTuple;
   ArgsT arg;
   UnrollerWithoutVecSize<InputSetter, Arity>::step(ins, arg, &ins_data);
@@ -820,7 +820,7 @@ void ElementwiseKernel(const KPDevice &dev_ctx,
                        const std::vector<const DenseTensor *> &ins,
                        std::vector<DenseTensor *> *outs,
                        Functor func) {
-  using Traits = phi::funcs::FunctionTraits<Functor>;
+  using Traits = funcs::FunctionTraits<Functor>;
   const int kArity = Traits::arity;
   PADDLE_ENFORCE_EQ(ins.size(),
                     kArity,

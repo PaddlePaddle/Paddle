@@ -75,7 +75,7 @@ __global__ void SparseAdamWCUDAKernelREG(MT beta1,
 
   for (; id < ndim; id += blockDim.x * gridDim.x) {
     auto row_idx =
-        phi::funcs::BinarySearch<int64_t>(rows_, row_count, id / row_numel);
+        funcs::BinarySearch<int64_t>(rows_, row_count, id / row_numel);
     if (lazy_mode && row_idx < 0) {
       return;
     } else {
@@ -245,7 +245,7 @@ void AdamwDenseParamSparseGradKernel(
   } else {
     // merge duplicated rows if any.
     // The rows of grad_merge have been sorted inside MergeAdd functor
-    phi::funcs::scatter::MergeAdd<Context, T> merge_func;
+    funcs::scatter::MergeAdd<Context, T> merge_func;
     merge_func(dev_ctx, grad, &tmp_grad_merge, true);
     grad_merge_ptr = &tmp_grad_merge;
   }

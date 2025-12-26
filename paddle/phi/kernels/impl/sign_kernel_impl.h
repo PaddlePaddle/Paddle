@@ -30,7 +30,7 @@ void SignKernel(const Context& dev_ctx,
   auto eigen_x = phi::EigenVector<T>::Flatten(x);
 
   auto& dev = *dev_ctx.eigen_device();
-  phi::funcs::EigenSign<std::decay_t<decltype(dev)>, T>::Eval(
+  funcs::EigenSign<std::decay_t<decltype(dev)>, T>::Eval(
       dev, eigen_out, eigen_x);
 }
 

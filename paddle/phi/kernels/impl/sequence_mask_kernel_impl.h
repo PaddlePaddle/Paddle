@@ -63,7 +63,7 @@ void SequenceMaskScalarKernel(const Context& dev_ctx,
   }
 
   phi::VisitDataType(out_dtype,
-                     phi::funcs::SequenceMaskFunctor<Context, T>(
+                     funcs::SequenceMaskFunctor<Context, T>(
                          dev_ctx, x_data, y, x_numel * maxlen, maxlen));
 }
 
@@ -78,7 +78,7 @@ void SequenceMaskKernel(const Context& dev_ctx,
     bool is_gpu_place =
         dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
     if (is_gpu_place) {
-      phi::DenseTensor temp;
+      DenseTensor temp;
       phi::Copy(
           dev_ctx, *max_len_tensor.get_ptr(), phi::CPUPlace(), false, &temp);
       maxlen = *temp.data<int32_t>();

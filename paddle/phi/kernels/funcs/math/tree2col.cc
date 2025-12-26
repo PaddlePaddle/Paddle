@@ -51,7 +51,7 @@ std::vector<TreeNode> Tree2ColUtil::construct_patch(
   return patch;
 }
 
-void Tree2ColUtil::construct_tree(const phi::DenseTensor &EdgeSet,
+void Tree2ColUtil::construct_tree(const DenseTensor &EdgeSet,
                                   std::vector<std::vector<int>> *tr,
                                   size_t *node_count) {
   const auto &edge_set_dims = EdgeSet.dims();
@@ -87,13 +87,13 @@ template <typename T>
 class Tree2ColFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext &dev_ctx,
-                  const phi::DenseTensor &EdgeSet,
-                  const phi::DenseTensor &node_features,
-                  phi::DenseTensor *patch,
+                  const DenseTensor &EdgeSet,
+                  const DenseTensor &node_features,
+                  DenseTensor *patch,
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     const auto &feature_dims = node_features.dims();
-    phi::funcs::SetConstant<phi::CPUContext, T> constant;
+    funcs::SetConstant<phi::CPUContext, T> constant;
     int64_t feature_size = feature_dims[1];
     size_t patch_elem_size = 3 * static_cast<size_t>(feature_size);
     size_t node_count = 0, patch_count = 0, patch_size = 0;
@@ -139,13 +139,13 @@ template <typename T>
 class Col2TreeFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext &dev_ctx,
-                  const phi::DenseTensor &EdgeSet,
-                  const phi::DenseTensor &out_grad,
-                  phi::DenseTensor *in_grad,
+                  const DenseTensor &EdgeSet,
+                  const DenseTensor &out_grad,
+                  DenseTensor *in_grad,
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     const auto &output_dims = out_grad.dims();
-    phi::funcs::SetConstant<phi::CPUContext, T> constant;
+    funcs::SetConstant<phi::CPUContext, T> constant;
     int64_t output_size = output_dims[1];
     size_t grad_elem_size = 3 * static_cast<size_t>(output_size);
     size_t node_count = 0, grad_count = 0;

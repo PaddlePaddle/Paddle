@@ -43,8 +43,8 @@ template <typename DeviceContext, typename T>
 struct SelectedRowsAddTensor {
   void operator()(const DeviceContext& dev_ctx,
                   const phi::SelectedRows& input1,
-                  const phi::DenseTensor& input2,
-                  phi::DenseTensor* output);
+                  const DenseTensor& input2,
+                  DenseTensor* output);
 };
 
 // input2 = input1 + input2
@@ -72,7 +72,7 @@ template <typename DeviceContext, typename T>
 struct SelectedRowsAddToTensor {
   void operator()(const DeviceContext& dev_ctx,
                   const phi::SelectedRows& input1,
-                  phi::DenseTensor* input2);
+                  DenseTensor* input2);
 };
 
 namespace scatter {
@@ -114,7 +114,7 @@ struct UpdateToTensor {
   void operator()(const DeviceContext& dev_ctx,
                   const ScatterOps& op,
                   const phi::SelectedRows& input1,
-                  phi::DenseTensor* input2);
+                  DenseTensor* input2);
 };
 
 }  // namespace scatter

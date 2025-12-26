@@ -44,7 +44,7 @@ template <typename Context>
 void FeedDenseTensorKernel(const Context& dev_ctx,
                            const phi::ExtendedTensor& x,
                            int col,
-                           phi::DenseTensor* out) {
+                           DenseTensor* out) {
   PADDLE_ENFORCE_NOT_NULL(
       out,
       common::errors::NotFound(

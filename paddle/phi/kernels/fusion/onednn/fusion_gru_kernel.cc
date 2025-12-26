@@ -23,23 +23,22 @@
 
 namespace phi::fusion {
 
+using funcs::CreateKey;
+using funcs::OneDNNGetDataType;
+using funcs::OneDNNMemDesc;
+using funcs::RNNReorderType;
 using phi::OneDNNContext;
-using phi::funcs::CreateKey;
-using phi::funcs::OneDNNGetDataType;
-using phi::funcs::OneDNNMemDesc;
-using phi::funcs::RNNReorderType;
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
 template <typename T, typename T_out = T>
-class GRUOneDNNHandler
-    : public phi::funcs::OneDNNHandlerT<T, dnnl::gru_forward> {
+class GRUOneDNNHandler : public funcs::OneDNNHandlerT<T, dnnl::gru_forward> {
  public:
   GRUOneDNNHandler(const OneDNNContext& dev_ctx,
                    const dnnl::engine onednn_engine,
                    phi::Place cpu_place UNUSED,
-                   const phi::DenseTensor* input,
-                   const phi::DenseTensor* weight_h,
-                   const phi::DenseTensor* h0,
+                   const DenseTensor* input,
+                   const DenseTensor* weight_h,
+                   const DenseTensor* h0,
                    const bool is_reverse,
                    const float scale_data,
                    const float shift_data,
@@ -50,7 +49,7 @@ class GRUOneDNNHandler
                    const int64_t Ti,
                    const int64_t IC,
                    const int64_t OC)
-      : phi::funcs::OneDNNHandlerT<T, dnnl::gru_forward>(
+      : funcs::OneDNNHandlerT<T, dnnl::gru_forward>(
             dev_ctx,
             dev_ctx.GetEngine(),
             cpu_place,
@@ -68,7 +67,7 @@ class GRUOneDNNHandler
         dev_ctx.GetInputsName("X")[0] + dev_ctx.GetInputsName("WeightH")[0];
     // Create memory key without Ti because weights, bias and h0 memories
     // do not depend on Ti size but primitive and input/output memory do
-    memory_key_ = phi::funcs::ExtendKeyWithThreadInfoIfNeeded(
+    memory_key_ = funcs::ExtendKeyWithThreadInfoIfNeeded(
         dev_ctx, CreateKey(dev_ctx, unique_name, OneDNNGetDataType<T>()));
     // Is it int8 kernel
     const bool is_INT8 = std::is_same<T, uint8_t>::value;
@@ -212,7 +211,7 @@ class GRUOneDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireInputMemoryWithReorder(
-      const phi::DenseTensor* input, const bool is_reverse) {
+      const DenseTensor* input, const bool is_reverse) {
     const auto name = this->key_ + "@input_mem";
     auto memory_p =
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(name));
@@ -224,7 +223,7 @@ class GRUOneDNNHandler
     }
 
     const auto& input_lod = input->lod()[0];
-    auto* x_data = phi::funcs::to_void_cast(input->data<T>());
+    auto* x_data = funcs::to_void_cast(input->data<T>());
 
     auto* x_onednn_data = memory_p->get_data_handle();
     memset(x_onednn_data, 0, sizeof(T) * N * Ti * IC);
@@ -254,7 +253,7 @@ class GRUOneDNNHandler
 
   // H0 is for now persistable
   template <typename U>
-  std::shared_ptr<dnnl::memory> AcquireH0Memory(const phi::DenseTensor* h0) {
+  std::shared_ptr<dnnl::memory> AcquireH0Memory(const DenseTensor* h0) {
     const std::string h0_key = memory_key_ + "@h0";
     auto memory_p =
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(h0_key));
@@ -265,7 +264,7 @@ class GRUOneDNNHandler
         user_h0_memory = dnnl::memory(
             {{1, 1, N, OC}, OneDNNGetDataType<U>(), OneDNNMemoryFormat::ldnc},
             this->engine_,
-            phi::funcs::to_void_cast(h0->data<U>()));
+            funcs::to_void_cast(h0->data<U>()));
       } else {
         user_h0_memory = dnnl::memory(
             {{1, 1, N, OC}, OneDNNGetDataType<U>(), OneDNNMemoryFormat::ldnc},
@@ -286,7 +285,7 @@ class GRUOneDNNHandler
 
   template <typename U>
   std::shared_ptr<dnnl::memory> AcquireWeightXMemory(
-      const phi::DenseTensor* weight_x, const bool origin_mode) {
+      const DenseTensor* weight_x, const bool origin_mode) {
     const std::string wx_key = this->memory_key_ + "@weight_x";
     auto memory_p =
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(wx_key));
@@ -326,7 +325,7 @@ class GRUOneDNNHandler
 
   template <typename U>
   std::shared_ptr<dnnl::memory> AcquireWeightHMemory(
-      const phi::DenseTensor* weight_h, const bool origin_mode) {
+      const DenseTensor* weight_h, const bool origin_mode) {
     const std::string wh_key = this->memory_key_ + "@weight_h";
     auto memory_p =
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(wh_key));
@@ -378,7 +377,7 @@ class GRUOneDNNHandler
     return memory_p;
   }
 
-  std::shared_ptr<dnnl::memory> AcquireBiasMemory(const phi::DenseTensor* bias,
+  std::shared_ptr<dnnl::memory> AcquireBiasMemory(const DenseTensor* bias,
                                                   const bool origin_mode) {
     const std::string bias_key = this->memory_key_ + "@bias";
     auto memory_p = std::static_pointer_cast<dnnl::memory>(
@@ -530,7 +529,7 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
 
   auto* hidden_onednn_data = hidden_onednn_memory_p->get_data_handle();
   auto* hidden_tmp_data = dev_ctx.template Alloc<Tout>(hidden);
-  auto* hidden_data = phi::funcs::to_void_cast(hidden_tmp_data);
+  auto* hidden_data = funcs::to_void_cast(hidden_tmp_data);
   if (handler.is_NTC()) {
     handler.reorderRNNdata(hidden_onednn_data,
                            hidden_data,

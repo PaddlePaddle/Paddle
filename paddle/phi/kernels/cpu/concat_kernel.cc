@@ -98,7 +98,7 @@ void ConcatKernel(const Context& dev_ctx,
     }
   } else {
     // TODO(chenweihang): concat functor support vector<DenseTensor*> input
-    std::vector<phi::DenseTensor> inputs;
+    std::vector<DenseTensor> inputs;
     inputs.reserve(x.size());
     for (auto item : x) {
       if (item->numel() > 0) {

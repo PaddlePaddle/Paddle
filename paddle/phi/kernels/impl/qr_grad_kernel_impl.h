@@ -65,10 +65,10 @@ void QrGradKernel(const Context& dev_ctx,
   DenseTensor& dA = *x_grad;
 
   dev_ctx.template Alloc<T>(&dA);
-  phi::funcs::SetConstant<Context, T>()(dev_ctx, &dA, T(0));
+  funcs::SetConstant<Context, T>()(dev_ctx, &dA, T(0));
 
   bool compute_q, reduced;
-  std::tie(compute_q, reduced) = phi::funcs::ParseQrMode(mode);
+  std::tie(compute_q, reduced) = funcs::ParseQrMode(mode);
   if (!compute_q) {
     PADDLE_THROW(errors::InvalidArgument(
         "The derivative of qr is not implemented when mode='%s'.", mode));

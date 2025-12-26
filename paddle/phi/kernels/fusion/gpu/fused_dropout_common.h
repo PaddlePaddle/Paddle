@@ -52,7 +52,7 @@ namespace fusion {
  * 2D grids: gridDim.y = rows
  */
 inline phi::backends::gpu::GpuLaunchConfig Get1DBlocksAnd2DGrids(
-    const phi::GPUContext &dev_ctx,
+    const GPUContext &dev_ctx,
     const uint64_t rows,
     const uint64_t cols,
     const int vec_size) {
@@ -126,7 +126,7 @@ __forceinline__ __device__ void RandVec<8>(GPURAND(StatePhilox4_32_10_t) *
 }
 
 template <typename T>
-inline void SetZero(const phi::GPUContext &dev_ctx, T *ptr, const size_t size) {
+inline void SetZero(const GPUContext &dev_ctx, T *ptr, const size_t size) {
   PADDLE_ENFORCE_GPU_SUCCESS(
       GPU(MemsetAsync)(ptr, 0, size * sizeof(T), dev_ctx.stream()));
 }
@@ -162,7 +162,7 @@ inline __device__ void CalculateDBias(const T *tmp_sum,
   int reduce_num_pre_thread = (BlockSizeX * VecSize + 31) / 32;
   // reduce 32 to 1
   for (int i = 0; i < reduce_num_pre_thread; i++) {
-    sum[i] = phi::funcs::WarpReduceSum(sum[i]);
+    sum[i] = funcs::WarpReduceSum(sum[i]);
   }
 
   // save sum to dbias

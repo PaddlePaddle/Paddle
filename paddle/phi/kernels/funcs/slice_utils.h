@@ -332,13 +332,13 @@ inline void UpdateSliceAttrs(const DDim in_dims,
 }
 
 template <typename T = int64_t>
-inline phi::DDim GetSliceDims(const phi::DDim in_dims,
-                              const std::vector<T>& axes,
-                              const std::vector<T>& starts,
-                              const std::vector<T>& ends,
-                              std::vector<T>* steps = nullptr,
-                              std::vector<T>* infer_flags = nullptr) {
-  phi::DDim slice_dims(in_dims);
+inline DDim GetSliceDims(const DDim in_dims,
+                         const std::vector<T>& axes,
+                         const std::vector<T>& starts,
+                         const std::vector<T>& ends,
+                         std::vector<T>* steps = nullptr,
+                         std::vector<T>* infer_flags = nullptr) {
+  DDim slice_dims(in_dims);
 
   for (size_t i = 0; i < axes.size(); ++i) {
     T axis = axes[i];
@@ -484,7 +484,7 @@ inline void CheckAndUpdateSparseSliceAttrs(const DDim in_dims,
   CheckAndUpdateSliceAttrs<T>(in_dims, *axes, starts, ends);
 }
 
-inline void ConstructNewSliceAttrs(const phi::DDim& x_dims,
+inline void ConstructNewSliceAttrs(const DDim& x_dims,
                                    const std::vector<int64_t>& axes,
                                    const std::vector<int64_t>& starts,
                                    const std::vector<int64_t>& ends,

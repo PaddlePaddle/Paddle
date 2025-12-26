@@ -24,9 +24,9 @@ namespace phi {
 namespace funcs {
 
 template <typename Context>
-phi::DenseTensor TransDataType(const Context& dev_ctx,
-                               const phi::DenseTensor& x,
-                               DataType dtype) {
+DenseTensor TransDataType(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          DataType dtype) {
   VLOG(3) << "TransDataType "
           << "src type:" << x.dtype() << "; dst type: " << dtype;
 

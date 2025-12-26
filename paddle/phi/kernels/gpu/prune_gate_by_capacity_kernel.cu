@@ -49,8 +49,8 @@ template <typename Context, typename T1>
 class PruneGateByCapacityFunctor {
  public:
   PruneGateByCapacityFunctor(const Context& dev_ctx,
-                             const phi::DenseTensor* gate_idx,
-                             phi::DenseTensor* expert_count_out,
+                             const DenseTensor* gate_idx,
+                             DenseTensor* expert_count_out,
                              T1* new_gate_idx_data)
       : dev_ctx_(dev_ctx),
         gate_idx_(gate_idx),
@@ -76,8 +76,8 @@ class PruneGateByCapacityFunctor {
 
  private:
   const Context& dev_ctx_;
-  const phi::DenseTensor* gate_idx_;
-  phi::DenseTensor* expert_count_out_;
+  const DenseTensor* gate_idx_;
+  DenseTensor* expert_count_out_;
   T1* new_gate_idx_data_;
 };
 
@@ -103,10 +103,10 @@ void PruneGateByCapacityKernel(const Context& dev_ctx,
                                DenseTensor* new_gate_idx) {
   auto* gate_idx_ptr = &gate_idx;
   // auto* expert_count_out =
-  // context.Output<phi::DenseTensor>("ExpertCountOut");
+  // context.Output<DenseTensor>("ExpertCountOut");
   auto* new_gate_idx_data = dev_ctx.template Alloc<T>(new_gate_idx);
 
-  phi::DenseTensor expert_count_out;
+  DenseTensor expert_count_out;
   phi::Copy(
       dev_ctx, expert_count, dev_ctx.GetPlace(), false, &expert_count_out);
   PruneGateByCapacityFunctor<Context, T> functor(

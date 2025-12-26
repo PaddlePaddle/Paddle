@@ -2577,14 +2577,14 @@ Scope* OperatorWithKernel::PrepareData(
         // Var without buffer may be needed
         // for some situation like InferShape().
         // In this situation We cannot skip Var analysis, as
-        // oneDNN shape of Var may differ from kNHWC Var
+        // ONEDNN shape of Var may differ from NHWC Var
         // In such situation corresponding resized Var
         // has to be created and registered
         if ((tensor_in->layout() == DataLayout::ONEDNN) &&
             (var->IsType<phi::DenseTensor>() == true) &&
             (expected_kernel_key.layout() != DataLayout::ONEDNN) &&
             (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-             DataLayout::kNHWC) &&
+             DataLayout::NHWC) &&
             (tensor_in->dims().size() >= 3)) {
           // Mixed execution : oneDNN and GPU is not supported!
           if (!new_scope) {
@@ -2595,10 +2595,10 @@ Scope* OperatorWithKernel::PrepareData(
           auto out = trans_var->GetMutable<phi::DenseTensor>();
           out->Resize(tensor_in->dims());
           phi::funcs::MatchShapeToLayout(
-              out, tensor_in->layout(), DataLayout::kNHWC);
-          VLOG(7) << "Created reshaped dummy input based on oneDNN "
+              out, tensor_in->layout(), DataLayout::NHWC);
+          VLOG(7) << "Created reshaped dummy input based on ONEDNN "
                      "phi::DenseTensor , "
-                     "but kNHWC layout"
+                     "but NHWC layout"
                   << in_name << " in Operator " << type_;
         } else {
           VLOG(7) << "Skip scanning input " << in_name << " in Operator "
@@ -3062,9 +3062,9 @@ phi::KernelKey OperatorWithKernel::GetKernelTypeForVar(
   if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN) &&
       phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-          phi::DataLayout::kNHWC) {
+          phi::DataLayout::NHWC) {
     return phi::KernelKey(
-        tensor.place(), phi::DataLayout::kNHWC, expected_kernel_type.dtype());
+        tensor.place(), phi::DataLayout::NHWC, expected_kernel_type.dtype());
   }
 #endif
   return phi::KernelKey(

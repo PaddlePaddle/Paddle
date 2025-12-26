@@ -92,11 +92,11 @@ std::tuple<DenseTensor, DenseTensor, DenseTensor, DenseTensor> ComputePoolMax(
 #endif
   using thrust_ptr = thrust::device_ptr<IntT>;
   auto nnz = indices.dims()[1];
-  DenseTensor offsets = phi::funcs::sparse::GetOffsets<IntT, Context>(
-      dev_ctx, indices, sizes, dim);
+  DenseTensor offsets =
+      funcs::sparse::GetOffsets<IntT, Context>(dev_ctx, indices, sizes, dim);
   auto offsets_ptr = offsets.data<IntT>();
 
-  phi::DenseTensor sorted_indices = phi::Empty<IntT>(dev_ctx, {nnz});
+  DenseTensor sorted_indices = phi::Empty<IntT>(dev_ctx, {nnz});
   thrust_ptr sorted_indices_thrust_ptr(sorted_indices.data<IntT>());
   thrust::sequence(
       policy, sorted_indices_thrust_ptr, sorted_indices_thrust_ptr + nnz, 0);

@@ -105,7 +105,7 @@ void GammalnGradKernel(const Context& dev_ctx,
   auto* x_data = x.data<T>();
   auto* dx_data =
       dev_ctx.template Alloc<T>(d_x, static_cast<size_t>(numel * sizeof(T)));
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
   GammalnGradFunctor<T> functor(dout_data, x_data, dx_data, numel);
   for_range(functor);
 }

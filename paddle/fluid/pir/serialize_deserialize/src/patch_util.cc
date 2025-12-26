@@ -194,21 +194,26 @@ Json GetAttrJson(const YAML::Node& action) {
 }
 
 std::string YamlStringToDataLayoutString(const std::string& layout) {
-  if (layout == "phi::DataLayout::kNHWC") {
+  if (layout == "phi::DataLayout::kNHWC" || layout == "phi::DataLayout::NHWC") {
     return "NHWC";
-  } else if (layout == "phi::DataLayout::kNCHW") {
+  } else if (layout == "phi::DataLayout::kNCHW" ||
+             layout == "phi::DataLayout::NCHW") {
     return "NCHW";
-  } else if (layout == "phi::DataLayout::kAnyLayout") {
+  } else if (layout == "phi::DataLayout::kAnyLayout" ||
+             layout == "phi::DataLayout::ANY") {
     return "Undefined(AnyLayout)";
-  } else if (layout == "phi::DataLayout::kMKLDNN") {
+  } else if (layout == "phi::DataLayout::kMKLDNN" ||
+             layout == "phi::DataLayout::ONEDNN") {
     return "ONEDNN";
   } else if (layout == "phi::DataLayout::SPARSE_COO") {
     return "SPARSE_COO";
   } else if (layout == "phi::DataLayout::SPARSE_CSR") {
     return "SPARSE_CSR";
-  } else if (layout == "phi::DataLayout::kNDHWC") {
+  } else if (layout == "phi::DataLayout::kNDHWC" ||
+             layout == "phi::DataLayout::NDHWC") {
     return "NDHWC";
-  } else if (layout == "phi::DataLayout::kNCDHW") {
+  } else if (layout == "phi::DataLayout::kNCDHW" ||
+             layout == "phi::DataLayout::NCDHW") {
     return "NCDHW";
   } else if (layout == "phi::DataLayout::PSTRING_UNION") {
     return "PSTRING_UNION";

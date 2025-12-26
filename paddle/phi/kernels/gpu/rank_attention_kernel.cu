@@ -58,7 +58,7 @@ void RankAttentionCUDAKernel(const Context &dev_ctx,
   int block_matrix_row = max_rank * x_fea_dim;
   int max_ins = std::max(ins_num, static_cast<int64_t>(max_size));
 
-  phi::DenseTensor param_help;
+  DenseTensor param_help;
   param_help.Resize({max_ins * block_matrix_row, para_col});
   dev_ctx.template Alloc<T>(&param_help);
 

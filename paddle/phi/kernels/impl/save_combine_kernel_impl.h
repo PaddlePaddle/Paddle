@@ -59,7 +59,7 @@ inline void SaveToMemory(const std::string& file_path,
 
 template <typename T, typename Context>
 void SerializeCombineTensor(const Context& dev_ctx,
-                            const std::vector<const phi::DenseTensor*>& x,
+                            const std::vector<const DenseTensor*>& x,
                             bool save_as_fp16,
                             std::ostream& ss) {
   for (size_t i = 0; i < x.size(); i++) {
@@ -79,7 +79,7 @@ void SerializeCombineTensor(const Context& dev_ctx,
           phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, in_dtype);
       auto out_kernel_type =
           phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, out_dtype);
-      phi::DenseTensor out;
+      DenseTensor out;
       TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
       // copy LoD info to the new tensor
       out.set_lod(tensor.lod());
@@ -92,7 +92,7 @@ void SerializeCombineTensor(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void SaveCombineTensorKernel(const Context& dev_ctx,
-                             const std::vector<const phi::DenseTensor*>& x,
+                             const std::vector<const DenseTensor*>& x,
                              const std::string& file_path,
                              bool overwrite,
                              bool save_as_fp16,

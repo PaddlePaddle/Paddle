@@ -85,7 +85,7 @@ void Atan2Kernel(const Context& dev_ctx,
   const auto* y_data = y.data<T>();
 
   auto* out_data = dev_ctx.template Alloc<typename Atan2Out<T>::type>(out);
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
   phi::Atan2Functor<T> functor(x_data, y_data, out_data, numel);
   for_range(functor);
 }

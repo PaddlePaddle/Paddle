@@ -136,8 +136,8 @@ template <typename T>
 struct SelectedRowsAddTensor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
                   const phi::SelectedRows& input1,
-                  const phi::DenseTensor& input2,
-                  phi::DenseTensor* output) {
+                  const DenseTensor& input2,
+                  DenseTensor* output) {
     auto in1_height = input1.height();
     auto in2_dims = input2.dims();
     auto out_dims = output->dims();
@@ -183,7 +183,7 @@ struct SelectedRowsAddTensor<phi::GPUContext, T> {
     auto* in2_data = input2.data<T>();
     auto* out_data = output->data<T>();
 
-    phi::funcs::SetConstant<phi::GPUContext, T> functor;
+    funcs::SetConstant<phi::GPUContext, T> functor;
     functor(dev_ctx, output, static_cast<T>(0));
 
     const int block_size = 256;
@@ -288,7 +288,7 @@ template <typename T>
 struct SelectedRowsAddToTensor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
                   const phi::SelectedRows& input1,
-                  phi::DenseTensor* input2) {
+                  DenseTensor* input2) {
     auto in1_height = input1.height();
     auto in2_dims = input2->dims();
     PADDLE_ENFORCE_EQ(
@@ -399,7 +399,7 @@ struct MergeAddImpl {
         {static_cast<int64_t>(merge_rows.size()), input_width}));
     dev_ctx.template Alloc<T>(out_tensor);
 
-    phi::funcs::SetConstant<DeviceContext, T> constant_functor;
+    funcs::SetConstant<DeviceContext, T> constant_functor;
     constant_functor(dev_ctx, out.mutable_value(), static_cast<T>(0));
 
     auto* out_data = out.mutable_value()->data<T>();
@@ -471,7 +471,7 @@ struct MergeAddImpl {
         {static_cast<int64_t>(merge_rows.size()), input_width}));
     dev_ctx.template Alloc<T>(out_tensor);
 
-    phi::funcs::SetConstant<DeviceContext, T> constant_functor;
+    funcs::SetConstant<DeviceContext, T> constant_functor;
     constant_functor(dev_ctx, out.mutable_value(), static_cast<T>(0));
 
     auto* out_data = out.mutable_value()->data<T>();

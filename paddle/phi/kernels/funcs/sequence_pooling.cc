@@ -36,10 +36,10 @@ template <typename T, bool is_test>
 class MaxSeqPoolFunctor {
  public:
   void operator()(const phi::CPUContext& dev_ctx UNUSED,
-                  const phi::DenseTensor& input,
+                  const DenseTensor& input,
                   T pad_value,
-                  phi::DenseTensor* output,
-                  phi::DenseTensor* index) {
+                  DenseTensor* output,
+                  DenseTensor* index) {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     auto idx_dims = index->dims();
@@ -115,10 +115,10 @@ template <typename T>
 class MaxSeqPoolFunctor<T, true> {
  public:
   void operator()(const phi::CPUContext& dev_ctx UNUSED,
-                  const phi::DenseTensor& input,
+                  const DenseTensor& input,
                   T pad_value,
-                  phi::DenseTensor* output,
-                  phi::DenseTensor* index UNUSED) {
+                  DenseTensor* output,
+                  DenseTensor* index UNUSED) {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     PADDLE_ENFORCE_GT(in_dims.size(),
@@ -176,9 +176,9 @@ template <typename T>
 class MaxSeqPoolGradFunctor {
  public:
   void operator()(const phi::CPUContext& dev_ctx,
-                  const phi::DenseTensor& out_grad,
-                  const phi::DenseTensor& index,
-                  phi::DenseTensor* in_grad) {
+                  const DenseTensor& out_grad,
+                  const DenseTensor& index,
+                  DenseTensor* in_grad) {
     auto og_dims = out_grad.dims();
     auto ig_dims = in_grad->dims();
     auto idx_dims = index.dims();
@@ -221,7 +221,7 @@ class MaxSeqPoolGradFunctor {
     const int* max_index = index.data<int>();
     T* ig_data = in_grad->data<T>();
 
-    phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
+    funcs::SetConstant<phi::CPUContext, T> set_zero;
     set_zero(dev_ctx, in_grad, static_cast<T>(0.0));
     int64_t num_seq = og_dims[0];
     int64_t dim = out_grad.numel() / num_seq;
@@ -239,9 +239,9 @@ template <typename T>
 class LastSeqPoolFunctor {
  public:
   void operator()(const phi::CPUContext& dev_ctx UNUSED,
-                  const phi::DenseTensor& input,
+                  const DenseTensor& input,
                   T pad_value,
-                  phi::DenseTensor* output) {
+                  DenseTensor* output) {
     // Create pointers to input and output data
     auto* in_data = input.data<T>();
     auto* out_data = output->data<T>();
@@ -273,9 +273,9 @@ template <typename T>
 class FirstSeqPoolFunctor {
  public:
   void operator()(const phi::CPUContext& dev_ctx UNUSED,
-                  const phi::DenseTensor& input,
+                  const DenseTensor& input,
                   T pad_value,
-                  phi::DenseTensor* output) {
+                  DenseTensor* output) {
     // Create pointers to input and output data
     auto* in_data = input.data<T>();
     auto* out_data = output->data<T>();
@@ -307,8 +307,8 @@ template <typename T>
 class SumSeqPoolGradFunctor {
  public:
   void operator()(const phi::CPUContext& dev_ctx,
-                  const phi::DenseTensor& out_grad,
-                  phi::DenseTensor* in_grad) {
+                  const DenseTensor& out_grad,
+                  DenseTensor* in_grad) {
     auto lod_level = in_grad->lod().size();
     auto lod = in_grad->lod()[lod_level - 1];
     int64_t out_w = out_grad.numel() / out_grad.dims()[0];
@@ -325,7 +325,7 @@ class SumSeqPoolGradFunctor {
                           out_w));
     const T* out_g_data = out_grad.data<T>();
     T* in_g_data = dev_ctx.template Alloc<T>(in_grad);
-    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+    auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
       if (h == 0) continue;
@@ -346,27 +346,27 @@ class SequencePoolFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& dev_ctx,
                   const std::string pooltype,
                   T pad_value,
-                  const phi::DenseTensor& input,
-                  phi::DenseTensor* output,
+                  const DenseTensor& input,
+                  DenseTensor* output,
                   bool is_test,
-                  phi::DenseTensor* index = nullptr) {
+                  DenseTensor* index = nullptr) {
     if (pooltype == "MAX") {
       if (is_test) {
-        phi::funcs::MaxSeqPoolFunctor<T, true> max_pool;
+        funcs::MaxSeqPoolFunctor<T, true> max_pool;
         max_pool(dev_ctx, input, pad_value, output, index);
       } else {
-        phi::funcs::MaxSeqPoolFunctor<T, false> max_pool;
+        funcs::MaxSeqPoolFunctor<T, false> max_pool;
         max_pool(dev_ctx, input, pad_value, output, index);
       }
       return;
     }
     if (pooltype == "LAST") {
-      phi::funcs::LastSeqPoolFunctor<T> last_pool;
+      funcs::LastSeqPoolFunctor<T> last_pool;
       last_pool(dev_ctx, input, pad_value, output);
       return;
     }
     if (pooltype == "FIRST") {
-      phi::funcs::FirstSeqPoolFunctor<T> first_pool;
+      funcs::FirstSeqPoolFunctor<T> first_pool;
       first_pool(dev_ctx, input, pad_value, output);
       return;
     }
@@ -403,7 +403,7 @@ class SequencePoolFunctor<phi::CPUContext, T> {
     }
     auto& place = *dev_ctx.eigen_device();
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
-      phi::DenseTensor out_t = output->Slice(i, i + 1);
+      DenseTensor out_t = output->Slice(i, i + 1);
       int64_t w = input.numel() / input.dims()[0];
       if (lod[i] == lod[i + 1]) {
         for (int j = 0; j < w; ++j) {
@@ -411,7 +411,7 @@ class SequencePoolFunctor<phi::CPUContext, T> {
         }
         continue;
       }
-      phi::DenseTensor in_t =
+      DenseTensor in_t =
           input.Slice(static_cast<int>(lod[i]), static_cast<int>(lod[i + 1]));
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
       auto in_e = EigenMatrix<T>::From(in_t, common::make_ddim({h, w}));
@@ -436,24 +436,24 @@ class SequencePoolGradFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& dev_ctx,
                   const std::string pooltype,
-                  const phi::DenseTensor& out_grad,
-                  phi::DenseTensor* in_grad,
+                  const DenseTensor& out_grad,
+                  DenseTensor* in_grad,
                   /* max pool has index */
-                  const phi::DenseTensor* index = nullptr) {
+                  const DenseTensor* index = nullptr) {
     if (pooltype == "MAX") {
-      phi::funcs::MaxSeqPoolGradFunctor<T> max_pool_grad;
+      funcs::MaxSeqPoolGradFunctor<T> max_pool_grad;
       max_pool_grad(dev_ctx, out_grad, *index, in_grad);
       return;
     }
 
     if (pooltype == "LAST" || pooltype == "FIRST") {
       // set X@GRAD be zero at first when pooltype is LAST/FIRST
-      phi::funcs::SetConstant<phi::CPUContext, T> functor;
+      funcs::SetConstant<phi::CPUContext, T> functor;
       functor(dev_ctx, in_grad, 0);
     }
 
     if (pooltype == "SUM") {
-      phi::funcs::SumSeqPoolGradFunctor<T> sum_pool_grad;
+      funcs::SumSeqPoolGradFunctor<T> sum_pool_grad;
       sum_pool_grad(dev_ctx, out_grad, in_grad);
       return;
     }

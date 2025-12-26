@@ -172,8 +172,7 @@ void IndexElementwiseGetKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) return;
 
-  if (funcs::IsInUint32Range(x.numel()) &&
-      funcs::IsInUint32Range(out->numel())) {
+  if (funcs::IsInUint32Range(x.numel() * sizeof(T), out->numel() * sizeof(T))) {
     GPUIndexElementwiseGetKernel<T>(dev_ctx,
                                     x,
                                     index,

@@ -54,7 +54,7 @@ void DigammaKernel(const Context& dev_ctx,
   auto* x_data = x.data<T>();
   auto* out_data = out->data<T>();
   auto numel = x.numel();
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
   DigammaFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);
 }

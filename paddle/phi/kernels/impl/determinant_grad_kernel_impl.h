@@ -82,11 +82,11 @@ inline bool CheckMatrixInvertible(const Context& dev_ctx,
   DenseTensor dev_tensor = phi::Empty<bool, Context>(dev_ctx, {1});
 
   // set false
-  phi::funcs::SetConstant<Context, bool> zero;
+  funcs::SetConstant<Context, bool> zero;
   zero(dev_ctx, &dev_tensor, false);
 
   // find whether zero
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
   FoundZeroFunctor<T> functor(det->data<T>(), numel, dev_tensor.data<bool>());
   for_range(functor);
 
@@ -161,7 +161,7 @@ void DeterminantGradKernel(const Context& dev_ctx,
     inverse_A.Resize(x.dims());
     dev_ctx.template Alloc<MPType>(&inverse_A);
 
-    phi::funcs::MatrixInverseFunctor<Context, MPType> mat_inv;
+    funcs::MatrixInverseFunctor<Context, MPType> mat_inv;
     if constexpr (!std::is_same_v<MPType, T>) {
       auto x_mp = phi::Cast<T, Context>(
           dev_ctx, x, phi::CppTypeToDataType<MPType>::Type());
@@ -199,8 +199,8 @@ void DeterminantGradKernel(const Context& dev_ctx,
     VLOG(3) << "dA * |A| dims: " << mul_dA_detA.dims();
 
     // Fourth: unsqueeze(dA * |A|, [-1, -2])
-    auto unsqueeze1 = phi::funcs::Unsqueeze(mul_dA_detA, -1);
-    mul_unsqueezed = phi::funcs::Unsqueeze(unsqueeze1, -2);
+    auto unsqueeze1 = funcs::Unsqueeze(mul_dA_detA, -1);
+    mul_unsqueezed = funcs::Unsqueeze(unsqueeze1, -2);
     VLOG(3) << "unsqueezed(dA * |A|) dims: " << mul_unsqueezed.dims();
   }
 

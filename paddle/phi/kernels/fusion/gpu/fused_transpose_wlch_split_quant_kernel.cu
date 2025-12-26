@@ -22,7 +22,7 @@
 namespace phi {
 namespace fusion {
 
-using FastDivMod = phi::funcs::FastDivMod<int64_t>;
+using FastDivMod = funcs::FastDivMod<int64_t>;
 
 template <bool Pow2Scales>
 __device__ void BlockColumnScale(const __nv_bfloat16 x[8][4],
