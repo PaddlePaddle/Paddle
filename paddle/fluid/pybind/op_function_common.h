@@ -304,12 +304,8 @@ PyObject* GetItemFromArgsOrKWArgs(PyObject* args,
 void CheckRemainingParamsValidity(PyObject* args,
                                   PyObject* kwargs,
                                   const int remaining_kwargs,
-                                  const int nargs);
-void CheckRemainingParamsValidity(PyObject* args,
-                                  PyObject* kwargs,
-                                  const int remaining_kwargs,
                                   const int nargs,
-                                  const bool is_inplace);
+                                  const bool inplace = false);
 
 static inline void CheckParamsCount(const int nargs,
                                     const int remaining_kwargs,
