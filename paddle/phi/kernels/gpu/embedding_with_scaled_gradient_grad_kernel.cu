@@ -171,7 +171,7 @@ struct EmbeddingWithScaledGradientGradCUDAFunctor {
       }
 
       DenseTensor count_ids =
-          phi::Empty<int, Context>(dev_ctx_, {static_cast<int64_t>(N)});
+          Empty<int, Context>(dev_ctx_, {static_cast<int64_t>(N)});
       int* count_ids_data = count_ids.data<int>();
       auto stream = dev_ctx_.stream();
 #ifdef PADDLE_WITH_HIP

@@ -172,8 +172,8 @@ class WarpCTCFunctor {
             workspace_bytes));
 
     size_t workspace_elements = workspace_bytes / sizeof(T) + 1UL;
-    DenseTensor workspace = phi::Empty<T, Context>(
-        dev_ctx, {static_cast<int64_t>(workspace_elements)});
+    DenseTensor workspace =
+        Empty<T, Context>(dev_ctx, {static_cast<int64_t>(workspace_elements)});
     T* workspace_data = workspace.data<T>();
     funcs::SetConstant<Context, T>()(dev_ctx, &workspace, static_cast<T>(0));
 
@@ -346,10 +346,10 @@ void WarpctcKernel(const Context& dev_ctx,
 
   // warpctc needs sequences data stored in transposed padding format
   DenseTensor warpctc_logits_tmp =
-      phi::Empty<T, Context>(dev_ctx,
-                             {static_cast<int64_t>(max_sequence_length),
-                              static_cast<int64_t>(num_sequences),
-                              static_cast<int64_t>(sequence_width)});
+      Empty<T, Context>(dev_ctx,
+                        {static_cast<int64_t>(max_sequence_length),
+                         static_cast<int64_t>(num_sequences),
+                         static_cast<int64_t>(sequence_width)});
   DenseTensor warpctc_logits(warpctc_logits_tmp);
 
   if (logits_length.is_initialized()) {

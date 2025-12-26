@@ -62,8 +62,7 @@ void CalculateXGrad(const Context& dev_ctx,
               out_grad_tensor, x_grad_tensor, src, dst, false, sum_functor);
         }
       } else {
-        DenseTensor x_grad_v2 =
-            phi::EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
+        DenseTensor x_grad_v2 = EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
         funcs::SetConstant<Context, T>()(
             dev_ctx, &x_grad_v2, static_cast<T>(0));
         for (int64_t i = 0; i < index_size; i++) {
@@ -105,8 +104,7 @@ void CalculateXGrad(const Context& dev_ctx,
           }
         }
       } else {
-        DenseTensor x_grad_v2 =
-            phi::EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
+        DenseTensor x_grad_v2 = EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
         funcs::SetConstant<Context, T>()(
             dev_ctx, &x_grad_v2, static_cast<T>(0));
         T* x_grad_v2_data = x_grad_v2.data<T>();
@@ -154,8 +152,7 @@ void CalculateXGrad(const Context& dev_ctx,
           eigen_x_grad += (eigen_out_grad / static_cast<T>(s_count[src]));
         }
       } else {
-        DenseTensor x_grad_v2 =
-            phi::EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
+        DenseTensor x_grad_v2 = EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
         funcs::SetConstant<Context, T>()(
             dev_ctx, &x_grad_v2, static_cast<T>(0));
         for (int64_t i = 0; i < index_size; i++) {
@@ -198,8 +195,7 @@ void CalculateXGrad(const Context& dev_ctx,
           }
         }
       } else {
-        DenseTensor x_grad_v2 =
-            phi::EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
+        DenseTensor x_grad_v2 = EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
         funcs::SetConstant<Context, T>()(
             dev_ctx, &x_grad_v2, static_cast<T>(0));
         T* x_grad_v2_data = x_grad_v2.data<T>();

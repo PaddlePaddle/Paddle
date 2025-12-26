@@ -865,7 +865,7 @@ void BatchNormKernel(const Context &dev_ctx,
                 transformed_y.template data<T>());
       } else {
         if (x_dims.size() == 2) {
-          DenseTensor inv_var = phi::Empty<BatchNormParamType<T>>(dev_ctx, {C});
+          DenseTensor inv_var = Empty<BatchNormParamType<T>>(dev_ctx, {C});
           auto *inv_var_ptr = inv_var.data<BatchNormParamType<T>>();
           const int threads = 512 > C ? C : 512;
           const int blocks = (C + 511) / 512;
@@ -1058,9 +1058,9 @@ void BatchNormKernel(const Context &dev_ctx,
         DenseTensor block_data_tensor;
         DenseTensor flag_tensor;
         DenseTensor compute_mean_tensor =
-            phi::Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
+            Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
         DenseTensor compute_inv_var_tensor =
-            phi::Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
+            Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
 
         BatchNormParamType<T> *block_data_ptr = nullptr;
         int *flag_ptr = nullptr;
@@ -1089,9 +1089,9 @@ void BatchNormKernel(const Context &dev_ctx,
           grid.y = grid_y;
 
           if (grid.x > 1) {
-            block_data_tensor = phi::Empty<BatchNormParamType<T>, Context>(
+            block_data_tensor = Empty<BatchNormParamType<T>, Context>(
                 dev_ctx, {2 * C * grid.x});
-            flag_tensor = phi::Empty<int, Context>(dev_ctx, {grid.y});
+            flag_tensor = Empty<int, Context>(dev_ctx, {grid.y});
 
             block_data_ptr = block_data_tensor.data<BatchNormParamType<T>>();
             flag_ptr = flag_tensor.data<int>();
@@ -1151,9 +1151,9 @@ void BatchNormKernel(const Context &dev_ctx,
           grid.y = grid_y;
 
           if (grid.y > 1) {
-            block_data_tensor = phi::Empty<BatchNormParamType<T>, Context>(
+            block_data_tensor = Empty<BatchNormParamType<T>, Context>(
                 dev_ctx, {2 * C * grid.y});
-            flag_tensor = phi::Empty<int, Context>(dev_ctx, {grid.x});
+            flag_tensor = Empty<int, Context>(dev_ctx, {grid.x});
 
             block_data_ptr = block_data_tensor.data<BatchNormParamType<T>>();
             flag_ptr = flag_tensor.data<int>();

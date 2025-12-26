@@ -79,7 +79,7 @@ inline bool CheckMatrixInvertible(const Context& dev_ctx,
                                   const DenseTensor* det) {
   auto numel = det->numel();
 
-  DenseTensor dev_tensor = phi::Empty<bool, Context>(dev_ctx, {1});
+  DenseTensor dev_tensor = Empty<bool, Context>(dev_ctx, {1});
 
   // set false
   funcs::SetConstant<Context, bool> zero;

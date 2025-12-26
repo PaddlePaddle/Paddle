@@ -137,8 +137,7 @@ void CalculateXGrad(const Context& dev_ctx,
                                                    functor);
       } else {
         const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
-        DenseTensor x_grad_v2 =
-            phi::EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
+        DenseTensor x_grad_v2 = EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
         funcs::SetConstant<Context, T>()(dev_ctx, &x_grad_v2, T(0));
         T* x_grad_v2_data = x_grad_v2.data<T>();
         GraphSendRecvCUDAKernel<T,
@@ -207,8 +206,7 @@ void CalculateXGrad(const Context& dev_ctx,
                 mul_functor,
                 sum_functor);
       } else {
-        DenseTensor x_grad_v2 =
-            phi::EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
+        DenseTensor x_grad_v2 = EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
         funcs::SetConstant<Context, T>()(dev_ctx, &x_grad_v2, T(0));
         T* x_grad_v2_data = x_grad_v2.data<T>();
         GraphSendUERecvCUDAKernel<T,
@@ -264,8 +262,7 @@ void CalculateXGrad(const Context& dev_ctx,
                                                    s_count);
       } else {
         const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
-        DenseTensor x_grad_v2 =
-            phi::EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
+        DenseTensor x_grad_v2 = EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
         funcs::SetConstant<Context, T>()(dev_ctx, &x_grad_v2, T(0));
         T* x_grad_v2_data = x_grad_v2.data<T>();
         ManipulateMeanGradCUDAKernel<T, IndexT>
@@ -326,8 +323,7 @@ void CalculateXGrad(const Context& dev_ctx,
                 out_len,
                 bcast_info.use_bcast);
       } else {
-        DenseTensor x_grad_v2 =
-            phi::EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
+        DenseTensor x_grad_v2 = EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
         funcs::SetConstant<Context, T>()(dev_ctx, &x_grad_v2, T(0));
         T* x_grad_v2_data = x_grad_v2.data<T>();
         ManipulateMeanGradCUDAKernelForMulX<T, IndexT>

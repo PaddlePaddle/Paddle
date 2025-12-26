@@ -54,11 +54,11 @@ void CholeskySolveKernel(const Context& dev_ctx,
   IntArray x_bst_dims(x_bst_dims_vec);
   IntArray y_bst_dims(y_bst_dims_vec);
 
-  DenseTensor y_bst = phi::Empty<T, Context>(dev_ctx, y_bst_dims);
+  DenseTensor y_bst = Empty<T, Context>(dev_ctx, y_bst_dims);
   ExpandKernel<T, Context>(dev_ctx, y, y_bst_dims, &y_bst);
 
   // Tensor broadcast to temp 'x_bst' and 'y_bst'
-  DenseTensor x_bst = phi::Empty<T, Context>(dev_ctx, x_bst_dims);
+  DenseTensor x_bst = Empty<T, Context>(dev_ctx, x_bst_dims);
   ExpandKernel<T, Context>(dev_ctx, x, x_bst_dims, &x_bst);
 
   // calculate y_bst's conjugate for complex
@@ -81,7 +81,7 @@ void CholeskySolveKernel(const Context& dev_ctx,
   int N = static_cast<int>(x_bst_dims_vec[x_bst_ndim - 1]);
   int batchsize = product(common::slice_ddim(x_bst.dims(), 0, x_bst_ndim - 2));
 
-  DenseTensor info = phi::Empty<int, Context>(dev_ctx, IntArray({batchsize}));
+  DenseTensor info = Empty<int, Context>(dev_ctx, IntArray({batchsize}));
   int* info_data = info.data<int>();
 
   CholeskySolveFunctor<T, Context> functor;

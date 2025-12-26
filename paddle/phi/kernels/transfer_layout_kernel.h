@@ -32,7 +32,7 @@ DenseTensor TransferLayout(const Context& dev_ctx,
                            const DenseTensor& x,
                            DataLayout dst_layout) {
   phi::DenseTensor dense_out =
-      phi::Empty(dev_ctx, {x.dtype(), x.dims(), dst_layout});
+      Empty(dev_ctx, {x.dtype(), x.dims(), dst_layout});
   TransferLayoutKernel<Context>(dev_ctx,
                                 x,
                                 static_cast<int>(x.layout()),
