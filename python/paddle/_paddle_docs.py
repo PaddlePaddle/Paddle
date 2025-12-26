@@ -3360,7 +3360,7 @@ def allclose(
 add_doc_and_signature(
     "asinh",
     """
-    Inverse Hyperbolic Sine Operator.
+    Arcsine Hyperbolic Operator.
 
     .. math::
         out = sinh^{-1}(x)
@@ -3391,13 +3391,13 @@ add_doc_and_signature(
             [-0.39003533, -0.19869010,  0.09983408,  0.29567307])
     """,
     """
-def asinh(
-    x: Tensor,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
+    def asinh(
+        x: Tensor,
+        name: str | None = None,
+        *,
+        out: Tensor | None = None,
+    ) -> Tensor
+    """,
 )
 
 add_doc_and_signature(
@@ -3435,13 +3435,13 @@ add_doc_and_signature(
             [-0.38050638, -0.19739556,  0.09966865,  0.29145679])
     """,
     """
-def atan(
-    x: Tensor,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
+    def atan(
+        x: Tensor,
+        name: str | None = None,
+        *,
+        out: Tensor | None = None,
+    ) -> Tensor
+    """,
 )
 
 add_doc_and_signature(
