@@ -5359,8 +5359,10 @@ def deg2rad(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-@param_two_alias(['x', 'input'], ['y', 'other'])
-def gcd(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
+def gcd(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     """
     Computes the element-wise greatest common divisor (GCD) of input |x| and |y|.
     Both x and y must have integer types.
@@ -5374,6 +5376,7 @@ def gcd(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         x (Tensor): An N-D Tensor, the data type is int32, int64.
         y (Tensor): An N-D Tensor, the data type is int32, int64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         out (Tensor): An N-D Tensor, the data type is the same with input.
@@ -5436,13 +5439,20 @@ def gcd(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     if in_dynamic_mode():
         while _gcd_cond_fn(x, y):
             x, y = _gcd_body_fn(x, y)
-
+        if out is not None:
+            paddle.assign(x, out)
+            return out
         return x
     else:
         check_variable_and_dtype(x, 'x', ['int32', 'int64'], 'gcd')
         check_variable_and_dtype(y, 'y', ['int32', 'int64'], 'gcd')
-        out, _ = paddle.static.nn.while_loop(_gcd_cond_fn, _gcd_body_fn, [x, y])
-        return out
+        out_res, _ = paddle.static.nn.while_loop(
+            _gcd_cond_fn, _gcd_body_fn, [x, y]
+        )
+        if out is not None:
+            paddle.assign(out_res, out)
+            return out
+        return out_res
 
 
 @param_two_alias(['x', 'input'], ['y', 'other'])
@@ -5489,8 +5499,10 @@ def gcd_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return x
 
 
-@param_two_alias(['x', 'input'], ['y', 'other'])
-def lcm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
+def lcm(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     """
     Computes the element-wise least common multiple (LCM) of input |x| and |y|.
     Both x and y must have integer types.
@@ -5504,6 +5516,7 @@ def lcm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         x (Tensor): An N-D Tensor, the data type is int32, int64.
         y (Tensor): An N-D Tensor, the data type is int32, int64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         out (Tensor): An N-D Tensor, the data type is the same with input.
@@ -5544,10 +5557,13 @@ def lcm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     # they won't be used.
     d_equal_0 = paddle.equal(d, 0)
     d_safe = paddle.where(d_equal_0, paddle.ones(d.shape, d.dtype), d)
-    out = paddle.where(
+    out_res = paddle.where(
         d_equal_0, paddle.zeros(d.shape, d.dtype), paddle.abs(x * y) // d_safe
     )
-    return out
+    if out is not None:
+        paddle.assign(out_res, out)
+        return out
+    return out_res
 
 
 @param_two_alias(['x', 'input'], ['y', 'other'])

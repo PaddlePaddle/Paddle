@@ -3294,6 +3294,132 @@ def asin(
 """,
 )
 
+
+add_doc_and_signature(
+    "gcd",
+    """
+    Computes the element-wise greatest common divisor (GCD) of input |x| and |y|.
+    Both x and y must have integer types.
+
+    Note:
+        gcd(0,0)=0, gcd(0, y)=|y|
+
+        If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is int32, int64.
+        y (Tensor): An N-D Tensor, the data type is int32, int64.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+
+    Returns:
+        out (Tensor): An N-D Tensor, the data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x1 = paddle.to_tensor(12)
+            >>> x2 = paddle.to_tensor(20)
+            >>> paddle.gcd(x1, x2)
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+            4)
+
+            >>> x3 = paddle.arange(6)
+            >>> paddle.gcd(x3, x2)
+            Tensor(shape=[6], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [20, 1 , 2 , 1 , 4 , 5])
+
+            >>> x4 = paddle.to_tensor(0)
+            >>> paddle.gcd(x4, x2)
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+            20)
+
+            >>> paddle.gcd(x4, x4)
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+            0)
+
+            >>> x5 = paddle.to_tensor(-20)
+            >>> paddle.gcd(x1, x5)
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+            4)
+    """,
+    """
+def gcd(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+
+add_doc_and_signature(
+    "lcm",
+    """
+        Computes the element-wise least common multiple (LCM) of input |x| and |y|.
+        Both x and y must have integer types.
+
+        Note:
+            lcm(0,0)=0, lcm(0, y)=0
+
+            If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
+
+        Args:
+            x (Tensor): An N-D Tensor, the data type is int32, int64.
+            y (Tensor): An N-D Tensor, the data type is int32, int64.
+            name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+            out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+        Returns:
+            out (Tensor): An N-D Tensor, the data type is the same with input.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> x1 = paddle.to_tensor(12)
+                >>> x2 = paddle.to_tensor(20)
+                >>> paddle.lcm(x1, x2)
+                Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+                60)
+
+                >>> x3 = paddle.arange(6)
+                >>> paddle.lcm(x3, x2)
+                Tensor(shape=[6], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [0, 20, 20, 60, 20, 20])
+
+                >>> x4 = paddle.to_tensor(0)
+                >>> paddle.lcm(x4, x2)
+                Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+                0)
+
+                >>> paddle.lcm(x4, x4)
+                Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+                0)
+
+                >>> x5 = paddle.to_tensor(-20)
+                >>> paddle.lcm(x1, x5)
+                Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+                60)
+        """,
+    """
+def lcm(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+
 add_doc_and_signature(
     "inverse",
     """
