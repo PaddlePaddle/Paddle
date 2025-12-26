@@ -2,7 +2,8 @@ name: Codestyle-Check
 
 on:
   pull_request:
-    branches: ["develop"]
+    types: [opened, synchronize]
+    branches: [develop, release/**]
 
 jobs:
   pre-commit:
