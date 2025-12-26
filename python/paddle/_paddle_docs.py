@@ -3392,11 +3392,11 @@ add_doc_and_signature(
 
     """,
     """
-    def inverse(
-        x: Tensor,
-        name: str | None = None,
-        *,
-        out: Tensor | None = None,
-    ) -> Tensor
-    """,
+def inverse(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
 )
