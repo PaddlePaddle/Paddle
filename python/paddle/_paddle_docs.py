@@ -3379,7 +3379,7 @@ add_doc_and_signature(
                         is the same as x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
