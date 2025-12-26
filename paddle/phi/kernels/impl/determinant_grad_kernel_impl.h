@@ -174,8 +174,7 @@ void DeterminantGradKernel(const Context& dev_ctx,
     VLOG(3) << "inverse(A).conj() dims: " << conj_inverse_A.dims();
 
     // Second: inverse(A).conj().transpose(-2, -1)
-    transpose_inverse_A =
-        phi::TransposeLast2Dim<MPType>(dev_ctx, conj_inverse_A);
+    transpose_inverse_A = TransposeLast2Dim<MPType>(dev_ctx, conj_inverse_A);
     VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
             << transpose_inverse_A.dims();
   }

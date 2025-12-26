@@ -144,7 +144,7 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
 
   // Third: inverse(A).conj().transpose(-2, -1)
   DenseTensor transpose_inverse_A =
-      phi::TransposeLast2Dim<T>(dev_ctx, conj_inverse_A);
+      TransposeLast2Dim<T>(dev_ctx, conj_inverse_A);
   VLOG(3) << "inverse(A).conj().transpose(-2, -1) dims: "
           << transpose_inverse_A.dims();
 
@@ -262,7 +262,7 @@ void SlogDeterminantV2GradKernel(const Context& dev_ctx,
 
   // Third: inverse(A).conj().transpose(-2, -1)
   DenseTensor transpose_inverse_A =
-      phi::TransposeLast2Dim<T>(dev_ctx, conj_inverse_A);
+      TransposeLast2Dim<T>(dev_ctx, conj_inverse_A);
   VLOG(3) << "inverse(A).conj().transpose(-2, -1) dims: "
           << transpose_inverse_A.dims();
 

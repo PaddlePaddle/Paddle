@@ -436,8 +436,7 @@ void MatMulFunctionImplWithBlas(
       // "use_accuracy_compatible_kernel"
       if (!FLAGS_use_legacy_gemm && FLAGS_use_accuracy_compatible_kernel) {
         // x_batch_size == 1 && M != 1 || !transy
-        DenseTensor processedY =
-            trans_y ? Y : phi::TransposeLast2Dim<T>(dev_ctx, Y);
+        DenseTensor processedY = trans_y ? Y : TransposeLast2Dim<T>(dev_ctx, Y);
         DenseTensor processedX = X;
         blas.GEMM(CblasNoTrans,
                   trans_x ? CblasNoTrans : CblasTrans,
@@ -457,7 +456,7 @@ void MatMulFunctionImplWithBlas(
         actual_dim[actual_dim.size() - 1] =
             out_original_shape[out_original_shape.size() - 2];
         Out->Resize(common::make_ddim(actual_dim));
-        DenseTensor transposedOut = phi::TransposeLast2Dim<T>(dev_ctx, *Out);
+        DenseTensor transposedOut = TransposeLast2Dim<T>(dev_ctx, *Out);
         *Out = transposedOut;
         Out->Resize(out_original_shape);
       } else  // NOLINT

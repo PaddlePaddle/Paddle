@@ -63,12 +63,12 @@ void CholeskySolveKernel(const Context& dev_ctx,
 
   // calculate y_bst's conjugate for complex
   DenseTensor y_bst_conj = Conj<T, Context>(dev_ctx, y_bst);
-  y_bst_conj = phi::TransposeLast2Dim<T>(dev_ctx, y_bst_conj);
+  y_bst_conj = TransposeLast2Dim<T>(dev_ctx, y_bst_conj);
   T* y_bst_conj_data = y_bst_conj.data<T>();
 
   // calculate x_bst's conjugate for complex
   DenseTensor x_bst_conj = Conj<T, Context>(dev_ctx, x_bst);
-  x_bst_conj = phi::TransposeLast2Dim<T>(dev_ctx, x_bst_conj);
+  x_bst_conj = TransposeLast2Dim<T>(dev_ctx, x_bst_conj);
 
   // copy x_bst's conjugate to 'result'
   DenseTensor result;
@@ -97,7 +97,7 @@ void CholeskySolveKernel(const Context& dev_ctx,
   }
 
   // calculate out's conjugate for complex
-  result = phi::TransposeLast2Dim<T>(dev_ctx, result);
+  result = TransposeLast2Dim<T>(dev_ctx, result);
   out->Resize(common::make_ddim(x_bst_dims_vec));
   ConjKernel<T, Context>(dev_ctx, result, out);
 }

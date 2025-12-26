@@ -790,7 +790,7 @@ void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
     gV_safe =
         Fill<T, Context>(dev_ctx, common::vectorize<int64_t>(V.dims()), T(0));
   }
-  DenseTensor trans_v = phi::TransposeLast2Dim<T>(dev_ctx, V);
+  DenseTensor trans_v = TransposeLast2Dim<T>(dev_ctx, V);
   DenseTensor Vh = phi::Conj<T>(dev_ctx, trans_v);
   DenseTensor Lconj = phi::Conj<T>(dev_ctx, L);
   DenseTensor Econj = phi::Subtract<T>(dev_ctx,

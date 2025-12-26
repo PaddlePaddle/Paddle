@@ -85,7 +85,7 @@ void CholeskySolveGradKernel(const Context& dev_ctx,
 
   // calculate out's conjugate for complex
   DenseTensor out_conj = Conj<T, Context>(dev_ctx, out);
-  out_conj = phi::TransposeLast2Dim<T>(dev_ctx, out_conj);
+  out_conj = TransposeLast2Dim<T>(dev_ctx, out_conj);
 
   DenseTensor commonterm = phi::Empty<T, Context>(dev_ctx, y_bst_dims);
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);
@@ -99,7 +99,7 @@ void CholeskySolveGradKernel(const Context& dev_ctx,
 
   // calculate commonterm's conjugate for complex
   DenseTensor commonterm_conj = Conj<T, Context>(dev_ctx, commonterm);
-  commonterm_conj = phi::TransposeLast2Dim<T>(dev_ctx, commonterm_conj);
+  commonterm_conj = TransposeLast2Dim<T>(dev_ctx, commonterm_conj);
 
   phi::AddKernel<T>(dev_ctx, commonterm, commonterm_conj, &commonterm);
 
