@@ -27,9 +27,6 @@ jobs:
       group: test2
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
       - name: Check approval
         id: check-approval
         run: |
@@ -63,8 +60,7 @@ jobs:
 
       - name: Check bypass
         id: check-bypass
-        if: steps.check-approval.outputs.can-skip != 'true'
-        uses: ./.github/actions/check-bypass
+        uses: ./.github/workflows/check-bypass.yml
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           workflow-name: ixuca
