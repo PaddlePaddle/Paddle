@@ -82,9 +82,9 @@ void SeqCompute(const Context& dev_ctx,
   const T* wh_state_data = wh_data + D * D2;
   T* hidden_out_data = dev_ctx.template Alloc<T>(hidden);
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
-  phi::funcs::FCFunctor<Context, T> fc;
+  funcs::FCFunctor<Context, T> fc;
   fc(dev_ctx,
      total_T,
      D3,
@@ -203,10 +203,10 @@ void BatchCompute(const Context& dev_ctx,
   T* batched_input_data = dev_ctx.template Alloc<T>(batched_input);
   T* batched_out_data = dev_ctx.template Alloc<T>(batched_out);
   dev_ctx.template Alloc<T>(hidden);
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
-  phi::funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
+  funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
 
-  phi::funcs::FCFunctor<Context, T> fc;
+  funcs::FCFunctor<Context, T> fc;
   if (M > D3) {
     fc(dev_ctx,
        total_T,
@@ -332,7 +332,7 @@ void BatchCompute(const Context& dev_ctx,
     batched_input_data = cur_batched_data;
   }
 
-  phi::funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
+  funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
   batched_out->set_lod(batched_lod);
   to_seq(dev_ctx, *batched_out, hidden);
 }

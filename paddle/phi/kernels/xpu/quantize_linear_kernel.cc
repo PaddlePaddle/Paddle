@@ -280,8 +280,8 @@ void QuantizeLinearDeprecatedInferKernel(const Context& dev_ctx,
                                          int round_type,
                                          bool only_observer,
                                          DenseTensor* out) {
-  paddle::optional<phi::DenseTensor> scale =
-      paddle::make_optional<phi::DenseTensor>(in_scale);
+  paddle::optional<DenseTensor> scale =
+      paddle::make_optional<DenseTensor>(in_scale);
   QuantizeLinearInferKernel<T, Context>(dev_ctx,
                                         x,
                                         scale,
@@ -307,8 +307,8 @@ void DeQuantizeLinearDeprecatedKernel(const Context& dev_ctx,
                                       int round_type,
                                       bool only_observer,
                                       DenseTensor* out) {
-  paddle::optional<phi::DenseTensor> scale =
-      paddle::make_optional<phi::DenseTensor>(in_scale);
+  paddle::optional<DenseTensor> scale =
+      paddle::make_optional<DenseTensor>(in_scale);
   DeQuantizeLinearKernel<T, Context>(dev_ctx,
                                      x,
                                      scale,

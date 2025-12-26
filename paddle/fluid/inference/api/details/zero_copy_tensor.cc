@@ -732,8 +732,8 @@ std::vector<int> Tensor::shape() const {
     // combination.
     if (tensor->dims().size() < 3)
       return common::vectorize<int>(tensor->dims());
-    if (out_layout == phi::DataLayout::kNHWC ||
-        out_layout == phi::DataLayout::kNDHWC) {
+    if (out_layout == phi::DataLayout::NHWC ||
+        out_layout == phi::DataLayout::NDHWC) {
       auto dims = common::vectorize<int>(tensor->dims());
       std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
       return dims;

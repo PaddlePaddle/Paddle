@@ -66,11 +66,9 @@ void Conv3dCooGradCPUKernel(const CPUContext& dev_ctx,
       x.dtype(), {rulebook_len, in_channels}, DataLayout::NCHW);
   DenseTensorMeta out_grad_features_meta(
       x.dtype(), {rulebook_len, out_channels}, DataLayout::NCHW);
-  phi::DenseTensor in_features =
-      phi::Empty(dev_ctx, std::move(in_features_meta));
-  phi::DenseTensor d_x_features =
-      phi::Empty(dev_ctx, std::move(d_x_features_meta));
-  phi::DenseTensor out_grad_features =
+  DenseTensor in_features = phi::Empty(dev_ctx, std::move(in_features_meta));
+  DenseTensor d_x_features = phi::Empty(dev_ctx, std::move(d_x_features_meta));
+  DenseTensor out_grad_features =
       phi::Empty(dev_ctx, std::move(out_grad_features_meta));
 
   T* in_features_ptr = in_features.data<T>();

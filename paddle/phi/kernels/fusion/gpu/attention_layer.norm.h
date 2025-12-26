@@ -24,7 +24,7 @@ namespace fusion {
 template <typename T, typename InType = T, typename OutType = T>
 class AttnLayerNorm {
  public:
-  AttnLayerNorm(const phi::GPUContext& dev_ctx,
+  AttnLayerNorm(const GPUContext& dev_ctx,
                 float epsilon,
                 int64_t batch_size,
                 int64_t feature_size)
@@ -101,7 +101,7 @@ class AttnLayerNorm {
   }
 
  private:
-  const phi::GPUContext& dev_ctx_;
+  const GPUContext& dev_ctx_;
 
   int64_t batch_size_;
   int64_t feature_size_;

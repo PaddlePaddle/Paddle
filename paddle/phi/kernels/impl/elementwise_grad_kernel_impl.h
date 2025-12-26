@@ -272,11 +272,11 @@ struct DivDoubleDDOut_Only_DDY {
 
 template <typename T, typename DDout_OP, typename OutType = T>
 void ComputeDDoutWithoutBroadcast(const CPUContext& dev_ctx UNUSED,
-                                  const phi::DenseTensor& ddx,
-                                  const phi::DenseTensor& ddy,
-                                  const phi::DenseTensor& y,
-                                  const phi::DenseTensor& out,
-                                  phi::DenseTensor* ddout,
+                                  const DenseTensor& ddx,
+                                  const DenseTensor& ddy,
+                                  const DenseTensor& y,
+                                  const DenseTensor& out,
+                                  DenseTensor* ddout,
                                   DDout_OP dout_op) {
   auto out_numel = out.numel();
   auto* ddx_data = ddx.data<T>();
@@ -291,11 +291,11 @@ void ComputeDDoutWithoutBroadcast(const CPUContext& dev_ctx UNUSED,
 
 template <typename T, typename DDout_OP, typename OutType = T>
 void ComputeDDoutWithBroadcast(const CPUContext& dev_ctx UNUSED,
-                               const phi::DenseTensor& ddx,
-                               const phi::DenseTensor& ddy,
-                               const phi::DenseTensor& y,
-                               const phi::DenseTensor& out,
-                               phi::DenseTensor* ddout,
+                               const DenseTensor& ddx,
+                               const DenseTensor& ddy,
+                               const DenseTensor& y,
+                               const DenseTensor& out,
+                               DenseTensor* ddout,
                                const int* x_dims_array,
                                const int* y_dims_array,
                                const int* out_dims_array,
@@ -416,11 +416,11 @@ __global__ void ComputeDDoutWithoutBroadcastGPUKernel(const T* ddx_data,
 
 template <typename T, typename DDout_OP, typename OutType = T>
 void ComputeDDoutWithoutBroadcast(const GPUContext& dev_ctx UNUSED,
-                                  const phi::DenseTensor& ddx,
-                                  const phi::DenseTensor& ddy,
-                                  const phi::DenseTensor& y,
-                                  const phi::DenseTensor& out,
-                                  phi::DenseTensor* ddout,
+                                  const DenseTensor& ddx,
+                                  const DenseTensor& ddy,
+                                  const DenseTensor& y,
+                                  const DenseTensor& out,
+                                  DenseTensor* ddout,
                                   DDout_OP dout_op) {
   auto out_numel = out.numel();
   auto* ddx_data = ddx.data<T>();
@@ -472,11 +472,11 @@ __global__ void ComputeDDoutWithBroadcastGPUKernel(
 
 template <typename T, typename DDout_OP, typename OutType = T>
 void ComputeDDoutWithBroadcast(const GPUContext& dev_ctx UNUSED,
-                               const phi::DenseTensor& ddx,
-                               const phi::DenseTensor& ddy,
-                               const phi::DenseTensor& y,
-                               const phi::DenseTensor& out,
-                               phi::DenseTensor* ddout,
+                               const DenseTensor& ddx,
+                               const DenseTensor& ddy,
+                               const DenseTensor& y,
+                               const DenseTensor& out,
+                               DenseTensor* ddout,
                                const int* x_dims_array,
                                const int* y_dims_array,
                                const int* out_dims_array,
@@ -517,12 +517,12 @@ void ComputeDDoutWithBroadcast(const GPUContext& dev_ctx UNUSED,
 
 template <typename Context, typename T, typename DDout_OP, typename Tout = T>
 void DivDoubleDDoutCompute(const Context& dev_ctx,
-                           const phi::DenseTensor& ddx,
-                           const phi::DenseTensor& ddy,
-                           const phi::DenseTensor& y,
-                           const phi::DenseTensor& out,
+                           const DenseTensor& ddx,
+                           const DenseTensor& ddy,
+                           const DenseTensor& y,
+                           const DenseTensor& out,
                            int axis,
-                           phi::DenseTensor* ddout,
+                           DenseTensor* ddout,
                            DDout_OP dout_op) {
   auto x_dims = ddx.dims();
   auto y_dims = ddy.dims();

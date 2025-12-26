@@ -23,11 +23,11 @@
 
 namespace phi {
 template <typename T>
-inline void StridedTensorCopy(const phi::DenseTensor& input,
+inline void StridedTensorCopy(const DenseTensor& input,
                               const std::vector<int64_t>& dims,
                               const std::vector<int64_t>& out_stride,
                               int64_t offset,
-                              phi::DenseTensor* out) {
+                              DenseTensor* out) {
   auto& pool = phi::DeviceContextPool::Instance();
   if (input.place().GetType() == phi::AllocationType::CPU) {
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(input.place()));
@@ -53,11 +53,11 @@ inline void StridedTensorCopy(const phi::DenseTensor& input,
         phi::DataLayout::ALL_LAYOUT,
         input.dtype()};
     using strided_copy_signature = void (*)(const phi::DeviceContext&,
-                                            const phi::DenseTensor&,
+                                            const DenseTensor&,
                                             const std::vector<int64_t>&,
                                             const std::vector<int64_t>&,
                                             int64_t,
-                                            phi::DenseTensor*);
+                                            DenseTensor*);
     PD_VISIT_KERNEL("strided_copy",
                     strided_copy_key,
                     strided_copy_signature,
@@ -76,9 +76,9 @@ inline void StridedTensorCopy(const phi::DenseTensor& input,
 }
 
 template <typename T>
-inline void StridedTensorFill(const phi::DenseTensor& x,
+inline void StridedTensorFill(const DenseTensor& x,
                               const phi::Scalar& value,
-                              phi::DenseTensor* out) {
+                              DenseTensor* out) {
   auto& pool = phi::DeviceContextPool::Instance();
   if (x.place().GetType() == phi::AllocationType::CPU) {
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(x.place()));
@@ -101,9 +101,9 @@ inline void StridedTensorFill(const phi::DenseTensor& x,
         phi::DataLayout::ALL_LAYOUT,
         x.dtype()};
     using fill_signature = void (*)(const phi::DeviceContext&,
-                                    const phi::DenseTensor&,
+                                    const DenseTensor&,
                                     const phi::Scalar&,
-                                    phi::DenseTensor*);
+                                    DenseTensor*);
     PD_VISIT_KERNEL(
         "fill", fill_key, fill_signature, false, *dev_ctx, x, value, out);
 #endif
@@ -114,8 +114,8 @@ inline void StridedTensorFill(const phi::DenseTensor& x,
 }
 
 template <typename T>
-inline void StridedTensorContiguous(const phi::DenseTensor& input,
-                                    phi::DenseTensor* out) {
+inline void StridedTensorContiguous(const DenseTensor& input,
+                                    DenseTensor* out) {
   auto& pool = phi::DeviceContextPool::Instance();
   if (input.place().GetType() == phi::AllocationType::CPU) {
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(input.place()));
@@ -137,8 +137,8 @@ inline void StridedTensorContiguous(const phi::DenseTensor& input,
         phi::TransToPhiBackend(dev_ctx->GetPlace()),
         phi::DataLayout::ALL_LAYOUT,
         input.dtype()};
-    using contiguous_signature = void (*)(
-        const phi::DeviceContext&, const phi::DenseTensor&, phi::DenseTensor*);
+    using contiguous_signature =
+        void (*)(const phi::DeviceContext&, const DenseTensor&, DenseTensor*);
     PD_VISIT_KERNEL("contiguous",
                     contiguous_key,
                     contiguous_signature,

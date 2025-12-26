@@ -1067,59 +1067,89 @@ add_doc_and_signature(
 add_doc_and_signature(
     "isclose",
     """
-     Check if all :math:`x` and :math:`y` satisfy the condition:
-     .. math::
-         \\left| x - y \right| \\leq atol + rtol \times \\left| y \right|
-     elementwise, for all elements of :math:`x` and :math:`y`. The behaviour of this
-     operator is analogous to :math:`numpy.isclose`, namely that it returns :math:`True` if
-     two tensors are elementwise equal within a tolerance.
-     Args:
-         x(Tensor): The input tensor, it's data type should be float16, float32, float64, complex64, complex128.
-         y(Tensor): The input tensor, it's data type should be float16, float32, float64, complex64, complex128.
-         rtol(float, optional): The relative tolerance. Default: :math:`1e-5` .
-         atol(float, optional): The absolute tolerance. Default: :math:`1e-8` .
-         equal_nan(bool, optional): If :math:`True` , then two :math:`NaNs` will be compared as equal. Default: :math:`False` .
-         name (str|None, optional): Name for the operation. For more information, please
-             refer to :ref:`api_guide_Name`. Default: None.
-     Returns:
-         Tensor: The output tensor, it's data type is bool.
-     Examples:
-         .. code-block:: python
-             >>> import paddle
-             >>> x = paddle.to_tensor([10000., 1e-07])
-             >>> y = paddle.to_tensor([10000.1, 1e-08])
-             >>> result1 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
-             ...                          equal_nan=False, name="ignore_nan")
-             >>> print(result1)
-             Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
-             [True , False])
-             >>> result2 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
-             ...                          equal_nan=True, name="equal_nan")
-             >>> print(result2)
-             Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
-             [True , False])
-             >>> x = paddle.to_tensor([1.0, float('nan')])
-             >>> y = paddle.to_tensor([1.0, float('nan')])
-             >>> result1 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
-             ...                          equal_nan=False, name="ignore_nan")
-             >>> print(result1)
-             Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
-             [True , False])
-             >>> result2 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
-             ...                          equal_nan=True, name="equal_nan")
-             >>> print(result2)
-             Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
-             [True, True])
-     """,
+    Check if all :math:`x` and :math:`y` satisfy the condition:
+
+    .. math::
+        \\left| x - y \right| \\leq atol + rtol \times \\left| y \right|
+
+    elementwise, for all elements of :math:`x` and :math:`y`. The behaviour of this
+    operator is analogous to :math:`numpy.isclose`, namely that it returns :math:`True` if
+    two tensors are elementwise equal within a tolerance.
+
+    Args:
+        x(Tensor): The input tensor, it's data type should be float16, float32, float64, complex64, complex128.
+        y(Tensor): The input tensor, it's data type should be float16, float32, float64, complex64, complex128.
+        rtol(float, optional): The relative tolerance. Default: :math:`1e-5` .
+        atol(float, optional): The absolute tolerance. Default: :math:`1e-8` .
+        equal_nan(bool, optional): If :math:`True` , then two :math:`NaNs` will be compared as equal. Default: :math:`False` .
+        name (str|None, optional): Name for the operation. For more information, please
+            refer to :ref:`api_guide_Name`. Default: None.
+
+    Returns:
+        Tensor: The output tensor, it's data type is bool.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([10000., 1e-07])
+            >>> y = paddle.to_tensor([10000.1, 1e-08])
+            >>> result1 = paddle.isclose(
+            ...     x,
+            ...     y,
+            ...     rtol=1e-05,
+            ...     atol=1e-08,
+            ...     equal_nan=False,
+            ...     name="ignore_nan"
+            ... )
+            >>> print(result1)
+            Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True , False])
+            >>> result2 = paddle.isclose(
+            ...     x,
+            ...     y,
+            ...     rtol=1e-05,
+            ...     atol=1e-08,
+            ...     equal_nan=True,
+            ...     name="equal_nan"
+            ... )
+            >>> print(result2)
+            Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True , False])
+            >>> x = paddle.to_tensor([1.0, float('nan')])
+            >>> y = paddle.to_tensor([1.0, float('nan')])
+            >>> result1 = paddle.isclose(
+            ...     x,
+            ...     y,
+            ...     rtol=1e-05,
+            ...     atol=1e-08,
+            ...     equal_nan=False,
+            ...     name="ignore_nan"
+            ... )
+            >>> print(result1)
+            Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True , False])
+            >>> result2 = paddle.isclose(
+            ...     x,
+            ...     y,
+            ...     rtol=1e-05,
+            ...     atol=1e-08,
+            ...     equal_nan=True,
+            ...     name="equal_nan"
+            ... )
+            >>> print(result2)
+            Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True, True])
+    """,
     """
 def isclose(
-     x: Tensor,
-     y: Tensor,
-     rtol: float = 1e-05,
-     atol: float = 1e-08,
-     equal_nan: bool = False,
-     name: str | None = None,
- ) -> Tensor
+    x: Tensor,
+    y: Tensor,
+    rtol: float = 1e-05,
+    atol: float = 1e-08,
+    equal_nan: bool = False,
+    name: str | None = None,
+) -> Tensor
 """,
 )
 
@@ -1339,11 +1369,12 @@ add_doc_and_signature(
     "sum",
     """
     Computes the sum of tensor elements over the given dimension.
-     .. note::
-        Parameter order support: When passing positional parameters, it is possible to support swapping the positional order of dtype and axis.
-        For example, ``sum(x, axis, keepdim, dtype)`` is equivalent to ``sum(x, axis, dtype, keepdim)``.
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x`` and the parameter name ``dim`` can be used as an alias for ``axis``.
-        For example, ``sum(input=tensor_x, dim=1)`` is equivalent to ``sum(x=tensor_x, axis=1)``.
+
+    .. note::
+        | Parameter order support: When passing positional parameters, it is possible to support swapping the positional order of dtype and axis.
+        | For example, ``sum(x, axis, keepdim, dtype)`` is equivalent to ``sum(x, axis, dtype, keepdim)``.
+        | Alias Support: The parameter name ``input`` can be used as an alias for ``x`` and the parameter name ``dim`` can be used as an alias for ``axis``.
+        | For example, ``sum(input=tensor_x, dim=1)`` is equivalent to ``sum(x=tensor_x, axis=1)``.
 
     Args:
         x (Tensor): An N-D Tensor, the data type is bool, bfloat16, float16, float32, float64,
@@ -3263,6 +3294,68 @@ def asin(
 """,
 )
 
+add_doc_and_signature(
+    "allclose",
+    r"""
+    Check if all :math:`x` and :math:`y` satisfy the condition:
+
+    .. math::
+        \left| x - y \right| \leq atol + rtol \times \left| y \right|
+
+    elementwise, for all elements of :math:`x` and :math:`y`. This is analogous to :math:`numpy.allclose`, namely that it returns :math:`True` if
+    two tensors are elementwise equal within a tolerance.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64.
+            Alias: ``input``.
+        y (Tensor): The input tensor, it's data type should be float16, float32, float64.
+            Alias: ``other``.
+        rtol (float, optional): The relative tolerance. Default: :math:`1e-5` .
+        atol (float, optional): The absolute tolerance. Default: :math:`1e-8` .
+        equal_nan (bool, optional): ${equal_nan_comment}. Default: False.
+        name (str|None, optional): Name for the operation. For more information, please
+            refer to :ref:`api_guide_Name`. Default: None.
+
+    Returns:
+        Tensor: The output tensor, it's data type is bool.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([10000., 1e-07])
+            >>> y = paddle.to_tensor([10000.1, 1e-08])
+            >>> result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name="ignore_nan")
+            >>> print(result1)
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            False)
+            >>> result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=True, name="equal_nan")
+            >>> print(result2)
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            False)
+            >>> x = paddle.to_tensor([1.0, float('nan')])
+            >>> y = paddle.to_tensor([1.0, float('nan')])
+            >>> result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name="ignore_nan")
+            >>> print(result1)
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            False)
+            >>> result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=True, name="equal_nan")
+            >>> print(result2)
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            True)
+    """,
+    """
+def allclose(
+    x: Tensor,
+    y: Tensor,
+    rtol: float = 1e-05,
+    atol: float = 1e-08,
+    equal_nan: bool = False,
+    name: str | None = None
+) -> Tensor
+""",
+)
 
 add_doc_and_signature(
     "asinh",
@@ -3306,7 +3399,6 @@ add_doc_and_signature(
     ) -> Tensor
     """,
 )
-
 
 add_doc_and_signature(
     "atan",
@@ -3414,3 +3506,4 @@ def atan2(
 ) -> Tensor
 """,
 )
+

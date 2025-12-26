@@ -22,8 +22,8 @@ namespace phi {
 struct BeamSearchDecodeFunctor {
   BeamSearchDecodeFunctor(const TensorArray& step_ids,
                           const TensorArray& step_scores,
-                          phi::DenseTensor* id_tensor,
-                          phi::DenseTensor* score_tensor,
+                          DenseTensor* id_tensor,
+                          DenseTensor* score_tensor,
                           size_t beam_size,
                           int end_id)
       : beam_size_(beam_size),
@@ -45,7 +45,7 @@ struct BeamSearchDecodeFunctor {
       auto* dev_ctx = pool.Get(step_ids_origin_[0].place());
       // Copy all tensors in the input tensor array
       for (auto& step_id : step_ids_origin_) {
-        phi::DenseTensor out;
+        DenseTensor out;
         if (step_id.numel() > 0) {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
@@ -71,7 +71,7 @@ struct BeamSearchDecodeFunctor {
       auto* dev_ctx = pool.Get(step_scores_origin_[0].place());
       // Copy all tensors in the input tensor array
       for (auto& step_score : step_scores_origin_) {
-        phi::DenseTensor out;
+        DenseTensor out;
         if (step_score.numel() > 0) {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
@@ -115,8 +115,8 @@ struct BeamSearchDecodeFunctor {
   const TensorArray& step_scores_origin_;
   TensorArray step_ids_ = TensorArray();
   TensorArray step_scores_ = TensorArray();
-  phi::DenseTensor* id_tensor_;
-  phi::DenseTensor* score_tensor_;
+  DenseTensor* id_tensor_;
+  DenseTensor* score_tensor_;
 };
 
 template <typename T, typename Context>
@@ -162,8 +162,8 @@ void BeamSearchDecodeOpKernel(const Context& dev_ctx,
   }
 
   // prepare output
-  phi::DenseTensor* sentenceIds = sentence_ids;
-  phi::DenseTensor* sentenceScores = sentence_scores;
+  DenseTensor* sentenceIds = sentence_ids;
+  DenseTensor* sentenceScores = sentence_scores;
   BeamSearchDecodeFunctor bs(
       *ids, *scores, sentenceIds, sentenceScores, beam_size, end_id);
   bs.apply_mix<T>();

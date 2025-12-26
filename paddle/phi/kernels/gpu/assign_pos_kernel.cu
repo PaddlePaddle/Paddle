@@ -60,7 +60,7 @@ void AssignPosKernel(const Context& dev_ctx,
   T* cum_data = const_cast<T*>(cum_count_ptr->data<T>());
   auto cum_size = cum_count_ptr->numel();
 
-  phi::DenseTensor cpu_eff_num_len;
+  DenseTensor cpu_eff_num_len;
   int64_t cpu_eff_num_len_data = 0;
   bool is_cpu_place = eff_num_len_ptr->place() == phi::CPUPlace();
   if (is_cpu_place) {

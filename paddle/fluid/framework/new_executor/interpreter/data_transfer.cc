@@ -530,7 +530,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
               // Var without buffer may be needed
               // for some situation like InferShape().
               // In this situation We cannot skip Var analysis, as
-              // MKL-DNN shape of Var may differ from kNHWC Var
+              // ONEDNN shape of Var may differ from NHWC Var
               // In such situation corresponding resized Var
               // has to be created and registered
               if ((tensor_in->layout() == DataLayout::ONEDNN) &&

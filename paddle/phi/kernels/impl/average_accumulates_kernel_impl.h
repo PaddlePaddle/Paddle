@@ -85,19 +85,19 @@ void AverageAccumulatesKernel(const Context& dev_ctx,
           max_average_window));
 
   // Get inputs
-  // auto* param = dev_ctx.Input<phi::DenseTensor>("param");
-  // auto* in_sum_1 = dev_ctx.Input<phi::DenseTensor>("in_sum_1");
-  // auto* in_sum_2 = dev_ctx.Input<phi::DenseTensor>("in_sum_2");
-  // auto* in_sum_3 = dev_ctx.Input<phi::DenseTensor>("in_sum_3");
+  // auto* param = dev_ctx.Input<DenseTensor>("param");
+  // auto* in_sum_1 = dev_ctx.Input<DenseTensor>("in_sum_1");
+  // auto* in_sum_2 = dev_ctx.Input<DenseTensor>("in_sum_2");
+  // auto* in_sum_3 = dev_ctx.Input<DenseTensor>("in_sum_3");
   auto param_tensor = EigenVector<T>::Flatten(param);
   auto in_sum_1_tensor = EigenVector<T>::Flatten(in_sum_1);
   auto in_sum_2_tensor = EigenVector<T>::Flatten(in_sum_2);
   auto in_sum_3_tensor = EigenVector<T>::Flatten(in_sum_3);
 
   // Get outputs
-  // auto* out_sum_1 = dev_ctx.Output<phi::DenseTensor>("out_sum_1");
-  // auto* out_sum_2 = dev_ctx.Output<phi::DenseTensor>("out_sum_2");
-  // auto* out_sum_3 = dev_ctx.Output<phi::DenseTensor>("out_sum_3");
+  // auto* out_sum_1 = dev_ctx.Output<DenseTensor>("out_sum_1");
+  // auto* out_sum_2 = dev_ctx.Output<DenseTensor>("out_sum_2");
+  // auto* out_sum_3 = dev_ctx.Output<DenseTensor>("out_sum_3");
   dev_ctx.template Alloc<T>(out_sum_1);
   dev_ctx.template Alloc<T>(out_sum_2);
   dev_ctx.template Alloc<T>(out_sum_3);

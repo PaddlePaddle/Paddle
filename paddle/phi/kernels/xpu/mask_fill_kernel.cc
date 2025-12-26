@@ -38,19 +38,19 @@ void MaskedFillKernel(const Context& dev_ctx,
   const auto& x_dims = x.dims();
   const auto& mask_dims = mask.dims();
 
-  phi::DDim x_dims_ex = x_dims;
-  phi::DDim mask_dims_ex = mask_dims;
+  DDim x_dims_ex = x_dims;
+  DDim mask_dims_ex = mask_dims;
 
   if (x_dims.size() == 0 && mask_dims.size() == 0) {
     x_dims_ex = common::make_ddim({1});
     mask_dims_ex = common::make_ddim({1});
   } else {
     int rank = std::max(x_dims.size(), mask_dims.size());
-    x_dims_ex = phi::funcs::ExtendDims2Rank(x_dims, rank);
-    mask_dims_ex = phi::funcs::ExtendDims2Rank(mask_dims, rank);
+    x_dims_ex = funcs::ExtendDims2Rank(x_dims, rank);
+    mask_dims_ex = funcs::ExtendDims2Rank(mask_dims, rank);
   }
 
-  auto out_dims = phi::funcs::BroadcastTwoDims(x_dims_ex, mask_dims_ex, -1);
+  auto out_dims = funcs::BroadcastTwoDims(x_dims_ex, mask_dims_ex, -1);
   out->Resize(out_dims);
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (out && out->numel() == 0) {

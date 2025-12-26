@@ -2305,5 +2305,23 @@ class TestListToTensor(unittest.TestCase):
         self.assertEqual(b[1], 2.0)
 
 
+class TestEagerTensorIndex(unittest.TestCase):
+    def test__index__with_0size_tensor(self):
+        with dygraph_guard():
+            x = paddle.randn([0])
+            l = [1, 2, 3]
+            with self.assertRaisesRegex(
+                AssertionError,
+                "only one element variable can be converted to python index.",
+            ):
+                l[x]
+
+    def test__index__with_non_scalar_tensor(self):
+        with dygraph_guard():
+            l = [1, 2, 3]
+            x = paddle.to_tensor([1]).reshape(1, 1, 1)
+            self.assertEqual(l[x], l[x.item()])
+
+
 if __name__ == "__main__":
     unittest.main()

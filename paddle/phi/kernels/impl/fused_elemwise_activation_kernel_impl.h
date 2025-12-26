@@ -43,7 +43,7 @@ void FusedElemwiseActivationKernel(const Context &dev_ctx,
       common::errors::InvalidArgument("The output(Out) should not be empty"));
   auto output = out;
 
-  std::vector<phi::DenseTensor *> outputs;
+  std::vector<DenseTensor *> outputs;
   outputs.emplace_back(output);
 
   if (save_intermediate_out) {
@@ -87,7 +87,7 @@ void FusedElemwiseActivationGradKernel(
       in_y,
       nullptr,
       common::errors::InvalidArgument("Input(Y) should not be nullptr."));
-  phi::DenseTensor *in_out = const_cast<phi::DenseTensor *>(&out);
+  DenseTensor *in_out = const_cast<DenseTensor *>(&out);
 
   auto in_out_grad = &out_grad;
   PADDLE_ENFORCE_NE(in_out_grad,
@@ -107,18 +107,18 @@ void FusedElemwiseActivationGradKernel(
     functor_list_new[1] += "_grad";
   }
 
-  phi::DenseTensor *in_x = const_cast<phi::DenseTensor *>(&x);
-  phi::DenseTensor *d_intermediate_out =
+  DenseTensor *in_x = const_cast<DenseTensor *>(&x);
+  DenseTensor *d_intermediate_out =
       nullptr;  // intermediate_out_grad  is not supported in ops.yaml, so use
                 // nullptr
 
   // Get intermediate_out
-  phi::DenseTensor *in_intermediate_out = nullptr;
+  DenseTensor *in_intermediate_out = nullptr;
   if (save_intermediate_out) {
     // if save_intermediate_out is true, for Unary(Binary(x, y)) and
     // Binary(x, Unary(y)), the Binary(x, y) and Unary(y) not need to
     // recompute.
-    in_intermediate_out = const_cast<phi::DenseTensor *>(&intermediate_out);
+    in_intermediate_out = const_cast<DenseTensor *>(&intermediate_out);
     PADDLE_ENFORCE_NE(in_intermediate_out,
                       nullptr,
                       common::errors::InvalidArgument(
@@ -147,7 +147,7 @@ void FusedElemwiseActivationGradKernel(
                       common::errors::InvalidArgument(
                           "Only when the compoundfunctor contains "
                           "elementwise_add_grad, the 'X' could be absent."));
-    in_x = const_cast<phi::DenseTensor *>(in_out_grad);
+    in_x = const_cast<DenseTensor *>(in_out_grad);
   }
 
   // Get in_Out
@@ -164,7 +164,7 @@ void FusedElemwiseActivationGradKernel(
                       common::errors::InvalidArgument(
                           "Only when the compoundfunctor contains "
                           "elementwise_add_grad, the 'X' could be absent."));
-    in_out = const_cast<phi::DenseTensor *>(in_out_grad);
+    in_out = const_cast<DenseTensor *>(in_out_grad);
   }
 
   bool has_in_place = funcs::HasInPlaceUnary(functor_list_new);
@@ -233,8 +233,8 @@ void FusedElemwiseAddActivationGradKernel(
     bool save_intermediate_out,
     DenseTensor *x_grad,
     DenseTensor *y_grad) {
-  phi::DenseTensor tmp_x;
-  phi::DenseTensor tmp_i;
+  DenseTensor tmp_x;
+  DenseTensor tmp_i;
   if (x) {
     tmp_x = x.get();
   }

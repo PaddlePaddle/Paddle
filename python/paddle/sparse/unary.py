@@ -41,12 +41,12 @@ if TYPE_CHECKING:
 __all__ = []
 
 _int_dtype_ = [
-    core.VarDesc.VarType.UINT8,
-    core.VarDesc.VarType.INT8,
-    core.VarDesc.VarType.INT16,
-    core.VarDesc.VarType.INT32,
-    core.VarDesc.VarType.INT64,
-    core.VarDesc.VarType.BOOL,
+    core.DataType.UINT8,
+    core.DataType.INT8,
+    core.DataType.INT16,
+    core.DataType.INT32,
+    core.DataType.INT64,
+    core.DataType.BOOL,
 ]
 
 
@@ -793,11 +793,11 @@ def rad2deg(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> dense_x = paddle.to_tensor([3.142, 0., -3.142])
+            >>> dense_x = paddle.to_tensor([3.142, 0.0, -3.142])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.rad2deg(sparse_x)
             >>> out
@@ -809,7 +809,7 @@ def rad2deg(x: Tensor, name: str | None = None) -> Tensor:
         "Currently, Sparse API only support dynamic mode or pir mode."
     )
     if x.dtype in _int_dtype_:
-        x = _C_ops.sparse_cast(x, None, core.VarDesc.VarType.FP32)
+        x = _C_ops.sparse_cast(x, None, core.DataType.FLOAT32)
     return _C_ops.sparse_scale(x, 180.0 / np.pi, 0.0, True)
 
 
@@ -831,7 +831,7 @@ def deg2rad(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -847,7 +847,7 @@ def deg2rad(x: Tensor, name: str | None = None) -> Tensor:
         "Currently, Sparse API only support dynamic mode or pir mode."
     )
     if x.dtype in _int_dtype_:
-        x = _C_ops.sparse_cast(x, None, core.VarDesc.VarType.FP32)
+        x = _C_ops.sparse_cast(x, None, core.DataType.FLOAT32)
     return _C_ops.sparse_scale(x, np.pi / 180.0, 0.0, True)
 
 

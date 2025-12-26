@@ -154,9 +154,9 @@ struct CSoftmaxWithMultiLabelCrossEntropyFunctor<phi::GPUContext, T> {
                   DenseTensor* softmax,
                   DenseTensor* loss) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    const phi::DenseTensor* logits = &logits_in;
-    const phi::DenseTensor* labels = &label_in;
-    const phi::DenseTensor* smooth_weight = &smooth_weight_in;
+    const DenseTensor* logits = &logits_in;
+    const DenseTensor* labels = &label_in;
+    const DenseTensor* smooth_weight = &smooth_weight_in;
 
     gpuStream_t stream = nullptr;
     phi::distributed::NCCLCommContext* comm_ctx = nullptr;
@@ -183,7 +183,7 @@ struct CSoftmaxWithMultiLabelCrossEntropyFunctor<phi::GPUContext, T> {
     const int64_t D = funcs::SizeFromAxis<int64_t>(axis, logits_dims);
     const int64_t C = funcs::SizeFromAxis<int64_t>(axis, labels_dims);
 
-    phi::DenseTensor logits_2d, softmax_2d, loss_2d;
+    DenseTensor logits_2d, softmax_2d, loss_2d;
     logits_2d.ShareDataWith(*logits).Resize({N, D});
     softmax_2d.ShareDataWith(*softmax).Resize({N, D});
     int64_t loss_last_dim = sum_multi_label_loss ? 1 : C;
@@ -193,7 +193,7 @@ struct CSoftmaxWithMultiLabelCrossEntropyFunctor<phi::GPUContext, T> {
     auto eigen_softmax = funcs::EigenMatrix<T>::From(softmax_2d);
 
     // step 1, obtain logit_max
-    phi::DenseTensor logits_max;
+    DenseTensor logits_max;
     logits_max.Resize({N, 1});
     dev_ctx.template Alloc<T>(&logits_max);
 
@@ -213,7 +213,7 @@ struct CSoftmaxWithMultiLabelCrossEntropyFunctor<phi::GPUContext, T> {
          eigen_logits_max.reshape(batch_by_one).broadcast(one_by_class));
 
     // step 3, obtain predict target
-    phi::DenseTensor predicted_logits;
+    DenseTensor predicted_logits;
     predicted_logits.Resize({N, C});
     dev_ctx.template Alloc<T>(&predicted_logits);
 
@@ -262,7 +262,7 @@ struct CSoftmaxWithMultiLabelCrossEntropyFunctor<phi::GPUContext, T> {
     eigen_softmax.device(*dev_ctx.eigen_device()) = eigen_softmax.exp();
 
     // step 5, obtain sum_exp_logits
-    phi::DenseTensor sum_exp_logits;
+    DenseTensor sum_exp_logits;
     sum_exp_logits.Resize({N, 1});
     dev_ctx.template Alloc<T>(&sum_exp_logits);
 

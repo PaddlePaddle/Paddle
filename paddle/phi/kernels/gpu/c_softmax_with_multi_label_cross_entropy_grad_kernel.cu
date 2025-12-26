@@ -83,11 +83,11 @@ void CSoftmaxWithMultiLabelCrossEntropyGradKernel(
     int rank,
     int nranks,
     DenseTensor* logits_grad) {
-  const phi::DenseTensor* labels = &label_in;
-  const phi::DenseTensor* smooth_weight = &smooth_weight_in;
-  const phi::DenseTensor* loss_grad = &loss_grad_in;
-  const phi::DenseTensor* softmax = &softmax_in;
-  phi::DenseTensor* logit_grad = logits_grad;
+  const DenseTensor* labels = &label_in;
+  const DenseTensor* smooth_weight = &smooth_weight_in;
+  const DenseTensor* loss_grad = &loss_grad_in;
+  const DenseTensor* softmax = &softmax_in;
+  DenseTensor* logit_grad = logits_grad;
 
   if (logit_grad != softmax) {
     phi::Copy(dev_ctx, *softmax, dev_ctx.GetPlace(), false, logit_grad);
@@ -100,7 +100,7 @@ void CSoftmaxWithMultiLabelCrossEntropyGradKernel(
   const auto label_dims = labels->dims();
   const int64_t C = label_dims[axis];
 
-  phi::DenseTensor logit_grad_2d;
+  DenseTensor logit_grad_2d;
   logit_grad_2d.ShareDataWith(*logit_grad).Resize({N, D});
 
   int64_t blocks = NumBlocks(N * D);

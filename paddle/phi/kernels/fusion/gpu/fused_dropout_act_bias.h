@@ -218,7 +218,7 @@ void LaunchDropoutActBias(Functor act_functor,
                           const T *bias,
                           OutType *dst,
                           MaskType *mask_data,
-                          const phi::GPUContext &dev_ctx,
+                          const GPUContext &dev_ctx,
                           const float quant_last_in_scale = 1.0,
                           const float *dequant_out_scale_data = nullptr,
                           const float quant_next_in_scale = 1.0,
@@ -413,7 +413,7 @@ void LaunchDropoutActBiasGrad(Functor act_functor,
                               const uint32_t cols,
                               T *dx,
                               T *dbias,
-                              const phi::GPUContext &dev_ctx) {
+                              const GPUContext &dev_ctx) {
   const T zero = static_cast<T>(0.0);
   auto factor = dropout_prob == static_cast<float>(1.0f)
                     ? zero

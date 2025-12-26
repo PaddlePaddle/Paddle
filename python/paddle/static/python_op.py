@@ -18,8 +18,9 @@ import inspect
 import sys
 import types
 from collections.abc import Mapping, Sequence
-from functools import partial, wraps
-from typing import Any, Callable, TypeVar, overload
+from dataclasses import dataclass
+from functools import cached_property, partial, wraps
+from typing import Any, Callable, Generic, TypeVar, overload
 
 from typing_extensions import ParamSpec
 
@@ -135,6 +136,109 @@ def eliminate_positional_or_keyword_only(
     return new_fn
 
 
+@dataclass
+class FunctionPack(Generic[P1, R1]):
+    fn: Callable[P1, R1]
+    infer_meta: Callable[..., Any]
+
+    def id(self) -> int:
+        return id(self.fn)
+
+
+class ConstantParams:
+    def __init__(self, params: dict[str, Any]):
+        self.params = params
+
+    def __hash__(self):
+        return custom_hash(self.params)
+
+    def __eq__(self, other):
+        if not isinstance(other, ConstantParams):
+            return False
+        return self.params == other.params
+
+
+@dataclass
+class OriginalFunctionPack(FunctionPack[P1, R1]):
+    def __post_init__(self):
+        self._specialized_fns: dict[ConstantParams, FunctionPack[P1, R1]] = {}
+
+    @cached_property
+    def fn_eliminated(self) -> Callable[P1, R1]:
+        return eliminate_positional_or_keyword_only(self.fn)
+
+    @cached_property
+    def infer_meta_eliminated(self) -> Callable[..., Any]:
+        return eliminate_positional_or_keyword_only(self.infer_meta)
+
+    def get_bound_args(self, /, *args: P1.args, **kwargs: P1.kwargs):
+        sig = inspect.signature(self.fn)
+        bound_args = sig.bind(*args, **kwargs)
+        bound_args.apply_defaults()
+        return bound_args.arguments
+
+    def separate_mutable_and_const_params(
+        self, /, *args: P1.args, **kwargs: P1.kwargs
+    ) -> tuple[dict[str, paddle.pir.Value], dict[str, Any]]:
+        params = self.get_bound_args(*args, **kwargs)
+
+        mutable_params = {}
+        const_params = {}
+
+        # TODO: Support container types like list, dict, tuple
+        for k, v in params.items():
+            if isinstance(v, paddle.pir.Value):
+                mutable_params[k] = v
+            else:
+                const_params[k] = v
+
+        return mutable_params, const_params
+
+    def specialize(self, const_params: dict[str, Any]) -> FunctionPack[P1, R1]:
+        const_params_wrapper = ConstantParams(const_params)
+        if const_params_wrapper in self._specialized_fns:
+            return self._specialized_fns[const_params_wrapper]
+
+        specialized_fn = partial(self.fn_eliminated, **const_params)
+        specialized_infer_meta = partial(
+            self.infer_meta_eliminated, **const_params
+        )
+        specialized_fn_pack = FunctionPack(
+            specialized_fn, specialized_infer_meta
+        )
+        self._specialized_fns[const_params_wrapper] = specialized_fn_pack
+        return specialized_fn_pack
+
+
+class FunctionRegistry:
+    def __init__(self):
+        self._registry: dict[str, OriginalFunctionPack[Any, Any]] = {}
+
+    def register(
+        self,
+        name: str,
+        fn: Callable[P1, R1],
+        infer_meta: Callable[..., Any],
+    ):
+        if name not in self._registry:
+            self._registry[name] = OriginalFunctionPack(fn, infer_meta)
+            return self._registry[name]
+        fn_pack = self._registry[name]
+        if fn is not fn_pack.fn or infer_meta is not fn_pack.infer_meta:
+            raise ValueError(
+                f"Function '{name}' is already registered with a different implementation."
+            )
+        return fn_pack
+
+    def get(self, name: str) -> OriginalFunctionPack[Any, Any]:
+        if name not in self._registry:
+            raise KeyError(f"Function '{name}' is not registered.")
+        return self._registry[name]
+
+
+FUNCTION_REGISTRY = FunctionRegistry()
+
+
 def bind_constants(fn, infer_meta, *args, **kwargs):
     sig = inspect.signature(fn)
     bound_args = sig.bind(*args, **kwargs)
@@ -172,38 +276,28 @@ def run_in_dynamic_mode(fn):
 
 def custom_hash(obj):
     # Compute a hash for various types of objects, including unhashable ones.
-    # This may not be collision-free, but should work for distinguishing different
-    # constant parameters in most practical scenarios.
+    # This may not be collision-free. For example, hash(-1) is same as hash(-2).
+    # We use dict to resolve collisions in ConstantParams.
 
-    # TODO: We should avoid hash collisions more strictly if necessary. For example,
-    # hash(-1) == hash(-2)
+    # Handle basic types
     if isinstance(obj, (int, float, str, bool, bytes)):
         return hash(obj)
 
-    # Hashing for common hashable types
-    if isinstance(obj, (tuple, frozenset)):
-        try:
-            return hash(obj)
-        except TypeError:
-            pass
+    # Handle sequences (like list, tuple, set, frozenset)
+    if isinstance(obj, (Sequence, frozenset, set)):
+        type_id_map = {list: 1, tuple: 2, frozenset: 3, set: 4}
+        type_id = type_id_map.get(type(obj), 0)
+        return hash((type_id, *tuple(custom_hash(item) for item in obj)))
 
-    # Unhashable types
-    if isinstance(obj, (Sequence, set)):
-        try:
-            return hash((0, *tuple(custom_hash(item) for item in obj)))
-        except TypeError:
-            pass
-
-    # Unhashable Mapping
+    # Handle mappings (like dict)
     if isinstance(obj, Mapping):
-        try:
-            items_hashed = tuple(
-                sorted((custom_hash(k), custom_hash(v)) for k, v in obj.items())
-            )
-            return hash((1, *items_hashed))
-        except TypeError:
-            pass
+        type_id = 5
+        items_hashed = tuple(
+            sorted((custom_hash(k), custom_hash(v)) for k, v in obj.items())
+        )
+        return hash((type_id, *items_hashed))
 
+    # Fallback: try to use the built-in hash, or use id() if unhashable
     try:
         return hash(obj)
     except TypeError:
@@ -264,28 +358,25 @@ def register_op(
             if paddle.in_dynamic_mode():
                 return real_fn(*args, **kwargs)
 
-            (
-                mutable_arg_names,
-                bound_constants_fn,
-                bound_constants_infer_meta,
-                mutable_args,
-                const_params,
-            ) = bind_constants(real_fn, infer_meta, *args, **kwargs)
-            assert len(mutable_arg_names) == len(input_names), (
-                f"Number of mutable arguments ({len(mutable_arg_names)}) does not match "
+            fn_pack = FUNCTION_REGISTRY.register(op_name, real_fn, infer_meta)
+            mutable_params, const_params = (
+                fn_pack.separate_mutable_and_const_params(*args, **kwargs)
+            )
+            specialized_fn_pack = fn_pack.specialize(const_params)
+
+            assert len(mutable_params) == len(input_names), (
+                f"Number of mutable arguments ({len(mutable_params)}) does not match "
                 f"the number of input names ({len(input_names)})."
             )
 
-            const_params_hash = custom_hash(const_params)
-
             out = _C_ops._run_python_op(
-                *mutable_args,
-                name=f"{op_name}_{const_params_hash}",
+                *mutable_params.values(),
+                name=f"{op_name}_{specialized_fn_pack.id()}",
                 input_names=input_names,
                 output_names=output_names,
                 attrs={
-                    "infer_meta_fn_ptr": bound_constants_infer_meta,
-                    "fn_ptr": run_in_dynamic_mode(bound_constants_fn),
+                    "infer_meta_fn_ptr": specialized_fn_pack.infer_meta,
+                    "fn_ptr": run_in_dynamic_mode(specialized_fn_pack.fn),
                 },
                 inplace_map=inplace_map or {},
             )

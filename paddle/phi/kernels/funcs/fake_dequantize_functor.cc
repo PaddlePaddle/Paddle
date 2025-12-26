@@ -50,8 +50,8 @@ void ChannelDequantizeFunctor<Context, T>::operator()(
     if (quant_axis == 0) {
       for (int64_t i = 0; i < channel; i++) {
         T s = scale_factor[i];
-        phi::DenseTensor one_channel_in = in->Slice(i, i + 1);
-        phi::DenseTensor one_channel_out = out->Slice(i, i + 1);
+        DenseTensor one_channel_in = in->Slice(i, i + 1);
+        DenseTensor one_channel_out = out->Slice(i, i + 1);
         auto in_e = phi::EigenVector<T>::Flatten(one_channel_in);
         auto out_e = phi::EigenVector<T>::Flatten(one_channel_out);
         auto& dev = *dev_ctx.eigen_device();
@@ -113,14 +113,14 @@ void ChannelDequantizeFunctor<Context, T>::operator()(
       const T* scale_one = scales[0]->data<T>();
       const T* scale_two = scales[1]->data<T>();
       for (int i = 0; i < batch_size; i++) {
-        phi::DenseTensor one_batch_in = in->Slice(i, i + 1).Resize(
+        DenseTensor one_batch_in = in->Slice(i, i + 1).Resize(
             common::slice_ddim(in->dims(), 1, in->dims().size()));
-        phi::DenseTensor one_batch_out = out->Slice(i, i + 1).Resize(
+        DenseTensor one_batch_out = out->Slice(i, i + 1).Resize(
             common::slice_ddim(out->dims(), 1, out->dims().size()));
         for (int j = 0; j < channel; j++) {
           T s = scale_one[j];
-          phi::DenseTensor one_channel_in = one_batch_in.Slice(j, j + 1);
-          phi::DenseTensor one_channel_out = one_batch_out.Slice(j, j + 1);
+          DenseTensor one_channel_in = one_batch_in.Slice(j, j + 1);
+          DenseTensor one_channel_out = one_batch_out.Slice(j, j + 1);
           auto in_e = phi::EigenVector<T>::Flatten(one_channel_in);
           auto out_e = phi::EigenVector<T>::Flatten(one_channel_out);
           auto& dev = *dev_ctx.eigen_device();

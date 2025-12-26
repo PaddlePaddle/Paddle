@@ -25,19 +25,19 @@ namespace funcs {
 
 template <typename T>
 void ComputeFusedGemmEpilogueBackwardXPU(const phi::XPUContext& dev_ctx,
-                                         const phi::DenseTensor* dout,
-                                         const phi::DenseTensor* x,
-                                         const phi::DenseTensor* y,
-                                         const phi::DenseTensor* reserve_space,
+                                         const DenseTensor* dout,
+                                         const DenseTensor* x,
+                                         const DenseTensor* y,
+                                         const DenseTensor* reserve_space,
                                          int64_t M,
                                          int64_t N,
                                          int64_t K,
                                          bool trans_x,
                                          bool trans_y,
                                          const std::string& activation_grad,
-                                         phi::DenseTensor* dx,
-                                         phi::DenseTensor* dy,
-                                         phi::DenseTensor* dbias,
+                                         DenseTensor* dx,
+                                         DenseTensor* dy,
+                                         DenseTensor* dbias,
                                          bool use_addto_dx = false,
                                          bool use_addto_dy = false) {
   using XPUType = typename XPUTypeTrait<T>::Type;

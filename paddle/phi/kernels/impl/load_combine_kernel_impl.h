@@ -36,7 +36,7 @@ void LoadParamsFromBuffer(const Context& dev_ctx,
                           const phi::Place& place,
                           std::istream* buffer,
                           bool load_as_fp16,
-                          const std::vector<phi::DenseTensor*>& out) {
+                          const std::vector<DenseTensor*>& out) {
   auto out_vars = out;
   for (size_t i = 0; i < out_vars.size(); i++) {
     PADDLE_ENFORCE_NOT_NULL(
@@ -52,7 +52,7 @@ void LoadParamsFromBuffer(const Context& dev_ctx,
             "Please check whether the model file is complete or damaged."));
 
     dev_ctx.template Alloc<T>(out_vars[i]);
-    phi::DenseTensor* tensor = out_vars[i];
+    DenseTensor* tensor = out_vars[i];
     // Get data from fin to tensor
     phi::DeserializeFromStream(*buffer, tensor, dev_ctx);
     auto in_dtype = tensor->dtype();
@@ -63,7 +63,7 @@ void LoadParamsFromBuffer(const Context& dev_ctx,
           phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, in_dtype);
       auto out_kernel_type =
           phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, out_dtype);
-      phi::DenseTensor fp16_tensor;
+      DenseTensor fp16_tensor;
       // copy LoD info to the new tensor
       fp16_tensor.set_lod(tensor->lod());
       TransDataType(in_kernel_type, out_kernel_type, *tensor, &fp16_tensor);
@@ -182,14 +182,14 @@ void LoadParamsFromBuffer(const Context& dev_ctx,
             phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, in_dtype);
         auto out_kernel_type =
             phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, out_dtype);
-        phi::DenseTensor fp16_tensor;
+        DenseTensor fp16_tensor;
         // copy LoD info to the new tensor
         fp16_tensor.set_lod(tensor->lod());
         TransDataType(in_kernel_type, out_kernel_type, *tensor, &fp16_tensor);
 
         // reset output tensor
         // raw_tensor->Clear();
-        tensor = raw_tensor->GetMutable<phi::DenseTensor>();
+        tensor = raw_tensor->GetMutable<DenseTensor>();
         tensor->set_lod(fp16_tensor.lod());
         tensor->ShareDataWith(fp16_tensor);
       }
@@ -208,7 +208,7 @@ void LoadCombineKernel(const Context& dev_ctx,
                        const std::string& file_path,
                        bool load_as_fp16,
                        bool model_from_memory,
-                       std::vector<phi::DenseTensor*> out) {
+                       std::vector<DenseTensor*> out) {
   auto place = dev_ctx.GetPlace();
   auto filename = file_path;
   auto out_var_names = out;

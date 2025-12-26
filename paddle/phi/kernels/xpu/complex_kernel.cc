@@ -69,7 +69,7 @@ void RealKernel(const Context& dev_ctx,
   }
   dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
   // The allocation of imag here is redundant and could be optimized.
-  phi::DenseTensor imag;
+  DenseTensor imag;
   imag.Resize(x.dims());
   dev_ctx.template Alloc<phi::dtype::Real<T>>(&imag);
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
@@ -93,7 +93,7 @@ void ImagKernel(const Context& dev_ctx,
   }
   dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
   // The allocation of ‘real’ here is redundant and could be optimized.
-  phi::DenseTensor real;
+  DenseTensor real;
   real.Resize(x.dims());
   dev_ctx.template Alloc<phi::dtype::Real<T>>(&real);
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
@@ -119,7 +119,7 @@ void ComplexKernel(const Context& dev_ctx,
   }
   auto x_dims = x.dims();
   auto y_dims = y.dims();
-  auto out_dims = phi::funcs::BroadcastTwoDims(x_dims, y_dims);
+  auto out_dims = funcs::BroadcastTwoDims(x_dims, y_dims);
   std::vector<int64_t> out_dims_vec = phi::vectorize(out_dims);
 
   DenseTensor broadcasted_x, broadcasted_y;

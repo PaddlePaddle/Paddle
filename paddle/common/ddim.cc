@@ -36,14 +36,14 @@ DDim::DDim(std::initializer_list<int64_t> init_list)
 int64_t& DDim::at(int idx) {
   PADDLE_ENFORCE_GE(idx,
                     0,
-                    common::errors::InvalidArgument(
+                    errors::InvalidArgument(
                         "Invalid DDim index to be accessed. The valid index "
                         "is between 0 and %d, but received index is %d.",
                         rank_,
                         idx));
   PADDLE_ENFORCE_LT(idx,
                     rank_,
-                    common::errors::InvalidArgument(
+                    errors::InvalidArgument(
                         "Invalid DDim index to be accessed. The valid index "
                         "is between 0 and %d, but received index is %d.",
                         rank_,
@@ -54,14 +54,14 @@ int64_t& DDim::at(int idx) {
 int64_t DDim::at(int idx) const {
   PADDLE_ENFORCE_GE(idx,
                     0,
-                    common::errors::InvalidArgument(
+                    errors::InvalidArgument(
                         "Invalid DDim index to be accessed. The valid index "
                         "is between 0 and %d, but received index is %d.",
                         rank_,
                         idx));
   PADDLE_ENFORCE_LT(idx,
                     rank_,
-                    common::errors::InvalidArgument(
+                    errors::InvalidArgument(
                         "Invalid DDim index to be accessed. The valid index "
                         "is between 0 and %d, but received index is %d.",
                         rank_,
@@ -143,7 +143,7 @@ DDim slice_ddim(const DDim& dim, int begin, int end) {
   PADDLE_ENFORCE_EQ(
       (begin >= 0 && end <= dim.size()),
       true,
-      common::errors::InvalidArgument(
+      errors::InvalidArgument(
           "[begin(%d), end(%d)) must be inside [0, %d) in ddim slice.",
           begin,
           end,
@@ -173,30 +173,30 @@ std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
 }
 
 DDim flatten_to_3d(const DDim& src, int num_row_dims, int num_col_dims) {
-  PADDLE_ENFORCE_GE(src.size(),
-                    3,
-                    common::errors::InvalidArgument(
-                        "The rank of src dim should be at least 3 "
-                        "in flatten_to_3d, but received %d.",
-                        src.size()));
-  PADDLE_ENFORCE_EQ((num_row_dims >= 1 && num_row_dims < src.size()),
-                    true,
-                    common::errors::InvalidArgument(
-                        "The num_row_dims should be inside [1, %d] "
-                        "in flatten_to_3d, but received %d.",
-                        src.size() - 1,
-                        num_row_dims));
-  PADDLE_ENFORCE_EQ((num_col_dims >= 2 && num_col_dims <= src.size()),
-                    true,
-                    common::errors::InvalidArgument(
-                        "The num_col_dims should be inside [2, %d] "
-                        "in flatten_to_3d, but received %d.",
-                        src.size(),
-                        num_col_dims));
+  PADDLE_ENFORCE_GE(
+      src.size(),
+      3,
+      errors::InvalidArgument("The rank of src dim should be at least 3 "
+                              "in flatten_to_3d, but received %d.",
+                              src.size()));
+  PADDLE_ENFORCE_EQ(
+      (num_row_dims >= 1 && num_row_dims < src.size()),
+      true,
+      errors::InvalidArgument("The num_row_dims should be inside [1, %d] "
+                              "in flatten_to_3d, but received %d.",
+                              src.size() - 1,
+                              num_row_dims));
+  PADDLE_ENFORCE_EQ(
+      (num_col_dims >= 2 && num_col_dims <= src.size()),
+      true,
+      errors::InvalidArgument("The num_col_dims should be inside [2, %d] "
+                              "in flatten_to_3d, but received %d.",
+                              src.size(),
+                              num_col_dims));
   PADDLE_ENFORCE_GE(
       num_col_dims,
       num_row_dims,
-      common::errors::InvalidArgument(
+      errors::InvalidArgument(
           "The num_row_dims should be less than num_col_dims in flatten_to_3d,"
           "but received num_row_dims = %d, num_col_dims = %d.",
           num_row_dims,
@@ -252,7 +252,7 @@ DDim DDim::reshape(std::vector<int>& shape) const {
     shape[index] = static_cast<int>(product(in_dims)) / reshape_out_product;
   }
 
-  return common::make_ddim(shape);
+  return make_ddim(shape);
 }
 
 DDim DDim::reshape(std::vector<int64_t>& shape) const {
@@ -273,7 +273,7 @@ DDim DDim::reshape(std::vector<int64_t>& shape) const {
     shape[index] = static_cast<int64_t>(product(in_dims)) / reshape_out_product;
   }
 
-  return common::make_ddim(shape);
+  return make_ddim(shape);
 }
 
 DDim DDim::transpose(const std::vector<int>& axis) const {

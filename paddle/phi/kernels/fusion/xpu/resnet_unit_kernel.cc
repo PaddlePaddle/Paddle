@@ -62,15 +62,15 @@ void ResNetUnitXPUKernel(const Context &dev_ctx,
 
   bool is_nchw = (data_format == "NCHW");
   // input x
-  const phi::DenseTensor *input_x = &x_in;
-  const phi::DenseTensor *filter_x = &filter_x_in;
-  const phi::DenseTensor *scale_x = &scale_x_in;
-  const phi::DenseTensor *bias_x = &bias_x_in;
+  const DenseTensor *input_x = &x_in;
+  const DenseTensor *filter_x = &filter_x_in;
+  const DenseTensor *scale_x = &scale_x_in;
+  const DenseTensor *bias_x = &bias_x_in;
 
   // output x
-  phi::DenseTensor *conv_out_x = conv_x;
+  DenseTensor *conv_out_x = conv_x;
 
-  phi::DenseTensor *output = out;
+  DenseTensor *output = out;
 
   //  attrs
   float eps = epsilon;
@@ -113,12 +113,12 @@ void ResNetUnitXPUKernel(const Context &dev_ctx,
   std::vector<const float *> w_maxlist = {nullptr};
   if (has_shortcut) {
     // input z
-    const phi::DenseTensor *input_z = z_in.get_ptr();
-    const phi::DenseTensor *filter_z = filter_z_in.get_ptr();
-    const phi::DenseTensor *scale_z = scale_z_in.get_ptr();
-    const phi::DenseTensor *bias_z = bias_z_in.get_ptr();
+    const DenseTensor *input_z = z_in.get_ptr();
+    const DenseTensor *filter_z = filter_z_in.get_ptr();
+    const DenseTensor *scale_z = scale_z_in.get_ptr();
+    const DenseTensor *bias_z = bias_z_in.get_ptr();
 
-    phi::DenseTensor *conv_out_z = conv_z;
+    DenseTensor *conv_out_z = conv_z;
 
     x_list.push_back(reinterpret_cast<const XPUType *>(input_z->data<T>()));
     w_list.push_back(reinterpret_cast<const XPUType *>(filter_z->data<T>()));
@@ -145,7 +145,7 @@ void ResNetUnitXPUKernel(const Context &dev_ctx,
     w_maxlist.push_back(nullptr);
   } else {
     if (fuse_add) {
-      const phi::DenseTensor *input_z = z_in.get_ptr();
+      const DenseTensor *input_z = z_in.get_ptr();
       auto input_z_shape = common::vectorize<int64_t>(input_z->dims());
       x_list.push_back(reinterpret_cast<const XPUType *>(input_z->data<T>()));
       x_shape_list.push_back(input_z_shape);

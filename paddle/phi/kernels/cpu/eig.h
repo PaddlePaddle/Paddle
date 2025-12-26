@@ -152,7 +152,6 @@ void LapackEig(DenseTensor* input,
                const Context& dev_ctx) {
   char jobvl = 'N';
   char jobvr = 'V';  // only right eigenvectors are computed
-  int num_dims = input->dims().size();
   int order = static_cast<int>(input->dims(-1));
 
   T* input_data = input->data<T>();
@@ -247,7 +246,6 @@ void MagmaEig(const Context& dev_ctx,
       common::errors::PreconditionNotMet(
           "the numel of input should be in [0, "
           "std::numeric_limits<int32_t>::max()]"));
-  auto num_dims = input.dims().size();
   // magma will modify original input, so copy to cpu at any case
   DenseTensor input_copy_cpu;
   input_copy_cpu.Resize(input.dims());

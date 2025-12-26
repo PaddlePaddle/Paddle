@@ -33,12 +33,12 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
                                              bool relu,
                                              bool padding_weights) {
   auto blas = GetBlas<DeviceContext, T>(dev_ctx);
-  phi::DenseTensor Y1;
+  DenseTensor Y1;
   T* Y1_data = nullptr;
   if (padding_weights) {
     const int NN = N + 4;
     const int KK = K + 4;
-    phi::DenseTensor X1;
+    DenseTensor X1;
     X1.Resize({M * KK});
     T* X1_data = dev_ctx.template HostAlloc<T>(&X1);
 
