@@ -57,6 +57,38 @@ struct Atan2Functor {
 };
 
 template <>
+struct Atan2Functor<int32_t> {
+  Atan2Functor(const int32_t* x1, const int32_t* x2, double* out, int64_t numel)
+      : x1_(x1), x2_(x2), out_(out), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    out_[idx] =
+        ::atan2(static_cast<double>(x1_[idx]), static_cast<double>(x2_[idx]));
+  }
+
+  const int32_t* x1_;
+  const int32_t* x2_;
+  double* out_;
+  int64_t numel_;
+};
+
+template <>
+struct Atan2Functor<int64_t> {
+  Atan2Functor(const int64_t* x1, const int64_t* x2, double* out, int64_t numel)
+      : x1_(x1), x2_(x2), out_(out), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    out_[idx] =
+        ::atan2(static_cast<double>(x1_[idx]), static_cast<double>(x2_[idx]));
+  }
+
+  const int64_t* x1_;
+  const int64_t* x2_;
+  double* out_;
+  int64_t numel_;
+};
+
+template <>
 struct Atan2Functor<double> {
   Atan2Functor(const double* x1, const double* x2, double* out, int64_t numel)
       : x1_(x1), x2_(x2), out_(out), numel_(numel) {}
@@ -91,24 +123,6 @@ void Atan2Kernel(const Context& dev_ctx,
   } else {
     DenseTensor b_x, b_y;
     // Calculate broadcasted dims
-    auto x_dims = x.dims();
-    auto y_dims = y.dims();
-    int max_dim = std::max(x_dims.size(), y_dims.size());
-    int axis = std::abs(x_dims.size() - y_dims.size());
-    std::vector<int64_t> x_dims_array(max_dim);
-    std::vector<int64_t> y_dims_array(max_dim);
-    std::vector<int64_t> out_dims_array(max_dim);
-    phi::funcs::GetBroadcastDimsArrays(x_dims,
-                                       y_dims,
-                                       x_dims_array.data(),
-                                       y_dims_array.data(),
-                                       out_dims_array.data(),
-                                       max_dim,
-                                       axis);
-    auto out_dims = common::make_ddim(out_dims_array);
-    b_x.Resize(out_dims);
-    b_y.Resize(out_dims);
-
     std::vector<const DenseTensor*> inputs = {&x, &y};
     std::vector<DenseTensor*> outputs = {&b_x, &b_y};
     phi::BroadcastTensorsKernel<T, Context>(dev_ctx, inputs, outputs);
