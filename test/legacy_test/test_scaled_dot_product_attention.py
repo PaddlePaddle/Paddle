@@ -47,6 +47,8 @@ def attention_naive(q, k, v, causal=False):
 
 
 def attention_naive_with_mask(q, k, v, attn_bias):
+    if attn_bias is not None and attn_bias.dim() == 3:
+        attn_bias = paddle.unsqueeze(attn_bias, axis=1)
     qt = paddle.transpose(q, [0, 2, 1, 3])
     kt = paddle.transpose(k, [0, 2, 1, 3])
     vt = paddle.transpose(v, [0, 2, 1, 3])
@@ -616,6 +618,50 @@ class TestMemEffAttnMaskBroadcasting(unittest.TestCase):
             q.grad.numpy(), q_ref.grad.numpy(), rtol=5e-3, atol=1e-3
         )
 
+    def test_broadcast_mask_head_match_batch_broadcast(self):
+        paddle.disable_static()
+
+        query = np.random.random(self.q_shape).astype(self.dtype)
+        key = np.random.random(self.q_shape).astype(self.dtype)
+        value = np.random.random(self.q_shape).astype(self.dtype)
+        mask = np.random.random(
+            [1, self.num_heads, self.seq_len, self.seq_len]
+        ).astype(self.dtype)
+
+        q = paddle.to_tensor(query, place=self.place, stop_gradient=False)
+        k = paddle.to_tensor(key, place=self.place, stop_gradient=False)
+        v = paddle.to_tensor(value, place=self.place, stop_gradient=False)
+        m = paddle.to_tensor(mask, place=self.place, stop_gradient=False)
+
+        q_ref = paddle.to_tensor(query, place=self.place, stop_gradient=False)
+        k_ref = paddle.to_tensor(key, place=self.place, stop_gradient=False)
+        v_ref = paddle.to_tensor(value, place=self.place, stop_gradient=False)
+        m_ref = paddle.to_tensor(mask, place=self.place, stop_gradient=False)
+
+        with sdp_kernel(
+            enable_math=False, enable_flash=False, enable_mem_efficient=True
+        ):
+            out = scaled_dot_product_attention(
+                q,
+                k,
+                v,
+                attn_mask=m,
+                dropout_p=self.dropout,
+                is_causal=self.causal,
+            )
+
+        out_ref = attention_naive_with_mask(q_ref, k_ref, v_ref, m_ref)
+
+        np.testing.assert_allclose(
+            out.numpy(), out_ref.numpy(), rtol=5e-3, atol=1e-3
+        )
+
+        out.backward()
+        out_ref.backward()
+        np.testing.assert_allclose(
+            q.grad.numpy(), q_ref.grad.numpy(), rtol=5e-3, atol=1e-3
+        )
+
     def test_broadcast_mask_double_broadcast(self):
         """
         Test extreme case: [1, 1, S, S] -> [B, H, S, S]
@@ -642,6 +688,103 @@ class TestMemEffAttnMaskBroadcasting(unittest.TestCase):
                 q, k, v, attn_mask=m, dropout_p=self.dropout
             )
         self.assertEqual(out.shape, list(self.q_shape))
+
+    def _run_test_with_shape(self, mask_shape, case_name):
+        """
+        Helper function to run test with a specific mask shape.
+        Handles data creation, running both MEA and Naive implementations, and validation.
+        """
+        paddle.disable_static()
+
+        # 1. Prepare Inputs
+        query = np.random.random(self.q_shape).astype(self.dtype)
+        key = np.random.random(self.q_shape).astype(self.dtype)
+        value = np.random.random(self.q_shape).astype(self.dtype)
+        mask = np.random.random(mask_shape).astype(self.dtype)
+
+        q = paddle.to_tensor(query, place=self.place, stop_gradient=False)
+        k = paddle.to_tensor(key, place=self.place, stop_gradient=False)
+        v = paddle.to_tensor(value, place=self.place, stop_gradient=False)
+        m = paddle.to_tensor(mask, place=self.place, stop_gradient=False)
+
+        q_ref = paddle.to_tensor(query, place=self.place, stop_gradient=False)
+        k_ref = paddle.to_tensor(key, place=self.place, stop_gradient=False)
+        v_ref = paddle.to_tensor(value, place=self.place, stop_gradient=False)
+        m_ref = paddle.to_tensor(mask, place=self.place, stop_gradient=False)
+
+        # 2. Run Memory Efficient Attention (Target)
+        with sdp_kernel(
+            enable_math=False, enable_flash=False, enable_mem_efficient=True
+        ):
+            out = scaled_dot_product_attention(
+                q,
+                k,
+                v,
+                attn_mask=m,
+                is_causal=self.causal,
+            )
+
+        # 3. Run Naive Math (Reference)
+        # Note: Standard broadcasting rules apply for the reference implementation
+        # 2D [S, S] broadcasts to [B, H, S, S]
+        # 3D [B, S, S] broadcasts to [B, H, S, S]
+        out_ref = attention_naive_with_mask(q_ref, k_ref, v_ref, m_ref)
+
+        # 4. Validation
+        np.testing.assert_allclose(
+            out.numpy(),
+            out_ref.numpy(),
+            rtol=5e-3,
+            atol=1e-3,
+            err_msg=f"Output mismatch in case: {case_name}",
+        )
+
+        out.backward()
+        out_ref.backward()
+        np.testing.assert_allclose(
+            q.grad.numpy(),
+            q_ref.grad.numpy(),
+            rtol=5e-3,
+            atol=1e-3,
+            err_msg=f"Gradient mismatch in case: {case_name}",
+        )
+
+    def test_2d_mask(self):
+        """
+        Case: 2D Mask [Seq, Seq]
+        Expectation: Automatically broadcasts to [B, H, Seq, Seq]
+        """
+        mask_shape = (self.seq_len, self.seq_len)
+        self._run_test_with_shape(mask_shape, "test_2d_mask")
+
+    def test_3d_mask_batch_match(self):
+        """
+        Case: 3D Mask [B, Seq, Seq] where B > 1 matches Query
+        Expectation: Broadcasts to [B, H, Seq, Seq]
+        """
+        mask_shape = (self.batch_size, self.seq_len, self.seq_len)
+        self._run_test_with_shape(mask_shape, "test_3d_mask_batch_match")
+
+    def test_3d_mask_batch_broadcast(self):
+        """
+        Case: 3D Mask [1, Seq, Seq]
+        Expectation: Broadcasts to [B, H, Seq, Seq]
+        """
+        mask_shape = (1, self.seq_len, self.seq_len)
+        self._run_test_with_shape(mask_shape, "test_3d_mask_batch_broadcast")
+
+    def test_4d_mask_full_match(self):
+        """
+        Case: 4D Mask [B, H, Seq, Seq] (Full Match)
+        Expectation: Works natively without broadcasting
+        """
+        mask_shape = (
+            self.batch_size,
+            self.num_heads,
+            self.seq_len,
+            self.seq_len,
+        )
+        self._run_test_with_shape(mask_shape, "test_4d_mask_full_match")
 
 
 @unittest.skipIf(
@@ -756,6 +899,258 @@ class TestFlashAttnMaskLogic(unittest.TestCase):
         # Shape: [Batch, Seq, Seq]
         mask_shape = (self.batch_size, self.seq_len, self.seq_len)
         self._run_test_with_mask_shape(mask_shape)
+
+
+@unittest.skipIf(
+    paddle.device.is_compiled_with_xpu(),
+    "SDPA on XPU force select FA backend, skip math broadcast test.",
+)
+class TestMathAttnMaskBroadcasting(unittest.TestCase):
+    """
+    Test case specifically for validating mask broadcasting logic in math_attention.
+    Target issue: Fix crash when mask shape is [B, 1, S, S] and Query is [B, H, S, D] where B > 1.
+    """
+
+    def setUp(self):
+        self.place = get_device_place()
+        self.dtype = 'float32'
+        self.dropout = 0.0
+        self.causal = False
+
+        # Key configuration to trigger the bug:
+        # 1. Batch Size > 1
+        # 2. Query Heads > 1
+        # 3. Mask Heads == 1 (Requires broadcast)
+        self.batch_size = 3
+        self.seq_len = 8
+        self.num_heads = 4
+        self.head_dim = 16
+
+        self.q_shape = (
+            self.batch_size,
+            self.seq_len,
+            self.num_heads,
+            self.head_dim,
+        )
+        # Mask shape: [Batch, 1, Seq, Seq]
+        # This matches Query on Batch (3==3), but mismatch on Heads (1!=4)
+        self.mask_shape = (self.batch_size, 1, self.seq_len, self.seq_len)
+
+    def test_broadcast_mask_batch_match_head_broadcast(self):
+        paddle.disable_static()
+
+        # Create Inputs
+        query = np.random.random(self.q_shape).astype(self.dtype)
+        key = np.random.random(self.q_shape).astype(self.dtype)
+        value = np.random.random(self.q_shape).astype(self.dtype)
+        mask = np.random.random(self.mask_shape).astype(self.dtype)
+
+        q = paddle.to_tensor(query, place=self.place, stop_gradient=False)
+        k = paddle.to_tensor(key, place=self.place, stop_gradient=False)
+        v = paddle.to_tensor(value, place=self.place, stop_gradient=False)
+        m = paddle.to_tensor(mask, place=self.place, stop_gradient=False)
+
+        # Create Reference Inputs (Clone)
+        q_ref = paddle.to_tensor(query, place=self.place, stop_gradient=False)
+        k_ref = paddle.to_tensor(key, place=self.place, stop_gradient=False)
+        v_ref = paddle.to_tensor(value, place=self.place, stop_gradient=False)
+        m_ref = paddle.to_tensor(mask, place=self.place, stop_gradient=False)
+
+        with sdp_kernel(
+            enable_math=True, enable_flash=False, enable_mem_efficient=False
+        ):
+            out = scaled_dot_product_attention(
+                q,
+                k,
+                v,
+                attn_mask=m,
+                dropout_p=self.dropout,
+                is_causal=self.causal,
+            )
+
+        # 2. Run with Naive Math Implementation (Reference)
+        # Using the helper function defined in your file
+        out_ref = attention_naive_with_mask(q_ref, k_ref, v_ref, m_ref)
+
+        # 3. Validation
+        # Check Output values
+        np.testing.assert_allclose(
+            out.numpy(), out_ref.numpy(), rtol=5e-3, atol=1e-3
+        )
+
+        # Check Gradients (Optional but good practice)
+        out.backward()
+        out_ref.backward()
+        np.testing.assert_allclose(
+            q.grad.numpy(), q_ref.grad.numpy(), rtol=5e-3, atol=1e-3
+        )
+
+    def test_broadcast_mask_head_match_batch_broadcast(self):
+        paddle.disable_static()
+
+        query = np.random.random(self.q_shape).astype(self.dtype)
+        key = np.random.random(self.q_shape).astype(self.dtype)
+        value = np.random.random(self.q_shape).astype(self.dtype)
+        mask = np.random.random(
+            [1, self.num_heads, self.seq_len, self.seq_len]
+        ).astype(self.dtype)
+
+        q = paddle.to_tensor(query, place=self.place, stop_gradient=False)
+        k = paddle.to_tensor(key, place=self.place, stop_gradient=False)
+        v = paddle.to_tensor(value, place=self.place, stop_gradient=False)
+        m = paddle.to_tensor(mask, place=self.place, stop_gradient=False)
+
+        q_ref = paddle.to_tensor(query, place=self.place, stop_gradient=False)
+        k_ref = paddle.to_tensor(key, place=self.place, stop_gradient=False)
+        v_ref = paddle.to_tensor(value, place=self.place, stop_gradient=False)
+        m_ref = paddle.to_tensor(mask, place=self.place, stop_gradient=False)
+
+        with sdp_kernel(
+            enable_math=True, enable_flash=False, enable_mem_efficient=False
+        ):
+            out = scaled_dot_product_attention(
+                q,
+                k,
+                v,
+                attn_mask=m,
+                dropout_p=self.dropout,
+                is_causal=self.causal,
+            )
+
+        out_ref = attention_naive_with_mask(q_ref, k_ref, v_ref, m_ref)
+
+        np.testing.assert_allclose(
+            out.numpy(), out_ref.numpy(), rtol=5e-3, atol=1e-3
+        )
+
+        out.backward()
+        out_ref.backward()
+        np.testing.assert_allclose(
+            q.grad.numpy(), q_ref.grad.numpy(), rtol=5e-3, atol=1e-3
+        )
+
+    def test_broadcast_mask_double_broadcast(self):
+        """
+        Test extreme case: [1, 1, S, S] -> [B, H, S, S]
+        This was technically supported before, but good to regression test.
+        """
+        paddle.disable_static()
+
+        # Mask shape: [1, 1, Seq, Seq]
+        broadcast_mask_shape = (1, 1, self.seq_len, self.seq_len)
+
+        query = np.random.random(self.q_shape).astype(self.dtype)
+        mask = np.random.random(broadcast_mask_shape).astype(self.dtype)
+
+        q = paddle.to_tensor(query, place=self.place)
+        k = paddle.to_tensor(query, place=self.place)  # shared for simplicity
+        v = paddle.to_tensor(query, place=self.place)
+        m = paddle.to_tensor(mask, place=self.place)
+
+        # Should pass without error
+        with sdp_kernel(
+            enable_math=True, enable_flash=False, enable_mem_efficient=False
+        ):
+            out = scaled_dot_product_attention(
+                q, k, v, attn_mask=m, dropout_p=self.dropout
+            )
+        self.assertEqual(out.shape, list(self.q_shape))
+
+    def _run_test_with_shape(self, mask_shape, case_name):
+        """
+        Helper function to run test with a specific mask shape.
+        Handles data creation, running both MEA and Naive implementations, and validation.
+        """
+        paddle.disable_static()
+
+        # 1. Prepare Inputs
+        query = np.random.random(self.q_shape).astype(self.dtype)
+        key = np.random.random(self.q_shape).astype(self.dtype)
+        value = np.random.random(self.q_shape).astype(self.dtype)
+        mask = np.random.random(mask_shape).astype(self.dtype)
+
+        q = paddle.to_tensor(query, place=self.place, stop_gradient=False)
+        k = paddle.to_tensor(key, place=self.place, stop_gradient=False)
+        v = paddle.to_tensor(value, place=self.place, stop_gradient=False)
+        m = paddle.to_tensor(mask, place=self.place, stop_gradient=False)
+
+        q_ref = paddle.to_tensor(query, place=self.place, stop_gradient=False)
+        k_ref = paddle.to_tensor(key, place=self.place, stop_gradient=False)
+        v_ref = paddle.to_tensor(value, place=self.place, stop_gradient=False)
+        m_ref = paddle.to_tensor(mask, place=self.place, stop_gradient=False)
+
+        with sdp_kernel(
+            enable_math=True, enable_flash=False, enable_mem_efficient=False
+        ):
+            out = scaled_dot_product_attention(
+                q,
+                k,
+                v,
+                attn_mask=m,
+                is_causal=self.causal,
+            )
+
+        # 3. Run Naive Math (Reference)
+        # Note: Standard broadcasting rules apply for the reference implementation
+        # 2D [S, S] broadcasts to [B, H, S, S]
+        # 3D [B, S, S] broadcasts to [B, H, S, S]
+        out_ref = attention_naive_with_mask(q_ref, k_ref, v_ref, m_ref)
+
+        # 4. Validation
+        np.testing.assert_allclose(
+            out.numpy(),
+            out_ref.numpy(),
+            rtol=5e-3,
+            atol=1e-3,
+            err_msg=f"Output mismatch in case: {case_name}",
+        )
+
+        out.backward()
+        out_ref.backward()
+        np.testing.assert_allclose(
+            q.grad.numpy(),
+            q_ref.grad.numpy(),
+            rtol=5e-3,
+            atol=1e-3,
+            err_msg=f"Gradient mismatch in case: {case_name}",
+        )
+
+    def test_2d_mask(self):
+        """
+        Case: 2D Mask [Seq, Seq]
+        Expectation: Automatically broadcasts to [B, H, Seq, Seq]
+        """
+        mask_shape = (self.seq_len, self.seq_len)
+        self._run_test_with_shape(mask_shape, "test_2d_mask")
+
+    def test_3d_mask_batch_match(self):
+        """
+        Case: 3D Mask [B, Seq, Seq] where B > 1 matches Query
+        Expectation: Broadcasts to [B, H, Seq, Seq]
+        """
+        mask_shape = (self.batch_size, self.seq_len, self.seq_len)
+        self._run_test_with_shape(mask_shape, "test_3d_mask_batch_match")
+
+    def test_3d_mask_batch_broadcast(self):
+        """
+        Case: 3D Mask [1, Seq, Seq]
+        Expectation: Broadcasts to [B, H, Seq, Seq]
+        """
+        mask_shape = (1, self.seq_len, self.seq_len)
+        self._run_test_with_shape(mask_shape, "test_3d_mask_batch_broadcast")
+
+    def test_4d_mask_full_match(self):
+        """
+        Case: 4D Mask [B, H, Seq, Seq] (Full Match)
+        Expectation: Works natively without broadcasting
+        """
+        mask_shape = (
+            self.batch_size,
+            self.num_heads,
+            self.seq_len,
+            self.seq_len,
+        )
+        self._run_test_with_shape(mask_shape, "test_4d_mask_full_match")
 
 
 if __name__ == '__main__':

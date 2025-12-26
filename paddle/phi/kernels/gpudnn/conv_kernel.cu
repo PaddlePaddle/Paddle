@@ -45,6 +45,7 @@
 #include "paddle/common/flags.h"
 
 COMMON_DECLARE_bool(manually_trans_conv_filter);
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 template <typename T, typename Context>
@@ -230,12 +231,6 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
   auto& plan_cache = phi::autotune::AutoTuneCache::Instance().GetConvV8(
       phi::autotune::AlgorithmType::kConvForwardV8);
 
-  PADDLE_ENFORCE_EQ(
-      groups,
-      1,
-      common::errors::Unimplemented(
-          "Group concolution using CUDNNv8 API unsupported for now"));
-
   T* input_data = const_cast<T*>(input_tensor->data<T>());
   T* filter_data = const_cast<T*>(filter_channel_tensor->data<T>());
   T* output_data = output_tensor->data<T>();
@@ -343,11 +338,11 @@ void ConvCudnnKernel(const Context& dev_ctx,
   auto compute_format = DataLayout::NCHW;
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
-  // Tensor Core introduced from Volta GPUs supports more faster conv op
-  // with FP16 or BF16 in NHWC data format.
   const bool compute_in_nhwc =
-      (dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLOAT16) &&
-      IsVoltaOrLater(dev_ctx);
+      FLAGS_use_accuracy_compatible_kernel
+          ? channel_last
+          : ((dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLOAT16) &&
+             IsVoltaOrLater(dev_ctx));
 #else
   // Tensor Core introduced from Volta GPUs supports more faster conv op
   // with FP16 in NHWC data format. (BF16 require cudnn >= 8.1.0)
@@ -495,7 +490,8 @@ void ConvCudnnKernel(const Context& dev_ctx,
   CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_filter_channel);
   CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_output);
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
-  if (dynload::IsCudnnFrontendEnabled() && (groups == 1))
+  if (dynload ::IsCudnnFrontendEnabled() &&
+      (FLAGS_use_accuracy_compatible_kernel || groups == 1))
     ConvCudnnKernelImplV8<T>(&transformed_input,
                              &transformed_filter_channel,
                              dev_ctx,
