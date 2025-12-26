@@ -874,7 +874,7 @@ void LaunchLayernormResidualDropoutBias(
     OutType *layernorm_dst,
     LayerNormParamType<T> *mean,
     LayerNormParamType<T> *var,
-    const phi::GPUContext &dev_ctx,
+    const GPUContext &dev_ctx,
     const float quant_last_in_scale = 1.0,
     const float *dequant_out_scale_data = nullptr,
     const float quant_next_in_scale = 1.0,
@@ -1122,7 +1122,7 @@ template <typename T,
           typename MaskType,
           bool ScaleBiasWithSameTypeX = false>
 void LaunchLayernormResidualDropoutGrad(
-    const phi::GPUContext &dev_ctx,
+    const GPUContext &dev_ctx,
     const int64_t rows,
     const int64_t cols,
     const float epsilon,

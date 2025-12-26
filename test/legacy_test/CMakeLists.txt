@@ -106,7 +106,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
   list(REMOVE_ITEM TEST_OPS test_fused_transpose_spilt_quant_op)
   list(REMOVE_ITEM TEST_OPS test_fused_transpose_wlch_split_quant_op)
-  list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_rms_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_swiglu_weighted_bwd_op)
   list(REMOVE_ITEM TEST_OPS test_fused_comm_buffer)
@@ -202,7 +202,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_bias)
   list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_int8_op)
   list(REMOVE_ITEM TEST_OPS test_masked_multihead_attention_op)
-  list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_rms_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
   list(REMOVE_ITEM TEST_OPS test_incubate_fast_ln)
   list(REMOVE_ITEM TEST_OPS test_fused_weighted_swiglu_act_quant_op)
@@ -575,7 +575,14 @@ if(NOT WITH_GPU
    OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 11.8))
 )# Restrict the use of older versions of CUB
   list(REMOVE_ITEM TEST_OPS test_incubate_fused_rmsnorm_ext)
-  list(REMOVE_ITEM TEST_OPS test_rms_norm)
+endif()
+
+if(NOT WITH_GPU
+   OR APPLE
+   OR WITH_ROCM
+   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 11.8))
+)# Restrict the use of older versions of CUB
+  list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
 endif()
 
 if(NOT WITH_GPU

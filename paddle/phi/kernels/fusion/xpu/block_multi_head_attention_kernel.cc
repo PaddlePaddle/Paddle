@@ -25,8 +25,8 @@ namespace fusion {
 
 template <typename Context>
 int GetMaxLen(const Context& dev_ctx,
-              const phi::DenseTensor& seq_lens_tensor,
-              phi::DenseTensor* max_len_tensor,
+              const DenseTensor& seq_lens_tensor,
+              DenseTensor* max_len_tensor,
               const int batch_size) {
   int max_len_cpu = 0;
   int r = baidu::xpu::api::reduce_max<int>(dev_ctx.x_context(),
@@ -175,8 +175,8 @@ void BlockMultiheadAttentionXPUKernel(
 
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  phi::DenseTensor qkv_buf;
-  phi::DenseTensor fmha_buf;
+  DenseTensor qkv_buf;
+  DenseTensor fmha_buf;
   VLOG(3) << "fmha_out " << fmha_out->dims();
   if (out_scale <= 0) {
     dev_ctx.template Alloc<T>(fmha_out);
@@ -232,7 +232,7 @@ void BlockMultiheadAttentionXPUKernel(
 
   int max_dec_len_this_time_data(0);
   if (!max_dec_len_this_time) {
-    phi::DenseTensor max_dec_len_tensor;
+    DenseTensor max_dec_len_tensor;
     max_dec_len_tensor.Resize({{1}});
     dev_ctx.template Alloc<int>(&max_dec_len_tensor,
                                 max_dec_len_tensor.numel() * sizeof(int));
@@ -249,7 +249,7 @@ void BlockMultiheadAttentionXPUKernel(
   }
   int max_enc_len_this_time_data(0);
   if (!max_enc_len_this_time) {
-    phi::DenseTensor max_enc_len_tensor;
+    DenseTensor max_enc_len_tensor;
     max_enc_len_tensor.Resize({{1}});
     dev_ctx.template Alloc<int>(&max_enc_len_tensor,
                                 max_enc_len_tensor.numel() * sizeof(int));
@@ -267,9 +267,9 @@ void BlockMultiheadAttentionXPUKernel(
 
   const int MAXPTR_N = xpu_context->max_ptr_size();
   VLOG(3) << "max_len end";
-  phi::DenseTensor unpadding_q, unpadding_k, unpadding_v;
-  phi::DenseTensor softmax_out, softmax_lse, seed_offset;
-  phi::DenseTensor q_trans, k_trans, v_trans, qktv_out;
+  DenseTensor unpadding_q, unpadding_k, unpadding_v;
+  DenseTensor softmax_out, softmax_lse, seed_offset;
+  DenseTensor q_trans, k_trans, v_trans, qktv_out;
   if (!use_pre_cache) {
     unpadding_q.Resize({{token_num, q_num_head, dim_head}});
     unpadding_k.Resize({{token_num, kv_num_head, dim_head}});

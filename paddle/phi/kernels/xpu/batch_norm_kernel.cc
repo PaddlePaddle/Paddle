@@ -85,8 +85,8 @@ void BatchNormKernel(const Context& dev_ctx,
   auto* Scale = scale.get_ptr();
   auto* Bias = bias.get_ptr();
 
-  phi::DenseTensor new_scale;
-  phi::DenseTensor new_bias;
+  DenseTensor new_scale;
+  DenseTensor new_bias;
 
   if (Scale) {
     new_scale = scale.get();

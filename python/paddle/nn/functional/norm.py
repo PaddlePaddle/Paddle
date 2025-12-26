@@ -470,6 +470,7 @@ def rms_norm(
 ) -> tuple[Tensor, Tensor]:
     """
     Applies Layer Normalization over the last dimension of the input tensor using CUDA implementation.
+
     Args:
         input (Tensor): Input tensor of shape [rows, cols] or higher dimensions (flattened to 2D).
         normalized_shape(int|list|tuple): Input shape from an expected input of
@@ -479,6 +480,7 @@ def rms_norm(
         weight(Tensor, optional): The weight tensor of rms_norm. Default: None.
         eps(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-05.
         name (str, optional): Name of the operator.
+
     Returns:
         out (Tensor): Normalized tensor of same shape as input.
         invvar (Tensor): Tensor of shape [rows], the inverse standard deviation of each row.
@@ -522,7 +524,7 @@ def rms_norm(
         raise ValueError("weight must not be None.")
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.fused_rms_norm_ext(input, weight, eps)
+        return _C_ops.rms_norm(input, weight, eps)
 
     helper = LayerHelper('rms_norm', **locals())
     from paddle.base.data_feeder import convert_dtype

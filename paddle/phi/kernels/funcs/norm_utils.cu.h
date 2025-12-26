@@ -428,21 +428,21 @@ __global__ void DoubleGradComputeDDYWithGlobal(const T *ddx,
 template <typename DeviceContext, typename T>
 void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                            const DataLayout data_layout,
-                           const phi::DenseTensor *X,
-                           const phi::DenseTensor *Scale,
-                           const phi::DenseTensor *dY,
-                           const phi::DenseTensor *Saved_mean,
-                           const phi::DenseTensor *Saved_variance,
-                           const phi::DenseTensor *Mean,
-                           const phi::DenseTensor *Variance,
+                           const DenseTensor *X,
+                           const DenseTensor *Scale,
+                           const DenseTensor *dY,
+                           const DenseTensor *Saved_mean,
+                           const DenseTensor *Saved_variance,
+                           const DenseTensor *Mean,
+                           const DenseTensor *Variance,
                            const double epsilon,
                            const bool use_global_stats,
-                           const phi::DenseTensor *ddX,
-                           const phi::DenseTensor *ddScale,
-                           const phi::DenseTensor *ddBias,
-                           phi::DenseTensor *dX,
-                           phi::DenseTensor *dScale,
-                           phi::DenseTensor *ddY) {
+                           const DenseTensor *ddX,
+                           const DenseTensor *ddScale,
+                           const DenseTensor *ddBias,
+                           DenseTensor *dX,
+                           DenseTensor *dScale,
+                           DenseTensor *ddY) {
   const T *x_data = X->data<T>();
   const T *dy_data = dY->data<T>();
   const T *ddx_data = (ddX == nullptr ? nullptr : ddX->data<T>());
@@ -458,7 +458,7 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
   const int N = x_dims[0];
   const int64_t num = X->numel();
   const int sample_size = num / N / C;
-  phi::DenseTensor scale_tmp;
+  DenseTensor scale_tmp;
   if (!Scale) {
     scale_tmp.Resize({C});
     dev_ctx.template Alloc<T>(&scale_tmp);

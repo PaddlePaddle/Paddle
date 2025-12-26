@@ -237,13 +237,13 @@ void SumRawKernel(const Context& dev_ctx,
 
   if (x.dtype() == phi::DataType::BFLOAT16 &&
       out_dtype == phi::DataType::FLOAT32) {
-    std::vector<int> reduce_dims = phi::funcs::details::GetReduceDim(
+    std::vector<int> reduce_dims = funcs::details::GetReduceDim(
         dims.GetData(), x.dims().size(), reduce_all);
 
-    phi::funcs::ReduceKernel<phi::bfloat16,
-                             float,
-                             kps::AddFunctor,
-                             kps::IdentityFunctor<phi::bfloat16, float>>(
+    funcs::ReduceKernel<phi::bfloat16,
+                        float,
+                        kps::AddFunctor,
+                        kps::IdentityFunctor<phi::bfloat16, float>>(
         dev_ctx,
         x,
         out,

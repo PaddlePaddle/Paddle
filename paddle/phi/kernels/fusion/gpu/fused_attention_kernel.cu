@@ -151,7 +151,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
 
   bool is_upscale_in_train_1 =
       (attn_dropout_implementation == "upscale_in_train");
-  phi::DenseTensor *seed_1 = nullptr;
+  DenseTensor *seed_1 = nullptr;
 
   // get data ptr for qkv part.
   const auto input_x_dims = x_p->dims();

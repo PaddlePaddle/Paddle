@@ -27,26 +27,26 @@ namespace fusion {
 
 template <typename T, typename Context>
 void FFNGrad(const phi::XPUContext& dev_ctx,
-             const phi::DenseTensor* d_out,
-             const phi::DenseTensor* x,
-             const phi::DenseTensor* dropout1_mask,
-             const phi::DenseTensor* dropout2_mask,
-             const phi::DenseTensor* linear1_out,
-             const phi::DenseTensor* ln1_out,
-             const phi::DenseTensor* dropout1_out,
-             const phi::DenseTensor* dropout2_out,
-             const phi::DenseTensor* linear1_weight,
-             const phi::DenseTensor* linear2_weight,
-             const phi::DenseTensor* ln_scale,
-             const phi::DenseTensor* ln_mean,
-             const phi::DenseTensor* ln_variance,
-             phi::DenseTensor* d_x,
-             phi::DenseTensor* d_linear1_weight,
-             phi::DenseTensor* d_linear1_bias,
-             phi::DenseTensor* d_linear2_weight,
-             phi::DenseTensor* d_linear2_bias,
-             phi::DenseTensor* d_ln_scale,
-             phi::DenseTensor* d_ln_bias,
+             const DenseTensor* d_out,
+             const DenseTensor* x,
+             const DenseTensor* dropout1_mask,
+             const DenseTensor* dropout2_mask,
+             const DenseTensor* linear1_out,
+             const DenseTensor* ln1_out,
+             const DenseTensor* dropout1_out,
+             const DenseTensor* dropout2_out,
+             const DenseTensor* linear1_weight,
+             const DenseTensor* linear2_weight,
+             const DenseTensor* ln_scale,
+             const DenseTensor* ln_mean,
+             const DenseTensor* ln_variance,
+             DenseTensor* d_x,
+             DenseTensor* d_linear1_weight,
+             DenseTensor* d_linear1_bias,
+             DenseTensor* d_linear2_weight,
+             DenseTensor* d_linear2_bias,
+             DenseTensor* d_ln_scale,
+             DenseTensor* d_ln_bias,
              const int bsz_seq,
              const int d_model,
              const int dim_feedforward,
@@ -424,9 +424,9 @@ void FusedFeedForwardGradKernel(
   auto* linear1_weight_ptr = &linear1_weight;
   auto* linear2_weight_ptr = &linear2_weight;
 
-  const phi::DenseTensor* ln_mean = nullptr;
-  const phi::DenseTensor* ln_variance = nullptr;
-  const phi::DenseTensor* ln_scale = nullptr;
+  const DenseTensor* ln_mean = nullptr;
+  const DenseTensor* ln_variance = nullptr;
+  const DenseTensor* ln_scale = nullptr;
 
   if (pre_layer_norm) {
     ln_mean = ln1_mean.get_ptr();
@@ -441,8 +441,8 @@ void FusedFeedForwardGradKernel(
   // output
   auto* d_x = x_grad;
 
-  phi::DenseTensor* d_ln_scale = nullptr;
-  phi::DenseTensor* d_ln_bias = nullptr;
+  DenseTensor* d_ln_scale = nullptr;
+  DenseTensor* d_ln_bias = nullptr;
 
   if (pre_layer_norm) {
     d_ln_scale = ln1_scale_grad;

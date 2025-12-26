@@ -497,18 +497,16 @@ void BindProgram(py::module *m) {
              pir::IrMapping &mapper,
              Block *block) { return self->CopyToBlock(mapper, block); },
           return_value_policy::reference)
-      .def(
-          "list_vars",
-          [](std::shared_ptr<Program> self) {
-            std::vector<pir::Value> vars;
-            for (auto op : self->block()->ops()) {
-              for (auto var : op->results()) {
-                vars.push_back(var);
-              }
-            }
-            return vars;
-          },
-          return_value_policy::reference)
+      .def("list_vars",
+           [](std::shared_ptr<Program> self) {
+             py::list vars;
+             for (auto op : self->block()->ops()) {
+               for (auto var : op->results()) {
+                 vars.append(var);
+               }
+             }
+             return vars;
+           })
       .def("_list_named_vars",
            [](std::shared_ptr<Program> self) {
              return name_analysis::GetAllNamedValues(*self);

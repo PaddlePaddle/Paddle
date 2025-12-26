@@ -629,6 +629,14 @@ PADDLE_API void FusedRmsNormQuantGradInferMeta(const MetaTensor& x,
                                                MetaTensor* norm_weight_grad,
                                                MetaTensor* norm_bias_grad);
 
+PADDLE_API void RMSNormGradInferMeta(const MetaTensor& x,
+                                     const MetaTensor& scale,
+                                     const MetaTensor& invvar,
+                                     const MetaTensor& y_grad,
+                                     float epsilon,
+                                     MetaTensor* x_grad,
+                                     MetaTensor* scale_grad);
+
 PADDLE_API void RnnGradInferMeta(
     const MetaTensor& x,
     const std::vector<const MetaTensor*>& pre_state,

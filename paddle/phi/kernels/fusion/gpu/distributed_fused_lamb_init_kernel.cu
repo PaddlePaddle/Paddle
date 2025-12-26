@@ -178,18 +178,18 @@ static size_t FillAlignmentPaddingInfo(std::vector<ParamGradInfo> *infos,
 }
 
 template <typename T>
-static T *TensorFillConstant(const phi::GPUContext &dev_ctx,
+static T *TensorFillConstant(const GPUContext &dev_ctx,
                              DenseTensor *tensor,
                              const DDim &dims,
                              T value) {
   tensor->Resize(dims);
   auto *ptr = dev_ctx.template Alloc<T>(tensor);
-  funcs::SetConstant<phi::GPUContext, T> set_constant;
+  funcs::SetConstant<GPUContext, T> set_constant;
   set_constant(dev_ctx, tensor, value);
   return ptr;
 }
 
-static DenseTensor CastDataForInitedTensor(const phi::GPUContext &dev_ctx,
+static DenseTensor CastDataForInitedTensor(const GPUContext &dev_ctx,
                                            DenseTensor *origin,
                                            DenseTensor *fused_out,
                                            size_t numel_offset) {
@@ -221,11 +221,10 @@ static DenseTensor CastDataForInitedTensor(const phi::GPUContext &dev_ctx,
   return sliced_tensor;
 }
 
-static DenseTensor CopyAndShareBufferForInitedTensor(
-    const phi::GPUContext &dev_ctx,
-    DenseTensor *origin,
-    DenseTensor *fused_out,
-    size_t numel_offset) {
+static DenseTensor CopyAndShareBufferForInitedTensor(const GPUContext &dev_ctx,
+                                                     DenseTensor *origin,
+                                                     DenseTensor *fused_out,
+                                                     size_t numel_offset) {
   PADDLE_ENFORCE_EQ(
       origin->IsInitialized(),
       true,
@@ -287,7 +286,7 @@ static void ShareBufferForNonInitedTensor(DenseTensor *origin,
 }
 
 template <typename T>
-static void CopyVectorToCPUTensor(const phi::GPUContext &dev_ctx,
+static void CopyVectorToCPUTensor(const GPUContext &dev_ctx,
                                   const std::vector<T> &src,
                                   DenseTensor *dst) {
   dst->Resize({static_cast<int64_t>(src.size())});

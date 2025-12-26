@@ -88,7 +88,7 @@ class FusedEmbeddingFCLSTMKernel {
   /* diagonal weight*/                                            \
   const T* wc_data = bias->data<T>() + D4;                        \
   /* for peephole only*/                                          \
-  phi::DenseTensor checked_cell;                                  \
+  DenseTensor checked_cell;                                       \
   T* checked_cell_data = nullptr;                                 \
   if (use_peepholes) {                                            \
     /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/              \

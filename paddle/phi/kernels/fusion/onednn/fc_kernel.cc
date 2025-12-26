@@ -65,10 +65,10 @@ class FCOneDNNHandler
     : public funcs::OneDNNHandlerNoCachingT<T_in, dnnl::inner_product_forward> {
  public:
   FCOneDNNHandler(const OneDNNContext& dev_ctx,
-                  const phi::DenseTensor* x,
-                  const phi::DenseTensor* weights,
-                  const phi::DenseTensor* bias,
-                  phi::DenseTensor* out UNUSED,
+                  const DenseTensor* x,
+                  const DenseTensor* weights,
+                  const DenseTensor* bias,
+                  DenseTensor* out UNUSED,
                   const float scale_in,
                   const float scale_out,
                   const std::vector<float>& scale_weights,
@@ -276,7 +276,7 @@ class FCOneDNNHandler
 
  public:
   std::shared_ptr<dnnl::memory> AcquireSrcMemoryWithReorder(
-      const phi::DenseTensor* x) {
+      const DenseTensor* x) {
     const T_in* x_data = x->data<T_in>();
 
     auto user_md = x->mem_desc();
@@ -291,14 +291,14 @@ class FCOneDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireBiasMemoryWithReorder(
-      const phi::DenseTensor* bias) {
+      const DenseTensor* bias) {
     const float* bias_data = bias->data<float>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->bias_desc(),
                                             to_void_cast<float>(bias_data));
   }
 
   std::shared_ptr<dnnl::memory> AcquireWeightsMemoryWithReorder(
-      const phi::DenseTensor* weights, const std::vector<float>& scale_data) {
+      const DenseTensor* weights, const std::vector<float>& scale_data) {
     const std::string weights_base_key = this->memory_key_ + "@weights";
     std::string weights_key;
     weights_key.reserve(128);
@@ -340,7 +340,7 @@ class FCOneDNNHandler
     return memory_p;
   }
 
-  std::shared_ptr<dnnl::memory> AcquireCustomDstMemory(phi::DenseTensor* out) {
+  std::shared_ptr<dnnl::memory> AcquireCustomDstMemory(DenseTensor* out) {
     return this->template AcquireDstMemory<T_out>(out);
   }  // namespace operators
 
@@ -367,9 +367,9 @@ class FCOneDNNHandler
 
 void RecomputeOutputDims(const int in_num_col_dims,
                          const bool padding_weights,
-                         const phi::DenseTensor* x,
-                         const phi::DenseTensor* weights,
-                         phi::DenseTensor* out) {
+                         const DenseTensor* x,
+                         const DenseTensor* weights,
+                         DenseTensor* out) {
   PADDLE_ENFORCE_EQ(padding_weights,
                     false,
                     common::errors::PermissionDenied(
@@ -388,7 +388,7 @@ template <typename T>
 void PrepareSrcMem(const std::shared_ptr<dnnl::inner_product_forward>& fc_p
                        UNUSED,
                    const std::shared_ptr<dnnl::memory>& src_mem,
-                   const phi::DenseTensor* x,
+                   const DenseTensor* x,
                    const dnnl::engine& engine) {
   auto x_md = x->mem_desc().reshape(src_mem->get_desc().get_dims());
   if (x_md != src_mem->get_desc()) {

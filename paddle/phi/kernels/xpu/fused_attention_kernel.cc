@@ -73,10 +73,10 @@ void FusedAttentionKernel(const Context &dev_ctx,
   using XPUTypeT = typename XPUTypeTrait<T>::Type;
 
   // shape [batch_size, 1, 1, seq_len]
-  const phi::DenseTensor *src_mask_p = src_mask.get_ptr();
+  const DenseTensor *src_mask_p = src_mask.get_ptr();
 
-  const phi::DenseTensor *ln_scale_p = nullptr;
-  const phi::DenseTensor *ln_bias_p = nullptr;
+  const DenseTensor *ln_scale_p = nullptr;
+  const DenseTensor *ln_bias_p = nullptr;
 
   if (pre_layer_norm) {
     ln_scale_p = ln_scale.get_ptr();
@@ -96,7 +96,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
 
   bool is_upscale_in_train_1 =
       (attn_dropout_implementation == "upscale_in_train");
-  const phi::DenseTensor *seed_1 = nullptr;
+  const DenseTensor *seed_1 = nullptr;
 
   phi::XPUDropoutParam attn_dropout_param;
   attn_dropout_param.initXPUDropoutParam(attn_dropout_rate,

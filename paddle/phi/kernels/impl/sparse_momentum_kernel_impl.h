@@ -288,8 +288,8 @@ void InnerCompute(const Context& dev_ctx,
                           " the second dimension should be 1."));
   }
 
-  const phi::DenseTensor* master_param = nullptr;
-  phi::DenseTensor* master_param_out = nullptr;
+  const DenseTensor* master_param = nullptr;
+  DenseTensor* master_param_out = nullptr;
   if (multi_precision) {
     bool has_master = (master_param_in.get_ptr() != nullptr) &&
                       (master_param_out_out != nullptr);
@@ -329,7 +329,7 @@ void InnerCompute(const Context& dev_ctx,
       common::errors::InvalidArgument("The Grad's rank of sparse_momentum_op"
                                       " must be 2 now."));
 
-  phi::DenseTensor sorted_index, grad_index, sort_value;
+  DenseTensor sorted_index, grad_index, sort_value;
   sorted_index.Resize({num_index});
   grad_index.Resize({num_index});
   auto sorted_index_ptr = dev_ctx.template Alloc<IndexT>(&sorted_index);

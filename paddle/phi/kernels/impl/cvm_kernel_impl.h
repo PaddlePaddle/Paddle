@@ -104,7 +104,7 @@ void CVMGradOpKernel(const Context& dev_ctx,
   auto* dx = x_grad;
   T* dx_data = dev_ctx.template Alloc<T>(dx);
 
-  const phi::DenseTensor* cvm = &cvm_in;
+  const DenseTensor* cvm = &cvm_in;
   const T* cvm_data = cvm->data<T>();
 
   const auto* dOut = &out_grad;

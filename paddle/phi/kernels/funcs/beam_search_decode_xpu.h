@@ -20,14 +20,13 @@
 
 namespace phi {
 namespace funcs {
-inline int SetMeta(const phi::DenseTensor& srcTensor,
-                   phi::DenseTensor* dstTensor) {
+inline int SetMeta(const DenseTensor& srcTensor, DenseTensor* dstTensor) {
   if (srcTensor.dtype() == phi::DataType::INT32 ||
       srcTensor.dtype() == phi::DataType::INT64 ||
       srcTensor.dtype() == phi::DataType::FLOAT32 ||
       srcTensor.dtype() == phi::DataType::FLOAT16 ||
       srcTensor.dtype() == phi::DataType::FLOAT64) {
-    const phi::DenseTensorMeta meta_data(srcTensor.dtype(), srcTensor.dims());
+    const DenseTensorMeta meta_data(srcTensor.dtype(), srcTensor.dims());
     dstTensor->set_meta(meta_data);
   } else {
     return xpu::Error_t::INVALID_PARAM;
@@ -36,8 +35,8 @@ inline int SetMeta(const phi::DenseTensor& srcTensor,
   return xpu::Error_t::SUCCESS;
 }
 template <typename T>
-inline int CopyTensorByXPU(const phi::DenseTensor& srcTensor,
-                           phi::DenseTensor* dstTensor,
+inline int CopyTensorByXPU(const DenseTensor& srcTensor,
+                           DenseTensor* dstTensor,
                            int flag,
                            const Place& place) {
   const T* srcData = srcTensor.template data<T>();
@@ -72,8 +71,8 @@ inline int CopyTensorByXPU(const phi::DenseTensor& srcTensor,
   return xpu::Error_t::SUCCESS;
 }
 
-const int CopyTensorByType(const phi::DenseTensor& srcTensor,
-                           phi::DenseTensor* dstTensor,
+const int CopyTensorByType(const DenseTensor& srcTensor,
+                           DenseTensor* dstTensor,
                            int flag,
                            const Place& place) {
   int r = 0;
@@ -101,8 +100,8 @@ const int CopyTensorByType(const phi::DenseTensor& srcTensor,
 struct BeamSearchDecodeXPUFunctor {
   BeamSearchDecodeXPUFunctor(const TensorArray& step_ids,
                              const TensorArray& step_scores,
-                             phi::DenseTensor* id_tensor,
-                             phi::DenseTensor* score_tensor,
+                             DenseTensor* id_tensor,
+                             DenseTensor* score_tensor,
                              size_t beam_size,
                              int end_id)
       : beam_size_(beam_size),
@@ -115,7 +114,7 @@ struct BeamSearchDecodeXPUFunctor {
     if (step_ids.at(0).place().GetType() == phi::AllocationType::XPU) {
       // Copy all tensors in the input tensor array
       for (auto& step_id : step_ids) {
-        phi::DenseTensor out;
+        DenseTensor out;
         if (step_id.numel() > 0) {
           r = CopyTensorByType(step_id, &out, 0, step_ids.at(0).place());
           PADDLE_ENFORCE_EQ(
@@ -133,7 +132,7 @@ struct BeamSearchDecodeXPUFunctor {
     if (step_scores.at(0).place().GetType() == phi::AllocationType::XPU) {
       // Copy all tensors in the input tensor array
       for (auto& step_score : step_scores) {
-        phi::DenseTensor out;
+        DenseTensor out;
         if (step_score.numel() > 0) {
           r = CopyTensorByType(step_score, &out, 0, step_scores.at(0).place());
           PADDLE_ENFORCE_EQ(
@@ -168,8 +167,8 @@ struct BeamSearchDecodeXPUFunctor {
   // scenarios.
   TensorArray step_ids_ = TensorArray();
   TensorArray step_scores_ = TensorArray();
-  phi::DenseTensor* id_tensor_;
-  phi::DenseTensor* score_tensor_;
+  DenseTensor* id_tensor_;
+  DenseTensor* score_tensor_;
 };
 }  // namespace funcs
 }  // namespace phi

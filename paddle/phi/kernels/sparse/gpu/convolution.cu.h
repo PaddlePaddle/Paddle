@@ -516,8 +516,8 @@ int ProductRuleBook(const Context& dev_ctx,
         indices_dtype, {sparse_dim, out_non_zero_num}, DataLayout::NCHW);
     DenseTensorMeta values_meta(
         x.dtype(), {out_non_zero_num, kernel_sizes[4]}, x.values().layout());
-    phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
-    phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
+    DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
+    DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
 
     IntT* out_indices_ptr = out_indices.data<IntT>();
 

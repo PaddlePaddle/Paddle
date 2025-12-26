@@ -48,7 +48,7 @@ void MovingAverageAbsMaxScaleKernel(
   // training
   auto *in_accum = in_accum_in.get_ptr();
   auto *in_state = in_state_in.get_ptr();
-  phi::DenseTensor tmp_scale;
+  DenseTensor tmp_scale;
   tmp_scale.Resize(common::make_dim(1));
   T *cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
 

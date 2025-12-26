@@ -21,7 +21,7 @@ template <typename T>
 class ShuffleChannelONEDNNHandler
     : public funcs::OneDNNHandlerNoCachingT<T, dnnl::shuffle_forward> {
  public:
-  ShuffleChannelONEDNNHandler(const phi::DenseTensor* x,
+  ShuffleChannelONEDNNHandler(const DenseTensor* x,
                               const int group,
                               const dnnl::engine engine,
                               phi::Place cpu_place)

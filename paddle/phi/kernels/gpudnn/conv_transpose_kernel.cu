@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/padding.h"
 #include "paddle/phi/kernels/funcs/slice.h"
+#include "paddle/phi/kernels/gpudnn/conv_gpudnn.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 #ifdef PADDLE_WITH_HIP
@@ -42,6 +43,10 @@ limitations under the License. */
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 // clang-format on
 #endif
+
+#include "paddle/common/flags.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -454,6 +459,41 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
   }
 }
 
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+template <typename T, typename Context>
+void ConvTransposeRawGPUDNNKernelV8(const Context& dev_ctx,
+                                    const DenseTensor& x,
+                                    const DenseTensor& filter,
+                                    const std::vector<int>& strides,
+                                    const std::vector<int>& paddings,
+                                    const std::string& padding_algorithm,
+                                    int groups,
+                                    const std::vector<int>& dilations,
+                                    const std::string& data_format,
+                                    DenseTensor* out) {
+  DenseTensor dummy_input;
+  dummy_input.Resize(out->dims());
+
+  dev_ctx.template Alloc<T>(out);
+  dummy_input.ShareDataWith(*out);
+
+  DenseTensor* filter_grad_ptr = nullptr;
+
+  ConvCudnnGradKernel<T, Context>(dev_ctx,
+                                  dummy_input,
+                                  filter,
+                                  x,
+                                  strides,
+                                  paddings,
+                                  padding_algorithm,
+                                  dilations,
+                                  groups,
+                                  data_format,
+                                  out,
+                                  filter_grad_ptr);
+}
+#endif
+
 template <typename T, typename Context>
 void Conv2dTransposeGPUDNNKernel(const Context& dev_ctx,
                                  const DenseTensor& x,
@@ -467,6 +507,31 @@ void Conv2dTransposeGPUDNNKernel(const Context& dev_ctx,
                                  const std::vector<int>& dilations,
                                  const std::string& data_format,
                                  DenseTensor* out) {
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+  if (dynload::IsCudnnFrontendEnabled() && FLAGS_use_accuracy_compatible_kernel)
+    ConvTransposeRawGPUDNNKernelV8<T, Context>(dev_ctx,
+                                               x,
+                                               filter,
+                                               strides,
+                                               paddings,
+                                               padding_algorithm,
+                                               groups,
+                                               dilations,
+                                               data_format,
+                                               out);
+  else
+    ConvTransposeRawGPUDNNKernel<T, Context>(dev_ctx,
+                                             x,
+                                             filter,
+                                             strides,
+                                             paddings,
+                                             padding_algorithm,
+                                             groups,
+                                             dilations,
+                                             data_format,
+                                             out);
+
+#else
   ConvTransposeRawGPUDNNKernel<T, Context>(dev_ctx,
                                            x,
                                            filter,
@@ -477,6 +542,7 @@ void Conv2dTransposeGPUDNNKernel(const Context& dev_ctx,
                                            dilations,
                                            data_format,
                                            out);
+#endif
 }
 
 template <typename T, typename Context>

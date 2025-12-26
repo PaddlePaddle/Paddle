@@ -45,8 +45,8 @@ void CAllReduceKernel(const Context& dev_ctx,
   if (map->has(rid)) {
     // Use ProcessGroup
     phi::distributed::ProcessGroup* pg = map->get(rid);
-    std::vector<phi::DenseTensor> in_tensor;
-    std::vector<phi::DenseTensor> out_tensor;
+    std::vector<DenseTensor> in_tensor;
+    std::vector<DenseTensor> out_tensor;
     in_tensor.push_back(*in);
     out_tensor.push_back(*out);
 

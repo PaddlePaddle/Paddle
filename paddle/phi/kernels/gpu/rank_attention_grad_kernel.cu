@@ -58,7 +58,7 @@ void RankAttentionGradOpCUDAKernel(const Context &dev_ctx,
   drank_para_eigen.device(place) = drank_para_eigen.constant(static_cast<T>(0));
 
   // copy data
-  phi::DenseTensor param_grad;
+  DenseTensor param_grad;
   param_grad.Resize({max_ins * block_matrix_row, para_col});
   dev_ctx.template Alloc<T>(&param_grad);
 

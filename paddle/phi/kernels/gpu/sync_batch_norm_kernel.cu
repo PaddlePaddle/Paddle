@@ -85,7 +85,7 @@ void SyncBatchNormKernel(const Context& dev_ctx,
     // x, x^2, 1, here 1 is used to calc device num
     // device num also can be got from phi::DeviceContextPool
     const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
-    phi::DenseTensor stats_tensor;
+    DenseTensor stats_tensor;
     stats_tensor.Resize({static_cast<int64_t>(bytes)});
     dev_ctx.template Alloc<BatchNormParamType<T>>(&stats_tensor);
     auto* stats_data = stats_tensor.data<BatchNormParamType<T>>();
@@ -119,7 +119,7 @@ void SyncBatchNormKernel(const Context& dev_ctx,
         dev_ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
 
     int64_t reserve_space_size = 0;
-    phi::DenseTensor tmp_reserve_space;
+    DenseTensor tmp_reserve_space;
     if (reserve_space == nullptr) {
       reserve_space = &tmp_reserve_space;
     }

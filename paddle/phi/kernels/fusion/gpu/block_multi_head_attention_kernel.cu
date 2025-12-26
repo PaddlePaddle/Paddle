@@ -37,9 +37,9 @@ inline int getSMVersion() {
 namespace phi {
 namespace fusion {
 
-int GetMaxLen(const phi::GPUContext& dev_ctx,
-              const phi::DenseTensor& seq_lens_tensor,
-              phi::DenseTensor* max_len_tensor,
+int GetMaxLen(const GPUContext& dev_ctx,
+              const DenseTensor& seq_lens_tensor,
+              DenseTensor* max_len_tensor,
               const int batch_size) {
   constexpr int blockSize = 128;
   int max_len_cpu = 0;
@@ -337,8 +337,8 @@ void DispatchWithDtype(
     DenseTensor* qkv_out,
     DenseTensor* key_cache_out,
     DenseTensor* value_cache_out) {
-  phi::DenseTensor qkv_buf;
-  phi::DenseTensor fmha_buf;
+  DenseTensor qkv_buf;
+  DenseTensor fmha_buf;
 
   VLOG(1) << "fmha_out " << fmha_out->dims();
   if (fmha_out->dtype() == phi::DataType::INT8) {
@@ -391,7 +391,7 @@ void DispatchWithDtype(
 
   int max_dec_len_this_time_data(0);
   if (!max_dec_len_this_time) {
-    phi::DenseTensor max_dec_len_tensor;
+    DenseTensor max_dec_len_tensor;
     max_dec_len_tensor.Resize({{1}});
     auto* max_dec_len_data = dev_ctx.template Alloc<int>(
         &max_dec_len_tensor, max_dec_len_tensor.numel() * sizeof(int));
@@ -409,7 +409,7 @@ void DispatchWithDtype(
 
   int max_enc_len_this_time_data(0);
   if (!max_enc_len_this_time) {
-    phi::DenseTensor max_enc_len_tensor;
+    DenseTensor max_enc_len_tensor;
     max_enc_len_tensor.Resize({{1}});
     auto* max_enc_len_data = dev_ctx.template Alloc<int>(
         &max_enc_len_tensor, max_enc_len_tensor.numel() * sizeof(int));
@@ -425,7 +425,7 @@ void DispatchWithDtype(
     max_enc_len_this_time_data = *max_enc_len_this_time.get().data<int>();
   }
 
-  phi::DenseTensor qkv_out_decoder;
+  DenseTensor qkv_out_decoder;
   if (max_dec_len_this_time_data > 0) {
     if (q_num_head == kv_num_head) {
       qkv_out_decoder.Resize({{bsz, 3, q_num_head, dim_head}});
@@ -436,9 +436,9 @@ void DispatchWithDtype(
         &qkv_out_decoder, qkv_out_decoder.numel() * sizeof(T));
   }
   VLOG(3) << "max_len end";
-  phi::DenseTensor unpadding_q, unpadding_k, unpadding_v;
-  phi::DenseTensor softmax_out, softmax_lse, seed_offset;
-  phi::DenseTensor q_trans, k_trans, v_trans, qktv_out;
+  DenseTensor unpadding_q, unpadding_k, unpadding_v;
+  DenseTensor softmax_out, softmax_lse, seed_offset;
+  DenseTensor q_trans, k_trans, v_trans, qktv_out;
   int sm = getSMVersion();
   if (max_enc_len_this_time_data > 0) {
     if (!use_pre_cache && sm >= 80) {
@@ -496,8 +496,8 @@ void DispatchWithDtype(
 
   if (qkv_bias) {
     VLOG(1) << "has bias";
-    std::vector<const phi::DenseTensor*> ins = {&qkv_buf, qkv_bias.get_ptr()};
-    std::vector<phi::DenseTensor*> outs = {&qkv_buf};
+    std::vector<const DenseTensor*> ins = {&qkv_buf, qkv_bias.get_ptr()};
+    std::vector<DenseTensor*> outs = {&qkv_buf};
     funcs::BroadcastKernel<T>(dev_ctx, ins, &outs, funcs::AddFunctor<T>());
   }
 
@@ -635,7 +635,7 @@ void DispatchWithDtype(
             dim_head);
       }
 #ifdef PADDLE_WITH_MEMORY_EFFICIENT_ATTENTION
-      phi::fusion::MultiHeadAttentionVariableForwardKernel<T, phi::GPUContext>(
+      phi::fusion::MultiHeadAttentionVariableForwardKernel<T, GPUContext>(
           dev_ctx,
           q_trans,
           k_trans,
@@ -648,7 +648,7 @@ void DispatchWithDtype(
           pre_cache_length,
           &qktv_out);
 #elif defined(PADDLE_WITH_HIP)
-      phi::DenseTensor q, k, v, out;
+      DenseTensor q, k, v, out;
       q.Resize({{bsz, max_enc_len_this_time_data, q_num_head, dim_head}});
       k.Resize({{bsz,
                  max_enc_len_this_time_data + pre_cache_length,

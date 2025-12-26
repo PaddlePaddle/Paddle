@@ -243,9 +243,10 @@ class GradNodeBase {
   TEST_API const
       paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
       OutputMeta() const;
-
   paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
   MutableOutputMeta();
+  paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+  MutableInputMeta();
   /**
    * Set bwd ins and outs info with forward vars
    * **/

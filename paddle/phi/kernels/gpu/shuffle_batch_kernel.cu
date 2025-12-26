@@ -64,7 +64,7 @@ void ShuffleBatchKernel(const Context& dev_ctx,
       // NOTE: We have overwritten GetKernelTypeForVar, so seed_place would
       // not be CUDAPlace in practice. This case would only happen in Python
       // op_test framework.
-      phi::DenseTensor tmp_tensor;
+      DenseTensor tmp_tensor;
       phi::Copy(dev_ctx, seed, phi::CPUPlace(), false, &tmp_tensor);
       seed_int = *(tmp_tensor.data<int64_t>());
     } else {

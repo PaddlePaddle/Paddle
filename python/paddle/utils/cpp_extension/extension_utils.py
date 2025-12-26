@@ -708,7 +708,7 @@ def find_ccache_home():
 
     if ccache_path is None:
         warning_message = "No ccache found. Please be aware that recompiling all source files may be required. "
-        warning_message += "You can download and install ccache from: https://github.com/ccache/ccache/blob/master/doc/INSTALL.md"
+        warning_message += "You can download and install ccache from: https://github.com/ccache/ccache/blob/master/doc/install.md"
         warnings.warn(warning_message)
 
     return ccache_path

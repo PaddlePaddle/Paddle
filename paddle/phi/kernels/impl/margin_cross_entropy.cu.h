@@ -72,8 +72,8 @@ void GetClassInterval(const gpuStream_t& stream,
   if (map->has(rid)) {
     // Use ProcessGroup
     distributed::ProcessGroup* pg = map->get(rid);
-    std::vector<phi::DenseTensor> in_tensor;
-    std::vector<phi::DenseTensor> out_tensor;
+    std::vector<DenseTensor> in_tensor;
+    std::vector<DenseTensor> out_tensor;
     in_tensor.push_back(num_classes_per_device);
     out_tensor.push_back(num_classes_per_device);
 
