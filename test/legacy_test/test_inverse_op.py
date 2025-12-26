@@ -25,7 +25,7 @@ class TestInverseOp(OpTest):
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
-        self.python_api = paddle.tensor.math.inverse
+        self.python_api = paddle.inverse
 
     def setUp(self):
         self.op_type = "inverse"
@@ -55,28 +55,28 @@ class TestInverseOpBatched(TestInverseOp):
     def config(self):
         self.matrix_shape = [8, 4, 4]
         self.dtype = "float64"
-        self.python_api = paddle.tensor.math.inverse
+        self.python_api = paddle.inverse
 
 
 class TestInverseOpZeroSize(TestInverseOp):
     def config(self):
         self.matrix_shape = [0, 0]
         self.dtype = "float64"
-        self.python_api = paddle.tensor.math.inverse
+        self.python_api = paddle.inverse
 
 
 class TestInverseOpBatchedZeroSize(TestInverseOp):
     def config(self):
         self.matrix_shape = [7, 0, 0]
         self.dtype = "float64"
-        self.python_api = paddle.tensor.math.inverse
+        self.python_api = paddle.inverse
 
 
 class TestInverseOpLarge(TestInverseOp):
     def config(self):
         self.matrix_shape = [32, 32]
         self.dtype = "float64"
-        self.python_api = paddle.tensor.math.inverse
+        self.python_api = paddle.inverse
 
     def test_grad(self):
         self.check_grad(
@@ -88,7 +88,7 @@ class TestInverseOpFP32(TestInverseOp):
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float32"
-        self.python_api = paddle.tensor.math.inverse
+        self.python_api = paddle.inverse
 
     def test_grad(self):
         self.check_grad(
@@ -100,21 +100,21 @@ class TestInverseOpBatchedFP32(TestInverseOpFP32):
     def config(self):
         self.matrix_shape = [8, 4, 4]
         self.dtype = "float32"
-        self.python_api = paddle.tensor.math.inverse
+        self.python_api = paddle.inverse
 
 
 class TestInverseOpLargeFP32(TestInverseOpFP32):
     def config(self):
         self.matrix_shape = [32, 32]
         self.dtype = "float32"
-        self.python_api = paddle.tensor.math.inverse
+        self.python_api = paddle.inverse
 
 
 class TestInverseOpComplex64(TestInverseOp):
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "complex64"
-        self.python_api = paddle.tensor.math.inverse
+        self.python_api = paddle.inverse
 
     def test_grad(self):
         self.check_grad(['Input'], 'Output', check_pir=True)
@@ -124,7 +124,7 @@ class TestInverseOpComplex128(TestInverseOp):
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "complex128"
-        self.python_api = paddle.tensor.math.inverse
+        self.python_api = paddle.inverse
 
     def test_grad(self):
         self.check_grad(['Input'], 'Output', check_pir=True)
@@ -251,6 +251,53 @@ class TestInverseAPI_ZeroSize(unittest.TestCase):
                 loss = paddle.sum(result)
                 loss.backward()
                 np.testing.assert_allclose(input.grad.shape, input.shape)
+
+
+class TestInverseAPICompat(unittest.TestCase):
+    def setUp(self):
+        self.dtype = "float64"
+        self.shape = [10, 10]
+        np.random.seed(123)
+        self.x_np = np.random.random(self.shape).astype(self.dtype)
+        # Ensure invertible
+        while np.linalg.det(self.x_np) == 0:
+            self.x_np = np.random.random(self.shape).astype(self.dtype)
+        self.out_np = np.linalg.inv(self.x_np)
+
+    def test_alias(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_np)
+        out = paddle.inverse(input=x)
+        np.testing.assert_allclose(out.numpy(), self.out_np, rtol=1e-5)
+        paddle.enable_static()
+
+    def test_out(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_np)
+        out = paddle.empty_like(x)
+        paddle.inverse(x, out=out)
+        np.testing.assert_allclose(out.numpy(), self.out_np, rtol=1e-5)
+        paddle.enable_static()
+
+    def test_out_return(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_np)
+        out = paddle.empty_like(x)
+        res = paddle.inverse(x, out=out)
+        np.testing.assert_allclose(res.numpy(), self.out_np, rtol=1e-5)
+        np.testing.assert_allclose(out.numpy(), self.out_np, rtol=1e-5)
+        paddle.enable_static()
+
+    def test_static_alias(self):
+        paddle.enable_static()
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
+            x = paddle.static.data(name='x', shape=self.shape, dtype=self.dtype)
+            out = paddle.inverse(input=x)
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            res = exe.run(feed={'x': self.x_np}, fetch_list=[out])
+            np.testing.assert_allclose(res[0], self.out_np, rtol=1e-5)
 
 
 if __name__ == "__main__":

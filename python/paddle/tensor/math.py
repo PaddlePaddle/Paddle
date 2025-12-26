@@ -28,6 +28,7 @@ from paddle._C_ops import (  # noqa: F401
     amax,
     amin,
     any,
+    inverse,
     isfinite,
     isinf,
     isnan,
@@ -2897,63 +2898,6 @@ def outer(
         return out
 
 
-def inverse(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    Takes the inverse of the square matrix. A square matrix is a matrix with
-    the same number of rows and columns. The input can be a square matrix
-    (2-D Tensor) or batches of square matrices.
-
-    Args:
-        x (Tensor): The input tensor. The last two
-            dimensions should be equal. When the number of dimensions is
-            greater than 2, it is treated as batches of square matrix. The data
-            type can be float32, float64, complex64, complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: A Tensor holds the inverse of x. The shape and data type
-                        is the same as x.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> mat = paddle.to_tensor([[2, 0], [0, 2]], dtype='float32')
-            >>> inv = paddle.inverse(mat)
-            >>> print(inv)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.50000000, 0.        ],
-             [0.        , 0.50000000]])
-
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.inverse(x)
-    else:
-
-        def _check_input(x):
-            check_variable_and_dtype(
-                x,
-                'x',
-                ['float32', 'float64', 'complex64', 'complex128'],
-                'inverse',
-            )
-            if len(x.shape) < 2:
-                raise ValueError(
-                    "The input of inverse is expected to be a Tensor whose number "
-                    f"of dimensions is no less than 2. But received: {len(x.shape)}, "
-                    f"x's shape: {x.shape}."
-                )
-
-        _check_input(x)
-        helper = LayerHelper('inverse', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='inverse', inputs={'Input': [x]}, outputs={'Output': [out]}
-        )
-        return out
-
-
 @ForbidKeywordsDecorator(
     illegal_keys={"input", "dim", "other"},
     func_name="paddle.max",
@@ -5415,8 +5359,10 @@ def deg2rad(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-@param_two_alias(['x', 'input'], ['y', 'other'])
-def gcd(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
+def gcd(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     """
     Computes the element-wise greatest common divisor (GCD) of input |x| and |y|.
     Both x and y must have integer types.
@@ -5430,6 +5376,7 @@ def gcd(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         x (Tensor): An N-D Tensor, the data type is int32, int64.
         y (Tensor): An N-D Tensor, the data type is int32, int64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         out (Tensor): An N-D Tensor, the data type is the same with input.
@@ -5492,13 +5439,17 @@ def gcd(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     if in_dynamic_mode():
         while _gcd_cond_fn(x, y):
             x, y = _gcd_body_fn(x, y)
-
-        return x
+        out_res = x
     else:
         check_variable_and_dtype(x, 'x', ['int32', 'int64'], 'gcd')
         check_variable_and_dtype(y, 'y', ['int32', 'int64'], 'gcd')
-        out, _ = paddle.static.nn.while_loop(_gcd_cond_fn, _gcd_body_fn, [x, y])
+        out_res, _ = paddle.static.nn.while_loop(
+            _gcd_cond_fn, _gcd_body_fn, [x, y]
+        )
+    if out is not None:
+        paddle.assign(out_res, out)
         return out
+    return out_res
 
 
 @param_two_alias(['x', 'input'], ['y', 'other'])
@@ -5545,8 +5496,10 @@ def gcd_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return x
 
 
-@param_two_alias(['x', 'input'], ['y', 'other'])
-def lcm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
+def lcm(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     """
     Computes the element-wise least common multiple (LCM) of input |x| and |y|.
     Both x and y must have integer types.
@@ -5560,6 +5513,7 @@ def lcm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         x (Tensor): An N-D Tensor, the data type is int32, int64.
         y (Tensor): An N-D Tensor, the data type is int32, int64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         out (Tensor): An N-D Tensor, the data type is the same with input.
@@ -5600,10 +5554,13 @@ def lcm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     # they won't be used.
     d_equal_0 = paddle.equal(d, 0)
     d_safe = paddle.where(d_equal_0, paddle.ones(d.shape, d.dtype), d)
-    out = paddle.where(
+    out_res = paddle.where(
         d_equal_0, paddle.zeros(d.shape, d.dtype), paddle.abs(x * y) // d_safe
     )
-    return out
+    if out is not None:
+        paddle.assign(out_res, out)
+        return out
+    return out_res
 
 
 @param_two_alias(['x', 'input'], ['y', 'other'])
