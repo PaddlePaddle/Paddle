@@ -88,10 +88,10 @@ class GPUHashTable {
   const int _width;
   key_type* table_keys;
   val_type* table_vals;
-  void insert_many_coords(const phi::GPUContext& dev_ctx,
+  void insert_many_coords(const GPUContext& dev_ctx,
                           const int* coords,
                           const int n);
-  void lookup_many_coords(const phi::GPUContext& dev_ctx,
+  void lookup_many_coords(const GPUContext& dev_ctx,
                           const int* coords,
                           val_type* results,
                           const int* kernel_sizes,
@@ -116,8 +116,8 @@ class GPUHashTable {
       cudaFree(table_vals);
     }
   };
-  void insert_coords(const phi::GPUContext& dev_ctx, const DenseTensor& coords);
-  void lookup_coords(const phi::GPUContext& dev_ctx,
+  void insert_coords(const GPUContext& dev_ctx, const DenseTensor& coords);
+  void lookup_coords(const GPUContext& dev_ctx,
                      const DenseTensor& coords,
                      const int* kernel_sizes,
                      const int* tensor_strides,
@@ -249,7 +249,7 @@ __global__ void set_kernel_sizes_and_strides_tensor(int* kernel_size_tensor,
 
 template <typename key_type, typename val_type>
 void GPUHashTable<key_type, val_type>::insert_many_coords(
-    const phi::GPUContext& dev_ctx, const int* coords, const int n) {
+    const GPUContext& dev_ctx, const int* coords, const int n) {
   insert_coords_kernel<key_type, val_type>
       <<<(n + BLOCK_SIZE - 1) / BLOCK_SIZE, BLOCK_SIZE, 0, dev_ctx.stream()>>>(
           table_keys, table_vals, coords, n, _capacity, _width);
@@ -257,13 +257,13 @@ void GPUHashTable<key_type, val_type>::insert_many_coords(
 
 template <typename key_type, typename val_type>
 void GPUHashTable<key_type, val_type>::insert_coords(
-    const phi::GPUContext& dev_ctx, const DenseTensor& coords) {
+    const GPUContext& dev_ctx, const DenseTensor& coords) {
   insert_many_coords(dev_ctx, coords.data<int>(), coords.dims()[0]);
 }
 
 template <typename key_type, typename val_type>
 void GPUHashTable<key_type, val_type>::lookup_many_coords(
-    const phi::GPUContext& dev_ctx,
+    const GPUContext& dev_ctx,
     const int* coords,
     val_type* results,
     const int* kernel_sizes,
@@ -303,13 +303,12 @@ void GPUHashTable<key_type, val_type>::lookup_many_coords(
 }
 
 template <typename key_type, typename val_type>
-void GPUHashTable<key_type, val_type>::lookup_coords(
-    const phi::GPUContext& dev_ctx,
-    const DenseTensor& coords,
-    const int* kernel_sizes,
-    const int* strides,
-    const int kernel_volume,
-    DenseTensor* results) {
+void GPUHashTable<key_type, val_type>::lookup_coords(const GPUContext& dev_ctx,
+                                                     const DenseTensor& coords,
+                                                     const int* kernel_sizes,
+                                                     const int* strides,
+                                                     const int kernel_volume,
+                                                     DenseTensor* results) {
   int32_t* results_data = results->data<int32_t>();
   lookup_many_coords(dev_ctx,
                      coords.data<int>(),
@@ -321,7 +320,7 @@ void GPUHashTable<key_type, val_type>::lookup_coords(
 }
 
 template <typename IntT>
-void build_sparse_conv_kmap(const phi::GPUContext& dev_ctx,
+void build_sparse_conv_kmap(const GPUContext& dev_ctx,
                             const SparseCooTensor& x,
                             const std::string& key,
                             const std::vector<int>& kernel_sizes,
@@ -330,18 +329,18 @@ void build_sparse_conv_kmap(const phi::GPUContext& dev_ctx,
                             const bool is2D,
                             SparseCooTensor* out) {
   int nnz = x.nnz();
-  const phi::KmapCache* in_kmap_cache_ptr = x.GetKmapCache(key);
+  const KmapCache* in_kmap_cache_ptr = x.GetKmapCache(key);
   out->ClearKmaps();
-  phi::KmapCache* out_kmap_cache_ptr = nullptr;
+  KmapCache* out_kmap_cache_ptr = nullptr;
   bool to_insert = false;
   if (in_kmap_cache_ptr == nullptr) {
-    phi::KmapCache kmap_cache;
+    KmapCache kmap_cache;
     out_kmap_cache_ptr = out->SetKmapCache(key, kmap_cache);
     if (out_kmap_cache_ptr->hashmap_keys == nullptr) {
       DenseTensor* tmp_hashmap_keys = new DenseTensor();
       tmp_hashmap_keys->Resize({2 * x.nnz()});
       dev_ctx.template Alloc<IntT>(tmp_hashmap_keys);
-      funcs::SetConstant<phi::GPUContext, IntT> set_zero;
+      funcs::SetConstant<GPUContext, IntT> set_zero;
       set_zero(dev_ctx, tmp_hashmap_keys, static_cast<IntT>(0));
       out_kmap_cache_ptr->hashmap_keys = tmp_hashmap_keys;
       to_insert = true;
@@ -350,7 +349,7 @@ void build_sparse_conv_kmap(const phi::GPUContext& dev_ctx,
       DenseTensor* tmp_hashmap_values = new DenseTensor();
       tmp_hashmap_values->Resize({2 * x.nnz()});
       dev_ctx.template Alloc<int32_t>(tmp_hashmap_values);
-      funcs::SetConstant<phi::GPUContext, int32_t> set_zero;
+      funcs::SetConstant<GPUContext, int32_t> set_zero;
       set_zero(dev_ctx, tmp_hashmap_values, static_cast<int32_t>(0));
       out_kmap_cache_ptr->hashmap_values = tmp_hashmap_values;
     }
@@ -382,7 +381,7 @@ void build_sparse_conv_kmap(const phi::GPUContext& dev_ctx,
         {(x.nnz() + divisor - 1) / divisor * divisor, kernel_volume});
     dev_ctx.template Alloc<int32_t>(tmp_out_in_map);
     out_kmap_cache_ptr->out_in_map = tmp_out_in_map;
-    funcs::SetConstant<phi::GPUContext, int32_t> set_neg_one;
+    funcs::SetConstant<GPUContext, int32_t> set_neg_one;
     set_neg_one(
         dev_ctx, out_kmap_cache_ptr->out_in_map, static_cast<int32_t>(-1));
 
@@ -411,7 +410,7 @@ void build_sparse_conv_kmap(const phi::GPUContext& dev_ctx,
     // force clear the kmaps of x
     const_cast<SparseCooTensor&>(x).ClearKmaps();
   }
-  const phi::KmapCache* new_out_kmap_cache_ptr = out->GetKmapCache(key);
+  const KmapCache* new_out_kmap_cache_ptr = out->GetKmapCache(key);
   assert(new_out_kmap_cache_ptr != nullptr);
   assert(new_out_kmap_cache_ptr->hashmap_keys != nullptr);
   assert(new_out_kmap_cache_ptr->hashmap_values != nullptr);
