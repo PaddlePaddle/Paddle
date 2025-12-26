@@ -294,11 +294,13 @@ void CumprodGradKernel(const Context &dev_ctx,
     return;
   }
 
+#ifdef PADDLE_WITH_CUDA
   if (FLAGS_use_accuracy_compatible_kernel && !exclusive && !reverse) {
     if (CumprodGradCompatible<T, Context>(dev_ctx, x, out, dout, dim, dx)) {
       return;
     }
   }
+#endif
 
   size_t outer_dim, mid_dim, inner_dim;
   GetCumprodDimInfo(x.dims(), dim, &outer_dim, &mid_dim, &inner_dim);
