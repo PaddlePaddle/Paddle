@@ -27,6 +27,9 @@ jobs:
       group: test2
 
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Check approval
         id: check-approval
         run: |
