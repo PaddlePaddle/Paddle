@@ -593,7 +593,7 @@ add_doc_and_signature(
     "angle",
     r"""
     Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while
-    for negative real numbers, the angle is :math:`\pi`, and NaNs are propagated..
+    for negative real numbers, the angle is :math:`\pi`, and NaNs are propagated.
 
     Equation:
         .. math::
