@@ -184,7 +184,7 @@ void BinaryStrideBroadcastKernel(const Context &dev_ctx,
     }
   }
 
-  if (!funcs::IsInUint32Range(max_stride)) {
+  if (!funcs::IsInUint32Range(max_stride * sizeof(OutT))) {
     is_big_tensor = true;
   }
 
@@ -285,7 +285,7 @@ void BinaryStrideElementwiseKernel(const Context &dev_ctx,
     }
   }
 
-  if (!funcs::IsInUint32Range(max_stride)) {
+  if (!funcs::IsInUint32Range(max_stride) * sizeof(OutT)) {
     is_big_tensor = true;
   }
 
@@ -386,7 +386,7 @@ void UnaryStrideElementwiseKernel(const Context &dev_ctx,
     }
   }
 
-  if (!funcs::IsInUint32Range(max_stride)) {
+  if (!funcs::IsInUint32Range(max_stride * sizeof(OutT))) {
     is_big_tensor = true;
   }
 
