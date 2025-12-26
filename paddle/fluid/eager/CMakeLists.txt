@@ -62,6 +62,9 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     backward
     SRCS backward.cc
     DEPS grad_tensor_holder utils autograd_meta grad_node_info phi common)
+  if(WITH_PYTHON)
+    target_include_directories(backward PRIVATE ${PYTHON_INCLUDE_DIRS})
+  endif()
 endif()
 
 cc_library(

@@ -126,6 +126,7 @@ set(GLOB_OPERATOR_DEPS ${OPERATOR_DEPS} CACHE INTERNAL "Global Op dependencies")
 
 if (WITH_PYTHON)
   cc_library(py_func_op SRCS py_func_op.cc DEPS op_registry python pybind)
+  target_include_directories(py_func_op PRIVATE ${PYTHON_INCLUDE_DIRS})
 endif()
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")

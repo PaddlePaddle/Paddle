@@ -648,6 +648,8 @@ if(WITH_PYTHON)
     target_compile_options(${SHARD_LIB_NAME} PRIVATE -Wno-maybe-uninitialized)
   endif()
 
+  target_include_directories(${SHARD_LIB_NAME} PRIVATE ${PYTHON_INCLUDE_DIRS})
+
   # cc_test do not respect deps, whole archive to link symbols that may need by test
   if(WITH_TESTING)
     #set_target_properties(${SHARD_LIB_NAME} PROPERTIES LINK_FLAGS "-Wl,--whole-archive")

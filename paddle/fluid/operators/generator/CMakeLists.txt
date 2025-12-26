@@ -14,8 +14,8 @@ set(sparse_bw_op_yaml_file ${ops_yaml_dir}/sparse_backward.yaml)
 set(static_bw_op_yaml_file ${ops_yaml_dir}/legacy/static_backward.yaml)
 set(fused_bw_op_yaml_file ${ops_yaml_dir}/fused_backward.yaml)
 
-if(NOT PYTHONINTERP_FOUND)
-  find_package(PythonInterp REQUIRED)
+if(NOT Python_Interpreter_FOUND)
+  find_package(Python REQUIRED COMPONENTS Interpreter)
 endif()
 
 function(install_py_pyyaml)
