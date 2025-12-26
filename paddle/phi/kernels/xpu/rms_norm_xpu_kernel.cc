@@ -38,10 +38,24 @@ static void GetRowsCols(const std::vector<int64_t> &shape,
 template <typename T, typename Context>
 void RMSNormFwdKernel(const Context &dev_ctx,
                       const DenseTensor &x,
-                      const DenseTensor &scale,
+                      const paddle::optional<DenseTensor> &scale_opt,
                       double epsilon,
+                      int begin_norm_axis,
                       DenseTensor *y,
                       DenseTensor *invvar) {
+  if (begin_norm_axis != 1) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "XPU RMSNorm only supports begin_norm_axis=1, but got %d",
+        begin_norm_axis));
+  }
+
+  auto *scale_ptr = scale_opt.get_ptr();
+  if (scale_ptr == nullptr) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Scale must be provided for RMSNorm backward"));
+  }
+  const DenseTensor &scale = *scale_ptr;
+
   int64_t rows, cols;
   GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
 
@@ -123,12 +137,26 @@ void RMSNormFwdKernel(const Context &dev_ctx,
 template <typename T, typename Context>
 void RMSNormBwdKernel(const Context &dev_ctx,
                       const DenseTensor &x,
-                      const DenseTensor &scale,
+                      const paddle::optional<DenseTensor> &scale_opt,
                       const DenseTensor &invvar,
                       const DenseTensor &y_grad,
                       double epsilon,
+                      int begin_norm_axis,
                       DenseTensor *x_grad,
                       DenseTensor *scale_grad) {
+  if (begin_norm_axis != 1) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "XPU RMSNorm only supports begin_norm_axis=1, but got %d",
+        begin_norm_axis));
+  }
+
+  auto *scale_ptr = scale_opt.get_ptr();
+  if (scale_ptr == nullptr) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Scale must be provided for RMSNorm backward"));
+  }
+  const DenseTensor &scale = *scale_ptr;
+
   int64_t rows, cols;
   GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
   dev_ctx.template Alloc<T>(x_grad);

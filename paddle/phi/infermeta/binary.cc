@@ -3890,35 +3890,29 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
 void RmsNormInferMeta(const MetaTensor& x,
                       const MetaTensor& scale,
                       double epsilon,
+                      int begin_norm_axis,
                       MetaTensor* y,
                       MetaTensor* invvar) {
   auto x_dim = x.dims();
-  auto x_ndim = x_dim.size();
-
-  auto matrix_dim = common::flatten_to_2d(x_dim, x_ndim - 1);
-
-  int64_t right = matrix_dim[1];
-  if (scale) {
-    PADDLE_ENFORCE_EQ(scale.dims().size(),
-                      1,
-                      common::errors::InvalidArgument(
-                          "The dimensions of Input(Scale) must be 1, but "
-                          "received dimensions of "
-                          "Input(Scale) is [%d]",
-                          scale.dims().size()));
-  }
-
-  PADDLE_ENFORCE_EQ(
-      scale.dims()[0],
-      right,
+  PADDLE_ENFORCE_GT(begin_norm_axis,
+                    0,
+                    common::errors::InvalidArgument(
+                        "'begin_norm_axis' in Op(LayerNorm) should be "
+                        "greater than zero. But received [%d].",
+                        begin_norm_axis));
+  PADDLE_ENFORCE_LT(
+      begin_norm_axis,
+      x_dim.size(),
       common::errors::InvalidArgument(
-          "The first dimension value of Input(Scale) must equal to be the "
-          "second dimension value of the flattened 2D matrix of Input(X), "
-          "But received the first dimension value of Input(Scale) is "
-          "[%d], the second dimension value of the flattened 2D matrix of "
-          " Input(Scale) is [%d].",
-          scale.dims()[0],
-          right));
+          "'begin_norm_axis' must be less than the dimensions of X,"
+          "But received 'begin_norm_axis' is [%d],"
+          "received the dimensions of X is [%d].",
+          begin_norm_axis,
+          x_dim.size()));
+
+  auto matrix_dim = common::flatten_to_2d(x_dim, begin_norm_axis);
+  auto before_norm_dims = slice_ddim(x_dim, 0, begin_norm_axis);
+  int64_t right = matrix_dim[1];
 
   PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f,
                     true,
@@ -3935,9 +3929,7 @@ void RmsNormInferMeta(const MetaTensor& x,
       (x_dtype == DataType::BFLOAT16 || x_dtype == DataType::FLOAT16)
           ? DataType::FLOAT32
           : x_dtype;
-
-  auto row_shape = slice_ddim(x_dim, 0, x_dim.size() - 1);
-  invvar->set_dims({row_shape});
+  invvar->set_dims({before_norm_dims});
   invvar->set_dtype(param_type);
 }
 

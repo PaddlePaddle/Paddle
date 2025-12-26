@@ -3415,6 +3415,19 @@ bool RoiAlignOpInferSymbolicShape(
 
 bool RmsNormOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  //   const auto &x_shape =
+  //       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  //   const auto &scale_shape =
+  //       infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  //   const auto &epsilon =
+  //       infer_context->GetShapeOrDataForValue(op->operand_source(2)).data();
+  //   int begin_norm_axis =
+  //   op->attribute<pir::Int32Attribute>("begin_norm_axis")
+  //                             .has_data()
+  //                         ?
+  //                         op->attribute<pir::Int32Attribute>("begin_norm_axis")
+  //                               .data()
+  //                         : x_shape.size() - 1;
   // Get the shapes of input tensors
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));

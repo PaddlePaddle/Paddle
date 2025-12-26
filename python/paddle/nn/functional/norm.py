@@ -498,13 +498,23 @@ def rms_norm(
 
     normalized_ndim = len(normalized_shape)
     begin_norm_axis = input_ndim - normalized_ndim
-    if input_ndim < normalized_ndim or (
-        not paddle.utils.is_same_shape(
-            input_shape[begin_norm_axis:], normalized_shape
+
+    if (
+        input_ndim < normalized_ndim
+        or (
+            not paddle.utils.is_same_shape(
+                input_shape[begin_norm_axis:], normalized_shape
+            )
+        )
+        or (
+            (weight is not None)
+            and not paddle.utils.is_same_shape(
+                list(weight.shape), normalized_shape
+            )
         )
     ):
         str_normalized_shape = str(normalized_shape)
-        raise ValueError(
+        msg = (
             'Given normalized_shape is '
             + str_normalized_shape
             + ', expected input with shape [*, '
@@ -512,19 +522,17 @@ def rms_norm(
             + ', but got input shape '
             + str(input_shape)
         )
-
-    if normalized_ndim != 1:
-        raise ValueError(
-            'Given len(normalized_shape) is '
-            + normalized_ndim
-            + ', expected len(normalized_shape) is 1.'
-        )
-
-    if weight is None:
-        raise ValueError("weight must not be None.")
+        if weight is not None:
+            msg += (
+                ', and expected weight.shape equals to '
+                + str_normalized_shape
+                + ', but got weight shape '
+                + str(weight.shape)
+            )
+        raise ValueError(msg)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.rms_norm(input, weight, eps)
+        return _C_ops.rms_norm(input, weight, eps, begin_norm_axis)
 
     helper = LayerHelper('rms_norm', **locals())
     from paddle.base.data_feeder import convert_dtype
@@ -539,7 +547,7 @@ def rms_norm(
         type='rms_norm',
         inputs=inputs,
         outputs={'out': out, 'invvar': invvar},
-        attrs={'eps': eps},
+        attrs={"eps": eps, "begin_norm_axis": begin_norm_axis},
     )
     return out, invvar
 

@@ -6109,12 +6109,13 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op: rms_norm
-  args: (Tensor x, Tensor scale, double epsilon)
+  args: (Tensor x, Tensor scale, double epsilon= 1e-5, int begin_norm_axis = 1)
   output: Tensor(y), Tensor(invvar)
   infer_meta:
     func: RmsNormInferMeta
   kernel:
     func: rms_norm
     data_type: x
+  optional : scale
   backward: rms_norm_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface

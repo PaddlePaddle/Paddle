@@ -16,6 +16,8 @@
 
 #include <cuda_runtime.h>
 #include <thrust/tuple.h>
+
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/data_type.h"
@@ -24,13 +26,83 @@
 
 namespace phi {
 
+// -----------------------------------------------------------------------
+//  Constants
+// -----------------------------------------------------------------------
+
 static constexpr int kCUDANumThreads = 256;
 static constexpr int kCUDABlockReduceNumThreads = 512;
 static constexpr int kWarpSize = 32;
 static constexpr int kVecSize = 4;
 
 // -----------------------------------------------------------------------
-//  Manual Warp/Block Reductions
+//  Helper Functions & Structs
+// -----------------------------------------------------------------------
+
+template <typename T>
+__device__ __forceinline__ T Rsqrt_(T x);
+
+template <>
+__device__ __forceinline__ float Rsqrt_<float>(float x) {
+  return rsqrtf(x);
+}
+
+template <>
+__device__ __forceinline__ double Rsqrt_<double>(double x) {
+  return rsqrt(x);
+}
+
+template <typename T, int kVecSize>
+struct alignas(sizeof(T) * kVecSize) aligned_vector {
+  T val[kVecSize];
+};
+
+template <typename T>
+bool can_vectorize(const T* ptr, int alignment) {
+  uint64_t addr = reinterpret_cast<uint64_t>(ptr);
+  return addr % alignment == 0;
+}
+
+// -----------------------------------------------------------------------
+//  Welford Algorithms
+// -----------------------------------------------------------------------
+
+struct WelfordDataLN {
+  float mean;
+  float sigma2;
+  float count;
+  __host__ __device__ WelfordDataLN() : mean(0.f), sigma2(0.f), count(0.f) {}
+  __host__ __device__ WelfordDataLN(float mean, float sigma2, float count)
+      : mean(mean), sigma2(sigma2), count(count) {}
+};
+
+template <typename scalar_t, typename index_t>
+struct WelfordData {
+  scalar_t mean;
+  scalar_t m2;
+  index_t n;
+  scalar_t nf;
+
+  __host__ __device__ WelfordData() : mean(0), m2(0), n(0), nf(0) {}
+
+  __host__ __device__
+  WelfordData(scalar_t mean, scalar_t m2, index_t n, scalar_t nf)
+      : mean(mean), m2(m2), n(n), nf(nf) {}
+};
+
+template <typename U>
+__device__ WelfordDataLN cuWelfordOnlineSum(const U val,
+                                            const WelfordDataLN& curr_sum) {
+  return {0.f, curr_sum.sigma2 + val * val, 0};
+}
+
+__device__ WelfordDataLN cuWelfordCombine(const WelfordDataLN dataB,
+                                          const WelfordDataLN dataA) {
+  return {0.f, dataB.sigma2 + dataA.sigma2, 0};
+}
+
+// -----------------------------------------------------------------------
+//  Warp & Block Reductions
 // -----------------------------------------------------------------------
 
 template <typename T>
@@ -93,55 +165,6 @@ __device__ T BlockReduceSum(T val, T* shared) {
   }
   return val;
 }
-
-// -----------------------------------------------------------------------
-
-template <typename T, int kVecSize>
-struct alignas(sizeof(T) * kVecSize) aligned_vector {
-  T val[kVecSize];
-};
-
-template <typename T>
-bool can_vectorize(const T* ptr, int alignment) {
-  uint64_t addr = reinterpret_cast<uint64_t>(ptr);
-  return addr % alignment == 0;
-}
-
-struct WelfordDataLN {
-  float mean;
-  float sigma2;
-  float count;
-  __host__ __device__ WelfordDataLN() : mean(0.f), sigma2(0.f), count(0.f) {}
-  __host__ __device__ WelfordDataLN(float mean, float sigma2, float count)
-      : mean(mean), sigma2(sigma2), count(count) {}
-};
-
-template <typename U>
-__device__ WelfordDataLN cuWelfordOnlineSum(const U val,
-                                            const WelfordDataLN& curr_sum) {
-  return {0.f, curr_sum.sigma2 + val * val, 0};
-}
-
-__device__ WelfordDataLN cuWelfordCombine(const WelfordDataLN dataB,
-                                          const WelfordDataLN dataA) {
-  return {0.f, dataB.sigma2 + dataA.sigma2, 0};
-}
-
-// -----------------------------------------------------------------------
-
-template <typename scalar_t, typename index_t>
-struct WelfordData {
-  scalar_t mean;
-  scalar_t m2;
-  index_t n;
-  scalar_t nf;
-
-  __host__ __device__ WelfordData() : mean(0), m2(0), n(0), nf(0) {}
-
-  __host__ __device__
-  WelfordData(scalar_t mean, scalar_t m2, index_t n, scalar_t nf)
-      : mean(mean), m2(m2), n(n), nf(nf) {}
-};
 
 template <typename scalar_t,
           typename acc_scalar_t,
@@ -208,23 +231,6 @@ struct WelfordOps {
 };
 
 // -----------------------------------------------------------------------
-//  Helper
-// -----------------------------------------------------------------------
-
-template <typename T>
-__device__ __forceinline__ T Rsqrt_(T x);
-
-template <>
-__device__ __forceinline__ float Rsqrt_<float>(float x) {
-  return rsqrtf(x);
-}
-
-template <>
-__device__ __forceinline__ double Rsqrt_<double>(double x) {
-  return rsqrt(x);
-}
-
-// -----------------------------------------------------------------------
 //  Forward Kernels
 // -----------------------------------------------------------------------
 
@@ -263,14 +269,12 @@ __global__ void RowwiseMomentsCUDAKernel(int64_t N,
   int lane = threadIdx.x % kWarpSize;
   int wid = threadIdx.x / kWarpSize;
 
-  // 关键修复：在写shared memory前同步，防止race condition
   __syncthreads();
   if (lane == 0) {
     val_shared_ptr[wid] = val;
   }
   __syncthreads();
 
-  // 修复：统一初始化逻辑，与PyTorch保持一致
   val = (threadIdx.x < blockDim.x / kWarpSize) ? val_shared_ptr[lane]
                                                : WelfordType(0, 0, 0, 0);
 
@@ -294,15 +298,15 @@ __global__ void RowwiseMomentsCUDAKernel(int64_t N,
 
 // Non-vectorized Forward for RMSNorm
 template <typename T, typename T_ACC>
-__global__ void LayerNormForwardCUDAKernel(
-    int64_t N, const T* X, const T_ACC* rstd, const T* gamma, T* Y) {
+__global__ void RMSNormForwardCUDAKernel(
+    int64_t N, const T* X, const T_ACC* rstd, const T* scale, T* Y) {
   const int64_t i = blockIdx.x;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
     const int64_t index = i * N + j;
-    const T_ACC gamma_v =
-        gamma == nullptr ? T_ACC(1) : static_cast<T_ACC>(gamma[j]);
+    const T_ACC scale_v =
+        scale == nullptr ? T_ACC(1) : static_cast<T_ACC>(scale[j]);
     Y[index] = static_cast<T>((static_cast<T_ACC>(X[index])) *
-                              static_cast<T_ACC>(rstd[i]) * gamma_v);
+                              static_cast<T_ACC>(rstd[i]) * scale_v);
   }
 }
 
@@ -362,12 +366,12 @@ __device__ WelfordDataLN compute_stats(const T* __restrict__ X,
 }
 
 template <typename T, typename T_ACC>
-__global__ void vectorized_layer_norm_kernel(const int N,
-                                             T_ACC eps,
-                                             const T* __restrict__ X,
-                                             const T* gamma,
-                                             T_ACC* rstd,
-                                             T* Y) {
+__global__ void vectorized_rms_norm_kernel(const int N,
+                                           T_ACC eps,
+                                           const T* __restrict__ X,
+                                           const T* scale,
+                                           T_ACC* rstd,
+                                           T* Y) {
   extern __shared__ char s_data_raw[];
   T_ACC* s_data = reinterpret_cast<T_ACC*>(s_data_raw);
 
@@ -379,8 +383,8 @@ __global__ void vectorized_layer_norm_kernel(const int N,
 
   using vec_t = aligned_vector<T, kVecSize>;
   const vec_t* X_vec = reinterpret_cast<const vec_t*>(block_row);
-  const vec_t* gamma_vec =
-      (gamma != nullptr) ? reinterpret_cast<const vec_t*>(gamma) : nullptr;
+  const vec_t* scale_vec =
+      (scale != nullptr) ? reinterpret_cast<const vec_t*>(scale) : nullptr;
   vec_t* Y_vec = reinterpret_cast<vec_t*>(Y + i1 * N);
 
   const int numx = blockDim.x * blockDim.y;
@@ -392,11 +396,11 @@ __global__ void vectorized_layer_norm_kernel(const int N,
   for (int i = thrx; i < n_vec_to_read; i += numx) {
     vec_t data = X_vec[i];
     vec_t out;
-    if (gamma_vec != nullptr) {
+    if (scale_vec != nullptr) {
 #pragma unroll
       for (int ii = 0; ii < kVecSize; ii++) {
         out.val[ii] =
-            static_cast<T>(static_cast<T_ACC>(gamma_vec[i].val[ii]) *
+            static_cast<T>(static_cast<T_ACC>(scale_vec[i].val[ii]) *
                            (rstd_val * static_cast<T_ACC>(data.val[ii])));
       }
     } else {
@@ -414,19 +418,15 @@ __global__ void vectorized_layer_norm_kernel(const int N,
   }
 }
 
-// -----------------------------------------------------------------------
-//  Launch Logic
-// -----------------------------------------------------------------------
-
 template <typename T, typename T_ACC>
-void launch_vectorized_layer_norm_kernel_driver(int N,
-                                                int64_t M,
-                                                T_ACC eps,
-                                                const T* X_data,
-                                                const T* gamma_data,
-                                                T* Y_data,
-                                                T_ACC* rstd_data,
-                                                cudaStream_t stream) {
+void launch_vectorized_rms_norm_kernel_driver(int N,
+                                              int64_t M,
+                                              T_ACC eps,
+                                              const T* X_data,
+                                              const T* scale_data,
+                                              T* Y_data,
+                                              T_ACC* rstd_data,
+                                              cudaStream_t stream) {
   const int warp_size = 32;
   const int num_threads = 128;
   const dim3 threads(warp_size, num_threads / warp_size, 1);
@@ -435,76 +435,8 @@ void launch_vectorized_layer_norm_kernel_driver(int N,
   // Shared memory for reduction: need size proportional to threads.y and T_ACC
   int nshared = threads.y > 1 ? threads.y * 3 / 2 * sizeof(T_ACC) : 0;
 
-  vectorized_layer_norm_kernel<T, T_ACC><<<blocks, threads, nshared, stream>>>(
-      N, eps, X_data, gamma_data, rstd_data, Y_data);
-}
-
-template <typename T, typename Context>
-void RMSNormFwdKernel_Torch(const Context& dev_ctx,
-                            const DenseTensor& x,
-                            const DenseTensor& scale,
-                            double epsilon,
-                            DenseTensor* y,
-                            DenseTensor* invvar) {
-  printf("[paddle][call RMSNormFwdKernel_Torch]\n");
-  using T_ACC = typename phi::dtype::MPTypeTrait<T>::Type;
-
-  const auto& x_dims = x.dims();
-  const auto& scale_dims = scale.dims();
-
-  // Assuming last dim is normalized (consistent with PyTorch's common usage
-  // when scale is provided for last dim) But Paddle RMSNorm usually takes x
-  // [Batch, ..., Feature], scale [Feature] We need to flatten to [M, N]
-  int cols = scale_dims[scale_dims.size() - 1];
-  int rows = 1;
-  for (int i = 0; i < x_dims.size(); ++i) {
-    rows *= x_dims[i];
-  }
-  rows /= cols;
-
-  auto* x_data = x.data<T>();
-  auto* scale_data = scale.data<T>();
-  auto* y_data = dev_ctx.template Alloc<T>(y);
-  auto* rstd_data = dev_ctx.template Alloc<T_ACC>(invvar);
-
-  auto stream = dev_ctx.stream();
-
-  // Check vectorization conditions
-  constexpr int num_vec_elems = kVecSize;
-  constexpr int alignment = num_vec_elems * sizeof(T);
-  bool can_vec_X = can_vectorize(x_data, alignment);
-  bool can_vec_Y = can_vectorize(y_data, alignment);
-  bool can_vec_scale = can_vectorize(scale_data, alignment);
-
-  bool is_supported_type = (std::is_same<T, float>::value ||
-                            std::is_same<T, phi::dtype::float16>::value ||
-                            std::is_same<T, phi::dtype::bfloat16>::value);
-
-  if (is_supported_type &&
-      cols <=
-          static_cast<int64_t>(1ULL << std::numeric_limits<float>::digits) &&
-      cols % num_vec_elems == 0 && can_vec_X && can_vec_Y && can_vec_scale) {
-    printf("[paddle][call launch_vectorized_layer_norm_kernel_driver1]\n");
-
-    launch_vectorized_layer_norm_kernel_driver<T, T_ACC>(
-        cols,
-        rows,
-        static_cast<T_ACC>(epsilon),
-        x_data,
-        scale_data,
-        y_data,
-        rstd_data,
-        stream);
-
-  } else {
-    printf("[paddle][call RowwiseMomentsCUDAKernel1]\n");
-    RowwiseMomentsCUDAKernel<T, T_ACC>
-        <<<rows, kCUDABlockReduceNumThreads, 0, stream>>>(
-            cols, static_cast<T_ACC>(epsilon), x_data, rstd_data);
-
-    LayerNormForwardCUDAKernel<T, T_ACC><<<rows, kCUDANumThreads, 0, stream>>>(
-        cols, x_data, rstd_data, scale_data, y_data);
-  }
+  vectorized_rms_norm_kernel<T, T_ACC><<<blocks, threads, nshared, stream>>>(
+      N, eps, X_data, scale_data, rstd_data, Y_data);
 }
 
 // -----------------------------------------------------------------------
@@ -515,7 +447,7 @@ template <typename T, typename T_ACC>
 __device__ __inline__ void compute_gI(const T* __restrict__ dY,
                                       const T* __restrict__ X,
                                       const T_ACC* __restrict__ rstd,
-                                      const T* __restrict__ gamma,
+                                      const T* __restrict__ scale,
                                       T* dX,
                                       const int N,
                                       T_ACC* buf) {
@@ -531,19 +463,19 @@ __device__ __inline__ void compute_gI(const T* __restrict__ dY,
   for (; l + unroll - 1 < N; l += blockDim.x * unroll) {
 #pragma unroll
     for (int k = 0; k < unroll; k++) {
-      const auto gamma_val =
-          (gamma != nullptr) ? static_cast<T_ACC>(gamma[l + k]) : T_ACC(1);
+      const auto scale_val =
+          (scale != nullptr) ? static_cast<T_ACC>(scale[l + k]) : T_ACC(1);
       const auto c_h = static_cast<T_ACC>(X_i[l + k]);
       const auto c_loss = static_cast<T_ACC>(dY_i[l + k]);
-      stats_x2 += c_loss * gamma_val * (c_h)*rstd_val;
+      stats_x2 += c_loss * scale_val * (c_h)*rstd_val;
     }
   }
   for (; l < N; l++) {
-    const auto gamma_val =
-        (gamma != nullptr) ? static_cast<T_ACC>(gamma[l]) : T_ACC(1);
+    const auto scale_val =
+        (scale != nullptr) ? static_cast<T_ACC>(scale[l]) : T_ACC(1);
     const auto c_h = static_cast<T_ACC>(X_i[l]);
     const auto c_loss = static_cast<T_ACC>(dY_i[l]);
-    stats_x2 += c_loss * gamma_val * (c_h)*rstd_val;
+    stats_x2 += c_loss * scale_val * (c_h)*rstd_val;
   }
 
   stats_x2 = BlockReduceSum(stats_x2, buf);
@@ -560,10 +492,10 @@ __device__ __inline__ void compute_gI(const T* __restrict__ dY,
   for (int l = threadIdx.x; l < N; l += blockDim.x) {
     const auto x = static_cast<T_ACC>(X_i[l]);
     const auto dy = static_cast<T_ACC>(dY_i[l]);
-    const auto gamma_val =
-        (gamma != nullptr) ? static_cast<T_ACC>(gamma[l]) : T_ACC(1);
+    const auto scale_val =
+        (scale != nullptr) ? static_cast<T_ACC>(scale[l]) : T_ACC(1);
 
-    T_ACC f_grad_input = fH * gamma_val * dy;
+    T_ACC f_grad_input = fH * scale_val * dy;
     f_grad_input -= (x)*rstd_val * stats_x2;
     f_grad_input *= term1;
     dX_i[l] = static_cast<T>(f_grad_input);
@@ -571,23 +503,23 @@ __device__ __inline__ void compute_gI(const T* __restrict__ dY,
 }
 
 template <typename T, typename T_ACC>
-__global__ void layer_norm_grad_input_kernel(const T* __restrict__ dY,
-                                             const T* __restrict__ X,
-                                             const T_ACC* __restrict__ rstd,
-                                             const T* __restrict__ gamma,
-                                             T* dX,
-                                             const int N) {
+__global__ void rms_norm_grad_input_kernel(const T* __restrict__ dY,
+                                           const T* __restrict__ X,
+                                           const T_ACC* __restrict__ rstd,
+                                           const T* __restrict__ scale,
+                                           T* dX,
+                                           const int N) {
   alignas(sizeof(double)) extern __shared__ char s_data1[];
   T_ACC* buf = reinterpret_cast<T_ACC*>(&s_data1);
-  compute_gI<T, T_ACC>(dY, X, rstd, gamma, dX, N, buf);
+  compute_gI<T, T_ACC>(dY, X, rstd, scale, dX, N, buf);
 }
 
 template <typename T, typename T_ACC>
-__global__ void layer_norm_grad_input_kernel_vectorized(
+__global__ void rms_norm_grad_input_kernel_vectorized(
     const T* __restrict__ dY,
     const T* __restrict__ X,
     const T_ACC* __restrict__ rstd,
-    const T* __restrict__ gamma,
+    const T* __restrict__ scale,
     T* dX,
     const int N) {
   alignas(sizeof(double)) extern __shared__ char shared_data[];
@@ -602,41 +534,41 @@ __global__ void layer_norm_grad_input_kernel_vectorized(
   using vec_t = aligned_vector<T, kVecSize>;
   const vec_t* const X_i_vec_ptr = reinterpret_cast<const vec_t*>(X_i);
   const vec_t* const dY_i_vec_ptr = reinterpret_cast<const vec_t*>(dY_i);
-  const vec_t* const gamma_vec_ptr =
-      (gamma != nullptr) ? reinterpret_cast<const vec_t*>(gamma) : nullptr;
+  const vec_t* const scale_vec_ptr =
+      (scale != nullptr) ? reinterpret_cast<const vec_t*>(scale) : nullptr;
   vec_t* const dX_i_vec = reinterpret_cast<vec_t*>(dX_i);
 
-  vec_t X_i_vec_reg, dY_i_vec_reg, gamma_vec_reg, dX_i_vec_reg;
+  vec_t X_i_vec_reg, dY_i_vec_reg, scale_vec_reg, dX_i_vec_reg;
   for (int k = 0; k < kVecSize; ++k) {
-    gamma_vec_reg.val[k] = T(1);
+    scale_vec_reg.val[k] = T(1);
   }
 
   T_ACC stats_x2{0};
   unsigned int l = threadIdx.x * kVecSize;
   for (; l + kVecSize - 1 < N; l += blockDim.x * kVecSize) {
     unsigned int vec_idx = l / kVecSize;
-    if (gamma != nullptr) {
-      gamma_vec_reg = gamma_vec_ptr[vec_idx];
+    if (scale != nullptr) {
+      scale_vec_reg = scale_vec_ptr[vec_idx];
     }
 
     X_i_vec_reg = X_i_vec_ptr[vec_idx];
     dY_i_vec_reg = dY_i_vec_ptr[vec_idx];
 
     for (int k = 0; k < kVecSize; ++k) {
-      const auto gamma_val = static_cast<T_ACC>(gamma_vec_reg.val[k]);
+      const auto scale_val = static_cast<T_ACC>(scale_vec_reg.val[k]);
       const auto c_h = static_cast<T_ACC>(X_i_vec_reg.val[k]);
       const auto c_loss = static_cast<T_ACC>(dY_i_vec_reg.val[k]);
-      stats_x2 += c_loss * gamma_val * (c_h)*rstd_val;
+      stats_x2 += c_loss * scale_val * (c_h)*rstd_val;
     }
   }
 
   // Tail Loop
   for (; l < N; l++) {
-    const auto gamma_val =
-        (gamma != nullptr) ? static_cast<T_ACC>(gamma[l]) : T_ACC(1);
+    const auto scale_val =
+        (scale != nullptr) ? static_cast<T_ACC>(scale[l]) : T_ACC(1);
     const auto c_h = static_cast<T_ACC>(X_i[l]);
     const auto c_loss = static_cast<T_ACC>(dY_i[l]);
-    stats_x2 += c_loss * gamma_val * (c_h)*rstd_val;
+    stats_x2 += c_loss * scale_val * (c_h)*rstd_val;
   }
 
   stats_x2 = BlockReduceSum(stats_x2, reduce_buf);
@@ -652,19 +584,19 @@ __global__ void layer_norm_grad_input_kernel_vectorized(
   l = threadIdx.x * kVecSize;
   for (; l + kVecSize - 1 < N; l += blockDim.x * kVecSize) {
     unsigned int vec_idx = l / kVecSize;
-    if (gamma != nullptr) {
-      gamma_vec_reg = gamma_vec_ptr[vec_idx];
+    if (scale != nullptr) {
+      scale_vec_reg = scale_vec_ptr[vec_idx];
     }
 
     X_i_vec_reg = X_i_vec_ptr[vec_idx];
     dY_i_vec_reg = dY_i_vec_ptr[vec_idx];
 
     for (int k = 0; k < kVecSize; ++k) {
-      const auto gamma_val = static_cast<T_ACC>(gamma_vec_reg.val[k]);
+      const auto scale_val = static_cast<T_ACC>(scale_vec_reg.val[k]);
       const auto x = static_cast<T_ACC>(X_i_vec_reg.val[k]);
       const auto dy = static_cast<T_ACC>(dY_i_vec_reg.val[k]);
 
-      T_ACC f_grad_input = fH * gamma_val * dy;
+      T_ACC f_grad_input = fH * scale_val * dy;
       f_grad_input -= (x)*rstd_val * stats_x2;
       f_grad_input *= term1;
       dX_i_vec_reg.val[k] = static_cast<T>(f_grad_input);
@@ -677,10 +609,10 @@ __global__ void layer_norm_grad_input_kernel_vectorized(
   for (; l < N; l += blockDim.x) {
     const auto x = static_cast<T_ACC>(X_i[l]);
     const auto dy = static_cast<T_ACC>(dY_i[l]);
-    const auto gamma_val =
-        (gamma != nullptr) ? static_cast<T_ACC>(gamma[l]) : T_ACC(1);
+    const auto scale_val =
+        (scale != nullptr) ? static_cast<T_ACC>(scale[l]) : T_ACC(1);
 
-    T_ACC f_grad_input = fH * gamma_val * dy;
+    T_ACC f_grad_input = fH * scale_val * dy;
     f_grad_input -= (x)*rstd_val * stats_x2;
     f_grad_input *= term1;
     dX_i[l] = static_cast<T>(f_grad_input);
@@ -694,15 +626,15 @@ template <typename T,
           unsigned int rows_per_block_y,
           bool check_x,
           bool check_y>
-__device__ __forceinline__ void blockReduceGammaBetaBackwardsHelper(
+__device__ __forceinline__ void blockReduceScaleBackwardHelper(
     int64_t M_start,
     int64_t M,
     int64_t N,
     const T* __restrict__ dY,
     const T* __restrict__ X,
     const T_ACC* __restrict__ rstd,
-    T* __restrict__ dg,
-    T_ACC* dg_sum) {
+    T* __restrict__ dscale,
+    T_ACC* dscale_sum) {
   constexpr int rows_per_thread_y = rows_per_block_y / block_dim_y;
   int64_t thread_x = static_cast<int64_t>(blockIdx.x) * block_dim_x +
                      static_cast<int64_t>(threadIdx.x);
@@ -741,7 +673,7 @@ __device__ __forceinline__ void blockReduceGammaBetaBackwardsHelper(
 #pragma unroll
   for (int i = 0; i < rows_per_thread_y; ++i) {
     T_ACC rstd_reg = WARP_SHFL_(warp_rstd, i, kWarpSize);
-    *dg_sum += dY_regs[i] * (X_regs[i]) * rstd_reg;
+    *dscale_sum += dY_regs[i] * (X_regs[i]) * rstd_reg;
   }
 }
 
@@ -752,36 +684,36 @@ template <typename T,
           unsigned int rows_per_block_y,
           bool check_x,
           bool check_y>
-__device__ __forceinline__ void blockReduceGammaBetaBackwardsWithChecks(
+__device__ __forceinline__ void blockReduceScaleBackwardWithChecks(
     int64_t M,
     int64_t N,
     const T* __restrict__ dY,
     const T* __restrict__ X,
     const T_ACC* __restrict__ rstd,
-    T* __restrict__ dg,
-    T_ACC* dg_sum) {
+    T* __restrict__ dscale,
+    T_ACC* dscale_sum) {
   for (int64_t M_start = static_cast<int64_t>(blockIdx.y) * rows_per_block_y;
        M_start < M;
        M_start += rows_per_block_y * gridDim.y) {
     int64_t M_end = M_start + rows_per_block_y - 1;
     if (!check_y || M_end < M) {
-      blockReduceGammaBetaBackwardsHelper<T,
-                                          T_ACC,
-                                          block_dim_x,
-                                          block_dim_y,
-                                          rows_per_block_y,
-                                          check_x,
-                                          false>(
-          M_start, M, N, dY, X, rstd, dg, dg_sum);
+      blockReduceScaleBackwardHelper<T,
+                                     T_ACC,
+                                     block_dim_x,
+                                     block_dim_y,
+                                     rows_per_block_y,
+                                     check_x,
+                                     false>(
+          M_start, M, N, dY, X, rstd, dscale, dscale_sum);
     } else {
-      blockReduceGammaBetaBackwardsHelper<T,
-                                          T_ACC,
-                                          block_dim_x,
-                                          block_dim_y,
-                                          rows_per_block_y,
-                                          check_x,
-                                          true>(
-          M_start, M, N, dY, X, rstd, dg, dg_sum);
+      blockReduceScaleBackwardHelper<T,
+                                     T_ACC,
+                                     block_dim_x,
+                                     block_dim_y,
+                                     rows_per_block_y,
+                                     check_x,
+                                     true>(
+          M_start, M, N, dY, X, rstd, dscale, dscale_sum);
     }
   }
 }
@@ -793,47 +725,46 @@ template <typename T,
           unsigned int rows_per_block_y,
           bool partial_reduction,
           bool aligned_grid>
-__global__ void GammaBetaBackwardCUDAKernelTemplate(
-    int64_t M,
-    int64_t N,
-    const T* __restrict__ dY,
-    const T* __restrict__ X,
-    const T_ACC* __restrict__ rstd,
-    T* __restrict__ dg) {
+__global__ void ScaleBackwardCUDAKernelTemplate(int64_t M,
+                                                int64_t N,
+                                                const T* __restrict__ dY,
+                                                const T* __restrict__ X,
+                                                const T_ACC* __restrict__ rstd,
+                                                T* __restrict__ dscale) {
   constexpr int rows_per_thread_y = rows_per_block_y / block_dim_y;
   static_assert(rows_per_thread_y <= kWarpSize);
 
-  T_ACC dg_sum = 0;
+  T_ACC dscale_sum = 0;
 
   // Template : Boundary check of x and y
   if (aligned_grid) {
-    blockReduceGammaBetaBackwardsWithChecks<T,
-                                            T_ACC,
-                                            block_dim_x,
-                                            block_dim_y,
-                                            rows_per_block_y,
-                                            false,
-                                            false>(
-        M, N, dY, X, rstd, dg, &dg_sum);
+    blockReduceScaleBackwardWithChecks<T,
+                                       T_ACC,
+                                       block_dim_x,
+                                       block_dim_y,
+                                       rows_per_block_y,
+                                       false,
+                                       false>(
+        M, N, dY, X, rstd, dscale, &dscale_sum);
   } else {
-    if (blockIdx.x * block_dim_x + block_dim_x - 1 < N) {
-      blockReduceGammaBetaBackwardsWithChecks<T,
-                                              T_ACC,
-                                              block_dim_x,
-                                              block_dim_y,
-                                              rows_per_block_y,
-                                              false,
-                                              true>(
-          M, N, dY, X, rstd, dg, &dg_sum);
+    if (static_cast<int64_t>(blockIdx.x) * block_dim_x + block_dim_x - 1 < N) {
+      blockReduceScaleBackwardWithChecks<T,
+                                         T_ACC,
+                                         block_dim_x,
+                                         block_dim_y,
+                                         rows_per_block_y,
+                                         false,
+                                         true>(
+          M, N, dY, X, rstd, dscale, &dscale_sum);
     } else {
-      blockReduceGammaBetaBackwardsWithChecks<T,
-                                              T_ACC,
-                                              block_dim_x,
-                                              block_dim_y,
-                                              rows_per_block_y,
-                                              true,
-                                              true>(
-          M, N, dY, X, rstd, dg, &dg_sum);
+      blockReduceScaleBackwardWithChecks<T,
+                                         T_ACC,
+                                         block_dim_x,
+                                         block_dim_y,
+                                         rows_per_block_y,
+                                         true,
+                                         true>(
+          M, N, dY, X, rstd, dscale, &dscale_sum);
     }
   }
 
@@ -844,8 +775,8 @@ __global__ void GammaBetaBackwardCUDAKernelTemplate(
     if (aligned_grid || thread_x < N) {
       int64_t thread_y =
           (static_cast<int64_t>(blockIdx.y)) * blockDim.y + threadIdx.y;
-      if (dg) {
-        dg[thread_y * N + thread_x] = static_cast<T>(dg_sum);
+      if (dscale) {
+        dscale[thread_y * N + thread_x] = static_cast<T>(dscale_sum);
       }
     }
   } else {
@@ -853,10 +784,10 @@ __global__ void GammaBetaBackwardCUDAKernelTemplate(
     static_assert(rows_per_thread_y <= kWarpSize);
     alignas(sizeof(double)) extern __shared__ char s_data1[];
     T_ACC* s_data_typed = reinterpret_cast<T_ACC*>(&s_data1);
-    T_ACC* s_dg;
+    T_ACC* s_dscale;
     int padded_bx = (block_dim_x + 1);
-    s_dg = s_data_typed;
-    s_dg[threadIdx.y * padded_bx + threadIdx.x] = dg_sum;
+    s_dscale = s_data_typed;
+    s_dscale[threadIdx.y * padded_bx + threadIdx.x] = dscale_sum;
     __syncthreads();
 
     static_assert(block_dim_x * block_dim_y % kWarpSize == 0);
@@ -867,19 +798,19 @@ __global__ void GammaBetaBackwardCUDAKernelTemplate(
     int lane_id = thread_id & (kWarpSize - 1);
 #pragma unroll
     for (int i = warp_id; i < block_dim_x; i += warps_available_to_reduce) {
-      T_ACC reg_dg;
+      T_ACC reg_dscale;
       if (lane_id < block_dim_y) {
-        reg_dg = s_dg[lane_id * padded_bx + i];
+        reg_dscale = s_dscale[lane_id * padded_bx + i];
       }
 #pragma unroll
       for (unsigned delta = block_dim_y >> 1; delta >= 1; delta >>= 1) {
-        reg_dg += WARP_SHFL_XOR_(reg_dg, delta, kWarpSize);
+        reg_dscale += WARP_SHFL_XOR_(reg_dscale, delta, kWarpSize);
       }
 
       int64_t out_index = static_cast<int64_t>(blockIdx.x) * block_dim_x + i;
       if (threadIdx.x == 0 && (aligned_grid || out_index < N)) {
-        if (dg) {
-          dg[out_index] = static_cast<T>(reg_dg);
+        if (dscale) {
+          dscale[out_index] = static_cast<T>(reg_dscale);
         }
       }
     }
@@ -891,13 +822,13 @@ template <typename T,
           int block_dim_x,
           int block_dim_y,
           int rows_per_block_y>
-void ConfigureAndLaunchGammaBetaBackwardKernel(const T* dY_data,
-                                               const T* X_data,
-                                               const T_ACC* rstd_data,
-                                               int64_t M,
-                                               int64_t N,
-                                               T* dgamma_data,
-                                               cudaStream_t cuda_stream) {
+void ConfigureAndLaunchScaleBackwardKernel(const T* dY_data,
+                                           const T* X_data,
+                                           const T_ACC* rstd_data,
+                                           int64_t M,
+                                           int64_t N,
+                                           T* dscale_data,
+                                           cudaStream_t cuda_stream) {
   bool aligned_grid = (M % rows_per_block_y == 0) && (N % block_dim_x == 0);
   dim3 threads{block_dim_x, block_dim_y};
   dim3 blocks;
@@ -907,88 +838,140 @@ void ConfigureAndLaunchGammaBetaBackwardKernel(const T* dY_data,
 
   if (blocks.y == 1 && threads.y == 1) {
     if (aligned_grid) {
-      GammaBetaBackwardCUDAKernelTemplate<T,
-                                          T_ACC,
-                                          block_dim_x,
-                                          block_dim_y,
-                                          rows_per_block_y,
-                                          true,
-                                          true>
+      ScaleBackwardCUDAKernelTemplate<T,
+                                      T_ACC,
+                                      block_dim_x,
+                                      block_dim_y,
+                                      rows_per_block_y,
+                                      true,
+                                      true>
           <<<blocks, threads, shmem_sz, cuda_stream>>>(
-              M, N, dY_data, X_data, rstd_data, dgamma_data);
+              M, N, dY_data, X_data, rstd_data, dscale_data);
     } else {
-      GammaBetaBackwardCUDAKernelTemplate<T,
-                                          T_ACC,
-                                          block_dim_x,
-                                          block_dim_y,
-                                          rows_per_block_y,
-                                          true,
-                                          false>
+      ScaleBackwardCUDAKernelTemplate<T,
+                                      T_ACC,
+                                      block_dim_x,
+                                      block_dim_y,
+                                      rows_per_block_y,
+                                      true,
+                                      false>
           <<<blocks, threads, shmem_sz, cuda_stream>>>(
-              M, N, dY_data, X_data, rstd_data, dgamma_data);
+              M, N, dY_data, X_data, rstd_data, dscale_data);
     }
   } else {
     if (aligned_grid) {
-      GammaBetaBackwardCUDAKernelTemplate<T,
-                                          T_ACC,
-                                          block_dim_x,
-                                          block_dim_y,
-                                          rows_per_block_y,
-                                          false,
-                                          true>
+      ScaleBackwardCUDAKernelTemplate<T,
+                                      T_ACC,
+                                      block_dim_x,
+                                      block_dim_y,
+                                      rows_per_block_y,
+                                      false,
+                                      true>
           <<<blocks, threads, shmem_sz, cuda_stream>>>(
-              M, N, dY_data, X_data, rstd_data, dgamma_data);
+              M, N, dY_data, X_data, rstd_data, dscale_data);
     } else {
-      GammaBetaBackwardCUDAKernelTemplate<T,
-                                          T_ACC,
-                                          block_dim_x,
-                                          block_dim_y,
-                                          rows_per_block_y,
-                                          false,
-                                          false>
+      ScaleBackwardCUDAKernelTemplate<T,
+                                      T_ACC,
+                                      block_dim_x,
+                                      block_dim_y,
+                                      rows_per_block_y,
+                                      false,
+                                      false>
           <<<blocks, threads, shmem_sz, cuda_stream>>>(
-              M, N, dY_data, X_data, rstd_data, dgamma_data);
+              M, N, dY_data, X_data, rstd_data, dscale_data);
     }
   }
 }
 
+// -----------------------------------------------------------------------
+//  Host API Implementations
+// -----------------------------------------------------------------------
+
 template <typename T, typename Context>
-void RMSNormBwdKernel_Torch(const Context& dev_ctx,
-                            const DenseTensor& X,
-                            const DenseTensor& scale,
-                            const DenseTensor& invvar,
-                            const DenseTensor& dY,
-                            double epsilon,
-                            DenseTensor* dX,
-                            DenseTensor* dscale) {
+void RMSNormFwdKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const paddle::optional<DenseTensor>& scale_opt,
+                      double epsilon,
+                      int begin_norm_axis,
+                      DenseTensor* y,
+                      DenseTensor* invvar) {
+  using T_ACC = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  auto matrix_dim = common::flatten_to_2d(x.dims(), begin_norm_axis);
+  int64_t rows = matrix_dim[0];
+  int64_t cols = matrix_dim[1];
+
+  auto* scale_ptr = scale_opt.get_ptr();
+  const DenseTensor& scale = *scale_ptr;
+
+  auto* x_data = x.data<T>();
+  auto* scale_data = scale_ptr ? scale.data<T>() : nullptr;
+  auto* y_data = dev_ctx.template Alloc<T>(y);
+  auto* rstd_data = dev_ctx.template Alloc<T_ACC>(invvar);
+
+  auto stream = dev_ctx.stream();
+
+  // Check vectorization conditions
+  constexpr int num_vec_elems = kVecSize;
+  constexpr int alignment = num_vec_elems * sizeof(T);
+  bool can_vec_X = can_vectorize(x_data, alignment);
+  bool can_vec_Y = can_vectorize(y_data, alignment);
+  bool can_vec_scale = can_vectorize(scale_data, alignment);
+
+  bool is_supported_type = (std::is_same<T, float>::value ||
+                            std::is_same<T, phi::dtype::float16>::value ||
+                            std::is_same<T, phi::dtype::bfloat16>::value);
+
+  if (is_supported_type &&
+      cols <=
+          static_cast<int64_t>(1ULL << std::numeric_limits<float>::digits) &&
+      cols % num_vec_elems == 0 && can_vec_X && can_vec_Y && can_vec_scale) {
+    launch_vectorized_rms_norm_kernel_driver<T, T_ACC>(
+        cols,
+        rows,
+        static_cast<T_ACC>(epsilon),
+        x_data,
+        scale_data,
+        y_data,
+        rstd_data,
+        stream);
+
+  } else {
+    RowwiseMomentsCUDAKernel<T, T_ACC>
+        <<<rows, kCUDABlockReduceNumThreads, 0, stream>>>(
+            cols, static_cast<T_ACC>(epsilon), x_data, rstd_data);
+
+    RMSNormForwardCUDAKernel<T, T_ACC><<<rows, kCUDANumThreads, 0, stream>>>(
+        cols, x_data, rstd_data, scale_data, y_data);
+  }
+}
+
+template <typename T, typename Context>
+void RMSNormBwdKernel(const Context& dev_ctx,
+                      const DenseTensor& X,
+                      const paddle::optional<DenseTensor>& scale_opt,
+                      const DenseTensor& invvar,
+                      const DenseTensor& dY,
+                      double epsilon,
+                      int begin_norm_axis,
+                      DenseTensor* dX,
+                      DenseTensor* dscale) {
   using T_ACC = typename phi::dtype::MPTypeTrait<T>::Type;
 
   // X, dY: [Batch, ..., Feature] -> flatten to [M, N]
   // scale, dscale: [Feature] -> [N]
   // invvar: [Batch, ...] -> [M]
 
-  const auto& x_dims = X.dims();
-  const auto& scale_dims = scale.dims();
-  int cols = scale_dims[scale_dims.size() - 1];
-  int rows = 1;
-  for (int i = 0; i < x_dims.size(); ++i) {
-    rows *= x_dims[i];
-  }
-  rows /= cols;
-  int64_t M = rows;
-  int64_t N = cols;
+  auto matrix_dim = common::flatten_to_2d(X.dims(), begin_norm_axis);
+  int64_t M = matrix_dim[0];
+  int64_t N = matrix_dim[1];
 
-  // TORCH_CHECK(dY.numel() == M * N);
-  // TORCH_CHECK(rstd.numel() == M);
-  // TORCH_CHECK(M <= at::cuda::getCurrentDeviceProperties()->maxGridSize[0], "M
-  // should be less than maximum CUDA grid size, file a support request to
-  // support bigger batches"); TORCH_CHECK(N <= std::numeric_limits<int>::max(),
-  // "Normalized shape should have less than INT_MAX elements, file a support
-  // request to support bigger normalized shapes");
+  auto* scale_ptr = scale_opt.get_ptr();
+  const DenseTensor& scale = *scale_ptr;
 
   auto* dY_data = dY.data<T>();
   auto* X_data = X.data<T>();
-  auto* scale_data = scale.data<T>();
+  auto* scale_data = scale_ptr ? scale.data<T>() : nullptr;
   auto* invvar_data = invvar.data<T_ACC>();
 
   auto* dX_data = dX ? dev_ctx.template Alloc<T>(dX) : nullptr;
@@ -1015,18 +998,18 @@ void RMSNormBwdKernel_Torch(const Context& dev_ctx,
     int nshared = (num_threads / warp_size) * sizeof(T_ACC);
 
     if (is_supported_type && bAlignedBuffers && bVectorSizeMultiple) {
-      layer_norm_grad_input_kernel_vectorized<T, T_ACC>
+      rms_norm_grad_input_kernel_vectorized<T, T_ACC>
           <<<blocks, num_threads, nshared, stream>>>(
               dY_data, X_data, invvar_data, scale_data, dX_data, N);
     } else {
-      layer_norm_grad_input_kernel<T, T_ACC>
+      rms_norm_grad_input_kernel<T, T_ACC>
           <<<blocks, num_threads, nshared, stream>>>(
               dY_data, X_data, invvar_data, scale_data, dX_data, N);
     }
   }
 
-  // 2. Compute dscale (dgamma)
-  if (dscale_data) {
+  // 2. Compute dscale
+  if (scale_data) {
     constexpr int block_dim_x = 32;
     const int sm_count = dev_ctx.GetSMCount();
     if (M > 64 * 1024 && N / block_dim_x < sm_count / 2) {
@@ -1042,56 +1025,46 @@ void RMSNormBwdKernel_Torch(const Context& dev_ctx,
       constexpr int max_grid_size = 64 * 1024 / 2;
       blocks.y = std::min<unsigned int>(max_grid_size / blocks.x, blocks.y);
 
-      DenseTensor dgamma_blocks;
-      dgamma_blocks.Resize({static_cast<int64_t>(blocks.y * threads.y), N});
-      T* dgamma_blocks_ptr = dev_ctx.template Alloc<T>(&dgamma_blocks);
+      DenseTensor dscale_blocks;
+      dscale_blocks.Resize({static_cast<int64_t>(blocks.y * threads.y), N});
+      T* dscale_blocks_ptr = dev_ctx.template Alloc<T>(&dscale_blocks);
 
       if (aligned_grid) {
-        GammaBetaBackwardCUDAKernelTemplate<T,
-                                            T_ACC,
-                                            block_dim_x,
-                                            block_dim_y,
-                                            rows_per_block_y,
-                                            true,
-                                            true>
-            <<<blocks, threads, 0, stream>>>(
-                M, N, dY_data, X_data, invvar_data, dgamma_blocks_ptr);
+        ScaleBackwardCUDAKernelTemplate<T,
+                                        T_ACC,
+                                        block_dim_x,
+                                        block_dim_y,
+                                        rows_per_block_y,
+                                        true,
+                                        true><<<blocks, threads, 0, stream>>>(
+            M, N, dY_data, X_data, invvar_data, dscale_blocks_ptr);
       } else {
-        GammaBetaBackwardCUDAKernelTemplate<T,
-                                            T_ACC,
-                                            block_dim_x,
-                                            block_dim_y,
-                                            rows_per_block_y,
-                                            true,
-                                            false>
-            <<<blocks, threads, 0, stream>>>(
-                M, N, dY_data, X_data, invvar_data, dgamma_blocks_ptr);
+        ScaleBackwardCUDAKernelTemplate<T,
+                                        T_ACC,
+                                        block_dim_x,
+                                        block_dim_y,
+                                        rows_per_block_y,
+                                        true,
+                                        false><<<blocks, threads, 0, stream>>>(
+            M, N, dY_data, X_data, invvar_data, dscale_blocks_ptr);
       }
 
       // Sum reduction along blocks.y dimension to get final dscale
       phi::SumKernel<T, Context>(
-          dev_ctx, dgamma_blocks, {0}, dscale->dtype(), false, dscale);
+          dev_ctx, dscale_blocks, {0}, dscale->dtype(), false, dscale);
 
     } else {
       if (M < 64) {
-        ConfigureAndLaunchGammaBetaBackwardKernel<T, T_ACC, block_dim_x, 1, 8>(
+        ConfigureAndLaunchScaleBackwardKernel<T, T_ACC, block_dim_x, 1, 8>(
             dY_data, X_data, invvar_data, M, N, dscale_data, stream);
       } else if (M < 128) {
-        ConfigureAndLaunchGammaBetaBackwardKernel<T, T_ACC, block_dim_x, 8, 64>(
+        ConfigureAndLaunchScaleBackwardKernel<T, T_ACC, block_dim_x, 8, 64>(
             dY_data, X_data, invvar_data, M, N, dscale_data, stream);
       } else if (M < 256) {
-        ConfigureAndLaunchGammaBetaBackwardKernel<T,
-                                                  T_ACC,
-                                                  block_dim_x,
-                                                  16,
-                                                  128>(
+        ConfigureAndLaunchScaleBackwardKernel<T, T_ACC, block_dim_x, 16, 128>(
             dY_data, X_data, invvar_data, M, N, dscale_data, stream);
       } else {
-        ConfigureAndLaunchGammaBetaBackwardKernel<T,
-                                                  T_ACC,
-                                                  block_dim_x,
-                                                  32,
-                                                  256>(
+        ConfigureAndLaunchScaleBackwardKernel<T, T_ACC, block_dim_x, 32, 256>(
             dY_data, X_data, invvar_data, M, N, dscale_data, stream);
       }
     }
