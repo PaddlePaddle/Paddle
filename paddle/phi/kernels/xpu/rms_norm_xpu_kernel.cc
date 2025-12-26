@@ -43,11 +43,13 @@ void RMSNormFwdKernel(const Context &dev_ctx,
                       int begin_norm_axis,
                       DenseTensor *y,
                       DenseTensor *invvar) {
-  if (begin_norm_axis != 1) {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "XPU RMSNorm only supports begin_norm_axis=1, but got %d",
-        begin_norm_axis));
-  }
+  PADDLE_ENFORCE_EQ(
+      begin_norm_axis,
+      x.dims() - 1,
+      common::errors::InvalidArgument(
+          "XPU RMSNorm only supports begin_norm_axis=%d, but got %d",
+          x.dims() - 1,
+          begin_norm_axis));
 
   auto *scale_ptr = scale_opt.get_ptr();
   if (scale_ptr == nullptr) {
@@ -144,11 +146,13 @@ void RMSNormBwdKernel(const Context &dev_ctx,
                       int begin_norm_axis,
                       DenseTensor *x_grad,
                       DenseTensor *scale_grad) {
-  if (begin_norm_axis != 1) {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "XPU RMSNorm only supports begin_norm_axis=1, but got %d",
-        begin_norm_axis));
-  }
+  PADDLE_ENFORCE_EQ(
+      begin_norm_axis,
+      x.dims() - 1,
+      common::errors::InvalidArgument(
+          "XPU RMSNorm only supports begin_norm_axis=%d, but got %d",
+          x.dims() - 1,
+          begin_norm_axis));
 
   auto *scale_ptr = scale_opt.get_ptr();
   if (scale_ptr == nullptr) {
