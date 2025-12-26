@@ -18,8 +18,11 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/elementwise_grad_base.h"
 #include "paddle/phi/kernels/funcs/matrix_reduce.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/impl/matmul_grad_kernel_impl.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
@@ -211,54 +214,22 @@ void LinearV2GradKernel(const Context& dev_ctx,
   /*
   reduce bias with dummy add_grad, perform matmul grad, reshape grad dim
   #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION > 11060 &&
-  !defined(PADDLE_WITH_HIP) && !defined(_WIN32) dev_ctx.template Alloc<T>(out,
-  out->numel() * sizeof(T)); const auto [M, N, K] = canonicalize_dims(input,
-  weight);
-
-    if (bias.numel() != N) {
-      // only broadcast to 1D bias whatsoever
-      // pass1: scalar to 1D
-      phi::Tile(dev_ctx, bias, {N}, out);
-    }
-    if (N > 1 && K > 1) {
-      // CublasLt path with bias add epilogue
-      phi::funcs::LinearWithCublasLt<T>::Run(
-          dev_ctx,
-          &input,
-          &weight,
-          out,
-          static_cast<const void*>(bias.data<T>()),
-          nullptr,
-          M,
-          N,
-          K,
-          false,
-          false,
-          phi::funcs::MatmulFusedType::kMatmulBias);
-    } else {
-      // Cublas path with beta==1 bias adding.
-      blas.GEMM(dev_ctx, )
-    }
+  !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   #else
   */
   phi::MatmulGradKernel<T, Context>(
       dev_ctx, input, weight, out_grad, false, false, input_grad, weight_grad);
-  /*
-      if (dy_bst.dims() == y.dims()) {
-      Copy<Context>(dev_ctx, dy_bst, dev_ctx.GetPlace(), false, dy);
+
+  if (bias_grad && bias.numel() != 0) {
+    if (out_grad.numel() != bias_grad->numel()) {
+      dev_ctx.template Alloc<T>(bias_grad);
+      std::vector<int> reduce_dims =
+          funcs::GetReduceDim(bias.dims(), out_grad.dims(), -1);
+      phi::SumKernel<T, Context>(
+          dev_ctx, out_grad, reduce_dims, out_grad.dtype(), false, bias_grad);
     } else {
-      funcs::MatrixReduceSumFunctor<T, Context> functor;
-      functor(dev_ctx, dy_bst, dy);
-      dy->Resize(y.dims());
+      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, bias_grad);
     }
-  */
-  dev_ctx.template Alloc<T>(bias_grad);
-  if (out_grad.dims() != bias.dims()) {
-    funcs::MatrixReduceSumFunctor<T, Context> functor;
-    functor(dev_ctx, out_grad, bias_grad);
-    bias_grad->Resize(bias.dims());
-  } else {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, bias_grad);
   }
   // #endif
 }

@@ -504,37 +504,6 @@ void LinearV2GradInferMeta(const MetaTensor& input,
   auto bias_dims = bias.dims();
   auto dout_dims = out_grad.dims();
 
-  PADDLE_ENFORCE_GE(dout_dims.size(),
-                    2,
-                    common::errors::InvalidArgument(
-                        "The Input tensor DOut's dimension of LinearV2Op "
-                        " should be >= 2, but got %d.",
-                        dout_dims.size()));
-
-  PADDLE_ENFORCE_EQ(weight_dims.size(),
-                    2,
-                    common::errors::InvalidArgument(
-                        "The Input tensor Y's dimension of LinearV2Op "
-                        " should be 2, but got %d.",
-                        weight_dims.size()));
-
-  PADDLE_ENFORCE_GE(input_dims.size(),
-                    2,
-                    common::errors::InvalidArgument(
-                        "The Input tensor X's dimension of LinearV2Op "
-                        " should be >= 2, but got %d.",
-                        input_dims.size()));
-
-  PADDLE_ENFORCE_EQ(
-      dout_dims.size(),
-      input_dims.size(),
-      common::errors::InvalidArgument(
-          "The Input tensor DOut's and X's dimension of "
-          "LinearV2Op "
-          " should be the same, but got DOut's dim = %d and X's = %d.",
-          dout_dims.size(),
-          input_dims.size()));
-
   auto dout_mat_dims = common::flatten_to_2d(dout_dims, dout_dims.size() - 1);
 
   PADDLE_ENFORCE_EQ(
@@ -561,8 +530,9 @@ void LinearV2GradInferMeta(const MetaTensor& input,
     }
   }
 
-  auto k_from_dout = dout_dims[input_dims.size() - 2];
-  auto k_from_input = input_dims[input_dims.size() - 2];
+  const int64_t input_ndim = input_dims.size();
+  auto k_from_dout = input_ndim >= 2 ? dout_dims[input_ndim - 2] : 1;
+  auto k_from_input = input_ndim >= 2 ? input_dims[input_ndim - 2] : 1;
 
   bool check_k =
       (k_from_dout < 0 || k_from_input < 0) || (k_from_dout == k_from_input);
