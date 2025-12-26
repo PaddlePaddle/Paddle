@@ -215,13 +215,15 @@ class TestMultiprocessingBase(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda()
-    and not paddle.base.core.is_compiled_with_xpu(),
-    "Require compiled with CUDA or XPU.",
-)
-@unittest.skipIf(
-    platform.system().lower() == "windows",
-    "Skip: ipc function on Windows is not supported.",
+    (
+        not (
+            paddle.is_compiled_with_cuda()
+            and not paddle.is_compiled_with_rocm()
+        )
+        and not paddle.is_compiled_with_xpu()
+    )
+    or platform.system().lower() == "windows",
+    "Require compiled with CUDA or XPU. Skip: ipc function on Windows is not supported.",
 )
 class TestMultiprocessingGpu(TestMultiprocessingBase):
     def func_test_pass_tensor(self):
