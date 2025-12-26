@@ -20,25 +20,18 @@ env:
   CI_name: ixuca
 
 jobs:
-  check-approval:
-    name: Check approval for IXUCA
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: read
-    outputs:
-      can-skip-by-approval: ${{ steps.check-approval.outputs.can-skip }}
+  test:
+    name: Build and Test
+    if: ${{ inputs.can-skip != 'true' }}
+    runs-on:
+      group: test2
+
     steps:
       - name: Check approval
         id: check-approval
         run: |
-          echo "Checking PR #${{ github.event.pull_request.number }} for approvals..."
-
-          response=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews")
-
+          # Check for approval from authorized users
           AUTHORIZED_REVIEWERS=("YqGe585" "yongqiangma")
-
           REVIEWER_REGEX=$(IFS="|"; echo "${AUTHORIZED_REVIEWERS[*]}")
 
           response=$(curl -s \
@@ -57,34 +50,24 @@ jobs:
               can_skip=true
               echo "Found approval from authorized reviewer, skipping IXUCA CI"
             else
-              echo "No approval from authorized reviewer found, continuing IXUCA CI"
+              echo "No approval from authorized reviewer found"
             fi
           else
-            echo "Failed to parse GitHub API response, do not skip CI"
+            echo "Failed to parse GitHub API response"
           fi
 
-          echo "can-skip=${can_skip}" >> $GITHUB_OUTPUT
+          echo "can-skip=$can_skip" >> $GITHUB_OUTPUT
 
-  check-bypass:
-    name: Check bypass
-    if: ${{ inputs.can-skip != 'true' }}
-    uses: ./.github/workflows/check-bypass.yml
-    with:
-      workflow-name: 'ixuca'
-    secrets:
-      github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check bypass
+        id: check-bypass
+        if: steps.check-approval.outputs.can-skip != 'true'
+        uses: ./.github/actions/check-bypass
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow-name: ixuca
 
-  test:
-    name: Test
-    needs: [check-bypass, check-approval]
-    if: |
-      needs.check-bypass.outputs.can-skip != 'true' &&
-      needs.check-approval.outputs.can-skip-by-approval != 'true'
-    runs-on:
-      group: test2
-
-    steps:
       - name: Download paddle.tar.gz and update test branch
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker run -i --rm \
           -v ${{ github.workspace }}:/paddle \
@@ -108,6 +91,7 @@ jobs:
           # bash ci/git_pull.sh $BRANCH
 
       - name: Determine the runner
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
           echo $runner_name
@@ -116,6 +100,7 @@ jobs:
           # echo no_proxy="localhost,127.0.0.1,localaddress,.bj.bcebos.com,.localdomain.com,.cdn.bcebos.com,.baidu.com,.bcebos.com" >> ${{ github.env }}
 
       - name: Clone PaddleCustomDevice repository
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           # source ~/.bashrc
           wget -q https://xly-devops.bj.bcebos.com/PaddleTest/PaddleCustomDevice/PaddleCustomDevice-develop.tar.gz
@@ -127,6 +112,7 @@ jobs:
           git commit -m "add Paddle to nightly"
 
       - name: Check docker image and run container
+        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           PADDLE_VERSION: 0.0.0
           WITH_COVERAGE: "OFF"
@@ -171,6 +157,7 @@ jobs:
             -w /paddle ${docker_image} /bin/bash
 
       - name: Install Paddle-CPU
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -x
@@ -192,6 +179,7 @@ jobs:
           '
 
       - name: Build and test
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
