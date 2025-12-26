@@ -60,19 +60,19 @@ void BeamSearchDecodeXPUKernel(const Context& dev_ctx,
   }
 
   // prepare output
-  phi::DenseTensor* sentenceIds = nullptr;
-  phi::DenseTensor* sentenceScores = nullptr;
+  DenseTensor* sentenceIds = nullptr;
+  DenseTensor* sentenceScores = nullptr;
 
-  phi::DenseTensor* sentenceIds_temp = sentence_ids;
-  phi::DenseTensor* sentenceScores_temp = sentence_scores;
+  DenseTensor* sentenceIds_temp = sentence_ids;
+  DenseTensor* sentenceScores_temp = sentence_scores;
 
   if (ids->at(0).place().GetType() == phi::AllocationType::XPU) {
-    sentenceIds = new phi::DenseTensor();
+    sentenceIds = new DenseTensor();
     sentenceIds->set_lod(sentenceIds_temp->lod());
   }
 
   if (ids->at(0).place().GetType() == phi::AllocationType::XPU) {
-    sentenceScores = new phi::DenseTensor();
+    sentenceScores = new DenseTensor();
     sentenceScores->set_lod(sentenceScores_temp->lod());
   }
 

@@ -58,7 +58,7 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
     const int64_t *cpu_global_count_data;
     auto local_count_len = 0;
 
-    phi::DenseTensor cpu_local_count;
+    DenseTensor cpu_local_count;
     if (local_count->place().GetType() == phi::AllocationType::CPU) {
       cpu_local_count_data = local_count->data<int64_t>();
       local_count_len = local_count->numel();
@@ -68,7 +68,7 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
       local_count_len = cpu_local_count.numel();
     }
 
-    phi::DenseTensor cpu_global_count;
+    DenseTensor cpu_global_count;
     if (global_count->place().GetType() == phi::AllocationType::CPU) {
       cpu_global_count_data = global_count->data<int64_t>();
     } else {

@@ -27,7 +27,7 @@ void SequencePoolGradKernel(const Context& dev_ctx,
                             const std::string& pooltype,
                             float pad_value UNUSED,
                             DenseTensor* x_grad) {
-  const phi::DenseTensor* index = nullptr;
+  const DenseTensor* index = nullptr;
   if (pooltype == "MAX") {
     index = max_index.get_ptr();
   }

@@ -53,10 +53,10 @@ void CBroadcastKernel(const Context& dev_ctx,
             << x->numel();
     if (out != x) {
       phi::Copy(dev_ctx,
-                *static_cast<const phi::DenseTensor*>(x),
+                *static_cast<const DenseTensor*>(x),
                 place,
                 false,
-                static_cast<phi::DenseTensor*>(out));
+                static_cast<DenseTensor*>(out));
     }
   } else {
     phi::DeviceManager::CCLBroadcast(place.GetDeviceType(),

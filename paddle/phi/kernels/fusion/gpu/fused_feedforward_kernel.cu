@@ -27,10 +27,10 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void MatMul(const phi::GPUContext& dev_ctx,
-            const phi::DenseTensor& a,
-            const phi::DenseTensor& b,
-            phi::DenseTensor* c) {
+void MatMul(const GPUContext& dev_ctx,
+            const DenseTensor& a,
+            const DenseTensor& b,
+            DenseTensor* c) {
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   auto a_2d = phi::FoldInitDims(a);
   auto b_2d = phi::FoldInitDims(b);
@@ -41,27 +41,27 @@ void MatMul(const phi::GPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
-void FFN(const phi::GPUContext& dev_ctx,
-         const phi::DenseTensor& x,
-         const phi::DenseTensor& linear1_weight,
-         const phi::DenseTensor* linear1_bias,
-         const phi::DenseTensor& linear2_weight,
-         const phi::DenseTensor* linear2_bias,
-         const phi::DenseTensor* ln1_scale,
-         const phi::DenseTensor* ln1_bias,
-         const phi::DenseTensor* ln2_scale,
-         const phi::DenseTensor* ln2_bias,
-         phi::DenseTensor* out,
-         phi::DenseTensor* dropout1_mask,
-         phi::DenseTensor* dropout2_mask,
-         phi::DenseTensor* ln1_mean,
-         phi::DenseTensor* ln1_variance,
-         phi::DenseTensor* ln2_mean,
-         phi::DenseTensor* ln2_variance,
-         phi::DenseTensor* linear1_out,
-         phi::DenseTensor* ln1_out,
-         phi::DenseTensor* dropout1_out,
-         phi::DenseTensor* dropout2_out,
+void FFN(const GPUContext& dev_ctx,
+         const DenseTensor& x,
+         const DenseTensor& linear1_weight,
+         const DenseTensor* linear1_bias,
+         const DenseTensor& linear2_weight,
+         const DenseTensor* linear2_bias,
+         const DenseTensor* ln1_scale,
+         const DenseTensor* ln1_bias,
+         const DenseTensor* ln2_scale,
+         const DenseTensor* ln2_bias,
+         DenseTensor* out,
+         DenseTensor* dropout1_mask,
+         DenseTensor* dropout2_mask,
+         DenseTensor* ln1_mean,
+         DenseTensor* ln1_variance,
+         DenseTensor* ln2_mean,
+         DenseTensor* ln2_variance,
+         DenseTensor* linear1_out,
+         DenseTensor* ln1_out,
+         DenseTensor* dropout1_out,
+         DenseTensor* dropout2_out,
          const int bsz_seq,
          const int d_model,
          const int dim_feedforward,
@@ -82,7 +82,7 @@ void FFN(const phi::GPUContext& dev_ctx,
           dev_ctx, bsz_seq, d_model, dropout_param2, epsilon2);
 
   using U = funcs::LayerNormParamType<T>;
-  const phi::DenseTensor* in = &x;
+  const DenseTensor* in = &x;
 
   const U* ln1_scale_ptr =
       ln1_scale == nullptr ? nullptr : ln1_scale->data<U>();
@@ -112,7 +112,7 @@ void FFN(const phi::GPUContext& dev_ctx,
                                           act_method,
                                           dropout1_out->data<T>(),
                                           dropout1_mask->data<uint8_t>());
-  phi::DenseTensor linear2_out;
+  DenseTensor linear2_out;
   linear2_out.Resize({bsz_seq, d_model});
   dev_ctx.template Alloc<T>(&linear2_out, linear2_out.numel() * sizeof(T));
   MatMul<T, Context>(dev_ctx, *dropout1_out, linear2_weight, &linear2_out);

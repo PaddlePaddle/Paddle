@@ -40,8 +40,8 @@ struct alignas(sizeof(T) * VecSize) VectorType {
  * must be [dim1, dim0].
  */
 struct BroadcastConfig {
-  phi::funcs::FastDivMod<int> divmoders[phi::DDim::kMaxRank];
-  uint64_t strides[phi::DDim::kMaxRank];
+  funcs::FastDivMod<int> divmoders[DDim::kMaxRank];
+  uint64_t strides[DDim::kMaxRank];
   int rank{0};
 
   // BroadcastConfig should be defined on host used on device.
@@ -51,7 +51,7 @@ struct BroadcastConfig {
                   const std::vector<int64_t>& in_dims,
                   int dim_size) {
     for (int i = 0; i < dim_size; ++i) {
-      divmoders[i] = phi::funcs::FastDivMod<int>(out_dims[i]);
+      divmoders[i] = funcs::FastDivMod<int>(out_dims[i]);
     }
 
     for (int i = 0; i < dim_size; ++i) {
@@ -432,7 +432,7 @@ __device__ __forceinline__ void ReadDataBc(
         }
       }
 #pragma unroll
-      for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
+      for (int i = 0; i < DDim::kMaxRank; ++i) {
         if (i >= config.rank) break;
         auto fast_divmoder = config.divmoders[i].Divmod(index_output);
         index_output = fast_divmoder.val[0];
@@ -765,7 +765,7 @@ __device__ __forceinline__ void ReadDataBc(
       }
     }
 #pragma unroll
-    for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
+    for (int i = 0; i < DDim::kMaxRank; ++i) {
       if (i >= config.rank) break;
       auto fast_divmoder = config.divmoders[i].Divmod(index_output);
       index_output = fast_divmoder.val[0];
@@ -826,7 +826,7 @@ __device__ __forceinline__ void ReadDataBc(
       }
     }
 #pragma unroll
-    for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
+    for (int i = 0; i < DDim::kMaxRank; ++i) {
       if (i >= config.rank) break;
       auto fast_divmoder = config.divmoders[i].Divmod(index_output);
       index_output = fast_divmoder.val[0];

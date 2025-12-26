@@ -29,11 +29,11 @@ void SequenceConvXPUKernel(const Context& dev_ctx,
   auto* in = &x;
   dev_ctx.template Alloc<T>(out);
 
-  PADDLE_ENFORCE_EQ(in->lod().empty(),
-                    false,
-                    common::errors::InvalidArgument(
-                        "Input(X) phi::DenseTensor of SequenceConvOp "
-                        "does not contain LoD information."));
+  PADDLE_ENFORCE_EQ(
+      in->lod().empty(),
+      false,
+      common::errors::InvalidArgument("Input(X) DenseTensor of SequenceConvOp "
+                                      "does not contain LoD information."));
   PADDLE_ENFORCE_EQ(
       in->lod().size(),
       1UL,

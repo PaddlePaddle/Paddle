@@ -36,7 +36,7 @@ void CPUUniformRandomKernel(const Context& dev_ctx,
                             SelectedRows* out) {
   out->set_rows(input.rows());
   out->set_height(input.height());
-  phi::DenseTensor* tensor = out->mutable_value();
+  DenseTensor* tensor = out->mutable_value();
   T* data = dev_ctx.template Alloc<T>(tensor);
   int64_t size = tensor->numel();
 

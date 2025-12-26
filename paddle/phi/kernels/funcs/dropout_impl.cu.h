@@ -267,10 +267,10 @@ void DropoutFwGPUKernelDriver(
     bool upscale_in_train,
     bool is_fix_seed,
     int seed_val,
-    const phi::DenseTensor& x,
-    const phi::DenseTensor* seed,
-    phi::DenseTensor* mask,
-    phi::DenseTensor* y,
+    const DenseTensor& x,
+    const DenseTensor* seed,
+    DenseTensor* mask,
+    DenseTensor* y,
     bool is_dropout_nd = false,
     const std::vector<int>& axis = std::vector<int>()) {
   int64_t x_numel = x.numel();
@@ -342,8 +342,8 @@ void DropoutFwGPUKernelDriver(
                                                  seed_ptr);
       auto dst_functor =
           DstFunctor<T>(1.0f - dropout_prob, upscale_in_train, x_numel);
-      std::vector<const phi::DenseTensor*> ins = {&x, mask};
-      std::vector<phi::DenseTensor*> outs = {y};
+      std::vector<const DenseTensor*> ins = {&x, mask};
+      std::vector<DenseTensor*> outs = {y};
       funcs::BroadcastKernel<T>(dev_ctx, ins, &outs, dst_functor);
     } else {
       bool copy_in_kernel = GetSeedDataAndIncrement(
@@ -441,9 +441,9 @@ void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
                                 bool is_test,
                                 float dropout_prob,
                                 bool upscale_in_train,
-                                const phi::DenseTensor& grad_y,
-                                const phi::DenseTensor& mask,
-                                phi::DenseTensor* grad_x,
+                                const DenseTensor& grad_y,
+                                const DenseTensor& mask,
+                                DenseTensor* grad_x,
                                 bool is_dropout_nd = false) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
@@ -465,8 +465,8 @@ void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
                       ? static_cast<MT>(1.0f / (1.0f - dropout_prob))
                       : static_cast<MT>(1.0f);
 
-      std::vector<const phi::DenseTensor*> ins = {&grad_y, &mask};
-      std::vector<phi::DenseTensor*> outs = {grad_x};
+      std::vector<const DenseTensor*> ins = {&grad_y, &mask};
+      std::vector<DenseTensor*> outs = {grad_x};
       if (is_dropout_nd) {
         funcs::BroadcastKernel<T>(
             dev_ctx, ins, &outs, CudaDropoutGradFunctor<T>(factor));

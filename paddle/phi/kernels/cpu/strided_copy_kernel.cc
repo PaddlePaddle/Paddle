@@ -42,7 +42,7 @@ void StridedCopyKernel(const Context& dev_ctx,
       out->place().GetType() == phi::AllocationType::GPU &&
       input.dtype() == out->dtype() &&
       (!input.meta().is_contiguous() || !out->meta().is_contiguous())) {
-    phi::DenseTensor dst_gpu;
+    DenseTensor dst_gpu;
     if (out->meta().is_contiguous()) {
       dst_gpu = *out;
     } else {
@@ -73,7 +73,7 @@ void StridedCopyKernel(const Context& dev_ctx,
           dst_gpu_place, dst_ptr, src_cpu_place, input.data<T>(), size, stream);
 
     } else {
-      phi::DenseTensor cpu_out;
+      DenseTensor cpu_out;
       phi::ContiguousKernel<T, Context>(dev_ctx, input, &cpu_out);
       auto* src_ptr = cpu_out.data<T>();
       auto size = phi::SizeOf(input.dtype()) * cpu_out.numel();
@@ -104,7 +104,7 @@ void StridedCopyKernel(const Context& dev_ctx,
 #endif
 #endif
 
-  phi::DenseTensorMeta meta = input.meta();
+  DenseTensorMeta meta = input.meta();
   meta.strides = common::make_ddim(out_stride);
   meta.dims = common::make_ddim(dims);
   meta.offset = offset;

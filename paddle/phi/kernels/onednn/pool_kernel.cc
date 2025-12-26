@@ -24,7 +24,7 @@ bool Pool2dCheckIfOneDNNSupport(const KernelContext* dev_ctx) {
     return true;
   }
   // oneDNN is supporting only unchangeable in size pool window
-  auto src_tz = common::vectorize(dev_ctx->InputAt<phi::DenseTensor>(0).dims());
+  auto src_tz = common::vectorize(dev_ctx->InputAt<DenseTensor>(0).dims());
   const TensorRef& kernel_size_tmp = dev_ctx->AttrAt<TensorRef>(0);
   IntArray kernel_size_array = IntArray(*kernel_size_tmp.Get());
   std::vector<int64_t> kernel_size = kernel_size_array.GetData();
@@ -88,7 +88,7 @@ void Pool2dKernel(const Context& dev_ctx,
 
 phi::KernelKey PoolOpGetKernelTypeForVar(
     const GetKernelTypeForVarContext* dev_ctx) {
-  const phi::DenseTensor& tensor = dev_ctx->GetTensor();
+  const DenseTensor& tensor = dev_ctx->GetTensor();
   const phi::KernelKey& expected_kernel_type = dev_ctx->GetKernelKey();
 #ifdef PADDLE_WITH_DNNL
   if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&

@@ -42,7 +42,7 @@ void TensorFormatter::SetSummarize(int64_t summarize) {
   summarize_ = summarize;
 }
 
-void TensorFormatter::Print(const phi::DenseTensor& print_tensor,
+void TensorFormatter::Print(const DenseTensor& print_tensor,
                             const std::string& tensor_name,
                             const std::string& message) {
   static std::mutex mutex;
@@ -50,7 +50,7 @@ void TensorFormatter::Print(const phi::DenseTensor& print_tensor,
   std::cout << Format(print_tensor, tensor_name, message);
 }
 
-std::string TensorFormatter::Format(const phi::DenseTensor& print_tensor,
+std::string TensorFormatter::Format(const DenseTensor& print_tensor,
                                     const std::string& tensor_name,
                                     const std::string& message) {
   std::stringstream log_stream;
@@ -125,14 +125,14 @@ std::string TensorFormatter::Format(const phi::DenseTensor& print_tensor,
 }
 
 template <typename T>
-void TensorFormatter::FormatData(const phi::DenseTensor& print_tensor,
+void TensorFormatter::FormatData(const DenseTensor& print_tensor,
                                  std::stringstream& log_stream,
                                  int precision) {
   int64_t print_size = summarize_ == -1
                            ? print_tensor.numel()
                            : std::min(summarize_, print_tensor.numel());
   const T* data = nullptr;
-  phi::DenseTensor cpu_tensor;
+  DenseTensor cpu_tensor;
   if (print_tensor.place().GetType() == phi::AllocationType::CPU) {
     data = print_tensor.data<T>();
   } else {
@@ -170,47 +170,47 @@ void TensorFormatter::FormatData(const phi::DenseTensor& print_tensor,
 }
 
 template PADDLE_API void TensorFormatter::FormatData<bool>(
-    const phi::DenseTensor& print_tensor,
+    const DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
 template PADDLE_API void TensorFormatter::FormatData<float>(
-    const phi::DenseTensor& print_tensor,
+    const DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
 template PADDLE_API void TensorFormatter::FormatData<double>(
-    const phi::DenseTensor& print_tensor,
+    const DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
 template PADDLE_API void TensorFormatter::FormatData<int>(
-    const phi::DenseTensor& print_tensor,
+    const DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
 template PADDLE_API void TensorFormatter::FormatData<int64_t>(
-    const phi::DenseTensor& print_tensor,
+    const DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
 template PADDLE_API void TensorFormatter::FormatData<phi::float16>(
-    const phi::DenseTensor& print_tensor,
+    const DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
 template PADDLE_API void TensorFormatter::FormatData<phi::bfloat16>(
-    const phi::DenseTensor& print_tensor,
+    const DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
 template PADDLE_API void TensorFormatter::FormatData<phi::float8_e4m3fn>(
-    const phi::DenseTensor& print_tensor,
+    const DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
 template PADDLE_API void TensorFormatter::FormatData<phi::float8_e5m2>(
-    const phi::DenseTensor& print_tensor,
+    const DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
 template PADDLE_API void TensorFormatter::FormatData<phi::complex64>(
-    const phi::DenseTensor& print_tensor,
+    const DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
 template PADDLE_API void TensorFormatter::FormatData<phi::complex128>(
-    const phi::DenseTensor& print_tensor,
+    const DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
 

@@ -30,11 +30,11 @@ namespace phi {
 template <typename T>
 struct LRNGradFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& dev_ctx,
-                  const phi::DenseTensor& x,
-                  const phi::DenseTensor& out,
-                  const phi::DenseTensor& mid,
-                  phi::DenseTensor* x_g,
-                  const phi::DenseTensor& out_g,
+                  const DenseTensor& x,
+                  const DenseTensor& out,
+                  const DenseTensor& mid,
+                  DenseTensor* x_g,
+                  const DenseTensor& out_g,
                   int64_t N,
                   int64_t C,
                   int64_t H,

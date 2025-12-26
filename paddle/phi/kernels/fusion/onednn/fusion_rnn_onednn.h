@@ -31,9 +31,9 @@ class RNNONEDNNHandler : public funcs::OneDNNHandlerT<T, T_alg> {
   RNNONEDNNHandler(const phi::OneDNNContext& dev_ctx,
                    const dnnl::engine onednn_engine UNUSED,
                    phi::Place cpu_place,
-                   const phi::DenseTensor* input UNUSED,
-                   const phi::DenseTensor* weight_h UNUSED,
-                   const phi::DenseTensor* h0 UNUSED,
+                   const DenseTensor* input UNUSED,
+                   const DenseTensor* weight_h UNUSED,
+                   const DenseTensor* h0 UNUSED,
                    const bool is_reverse UNUSED,
                    const int64_t N,
                    const int64_t Ti,
@@ -150,7 +150,7 @@ class RNNONEDNNHandler : public funcs::OneDNNHandlerT<T, T_alg> {
   }
 
   std::shared_ptr<dnnl::memory> AcquireInputMemoryWithReorder(
-      const phi::DenseTensor* input, const bool is_reverse) {
+      const DenseTensor* input, const bool is_reverse) {
     const auto name = this->key_ + "@input_mem";
     auto memory_p =
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(name));
@@ -192,7 +192,7 @@ class RNNONEDNNHandler : public funcs::OneDNNHandlerT<T, T_alg> {
 
   // H0 is for now persistable
   template <typename U>
-  std::shared_ptr<dnnl::memory> AcquireH0Memory(const phi::DenseTensor* h0) {
+  std::shared_ptr<dnnl::memory> AcquireH0Memory(const DenseTensor* h0) {
     const std::string h0_key = memory_key_ + "@h0";
     auto memory_p =
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(h0_key));

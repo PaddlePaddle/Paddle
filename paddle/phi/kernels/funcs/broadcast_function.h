@@ -674,7 +674,7 @@ void BroadcastKernelSplit(const KPDevice &dev_ctx,
   for (int iter = 0; iter < loop_num; iter++) {
     std::vector<const DenseTensor *> new_ins = {};
     std::vector<DenseTensor *> new_outs = {};
-    phi::DenseTensor tmp_in[kArity];
+    DenseTensor tmp_in[kArity];
     DenseTensor tmp_out[NumOuts];
 
     int64_t tmp_size = iter;

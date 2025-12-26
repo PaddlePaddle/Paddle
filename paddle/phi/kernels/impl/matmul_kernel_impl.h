@@ -1992,7 +1992,7 @@ DispatchMatmulFP8Kernel(const Context& dev_ctx,
       common::errors::InvalidArgument(
           "fp8 matmul need y_dims[0] % 16 = 0, got y_dims[0] = %d", y_dims[0]));
 
-  phi::DenseTensor workspace;
+  DenseTensor workspace;
   workspace.Resize({30 * 1024 * 1024});
   dev_ctx.template Alloc<int8_t>(&workspace);
   dev_ctx.template Alloc<phi::float16>(out);

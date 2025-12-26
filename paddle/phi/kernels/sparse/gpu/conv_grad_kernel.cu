@@ -67,11 +67,10 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
       funcs::sparse::GetRulebookPtr<IntT>(out, rulebook, key, &rulebook_len);
   const int* counter_ptr = funcs::sparse::GetCounterPtr(out, counter, key);
 
-  phi::DenseTensor in_features =
+  DenseTensor in_features = phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
+  DenseTensor d_x_features =
       phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
-  phi::DenseTensor d_x_features =
-      phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
-  phi::DenseTensor out_grad_features =
+  DenseTensor out_grad_features =
       phi::Empty<T>(dev_ctx, {rulebook_len, out_channels});
 
   T* in_features_ptr = in_features.data<T>();

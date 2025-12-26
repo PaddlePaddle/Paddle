@@ -37,7 +37,7 @@ struct NormConvolutionArgs {
     compute_type = phi::backends::gpu::CudnnDataType<float>::type;
   }
 
-  void Set(const phi::GPUContext &dev_ctx,
+  void Set(const GPUContext &dev_ctx,
            const std::vector<int> &input_shape,
            const std::vector<int> &filter_shape,
            const std::vector<int> &output_shape,
@@ -132,7 +132,7 @@ struct NormConvolutionArgs {
     conv_desc.set(dtype, paddings, strides, dilations, false, group);
   }
 
-  bool IsSupport(const phi::GPUContext &dev_ctx,
+  bool IsSupport(const GPUContext &dev_ctx,
                  const std::vector<int> &filter_shape,
                  int stride,
                  int dilation,
@@ -175,7 +175,7 @@ struct NormConvolutionArgs {
 template <typename T>
 class CudnnNormConvolution {
  public:
-  CudnnNormConvolution(const phi::GPUContext &dev_ctx,
+  CudnnNormConvolution(const GPUContext &dev_ctx,
                        const std::vector<int> &input_shape,
                        const std::vector<int> &filter_shape,
                        const std::vector<int> &output_shape,
@@ -194,12 +194,12 @@ class CudnnNormConvolution {
   }
   ~CudnnNormConvolution() {}
 
-  void Forward(const phi::GPUContext &dev_ctx,
-               const phi::DenseTensor &input,
-               const phi::DenseTensor &filter,
-               phi::DenseTensor *output,
-               phi::DenseTensor *sum,
-               phi::DenseTensor *sum_of_squares) {
+  void Forward(const GPUContext &dev_ctx,
+               const DenseTensor &input,
+               const DenseTensor &filter,
+               DenseTensor *output,
+               DenseTensor *sum,
+               DenseTensor *sum_of_squares) {
     auto cudnn_handle = dev_ctx.cudnn_handle();
 
     CudnnFusionOp *fwd_op = GetForwardOp(dev_ctx);
@@ -238,7 +238,7 @@ class CudnnNormConvolution {
   }
 
  private:
-  CudnnFusionOp *GetForwardOp(const phi::GPUContext &dev_ctx) {
+  CudnnFusionOp *GetForwardOp(const GPUContext &dev_ctx) {
     funcs::AlgorithmsCache<CudnnFusionOp *> &cache =
         *(CudnnFusionOpCache::Instance().GetForward());
 
@@ -294,7 +294,7 @@ class CudnnNormConvolution {
 template <typename T>
 class CudnnNormConvolutionGrad {
  public:
-  CudnnNormConvolutionGrad(const phi::GPUContext &dev_ctx,
+  CudnnNormConvolutionGrad(const GPUContext &dev_ctx,
                            const std::vector<int> &input_shape,
                            const std::vector<int> &filter_shape,
                            const std::vector<int> &output_shape,
@@ -314,12 +314,12 @@ class CudnnNormConvolutionGrad {
   }
   ~CudnnNormConvolutionGrad() {}
 
-  void Backward(const phi::GPUContext &dev_ctx,
-                const phi::DenseTensor &input,
-                const phi::DenseTensor &filter,
-                const phi::DenseTensor &output_grad,
-                phi::DenseTensor *input_grad,
-                phi::DenseTensor *filter_grad,
+  void Backward(const GPUContext &dev_ctx,
+                const DenseTensor &input,
+                const DenseTensor &filter,
+                const DenseTensor &output_grad,
+                DenseTensor *input_grad,
+                DenseTensor *filter_grad,
                 bool use_addto = false) {
     T *input_ptr = const_cast<T *>(input.data<T>());
     T *filter_ptr = const_cast<T *>(filter.data<T>());
@@ -339,7 +339,7 @@ class CudnnNormConvolutionGrad {
   }
 
  private:
-  void BackwardFilter(const phi::GPUContext &dev_ctx,
+  void BackwardFilter(const GPUContext &dev_ctx,
                       T *output_grad_ptr,
                       T *input_ptr,
                       T *filter_grad_ptr) {
@@ -367,7 +367,7 @@ class CudnnNormConvolutionGrad {
         workspace_size);
   }
 
-  void BackwardData(const phi::GPUContext &dev_ctx,
+  void BackwardData(const GPUContext &dev_ctx,
                     T *output_grad_ptr,
                     T *filter_ptr,
                     T *input_grad_ptr,
@@ -398,7 +398,7 @@ class CudnnNormConvolutionGrad {
         workspace_size);
   }
 
-  CudnnFusionOp *GetBackwardFilterOp(const phi::GPUContext &dev_ctx) {
+  CudnnFusionOp *GetBackwardFilterOp(const GPUContext &dev_ctx) {
     funcs::AlgorithmsCache<CudnnFusionOp *> &cache =
         *(CudnnFusionOpCache::Instance().GetBackward());
 
@@ -441,7 +441,7 @@ class CudnnNormConvolutionGrad {
     return wgrad_op;
   }
 
-  size_t GetWorkspaceSizeBwdData(const phi::GPUContext &dev_ctx) {
+  size_t GetWorkspaceSizeBwdData(const GPUContext &dev_ctx) {
     size_t workspace_size = 0U;
     auto handle = dev_ctx.cudnn_handle();
     PADDLE_ENFORCE_GPU_SUCCESS(

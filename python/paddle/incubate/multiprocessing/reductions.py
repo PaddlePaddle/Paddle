@@ -95,7 +95,7 @@ def _rebuild_tensor(cls, lodtensor, metadata):
 def _rebuild_vmm_tensor(
     cls, blob: bytes, dtype_idx: int, dims: list[int], lod, device: int
 ):
-    lodtensor = cls._new_shared_cuda((blob, dtype_idx, dims, lod, device))
+    lodtensor = cls._new_from_ipc((blob, dtype_idx, dims, lod, device))
     return lodtensor
 
 
@@ -176,35 +176,12 @@ def _rebuild_lodtensor_filedescriptor(
     return lodtensor
 
 
-def _rebuild_cuda_tensor(
+def _rebuild_device_tensor(
     cls, handle, offset_bytes, size, type_idx, dims, lod, device_idx
 ):
     cache_tensor = _cuda_from_cache((handle, offset_bytes))
     if cache_tensor is None:
-        lodtensor = cls._new_shared_cuda(
-            (handle, offset_bytes, size, type_idx, dims, lod, device_idx)
-        )
-        # We only cache cuda shared tensor here.
-        # The opening cost of cudaIpcMemoryHandle is very high.
-        # Since we cache the received tensor directly,
-        # The sender may reallocate the tensor space,
-        # you should manually maintain the lifecycle of ipc tensor
-        shared_cache[(handle, offset_bytes)] = lodtensor
-    else:
-        lodtensor = paddle.base.core.DenseTensor()
-        lodtensor._share_buffer_with(
-            cache_tensor, (size, type_idx, dims, lod, device_idx)
-        )
-
-    return lodtensor
-
-
-def _rebuild_xpu_tensor(
-    cls, handle, offset_bytes, size, type_idx, dims, lod, device_idx
-):
-    cache_tensor = _cuda_from_cache((handle, offset_bytes))
-    if cache_tensor is None:
-        lodtensor = cls._new_shared_xpu(
+        lodtensor = cls._new_from_ipc(
             (handle, offset_bytes, size, type_idx, dims, lod, device_idx)
         )
         # We only cache cuda shared tensor here.
@@ -260,17 +237,17 @@ def _reduce_lodtensor(lodtensor):
         if prev_id != cur_id:
             paddle.base.core.set_cuda_current_device_id(cur_id)
         try:
-            metadata = lodtensor._share_cuda()
+            metadata = lodtensor._share_device_ipc()
             if len(metadata) == 5:
                 rebuild = _rebuild_vmm_tensor
             else:
-                rebuild = _rebuild_cuda_tensor
+                rebuild = _rebuild_device_tensor
         finally:
             if prev_id != cur_id:
                 paddle.base.core.set_cuda_current_device_id(prev_id)
     elif lodtensor._place().is_xpu_place():
-        metadata = lodtensor._share_xpu()
-        rebuild = _rebuild_xpu_tensor
+        metadata = lodtensor._share_device_ipc()
+        rebuild = _rebuild_device_tensor
     else:
         raise RuntimeError(
             "We only support pass cpu/gpu/xpu lodtensor for now!"

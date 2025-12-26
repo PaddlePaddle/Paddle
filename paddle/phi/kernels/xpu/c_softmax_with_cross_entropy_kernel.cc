@@ -59,14 +59,14 @@ void CSoftmaxWithCrossEntropyKernel(const Context& dev_ctx,
 
 template <typename T>
 void FixLossAccordingToIgnoreIndex(const phi::XPUContext& dev_ctx,
-                                   const phi::DenseTensor* labels,
-                                   const phi::DenseTensor* predicted_logits,
-                                   phi::DenseTensor* loss,
+                                   const DenseTensor* labels,
+                                   const DenseTensor* predicted_logits,
+                                   DenseTensor* loss,
                                    const int64_t N,
                                    const int64_t ignore_index) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   // 先准备一个全0的tensor
-  phi::DenseTensor zeros_constant;
+  DenseTensor zeros_constant;
   zeros_constant.Resize({N, 1});
   dev_ctx.template Alloc<T>(&zeros_constant);
 
@@ -78,12 +78,12 @@ void FixLossAccordingToIgnoreIndex(const phi::XPUContext& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
 
   // 准备一个bool类型的tensor，用来标记每一个loss要不要刷0
-  phi::DenseTensor bool_tensor_for_mask_label;
+  DenseTensor bool_tensor_for_mask_label;
   bool_tensor_for_mask_label.Resize({N, 1});
   dev_ctx.template Alloc<bool>(&bool_tensor_for_mask_label);
 
   // 准备一个和label同类型的tensor，每个元素都刷成ignore_index
-  phi::DenseTensor ignore_label_as_tensor;
+  DenseTensor ignore_label_as_tensor;
 
   const auto& label_type = labels->dtype();
   if (label_type == phi::DataType::INT32) {
@@ -147,8 +147,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
                   DenseTensor* loss) {
 #if defined(PADDLE_WITH_XPU_BKCL)
     using XPUType = typename XPUTypeTrait<T>::Type;
-    const phi::DenseTensor* logits = &logits_in;
-    const phi::DenseTensor* labels = &label_in;
+    const DenseTensor* logits = &logits_in;
+    const DenseTensor* labels = &label_in;
 
     XPUStream stream = nullptr;
     phi::distributed::BKCLCommContext* comm_ctx = nullptr;
@@ -173,14 +173,14 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     const int64_t N = funcs::SizeToAxis(axis, logits_dims);
     const int64_t D = funcs::SizeFromAxis(axis, logits_dims);
 
-    phi::DenseTensor logits_2d, softmax_2d;
+    DenseTensor logits_2d, softmax_2d;
     logits_2d.ShareDataWith(*logits).Resize({N, D});
     softmax_2d.ShareDataWith(*softmax).Resize({N, D});
     const int new_axis = logits_2d.dims().size() - 1;
 
     int ret = -1;
     // step 1, obtain logit_max
-    phi::DenseTensor logits_max;
+    DenseTensor logits_max;
     logits_max.Resize({N, 1});
     dev_ctx.template Alloc<T>(&logits_max);
     {
@@ -223,7 +223,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     }
 
     // step 3, obtain predict target
-    phi::DenseTensor predicted_logits;
+    DenseTensor predicted_logits;
     predicted_logits.Resize({N, 1});
     dev_ctx.template Alloc<T>(&predicted_logits);
     ret = xpu::constant<XPUType>(
@@ -273,7 +273,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "exp");
 
     // step 5, obtain sum_exp_logits
-    phi::DenseTensor sum_exp_logits;
+    DenseTensor sum_exp_logits;
     sum_exp_logits.Resize({N, 1});
     dev_ctx.Alloc<T>(&sum_exp_logits);
     {

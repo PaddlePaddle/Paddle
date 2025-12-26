@@ -138,7 +138,7 @@ void PNormKernel(const Context& dev_ctx,
     } else if (porder == 2.0) {
       // fast 2-norm
       using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-      phi::DenseTensor temp_sum_of_squares_hp;
+      DenseTensor temp_sum_of_squares_hp;
       temp_sum_of_squares_hp.Resize(out_norm->dims());
       dev_ctx.template Alloc<MT>(&temp_sum_of_squares_hp);
       funcs::ReduceKernel<T, MT, kps::AddFunctor, SquareFunctor<T>>(
@@ -148,7 +148,7 @@ void PNormKernel(const Context& dev_ctx,
           SquareFunctor<T>(),
           reduce_axis);
 
-      phi::DenseTensor temp_norm_hp;
+      DenseTensor temp_norm_hp;
       temp_norm_hp.Resize(out_norm->dims());
       dev_ctx.template Alloc<MT>(&temp_norm_hp);
       phi::SqrtKernel<MT>(dev_ctx, temp_sum_of_squares_hp, &temp_norm_hp);

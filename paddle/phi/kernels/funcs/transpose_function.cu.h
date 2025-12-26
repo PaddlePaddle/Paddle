@@ -27,7 +27,7 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-using Tensor = phi::DenseTensor;
+using Tensor = DenseTensor;
 
 struct EqualTo {
   constexpr bool operator()(int a, int b) const { return a == b; }
@@ -852,9 +852,9 @@ inline void CombineTransposeDim3(const DDim& shape,
 template <typename T>
 struct TransposeSimple {
   static bool Run(const phi::GPUContext& dev_ctx,
-                  const phi::DenseTensor& in,
+                  const DenseTensor& in,
                   const std::vector<int32_t>& perm,
-                  phi::DenseTensor* out,
+                  DenseTensor* out,
                   const int64_t numel) {
     if (numel >= std::numeric_limits<int32_t>::max()) {
       return RunImpl<int64_t>(dev_ctx, in, perm, out);
@@ -866,9 +866,9 @@ struct TransposeSimple {
  private:
   template <typename IndexType = int32_t>
   static bool RunImpl(const phi::GPUContext& dev_ctx,
-                      const phi::DenseTensor& in,
+                      const DenseTensor& in,
                       const std::vector<int32_t>& perm,
-                      phi::DenseTensor* out) {
+                      DenseTensor* out) {
     // First reduce the dimensions of the input tensor if possible.
     auto in_data = in.data<T>();
     auto out_data = out->data<T>();
@@ -1549,8 +1549,8 @@ template <typename T>
 inline void PermuteAndTranspose(
     const phi::GPUContext& dev_ctx,
     const int& rank,
-    const phi::DenseTensor& in,
-    phi::DenseTensor* out,
+    const DenseTensor& in,
+    DenseTensor* out,
     const funcs::PermuteDimsSimplifier& simplifier) {
   T* dst_data = out->data<T>();
   const T* src_data = in.data<T>();
@@ -1592,13 +1592,13 @@ inline void PermuteAndTranspose(
 template <typename T>
 inline void PermuteWithEigen(const phi::GPUContext& dev_ctx,
                              const int& rank,
-                             const phi::DenseTensor& in,
-                             phi::DenseTensor* out,
+                             const DenseTensor& in,
+                             DenseTensor* out,
                              const funcs::PermuteDimsSimplifier& simplifier) {
   bool not_same_dims = simplifier.GetRank() != rank;
   if (not_same_dims) {
     DDim dst_dims = out->dims();
-    phi::DenseTensor temp_in;
+    DenseTensor temp_in;
 
     temp_in.ShareBufferWith(in);
     temp_in.Resize(common::make_ddim(simplifier.GetSrcDims()));
@@ -1615,9 +1615,9 @@ inline void PermuteWithEigen(const phi::GPUContext& dev_ctx,
 
 template <typename T>
 void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx,
-                              const phi::DenseTensor& in,
+                              const DenseTensor& in,
                               const std::vector<int32_t>& perm,
-                              phi::DenseTensor* out) {
+                              DenseTensor* out) {
   const int rank = perm.size();
   int64_t numel = in.numel();
   bool ret = TransposeSimple<T>::Run(dev_ctx, in, perm, out, numel);

@@ -51,7 +51,7 @@ void SliceStridedKernel(const Context& dev_ctx,
   }
   // axis = 0, dim_value = 3, st[0]=0, ed[0]=4
   // The step seems to be regarded as 1 here
-  phi::funcs::CheckAndUpdateSliceAttrs<int64_t>(
+  funcs::CheckAndUpdateSliceAttrs<int64_t>(
       in_dims, new_axes, &starts, &ends, nullptr, nullptr);
 
   std::vector<int64_t> output_dims = common::vectorize<int64_t>(input.dims());

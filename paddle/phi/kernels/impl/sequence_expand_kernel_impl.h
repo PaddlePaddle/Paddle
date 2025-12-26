@@ -26,19 +26,19 @@ namespace phi {
 template <typename Context, typename T>
 struct SequenceExpandFunctor {
   void operator()(const Context& dev_ctx,
-                  const phi::DenseTensor& x,
+                  const DenseTensor& x,
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
-                  phi::DenseTensor* out);
+                  DenseTensor* out);
 };
 
 template <typename Context, typename T>
 struct SequenceExpandGradFunctor {
   void operator()(const Context& dev_ctx,
-                  const phi::DenseTensor& dout,
+                  const DenseTensor& dout,
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
-                  phi::DenseTensor* dx);
+                  DenseTensor* dx);
 };
 
 template <typename T, typename Context>
@@ -126,7 +126,7 @@ void SequenceExpandKernel(const Context& dev_ctx,
       y_lod.empty(),
       false,
       common::errors::InvalidArgument(
-          "Input(Y) phi::DenseTensor of SequenceExpandOp does not contain "
+          "Input(Y) DenseTensor of SequenceExpandOp does not contain "
           "LoD information."));
 
   if (ref_level == -1) ref_level = y_lod.size() - 1;

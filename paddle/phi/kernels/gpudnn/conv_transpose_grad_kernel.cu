@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/padding.h"
 #include "paddle/phi/kernels/funcs/slice.h"
+#include "paddle/phi/kernels/gpudnn/conv_gpudnn.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 #ifdef PADDLE_WITH_HIP
@@ -36,6 +37,10 @@ limitations under the License. */
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 #include "paddle/phi/kernels/full_kernel.h"
+
+#include "paddle/common/flags.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -391,6 +396,53 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& dev_ctx,
   }
 }
 
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+template <typename T, typename Context>
+void ConvTransposeGradRawGPUDNNKernelV8(const Context& dev_ctx,
+                                        const DenseTensor& x,
+                                        const DenseTensor& filter,
+                                        const DenseTensor& dout,
+                                        const std::vector<int>& strides,
+                                        const std::vector<int>& paddings,
+                                        const std::string& padding_algorithm,
+                                        int groups,
+                                        const std::vector<int>& dilations,
+                                        const std::string& data_format,
+                                        DenseTensor* dx,
+                                        DenseTensor* dfilter) {
+  // compute dx (Input Gradient)
+  if (dx) {
+    ConvCudnnKernel<T, Context>(dev_ctx,
+                                dout,
+                                filter,
+                                strides,
+                                paddings,
+                                padding_algorithm,
+                                dilations,
+                                groups,
+                                data_format,
+                                dx);
+  }
+
+  // compute dfilter (Filter Gradient)
+  if (dfilter) {
+    DenseTensor* null_input_grad = nullptr;
+    ConvCudnnGradKernel<T, Context>(dev_ctx,
+                                    dout,
+                                    filter,
+                                    x,
+                                    strides,
+                                    paddings,
+                                    padding_algorithm,
+                                    dilations,
+                                    groups,
+                                    data_format,
+                                    null_input_grad,
+                                    dfilter);
+  }
+}
+#endif
+
 template <typename T, typename Context>
 void Conv2dTransposeGradGPUDNNKernel(const Context& dev_ctx,
                                      const DenseTensor& x,
@@ -406,6 +458,35 @@ void Conv2dTransposeGradGPUDNNKernel(const Context& dev_ctx,
                                      const std::string& data_format,
                                      DenseTensor* dx,
                                      DenseTensor* dfilter) {
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+  if (dynload::IsCudnnFrontendEnabled() && FLAGS_use_accuracy_compatible_kernel)
+    ConvTransposeGradRawGPUDNNKernelV8<T, Context>(dev_ctx,
+                                                   x,
+                                                   filter,
+                                                   dout,
+                                                   strides,
+                                                   paddings_,
+                                                   padding_algorithm,
+                                                   groups,
+                                                   dilations_,
+                                                   data_format,
+                                                   dx,
+                                                   dfilter);
+  else
+    ConvTransposeGradRawGPUDNNKernel<T, Context>(dev_ctx,
+                                                 x,
+                                                 filter,
+                                                 dout,
+                                                 strides,
+                                                 paddings_,
+                                                 padding_algorithm,
+                                                 groups,
+                                                 dilations_,
+                                                 data_format,
+                                                 dx,
+                                                 dfilter);
+
+#else
   ConvTransposeGradRawGPUDNNKernel<T, Context>(dev_ctx,
                                                x,
                                                filter,
@@ -418,6 +499,7 @@ void Conv2dTransposeGradGPUDNNKernel(const Context& dev_ctx,
                                                data_format,
                                                dx,
                                                dfilter);
+#endif
 }
 
 /*

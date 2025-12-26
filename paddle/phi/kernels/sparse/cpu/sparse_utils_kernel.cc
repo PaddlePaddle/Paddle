@@ -80,9 +80,9 @@ void DenseToCooKernel(const Context& dev_ctx,
   const auto values_dims =
       funcs::sparse::InferDenseDims(x_dims, sparse_dim, non_zero_num);
   DenseTensorMeta values_meta(x.meta().dtype, values_dims, x.meta().layout);
-  phi::DenseTensor indices =
+  DenseTensor indices =
       phi::Empty<int64_t>(dev_ctx, {sparse_dim, non_zero_num});
-  phi::DenseTensor values = phi::Empty(dev_ctx, std::move(values_meta));
+  DenseTensor values = phi::Empty(dev_ctx, std::move(values_meta));
   int64_t* indices_data = indices.data<int64_t>();
   T* values_data = values.data<T>();
 
@@ -116,9 +116,8 @@ void CsrToCooCPUKernel(const CPUContext& dev_ctx,
   if (x_dims.size() == 3) {
     sparse_dim = 3;
   }
-  phi::DenseTensor indices =
-      phi::Empty<IntT>(dev_ctx, {sparse_dim, non_zero_num});
-  phi::DenseTensor values = phi::Empty<T>(dev_ctx, {non_zero_num});
+  DenseTensor indices = phi::Empty<IntT>(dev_ctx, {sparse_dim, non_zero_num});
+  DenseTensor values = phi::Empty<T>(dev_ctx, {non_zero_num});
   if (x.nnz() <= 0) {
     out->SetMember(indices, values, x_dims, true);
     return;
@@ -184,9 +183,9 @@ void CooToCsrCPUKernel(const CPUContext& dev_ctx,
   int batches = static_cast<int>(x_dims.size() == 2 ? 1 : x_dims[0]);
   int rows = static_cast<int>(x_dims.size() == 2 ? x_dims[0] : x_dims[1]);
 
-  phi::DenseTensor crows = phi::Empty<IntT>(dev_ctx, {batches * (rows + 1)});
-  phi::DenseTensor cols = phi::Empty<IntT>(dev_ctx, {non_zero_num});
-  phi::DenseTensor values = phi::EmptyLike<T, CPUContext>(dev_ctx, x.values());
+  DenseTensor crows = phi::Empty<IntT>(dev_ctx, {batches * (rows + 1)});
+  DenseTensor cols = phi::Empty<IntT>(dev_ctx, {non_zero_num});
+  DenseTensor values = phi::EmptyLike<T, CPUContext>(dev_ctx, x.values());
   if (non_zero_num <= 0) {
     out->SetMember(crows, cols, values, x_dims);
     return;

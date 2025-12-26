@@ -107,35 +107,35 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
   int slimmed_x_len = new_mask_dims[2];
 
   // Outputs
-  phi::DenseTensor* out_slimmed_x = slimmed_x;
-  phi::DenseTensor* slimmed_indices = cls_inds;
+  DenseTensor* out_slimmed_x = slimmed_x;
+  DenseTensor* slimmed_indices = cls_inds;
   auto* out_slimmed_x_data = dev_ctx.template Alloc<T>(out_slimmed_x);
   auto* slimmed_indices_data = dev_ctx.template Alloc<int64_t>(slimmed_indices);
 
   // Intermediate variable
-  phi::DenseTensor attn_tmp;
+  DenseTensor attn_tmp;
   attn_tmp.Resize(attn_dims);
   auto* attn_tmp_data = dev_ctx.template Alloc<T>(&attn_tmp);
-  phi::DenseTensor attn_accu;
+  DenseTensor attn_accu;
   attn_accu.Resize({bsz, max_seq_len});
   auto* attn_accu_data = dev_ctx.template Alloc<T>(&attn_accu);
-  phi::DenseTensor attn_accu_indices;
+  DenseTensor attn_accu_indices;
   attn_accu_indices.Resize({bsz, max_seq_len});
   auto* attn_accu_indices_data =
       dev_ctx.template Alloc<int64_t>(&attn_accu_indices);
-  phi::DenseTensor sort_attn_accu;
+  DenseTensor sort_attn_accu;
   sort_attn_accu.Resize({bsz, max_seq_len});
   auto* sort_attn_accu_data = dev_ctx.template Alloc<T>(&sort_attn_accu);
-  phi::DenseTensor sort_attn_accu_indices;
+  DenseTensor sort_attn_accu_indices;
   sort_attn_accu_indices.Resize({bsz, max_seq_len});
   auto* sort_attn_accu_indices_data =
       dev_ctx.template Alloc<int64_t>(&sort_attn_accu_indices);
 
-  phi::DenseTensor temp_storage;
+  DenseTensor temp_storage;
 
   // 1. Filter attn by mask
-  std::vector<const phi::DenseTensor*> ins;
-  std::vector<phi::DenseTensor*> outs;
+  std::vector<const DenseTensor*> ins;
+  std::vector<DenseTensor*> outs;
   ins.emplace_back(&attn);
   ins.emplace_back(&mask);
   outs.emplace_back(&attn_tmp);

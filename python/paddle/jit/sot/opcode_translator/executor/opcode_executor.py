@@ -1099,7 +1099,9 @@ class OpcodeExecutorBase:
         level = self.stack.pop().get_py_value()
         globals_dict = self.vframe.globals.get_value()
         for key, val in globals_dict.items():
-            if isinstance(val, VariableBase):
+            if isinstance(val, VariableBase) and not isinstance(
+                val, NullVariable
+            ):
                 globals_dict[key] = val.get_py_value()
         try:
             value = __import__(

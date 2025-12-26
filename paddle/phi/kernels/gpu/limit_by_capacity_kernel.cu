@@ -53,7 +53,7 @@ void LimitByCapacityKernel(const Context& dev_ctx,
   auto out_data = dev_ctx.template Alloc<T>(Out);
   const T* ec_data = expert_count_ptr->data<T>();
 
-  phi::DenseTensor capacity_copy;
+  DenseTensor capacity_copy;
   phi::Copy(dev_ctx, capacity, dev_ctx.GetPlace(), false, &capacity_copy);
   T* cap_data = dev_ctx.template Alloc<T>(&capacity_copy);
 
