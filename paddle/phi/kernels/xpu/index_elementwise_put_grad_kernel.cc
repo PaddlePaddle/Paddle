@@ -132,7 +132,7 @@ void XPUIndexElementwisePutGradKernel(
 }
 
 template <typename T, typename Context>
-void LaunchIndexElementwisePutWithTensorGradCudaKernel(
+void LaunchIndexElementwisePutWithTensorGradXPUKernel(
     const Context& dev_ctx,
     const std::vector<const DenseTensor*>& indices,
     const DenseTensor& out_grad,
@@ -342,16 +342,16 @@ void IndexElementwisePutWithTensorGradKernel(
     return;
   }
 
-  LaunchIndexElementwisePutWithTensorGradCudaKernel<T, Context>(dev_ctx,
-                                                                indices,
-                                                                out_grad,
-                                                                input_dims,
-                                                                input_strides,
-                                                                index_dims,
-                                                                index_strides,
-                                                                slice_offset,
-                                                                value_grad,
-                                                                x_grad);
+  LaunchIndexElementwisePutWithTensorGradXPUKernel<T, Context>(dev_ctx,
+                                                               indices,
+                                                               out_grad,
+                                                               input_dims,
+                                                               input_strides,
+                                                               index_dims,
+                                                               index_strides,
+                                                               slice_offset,
+                                                               value_grad,
+                                                               x_grad);
 }
 
 }  // namespace phi
