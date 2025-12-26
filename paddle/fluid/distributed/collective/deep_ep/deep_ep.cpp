@@ -76,6 +76,7 @@ Buffer::Buffer(int rank,
   auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
   paddle::distributed::ProcessGroup* pg = map->get(context_ring_id);
   const auto& place = phi::GPUPlace(device_id);
+  phi::Allocator* allocator = paddle::GetAllocator(place);
   comm_ctx =
       reinterpret_cast<paddle::distributed::ProcessGroupNCCL*>(pg)
           ->GetOrCreateCommContext(place, phi::distributed::CommType::ALLTOALL);
@@ -116,9 +117,13 @@ Buffer::Buffer(int rank,
 
   if (num_nvl_bytes > 0) {
     // Local IPC: alloc local memory and set local IPC handles
-    CUDA_CHECK(cudaMalloc(&buffer_ptrs[nvl_rank],
-                          num_nvl_bytes + barrier_signal_bytes +
-                              buffer_ptr_bytes + barrier_signal_ptr_bytes));
+    // CUDA_CHECK(cudaMalloc(&buffer_ptrs[nvl_rank],
+    //                       num_nvl_bytes + barrier_signal_bytes +
+    //                           buffer_ptr_bytes + barrier_signal_ptr_bytes));
+    int alloc_size1 = num_nvl_bytes + barrier_signal_bytes + buffer_ptr_bytes +
+                      barrier_signal_ptr_bytes;
+    buffer_ptrs[nvl_rank] = allocator->Allocate(alloc_size1)->ptr();
+
     CUDA_CHECK(
         cudaIpcGetMemHandle(&ipc_handles[nvl_rank], buffer_ptrs[nvl_rank]));
     buffer_ptrs_gpu =
@@ -140,8 +145,12 @@ Buffer::Buffer(int rank,
   // Create 32 MiB workspace
   // Note(ZKK):  here we allocate more(2 * M2N_NUM_WORKSPACE) to support M2N!
   // Later we will opitimize here!
-  CUDA_CHECK(
-      cudaMalloc(&workspace, 2 * M2N_NUM_WORKSPACE * NUM_WORKSPACE_BYTES));
+  // CUDA_CHECK(
+  //     cudaMalloc(&workspace, 2 * M2N_NUM_WORKSPACE * NUM_WORKSPACE_BYTES));
+
+  int alloc_size2 = 2 * M2N_NUM_WORKSPACE * NUM_WORKSPACE_BYTES;
+  workspace = allocator->Allocate(alloc_size2)->ptr();
+
   CUDA_CHECK(cudaMemsetAsync(
       workspace, 0, 2 * M2N_NUM_WORKSPACE * NUM_WORKSPACE_BYTES, comm_stream));
 
