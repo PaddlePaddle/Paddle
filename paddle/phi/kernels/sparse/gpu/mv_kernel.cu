@@ -53,9 +53,6 @@ void MvKernelImpl(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPMV(false, static_cast<T>(1), x, vec, static_cast<T>(0), out);
-#else
-  PADDLE_THROW(common::errors::Unimplemented(
-      " 'sparse.mv' use cusparseSpMV, which is supported from CUDA 11.0"));
 #endif
 }
 
