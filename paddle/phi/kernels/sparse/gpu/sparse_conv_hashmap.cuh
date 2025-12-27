@@ -385,8 +385,8 @@ void build_sparse_conv_kmap(const phi::GPUContext& dev_ctx,
         dev_ctx, out_kmap_cache_ptr->out_in_map, static_cast<int32_t>(-1));
 
     // need to put kernel_sizes and strides to GPU
-    auto kernel_sizes_tensor = Empty<int32_t>(dev_ctx, {3});
-    auto strides_tensor = Empty<int32_t>(dev_ctx, {3});
+    auto kernel_sizes_tensor = phi::Empty<int32_t>(dev_ctx, {3});
+    auto strides_tensor = phi::Empty<int32_t>(dev_ctx, {3});
     set_kernel_sizes_and_strides_tensor<<<1, 32, 0, dev_ctx.stream()>>>(
         kernel_sizes_tensor.data<int32_t>(),
         strides_tensor.data<int32_t>(),
