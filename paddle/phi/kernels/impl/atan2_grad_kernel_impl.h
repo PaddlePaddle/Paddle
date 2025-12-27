@@ -190,13 +190,13 @@ void Atan2GradKernel(const Context& dev_ctx,
 
     if (x_grad && !x_axes.empty()) {
       phi::SumKernel<T, Context>(
-          dev_ctx, dx_b, phi::IntArray(x_axes), x_grad->dtype(), true, x_grad);
+          dev_ctx, dx_b, phi::IntArray(x_axes), x_grad->dtype(), false, x_grad);
       x_grad->Resize(x.dims());
     }
 
     if (y_grad && !y_axes.empty()) {
       phi::SumKernel<T, Context>(
-          dev_ctx, dy_b, phi::IntArray(y_axes), y_grad->dtype(), true, y_grad);
+          dev_ctx, dy_b, phi::IntArray(y_axes), y_grad->dtype(), false, y_grad);
       y_grad->Resize(y.dims());
     }
   }
