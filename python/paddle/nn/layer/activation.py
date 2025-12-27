@@ -989,7 +989,7 @@ class Hardsigmoid(Layer):
         return F.hardsigmoid(x, inplace=self._inplace, name=self.name)
 
     def extra_repr(self) -> str:
-        name_str = f'name={self.name}' if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return f'inplace={self._inplace}{name_str}'
 
 
@@ -1187,7 +1187,7 @@ class Swish(Layer):
         return F.swish(x, self._inplace, self._name)
 
     def extra_repr(self) -> str:
-        name_str = f'name={self._name}' if self._name else ''
+        name_str = f', name={self._name}' if self._name else ''
         return f'inplace={self._inplace}{name_str}'
 
 
@@ -1242,7 +1242,7 @@ class Mish(Layer):
         return F.mish(x, self._inplace, self._name)
 
     def extra_repr(self) -> str:
-        name_str = f'name={self._name}' if self._name else ''
+        name_str = f', name={self._name}' if self._name else ''
         return f'inplace={self._inplace}{name_str}'
 
 

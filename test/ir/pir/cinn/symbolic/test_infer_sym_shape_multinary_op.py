@@ -461,7 +461,7 @@ class SELUInplaceNet(paddle.nn.Layer):
 
 class SELUOpInferSymbolicShapeTest(TestBase):
     def prepare_data(self):
-        self.cases = [np.random.normal([3, 5, 5, 10]).astype('float64')]
+        self.cases = [np.random.normal(size=[3, 5, 5, 10]).astype('float64')]
         self.expected = ['shape[S0, S1, S2, S3], data[NULL]']
 
     def test_eval_symbolic(self):
@@ -493,7 +493,7 @@ class HardSigmoidInplaceNet(paddle.nn.Layer):
 
 class HardSigmoidInferSymbolicShapeTest(TestBase):
     def prepare_data(self):
-        self.cases = [np.random.normal([3, 5, 5, 10]).astype('float64')]
+        self.cases = [np.random.normal(size=[3, 5, 5, 10]).astype('float64')]
         self.expected = ['shape[S0, S1, S2, S3], data[NULL]']
 
     def test_eval_symbolic(self):
@@ -527,7 +527,7 @@ class MishInplaceNet(paddle.nn.Layer):
 
 class MishOpInferSymbolicShapeTest(TestBase):
     def prepare_data(self):
-        self.cases = [np.random.normal([3, 5, 5, 10]).astype('float64')]
+        self.cases = [np.random.normal(size=[3, 5, 5, 10]).astype('float64')]
         self.expected = ['shape[S0, S1, S2, S3], data[NULL]']
 
     def test_eval_symbolic(self):
@@ -559,7 +559,7 @@ class SwishInplaceNet(paddle.nn.Layer):
 
 class SwishOpInferSymbolicShapeTest(TestBase):
     def prepare_data(self):
-        self.cases = [np.random.normal([3, 5, 5, 10]).astype('float64')]
+        self.cases = [np.random.normal(size=[3, 5, 5, 10]).astype('float64')]
         self.expected = ['shape[S0, S1, S2, S3], data[NULL]']
 
     def test_eval_symbolic(self):

@@ -51,7 +51,7 @@ class TestLayerPrint(unittest.TestCase):
         module = nn.RReLU(lower=0.1, upper=0.3, inplace=True)
         self.assertEqual(
             str(module),
-            'RRELU(lower=0.1, upper=0.3, training=True, dtype=float32, inplace=False)',
+            'RRELU(lower=0.1, upper=0.3, training=True, dtype=float32, inplace=True)',
         )
 
         module = nn.ReLU()
