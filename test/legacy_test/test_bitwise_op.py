@@ -27,7 +27,7 @@ paddle.enable_static()
 class TestBitwiseAnd(OpTest):
     def setUp(self):
         self.op_type = "bitwise_and"
-        self.python_api = paddle.tensor.logic.bitwise_and
+        self.python_api = paddle.bitwise_and
         self.init_dtype()
         self.init_shape()
         self.init_bound()
@@ -120,7 +120,7 @@ class TestBitwiseAndInt64(TestBitwiseAnd):
 class TestBitwiseAndBool(TestBitwiseAnd):
     def setUp(self):
         self.op_type = "bitwise_and"
-        self.python_api = paddle.tensor.logic.bitwise_and
+        self.python_api = paddle.bitwise_and
 
         self.init_shape()
 
@@ -194,6 +194,77 @@ class TestBitwiseAndAlias(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestBitwiseAndMagicMethod(unittest.TestCase):
+    """Test magic method x & y for bitwise_and"""
+
+    def test_bitwise_and_magic_method(self):
+        """Test using & operator for bitwise_and"""
+        paddle.disable_static()
+        x_data = np.array([1, 2, 3], dtype=np.int32)
+        y_data = np.array([4, 2, 1], dtype=np.int32)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+
+        # Use & magic method
+        result = x & y
+        expected = np.bitwise_and(x_data, y_data)
+        np.testing.assert_array_equal(result.numpy(), expected)
+        paddle.enable_static()
+
+    def test_bitwise_and_magic_method_different_dtypes(self):
+        """Test & operator with different data types"""
+        paddle.disable_static()
+
+        # Test with uint8
+        x_uint8 = paddle.to_tensor(np.array([15, 255, 128], dtype=np.uint8))
+        y_uint8 = paddle.to_tensor(np.array([240, 15, 64], dtype=np.uint8))
+        result_uint8 = x_uint8 & y_uint8
+        expected_uint8 = np.bitwise_and(x_uint8.numpy(), y_uint8.numpy())
+        np.testing.assert_array_equal(result_uint8.numpy(), expected_uint8)
+
+        # Test with int8
+        x_int8 = paddle.to_tensor(np.array([15, -128, 127], dtype=np.int8))
+        y_int8 = paddle.to_tensor(np.array([7, 64, -1], dtype=np.int8))
+        result_int8 = x_int8 & y_int8
+        expected_int8 = np.bitwise_and(x_int8.numpy(), y_int8.numpy())
+        np.testing.assert_array_equal(result_int8.numpy(), expected_int8)
+
+        # Test with bool
+        x_bool = paddle.to_tensor(np.array([True, False, True], dtype=bool))
+        y_bool = paddle.to_tensor(np.array([True, True, False], dtype=bool))
+        result_bool = x_bool & y_bool
+        expected_bool = np.bitwise_and(x_bool.numpy(), y_bool.numpy())
+        np.testing.assert_array_equal(result_bool.numpy(), expected_bool)
+
+        paddle.enable_static()
+
+    def test_bitwise_and_magic_method_broadcast(self):
+        """Test & operator with broadcasting"""
+        paddle.disable_static()
+        x_data = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.int32)
+        y_data = np.array([7, 6, 5], dtype=np.int32)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+
+        result = x & y
+        expected = np.bitwise_and(x_data, y_data)
+        np.testing.assert_array_equal(result.numpy(), expected)
+        paddle.enable_static()
+
+    def test_bitwise_and_magic_method_zero_dim(self):
+        """Test & operator with zero-dimensional tensors"""
+        paddle.disable_static()
+        x_data = np.array(5, dtype=np.int32)
+        y_data = np.array(3, dtype=np.int32)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+
+        result = x & y
+        expected = np.bitwise_and(x_data, y_data)
+        np.testing.assert_array_equal(result.numpy(), expected)
+        paddle.enable_static()
+
+
 class TestBitwiseAndInplaceAlias(unittest.TestCase):
     """Test parameter aliases for bitwise_and_ inplace API"""
 
@@ -252,8 +323,8 @@ class TestElementwiseBitwiseAndOp_Stride(OpTest):
 
     def setUp(self):
         self.op_type = "bitwise_and"
-        self.python_api = paddle.tensor.logic.bitwise_and
-        self.public_python_api = paddle.tensor.logic.bitwise_and
+        self.python_api = paddle.bitwise_and
+        self.public_python_api = paddle.bitwise_and
         self.transpose_api = paddle.transpose
         self.as_stride_api = paddle.as_strided
         self.init_dtype()
@@ -404,7 +475,7 @@ class TestElementwiseBitwiseAndOp_Stride_ZeroSize1(
 class TestBitwiseOr(OpTest):
     def setUp(self):
         self.op_type = "bitwise_or"
-        self.python_api = paddle.tensor.logic.bitwise_or
+        self.python_api = paddle.bitwise_or
         self.init_dtype()
         self.init_shape()
         self.init_bound()
@@ -497,7 +568,7 @@ class TestBitwiseOrInt64(TestBitwiseOr):
 class TestBitwiseOrBool(TestBitwiseOr):
     def setUp(self):
         self.op_type = "bitwise_or"
-        self.python_api = paddle.tensor.logic.bitwise_or
+        self.python_api = paddle.bitwise_or
 
         self.init_shape()
 
@@ -518,8 +589,8 @@ class TestElementwiseBitwiseOrOp_Stride(OpTest):
 
     def setUp(self):
         self.op_type = "bitwise_or"
-        self.python_api = paddle.tensor.logic.bitwise_or
-        self.public_python_api = paddle.tensor.logic.bitwise_or
+        self.python_api = paddle.bitwise_or
+        self.public_python_api = paddle.bitwise_or
         self.transpose_api = paddle.transpose
         self.as_stride_api = paddle.as_strided
         self.init_dtype()
@@ -670,7 +741,7 @@ class TestElementwiseBitwiseOrOp_Stride_ZeroSize1(
 class TestBitwiseXor(OpTest):
     def setUp(self):
         self.op_type = "bitwise_xor"
-        self.python_api = paddle.tensor.logic.bitwise_xor
+        self.python_api = paddle.bitwise_xor
 
         self.init_dtype()
         self.init_shape()
@@ -764,7 +835,7 @@ class TestBitwiseXorInt64(TestBitwiseXor):
 class TestBitwiseXorBool(TestBitwiseXor):
     def setUp(self):
         self.op_type = "bitwise_xor"
-        self.python_api = paddle.tensor.logic.bitwise_xor
+        self.python_api = paddle.bitwise_xor
 
         self.init_shape()
 
@@ -785,8 +856,8 @@ class TestElementwiseBitwiseXorOp_Stride(OpTest):
 
     def setUp(self):
         self.op_type = "bitwise_xor"
-        self.python_api = paddle.tensor.logic.bitwise_xor
-        self.public_python_api = paddle.tensor.logic.bitwise_xor
+        self.python_api = paddle.bitwise_xor
+        self.public_python_api = paddle.bitwise_xor
         self.transpose_api = paddle.transpose
         self.as_stride_api = paddle.as_strided
         self.init_dtype()
@@ -937,7 +1008,7 @@ class TestElementwiseBitwiseXorOp_Stride_ZeroSize1(
 class TestBitwiseNot(OpTest):
     def setUp(self):
         self.op_type = "bitwise_not"
-        self.python_api = paddle.tensor.logic.bitwise_not
+        self.python_api = paddle.bitwise_not
 
         self.init_dtype()
         self.init_shape()
@@ -1016,7 +1087,7 @@ class TestBitwiseNotInt64(TestBitwiseNot):
 class TestBitwiseNotBool(TestBitwiseNot):
     def setUp(self):
         self.op_type = "bitwise_not"
-        self.python_api = paddle.tensor.logic.bitwise_not
+        self.python_api = paddle.bitwise_not
         self.init_shape()
 
         x = np.random.choice([True, False], self.x_shape)
