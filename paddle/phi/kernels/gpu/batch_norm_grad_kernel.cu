@@ -678,7 +678,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
   if (!use_global_stats) {
     if ((N * H * W * D) == 1) {
       if (d_x) {
-        phi::Copy(dev_ctx, *d_y, dev_ctx.GetPlace(), false, d_x);
+        Copy(dev_ctx, *d_y, dev_ctx.GetPlace(), false, d_x);
       }
       funcs::SetConstant<Context, BatchNormParamType<T>> functor;
       functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));

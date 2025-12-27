@@ -120,7 +120,7 @@ void CSoftmaxWithCrossEntropyGradKernel(const Context& dev_ctx,
   DenseTensor* logit_grad = logits_grad;
 
   if (logit_grad != softmax) {
-    phi::Copy(dev_ctx, *softmax, dev_ctx.GetPlace(), false, logit_grad);
+    Copy(dev_ctx, *softmax, dev_ctx.GetPlace(), false, logit_grad);
   }
   const auto softmax_dims = softmax->dims();
   const int axis = softmax_dims.size() - 1;

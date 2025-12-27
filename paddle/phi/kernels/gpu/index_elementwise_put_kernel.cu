@@ -40,7 +40,7 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
   T* output_ = dev_ctx.template Alloc<T>(output);
 
   if (!is_initialized || !is_same_place) {
-    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
   }
   int64_t numel = 0;
   int64_t num_indices = 0;
@@ -145,7 +145,7 @@ void GPUIndexElementwisePutWithTensorKernel(
   T* output_ = dev_ctx.template Alloc<T>(output);
 
   if (!is_initialized || !is_same_place) {
-    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
   }
 
   int64_t numel = 0;

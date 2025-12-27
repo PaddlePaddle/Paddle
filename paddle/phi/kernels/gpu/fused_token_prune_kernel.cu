@@ -255,11 +255,11 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
         sizeof(int64_t) * 8,
         dev_ctx.stream()));
   } else {
-    phi::Copy(dev_ctx,
-              slimmed_indices_tmp,
-              dev_ctx.GetPlace(),
-              false,
-              slimmed_indices);
+    Copy(dev_ctx,
+         slimmed_indices_tmp,
+         dev_ctx.GetPlace(),
+         false,
+         slimmed_indices);
   }
   // 7. Get slimmed X by indices
   config =

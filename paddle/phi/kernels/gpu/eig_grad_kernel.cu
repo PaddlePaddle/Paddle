@@ -805,14 +805,14 @@ void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
 
   DenseTensor diag_real_cpu;
   diag_real_cpu.Resize(diag_real.dims());
-  phi::Copy(dev_ctx, diag_real, cpu_place, false, &diag_real_cpu);
+  Copy(dev_ctx, diag_real, cpu_place, false, &diag_real_cpu);
 
   DenseTensor diag_res_cpu =
       phi::funcs::BatchDiag<T>((*cpu_ctx), diag_real_cpu, batch_count);
 
   DenseTensor diag_res;
   dev_ctx.template Alloc<T>(&diag_res);
-  phi::Copy(dev_ctx, diag_res_cpu, phi::GPUPlace(), false, &diag_res);
+  Copy(dev_ctx, diag_res_cpu, phi::GPUPlace(), false, &diag_res);
 
   DenseTensor diag_unsqueezed = phi::funcs::Unsqueeze(diag_res, -2);
 

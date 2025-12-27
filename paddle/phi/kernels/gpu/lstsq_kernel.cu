@@ -86,12 +86,12 @@ void LstsqKernel(const Context& dev_ctx,
   DenseTensor new_x;
   new_x.Resize(common::make_ddim({batch_count, m, n}));
   dev_ctx.template Alloc<T>(&new_x);
-  phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, &new_x);
+  Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, &new_x);
 
   DenseTensor new_y;
   new_y.Resize(common::make_ddim({batch_count, m, nrhs}));
   dev_ctx.template Alloc<T>(&new_y);
-  phi::Copy<Context>(dev_ctx, y, dev_ctx.GetPlace(), true, &new_y);
+  Copy<Context>(dev_ctx, y, dev_ctx.GetPlace(), true, &new_y);
 
   // Prepare tau
   auto tau_dims_vec = common::vectorize<int>(x_dims);
@@ -179,8 +179,7 @@ void LstsqKernel(const Context& dev_ctx,
     DenseTensor slice_q = funcs::Slice<T>(dev_ctx, trans_q, {-1}, {0}, {m});
     DenseTensor solu_tensor =
         phi::Matmul<T>(dev_ctx, slice_q, *solution, false, false);
-    phi::Copy<Context>(
-        dev_ctx, solu_tensor, dev_ctx.GetPlace(), true, solution);
+    Copy<Context>(dev_ctx, solu_tensor, dev_ctx.GetPlace(), true, solution);
   }
   if (batch_count == 1) solution->Resize(common::make_ddim({n, nrhs}));
   GetResidualsTensor<Context, T>(
