@@ -26,9 +26,9 @@ namespace funcs {
 template <typename T>
 struct SelectedRowsAdd<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
-                  const phi::SelectedRows& input1,
-                  const phi::SelectedRows& input2,
-                  phi::SelectedRows* output) {
+                  const SelectedRows& input1,
+                  const SelectedRows& input2,
+                  SelectedRows* output) {
     auto in1_height = input1.height();
     PADDLE_ENFORCE_EQ(
         in1_height,
@@ -135,7 +135,7 @@ __global__ void SelectedRowsAddTensorKernel(const T* selected_rows,
 template <typename T>
 struct SelectedRowsAddTensor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
-                  const phi::SelectedRows& input1,
+                  const SelectedRows& input1,
                   const DenseTensor& input2,
                   DenseTensor* output) {
     auto in1_height = input1.height();
@@ -211,9 +211,9 @@ template struct SelectedRowsAddTensor<phi::GPUContext, phi::float16>;
 template <typename T>
 struct SelectedRowsAddTo<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
-                  const phi::SelectedRows& input1,
+                  const SelectedRows& input1,
                   const int64_t input2_offset,
-                  phi::SelectedRows* input2) {
+                  SelectedRows* input2) {
     auto in1_height = input1.height();
     PADDLE_ENFORCE_EQ(
         in1_height,
@@ -287,7 +287,7 @@ __global__ void SelectedRowsAddToTensorKernel(const T* selected_rows,
 template <typename T>
 struct SelectedRowsAddToTensor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
-                  const phi::SelectedRows& input1,
+                  const SelectedRows& input1,
                   DenseTensor* input2) {
     auto in1_height = input1.height();
     auto in2_dims = input2->dims();
@@ -368,24 +368,24 @@ __global__ void MergeAddKernel(const T* input,
 
 template <typename DeviceContext, typename T>
 struct MergeAddImpl {
-  phi::SelectedRows operator()(const DeviceContext& dev_ctx,
-                               const phi::SelectedRows& input,
-                               const bool sorted_result = false) {
-    phi::SelectedRows out;
+  SelectedRows operator()(const DeviceContext& dev_ctx,
+                          const SelectedRows& input,
+                          const bool sorted_result = false) {
+    SelectedRows out;
     (*this)(dev_ctx, input, &out);
     return out;
   }
 
   void operator()(const DeviceContext& dev_ctx,
-                  const phi::SelectedRows& input,
-                  phi::SelectedRows* output,
+                  const SelectedRows& input,
+                  SelectedRows* output,
                   const bool sorted_result = false) {
     phi::Vector<int64_t> input_rows(input.rows());
     if (input_rows.size() == 0) {
       return;
     }
 
-    phi::SelectedRows& out = *output;
+    SelectedRows& out = *output;
     std::set<int64_t> row_set(input_rows.begin(), input_rows.end());
     std::vector<int64_t> merge_rows_cpu(row_set.begin(), row_set.end());
     phi::Vector<int64_t> merge_rows(merge_rows_cpu);
@@ -422,14 +422,14 @@ struct MergeAddImpl {
   }
 
   void operator()(const DeviceContext& dev_ctx,
-                  const std::vector<const phi::SelectedRows*>& inputs,
-                  phi::SelectedRows* output,
+                  const std::vector<const SelectedRows*>& inputs,
+                  SelectedRows* output,
                   const bool sorted_result = false) {
     if (inputs.size() == 0) {
       VLOG(3) << "no input! return";
       return;
     }
-    const phi::SelectedRows* has_value_input = nullptr;
+    const SelectedRows* has_value_input = nullptr;
     for (auto* in : inputs) {
       if (in->rows().size() > 0) {
         has_value_input = in;
@@ -442,7 +442,7 @@ struct MergeAddImpl {
     }
     auto input_width = has_value_input->value().dims()[1];
     auto input_height = has_value_input->height();
-    phi::SelectedRows& out = *output;
+    SelectedRows& out = *output;
     std::set<int64_t> merged_row_set;
     for (auto* input : inputs) {
       if (input->rows().size() == 0) {
@@ -505,22 +505,22 @@ template <typename T>
 struct MergeAdd<phi::GPUContext, T> {
   // unary functor, merge by adding duplicated rows in
   // the input SelectedRows object.
-  phi::SelectedRows operator()(const phi::GPUContext& dev_ctx,
-                               const phi::SelectedRows& input,
-                               const bool sorted_result) {
+  SelectedRows operator()(const phi::GPUContext& dev_ctx,
+                          const SelectedRows& input,
+                          const bool sorted_result) {
     return MergeAddImpl<phi::GPUContext, T>()(dev_ctx, input, sorted_result);
   }
 
   void operator()(const phi::GPUContext& dev_ctx,
-                  const phi::SelectedRows& input,
-                  phi::SelectedRows* output,
+                  const SelectedRows& input,
+                  SelectedRows* output,
                   const bool sorted_result) {
     MergeAddImpl<phi::GPUContext, T>()(dev_ctx, input, output, sorted_result);
   }
 
   void operator()(const phi::GPUContext& dev_ctx,
-                  const std::vector<const phi::SelectedRows*>& inputs,
-                  phi::SelectedRows* output,
+                  const std::vector<const SelectedRows*>& inputs,
+                  SelectedRows* output,
                   const bool sorted_result) {
     MergeAddImpl<phi::GPUContext, T>()(dev_ctx, inputs, output, sorted_result);
   }
@@ -594,7 +594,7 @@ template <typename T>
 struct UpdateToTensor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
                   const ScatterOps& op,
-                  const phi::SelectedRows& input1,
+                  const SelectedRows& input1,
                   DenseTensor* input2) {
     // NOTE: Use SelectedRowsAddToTensor for better performance
     //       no additional MergeAdd called.
