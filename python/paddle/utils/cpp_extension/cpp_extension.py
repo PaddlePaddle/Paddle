@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Any
 import os
 import copy
 import concurrent
+import functools
 import re
 import warnings
 import collections
@@ -95,17 +96,10 @@ if core.is_compiled_with_rocm():
     ROCM_HOME = find_rocm_home()
     CUDA_HOME = ROCM_HOME
 
-# Initialize as None, will be set when actually needed
-_CCACHE_HOME = None
-_CCACHE_HOME_INITIALIZED = False
 
-
+@functools.cache
 def _get_ccache_home():
-    global _CCACHE_HOME, _CCACHE_HOME_INITIALIZED
-    if not _CCACHE_HOME_INITIALIZED:
-        _CCACHE_HOME = find_ccache_home()
-        _CCACHE_HOME_INITIALIZED = True
-    return _CCACHE_HOME
+    return find_ccache_home()
 
 
 def setup(**attr: Any) -> None:
