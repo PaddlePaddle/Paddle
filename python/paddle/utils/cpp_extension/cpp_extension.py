@@ -546,7 +546,6 @@ class BuildExtension(build_ext):
                 else:
                     ccache_home = _get_ccache_home()
                     if ccache_home is not None:
-                        # self.set_executable('compiler_so', [ccache_home, *self.executables['compiler_so']])
                         self.set_executable(
                             'compiler_so', [ccache_home, *self.compiler_so]
                         )
