@@ -44,7 +44,7 @@ void MixedPrecisionAddGradImpl(const Context& dev_ctx,
   if (x_grad != nullptr && y_grad == nullptr &&
       x_grad->dims() == out_grad.dims()) {
     VLOG(4) << "Mixed precision: only x_grad needed, no reduce";
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   } else if (x_grad == nullptr && y_grad != nullptr &&
              y_grad->dims() == out_grad.dims()) {
     VLOG(4) << "Mixed precision: only y_grad needed, no reduce";
@@ -71,12 +71,12 @@ void AddGradImpl(const Context& dev_ctx,
       x_grad->dims() == out_grad.dims()) {
     VLOG(4) << "Special case when y_grad is not needed and x_grad doesn't "
                "reduce";
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   } else if (x_grad == nullptr && y_grad != nullptr &&
              y_grad->dims() == out_grad.dims()) {
     VLOG(4) << "Special case when x_grad is not needed and y_grad doesn't "
                "reduce";
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, y_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, y_grad);
   } else {
     grad_func(dev_ctx, x, y, *out, out_grad, x_grad, y_grad, axis);
   }
@@ -112,7 +112,7 @@ void AddDoubleGradImpl(const Context& dev_ctx,
       } else {
         VLOG(4) << "Special case when ddx is not needed and ddy doesn't need "
                    "to broadcast\n";
-        phi::Copy(dev_ctx, *ddy_tensor, dev_ctx.GetPlace(), false, ddout);
+        Copy(dev_ctx, *ddy_tensor, dev_ctx.GetPlace(), false, ddout);
       }
     } else if (ddx_tensor != nullptr && ddy_tensor == nullptr) {
       if (ddx_tensor->dims() != out_shape) {
@@ -127,7 +127,7 @@ void AddDoubleGradImpl(const Context& dev_ctx,
       } else {
         VLOG(4) << "Special case when ddx is not needed and ddy doesn't need "
                    "to broadcast\n";
-        phi::Copy(dev_ctx, *ddx_tensor, dev_ctx.GetPlace(), false, ddout);
+        Copy(dev_ctx, *ddx_tensor, dev_ctx.GetPlace(), false, ddout);
       }
     } else {
       auto ddx_dims = ddx_tensor->dims();

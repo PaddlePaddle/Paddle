@@ -187,7 +187,7 @@ void QrGradKernel(const Context& dev_ctx,
 
   if (m >= n) {
     auto dA_tmp = m_ge_n_case(dev_ctx, dQ, dR, A, Q, R);
-    phi::Copy(dev_ctx, dA_tmp, dA.place(), false, &dA);
+    Copy(dev_ctx, dA_tmp, dA.place(), false, &dA);
   } else {
     // If m < n for input matrices A, we partition A = [X|Y] and R = [U|V]
     // Calculate dX and dY individually and concatenate them to get dA
@@ -218,7 +218,7 @@ void QrGradKernel(const Context& dev_ctx,
     dY = Matmul<T, Context>(dev_ctx, Q, dV);
     // Concatenate dX and dY to get dA.
     auto dA_tmp = Concat<T, Context>(dev_ctx, {&dX, &dY}, -1);
-    phi::Copy(dev_ctx, dA_tmp, dA.place(), false, &dA);
+    Copy(dev_ctx, dA_tmp, dA.place(), false, &dA);
   }
 }
 

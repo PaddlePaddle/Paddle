@@ -59,8 +59,8 @@ void SpectralNormGradKernel(const Context& dev_ctx,
     for (int i = 0; i < rank; i++) {
       real_dims.push_back(i);
     }
-    phi::Copy(dev_ctx, weight, dev_ctx.GetPlace(), true, &weight_mat);
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), true, &out_grad_mat);
+    Copy(dev_ctx, weight, dev_ctx.GetPlace(), true, &weight_mat);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), true, &out_grad_mat);
   }
   weight_mat = weight_mat.Resize({h, w});
   out_grad_mat = out_grad_mat.Resize({h, w});
@@ -69,8 +69,8 @@ void SpectralNormGradKernel(const Context& dev_ctx,
   sigma.Resize(weight_mat.dims());
   dev_ctx.template Alloc<T>(&sigma);
   DenseTensor uu, vv;
-  phi::Copy(dev_ctx, u, dev_ctx.GetPlace(), true, &uu);
-  phi::Copy(dev_ctx, v, dev_ctx.GetPlace(), true, &vv);
+  Copy(dev_ctx, u, dev_ctx.GetPlace(), true, &uu);
+  Copy(dev_ctx, v, dev_ctx.GetPlace(), true, &vv);
   CalcMatrixSigmaAndNormWeight<Context, T>(dev_ctx,
                                            &weight_mat,
                                            &(uu.Resize({h, 1})),
@@ -119,11 +119,11 @@ void SpectralNormGradKernel(const Context& dev_ctx,
         perm,
         weight_grad);
   } else {
-    phi::Copy(dev_ctx,
-              weight_grad_mat.Resize(dims),
-              dev_ctx.GetPlace(),
-              true,
-              weight_grad);
+    Copy(dev_ctx,
+         weight_grad_mat.Resize(dims),
+         dev_ctx.GetPlace(),
+         true,
+         weight_grad);
   }
 }
 

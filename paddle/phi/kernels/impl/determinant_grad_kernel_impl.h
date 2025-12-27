@@ -92,7 +92,7 @@ inline bool CheckMatrixInvertible(const Context& dev_ctx,
 
   // copy to host
   DenseTensor cpu_tensor;
-  phi::Copy<Context>(dev_ctx, dev_tensor, phi::CPUPlace(), false, &cpu_tensor);
+  Copy<Context>(dev_ctx, dev_tensor, phi::CPUPlace(), false, &cpu_tensor);
 
   // if founded zero, the matrix is not invertible
   // else the matrix is invertible
@@ -212,7 +212,7 @@ void DeterminantGradKernel(const Context& dev_ctx,
   x_grad->Resize(x.dims());
   VLOG(3) << "d|A| dims: " << x_grad->dims();
 
-  phi::Copy(dev_ctx, res_mp, dev_ctx.GetPlace(), false, x_grad);
+  Copy(dev_ctx, res_mp, dev_ctx.GetPlace(), false, x_grad);
 }
 
 }  // namespace phi

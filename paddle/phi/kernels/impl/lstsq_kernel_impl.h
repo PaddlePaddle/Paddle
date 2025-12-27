@@ -94,16 +94,14 @@ inline void GetResidualsTensor(const Context& dev_ctx,
 
       auto sum_tensor = phi::Sum<T>(
           dev_ctx, pow_tensor, phi::IntArray({-2}), pow_tensor.dtype(), false);
-      phi::Copy<Context>(
-          dev_ctx, sum_tensor, dev_ctx.GetPlace(), true, residuals);
+      Copy<Context>(dev_ctx, sum_tensor, dev_ctx.GetPlace(), true, residuals);
       return;
     }
   }
 
   IntArray empty_shape({0});
   DenseTensor empty_tensor = phi::Empty<T, Context>(dev_ctx, empty_shape);
-  phi::Copy<Context>(
-      dev_ctx, empty_tensor, dev_ctx.GetPlace(), true, residuals);
+  Copy<Context>(dev_ctx, empty_tensor, dev_ctx.GetPlace(), true, residuals);
 }
 
 #ifdef PADDLE_WITH_HIP
