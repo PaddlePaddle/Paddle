@@ -152,5 +152,28 @@ class TestRMSNormAPI(unittest.TestCase):
         )
 
 
+class TestRMSNormValueError(unittest.TestCase):
+    def test_normalized_shape_type_error(self):
+        x = paddle.randn([2, 3])
+        with self.assertRaisesRegex(
+            ValueError,
+            "`normalized_shape` should be int, list of ints or tuple of ints.",
+        ):
+            rms_norm(x, "invalid_shape")
+
+    def test_input_shape_mismatch(self):
+        x = paddle.randn([2, 3])
+        with self.assertRaisesRegex(ValueError, "expected input with shape"):
+            rms_norm(x, [4])
+
+    def test_weight_shape_mismatch(self):
+        x = paddle.randn([2, 3])
+        weight = paddle.randn([4])
+        with self.assertRaisesRegex(
+            ValueError, "expected weight.shape equals to"
+        ):
+            rms_norm(x, [3], weight=weight)
+
+
 if __name__ == '__main__':
     unittest.main()
