@@ -222,7 +222,7 @@ void PowKernel(const Context& dev_ctx,
     return;
   }
   if (factor.to<float>() == 1) {
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
   auto x_flatten = phi::EigenVector<T>::Flatten(

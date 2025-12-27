@@ -66,7 +66,7 @@ void quant_compute(const Context& dev_ctx,
       (arch == 90) || (arch == 100)) {
     x_int.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
   } else {
-    // phi::Copy may change tensor meta info, here we transpose the quanted
+    // Copy may change tensor meta info, here we transpose the quanted
     // data's shape.
     x_int.Resize({static_cast<int64_t>(n), static_cast<int64_t>(m)});
   }
@@ -128,7 +128,7 @@ void quant_compute(const Context& dev_ctx,
       // Note(Zhengzekang): In sm70, we only need RowMajor layout, just add bias
       // to make it unsigned.
       add_bias_and_interleave_inplace<bits>(x_int_data, num);
-      // phi::Copy break the shape of int4 output, use naive copy;
+      // Copy break the shape of int4 output, use naive copy;
       // only left half of x_int data is valid in int4 mode
       for (int i = 0; i < out->numel(); ++i) {
         out_data[i] = x_int_data[i];

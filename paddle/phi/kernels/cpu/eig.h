@@ -249,7 +249,7 @@ void MagmaEig(const Context& dev_ctx,
   // magma will modify original input, so copy to cpu at any case
   DenseTensor input_copy_cpu;
   input_copy_cpu.Resize(input.dims());
-  phi::Copy(dev_ctx, input, phi::CPUPlace(), false, &input_copy_cpu);
+  Copy(dev_ctx, input, phi::CPUPlace(), false, &input_copy_cpu);
 
   using RealT = typename phi::dtype::Real<T>;
   magma_vec_t jobvr = MagmaVec;

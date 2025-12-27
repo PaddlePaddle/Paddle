@@ -65,7 +65,7 @@ void IndexSelectInner(const Context& dev_ctx,
 
   DenseTensor index_cpu_copy;
   if (index.place().GetType() != phi::AllocationType::CPU) {
-    phi::Copy(dev_ctx, index, phi::CPUPlace(), true, &index_cpu_copy);
+    Copy(dev_ctx, index, phi::CPUPlace(), true, &index_cpu_copy);
   }
   const IndexT* index_data = index.place().GetType() == phi::AllocationType::CPU
                                  ? index.data<IndexT>()
