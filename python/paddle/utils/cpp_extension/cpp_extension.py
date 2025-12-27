@@ -420,6 +420,8 @@ class BuildExtension(build_ext):
         self.output_dir = kwargs.get("output_dir", None)
         # whether containing cuda source file in Extensions
         self.contain_cuda_file = False
+        # Initialize ccache_home to avoid race condition in multi-thread compilation
+        _get_ccache_home()
 
     def initialize_options(self) -> None:
         super().initialize_options()
