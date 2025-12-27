@@ -1780,7 +1780,7 @@ void MoeCombineInferMeta(const MetaTensor& x,
                         "Input(x) is [%d]",
                         x_dim.size()));
   // maybe there is more conditions here....
-  y->set_dims(phi::make_ddim({combine_weights_shape[0], x_dim[1]}));
+  y->set_dims(make_ddim({combine_weights_shape[0], x_dim[1]}));
   y->set_dtype(x.dtype());
 }
 
@@ -1819,7 +1819,7 @@ void MoeCombineNoWeightInferMeta(const MetaTensor& x,
                         "the total size of Input(scatter_index) [%d].",
                         x_dim[0],
                         seqlen * k));
-  y->set_dims(phi::make_ddim({seqlen, hidden_size}));
+  y->set_dims(make_ddim({seqlen, hidden_size}));
   y->set_dtype(x.dtype());
 }
 
@@ -3027,15 +3027,15 @@ void TdmSamplerInferMeta(const MetaTensor& x,
   for (auto sample_nums : neg_samples_num_vec) {
     sample_res_length += sample_nums + (int64_t)output_positive_flag;
   }
-  auto ddim = phi::make_ddim({-1, sample_res_length});
+  auto ddim = make_ddim({-1, sample_res_length});
   auto input_dims = x.dims();
   if (config.is_runtime) {
-    auto output_dims = phi::vectorize(input_dims);
+    auto output_dims = vectorize(input_dims);
     auto batch_size = output_dims[0];
-    out->set_dims(phi::make_ddim({batch_size, sample_res_length}));
-    mask->set_dims(phi::make_ddim({batch_size, sample_res_length}));
+    out->set_dims(make_ddim({batch_size, sample_res_length}));
+    mask->set_dims(make_ddim({batch_size, sample_res_length}));
     if (labels) {
-      labels->set_dims(phi::make_ddim({batch_size, sample_res_length}));
+      labels->set_dims(make_ddim({batch_size, sample_res_length}));
     }
   } else {
     out->set_dims(ddim);
