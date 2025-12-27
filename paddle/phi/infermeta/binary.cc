@@ -197,7 +197,7 @@ void ArrayReadInferMeta(const MetaTensor& array,
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   ElementwiseInferMeta(x, y, out);
   if (out->dtype() == DataType::INT32 || out->dtype() == DataType::INT64) {
-    out->set_dtype(DataType::FLOAT32);
+    out->set_dtype(DataType::FLOAT64);
   }
 }
 

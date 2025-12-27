@@ -114,10 +114,13 @@ void BroadcastTensorsKernel(const Context& dev_ctx,
         SWITCH_OUT_RANK_CASE(4)
         SWITCH_OUT_RANK_CASE(5)
         SWITCH_OUT_RANK_CASE(6)
+        SWITCH_OUT_RANK_CASE(7)
+        SWITCH_OUT_RANK_CASE(8)
+        SWITCH_OUT_RANK_CASE(9)
       default: {
         PADDLE_THROW(common::errors::InvalidArgument(
             "Target tensor rank out of range. "
-            "Maximum supported rank for broadcast is: 6"));
+            "Maximum supported rank for broadcast is: 9"));
       }
     }
   }
