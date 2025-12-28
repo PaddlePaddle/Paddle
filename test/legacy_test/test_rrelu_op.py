@@ -513,7 +513,7 @@ class RReluTest_ZeroSize(RReluTest):
 
 class TestRRELUOpClass_Inplace(unittest.TestCase):
     def _test_case1_cpu(self):
-        x_np = np.random.uniform(-1.0, 1.0, [1, 2, 3, 4]).astype('float64')
+        x_np = np.random.uniform(-1.0, 1.0, [1, 2, 3, 4]).astype('float32')
         lower_0 = 0.05
         upper_0 = 0.25
         y_ref = ref_rrelu(x_np, lower_0, upper_0)
@@ -523,7 +523,7 @@ class TestRRELUOpClass_Inplace(unittest.TestCase):
             x_var1 = paddle.to_tensor(x_np)
             x_var2 = paddle.to_tensor(x_np)
 
-            y_var1 = F.rrelu(x_var1, lower_0, upper_0, True)
+            y_var1 = F.rrelu(x_var1, lower_0, upper_0, inplace=True)
             y_test1 = y_var1.numpy()
 
             func = paddle.nn.RReLU(lower_0, upper_0, True)
@@ -541,7 +541,7 @@ class TestRRELUOpClass_Inplace(unittest.TestCase):
         )
 
     def _test_case1_gpu(self):
-        x = np.random.uniform(-1.0, 1.0, [1, 2, 3, 4]).astype('float64')
+        x = np.random.uniform(-1.0, 1.0, [1, 2, 3, 4]).astype('float32')
         lower_1 = 0.1
         upper_1 = 0.33
         y_ref = ref_rrelu(x, lower_1, upper_1)
@@ -551,7 +551,7 @@ class TestRRELUOpClass_Inplace(unittest.TestCase):
             x_var1 = paddle.to_tensor(x)
             x_var2 = paddle.to_tensor(x)
 
-            y_var1 = F.rrelu(x_var1, lower_1, upper_1, True)
+            y_var1 = F.rrelu(x_var1, lower_1, upper_1, inplace=True)
             y_test1 = y_var1.numpy()
 
             func = paddle.nn.RReLU(lower_1, upper_1, True)
@@ -578,7 +578,7 @@ class TestRRELUAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
         self.shape = [1, 2, 3, 4]
-        self.x_np = np.random.uniform(-1.0, 1.0, self.shape).astype('float64')
+        self.x_np = np.random.uniform(-1.0, 1.0, self.shape).astype('float32')
         self.lower_1 = 0.1
         self.upper_1 = 0.33
         self.place = [get_device_place()]
@@ -590,7 +590,7 @@ class TestRRELUAPI(unittest.TestCase):
         def run(place, inplace):
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.shape)
-                out = F.rrelu(x, self.lower_1, self.upper_1, inplace)
+                out = F.rrelu(x, self.lower_1, self.upper_1, inplace=inplace)
                 exe = paddle.static.Executor(place)
                 res = exe.run(
                     feed={
@@ -612,7 +612,7 @@ class TestRRELUAPI(unittest.TestCase):
         def run(place, inplace):
             paddle.disable_static(place)
             x_tensor = paddle.to_tensor(self.x_np)
-            out = F.rrelu(x_tensor, self.lower_1, self.upper_1, inplace)
+            out = F.rrelu(x_tensor, self.lower_1, self.upper_1, inplace=inplace)
 
             target = copy.deepcopy(self.x_np)
             out_ref = ref_rrelu(
