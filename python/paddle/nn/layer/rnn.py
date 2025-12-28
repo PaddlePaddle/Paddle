@@ -1029,20 +1029,8 @@ class LSTMCell(RNNCellBase):
         name: str | None = None,
     ) -> None:
         if not bias:
-            if (bias_ih_attr not in (None, False)) or (
-                bias_hh_attr not in (None, False)
-            ):
-                raise ValueError(
-                    "LSTMCell got bias=False, but bias_ih_attr or bias_hh_attr was also provided. "
-                    "When bias is False, no bias parameters are created. "
-                    "Either set bias=True or do not pass bias_ih_attr/bias_hh_attr."
-                )
             bias_ih_attr = False
             bias_hh_attr = False
-
-        if device is not None:
-            if isinstance(device, str) and device.startswith('cuda'):
-                device = device.replace('cuda', 'gpu')
 
         super().__init__()
         if hidden_size <= 0:
@@ -2145,20 +2133,8 @@ class LSTM(RNNBase):
         name: str | None = None,
     ) -> None:
         if not bias:
-            if (bias_ih_attr not in (None, False)) or (
-                bias_hh_attr not in (None, False)
-            ):
-                raise ValueError(
-                    "LSTM got bias=False, but bias_ih_attr or bias_hh_attr was also provided. "
-                    "When bias is False, no bias parameters are created. "
-                    "Either set bias=True or do not pass bias_ih_attr/bias_hh_attr."
-                )
             bias_ih_attr = False
             bias_hh_attr = False
-
-        if device is not None:
-            if isinstance(device, str) and device.startswith('cuda'):
-                device = device.replace('cuda', 'gpu')
 
         super().__init__(
             "LSTM",
