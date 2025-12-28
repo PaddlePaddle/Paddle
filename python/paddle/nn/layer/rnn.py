@@ -964,11 +964,11 @@ class LSTMCell(RNNCellBase):
         proj_size (int, optional): If specified, the output hidden state
             will be projected to `proj_size`. `proj_size` must be smaller than
             `hidden_size`. Default: None.
-        name (str|None, optional): Name for the operation (optional, default is
-            None). For more information, please refer to :ref:`api_guide_Name`.
-        bias (bool, optional): If False, then the layer does not use bias weights `b_ih` and `b_hh`. Default: True.
+        bias (bool, optional): If False, then the layer does not use bias weights `bias_ih` and `bias_hh`. Default: True.
         device (str, optional): The device to execute the layer. Default: None.
         dtype (str, optional): The data type of the layer. Default: None.
+        name (str|None, optional): Name for the operation (optional, default is
+            None). For more information, please refer to :ref:`api_guide_Name`.
 
     Variables:
         - **weight_ih** (Parameter): shape (4 * hidden_size, input_size), input to hidden weight, which corresponds to the concatenation of :math:`W_{ii}, W_{if}, W_{ig}, W_{io}` in the formula.
@@ -1017,91 +1017,99 @@ class LSTMCell(RNNCellBase):
         self,
         input_size: int,
         hidden_size: int,
+        *,
         weight_ih_attr: ParamAttrLike | None = None,
         weight_hh_attr: ParamAttrLike | None = None,
         bias_ih_attr: ParamAttrLike | None = None,
         bias_hh_attr: ParamAttrLike | None = None,
         proj_size: int = 0,
-        name: str | None = None,
         bias: bool = True,
         device=None,
         dtype=None,
+        name: str | None = None,
     ) -> None:
         if not bias:
+            if (bias_ih_attr not in (None, False)) or (
+                bias_hh_attr not in (None, False)
+            ):
+                raise ValueError(
+                    "LSTMCell got bias=False, but bias_ih_attr or bias_hh_attr was also provided. "
+                    "When bias is False, no bias parameters are created. "
+                    "Either set bias=True or do not pass bias_ih_attr/bias_hh_attr."
+                )
             bias_ih_attr = False
             bias_hh_attr = False
 
-        original_device = paddle.device.get_device()
-        original_dtype = paddle.get_default_dtype()
+        if device is not None:
+            if isinstance(device, str) and device.startswith('cuda'):
+                device = device.replace('cuda', 'gpu')
 
-        try:
-            if device is not None:
-                if isinstance(device, str) and device.startswith('cuda'):
-                    device = device.replace('cuda', 'gpu')
-                paddle.device.set_device(device)
+        super().__init__()
+        if hidden_size <= 0:
+            raise ValueError(
+                f"hidden_size of {self.__class__.__name__} must be greater than 0, but now equals to {hidden_size}"
+            )
+        if proj_size < 0:
+            raise ValueError(
+                f"proj_size of {self.__class__.__name__} must be greater than 0, but now equals to {hidden_size}"
+            )
 
-            if dtype is not None:
-                paddle.set_default_dtype(dtype)
+        if proj_size >= hidden_size:
+            raise ValueError("proj_size must be smaller than hidden_size")
 
-            super().__init__()
-            if hidden_size <= 0:
-                raise ValueError(
-                    f"hidden_size of {self.__class__.__name__} must be greater than 0, but now equals to {hidden_size}"
-                )
-            if proj_size < 0:
-                raise ValueError(
-                    f"proj_size of {self.__class__.__name__} must be greater than 0, but now equals to {hidden_size}"
-                )
-
-            if proj_size >= hidden_size:
-                raise ValueError("proj_size must be smaller than hidden_size")
-
-            std = 1.0 / math.sqrt(hidden_size)
-            if weight_ih_attr is not False:
-                self.weight_ih = self.create_parameter(
-                    (4 * hidden_size, input_size),
-                    weight_ih_attr,
-                    default_initializer=I.Uniform(-std, std),
-                )
-            else:
-                self.weight_ih = self.create_parameter(
-                    (4 * hidden_size, input_size),
-                    None,
-                    default_initializer=I.Constant(1.0),
-                )
-                self.weight_ih.stop_gradient = True
-            if weight_hh_attr is not False:
-                self.weight_hh = self.create_parameter(
-                    (4 * hidden_size, proj_size or hidden_size),
-                    weight_hh_attr,
-                    default_initializer=I.Uniform(-std, std),
-                )
-            else:
-                self.weight_hh = self.create_parameter(
-                    (4 * hidden_size, proj_size or hidden_size),
-                    None,
-                    default_initializer=I.Constant(1.0),
-                )
-                self.weight_hh.stop_gradient = True
-            if bias_ih_attr is not False:
-                self.bias_ih = self.create_parameter(
-                    (4 * hidden_size,),
-                    bias_ih_attr,
-                    is_bias=True,
-                    default_initializer=I.Uniform(-std, std),
-                )
-            if bias_hh_attr is not False:
-                self.bias_hh = self.create_parameter(
-                    (4 * hidden_size,),
-                    bias_hh_attr,
-                    is_bias=True,
-                    default_initializer=I.Uniform(-std, std),
-                )
-        finally:
-            if device is not None:
-                paddle.device.set_device(original_device)
-            if dtype is not None:
-                paddle.set_default_dtype(original_dtype)
+        std = 1.0 / math.sqrt(hidden_size)
+        if weight_ih_attr is not False:
+            self.weight_ih = self.create_parameter(
+                (4 * hidden_size, input_size),
+                weight_ih_attr,
+                default_initializer=I.Uniform(-std, std),
+                dtype=dtype,
+                device=device,
+            )
+        else:
+            self.weight_ih = self.create_parameter(
+                (4 * hidden_size, input_size),
+                None,
+                default_initializer=I.Constant(1.0),
+                dtype=dtype,
+                device=device,
+            )
+            self.weight_ih.stop_gradient = True
+        if weight_hh_attr is not False:
+            self.weight_hh = self.create_parameter(
+                (4 * hidden_size, proj_size or hidden_size),
+                weight_hh_attr,
+                default_initializer=I.Uniform(-std, std),
+                dtype=dtype,
+                device=device,
+            )
+        else:
+            self.weight_hh = self.create_parameter(
+                (4 * hidden_size, proj_size or hidden_size),
+                None,
+                default_initializer=I.Constant(1.0),
+                dtype=dtype,
+                device=device,
+            )
+            self.weight_hh.stop_gradient = True
+        if bias_ih_attr is not False:
+            self.bias_ih = self.create_parameter(
+                (4 * hidden_size,),
+                bias_ih_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+                dtype=dtype,
+                device=device,
+            )
+        if bias_hh_attr is not False:
+            self.bias_hh = self.create_parameter(
+                (4 * hidden_size,),
+                bias_hh_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+                dtype=dtype,
+                device=device,
+            )
 
         self.proj_size = proj_size
         if proj_size > 0:
@@ -1109,6 +1117,8 @@ class LSTMCell(RNNCellBase):
                 (hidden_size, proj_size),
                 weight_hh_attr,
                 default_initializer=I.Uniform(-std, std),
+                dtype=dtype,
+                device=device,
             )
 
         self.hidden_size = hidden_size
@@ -1552,6 +1562,8 @@ class RNNBase(LayerList):
         bias_ih_attr: ParamAttrLike | None = None,
         bias_hh_attr: ParamAttrLike | None = None,
         proj_size: int = 0,
+        device=None,
+        dtype=None,
     ) -> None:
         super().__init__()
         bidirectional_list: list[str] = ["bidirectional", "bidirect"]
@@ -1578,6 +1590,8 @@ class RNNBase(LayerList):
         if mode == "LSTM":
             rnn_cls = LSTMCell
             kwargs["proj_size"] = proj_size
+            kwargs["device"] = device
+            kwargs["dtype"] = dtype
         elif mode == "GRU":
             rnn_cls = GRUCell
         elif mode == "RNN_RELU":
@@ -2065,11 +2079,11 @@ class LSTM(RNNBase):
         proj_size (int, optional): If specified, the output hidden state of each layer
             will be projected to `proj_size`. `proj_size` must be smaller than `hidden_size`.
             Default: 0.
-        name (str|None, optional): Name for the operation (optional, default is
-            None). For more information, please refer to :ref:`api_guide_Name`.
-        bias (bool, optional): If False, then the layer does not use bias weights `b_ih` and `b_hh`. Default: True.
+        bias (bool, optional): If False, then the layer does not use bias weights `bias_ih` and `bias_hh`. Default: True.
         device (str, optional): The device to execute the layer. Default: None.
         dtype (str, optional): The data type of the layer. Default: None.
+        name (str|None, optional): Name for the operation (optional, default is
+            None). For more information, please refer to :ref:`api_guide_Name`.
 
     Inputs:
         - **inputs** (Tensor): the input sequence. If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`, else, the shape is `[batch_size, time_steps, input_size]`. `time_steps` means the length of the input sequence.
@@ -2116,6 +2130,7 @@ class LSTM(RNNBase):
         input_size: int,
         hidden_size: int,
         num_layers: int = 1,
+        *,
         direction: _DirectionType | str = "forward",
         time_major: bool = False,
         dropout: float = 0.0,
@@ -2124,46 +2139,43 @@ class LSTM(RNNBase):
         bias_ih_attr: ParamAttrLike | None = None,
         bias_hh_attr: ParamAttrLike | None = None,
         proj_size: int = 0,
-        name: str | None = None,
         bias: bool = True,
         device=None,
         dtype=None,
+        name: str | None = None,
     ) -> None:
         if not bias:
+            if (bias_ih_attr not in (None, False)) or (
+                bias_hh_attr not in (None, False)
+            ):
+                raise ValueError(
+                    "LSTM got bias=False, but bias_ih_attr or bias_hh_attr was also provided. "
+                    "When bias is False, no bias parameters are created. "
+                    "Either set bias=True or do not pass bias_ih_attr/bias_hh_attr."
+                )
             bias_ih_attr = False
             bias_hh_attr = False
 
-        original_device = paddle.device.get_device()
-        original_dtype = paddle.get_default_dtype()
+        if device is not None:
+            if isinstance(device, str) and device.startswith('cuda'):
+                device = device.replace('cuda', 'gpu')
 
-        try:
-            if device is not None:
-                if isinstance(device, str) and device.startswith('cuda'):
-                    device = device.replace('cuda', 'gpu')
-                paddle.device.set_device(device)
-
-            if dtype is not None:
-                paddle.set_default_dtype(dtype)
-
-            super().__init__(
-                "LSTM",
-                input_size,
-                hidden_size,
-                num_layers,
-                direction,
-                time_major,
-                dropout,
-                weight_ih_attr,
-                weight_hh_attr,
-                bias_ih_attr,
-                bias_hh_attr,
-                proj_size,
-            )
-        finally:
-            if device is not None:
-                paddle.device.set_device(original_device)
-            if dtype is not None:
-                paddle.set_default_dtype(original_dtype)
+        super().__init__(
+            "LSTM",
+            input_size,
+            hidden_size,
+            num_layers,
+            direction,
+            time_major,
+            dropout,
+            weight_ih_attr,
+            weight_hh_attr,
+            bias_ih_attr,
+            bias_hh_attr,
+            proj_size,
+            device=device,
+            dtype=dtype,
+        )
 
 
 class GRU(RNNBase):

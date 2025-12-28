@@ -42,10 +42,19 @@ class TestLSTMCompat(unittest.TestCase):
         y, (h, c) = lstm(x)
         self.assertEqual(y.shape, [4, 5, 20])
 
+    def test_bias_true(self):
+        lstm = nn.LSTM(10, 20, bias=True)
+        self.assertTrue(hasattr(lstm, 'bias_ih_l0'))
+        self.assertTrue(hasattr(lstm, 'bias_hh_l0'))
+        self.assertFalse(lstm.bias_ih_l0.stop_gradient)
+        self.assertFalse(lstm.bias_hh_l0.stop_gradient)
+
     def test_dtype(self):
         lstm = nn.LSTM(10, 20, dtype='float64')
         self.assertEqual(lstm.weight_ih_l0.dtype, paddle.float64)
         self.assertEqual(lstm.weight_hh_l0.dtype, paddle.float64)
+        self.assertEqual(lstm.bias_ih_l0.dtype, paddle.float64)
+        self.assertEqual(lstm.bias_hh_l0.dtype, paddle.float64)
 
         x = paddle.randn([4, 5, 10]).astype('float64')
         y, (h, c) = lstm(x)
@@ -65,6 +74,18 @@ class TestLSTMCompat(unittest.TestCase):
         # Also test explicit cpu on gpu machine if possible, but 'cpu' is always safe
         lstm_cpu = nn.LSTM(10, 20, device='cpu')
         self.assertTrue(lstm_cpu.weight_ih_l0.place.is_cpu_place())
+
+    def test_keyword_only_args(self):
+        # direction is keyword-only
+        with self.assertRaises(TypeError):
+            nn.LSTM(10, 20, 1, 'forward')
+
+        # This should work
+        nn.LSTM(10, 20, 1, direction='forward')
+
+    def test_conflict_bias_false(self):
+        with self.assertRaisesRegex(ValueError, "LSTM got bias=False"):
+            nn.LSTM(10, 20, bias=False, bias_ih_attr=paddle.ParamAttr())
 
 
 if __name__ == '__main__':

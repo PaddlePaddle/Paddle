@@ -46,10 +46,19 @@ class TestLSTMCellCompat(unittest.TestCase):
         self.assertEqual(new_h.shape, [4, 20])
         self.assertEqual(new_c.shape, [4, 20])
 
+    def test_bias_true(self):
+        cell = nn.LSTMCell(10, 20, bias=True)
+        self.assertTrue(hasattr(cell, 'bias_ih'))
+        self.assertTrue(hasattr(cell, 'bias_hh'))
+        self.assertFalse(cell.bias_ih.stop_gradient)
+        self.assertFalse(cell.bias_hh.stop_gradient)
+
     def test_dtype(self):
         cell = nn.LSTMCell(10, 20, dtype='float64')
         self.assertEqual(cell.weight_ih.dtype, paddle.float64)
         self.assertEqual(cell.weight_hh.dtype, paddle.float64)
+        self.assertEqual(cell.bias_ih.dtype, paddle.float64)
+        self.assertEqual(cell.bias_hh.dtype, paddle.float64)
 
         x = paddle.randn([4, 10]).astype('float64')
         h = paddle.randn([4, 20]).astype('float64')
@@ -75,6 +84,18 @@ class TestLSTMCellCompat(unittest.TestCase):
         # Also test explicit cpu on gpu machine if possible, but 'cpu' is always safe
         cell_cpu = nn.LSTMCell(10, 20, device='cpu')
         self.assertTrue(cell_cpu.weight_ih.place.is_cpu_place())
+
+    def test_keyword_only_args(self):
+        # weight_ih_attr is keyword-only
+        with self.assertRaises(TypeError):
+            nn.LSTMCell(10, 20, paddle.ParamAttr())
+
+        # This should work
+        nn.LSTMCell(10, 20, weight_ih_attr=paddle.ParamAttr())
+
+    def test_conflict_bias_false(self):
+        with self.assertRaisesRegex(ValueError, "LSTMCell got bias=False"):
+            nn.LSTMCell(10, 20, bias=False, bias_ih_attr=paddle.ParamAttr())
 
 
 if __name__ == '__main__':
