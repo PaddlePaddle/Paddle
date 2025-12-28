@@ -3441,11 +3441,6 @@ add_doc_and_signature(
             >>> print(res)
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [0, 2, 1])
-            >>> # using alias 'input' and 'other'
-            >>> res = paddle.bitwise_and(input=x, other=y)
-            >>> print(res)
-            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [0, 2, 1])
     """,
     """
 def bitwise_and(
