@@ -148,14 +148,6 @@ RECORD_EVENT_TEMPLATE = (
 )
 
 
-RETURN_INPLACE_INDEX_PYOBJECT_TEMPLATE = """
-    inplace_var_idx_map[{}] = {};
-"""
-RETURN_INPLACE_NAME_PYOBJECT_TEMPLATE = """
-    inplace_var_name_map[{}] = {};
-"""
-
-
 PYTHON_C_FUNCTION_TEMPLATE = """
 PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs) {{
   {}
