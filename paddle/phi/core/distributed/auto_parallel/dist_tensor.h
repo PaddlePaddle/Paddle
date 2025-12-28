@@ -47,7 +47,7 @@ class PADDLE_API DistTensor final
 
   /// \brief Construct a dist tensor based dtype.
   /// \param dtype The dtype of the current tensor.
-  explicit DistTensor(phi::DataType dtype);
+  explicit DistTensor(DataType dtype);
 
   /// \brief Construct a dist tensor based dense tensor.
   /// \param global_value The global dense tensor of the current tensor.
