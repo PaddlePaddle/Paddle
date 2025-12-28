@@ -110,8 +110,8 @@ void NCCLCommContext::SetCommEvent(
   comm_event_ = std::move(comm_event);
 }
 
-void NCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
-                                const phi::DenseTensor& in_tensor,
+void NCCLCommContext::Broadcast(DenseTensor* out_tensor,
+                                const DenseTensor& in_tensor,
                                 int root,
                                 gpuStream_t stream) {
   CommStaticCheck::SameShape(*out_tensor,
@@ -131,8 +131,8 @@ void NCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                          stream));
 }
 
-void NCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
-                                const phi::DenseTensor& in_tensor,
+void NCCLCommContext::AllGather(DenseTensor* out_tensor,
+                                const DenseTensor& in_tensor,
                                 gpuStream_t stream) {
   phi::distributed::CommStaticCheck::GatherLikeShape(*out_tensor,
                                                      in_tensor,
@@ -152,8 +152,8 @@ void NCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
                                          nccl_comm_,
                                          stream));
 }
-void NCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
-                                    const phi::DenseTensor& in_tensor,
+void NCCLCommContext::ReduceScatter(DenseTensor* out_tensor,
+                                    const DenseTensor& in_tensor,
                                     ncclRedOp_t reduce_type,
                                     gpuStream_t stream) {
   PADDLE_ENFORCE_EQ(
@@ -183,7 +183,7 @@ void NCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
                                              stream));
 }
 
-void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
+void NCCLCommContext::Send(const DenseTensor& in_tensor,
                            const int64_t& count,
                            const int& peer,
                            gpuStream_t stream) {
@@ -203,7 +203,7 @@ void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
           << common::product(in_tensor.dims()) << " to " << peer;
 }
 
-void NCCLCommContext::Recv(phi::DenseTensor* out_tensor,
+void NCCLCommContext::Recv(DenseTensor* out_tensor,
                            const int64_t& count,
                            const int& peer,
                            gpuStream_t stream) {
@@ -222,8 +222,8 @@ void NCCLCommContext::Recv(phi::DenseTensor* out_tensor,
           << common::product(out_tensor->dims()) << " from " << peer;
 }
 
-void NCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
-                                const phi::DenseTensor& in_tensor,
+void NCCLCommContext::AllReduce(DenseTensor* out_tensor,
+                                const DenseTensor& in_tensor,
                                 ncclRedOp_t reduce_type,
                                 gpuStream_t stream) {
   PADDLE_ENFORCE_EQ(
@@ -253,8 +253,8 @@ void NCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
                                          stream));
 }
 
-void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
-                             const phi::DenseTensor& in_tensor,
+void NCCLCommContext::Reduce(DenseTensor* out_tensor,
+                             const DenseTensor& in_tensor,
                              ncclRedOp_t reduce_type,
                              int root,
                              gpuStream_t stream) {

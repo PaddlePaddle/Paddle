@@ -225,7 +225,7 @@ phi::DeviceContext* GetDistTensorDeviceContext(
 }
 
 phi::DDim InferShapeForReshardFromReplicate(
-    const std::shared_ptr<phi::DenseTensor>& global_value,
+    const std::shared_ptr<DenseTensor>& global_value,
     const TensorDistAttr& dist_attr) {
   phi::DDim out_dim = global_value->dims();
   auto coord_id = GetCurRankCoordInMesh(dist_attr.process_mesh());

@@ -93,19 +93,19 @@ namespace distributed {
 #endif
 
 template <typename T, typename P>
-void SetOutput(P* opts, phi::DenseTensor* tensor) {
+void SetOutput(P* opts, DenseTensor* tensor) {
   opts->setOutput(reinterpret_cast<T*>(tensor->data()), tensor->numel());
 }
 
 template <typename T, typename P>
-void SetInput(P* opts, const phi::DenseTensor& tensor) {
+void SetInput(P* opts, const DenseTensor& tensor) {
   // gloo only support mutable data input
   opts->setInput(reinterpret_cast<T*>(const_cast<void*>(tensor.data())),
                  tensor.numel());
 }
 
 template <typename T, typename P>
-void SetInputForScatter(P* opts, const phi::DenseTensor& tensor, int nranks) {
+void SetInputForScatter(P* opts, const DenseTensor& tensor, int nranks) {
   std::vector<T*> ret;
   ret.reserve(nranks);
   T* raw_pointer = reinterpret_cast<T*>(const_cast<void*>(tensor.data()));
