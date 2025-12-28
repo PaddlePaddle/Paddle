@@ -1666,6 +1666,16 @@ def monkey_patch_value():
         ('__bool__', _bool_),
         ('__complex__', _complex_),
         ('itemsize', itemsize),
+        (
+            '__and__',
+            _binary_creator_('__and__', paddle.tensor.bitwise_and, False, None),
+        ),
+        (
+            '__rand__',
+            _binary_creator_(
+                '__rand__', paddle.tensor.bitwise_and, False, None
+            ),
+        ),
     ]
     dtype_conversion_methods = _create_dtype_conversion_methods()
     value_methods.extend(dtype_conversion_methods)

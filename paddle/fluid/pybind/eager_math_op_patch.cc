@@ -2340,6 +2340,77 @@ static PyObject* tensor__eq__method(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__and__method(TensorObject* self,
+                                     PyObject* args,
+                                     PyObject* kwargs) {
+  phi::RecordEvent pythonc_record_event(
+      "__and__ pybind_patch_func", phi::TracerEventType::UserDefined, 1);
+
+  EAGER_TRY
+  VLOG(6) << "Running Eager tensor__and__method";
+
+  SetPythonStack();
+
+  // Set Device ID
+  auto place = egr::Controller::Instance().GetExpectedPlace();
+  SetDevice(place);
+
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
+  PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+
+  // 1. scalar exists cases (int/bool)
+  if (PyCheckInteger(other_obj) || PyBool_Check(other_obj)) {
+    int64_t other_value = CastPyArg2Long(other_obj, "__and__", 0);
+    paddle::Tensor other_tensor;
+    {
+      eager_gil_scoped_release guard;
+      other_tensor = full_ad_func(self_tensor.shape(),
+                                  phi::Scalar(other_value),
+                                  self_tensor.dtype(),
+                                  self_tensor.place());
+    }
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    }
+    {
+      eager_gil_scoped_release guard;
+      ret = bitwise_and_ad_func(self_tensor, other_tensor);
+    }
+    return ToPyObject(ret);
+  }
+
+  // 2. create or get tensor for other_obj
+  paddle::Tensor other_tensor;
+  if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
+    }
+    self_tensor = self_tensor_ref_addr;
+    other_tensor = other_tensor_ref_addr;
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Unsupported operand type(s) for &: 'Tensor' and '%s'",
+        other_obj->ob_type->tp_name));
+  }
+
+  // 3. calculation
+  VLOG(6) << "Calling bitwise_and_ad_func in tensor__and__method";
+  {
+    eager_gil_scoped_release guard;
+    ret = bitwise_and_ad_func(self_tensor, other_tensor);
+  }
+
+  return ToPyObject(ret);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef math_op_patch_methods[] = {  // NOLINT
     {"__add__",
      (PyCFunction)(void (*)())tensor__add__method,
@@ -2435,6 +2506,14 @@ PyMethodDef math_op_patch_methods[] = {  // NOLINT
      nullptr},
     {"__ne__",
      (PyCFunction)(void (*)())tensor__ne__method,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"__and__",
+     (PyCFunction)(void (*)())tensor__and__method,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"__rand__",
+     (PyCFunction)(void (*)())tensor__and__method,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {nullptr, nullptr, 0, nullptr}};

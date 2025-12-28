@@ -956,8 +956,6 @@ tensor_method_func = [
 
 # this list used in math_op_patch.py for magic_method bind
 magic_method_func = [
-    ('__and__', 'bitwise_and'),
-    ('__rand__', '__rand__'),
     ('__or__', 'bitwise_or'),
     ('__ror__', '__ror__'),
     ('__xor__', 'bitwise_xor'),

@@ -969,6 +969,8 @@ def monkey_patch_variable():
         ('values', values),
         ('indices', indices),
         ('to_dense', to_dense),
+        ('__and__', _binary_creator_('__and__', 'bitwise_and', False, None)),
+        ('__rand__', _binary_creator_('__rand__', 'bitwise_and', False, None)),
     ]
 
     global _already_patch_variable

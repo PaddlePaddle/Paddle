@@ -666,6 +666,8 @@ def monkey_patch_math_tensor():
         '__rpow__',
         '__eq__',
         '__ne__',
+        '__and__',
+        '__rand__',
     ]
 
     global _already_patch_eager_tensor
