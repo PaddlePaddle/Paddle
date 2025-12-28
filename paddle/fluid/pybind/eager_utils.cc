@@ -1030,6 +1030,7 @@ PyObject* ToPyObjectTuple(const std::vector<PyObject*>& value) {
   PyObject* result = PyTuple_New(len);
 
   for (size_t i = 0; i < len; i++) {
+    Py_INCREF(value.at(i));
     PyTuple_SET_ITEM(result, i, value.at(i));
   }
 
