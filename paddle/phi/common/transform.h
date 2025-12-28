@@ -18,7 +18,7 @@ limitations under the License. */
 #include <type_traits>
 
 #include "paddle/common/hostdevice.h"
-#include "paddle/phi/backends/all_dev_ctx.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/enforce.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
@@ -68,9 +68,9 @@ struct Transform {
 // NOTE: After the phi kernel is migrated, it needs to be deleted.
 
 template <>
-struct Transform<phi::CPUContext> {
+struct Transform<CPUContext> {
   template <typename InputIter, typename OutputIter, typename UnaryOperation>
-  void operator()(const phi::CPUContext& dev_ctx UNUSED,
+  void operator()(const CPUContext& dev_ctx UNUSED,
                   InputIter first,
                   InputIter last,
                   OutputIter result,
@@ -82,7 +82,7 @@ struct Transform<phi::CPUContext> {
             typename InputIter2,
             typename OutputIter,
             typename BinaryOperation>
-  void operator()(const phi::CPUContext& dev_ctx UNUSED,
+  void operator()(const CPUContext& dev_ctx UNUSED,
                   InputIter1 first1,
                   InputIter1 last1,
                   InputIter2 first2,
@@ -135,9 +135,9 @@ auto CastToCUDATransformIterator(T t) ->
 }
 
 template <>
-struct Transform<phi::GPUContext> {
+struct Transform<GPUContext> {
   template <typename InputIter, typename OutputIter, typename UnaryOperation>
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   InputIter first,
                   InputIter last,
                   OutputIter result,
@@ -173,7 +173,7 @@ struct Transform<phi::GPUContext> {
             typename InputIter2,
             typename OutputIter,
             typename BinaryOperation>
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   InputIter1 first1,
                   InputIter1 last1,
                   InputIter2 first2,
