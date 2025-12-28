@@ -866,11 +866,12 @@ void FusedActDequantInferMeta(const MetaTensor& x,
           x.dtype()));
 
   PADDLE_ENFORCE_EQ(
-      x_scale.dtype(),
-      DataType::FLOAT32,
-      common::errors::InvalidArgument(
-          "The data type of X_scale should be FLOAT32, but received %s.",
-          x_scale.dtype()));
+      x_scale.dtype() == DataType::FLOAT32 ||
+          x_scale.dtype() == DataType::INT32,
+      true,
+      common::errors::InvalidArgument("The data type of X_scale should be "
+                                      "FLOAT32 or INT32, but received %s.",
+                                      x_scale.dtype()));
 
   PADDLE_ENFORCE_EQ(x_dims.size(),
                     2,
@@ -892,6 +893,31 @@ void FusedActDequantInferMeta(const MetaTensor& x,
       0,
       common::errors::InvalidArgument(
           "The cols of X should be positive, but received %d.", cols));
+
+  auto scale_dims = x_scale.dims();
+  int64_t scale_cols_expected = (cols + 127) / 128;
+  if (x_scale.dtype() == DataType::INT32) {
+    scale_cols_expected = (scale_cols_expected + 3) / 4;
+  }
+
+  // Check scale shape assuming it is [rows, scale_cols] or flattened
+  if (scale_dims.size() == 2) {
+    PADDLE_ENFORCE_EQ(scale_dims[0],
+                      rows,
+                      common::errors::InvalidArgument(
+                          "The rows of X_scale should be equal to rows of X"));
+    PADDLE_ENFORCE_EQ(
+        scale_dims[1],
+        scale_cols_expected,
+        common::errors::InvalidArgument("The cols of X_scale should be %d",
+                                        scale_cols_expected));
+  } else if (scale_dims.size() == 1) {
+    PADDLE_ENFORCE_EQ(
+        scale_dims[0],
+        rows * scale_cols_expected,
+        common::errors::InvalidArgument("The numel of X_scale should be %d",
+                                        rows * scale_cols_expected));
+  }
 
   out->set_dims(x_dims);
   out->set_dtype(DataType::BFLOAT16);
