@@ -388,6 +388,7 @@ def fp8_quant_blockwise(
     output_scale_transpose: bool = True,
     return_transpose_only: bool = False,
     using_pow2_scale: bool = True,
+    using_ue8m0_scale: bool = False,
     quant_method: str = "1x128",
     output_type: str = "e4m3",
     name: str | None = None,
@@ -414,6 +415,7 @@ def fp8_quant_blockwise(
             return_transpose_only,
             using_e5m2,
             using_pow2_scale,
+            using_ue8m0_scale,
         )
         # Aligned with kitchen's logic
         if not input_transpose:
