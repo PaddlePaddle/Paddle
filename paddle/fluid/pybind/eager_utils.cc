@@ -1025,6 +1025,17 @@ std::vector<std::string> CastPyArg2VectorOfString(PyObject* obj,
   }
 }
 
+PyObject* ToPyObjectTuple(const std::vector<PyObject*>& value) {
+  size_t len = value.size();
+  PyObject* result = PyTuple_New(len);
+
+  for (size_t i = 0; i < len; i++) {
+    PyTuple_SET_ITEM(result, i, value.at(i));
+  }
+
+  return result;
+}
+
 PyObject* ToPyObject(bool value) {
   if (value) {
     Py_INCREF(Py_True);
@@ -1072,49 +1083,6 @@ PyObject* ToPyObject(PyObject* args, ssize_t arg_idx) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
   Py_INCREF(obj);
   return obj;
-}
-
-PyObject* ToPyObject(
-    const paddle::Tensor& value,
-    PyObject* args,
-    PyObject* kwargs,
-    const std::map<ssize_t, ssize_t>& inplace_var_idx_map,
-    const std::map<ssize_t, std::vector<std::string>>& inplace_var_name_map) {
-  if (!inplace_var_idx_map.empty() && inplace_var_idx_map.count(0)) {
-    return ToPyObject(
-        args, kwargs, inplace_var_idx_map.at(0), inplace_var_name_map.at(0));
-  } else {
-    return ToPyObject(value);
-  }
-}
-
-PyObject* ToPyObject(PyObject* args,
-                     PyObject* kwargs,
-                     ssize_t arg_idx,
-                     std::vector<std::string> arg_names) {
-  // For inplace op, directly return the input PyObject of the inplace tensor.
-  // Used for apis with single output
-  // [Parameter]
-  // args: Input PyObject.
-  // kwargs: Input PyObject (keyword arg).
-  // arg_idx: Index of inplace PyObject in input args. Used to find the input
-  // arg_names: Name list of inplace PyObject in input args. Used to find the
-  // input
-  if (PyTuple_Size(args) > arg_idx) {
-    // inplace PyObject in args
-    PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
-    Py_INCREF(obj);
-    return obj;
-  } else {
-    // inplace PyObject in kwargs
-    for (size_t i = 0; i < arg_names.size(); i++) {
-      PyObject* obj = PyDict_GetItemString(kwargs, arg_names[i].c_str());
-      if (obj) {
-        Py_INCREF(obj);
-        return obj;
-      }
-    }
-  }
 }
 
 PyObject* ToPyObject(const std::vector<bool>& value) {

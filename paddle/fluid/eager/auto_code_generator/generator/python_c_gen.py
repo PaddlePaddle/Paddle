@@ -355,6 +355,8 @@ PYTHON_C_FUNCTION_DECLARE_TEMPLATE = """
 PyObject *eager_api_{name}(PyObject *self, PyObject *args, PyObject *kwargs);
 """
 
+INPLACE_GET_PYOBJECT_TEMPLATE = "    PyObject* {}_obj = GetItemFromArgsOrKWArgs(args, {}, kwargs, {}, nargs, &remaining_kwargs, false);\n"
+
 
 #####################
 # Generator Classes #
@@ -809,34 +811,43 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     CHECK_REMAINING_ARGS_VALID_TEMPLATE.format("true")
                 )
 
-            # map of output position and input position
-            return_str = "    std::map<ssize_t, ssize_t> inplace_var_idx_map;"
-            for inplace_input, inplace_output in forward_inplace_map.items():
-                return_str += RETURN_INPLACE_INDEX_PYOBJECT_TEMPLATE.format(
-                    inplace_returns_pos_map[inplace_output],
-                    inplace_args_pos_map[inplace_input],
-                )
-            # map of output position and input arg name
-            return_str += "    std::map<ssize_t, std::vector<std::string>> inplace_var_name_map;"
-            if not need_parse_python_api_args:
-                for (
-                    inplace_input,
-                    inplace_output,
-                ) in forward_inplace_map.items():
-                    return_str += RETURN_INPLACE_NAME_PYOBJECT_TEMPLATE.format(
-                        inplace_returns_pos_map[inplace_output],
-                        '{"' + inplace_input + '"}',
-                    )
+            # count args & kwargs
+            if need_parse_python_api_args:
+                return_str = "    remaining_kwargs = kwargs ? static_cast<int>(PyDict_Size(kwargs)) : 0;\n"
             else:
-                for (
-                    inplace_input,
-                    inplace_output,
-                ) in forward_inplace_map.items():
-                    return_str += RETURN_INPLACE_NAME_PYOBJECT_TEMPLATE.format(
-                        inplace_returns_pos_map[inplace_output],
+                return_str = "    int nargs = args ? static_cast<int>(PyTuple_Size(args)) : 0;\n"
+                return_str += "    int remaining_kwargs = kwargs ? static_cast<int>(PyDict_Size(kwargs)) : 0;\n"
+
+            # get inplace PyObjects from args & kwargs
+            for inplace_input, inplace_output in forward_inplace_map.items():
+                if need_parse_python_api_args:
+                    return_str += INPLACE_GET_PYOBJECT_TEMPLATE.format(
+                        inplace_input,
+                        inplace_args_pos_map[inplace_input],
                         _get_keywords(inplace_input, args_alias_map),
                     )
-            return_str += "    return ToPyObject(ad_func_out, args, kwargs, inplace_var_idx_map, inplace_var_name_map);"
+                else:
+                    return_str += INPLACE_GET_PYOBJECT_TEMPLATE.format(
+                        inplace_input,
+                        inplace_args_pos_map[inplace_input],
+                        '{"' + inplace_input + '"}',
+                    )
+
+            if len(forward_inplace_map) < 2:
+                # return single object
+                return_str += (
+                    f"    Py_INCREF({next(iter(forward_inplace_map))}_obj);\n"
+                )
+                return_str += (
+                    f"    return {next(iter(forward_inplace_map))}_obj;"
+                )
+            else:
+                # return multiple objects, need to be converted into a PyTuple
+                return_str += "    return ToPyObjectTuple({{{}}});".format(
+                    ", ".join(
+                        [f"{name}_obj" for name in forward_inplace_map.keys()]
+                    )
+                )
 
             # Generate Python-C Function Definition
             python_c_inplace_func_str = PYTHON_C_FUNCTION_TEMPLATE.format(
