@@ -72,6 +72,7 @@ jobs:
         if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker run -i --rm \
+          --network host \
           -v ${{ github.workspace }}:/paddle \
           -e PR_ID \
           -e COMMIT_ID \
