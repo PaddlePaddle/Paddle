@@ -2382,7 +2382,7 @@ PHI_DEFINE_EXPORTED_bool(use_legacy_gemm,
 /**
  * Legacy gemm related FLAG
  * Name: FLAGS_use_legacy_linear
- * Since Version: 3.2.2
+ * Since Version: 3.3.1
  * Value Range: bool, default=false
  * Example:
  * Note: Whether use legacy linear kernel.
