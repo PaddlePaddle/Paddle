@@ -52,8 +52,6 @@ class MatrixReduceSumFunctor<T, GPUContext> {
 
 template class MatrixReduceSumFunctor<float, GPUContext>;
 template class MatrixReduceSumFunctor<double, GPUContext>;
-template class MatrixReduceSumFunctor<phi::float16, GPUContext>;
-template class MatrixReduceSumFunctor<phi::bfloat16, GPUContext>;
 template class MatrixReduceSumFunctor<phi::complex64, GPUContext>;
 template class MatrixReduceSumFunctor<phi::complex128, GPUContext>;
 
