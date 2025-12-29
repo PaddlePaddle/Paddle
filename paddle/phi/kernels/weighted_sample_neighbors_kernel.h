@@ -20,31 +20,30 @@ namespace phi {
 
 template <typename T, typename Context>
 void GraphWeightedSampleNeighborsKernel(
-    const Context& dev_ctx,
-    const DenseTensor& row,
-    const DenseTensor& col_ptr,
-    const DenseTensor& edge_weight,
-    const DenseTensor& x,
-    const paddle::optional<DenseTensor>& eids,
-    int sample_size,
-    bool return_eids,
-    DenseTensor* out,
-    DenseTensor* out_count,
-    DenseTensor* out_eids);
-
-template <typename T, typename Context>
-void WeightedSampleNeighborsKernel(
     const Context &dev_ctx,
     const DenseTensor &row,
-    const DenseTensor &colptr,
+    const DenseTensor &col_ptr,
     const DenseTensor &edge_weight,
-    const DenseTensor &input_nodes,
-    const int sample_size,
-    const DenseTensor &eids,
-    const bool return_eids,
-    DenseTensor *y,
-    DenseTensor *out_neighbors,
+    const DenseTensor &x,
+    const paddle::optional<DenseTensor> &eids,
+    int sample_size,
+    bool return_eids,
+    DenseTensor *out,
     DenseTensor *out_count,
     DenseTensor *out_eids);
+
+template <typename T, typename Context>
+void WeightedSampleNeighborsKernel(const Context &dev_ctx,
+                                   const DenseTensor &row,
+                                   const DenseTensor &colptr,
+                                   const DenseTensor &edge_weight,
+                                   const DenseTensor &input_nodes,
+                                   const int sample_size,
+                                   const DenseTensor &eids,
+                                   const bool return_eids,
+                                   DenseTensor *y,
+                                   DenseTensor *out_neighbors,
+                                   DenseTensor *out_count,
+                                   DenseTensor *out_eids);
 
 }  // namespace phi
