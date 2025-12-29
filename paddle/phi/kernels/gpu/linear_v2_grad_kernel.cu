@@ -18,8 +18,6 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/funcs/elementwise_grad_base.h"
-#include "paddle/phi/kernels/funcs/matrix_reduce.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/impl/matmul_grad_kernel_impl.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
@@ -75,8 +73,10 @@ void LinearV2GradKernel(const Context& dev_ctx,
           funcs::GetReduceDim(bias.dims(), out_grad.dims(), -1);
       phi::SumKernel<T, Context>(
           dev_ctx, out_grad, reduce_dims, out_grad.dtype(), false, bias_grad);
+      bias_grad->Resize(bias.dims());
     } else {
       phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, bias_grad);
+      bias_grad->Resize(bias.dims());
     }
   }
   // #endif

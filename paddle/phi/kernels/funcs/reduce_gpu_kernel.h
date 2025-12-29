@@ -263,7 +263,7 @@ int GetOutputVecSize(const DenseTensorIterator& iter) {
 }
 
 // Simplify fraction by dividing both numerator and denominator by their GCD
-// (Greatest Common Divisor).
+// (Greatest Common Divisor)
 HOSTDEVICE static void ReduceFraction(size_t* numerator, size_t* denominator) {
   size_t a = *denominator;
   size_t b = *numerator;

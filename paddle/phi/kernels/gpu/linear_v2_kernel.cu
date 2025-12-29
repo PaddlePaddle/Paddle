@@ -90,8 +90,8 @@ void LinearV2Kernel(const Context& dev_ctx,
                     const DenseTensor& weight,
                     const DenseTensor& bias,
                     DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
     return;
   }
 
@@ -100,7 +100,6 @@ void LinearV2Kernel(const Context& dev_ctx,
     !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   if (!FLAGS_use_legacy_linear) {
     VLOG(3) << "Use LinearV2Kernel with cublaslt";
-    dev_ctx.template Alloc<T>(out);
     const auto out_dim_original = out->dims();
     const auto [M, N, K] = canonicalize_dims(input, weight);
     VLOG(3) << "M: " << M << ", N: " << N << ", K: " << K;
