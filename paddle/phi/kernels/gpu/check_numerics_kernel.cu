@@ -381,11 +381,11 @@ static void WriteToOutputDir(const phi::GPUContext& dev_ctx,
   // Copy stats and values from GPU to CPU.
   DenseTensor cpu_stats;
   cpu_stats.Resize({static_cast<int64_t>(3)});
-  phi::Copy(dev_ctx, stats, phi::CPUPlace(), false, &cpu_stats);
+  Copy(dev_ctx, stats, phi::CPUPlace(), false, &cpu_stats);
 
   DenseTensor cpu_values;
   cpu_values.Resize({static_cast<int64_t>(3)});
-  phi::Copy(dev_ctx, values, phi::CPUPlace(), false, &cpu_values);
+  Copy(dev_ctx, values, phi::CPUPlace(), false, &cpu_values);
   dev_ctx.Wait();
 
   int dev_id = tensor.place().device;

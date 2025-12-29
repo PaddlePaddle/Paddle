@@ -50,7 +50,7 @@ static void UniqueConsecutiveFlattenedCUDATensor(const Context& dev_ctx,
                                                  DenseTensor* counts) {
   // 0. Preparation
   DenseTensor in_hat;
-  phi::Copy(dev_ctx, in, dev_ctx.GetPlace(), false, &in_hat);
+  Copy(dev_ctx, in, dev_ctx.GetPlace(), false, &in_hat);
   auto in_data_hat = dev_ctx.template Alloc<InT>(&in_hat);
 
   DenseTensor sorted_indices;
@@ -64,7 +64,7 @@ static void UniqueConsecutiveFlattenedCUDATensor(const Context& dev_ctx,
   auto range_data_ptr = dev_ctx.template Alloc<IndexT>(&range);
   thrust::sequence(
       thrust::device, range_data_ptr, range_data_ptr + num_input + 1);
-  phi::Copy(dev_ctx, in_hat, dev_ctx.GetPlace(), false, out);
+  Copy(dev_ctx, in_hat, dev_ctx.GetPlace(), false, out);
   int num_out;
   auto out_data = dev_ctx.template Alloc<InT>(out);
   num_out =

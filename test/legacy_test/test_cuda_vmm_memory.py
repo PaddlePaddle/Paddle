@@ -46,8 +46,8 @@ def _vmm_runtime_available() -> bool:
         return False
     try:
         tensor = paddle.randn([32], dtype="float32")
-        meta = tensor.get_tensor()._share_cuda()
-        rebuilt = paddle.base.core.DenseTensor._new_shared_cuda(meta)
+        meta = tensor.get_tensor()._share_device_ipc()
+        rebuilt = paddle.base.core.DenseTensor._new_from_ipc(meta)
         _ = paddle.to_tensor(rebuilt)
         _VMM_RUNTIME_AVAILABLE = True
     except Exception:
@@ -138,7 +138,7 @@ class TestMemoryreserved(unittest.TestCase):
         values = paddle.arange(param_storage.numel(), dtype=param_storage.dtype)
         values_md5sum = values._md5sum()
         param_storage.set_value(values)
-        imported = paddle.base.core.DenseTensor._new_shared_cuda(refreshed_meta)
+        imported = paddle.base.core.DenseTensor._new_from_ipc(refreshed_meta)
         imported_tensor = paddle.to_tensor(imported)
         np.testing.assert_allclose(imported_tensor.numpy(), values.numpy())
         del imported_tensor
@@ -167,7 +167,7 @@ class TestMemoryreserved(unittest.TestCase):
         fused_comm_buffer._param_buffer_meta_tensor = param_storage
         meta_a = fused_comm_buffer.param_buffer_ipc_meta
         imported_a = paddle.to_tensor(
-            paddle.base.core.DenseTensor._new_shared_cuda(meta_a)
+            paddle.base.core.DenseTensor._new_from_ipc(meta_a)
         )
         np.testing.assert_allclose(
             imported_a.numpy(), param_storage.numpy(), rtol=0, atol=0
@@ -177,7 +177,7 @@ class TestMemoryreserved(unittest.TestCase):
         fused_comm_buffer._param_buffer_meta_tensor = new_storage
         meta_b = fused_comm_buffer.param_buffer_ipc_meta
         imported_b = paddle.to_tensor(
-            paddle.base.core.DenseTensor._new_shared_cuda(meta_b)
+            paddle.base.core.DenseTensor._new_from_ipc(meta_b)
         )
         np.testing.assert_allclose(
             imported_b.numpy(), new_storage.numpy(), rtol=0, atol=0

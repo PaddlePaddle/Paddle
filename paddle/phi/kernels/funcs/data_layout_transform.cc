@@ -54,7 +54,7 @@ void* GetDataFromTensor(const DenseTensor& tensor,
 // construct a 1-D memory descriptor with shape [1], since oneDNN didn't support
 // 0-D now.
 dnnl::memory::desc make_memory_desc(const DenseTensor& ref_tensor,
-                                    phi::DataLayout target_layout) {
+                                    DataLayout target_layout) {
   auto ref_dims = common::vectorize<int64_t>(ref_tensor.dims());
   auto ref_type = ToOneDNNDataType(ref_tensor.dtype());
   PADDLE_ENFORCE_NE(ref_type,
