@@ -123,7 +123,6 @@ std::shared_ptr<jit::Function> CastPyArg2JitFunction(PyObject* obj,
 void SetPythonStack();
 std::string GetPythonStack();
 
-PyObject* ToPyObjectTuple(const std::vector<PyObject*>& value);
 PyObject* ToPyObject(int value);
 PyObject* ToPyObject(uint32_t value);
 PyObject* ToPyObject(bool value);
@@ -285,6 +284,19 @@ struct TupleTensorResult {
       PyTuple_SET_ITEM(result, N - 1, ToPyObject(std::get<N - 1>(out)));
     }
   }
+
+  static void Run(const Tuple& out,
+                  PyObject* result,
+                  const std::map<size_t, PyObject*>& inplace_obj_idx_map) {
+    TupleTensorResult<Tuple, N - 1>::Run(out, result, inplace_obj_idx_map);
+    auto it = inplace_obj_idx_map.find(N - 1);
+    if (it != inplace_obj_idx_map.end()) {
+      Py_INCREF(it->second);
+      PyTuple_SET_ITEM(result, N - 1, it->second);
+    } else {
+      PyTuple_SET_ITEM(result, N - 1, ToPyObject(std::get<N - 1>(out)));
+    }
+  }
 };
 
 template <typename Tuple>
@@ -303,7 +315,32 @@ struct TupleTensorResult<Tuple, 1> {
       PyTuple_SET_ITEM(result, 0, ToPyObject(std::get<0>(out)));
     }
   }
+
+  static void Run(const Tuple& out,
+                  PyObject* result,
+                  const std::map<size_t, PyObject*>& inplace_obj_idx_map) {
+    auto it = inplace_obj_idx_map.find(0);
+    if (it != inplace_obj_idx_map.end()) {
+      Py_INCREF(it->second);
+      PyTuple_SET_ITEM(result, 0, it->second);
+    } else {
+      PyTuple_SET_ITEM(result, 0, ToPyObject(std::get<0>(out)));
+    }
+  }
 };
+
+template <typename... Args>
+PyObject* ToPyObjectTuple(
+    const std::tuple<Args...>& out,
+    const std::map<size_t, PyObject*>& inplace_obj_idx_map) {
+  auto len = sizeof...(Args);
+  PyObject* result = PyTuple_New(len);
+
+  TupleTensorResult<decltype(out), sizeof...(Args)>::Run(
+      out, result, inplace_obj_idx_map);
+
+  return result;
+}
 
 template <typename... Args>
 PyObject* ToPyObject(const std::tuple<Args...>& out) {

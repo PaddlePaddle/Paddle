@@ -825,20 +825,28 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                         '{"' + inplace_input + '"}',
                     )
 
-            if len(forward_inplace_map) < 2:
-                # return single object
+            if (
+                len(forward_outputs_position_map)
+                - len(self.intermediate_outputs)
+                > 1
+            ):
+                # multiple outputs
+                return_str += (
+                    "    std::map<size_t, PyObject*> inplace_obj_idx_map;\n"
+                )
+                for (
+                    inplace_input,
+                    inplace_output,
+                ) in forward_inplace_map.items():
+                    return_str += f"    inplace_obj_idx_map[{inplace_returns_pos_map[inplace_output]}] = {inplace_input}_obj;\n"
+                return_str += "    return ToPyObjectTuple(ad_func_out, inplace_obj_idx_map);"
+            else:
+                # single output
                 return_str += (
                     f"    Py_INCREF({next(iter(forward_inplace_map))}_obj);\n"
                 )
                 return_str += (
                     f"    return {next(iter(forward_inplace_map))}_obj;"
-                )
-            else:
-                # return multiple objects, need to be converted into a PyTuple
-                return_str += "    return ToPyObjectTuple({{{}}});".format(
-                    ", ".join(
-                        [f"{name}_obj" for name in forward_inplace_map.keys()]
-                    )
                 )
 
             # Generate Python-C Function Definition
@@ -915,6 +923,9 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
         # Initialized orig_forward_inputs_list, orig_forward_returns_list, orig_forward_attrs_list
         self.CollectOriginalForwardInfo()
+
+        # Initialized intermediate_outputs
+        self.ParseIntermediate()
         if not no_parse_python_api_info:
             self.InitAndParsePythonAPIInfo()
         if SkipAPIGeneration(self.forward_api_name):

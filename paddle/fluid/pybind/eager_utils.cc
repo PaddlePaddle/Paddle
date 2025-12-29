@@ -1025,18 +1025,6 @@ std::vector<std::string> CastPyArg2VectorOfString(PyObject* obj,
   }
 }
 
-PyObject* ToPyObjectTuple(const std::vector<PyObject*>& value) {
-  size_t len = value.size();
-  PyObject* result = PyTuple_New(len);
-
-  for (size_t i = 0; i < len; i++) {
-    Py_INCREF(value.at(i));
-    PyTuple_SET_ITEM(result, i, value.at(i));
-  }
-
-  return result;
-}
-
 PyObject* ToPyObject(bool value) {
   if (value) {
     Py_INCREF(Py_True);
