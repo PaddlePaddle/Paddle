@@ -50,7 +50,7 @@ inline void StridedTensorCopy(const DenseTensor& input,
     auto* dev_ctx = static_cast<phi::CustomContext*>(pool.Get(input.place()));
     const phi::KernelKey& strided_copy_key = {
         phi::TransToPhiBackend(dev_ctx->GetPlace()),
-        phi::DataLayout::ALL_LAYOUT,
+        DataLayout::ALL_LAYOUT,
         input.dtype()};
     using strided_copy_signature = void (*)(const phi::DeviceContext&,
                                             const DenseTensor&,
@@ -98,7 +98,7 @@ inline void StridedTensorFill(const DenseTensor& x,
     auto* dev_ctx = static_cast<phi::CustomContext*>(pool.Get(x.place()));
     const phi::KernelKey& fill_key = {
         phi::TransToPhiBackend(dev_ctx->GetPlace()),
-        phi::DataLayout::ALL_LAYOUT,
+        DataLayout::ALL_LAYOUT,
         x.dtype()};
     using fill_signature = void (*)(const phi::DeviceContext&,
                                     const DenseTensor&,
@@ -135,7 +135,7 @@ inline void StridedTensorContiguous(const DenseTensor& input,
     auto* dev_ctx = static_cast<phi::CustomContext*>(pool.Get(input.place()));
     const phi::KernelKey& contiguous_key = {
         phi::TransToPhiBackend(dev_ctx->GetPlace()),
-        phi::DataLayout::ALL_LAYOUT,
+        DataLayout::ALL_LAYOUT,
         input.dtype()};
     using contiguous_signature =
         void (*)(const phi::DeviceContext&, const DenseTensor&, DenseTensor*);

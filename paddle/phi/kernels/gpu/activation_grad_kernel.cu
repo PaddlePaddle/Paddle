@@ -365,7 +365,7 @@ void PowGradKernel(const Context& dev_ctx,
   }
   if (factor.to<double>() == 1) {
     std::vector<int64_t> vec_dims = common::vectorize(dx->dims());
-    phi::Copy<Context>(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+    Copy<Context>(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
     return;
   }
   if (factor.to<double>() == 2) {

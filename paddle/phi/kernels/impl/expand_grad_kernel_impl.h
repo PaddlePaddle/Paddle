@@ -102,7 +102,7 @@ void ExpandGradKernel(const Context& dev_ctx,
   }
 
   if (in_grad->dims() == out_grad_dims) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);
     return;
   }
   auto vec_in_dims = common::vectorize<int64_t>(x_dims);

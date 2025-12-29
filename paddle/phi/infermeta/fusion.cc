@@ -4613,7 +4613,7 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
   std::vector<int64_t> out_dims(
       {query_batch_size, query_num_head, query_seq_length, value_head_size});
 
-  out->set_dims(phi::make_ddim(out_dims));
+  out->set_dims(make_ddim(out_dims));
   out->set_dtype(query.dtype());
   out->set_layout(query.layout());
 }
@@ -4672,7 +4672,7 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
           hidden_dim));
 
   // output shape: {B, L, HD}
-  qkv->set_dims(phi::make_ddim({q_dims[0], q_dims[1], head_num * head_dim}));
+  qkv->set_dims(make_ddim({q_dims[0], q_dims[1], head_num * head_dim}));
   qkv->set_dtype(out_dtype);
   qkv->set_layout(q.layout());
 }
@@ -4701,7 +4701,7 @@ void SinePosXPUInferMeta(const MetaTensor& x,
           "x_dims_size should be 3, but received x_dims_size is %d",
           y_dims_size));
 
-  DDim out_dim = phi::make_ddim({x_dims[0], x_dims[1], y_dims[0]});
+  DDim out_dim = make_ddim({x_dims[0], x_dims[1], y_dims[0]});
 
   out->set_dims(out_dim);
   out->set_dtype(x.dtype());
@@ -4717,16 +4717,16 @@ void Pad2dXPUInferMeta(const MetaTensor& x,
 
   DDim out_dim;
   if (data_format == "NCHW") {
-    out_dim = phi::make_ddim(
+    out_dim = make_ddim(
         {x_dims[0],
          x_dims[1],
          x_dims[2] + paddings[2] + paddings[3],    // top bottom height
          x_dims[3] + paddings[0] + paddings[1]});  // left right weight
   } else if (data_format == "NHWC") {
-    out_dim = phi::make_ddim({x_dims[0],
-                              x_dims[1] + paddings[2] + paddings[3],  // height
-                              x_dims[2] + paddings[0] + paddings[1],  // width
-                              x_dims[3]});
+    out_dim = make_ddim({x_dims[0],
+                         x_dims[1] + paddings[2] + paddings[3],  // height
+                         x_dims[2] + paddings[0] + paddings[1],  // width
+                         x_dims[3]});
   } else {
     PADDLE_THROW(common::errors::External(
         "XPU is not support data format in pad2d is %s", data_format));
@@ -4818,14 +4818,14 @@ void CrossAttentionXPUInferMeta(
 
   // output shape: {B, qL, H*D}
   qkv->set_dims(
-      phi::make_ddim({input_q_dims[0], input_q_dims[1], head_num * head_dim}));
+      make_ddim({input_q_dims[0], input_q_dims[1], head_num * head_dim}));
   qkv->set_dtype(out_dtype);
   qkv->set_layout(input_q.layout());
   // TODO(Terry) optimize the max value num
   // unable to pass few PR-CIs, so just use a constant value
   // int xpu2_max_value_num = phi::backends::xpu::get_xpu_max_ptr_size(-1);
   const int xpu2_max_value_num = 6;
-  qkv_max->set_dims(phi::make_ddim({xpu2_max_value_num}));
+  qkv_max->set_dims(make_ddim({xpu2_max_value_num}));
   qkv_max->set_dtype(out_dtype);
   qkv_max->set_layout(input_q.layout());
 }
@@ -5116,7 +5116,7 @@ void FusionLstmInferMeta(const MetaTensor& x,
                           "Bias dim is:[%s]",
                           frame_size,
                           b_dims));
-    checked_cell->set_dims(phi::make_ddim({2, frame_size}));
+    checked_cell->set_dims(make_ddim({2, frame_size}));
     checked_cell->set_dtype(x.dtype());
   } else {
     PADDLE_ENFORCE_EQ(
@@ -5129,7 +5129,7 @@ void FusionLstmInferMeta(const MetaTensor& x,
             b_dims));
   }
 
-  auto out_dims = phi::make_ddim({x_dims[0], frame_size});
+  auto out_dims = make_ddim({x_dims[0], frame_size});
   hidden->set_dims(out_dims);
   cell->set_dims(out_dims);
   hidden->share_lod(x);
@@ -5143,14 +5143,14 @@ void FusionLstmInferMeta(const MetaTensor& x,
   } else {
     xx_width = x_dims[1] > wx_dims[1] ? wx_dims[1] : x_dims[1];
 
-    batched_input->set_dims(phi::make_ddim({x_dims[0], wx_dims[1]}));
+    batched_input->set_dims(make_ddim({x_dims[0], wx_dims[1]}));
     batched_hidden->set_dims(out_dims);
     batched_cell->set_dims(out_dims);
     batched_input->set_dtype(x.dtype());
     batched_hidden->set_dtype(x.dtype());
     batched_cell->set_dtype(x.dtype());
   }
-  xx->set_dims(phi::make_ddim({x_dims[0], xx_width}));
+  xx->set_dims(make_ddim({x_dims[0], xx_width}));
   xx->set_dtype(x.dtype());
   xx->share_lod(x);
 }

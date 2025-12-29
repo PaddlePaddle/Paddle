@@ -134,7 +134,7 @@ void SequenceExpandKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
 
   if (y_lod[ref_level].size() <= 1) {
-    phi::Copy(dev_ctx, *x, dev_ctx.GetPlace(), false, out);
+    Copy(dev_ctx, *x, dev_ctx.GetPlace(), false, out);
     return;
   }
 
@@ -191,7 +191,7 @@ void SequenceExpandGradKernel(const Context& dev_ctx,
   if (ref_level == -1) ref_level = y_lod.size() - 1;
   // just copy the gradient
   if (y_lod[ref_level].size() <= 1) {
-    phi::Copy(dev_ctx, *g_out, dev_ctx.GetPlace(), false, g_x);
+    Copy(dev_ctx, *g_out, dev_ctx.GetPlace(), false, g_x);
     return;
   }
 

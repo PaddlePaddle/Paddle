@@ -224,10 +224,10 @@ phi::DeviceContext* GetDistTensorDeviceContext(
   return phi::DeviceContextPool::Instance().Get(place);
 }
 
-phi::DDim InferShapeForReshardFromReplicate(
-    const std::shared_ptr<phi::DenseTensor>& global_value,
+DDim InferShapeForReshardFromReplicate(
+    const std::shared_ptr<DenseTensor>& global_value,
     const TensorDistAttr& dist_attr) {
-  phi::DDim out_dim = global_value->dims();
+  DDim out_dim = global_value->dims();
   auto coord_id = GetCurRankCoordInMesh(dist_attr.process_mesh());
   for (int tensor_axis = 0; tensor_axis < global_value->dims().size();
        ++tensor_axis) {

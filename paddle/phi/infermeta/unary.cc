@@ -5035,10 +5035,10 @@ void SequenceMaskScalarInferMeta(const MetaTensor& x,
                                  const Scalar& max_len,
                                  DataType out_dtype,
                                  MetaTensor* y) {
-  auto dim = phi::vectorize<int>(x.dims());
+  auto dim = vectorize<int>(x.dims());
   int maxlen = max_len.to<int>();
   dim.push_back(maxlen > 0 ? maxlen : -1);
-  y->set_dims(phi::make_ddim(dim));
+  y->set_dims(make_ddim(dim));
   y->set_dtype(out_dtype);
 }
 
@@ -6557,7 +6557,7 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
 
   out->set_dtype(DataType::INT8);
 
-  scale->set_dims(phi::make_ddim(dim_scale));
+  scale->set_dims(make_ddim(dim_scale));
   scale->set_dtype(x.dtype());
 }
 
@@ -6721,7 +6721,7 @@ void IntBincountInferMeta(const MetaTensor& x,
       errors::InvalidArgument("Attr high (%d) must be > low (%d).", high, low));
   int64_t bin_count = high - low;
 
-  out->set_dims(phi::make_ddim({bin_count}));
+  out->set_dims(make_ddim({bin_count}));
   out->set_dtype(x.dtype());
 }
 

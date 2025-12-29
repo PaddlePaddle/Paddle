@@ -225,7 +225,7 @@ void set_constant_with_place<phi::CustomPlace>(
   auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "full",
       {paddle::experimental::ParseBackend(tensor->place()),
-       phi::DataLayout::ALL_LAYOUT,
+       DataLayout::ALL_LAYOUT,
        paddle::experimental::ParseDataType(tensor->dtype())});
   const auto& kernel = kernel_result.kernel;
   using kernel_signature = void (*)(const phi::DeviceContext&,

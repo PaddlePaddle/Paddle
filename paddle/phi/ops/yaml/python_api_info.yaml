@@ -313,3 +313,9 @@
   name: [paddle.sinh, paddle.Tensor.sinh]
   args_alias :
     use_default_mapping : True
+
+- op : baddbmm
+  name : [paddle.baddbmm, paddle.Tensor.baddbmm]
+  args_alias:
+    x : [batch1]
+    y : [batch2]

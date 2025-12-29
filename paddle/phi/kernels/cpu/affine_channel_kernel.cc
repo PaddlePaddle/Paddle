@@ -46,12 +46,12 @@ void AffineChannelKernel(const Context& dev_ctx,
   auto* y = out;
   dev_ctx.template Alloc<T>(y);
 
-  const phi::DataLayout layout = common::StringToDataLayout(data_layout);
+  const DataLayout layout = common::StringToDataLayout(data_layout);
 
   auto dims = x->dims();
   int N = static_cast<int>(dims[0]);
-  int C = static_cast<int>(
-      layout == phi::DataLayout::NCHW ? dims[1] : dims[dims.size() - 1]);
+  int C = static_cast<int>(layout == DataLayout::NCHW ? dims[1]
+                                                      : dims[dims.size() - 1]);
   int HxW = static_cast<int>(x->numel() / N / C);
 
   auto* scale_d = scale->data<T>();
@@ -61,7 +61,7 @@ void AffineChannelKernel(const Context& dev_ctx,
 
   auto* x_d = x->data<T>();
   auto* y_d = y->data<T>();
-  if (layout == phi::DataLayout::NCHW) {
+  if (layout == DataLayout::NCHW) {
     int stride = C * HxW;
     for (int i = 0; i < N; i++) {
       ConstEigenArrayMap<T> x_e(x_d, HxW, C);
