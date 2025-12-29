@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#pragma once
 #include <algorithm>
 #include <mutex>
 #include <unordered_map>
@@ -22,36 +23,10 @@
 #include "paddle/phi/kernels/impl/matmul_grad_kernel_impl.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
-#ifdef PADDLE_WITH_HIP
-#include <hip/hip_runtime.h>
-#include <hip/hip_runtime_api.h>
-#else
-#include <cuda_runtime_api.h>  // NOLINT
-#include "cuda.h"              // NOLINT
-#endif
-
-#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060) || \
-    defined(PADDLE_WITH_HIP)
-
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
-#include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/scope_guard.h"
-#include "paddle/utils/optional.h"
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
-#include "paddle/phi/backends/dynload/cublasLt.h"
-#include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
-#include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
-#elif defined(PADDLE_WITH_HIP)
-#include "paddle/phi/backends/dynload/hipblasLt.h"
-#include "paddle/phi/backends/gpu/rocm/rocm_helper.h"
-#include "paddle/phi/kernels/funcs/blas/blaslt_impl.hip.h"
-#endif
 
-#endif
 namespace phi {
 
 template <typename T, typename Context>
@@ -79,13 +54,21 @@ void LinearV2GradKernel(const Context& dev_ctx,
       bias_grad->Resize(bias.dims());
     }
   }
-  // #endif
 }
 
 }  // namespace phi
 
 PD_REGISTER_KERNEL(linear_v2_grad,
                    GPU,
+                   ALL_LAYOUT,
+                   phi::LinearV2GradKernel,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16) {}
+
+PD_REGISTER_KERNEL(linear_v2_grad,
+                   CPU,
                    ALL_LAYOUT,
                    phi::LinearV2GradKernel,
                    float,

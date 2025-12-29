@@ -23,6 +23,7 @@
 #include "paddle/phi/kernels/addmm_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/impl/matmul_kernel_impl.h"
+#include "paddle/phi/kernels/linear_v2_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
 #include "paddle/phi/kernels/tile_kernel.h"
 
@@ -60,30 +61,6 @@ COMMON_DECLARE_bool(use_legacy_linear);
 
 namespace phi {
 
-/*
-  NOTE(Pan Zhaowu): There's a promise from API level that bias is exist,
-  and always(or always can be broadcasted) to be equal to the output's last dim.
-*/
-
-// we don't receive 2+d tensor as weight
-inline std::tuple<int64_t, int64_t, int64_t> canonicalize_dims(
-    const DenseTensor& input, const DenseTensor& weight) {
-  const auto x_dims = input.dims();
-  const auto y_dims = weight.dims();
-  const int64_t N = y_dims.size() < 2 ? 1 : y_dims[y_dims.size() - 1];
-  const int64_t K = y_dims.size() < 2 ? y_dims[0] : y_dims[y_dims.size() - 2];
-
-  int64_t M = x_dims.size() >= 2 ? x_dims[x_dims.size() - 2] : 1;
-  if (x_dims.size() > 2) {
-    // Accumulate the batch dims for input
-    for (int64_t i = 0; i < x_dims.size() - 2; ++i) {
-      M *= x_dims[i];
-    }
-  }
-
-  return {M, N, K};
-}
-
 template <typename T, typename Context>
 void LinearV2Kernel(const Context& dev_ctx,
                     const DenseTensor& input,
@@ -99,10 +76,10 @@ void LinearV2Kernel(const Context& dev_ctx,
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION > 11060 && \
     !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   if (!FLAGS_use_legacy_linear) {
-    VLOG(3) << "Use LinearV2Kernel with cublaslt";
+    VLOG(10) << "Use LinearV2Kernel with cublaslt";
     const auto out_dim_original = out->dims();
     const auto [M, N, K] = canonicalize_dims(input, weight);
-    VLOG(3) << "M: " << M << ", N: " << N << ", K: " << K;
+    VLOG(10) << "M: " << M << ", N: " << N << ", K: " << K;
 
     DenseTensor input_processed;
     DenseTensor weight_processed;
@@ -110,9 +87,9 @@ void LinearV2Kernel(const Context& dev_ctx,
     phi::ReshapeKernel<Context>(dev_ctx, input, {M, K}, &input_processed);
     phi::ReshapeKernel<Context>(dev_ctx, weight, {K, N}, &weight_processed);
     out->Resize(common::make_ddim({M, N}));
-    VLOG(3) << "input_processed: " << input_processed.dims()
-            << ", weight_processed: " << weight_processed.dims()
-            << ", output_processed: " << out->dims();
+    VLOG(10) << "input_processed: " << input_processed.dims()
+             << ", weight_processed: " << weight_processed.dims()
+             << ", output_processed: " << out->dims();
 
     if (N > 1 && K > 1) {
       DenseTensor bias_processed;
@@ -142,13 +119,13 @@ void LinearV2Kernel(const Context& dev_ctx,
       if (bias.numel() != (M * N)) {
         phi::ReshapeKernel<Context>(
             dev_ctx, bias, {1, bias.numel()}, &bias_processed);
-        VLOG(3) << "bias.dim(): " << bias.dims();
-        VLOG(3) << "M*N: " << M * N;
-        VLOG(3) << "bias tiling and addmm calculating";
+        VLOG(10) << "bias.dim(): " << bias.dims();
+        VLOG(10) << "M*N: " << M * N;
+        VLOG(10) << "bias tiling and addmm calculating";
         // only broadcast to 1D bias whatsoever
         phi::TileKernel<T, Context>(
             dev_ctx, bias_processed, {M, 1}, &bias_processed);
-        VLOG(3) << "bias_processed.dims(): " << bias_processed.dims();
+        VLOG(10) << "bias_processed.dims(): " << bias_processed.dims();
       } else {
         bias_processed = bias;
       }
@@ -160,7 +137,7 @@ void LinearV2Kernel(const Context& dev_ctx,
                           1.0f,
                           out);
     }
-    VLOG(3) << "linear calculate complete";
+    VLOG(10) << "linear calculate complete";
     out->Resize(out_dim_original);
   } else  // NOLINT
 #endif

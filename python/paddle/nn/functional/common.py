@@ -2530,7 +2530,11 @@ def linear(
              [ 1.08524013,  1.08524013,  1.08524013,  1.08524013],
              [-0.67769694, -0.67769694, -0.67769694, -0.67769694]])
     """
-    if os.environ.get("FLAGS_use_legacy_linear", False):
+    # If not specified by user to use legacy linear, or not CUDA compatible, we fallback.
+    if (
+        os.environ.get("FLAGS_use_legacy_linear", False)
+        or not paddle.is_compiled_with_cuda()
+    ):
         if in_dynamic_mode():
             return _C_ops.linear(x, weight, bias)
 
