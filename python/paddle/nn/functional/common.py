@@ -2530,7 +2530,7 @@ def linear(
              [ 1.08524013,  1.08524013,  1.08524013,  1.08524013],
              [-0.67769694, -0.67769694, -0.67769694, -0.67769694]])
     """
-    if os.environ.get("FLAGS_use_legacy_gemm", False):
+    if os.environ.get("FLAGS_use_legacy_linear", False):
         if in_dynamic_mode():
             return _C_ops.linear(x, weight, bias)
 

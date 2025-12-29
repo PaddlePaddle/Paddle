@@ -32,7 +32,7 @@ limitations under the License. */
 
 COMMON_DECLARE_int64(cublaslt_exhaustive_search_times);
 COMMON_DECLARE_bool(enable_blaslt_global_search);
-COMMON_DECLARE_bool(use_legacy_gemm);
+COMMON_DECLARE_bool(use_legacy_linear);
 #endif
 
 namespace phi {
@@ -467,7 +467,7 @@ struct CublasLtBase {
     // NOTE(limingshu): As workspace_size varies from different DL framework,
     // I wonder is there any smarter idea for workspace setting, currently I
     // just followed the settings from the NVIDIA colleague`s setting.
-    size_t workspace_size = FLAGS_use_legacy_gemm
+    size_t workspace_size = FLAGS_use_legacy_linear
                                 ? static_cast<size_t>(4) * 1024 * 1024
                                 : static_cast<size_t>(1) * 1024 * 1024;
     phi::Allocator::AllocationPtr workspace =
@@ -494,7 +494,7 @@ struct CublasLtBase {
       }
     }
     cublasLtMatmulHeuristicResult_t heuristic_results = {};
-    if (!FLAGS_use_legacy_gemm) {
+    if (!FLAGS_use_legacy_linear) {
       cublasLtMatmulPreference_t preference;
       PADDLE_ENFORCE_GPU_SUCCESS(
           dynload::cublasLtMatmulPreferenceCreate(&preference));
@@ -539,7 +539,7 @@ struct CublasLtBase {
         desc->out_desc,
         out_ptr,
         desc->out_desc,
-        FLAGS_use_legacy_gemm ? desc->algo : &heuristic_results.algo,
+        FLAGS_use_legacy_linear ? desc->algo : &heuristic_results.algo,
         workspace->ptr(),
         workspace_size,
         dev_ctx.stream()));
