@@ -20,6 +20,15 @@ env:
   CI_name: ixuca
 
 jobs:
+  check-bypass:
+    name: Check bypass
+    if: ${{ inputs.can-skip != 'true' }}
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'IXUCA'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
   test:
     name: Build and Test
     if: ${{ inputs.can-skip != 'true' }}
@@ -57,13 +66,6 @@ jobs:
           fi
 
           echo "can-skip=$can_skip" >> $GITHUB_OUTPUT
-
-      - name: Check bypass
-        id: check-bypass
-        uses: ./.github/workflows/check-bypass.yml
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: ixuca
 
       - name: Download paddle.tar.gz and update test branch
         if: steps.check-bypass.outputs.can-skip != 'true'
