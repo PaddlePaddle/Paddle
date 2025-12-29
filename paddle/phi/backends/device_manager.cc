@@ -515,6 +515,13 @@ size_t DeviceManager::GetMaxThreadsPerBlock(const Place& place) {
   return dev_impl->GetMaxThreadsPerBlock(device_id);
 }
 
+size_t DeviceManager::GetMaxBlocksPerMultiProcessor(const Place& place) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->GetMaxBlocksPerMultiProcessor(device_id);
+}
+
 std::array<unsigned int, 3> DeviceManager::GetMaxGridDimSize(
     const Place& place) {
   auto device_type = place.GetDeviceType();

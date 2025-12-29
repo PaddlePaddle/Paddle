@@ -634,6 +634,16 @@ class CustomDevice : public DeviceInterface {
     return threads_per_block;
   }
 
+  size_t GetMaxBlocksPerMultiProcessor(size_t dev_id) override {
+    const auto device = &devices_pool[dev_id];
+    size_t blocks_per_mp = 0;
+    if (pimpl_->get_max_blocks_per_mp) {
+      pimpl_->get_max_blocks_per_mp(device, &blocks_per_mp);
+    }
+    VLOG(10) << Type() << " get blocks per multiprocessor " << blocks_per_mp;
+    return blocks_per_mp;
+  }
+
   std::array<unsigned int, 3> GetMaxGridDimSize(size_t dev_id) override {
     const auto device = &devices_pool[dev_id];
     std::array<unsigned int, 3> grid_dim_size = {0, 0, 0};
@@ -1352,6 +1362,7 @@ bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
   CHECK_INTERFACE(get_multi_process, false);
   CHECK_INTERFACE(get_max_threads_per_mp, false);
   CHECK_INTERFACE(get_max_threads_per_block, false);
+  CHECK_INTERFACE(get_max_blocks_per_mp, false);
   CHECK_INTERFACE(get_max_grid_dim_size, false);
   CHECK_INTERFACE(init_eigen_device, false);
   CHECK_INTERFACE(destroy_eigen_device, false);

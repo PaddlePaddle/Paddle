@@ -185,6 +185,8 @@ class PADDLE_API DeviceManager {
 
   static size_t GetMaxThreadsPerBlock(const Place& place);
 
+  static size_t GetMaxBlocksPerMultiProcessor(const Place& place);
+
   static std::array<unsigned int, 3> GetMaxGridDimSize(const Place& place);
 
   static bool IsFloat16Supported(const Place& place);

@@ -619,6 +619,13 @@ struct C_DeviceInterface {
                                         size_t* threads_per_block);
 
   /**
+   * @brief Get Max Block Per MultiProcessor
+   *
+   * @param[size_t*]    blocks_per_mp
+   */
+  C_Status (*get_max_blocks_per_mp)(const C_Device device,
+                                    size_t* blocks_per_mp);
+  /**
    * @brief Get Max Grid Dim Size
    *
    * @param[std::array<unsigned int, 3>*]    grid_dim_size

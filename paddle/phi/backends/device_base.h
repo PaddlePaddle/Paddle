@@ -78,6 +78,8 @@ class DeviceInterface {  // Driver / Runtime
 
   virtual size_t GetMaxThreadsPerBlock(size_t dev_id);
 
+  virtual size_t GetMaxBlocksPerMultiProcessor(size_t dev_id);
+
   virtual std::array<unsigned int, 3> GetMaxGridDimSize(size_t dev_id);
 
   virtual bool IsFloat16Supported(size_t dev_id);
