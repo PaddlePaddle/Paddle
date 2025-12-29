@@ -29,24 +29,24 @@ inline void StridedTensorCopy(const DenseTensor& input,
                               int64_t offset,
                               DenseTensor* out) {
   auto& pool = phi::DeviceContextPool::Instance();
-  if (input.place().GetType() == phi::AllocationType::CPU) {
+  if (input.place().GetType() == AllocationType::CPU) {
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(input.place()));
     phi::StridedCopyKernel<T, phi::CPUContext>(
         *dev_ctx, input, dims, out_stride, offset, out);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  } else if (input.place().GetType() == phi::AllocationType::GPU) {
+  } else if (input.place().GetType() == AllocationType::GPU) {
     auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(input.place()));
     phi::StridedCopyKernel<T, phi::GPUContext>(
         *dev_ctx, input, dims, out_stride, offset, out);
 #endif
 #ifdef PADDLE_WITH_XPU
-  } else if (input.place().GetType() == phi::AllocationType::XPU) {
+  } else if (input.place().GetType() == AllocationType::XPU) {
     auto* dev_ctx = static_cast<phi::XPUContext*>(pool.Get(input.place()));
     phi::StridedCopyKernel<T, phi::XPUContext>(
         *dev_ctx, input, dims, out_stride, offset, out);
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  } else if (input.place().GetType() == phi::AllocationType::CUSTOM) {
+  } else if (input.place().GetType() == AllocationType::CUSTOM) {
     auto* dev_ctx = static_cast<phi::CustomContext*>(pool.Get(input.place()));
     const phi::KernelKey& strided_copy_key = {
         phi::TransToPhiBackend(dev_ctx->GetPlace()),
@@ -80,21 +80,21 @@ inline void StridedTensorFill(const DenseTensor& x,
                               const phi::Scalar& value,
                               DenseTensor* out) {
   auto& pool = phi::DeviceContextPool::Instance();
-  if (x.place().GetType() == phi::AllocationType::CPU) {
+  if (x.place().GetType() == AllocationType::CPU) {
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(x.place()));
     phi::FillKernel<T, phi::CPUContext>(*dev_ctx, x, value, out);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  } else if (x.place().GetType() == phi::AllocationType::GPU) {
+  } else if (x.place().GetType() == AllocationType::GPU) {
     auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(x.place()));
     phi::FillKernel<T, phi::GPUContext>(*dev_ctx, x, value, out);
 #endif
 #ifdef PADDLE_WITH_XPU
-  } else if (x.place().GetType() == phi::AllocationType::XPU) {
+  } else if (x.place().GetType() == AllocationType::XPU) {
     auto* dev_ctx = static_cast<phi::XPUContext*>(pool.Get(x.place()));
     phi::FillKernel<T, phi::XPUContext>(*dev_ctx, x, value, out);
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  } else if (x.place().GetType() == phi::AllocationType::CUSTOM) {
+  } else if (x.place().GetType() == AllocationType::CUSTOM) {
     auto* dev_ctx = static_cast<phi::CustomContext*>(pool.Get(x.place()));
     const phi::KernelKey& fill_key = {
         phi::TransToPhiBackend(dev_ctx->GetPlace()),
@@ -117,21 +117,21 @@ template <typename T>
 inline void StridedTensorContiguous(const DenseTensor& input,
                                     DenseTensor* out) {
   auto& pool = phi::DeviceContextPool::Instance();
-  if (input.place().GetType() == phi::AllocationType::CPU) {
+  if (input.place().GetType() == AllocationType::CPU) {
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(input.place()));
     phi::ContiguousKernel<T, phi::CPUContext>(*dev_ctx, input, out);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  } else if (input.place().GetType() == phi::AllocationType::GPU) {
+  } else if (input.place().GetType() == AllocationType::GPU) {
     auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(input.place()));
     phi::ContiguousKernel<T, phi::GPUContext>(*dev_ctx, input, out);
 #endif
 #ifdef PADDLE_WITH_XPU
-  } else if (input.place().GetType() == phi::AllocationType::XPU) {
+  } else if (input.place().GetType() == AllocationType::XPU) {
     auto* dev_ctx = static_cast<phi::XPUContext*>(pool.Get(input.place()));
     phi::ContiguousKernel<T, phi::XPUContext>(*dev_ctx, input, out);
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  } else if (input.place().GetType() == phi::AllocationType::CUSTOM) {
+  } else if (input.place().GetType() == AllocationType::CUSTOM) {
     auto* dev_ctx = static_cast<phi::CustomContext*>(pool.Get(input.place()));
     const phi::KernelKey& contiguous_key = {
         phi::TransToPhiBackend(dev_ctx->GetPlace()),

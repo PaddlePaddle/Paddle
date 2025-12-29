@@ -76,17 +76,17 @@ struct SelectedRowsAdd<phi::GPUContext, T> {
     auto* in1_data = in1_value.data<T>();
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::GPU,
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == AllocationType::GPU,
                       true,
                       common::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
     auto in2_place = input2.place();
-    PADDLE_ENFORCE_EQ(in2_place.GetType() == phi::AllocationType::GPU,
+    PADDLE_ENFORCE_EQ(in2_place.GetType() == AllocationType::GPU,
                       true,
                       common::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
     auto out_place = dev_ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(out_place.GetType() == phi::AllocationType::GPU,
+    PADDLE_ENFORCE_EQ(out_place.GetType() == AllocationType::GPU,
                       true,
                       common::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
@@ -237,12 +237,12 @@ struct SelectedRowsAddTo<phi::GPUContext, T> {
     }
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::GPU,
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == AllocationType::GPU,
                       true,
                       common::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
     auto in2_place = input2->place();
-    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::GPU,
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == AllocationType::GPU,
                       true,
                       common::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
