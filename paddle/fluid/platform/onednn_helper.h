@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
-
+#ifdef PADDLE_WITH_DNNL
 #include <algorithm>
 #include <iostream>
 #include <memory>
@@ -28,9 +28,7 @@ limitations under the License. */
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/operation.h"
 namespace paddle {
-#ifdef PADDLE_WITH_DNNL
 using phi::OneDNNContext;
-#endif
 namespace platform {
 
 inline void ClearONEDNNCache(const phi::Place& place, void* ptr = nullptr) {
@@ -208,3 +206,4 @@ inline bool FoundPhiOneDNNKernel(const framework::OpDesc* op) {
 }
 
 }  // namespace paddle
+#endif
