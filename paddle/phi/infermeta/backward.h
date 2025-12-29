@@ -260,6 +260,14 @@ PADDLE_API void FlashAttnGradInferMeta(const MetaTensor& q,
                                        MetaTensor* dk,
                                        MetaTensor* dv);
 
+PADDLE_API void FlashMaskV2GradInferMeta(const MetaTensor& q,
+                                         const MetaTensor& k,
+                                         const MetaTensor& v,
+                                         int nranks,
+                                         MetaTensor* dq,
+                                         MetaTensor* dk,
+                                         MetaTensor* dv);
+
 PADDLE_API void FlashAttnQKVPackedGradInferMeta(const MetaTensor& qkv,
                                                 MetaTensor* dq);
 

@@ -830,6 +830,8 @@ void FlashMaskV2GradBaseKernel(
     float const softcap,
     bool const deterministic,
     int const sm_margin,
+    int const rank,
+    int const nranks,
     DenseTensor *dq,
     DenseTensor *dk,
     DenseTensor *dv,
@@ -1164,7 +1166,7 @@ void FlashMaskV2GradBaseKernel(
                  : (arch == 86 || arch == 89 ? kBlockN_sm86 : kBlockN_sm80);
   auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
   int const seqlen_q_rounded = round_multiple(seqlen_q, kBlockM);
-  int const seqlen_k_rounded = round_multiple(seqlen_k, kBlockN);
+  int const seqlen_k_rounded = round_multiple(nranks * seqlen_k, kBlockN);
   int const total_q_padded_rounded =
       round_multiple(total_q + batch_size * kBlockM, kBlockM);
   int const total_k_padded_rounded =
@@ -1229,44 +1231,60 @@ void FlashMaskV2GradBaseKernel(
   } else {
     *dq = EmptyLike<T, Context>(dev_ctx, q);
   }
-  if (dk_.is_initialized()) {
-    *dk = dk_.get();
+
+  PADDLE_ENFORCE_GT(nranks,
+                    0,
+                    common::errors::InvalidArgument(
+                        "nranks should be at least 1, but got: %d", nranks));
+
+  if (nranks > 1) {
     PADDLE_ENFORCE_EQ(
-        dk->dtype(),
-        q_type,
-        common::errors::InvalidArgument("dk must have the same dtype as q"));
-    CHECK_DEVICE((*dk));
-    PADDLE_ENFORCE_EQ(dk->strides()[dk->strides().size() - 1],
-                      1,
-                      common::errors::InvalidArgument(
-                          "dk must have contiguous last dimension"));
-    if (!is_varlen_k) {
-      CHECK_SHAPE((*dk), batch_size, seqlen_k, num_heads_k, head_size);
-    } else {
-      CHECK_SHAPE((*dk), total_k, num_heads_k, head_size);
-    }
-  } else {
-    *dk = EmptyLike<T, Context>(dev_ctx, k);
-  }
-  if (dv_.is_initialized()) {
-    *dv = dv_.get();
+        is_varlen_k,
+        false,
+        common::errors::InvalidArgument(
+            "when nranks > 1, %s is not allowed to be varlen.", name));
     PADDLE_ENFORCE_EQ(
-        dv->dtype(),
-        q_type,
-        common::errors::InvalidArgument("dv must have the same dtype as q"));
-    CHECK_DEVICE((*dv));
-    PADDLE_ENFORCE_EQ(dv->strides()[dv->strides().size() - 1],
-                      1,
-                      common::errors::InvalidArgument(
-                          "dv must have contiguous last dimension"));
-    if (!is_varlen_k) {
-      CHECK_SHAPE((*dv), batch_size, seqlen_k, num_heads_k, head_size);
-    } else {
-      CHECK_SHAPE((*dv), total_k, num_heads_k, head_size);
-    }
-  } else {
-    *dv = EmptyLike<T, Context>(dev_ctx, v);
+        num_heads_k != num_heads,
+        true,
+        common::errors::InvalidArgument("FlashMask distributed overlap does "
+                                        "not support non-GQA currently."))
   }
+
+  auto GradTensorCheckSetter = [&](const DenseTensor &t,
+                                   const paddle::optional<DenseTensor> &dt_,
+                                   DenseTensor *dt,
+                                   const char *name) {
+    if (dt_.is_initialized()) {
+      *dt = dt_.get();
+      PADDLE_ENFORCE_EQ(dt->dtype(),
+                        q_type,
+                        common::errors::InvalidArgument(
+                            "%s must have the same dtype as q", name));
+      CHECK_DEVICE((*dt));
+      PADDLE_ENFORCE_EQ(dt->strides()[dt->strides().size() - 1],
+                        1,
+                        common::errors::InvalidArgument(
+                            "%s must have contiguous last dimension", name));
+      if (!is_varlen_k) {
+        CHECK_SHAPE(
+            (*dt), batch_size, seqlen_k * nranks, num_heads_k, head_size);
+      } else {
+        CHECK_SHAPE((*dt), total_k, num_heads_k, head_size);
+      }
+    } else {
+      if (nranks == 1) {
+        *dt = phi::EmptyLike<T, Context>(dev_ctx, t);
+      } else {
+        // nranks > 1: using distributed overlap will actually compute with
+        // complete size
+        *dt = phi::Empty<T, Context>(
+            dev_ctx, {batch_size, seqlen_k * nranks, num_heads_k, head_size});
+      }
+    }
+  };
+
+  GradTensorCheckSetter(k, dk_, dk, "dk");
+  GradTensorCheckSetter(v, dv_, dv, "dv");
 
   // Otherwise the kernel will be launched from cuda:0 device
   // Cast to char to avoid compiler warning about narrowing
@@ -1349,9 +1367,10 @@ void FlashMaskV2GradBaseKernel(
       params_handle,
       batch_size,
       seqlen_q,
-      seqlen_k,
+      seqlen_k,  // in overlap mode: seqlen_k will be scaled in flash-attn
       seqlen_q_rounded,
-      seqlen_k_rounded,
+      seqlen_k_rounded,  // in overlap mode: seqlen_k is already scaled in
+                         // Paddle
       num_heads,
       num_heads_k,
       head_size,
@@ -1458,6 +1477,12 @@ void FlashMaskV2GradBaseKernel(
         params_handle, startend_row_indices.dims()[1]);
     dynload::flashmaskv2_bwd_params_set_h_h_flashmask_ratio(
         params_handle, num_heads / startend_row_indices.dims()[1]);
+
+    static constexpr bool distributed_overlap = true;
+    if constexpr (distributed_overlap) {
+      dynload::flashmaskv2_bwd_params_set_rank(params_handle, rank);
+      dynload::flashmaskv2_bwd_params_set_nranks(params_handle, nranks);
+    }
   } else {
     dynload::flashmaskv2_bwd_params_set_lt_start_ptr(params_handle, nullptr);
     dynload::flashmaskv2_bwd_params_set_lt_end_ptr(params_handle, nullptr);
@@ -1527,6 +1552,8 @@ void FlashMaskV2GradKernel(
     const DenseTensor &out_grad,
     float const softmax_scale,
     bool is_causal,
+    int rank,
+    int nranks,
     DenseTensor *dq,
     DenseTensor *dk,
     DenseTensor *dv) {
@@ -1571,6 +1598,8 @@ void FlashMaskV2GradKernel(
       0,                          // softcap,
       FLAGS_cudnn_deterministic,  // deterministic,
       0,                          // sm_margin,
+      rank,
+      nranks,
       dq,
       dk,
       dv,

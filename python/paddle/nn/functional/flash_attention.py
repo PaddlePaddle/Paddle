@@ -1266,6 +1266,7 @@ def flashmask_attention(
     name: str | None = None,
     softmax_scale: float | None = None,
     block_mask: Tensor | None = None,
+    unique_id: Tensor | None = None,
     rank: int = 0,
     nranks: int = 1,
 ):
@@ -1346,6 +1347,16 @@ def flashmask_attention(
             This argument must be provided together with flashmask.
             The mask will be applied at the block level: each [i, j] position in block_mask controls whether the corresponding [128 x 128] block in the attention matrix is masked.
             Any mismatch in expected shape or head dimension will raise an error.
+        unique_id (tensor, optional):
+            A 1D CPU tensor with exactly 128 elems (bytes). Generated from ``flashmask_generate_unique_id``, and is used for initializing
+            the NVSHMEM env for distributed overlap flashmask. This Tensor is only needed once: whenever users want to use overlapped flashmask,
+            they can pass in ``(unique_id, rank, nranks)``, and flashmask will automatically initialize an OverlapCommunicator instance under the hood.
+            Once it is initialized, only rank & nranks are needed every time. Note that the tensor resides on CPU **only**. Type: uint8_t. Default: None.
+
+            Usage Notes:
+            - When users haven't passed ``unique_id`` once, even if they passed ``rank``, ``nranks``, the flashmask does not come with distributed overlap
+            functionality. Users should pass ``unique_id`` at least for once (together with ``rank`` and ``nranks``), to initiate distributed overlap setups.
+            - Only useful when fa_version == 3, and we are using sparse masks (other than ``full`` and ``causal``)
         rank (int, optional): self-rank. Used in distributed context parallelism. Informing the overlap communicator about the comm topology. Default: 0.
         nranks (int, optional): number of PEs for the comm. Used in distributed context parallelism. Informing the overlap communicator about the comm topology. Default: 1.
 
@@ -2088,10 +2099,14 @@ def flashmask_attention(
             assert training, (
                 "flashmask_attention_v2 does not support setting training to False"
             )
-
             assert name is None, (
                 "flashmask_attention_v2 does not support setting name"
             )
+
+            if unique_id is not None:
+                assert nranks > 1, (
+                    f"Meanless when initializing NVSHMEM with less than 2 ranks (Current nranks: {nranks})."
+                )
 
             if softmax_scale is None:
                 softmax_scale = query.shape[-1] ** (-0.5)
@@ -2105,6 +2120,7 @@ def flashmask_attention(
                 value,
                 startend_row_indices,
                 block_mask,
+                unique_id,
                 softmax_scale,
                 causal,
                 rank,
@@ -2122,6 +2138,20 @@ def flashmask_attention(
         return outputs[0]
     else:
         return outputs
+
+
+def flashmask_get_unique_id():
+    """FlashMask distributed overlap: get the unique ID to initialize NVSHMEM.
+
+        Normally, this function only needs to be called once. After initializing NVSHMEM,
+        there is no need to pass the unique_id tensor again. Please refer to the doc of ``flashmask_attention``
+        and check the usage of ``unique_id`` for more detailed usage.
+
+    Return:
+        Tensor. CPU Tensor with exactly 128 uint8s (128B). If flashmask module is not compiled
+        with ``WITH_DISTRIBUTED_OVERLAP`` flag, this function returns a zero tensor.
+    """
+    return paddle._C_ops.flashmask_get_unique_id()
 
 
 def calc_reduced_attention_scores(

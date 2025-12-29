@@ -342,6 +342,40 @@ void FlashAttnGradInferMeta(const MetaTensor& q,
   }
 }
 
+void FlashMaskV2GradInferMeta(const MetaTensor& q,
+                              const MetaTensor& k,
+                              const MetaTensor& v,
+                              int nranks,
+                              MetaTensor* dq,
+                              MetaTensor* dk,
+                              MetaTensor* dv) {
+  FlashAttnGradInferMeta(q, k, v, dq, dk, dv);
+
+  // Used in distributed overlap flashmask for CP
+  // ``nranks`` is not number of PEs of the comm world
+  // but total number of PEs in the CP group
+  if (nranks > 1) {  // ``nranks`` is 1, by default
+    auto ProcessMetaTensor = [nranks](const MetaTensor& t, MetaTensor* dt) {
+      if (dt && t) {
+        auto dims = dt->dims();
+        PADDLE_ENFORCE_EQ(dims.size(),
+                          4,
+                          common::errors::InvalidArgument(
+                              "varlen shape (ndim < 4) is not supported."));
+        auto strides = dt->strides();
+        dims[1] *= nranks;
+        strides[0] *= nranks;  // assume contiguous (B, S, H, D)
+
+        // scale the seqlen by nranks (cp_size)
+        dt->set_dims(dims);
+        dt->set_strides(strides);
+      }
+    };
+    ProcessMetaTensor(k, dk);
+    ProcessMetaTensor(v, dv);
+  }
+}
+
 void FlashAttnQKVPackedGradInferMeta(const MetaTensor& qkv, MetaTensor* dqkv) {
   if (dqkv) {
     dqkv->share_meta(qkv);
