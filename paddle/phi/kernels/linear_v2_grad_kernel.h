@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/impl/matmul_grad_kernel_impl.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
@@ -57,21 +58,3 @@ void LinearV2GradKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-
-PD_REGISTER_KERNEL(linear_v2_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::LinearV2GradKernel,
-                   float,
-                   double,
-                   phi::float16,
-                   phi::bfloat16) {}
-
-PD_REGISTER_KERNEL(linear_v2_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::LinearV2GradKernel,
-                   float,
-                   double,
-                   phi::float16,
-                   phi::bfloat16) {}
