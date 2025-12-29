@@ -24,8 +24,26 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace xfft_internal::xpu {
-int combine_as_complex(int N, float* real, float* imag, float2* out);
-int complex_spilt_float(int N, float2* in, float* real, float* imag);
+// just for declaration here, the real implementation is in libcufft.so
+template <typename T, typename TComplex>
+int combine_as_complex(int N, const T* real, const T* imag, TComplex* out);
+template <>
+int combine_as_complex(int N,
+                       const float* real,
+                       const float* imag,
+                       float2* out);
+template <>
+int combine_as_complex(int N,
+                       const double* real,
+                       const double* imag,
+                       double2* out);
+
+template <typename TComplex, typename T>
+int complex_spilt(int N, const TComplex* in, T* real, T* imag);
+template <>
+int complex_spilt(int N, const float2* in, float* real, float* imag);
+template <>
+int complex_spilt(int N, const double2* in, double* real, double* imag);
 }  // namespace xfft_internal::xpu
 
 namespace phi {
@@ -58,7 +76,8 @@ void RealGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
   int r = xfft_internal::xpu::combine_as_complex(
       numel,
-      const_cast<phi::dtype::Real<T>*>(dout.data<phi::dtype::Real<T>>()),
+      reinterpret_cast<const phi::dtype::Real<T>*>(
+          dout.data<phi::dtype::Real<T>>()),
       imag.data<phi::dtype::Real<T>>(),
       reinterpret_cast<cuFloatComplex*>(dx_data));
   PADDLE_ENFORCE_XPU_SUCCESS(r);
@@ -83,7 +102,8 @@ void ImagGradKernel(const Context& dev_ctx,
   int r = xfft_internal::xpu::combine_as_complex(
       numel,
       real.data<phi::dtype::Real<T>>(),
-      const_cast<phi::dtype::Real<T>*>(dout.data<phi::dtype::Real<T>>()),
+      reinterpret_cast<const phi::dtype::Real<T>*>(
+          dout.data<phi::dtype::Real<T>>()),
       reinterpret_cast<cuFloatComplex*>(dx_data));
   PADDLE_ENFORCE_XPU_SUCCESS(r);
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
@@ -124,9 +144,9 @@ void ComplexGradKernel(const Context& dev_ctx,
   T* imag_data = dev_ctx.template Alloc<T>(&imag_dout);
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
-  int r = xfft_internal::xpu::complex_spilt_float(
+  int r = xfft_internal::xpu::complex_spilt(
       numel,
-      reinterpret_cast<cuFloatComplex*>(const_cast<C*>(dout.data<C>())),
+      reinterpret_cast<const cuFloatComplex*>(dout.data<C>()),
       real_data,
       imag_data);
   PADDLE_ENFORCE_XPU_SUCCESS(r);

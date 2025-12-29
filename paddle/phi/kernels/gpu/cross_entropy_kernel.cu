@@ -1323,8 +1323,7 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
 
     // cause of input is softmax
     // copy to output softmax, directly
-    phi::Copy<GPUContext>(
-        dev_ctx, *softmax, dev_ctx.GetPlace(), false, softmax_out);
+    Copy<GPUContext>(dev_ctx, *softmax, dev_ctx.GetPlace(), false, softmax_out);
 
     return;
   }

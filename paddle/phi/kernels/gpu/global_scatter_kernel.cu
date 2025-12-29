@@ -61,7 +61,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
     if (local_count->place().GetType() == phi::AllocationType::CPU) {
       cpu_local_count_data = local_count->data<int64_t>();
     } else {
-      phi::Copy(dev_ctx, *local_count, phi::CPUPlace(), true, &cpu_local_count);
+      Copy(dev_ctx, *local_count, phi::CPUPlace(), true, &cpu_local_count);
       cpu_local_count_data = cpu_local_count.data<int64_t>();
     }
     auto global_count_len = 0;
@@ -70,8 +70,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
       cpu_global_count_data = global_count->data<int64_t>();
       global_count_len = global_count->numel();
     } else {
-      phi::Copy(
-          dev_ctx, *global_count, phi::CPUPlace(), true, &cpu_global_count);
+      Copy(dev_ctx, *global_count, phi::CPUPlace(), true, &cpu_global_count);
       cpu_global_count_data = cpu_global_count.data<int64_t>();
       global_count_len = cpu_global_count.numel();
     }

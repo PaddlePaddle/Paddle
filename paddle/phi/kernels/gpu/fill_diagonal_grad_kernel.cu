@@ -55,7 +55,7 @@ void FillDiagonalGradKernel(const Context& dev_ctx,
   auto* in_data = dev_ctx.template Alloc<T>(x_grad);
   if (x_grad && x_grad->numel() == 0) return;
 
-  phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+  Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
 
   auto size = x_grad->numel();
   auto out_dims = x_grad->dims();

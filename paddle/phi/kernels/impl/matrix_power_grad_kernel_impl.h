@@ -39,7 +39,7 @@ void MatrixPowerGradFunction(const DenseTensor* X,
     return;
   } else if (n == 1) {
     // \nabla X = \nabla Out
-    phi::Copy(dev_ctx, *dOut, dev_ctx.GetPlace(), false, dX);
+    Copy(dev_ctx, *dOut, dev_ctx.GetPlace(), false, dX);
     return;
   }
 
@@ -74,7 +74,7 @@ void MatrixPowerGradFunction(const DenseTensor* X,
   int new_n = n;
   if (n > 0) {
     // newX = X
-    phi::Copy(dev_ctx, *X, dev_ctx.GetPlace(), false, &new_x);
+    Copy(dev_ctx, *X, dev_ctx.GetPlace(), false, &new_x);
   } else {
     // newX = X^{-1}, n = -n
     funcs::MatrixInverseFunctor<Context, T> mat_inv;
@@ -158,7 +158,7 @@ void MatrixPowerGradFunction(const DenseTensor* X,
 
   if (n > 0) {
     // \nabla X = \nabla newX
-    phi::Copy(dev_ctx, dx_new, dev_ctx.GetPlace(), false, dX);
+    Copy(dev_ctx, dx_new, dev_ctx.GetPlace(), false, dX);
   } else {
     // \nabla X = newX^{T} * \nabla newX * newX^{T}
     DenseTensor temp_dx;

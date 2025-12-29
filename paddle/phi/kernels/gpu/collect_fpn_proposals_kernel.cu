@@ -95,7 +95,7 @@ void GPUCollectFpnProposalsOpKernel(
     auto score_in = score_ins[i];
     if (multi_rois_num.size() > 0) {
       DenseTensor temp;
-      phi::Copy(dev_ctx, *multi_rois_num[i], phi::CPUPlace(), true, &temp);
+      Copy(dev_ctx, *multi_rois_num[i], phi::CPUPlace(), true, &temp);
       const int* length_in = temp.data<int>();
       lod_size = multi_rois_num[i]->numel();
       for (size_t n = 0; n < lod_size; ++n) {
@@ -131,11 +131,11 @@ void GPUCollectFpnProposalsOpKernel(
 
   // copy batch id list to GPU
   DenseTensor roi_batch_id_list_gpu;
-  phi::Copy(dev_ctx,
-            roi_batch_id_list,
-            dev_ctx.GetPlace(),
-            false,
-            &roi_batch_id_list_gpu);
+  Copy(dev_ctx,
+       roi_batch_id_list,
+       dev_ctx.GetPlace(),
+       false,
+       &roi_batch_id_list_gpu);
 
   DenseTensor index_in_t;
   index_in_t.Resize({total_roi_num});

@@ -57,8 +57,7 @@ void LRNKernel(const Context& dev_ctx,
   auto x_dims = x.dims();
 
   const std::string data_layout_str = data_format;
-  const phi::DataLayout data_layout =
-      common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   // NCHW
   int64_t N = x_dims[0];
   int64_t C = (data_layout != DataLayout::NHWC ? x_dims[1] : x_dims[3]);
@@ -146,8 +145,7 @@ void LRNGradKernel(const Context& dev_ctx,
   const DenseTensor& out_g = out_grad;
   const DenseTensor& mid = mid_out;
   const std::string data_layout_str = data_format;
-  const phi::DataLayout data_layout =
-      common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
 
   auto x_g = x_grad;
   dev_ctx.template Alloc<T>(x_g);

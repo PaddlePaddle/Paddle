@@ -335,7 +335,7 @@ void ScanKernel(const Context& dev_ctx,
   // For 0D Tensor
   if (out->numel() == 1) {
     auto raw_dims = out->dims();
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     out->Resize(raw_dims);
     return;
   }
