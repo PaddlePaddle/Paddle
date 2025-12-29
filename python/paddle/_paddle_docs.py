@@ -3507,7 +3507,7 @@ def atan2(
 """,
 )
 
-add_docs_and_signature(
+add_doc_and_signature(
     "baddbmm",
     r"""
     Performs a batch matrix-matrix product of matrices in input with matrices in batch1 and batch2,
