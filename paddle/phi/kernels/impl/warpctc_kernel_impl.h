@@ -276,10 +276,8 @@ void WarpctcKernel(const Context& dev_ctx,
 
     DenseTensor logits_length_cpu;
     DenseTensor labels_length_cpu;
-    phi::Copy(
-        dev_ctx, *logits_length, phi::CPUPlace(), false, &logits_length_cpu);
-    phi::Copy(
-        dev_ctx, *labels_length, phi::CPUPlace(), false, &labels_length_cpu);
+    Copy(dev_ctx, *logits_length, phi::CPUPlace(), false, &logits_length_cpu);
+    Copy(dev_ctx, *labels_length, phi::CPUPlace(), false, &labels_length_cpu);
 
     logits_lod.push_back(0);
     label_lod.push_back(0);
@@ -353,7 +351,7 @@ void WarpctcKernel(const Context& dev_ctx,
   DenseTensor warpctc_logits(warpctc_logits_tmp);
 
   if (logits_length.is_initialized()) {
-    phi::Copy(dev_ctx, logits, dev_ctx.GetPlace(), true, &warpctc_logits);
+    Copy(dev_ctx, logits, dev_ctx.GetPlace(), true, &warpctc_logits);
   } else {
     DenseTensor cpu_pad_value;
     cpu_pad_value.Resize({1});
@@ -363,7 +361,7 @@ void WarpctcKernel(const Context& dev_ctx,
     if (dev_ctx.GetPlace() == phi::CPUPlace()) {
       pad_value = cpu_pad_value;
     } else {
-      phi::Copy(dev_ctx, cpu_pad_value, dev_ctx.GetPlace(), true, &pad_value);
+      Copy(dev_ctx, cpu_pad_value, dev_ctx.GetPlace(), true, &pad_value);
     }
 
     funcs::PaddingDenseTensorFunctor<Context, T>()(dev_ctx,
@@ -426,10 +424,10 @@ void WarpctcKernel(const Context& dev_ctx,
           0 /*lod_level*/,
           false /*norm_by_times*/,
           funcs::kBatchLengthWidth);
-      phi::Copy(dev_ctx, gpu_label, phi::CPUPlace(), true, &warpctc_label);
+      Copy(dev_ctx, gpu_label, phi::CPUPlace(), true, &warpctc_label);
     }
   } else {
-    phi::Copy(dev_ctx, label, phi::CPUPlace(), true, &warpctc_label);
+    Copy(dev_ctx, label, phi::CPUPlace(), true, &warpctc_label);
   }
 
   const int* warpctc_label_data = warpctc_label.data<int>();
@@ -448,7 +446,7 @@ void WarpctcKernel(const Context& dev_ctx,
                                blank,
                                warpctc_loss_data);
   // Copy the loss back
-  phi::Copy(dev_ctx, warpctc_loss, dev_ctx.GetPlace(), false, loss);
+  Copy(dev_ctx, warpctc_loss, dev_ctx.GetPlace(), false, loss);
 }
 
 }  // namespace phi

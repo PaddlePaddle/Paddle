@@ -21,6 +21,7 @@ from typing_extensions import TypeGuard
 import paddle
 from paddle import _C_ops
 from paddle._C_ops import (  # noqa: F401
+    allclose,
     greater_than,
     isclose,
     logical_and,
@@ -265,117 +266,6 @@ def equal_all(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             inputs={'X': [x], 'Y': [y]},
             outputs={'Out': [out]},
         )
-        return out
-
-
-def allclose(
-    x: Tensor,
-    y: Tensor,
-    rtol: float = 1e-05,
-    atol: float = 1e-08,
-    equal_nan: bool = False,
-    name: str | None = None,
-) -> Tensor:
-    r"""
-    Check if all :math:`x` and :math:`y` satisfy the condition:
-
-    .. math::
-        \left| x - y \right| \leq atol + rtol \times \left| y \right|
-
-    elementwise, for all elements of :math:`x` and :math:`y`. This is analogous to :math:`numpy.allclose`, namely that it returns :math:`True` if
-    two tensors are elementwise equal within a tolerance.
-
-    Args:
-        x (Tensor): The input tensor, it's data type should be float16, float32, float64.
-        y (Tensor): The input tensor, it's data type should be float16, float32, float64.
-        rtol (float, optional): The relative tolerance. Default: :math:`1e-5` .
-        atol (float, optional): The absolute tolerance. Default: :math:`1e-8` .
-        equal_nan (bool, optional): ${equal_nan_comment}. Default: False.
-        name (str|None, optional): Name for the operation. For more information, please
-            refer to :ref:`api_guide_Name`. Default: None.
-
-    Returns:
-        Tensor: The output tensor, it's data type is bool.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([10000., 1e-07])
-            >>> y = paddle.to_tensor([10000.1, 1e-08])
-            >>> result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name="ignore_nan")
-            >>> print(result1)
-            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
-            False)
-            >>> result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=True, name="equal_nan")
-            >>> print(result2)
-            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
-            False)
-            >>> x = paddle.to_tensor([1.0, float('nan')])
-            >>> y = paddle.to_tensor([1.0, float('nan')])
-            >>> result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name="ignore_nan")
-            >>> print(result1)
-            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
-            False)
-            >>> result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=True, name="equal_nan")
-            >>> print(result2)
-            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
-            True)
-    """
-
-    if in_dynamic_mode():
-        return _C_ops.allclose(x, y, rtol, atol, equal_nan)
-    elif in_pir_mode():
-        check_variable_and_dtype(
-            x,
-            "input",
-            ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'],
-            'allclose',
-        )
-        check_variable_and_dtype(
-            y,
-            "input",
-            ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'],
-            'allclose',
-        )
-        if not isinstance(rtol, (float, paddle.pir.Value)):
-            raise TypeError(
-                f"Type of input rtol must be float, but received type {type(rtol)}"
-            )
-        if not isinstance(atol, (float, paddle.pir.Value)):
-            raise TypeError(
-                f"Type of input atol must be float, but received type {type(atol)}"
-            )
-        check_type(equal_nan, 'equal_nan', bool, 'allclose')
-        return _C_ops.allclose(x, y, rtol, atol, equal_nan)
-    else:
-        check_variable_and_dtype(
-            x,
-            "input",
-            ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'],
-            'allclose',
-        )
-        check_variable_and_dtype(
-            y,
-            "input",
-            ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'],
-            'allclose',
-        )
-        check_type(rtol, 'rtol', float, 'allclose')
-        check_type(atol, 'atol', float, 'allclose')
-        check_type(equal_nan, 'equal_nan', bool, 'allclose')
-
-        helper = LayerHelper("allclose", **locals())
-        out = helper.create_variable_for_type_inference(dtype='bool')
-
-        inputs = {'Input': x, 'Other': y}
-        outputs = {'Out': out}
-        attrs = {'rtol': str(rtol), 'atol': str(atol), 'equal_nan': equal_nan}
-        helper.append_op(
-            type='allclose', inputs=inputs, outputs=outputs, attrs=attrs
-        )
-
         return out
 
 

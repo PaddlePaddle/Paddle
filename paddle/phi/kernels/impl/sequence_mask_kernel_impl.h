@@ -78,9 +78,8 @@ void SequenceMaskKernel(const Context& dev_ctx,
     bool is_gpu_place =
         dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
     if (is_gpu_place) {
-      phi::DenseTensor temp;
-      phi::Copy(
-          dev_ctx, *max_len_tensor.get_ptr(), phi::CPUPlace(), false, &temp);
+      DenseTensor temp;
+      Copy(dev_ctx, *max_len_tensor.get_ptr(), phi::CPUPlace(), false, &temp);
       maxlen = *temp.data<int32_t>();
     } else {
       maxlen = *max_len_tensor.get_ptr()->data<int32_t>();

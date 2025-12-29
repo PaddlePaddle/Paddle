@@ -567,19 +567,19 @@ void LaunchDequantMergeKernel(const int32_t* x,
 
 template <typename T>
 void LLMGemm(const phi::GPUContext& dev_ctx,
-             const phi::DenseTensor* weight,
-             const phi::DenseTensor* input,
-             const phi::DenseTensor* weight_scale,
+             const DenseTensor* weight,
+             const DenseTensor* input,
+             const DenseTensor* weight_scale,
              const float threshold,
-             phi::DenseTensor* output,
-             phi::DenseTensor* workspace,
+             DenseTensor* output,
+             DenseTensor* workspace,
              std::string name,
              int m,
              int k,
              int n) {
   // absmax, quant, outlier
   int64_t num_outlier_idx = (k + 31) / 32;
-  phi::DenseTensor row_ranges, outlier_idx, quant_input;
+  DenseTensor row_ranges, outlier_idx, quant_input;
   row_ranges.Resize({m});
   outlier_idx.Resize({num_outlier_idx});
   quant_input.Resize({m, k});
@@ -600,7 +600,7 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
                                 quant_input.data<int8_t>(),
                                 dev_ctx.stream());
   int32_t kfp_num = 0;
-  phi::DenseTensor kfp_num_tensor;
+  DenseTensor kfp_num_tensor;
   kfp_num_tensor.Resize({1});
   dev_ctx.Alloc<int32_t>(&kfp_num_tensor);
 
@@ -613,11 +613,11 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
              sizeof(int32_t),
              cudaMemcpyDeviceToHost);
 
-  phi::DenseTensor sub_out;
+  DenseTensor sub_out;
   sub_out.Resize({m, n});
   dev_ctx.Alloc<T>(&sub_out);
   if (kfp_num != 0) {
-    phi::DenseTensor sub_input, sub_weight;
+    DenseTensor sub_input, sub_weight;
     sub_input.Resize({m, kfp_num});
     sub_weight.Resize({n, kfp_num});
 
@@ -670,7 +670,7 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
         sub_out.data<T>(), 0, sub_out.numel() * sizeof(T), dev_ctx.stream()));
   }
 
-  phi::DenseTensor int_out;
+  DenseTensor int_out;
   int_out.Resize({m, n});
   dev_ctx.Alloc<int32_t>(&int_out);
 

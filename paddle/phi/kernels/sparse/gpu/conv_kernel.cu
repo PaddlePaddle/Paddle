@@ -213,9 +213,8 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                        unique_value_ptr);
   }
   // 2. gather
-  phi::DenseTensor in_features =
-      phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
-  phi::DenseTensor out_features =
+  DenseTensor in_features = phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
+  DenseTensor out_features =
       phi::Empty<T>(dev_ctx, {rulebook_len, out_channels});
   T* in_features_ptr = in_features.data<T>();
   T* out_features_ptr = out_features.data<T>();

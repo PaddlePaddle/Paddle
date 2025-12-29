@@ -85,11 +85,11 @@ template <ColFormat Format, typename DeviceContext, typename T>
 class Im2ColFunctor {
  public:
   void operator()(const DeviceContext& dev_ctx,
-                  const phi::DenseTensor& im,
+                  const DenseTensor& im,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
-                  phi::DenseTensor* col,
+                  DenseTensor* col,
                   const DataLayout data_layout = DataLayout::NCHW);
 };
 
@@ -97,11 +97,11 @@ template <ColFormat Format, typename DeviceContext, typename T>
 class Col2ImFunctor {
  public:
   void operator()(const DeviceContext& dev_ctx,
-                  const phi::DenseTensor& col,
+                  const DenseTensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
-                  phi::DenseTensor* im,
+                  DenseTensor* im,
                   const DataLayout data_layout = DataLayout::NCHW);
 };
 

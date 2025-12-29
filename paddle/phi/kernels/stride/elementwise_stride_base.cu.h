@@ -58,7 +58,7 @@ __global__ void BinaryElementwiseKernel(
   for (int i = 0; i < vt; i++) {
     if (idx < numel) {
       auto offsets = offset_calc.get(idx);
-      using Traits = phi::funcs::FunctionTraits<Functor>;
+      using Traits = funcs::FunctionTraits<Functor>;
       using ArgsT = typename Traits::ArgsTuple;
       __simd__ ArgsT args[VecSize];
       __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
@@ -102,7 +102,7 @@ __global__ void UnaryElementwiseKernel(
   for (int i = 0; i < vt; i++) {
     if (idx < numel) {
       auto offsets = offset_calc.get(idx);
-      using Traits = phi::funcs::FunctionTraits<Functor>;
+      using Traits = funcs::FunctionTraits<Functor>;
       using ArgsT = typename Traits::ArgsTuple;
       __simd__ ArgsT args[VecSize];
       __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
@@ -129,7 +129,7 @@ void BinaryStrideBroadcastKernel(const Context &dev_ctx,
                                  std::vector<DenseTensor *> *outs,
                                  Functor func,
                                  int axis = -1) {
-  using Traits = phi::funcs::FunctionTraits<Functor>;
+  using Traits = funcs::FunctionTraits<Functor>;
   const int Arity = Traits::arity;
   for (auto i = 0; i < outs->size(); ++i) {
     if (i > 0) {
@@ -193,7 +193,7 @@ void BinaryStrideElementwiseKernel(const Context &dev_ctx,
                                    const std::vector<const DenseTensor *> &ins,
                                    std::vector<DenseTensor *> *outs,
                                    Functor func) {
-  using Traits = phi::funcs::FunctionTraits<Functor>;
+  using Traits = funcs::FunctionTraits<Functor>;
   const int Arity = Traits::arity;
   bool have_0_size = false;
   for (int i = 0; i < outs->size(); ++i) {
@@ -261,7 +261,7 @@ void UnaryStrideElementwiseKernel(const Context &dev_ctx,
                                   const std::vector<const DenseTensor *> &ins,
                                   std::vector<DenseTensor *> *outs,
                                   Functor func) {
-  using Traits = phi::funcs::FunctionTraits<Functor>;
+  using Traits = funcs::FunctionTraits<Functor>;
   const int Arity = Traits::arity;
   bool have_0_size = false;
   for (int i = 0; i < outs->size(); ++i) {
@@ -349,11 +349,11 @@ void LaunchBinaryElementwiseStrideKernel(const Context &dev_ctx,
 }
 
 template <typename Context>
-phi::DenseTensor Tensor2Contiguous(const Context &dev_ctx,
-                                   const phi::DenseTensor &tensor) {
-  phi::DenseTensor dense_out;
-  phi::MetaTensor meta_input(tensor);
-  phi::MetaTensor meta_out(&dense_out);
+DenseTensor Tensor2Contiguous(const Context &dev_ctx,
+                              const DenseTensor &tensor) {
+  DenseTensor dense_out;
+  MetaTensor meta_input(tensor);
+  MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(meta_input, &meta_out);
   PD_VISIT_ALL_TYPES(tensor.dtype(), "Tensor2Contiguous", ([&] {
                        phi::ContiguousKernel<data_t, Context>(

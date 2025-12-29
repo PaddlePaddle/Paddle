@@ -3293,3 +3293,123 @@ def asin(
 ) -> Tensor
 """,
 )
+
+
+add_doc_and_signature(
+    "allclose",
+    r"""
+    Check if all :math:`x` and :math:`y` satisfy the condition:
+
+    .. math::
+        \left| x - y \right| \leq atol + rtol \times \left| y \right|
+
+    elementwise, for all elements of :math:`x` and :math:`y`. This is analogous to :math:`numpy.allclose`, namely that it returns :math:`True` if
+    two tensors are elementwise equal within a tolerance.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64.
+            Alias: ``input``.
+        y (Tensor): The input tensor, it's data type should be float16, float32, float64.
+            Alias: ``other``.
+        rtol (float, optional): The relative tolerance. Default: :math:`1e-5` .
+        atol (float, optional): The absolute tolerance. Default: :math:`1e-8` .
+        equal_nan (bool, optional): ${equal_nan_comment}. Default: False.
+        name (str|None, optional): Name for the operation. For more information, please
+            refer to :ref:`api_guide_Name`. Default: None.
+
+    Returns:
+        Tensor: The output tensor, it's data type is bool.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([10000., 1e-07])
+            >>> y = paddle.to_tensor([10000.1, 1e-08])
+            >>> result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name="ignore_nan")
+            >>> print(result1)
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            False)
+            >>> result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=True, name="equal_nan")
+            >>> print(result2)
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            False)
+            >>> x = paddle.to_tensor([1.0, float('nan')])
+            >>> y = paddle.to_tensor([1.0, float('nan')])
+            >>> result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name="ignore_nan")
+            >>> print(result1)
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            False)
+            >>> result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=True, name="equal_nan")
+            >>> print(result2)
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            True)
+    """,
+    """
+def allclose(
+    x: Tensor,
+    y: Tensor,
+    rtol: float = 1e-05,
+    atol: float = 1e-08,
+    equal_nan: bool = False,
+    name: str | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "baddbmm",
+    r"""
+    Performs a batch matrix-matrix product of matrices in input with matrices in batch1 and batch2,
+    and adds the result to input. The result is:
+    .. math::
+        out = \beta \times input + \alpha \times x \times y
+    where :math:`\beta` and :math:`\alpha` are scaling factors.
+    Args:
+        input (Tensor): The input tensor to be added to the final result. It should be a 2-D or 3-D tensor.
+            Data type should be float16, float32, float64, uint16.
+        x (Tensor): The first batch of matrices to be multiplied. It should be a 3-D tensor with shape [b, n, p].
+            Data type should be float16, float32, float64, uint16.
+            Alias: ``batch1``.
+        y (Tensor): The second batch of matrices to be multiplied. It should be a 3-D tensor with shape [b, p, m].
+            Data type should be float16, float32, float64, uint16.
+            Alias: ``batch2``.
+        beta (float, optional): The scaling factor for input. Default: 1.0.
+        alpha (float, optional): The scaling factor for x @ y. Default: 1.0.
+        out_dtype (paddle.dtype|None, optional): The desired data type of the returned tensor. If None, the output tensor will have the same data type as input. Default: None.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
+    Returns:
+        Tensor: The output tensor should be a 3-D tensor with shape [b, n, m].
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.ones([2, 2, 2])
+            >>> y = paddle.ones([2, 2, 2])
+            >>> input = paddle.ones([2, 2, 2])
+
+            >>> out = paddle.baddbmm(input=input, x=x, y=y, beta=0.5, alpha=5.0)
+            >>> out
+            Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[10.50000000, 10.50000000],
+              [10.50000000, 10.50000000]],
+             [[10.50000000, 10.50000000],
+              [10.50000000, 10.50000000]]])
+    """,
+    """
+def baddbmm(
+    input: Tensor,
+    x: Tensor,
+    y: Tensor,
+    beta: float = 1.0,
+    alpha: float = 1.0,
+    out_dtype: paddle.dtype | None = None,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)

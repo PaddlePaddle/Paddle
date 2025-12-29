@@ -54,4 +54,30 @@ void DepthwiseConvKernel(const Context& dev_ctx,
                          const std::string& data_format,
                          DenseTensor* out);
 
+template <typename T, typename Context>
+void DepthwiseConv2dBiasKernel(const Context& dev_ctx,
+                               const DenseTensor& input,
+                               const DenseTensor& filter,
+                               const paddle::optional<DenseTensor>& bias,
+                               const std::vector<int>& strides,
+                               const std::vector<int>& paddings,
+                               const std::string& padding_algorithm,
+                               int groups,
+                               const std::vector<int>& dilations,
+                               const std::string& data_format,
+                               DenseTensor* out);
+
+template <typename T, typename Context>
+void DepthwiseConv3dBiasKernel(const Context& dev_ctx,
+                               const DenseTensor& input,
+                               const DenseTensor& filter,
+                               const paddle::optional<DenseTensor>& bias,
+                               const std::vector<int>& strides,
+                               const std::vector<int>& paddings,
+                               const std::string& padding_algorithm,
+                               int groups,
+                               const std::vector<int>& dilations,
+                               const std::string& data_format,
+                               DenseTensor* out);
+
 }  // namespace phi

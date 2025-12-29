@@ -41,7 +41,7 @@ endif()
 if(WITH_ARM)
   set(XPU_XCCL_BASE_VERSION "20251104") # For XRE5
 else()
-  set(XPU_XCCL_BASE_VERSION "3.0.4.7") # For XRE5
+  set(XPU_XCCL_BASE_VERSION "3.0.6.0") # For XRE5
 endif()
 if(NOT DEFINED XPU_XFT_BASE_VERSION)
   set(XPU_XFT_BASE_VERSION "20250507/xpu3")
@@ -73,7 +73,7 @@ if(NOT DEFINED XPU_FFT_BASE_DATE)
   if(WITH_ARM)
     set(XPU_FFT_BASE_DATE "20251017")
   else()
-    set(XPU_FFT_BASE_DATE "20250704")
+    set(XPU_FFT_BASE_DATE "20251226")
   endif()
 endif()
 

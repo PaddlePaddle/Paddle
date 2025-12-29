@@ -102,7 +102,7 @@ void FakeQuantOrWithDequantMovingAverageAbsMaxKernel(
   }
 
   // training
-  phi::DenseTensor tmp_scale;
+  DenseTensor tmp_scale;
   tmp_scale.Resize(common::make_dim(1));
   T *cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
 
@@ -189,7 +189,7 @@ void FakeQuantizeDequantizeMovingAverageAbsMaxKernel(
 
   // training
 
-  phi::DenseTensor tmp_scale;
+  DenseTensor tmp_scale;
   tmp_scale.Resize(common::make_dim(1));
   T *cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
   funcs::FindAbsMaxFunctor<Context, T>()(

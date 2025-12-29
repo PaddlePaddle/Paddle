@@ -197,7 +197,7 @@ struct VisitDataCudaMinMaxWithIndexFunctor {
       dev_ctx.template Alloc<T>(val_out);
       dev_ctx.template Alloc<IndType>(ind_out);
       funcs::set_constant(dev_ctx, ind_out, static_cast<IndType>(0));
-      phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, val_out);
+      Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, val_out);
       return;
     }
 

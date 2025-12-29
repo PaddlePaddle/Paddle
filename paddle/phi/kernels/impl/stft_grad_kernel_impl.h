@@ -41,11 +41,11 @@ using MulFunctor = funcs::MultiplyFunctor<T>;
 // cases and avoid the need of XxxInverseFunctor.
 template <typename Functor, typename Context, typename T, typename OutType = T>
 void ElementwiseComputeEx(const Context& dev_ctx,
-                          const phi::DenseTensor* x,
-                          const phi::DenseTensor* y,
+                          const DenseTensor* x,
+                          const DenseTensor* y,
                           int axis,
                           Functor func,
-                          phi::DenseTensor* z) {
+                          DenseTensor* z) {
   dev_ctx.template Alloc<OutType>(z);
   funcs::ElementwiseCompute<Functor, T, OutType>(
       dev_ctx, *x, *y, func, z, axis);
@@ -74,13 +74,13 @@ void StftGradKernel(const Context& dev_ctx,
   const size_t seq_length = dx->dims()[dx_rank - 1];
 
   std::vector<int64_t> axes = {1};
-  phi::DenseTensor d_frames_w;
+  DenseTensor d_frames_w;
   DDim d_frames_dims(dy->dims());
   d_frames_dims.at(axes.back()) = n_fft;
   d_frames_w.Resize(d_frames_dims);
   dev_ctx.template Alloc<T>(&d_frames_w);
 
-  phi::DenseTensor complex_d_frames_w;
+  DenseTensor complex_d_frames_w;
   complex_d_frames_w.Resize(d_frames_dims);
   dev_ctx.template Alloc<C>(&complex_d_frames_w);
 
@@ -96,7 +96,7 @@ void StftGradKernel(const Context& dev_ctx,
   if (!onesided) {
     fft_c2c_func(dev_ctx, *dy, &complex_d_frames_w, axes, normalization, false);
   } else {
-    phi::DenseTensor full_dy;
+    DenseTensor full_dy;
     full_dy.Resize(d_frames_dims);
     dev_ctx.template Alloc<C>(&full_dy);
     auto zero_length = static_cast<int>(full_dy.dims().at(axes.back()) -
@@ -114,10 +114,10 @@ void StftGradKernel(const Context& dev_ctx,
   phi::RealKernel<C>(dev_ctx, complex_d_frames_w, &d_frames_w);
 
   // d_frames_w -> d_frames
-  phi::DenseTensor d_frames;
+  DenseTensor d_frames;
   d_frames.Resize(d_frames_dims);
   dev_ctx.template Alloc<T>(&d_frames);
-  const phi::DenseTensor d_frames_w_const = d_frames_w;
+  const DenseTensor d_frames_w_const = d_frames_w;
   ElementwiseComputeEx<MulFunctor<T>, Context, T>(dev_ctx,
                                                   &d_frames_w_const,
                                                   &window,

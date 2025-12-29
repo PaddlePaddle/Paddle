@@ -62,9 +62,9 @@ template <typename T>
 class PaddingDenseTensorFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& dev_ctx,
-                  const phi::DenseTensor& seq_tensor,
-                  phi::DenseTensor* pad_tensor,
-                  const phi::DenseTensor& pad_value,
+                  const DenseTensor& seq_tensor,
+                  DenseTensor* pad_tensor,
+                  const DenseTensor& pad_value,
                   int pad_seq_len = -1,
                   int lod_level = 0,
                   bool norm_by_times = false,
@@ -144,8 +144,8 @@ template <typename T>
 class UnpaddingDenseTensorFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& dev_ctx,
-                  const phi::DenseTensor& pad_tensor,
-                  phi::DenseTensor* seq_tensor,
+                  const DenseTensor& pad_tensor,
+                  DenseTensor* seq_tensor,
                   int pad_seq_len = -1,
                   int lod_level = 0,
                   bool norm_by_times = false,

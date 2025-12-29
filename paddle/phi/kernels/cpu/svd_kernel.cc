@@ -113,7 +113,7 @@ void SvdKernel(const Context& dev_ctx,
     return;
   }
   DenseTensor trans_x =
-      ::phi::TransposeLast2Dim<T>(dev_ctx, Conj<T, Context>(dev_ctx, X));
+      TransposeLast2Dim<T>(dev_ctx, Conj<T, Context>(dev_ctx, X));
   auto x_dims = X.dims();
   int rows = static_cast<int>(x_dims[x_dims.size() - 2]);
   int cols = static_cast<int>(x_dims[x_dims.size() - 1]);
@@ -137,8 +137,7 @@ void SvdKernel(const Context& dev_ctx,
     int64_t& y = origin_dim[origin_dim.size() - 2];
     std::swap(x, y);
     out->Resize(origin_dim);
-    return ::phi::TransposeLast2Dim<T>(dev_ctx,
-                                       phi::Conj<T, Context>(dev_ctx, *out));
+    return TransposeLast2Dim<T>(dev_ctx, phi::Conj<T, Context>(dev_ctx, *out));
   };
   *U = col_major_to_row_major(U);
   *VH = col_major_to_row_major(VH);

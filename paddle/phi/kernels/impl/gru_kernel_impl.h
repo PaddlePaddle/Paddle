@@ -26,9 +26,9 @@ namespace phi {
 
 template <typename Context, typename T>
 void ReorderInitState(const Context &dev_ctx,
-                      const phi::DenseTensor &src,
+                      const DenseTensor &src,
                       phi::Vector<size_t> index_lod,
-                      phi::DenseTensor *dst,
+                      DenseTensor *dst,
                       bool indexed_src) {
   funcs::CopyMatrixRowsFunctor<Context, T> row_shuffle;
   dst->Resize(src.dims());
@@ -64,8 +64,7 @@ void GRUGradKernel(const Context &dev_ctx,
   int frame_size = hidden_dims[1];
 
   funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
-  phi::DenseTensor batch_hidden_grad, batch_gate_grad,
-      batch_reset_hidden_prev_grad;
+  DenseTensor batch_hidden_grad, batch_gate_grad, batch_reset_hidden_prev_grad;
   batch_hidden_grad.Resize(hidden_dims);
   batch_gate_grad.Resize(gate_dims);
   batch_reset_hidden_prev_grad.Resize(hidden_dims);
@@ -78,7 +77,7 @@ void GRUGradKernel(const Context &dev_ctx,
   zero(dev_ctx, &batch_gate_grad, static_cast<T>(0.0));
   zero(dev_ctx, &batch_reset_hidden_prev_grad, static_cast<T>(0.0));
 
-  phi::DenseTensor ordered_h0, ordered_h0_grad;
+  DenseTensor ordered_h0, ordered_h0_grad;
 
   phi::Vector<size_t> order(batch_gate.lod()[2]);
 
@@ -119,17 +118,17 @@ void GRUGradKernel(const Context &dev_ctx,
     int bend = static_cast<int>(batch_starts[n + 1]);
     int cur_batch_size = bend - bstart;
 
-    phi::DenseTensor gate_t = batch_gate.Slice(bstart, bend);
+    DenseTensor gate_t = batch_gate.Slice(bstart, bend);
     gru_value.gate_value = gate_t.data<T>();
-    phi::DenseTensor reset_hidden_prev_t =
+    DenseTensor reset_hidden_prev_t =
         batch_reset_hidden_prev.Slice(bstart, bend);
     gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
 
-    phi::DenseTensor hidden_grad_t = batch_hidden_grad.Slice(bstart, bend);
+    DenseTensor hidden_grad_t = batch_hidden_grad.Slice(bstart, bend);
     gru_grad.output_grad = hidden_grad_t.data<T>();
-    phi::DenseTensor gate_grad_t = batch_gate_grad.Slice(bstart, bend);
+    DenseTensor gate_grad_t = batch_gate_grad.Slice(bstart, bend);
     gru_grad.gate_grad = gate_grad_t.data<T>();
-    phi::DenseTensor reset_hidden_prev_grad_t =
+    DenseTensor reset_hidden_prev_grad_t =
         batch_reset_hidden_prev_grad.Slice(bstart, bend);
     gru_grad.reset_output_grad = reset_hidden_prev_grad_t.data<T>();
     if (n == 0) {
@@ -138,9 +137,9 @@ void GRUGradKernel(const Context &dev_ctx,
           h0 && h0_grad ? ordered_h0_grad.data<T>() : nullptr;
     } else {
       int bstart_pre = static_cast<int>(batch_starts[n - 1]);
-      phi::DenseTensor hidden_prev_t = batch_hidden.Slice(bstart_pre, bstart);
+      DenseTensor hidden_prev_t = batch_hidden.Slice(bstart_pre, bstart);
       gru_value.prev_out_value = hidden_prev_t.data<T>();
-      phi::DenseTensor hidden_prev_grad_t =
+      DenseTensor hidden_prev_grad_t =
           batch_hidden_grad.Slice(bstart_pre, bstart);
       gru_grad.prev_out_grad = hidden_prev_grad_t.data<T>();
     }

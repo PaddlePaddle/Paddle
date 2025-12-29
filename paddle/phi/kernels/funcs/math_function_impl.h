@@ -27,7 +27,7 @@ using phi::To32BitIndex;
 
 template <typename DeviceContext, typename T>
 void SetConstant<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
-                                               phi::DenseTensor* tensor,
+                                               DenseTensor* tensor,
                                                T num) {
   auto t = phi::EigenVector<T>::Flatten(*tensor);
   t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(num));
@@ -36,7 +36,7 @@ void SetConstant<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
 #ifdef PADDLE_WITH_XPU
 template <typename T>
 void SetConstant<phi::XPUContext, T>::operator()(const phi::XPUContext& dev_ctx,
-                                                 phi::DenseTensor* tensor,
+                                                 DenseTensor* tensor,
                                                  T num) {
   phi::VisitDataType(tensor->dtype(),
                      TensorSetConstantXPU<T>(tensor, num, dev_ctx.GetPlace()));
@@ -46,8 +46,8 @@ void SetConstant<phi::XPUContext, T>::operator()(const phi::XPUContext& dev_ctx,
 template <typename DeviceContext, typename T, int Rank>
 void Transpose<DeviceContext, T, Rank>::operator()(
     const DeviceContext& dev_ctx,
-    const phi::DenseTensor& in,
-    phi::DenseTensor* out,
+    const DenseTensor& in,
+    DenseTensor* out,
     const std::vector<int>& axis) {
   Eigen::array<int, Rank> permute;
   for (int i = 0; i < Rank; i++) {
@@ -69,8 +69,8 @@ void Transpose<DeviceContext, T, Rank>::operator()(
 
 template <typename DeviceContext, typename T>
 void ColwiseSum<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
-                                              const phi::DenseTensor& input,
-                                              phi::DenseTensor* out) {
+                                              const DenseTensor& input,
+                                              DenseTensor* out) {
   auto in_dims = input.dims();
   auto size = input.numel() / in_dims[0];
   PADDLE_ENFORCE_EQ(out->numel(),
@@ -95,8 +95,8 @@ template <typename T>
 class ColwiseSum<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& dev_ctx,
-                  const phi::DenseTensor& input,
-                  phi::DenseTensor* out) {
+                  const DenseTensor& input,
+                  DenseTensor* out) {
     auto& in_dims = input.dims();
     auto height = in_dims[0];
     auto size = in_dims[1];
@@ -127,8 +127,8 @@ class ColwiseSum<phi::CPUContext, T> {
 
 template <typename DeviceContext, typename T>
 void RowwiseMean<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
-                                               const phi::DenseTensor& input,
-                                               phi::DenseTensor* out) {
+                                               const DenseTensor& input,
+                                               DenseTensor* out) {
   auto in_dims = input.dims();
   PADDLE_ENFORCE_EQ(
       in_dims.size(),
@@ -158,8 +158,8 @@ template <typename T>
 class RowwiseMean<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& dev_ctx,
-                  const phi::DenseTensor& input,
-                  phi::DenseTensor* out) {
+                  const DenseTensor& input,
+                  DenseTensor* out) {
     auto& in_dims = input.dims();
     PADDLE_ENFORCE_EQ(
         in_dims.size(),
@@ -194,8 +194,8 @@ class RowwiseMean<phi::CPUContext, T> {
 
 template <typename DeviceContext, typename T>
 void RowwiseSum<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
-                                              const phi::DenseTensor& input,
-                                              phi::DenseTensor* out) {
+                                              const DenseTensor& input,
+                                              DenseTensor* out) {
   auto in_dims = input.dims();
   PADDLE_ENFORCE_EQ(
       in_dims.size(),
@@ -225,8 +225,8 @@ template <typename T>
 class RowwiseSum<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& dev_ctx,
-                  const phi::DenseTensor& input,
-                  phi::DenseTensor* out) {
+                  const DenseTensor& input,
+                  DenseTensor* out) {
     auto& in_dims = input.dims();
     PADDLE_ENFORCE_EQ(
         in_dims.size(),

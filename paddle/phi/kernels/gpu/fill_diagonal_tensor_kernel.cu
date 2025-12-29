@@ -51,7 +51,7 @@ void FillDiagonalTensorKernel(const Context &dev_ctx,
                               int dim2,
                               DenseTensor *out) {
   const int64_t kMaxBlockDim = 512;
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
 
   T *out_data = dev_ctx.template Alloc<T>(out);
   const T *fill_data = y.data<T>();

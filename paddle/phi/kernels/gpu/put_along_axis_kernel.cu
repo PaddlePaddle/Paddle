@@ -34,7 +34,7 @@ void PutAlongAxisKernel(const Context& dev_ctx,
                         DenseTensor* out) {
   const auto& index_type = index.dtype();
 
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   if (reduce == "add") {
     if (index_type == DataType::INT32) {
       funcs::gpu_scatter_add_kernel<T, int32_t>(

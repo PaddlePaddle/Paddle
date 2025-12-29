@@ -103,11 +103,11 @@ __global__ void vol2col(int64_t num_kernels,
 template <class DeviceContext, class T>
 void Vol2ColFunctor<DeviceContext, T>::operator()(
     const DeviceContext& dev_ctx,
-    const phi::DenseTensor& vol,
+    const DenseTensor& vol,
     const std::vector<int>& dilations,
     const std::vector<int>& strides,
     const std::vector<int>& paddings,
-    phi::DenseTensor* col,
+    DenseTensor* col,
     const DataLayout data_layout) const {
   PADDLE_ENFORCE_EQ(vol.dims().size(),
                     4,
@@ -322,11 +322,11 @@ __global__ void col2vol(int64_t num_kernels,
 template <class DeviceContext, class T>
 void Col2VolFunctor<DeviceContext, T>::operator()(
     const DeviceContext& dev_ctx,
-    const phi::DenseTensor& col,
+    const DenseTensor& col,
     const std::vector<int>& dilations,
     const std::vector<int>& strides,
     const std::vector<int>& paddings,
-    phi::DenseTensor* vol,
+    DenseTensor* vol,
     const DataLayout data_layout) const {
   PADDLE_ENFORCE_EQ(vol->dims().size(),
                     4,

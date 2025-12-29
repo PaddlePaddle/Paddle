@@ -32,7 +32,7 @@ void SequencePoolKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(
       lod_level,
       0,
-      errors::InvalidArgument("Input(X) phi::DenseTensor of SequencePoolOp "
+      errors::InvalidArgument("Input(X) DenseTensor of SequencePoolOp "
                               "does not contain LoD information."));
   PADDLE_ENFORCE_LE(
       lod_level,
@@ -61,7 +61,7 @@ void SequencePoolKernel(const Context& dev_ctx,
   dims[0] = lod[lod_level - 1].size() - 1;
   out->Resize({dims});
   dev_ctx.template Alloc<T>(out);
-  phi::DenseTensor* index = nullptr;
+  DenseTensor* index = nullptr;
 
   // Do not create index buffer for inference mode
   if (pooltype == "MAX" &&
