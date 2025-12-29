@@ -1164,9 +1164,11 @@ __global__ __launch_bounds__(
           }
           int4& combined_int4 = *reinterpret_cast<int4*>(combined_values);
           auto combined_bf16 = reinterpret_cast<nv_bfloat16*>(&combined_values);
+
 #pragma unroll
-          for (int j = 0; j < kNumElemsPerInt4; ++j)
+          for (int j = 0; j < kNumElemsPerInt4; ++j) {
             combined_bf16[j] = static_cast<nv_bfloat16>(combined_values[j]);
+          }
           dst_ptr[g_id] = combined_int4;
         }
         __syncthreads();
@@ -1237,7 +1239,7 @@ __global__ __launch_bounds__(
               reinterpret_cast<int*>(dst_rdma_flag),
               1,
               deal_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank,
-              qp_id);
+              thread_id);
         }
       }
     }
@@ -1274,8 +1276,9 @@ LOW_LATENCY_COMBINE_RECV:
           auto x_vec = ld_nc_global(src_ptr + g_id);
           const auto x_bf16 = reinterpret_cast<nv_bfloat16*>(&x_vec);
 #pragma unroll
-          for (int j = 0; j < kNumElemsPerInt4; ++j)
+          for (int j = 0; j < kNumElemsPerInt4; ++j) {
             combined_values[j] += static_cast<float>(x_bf16[j]);
+          }
         }
       }
       // Write results
