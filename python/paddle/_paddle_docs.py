@@ -3500,6 +3500,14 @@ add_doc_and_signature(
 def atan2(
     x: Tensor,
     y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_docs_and_signature(
     "baddbmm",
     r"""
     Performs a batch matrix-matrix product of matrices in input with matrices in batch1 and batch2,
