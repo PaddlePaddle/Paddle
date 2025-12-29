@@ -88,6 +88,7 @@ void IRElementwiseSchedule(ir::IRSchedule &ir_sch,  // NOLINT
   };
   target.arch.Match(
       [&](common::NVGPUArch) { schedule_nv_hygon(); },
+      [&](common::CustomDeviceArch) { CINN_NOT_IMPLEMENTED; },
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         // IRScheduleInjectiveCPU(ir_sch, output_shape, target, false);
         auto blocks = ir_sch.GetAllBlocks();
@@ -122,6 +123,7 @@ void IRInjectiveSchedule(ir::IRSchedule &ir_sch,  // NOLINT
   };
   target.arch.Match(
       [&](common::NVGPUArch) { schedule_nv_hygon(); },
+      [&](common::CustomDeviceArch) { schedule_nv_hygon(); },
       [&](std::variant<common::UnknownArch,
                        common::X86Arch,
                        common::ARMArch>) {  // IRScheduleInjectiveCPU(ir_sch,
@@ -209,6 +211,7 @@ std::vector<cinn::common::CINNValue> IRGpuScheduleMatMul(
     const cinn::common::Target &target) {
   target.arch.Match(
       [&](common::NVGPUArch) {},
+      [&](common::CustomDeviceArch) {},
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         CINN_NOT_IMPLEMENTED;
       },
@@ -388,6 +391,7 @@ void IRCudaSplitSchedule(ir::IRSchedule &ir_sch,  // NOLINT
 
   target.arch.Match(
       [&](common::NVGPUArch) { SplitScheduleGpuDcu(); },
+      [&](common::CustomDeviceArch) { SplitScheduleGpuDcu(); },
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         {
           for (auto &block_name : block_names) {

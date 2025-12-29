@@ -45,6 +45,7 @@ BackendAPI* BackendAPI::get_backend(common::Arch arch) {
       [&](std::variant<common::UnknownArch,
                        common::X86Arch,
                        common::ARMArch,
+                       common::CustomDeviceArch,
                        common::NVGPUArch>) {
         std::stringstream ss;
         ss << "Target(" << arch << ") is not support get_backend now.";

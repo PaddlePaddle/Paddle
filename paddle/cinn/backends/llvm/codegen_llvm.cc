@@ -1512,6 +1512,10 @@ int GetNaiveVecAlignmentImpl(common::HygonDCUArchSYCL, const Target &target) {
   return 128;
 }
 
+int GetNaiveVecAlignmentImpl(common::CustomDeviceArch, const Target &target) {
+  return 128;
+}
+
 int GetNaiveVecAlignment(const Target &target) {
   return std::visit(
       [&](const auto &impl) { return GetNaiveVecAlignmentImpl(impl, target); },

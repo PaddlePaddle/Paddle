@@ -368,6 +368,10 @@ void CheckCompileOptionImpl(cinn::common::ARMArch) {
   // Do nothing.
 }
 
+void CheckCompileOptionImpl(cinn::common::CustomDeviceArch) {
+  // Do nothing.
+}
+
 void CheckCompileOptionImpl(cinn::common::NVGPUArch) {
 #if defined(CINN_WITH_CUDNN)
   // Do nothing;

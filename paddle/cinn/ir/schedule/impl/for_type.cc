@@ -191,7 +191,10 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
     CINN_IR_SCHEDULE_END(this->err_msg_level_);
   };
   cinn::common::DefaultDeviceTarget().arch.Match(
-      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      [&](std::variant<common::UnknownArch,
+                       common::X86Arch,
+                       common::ARMArch,
+                       common::CustomDeviceArch>) {
         // nothing
       },
       [&](common::NVGPUArch) {

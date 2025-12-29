@@ -872,6 +872,14 @@ std::vector<Tensor> MulBaseCallImpl(common::NVGPUArch,
   MulBaseCallImplNvHygon(A, B, name, target);
 }
 
+std::vector<Tensor> MulBaseCallImpl(common::CustomDeviceArch,
+                                    const Tensor& A,
+                                    const Tensor& B,
+                                    const std::string& name,
+                                    const cinn::common::Target& target) {
+  MulBaseCallImplNvHygon(A, B, name, target);
+}
+
 std::vector<Tensor> MulBaseCallImpl(common::HygonDCUArchHIP,
                                     const Tensor& A,
                                     const Tensor& B,
@@ -1662,6 +1670,10 @@ ir::Tensor ScatterAssign(const ir::Tensor& input,
             "ScatterAssign only support X86 and NVGPU ! Please Check.\n"));
       },
       [&](common::NVGPUArch) { extern_fun_name.assign("cinn_cuda_find_int"); },
+      [&](common::CustomDeviceArch) {
+        PADDLE_THROW(::common::errors::Fatal(
+            "ScatterAssign only support X86 and NVGPU ! Please Check.\n"));
+      },
       [&](common::HygonDCUArchHIP) {
         extern_fun_name.assign("cinn_hip_find_int");
       },
@@ -1775,6 +1787,7 @@ ir::Tensor ScatterAdd(const ir::Tensor& input,
             "HygonDCU now ! Please Check.\n"));
       },
       [&](common::NVGPUArch) { return ScatterAddNvHygon(); },
+      [&](common::CustomDeviceArch) { return ScatterAddNvHygon(); },
       [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
         return ScatterAddNvHygon();
       });

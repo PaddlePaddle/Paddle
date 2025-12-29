@@ -258,6 +258,13 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
 #ifdef CINN_WITH_SYCL
         shared_mem_bytes = Expr(0);
 #endif
+      },
+      [&](common::CustomDeviceArch) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+        CINN_NOT_IMPLEMENTED;
+    // shared_mem_bytes =
+    // phi::DeviceManager::GetDeviceProperties().sharedMemPerBlock;
+#endif
       });
 
   VLOG(6) << "Add a call node for func_node->name " << func_node->name << "\n"
@@ -283,7 +290,8 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
       },
       [&](common::HygonDCUArchSYCL) {
         call_kernel = runtime::intrinsic::call_sycl_kernel;
-      });
+      },
+      [&](common::CustomDeviceArch) { CINN_NOT_IMPLEMENTED; });
   // TODO(Dmovic): use new ir when backend update done.
   // Author(liujinnan): Copy args instead of use func args directly in host
   // func. because after longlong2int pass, some type of loweredfunc args may be

@@ -29,6 +29,10 @@
 #include "paddle/cinn/runtime/backend_api.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/common/enforce.h"
+#ifdef CINN_WITH_CUSTOM_DEVICE
+#include "paddle/phi/api/include/device_manager.h"
+#endif
+
 using cinn::runtime::BackendAPI;
 
 namespace cinn {
@@ -61,6 +65,13 @@ Target::Target(OS o,
                PADDLE_THROW(::common::errors::Unimplemented(
                    "Please recompile with flag CINN_WITH_SYCL and WITH_CINN."));
 #endif
+             },
+             [&](CustomDeviceArch) {
+#ifndef CINN_WITH_CUSTOM_DEVICE
+               PADDLE_THROW(::common::errors::Unimplemented(
+                   "Please recompile with flag CINN_WITH_CUSTOM_DEVICE and "
+                   "WITH_CINN."));
+#endif
              });
 }
 
@@ -84,6 +95,8 @@ int GetRuntimeArchImpl(NVGPUArch) {
 int GetRuntimeArchImpl(HygonDCUArchHIP) { CINN_NOT_IMPLEMENTED }
 
 int GetRuntimeArchImpl(HygonDCUArchSYCL) { CINN_NOT_IMPLEMENTED }
+
+int GetRuntimeArchImpl(CustomDeviceArch arch) { return cinn_custom_device; }
 
 int GetRuntimeArch(Arch arch) {
   return std::visit([](const auto &impl) { return GetRuntimeArchImpl(impl); },
@@ -109,6 +122,13 @@ int GetMaxNumThreadsImpl(NVGPUArch arch) { return 1024; }
 int GetMaxNumThreadsImpl(HygonDCUArchHIP arch) { return 1024; }
 
 int GetMaxNumThreadsImpl(HygonDCUArchSYCL arch) { return 1024; }
+
+int GetMaxNumThreadsImpl(CustomDeviceArch arch) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+  return phi::DeviceManager::GetMaxThreadsPerBlock(
+      phi::Place(arch.device_type, arch.device_id));
+#endif
+}
 
 int GetMaxNumThreads(Arch arch) {
   return std::visit([](const auto &impl) { return GetMaxNumThreadsImpl(impl); },
@@ -146,6 +166,13 @@ int GetMultiProcessCountImpl(HygonDCUArchHIP arch) {
 int GetMultiProcessCountImpl(HygonDCUArchSYCL arch) {
   return BackendAPI::get_backend(arch)->get_device_property(
       BackendAPI::DeviceProperty::MultiProcessorCount);
+}
+
+int GetMultiProcessCountImpl(CustomDeviceArch arch) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+  return phi::DeviceManager::GetMultiProcessors(
+      phi::Place(arch.device_type, arch.device_id));
+#endif
 }
 
 int GetMultiProcessCount(Arch arch) {
@@ -192,6 +219,13 @@ int GetMaxThreadsPerSmImpl(HygonDCUArchSYCL arch) {
       BackendAPI::DeviceProperty::MaxThreadsPerSM);
 }
 
+int GetMaxThreadsPerSmImpl(CustomDeviceArch arch) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+  return phi::DeviceManager::GetMaxThreadsPerMultiProcessor(
+      phi::Place(arch.device_type, arch.device_id));
+#endif
+}
+
 int GetMaxThreadsPerSm(Arch arch) {
   return std::visit(
       [](const auto &impl) { return GetMaxThreadsPerSmImpl(impl); },
@@ -232,6 +266,13 @@ int GetMaxBlocksPerSmImpl(HygonDCUArchHIP arch) {
 int GetMaxBlocksPerSmImpl(HygonDCUArchSYCL arch) {
   return BackendAPI::get_backend(arch)->get_device_property(
       BackendAPI::DeviceProperty::MaxBlocksPerSM);
+}
+
+int GetMaxBlocksPerSmImpl(CustomDeviceArch arch) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+  return phi::DeviceManager::GetMaxBlocksPerMultiProcessor(
+      phi::Place(arch.device_type, arch.device_id));
+#endif
 }
 
 int GetMaxBlocksPerSm(Arch arch) {
@@ -289,6 +330,11 @@ std::string Target::device_name_str() const {
   std::string device_name = properties.name;
   device_name = std::regex_replace(device_name, std::regex(" "), "_");
   return std::regex_replace(device_name, std::regex("-"), "_");
+#elif defined(CINN_WITH_CUSTOM_DEVICE)
+  // 通过 Visit 拿到 CustomDeviceArch 里的字符串 name
+  return arch.Visit(common::Overloaded{
+      [](const CustomDeviceArch &a) { return a.device_type; },
+      [](const auto &) { return "unknown_device"; }});
 #else
   CINN_NOT_IMPLEMENTED
 #endif
@@ -356,6 +402,12 @@ const Target &DefaultHygonDcuSyclTarget() {
   return target;
 }
 
+const Target &DefaultCustomDeviceTarget() {
+  static Target target(
+      Target::OS::Linux, CustomDeviceArch{}, Target::Bit::k64, {}, {});
+  return target;
+}
+
 const Target &DefaultDeviceTarget() {
 #ifdef CINN_WITH_CUDA
   return DefaultNVGPUTarget();
@@ -363,6 +415,8 @@ const Target &DefaultDeviceTarget() {
   return DefaultHygonDcuSyclTarget();
 #elif defined(CINN_WITH_HIP)
   return DefaultHygonDcuHipTarget();
+#elif defined(CINN_WITH_CUSTOM_DEVICE)
+  return DefaultCustomDeviceTarget();
 #endif
 }
 
@@ -377,6 +431,17 @@ int GetMaxThreads() {
       &max_threads, cudaDeviceAttr::cudaDevAttrMaxThreadsPerMultiProcessor, 0);
   // multiplication num_sm
   max_threads *= (num_sm * 4);
+#elif defined( \
+    CINN_WITH_CUSTOM_DEVICE)  // 假设默认使用第 0 号设备，你可以根据需要获取当前
+                              // device_type
+  std::vector dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  int device_id = phi::DeviceManager::GetDevice(dev_types[0]);
+  if (!dev_types.empty()) {
+    std::string dev_type = dev_types[0];
+    phi::Place place(dev_type, device_id);
+    max_threads = phi::DeviceManager::GetMultiProcessors(place) *
+                  phi::DeviceManager::GetMaxThreadsPerMultiProcessor(place);
+  }
 #endif
   return max_threads;
 }
@@ -393,6 +458,15 @@ int GetMaxBlocks() {
 
   // multiplication num_sm
   max_blocks *= num_sm;
+#elif defined(CINN_WITH_CUSTOM_DEVICE)
+  std::vector dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  int device_id = phi::DeviceManager::GetDevice(dev_types[0]);
+  if (!dev_types.empty()) {
+    std::string dev_type = dev_types[0];
+    phi::Place place(dev_type, device_id);
+    max_threads = phi::DeviceManager::GetMultiProcessors(place) *
+                  phi::DeviceManager::GetMaxBlocksPerMultiProcessor(place);
+  }
 #endif
   return max_blocks;
 }
@@ -404,6 +478,11 @@ const Target &DefaultTarget() {
   return DefaultHygonDcuSyclTarget();
 #elif defined(CINN_WITH_HIP)
   return DefaultHygonDcuHipTarget();
+#elif defined( \
+    CINN_WITH_CUSTOM_DEVICE)  // 获取第一个注册的自定义设备类型，例如 "metax"
+  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  if (!dev_types.empty()) return DefaultCustomDeviceTarget(dev_types[0]);
+  return DefaultHostTarget();
 #else
   return DefaultHostTarget();
 #endif
@@ -441,6 +520,8 @@ bool GetSupportsCooperativeLaunch(Arch arch) {
       [](const auto &impl) { return GetSupportsCooperativeLaunchImpl(impl); },
       arch.variant());
 }
+
+bool GetSupportsCooperativeLaunchImpl(CustomDeviceArch) { return false; }
 
 bool Target::get_supports_cooperative_launch() const {
   return GetSupportsCooperativeLaunch(arch);

@@ -127,7 +127,8 @@ std::shared_ptr<OpStrategy> StrategyForCustomCall(
         },
         [&](std::variant<common::UnknownArch,
                          common::X86Arch,
-                         common::ARMArch>) {},
+                         common::ARMArch,
+                         common::CustomDeviceArch>) {},
         [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
           ir::Var kernel_stream(KERNEL_STREAM, type_of<void *>());
           host_args.push_back(kernel_stream);

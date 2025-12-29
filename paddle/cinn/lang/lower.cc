@@ -297,7 +297,8 @@ std::vector<ir::LoweredFunc> LowerToAstVec(
         },
         [&](std::variant<common::UnknownArch,
                          common::X86Arch,
-                         common::ARMArch>) {});
+                         common::ARMArch,
+                         common::CustomDeviceArch>) {});
   }
   return result;
 }

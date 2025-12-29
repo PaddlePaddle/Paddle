@@ -254,7 +254,8 @@ std::vector<BlockRef> LowerTensorGroup::GenerateFunctionBody(
           },
           [&](std::variant<common::UnknownArch,
                            common::X86Arch,
-                           common::ARMArch>) {});
+                           common::ARMArch,
+                           common::CustomDeviceArch>) {});
     }
   }
 

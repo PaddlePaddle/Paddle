@@ -126,7 +126,8 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
     cinn::common::DefaultDeviceTarget().arch.Match(
         [&](std::variant<common::UnknownArch,
                          common::X86Arch,
-                         common::ARMArch>) { CINN_NOT_IMPLEMENTED; },
+                         common::ARMArch,
+                         common::CustomDeviceArch>) { CINN_NOT_IMPLEMENTED; },
         [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
           CodeGenCudaDev codegen_dev(cinn::common::DefaultNVGPUTarget());
@@ -164,7 +165,8 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
     cinn::common::DefaultDeviceTarget().arch.Match(
         [&](std::variant<common::UnknownArch,
                          common::X86Arch,
-                         common::ARMArch>) { CINN_NOT_IMPLEMENTED; },
+                         common::ARMArch,
+                         common::CustomDeviceArch>) { CINN_NOT_IMPLEMENTED; },
         [&](common::NVGPUArch) {
           call_kernel = runtime::intrinsic::call_cuda_kernel;
         },

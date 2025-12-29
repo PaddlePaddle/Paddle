@@ -420,7 +420,8 @@ std::vector<CondFuncPriorWrapper> OpLowererImpl::PostProcess(
       cinn::common::DefaultDeviceTarget().arch.Match(
           [&](std::variant<common::UnknownArch,
                            common::X86Arch,
-                           common::ARMArch>) {},
+                           common::ARMArch,
+                           common::CustomDeviceArch>) {},
           [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
             // optim::EliminateCommonGlobalMemoryRead(&(func_body));
@@ -635,7 +636,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
         },
         [&](std::variant<common::UnknownArch,
                          common::X86Arch,
-                         common::ARMArch>) {
+                         common::ARMArch,
+                         common::CustomDeviceArch>) {
           op_func_arg_tensors->push_back(expr.as_tensor_ref());
           expr.as_tensor_ref()->WithBuffer();
         },

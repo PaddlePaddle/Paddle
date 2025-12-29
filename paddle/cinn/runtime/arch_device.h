@@ -30,6 +30,9 @@ inline std::optional<int> GetArchDevice(const common::Target& target) {
       [&](common::UnknownArch) -> std::optional<int> { return std::nullopt; },
       [&](common::X86Arch) -> std::optional<int> { return std::nullopt; },
       [&](common::ARMArch) -> std::optional<int> { return std::nullopt; },
+      [&](common::CustomDeviceArch) -> std::optional<int> {
+        return std::nullopt;
+      },
       [&](common::NVGPUArch) -> std::optional<int> {
 #ifdef CINN_WITH_CUDA
         int device_id;
@@ -60,6 +63,7 @@ inline void SetArchDevice(const common::Target& target,
       [&](common::UnknownArch) -> void {},
       [&](common::X86Arch) -> void {},
       [&](common::ARMArch) -> void {},
+      [&](common::CustomDeviceArch) -> void {},
       [&](common::NVGPUArch) -> void {
 #ifdef CINN_WITH_CUDA
         PADDLE_ENFORCE_EQ(device_id.has_value(),

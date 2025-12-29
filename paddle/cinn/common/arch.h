@@ -16,6 +16,7 @@
 
 #include <functional>
 #include <ostream>
+#include <string>
 #include <variant>
 #include "paddle/common/overloaded.h"
 
@@ -32,15 +33,20 @@ struct UnknownArch {};
   struct class_name {};
 CINN_ARCH_CLASS_NAMES(DEFINE_CINN_ARCH);
 #undef DEFINE_CINN_ARCH
+struct CustomDeviceArch {
+  std::string device_type{"unknown_custom"};
+  int device_id{0};
+};
 
 /**
  * The architecture used by the target. Determines the instruction set to use.
  */
-using ArchBase = std::variant<
+using ArchBase = std::variant<  // ADT 是否只需要处理这一处
 #define LIST_CINN_ARCH_ALTERNATIVE(class_name) class_name,
     CINN_ARCH_CLASS_NAMES(LIST_CINN_ARCH_ALTERNATIVE)
 #undef LIST_CINN_ARCH_ALTERNATIVE
-        UnknownArch>;
+        CustomDeviceArch,
+    UnknownArch>;
 struct Arch final : public ArchBase {
   using ArchBase::ArchBase;
 

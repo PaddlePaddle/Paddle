@@ -170,8 +170,10 @@ LogicalResult TransBufferWithDynamicShapePass::Run(ir::LoweredFunc func) {
   Mutator mutator;
   mutator(func->body_block);
   cinn::common::DefaultDeviceTarget().arch.Match(
-      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
-      },
+      [&](std::variant<common::UnknownArch,
+                       common::X86Arch,
+                       common::ARMArch,
+                       common::CustomDeviceArch>) {},
       [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
         auto cur_dev_info =

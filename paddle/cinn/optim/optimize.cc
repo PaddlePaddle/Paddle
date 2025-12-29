@@ -127,8 +127,10 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
         VLOG(10) << "After Optimize TransBufferWithDynamicShape:" << copied;
 #endif
       },
-      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
-      });
+      [&](std::variant<common::UnknownArch,
+                       common::X86Arch,
+                       common::ARMArch,
+                       common::CustomDeviceArch>) {});
 
   SimplifyUnitBlock(&copied->body);
   VLOG(4) << "After SimplifyUnitBlock:" << copied;
@@ -167,8 +169,10 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
         func_pass_manager.Run(copied);
         VLOG(4) << "After Optimize RearrangeLoadInstruction:" << copied;
       },
-      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
-      });
+      [&](std::variant<common::UnknownArch,
+                       common::X86Arch,
+                       common::ARMArch,
+                       common::CustomDeviceArch>) {});
 
   VectorizeForTrans(&copied->body);
   VLOG(10) << "After Optimize vectorize" << copied;

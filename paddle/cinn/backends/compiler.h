@@ -211,6 +211,7 @@ class Compiler final {
   std::unique_ptr<runtime::cuda::CUDAModule> cuda_module_;
   void* cuda_module_handle_{nullptr};
 #endif
+
 #ifdef CINN_WITH_HIP
   std::unique_ptr<runtime::hip::HIPModule> hip_module_;
 #endif

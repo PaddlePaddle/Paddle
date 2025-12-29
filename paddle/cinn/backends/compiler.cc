@@ -253,7 +253,8 @@ void Compiler::Build(const Module& module, const std::string& code) {
       [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::NVGPUArch) { CompileCudaModule(module, code); },
       [&](common::HygonDCUArchHIP) { CompileHipModule(module, code); },
-      [&](common::HygonDCUArchSYCL) { CompileSyclModule(module, code); });
+      [&](common::HygonDCUArchSYCL) { CompileSyclModule(module, code); },
+      [&](common::CustomDeviceArch) { CINN_NOT_IMPLEMENTED; });
 }
 
 void Compiler::AppendCX86(const Module& module) {
@@ -344,6 +345,7 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
       [&](common::UnknownArch) -> std::string { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) -> std::string { CINN_NOT_IMPLEMENTED; },
       [&](common::ARMArch) -> std::string { CINN_NOT_IMPLEMENTED; },
+      [&](common::CustomDeviceArch) -> std::string { CINN_NOT_IMPLEMENTED; },
       [&](common::NVGPUArch) -> std::string {
 #ifdef CINN_WITH_CUDA
         auto _host_module_device_module_ =
@@ -390,6 +392,7 @@ void Compiler::BuildDefault(const Module& module) {
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) { CompileX86Module(module); },
       [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::CustomDeviceArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::NVGPUArch) { CompileCudaModule(module); },
       [&](common::HygonDCUArchHIP) { CompileHipModule(module); },
       [&](common::HygonDCUArchSYCL) { CompileSyclModule(module); });
@@ -418,6 +421,7 @@ void Compiler::RegisterDeviceModuleSymbol() {
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) { return; },
       [&](common::ARMArch) { return; },
+      [&](common::CustomDeviceArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::NVGPUArch) { RegisterCudaModuleSymbol(); },
       [&](common::HygonDCUArchHIP) { RegisterHipModuleSymbol(); },
       [&](common::HygonDCUArchSYCL) { RegisterSyclModuleSymbol(); });
