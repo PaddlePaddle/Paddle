@@ -605,14 +605,17 @@ static inline int GetVectorizedSizeWithAddress(const DenseTensor *tensor) {
 
 static int GetVectorizedSizeForTensors(
     const std::vector<const DenseTensor *> &ins,
-    const std::vector<DenseTensor *> &outs) {
+    const std::vector<DenseTensor *> &outs,
+    bool only_consider_outs_dtype = false) {
 #ifdef PADDLE_WITH_XPU_KP
   int vec_size = 256;
 #else
   constexpr int max_vec_size = 8;
   int vec_size = 1;
-  for (size_t i = 0; i < ins.size(); ++i) {
-    vec_size = std::max(vec_size, GetVectorizedSizeWithDtype(ins[i]));
+  if (!only_consider_outs_dtype) {
+    for (size_t i = 0; i < ins.size(); ++i) {
+      vec_size = std::max(vec_size, GetVectorizedSizeWithDtype(ins[i]));
+    }
   }
   for (size_t i = 0; i < outs.size(); ++i) {
     vec_size = std::max(vec_size, GetVectorizedSizeWithDtype(outs[i]));

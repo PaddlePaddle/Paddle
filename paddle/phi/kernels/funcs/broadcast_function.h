@@ -532,16 +532,28 @@ BroadcastKernelForDifferentVecSize(const KPDevice &dev_ctx,
                                    std::vector<DenseTensor *> *outs,
                                    int axis,
                                    Functor func) {
+  auto classifier =
+      BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts>(ins, outs, axis);
 #ifdef PADDLE_WITH_XPU_KP
   auto type = kps::details::OptType::CanNotOptimize;
   bool is_optimize = classifier.configs[0].cmp_type != type;
   int vec_size = is_optimize ? VecSizeL : VecSizeM;
 #else
-  // Calculate the max vec_size for all ins and outs.
-  int vec_size = GetVectorizedSizeForTensors(ins, *outs);
+  static int capability = dev_ctx.GetComputeCapability();
+  // For Hopper and Blackwell, max vectorized size is VecSizeL(8).
+  static int max_vec_size = capability >= 90 ? VecSizeVL : VecSizeL;
+  // calculate the max vec_size for all ins and outs
+  int vec_size = GetVectorizedSizeForTensors(ins, *outs, true);
+  vec_size = std::min(vec_size, max_vec_size);
+  int64_t numel = classifier.numel;
+  // For small tensor, using VecSizeL can improve performance more than
+  // VecSizeVL
+  constexpr int64_t large_vect_threshold = 1024 * 1024 * 4;
+  if (numel < large_vect_threshold) {
+    vec_size = std::min(vec_size, VecSizeL);
+  }
 #endif
-  auto classifier =
-      BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts>(ins, outs, axis);
+
   switch (vec_size) {
     case VecSizeVL: {
       LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeVL>(
