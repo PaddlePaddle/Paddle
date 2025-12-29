@@ -44,10 +44,24 @@ jobs:
           AUTHORIZED_REVIEWERS=("YqGe585" "yongqiangma")
           REVIEWER_REGEX=$(IFS="|"; echo "${AUTHORIZED_REVIEWERS[*]}")
 
+          echo "=== GitHub API Debug Info ==="
+          echo "Repository: ${{ github.repository }}"
+          echo "PR Number: ${{ github.event.pull_request.number }}"
+          echo "GitHub Token length: ${#GITHUB_TOKEN}"
+          echo "Proxy settings: https_proxy=$https_proxy, http_proxy=$http_proxy"
+          echo "Testing GitHub API connectivity..."
+          curl -v -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews" 2>&1 | head -20
+          echo "=== End Debug Info ==="
+
           response=$(curl -s \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews")
+
+          echo "Response received: $response"
+          echo "Response length: ${#response}"
 
           can_skip=false
 
