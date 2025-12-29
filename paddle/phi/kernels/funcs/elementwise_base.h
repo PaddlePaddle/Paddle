@@ -837,7 +837,7 @@ ElementwiseKernelForDifferentVecSize(
     Functor func) {
   static int capability = dev_ctx.GetComputeCapability();
   // For Hopper and Blackwell, max vectorized size is 8.
-  static int max_vec_size = capability >= 90 ? 8 : 4;
+  static int max_vec_size = capability >= 90 ? VecSizeVL : VecSizeL;
   // calculate the max vec_size for all ins and outs
   int vec_size = GetVectorizedSizeForTensors(ins, *outs);
   vec_size = std::min(vec_size, max_vec_size);
