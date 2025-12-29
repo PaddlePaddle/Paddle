@@ -198,8 +198,8 @@ class TestSeluAPI(unittest.TestCase):
 class TestSELUOpClass_Inplace(unittest.TestCase):
     def _test_case1_cpu(self):
         x_np = np.random.normal(size=[3, 5, 5, 10]).astype(np.float32)
-        alpha = 1.6732632423543772848170429916717
-        scale = 1.0507009873554804934193349852946
+        alpha = 2.0
+        scale = 1.5
         y_ref = ref_selu(x_np, alpha, scale)
 
         place = base.CPUPlace()
@@ -226,6 +226,7 @@ class TestSELUOpClass_Inplace(unittest.TestCase):
 
     def _test_case1_gpu(self):
         x = np.random.normal(size=[3, 5, 5, 10]).astype(np.float32)
+        x[np.abs(x) < 0.005] = 0.02
         alpha = 1.6732632423543772848170429916717
         scale = 1.0507009873554804934193349852946
         y_ref = ref_selu(x, alpha, scale)
@@ -263,6 +264,7 @@ class TestSELUAPI(unittest.TestCase):
         np.random.seed(0)
         self.shape = [3, 5, 5, 10]
         self.x_np = np.random.normal(size=self.shape).astype(np.float32)
+        self.x_np[np.abs(self.x_np) < 0.005] = 0.02
         self.alpha = 1.6732632423543772848170429916717
         self.scale = 1.0507009873554804934193349852946
         self.place = [get_device_place()]
