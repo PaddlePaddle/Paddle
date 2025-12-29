@@ -20,7 +20,7 @@
 
 namespace phi {
 
-template <typename T, phi::DataLayout layout, bool HasBias>
+template <typename T, DataLayout layout, bool HasBias>
 __global__ static inline void KeAffineChannelCUDA(const T* x,
                                                   const T* scale,
                                                   const T* bias,
@@ -33,7 +33,7 @@ __global__ static inline void KeAffineChannelCUDA(const T* x,
       static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
   for (int64_t i = gid; i < num; i += stride) {
-    const int c = layout == phi::DataLayout::NCHW ? i / HxW % C : i % C;
+    const int c = layout == DataLayout::NCHW ? i / HxW % C : i % C;
     if (HasBias) {
       y[i] = scale[c] * x[i] + bias[c];
     } else {
@@ -56,12 +56,12 @@ void AffineChannelCUDAKernel(const Context& dev_ctx,
   auto* y = out;
   dev_ctx.template Alloc<T>(y);
 
-  const phi::DataLayout layout = common::StringToDataLayout(data_layout);
+  const DataLayout layout = common::StringToDataLayout(data_layout);
 
   auto dims = x->dims();
   const int64_t num = x->numel();
   int64_t N = dims[0];
-  int64_t C = layout == phi::DataLayout::NCHW ? dims[1] : dims[dims.size() - 1];
+  int64_t C = layout == DataLayout::NCHW ? dims[1] : dims[dims.size() - 1];
   int64_t HxW = num / N / C;
 
   const T* x_d = x->data<T>();
@@ -82,12 +82,12 @@ void AffineChannelCUDAKernel(const Context& dev_ctx,
   // NOTE(large-tensor): KeAffineChannelCUDA function signature uses int for C
   // parameter
   PADDLE_ENFORCE_LE_INT_MAX(C, "C");
-  if (layout == phi::DataLayout::NCHW) {
-    KeAffineChannelCUDA<T, phi::DataLayout::NCHW, true>
+  if (layout == DataLayout::NCHW) {
+    KeAffineChannelCUDA<T, DataLayout::NCHW, true>
         <<<grid, block, 0, dev_ctx.stream()>>>(
             x_d, scale_d, bias_d, static_cast<int>(C), HxW, num, y_d);
   } else {
-    KeAffineChannelCUDA<T, phi::DataLayout::NHWC, true>
+    KeAffineChannelCUDA<T, DataLayout::NHWC, true>
         <<<grid, block, 0, dev_ctx.stream()>>>(
             x_d, scale_d, bias_d, static_cast<int>(C), HxW, num, y_d);
   }

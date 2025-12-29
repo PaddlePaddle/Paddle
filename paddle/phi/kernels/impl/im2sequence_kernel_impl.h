@@ -50,8 +50,7 @@ void Im2SequenceKernel(const Context& dev_ctx,
     const DenseTensor* img_real_size = y.get_ptr();
 
     DenseTensor cpu_shape_tensor;
-    phi::Copy(
-        dev_ctx, *img_real_size, phi::CPUPlace(), true, &cpu_shape_tensor);
+    Copy(dev_ctx, *img_real_size, phi::CPUPlace(), true, &cpu_shape_tensor);
     std::vector<int> img_real_h;
     std::vector<int> img_real_w;
     std::vector<int> output_height;

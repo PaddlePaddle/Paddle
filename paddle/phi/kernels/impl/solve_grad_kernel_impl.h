@@ -106,12 +106,12 @@ void SolveGradKernel(const Context& dev_ctx,
   } else {
     tmp_y.Resize(y.dims());
     dev_ctx.Alloc(&tmp_y, y.dtype());
-    phi::Copy(dev_ctx, y, dev_ctx.GetPlace(), false, &tmp_y);
+    Copy(dev_ctx, y, dev_ctx.GetPlace(), false, &tmp_y);
   }
   DenseTensor tmp_x;
   tmp_x.Resize(x.dims());
   dev_ctx.Alloc(&tmp_x, x.dtype());
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &tmp_x);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &tmp_x);
 
   std::vector<int64_t> x_broadcast_dims;
   std::vector<int64_t> y_broadcast_dims;
@@ -186,7 +186,7 @@ void SolveGradKernel(const Context& dev_ctx,
     dy_help.Resize(tmp_dy.dims());
     dev_ctx.Alloc(&dy_help, tmp_dy.dtype());
 
-    phi::Copy(dev_ctx, tmp_dy, dev_ctx.GetPlace(), false, &dy_help);
+    Copy(dev_ctx, tmp_dy, dev_ctx.GetPlace(), false, &dy_help);
 
     // get dims
     std::vector<std::int64_t> x_dims = common::vectorize(x.dims());
@@ -231,14 +231,14 @@ void SolveGradKernel(const Context& dev_ctx,
       dy->Resize(y.dims());
     }
   } else {
-    phi::Copy(dev_ctx, tmp_dy, dev_ctx.GetPlace(), false, dy);
+    Copy(dev_ctx, tmp_dy, dev_ctx.GetPlace(), false, dy);
   }
 
   if (x.dims() != tmp_dx.dims()) {
     DenseTensor dx_help;
     dx_help.Resize(tmp_dx.dims());
     dev_ctx.Alloc(&dx_help, tmp_dx.dtype());
-    phi::Copy(dev_ctx, tmp_dx, dev_ctx.GetPlace(), false, &dx_help);
+    Copy(dev_ctx, tmp_dx, dev_ctx.GetPlace(), false, &dx_help);
     // get dims
     std::vector<std::int64_t> x_dims = common::vectorize(x.dims());
     std::vector<std::int64_t> y_dims = common::vectorize(y.dims());
@@ -278,7 +278,7 @@ void SolveGradKernel(const Context& dev_ctx,
       dx->Resize(x.dims());
     }
   } else {
-    phi::Copy(dev_ctx, tmp_dx, dev_ctx.GetPlace(), false, dx);
+    Copy(dev_ctx, tmp_dx, dev_ctx.GetPlace(), false, dx);
   }
 }
 
