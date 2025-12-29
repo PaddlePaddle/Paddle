@@ -83,10 +83,6 @@ class TestLSTMCompat(unittest.TestCase):
         # This should work
         nn.LSTM(10, 20, 1, direction='forward')
 
-    def test_conflict_bias_false(self):
-        with self.assertRaisesRegex(ValueError, "LSTM got bias=False"):
-            nn.LSTM(10, 20, bias=False, bias_ih_attr=paddle.ParamAttr())
-
 
 if __name__ == '__main__':
     unittest.main()

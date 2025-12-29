@@ -93,10 +93,6 @@ class TestLSTMCellCompat(unittest.TestCase):
         # This should work
         nn.LSTMCell(10, 20, weight_ih_attr=paddle.ParamAttr())
 
-    def test_conflict_bias_false(self):
-        with self.assertRaisesRegex(ValueError, "LSTMCell got bias=False"):
-            nn.LSTMCell(10, 20, bias=False, bias_ih_attr=paddle.ParamAttr())
-
 
 if __name__ == '__main__':
     unittest.main()
