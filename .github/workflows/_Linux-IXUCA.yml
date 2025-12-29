@@ -25,7 +25,7 @@ jobs:
     if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'IXUCA'
+      workflow-name: 'ixuca'
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -40,6 +40,7 @@ jobs:
         id: check-approval
         run: |
           # Check for approval from authorized users
+          export https_proxy=http://oversea-website-proxy.aistudio.public:8888 && export http_proxy=http://oversea-website-proxy.aistudio.public:8888
           AUTHORIZED_REVIEWERS=("YqGe585" "yongqiangma")
           REVIEWER_REGEX=$(IFS="|"; echo "${AUTHORIZED_REVIEWERS[*]}")
 
@@ -108,6 +109,8 @@ jobs:
           tar -zxf PaddleCustomDevice-develop.tar.gz
           mv PaddleCustomDevice-develop PaddleCustomDevice
           cd PaddleCustomDevice
+          export https_proxy=http://oversea-website-proxy.aistudio.public:8888 && export http_proxy=http://oversea-website-proxy.aistudio.public:8888
+          git pull origin develop
           cp -r ../Paddle .
           git add Paddle
           git commit -m "add Paddle to nightly"
