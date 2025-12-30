@@ -1242,12 +1242,12 @@ void FlashMaskV2GradBaseKernel(
         is_varlen_k,
         false,
         common::errors::InvalidArgument(
-            "when nranks > 1, %s is not allowed to be varlen.", name));
+            "when nranks > 1, FlashMask does not support varlen k."));
     PADDLE_ENFORCE_EQ(
         num_heads_k != num_heads,
         true,
         common::errors::InvalidArgument("FlashMask distributed overlap does "
-                                        "not support non-GQA currently."))
+                                        "not support non-GQA currently."));
   }
 
   auto GradTensorCheckSetter = [&](const DenseTensor &t,

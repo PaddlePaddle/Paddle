@@ -2200,8 +2200,9 @@
   output : Tensor(out)
   infer_meta :
     func : FlashMaskGetUniqueIdInferMeta
+    param : []
   kernel :
-    func : full
+    func : flashmask_get_unique_id
     data_type : dtype
     backend : place
   traits : paddle::dialect::ForwardOnlyTrait

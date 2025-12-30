@@ -2204,17 +2204,18 @@ void FlashMaskV2BaseKernel(
     if constexpr (use_distributed_overlap) {
       dynload::flashmaskv2_fwd_params_set_rank(params_handle, rank);
       dynload::flashmaskv2_fwd_params_set_nranks(params_handle, nranks);
-      uint8_t *unique_id_ptr = nullptr;
       if (unique_id_.is_initialized()) {
-        unique_id_ptr = unique_id_.get().data<uint8_t>();
+        dynload::flashmaskv2_fwd_params_set_unique_id_ptr(
+            params_handle, unique_id_.get().data<uint8_t>());
+        VLOG(4) << "FlashMask overlap debug: unique_id_ptr set.";
+      } else {
+        dynload::flashmaskv2_fwd_params_set_unique_id_ptr(params_handle,
+                                                          nullptr);
       }
-      dynload::flashmaskv2_fwd_params_set_unique_id_ptr(params_handle,
-                                                        unique_id_ptr);
 
       // TODO(heqianyue): cp_size and write_ptr are not set by this for now
       VLOG(4) << "FlashMask overlap debug (rank and nranks): " << rank << ", "
-              << nranks
-              << ", unique_id_ptr is null: " << int(unique_id_ptr == nullptr);
+              << nranks;
     }
   } else {
     dynload::flashmaskv2_fwd_params_set_lt_start_ptr(params_handle, nullptr);

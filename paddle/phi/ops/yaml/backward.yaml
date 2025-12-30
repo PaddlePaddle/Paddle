@@ -1261,7 +1261,7 @@
   output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad)
   infer_meta :
     func : FlashMaskV2GradInferMeta
-    param : [q, k, v]
+    param : [q, k, v, nranks]
   kernel :
     func : flashmask_attention_v2_grad
     data_type: q
