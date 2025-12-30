@@ -1596,11 +1596,11 @@ void LinearV2InferMeta(const MetaTensor& input,
       common::flatten_to_2d(input_dims, input_dims.size() - 1);
 
   auto input_rank = input_dims.size();
+  int64_t K_from_input = input_mat_dims[1];
+  int64_t K_from_weight = weight_dims[0];
   const bool check_dim =
       (!config.is_runtime && K_from_input != -1) || config.is_runtime;
   if (check_dim) {
-    int64_t K_from_input = input_mat_dims[1];
-    int64_t K_from_weight = weight_dims[0];
     PADDLE_ENFORCE_EQ(
         K_from_input,
         K_from_weight,
