@@ -54,9 +54,9 @@ void GlobalToSubMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     SetValue(out, in_dense_value);
   } else {
     *(out->unsafe_mutable_value()) =
-        phi::DenseTensor(std::make_shared<phi::Allocation>(
-                             nullptr, 0, phi::distributed::GetDefaultPlace()),
-                         in.value().meta());
+        DenseTensor(std::make_shared<phi::Allocation>(
+                        nullptr, 0, phi::distributed::GetDefaultPlace()),
+                    in.value().meta());
   }
   SetDistProps(out, in.dims(), out_dist_attr);
 }

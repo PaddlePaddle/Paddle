@@ -40,12 +40,11 @@ void AffineChannelGradXPUKernel(const Context& dev_ctx,
   auto* dscale = scale_grad;
   auto* dbias = bias_grad;
 
-  const phi::DataLayout layout = common::StringToDataLayout(data_layout);
+  const DataLayout layout = common::StringToDataLayout(data_layout);
 
   auto dims = x->dims();
   int64_t N = dims[0];
-  int64_t C =
-      (layout == phi::DataLayout::NCHW) ? dims[1] : dims[dims.size() - 1];
+  int64_t C = (layout == DataLayout::NCHW) ? dims[1] : dims[dims.size() - 1];
   int64_t HxW = x->numel() / N / C;
 
   auto* dy_d = dy->data<T>();
@@ -58,7 +57,7 @@ void AffineChannelGradXPUKernel(const Context& dev_ctx,
   std::vector<int64_t> x_shape;
   std::vector<int64_t> b_shape;
   std::vector<int64_t> rdims;
-  if (layout == phi::DataLayout::NCHW) {
+  if (layout == DataLayout::NCHW) {
     x_shape.push_back(N);
     x_shape.push_back(C);
     x_shape.push_back(HxW);

@@ -33,7 +33,7 @@ void LodResetKernel(const Context& dev_ctx,
   auto* in = &x;
   auto* lod_t = y.get_ptr();
 
-  phi::Copy(dev_ctx, *in, in->place(), false, out);
+  Copy(dev_ctx, *in, in->place(), false, out);
 
   std::vector<int> level0;
   if (lod_t) {
@@ -56,7 +56,7 @@ void LodResetKernel(const Context& dev_ctx,
       auto* lod = lod_t->data<int>();
       DenseTensor lod_cpu;
       if (lod_t->place().GetType() == phi::AllocationType::GPU) {
-        phi::Copy(dev_ctx, *lod_t, phi::CPUPlace(), true, &lod_cpu);
+        Copy(dev_ctx, *lod_t, phi::CPUPlace(), true, &lod_cpu);
         lod = lod_cpu.data<int>();
       }
       level0 = std::vector<int>(lod, lod + lod_t->numel());
@@ -121,7 +121,7 @@ void LodResetGradKernel(const Context& dev_ctx,
   auto* d_out = &out_grad;
   auto* d_x = x_grad;
 
-  phi::Copy(dev_ctx, *d_out, d_out->place(), false, d_x);
+  Copy(dev_ctx, *d_out, d_out->place(), false, d_x);
 }
 
 }  // namespace phi

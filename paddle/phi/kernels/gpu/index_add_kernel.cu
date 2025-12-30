@@ -84,15 +84,15 @@ void IndexAddKernel(const Context& dev_ctx,
                     int axis,
                     DenseTensor* output) {
   if (x.numel() == 0) {
-    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
+    Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
     return;
   }
   if (index.numel() == 0) {
-    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
+    Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
     return;
   }
   if (add_value.numel() == 0) {
-    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
+    Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
     return;
   }
   auto input_dim = x.dims();
@@ -115,7 +115,7 @@ void IndexAddKernel(const Context& dev_ctx,
 
   // copy input to output.
   // todo(@limin29): inplace do not need copy.
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
 
   auto index_dim_size = input_dim[dim];
 

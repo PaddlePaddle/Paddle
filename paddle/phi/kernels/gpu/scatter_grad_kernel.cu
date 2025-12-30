@@ -57,7 +57,7 @@ void ScatterGradKernel(const Context &dev_ctx,
                         phi::DataType::INT64));
 
   if (x_grad) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     if (index_type == phi::DataType::INT32) {
       funcs::GPUScatterGradForX<T, int32_t>(dev_ctx, index, x_grad);
     } else {

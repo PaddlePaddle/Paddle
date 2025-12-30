@@ -37,7 +37,7 @@ void MovingAverageAbsMaxScaleKernel(
 
   if (out != nullptr) {
     dev_ctx.template Alloc<T>(out);
-    phi::Copy(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
+    Copy(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
   }
 
   // testing

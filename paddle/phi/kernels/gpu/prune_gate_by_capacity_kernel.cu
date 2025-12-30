@@ -107,8 +107,7 @@ void PruneGateByCapacityKernel(const Context& dev_ctx,
   auto* new_gate_idx_data = dev_ctx.template Alloc<T>(new_gate_idx);
 
   DenseTensor expert_count_out;
-  phi::Copy(
-      dev_ctx, expert_count, dev_ctx.GetPlace(), false, &expert_count_out);
+  Copy(dev_ctx, expert_count, dev_ctx.GetPlace(), false, &expert_count_out);
   PruneGateByCapacityFunctor<Context, T> functor(
       dev_ctx, gate_idx_ptr, &expert_count_out, new_gate_idx_data);
   VisitType(expert_count.type(), functor);
