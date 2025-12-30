@@ -59,40 +59,43 @@ jobs:
 
           can_skip=$(python3 -c '
           import json, sys
-          print("=== Review Check Debug Info ===")
-          print(f"Authorized reviewers: {sys.argv[1:]}")
+
+          def debug(msg):
+              print(msg, file=sys.stderr)
+
+          debug("=== Review Check Debug Info ===")
+          debug(f"Authorized reviewers: {sys.argv[1:]}")
           AUTHORIZED = set(sys.argv[1:])
 
           try:
               input_data = sys.stdin.read()
-              print(f"Raw input data length: {len(input_data)}")
+              debug(f"Raw input data length: {len(input_data)}")
               data = json.loads(input_data)
-              print(f"Parsed {len(data)} reviews")
+              debug(f"Parsed {len(data)} reviews")
           except Exception as e:
-              print(f"JSON parse error: {str(e)}")
+              debug(f"JSON parse error: {str(e)}")
               print("false")
               sys.exit(0)
 
           latest_state = {}
-          print("\n=== Review States ===")
+          debug("\n=== Review States ===")
           for r in data:
               user = r.get("user", {}).get("login")
               if not user:
                   continue
               state = r.get("state")
               latest_state[user] = state
-              print(f"- {user}: {state} (commit: {r.get('commit_id','')[:8]})")
+              debug(f"- {user}: {state} (commit: {r.get('commit_id','')[:8]})")
 
-          print("\n=== Final Check ===")
+          debug("\n=== Final Check ===")
           for user, state in latest_state.items():
               if user in AUTHORIZED and state == "APPROVED":
-                  print(f"Found APPROVED review from authorized user: {user}")
+                  debug(f"Found APPROVED review from authorized user: {user}")
                   print("true")
                   sys.exit(0)
 
-          print("No APPROVED review found from authorized users")
+          debug("No APPROVED review found from authorized users")
           print("false")
-          print("=== End Debug Info ===")
           ' "${AUTHORIZED_REVIEWERS[@]}" <<< "$response")
 
           echo "can-skip=$can_skip" >> "$GITHUB_OUTPUT"
