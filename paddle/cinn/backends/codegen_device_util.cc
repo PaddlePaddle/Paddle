@@ -261,9 +261,8 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
       },
       [&](common::CustomDeviceArch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
-        CINN_NOT_IMPLEMENTED;
-    // shared_mem_bytes =
-    // phi::DeviceManager::GetDeviceProperties().sharedMemPerBlock;
+        CINN_NOT_IMPLEMENTED
+    // shared_mem_bytes = CalculateSharedMemory(func);
 #endif
       });
 
@@ -291,7 +290,11 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
       [&](common::HygonDCUArchSYCL) {
         call_kernel = runtime::intrinsic::call_sycl_kernel;
       },
-      [&](common::CustomDeviceArch) { CINN_NOT_IMPLEMENTED; });
+      [&](common::CustomDeviceArch) {
+        call_kernel = RequiresCooperativeLaunch(func)
+                          ? runtime::intrinsic::call_cuda_cooperative_kernel
+                          : runtime::intrinsic::call_cuda_kernel;
+      });
   // TODO(Dmovic): use new ir when backend update done.
   // Author(liujinnan): Copy args instead of use func args directly in host
   // func. because after longlong2int pass, some type of loweredfunc args may be

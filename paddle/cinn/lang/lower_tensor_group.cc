@@ -246,6 +246,12 @@ std::vector<BlockRef> LowerTensorGroup::GenerateFunctionBody(
               bodies.clear();
             }
           },
+          [&](common::CustomDeviceArch) {
+            if (!gpu_local) {
+              result.push_back(BlockRef(bodies));
+              bodies.clear();
+            }
+          },
           [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
             if (!gpu_local) {
               result.push_back(BlockRef(bodies));
@@ -254,8 +260,7 @@ std::vector<BlockRef> LowerTensorGroup::GenerateFunctionBody(
           },
           [&](std::variant<common::UnknownArch,
                            common::X86Arch,
-                           common::ARMArch,
-                           common::CustomDeviceArch>) {});
+                           common::ARMArch>) {});
     }
   }
 

@@ -619,6 +619,13 @@ struct C_DeviceInterface {
                                         size_t* threads_per_block);
 
   /**
+   * @brief Get Max Shared Mem Per Block
+   *
+   * @param[size_t*]    shared_mem_per_block
+   */
+  C_Status (*get_max_shared_mem_per_block)(const C_Device device,
+                                           size_t* shared_mem_per_block);
+  /**
    * @brief Get Max Block Per MultiProcessor
    *
    * @param[size_t*]    blocks_per_mp
@@ -633,6 +640,13 @@ struct C_DeviceInterface {
   C_Status (*get_max_grid_dim_size)(const C_Device device,
                                     std::array<unsigned int, 3>* grid_dim_size);
 
+  /**
+   * @brief Get Max Block Dim Size
+   *
+   * @param[std::array<unsigned int, 3>*]    block_dim_size
+   */
+  C_Status (*get_max_block_dim_size)(
+      const C_Device device, std::array<unsigned int, 3>* block_dim_size);
   /**
    * @brief Is float16 supported
    *

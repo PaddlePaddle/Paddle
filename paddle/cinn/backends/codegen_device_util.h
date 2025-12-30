@@ -126,8 +126,15 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
     cinn::common::DefaultDeviceTarget().arch.Match(
         [&](std::variant<common::UnknownArch,
                          common::X86Arch,
-                         common::ARMArch,
-                         common::CustomDeviceArch>) { CINN_NOT_IMPLEMENTED; },
+                         common::ARMArch>) { CINN_NOT_IMPLEMENTED; },
+        [&](common::CustomDeviceArch) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+          CINN_NOT_IMPLEMENTED;
+      // CodeGenCudaDev codegen_dev(cinn::common::DefaultNVGPUTarget());
+      // codegen_dev.Compile(ir::LoweredFunc(func));
+      // shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+#endif
+        },
         [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
           CodeGenCudaDev codegen_dev(cinn::common::DefaultNVGPUTarget());
@@ -165,8 +172,10 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
     cinn::common::DefaultDeviceTarget().arch.Match(
         [&](std::variant<common::UnknownArch,
                          common::X86Arch,
-                         common::ARMArch,
-                         common::CustomDeviceArch>) { CINN_NOT_IMPLEMENTED; },
+                         common::ARMArch>) { CINN_NOT_IMPLEMENTED; },
+        [&](common::CustomDeviceArch) {
+          call_kernel = runtime::intrinsic::call_cuda_kernel;
+        },
         [&](common::NVGPUArch) {
           call_kernel = runtime::intrinsic::call_cuda_kernel;
         },

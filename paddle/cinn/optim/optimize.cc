@@ -105,6 +105,28 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
         VLOG(10) << "After Optimize TransBufferWithDynamicShape:" << copied;
 #endif
       },
+      [&](common::CustomDeviceArch) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+        ir::SetCudaAxisInfo(copied);
+        if (remove_gpu_for_loops) {
+          VLOG(4) << "Before removing GPU for loops:\n" << copied;
+          FuncPassManager func_pass_manager;
+          func_pass_manager.AddPass(CreateRemoveGpuForLoopsPass());
+          func_pass_manager.Run(copied);
+          VLOG(4) << "After removing GPU for loops:\n" << copied;
+        }
+        VLOG(10) << "Before Optimize CudaSyncThreadsDropIfThenElse:" << copied;
+        BlockPassManager blk_pass_manager;
+        blk_pass_manager.AddPass(CreateCudaSyncThreadsDropIfThenElsePass());
+        blk_pass_manager.Run(copied->body_block);
+        VLOG(10) << "After Optimize CudaSyncThreadsDropIfThenElse:" << copied;
+        FuncPassManager func_pass_manager;
+        VLOG(10) << "Before Optimize TransBufferWithDynamicShape:" << copied;
+        func_pass_manager.AddPass(CreateTransBufferWithDynamicShapePass());
+        func_pass_manager.Run(copied);
+        VLOG(10) << "After Optimize TransBufferWithDynamicShape:" << copied;
+#endif
+      },
       [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
 #if defined(PADDLE_WITH_SYCL) || defined(PADDLE_WITH_HIP)
         ir::SetCudaAxisInfo(copied);
@@ -127,10 +149,8 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
         VLOG(10) << "After Optimize TransBufferWithDynamicShape:" << copied;
 #endif
       },
-      [&](std::variant<common::UnknownArch,
-                       common::X86Arch,
-                       common::ARMArch,
-                       common::CustomDeviceArch>) {});
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      });
 
   SimplifyUnitBlock(&copied->body);
   VLOG(4) << "After SimplifyUnitBlock:" << copied;
@@ -163,16 +183,20 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
         func_pass_manager.Run(copied);
         VLOG(4) << "After Optimize RearrangeLoadInstruction:" << copied;
       },
+      [&](common::CustomDeviceArch) {
+        FuncPassManager func_pass_manager;
+        func_pass_manager.AddPass(CreateRearrangeLoadInstructionPass());
+        func_pass_manager.Run(copied);
+        VLOG(4) << "After Optimize RearrangeLoadInstruction:" << copied;
+      },
       [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
         FuncPassManager func_pass_manager;
         func_pass_manager.AddPass(CreateRearrangeLoadInstructionPass());
         func_pass_manager.Run(copied);
         VLOG(4) << "After Optimize RearrangeLoadInstruction:" << copied;
       },
-      [&](std::variant<common::UnknownArch,
-                       common::X86Arch,
-                       common::ARMArch,
-                       common::CustomDeviceArch>) {});
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      });
 
   VectorizeForTrans(&copied->body);
   VLOG(10) << "After Optimize vectorize" << copied;

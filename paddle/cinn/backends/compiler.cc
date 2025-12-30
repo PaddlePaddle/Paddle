@@ -254,7 +254,9 @@ void Compiler::Build(const Module& module, const std::string& code) {
       [&](common::NVGPUArch) { CompileCudaModule(module, code); },
       [&](common::HygonDCUArchHIP) { CompileHipModule(module, code); },
       [&](common::HygonDCUArchSYCL) { CompileSyclModule(module, code); },
-      [&](common::CustomDeviceArch) { CINN_NOT_IMPLEMENTED; });
+      [&](common::CustomDeviceArch) {
+        CompileCudaModule(module, code);
+      });  // TODO(yuhan): support custom device arch
 }
 
 void Compiler::AppendCX86(const Module& module) {
@@ -345,7 +347,20 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
       [&](common::UnknownArch) -> std::string { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) -> std::string { CINN_NOT_IMPLEMENTED; },
       [&](common::ARMArch) -> std::string { CINN_NOT_IMPLEMENTED; },
-      [&](common::CustomDeviceArch) -> std::string { CINN_NOT_IMPLEMENTED; },
+      [&](common::CustomDeviceArch) -> std::string {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+        CINN_NOT_IMPLEMENTED;
+    // auto _host_module_device_module_ =
+    //     SplitDeviceAndHostModule(module);  // NOLINT
+    // auto& host_module = std::get<0>(_host_module_device_module_);
+    // auto& device_module = std::get<1>(_host_module_device_module_);
+    // CodeGenCudaDev codegen(target_);
+    // auto source_code = codegen.Compile(device_module);
+    // return source_code;
+#else
+        CINN_NOT_IMPLEMENTED
+#endif
+      },
       [&](common::NVGPUArch) -> std::string {
 #ifdef CINN_WITH_CUDA
         auto _host_module_device_module_ =
@@ -392,7 +407,7 @@ void Compiler::BuildDefault(const Module& module) {
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) { CompileX86Module(module); },
       [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::CustomDeviceArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::CustomDeviceArch) { CompileCudaModule(module); },
       [&](common::NVGPUArch) { CompileCudaModule(module); },
       [&](common::HygonDCUArchHIP) { CompileHipModule(module); },
       [&](common::HygonDCUArchSYCL) { CompileSyclModule(module); });
@@ -421,7 +436,7 @@ void Compiler::RegisterDeviceModuleSymbol() {
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) { return; },
       [&](common::ARMArch) { return; },
-      [&](common::CustomDeviceArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::CustomDeviceArch) { RegisterCudaModuleSymbol(); },
       [&](common::NVGPUArch) { RegisterCudaModuleSymbol(); },
       [&](common::HygonDCUArchHIP) { RegisterHipModuleSymbol(); },
       [&](common::HygonDCUArchSYCL) { RegisterSyclModuleSymbol(); });

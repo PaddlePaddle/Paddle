@@ -292,13 +292,13 @@ std::vector<ir::LoweredFunc> LowerToAstVec(
   for (auto& res : result) {
     target.arch.Match(
         [&](common::NVGPUArch) { res->device_api = ir::DeviceAPI::GPU; },
+        [&](common::CustomDeviceArch) { res->device_api = ir::DeviceAPI::GPU; },
         [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
           res->device_api = ir::DeviceAPI::GPU;
         },
         [&](std::variant<common::UnknownArch,
                          common::X86Arch,
-                         common::ARMArch,
-                         common::CustomDeviceArch>) {});
+                         common::ARMArch>) {});
   }
   return result;
 }

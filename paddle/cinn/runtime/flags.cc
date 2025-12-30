@@ -368,16 +368,22 @@ void CheckCompileOptionImpl(cinn::common::ARMArch) {
   // Do nothing.
 }
 
-void CheckCompileOptionImpl(cinn::common::CustomDeviceArch) {
-  // Do nothing.
-}
-
 void CheckCompileOptionImpl(cinn::common::NVGPUArch) {
 #if defined(CINN_WITH_CUDNN)
   // Do nothing;
 #else
   PADDLE_THROW(::common::errors::Fatal(
       "Current CINN version does not support NVGPU, please try to "
+      "recompile with -DWITH_CUDA."));
+#endif
+}
+
+void CheckCompileOptionImpl(cinn::common::CustomDeviceArch) {
+#if defined(CINN_WITH_CUDNN)
+  // Do nothing;
+#else
+  PADDLE_THROW(::common::errors::Fatal(
+      "Current CINN version does not support CustomDevice, please try to "
       "recompile with -DWITH_CUDA."));
 #endif
 }

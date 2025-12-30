@@ -65,7 +65,8 @@ class CodeGenGpuHost : public CodeGenHost {
           }
         },
         [&](common::CustomDeviceArch) {
-          if (op->name == runtime::intrinsic::call_sycl_kernel) {
+          if (op->name == runtime::intrinsic::call_cuda_kernel ||
+              op->name == runtime::intrinsic::call_cuda_cooperative_kernel) {
             return LowerGPUKernelCall(op);
           } else {
             return CodeGenHost::Visit(op);
