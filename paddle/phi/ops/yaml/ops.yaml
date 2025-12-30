@@ -3189,6 +3189,7 @@
     func : linear_v2
     data_type : input
   backward : linear_v2_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : linspace
   args : (Tensor start, Tensor stop, Tensor number, DataType dtype, Place place)
