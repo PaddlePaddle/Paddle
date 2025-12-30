@@ -68,6 +68,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'FusedGateAttentionGradInferMeta',
     'ResnetBasicBlockInferMeta',
     'ResnetBasicBlockGradInferMeta',
+    'LinearV2InferMeta',
     # multiary.h
     'AddNInferMeta',
     'ApVariadicInferMeta',
