@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -31,8 +31,6 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle.base.core import task
     from paddle.distributed.communication.group import Group
-
-    _T = TypeVar("_T")
 
 
 def all_gather(
@@ -84,9 +82,7 @@ def all_gather(
     return stream.all_gather(tensor_list, tensor, group, sync_op)
 
 
-def all_gather_object(
-    object_list: list[_T], obj: _T, group: Group = None
-) -> None:
+def all_gather_object(object_list: list, obj, group: Group = None) -> None:
     """
 
     Gather picklable objects from all participators and all get the result. Similar to all_gather(), but python object can be passed in.
@@ -110,7 +106,7 @@ def all_gather_object(
             >>> import paddle.distributed as dist
 
             >>> dist.init_parallel_env()
-            >>> object_list = [] # type: ignore
+            >>> object_list = [None for _ in dist.get_world_size()] # type: ignore
             >>> if dist.get_rank() == 0:
             ...     obj = {"foo": [1, 2, 3]}
             >>> else:
@@ -140,6 +136,11 @@ def all_gather_object(
     tensor_list = []
     all_gather(tensor_list, input_tensor, group)
     for i, tensor in enumerate(tensor_list):
-        object_list.append(
-            convert_tensor_to_object(tensor, list_len_of_tensor[i])
-        )
+        if len(object_list) == 0:
+            object_list.append(
+                convert_tensor_to_object(tensor, list_len_of_tensor[i])
+            )
+        else:
+            object_list[i] = convert_tensor_to_object(
+                tensor, list_len_of_tensor[i]
+            )
