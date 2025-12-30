@@ -39,48 +39,112 @@ jobs:
       - name: Check approval
         id: check-approval
         run: |
-          # Check for approval from authorized users
-          export https_proxy=http://oversea-website-proxy.aistudio.public:8888 && export http_proxy=http://oversea-website-proxy.aistudio.public:8888
-          AUTHORIZED_REVIEWERS=("YqGe585" "yongqiangma")
-          REVIEWER_REGEX=$(IFS="|"; echo "${AUTHORIZED_REVIEWERS[*]}")
+          set -euo pipefail
 
-          echo "=== GitHub API Debug Info ==="
+          export https_proxy=http://oversea-website-proxy.aistudio.public:8888
+          export http_proxy=http://oversea-website-proxy.aistudio.public:8888
+
+          AUTHORIZED_REVIEWERS=("YqGe585" "yongqiangma")
+
+          echo "Authorized reviewers: ${AUTHORIZED_REVIEWERS[*]}"
           echo "Repository: ${{ github.repository }}"
-          echo "PR Number: ${{ github.event.pull_request.number }}"
-          echo "GitHub Token length: ${#GITHUB_TOKEN}"
-          echo "Proxy settings: https_proxy=$https_proxy, http_proxy=$http_proxy"
-          echo "Testing GitHub API connectivity..."
-          curl -v -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews" 2>&1 | head -20
-          echo "=== End Debug Info ==="
+          echo "PR number: ${{ github.event.pull_request.number }}"
 
           response=$(curl -s \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews")
 
-          echo "Response received: $response"
           echo "Response length: ${#response}"
 
-          can_skip=false
+          can_skip=$(python3 - << 'EOF'
+          import json, sys
+          print("=== Review Check Debug Info ===")
+          print(f"Authorized reviewers: {sys.argv[1:]}")
+          AUTHORIZED = set(sys.argv[1:])
 
-          if echo "$response" | jq -e . >/dev/null 2>&1; then
-            if echo "$response" | jq -e \
-              ".[]
-              | select(.state == \"APPROVED\")
-              | select(.user.login | test(\"^(${REVIEWER_REGEX})$\"))" \
-              > /dev/null 2>&1; then
-              can_skip=true
-              echo "Found approval from authorized reviewer, skipping IXUCA CI"
-            else
-              echo "No approval from authorized reviewer found"
-            fi
+          try:
+              input_data = sys.stdin.read()
+              print(f"Raw input data length: {len(input_data)}")
+              data = json.loads(input_data)
+              print(f"Parsed {len(data)} reviews")
+          except Exception as e:
+              print(f"JSON parse error: {str(e)}")
+              print("false")
+              sys.exit(0)
+
+          latest_state = {}
+          print("\n=== Review States ===")
+          for r in data:
+              user = r.get("user", {}).get("login")
+              if not user:
+                  continue
+              state = r.get("state")
+              latest_state[user] = state
+              print(f"- {user}: {state} (commit: {r.get('commit_id','')[:8]})")
+
+          print("\n=== Final Check ===")
+          for user, state in latest_state.items():
+              if user in AUTHORIZED and state == "APPROVED":
+                  print(f"Found APPROVED review from authorized user: {user}")
+                  print("true")
+                  sys.exit(0)
+
+          print("No APPROVED review found from authorized users")
+          print("false")
+          print("=== End Debug Info ===")
+          EOF \
+          "${AUTHORIZED_REVIEWERS[@]}" <<< "$response")
+
+          echo "can-skip=$can_skip" >> "$GITHUB_OUTPUT"
+
+          if [ "$can_skip" = "true" ]; then
+            echo "Found valid approval from authorized reviewer, skipping IXUCA CI"
           else
-            echo "Failed to parse GitHub API response"
+            echo "No valid approval found, running full CI"
           fi
+          # # Check for approval from authorized users
+          # export https_proxy=http://oversea-website-proxy.aistudio.public:8888 && export http_proxy=http://oversea-website-proxy.aistudio.public:8888
+          # AUTHORIZED_REVIEWERS=("YqGe585" "yongqiangma")
+          # REVIEWER_REGEX=$(IFS="|"; echo "${AUTHORIZED_REVIEWERS[*]}")
 
-          echo "can-skip=$can_skip" >> $GITHUB_OUTPUT
+          # echo "=== GitHub API Debug Info ==="
+          # echo "Repository: ${{ github.repository }}"
+          # echo "PR Number: ${{ github.event.pull_request.number }}"
+          # echo "GitHub Token length: ${#GITHUB_TOKEN}"
+          # echo "Proxy settings: https_proxy=$https_proxy, http_proxy=$http_proxy"
+          # echo "Testing GitHub API connectivity..."
+          # curl -v -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          #   -H "Accept: application/vnd.github.v3+json" \
+          #   "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews" 2>&1 | head -20
+          # echo "=== End Debug Info ==="
+
+          # response=$(curl -s \
+          #   -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          #   -H "Accept: application/vnd.github.v3+json" \
+          #   "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews")
+
+          # echo "Response received: $response"
+          # echo "Response length: ${#response}"
+
+          # can_skip=false
+
+          # if echo "$response" | jq -e . >/dev/null 2>&1; then
+          #   if echo "$response" | jq -e \
+          #     ".[]
+          #     | select(.state == \"APPROVED\")
+          #     | select(.user.login | test(\"^(${REVIEWER_REGEX})$\"))" \
+          #     > /dev/null 2>&1; then
+          #     can_skip=true
+          #     echo "Found approval from authorized reviewer, skipping IXUCA CI"
+          #   else
+          #     echo "No approval from authorized reviewer found"
+          #   fi
+          # else
+          #   echo "Failed to parse GitHub API response"
+          # fi
+
+          # echo "can-skip=$can_skip" >> $GITHUB_OUTPUT
 
       - name: Download paddle.tar.gz and update test branch
         if: steps.check-bypass.outputs.can-skip != 'true'
@@ -124,7 +188,6 @@ jobs:
           tar -zxf PaddleCustomDevice-develop.tar.gz
           mv PaddleCustomDevice-develop PaddleCustomDevice
           cd PaddleCustomDevice
-          export https_proxy=http://oversea-website-proxy.aistudio.public:8888 && export http_proxy=http://oversea-website-proxy.aistudio.public:8888
           git pull origin develop
           cp -r ../Paddle .
           git add Paddle
@@ -144,7 +207,6 @@ jobs:
           PADDLE_BRANCH: ${{ github.event.pull_request.base.ref }}
 
         run: |
-          # echo ${ASCEND_RT_VISIBLE_DEVICES}
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker run --network host --privileged --cap-add=ALL --pid=host --shm-size=128G -d -t --name ${container_name} \
