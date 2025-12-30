@@ -17,6 +17,7 @@ from types import MethodType
 
 import paddle
 import paddle.distributed as dist
+from paddle.autograd import PyLayer
 
 from .auto_dp_utils import in_auto_dp_mode
 from .sharding import get_placement_with_sharding
@@ -72,10 +73,11 @@ class FullyShardAuto:
         for param in self.model.parameters():
             param._need_shard_auto = True
             self._shard_fn._shard_parameter(param)
-            if not in_auto_dp_mode():
+            if in_auto_dp_mode():
+                self._register_comm_hook(model)
+            else:
                 self._shard_fn._register_hook_for_param_grad(param)
         os.environ["skip_sharding3_output_reshard"] = "1"
-        self._register_comm_hook(model)
 
     def _register_comm_hook(self, model):
         def _pre_forward_hook(sublayers):
@@ -98,8 +100,6 @@ class FullyShardAuto:
             @paddle.autograd.no_grad()
             def shard_comm(*_):
                 for key, param in sublayers._parameters.items():
-                    if param.name.startswith('embedding'):
-                        continue
                     if param.trainable:
                         new_placements = get_placement_with_sharding(param, 0)
                         shard_param = dist.reshard(
@@ -110,17 +110,6 @@ class FullyShardAuto:
                         )
 
             return shard_comm
-
-        def _pre_backward_hook(param):
-            @paddle.autograd.no_grad()
-            def gather_comm(*_):
-                new_placements = [dist.Replicate() for _ in param.placements]
-                replicte_param = dist.reshard(
-                    param, param.process_mesh, new_placements
-                )
-                param.get_tensor()._share_data_with(replicte_param.get_tensor())
-
-            return gather_comm
 
         def _post_backward_hook(param):
             def shard_comm(grad):
@@ -144,5 +133,39 @@ class FullyShardAuto:
         # register backward hooks
         for param in model.parameters():
             if param.trainable:
-                param._register_backward_hook(_pre_backward_hook(param))
                 _post_backward_hook(param)
+
+        # register layer hooks for param sync in tie weights
+        self._register_layer_hooks(model)
+
+    def _register_layer_hooks(self, layer, name="last_layer"):
+        def _forward_post_hook(layer, inputs, outputs):
+            return LayerHook.apply(
+                outputs,
+                layer=layer,
+            )
+
+        if layer.parameters(include_sublayers=False):
+            layer.register_forward_post_hook(_forward_post_hook)
+        for name, sub_layer in layer.named_children():
+            self._register_layer_hooks(sub_layer, name)
+
+
+class LayerHook(PyLayer):
+    @staticmethod
+    def forward(ctx, inputs, layer):
+        ctx.layer = layer
+        return inputs
+
+    @staticmethod
+    def backward(ctx, *args):
+        layer = ctx.layer
+        for param in layer.parameters(include_sublayers=False):
+            if not param.trainable:
+                continue
+            new_placements = [dist.Replicate() for _ in param.placements]
+            replicte_param = dist.reshard(
+                param, param.process_mesh, new_placements
+            )
+            param.get_tensor()._share_data_with(replicte_param.get_tensor())
+        return args
