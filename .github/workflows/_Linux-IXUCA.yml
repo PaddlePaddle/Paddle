@@ -85,7 +85,7 @@ jobs:
                   continue
               state = r.get("state")
               latest_state[user] = state
-              debug(f"- {user}: {state} (commit: {r.get('commit_id','')[:8]})")
+              debug(f"- {user}: {state} (commit: {(r.get('commit_id') or '')[:8]})")
 
           debug("\n=== Final Check ===")
           for user, state in latest_state.items():
