@@ -27,6 +27,19 @@
 // NOTE(@xiongkun): use of IsComplex<>
 #include "paddle/phi/core/utils/data_type.h"
 
+#include "paddle/phi/kernels/compare_kernel.h"
+#include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/cum_kernel.h"
+#include "paddle/phi/kernels/elementwise_divide_kernel.h"
+#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
+#include "paddle/phi/kernels/flip_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/reduce_any_kernel.h"
+
+#include "paddle/common/flags.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
+
 namespace phi {
 
 template <typename T>
@@ -148,6 +161,123 @@ struct FillFirstZeroPositionGradFunctor {
 };
 
 template <typename T, typename Context>
+void ReversedCumsum(const Context &dev_ctx,
+                    const DenseTensor &input,
+                    int dim,
+                    DenseTensor *output) {
+  DenseTensor flipped_input;
+  flipped_input.Resize(input.dims());
+  dev_ctx.template Alloc<T>(&flipped_input);
+  std::vector<int> axis = {dim};
+  phi::FlipKernel<T, Context>(dev_ctx, input, axis, &flipped_input);
+
+  DenseTensor cumsum_out;
+  cumsum_out.Resize(input.dims());
+  dev_ctx.template Alloc<T>(&cumsum_out);
+  phi::CumsumKernel<T, Context>(
+      dev_ctx, flipped_input, dim, false, false, false, &cumsum_out);
+
+  phi::FlipKernel<T, Context>(dev_ctx, cumsum_out, axis, output);
+}
+
+template <typename T, typename Context>
+bool CumprodGradCompatible(const Context &dev_ctx,
+                           const DenseTensor &x,
+                           const DenseTensor &out,
+                           const DenseTensor &dout,
+                           int dim,
+                           DenseTensor *dx) {
+  auto x_dims = x.dims();
+  int wrap_dim = dim;
+  if (wrap_dim < 0) {
+    wrap_dim += x_dims.size();
+  }
+  bool is_trivial = (x.numel() <= 1) || (x_dims[wrap_dim] == 1);
+  if (is_trivial) {
+    dev_ctx.template Alloc<T>(dx);
+    phi::Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+
+    return true;
+  }
+
+  DenseTensor x_conj_tensor;
+  DenseTensor out_conj_tensor;
+
+  if (phi::IsComplexType(x.dtype())) {
+    x_conj_tensor.Resize(x.dims());
+    out_conj_tensor.Resize(out.dims());
+    dev_ctx.template Alloc<T>(&x_conj_tensor);
+    dev_ctx.template Alloc<T>(&out_conj_tensor);
+
+    phi::ConjKernel<T, Context>(dev_ctx, x, &x_conj_tensor);
+    phi::ConjKernel<T, Context>(dev_ctx, out, &out_conj_tensor);
+  }
+
+  const DenseTensor &x_ref = phi::IsComplexType(x.dtype()) ? x_conj_tensor : x;
+  const DenseTensor &out_ref =
+      phi::IsComplexType(x.dtype()) ? out_conj_tensor : out;
+
+  DenseTensor zero_val;
+  zero_val.Resize({1});
+  dev_ctx.template Alloc<T>(&zero_val);
+  phi::FullKernel<T, Context>(
+      dev_ctx, {1}, static_cast<T>(0), x.dtype(), &zero_val);
+
+  DenseTensor is_zero_mask;
+  is_zero_mask.Resize(x.dims());
+  dev_ctx.template Alloc<bool>(&is_zero_mask);
+  phi::EqualKernel<T, Context>(dev_ctx, x, zero_val, &is_zero_mask);
+
+  DenseTensor any_zero;
+  any_zero.Resize({1});
+  dev_ctx.template Alloc<bool>(&any_zero);
+
+  phi::AnyKernel<bool, Context>(
+      dev_ctx, is_zero_mask, std::vector<int64_t>(), false, &any_zero);
+
+  bool has_zero = false;
+#ifdef PADDLE_WITH_CUDA
+  DenseTensor any_zero_cpu;
+  phi::Copy(dev_ctx, any_zero, phi::CPUPlace(), true, &any_zero_cpu);
+  has_zero = *any_zero_cpu.data<bool>();
+#else
+  has_zero = *any_zero.data<bool>();
+#endif
+
+  if (has_zero) {
+    return false;  // fallback
+  }
+
+  dev_ctx.template Alloc<T>(dx);
+
+  DenseTensor w;
+  w.Resize(out_ref.dims());
+  dev_ctx.template Alloc<T>(&w);
+  phi::MultiplyKernel<T, Context>(dev_ctx, out_ref, dout, &w);
+
+  DenseTensor w_flipped, w_cum, rc_w;
+  w_flipped.Resize(w.dims());
+  w_cum.Resize(w.dims());
+  rc_w.Resize(w.dims());
+
+  dev_ctx.template Alloc<T>(&w_flipped);
+  dev_ctx.template Alloc<T>(&w_cum);
+  dev_ctx.template Alloc<T>(&rc_w);
+
+  std::vector<int> axis = {dim};
+  phi::FlipKernel<T, Context>(dev_ctx, w, axis, &w_flipped);
+
+  phi::CumsumKernel<T, Context>(
+      dev_ctx, w_flipped, dim, false, false, false, &w_cum);
+
+  phi::FlipKernel<T, Context>(dev_ctx, w_cum, axis, &rc_w);
+
+  phi::DivideKernel<T, Context>(dev_ctx, rc_w, x_ref, dx);
+
+  return true;
+}
+
+template <typename T, typename Context>
 void CumprodGradKernel(const Context &dev_ctx,
                        const DenseTensor &x,
                        const DenseTensor &out,
@@ -163,6 +293,14 @@ void CumprodGradKernel(const Context &dev_ctx,
     dev_ctx.template Alloc<T>(dx);
     return;
   }
+
+#ifdef PADDLE_WITH_CUDA
+  if (FLAGS_use_accuracy_compatible_kernel && !exclusive && !reverse) {
+    if (CumprodGradCompatible<T, Context>(dev_ctx, x, out, dout, dim, dx)) {
+      return;
+    }
+  }
+#endif
 
   size_t outer_dim, mid_dim, inner_dim;
   GetCumprodDimInfo(x.dims(), dim, &outer_dim, &mid_dim, &inner_dim);
