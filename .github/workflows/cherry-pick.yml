@@ -126,7 +126,7 @@ jobs:
 
           Cherry-pick of #$PR_NUMBER
 
-          Close and reopen this PR to trigger CIs."
+          Close and reopen this PR to trigger CI checks."
 
               # Check if PR already exists
               EXISTING_PR=$(gh pr list --base "$TARGET_BRANCH" --head "$NEW_BRANCH" --json url --jq '.[0].url')
