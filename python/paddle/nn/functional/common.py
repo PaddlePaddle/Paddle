@@ -2534,6 +2534,7 @@ def linear(
     if (
         os.environ.get("FLAGS_use_legacy_linear", False)
         or not paddle.is_compiled_with_cuda()
+        or not in_dynamic_or_pir_mode()
     ):
         if in_dynamic_mode():
             return _C_ops.linear(x, weight, bias)
@@ -2579,11 +2580,12 @@ def linear(
                 res = tmp
             return res
     else:
-        if in_dynamic_or_pir_mode():
-            if bias is not None:
-                return _C_ops.linear_v2(x, weight, bias)
-            else:
-                return _C_ops.matmul(x, weight)
+        if bias is not None:
+            print("exist bias")
+            return _C_ops.linear_v2(x, weight, bias)
+        else:
+            print("not exist bias")
+            return _C_ops.matmul(x, weight)
 
 
 def label_smooth(

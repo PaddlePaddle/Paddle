@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -217,4 +218,5 @@ class TestMasterGrad(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    os.environ["FLAGS_use_legacy_linear"] = "True"
     unittest.main()

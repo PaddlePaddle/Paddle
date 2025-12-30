@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 from contextlib import contextmanager
 
@@ -455,4 +456,5 @@ class TestDy2STWithSetValue(AmpTestBase):
 
 
 if __name__ == '__main__':
+    os.environ["FLAGS_use_legacy_linear"] = "True"
     unittest.main()
