@@ -2581,10 +2581,8 @@ def linear(
             return res
     else:
         if bias is not None:
-            print("exist bias")
             return _C_ops.linear_v2(x, weight, bias)
         else:
-            print("not exist bias")
             return _C_ops.matmul(x, weight)
 
 
