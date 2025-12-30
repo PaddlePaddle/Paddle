@@ -802,7 +802,6 @@ class TestPyLayer(unittest.TestCase):
         input2.stop_gradient = False
         z = tanh.apply(input1, input1, paddle.tanh, paddle.square)
         z = z[0] + z[2]
-        z.mean()
         out = z.mean()
         (input1_grad,) = paddle.grad(out, [input1], retain_graph=True)
 
