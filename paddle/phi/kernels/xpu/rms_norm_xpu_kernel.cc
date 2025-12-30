@@ -45,10 +45,10 @@ void RMSNormFwdKernel(const Context &dev_ctx,
                       DenseTensor *invvar) {
   PADDLE_ENFORCE_EQ(
       begin_norm_axis,
-      x.dims().size() - 1,
+      x.dims() - 1,
       common::errors::InvalidArgument(
           "XPU RMSNorm only supports begin_norm_axis=%d, but got %d",
-          x.dims().size() - 1,
+          x.dims() - 1,
           begin_norm_axis));
 
   auto *scale_ptr = scale_opt.get_ptr();
@@ -148,10 +148,10 @@ void RMSNormBwdKernel(const Context &dev_ctx,
                       DenseTensor *scale_grad) {
   PADDLE_ENFORCE_EQ(
       begin_norm_axis,
-      x.dims().size() - 1,
+      x.dims() - 1,
       common::errors::InvalidArgument(
           "XPU RMSNorm only supports begin_norm_axis=%d, but got %d",
-          x.dims().size() - 1,
+          x.dims() - 1,
           begin_norm_axis));
 
   auto *scale_ptr = scale_opt.get_ptr();
