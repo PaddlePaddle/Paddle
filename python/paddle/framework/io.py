@@ -851,7 +851,7 @@ def save(
             >>> path = 'example/model.pdparams'
             >>> paddle.save(obj, path)
 
-        .. code-block:: pycon
+        .. code-block:: python
             :name: code-example-3
 
             >>> # example 3: static graph
