@@ -57,7 +57,7 @@ jobs:
 
           echo "Response length: ${#response}"
 
-          can_skip=$(python3 - << 'EOF'
+          can_skip=$(python3 -c '
           import json, sys
           print("=== Review Check Debug Info ===")
           print(f"Authorized reviewers: {sys.argv[1:]}")
@@ -93,8 +93,7 @@ jobs:
           print("No APPROVED review found from authorized users")
           print("false")
           print("=== End Debug Info ===")
-          EOF \
-          "${AUTHORIZED_REVIEWERS[@]}" <<< "$response")
+          ' "${AUTHORIZED_REVIEWERS[@]}" <<< "$response")
 
           echo "can-skip=$can_skip" >> "$GITHUB_OUTPUT"
 
@@ -191,7 +190,7 @@ jobs:
           git pull origin develop
           cp -r ../Paddle .
           git add Paddle
-          git commit -m "add Paddle to nightly"
+          git commit -m "Update Paddle Submodule"
 
       - name: Check docker image and run container
         if: steps.check-bypass.outputs.can-skip != 'true'
