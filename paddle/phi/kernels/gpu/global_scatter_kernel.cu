@@ -58,7 +58,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
     const int64_t* cpu_local_count_data;
     const int64_t* cpu_global_count_data;
     DenseTensor cpu_local_count;
-    if (local_count->place().GetType() == phi::AllocationType::CPU) {
+    if (local_count->place().GetType() == AllocationType::CPU) {
       cpu_local_count_data = local_count->data<int64_t>();
     } else {
       Copy(dev_ctx, *local_count, phi::CPUPlace(), true, &cpu_local_count);
@@ -66,7 +66,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
     }
     auto global_count_len = 0;
     DenseTensor cpu_global_count;
-    if (global_count->place().GetType() == phi::AllocationType::CPU) {
+    if (global_count->place().GetType() == AllocationType::CPU) {
       cpu_global_count_data = global_count->data<int64_t>();
       global_count_len = global_count->numel();
     } else {
