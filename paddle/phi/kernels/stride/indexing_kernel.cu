@@ -204,7 +204,6 @@ void LaunchIndexPutKernel_V2(const Context& dev_ctx,
     is_big_tensor = true;
   }
 
-  // 提取kernel启动的通用配置
   const int64_t N = iter.numel();
   PADDLE_ENFORCE_EQ(true,
                     (N >= 0 && N <= std::numeric_limits<int32_t>::max()),
