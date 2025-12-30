@@ -787,6 +787,7 @@ class TestPyLayer(unittest.TestCase):
                 y1 = func1(x1)
                 y2 = func1(x2)
                 ctx.save_for_backward(y1, y2)
+                ctx.mark_non_differentiable(y2)
                 return y1, 1, y2, None
 
             @staticmethod
@@ -805,7 +806,10 @@ class TestPyLayer(unittest.TestCase):
         out = z.mean()
         (input1_grad,) = paddle.grad(out, [input1], retain_graph=True)
 
-        z2 = paddle.tanh(input2) + paddle.tanh(input2)
+        y2_0 = paddle.tanh(input2)
+        y2_1 = paddle.tanh(input2)
+        y2_1.stop_gradient = True
+        z2 = y2_0 + y2_1
         out2 = z2.mean()
         (input2_grad,) = paddle.grad(out2, [input2], retain_graph=True)
 
