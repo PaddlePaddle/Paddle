@@ -4239,8 +4239,8 @@
     data_type: w
 
 - backward_op: rms_norm_grad
-  forward: rms_norm (Tensor x, Tensor scale, double epsilon = 1e-5, int begin_norm_axis = 1) -> Tensor(y), Tensor(invvar)
-  args: (Tensor x, Tensor scale, Tensor invvar, Tensor y_grad, double epsilon = 1e-5, int begin_norm_axis = 1)
+  forward: rms_norm (Tensor x, Tensor scale, IntArray normalized_shape={}, double epsilon = 1e-5) -> Tensor(y), Tensor(invvar)
+  args: (Tensor x, Tensor scale, Tensor invvar, Tensor y_grad, IntArray normalized_shape={}, double epsilon = 1e-5)
   output: Tensor(x_grad), Tensor(scale_grad)
   infer_meta:
     func: RMSNormGradInferMeta

@@ -39,10 +39,11 @@ template <typename T, typename Context>
 void RMSNormFwdKernel(const Context &dev_ctx,
                       const DenseTensor &x,
                       const paddle::optional<DenseTensor> &scale_opt,
+                      const IntArray &normalized_shape,
                       double epsilon,
-                      int begin_norm_axis,
                       DenseTensor *y,
                       DenseTensor *invvar) {
+  int begin_norm_axis = x.dims().size() - normalized_shape.size();
   PADDLE_ENFORCE_EQ(
       begin_norm_axis,
       x.dims().size() - 1,
@@ -142,10 +143,11 @@ void RMSNormBwdKernel(const Context &dev_ctx,
                       const paddle::optional<DenseTensor> &scale_opt,
                       const DenseTensor &invvar,
                       const DenseTensor &y_grad,
+                      const IntArray &normalized_shape,
                       double epsilon,
-                      int begin_norm_axis,
                       DenseTensor *x_grad,
                       DenseTensor *scale_grad) {
+  int begin_norm_axis = x.dims().size() - normalized_shape.size();
   PADDLE_ENFORCE_EQ(
       begin_norm_axis,
       x.dims().size() - 1,

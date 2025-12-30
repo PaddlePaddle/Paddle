@@ -3889,26 +3889,64 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
 
 void RmsNormInferMeta(const MetaTensor& x,
                       const MetaTensor& scale,
+                      const IntArray& normalized_shape,
                       double epsilon,
-                      int begin_norm_axis,
                       MetaTensor* y,
                       MetaTensor* invvar) {
   auto x_dim = x.dims();
+  std::vector<int64_t> normalized_shape_data = normalized_shape.GetData();
+  int normalized_shape_size = normalized_shape_data.size();
+  int x_dims_size = x_dim.size();
+  int begin_norm_axis = x_dims_size - normalized_shape_size;
+
   PADDLE_ENFORCE_GT(begin_norm_axis,
                     0,
                     common::errors::InvalidArgument(
                         "'begin_norm_axis' in Op(LayerNorm) should be "
                         "greater than zero. But received [%d].",
                         begin_norm_axis));
+
   PADDLE_ENFORCE_LT(
       begin_norm_axis,
-      x_dim.size(),
+      x_dims_size,
       common::errors::InvalidArgument(
           "'begin_norm_axis' must be less than the dimensions of X,"
           "But received 'begin_norm_axis' is [%d],"
           "received the dimensions of X is [%d].",
           begin_norm_axis,
-          x_dim.size()));
+          x_dims_size));
+
+  for (int i = 0; i < normalized_shape_size; i++) {
+    PADDLE_ENFORCE_EQ(x_dim[x_dims_size - i - 1],
+                      normalized_shape[normalized_shape_size - i - 1],
+                      common::errors::InvalidArgument(
+                          "The %d-th dimension of X is not equal to the %d-th "
+                          "dimension of NormalizedShape.",
+                          x_dims_size - i - 1,
+                          normalized_shape_size - i - 1));
+  }
+
+  if (scale) {
+    auto scale_dim = scale.dims();
+    PADDLE_ENFORCE_EQ(scale_dim.size(),
+                      normalized_shape_size,
+                      common::errors::InvalidArgument(
+                          "The dimensions of Input(Scale) must be equal to the "
+                          "dimensions of NormalizedShape. "
+                          "But received: the dimensions of Input(Scale) is "
+                          "[%d], the dimensions of NormalizedShape is [%d].",
+                          scale_dim.size(),
+                          normalized_shape_size));
+    for (int i = 0; i < normalized_shape_size; i++) {
+      PADDLE_ENFORCE_EQ(scale_dim[i],
+                        normalized_shape[i],
+                        common::errors::InvalidArgument(
+                            "The %d-th dimension of Input(Scale) is not equal "
+                            "to the %d-th dimension of NormalizedShape.",
+                            i,
+                            i));
+    }
+  }
 
   auto matrix_dim = common::flatten_to_2d(x_dim, begin_norm_axis);
   auto before_norm_dims = slice_ddim(x_dim, 0, begin_norm_axis);

@@ -18,11 +18,14 @@
 #include <thrust/tuple.h>
 
 #include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -33,7 +36,7 @@ namespace phi {
 static constexpr int kCUDANumThreads = 256;
 static constexpr int kCUDABlockReduceNumThreads = 512;
 static constexpr int kWarpSize = 32;
-static constexpr int kVecSize = 4;
+// static constexpr int kVecSize = 4;
 
 // -----------------------------------------------------------------------
 //  Helper Functions & Structs
@@ -66,16 +69,6 @@ bool can_vectorize(const T* ptr, int alignment) {
 // -----------------------------------------------------------------------
 //  Welford Algorithms
 // -----------------------------------------------------------------------
-
-struct WelfordDataLN {
-  float mean;
-  float sigma2;
-  float count;
-  __host__ __device__ WelfordDataLN() : mean(0.f), sigma2(0.f), count(0.f) {}
-  __host__ __device__ WelfordDataLN(float mean, float sigma2, float count)
-      : mean(mean), sigma2(sigma2), count(count) {}
-};
-
 template <typename scalar_t, typename index_t>
 struct WelfordData {
   scalar_t mean;
@@ -89,17 +82,6 @@ struct WelfordData {
   WelfordData(scalar_t mean, scalar_t m2, index_t n, scalar_t nf)
       : mean(mean), m2(m2), n(n), nf(nf) {}
 };
-
-template <typename U>
-__device__ WelfordDataLN cuWelfordOnlineSum(const U val,
-                                            const WelfordDataLN& curr_sum) {
-  return {0.f, curr_sum.sigma2 + val * val, 0};
-}
-
-__device__ WelfordDataLN cuWelfordCombine(const WelfordDataLN dataB,
-                                          const WelfordDataLN dataA) {
-  return {0.f, dataB.sigma2 + dataA.sigma2, 0};
-}
 
 // -----------------------------------------------------------------------
 //  Warp & Block Reductions
@@ -146,7 +128,7 @@ __device__ T BlockReduceSum(T val, T* shared) {
   int lane = threadIdx.x % kWarpSize;
   int wid = threadIdx.x / kWarpSize;
 
-  for (int offset = kWarpSize / 2; offset > 0; offset /= 2) {
+  for (int offset = kWarpSize >> 1; offset > 0; offset >>= 1) {
     val += WARP_SHFL_DOWN_(val, offset);
   }
 
@@ -159,7 +141,7 @@ __device__ T BlockReduceSum(T val, T* shared) {
   val = (threadIdx.x < blockDim.x / kWarpSize) ? shared[lane] : T(0);
 
   if (wid == 0) {
-    for (int offset = kWarpSize / 2; offset > 0; offset /= 2) {
+    for (int offset = kWarpSize >> 1; offset > 0; offset >>= 1) {
       val += WARP_SHFL_DOWN_(val, offset);
     }
   }
@@ -255,7 +237,7 @@ __global__ void RowwiseMomentsCUDAKernel(int64_t N,
 
   // Block Reduce
   // 1. Warp Reduce
-  for (int offset = kWarpSize / 2; offset > 0; offset /= 2) {
+  for (int offset = kWarpSize >> 1; offset > 0; offset >>= 1) {
     WelfordType wdB = welford_op.warp_shfl_down(val, offset);
     val = welford_op.combine(val, wdB);
   }
@@ -280,7 +262,7 @@ __global__ void RowwiseMomentsCUDAKernel(int64_t N,
 
   // Final Warp Reduce for the first warp
   if (wid == 0) {
-    for (int offset = kWarpSize / 2; offset > 0; offset /= 2) {
+    for (int offset = kWarpSize >> 1; offset > 0; offset >>= 1) {
       WelfordType wdB = welford_op.warp_shfl_down(val, offset);
       val = welford_op.combine(val, wdB);
     }
@@ -311,61 +293,59 @@ __global__ void RMSNormForwardCUDAKernel(
 }
 
 // Vectorized Helper
-template <typename T, typename T_ACC>
-__device__ WelfordDataLN compute_stats(const T* __restrict__ X,
-                                       const int N,
-                                       T_ACC* buf) {
+template <typename T, typename T_ACC, int kVecSize>
+__device__ T_ACC compute_stats(const T* __restrict__ X,
+                               const int N,
+                               T_ACC* buf) {
   using vec_t = aligned_vector<T, kVecSize>;
   const vec_t* X_vec = reinterpret_cast<const vec_t*>(X);
   const int numx = blockDim.x * blockDim.y;
   const int thrx = threadIdx.x + threadIdx.y * blockDim.x;
   const int n_vec_to_read = N / kVecSize;
-  WelfordDataLN wd(0.f, 0.f, 0.f);
+  T_ACC sigma2 = 0;
 
   for (int i = thrx; i < n_vec_to_read; i += numx) {
     vec_t data = X_vec[i];
 #pragma unroll
     for (int ii = 0; ii < kVecSize; ii++) {
-      wd = cuWelfordOnlineSum<T_ACC>(static_cast<T_ACC>(data.val[ii]), wd);
+      T_ACC val = static_cast<T_ACC>(data.val[ii]);
+      sigma2 += val * val;
     }
   }
 
   // Intra-warp reduction
   for (int offset = (kWarpSize >> 1); offset > 0; offset >>= 1) {
-    WelfordDataLN wdB{0, WARP_SHFL_DOWN_(wd.sigma2, offset), 0};
-    wd = cuWelfordCombine(wd, wdB);
+    sigma2 += WARP_SHFL_DOWN_(sigma2, offset);
   }
 
   // Inter-warp reductions
   if (blockDim.y > 1) {
     T_ACC* meansigmabuf = buf;
     // Use simpler layout: just sigma2
-    for (int offset = blockDim.y / 2; offset > 0; offset /= 2) {
+    for (int offset = blockDim.y >> 1; offset > 0; offset >>= 1) {
       if (threadIdx.x == 0 && threadIdx.y >= offset &&
           threadIdx.y < 2 * offset) {
         const int wrt_y = threadIdx.y - offset;
-        meansigmabuf[wrt_y] = wd.sigma2;
+        meansigmabuf[wrt_y] = sigma2;
       }
       __syncthreads();
       if (threadIdx.x == 0 && threadIdx.y < offset) {
-        WelfordDataLN wdB{0, meansigmabuf[threadIdx.y], 0};
-        wd = cuWelfordCombine(wd, wdB);
+        sigma2 += meansigmabuf[threadIdx.y];
       }
       __syncthreads();
     }
     if (threadIdx.x == 0 && threadIdx.y == 0) {
-      meansigmabuf[0] = wd.sigma2 / static_cast<T_ACC>(N);
+      meansigmabuf[0] = sigma2 / static_cast<T_ACC>(N);
     }
     __syncthreads();
-    return WelfordDataLN{0, meansigmabuf[0], 0.f};
+    return meansigmabuf[0];
 
   } else {
-    return WelfordDataLN{
-        0, WARP_SHFL_(wd.sigma2, 0) / static_cast<T_ACC>(N), 0.f};
+    return WARP_SHFL_(sigma2, 0) / static_cast<T_ACC>(N);
   }
 }
 
-template <typename T, typename T_ACC>
+template <typename T, typename T_ACC, int kVecSize>
 __global__ void vectorized_rms_norm_kernel(const int N,
                                            T_ACC eps,
                                            const T* __restrict__ X,
@@ -379,7 +359,7 @@ __global__ void vectorized_rms_norm_kernel(const int N,
   const T* block_row = X + i1 * N;
 
   // Compute stats
-  WelfordDataLN wd = compute_stats<T, T_ACC>(block_row, N, s_data);
+  T_ACC sigma2 = compute_stats<T, T_ACC, kVecSize>(block_row, N, s_data);
 
   using vec_t = aligned_vector<T, kVecSize>;
   const vec_t* X_vec = reinterpret_cast<const vec_t*>(block_row);
@@ -391,26 +371,31 @@ __global__ void vectorized_rms_norm_kernel(const int N,
   const int thrx = threadIdx.x + threadIdx.y * blockDim.x;
   const int n_vec_to_read = N / kVecSize;
 
-  T_ACC rstd_val = Rsqrt_<T_ACC>(wd.sigma2 + eps);
+  T_ACC rstd_val = Rsqrt_<T_ACC>(sigma2 + eps);
 
-  for (int i = thrx; i < n_vec_to_read; i += numx) {
-    vec_t data = X_vec[i];
-    vec_t out;
-    if (scale_vec != nullptr) {
+  if (scale_vec != nullptr) {
+    for (int i = thrx; i < n_vec_to_read; i += numx) {
+      vec_t data = X_vec[i];
+      vec_t out;
 #pragma unroll
       for (int ii = 0; ii < kVecSize; ii++) {
         out.val[ii] =
             static_cast<T>(static_cast<T_ACC>(scale_vec[i].val[ii]) *
                            (rstd_val * static_cast<T_ACC>(data.val[ii])));
       }
-    } else {
+      Y_vec[i] = out;
+    }
+  } else {
+    for (int i = thrx; i < n_vec_to_read; i += numx) {
+      vec_t data = X_vec[i];
+      vec_t out;
 #pragma unroll
       for (int ii = 0; ii < kVecSize; ii++) {
         out.val[ii] =
             static_cast<T>(rstd_val * static_cast<T_ACC>(data.val[ii]));
       }
+      Y_vec[i] = out;
     }
-    Y_vec[i] = out;
   }
 
   if (thrx == 0) {
@@ -418,7 +403,7 @@ __global__ void vectorized_rms_norm_kernel(const int N,
   }
 }
 
-template <typename T, typename T_ACC>
+template <typename T, typename T_ACC, int kVecSize>
 void launch_vectorized_rms_norm_kernel_driver(int N,
                                               int64_t M,
                                               T_ACC eps,
@@ -435,8 +420,9 @@ void launch_vectorized_rms_norm_kernel_driver(int N,
   // Shared memory for reduction: need size proportional to threads.y and T_ACC
   int nshared = threads.y > 1 ? threads.y * 3 / 2 * sizeof(T_ACC) : 0;
 
-  vectorized_rms_norm_kernel<T, T_ACC><<<blocks, threads, nshared, stream>>>(
-      N, eps, X_data, scale_data, rstd_data, Y_data);
+  vectorized_rms_norm_kernel<T, T_ACC, kVecSize>
+      <<<blocks, threads, nshared, stream>>>(
+          N, eps, X_data, scale_data, rstd_data, Y_data);
 }
 
 // -----------------------------------------------------------------------
@@ -514,7 +500,7 @@ __global__ void rms_norm_grad_input_kernel(const T* __restrict__ dY,
   compute_gI<T, T_ACC>(dY, X, rstd, scale, dX, N, buf);
 }
 
-template <typename T, typename T_ACC>
+template <typename T, typename T_ACC, int kVecSize>
 __global__ void rms_norm_grad_input_kernel_vectorized(
     const T* __restrict__ dY,
     const T* __restrict__ X,
@@ -891,11 +877,13 @@ template <typename T, typename Context>
 void RMSNormFwdKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const paddle::optional<DenseTensor>& scale_opt,
+                      const IntArray& normalized_shape,
                       double epsilon,
-                      int begin_norm_axis,
                       DenseTensor* y,
                       DenseTensor* invvar) {
   using T_ACC = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  int begin_norm_axis = x.dims().size() - normalized_shape.size();
 
   auto matrix_dim = common::flatten_to_2d(x.dims(), begin_norm_axis);
   int64_t rows = matrix_dim[0];
@@ -911,13 +899,38 @@ void RMSNormFwdKernel(const Context& dev_ctx,
 
   auto stream = dev_ctx.stream();
 
+  if (!FLAGS_use_accuracy_compatible_kernel && rows <= 1024 && cols >= 24576) {
+    constexpr int num_vec_elems2 = 8;
+    constexpr int alignment2 = num_vec_elems2 * sizeof(T);
+    bool can_vec_X2 = can_vectorize(x_data, alignment2);
+    bool can_vec_Y2 = can_vectorize(y_data, alignment2);
+    bool can_vec_scale2 = can_vectorize(scale_data, alignment2);
+    bool is_supported_type2 = (std::is_same<T, phi::dtype::float16>::value ||
+                               std::is_same<T, phi::dtype::bfloat16>::value);
+    if (is_supported_type2 &&
+        cols <=
+            static_cast<int64_t>(1ULL << std::numeric_limits<float>::digits) &&
+        cols % num_vec_elems2 == 0 && can_vec_X2 && can_vec_Y2 &&
+        can_vec_scale2) {
+      launch_vectorized_rms_norm_kernel_driver<T, T_ACC, 8>(
+          cols,
+          rows,
+          static_cast<T_ACC>(epsilon),
+          x_data,
+          scale_data,
+          y_data,
+          rstd_data,
+          stream);
+      return;
+    }
+  }
+
   // Check vectorization conditions
-  constexpr int num_vec_elems = kVecSize;
+  constexpr int num_vec_elems = 4;
   constexpr int alignment = num_vec_elems * sizeof(T);
   bool can_vec_X = can_vectorize(x_data, alignment);
   bool can_vec_Y = can_vectorize(y_data, alignment);
   bool can_vec_scale = can_vectorize(scale_data, alignment);
-
   bool is_supported_type = (std::is_same<T, float>::value ||
                             std::is_same<T, phi::dtype::float16>::value ||
                             std::is_same<T, phi::dtype::bfloat16>::value);
@@ -926,7 +939,7 @@ void RMSNormFwdKernel(const Context& dev_ctx,
       cols <=
           static_cast<int64_t>(1ULL << std::numeric_limits<float>::digits) &&
       cols % num_vec_elems == 0 && can_vec_X && can_vec_Y && can_vec_scale) {
-    launch_vectorized_rms_norm_kernel_driver<T, T_ACC>(
+    launch_vectorized_rms_norm_kernel_driver<T, T_ACC, 4>(
         cols,
         rows,
         static_cast<T_ACC>(epsilon),
@@ -952,11 +965,13 @@ void RMSNormBwdKernel(const Context& dev_ctx,
                       const paddle::optional<DenseTensor>& scale_opt,
                       const DenseTensor& invvar,
                       const DenseTensor& dY,
+                      const IntArray& normalized_shape,
                       double epsilon,
-                      int begin_norm_axis,
                       DenseTensor* dX,
                       DenseTensor* dscale) {
   using T_ACC = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  int begin_norm_axis = X.dims().size() - normalized_shape.size();
 
   // X, dY: [Batch, ..., Feature] -> flatten to [M, N]
   // scale, dscale: [Feature] -> [N]
@@ -979,6 +994,8 @@ void RMSNormBwdKernel(const Context& dev_ctx,
 
   auto stream = dev_ctx.stream();
 
+  static constexpr int kVecSize = 4;
+
   // 1. Compute dX
   if (dX_data) {
     const int warp_size = 32;
@@ -998,7 +1015,7 @@ void RMSNormBwdKernel(const Context& dev_ctx,
     int nshared = (num_threads / warp_size) * sizeof(T_ACC);
 
     if (is_supported_type && bAlignedBuffers && bVectorSizeMultiple) {
-      rms_norm_grad_input_kernel_vectorized<T, T_ACC>
+      rms_norm_grad_input_kernel_vectorized<T, T_ACC, kVecSize>
           <<<blocks, num_threads, nshared, stream>>>(
               dY_data, X_data, invvar_data, scale_data, dX_data, N);
     } else {
