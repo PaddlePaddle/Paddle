@@ -45,7 +45,7 @@ void RpropKernelCPUImpl(const Context& dev_ctx,
   DenseTensor grad_tensor;
   grad_tensor.Resize(grad.dims());
   dev_ctx.template Alloc<T>(&grad_tensor);
-  phi::Copy<Context>(dev_ctx, grad, dev_ctx.GetPlace(), true, &grad_tensor);
+  Copy<Context>(dev_ctx, grad, dev_ctx.GetPlace(), true, &grad_tensor);
   auto grad_eigen = EigenVector<T>::Flatten(grad_tensor);
 
   DenseTensor product_tensor;
@@ -56,7 +56,7 @@ void RpropKernelCPUImpl(const Context& dev_ctx,
   DenseTensor learning_rate_tensor;
   learning_rate_tensor.Resize(learning_rate.dims());
   dev_ctx.template Alloc<T>(&learning_rate_tensor);
-  phi::Copy<Context>(
+  Copy<Context>(
       dev_ctx, learning_rate, dev_ctx.GetPlace(), true, &learning_rate_tensor);
   auto learning_rate_eigen = EigenVector<T>::Flatten(learning_rate_tensor);
 
@@ -95,12 +95,12 @@ void RpropKernelCPUImpl(const Context& dev_ctx,
   param_out_eigen = param_eigen - grad_eigen.sign() * learning_rate_eigen;
   prev_out_eigen = grad_eigen;
   learning_rate_out_eigen = learning_rate_eigen;
-  phi::Copy<Context>(dev_ctx, grad_tensor, dev_ctx.GetPlace(), true, prev_out);
-  phi::Copy<Context>(dev_ctx,
-                     learning_rate_tensor,
-                     dev_ctx.GetPlace(),
-                     true,
-                     learning_rate_out);
+  Copy<Context>(dev_ctx, grad_tensor, dev_ctx.GetPlace(), true, prev_out);
+  Copy<Context>(dev_ctx,
+                learning_rate_tensor,
+                dev_ctx.GetPlace(),
+                true,
+                learning_rate_out);
 }
 
 template <typename T, typename Context>

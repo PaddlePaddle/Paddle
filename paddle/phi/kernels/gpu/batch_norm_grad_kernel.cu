@@ -861,9 +861,9 @@ void BatchNormGradFunctor(const Context &dev_ctx,
           DenseTensor block_data_tensor;
           DenseTensor flag_tensor;
           DenseTensor compute_mean_tensor =
-              phi::Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
+              Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
           DenseTensor compute_inv_var_tensor =
-              phi::Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
+              Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
 
           BatchNormParamType<T> *block_data_ptr = nullptr;
           int *flag_ptr = nullptr;
@@ -915,9 +915,9 @@ void BatchNormGradFunctor(const Context &dev_ctx,
             dbias = dev_ctx.template Alloc<BatchNormParamType<T>>(d_bias);
           } else {
             DenseTensor dscale_mem =
-                phi::Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
+                Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
             DenseTensor dbias_mem =
-                phi::Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
+                Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
             dscale = dscale_mem.data<BatchNormParamType<T>>();
             dbias = dbias_mem.data<BatchNormParamType<T>>();
           }

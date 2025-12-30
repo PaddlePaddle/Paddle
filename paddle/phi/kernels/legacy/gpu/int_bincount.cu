@@ -65,7 +65,7 @@ void IntBincountImpl(const Context &dev_ctx,
   for (int i = 0; i < 2; ++i) {
     if (workspace_size > 0) {
       workspace =
-          phi::Empty<uint8_t>(dev_ctx, {static_cast<int64_t>(workspace_size)});
+          Empty<uint8_t>(dev_ctx, {static_cast<int64_t>(workspace_size)});
       workspace_ptr = workspace.data();
     }
     auto err = cub::DeviceHistogram::HistogramEven(workspace_ptr,

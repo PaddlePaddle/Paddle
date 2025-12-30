@@ -44,8 +44,8 @@ void DotKernel(const Context& dev_ctx,
 #ifdef PADDLE_WITH_CUDA
     if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t>) {
       auto eigen_out = phi::EigenScalar<T>::From(*out);
-      auto eigen_x = phi::EigenVector<T>::Flatten(x);
-      auto eigen_y = phi::EigenVector<T>::Flatten(y);
+      auto eigen_x = EigenVector<T>::Flatten(x);
+      auto eigen_y = EigenVector<T>::Flatten(y);
 
       auto& dev = *dev_ctx.eigen_device();
       eigen_out.device(dev) = (eigen_x * eigen_y).sum();
@@ -63,14 +63,14 @@ void DotKernel(const Context& dev_ctx,
     }
 #else
     auto eigen_out = phi::EigenScalar<T>::From(*out);
-    auto eigen_x = phi::EigenVector<T>::Flatten(x);
-    auto eigen_y = phi::EigenVector<T>::Flatten(y);
+    auto eigen_x = EigenVector<T>::Flatten(x);
+    auto eigen_y = EigenVector<T>::Flatten(y);
 
     auto& dev = *dev_ctx.eigen_device();
     eigen_out.device(dev) = (eigen_x * eigen_y).sum();
 #endif
   } else {
-    auto eigen_out = phi::EigenVector<T>::From(*out);
+    auto eigen_out = EigenVector<T>::From(*out);
     auto eigen_x = phi::EigenMatrix<T>::From(x);
     auto eigen_y = phi::EigenMatrix<T>::From(y);
 

@@ -37,9 +37,9 @@ template <typename T, typename IntT, typename Context>
 void AllocCsrPtr(const Context& dev_ctx,
                  const SparseCsrTensor& x,
                  SparseCsrTensor* dx) {
-  DenseTensor dx_crows = phi::EmptyLike<IntT>(dev_ctx, x.crows());
-  DenseTensor dx_cols = phi::EmptyLike<IntT>(dev_ctx, x.cols());
-  DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.values());
+  DenseTensor dx_crows = EmptyLike<IntT>(dev_ctx, x.crows());
+  DenseTensor dx_cols = EmptyLike<IntT>(dev_ctx, x.cols());
+  DenseTensor dx_values = EmptyLike<T>(dev_ctx, x.values());
   dx->set_meta(x.meta());  // NOLINT
   dx->SetMember(dx_crows, dx_cols, dx_values, x.dims());
 }
@@ -48,8 +48,8 @@ template <typename T, typename IntT, typename Context>
 void AllocCooPtr(const Context& dev_ctx,
                  const SparseCooTensor& x,
                  SparseCooTensor* dx) {
-  DenseTensor dx_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
-  DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.values());
+  DenseTensor dx_indices = EmptyLike<IntT>(dev_ctx, x.indices());
+  DenseTensor dx_values = EmptyLike<T>(dev_ctx, x.values());
   dx->set_meta(x.meta());  // NOLINT
   dx->SetMember(dx_indices, dx_values, x.dims(), x.coalesced());
 }

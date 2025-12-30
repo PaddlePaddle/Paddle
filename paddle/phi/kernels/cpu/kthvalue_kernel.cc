@@ -101,7 +101,7 @@ void KthvalueKernel(const Context& dev_ctx,
                           "elements number of the input X, but received %lld .",
                           k));
 
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, output);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, output);
     funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }

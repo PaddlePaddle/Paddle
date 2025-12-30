@@ -98,7 +98,7 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
     CrossEntropy<T>(
         dev_ctx, logits, label, soft_label, ignore_index, axis, loss);
     // cause of input is softmax, copy to output softmax, directly
-    phi::Copy<Context>(dev_ctx, logits, dev_ctx.GetPlace(), false, softmax);
+    Copy<Context>(dev_ctx, logits, dev_ctx.GetPlace(), false, softmax);
     return;
   }
 

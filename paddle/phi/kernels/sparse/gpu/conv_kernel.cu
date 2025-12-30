@@ -129,10 +129,10 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   // Second algorithm:
   // https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf
   // 1. product rulebook
-  DenseTensor counter_per_kernel = phi::Empty<int>(dev_ctx, {kernel_size});
-  DenseTensor offsets_per_kernel = phi::Empty<int>(dev_ctx, {kernel_size});
-  DenseTensor out_index = phi::Empty<int>(dev_ctx, {1});
-  DenseTensor unique_value = phi::Empty<int>(dev_ctx, {1});
+  DenseTensor counter_per_kernel = Empty<int>(dev_ctx, {kernel_size});
+  DenseTensor offsets_per_kernel = Empty<int>(dev_ctx, {kernel_size});
+  DenseTensor out_index = Empty<int>(dev_ctx, {1});
+  DenseTensor unique_value = Empty<int>(dev_ctx, {1});
 
   if (is2D) {
     VLOG(6) << "call SubmConv2D or Conv2D " << subm << " and the key is "
@@ -213,9 +213,8 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                        unique_value_ptr);
   }
   // 2. gather
-  DenseTensor in_features = phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
-  DenseTensor out_features =
-      phi::Empty<T>(dev_ctx, {rulebook_len, out_channels});
+  DenseTensor in_features = Empty<T>(dev_ctx, {rulebook_len, in_channels});
+  DenseTensor out_features = Empty<T>(dev_ctx, {rulebook_len, out_channels});
   T* in_features_ptr = in_features.data<T>();
   T* out_features_ptr = out_features.data<T>();
   funcs::SetConstant<GPUContext, T> set_zero;

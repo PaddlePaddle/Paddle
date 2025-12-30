@@ -82,9 +82,9 @@ void DGCKernel(const Context& dev_ctx,
                         "DGC is not useful when num_trainers <= 1. Please "
                         "use multi card or multi machine GPU"));
 
-  auto param_e = phi::EigenVector<T>::Flatten(param);
-  auto grad_e = phi::EigenVector<T>::Flatten(grad);
-  auto grad_out_e = phi::EigenVector<T>::Flatten(*grad_out);
+  auto param_e = EigenVector<T>::Flatten(param);
+  auto grad_e = EigenVector<T>::Flatten(grad);
+  auto grad_out_e = EigenVector<T>::Flatten(*grad_out);
 
   auto& eigen_ctx = *dev_ctx.eigen_device();
 
@@ -145,8 +145,8 @@ void DGCKernel(const Context& dev_ctx,
   *k_out_data = k;
 
   // FIXME(gongwb): use cublas.
-  auto u_out_e = phi::EigenVector<T>::Flatten(*u_out);
-  auto u_e = phi::EigenVector<T>::Flatten(u);
+  auto u_out_e = EigenVector<T>::Flatten(*u_out);
+  auto u_e = EigenVector<T>::Flatten(u);
 
   // calc local momentum from global momentum
   // NOTE. If grad not multi nranks, need add below code.
