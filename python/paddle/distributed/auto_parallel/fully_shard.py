@@ -15,7 +15,11 @@
 import os
 from types import MethodType
 
+import paddle
 import paddle.distributed as dist
+
+from .auto_dp_utils import in_auto_dp_mode
+from .sharding import get_placement_with_sharding
 
 
 def shard_accumulators(parameters_and_grads, optimizer, target_block):
@@ -68,5 +72,77 @@ class FullyShardAuto:
         for param in self.model.parameters():
             param._need_shard_auto = True
             self._shard_fn._shard_parameter(param)
-            self._shard_fn._register_hook_for_param_grad(param)
+            if not in_auto_dp_mode():
+                self._shard_fn._register_hook_for_param_grad(param)
         os.environ["skip_sharding3_output_reshard"] = "1"
+        self._register_comm_hook(model)
+
+    def _register_comm_hook(self, model):
+        def _pre_forward_hook(sublayers):
+            @paddle.autograd.no_grad()
+            def gather_comm(*_):
+                for key, param in sublayers._parameters.items():
+                    new_placements = [
+                        dist.Replicate() for _ in param.placements
+                    ]
+                    replicte_param = dist.reshard(
+                        param, param.process_mesh, new_placements
+                    )
+                    param.get_tensor()._share_data_with(
+                        replicte_param.get_tensor()
+                    )
+
+            return gather_comm
+
+        def _post_forward_hook(sublayers):
+            @paddle.autograd.no_grad()
+            def shard_comm(*_):
+                for key, param in sublayers._parameters.items():
+                    if param.name.startswith('embedding'):
+                        continue
+                    if param.trainable:
+                        new_placements = get_placement_with_sharding(param, 0)
+                        shard_param = dist.reshard(
+                            param, param.process_mesh, new_placements
+                        )
+                        param.get_tensor()._share_data_with(
+                            shard_param.get_tensor()
+                        )
+
+            return shard_comm
+
+        def _pre_backward_hook(param):
+            @paddle.autograd.no_grad()
+            def gather_comm(*_):
+                new_placements = [dist.Replicate() for _ in param.placements]
+                replicte_param = dist.reshard(
+                    param, param.process_mesh, new_placements
+                )
+                param.get_tensor()._share_data_with(replicte_param.get_tensor())
+
+            return gather_comm
+
+        def _post_backward_hook(param):
+            def shard_comm(grad):
+                if param.placements[0] == dist.Replicate():
+                    new_placements = get_placement_with_sharding(param, 0)
+                    shard_param = dist.reshard(
+                        param, param.process_mesh, new_placements
+                    )
+                    param.get_tensor()._share_data_with(
+                        shard_param.get_tensor()
+                    )
+                return grad
+
+            param.register_hook(shard_comm)
+
+        # register forward hooks
+        for name, sublayers in model.named_sublayers(include_self=True):
+            sublayers.register_forward_pre_hook(_pre_forward_hook(sublayers))
+            sublayers.register_forward_post_hook(_post_forward_hook(sublayers))
+
+        # register backward hooks
+        for param in model.parameters():
+            if param.trainable:
+                param._register_backward_hook(_pre_backward_hook(param))
+                _post_backward_hook(param)
