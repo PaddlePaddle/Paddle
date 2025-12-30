@@ -10,9 +10,18 @@ permissions:
   pull-requests: write
   issues: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
 jobs:
   cherry-pick:
-    if: github.event.pull_request.merged == true
+    if: >
+      github.event.pull_request.merged == true &&
+      (
+        github.event.action == 'labeled' ||
+        contains(join(github.event.pull_request.labels.*.name, ' '), 'cherry-pick')
+      )
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -64,7 +73,7 @@ jobs:
           fi
 
           # Loop through labels
-          echo "$LABELS" | while read -r label; do
+          while read -r label; do
             if [[ "$label" == cherry-pick:* ]]; then
               TARGET_BRANCH=$(echo "${label#cherry-pick:}" | xargs)
 
@@ -153,7 +162,7 @@ jobs:
                 else
                   echo "Failed to create PR."
                   post_comment "❌ Cherry-pick failed: Could not create PR to \`$TARGET_BRANCH\`."
-                  exit 1
+                  continue
                 fi
               fi
 
@@ -161,4 +170,4 @@ jobs:
               git checkout "$ORIGINAL_HEAD_SHA"
               git branch -D "$NEW_BRANCH"
             fi
-          done
+          done <<< "$LABELS"
