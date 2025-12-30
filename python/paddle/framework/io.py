@@ -113,7 +113,7 @@ def async_save(
         sync_other_task(bool) : Determine whether to wait other async save task to be finished before this one be put in queue.
         **configs(dict, optional): compatible argument to paddle.save, but will be overridden by default setting.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-1
 
             import paddle
@@ -851,7 +851,7 @@ def save(
             >>> path = 'example/model.pdparams'
             >>> paddle.save(obj, path)
 
-        .. code-block:: pycon
+        .. code-block:: python
             :name: code-example-3
 
             >>> # example 3: static graph
@@ -870,7 +870,7 @@ def save(
             >>> prog = paddle.static.default_main_program()
             >>> for var in prog.list_vars():
             ...     if list(var.shape) == [224, 10]:
-            ...         tensor = var.get_value()
+            ...         tensor = paddle.static.global_scope().find_var(var.name).get_tensor()
             ...         break
 
             >>> # save/load tensor
