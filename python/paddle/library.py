@@ -70,6 +70,11 @@ class CustomOpDef:
         )
         return fn
 
+    def __call__(self, *args, **kwargs):
+        PYTHON_OP_REGISTRY.get_operator(f"{self._namespace}::{self._name}")(
+            *args, **kwargs
+        )
+
 
 @overload
 def custom_op(
