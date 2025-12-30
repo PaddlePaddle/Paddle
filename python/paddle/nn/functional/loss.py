@@ -1013,7 +1013,7 @@ def hsigmoid_loss(
         A tensor with the cost of hierarchical sigmoid, its shape is [N, 1] and data type is the same as `input`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
