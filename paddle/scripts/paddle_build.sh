@@ -4095,16 +4095,16 @@ function check_coverage_build() {
     diff_coverage_build_size=`echo $(($pr_coverage_build_size - $dev_coverage_build_size))`
     set +x
     if [ ${diff_coverage_build_size} -gt 3 ]; then
-       approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
-       APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 29832297 6836917 62429225 50065335`
-       echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
-       if [ "${APPROVALS}" == "FALSE" ]; then
-           echo "=========================================================================================="
-           echo "This PR make the release paddlepaddle coverage build size growth exceeds 3 G, please explain why your PR exceeds 3G to ext_ppee@baidu.com and in PR description."
-           echo "Then you must have one RD (tianshuo78520a (Recommend) or luotao1 or risemeup1 or swgu98) approval for this PR\n"
-           echo "=========================================================================================="
-           exit 6
-       fi
+        approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+        APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 swgu98 luotao1 risemeup1 ooooo-create`
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+        if [ "${APPROVALS}" == "FALSE" ]; then
+            echo "=========================================================================================="
+            echo "This PR make the release paddlepaddle coverage build size growth exceeds 3 G, please explain why your PR exceeds 3G to ext_ppee@baidu.com and in PR description."
+            echo "Then you must have one RD (swgu98 (Recommend) or luotao1 or risemeup1 or ooooo-create) approval for this PR\n"
+            echo "=========================================================================================="
+            exit 6
+        fi
     fi
     set -x
 }
