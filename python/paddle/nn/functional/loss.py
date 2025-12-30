@@ -807,7 +807,7 @@ def binary_cross_entropy_with_logits(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
