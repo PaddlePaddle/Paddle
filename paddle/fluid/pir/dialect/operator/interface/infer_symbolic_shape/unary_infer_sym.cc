@@ -339,6 +339,7 @@ bool MinMaxOpInferSymbolicShape(pir::Operation *op,
     keepdims = GetBoolAttr(op, "keepdims");
     const auto &axis_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    // NOTE(large-tensor): axis is a small integer.
     axis = static_cast<int>(
         axis_shape_or_data.data().value().at(0).Get<int64_t>());
   }

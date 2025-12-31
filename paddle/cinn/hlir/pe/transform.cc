@@ -69,8 +69,8 @@ std::vector<std::vector<int>> GetMatmulNewShapes(
   auto& new_y_shape = new_shape[1];
   auto& out_shape = new_shape[2];
 
-  int x_dim = x_shape.size(), y_dim = y_shape.size();
-  int max_dim = std::max(x_shape.size(), y_shape.size());
+  size_t x_dim = x_shape.size(), y_dim = y_shape.size();
+  size_t max_dim = std::max(x_shape.size(), y_shape.size());
   int out_dim = max_dim >= 3 ? 3 : (max_dim <= 2 ? 2 : max_dim);
 
   auto get_input_shape = [out_dim](const std::vector<int>& old_shape) {

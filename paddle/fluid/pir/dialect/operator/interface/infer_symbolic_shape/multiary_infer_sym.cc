@@ -3725,7 +3725,7 @@ bool NceOpInferSymbolicShape(pir::Operation *op,
     infer_context->AddEqualCstr(weight_shape[0], bias_shape[0]);
   }
 
-  int num_total_classes =
+  int64_t num_total_classes =
       op->attribute<pir::Int64Attribute>("num_total_classes").data();
   infer_context->AddEqualCstr(symbol::DimExpr(num_total_classes),
                               weight_shape[0]);
@@ -3737,7 +3737,7 @@ bool NceOpInferSymbolicShape(pir::Operation *op,
           symbol::TensorShapeOrDataDimExprs(out_shape)});
 
   bool is_test = op->attribute<pir::BoolAttribute>("is_test").data();
-  int num_neg_samples =
+  int64_t num_neg_samples =
       op->attribute<pir::Int64Attribute>("num_neg_samples").data();
   if (!is_test) {
     std::vector<symbol::DimExpr> sample_out_shape = {x_shape[0]};

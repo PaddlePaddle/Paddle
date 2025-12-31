@@ -5383,6 +5383,8 @@ void PartialConcatInferMeta(const std::vector<const MetaTensor*>& xs,
                             MetaConfig config) {
   int64_t batch_size = -1;
   int64_t input_len = -1;
+  // TODO(large-tensor): change start_index to int64_t
+  int64_t start_index_int64 = start_index;
 
   auto inputs_num = xs.size();
   PADDLE_ENFORCE_GT(inputs_num,
@@ -5427,12 +5429,12 @@ void PartialConcatInferMeta(const std::vector<const MetaTensor*>& xs,
           start_index));
 
   if (start_index < 0) {
-    start_index += input_len;
+    start_index_int64 += input_len;
   }
 
   if (length > 0) {
     PADDLE_ENFORCE_GE(input_len,
-                      start_index + length,
+                      start_index_int64 + length,
                       common::errors::OutOfRange(
                           "start_index + length is larger than input length"));
   }
@@ -5440,7 +5442,7 @@ void PartialConcatInferMeta(const std::vector<const MetaTensor*>& xs,
   std::vector<int64_t> out_dims(2);
   out_dims[0] = batch_size;
   // colnum = input_num * length
-  out_dims[1] = (length < 0) ? input_len - start_index : length;
+  out_dims[1] = (length < 0) ? input_len - start_index_int64 : length;
   out_dims[1] *= inputs_num;
   DDim out_dim = common::make_ddim(out_dims);
   out->set_dims(out_dim);
@@ -5448,10 +5450,10 @@ void PartialConcatInferMeta(const std::vector<const MetaTensor*>& xs,
 }
 
 void SvdvalsInferMeta(const MetaTensor& x, MetaTensor* s) {
-  auto SDDim = [](const DDim& x_dim, int k) {
+  auto SDDim = [](const DDim& x_dim, int64_t k) {
     auto x_vec = common::vectorize(x_dim);
     x_vec.erase(x_vec.end() - 2, x_vec.end());
-    x_vec.push_back(k);
+    x_vec.push_back(static_cast<int>(k));
     return common::make_ddim(x_vec);
   };
 
