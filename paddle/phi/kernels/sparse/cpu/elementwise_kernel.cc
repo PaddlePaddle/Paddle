@@ -230,8 +230,8 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                                          out_indices_vec.data());
 
   if (nnz == 0) {
-    phi::DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
-    phi::DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, x.values());
+    DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
+    DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, x.values());
     out->SetMember(out_indices, out_values, x.dims());
   } else {
     DenseTensorMeta indices_meta(
@@ -244,8 +244,8 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
     indices_dim.insert(indices_dim.begin(), nnz);
     DenseTensorMeta values_meta(
         x.dtype(), common::make_ddim(indices_dim), DataLayout::NCHW);
-    phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
-    phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
+    DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
+    DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
 
     std::memcpy(out_indices.data<IntT>(),
                 out_indices_vec.data(),

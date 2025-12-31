@@ -30,21 +30,21 @@ namespace phi {
 template <typename Context, typename T>
 struct DequantizeFunctor {
   void operator()(const Context& dev_ctx,
-                  const phi::DenseTensor* in,
-                  const phi::DenseTensor* scale,
+                  const DenseTensor* in,
+                  const DenseTensor* scale,
                   T max_range,
-                  phi::DenseTensor* out);
+                  DenseTensor* out);
 };
 
 template <typename Context, typename T>
 struct ChannelDequantizeFunctorV2 {
   void operator()(const Context& dev_ctx,
-                  const phi::DenseTensor* in,
-                  const phi::DenseTensor** scales,
+                  const DenseTensor* in,
+                  const DenseTensor** scales,
                   const int scale_num,
                   T max_range,
                   const int quant_axis,
-                  phi::DenseTensor* out);
+                  DenseTensor* out);
 };
 
 template <typename T, typename Context, typename D>
@@ -62,7 +62,7 @@ void DeQuantizeLinearImpl(const Context& dev_ctx,
   dev_ctx.template Alloc<D>(out, out->numel() * sizeof(D));
 
   if (only_observer) {
-    phi::Copy(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
+    Copy(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
     return;
   }
 
@@ -160,7 +160,7 @@ void QuantizeLinearTrainKernel(const Context& dev_ctx,
 
   if (quant_axis < 0) {
     // training
-    phi::DenseTensor tmp_scale;
+    DenseTensor tmp_scale;
     tmp_scale.Resize(common::make_dim(1));
     T* cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
 
@@ -180,7 +180,7 @@ void QuantizeLinearTrainKernel(const Context& dev_ctx,
                                                         out_accum,
                                                         out_scale);
     if (only_observer) {
-      phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
+      Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
     } else {
       funcs::ClipAndFakeQuantFunctor<Context, T>()(
           dev_ctx, *in, *out_scale, qmax, round_type, out);
@@ -190,7 +190,7 @@ void QuantizeLinearTrainKernel(const Context& dev_ctx,
     funcs::FindChannelAbsMaxFunctor<Context, T>()(
         dev_ctx, *in, quant_axis, out_scale_data);
     if (only_observer) {
-      phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
+      Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
     } else {
       funcs::ChannelClipAndFakeQuantFunctor<Context, T>()(
           dev_ctx, *in, *out_scale, qmax, round_type, quant_axis, out);
@@ -220,14 +220,14 @@ void QuantizeLinearInferKernel(const Context& dev_ctx,
 
   if (quant_axis < 0) {
     if (only_observer) {
-      phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
+      Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
     } else {
       funcs::ClipAndFakeQuantFunctor<Context, T>()(
           dev_ctx, *in, *in_scale, qmax, round_type, out);
     }
   } else {
     if (only_observer) {
-      phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
+      Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
     } else {
       funcs::ChannelClipAndFakeQuantFunctor<Context, T>()(
           dev_ctx, *in, *in_scale, qmax, round_type, quant_axis, out);
@@ -305,8 +305,8 @@ void QuantizeLinearDeprecatedTrainKernel(
     DenseTensor* out_state,
     DenseTensor* out_accum,
     DenseTensor* out_scale) {
-  paddle::optional<phi::DenseTensor> scale =
-      paddle::make_optional<phi::DenseTensor>(in_scale);
+  paddle::optional<DenseTensor> scale =
+      paddle::make_optional<DenseTensor>(in_scale);
   QuantizeLinearTrainKernel<T, Context>(dev_ctx,
                                         x,
                                         scale,
@@ -337,8 +337,8 @@ void QuantizeLinearDeprecatedInferKernel(const Context& dev_ctx,
                                          int round_type,
                                          bool only_observer,
                                          DenseTensor* out) {
-  paddle::optional<phi::DenseTensor> scale =
-      paddle::make_optional<phi::DenseTensor>(in_scale);
+  paddle::optional<DenseTensor> scale =
+      paddle::make_optional<DenseTensor>(in_scale);
   QuantizeLinearInferKernel<T, Context>(dev_ctx,
                                         x,
                                         scale,
@@ -364,8 +364,8 @@ void DeQuantizeLinearDeprecatedKernel(const Context& dev_ctx,
                                       int round_type,
                                       bool only_observer,
                                       DenseTensor* out) {
-  paddle::optional<phi::DenseTensor> scale =
-      paddle::make_optional<phi::DenseTensor>(in_scale);
+  paddle::optional<DenseTensor> scale =
+      paddle::make_optional<DenseTensor>(in_scale);
   DeQuantizeLinearKernel<T, Context>(dev_ctx,
                                      x,
                                      scale,

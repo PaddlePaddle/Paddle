@@ -1408,7 +1408,8 @@ Tensor baddbmm_decomp(const Tensor& input,
                       const Tensor& x,
                       const Tensor& y,
                       const float beta,
-                      const float alpha) {
+                      const float alpha,
+                      const DataType out_dtype) {
   int64_t batch_size = x.shape()[0];
   std::vector<Tensor> batch_results;
 

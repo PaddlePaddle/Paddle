@@ -518,7 +518,7 @@ void TriuIndicesInferMeta(
 
 void ReadFileInferMeta(const std::string& filename, MetaTensor* out) {
   auto out_dims = std::vector<int>(1, -1);
-  out->set_dims(phi::make_ddim(out_dims));
+  out->set_dims(make_ddim(out_dims));
   out->set_dtype(DataType::UINT8);
 }
 

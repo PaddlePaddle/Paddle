@@ -145,8 +145,8 @@ void FTRLOpKernel(const Context& dev_ctx,
 
   auto grad = &grad_in;
 
-  phi::SelectedRows tmp_merged_grad;
-  phi::SelectedRows* merged_grad = &tmp_merged_grad;
+  SelectedRows tmp_merged_grad;
+  SelectedRows* merged_grad = &tmp_merged_grad;
   funcs::scatter::MergeAdd<Context, T> merge_func;
   merge_func(dev_ctx, *grad, merged_grad);
 

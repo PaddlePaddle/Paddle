@@ -6541,14 +6541,14 @@ void TopPSamplingInferMeta(const MetaTensor& x,
       mode == "truncated" || mode == "non-truncated",
       errors::InvalidArgument("mode must be 'truncated' or 'non-truncated'."));
 
-  ids->set_dims(phi::make_ddim({bsz, 1}));
+  ids->set_dims(make_ddim({bsz, 1}));
   ids->set_dtype(DataType::INT64);
-  out->set_dims(phi::make_ddim({bsz, 1}));
+  out->set_dims(make_ddim({bsz, 1}));
   out->set_dtype(x.dtype());
   if (k > 0) {
-    topk_ids->set_dims(phi::make_ddim({bsz, k}));
+    topk_ids->set_dims(make_ddim({bsz, k}));
     topk_ids->set_dtype(DataType::INT64);
-    topk_scores->set_dims(phi::make_ddim({bsz, k}));
+    topk_scores->set_dims(make_ddim({bsz, k}));
     topk_scores->set_dtype(x.dtype());
   }
 }
@@ -6648,10 +6648,10 @@ void CalAuxLossInferMeta(const MetaTensor& gate_prob,
             "The input dispatch_tokens_mask type should be BOOL"));
   }
 
-  l_aux_loss->set_dims(phi::make_ddim({}));
+  l_aux_loss->set_dims(make_ddim({}));
   l_aux_loss->set_dtype(gate_prob.dtype());
 
-  seqlen_floats->set_dims(phi::make_ddim({}));
+  seqlen_floats->set_dims(make_ddim({}));
   seqlen_floats->set_dtype(gate_prob.dtype());
 
   ce->set_dims({gate_prob_dims[1]});

@@ -499,10 +499,10 @@ template <typename tensor_t,
           bool is_scatter_like = true>
 struct gpu_gather_scatter_functor {
   template <typename func_t>
-  void operator()(phi::DenseTensor self,
+  void operator()(DenseTensor self,
                   int dim,
-                  const phi::DenseTensor& index,
-                  phi::DenseTensor src,
+                  const DenseTensor& index,
+                  DenseTensor src,
                   const std::string& method_name,
                   const func_t& reduce_op,
                   bool include_self,
@@ -634,10 +634,10 @@ struct gpu_gather_scatter_functor {
 };  // struct gpu_gather_scatter_functor
 
 template <typename tensor_t, typename index_t>
-void gpu_gather_kernel(phi::DenseTensor self,
+void gpu_gather_kernel(DenseTensor self,
                        int dim,
-                       const phi::DenseTensor& index,
-                       phi::DenseTensor result,
+                       const DenseTensor& index,
+                       DenseTensor result,
                        bool include_self,
                        const phi::DeviceContext& dev_ctx) {
   gpu_gather_scatter_functor<tensor_t,
@@ -648,10 +648,10 @@ void gpu_gather_kernel(phi::DenseTensor self,
 }
 
 template <typename tensor_t, typename index_t>
-void gpu_scatter_assign_kernel(phi::DenseTensor self,
+void gpu_scatter_assign_kernel(DenseTensor self,
                                int dim,
-                               const phi::DenseTensor& index,
-                               phi::DenseTensor src,
+                               const DenseTensor& index,
+                               DenseTensor src,
                                bool include_self,
                                const phi::DeviceContext& dev_ctx) {
   gpu_gather_scatter_functor<tensor_t,
@@ -661,10 +661,10 @@ void gpu_scatter_assign_kernel(phi::DenseTensor self,
 }
 
 template <typename tensor_t, typename index_t>
-void gpu_scatter_add_kernel(phi::DenseTensor self,
+void gpu_scatter_add_kernel(DenseTensor self,
                             int dim,
-                            const phi::DenseTensor& index,
-                            phi::DenseTensor src,
+                            const DenseTensor& index,
+                            DenseTensor src,
                             bool include_self,
                             const phi::DeviceContext& dev_ctx) {
   gpu_gather_scatter_functor<tensor_t,
@@ -674,10 +674,10 @@ void gpu_scatter_add_kernel(phi::DenseTensor self,
 }
 
 template <typename tensor_t, typename index_t>
-void gpu_scatter_mul_kernel(phi::DenseTensor self,
+void gpu_scatter_mul_kernel(DenseTensor self,
                             int dim,
-                            const phi::DenseTensor& index,
-                            phi::DenseTensor src,
+                            const DenseTensor& index,
+                            DenseTensor src,
                             bool include_self,
                             const phi::DeviceContext& dev_ctx) {
   gpu_gather_scatter_functor<tensor_t,
@@ -687,10 +687,10 @@ void gpu_scatter_mul_kernel(phi::DenseTensor self,
 }
 
 template <typename tensor_t, typename index_t>
-void gpu_scatter_mean_kernel(phi::DenseTensor self,
+void gpu_scatter_mean_kernel(DenseTensor self,
                              int dim,
-                             const phi::DenseTensor& index,
-                             phi::DenseTensor src,
+                             const DenseTensor& index,
+                             DenseTensor src,
                              bool include_self,
                              const phi::DeviceContext& dev_ctx) {
   gpu_gather_scatter_functor<tensor_t,
@@ -700,10 +700,10 @@ void gpu_scatter_mean_kernel(phi::DenseTensor self,
 }
 
 template <typename tensor_t, typename index_t>
-void gpu_scatter_max_kernel(phi::DenseTensor self,
+void gpu_scatter_max_kernel(DenseTensor self,
                             int dim,
-                            const phi::DenseTensor& index,
-                            phi::DenseTensor src,
+                            const DenseTensor& index,
+                            DenseTensor src,
                             bool include_self,
                             const phi::DeviceContext& dev_ctx) {
   gpu_gather_scatter_functor<tensor_t,
@@ -713,10 +713,10 @@ void gpu_scatter_max_kernel(phi::DenseTensor self,
 }
 
 template <typename tensor_t, typename index_t>
-void gpu_scatter_min_kernel(phi::DenseTensor self,
+void gpu_scatter_min_kernel(DenseTensor self,
                             int dim,
-                            const phi::DenseTensor& index,
-                            phi::DenseTensor src,
+                            const DenseTensor& index,
+                            DenseTensor src,
                             bool include_self,
                             const phi::DeviceContext& dev_ctx) {
   gpu_gather_scatter_functor<tensor_t,
@@ -763,10 +763,10 @@ __global__ void ScatterInputGradGPUKernel(
 }
 
 template <typename tensor_t, typename index_t>
-void gpu_scatter_input_grad_kernel(phi::DenseTensor self,
+void gpu_scatter_input_grad_kernel(DenseTensor self,
                                    int dim,
-                                   const phi::DenseTensor& index,
-                                   phi::DenseTensor grad,
+                                   const DenseTensor& index,
+                                   DenseTensor grad,
                                    bool include_self UNUSED,
                                    const phi::DeviceContext& dev_ctx) {
   auto* index_data = index.data<index_t>();
@@ -920,13 +920,13 @@ __global__ void ScatterMinMaxInputGradGPUKernel(
 
 template <typename tensor_t, typename index_t>
 void gpu_scatter_mul_min_max_input_grad_kernel(
-    phi::DenseTensor self,
+    DenseTensor self,
     int dim,
-    const phi::DenseTensor& index,
-    const phi::DenseTensor& out,
-    const phi::DenseTensor& x,
-    const phi::DenseTensor& value,
-    phi::DenseTensor grad,
+    const DenseTensor& index,
+    const DenseTensor& out,
+    const DenseTensor& x,
+    const DenseTensor& value,
+    DenseTensor grad,
     const std::string& reduce,
     bool include_self UNUSED,
     const phi::DeviceContext& dev_ctx) {
@@ -1058,10 +1058,10 @@ __global__ void ScatterMeanInputGradGPUKernel(
 }
 
 template <typename tensor_t, typename index_t>
-void gpu_scatter_mean_input_grad_kernel(phi::DenseTensor self,
+void gpu_scatter_mean_input_grad_kernel(DenseTensor self,
                                         int dim,
-                                        const phi::DenseTensor& index,
-                                        phi::DenseTensor grad,
+                                        const DenseTensor& index,
+                                        DenseTensor grad,
                                         bool include_self UNUSED,
                                         const phi::DeviceContext& dev_ctx) {
   auto* index_data = index.data<index_t>();
@@ -1159,10 +1159,10 @@ __global__ void ScatterValueGradGPUKernel(
 }
 
 template <typename tensor_t, typename index_t>
-void gpu_scatter_value_grad_kernel(phi::DenseTensor self,
+void gpu_scatter_value_grad_kernel(DenseTensor self,
                                    int dim,
-                                   const phi::DenseTensor& index,
-                                   phi::DenseTensor grad,
+                                   const DenseTensor& index,
+                                   DenseTensor grad,
                                    bool include_self UNUSED,
                                    const phi::DeviceContext& dev_ctx) {
   auto* self_data = self.data<tensor_t>();
@@ -1270,17 +1270,17 @@ __global__ void ScatterAddValueGradGPUKernel(
 }
 
 template <typename tensor_t, typename index_t>
-void gpu_scatter_add_mean_value_grad_kernel(
-    phi::DenseTensor self,
-    int dim,
-    const phi::DenseTensor& index,
-    const phi::DenseTensor& out UNUSED,
-    const phi::DenseTensor& x UNUSED,
-    const phi::DenseTensor& value UNUSED,
-    phi::DenseTensor grad,
-    const std::string& reduce,
-    bool include_self,
-    const phi::DeviceContext& dev_ctx UNUSED) {
+void gpu_scatter_add_mean_value_grad_kernel(DenseTensor self,
+                                            int dim,
+                                            const DenseTensor& index,
+                                            const DenseTensor& out UNUSED,
+                                            const DenseTensor& x UNUSED,
+                                            const DenseTensor& value UNUSED,
+                                            DenseTensor grad,
+                                            const std::string& reduce,
+                                            bool include_self,
+                                            const phi::DeviceContext& dev_ctx
+                                                UNUSED) {
   const auto* self_data = self.data<tensor_t>();
   auto* index_data = index.data<index_t>();
   auto* grad_data = grad.data<tensor_t>();
@@ -1405,13 +1405,13 @@ __global__ void ScatterMinMaxValueGradGPUKernel(
 
 template <typename tensor_t, typename index_t>
 void gpu_scatter_mul_min_max_value_grad_kernel(
-    phi::DenseTensor self,
+    DenseTensor self,
     int dim,
-    const phi::DenseTensor& index,
-    const phi::DenseTensor& out,
-    const phi::DenseTensor& x,
-    const phi::DenseTensor& value,
-    phi::DenseTensor grad,
+    const DenseTensor& index,
+    const DenseTensor& out,
+    const DenseTensor& x,
+    const DenseTensor& value,
+    DenseTensor grad,
     const std::string& reduce,
     bool include_self,
     const phi::DeviceContext& dev_ctx) {

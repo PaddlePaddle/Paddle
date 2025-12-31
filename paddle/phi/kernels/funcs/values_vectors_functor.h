@@ -235,7 +235,7 @@ struct MatrixEighFunctor<CPUContext, T> {
     DenseTensor input_trans;
     // lapack is a column-major storage, transpose make the input to
     // have a continuous memory layout
-    input_trans = phi::TransposeLast2Dim<T>(dev_ctx, input);
+    input_trans = TransposeLast2Dim<T>(dev_ctx, input);
     T *input_vector = input_trans.data<T>();
 
     auto dims = input.dims();
@@ -321,7 +321,7 @@ struct MatrixEighFunctor<CPUContext, T> {
                                   "When has_vectors is true,"
                                   "the eigenvectors needs to be calculated, "
                                   "so the eigenvectors must be provided."));
-      input_trans = phi::TransposeLast2Dim<T>(dev_ctx, input_trans);
+      input_trans = TransposeLast2Dim<T>(dev_ctx, input_trans);
       eigen_vectors->ShareDataWith(input_trans);
     }
   }
@@ -405,7 +405,7 @@ struct MatrixEighFunctor<GPUContext, T> {
         has_vectors ? rocblas_evect_original : rocblas_evect_none;
 
     ValueType *out_value = dev_ctx.template Alloc<ValueType>(eigen_values);
-    DenseTensor input_trans = phi::TransposeLast2Dim<T>(dev_ctx, input);
+    DenseTensor input_trans = TransposeLast2Dim<T>(dev_ctx, input);
     T *input_vector = input_trans.data<T>();
 
     auto handle = dev_ctx.cusolver_dn_handle();
@@ -450,7 +450,7 @@ struct MatrixEighFunctor<GPUContext, T> {
                                   "When has_vectors is true,"
                                   "the eigenvectors needs to be calculated,"
                                   "so the eigenvectors must be provided."));
-      input_trans = phi::TransposeLast2Dim<T>(dev_ctx, input_trans);
+      input_trans = TransposeLast2Dim<T>(dev_ctx, input_trans);
       eigen_vectors->ShareDataWith(input_trans);
     }
   }
@@ -488,7 +488,7 @@ struct MatrixEighFunctor<GPUContext, T> {
         has_vectors ? CUSOLVER_EIG_MODE_VECTOR : CUSOLVER_EIG_MODE_NOVECTOR;
 
     ValueType *out_value = dev_ctx.template Alloc<ValueType>(eigen_values);
-    DenseTensor input_trans = phi::TransposeLast2Dim<T>(dev_ctx, input);
+    DenseTensor input_trans = TransposeLast2Dim<T>(dev_ctx, input);
     T *input_vector = input_trans.data<T>();
 
     // Precision loss will occur in some cases while using
@@ -601,7 +601,7 @@ struct MatrixEighFunctor<GPUContext, T> {
                                   "When has_vectors is true,"
                                   "the eigenvectors needs to be calculated,"
                                   "so the eigenvectors must be provided."));
-      input_trans = phi::TransposeLast2Dim<T>(dev_ctx, input_trans);
+      input_trans = TransposeLast2Dim<T>(dev_ctx, input_trans);
       eigen_vectors->ShareDataWith(input_trans);
     }
   }

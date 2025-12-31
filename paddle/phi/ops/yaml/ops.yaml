@@ -556,7 +556,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : baddbmm
-  args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
+  args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0, DataType out_dtype=DataType::UNDEFINED)
   output : Tensor(out)
   infer_meta :
     func : BaddbmmInferMeta

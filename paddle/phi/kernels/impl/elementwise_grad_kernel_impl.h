@@ -44,7 +44,7 @@ void MixedPrecisionAddGradImpl(const Context& dev_ctx,
   if (x_grad != nullptr && y_grad == nullptr &&
       x_grad->dims() == out_grad.dims()) {
     VLOG(4) << "Mixed precision: only x_grad needed, no reduce";
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   } else if (x_grad == nullptr && y_grad != nullptr &&
              y_grad->dims() == out_grad.dims()) {
     VLOG(4) << "Mixed precision: only y_grad needed, no reduce";
@@ -71,12 +71,12 @@ void AddGradImpl(const Context& dev_ctx,
       x_grad->dims() == out_grad.dims()) {
     VLOG(4) << "Special case when y_grad is not needed and x_grad doesn't "
                "reduce";
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   } else if (x_grad == nullptr && y_grad != nullptr &&
              y_grad->dims() == out_grad.dims()) {
     VLOG(4) << "Special case when x_grad is not needed and y_grad doesn't "
                "reduce";
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, y_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, y_grad);
   } else {
     grad_func(dev_ctx, x, y, *out, out_grad, x_grad, y_grad, axis);
   }
@@ -112,7 +112,7 @@ void AddDoubleGradImpl(const Context& dev_ctx,
       } else {
         VLOG(4) << "Special case when ddx is not needed and ddy doesn't need "
                    "to broadcast\n";
-        phi::Copy(dev_ctx, *ddy_tensor, dev_ctx.GetPlace(), false, ddout);
+        Copy(dev_ctx, *ddy_tensor, dev_ctx.GetPlace(), false, ddout);
       }
     } else if (ddx_tensor != nullptr && ddy_tensor == nullptr) {
       if (ddx_tensor->dims() != out_shape) {
@@ -127,7 +127,7 @@ void AddDoubleGradImpl(const Context& dev_ctx,
       } else {
         VLOG(4) << "Special case when ddx is not needed and ddy doesn't need "
                    "to broadcast\n";
-        phi::Copy(dev_ctx, *ddx_tensor, dev_ctx.GetPlace(), false, ddout);
+        Copy(dev_ctx, *ddx_tensor, dev_ctx.GetPlace(), false, ddout);
       }
     } else {
       auto ddx_dims = ddx_tensor->dims();
@@ -272,11 +272,11 @@ struct DivDoubleDDOut_Only_DDY {
 
 template <typename T, typename DDout_OP, typename OutType = T>
 void ComputeDDoutWithoutBroadcast(const CPUContext& dev_ctx UNUSED,
-                                  const phi::DenseTensor& ddx,
-                                  const phi::DenseTensor& ddy,
-                                  const phi::DenseTensor& y,
-                                  const phi::DenseTensor& out,
-                                  phi::DenseTensor* ddout,
+                                  const DenseTensor& ddx,
+                                  const DenseTensor& ddy,
+                                  const DenseTensor& y,
+                                  const DenseTensor& out,
+                                  DenseTensor* ddout,
                                   DDout_OP dout_op) {
   auto out_numel = out.numel();
   auto* ddx_data = ddx.data<T>();
@@ -291,11 +291,11 @@ void ComputeDDoutWithoutBroadcast(const CPUContext& dev_ctx UNUSED,
 
 template <typename T, typename DDout_OP, typename OutType = T>
 void ComputeDDoutWithBroadcast(const CPUContext& dev_ctx UNUSED,
-                               const phi::DenseTensor& ddx,
-                               const phi::DenseTensor& ddy,
-                               const phi::DenseTensor& y,
-                               const phi::DenseTensor& out,
-                               phi::DenseTensor* ddout,
+                               const DenseTensor& ddx,
+                               const DenseTensor& ddy,
+                               const DenseTensor& y,
+                               const DenseTensor& out,
+                               DenseTensor* ddout,
                                const int* x_dims_array,
                                const int* y_dims_array,
                                const int* out_dims_array,
@@ -416,11 +416,11 @@ __global__ void ComputeDDoutWithoutBroadcastGPUKernel(const T* ddx_data,
 
 template <typename T, typename DDout_OP, typename OutType = T>
 void ComputeDDoutWithoutBroadcast(const GPUContext& dev_ctx UNUSED,
-                                  const phi::DenseTensor& ddx,
-                                  const phi::DenseTensor& ddy,
-                                  const phi::DenseTensor& y,
-                                  const phi::DenseTensor& out,
-                                  phi::DenseTensor* ddout,
+                                  const DenseTensor& ddx,
+                                  const DenseTensor& ddy,
+                                  const DenseTensor& y,
+                                  const DenseTensor& out,
+                                  DenseTensor* ddout,
                                   DDout_OP dout_op) {
   auto out_numel = out.numel();
   auto* ddx_data = ddx.data<T>();
@@ -472,11 +472,11 @@ __global__ void ComputeDDoutWithBroadcastGPUKernel(
 
 template <typename T, typename DDout_OP, typename OutType = T>
 void ComputeDDoutWithBroadcast(const GPUContext& dev_ctx UNUSED,
-                               const phi::DenseTensor& ddx,
-                               const phi::DenseTensor& ddy,
-                               const phi::DenseTensor& y,
-                               const phi::DenseTensor& out,
-                               phi::DenseTensor* ddout,
+                               const DenseTensor& ddx,
+                               const DenseTensor& ddy,
+                               const DenseTensor& y,
+                               const DenseTensor& out,
+                               DenseTensor* ddout,
                                const int* x_dims_array,
                                const int* y_dims_array,
                                const int* out_dims_array,
@@ -517,12 +517,12 @@ void ComputeDDoutWithBroadcast(const GPUContext& dev_ctx UNUSED,
 
 template <typename Context, typename T, typename DDout_OP, typename Tout = T>
 void DivDoubleDDoutCompute(const Context& dev_ctx,
-                           const phi::DenseTensor& ddx,
-                           const phi::DenseTensor& ddy,
-                           const phi::DenseTensor& y,
-                           const phi::DenseTensor& out,
+                           const DenseTensor& ddx,
+                           const DenseTensor& ddy,
+                           const DenseTensor& y,
+                           const DenseTensor& out,
                            int axis,
-                           phi::DenseTensor* ddout,
+                           DenseTensor* ddout,
                            DDout_OP dout_op) {
   auto x_dims = ddx.dims();
   auto y_dims = ddy.dims();

@@ -150,7 +150,7 @@ void LRNMKLDNNOpKernel(const Context& dev_ctx,
   auto lrn_p = handler.AcquireForwardPrimitive();
 
   auto workspace_memory = handler.AcquireWorkspaceMemory(mid, dev_ctx);
-  mid->set_layout(phi::DataLayout::ONEDNN);
+  mid->set_layout(DataLayout::ONEDNN);
 
   auto& astream = OneDNNContext::tls().get_stream();
   if (!workspace_memory->get_desc().is_zero()) {

@@ -117,8 +117,7 @@ void BincountCUDAInner(const Context& dev_ctx,
   input_min_max_t.Resize({2});
   auto* input_min_max_data = dev_ctx.template Alloc<InputT>(&input_min_max_t);
 
-  phi::Copy(
-      dev_ctx, input_min_max_cpu, dev_ctx.GetPlace(), true, &input_min_max_t);
+  Copy(dev_ctx, input_min_max_cpu, dev_ctx.GetPlace(), true, &input_min_max_t);
 
   int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int64_t num_blocks = std::min(GET_BLOCKS(input_numel), max_grid_x);
@@ -126,8 +125,7 @@ void BincountCUDAInner(const Context& dev_ctx,
       <<<num_blocks, PADDLE_CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
           input_data, input_numel, input_min_max_data, input_min_max_data + 1);
 
-  phi::Copy(
-      dev_ctx, input_min_max_t, phi::CPUPlace(), true, &input_min_max_cpu);
+  Copy(dev_ctx, input_min_max_t, phi::CPUPlace(), true, &input_min_max_cpu);
 
   InputT input_min = input_min_max_cpu.data<InputT>()[0];
 

@@ -332,7 +332,7 @@ void WarprnntKernel(const Context& dev_ctx,
                                 1 /*num_threads*/,
                                 warprnnt_loss_data);
 
-  phi::Copy(dev_ctx, warprnnt_loss, dev_ctx.GetPlace(), true, loss);
+  Copy(dev_ctx, warprnnt_loss, dev_ctx.GetPlace(), true, loss);
 }
 
 }  // namespace phi

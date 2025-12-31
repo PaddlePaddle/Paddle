@@ -710,9 +710,8 @@ int ProductRuleBook(const Context& dev_ctx,
                                                    out_index_ptr);
 
     const int64_t sparse_dim = is2D ? 3 : 4;
-    phi::DenseTensor out_indices =
-        phi::Empty<IntT>(dev_ctx, {sparse_dim, out_nnz});
-    phi::DenseTensor out_values =
+    DenseTensor out_indices = phi::Empty<IntT>(dev_ctx, {sparse_dim, out_nnz});
+    DenseTensor out_values =
         phi::Empty<T>(dev_ctx, {out_nnz, kernel_sizes[sparse_dim]});
     out->SetMember(out_indices, out_values, out_dims, false);
 

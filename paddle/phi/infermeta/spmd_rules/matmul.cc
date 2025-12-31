@@ -363,9 +363,9 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x_,
     y = DistMetaTensor(y.dims(), infer_y_dist_attr);
   }
 
-  const std::vector<int64_t> x_shape = phi::vectorize(x.dims());
-  const std::vector<int64_t> y_shape = phi::vectorize(y.dims());
-  const std::vector<int64_t> out_grad_shape = phi::vectorize(out_grad.dims());
+  const std::vector<int64_t> x_shape = vectorize(x.dims());
+  const std::vector<int64_t> y_shape = vectorize(y.dims());
+  const std::vector<int64_t> out_grad_shape = vectorize(out_grad.dims());
 
   SpmdInfo dx_spmd_info;
   SpmdInfo dy_spmd_info;

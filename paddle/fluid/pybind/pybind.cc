@@ -134,13 +134,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/xpu_streams_py.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/phi/backends/gpu/gpu_info.h"
-#endif
-#ifdef PADDLE_WITH_XPU
-#include "paddle/phi/backends/xpu/xpu_info.h"
-#endif
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
