@@ -485,7 +485,7 @@
   backward: fused_seqpool_cvm_grad
 
 - op : fused_stack_quant
-  args : (Tensor[] x)
+  args : (Tensor[] x, bool using_pow2_scaling=false, bool using_ue8m0_scale=false, bool output_scale_transpose=true)
   output : Tensor(out), Tensor(scale)
   infer_meta :
     func : FusedStackQuantInferMeta
@@ -495,7 +495,7 @@
   support_dygraph_mode : true
 
 - op : fused_stack_transpose_quant
-  args : (Tensor[] x)
+  args : (Tensor[] x, bool using_pow2_scaling=false, bool using_ue8m0_scale=false, bool output_scale_transpose=true)
   output : Tensor(out), Tensor(scale)
   infer_meta :
     func : FusedStackTransposeQuantInferMeta
