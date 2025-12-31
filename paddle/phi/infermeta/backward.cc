@@ -506,14 +506,23 @@ void LinearV2GradInferMeta(const MetaTensor& input,
 
   auto dout_mat_dims = common::flatten_to_2d(dout_dims, dout_dims.size() - 1);
 
-  PADDLE_ENFORCE_EQ(
-      dout_mat_dims[1],
-      weight_dims[1],
-      common::errors::InvalidArgument(
-          "The last dimension of DOut should be equal with Y's last "
-          "dimension. But received DOut[-1] = [%d], Y[1] = [%d].",
-          dout_mat_dims[1],
-          weight_dims[1]));
+  const int64_t input_ndim = input_dims.size();
+  auto k_from_dout = input_ndim >= 2 ? dout_dims[input_ndim - 2] : 1;
+  auto k_from_input = input_ndim >= 2 ? input_dims[input_ndim - 2] : 1;
+
+  bool check_k =
+      (k_from_dout < 0 || k_from_input < 0) || (k_from_dout == k_from_input);
+
+  if (check_k) {
+    PADDLE_ENFORCE_EQ(
+        dout_mat_dims[1],
+        weight_dims[1],
+        common::errors::InvalidArgument(
+            "The last dimension of DOut should be equal with Y's last "
+            "dimension. But received DOut[-1] = [%d], Y[1] = [%d].",
+            dout_mat_dims[1],
+            weight_dims[1]));
+  }
 
   for (int32_t i = 0; i + 2 < input_dims.size(); ++i) {
     if (dout_dims[i] > 0 && input_dims[i] > 0) {
@@ -529,20 +538,6 @@ void LinearV2GradInferMeta(const MetaTensor& input,
               input_dims[i]));
     }
   }
-
-  const int64_t input_ndim = input_dims.size();
-  auto k_from_dout = input_ndim >= 2 ? dout_dims[input_ndim - 2] : 1;
-  auto k_from_input = input_ndim >= 2 ? input_dims[input_ndim - 2] : 1;
-
-  bool check_k =
-      (k_from_dout < 0 || k_from_input < 0) || (k_from_dout == k_from_input);
-  PADDLE_ENFORCE_EQ(
-      check_k,
-      true,
-      common::errors::InvalidArgument(
-          "K from dout and x is not same, k_from_dout is [%d], k_from_x is[%d]",
-          k_from_dout,
-          k_from_input));
 
   if (input_grad) {
     input_grad->set_dims(input_dims);
