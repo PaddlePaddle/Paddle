@@ -3452,3 +3452,40 @@ def conj(
 ) -> Tensor
 """,
 )
+
+add_doc_and_signature(
+    "tan",
+    r"""
+    Tan Activation Operator.
+
+    .. math::
+        out = tan(x)
+
+    Args:
+        x (Tensor): Input of Tan operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            int32, int64, complex64 or complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Output of Tan operator, a Tensor with shape same as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.tan(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.42279324, -0.20271003,  0.10033467,  0.30933627])
+""",
+    """
+def tan(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)

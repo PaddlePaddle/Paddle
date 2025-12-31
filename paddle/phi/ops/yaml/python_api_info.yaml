@@ -324,3 +324,8 @@
   args_alias:
     x : [batch1]
     y : [batch2]
+
+- op : tan
+  name : [paddle.tan, paddle.Tensor.tan]
+  args_alias:
+    use_default_mapping : True
