@@ -36,7 +36,6 @@ namespace phi {
 static constexpr int kCUDANumThreads = 256;
 static constexpr int kCUDABlockReduceNumThreads = 512;
 static constexpr int kWarpSize = 32;
-// static constexpr int kVecSize = 4;
 
 // -----------------------------------------------------------------------
 //  Helper Functions & Structs
@@ -412,9 +411,8 @@ void launch_vectorized_rms_norm_kernel_driver(int N,
                                               T* Y_data,
                                               T_ACC* rstd_data,
                                               cudaStream_t stream) {
-  const int warp_size = 32;
   const int num_threads = 128;
-  const dim3 threads(warp_size, num_threads / warp_size, 1);
+  const dim3 threads(kWarpSize, num_threads / kWarpSize, 1);
   dim3 blocks(M);
 
   // Shared memory for reduction: need size proportional to threads.y and T_ACC
@@ -899,7 +897,10 @@ void RMSNormFwdKernel(const Context& dev_ctx,
 
   auto stream = dev_ctx.stream();
 
-  if (!FLAGS_use_accuracy_compatible_kernel && rows <= 1024 && cols >= 24576) {
+  // When using a vectorization size of 8 in fp16 and bf16, there may be
+  // misalignment of accuracy and torch alignment.
+  if (!FLAGS_use_accuracy_compatible_kernel && rows <= 1024 &&
+      (cols / rows >= 32)) {
     constexpr int num_vec_elems2 = 8;
     constexpr int alignment2 = num_vec_elems2 * sizeof(T);
     bool can_vec_X2 = can_vectorize(x_data, alignment2);
@@ -994,12 +995,9 @@ void RMSNormBwdKernel(const Context& dev_ctx,
 
   auto stream = dev_ctx.stream();
 
-  static constexpr int kVecSize = 4;
-
   // 1. Compute dX
   if (dX_data) {
-    const int warp_size = 32;
-
+    static constexpr int kVecSize = 4;
     bool bVectorSizeMultiple = (N % kVecSize == 0);
     const unsigned int alignment = sizeof(T) * kVecSize;
     bool bAlignedBuffers = can_vectorize(dY_data, alignment) &&
@@ -1010,11 +1008,26 @@ void RMSNormBwdKernel(const Context& dev_ctx,
                               std::is_same<T, phi::dtype::float16>::value ||
                               std::is_same<T, phi::dtype::bfloat16>::value);
 
-    dim3 blocks(M);
-    int num_threads = 128;
-    int nshared = (num_threads / warp_size) * sizeof(T_ACC);
+    const unsigned int alignment2 = sizeof(T) * 8;
+    bool bAlignedBuffers2 = can_vectorize(dY_data, alignment2) &&
+                            can_vectorize(X_data, alignment2) &&
+                            can_vectorize(scale_data, alignment2) &&
+                            can_vectorize(dX_data, alignment2);
+    bool is_supported_type2 = (std::is_same<T, phi::dtype::float16>::value ||
+                               std::is_same<T, phi::dtype::bfloat16>::value);
 
-    if (is_supported_type && bAlignedBuffers && bVectorSizeMultiple) {
+    dim3 blocks(M);
+    constexpr int num_threads = 128;
+    constexpr int nshared = (num_threads / kWarpSize) * sizeof(T_ACC);
+
+    // When using a vectorization size of 8 in fp16 and bf16, there may be
+    // misalignment of accuracy and torch alignment.
+    if (!FLAGS_use_accuracy_compatible_kernel && is_supported_type2 &&
+        bAlignedBuffers2 && (N % 8 == 0 && M <= 1024 && (N / M >= 32))) {
+      rms_norm_grad_input_kernel_vectorized<T, T_ACC, 8>
+          <<<blocks, num_threads, nshared, stream>>>(
+              dY_data, X_data, invvar_data, scale_data, dX_data, N);
+    } else if (is_supported_type && bAlignedBuffers && bVectorSizeMultiple) {
       rms_norm_grad_input_kernel_vectorized<T, T_ACC, kVecSize>
           <<<blocks, num_threads, nshared, stream>>>(
               dY_data, X_data, invvar_data, scale_data, dX_data, N);
