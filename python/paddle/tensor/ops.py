@@ -94,7 +94,7 @@ for _OP in set(__inplace_unary_func__):
 @inplace_apis_in_dygraph_only
 def round_(x, decimals=0, name=None):
     r"""
-    Inplace version of ``round`` API,  output Tensor will be inplaced with input ``x``.
+    Inplace version of ``round`` API, output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_round`.
     """
     return _C_ops.round_(x, decimals)

@@ -955,7 +955,7 @@ def _bitwise_op(
 def __rand__(x: Tensor, y: int | bool):
     if isinstance(y, (int, bool)):
         y_tensor = paddle.to_tensor(y, dtype=x.dtype)
-        return bitwise_and(y_tensor, x, None, None)
+        return bitwise_and(y_tensor, x)
     else:
         raise TypeError(
             f"unsupported operand type(s) for |: '{type(y).__name__}' and 'Tensor'"
@@ -1020,8 +1020,8 @@ def bitwise_or(
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [-1, -1, -3])
     """
-    if in_dynamic_or_pir_mode() and out is None:
-        return _C_ops.bitwise_or(x, y)
+    if in_dynamic_or_pir_mode():
+        return _C_ops.bitwise_or(x, y, out=out)
 
     return _bitwise_op(
         op_name="bitwise_or", x=x, y=y, name=name, out=out, binary_op=True

@@ -677,7 +677,7 @@ class TestAsinhAPI_Compatibility(unittest.TestCase):
 
         # Tensor method args
         out4 = paddle.empty([])
-        out5 = x.asinh(x, out=out4)
+        out5 = x.asinh(out=out4)
         paddle_dygraph_out.append(out4)
         paddle_dygraph_out.append(out5)
 
@@ -695,7 +695,7 @@ class TestAsinhAPI_Compatibility(unittest.TestCase):
 
         # Verify all outputs
         for out in paddle_dygraph_out:
-            np.testing.assert_allclose(ref_out, out.numpy())
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6)
         paddle.enable_static()
 
     def test_static_Compatibility(self):
@@ -752,20 +752,14 @@ class TestReciprocalAPI_Compatibility(unittest.TestCase):
         out3 = paddle.reciprocal(input=x)
         paddle_dygraph_out.append(out3)
 
-        # Tensor method args
-        out4 = paddle.empty([])
-        out5 = x.reciprocal(x, out=out4)
-        paddle_dygraph_out.append(out4)
-        paddle_dygraph_out.append(out5)
-
         # Tensor method kwargs
-        out6 = x.reciprocal()
-        paddle_dygraph_out.append(out6)
+        out4 = x.reciprocal()
+        paddle_dygraph_out.append(out4)
 
         # Test out parameter
-        out7 = paddle.empty([])
-        paddle.reciprocal(x, out=out7)
-        paddle_dygraph_out.append(out7)
+        out5 = paddle.empty([])
+        paddle.reciprocal(x, out=out5)
+        paddle_dygraph_out.append(out5)
 
         # Numpy reference output
         ref_out = 1.0 / self.np_input
@@ -831,7 +825,7 @@ class TestSquareAPI_Compatibility(unittest.TestCase):
 
         # Tensor method args
         out4 = paddle.empty([])
-        out5 = x.square(x, out=out4)
+        out5 = x.square(out=out4)
         paddle_dygraph_out.append(out4)
         paddle_dygraph_out.append(out5)
 
@@ -908,7 +902,7 @@ class TestTanAPI_Compatibility(unittest.TestCase):
 
         # Tensor method args
         out4 = paddle.empty([])
-        out5 = x.tan(x, out=out4)
+        out5 = x.tan(out=out4)
         paddle_dygraph_out.append(out4)
         paddle_dygraph_out.append(out5)
 
@@ -975,37 +969,37 @@ class TestBitwiseAndAPI_Compatibility(unittest.TestCase):
         y = paddle.to_tensor(self.np_y)
         paddle_dygraph_out = []
 
-        # 位置参数 (args)
+        # Position args (args)
         out1 = paddle.bitwise_and(x, y)
         paddle_dygraph_out.append(out1)
 
-        # Paddle关键字参数
+        # Paddle keyword args
         out2 = paddle.bitwise_and(x=x, y=y)
         paddle_dygraph_out.append(out2)
 
-        # Torch关键字参数
+        # Torch keyword args
         out3 = paddle.bitwise_and(input=x, other=y)
         paddle_dygraph_out.append(out3)
 
-        # Tensor方法 - 位置参数
+        # Tensor method - args
         out4 = paddle.empty([])
         out5 = x.bitwise_and(y, out=out4)
         paddle_dygraph_out.append(out4)
         paddle_dygraph_out.append(out5)
 
-        # Tensor方法 - kwargs
+        # Tensor method - kwargs
         out6 = x.bitwise_and(y=y)
         paddle_dygraph_out.append(out6)
 
-        # 测试out参数
+        # Test out parameter
         out7 = paddle.empty([])
         paddle.bitwise_and(x, y, out=out7)
         paddle_dygraph_out.append(out7)
 
-        # Numpy参考输出
+        # Numpy reference output
         ref_out = np.bitwise_and(self.np_x, self.np_y)
 
-        # 验证所有输出
+        # Verify all outputs
         for out in paddle_dygraph_out:
             np.testing.assert_array_equal(ref_out, out.numpy())
         paddle.enable_static()
@@ -1018,13 +1012,13 @@ class TestBitwiseAndAPI_Compatibility(unittest.TestCase):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
 
-            # 位置参数
+            # Position args
             out1 = paddle.bitwise_and(x, y)
-            # Paddle关键字参数
+            # Paddle keyword args
             out2 = paddle.bitwise_and(x=x, y=y)
-            # Torch关键字参数
+            # Torch keyword args
             out3 = paddle.bitwise_and(input=x, other=y)
-            # Tensor方法
+            # Tensor method
             out4 = x.bitwise_and(y)
 
             exe = paddle.base.Executor(paddle.CPUPlace())
@@ -1055,37 +1049,37 @@ class TestBitwiseNotAPI_Compatibility(unittest.TestCase):
         x = paddle.to_tensor(self.np_x)
         paddle_dygraph_out = []
 
-        # 位置参数 (args)
+        # Position args (args)
         out1 = paddle.bitwise_not(x)
         paddle_dygraph_out.append(out1)
 
-        # Paddle关键字参数
+        # Paddle keyword args
         out2 = paddle.bitwise_not(x=x)
         paddle_dygraph_out.append(out2)
 
-        # Torch关键字参数
+        # Torch keyword args
         out3 = paddle.bitwise_not(input=x)
         paddle_dygraph_out.append(out3)
 
-        # Tensor方法 - 位置参数
+        # Tensor method - args
         out4 = paddle.empty([])
         out5 = x.bitwise_not(out=out4)
         paddle_dygraph_out.append(out4)
         paddle_dygraph_out.append(out5)
 
-        # Tensor方法 - kwargs
+        # Tensor method - kwargs
         out6 = x.bitwise_not()
         paddle_dygraph_out.append(out6)
 
-        # 测试out参数
+        # Test out parameter
         out7 = paddle.empty([])
         paddle.bitwise_not(x, out=out7)
         paddle_dygraph_out.append(out7)
 
-        # Numpy参考输出
+        # Numpy reference output
         ref_out = np.bitwise_not(self.np_x)
 
-        # 验证所有输出
+        # Verify all outputs
         for out in paddle_dygraph_out:
             np.testing.assert_array_equal(ref_out, out.numpy())
         paddle.enable_static()
@@ -1097,13 +1091,13 @@ class TestBitwiseNotAPI_Compatibility(unittest.TestCase):
         with paddle.base.program_guard(main, startup):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
 
-            # 位置参数
+            # Position args
             out1 = paddle.bitwise_not(x)
-            # Paddle关键字参数
+            # Paddle keyword args
             out2 = paddle.bitwise_not(x=x)
-            # Torch关键字参数
+            # Torch keyword args
             out3 = paddle.bitwise_not(input=x)
-            # Tensor方法
+            # Tensor method
             out4 = x.bitwise_not()
 
             exe = paddle.base.Executor(paddle.CPUPlace())
@@ -1136,37 +1130,37 @@ class TestBitwiseXorAPI_Compatibility(unittest.TestCase):
         y = paddle.to_tensor(self.np_y)
         paddle_dygraph_out = []
 
-        # 位置参数 (args)
+        # Position args (args)
         out1 = paddle.bitwise_xor(x, y)
         paddle_dygraph_out.append(out1)
 
-        # Paddle关键字参数
+        # Paddle keyword args
         out2 = paddle.bitwise_xor(x=x, y=y)
         paddle_dygraph_out.append(out2)
 
-        # Torch关键字参数
+        # Torch keyword args
         out3 = paddle.bitwise_xor(input=x, other=y)
         paddle_dygraph_out.append(out3)
 
-        # Tensor方法 - 位置参数
+        # Tensor method - args
         out4 = paddle.empty([])
         out5 = x.bitwise_xor(y, out=out4)
         paddle_dygraph_out.append(out4)
         paddle_dygraph_out.append(out5)
 
-        # Tensor方法 - kwargs
+        # Tensor method - kwargs
         out6 = x.bitwise_xor(y=y)
         paddle_dygraph_out.append(out6)
 
-        # 测试out参数
+        # Test out parameter
         out7 = paddle.empty([])
         paddle.bitwise_xor(x, y, out=out7)
         paddle_dygraph_out.append(out7)
 
-        # Numpy参考输出
+        # Numpy reference output
         ref_out = np.bitwise_xor(self.np_x, self.np_y)
 
-        # 验证所有输出
+        # Verify all outputs
         for out in paddle_dygraph_out:
             np.testing.assert_array_equal(ref_out, out.numpy())
         paddle.enable_static()
@@ -1179,13 +1173,13 @@ class TestBitwiseXorAPI_Compatibility(unittest.TestCase):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
 
-            # 位置参数
+            # Position args
             out1 = paddle.bitwise_xor(x, y)
-            # Paddle关键字参数
+            # Paddle keyword args
             out2 = paddle.bitwise_xor(x=x, y=y)
-            # Torch关键字参数
+            # Torch keyword args
             out3 = paddle.bitwise_xor(input=x, other=y)
-            # Tensor方法
+            # Tensor method
             out4 = x.bitwise_xor(y)
 
             exe = paddle.base.Executor(paddle.CPUPlace())

@@ -91,6 +91,8 @@
   name : [paddle.bincount, paddle.Tensor.bincount]
   args_alias :
     use_default_mapping : True
+  pre_process :
+    func : BinCountPreProcess(x, weights, minlength)
 
 - op : bitwise_and
   name : [paddle.bitwise_and, paddle.Tensor.bitwise_and]
@@ -184,6 +186,13 @@
   name : [paddle.greater_than, paddle.Tensor.greater_than]
   args_alias :
     use_default_mapping : True
+
+- op : grid_sample
+  name : [paddle.nn.functional.grid_sample]
+  args_alias:
+    use_default_mapping : True
+  pre_process:
+    func : GridSamplePreProcess(x, grid, mode, padding_mode, align_corners)
 
 - op : heaviside
   name : [paddle.heaviside, paddle.Tensor.heaviside]
@@ -304,9 +313,10 @@
 
 - op : roll
   name : [paddle.roll, paddle.Tensor.roll]
-  args_alias :
+  args_alias:
+    axis : [dims]
     use_default_mapping : True
-  pre_process :
+  pre_process:
     func : RollPreProcess(x, shifts, axis)
 
 - op : round

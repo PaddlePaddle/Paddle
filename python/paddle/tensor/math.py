@@ -3210,14 +3210,14 @@ def clip_(
     Inplace version of ``clip`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_clip`.
     """
-    _fmin = float(np.finfo(np.float32).min)
-    _fmax = float(np.finfo(np.float32).max)
+    min_ = float(np.finfo(np.float32).min)
+    max_ = float(np.finfo(np.float32).max)
     if isinstance(min, Variable):
         min = min.item(0)
     if isinstance(max, Variable):
         max = max.item(0)
-    min = _fmin if min is None else min
-    max = _fmax if max is None else max
+    min = min_ if min is None else min
+    max = max_ if max is None else max
 
     if in_dynamic_mode():
         return _C_ops.clip_(x, min, max)
@@ -5609,6 +5609,7 @@ def diff(
             prepend=None,
             append=None,
             name=name,
+            out=out,
         )
     return last_out
 
