@@ -66,24 +66,26 @@ class StudentT(distribution.Distribution):
             >>> dist = StudentT(df=10.0, loc=0.0, scale=1.0)
             >>> dist.sample([3])
             Tensor(shape=[3, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            ...)
+            [[-2.07709980],
+             [ 0.27981189],
+             [ 0.00881413]])
 
             >>> dist2 = StudentT(df=paddle.to_tensor([10.0, 5.0]), loc=paddle.to_tensor([0.0, 0.0]), scale=paddle.to_tensor([1.0, 2.0]))
             >>> value_tensor = paddle.to_tensor([0.8], dtype="float32")
             >>> lp = dist2.log_prob(value_tensor)
             >>> print(lp)
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            ...)
+            [-1.28509235, -1.75626254])
 
             >>> p = dist2.prob(value_tensor)
             >>> print(p)
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            ...)
+            [0.27662504, 0.17268908])
 
             >>> entropy = dist2.entropy()
             >>> print(entropy)
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            ...)
+            [1.52126312, 2.32064891])
 
     """
 
