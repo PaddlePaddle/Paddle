@@ -871,7 +871,9 @@ void linear_v2_double_grad(const Tensor& input,
                         input_grad,
                         weight_grad,
                         grad_out_grad);
-  add_double_grad<T>(bias, grad_out, nullptr, grad_bias_grad, -1, bias_grad);
+  if (bias_grad) {
+    add_double_grad<T>(bias, grad_out, nullptr, grad_bias_grad, -1, bias_grad);
+  }
 }
 
 template <typename T>

@@ -103,6 +103,7 @@ PRIM_VJP = [
     'logsumexp_grad',
     'masked_select_grad',
     'matmul_grad',
+    'linear_v2_grad',
     'max_grad',
     'maximum_grad',
     'minimum_grad',
