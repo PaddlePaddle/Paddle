@@ -100,7 +100,7 @@ inline void GetResidualsTensor(const Context& dev_ctx,
   }
 
   IntArray empty_shape({0});
-  DenseTensor empty_tensor = phi::Empty<T, Context>(dev_ctx, empty_shape);
+  DenseTensor empty_tensor = Empty<T, Context>(dev_ctx, empty_shape);
   Copy<Context>(dev_ctx, empty_tensor, dev_ctx.GetPlace(), true, residuals);
 }
 

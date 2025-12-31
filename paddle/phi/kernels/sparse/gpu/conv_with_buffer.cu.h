@@ -138,9 +138,9 @@ void cuda_remove(const GPUContext& dev_ctx,
                  int* out_num_ptr) {
   const int block_size = 256;
   const int grid_size = (n + block_size - 1) / block_size;
-  DenseTensor flags = phi::Empty<int>(dev_ctx, {n});
-  DenseTensor indices = phi::Empty<int>(dev_ctx, {n});
-  DenseTensor out = phi::Empty<T>(dev_ctx, {n});
+  DenseTensor flags = Empty<int>(dev_ctx, {n});
+  DenseTensor indices = Empty<int>(dev_ctx, {n});
+  DenseTensor out = Empty<T>(dev_ctx, {n});
 
   mark_kernel<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
       input.data<T>(), flags.data<int>(), pred, n);
@@ -379,7 +379,7 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
                               DenseTensor* unique_value,
                               SparseCooTensor* out,
                               int* h_buffer) {
-  DenseTensor d_buffer = phi::Empty<int>(dev_ctx, {2 * kernel_size + 3});
+  DenseTensor d_buffer = Empty<int>(dev_ctx, {2 * kernel_size + 3});
   const bool is2D = out_dims.size() == 4 ? true : false;
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
@@ -398,7 +398,7 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
                                                     rulebook_ptr,
                                                     counter_ptr);
 
-  DenseTensor rulebook_len_tensor = phi::Empty<int>(dev_ctx, {1});
+  DenseTensor rulebook_len_tensor = Empty<int>(dev_ctx, {1});
   cuda_remove<IntT>(dev_ctx,
                     *rulebook,
                     rulebook_rows * rulebook_cols,
@@ -420,8 +420,7 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
   // 3. sorted or merge the out index
 
   out_index->ResizeAndAllocate({static_cast<int>(max_nnz)});
-  DenseTensor unique_key =
-      phi::Empty<int>(dev_ctx, {static_cast<int>(max_nnz)});
+  DenseTensor unique_key = Empty<int>(dev_ctx, {static_cast<int>(max_nnz)});
   int* out_index_ptr = out_index->data<int>();
   int* unique_key_ptr = unique_key.data<int>();
 
@@ -505,10 +504,10 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
                                                  out_index_ptr);
 
   const int64_t sparse_dim = is2D ? 3 : 4;
-  DenseTensor out_indices = phi::Empty<IntT>(dev_ctx, {sparse_dim, out_nnz});
+  DenseTensor out_indices = Empty<IntT>(dev_ctx, {sparse_dim, out_nnz});
 
   DenseTensor out_values =
-      phi::Empty<T>(dev_ctx, {out_nnz, kernel_sizes[sparse_dim]});
+      Empty<T>(dev_ctx, {out_nnz, kernel_sizes[sparse_dim]});
   out->SetMember(out_indices, out_values, out_dims, false);
 
   IntT* out_indices_ptr = out_indices.data<IntT>();

@@ -692,7 +692,7 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
                                         funcs::InverseDivideFunctor<T>>(
           dev_ctx, tmp, y, ddout, axis);
       auto& place = *dev_ctx.eigen_device();
-      auto ddout_result = phi::EigenVector<T>::Flatten(*ddout);
+      auto ddout_result = EigenVector<T>::Flatten(*ddout);
       ddout_result.device(place) = static_cast<T>(-1) * ddout_result;
 #else
       DivDoubleDDoutCompute<Context, T, DivDoubleDDOut_Only_DDY<T>, T>(
@@ -748,7 +748,7 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, *dx_tensor, *ddy_tensor, dout, axis);
       auto& place = *dev_ctx.eigen_device();
-      auto dout_result = phi::EigenVector<T>::Flatten(*dout);
+      auto dout_result = EigenVector<T>::Flatten(*dout);
       dout_result.device(place) = static_cast<T>(-1) * dout_result;
     }
   }
@@ -1026,8 +1026,8 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, ddy_safe, x, &ddout_tmp, axis);
 
-      auto ddout_t = phi::EigenVector<T>::Flatten(*ddout);
-      auto ddout_tmp_t = phi::EigenVector<T>::Flatten(ddout_tmp);
+      auto ddout_t = EigenVector<T>::Flatten(*ddout);
+      auto ddout_tmp_t = EigenVector<T>::Flatten(ddout_tmp);
       ddout_t.device(place) = ddout_t + ddout_tmp_t;
     } else {
       // use dx to save memory, other than alloc tmp tensor
@@ -1062,8 +1062,8 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
                                           funcs::InverseMultiplyFunctor<T>>(
             dev_ctx, ddx_safe, y, ddout, axis);
 
-        auto ddout_t = phi::EigenVector<T>::Flatten(*ddout);
-        auto ddout_tmp_t = phi::EigenVector<T>::Flatten(*ddout_tmp);
+        auto ddout_t = EigenVector<T>::Flatten(*ddout);
+        auto ddout_tmp_t = EigenVector<T>::Flatten(*ddout_tmp);
         ddout_t.device(place) = ddout_t + ddout_tmp_t;
 
         funcs::DefaultElementwiseOperator<Context,
@@ -1083,7 +1083,7 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
                                           funcs::InverseMultiplyFunctor<T>>(
             dev_ctx, x, ddy_safe, &tmp_a, axis);
 
-        auto ddout_t1 = phi::EigenVector<T>::Flatten(tmp_a);
+        auto ddout_t1 = EigenVector<T>::Flatten(tmp_a);
 
         funcs::DefaultElementwiseOperator<Context,
                                           T,
@@ -1091,7 +1091,7 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
                                           funcs::InverseMultiplyFunctor<T>>(
             dev_ctx, ddx_safe, y, ddout, axis);
 
-        auto ddout_t2 = phi::EigenVector<T>::Flatten(*ddout);
+        auto ddout_t2 = EigenVector<T>::Flatten(*ddout);
         ddout_t2.device(place) = ddout_t2 + ddout_t1;
 
         // NOTE: in the following ElemwiseGradCompute, for the
@@ -1122,7 +1122,7 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
                                           funcs::InverseMultiplyFunctor<T>>(
             dev_ctx, x, ddy_safe, &tmp_a, axis);
 
-        auto ddout_t1 = phi::EigenVector<T>::Flatten(tmp_a);
+        auto ddout_t1 = EigenVector<T>::Flatten(tmp_a);
 
         funcs::DefaultElementwiseOperator<Context,
                                           T,
@@ -1130,7 +1130,7 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
                                           funcs::InverseMultiplyFunctor<T>>(
             dev_ctx, ddx_safe, y, ddout, axis);
 
-        auto ddout_t2 = phi::EigenVector<T>::Flatten(*ddout);
+        auto ddout_t2 = EigenVector<T>::Flatten(*ddout);
         ddout_t2.device(place) = ddout_t2 + ddout_t1;
       }
     }
@@ -1241,8 +1241,8 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, ddy_safe, d_dx.get(), &d_dout_tmp, axis);
 
-      auto d_dout_t = phi::EigenVector<T>::Flatten(*d_dout);
-      auto d_dout_tmp_t = phi::EigenVector<T>::Flatten(d_dout_tmp);
+      auto d_dout_t = EigenVector<T>::Flatten(*d_dout);
+      auto d_dout_tmp_t = EigenVector<T>::Flatten(d_dout_tmp);
       d_dout_t.device(place) = d_dout_t + d_dout_tmp_t;
     } else if (d_dy && !d_dx) {
       funcs::DefaultElementwiseOperator<Context,
@@ -1250,7 +1250,7 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                                         funcs::MultiplyFunctor<T>,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, d_dy.get(), ddx_safe, d_dout, axis);
-      auto d_dout_t = phi::EigenVector<T>::Flatten(*d_dout);
+      auto d_dout_t = EigenVector<T>::Flatten(*d_dout);
       d_dout_t.device(place) = d_dout_t;
     } else if (!d_dy && d_dx) {
       funcs::DefaultElementwiseOperator<Context,
@@ -1259,7 +1259,7 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, ddy_safe, d_dx.get(), d_dout, axis);
 
-      auto d_dout_t = phi::EigenVector<T>::Flatten(*d_dout);
+      auto d_dout_t = EigenVector<T>::Flatten(*d_dout);
       d_dout_t.device(place) = d_dout_t;
     } else {
       FullLikeKernel<T, Context>(
@@ -1286,8 +1286,8 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, y, *(d_ddout.get_ptr()), &d_ddx_tmp, axis);
 
-      auto d_ddx_t = phi::EigenVector<T>::Flatten(*d_ddx);
-      auto d_ddx_tmp_t = phi::EigenVector<T>::Flatten(d_ddx_tmp);
+      auto d_ddx_t = EigenVector<T>::Flatten(*d_ddx);
+      auto d_ddx_tmp_t = EigenVector<T>::Flatten(d_ddx_tmp);
       d_ddx_t.device(place) = d_ddx_t + d_ddx_tmp_t;
     } else if (d_dy && !d_ddout) {
       funcs::DefaultElementwiseOperator<Context,
@@ -1296,7 +1296,7 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, dout, d_dy.get(), d_ddx, axis);
 
-      auto d_ddx_t = phi::EigenVector<T>::Flatten(*d_ddx);
+      auto d_ddx_t = EigenVector<T>::Flatten(*d_ddx);
       d_ddx_t.device(place) = d_ddx_t;
     } else if (!d_dy && d_ddout) {
       funcs::DefaultElementwiseOperator<Context,
@@ -1305,7 +1305,7 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, y, *(d_ddout.get_ptr()), d_ddx, axis);
 
-      auto d_ddx_t = phi::EigenVector<T>::Flatten(*d_ddx);
+      auto d_ddx_t = EigenVector<T>::Flatten(*d_ddx);
       d_ddx_t.device(place) = d_ddx_t;
     } else {
       FullLikeKernel<T, Context>(dev_ctx, x, Scalar(0.0), x.dtype(), d_ddx);
@@ -1332,8 +1332,8 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, x, *(d_ddout.get_ptr()), &d_ddy_tmp, axis);
 
-      auto d_ddy_t = phi::EigenVector<T>::Flatten(*d_ddy);
-      auto d_ddy_tmp_t = phi::EigenVector<T>::Flatten(d_ddy_tmp);
+      auto d_ddy_t = EigenVector<T>::Flatten(*d_ddy);
+      auto d_ddy_tmp_t = EigenVector<T>::Flatten(d_ddy_tmp);
       d_ddy_t.device(place) = d_ddy_t + d_ddy_tmp_t;
     } else if (d_dx && !d_ddout) {
       funcs::DefaultElementwiseOperator<Context,
@@ -1342,7 +1342,7 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, dout, d_dx.get(), d_ddy, axis);
 
-      auto d_ddy_t = phi::EigenVector<T>::Flatten(*d_ddy);
+      auto d_ddy_t = EigenVector<T>::Flatten(*d_ddy);
       d_ddy_t.device(place) = d_ddy_t;
     } else if (!d_dx && d_ddout) {
       funcs::DefaultElementwiseOperator<Context,
@@ -1351,7 +1351,7 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, x, *(d_ddout.get_ptr()), d_ddy, axis);
 
-      auto d_ddy_t = phi::EigenVector<T>::Flatten(*d_ddy);
+      auto d_ddy_t = EigenVector<T>::Flatten(*d_ddy);
       d_ddy_t.device(place) = d_ddy_t;
     } else {
       FullLikeKernel<T, Context>(dev_ctx, y, Scalar(0.0), y.dtype(), d_ddy);

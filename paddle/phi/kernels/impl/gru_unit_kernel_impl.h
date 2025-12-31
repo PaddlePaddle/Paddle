@@ -332,7 +332,7 @@ void GRUUnitGradKernel(const Context& dev_ctx,
   // backward for bias
   if (bias_grad) {
     dev_ctx.template Alloc<T>(bias_grad);
-    auto d_b = phi::EigenVector<T>::Flatten(*bias_grad);
+    auto d_b = EigenVector<T>::Flatten(*bias_grad);
     d_b.device(place) = d_g.sum(Eigen::array<int64_t, 1>({{0}}));
   }
 }
