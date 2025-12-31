@@ -63,7 +63,7 @@ class TestDeg2radAPI(unittest.TestCase):
 class TestDeg2radAPI2(TestDeg2radAPI):
     # Test input data type is int
     def setUp(self):
-        self.x_np = [180]
+        self.x_np = [180.0]
         self.x_shape = [1]
         self.out_np = np.pi
         self.x_dtype = 'int64'
@@ -71,9 +71,34 @@ class TestDeg2radAPI2(TestDeg2radAPI):
     def test_dygraph(self):
         paddle.disable_static()
 
-        x2 = paddle.to_tensor([180])
+        x2 = paddle.to_tensor([180.0])
         result2 = paddle.deg2rad(x2)
         np.testing.assert_allclose(np.pi, result2.numpy(), rtol=1e-05)
+
+        paddle.enable_static()
+
+
+class TestDeg2radAliasAndOut(unittest.TestCase):
+    def test_alias_and_out(self):
+        paddle.disable_static()
+        x = paddle.to_tensor([180.0])
+        expected = np.deg2rad(180.0)
+
+        # Test alias
+        res = paddle.deg2rad(input=x)
+        np.testing.assert_allclose(res.numpy(), expected, rtol=1e-05)
+
+        # Test out
+        out = paddle.zeros([1], dtype="float32")
+        res = paddle.deg2rad(x, out=out)
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+        self.assertTrue(res is out)
+
+        # Test int input with out
+        x_int = paddle.to_tensor([180.0])
+        out_float = paddle.zeros([1], dtype="float32")
+        res = paddle.deg2rad(x_int, out=out_float)
+        np.testing.assert_allclose(out_float.numpy(), expected, rtol=1e-05)
 
         paddle.enable_static()
 

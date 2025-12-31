@@ -235,6 +235,11 @@
   args_mapper :
     func : ArgSumMapper
 
+- op : tan
+  name : [paddle.tan, paddle.Tensor.tan]
+  args_alias:
+    use_default_mapping : True
+
 - op : tanh
   name : [paddle.tanh, paddle.Tensor.tanh, paddle.nn.functional.tanh]
   args_alias:
