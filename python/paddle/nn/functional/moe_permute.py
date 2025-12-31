@@ -32,6 +32,7 @@ def moe_permute(
     tokens_per_expert: list,
     padding_alignment: int,
     do_gather: bool = True,
+    using_ue8m0_scale: bool = False,
     name: str | None = None,
 ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     r"""
@@ -136,6 +137,7 @@ def moe_permute(
             tokens_per_expert,
             padding_alignment,
             do_gather,
+            using_ue8m0_scale,
         )
         return (
             hidden_states_unzipped,

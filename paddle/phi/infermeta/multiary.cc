@@ -6165,6 +6165,7 @@ void MoePermuteInferMeta(const MetaTensor& X,
                          const std::vector<int>& tokens_per_expert,
                          const int padding_alignment,
                          const bool do_gather,
+                         const bool using_ue8m0_scale,
                          MetaTensor* X_unzipped,
                          MetaTensor* zipped_expertwise_rowmap,
                          MetaTensor* token_prob_unzipped,
@@ -6188,10 +6189,18 @@ void MoePermuteInferMeta(const MetaTensor& X,
                     common::errors::InvalidArgument(
                         "Input expert_prob_topk's dtype should be FLOAT32"));
   if (XScale && do_gather) {
-    PADDLE_ENFORCE_EQ(XScale.dtype(),
-                      DataType::FLOAT32,
-                      common::errors::InvalidArgument(
-                          "Input XScale's dtype should be FLOAT32"));
+    if (using_ue8m0_scale) {
+      PADDLE_ENFORCE_EQ(XScale.dtype(),
+                        DataType::INT32,
+                        common::errors::InvalidArgument(
+                            "Input XScale's dtype should be INT32 if "
+                            "using_ue8m0_scale is True"));
+    } else {
+      PADDLE_ENFORCE_EQ(XScale.dtype(),
+                        DataType::FLOAT32,
+                        common::errors::InvalidArgument(
+                            "Input XScale's dtype should be FLOAT32"));
+    }
     const int64_t quanted_cols = XScale.dims()[1];
     XScale_unzipped->set_dims({-1, quanted_cols});
     XScale_unzipped->set_dtype(XScale.dtype());
