@@ -1024,17 +1024,26 @@ def hsigmoid_loss(
             >>> input = paddle.uniform([4, 3])
             >>> print(input)
             Tensor(shape=[4, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    ...)
+                   [[0.86583614, 0.52014720, 0.25960937],
+                    [0.90525323, 0.42400089, 0.40641287],
+                    [0.97020894, 0.74437362, 0.51785129],
+                    [0.73292869, 0.97786582, 0.04315904]])
             >>> label = paddle.to_tensor([0, 1, 4, 5])
             >>> num_classes = 5
             >>> weight = paddle.uniform([num_classes - 1, 3])
             >>> print(weight)
             Tensor(shape=[4, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    ...)
+                   [[0.42639419, 0.71958369, 0.20811461],
+                    [0.19731510, 0.38424349, 0.14603184],
+                    [0.22713774, 0.44607511, 0.21657862],
+                    [0.67685395, 0.46460176, 0.92382854]])
             >>> out = F.hsigmoid_loss(input, label, num_classes, weight)
             >>> print(out)
             Tensor(shape=[4, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    ...)
+                   [[2.37209344],
+                    [2.03524041],
+                    [2.56769133],
+                    [2.48895621]])
 
     """
     if num_classes < 2:
