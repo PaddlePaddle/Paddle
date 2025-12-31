@@ -308,62 +308,6 @@ def square(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-# def tan(x: Tensor, name: str | None = None) -> Tensor:
-# """
-# Tangent Operator. Computes tangent of x element-wise.
-
-# Input range is `(k*pi-pi/2, k*pi+pi/2)` and output range is `(-inf, inf)`.
-
-# .. math::
-#    out = tan(x)
-
-# Args:
-#     x (Tensor): Input of Tan operator, an N-D Tensor, with data type float32, float64, float16,
-#         bfloat16, uint8, int8, int16, int32, int64, complex64 or complex128.
-#     name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-# Returns:
-#     Tensor. Output of Tan operator, a Tensor with shape same as input
-#         (integer types are autocasted into float32).
-
-# Examples:
-#     .. code-block:: python
-
-#         >>> import paddle
-
-#         >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-#         >>> out = paddle.tan(x)
-#         >>> print(out)
-#         Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-#         [-0.42279324, -0.20271003,  0.10033467,  0.30933627])
-# """
-#     if in_dynamic_or_pir_mode():
-#         return _C_ops.tan(x)
-#     else:
-#         check_variable_and_dtype(
-#             x,
-#             'x',
-#             [
-#                 'float16',
-#                 'uint16',
-#                 'float32',
-#                 'float64',
-#                 'uint8',
-#                 'int8',
-#                 'int16',
-#                 'int32',
-#                 'int64',
-#                 'complex64',
-#                 'complex128',
-#             ],
-#             'tan',
-#         )
-#         helper = LayerHelper('tan', **locals())
-#         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-#         helper.append_op(type='tan', inputs={"X": x}, outputs={"Out": out})
-#         return out
-
-
 def erf(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     The error function.
