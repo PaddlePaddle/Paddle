@@ -20,6 +20,8 @@ import numpy as np
 import paddle
 from paddle.base import core
 
+os.environ["FLAGS_use_legacy_linear"] = "True"
+
 
 class SimpleNet(paddle.nn.Layer):
     def __init__(self, input_size, output_size):
@@ -218,5 +220,4 @@ class TestMasterGrad(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    os.environ["FLAGS_use_legacy_linear"] = "True"
     unittest.main()

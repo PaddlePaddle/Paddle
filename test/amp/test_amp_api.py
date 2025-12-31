@@ -24,6 +24,8 @@ from paddle import nn
 from paddle.base import core
 from paddle.static import amp
 
+os.environ["FLAGS_use_legacy_linear"] = "True"
+
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
@@ -456,5 +458,4 @@ class TestDy2STWithSetValue(AmpTestBase):
 
 
 if __name__ == '__main__':
-    os.environ["FLAGS_use_legacy_linear"] = "True"
     unittest.main()
