@@ -83,7 +83,7 @@ void LerpKernel(const Context &dev_ctx,
   } else {
     inputs.reserve(3);
     auto functor = LerpElementWiseDirectCUDAFunctor<T>();
-    DenseTensor b_min = phi::EmptyLike<T>(dev_ctx, *out);
+    DenseTensor b_min = EmptyLike<T>(dev_ctx, *out);
     if (x.dims().size() != y.dims().size() &&
         weight.dims().size() != y.dims().size()) {
       if (x.dims().size() < y.dims().size() &&

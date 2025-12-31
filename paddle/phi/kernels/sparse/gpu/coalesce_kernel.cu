@@ -35,8 +35,8 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
                           SparseCooTensor* out) {
   const DenseTensor& x_indices = x.indices();
   const DenseTensor& x_values = x.values();
-  DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x_indices);
-  DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, x_values);
+  DenseTensor out_indices = EmptyLike<IntT>(dev_ctx, x_indices);
+  DenseTensor out_values = EmptyLike<T>(dev_ctx, x_values);
 
   const int64_t nnz = x.nnz();
   const int64_t sparse_dim = x.indices().dims()[0];
@@ -48,8 +48,8 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
   DenseTensorMeta sparse_offset_meta(
       phi::CppTypeToDataType<IntT>::Type(), {sparse_dim}, DataLayout::NCHW);
   DenseTensor d_sparse_offsets =
-      phi::Empty<GPUContext>(dev_ctx, std::move(sparse_offset_meta));
-  DenseTensor indices = phi::Empty(
+      Empty<GPUContext>(dev_ctx, std::move(sparse_offset_meta));
+  DenseTensor indices = Empty(
       dev_ctx, DenseTensorMeta(x_indices.dtype(), {nnz}, x_indices.layout()));
   IntT* indices_ptr = indices.data<IntT>();
 
@@ -75,10 +75,10 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
   const T* x_values_ptr = x_values.data<T>();
   const int64_t stride =
       x.dims().size() == sparse_dim ? 1 : x.values().dims()[1];
-  DenseTensor values_indices = phi::Empty(
-      dev_ctx, DenseTensorMeta(DataType::INT32, {nnz}, DataLayout::NCHW));
+  DenseTensor values_indices =
+      Empty(dev_ctx, DenseTensorMeta(DataType::INT32, {nnz}, DataLayout::NCHW));
   int* values_indices_ptr = values_indices.data<int>();
-  DenseTensor public_indices = phi::EmptyLike<int>(dev_ctx, values_indices);
+  DenseTensor public_indices = EmptyLike<int>(dev_ctx, values_indices);
 
   // values_indices = [0,1,2,,,nnz-1]
   phi::IndexKernel<int, kps::IdentityFunctor<int>>(

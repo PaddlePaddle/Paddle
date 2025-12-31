@@ -97,8 +97,7 @@ void ReduceGradKernel(const Context& dev_ctx,
   if (x.dtype() != out_grad.dtype()) {
     DenseTensorMeta x_grad_meta(
         out_grad.dtype(), x_grad->dims(), x_grad->layout());
-    DenseTensor x_grad_tmp =
-        phi::Empty<Context>(dev_ctx, std::move(x_grad_meta));
+    DenseTensor x_grad_tmp = Empty<Context>(dev_ctx, std::move(x_grad_meta));
     ComputeFromInput<Context, T, Functor, kNoNeedBufferX, kNoNeedBufferY>(
         dev_ctx,
         x,

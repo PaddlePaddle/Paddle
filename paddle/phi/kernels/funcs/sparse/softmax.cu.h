@@ -41,7 +41,7 @@ inline DenseTensor GetOffsets(const Context& dev_ctx,
   }
 
   const IntArray strides_shape(common::vectorize<IntT>(indices.dims()));
-  DenseTensor strides = phi::Empty<IntT>(dev_ctx, strides_shape);
+  DenseTensor strides = Empty<IntT>(dev_ctx, strides_shape);
   auto strides_ptr = strides.data<IntT>();
   memory_utils::Copy(dev_ctx.GetPlace(),
                      strides_ptr,
@@ -50,7 +50,7 @@ inline DenseTensor GetOffsets(const Context& dev_ctx,
                      sizeof(IntT) * host_strides.size(),
                      dev_ctx.stream());
 
-  DenseTensor offsets = phi::Empty<IntT>(dev_ctx, {nnz});
+  DenseTensor offsets = Empty<IntT>(dev_ctx, {nnz});
   auto indices_ptr = indices.data<IntT>();
 
   thrust::transform(
@@ -96,7 +96,7 @@ std::tuple<DenseTensor, DenseTensor, DenseTensor, DenseTensor> ComputePoolMax(
       funcs::sparse::GetOffsets<IntT, Context>(dev_ctx, indices, sizes, dim);
   auto offsets_ptr = offsets.data<IntT>();
 
-  DenseTensor sorted_indices = phi::Empty<IntT>(dev_ctx, {nnz});
+  DenseTensor sorted_indices = Empty<IntT>(dev_ctx, {nnz});
   thrust_ptr sorted_indices_thrust_ptr(sorted_indices.data<IntT>());
   thrust::sequence(
       policy, sorted_indices_thrust_ptr, sorted_indices_thrust_ptr + nnz, 0);
@@ -109,7 +109,7 @@ std::tuple<DenseTensor, DenseTensor, DenseTensor, DenseTensor> ComputePoolMax(
                  return offsets_ptr[x] < offsets_ptr[y];
                });
 
-  DenseTensor pool_sizes = phi::Empty<IntT>(dev_ctx, {nnz});
+  DenseTensor pool_sizes = Empty<IntT>(dev_ctx, {nnz});
 
   /* reduce the elements which are grouped by pool index,
   returns all the pool indexes with unique offset value for each. */

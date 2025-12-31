@@ -148,7 +148,7 @@ void PReluGradKernel(const Context& dev_ctx,
   } else {
     DenseTensorMeta alpha_grad_meta(
         alpha_grad->dtype(), dim, alpha_grad->layout());
-    alpha_grad_tmp = phi::Empty(dev_ctx, std::move(alpha_grad_meta));
+    alpha_grad_tmp = Empty(dev_ctx, std::move(alpha_grad_meta));
     alpha_grad_tmp_ptr = alpha_grad_tmp.data<T>();
   }
 

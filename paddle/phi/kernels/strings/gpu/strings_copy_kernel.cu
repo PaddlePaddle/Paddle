@@ -68,7 +68,7 @@ void Copy(const Context& dev_ctx,
   if (src_place.GetType() == AllocationType::GPU &&
       dst_place.GetType() == AllocationType::CPU) {
     // Situation 1: gpu_place->cpu_place
-    DenseTensor gpu_serialized = phi::Empty<uint8_t, GPUContext>(dev_ctx, {1});
+    DenseTensor gpu_serialized = Empty<uint8_t, GPUContext>(dev_ctx, {1});
     phi::strings::SerializeOnGPU(dev_ctx, src, &gpu_serialized);
 
     DenseTensor cpu_serialized;
@@ -88,8 +88,7 @@ void Copy(const Context& dev_ctx,
 
     phi::strings::SerializeOnCPU(dev_ctx, src, &cpu_serialized);
 
-    DenseTensor gpu_serialized =
-        phi::EmptyLike<uint8_t>(dev_ctx, cpu_serialized);
+    DenseTensor gpu_serialized = EmptyLike<uint8_t>(dev_ctx, cpu_serialized);
     phi::Copy(
         dev_ctx, cpu_serialized, dev_ctx.GetPlace(), false, &gpu_serialized);
 

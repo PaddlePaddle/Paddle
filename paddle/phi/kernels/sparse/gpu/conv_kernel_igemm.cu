@@ -126,10 +126,9 @@ void Conv3dImplicitGemmGPUKernel(const GPUContext& dev_ctx,
 
   // Set the output tensor
   if (subm) {
-    DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
+    DenseTensor out_indices = EmptyLike<IntT>(dev_ctx, x.indices());
     int tmpidx = is2D ? 3 : 4;
-    DenseTensor out_values =
-        phi::Empty<T>(dev_ctx, {x.nnz(), kernel_sizes[tmpidx]});
+    DenseTensor out_values = Empty<T>(dev_ctx, {x.nnz(), kernel_sizes[tmpidx]});
     phi::Copy(dev_ctx, x.indices(), dev_ctx.GetPlace(), false, &out_indices);
     out->SetMember(out_indices, out_values, out_dims, false);
   } else {
@@ -142,7 +141,7 @@ void Conv3dImplicitGemmGPUKernel(const GPUContext& dev_ctx,
 
   auto* out_kmap_cache_ptr = out->GetKmapCache(key);
 
-  DenseTensor kernel_transpose = phi::EmptyLike<T, GPUContext>(dev_ctx, kernel);
+  DenseTensor kernel_transpose = EmptyLike<T, GPUContext>(dev_ctx, kernel);
   std::vector<int> perm;
   if (is2D) {
     perm = {1, 0, 2, 3};

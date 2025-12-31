@@ -65,7 +65,7 @@ int GetAllStringsSize(const Context& dev_ctx,
                       const phi::dtype::pstring* src_ptr,
                       size_t numel) {
   auto nums_meta = phi::DenseTensorMeta(DataType::INT32, {1}, DataLayout::NCHW);
-  DenseTensor nums_tensor = phi::Empty(dev_ctx, std::move(nums_meta));
+  DenseTensor nums_tensor = Empty(dev_ctx, std::move(nums_meta));
 
   int* nums_ptr = dev_ctx.template Alloc<int>(&nums_tensor);
   phi::backends::gpu::GpuMemsetAsync(

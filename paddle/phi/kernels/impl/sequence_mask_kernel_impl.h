@@ -75,8 +75,7 @@ void SequenceMaskKernel(const Context& dev_ctx,
                         DataType out_dtype,
                         DenseTensor* y) {
   if (max_len_tensor) {
-    bool is_gpu_place =
-        dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
+    bool is_gpu_place = dev_ctx.GetPlace().GetType() == AllocationType::GPU;
     if (is_gpu_place) {
       DenseTensor temp;
       Copy(dev_ctx, *max_len_tensor.get_ptr(), phi::CPUPlace(), false, &temp);

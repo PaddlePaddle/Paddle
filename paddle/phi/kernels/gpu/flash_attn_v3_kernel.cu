@@ -616,7 +616,7 @@ void FlashAttnV3BaseKernel(
                             "scheduler_metadata must have dtype int32"));
       tile_count_semaphore = scheduler_metadata;
     } else {
-      tile_count_semaphore = phi::Empty<int32_t>(dev_ctx, {metadata_size});
+      tile_count_semaphore = Empty<int32_t>(dev_ctx, {metadata_size});
     }
     if (scheduler_needs_semaphore && !use_dynamic_split) {
       funcs::SetConstant<Context, int32_t> set_zero;
@@ -1791,7 +1791,7 @@ void FlashMaskV2BaseKernel(
                             "scheduler_metadata must have dtype int32"));
       tile_count_semaphore = scheduler_metadata;
     } else {
-      tile_count_semaphore = phi::Empty<int32_t>(dev_ctx, {metadata_size});
+      tile_count_semaphore = Empty<int32_t>(dev_ctx, {metadata_size});
     }
     if (scheduler_needs_semaphore && !use_dynamic_split) {
       funcs::SetConstant<Context, int32_t> set_zero;
