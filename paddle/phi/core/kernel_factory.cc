@@ -309,13 +309,16 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     auto kernel_iter = iter->second.find(
         {Backend::GPUDNN, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype()});
     if (kernel_iter != iter->second.end()) {
-      VLOG(8) << "[SelectKernelOrThrowError] Found GPUDNN kernel for " << kernel_name;
+      VLOG(8) << "[SelectKernelOrThrowError] Found GPUDNN kernel for "
+              << kernel_name;
       return {kernel_iter->second, false, false};
     }
-    VLOG(8) << "[SelectKernelOrThrowError] No GPUDNN kernel found, switching to Custom Device: " 
+    VLOG(8) << "[SelectKernelOrThrowError] No GPUDNN kernel found, switching "
+               "to Custom Device: "
             << Backend::DEFAULT_CUSTOM_DEVICE << " for " << kernel_name;
-    kernel_key =
-        KernelKey(Backend::DEFAULT_CUSTOM_DEVICE, kernel_key.layout(), kernel_key.dtype());
+    kernel_key = KernelKey(Backend::DEFAULT_CUSTOM_DEVICE,
+                           kernel_key.layout(),
+                           kernel_key.dtype());
   }
 #elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (kernel_key.backend() == Backend::GPUDNN) {
@@ -380,12 +383,12 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
                                      phi::DataLayout::ALL_LAYOUT,
                                      kernel_key.dtype()});
   }
-  
+
   if (kernel_iter == iter->second.end()) {
     bool in_black_list = phi::backends::custom_device::is_in_custom_black_list(
         TransToFluidOpName(kernel_name));
   }
-  
+
   if (FLAGS_enable_api_kernel_fallback &&
       (kernel_iter == iter->second.end() ||
        phi::backends::custom_device::is_in_custom_black_list(

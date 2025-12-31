@@ -65,8 +65,9 @@ struct KernelKeySet {
 #endif
     std::size_t leading_zeros = detail::CountLeadingZeros(bitset_value);
     Backend selected_backend = static_cast<Backend>(32 - leading_zeros);
-    VLOG(8) << "GetHighestPriorityKernelKey: selected_backend = " << selected_backend;
-    
+    VLOG(8) << "GetHighestPriorityKernelKey: selected_backend = "
+            << selected_backend;
+
     return phi::KernelKey(selected_backend, layout, dtype);
   }
 };
@@ -109,7 +110,8 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     key_set.backend_set = key_set.backend_set | tensor_backend_set;
     // tensor's attribute use_gpudnn=False, explicitly disable gpudnn kernel
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    if (tensor_backend_set == BackendSet(Backend::DEFAULT_CUSTOM_DEVICE) || disable_gpudnn) {
+    if (tensor_backend_set == BackendSet(Backend::DEFAULT_CUSTOM_DEVICE) ||
+        disable_gpudnn) {
       disable_gpudnn = true;
       key_set.backend_set = key_set.backend_set - BackendSet(Backend::GPUDNN);
       VLOG(8) << "Disable kernel backend: GPUDNN";
@@ -231,7 +233,6 @@ template <typename... Args>
 KernelKeySet ParseKernelKeyByInputArgs(const Args&... args) {
   return detail::KernelKeyParser().apply(args...).key_set;
 }
-
 
 template <typename... Args>
 KernelType ParseKernelTypeByInputArgs(const Args&... args) {

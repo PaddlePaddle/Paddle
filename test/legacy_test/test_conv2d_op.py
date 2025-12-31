@@ -374,6 +374,7 @@ def create_test_cudnn_padding_SAME_class(parent):
                 if (core.is_compiled_with_rocm() or is_custom_device())
                 else np.float64
             )
+
         def init_paddings(self):
             self.pad = [1, 1]
             self.padding_algorithm = "SAME"
@@ -742,10 +743,10 @@ class TestCUDNNExhaustiveSearch(TestConv2DOp):
         self.use_cudnn = True
         self.exhaustive_search = True
         self.dtype = (
-                np.float32
-                if (core.is_compiled_with_rocm() or is_custom_device())
-                else np.float64
-            )
+            np.float32
+            if (core.is_compiled_with_rocm() or is_custom_device())
+            else np.float64
+        )
 
 
 class TestConv2DOpError(unittest.TestCase):
