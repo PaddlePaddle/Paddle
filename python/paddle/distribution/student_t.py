@@ -66,7 +66,7 @@ class StudentT(distribution.Distribution):
             >>> dist = StudentT(df=10.0, loc=0.0, scale=1.0)
             >>> dist.sample([3])
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [ 0.32376748, -1.45858061, -0.33535486])
+            [-2.07709980,  0.27981189,  0.00881413])
 
             >>> dist2 = StudentT(df=paddle.to_tensor([10.0, 5.0]), loc=paddle.to_tensor([0.0, 0.0]), scale=paddle.to_tensor([1.0, 2.0]))
             >>> value_tensor = paddle.to_tensor([0.8], dtype="float32")
