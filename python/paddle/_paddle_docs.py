@@ -168,7 +168,7 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.41075233, -0.20133601,  0.10016675,  0.30452031])
-    """,
+""",
     """
 def sinh(
     x: Tensor,
