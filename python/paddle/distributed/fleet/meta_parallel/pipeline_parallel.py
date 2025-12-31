@@ -495,6 +495,8 @@ class PipelineParallel(MetaParallelBase):
         # only support user hooks during training
         self.user_hooks_enabled = True
 
+        self.recompute_overlap = True
+
     def register_hook(
         self, location: PipelineParallelMicroStepLocations, hook: Callable
     ):
@@ -866,6 +868,18 @@ class PipelineParallel(MetaParallelBase):
             )
 
             output_tensor_tuple = dict_to_tuple_helper(output_tensor)
+
+            input_buffers.append(input_tensor)
+            output_buffers.append(output_tensor_tuple)
+
+            input_tensor, output_tensor = (
+                input_buffers.pop(0),
+                output_buffers.pop(0),
+            )
+
+            if self.recompute_overlap:
+                recompute_result = self._layers.recompute(input_tensor)
+
             # NOTE: `send_forward_recv_backward` is intentionally unused to
             # prevent hanging bugs in dynamic shape mode.
             self._p2p_helper.send_forward(
@@ -879,21 +893,26 @@ class PipelineParallel(MetaParallelBase):
                 batch_p2p_comm=self._use_batch_p2p_comm,
             )
 
-            input_buffers.append(input_tensor)
-            output_buffers.append(output_tensor_tuple)
-
             if not self.is_pipeline_last_stage():
                 self._release_output(output_tensor_tuple)
 
-            input_tensor, output_tensor = (
-                input_buffers.pop(0),
-                output_buffers.pop(0),
-            )
-
             self._record_stamp("B", i, '"B"', self._backward_color)
-            input_tensor_grad = self._backward_step(
-                input_tensor, output_tensor, output_tensor_grad, step_id=i
-            )
+            if self.recompute_overlap:
+                input_tensor_grad = self._backward_step(
+                    input_tensor,
+                    output_tensor,
+                    output_tensor_grad,
+                    recompute_result,
+                    step_id=i,
+                )
+            else:
+                input_tensor_grad = self._backward_step(
+                    input_tensor,
+                    output_tensor,
+                    output_tensor_grad,
+                    step_id=i,
+                )
+
             self._record_stamp("B", i, '"E"', self._backward_color)
 
             if last_iter:
@@ -930,15 +949,28 @@ class PipelineParallel(MetaParallelBase):
                 batch_p2p_comm=self._use_batch_p2p_comm,
             )
 
+            if self.recompute_overlap:
+                recompute_result = self._layers.recompute(input_tensor)
+
             self._record_stamp(
                 "B", steady_steps + i, '"B"', self._backward_color
             )
-            input_tensor_grad = self._backward_step(
-                input_tensor,
-                output_tensor,
-                output_tensor_grad,
-                step_id=steady_steps + i,
-            )
+
+            if self.recompute_overlap:
+                input_tensor_grad = self._backward_step(
+                    input_tensor,
+                    output_tensor,
+                    output_tensor_grad,
+                    recompute_result,
+                    step_id=steady_steps + i,
+                )
+            else:
+                input_tensor_grad = self._backward_step(
+                    input_tensor,
+                    output_tensor,
+                    output_tensor_grad,
+                    step_id=steady_steps + i,
+                )
             self._record_stamp(
                 "B", steady_steps + i, '"E"', self._backward_color
             )
@@ -1254,10 +1286,15 @@ class PipelineParallel(MetaParallelBase):
         schedule_chunk = None
         if overlap_schedule_mode:
             schedule_chunk = self._layers.get_schedule_chunk(chunk_id=chunk_id)
-            output_tensor = schedule_chunk.forward(input_tensor)
+            output_tensor = schedule_chunk.forward(
+                input_tensor,
+                is_pipeline_last_stage=self.is_pipeline_last_stage(),
+            )
         else:
             output_tensor = self._layers.forward(
-                input_tensor, chunk_id=chunk_id
+                input_tensor,
+                chunk_id=chunk_id,
+                is_pipeline_last_stage=self.is_pipeline_last_stage(),
             )
 
         self.callbacks.on_location(
@@ -1290,6 +1327,7 @@ class PipelineParallel(MetaParallelBase):
         input_tensor,
         output_tensor,
         output_tensor_grad,
+        recompute_result=None,
         chunk_id=None,
         step_id=None,
         overlap_schedule_mode=False,
@@ -1312,22 +1350,15 @@ class PipelineParallel(MetaParallelBase):
                 output_tensor_grad=output_tensor_grad,
                 step_id=step_id,
             )
-            if self.is_pipeline_last_stage():
-                assert output_tensor_grad is None
-                if overlap_schedule_mode:
-                    assert (
-                        loss_fn_node is not None and schedule_chunk is not None
-                    ), (
-                        "loss_fn_node and schedule_chunk should not be None in overlap_schedule_mode"
-                    )
-                    input_tensor_grad = loss_fn_node.backward(
-                        scaler=self.scaler
-                    )
-                    input_tensor_grad = schedule_chunk.backward(
-                        input_tensor_grad
-                    )
-                else:
-                    # In align mode, we scale the grad directly after forward
+            if self.recompute_overlap:
+                # TODO 暂时不支持overlap_schedule_mode
+                if self.is_pipeline_last_stage():
+                    if isinstance(input_tensor, paddle.Tensor):
+                        input_tensor.stop_gradient = False
+                    else:
+                        for input_item in input_tensor:
+                            input_item.stop_gradient = False
+
                     if paddle.distributed.in_auto_parallel_align_mode():
                         output_tensor = output_tensor / _get_align_mode_scale()
                     if self.scaler:
@@ -1336,31 +1367,8 @@ class PipelineParallel(MetaParallelBase):
                         )
                     else:
                         paddle.autograd.backward(output_tensor)
-            else:
-                if isinstance(output_tensor, tuple):
-                    outputs = [t for t in output_tensor if not t.stop_gradient]
-                    assert len(outputs) == len(output_tensor_grad)
-                    grad_tensors = list(output_tensor_grad)
-                else:
-                    outputs = [output_tensor]
-                    grad_tensors = [output_tensor_grad]
 
-                if overlap_schedule_mode:
-                    assert schedule_chunk is not None, (
-                        "schedule_chunk should not be None in overlap_schedule_mode"
-                    )
-                    input_tensor_grad = schedule_chunk.backward(grad_tensors)
-                else:
-                    paddle.autograd.backward(
-                        tensors=outputs,
-                        grad_tensors=grad_tensors,
-                    )
-
-            if not overlap_schedule_mode:
-                # Extract input_tensor_grad from the input tensor. In overlap_schedule_mode,
-                # the input_tensor_grad is extracted inside the schedule_chunk.
-                input_tensor_grad = None
-                if input_tensor is not None:
+                    input_tensor_grad = None
                     if isinstance(input_tensor, tuple):
                         input_tensor_grad = tuple(
                             [
@@ -1369,8 +1377,140 @@ class PipelineParallel(MetaParallelBase):
                                 if not t.stop_gradient
                             ]
                         )
+                    elif isinstance(input_tensor, list):
+                        input_tensor_grad = list(
+                            [
+                                t.grad
+                                for t in input_tensor
+                                if not t.stop_gradient
+                            ]
+                        )
                     else:
                         input_tensor_grad = input_tensor.grad
+                else:
+                    for idx in sorted(recompute_result.keys(), reverse=True):
+                        layer_result = recompute_result[idx]
+                        output_tensor = layer_result[1]
+                        if isinstance(output_tensor, tuple):
+                            outputs = [
+                                t for t in output_tensor if not t.stop_gradient
+                            ]
+                            assert len(outputs) == len(output_tensor_grad), (
+                                f"{len(outputs)=}, {len(output_tensor_grad)=}"
+                            )
+                            grad_tensors = list(output_tensor_grad)
+                        elif isinstance(output_tensor, list):
+                            outputs = [
+                                t for t in output_tensor if not t.stop_gradient
+                            ]
+                            assert len(outputs) == len(output_tensor_grad), (
+                                f"{len(outputs)=}, {len(output_tensor_grad)=}"
+                            )
+                            grad_tensors = list(output_tensor_grad)
+                        elif isinstance(output_tensor, paddle.Tensor):
+                            outputs = [output_tensor]
+                            grad_tensors = [output_tensor_grad]
+                        else:
+                            raise ValueError(
+                                f"Unsupported type of output_tensor: {type(output_tensor)}"
+                            )
+
+                        paddle.autograd.backward(
+                            tensors=outputs,
+                            grad_tensors=grad_tensors,
+                        )
+                        input_tensor_grad = None
+                        input_tensor = layer_result[0]
+                        if input_tensor is not None:
+                            if isinstance(input_tensor, tuple):
+                                input_tensor_grad = tuple(
+                                    [
+                                        t.grad
+                                        for t in input_tensor
+                                        if not t.stop_gradient
+                                    ]
+                                )
+                            elif isinstance(input_tensor, list):
+                                input_tensor_grad = list(
+                                    [
+                                        t.grad
+                                        for t in input_tensor
+                                        if not t.stop_gradient
+                                    ]
+                                )
+                            else:
+                                input_tensor_grad = input_tensor.grad
+                            output_tensor_grad = input_tensor_grad
+                    input_tensor_grad = output_tensor_grad
+            else:
+                if self.is_pipeline_last_stage():
+                    assert output_tensor_grad is None
+                    if overlap_schedule_mode:
+                        assert (
+                            loss_fn_node is not None
+                            and schedule_chunk is not None
+                        ), (
+                            "loss_fn_node and schedule_chunk should not be None in overlap_schedule_mode"
+                        )
+                        input_tensor_grad = loss_fn_node.backward(
+                            scaler=self.scaler
+                        )
+                        input_tensor_grad = schedule_chunk.backward(
+                            input_tensor_grad
+                        )
+                    else:
+                        # In align mode, we scale the grad directly after forward
+                        if paddle.distributed.in_auto_parallel_align_mode():
+                            output_tensor = (
+                                output_tensor / _get_align_mode_scale()
+                            )
+                        if self.scaler:
+                            paddle.autograd.backward(
+                                self.scaler.scale(output_tensor)
+                            )
+                        else:
+                            paddle.autograd.backward(output_tensor)
+                else:
+                    if isinstance(output_tensor, tuple):
+                        outputs = [
+                            t for t in output_tensor if not t.stop_gradient
+                        ]
+                        assert len(outputs) == len(output_tensor_grad)
+                        grad_tensors = list(output_tensor_grad)
+                    else:
+                        outputs = [output_tensor]
+                        grad_tensors = [output_tensor_grad]
+
+                    if overlap_schedule_mode:
+                        assert schedule_chunk is not None, (
+                            "schedule_chunk should not be None in overlap_schedule_mode"
+                        )
+                        input_tensor_grad = schedule_chunk.backward(
+                            grad_tensors
+                        )
+
+                    else:
+                        tracer = framework._dygraph_tracer()
+                        paddle.autograd.backward(
+                            tensors=outputs,
+                            grad_tensors=grad_tensors,
+                        )
+
+                if not overlap_schedule_mode:
+                    # Extract input_tensor_grad from the input tensor. In overlap_schedule_mode,
+                    # the input_tensor_grad is extracted inside the schedule_chunk.
+                    input_tensor_grad = None
+                    if input_tensor is not None:
+                        if isinstance(input_tensor, tuple):
+                            input_tensor_grad = tuple(
+                                [
+                                    t.grad
+                                    for t in input_tensor
+                                    if not t.stop_gradient
+                                ]
+                            )
+                        else:
+                            input_tensor_grad = input_tensor.grad
             if self._enable_timer:
                 self.timers("backward_step").stop()
             self.callbacks.on_location(
