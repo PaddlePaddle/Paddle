@@ -73,10 +73,10 @@ class FullyShardAuto:
         for param in self.model.parameters():
             param._need_shard_auto = True
             self._shard_fn._shard_parameter(param)
-            if in_auto_dp_mode():
-                self._register_comm_hook(model)
-            else:
+            if not in_auto_dp_mode():
                 self._shard_fn._register_hook_for_param_grad(param)
+        if in_auto_dp_mode():
+            self._register_comm_hook(model)
         os.environ["skip_sharding3_output_reshard"] = "1"
 
     def _register_comm_hook(self, model):
