@@ -147,8 +147,8 @@ void CalculateXGrad(const Context& dev_ctx,
           IndexT dst = d_index[i];
           auto out_grad_slice = out_grad_tensor.Slice(src, src + 1);
           auto x_grad_slice = x_grad_tensor->Slice(dst, dst + 1);
-          auto eigen_out_grad = phi::EigenVector<T>::Flatten(out_grad_slice);
-          auto eigen_x_grad = phi::EigenVector<T>::Flatten(x_grad_slice);
+          auto eigen_out_grad = EigenVector<T>::Flatten(out_grad_slice);
+          auto eigen_x_grad = EigenVector<T>::Flatten(x_grad_slice);
           eigen_x_grad += (eigen_out_grad / static_cast<T>(s_count[src]));
         }
       } else {
@@ -160,8 +160,8 @@ void CalculateXGrad(const Context& dev_ctx,
           IndexT dst = d_index[i];
           auto out_grad_slice = out_grad_tensor.Slice(src, src + 1);
           auto x_grad_slice = x_grad_v2.Slice(dst, dst + 1);
-          auto eigen_out_grad = phi::EigenVector<T>::Flatten(out_grad_slice);
-          auto eigen_x_grad = phi::EigenVector<T>::Flatten(x_grad_slice);
+          auto eigen_out_grad = EigenVector<T>::Flatten(out_grad_slice);
+          auto eigen_x_grad = EigenVector<T>::Flatten(x_grad_slice);
           eigen_x_grad += (eigen_out_grad / static_cast<T>(s_count[src]));
         }
         DenseTensor x_grad_out =

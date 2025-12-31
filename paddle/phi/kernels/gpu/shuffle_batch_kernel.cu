@@ -58,8 +58,8 @@ void ShuffleBatchKernel(const Context& dev_ctx,
   int64_t seed_int = 0;
   if (seed.initialized()) {
     const auto& seed_place = seed.place().GetType();
-    bool is_gpu_place = seed_place == phi::AllocationType::GPU ||
-                        seed_place == phi::AllocationType::CUSTOM;
+    bool is_gpu_place = seed_place == AllocationType::GPU ||
+                        seed_place == AllocationType::CUSTOM;
     if (is_gpu_place) {
       // NOTE: We have overwritten GetKernelTypeForVar, so seed_place would
       // not be CUDAPlace in practice. This case would only happen in Python

@@ -67,10 +67,10 @@ void PNormGradKernel(const Context& dev_ctx,
 
   auto* place = dev_ctx.eigen_device();
 
-  auto x_e = phi::EigenVector<T>::Flatten(*in_x);
-  auto dx_e = phi::EigenVector<T>::Flatten(*out_dx);
-  auto norm_e = phi::EigenVector<T>::Flatten(*in_norm);
-  auto norm_dy_e = phi::EigenVector<T>::Flatten(*in_norm_dy);
+  auto x_e = EigenVector<T>::Flatten(*in_x);
+  auto dx_e = EigenVector<T>::Flatten(*out_dx);
+  auto norm_e = EigenVector<T>::Flatten(*in_norm);
+  auto norm_dy_e = EigenVector<T>::Flatten(*in_norm_dy);
 
   auto xr = x_e.reshape(shape);
   auto dx = dx_e.reshape(shape);
