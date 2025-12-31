@@ -572,19 +572,62 @@ struct InputSetter {
   }
 };
 
+static inline int GetVectorizedSizeWithDtype(const DenseTensor *tensor) {
+  int element_size = phi::SizeOf(tensor->dtype());
+  if (element_size > sizeof(float)) {
+    return 1;
+  }
+  constexpr int max_load_bits = 128;
+  int vec_size = max_load_bits / CHAR_BIT / element_size;
+  return vec_size;
+}
+static inline int GetVectorizedSizeWithAddress(const DenseTensor *tensor) {
+  int element_size = phi::SizeOf(tensor->dtype());
+  if (element_size > sizeof(float)) {
+    return 1;
+  }
+  uint64_t address = reinterpret_cast<uint64_t>(tensor->data());
+
+  // Currently, decide to deal with no more than 4 data once while adopting
+  // vectorization load/store, if performance test shows that dealing with
+  // 8 data once in vectorization load/store does get optimized, code below
+  // can begin with :
+  if (address % (element_size * 8) == 0) {
+    return 8;
+  } else if (address % (element_size * 4) == 0) {
+    return 4;
+  } else if (address % (element_size * 2) == 0) {
+    return 2;
+  } else {
+    return 1;
+  }
+}
+
 static int GetVectorizedSizeForTensors(
     const std::vector<const DenseTensor *> &ins,
-    const std::vector<DenseTensor *> &outs) {
+    const std::vector<DenseTensor *> &outs,
+    bool only_consider_outs_dtype = false) {
 #ifdef PADDLE_WITH_XPU_KP
   int vec_size = 256;
 #else
-  int vec_size = 4;
-  for (size_t i = 0; i < ins.size(); ++i) {
-    vec_size = std::min(vec_size, phi::GetVectorizedSize(ins[i]));
+  constexpr int max_vec_size = 8;
+  int vec_size = 1;
+  if (!only_consider_outs_dtype) {
+    for (size_t i = 0; i < ins.size(); ++i) {
+      vec_size = std::max(vec_size, GetVectorizedSizeWithDtype(ins[i]));
+    }
   }
   for (size_t i = 0; i < outs.size(); ++i) {
-    vec_size = std::min(vec_size, phi::GetVectorizedSize(outs[i]));
+    vec_size = std::max(vec_size, GetVectorizedSizeWithDtype(outs[i]));
   }
+
+  for (size_t i = 0; i < ins.size(); ++i) {
+    vec_size = std::min(vec_size, GetVectorizedSizeWithAddress(ins[i]));
+  }
+  for (size_t i = 0; i < outs.size(); ++i) {
+    vec_size = std::min(vec_size, GetVectorizedSizeWithAddress(outs[i]));
+  }
+  vec_size = std::min(vec_size, max_vec_size);
 #endif
   return vec_size;
 }
@@ -792,9 +835,18 @@ ElementwiseKernelForDifferentVecSize(
     const std::vector<const DenseTensor *> &ins,
     std::vector<DenseTensor *> *outs,
     Functor func) {
+  static int capability = dev_ctx.GetComputeCapability();
+  // For Hopper and Blackwell, max vectorized size is 8.
+  static int max_vec_size = capability >= 90 ? VecSizeVL : VecSizeL;
   // calculate the max vec_size for all ins and outs
   int vec_size = GetVectorizedSizeForTensors(ins, *outs);
+  vec_size = std::min(vec_size, max_vec_size);
+
   switch (vec_size) {
+    case VecSizeVL:
+      LaunchElementwiseKernel<OutT, Functor, Arity, NumOuts, VecSizeVL>(
+          dev_ctx, ins, outs, func);
+      break;
     case VecSizeL:
       LaunchElementwiseKernel<OutT, Functor, Arity, NumOuts, VecSizeL>(
           dev_ctx, ins, outs, func);
