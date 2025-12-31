@@ -68,6 +68,14 @@ void Full(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void Full(const Context& dev_ctx,
+          const DDim& dims,
+          const Scalar& val,
+          DenseTensor* out) {
+  Full<T, Context>(dev_ctx, IntArray(vectorize(dims)), val, out);
+}
+
+template <typename T, typename Context>
 DenseTensor Full(const Context& dev_ctx,
                  const IntArray& shape,
                  const Scalar& val) {
