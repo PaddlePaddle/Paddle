@@ -86,6 +86,7 @@ prim_white_list = [
     "where_double_grad",
     "bmm_double_grad",
     "index_put_double_grad",
+    "linear_v2_double_grad",
     "gather_nd_double_grad",
     "reshape_double_grad",
     "take_along_axis_double_grad",
