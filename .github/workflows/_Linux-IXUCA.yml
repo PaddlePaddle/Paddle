@@ -107,6 +107,18 @@ jobs:
             echo "No valid approval found, running full CI"
           fi
 
+      - name: Clone PaddleCustomDevice repository
+        if: steps.check-bypass.outputs.can-skip != 'true'
+        run: |
+          wget -q https://xly-devops.bj.bcebos.com/PaddleTest/PaddleCustomDevice/PaddleCustomDevice-develop.tar.gz
+          tar -zxf PaddleCustomDevice-develop.tar.gz
+          mv PaddleCustomDevice-develop PaddleCustomDevice
+          cd PaddleCustomDevice
+          export https_proxy=http://oversea-website-proxy.aistudio.public:8888
+          export http_proxy=http://oversea-website-proxy.aistudio.public:8888
+          git fetch origin
+          git merge origin/develop --no-recurse-submodules
+
       - name: Download paddle.tar.gz and update test branch
         if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
@@ -129,30 +141,16 @@ jobs:
           git config pull.rebase false
           git checkout test
           echo "Pull upstream develop"
-          # source ${{ github.workspace }}/../../../proxy
-          # bash ci/git_pull.sh $BRANCH
+          cd ../PaddleCustomDevice
+          cp -r ../Paddle .
+          git add Paddle
+          git commit -m "Update Paddle Submodule"
 
       - name: Determine the runner
         if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
           echo $runner_name
-
-      - name: Clone PaddleCustomDevice repository
-        if: steps.check-bypass.outputs.can-skip != 'true'
-        run: |
-          # source ~/.bashrc
-          wget -q https://xly-devops.bj.bcebos.com/PaddleTest/PaddleCustomDevice/PaddleCustomDevice-develop.tar.gz
-          tar -zxf PaddleCustomDevice-develop.tar.gz
-          mv PaddleCustomDevice-develop PaddleCustomDevice
-          cd PaddleCustomDevice
-          export https_proxy=http://oversea-website-proxy.aistudio.public:8888
-          export http_proxy=http://oversea-website-proxy.aistudio.public:8888
-          git fetch origin
-          git merge origin/develop --no-recurse-submodules
-          cp -r ../Paddle .
-          git add Paddle
-          git commit -m "Update Paddle Submodule"
 
       - name: Check docker image and run container
         if: steps.check-bypass.outputs.can-skip != 'true'
