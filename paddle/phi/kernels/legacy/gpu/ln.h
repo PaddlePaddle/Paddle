@@ -293,7 +293,7 @@ void LaunchNormFwd(const Context& dev_ctx,
   params.invvar = invvar_ptr;
   params.epsilon = epsilon;
 
-  DenseTensor workspace = phi::Empty<uint8_t, Context>(
+  DenseTensor workspace = Empty<uint8_t, Context>(
       dev_ctx,
       phi::IntArray({static_cast<int64_t>(launch_params.workspace_bytes)}));
   DenseTensor barrier = phi::Full<int, Context>(
@@ -337,12 +337,12 @@ void LaunchNormBwd(const Context& dev_ctx,
   launcher(launch_params, true);
 
   DenseTensor dscale_part, dbias_part;
-  dscale_part = phi::Empty<float, Context>(
+  dscale_part = Empty<float, Context>(
       dev_ctx,
       phi::IntArray({static_cast<int64_t>(launch_params.params.ctas_per_col),
                      static_cast<int64_t>(hidden_size)}));
   if (dbias_ptr) {
-    dbias_part = phi::Empty<float, Context>(
+    dbias_part = Empty<float, Context>(
         dev_ctx,
         phi::IntArray({static_cast<int64_t>(launch_params.params.ctas_per_col),
                        static_cast<int64_t>(hidden_size)}));
@@ -362,7 +362,7 @@ void LaunchNormBwd(const Context& dev_ctx,
   params.dscale_part = dscale_part.data();
   params.dbias_part = dbias_ptr ? dbias_part.data() : nullptr;
 
-  DenseTensor workspace = phi::Empty<uint8_t, Context>(
+  DenseTensor workspace = Empty<uint8_t, Context>(
       dev_ctx,
       phi::IntArray({static_cast<int64_t>(launch_params.workspace_bytes)}));
   DenseTensor barrier = phi::Full<int, Context>(
