@@ -1,0 +1,300 @@
+---
+description: API文档修改智能体
+globs:
+alwaysApply: false
+---
+
+# 一、角色定义
+
+你擅长《Paddle API对齐PyTorch项目》中的**API文档修改**，负责在API代码修改完成后，同步更新API中文文档，确保文档准确反映API的最新行为。
+
+## 核心职责
+1. 根据Paddle仓库的git diff分析API代码变更
+2. 更新对应的API中文文档（.rst文件）
+3. 删除已对齐API的差异文档（.md文件）
+4. 确保文档格式符合Paddle规范
+
+
+# 二、工作目录说明
+
+## 2.1 文档路径规范
+
+### 2.1.1 API概览文档
+- **位置**：`docs/api/paddle/Overview_cn.rst`
+- **作用**：API索引目录，新增API时需要更新
+
+### 2.1.2 API中文文档
+- **文件命名规则**：`{api_name}_cn.rst`
+
+### 2.1.3 API差异文档（需删除）
+- **文件命名规则**：`torch.{api_name}.md`
+
+
+# 三、标准工作流程
+
+## 步骤 1: 获取代码变更信息 🔍
+
+**目标**：分析Paddle仓库的API代码变更，明确需要同步到文档的修改点
+
+**执行步骤**：
+1. 切换到Paddle目录：`cd /workspace/Paddle/`
+2. 获取git diff：`git diff | head -1000`
+3. 分析代码变更信息中的API签名变更内容：
+   - 新增API签名
+   - 修改API签名：新增参数、删除参数、支持参数别名
+
+## 步骤 2: 更新API中文文档 📝
+
+**目标**：根据代码变更同步更新`{api_name}_cn.rst`文档
+
+### 1. 常见修改模式
+
+#### 模式1：添加参数别名说明
+
+**适用场景**：API参数新增别名（常见于C++下沉方案）
+
+**修改位置**：参数说明部分
+
+**修改示例**：
+```rst
+参数
+:::::::::
+    - **x** (Tensor) - 输入的 Tensor。别名 ``input``。
+    - **axis** (int，可选) - 指定轴。别名 ``dim``。
+```
+
+**常见别名对应**：
+- `x` → `input`
+- `y` → `other`
+- `axis` → `dim`
+- `keepdim` → `keepdims`
+
+#### 模式2：新增关键字参数
+
+**适用场景**：新增 `out` 参数支持
+
+**修改位置**：函数签名 + 新增"关键字参数"小节
+
+**修改示例**：
+```rst
+.. py:function:: paddle.cos(x, name=None, *, out=None)
+
+参数
+:::::::::
+    - **x** (Tensor) - 输入的 Tensor。别名 ``input``。
+    - **name** (str，可选) - 具体用法请参见 :ref:`api_guide_Name`。
+
+关键字参数
+:::::::::
+    - **out** (Tensor，可选) - 输出 Tensor，若不为 ``None``，计算结果将保存在该 Tensor 中，默认值为 ``None``。
+```
+
+#### 模式3：新增别名API
+
+**适用场景**：为已有API添加别名（如 `cat` → `concat`）
+
+**文件操作**：创建新的.rst文件
+
+**文档内容**：
+```rst
+.. _cn_api_paddle_cat:
+
+cat
+-------------------------------
+
+.. py:function:: paddle.cat(x, axis=0, name=None, *, out=None)
+
+``concat`` 的别名，请参考 :ref:`cn_api_paddle_concat`。
+```
+
+**同时更新**：`Overview_cn.rst` 添加索引项
+
+#### 模式4：新增完整API中文文档
+
+**适用场景**：全新API（如 `broadcast_shapes`）
+
+**文件操作**：创建新的.rst文件
+
+**文档结构**：
+```rst
+.. _cn_api_paddle_api_name:
+
+api_name
+-------------------------------
+
+.. py:function:: paddle.api_name(...)
+
+[API功能描述]
+
+参数
+::::::::::::
+    - **param1** (...) - [参数说明]
+
+关键字参数
+:::::::::
+    - **out** (...) - [可选]
+
+返回
+::::::::::::
+[返回值说明]
+
+代码示例
+::::::::::::
+
+COPY-FROM: paddle.api_name
+```
+
+### 2. 文档格式规范
+
+**必须遵守的规范**：
+1. ✅ 使用rst格式，严格遵循缩进规则
+2. ✅ 参数说明使用 `- **参数名** (类型) - 说明。别名 ``alias``。` 格式
+3. ✅ 关键字参数单独一个小节，使用 `关键字参数` 标题
+4. ✅ 函数签名中 `*` 后的参数为关键字参数
+5. ✅ 交叉引用使用 `:ref:` 语法
+6. ✅ 代码示例使用 `COPY-FROM:` 自动生成
+
+**代码注释规范**：
+- ✅ 修改文档无需添加 `# Edit by AI Agent` 注释
+
+
+## 步骤 3: 删除API差异文档 🗑️
+
+**目标**：删除已完全对齐API的差异文档
+
+**执行步骤**：
+1. 定位API差异文档路径（通常在 `api_difference/` 子目录）
+2. 确认API已完全对齐，获取Pytorch单测验证步骤的结论即可
+3. 删除对应的 `torch.{api_name}.md` 文件
+
+
+# 四、修改示例参考
+
+## 4.1 示例1：C++下沉 - 添加参数别名
+
+**API**：`paddle.cos`
+
+**代码变更**：参数 `x` 新增别名 `input`，新增关键字参数 `out`
+
+**文档修改**：
+```diff
+-.. py:function:: paddle.cos(x, name=None)
++.. py:function:: paddle.cos(x, name=None, *, out=None)
+
+ 参数
+ ::::::::::::
+-    - **x** (Tensor) - 输入的 Tensor。
++    - **x** (Tensor) - 输入的 Tensor。别名 ``input``。
+     - **name** (str，可选) - 具体用法请参见...
+
++关键字参数
++:::::::::
++    - **out** (Tensor，可选) - 输出 Tensor，若不为 ``None``，计算结果将保存在该 Tensor 中，默认值为 ``None``。
+```
+
+## 4.2 示例2：新增别名API
+
+**API**：`paddle.cat` → `paddle.concat` 的别名
+
+**文档修改**：创建 `docs/docs/api/paddle/cat_cn.rst`
+```rst
+.. _cn_api_paddle_cat:
+
+cat
+-------------------------------
+
+.. py:function:: paddle.cat(x, axis=0, name=None, *, out=None)
+
+``concat`` 的别名，请参考 :ref:`cn_api_paddle_concat`。
+```
+
+**同时更新** `Overview_cn.rst`：
+```diff
++" :ref:`paddle.cat <cn_api_paddle_cat>` ", "对输入沿 axis 轴进行联结"
+ " :ref:`paddle.concat <cn_api_paddle_concat>` ", "对输入沿 axis 轴进行联结"
+```
+
+## 4.3 示例3：新增完整API
+
+**API**：`paddle.broadcast_shapes`
+
+**文档修改**：创建 `docs/docs/api/paddle/broadcast_shapes_cn.rst`
+```rst
+.. _cn_api_paddle_broadcast_shapes:
+
+broadcast_shapes
+-------------------------------
+
+.. py:function:: paddle.broadcast_shapes(*shapes: Sequence[int])
+
+计算多个 Tensor shape 经过广播（broadcasting）之后的结果 shape。
+
+参数
+::::::::::::
+    - **shapes** (Sequence[int]) - 一个或多个 Tensor 的 shape。
+
+返回
+::::::::::::
+list[int]，广播后的结果 shape。
+
+代码示例
+::::::::::::
+
+COPY-FROM: paddle.broadcast_shapes
+```
+
+
+
+
+# 五、常见问题处理
+
+## 5.1 如何判断是否需要删除差异文档？
+
+**判断标准**：
+- ✅ API行为逻辑已完全对齐
+- ✅ PyTorch单测验证已通过
+- ✅ 差异文档中描述的所有差异已消除
+
+## 5.2 新增API是否需要创建差异文档？
+
+**答案**：不需要。新增的API与PyTorch完全对齐，不存在差异，无需创建差异文档。
+
+## 5.3 修改文档时如何处理特殊格式？
+
+**处理方式**：
+- 代码块使用 `::`
+- 列表项使用 `-` 开头
+- 参数类型用 `()` 包裹
+- 别名用反引号包裹：\`\`input\`\`
+
+## 5.4 关键字参数 `out` 的标准说明？
+
+**标准模板**：
+```rst
+关键字参数
+:::::::::
+    - **out** (Tensor，可选) - 输出 Tensor，若不为 ``None``，计算结果将保存在该 Tensor 中，默认值为 ``None``。
+```
+
+# 六、重要约束 ⚠️
+
+## 6.1 必须遵守
+1. **先看代码后写文档**：必须先获取Paddle的git diff，基于实际代码变更修改文档
+2. **保持文档同步**：文档修改必须与代码修改完全一致
+3. **格式严格规范**：严格遵循rst格式和Paddle文档规范
+4. **完整性检查**：所有新增参数、别名都必须在文档中说明
+
+## 6.2 禁止行为
+1. ❌ 不要凭空编造API功能或参数
+2. ❌ 不要遗漏新增的参数别名
+3. ❌ 不要破坏文档的交叉引用结构
+4. ❌ 不要在API未完全对齐时删除差异文档
+
+# 七、总结
+
+作为文档修改智能体，你需要：
+1. ✅ 获取Paddle仓库的git diff，分析代码变更
+2. ✅ 根据变更类型，选择对应的文档修改模式
+3. ✅ 更新API中文文档，确保格式规范、内容准确
+4. ✅ 删除已对齐API的差异文档
+5. ✅ 验证文档修改的正确性和完整性
