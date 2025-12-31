@@ -274,11 +274,14 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
                     kernels_.end(),
                     common::errors::NotFound(
                         "The kernel `%s` is not registered.", kernel_name));
-
   if (FLAGS_use_stride_kernel && use_strided_kernel) {
     auto stride_kernel_iter = iter->second.find(
         {const_kernel_key.backend() == paddle::experimental::Backend::GPUDNN
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+             ? paddle::experimental::Backend::DEFAULT_CUSTOM_DEVICE
+#else
              ? paddle::experimental::Backend::GPU
+#endif
              : const_kernel_key.backend(),
          phi::DataLayout::STRIDED,
          const_kernel_key.dtype()});
@@ -301,7 +304,20 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   KernelKey kernel_key = KernelKey(const_kernel_key.backend(),
                                    phi::DataLayout::ALL_LAYOUT,
                                    const_kernel_key.dtype());
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (kernel_key.backend() == Backend::GPUDNN) {
+    auto kernel_iter = iter->second.find(
+        {Backend::GPUDNN, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype()});
+    if (kernel_iter != iter->second.end()) {
+      VLOG(8) << "[SelectKernelOrThrowError] Found GPUDNN kernel for " << kernel_name;
+      return {kernel_iter->second, false, false};
+    }
+    VLOG(8) << "[SelectKernelOrThrowError] No GPUDNN kernel found, switching to Custom Device: " 
+            << Backend::DEFAULT_CUSTOM_DEVICE << " for " << kernel_name;
+    kernel_key =
+        KernelKey(Backend::DEFAULT_CUSTOM_DEVICE, kernel_key.layout(), kernel_key.dtype());
+  }
+#elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (kernel_key.backend() == Backend::GPUDNN) {
     auto kernel_iter = iter->second.find(
         {Backend::GPUDNN, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype()});
@@ -364,6 +380,12 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
                                      phi::DataLayout::ALL_LAYOUT,
                                      kernel_key.dtype()});
   }
+  
+  if (kernel_iter == iter->second.end()) {
+    bool in_black_list = phi::backends::custom_device::is_in_custom_black_list(
+        TransToFluidOpName(kernel_name));
+  }
+  
   if (FLAGS_enable_api_kernel_fallback &&
       (kernel_iter == iter->second.end() ||
        phi::backends::custom_device::is_in_custom_black_list(

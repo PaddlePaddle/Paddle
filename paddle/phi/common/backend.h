@@ -63,6 +63,8 @@ enum class Backend : uint8_t {
   // end of backend types
   NUM_BACKENDS,
 
+  DEFAULT_CUSTOM_DEVICE,
+
   /**
    * [ Why we need ALL in basic kernel key member? ]
    *
