@@ -59,20 +59,21 @@ jobs:
           WITH_TENSORRT: "OFF"
           GENERATOR: Ninja
           WITH_INFERENCE_API_TEST: "OFF"
-          CCACHE_MAXSIZE: 150G
+          CCACHE_MAXSIZE: 20G
           CCACHE_LIMIT_MULTIPLE: 0.8
           WITH_AVX: "OFF"
           CACHE_DIR: "/root/.cache/sot"
           CCACHE_DIR: "/root/.ccache/sot"
-          CFS_CCACHE_DIR: "/home/data/cfs/.ccache/sot"
         run: |
           set -x
           container_name=${TASK}-$(date +%s)
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker_image=${{ inputs.docker_sot_image }}
           docker run -d -t --name ${container_name} \
-            -v "/dev/shm:/dev/shm" \
             -v "/home/data/cfs:/home/data/cfs" \
+            -v "/home/data/cfs/.cache:/root/.cache" \
+            -v "/home/data/cfs/.ccache:/root/.ccache" \
+            -v "/dev/shm:/dev/shm" \
             -v "${{ github.workspace }}/../../..:${{ github.workspace }}/../../.." \
             -v ${{ github.workspace }}:/paddle \
             -e CI_name \
@@ -101,7 +102,6 @@ jobs:
             -e WITH_AVX \
             -e CACHE_DIR \
             -e CCACHE_DIR \
-            -e CFS_CCACHE_DIR \
             -e no_proxy \
             -w /paddle --network host ${docker_image}
 
@@ -140,21 +140,6 @@ jobs:
           bash ${ci_scripts}/determine_sot_ci_trigger.sh
           determine_excode=$?
           echo "determine_excode=$determine_excode" >> ${{ github.env }}
-          '
-
-      - name: Install rsync
-        if: ${{ env.determine_excode == 0 }}
-        run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          source ${{ github.workspace }}/../../../proxy
-          apt-get update && apt-get install -y rsync
-          '
-
-      - name: Restore ccache from CFS
-        if: ${{ env.determine_excode == 0 }}
-        run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          bash ${ci_scripts}/manage_ccache.sh restore
           '
 
       - name: Build with python3.9
@@ -311,13 +296,6 @@ jobs:
           EXCODE=$?
           rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
           exit $EXCODE
-          '
-
-      - name: Save ccache to CFS
-        if: ${{ env.determine_excode == 0 }}
-        run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          bash ${ci_scripts}/manage_ccache.sh save
           '
 
       - name: Test with python3.14
