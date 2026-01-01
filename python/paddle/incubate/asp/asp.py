@@ -465,7 +465,7 @@ def prune_model(
             >>> paddle.incubate.asp.prune_model(my_layer, mask_algo='mask_2d_best')
             >>> # it also be accepted to call
             >>> # paddle.incubate.asp.prune_model(main_program, mask_algo='mask_2d_best')
-            
+
             >>> for i in range(10):
             ...     imgs = np.random.randn(64, 3, 32, 32).astype('float32')
             ...     labels = np.random.randint(10, size=(64, 1)).astype('float32')
