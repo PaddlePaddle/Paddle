@@ -33,13 +33,18 @@ install_rsync() {
 }
 
 if [ "$MODE" == "restore" ]; then
+    echo "Starting ccache restore..."
+    echo "CFS Cache Path: ${CFS_CACHE_PATH}"
+    echo "Local Cache Path: ${LOCAL_CACHE_PATH}"
     mkdir -p "${LOCAL_CACHE_PATH}"
     if [ -d "${CFS_CACHE_PATH}" ]; then
         echo "::group::Restoring ccache from CFS..."
+        echo "CFS cache size:"
+        du -sh "${CFS_CACHE_PATH}" || echo "Failed to get size of CFS cache."
         install_rsync
         # -a: archive mode, preserves permissions/times
         # --info=progress2: show progress (optional, might be noisy in CI)
-        rsync -a "${CFS_CACHE_PATH}/" "${LOCAL_CACHE_PATH}/"
+        rsync -a "${CFS_CACHE_PATH}/" "${LOCAL_CACHE_PATH}/" --progress
         echo "::endgroup::"
     else
         echo "CFS cache path not found: ${CFS_CACHE_PATH}. Skipping restore."
@@ -50,7 +55,7 @@ elif [ "$MODE" == "save" ]; then
         install_rsync
         mkdir -p "${CFS_CACHE_PATH}"
         # Sync back to CFS
-        rsync -a "${LOCAL_CACHE_PATH}/" "${CFS_CACHE_PATH}/"
+        rsync -a "${LOCAL_CACHE_PATH}/" "${CFS_CACHE_PATH}/" --progress
         echo "::endgroup::"
     else
         echo "CFS parent directory not found. Skipping cache save."
