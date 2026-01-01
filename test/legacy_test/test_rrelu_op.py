@@ -523,7 +523,9 @@ class TestRRELUOpClass_Inplace(unittest.TestCase):
             x_var1 = paddle.to_tensor(x_np)
             x_var2 = paddle.to_tensor(x_np)
 
-            y_var1 = F.rrelu(x_var1, lower_0, upper_0, inplace=True)
+            y_var1 = F.rrelu(
+                x_var1, lower_0, upper_0, training=False, inplace=True
+            )
             y_test1 = y_var1.numpy()
 
             func = paddle.nn.RReLU(lower_0, upper_0, True)
@@ -552,7 +554,9 @@ class TestRRELUOpClass_Inplace(unittest.TestCase):
             x_var1 = paddle.to_tensor(x)
             x_var2 = paddle.to_tensor(x)
 
-            y_var1 = F.rrelu(x_var1, lower_1, upper_1, inplace=True)
+            y_var1 = F.rrelu(
+                x_var1, lower_1, upper_1, training=False, inplace=True
+            )
             y_test1 = y_var1.numpy()
 
             func = paddle.nn.RReLU(lower_1, upper_1, True)
