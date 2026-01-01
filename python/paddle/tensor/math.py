@@ -4471,7 +4471,7 @@ def digamma(x: Tensor, name: str | None = None) -> Tensor:
 
             >>> data = paddle.to_tensor([[1, 1.5], [0, -2.2]], dtype='float32')
             >>> res = paddle.digamma(data)
-            >>> print(res)
+            >>> res
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.57721591,  0.03648996],
              [-inf.      ,  5.32286835]])

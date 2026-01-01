@@ -173,9 +173,9 @@ def bernoulli_(
             >>> x.bernoulli_(p)
             >>> print(x)
             Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[1., 1., 1., 1.],
-             [0., 0., 0., 0.],
-             [0., 0., 0., 0.]])
+            [[0., 0., 0., 0.],
+             [1., 1., 1., 1.],
+             [1., 1., 1., 1.]])
     """
     x.uniform_(0.0, 1.0)
     ones_mask = x < p
