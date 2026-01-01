@@ -65,12 +65,7 @@ class ESC50(AudioClassificationDataset):
         .. code-block:: pycon
 
             >>> import paddle
-            >>> import warnings
-            >>> import os
-            >>> warnings.simplefilter('ignore')
-            >>> os.environ['PIP_ROOT_USER_ACTION'] = 'ignore'
 
-            >>> # xdoctest: +TIMEOUT(100)
             >>> mode = 'dev'
             >>> esc50_dataset = paddle.audio.datasets.ESC50(
             ...     mode=mode,  # type: ignore[arg-type]
@@ -82,10 +77,10 @@ class ESC50(AudioClassificationDataset):
             ...     print(audio.shape, label)
             ...     # [audio_data_length] , label_id
             paddle.Size([220500]) 0
-            paddle.Size([220500]) 0
-            paddle.Size([220500]) 0
-            paddle.Size([220500]) 2
-            paddle.Size([220500]) 2
+            paddle.Size([220500]) 14
+            paddle.Size([220500]) 36
+            paddle.Size([220500]) 36
+            paddle.Size([220500]) 19
 
             >>> # xdoctest: +SKIP("dataset too large for CI")
             >>> esc50_dataset = paddle.audio.datasets.ESC50(
