@@ -62,7 +62,11 @@ if [ "$MODE" == "restore" ]; then
         install_rsync
         # -a: archive mode, preserves permissions/times
         # --info=progress2: show progress (optional, might be noisy in CI)
-        rsync -a "${CFS_CACHE_PATH}/" "${LOCAL_CACHE_PATH}/" --progress
+        rsync -avzW \
+            --no-perms --no-owner --no-group \
+            --partial \
+            --progress \
+            --delete "${CFS_CACHE_PATH}/" "${LOCAL_CACHE_PATH}/"
         echo "::endgroup::"
     else
         echo "CFS cache path not found: ${CFS_CACHE_PATH}. Skipping restore."
@@ -84,7 +88,11 @@ elif [ "$MODE" == "save" ]; then
         fi
 
         # Sync back to CFS
-        rsync -a "${LOCAL_CACHE_PATH}/" "${CFS_CACHE_PATH}/" --progress
+        rsync -avzW \
+            --no-perms --no-owner --no-group \
+            --partial \
+            --progress \
+            --delete "${LOCAL_CACHE_PATH}/" "${CFS_CACHE_PATH}/"
         echo "::endgroup::"
     else
         echo "CFS parent directory not found. Skipping cache save."
