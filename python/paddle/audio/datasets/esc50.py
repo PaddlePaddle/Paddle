@@ -64,6 +64,7 @@ class ESC50(AudioClassificationDataset):
 
         .. code-block:: pycon
 
+            >>> # doctest: +TIMEOUT(60)
             >>> import paddle
 
             >>> mode = 'dev'
@@ -82,7 +83,6 @@ class ESC50(AudioClassificationDataset):
             paddle.Size([220500]) 36
             paddle.Size([220500]) 19
 
-            >>> # xdoctest: +SKIP("dataset too large for CI")
             >>> esc50_dataset = paddle.audio.datasets.ESC50(
             ...     mode=mode,  # type: ignore[arg-type]
             ...     feat_type='mfcc',
