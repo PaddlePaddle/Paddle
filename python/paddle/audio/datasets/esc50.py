@@ -77,11 +77,11 @@ class ESC50(AudioClassificationDataset):
             ...     # do something with audio, label
             ...     print(audio.shape, label)
             ...     # [audio_data_length] , label_id
-            paddle.Size([220500]) 0
-            paddle.Size([220500]) 0
-            paddle.Size([220500]) 0
-            paddle.Size([220500]) 2
-            paddle.Size([220500]) 2
+            paddle.Size([40, 1723]) 0
+            paddle.Size([40, 1723]) 14
+            paddle.Size([40, 1723]) 36
+            paddle.Size([40, 1723]) 36
+            paddle.Size([40, 1723]) 19
 
             >>> esc50_dataset = paddle.audio.datasets.ESC50(
             ...     mode=mode,  # type: ignore[arg-type]
