@@ -43,7 +43,7 @@ if [ "$MODE" == "restore" ]; then
         du -sh "${CFS_CACHE_PATH}" || echo "Failed to get size of CFS cache."
         if command -v ccache &> /dev/null; then
             echo "Cleaning unused files in CFS ccache before transfer..."
-            ccache --dir "${CFS_CACHE_PATH}" --cleanup || echo "ccache cleanup on CFS failed"
+            ccache --dir "${CFS_CACHE_PATH}" --evict-older-than 15d || echo "ccache cleanup on CFS failed"
             echo "CFS ccache stats:"
             ccache --dir "${CFS_CACHE_PATH}" --show-stats || true
             echo "Local ccache stats:"
@@ -66,7 +66,7 @@ elif [ "$MODE" == "save" ]; then
         mkdir -p "${CFS_CACHE_PATH}"
         if command -v ccache &> /dev/null; then
             echo "Cleaning unused files in CFS ccache before transfer..."
-            ccache --dir "${CFS_CACHE_PATH}" --cleanup || echo "ccache cleanup on CFS failed"
+            ccache --dir "${CFS_CACHE_PATH}" --evict-older-than 15d || echo "ccache cleanup on CFS failed"
             echo "CFS ccache stats:"
             ccache --dir "${CFS_CACHE_PATH}" --show-stats || true
             echo "Local ccache stats:"
