@@ -64,11 +64,15 @@ def set_excluded_layers(
                                           If None is given, then it would be set as `paddle.static.default_main_program().
                                           Default is None.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: dynamic-graph
 
             >>> # Example1: Usage of Dynamic Graph
+            >>> import os
+            >>> os.environ['FLAGS_enable_pir_api'] = '0'
             >>> import paddle
+
+            >>> paddle.disable_static()
 
             >>> class MyLayer(paddle.nn.Layer):
             ...     def __init__(self):
@@ -92,7 +96,7 @@ def set_excluded_layers(
 
             >>> optimizer = paddle.incubate.asp.decorate(optimizer)
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: static-graph
 
             >>> # Example2: Usage of Static Graph
@@ -128,7 +132,7 @@ def set_excluded_layers(
             ...     paddle.incubate.asp.set_excluded_layers([my_layer.linear1.full_name()], main_program)
             ...
             ...     optimizer = paddle.optimizer.SGD(learning_rate=0.1)
-            ...     optimizer = paddle.static.amp.decorate(optimizer )
+            ...     optimizer = paddle.static.amp.decorate(optimizer)
             ...     # Calling paddle.incubate.asp.decorate() to wrap minimize() in optimizer, which
             ...     # will insert necessary masking operations for ASP workflow.
             ...     optimizer = paddle.incubate.asp.decorate(optimizer)
@@ -151,11 +155,15 @@ def reset_excluded_layers(main_program: Program | None = None) -> None:
                                           If None is given, then this function would reset all excluded_layers.
                                           Default is None.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: dynamic-graph
 
             >>> # Example1: Usage of Dynamic Graph
+            >>> import os
+            >>> os.environ['FLAGS_enable_pir_api'] = '0'
             >>> import paddle
+
+            >>> paddle.disable_static()
 
             >>> class MyLayer(paddle.nn.Layer):
             ...     def __init__(self):
@@ -182,7 +190,7 @@ def reset_excluded_layers(main_program: Program | None = None) -> None:
 
             >>> optimizer = paddle.incubate.asp.decorate(optimizer)
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: static-graph
 
             >>> # Example2: Usage of Static Graph
@@ -221,7 +229,7 @@ def reset_excluded_layers(main_program: Program | None = None) -> None:
             ...     paddle.incubate.asp.reset_excluded_layers(main_program)
             ...
             ...     optimizer = paddle.optimizer.SGD(learning_rate=0.1)
-            ...     optimizer = paddle.static.amp.decorate(optimizer )
+            ...     optimizer = paddle.static.amp.decorate(optimizer)
             ...     # Calling paddle.incubate.asp.decorate() to wrap minimize() in optimizer, which
             ...     # will insert necessary masking operations for ASP workflow.
             ...     optimizer = paddle.incubate.asp.decorate(optimizer)
@@ -242,11 +250,15 @@ def decorate(optimizer: Optimizer) -> OptimizerWithSparsityGuarantee:
     Returns:
         OptimizerWithSparsityGuarantee: A wrapper for ASP to decorate `minimize` function of the given optimizer.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: dynamic-graph
 
             >>> # Example1: Usage of Dynamic Graph
+            >>> import os
+            >>> os.environ['FLAGS_enable_pir_api'] = '0'
             >>> import paddle
+
+            >>> paddle.disable_static()
 
             >>> class MyLayer(paddle.nn.Layer):
             ...     def __init__(self):
@@ -274,7 +286,7 @@ def decorate(optimizer: Optimizer) -> OptimizerWithSparsityGuarantee:
             >>> # In dynamic graph mode, ASP would create related mask variables during decoration.
             >>> optimizer = paddle.incubate.asp.decorate(optimizer)
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: static-graph
 
             >>> # Example2: Usage of Static Graph
@@ -345,12 +357,15 @@ def prune_model(
     Returns:
         dictionary: A dictionary with key: `parameter name` (string) and value: its corresponding mask Variable.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: dynamic-graph
 
             >>> # Example1: Usage of Dynamic Graph
+            >>> import os
+            >>> os.environ['FLAGS_enable_pir_api'] = '0'
             >>> import paddle
             >>> import numpy as np
+            >>> paddle.disable_static()
 
             >>> class MyLayer(paddle.nn.Layer):
             ...     def __init__(self):
@@ -396,7 +411,7 @@ def prune_model(
             ...     optimizer.step()
             ...     optimizer.clear_grad()
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: static-graph
 
             >>> # Example2: Usage of Static Graph
@@ -450,7 +465,7 @@ def prune_model(
             >>> paddle.incubate.asp.prune_model(my_layer, mask_algo='mask_2d_best')
             >>> # it also be accepted to call
             >>> # paddle.incubate.asp.prune_model(main_program, mask_algo='mask_2d_best')
-
+            
             >>> for i in range(10):
             ...     imgs = np.random.randn(64, 3, 32, 32).astype('float32')
             ...     labels = np.random.randint(10, size=(64, 1)).astype('float32')
