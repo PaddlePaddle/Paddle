@@ -62,14 +62,16 @@ class ESC50(AudioClassificationDataset):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +TIMEOUT(60)
             >>> import paddle
 
             >>> mode = 'dev'
-            >>> esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,  # type: ignore[arg-type]
-            ...                                         feat_type='raw')
+            >>> esc50_dataset = paddle.audio.datasets.ESC50(
+            ...     mode=mode,  # type: ignore[arg-type]
+            ...     feat_type='raw',
+            ... )
             >>> for idx in range(5):
             ...     audio, label = esc50_dataset[idx]
             ...     # do something with audio, label
@@ -81,9 +83,11 @@ class ESC50(AudioClassificationDataset):
             [220500] 36
             [220500] 19
 
-            >>> esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,  # type: ignore[arg-type]
-            ...                                         feat_type='mfcc',
-            ...                                         n_mfcc=40)
+            >>> esc50_dataset = paddle.audio.datasets.ESC50(
+            ...     mode=mode,  # type: ignore[arg-type]
+            ...     feat_type='mfcc',
+            ...     n_mfcc=40,
+            ... )
             >>> for idx in range(5):
             ...     audio, label = esc50_dataset[idx]
             ...     # do something with mfcc feature, label
