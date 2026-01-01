@@ -39,8 +39,8 @@ if [ "$MODE" == "restore" ]; then
     mkdir -p "${LOCAL_CACHE_PATH}"
     if [ -d "${CFS_CACHE_PATH}" ]; then
         echo "::group::Restoring ccache from CFS..."
-        echo "CFS cache size:"
-        du -sh "${CFS_CACHE_PATH}" || echo "Failed to get size of CFS cache."
+        # echo "CFS cache size:"
+        # du -sh "${CFS_CACHE_PATH}" || echo "Failed to get size of CFS cache."
         if command -v ccache &> /dev/null; then
             echo "Cleaning unused files in CFS ccache before transfer..."
             ccache --dir "${CFS_CACHE_PATH}" --evict-older-than 15d || echo "ccache cleanup on CFS failed"
