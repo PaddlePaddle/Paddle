@@ -32,6 +32,11 @@ install_rsync() {
     fi
 }
 
+limit_ccache_size() {
+    echo "Setting ccache max size to 15G"
+    ccache --max-size=15G
+}
+
 if [ "$MODE" == "restore" ]; then
     echo "Starting ccache restore..."
     echo "Ccache version:"
@@ -41,11 +46,12 @@ if [ "$MODE" == "restore" ]; then
     mkdir -p "${LOCAL_CACHE_PATH}"
     if [ -d "${CFS_CACHE_PATH}" ]; then
         echo "::group::Restoring ccache from CFS..."
+        limit_ccache_size
         # echo "CFS cache size:"
         # du -sh "${CFS_CACHE_PATH}" || echo "Failed to get size of CFS cache."
         if command -v ccache &> /dev/null; then
             echo "Cleaning unused files in CFS ccache before transfer..."
-            ccache --dir "${CFS_CACHE_PATH}" --evict-older-than 15d || echo "ccache cleanup on CFS failed"
+            ccache --dir "${CFS_CACHE_PATH}" --clean || echo "ccache cleanup on CFS failed"
             echo "CFS ccache stats:"
             ccache --dir "${CFS_CACHE_PATH}" --show-stats || true
             echo "Local ccache stats:"
@@ -68,7 +74,7 @@ elif [ "$MODE" == "save" ]; then
         mkdir -p "${CFS_CACHE_PATH}"
         if command -v ccache &> /dev/null; then
             echo "Cleaning unused files in CFS ccache before transfer..."
-            ccache --dir "${CFS_CACHE_PATH}" --evict-older-than 15d || echo "ccache cleanup on CFS failed"
+            ccache --dir "${CFS_CACHE_PATH}" --clean || echo "ccache cleanup on CFS failed"
             echo "CFS ccache stats:"
             ccache --dir "${CFS_CACHE_PATH}" --show-stats || true
             echo "Local ccache stats:"
