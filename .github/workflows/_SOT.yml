@@ -59,7 +59,7 @@ jobs:
           WITH_TENSORRT: "OFF"
           GENERATOR: Ninja
           WITH_INFERENCE_API_TEST: "OFF"
-          CCACHE_MAXSIZE: 20G
+          CCACHE_MAXSIZE: 20G # Reduce max ccache size to 20G to shrink cache and save SOT CI time (see PR #77167)
           CCACHE_LIMIT_MULTIPLE: 0.8
           WITH_AVX: "OFF"
           CACHE_DIR: "/root/.cache/sot"
