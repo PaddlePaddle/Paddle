@@ -665,7 +665,7 @@ void MatrixRankTolKernel(const Context& dev_ctx,
 
   // Must Copy X once, because the gesvdj will destroy the content when exit.
   DenseTensor x_tmp;
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &x_tmp);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &x_tmp);
   auto info = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int) * batches,
@@ -785,7 +785,7 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
 
   // Must Copy X once, because the gesvdj will destroy the content when exit.
   DenseTensor x_tmp;
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &x_tmp);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &x_tmp);
   auto info = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int) * batches,

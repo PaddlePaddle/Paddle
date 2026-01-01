@@ -30,7 +30,7 @@
 namespace phi {
 
 template <typename T>
-using SubFunctor = phi::funcs::SubtractFunctor<T>;
+using SubFunctor = funcs::SubtractFunctor<T>;
 
 template <typename Context, typename T, size_t D>
 void SetValueCompute(const Context& dev_ctx,
@@ -48,12 +48,9 @@ void SetValueCompute(const Context& dev_ctx,
   auto dtype = in->dtype();
 
   auto in_dims = in->dims();
-  phi::funcs::CheckAndUpdateSliceAttrs<int64_t>(
-      in_dims, axes, starts, ends, &steps);
-  auto slice_dims =
-      phi::funcs::GetSliceDims(in_dims, axes, *starts, *ends, &steps);
-  auto decrease_slice_dims =
-      phi::funcs::GetDecreasedDims(slice_dims, decrease_axes);
+  funcs::CheckAndUpdateSliceAttrs<int64_t>(in_dims, axes, starts, ends, &steps);
+  auto slice_dims = funcs::GetSliceDims(in_dims, axes, *starts, *ends, &steps);
+  auto decrease_slice_dims = funcs::GetDecreasedDims(slice_dims, decrease_axes);
 
   auto slice_dims_for_assign = decrease_slice_dims;
   if (!none_axes.empty()) {
@@ -95,7 +92,7 @@ void SetValueCompute(const Context& dev_ctx,
   // be two ops points to the output in graph: op1 -> output <- set_value.
   // In this case, we have to find a way to handle the running order of
   // set_value is what we want.
-  phi::Copy(dev_ctx, *in, place, false, out);
+  Copy(dev_ctx, *in, place, false, out);
 
   DenseTensor slice_tensor(dtype), pad_tensor(dtype);
   slice_tensor.Resize(slice_dims);
@@ -152,17 +149,17 @@ void SetValueCompute(const Context& dev_ctx,
 
   slice_tensor.Resize(slice_dims_for_assign);
   if (value_tensor != nullptr) {
-    phi::funcs::CheckIsDimsMatch(slice_dims_for_assign, value_tensor->dims());
-    phi::funcs::ElementwiseCompute<SubFunctor<T>, T>(
+    funcs::CheckIsDimsMatch(slice_dims_for_assign, value_tensor->dims());
+    funcs::ElementwiseCompute<SubFunctor<T>, T>(
         dev_ctx, slice_tensor, *value_tensor, SubFunctor<T>(), &slice_tensor);
   } else {
     DenseTensor value_t(dtype);
     auto value_dims = common::make_ddim(shape);
-    phi::funcs::CheckIsDimsMatch(slice_dims_for_assign, value_dims);
+    funcs::CheckIsDimsMatch(slice_dims_for_assign, value_dims);
 
     value_t.Resize(value_dims);
     dev_ctx.template Alloc<T>(&value_t);
-    phi::funcs::ElementwiseCompute<SubFunctor<T>, T>(
+    funcs::ElementwiseCompute<SubFunctor<T>, T>(
         dev_ctx, slice_tensor, value_t, SubFunctor<T>(), &slice_tensor);
   }
   slice_tensor.Resize(slice_dims);
@@ -222,9 +219,9 @@ void Tensor_Conj(const Context& dev_ctx,
                  const DenseTensor& tensor,
                  DenseTensor* out) {
   out->Resize(tensor.dims());
-  phi::funcs::ForRange<Context> out_for_range(dev_ctx, tensor.numel());
+  funcs::ForRange<Context> out_for_range(dev_ctx, tensor.numel());
   dev_ctx.template Alloc<T>(out);
-  phi::funcs::ConjFunctor<T> out_functor(
+  funcs::ConjFunctor<T> out_functor(
       tensor.data<T>(), tensor.numel(), out->data<T>());
   out_for_range(out_functor);
 }
@@ -292,10 +289,10 @@ void SliceCompute(const Context& dev_ctx,
     }
   }
 
-  phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
-  slice_dims = phi::funcs::GetSliceDims<int64_t>(
+  funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
+  slice_dims = funcs::GetSliceDims<int64_t>(
       in_dims, axes, starts, ends, nullptr, nullptr);
-  out_dims = phi::funcs::GetDecreasedDims(slice_dims, decrease_axis);
+  out_dims = funcs::GetDecreasedDims(slice_dims, decrease_axis);
 
   // 2.2 Get output
   auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
@@ -426,13 +423,13 @@ void LU_Unpack(const Context& dev_ctx,
   const auto W = udims[udims.size() - 1];
   dev_ctx.template Alloc<T>(L);
   auto L_dataptr = L->data<T>();
-  phi::funcs::ForRange<Context> x_for_range(dev_ctx, LU->numel());
-  phi::funcs::TrilTriuCompute<T> tril_computer(
+  funcs::ForRange<Context> x_for_range(dev_ctx, LU->numel());
+  funcs::TrilTriuCompute<T> tril_computer(
       LU->data<T>(), -1, true, H, W, L_dataptr);
   x_for_range(tril_computer);
 
   dev_ctx.template Alloc<T>(U);
-  phi::funcs::TrilTriuCompute<T> triu_computer(
+  funcs::TrilTriuCompute<T> triu_computer(
       LU->data<T>(), 0, false, H, W, U->data<T>());
   x_for_range(triu_computer);
 
@@ -447,11 +444,11 @@ void LU_Unpack(const Context& dev_ctx,
   arange<Context>(dev_ctx, &rowtensor, dim, batchsize, H);
   auto idtptr = rowtensor.data<int32_t>();
   if (phi::AllocationType::GPU == dev_ctx.GetPlace().GetType()) {
-    phi::Copy(dev_ctx, rowtensor, dev_ctx.GetPlace(), false, &rt_dev);
+    Copy(dev_ctx, rowtensor, dev_ctx.GetPlace(), false, &rt_dev);
     idtptr = rt_dev.data<int32_t>();
   }
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, rowtensor.numel());
+  funcs::ForRange<Context> for_range(dev_ctx, rowtensor.numel());
   OneFunctor<T> functor(L_dataptr, idtptr, W, dim);
   for_range(functor);
 }
@@ -462,10 +459,10 @@ void scatterpivot(
   DenseTensor idlst_tmp;
   idlst_tmp.Resize(idlst->dims());
   dev_ctx.template Alloc<int32_t>(&idlst_tmp);
-  phi::Copy(dev_ctx, *idlst, dev_ctx.GetPlace(), false, &idlst_tmp);
+  Copy(dev_ctx, *idlst, dev_ctx.GetPlace(), false, &idlst_tmp);
   auto idtptr = idlst_tmp.data<int32_t>();
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, idlst_tmp.numel());
+  funcs::ForRange<Context> for_range(dev_ctx, idlst_tmp.numel());
   OneFunctor<T> functor(out_data, idtptr, w, dim);
   for_range(functor);
 }
@@ -482,7 +479,7 @@ void Unpack_Pivot(const Context& dev_ctx,
   auto Pnum = dims[prank - 1];
   DenseTensor Pivot_cpu;
   phi::CPUPlace cpu;
-  phi::Copy(dev_ctx, Pivot, cpu, false, &Pivot_cpu);
+  Copy(dev_ctx, Pivot, cpu, false, &Pivot_cpu);
   auto pdataptr = Pivot_cpu.data<int32_t>();
   Pdimvec[prank - 1] = h;
   Pdimvec.emplace_back(h);
@@ -490,7 +487,7 @@ void Unpack_Pivot(const Context& dev_ctx,
   P->Resize(Pdim);
   dev_ctx.template Alloc<T>(P);
   auto pdata = P->data<T>();
-  phi::funcs::SetConstant<Context, T> setter;
+  funcs::SetConstant<Context, T> setter;
   setter(dev_ctx, P, static_cast<T>(0));
 
   auto batchsize = product(common::slice_ddim(dims, 0, prank - 1));
@@ -546,27 +543,27 @@ DenseTensor Transpose2DTo6D(const Context& dev_ctx, const DenseTensor& x) {
   dev_ctx.template Alloc<T>(&ret);
   switch (rank) {
     case 2: {
-      phi::funcs::Transpose<Context, T, 2> trans;
+      funcs::Transpose<Context, T, 2> trans;
       trans(dev_ctx, x, &ret, axis);
       break;
     }
     case 3: {
-      phi::funcs::Transpose<Context, T, 3> trans;
+      funcs::Transpose<Context, T, 3> trans;
       trans(dev_ctx, x, &ret, axis);
       break;
     }
     case 4: {
-      phi::funcs::Transpose<Context, T, 4> trans;
+      funcs::Transpose<Context, T, 4> trans;
       trans(dev_ctx, x, &ret, axis);
       break;
     }
     case 5: {
-      phi::funcs::Transpose<Context, T, 5> trans;
+      funcs::Transpose<Context, T, 5> trans;
       trans(dev_ctx, x, &ret, axis);
       break;
     }
     case 6: {
-      phi::funcs::Transpose<Context, T, 6> trans;
+      funcs::Transpose<Context, T, 6> trans;
       trans(dev_ctx, x, &ret, axis);
       break;
     }

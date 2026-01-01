@@ -58,16 +58,19 @@ void KLDivLossGradKernel(const Context& dev_ctx,
   auto* input_grad = d_x;
   auto* loss_grad = &d_out;
 
-  const int n = input_grad->dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t n = input_grad->dims()[0];
+
   const int64_t numel = input_grad->numel();
   const int64_t expand = numel / loss_grad->numel();
 
   dev_ctx.template Alloc<T>(input_grad);
 
-  auto target_t = phi::EigenVector<T>::Flatten(*target);
+  auto target_t = EigenVector<T>::Flatten(*target);
 
-  auto input_grad_t = phi::EigenVector<T>::Flatten(*input_grad);
-  auto loss_grad_t = phi::EigenVector<T>::Flatten(*loss_grad);
+  auto input_grad_t = EigenVector<T>::Flatten(*input_grad);
+  auto loss_grad_t = EigenVector<T>::Flatten(*loss_grad);
 
   auto loss_grad_expand = loss_grad_t.broadcast(Array1(expand));
   auto grad_t = loss_grad_expand;

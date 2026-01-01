@@ -117,15 +117,33 @@ template <typename T>
 class Unpool2dMaxFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
-                  const phi::DenseTensor& input,
-                  const phi::DenseTensor& indices,
-                  phi::DenseTensor* output) {
-    const int batch_size = input.dims()[0];
-    const int input_height = input.dims()[2];
-    const int input_width = input.dims()[3];
-    const int output_channels = output->dims()[1];
-    const int output_height = output->dims()[2];
-    const int output_width = output->dims()[3];
+                  const DenseTensor& input,
+                  const DenseTensor& indices,
+                  DenseTensor* output) {
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t batch_size = input.dims()[0];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t input_height = input.dims()[2];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t input_width = input.dims()[3];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_channels = output->dims()[1];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_height = output->dims()[2];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_width = output->dims()[3];
+
     const T* input_data = input.data<T>();
     const int* indices_data = indices.data<int>();
     T* output_data = context.template Alloc<T>(output);
@@ -151,17 +169,35 @@ template <typename T>
 class Unpool2dMaxGradFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
-                  const phi::DenseTensor& input,
-                  const phi::DenseTensor& indices,
-                  const phi::DenseTensor& output,
-                  const phi::DenseTensor& output_grad,
-                  phi::DenseTensor* input_grad) {
-    const int batch_size = input.dims()[0];
-    const int input_height = input.dims()[2];
-    const int input_width = input.dims()[3];
-    const int output_channels = output.dims()[1];
-    const int output_height = output.dims()[2];
-    const int output_width = output.dims()[3];
+                  const DenseTensor& input,
+                  const DenseTensor& indices,
+                  const DenseTensor& output,
+                  const DenseTensor& output_grad,
+                  DenseTensor* input_grad) {
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t batch_size = input.dims()[0];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t input_height = input.dims()[2];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t input_width = input.dims()[3];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_channels = output.dims()[1];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_height = output.dims()[2];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_width = output.dims()[3];
+
     const T* input_data = input.data<T>();
     const int* indices_data = indices.data<int>();
     const T* output_data = output.data<T>();
@@ -189,17 +225,41 @@ template <typename T>
 class Unpool3dMaxFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
-                  const phi::DenseTensor& input,
-                  const phi::DenseTensor& indices,
-                  phi::DenseTensor* output) {
-    const int batch_size = input.dims()[0];
-    const int input_depth = input.dims()[2];
-    const int input_height = input.dims()[3];
-    const int input_width = input.dims()[4];
-    const int output_channels = output->dims()[1];
-    const int output_depth = output->dims()[2];
-    const int output_height = output->dims()[3];
-    const int output_width = output->dims()[4];
+                  const DenseTensor& input,
+                  const DenseTensor& indices,
+                  DenseTensor* output) {
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t batch_size = input.dims()[0];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t input_depth = input.dims()[2];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t input_height = input.dims()[3];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t input_width = input.dims()[4];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_channels = output->dims()[1];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_depth = output->dims()[2];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_height = output->dims()[3];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_width = output->dims()[4];
+
     const T* input_data = input.data<T>();
     const int* indices_data = indices.data<int>();
     T* output_data = context.template Alloc<T>(output);
@@ -227,19 +287,43 @@ template <typename T>
 class Unpool3dMaxGradFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
-                  const phi::DenseTensor& input,
-                  const phi::DenseTensor& indices,
-                  const phi::DenseTensor& output,
-                  const phi::DenseTensor& output_grad,
-                  phi::DenseTensor* input_grad) {
-    const int batch_size = input.dims()[0];
-    const int input_depth = input.dims()[2];
-    const int input_height = input.dims()[3];
-    const int input_width = input.dims()[4];
-    const int output_channels = output.dims()[1];
-    const int output_depth = output.dims()[2];
-    const int output_height = output.dims()[3];
-    const int output_width = output.dims()[4];
+                  const DenseTensor& input,
+                  const DenseTensor& indices,
+                  const DenseTensor& output,
+                  const DenseTensor& output_grad,
+                  DenseTensor* input_grad) {
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t batch_size = input.dims()[0];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t input_depth = input.dims()[2];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t input_height = input.dims()[3];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t input_width = input.dims()[4];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_channels = output.dims()[1];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_depth = output.dims()[2];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_height = output.dims()[3];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t output_width = output.dims()[4];
+
     const T* input_data = input.data<T>();
     const int* indices_data = indices.data<int>();
     const T* output_data = output.data<T>();

@@ -37,7 +37,7 @@ void FCKernel(const Context& dev_ctx,
   auto w_dims = w.dims();
 
   std::vector<int64_t> output_dims;
-  phi::funcs::FCOutputSize(
+  funcs::FCOutputSize(
       input.dims(), w_dims, output_dims, in_num_col_dims, padding_weights);
   out->Resize(common::make_ddim(output_dims));
   out->set_lod(input.lod());
@@ -51,7 +51,7 @@ void FCKernel(const Context& dev_ctx,
   const T* w_data = w.data<T>();
   auto* output_data = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
-  phi::funcs::FCFunctor<Context, T> fc;
+  funcs::FCFunctor<Context, T> fc;
   fc(dev_ctx,
      M,
      w_dims1,

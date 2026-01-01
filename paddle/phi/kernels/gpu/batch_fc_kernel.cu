@@ -81,7 +81,7 @@ void BatchFCCUDAKernel(const Context& dev_ctx,
   output->Resize({slot_pairs_num, ins_num, out_dim});
   T* out_data = dev_ctx.template Alloc<T>(output);
   // initialize
-  auto out_eigen = phi::EigenVector<T>::Flatten(*output);
+  auto out_eigen = EigenVector<T>::Flatten(*output);
   auto& place = *dev_ctx.eigen_device();
   out_eigen.device(place) = out_eigen.constant(static_cast<T>(0));
 

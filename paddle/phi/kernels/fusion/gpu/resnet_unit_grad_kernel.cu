@@ -70,18 +70,18 @@ void ResNetUnitGradKernel(
                     common::errors::Unavailable(
                         "ResNetUnitOp only supports float16 for now."));
 
-  const phi::DenseTensor *y_grad = &out_grad;
+  const DenseTensor *y_grad = &out_grad;
 
-  const phi::DenseTensor *x = &x_in;
-  const phi::DenseTensor *filter_x = &filter_x_in;
-  const phi::DenseTensor *scale_x = &scale_x_in;
-  const phi::DenseTensor *bias_x = &bias_x_in;
-  const phi::DenseTensor *saved_mean_x = &saved_mean_x_in;
-  const phi::DenseTensor *saved_invstd_x = &saved_invstd_x_in;
+  const DenseTensor *x = &x_in;
+  const DenseTensor *filter_x = &filter_x_in;
+  const DenseTensor *scale_x = &scale_x_in;
+  const DenseTensor *bias_x = &bias_x_in;
+  const DenseTensor *saved_mean_x = &saved_mean_x_in;
+  const DenseTensor *saved_invstd_x = &saved_invstd_x_in;
 
-  const phi::DenseTensor *conv_out_x = &conv_x_in;
-  const phi::DenseTensor *output = &out;
-  const phi::DenseTensor *bitmask = &bit_mask;
+  const DenseTensor *conv_out_x = &conv_x_in;
+  const DenseTensor *output = &out;
+  const DenseTensor *bitmask = &bit_mask;
 
   double eps = static_cast<double>(epsilon);
   double momentum = static_cast<double>(momentum_in);
@@ -94,7 +94,7 @@ void ResNetUnitGradKernel(
 
   // 1. Backward of BN (+ Add + Relu) for x, get conv_out_x_grad,
   // scale_x_grad, bias_x_grad
-  phi::DenseTensor conv_out_x_grad;
+  DenseTensor conv_out_x_grad;
   conv_out_x_grad.Resize(conv_out_x->dims());
   phi::fusion::CudnnScaleBiasAddRelu<T> sbar_x_op(dev_ctx,
                                                   act_type,
@@ -113,17 +113,17 @@ void ResNetUnitGradKernel(
     //          ScaleBiasAddRelu
     //                  |
     //                  Y
-    const phi::DenseTensor *z = z_in.get_ptr();
-    const phi::DenseTensor *filter_z = filter_z_in.get_ptr();
-    const phi::DenseTensor *scale_z = scale_z_in.get_ptr();
-    const phi::DenseTensor *bias_z = bias_z_in.get_ptr();
-    const phi::DenseTensor *saved_mean_z = saved_mean_z_in.get_ptr();
-    const phi::DenseTensor *saved_invstd_z = saved_invstd_z_in.get_ptr();
-    const phi::DenseTensor *conv_out_z = conv_z_in.get_ptr();
+    const DenseTensor *z = z_in.get_ptr();
+    const DenseTensor *filter_z = filter_z_in.get_ptr();
+    const DenseTensor *scale_z = scale_z_in.get_ptr();
+    const DenseTensor *bias_z = bias_z_in.get_ptr();
+    const DenseTensor *saved_mean_z = saved_mean_z_in.get_ptr();
+    const DenseTensor *saved_invstd_z = saved_invstd_z_in.get_ptr();
+    const DenseTensor *conv_out_z = conv_z_in.get_ptr();
 
     // 1.1 Backward of BN + Add (+ Relu) for x, get conv_out_x_grad,
     // scale_x_grad, bias_x_grad and z_grad_temp
-    phi::DenseTensor z_grad_temp;
+    DenseTensor z_grad_temp;
     z_grad_temp.Resize(conv_out_z->dims());
     sbar_x_op.Backward(dev_ctx,
                        *y_grad,
@@ -140,7 +140,7 @@ void ResNetUnitGradKernel(
                        eps);
 
     // 1.2 bn backward for z, get conv_out_z_grad, dscale_z, dbias_z
-    phi::DenseTensor conv_out_z_grad;
+    DenseTensor conv_out_z_grad;
     conv_out_z_grad.Resize(conv_out_z->dims());
     phi::fusion::CudnnScaleBiasAddRelu<T> sbar_z_op(
         dev_ctx, "", false, false, output_shape, param_shape, bitmask_shape);
@@ -174,7 +174,7 @@ void ResNetUnitGradKernel(
   } else {
     // 1.1 Backward of BN (+ Add + Relu) for x, get conv_out_x_grad,
     // scale_x_grad, bias_x_grad (and z_grad)
-    phi::DenseTensor *z_grad_tmp = fuse_add ? z_grad : nullptr;
+    DenseTensor *z_grad_tmp = fuse_add ? z_grad : nullptr;
     sbar_x_op.Backward(dev_ctx,
                        *y_grad,
                        *conv_out_x,

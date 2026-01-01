@@ -72,10 +72,10 @@ void LogsumexpGradKernel(const Context& dev_ctx,
   reduce_all = recompute_reduce_all(in, axis, reduce_all);
 
   if (reduce_all) {
-    auto x = phi::EigenVector<T>::Flatten(in);
-    auto y = phi::EigenVector<T>::Flatten(out);
-    auto dy = phi::EigenVector<T>::Flatten(out_grad);
-    auto dx = phi::EigenVector<T>::Flatten(*in_grad);
+    auto x = EigenVector<T>::Flatten(in);
+    auto y = EigenVector<T>::Flatten(out);
+    auto dy = EigenVector<T>::Flatten(out_grad);
+    auto dx = EigenVector<T>::Flatten(*in_grad);
     auto& place = *dev_ctx.eigen_device();
     auto broadcast_dim = Eigen::array<int, 1>({{static_cast<int>(in.numel())}});
     LogsumexpGradFunctor<T>()(
@@ -90,19 +90,19 @@ void LogsumexpGradKernel(const Context& dev_ctx,
     });
     switch (rank) {
       case 1:
-        phi::funcs::ReduceGradFunctor<Context, T, 1, LogsumexpGradFunctor<T>>(
+        funcs::ReduceGradFunctor<Context, T, 1, LogsumexpGradFunctor<T>>(
             dev_ctx, in, out, out_grad, in_grad, functor, axis32);
         break;
       case 2:
-        phi::funcs::ReduceGradFunctor<Context, T, 2, LogsumexpGradFunctor<T>>(
+        funcs::ReduceGradFunctor<Context, T, 2, LogsumexpGradFunctor<T>>(
             dev_ctx, in, out, out_grad, in_grad, functor, axis32);
         break;
       case 3:
-        phi::funcs::ReduceGradFunctor<Context, T, 3, LogsumexpGradFunctor<T>>(
+        funcs::ReduceGradFunctor<Context, T, 3, LogsumexpGradFunctor<T>>(
             dev_ctx, in, out, out_grad, in_grad, functor, axis32);
         break;
       case 4:
-        phi::funcs::ReduceGradFunctor<Context, T, 4, LogsumexpGradFunctor<T>>(
+        funcs::ReduceGradFunctor<Context, T, 4, LogsumexpGradFunctor<T>>(
             dev_ctx, in, out, out_grad, in_grad, functor, axis32);
         break;
       default:

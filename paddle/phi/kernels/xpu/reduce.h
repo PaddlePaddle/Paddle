@@ -98,8 +98,8 @@ int XPUReduce(const Context& dev_ctx,
 
 template <typename Context, typename T, typename OutT, typename Functor>
 void ReduceKernelImpl(const Context& dev_ctx,
-                      const phi::DenseTensor& input,
-                      phi::DenseTensor* output,
+                      const DenseTensor& input,
+                      DenseTensor* output,
                       const std::vector<int64_t>& xdims,
                       const std::vector<int64_t>& reduce_dims) {
   using XPUType = typename XPUTypeTrait<OutT>::Type;

@@ -28,6 +28,7 @@ from paddle._C_ops import (  # noqa: F401
     amax,
     amin,
     any,
+    baddbmm,
     isfinite,
     isinf,
     isnan,
@@ -2453,140 +2454,7 @@ def addmm_(
         return _C_ops.addmm_(input, x, y, beta, alpha)
 
 
-def baddbmm(
-    input: Tensor,
-    x: Tensor,
-    y: Tensor,
-    beta: float = 1.0,
-    alpha: float = 1.0,
-    name: str | None = None,
-) -> Tensor:
-    """
-    **baddbmm**
-
-    Perform batch matrix multiplication for input $x$ and $y$.
-    $input$ is added to the final result.
-    The equation is:
-
-    ..  math::
-        Out = alpha * x * y + beta * input
-
-    $Input$, $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $input$.
-
-    Args:
-        input (Tensor): The input Tensor to be added to the final result.
-        x (Tensor): The first input Tensor for batch matrix multiplication.
-        y (Tensor): The second input Tensor for batch matrix multiplication.
-        beta (float, optional): Coefficient of $input$, default is 1.
-        alpha (float, optional): Coefficient of $x*y$, default is 1.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: The output Tensor of baddbmm.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.ones([2, 2, 2])
-            >>> y = paddle.ones([2, 2, 2])
-            >>> input = paddle.ones([2, 2, 2])
-
-            >>> out = paddle.baddbmm(input=input, x=x, y=y, beta=0.5, alpha=5.0)
-
-            >>> out
-            Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[10.50000000, 10.50000000],
-              [10.50000000, 10.50000000]],
-             [[10.50000000, 10.50000000],
-              [10.50000000, 10.50000000]]])
-    """
-    input_shape = input.shape
-    x_shape = x.shape
-    y_shape = y.shape
-    if not len(x_shape) == len(y_shape) == 3:
-        raise ValueError(
-            f"The dimension of x, y should be 3 but receive x's shape: {x_shape}, y's shape: {y_shape}"
-        )
-    if x_shape[2] != y_shape[1]:
-        raise ValueError(
-            f"The input Variable x's width must be equal with Variable y's height. But received x's shape = {x_shape}, y's shape = {y_shape}."
-        )
-
-    if len(input_shape) == 3:
-        if input_shape[0] != x_shape[0]:
-            if input_shape[0] != 1:
-                raise ValueError(
-                    f"If input's dimension[0] is not equal to x's dimension[0], input's dimension[0] must be 1. But received input's dimension[0] = {input_shape[0]}, x's dimension[0] = {x_shape[0]}"
-                )
-            else:
-                if not (
-                    input_shape[1] == x_shape[1] or input_shape[1] == 1
-                ) or not (input_shape[2] == y_shape[2] or input_shape[2] == 1):
-                    raise ValueError(
-                        f"If input's dimension[0] is 1, input's dimension[1] and dimension[2] must be equal to x's dimension[1] and y's dimension[2] respectively, or they must be 1. But received input's shape = {input_shape}, x's shape = {x_shape}, y's shape = {y_shape}"
-                    )
-
-        if input_shape[1] != x_shape[1]:
-            if input_shape[1] != 1:
-                raise ValueError(
-                    f"If input's dimension[1] is not equal to x's dimension[1], input's dimension[1] must be 1. But received input's dimension[1] = {input_shape[1]}, x's dimension[1] = {x_shape[1]}"
-                )
-            else:
-                if not (
-                    input_shape[0] == x_shape[0] or input_shape[0] == 1
-                ) or not (input_shape[2] == y_shape[2] or input_shape[2] == 1):
-                    raise ValueError(
-                        f"If input's dimension[1] is 1, input's dimension[0] and dimension[2] must be equal to x's dimension[0] and y's dimension[2] respectively, or they must be 1. But received input's shape = {input_shape}, x's shape = {x_shape}, y's shape = {y_shape}"
-                    )
-
-        if input_shape[2] != y_shape[2]:
-            if input_shape[2] != 1:
-                raise ValueError(
-                    f"If input's dimension[2] is not equal to y's dimension[2], input's dimension[2] must be 1. But received input's dimension[2] = {input_shape[2]}, y's dimension[2] = {y_shape[2]}"
-                )
-    elif len(input_shape) == 2:
-        if input_shape[0] != x_shape[0]:
-            raise ValueError(
-                f"The batch size of input must be equal to the batch size of x. But received input's batch size = {input_shape[0]}, x's batch size = {x_shape[0]}"
-            )
-        if input_shape[1] not in (y_shape[2], 1):
-            raise ValueError(
-                f"The input's shape: {input_shape} is not broadcastable with [x.shape[0], x.shape[1], y.shape[2]]: [{x_shape[0]},{x_shape[1]},{y_shape[2]}]"
-            )
-    else:
-        raise ValueError(
-            f"The dimension of input should be 3 or 2 but received input's shape: {input_shape}"
-        )
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.baddbmm(input, x, y, beta, alpha)
-    else:
-        inputs = {'Input': input, "X": x, "Y": y}
-        attrs = {'Alpha': alpha, 'Beta': beta}
-
-        helper = LayerHelper("baddbmm", **locals())
-        check_variable_and_dtype(
-            input,
-            'Input',
-            ['float16', 'float32', 'float64', 'uint16'],
-            'baddbmm',
-        )
-        check_variable_and_dtype(
-            x, 'X', ['float16', 'float32', 'float64', 'uint16'], 'baddbmm'
-        )
-        check_variable_and_dtype(
-            y, 'Y', ['float16', 'float32', 'float64', 'uint16'], 'baddbmm'
-        )
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-        helper.append_op(
-            type="baddbmm", inputs=inputs, attrs=attrs, outputs={"Out": out}
-        )
-        return out
-
-
+@param_two_alias(["x", "batch1"], ["y", "batch2"])
 @inplace_apis_in_dygraph_only
 def baddbmm_(
     input: Tensor,
@@ -3479,6 +3347,7 @@ def clip_(
         return _C_ops.clip_(x, min, max)
 
 
+@param_one_alias(["x", "input"])
 def trace(
     x: Tensor,
     offset: int = 0,
@@ -3502,9 +3371,12 @@ def trace(
     - If offset > 0, it is above the main diagonal.
     - If offset < 0, it is below the main diagonal.
     - Note that if offset is out of input's shape indicated by axis1 and axis2, 0 will be returned.
-
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``trace(input=x)`` is equivalent to ``trace(x=x)``.
     Args:
         x (Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be float16, float32, float64, int32, int64.
+            alias: ``input``.
         offset (int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
         axis1 (int, optional): The first axis with respect to take diagonal. Default: 0.
         axis2 (int, optional): The second axis with respect to take diagonal. Default: 1.
@@ -4071,10 +3943,10 @@ def logcumsumexp(
 def cumprod(
     x: Tensor,
     dim: int | None = None,
-    *,
     dtype: DTypeLike | None = None,
-    out: Tensor | None = None,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Compute the cumulative product of the input tensor x along a given dimension dim.
@@ -4090,9 +3962,9 @@ def cumprod(
         dtype (str|core.VarDesc.VarType|core.DataType|np.dtype, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64, int32, int64,
                     complex64, complex128. If specified, the input tensor is casted to dtype before the operation is performed.
                     This is useful for preventing data type overflows. The default value is None.
-        out (Tensor|None, optional): The output tensor. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information,
                     please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, the result of cumprod operator.
@@ -5411,6 +5283,7 @@ def deg2rad(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@param_two_alias(['x', 'input'], ['y', 'other'])
 def gcd(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Computes the element-wise greatest common divisor (GCD) of input |x| and |y|.
@@ -5496,6 +5369,7 @@ def gcd(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@param_two_alias(['x', 'input'], ['y', 'other'])
 def gcd_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``gcd`` API, the output Tensor will be inplaced with input ``x``.
@@ -5539,6 +5413,7 @@ def gcd_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return x
 
 
+@param_two_alias(['x', 'input'], ['y', 'other'])
 def lcm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Computes the element-wise least common multiple (LCM) of input |x| and |y|.
@@ -5599,6 +5474,7 @@ def lcm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return out
 
 
+@param_two_alias(['x', 'input'], ['y', 'other'])
 def lcm_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``lcm`` API, the output Tensor will be inplaced with input ``x``.
@@ -6082,21 +5958,17 @@ def sgn(x: Tensor, name: str | None = None) -> Tensor:
         Tensor: A sign Tensor for real input, or normalized Tensor for complex input, shape and data type are same as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.to_tensor([[3 + 4j, 7 - 24j, 0, 1 + 2j], [6 + 8j, 3, 0, -2]])
             >>> paddle.sgn(x)
             Tensor(shape=[2, 4], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[ (0.6000000238418579+0.800000011920929j),
-              (0.2800000011920929-0.9599999785423279j),
-               0j                                     ,
-              (0.4472135901451111+0.8944271802902222j)],
-             [ (0.6000000238418579+0.800000011920929j),
-               (1+0j)                                 ,
-               0j                                     ,
-              (-1+0j)                                 ]])
+            [[ (0.60000002+0.80000001j),  (0.28000000-0.95999998j),
+               (0.00000000+0.00000000j),  (0.44721359+0.89442718j)],
+             [ (0.60000002+0.80000001j),  (1.00000000+0.00000000j),
+               (0.00000000+0.00000000j), (-1.00000000+0.00000000j)]])
 
     """
     if x.dtype not in [

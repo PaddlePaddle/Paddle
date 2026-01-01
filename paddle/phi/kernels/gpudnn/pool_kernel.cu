@@ -43,7 +43,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
     return;
   }
   PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
+      dev_ctx.GetPlace().GetType() == AllocationType::GPU,
       true,
       errors::InvalidArgument("Pool operator CUDA kernel must use CUDAPlace "
                               "rather than CPUPlace."));

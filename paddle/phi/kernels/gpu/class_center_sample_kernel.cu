@@ -559,11 +559,11 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
           dev_ctx.template Alloc<T>(remapped_label));
 
   // step 14: Get sampled class center for output
-  phi::Copy<Context>(dev_ctx,
-                     num_classes_per_device,
-                     phi::CPUPlace(),
-                     true,
-                     &num_classes_per_device);
+  Copy<Context>(dev_ctx,
+                num_classes_per_device,
+                phi::CPUPlace(),
+                true,
+                &num_classes_per_device);
   T actual_num_samples = num_classes_per_device.data<T>()[rank + 1];
   sampled_local_class_center->Resize(common::make_ddim({actual_num_samples}));
 

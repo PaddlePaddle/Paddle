@@ -29,11 +29,11 @@
 namespace phi {
 
 template <typename Context>
-phi::DenseTensor Tensor2Contiguous(const Context& dev_ctx,
-                                   const phi::DenseTensor& tensor) {
-  phi::DenseTensor dense_out;
-  phi::MetaTensor meta_input(tensor);
-  phi::MetaTensor meta_out(&dense_out);
+DenseTensor Tensor2Contiguous(const Context& dev_ctx,
+                              const DenseTensor& tensor) {
+  DenseTensor dense_out;
+  MetaTensor meta_input(tensor);
+  MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(meta_input, &meta_out);
   PD_VISIT_ALL_TYPES(tensor.dtype(), "Tensor2Contiguous", ([&] {
                        phi::ContiguousKernel<data_t, Context>(
@@ -843,10 +843,30 @@ void ReduceStrideImpl(const Context& dev_ctx,
   DenseTensor reduce_buf_tensor;
   DenseTensor reduce_sem_tensor;
 
+  PADDLE_ENFORCE_LT(
+      reduce_stride_conf.gm_size(),
+      std::numeric_limits<int32_t>::max(),
+      ::common::errors::InvalidArgument(
+          "reduce_stride_conf.gm_size() should be less than int32_t"));
+
+  PADDLE_ENFORCE_LT(
+      reduce_stride_conf.sem_size(),
+      std::numeric_limits<int32_t>::max(),
+      ::common::errors::InvalidArgument(
+          "reduce_stride_conf.sem_size() should be less than int32_t"));
+
   std::vector<int> reduce_buf_size = {
       static_cast<int>(reduce_stride_conf.gm_size() / phi::SizeOf(x.dtype()))};
   std::vector<int> reduce_sem_size = {
       static_cast<int>(reduce_stride_conf.sem_size() / phi::SizeOf(x.dtype()))};
+
+  if (reduce_buf_size[0] == 0) {
+    reduce_buf_size[0] = phi::SizeOf(x.dtype());
+  }
+
+  if (reduce_sem_size[0] == 0) {
+    reduce_sem_size[0] = phi::SizeOf(x.dtype());
+  }
 
   if (reduce_stride_conf.enable_g_reduce()) {
     reduce_buf_tensor.Resize(common::make_ddim(reduce_buf_size));

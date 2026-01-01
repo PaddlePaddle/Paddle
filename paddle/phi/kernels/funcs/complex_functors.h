@@ -356,7 +356,7 @@ struct AngleFunctor;
 
 // angel function for complex
 template <typename T>
-struct AngleFunctor<T, phi::funcs::Complex<T, dtype::Real<T>>> {
+struct AngleFunctor<T, funcs::Complex<T, dtype::Real<T>>> {
   AngleFunctor(const T* input, dtype::Real<T>* output, int64_t numel)
       : input_(input), output_(output), numel_(numel) {}
 
@@ -371,7 +371,7 @@ struct AngleFunctor<T, phi::funcs::Complex<T, dtype::Real<T>>> {
 
 // angel function for real
 template <typename T>
-struct AngleFunctor<T, phi::funcs::NoComplex<T, dtype::Real<T>>> {
+struct AngleFunctor<T, funcs::NoComplex<T, dtype::Real<T>>> {
   AngleFunctor(const T* input, T* output, int64_t numel)
       : input_(input), output_(output), numel_(numel) {}
 
@@ -408,7 +408,7 @@ struct AngleGradFunctor;
 
 // angle grad for complex
 template <typename T>
-struct AngleGradFunctor<T, phi::funcs::Complex<T, dtype::Real<T>>> {
+struct AngleGradFunctor<T, funcs::Complex<T, dtype::Real<T>>> {
   AngleGradFunctor(const dtype::Real<T>* dout, const T* x, T* dx, int64_t numel)
       : dout_(dout), x_(x), dx_(dx), numel_(numel) {}
 
@@ -431,7 +431,7 @@ struct AngleGradFunctor<T, phi::funcs::Complex<T, dtype::Real<T>>> {
 
 // angle grad for real
 template <typename T>
-struct AngleGradFunctor<T, phi::funcs::NoComplex<T, dtype::Real<T>>> {
+struct AngleGradFunctor<T, funcs::NoComplex<T, dtype::Real<T>>> {
   AngleGradFunctor(const dtype::Real<T>* dout, const T* x, T* dx, int64_t numel)
       : dout_(dout), x_(x), dx_(dx), numel_(numel) {}
 

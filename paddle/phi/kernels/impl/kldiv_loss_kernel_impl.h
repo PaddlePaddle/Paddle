@@ -61,9 +61,9 @@ void KLDivLossKernel(const Context& dev_ctx,
   const int64_t n = input->dims()[0];
   dev_ctx.template Alloc<T>(loss);
 
-  auto input_t = phi::EigenVector<T>::Flatten(*input);
-  auto target_t = phi::EigenVector<T>::Flatten(*target);
-  auto loss_t = phi::EigenVector<T>::Flatten(*loss);
+  auto input_t = EigenVector<T>::Flatten(*input);
+  auto target_t = EigenVector<T>::Flatten(*target);
+  auto loss_t = EigenVector<T>::Flatten(*loss);
   auto output = target_t.binaryExpr(input_t, KLDivLossForward<T>(log_target));
   if ("none" == reduction) {
     loss_t.device(place) = output;

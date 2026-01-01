@@ -450,6 +450,18 @@ OpMetaInfo& OpMetaInfo::SetInferSpmdFn(InferSpmdFunc&& func) {
   infer_spmd_fn_ = std::forward<InferSpmdFunc>(func);
   return *this;
 }
+OpMetaInfo& OpMetaInfo::SetPythonOperatorFunction(
+    PythonOperatorFunctionType&& func) {
+  pyop_func_ = std::forward<PythonOperatorFunctionType>(func);
+  return *this;
+}
+
+OpMetaInfo& OpMetaInfo::SetPythonOperatorInferMetaFunction(
+    PythonOperatorInferMetaFunctionType&& func) {
+  pyop_func_infer_meta_ =
+      std::forward<PythonOperatorInferMetaFunctionType>(func);
+  return *this;
+}
 
 bool OpMetaInfo::IsDoubleGradOp() const {
   if (name_.find("_grad_grad") != name_.npos) {
@@ -517,6 +529,18 @@ const InferDtypeFunc& OpMetaInfoHelper::GetInferDtypeFn(
 const InferSpmdFunc& OpMetaInfoHelper::GetInferSpmdFn(
     const paddle::OpMetaInfo& info) {
   return info.infer_spmd_fn_;
+}
+
+// Python Op
+const PythonOperatorFunctionType& OpMetaInfoHelper::GetPythonOperatorFunction(
+    const paddle::OpMetaInfo& info) {
+  return info.pyop_func_;
+}
+
+const PythonOperatorInferMetaFunctionType&
+OpMetaInfoHelper::GetPythonOperatorInferMetaFunction(
+    const paddle::OpMetaInfo& info) {
+  return info.pyop_func_infer_meta_;
 }
 
 #ifdef PADDLE_WITH_TENSORRT
@@ -609,7 +633,8 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
        "std::vector<float>",
        "std::vector<int64_t>",
        "std::vector<std::string>",
-       "std::vector<bool>"});
+       "std::vector<bool>",
+       "void*"});
   for (const auto& attr : attrs) {
     auto attr_type_str = ParseAttrStr(attr)[1];
     if (custom_attrs_type.find(attr_type_str) == custom_attrs_type.end()) {
@@ -618,7 +643,7 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
           "Supported data types include `bool`, `int`, `float`, `double`,  "
           "`int64_t`, `std::string`, `std::vector<int>`, "
           "`std::vector<float>`, `std::vector<int64_t>`, "
-          "`std::vector<std::string>`, `std::vector<bool>`, "
+          "`std::vector<std::string>`, `std::vector<bool>`, `void*`. "
           "Please check whether the attribute data type and "
           "data type string are matched.",
           attr_type_str));
@@ -675,6 +700,20 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc func) {
 
 OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferSpmdFn(InferSpmdFunc func) {
   info_ptr_->SetInferSpmdFn(std::forward<InferSpmdFunc>(func));
+  return *this;
+}
+
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetPythonOperatorFunction(
+    PythonOperatorFunctionType func) {
+  info_ptr_->SetPythonOperatorFunction(
+      std::forward<PythonOperatorFunctionType>(func));
+  return *this;
+}
+
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetPythonOperatorInferMetaFunction(
+    PythonOperatorInferMetaFunctionType func) {
+  info_ptr_->SetPythonOperatorInferMetaFunction(
+      std::forward<PythonOperatorInferMetaFunctionType>(func));
   return *this;
 }
 

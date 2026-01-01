@@ -32,7 +32,7 @@ void SoftmaxGradKernel(const Context& dev_ctx,
   const int rank = x_grad->dims().size();
   // For 0D Tensor
   if (rank == 0) {
-    phi::funcs::set_constant(dev_ctx, x_grad, static_cast<T>(0.0));
+    funcs::set_constant(dev_ctx, x_grad, static_cast<T>(0.0));
     return;
   }
   // For zero-sized Tensor
@@ -40,17 +40,17 @@ void SoftmaxGradKernel(const Context& dev_ctx,
     return;
   }
 
-  const int calc_axis = phi::funcs::CanonicalAxis(axis, rank);
+  const int calc_axis = funcs::CanonicalAxis(axis, rank);
   int64_t axis_dim = x_grad->dims()[calc_axis];
 
-  const int64_t n = phi::funcs::SizeToAxis(calc_axis, x_grad->dims());
-  const int64_t d = phi::funcs::SizeFromAxis(calc_axis, x_grad->dims());
+  const int64_t n = funcs::SizeToAxis(calc_axis, x_grad->dims());
+  const int64_t d = funcs::SizeFromAxis(calc_axis, x_grad->dims());
   DenseTensor dX_2d, Out_2d, dOut_2d;
   dX_2d.ShareDataWith(*x_grad).Resize({n, d});
   Out_2d.ShareDataWith(out).Resize({n, d});
   dOut_2d.ShareDataWith(out_grad).Resize({n, d});
 
-  phi::funcs::SoftmaxGradFunctor<Context, T>()(
+  funcs::SoftmaxGradFunctor<Context, T>()(
       dev_ctx, axis_dim, &Out_2d, &dOut_2d, &dX_2d);
 }
 

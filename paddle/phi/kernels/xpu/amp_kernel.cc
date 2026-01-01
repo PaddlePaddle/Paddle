@@ -53,7 +53,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
                         "FoundInfinite must has only one element."));
   const bool* found_inf_data = found_infinite.data<bool>();
   bool cpu_found_inf_data = false;
-  if (found_infinite.place().GetType() == phi::AllocationType::XPU) {
+  if (found_infinite.place().GetType() == AllocationType::XPU) {
     memory_utils::Copy(phi::CPUPlace(),
                        static_cast<void*>(&cpu_found_inf_data),
                        found_infinite.place(),
@@ -93,7 +93,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
   int cpu_bad_in_data;
   int cpu_good_in_data;
   MPDType cpu_pre_loss_scaling_data;
-  if (in_bad_steps.place().GetType() == phi::AllocationType::XPU) {
+  if (in_bad_steps.place().GetType() == AllocationType::XPU) {
     memory_utils::Copy(phi::CPUPlace(),
                        static_cast<void*>(&cpu_bad_in_data),
                        in_bad_steps.place(),
@@ -103,7 +103,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
     cpu_bad_in_data = (*bad_in_data);
   }
 
-  if (in_good_steps.place().GetType() == phi::AllocationType::XPU) {
+  if (in_good_steps.place().GetType() == AllocationType::XPU) {
     memory_utils::Copy(phi::CPUPlace(),
                        static_cast<void*>(&cpu_good_in_data),
                        in_good_steps.place(),
@@ -113,7 +113,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
     cpu_good_in_data = (*good_in_data);
   }
 
-  if (prev_loss_scaling.place().GetType() == phi::AllocationType::XPU) {
+  if (prev_loss_scaling.place().GetType() == AllocationType::XPU) {
     memory_utils::Copy(phi::CPUPlace(),
                        static_cast<void*>(&cpu_pre_loss_scaling_data),
                        prev_loss_scaling.place(),
@@ -185,7 +185,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
   // has nans or infs
   bool has_inf_nans = false;
   MPDType cpu_scale_data;
-  if (scale.place().GetType() == phi::AllocationType::XPU) {
+  if (scale.place().GetType() == AllocationType::XPU) {
     memory_utils::Copy(phi::CPUPlace(),
                        static_cast<void*>(&cpu_scale_data),
                        scale.place(),

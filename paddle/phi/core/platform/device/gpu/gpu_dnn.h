@@ -21,7 +21,7 @@
 namespace paddle {
 namespace platform {
 
-using DataLayout = phi::backends::gpu::DataLayout;
+using DataLayout = phi::DataLayout;
 using PoolingMode = phi::backends::gpu::PoolingMode;
 template <typename T>
 using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;

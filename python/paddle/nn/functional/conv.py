@@ -147,7 +147,11 @@ def _conv_nd(
     use_cudnn: bool = True,
     name: str | None = None,
 ) -> Tensor:
-    # Due to the poor performance of NHWC, we transpose the input to NCHW.
+    use_accuracy_compatible = paddle.get_flags(
+        ["FLAGS_use_accuracy_compatible_kernel"]
+    ).get(
+        "FLAGS_use_accuracy_compatible_kernel", False
+    )  # Due to the poor performance of NHWC, we transpose the input to NCHW.
     if in_dynamic_or_pir_mode() and op_type == "conv2d":
         pre_bias = _C_ops.conv2d(
             x,
@@ -178,23 +182,36 @@ def _conv_nd(
             return pre_bias
 
     if in_dynamic_or_pir_mode() and op_type == "depthwise_conv2d":
-        pre_bias = _C_ops.depthwise_conv2d(
-            x,
-            weight,
-            stride,
-            padding,
-            padding_algorithm,
-            groups,
-            dilation,
-            data_format,
-        )
-        if bias is not None:
-            new_shape = [1] * len(x.shape)
-            new_shape[channel_dim] = -1
-            bias = bias.reshape(new_shape)
-            return _C_ops.add(pre_bias, bias)
+        if use_accuracy_compatible and is_compiled_with_cuda():
+            return _C_ops.depthwise_conv2d_bias(
+                x,
+                weight,
+                bias,
+                stride,
+                padding,
+                padding_algorithm,
+                groups,
+                dilation,
+                data_format,
+            )
         else:
-            return pre_bias
+            pre_bias = _C_ops.depthwise_conv2d(
+                x,
+                weight,
+                stride,
+                padding,
+                padding_algorithm,
+                groups,
+                dilation,
+                data_format,
+            )
+            if bias is not None:
+                new_shape = [1] * len(x.shape)
+                new_shape[channel_dim] = -1
+                bias = bias.reshape(new_shape)
+                return _C_ops.add(pre_bias, bias)
+            else:
+                return pre_bias
 
     if in_dynamic_or_pir_mode() and op_type == "conv3d":
         pre_bias = _C_ops.conv3d(
@@ -214,6 +231,19 @@ def _conv_nd(
             return _C_ops.add(pre_bias, bias)
         else:
             return pre_bias
+
+    if in_dynamic_or_pir_mode() and op_type == "depthwise_conv3d":
+        return _C_ops.depthwise_conv3d_bias(
+            x,
+            weight,
+            bias,
+            stride,
+            padding,
+            padding_algorithm,
+            groups,
+            dilation,
+            data_format,
+        )
 
     if in_dynamic_mode():
         attrs = (
@@ -1286,7 +1316,15 @@ def conv2d_transpose(
 
     op_type = 'conv2d_transpose'
     num_filters = weight.shape[1]
-    if num_channels == groups and num_channels != 1 and num_filters == 1:
+    use_accuracy_compatible = paddle.get_flags(
+        ["FLAGS_use_accuracy_compatible_kernel"]
+    ).get("FLAGS_use_accuracy_compatible_kernel", False)
+    if (
+        not use_accuracy_compatible
+        and num_channels == groups
+        and num_channels != 1
+        and num_filters == 1
+    ):
         op_type = 'depthwise_conv2d_transpose'
         use_cudnn = False
 
@@ -1531,6 +1569,17 @@ def conv3d(
     stride = convert_to_list(stride, 3, 'stride')
     dilation = convert_to_list(dilation, 3, 'dilation')
     op_type = "conv3d"
+    use_accuracy_compatible = paddle.get_flags(
+        ["FLAGS_use_accuracy_compatible_kernel"]
+    ).get("FLAGS_use_accuracy_compatible_kernel", False)
+    if (
+        use_accuracy_compatible
+        and is_compiled_with_cuda()
+        and num_channels == groups
+        and num_channels != 1
+        and num_filters % num_channels == 0
+    ):
+        op_type = 'depthwise_conv3d'
 
     return _conv_nd(
         x,

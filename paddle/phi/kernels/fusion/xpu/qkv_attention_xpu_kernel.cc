@@ -92,7 +92,7 @@ void QKVAttentionXPUKernelImpl(const Context& dev_ctx,
   if (apply_flash_attention) {
     if (std::is_same<T_GEMM, int8_t>::value) {
       if (std::is_same<T_X, float>::value) {
-        phi::DenseTensor x_fp16, out_fp16;
+        DenseTensor x_fp16, out_fp16;
         out_fp16.set_type(phi::DataType::FLOAT16);
         out_fp16.Resize(qkv->dims());
         x_fp16.set_type(phi::DataType::FLOAT16);

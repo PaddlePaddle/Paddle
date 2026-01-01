@@ -130,7 +130,7 @@ void MatrixRankTolKernel(const Context& dev_ctx,
     phi::AbsKernel<RealType, Context>(
         dev_ctx, eigenvalue_tensor, &eigenvalue_tensor);
   } else {
-    DenseTensor trans_x = phi::TransposeLast2Dim<T>(dev_ctx, x);
+    DenseTensor trans_x = TransposeLast2Dim<T>(dev_ctx, x);
     auto* x_data = trans_x.data<T>();
     BatchSVD<T>(x_data, eigenvalue_data, batches, rows, cols);
   }
@@ -233,7 +233,7 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
     phi::AbsKernel<RealType, Context>(
         dev_ctx, eigenvalue_tensor, &eigenvalue_tensor);
   } else {
-    DenseTensor trans_x = phi::TransposeLast2Dim<T>(dev_ctx, x);
+    DenseTensor trans_x = TransposeLast2Dim<T>(dev_ctx, x);
     auto* x_data = trans_x.data<T>();
     BatchSVD<T>(x_data, eigenvalue_data, batches, rows, cols);
   }

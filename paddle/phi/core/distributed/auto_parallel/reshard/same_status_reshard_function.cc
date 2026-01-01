@@ -65,9 +65,9 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   VLOG(3) << "Same_status_reshard_function create an empty DenseTensor for "
              "cross-mesh DistTensor.";
   *(out->unsafe_mutable_value()) =
-      phi::DenseTensor(std::make_shared<phi::Allocation>(
-                           nullptr, 0, phi::distributed::GetDefaultPlace()),
-                       in.value().meta());
+      DenseTensor(std::make_shared<phi::Allocation>(
+                      nullptr, 0, phi::distributed::GetDefaultPlace()),
+                  in.value().meta());
 
   std::vector<std::pair<int64_t, int64_t>> p2p_pair;
   for (size_t i = 0; i < out_process_ids.size(); ++i) {

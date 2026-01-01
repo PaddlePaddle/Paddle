@@ -77,7 +77,7 @@ void moe_dispatch_grad(
 
   // output
   DenseTensor x_grad_tmp =
-      phi::Empty<T, Context>(dev_ctx, {num_rows, k, hidden_size});
+      Empty<T, Context>(dev_ctx, {num_rows, k, hidden_size});
 
   // ctx
   using XPUType = typename XPUTypeTrait<T>::Type;

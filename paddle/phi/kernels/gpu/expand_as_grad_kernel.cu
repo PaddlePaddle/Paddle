@@ -48,7 +48,7 @@ void ExpandAsGradKernel(const Context& dev_ctx,
 
   dev_ctx.template Alloc<T>(in_grad);
   if (in_dims == out_dims) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);
   } else {
     std::vector<int> reduce_dims = funcs::GetReduceDim(in_dims, out_dims, -1);
 

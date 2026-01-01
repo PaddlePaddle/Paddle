@@ -497,18 +497,16 @@ void BindProgram(py::module *m) {
              pir::IrMapping &mapper,
              Block *block) { return self->CopyToBlock(mapper, block); },
           return_value_policy::reference)
-      .def(
-          "list_vars",
-          [](std::shared_ptr<Program> self) {
-            std::vector<pir::Value> vars;
-            for (auto op : self->block()->ops()) {
-              for (auto var : op->results()) {
-                vars.push_back(var);
-              }
-            }
-            return vars;
-          },
-          return_value_policy::reference)
+      .def("list_vars",
+           [](std::shared_ptr<Program> self) {
+             py::list vars;
+             for (auto op : self->block()->ops()) {
+               for (auto var : op->results()) {
+                 vars.append(var);
+               }
+             }
+             return vars;
+           })
       .def("_list_named_vars",
            [](std::shared_ptr<Program> self) {
              return name_analysis::GetAllNamedValues(*self);
@@ -3387,7 +3385,7 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
           "is_equal",
           [](symbol::ShapeOrDataDimExprs &self,
              std::vector<int64_t> expect_shape,
-             std::vector<int64_t> expect_data = {}) -> bool {
+             std::vector<int64_t> expect_data) -> bool {
             VLOG(3) << "Start compare shape and data.";
 
             const auto &CompareFunc =
@@ -3458,7 +3456,9 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
               return shape_status && data_status;
             }
             return shape_status;
-          });
+          },
+          py::arg("expect_shape"),
+          py::arg("expect_data") = py::list());
 }
 
 void BindShapeConstraintIRAnalysis(pybind11::module *m) {

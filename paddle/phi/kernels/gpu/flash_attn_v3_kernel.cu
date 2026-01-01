@@ -616,7 +616,7 @@ void FlashAttnV3BaseKernel(
                             "scheduler_metadata must have dtype int32"));
       tile_count_semaphore = scheduler_metadata;
     } else {
-      tile_count_semaphore = phi::Empty<int32_t>(dev_ctx, {metadata_size});
+      tile_count_semaphore = Empty<int32_t>(dev_ctx, {metadata_size});
     }
     if (scheduler_needs_semaphore && !use_dynamic_split) {
       funcs::SetConstant<Context, int32_t> set_zero;
@@ -700,7 +700,10 @@ void FlashAttnV3BaseKernel(
         0,
         common::errors::InvalidArgument(
             "Only rotary dimensions divisible by 16 are currently supported"));
-    const int seqlen_ro = rotary_cos.dims()[0];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t seqlen_ro = rotary_cos.dims()[0];
+
     if (paged_KV) {
       PADDLE_ENFORCE_GE(
           seqlen_ro,
@@ -1788,7 +1791,7 @@ void FlashMaskV2BaseKernel(
                             "scheduler_metadata must have dtype int32"));
       tile_count_semaphore = scheduler_metadata;
     } else {
-      tile_count_semaphore = phi::Empty<int32_t>(dev_ctx, {metadata_size});
+      tile_count_semaphore = Empty<int32_t>(dev_ctx, {metadata_size});
     }
     if (scheduler_needs_semaphore && !use_dynamic_split) {
       funcs::SetConstant<Context, int32_t> set_zero;
@@ -1869,7 +1872,10 @@ void FlashMaskV2BaseKernel(
         0,
         common::errors::InvalidArgument(
             "Only rotary dimensions divisible by 16 are currently supported"));
-    const int seqlen_ro = rotary_cos.dims()[0];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t seqlen_ro = rotary_cos.dims()[0];
+
     if (paged_KV) {
       PADDLE_ENFORCE_GE(
           seqlen_ro,

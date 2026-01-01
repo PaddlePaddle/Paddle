@@ -116,7 +116,10 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& dev_ctx,
                                          int64_t out_size,
                                          DenseTensor* out,
                                          DenseTensor* dst_count = nullptr) {
-  const int& index_size = src_index.dims()[0];  // NOLINT
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  const int64_t& index_size = src_index.dims()[0];
+  // NOLINT
   auto out_dims = out->dims();
   int64_t memset_size = 1;
   std::vector<int64_t> dims_ = common::vectorize(out_dims);
@@ -175,7 +178,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& dev_ctx,
       for (int i = 0; i < input_size; i++) {
         if (dst_count_data[i] == 0) continue;
         auto out_slice = out->Slice(i, i + 1);
-        auto eigen_out = phi::EigenVector<T>::Flatten(out_slice);
+        auto eigen_out = EigenVector<T>::Flatten(out_slice);
         eigen_out = eigen_out / static_cast<T>(dst_count_data[i]);
       }
     }

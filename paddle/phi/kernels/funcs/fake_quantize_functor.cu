@@ -167,14 +167,14 @@ __global__ void ClipAndQuantDequantKernel(const T *in,
   using ComputeDataType = typename QuantizeDataType<T>::type;
 
   ComputeDataType s = static_cast<ComputeDataType>(scale[0]);
-  ComputeDataType inv_s = phi::funcs::inverse(s);
+  ComputeDataType inv_s = funcs::inverse(s);
   ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
 
   for (int64_t i = bid; i < n; i += blockDim.x * gridDim.x) {
     ComputeDataType x = static_cast<ComputeDataType>(in[i]);
     if (round_type == 0) {
       x = bin_cnt_t * inv_s * x;
-      x = phi::funcs::roundWithTiesToEven(x);
+      x = funcs::roundWithTiesToEven(x);
       ComputeDataType max_bound = bin_cnt_t;
       ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
       x = x > max_bound ? max_bound : x;
@@ -671,7 +671,7 @@ void FindRangeAbsMaxFunctor<Context, T>::operator()(
   T *scale_arr = dev_ctx.template Alloc<T>(scales_arr);
   T *out_scale_data = dev_ctx.template Alloc<T>(out_scale);
 
-  phi::DenseTensor need_find_max, out_size;
+  DenseTensor need_find_max, out_size;
   need_find_max.Resize({1});
   out_size.Resize({1});
   int *find_max = dev_ctx.template Alloc<int>(&need_find_max);
@@ -704,7 +704,7 @@ void FindRangeAbsMaxFunctor<Context, T>::operator()(
                        sizeof(int),
                        dev_ctx.stream());
     dev_ctx.Wait();
-    phi::funcs::FindAbsMaxFunctor<phi::GPUContext, T>()(
+    funcs::FindAbsMaxFunctor<phi::GPUContext, T>()(
         dev_ctx, scale_arr, len, out_scale_data);
   }
 }

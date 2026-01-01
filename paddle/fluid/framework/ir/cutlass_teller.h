@@ -71,10 +71,10 @@ class CutlassTeller {
                             "dimensions, but received dimensions %d.",
                             filter_tensor.dims().size()));
       auto groups = op_desc->GetAttrIfExists<int>("groups");
-      int oc = filter_tensor.dims()[0];
-      int kc = filter_tensor.dims()[1];
-      int kh = filter_tensor.dims()[2];
-      int kw = filter_tensor.dims()[3];
+      int64_t oc = filter_tensor.dims()[0];
+      int64_t kc = filter_tensor.dims()[1];
+      int64_t kh = filter_tensor.dims()[2];
+      int64_t kw = filter_tensor.dims()[3];
 
       // For convenience, we only support EXPLICIT
       auto padding_algorithm =
@@ -83,10 +83,15 @@ class CutlassTeller {
         return false;
       }
 
-      if (!Conv2dCanSupport(oc,
-                            kc,
-                            kh,
-                            kw,
+      // TODO(large-tensor): Conv2dCanSupport not support int64
+      PADDLE_ENFORCE_LE_INT_MAX(oc, "oc");
+      PADDLE_ENFORCE_LE_INT_MAX(kc, "kc");
+      PADDLE_ENFORCE_LE_INT_MAX(kh, "kh");
+      PADDLE_ENFORCE_LE_INT_MAX(kw, "kw");
+      if (!Conv2dCanSupport(static_cast<int>(oc),
+                            static_cast<int>(kc),
+                            static_cast<int>(kh),
+                            static_cast<int>(kw),
                             stride_h,
                             stride_w,
                             dilation_h,
@@ -139,10 +144,10 @@ class CutlassTeller {
                             "dimensions, but received dimensions %d.",
                             filter_tensor.dims().size()));
       auto groups = op_desc->GetAttrIfExists<int>("groups");
-      int oc = filter_tensor.dims()[0];
-      int kc = filter_tensor.dims()[1];
-      int kh = filter_tensor.dims()[2];
-      int kw = filter_tensor.dims()[3];
+      int64_t oc = filter_tensor.dims()[0];
+      int64_t kc = filter_tensor.dims()[1];
+      int64_t kh = filter_tensor.dims()[2];
+      int64_t kw = filter_tensor.dims()[3];
 
       // For convenience, we only support EXPLICIT
       auto padding_algorithm =
@@ -151,10 +156,15 @@ class CutlassTeller {
         return false;
       }
 
-      if (!Conv2dCanSupport(oc,
-                            kc,
-                            kh,
-                            kw,
+      // TODO(large-tensor): Conv2dCanSupport not support int64
+      PADDLE_ENFORCE_LE_INT_MAX(oc, "oc");
+      PADDLE_ENFORCE_LE_INT_MAX(kc, "kc");
+      PADDLE_ENFORCE_LE_INT_MAX(kh, "kh");
+      PADDLE_ENFORCE_LE_INT_MAX(kw, "kw");
+      if (!Conv2dCanSupport(static_cast<int>(oc),
+                            static_cast<int>(kc),
+                            static_cast<int>(kh),
+                            static_cast<int>(kw),
                             stride_h,
                             stride_w,
                             dilation_h,
@@ -215,10 +225,10 @@ class CutlassTeller {
                             "dimensions, but received dimensions %d.",
                             filter_tensor.dims().size()));
       auto groups = op_desc->GetAttrIfExists<int>("groups");
-      int oc = filter_tensor.dims()[0];
-      int kc = filter_tensor.dims()[1];
-      int kh = filter_tensor.dims()[2];
-      int kw = filter_tensor.dims()[3];
+      int64_t oc = filter_tensor.dims()[0];
+      int64_t kc = filter_tensor.dims()[1];
+      int64_t kh = filter_tensor.dims()[2];
+      int64_t kw = filter_tensor.dims()[3];
 
       // For convenience, we only support EXPLICIT
       auto padding_algorithm =
@@ -227,10 +237,15 @@ class CutlassTeller {
         return false;
       }
 
-      if (!Conv2dCanSupport(oc,
-                            kc,
-                            kh,
-                            kw,
+      // TODO(large-tensor): Conv2dCanSupport not support int64
+      PADDLE_ENFORCE_LE_INT_MAX(oc, "oc");
+      PADDLE_ENFORCE_LE_INT_MAX(kc, "kc");
+      PADDLE_ENFORCE_LE_INT_MAX(kh, "kh");
+      PADDLE_ENFORCE_LE_INT_MAX(kw, "kw");
+      if (!Conv2dCanSupport(static_cast<int>(oc),
+                            static_cast<int>(kc),
+                            static_cast<int>(kh),
+                            static_cast<int>(kw),
                             stride_h,
                             stride_w,
                             dilation_h,

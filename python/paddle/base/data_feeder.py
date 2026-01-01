@@ -64,6 +64,49 @@ _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.RAW: 'raw',
 }
 
+_PADDLE_DTYPE = [
+    core.DataType.UINT8,
+    core.DataType.INT8,
+    core.DataType.INT16,
+    core.DataType.INT32,
+    core.DataType.INT64,
+    core.DataType.FLOAT16,
+    core.DataType.FLOAT32,
+    core.DataType.FLOAT64,
+    core.DataType.COMPLEX64,
+    core.DataType.COMPLEX128,
+    core.DataType.BOOL,
+    core.DataType.BFLOAT16,
+]
+u1, i1, i2, i4, i8, f2, f4, f8, c4, c8, b1, bf = _PADDLE_DTYPE
+
+_PROMOTE_MATRIX = [
+    # u1, i1, i2, i4, i8, f2, f4, f8, c4, c8, b1, bf
+    [u1, i2, i2, i4, i8, f2, f4, f8, c4, c8, u1, bf],  # u1
+    [i2, i1, i2, i4, i8, f2, f4, f8, c4, c8, i1, bf],  # i1
+    [i2, i2, i2, i4, i8, f2, f4, f8, c4, c8, i2, bf],  # i2
+    [i4, i4, i4, i4, i8, f2, f4, f8, c4, c8, i4, bf],  # i4
+    [i8, i8, i8, i8, i8, f2, f4, f8, c4, c8, i8, bf],  # i8
+    [f2, f2, f2, f2, f2, f2, f4, f8, c4, c8, f2, f4],  # f2
+    [f4, f4, f4, f4, f4, f4, f4, f8, c4, c8, f4, f4],  # f4
+    [f8, f8, f8, f8, f8, f8, f8, f8, c8, c8, f8, f8],  # f8
+    [c4, c4, c4, c4, c4, c4, c4, c8, c4, c8, c4, c4],  # c4
+    [c8, c8, c8, c8, c8, c8, c8, c8, c8, c8, c8, c8],  # c8
+    [u1, i1, i2, i4, i8, f2, f4, f8, c4, c8, b1, bf],  # b1
+    [bf, bf, bf, bf, bf, f4, f4, f8, c4, c8, bf, bf],  # bf
+]
+_TYPE_TO_IDX = {t: i for i, t in enumerate(_PADDLE_DTYPE)}
+
+
+def promote_types(type1, type2):
+    idx1 = _TYPE_TO_IDX.get(type1)
+    idx2 = _TYPE_TO_IDX.get(type2)
+
+    if idx1 is None or idx2 is None:
+        raise TypeError(f"Unsupported dtype: {type1} or {type2}")
+
+    return _PROMOTE_MATRIX[idx1][idx2]
+
 
 def convert_float_to_uint16(data, data_format="NCHW"):
     if data.size == 0:

@@ -142,35 +142,6 @@ jobs:
           echo "determine_excode=$determine_excode" >> ${{ github.env }}
           '
 
-      - name: Build with python3.14
-        env:
-          work_dir: ${{ github.workspace }}
-          PADDLE_ROOT: ${{ github.workspace }}
-        if: ${{ env.determine_excode == 0 }}
-        run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          export PY_VERSION=3.14
-          source ${{ github.workspace }}/../../../proxy
-          bash ${ci_scripts}/run_setup.sh bdist_wheel
-          EXCODE=$?
-          rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
-          exit $EXCODE
-          '
-
-      - name: Test with python3.14
-        env:
-          work_dir: ${{ github.workspace }}
-          PADDLE_ROOT: ${{ github.workspace }}
-        if: ${{ env.determine_excode == 0 }}
-        run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          source ${{ github.workspace }}/../../../proxy
-          bash ${ci_scripts}/run_sot_test.sh 3.14
-          EXCODE=$?
-          rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
-          exit $EXCODE
-          '
-
       - name: Build with python3.9
         env:
           work_dir: ${{ github.workspace }}
@@ -307,6 +278,35 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/run_sot_test.sh 3.13
+          EXCODE=$?
+          rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
+          exit $EXCODE
+          '
+
+      - name: Build with python3.14
+        env:
+          work_dir: ${{ github.workspace }}
+          PADDLE_ROOT: ${{ github.workspace }}
+        if: ${{ env.determine_excode == 0 }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          export PY_VERSION=3.14
+          source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/run_setup.sh bdist_wheel
+          EXCODE=$?
+          rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
+          exit $EXCODE
+          '
+
+      - name: Test with python3.14
+        env:
+          work_dir: ${{ github.workspace }}
+          PADDLE_ROOT: ${{ github.workspace }}
+        if: ${{ env.determine_excode == 0 }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/run_sot_test.sh 3.14
           EXCODE=$?
           rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
           exit $EXCODE

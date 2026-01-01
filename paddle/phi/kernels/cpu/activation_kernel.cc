@@ -222,12 +222,12 @@ void PowKernel(const Context& dev_ctx,
     return;
   }
   if (factor.to<float>() == 1) {
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
-  auto x_flatten = phi::EigenVector<T>::Flatten(
-      GET_DATA_SAFELY(&x, "Input", "X", "Activation"));
-  auto out_flatten = phi::EigenVector<T>::Flatten(
+  auto x_flatten =
+      EigenVector<T>::Flatten(GET_DATA_SAFELY(&x, "Input", "X", "Activation"));
+  auto out_flatten = EigenVector<T>::Flatten(
       GET_DATA_SAFELY(out, "Output", "Out", "Activation"));
   auto* place = dev_ctx.eigen_device();
   funcs::PowFunctor<T> functor;

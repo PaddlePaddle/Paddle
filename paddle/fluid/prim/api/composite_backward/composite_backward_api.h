@@ -1725,10 +1725,21 @@ void instance_norm_grad(const Tensor& x,
                         Tensor* x_grad,
                         Tensor* scale_grad,
                         Tensor* bias_grad) {
-  const int n = x.dims()[0];
-  const int c = x.dims()[1];
-  const int h = x.dims()[2];
-  const int w = x.dims()[3];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t n = x.dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t c = x.dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t h = x.dims()[2];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t w = x.dims()[3];
 
   auto promoted_y_grad = y_grad;
   if (x.dtype() == phi::DataType::FLOAT16 ||

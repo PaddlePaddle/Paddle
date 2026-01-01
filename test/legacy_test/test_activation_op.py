@@ -6376,6 +6376,7 @@ class TestActivationAPI_Compatibility(unittest.TestCase):
         ("paddle.round", np.round, {'min_val': -5.0, 'max_val': 5.0}),
         ("paddle.tanh", np.tanh, {'min_val': -1.0, 'max_val': 1.0}),
         ("paddle.cosh", np.cosh, {'min_val': -1.0, 'max_val': 1.0}),
+        ("paddle.sinh", np.sinh, {'min_val': -1.0, 'max_val': 1.0}),
     ]
     ACTIVATION_NOT_METHOD_CONFIGS = [
         (

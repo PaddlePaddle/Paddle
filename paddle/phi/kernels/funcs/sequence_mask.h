@@ -41,7 +41,7 @@ template <typename DeviceContext, typename Tx>
 struct SequenceMaskFunctor {
   SequenceMaskFunctor(const DeviceContext &dev_ctx,
                       const Tx *x,
-                      phi::DenseTensor *y,
+                      DenseTensor *y,
                       int64_t limits,
                       int maxlen)
       : dev_ctx_(dev_ctx), x_(x), y_(y), limits_(limits), maxlen_(maxlen) {}
@@ -49,14 +49,14 @@ struct SequenceMaskFunctor {
   void apply() const {
     dev_ctx_.template Alloc<Ty>(y_);
     auto *y_data = y_->data<Ty>();
-    phi::funcs::ForRange<DeviceContext> for_range(dev_ctx_, limits_);
+    funcs::ForRange<DeviceContext> for_range(dev_ctx_, limits_);
     for_range(SequenceMaskForRangeFunctor<Tx, Ty>(x_, y_data, maxlen_));
   }
 
  private:
   const DeviceContext &dev_ctx_;
   const Tx *x_;
-  phi::DenseTensor *y_;
+  DenseTensor *y_;
   int64_t limits_;
   int maxlen_;
 };

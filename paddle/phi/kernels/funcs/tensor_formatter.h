@@ -27,16 +27,16 @@ class PADDLE_API TensorFormatter {
  public:
   TensorFormatter() {}
 
-  std::string Format(const phi::DenseTensor& print_tensor,
+  std::string Format(const DenseTensor& print_tensor,
                      const std::string& tensor_name = "",
                      const std::string& message = "");
 
   template <typename T>
-  void FormatData(const phi::DenseTensor& print_tensor,
+  void FormatData(const DenseTensor& print_tensor,
                   std::stringstream& log_stream,
                   int precision = 6);
 
-  void Print(const phi::DenseTensor& print_tensor,
+  void Print(const DenseTensor& print_tensor,
              const std::string& tensor_name = "",
              const std::string& message = "");
 
