@@ -142,6 +142,14 @@ jobs:
           echo "determine_excode=$determine_excode" >> ${{ github.env }}
           '
 
+      - name: Install rsync
+        if: ${{ env.determine_excode == 0 }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          apt-get update && apt-get install -y rsync
+          '
+
       - name: Restore ccache from CFS
         if: ${{ env.determine_excode == 0 }}
         run: |
