@@ -163,7 +163,7 @@ void BatchNormGradFunctor(const Context& dev_ctx,
   }
 
   if (d_x && (N * sample_size) == 1 && !use_global_stats) {
-    phi::Copy(dev_ctx, *d_y, dev_ctx.GetPlace(), false, d_x);
+    Copy(dev_ctx, *d_y, dev_ctx.GetPlace(), false, d_x);
     return;
   }
   auto* Scale = scale.get_ptr();

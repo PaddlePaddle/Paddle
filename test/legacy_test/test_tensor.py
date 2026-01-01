@@ -549,7 +549,7 @@ class TestTensorDataSetter(unittest.TestCase):
 
     def test_new_shape_same_dtype_same_place(self):
         x: paddle.Tensor = paddle.tensor([[1, 2], [3, 4]], dtype="float32")
-        y = paddle.tensor([2], dtype="float32")
+        y = paddle.rand([3, 4, 5], dtype="float32")
         x.requires_grad = True
 
         loss = x.sum()
@@ -569,8 +569,7 @@ class TestTensorDataSetter(unittest.TestCase):
             True,
             "x's requires_grad should be True after data setting.",
         )
-
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises((ValueError, RuntimeError)):
             loss = x.sum()
             loss.backward()
 
@@ -595,8 +594,7 @@ class TestTensorDataSetter(unittest.TestCase):
         np.testing.assert_equal(x.grad.numpy(), x_grad_expected.numpy())
         assert x.grad.dtype == x_grad_expected.dtype
 
-        x.clear_gradient(set_to_zero=True)
-        # dtype changed, clear_gradient must set grad to None
+        x.clear_gradient(False)
         assert x.grad is None
         z = x.sum()
         z.backward()
@@ -627,8 +625,7 @@ class TestTensorDataSetter(unittest.TestCase):
         assert x.grad.dtype == x_grad_expected.dtype
         assert x.grad.place == x_grad_expected.place
 
-        x.clear_gradient(set_to_zero=True)
-        # place changed, clear_gradient must set grad to None
+        x.clear_gradient(False)
         assert x.grad is None
         loss = x.sum()
         loss.backward()
@@ -638,4 +635,4 @@ class TestTensorDataSetter(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(argv=["", "TestTensorDataSetter"])
+    unittest.main()

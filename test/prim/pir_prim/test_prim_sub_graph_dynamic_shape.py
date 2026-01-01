@@ -120,11 +120,11 @@ def batch_norm_net4(x, y, z):
 
 
 def swiglu_net1(x, y):
-    return paddle.incubate.nn.functional.swiglu(x, y)
+    return paddle.nn.functional.swiglu(x, y)
 
 
 def swiglu_net2(x):
-    return paddle.incubate.nn.functional.swiglu(x)
+    return paddle.nn.functional.swiglu(x)
 
 
 def squared_l2_norm_net(x):

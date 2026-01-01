@@ -69,15 +69,15 @@ void ResNetUnitKernel(const Context &dev_ctx,
                         "ResNetUnitOp only supports float16 for now."));
 
   // input x
-  const phi::DenseTensor *input_x = &x_in;
-  const phi::DenseTensor *filter_x = &filter_x_in;
-  const phi::DenseTensor *scale_x = &scale_x_in;
-  const phi::DenseTensor *bias_x = &bias_x_in;
+  const DenseTensor *input_x = &x_in;
+  const DenseTensor *filter_x = &filter_x_in;
+  const DenseTensor *scale_x = &scale_x_in;
+  const DenseTensor *bias_x = &bias_x_in;
   // norm conv
-  phi::DenseTensor *conv_out_x = conv_x;
+  DenseTensor *conv_out_x = conv_x;
   // sbar
-  phi::DenseTensor *output = out;
-  phi::DenseTensor *bitmask = bit_mask;
+  DenseTensor *output = out;
+  DenseTensor *bitmask = bit_mask;
   // attrs
   double eps = static_cast<double>(epsilon);
   double momentum = static_cast<double>(momentum_in);
@@ -105,8 +105,8 @@ void ResNetUnitKernel(const Context &dev_ctx,
       output_channel;
 
   // 1. Conv
-  phi::DenseTensor sum_x;
-  phi::DenseTensor sum_of_squares_x;
+  DenseTensor sum_x;
+  DenseTensor sum_of_squares_x;
   sum_x.Resize(param_dims);
   sum_of_squares_x.Resize(param_dims);
   phi::fusion::CudnnNormConvolution<T> conv_x_op(dev_ctx,
@@ -121,8 +121,8 @@ void ResNetUnitKernel(const Context &dev_ctx,
       dev_ctx, *input_x, *filter_x, conv_out_x, &sum_x, &sum_of_squares_x);
 
   // 2. BN
-  phi::DenseTensor equiv_scale_x;
-  phi::DenseTensor equiv_bias_x;
+  DenseTensor equiv_scale_x;
+  DenseTensor equiv_bias_x;
   equiv_scale_x.Resize(param_dims);
   equiv_bias_x.Resize(param_dims);
   phi::fusion::CudnnBNStatsFinalize<T> bn_x_op(dev_ctx, param_shape);
@@ -152,19 +152,19 @@ void ResNetUnitKernel(const Context &dev_ctx,
                                                 bitmask_shape);
   if (has_shortcut) {
     // input z
-    const phi::DenseTensor *input_z = z_in.get_ptr();
-    const phi::DenseTensor *filter_z = filter_z_in.get_ptr();
-    const phi::DenseTensor *scale_z = scale_z_in.get_ptr();
-    const phi::DenseTensor *bias_z = bias_z_in.get_ptr();
+    const DenseTensor *input_z = z_in.get_ptr();
+    const DenseTensor *filter_z = filter_z_in.get_ptr();
+    const DenseTensor *scale_z = scale_z_in.get_ptr();
+    const DenseTensor *bias_z = bias_z_in.get_ptr();
     // norm conv
-    phi::DenseTensor *conv_out_z = conv_z;
+    DenseTensor *conv_out_z = conv_z;
 
     auto input_z_shape = common::vectorize<int>(input_z->dims());
     auto filter_z_shape = common::vectorize<int>(filter_z->dims());
 
     // 3.1 Conv for second input
-    phi::DenseTensor sum_z;
-    phi::DenseTensor sum_of_squares_z;
+    DenseTensor sum_z;
+    DenseTensor sum_of_squares_z;
     sum_z.Resize(param_dims);
     sum_of_squares_z.Resize(param_dims);
     phi::fusion::CudnnNormConvolution<T> conv_z_op(dev_ctx,
@@ -179,8 +179,8 @@ void ResNetUnitKernel(const Context &dev_ctx,
         dev_ctx, *input_z, *filter_z, conv_out_z, &sum_z, &sum_of_squares_z);
 
     // 3.2 BN for second input
-    phi::DenseTensor equiv_scale_z;
-    phi::DenseTensor equiv_bias_z;
+    DenseTensor equiv_scale_z;
+    DenseTensor equiv_bias_z;
     equiv_scale_z.Resize(param_dims);
     equiv_bias_z.Resize(param_dims);
     phi::fusion::CudnnBNStatsFinalize<T> bn_z_op(dev_ctx, param_shape);
@@ -210,7 +210,7 @@ void ResNetUnitKernel(const Context &dev_ctx,
                     output,
                     bitmask);
   } else {
-    const phi::DenseTensor *input_z = fuse_add ? z_in.get_ptr() : nullptr;
+    const DenseTensor *input_z = fuse_add ? z_in.get_ptr() : nullptr;
     sbar_op.Forward(dev_ctx,
                     *conv_out_x,
                     equiv_scale_x,

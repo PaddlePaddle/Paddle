@@ -50,8 +50,8 @@ flagcxComm_t FlagcxCommContext::GetFlagcxComm() {
   return flagcx_handler_->comm;
 }
 
-void FlagcxCommContext::Broadcast(phi::DenseTensor* out_tensor,
-                                  const phi::DenseTensor& in_tensor,
+void FlagcxCommContext::Broadcast(DenseTensor* out_tensor,
+                                  const DenseTensor& in_tensor,
                                   int root,
                                   flagcxStream_t stream) {
   CommStaticCheck::SameShape(*out_tensor,
@@ -68,8 +68,8 @@ void FlagcxCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                              stream));
 }
 
-void FlagcxCommContext::AllGather(phi::DenseTensor* out_tensor,
-                                  const phi::DenseTensor& in_tensor,
+void FlagcxCommContext::AllGather(DenseTensor* out_tensor,
+                                  const DenseTensor& in_tensor,
                                   flagcxStream_t stream) {
   phi::distributed::CommStaticCheck::GatherLikeShape(*out_tensor,
                                                      in_tensor,
@@ -83,8 +83,8 @@ void FlagcxCommContext::AllGather(phi::DenseTensor* out_tensor,
                                              flagcx_handler_->comm,
                                              stream));
 }
-void FlagcxCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
-                                      const phi::DenseTensor& in_tensor,
+void FlagcxCommContext::ReduceScatter(DenseTensor* out_tensor,
+                                      const DenseTensor& in_tensor,
                                       flagcxRedOp_t reduce_type,
                                       flagcxStream_t stream) {
   phi::distributed::CommStaticCheck::ScatterLikeShape(*out_tensor,
@@ -102,7 +102,7 @@ void FlagcxCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
                                         stream));
 }
 
-void FlagcxCommContext::Send(const phi::DenseTensor& in_tensor,
+void FlagcxCommContext::Send(const DenseTensor& in_tensor,
                              const int64_t& count,
                              const int& peer,
                              flagcxStream_t stream) {
@@ -118,7 +118,7 @@ void FlagcxCommContext::Send(const phi::DenseTensor& in_tensor,
           << common::product(in_tensor.dims()) << " to " << peer;
 }
 
-void FlagcxCommContext::Recv(phi::DenseTensor* out_tensor,
+void FlagcxCommContext::Recv(DenseTensor* out_tensor,
                              const int64_t& count,
                              const int& peer,
                              flagcxStream_t stream) {
@@ -134,8 +134,8 @@ void FlagcxCommContext::Recv(phi::DenseTensor* out_tensor,
           << common::product(out_tensor->dims()) << " from " << peer;
 }
 
-void FlagcxCommContext::AllReduce(phi::DenseTensor* out_tensor,
-                                  const phi::DenseTensor& in_tensor,
+void FlagcxCommContext::AllReduce(DenseTensor* out_tensor,
+                                  const DenseTensor& in_tensor,
                                   flagcxRedOp_t reduce_type,
                                   flagcxStream_t stream) {
   phi::distributed::CommStaticCheck::SameShape(*out_tensor,
@@ -152,8 +152,8 @@ void FlagcxCommContext::AllReduce(phi::DenseTensor* out_tensor,
                                              stream));
 }
 
-void FlagcxCommContext::Reduce(phi::DenseTensor* out_tensor,
-                               const phi::DenseTensor& in_tensor,
+void FlagcxCommContext::Reduce(DenseTensor* out_tensor,
+                               const DenseTensor& in_tensor,
                                flagcxRedOp_t reduce_type,
                                int root,
                                flagcxStream_t stream) {
@@ -172,8 +172,8 @@ void FlagcxCommContext::Reduce(phi::DenseTensor* out_tensor,
                                           stream));
 }
 
-void FlagcxCommContext::AllToAll(phi::DenseTensor* out_tensor,
-                                 const phi::DenseTensor& in_tensor,
+void FlagcxCommContext::AllToAll(DenseTensor* out_tensor,
+                                 const DenseTensor& in_tensor,
                                  flagcxStream_t stream) {
   phi::distributed::CommStaticCheck::SameShape(*out_tensor,
                                                in_tensor,

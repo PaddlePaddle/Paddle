@@ -944,12 +944,15 @@ def flash_attn_varlen_func(
 ):
     r"""
     The equation is:
+
     .. math::
         result=softmax(\frac{ Q * K^T }{\sqrt{d}}) * V
+
     where : ``Q``, ``K``, and ``V`` represent the three input parameters of the attention module.
     The dimensions of the three parameters are the same.
     ``d`` represents the size of the last dimension of the three parameters.
     This is the varlen version of flash attention.
+
     Warning:
         This API is only support inputs with dtype float16 and bfloat16.
     Args:
@@ -973,18 +976,23 @@ def flash_attn_varlen_func(
         softmax_scale(float): The softmax scale of the attention.
         max_seqlen_q(int): Maximum sequence length of query in the batch. Note it's the padding length, not the max actual seqlen.
         max_seqlen_k(int): Maximum sequence length of key/value in the batch.
+
     Returns:
         out(Tensor): The attention tensor. 3-D tensor with shape: [token_num, num_heads, head_dim]. The dtype can be float16 or bfloat16.
         softmax(Tensor): The softmax tensor. None if return_softmax is False.
+
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
+
             >>> # doctest: +SKIP('flash_attn_v3 need H100 compile')
             >>> import paddle
             >>> paddle.seed(2023)
             >>> q = paddle.rand((10, 2, 128), dtype="bfloat16")
             >>> cu_seqlens_q = paddle.to_tensor([0, 10], dtype="int32")
             >>> max_seq_len_q = 10
-            >>> output = paddle.nn.functional.flash_attention.flash_attention_v3_varlen(q, q, q, cu_seqlens_q, cu_seqlens_q, max_seqlen_q=max_seq_len_q, max_seqlen_k=max_seq_len_q, causal=True)
+            >>> output = paddle.nn.functional.flash_attention.flash_attention_v3_varlen(
+            ...     q, q, q, cu_seqlens_q, cu_seqlens_q, max_seqlen_q=max_seq_len_q, max_seqlen_k=max_seq_len_q, causal=True
+            ... )
             >>> # doctest: -SKIP
     """
     assert "xpu" not in paddle.get_device(), (

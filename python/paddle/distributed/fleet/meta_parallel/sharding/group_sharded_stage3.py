@@ -704,18 +704,25 @@ class GroupShardedStage3(nn.Layer):
 
         return update_list
 
-    def get_all_parameters(self, convert2cpu=False):
+    def get_all_parameters(self, convert2cpu=False, with_freeze_param=False):
         """
         Get the full parameters and return the corresponding task flows.
         """
         assert len(self._trainable_params.keys()) > 0
         current_layer_params = self._layer.parameters(include_sublayers=True)
-        trainable_params = list(
-            filter(
-                lambda p: p.trainable and p not in self._unslice_params,
-                current_layer_params,
+        if with_freeze_param:
+            trainable_params = []
+            for param in current_layer_params:
+                if param.name in self._param2buffer_size:
+                    trainable_params.append(param)
+        else:
+            trainable_params = list(
+                filter(
+                    lambda p: p.trainable and p not in self._unslice_params,
+                    current_layer_params,
+                )
             )
-        )
+
         t_flow = _allgather_buffer(
             trainable_params,
             self._group,
@@ -868,24 +875,25 @@ class GroupShardedStage3(nn.Layer):
     def align_param_to_buffer_and_clear_slice_param(self):
         for layer_id, params in self._trainable_params.items():
             for param in params:
-                param_shape = param.shape
-                origin_state = param.stop_gradient
-                param.stop_gradient = True
-                start, end = self._param2buffer[param.name][self._rank]
-                param.flatten_()
-                param.stop_gradient = origin_state
-                param_numel = param.numel().item()
-                start = min(start, param_numel)
-                end = min(end, param_numel)
-                if end > start:
-                    tmp_tensor = param._slice(start, end).detach()
-                    buffer_slice = param.fw_storage._slice(
-                        0, end - start
-                    ).detach()
-                    buffer_slice.set_value(tmp_tensor)
-                    del buffer_slice
-                param.get_tensor()._set_dims(param_shape)
-                param._clear_data()
+                if param._is_initialized():
+                    param_shape = param.shape
+                    origin_state = param.stop_gradient
+                    param.stop_gradient = True
+                    start, end = self._param2buffer[param.name][self._rank]
+                    param.flatten_()
+                    param.stop_gradient = origin_state
+                    param_numel = param.numel().item()
+                    start = min(start, param_numel)
+                    end = min(end, param_numel)
+                    if end > start:
+                        tmp_tensor = param._slice(start, end).detach()
+                        buffer_slice = param.fw_storage._slice(
+                            0, end - start
+                        ).detach()
+                        buffer_slice.set_value(tmp_tensor)
+                        del buffer_slice
+                    param.get_tensor()._set_dims(param_shape)
+                    param._clear_data()
 
     def init_optimizer_for_slice_param(self):
         local_param_list = []
@@ -1306,7 +1314,7 @@ def _allgather_buffer(
         assert sync_wait
 
     for param in trainable_params:
-        if param.status == "all":
+        if hasattr(param, "status") and param.status == "all":
             param.use_count += 1
             continue
 

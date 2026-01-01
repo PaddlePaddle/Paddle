@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from .batched_gemm import batched_gemm
 from .blha_get_max_len import blha_get_max_len
 from .block_multihead_attention import (
@@ -109,7 +110,6 @@ __all__ = [
     "masked_multihead_attention",
     "blha_get_max_len",
     "block_multihead_attention",
-    "swiglu",
     "moe_combine",
     "expand_modality_expert_id",
     "cal_aux_loss",

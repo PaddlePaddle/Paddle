@@ -32,7 +32,7 @@ void LimitByCapacityKernel(const Context& dev_ctx,
 
   dev_ctx.template Alloc<T>(out);
   std::vector<T> out_data(out->numel());
-  phi::DenseTensor expert_count_cpu, capacity_cpu;
+  DenseTensor expert_count_cpu, capacity_cpu;
   phi::Copy(dev_ctx, *expert_count, phi::CPUPlace(), true, &expert_count_cpu);
   phi::Copy(dev_ctx, *capacity, phi::CPUPlace(), true, &capacity_cpu);
 

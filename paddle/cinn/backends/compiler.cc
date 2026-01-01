@@ -270,10 +270,11 @@ void Compiler::EndCompile() {
   RegisterDeviceModuleSymbol();
   std::vector<std::string> cinn_runtime_include_path = {
       Context::Global().runtime_include_dir()};
-  engine_->AddSelfModule(host_func_name_, cinn_runtime_include_path);
+  engine_->AddSelfModule(GetFusionHash(), cinn_runtime_include_path);
 }
 
 void Compiler::LoadAndRegisterFromCache() {
+#ifdef CINN_WITH_CUDA
   std::string cache_so_path = GetCachePath() + CINN_CACHE_SO;
   // 1. Load metadata (restore Kernel name list)
   LoadKernelNamesFromMeta();
@@ -333,6 +334,9 @@ void Compiler::LoadAndRegisterFromCache() {
   // 6. Store handles and paths for subsequent dlclose
   dynamic_library_path_ = cache_so_path;
   dynamic_library_handle_ = handle;
+#else
+  CINN_NOT_IMPLEMENTED
+#endif
 }
 
 std::string Compiler::GetSourceCode(const ir::Module& module) {
@@ -425,7 +429,7 @@ std::string Compiler::GetDeviceId() const {
 }
 std::string Compiler::GetCachePath() const {
   return FLAGS_cinn_kernel_cache_save_path + "/" + GetDeviceId() + "/" +
-         host_func_name_ + "/";
+         std::to_string(GetFusionHash()) + "/";
 }
 void Compiler::RegisterCudaModuleSymbol() {
 #ifdef CINN_WITH_CUDA
@@ -733,8 +737,6 @@ void* Compiler::Lookup(std::string_view fn_name) {
 }
 
 #ifdef CINN_WITH_CUDA
-std::string Compiler::ComputeSourceHash() { return host_func_name_; }
-
 std::string Compiler::GetDeviceArch() {
   int major = 0, minor = 0;
   if (cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, 0) ==

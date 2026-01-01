@@ -34,27 +34,27 @@ void CSoftmaxWithEntropyGradKernel(const Context& dev_ctx,
                                    int rank,
                                    int nranks,
                                    DenseTensor* logits_grad) {
-  const phi::DenseTensor* labels = &label_in;
-  const phi::DenseTensor* loss_grad = &loss_grad_in;
-  const phi::DenseTensor* softmax = &softmax_in;
-  phi::DenseTensor* logit_grad = logits_grad;
+  const DenseTensor* labels = &label_in;
+  const DenseTensor* loss_grad = &loss_grad_in;
+  const DenseTensor* softmax = &softmax_in;
+  DenseTensor* logit_grad = logits_grad;
 
   if (logit_grad != softmax) {
     phi::Copy(dev_ctx, *softmax, dev_ctx.GetPlace(), false, logit_grad);
   }
   const auto softmax_dims = softmax->dims();
   const int axis = softmax_dims.size() - 1;
-  const int N = phi::funcs::SizeToAxis(axis, softmax_dims);
-  const int D = phi::funcs::SizeFromAxis(axis, softmax_dims);
+  const int N = funcs::SizeToAxis(axis, softmax_dims);
+  const int D = funcs::SizeFromAxis(axis, softmax_dims);
   const auto& label_type = labels->dtype();
 
   if (label_type == phi::DataType::INT32 ||
       label_type == phi::DataType::INT64) {
-    auto logit_grad_t = std::make_shared<phi::DenseTensor>();
+    auto logit_grad_t = std::make_shared<DenseTensor>();
     logit_grad_t->ShareDataWith(*logit_grad).Resize({N, D});
-    auto loss_grad_t = std::make_shared<phi::DenseTensor>();
+    auto loss_grad_t = std::make_shared<DenseTensor>();
     loss_grad_t->ShareDataWith(*loss_grad).Resize({N});
-    auto labels_1d = std::make_shared<phi::DenseTensor>();
+    auto labels_1d = std::make_shared<DenseTensor>();
     labels_1d->ShareDataWith(*labels).Resize({N});
     paddle::Tensor logits_grad_tensor(logit_grad_t),
         loss_grad_tensor(loss_grad_t), labels_1d_tensor(labels_1d);
@@ -89,7 +89,7 @@ void CSoftmaxWithEntropyGradKernel(const Context& dev_ctx,
         logits_grad_out_tensor1,
         paddle::experimental::reshape(loss_grad_tensor, {N, 1}));
     logit_grad
-        ->ShareDataWith(*reinterpret_cast<phi::DenseTensor*>(
+        ->ShareDataWith(*reinterpret_cast<DenseTensor*>(
             logits_grad_out_tensor2.impl().get()))
         .Resize(softmax_dims);
   } else {

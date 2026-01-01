@@ -77,8 +77,7 @@ void EigKernel(const Context& dev_ctx,
     for_range(functor);
 
     // 3. construct complex vectors
-    DenseTensor out_v_real_trans =
-        phi::TransposeLast2Dim<T>(dev_ctx, out_v_real);
+    DenseTensor out_v_real_trans = TransposeLast2Dim<T>(dev_ctx, out_v_real);
     DenseTensor out_v_trans;
     out_v_trans.Resize(x.dims());
     dev_ctx.template Alloc<phi::dtype::Complex<T>>(&out_v_trans);

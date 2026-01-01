@@ -26,7 +26,7 @@ bool DistPairDescend(std::tuple<int, int, T> pair1,
 // The match_indices must be initialized to -1 at first.
 // The match_dist must be initialized to 0 at first.
 template <typename T>
-void BipartiteMatch(const phi::DenseTensor& dist,
+void BipartiteMatch(const DenseTensor& dist,
                     int* match_indices,
                     T* match_dist) {
   PADDLE_ENFORCE_EQ(
@@ -111,7 +111,7 @@ void BipartiteMatch(const phi::DenseTensor& dist,
 }
 
 template <typename T>
-void ArgMaxMatch(const phi::DenseTensor& dist,
+void ArgMaxMatch(const DenseTensor& dist,
                  int* match_indices,
                  T* match_dist,
                  T overlap_threshold) {
@@ -194,8 +194,8 @@ void BipartiteMatchKernel(const Context& dev_ctx,
     auto lod = dist_mat->lod().back();
     for (size_t i = 0; i < lod.size() - 1; ++i) {
       if (lod[i + 1] > lod[i]) {
-        phi::DenseTensor one_ins = dist_mat->Slice(
-            static_cast<int64_t>(lod[i]), static_cast<int64_t>(lod[i + 1]));
+        DenseTensor one_ins = dist_mat->Slice(static_cast<int64_t>(lod[i]),
+                                              static_cast<int64_t>(lod[i + 1]));
         BipartiteMatch<T>(one_ins, indices + i * col, dist + i * col);
         if (type == "per_prediction") {
           ArgMaxMatch<T>(one_ins, indices + i * col, dist + i * col, threshold);

@@ -27,41 +27,41 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void MatMul(const phi::GPUContext& dev_ctx,
-            const phi::DenseTensor& a,
-            const phi::DenseTensor& b,
-            phi::DenseTensor* c) {
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+void MatMul(const GPUContext& dev_ctx,
+            const DenseTensor& a,
+            const DenseTensor& b,
+            DenseTensor* c) {
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   auto a_2d = phi::FoldInitDims(a);
   auto b_2d = phi::FoldInitDims(b);
-  auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a_2d.dims(), 0, false);
-  auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b_2d.dims(), 0, false);
+  auto mat_dim_a = funcs::CreateMatrixDescriptor(a_2d.dims(), 0, false);
+  auto mat_dim_b = funcs::CreateMatrixDescriptor(b_2d.dims(), 0, false);
   T alpha = static_cast<T>(1.0);
   blas.MatMul(a, mat_dim_a, b, mat_dim_b, alpha, c, T(0));
 }
 
 template <typename T, typename Context>
-void FFN(const phi::GPUContext& dev_ctx,
-         const phi::DenseTensor& x,
-         const phi::DenseTensor& linear1_weight,
-         const phi::DenseTensor* linear1_bias,
-         const phi::DenseTensor& linear2_weight,
-         const phi::DenseTensor* linear2_bias,
-         const phi::DenseTensor* ln1_scale,
-         const phi::DenseTensor* ln1_bias,
-         const phi::DenseTensor* ln2_scale,
-         const phi::DenseTensor* ln2_bias,
-         phi::DenseTensor* out,
-         phi::DenseTensor* dropout1_mask,
-         phi::DenseTensor* dropout2_mask,
-         phi::DenseTensor* ln1_mean,
-         phi::DenseTensor* ln1_variance,
-         phi::DenseTensor* ln2_mean,
-         phi::DenseTensor* ln2_variance,
-         phi::DenseTensor* linear1_out,
-         phi::DenseTensor* ln1_out,
-         phi::DenseTensor* dropout1_out,
-         phi::DenseTensor* dropout2_out,
+void FFN(const GPUContext& dev_ctx,
+         const DenseTensor& x,
+         const DenseTensor& linear1_weight,
+         const DenseTensor* linear1_bias,
+         const DenseTensor& linear2_weight,
+         const DenseTensor* linear2_bias,
+         const DenseTensor* ln1_scale,
+         const DenseTensor* ln1_bias,
+         const DenseTensor* ln2_scale,
+         const DenseTensor* ln2_bias,
+         DenseTensor* out,
+         DenseTensor* dropout1_mask,
+         DenseTensor* dropout2_mask,
+         DenseTensor* ln1_mean,
+         DenseTensor* ln1_variance,
+         DenseTensor* ln2_mean,
+         DenseTensor* ln2_variance,
+         DenseTensor* linear1_out,
+         DenseTensor* ln1_out,
+         DenseTensor* dropout1_out,
+         DenseTensor* dropout2_out,
          const int bsz_seq,
          const int d_model,
          const int dim_feedforward,
@@ -81,8 +81,8 @@ void FFN(const phi::GPUContext& dev_ctx,
       fused_dropout_layernorm_helper(
           dev_ctx, bsz_seq, d_model, dropout_param2, epsilon2);
 
-  using U = phi::funcs::LayerNormParamType<T>;
-  const phi::DenseTensor* in = &x;
+  using U = funcs::LayerNormParamType<T>;
+  const DenseTensor* in = &x;
 
   const U* ln1_scale_ptr =
       ln1_scale == nullptr ? nullptr : ln1_scale->data<U>();
@@ -112,7 +112,7 @@ void FFN(const phi::GPUContext& dev_ctx,
                                           act_method,
                                           dropout1_out->data<T>(),
                                           dropout1_mask->data<uint8_t>());
-  phi::DenseTensor linear2_out;
+  DenseTensor linear2_out;
   linear2_out.Resize({bsz_seq, d_model});
   dev_ctx.template Alloc<T>(&linear2_out, linear2_out.numel() * sizeof(T));
   MatMul<T, Context>(dev_ctx, *dropout1_out, linear2_weight, &linear2_out);
@@ -231,7 +231,7 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
                                            dropout2_seed_ptr,
                                            dropout2_seed_val);
 
-  using U = phi::funcs::LayerNormParamType<T>;
+  using U = funcs::LayerNormParamType<T>;
   dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
   dev_ctx.template Alloc<uint8_t>(dropout1_mask,
                                   dropout1_mask->numel() * sizeof(uint8_t));
@@ -255,8 +255,8 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
   }
 
   auto x_dim = x_ptr->dims();
-  auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
-      phi::RowMatrixFromVector(x_dim), 0, false);
+  auto mat_dim_x =
+      funcs::CreateMatrixDescriptor(phi::RowMatrixFromVector(x_dim), 0, false);
 
   auto dim = linear1_weight_ptr->dims();
   int d_model = dim[0];

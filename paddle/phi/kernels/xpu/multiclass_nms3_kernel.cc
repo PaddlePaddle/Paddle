@@ -60,7 +60,7 @@ void MultiClassNMSKernel(const Context& dev_ctx,
   std::vector<int64_t> rois_num_vec;
   if (is_lod) {
     if (has_rois_num) {
-      phi::DenseTensor rois_num_host;
+      DenseTensor rois_num_host;
       rois_num_host.Resize(rois_num.get_ptr()->dims());
       if (rois_num.get_ptr()->dtype() == phi::DataType::INT64) {
         dev_ctx.template HostAlloc<int64_t>(&rois_num_host);

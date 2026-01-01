@@ -130,7 +130,7 @@ struct SearchAlgorithmBase<ConvKind::kForward> {
 
   // Heuristic search mode, calling the cudnnGetXxxAlgorithm.
   static SearchResult<AlgoT> FindAlgoHeuristic(const ConvArgs& args,
-                                               const phi::GPUContext& dev_ctx) {
+                                               const GPUContext& dev_ctx) {
     SearchResult<AlgoT> result;
     size_t workspace_size_limit =
         CalcWorkspaceLimitInBytes(UseFixedWorkspace());
@@ -167,7 +167,7 @@ struct SearchAlgorithmBase<ConvKind::kForward> {
 
   template <typename T>
   static SearchResult<AlgoT> FindAlgoExhaustiveSearch(
-      const ConvArgs& args, const phi::GPUContext& dev_ctx) {
+      const ConvArgs& args, const GPUContext& dev_ctx) {
     SearchResult<AlgoT> result;
     size_t workspace_size_limit =
         CalcWorkspaceLimitInBytes(UseFixedWorkspace());
@@ -277,7 +277,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardData> {
   }
 
   static SearchResult<AlgoT> FindAlgoHeuristic(const ConvArgs& args,
-                                               const phi::GPUContext& dev_ctx) {
+                                               const GPUContext& dev_ctx) {
     SearchResult<AlgoT> result;
     size_t workspace_size_limit =
         CalcWorkspaceLimitInBytes(UseFixedWorkspace());
@@ -309,7 +309,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardData> {
 
   template <typename T>
   static SearchResult<AlgoT> FindAlgoExhaustiveSearch(
-      const ConvArgs& args, const phi::GPUContext& dev_ctx) {
+      const ConvArgs& args, const GPUContext& dev_ctx) {
     SearchResult<AlgoT> result;
     size_t workspace_size_limit =
         CalcWorkspaceLimitInBytes(UseFixedWorkspace());
@@ -419,7 +419,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardFilter> {
   }
 
   static SearchResult<AlgoT> FindAlgoHeuristic(const ConvArgs& args,
-                                               const phi::GPUContext& dev_ctx) {
+                                               const GPUContext& dev_ctx) {
     SearchResult<AlgoT> result;
     size_t workspace_size_limit =
         CalcWorkspaceLimitInBytes(UseFixedWorkspace());
@@ -452,7 +452,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardFilter> {
 
   template <typename T>
   static SearchResult<AlgoT> FindAlgoExhaustiveSearch(
-      const ConvArgs& args, const phi::GPUContext& dev_ctx) {
+      const ConvArgs& args, const GPUContext& dev_ctx) {
     SearchResult<AlgoT> result;
     int returned_algo_count = 0;
     std::vector<PerfT> perf_results(kNUM_CUDNN_BWD_FILTER_ALGS);
@@ -565,7 +565,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<CK> {
   using AlgoT = typename SearchAlgorithmBase<CK>::AlgoT;
 
   template <typename T>
-  static SearchResult<AlgoT> Find(const phi::GPUContext& dev_ctx,
+  static SearchResult<AlgoT> Find(const GPUContext& dev_ctx,
                                   const ConvArgs& args,
                                   bool exhaustive_search,
                                   bool deterministic,
@@ -630,7 +630,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<CK> {
   }
 
   static void SetConvMathType(
-      const phi::GPUContext& dev_ctx,
+      const GPUContext& dev_ctx,
       cudnnDataType_t dtype,
       const phi::backends::gpu::ConvolutionDescriptor& cdesc) {
     if (dev_ctx.GetComputeCapability() >= 70 && dtype == CUDNN_DATA_HALF) {
@@ -661,7 +661,7 @@ struct ConvRunner {};
 template <typename T>
 struct ConvRunner<T, ConvKind::kForward> {
   static void Apply(
-      const phi::GPUContext& dev_ctx,
+      const GPUContext& dev_ctx,
       const ConvArgs& args,
       const SearchResult<cudnnConvolutionFwdAlgo_t>& search_result,
       const T* input_ptr,
@@ -704,7 +704,7 @@ struct ConvRunner<T, ConvKind::kForward> {
 template <typename T>
 struct ConvRunner<T, ConvKind::kBackwardData> {
   static void Apply(
-      const phi::GPUContext& dev_ctx,
+      const GPUContext& dev_ctx,
       const ConvArgs& args,
       const SearchResult<cudnnConvolutionBwdDataAlgo_t>& search_result,
       const T* output_grad_ptr,
@@ -748,7 +748,7 @@ struct ConvRunner<T, ConvKind::kBackwardData> {
 template <typename T>
 struct ConvRunner<T, ConvKind::kBackwardFilter> {
   static void Apply(
-      const phi::GPUContext& dev_ctx,
+      const GPUContext& dev_ctx,
       const ConvArgs& args,
       const SearchResult<cudnnConvolutionBwdFilterAlgo_t>& search_result,
       const T* output_grad_ptr,

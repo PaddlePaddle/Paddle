@@ -102,6 +102,7 @@ void XPUIndexElementwiseGetKernel(const Context& dev_ctx,
       reinterpret_cast<const XPUType*>(in_ptr),  // XPU ptr
       reinterpret_cast<XPUType*>(out_ptr),       // XPU ptr
       index_ptrs_vec,                            // vec of XPU ptrs
+      input_dims,                                // CPU vec
       index_numel_vec,                           // CPU vec
       desired_shape,                             // CPU vec
       sizes_vec,                                 // CPU vec

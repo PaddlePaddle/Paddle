@@ -376,7 +376,8 @@ void dispatch(void* packed_recv_x,
               void* workspace,
               cudaStream_t stream,
               int phases,
-              int next_buffer_id);
+              int next_buffer_id,
+              int num_per_channel);
 
 void combine(void* combined_x,
              void* rdma_recv_x,
@@ -404,7 +405,8 @@ void combine(void* combined_x,
              cudaStream_t stream,
              int phases,
              bool dispatch_use_fp8,
-             int next_buffer_id);
+             int next_buffer_id,
+             int num_per_channel);
 
 void clean_low_latency_buffer_two_stage(void** buffer_ptrs_gpu,
                                         const size_t max_nvl_num_bytes,

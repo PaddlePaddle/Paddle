@@ -47,17 +47,17 @@ static __forceinline__ __device__ bool InBounds3D(
 inline bool cudnnIsAvailable() {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
   // Get all custom device types
-  auto custom_device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  auto custom_device_types = DeviceManager::GetAllCustomDeviceTypes();
 
   // Use the first custom device type
   if (!custom_device_types.empty()) {
     const std::string& device_type = custom_device_types[0];
     // Get current device ID for this device type
-    int device_id = phi::DeviceManager::GetDevice(device_type);
+    int device_id = DeviceManager::GetDevice(device_type);
     // Create place for the current device
     phi::Place place(phi::CustomPlace(device_type, device_id));
     // Check if this device has DNN support
-    return phi::DeviceManager::IsDnnAvailable(place);
+    return DeviceManager::IsDnnAvailable(place);
   }
   return false;
 #elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -68,11 +68,11 @@ inline bool cudnnIsAvailable() {
 #endif
 }
 
-inline bool isGpuTensor(const phi::DenseTensor& x) {
+inline bool isGpuTensor(const DenseTensor& x) {
   return phi::is_gpu_place(x.place());
 }
 
-inline bool canUse32bitIndexMath(const phi::DenseTensor& x) {
+inline bool canUse32bitIndexMath(const DenseTensor& x) {
   auto elements = x.numel();
   int64_t max_elem = static_cast<int64_t>(std::numeric_limits<int>::max());
 
@@ -90,8 +90,8 @@ inline bool canUse32bitIndexMath(const phi::DenseTensor& x) {
 }
 
 template <typename T>
-inline bool condCudnnGridSampler(const phi::DenseTensor& input,
-                                 const phi::DenseTensor& grid) {
+inline bool condCudnnGridSampler(const DenseTensor& input,
+                                 const DenseTensor& grid) {
   if (!cudnnIsAvailable()) return false;
   if (!isGpuTensor(input) || !isGpuTensor(grid)) return false;
   if (!(std::is_same<T, float>::value || std::is_same<T, double>::value))

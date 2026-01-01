@@ -27,14 +27,14 @@ template <typename T,
           typename InfoT = int,
           typename OutT = int>
 void TDMChildInner(const Context &dev_ctx,
-                   const phi::DenseTensor &input,
-                   const phi::DenseTensor &tree_info,
+                   const DenseTensor &input,
+                   const DenseTensor &tree_info,
                    int child_nums,
-                   phi::DenseTensor *child,
-                   phi::DenseTensor *mask) {
+                   DenseTensor *child,
+                   DenseTensor *mask) {
   auto info_dims = tree_info.dims();
-  int node_nums = info_dims[0];
-  int length = info_dims[1];
+  int64_t node_nums = info_dims[0];
+  int64_t length = info_dims[1];
 
   int64_t input_ids_num = input.numel();
 
@@ -71,21 +71,23 @@ void TDMChildInner(const Context &dev_ctx,
     PADDLE_ENFORCE_LE_INT_MAX(input_data[input_ids], "input_data[input_ids]");
     bool has_child =
         (input_data[input_ids] == 0 ||
-         tree_info_data[static_cast<int>(input_data[input_ids]) * length + 3] ==
-             0)
+         tree_info_data[static_cast<int64_t>(input_data[input_ids]) * length +
+                        3] == 0)
             ? false
             : true;
 
     if (has_child) {
       for (int child_ids = 0; child_ids < child_nums; ++child_ids) {
         OutT child_id = static_cast<OutT>(
-            tree_info_data[static_cast<int>(input_data[input_ids]) * length +
+            tree_info_data[static_cast<int64_t>(input_data[input_ids]) *
+                               length +
                            3 + child_ids]);
         child_vec.push_back(child_id);
         // TODO(large-tensor): array index not support int64
         PADDLE_ENFORCE_LE_INT_MAX(child_id, "child_id");
         OutT child_is_item = static_cast<OutT>(
-            tree_info_data[static_cast<int>(child_id) * length] == 0 ? 0 : 1);
+            tree_info_data[static_cast<int64_t>(child_id) * length] == 0 ? 0
+                                                                         : 1);
         item_mask_vec.push_back(child_is_item);
       }
     } else {
@@ -106,12 +108,12 @@ void TDMChildInner(const Context &dev_ctx,
 
 template <typename T, typename Context>
 void TDMChildKernel(const Context &dev_ctx,
-                    const phi::DenseTensor &x,
-                    const phi::DenseTensor &tree_info,
+                    const DenseTensor &x,
+                    const DenseTensor &tree_info,
                     int child_nums,
                     phi::DataType dtype,
-                    phi::DenseTensor *child,
-                    phi::DenseTensor *leaf_mask) {
+                    DenseTensor *child,
+                    DenseTensor *leaf_mask) {
   const auto &input_type = x.dtype();
   bool input_type_match =
       input_type == DataType::INT32 || input_type == DataType::INT64;

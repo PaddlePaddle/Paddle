@@ -87,7 +87,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
                                        std::multiplies<int64_t>()));
 
   dev_ctx.template Alloc<T>(d_x);
-  phi::funcs::SetConstant<XPUContext, T> set_zero;
+  funcs::SetConstant<XPUContext, T> set_zero;
 
   auto* x_data = x.data<T>();
   auto* y_data = y.data<T>();

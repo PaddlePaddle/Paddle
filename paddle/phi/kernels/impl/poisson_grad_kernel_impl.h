@@ -24,7 +24,7 @@ void PoissonGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad UNUSED,
                        DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
-  phi::funcs::SetConstant<Context, T> functor;
+  funcs::SetConstant<Context, T> functor;
   functor(dev_ctx, x_grad, static_cast<T>(0));
 }
 

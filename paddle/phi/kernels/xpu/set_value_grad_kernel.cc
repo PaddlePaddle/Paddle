@@ -139,7 +139,7 @@ void SetValueGradImpl(const Context& dev_ctx,
     }
   }
 
-  phi::funcs::SetConstant<Context, T> set_zero;
+  funcs::SetConstant<Context, T> set_zero;
   int r = 0;
 
   if (x_grad) {

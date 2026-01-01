@@ -86,7 +86,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
                           DenseTensor *bias_dropout_residual_out,
                           DenseTensor *cache_kv_out,
                           DenseTensor *out) {
-  using U = phi::funcs::LayerNormParamType<T>;
+  using U = funcs::LayerNormParamType<T>;
   if (x.numel() == 0) {
     if (ln_mean) dev_ctx.template Alloc<U>(ln_mean);
     if (ln_var) dev_ctx.template Alloc<U>(ln_var);
@@ -151,7 +151,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
 
   bool is_upscale_in_train_1 =
       (attn_dropout_implementation == "upscale_in_train");
-  phi::DenseTensor *seed_1 = nullptr;
+  DenseTensor *seed_1 = nullptr;
 
   // get data ptr for qkv part.
   const auto input_x_dims = x_p->dims();

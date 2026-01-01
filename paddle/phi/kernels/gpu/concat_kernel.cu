@@ -98,7 +98,7 @@ void ConcatKernel(const Context& dev_ctx,
       output_offset += in_stride[axis];
     }
   } else {
-    std::vector<phi::DenseTensor> inputs;
+    std::vector<DenseTensor> inputs;
     for (size_t j = 0; j < x.size(); ++j) {
       if (x[j]->numel() > 0) {
         inputs.push_back(*x[j]);

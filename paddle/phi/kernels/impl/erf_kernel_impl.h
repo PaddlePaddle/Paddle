@@ -29,7 +29,7 @@ void ErfKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   auto eigen_out = EigenVector<T>::Flatten(*out);
   auto eigen_in = EigenVector<T>::Flatten(x);
   auto& place = *dev_ctx.eigen_device();
-  phi::funcs::EigenErf<std::decay_t<decltype(place)>, T>::Eval(
+  funcs::EigenErf<std::decay_t<decltype(place)>, T>::Eval(
       place, eigen_out, eigen_in);
 }
 

@@ -867,7 +867,9 @@ def _compute_quantile(
             return tensor_upper
 
         if interpolation == "midpoint":
-            return (tensor_upper + tensor_below) / 2
+            return (
+                tensor_upper.astype(x.dtype) + tensor_below.astype(x.dtype)
+            ) / 2
 
         weights = (index - indices_below.astype(index.dtype)).astype(x.dtype)
         # "linear"

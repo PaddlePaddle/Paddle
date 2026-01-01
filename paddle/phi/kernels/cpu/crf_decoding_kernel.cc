@@ -22,9 +22,9 @@ namespace phi {
 
 template <typename T, typename Context>
 void Decode(const Context& dev_ctx,
-            const phi::DenseTensor& emission_weights,
-            const phi::DenseTensor& transition_weights,
-            phi::DenseTensor* decoded_path) {
+            const DenseTensor& emission_weights,
+            const DenseTensor& transition_weights,
+            DenseTensor* decoded_path) {
   auto emission_dims = emission_weights.dims();
   const size_t seq_len = emission_dims[0];
   const size_t tag_num = emission_dims[1];
@@ -35,10 +35,10 @@ void Decode(const Context& dev_ctx,
   // alpha is a memo table. An element alpha(k, v) records the score of the
   // best sequence of tags from position 1 to position k with v being the end
   // tag.
-  phi::DenseTensor alpha;
+  DenseTensor alpha;
   alpha.Resize(emission_dims);
   T* alpha_value = dev_ctx.template Alloc<T>(&alpha);
-  phi::DenseTensor track;
+  DenseTensor track;
   track.Resize(emission_dims);
   int* track_value = dev_ctx.template Alloc<int>(&track);
   auto ker = phi::jit::KernelFuncs<phi::jit::CRFDecodingTuple<T>,
@@ -84,7 +84,7 @@ void CRFDecodingOpKernel(const Context& dev_ctx,
     const int64_t* length_data = length_p->data<int64_t>();
     auto in_dims = emission_weights->dims();
 
-    phi::DenseTensor emission_weights_tmp = *emission_weights;
+    DenseTensor emission_weights_tmp = *emission_weights;
     emission_weights_tmp.Resize(
         common::make_ddim({in_dims[0] * in_dims[1], in_dims[2]}));
 
@@ -93,7 +93,7 @@ void CRFDecodingOpKernel(const Context& dev_ctx,
       if (length_data[i] == 0) continue;
       int64_t start_pos = i * in_dims[1];
       int64_t end_pos = start_pos + static_cast<int64_t>(length_data[i]);
-      phi::DenseTensor decoded_path_one_seq =
+      DenseTensor decoded_path_one_seq =
           decoded_path->Slice(start_pos, end_pos);
       Decode<T, Context>(dev_ctx,
                          emission_weights_tmp.Slice(start_pos, end_pos),
@@ -137,7 +137,7 @@ void CRFDecodingOpKernel(const Context& dev_ctx,
       if (lod[level][i] == lod[level][i + 1]) continue;
       int64_t start_pos = static_cast<int64_t>(lod[level][i]);
       int64_t end_pos = static_cast<int64_t>(lod[level][i + 1]);
-      phi::DenseTensor decoded_path_one_seq =
+      DenseTensor decoded_path_one_seq =
           decoded_path->Slice(start_pos, end_pos);
       Decode<T, Context>(dev_ctx,
                          emission_weights->Slice(start_pos, end_pos),

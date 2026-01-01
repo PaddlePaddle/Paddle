@@ -39,11 +39,10 @@ void GRUKernel(const Context &dev_ctx,
   auto input_dims = input.dims();
   auto hidden_dims = hidden->dims();
 
-  phi::DenseTensor *batch_gate;
-  phi::DenseTensor *batch_reset_hidden_prev;
-  phi::DenseTensor *batch_hidden;
-  phi::DenseTensor batch_gate_tmp, batch_reset_hidden_prev_tmp,
-      batch_hidden_tmp;
+  DenseTensor *batch_gate;
+  DenseTensor *batch_reset_hidden_prev;
+  DenseTensor *batch_hidden;
+  DenseTensor batch_gate_tmp, batch_reset_hidden_prev_tmp, batch_hidden_tmp;
   if (is_test) {
     batch_gate = &batch_gate_tmp;
     batch_gate->Resize(input_dims);
@@ -75,7 +74,7 @@ void GRUKernel(const Context &dev_ctx,
   gru_value.gate_weight = const_cast<T *>(weight_data);
   gru_value.state_weight =
       const_cast<T *>(weight_data + 2 * frame_size * frame_size);
-  phi::DenseTensor ordered_h0;
+  DenseTensor ordered_h0;
 
   phi::Vector<size_t> order(batch_gate->lod()[2]);
 
@@ -97,10 +96,10 @@ void GRUKernel(const Context &dev_ctx,
     int bend = static_cast<int>(batch_starts[n + 1]);
     int cur_batch_size = bend - bstart;
 
-    phi::DenseTensor gate_t = batch_gate->Slice(bstart, bend);
-    phi::DenseTensor reset_hidden_prev_t =
+    DenseTensor gate_t = batch_gate->Slice(bstart, bend);
+    DenseTensor reset_hidden_prev_t =
         batch_reset_hidden_prev->Slice(bstart, bend);
-    phi::DenseTensor hidden_t = batch_hidden->Slice(bstart, bend);
+    DenseTensor hidden_t = batch_hidden->Slice(bstart, bend);
     gru_value.output_value = hidden_t.data<T>();
     gru_value.gate_value = gate_t.data<T>();
     gru_value.reset_output_value = reset_hidden_prev_t.data<T>();

@@ -222,7 +222,7 @@ void CrossEntropyWithSoftmaxBwdWithDowncastGPUKernel(
     DenseTensor* logits_grad) {
   PADDLE_ENFORCE_EQ(
       dev_ctx.GetPlace().GetType(),
-      phi::AllocationType::GPU,
+      AllocationType::GPU,
       common::errors::Unavailable("softmax_with_cross_entropy operator's "
                                   "CUDA kernel only runs on GPU device."));
 

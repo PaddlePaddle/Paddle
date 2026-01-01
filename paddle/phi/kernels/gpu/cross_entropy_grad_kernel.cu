@@ -147,7 +147,7 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
                                           DenseTensor* logits_grad) {
   PADDLE_ENFORCE_EQ(
       dev_ctx.GetPlace().GetType(),
-      phi::AllocationType::GPU,
+      AllocationType::GPU,
       common::errors::Unavailable("softmax_with_cross_entropy operator's "
                                   "CUDA kernel only runs on GPU device."));
   const T* loss_grad_data = loss_grad.data<T>();
@@ -156,7 +156,7 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
   T* logit_grad_data = nullptr;
   bool copy_flag = (logit_grad != &softmax && (!use_softmax || soft_label));
   if (copy_flag) {
-    phi::Copy(dev_ctx, softmax, dev_ctx.GetPlace(), false, logit_grad);
+    Copy(dev_ctx, softmax, dev_ctx.GetPlace(), false, logit_grad);
     logit_grad_data = logit_grad->data<T>();
   } else {
     logit_grad_data = dev_ctx.template Alloc<T>(logit_grad);

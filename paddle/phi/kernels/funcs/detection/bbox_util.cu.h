@@ -47,11 +47,11 @@ struct RangeInitFunctor {
 
 template <typename T>
 static void SortDescending(const phi::GPUContext &dev_ctx,
-                           const phi::DenseTensor &value,
-                           phi::DenseTensor *value_out,
-                           phi::DenseTensor *index_out) {
+                           const DenseTensor &value,
+                           DenseTensor *value_out,
+                           DenseTensor *index_out) {
   int num = static_cast<int>(value.numel());
-  phi::DenseTensor index_in_t;
+  DenseTensor index_in_t;
   index_in_t.Resize({num});
   int *idx_in = dev_ctx.Alloc<int>(&index_in_t);
   ForRange<phi::GPUContext> for_range(dev_ctx, num);
@@ -290,10 +290,10 @@ static __global__ void NMSKernel(const int n_boxes,
 
 template <typename T>
 static void NMS(const phi::GPUContext &dev_ctx,
-                const phi::DenseTensor &proposals,
-                const phi::DenseTensor &sorted_indices,
+                const DenseTensor &proposals,
+                const DenseTensor &sorted_indices,
                 const T nms_threshold,
-                phi::DenseTensor *keep_out,
+                DenseTensor *keep_out,
                 bool pixel_offset = true) {
   // TODO(large-tensor): downstream functors may still use int
   int64_t boxes_num = proposals.dims()[0];

@@ -85,7 +85,7 @@ class TestRmsNormFusePattern(PassTest):
                                     "pd_op.scale": 0,
                                     "pd_op.rsqrt": 0,
                                     "pd_op.multiply": 0,
-                                    "pd_op.rms_norm": 1,
+                                    "pd_op.fused_rms_norm_quant": 1,
                                 }
 
                                 yield [main_prog, start_prog], False
@@ -170,7 +170,7 @@ class TestRmsNormFusePattern_FP16(TestRmsNormFusePattern):
                                     "pd_op.scale": 0,
                                     "pd_op.rsqrt": 0,
                                     "pd_op.multiply": 0,
-                                    "pd_op.rms_norm": 1,
+                                    "pd_op.fused_rms_norm_quant": 1,
                                 }
 
                                 yield [main_prog, start_prog], False
@@ -264,7 +264,7 @@ class TestAddRmsNormFusePatternWithResidual(TestRmsNormFusePattern):
                                     "pd_op.scale": 0,
                                     "pd_op.rsqrt": 0,
                                     "pd_op.multiply": 0,
-                                    "pd_op.rms_norm": 1,
+                                    "pd_op.fused_rms_norm_quant": 1,
                                 }
 
                                 yield [main_prog, start_prog], False

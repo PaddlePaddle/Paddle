@@ -86,6 +86,10 @@ GradNodeBase::MutableOutputMeta() {
   return bwd_out_meta_;
 }
 
+paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+GradNodeBase::MutableInputMeta() {
+  return bwd_in_meta_;
+}
 void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
                                  size_t slot_rank) {
   VLOG(7) << "Set GradSlotMeta for Grad Inputs";

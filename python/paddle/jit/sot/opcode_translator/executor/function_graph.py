@@ -393,10 +393,18 @@ class FunctionGraph:
         restore_instr_names = [
             instr.opname for instr in restore_instrs[:current_idx]
         ]
-        # NOTE(SigureMo): Trailing KW_NAMES is no need to restore in Python 3.11+
-        if restore_instr_names[-1:] == ["KW_NAMES"]:
-            restore_instrs = restore_instrs[:-1]
-            restore_instr_names = restore_instr_names[:-1]
+        # NOTE(SigureMo): Some trailing instructions are no need to restore
+        need_trim_opcode_sequences = [
+            ["KW_NAMES"],  # Python 3.11
+            ["TO_BOOL"],  # Python 3.13+
+        ]
+        for seq in need_trim_opcode_sequences:
+            seq_len = len(seq)
+            if len(restore_instrs) < seq_len:
+                continue
+            if restore_instr_names[-seq_len:] == seq:
+                restore_instrs = restore_instrs[:-seq_len]
+                restore_instr_names = restore_instr_names[:-seq_len]
 
         self.pycode_gen.extend_instrs(restore_instrs)
         nop = self.pycode_gen.add_instr("NOP")

@@ -32,7 +32,7 @@ void PutAlongAxisKernel(const Context& dev_ctx,
                         const std::string& reduce,
                         bool include_self,
                         DenseTensor* out) {
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   const auto& index_type = index.dtype();
   if (reduce == "add") {
     if (index_type == DataType::INT32) {

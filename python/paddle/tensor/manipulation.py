@@ -250,6 +250,10 @@ def cast(x: Tensor, dtype: DTypeLike) -> Tensor:
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dynamic_or_pir_mode():
+        if hasattr(x, 'dtype') and x.dtype == dtype:
+            if not getattr(x, 'is_leaf', False):
+                return x
+
         return _C_ops.cast(x, dtype)
     else:
         check_variable_and_dtype(
@@ -2127,6 +2131,7 @@ def ravel(input: Tensor) -> Tensor:
         For example:
 
         .. code-block:: text
+
             Case 1:
               Given
                 X.shape = (3, 100, 100, 4)
@@ -3672,6 +3677,7 @@ def unique(
     return_counts: Literal[True] = ...,
     axis: int | None = ...,
     dtype: DTypeLike = ...,
+    sorted: bool = ...,
     name: str | None = ...,
 ) -> tuple[Tensor, Tensor, Tensor, Tensor]: ...
 
@@ -3684,6 +3690,7 @@ def unique(
     return_counts: Literal[True] = ...,
     axis: int | None = ...,
     dtype: DTypeLike = ...,
+    sorted: bool = ...,
     name: str | None = ...,
 ) -> tuple[Tensor, Tensor, Tensor]: ...
 
@@ -3696,6 +3703,7 @@ def unique(
     return_counts: Literal[True] = ...,
     axis: int | None = ...,
     dtype: DTypeLike = ...,
+    sorted: bool = ...,
     name: str | None = ...,
 ) -> tuple[Tensor, Tensor, Tensor]: ...
 
@@ -3708,6 +3716,7 @@ def unique(
     return_counts: Literal[False] = ...,
     axis: int | None = ...,
     dtype: DTypeLike = ...,
+    sorted: bool = ...,
     name: str | None = ...,
 ) -> tuple[Tensor, Tensor, Tensor]: ...
 
@@ -3720,6 +3729,7 @@ def unique(
     return_counts: Literal[True] = ...,
     axis: int | None = ...,
     dtype: DTypeLike = ...,
+    sorted: bool = ...,
     name: str | None = ...,
 ) -> tuple[Tensor, Tensor]: ...
 
@@ -3732,6 +3742,7 @@ def unique(
     return_counts: Literal[False] = ...,
     axis: int | None = ...,
     dtype: DTypeLike = ...,
+    sorted: bool = ...,
     name: str | None = ...,
 ) -> tuple[Tensor, Tensor]: ...
 
@@ -3744,6 +3755,7 @@ def unique(
     return_counts: Literal[False] = ...,
     axis: int | None = ...,
     dtype: DTypeLike = ...,
+    sorted: bool = ...,
     name: str | None = ...,
 ) -> tuple[Tensor, Tensor]: ...
 
@@ -3756,6 +3768,7 @@ def unique(
     return_counts: Literal[False] = ...,
     axis: int | None = ...,
     dtype: DTypeLike = ...,
+    sorted: bool = ...,
     name: str | None = ...,
 ) -> Tensor: ...
 
@@ -3768,6 +3781,7 @@ def unique(
     return_counts: bool = False,
     axis: int | None = ...,
     dtype: DTypeLike = ...,
+    sorted: bool = ...,
     name: str | None = ...,
 ) -> Tensor | tuple[Tensor, ...]: ...
 
@@ -3779,6 +3793,7 @@ def unique(
     return_counts=False,
     axis=None,
     dtype="int64",
+    sorted=True,
     name=None,
 ):
     r"""
@@ -3795,6 +3810,7 @@ def unique(
             Default: None.
         dtype(str|paddle.dtype|np.dtype, optional): The date type of `indices` or `inverse` tensor: int32 or int64.
             Default: int64.
+        sorted(bool, optional): Does not affect the return result, same as PyTorch.
         name(str|None, optional): Name for the operation. For more information, please refer to
             :ref:`api_guide_Name`. Default: None.
 
