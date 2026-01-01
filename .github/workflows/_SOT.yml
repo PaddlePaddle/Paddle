@@ -146,7 +146,7 @@ jobs:
         if: ${{ env.determine_excode == 0 }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          ccache -c --progress
+          ccache -c --trim-max-size 20GiB
           ccache -s
           '
 
