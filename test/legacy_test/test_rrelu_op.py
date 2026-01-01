@@ -527,6 +527,7 @@ class TestRRELUOpClass_Inplace(unittest.TestCase):
             y_test1 = y_var1.numpy()
 
             func = paddle.nn.RReLU(lower_0, upper_0, True)
+            func.training = False
             y_var2 = func(x_var2)
             y_test2 = y_var2.numpy()
 
@@ -555,6 +556,7 @@ class TestRRELUOpClass_Inplace(unittest.TestCase):
             y_test1 = y_var1.numpy()
 
             func = paddle.nn.RReLU(lower_1, upper_1, True)
+            func.training = False
             y_var2 = func(x_var2)
             y_test2 = y_var2.numpy()
 
@@ -590,7 +592,13 @@ class TestRRELUAPI(unittest.TestCase):
         def run(place, inplace):
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.shape)
-                out = F.rrelu(x, self.lower_1, self.upper_1, inplace=inplace)
+                out = F.rrelu(
+                    x,
+                    self.lower_1,
+                    self.upper_1,
+                    training=False,
+                    inplace=inplace,
+                )
                 exe = paddle.static.Executor(place)
                 res = exe.run(
                     feed={
@@ -612,7 +620,13 @@ class TestRRELUAPI(unittest.TestCase):
         def run(place, inplace):
             paddle.disable_static(place)
             x_tensor = paddle.to_tensor(self.x_np)
-            out = F.rrelu(x_tensor, self.lower_1, self.upper_1, inplace=inplace)
+            out = F.rrelu(
+                x_tensor,
+                self.lower_1,
+                self.upper_1,
+                training=False,
+                inplace=inplace,
+            )
 
             target = copy.deepcopy(self.x_np)
             out_ref = ref_rrelu(
