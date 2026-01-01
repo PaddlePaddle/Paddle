@@ -177,8 +177,7 @@ void SliceArrayKernel(const Context& dev_ctx,
     const auto& in_tensor = input.at(i + start);
     out_tensor->set_lod(in_tensor.lod());
     if (in_tensor.memory_size() > 0) {
-      phi::Copy<Context>(
-          dev_ctx, in_tensor, dev_ctx.GetPlace(), false, out_tensor);
+      Copy<Context>(dev_ctx, in_tensor, dev_ctx.GetPlace(), false, out_tensor);
     } else {
       VLOG(10) << "WARNING: The input tensor 'x_tensor' holds no memory, so "
                   "nothing has been written to output array["
@@ -196,7 +195,7 @@ void SliceArrayDenseKernel(const Context& dev_ctx,
   int64_t start = starts[0] < 0 ? (starts[0] + in_size) : starts[0];
   start = std::max(start, static_cast<int64_t>(0));
 
-  phi::Copy<Context>(dev_ctx, input[start], dev_ctx.GetPlace(), false, out);
+  Copy<Context>(dev_ctx, input[start], dev_ctx.GetPlace(), false, out);
 }
 
 }  // namespace phi

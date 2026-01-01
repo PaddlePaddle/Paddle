@@ -150,5 +150,121 @@ class TestInterpolateParam(unittest.TestCase):
             )
 
 
+class TestInterpolateAntialias(unittest.TestCase):
+    def setUp(self):
+        self.input_shape = (1, 1, 8, 8)
+        self.input_data = paddle.arange(64, dtype="float32").reshape(
+            self.input_shape
+        )
+        # A pattern that has high frequency components
+        self.input_data[0, 0, ::2, ::2] = 100.0
+
+    def test_bilinear_antialias(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        # Downsample by 0.5
+        scale = 0.5
+        out_aa = paddle.nn.functional.interpolate(
+            self.input_data,
+            scale_factor=scale,
+            mode='bilinear',
+            align_corners=False,
+            antialias=True,
+        )
+
+        # Compare with CPU non-antialias result (since GPU non-antialias might crash)
+        x_cpu = self.input_data.cpu()
+        out_no_aa_cpu = paddle.nn.functional.interpolate(
+            x_cpu,
+            scale_factor=scale,
+            mode='bilinear',
+            align_corners=False,
+            antialias=False,
+        )
+
+        # Results should be different
+        self.assertFalse(
+            np.allclose(out_no_aa_cpu.numpy(), out_aa.cpu().numpy()),
+            "Bilinear: Antialias=True should differ from False",
+        )
+
+    def test_bicubic_antialias(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        # Downsample by 0.5
+        scale = 0.5
+        out_aa = paddle.nn.functional.interpolate(
+            self.input_data,
+            scale_factor=scale,
+            mode='bicubic',
+            align_corners=False,
+            antialias=True,
+        )
+
+        x_cpu = self.input_data.cpu()
+        out_no_aa_cpu = paddle.nn.functional.interpolate(
+            x_cpu,
+            scale_factor=scale,
+            mode='bicubic',
+            align_corners=False,
+            antialias=False,
+        )
+
+        # Results should be different
+        self.assertFalse(
+            np.allclose(out_no_aa_cpu.numpy(), out_aa.cpu().numpy()),
+            "Bicubic: Antialias=True should differ from False",
+        )
+
+    def test_error_on_other_modes(self):
+        with self.assertRaises(ValueError):
+            paddle.nn.functional.interpolate(
+                self.input_data,
+                scale_factor=0.5,
+                mode='nearest',
+                antialias=True,
+            )
+
+        with self.assertRaises(ValueError):
+            paddle.nn.functional.interpolate(
+                self.input_data, scale_factor=0.5, mode='linear', antialias=True
+            )
+
+    def test_bilinear_antialias_grad(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        x = paddle.to_tensor(self.input_data, stop_gradient=False)
+        scale = 0.5
+        out = paddle.nn.functional.interpolate(
+            x,
+            scale_factor=scale,
+            mode='bilinear',
+            align_corners=False,
+            antialias=True,
+        )
+        loss = out.mean()
+        loss.backward()
+        self.assertIsNotNone(x.grad)
+        # Check if grad is not all zeros (it shouldn't be)
+        self.assertTrue(np.any(x.grad.numpy() != 0))
+
+    def test_bicubic_antialias_grad(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        x = paddle.to_tensor(self.input_data, stop_gradient=False)
+        scale = 0.5
+        out = paddle.nn.functional.interpolate(
+            x,
+            scale_factor=scale,
+            mode='bicubic',
+            align_corners=False,
+            antialias=True,
+        )
+        loss = out.mean()
+        loss.backward()
+        self.assertIsNotNone(x.grad)
+        self.assertTrue(np.any(x.grad.numpy() != 0))
+
+
 if __name__ == '__main__':
     unittest.main()

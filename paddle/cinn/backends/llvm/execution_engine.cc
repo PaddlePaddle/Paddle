@@ -287,6 +287,7 @@ bool ExecutionEngine::compileLLVMIR(llvm::Module *module,
 bool ExecutionEngine::linkSharedLibrary(
     const std::string output_path,
     const std::vector<std::string> &cinn_runtime_include_path) {
+#ifdef CINN_WITH_CUDA
   llvm::sys::fs::create_directories(output_path);
 
   std::string output_so = output_path + "/" + CINN_CACHE_SO;
@@ -309,6 +310,9 @@ bool ExecutionEngine::linkSharedLibrary(
     return false;
   }
   return true;
+#else
+  CINN_NOT_IMPLEMENTED;
+#endif
 }
 
 bool ExecutionEngine::AddModule(

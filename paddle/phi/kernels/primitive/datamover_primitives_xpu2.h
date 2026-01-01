@@ -78,11 +78,11 @@ struct alignas(sizeof(T) * VecSize) VectorType {
  */
 #pragma pack(4)
 struct BroadcastConfig {
-  int strides_in[phi::DDim::kMaxRank];
-  int strides_out[phi::DDim::kMaxRank];
-  int in_dim[phi::DDim::kMaxRank];
-  int dim_after_cmp[phi::DDim::kMaxRank];
-  int y_dim_after_cmp[phi::DDim::kMaxRank];
+  int strides_in[DDim::kMaxRank];
+  int strides_out[DDim::kMaxRank];
+  int in_dim[DDim::kMaxRank];
+  int dim_after_cmp[DDim::kMaxRank];
+  int y_dim_after_cmp[DDim::kMaxRank];
   int dim_size_after_cmp = 0;
   int cmp_res = 0;
   OptType cmp_type = OptType::CanNotOptimize;

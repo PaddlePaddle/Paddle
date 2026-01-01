@@ -63,7 +63,7 @@ static int ConvertDataByType(const T1* x,
 }
 
 template <typename Context, typename T>
-static void GetDataPointer(const phi::DenseTensor& tensorData,
+static void GetDataPointer(const DenseTensor& tensorData,
                            T** result,
                            const Context& dev_ctx,
                            xpu::ctx_guard* ctx_guard) {
@@ -91,7 +91,7 @@ static void GetOutDataPointer(DenseTensor* tensorData,
 
 template <typename Context, typename T>
 static void CopyOutData(const DenseTensor& srcTensor,
-                        phi::DenseTensor* dstTensor,
+                        DenseTensor* dstTensor,
                         const Context& dev_ctx,
                         xpu::ctx_guard* ctx_guard) {
   if (dstTensor->dtype() == DataType::FLOAT16) {
@@ -106,8 +106,8 @@ static void CopyOutData(const DenseTensor& srcTensor,
 }
 
 template <typename Context, typename T>
-static void SetBetaData(const phi::DenseTensor& beta_pow,
-                        phi::DenseTensor* beta_pow_out,
+static void SetBetaData(const DenseTensor& beta_pow,
+                        DenseTensor* beta_pow_out,
                         const T& beta,
                         const Context& dev_ctx) {
   if (beta_pow.dtype() == DataType::FLOAT16) {
@@ -121,8 +121,8 @@ static void SetBetaData(const phi::DenseTensor& beta_pow,
 }
 
 template <typename Context, typename T>
-static void Scale(phi::DenseTensor* beta_pow_out,
-                  const phi::DenseTensor& beta_pow,
+static void Scale(DenseTensor* beta_pow_out,
+                  const DenseTensor& beta_pow,
                   T* beta_pow_ptr,
                   const T& beta,
                   const Context& dev_ctx,
@@ -130,8 +130,8 @@ static void Scale(phi::DenseTensor* beta_pow_out,
   float16* beta_pow_out_p2 = dev_ctx.template Alloc<float16>(beta_pow_out);
 
   DenseTensor xpu_beta_pow_out;
-  const phi::DenseTensorMeta meta_beta_pow_out(DataType::FLOAT32,
-                                               beta_pow_out->dims());
+  const DenseTensorMeta meta_beta_pow_out(DataType::FLOAT32,
+                                          beta_pow_out->dims());
   xpu_beta_pow_out.set_meta(meta_beta_pow_out);
 
   T* beta_pow_out_ptr = dev_ctx.template Alloc<T>(&xpu_beta_pow_out);

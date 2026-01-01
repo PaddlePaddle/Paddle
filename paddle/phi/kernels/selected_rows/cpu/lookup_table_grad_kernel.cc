@@ -26,7 +26,6 @@
 
 namespace phi {
 namespace sr {
-using DDim = phi::DDim;
 
 constexpr int64_t kNoPadding = -1;
 

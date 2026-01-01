@@ -42,17 +42,17 @@ void CSoftmaxWithEntropyKernel(const Context& dev_ctx,
                         "XCCLCommContext is nullptr, collective op should "
                         "has ring_id attr."));
 
-  const phi::DenseTensor* logits = &logits_in;
-  const phi::DenseTensor* labels = &label_in;
+  const DenseTensor* logits = &logits_in;
+  const DenseTensor* labels = &label_in;
   auto softmax_dims = softmax->dims();
   auto loss_dims = loss->dims();
 
   const int axis = logits->dims().size() - 1;
-  const int N = phi::funcs::SizeToAxis(axis, logits->dims());
-  const int D = phi::funcs::SizeFromAxis(axis, logits->dims());
+  const int N = funcs::SizeToAxis(axis, logits->dims());
+  const int D = funcs::SizeFromAxis(axis, logits->dims());
 
-  auto logits_2d = std::make_shared<phi::DenseTensor>();
-  auto labels_1d = std::make_shared<phi::DenseTensor>();
+  auto logits_2d = std::make_shared<DenseTensor>();
+  auto labels_1d = std::make_shared<DenseTensor>();
   logits_2d->ShareDataWith(*logits).Resize({N, D});
   labels_1d->ShareDataWith(*labels).Resize({N});
   paddle::Tensor logits_2d_tensor(logits_2d), labels_1d_tensor(labels_1d);
@@ -60,7 +60,7 @@ void CSoftmaxWithEntropyKernel(const Context& dev_ctx,
   // step 1, obtain logit_max
   auto logits_2d_max_tensor = logits_2d_tensor.max({1}, true);
   auto logits_2d_max =
-      reinterpret_cast<phi::DenseTensor*>(logits_2d_max_tensor.impl().get());
+      reinterpret_cast<DenseTensor*>(logits_2d_max_tensor.impl().get());
   auto& stream = *dev_ctx.GetStream();
   phi::DeviceManager::CCLAllReduce(dev_ctx.GetPlace().GetDeviceType(),
                                    logits_2d_max->data<float>(),
@@ -104,7 +104,7 @@ void CSoftmaxWithEntropyKernel(const Context& dev_ctx,
                                                logits_2d_sub_max.dtype()));
 
   auto predicted_logits =
-      reinterpret_cast<phi::DenseTensor*>(predicted_logits_tensor.impl().get());
+      reinterpret_cast<DenseTensor*>(predicted_logits_tensor.impl().get());
   phi::DeviceManager::CCLAllReduce(dev_ctx.GetPlace().GetDeviceType(),
                                    predicted_logits->data<float>(),
                                    predicted_logits->data<float>(),
@@ -122,7 +122,7 @@ void CSoftmaxWithEntropyKernel(const Context& dev_ctx,
       softmax_2d_tensor.sum({1}, softmax_2d_tensor.dtype(), false);
 
   auto sum_exp_logits =
-      reinterpret_cast<phi::DenseTensor*>(sum_exp_logits_tensor.impl().get());
+      reinterpret_cast<DenseTensor*>(sum_exp_logits_tensor.impl().get());
   phi::DeviceManager::CCLAllReduce(dev_ctx.GetPlace().GetDeviceType(),
                                    sum_exp_logits->data<float>(),
                                    sum_exp_logits->data<float>(),
@@ -144,11 +144,9 @@ void CSoftmaxWithEntropyKernel(const Context& dev_ctx,
           .multiply(paddle::experimental::cast(labels_1d_not_equal_ignore,
                                                sum_exp_logits_tensor.dtype()));
   softmax
-      ->ShareDataWith(
-          *reinterpret_cast<phi::DenseTensor*>(softmax_out.impl().get()))
+      ->ShareDataWith(*reinterpret_cast<DenseTensor*>(softmax_out.impl().get()))
       .Resize(softmax_dims);
-  loss->ShareDataWith(
-          *reinterpret_cast<phi::DenseTensor*>(loss_out.impl().get()))
+  loss->ShareDataWith(*reinterpret_cast<DenseTensor*>(loss_out.impl().get()))
       .Resize(loss_dims);
 }
 }  // namespace phi

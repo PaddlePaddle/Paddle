@@ -394,17 +394,17 @@ static GPU(blasLtEpilogue_t)
 
 template <typename T>
 void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
-                                     const phi::DenseTensor* x,
-                                     const phi::DenseTensor* y,
-                                     const phi::DenseTensor* bias,
+                                     const DenseTensor* x,
+                                     const DenseTensor* y,
+                                     const DenseTensor* bias,
                                      int64_t M,
                                      int64_t N,
                                      int64_t K,
                                      bool trans_x,
                                      bool trans_y,
                                      const std::string& activation,
-                                     phi::DenseTensor* out,
-                                     phi::DenseTensor* reserve_space) {
+                                     DenseTensor* out,
+                                     DenseTensor* reserve_space) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   VLOG(6) << "x.shape={" << x->dims() << "}, y.shape={" << y->dims()
@@ -587,7 +587,7 @@ struct BwdFusedEpilogueSetter {
 
   template <typename DYT, bool TransY>
   static funcs::MatmulFusedType SetForDy(const phi::GPUContext& dev_ctx,
-                                         phi::DenseTensor* dbias) {
+                                         DenseTensor* dbias) {
     if (dbias != nullptr) {
       dev_ctx.Alloc<DYT>(dbias, dbias->numel() * sizeof(DYT));
       return TransY ? kMatmulBiasGradToB : kMatmulBiasGradToA;
@@ -599,17 +599,17 @@ struct BwdFusedEpilogueSetter {
 
 template <typename T, typename DXT, typename DYT, bool TransX, bool TransY>
 void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
-                                          const phi::DenseTensor* dout,
-                                          const phi::DenseTensor* x,
-                                          const phi::DenseTensor* y,
-                                          const phi::DenseTensor* reserve_space,
+                                          const DenseTensor* dout,
+                                          const DenseTensor* x,
+                                          const DenseTensor* y,
+                                          const DenseTensor* reserve_space,
                                           int64_t M,
                                           int64_t N,
                                           int64_t K,
                                           const std::string activation_grad,
-                                          phi::DenseTensor* dx,
-                                          phi::DenseTensor* dy,
-                                          phi::DenseTensor* dbias,
+                                          DenseTensor* dx,
+                                          DenseTensor* dy,
+                                          DenseTensor* dbias,
                                           bool use_addto_dx,
                                           bool use_addto_dy) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
@@ -695,21 +695,20 @@ static GPU(blasLtEpilogue_t)
 }
 
 template <typename T, typename DXT, typename DYT, bool TransX, bool TransY>
-void ComputeFusedGemmEpilogueBackwardImplDev(
-    const phi::GPUContext& dev_ctx,
-    const phi::DenseTensor* dout,
-    const phi::DenseTensor* x,
-    const phi::DenseTensor* y,
-    const phi::DenseTensor* reserve_space,
-    int64_t M,
-    int64_t N,
-    int64_t K,
-    const std::string activation_grad,
-    phi::DenseTensor* dx,
-    phi::DenseTensor* dy,
-    phi::DenseTensor* dbias,
-    bool use_addto_dx,
-    bool use_addto_dy) {
+void ComputeFusedGemmEpilogueBackwardImplDev(const phi::GPUContext& dev_ctx,
+                                             const DenseTensor* dout,
+                                             const DenseTensor* x,
+                                             const DenseTensor* y,
+                                             const DenseTensor* reserve_space,
+                                             int64_t M,
+                                             int64_t N,
+                                             int64_t K,
+                                             const std::string activation_grad,
+                                             DenseTensor* dx,
+                                             DenseTensor* dy,
+                                             DenseTensor* dbias,
+                                             bool use_addto_dx,
+                                             bool use_addto_dy) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   constexpr bool kIsValidDataType =
       (std::is_same<DXT, T>::value || std::is_same<DXT, MT>::value) &&
@@ -1023,19 +1022,19 @@ void ComputeFusedGemmEpilogueBackwardImplDev(
 
 template <typename T, typename DXT = T, typename DYT = T>
 void ComputeFusedGemmEpilogueBackward(const phi::GPUContext& dev_ctx,
-                                      const phi::DenseTensor* dout,
-                                      const phi::DenseTensor* x,
-                                      const phi::DenseTensor* y,
-                                      const phi::DenseTensor* reserve_space,
+                                      const DenseTensor* dout,
+                                      const DenseTensor* x,
+                                      const DenseTensor* y,
+                                      const DenseTensor* reserve_space,
                                       int64_t M,
                                       int64_t N,
                                       int64_t K,
                                       bool trans_x,
                                       bool trans_y,
                                       const std::string& activation_grad,
-                                      phi::DenseTensor* dx,
-                                      phi::DenseTensor* dy,
-                                      phi::DenseTensor* dbias,
+                                      DenseTensor* dx,
+                                      DenseTensor* dy,
+                                      DenseTensor* dbias,
                                       bool use_addto_dx = false,
                                       bool use_addto_dy = false) {
   VLOG(10) << "M=" << M << ", K=" << K << ", N=" << N << ", trans_x=" << trans_x

@@ -175,7 +175,7 @@ void exec_fft(const phi::XPUContext& dev_ctx,
 
   // resize for the collapsed output
   collapsed_output.Resize(transposed_output_shape);
-  phi::DenseTensor& transposed_output = collapsed_output;
+  DenseTensor& transposed_output = collapsed_output;
 
   // reverse the transposition
   std::vector<int> reverse_dim_permute(ndim);

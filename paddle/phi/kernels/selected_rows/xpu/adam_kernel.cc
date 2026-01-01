@@ -143,21 +143,21 @@ void AdamDenseParamSparseGradKernel(
 
   DenseTensor xpu_param_out;
   float* param_out_ptr = nullptr;
-  const phi::DenseTensorMeta meta_param(DataType::FLOAT32, param_out->dims());
+  const DenseTensorMeta meta_param(DataType::FLOAT32, param_out->dims());
   xpu_param_out.set_meta(meta_param);
   funcs::GetOutDataPointer<Context, float>(
       param_out, &xpu_param_out, &param_out_ptr, dev_ctx);
 
   DenseTensor xpu_mom1_out;
   float* mom1_out_ptr = nullptr;
-  const phi::DenseTensorMeta meta_mom1(DataType::FLOAT32, moment1_out->dims());
+  const DenseTensorMeta meta_mom1(DataType::FLOAT32, moment1_out->dims());
   xpu_mom1_out.set_meta(meta_mom1);
   funcs::GetOutDataPointer<Context, float>(
       moment1_out, &xpu_mom1_out, &mom1_out_ptr, dev_ctx);
 
   DenseTensor xpu_mom2_out;
   float* mom2_out_ptr = nullptr;
-  const phi::DenseTensorMeta meta_mom2(DataType::FLOAT32, moment2_out->dims());
+  const DenseTensorMeta meta_mom2(DataType::FLOAT32, moment2_out->dims());
   xpu_mom2_out.set_meta(meta_mom2);
   funcs::GetOutDataPointer<Context, float>(
       moment2_out, &xpu_mom2_out, &mom2_out_ptr, dev_ctx);
@@ -228,7 +228,7 @@ void AdamDenseParamSparseGradKernel(
   if (is_strict_sorted) {
     grad_merge_ptr = &grad;
   } else {
-    phi::funcs::scatter::MergeAdd<Context, float> merge_func;
+    funcs::scatter::MergeAdd<Context, float> merge_func;
     merge_func(dev_ctx, grad, &tmp_grad_merge, true);
 
     xpu_wait(dev_ctx.x_context()->xpu_stream);

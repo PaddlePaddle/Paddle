@@ -34,7 +34,7 @@ void AffineGridCudnnKernel(const Context& dev_ctx,
                            bool align_corners,
                            DenseTensor* output) {
   PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
+      dev_ctx.GetPlace().GetType() == AllocationType::GPU,
       true,
       common::errors::InvalidArgument(
           "Only support for CUDAPlace.Please switch your context from "

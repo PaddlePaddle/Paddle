@@ -90,11 +90,11 @@ template <class DeviceContext, class T>
 class Im2ColFunctor<funcs::ColFormat::kCFO, DeviceContext, T> {
  public:
   void operator()(const DeviceContext& dev_ctx,
-                  const phi::DenseTensor& im,
+                  const DenseTensor& im,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
-                  phi::DenseTensor* col,
+                  DenseTensor* col,
                   const DataLayout data_layout) {
     PADDLE_ENFORCE_EQ(im.dims().size(),
                       3,
@@ -236,11 +236,11 @@ template <class DeviceContext, class T>
 class Col2ImFunctor<funcs::ColFormat::kCFO, DeviceContext, T> {
  public:
   void operator()(const DeviceContext& dev_ctx,
-                  const phi::DenseTensor& col,
+                  const DenseTensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
-                  phi::DenseTensor* im,
+                  DenseTensor* im,
                   const DataLayout data_layout) {
     PADDLE_ENFORCE_EQ(im->dims().size(),
                       3,
@@ -397,11 +397,11 @@ template <class DeviceContext, class T>
 class Im2ColFunctor<funcs::ColFormat::kOCF, DeviceContext, T> {
  public:
   void operator()(const DeviceContext& dev_ctx,
-                  const phi::DenseTensor& im,
+                  const DenseTensor& im,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
-                  phi::DenseTensor* col,
+                  DenseTensor* col,
                   const DataLayout data_layout) {
     PADDLE_ENFORCE_EQ(im.dims().size(),
                       3,
@@ -509,11 +509,11 @@ template <class DeviceContext, class T>
 class Col2ImFunctor<funcs::ColFormat::kOCF, DeviceContext, T> {
  public:
   void operator()(const DeviceContext& dev_ctx,
-                  const phi::DenseTensor& col,
+                  const DenseTensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
-                  phi::DenseTensor* im,
+                  DenseTensor* im,
                   const DataLayout data_layout) {
     PADDLE_ENFORCE_EQ(im->dims().size(),
                       3,

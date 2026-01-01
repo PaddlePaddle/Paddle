@@ -92,7 +92,7 @@ void SetValueCompute(const Context& dev_ctx,
   // be two ops points to the output in graph: op1 -> output <- set_value.
   // In this case, we have to find a way to handle the running order of
   // set_value is what we want.
-  phi::Copy(dev_ctx, *in, place, false, out);
+  Copy(dev_ctx, *in, place, false, out);
 
   DenseTensor slice_tensor(dtype), pad_tensor(dtype);
   slice_tensor.Resize(slice_dims);
@@ -444,7 +444,7 @@ void LU_Unpack(const Context& dev_ctx,
   arange<Context>(dev_ctx, &rowtensor, dim, batchsize, H);
   auto idtptr = rowtensor.data<int32_t>();
   if (phi::AllocationType::GPU == dev_ctx.GetPlace().GetType()) {
-    phi::Copy(dev_ctx, rowtensor, dev_ctx.GetPlace(), false, &rt_dev);
+    Copy(dev_ctx, rowtensor, dev_ctx.GetPlace(), false, &rt_dev);
     idtptr = rt_dev.data<int32_t>();
   }
 
@@ -459,7 +459,7 @@ void scatterpivot(
   DenseTensor idlst_tmp;
   idlst_tmp.Resize(idlst->dims());
   dev_ctx.template Alloc<int32_t>(&idlst_tmp);
-  phi::Copy(dev_ctx, *idlst, dev_ctx.GetPlace(), false, &idlst_tmp);
+  Copy(dev_ctx, *idlst, dev_ctx.GetPlace(), false, &idlst_tmp);
   auto idtptr = idlst_tmp.data<int32_t>();
 
   funcs::ForRange<Context> for_range(dev_ctx, idlst_tmp.numel());
@@ -479,7 +479,7 @@ void Unpack_Pivot(const Context& dev_ctx,
   auto Pnum = dims[prank - 1];
   DenseTensor Pivot_cpu;
   phi::CPUPlace cpu;
-  phi::Copy(dev_ctx, Pivot, cpu, false, &Pivot_cpu);
+  Copy(dev_ctx, Pivot, cpu, false, &Pivot_cpu);
   auto pdataptr = Pivot_cpu.data<int32_t>();
   Pdimvec[prank - 1] = h;
   Pdimvec.emplace_back(h);

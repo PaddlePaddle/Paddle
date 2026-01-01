@@ -24,7 +24,8 @@
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 namespace xfft_internal::xpu {
-int RemainderFunctor(int N, float2* input_x, float2* input_y, float2* output);
+template <typename T>  // T supports float2, double2
+int RemainderFunctor(int N, const T* input_x, const T* input_y, T* output);
 }
 #endif
 
@@ -101,7 +102,7 @@ void RemainderKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
   }
   const auto& x_dims = x.dims();
   const auto& y_dims = y.dims();
-  auto out_dims = phi::funcs::BroadcastTwoDims(x_dims, y_dims);
+  auto out_dims = funcs::BroadcastTwoDims(x_dims, y_dims);
   std::vector<int64_t> out_dims_vec = phi::vectorize(out_dims);
 
   auto complex_expand = [](const XPUContext& dev_ctx,

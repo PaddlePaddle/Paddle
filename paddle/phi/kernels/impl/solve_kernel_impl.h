@@ -125,13 +125,13 @@ static void linalg_solve(const Context& dev_ctx,
     tmp_y.Resize(y.dims());
     dev_ctx.Alloc(&tmp_y, y.dtype());
 
-    phi::Copy(dev_ctx, y, dev_ctx.GetPlace(), false, &tmp_y);
+    Copy(dev_ctx, y, dev_ctx.GetPlace(), false, &tmp_y);
   }
 
   Tensor tmp_x;
   tmp_x.Resize(x.dims());
   dev_ctx.Alloc(&tmp_x, x.dtype());
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &tmp_x);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &tmp_x);
 
   std::vector<int64_t> x_broadcast_dims;
   std::vector<int64_t> y_broadcast_dims;

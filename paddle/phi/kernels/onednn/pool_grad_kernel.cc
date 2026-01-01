@@ -24,7 +24,7 @@ bool Pool2dGradCheckIfOneDNNSupport(const KernelContext* dev_ctx) {
     return true;
   }
   // oneDNN is supporting only unchangeable in size pool window
-  auto src_tz = common::vectorize(dev_ctx->InputAt<phi::DenseTensor>(0).dims());
+  auto src_tz = common::vectorize(dev_ctx->InputAt<DenseTensor>(0).dims());
   const TensorRef& kernel_size_tmp = dev_ctx->AttrAt<TensorRef>(0);
   IntArray kernel_size_array = IntArray(*kernel_size_tmp.Get());
   std::vector<int64_t> kernel_size = kernel_size_array.GetData();
@@ -92,8 +92,8 @@ phi::KernelKey PoolOpGradGetKernelTypeForVar(
   const DenseTensor& tensor = dev_ctx->GetTensor();
   const KernelKey& expected_kernel_type = dev_ctx->GetKernelKey();
 #ifdef PADDLE_WITH_DNNL
-  if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
-      (tensor.layout() != phi::DataLayout::ONEDNN)) {
+  if ((expected_kernel_type.layout() == DataLayout::ONEDNN) &&
+      (tensor.layout() != DataLayout::ONEDNN)) {
     const AttributeMap& attrs = dev_ctx->GetAttrs();
     auto it = attrs.find("data_format");
     const std::string data_format = PADDLE_GET_CONST(std::string, it->second);

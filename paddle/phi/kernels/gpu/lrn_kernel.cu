@@ -119,9 +119,9 @@ void CrossMapNormal(const phi::GPUContext& dev_ctx,
 template <typename T>
 struct LRNFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
-                  const phi::DenseTensor& input,
-                  phi::DenseTensor* out,
-                  phi::DenseTensor* mid,
+                  const DenseTensor& input,
+                  DenseTensor* out,
+                  DenseTensor* mid,
                   int64_t N,
                   int64_t C,
                   int64_t H,

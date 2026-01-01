@@ -130,7 +130,7 @@ void SvdvalsKernel(const Context& dev_ctx,
   auto* S_out = dev_ctx.template Alloc<phi::dtype::Real<T>>(S);
 
   // Transpose the last two dimensions for LAPACK compatibility
-  DenseTensor trans_x = ::phi::TransposeLast2Dim<T>(dev_ctx, X);
+  DenseTensor trans_x = TransposeLast2Dim<T>(dev_ctx, X);
   auto* x_data = trans_x.data<T>();
   // Perform batch SVD computation for singular values
   BatchSvdvals<T>(x_data, S_out, rows, cols, batches);

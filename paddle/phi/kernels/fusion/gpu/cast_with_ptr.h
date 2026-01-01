@@ -27,7 +27,7 @@ struct CastFunctor {
   HOSTDEVICE OutT operator()(InT x) const { return static_cast<OutT>(x); }
 };
 template <typename InT, typename OutT, int VecSize>
-static void VecCastKernel(const phi::GPUContext &dev_ctx,
+static void VecCastKernel(const GPUContext &dev_ctx,
                           const InT *x,
                           OutT *y,
                           size_t n) {
@@ -47,7 +47,7 @@ static void VecCastKernel(const phi::GPUContext &dev_ctx,
 }
 
 template <typename InT, typename OutT>
-static void LaunchCastKernel(const phi::GPUContext &dev_ctx,
+static void LaunchCastKernel(const GPUContext &dev_ctx,
                              const InT *x,
                              OutT *y,
                              size_t n) {

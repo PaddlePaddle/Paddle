@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+from collections.abc import Callable
 
 import numpy as np
 from dygraph_to_static_utils import (
@@ -57,9 +58,25 @@ def fn_with_numpy_operation(x: Tensor, y: Tensor) -> Tensor:
     return paddle.to_tensor(x_np_reduce + y_np_reduce).cast(paddle.int32)
 
 
+@paddle.static.register_op(
+    name="fn_with_constant",
+    infer_meta=lambda x, c: paddle.static.MetaTensor(
+        dtype=x.dtype, shape=[np.prod(x.shape).item()]
+    ),
+    input_names=["x"],
+    output_names=["out"],
+)
+def fn_with_constant(x: paddle.Tensor, c: int):
+    return paddle.to_tensor(x.flatten() + c)
+
+
 class PythonOpTestMixin:
+    inputs: dict[str, paddle.Tensor]
+    constants: dict[str, object]
+    fn: Callable[..., paddle.Tensor]
+
     def run_in_dygraph(self):
-        return self.fn(**self.inputs)
+        return self.fn(**self.inputs, **self.constants)
 
     @static_guard()
     def run_in_static(self):
@@ -69,7 +86,7 @@ class PythonOpTestMixin:
                 k: paddle.static.data(name=k, shape=v.shape, dtype=v.dtype)
                 for k, v in self.inputs.items()
             }
-            out_value = self.fn(**input_values)
+            out_value = self.fn(**input_values, **self.constants)
             exe = paddle.static.Executor()
         (out,) = exe.run(
             main_program,
@@ -89,6 +106,7 @@ class TestFnWithBreakgraph(unittest.TestCase, PythonOpTestMixin):
             "x": paddle.randn([2, 3, 4]),
             "y": paddle.randn([2, 3, 4]),
         }
+        self.constants = {}
 
 
 class TestFnWithNumPyOperation(unittest.TestCase, PythonOpTestMixin):
@@ -98,6 +116,25 @@ class TestFnWithNumPyOperation(unittest.TestCase, PythonOpTestMixin):
             "x": paddle.randn([7, 8, 9]),
             "y": paddle.randn([7, 8, 9]),
         }
+        self.constants = {}
+
+
+class TestFnWithConstant1(unittest.TestCase, PythonOpTestMixin):
+    def setUp(self):
+        self.fn = fn_with_constant
+        self.inputs = {
+            "x": paddle.randn([4, 5, 6]),
+        }
+        self.constants = {"c": -1}
+
+
+class TestFnWithConstant2(unittest.TestCase, PythonOpTestMixin):
+    def setUp(self):
+        self.fn = fn_with_constant
+        self.inputs = {
+            "x": paddle.randn([4, 5, 6]),
+        }
+        self.constants = {"c": -2}  # Note that hash(-1) == hash(-2)
 
 
 def fn_use_2_register_op(x: Tensor, y: Tensor) -> Tensor:

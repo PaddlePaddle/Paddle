@@ -24,8 +24,8 @@
 namespace phi {
 namespace funcs {
 
-inline std::vector<int64_t> CalculateBroadcastedDims(
-    const phi::DenseTensor* x, const phi::DenseTensor* y) {
+inline std::vector<int64_t> CalculateBroadcastedDims(const DenseTensor* x,
+                                                     const DenseTensor* y) {
   const auto src_tz = common::vectorize(x->dims());
   const auto dst_tz = common::vectorize(y->dims());
 
@@ -47,7 +47,7 @@ inline std::vector<int64_t> CalculateBroadcastedDims(
 }
 
 inline void AddSubNonBroadcast(ReorderOneDNNHandler* reorder_handler,
-                               phi::DenseTensor* grad_tensor,
+                               DenseTensor* grad_tensor,
                                const std::shared_ptr<dnnl::memory>& src_memory,
                                const std::shared_ptr<dnnl::memory>& dst_memory,
                                const dnnl::memory& scales_memory) {
@@ -67,8 +67,8 @@ inline void AddSubNonBroadcast(ReorderOneDNNHandler* reorder_handler,
 template <typename T>
 inline void BroadcastReduction(const Place& place,
                                const dnnl::engine& onednn_engine,
-                               phi::DenseTensor* grad_tensor,
-                               const phi::DenseTensor* dout,
+                               DenseTensor* grad_tensor,
+                               const DenseTensor* dout,
                                const std::shared_ptr<dnnl::memory>& src_memory,
                                std::shared_ptr<dnnl::memory> dst_memory,
                                const std::vector<float>& scales,

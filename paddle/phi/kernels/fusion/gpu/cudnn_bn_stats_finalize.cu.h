@@ -61,7 +61,7 @@ struct BNStatsFinalizeArgs {
 template <typename T>
 class CudnnBNStatsFinalize {
  public:
-  CudnnBNStatsFinalize(const phi::GPUContext &dev_ctx,
+  CudnnBNStatsFinalize(const GPUContext &dev_ctx,
                        const std::vector<int> &param_shape)
       : train_op_(CUDNN_FUSED_BN_FINALIZE_STATISTICS_TRAINING),
         inference_op_(CUDNN_FUSED_BN_FINALIZE_STATISTICS_INFERENCE) {
@@ -69,17 +69,17 @@ class CudnnBNStatsFinalize {
   }
   ~CudnnBNStatsFinalize() {}
 
-  void Forward(const phi::GPUContext &dev_ctx,
-               const phi::DenseTensor &sum,
-               const phi::DenseTensor &sum_of_squares,
-               const phi::DenseTensor &scale,
-               const phi::DenseTensor &bias,
-               phi::DenseTensor *saved_mean,
-               phi::DenseTensor *saved_invstd,
-               phi::DenseTensor *running_mean,
-               phi::DenseTensor *running_var,
-               phi::DenseTensor *equiv_scale,
-               phi::DenseTensor *equiv_bias,
+  void Forward(const GPUContext &dev_ctx,
+               const DenseTensor &sum,
+               const DenseTensor &sum_of_squares,
+               const DenseTensor &scale,
+               const DenseTensor &bias,
+               DenseTensor *saved_mean,
+               DenseTensor *saved_invstd,
+               DenseTensor *running_mean,
+               DenseTensor *running_var,
+               DenseTensor *equiv_scale,
+               DenseTensor *equiv_bias,
                double eps,
                float momentum,
                int64_t ele_count,
@@ -135,7 +135,7 @@ class CudnnBNStatsFinalize {
   }
 
  private:
-  void TrainInit(const phi::GPUContext &dev_ctx) {
+  void TrainInit(const GPUContext &dev_ctx) {
     // Set constant_param for train op
     train_op_.SetOpConstParamAttr({CUDNN_PARAM_YSUM_PLACEHOLDER,
                                    CUDNN_PARAM_YSQSUM_PLACEHOLDER,
@@ -172,7 +172,7 @@ class CudnnBNStatsFinalize {
                                        &workspace_size_bytes);
   }
 
-  void InferenceInit(const phi::GPUContext &dev_ctx) {
+  void InferenceInit(const GPUContext &dev_ctx) {
     // Set constant_param for inference op
     inference_op_.SetOpConstParamAttr({CUDNN_PARAM_BN_SCALE_PLACEHOLDER,
                                        CUDNN_PARAM_BN_BIAS_PLACEHOLDER,

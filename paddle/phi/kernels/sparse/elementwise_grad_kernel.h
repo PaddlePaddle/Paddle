@@ -137,7 +137,7 @@ void ElementWiseAddDenseGradKernel(const Context& dev_ctx,
   }
 
   if (dy) {
-    *dy = phi::EmptyLike<T>(dev_ctx, y);
+    *dy = EmptyLike<T>(dev_ctx, y);
     y_grad = dy;
   }
   phi::AddGradKernel<T, Context>(

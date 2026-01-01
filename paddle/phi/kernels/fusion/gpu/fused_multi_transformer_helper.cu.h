@@ -35,16 +35,16 @@ namespace fusion {
 template <typename T>
 class BiasActHelper {
  public:
-  BiasActHelper(const phi::GPUContext &dev_ctx,
+  BiasActHelper(const GPUContext &dev_ctx,
                 const std::string &act_method,
                 int rows,
                 int cols)
       : dev_ctx_(dev_ctx), act_method_(act_method), rows_(rows), cols_(cols) {}
 
   // dst = Activation(x + bias(optional))
-  void Compute(const phi::DenseTensor *x,
-               const phi::DenseTensor *bias,
-               phi::DenseTensor *output) {
+  void Compute(const DenseTensor *x,
+               const DenseTensor *bias,
+               DenseTensor *output) {
     const T *bias_data = (bias == nullptr) ? nullptr : bias->data<T>();
     funcs::Load<T> load_func(x->data<T>());
     funcs::Store<T> store_func(output->data<T>());
@@ -92,7 +92,7 @@ class BiasActHelper {
           "Currently Only Support GeGLU, SwiGLU, GeLU"));
     }
   }
-  const phi::GPUContext &dev_ctx_;
+  const GPUContext &dev_ctx_;
   std::string act_method_;
   int rows_;
   int cols_;
@@ -102,7 +102,7 @@ template <typename T,
           typename nvT = typename phi::PDDataTypeTraits<T>::DataType>
 class GEMMHelper {
  public:
-  GEMMHelper(const phi::GPUContext &dev_ctx,
+  GEMMHelper(const GPUContext &dev_ctx,
              int token_num,
              int dim_ffn,
              int dim_embed,
@@ -116,12 +116,12 @@ class GEMMHelper {
         transpose_weight_(transpose_weight) {}
 
   // dst = act(fc(src[0]) + bias) * src[1]
-  void Compute(const phi::DenseTensor *input,
-               const phi::DenseTensor *weight,
-               const phi::DenseTensor *scale,
-               const phi::DenseTensor *bias,
-               phi::DenseTensor *workspace,
-               phi::DenseTensor *output) {
+  void Compute(const DenseTensor *input,
+               const DenseTensor *weight,
+               const DenseTensor *scale,
+               const DenseTensor *bias,
+               DenseTensor *workspace,
+               DenseTensor *output) {
     VLOG(5) << "GEMMHelper,"
             << " token_num_:" << token_num_ << " dim_ffn_:" << dim_ffn_
             << " dim_embed_:" << dim_embed_;
@@ -147,7 +147,7 @@ class GEMMHelper {
   }
 
  private:
-  const phi::GPUContext &dev_ctx_;
+  const GPUContext &dev_ctx_;
   int token_num_;
   int dim_ffn_;
   int dim_embed_;
@@ -158,7 +158,7 @@ class GEMMHelper {
 template <typename T>
 class NormHelper {
  public:
-  NormHelper(const phi::GPUContext &dev_ctx,
+  NormHelper(const GPUContext &dev_ctx,
              const std::string &norm_type,
              const int64_t rows,
              const int64_t cols,
@@ -185,19 +185,19 @@ class NormHelper {
   Note(Zhengzekang):
   Since input `X` and `Residual` in FusedMT will be swapped by preallocated
   buffer, I have no choice but to pass the data pointer instead of
-  phi::DenseTensor.
+  DenseTensor.
   */
 
   // dst = Norm(x + residual + bias(optional))
   void NormResidualBias(const T *x_data,
                         const T *residual_data,
-                        const phi::DenseTensor *bias,
-                        const phi::DenseTensor *norm_weight,
-                        const phi::DenseTensor *norm_bias,
-                        phi::DenseTensor *mean,
-                        phi::DenseTensor *var,
-                        phi::DenseTensor *bias_residual_out,
-                        phi::DenseTensor *output) {
+                        const DenseTensor *bias,
+                        const DenseTensor *norm_weight,
+                        const DenseTensor *norm_bias,
+                        DenseTensor *mean,
+                        DenseTensor *var,
+                        DenseTensor *bias_residual_out,
+                        DenseTensor *output) {
     using U = phi::fusion::LayerNormParamType<T>;
     const T *bias_data = bias ? bias->data<T>() : nullptr;
     U *mean_data = mean ? mean->data<U>() : nullptr;
@@ -227,17 +227,17 @@ class NormHelper {
       const T *norm_weight_data =
           norm_weight ? norm_weight->data<T>() : nullptr;
       const T *norm_bias_data = norm_bias ? norm_bias->data<T>() : nullptr;
-      phi::ResidualAddRmsNormWrapper<T, phi::GPUContext>(dev_ctx_,
-                                                         x_data,
-                                                         residual_data,
-                                                         bias_data,
-                                                         norm_weight_data,
-                                                         norm_bias_data,
-                                                         epsilon_,
-                                                         rows_,
-                                                         cols_,
-                                                         bias_residual_out_data,
-                                                         output_data);
+      phi::ResidualAddRmsNormWrapper<T, GPUContext>(dev_ctx_,
+                                                    x_data,
+                                                    residual_data,
+                                                    bias_data,
+                                                    norm_weight_data,
+                                                    norm_bias_data,
+                                                    epsilon_,
+                                                    rows_,
+                                                    cols_,
+                                                    bias_residual_out_data,
+                                                    output_data);
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
           "Currently NormHelper only support `layernorm` and `rmsnorm`. "));
@@ -246,11 +246,11 @@ class NormHelper {
 
   // dst = Norm(x)
   void Norm(const T *x_data,
-            const phi::DenseTensor *norm_weight,
-            const phi::DenseTensor *norm_bias,
-            phi::DenseTensor *mean,
-            phi::DenseTensor *var,
-            phi::DenseTensor *output) {
+            const DenseTensor *norm_weight,
+            const DenseTensor *norm_bias,
+            DenseTensor *mean,
+            DenseTensor *var,
+            DenseTensor *output) {
     using U = phi::fusion::LayerNormParamType<T>;
     U *mean_data = mean ? mean->data<U>() : nullptr;
     U *var_data = var ? var->data<U>() : nullptr;
@@ -272,14 +272,14 @@ class NormHelper {
       const T *norm_weight_data =
           norm_weight ? norm_weight->data<T>() : nullptr;
       const T *norm_bias_data = norm_bias ? norm_bias->data<T>() : nullptr;
-      phi::RmsNormWrapper<T, phi::GPUContext>(dev_ctx_,
-                                              x_data,
-                                              norm_weight_data,
-                                              norm_bias_data,
-                                              epsilon_,
-                                              rows_,
-                                              cols_,
-                                              output_data);
+      phi::RmsNormWrapper<T, GPUContext>(dev_ctx_,
+                                         x_data,
+                                         norm_weight_data,
+                                         norm_bias_data,
+                                         epsilon_,
+                                         rows_,
+                                         cols_,
+                                         output_data);
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
           "Currently NormHelper only support `layernorm` and `rmsnorm`. "));
@@ -287,7 +287,7 @@ class NormHelper {
   }
 
  private:
-  const phi::GPUContext &dev_ctx_;
+  const GPUContext &dev_ctx_;
   std::string norm_type_;
   int64_t rows_;
   int64_t cols_;
@@ -302,7 +302,7 @@ template <typename T,
           typename nvT = typename phi::PDDataTypeTraits<T>::DataType>
 class FFNHelper {
  public:
-  FFNHelper(const phi::GPUContext &dev_ctx,
+  FFNHelper(const GPUContext &dev_ctx,
             const std::string &act_method,
             int token_num,
             int dim_ffn,
@@ -316,13 +316,13 @@ class FFNHelper {
         gemm_method_(gemm_method) {}
 
   // dst = act(fc(src[0]) + bias) * src[1]
-  void Compute(const phi::DenseTensor *input,
-               const phi::DenseTensor *weight,
-               const phi::DenseTensor *scale,
-               const phi::DenseTensor *bias,
-               phi::DenseTensor *workspace,
-               phi::DenseTensor *bias_out,
-               phi::DenseTensor *output) {
+  void Compute(const DenseTensor *input,
+               const DenseTensor *weight,
+               const DenseTensor *scale,
+               const DenseTensor *bias,
+               DenseTensor *workspace,
+               DenseTensor *bias_out,
+               DenseTensor *output) {
     /*
     input's shape [token_num, dim_embed]
     weight's shape [dim_embed, dim_ffn]
@@ -339,7 +339,7 @@ class FFNHelper {
   }
 
  private:
-  const phi::GPUContext &dev_ctx_;
+  const GPUContext &dev_ctx_;
   std::string act_method_;
   int token_num_;
   int dim_ffn_;

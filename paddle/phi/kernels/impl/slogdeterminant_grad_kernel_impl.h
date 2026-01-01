@@ -128,8 +128,7 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
       output_slice = output_slice.Slice(processed, processed + current_batch);
       output_slice.Resize({current_batch, n, n});
 
-      phi::Copy(
-          dev_ctx, inverse_batch, dev_ctx.GetPlace(), false, &output_slice);
+      Copy(dev_ctx, inverse_batch, dev_ctx.GetPlace(), false, &output_slice);
 
       processed += current_batch;
     }
@@ -144,7 +143,7 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
 
   // Third: inverse(A).conj().transpose(-2, -1)
   DenseTensor transpose_inverse_A =
-      phi::TransposeLast2Dim<T>(dev_ctx, conj_inverse_A);
+      TransposeLast2Dim<T>(dev_ctx, conj_inverse_A);
   VLOG(3) << "inverse(A).conj().transpose(-2, -1) dims: "
           << transpose_inverse_A.dims();
 
@@ -169,7 +168,7 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
   auto res = phi::Multiply<T>(dev_ctx, unsqueeze2, transpose_inverse_A);
   VLOG(3) << "unsqueeze(dslA) * inverse(A) dims: " << res.dims();
 
-  phi::Copy(dev_ctx, res, dev_ctx.GetPlace(), false, x_grad);
+  Copy(dev_ctx, res, dev_ctx.GetPlace(), false, x_grad);
   x_grad->Resize(x.dims());
   VLOG(3) << "dsl|A| dims: " << x_grad->dims();
 }
@@ -262,7 +261,7 @@ void SlogDeterminantV2GradKernel(const Context& dev_ctx,
 
   // Third: inverse(A).conj().transpose(-2, -1)
   DenseTensor transpose_inverse_A =
-      phi::TransposeLast2Dim<T>(dev_ctx, conj_inverse_A);
+      TransposeLast2Dim<T>(dev_ctx, conj_inverse_A);
   VLOG(3) << "inverse(A).conj().transpose(-2, -1) dims: "
           << transpose_inverse_A.dims();
 
