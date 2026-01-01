@@ -41,6 +41,16 @@ if [ "$MODE" == "restore" ]; then
         echo "::group::Restoring ccache from CFS..."
         echo "CFS cache size:"
         du -sh "${CFS_CACHE_PATH}" || echo "Failed to get size of CFS cache."
+        if command -v ccache &> /dev/null; then
+            echo "Cleaning unused files in CFS ccache before transfer..."
+            ccache --dir "${CFS_CACHE_PATH}" --cleanup || echo "ccache cleanup on CFS failed"
+            echo "CFS ccache stats:"
+            ccache --dir "${CFS_CACHE_PATH}" --show-stats || true
+            echo "Local ccache stats:"
+            ccache --dir "${LOCAL_CACHE_PATH}" --show-stats || true
+        else
+            echo "ccache not found, skipping ccache cleanup and stats."
+        fi
         install_rsync
         # -a: archive mode, preserves permissions/times
         # --info=progress2: show progress (optional, might be noisy in CI)
@@ -54,6 +64,17 @@ elif [ "$MODE" == "save" ]; then
         echo "::group::Saving ccache to CFS..."
         install_rsync
         mkdir -p "${CFS_CACHE_PATH}"
+        if command -v ccache &> /dev/null; then
+            echo "Cleaning unused files in CFS ccache before transfer..."
+            ccache --dir "${CFS_CACHE_PATH}" --cleanup || echo "ccache cleanup on CFS failed"
+            echo "CFS ccache stats:"
+            ccache --dir "${CFS_CACHE_PATH}" --show-stats || true
+            echo "Local ccache stats:"
+            ccache --dir "${LOCAL_CACHE_PATH}" --show-stats || true
+        else
+            echo "ccache not found, skipping ccache cleanup and stats."
+        fi
+
         # Sync back to CFS
         rsync -a "${LOCAL_CACHE_PATH}/" "${CFS_CACHE_PATH}/" --progress
         echo "::endgroup::"
