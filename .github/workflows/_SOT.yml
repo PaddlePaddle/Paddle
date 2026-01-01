@@ -142,14 +142,6 @@ jobs:
           echo "determine_excode=$determine_excode" >> ${{ github.env }}
           '
 
-      - name: Cleanup ccache before build
-        if: ${{ env.determine_excode == 0 }}
-        run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          ccache --dir /home/data/cfs/.ccache/sot --clear
-          ccache --dir /home/data/cfs/.ccache/sot --show-stats
-          '
-
       - name: Build with python3.9
         env:
           work_dir: ${{ github.workspace }}
