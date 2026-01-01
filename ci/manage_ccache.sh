@@ -34,6 +34,8 @@ install_rsync() {
 
 if [ "$MODE" == "restore" ]; then
     echo "Starting ccache restore..."
+    echo "Ccache version:"
+    ccache --version
     echo "CFS Cache Path: ${CFS_CACHE_PATH}"
     echo "Local Cache Path: ${LOCAL_CACHE_PATH}"
     mkdir -p "${LOCAL_CACHE_PATH}"
