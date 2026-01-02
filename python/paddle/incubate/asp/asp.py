@@ -67,16 +67,19 @@ def set_excluded_layers(
         .. code-block:: pycon
             :name: dynamic-graph
 
-            >>> # doctest: +SKIP("paddle.incubate.asp module isn't support pir mode now")
+            >>> # doctest: +SKIP("paddle.incubate.asp module doesn't support PIR mode now")
             >>> # Example1: Usage of Dynamic Graph
             >>> import paddle
-
-            >>> paddle.disable_static()
 
             >>> class MyLayer(paddle.nn.Layer):
             ...     def __init__(self):
             ...         super().__init__()
-            ...         self.conv1 = paddle.nn.Conv2D(in_channels=3, out_channels=4, kernel_size=3, padding=2)
+            ...         self.conv1 = paddle.nn.Conv2D(
+            ...             in_channels=3,
+            ...             out_channels=4,
+            ...             kernel_size=3,
+            ...             padding=2,
+            ...         )
             ...         self.linear1 = paddle.nn.Linear(4624, 100)
             ...
             ...     def forward(self, img):
@@ -86,7 +89,10 @@ def set_excluded_layers(
             ...         return prediction
 
             >>> my_layer = MyLayer()
-            >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=my_layer.parameters())
+            >>> optimizer = paddle.optimizer.SGD(
+            ...     learning_rate=0.01,
+            ...     parameters=my_layer.parameters(),
+            ... )
 
             >>> # Need to set excluded layers before calling decorate
             >>> paddle.incubate.asp.set_excluded_layers([my_layer.linear1.full_name()])
@@ -104,7 +110,12 @@ def set_excluded_layers(
             >>> class MyLayer(paddle.nn.Layer):
             ...     def __init__(self):
             ...         super().__init__()
-            ...         self.conv1 = paddle.nn.Conv2D(in_channels=3, out_channels=4, kernel_size=3, padding=2)
+            ...         self.conv1 = paddle.nn.Conv2D(
+            ...             in_channels=3,
+            ...             out_channels=4,
+            ...             kernel_size=3,
+            ...             padding=2,
+            ...         )
             ...         self.linear1 = paddle.nn.Linear(4624, 100)
             ...
             ...     def forward(self, img):
@@ -154,16 +165,19 @@ def reset_excluded_layers(main_program: Program | None = None) -> None:
         .. code-block:: pycon
             :name: dynamic-graph
 
-            >>> # doctest: +SKIP("paddle.incubate.asp module isn't support pir mode now")
+            >>> # doctest: +SKIP("paddle.incubate.asp module doesn't support PIR mode now")
             >>> # Example1: Usage of Dynamic Graph
             >>> import paddle
-
-            >>> paddle.disable_static()
 
             >>> class MyLayer(paddle.nn.Layer):
             ...     def __init__(self):
             ...         super().__init__()
-            ...         self.conv1 = paddle.nn.Conv2D(in_channels=3, out_channels=4, kernel_size=3, padding=2)
+            ...         self.conv1 = paddle.nn.Conv2D(
+            ...             in_channels=3,
+            ...             out_channels=4,
+            ...             kernel_size=3,
+            ...             padding=2,
+            ...         )
             ...         self.linear1 = paddle.nn.Linear(4624, 100)
             ...
             ...     def forward(self, img):
@@ -173,7 +187,10 @@ def reset_excluded_layers(main_program: Program | None = None) -> None:
             ...         return prediction
 
             >>> my_layer = MyLayer()
-            >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=my_layer.parameters())
+            >>> optimizer = paddle.optimizer.SGD(
+            ...     learning_rate=0.01,
+            ...     parameters=my_layer.parameters(),
+            ... )
 
             >>> # Need to set excluded layers before calling decorate
             >>> paddle.incubate.asp.set_excluded_layers([my_layer.linear1.full_name()])
@@ -194,7 +211,12 @@ def reset_excluded_layers(main_program: Program | None = None) -> None:
             >>> class MyLayer(paddle.nn.Layer):
             ...     def __init__(self):
             ...         super().__init__()
-            ...         self.conv1 = paddle.nn.Conv2D(in_channels=3, out_channels=4, kernel_size=3, padding=2)
+            ...         self.conv1 = paddle.nn.Conv2D(
+            ...             in_channels=3,
+            ...             out_channels=4,
+            ...             kernel_size=3,
+            ...             padding=2,
+            ...         )
             ...         self.linear1 = paddle.nn.Linear(4624, 100)
             ...
             ...     def forward(self, img):
@@ -245,16 +267,19 @@ def decorate(optimizer: Optimizer) -> OptimizerWithSparsityGuarantee:
         .. code-block:: pycon
             :name: dynamic-graph
 
-            >>> # doctest: +SKIP("paddle.incubate.asp module isn't support pir mode now")
+            >>> # doctest: +SKIP("paddle.incubate.asp module doesn't support PIR mode now")
             >>> # Example1: Usage of Dynamic Graph
             >>> import paddle
-
-            >>> paddle.disable_static()
 
             >>> class MyLayer(paddle.nn.Layer):
             ...     def __init__(self):
             ...         super().__init__()
-            ...         self.conv1 = paddle.nn.Conv2D(in_channels=3, out_channels=4, kernel_size=3, padding=2)
+            ...         self.conv1 = paddle.nn.Conv2D(
+            ...             in_channels=3,
+            ...             out_channels=4,
+            ...             kernel_size=3,
+            ...             padding=2,
+            ...         )
             ...         self.linear1 = paddle.nn.Linear(4624, 32)
             ...         self.linear2 = paddle.nn.Linear(32, 32)
             ...         self.linear3 = paddle.nn.Linear(32, 10)
@@ -268,7 +293,10 @@ def decorate(optimizer: Optimizer) -> OptimizerWithSparsityGuarantee:
             ...         return prediction
 
             >>> my_layer = MyLayer()
-            >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=my_layer.parameters())
+            >>> optimizer = paddle.optimizer.SGD(
+            ...     learning_rate=0.01,
+            ...     parameters=my_layer.parameters(),
+            ... )
 
             >>> # Calling paddle.incubate.asp.decorate() to wrap step() in optimizer, which
             >>> # will apply necessary masking operations for ASP workflow.
@@ -286,7 +314,12 @@ def decorate(optimizer: Optimizer) -> OptimizerWithSparsityGuarantee:
             >>> class MyLayer(paddle.nn.Layer):
             ...     def __init__(self):
             ...         super().__init__()
-            ...         self.conv1 = paddle.nn.Conv2D(in_channels=3, out_channels=4, kernel_size=3, padding=2)
+            ...         self.conv1 = paddle.nn.Conv2D(
+            ...             in_channels=3,
+            ...             out_channels=4,
+            ...             kernel_size=3,
+            ...             padding=2,
+            ...         )
             ...         self.linear1 = paddle.nn.Linear(4624, 100)
             ...
             ...     def forward(self, img):
@@ -348,16 +381,20 @@ def prune_model(
         .. code-block:: pycon
             :name: dynamic-graph
 
-            >>> # doctest: +SKIP("paddle.incubate.asp module isn't support pir mode now")
+            >>> # doctest: +SKIP("paddle.incubate.asp module doesn't support PIR mode now")
             >>> # Example1: Usage of Dynamic Graph
             >>> import paddle
             >>> import numpy as np
-            >>> paddle.disable_static()
 
             >>> class MyLayer(paddle.nn.Layer):
             ...     def __init__(self):
             ...         super().__init__()
-            ...         self.conv1 = paddle.nn.Conv2D(in_channels=3, out_channels=4, kernel_size=3, padding=2)
+            ...         self.conv1 = paddle.nn.Conv2D(
+            ...             in_channels=3,
+            ...             out_channels=4,
+            ...             kernel_size=3,
+            ...             padding=2,
+            ...         )
             ...         self.linear1 = paddle.nn.Linear(4624, 32)
             ...         self.linear2 = paddle.nn.Linear(32, 32)
             ...         self.linear3 = paddle.nn.Linear(32, 10)
@@ -373,7 +410,10 @@ def prune_model(
             >>> my_layer = MyLayer()
             >>> loss_fn = paddle.nn.MSELoss(reduction='mean')
 
-            >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=my_layer.parameters())
+            >>> optimizer = paddle.optimizer.SGD(
+            ...     learning_rate=0.01,
+            ...     parameters=my_layer.parameters(),
+            ... )
 
             >>> # Calling paddle.incubate.asp.decorate() to wrap step() in optimizer, which
             >>> # will apply necessary masking operations for ASP workflow.
@@ -404,7 +444,12 @@ def prune_model(
             >>> class MyLayer(paddle.nn.Layer):
             ...     def __init__(self):
             ...         super().__init__()
-            ...         self.conv1 = paddle.nn.Conv2D(in_channels=3, out_channels=4, kernel_size=3, padding=2)
+            ...         self.conv1 = paddle.nn.Conv2D(
+            ...             in_channels=3,
+            ...             out_channels=4,
+            ...             kernel_size=3,
+            ...             padding=2,
+            ...         )
             ...         self.linear1 = paddle.nn.Linear(4624, 32)
             ...         self.linear2 = paddle.nn.Linear(32, 32)
             ...         self.linear3 = paddle.nn.Linear(32, 10)
@@ -757,7 +802,6 @@ class ASPHelper:
                 ...     print(param.name, '->', ASPHelper._is_supported_layer(main_program, param.name))
                 fc_0.w_0 -> True
                 fc_0.b_0 -> False
-                >>> paddle.disable_static()
         """
         param_name_list = param_name.split('.')
 
