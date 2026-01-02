@@ -776,13 +776,6 @@ class PADDLE_API Tensor final {
   Tensor tile(const IntArray& repeat_times = {}) const;
 };
 
-inline void UnusedAPITriggerRecompile() {
-  std::vector<Tensor> tensors;
-  for (const auto& t : tensors) {
-    std::cout << t.numel();
-  }
-}
-
 PADDLE_API Tensor operator+(const Scalar& x, const Tensor& y);
 
 PADDLE_API Tensor operator-(const Scalar& x, const Tensor& y);
