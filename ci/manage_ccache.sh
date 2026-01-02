@@ -29,14 +29,14 @@ if [ "$MODE" == "restore" ]; then
     ccache --version
     echo "CFS Cache Path: ${CFS_CACHE_PATH}"
     echo "Local Cache Path: ${LOCAL_CACHE_PATH}"
-    mkdir -p "${LOCAL_CACHE_PATH}"
+    rm -rf "${LOCAL_CACHE_PATH}"
+    mkdir "${LOCAL_CACHE_PATH}"
     if [ -d "${CFS_CACHE_PATH}" ]; then
         echo "::group::Restoring ccache from CFS..."
-        rsync -avzW \
-            --no-perms --no-owner --no-group \
-            --partial \
-            --progress \
-            --delete "${CFS_CACHE_PATH}/" "${LOCAL_CACHE_PATH}/"
+        # create a tarball from CFS cache
+        tar -czf /tmp/ccache_backup.tar.gz -C "${CFS_CACHE_PATH}" .
+        # extract to local ccache dir
+        tar -xzf /tmp/ccache_backup.tar.gz -C "${LOCAL_CACHE_PATH}"
         echo "::endgroup::"
     else
         echo "CFS cache path not found: ${CFS_CACHE_PATH}. Skipping restore."
