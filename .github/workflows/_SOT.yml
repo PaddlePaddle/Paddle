@@ -101,7 +101,7 @@ jobs:
             -e WITH_AVX \
             -e CACHE_DIR \
             -e CCACHE_DIR \
-            -e CFS_CCACHE_DIR \
+            -e CCACHE_SECONDARY_STORAGE \
             -e no_proxy \
             -w /paddle --network host ${docker_image}
 
