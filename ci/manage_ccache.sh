@@ -30,7 +30,7 @@ if [ "$MODE" == "restore" ]; then
     echo "CFS Cache Path: ${CFS_CACHE_PATH}"
     echo "Local Cache Path: ${LOCAL_CACHE_PATH}"
     rm -rf "${LOCAL_CACHE_PATH}"
-    mkdir "${LOCAL_CACHE_PATH}"
+    mkdir -p "${LOCAL_CACHE_PATH}"
     if [ -d "${CFS_CACHE_PATH}" ]; then
         echo "::group::Restoring ccache from CFS..."
         # create a tarball from CFS cache
