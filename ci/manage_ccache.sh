@@ -23,18 +23,6 @@ if [ -z "${CFS_CACHE_PATH}" ] || [ -z "${LOCAL_CACHE_PATH}" ]; then
     exit 1
 fi
 
-install_rsync() {
-    if ! command -v rsync &> /dev/null; then
-        echo "Installing rsync..."
-        apt-get update && apt-get install -y rsync
-    fi
-}
-
-limit_ccache_size() {
-    echo "Setting ccache max size to 15G"
-    ccache --max-size=15G
-}
-
 if [ "$MODE" == "restore" ]; then
     echo "Starting ccache restore..."
     echo "Ccache version:"
@@ -44,22 +32,6 @@ if [ "$MODE" == "restore" ]; then
     mkdir -p "${LOCAL_CACHE_PATH}"
     if [ -d "${CFS_CACHE_PATH}" ]; then
         echo "::group::Restoring ccache from CFS..."
-        limit_ccache_size
-        # echo "CFS cache size:"
-        # du -sh "${CFS_CACHE_PATH}" || echo "Failed to get size of CFS cache."
-        if command -v ccache &> /dev/null; then
-            echo "Cleaning unused files in CFS ccache before transfer..."
-            ccache --dir "${CFS_CACHE_PATH}" --clean || echo "ccache cleanup on CFS failed"
-            echo "CFS ccache stats:"
-            ccache --dir "${CFS_CACHE_PATH}" --show-stats || true
-            echo "Local ccache stats:"
-            ccache --dir "${LOCAL_CACHE_PATH}" --show-stats || true
-        else
-            echo "ccache not found, skipping ccache cleanup and stats."
-        fi
-        install_rsync
-        # -a: archive mode, preserves permissions/times
-        # --info=progress2: show progress (optional, might be noisy in CI)
         rsync -avzW \
             --no-perms --no-owner --no-group \
             --partial \
@@ -72,18 +44,7 @@ if [ "$MODE" == "restore" ]; then
 elif [ "$MODE" == "save" ]; then
     if [ -d "$(dirname "${CFS_CACHE_PATH}")" ]; then
         echo "::group::Saving ccache to CFS..."
-        install_rsync
         mkdir -p "${CFS_CACHE_PATH}"
-        if command -v ccache &> /dev/null; then
-            echo "Cleaning unused files in CFS ccache before transfer..."
-            ccache --dir "${CFS_CACHE_PATH}" --clean || echo "ccache cleanup on CFS failed"
-            echo "CFS ccache stats:"
-            ccache --dir "${CFS_CACHE_PATH}" --show-stats || true
-            echo "Local ccache stats:"
-            ccache --dir "${LOCAL_CACHE_PATH}" --show-stats || true
-        else
-            echo "ccache not found, skipping ccache cleanup and stats."
-        fi
 
         # Sync back to CFS
         rsync -avzW \
@@ -95,7 +56,15 @@ elif [ "$MODE" == "save" ]; then
     else
         echo "CFS parent directory not found. Skipping cache save."
     fi
+elif [ "$MODE" == "prune" ]; then
+    if [ -d "${CFS_CACHE_PATH}" ]; then
+        echo "::group::Pruning ccache..."
+        ccache --dir "${CFS_CACHE_PATH}" --clean || echo "ccache cleanup on CFS failed"
+        echo "::endgroup::"
+    else
+        echo "CFS cache path not found: ${CFS_CACHE_PATH}. Skipping prune."
+    fi
 else
-    echo "Usage: $0 [restore|save]"
+    echo "Usage: $0 [restore|save|prune]"
     exit 1
 fi

@@ -73,8 +73,6 @@ jobs:
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/dev/shm:/dev/shm" \
-            -v "/home/data/cfs/.cache:/root/.cache" \
-            -v "/home/data/cfs/.ccache:/root/.ccache" \
             -v "${{ github.workspace }}/../../..:${{ github.workspace }}/../../.." \
             -v ${{ github.workspace }}:/paddle \
             -e CI_name \
@@ -334,6 +332,13 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           bash ${ci_scripts}/manage_ccache.sh save
+          '
+
+      - name: Prune ccache on CFS
+        if: ${{ env.determine_excode == 0 }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          bash ${ci_scripts}/manage_ccache.sh prune
           '
 
       - name: Terminate and delete the container
