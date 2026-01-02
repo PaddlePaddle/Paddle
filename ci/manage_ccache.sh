@@ -34,9 +34,9 @@ if [ "$MODE" == "restore" ]; then
     if [ -d "${CFS_CACHE_PATH}" ]; then
         echo "::group::Restoring ccache from CFS..."
         # create a tarball from CFS cache
-        tar -czf /tmp/ccache_backup.tar.gz -C "${CFS_CACHE_PATH}" .
+        tar -cf /tmp/ccache_backup.tar -C "${CFS_CACHE_PATH}" .
         # extract to local ccache dir
-        tar -xzf /tmp/ccache_backup.tar.gz -C "${LOCAL_CACHE_PATH}"
+        tar -xf /tmp/ccache_backup.tar -C "${LOCAL_CACHE_PATH}"
         echo "::endgroup::"
     else
         echo "CFS cache path not found: ${CFS_CACHE_PATH}. Skipping restore."
