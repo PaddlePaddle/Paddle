@@ -424,8 +424,16 @@ def prune_model(
             >>> paddle.incubate.asp.prune_model(my_layer, mask_algo='mask_2d_best')
 
             >>> for i in range(10):
-            ...     imgs = paddle.to_tensor(np.random.randn(64, 3, 32, 32), dtype='float32', stop_gradient=False)
-            ...     labels = paddle.to_tensor(np.random.randint(10, size=(64, 1)), dtype='float32', stop_gradient=False)
+            ...     imgs = paddle.to_tensor(
+            ...         np.random.randn(64, 3, 32, 32),
+            ...         dtype='float32',
+            ...         stop_gradient=False,
+            ...     )
+            ...     labels = paddle.to_tensor(
+            ...         np.random.randint(10, size=(64, 1)),
+            ...         dtype='float32',
+            ...         stop_gradient=False,
+            ...     )
             ...     output = my_layer(imgs)
             ...     loss = loss_fn(output, labels)
             ...     loss.backward()
