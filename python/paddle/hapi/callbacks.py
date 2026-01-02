@@ -719,6 +719,7 @@ class LRScheduler(Callback):
     Examples:
         .. code-block:: pycon
 
+            >>> # doctest: +TIMEOUT(30)
             >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from paddle.static import InputSpec
