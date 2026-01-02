@@ -29,18 +29,18 @@ if [ "$MODE" == "restore" ]; then
     ccache --version
     echo "CFS Cache Path: ${CFS_CACHE_PATH}"
     echo "Local Cache Path: ${LOCAL_CACHE_PATH}"
-    rm -rf "${LOCAL_CACHE_PATH}"
-    mkdir -p "${LOCAL_CACHE_PATH}"
-    if [ -d "${CFS_CACHE_PATH}" ]; then
-        echo "::group::Restoring ccache from CFS..."
-        # create a tarball from CFS cache
-        tar -cf /tmp/ccache_backup.tar -C "${CFS_CACHE_PATH}" .
-        # extract to local ccache dir
-        tar -xf /tmp/ccache_backup.tar -C "${LOCAL_CACHE_PATH}"
-        echo "::endgroup::"
-    else
-        echo "CFS cache path not found: ${CFS_CACHE_PATH}. Skipping restore."
-    fi
+    # rm -rf "${LOCAL_CACHE_PATH}"
+    # mkdir -p "${LOCAL_CACHE_PATH}"
+    # if [ -d "${CFS_CACHE_PATH}" ]; then
+    #     echo "::group::Restoring ccache from CFS..."
+    #     # create a tarball from CFS cache
+    #     tar -cf /tmp/ccache_backup.tar -C "${CFS_CACHE_PATH}" .
+    #     # extract to local ccache dir
+    #     tar -xf /tmp/ccache_backup.tar -C "${LOCAL_CACHE_PATH}"
+    #     echo "::endgroup::"
+    # else
+    #     echo "CFS cache path not found: ${CFS_CACHE_PATH}. Skipping restore."
+    # fi
 elif [ "$MODE" == "save" ]; then
     if [ -d "$(dirname "${CFS_CACHE_PATH}")" ]; then
         echo "::group::Saving ccache to CFS..."
