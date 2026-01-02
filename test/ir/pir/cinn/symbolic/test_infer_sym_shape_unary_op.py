@@ -831,5 +831,39 @@ class UniqueConsecutiveOpInferSymbolicShapeTest(TestBase):
         return True
 
 
+class RRELUInplaceNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        F.rrelu(x, training=False, inplace=True)
+
+        return x
+
+
+class RRELUOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.cases = [
+            np.random.uniform(-1.0, 1.0, [1, 2, 3, 4]).astype('float32')
+        ]
+        self.expected = ['shape[S0, S1, S2, S3], data[NULL]']
+
+    def test_eval_symbolic(self):
+        net = RRELUInplaceNet()
+
+        for i in range(len(self.cases)):
+            x = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for index in range(len(x.shape))], dtype='float32'
+            )
+
+            input_spec = [x_spec]
+            net = apply_to_static(net, True, input_spec)
+            net.eval()
+            check_infer_results(net, input_spec, 'pd_op.rrelu_', self.expected)
+
+        return True
+
+
 if __name__ == '__main__':
     unittest.main()
