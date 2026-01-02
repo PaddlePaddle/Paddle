@@ -64,6 +64,7 @@ jobs:
           WITH_AVX: "OFF"
           CACHE_DIR: "/root/.cache/sot"
           CCACHE_DIR: "/root/.ccache/sot"
+          CFS_CCACHE_DIR: "/home/data/cfs/.ccache/sot"
         run: |
           set -x
           container_name=${TASK}-$(date +%s)
@@ -72,6 +73,8 @@ jobs:
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/dev/shm:/dev/shm" \
+            -v "/home/data/cfs/.cache:/root/.cache" \
+            -v "/home/data/cfs/.ccache:/root/.ccache" \
             -v "${{ github.workspace }}/../../..:${{ github.workspace }}/../../.." \
             -v ${{ github.workspace }}:/paddle \
             -e CI_name \
@@ -100,6 +103,7 @@ jobs:
             -e WITH_AVX \
             -e CACHE_DIR \
             -e CCACHE_DIR \
+            -e CFS_CCACHE_DIR \
             -e no_proxy \
             -w /paddle --network host ${docker_image}
 
@@ -138,6 +142,21 @@ jobs:
           bash ${ci_scripts}/determine_sot_ci_trigger.sh
           determine_excode=$?
           echo "determine_excode=$determine_excode" >> ${{ github.env }}
+          '
+
+      - name: Install rsync
+        if: ${{ env.determine_excode == 0 }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          apt-get update && apt-get install -y rsync
+          '
+
+      - name: Restore ccache from CFS
+        if: ${{ env.determine_excode == 0 }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          bash ${ci_scripts}/manage_ccache.sh restore
           '
 
       - name: Build with python3.9
@@ -308,6 +327,13 @@ jobs:
           EXCODE=$?
           rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
           exit $EXCODE
+          '
+
+      - name: Save ccache to CFS
+        if: ${{ env.determine_excode == 0 }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          bash ${ci_scripts}/manage_ccache.sh save
           '
 
       - name: Terminate and delete the container
