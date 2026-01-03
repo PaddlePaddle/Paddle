@@ -35,7 +35,10 @@ from ..aoa.aoa_engine import (
 from .metadata import LocalTensorIndex, LocalTensorMetadata, Metadata
 from .metadata_manager import MetadataManager
 from .reshard_comm import CommunicatorFactory
-from .resharder import StateDictResharder
+from .resharder import (
+    StateDictResharder,
+    ThreeDCommGroupStateResharder,
+)
 from .sharded_weight import (
     ShardedWeight,
     ShardedWeightDesc,
@@ -734,6 +737,7 @@ def load_state_dict(
         "broadcast",
         "multi_group_broadcast",
         "grouped_send_recv",
+        "3d_parallel",
     ]
     assert comm_method in valid_methods, (
         f"Invalid communication method '{comm_method}'. "
@@ -1265,19 +1269,36 @@ def _load_state_dict(
     worker_groups: list[Group] | None = None,
     comm_method: str = 'broadcast',
 ):
-    use_dist = True if paddle.distributed.get_world_size() > 1 else False
-    communicator = CommunicatorFactory.create(
-        comm_method, worker_groups=worker_groups
-    )
-    resharder = StateDictResharder(
-        target_state_dict=target_state_dict,
-        source_state_dict=source_state_dict,
-        metadata_list=metadata_list,
-        communicator=communicator,
-        process_group=process_group,
-        offload=offload,
-        use_dist=use_dist,
-    )
+    if comm_method != "3d_parallel":
+        use_dist = True if paddle.distributed.get_world_size() > 1 else False
+        communicator = CommunicatorFactory.create(
+            comm_method, worker_groups=worker_groups
+        )
+        resharder = StateDictResharder(
+            target_state_dict=target_state_dict,
+            source_state_dict=source_state_dict,
+            metadata_list=metadata_list,
+            communicator=communicator,
+            process_group=process_group,
+            offload=offload,
+            use_dist=use_dist,
+        )
+    else:
+        assert len(worker_groups) == 3, " H V P worker_groups must be provided."
+        h_group = worker_groups[0]
+        v_group = worker_groups[1]
+        p_group = worker_groups[2]
+        resharder = ThreeDCommGroupStateResharder(
+            target_state_dict=target_state_dict,
+            source_state_dict=source_state_dict,
+            metadata_list=metadata_list,
+            h_group=h_group,
+            v_group=v_group,
+            p_group=p_group,
+            memory_growth_threshold=8 * (2**30),
+            offload=offload,
+        )
+
     resharder.reshard()
 
 
