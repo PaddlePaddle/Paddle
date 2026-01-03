@@ -3361,8 +3361,9 @@ def allclose(
 add_doc_and_signature(
     "baddbmm",
     r"""
-    Performs a batch matrix-matrix product of matrices in input with matrices in batch1 and batch2,
-    and adds the result to input. The result is:
+    Perform batch matrix multiplication for input $x$ and $y$.
+    $input$ is added to the final result.
+    The equation is:
     .. math::
         out = \beta \times input + \alpha \times x \times y
     where :math:`\beta` and :math:`\alpha` are scaling factors.
