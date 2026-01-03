@@ -136,6 +136,19 @@ void profiler_add_runtime_trace_event(C_Profiler prof, void* event);
 
 void profiler_add_device_trace_event(C_Profiler prof, void* event);
 
+typedef struct {
+  size_t size;
+  // 编译策略接口
+  C_Status (*get_compilation_strategy)(C_Device device, void** strategy_handle);
+  // 工具链接口
+  C_Status (*get_compiler_toolchain)(C_Device device, void** toolchain_handle);
+  // 运行时接口
+  C_Status (*get_runtime_strategy)(C_Device device, void** runtime_handle);
+
+  // 预留扩展位
+  void* reserved[4];
+} C_CinnInterface;
+
 struct C_DeviceInterface {
   // Core fill it and plugin must to check it
   size_t size;
@@ -911,6 +924,9 @@ struct C_DeviceInterface {
                          float beta,
                          void* y);
   void* reserved_other_api[7];
+
+  // 新增：CINN 专用接口指针
+  C_CinnInterface* cinn_interface;
 };
 
 struct CustomRuntimeVersion {

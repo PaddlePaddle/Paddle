@@ -26,6 +26,9 @@
 #ifdef CINN_WITH_SYCL
 #include "paddle/cinn/backends/sycl/codegen_sycl_dev.h"
 #endif
+#ifdef CINN_WITH_CUSTOM_DEVICE
+#include "paddle/cinn/backends/custom_device/codegen_custom_device_dev.h"
+#endif
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"

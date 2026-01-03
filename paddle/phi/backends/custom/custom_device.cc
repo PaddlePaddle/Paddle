@@ -1286,6 +1286,9 @@ class CustomDevice : public DeviceInterface {
     }
   }
 
+  // 新增：获取 CINN 插件能力的接口
+  C_CinnInterface* GetCinnInterface() { return interface_->cinn_interface; }
+
  private:
   inline int PlaceToIdNoCheck(const Place& place) {
     int dev_id = place.GetDeviceId();  // NOLINT

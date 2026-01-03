@@ -26,3 +26,7 @@ endif()
 if(WITH_SYCL)
   add_subdirectory(sycl)
 endif()
+
+if(WITH_CUSTOM_DEVICE)
+  add_subdirectory(custom_device)
+endif()

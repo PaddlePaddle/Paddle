@@ -261,8 +261,7 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
       },
       [&](common::CustomDeviceArch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
-        CINN_NOT_IMPLEMENTED
-    // shared_mem_bytes = CalculateSharedMemory(func);
+        shared_mem_bytes = CalculateSharedMemory(func);
 #endif
       });
 
