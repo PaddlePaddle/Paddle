@@ -98,9 +98,9 @@ void Internal_PyFrame_Clear(_PyInterpreterFrame *frame) {
   Py_DECREF(frame->f_code);
 }
 
-static int _PyFrame_OpAlreadyRan(_PyInterpreterFrame *frame,
-                                 int opcode,
-                                 int oparg) {
+static int Internal_PyFrame_OpAlreadyRan(_PyInterpreterFrame *frame,
+                                         int opcode,
+                                         int oparg) {
   // This only works when opcode is a non-quickened form:
   assert(_PyOpcode_Deopt[opcode] == opcode);
   int check_oparg = 0;
@@ -179,7 +179,7 @@ int Internal_PyFrame_FastToLocalsWithError(_PyInterpreterFrame *frame) {
         // run yet.
         if (value != NULL) {
           if (PyCell_Check(value) &&
-              _PyFrame_OpAlreadyRan(frame, MAKE_CELL, i)) {
+              Internal_PyFrame_OpAlreadyRan(frame, MAKE_CELL, i)) {
             // (likely) MAKE_CELL must have executed already.
             value = PyCell_GET(value);
           }
