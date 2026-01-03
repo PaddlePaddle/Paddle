@@ -102,6 +102,7 @@ def set_excluded_layers(
         .. code-block:: pycon
             :name: static-graph
 
+            >>> # doctest: +SKIP("paddle.incubate.asp module doesn't support PIR mode now")
             >>> # Example2: Usage of Static Graph
             >>> import paddle
 
@@ -203,6 +204,7 @@ def reset_excluded_layers(main_program: Program | None = None) -> None:
         .. code-block:: pycon
             :name: static-graph
 
+            >>> # doctest: +SKIP("paddle.incubate.asp module doesn't support PIR mode now")
             >>> # Example2: Usage of Static Graph
             >>> import paddle
 
@@ -306,6 +308,7 @@ def decorate(optimizer: Optimizer) -> OptimizerWithSparsityGuarantee:
         .. code-block:: pycon
             :name: static-graph
 
+            >>> # doctest: +SKIP("paddle.incubate.asp module doesn't support PIR mode now")
             >>> # Example2: Usage of Static Graph
             >>> import paddle
 
@@ -443,6 +446,7 @@ def prune_model(
         .. code-block:: pycon
             :name: static-graph
 
+            >>> # doctest: +SKIP("paddle.incubate.asp module doesn't support PIR mode now")
             >>> # Example2: Usage of Static Graph
             >>> import paddle
             >>> import numpy as np
@@ -795,7 +799,7 @@ class ASPHelper:
         Examples:
             .. code-block:: pycon
 
-                >>> # doctest: +SKIP("paddle.incubate.asp module isn't support pir mode now")
+                >>> # doctest: +SKIP("paddle.incubate.asp module doesn't support PIR mode now")
                 >>> from paddle.incubate.asp import ASPHelper
                 >>> paddle.enable_static()
 
