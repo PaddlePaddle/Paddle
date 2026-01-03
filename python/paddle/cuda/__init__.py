@@ -52,8 +52,6 @@ from paddle.tensor.creation import (
 )
 
 if TYPE_CHECKING:
-    from paddle.base.libpaddle import _gpuDeviceProperties
-
     DeviceLike = Union[paddle.core.Place, int, str, None]
 
 
@@ -171,7 +169,7 @@ def is_current_stream_capturing() -> bool:
     return _is_current_stream_capturing()
 
 
-def get_device_properties(device: DeviceLike = None) -> _gpuDeviceProperties:
+def get_device_properties(device: DeviceLike = None):
     """
     Get the properties of a CUDA device.
 

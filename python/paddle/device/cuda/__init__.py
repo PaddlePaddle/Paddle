@@ -27,6 +27,7 @@ from .streams import Event, Stream, create_event, create_stream  # noqa: F401
 
 if TYPE_CHECKING:
     from paddle import CUDAPlace, CustomPlace
+    from paddle.base.libpaddle import _gpuDeviceProperties
 
     _CudaPlaceLike: TypeAlias = Union[
         CUDAPlace,
@@ -594,7 +595,7 @@ def stream_guard(stream: Stream) -> NoReturn:
 
 def get_device_properties(
     device: _CudaPlaceLike | None = None,
-):
+) -> _gpuDeviceProperties:
     '''
     Return the properties of given device.
 
