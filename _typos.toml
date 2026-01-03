@@ -6,8 +6,6 @@ extend-exclude = [
     "build",
     # Skip `creater` check in these files
     "paddle/fluid/inference/tensorrt/convert/CMakeLists.txt",
-    "paddle/fluid/inference/tensorrt/convert/generic_and_custom_plugin_creater.cc",
-    "paddle/fluid/inference/tensorrt/convert/test_custom_plugin_creater.cc",
 ]
 
 [default]
@@ -29,6 +27,7 @@ cacl = 'cacl'
 CANN = 'CANN'
 Clas = 'Clas'
 clen = 'clen'
+Copyer = 'Copyer'
 datas = 'datas'
 dota = 'dota'
 dout = "dout"
