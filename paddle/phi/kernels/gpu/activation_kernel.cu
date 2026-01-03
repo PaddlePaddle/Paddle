@@ -277,7 +277,7 @@ void PowKernel(const Context& dev_ctx,
     return;
   }
   if (factor.to<double>() == 1) {
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
   if (factor.to<double>() == 2) {

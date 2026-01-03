@@ -60,3 +60,4 @@
 - variance
 - masked_fill
 - index_elementwise_put_with_tensor
+- index_elementwise_put

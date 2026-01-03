@@ -204,7 +204,9 @@ class ListVariable(ContainerVariable):
 
     def get_py_value(self, allow_tensor=False):
         items = self.proxy.get_all()
-        return [item.get_py_value(allow_tensor) for item in items]
+        return self.get_py_type()(
+            [item.get_py_value(allow_tensor) for item in items]
+        )
 
     def get_py_type(self):
         return list
@@ -245,7 +247,8 @@ class ListVariable(ContainerVariable):
             return res
         elif isinstance(key, slice):
             items = self.proxy.get_all()
-            return VariableFactory.from_value(
+            assert self.__class__ in {ListVariable, SizeVariable}
+            return self.__class__(
                 items[key],
                 self.graph,
                 tracker=GetItemTracker(
@@ -334,7 +337,8 @@ class ListVariable(ContainerVariable):
 
     def repeat(self, length):
         assert isinstance(length, ConstantVariable)
-        return ListVariable(
+        assert self.__class__ in {ListVariable, SizeVariable}
+        return self.__class__(
             self.proxy.get_all() * length.value,
             self.graph,
             DummyTracker([self, length]),
@@ -349,7 +353,8 @@ class ListVariable(ContainerVariable):
         return res
 
     def copy(self):
-        return ListVariable(
+        assert self.__class__ in {ListVariable, SizeVariable}
+        return self.__class__(
             self.proxy.get_all(),
             self.graph,
             DummyTracker([self]),
@@ -1122,3 +1127,47 @@ class DictVariable(ContainerVariable):
 class SizeVariable(ListVariable):
     def get_py_type(self):
         return paddle.Size
+
+    def getattr(self, name: str, default=None):
+        if name == "numel":
+            return UserDefinedFunctionVariable(
+                SizeVariable._numel_impl, self.graph, DanglingTracker()
+            ).bind_dangling_fn(self, name)
+
+        return super().getattr(name, default)
+
+    def _numel_impl(self):
+        res = 1
+        for i in range(len(self)):
+            res = res * self[i]
+
+        return res
+
+    def concat(self, other):
+        assert isinstance(other, (ListVariable, TupleVariable))
+        data = other.proxy.get_all()
+
+        return SizeVariable(
+            self.proxy.get_all() + data,
+            self.graph,
+            DummyTracker([self, other]),
+        )
+
+    def _reconstruct(self, codegen: PyCodeGen):
+        codegen.gen_load_global("paddle", push_null=False)
+        codegen.gen_load_method("Size")
+        super()._reconstruct(codegen)
+        codegen.gen_call_method(1)
+
+    @classmethod
+    def from_sequence_var(cls, data: ListVariable | TupleVariable):
+        assert isinstance(data, (ListVariable, TupleVariable))
+        return SizeVariable(
+            data.get_wrapped_items(), data.graph, DummyTracker([data])
+        )
+
+    @VariableFactory.register_from_value(successor="ListVariable")
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if type(value) is paddle.Size:
+            return SizeVariable(value, graph=graph, tracker=tracker)
+        return None

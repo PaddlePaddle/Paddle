@@ -7,13 +7,8 @@ on:
 jobs:
   re-run:
     if: ${{ github.event.issue.pull_request && contains(github.event.comment.body, '/re-run')  && github.event.comment.user.login == github.event.issue.user.login }}
-    runs-on:
-      group: APPROVAL
+    runs-on: ubuntu-latest
     steps:
-      - name: Cleanup
-        run: |
-          rm -rf * .[^.]*
-
       - name: Checkout code
         uses: actions/checkout@v4
 

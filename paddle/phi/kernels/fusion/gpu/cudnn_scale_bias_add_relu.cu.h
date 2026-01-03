@@ -100,7 +100,7 @@ struct ScaleBiasAddReluArgs {
 template <typename T>
 class CudnnScaleBiasAddRelu {
  public:
-  CudnnScaleBiasAddRelu(const phi::GPUContext &dev_ctx,
+  CudnnScaleBiasAddRelu(const GPUContext &dev_ctx,
                         const std::string &act_type,
                         bool fuse_add,
                         bool has_shortcut,
@@ -116,15 +116,15 @@ class CudnnScaleBiasAddRelu {
 
   ~CudnnScaleBiasAddRelu() {}
 
-  void Forward(const phi::GPUContext &dev_ctx,
-               const phi::DenseTensor &x,
-               const phi::DenseTensor &x_scale,
-               const phi::DenseTensor &x_bias,
-               const phi::DenseTensor *z,
-               const phi::DenseTensor *z_scale,
-               const phi::DenseTensor *z_bias,
-               phi::DenseTensor *out,
-               phi::DenseTensor *bitmask) {
+  void Forward(const GPUContext &dev_ctx,
+               const DenseTensor &x,
+               const DenseTensor &x_scale,
+               const DenseTensor &x_bias,
+               const DenseTensor *z,
+               const DenseTensor *z_scale,
+               const DenseTensor *z_bias,
+               DenseTensor *out,
+               DenseTensor *bitmask) {
     ForwardInit(dev_ctx);
     auto handle = dev_ctx.cudnn_handle();
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
@@ -171,18 +171,18 @@ class CudnnScaleBiasAddRelu {
         fwd_workspace_byte_);
   }
 
-  void Backward(const phi::GPUContext &dev_ctx,
-                const phi::DenseTensor &dy,
-                const phi::DenseTensor &x,
-                const phi::DenseTensor &scale,
-                const phi::DenseTensor &bias,
-                const phi::DenseTensor &saved_mean,
-                const phi::DenseTensor &saved_invstd,
-                const phi::DenseTensor *bitmask,
-                phi::DenseTensor *dx,
-                phi::DenseTensor *dz,
-                phi::DenseTensor *dscale,
-                phi::DenseTensor *dbias,
+  void Backward(const GPUContext &dev_ctx,
+                const DenseTensor &dy,
+                const DenseTensor &x,
+                const DenseTensor &scale,
+                const DenseTensor &bias,
+                const DenseTensor &saved_mean,
+                const DenseTensor &saved_invstd,
+                const DenseTensor *bitmask,
+                DenseTensor *dx,
+                DenseTensor *dz,
+                DenseTensor *dscale,
+                DenseTensor *dbias,
                 double eps) {
     BackwardInit(dev_ctx);
     auto handle = dev_ctx.cudnn_handle();
@@ -241,7 +241,7 @@ class CudnnScaleBiasAddRelu {
   }
 
  private:
-  void ForwardInit(const phi::GPUContext &dev_ctx) {
+  void ForwardInit(const GPUContext &dev_ctx) {
     // Set constant_param
     fwd_op_.SetOpConstParamAttr({CUDNN_PARAM_XDATA_PLACEHOLDER,
                                  CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
@@ -289,7 +289,7 @@ class CudnnScaleBiasAddRelu {
                                 CUDNN_BATCHNORM_SPATIAL_PERSISTENT);
   }
 
-  void BackwardInit(const phi::GPUContext &dev_ctx) {
+  void BackwardInit(const GPUContext &dev_ctx) {
     // Set constant_param
     bwd_op_.SetOpConstParamAttr({CUDNN_PARAM_XDATA_PLACEHOLDER,
                                  CUDNN_PARAM_DYDATA_PLACEHOLDER,

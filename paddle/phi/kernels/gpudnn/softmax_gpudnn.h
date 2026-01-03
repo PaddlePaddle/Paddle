@@ -2882,7 +2882,7 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
             dev_ctx, out, dout, input_axis, dx);
       }
     } else {
-      phi::DenseTensor tmp;
+      DenseTensor tmp;
       tmp.Resize(dout.dims());
       dev_ctx.Alloc<T>(&tmp);
       phi::MultiplyKernel<T>(dev_ctx, dout, out, &tmp);

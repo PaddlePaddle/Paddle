@@ -1042,7 +1042,7 @@ void FusedLayerNormKernel(const Context& dev_ctx,
                           quant_scale));
   }
 
-  using U = phi::funcs::LayerNormParamType<T>;
+  using U = funcs::LayerNormParamType<T>;
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     if (residual_out) dev_ctx.template Alloc<T>(residual_out);

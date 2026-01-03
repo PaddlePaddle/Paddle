@@ -185,8 +185,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
                   DenseTensor* softmax,
                   DenseTensor* loss) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    const phi::DenseTensor* logits = &logits_in;
-    const phi::DenseTensor* labels = &label_in;
+    const DenseTensor* logits = &logits_in;
+    const DenseTensor* labels = &label_in;
 
     gpuStream_t stream = nullptr;
     phi::distributed::NCCLCommContext* comm_ctx = nullptr;
@@ -213,13 +213,13 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     const int64_t D = funcs::SizeFromAxis<int64_t>(axis, logits_dims);
     const int64_t C = funcs::SizeFromAxis<int64_t>(axis, labels_dims);
 
-    phi::DenseTensor logits_2d, softmax_2d, loss_2d;
+    DenseTensor logits_2d, softmax_2d, loss_2d;
     logits_2d.ShareDataWith(*logits).Resize({N, D});
     softmax_2d.ShareDataWith(*softmax).Resize({N, D});
     loss_2d.ShareDataWith(*loss).Resize({N, 1});
 
     // step 1, obtain logit_max
-    phi::DenseTensor logits_max;
+    DenseTensor logits_max;
     logits_max.Resize({N, 1});
     dev_ctx.template Alloc<T>(&logits_max);
 
@@ -229,13 +229,13 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     comm_ctx->AllReduce(&logits_max, logits_max, ncclMax, stream);
 
     // step 2, obtain logit - logit_max
-    std::vector<const phi::DenseTensor*> inputs = {&logits_2d, &logits_max};
-    std::vector<phi::DenseTensor*> outputs = {&softmax_2d};
+    std::vector<const DenseTensor*> inputs = {&logits_2d, &logits_max};
+    std::vector<DenseTensor*> outputs = {&softmax_2d};
     funcs::BroadcastKernel<T>(
         dev_ctx, inputs, &outputs, funcs::SubtractFunctor<T>());
 
     // step 3, obtain predict target
-    phi::DenseTensor predicted_logits;
+    DenseTensor predicted_logits;
     predicted_logits.Resize({N, 1});
     dev_ctx.template Alloc<T>(&predicted_logits);
 
@@ -314,7 +314,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     phi::ExpKernel<T, phi::GPUContext>(dev_ctx, softmax_2d, &softmax_2d);
 
     // step 5, obtain sum_exp_logits
-    phi::DenseTensor sum_exp_logits;
+    DenseTensor sum_exp_logits;
     sum_exp_logits.Resize({N, 1});
     dev_ctx.template Alloc<T>(&sum_exp_logits);
 
@@ -367,8 +367,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     phi::ReciprocalKernel<T, phi::GPUContext>(
         dev_ctx, sum_exp_logits, &sum_exp_logits);
 
-    inputs = std::vector<const phi::DenseTensor*>{&softmax_2d, &sum_exp_logits};
-    outputs = std::vector<phi::DenseTensor*>{&softmax_2d};
+    inputs = std::vector<const DenseTensor*>{&softmax_2d, &sum_exp_logits};
+    outputs = std::vector<DenseTensor*>{&softmax_2d};
     funcs::BroadcastKernel<T>(
         dev_ctx, inputs, &outputs, funcs::MultiplyFunctor<T>());
 #endif

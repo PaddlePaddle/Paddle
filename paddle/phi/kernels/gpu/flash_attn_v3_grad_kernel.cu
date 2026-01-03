@@ -338,7 +338,7 @@ void FlashAttnV3GradBaseKernel(
       CHECK_SHAPE((*dq), total_q, num_heads, head_size);
     }
   } else {
-    *dq = phi::EmptyLike<T, Context>(dev_ctx, q);
+    *dq = EmptyLike<T, Context>(dev_ctx, q);
   }
   if (dk_.is_initialized()) {
     *dk = dk_.get();
@@ -357,7 +357,7 @@ void FlashAttnV3GradBaseKernel(
       CHECK_SHAPE((*dk), total_k, num_heads_k, head_size);
     }
   } else {
-    *dk = phi::EmptyLike<T, Context>(dev_ctx, k);
+    *dk = EmptyLike<T, Context>(dev_ctx, k);
   }
   if (dv_.is_initialized()) {
     *dv = dv_.get();
@@ -376,7 +376,7 @@ void FlashAttnV3GradBaseKernel(
       CHECK_SHAPE((*dv), total_k, num_heads_k, head_size_v);
     }
   } else {
-    *dv = phi::EmptyLike<T, Context>(dev_ctx, v);
+    *dv = EmptyLike<T, Context>(dev_ctx, v);
   }
 
   // Otherwise the kernel will be launched from cuda:0 device
@@ -507,13 +507,13 @@ void FlashAttnV3GradBaseKernel(
   // opts.dtype(torch::kInt32)); params.tile_count_semaphore =
   // tile_count_semaphore.data_ptr<int>(); Will be zero'ed out in the backward
   // preprocess kernel
-  DenseTensor dq_semaphore = phi::Empty<int32_t>(
+  DenseTensor dq_semaphore = Empty<int32_t>(
       dev_ctx, {(seqlen_q + kBlockM - 1) / kBlockM, batch_size, num_heads});
   dynload::fa3_bwd_params_set_dq_semaphore(params_handle,
                                            dq_semaphore.data<int>());
-  DenseTensor dk_semaphore = phi::Empty<int32_t>(
+  DenseTensor dk_semaphore = Empty<int32_t>(
       dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
-  DenseTensor dv_semaphore = phi::Empty<int32_t>(
+  DenseTensor dv_semaphore = Empty<int32_t>(
       dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
   if (num_heads_k != num_heads &&
       dynload::fa3_bwd_params_get_deterministic(params_handle)) {
@@ -1250,7 +1250,7 @@ void FlashMaskV2GradBaseKernel(
       CHECK_SHAPE((*dq), total_q, num_heads, head_size);
     }
   } else {
-    *dq = phi::EmptyLike<T, Context>(dev_ctx, q);
+    *dq = EmptyLike<T, Context>(dev_ctx, q);
   }
   if (dk_.is_initialized()) {
     *dk = dk_.get();
@@ -1269,7 +1269,7 @@ void FlashMaskV2GradBaseKernel(
       CHECK_SHAPE((*dk), total_k, num_heads_k, head_size);
     }
   } else {
-    *dk = phi::EmptyLike<T, Context>(dev_ctx, k);
+    *dk = EmptyLike<T, Context>(dev_ctx, k);
   }
   if (dv_.is_initialized()) {
     *dv = dv_.get();
@@ -1288,7 +1288,7 @@ void FlashMaskV2GradBaseKernel(
       CHECK_SHAPE((*dv), total_k, num_heads_k, head_size);
     }
   } else {
-    *dv = phi::EmptyLike<T, Context>(dev_ctx, v);
+    *dv = EmptyLike<T, Context>(dev_ctx, v);
   }
 
   // Otherwise the kernel will be launched from cuda:0 device
@@ -1426,13 +1426,13 @@ void FlashMaskV2GradBaseKernel(
                                                                   nullptr);
   }
 
-  DenseTensor dq_semaphore = phi::Empty<int32_t>(
+  DenseTensor dq_semaphore = Empty<int32_t>(
       dev_ctx, {(seqlen_q + kBlockM - 1) / kBlockM, batch_size, num_heads});
   dynload::flashmaskv2_bwd_params_set_dq_semaphore(params_handle,
                                                    dq_semaphore.data<int>());
-  DenseTensor dk_semaphore = phi::Empty<int32_t>(
+  DenseTensor dk_semaphore = Empty<int32_t>(
       dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
-  DenseTensor dv_semaphore = phi::Empty<int32_t>(
+  DenseTensor dv_semaphore = Empty<int32_t>(
       dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
   if (num_heads_k != num_heads &&
       dynload::flashmaskv2_bwd_params_get_deterministic(params_handle)) {

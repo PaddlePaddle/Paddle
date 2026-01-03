@@ -30,7 +30,6 @@ void PadGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(d_x);
   if (d_x->numel() == 0) return;
   int rank = d_out.dims().size();
-  phi::funcs::PaddingGradFunctor<Context, T>(
-      rank, dev_ctx, paddings, d_out, d_x);
+  funcs::PaddingGradFunctor<Context, T>(rank, dev_ctx, paddings, d_out, d_x);
 }
 }  // namespace phi

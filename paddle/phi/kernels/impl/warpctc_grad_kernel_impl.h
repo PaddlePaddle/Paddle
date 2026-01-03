@@ -69,17 +69,16 @@ void WarpctcGradKernel(const Context& dev_ctx,
       logits_grad_e.device(*place) = logits_g;
     }
   } else {
-    phi::funcs::UnpaddingDenseTensorFunctor<Context, T>()(
-        dev_ctx,
-        warpctcgrad,
-        logits_grad,
-        -1,
-        0,
-        norm_by_times,
-        phi::funcs::kLengthBatchWidth);
+    funcs::UnpaddingDenseTensorFunctor<Context, T>()(dev_ctx,
+                                                     warpctcgrad,
+                                                     logits_grad,
+                                                     -1,
+                                                     0,
+                                                     norm_by_times,
+                                                     funcs::kLengthBatchWidth);
 
     const T* loss_grad_data = loss_grad.data<T>();
-    phi::funcs::ScaleDenseTensorFunctor<Context, T>()(
+    funcs::ScaleDenseTensorFunctor<Context, T>()(
         dev_ctx, loss_grad_data, logits_grad);
   }
 }

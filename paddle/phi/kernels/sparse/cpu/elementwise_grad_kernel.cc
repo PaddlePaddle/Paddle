@@ -37,9 +37,9 @@ template <typename T, typename IntT, typename Context>
 void AllocCsrPtr(const Context& dev_ctx,
                  const SparseCsrTensor& x,
                  SparseCsrTensor* dx) {
-  DenseTensor dx_crows = phi::EmptyLike<IntT>(dev_ctx, x.crows());
-  DenseTensor dx_cols = phi::EmptyLike<IntT>(dev_ctx, x.cols());
-  DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.values());
+  DenseTensor dx_crows = EmptyLike<IntT>(dev_ctx, x.crows());
+  DenseTensor dx_cols = EmptyLike<IntT>(dev_ctx, x.cols());
+  DenseTensor dx_values = EmptyLike<T>(dev_ctx, x.values());
   dx->set_meta(x.meta());  // NOLINT
   dx->SetMember(dx_crows, dx_cols, dx_values, x.dims());
 }
@@ -48,8 +48,8 @@ template <typename T, typename IntT, typename Context>
 void AllocCooPtr(const Context& dev_ctx,
                  const SparseCooTensor& x,
                  SparseCooTensor* dx) {
-  DenseTensor dx_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
-  DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.values());
+  DenseTensor dx_indices = EmptyLike<IntT>(dev_ctx, x.indices());
+  DenseTensor dx_values = EmptyLike<T>(dev_ctx, x.values());
   dx->set_meta(x.meta());  // NOLINT
   dx->SetMember(dx_indices, dx_values, x.dims(), x.coalesced());
 }
@@ -65,24 +65,24 @@ void CopyCooValues(const Context& dev_ctx,
   std::vector<IntT> sparse_offsets(sparse_dim), dout_indices(dout.nnz()),
       x_indices(x.nnz());
 
-  phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
+  funcs::sparse::CalcOffsetsPerDim<IntT>(
       dout.dims(), sparse_dim, sparse_offsets.data());
 
-  phi::funcs::sparse::FlattenIndices(dout.indices().data<IntT>(),
-                                     sparse_offsets.data(),
-                                     dout.nnz(),
-                                     sparse_dim,
-                                     0,
-                                     1,
-                                     dout_indices.data());
+  funcs::sparse::FlattenIndices(dout.indices().data<IntT>(),
+                                sparse_offsets.data(),
+                                dout.nnz(),
+                                sparse_dim,
+                                0,
+                                1,
+                                dout_indices.data());
 
-  phi::funcs::sparse::FlattenIndices(x.indices().data<IntT>(),
-                                     sparse_offsets.data(),
-                                     x.nnz(),
-                                     sparse_dim,
-                                     0,
-                                     1,
-                                     x_indices.data());
+  funcs::sparse::FlattenIndices(x.indices().data<IntT>(),
+                                sparse_offsets.data(),
+                                x.nnz(),
+                                sparse_dim,
+                                0,
+                                1,
+                                x_indices.data());
 
   size_t i = 0, j = 0;
   T* dx_values_ptr = dx->mutable_values()->data<T>();

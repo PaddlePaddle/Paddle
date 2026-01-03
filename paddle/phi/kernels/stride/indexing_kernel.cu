@@ -77,6 +77,34 @@ inline bool CheckIsDimsMatchBool(const DDim& first, const DDim& second) {
   return false;
 }
 
+template <typename T, int64_t num_indices>
+__device__ __forceinline__ void index_put_impl(char* out_data,
+                                               const char* in_data,
+                                               const char* const* index_ptrs,
+                                               const int64_t* offsets,
+                                               const int64_t* sizes,
+                                               const int64_t* strides,
+                                               bool accumulate) {
+  int64_t offset = 0;
+#pragma unroll
+  for (int64_t i = 0; i < num_indices; i++) {
+    int64_t index =
+        *reinterpret_cast<const int64_t*>(index_ptrs[i] + offsets[2]);
+    if (index < 0) {
+      index += sizes[i];
+    }
+    offset += index * strides[i];
+  }
+
+  if (accumulate) {
+    *reinterpret_cast<T*>(out_data + offset) +=
+        *reinterpret_cast<const T*>(in_data);
+  } else {
+    *reinterpret_cast<T*>(out_data + offset) =
+        *reinterpret_cast<const T*>(in_data);
+  }
+}
+
 template <typename T, typename Context, typename OffsetT = uint32_t>
 void LaunchIndexPutKernel_V2(const Context& dev_ctx,
                              const DenseTensor& x,
@@ -164,7 +192,17 @@ void LaunchIndexPutKernel_V2(const Context& dev_ctx,
     index_ptrs[i] = reinterpret_cast<const char*>(iter.data_ptr(i + 2));
   }
 
-  funcs::OffsetCalculator offset_calc = funcs::make_offset_calculator<3>(iter);
+  bool is_big_tensor = false;
+  int64_t max_stride = 0;
+  for (int i = 0; i < 2 + num_indices; i++) {
+    for (int j = 0; j < iter.ndim(); j++) {
+      max_stride += iter.operands_[i].stride_bytes.data()[j] * iter.shape()[j];
+    }
+  }
+
+  if (!funcs::IsInUint32Range(max_stride * sizeof(T))) {
+    is_big_tensor = true;
+  }
 
   const int64_t N = iter.numel();
   PADDLE_ENFORCE_EQ(true,
@@ -182,30 +220,44 @@ void LaunchIndexPutKernel_V2(const Context& dev_ctx,
 
   const char* in_ptr = reinterpret_cast<const char*>(val_data);
   char* out_ptr = reinterpret_cast<char*>(out_data);
-  funcs::index_put_kernel<nt, vt, T><<<grid, block, 0, stream>>>(
-      N, accumulate, [=] __device__(int idx, bool accumulate) {
-        const auto offsets = offset_calc.get(idx);
-        char* const out_data = out_ptr + offsets[0];
-        const char* const in_data = in_ptr + offsets[1];
 
-        int64_t offset = 0;
-#pragma unroll
-        for (int64_t i = 0; i < num_indices; i++) {
-          int64_t index =
-              *reinterpret_cast<const int64_t*>(index_ptrs[i] + offsets[2]);
-          if (index < 0) {
-            index += sizes[i];
-          }
-          offset += index * strides[i];
-        }
-        if (accumulate) {
-          *reinterpret_cast<T*>(out_data + offset) +=
-              *reinterpret_cast<const T*>(in_data);
-        } else {
-          *reinterpret_cast<T*>(out_data + offset) =
-              *reinterpret_cast<const T*>(in_data);
-        }
+#define Launch_Index_Put                                                     \
+  funcs::index_put_kernel<nt, vt, T><<<grid, block, 0, stream>>>(            \
+      N, accumulate, [=] __device__(int64_t idx, bool accumulate) {          \
+        const auto offsets = offset_calc.get(idx);                           \
+        char* const out_data = out_ptr + offsets[0];                         \
+        const char* const in_data = in_ptr + offsets[1];                     \
+                                                                             \
+        int64_t offset = 0;                                                  \
+        for (int64_t i = 0; i < num_indices; i++) {                          \
+          int64_t index =                                                    \
+              *reinterpret_cast<const int64_t*>(index_ptrs[i] + offsets[2]); \
+          if (index < 0) {                                                   \
+            index += sizes[i];                                               \
+          }                                                                  \
+          offset += index * strides[i];                                      \
+        }                                                                    \
+        if (accumulate) {                                                    \
+          *reinterpret_cast<T*>(out_data + offset) +=                        \
+              *reinterpret_cast<const T*>(in_data);                          \
+        } else {                                                             \
+          *reinterpret_cast<T*>(out_data + offset) =                         \
+              *reinterpret_cast<const T*>(in_data);                          \
+        }                                                                    \
       });
+
+  if (is_big_tensor) {
+    funcs::OffsetCalculator offset_calc =
+        funcs::make_offset_calculator<3, false, uint64_t>(iter);
+    Launch_Index_Put;
+  } else {
+    funcs::OffsetCalculator offset_calc =
+        funcs::make_offset_calculator<3, false, uint32_t>(iter);
+    Launch_Index_Put;
+  }
+
+  // funcs::OffsetCalculator offset_calc =
+  // funcs::make_offset_calculator<3>(iter);
 }
 
 template <typename T, typename Context>
@@ -228,8 +280,11 @@ void IndexPutKernel_V2(const Context& dev_ctx,
                       common::errors::InvalidArgument(
                           "Indices in Index_put must be contiguous."));
   }
-
-  if (!FLAGS_use_stride_compute_kernel) {
+  bool zero_size = false;
+  if (x.numel() == 0) {
+    zero_size = true;
+  }
+  if (!FLAGS_use_stride_compute_kernel || zero_size) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {

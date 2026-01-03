@@ -54,7 +54,7 @@ void RandomRoutingKernel(const Context& dev_ctx,
                          const DenseTensor& topk_value,
                          const DenseTensor& topk_idx,
                          DenseTensor* out) {
-  phi::Copy(dev_ctx, topk_idx, dev_ctx.GetPlace(), false, out);
+  Copy(dev_ctx, topk_idx, dev_ctx.GetPlace(), false, out);
 
   size_t N = topk_idx.dims()[0];
   size_t D = topk_idx.dims()[1];

@@ -132,14 +132,14 @@ class Compiler final {
   std::vector<void*> GetFnPtr() const { return fn_ptr_; }
 
   /**
-   * Set pir host_func_name_
+   * Set pir fusion hash
    */
-  void SetFuncName(std::string func_name) { host_func_name_ = func_name; }
+  void SetFusionHash(size_t hash) { fusion_hash_ = hash; }
 
   /**
-   * Get pir host_func_name_
+   * Get pir fusion hash
    */
-  std::string GetFuncName() const { return host_func_name_; }
+  size_t GetFusionHash() const { return fusion_hash_; }
 
   std::string GetDeviceId() const;
 
@@ -202,13 +202,13 @@ class Compiler final {
   std::vector<std::string> device_fn_name_;
   std::string device_fn_code_;
   // kernel cache control
-  std::string host_func_name_;
-
-#ifdef CINN_WITH_CUDA
-  std::unique_ptr<runtime::cuda::CUDAModule> cuda_module_;
+  size_t fusion_hash_{0};
   // dynamic library support
   std::string dynamic_library_path_;
   void* dynamic_library_handle_{nullptr};
+
+#ifdef CINN_WITH_CUDA
+  std::unique_ptr<runtime::cuda::CUDAModule> cuda_module_;
   void* cuda_module_handle_{nullptr};
 #endif
 #ifdef CINN_WITH_HIP
@@ -219,9 +219,8 @@ class Compiler final {
 #endif
 
   // Dynamic library helper methods
-#ifdef CINN_WITH_CUDA
   std::string GetCachePath() const;
-  std::string ComputeSourceHash();
+#ifdef CINN_WITH_CUDA
   std::string GetDeviceArch();
   std::string GetComputeArch();
   std::string GenerateObjectWithoutCache(const std::string& source_code);

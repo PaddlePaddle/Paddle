@@ -326,7 +326,7 @@ void MemoryEfficientAttentionGradKernel(
 
     DenseTensor delta;
     if (KernelType::kKernelComputesDelta) {
-      phi::EmptyKernel<float, Context>(
+      EmptyKernel<float, Context>(
           dev_ctx,
           {output.dims()[0], output.dims()[2], output.dims()[1]},
           output.dtype(),
@@ -344,14 +344,14 @@ void MemoryEfficientAttentionGradKernel(
           phi::Multiply<float, Context>(dev_ctx, output_grad_tmp, output_tmp);
 
       DenseTensor delta_sum;
-      phi::EmptyKernel<float, Context>(
+      EmptyKernel<float, Context>(
           dev_ctx,
           {delta_mul.dims()[0], delta_mul.dims()[1], delta_mul.dims()[2]},
           DataType::FLOAT32,
           &delta_sum);
       phi::SumKernel<float, Context>(
           dev_ctx, delta_mul, {-1}, delta_mul.dtype(), false, &delta_sum);
-      phi::EmptyKernel<float, Context>(
+      EmptyKernel<float, Context>(
           dev_ctx,
           {delta_mul.dims()[0], delta_mul.dims()[2], delta_mul.dims()[1]},
           DataType::FLOAT32,
@@ -400,12 +400,12 @@ void MemoryEfficientAttentionGradKernel(
     bool force_pad_inf = (compute_capacity == 75);
     const std::string data_format = "NCHW";
     DenseTensor padded_lse =
-        phi::funcs::get_pad_lse<float>(dev_ctx,
-                                       const_cast<DenseTensor*>(&logsumexp),
-                                       static_cast<int>(output.dims()[1]),
-                                       32,
-                                       data_format,
-                                       force_pad_inf);
+        funcs::get_pad_lse<float>(dev_ctx,
+                                  const_cast<DenseTensor*>(&logsumexp),
+                                  static_cast<int>(output.dims()[1]),
+                                  32,
+                                  data_format,
+                                  force_pad_inf);
     p.logsumexp_ptr = phi::SafeGetTensorPtr<float>(padded_lse);
     VLOG(3) << "logsumexp_ptr" << p.logsumexp_ptr;
     p.output_ptr = phi::SafeGetTensorPtr<scalar_t>(output);

@@ -58,7 +58,7 @@ void LambKernel(const Context& dev_ctx,
   }
   bool cpu_skip_update = false;
   if (skip_update && skip_update->IsInitialized()) {
-    if (skip_update->place().GetType() == phi::AllocationType::CPU) {
+    if (skip_update->place().GetType() == AllocationType::CPU) {
       cpu_skip_update = *(skip_update->data<bool>());
     } else {
       const bool* skip_update_flag = skip_update->data<bool>();
@@ -111,7 +111,7 @@ void LambKernel(const Context& dev_ctx,
   xpu::Context* xpu_ctx = dev_ctx.x_context();
   xpu::ctx_guard RAII_GUARD(xpu_ctx);
 
-  if (beta1_pow.place().GetType() == phi::AllocationType::CPU) {
+  if (beta1_pow.place().GetType() == AllocationType::CPU) {
     beta1_pow_xpu_ptr = RAII_GUARD.alloc_l3_or_gm<MT>(beta1_pow.numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(beta1_pow_out_ptr);
     memory_utils::Copy(dev_ctx.GetPlace(),
@@ -126,7 +126,7 @@ void LambKernel(const Context& dev_ctx,
   } else {
     beta1_pow_out_ptr = dev_ctx.template Alloc<MT>(beta1_pow_out);
   }
-  if (beta2_pow.place().GetType() == phi::AllocationType::CPU) {
+  if (beta2_pow.place().GetType() == AllocationType::CPU) {
     beta2_pow_xpu_ptr = RAII_GUARD.alloc_l3_or_gm<MT>(beta2_pow.numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(beta2_pow_xpu_ptr);
     memory_utils::Copy(dev_ctx.GetPlace(),
@@ -195,7 +195,7 @@ void LambKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
   }
 
-  if (beta1_pow.place().GetType() == phi::AllocationType::CPU) {
+  if (beta1_pow.place().GetType() == AllocationType::CPU) {
     // copy beta1_pow_out from xpu to cpu
     memory_utils::Copy(beta1_pow.place(),
                        dev_ctx.template HostAlloc<MT>(beta1_pow_out),
@@ -203,7 +203,7 @@ void LambKernel(const Context& dev_ctx,
                        beta1_pow_out_ptr,
                        sizeof(MT) * beta1_pow_out->numel());
   }
-  if (beta2_pow.place().GetType() == phi::AllocationType::CPU) {
+  if (beta2_pow.place().GetType() == AllocationType::CPU) {
     // copy beta2_pow_out from xpu to cpu
     memory_utils::Copy(beta2_pow.place(),
                        dev_ctx.template HostAlloc<MT>(beta2_pow_out),

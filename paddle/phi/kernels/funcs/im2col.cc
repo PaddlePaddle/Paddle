@@ -27,14 +27,14 @@ namespace phi::funcs {
  *   [input_channels, filter_height, filter_width, output_height, output_width]
  */
 template <class T, typename DeviceContext>
-class Im2ColFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
+class Im2ColFunctor<funcs::ColFormat::kCFO, DeviceContext, T> {
  public:
   void operator()(const DeviceContext& dev_ctx UNUSED,
-                  const phi::DenseTensor& im,
+                  const DenseTensor& im,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
-                  phi::DenseTensor* col,
+                  DenseTensor* col,
                   const DataLayout data_layout) {
     PADDLE_ENFORCE_EQ(im.dims().size(),
                       3,
@@ -72,14 +72,14 @@ class Im2ColFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
  *   [input_channels, filter_height, filter_width, output_height, output_width]
  */
 template <class T, typename DeviceContext>
-class Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
+class Col2ImFunctor<funcs::ColFormat::kCFO, DeviceContext, T> {
  public:
   void operator()(const DeviceContext& dev_ctx UNUSED,
-                  const phi::DenseTensor& col,
+                  const DenseTensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
-                  phi::DenseTensor* im,
+                  DenseTensor* im,
                   const DataLayout data_layout) {
     PADDLE_ENFORCE_EQ(im->dims().size(),
                       3,
@@ -154,23 +154,21 @@ class Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
 };
 
 template class PADDLE_API
-    Im2ColFunctor<phi::funcs::ColFormat::kCFO, phi::CPUContext, float>;
+    Im2ColFunctor<funcs::ColFormat::kCFO, phi::CPUContext, float>;
 template class PADDLE_API
-    Im2ColFunctor<phi::funcs::ColFormat::kCFO, phi::CPUContext, double>;
+    Im2ColFunctor<funcs::ColFormat::kCFO, phi::CPUContext, double>;
 template class PADDLE_API
-    Im2ColFunctor<phi::funcs::ColFormat::kCFO, phi::CPUContext, phi::complex64>;
-template class PADDLE_API Im2ColFunctor<phi::funcs::ColFormat::kCFO,
-                                        phi::CPUContext,
-                                        phi::complex128>;
+    Im2ColFunctor<funcs::ColFormat::kCFO, phi::CPUContext, phi::complex64>;
 template class PADDLE_API
-    Col2ImFunctor<phi::funcs::ColFormat::kCFO, phi::CPUContext, float>;
+    Im2ColFunctor<funcs::ColFormat::kCFO, phi::CPUContext, phi::complex128>;
 template class PADDLE_API
-    Col2ImFunctor<phi::funcs::ColFormat::kCFO, phi::CPUContext, double>;
+    Col2ImFunctor<funcs::ColFormat::kCFO, phi::CPUContext, float>;
 template class PADDLE_API
-    Col2ImFunctor<phi::funcs::ColFormat::kCFO, phi::CPUContext, phi::complex64>;
-template class PADDLE_API Col2ImFunctor<phi::funcs::ColFormat::kCFO,
-                                        phi::CPUContext,
-                                        phi::complex128>;
+    Col2ImFunctor<funcs::ColFormat::kCFO, phi::CPUContext, double>;
+template class PADDLE_API
+    Col2ImFunctor<funcs::ColFormat::kCFO, phi::CPUContext, phi::complex64>;
+template class PADDLE_API
+    Col2ImFunctor<funcs::ColFormat::kCFO, phi::CPUContext, phi::complex128>;
 
 /*
  * im = [input_channels, input_height, input_width]
@@ -178,14 +176,14 @@ template class PADDLE_API Col2ImFunctor<phi::funcs::ColFormat::kCFO,
  *   [output_height, output_width, input_channels, filter_height, filter_width]
  */
 template <class T, typename DeviceContext>
-class Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
+class Im2ColFunctor<funcs::ColFormat::kOCF, DeviceContext, T> {
  public:
   void operator()(const DeviceContext& dev_ctx UNUSED,
-                  const phi::DenseTensor& im,
+                  const DenseTensor& im,
                   const std::vector<int>& dilation UNUSED,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
-                  phi::DenseTensor* col,
+                  DenseTensor* col,
                   const DataLayout data_layout UNUSED) {
     PADDLE_ENFORCE_EQ(im.dims().size(),
                       3,
@@ -251,14 +249,14 @@ class Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
  *   [output_height, output_width, input_channels, filter_height, filter_width]
  */
 template <class T, typename DeviceContext>
-class Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
+class Col2ImFunctor<funcs::ColFormat::kOCF, DeviceContext, T> {
  public:
   void operator()(const DeviceContext& dev_ctx UNUSED,
-                  const phi::DenseTensor& col,
+                  const DenseTensor& col,
                   const std::vector<int>& dilation UNUSED,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
-                  phi::DenseTensor* im,
+                  DenseTensor* im,
                   const DataLayout data_layout UNUSED) {
     PADDLE_ENFORCE_EQ(im->dims().size(),
                       3,
@@ -331,21 +329,19 @@ class Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
 };
 
 template class PADDLE_API
-    Im2ColFunctor<phi::funcs::ColFormat::kOCF, phi::CPUContext, float>;
+    Im2ColFunctor<funcs::ColFormat::kOCF, phi::CPUContext, float>;
 template class PADDLE_API
-    Im2ColFunctor<phi::funcs::ColFormat::kOCF, phi::CPUContext, double>;
+    Im2ColFunctor<funcs::ColFormat::kOCF, phi::CPUContext, double>;
 template class PADDLE_API
-    Im2ColFunctor<phi::funcs::ColFormat::kOCF, phi::CPUContext, phi::complex64>;
-template class PADDLE_API Im2ColFunctor<phi::funcs::ColFormat::kOCF,
-                                        phi::CPUContext,
-                                        phi::complex128>;
+    Im2ColFunctor<funcs::ColFormat::kOCF, phi::CPUContext, phi::complex64>;
 template class PADDLE_API
-    Col2ImFunctor<phi::funcs::ColFormat::kOCF, phi::CPUContext, float>;
+    Im2ColFunctor<funcs::ColFormat::kOCF, phi::CPUContext, phi::complex128>;
 template class PADDLE_API
-    Col2ImFunctor<phi::funcs::ColFormat::kOCF, phi::CPUContext, double>;
+    Col2ImFunctor<funcs::ColFormat::kOCF, phi::CPUContext, float>;
 template class PADDLE_API
-    Col2ImFunctor<phi::funcs::ColFormat::kOCF, phi::CPUContext, phi::complex64>;
-template class PADDLE_API Col2ImFunctor<phi::funcs::ColFormat::kOCF,
-                                        phi::CPUContext,
-                                        phi::complex128>;
+    Col2ImFunctor<funcs::ColFormat::kOCF, phi::CPUContext, double>;
+template class PADDLE_API
+    Col2ImFunctor<funcs::ColFormat::kOCF, phi::CPUContext, phi::complex64>;
+template class PADDLE_API
+    Col2ImFunctor<funcs::ColFormat::kOCF, phi::CPUContext, phi::complex128>;
 }  // namespace phi::funcs

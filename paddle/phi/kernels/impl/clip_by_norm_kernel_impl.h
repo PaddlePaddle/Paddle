@@ -32,8 +32,8 @@ void ClipByNormFunctor(const Context& dev_ctx,
                               "Input(X) of ClipByNormOp should not be null. "
                               "Please check if it is created correctly."));
 
-  auto x = phi::EigenVector<T>::Flatten(*input);
-  auto out = phi::EigenVector<T>::Flatten(*output);
+  auto x = EigenVector<T>::Flatten(*input);
+  auto out = EigenVector<T>::Flatten(*output);
   auto x_norm = x.square().sum().sqrt();
   auto* place = dev_ctx.eigen_device();
 

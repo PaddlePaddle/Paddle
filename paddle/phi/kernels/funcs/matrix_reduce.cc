@@ -47,7 +47,7 @@ class MatrixReduceSumFunctor<T, CPUContext> {
         out_reduce_dims.push_back(static_cast<int>(idx));
       }
     }
-    ReduceKernelImpl<CPUContext, T, T, phi::funcs::SumFunctor>(
+    ReduceKernelImpl<CPUContext, T, T, funcs::SumFunctor>(
         dev_ctx, in, out, out_reduce_dims, true, false);
   }
 };

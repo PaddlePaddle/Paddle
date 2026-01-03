@@ -40,12 +40,10 @@ void MaxPoolCooCPUKernel(const CPUContext& dev_ctx,
                          DenseTensor* counter) {
   const auto& x_dims = x.dims();
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
-  const std::vector<int>& real_kernel_sizes =
-      phi::funcs::sparse::PoolResetKernel(kernel_sizes,
-                                          static_cast<int>(x_dims[4]),
-                                          static_cast<int>(x_dims[4]));
+  const std::vector<int>& real_kernel_sizes = funcs::sparse::PoolResetKernel(
+      kernel_sizes, static_cast<int>(x_dims[4]), static_cast<int>(x_dims[4]));
   DDim out_dims = {1, 1, 1, 1, 1};
-  phi::funcs::sparse::GetOutShape(
+  funcs::sparse::GetOutShape(
       x_dims, real_kernel_sizes, paddings, dilations, strides, &out_dims);
   const int in_channels = real_kernel_sizes[3];
 
@@ -75,12 +73,12 @@ void MaxPoolCooCPUKernel(const CPUContext& dev_ctx,
   memcpy(counter_ptr, counter_per_kernel.data(), kernel_size * sizeof(int));
 
   std::vector<int> offsets(kernel_size + 1);
-  phi::funcs::sparse::PrefixSum(counter_ptr, &offsets[0], kernel_size);
+  funcs::sparse::PrefixSum(counter_ptr, &offsets[0], kernel_size);
   std::vector<bool> out_flags(out->nnz(), false);
 
   // 2. max pool
   T* out_features_ptr = out->mutable_values()->data<T>();
-  phi::funcs::MaxPool<T> max_pool_functor;
+  funcs::MaxPool<T> max_pool_functor;
   for (int i = 0; i < kernel_size; i++) {
     for (int j = 0; j < counter_ptr[i]; j++) {
       IntT in_i = rulebook_ptr[rulebook_len + offsets[i] + j];

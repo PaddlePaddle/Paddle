@@ -28,9 +28,7 @@ using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
 
 template <typename T, typename DeviceContext>
 void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
-    const DeviceContext& dev_ctx,
-    const phi::DenseTensor* X,
-    phi::DenseTensor* Y) {
+    const DeviceContext& dev_ctx, const DenseTensor* X, DenseTensor* Y) {
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor xDesc;
   ScopedTensorDescriptor yDesc;
@@ -39,7 +37,7 @@ void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
   if (cudnn_tensor_dims.size() == 5) {
     layout = DataLayout::NCDHW;
   }
-  // NOTE(*) : cudnn softmax only support >= 4D phi::DenseTensor,
+  // NOTE(*) : cudnn softmax only support >= 4D DenseTensor,
   // fill 1 at unused dims
   if (cudnn_tensor_dims.size() <= 2) {
     cudnn_tensor_dims.resize(4, 1);
@@ -80,9 +78,9 @@ void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
 template <typename T, typename DeviceContext>
 void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
     const DeviceContext& dev_ctx,
-    const phi::DenseTensor* Y,
-    const phi::DenseTensor* YGrad,
-    phi::DenseTensor* XGrad) {
+    const DenseTensor* Y,
+    const DenseTensor* YGrad,
+    DenseTensor* XGrad) {
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor yDesc;
   ScopedTensorDescriptor dyDesc;
@@ -92,7 +90,7 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
   if (cudnn_tensor_dims.size() == 5) {
     layout = DataLayout::NCDHW;
   }
-  // NOTE(*) : cudnn softmax only support >= 4D phi::DenseTensor,
+  // NOTE(*) : cudnn softmax only support >= 4D DenseTensor,
   // fill 1 at unused dims
   if (cudnn_tensor_dims.size() <= 2) {
     cudnn_tensor_dims.resize(4, 1);

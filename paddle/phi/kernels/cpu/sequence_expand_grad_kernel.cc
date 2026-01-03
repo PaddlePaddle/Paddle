@@ -32,10 +32,10 @@ namespace phi {
 template <typename T>
 struct SequenceExpandGradFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& dev_ctx,
-                  const phi::DenseTensor& dout,
+                  const DenseTensor& dout,
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
-                  phi::DenseTensor* dx) {
+                  DenseTensor* dx) {
     int dout_offset = 0;
     for (size_t i = 1; i < ref_lod.size(); ++i) {
       int repeat_num = ref_lod[i] - ref_lod[i - 1];

@@ -127,7 +127,7 @@ void TileGradKernel(const Context& dev_ctx,
   if (just_copy) {
     dev_ctx.template Alloc<T>(x_grad);
 
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     // TensorCopy may change the dims of dx
     x_grad->Resize(x_dims);
   } else {

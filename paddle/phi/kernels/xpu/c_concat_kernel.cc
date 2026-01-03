@@ -55,8 +55,8 @@ void CConcatKernel(const Context& dev_ctx,
                         rank,
                         nranks));
 
-  phi::DenseTensor temp_out;
-  phi::DDim temp_out_dims = x->dims();
+  DenseTensor temp_out;
+  DDim temp_out_dims = x->dims();
   temp_out_dims[0] *= nranks;
   temp_out.Resize(temp_out_dims);
   dev_ctx.Alloc(&temp_out, x->dtype());
@@ -73,19 +73,19 @@ void CConcatKernel(const Context& dev_ctx,
   stream = dev_ctx.stream();
   comm_ctx->AllGather(&temp_out, *x, stream);
 
-  std::vector<phi::DenseTensor> inputs;
+  std::vector<DenseTensor> inputs;
   int axis = x->dims().size() - 1;
   auto out_dims = x->dims();
   out_dims[out_dims.size() - 1] *= nranks;
   int64_t rows_per_tensor = x->dims()[0];
   int64_t offset = 0;
   for (int i = 0; i < nranks; i++) {
-    phi::DenseTensor temp = temp_out.Slice(offset, offset + rows_per_tensor);
+    DenseTensor temp = temp_out.Slice(offset, offset + rows_per_tensor);
     inputs.emplace_back(temp);
     offset += rows_per_tensor;
   }
 
-  phi::funcs::ConcatFunctor<phi::XPUContext, T> functor;
+  funcs::ConcatFunctor<phi::XPUContext, T> functor;
   out->Resize(out_dims);
   dev_ctx.Alloc(out, x->dtype());
   functor(dev_ctx, inputs, axis, out);

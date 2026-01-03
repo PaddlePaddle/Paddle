@@ -32,16 +32,16 @@ template <typename T,
           typename TreeT = int,
           typename OutT = int>
 void TDMSamplerInner(const Context &dev_ctx,
-                     const phi::DenseTensor &input_tensor,
-                     const phi::DenseTensor &travel_dense_tensor,
-                     const phi::DenseTensor &layer_dense_tensor,
+                     const DenseTensor &input_tensor,
+                     const DenseTensor &travel_dense_tensor,
+                     const DenseTensor &layer_dense_tensor,
                      bool output_positive,
                      std::vector<int> neg_samples_num_list,
                      std::vector<int> layer_offset,
                      int seed,
-                     phi::DenseTensor *out,
-                     phi::DenseTensor *label,
-                     phi::DenseTensor *mask) {
+                     DenseTensor *out,
+                     DenseTensor *label,
+                     DenseTensor *mask) {
   // get dimension
   int64_t input_ids_num = input_tensor.numel();
 
@@ -192,11 +192,11 @@ void TDMSamplerInner(const Context &dev_ctx,
                 << mask_vec[i * sample_res_length + offset];
         offset += 1;
       }
-      std::vector<int> sample_res_vec{};
+      std::vector<int64_t> sample_res_vec{};
       // Sampling at layer, until samples enough
       for (int sample_index = 0; sample_index < sample_num; ++sample_index) {
         // Avoid sampling to positive samples
-        int sample_res = 0;
+        int64_t sample_res = 0;
         do {
           sample_res = sampler_vec[layer_idx]->Sample();
         } while (positive_node_id ==

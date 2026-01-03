@@ -195,13 +195,13 @@ class Blas {
 
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
   template <typename T>
-  void MatMulWithHead(const phi::DenseTensor& mat_a,
+  void MatMulWithHead(const DenseTensor& mat_a,
                       const MatDescriptor& dim_a,
-                      const phi::DenseTensor& mat_b,
+                      const DenseTensor& mat_b,
                       const MatDescriptor& dim_b,
                       T alpha,
                       int head_number,
-                      phi::DenseTensor* mat_out,
+                      DenseTensor* mat_out,
                       T beta,
                       bool mat_y_split_vertical) const;
 #endif
@@ -210,13 +210,13 @@ class Blas {
 #if defined(PADDLE_WITH_HML) && !defined(PADDLE_WITH_CUDA) && \
     !defined(PADDLE_WITH_HIP)
   template <typename T>
-  void MatMulWithHead(const phi::DenseTensor& mat_a,
+  void MatMulWithHead(const DenseTensor& mat_a,
                       const MatDescriptor& dim_a,
-                      const phi::DenseTensor& mat_b,
+                      const DenseTensor& mat_b,
                       const MatDescriptor& dim_b,
                       T alpha,
                       int head_number,
-                      phi::DenseTensor* mat_out,
+                      DenseTensor* mat_out,
                       T beta,
                       bool mat_y_split_vertical) const;
 #endif
@@ -230,20 +230,20 @@ class Blas {
               T* C) const;
 
   template <typename T>
-  void MatMul(const phi::DenseTensor& mat_a,
+  void MatMul(const DenseTensor& mat_a,
               bool trans_a,
-              const phi::DenseTensor& mat_b,
+              const DenseTensor& mat_b,
               bool trans_b,
               T alpha,
-              phi::DenseTensor* mat_out,
+              DenseTensor* mat_out,
               T beta) const;
 
   template <typename T>
-  void MatMul(const phi::DenseTensor& mat_a,
+  void MatMul(const DenseTensor& mat_a,
               bool trans_a,
-              const phi::DenseTensor& mat_b,
+              const DenseTensor& mat_b,
               bool trans_b,
-              phi::DenseTensor* mat_out) const {
+              DenseTensor* mat_out) const {
     MatMul(mat_a,
            trans_a,
            mat_b,
@@ -254,9 +254,9 @@ class Blas {
   }
 
   template <typename T>
-  void MatMul(const phi::DenseTensor& mat_a,
-              const phi::DenseTensor& mat_b,
-              phi::DenseTensor* mat_out) const {
+  void MatMul(const DenseTensor& mat_a,
+              const DenseTensor& mat_b,
+              DenseTensor* mat_out) const {
     this->template MatMul<T>(mat_a, false, mat_b, false, mat_out);
   }
 
@@ -396,12 +396,12 @@ class Blas {
 #endif
 
   template <typename T>
-  void MatMul(const phi::DenseTensor& mat_a,
+  void MatMul(const DenseTensor& mat_a,
               const MatDescriptor& dim_a,
-              const phi::DenseTensor& mat_b,
+              const DenseTensor& mat_b,
               const MatDescriptor& dim_b,
               T alpha,
-              phi::DenseTensor* mat_out,
+              DenseTensor* mat_out,
               T beta) const;
 
   template <typename T>

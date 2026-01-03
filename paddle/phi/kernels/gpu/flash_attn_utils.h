@@ -141,6 +141,7 @@ struct FlashAttnParamsBase {
   bool is_fp8;
   float softmax_scale;
   std::vector<int64_t> softmax_lse_dims;
+  std::vector<int64_t> dpsum_dims;
 
   bool causal;
   std::vector<int64_t> mask_dims;
@@ -148,6 +149,9 @@ struct FlashAttnParamsBase {
 
   const DenseTensor* startend_row_indices;
   std::vector<int64_t> startend_row_indices_dims;
+
+  bool unpadded_lse;
+  int total_q;
 
   FlashAttnParamsBase(const int _version,
                       const int _is_fwd,
@@ -161,7 +165,9 @@ struct FlashAttnParamsBase {
                       const bool _causal,
                       const DataType q_dtype,
                       const paddle::optional<DenseTensor>& attn_mask,
-                      const paddle::optional<DenseTensor>& startend_row_indices)
+                      const paddle::optional<DenseTensor>& startend_row_indices,
+                      const bool _unpadded_lse,
+                      const int _total_q)
       : version(_version),
         is_fwd(_is_fwd),
         batch_size(_batch_size),
@@ -173,7 +179,9 @@ struct FlashAttnParamsBase {
         softmax_scale(_scale),
         causal(_causal),
         attn_mask_tensor(attn_mask.get_ptr()),
-        startend_row_indices(startend_row_indices.get_ptr()) {
+        startend_row_indices(startend_row_indices.get_ptr()),
+        unpadded_lse(_unpadded_lse),
+        total_q(_total_q) {
     is_bf16 = q_dtype == DataType::BFLOAT16;
 
     // TODO(GuoxiaWang): check q, k, v dtype
@@ -191,7 +199,11 @@ struct FlashAttnParamsBase {
     seqlen_q_rounded = round_multiple(max_seqlen_q, kBlockM);
     seqlen_k_rounded = round_multiple(max_seqlen_k, 128);
 
-    softmax_lse_dims = {batch_size, num_heads, seqlen_q_rounded};
+    softmax_lse_dims = unpadded_lse ? std::vector<int64_t>{num_heads, total_q}
+                                    : std::vector<int64_t>{
+                                          batch_size, num_heads, max_seqlen_q};
+
+    dpsum_dims = std::vector<int64_t>{batch_size, num_heads, seqlen_q_rounded};
 
     if (attn_mask_tensor) {
       PADDLE_ENFORCE_EQ(
@@ -251,7 +263,9 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
       const paddle::optional<DenseTensor>& startend_row_indices,
       DenseTensor* _softmax,
       DenseTensor* _softmax_lse,
-      DenseTensor* _seed_offset)
+      DenseTensor* _seed_offset,
+      const bool _unpadded_lse,
+      const int _total_q)
       : FlashAttnParamsBase(_version,
                             /*is_fwd=*/true,
                             _batch_size,
@@ -264,7 +278,9 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
                             _causal,
                             q_dtype,
                             attn_mask,
-                            startend_row_indices),
+                            startend_row_indices,
+                            _unpadded_lse,
+                            _total_q),
         dropout(_dropout),
         return_softmax(_return_softmax),
         softmax(_softmax),
@@ -339,7 +355,9 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
       const DataType q_dtype,
       const paddle::optional<DenseTensor>& attn_mask,
       const paddle::optional<DenseTensor>& startend_row_indices,
-      const int64_t* seed_offset_data)
+      const int64_t* seed_offset_data,
+      const bool _unpadded_lse,
+      const int _total_q)
       : FlashAttnParamsBase(_version,
                             /*is_fwd=*/false,
                             _batch_size,
@@ -352,7 +370,9 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
                             _causal,
                             q_dtype,
                             attn_mask,
-                            startend_row_indices),
+                            startend_row_indices,
+                            _unpadded_lse,
+                            _total_q),
         dropout(_dropout) {
     seed = static_cast<uint64_t>(seed_offset_data[0]);
     offset = static_cast<uint64_t>(seed_offset_data[1]);
@@ -362,7 +382,7 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
     rng_state = Empty<int64_t>(dev_ctx, {2});
 
     // gradient of softmax_lse
-    softmax_d = Empty<float>(dev_ctx, softmax_lse_dims);
+    softmax_d = Empty<float>(dev_ctx, dpsum_dims);
 
     if (_version == 3) {
       softmax_lse_log2 = Empty<float>(dev_ctx, softmax_lse_dims);

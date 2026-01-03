@@ -143,8 +143,8 @@ void SwitchKernel(const Context& dev_ctx,
   } else {
     //    broadcast weight with out_grad's dimensions
     const std::vector<const DenseTensor*> in_tensors = {&weight, &out_grad};
-    DenseTensor b_weight = phi::EmptyLike<T>(dev_ctx, out_grad);
-    DenseTensor b_out = phi::EmptyLike<T>(dev_ctx, out_grad);
+    DenseTensor b_weight = EmptyLike<T>(dev_ctx, out_grad);
+    DenseTensor b_out = EmptyLike<T>(dev_ctx, out_grad);
     std::vector<DenseTensor*> out_tensors = {&b_weight, &b_out};
 
     phi::BroadcastTensorsKernel<T, Context>(dev_ctx, in_tensors, out_tensors);
@@ -234,8 +234,8 @@ void LerpGradKernel(const Context& dev_ctx,
 
   } else {
     int64_t x_grad_size = 0, y_grad_size = 0;
-    DenseTensor b_xgrad = phi::EmptyLike<T, Context>(dev_ctx, out_grad);
-    DenseTensor b_ygrad = phi::EmptyLike<T, Context>(dev_ctx, out_grad);
+    DenseTensor b_xgrad = EmptyLike<T, Context>(dev_ctx, out_grad);
+    DenseTensor b_ygrad = EmptyLike<T, Context>(dev_ctx, out_grad);
     T* x_grad_data = NULL;
     T* y_grad_data = NULL;
 

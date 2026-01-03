@@ -30,9 +30,9 @@ namespace phi {
 template <typename T>
 struct LRNFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& dev_ctx,
-                  const phi::DenseTensor& input,
-                  phi::DenseTensor* out,
-                  phi::DenseTensor* mid,
+                  const DenseTensor& input,
+                  DenseTensor* out,
+                  DenseTensor* mid,
                   int64_t N,
                   int64_t C,
                   int64_t H,
@@ -44,7 +44,7 @@ struct LRNFunctor<phi::CPUContext, T> {
                   const DataLayout data_layout) {
     auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
     funcs::Transpose<phi::CPUContext, T, 4> transpose;
-    phi::DenseTensor in_transpose, mid_transpose, out_transpose;
+    DenseTensor in_transpose, mid_transpose, out_transpose;
     // if channel_last, transpose to channel_first
     if (data_layout == DataLayout::NHWC) {
       auto in_dims = input.dims();
@@ -72,7 +72,7 @@ struct LRNFunctor<phi::CPUContext, T> {
     T* odata = out_transpose.data<T>();
     T* mdata = mid_transpose.data<T>();
 
-    phi::DenseTensor squared;
+    DenseTensor squared;
     squared.Resize({1, C + n - 1, H, W});
     T* sdata = dev_ctx.Alloc<T>(&squared);
     std::memset(sdata, 0, sizeof(T) * squared.numel());

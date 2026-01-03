@@ -16,13 +16,14 @@
 
 #include <ATen/core/TensorBase.h>
 #include <ATen/indexing.h>
+#include <c10/core/Backend.h>
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
 
 namespace at {
 using PaddleTensor = paddle::Tensor;
-
+using PaddlePlace = phi::Place;
 class Tensor : public TensorBase {
  public:
   Tensor() = default;
@@ -68,6 +69,35 @@ class Tensor : public TensorBase {
   template <typename T>
   T* data_ptr() const {
     return const_cast<T*>(tensor_.data<T>());
+  }
+
+  template <typename T>
+  void* data() const {
+    return data_ptr<T>();
+  }
+
+  Tensor toBackend(c10::Backend b) const {
+    if (b == c10::Backend::CPU) {
+      PaddlePlace place(phi::AllocationType::CPU);
+      return tensor_.copy_to(place, true);
+    } else if (b == c10::Backend::CUDA) {
+      PaddlePlace place(phi::AllocationType::GPU);
+      return tensor_.copy_to(place, true);
+    } else if (b == c10::Backend::XPU) {
+      PaddlePlace place(phi::AllocationType::XPU);
+      return tensor_.copy_to(place, true);
+    } else if (b == c10::Backend::IPU) {
+      PaddlePlace place(phi::AllocationType::IPU);
+      return tensor_.copy_to(place, true);
+    } else {
+      PD_CHECK(false, "Unsupported backend");
+    }
+    return tensor_;
+  }
+
+  Tensor cpu() const {
+    PaddlePlace place(phi::AllocationType::CPU);
+    return tensor_.copy_to(place, true);
   }
 
   const void* const_data_ptr() const {

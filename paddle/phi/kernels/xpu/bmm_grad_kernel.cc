@@ -79,7 +79,7 @@ void BmmGradKernel(const Context& dev_ctx,
   ReshapeXYOutIntoMatrixSequence(
       &x_help, &y_help, &out_grad_help, false, false);
 
-  phi::DDim dx_dims;
+  DDim dx_dims;
   if (x_grad) {
     dx_dims = x_grad->dims();
     if (dx_dims != x_help.dims()) {
@@ -87,7 +87,7 @@ void BmmGradKernel(const Context& dev_ctx,
     }
   }
 
-  phi::DDim dy_dims;
+  DDim dy_dims;
   if (y_grad) {
     dy_dims = y_grad->dims();
     if (dy_dims != y_help.dims()) {

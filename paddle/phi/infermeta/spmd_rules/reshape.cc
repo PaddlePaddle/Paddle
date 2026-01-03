@@ -156,7 +156,7 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
 SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
                           const std::vector<int64_t>& shape) {
   // Step0: Verify input args based on reshape logic
-  auto x_shape = phi::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
 
   int x_ndim = static_cast<int>(x_shape.size());
   int out_ndim = static_cast<int>(shape.size());

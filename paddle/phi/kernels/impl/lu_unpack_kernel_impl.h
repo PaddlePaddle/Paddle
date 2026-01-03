@@ -55,10 +55,10 @@ void LUUnpackKernel(const Context& dev_ctx,
       LU_Unpack<Context, T>(dev_ctx, &x, &L, &U);
 
       if (m >= n) {
-        phi::Copy(dev_ctx, L, dev_ctx.GetPlace(), false, l);
+        Copy(dev_ctx, L, dev_ctx.GetPlace(), false, l);
         Tensor_narrow<Context, T>(dev_ctx, &U, u, 0, k, 0, k);
       } else {
-        phi::Copy(dev_ctx, U, dev_ctx.GetPlace(), false, u);
+        Copy(dev_ctx, U, dev_ctx.GetPlace(), false, u);
         Tensor_narrow<Context, T>(dev_ctx, &L, l, 0, k, 0, k);
       }
     }
@@ -73,10 +73,10 @@ void LUUnpackKernel(const Context& dev_ctx,
       if (columns == 0) return;
 
       T* pmat_data = pmat->data<T>();
-      phi::funcs::SetConstant<Context, T> set_zero;
+      funcs::SetConstant<Context, T> set_zero;
       set_zero(dev_ctx, pmat, static_cast<T>(0));
       int64_t rows = pmat->numel() / columns;
-      phi::funcs::ForRange<Context> for_range(dev_ctx, rows);
+      funcs::ForRange<Context> for_range(dev_ctx, rows);
       LuUnpackEyeFunctor<T> functor(columns, pmat_data);
       for_range(functor);
       return;

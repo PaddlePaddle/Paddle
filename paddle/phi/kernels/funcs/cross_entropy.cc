@@ -20,7 +20,7 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-using Tensor = phi::DenseTensor;
+using Tensor = DenseTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -28,9 +28,9 @@ using EigenMatrix = phi::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename T>
 struct HardLabelCrossEntropyCPUFunctorImpl {
-  HardLabelCrossEntropyCPUFunctorImpl(phi::DenseTensor* out,
-                                      const phi::DenseTensor* prob,
-                                      const phi::DenseTensor* labels,
+  HardLabelCrossEntropyCPUFunctorImpl(DenseTensor* out,
+                                      const DenseTensor* prob,
+                                      const DenseTensor* labels,
                                       const int ignore_index,
                                       const int axis_dim)
       : out_(out),
@@ -80,15 +80,15 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
         loss_data[loss_idx] =
             lbl == ignore_index_
                 ? 0
-                : -phi::funcs::TolerableValue<T>()(std::log(prob_data[index]));
+                : -funcs::TolerableValue<T>()(std::log(prob_data[index]));
       }
     }
   }
 
  private:
-  phi::DenseTensor* out_;
-  const phi::DenseTensor* prob_;
-  const phi::DenseTensor* labels_;
+  DenseTensor* out_;
+  const DenseTensor* prob_;
+  const DenseTensor* labels_;
   const int ignore_index_;
   const int axis_dim_;
 };
@@ -96,9 +96,9 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
 template <typename DeviceContext, typename T>
 void CrossEntropyFunctor<DeviceContext, T>::operator()(
     const DeviceContext& dev_ctx,
-    phi::DenseTensor* out,
-    const phi::DenseTensor* prob,
-    const phi::DenseTensor* labels,
+    DenseTensor* out,
+    const DenseTensor* prob,
+    const DenseTensor* labels,
     const bool softLabel,
     const int ignore_index,
     const int axis_dim) {
@@ -116,7 +116,7 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
     auto loss = EigenMatrix<T>::From(*out);
 
     loss.device(*dev_ctx.eigen_device()) =
-        -((lbl * in.log().unaryExpr(phi::funcs::TolerableValue<T>()))
+        -((lbl * in.log().unaryExpr(funcs::TolerableValue<T>()))
               .reshape(batch_axis_remain)
               .sum(Eigen::DSizes<int, 1>(1)));
   } else {

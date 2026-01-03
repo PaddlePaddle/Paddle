@@ -840,7 +840,7 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
     break;
 
 template <typename T, typename LoadFunc, typename StoreFunc, bool SPLIT>
-void fmha_impl(const phi::GPUContext &dev_ctx,
+void fmha_impl(const GPUContext &dev_ctx,
                const Masked_multihead_attention_params<T> &params,
                int dim_head,
                LoadFunc load_func,
@@ -863,13 +863,13 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
 }
 
 template <typename T, bool SPLIT = false>
-void DispatchFMHA(const phi::GPUContext &dev_ctx,
-                  const phi::DenseTensor &qkv_tensor,
+void DispatchFMHA(const GPUContext &dev_ctx,
+                  const DenseTensor &qkv_tensor,
                   const Masked_multihead_attention_params<T> &params,
                   int num_head,
                   int dim_head,
-                  phi::DenseTensor *out_tensor,
-                  const phi::DenseTensor *dequant_qkv_scales = nullptr,
+                  DenseTensor *out_tensor,
+                  const DenseTensor *dequant_qkv_scales = nullptr,
                   const float quant_fmha_out_scale = -1,
                   const int quant_round_type = 1,
                   const float quant_max_bound = 127.0f,
@@ -910,15 +910,15 @@ void DispatchFMHA(const phi::GPUContext &dev_ctx,
 }
 
 template <typename T, bool SPLIT = false>
-void DispatchFMHA(const phi::GPUContext &dev_ctx,
-                  const phi::DenseTensor &qkv_tensor,
-                  const phi::DenseTensor &shift,
-                  const phi::DenseTensor &smooth,
+void DispatchFMHA(const GPUContext &dev_ctx,
+                  const DenseTensor &qkv_tensor,
+                  const DenseTensor &shift,
+                  const DenseTensor &smooth,
                   const Masked_multihead_attention_params<T> &params,
                   int num_head,
                   int dim_head,
-                  phi::DenseTensor *out_tensor,
-                  const phi::DenseTensor *dequant_qkv_scales = nullptr,
+                  DenseTensor *out_tensor,
+                  const DenseTensor *dequant_qkv_scales = nullptr,
                   const float quant_fmha_out_scale = -1,
                   const int quant_round_type = 1,
                   const float quant_max_bound = 127.0f,
@@ -1107,14 +1107,14 @@ void DispatchWithDtype(const Context &dev_ctx,
     params.split_seq = (timestep - 1) / steps_per_block + 1;
     int split_seq = params.split_seq;
 
-    phi::DenseTensor qk_sum_max_split_seq;
+    DenseTensor qk_sum_max_split_seq;
     // 2 means sum and max.
     qk_sum_max_split_seq.Resize({{bsz, num_head, split_seq, 2}});
     dev_ctx.template Alloc<float>(&qk_sum_max_split_seq,
                                   qk_sum_max_split_seq.numel() * sizeof(float));
     params.qk_sum_max_split_seq = qk_sum_max_split_seq.data<float>();
 
-    phi::DenseTensor split_out;
+    DenseTensor split_out;
     split_out.Resize({{bsz, num_head, split_seq, dim_head}});
     dev_ctx.template Alloc<float>(&split_out,
                                   split_out.numel() * sizeof(float));

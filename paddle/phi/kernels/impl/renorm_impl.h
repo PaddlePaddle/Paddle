@@ -35,7 +35,7 @@ void RenormFunc(const phi::CPUContext& dev_ctx UNUSED,
                 int dim,
                 float max_norm,
                 int64_t dimension_each,
-                const phi::DDim& input_dims,
+                const DDim& input_dims,
                 int64_t numel) {
   auto dim_size = input_dims.size();
   int64_t dim_divisor = 1;
@@ -87,7 +87,7 @@ void RenormGradFunc(const phi::CPUContext& dev_ctx UNUSED,
                     int dim,
                     float max_norm,
                     int64_t dimension_each,
-                    const phi::DDim& input_dims,
+                    const DDim& input_dims,
                     int64_t numel) {
   auto dim_size = input_dims.size();
   int64_t dim_divisor = 1;
@@ -278,7 +278,7 @@ void RenormFunc(const phi::GPUContext& dev_ctx,
                 int dim,
                 float max_norm,
                 int64_t dimension_each,
-                const phi::DDim& input_dims,
+                const DDim& input_dims,
                 int64_t numel) {
   auto dim_size = input_dims.size();
   DenseTensor pow_value, dim_value;
@@ -317,7 +317,7 @@ void RenormGradFunc(const phi::GPUContext& dev_ctx,
                     int dim,
                     float max_norm,
                     int64_t dimension_each,
-                    const phi::DDim& input_dims,
+                    const DDim& input_dims,
                     int64_t numel) {
   auto dim_size = input_dims.size();
   int64_t dim_divisor = 1, pre_mul = 1;
