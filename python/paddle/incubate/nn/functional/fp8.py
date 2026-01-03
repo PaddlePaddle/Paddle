@@ -37,7 +37,7 @@ def fused_stack_transpose_quant(
     transpose: bool = True,
     using_pow2_scaling: bool = False,
     using_ue8m0_scale: bool = False,
-    output_scale_transpose: bool = True,
+    output_scale_transpose: bool = False,
 ) -> tuple[Tensor, Tensor]:
     """
     Fused operation that performs stacking, optional transposition, and quantization
