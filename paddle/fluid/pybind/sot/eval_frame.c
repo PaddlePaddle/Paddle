@@ -16,7 +16,7 @@ limitations under the License. */
 
 #if SOT_IS_SUPPORTED
 
-#include "paddle/fluid/pybind/sot/cpython_internals.h"
+// #include "paddle/fluid/pybind/sot/cpython_internals.h"
 #include "paddle/fluid/pybind/sot/eval_frame_tools.h"
 #include "paddle/fluid/pybind/sot/frame_proxy.h"
 
