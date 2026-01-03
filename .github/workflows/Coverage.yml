@@ -57,7 +57,7 @@ jobs:
       - name: Check docker image and run container
         env:
           CACHE_DIR: "/root/.cache/coverage"
-          CCACHE_DIR: "/home/data/shared" # L1 cache on machine shared dir
+          CCACHE_DIR: "/home/data/shared/.ccache/l1" # L1 cache on machine shared dir
           CCACHE_SECONDARY_STORAGE: "file:///home/data/cfs/.ccache/l2" # L2 cache on cfs
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
           CTEST_PARALLEL_LEVEL: 2
