@@ -2355,9 +2355,9 @@ void FlashMaskV2Kernel(const Context &dev_ctx,
 }
 
 template <typename T, typename Context>
-void FlashMaskV2GetUniqueId(const Context &dev_ctx, DenseTensor *out) {
-  out->Resize(common::make_ddim({128}));
-  dev_ctx.template Alloc<uint8_t>(out);
+void FlashMaskV2GetUniqueIdInplace(const Context &dev_ctx,
+                                   const DenseTensor &x,
+                                   DenseTensor *out) {
   bool valid_unique_id =
       dynload::flashmaskv2_get_nvshmem_unique_id(out->data<uint8_t>());
   if (!valid_unique_id) {
@@ -2373,8 +2373,10 @@ void FlashMaskV2GetUniqueId(const Context &dev_ctx, DenseTensor *out) {
 PD_REGISTER_KERNEL(flashmask_get_unique_id,
                    CPU,
                    ALL_LAYOUT,
-                   phi::FlashMaskV2GetUniqueId,
-                   uint8_t) {}
+                   phi::FlashMaskV2GetUniqueIdInplace,
+                   uint8_t) {
+  kernel->InputAt(0).SetBackend(phi::Backend::CPU);
+}
 
 PD_REGISTER_KERNEL(flash_attn_v3,
                    GPU,

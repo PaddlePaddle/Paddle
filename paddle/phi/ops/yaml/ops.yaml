@@ -2196,16 +2196,17 @@
   backward : flashmask_attention_v2_grad
 
 - op : flashmask_get_unique_id
-  args : (DataType dtype=DataType::UINT8, Place place=CPUPlace())
-  output : Tensor(out)
-  infer_meta :
-    func : FlashMaskGetUniqueIdInferMeta
-    param : []
-  kernel :
-    func : flashmask_get_unique_id
-    data_type : dtype
-    backend : place
-  traits : paddle::dialect::ForwardOnlyTrait
+  args: (Tensor x)
+  output: Tensor(out)
+  infer_meta:
+    func: FlashMaskGetUniqueIdInferMeta
+    param: [x]
+  kernel:
+    func: flashmask_get_unique_id
+    data_type: x
+    backend : x
+  inplace: (x -> out)
+  interfaces : paddle::dialect::ForwardOnlyTrait
 
 - op : flatten
   args : (Tensor x, int start_axis = 1, int stop_axis = 1)

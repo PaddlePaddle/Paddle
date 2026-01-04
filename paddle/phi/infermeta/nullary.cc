@@ -224,11 +224,6 @@ void EyeInferMeta(const Scalar& num_rows,
   out->set_dtype(dtype);
 }
 
-void FlashMaskGetUniqueIdInferMeta(MetaTensor* out) {
-  out->set_dims({128});
-  out->set_dtype(DataType::UINT8);
-}
-
 void GaussianInferMeta(const IntArray& shape,
                        float mean,
                        float std,

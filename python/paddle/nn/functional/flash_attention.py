@@ -2151,7 +2151,9 @@ def flashmask_get_unique_id():
         Tensor. CPU Tensor with exactly 128 uint8s (128B). If flashmask module is not compiled
         with ``WITH_DISTRIBUTED_OVERLAP`` flag, this function returns a zero tensor.
     """
-    return paddle._C_ops.flashmask_get_unique_id()
+    output = paddle.zeros([128], dtype=paddle.uint8, device='cpu')
+    paddle._C_ops.flashmask_get_unique_id_(output)
+    return output
 
 
 def calc_reduced_attention_scores(

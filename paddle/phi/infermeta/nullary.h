@@ -78,8 +78,6 @@ PADDLE_API void EyeInferMeta(const Scalar& num_rows,
                              MetaTensor* out,
                              MetaConfig config = MetaConfig());
 
-PADDLE_API void FlashMaskGetUniqueIdInferMeta(MetaTensor* out);
-
 PADDLE_API void GaussianInferMeta(const IntArray& shape,
                                   float mean,
                                   float std,
