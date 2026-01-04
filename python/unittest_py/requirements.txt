@@ -1,7 +1,7 @@
 PyGithub
 coverage==7.10.7
 mock
-gymnasium>=1.2.3
+gymnasium>=1.1.1
 hypothesis
 opencv-python>= 4.10.0.84
 visualdl==2.5.3
