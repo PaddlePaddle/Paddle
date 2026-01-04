@@ -218,9 +218,11 @@ class TestConjBF16(OpTest):
 
 class TestConjAPI_Compatibility(unittest.TestCase):
     def setUp(self):
-        self.x = np.random.random((12, 14)) + 1j * np.random.random((12, 14))
+        self.x = np.random.random([2, 20, 2, 3]) + 1j * np.random.random(
+            [2, 20, 2, 3]
+        )
         self.out = np.conj(self.x)
-        self.dtype = np.complex64
+        self.dtype = np.complex128
         self.place = get_device_place()
 
     def test_dygraph_Compatibility(self):
