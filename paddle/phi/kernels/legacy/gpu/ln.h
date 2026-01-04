@@ -32,19 +32,6 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 
-#define EMPTY_LIKE(dev_ctx, x)                                   \
-  [&]() -> DenseTensor {                                         \
-    if (x.dtype() == phi::DataType::BFLOAT16) {                  \
-      return phi::EmptyLike<phi::bfloat16, Context>(dev_ctx, x); \
-    } else if (x.dtype() == phi::DataType::FLOAT32) {            \
-      return phi::EmptyLike<float, Context>(dev_ctx, x);         \
-    } else if (x.dtype() == phi::DataType::FLOAT16) {            \
-      return phi::EmptyLike<phi::float16, Context>(dev_ctx, x);  \
-    } else {                                                     \
-      PD_THROW("Unsupported data type for EMPTY_LIKE macro.");   \
-    }                                                            \
-  }()
-
 namespace layer_norm {
 
 template <typename Params>
