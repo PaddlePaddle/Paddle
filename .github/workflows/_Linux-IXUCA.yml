@@ -108,14 +108,6 @@ jobs:
             echo "No valid approval found, running full CI"
           fi
 
-      - name: Clone PaddleCustomDevice repository
-        if: steps.check-approval.outputs.can-skip != 'true'
-        run: |
-          wget -q https://xly-devops.bj.bcebos.com/PaddleTest/PaddleCustomDevice/PaddleCustomDevice-develop.tar.gz
-          tar -zxf PaddleCustomDevice-develop.tar.gz
-          mv PaddleCustomDevice-develop PaddleCustomDevice
-          cd PaddleCustomDevice
-
       - name: Download paddle.tar.gz and update test branch
         if: steps.check-approval.outputs.can-skip != 'true'
         run: |
@@ -137,11 +129,17 @@ jobs:
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
           git config pull.rebase false
           git checkout test
-          echo "Pull upstream develop"
-          cd ../PaddleCustomDevice
+
+      - name: Clone PaddleCustomDevice repository
+        if: steps.check-approval.outputs.can-skip != 'true'
+        run: |
+          wget -q https://xly-devops.bj.bcebos.com/PaddleTest/PaddleCustomDevice/PaddleCustomDevice-develop.tar.gz
+          tar -zxf PaddleCustomDevice-develop.tar.gz
+          mv PaddleCustomDevice-develop PaddleCustomDevice
+          cd PaddleCustomDevice
           cp -r ../Paddle .
           git add Paddle
-          git commit -m "Update Paddle Submodule"
+          git commit -m "add Paddle to nightly"
 
       - name: Determine the runner
         if: steps.check-approval.outputs.can-skip != 'true'
