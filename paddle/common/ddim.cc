@@ -31,7 +31,8 @@ DDim::DDim(const int64_t* d, int n) : rank_(n) {
 }
 
 DDim::DDim(std::initializer_list<int64_t> init_list)
-    : DDim(init_list.begin(), init_list.size()) {}
+    // NOTE(large-tensor): tensor rank is a small integer
+    : DDim(init_list.begin(), static_cast<int>(init_list.size())) {}
 
 int64_t& DDim::at(int idx) {
   PADDLE_ENFORCE_GE(idx,

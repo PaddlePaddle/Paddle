@@ -148,7 +148,8 @@ void ArrayPopKernel(const Context& dev_ctx,
                                       "but the received is %d",
                                       array.size()));
   if (index < 0) {
-    index += array.size();
+    // NOTE(large-tensor): array size is a small integer
+    index += static_cast<int>(array.size());
   }
 
   out->ShareDataWith(array[index]);

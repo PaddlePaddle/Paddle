@@ -35,9 +35,10 @@ void FlattenGradKernel(const Context& dev_ctx,
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
       out_grad.mem_desc(), funcs::to_void_cast(out_grad.data<T>()));
+  // NOTE(large-tensor): tensor rank is a small integer
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
       x_grad,
-      funcs::GetPlainOneDNNFormat(out_grad_vec_dims.size()),
+      funcs::GetPlainOneDNNFormat(static_cast<int>(out_grad_vec_dims.size())),
       dev_ctx.GetPlace());
   auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                   reorder_src_memory_p);
