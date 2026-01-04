@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 from legacy_test.test_parallel_dygraph_dataparallel import (
     TestMultipleAccelerators,
 )
+
+# NOTE(Pan Zhaowu): using legacy linear to fulfill promise of array equal.
+os.environ["FLAGS_use_legacy_linear"] = "True"
 
 
 class TestDygraphShardingStage2(TestMultipleAccelerators):

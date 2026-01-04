@@ -30,6 +30,10 @@ SEED = 10
 IMAGE_SIZE = 784
 CLASS_NUM = 10
 
+# NOTE(Pan Zhaowu): using legacy linear to fulfill promise of array equal
+# in test_inference_and_fine_tuning.
+os.environ["FLAGS_use_legacy_linear"] = "True"
+
 
 # define a random dataset
 class RandomDataset(paddle.io.Dataset):

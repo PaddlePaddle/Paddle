@@ -17,6 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
+
+# NOTE(Pan Zhaowu): enable prim all to support high-order gradients of linear_v2
+paddle.core._set_prim_all_enabled(True)
 from paddle.autograd.backward_utils import ValueDict, ValueSet
 from paddle.autograd.ir_backward import grad
 from paddle.base.wrapped_decorator import signature_safe_contextmanager

@@ -17,6 +17,9 @@ import sys
 import tempfile
 import unittest
 
+# NOTE(Pan Zhaowu): using legacy linear to fulfill promise of hard-coded op numbers in TestTensorAxis.
+os.environ["FLAGS_use_legacy_linear"] = "True"
+
 from paddle.framework import use_pir_api
 
 sys.path.append("../../legacy_test")
