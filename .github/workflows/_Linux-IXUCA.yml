@@ -115,10 +115,6 @@ jobs:
           tar -zxf PaddleCustomDevice-develop.tar.gz
           mv PaddleCustomDevice-develop PaddleCustomDevice
           cd PaddleCustomDevice
-          export https_proxy=http://oversea-website-proxy.aistudio.public:8888
-          export http_proxy=http://oversea-website-proxy.aistudio.public:8888
-          git fetch origin
-          git merge origin/develop --no-recurse-submodules
 
       - name: Download paddle.tar.gz and update test branch
         if: steps.check-approval.outputs.can-skip != 'true'
