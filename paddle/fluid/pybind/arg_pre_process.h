@@ -46,6 +46,8 @@ void SumPreProcess(Value* x, Value* axis);
 void IsClosePreProcess(Value* x, Value* y, Value* rtol, Value* atol);
 void AllClosePreProcess(Value* x, Value* y, Value* rtol, Value* atol);
 
+void NextAfterPreProcess(Value* x, Value* y);
+
 void GridSamplePreProcess(Tensor* x,
                           Tensor* grid,
                           std::string* mode,

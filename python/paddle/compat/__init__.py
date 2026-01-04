@@ -118,6 +118,46 @@ def allclose(
 
 @ForbidKeywordsDecorator(
     illegal_keys={"x", "y"},
+    func_name="paddle.compat.nextafter",
+    correct_name="paddle.nextafter",
+)
+def nextafter(
+    input: Tensor,
+    other: Tensor,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
+    """
+    Return the next floating-point value after input towards other, elementwise.
+    The shapes of input and other must be broadcastable.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is float32, float64.
+        y (Tensor): An N-D Tensor, the data type is float32, float64.
+        name(str, optional):Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> out = paddle.nextafter(paddle.to_tensor([1.0,2.0]),paddle.to_tensor([2.0,1.0]))
+            >>> out
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.00000012, 1.99999988])
+    """
+    _check_out_status(out, False)
+    result = paddle.nextafter(input, other)
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
+
+
+@ForbidKeywordsDecorator(
+    illegal_keys={"x", "y"},
     func_name="paddle.compat.equal",
     correct_name="paddle.equal",
 )

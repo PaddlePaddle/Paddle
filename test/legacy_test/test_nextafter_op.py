@@ -171,5 +171,76 @@ class TestNextafterOPZeroDim2(TestNextafterOP):
         self.outputs = {'out': out}
 
 
+class TestNextafterCompatibility(unittest.TestCase):
+    def setUp(self):
+        self.x = np.random.rand(2, 3, 4, 5).astype('float32')
+        self.y = np.random.rand(2, 3, 4, 5).astype('float32')
+        self.out = np.nextafter(self.x, self.y)
+        self.place = get_device_place()
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x)
+        y = paddle.to_tensor(self.y)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.nextafter(x, y)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.nextafter(x=x, y=y)
+        paddle_dygraph_out.append(out2)
+        # Key words args (kwargs) for torch
+        out3 = paddle.nextafter(input=x, other=y)
+        paddle_dygraph_out.append(out3)
+
+        # Tensor method args
+        out4 = paddle.empty([])
+        out5 = x.nextafter(y, out=out4)
+        paddle_dygraph_out.append(out4)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.nextafter(y, out=out4)
+        paddle_dygraph_out.append(out6)
+        # Test out
+        out7 = paddle.empty([])
+        paddle.nextafter(x, y, out=out7)
+        paddle_dygraph_out.append(out7)
+        # Numpy reference  out
+        ref_out = np.nextafter(self.x, self.y)
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name='x', shape=self.x.shape, dtype='float32'
+            )
+            y = paddle.static.data(
+                name='y', shape=self.y.shape, dtype='float32'
+            )
+            # Position args (args)
+            out1 = paddle.nextafter(x, y)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.nextafter(x=x, y=y)
+            # Key words args (kwargs) for torch
+            out3 = paddle.nextafter(input=x, other=y)
+            # Tensor method args
+            out4 = x.nextafter(y)
+
+            exe = paddle.static.Executor(self.place)
+            fetches = exe.run(
+                main,
+                feed={"x": self.x, "y": self.y},
+                fetch_list=[out1, out2, out3, out4],
+            )
+            ref_out = np.nextafter(self.x, self.y)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
+
+
 if __name__ == "__main__":
     unittest.main()

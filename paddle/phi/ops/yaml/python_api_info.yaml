@@ -319,3 +319,11 @@
   args_alias:
     x : [batch1]
     y : [batch2]
+
+- op : nextafter
+  name : [paddle.nextafter, paddle.Tensor.nextafter]
+  args_alias :
+    x: [input]
+    y: [other]
+  pre_process:
+    static_func: NextAfterPreProcess(x, y)

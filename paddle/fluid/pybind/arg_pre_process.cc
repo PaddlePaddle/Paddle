@@ -237,6 +237,17 @@ void AllClosePreProcess(Value* x, Value* y, Value* rtol, Value* atol) {
       "allclose", "atol", pir::GetValueDtype(*atol), {phi::DataType::FLOAT64});
 }
 
+void NextAfterPreProcess(Value* x, Value* y) {
+  CheckDataType("nextafter",
+                "x",
+                pir::GetValueDtype(*x),
+                {phi::DataType::FLOAT32, phi::DataType::FLOAT64});
+  CheckDataType("nextafter",
+                "y",
+                pir::GetValueDtype(*y),
+                {phi::DataType::FLOAT32, phi::DataType::FLOAT64});
+}
+
 void GridSamplePreProcess(Tensor* x,
                           Tensor* grid,
                           std::string* mode,
