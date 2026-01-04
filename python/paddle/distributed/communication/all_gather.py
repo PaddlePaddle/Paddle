@@ -139,12 +139,9 @@ def all_gather_object(
 
     tensor_list = []
     all_gather(tensor_list, input_tensor, group)
+    # Ensure object_list has enough slots for all gathered objects
+    while len(object_list) < len(tensor_list):
+        object_list.append(None)
+
     for i, tensor in enumerate(tensor_list):
-        if len(object_list) == 0:
-            object_list.append(
-                convert_tensor_to_object(tensor, list_len_of_tensor[i])
-            )
-        else:
-            object_list[i] = convert_tensor_to_object(
-                tensor, list_len_of_tensor[i]
-            )
+        object_list[i] = convert_tensor_to_object(tensor, list_len_of_tensor[i])
