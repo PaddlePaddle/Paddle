@@ -16,7 +16,7 @@
 
 #include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
 #include "glog/logging.h"
-#include "paddle/phi/backends/custom/custom_device.h"
+#include "paddle/phi/backends/device_ext.h"
 #include "paddle/phi/backends/device_manager.h"
 
 #ifdef CINN_WITH_CUSTOM_DEVICE
@@ -34,16 +34,29 @@ class DefaultCompilerToolchain : public CustomCompilerToolchain {
  public:
   explicit DefaultCompilerToolchain(C_CinnInterface* cif) : cif_(cif) {}
 
+  // 1. 实现 Compile：调用 C 接口
   std::string Compile(const std::string& code) override {
-    if (cif_ && cif_->compile_kernel) {
-      // TODO(Plugin): 这里需要按照具体的 C 接口协议调用 compile_kernel
+    if (cif_ && cif_->compile) {
+      // TODO(Plugin): 这里需要按照具体的 C 接口协议调用 compile
       // void* handle = nullptr;
-      // cif_->compile_kernel(..., code.c_str(), &handle);
+      char output_path[1024];
+      cif_->compile(cif_->dev_ptr, code.c_str(), output_path, 1024);
       // return HandleToPath(handle);
       VLOG(3) << "Calling Custom Device compile_kernel...";
-      return "temp_path_placeholder.so";  // 临时占位
+      return std::string(output_path);
     }
     LOG(ERROR) << "compile_kernel interface not implemented by vendor.";
+    return "";
+  }
+
+  // 2. 实现 GetRuntimeSource：调用 C 接口
+  std::string GetRuntimeSource() override {
+    if (cif_ && cif_->get_runtime_source) {
+      // 获取厂商内置的 Runtime 源码字符串
+      const char* src = cif_->get_runtime_source(cif_->dev_ptr);
+      return src ? std::string(src) : "";
+    }
+    // 如果厂商没提供，可能返回一个空的，或者基础的通用定义
     return "";
   }
 
@@ -60,22 +73,39 @@ class DefaultRuntimeStrategy : public CustomRuntimeStrategy {
   void* LoadModule(const std::string& path) override {
     if (cif_ && cif_->module_load) {
       void* handle = nullptr;
-      // cif_->module_load(path.c_str(), &handle);
-      // return handle;
-      return nullptr;  // TODO(xuyuhan): 实现具体调用
+      cif_->module_load(cif_->dev_ptr, path.c_str(), &handle);
+      return handle;
     }
     return nullptr;
   }
 
-  void LaunchKernel(void* module_handle,
+  void LaunchKernel(void* func_ptr,
                     const std::string& func_name,
                     void** args,
                     int num_args,
+                    int grid_x,
+                    int grid_y,
+                    int grid_z,
+                    int block_x,
+                    int block_y,
+                    int block_z,
+                    int shared_mem,
                     void* stream) override {
     if (cif_ && cif_->launch_kernel) {
-      // cif_->launch_kernel(module_handle, func_name.c_str(), args, num_args,
-      // stream);
-      return;  // TODO(xuyuhan): 实现具体调用
+      // 调用 C 接口
+      cif_->launch_kernel(cif_->dev_ptr,
+                          func_ptr,
+                          args,
+                          num_args,
+                          grid_x,
+                          grid_y,
+                          grid_z,
+                          block_x,
+                          block_y,
+                          block_z,
+                          shared_mem,
+                          stream);
+      return;
     }
     LOG(ERROR) << "launch_kernel interface not implemented by vendor.";
   }
@@ -120,8 +150,7 @@ CinnCustomDevicePlugin& CinnCustomDevicePlugin::GetInstance(
         phi::errors::NotFound("Device for %s not found.", place.DebugString()));
 
     // B. 转换为 CustomDevice 并获取 CINN 专属 C 接口
-    auto* custom_device = static_cast<phi::CustomDevice*>(device_base);
-    C_CinnInterface* cif = custom_device->GetCinnInterface();
+    C_CinnInterface* cif = device_base->GetCinnInterface();
 
     // C. 检查接口是否存在
     if (cif == nullptr) {

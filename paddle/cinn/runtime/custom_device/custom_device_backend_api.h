@@ -38,6 +38,9 @@ class CustomCompilerToolchain {
  public:
   virtual ~CustomCompilerToolchain() = default;
   virtual std::string Compile(const std::string& code) = 0;
+  // 新增：获取厂商的基础设备库源码 (原 cinn_custom_device_runtime_source.h
+  // 的内容)
+  virtual std::string GetRuntimeSource() = 0;
 };
 
 // 2. 运行时策略接口：负责加载和启动 Kernel
@@ -45,10 +48,17 @@ class CustomRuntimeStrategy {
  public:
   virtual ~CustomRuntimeStrategy() = default;
   virtual void* LoadModule(const std::string& path) = 0;
-  virtual void LaunchKernel(void* module_handle,
+  virtual void LaunchKernel(void* func_ptr,
                             const std::string& func_name,
                             void** args,
                             int num_args,
+                            int grid_x,
+                            int grid_y,
+                            int grid_z,
+                            int block_x,
+                            int block_y,
+                            int block_z,
+                            int shared_mem,
                             void* stream) = 0;
 };
 
@@ -64,7 +74,7 @@ class CustomCompileStrategy {
 // 第二部分：插件管理类 (单例)
 // ============================================================
 // 4. 顶层插件管理类
-class CinnCustomDevicePlugin {
+class PADDLE_API CinnCustomDevicePlugin {
  public:
   // 禁用构造，统一通过 GetInstance 访问
   CinnCustomDevicePlugin() = default;

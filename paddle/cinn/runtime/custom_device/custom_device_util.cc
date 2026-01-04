@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/cinn/runtime/custom_device/custom_device_util.h"
-#include <glog/logging.h>
+#include <vector>
+#include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
 #include "paddle/cinn/utils/profiler.h"
+#include "paddle/phi/backends/device_manager.h"
 
 namespace cinn {
 namespace runtime {
@@ -31,35 +33,65 @@ void cinn_call_custom_device_kernel(void *kernel_fn,
                                     int block_z,
                                     int shared_memory_bytes,
                                     void *stream) {
-  int current_device_id;
-  customDeviceGetDevice(&current_device_id);
-  VLOG(3) << "cinn_call_custom_device_kernel, grid_dim={" << grid_x << ", "
-          << grid_y << ", " << grid_z << "}, block_dim={" << block_x << ", "
-          << block_y << ", " << block_z << "}, num_args=" << num_args
-          << ", shared_memory_bytes=" << shared_memory_bytes
-          << ", stream=" << stream << ", kernel_fn=" << kernel_fn
-          << " in device" << current_device_id;
+  // 1. 获取当前设备 (通过 Phi DeviceManager)
+  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  PADDLE_ENFORCE_EQ(dev_types.empty(),
+                    false,
+                    phi::errors::NotFound("No Custom Device type registered."));
+
+  std::string dev_type = dev_types[0];
+  int device_id = phi::DeviceManager::GetDevice(dev_type);
+  auto place = phi::CustomPlace(dev_type, device_id);
+
+  // 2. 获取插件实例
+  auto &plugin = CinnCustomDevicePlugin::GetInstance(place);
+  auto *runtime_strategy = plugin.GetRuntime();
+
+  VLOG(3) << "Launching kernel on " << dev_type << ":" << device_id << " Grid("
+          << grid_x << "," << grid_y << "," << grid_z << ")"
+          << " Block(" << block_x << "," << block_y << "," << block_z << ")";
+
+  // 3. 参数转换：从 cinn_pod_value_t (v_args) 到 void** (kernel_args)
+  // CINN 的参数协议：
+  // - 如果是 Buffer，传入的是 cinn_buffer_t*，我们需要提取其内部的 memory
+  // 指针。
+  // - 如果是标量 (int/float)，直接传入其地址。
   std::vector<void *> kernel_args;
+  kernel_args.reserve(num_args);
+
+  cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
+
   {
     cinn::utils::RecordEvent record_run("prepare_args",
                                         cinn::utils::EventType::kInstruction);
-    kernel_args.reserve(num_args);
-    cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
     for (int idx = 0; idx < num_args; ++idx) {
       if (args[idx].type_code() == ::cinn_type_code<cinn_buffer_t *>()) {
-        kernel_args.emplace_back(
-            &((cinn_buffer_t *)(args[idx]))->memory);  // NOLINT
+        // 对于显存 Buffer，获取 cinn_buffer_t->memory (这已经在 Device
+        // 端分配好了)
+        cinn_buffer_t *buffer = static_cast<cinn_buffer_t *>(args[idx]);
+        kernel_args.emplace_back(&(buffer->memory));
       } else {
-        kernel_args.emplace_back(args[idx].data_addr());
+        // 对于标量参数，获取其在 host 上的数据地址
+        // 注意：插件内部的 LaunchKernel 需要处理这些标量的拷贝或映射
+        kernel_args.emplace_back(const_cast<void *>(args[idx].data_addr()));
       }
     }
   }
 
+  // 4. 调用插件的 LaunchKernel
+  // 此时 kernel_fn 是厂商插件 LoadModule 后返回的函数句柄 (如
+  // customDeviceFunction_t)
   {
-    cinn::utils::RecordEvent record_run("customDeviceLaunchKernel",
+    cinn::utils::RecordEvent record_run("plugin_launch_kernel",
                                         cinn::utils::EventType::kInstruction);
-    HIP_DRIVER_CHECK(customDeviceModuleLaunchKernel(
-        static_cast<customDeviceFunction_t>(kernel_fn),
+
+    // 注意：这里我们传入 args 的地址数组
+    // 厂商实现通常类似于：cuLaunchKernel(..., kernel_args.data(), ...)
+    runtime_strategy->LaunchKernel(
+        kernel_fn,
+        "",  // 这里 func_name 可为空，因为 kernel_fn 已经是句柄了
+        kernel_args.data(),
+        num_args,
         grid_x,
         grid_y,
         grid_z,
@@ -67,9 +99,7 @@ void cinn_call_custom_device_kernel(void *kernel_fn,
         block_y,
         block_z,
         shared_memory_bytes,
-        static_cast<customDeviceStream_t>(stream),
-        kernel_args.data(),
-        nullptr))
+        stream);
   }
 }
 

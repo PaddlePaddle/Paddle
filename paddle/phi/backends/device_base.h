@@ -22,6 +22,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 
+struct C_CinnInterface;
 namespace phi {
 
 struct DeviceProp {
@@ -62,6 +63,8 @@ class DeviceInterface {  // Driver / Runtime
   bool IsCustom() { return is_custom_; }
 
   virtual ~DeviceInterface() {}
+
+  virtual C_CinnInterface* GetCinnInterface() { return nullptr; }
 
   // Info
   virtual size_t GetComputeCapability(size_t dev_id);

@@ -16,6 +16,7 @@
 
 #include <string>
 #include <vector>
+#include "paddle/cinn/common/target.h"
 
 namespace cinn {
 namespace backends {
@@ -27,7 +28,7 @@ namespace cdrtc {
  */
 class Compiler {
  public:
-  Compiler() {}
+  explicit Compiler(const common::Target& target);
   /**
    * Compile the \p code and get hsaco string.
    * @param code The CUSTOMDEVICE source code.
@@ -38,30 +39,8 @@ class Compiler {
   std::string operator()(const std::string& code, bool include_headers = true);
 
  private:
-  /**
-   * Get the directories of CUSTOMDEVICE's header files.
-   * @return list of header file directories.
-   */
-  std::vector<std::string> FindCustomDeviceIncludePaths();
-
-  /**
-   * Get the directories of CINN runtime's header files.
-   * @return list of header file directories.
-   */
-  std::vector<std::string> FindCINNRuntimeIncludePaths();
-  /**
-   * Compile CUSTOMDEVICE source code with Cdrtc.
-   * @param code source code string.
-   * @return hsaco string.
-   */
-  std::string CompileWithCdrtc(const std::string& code, bool include_headers);
-
-  // compile with custom_devicecc
-  std::string CompileWithCdcc(const std::string& code);
-
-  std::string GetDeviceArch();
-
-  std::string prefix_name_{""};
+  // 只需要保留 target，用于确定去哪个 Place 找插件
+  common::Target target_;
 };
 
 }  // namespace cdrtc

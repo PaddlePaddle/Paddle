@@ -51,42 +51,42 @@
  */
 #define REGISTER_EXTERN_FUNC_1_IN_1_OUT(fn__, target__, in_type__, out_type__) \
   REGISTER_EXTERN_FUNC_HELPER(fn__, target__)                                  \
-      .SetRetType<out_type__>()                                                \
-      .AddInputType<in_type__>()                                               \
+      .template SetRetType(cinn::common::type_of<out_type__>())                \
+      .template AddInputType(cinn::common::type_of<in_type__>())               \
       .End()
 
 /**
  * Register an external function with one input and one output.
  */
-#define REGISTER_EXTERN_FUNC_2_IN_1_OUT(                \
-    fn__, target__, in_type1__, in_type2__, out_type__) \
-  REGISTER_EXTERN_FUNC_HELPER(fn__, target__)           \
-      .SetRetType<out_type__>()                         \
-      .AddInputType<in_type1__>()                       \
-      .AddInputType<in_type2__>()                       \
+#define REGISTER_EXTERN_FUNC_2_IN_1_OUT(                          \
+    fn__, target__, in_type1__, in_type2__, out_type__)           \
+  REGISTER_EXTERN_FUNC_HELPER(fn__, target__)                     \
+      .template SetRetType(cinn::common::type_of<out_type__>())   \
+      .template AddInputType(cinn::common::type_of<in_type1__>()) \
+      .template AddInputType(cinn::common::type_of<in_type2__>()) \
       .End()
 
 /**
  * Register a sourced function(No function address, called in generated source
  * code).
  */
-#define REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(      \
-    fn__, target__, in_type__, out_type__)           \
-  REGISTER_FACKED_EXTERN_FUNC_HELPER(fn__, target__) \
-      .SetRetType<out_type__>()                      \
-      .AddInputType<in_type__>()                     \
+#define REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(                  \
+    fn__, target__, in_type__, out_type__)                       \
+  REGISTER_FACKED_EXTERN_FUNC_HELPER(fn__, target__)             \
+      .template SetRetType(cinn::common::type_of<out_type__>())  \
+      .template AddInputType(cinn::common::type_of<in_type__>()) \
       .End()
 
 /**
  * Register a sourced function(No function address, called in generated source
  * code).
  */
-#define REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(         \
-    fn__, target__, in_type1__, in_type2__, out_type__) \
-  REGISTER_FACKED_EXTERN_FUNC_HELPER(fn__, target__)    \
-      .SetRetType<out_type__>()                         \
-      .AddInputType<in_type1__>()                       \
-      .AddInputType<in_type2__>()                       \
+#define REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(                   \
+    fn__, target__, in_type1__, in_type2__, out_type__)           \
+  REGISTER_FACKED_EXTERN_FUNC_HELPER(fn__, target__)              \
+      .template SetRetType(cinn::common::type_of<out_type__>())   \
+      .template AddInputType(cinn::common::type_of<in_type1__>()) \
+      .template AddInputType(cinn::common::type_of<in_type2__>()) \
       .End()
 
 namespace cinn {
@@ -136,6 +136,11 @@ struct RegisterExternFunction {
     return *this;
   }
 
+  RegisterExternFunction& AddInputType(const cinn::common::Type& t) {
+    fn_proto_builder_.AddInputType(t);
+    return *this;
+  }
+
   /**
    * Add an output type.
    * @tparam T The output type.
@@ -155,6 +160,11 @@ struct RegisterExternFunction {
   template <typename T>
   RegisterExternFunction& SetRetType() {
     fn_proto_builder_.SetRetType<T>();
+    return *this;
+  }
+
+  RegisterExternFunction& SetRetType(const cinn::common::Type& t) {
+    fn_proto_builder_.SetRetType(t);
     return *this;
   }
 

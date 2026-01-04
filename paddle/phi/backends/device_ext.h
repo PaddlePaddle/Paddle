@@ -136,18 +136,35 @@ void profiler_add_runtime_trace_event(C_Profiler prof, void* event);
 
 void profiler_add_device_trace_event(C_Profiler prof, void* event);
 
-typedef struct {
+struct C_CinnInterface {
   size_t size;
-  // 编译策略接口
-  C_Status (*get_compilation_strategy)(C_Device device, void** strategy_handle);
-  // 工具链接口
-  C_Status (*get_compiler_toolchain)(C_Device device, void** toolchain_handle);
-  // 运行时接口
-  C_Status (*get_runtime_strategy)(C_Device device, void** runtime_handle);
+  void* dev_ptr;  // 厂商私有上下文，传给下面所有函数的第一个参数
 
-  // 预留扩展位
-  void* reserved[4];
-} C_CinnInterface;
+  // --- Compiler Toolchain 部分 ---
+  C_Status (*compile)(void* dev_ptr,
+                      const char* code,
+                      char* out_path,
+                      size_t len);
+  const char* (*get_runtime_source)(void* dev_ptr);
+
+  // --- Runtime Strategy 部分 ---
+  C_Status (*module_load)(void* dev_ptr, const char* path, void** mod_out);
+  C_Status (*launch_kernel)(void* dev_ptr,
+                            void* func_ptr,
+                            void** args,
+                            int num_args,
+                            int gx,
+                            int gy,
+                            int gz,
+                            int bx,
+                            int by,
+                            int bz,
+                            int shm,
+                            void* stream);
+
+  // --- Compile Strategy 部分 ---
+  C_Status (*apply_custom_pass)(void* dev_ptr, void* ir_module);
+};
 
 struct C_DeviceInterface {
   // Core fill it and plugin must to check it

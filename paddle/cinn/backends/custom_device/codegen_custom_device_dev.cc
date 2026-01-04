@@ -13,28 +13,64 @@
 // limitations under the License.
 
 #include "paddle/cinn/backends/custom_device/codegen_custom_device_dev.h"
+#include <string>
+#include <vector>
+#include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
+#include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/common/place.h"
 
 namespace cinn {
 namespace backends {
 namespace custom_device {
 
-const std::string CodeGenCustomDevice::source_header_ =  // NOLINT
-    R"(#define CINN_WITH_CUSTOM_DEVICE
-     #include "float16.h"
-     using cinn::common::float16;
-     #include "cinn_custom_device_runtime_source.h"
-)";
-
-const std::string &CodeGenCustomDevice::GetSourceHeader() {
-  return source_header_;
-}
-
 CodeGenCustomDevice::CodeGenCustomDevice(Target target)
     : CodeGenGpuDev(target) {}
 
-void CodeGenCustomDevice::PrintIncludes() { str_ += GetSourceHeader(); }
+void CodeGenCustomDevice::PrintIncludes() {
+  // 1. 基础宏定义
+  str_ += "#define CINN_WITH_CUSTOM_DEVICE\n";
+  str_ += "#include \"float16.h\"\n";
+  str_ += "using cinn::common::float16;\n";
 
-void CodeGenCustomDevice::Visit(const ir::Min *op) {
+  // 2. 动态获取厂商的 Runtime Source
+  // 逻辑：找到当前系统中的 Custom Device 类型 -> 获取插件 -> 获取源码
+  std::string dev_type = "";
+  auto devs = phi::DeviceManager::GetAllCustomDeviceTypes();
+  if (!devs.empty()) {
+    dev_type = devs[0];
+  } else {
+    LOG(WARNING)
+        << "No custom device found, skipping runtime source injection.";
+    return;
+  }
+
+  // 获取插件实例
+  auto place = phi::CustomPlace(dev_type, 0);
+  try {
+    auto& plugin =
+        cinn::runtime::custom_device::CinnCustomDevicePlugin::GetInstance(
+            place);
+
+    // 3. 从 Toolchain 中获取运行时源码并追加到生成的 Kernel 字符串中
+    std::string runtime_src = plugin.GetToolchain()->GetRuntimeSource();
+    if (runtime_src.empty()) {
+      LOG(WARNING) << "Custom Device [" << dev_type
+                   << "] returned empty runtime source.";
+    }
+    str_ += "\n// ----- Custom Device Runtime Source (Begin) -----\n";
+    str_ += runtime_src;
+    str_ += "\n// ----- Custom Device Runtime Source (End) -----\n";
+  } catch (const std::exception& e) {
+    LOG(ERROR) << "Failed to get CinnCustomDevicePlugin: " << e.what();
+  }
+}
+
+const std::string& CodeGenCustomDevice::GetSourceHeader() {
+  static std::string empty_header = "";
+  return empty_header;
+}
+
+void CodeGenCustomDevice::Visit(const ir::Min* op) {
   str_ += "std::min(";
   ir::Expr a = op->a(), b = op->b();
   auto [unify_bit, both_dyn] =
@@ -46,7 +82,7 @@ void CodeGenCustomDevice::Visit(const ir::Min *op) {
   str_ += ")";
 }
 
-void CodeGenCustomDevice::Visit(const ir::Max *op) {
+void CodeGenCustomDevice::Visit(const ir::Max* op) {
   str_ += "std::max(";
   ir::Expr a = op->a(), b = op->b();
   auto [unify_bit, both_dyn] =

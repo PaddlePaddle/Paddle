@@ -7,11 +7,14 @@ gather_srcs(
   intrinsic.cc
   cinn_runtime.cc
   intrinsic_types.cc
-  backend_api.cc)
+  backend_api.cc
+  custom_device/custom_device_backend_api.cc
+  custom_device/custom_device_util.cc
+  custom_device/custom_device_intrinsics.cc)
 
 cinn_cc_library(
   cinn_runtime SRCS cinn_runtime.cc buffer.cc #cinn_x86_device_impl.cc
-)
+  DEPS cinn_custom_device_runtime)
 
 if(WITH_OPENMP)
   cinn_cc_library(tiny_runtime STATIC SRCS tiny_runtime.cc)

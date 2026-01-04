@@ -37,7 +37,6 @@ class CodeGenCustomDevice : public CodeGenGpuDev {
   void Visit(const ir::Max* op) override;
 
  private:
-  static const std::string source_header_;
 };
 
 }  // namespace custom_device

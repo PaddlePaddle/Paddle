@@ -29,6 +29,7 @@
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/port.h"
 
+struct C_CinnInterface;
 namespace phi {
 class PADDLE_API Device final {
  public:
@@ -125,6 +126,10 @@ class PADDLE_API Device final {
                  T* y);
 
   std::string Type();
+
+  struct C_CinnInterface* GetCinnInterface() const {
+    return impl_->GetCinnInterface();
+  }
 
  private:
   size_t dev_id_;

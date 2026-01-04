@@ -14,9 +14,6 @@
 
 #pragma once
 
-#include <custom_device/custom_device_runtime.h>
-#include <custom_device/custom_devicertc.h>  // TODO(xuyuhan)
-
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/common/enforce.h"
 
@@ -24,39 +21,11 @@ namespace cinn {
 namespace runtime {
 namespace custom_device {
 
-#define HIP_CHECK(expr)                                                 \
-  {                                                                     \
-    auto status = expr;                                                 \
-    if (status != customDeviceSuccess) {                                \
-      PADDLE_THROW(                                                     \
-          ::common::errors::Fatal("HIP Error in Paddle CINN: %s",       \
-                                  customDeviceGetErrorString(status))); \
-    }                                                                   \
-  }
-
-#define HIP_DRIVER_CHECK(expr)                                         \
-  {                                                                    \
-    auto status = expr;                                                \
-    if (status != customDeviceSuccess) {                               \
-      const char *msg;                                                 \
-      customDeviceDrvGetErrorString(status, &msg);                     \
-      PADDLE_THROW(::common::errors::Fatal(                            \
-          "HIP Driver Error in Paddle CINN: %s failed with error: %s", \
-          #expr,                                                       \
-          msg));                                                       \
-    }                                                                  \
-  }
-
-#define HIPRTC_CHECK(expr)                                                 \
-  {                                                                        \
-    auto status = expr;                                                    \
-    if (status != HIPRTC_SUCCESS) {                                        \
-      PADDLE_THROW(                                                        \
-          ::common::errors::Fatal("HIPRTC Error in Paddle CINN: %s",       \
-                                  customDevicertcGetErrorString(status))); \
-    }                                                                      \
-  }
-
+/**
+ * @brief 通用的自定义设备 Kernel 调用接口。
+ * * 该函数不再直接调用特定厂商的 API (如 hipLaunchKernel)，
+ * 而是通过 CinnCustomDevicePlugin 转发给厂商插件实现。
+ */
 void cinn_call_custom_device_kernel(void *kernel_fn,
                                     void *v_args,
                                     int num_args,
@@ -69,6 +38,9 @@ void cinn_call_custom_device_kernel(void *kernel_fn,
                                     int shared_memory_bytes,
                                     void *stream);
 
+/**
+ * @brief 用于动态形状推理的 Host 端辅助函数。
+ */
 void infer_shape_set_value(int row, int col, int64_t value, int64_t **v);
 
 }  // namespace custom_device

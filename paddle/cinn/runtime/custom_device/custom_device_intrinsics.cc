@@ -14,46 +14,50 @@
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 using cinn::backends::GlobalSymbolRegistry;
 #include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
-using cinn::runtime::custom_device::HIPBackendAPI;
+using cinn::runtime::custom_device::CustomBackendAPI;
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/runtime/custom_device/custom_device_util.h"
+
+using cinn_buffer_ptr_t = cinn_buffer_t *;
+using cinn_int_ptr_t = int *;
 
 CINN_REGISTER_HELPER(cinn_custom_device_host_api) {
   GlobalSymbolRegistry::Global().RegisterFn(
       "backend_api.custom_device",
-      reinterpret_cast<void *>(HIPBackendAPI::Global()));  // TODO(xuyuhan)
+      reinterpret_cast<void *>(CustomBackendAPI::Global()));  // TODO(xuyuhan)
 
   using cinn::runtime::custom_device::cinn_call_custom_device_kernel;
   REGISTER_EXTERN_FUNC_HELPER(cinn_call_custom_device_kernel,
                               cinn::common::DefaultHostTarget())
-      .SetRetType<void>()
-      .AddInputType<void *>()  // kernel_fn
-      .AddInputType<void *>()  // args
-      .AddInputType<int>()     // num_args
-      .AddInputType<int>()     // grid_x
-      .AddInputType<int>()     // grid_y
-      .AddInputType<int>()     // grid_z
-      .AddInputType<int>()     // block_x
-      .AddInputType<int>()     // block_y
-      .AddInputType<int>()     // block_z
-      .AddInputType<int>()     // shared_memory_bytes
-      .AddInputType<void *>()  // stream
+      .template SetRetType<void>()
+      .template AddInputType<void *>()                      // kernel_fn
+      .template AddInputType<void *>()                      // args
+      .template AddInputType(cinn::common::type_of<int>())  // num_args
+      .template AddInputType(cinn::common::type_of<int>())  // grid_x
+      .template AddInputType(cinn::common::type_of<int>())  // grid_y
+      .template AddInputType(cinn::common::type_of<int>())  // grid_z
+      .template AddInputType(cinn::common::type_of<int>())  // block_x
+      .template AddInputType(cinn::common::type_of<int>())  // block_y
+      .template AddInputType(cinn::common::type_of<int>())  // block_z
+      .template AddInputType(
+          cinn::common::type_of<int>())  // shared_memory_bytes
+      .template AddInputType<void *>()   // stream
       .End();
   using cinn::runtime::custom_device::infer_shape_set_value;
 
   REGISTER_EXTERN_FUNC_HELPER(infer_shape_set_value,
                               cinn::common::DefaultHostTarget())
-      .SetRetType<void>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .AddInputType<int64_t>()
-      .AddInputType<int64_t **>()
+      .template SetRetType<void>()
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int64_t>())
+      .template AddInputType(cinn::common::type_of<int64_t **>())
       .End();
   return true;
 }
 
 CINN_REGISTER_HELPER(custom_device_intrinsics) {
-  auto target = cinn::common::DefaultHygonDcuHipTarget();
+  auto target = cinn::common::DefaultCustomDeviceTarget();
 
 // bool for 1 input 1 output
 #define REGISTER_EXTERN_FUNC_1_IN_1_OUT_BOOL(func__) \
@@ -298,72 +302,72 @@ CINN_REGISTER_HELPER(custom_device_intrinsics) {
 #undef REGISTER_EXTERN_FUNC_2_IN_1_INT64
 
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_custom_device_find_int, target)
-      .SetRetType<int>()
-      .AddInputType<cinn_buffer_t *>()
-      .AddInputType<int>()
-      .AddInputType<int>()
+      .template SetRetType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<cinn_buffer_ptr_t>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
       .End();
 
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_custom_device_find_float, target)
-      .SetRetType<int>()
-      .AddInputType<cinn_buffer_t *>()
-      .AddInputType<int>()
-      .AddInputType<float>()
+      .template SetRetType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<cinn_buffer_ptr_t>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<float>())
       .End();
 
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_custom_device_find_int_nd, target)
-      .SetRetType<int>()
-      .AddInputType<cinn_buffer_t *>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .AddInputType<int>()
+      .template SetRetType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<cinn_buffer_ptr_t>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
       .End();
 
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_custom_device_find_float_nd, target)
-      .SetRetType<int>()
-      .AddInputType<cinn_buffer_t *>()
-      .AddInputType<int>()
-      .AddInputType<float>()
-      .AddInputType<int>()
-      .AddInputType<int>()
+      .template SetRetType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<cinn_buffer_ptr_t>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<float>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
       .End();
 
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_custom_device_find_int_from, target)
-      .SetRetType<int>()
-      .AddInputType<cinn_buffer_t *>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .AddInputType<int>()
+      .template SetRetType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<cinn_buffer_ptr_t>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
       .End();
 
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_custom_device_find_float_from, target)
-      .SetRetType<int>()
-      .AddInputType<cinn_buffer_t *>()
-      .AddInputType<int>()
-      .AddInputType<float>()
-      .AddInputType<int>()
+      .template SetRetType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<cinn_buffer_ptr_t>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<float>())
+      .template AddInputType(cinn::common::type_of<int>())
       .End();
 
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_custom_device_next_smallest_int32,
                                      target)
-      .SetRetType<int>()
-      .AddInputType<cinn_buffer_t *>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .AddInputType<int>()
+      .template SetRetType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<cinn_buffer_ptr_t>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
       .End();
 
 #define _REGISTER_CINN_NVGPU_LT_NUM(TYPE_SUFFIX, TYPE)                        \
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_custom_device_lt_num_##TYPE_SUFFIX, \
                                      target)                                  \
-      .SetRetType<int>()                                                      \
-      .AddInputType<cinn_buffer_t *>()                                        \
-      .AddInputType<int>()                                                    \
-      .AddInputType<TYPE>()                                                   \
-      .AddInputType<int>()                                                    \
-      .AddInputType<int>()                                                    \
+      .template SetRetType(cinn::common::type_of<int>())                      \
+      .template AddInputType(cinn::common::type_of<cinn_buffer_ptr_t>())      \
+      .template AddInputType(cinn::common::type_of<int>())                    \
+      .template AddInputType(cinn::common::type_of<TYPE>())                   \
+      .template AddInputType(cinn::common::type_of<int>())                    \
+      .template AddInputType(cinn::common::type_of<int>())                    \
       .End();
 
   _REGISTER_CINN_NVGPU_LT_NUM(fp32, float);
@@ -379,12 +383,12 @@ CINN_REGISTER_HELPER(custom_device_intrinsics) {
 #define _REGISTER_CINN_NVGPU_GT_NUM(TYPE_SUFFIX, TYPE)                        \
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_custom_device_gt_num_##TYPE_SUFFIX, \
                                      target)                                  \
-      .SetRetType<int>()                                                      \
-      .AddInputType<cinn_buffer_t *>()                                        \
-      .AddInputType<int>()                                                    \
-      .AddInputType<TYPE>()                                                   \
-      .AddInputType<int>()                                                    \
-      .AddInputType<int>()                                                    \
+      .template SetRetType(cinn::common::type_of<int>())                      \
+      .template AddInputType(cinn::common::type_of<cinn_buffer_ptr_t>())      \
+      .template AddInputType(cinn::common::type_of<int>())                    \
+      .template AddInputType(cinn::common::type_of<TYPE>())                   \
+      .template AddInputType(cinn::common::type_of<int>())                    \
+      .template AddInputType(cinn::common::type_of<int>())                    \
       .End();
 
   _REGISTER_CINN_NVGPU_GT_NUM(fp32, float);
@@ -396,17 +400,17 @@ CINN_REGISTER_HELPER(custom_device_intrinsics) {
 
 #undef _REGISTER_CINN_NVGPU_GT_NUM
 
-#define _REGISTER_CINN_NVGPU_INDEX_ADD(TYPE_SUFFIX, TYPE) \
-  REGISTER_FACKED_EXTERN_FUNC_HELPER(                     \
-      cinn_custom_device_index_add_##TYPE_SUFFIX, target) \
-      .SetRetType<TYPE>()                                 \
-      .AddInputType<TYPE>()                               \
-      .AddInputType<int>()                                \
-      .AddInputType<cinn_buffer_t *>()                    \
-      .AddInputType<int>()                                \
-      .AddInputType<int>()                                \
-      .AddInputType<cinn_buffer_t *>()                    \
-      .AddInputType<int>()                                \
+#define _REGISTER_CINN_NVGPU_INDEX_ADD(TYPE_SUFFIX, TYPE)                \
+  REGISTER_FACKED_EXTERN_FUNC_HELPER(                                    \
+      cinn_custom_device_index_add_##TYPE_SUFFIX, target)                \
+      .template SetRetType(cinn::common::type_of<TYPE>())                \
+      .template AddInputType(cinn::common::type_of<TYPE>())              \
+      .template AddInputType(cinn::common::type_of<int>())               \
+      .template AddInputType(cinn::common::type_of<cinn_buffer_ptr_t>()) \
+      .template AddInputType(cinn::common::type_of<int>())               \
+      .template AddInputType(cinn::common::type_of<int>())               \
+      .template AddInputType(cinn::common::type_of<cinn_buffer_ptr_t>()) \
+      .template AddInputType(cinn::common::type_of<int>())               \
       .End();
 
   _REGISTER_CINN_NVGPU_INDEX_ADD(bool, bool);
@@ -419,31 +423,31 @@ CINN_REGISTER_HELPER(custom_device_intrinsics) {
 #undef _REGISTER_CINN_NVGPU_INDEX_ADD
 
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_custom_device_resize_bilinear, target)
-      .SetRetType<int>()
-      .AddInputType<cinn_buffer_t *>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .AddInputType<int>()
+      .template SetRetType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<cinn_buffer_ptr_t>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
       .End();
 
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_custom_device_resize_bicubic, target)
-      .SetRetType<int>()
-      .AddInputType<cinn_buffer_t *>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .AddInputType<int>()
+      .template SetRetType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<cinn_buffer_ptr_t>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
       .End();
 
   return true;
