@@ -1425,9 +1425,11 @@ void FlashMaskV2GradBaseKernel(
   dynload::flashmaskv2_bwd_params_set_dq_semaphore(params_handle,
                                                    dq_semaphore.data<int>());
   DenseTensor dk_semaphore = Empty<int32_t>(
-      dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
+      dev_ctx,
+      {(seqlen_k * nranks + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
   DenseTensor dv_semaphore = Empty<int32_t>(
-      dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
+      dev_ctx,
+      {(seqlen_k * nranks + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
   if (num_heads_k != num_heads &&
       dynload::flashmaskv2_bwd_params_get_deterministic(params_handle)) {
     // xiangrui: we need to zero them out

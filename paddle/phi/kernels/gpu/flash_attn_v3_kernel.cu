@@ -2371,7 +2371,7 @@ void FlashMaskV2GetUniqueId(const Context &dev_ctx, DenseTensor *out) {
 }  // namespace phi
 
 PD_REGISTER_KERNEL(flashmask_get_unique_id,
-                   CPU,  // this function returns a CPU tensor
+                   CPU,
                    ALL_LAYOUT,
                    phi::FlashMaskV2GetUniqueId,
                    uint8_t) {}
