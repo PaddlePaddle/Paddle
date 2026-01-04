@@ -135,6 +135,29 @@ class Tensor : public TensorBase {
     return TensorBase::to(options, non_blocking, copy, memory_format);
   }
 
+  Tensor meta() const {
+    PD_THROW("`meta()` is not supported in this Paddle build.");
+  }
+
+  at::Scalar item() const {
+    if (tensor_.numel() != 1) {
+      PD_THROW("only one element tensors can be converted to Python scalars");
+    }
+    auto dtype = tensor_.dtype();
+    if (dtype == phi::DataType::FLOAT32) {
+      return at::Scalar(*(tensor_.data<float>()));
+    } else if (dtype == phi::DataType::FLOAT64) {
+      return at::Scalar(*(tensor_.data<double>()));
+    } else if (dtype == phi::DataType::INT32) {
+      return at::Scalar(*(tensor_.data<int32_t>()));
+    } else if (dtype == phi::DataType::INT64) {
+      return at::Scalar(*(tensor_.data<int64_t>()));
+    } else if (dtype == phi::DataType::BOOL) {
+      return at::Scalar(*(tensor_.data<bool>()));
+    }
+    PD_THROW("item(): Unsupported data type");
+  }
+
   at::Tensor to(
       at::ScalarType dtype,
       bool non_blocking = false,
