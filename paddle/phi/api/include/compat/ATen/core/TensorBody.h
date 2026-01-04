@@ -182,6 +182,22 @@ class Tensor : public TensorBase {
     PD_THROW("item(): Unsupported data type");
   }
 
+  template <typename T>
+  T item() const {
+    if (tensor_.numel() != 1) {
+      PD_THROW("only one element tensors can be converted to Python scalars");
+    }
+
+    // Move to CPU if necessary (for compatibility with PyTorch behavior)
+    PaddleTensor cpu_tensor = tensor_;
+    if (!phi::is_cpu_place(tensor_.place())) {
+      PaddlePlace place(phi::AllocationType::CPU);
+      cpu_tensor = tensor_.copy_to(place, true);
+    }
+
+    return *(cpu_tensor.data<T>());
+  }
+
   at::Tensor to(
       at::ScalarType dtype,
       bool non_blocking = false,
