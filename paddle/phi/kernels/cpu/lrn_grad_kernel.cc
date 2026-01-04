@@ -44,7 +44,7 @@ struct LRNGradFunctor<phi::CPUContext, T> {
                   T beta,
                   const DataLayout data_layout) {
     T ratio = -2 * alpha * beta;
-    auto x_g_e = phi::EigenVector<T>::Flatten(*x_g);
+    auto x_g_e = EigenVector<T>::Flatten(*x_g);
     x_g_e = x_g_e.constant(0.0);
 
     auto e_x = phi::EigenTensor<T, 4>::From(x);

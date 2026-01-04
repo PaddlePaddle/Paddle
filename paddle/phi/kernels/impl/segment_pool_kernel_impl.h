@@ -42,7 +42,7 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
                         "dimension size is 1. Segment_ids's shape is: [%s].",
                         segment_ids.dims()));
 
-  bool cpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU;
+  bool cpu_place = dev_ctx.GetPlace().GetType() == AllocationType::CPU;
   if (cpu_place) {
     auto dims = x.dims();
     auto* segment_ids_ptr = segment_ids.data<IndexT>();

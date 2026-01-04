@@ -717,8 +717,9 @@ class LRScheduler(Callback):
             by epoch. Default: False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +TIMEOUT(60)
             >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from paddle.static import InputSpec
@@ -726,43 +727,42 @@ class LRScheduler(Callback):
             >>> inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
             >>> labels = [InputSpec([None, 1], 'int64', 'label')]
 
-            >>> transform = T.Compose([
-            ...     T.Transpose(),
-            ...     T.Normalize([127.5], [127.5])
-            ... ])
+            >>> transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
             >>> train_dataset = paddle.vision.datasets.MNIST(mode='train', transform=transform)
 
             >>> lenet = paddle.vision.models.LeNet()
-            >>> model = paddle.Model(lenet,
-            ...     inputs, labels)
+            >>> model = paddle.Model(lenet, inputs, labels)
 
             >>> base_lr = 1e-3
             >>> boundaries = [5, 8]
-            >>> wamup_steps = 4
+            >>> warmup_steps = 4
 
             >>> def make_optimizer(parameters=None):
             ...     momentum = 0.9
             ...     weight_decay = 5e-4
             ...     values = [base_lr * (0.1**i) for i in range(len(boundaries) + 1)]
-            ...     learning_rate = paddle.optimizer.lr.PiecewiseDecay(
-            ...         boundaries=boundaries, values=values)
+            ...     learning_rate = paddle.optimizer.lr.PiecewiseDecay(boundaries=boundaries, values=values)
             ...     learning_rate = paddle.optimizer.lr.LinearWarmup(
             ...         learning_rate=learning_rate,
-            ...         warmup_steps=wamup_steps,
-            ...         start_lr=base_lr / 5.,
+            ...         warmup_steps=warmup_steps,
+            ...         start_lr=base_lr / 5.0,
             ...         end_lr=base_lr,
-            ...         verbose=True)
+            ...         verbose=True,
+            ...     )
             ...     optimizer = paddle.optimizer.Momentum(
             ...         learning_rate=learning_rate,
             ...         weight_decay=weight_decay,
             ...         momentum=momentum,
-            ...         parameters=parameters)
+            ...         parameters=parameters,
+            ...     )
             ...     return optimizer
 
             >>> optim = make_optimizer(parameters=lenet.parameters())
-            >>> model.prepare(optimizer=optim,
-            ...             loss=paddle.nn.CrossEntropyLoss(),
-            ...             metrics=paddle.metric.Accuracy())
+            >>> model.prepare(
+            ...     optimizer=optim,
+            ...     loss=paddle.nn.CrossEntropyLoss(),
+            ...     metrics=paddle.metric.Accuracy(),
+            ... )
 
             >>> # if LRScheduler callback not set, an instance LRScheduler update by step
             >>> # will be created auto.

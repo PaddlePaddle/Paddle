@@ -238,7 +238,7 @@ void MaskedMatmulCsrGradKernel(const Context& dev_ctx,
     std::vector<int> trans_dim_vec = common::vectorize<int>(y.dims());
     size_t rank = trans_dim_vec.size();
     std::swap(trans_dim_vec[rank - 1], trans_dim_vec[rank - 2]);
-    DenseTensor trans_dy = phi::Empty<T, Context>(dev_ctx, trans_dim_vec);
+    DenseTensor trans_dy = Empty<T, Context>(dev_ctx, trans_dim_vec);
 
     sparse_blas.SPMM(
         true, false, static_cast<T>(1), dout, x, static_cast<T>(0), &trans_dy);

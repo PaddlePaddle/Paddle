@@ -92,13 +92,13 @@ void LstsqKernel(const Context& dev_ctx,
   DenseTensor new_x;
   new_x.Resize(common::make_ddim({batch_count, m, n}));
   dev_ctx.template Alloc<T>(&new_x);
-  phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, &new_x);
+  Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, &new_x);
 
   solution->Resize(common::make_ddim({batch_count, std::max(m, n), nrhs}));
   dev_ctx.template Alloc<T>(solution);
 
   if (m >= n) {
-    phi::Copy<Context>(dev_ctx, y, dev_ctx.GetPlace(), true, solution);
+    Copy<Context>(dev_ctx, y, dev_ctx.GetPlace(), true, solution);
   } else {
     auto* solu_data = solution->data<T>();
     auto* y_data = y.data<T>();
@@ -111,9 +111,8 @@ void LstsqKernel(const Context& dev_ctx,
 
   DenseTensor input_x_trans = TransposeLast2Dim<T>(dev_ctx, new_x);
   DenseTensor input_y_trans = TransposeLast2Dim<T>(dev_ctx, *solution);
-  phi::Copy<Context>(dev_ctx, input_x_trans, dev_ctx.GetPlace(), true, &new_x);
-  phi::Copy<Context>(
-      dev_ctx, input_y_trans, dev_ctx.GetPlace(), true, solution);
+  Copy<Context>(dev_ctx, input_x_trans, dev_ctx.GetPlace(), true, &new_x);
+  Copy<Context>(dev_ctx, input_y_trans, dev_ctx.GetPlace(), true, solution);
 
   auto* x_vector = new_x.data<T>();
   auto* y_vector = solution->data<T>();
@@ -299,7 +298,7 @@ void LstsqKernel(const Context& dev_ctx,
   }
 
   DenseTensor tmp_s = TransposeLast2Dim<T>(dev_ctx, *solution);
-  phi::Copy<Context>(dev_ctx, tmp_s, dev_ctx.GetPlace(), true, solution);
+  Copy<Context>(dev_ctx, tmp_s, dev_ctx.GetPlace(), true, solution);
 
   if (m > n) {
     auto* solu_data = solution->data<T>();

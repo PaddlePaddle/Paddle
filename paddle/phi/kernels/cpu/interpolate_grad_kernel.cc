@@ -462,7 +462,7 @@ static void Interpolate1DCPUBwd(
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_w == out_w) {
-    phi::Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
+    Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
     return;
   }
 
@@ -588,7 +588,7 @@ static void Interpolate2DCPUBwd(
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_h == out_h && in_w == out_w) {
-    phi::Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
+    Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
     return;
   }
 
@@ -765,7 +765,7 @@ static void Interpolate3DCPUBwd(
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_d == out_d && in_h == out_h && in_w == out_w) {
-    phi::Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
+    Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
     return;
   }
 

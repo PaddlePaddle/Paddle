@@ -409,8 +409,8 @@ void IndexElementwisePutWithTensorGradKernel(
     }
     return;
   }
-  if (funcs::IsInUint32Range(x_grad->numel() * sizeof(T),
-                             out_grad.numel() * sizeof(T))) {
+  if (x_grad && funcs::IsInUint32Range(x_grad->numel() * sizeof(T),
+                                       out_grad.numel() * sizeof(T))) {
     LaunchIndexElementwisePutWithTensorGradCudaKernel<T, Context>(dev_ctx,
                                                                   indices,
                                                                   out_grad,

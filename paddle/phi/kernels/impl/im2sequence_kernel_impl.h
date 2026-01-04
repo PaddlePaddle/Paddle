@@ -159,7 +159,7 @@ void Im2SequenceGradKernel(const Context& dev_ctx,
   auto* d_x = x_grad;
   dev_ctx.template Alloc<T>(d_x);
 
-  auto x_v = phi::EigenVector<T>::Flatten(*d_x);
+  auto x_v = EigenVector<T>::Flatten(*d_x);
   auto& place = *dev_ctx.eigen_device();
   funcs::EigenConstant<std::decay_t<decltype(place)>, T, 1>::Eval(
       place, x_v, 0.0);

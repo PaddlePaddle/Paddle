@@ -41,8 +41,8 @@ void MaskCooCPUKernel(const CPUContext& dev_ctx,
   const DenseTensor& values = mask.values();
   const int sparse_dim = mask.sparse_dim();
 
-  DenseTensor out_indices = phi::EmptyLike<T>(dev_ctx, indices);
-  DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, values);
+  DenseTensor out_indices = EmptyLike<T>(dev_ctx, indices);
+  DenseTensor out_values = EmptyLike<T>(dev_ctx, values);
 
   // the out_indices is same as indices of mask
   phi::Copy(dev_ctx, indices, dev_ctx.GetPlace(), false, &out_indices);
@@ -94,9 +94,9 @@ void MaskCsr2DCPUKernel(const CPUContext& dev_ctx,
   const DenseTensor& mask_crows = mask.crows();
   int64_t num_non_zeros = mask.nnz();
 
-  DenseTensor out_cols = phi::EmptyLike<IntT>(dev_ctx, mask_cols);
-  DenseTensor out_crows = phi::EmptyLike<IntT>(dev_ctx, mask_crows);
-  DenseTensor out_values = phi::Empty<T>(dev_ctx, {num_non_zeros});
+  DenseTensor out_cols = EmptyLike<IntT>(dev_ctx, mask_cols);
+  DenseTensor out_crows = EmptyLike<IntT>(dev_ctx, mask_crows);
+  DenseTensor out_values = Empty<T>(dev_ctx, {num_non_zeros});
 
   phi::Copy(dev_ctx, mask_cols, dev_ctx.GetPlace(), false, &out_cols);
   phi::Copy(dev_ctx, mask_crows, dev_ctx.GetPlace(), false, &out_crows);
@@ -128,9 +128,9 @@ void MaskCsr3DCPUKernel(const CPUContext& dev_ctx,
   const DenseTensor& mask_crows = mask.crows();
   int64_t num_non_zeros = mask.nnz();
 
-  DenseTensor out_cols = phi::EmptyLike<IntT>(dev_ctx, mask_cols);
-  DenseTensor out_crows = phi::EmptyLike<IntT>(dev_ctx, mask_crows);
-  DenseTensor out_values = phi::Empty<T>(dev_ctx, {num_non_zeros});
+  DenseTensor out_cols = EmptyLike<IntT>(dev_ctx, mask_cols);
+  DenseTensor out_crows = EmptyLike<IntT>(dev_ctx, mask_crows);
+  DenseTensor out_values = Empty<T>(dev_ctx, {num_non_zeros});
 
   phi::Copy(dev_ctx, mask_cols, dev_ctx.GetPlace(), false, &out_cols);
   phi::Copy(dev_ctx, mask_crows, dev_ctx.GetPlace(), false, &out_crows);
@@ -222,7 +222,7 @@ void MaskHelperCooCPUKernel(const CPUContext& dev_ctx,
     x_indices_map[x_indices[i]] = i;
   }
 
-  *out = phi::EmptyLike<T>(dev_ctx, x.values());
+  *out = EmptyLike<T>(dev_ctx, x.values());
   funcs::SetConstant<CPUContext, T> set_zero;
   set_zero(dev_ctx, out, static_cast<T>(0));
   T* out_ptr = out->data<T>();
