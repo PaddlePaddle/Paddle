@@ -15,6 +15,8 @@
 import itertools
 import unittest
 
+import numpy as np
+
 import paddle
 from paddle.incubate.nn.functional import fp8
 
@@ -31,6 +33,7 @@ class TestFP8Quantization(unittest.TestCase):
         self.output_scale_transpose_options = [True, False]
         self.return_transpose_only_options = [True, False]
         self.using_pow2_scale_options = [True, False]
+        self.using_ue8m0_scale_options = [True, False]
 
     def cal_all_rmse(self, x, x_qdq, transposed: bool):
         if transposed:
@@ -48,6 +51,7 @@ class TestFP8Quantization(unittest.TestCase):
         output_scale_transpose: bool = False,
         return_transpose_only: bool = False,
         using_pow2_scale=True,
+        using_ue8m0_scale=False,
     ):
         x = x.contiguous()
         x_q_valid = False
@@ -61,6 +65,7 @@ class TestFP8Quantization(unittest.TestCase):
                     output_scale_transpose=output_scale_transpose,
                     using_pow2_scale=using_pow2_scale,
                     return_transpose_only=return_transpose_only,
+                    using_ue8m0_scale=using_ue8m0_scale,
                 )
                 x_t_q_valid = True
             else:
@@ -71,6 +76,7 @@ class TestFP8Quantization(unittest.TestCase):
                     output_scale_transpose=output_scale_transpose,
                     using_pow2_scale=using_pow2_scale,
                     return_transpose_only=return_transpose_only,
+                    using_ue8m0_scale=using_ue8m0_scale,
                 )
                 x_t_q_valid = True
                 x_q_valid = True
@@ -83,6 +89,7 @@ class TestFP8Quantization(unittest.TestCase):
                 output_scale_transpose=output_scale_transpose,
                 using_pow2_scale=using_pow2_scale,
                 return_transpose_only=return_transpose_only,
+                using_ue8m0_scale=using_ue8m0_scale,
             )
             x_q_valid = True
 
@@ -96,10 +103,23 @@ class TestFP8Quantization(unittest.TestCase):
         rmse = 0
         for verify_transpose, x_q_in, scale_in in valid_test_list:
             scale_in = scale_in.T if output_scale_transpose else scale_in
+            if using_ue8m0_scale:
+                # scale_in is int32 tensor packed with 4 float scales.
+                # Explicitly cast to int32 to ensure correct unpacking behavior (4 bytes per element)
+                # Ensure contiguous memory layout for view operation
+                scale_np = np.ascontiguousarray(scale_in.numpy()).astype(
+                    np.int32
+                )
+                # Unpack: (M, N/4) int32 -> (M, N) uint8
+                scale_u8 = scale_np.view(np.uint8)
+                # Recover scale value: 2^(exponent - 127)
+                scale_float = 2.0 ** (scale_u8.astype(np.float32) - 127)
+                scale_in = paddle.to_tensor(scale_float)
+
             scale_in = paddle.repeat_interleave(
                 (
                     paddle.repeat_interleave(scale_in, repeats=128, axis=0)
-                    if quant_method == "128x128"
+                    if quant_method == "128x128" and not using_ue8m0_scale
                     else scale_in
                 ),
                 repeats=128,
@@ -124,12 +144,14 @@ class TestFP8Quantization(unittest.TestCase):
             output_scale_transpose,
             using_pow2_scale,
             return_transpose_only,
+            using_ue8m0_scale,
         ) in itertools.product(
             self.quant_method_options,
             self.input_transpose_options,
             self.output_scale_transpose_options,
             self.using_pow2_scale_options,
             self.return_transpose_only_options,
+            self.using_ue8m0_scale_options,
         ):
             rmse = self.quant_verify_wrapper(
                 x,
@@ -138,6 +160,7 @@ class TestFP8Quantization(unittest.TestCase):
                 output_scale_transpose=output_scale_transpose,
                 return_transpose_only=return_transpose_only,
                 using_pow2_scale=using_pow2_scale,
+                using_ue8m0_scale=using_ue8m0_scale,
             )
             self.assertLessEqual(rmse, self.rmse_threshold)
             rmses.append(rmse)
