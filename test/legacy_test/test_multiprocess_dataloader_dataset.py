@@ -28,6 +28,10 @@ from paddle.io import (
     IterableDataset,
     TensorDataset,
 )
+from paddle.utils.data import (
+    ConcatDataset as UtilsConcatDataset,
+    IterableDataset as UtilsIterableDataset,
+)
 
 IMAGE_SIZE = 32
 
@@ -47,6 +51,18 @@ class RandomDataset(Dataset):
 
 
 class RandomIterableDataset(IterableDataset):
+    def __init__(self, sample_num):
+        self.sample_num = sample_num
+
+    def __iter__(self):
+        for i in range(self.sample_num):
+            np.random.seed(i)
+            image = np.random.random([IMAGE_SIZE]).astype('float32')
+            label = np.random.randint(0, 9, (1,)).astype('int64')
+            yield image, label
+
+
+class RandomUtilsIterableDataset(UtilsIterableDataset):
     def __init__(self, sample_num):
         self.sample_num = sample_num
 
@@ -452,6 +468,7 @@ class TestConcatDataset(unittest.TestCase):
         d1 = TensorDataset([paddle.rand((7, 3, 28, 28)), paddle.rand((7,))])
         it1 = RandomIterableDataset(10)
         it2 = RandomIterableDataset(10)
+        it3 = RandomUtilsIterableDataset(10)
 
         with self.assertRaisesRegex(
             AssertionError, "does not support IterableDataset"
@@ -467,6 +484,73 @@ class TestConcatDataset(unittest.TestCase):
             AssertionError, "does not support IterableDataset"
         ):
             ConcatDataset([it1, d1])
+
+        with self.assertRaisesRegex(
+            AssertionError, "does not support IterableDataset"
+        ):
+            ConcatDataset([d1, it3])
+
+        with self.assertRaisesRegex(
+            AssertionError, "does not support IterableDataset"
+        ):
+            ConcatDataset([it3])
+
+
+class TestUtilsConcatDataset(unittest.TestCase):
+    def run_main(self, num_workers, places):
+        result = UtilsConcatDataset([[0], [1]])
+        self.assertEqual(2, len(result))
+        self.assertEqual(0, result[0])
+        self.assertEqual(1, result[1])
+
+        result = UtilsConcatDataset([[0, 1, 2, 3, 4], [5, 6, 7, 8, 9]])
+        self.assertEqual(10, len(result))
+        self.assertEqual(0, result[0])
+        self.assertEqual(5, result[5])
+
+        result = UtilsConcatDataset([[0, 1, 2, 3, 4], [], [5, 6, 7, 8, 9]])
+        self.assertEqual(10, len(result))
+        self.assertEqual(0, result[0])
+        self.assertEqual(5, result[5])
+
+        result = UtilsConcatDataset([[0, 1, 2, 3, 4], [5, 6, 7, 8, 9]])
+        with self.assertRaises(IndexError):
+            result[11]
+
+    def test_main(self):
+        for p in get_places():
+            self.run_main(num_workers=0, places=p)
+
+    def test_iterable_dataset_err(self):
+        d1 = TensorDataset([paddle.rand((7, 3, 28, 28)), paddle.rand((7,))])
+        it1 = RandomIterableDataset(10)
+        it2 = RandomIterableDataset(10)
+        it3 = RandomUtilsIterableDataset(10)
+
+        with self.assertRaisesRegex(
+            AssertionError, "does not support IterableDataset"
+        ):
+            UtilsConcatDataset([d1, it2, it1])
+
+        with self.assertRaisesRegex(
+            AssertionError, "does not support IterableDataset"
+        ):
+            UtilsConcatDataset([it2])
+
+        with self.assertRaisesRegex(
+            AssertionError, "does not support IterableDataset"
+        ):
+            UtilsConcatDataset([it1, d1])
+
+        with self.assertRaisesRegex(
+            AssertionError, "does not support IterableDataset"
+        ):
+            UtilsConcatDataset([d1, it3])
+
+        with self.assertRaisesRegex(
+            AssertionError, "does not support IterableDataset"
+        ):
+            UtilsConcatDataset([it3])
 
 
 if __name__ == '__main__':
