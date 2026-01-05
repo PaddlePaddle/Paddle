@@ -447,7 +447,18 @@ class ThreeDCommGroupStateResharder:
         self.metadata = metadata_list[0]
         self.h_group = h_group
         self.v_group = v_group
+        for group, name in [
+            (self.h_group, "horizontal"),
+            (self.v_group, "vertical"),
+        ]:
+            assert group.nranks > 1, (
+                f"The number of ranks in the {name} communication group must be greater than 1, "
+                f"but actually it is {group.nranks}. Please check this communication group: {group}!"
+            )
         self.p_group = p_group
+        self.using_2d_comm_group = (not self.p_group) or (
+            self.p_group.nranks == 1
+        )
         self.memory_growth_threshold = memory_growth_threshold
         self.offload = offload
         self.using_tuple_key = True
@@ -515,10 +526,19 @@ class ThreeDCommGroupStateResharder:
         paddle.distributed.all_gather_object(
             self.topology, h_ranks, self.v_group
         )
-        p_ranks = []
-        paddle.distributed.all_gather_object(
-            p_ranks, self.cur_rank, self.p_group
-        )
+
+        if not self.using_2d_comm_group:
+            p_ranks = []
+            paddle.distributed.all_gather_object(
+                p_ranks, self.cur_rank, self.p_group
+            )
+        else:
+            p_ranks = [self.cur_rank]
+
+        self.parallel_index = {rank: i for i, rank in enumerate(p_ranks)}
+        self.p_ranks = p_ranks
+        self.cur_parallel_index = self.parallel_index[self.cur_rank]
+
         self.vertical_ranks = [set(col) for col in zip(*self.topology)]
         self.horizontal_index = {
             rank: i
@@ -528,10 +548,8 @@ class ThreeDCommGroupStateResharder:
         self.vertical_index = {
             rank: i for i, row in enumerate(self.topology) for rank in row
         }
-        self.parallel_index = {rank: i for i, rank in enumerate(p_ranks)}
-        self.p_ranks = p_ranks
+
         self.cur_horizontal_index = self.horizontal_index[self.cur_rank]
-        self.cur_parallel_index = self.parallel_index[self.cur_rank]
         self.h_group_size = self.h_group.nranks
         self.v_group_size = self.v_group.nranks
 
@@ -755,8 +773,17 @@ class ThreeDCommGroupStateResharder:
         self.batch_read_items = batch_read_items
 
     def aggregate_global_read_items(self):
+        if self.using_2d_comm_group:
+            self.aggregated_global_broadcast_read_items = (
+                self.global_broadcast_read_items
+            )
+            self.aggregated_batch_read_items = [
+                [batch_items] for batch_items in self.batch_read_items
+            ]
+            return
         aggregated_global_broadcast_read_items = []
         aggregated_batch_read_items = []
+
         dist.all_gather_object(
             aggregated_global_broadcast_read_items,
             self.global_broadcast_read_items,
@@ -772,7 +799,7 @@ class ThreeDCommGroupStateResharder:
             for sublist in aggregated_global_broadcast_read_items
             for item in sublist
         ]
-        self.aggregated_batch_read_items = []  # [[[batch1],[batch2],...],]
+        self.aggregated_batch_read_items = []  # [[[batch1],[batch2],,,,],]
         max_tasks = max(
             [len(sublist) for sublist in aggregated_batch_read_items]
         )
@@ -838,6 +865,9 @@ class ThreeDCommGroupStateResharder:
                 tensor_list, buffer, group=self.h_group
             )
 
+        # NOTE(xingmingyyj) Release the GPU memory occupied by source_state_dict in advance.
+        buffer._clear()
+
         return tensor_list
 
     def broadcast_cross_p_group_and_assign(self, tensor_list, task_batches):
@@ -860,18 +890,21 @@ class ThreeDCommGroupStateResharder:
 
         cnt = 0
         for idx, read_item in enumerate(filtered_read_items):
-            if read_item.src_rank == self.cur_rank:
-                buffer = tensor_list[cnt]
-                cnt += 1
-            else:
-                buffer = paddle.empty(
-                    read_item.slice_shape, dtype=read_item.dtype
+            if not self.using_2d_comm_group:
+                if read_item.src_rank == self.cur_rank:
+                    buffer = tensor_list[cnt]
+                else:
+                    buffer = paddle.empty(
+                        read_item.slice_shape, dtype=read_item.dtype
+                    )
+
+                paddle.distributed.broadcast(
+                    buffer, src=read_item.src_rank, group=self.p_group
                 )
+            else:
+                buffer = tensor_list[cnt]
 
-            paddle.distributed.broadcast(
-                buffer, src=read_item.src_rank, group=self.p_group
-            )
-
+            cnt += 1
             received_sharded_weight = ShardedWeight(
                 key=read_item.tensor_name,
                 local_tensor=buffer,
@@ -883,6 +916,20 @@ class ThreeDCommGroupStateResharder:
             for target_sharded_weight in self.grouped_target_state_dict[
                 read_item.tensor_name
             ]:
+                if not target_sharded_weight.local_tensor._is_initialized():
+                    buffer = paddle.zeros_like(
+                        target_sharded_weight.local_tensor
+                    )
+                    buffer._share_buffer_to(target_sharded_weight.local_tensor)
+
+                src_tensor = received_sharded_weight.local_tensor
+                tgt_place = target_sharded_weight.local_tensor.place
+
+                if src_tensor.place != tgt_place:
+                    src_tensor = src_tensor.to(tgt_place)
+
+                received_sharded_weight.local_tensor = src_tensor
+
                 assign_sharded_weight(
                     src=received_sharded_weight,
                     dst=target_sharded_weight,

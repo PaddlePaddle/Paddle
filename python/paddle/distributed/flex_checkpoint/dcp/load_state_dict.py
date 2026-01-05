@@ -65,7 +65,10 @@ if TYPE_CHECKING:
     from paddle.distributed.collective import Group
 
 PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list, list]] = {}
-_UNINIT_TENSOR_MODES = ["send_recv", "grouped_send_recv"]
+
+# When using the communication mode described below, newly created tensors will not be allocated GPU memory.
+# The allocation of GPU memory for these tensors will occur only when meaningful values are written to them.
+_UNINIT_TENSOR_MODES = ["send_recv", "grouped_send_recv", "3d_parallel"]
 
 _metadata_manager = MetadataManager()
 
@@ -980,7 +983,6 @@ def restore_unflattened_state_dict(
     tmp_metadata.storage_metadata = {
         k: v for d in global_storage_metadata for k, v in d.items()
     }
-
     _load_state_dict(
         target_state_dict=destination_sharded_state_dict,
         source_state_dict=source_state_dict_for_reshard,
@@ -1284,7 +1286,12 @@ def _load_state_dict(
             use_dist=use_dist,
         )
     else:
-        assert len(worker_groups) == 3, " H V P worker_groups must be provided."
+        assert len(worker_groups) == 3, (
+            f"When the reshard communication mode is set to '3d_parallel', the number of worker_groups must be 3, "
+            f"i.e., it must include groups for the horizontal, vertical, and parallel directions. "
+            f"However, there are currently only {len(worker_groups)} groups. "
+            f"Please check the worker_groups parameter: {worker_groups}"
+        )
         h_group = worker_groups[0]
         v_group = worker_groups[1]
         p_group = worker_groups[2]
