@@ -2228,14 +2228,17 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
               "must be divisible by 4, but got %d",
               scale_outer_dim));
       scale_outer_dim /= 4;
-      PADDLE_ENFORCE_EQ(
-          scale_transposed_outer_dim % 4,
-          0,
-          common::errors::InvalidArgument(
-              "When use_ue8m0 is true, the outer dimension of transposed scale "
-              "must be divisible by 4, but got %d",
-              scale_transposed_outer_dim));
-      scale_transposed_outer_dim /= 4;
+      if (input_transpose) {
+        PADDLE_ENFORCE_EQ(scale_transposed_outer_dim % 4,
+                          0,
+                          common::errors::InvalidArgument(
+                              "When use_ue8m0 is true, the outer dimension of "
+                              "transposed scale "
+                              "must be divisible by 4, but got %d",
+                              scale_transposed_outer_dim));
+        scale_transposed_outer_dim /= 4;
+      }
+
     } else {
       PADDLE_ENFORCE_EQ(
           scale_inner_dim % 4,
@@ -2245,14 +2248,16 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
               "must be divisible by 4, but got %d",
               scale_inner_dim));
       scale_inner_dim /= 4;
-      PADDLE_ENFORCE_EQ(
-          scale_transposed_inner_dim % 4,
-          0,
-          common::errors::InvalidArgument(
-              "When use_ue8m0 is true, the inner dimension of transposed scale "
-              "must be divisible by 4, but got %d",
-              scale_transposed_inner_dim));
-      scale_transposed_inner_dim /= 4;
+      if (input_transpose) {
+        PADDLE_ENFORCE_EQ(scale_transposed_inner_dim % 4,
+                          0,
+                          common::errors::InvalidArgument(
+                              "When use_ue8m0 is true, the inner dimension of "
+                              "transposed scale "
+                              "must be divisible by 4, but got %d",
+                              scale_transposed_inner_dim));
+        scale_transposed_inner_dim /= 4;
+      }
     }
   }
 
