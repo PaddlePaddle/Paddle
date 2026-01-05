@@ -15,6 +15,7 @@
 from ..base.framework import require_version
 from . import (  # noqa: F401
     cpp_extension,
+    data,
     decorator_utils,
     dlpack,
     download,
