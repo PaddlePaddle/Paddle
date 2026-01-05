@@ -337,7 +337,11 @@ bool EyeOpInferSymbolicShape(pir::Operation *op,
   symbol::DimExpr num_columns_dim;
   symbol::DimExpr num_rows_dim;
   if (op->HasAttribute("num_rows")) {
-    int num_rows_int = op->attribute<pir::Int64Attribute>("num_rows").data();
+    int64_t num_rows_int64 =
+        op->attribute<pir::Int64Attribute>("num_rows").data();
+    // TODO(large-tensor): num_rows may exceed INT_MAX
+    PADDLE_ENFORCE_LE_INT_MAX(num_rows_int64, "num_rows");
+    int num_rows_int = static_cast<int>(num_rows_int64);
     num_rows_dim = symbol::DimExpr(num_rows_int);
   } else if (op->operand_source(0)) {
     const auto &num_rows_shape_or_data =
@@ -351,8 +355,11 @@ bool EyeOpInferSymbolicShape(pir::Operation *op,
   }
 
   if (op->HasAttribute("num_columns")) {
-    int num_columns_int =
+    int64_t num_columns_int64 =
         op->attribute<pir::Int64Attribute>("num_columns").data();
+    // TODO(large-tensor): num_columns may exceed INT_MAX
+    PADDLE_ENFORCE_LE_INT_MAX(num_columns_int64, "num_columns");
+    int num_columns_int = static_cast<int>(num_columns_int64);
     if (num_columns_int == -1) {
       num_columns_dim = num_rows_dim;
     } else {

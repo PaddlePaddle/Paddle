@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/pybind/sot/frame_proxy.h"
-#include "paddle/fluid/pybind/sot/macros.h"
+#include "paddle/fluid/pybind/sot/cpython_internals.h"
 
 #if SOT_IS_SUPPORTED
 #include <Python.h>
@@ -61,7 +61,7 @@ DECLARE_PROXY_PROPERTY(f_builtins)
 // https://github.com/python/cpython/blob/9414ddf91898892f3f6a672ae946931ee4b3ceb7/Objects/frameobject.c#L953-L961
 static PyObject *PyInterpreterFrameProxy_method_repr(
     PyInterpreterFrameProxy *self) {
-#if PY_3_13_PLUS
+#if PY_3_12_PLUS
   int lineno = Internal_PyUnstable_InterpreterFrame_GetLine(self->frame);
 #else
   int lineno = Internal_PyInterpreterFrame_GetLine(self->frame);

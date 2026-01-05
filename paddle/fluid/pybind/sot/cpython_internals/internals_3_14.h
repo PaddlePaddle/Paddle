@@ -13,25 +13,25 @@
 // limitations under the License.
 
 #pragma once
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "paddle/fluid/pybind/sot/macros.h"
+#include <Python.h>
 
-#if SOT_IS_SUPPORTED
+#define Py_BUILD_CORE
+#include <internal/pycore_frame.h>
 
-#if PY_3_14_PLUS
-#include "paddle/fluid/pybind/sot/cpython_internals/internals_3_14.h"
-#elif PY_3_13_PLUS
-#include "paddle/fluid/pybind/sot/cpython_internals/internals_3_13.h"
-#elif PY_3_12_PLUS
-#include "paddle/fluid/pybind/sot/cpython_internals/internals_3_12.h"
-#elif PY_3_11_PLUS
-#include "paddle/fluid/pybind/sot/cpython_internals/internals_3_11.h"
-#endif
+int Internal_PyUnstable_InterpreterFrame_GetLine(_PyInterpreterFrame *frame);
 
-#endif  // SOT_IS_SUPPORTED
+void Internal_PyEval_FrameClearAndPop(PyThreadState *tstate,
+                                      _PyInterpreterFrame *frame);
+
+_PyInterpreterFrame *Internal_PyThreadState_PushFrame(PyThreadState *tstate,
+                                                      size_t size);
+
+PyObject *get_framelocals_mapping(_PyInterpreterFrame *frame);
 
 #ifdef __cplusplus
 }
