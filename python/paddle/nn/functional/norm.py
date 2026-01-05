@@ -487,7 +487,7 @@ def rms_norm(
     """
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.rms_norm(input, weight, normalized_shape, eps, 0)
+        return _C_ops.rms_norm(input, weight, normalized_shape, eps)
 
     helper = LayerHelper('rms_norm', **locals())
     from paddle.base.data_feeder import convert_dtype

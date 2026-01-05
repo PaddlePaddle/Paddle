@@ -15,7 +15,6 @@
 #pragma once
 
 #include <cuda_runtime.h>
-#include <thrust/tuple.h>
 
 #include "paddle/common/ddim.h"
 #include "paddle/common/flags.h"
@@ -57,6 +56,15 @@ __device__ __forceinline__ double Rsqrt_<double>(double x) {
 template <typename T, int kVecSize>
 struct alignas(sizeof(T) * kVecSize) aligned_vector {
   T val[kVecSize];
+};
+
+template <typename T1, typename T2>
+struct SimplePair {
+  T1 first;
+  T2 second;
+
+  __host__ __device__ SimplePair() {}
+  __host__ __device__ SimplePair(T1 f, T2 s) : first(f), second(s) {}
 };
 
 template <typename T>
@@ -188,9 +196,9 @@ struct WelfordOps {
             new_count};
   }
   inline __device__ res_t project(acc_t acc) const {
-    const auto mean = static_cast<scalar_t>(acc.mean);
-    const auto divisor = acc.nf > correction ? acc.nf - correction : 0;
-    const auto var = acc.m2 / divisor;
+    const scalar_t mean = static_cast<scalar_t>(acc.mean);
+    const acc_scalar_t divisor = acc.nf > correction ? acc.nf - correction : 0;
+    const acc_scalar_t var = acc.m2 / divisor;
     res_t results(take_sqrt ? std::sqrt(var) : var, mean);
     return results;
   }
@@ -222,8 +230,7 @@ __global__ void RowwiseMomentsCUDAKernel(int64_t N,
                                          const T* X,
                                          T_ACC* rstd) {
   using WelfordType = WelfordData<T_ACC, int64_t>;
-  using WelfordOp =
-      WelfordOps<T_ACC, T_ACC, int64_t, thrust::pair<T_ACC, T_ACC>>;
+  using WelfordOp = WelfordOps<T_ACC, T_ACC, int64_t, SimplePair<T_ACC, T_ACC>>;
 
   const int64_t i = blockIdx.x;
   WelfordOp welford_op = {/*correction=*/0, /*take_sqrt=*/false};
@@ -270,7 +277,7 @@ __global__ void RowwiseMomentsCUDAKernel(int64_t N,
   if (threadIdx.x == 0) {
     T_ACC m1;  // mean
     T_ACC m2;  // var
-    thrust::pair<T_ACC, T_ACC> res = welford_op.project(val);
+    SimplePair<T_ACC, T_ACC> res = welford_op.project(val);
     m2 = res.first;
     m1 = res.second;
     rstd[i] = Rsqrt_<T_ACC>(m2 + m1 * m1 + eps);
