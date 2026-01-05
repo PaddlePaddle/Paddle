@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Any
 import os
 import copy
 import concurrent
+import functools
 import re
 import warnings
 import collections
@@ -95,7 +96,10 @@ if core.is_compiled_with_rocm():
     ROCM_HOME = find_rocm_home()
     CUDA_HOME = ROCM_HOME
 
-CCACHE_HOME = find_ccache_home()
+
+@functools.cache
+def _get_ccache_home():
+    return find_ccache_home()
 
 
 def setup(**attr: Any) -> None:
@@ -416,6 +420,8 @@ class BuildExtension(build_ext):
         self.output_dir = kwargs.get("output_dir", None)
         # whether containing cuda source file in Extensions
         self.contain_cuda_file = False
+        # Initialize ccache_home to avoid race condition in multi-thread compilation
+        _get_ccache_home()
 
     def initialize_options(self) -> None:
         super().initialize_options()
@@ -491,9 +497,10 @@ class BuildExtension(build_ext):
                             "Not found ROCM runtime, \
                             please use `export ROCM_PATH= XXX` to specify it."
                         )
-                        if CCACHE_HOME is not None:
+                        ccache_home = _get_ccache_home()
+                        if ccache_home is not None:
                             hipcc_cmd = os.path.join(ROCM_HOME, 'bin', 'hipcc')
-                            hipcc_cmd = f'{CCACHE_HOME} {hipcc_cmd}'
+                            hipcc_cmd = f'{ccache_home} {hipcc_cmd}'
                         else:
                             hipcc_cmd = os.path.join(ROCM_HOME, 'bin', 'hipcc')
                         self.set_executable('compiler_so', hipcc_cmd)
@@ -519,9 +526,10 @@ class BuildExtension(build_ext):
                             "Not found CUDA runtime, \
                             please use `export CUDA_HOME= XXX` to specify it."
                         )
-                        if CCACHE_HOME is not None:
+                        ccache_home = _get_ccache_home()
+                        if ccache_home is not None:
                             nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
-                            nvcc_cmd = f'{CCACHE_HOME} {nvcc_cmd}'
+                            nvcc_cmd = f'{ccache_home} {nvcc_cmd}'
                         else:
                             nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
                         self.set_executable('compiler_so', nvcc_cmd)
@@ -532,10 +540,10 @@ class BuildExtension(build_ext):
                     cflags = prepare_unix_cudaflags(cflags)
                 # cxx compile Cpp source
                 else:
-                    if CCACHE_HOME is not None:
-                        # self.set_executable('compiler_so', [CCACHE_HOME, *self.executables['compiler_so']])
+                    ccache_home = _get_ccache_home()
+                    if ccache_home is not None:
                         self.set_executable(
-                            'compiler_so', [CCACHE_HOME, *self.compiler_so]
+                            'compiler_so', [ccache_home, *self.compiler_so]
                         )
 
                     if isinstance(cflags, dict):
@@ -602,8 +610,9 @@ class BuildExtension(build_ext):
             nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
 
             cmd = []
-            if CCACHE_HOME:
-                cmd.append(CCACHE_HOME)
+            ccache_home = _get_ccache_home()
+            if ccache_home:
+                cmd.append(ccache_home)
             cmd.append(nvcc_cmd)
 
             cmd.extend(objects)

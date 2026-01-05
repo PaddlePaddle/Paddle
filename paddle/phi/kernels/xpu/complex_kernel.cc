@@ -14,7 +14,6 @@
 
 #ifdef PADDLE_WITH_XPU_FFT
 #include "paddle/phi/kernels/complex_kernel.h"
-
 #include "fft/cuComplex.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/type_traits.h"
@@ -68,6 +67,13 @@ void ConjKernel(const Context& dev_ctx,
         reinterpret_cast<cuFloatComplex*>(out->data<T>()));
     PADDLE_ENFORCE_XPU_SUCCESS(r);
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
+  } else if (std::is_same_v<T, phi::complex128>) {
+    int r = xfft_internal::xpu::Conj(
+        x.numel(),
+        reinterpret_cast<const cuDoubleComplex*>(x.data<T>()),
+        reinterpret_cast<cuDoubleComplex*>(out->data<T>()));
+    PADDLE_ENFORCE_XPU_SUCCESS(r);
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
   } else {
     using XPUType = typename XPUCopyTypeTrait<T>::Type;
     const auto* input_data = x.data<T>();
@@ -83,6 +89,8 @@ template <typename T, typename Context>
 void RealKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
+  using XPUComplexType =
+      typename XPUComplexTypeTrait<phi::dtype::Real<T>>::Type;
   if (out->numel() == 0) {
     dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
     return;
@@ -96,7 +104,7 @@ void RealKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
   int r = xfft_internal::xpu::complex_spilt(
       out->numel(),
-      reinterpret_cast<const cuFloatComplex*>(x.data<T>()),
+      reinterpret_cast<const XPUComplexType*>(x.data<T>()),
       out->data<phi::dtype::Real<T>>(),
       imag.data<phi::dtype::Real<T>>());
   PADDLE_ENFORCE_XPU_SUCCESS(r);
@@ -107,6 +115,8 @@ template <typename T, typename Context>
 void ImagKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
+  using XPUComplexType =
+      typename XPUComplexTypeTrait<phi::dtype::Real<T>>::Type;
   if (out->numel() == 0) {
     dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
     return;
@@ -120,7 +130,7 @@ void ImagKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
   int r = xfft_internal::xpu::complex_spilt(
       out->numel(),
-      reinterpret_cast<const cuFloatComplex*>(x.data<T>()),
+      reinterpret_cast<const XPUComplexType*>(x.data<T>()),
       real.data<phi::dtype::Real<T>>(),
       out->data<phi::dtype::Real<T>>());
   PADDLE_ENFORCE_XPU_SUCCESS(r);
@@ -133,6 +143,7 @@ void ComplexKernel(const Context& dev_ctx,
                    const DenseTensor& y,
                    DenseTensor* out) {
   using C = phi::dtype::complex<T>;
+  using XPUComplexType = typename XPUComplexTypeTrait<T>::Type;
   if (out->numel() == 0) {
     dev_ctx.template Alloc<C>(out);
     return;
@@ -173,7 +184,7 @@ void ComplexKernel(const Context& dev_ctx,
       out->numel(),
       x_data,
       y_data,
-      reinterpret_cast<cuFloatComplex*>(out->data<C>()));
+      reinterpret_cast<XPUComplexType*>(out->data<C>()));
   PADDLE_ENFORCE_XPU_SUCCESS(r);
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
 }
@@ -190,17 +201,21 @@ PD_REGISTER_KERNEL(conj,
                    double,
                    phi::float16,
                    phi::bfloat16,
-                   phi::complex64) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
-PD_REGISTER_KERNEL(real, XPU, ALL_LAYOUT, phi::RealKernel, phi::complex64) {
+PD_REGISTER_KERNEL(
+    real, XPU, ALL_LAYOUT, phi::RealKernel, phi::complex64, phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
-PD_REGISTER_KERNEL(imag, XPU, ALL_LAYOUT, phi::ImagKernel, phi::complex64) {
+PD_REGISTER_KERNEL(
+    imag, XPU, ALL_LAYOUT, phi::ImagKernel, phi::complex64, phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
-PD_REGISTER_KERNEL(complex, XPU, ALL_LAYOUT, phi::ComplexKernel, float) {
+PD_REGISTER_KERNEL(
+    complex, XPU, ALL_LAYOUT, phi::ComplexKernel, float, double) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
 }
 #endif  // PADDLE_WITH_XPU_FFT

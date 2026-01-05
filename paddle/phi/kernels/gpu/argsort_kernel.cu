@@ -336,7 +336,7 @@ void ArgsortKernel(const Context& dev_ctx,
   if (rank == 0) {
     dev_ctx.template Alloc<T>(output);
     dev_ctx.template Alloc<int64_t>(indices);
-    phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, output);
     funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }

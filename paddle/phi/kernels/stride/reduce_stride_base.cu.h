@@ -29,11 +29,11 @@
 namespace phi {
 
 template <typename Context>
-phi::DenseTensor Tensor2Contiguous(const Context& dev_ctx,
-                                   const phi::DenseTensor& tensor) {
-  phi::DenseTensor dense_out;
-  phi::MetaTensor meta_input(tensor);
-  phi::MetaTensor meta_out(&dense_out);
+DenseTensor Tensor2Contiguous(const Context& dev_ctx,
+                              const DenseTensor& tensor) {
+  DenseTensor dense_out;
+  MetaTensor meta_input(tensor);
+  MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(meta_input, &meta_out);
   PD_VISIT_ALL_TYPES(tensor.dtype(), "Tensor2Contiguous", ([&] {
                        phi::ContiguousKernel<data_t, Context>(

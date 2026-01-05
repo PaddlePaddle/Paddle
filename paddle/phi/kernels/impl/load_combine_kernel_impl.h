@@ -60,9 +60,9 @@ void LoadParamsFromBuffer(const Context& dev_ctx,
     if (in_dtype != out_dtype) {
       // convert to float16 tensor
       auto in_kernel_type =
-          phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, in_dtype);
+          phi::KernelKey(place, DataLayout::ALL_LAYOUT, in_dtype);
       auto out_kernel_type =
-          phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, out_dtype);
+          phi::KernelKey(place, DataLayout::ALL_LAYOUT, out_dtype);
       DenseTensor fp16_tensor;
       // copy LoD info to the new tensor
       fp16_tensor.set_lod(tensor->lod());
@@ -179,9 +179,9 @@ void LoadParamsFromBuffer(const Context& dev_ctx,
       if (in_dtype != out_dtype) {
         // convert to float16 tensor
         auto in_kernel_type =
-            phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, in_dtype);
+            phi::KernelKey(place, DataLayout::ALL_LAYOUT, in_dtype);
         auto out_kernel_type =
-            phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, out_dtype);
+            phi::KernelKey(place, DataLayout::ALL_LAYOUT, out_dtype);
         DenseTensor fp16_tensor;
         // copy LoD info to the new tensor
         fp16_tensor.set_lod(tensor->lod());

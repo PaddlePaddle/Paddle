@@ -259,7 +259,7 @@ void FusedMultiTransformerOpKernel(
   if (time_step) {
     PADDLE_ENFORCE_EQ(
         time_step->place().GetType(),
-        phi::AllocationType::CPU,
+        AllocationType::CPU,
         common::errors::InvalidArgument(
             "The place of input(time_step) must be CPU, but got %s.",
             time_step->place()));

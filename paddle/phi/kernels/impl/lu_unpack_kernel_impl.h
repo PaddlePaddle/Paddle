@@ -55,10 +55,10 @@ void LUUnpackKernel(const Context& dev_ctx,
       LU_Unpack<Context, T>(dev_ctx, &x, &L, &U);
 
       if (m >= n) {
-        phi::Copy(dev_ctx, L, dev_ctx.GetPlace(), false, l);
+        Copy(dev_ctx, L, dev_ctx.GetPlace(), false, l);
         Tensor_narrow<Context, T>(dev_ctx, &U, u, 0, k, 0, k);
       } else {
-        phi::Copy(dev_ctx, U, dev_ctx.GetPlace(), false, u);
+        Copy(dev_ctx, U, dev_ctx.GetPlace(), false, u);
         Tensor_narrow<Context, T>(dev_ctx, &L, l, 0, k, 0, k);
       }
     }

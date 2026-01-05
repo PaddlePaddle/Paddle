@@ -18,12 +18,10 @@
 #include <string>
 #include <vector>
 
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/phi/backends/onednn/onednn_helper.h"
-#endif
 
 namespace phi {
 
@@ -44,7 +42,7 @@ struct LRNGradFunctor<phi::CPUContext, T> {
                   T beta,
                   const DataLayout data_layout) {
     T ratio = -2 * alpha * beta;
-    auto x_g_e = phi::EigenVector<T>::Flatten(*x_g);
+    auto x_g_e = EigenVector<T>::Flatten(*x_g);
     x_g_e = x_g_e.constant(0.0);
 
     auto e_x = phi::EigenTensor<T, 4>::From(x);

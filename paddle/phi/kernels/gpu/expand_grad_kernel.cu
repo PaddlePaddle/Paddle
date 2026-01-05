@@ -32,7 +32,7 @@ void ExpandGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(x_grad);
   auto expand_shape = shape.GetData();
   if (expand_shape.empty()) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     return;
   }
   if ((x_grad && x_grad->numel() == 0) || out_grad.numel() == 0) {
@@ -41,7 +41,7 @@ void ExpandGradKernel(const Context& dev_ctx,
     return;
   }
   if (x_grad->dims() == out_grad.dims()) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   } else {
     std::vector<int> reduce_dims =
         funcs::GetReduceDim(x_grad->dims(), out_grad.dims(), -1);

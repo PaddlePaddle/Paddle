@@ -3357,3 +3357,59 @@ def allclose(
 ) -> Tensor
 """,
 )
+
+add_doc_and_signature(
+    "baddbmm",
+    r"""
+    Performs a batch matrix-matrix product of matrices in input with matrices in batch1 and batch2,
+    and adds the result to input. The result is:
+    .. math::
+        out = \beta \times input + \alpha \times x \times y
+    where :math:`\beta` and :math:`\alpha` are scaling factors.
+    Args:
+        input (Tensor): The input tensor to be added to the final result. It should be a 2-D or 3-D tensor.
+            Data type should be float16, float32, float64, uint16.
+        x (Tensor): The first batch of matrices to be multiplied. It should be a 3-D tensor with shape [b, n, p].
+            Data type should be float16, float32, float64, uint16.
+            Alias: ``batch1``.
+        y (Tensor): The second batch of matrices to be multiplied. It should be a 3-D tensor with shape [b, p, m].
+            Data type should be float16, float32, float64, uint16.
+            Alias: ``batch2``.
+        beta (float, optional): The scaling factor for input. Default: 1.0.
+        alpha (float, optional): The scaling factor for x @ y. Default: 1.0.
+        out_dtype (paddle.dtype|None, optional): The desired data type of the returned tensor. If None, the output tensor will have the same data type as input. Default: None.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
+    Returns:
+        Tensor: The output tensor should be a 3-D tensor with shape [b, n, m].
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.ones([2, 2, 2])
+            >>> y = paddle.ones([2, 2, 2])
+            >>> input = paddle.ones([2, 2, 2])
+
+            >>> out = paddle.baddbmm(input=input, x=x, y=y, beta=0.5, alpha=5.0)
+            >>> out
+            Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[10.50000000, 10.50000000],
+              [10.50000000, 10.50000000]],
+             [[10.50000000, 10.50000000],
+              [10.50000000, 10.50000000]]])
+    """,
+    """
+def baddbmm(
+    input: Tensor,
+    x: Tensor,
+    y: Tensor,
+    beta: float = 1.0,
+    alpha: float = 1.0,
+    out_dtype: paddle.dtype | None = None,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)

@@ -36,7 +36,7 @@ void Expand(const Context& dev_ctx,
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int> repeat_times(vec_in_dims.size());
   if (Rank == 0) {
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {

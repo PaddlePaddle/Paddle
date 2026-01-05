@@ -74,7 +74,7 @@ void PartialSumGradientOpKernel(const Context& dev_ctx,
   auto& place = *dev_ctx.eigen_device();
   for (size_t i = 0; i < x_grad.size(); ++i) {
     dev_ctx.template Alloc<T>(x_grad[i]);
-    auto dxt = phi::EigenVector<T>::Flatten(*x_grad[i]);
+    auto dxt = EigenVector<T>::Flatten(*x_grad[i]);
     dxt.device(place) = dxt.constant(static_cast<T>(0));
   }
 

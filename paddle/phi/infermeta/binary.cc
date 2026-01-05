@@ -19,8 +19,10 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/api/lib/data_type_set.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -31,12 +33,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/correlation_funcs.h"
-
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/phi/backends/onednn/onednn_helper.h"
-#endif
-
-#include "paddle/common/flags.h"
 
 COMMON_DECLARE_bool(manually_trans_conv_filter);
 
@@ -4075,7 +4071,7 @@ void ShuffleBatchInferMeta(const MetaTensor& x,
   seed_out->share_dims(seed);
   seed_out->share_lod(seed);
   seed_out->set_dtype(seed.dtype());
-  shuffle_idx->set_dims(phi::make_ddim({-1}));
+  shuffle_idx->set_dims(make_ddim({-1}));
 }
 
 void SequenceMaskInferMeta(const MetaTensor& x,

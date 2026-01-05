@@ -127,8 +127,7 @@ void BroadcastTensorsGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(output_tensor);
     if (just_copy) {
       // If this turns out to be a No-Op, simply perform a tensor copy
-      phi::Copy(
-          dev_ctx, *input_tensor, dev_ctx.GetPlace(), false, output_tensor);
+      Copy(dev_ctx, *input_tensor, dev_ctx.GetPlace(), false, output_tensor);
     } else {
       PADDLE_ENFORCE_GE(
           reduce_dims_vec.size(),

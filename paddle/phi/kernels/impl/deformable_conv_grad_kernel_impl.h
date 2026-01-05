@@ -246,10 +246,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
   int64_t input_mask_dim = mask ? mask->numel() / mask->dims()[0] : 0;
 
   if (filter_grad) {
-    Full<T>(dev_ctx,
-            {filter_grad_shape.Get(), filter_grad_shape.size()},
-            0,
-            filter_grad);
+    Full<T>(dev_ctx, filter_grad_shape, 0, filter_grad);
   }
 
   if (dx) {

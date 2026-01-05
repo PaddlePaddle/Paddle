@@ -251,7 +251,7 @@ struct AccuracyCheckFunctor<phi::GPUContext, T> {
         in_data, other_data, rtol, atol, equal_nan, num, out_data);
 
     DenseTensor out_cpu;
-    phi::Copy(dev_ctx, *output, phi::CPUPlace(), true, &out_cpu);
+    Copy(dev_ctx, *output, phi::CPUPlace(), true, &out_cpu);
     auto data_ptr = out_cpu.data<bool>();
 
     PADDLE_ENFORCE_EQ(*data_ptr,

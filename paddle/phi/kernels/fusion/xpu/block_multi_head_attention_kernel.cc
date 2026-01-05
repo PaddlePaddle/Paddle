@@ -241,7 +241,7 @@ void BlockMultiheadAttentionXPUKernel(
   } else {
     PADDLE_ENFORCE_EQ(
         max_dec_len_this_time.get().place().GetType(),
-        phi::AllocationType::CPU,
+        AllocationType::CPU,
         errors::InvalidArgument(
             "The place of input max_dec_len_this_time must be CPU, but got %s.",
             max_dec_len_this_time.get().place()));
@@ -258,7 +258,7 @@ void BlockMultiheadAttentionXPUKernel(
   } else {
     PADDLE_ENFORCE_EQ(
         max_enc_len_this_time.get().place().GetType(),
-        phi::AllocationType::CPU,
+        AllocationType::CPU,
         errors::InvalidArgument(
             "The place of input max_enc_len_this_time must be CPU, but got %s.",
             max_enc_len_this_time.get().place()));

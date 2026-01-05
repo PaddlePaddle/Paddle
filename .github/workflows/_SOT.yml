@@ -64,6 +64,7 @@ jobs:
           WITH_AVX: "OFF"
           CACHE_DIR: "/root/.cache/sot"
           CCACHE_DIR: "/root/.ccache/sot"
+          CCACHE_SECONDARY_STORAGE: "file:///home/data/cfs/.ccache/sot"
         run: |
           set -x
           container_name=${TASK}-$(date +%s)
@@ -72,7 +73,6 @@ jobs:
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
-            -v "/home/data/cfs/.ccache:/root/.ccache" \
             -v "/dev/shm:/dev/shm" \
             -v "${{ github.workspace }}/../../..:${{ github.workspace }}/../../.." \
             -v ${{ github.workspace }}:/paddle \
@@ -102,6 +102,7 @@ jobs:
             -e WITH_AVX \
             -e CACHE_DIR \
             -e CCACHE_DIR \
+            -e CCACHE_SECONDARY_STORAGE \
             -e no_proxy \
             -w /paddle --network host ${docker_image}
 
@@ -142,6 +143,19 @@ jobs:
           echo "determine_excode=$determine_excode" >> ${{ github.env }}
           '
 
+      - name: CMake Pre-download
+        env:
+          work_dir: ${{ github.workspace }}
+          PADDLE_ROOT: ${{ github.workspace }}
+        if: ${{ env.determine_excode == 0 }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/cmake-predownload.sh
+          EXCODE=$?
+          exit $EXCODE
+          '
+
       - name: Build with python3.9
         env:
           work_dir: ${{ github.workspace }}
@@ -151,7 +165,6 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           export PY_VERSION=3.9
           source ${{ github.workspace }}/../../../proxy
-          bash ${ci_scripts}/cmake-predownload.sh
           bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
           exit $EXCODE

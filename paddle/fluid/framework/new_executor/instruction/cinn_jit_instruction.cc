@@ -98,6 +98,7 @@ class CinnJitInstruction::FnPtrImpl {
     }
   }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void Run(const std::vector<phi::DenseTensor*>& kernel_tensor_args,
            void* stream,
            bool is_gpu) {
@@ -166,6 +167,7 @@ class CinnJitInstruction::FnPtrImpl {
     }
     VLOG(6) << "End Run: " << cinn_kernel_info_.fn_name;
   }
+#endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
   void InferShape(const std::vector<phi::DenseTensor*>& kernel_tensor_args,
                   const std::vector<phi::DDim>& ir_dim,
