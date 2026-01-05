@@ -133,15 +133,13 @@ void ArgMaxMinMapper(PyObject* args,
   if (axis_obj == Py_None || axis_obj == nullptr) {
     *flatten = true;
     *axis = paddle::dialect::full(
-        std::vector<int64_t>{1}, 0, phi::DataType::INT64, phi::CPUPlace());
+        std::vector<int64_t>{1}, 0, phi::DataType::INT64, CPUPlace());
   } else if (PyObject_CheckIRValue(axis_obj)) {
     *axis = CastPyArg2Value(axis_obj, "argmax", 1);
   } else {
     int64_t axis_tmp = CastPyArg2Long(axis_obj, "argmax", 1);
-    *axis = paddle::dialect::full(std::vector<int64_t>{1},
-                                  axis_tmp,
-                                  phi::DataType::INT64,
-                                  phi::CPUPlace());
+    *axis = paddle::dialect::full(
+        std::vector<int64_t>{1}, axis_tmp, phi::DataType::INT64, CPUPlace());
   }
   *keepdims = CastPyArg2Boolean(keepdims_obj, "argmax", 2, false);
 
@@ -251,7 +249,7 @@ void ArgSumMapper(PyObject* args,
   } else {
     std::vector<int64_t> axis_tmp = CastPyArg2Longs(axis_obj, "sum", 1, {});
     *axis = paddle::dialect::full_int_array(
-        axis_tmp, phi::DataType::INT64, phi::CPUPlace());
+        axis_tmp, phi::DataType::INT64, CPUPlace());
   }
 
   PyObject* py_obj_1 = GetItemFromArgsOrKWArgs(
