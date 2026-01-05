@@ -59,6 +59,7 @@ from .pir.generated_methods_patch import (
     monkey_patch_generated_methods_for_value,
 )
 
+monkey_patch_generated_methods_for_tensor()
 monkey_patch_variable()
 monkey_patch_math_tensor()
 monkey_patch_value()
@@ -170,6 +171,7 @@ else:
 
     Tensor.__init__ = new_init
 
+import paddle._paddle_docs
 import paddle.distributed.fleet
 import paddle.text
 import paddle.vision
@@ -1509,9 +1511,6 @@ __all__ = [
     'disable_compat',
 ]
 import os
-
-monkey_patch_generated_methods_for_tensor()
-import paddle._paddle_docs
 
 FLAGS_trace_api = os.environ.get("FLAGS_trace_api", None)
 if FLAGS_trace_api is not None and FLAGS_trace_api != "":
