@@ -1671,14 +1671,15 @@ void FusedRmsNormQuantGradInferMeta(const MetaTensor& x,
   }
 }
 
-PADDLE_API void RMSNormGradInferMeta(const MetaTensor& x,
-                                     const MetaTensor& scale,
-                                     const MetaTensor& invvar,
-                                     const MetaTensor& y_grad,
-                                     const IntArray& normalized_shape,
-                                     double epsilon,
-                                     MetaTensor* x_grad,
-                                     MetaTensor* scale_grad) {
+PADDLE_API void RMSNormGradInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& scale,
+    const MetaTensor& invvar,
+    const MetaTensor& y_grad,
+    const std::vector<int64_t>& normalized_shape,
+    double epsilon,
+    MetaTensor* x_grad,
+    MetaTensor* scale_grad) {
   if (x_grad && x) {
     x_grad->share_meta(x);
   }

@@ -463,7 +463,7 @@ def layer_norm(
 
 def rms_norm(
     input: Tensor,
-    normalized_shape: list[int],
+    normalized_shape: Sequence[int],
     weight: Tensor | None = None,
     eps: float = 1e-5,
     name: str | None = None,
@@ -473,7 +473,7 @@ def rms_norm(
 
     Args:
         input (Tensor): Input tensor of shape [rows, cols] or higher dimensions (flattened to 2D).
-        normalized_shape(int|list|tuple): Input shape from an expected input of
+        normalized_shape(list|tuple): Input shape from an expected input of
             size :math:`[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`.
             If it is a single integer, this module will normalize over the last dimension
             which is expected to be of that specific size.

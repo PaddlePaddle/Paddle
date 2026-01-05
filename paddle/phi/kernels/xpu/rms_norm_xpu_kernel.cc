@@ -39,7 +39,7 @@ template <typename T, typename Context>
 void RMSNormFwdKernel(const Context &dev_ctx,
                       const DenseTensor &x,
                       const paddle::optional<DenseTensor> &scale_opt,
-                      const IntArray &normalized_shape,
+                      const std::vector<int64_t> &normalized_shape,
                       double epsilon,
                       DenseTensor *y,
                       DenseTensor *invvar) {
@@ -143,7 +143,7 @@ void RMSNormBwdKernel(const Context &dev_ctx,
                       const paddle::optional<DenseTensor> &scale_opt,
                       const DenseTensor &invvar,
                       const DenseTensor &y_grad,
-                      const IntArray &normalized_shape,
+                      const std::vector<int64_t> &normalized_shape,
                       double epsilon,
                       DenseTensor *x_grad,
                       DenseTensor *scale_grad) {

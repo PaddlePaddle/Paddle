@@ -3428,9 +3428,7 @@ bool RmsNormOpInferSymbolicShape(
   const auto &scale_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
   std::vector<int64_t> normalized_shape =
-      op->attribute<paddle::dialect::IntArrayAttribute>("normalized_shape")
-          .data()
-          .GetData();
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "normalized_shape");
 
   std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
   int x_dims_size = x_dims.size();

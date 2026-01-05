@@ -3885,13 +3885,13 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
 
 void RmsNormInferMeta(const MetaTensor& x,
                       const MetaTensor& scale,
-                      const IntArray& normalized_shape,
+                      const std::vector<int64_t>& normalized_shape,
                       double epsilon,
                       MetaTensor* y,
                       MetaTensor* invvar) {
   auto x_dim = x.dims();
-  std::vector<int64_t> normalized_shape_data = normalized_shape.GetData();
-  int normalized_shape_size = normalized_shape_data.size();
+  // std::vector<int64_t> normalized_shape_data = normalized_shape.GetData();
+  int normalized_shape_size = normalized_shape.size();
   int x_dims_size = x_dim.size();
   int begin_norm_axis = x_dims_size - normalized_shape_size;
 
