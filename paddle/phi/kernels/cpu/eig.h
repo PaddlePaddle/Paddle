@@ -249,7 +249,7 @@ void MagmaEig(const Context& dev_ctx,
   // magma will modify original input, so copy to cpu at any case
   DenseTensor input_copy_cpu;
   input_copy_cpu.Resize(input.dims());
-  phi::Copy(dev_ctx, input, phi::CPUPlace(), false, &input_copy_cpu);
+  Copy(dev_ctx, input, phi::CPUPlace(), false, &input_copy_cpu);
 
   using RealT = typename phi::dtype::Real<T>;
   magma_vec_t jobvr = MagmaVec;
@@ -338,8 +338,7 @@ void ApplyEigKernelMagma(const Context& dev_ctx,
                          DenseTensor* real_v_cpu) {
   // transfer to column-major memory layout i.e. common::make_ddim from
   // transposed_input: [*,row,col]->[*,col,row]
-  DenseTensor input_column_major_gpu =
-      phi::TransposeLast2Dim<T>(dev_ctx, input);
+  DenseTensor input_column_major_gpu = TransposeLast2Dim<T>(dev_ctx, input);
   int num_dims = input.dims().size();
   TransposeTwoAxis<T, Context>(
       input, &input_column_major_gpu, num_dims - 1, num_dims - 2, dev_ctx);
@@ -449,7 +448,7 @@ void ComputeBackwardForComplexInput(const DenseTensor& L,
         Fill<T, Context>(dev_ctx, common::vectorize<int64_t>(V.dims()), T(0));
   }
 
-  DenseTensor trans_v = phi::TransposeLast2Dim<T>(dev_ctx, V);
+  DenseTensor trans_v = TransposeLast2Dim<T>(dev_ctx, V);
   DenseTensor Vh = phi::Conj<T>(dev_ctx, trans_v);
   DenseTensor Lconj = phi::Conj<T>(dev_ctx, L);
   DenseTensor Econj = phi::Subtract<T>(

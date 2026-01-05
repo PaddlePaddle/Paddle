@@ -96,7 +96,7 @@ struct OneHotGenerator<GPUContext, T> {
     DenseTensor input_tensor;
     input_tensor.Resize(out->dims());
     dev_ctx.template Alloc<T>(&input_tensor);
-    phi::Copy(dev_ctx, *out, dev_ctx.GetPlace(), false, &input_tensor);
+    Copy(dev_ctx, *out, dev_ctx.GetPlace(), false, &input_tensor);
     funcs::set_constant(dev_ctx, out, static_cast<T>(0.0));
     OneHotCUDAKernel<T, thread_size>
         <<<block_size, thread_size, 0, dev_ctx.stream()>>>(

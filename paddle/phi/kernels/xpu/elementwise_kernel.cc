@@ -24,7 +24,8 @@
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 namespace xfft_internal::xpu {
-int RemainderFunctor(int N, float2* input_x, float2* input_y, float2* output);
+template <typename T>  // T supports float2, double2
+int RemainderFunctor(int N, const T* input_x, const T* input_y, T* output);
 }
 #endif
 
@@ -123,11 +124,11 @@ void RemainderKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
   };
 
   DenseTensor broadcasted_x, broadcasted_y;
-  T* x_data = nullptr;
-  T* y_data = nullptr;
+  const T* x_data = nullptr;
+  const T* y_data = nullptr;
 
   if (x_dims == out_dims) {
-    x_data = const_cast<T*>(x.data<T>());
+    x_data = x.data<T>();
   } else {
     broadcasted_x.Resize(out_dims);
     dev_ctx.template Alloc<T>(&broadcasted_x);
@@ -136,7 +137,7 @@ void RemainderKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
   }
 
   if (y_dims == out_dims) {
-    y_data = const_cast<T*>(y.data<T>());
+    y_data = y.data<T>();
   } else {
     broadcasted_y.Resize(out_dims);
     dev_ctx.template Alloc<T>(&broadcasted_y);
@@ -149,8 +150,8 @@ void RemainderKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
   int r = xfft_internal::xpu::RemainderFunctor(
       out->numel(),
-      reinterpret_cast<cuFloatComplex*>(x_data),
-      reinterpret_cast<cuFloatComplex*>(y_data),
+      reinterpret_cast<const cuFloatComplex*>(x_data),
+      reinterpret_cast<const cuFloatComplex*>(y_data),
       reinterpret_cast<cuFloatComplex*>(out->data<T>()));
   PADDLE_ENFORCE_XPU_SUCCESS(r);
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());

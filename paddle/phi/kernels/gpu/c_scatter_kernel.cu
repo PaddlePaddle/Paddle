@@ -83,11 +83,11 @@ void CScatterOpCUDAKernel(const Context& dev_ctx,
 
   if (root_id == comm_ctx->GetRank()) {
     comm_ctx->Broadcast(const_cast<DenseTensor*>(x), *x, root_id, stream);
-    phi::Copy(dev_ctx,
-              *static_cast<const DenseTensor*>(x),
-              place,
-              false,
-              static_cast<DenseTensor*>(&temp));
+    Copy(dev_ctx,
+         *static_cast<const DenseTensor*>(x),
+         place,
+         false,
+         static_cast<DenseTensor*>(&temp));
   } else {
     comm_ctx->Broadcast(&temp, temp, root_id, stream);
   }
@@ -99,11 +99,11 @@ void CScatterOpCUDAKernel(const Context& dev_ctx,
   temp.Resize(out_dims);
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
-  phi::Copy(dev_ctx,
-            *static_cast<const DenseTensor*>(&temp),
-            place,
-            true,
-            static_cast<DenseTensor*>(out));
+  Copy(dev_ctx,
+       *static_cast<const DenseTensor*>(&temp),
+       place,
+       true,
+       static_cast<DenseTensor*>(out));
   out->Resize(out_dims);
 #else
   PADDLE_ENFORCE_EQ(

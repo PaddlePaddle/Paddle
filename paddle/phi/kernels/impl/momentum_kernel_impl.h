@@ -445,7 +445,7 @@ void MomentumDenseImpl(const Context& dev_ctx,
       multi_precision ? master_param->data<MT>() : nullptr;
   MT* master_out_data =
       multi_precision ? dev_ctx.template Alloc<MT>(master_param_out) : nullptr;
-  if (dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
+  if (dev_ctx.GetPlace().GetType() == AllocationType::CPU) {
     CPUDenseMomentumFunctor<MT> functor;
     functor(&param,
             &grad,
@@ -457,8 +457,8 @@ void MomentumDenseImpl(const Context& dev_ctx,
             regularization_coeff,
             param_out,
             velocity_out);
-  } else if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU ||
-             dev_ctx.GetPlace().GetType() == phi::AllocationType::CUSTOM) {
+  } else if (dev_ctx.GetPlace().GetType() == AllocationType::GPU ||
+             dev_ctx.GetPlace().GetType() == AllocationType::CUSTOM) {
     funcs::ForRange<Context> for_range(dev_ctx, param.numel());
     const auto grad_type = grad.dtype();
 #define PADDLE_LAUNCH_DENSE_MOMENTUM_KERNEL(__nesterov, __reg_type)     \

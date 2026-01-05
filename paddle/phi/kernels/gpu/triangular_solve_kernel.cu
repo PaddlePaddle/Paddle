@@ -47,7 +47,7 @@ void TriangularSolveKernel(const Context& dev_ctx,
 
   // Tensor broadcast to 'out' and temp 'x_bst'
   IntArray x_bst_dims(x_bst_dims_vec);
-  DenseTensor x_bst = phi::Empty<T, Context>(dev_ctx, x_bst_dims);
+  DenseTensor x_bst = Empty<T, Context>(dev_ctx, x_bst_dims);
   const T* x_bst_data = x_bst.data<T>();
   ExpandKernel<T, Context>(dev_ctx, x, x_bst_dims, &x_bst);
 

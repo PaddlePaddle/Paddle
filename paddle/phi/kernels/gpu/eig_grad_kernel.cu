@@ -790,7 +790,7 @@ void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
     gV_safe =
         Fill<T, Context>(dev_ctx, common::vectorize<int64_t>(V.dims()), T(0));
   }
-  DenseTensor trans_v = phi::TransposeLast2Dim<T>(dev_ctx, V);
+  DenseTensor trans_v = TransposeLast2Dim<T>(dev_ctx, V);
   DenseTensor Vh = phi::Conj<T>(dev_ctx, trans_v);
   DenseTensor Lconj = phi::Conj<T>(dev_ctx, L);
   DenseTensor Econj = phi::Subtract<T>(dev_ctx,
@@ -805,14 +805,14 @@ void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
 
   DenseTensor diag_real_cpu;
   diag_real_cpu.Resize(diag_real.dims());
-  phi::Copy(dev_ctx, diag_real, cpu_place, false, &diag_real_cpu);
+  Copy(dev_ctx, diag_real, cpu_place, false, &diag_real_cpu);
 
   DenseTensor diag_res_cpu =
       phi::funcs::BatchDiag<T>((*cpu_ctx), diag_real_cpu, batch_count);
 
   DenseTensor diag_res;
   dev_ctx.template Alloc<T>(&diag_res);
-  phi::Copy(dev_ctx, diag_res_cpu, phi::GPUPlace(), false, &diag_res);
+  Copy(dev_ctx, diag_res_cpu, phi::GPUPlace(), false, &diag_res);
 
   DenseTensor diag_unsqueezed = phi::funcs::Unsqueeze(diag_res, -2);
 

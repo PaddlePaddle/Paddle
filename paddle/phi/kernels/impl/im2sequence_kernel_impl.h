@@ -50,8 +50,7 @@ void Im2SequenceKernel(const Context& dev_ctx,
     const DenseTensor* img_real_size = y.get_ptr();
 
     DenseTensor cpu_shape_tensor;
-    phi::Copy(
-        dev_ctx, *img_real_size, phi::CPUPlace(), true, &cpu_shape_tensor);
+    Copy(dev_ctx, *img_real_size, phi::CPUPlace(), true, &cpu_shape_tensor);
     std::vector<int> img_real_h;
     std::vector<int> img_real_w;
     std::vector<int> output_height;
@@ -160,7 +159,7 @@ void Im2SequenceGradKernel(const Context& dev_ctx,
   auto* d_x = x_grad;
   dev_ctx.template Alloc<T>(d_x);
 
-  auto x_v = phi::EigenVector<T>::Flatten(*d_x);
+  auto x_v = EigenVector<T>::Flatten(*d_x);
   auto& place = *dev_ctx.eigen_device();
   funcs::EigenConstant<std::decay_t<decltype(place)>, T, 1>::Eval(
       place, x_v, 0.0);

@@ -76,9 +76,9 @@ void SerializeCombineTensor(const Context& dev_ctx,
     if (in_dtype != out_dtype) {
       auto place = dev_ctx.GetPlace();
       auto in_kernel_type =
-          phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, in_dtype);
+          phi::KernelKey(place, DataLayout::ALL_LAYOUT, in_dtype);
       auto out_kernel_type =
-          phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, out_dtype);
+          phi::KernelKey(place, DataLayout::ALL_LAYOUT, out_dtype);
       DenseTensor out;
       TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
       // copy LoD info to the new tensor

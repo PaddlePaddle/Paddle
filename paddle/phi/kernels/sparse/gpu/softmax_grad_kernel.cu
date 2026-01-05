@@ -254,7 +254,7 @@ void SoftmaxCooGradGPUKernel(const Context& dev_ctx,
           dev_ctx, out_indices, values_2, sizes, nvalues, dim);
 
   DenseTensor bound =
-      phi::Empty<IntT>(dev_ctx, {static_cast<IntT>(out_offsets.dims()[0])});
+      Empty<IntT>(dev_ctx, {static_cast<IntT>(out_offsets.dims()[0])});
   IntT* bound_ptr = bound.data<IntT>();
   thrust::lower_bound(policy,
                       thrust_ptr(grad_offsets_ptr),

@@ -74,8 +74,7 @@ void MarginCrossEntropyGradKernel(const Context& dev_ctx,
   const int64_t D = funcs::SizeFromAxis(axis, softmax_dims);
 
   if (return_softmax) {
-    phi::Copy<Context>(
-        dev_ctx, softmax, dev_ctx.GetPlace(), false, logits_grad);
+    Copy<Context>(dev_ctx, softmax, dev_ctx.GetPlace(), false, logits_grad);
   } else {
     logits_grad->ShareDataWith(softmax);
   }

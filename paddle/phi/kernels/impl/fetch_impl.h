@@ -26,7 +26,7 @@ void FetchKernel(const Context& dev_ctx,
   if (!x.IsInitialized()) {
     return;
   }
-  phi::Copy(dev_ctx, x, phi::CPUPlace(), true, out);
+  Copy(dev_ctx, x, phi::CPUPlace(), true, out);
 }
 
 template <typename T, typename Context>
@@ -35,7 +35,7 @@ void FetchArrayKernel(const Context& dev_ctx,
                       TensorArray* out) {
   out->resize(x.size());
   for (size_t i = 0; i < x.size(); ++i) {
-    phi::Copy(dev_ctx, x[i], phi::CPUPlace(), true, &(out->at(i)));
+    Copy(dev_ctx, x[i], phi::CPUPlace(), true, &(out->at(i)));
   }
 }
 

@@ -228,11 +228,11 @@ void MatrixBitCodeFunctor<T>::MulGradWeight(const DenseTensor &tmat,
 template <typename T>
 struct MatrixBitCodeFunctorMulGradWeightSR {
   const DenseTensor &tmat_;
-  phi::SelectedRows *weight_;
+  SelectedRows *weight_;
   const DenseTensor &input_;
 
   MatrixBitCodeFunctorMulGradWeightSR(const DenseTensor &tmat,
-                                      phi::SelectedRows *weight,
+                                      SelectedRows *weight,
                                       const DenseTensor &input)
       : tmat_(tmat), weight_(weight), input_(input) {}
 
@@ -274,7 +274,7 @@ struct MatrixBitCodeFunctorMulGradWeightSR {
 
 template <typename T>
 void MatrixBitCodeFunctor<T>::MulGradWeight(const DenseTensor &tmat,
-                                            phi::SelectedRows *weight,
+                                            SelectedRows *weight,
                                             const DenseTensor &input) {
   MatrixBitCodeFunctorMulGradWeightSR<T> func(tmat, weight, input);
   paddle::visit(func, code_table_);

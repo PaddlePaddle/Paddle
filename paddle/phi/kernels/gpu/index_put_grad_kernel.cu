@@ -98,7 +98,7 @@ void LaunchIndexPutGradCudaKernel(
     DenseTensor* x_grad) {
   phi::Allocator::AllocationPtr indices_holder_1, indices_holder_2;
   if (x_grad) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     if (!accumulate) {
       T* x_grad_data = x_grad->data<T>();
 
@@ -255,7 +255,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
       funcs::DealWithBoolIndices<T, Context>(dev_ctx, indices, &tmp_args);
   if (int_indices_v.empty()) {
     if (x_grad) {
-      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+      Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
     if (value_grad) {
       FullKernel<T, Context>(dev_ctx,
