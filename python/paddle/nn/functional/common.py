@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import inspect
 import math
-import os
 import warnings
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -2531,8 +2530,9 @@ def linear(
              [-0.67769694, -0.67769694, -0.67769694, -0.67769694]])
     """
     # If not specified by user to use legacy linear, or not CUDA compatible, we fallback.
+
     if (
-        os.environ.get("FLAGS_use_legacy_linear", False)
+        paddle.get_flags("FLAGS_use_legacy_linear")["FLAGS_use_legacy_linear"]
         or not paddle.is_compiled_with_cuda()
         or not in_dynamic_or_pir_mode()
     ):

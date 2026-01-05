@@ -27,9 +27,6 @@ from pathlib import Path
 from typing_extensions import TypeAlias
 
 import paddle
-
-# NOTE(Pan Zhaowu): enable prim all to support high-order gradients of linear_v2
-# paddle.core._set_prim_all_enabled(True)
 from paddle import set_flags
 from paddle.jit.api import sot_mode_guard
 from paddle.jit.dy2static.utils import (

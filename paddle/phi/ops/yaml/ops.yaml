@@ -3185,6 +3185,7 @@
   output : Tensor(out)
   infer_meta :
     func : LinearV2InferMeta
+    spmd_rule : LinearV2InferSpmd
   kernel :
     func : linear_v2
     data_type : input
