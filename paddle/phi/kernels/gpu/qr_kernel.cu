@@ -478,7 +478,7 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
                                          info_d));
 
       int info_h;
-      memory_utils::Copy(phi::CPUPlace(),
+      memory_utils::Copy(CPUPlace(),
                          &info_h,
                          dev_ctx.GetPlace(),
                          info_d,
@@ -523,7 +523,7 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
       // Do we need synchronized here?
       // check the error info
       int info_h;
-      memory_utils::Copy(phi::CPUPlace(),
+      memory_utils::Copy(CPUPlace(),
                          &info_h,
                          dev_ctx.GetPlace(),
                          info_d,
@@ -578,7 +578,7 @@ void BatchedGeqrf<GPUContext, double>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &info_h,
                        dev_ctx.GetPlace(),
                        info_d,
@@ -634,7 +634,7 @@ void BatchedGeqrf<GPUContext, phi::complex64>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &info_h,
                        dev_ctx.GetPlace(),
                        info_d,
@@ -690,7 +690,7 @@ void BatchedGeqrf<GPUContext, phi::complex128>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &info_h,
                        dev_ctx.GetPlace(),
                        info_d,
@@ -746,7 +746,7 @@ void BatchedOrgqr<GPUContext, float>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &info_h,
                        dev_ctx.GetPlace(),
                        info_d,
@@ -802,7 +802,7 @@ void BatchedOrgqr<GPUContext, double>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &info_h,
                        dev_ctx.GetPlace(),
                        info_d,
@@ -867,7 +867,7 @@ void BatchedOrgqr<GPUContext, phi::complex64>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &info_h,
                        dev_ctx.GetPlace(),
                        info_d,
@@ -932,7 +932,7 @@ void BatchedOrgqr<GPUContext, phi::complex128>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &info_h,
                        dev_ctx.GetPlace(),
                        info_d,

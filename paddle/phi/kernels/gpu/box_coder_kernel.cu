@@ -216,7 +216,7 @@ void BoxCoderKernel(const Context &dev_ctx,
       bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   float *dev_var_data = reinterpret_cast<float *>(dev_var->ptr());
-  auto cplace = phi::CPUPlace();
+  auto cplace = CPUPlace();
   const auto gplace = dev_ctx.GetPlace();
   memory_utils::Copy(
       gplace, dev_var_data, cplace, &variance[0], bytes, dev_ctx.stream());
