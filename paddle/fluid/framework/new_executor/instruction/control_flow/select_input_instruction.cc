@@ -67,7 +67,7 @@ inline int GetBranchNumber(const phi::DenseTensor &mask) {
   std::unique_ptr<phi::DenseTensor> cpu_mask{new phi::DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
-  framework::TensorCopySync(mask, phi::CPUPlace(), cpu_mask.get());
+  framework::TensorCopySync(mask, CPUPlace(), cpu_mask.get());
 #else
   PADDLE_THROW(common::errors::Fatal(
       "This version of PaddlePaddle does NOT support GPU, "

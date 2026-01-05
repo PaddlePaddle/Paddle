@@ -193,7 +193,7 @@ class VariableWrapper {
 
   const phi::Place Place() const {
     const phi::DenseTensor* tensor = nullptr;
-    auto place = phi::CPUPlace();  // Default place for var not initialized.
+    auto place = CPUPlace();  // Default place for var not initialized.
     if (var_.IsInitialized()) {
       if (type_ == framework::proto::VarType::DENSE_TENSOR) {
         tensor = &(var_.Get<phi::DenseTensor>());

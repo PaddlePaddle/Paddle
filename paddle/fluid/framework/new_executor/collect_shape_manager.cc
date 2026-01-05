@@ -109,15 +109,15 @@ void CollectShapeManager::CollectShapeInfo(
       if (phi::is_cpu_place(tensor.place())) {
         auto &int32_tensor = tensor;
         if (tensor.dtype() == phi::DataType::INT64) {
-          auto *cpu_ctx = pool.Get(phi::CPUPlace());
+          auto *cpu_ctx = pool.Get(CPUPlace());
           int32_tensor = phi::funcs::TransDataType(
               reinterpret_cast<const phi::CPUContext &>(*cpu_ctx),
               tensor,
               DataType::INT32);
         }
-        paddle::memory::Copy(phi::CPUPlace(),
+        paddle::memory::Copy(CPUPlace(),
                              int32_host.data(),
-                             phi::CPUPlace(),
+                             CPUPlace(),
                              int32_tensor.data<int>(),
                              int32_tensor.numel() * sizeof(int));
       } else if (phi::is_gpu_place(tensor.place())) {
@@ -130,7 +130,7 @@ void CollectShapeManager::CollectShapeInfo(
               tensor,
               DataType::INT32);
         }
-        paddle::memory::Copy(phi::CPUPlace(),
+        paddle::memory::Copy(CPUPlace(),
                              int32_host.data(),
                              int32_tensor.place(),
                              int32_tensor.data<int>(),

@@ -365,7 +365,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
 #endif
 
 #define REGISTER_OP_CPU_KERNEL(op_type, ...) \
-  REGISTER_OP_KERNEL(op_type, CPU, ::phi::CPUPlace, __VA_ARGS__)
+  REGISTER_OP_KERNEL(op_type, CPU, ::CPUPlace, __VA_ARGS__)
 
 #define REGISTER_OP_IPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, IPU, ::phi::IPUPlace, __VA_ARGS__)
@@ -399,7 +399,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
 
 #define REGISTER_OP_CPU_KERNEL_FUNCTOR(op_type, ...)                  \
   REGISTER_OP_KERNEL_EX(                                              \
-      op_type, CPU, ::phi::CPUPlace, DEFAULT_TYPE,       \
+      op_type, CPU, ::CPUPlace, DEFAULT_TYPE,       \
       ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
       __VA_ARGS__)
 
