@@ -72,9 +72,9 @@ void FusedLinearParamGradAddImpl(const Context &dev_ctx,
   DenseTensor dbias_tmp_tensor;
   if (dbias) {
     if (kIsMultiPrecision) {
-      dbias_tmp_tensor = phi::EmptyLike<MT, Context>(dev_ctx, dbias.get());
+      dbias_tmp_tensor = EmptyLike<MT, Context>(dev_ctx, dbias.get());
     } else {
-      dbias_tmp_tensor = phi::EmptyLike<T, Context>(dev_ctx, dbias.get());
+      dbias_tmp_tensor = EmptyLike<T, Context>(dev_ctx, dbias.get());
     }
   }
   DenseTensor *dbias_tmp = !dbias ? dbias_out : &dbias_tmp_tensor;

@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_device_transform.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/phi/api/lib/data_transform.h"
 
 namespace paddle {
@@ -24,10 +25,6 @@ namespace framework {
 class Variable;
 }  // namespace framework
 }  // namespace paddle
-
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/onednn_helper.h"
-#endif
 
 namespace paddle {
 namespace framework {

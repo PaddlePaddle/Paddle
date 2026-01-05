@@ -42,7 +42,7 @@ void IndexAddInner(const Context& dev_ctx,
 
   // copy x to output.
   // todo(@limin29): inplace do not need copy.
-  phi::Copy(dev_ctx, *input, dev_ctx.GetPlace(), false, output);
+  Copy(dev_ctx, *input, dev_ctx.GetPlace(), false, output);
   if (index.numel() == 0) return;
 
   auto slice_size = 1;

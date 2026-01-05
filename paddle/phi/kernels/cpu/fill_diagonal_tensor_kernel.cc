@@ -83,7 +83,7 @@ void FillDiagonalTensorKernel(const Context &dev_ctx,
   T *out_data = dev_ctx.template Alloc<T>(out);
   const T *fill_data = y.data<T>();
 
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   auto out_dims = out->dims();
   const auto &matdims = y.dims();
   auto fill_dims = common::flatten_to_2d(matdims, matdims.size() - 1);

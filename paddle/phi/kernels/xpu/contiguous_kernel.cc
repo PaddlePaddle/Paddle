@@ -57,12 +57,12 @@ void ContiguousKernel(const Context& dev_ctx,
 }
 
 #ifdef PADDLE_WITH_XPU_FFT
-template <>
-void ContiguousKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
-                                                  const DenseTensor& input,
-                                                  DenseTensor* out) {
-  using T = phi::complex64;
-
+template <typename T>
+typename std::enable_if<std::is_same<T, phi::complex64>::value ||
+                        std::is_same<T, phi::complex128>::value>::type
+ComplexContiguousKernelImpl(const XPUContext& dev_ctx,
+                            const DenseTensor& input,
+                            DenseTensor* out) {
   DenseTensorMeta meta = input.meta();
   meta.strides = meta.calc_strides(meta.dims);
   meta.offset = 0;
@@ -105,6 +105,19 @@ void ContiguousKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "as_strided");
   }
 }
+template <>
+void ContiguousKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                                  const DenseTensor& input,
+                                                  DenseTensor* out) {
+  ComplexContiguousKernelImpl<phi::complex64>(dev_ctx, input, out);
+}
+
+template <>
+void ContiguousKernel<phi::complex128, XPUContext>(const XPUContext& dev_ctx,
+                                                   const DenseTensor& input,
+                                                   DenseTensor* out) {
+  ComplexContiguousKernelImpl<phi::complex128>(dev_ctx, input, out);
+}
 #endif
 
 }  // namespace phi
@@ -123,6 +136,7 @@ PD_REGISTER_KERNEL(contiguous,
                    double,
 #ifdef PADDLE_WITH_XPU_FFT
                    phi::complex64,
+                   phi::complex128,
 #endif
                    phi::float16,
                    phi::bfloat16) {

@@ -115,7 +115,7 @@ std::vector<const DenseTensor*> DealWithBoolIndices(
             dev_ctx, nonzero_indices, rank, 1, integer_indices);
 #ifdef PADDLE_WITH_XPU
         auto place = dev_ctx.GetPlace();
-        if (place.GetType() == phi::AllocationType::XPU) {
+        if (place.GetType() == AllocationType::XPU) {
           auto& pool = phi::DeviceContextPool::Instance();
           auto* xpu_ctx = static_cast<phi::XPUContext*>(pool.Get(place));
           if (xpu_ctx->x_context()->xpu_stream) {

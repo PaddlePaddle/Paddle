@@ -50,17 +50,17 @@ void AllToAllKernel(const phi::CustomContext& dev_ctx,
     sendbuf.push_back(x.data<T>() + i * send_numel);
     recvbuf.push_back(out->data<T>() + i * send_numel);
   }
-  phi::DeviceManager::CCLAllToAll(dev_ctx.GetPlace().GetDeviceType(),
-                                  const_cast<const void**>(sendbuf.data()),
-                                  sendsize.data(),
-                                  sendtype.data(),
-                                  recvbuf.data(),
-                                  sendsize.data(),
-                                  sendtype.data(),
-                                  rank,
-                                  nranks,
-                                  comm_ctx->GetXcclComm(),
-                                  dev_ctx.stream());
+  DeviceManager::CCLAllToAll(dev_ctx.GetPlace().GetDeviceType(),
+                             const_cast<const void**>(sendbuf.data()),
+                             sendsize.data(),
+                             sendtype.data(),
+                             recvbuf.data(),
+                             sendsize.data(),
+                             sendtype.data(),
+                             rank,
+                             nranks,
+                             comm_ctx->GetXcclComm(),
+                             dev_ctx.stream());
 }
 
 #endif

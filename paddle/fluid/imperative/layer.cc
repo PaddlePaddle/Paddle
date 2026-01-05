@@ -23,12 +23,10 @@
 #include "paddle/fluid/imperative/prepared_operator.h"
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/platform/profiler.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/onednn_helper.h"
-#endif
 
 COMMON_DECLARE_bool(use_mkldnn);
 COMMON_DECLARE_bool(use_onednn);
