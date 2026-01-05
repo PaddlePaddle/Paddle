@@ -1589,13 +1589,12 @@ void CheckRemainingParamsValidity(PyObject* args,
   if (remaining_kwargs == 0) return;
   PyObject* name = PyDict_GetItemString(kwargs, ignored_arg_name.c_str());
   PyObject* out = PyDict_GetItemString(kwargs, ignored_arg_out.c_str());
-  // inplace api with name remaining
-  if (inplace && remaining_kwargs == 1 && name) return;
-  // non-inplace api with name or out remaining
-  if (!inplace && remaining_kwargs == 1 && (name || out)) return;
-  // non-inplace api with both name and out remaining
-  if (!inplace && remaining_kwargs == 2 && (name && out)) return;
-  // too many args
+  if (inplace) {
+    if (remaining_kwargs == 1 && name) return;
+  } else {
+    if (remaining_kwargs == 1 && (name || out)) return;
+    if (remaining_kwargs == 2 && (name && out)) return;
+  }
   PADDLE_THROW(common::errors::InvalidArgument("has too many arguments"));
   return;
 }
