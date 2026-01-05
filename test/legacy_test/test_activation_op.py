@@ -6563,5 +6563,25 @@ for (
     setattr(TestActivationAPI_Compatibility, static_test.__name__, static_test)
 
 
+class TestSquareAPI(unittest.TestCase):
+    def test_alias_and_out(self):
+        paddle.disable_static()
+        x_np = np.random.random([2, 3]).astype("float32")
+        x = paddle.to_tensor(x_np)
+
+        # Test alias: input -> x
+        out1 = paddle.square(input=x)
+        out2 = paddle.square(x)
+        np.testing.assert_allclose(out1.numpy(), out2.numpy())
+        np.testing.assert_allclose(out1.numpy(), np.square(x_np))
+
+        # Test out parameter
+        out_tensor = paddle.empty_like(x)
+        paddle.square(x, out=out_tensor)
+        np.testing.assert_allclose(out_tensor.numpy(), out1.numpy())
+
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()

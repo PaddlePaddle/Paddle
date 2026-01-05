@@ -235,5 +235,23 @@ class TestRandintAPI_ZeroDim(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestRandintAliasAndOut(unittest.TestCase):
+    def test_alias_and_out(self):
+        paddle.disable_static()
+
+        # Test alias: size -> shape
+        out1 = paddle.randint(low=0, high=10, size=[10, 10])
+        out2 = paddle.randint(low=0, high=10, shape=[10, 10])
+        self.assertEqual(out1.shape, [10, 10])
+        self.assertEqual(out2.shape, [10, 10])
+
+        # Test out parameter
+        out_tensor = paddle.empty([10, 10], dtype="int64")
+        paddle.randint(low=0, high=10, shape=[10, 10], out=out_tensor)
+        self.assertEqual(out_tensor.shape, [10, 10])
+
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()

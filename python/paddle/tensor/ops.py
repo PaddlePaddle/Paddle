@@ -39,6 +39,7 @@ from paddle._C_ops import (  # noqa: F401
     square,
     tan,
 )
+from paddle.utils.decorator_utils import ParamAliasDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from .. import _C_ops

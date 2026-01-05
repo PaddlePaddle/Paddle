@@ -285,12 +285,16 @@ def var(
     return result
 
 
+@ParamAliasDecorator(
+    {"x": ["input"], "axis": ["dim"], "unbiased": ["correction"]}
+)
 def std(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
     unbiased: bool = True,
     keepdim: bool = False,
     name: str | None = None,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Computes the standard-deviation of ``x`` along ``axis`` .
@@ -319,6 +323,7 @@ def std(
             the output Tensor is squeezed in ``axis`` . Default is False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): Output tensor. Default is None.
 
     Returns:
         Tensor, results of standard-deviation along ``axis`` of ``x``, with the
@@ -345,8 +350,14 @@ def std(
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'std'
         )
-    out = var(**locals())
-    return paddle.sqrt(out)
+
+    var_out = var(
+        x, axis=axis, unbiased=unbiased, keepdim=keepdim, name=name, out=out
+    )
+    if out is not None:
+        out.sqrt_()
+        return out
+    return paddle.sqrt(var_out)
 
 
 def numel(x: Tensor, name: str | None = None) -> Tensor:

@@ -190,5 +190,24 @@ class TestStdAPI_UnBiased2(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestStdAliasAndOut(unittest.TestCase):
+    def test_alias_and_out(self):
+        paddle.disable_static()
+        x_np = np.random.random([2, 3, 4]).astype("float32")
+        x = paddle.to_tensor(x_np)
+
+        # Test alias: input -> x, dim -> axis, correction -> unbiased
+        out1 = paddle.std(input=x, dim=1, correction=0)
+        out2 = paddle.std(x, axis=1, unbiased=False)
+        np.testing.assert_allclose(out1.numpy(), out2.numpy())
+
+        # Test out parameter
+        out_tensor = paddle.empty_like(out1)
+        paddle.std(x, axis=1, unbiased=False, out=out_tensor)
+        np.testing.assert_allclose(out_tensor.numpy(), out1.numpy())
+
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()
