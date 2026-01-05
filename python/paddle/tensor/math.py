@@ -5169,7 +5169,10 @@ def lerp(
 
     """
     if isinstance(weight, float):
-        weight = paddle.full(shape=[], fill_value=weight, dtype=x.dtype)
+        if x.is_cuda and in_dynamic_mode():
+            weight = paddle.full(shape=[], fill_value=weight, dtype="float64")
+        else:
+            weight = paddle.full(shape=[], fill_value=weight, dtype=x.dtype)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.lerp(x, y, weight)
