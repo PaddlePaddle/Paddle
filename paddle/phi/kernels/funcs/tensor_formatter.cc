@@ -133,7 +133,7 @@ void TensorFormatter::FormatData(const DenseTensor& print_tensor,
                            : std::min(summarize_, print_tensor.numel());
   const T* data = nullptr;
   DenseTensor cpu_tensor;
-  if (print_tensor.place().GetType() == phi::AllocationType::CPU) {
+  if (print_tensor.place().GetType() == AllocationType::CPU) {
     data = print_tensor.data<T>();
   } else {
     phi::CPUPlace cpu_place;

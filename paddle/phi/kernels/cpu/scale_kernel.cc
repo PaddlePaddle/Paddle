@@ -32,8 +32,8 @@ void ScaleKernel(const Context& dev_ctx,
                  DenseTensor* out) {
   // calc
   dev_ctx.template Alloc<T>(out);
-  auto eigen_out = phi::EigenVector<T>::Flatten(*out);
-  auto eigen_x = phi::EigenVector<T>::Flatten(x);
+  auto eigen_out = EigenVector<T>::Flatten(*out);
+  auto eigen_x = EigenVector<T>::Flatten(x);
   auto& dev = *dev_ctx.eigen_device();
   // TODO(chenweihang): now the eigen function here need the dtype of scale,
   // eigen_x, bias should be same, so here need cast for two scalar arg,

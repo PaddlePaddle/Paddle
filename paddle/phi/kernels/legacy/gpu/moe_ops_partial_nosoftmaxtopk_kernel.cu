@@ -147,7 +147,7 @@ void apply_moe_dispatch_fwd(
                                       use_pad,
                                       sorter);
 
-  DenseTensor ws_ptr_tensor = phi::Empty<int8_t, Context>(dev_ctx, {bytes});
+  DenseTensor ws_ptr_tensor = Empty<int8_t, Context>(dev_ctx, {bytes});
   int8_t *ws_ptr = ws_ptr_tensor.data<int8_t>();
 
   phi::memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
@@ -589,9 +589,9 @@ void MoeGateDispatchPartialNoSoftMaxTopkKernel(
       *scatter_index_rev = phi::Slice<int32_t, Context>(
           dev_ctx, *scatter_index_rev, {0}, {0}, {expert_offset_host.back()});
     } else {
-      *y = phi::Empty<T, Context>(dev_ctx, {1, x_shape[1]});
+      *y = Empty<T, Context>(dev_ctx, {1, x_shape[1]});
       *scatter_index_rev =
-          phi::Empty<int32_t, Context>(dev_ctx, {});  // special treatment
+          Empty<int32_t, Context>(dev_ctx, {});  // special treatment
     }
   }
 }

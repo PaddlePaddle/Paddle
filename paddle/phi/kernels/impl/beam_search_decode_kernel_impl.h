@@ -34,11 +34,10 @@ struct BeamSearchDecodeFunctor {
         score_tensor_(score_tensor) {
     tensor_on_gpu_ = false;
     // First make a copy of GPU data on CPU
-    if (step_ids_origin_[0].place().GetType() == phi::AllocationType::GPU ||
-        step_ids_origin_[0].place().GetType() == phi::AllocationType::CUSTOM) {
-      if (step_ids_origin_[0].place().GetType() == phi::AllocationType::GPU ||
-          step_ids_origin_[0].place().GetType() ==
-              phi::AllocationType::CUSTOM) {
+    if (step_ids_origin_[0].place().GetType() == AllocationType::GPU ||
+        step_ids_origin_[0].place().GetType() == AllocationType::CUSTOM) {
+      if (step_ids_origin_[0].place().GetType() == AllocationType::GPU ||
+          step_ids_origin_[0].place().GetType() == AllocationType::CUSTOM) {
         tensor_on_gpu_ = true;
       }
       phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
@@ -50,7 +49,7 @@ struct BeamSearchDecodeFunctor {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
           }
-          phi::Copy(*dev_ctx, step_id, phi::CPUPlace(), false, &out);
+          Copy(*dev_ctx, step_id, phi::CPUPlace(), false, &out);
           dev_ctx->Wait();
         }
 
@@ -58,13 +57,10 @@ struct BeamSearchDecodeFunctor {
         step_ids_.push_back(out);
       }
     }
-    if (step_scores_origin_[0].place().GetType() == phi::AllocationType::GPU ||
-        step_scores_origin_[0].place().GetType() ==
-            phi::AllocationType::CUSTOM) {
-      if (step_scores_origin_[0].place().GetType() ==
-              phi::AllocationType::GPU ||
-          step_scores_origin_[0].place().GetType() ==
-              phi::AllocationType::CUSTOM) {
+    if (step_scores_origin_[0].place().GetType() == AllocationType::GPU ||
+        step_scores_origin_[0].place().GetType() == AllocationType::CUSTOM) {
+      if (step_scores_origin_[0].place().GetType() == AllocationType::GPU ||
+          step_scores_origin_[0].place().GetType() == AllocationType::CUSTOM) {
         tensor_on_gpu_ = true;
       }
       phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
@@ -76,7 +72,7 @@ struct BeamSearchDecodeFunctor {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
           }
-          phi::Copy(*dev_ctx, step_score, phi::CPUPlace(), false, &out);
+          Copy(*dev_ctx, step_score, phi::CPUPlace(), false, &out);
           dev_ctx->Wait();
         }
 

@@ -274,6 +274,7 @@ void Compiler::EndCompile() {
 }
 
 void Compiler::LoadAndRegisterFromCache() {
+#ifdef CINN_WITH_CUDA
   std::string cache_so_path = GetCachePath() + CINN_CACHE_SO;
   // 1. Load metadata (restore Kernel name list)
   LoadKernelNamesFromMeta();
@@ -333,6 +334,9 @@ void Compiler::LoadAndRegisterFromCache() {
   // 6. Store handles and paths for subsequent dlclose
   dynamic_library_path_ = cache_so_path;
   dynamic_library_handle_ = handle;
+#else
+  CINN_NOT_IMPLEMENTED
+#endif
 }
 
 std::string Compiler::GetSourceCode(const ir::Module& module) {

@@ -1375,16 +1375,16 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
         >>> x = paddle.to_tensor([1.0], stop_gradient=False)
         >>> underline_x = x.get_tensor()
         >>> print(underline_x)
-          - place: Place(cpu)
           - shape: [1]
           - layout: NCHW
+          - place: Place(cpu)
           - dtype: float32
           - data: [1]
 )DOC");  // NOLINT

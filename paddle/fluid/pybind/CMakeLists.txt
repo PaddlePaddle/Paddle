@@ -140,7 +140,6 @@ set(PYBIND_SRCS
     jit.cc
     auto_parallel_py.cc
     sot/eval_frame_tools.cc
-    sot/cpython_internals.c
     sot/frame_proxy.c
     sot/eval_frame.c
     sot/guards.cc
@@ -149,6 +148,16 @@ set(PYBIND_SRCS
     arg_pre_process.cc
     args_mapper.cc
     size.cc)
+
+if(${PY_VERSION} VERSION_EQUAL "3.11")
+  set(PYBIND_SRCS ${PYBIND_SRCS} sot/cpython_internals/internals_3_11.c)
+elseif(${PY_VERSION} VERSION_EQUAL "3.12")
+  set(PYBIND_SRCS ${PYBIND_SRCS} sot/cpython_internals/internals_3_12.c)
+elseif(${PY_VERSION} VERSION_EQUAL "3.13")
+  set(PYBIND_SRCS ${PYBIND_SRCS} sot/cpython_internals/internals_3_13.c)
+elseif(${PY_VERSION} VERSION_EQUAL "3.14")
+  set(PYBIND_SRCS ${PYBIND_SRCS} sot/cpython_internals/internals_3_14.c)
+endif()
 
 if(WITH_DISTRIBUTE)
   set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)

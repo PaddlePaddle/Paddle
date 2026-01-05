@@ -85,14 +85,14 @@ void FusedBatchNormActKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(y);
 
   int N, C, H, W, D;
-  const DataLayout data_layout = phi::DataLayout::NHWC;
+  const DataLayout data_layout = DataLayout::NHWC;
   funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
   if ((N * H * W * D) == 1) {
     // Only 1 element in normalization dimension,
     // skip the batch norm calculation, let y = act(x).
-    auto x_v = phi::EigenVector<T>::Flatten(x);
-    auto y_v = phi::EigenVector<T>::Flatten(*y);
+    auto x_v = EigenVector<T>::Flatten(x);
+    auto y_v = EigenVector<T>::Flatten(*y);
     auto &dev = *dev_ctx.eigen_device();
     if (act_type == "relu") {
       funcs::ReluCUDAFunctor<T>()(dev, x_v, y_v);

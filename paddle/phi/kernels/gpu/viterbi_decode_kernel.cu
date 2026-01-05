@@ -196,7 +196,7 @@ struct GetMaxValue {
                                                   out_data.data<int64_t>()));
     }
     DenseTensor max_value_tensor;
-    phi::Copy(dev_ctx, out_data, phi::CPUPlace(), false, &max_value_tensor);
+    Copy(dev_ctx, out_data, phi::CPUPlace(), false, &max_value_tensor);
     *max_value = max_value_tensor.data<T>()[0];
   }
 };
@@ -238,7 +238,7 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   DenseTensor float_buffer = Empty<T>(dev_ctx, {buffer_size});
   funcs::TensorBuffer float_tensor_buffer(float_buffer);
   DenseTensor left_length = int_tensor_buffer.GetBufferBlock({batch_size, 1});
-  phi::Copy(dev_ctx, length, curr_place, false, &left_length);
+  Copy(dev_ctx, length, curr_place, false, &left_length);
   int64_t max_seq_len = 0;
   GetMaxValue<Context, int64_t> get_max_value;
   get_max_value(dev_ctx, left_length, &max_seq_len);
@@ -257,7 +257,7 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   TransposeKernel<T, Context>(dev_ctx, input, {1, 0, 2}, &input_exp);
   DenseTensor trans_exp =
       float_tensor_buffer.GetBufferBlock({n_labels, n_labels});
-  phi::Copy(dev_ctx, transition, curr_place, false, &trans_exp);
+  Copy(dev_ctx, transition, curr_place, false, &trans_exp);
   trans_exp.Resize({1, n_labels, n_labels});
   DenseTensor alpha =
       float_tensor_buffer.GetBufferBlock({batch_size, n_labels});

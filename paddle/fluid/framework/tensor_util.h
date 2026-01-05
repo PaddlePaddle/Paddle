@@ -362,7 +362,7 @@ inline void TensorToVector(const phi::DenseTensor& src,
     memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
   }
 #endif
-  for (unsigned int i = 0; i < src.numel(); i++) {
+  for (int64_t i = 0; i < src.numel(); i++) {
     (*dst)[i] = static_cast<bool>(array[i]);
   }
   delete[] array;
@@ -408,7 +408,7 @@ inline void TensorToVector(const phi::DenseTensor& src,
 
   memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
 
-  for (unsigned int i = 0; i < src.numel(); i++) {
+  for (int64_t i = 0; i < src.numel(); i++) {
     (*dst)[i] = static_cast<bool>(array[i]);
   }
   delete[] array;
