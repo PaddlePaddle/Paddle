@@ -80,7 +80,7 @@ void recompute_bias_and_weights(const Scope* scope,
       ac_bias_tensor.data<float>(), ac_bias_tensor.numel(), 1);
 
   EigenVectorArrayMap eltwise_y_in_array(
-      eltwise_y_in_tensor->mutable_data<float>(phi::CPUPlace()),
+      eltwise_y_in_tensor->mutable_data<float>(CPUPlace()),
       eltwise_y_in_tensor->numel(),
       1);
 
@@ -91,7 +91,7 @@ void recompute_bias_and_weights(const Scope* scope,
       scope->FindVar(conv_weight->Name())->GetMutable<phi::DenseTensor>();
   auto weights_shape = weights->dims();
   auto weights_shape_2d = common::flatten_to_2d(weights_shape, 1);
-  auto* weights_data = weights->mutable_data<float>(phi::CPUPlace());
+  auto* weights_data = weights->mutable_data<float>(CPUPlace());
 
   EigenMatrixArrayMap weights_array_2d(
       weights_data, weights_shape_2d[0], weights_shape_2d[1]);
@@ -277,7 +277,7 @@ void ConvAffineChannelFusePass::FuseConvAffineChannel(
     auto* eltwise_y_in_tensor =
         scope->Var(eltwise_y_in_node->Name())->GetMutable<phi::DenseTensor>();
     eltwise_y_in_tensor->Resize(ac_bias_tensor->dims());
-    std::fill_n(eltwise_y_in_tensor->mutable_data<float>(phi::CPUPlace()),
+    std::fill_n(eltwise_y_in_tensor->mutable_data<float>(CPUPlace()),
                 eltwise_y_in_tensor->numel(),
                 0.0f);
 
