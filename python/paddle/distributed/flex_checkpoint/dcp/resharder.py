@@ -459,7 +459,13 @@ class ThreeDCommGroupStateResharder:
         self.using_2d_comm_group = (not self.p_group) or (
             self.p_group.nranks == 1
         )
+
+        assert self.using_2d_comm_group is True, (
+            "Only support 2D comm group now!"
+        )
         self.memory_growth_threshold = memory_growth_threshold
+        if self.memory_growth_threshold > 0:
+            assert self.p_group.nranks > 1, "Only support 3D comm group now!"
         self.offload = offload
         self.using_tuple_key = True
         self.preprocess()
