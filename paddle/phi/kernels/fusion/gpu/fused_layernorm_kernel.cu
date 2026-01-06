@@ -183,12 +183,12 @@ struct DefaultComputeType<half> {
   using type = float;
 };
 
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
 template <>
 struct DefaultComputeType<nv_bfloat16> {
   using type = float;
 };
-#endif  // CUDA_VERSION >= 11000
+#endif
 
 template <typename T>
 class HasCanPackAs {
