@@ -49,7 +49,7 @@ jobs:
     needs: [clone, build-docker]
     if: needs.clone.outputs.can-skip != 'true'
     runs-on:
-      group: l2-ccache-debug
+      group: GZ_BD-CPU
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
 

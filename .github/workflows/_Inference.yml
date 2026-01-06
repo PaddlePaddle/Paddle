@@ -43,7 +43,7 @@ jobs:
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-inference_build
     runs-on:
-      group: l2-ccache-debug
+      group: GZ_BD-CPU
 
     steps:
       - name: Check docker image and run container

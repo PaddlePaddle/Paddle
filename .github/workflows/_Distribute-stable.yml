@@ -33,7 +33,7 @@ jobs:
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
     runs-on:
-      group: l2-ccache-debug
+      group: GZ_BD-CPU
 
     steps:
       - name: Check docker image and run container
