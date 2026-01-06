@@ -2388,7 +2388,7 @@ PHI_DEFINE_EXPORTED_bool(use_legacy_gemm,
  * Note: Whether use legacy linear kernel.
  */
 PHI_DEFINE_EXPORTED_bool(use_legacy_linear,
-                         false,
+                         true,
                          "Whether use legacy linear dispatch logics.");
 
 /**
