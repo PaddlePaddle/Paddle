@@ -3163,6 +3163,7 @@
     func : LerpInferMeta
   kernel :
     func : lerp
+    data_type : x
   inplace : (x -> out)
   backward : lerp_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
@@ -6109,12 +6110,13 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op: rms_norm
-  args: (Tensor x, Tensor scale, float epsilon)
+  args: (Tensor x, Tensor scale, int64_t[] normalized_shape={}, double epsilon= 1e-5)
   output: Tensor(y), Tensor(invvar)
   infer_meta:
     func: RmsNormInferMeta
   kernel:
     func: rms_norm
     data_type: x
+  optional : scale
   backward: rms_norm_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
