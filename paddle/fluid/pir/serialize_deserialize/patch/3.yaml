@@ -16,4 +16,3 @@ op_patches:
         object : output_size
         type : pir::Int64Attribute
         data : -1
-
