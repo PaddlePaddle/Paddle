@@ -474,6 +474,15 @@ class ThreeDCommGroupStateResharder:
                     for k, v in state_dict.items()
                 }
 
+            for file_name, state_dict in self.source_state_dict.items():
+                for tensor_name, tensor in state_dict.items():
+                    if tensor.dtype != paddle.float32:
+                        state_dict[tensor_name] = tensor.cuda().pin_memory()
+                    else:
+                        state_dict[tensor_name] = tensor.cuda()
+
+        self.local_load_files = list(self.source_state_dict.keys())
+
         has_tuple_key = any(
             isinstance(k, tuple) for k in self.target_state_dict
         )
@@ -827,6 +836,8 @@ class ThreeDCommGroupStateResharder:
                     read_item.tensor_name
                 ]
             )
+            if not isinstance(buffer.place, paddle.CUDAPlace):
+                buffer = buffer.cuda()
         else:
             buffer = paddle.empty(read_item.slice_shape, dtype=read_item.dtype)
         paddle.distributed.broadcast(
@@ -952,6 +963,8 @@ class ThreeDCommGroupStateResharder:
                 buffer = self.source_state_dict[read_item.tensor_name][
                     read_item.tensor_name
                 ]
+                if not isinstance(buffer.place, paddle.CUDAPlace):
+                    buffer = buffer.cuda()
             else:
                 buffer = paddle.empty(
                     read_item.slice_shape, dtype=read_item.dtype

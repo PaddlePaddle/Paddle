@@ -799,9 +799,13 @@ class TestLoadShardedStateDictMultiCommGroup:
     def __init__(self):
         self._ckpt_path = os.getenv("ckpt_path_2")
         self.set_comm_method()
+        self.set_offload()
 
     def set_comm_method(self):
         self.comm_method = "multi_group_broadcast"
+
+    def set_offload(self):
+        self.offload = False
 
     def test_load_state_dict_with_four_devices(self, worker_groups):
         if dist.get_rank() == 0:
@@ -888,6 +892,7 @@ class TestLoadShardedStateDictMultiCommGroup:
             path=self._ckpt_path,
             worker_groups=worker_groups,
             comm_method=self.comm_method,
+            offload=self.offload,
         )
         paddle.distributed.barrier()
         self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
@@ -1055,6 +1060,7 @@ class TestLoadShardedStateDictMultiCommGroup:
             path=self._ckpt_path,
             worker_groups=worker_groups,
             comm_method=self.comm_method,
+            offload=self.offload,
         )
         paddle.distributed.barrier()
         self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
@@ -1131,7 +1137,7 @@ class TestLoadShardedStateDict3DCommGroup(
     TestLoadShardedStateDictMultiCommGroup
 ):
     def set_comm_method(self):
-        self.comm_method = "3d_parallel"
+        self.comm_method = "parallel_broadcast"
 
     def run_test_case(self):
         device_num = int(os.getenv("device_num"))
@@ -1228,7 +1234,14 @@ class TestLoadShardedStateDict3DCommGroupWithReplica(
         self.set_comm_method()
 
     def set_comm_method(self):
-        self.comm_method = "3d_parallel"
+        self.comm_method = "parallel_broadcast"
+
+
+class TestLoadShardedStateDict3DCommGroupOffload(
+    TestLoadShardedStateDict3DCommGroup
+):
+    def set_offload(self):
+        self.offload = True
 
 
 if __name__ == '__main__':
@@ -1240,3 +1253,5 @@ if __name__ == '__main__':
     TestLoadShardedStateDictWithAOAWithReplica().run_test_case()
     TestLoadShardedStateDictMultiCommGroupWithReplica().run_test_case()
     TestLoadShardedStateDict3DCommGroup().run_test_case()
+    TestLoadShardedStateDict3DCommGroupWithReplica().run_test_case()
+    TestLoadShardedStateDict3DCommGroupOffload().run_test_case()
