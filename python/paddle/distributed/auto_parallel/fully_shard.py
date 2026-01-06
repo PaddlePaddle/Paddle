@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import os
 from types import MethodType
 
@@ -20,7 +21,6 @@ import paddle.distributed as dist
 from paddle.autograd import PyLayer
 
 from .auto_dp_utils import in_auto_dp_mode
-from .sharding import get_placement_with_sharding
 
 
 def shard_accumulators(parameters_and_grads, optimizer, target_block):
@@ -41,7 +41,7 @@ def shard_accumulators(parameters_and_grads, optimizer, target_block):
             origin_accumulator_name = accumulator.name
 
             if 'beta' not in key:
-                placements = param.placements
+                placements = copy.deepcopy(param.placements)
             else:
                 placements = [
                     dist.Replicate()
@@ -83,25 +83,31 @@ class FullyShardAuto:
         def _pre_forward_hook(sublayers):
             @paddle.autograd.no_grad()
             def gather_comm(*_):
+                dp_axis = dist.auto_parallel.get_mesh().dim_names.index('dp')
                 for key, param in sublayers._parameters.items():
-                    new_placements = [
-                        dist.Replicate() for _ in param.placements
-                    ]
-                    replicte_param = dist.reshard(
-                        param, param.process_mesh, new_placements
-                    )
-                    param.get_tensor()._share_data_with(
-                        replicte_param.get_tensor()
-                    )
+                    if param.placements[dp_axis] != dist.Replicate():
+                        new_placements = copy.deepcopy(param.placements)
+                        new_placements[dp_axis] = dist.Replicate()
+                        replicte_param = dist.reshard(
+                            param, param.process_mesh, new_placements
+                        )
+                        param.get_tensor()._share_data_with(
+                            replicte_param.get_tensor()
+                        )
 
             return gather_comm
 
         def _post_forward_hook(sublayers):
             @paddle.autograd.no_grad()
             def shard_comm(*_):
+                dp_axis = dist.auto_parallel.get_mesh().dim_names.index('dp')
                 for key, param in sublayers._parameters.items():
-                    if param.trainable:
-                        new_placements = get_placement_with_sharding(param, 0)
+                    if (
+                        param.trainable
+                        and param.placements[dp_axis] == dist.Replicate()
+                    ):
+                        new_placements = copy.deepcopy(param.placements)
+                        new_placements[dp_axis] = dist.Shard(dp_axis)
                         shard_param = dist.reshard(
                             param, param.process_mesh, new_placements
                         )
@@ -113,8 +119,10 @@ class FullyShardAuto:
 
         def _post_backward_hook(param):
             def shard_comm(grad):
-                if param.placements[0] == dist.Replicate():
-                    new_placements = get_placement_with_sharding(param, 0)
+                dp_axis = dist.auto_parallel.get_mesh().dim_names.index('dp')
+                if param.placements[dp_axis] == dist.Replicate():
+                    new_placements = copy.deepcopy(param.placements)
+                    new_placements[dp_axis] = dist.Shard(dp_axis)
                     shard_param = dist.reshard(
                         param, param.process_mesh, new_placements
                     )
@@ -160,12 +168,16 @@ class LayerHook(PyLayer):
     @staticmethod
     def backward(ctx, *args):
         layer = ctx.layer
+        dp_axis = dist.auto_parallel.get_mesh().dim_names.index('dp')
         for param in layer.parameters(include_sublayers=False):
-            if not param.trainable:
-                continue
-            new_placements = [dist.Replicate() for _ in param.placements]
-            replicte_param = dist.reshard(
-                param, param.process_mesh, new_placements
-            )
-            param.get_tensor()._share_data_with(replicte_param.get_tensor())
+            if (
+                param.trainable
+                and param.placements[dp_axis] != dist.Replicate()
+            ):
+                new_placements = copy.deepcopy(param.placements)
+                new_placements[dp_axis] = dist.Replicate()
+                replicte_param = dist.reshard(
+                    param, param.process_mesh, new_placements
+                )
+                param.get_tensor()._share_data_with(replicte_param.get_tensor())
         return args
