@@ -324,3 +324,13 @@
   args_alias:
     x : [batch1]
     y : [batch2]
+
+- op : i1
+  name : [paddle.i1,paddle.Tensor.i1]
+  args_alias :
+    use_default_mapping : True
+
+- op : i1e
+  name : [paddle.i1e,paddle.Tensor.i1e]
+  args_alias :
+    use_default_mapping : True
