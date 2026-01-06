@@ -62,11 +62,11 @@ void AssignPosKernel(const Context& dev_ctx,
 
   DenseTensor cpu_eff_num_len;
   int64_t cpu_eff_num_len_data = 0;
-  bool is_cpu_place = eff_num_len_ptr->place() == phi::CPUPlace();
+  bool is_cpu_place = eff_num_len_ptr->place() == CPUPlace();
   if (is_cpu_place) {
     cpu_eff_num_len_data = eff_num_len_ptr->data<T>()[0];
   } else {
-    Copy(dev_ctx, eff_num_len, phi::CPUPlace(), false, &cpu_eff_num_len);
+    Copy(dev_ctx, eff_num_len, CPUPlace(), false, &cpu_eff_num_len);
     cpu_eff_num_len_data = cpu_eff_num_len.data<T>()[0];
   }
 

@@ -183,14 +183,33 @@ void CommStaticCheck::GatherLikeShape(const DenseTensor& out_tensor,
                                       int cur_rank,
                                       int world_size,
                                       phi::AllocationType place) {
-  CheckShape(out_tensor,
-             in_tensor,
-             dst_rank,
-             cur_rank,
-             world_size,
-             /*out_size_factor*/ 1,
-             /*in_size_factor*/ world_size,
-             place);
+  CheckRank(dst_rank, world_size);
+  CheckRank(cur_rank, world_size);
+
+  CheckPlace(out_tensor, in_tensor, place);
+  CheckDataType(out_tensor, in_tensor);
+
+  CheckGatherShape(out_tensor);
+  CheckGatherShape(in_tensor);
+  int64_t out_size = out_tensor.numel(), in_size = in_tensor.numel();
+  PADDLE_ENFORCE_EQ(
+      out_size,
+      in_size * world_size,
+      common::errors::InvalidArgument(
+          "Input and output tensors should have matching sizes. "
+          "out_size=%ld, out_size_factor=%d, in_size=%ld, in_size_factor=%d",
+          out_size,
+          1,
+          in_size,
+          world_size));
+}
+
+void CommStaticCheck::CheckGatherShape(const phi::DenseTensor& tensor) {
+  PADDLE_ENFORCE_GE(
+      tensor.numel(),
+      0,
+      common::errors::InvalidArgument("Size of tensor should be greater equal "
+                                      "than 0 in gather-liked communication."));
 }
 
 }  // namespace phi::distributed

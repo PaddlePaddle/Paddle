@@ -153,7 +153,7 @@ PADDLE_API void AdamwDenseKernel(
   const T* grad_ptr = grad.data<T>();
 
   auto adamw =
-      phi::jit::KernelFuncs<phi::jit::AdamWTuple<T>, phi::CPUPlace>::Cache().At(
+      phi::jit::KernelFuncs<phi::jit::AdamWTuple<T>, CPUPlace>::Cache().At(
           attr);
 
   static constexpr int64_t chunk_size = 512;

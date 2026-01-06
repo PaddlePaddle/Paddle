@@ -30,10 +30,10 @@ void GPUSeedKernel(const Context &dev_ctx,
                    DenseTensor *out) {
   int seed = get_seed(seed_in, deterministic, rng_name);
 
-  bool cpu_place = force_cpu || dev_ctx.GetPlace() == phi::CPUPlace();
+  bool cpu_place = force_cpu || dev_ctx.GetPlace() == CPUPlace();
   if (cpu_place) {
     phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
-    auto &dev_ctx_cpu = *pool.Get(phi::CPUPlace());
+    auto &dev_ctx_cpu = *pool.Get(CPUPlace());
     dev_ctx_cpu.Alloc<T>(out);
     funcs::SetConstant<phi::CPUContext, T> functor;
     functor(reinterpret_cast<const phi::CPUContext &>(dev_ctx_cpu),
@@ -42,12 +42,8 @@ void GPUSeedKernel(const Context &dev_ctx,
   } else {
     auto *out_data = dev_ctx.template Alloc<T>(out);
     auto stream = dev_ctx.stream();
-    phi::memory_utils::Copy(dev_ctx.GetPlace(),
-                            out_data,
-                            phi::CPUPlace(),
-                            &seed,
-                            sizeof(int),
-                            stream);
+    phi::memory_utils::Copy(
+        dev_ctx.GetPlace(), out_data, CPUPlace(), &seed, sizeof(int), stream);
   }
 }
 }  // namespace phi

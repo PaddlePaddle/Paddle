@@ -250,12 +250,12 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   }
 
   phi::DenseTensor cpu_tensor;
-  phi::CPUPlace cpu_place;
+  CPUPlace cpu_place;
 
   if (self->tensor.is_cpu() || self->tensor.is_gpu_pinned() ||
       self->tensor.is_xpu_pinned()) {
     eager_gil_scoped_release guard;
-    phi::CPUPlace place;
+    CPUPlace place;
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";
       auto* selected_rows =
@@ -382,7 +382,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
 #endif
 #if defined(PADDLE_WITH_XPU)
   } else if (self->tensor.is_xpu()) {
-    phi::CPUPlace place;
+    CPUPlace place;
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";
       auto* selected_rows =
@@ -3165,11 +3165,8 @@ static PyObject* tensor_method__share_memory(TensorObject* self,
   const std::string& ipc_name = shared_writer_holder->ipc_name();
   memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
   // 4. copy data & reset holder
-  memory::Copy(phi::CPUPlace(),
-               shared_writer_holder->ptr(),
-               phi::CPUPlace(),
-               data_ptr,
-               data_size);
+  memory::Copy(
+      CPUPlace(), shared_writer_holder->ptr(), CPUPlace(), data_ptr, data_size);
   t->ResetHolder(shared_writer_holder);
   return ToPyObject(t);
 #else
