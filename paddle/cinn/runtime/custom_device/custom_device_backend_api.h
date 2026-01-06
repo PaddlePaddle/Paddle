@@ -27,6 +27,14 @@
 #ifdef CINN_WITH_CUSTOM_DEVICE
 namespace cinn {
 namespace runtime {
+
+class CustomModule {
+ public:
+  virtual ~CustomModule() = default;
+
+  virtual void* GetFunction(const std::string& func_name) = 0;
+};
+
 namespace custom_device {
 
 // ============================================================
@@ -47,7 +55,8 @@ class CustomCompilerToolchain {
 class CustomRuntimeStrategy {
  public:
   virtual ~CustomRuntimeStrategy() = default;
-  virtual void* LoadModule(const std::string& path) = 0;
+  virtual std::unique_ptr<cinn::runtime::CustomModule> LoadModule(
+      const std::string& path) = 0;
   virtual void LaunchKernel(void* func_ptr,
                             const std::string& func_name,
                             void** args,

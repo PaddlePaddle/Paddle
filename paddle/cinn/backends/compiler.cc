@@ -37,6 +37,11 @@
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
 #include "paddle/cinn/runtime/flags.h"
 #endif
+#ifdef CINN_WITH_CUSTOM_DEVICE
+#include "paddle/cinn/backends/custom_device/codegen_custom_device_dev.h"
+#include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
+#include "paddle/phi/backends/device_manager.h"
+#endif
 #ifdef CINN_WITH_HIP
 #include "paddle/cinn/backends/hip/codegen_hip_dev.h"
 #include "paddle/cinn/backends/hip/compiler_hip.h"
@@ -255,8 +260,8 @@ void Compiler::Build(const Module& module, const std::string& code) {
       [&](common::HygonDCUArchHIP) { CompileHipModule(module, code); },
       [&](common::HygonDCUArchSYCL) { CompileSyclModule(module, code); },
       [&](common::CustomDeviceArch) {
-        CompileCudaModule(module, code);
-      });  // TODO(yuhan): support custom device arch
+        CompileCustomDeviceModule(module, code);
+      });
 }
 
 void Compiler::AppendCX86(const Module& module) {
@@ -349,14 +354,13 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
       [&](common::ARMArch) -> std::string { CINN_NOT_IMPLEMENTED; },
       [&](common::CustomDeviceArch) -> std::string {
 #ifdef CINN_WITH_CUSTOM_DEVICE
-        CINN_NOT_IMPLEMENTED;
-    // auto _host_module_device_module_ =
-    //     SplitDeviceAndHostModule(module);  // NOLINT
-    // auto& host_module = std::get<0>(_host_module_device_module_);
-    // auto& device_module = std::get<1>(_host_module_device_module_);
-    // CodeGenCudaDev codegen(target_);
-    // auto source_code = codegen.Compile(device_module);
-    // return source_code;
+        auto _host_module_device_module_ =
+            SplitDeviceAndHostModule(module);  // NOLINT
+        auto& host_module = std::get<0>(_host_module_device_module_);
+        auto& device_module = std::get<1>(_host_module_device_module_);
+        custom_device::CodeGenCustomDevice codegen(target_);
+        auto source_code = codegen.Compile(device_module);
+        return source_code;
 #else
         CINN_NOT_IMPLEMENTED
 #endif
@@ -407,7 +411,7 @@ void Compiler::BuildDefault(const Module& module) {
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) { CompileX86Module(module); },
       [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::CustomDeviceArch) { CompileCudaModule(module); },
+      [&](common::CustomDeviceArch) { CompileCustomDeviceModule(module); },
       [&](common::NVGPUArch) { CompileCudaModule(module); },
       [&](common::HygonDCUArchHIP) { CompileHipModule(module); },
       [&](common::HygonDCUArchSYCL) { CompileSyclModule(module); });
@@ -436,7 +440,7 @@ void Compiler::RegisterDeviceModuleSymbol() {
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) { return; },
       [&](common::ARMArch) { return; },
-      [&](common::CustomDeviceArch) { RegisterCudaModuleSymbol(); },
+      [&](common::CustomDeviceArch) { RegisterCustomDeviceModuleSymbol(); },
       [&](common::NVGPUArch) { RegisterCudaModuleSymbol(); },
       [&](common::HygonDCUArchHIP) { RegisterHipModuleSymbol(); },
       [&](common::HygonDCUArchSYCL) { RegisterSyclModuleSymbol(); });
@@ -545,6 +549,66 @@ void Compiler::RegisterCudaModuleSymbol() {
 #endif
 }
 
+void Compiler::RegisterCustomDeviceModuleSymbol() {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+  // 1. 获取插件实例
+  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  PADDLE_ENFORCE_EQ(!dev_types.empty(),
+                    true,
+                    ::common::errors::NotFound(
+                        "No custom device registered in DeviceManager."));
+
+  std::string dev_type = dev_types[0];
+  auto place = phi::CustomPlace(dev_type, 0);
+  auto& plugin =
+      cinn::runtime::custom_device::CinnCustomDevicePlugin::GetInstance(place);
+
+  // 2. 准备源码
+  // 此时 device_fn_code_ 已经包含了通过 Codegen 拼接的 Runtime Source
+  std::string source_code = device_fn_code_;
+
+  // 3. 调用插件工具链进行编译 (Compile)
+  // 返回值通常是编译产物的路径 (如 .so 或 .o 文件路径)
+  std::string lib_path = plugin.GetToolchain()->Compile(source_code);
+
+  PADDLE_ENFORCE_EQ(
+      !lib_path.empty(),
+      true,
+      ::common::errors::External("Custom Device Toolchain compile failed."));
+
+  // 4. 调用插件运行时加载模块 (LoadModule)
+  // device_module_ 是 Compiler 类的成员变量: std::unique_ptr<CustomModule>
+  // device_module_;
+  this->device_module_ = plugin.GetRuntime()->LoadModule(lib_path);
+  PADDLE_ENFORCE_NOT_NULL(
+      this->device_module_,
+      ::common::errors::External(
+          "Custom Device Runtime failed to load module from %s",
+          lib_path.c_str()));
+
+  // 5. 注册 Kernel 符号
+  // 我们需要获取设备 Kernel 的指针 (或者 Handle)，并将其注册为
+  // [kernel_name]_ptr_
+  RuntimeSymbols symbols;
+  for (const auto& kernel_fn_name : device_fn_name_) {
+    void* fn_kernel = this->device_module_->GetFunction(kernel_fn_name);
+
+    PADDLE_ENFORCE_NOT_NULL(fn_kernel,
+                            ::common::errors::NotFound(
+                                "Custom Device Runtime cannot find kernel: %s",
+                                kernel_fn_name.c_str()));
+
+    // 保存指针供 ExecutionEngine 使用
+    fn_ptr_.push_back(fn_kernel);
+    symbols.RegisterVar(kernel_fn_name + "_ptr_", fn_kernel);
+  }
+
+  engine_->RegisterModuleRuntimeSymbols(std::move(symbols));
+#else
+  CINN_NOT_IMPLEMENTED
+#endif
+}
+
 void Compiler::RegisterHipModuleSymbol() {
 #ifdef CINN_WITH_HIP
   hiprtc::Compiler compiler;
@@ -638,6 +702,46 @@ void Compiler::CompileCudaModule(const Module& module,
                     ::common::errors::InvalidArgument(
                         "Compile CUDA C code failed from device module"));
   VLOG(3) << "[CUDA] C:\n" << source_code;
+  SourceCodePrint::GetInstance()->write(source_code);
+  device_fn_code_ += source_code;
+
+  for (auto& fn : device_module.functions()) {
+    std::string kernel_fn_name = fn->name;
+    device_fn_name_.emplace_back(kernel_fn_name);
+  }
+  engine_->Link<CodeGenGpuHost>(host_module);
+#else
+  CINN_NOT_IMPLEMENTED
+#endif
+}
+
+void Compiler::CompileCustomDeviceModule(const Module& module,
+                                         const std::string& code) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+  auto _host_module_device_module_ =
+      SplitDeviceAndHostModule(module);  // NOLINT
+  auto& host_module = std::get<0>(_host_module_device_module_);
+  auto& device_module = std::get<1>(_host_module_device_module_);
+  VLOG(3) << "[CustomDevice] host module:\n" << host_module;
+
+  VLOG(3) << "[CustomDevice] device module:\n" << device_module;
+  std::string source_code;
+
+  if (!FLAGS_cinn_debug_custom_code_path.empty()) {
+    std::string file_path = FLAGS_cinn_debug_custom_code_path;
+    source_code = GetFileContent(file_path);
+  } else if (code.empty()) {
+    custom_device::CodeGenCustomDevice codegen(target_);
+    source_code = codegen.Compile(device_module);
+  } else {
+    source_code = code;
+  }
+
+  PADDLE_ENFORCE_EQ(!source_code.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Compile CustomDevice code failed from device module"));
+  VLOG(3) << "[CustomDevice] Source:\n" << source_code;
   SourceCodePrint::GetInstance()->write(source_code);
   device_fn_code_ += source_code;
 

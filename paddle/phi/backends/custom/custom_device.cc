@@ -1288,7 +1288,11 @@ class CustomDevice : public DeviceInterface {
 
   // 新增：获取 CINN 插件能力的接口
   C_CinnInterface* GetCinnInterface() override {
-    return pimpl_->cinn_interface;
+    if (pimpl_->size >=
+        offsetof(C_DeviceInterface, cinn_interface) + sizeof(void*)) {
+      return pimpl_->cinn_interface;
+    }
+    return nullptr;
   }
 
  private:

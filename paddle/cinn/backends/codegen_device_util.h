@@ -132,10 +132,13 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                          common::ARMArch>) { CINN_NOT_IMPLEMENTED; },
         [&](common::CustomDeviceArch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
-          CINN_NOT_IMPLEMENTED;
-      // CodeGenCudaDev codegen_dev(cinn::common::DefaultNVGPUTarget());
-      // codegen_dev.Compile(ir::LoweredFunc(func));
-      // shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+          // 1. 创建 CodeGen 对象，传入默认的 CustomDevice Target
+          custom_device::CodeGenCustomDevice codegen_dev(
+              cinn::common::DefaultCustomDeviceTarget());
+          // 2. 模拟编译过程，这一步会遍历 AST 并计算动态共享内存的大小
+          codegen_dev.Compile(ir::LoweredFunc(func));
+          // 3. 获取计算结果
+          shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
 #endif
         },
         [&](common::NVGPUArch) {
@@ -177,7 +180,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                          common::X86Arch,
                          common::ARMArch>) { CINN_NOT_IMPLEMENTED; },
         [&](common::CustomDeviceArch) {
-          call_kernel = runtime::intrinsic::call_cuda_kernel;
+          call_kernel = runtime::intrinsic::call_custom_device_kernel;
         },
         [&](common::NVGPUArch) {
           call_kernel = runtime::intrinsic::call_cuda_kernel;

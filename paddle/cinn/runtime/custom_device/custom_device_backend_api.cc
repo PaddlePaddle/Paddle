@@ -28,6 +28,43 @@ namespace custom_device {
 // 匿名命名空间：定义具体的默认实现类 (不对外暴露)
 // ============================================================
 namespace {
+// 0. 具体的 Module 实现类
+// 默认的 CustomDeviceModule 实现(连接 module_unload 和 get_kernel_address)
+class DefaultCustomDeviceModule : public cinn::runtime::CustomModule {
+ public:
+  DefaultCustomDeviceModule(void* handle, C_CinnInterface* cif)
+      : handle_(handle), cif_(cif) {}
+
+  // RAII: 析构时自动调用 module_unload
+  ~DefaultCustomDeviceModule() override {
+    if (handle_ && cif_ && cif_->module_unload) {
+      // 传递厂商上下文 dev_ptr 和模块句柄
+      cif_->module_unload(cif_->dev_ptr, handle_);
+    }
+  }
+
+  // 实现基类的 GetFunction
+  void* GetFunction(const std::string& func_name) override {
+    if (handle_ && cif_ && cif_->get_kernel_address) {
+      void* func_ptr = nullptr;
+      // 调用 C 接口查找符号
+      C_Status status = cif_->get_kernel_address(
+          cif_->dev_ptr, handle_, func_name.c_str(), &func_ptr);
+
+      if (status == C_SUCCESS) {
+        return func_ptr;
+      } else {
+        LOG(WARNING) << "Failed to get kernel address for: " << func_name;
+      }
+    }
+    return nullptr;
+  }
+
+ private:
+  void* handle_;          // 模块句柄
+  C_CinnInterface* cif_;  // 接口指针 (用于回调)
+};
+
 // 1. 编译工具链接口：负责调用外部编译器 (如 mxcc)
 // 默认编译工具链实现
 class DefaultCompilerToolchain : public CustomCompilerToolchain {
@@ -39,11 +76,13 @@ class DefaultCompilerToolchain : public CustomCompilerToolchain {
     if (cif_ && cif_->compile) {
       // TODO(Plugin): 这里需要按照具体的 C 接口协议调用 compile
       // void* handle = nullptr;
-      char output_path[1024];
-      cif_->compile(cif_->dev_ptr, code.c_str(), output_path, 1024);
-      // return HandleToPath(handle);
-      VLOG(3) << "Calling Custom Device compile_kernel...";
-      return std::string(output_path);
+      char output_path[1024] = {0};
+      C_Status status = cif_->compile(
+          cif_->dev_ptr, code.c_str(), output_path, sizeof(output_path));
+      if (status == C_SUCCESS) {
+        VLOG(3) << "Calling Custom Device compile_kernel...";
+        return std::string(output_path);
+      }
     }
     LOG(ERROR) << "compile_kernel interface not implemented by vendor.";
     return "";
@@ -70,12 +109,18 @@ class DefaultRuntimeStrategy : public CustomRuntimeStrategy {
  public:
   explicit DefaultRuntimeStrategy(C_CinnInterface* cif) : cif_(cif) {}
 
-  void* LoadModule(const std::string& path) override {
+  std::unique_ptr<cinn::runtime::CustomModule> LoadModule(
+      const std::string& path) override {
     if (cif_ && cif_->module_load) {
       void* handle = nullptr;
-      cif_->module_load(cif_->dev_ptr, path.c_str(), &handle);
-      return handle;
+      C_Status status = cif_->module_load(cif_->dev_ptr, path.c_str(), &handle);
+
+      if (status == C_SUCCESS && handle != nullptr) {
+        // 创建 DefaultCustomDeviceModule 并移交所有权
+        return std::make_unique<DefaultCustomDeviceModule>(handle, cif_);
+      }
     }
+    LOG(ERROR) << "Failed to load custom device module from path: " << path;
     return nullptr;
   }
 

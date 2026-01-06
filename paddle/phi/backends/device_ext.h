@@ -149,6 +149,11 @@ struct C_CinnInterface {
 
   // --- Runtime Strategy 部分 ---
   C_Status (*module_load)(void* dev_ptr, const char* path, void** mod_out);
+  C_Status (*module_unload)(void* dev_ptr, void* module_handle);
+  C_Status (*get_kernel_address)(void* dev_ptr,
+                                 void* module_handle,
+                                 const char* func_name,
+                                 void** func_out);
   C_Status (*launch_kernel)(void* dev_ptr,
                             void* func_ptr,
                             void** args,
@@ -940,10 +945,10 @@ struct C_DeviceInterface {
                          void* x,
                          float beta,
                          void* y);
-  void* reserved_other_api[7];
 
-  // 新增：CINN 专用接口指针
-  C_CinnInterface* cinn_interface;
+  struct C_CinnInterface* cinn_interface;
+
+  void* reserved_other_api[6];
 };
 
 struct CustomRuntimeVersion {
