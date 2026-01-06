@@ -68,7 +68,7 @@ PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list, list]] = {}
 
 # When using the communication mode described below, newly created tensors will not be allocated GPU memory.
 # The allocation of GPU memory for these tensors will occur only when meaningful values are written to them.
-_UNINIT_TENSOR_MODES = ["send_recv", "grouped_send_recv", "3d_parallel"]
+_UNINIT_TENSOR_MODES = ["send_recv", "grouped_send_recv", "parallel_broadcast"]
 
 _metadata_manager = MetadataManager()
 
@@ -740,7 +740,7 @@ def load_state_dict(
         "broadcast",
         "multi_group_broadcast",
         "grouped_send_recv",
-        "3d_parallel",
+        "parallel_broadcast",
     ]
     assert comm_method in valid_methods, (
         f"Invalid communication method '{comm_method}'. "
@@ -1271,7 +1271,7 @@ def _load_state_dict(
     worker_groups: list[Group] | None = None,
     comm_method: str = 'broadcast',
 ):
-    if comm_method != "3d_parallel":
+    if comm_method != "parallel_broadcast":
         use_dist = True if paddle.distributed.get_world_size() > 1 else False
         communicator = CommunicatorFactory.create(
             comm_method, worker_groups=worker_groups
@@ -1287,14 +1287,12 @@ def _load_state_dict(
         )
     else:
         assert len(worker_groups) == 3, (
-            f"When the reshard communication mode is set to '3d_parallel', the number of worker_groups must be 3, "
+            f"When the reshard communication mode is set to 'parallel_broadcast', the number of worker_groups must be 3, "
             f"i.e., it must include groups for the horizontal, vertical, and parallel directions. "
             f"However, there are currently only {len(worker_groups)} groups. "
             f"Please check the worker_groups parameter: {worker_groups}"
         )
-        h_group = worker_groups[0]
-        v_group = worker_groups[1]
-        p_group = worker_groups[2]
+        h_group, v_group, p_group = worker_groups[:3]
         resharder = ThreeDCommGroupStateResharder(
             target_state_dict=target_state_dict,
             source_state_dict=source_state_dict,
