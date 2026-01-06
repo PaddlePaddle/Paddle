@@ -3163,6 +3163,7 @@
     func : LerpInferMeta
   kernel :
     func : lerp
+    data_type : x
   inplace : (x -> out)
   backward : lerp_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface

@@ -30,6 +30,7 @@ from paddle._C_ops import (  # noqa: F401
     angle,
     any,
     baddbmm,
+    conj,
     fmax,
     fmin,
     heaviside,
@@ -4222,64 +4223,6 @@ def broadcast_shape(
     return core.broadcast_shape(x_shape, y_shape)
 
 
-def conj(x: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    This function computes the conjugate of the Tensor elementwisely.
-
-    Args:
-        x (Tensor): The input Tensor which hold the complex numbers.
-            Optional data types are: bfloat16, float16, complex64, complex128, float32, float64, int32 or int64.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        out (Tensor): The conjugate of input. The shape and data type is the same with input. If the elements of tensor is real type such as float32, float64, int32 or int64, the out is the same with input.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> data = paddle.to_tensor([[1+1j, 2+2j, 3+3j], [4+4j, 5+5j, 6+6j]])
-            >>> data
-            Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[(1+1j), (2+2j), (3+3j)],
-             [(4+4j), (5+5j), (6+6j)]])
-
-            >>> conj_data = paddle.conj(data)
-            >>> conj_data
-            Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[(1-1j), (2-2j), (3-3j)],
-             [(4-4j), (5-5j), (6-6j)]])
-
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.conj(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            "x",
-            [
-                'complex64',
-                'complex128',
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-            ],
-            'conj',
-        )
-
-        helper = LayerHelper('conj', **locals())
-        out = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype()
-        )
-
-        helper.append_op(type='conj', inputs={'X': x}, outputs={'Out': [out]})
-        return out
-
-
 def gammaln(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Calculates the logarithm of the absolute value of the gamma function elementwisely.
@@ -4341,7 +4284,7 @@ def digamma(x: Tensor, name: str | None = None) -> Tensor:
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -4350,7 +4293,7 @@ def digamma(x: Tensor, name: str | None = None) -> Tensor:
             >>> res
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.57721591,  0.03648996],
-             [ nan       ,  5.32286835]])
+             [-inf.      ,  5.32286835]])
     """
 
     if in_dynamic_or_pir_mode():
@@ -4913,7 +4856,10 @@ def lerp(
 
     """
     if isinstance(weight, float):
-        weight = paddle.full(shape=[], fill_value=weight, dtype=x.dtype)
+        if x.is_cuda and in_dynamic_mode():
+            weight = paddle.full(shape=[], fill_value=weight, dtype="float64")
+        else:
+            weight = paddle.full(shape=[], fill_value=weight, dtype=x.dtype)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.lerp(x, y, weight)

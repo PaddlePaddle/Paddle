@@ -74,18 +74,6 @@ void MatmulCooDenseGradKernel(const Context& dev_ctx,
         true, false, static_cast<T>(1), x, dout, static_cast<T>(0), dy);
 #endif
   }
-#else
-#ifdef PADDLE_WITH_CUDA
-  PADDLE_THROW(common::errors::Unimplemented(
-      "backward of 'sparse.matmul' use cusparseSDDMM, which is supported from "
-      "CUDA 11.3"));
-#elif defined(PADDLE_WITH_HIP)
-  PADDLE_THROW(
-      common::errors::Unimplemented("backward of 'sparse.matmul' use "
-                                    "rocsparse_sddmm with transpose, which is "
-                                    "supported from "
-                                    "ROCM 4.3.0"));
-#endif
 #endif
 }
 
@@ -125,18 +113,6 @@ void MatmulCsrDenseGradKernel(const Context& dev_ctx,
     sparse_blas.SPMM(
         true, false, static_cast<T>(1), x, dout, static_cast<T>(0), dy);
   }
-#else
-#ifdef PADDLE_WITH_CUDA
-  PADDLE_THROW(common::errors::Unimplemented(
-      "backward of 'sparse.matmul' use cusparseSDDMM, which is supported from "
-      "CUDA 11.3"));
-#elif defined(PADDLE_WITH_HIP)
-  PADDLE_THROW(
-      common::errors::Unimplemented("backward of 'sparse.matmul' use "
-                                    "rocsparse_sddmm with transpose, which is "
-                                    "supported from "
-                                    "ROCM 4.3.0"));
-#endif
 #endif
 }
 
@@ -162,7 +138,7 @@ void MatmulCsrCsrGradKernel(const Context& dev_ctx,
   // dx{SparseCsr} = dout{SparseCsr} * y'{SparseCsr}
   if (dx) {
     // cusparseSpGEMM only support CUSPARSE_OPERATION_NON_TRANSPOSE.
-    // transopse y before cusparseSpGEMM computation.
+    // transpose y before cusparseSpGEMM computation.
     SparseCsrTensor trans_y;
     TransposeCsrKernel<T, Context>(dev_ctx, y, perm, &trans_y);
 
@@ -173,19 +149,13 @@ void MatmulCsrCsrGradKernel(const Context& dev_ctx,
   // dy{SparseCsr} = x'{SparseCsr} * dout{SparseCsr}
   if (dy) {
     // cusparseSpGEMM only support CUSPARSE_OPERATION_NON_TRANSPOSE.
-    // transopse x before cusparseSpGEMM computation.
+    // transpose x before cusparseSpGEMM computation.
     SparseCsrTensor trans_x;
     TransposeCsrKernel<T, Context>(dev_ctx, x, perm, &trans_x);
 
     sparse_blas.SPGEMM(
         false, false, static_cast<T>(1), trans_x, dout, static_cast<T>(0), dy);
   }
-#else
-#ifdef PADDLE_WITH_CUDA
-  PADDLE_THROW(common::errors::Unimplemented(
-      "backward of 'sparse.matmul' use cusparseSpGEMM, which is supported from "
-      "CUDA 11.0"));
-#endif
 #endif
 }
 

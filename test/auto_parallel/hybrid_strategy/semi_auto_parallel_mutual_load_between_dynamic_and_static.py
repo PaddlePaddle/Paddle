@@ -48,7 +48,7 @@ class TestSemiAutoParallelMutualLoadBetweenDynamicAndStatic(
 
     def run_dynamic(self, layer, opt, data_loader, is_recompute=False):
         # MSELoss only support pir, but test_save_load_state_dict.py set FLAGS_enable_pir_api=0
-        loss_fn = nn.NLLLoss()
+        loss_fn = nn.SmoothL1Loss()
 
         loss_list = []
         for _ in range(5):
@@ -67,7 +67,7 @@ class TestSemiAutoParallelMutualLoadBetweenDynamicAndStatic(
     def run_dy2static(self, layer, opt, data_loader):
         # create loss
         # MSELoss only support pir, but test_save_load_state_dict.py set FLAGS_enable_pir_api=0
-        loss_fn = nn.NLLLoss()
+        loss_fn = nn.SmoothL1Loss()
         dist_loader = dist.shard_dataloader(
             dataloader=data_loader,
             meshes=[self.mesh],
@@ -117,7 +117,7 @@ class TestSemiAutoParallelMutualLoadBetweenDynamicAndStatic(
             learning_rate=0.1, parameters=dy_layer.parameters()
         )
         # MSELoss only support pir, but test_save_load_state_dict.py set FLAGS_enable_pir_api=0
-        loss_fn = nn.NLLLoss()
+        loss_fn = nn.SmoothL1Loss()
         dist_model = dist.to_static(
             dy_layer, dist_loader, loss_fn, dy2static_opt
         )
