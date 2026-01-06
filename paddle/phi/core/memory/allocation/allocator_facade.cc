@@ -122,6 +122,14 @@ COMMON_DECLARE_bool(use_cuda_malloc_async_allocator);
 COMMON_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
 
 namespace paddle::memory::allocation {
+static bool IsCUDAGraphCapturing() {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
+  return UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing());
+#else
+  return false;
+#endif
+}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE)
@@ -159,9 +167,18 @@ class CUDAGraphAllocator
  protected:
   phi::Allocation* AllocateImpl(size_t size) override {
     VLOG(10) << "Allocate " << size << " for CUDA Graph";
-    return new PrivateAllocation(this,
-                                 static_unique_ptr_cast<Allocation>(
-                                     underlying_allocator_->Allocate(size)));
+    if (IsCUDAGraphCapturing()) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+      phi::backends::gpu::CUDAGraphCaptureModeGuard capture_mode_guard;
+#endif
+      return new PrivateAllocation(this,
+                                   static_unique_ptr_cast<Allocation>(
+                                       underlying_allocator_->Allocate(size)));
+    } else {
+      return new PrivateAllocation(this,
+                                   static_unique_ptr_cast<Allocation>(
+                                       underlying_allocator_->Allocate(size)));
+    }
   }
 
   void FreeImpl(phi::Allocation* allocation) override {
@@ -173,15 +190,6 @@ class CUDAGraphAllocator
   std::shared_ptr<Allocator> underlying_allocator_;
 };
 #endif
-
-static bool IsCUDAGraphCapturing() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_CUSTOM_DEVICE)
-  return UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing());
-#else
-  return false;
-#endif
-}
 
 class AllocatorFacadePrivate {
  public:
