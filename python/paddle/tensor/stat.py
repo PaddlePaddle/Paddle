@@ -372,7 +372,7 @@ def std(*args: Any, **kwargs: Any) -> Tensor:
             >>> print(out4.numpy())
             [[1.721326]]
 
-            >>> out5 = paddle.std(input=x, dim=[0, 1])  # type: ignore[call-arg]
+            >>> out5 = paddle.std(input=x, dim=[0, 1])
             >>> print(out5.numpy())
             1.6329932
 
