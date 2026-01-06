@@ -229,7 +229,7 @@ jobs:
           pwd
           ls
           cd Paddle
-          git config --global --add safe.directory '*'
+          git config --global --add safe.directory "*"
           cd ..
           cd backends/iluvatar_gpu/
           bash build_paddle.sh
