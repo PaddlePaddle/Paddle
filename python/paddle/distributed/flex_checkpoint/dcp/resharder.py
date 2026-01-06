@@ -476,7 +476,7 @@ class ThreeDCommGroupStateResharder:
 
             for file_name, state_dict in self.source_state_dict.items():
                 for tensor_name, tensor in state_dict.items():
-                    if tensor.dtype != paddle.float32:
+                    if tensor.dtype == paddle.float32:
                         state_dict[tensor_name] = tensor.cuda().pin_memory()
                     else:
                         state_dict[tensor_name] = tensor.cuda()
