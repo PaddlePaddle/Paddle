@@ -2898,7 +2898,7 @@ class Executor:
 
         The document of infer_from_dataset is almost the same as train_from_dataset,
         except that in distributed training, push gradients will be disabled in infer_from_dataset.
-        infer_from_dataset() can be used for evaluation in multi-threadvery easily.
+        infer_from_dataset() can be used for evaluation in multi-thread very easily.
 
         Args:
             program(Program|CompiledProgram): the program that needs to be run,
