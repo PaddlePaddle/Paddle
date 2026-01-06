@@ -52,7 +52,7 @@ int GetWarpSize(const common::Target& target) {
                 phi::CustomPlace(impl.device_type, impl.device_id));
           }
 #endif
-          return 32;  // Fallback
+          return 32;
         } else {
           return 32;
         }
@@ -311,11 +311,22 @@ bool CheckSmUtilization(
 // avoid Tail Effect.
 int CalculateWarpNums(const SMConfig& sm_config,
                       int total_threads_needed,
-                      int warp_size) {
-  int best_warp_nums = 8;
+                      int warp_size,
+                      const common::Target& target) {
+  int max_threads = target.max_num_threads();
+  int max_warp_cnt = max_threads / warp_size;
+  int best_warp_nums = std::min(8, max_warp_cnt);
   int min_diff_to_full_sm = sm_config.sm_count;
 
-  std::vector<int> thread_configs = {1024, 512, 256};
+  std::vector<int> thread_configs;
+  if (max_threads >= 1024) thread_configs.push_back(1024);
+  if (max_threads >= 512) thread_configs.push_back(512);
+  if (max_threads >= 256) thread_configs.push_back(256);
+  if (max_threads >= 128) thread_configs.push_back(128);
+  if (thread_configs.empty() || thread_configs[0] != max_threads) {
+    if (thread_configs.empty()) thread_configs.push_back(max_threads);
+  }
+
   for (int threads_per_block : thread_configs) {
     int current_warp_count = threads_per_block / warp_size;
     int blocks_needed =
@@ -346,15 +357,16 @@ int CalculateWarpNums(const SMConfig& sm_config,
 int UpdateWarpNumsInDifferentCase(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const GroupVectorizeInfo& group_vectorize_info,
-    int warp_nums) {
+    int warp_nums,
+    int max_warp_cnt) {
   const auto& last_dim = base_info->iter_space_type.back().first;
   if (group_vectorize_info.has_if_else_op && last_dim == "R") {
-    warp_nums = Trim(warp_nums, 1, 16);
+    warp_nums = Trim(warp_nums, 1, std::min(16, max_warp_cnt));
   } else if (!group_vectorize_info.args_broadcast_axis_info.empty() &&
              last_dim == "S") {
-    warp_nums = Trim(warp_nums, 1, 8);
+    warp_nums = Trim(warp_nums, 1, std::min(8, max_warp_cnt));
   } else {
-    warp_nums = Trim(warp_nums, 1, 32);
+    warp_nums = Trim(warp_nums, 1, max_warp_cnt);
   }
   return warp_nums;
 }
@@ -670,7 +682,7 @@ TileConfigMap BuildVectorizeConfig(
       const int elements_in_warp = warp_size * vectorize_factor;
       warp_nums = CeilDiv(spatial_numel, elements_in_warp);
       int max_warp_nums = CalculateWarpNums(
-          sm_config, spatial_numel / vectorize_factor, warp_size);
+          sm_config, spatial_numel / vectorize_factor, warp_size, target);
       warp_nums = Trim(warp_nums, 1, max_warp_nums);
       sp_thread_num = warp_size * warp_nums;
       if (SpatialRegionCanVectorize(base_info,
@@ -685,8 +697,8 @@ TileConfigMap BuildVectorizeConfig(
     }
   }
 
-  warp_nums =
-      UpdateWarpNumsInDifferentCase(base_info, group_vectorize_info, warp_nums);
+  warp_nums = UpdateWarpNumsInDifferentCase(
+      base_info, group_vectorize_info, warp_nums, max_warp_cnt);
 
   if (can_vectorize && !CheckPerformanceLimitInVectorize(base_info,
                                                          group_vectorize_info,
@@ -788,6 +800,8 @@ TileConfigMap BuildPureStaticShapeConfig(
     const GroupVectorizeInfo& vectorize_info,
     const common::Target& target) {
   int warp_size = GetWarpSize(target);
+  int max_threads = target.max_num_threads();
+  int max_warp_cnt = max_threads / warp_size;
   const auto& last_dim = base_info->iter_space_type.back().first;
   const int sm_count = target.get_multi_processor_count();
   int64_t spatial_numel = base_info->spatial_numel;
@@ -814,7 +828,7 @@ TileConfigMap BuildPureStaticShapeConfig(
       sp_thread_num = Trim(spatial_numel, 1, 8);
       reduce_method = WarpReduceMethod();
     } else {
-      rd_thread_num *= Trim(remain_reduce_numel, 1, 32);
+      rd_thread_num *= Trim(remain_reduce_numel, 1, max_warp_cnt);
       reduce_method = BlockReduceMethod();
     }
   } else {  // last_dim == "S"
@@ -860,7 +874,8 @@ TileConfigMap BuildPureStaticShapeConfig(
 
   int64_t sp_upper_bound = base_info->spatial_numel > 1 ? kMaxNumel : 1;
   int64_t rd_upper_bound = base_info->reduce_numel > 1 ? kMaxNumel : 1;
-  int64_t warp_num = Trim(sp_thread_num * rd_thread_num / warp_size, 1, 32);
+  int64_t warp_num =
+      Trim(sp_thread_num * rd_thread_num / warp_size, 1, max_warp_cnt);
   BucketInfo bucket_info{1, sp_upper_bound, 1, rd_upper_bound};
   TileConfig tile_config{warp_num,
                          /* tree_reduce_num = */ rd_thread_num,
