@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 from contextlib import contextmanager
 
@@ -24,7 +23,7 @@ from paddle import nn
 from paddle.base import core
 from paddle.static import amp
 
-os.environ["FLAGS_use_legacy_linear"] = "True"
+paddle.set_flags({"FLAGS_use_legacy_linear": True})
 
 
 @unittest.skipIf(

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
@@ -20,7 +19,7 @@ import numpy as np
 import paddle
 from paddle.base import core
 
-os.environ["FLAGS_use_legacy_linear"] = "True"
+paddle.set_flags({"FLAGS_use_legacy_linear": True})
 
 
 class SimpleNet(paddle.nn.Layer):

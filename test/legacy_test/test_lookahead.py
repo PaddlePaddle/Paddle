@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
@@ -20,7 +19,7 @@ import numpy as np
 import paddle
 
 # NOTE(Pan Zhaowu): using legacy linear to fulfill the promise of add_grad op.
-os.environ["FLAGS_use_legacy_linear"] = "True"
+paddle.set_flags({"FLAGS_use_legacy_linear": True})
 
 from paddle import base, nn
 from paddle.base.framework import in_pir_mode
