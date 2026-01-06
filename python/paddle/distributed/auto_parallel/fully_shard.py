@@ -88,11 +88,11 @@ class FullyShardAuto:
                     if param.placements[dp_axis] != dist.Replicate():
                         new_placements = copy.deepcopy(param.placements)
                         new_placements[dp_axis] = dist.Replicate()
-                        replicte_param = dist.reshard(
+                        replicate_param = dist.reshard(
                             param, param.process_mesh, new_placements
                         )
                         param.get_tensor()._share_data_with(
-                            replicte_param.get_tensor()
+                            replicate_param.get_tensor()
                         )
 
             return gather_comm
@@ -176,8 +176,10 @@ class LayerHook(PyLayer):
             ):
                 new_placements = copy.deepcopy(param.placements)
                 new_placements[dp_axis] = dist.Replicate()
-                replicte_param = dist.reshard(
+                replicate_param = dist.reshard(
                     param, param.process_mesh, new_placements
                 )
-                param.get_tensor()._share_data_with(replicte_param.get_tensor())
+                param.get_tensor()._share_data_with(
+                    replicate_param.get_tensor()
+                )
         return args
