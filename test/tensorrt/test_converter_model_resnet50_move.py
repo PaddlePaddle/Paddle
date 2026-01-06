@@ -148,6 +148,11 @@ class TestConverterResNet50Move(unittest.TestCase):
         output_expected = standardize(output_expected[0])
         output_trt = standardize(output_converted[0].numpy())
 
+        print("$#$#!$!#$!#!@$!#$!@#!@$!@$#!@#!")
+        print("++++++++++++++++++++++++ expected")
+        print(output_expected)
+        print("++++++++++++++++++++++++ trt")
+        print(output_trt)
         np.testing.assert_allclose(
             output_expected,
             output_trt,
