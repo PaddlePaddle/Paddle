@@ -194,6 +194,12 @@ class PADDLE_API DeviceManager {
 
   static size_t GetMaxBlocksPerMultiProcessor(const Place& place);
 
+  static size_t GetWarpSize(const Place& place);
+
+  static size_t GetMaxRegistersPerMultiProcessor(const Place& place);
+
+  static size_t GetPreferredVectorWidth(const Place& place);
+
   static std::array<unsigned int, 3> GetMaxGridDimSize(const Place& place);
 
   static std::array<unsigned int, 3> GetMaxBlockDimSize(const Place& place);

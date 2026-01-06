@@ -69,7 +69,7 @@ Target::Target(OS o,
              [&](CustomDeviceArch) {
 #ifndef CINN_WITH_CUSTOM_DEVICE
                PADDLE_THROW(::common::errors::Unimplemented(
-                   "Please recompile with flag CINN_WITH_CUSTOM_DEVICE and "
+                   "Please recompile with flag WITH_CUSTOM_DEVICE and "
                    "WITH_CINN."));
 #endif
              });
@@ -404,8 +404,32 @@ const Target &DefaultHygonDcuSyclTarget() {
 }
 
 const Target &DefaultCustomDeviceTarget() {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+  // 1. 获取当前注册的所有 Custom Device 类型
+  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+
+  std::string device_type = "unknown_custom_device";
+  int device_id = 0;
+
+  // 2. 如果存在自定义设备，取第一个作为默认值 (通常列表非空)
+  if (!dev_types.empty()) {
+    device_type = dev_types[0];
+    // 获取该类型对应的当前设备 ID
+    device_id = phi::DeviceManager::GetDevice(device_type);
+  }
+
+  // 3. 使用获取到的 type 和 id 构造 CustomDeviceArch
+  // 注意：这里假设 CustomDeviceArch 结构体的字段顺序是 {device_type, device_id}
+  static Target target(Target::OS::Linux,
+                       CustomDeviceArch{device_type, device_id},
+                       Target::Bit::k64,
+                       {},
+                       {});
+#else
+  // Fallback: 如果没有编译 CustomDevice，保持原样
   static Target target(
       Target::OS::Linux, CustomDeviceArch{}, Target::Bit::k64, {}, {});
+#endif
   return target;
 }
 
@@ -432,12 +456,11 @@ int GetMaxThreads() {
       &max_threads, cudaDeviceAttr::cudaDevAttrMaxThreadsPerMultiProcessor, 0);
   // multiplication num_sm
   max_threads *= (num_sm * 4);
-#elif defined( \
-    CINN_WITH_CUSTOM_DEVICE)  // 假设默认使用第 0 号设备，你可以根据需要获取当前
-                              // device_type
-  std::vector dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
-  int device_id = phi::DeviceManager::GetDevice(dev_types[0]);
+#elif defined(CINN_WITH_CUSTOM_DEVICE)
+  std::vector<std::string> dev_types =
+      phi::DeviceManager::GetAllCustomDeviceTypes();
   if (!dev_types.empty()) {
+    int device_id = phi::DeviceManager::GetDevice(dev_types[0]);
     std::string dev_type = dev_types[0];
     auto place = phi::CustomPlace(dev_type, device_id);
     max_threads = phi::DeviceManager::GetMultiProcessors(place) *
@@ -460,9 +483,10 @@ int GetMaxBlocks() {
   // multiplication num_sm
   max_blocks *= num_sm;
 #elif defined(CINN_WITH_CUSTOM_DEVICE)
-  std::vector dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
-  int device_id = phi::DeviceManager::GetDevice(dev_types[0]);
+  std::vector<std::string> dev_types =
+      phi::DeviceManager::GetAllCustomDeviceTypes();
   if (!dev_types.empty()) {
+    int device_id = phi::DeviceManager::GetDevice(dev_types[0]);
     std::string dev_type = dev_types[0];
     auto place = phi::CustomPlace(dev_type, device_id);
     max_blocks = phi::DeviceManager::GetMultiProcessors(place) *
@@ -524,6 +548,7 @@ bool GetSupportsCooperativeLaunch(Arch arch) {
 bool GetSupportsCooperativeLaunchImpl(CustomDeviceArch) {
   int supportsCoopLaunch = 0;
 #ifdef CINN_WITH_CUSTOM_DEVICE
+  CINN_NOT_IMPLEMENTED
   // const auto place = phi::CustomPlace(arch.device_type, arch.device_id);
   // return phi::DeviceManager::GetDeviceAttribute(place,
   // phi::DeviceAttribute::COOPERATIVE_LAUNCH);

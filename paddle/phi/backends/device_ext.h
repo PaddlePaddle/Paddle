@@ -667,6 +667,29 @@ struct C_DeviceInterface {
    */
   C_Status (*get_max_blocks_per_mp)(const C_Device device,
                                     size_t* blocks_per_mp);
+
+  /**
+   * @brief Get Warp Size
+   *
+   * @param[size_t*]    warp_size
+   */
+  C_Status (*get_warp_size)(const C_Device device, size_t* warp_size);
+
+  /**
+   * @brief Get Max Registers Per MultiProcessor
+   *
+   * @param[size_t*]    registers_per_mp
+   */
+  C_Status (*get_max_registers_per_mp)(const C_Device device,
+                                       size_t* registers_per_mp);
+
+  /**
+   * @brief Get Preferred Vector Width
+   *
+   * @param[size_t*]    vector_width
+   */
+  C_Status (*get_vector_width)(const C_Device device, size_t* vector_width);
+
   /**
    * @brief Get Max Grid Dim Size
    *

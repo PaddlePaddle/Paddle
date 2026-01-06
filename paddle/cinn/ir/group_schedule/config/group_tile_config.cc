@@ -13,7 +13,12 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
+#include <type_traits>
+#include <variant>
+#include "paddle/cinn/common/target.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_impl.h"
+#include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/common/place.h"
 
 namespace cinn {
 namespace ir {
@@ -27,10 +32,56 @@ using TileConfigMap =
 namespace {
 
 const int kMaxNumel = BucketInfo::kMaxNumel;
-constexpr int kWarpSize = 32;
-constexpr int KMaxWarpSizePerSM = 64;
-constexpr int KMaxBlockSizePerSM = 32;
-constexpr int KMaxRegistersPerSM = 65536;
+// constexpr int warp_size = 32;
+// constexpr int KMaxWarpSizePerSM = 64;
+// constexpr int KMaxBlockSizePerSM = 32;
+// constexpr int KMaxRegistersPerSM = 65536;
+
+int GetWarpSize(const common::Target& target) {
+  return std::visit(
+      [&](const auto& impl) -> int {
+        // 获取当前 variant 存储的具体类型
+        using ArchT = std::decay_t<decltype(impl)>;
+
+        if constexpr (std::is_same_v<ArchT, common::NVGPUArch>) {
+          return 32;
+        } else if constexpr (std::is_same_v<ArchT, common::CustomDeviceArch>) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+          if (!impl.device_type.empty()) {
+            return phi::DeviceManager::GetWarpSize(
+                phi::CustomPlace(impl.device_type, impl.device_id));
+          }
+#endif
+          return 32;  // Fallback
+        } else {
+          return 32;
+        }
+      },
+      target.arch.variant());  // [重点] 使用 arch.variant()
+}
+
+// [新增] 辅助函数：获取 SM 最大寄存器数
+int GetMaxRegistersPerSM(const common::Target& target) {
+  return std::visit(
+      [&](const auto& impl) -> int {
+        using ArchT = std::decay_t<decltype(impl)>;
+
+        if constexpr (std::is_same_v<ArchT, common::NVGPUArch>) {
+          return 65536;
+        } else if constexpr (std::is_same_v<ArchT, common::CustomDeviceArch>) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+          if (!impl.device_type.empty()) {
+            return phi::DeviceManager::GetMaxRegistersPerMultiProcessor(
+                phi::CustomPlace(impl.device_type, impl.device_id));
+          }
+#endif
+          return 65536;
+        } else {
+          return 65536;
+        }
+      },
+      target.arch.variant());
+}
 
 int64_t CeilPow2(int64_t n) {
   int64_t pow = 1;
@@ -220,10 +271,11 @@ std::pair<int, int> CalculateBlocksAndSMsNeeded(const SMConfig& sm_config,
 bool ShouldUpdateWarpNums(int diff_to_fill_sm,
                           int min_diff_to_full_sm,
                           int threads_per_block,
-                          int best_warp_nums) {
+                          int best_warp_nums,
+                          int warp_size) {
   return (diff_to_fill_sm < min_diff_to_full_sm) ||
          (diff_to_fill_sm == min_diff_to_full_sm &&
-          threads_per_block > best_warp_nums * kWarpSize);
+          threads_per_block > best_warp_nums * warp_size);
 }
 
 // Only proceed with vectorization if SM utilization exceeds 100%
@@ -257,13 +309,15 @@ bool CheckSmUtilization(
 // By default, warp_nums can be a maximum of 8 (256 threads)
 // The Grid value should be divisible by the SM number as much as possible to
 // avoid Tail Effect.
-int CalculateWarpNums(const SMConfig& sm_config, int total_threads_needed) {
+int CalculateWarpNums(const SMConfig& sm_config,
+                      int total_threads_needed,
+                      int warp_size) {
   int best_warp_nums = 8;
   int min_diff_to_full_sm = sm_config.sm_count;
 
   std::vector<int> thread_configs = {1024, 512, 256};
   for (int threads_per_block : thread_configs) {
-    int current_warp_count = threads_per_block / kWarpSize;
+    int current_warp_count = threads_per_block / warp_size;
     int blocks_needed =
         std::ceil(static_cast<float>(total_threads_needed) / threads_per_block);
     auto [max_effective_blocks_per_sm, sms_needed] =
@@ -279,7 +333,8 @@ int CalculateWarpNums(const SMConfig& sm_config, int total_threads_needed) {
       if (ShouldUpdateWarpNums(diff_to_fill_sm,
                                min_diff_to_full_sm,
                                threads_per_block,
-                               best_warp_nums)) {
+                               best_warp_nums,
+                               warp_size)) {
         min_diff_to_full_sm = diff_to_fill_sm;
         best_warp_nums = current_warp_count;
       }
@@ -323,12 +378,13 @@ bool ReduceRegionCanVectorize(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const SMConfig& sm_config,
     const int warp_nums,
-    const int factor) {
+    const int factor,
+    const int warp_size) {
   const int64_t spatial_numel = base_info->spatial_numel;
   const int64_t reduce_numel = base_info->reduce_numel;
   if (warp_nums < 4 && spatial_numel > 1) return false;
 
-  int rd_thread_num = warp_nums * kWarpSize;
+  int rd_thread_num = warp_nums * warp_size;
   if ((warp_nums > 1 || spatial_numel < warp_nums * 64) &&
       CheckThreadDimensionCanVectorize(
           rd_thread_num, reduce_numel, factor, true) &&
@@ -344,10 +400,11 @@ bool SpatialRegionCanVectorize(
     const GroupVectorizeInfo& group_vectorize_info,
     const SMConfig& sm_config,
     const int warp_nums,
-    const int factor) {
+    const int factor,
+    const int warp_size) {
   const int64_t spatial_numel = base_info->spatial_numel;
   const int64_t reduce_numel = base_info->reduce_numel;
-  const int sp_thread_num = kWarpSize * warp_nums;
+  const int sp_thread_num = warp_size * warp_nums;
   if (group_vectorize_info.has_select_op) return false;
   if (CheckThreadDimensionCanVectorize(
           sp_thread_num, spatial_numel, factor, false) &&
@@ -394,8 +451,9 @@ int IsScalarTensorPreload(
     const std::vector<int64_t>& loop_ranges,
     const std::vector<std::vector<bool>> broadcast_axis_infos,
     const int warp_nums,
-    const int vectorize_factor) {
-  const int threads_deal_elements = warp_nums * kWarpSize * vectorize_factor;
+    const int vectorize_factor,
+    const int warp_size) {
+  const int threads_deal_elements = warp_nums * warp_size * vectorize_factor;
   bool is_scalar_tensor = true;
   for (int i = 0; i < broadcast_axis_infos.size(); i++) {
     int last_dim = broadcast_axis_infos[i].size() - 1;
@@ -417,7 +475,8 @@ int CalculateBroadcastTensorRegisterNums(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const GroupVectorizeInfo& group_vectorize_info,
     const int vectorize_factor,
-    const int warp_nums) {
+    const int warp_nums,
+    const int warp_size) {
   // current only support [S, R] and [S] situation.
   // thread parellization only current at last dimension in R or S dimension.
   constexpr int register_bits = 32;
@@ -438,7 +497,8 @@ int CalculateBroadcastTensorRegisterNums(
             base_info->loop_ranges,
             group_vectorize_info.args_broadcast_axis_info.at(tensor_name),
             warp_nums,
-            vectorize_factor)) {
+            vectorize_factor,
+            warp_size)) {
       tensor_buffer_size *= vectorize_factor;
     }
     int vectorize_data_bits = tensor_buffer_size * data_type_bits;
@@ -474,7 +534,9 @@ bool RegisterNumsLimitedCheckInCTACanApplyVectorize(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const GroupVectorizeInfo& group_vectorize_info,
     const int vectorize_factor,
-    const int warp_nums) {
+    const int warp_nums,
+    const common::Target& target,
+    int warp_size) {
   int thread_register_occupy_sum = 0;
   int vectorize_tensor_registers = CalculateVectorizeTensorRegisterNums(
       group_vectorize_info, vectorize_factor);
@@ -482,7 +544,7 @@ bool RegisterNumsLimitedCheckInCTACanApplyVectorize(
           << vectorize_tensor_registers << "\n";
   thread_register_occupy_sum += vectorize_tensor_registers;
   int broadcast_tensor_thread_registers = CalculateBroadcastTensorRegisterNums(
-      base_info, group_vectorize_info, vectorize_factor, warp_nums);
+      base_info, group_vectorize_info, vectorize_factor, warp_nums, warp_size);
   thread_register_occupy_sum += broadcast_tensor_thread_registers;
   VLOG(5) << "calculate broadcast tensor registers is : "
           << broadcast_tensor_thread_registers << "\n";
@@ -492,10 +554,14 @@ bool RegisterNumsLimitedCheckInCTACanApplyVectorize(
   thread_register_occupy_sum += other_register_occupy_sum;
   VLOG(5) << "calculate other registers is : " << other_register_occupy_sum
           << "\n";
+  int max_threads_per_sm = target.get_max_threads_per_sm();
+  int max_warps_per_sm = max_threads_per_sm / warp_size;
+  int max_blocks_per_sm_limit = target.get_max_blocks_per_sm();
+  int max_regs_per_sm = GetMaxRegistersPerSM(target);
   int max_blocks_per_sm =
-      Trim(CeilDiv(KMaxWarpSizePerSM, warp_nums), 1, KMaxBlockSizePerSM);
+      Trim(CeilDiv(max_warps_per_sm, warp_nums), 1, max_blocks_per_sm_limit);
   int best_register_nums_per_thread =
-      KMaxRegistersPerSM / max_blocks_per_sm / warp_nums / kWarpSize;
+      max_regs_per_sm / max_blocks_per_sm / warp_nums / warp_size;
   VLOG(5) << "calculatet thread register occupy sum is : "
           << thread_register_occupy_sum
           << ", best register nums per thread is : "
@@ -527,9 +593,15 @@ bool CheckPerformanceLimitInVectorize(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const GroupVectorizeInfo& group_vectorize_info,
     const int vectorize_factor,
-    const int warp_nums) {
-  if (!RegisterNumsLimitedCheckInCTACanApplyVectorize(
-          base_info, group_vectorize_info, vectorize_factor, warp_nums)) {
+    const int warp_nums,
+    const common::Target& target,
+    const int warp_size) {
+  if (!RegisterNumsLimitedCheckInCTACanApplyVectorize(base_info,
+                                                      group_vectorize_info,
+                                                      vectorize_factor,
+                                                      warp_nums,
+                                                      target,
+                                                      warp_size)) {
     VLOG(5) << "According to the limit of register, current schedule block "
                "can't enable vectorize!";
     return false;
@@ -561,6 +633,7 @@ TileConfigMap BuildVectorizeConfig(
     return {};
   }
 
+  int warp_size = GetWarpSize(target);
   const std::vector<int> vectorize_factors{4, 2};
   int64_t spatial_numel = base_info->spatial_numel;
   int64_t reduce_numel = base_info->reduce_numel;
@@ -574,17 +647,18 @@ TileConfigMap BuildVectorizeConfig(
   SMConfig sm_config(target.get_max_threads_per_sm(),
                      target.get_max_blocks_per_sm(),
                      target.get_multi_processor_count());
-
+  int max_threads_per_block = target.max_num_threads();
+  int max_warp_cnt = max_threads_per_block / warp_size;
   // Reduce Region
   if (last_dim == "R") {
     for (auto factor : vectorize_factors) {
       vectorize_factor = factor;
-      const int elements_in_warp = kWarpSize * vectorize_factor;
+      const int elements_in_warp = warp_size * vectorize_factor;
       warp_nums = CeilDiv(reduce_numel, elements_in_warp);
-      warp_nums = Trim(warp_nums, 1, 32);
-      rd_thread_num = warp_nums * kWarpSize;
+      warp_nums = Trim(warp_nums, 1, max_warp_cnt);
+      rd_thread_num = warp_nums * warp_size;
       if (ReduceRegionCanVectorize(
-              base_info, sm_config, warp_nums, vectorize_factor)) {
+              base_info, sm_config, warp_nums, vectorize_factor, warp_size)) {
         can_vectorize = true;
         reduce_method = BlockReduceMethod();
         break;
@@ -593,17 +667,18 @@ TileConfigMap BuildVectorizeConfig(
   } else if (iters_dim == 1 && last_dim == "S") {  // Spatial Region
     for (auto factor : vectorize_factors) {
       vectorize_factor = factor;
-      const int elements_in_warp = kWarpSize * vectorize_factor;
+      const int elements_in_warp = warp_size * vectorize_factor;
       warp_nums = CeilDiv(spatial_numel, elements_in_warp);
-      int max_warp_nums =
-          CalculateWarpNums(sm_config, spatial_numel / vectorize_factor);
+      int max_warp_nums = CalculateWarpNums(
+          sm_config, spatial_numel / vectorize_factor, warp_size);
       warp_nums = Trim(warp_nums, 1, max_warp_nums);
-      sp_thread_num = kWarpSize * warp_nums;
+      sp_thread_num = warp_size * warp_nums;
       if (SpatialRegionCanVectorize(base_info,
                                     group_vectorize_info,
                                     sm_config,
                                     warp_nums,
-                                    vectorize_factor)) {
+                                    vectorize_factor,
+                                    warp_size)) {
         can_vectorize = true;
         break;
       }
@@ -613,9 +688,12 @@ TileConfigMap BuildVectorizeConfig(
   warp_nums =
       UpdateWarpNumsInDifferentCase(base_info, group_vectorize_info, warp_nums);
 
-  if (can_vectorize &&
-      !CheckPerformanceLimitInVectorize(
-          base_info, group_vectorize_info, vectorize_factor, warp_nums)) {
+  if (can_vectorize && !CheckPerformanceLimitInVectorize(base_info,
+                                                         group_vectorize_info,
+                                                         vectorize_factor,
+                                                         warp_nums,
+                                                         target,
+                                                         warp_size)) {
     can_vectorize = false;
   }
 
@@ -709,6 +787,7 @@ TileConfigMap BuildPureStaticShapeConfig(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const GroupVectorizeInfo& vectorize_info,
     const common::Target& target) {
+  int warp_size = GetWarpSize(target);
   const auto& last_dim = base_info->iter_space_type.back().first;
   const int sm_count = target.get_multi_processor_count();
   int64_t spatial_numel = base_info->spatial_numel;
@@ -728,8 +807,8 @@ TileConfigMap BuildPureStaticShapeConfig(
   int64_t sp_thread_num = 1;
   int64_t rd_thread_num = 1;
   if (last_dim == "R") {
-    rd_thread_num = 32;
-    int64_t remain_reduce_numel = CeilDiv(reduce_numel, 32);
+    rd_thread_num = warp_size;
+    int64_t remain_reduce_numel = CeilDiv(reduce_numel, warp_size);
     if ((remain_reduce_numel <= 8 && spatial_numel > 1) ||
         (spatial_numel > remain_reduce_numel * 128)) {
       sp_thread_num = Trim(spatial_numel, 1, 8);
@@ -739,8 +818,8 @@ TileConfigMap BuildPureStaticShapeConfig(
       reduce_method = BlockReduceMethod();
     }
   } else {  // last_dim == "S"
-    sp_thread_num = 32;
-    int64_t remain_spatial_numel = CeilDiv(spatial_numel, 32);
+    sp_thread_num = warp_size;
+    int64_t remain_spatial_numel = CeilDiv(spatial_numel, warp_size);
     if (reduce_numel <= 16) {
       sp_thread_num *= Trim(remain_spatial_numel, 1, 8);
     } else {
@@ -781,7 +860,7 @@ TileConfigMap BuildPureStaticShapeConfig(
 
   int64_t sp_upper_bound = base_info->spatial_numel > 1 ? kMaxNumel : 1;
   int64_t rd_upper_bound = base_info->reduce_numel > 1 ? kMaxNumel : 1;
-  int64_t warp_num = Trim(sp_thread_num * rd_thread_num / 32, 1, 32);
+  int64_t warp_num = Trim(sp_thread_num * rd_thread_num / warp_size, 1, 32);
   BucketInfo bucket_info{1, sp_upper_bound, 1, rd_upper_bound};
   TileConfig tile_config{warp_num,
                          /* tree_reduce_num = */ rd_thread_num,
@@ -796,6 +875,8 @@ TileConfigMap BuildPureStaticShapeConfig(
 TileConfigMap BuildStaticSpatialConfig(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const common::Target& target) {
+  int warp_size = GetWarpSize(target);
+  int max_threads = target.max_num_threads();
   const auto& last_dim = base_info->iter_space_type.back().first;
   const int sm_count = target.get_multi_processor_count();
   const int64_t spatial_numel = base_info->spatial_numel;
@@ -813,18 +894,25 @@ TileConfigMap BuildStaticSpatialConfig(
               {8, 256, 1, 1, 1, -1, BlockReduceMethod()});
 
     if (rd_block_num > 1 && base_info->can_apply_grid_reduce) {
-      int64_t rd_threshold = rd_block_num * min_loops * 1024;
+      int64_t rd_threshold = rd_block_num * min_loops * max_threads;
       collector({1, kMaxNumel, 2049, rd_threshold},
-                {32, 1024, 1, 1, 1, -1, BlockReduceMethod()});
+                {warp_size, max_threads, 1, 1, 1, -1, BlockReduceMethod()});
       collector({1, kMaxNumel, rd_threshold + 1, kMaxNumel},
-                {32, 1024, rd_block_num, 1, 1, -1, BlockReduceMethod()});
+                {warp_size,
+                 max_threads,
+                 rd_block_num,
+                 1,
+                 1,
+                 -1,
+                 BlockReduceMethod()});
     } else {
       collector({1, kMaxNumel, 2049, kMaxNumel},
-                {32, 1024, 1, 1, 1, -1, BlockReduceMethod()});
+                {warp_size, max_threads, 1, 1, 1, -1, BlockReduceMethod()});
     }
 
   } else {  // last_dim == "S"
-    int64_t sp_block_num = std::max(CeilDiv(spatial_numel, 32), int64_t(1));
+    int64_t sp_block_num =
+        std::max(CeilDiv(spatial_numel, warp_size), int64_t(1));
     int64_t rd_block_num = FloorPow2(sm_count / sp_block_num);
 
     if (rd_block_num > 1 && base_info->can_apply_grid_reduce) {
@@ -845,6 +933,8 @@ TileConfigMap BuildStaticSpatialConfig(
 TileConfigMap BuildStaticReduceConfig(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const common::Target& target) {
+  int warp_size = GetWarpSize(target);
+  int max_threads = target.max_num_threads();
   const auto& last_dim = base_info->iter_space_type.back().first;
 
   TileConfigCollector collector;
@@ -865,13 +955,13 @@ TileConfigMap BuildStaticReduceConfig(
                 {warp_num, tree_reduce_num, 1, 1, 1, -1, BlockReduceMethod()});
     } else {
       collector({1, kMaxNumel, 2049, kMaxNumel},
-                {32, 1024, 1, 1, 1, -1, BlockReduceMethod()});
+                {warp_size, max_threads, 1, 1, 1, -1, BlockReduceMethod()});
     }
   } else {  // last_dim == "S"
     if (base_info->reduce_numel == 1) {
       collector({1, 1023, 1, 1}, {-1, 1, 1, 1, 1, -1, NoneReduceMethod()});
       collector({1024, kMaxNumel, 1, 1},
-                {32, 1, 1, 4, 1, -1, NoneReduceMethod()});
+                {warp_size, 1, 1, 4, 1, -1, NoneReduceMethod()});
     } else if (base_info->reduce_numel <= 16) {
       collector({1, kMaxNumel, 1, 1}, {8, 1, 1, 1, 1, -1, NoneReduceMethod()});
     } else {
@@ -886,6 +976,8 @@ TileConfigMap BuildStaticReduceConfig(
 TileConfigMap BuildDynamicShapeConfig(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const common::Target& target) {
+  int warp_size = GetWarpSize(target);
+  int max_threads = target.max_num_threads();
   const auto& last_dim = base_info->iter_space_type.back().first;
 
   TileConfigCollector collector;
@@ -897,7 +989,7 @@ TileConfigMap BuildDynamicShapeConfig(
     collector({1, kMaxNumel, 257, 2048},
               {8, 256, 1, 1, 1, 8, BlockReduceMethod()});
     collector({1, kMaxNumel, 2049, kMaxNumel},
-              {32, 1024, 1, 1, 1, -1, BlockReduceMethod()});
+              {warp_size, max_threads, 1, 1, 1, -1, BlockReduceMethod()});
   } else {  // last_dim == "S"
     collector({1, kMaxNumel, 1, kMaxNumel},
               {16, 16, 1, 1, 1, -1, DiscreteReduceMethod()});

@@ -41,7 +41,7 @@ struct CustomDeviceArch {
 /**
  * The architecture used by the target. Determines the instruction set to use.
  */
-using ArchBase = std::variant<  // ADT 是否只需要处理这一处
+using ArchBase = std::variant<
 #define LIST_CINN_ARCH_ALTERNATIVE(class_name) class_name,
     CINN_ARCH_CLASS_NAMES(LIST_CINN_ARCH_ALTERNATIVE)
 #undef LIST_CINN_ARCH_ALTERNATIVE

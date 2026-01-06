@@ -654,6 +654,37 @@ class CustomDevice : public DeviceInterface {
     return blocks_per_mp;
   }
 
+  size_t GetWarpSize(size_t dev_id) override {
+    const auto device = &devices_pool[dev_id];
+    size_t warp_size = 0;
+    if (pimpl_->get_warp_size) {
+      pimpl_->get_warp_size(device, &warp_size);
+    }
+    VLOG(10) << Type() << " get warp size " << warp_size;
+    return warp_size;
+  }
+
+  size_t GetMaxRegistersPerMultiProcessor(size_t dev_id) override {
+    const auto device = &devices_pool[dev_id];
+    size_t registers_per_mp = 0;
+    if (pimpl_->get_max_registers_per_mp) {
+      pimpl_->get_max_registers_per_mp(device, &registers_per_mp);
+    }
+    VLOG(10) << Type() << " get registers per multiprocessor "
+             << registers_per_mp;
+    return registers_per_mp;
+  }
+
+  size_t GetPreferredVectorWidth(size_t dev_id) override {
+    const auto device = &devices_pool[dev_id];
+    size_t vector_width = 0;
+    if (pimpl_->get_vector_width) {
+      pimpl_->get_vector_width(device, &vector_width);
+    }
+    VLOG(10) << Type() << " get preferred vector width " << vector_width;
+    return vector_width;
+  }
+
   std::array<unsigned int, 3> GetMaxGridDimSize(size_t dev_id) override {
     const auto device = &devices_pool[dev_id];
     std::array<unsigned int, 3> grid_dim_size = {0, 0, 0};
@@ -1288,11 +1319,7 @@ class CustomDevice : public DeviceInterface {
 
   // 新增：获取 CINN 插件能力的接口
   C_CinnInterface* GetCinnInterface() override {
-    if (pimpl_->size >=
-        offsetof(C_DeviceInterface, cinn_interface) + sizeof(void*)) {
-      return pimpl_->cinn_interface;
-    }
-    return nullptr;
+    return pimpl_->cinn_interface;
   }
 
  private:
@@ -1394,6 +1421,9 @@ bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
   CHECK_INTERFACE(get_max_threads_per_block, false);
   CHECK_INTERFACE(get_max_shared_mem_per_block, false);
   CHECK_INTERFACE(get_max_blocks_per_mp, false);
+  CHECK_INTERFACE(get_warp_size, false);
+  CHECK_INTERFACE(get_max_registers_per_mp, false);
+  CHECK_INTERFACE(get_vector_width, false);
   CHECK_INTERFACE(get_max_grid_dim_size, false);
   CHECK_INTERFACE(get_max_block_dim_size, false);
   CHECK_INTERFACE(init_eigen_device, false);

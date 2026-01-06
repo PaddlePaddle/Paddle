@@ -59,7 +59,7 @@ std::string GetExternFuncNameArchPrefixImpl(common::HygonDCUArchSYCL,
 
 std::string GetExternFuncNameArchPrefixImpl(common::CustomDeviceArch,
                                             const std::string& func_name) {
-  return "customDevice_";
+  return "custom_device_";
 }
 
 std::string GetExternFuncNameArchPrefix(common::Arch arch,

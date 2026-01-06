@@ -77,6 +77,21 @@ size_t DeviceInterface::GetMaxBlocksPerMultiProcessor(size_t dev_id) {
   return 0;
 }
 
+size_t DeviceInterface::GetWarpSize(size_t dev_id) {
+  VLOG(10) << Type() << " get warp size " << 0;
+  return 0;
+}
+
+size_t DeviceInterface::GetMaxRegistersPerMultiProcessor(size_t dev_id) {
+  VLOG(10) << Type() << " get max registers per multiprocessor " << 0;
+  return 0;
+}
+
+size_t DeviceInterface::GetPreferredVectorWidth(size_t dev_id) {
+  VLOG(10) << Type() << " get preferred vector width " << 0;
+  return 0;
+}
+
 std::array<unsigned int, 3> DeviceInterface::GetMaxGridDimSize(size_t dev_id) {
   VLOG(10) << Type() << " get max grid dim size [" << 0 << ", " << 0 << ", "
            << 0 << "]";

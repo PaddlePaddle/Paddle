@@ -85,6 +85,12 @@ class DeviceInterface {  // Driver / Runtime
 
   virtual size_t GetMaxBlocksPerMultiProcessor(size_t dev_id);
 
+  virtual size_t GetWarpSize(size_t dev_id);
+
+  virtual size_t GetMaxRegistersPerMultiProcessor(size_t dev_id);
+
+  virtual size_t GetPreferredVectorWidth(size_t dev_id);
+
   virtual std::array<unsigned int, 3> GetMaxGridDimSize(size_t dev_id);
 
   virtual std::array<unsigned int, 3> GetMaxBlockDimSize(size_t dev_id);
