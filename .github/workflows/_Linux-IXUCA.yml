@@ -219,6 +219,19 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
           set -x
+          set -euo pipefail
+
+          trap '\''{
+            ret=$?
+            echo "============================================================"
+            echo "IXUCA CI TEST FAILED"
+            echo "Please contact the following maintainers for help:"
+            echo "  - YqGe585"
+            echo "  - yongqiangma"
+            echo "============================================================"
+            exit $ret
+          }'\'' ERR
+
           echo "::group::Install dependencies"
           python -m pip install PyGithub
           python -m pip install wheel
@@ -237,17 +250,6 @@ jobs:
           cd tests/
           export FLAG_SKIP_FLOAT64=1
           bash run_test.sh
-          ret=$?
-
-          if [ $ret -ne 0 ]; then
-            echo "============================================================"
-            echo "IXUCA CI TEST FAILED"
-            echo "Please contact the following maintainers for help:"
-            echo "  - YqGe585"
-            echo "  - yongqiangma"
-            echo "============================================================"
-            exit $ret
-          fi
           '
 
       - name: Terminate and delete the container
