@@ -38,10 +38,27 @@ static void GetRowsCols(const std::vector<int64_t> &shape,
 template <typename T, typename Context>
 void RMSNormFwdKernel(const Context &dev_ctx,
                       const DenseTensor &x,
-                      const DenseTensor &scale,
-                      float epsilon,
+                      const paddle::optional<DenseTensor> &scale_opt,
+                      const std::vector<int64_t> &normalized_shape,
+                      double epsilon,
                       DenseTensor *y,
                       DenseTensor *invvar) {
+  int begin_norm_axis = x.dims().size() - normalized_shape.size();
+  PADDLE_ENFORCE_EQ(
+      begin_norm_axis,
+      x.dims().size() - 1,
+      common::errors::InvalidArgument(
+          "XPU RMSNorm only supports begin_norm_axis=%d, but got %d",
+          x.dims().size() - 1,
+          begin_norm_axis));
+
+  auto *scale_ptr = scale_opt.get_ptr();
+  if (scale_ptr == nullptr) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Scale must be provided for RMSNorm backward"));
+  }
+  const DenseTensor &scale = *scale_ptr;
+
   int64_t rows, cols;
   GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
 
@@ -123,12 +140,29 @@ void RMSNormFwdKernel(const Context &dev_ctx,
 template <typename T, typename Context>
 void RMSNormBwdKernel(const Context &dev_ctx,
                       const DenseTensor &x,
-                      const DenseTensor &scale,
+                      const paddle::optional<DenseTensor> &scale_opt,
                       const DenseTensor &invvar,
                       const DenseTensor &y_grad,
-                      float epsilon,
+                      const std::vector<int64_t> &normalized_shape,
+                      double epsilon,
                       DenseTensor *x_grad,
                       DenseTensor *scale_grad) {
+  int begin_norm_axis = x.dims().size() - normalized_shape.size();
+  PADDLE_ENFORCE_EQ(
+      begin_norm_axis,
+      x.dims().size() - 1,
+      common::errors::InvalidArgument(
+          "XPU RMSNorm only supports begin_norm_axis=%d, but got %d",
+          x.dims().size() - 1,
+          begin_norm_axis));
+
+  auto *scale_ptr = scale_opt.get_ptr();
+  if (scale_ptr == nullptr) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Scale must be provided for RMSNorm backward"));
+  }
+  const DenseTensor &scale = *scale_ptr;
+
   int64_t rows, cols;
   GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
   dev_ctx.template Alloc<T>(x_grad);

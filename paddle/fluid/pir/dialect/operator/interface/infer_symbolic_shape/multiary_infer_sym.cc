@@ -3427,20 +3427,34 @@ bool RmsNormOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &scale_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  std::vector<int64_t> normalized_shape =
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "normalized_shape");
 
   std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
-  // NOTE(large-tensor): tensor indices are small integers
-  int begin_norm_axis = static_cast<int>(x_dims.size() - 1);
+  int x_dims_size = x_dims.size();
+  int normalized_shape_size = normalized_shape.size();
+  int begin_norm_axis = x_dims_size - normalized_shape_size;
 
   // Flatten x_dims to 2D and get dim[1]
-  symbol::DimExpr matrix_dim_1 = x_dims[begin_norm_axis];
-  for (std::size_t i = begin_norm_axis + 1; i < x_dims.size(); ++i) {
-    matrix_dim_1 = matrix_dim_1 * x_dims[i];
+  PADDLE_ENFORCE_LT(normalized_shape_size,
+                    x_dims_size,
+                    "normalized_shape must be less than x_dims");
+  for (int i = 0; i < normalized_shape_size; i++) {
+    infer_context->AddEqualCstr(
+        x_dims[x_dims_size - i - 1],
+        symbol::DimExpr(normalized_shape[normalized_shape_size - i - 1]));
   }
 
   if (!scale_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
     std::vector<symbol::DimExpr> scale_dims = scale_shape_or_data.shape();
-    infer_context->AddEqualCstr(scale_dims[0], matrix_dim_1);
+    PADDLE_ENFORCE_EQ(
+        scale_dims.size(),
+        normalized_shape_size,
+        "scale_dims.size() must be equal to normalized_shape_size");
+    for (int i = 0; i < normalized_shape_size; i++) {
+      infer_context->AddEqualCstr(scale_dims[i],
+                                  symbol::DimExpr(normalized_shape[i]));
+    }
   }
 
   // Set output shapes
