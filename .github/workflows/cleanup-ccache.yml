@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [develop] # Remove before merge, just for testing
   schedule:
-    - cron: "0 0 * * 0" # Weekly on Sundays
+    - cron: "0 16 * * FRI" # Weekly on Saturday at 00:00 UTC+8
   workflow_dispatch:
 
 concurrency:
@@ -61,7 +61,7 @@ jobs:
         run: |
           docker exec -t ${container_name} bash -c '
             CFS_CCACHE_DIR="${CCACHE_SECONDARY_STORAGE#file://}"
-            ccache --trim-dir ${CFS_CCACHE_DIR} --trim-max-size 57G
+            ccache --trim-dir ${CFS_CCACHE_DIR} --trim-max-size 200G
           '
 
       - name: Terminate and delete the container
