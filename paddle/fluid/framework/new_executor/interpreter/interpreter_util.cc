@@ -1011,8 +1011,8 @@ void BuildOpFuncList(const phi::Place& place,
         auto* var = local_scope->FindVar(vname);
         if (var == nullptr) continue;
         const phi::DenseTensor* tensor{nullptr};
-        if (var->IsType<phi::DenseTensor>()) {
-          tensor = &var->Get<phi::DenseTensor>();
+        if (var->IsType<DenseTensor>()) {
+          tensor = &var->Get<DenseTensor>();
         } else {
           VLOG(6) << vname << " is not DenseTensor";
           continue;
@@ -1027,8 +1027,8 @@ void BuildOpFuncList(const phi::Place& place,
         auto* var = local_scope->FindVar(vname);
         if (var == nullptr) continue;
         const phi::DenseTensor* tensor{nullptr};
-        if (var->IsType<phi::DenseTensor>()) {
-          tensor = &var->Get<phi::DenseTensor>();
+        if (var->IsType<DenseTensor>()) {
+          tensor = &var->Get<DenseTensor>();
         } else {
           VLOG(6) << vname << "  is not DenseTensor";
           continue;
@@ -1100,9 +1100,9 @@ void BuildOpFuncList(const phi::Place& place,
         }
 
         VLOG(6) << "Erase variable " << var_name;
-        if (var->IsType<phi::DenseTensor>()) {
+        if (var->IsType<DenseTensor>()) {
           garbages->emplace_back(
-              var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+              var->GetMutable<DenseTensor>()->MoveMemoryHolder());
         } else if (var->IsType<phi::SelectedRows>()) {
           garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
                                      ->mutable_value()
@@ -1147,9 +1147,9 @@ void BuildOpFuncList(const phi::Place& place,
     auto* var = local_scope->FindVar(var_name);
     if (var == nullptr) continue;
     VLOG(6) << "Erase variable " << var_name;
-    if (var->IsType<phi::DenseTensor>()) {
+    if (var->IsType<DenseTensor>()) {
       garbages->emplace_back(
-          var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+          var->GetMutable<DenseTensor>()->MoveMemoryHolder());
     } else if (var->IsType<phi::SelectedRows>()) {
       garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
                                  ->mutable_value()

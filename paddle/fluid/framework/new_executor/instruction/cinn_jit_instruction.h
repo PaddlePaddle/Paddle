@@ -60,7 +60,7 @@ class CinnJitInstruction : public InstructionBase {
 
   // Tensors that hold the temporary spaces used by the kernel. These tensors
   // are managed by CinnJitInstruction, and not exposed to phi executor.
-  std::vector<phi::DenseTensor> temp_space_tensors_;
+  std::vector<DenseTensor> temp_space_tensors_;
 
   ::pir::Operation* op_{nullptr};  // not owned
 };
