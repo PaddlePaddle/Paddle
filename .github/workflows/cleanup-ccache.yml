@@ -7,6 +7,10 @@ on:
     - cron: "0 0 * * 0" # Weekly on Sundays
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
 env:
   TASK: cleanup-ccache-weekly
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
