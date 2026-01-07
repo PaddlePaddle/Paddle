@@ -61,7 +61,7 @@ void MatrixPowerFunction(const DenseTensor* X,
   int new_n = n;
   if (n > 0) {
     // newX = X
-    phi::Copy(dev_ctx, *X, dev_ctx.GetPlace(), false, &new_x);
+    Copy(dev_ctx, *X, dev_ctx.GetPlace(), false, &new_x);
   } else {
     // newX = X^{-1}, n = -n
     funcs::MatrixInverseFunctor<Context, T> mat_inv;
@@ -70,7 +70,7 @@ void MatrixPowerFunction(const DenseTensor* X,
   }
 
   if (new_n == 1) {
-    phi::Copy(dev_ctx, new_x, dev_ctx.GetPlace(), false, Out);
+    Copy(dev_ctx, new_x, dev_ctx.GetPlace(), false, Out);
     return;
   }
 
@@ -153,11 +153,11 @@ void MatrixPowerFunction(const DenseTensor* X,
                   static_cast<T>(1),
                   &temp_z,
                   static_cast<T>(0));
-      phi::Copy(dev_ctx, temp_z, dev_ctx.GetPlace(), false, &z);
+      Copy(dev_ctx, temp_z, dev_ctx.GetPlace(), false, &z);
     } else {
       z.Resize(X->dims());
       dev_ctx.template Alloc<T>(&z);
-      phi::Copy(dev_ctx, new_x, dev_ctx.GetPlace(), false, &z);
+      Copy(dev_ctx, new_x, dev_ctx.GetPlace(), false, &z);
     }
     if (bit == 1) {
       if (out_inited == true) {
@@ -168,9 +168,9 @@ void MatrixPowerFunction(const DenseTensor* X,
                     static_cast<T>(1),
                     &temp_out,
                     static_cast<T>(0));
-        phi::Copy(dev_ctx, temp_out, dev_ctx.GetPlace(), false, Out);
+        Copy(dev_ctx, temp_out, dev_ctx.GetPlace(), false, Out);
       } else {
-        phi::Copy(dev_ctx, z, dev_ctx.GetPlace(), false, Out);
+        Copy(dev_ctx, z, dev_ctx.GetPlace(), false, Out);
         out_inited = true;
       }
     }

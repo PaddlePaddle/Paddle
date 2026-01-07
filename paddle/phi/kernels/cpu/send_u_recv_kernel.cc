@@ -57,7 +57,7 @@ void GraphSendRecvCpuLoop(const int& input_size,
     for (int i = 0; i < input_size; ++i) {
       if (*(dst_count + i) == 0) continue;
       auto dst_slice = dst->Slice(i, i + 1);
-      auto eigen_dst = phi::EigenVector<T>::Flatten(dst_slice);
+      auto eigen_dst = EigenVector<T>::Flatten(dst_slice);
       eigen_dst = eigen_dst / static_cast<T>(*(dst_count + i));
     }
   } else if (reduce_op == "MIN" || reduce_op == "MAX") {

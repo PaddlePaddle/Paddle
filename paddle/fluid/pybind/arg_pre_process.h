@@ -44,6 +44,7 @@ void LogsumexpPreProcess(Value* x, std::vector<int>* axis, bool* reduce_all);
 
 void SumPreProcess(Value* x, Value* axis);
 void IsClosePreProcess(Value* x, Value* y, Value* rtol, Value* atol);
+void AllClosePreProcess(Value* x, Value* y, Value* rtol, Value* atol);
 
 void GridSamplePreProcess(Tensor* x,
                           Tensor* grid,

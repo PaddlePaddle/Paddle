@@ -68,11 +68,11 @@ template <typename DeviceContext, typename T>
 class Vol2ColFunctor {
  public:
   void operator()(const DeviceContext& dev_ctx,
-                  const phi::DenseTensor& vol,
+                  const DenseTensor& vol,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  phi::DenseTensor* col,
+                  DenseTensor* col,
                   const DataLayout data_layout = DataLayout::NCHW) const;
 };
 
@@ -80,11 +80,11 @@ template <typename DeviceContext, typename T>
 class Col2VolFunctor {
  public:
   void operator()(const DeviceContext& dev_ctx,
-                  const phi::DenseTensor& col,
+                  const DenseTensor& col,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  phi::DenseTensor* vol,
+                  DenseTensor* vol,
                   const DataLayout data_layout = DataLayout::NCHW) const;
 };
 

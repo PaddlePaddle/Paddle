@@ -377,11 +377,11 @@ void SliceArrayGradKernel(const Context& dev_ctx,
 
   int d_out_size = out_grad.size();
   for (int i = 0; i < d_out_size; ++i) {
-    phi::Copy<Context>(dev_ctx,
-                       out_grad[i],
-                       dev_ctx.GetPlace(),
-                       false,
-                       &input_grad->at(start + i));
+    Copy<Context>(dev_ctx,
+                  out_grad[i],
+                  dev_ctx.GetPlace(),
+                  false,
+                  &input_grad->at(start + i));
   }
 }
 
@@ -406,7 +406,7 @@ void SliceArrayDenseGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(in_grad_tensor);
     functor(dev_ctx, in_grad_tensor, static_cast<T>(0));
   }
-  phi::Copy<Context>(
+  Copy<Context>(
       dev_ctx, out_grad, dev_ctx.GetPlace(), false, &input_grad->at(start));
 }
 

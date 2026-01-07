@@ -33,42 +33,42 @@ class GlooCommContext final : public CommContext {
                   std::shared_ptr<gloo::rendezvous::Store> store,
                   std::shared_ptr<gloo::transport::Device> device);
 
-  void Broadcast(phi::DenseTensor* out_tensor,
-                 const phi::DenseTensor& in_tensor,
+  void Broadcast(DenseTensor* out_tensor,
+                 const DenseTensor& in_tensor,
                  int root,
                  uint32_t tag = 0);
 
-  void AllReduce(phi::DenseTensor* out_tensor,
-                 const phi::DenseTensor& in_tensor,
+  void AllReduce(DenseTensor* out_tensor,
+                 const DenseTensor& in_tensor,
                  int reduce_type,
                  uint32_t tag = 0);
 
-  void Reduce(phi::DenseTensor* out_tensor,
-              const phi::DenseTensor& in_tensor,
+  void Reduce(DenseTensor* out_tensor,
+              const DenseTensor& in_tensor,
               int reduce_type,
               int root,
               uint32_t tag = 0);
 
-  void AllGather(phi::DenseTensor* out_tensor,
-                 const phi::DenseTensor& in_tensor,
+  void AllGather(DenseTensor* out_tensor,
+                 const DenseTensor& in_tensor,
                  uint32_t tag = 0);
 
-  void Gather(phi::DenseTensor* out_tensor,
-              const phi::DenseTensor& in_tensor,
+  void Gather(DenseTensor* out_tensor,
+              const DenseTensor& in_tensor,
               int src,
               uint32_t tag = 0);
 
-  void Scatter(phi::DenseTensor* out_tensor,
-               const phi::DenseTensor& in_tensor,
+  void Scatter(DenseTensor* out_tensor,
+               const DenseTensor& in_tensor,
                int src,
                int size = 0,
                uint32_t tag = 0);
 
   void Barrier();
 
-  void Send(const phi::DenseTensor& in_tensor, int dst, uint32_t tag = 0);
+  void Send(const DenseTensor& in_tensor, int dst, uint32_t tag = 0);
 
-  void Recv(phi::DenseTensor* out_tensor, int src, uint32_t tag = 0);
+  void Recv(DenseTensor* out_tensor, int src, uint32_t tag = 0);
 
  private:
   DISABLE_COPY_AND_ASSIGN(GlooCommContext);

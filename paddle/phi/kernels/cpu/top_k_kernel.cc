@@ -149,7 +149,7 @@ void TopkKernel(const Context& dev_ctx,
   const auto& in_dims = input->dims();
   // 0d input x
   if (in_dims.size() == 0) {
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     dev_ctx.template Alloc<int64_t>(indices);
     funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;

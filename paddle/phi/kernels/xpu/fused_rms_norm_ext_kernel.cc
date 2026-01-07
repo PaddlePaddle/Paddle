@@ -150,12 +150,11 @@ void RMSLnBwd(const Context &dev_ctx,
   } else {
     // lora specific, scale_grad is nullptr
     if (scale.dtype() == phi::DataType::BFLOAT16) {
-      actual_scale_grad =
-          phi::EmptyLike<phi::bfloat16, Context>(dev_ctx, scale);
+      actual_scale_grad = EmptyLike<phi::bfloat16, Context>(dev_ctx, scale);
     } else if (scale.dtype() == phi::DataType::FLOAT16) {
-      actual_scale_grad = phi::EmptyLike<phi::float16, Context>(dev_ctx, scale);
+      actual_scale_grad = EmptyLike<phi::float16, Context>(dev_ctx, scale);
     } else if (scale.dtype() == phi::DataType::FLOAT32) {
-      actual_scale_grad = phi::EmptyLike<float, Context>(dev_ctx, scale);
+      actual_scale_grad = EmptyLike<float, Context>(dev_ctx, scale);
     } else {
       PADDLE_THROW(
           common::errors::InvalidArgument("The dtype of scale must be FLOAT32, "

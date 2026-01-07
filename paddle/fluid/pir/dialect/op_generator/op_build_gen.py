@@ -33,6 +33,8 @@ _INFERMETA_NEED_META_CONFIG = {
     'CSoftmaxWithCrossEntropyInferMeta',
     'CSoftmaxWithMultiLabelCrossEntropyInferMeta',
     'DepthwiseConvInferMeta',
+    'DepthwiseConv2dBiasInferMeta',
+    'DepthwiseConv3dBiasInferMeta',
     'DistributeFpnProposalsInferMeta',
     'ElementwiseRawInferMeta',
     'GridSampleBaseInferMeta',

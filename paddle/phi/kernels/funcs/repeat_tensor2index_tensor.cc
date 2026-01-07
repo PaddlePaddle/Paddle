@@ -26,11 +26,11 @@ template <typename Context, typename RepeatsT>
 void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
     const Context &dev_ctx, const DenseTensor &repeats, DenseTensor *index) {
   DenseTensor repeats_cpu_copy;
-  if (repeats.place().GetType() != phi::AllocationType::CPU) {
+  if (repeats.place().GetType() != AllocationType::CPU) {
     phi::Copy(dev_ctx, repeats, phi::CPUPlace(), true, &repeats_cpu_copy);
   }
   const RepeatsT *repeats_data =
-      repeats.place().GetType() == phi::AllocationType::CPU
+      repeats.place().GetType() == AllocationType::CPU
           ? repeats.data<RepeatsT>()
           : repeats_cpu_copy.data<RepeatsT>();
 

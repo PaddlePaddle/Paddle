@@ -155,7 +155,7 @@ class LazyZeros<phi::GPUContext, T> {
     size_t xs_size = xs.size();
     if (xs_size == 0) return;
 
-    const auto& cpu_place = phi::CPUPlace();
+    const auto& cpu_place = CPUPlace();
     // alloc each tensor's start index and copy to device
     auto h_in_starts_mem =
         phi::memory_utils::Alloc(cpu_place, (xs_size + 1) * sizeof(int64_t));
@@ -284,7 +284,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
   size_t xs_size = xs.size();
   if (xs_size == 0) return;
 
-  const auto& cpu_place = phi::CPUPlace();
+  const auto& cpu_place = CPUPlace();
   // calculate each tensor's start index and copy to device
   auto h_starts_tensor =
       phi::memory_utils::Alloc(cpu_place, (xs_size + 1) * sizeof(int64_t));

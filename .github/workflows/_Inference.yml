@@ -32,7 +32,7 @@ jobs:
     if: ${{ inputs.clone-can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'inference'
+      workflow-name: "inference"
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -66,8 +66,9 @@ jobs:
           WITH_NVCC_LAZY: "OFF"
           PYTHON_ABI: cp310-cp310
           CACHE_DIR: /root/.cache/inference
-          CCACHE_DIR: /root/.ccache/inference
-          CCACHE_MAXSIZE: 150G
+          CCACHE_DIR: "/home/data/shared/.ccache/l1" # L1 cache on machine shared dir
+          CCACHE_SECONDARY_STORAGE: "file:///home/data/cfs/.ccache/l2" # L2 cache on cfs
+          CCACHE_MAXSIZE: 50G
           CCACHE_LIMIT_MULTIPLE: "0.8"
           CUDA_ARCH_NAME: Pascal
           PADDLE_CUDA_INSTALL_REQUIREMENTS: "ON"
@@ -226,8 +227,7 @@ jobs:
           docker run -d -t --gpus all --name ${container_name} \
           -v "/home/data/cfs:/home/data/cfs" \
           -v "/home/data/cfs/.cache:/root/.cache" \
-          -v "/home/data/cfs/.ccache:/root/.ccache" \
-          -v "/home/data/cfs/.ccache/inference:/root/.ccache/inference" \
+          -v "/home/data/shared:/home/data/shared" \
           -v "/dev/shm:/dev/shm" \
           -v "${{ github.workspace }}/../../..:/action-runner" \
           -e BRANCH \
@@ -254,6 +254,7 @@ jobs:
           -e WITH_UNITY_BUILD \
           -e CACHE_DIR \
           -e CCACHE_DIR \
+          -e CCACHE_SECONDARY_STORAGE \
           -e CCACHE_MAXSIZE \
           -e CCACHE_LIMIT_MULTIPLE \
           -e ci_scripts \

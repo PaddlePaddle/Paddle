@@ -497,18 +497,16 @@ void BindProgram(py::module *m) {
              pir::IrMapping &mapper,
              Block *block) { return self->CopyToBlock(mapper, block); },
           return_value_policy::reference)
-      .def(
-          "list_vars",
-          [](std::shared_ptr<Program> self) {
-            std::vector<pir::Value> vars;
-            for (auto op : self->block()->ops()) {
-              for (auto var : op->results()) {
-                vars.push_back(var);
-              }
-            }
-            return vars;
-          },
-          return_value_policy::reference)
+      .def("list_vars",
+           [](std::shared_ptr<Program> self) {
+             py::list vars;
+             for (auto op : self->block()->ops()) {
+               for (auto var : op->results()) {
+                 vars.append(var);
+               }
+             }
+             return vars;
+           })
       .def("_list_named_vars",
            [](std::shared_ptr<Program> self) {
              return name_analysis::GetAllNamedValues(*self);
@@ -2974,9 +2972,9 @@ void BindPassManager(pybind11::module *m) {
                } else if (py::isinstance<framework::Scope>(attr.second)) {
                  pass->SetNotOwned(attr.first,
                                    attr.second.cast<framework::Scope *>());
-               } else if (py::isinstance<phi::GPUPlace>(attr.second)) {
+               } else if (py::isinstance<GPUPlace>(attr.second)) {
                  pass->Set(attr.first,
-                           new phi::Place(attr.second.cast<phi::GPUPlace>()));
+                           new phi::Place(attr.second.cast<GPUPlace>()));
                } else {
                  PADDLE_THROW(common::errors::InvalidArgument(
                      "The pass attr is not supported this type."));

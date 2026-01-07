@@ -356,11 +356,11 @@ void GPUScatterNdAdd(const phi::GPUContext& dev_ctx,
   }
 }
 
-inline int64_t ensure_nonempty_size(const phi::DenseTensor& t, int64_t dim) {
+inline int64_t ensure_nonempty_size(const DenseTensor& t, int64_t dim) {
   return t.dims().size() == 0 ? 1 : t.dims()[dim];
 }
 
-inline int64_t ensure_nonempty_stride(const phi::DenseTensor& t, int64_t dim) {
+inline int64_t ensure_nonempty_stride(const DenseTensor& t, int64_t dim) {
   if (t.dims().size() == 0) {
     return 1;
   }
@@ -386,14 +386,14 @@ inline DDim ensure_nonempty_ddim(DDim dim) {
 inline DenseTensor as_strided(const DenseTensor& src,
                               const std::vector<int64_t>& shape,
                               const std::vector<int64_t>& strides) {
-  phi::DenseTensor out;
+  DenseTensor out;
   out.ShareDataWith(src);
   out.Resize(phi::make_ddim(shape));
   out.set_strides(phi::make_ddim(strides));
   return out;
 }
 
-inline DenseTensor restride_dim(const phi::DenseTensor& src,
+inline DenseTensor restride_dim(const DenseTensor& src,
                                 int dim,
                                 const std::vector<int64_t>& replacement_shape) {
   auto strides = ensure_nonempty_vec(common::vectorize(src.strides()));

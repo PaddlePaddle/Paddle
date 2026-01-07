@@ -522,9 +522,14 @@ class SingleCommGroupFullParamAssembler(BaseAssembler):
             else:
                 local_tensor = paddle.empty(item.slice_shape, dtype=item.dtype)
 
+            on_cpu = local_tensor.place.is_cpu_place()
+            if on_cpu:
+                local_tensor = local_tensor.cuda()
             paddle.distributed.broadcast(
                 local_tensor, src=cur_src_rank, group=self.process_group
             )
+            if on_cpu:
+                local_tensor = local_tensor.cpu()
 
             shard_desc = ShardedWeightDesc(
                 key=item.tensor_name,

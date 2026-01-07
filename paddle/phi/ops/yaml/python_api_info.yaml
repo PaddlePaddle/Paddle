@@ -111,6 +111,14 @@
   args_alias:
     use_default_mapping : True
 
+- op : allclose
+  name : [paddle.allclose, paddle.Tensor.allclose]
+  args_alias:
+    x: [input]
+    y: [other]
+  pre_process:
+    static_func: AllClosePreProcess(x, y, rtol,atol)
+
 - op : bmm
   name : [paddle.bmm, paddle.Tensor.bmm]
   args_alias:
@@ -305,3 +313,14 @@
   name: [paddle.sinh, paddle.Tensor.sinh]
   args_alias :
     use_default_mapping : True
+
+- op : conj
+  name: [paddle.conj, paddle.Tensor.conj]
+  args_alias :
+    use_default_mapping : True
+
+- op : baddbmm
+  name : [paddle.baddbmm, paddle.Tensor.baddbmm]
+  args_alias:
+    x : [batch1]
+    y : [batch2]

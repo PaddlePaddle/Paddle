@@ -51,33 +51,33 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
   }
 
   // make new tensor reduce_out
-  phi::DenseTensor new_y(out_y->type());
+  DenseTensor new_y(out_y->type());
   new_y.ShareDataWith(*out_y);
   new_y.Resize(common::make_ddim(update_dims));
 
   // make new tensor d_out
-  phi::DenseTensor new_dout(d_out->type());
+  DenseTensor new_dout(d_out->type());
   new_dout.ShareDataWith(*d_out);
   new_dout.Resize(common::make_ddim(update_dims));
   dev_ctx.Alloc(d_x, d_out->dtype());
 
-  phi::DenseTensor new_in_tensor(*in_x);
-  phi::DenseTensor new_dx(*d_x);
+  DenseTensor new_in_tensor(*in_x);
+  DenseTensor new_dx(*d_x);
 
   // make equal_out
-  phi::DenseTensor equal_out;
+  DenseTensor equal_out;
   equal_out.Resize(in_x->dims());
   dev_ctx.template Alloc<T>(&equal_out);
 
   // make new tensor equal_count
-  phi::DenseTensor equal_count;
+  DenseTensor equal_count;
   equal_count.Resize(common::make_ddim(update_dims));
   dev_ctx.template Alloc<T>(&equal_count);
 
   // compute
   // 1. equal_out = Equal(x, y)
-  std::vector<const phi::DenseTensor*> equal_inputs = {&new_y, &new_in_tensor};
-  std::vector<phi::DenseTensor*> equal_outputs = {&equal_out};
+  std::vector<const DenseTensor*> equal_inputs = {&new_y, &new_in_tensor};
+  std::vector<DenseTensor*> equal_outputs = {&equal_out};
   if (NanEqual)
     funcs::BroadcastKernel<T>(
         dev_ctx, equal_inputs, &equal_outputs, funcs::NanEqualFunctor<T>(), 0);

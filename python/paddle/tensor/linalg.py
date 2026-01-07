@@ -1370,11 +1370,11 @@ def cond(
         Tensor: computing results of condition number, its data type is the same as input Tensor ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)
-            >>> x = paddle.to_tensor([[1., 0, -1], [0, 1, 0], [1, 0, 1]])
+            >>> x = paddle.to_tensor([[1.0, 0.0, -1.0], [0.0, 1.0, 0.0], [1.0, 0.0, 1.0]])
 
             >>> # compute conditional number when p is None
             >>> out = paddle.linalg.cond(x)
@@ -1439,13 +1439,13 @@ def cond(
               [-1.03176904, -0.33741450, -0.29695082, -1.50258386]],
              [[ 0.67233968, -1.07747352,  0.80170447, -0.06695852],
               [-1.85003340, -0.23008066,  0.65083790,  0.75387722],
-              [ 0.61212337, -0.52664012,  0.19209868, -0.18707706],
+              [ 0.61212337, -0.52664012,  0.19209850, -0.18707688],
               [-0.00711021,  0.35236868, -0.40404350,  1.28656745]]])
 
             >>> a_cond_fro = paddle.linalg.cond(a, p='fro')
             >>> print(a_cond_fro)
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [6.37173700 , 35.15114594])
+            [6.37173700 , 35.15111160])
 
             >>> b = paddle.randn([2, 3, 4])
             >>> print(b)
@@ -1454,13 +1454,13 @@ def cond(
               [-0.84461296,  0.99335045, -1.23486686,  0.59551388],
               [-0.63035583, -0.98797107,  0.09410731,  0.47007179]],
              [[ 0.85850012, -0.98949534, -1.63086998,  1.07340240],
-              [-0.05492965,  1.04750168, -2.33754158,  1.16518629],
+              [-0.05492966,  1.04750192, -2.33754158,  1.16518629],
               [ 0.66847134, -1.05326962, -0.05703246, -0.48190674]]])
 
             >>> b_cond_2 = paddle.linalg.cond(b, p=2)
             >>> print(b_cond_2)
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [2.86566353, 6.85834455])
+            [2.86566353, 6.85834646])
 
     """
 

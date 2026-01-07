@@ -36,8 +36,8 @@ void CrossEntropyOpKernel(const Context& dev_ctx,
 
   int rank = x.dims().size();
   auto label_dims = labels->dims();
-  phi::DenseTensor x_2d = phi::ReshapeToMatrix(x, rank - 1);
-  phi::DenseTensor labels_2d, y_2d;
+  DenseTensor x_2d = phi::ReshapeToMatrix(x, rank - 1);
+  DenseTensor labels_2d, y_2d;
   if (label_dims.size() < rank) {
     labels_2d.ShareDataWith(*labels);
     labels_2d.Resize({common::product(label_dims), 1});

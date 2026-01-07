@@ -123,7 +123,7 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
                                                           info,
                                                           gesvdj_params));
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -203,7 +203,7 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
                                                           gesvdj_params));
     // check the error info
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -283,7 +283,7 @@ void GesvdjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
         info,
         gesvdj_params));
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -364,7 +364,7 @@ void GesvdjBatched<phi::complex128>(const phi::GPUContext& dev_ctx,
         info,
         gesvdj_params));
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -420,7 +420,7 @@ void SyevjBatched<float>(const phi::GPUContext& dev_ctx,
                                                          params));
 
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -475,7 +475,7 @@ void SyevjBatched<double>(const phi::GPUContext& dev_ctx,
                                                          info,
                                                          params));
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -539,7 +539,7 @@ void SyevjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
         info,
         params));
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -604,7 +604,7 @@ void SyevjBatched<phi::complex128>(const phi::GPUContext& dev_ctx,
         info,
         params));
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -665,7 +665,7 @@ void MatrixRankTolKernel(const Context& dev_ctx,
 
   // Must Copy X once, because the gesvdj will destroy the content when exit.
   DenseTensor x_tmp;
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &x_tmp);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &x_tmp);
   auto info = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int) * batches,
@@ -785,7 +785,7 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
 
   // Must Copy X once, because the gesvdj will destroy the content when exit.
   DenseTensor x_tmp;
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &x_tmp);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &x_tmp);
   auto info = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int) * batches,

@@ -238,6 +238,32 @@ PADDLE_API void DepthwiseConvInferMeta(const MetaTensor& input,
                                        MetaTensor* out,
                                        MetaConfig config = MetaConfig());
 
+PADDLE_API void DepthwiseConv2dBiasInferMeta(
+    const MetaTensor& input,
+    const MetaTensor& filter,
+    const MetaTensor& bias,
+    const std::vector<int>& strides,
+    const std::vector<int>& paddings,
+    const std::string& padding_algorithm,
+    int groups,
+    const std::vector<int>& dilations,
+    const std::string& data_format,
+    MetaTensor* out,
+    MetaConfig config = MetaConfig());
+
+PADDLE_API void DepthwiseConv3dBiasInferMeta(
+    const MetaTensor& input,
+    const MetaTensor& filter,
+    const MetaTensor& bias,
+    const std::vector<int>& strides,
+    const std::vector<int>& paddings,
+    const std::string& padding_algorithm,
+    int groups,
+    const std::vector<int>& dilations,
+    const std::string& data_format,
+    MetaTensor* out,
+    MetaConfig config = MetaConfig());
+
 PADDLE_API void DequantizeAbsMaxInferMeta(const MetaTensor& x,
                                           const MetaTensor& scale,
                                           float max_range,
@@ -749,7 +775,8 @@ PADDLE_API void ReduceAsInferMeta(const MetaTensor& x,
 
 PADDLE_API void RmsNormInferMeta(const MetaTensor& x,
                                  const MetaTensor& scale,
-                                 float epsilon,
+                                 const std::vector<int64_t>& normalized_shape,
+                                 double epsilon,
                                  MetaTensor* y,
                                  MetaTensor* invvar);
 

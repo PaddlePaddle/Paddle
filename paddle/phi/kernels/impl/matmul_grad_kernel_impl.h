@@ -112,7 +112,7 @@ static DenseTensor FoldBatchIntoAggregation(const Context& dev_ctx,
   if (in_dims.size() != 3) {
     return input;
   }
-  DenseTensor output = phi::TransposeLast2Dim<T>(dev_ctx, input);
+  DenseTensor output = TransposeLast2Dim<T>(dev_ctx, input);
   output.Resize({in_dims[0] * in_dims[2], in_dims[1]});
   return output;
 }
@@ -584,9 +584,9 @@ void MatmulGradKernel(const Context& dev_ctx,
             // original: [B, M, N] x [B, K, N]' -> [B, M, K] -(reduceB)-> [M, K]
             // new: [BN, M] x [BN, K] -> [M, K]
             DenseTensor out_grad_processed =
-                phi::TransposeLast2Dim<T>(dev_ctx, out_grad);
+                TransposeLast2Dim<T>(dev_ctx, out_grad);
             DenseTensor y_conj_processed =
-                phi::TransposeLast2Dim<T>(dev_ctx, y_conj);
+                TransposeLast2Dim<T>(dev_ctx, y_conj);
             int64_t BN = 1;
             std::vector<std::int64_t> y_processed_dims =
                 common::vectorize(y_conj_processed.dims());

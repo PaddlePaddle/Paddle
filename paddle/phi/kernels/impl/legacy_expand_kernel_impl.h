@@ -191,7 +191,7 @@ void LegacyExpandGradKernel(const Context& dev_ctx,
     auto* in0 = &out_grad;
     auto* out0 = in_grad;
     dev_ctx.template Alloc<T>(out0);
-    phi::Copy(dev_ctx, *in0, dev_ctx.GetPlace(), false, out0);
+    Copy(dev_ctx, *in0, dev_ctx.GetPlace(), false, out0);
   } else {
     PADDLE_ENFORCE_GE(dims,
                       1,

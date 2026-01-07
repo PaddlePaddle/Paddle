@@ -488,7 +488,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Barrier(
                     0,
                     common::errors::PreconditionNotMet(
                         "The barrier device id must greater or equal than 0."));
-  phi::GPUPlace place(opts.device_id);
+  GPUPlace place(opts.device_id);
   auto allocator = std::unique_ptr<phi::Allocator>(
       new paddle::experimental::DefaultAllocator(place));
   phi::DenseTensorMeta meta(phi::DataType::FLOAT32, phi::DDim{1});
@@ -923,18 +923,18 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(
     // gather global ranks in current group
     size_t gpu_global_rank_size = sizeof(int);
     auto gpu_global_rank = phi::memory_utils::Alloc(
-        phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId()),
+        GPUPlace(phi::backends::gpu::GetCurrentDeviceId()),
         gpu_global_rank_size);
 
-    phi::memory_utils::Copy(phi::GPUPlace(),
+    phi::memory_utils::Copy(GPUPlace(),
                             gpu_global_rank->ptr(),
-                            phi::CPUPlace(),
+                            CPUPlace(),
                             &global_rank_,
                             gpu_global_rank_size);
 
     size_t gpu_global_ranks_size = num_ranks * sizeof(int);
     auto gpu_global_ranks = phi::memory_utils::Alloc(
-        phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId()),
+        GPUPlace(phi::backends::gpu::GetCurrentDeviceId()),
         gpu_global_ranks_size);
 
     NCCL_CHECK(phi::dynload::ncclAllGather(gpu_global_rank->ptr(),
@@ -945,9 +945,9 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(
                                            comm_ctx->stream()));
 
     std::vector<int> global_ranks(num_ranks);
-    phi::memory_utils::Copy(phi::CPUPlace(),
+    phi::memory_utils::Copy(CPUPlace(),
                             global_ranks.data(),
-                            phi::GPUPlace(),
+                            GPUPlace(),
                             gpu_global_ranks->ptr(),
                             gpu_global_ranks_size);
 
@@ -1032,7 +1032,7 @@ void ProcessGroupNCCL::SyncCalcStream(const Place& place,
 
 void ProcessGroupNCCL::EagerConnect() {
   const auto deviceId = phi::backends::gpu::GetCurrentDeviceId();
-  const auto& place = phi::GPUPlace(deviceId);
+  const auto& place = GPUPlace(deviceId);
   const auto key = GetKeyFromPlace(place);
 
   platform::CUDADeviceGuard cuda_guard(place);
@@ -1049,7 +1049,7 @@ void ProcessGroupNCCL::EagerConnect() {
 void ProcessGroupNCCL::EagerConnectRingExchange(
     std::shared_ptr<phi::distributed::NCCLConfig> nccl_config_ptr) {
   std::vector<std::pair<int, int>> peers;
-  const auto& place = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
+  const auto& place = GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
 
   for (int rank = 0; rank < size_; rank++) {
     auto peer_rank = rank + 1 >= size_ ? 0 : rank + 1;

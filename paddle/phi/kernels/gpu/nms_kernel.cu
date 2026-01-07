@@ -82,7 +82,7 @@ void NMSKernel(const Context& dev_ctx,
   NMS<T><<<grid, block, 0, dev_ctx.stream()>>>(
       boxes.data<T>(), threshold, num_boxes, mask_dev);
   std::vector<uint64_t> mask_host(num_boxes * blocks_per_line);
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      mask_host.data(),
                      dev_ctx.GetPlace(),
                      mask_dev,
@@ -107,7 +107,7 @@ void NMSKernel(const Context& dev_ctx,
   auto* output_data = dev_ctx.template Alloc<int64_t>(output);
   memory_utils::Copy(dev_ctx.GetPlace(),
                      output_data,
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      output_host,
                      sizeof(int64_t) * last_box_num,
                      dev_ctx.stream());

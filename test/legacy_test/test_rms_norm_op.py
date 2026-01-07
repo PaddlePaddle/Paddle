@@ -49,9 +49,13 @@ class TestRMSNormOp(OpTest):
         np.random.seed(2023)
         x = np.random.randn(*self.x_shape).astype(self.dtype)
         scale = np.random.randn(self.x_shape[-1]).astype(self.dtype)
+        normalized_shape = [self.x_shape[-1]]
 
         self.inputs = {'x': x, 'scale': scale}
-        self.attrs = {'epsilon': self.epsilon}
+        self.attrs = {
+            'normalized_shape': normalized_shape,
+            'epsilon': self.epsilon,
+        }
         y_ref, invvar_ref = rms_norm_reference(x, scale, epsilon=self.epsilon)
         self.outputs = {'y': y_ref, 'invvar': invvar_ref}
 
@@ -150,6 +154,24 @@ class TestRMSNormAPI(unittest.TestCase):
         np.testing.assert_allclose(
             scale_grad_fused, scale.grad.numpy(), rtol=1e-5, atol=1e-5
         )
+
+
+class TestRMSNormValueError(unittest.TestCase):
+    def test_normalized_shape_type_error(self):
+        x = paddle.randn([2, 3])
+        with self.assertRaises(TypeError):
+            rms_norm(x, "invalid_shape")
+
+    def test_input_shape_mismatch(self):
+        x = paddle.randn([2, 3])
+        with self.assertRaises(ValueError):
+            rms_norm(x, [4])
+
+    def test_weight_shape_mismatch(self):
+        x = paddle.randn([2, 3])
+        weight = paddle.randn([4])
+        with self.assertRaises(ValueError):
+            rms_norm(x, [3], weight=weight)
 
 
 if __name__ == '__main__':

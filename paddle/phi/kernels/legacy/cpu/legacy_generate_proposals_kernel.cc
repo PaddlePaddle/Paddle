@@ -27,13 +27,13 @@
 namespace phi {
 
 template <typename T>
-std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
+std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
     const phi::CPUContext &dev_ctx,
-    const phi::DenseTensor &im_info_slice,
-    const phi::DenseTensor &anchors,
-    const phi::DenseTensor &variances,
-    const phi::DenseTensor &bbox_deltas_slice,  // [M, 4]
-    const phi::DenseTensor &scores_slice,       // [N, 1]
+    const DenseTensor &im_info_slice,
+    const DenseTensor &anchors,
+    const DenseTensor &variances,
+    const DenseTensor &bbox_deltas_slice,  // [M, 4]
+    const DenseTensor &scores_slice,       // [N, 1]
     int pre_nms_top_n,
     int post_nms_top_n,
     float nms_thresh,
@@ -42,7 +42,7 @@ std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
   auto *scores_data = scores_slice.data<T>();
 
   // Sort index
-  phi::DenseTensor index_t;
+  DenseTensor index_t;
   index_t.Resize({scores_slice.numel()});
   int *index = dev_ctx.Alloc<int>(&index_t);
   for (int i = 0; i < scores_slice.numel(); ++i) {
@@ -60,7 +60,7 @@ std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
     index_t.Resize({pre_nms_top_n});
   }
 
-  phi::DenseTensor scores_sel, bbox_sel, anchor_sel, var_sel;
+  DenseTensor scores_sel, bbox_sel, anchor_sel, var_sel;
   scores_sel.Resize({index_t.numel(), 1});
   bbox_sel.Resize({index_t.numel(), 4});
   anchor_sel.Resize({index_t.numel(), 4});
@@ -75,7 +75,7 @@ std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
   funcs::CPUGather<T>(dev_ctx, anchors, index_t, &anchor_sel);
   funcs::CPUGather<T>(dev_ctx, variances, index_t, &var_sel);
 
-  phi::DenseTensor proposals;
+  DenseTensor proposals;
   proposals.Resize({index_t.numel(), 4});
   dev_ctx.Alloc<T>(&proposals);
   funcs::BoxCoder<T>(dev_ctx, &anchor_sel, &bbox_sel, &var_sel, &proposals);
@@ -83,7 +83,7 @@ std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
   funcs::ClipTiledBoxes<T>(
       dev_ctx, im_info_slice, proposals, &proposals, false);
 
-  phi::DenseTensor keep;
+  DenseTensor keep;
   funcs::FilterBoxes<T>(
       dev_ctx, &proposals, min_size, im_info_slice, true, &keep);
   // Handle the case when there is no keep index left
@@ -92,14 +92,14 @@ std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
     bbox_sel.Resize({1, 4});
     dev_ctx.Alloc<T>(&bbox_sel);
     set_zero(dev_ctx, &bbox_sel, static_cast<T>(0));
-    phi::DenseTensor scores_filter;
+    DenseTensor scores_filter;
     scores_filter.Resize({1, 1});
     dev_ctx.Alloc<T>(&scores_filter);
     set_zero(dev_ctx, &scores_filter, static_cast<T>(0));
     return std::make_pair(bbox_sel, scores_filter);
   }
 
-  phi::DenseTensor scores_filter;
+  DenseTensor scores_filter;
   bbox_sel.Resize({keep.numel(), 4});
   scores_filter.Resize({keep.numel(), 1});
   dev_ctx.Alloc<T>(&bbox_sel);
@@ -110,7 +110,7 @@ std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
     return std::make_pair(bbox_sel, scores_filter);
   }
 
-  phi::DenseTensor keep_nms =
+  DenseTensor keep_nms =
       funcs::NMS<T>(dev_ctx, &bbox_sel, &scores_filter, nms_thresh, eta);
 
   if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
@@ -164,7 +164,7 @@ void GenerateProposalsKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(rpn_rois);
   dev_ctx.template Alloc<T>(rpn_roi_probs);
 
-  phi::DenseTensor bbox_deltas_swap, scores_swap;
+  DenseTensor bbox_deltas_swap, scores_swap;
   bbox_deltas_swap.Resize({num, h_bbox, w_bbox, c_bbox});
   dev_ctx.template Alloc<T>(&bbox_deltas_swap);
   scores_swap.Resize({num, h_score, w_score, c_score});
@@ -185,14 +185,14 @@ void GenerateProposalsKernel(const Context &dev_ctx,
 
   int64_t num_proposals = 0;
   for (int64_t i = 0; i < num; ++i) {
-    phi::DenseTensor im_info_slice = im_info->Slice(i, i + 1);
-    phi::DenseTensor bbox_deltas_slice = bbox_deltas_swap.Slice(i, i + 1);
-    phi::DenseTensor scores_slice = scores_swap.Slice(i, i + 1);
+    DenseTensor im_info_slice = im_info->Slice(i, i + 1);
+    DenseTensor bbox_deltas_slice = bbox_deltas_swap.Slice(i, i + 1);
+    DenseTensor scores_slice = scores_swap.Slice(i, i + 1);
 
     bbox_deltas_slice.Resize({h_bbox * w_bbox * c_bbox / 4, 4});
     scores_slice.Resize({h_score * w_score * c_score, 1});
 
-    std::pair<phi::DenseTensor, phi::DenseTensor> tensor_pair =
+    std::pair<DenseTensor, DenseTensor> tensor_pair =
         ProposalForOneImage<T>(dev_ctx,
                                im_info_slice,
                                anchors,
@@ -204,8 +204,8 @@ void GenerateProposalsKernel(const Context &dev_ctx,
                                nms_thresh,
                                min_size,
                                eta);
-    phi::DenseTensor &proposals = tensor_pair.first;
-    phi::DenseTensor &scores = tensor_pair.second;
+    DenseTensor &proposals = tensor_pair.first;
+    DenseTensor &scores = tensor_pair.second;
 
     funcs::AppendProposals(rpn_rois, 4 * num_proposals, proposals);
     funcs::AppendProposals(rpn_roi_probs, num_proposals, scores);
