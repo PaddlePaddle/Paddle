@@ -60,8 +60,8 @@ jobs:
       - name: Cleanup L2 ccache inside container
         run: |
           docker exec -t ${container_name} bash -c '
-            CFS_CCACHE_DIR="/home/data/cfs/.ccache/l2"
-            ccache --trim-dir ${CCACHE_SECONDARY_STORAGE} --trim-max-size 57G
+            CFS_CCACHE_DIR="${CCACHE_SECONDARY_STORAGE#file://}"
+            ccache --trim-dir ${CFS_CCACHE_DIR} --trim-max-size 57G
           '
 
       - name: Terminate and delete the container
