@@ -57,6 +57,7 @@ jobs:
         run: |
           docker exec -t ${container_name} bash -c '
             CFS_CCACHE_DIR="/home/data/cfs/.ccache/l2"
+            find $CFS_CCACHE_DIR -name "stats" -type f -delete
             # Show current ccache stats
             echo "Current L2 ccache size before cleanup:"
             du -sh ${CFS_CCACHE_DIR}
