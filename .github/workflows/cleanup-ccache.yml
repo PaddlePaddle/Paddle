@@ -57,17 +57,7 @@ jobs:
         run: |
           docker exec -t ${container_name} bash -c '
             CFS_CCACHE_DIR="/home/data/cfs/.ccache/l2"
-            find $CFS_CCACHE_DIR -name "stats" -type f -delete
-            # Show current ccache stats
-            echo "Current L2 ccache size before cleanup:"
-            du -sh ${CFS_CCACHE_DIR}
-            ccache -s
-            # Trim L2 ccache to free up space
-            ccache --trim-dir ${CFS_CCACHE_DIR} --trim-max-size 200G
-            # Show ccache stats after cleanup
-            echo "Current ccache size after cleanup:"
-            du -sh ${CFS_CCACHE_DIR}
-            ccache -s
+            ccache --trim-dir ${CCACHE_SECONDARY_STORAGE} --trim-max-size 57G
           '
 
       - name: Terminate and delete the container
