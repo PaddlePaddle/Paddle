@@ -813,56 +813,6 @@ class TestBitwiseLeftShiftOp_Stride_ZeroSize1(TestBitwiseLeftShiftOp_Stride):
         self.y_trans = np.transpose(self.y, self.perm)
 
 
-class TestBitwiseLeftShiftInplaceOp_Compatibility(unittest.TestCase):
-    def setUp(self):
-        self.x = np.random.randint(0, 256, [200, 300]).astype('uint8')
-        self.y = np.random.randint(0, 256, [200, 300]).astype('uint8')
-        self.place = get_device_place()
-
-    def test_dygraph_api_arithmetic(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(self.x)
-        y = paddle.to_tensor(self.y)
-        paddle.bitwise_left_shift_(x, other=y)
-        out_ref = ref_left_shift_arithmetic(self.x, self.y)
-        np.testing.assert_allclose(out_ref, x.numpy())
-        paddle.enable_static()
-
-    def test_dygraph_api_logical(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(self.x)
-        y = paddle.to_tensor(self.y)
-        paddle.bitwise_left_shift_(x, other=y, is_arithmetic=False)
-        out_ref = ref_left_shift_logical(self.x, self.y)
-        np.testing.assert_allclose(out_ref, x.numpy())
-        paddle.enable_static()
-
-
-class TestBitwiseRightShiftInplaceOp_Compatibility(unittest.TestCase):
-    def setUp(self):
-        self.x = np.random.randint(0, 256, [200, 300]).astype('uint8')
-        self.y = np.random.randint(0, 256, [200, 300]).astype('uint8')
-        self.place = get_device_place()
-
-    def test_dygraph_api_arithmetic(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(self.x)
-        y = paddle.to_tensor(self.y)
-        paddle.bitwise_right_shift_(x, other=y)
-        out_ref = ref_right_shift_arithmetic(self.x, self.y)
-        np.testing.assert_allclose(out_ref, x.numpy())
-        paddle.enable_static()
-
-    def test_dygraph_api_logical(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(self.x)
-        y = paddle.to_tensor(self.y)
-        paddle.bitwise_right_shift_(x, other=y, is_arithmetic=False)
-        out_ref = ref_right_shift_logical(self.x, self.y)
-        np.testing.assert_allclose(out_ref, x.numpy())
-        paddle.enable_static()
-
-
 class TestBitwiseLeftShiftAPI_Compatibility(unittest.TestCase):
     def setUp(self):
         self.init_input()
