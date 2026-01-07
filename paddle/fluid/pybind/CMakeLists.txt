@@ -149,13 +149,16 @@ set(PYBIND_SRCS
     args_mapper.cc
     size.cc)
 
-if(${PY_VERSION} VERSION_EQUAL "3.11")
+if("${PYTHON_VERSION_MINOR}" EQUAL "11" OR "${PY_VERSION}" MATCHES "^3\\.11")
   set(PYBIND_SRCS ${PYBIND_SRCS} sot/cpython_internals/internals_3_11.c)
-elseif(${PY_VERSION} VERSION_EQUAL "3.12")
+elseif("${PYTHON_VERSION_MINOR}" EQUAL "12" OR "${PY_VERSION}" MATCHES
+                                               "^3\\.12")
   set(PYBIND_SRCS ${PYBIND_SRCS} sot/cpython_internals/internals_3_12.c)
-elseif(${PY_VERSION} VERSION_EQUAL "3.13")
+elseif("${PYTHON_VERSION_MINOR}" EQUAL "13" OR "${PY_VERSION}" MATCHES
+                                               "^3\\.13")
   set(PYBIND_SRCS ${PYBIND_SRCS} sot/cpython_internals/internals_3_13.c)
-elseif(${PY_VERSION} VERSION_EQUAL "3.14")
+elseif("${PYTHON_VERSION_MINOR}" EQUAL "14" OR "${PY_VERSION}" MATCHES
+                                               "^3\\.14")
   set(PYBIND_SRCS ${PYBIND_SRCS} sot/cpython_internals/internals_3_14.c)
 endif()
 
