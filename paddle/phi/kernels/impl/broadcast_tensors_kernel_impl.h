@@ -105,7 +105,7 @@ void BroadcastTensorsKernel(const Context& dev_ctx,
       case 0: {
         const DenseTensor* src = in_tensors[i];
         DenseTensor* dst = out_tensors[i];
-        phi::Copy(dev_ctx, *src, src->place(), false, dst);
+        Copy(dev_ctx, *src, src->place(), false, dst);
         break;
       }
         SWITCH_OUT_RANK_CASE(1)

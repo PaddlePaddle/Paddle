@@ -24,7 +24,6 @@ DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         '__deepcopy__',
         '__index__',
         '__len__',
-        '__long__',
         '__nonzero__',
         '__dict__',
         'apply_',

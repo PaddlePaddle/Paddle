@@ -122,7 +122,13 @@ if(NOT WITH_DGC)
 endif()
 
 if(NOT WITH_MAGMA)
-  list(REMOVE_ITEM kernel_gpu "xpu/eig_kernel.cc")
+  list(REMOVE_ITEM kernel_gpu "gpu/eig_kernel.cu" "gpu/eig_grad_kernel.cu")
+endif()
+
+if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 11.8))
+   OR APPLE
+   OR WITH_ROCM)
+  list(REMOVE_ITEM kernel_gpu "gpu/rms_norm_cuda_kernel.cu")
 endif()
 
 if(WITH_CUTLASS)
@@ -359,7 +365,7 @@ if(NOT
     AND WITH_MKL))
   list(REMOVE_ITEM kernel_cc "fusion/cpu/fused_layer_norm_avx_kernel.cc")
   list(REMOVE_ITEM kernel_cc "fusion/cpu/self_dp_attention_kernel.cc")
-  list(REMOVE_ITEM kernel_cc "fusion/cpu/rms_norm_avx_kernel.cc")
+  list(REMOVE_ITEM kernel_cc "fusion/cpu/fused_rms_norm_quant_avx_kernel.cc")
 endif()
 
 file(
@@ -410,6 +416,10 @@ if(WITH_XPU)
       "xpu/fft_grad_kernel.cc"
       "xpu/as_real_kernel.cc"
       "xpu/as_complex_kernel.cc")
+  endif()
+
+  if(NOT WITH_MAGMA)
+    list(REMOVE_ITEM kernel_xpu "xpu/eig_kernel.cc")
   endif()
 
   collect_srcs(kernels_srcs SRCS ${kernel_xpu})

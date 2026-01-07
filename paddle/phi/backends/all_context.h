@@ -21,9 +21,15 @@ limitations under the License. */
 // path replacement after implementing phi DeviceContext
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/custom/custom_context.h"
+#endif
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#endif
 #include "paddle/phi/backends/onednn/onednn_context.h"
+#ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#endif
 
 namespace phi {}  // namespace phi

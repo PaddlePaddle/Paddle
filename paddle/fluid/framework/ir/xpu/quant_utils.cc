@@ -29,7 +29,7 @@ namespace ir {
 
 void Assign(const phi::DenseTensor& in, phi::DenseTensor* out) {
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
-      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(CPUPlace()));
   out->Resize(in.dims());
   out->set_type(in.dtype());
   out->set_layout(in.layout());
@@ -56,7 +56,7 @@ void Transpose2D(phi::DenseTensor* in, phi::DenseTensor* out) {
   out_ptr->set_layout(in->layout());
 
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
-      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(CPUPlace()));
   std::vector<int> axis{1, 0};
   switch (in->dtype()) {
     case phi::DataType::FLOAT16:
@@ -85,7 +85,7 @@ void Transpose2D(phi::DenseTensor* in, phi::DenseTensor* out) {
 
 void CastToInt32(phi::DenseTensor* in, phi::DenseTensor* out) {
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
-      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(CPUPlace()));
 
   phi::DenseTensor int32_tensor;
   phi::DenseTensor* out_ptr = out == nullptr ? &int32_tensor : out;
@@ -117,7 +117,7 @@ void CastToInt32(phi::DenseTensor* in, phi::DenseTensor* out) {
 }
 void CastTo(phi::DenseTensor* in, phi::DenseTensor* out, DataType out_dtype) {
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
-      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(CPUPlace()));
 
   if (in->dtype() != phi::DataType::FLOAT16 &&
       in->dtype() != phi::DataType::FLOAT32) {
@@ -313,7 +313,7 @@ void ConvertWithQuant(phi::DenseTensor* weight,
   }
 
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
-      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(CPUPlace()));
   if (!per_channel_quant) {
     // Find max
     int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
@@ -348,6 +348,9 @@ void ConvertWithQuant(phi::DenseTensor* weight,
     int64_t n = weight_fp32.dims()[0];
     int64_t data_count = weight_fp32.numel() / n;
     auto* weight_fp32_data = weight_fp32.data<float>();
+    // TODO(large-tensor): GetQuantScales and QuantFP32ToIntX not support int64
+    PADDLE_ENFORCE_LE_INT_MAX(n, "n");
+    PADDLE_ENFORCE_LE_INT_MAX(data_count, "data_count");
     quant_scales = GetQuantScales(
         weight_fp32_data, static_cast<int>(n), static_cast<int>(data_count));
     weight->set_type(phi::CppTypeToDataType<Txpu>::Type());
@@ -393,7 +396,7 @@ void ConvertWithoutQuant(phi::DenseTensor* weight,
         common::errors::InvalidArgument(
             "ConvertWithoutQuant is not allowed weight scales is empty!"));
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
-        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(CPUPlace()));
     if (per_tensor_quant) {
       int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
       std::vector<float> max_vec(max_ptr_size, weight_scales[0]);
@@ -431,7 +434,7 @@ void ConvertWithoutQuant(phi::DenseTensor* weight,
     weight_max->set_type(phi::DataType::FLOAT32);
     weight_max->Resize({max_ptr_size});
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
-        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(CPUPlace()));
     memcpy(cpu_ctx->Alloc<float>(weight_max),
            max_vec.data(),
            max_ptr_size * sizeof(float));

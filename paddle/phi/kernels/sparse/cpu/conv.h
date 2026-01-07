@@ -26,7 +26,7 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-using Dims4D = phi::funcs::sparse::Dims4D;
+using Dims4D = funcs::sparse::Dims4D;
 
 // such as: kernel(3, 3, 3), kernel_size = 27
 // counter_per_weight: (kernel_size)
@@ -107,7 +107,7 @@ void ProductRuleBook(const Context& dev_ctx,
                        : indices_ptr[i + 2 * non_zero_num];
       IntT in_x = is2D ? indices_ptr[i + 2 * non_zero_num]
                        : indices_ptr[i + 3 * non_zero_num];
-      IntT index = phi::funcs::sparse::PointToIndex<Dims4D>(
+      IntT index = funcs::sparse::PointToIndex<Dims4D>(
           batch, in_x, in_y, in_z, c_x_dims);
       hash_in.insert(index);
     }
@@ -137,19 +137,19 @@ void ProductRuleBook(const Context& dev_ctx,
                 (in_y + c_paddings[2] - ky * c_dilations[2]) / c_strides[2];
             IntT out_x =
                 (in_x + c_paddings[3] - kx * c_dilations[3]) / c_strides[3];
-            if (phi::funcs::sparse::Check(c_x_dims,
-                                          c_kernel_dims,
-                                          c_paddings,
-                                          c_dilations,
-                                          c_strides,
-                                          in_x,
-                                          in_y,
-                                          in_z,
-                                          kx,
-                                          ky,
-                                          kz)) {
+            if (funcs::sparse::Check(c_x_dims,
+                                     c_kernel_dims,
+                                     c_paddings,
+                                     c_dilations,
+                                     c_strides,
+                                     in_x,
+                                     in_y,
+                                     in_z,
+                                     kx,
+                                     ky,
+                                     kz)) {
               if (subm) {
-                IntT out_index = phi::funcs::sparse::PointToIndex<Dims4D>(
+                IntT out_index = funcs::sparse::PointToIndex<Dims4D>(
                     batch, out_x, out_y, out_z, c_out_dims);
                 if (hash_in.find(out_index) == hash_in.end()) {
                   continue;
@@ -163,7 +163,7 @@ void ProductRuleBook(const Context& dev_ctx,
                 rulebook_ptr[rulebook_index] = kernel_index - 1;
                 rulebook_ptr[rulebook_index + rulebook_len] = i;  // in_i
                 rulebook_ptr[rulebook_index + rulebook_len * 2] =
-                    phi::funcs::sparse::PointToIndex<Dims4D>(
+                    funcs::sparse::PointToIndex<Dims4D>(
                         batch, out_x, out_y, out_z, c_out_dims);  // out_index
                 ++rulebook_index;
               }
@@ -176,10 +176,10 @@ void ProductRuleBook(const Context& dev_ctx,
 
   f_calc_rulebook(nullptr);
   // alloc the rulebook
-  *rulebook = phi::Empty(dev_ctx,
-                         DenseTensorMeta(phi::CppTypeToDataType<IntT>::Type(),
-                                         {3, rulebook_len},
-                                         DataLayout::NCHW));
+  *rulebook = Empty(dev_ctx,
+                    DenseTensorMeta(phi::CppTypeToDataType<IntT>::Type(),
+                                    {3, rulebook_len},
+                                    DataLayout::NCHW));
   IntT* rulebook_ptr = rulebook->data<IntT>();
   f_calc_rulebook(rulebook_ptr);
 }
@@ -195,9 +195,9 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
   const bool is2D = out_dims.size() == 4 ? true : false;
 
   std::set<IntT> tmp_indices;
-  int n = rulebook->dims()[1];
+  int64_t n = rulebook->dims()[1];
   IntT* rulebook_ptr = rulebook->data<IntT>();
-  for (int i = 0; i < n; i++) {
+  for (int64_t i = 0; i < n; i++) {
     tmp_indices.insert(rulebook_ptr[i + n * 2]);
   }
 
@@ -208,10 +208,10 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
                                DataLayout::NCHW);
   DenseTensorMeta values_meta(
       x.dtype(), {out_non_zero_num, out_channels}, x.values().layout());
-  phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
-  phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
+  DenseTensor out_indices = Empty(dev_ctx, std::move(indices_meta));
+  DenseTensor out_values = Empty(dev_ctx, std::move(values_meta));
   IntT* out_indices_ptr = out_indices.data<IntT>();
-  int i = 0;
+  int64_t idx = 0;
 
   int odim0, odim1, odim2, odim3;
   odim0 = out_dims[0];
@@ -220,22 +220,21 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
   odim3 = is2D ? 1 : out_dims[1];
   const Dims4D c_out_dims(odim0, odim1, odim2, odim3);
 
-  for (auto it = tmp_indices.begin(); it != tmp_indices.end(); it++, i++) {
+  for (auto it = tmp_indices.begin(); it != tmp_indices.end(); it++, idx++) {
     const IntT index = *it;
     IntT batch, x, y, z;
-    phi::funcs::sparse::IndexToPoint<Dims4D>(
-        index, c_out_dims, &batch, &x, &y, &z);
-    out_indices_ptr[i] = batch;
+    funcs::sparse::IndexToPoint<Dims4D>(index, c_out_dims, &batch, &x, &y, &z);
+    out_indices_ptr[idx] = batch;
     if (is2D) {
-      out_indices_ptr[i + out_non_zero_num] = y;
-      out_indices_ptr[i + out_non_zero_num * 2] = x;
+      out_indices_ptr[idx + out_non_zero_num] = y;
+      out_indices_ptr[idx + out_non_zero_num * 2] = x;
     } else {
-      out_indices_ptr[i + out_non_zero_num] = z;
-      out_indices_ptr[i + out_non_zero_num * 2] = y;
-      out_indices_ptr[i + out_non_zero_num * 3] = x;
+      out_indices_ptr[idx + out_non_zero_num] = z;
+      out_indices_ptr[idx + out_non_zero_num * 2] = y;
+      out_indices_ptr[idx + out_non_zero_num * 3] = x;
     }
   }
-  for (i = 0; i < n; i++) {
+  for (int64_t i = 0; i < n; i++) {
     IntT out_index = rulebook_ptr[i + n * 2];
     rulebook_ptr[i + n * 2] =
         std::distance(tmp_indices.begin(), tmp_indices.find(out_index));

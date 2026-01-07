@@ -48,11 +48,11 @@ __global__ void RowConvForwardSharedMemory(const T *in,
   }
   __syncthreads();
   for (size_t i = 0; i < num_sequence; i++) {
-    int start = static_cast<int>(batch_indices[i]);
-    int end = static_cast<int>(batch_indices[i + 1]);
-    int current_timesteps = end - start;
+    size_t start = batch_indices[i];
+    size_t end = batch_indices[i + 1];
+    size_t current_timesteps = end - start;
 
-    for (int k = thy; k < current_timesteps; k += bly) {
+    for (size_t k = thy; k < current_timesteps; k += bly) {
       T sum = 0;
       for (int w = 0; (w < future_context) && ((k + w) < current_timesteps);
            w++) {
@@ -84,13 +84,13 @@ __global__ void RowConvForward(const T *in,
 
   if (d >= input_dim) return;
   for (size_t i = 0; i < num_sequence; i++) {
-    int start = static_cast<int>(batch_indices[i]);
-    int end = static_cast<int>(batch_indices[i + 1]);
-    int current_timesteps = end - start;
+    size_t start = batch_indices[i];
+    size_t end = batch_indices[i + 1];
+    size_t current_timesteps = end - start;
 
-    for (int k = thy; k < current_timesteps; k += bly) {
+    for (size_t k = thy; k < current_timesteps; k += bly) {
       T sum = 0;
-      for (int w = 0; (w < future_context) && ((k + w) < current_timesteps);
+      for (size_t w = 0; (w < future_context) && ((k + w) < current_timesteps);
            w++) {
         sum += (wt[w * input_dim + d] * in[(start + k + w) * input_dim + d]);
       }
@@ -121,7 +121,6 @@ void RowConvKernel(const Context &dev_ctx,
   int input_dim = 0;
   phi::Vector<size_t> batch_indices(batch_size + 1);
   int64_t timesteps = X->dims()[1];
-  // TODO(large-tensor): downstream functors may still use int
 
   if (is_tensor) {
     for (int i = 0; i < batch_size + 1; i++) {
@@ -135,24 +134,26 @@ void RowConvKernel(const Context &dev_ctx,
 
   int num_sequence = batch_indices.size() - 1;
   int64_t future_context = Filter->dims()[0];
-  // TODO(large-tensor): downstream functors may still use int
+  // TODO(large-tensor): CUDA kernel future_context not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(future_context, "future_context");
+  int future_context_int = static_cast<int>(future_context);
 
   phi::MixVector<size_t> mix_vector(&batch_indices);
   size_t *idx = mix_vector.CUDAMutableData(dev_ctx.GetPlace());
   auto stream = dev_ctx.stream();
 
-  if (future_context <= 32) {
+  if (future_context_int <= 32) {
     dim3 block_dim = dim3(32, 32);
     dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
-    int mem_per_block = (future_context * block_dim.x) * sizeof(T);
+    int mem_per_block = (future_context_int * block_dim.x) * sizeof(T);
     RowConvForwardSharedMemory<T>
         <<<grid_dim, block_dim, mem_per_block, stream>>>(
-            in, weight, num_sequence, input_dim, future_context, idx, out);
+            in, weight, num_sequence, input_dim, future_context_int, idx, out);
   } else {
     dim3 block_dim = dim3(32, 32);
     dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
     RowConvForward<T><<<grid_dim, block_dim, 0, stream>>>(
-        in, weight, num_sequence, input_dim, future_context, idx, out);
+        in, weight, num_sequence, input_dim, future_context_int, idx, out);
   }
   mix_vector.CopyToCPU();
 }

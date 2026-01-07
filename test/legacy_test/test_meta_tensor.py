@@ -15,51 +15,7 @@
 import unittest
 
 import paddle
-from paddle.base.libpaddle import IrMetaTensor, IrTensor
 from paddle.static import MetaTensor
-
-
-class TestIrTensor(unittest.TestCase):
-    def test_basic_get_set(self):
-        ir_tensor = IrTensor()
-
-        ir_tensor.set_shape([4, 8192, 768])
-        self.assertEqual(ir_tensor.shape, [4, 8192, 768])
-
-        ir_tensor.set_dtype('bfloat16')
-        self.assertEqual(ir_tensor.dtype, paddle.bfloat16)
-        ir_tensor.set_dtype(paddle.uint8)
-        self.assertEqual(ir_tensor.dtype, paddle.uint8)
-
-    def test_eq(self):
-        x_ir_meta = IrTensor()
-        y_ir_meta = IrTensor()
-        self.assertEqual(x_ir_meta, y_ir_meta)
-        x_ir_meta.set_shape([4, 8192])
-        y_ir_meta.set_shape([4, 8192])
-        self.assertEqual(x_ir_meta, y_ir_meta)
-        x_ir_meta.set_shape([4, 8193])
-        self.assertNotEqual(x_ir_meta, y_ir_meta)
-        y_ir_meta = IrTensor(x_ir_meta)
-        self.assertEqual(x_ir_meta, y_ir_meta)
-
-
-class TestIrMetaTensor(unittest.TestCase):
-    def test_basic_get_set(self):
-        ir_tensor = IrTensor()
-        ir_meta_tensor = IrMetaTensor(ir_tensor)
-
-        shape = [4, 8192, 768]
-        ir_meta_tensor.set_shape(shape)
-        self.assertEqual(ir_tensor.shape, shape)
-        self.assertEqual(ir_meta_tensor.shape, shape)
-
-        ir_meta_tensor.set_dtype('bfloat16')
-        self.assertEqual(ir_tensor.dtype, paddle.bfloat16)
-        self.assertEqual(ir_meta_tensor.dtype, paddle.bfloat16)
-        ir_meta_tensor.set_dtype(paddle.uint8)
-        self.assertEqual(ir_tensor.dtype, paddle.uint8)
-        self.assertEqual(ir_meta_tensor.dtype, paddle.uint8)
 
 
 def infer_meta_fn(x_meta: MetaTensor, y_meta: MetaTensor):

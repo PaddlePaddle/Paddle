@@ -25,7 +25,7 @@ namespace sr {
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenVector = phi::EigenVector<T, MajorType, IndexType>;
+using EigenVector = EigenVector<T, MajorType, IndexType>;
 
 template <typename T>
 class SparseFTRLFunctor {
@@ -145,9 +145,9 @@ void FTRLOpKernel(const Context& dev_ctx,
 
   auto grad = &grad_in;
 
-  phi::SelectedRows tmp_merged_grad;
-  phi::SelectedRows* merged_grad = &tmp_merged_grad;
-  phi::funcs::scatter::MergeAdd<Context, T> merge_func;
+  SelectedRows tmp_merged_grad;
+  SelectedRows* merged_grad = &tmp_merged_grad;
+  funcs::scatter::MergeAdd<Context, T> merge_func;
   merge_func(dev_ctx, *grad, merged_grad);
 
   auto* merged_rows = merged_grad->mutable_rows();
@@ -156,8 +156,8 @@ void FTRLOpKernel(const Context& dev_ctx,
   auto row_numel = static_cast<int64_t>(merged_grad->value().dims()[1]);
   auto row_height = static_cast<int64_t>(merged_grad->rows().size());
 
-  phi::funcs::ForRange<Context> for_range(static_cast<const Context&>(dev_ctx),
-                                          row_numel * row_height);
+  funcs::ForRange<Context> for_range(static_cast<const Context&>(dev_ctx),
+                                     row_numel * row_height);
 
   SparseFTRLFunctor<T> functor(merged_grad->value().data<T>(),
                                param_in->data<T>(),

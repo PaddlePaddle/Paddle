@@ -380,7 +380,9 @@ def xpu() -> str:
         string: Return the version information of xpu. If paddle package is non-XPU version, it will return False.
     Examples:
         .. code-block:: python
+
             >>> import paddle
+
             >>> paddle.version.xpu()
             >>> # doctest: +SKIP('Different environments yield different output.')
             '20230114'
@@ -788,8 +790,8 @@ def get_paddle_extra_install_requirements():
                 ),
                 "13.0": (
                     "nvidia-cuda-runtime==13.0.88 | "
-                    "nvidia-cudnn-cu13==9.14.0.64 | "
-                    "nvidia-cublas==13.1.0.3 | "
+                    "nvidia-cudnn-cu13==9.13.0.50 | "
+                    "nvidia-cublas==13.0.2.14 | "
                     "nvidia-cufft==12.0.0.61 | "
                     "nvidia-curand==10.4.0.35 | "
                     "nvidia-cusolver==12.0.4.66 | "
@@ -902,6 +904,7 @@ packages=['paddle',
           'paddle.distribution',
           'paddle.distributed.utils',
           'paddle.distributed.sharding',
+          'paddle.distributed.fsdp',
           'paddle.distributed.fleet',
           'paddle.distributed.launch',
           'paddle.distributed.auto_tuner',
@@ -1054,6 +1057,7 @@ packages=['paddle',
           'paddle._typing',
           'paddle._typing.libs',
           'paddle.api_tracer',
+          'paddle.testing',
         ]
 
 if (
@@ -1351,6 +1355,12 @@ if '${WITH_XPU}' == 'ON':
             package_data['paddle.libs'] += [os.path.basename(xpu_ml_lib_file)]
         shutil.copy('${XPU_XBLAS_LIB}', libs_path)
         package_data['paddle.libs'] += ['${XPU_XBLAS_LIB_NAME}']
+        shutil.copy('${XPU_XBLAS_JITC_LIB}', libs_path)
+        package_data['paddle.libs'] += ['${XPU_XBLAS_JITC_LIB_NAME}']
+        shutil.copy('${XPU_XBLAS_LLVM_LIB}', libs_path)
+        package_data['paddle.libs'] += ['${XPU_XBLAS_LLVM_LIB_NAME}']
+        shutil.copy('${XPU_XBLAS_CLANG_LIB}', libs_path)
+        package_data['paddle.libs'] += ['${XPU_XBLAS_CLANG_LIB_NAME}']
         shutil.copy('${XPU_XFA_LIB}', libs_path)
         package_data['paddle.libs'] += ['${XPU_XFA_LIB_NAME}']
         shutil.copy('${XPU_XPUDNN_LIB}', libs_path)
@@ -1463,7 +1473,7 @@ headers = (
     # phi level api headers (low level api, for training only)
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi')) +  # phi extension header
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/include', recursive=True)) +  # phi include headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends', recursive=True)) +  # phi backends headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends')) +  # phi backends headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/core', recursive=True)) +  # phi core headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/infermeta', recursive=True)) +  # phi infermeta headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels', recursive=True)) +  # phi kernels headers
@@ -1532,7 +1542,9 @@ if '${WITH_OPENVINO}' == 'ON':
 if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
     # externalErrorMsg.pb for External Error message
     headers += list(find_files('*.pb', '${externalError_INCLUDE_DIR}'))
-
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends', recursive=True)
+    )
 
 if '${WITH_XPU}' == 'ON':
     headers += [
@@ -1540,6 +1552,20 @@ if '${WITH_XPU}' == 'ON':
         if '/include/xpu/kernel/' not in h
     ] # xdnn api headers
     headers += list(find_files('*.hpp', '@PADDLE_BINARY_DIR@/third_party/xpu/src/extern_xpu/xpu', recursive=True)) # xre headers with .hpp extension
+    headers += list(
+        find_files('*.h', '@PADDLE_BINARY_DIR@/paddle/phi/backends/cpu')
+    )
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/xpu')
+    )
+    headers += list(
+        find_files(
+            '*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload'
+        )
+    )
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/onednn')
+    )
 
 if (
     '@WITH_GPU@' == 'ON'
@@ -1550,6 +1576,70 @@ if (
     headers += list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/fp8/deep_gemm/include/cutlass/', recursive=True))
     headers += list(find_files('*.hpp', '@PADDLE_SOURCE_DIR@/paddle/fluid/fp8/deep_gemm/include/cutlass/', recursive=True))
     headers += list(find_files('*.cuh', '@PADDLE_SOURCE_DIR@/paddle/fluid/fp8/deep_gemm/include/deep_gemm', recursive=True))
+if (
+    '@WITH_GPU@' == 'OFF'
+    and '@WITH_ROCM@' == 'OFF'
+    and '@WITH_XPU@' == 'OFF'
+):  # Custom Device
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/cpu')
+    )
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/custom')
+    )
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/gpu', recursive=True)
+    )
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/onednn')
+    )
+    headers += [
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/afs_api.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/dynamic_loader.h',
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/mklml.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/mklrt.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/lapack.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/hml.h'
+        ),
+    ]
+else:
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/cpu')
+    )
+    headers += list(
+        find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends/onednn')
+    )
+    headers += [
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/afs_api.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/dynamic_loader.h',
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/mklml.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/mklrt.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/lapack.h'
+        ),
+        os.path.join(
+            '@PADDLE_SOURCE_DIR@/paddle/phi/backends/dynload/hml.h'
+        ),
+    ]
 
 headers += list(find_files('*.h', '${PYBIND_INCLUDE_DIR}', True)) # pybind headers
 

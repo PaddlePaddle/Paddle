@@ -23,12 +23,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/elementwise/elementwise_op_function.h"
-
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/onednn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -115,7 +112,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       bool should_rotate =
           ctx->IsRunONEDNNKernel() &&
           (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-           phi::DataLayout::kNHWC) &&
+           phi::DataLayout::NHWC) &&
           (x_dims.size() >= 3 || y_dims.size() >= 3);
       if (should_rotate) {
         // Pick bigger shape and rotate this one
@@ -174,9 +171,9 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
           (tensor.layout() != phi::DataLayout::ONEDNN) &&
           phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-              phi::DataLayout::kNHWC) {
+              phi::DataLayout::NHWC) {
         return phi::KernelKey(tensor.place(),
-                              phi::DataLayout::kNHWC,
+                              phi::DataLayout::NHWC,
                               expected_kernel_type.dtype());
       }
 #endif

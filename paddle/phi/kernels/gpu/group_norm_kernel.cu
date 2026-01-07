@@ -1256,7 +1256,7 @@ void GroupNormKernel(const Context& dev_ctx,
   if (is_same<T, phi::float16>::value && data_layout_str == "NHWC") {
     const paddle::optional<DenseTensor>& residual =
         paddle::optional<DenseTensor>(paddle::none);
-    phi::DenseTensor empty_tensor;
+    DenseTensor empty_tensor;
     GroupNormNDHWCKernel<phi::float16, Context>(dev_ctx,
                                                 x,
                                                 residual,
@@ -1277,7 +1277,7 @@ void GroupNormKernel(const Context& dev_ctx,
   if (is_same<T, phi::bfloat16>::value && data_layout_str == "NHWC") {
     const paddle::optional<DenseTensor>& residual =
         paddle::optional<DenseTensor>(paddle::none);
-    phi::DenseTensor empty_tensor;
+    DenseTensor empty_tensor;
     GroupNormNDHWCKernel<phi::bfloat16, Context>(dev_ctx,
                                                  x,
                                                  residual,

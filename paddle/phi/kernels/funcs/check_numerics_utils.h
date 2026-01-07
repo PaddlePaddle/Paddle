@@ -167,7 +167,7 @@ void WriteToFileForDifferentLevel(const char* debug_info,
             << ", max=" << static_cast<float>(max_value)
             << ", min=" << static_cast<float>(min_value)
             << ", mean=" << static_cast<float>(mean_value) << std::endl;
-  } else if (phi::funcs::NeedPrint<T, MT>(
+  } else if (funcs::NeedPrint<T, MT>(
                  max_value, min_value, check_nan_inf_level)) {
     outfile << "[PRECISION] in " << debug_info
             << ", numel=" << static_cast<long long>(numel)        // NOLINT
@@ -198,7 +198,7 @@ inline std::string GetCpuHintString(const std::string& op_type,
   }
 
   std::stringstream ss;
-  if (place.GetType() == phi::AllocationType::GPU) {
+  if (place.GetType() == AllocationType::GPU) {
     ss << "[device=gpu:" << device_id << ", ";
   } else {
     ss << "[device=cpu, ";

@@ -59,7 +59,7 @@ void Tile(const Context& dev_ctx,
           repeat_times.size()));
 
   if (Rank == 0) {
-    phi::Copy<DeviceContext>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<DeviceContext>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
   Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;

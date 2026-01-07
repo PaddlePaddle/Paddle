@@ -941,7 +941,7 @@ static void RegisterOperatorKernel(
     op_kernel_func = func;
   }
   RegisterOperatorKernelWithPlace(
-      name, op_kernel_func, proto::VarType::RAW, phi::CPUPlace());
+      name, op_kernel_func, proto::VarType::RAW, CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   RegisterOperatorKernelWithPlace(
       name, op_kernel_func, proto::VarType::RAW, phi::GPUPlace());

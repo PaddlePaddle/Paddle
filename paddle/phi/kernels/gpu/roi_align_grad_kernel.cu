@@ -205,7 +205,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   box_batch_id_list.Resize({rois_num});
   int* box_batch_size = dev_ctx.template HostAlloc<int>(&box_batch_id_list);
 
-  auto cplace = phi::CPUPlace();
+  auto cplace = CPUPlace();
   auto gplace = dev_ctx.GetPlace();
   if (boxes_num) {
     int64_t boxes_batch_size = boxes_num->numel();

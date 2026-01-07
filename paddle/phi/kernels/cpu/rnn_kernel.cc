@@ -213,7 +213,8 @@ struct Layer {
                   bool is_test,
                   DenseTensor* cache_input) {
     // create the temp input for the X * W_ih^T + Bias_ih
-    const int& hidden_size = weight.dims()[0];  // NOLINT
+    const int64_t& hidden_size = weight.dims()[0];
+    // NOLINT
     cache_input->Resize(
         common::make_ddim({input.dims()[0], input.dims()[1], hidden_size}));
     if (is_test) {
@@ -833,7 +834,7 @@ void RnnKernel(const Context& dev_ctx,
       if (dropout_state->numel() != out->numel()) dropout_state->clear();
     }
     const auto& out_dim = out->dims();
-    Full<uint8_t>(dev_ctx, {out_dim.Get(), out_dim.size()}, 1, dropout_state);
+    Full<uint8_t>(dev_ctx, out_dim, 1, dropout_state);
   }
 
   // init the output and allocate the memory

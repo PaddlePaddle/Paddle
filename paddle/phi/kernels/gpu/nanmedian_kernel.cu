@@ -279,7 +279,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
   KernelNanCounts<T><<<grid_size, block_size, 0, stream>>>(
       x_data, numel, pre_dim, stride, nan_counts_ptr, nan_indices_ptr);
   auto nan_stat_mem_cpu =
-      phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t) * 2);
+      phi::memory_utils::Alloc(CPUPlace(), sizeof(int64_t) * 2);
   int64_t* nan_stat_cpu_ptr =
       reinterpret_cast<int64_t*>(nan_stat_mem_cpu->ptr());
   int64_t sum =
@@ -287,7 +287,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
   nan_stat_cpu_ptr[0] = sum;
   auto min_nan_ptr = thrust::min_element(
       exec_policy, nan_counts_ptr, nan_counts_ptr + pre_dim);
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      nan_stat_cpu_ptr + 1,
                      dev_ctx.GetPlace(),
                      min_nan_ptr,

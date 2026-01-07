@@ -91,7 +91,7 @@ void ScatterKernel(const Context &dev_ctx,
   int64_t dim1 = common::product(common::slice_ddim(x_dims, 1, x_dims.size()));
 
   DenseTensor indices_cpu(index.type());
-  phi::Copy(dev_ctx, index, phi::CPUPlace(), true, &indices_cpu);
+  phi::Copy(dev_ctx, index, CPUPlace(), true, &indices_cpu);
 
   int r = 0;
   if (index_type == phi::DataType::INT32) {

@@ -13,9 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/matmul_kernel.h"
-
-#include <vector>
-
 #include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/enforce.h"
@@ -84,23 +81,13 @@ void MatmulKernelImpl(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
 
 #ifdef PADDLE_WITH_HIP
-  phi::funcs::SetConstant<Context, T> set_zero;
+  funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, out, static_cast<T>(0.0f));
 #endif
 
-  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPMM(
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
-#else
-#ifdef PADDLE_WITH_CUDA
-  PADDLE_THROW(common::errors::Unimplemented(
-      "forward of 'sparse.matmul' use cusparseSpMM, "
-      "which is supported from CUDA 11.0"));
-#elif defined(PADDLE_WITH_HIP)
-  PADDLE_THROW(common::errors::Unimplemented(
-      "forward of 'sparse.matmul' use rocsparse_spmm, "
-      "which is supported from ROCM 4.2.0"));
-#endif
 #endif
 }
 
@@ -159,7 +146,7 @@ void MatmulCsrCsrKernel(const Context& dev_ctx,
           "The shape of Input(x) and Input(y) is not suitable for matmul "
           "operation, x_dim[-1] must be equal to y_dim[-2]."));
 
-  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPGEMM(
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
 
@@ -259,7 +246,7 @@ void MaskedMatmulCsrKernel(const Context& dev_ctx,
   // InferMeta of SparseCsrTensor 'out', CreateLikeInferMeta
   EmptyLikeCsrKernel<T, Context>(dev_ctx, mask, out);
 
-  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SDDMM(
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
 #else

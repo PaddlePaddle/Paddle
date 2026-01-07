@@ -49,7 +49,7 @@ void ExpandAs(const Context& dev_ctx,
     }
   }
   if (target_shape.size() == 0) {
-    phi::DDim out_dims = common::make_ddim(target_shape);
+    DDim out_dims = common::make_ddim(target_shape);
     out->Resize(out_dims);
     dev_ctx.template Alloc<T>(out);
 
@@ -61,7 +61,7 @@ void ExpandAs(const Context& dev_ctx,
     return;
   }
 
-  phi::DDim out_dims = common::make_ddim(target_shape);
+  DDim out_dims = common::make_ddim(target_shape);
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
   auto& x_shape = vec_in_dims;

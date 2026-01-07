@@ -45,7 +45,7 @@ void FusedLinearParamGradAddImpl(const Context &dev_ctx,
 
   const bool fuse_bias_grad = false;  // kIsMultiPrecision && dweight_out;
   if (dweight_out) {
-    phi::funcs::ComputeFusedGemmEpilogueBackwardXPU<T>(
+    funcs::ComputeFusedGemmEpilogueBackwardXPU<T>(
         dev_ctx,
         &dout,
         &x,
@@ -72,9 +72,9 @@ void FusedLinearParamGradAddImpl(const Context &dev_ctx,
   DenseTensor dbias_tmp_tensor;
   if (dbias) {
     if (kIsMultiPrecision) {
-      dbias_tmp_tensor = phi::EmptyLike<MT, Context>(dev_ctx, dbias.get());
+      dbias_tmp_tensor = EmptyLike<MT, Context>(dev_ctx, dbias.get());
     } else {
-      dbias_tmp_tensor = phi::EmptyLike<T, Context>(dev_ctx, dbias.get());
+      dbias_tmp_tensor = EmptyLike<T, Context>(dev_ctx, dbias.get());
     }
   }
   DenseTensor *dbias_tmp = !dbias ? dbias_out : &dbias_tmp_tensor;
@@ -271,4 +271,5 @@ PD_REGISTER_KERNEL(fused_linear_param_grad_add,
                    ALL_LAYOUT,
                    phi::fusion::FusedLinearParamGradAdd,
                    float,
+                   phi::bfloat16,
                    phi::float16) {}

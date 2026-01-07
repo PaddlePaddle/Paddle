@@ -461,6 +461,52 @@ def layer_norm(
         return helper.append_activation(layer_norm_out)
 
 
+def rms_norm(
+    input: Tensor,
+    normalized_shape: Sequence[int],
+    weight: Tensor | None = None,
+    eps: float = 1e-5,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor]:
+    """
+    Applies Layer Normalization over the last dimension of the input tensor using CUDA implementation.
+
+    Args:
+        input (Tensor): Input tensor of shape [rows, cols] or higher dimensions (flattened to 2D).
+        normalized_shape(list|tuple): Input shape from an expected input of
+            size :math:`[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`.
+            If it is a single integer, this module will normalize over the last dimension
+            which is expected to be of that specific size.
+        weight(Tensor, optional): The weight tensor of rms_norm. Default: None.
+        eps(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-05.
+        name (str, optional): Name of the operator.
+
+    Returns:
+        out (Tensor): Normalized tensor of same shape as input.
+        invvar (Tensor): Tensor of shape [rows], the inverse standard deviation of each row.
+    """
+
+    if in_dynamic_or_pir_mode():
+        return _C_ops.rms_norm(input, weight, normalized_shape, eps)
+
+    helper = LayerHelper('rms_norm', **locals())
+    from paddle.base.data_feeder import convert_dtype
+
+    dtype = convert_dtype(input.dtype)
+    out = helper.create_variable_for_type_inference(dtype)
+    invvar = helper.create_variable_for_type_inference('float32')
+
+    inputs = {'input': input, 'weight': weight}
+
+    helper.append_op(
+        type='rms_norm',
+        inputs=inputs,
+        outputs={'out': out, 'invvar': invvar},
+        attrs={"normalized_shape": normalized_shape, "eps": eps},
+    )
+    return out, invvar
+
+
 def instance_norm(
     x: Tensor,
     running_mean: Tensor | None = None,

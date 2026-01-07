@@ -472,7 +472,7 @@ class SingleCommGroupFullParamAssembler(BaseAssembler):
         """Simple assembly path for a single GPU."""
         for k, v in self.filtered_sharded_state_dict.items():
             assert v.local_shape == v.global_shape, (
-                "Single card params must not be sharded."
+                "Single card params must not be sharded.But now the key is {k}, the local_shape is {v.local_shape}, the global_shape is {v.global_shape}."
             )
 
         for k, shard_mappings in self.destination_sharded_mappings.items():
@@ -522,9 +522,14 @@ class SingleCommGroupFullParamAssembler(BaseAssembler):
             else:
                 local_tensor = paddle.empty(item.slice_shape, dtype=item.dtype)
 
+            on_cpu = local_tensor.place.is_cpu_place()
+            if on_cpu:
+                local_tensor = local_tensor.cuda()
             paddle.distributed.broadcast(
                 local_tensor, src=cur_src_rank, group=self.process_group
             )
+            if on_cpu:
+                local_tensor = local_tensor.cpu()
 
             shard_desc = ShardedWeightDesc(
                 key=item.tensor_name,

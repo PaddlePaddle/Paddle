@@ -59,11 +59,12 @@ jobs:
           WITH_TENSORRT: "OFF"
           GENERATOR: Ninja
           WITH_INFERENCE_API_TEST: "OFF"
-          CCACHE_MAXSIZE: 150G
+          CCACHE_MAXSIZE: 50G
           CCACHE_LIMIT_MULTIPLE: 0.8
           WITH_AVX: "OFF"
           CACHE_DIR: "/root/.cache/sot"
-          CCACHE_DIR: "/root/.ccache/sot"
+          CCACHE_DIR: "/home/data/shared/.ccache/l1" # L1 cache on machine shared dir
+          CCACHE_SECONDARY_STORAGE: "file:///home/data/cfs/.ccache/l2" # L2 cache on cfs
         run: |
           set -x
           container_name=${TASK}-$(date +%s)
@@ -72,7 +73,7 @@ jobs:
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
-            -v "/home/data/cfs/.ccache:/root/.ccache" \
+            -v "/home/data/shared:/home/data/shared" \
             -v "/dev/shm:/dev/shm" \
             -v "${{ github.workspace }}/../../..:${{ github.workspace }}/../../.." \
             -v ${{ github.workspace }}:/paddle \
@@ -102,6 +103,7 @@ jobs:
             -e WITH_AVX \
             -e CACHE_DIR \
             -e CCACHE_DIR \
+            -e CCACHE_SECONDARY_STORAGE \
             -e no_proxy \
             -w /paddle --network host ${docker_image}
 
@@ -142,22 +144,7 @@ jobs:
           echo "determine_excode=$determine_excode" >> ${{ github.env }}
           '
 
-      - name: Build with python3.14
-        env:
-          work_dir: ${{ github.workspace }}
-          PADDLE_ROOT: ${{ github.workspace }}
-        if: ${{ env.determine_excode == 0 }}
-        run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          export PY_VERSION=3.14
-          source ${{ github.workspace }}/../../../proxy
-          bash ${ci_scripts}/run_setup.sh bdist_wheel
-          EXCODE=$?
-          rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
-          exit $EXCODE
-          '
-
-      - name: Test with python3.14
+      - name: CMake Pre-download
         env:
           work_dir: ${{ github.workspace }}
           PADDLE_ROOT: ${{ github.workspace }}
@@ -165,9 +152,8 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
-          bash ${ci_scripts}/run_sot_test.sh 3.14
+          bash ${ci_scripts}/cmake-predownload.sh
           EXCODE=$?
-          rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
           exit $EXCODE
           '
 
@@ -180,7 +166,6 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           export PY_VERSION=3.9
           source ${{ github.workspace }}/../../../proxy
-          bash ${ci_scripts}/cmake-predownload.sh
           bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
           exit $EXCODE
@@ -307,6 +292,35 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/run_sot_test.sh 3.13
+          EXCODE=$?
+          rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
+          exit $EXCODE
+          '
+
+      - name: Build with python3.14
+        env:
+          work_dir: ${{ github.workspace }}
+          PADDLE_ROOT: ${{ github.workspace }}
+        if: ${{ env.determine_excode == 0 }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          export PY_VERSION=3.14
+          source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/run_setup.sh bdist_wheel
+          EXCODE=$?
+          rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
+          exit $EXCODE
+          '
+
+      - name: Test with python3.14
+        env:
+          work_dir: ${{ github.workspace }}
+          PADDLE_ROOT: ${{ github.workspace }}
+        if: ${{ env.determine_excode == 0 }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/run_sot_test.sh 3.14
           EXCODE=$?
           rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
           exit $EXCODE

@@ -34,7 +34,7 @@ void EigvalshGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(x_grad);
     return;
   }
-  auto tV = phi::TransposeLast2Dim<T>(dev_ctx, phi::Conj<T>(dev_ctx, out_v));
+  auto tV = TransposeLast2Dim<T>(dev_ctx, phi::Conj<T>(dev_ctx, out_v));
 
   x_grad->Resize(out_v.dims());
   dev_ctx.template Alloc<T>(x_grad);

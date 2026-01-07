@@ -37,7 +37,7 @@ void HashKernel(const Context& dev_ctx,
   auto in_dims = in_t->dims();
 
   std::vector<int64_t> out_dims;
-  phi::funcs::HashOutputSize(in_dims, out_dims, num_hash);
+  funcs::HashOutputSize(in_dims, out_dims, num_hash);
   out_t->Resize(common::make_ddim(out_dims));
   auto* output = dev_ctx.template Alloc<T>(out_t);
 

@@ -34,7 +34,7 @@ void CommStaticCheck::CheckRank(int rank, int world_size) {
       common::errors::InvalidArgument("Rank is out of the process group."));
 }
 
-void CommStaticCheck::CheckPlace(const phi::DenseTensor& tensor,
+void CommStaticCheck::CheckPlace(const DenseTensor& tensor,
                                  phi::AllocationType place) {
   PADDLE_ENFORCE_EQ(
       tensor.place().GetType(),
@@ -42,8 +42,8 @@ void CommStaticCheck::CheckPlace(const phi::DenseTensor& tensor,
       common::errors::InvalidArgument("Tensor should be in backend's place."));
 }
 
-void CommStaticCheck::CheckPlace(const phi::DenseTensor& out_tensor,
-                                 const phi::DenseTensor& in_tensor,
+void CommStaticCheck::CheckPlace(const DenseTensor& out_tensor,
+                                 const DenseTensor& in_tensor,
                                  phi::AllocationType place) {
   CheckPlace(out_tensor, place);
   CheckPlace(in_tensor, place);
@@ -54,8 +54,8 @@ void CommStaticCheck::CheckPlace(const phi::DenseTensor& out_tensor,
           "Input and output tensors should be on the same place."));
 }
 
-void CommStaticCheck::CheckDataType(const phi::DenseTensor& out_tensor,
-                                    const phi::DenseTensor& in_tensor) {
+void CommStaticCheck::CheckDataType(const DenseTensor& out_tensor,
+                                    const DenseTensor& in_tensor) {
   PADDLE_ENFORCE_EQ(
       out_tensor.dtype(),
       in_tensor.dtype(),
@@ -64,8 +64,8 @@ void CommStaticCheck::CheckDataType(const phi::DenseTensor& out_tensor,
 }
 
 void CommStaticCheck::CheckDataType(
-    const std::vector<phi::DenseTensor>& out_tensors,
-    const std::vector<phi::DenseTensor>& in_tensors) {
+    const std::vector<DenseTensor>& out_tensors,
+    const std::vector<DenseTensor>& in_tensors) {
   if (in_tensors.empty() && out_tensors.empty()) {
     return;
   }
@@ -89,15 +89,15 @@ void CommStaticCheck::CheckDataType(
   }
 }
 
-void CommStaticCheck::CheckShape(const phi::DenseTensor& tensor) {
+void CommStaticCheck::CheckShape(const DenseTensor& tensor) {
   PADDLE_ENFORCE_GT(tensor.numel(),
                     0,
                     common::errors::InvalidArgument(
                         "Size of tensor should be greater than 0."));
 }
 
-void CommStaticCheck::CheckShape(const phi::DenseTensor& out_tensor,
-                                 const phi::DenseTensor& in_tensor,
+void CommStaticCheck::CheckShape(const DenseTensor& out_tensor,
+                                 const DenseTensor& in_tensor,
                                  int out_size_factor,
                                  int in_size_factor) {
   CheckShape(out_tensor);
@@ -115,8 +115,8 @@ void CommStaticCheck::CheckShape(const phi::DenseTensor& out_tensor,
           in_size_factor));
 }
 
-void CommStaticCheck::CheckShape(const phi::DenseTensor& out_tensor,
-                                 const phi::DenseTensor& in_tensor,
+void CommStaticCheck::CheckShape(const DenseTensor& out_tensor,
+                                 const DenseTensor& in_tensor,
                                  int dst_rank,
                                  int cur_rank,
                                  int world_size,
@@ -137,7 +137,7 @@ void CommStaticCheck::CheckShape(const phi::DenseTensor& out_tensor,
   }
 }
 
-void CommStaticCheck::CheckShape(const phi::DenseTensor& tensor,
+void CommStaticCheck::CheckShape(const DenseTensor& tensor,
                                  int rank,
                                  int world_size,
                                  phi::AllocationType place) {
@@ -145,8 +145,8 @@ void CommStaticCheck::CheckShape(const phi::DenseTensor& tensor,
   CheckRank(rank, world_size);
 }
 
-void CommStaticCheck::SameShape(const phi::DenseTensor& out_tensor,
-                                const phi::DenseTensor& in_tensor,
+void CommStaticCheck::SameShape(const DenseTensor& out_tensor,
+                                const DenseTensor& in_tensor,
                                 int dst_rank,
                                 int cur_rank,
                                 int world_size,
@@ -161,8 +161,8 @@ void CommStaticCheck::SameShape(const phi::DenseTensor& out_tensor,
              place);
 }
 
-void CommStaticCheck::ScatterLikeShape(const phi::DenseTensor& out_tensor,
-                                       const phi::DenseTensor& in_tensor,
+void CommStaticCheck::ScatterLikeShape(const DenseTensor& out_tensor,
+                                       const DenseTensor& in_tensor,
                                        int dst_rank,
                                        int cur_rank,
                                        int world_size,
@@ -177,20 +177,39 @@ void CommStaticCheck::ScatterLikeShape(const phi::DenseTensor& out_tensor,
              place);
 }
 
-void CommStaticCheck::GatherLikeShape(const phi::DenseTensor& out_tensor,
-                                      const phi::DenseTensor& in_tensor,
+void CommStaticCheck::GatherLikeShape(const DenseTensor& out_tensor,
+                                      const DenseTensor& in_tensor,
                                       int dst_rank,
                                       int cur_rank,
                                       int world_size,
                                       phi::AllocationType place) {
-  CheckShape(out_tensor,
-             in_tensor,
-             dst_rank,
-             cur_rank,
-             world_size,
-             /*out_size_factor*/ 1,
-             /*in_size_factor*/ world_size,
-             place);
+  CheckRank(dst_rank, world_size);
+  CheckRank(cur_rank, world_size);
+
+  CheckPlace(out_tensor, in_tensor, place);
+  CheckDataType(out_tensor, in_tensor);
+
+  CheckGatherShape(out_tensor);
+  CheckGatherShape(in_tensor);
+  int64_t out_size = out_tensor.numel(), in_size = in_tensor.numel();
+  PADDLE_ENFORCE_EQ(
+      out_size,
+      in_size * world_size,
+      common::errors::InvalidArgument(
+          "Input and output tensors should have matching sizes. "
+          "out_size=%ld, out_size_factor=%d, in_size=%ld, in_size_factor=%d",
+          out_size,
+          1,
+          in_size,
+          world_size));
+}
+
+void CommStaticCheck::CheckGatherShape(const phi::DenseTensor& tensor) {
+  PADDLE_ENFORCE_GE(
+      tensor.numel(),
+      0,
+      common::errors::InvalidArgument("Size of tensor should be greater equal "
+                                      "than 0 in gather-liked communication."));
 }
 
 }  // namespace phi::distributed

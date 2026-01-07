@@ -51,18 +51,18 @@ void UnfoldGradKernel(const Context& dev_ctx,
   std::vector<int64_t> paddings(paddings_.begin(), paddings_.end());
   std::vector<int64_t> dilations(dilations_.begin(), dilations_.end());
 
-  int64_t out_height = phi::funcs::CalcOutputSize(x_dims[2],
-                                                  kernel_sizes[0],
-                                                  dilations[0],
-                                                  paddings[0],
-                                                  paddings[2],
-                                                  strides[0]);
-  int64_t out_width = phi::funcs::CalcOutputSize(x_dims[3],
-                                                 kernel_sizes[1],
-                                                 dilations[1],
-                                                 paddings[1],
-                                                 paddings[3],
-                                                 strides[1]);
+  int64_t out_height = funcs::CalcOutputSize(x_dims[2],
+                                             kernel_sizes[0],
+                                             dilations[0],
+                                             paddings[0],
+                                             paddings[2],
+                                             strides[0]);
+  int64_t out_width = funcs::CalcOutputSize(x_dims[3],
+                                            kernel_sizes[1],
+                                            dilations[1],
+                                            paddings[1],
+                                            paddings[3],
+                                            strides[1]);
 
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   XPUType* out_grad_trans =

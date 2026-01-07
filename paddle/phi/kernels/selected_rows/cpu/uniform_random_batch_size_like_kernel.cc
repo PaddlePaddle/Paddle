@@ -36,11 +36,11 @@ void CPUUniformRandomKernel(const Context& dev_ctx,
                             SelectedRows* out) {
   out->set_rows(input.rows());
   out->set_height(input.height());
-  phi::DenseTensor* tensor = out->mutable_value();
+  DenseTensor* tensor = out->mutable_value();
   T* data = dev_ctx.template Alloc<T>(tensor);
   int64_t size = tensor->numel();
 
-  phi::funcs::UniformRealDistribution<T>(
+  funcs::UniformRealDistribution<T>(
       data, size, min, max, static_cast<unsigned int>(seed));
 
   unsigned int diag_num_tmp = static_cast<unsigned int>(diag_num);

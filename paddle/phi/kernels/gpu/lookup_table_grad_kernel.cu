@@ -84,19 +84,16 @@ void LookupTableGradCUDAKernel(
   auto d_table_t = w_grad;
 
   int64_t N = d_table_t->dims()[0];
-  // TODO(large-tensor): downstream functors may still use int
 
   int64_t D = d_table_t->dims()[1];
-  // TODO(large-tensor): downstream functors may still use int
 
   int64_t K = ids_t->numel();
-  // TODO(large-tensor): downstream functors may still use int
 
   const int64_t *ids = ids_t->data<int64_t>();
   const T *d_output = d_output_t->data<T>();
   T *d_table = dev_ctx.template Alloc<T>(d_table_t);
 
-  auto t = phi::EigenVector<T>::Flatten(*d_table_t);
+  auto t = EigenVector<T>::Flatten(*d_table_t);
   t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
 #ifdef PADDLE_WITH_HIP

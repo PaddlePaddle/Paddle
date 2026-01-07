@@ -175,8 +175,8 @@ void weight_permute_gpu_impl(const GPUContext& dev_ctx,
   auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
   int grid_size = gpu_config.GetGridSize();
   int block_size = gpu_config.GetBlockSize();
-  if ((arch == 90) || (arch == 89) || (arch == 86) || (arch == 80) ||
-      (arch == 75)) {
+  if ((arch == 100) || (arch == 90) || (arch == 89) || (arch == 86) ||
+      (arch == 80) || (arch == 75)) {
     if (algo == "weight_only_int4") {
       numel /= 2;
       weight_permute_kernel_wint4<IndexT><<<grid_size, block_size>>>(
@@ -426,8 +426,8 @@ void weight_quant_gpu(const GPUContext& dev_ctx,
         <<<kGridSize, kBlockSize>>>(
             weight_data, quanted_weight_data, scale_data, total_k, vec_total_n);
 #else
-    if ((arch == 90) || (arch == 89) || (arch == 86) || (arch == 80) ||
-        (arch == 75)) {
+    if ((arch == 100) || (arch == 90) || (arch == 89) || (arch == 86) ||
+        (arch == 80) || (arch == 75)) {
       per_channel_quant_gpu_int4_col_pack<T, kVectorSize>
           <<<kGridSize, kBlockSize>>>(weight_data,
                                       quanted_weight_data,

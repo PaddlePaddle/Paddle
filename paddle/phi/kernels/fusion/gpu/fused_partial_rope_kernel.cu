@@ -17,7 +17,7 @@
 namespace phi {
 namespace fusion {
 
-using FastDivMod = phi::funcs::FastDivMod<uint32_t>;
+using FastDivMod = funcs::FastDivMod<uint32_t>;
 
 template <typename T, int VecSize, int NopeSize, int PeSize>
 __global__ void rope_kernel(const T* __restrict__ x,

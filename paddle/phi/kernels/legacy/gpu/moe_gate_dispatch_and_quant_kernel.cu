@@ -41,8 +41,8 @@ constexpr int64_t WarpSize = 32;
           use_pad)
 
 template <bool Power2Scaling>
-__device__ __forceinline__ float ScaleWrapper(const float amax,
-                                              const float eps = 0.f) {
+__device__ __forceinline__ float ScaleWrapperImpl(const float amax,
+                                                  const float eps = 0.f) {
   constexpr float fp8_max = 448.0f;
   float amax_mod = fmaxf(amax, eps);
   if (amax_mod == 0.f) {
@@ -69,6 +69,13 @@ __device__ __forceinline__ float ScaleWrapper(const float amax,
     scale = ldexpf(1.0f, normal_biased_exp);
   }
   return scale;
+}
+
+template <bool Power2Scaling>
+__device__ __forceinline__ float ScaleWrapper(const float amax,
+                                              const float eps = 0.f) {
+  return RoundPower2Scale<Power2Scaling>(
+      ScaleWrapperImpl<Power2Scaling>(amax, eps));
 }
 
 template <int VecSize, bool Power2Scaling>
@@ -360,8 +367,7 @@ void MoeDispatchAndQuantKernel(const Context &dev_ctx,
                   sizeof(phi::float8_e4m3fn) * out_fp8->numel(),
                   dev_ctx.stream());
 
-  phi::Full<float, Context>(
-      dev_ctx, phi::IntArray(common::vectorize(scale->dims())), 1, scale);
+  Full<float, Context>(dev_ctx, scale->dims(), 1, scale);
 
   const auto &x_shape = x.dims();
   const auto &gate_logits_shape = gate_logits.dims();

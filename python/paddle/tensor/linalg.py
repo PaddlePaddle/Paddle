@@ -21,8 +21,7 @@ from typing_extensions import TypeAlias, overload
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import bmm, diagonal, dot, matmul  # noqa: F401
-from paddle.base.libpaddle import DataType
+from paddle._C_ops import bincount, bmm, diagonal, dot, matmul  # noqa: F401
 from paddle.common_ops_import import VarDesc
 from paddle.tensor.math import broadcast_shape
 from paddle.utils.decorator_utils import (
@@ -56,8 +55,6 @@ if TYPE_CHECKING:
     from paddle import Tensor
 
     _POrder: TypeAlias = Literal['fro', 'nuc']
-
-__all__ = []
 
 
 # Consistent with kDefaultDim from C++ Backend
@@ -1370,11 +1367,11 @@ def cond(
         Tensor: computing results of condition number, its data type is the same as input Tensor ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)
-            >>> x = paddle.to_tensor([[1., 0, -1], [0, 1, 0], [1, 0, 1]])
+            >>> x = paddle.to_tensor([[1.0, 0.0, -1.0], [0.0, 1.0, 0.0], [1.0, 0.0, 1.0]])
 
             >>> # compute conditional number when p is None
             >>> out = paddle.linalg.cond(x)
@@ -1439,13 +1436,13 @@ def cond(
               [-1.03176904, -0.33741450, -0.29695082, -1.50258386]],
              [[ 0.67233968, -1.07747352,  0.80170447, -0.06695852],
               [-1.85003340, -0.23008066,  0.65083790,  0.75387722],
-              [ 0.61212337, -0.52664012,  0.19209868, -0.18707706],
+              [ 0.61212337, -0.52664012,  0.19209850, -0.18707688],
               [-0.00711021,  0.35236868, -0.40404350,  1.28656745]]])
 
             >>> a_cond_fro = paddle.linalg.cond(a, p='fro')
             >>> print(a_cond_fro)
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [6.37173700 , 35.15114594])
+            [6.37173700 , 35.15111160])
 
             >>> b = paddle.randn([2, 3, 4])
             >>> print(b)
@@ -1454,13 +1451,13 @@ def cond(
               [-0.84461296,  0.99335045, -1.23486686,  0.59551388],
               [-0.63035583, -0.98797107,  0.09410731,  0.47007179]],
              [[ 0.85850012, -0.98949534, -1.63086998,  1.07340240],
-              [-0.05492965,  1.04750168, -2.33754158,  1.16518629],
+              [-0.05492966,  1.04750192, -2.33754158,  1.16518629],
               [ 0.66847134, -1.05326962, -0.05703246, -0.48190674]]])
 
             >>> b_cond_2 = paddle.linalg.cond(b, p=2)
             >>> print(b_cond_2)
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [2.86566353, 6.85834455])
+            [2.86566353, 6.85834646])
 
     """
 
@@ -2477,76 +2474,6 @@ def histogram_bin_edges(
         max = max + 0.5
         min = min - 0.5
     return paddle.linspace(min, max, bins + 1, name=name)
-
-
-def bincount(
-    x: Tensor,
-    weights: Tensor | None = None,
-    minlength: int = 0,
-    name: str | None = None,
-) -> Tensor:
-    """
-    Computes frequency of each value in the input tensor.
-
-    Args:
-        x (Tensor): A Tensor with non-negative integer. Should be 1-D tensor.
-        weights (Tensor, optional): Weight for each value in the input tensor. Should have the same shape as input. Default is None.
-        minlength (int, optional): Minimum number of bins. Should be non-negative integer. Default is 0.
-        name (str|None, optional): Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name`. Default is None.
-
-    Returns:
-        Tensor: The tensor of frequency.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([1, 2, 1, 4, 5])
-            >>> result1 = paddle.bincount(x)
-            >>> print(result1)
-            Tensor(shape=[6], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [0, 2, 1, 0, 1, 1])
-
-            >>> w = paddle.to_tensor([2.1, 0.4, 0.1, 0.5, 0.5])
-            >>> result2 = paddle.bincount(x, weights=w)
-            >>> print(result2)
-            Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.        , 2.19999981, 0.40000001, 0.        , 0.50000000, 0.50000000])
-    """
-    if x.dtype not in [
-        paddle.int32,
-        paddle.int64,
-        DataType.INT32,
-        DataType.INT64,
-    ]:
-        raise TypeError("Elements in Input(x) should all be integers")
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.bincount(x, weights, minlength)
-    else:
-        helper = LayerHelper('bincount', **locals())
-
-        check_variable_and_dtype(x, 'X', ['int32', 'int64'], 'bincount')
-
-        if weights is not None:
-            check_variable_and_dtype(
-                weights,
-                'Weights',
-                ['int32', 'int64', 'float32', 'float64'],
-                'bincount',
-            )
-            out = helper.create_variable_for_type_inference(dtype=weights.dtype)
-        else:
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='bincount',
-            inputs={'X': x, 'Weights': weights},
-            outputs={'Out': out},
-            attrs={'minlength': minlength},
-        )
-        return out
 
 
 def mv(x: Tensor, vec: Tensor, name: str | None = None) -> Tensor:

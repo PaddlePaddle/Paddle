@@ -1036,7 +1036,7 @@ void MultiSlotDataFeed::PutToFeedVec(
     const auto& offset = ins_vec[i].GetOffset();
     int total_instance = static_cast<int>(offset.back());
     VLOG(4) << "total_instance: " << total_instance;
-    // phi::CPUPlace()
+    // CPUPlace()
     VLOG(4) << "this->place_: " << this->place_;
     if (type[0] == 'f') {  // float
       const auto& feasign = ins_vec[i].GetFloatData();
@@ -3121,7 +3121,7 @@ void SlotRecordInMemoryDataFeed::PackToScope(MiniBatchGpuPack* pack,
       lod.resize(1);
       lod[0].resize(offset_cols_size);
       phi::MixVector<size_t> mixv_lod(&lod[0]);
-      memcpy(mixv_lod.MutableData(phi::CPUPlace()),
+      memcpy(mixv_lod.MutableData(CPUPlace()),
              off_start_ptr,
              offset_cols_size * sizeof(size_t));
     }

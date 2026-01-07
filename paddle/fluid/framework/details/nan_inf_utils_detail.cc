@@ -198,7 +198,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     }
 
     float* cpu_data = new float[tensor->numel()];
-    memory::Copy(phi::CPUPlace(),
+    memory::Copy(CPUPlace(),
                  static_cast<void*>(cpu_data),
                  tensor->place(),
                  static_cast<const void*>(tensor->data<float>()),

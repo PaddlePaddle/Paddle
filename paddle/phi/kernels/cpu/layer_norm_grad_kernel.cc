@@ -127,7 +127,7 @@ void LayerNormGradKernel(const Context& dev_ctx,
       // dy_dx
       funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T>(
           dev_ctx, d_y, *scale, funcs::MultiplyFunctor<T>(), &temp, 1);
-      phi::Copy<Context>(dev_ctx, temp, dev_ctx.GetPlace(), false, d_x);
+      Copy<Context>(dev_ctx, temp, dev_ctx.GetPlace(), false, d_x);
 
       // dy_dmean_dx
       row_mean(dev_ctx, temp, &temp_vec);
@@ -139,7 +139,7 @@ void LayerNormGradKernel(const Context& dev_ctx,
           dev_ctx, temp, temp_norm, funcs::MultiplyFunctor<T>(), &temp, 0);
     } else {
       // dy_dx
-      phi::Copy<Context>(dev_ctx, d_y, dev_ctx.GetPlace(), false, d_x);
+      Copy<Context>(dev_ctx, d_y, dev_ctx.GetPlace(), false, d_x);
 
       // dy_dmean_dx
       row_mean(dev_ctx, d_y, &temp_vec);

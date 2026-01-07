@@ -59,7 +59,7 @@ void ExpandAsGradKernel(const Context& dev_ctx,
       phi::vectorize<int64_t>(out_grad_dims);
 
   if (in_grad->dims() == out_grad_dims) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);
     return;
   }
 

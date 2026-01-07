@@ -41,12 +41,9 @@ void EighGradKernel(const Context& dev_ctx,
   }
   auto& dims = out_v.dims();
   const int m = dims[dims.size() - 1];
-  DenseTensor tV =
-      phi::TransposeLast2Dim<T>(dev_ctx, phi::Conj<T>(dev_ctx, out_v));
-  DenseTensor W =
-      phi::Subtract<phi::dtype::Real<T>>(dev_ctx,
-                                         phi::funcs::Unsqueeze(out_w, -2),
-                                         phi::funcs::Unsqueeze(out_w, -1));
+  DenseTensor tV = TransposeLast2Dim<T>(dev_ctx, phi::Conj<T>(dev_ctx, out_v));
+  DenseTensor W = phi::Subtract<phi::dtype::Real<T>>(
+      dev_ctx, funcs::Unsqueeze(out_w, -2), funcs::Unsqueeze(out_w, -1));
   DenseTensor result = phi::Matmul<T>(dev_ctx, tV, dout_v);
   result.Resize(dims);
   dev_ctx.template Alloc<T>(&result);
@@ -55,11 +52,11 @@ void EighGradKernel(const Context& dev_ctx,
   DenseTensor constant;
   constant.Resize(common::make_ddim(out_shape));
   dev_ctx.template Alloc<T>(&constant);
-  phi::funcs::SetConstant<Context, T>()(dev_ctx, &constant, T(0.5));
+  funcs::SetConstant<Context, T>()(dev_ctx, &constant, T(0.5));
   result = phi::Subtract<T>(
       dev_ctx,
       result,
-      phi::Conj<T>(dev_ctx, phi::TransposeLast2Dim<T>(dev_ctx, result)));
+      phi::Conj<T>(dev_ctx, TransposeLast2Dim<T>(dev_ctx, result)));
   result = phi::Multiply<T>(dev_ctx, result, constant);
   if (result.type() != W.type()) {
     auto x_vector = EigenVector<T>::Flatten(result);
@@ -70,7 +67,7 @@ void EighGradKernel(const Context& dev_ctx,
   } else {
     result = phi::Divide<T>(dev_ctx, result, W);
   }
-  result = phi::funcs::DiagFill<T, phi::dtype::Real<T>>(
+  result = funcs::DiagFill<T, phi::dtype::Real<T>>(
       dev_ctx, m, m, m, 0, dout_w, result);
   *dx = phi::Matmul<T>(dev_ctx, out_v, phi::Matmul<T>(dev_ctx, result, tV));
 }

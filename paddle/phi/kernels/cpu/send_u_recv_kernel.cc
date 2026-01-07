@@ -57,7 +57,7 @@ void GraphSendRecvCpuLoop(const int& input_size,
     for (int i = 0; i < input_size; ++i) {
       if (*(dst_count + i) == 0) continue;
       auto dst_slice = dst->Slice(i, i + 1);
-      auto eigen_dst = phi::EigenVector<T>::Flatten(dst_slice);
+      auto eigen_dst = EigenVector<T>::Flatten(dst_slice);
       eigen_dst = eigen_dst / static_cast<T>(*(dst_count + i));
     }
   } else if (reduce_op == "MIN" || reduce_op == "MAX") {
@@ -87,7 +87,10 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& dev_ctx,
                                        int64_t out_size,
                                        DenseTensor* out,
                                        DenseTensor* dst_count = nullptr) {
-  const int& index_size = src_index.dims()[0];  // NOLINT
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  const int64_t& index_size = src_index.dims()[0];
+  // NOLINT
 
   const auto& src_dims = x.dims();
   int64_t memset_size = 1;

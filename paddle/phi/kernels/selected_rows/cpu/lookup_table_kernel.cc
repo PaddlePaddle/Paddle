@@ -26,7 +26,6 @@
 
 namespace phi {
 namespace sr {
-using DDim = phi::DDim;
 
 constexpr int64_t kNoPadding = -1;
 
@@ -80,7 +79,7 @@ void LookupTableKernel(const Context &dev_ctx,
                    table + id_index * row_width,
                    row_width * sizeof(T));
           } else {
-            auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+            auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
             blas.VCOPY(row_width,
                        table + id_index * row_width,
                        output + i * row_width);
@@ -109,7 +108,7 @@ void LookupTableKernel(const Context &dev_ctx,
                  table + id_index * row_width,
                  row_width * sizeof(T));
         } else {
-          auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+          auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
           blas.VCOPY(
               row_width, table + id_index * row_width, output + i * row_width);
         }

@@ -238,6 +238,32 @@ PADDLE_API void DepthwiseConvInferMeta(const MetaTensor& input,
                                        MetaTensor* out,
                                        MetaConfig config = MetaConfig());
 
+PADDLE_API void DepthwiseConv2dBiasInferMeta(
+    const MetaTensor& input,
+    const MetaTensor& filter,
+    const MetaTensor& bias,
+    const std::vector<int>& strides,
+    const std::vector<int>& paddings,
+    const std::string& padding_algorithm,
+    int groups,
+    const std::vector<int>& dilations,
+    const std::string& data_format,
+    MetaTensor* out,
+    MetaConfig config = MetaConfig());
+
+PADDLE_API void DepthwiseConv3dBiasInferMeta(
+    const MetaTensor& input,
+    const MetaTensor& filter,
+    const MetaTensor& bias,
+    const std::vector<int>& strides,
+    const std::vector<int>& paddings,
+    const std::string& padding_algorithm,
+    int groups,
+    const std::vector<int>& dilations,
+    const std::string& data_format,
+    MetaTensor* out,
+    MetaConfig config = MetaConfig());
+
 PADDLE_API void DequantizeAbsMaxInferMeta(const MetaTensor& x,
                                           const MetaTensor& scale,
                                           float max_range,
@@ -747,6 +773,13 @@ PADDLE_API void ReduceAsInferMeta(const MetaTensor& x,
                                   const MetaTensor& target,
                                   MetaTensor* out);
 
+PADDLE_API void RmsNormInferMeta(const MetaTensor& x,
+                                 const MetaTensor& scale,
+                                 const std::vector<int64_t>& normalized_shape,
+                                 double epsilon,
+                                 MetaTensor* y,
+                                 MetaTensor* invvar);
+
 PADDLE_API void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
                                          const MetaTensor& mask,
                                          MetaTensor* out);
@@ -861,6 +894,8 @@ PADDLE_API void FusedRMSNormInferMeta(const MetaTensor& x,
 PADDLE_API void BatchedGemmInferMeta(const MetaTensor& lhs,
                                      const MetaTensor& rhs,
                                      const std::vector<int64_t>& batch_sizes,
+                                     const bool trans_lhs,
+                                     const bool trans_rhs,
                                      MetaTensor* output);
 
 }  // namespace phi

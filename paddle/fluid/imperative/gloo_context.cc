@@ -46,17 +46,17 @@ void GLOOParallelContext::Init() {
   int port = std::stoi(addr[1]);
   gloo_wrapper->SetHttpStore(host, port, "worker");
   gloo_wrapper->Init();
-  device_ = std::make_unique<phi::CPUContext>(phi::CPUPlace());
+  device_ = std::make_unique<phi::CPUContext>(CPUPlace());
   device_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                            .GetAllocator(phi::CPUPlace())
+                            .GetAllocator(CPUPlace())
                             .get());
   device_->SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(phi::CPUPlace())
+          .GetAllocator(CPUPlace())
           .get());
   device_->SetZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(phi::CPUPlace())
+          .GetZeroAllocator(CPUPlace())
           .get());
 }
 

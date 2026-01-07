@@ -56,7 +56,7 @@ void FillDiagonalKernel(const Context& dev_ctx,
     return;
   }
   const int64_t kMaxBlockDim = 512;
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
 
   T* out_data = dev_ctx.template Alloc<T>(out);
   auto fill_val = static_cast<T>(value);

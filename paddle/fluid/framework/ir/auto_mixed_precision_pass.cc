@@ -948,8 +948,7 @@ void AutoMixedPrecisionPass::ConvertWeightsData() const {
 
       if (low_precision_ == phi::DataType::FLOAT16) {
         auto* low_precision_data =
-            low_precision_tensor.mutable_data<phi::dtype::float16>(
-                phi::CPUPlace{});
+            low_precision_tensor.mutable_data<phi::dtype::float16>(CPUPlace{});
         for (int64_t i = 0; i < origin_tensor->numel(); i++) {
           if (origin_tensor->dtype() == phi::DataType::FLOAT64) {
             auto* origin_data = origin_tensor->data<double>();
@@ -963,8 +962,7 @@ void AutoMixedPrecisionPass::ConvertWeightsData() const {
         }
       } else if (low_precision_ == phi::DataType::BFLOAT16) {
         auto* low_precision_data =
-            low_precision_tensor.mutable_data<phi::dtype::bfloat16>(
-                phi::CPUPlace{});
+            low_precision_tensor.mutable_data<phi::dtype::bfloat16>(CPUPlace{});
         for (int64_t i = 0; i < origin_tensor->numel(); i++) {
           if (origin_tensor->dtype() == phi::DataType::FLOAT64) {
             auto* origin_data = origin_tensor->data<double>();
@@ -979,7 +977,7 @@ void AutoMixedPrecisionPass::ConvertWeightsData() const {
       }
       origin_tensor->clear();
       paddle::framework::TensorCopySync(
-          low_precision_tensor, phi::CPUPlace{}, origin_tensor);
+          low_precision_tensor, CPUPlace{}, origin_tensor);
     }
   }
 }

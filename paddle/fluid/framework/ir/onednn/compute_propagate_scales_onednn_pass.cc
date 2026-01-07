@@ -26,7 +26,7 @@ namespace paddle::framework::ir {
 void ComputePropagateScalesOnednnPass::GetTensorFromVector(
     const std::vector<float>& data_v, phi::DenseTensor* tensor) const {
   const int size = static_cast<int>(data_v.size());
-  auto* data = tensor->mutable_data<float>({size}, phi::CPUPlace());
+  auto* data = tensor->mutable_data<float>({size}, CPUPlace());
   for (int i = 0; i < size; i++) {
     data[i] = data_v[i];
   }
@@ -121,7 +121,7 @@ void ComputePropagateScalesOnednnPass::ComputeVarScales(
       std::vector<int64_t> reshape_dims = {dims[0], volume};
       tmp_tensor.Resize(common::make_ddim(reshape_dims));
       auto* weight_data = weight_tensor->data<float>();
-      auto* tmp_data = tmp_tensor.mutable_data<float>(phi::CPUPlace());
+      auto* tmp_data = tmp_tensor.mutable_data<float>(CPUPlace());
       for (int i = 0; i < weight_tensor->numel(); i++) {
         tmp_data[i] = std::abs(weight_data[i]);
       }
@@ -153,7 +153,10 @@ void ComputePropagateScalesOnednnPass::ComputeSingleGruWeightScales(
 
   const auto* wx_tensor = wx_var->GetMutable<phi::DenseTensor>();
   const auto* wh_tensor = wh_var->GetMutable<phi::DenseTensor>();
-  const int OC = wh_tensor->dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t OC = wh_tensor->dims()[0];
+
   std::vector<float> scale_ur(2 * OC);
   std::vector<float> scale_o(OC);
   for (int row_id = 0; row_id < wx_tensor->dims()[0]; row_id++) {
@@ -363,7 +366,7 @@ void ComputePropagateScalesOnednnPass::UpdateScaleOpInOutScales(
   auto pair = iter->second;
   const auto tensor = pair.second;
   tmp_tensor.Resize(tensor.dims());
-  auto* data = tmp_tensor.mutable_data<float>(phi::CPUPlace());
+  auto* data = tmp_tensor.mutable_data<float>(CPUPlace());
   auto* src_data = tensor.data<float>();
   for (int i = 0; i < tensor.numel(); i++) {
     if (out_iter != var_quant_scales->end()) {

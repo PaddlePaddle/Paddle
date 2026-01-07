@@ -288,8 +288,8 @@ void InnerCompute(const Context& dev_ctx,
                           " the second dimension should be 1."));
   }
 
-  const phi::DenseTensor* master_param = nullptr;
-  phi::DenseTensor* master_param_out = nullptr;
+  const DenseTensor* master_param = nullptr;
+  DenseTensor* master_param_out = nullptr;
   if (multi_precision) {
     bool has_master = (master_param_in.get_ptr() != nullptr) &&
                       (master_param_out_out != nullptr);
@@ -312,8 +312,8 @@ void InnerCompute(const Context& dev_ctx,
 
   auto grad = &grad_in;
 
-  phi::funcs::ForRange<Context> for_range(static_cast<const Context&>(dev_ctx),
-                                          param->numel());
+  funcs::ForRange<Context> for_range(static_cast<const Context&>(dev_ctx),
+                                     param->numel());
 
   auto param_dims = param->dims();
   auto grad_dims = grad->dims();
@@ -329,18 +329,18 @@ void InnerCompute(const Context& dev_ctx,
       common::errors::InvalidArgument("The Grad's rank of sparse_momentum_op"
                                       " must be 2 now."));
 
-  phi::DenseTensor sorted_index, grad_index, sort_value;
+  DenseTensor sorted_index, grad_index, sort_value;
   sorted_index.Resize({num_index});
   grad_index.Resize({num_index});
   auto sorted_index_ptr = dev_ctx.template Alloc<IndexT>(&sorted_index);
   auto grad_index_ptr = dev_ctx.template Alloc<IndexT>(&grad_index);
 
-  if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
+  if (dev_ctx.GetPlace().GetType() == AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
     sort_value.Resize({num_index});
     auto sort_value_ptr = dev_ctx.template Alloc<IndexT>(&sort_value);
 
-    phi::funcs::ForRange<Context> for_range_index(dev_ctx, num_index);
+    funcs::ForRange<Context> for_range_index(dev_ctx, num_index);
     RangeFunctor<IndexT> range_functor(sort_value_ptr);
     for_range_index(range_functor);
 
@@ -367,7 +367,7 @@ void InnerCompute(const Context& dev_ctx,
         sizeof(IndexT) * 8,
         dev_ctx.stream())));
 #endif
-  } else if (dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
+  } else if (dev_ctx.GetPlace().GetType() == AllocationType::CPU) {
     std::vector<std::pair<IndexT, IndexT>> vec_tosort;
     auto index_ptr = index->data<IndexT>();
     for (IndexT i = 0; i < num_index; i++) {

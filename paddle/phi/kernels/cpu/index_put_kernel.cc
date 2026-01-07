@@ -73,7 +73,7 @@ void LaunchIndexPutKernel(const Context& dev_ctx,
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   if (!is_initialized || !is_same_place) {
-    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   }
 
   const auto& x_dims = x.dims();
@@ -127,11 +127,11 @@ void IndexPutKernel(const Context& dev_ctx,
                         "Dims of input tensor should be less than 7."));
 
   std::vector<DenseTensor> tmp_args;
-  std::vector<const phi::DenseTensor*> int_indices_v =
+  std::vector<const DenseTensor*> int_indices_v =
       funcs::DealWithBoolIndices<T, Context>(dev_ctx, indices, &tmp_args);
   if (int_indices_v.empty()) {
     if (!out->initialized()) {
-      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     }
     return;
   }
@@ -139,7 +139,7 @@ void IndexPutKernel(const Context& dev_ctx,
   auto bd_dim = funcs::BroadCastTensorsDims(int_indices_v);
 
   std::vector<int64_t> res_dim_v(common::vectorize(bd_dim));
-  std::vector<const phi::DenseTensor*> res_indices_v(x.dims().size(), nullptr);
+  std::vector<const DenseTensor*> res_indices_v(x.dims().size(), nullptr);
   std::vector<DenseTensor> tmp_res_indices_v;
   std::vector<DenseTensor> tmp_value_v;
   std::vector<DenseTensor> range_tensor_v;

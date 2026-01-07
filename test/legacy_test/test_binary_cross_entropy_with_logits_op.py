@@ -84,6 +84,34 @@ class TestBinaryCrossEntropyWithLogits3(TestBinaryCrossEntropyWithLogits):
         self.pos_weight = None
 
 
+class TestBinaryCrossEntropyWithLogits1Compatible(
+    TestBinaryCrossEntropyWithLogits
+):
+    def setUp(self):
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': True})
+        super().setUp()
+        self.weight = None
+
+
+class TestBinaryCrossEntropyWithLogits2Compatible(
+    TestBinaryCrossEntropyWithLogits
+):
+    def setUp(self):
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': True})
+        super().setUp()
+        self.pos_weight = None
+
+
+class TestBinaryCrossEntropyWithLogits3Compatible(
+    TestBinaryCrossEntropyWithLogits
+):
+    def setUp(self):
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': True})
+        super().setUp()
+        self.weight = None
+        self.pos_weight = None
+
+
 class TestBinaryCrossEntropyWithLogits_ZeroSize(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
