@@ -561,7 +561,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
   // step 14: Get sampled class center for output
   Copy<Context>(dev_ctx,
                 num_classes_per_device,
-                phi::CPUPlace(),
+                CPUPlace(),
                 true,
                 &num_classes_per_device);
   T actual_num_samples = num_classes_per_device.data<T>()[rank + 1];

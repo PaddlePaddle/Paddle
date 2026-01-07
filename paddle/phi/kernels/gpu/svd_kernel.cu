@@ -105,7 +105,7 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
                                                                gesvdj_params));
     // check the error info
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -186,7 +186,7 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
                                                                gesvdj_params));
     // check the error info
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -269,7 +269,7 @@ void GesvdjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
         gesvdj_params));
     // check the error info
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -352,7 +352,7 @@ void GesvdjBatched<phi::complex128>(const phi::GPUContext& dev_ctx,
         gesvdj_params));
     // check the error info
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,

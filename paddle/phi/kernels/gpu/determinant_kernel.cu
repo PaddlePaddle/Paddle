@@ -168,7 +168,7 @@ struct DeterminantCudaFunctor<phi::dtype::complex<T>, Context> {
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     memory_utils::Copy(dev_ctx.GetPlace(),
                        tmp_gpu_ptrs_data->ptr(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        static_cast<void*>(cpu_ptrs.data()),
                        cpu_ptrs.size() * sizeof(phi::dtype::complex<T>*),
                        dev_ctx.stream());

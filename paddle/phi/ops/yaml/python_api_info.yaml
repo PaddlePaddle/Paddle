@@ -314,6 +314,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : conj
+  name: [paddle.conj, paddle.Tensor.conj]
+  args_alias :
+    use_default_mapping : True
+
 - op : baddbmm
   name : [paddle.baddbmm, paddle.Tensor.baddbmm]
   args_alias:

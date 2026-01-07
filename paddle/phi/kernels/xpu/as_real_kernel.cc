@@ -37,8 +37,12 @@ void AsRealKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    as_real, XPU, ALL_LAYOUT, phi::AsRealKernel, phi::complex64) {
+PD_REGISTER_KERNEL(as_real,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::AsRealKernel,
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 #endif  // PADDLE_WITH_XPU_FFT

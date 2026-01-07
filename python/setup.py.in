@@ -380,7 +380,9 @@ def xpu() -> str:
         string: Return the version information of xpu. If paddle package is non-XPU version, it will return False.
     Examples:
         .. code-block:: python
+
             >>> import paddle
+
             >>> paddle.version.xpu()
             >>> # doctest: +SKIP('Different environments yield different output.')
             '20230114'
@@ -1353,6 +1355,12 @@ if '${WITH_XPU}' == 'ON':
             package_data['paddle.libs'] += [os.path.basename(xpu_ml_lib_file)]
         shutil.copy('${XPU_XBLAS_LIB}', libs_path)
         package_data['paddle.libs'] += ['${XPU_XBLAS_LIB_NAME}']
+        shutil.copy('${XPU_XBLAS_JITC_LIB}', libs_path)
+        package_data['paddle.libs'] += ['${XPU_XBLAS_JITC_LIB_NAME}']
+        shutil.copy('${XPU_XBLAS_LLVM_LIB}', libs_path)
+        package_data['paddle.libs'] += ['${XPU_XBLAS_LLVM_LIB_NAME}']
+        shutil.copy('${XPU_XBLAS_CLANG_LIB}', libs_path)
+        package_data['paddle.libs'] += ['${XPU_XBLAS_CLANG_LIB_NAME}']
         shutil.copy('${XPU_XFA_LIB}', libs_path)
         package_data['paddle.libs'] += ['${XPU_XFA_LIB_NAME}']
         shutil.copy('${XPU_XPUDNN_LIB}', libs_path)

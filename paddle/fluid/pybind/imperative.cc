@@ -120,10 +120,10 @@ class PyVariableWrapperHook : public imperative::VariableWrapperHook {
 };
 
 static const phi::Place PyObjectToPlace(const py::object &place_obj) {
-  if (py::isinstance<phi::CPUPlace>(place_obj)) {
-    return place_obj.cast<phi::CPUPlace>();
-  } else if (py::isinstance<phi::GPUPlace>(place_obj)) {
-    return place_obj.cast<phi::GPUPlace>();
+  if (py::isinstance<CPUPlace>(place_obj)) {
+    return place_obj.cast<CPUPlace>();
+  } else if (py::isinstance<GPUPlace>(place_obj)) {
+    return place_obj.cast<GPUPlace>();
   } else if (py::isinstance<phi::XPUPlace>(place_obj)) {
     return place_obj.cast<phi::XPUPlace>();
   } else if (py::isinstance<phi::GPUPinnedPlace>(place_obj)) {
@@ -177,11 +177,11 @@ static void InitVarBaseAndTensor(imperative::VarBase *self,
   auto *tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
   VLOG(4) << "zero_copy: " << zero_copy;
   if (phi::is_cpu_place(place)) {
-    SetTensorFromPyArray<phi::CPUPlace>(tensor, array, place, zero_copy);
+    SetTensorFromPyArray<CPUPlace>(tensor, array, place, zero_copy);
   } else if (phi::is_xpu_place(place)) {
     SetTensorFromPyArray<phi::XPUPlace>(tensor, array, place, zero_copy);
   } else if (phi::is_gpu_place(place)) {
-    SetTensorFromPyArray<phi::GPUPlace>(tensor, array, place, zero_copy);
+    SetTensorFromPyArray<GPUPlace>(tensor, array, place, zero_copy);
   } else if (phi::is_cuda_pinned_place(place)) {
     SetTensorFromPyArray<phi::GPUPinnedPlace>(tensor, array, place, zero_copy);
   } else if (phi::is_xpu_pinned_place(place)) {
@@ -528,7 +528,7 @@ void BindImperative(py::module *m_ptr) {
                   "_generator' to locate the data causes this issue."));
           // 2. construct DenseTensor
           phi::DenseTensor t;
-          SetTensorFromPyArray<phi::CPUPlace>(&t, array, phi::CPUPlace(), true);
+          SetTensorFromPyArray<CPUPlace>(&t, array, CPUPlace(), true);
           // 3. allocate shared memory
           void *data_ptr = t.data();
           size_t data_size = t.numel() * phi::SizeOf(t.dtype());
@@ -538,9 +538,9 @@ void BindImperative(py::module *m_ptr) {
           const std::string &ipc_name = shared_writer_holder->ipc_name();
           memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
           // 5. copy data & reset holder
-          memory::Copy(phi::CPUPlace(),
+          memory::Copy(CPUPlace(),
                        shared_writer_holder->ptr(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        data_ptr,
                        data_size);
           t.ResetHolder(shared_writer_holder);
@@ -567,7 +567,7 @@ void BindImperative(py::module *m_ptr) {
                 "_generator' to locate the data causes this issue."));
         // 2. construct DenseTensor
         phi::DenseTensor t;
-        SetTensorFromPyArray<phi::CPUPlace>(&t, array, phi::CPUPlace(), true);
+        SetTensorFromPyArray<CPUPlace>(&t, array, CPUPlace(), true);
         // 3. allocate shared memory
         void *data_ptr = t.data();
         size_t data_size = t.numel() * phi::SizeOf(t.dtype());
@@ -577,9 +577,9 @@ void BindImperative(py::module *m_ptr) {
         const std::string &ipc_name = shared_writer_holder->ipc_name();
         memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
         // 5. copy data & reset holder
-        memory::Copy(phi::CPUPlace(),
+        memory::Copy(CPUPlace(),
                      shared_writer_holder->ptr(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      data_ptr,
                      data_size);
         t.ResetHolder(shared_writer_holder);
@@ -692,8 +692,8 @@ void BindImperative(py::module *m_ptr) {
             return py::cast(self.ExpectedPlace());
           },
           [](imperative::Tracer &self, const py::object &obj) {
-            if (py::isinstance<phi::GPUPlace>(obj)) {
-              auto p = obj.cast<phi::GPUPlace *>();
+            if (py::isinstance<GPUPlace>(obj)) {
+              auto p = obj.cast<GPUPlace *>();
               self.SetExpectedPlace(*p);
               // TODO(jiabin): Support eager here when we need to make all
               // dygraph in eager mode
@@ -704,8 +704,8 @@ void BindImperative(py::module *m_ptr) {
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
-            } else if (py::isinstance<phi::CPUPlace>(obj)) {
-              auto p = obj.cast<phi::CPUPlace *>();
+            } else if (py::isinstance<CPUPlace>(obj)) {
+              auto p = obj.cast<CPUPlace *>();
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
@@ -844,8 +844,8 @@ void BindImperative(py::module *m_ptr) {
           });
 
   m.def("varbase_copy", &VarBaseCopy<phi::Place>);
-  m.def("varbase_copy", &VarBaseCopy<phi::CPUPlace>);
-  m.def("varbase_copy", &VarBaseCopy<phi::GPUPlace>);
+  m.def("varbase_copy", &VarBaseCopy<CPUPlace>);
+  m.def("varbase_copy", &VarBaseCopy<GPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<phi::XPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<phi::GPUPinnedPlace>);
   m.def("varbase_copy", &VarBaseCopy<phi::XPUPinnedPlace>);
@@ -925,8 +925,7 @@ void BindImperative(py::module *m_ptr) {
              imperative::ParallelContext,
              std::shared_ptr<imperative::NCCLParallelContext>>(
       m, "NCCLParallelContext")
-      .def(py::init<const imperative::ParallelStrategy &,
-                    const phi::GPUPlace &>())
+      .def(py::init<const imperative::ParallelStrategy &, const GPUPlace &>())
       .def("init", [](imperative::NCCLParallelContext &self) { self.Init(); })
       .def("init_with_ring_id",
            &imperative::NCCLParallelContext::InitWithRingID,
@@ -965,8 +964,7 @@ void BindImperative(py::module *m_ptr) {
              imperative::ParallelContext,
              std::shared_ptr<imperative::GLOOParallelContext>>(
       m, "GLOOParallelContext")
-      .def(py::init<const imperative::ParallelStrategy &,
-                    const phi::CPUPlace &>())
+      .def(py::init<const imperative::ParallelStrategy &, const CPUPlace &>())
       .def("init", [](imperative::GLOOParallelContext &self) { self.Init(); })
       .def("init_with_ring_id",
            &imperative::GLOOParallelContext::InitWithRingID,

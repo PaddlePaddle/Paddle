@@ -293,7 +293,7 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
                           Node* scale_out) {
     // get Device context
     auto* dev_ctx = static_cast<phi::CPUContext*>(
-        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(CPUPlace()));
 
     auto scale_attr = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
 

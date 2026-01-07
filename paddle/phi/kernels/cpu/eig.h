@@ -249,7 +249,7 @@ void MagmaEig(const Context& dev_ctx,
   // magma will modify original input, so copy to cpu at any case
   DenseTensor input_copy_cpu;
   input_copy_cpu.Resize(input.dims());
-  Copy(dev_ctx, input, phi::CPUPlace(), false, &input_copy_cpu);
+  Copy(dev_ctx, input, CPUPlace(), false, &input_copy_cpu);
 
   using RealT = typename phi::dtype::Real<T>;
   magma_vec_t jobvr = MagmaVec;
@@ -274,7 +274,7 @@ void MagmaEig(const Context& dev_ctx,
   phi::dtype::Real<T>* rwork_data = nullptr;
 
   rwork.Resize(common::make_ddim({lda * 2}));
-  auto cpu_place = phi::CPUPlace();
+  auto cpu_place = CPUPlace();
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
   rwork_data = (*cpu_ctx).template Alloc<phi::dtype::Real<T>>(&rwork);
@@ -345,7 +345,7 @@ void ApplyEigKernelMagma(const Context& dev_ctx,
 
   DenseTensor vectors_row_major_cpu;
   vectors_row_major_cpu.Resize(input.dims());
-  auto cpu_place = phi::CPUPlace();
+  auto cpu_place = CPUPlace();
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
   (*cpu_ctx).template Alloc<T>(&vectors_row_major_cpu);
