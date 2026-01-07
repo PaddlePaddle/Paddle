@@ -200,9 +200,8 @@ class TestI0API_Compatibility(unittest.TestCase):
         paddle.enable_static()
 
     def test_static_Compatibility(self):
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(
                 name="x", shape=self.x.shape, dtype=self.dtype
             )
@@ -217,13 +216,14 @@ class TestI0API_Compatibility(unittest.TestCase):
 
             exe = paddle.static.Executor(self.place)
             fetches = exe.run(
-                main,
+                paddle.static.default_main_program(),
                 feed={"x": self.x},
                 fetch_list=[out1, out2, out3, out4],
             )
             ref_out = output_i0(self.x)
             for out in fetches:
                 np.testing.assert_allclose(out, ref_out, rtol=1e-5)
+        paddle.disable_static()
 
 
 if __name__ == "__main__":
