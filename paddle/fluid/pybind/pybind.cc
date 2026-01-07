@@ -1824,6 +1824,7 @@ PYBIND11_MODULE(libpaddle, m) {
                   &phi::backends::gpu::CUDAGraph::UniqueMemoryPoolID)
       .def("replay", &phi::backends::gpu::CUDAGraph::Replay)
       .def("reset", &phi::backends::gpu::CUDAGraph::Reset)
+      .def("__del__", &phi::backends::gpu::CUDAGraph::Reset)
       .def("print_to_dot_files",
            &phi::backends::gpu::CUDAGraph::PrintToDotFiles);
 #endif
@@ -2258,15 +2259,15 @@ PYBIND11_MODULE(libpaddle, m) {
   // stored in this static instance to avoid illegal memory access.
   m.def("clear_kernel_factory",
         []() { phi::KernelFactory::Instance().kernels().clear(); });
-  m.def("clear_device_manager", []() {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-    platform::XCCLCommContext::Release();
-    platform::CustomTracer::Release();
-    platform::CustomDeviceEventResourcePool::Release();
-    platform::CustomDeviceStreamResourcePool::Release();
-    phi::DeviceManager::Release();
-#endif
-  });
+  //   m.def("clear_device_manager", []() {
+  // #ifdef PADDLE_WITH_CUSTOM_DEVICE
+  //     platform::XCCLCommContext::Release();
+  //     platform::CustomTracer::Release();
+  //     platform::CustomDeviceEventResourcePool::Release();
+  //     platform::CustomDeviceStreamResourcePool::Release();
+  //     phi::DeviceManager::Release();
+  // #endif
+  //   });
 
   // NOTE(zjl): ctest would load environment variables at the beginning even
   // though we have not `import paddle.base as base`. So we add this API

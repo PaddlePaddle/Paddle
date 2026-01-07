@@ -17,6 +17,7 @@
 #include "paddle/phi/api/profiler/trace_event_collector.h"
 #include "paddle/phi/backends/callback_manager.h"
 #include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/backends/custom/cuda_graph.h"
 #include "paddle/phi/backends/custom/enforce_custom.h"
 #include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/backends/device_guard.h"
@@ -383,7 +384,7 @@ class CustomDevice : public DeviceInterface {
   void* MemoryAllocate(size_t dev_id, size_t size) override {
     void* ptr = nullptr;
     const auto device = &devices_pool[dev_id];
-
+    phi::backends::gpu::CUDAGraphCaptureModeGuard capture_mode_guard;
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
         pimpl_->device_memory_allocate(device, &ptr, size));
     return ptr;
@@ -1229,6 +1230,7 @@ class CustomDevice : public DeviceInterface {
   void CudaThreadExchangeStreamCaptureMode(graph::streamCaptureMode* mode) {
     if (pimpl_->cuda_thread_exchange_stream_capthure_mode) {
       C_StreamCaptureMode c_mode = C_StreamCaptureModeGlobal;
+      ConvertEnum(mode, &c_mode);
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->cuda_thread_exchange_stream_capthure_mode(&c_mode));
       ConvertEnum(&c_mode, mode);
