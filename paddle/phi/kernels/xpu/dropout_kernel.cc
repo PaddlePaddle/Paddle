@@ -49,7 +49,7 @@ void DropoutRawKernel(const Context& dev_ctx,
     int seed_data = 0;
     if (seed_tensor.get_ptr() != nullptr) {
       if ((seed_tensor->place()).GetType() == AllocationType::XPU) {
-        memory_utils::Copy(phi::CPUPlace(),
+        memory_utils::Copy(CPUPlace(),
                            &seed_data,
                            seed_tensor->place(),
                            seed_tensor->data<int>(),

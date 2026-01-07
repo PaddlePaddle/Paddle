@@ -57,7 +57,7 @@ void XPUFlattenUniqueKernelImpl(const Context& dev_ctx,
         nullptr,
         false);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "unique_count");
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &unique_len_cpu,
                        dev_ctx.GetPlace(),
                        unique_len_xpu,
@@ -218,7 +218,7 @@ void XPUDimUniqueKernelImpl(const Context& dev_ctx,
   std::vector<IndexT> inverse_cpu(axis_len);
   std::vector<IndexT> counts_cpu;
   std::vector<IndexT> ori_idx_cpu(axis_len);
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      ori_idx_cpu.data(),
                      dev_ctx.GetPlace(),
                      ori_idx_xpu,
@@ -241,7 +241,7 @@ void XPUDimUniqueKernelImpl(const Context& dev_ctx,
                               {1});
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_all");
 
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        adj_identical_cpu_data,
                        dev_ctx.GetPlace(),
                        adj_identical_xpu,
@@ -271,7 +271,7 @@ void XPUDimUniqueKernelImpl(const Context& dev_ctx,
       RAII_GUARD.alloc_l3_or_gm<XPUType>(unique_len * slice_size);
   memory_utils::Copy(dev_ctx.GetPlace(),
                      unique_axis_idx_xpu,
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      unique_axis.data(),
                      unique_len * sizeof(IndexT));
   r = xpu::paddle_gather<XPUType, IndexT>(dev_ctx.x_context(),
@@ -304,7 +304,7 @@ void XPUDimUniqueKernelImpl(const Context& dev_ctx,
     auto* indices_data = dev_ctx.template Alloc<IndexT>(indices);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        indices_data,
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        indices_cpu.data(),
                        sizeof(IndexT) * unique_len);
   }
@@ -314,7 +314,7 @@ void XPUDimUniqueKernelImpl(const Context& dev_ctx,
     auto* reverse_data = dev_ctx.template Alloc<IndexT>(index);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        reverse_data,
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        inverse_cpu.data(),
                        sizeof(IndexT) * axis_len);
   }
@@ -324,7 +324,7 @@ void XPUDimUniqueKernelImpl(const Context& dev_ctx,
     auto* counts_data = dev_ctx.template Alloc<IndexT>(counts);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        counts_data,
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        counts_cpu.data(),
                        sizeof(IndexT) * unique_len);
   }
