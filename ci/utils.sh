@@ -822,7 +822,7 @@ set +x
 
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'    # indicate whether the case was in quickly disable list
         test_cases=$(ctest -N -V) # get all test cases
-
+        sleep 3h
         if [ ${WITH_CINN:-OFF} == "ON" ]; then
             pushd ${PADDLE_ROOT}/build/paddle/cinn
             ctest -N -E "test_frontend_interpreter" | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list
