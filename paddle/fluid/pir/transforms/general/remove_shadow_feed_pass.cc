@@ -28,7 +28,7 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 
-namespace {
+namespace paddle {
 
 std::unique_ptr<paddle::dialect::OpYamlInfoParser> GetParser(
     pir::Operation *op) {
@@ -46,9 +46,9 @@ std::unique_ptr<paddle::dialect::OpYamlInfoParser> GetParser(
 }
 
 template <typename T>
-phi::Place GetVarPlace(const paddle::framework::Variable *var,
-                       const phi::Place &exe_place) {
-  phi::Place place;
+Place GetVarPlace(const paddle::framework::Variable *var,
+                  const Place &exe_place) {
+  Place place;
   auto &tensor = var->Get<T>();
   if (tensor.has_allocation()) {
     place = tensor.place();
@@ -63,7 +63,7 @@ class RemoveShadowFeedPattern
  public:
   explicit RemoveShadowFeedPattern(pir::IrContext *context,
                                    const pir::Block *block,
-                                   const phi::Place &place,
+                                   const Place &place,
                                    const paddle::framework::Scope *scope)
       : pir::OpRewritePattern<paddle::dialect::PhiKernelOp>::OpRewritePattern(
             context),
@@ -99,7 +99,7 @@ class RemoveShadowFeedPattern
       if (!var) {
         return false;
       }
-      phi::Place var_place, dst_place;
+      Place var_place, dst_place;
       if (var->IsType<phi::DenseTensor>()) {
         var_place = GetVarPlace<phi::DenseTensor>(var, place_);
       } else if (var->IsType<phi::SelectedRows>()) {
@@ -116,7 +116,7 @@ class RemoveShadowFeedPattern
       int dst_place_type =
           op.attribute("dst_place_type").dyn_cast<pir::Int32Attribute>().data();
       if (dst_place_type == 0) {
-        dst_place = phi::CPUPlace();
+        dst_place = CPUPlace();
       } else {
         dst_place = place_;
       }
@@ -164,7 +164,7 @@ class RemoveShadowFeedPattern
   }
 
  private:
-  const phi::Place place_;
+  const Place place_;
   const paddle::framework::Scope *scope_;
   std::unordered_map<::pir::Value, std::string> kwargs_map_;
 };
@@ -222,7 +222,7 @@ class RemoveShadowFeedPass : public pir::PatternRewritePass {
               "When using RemoveShadowFeedPass, scope attribute is required!"
               "Use Set method to set the scope attribute."));
       auto block = &Get<const pir::Block>("top_block");
-      auto &place = Get<const phi::Place>(pir::Pass::kPlaceAttr);
+      auto &place = Get<const Place>(pir::Pass::kPlaceAttr);
       auto scope =
           &Get<const paddle::framework::Scope>(pir::Pass::kParamScopeAttr);
       PADDLE_ENFORCE_NOT_NULL(
@@ -236,12 +236,12 @@ class RemoveShadowFeedPass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
+}  // namespace paddle
 
 namespace pir {
 
 std::unique_ptr<pir::Pass> CreateRemoveShadowFeedPass() {
-  return std::make_unique<RemoveShadowFeedPass>();
+  return std::make_unique<paddle::RemoveShadowFeedPass>();
 }
 
 }  // namespace pir
