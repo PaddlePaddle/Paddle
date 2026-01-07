@@ -32,7 +32,7 @@ namespace pir {
 
 std::unique_ptr<paddle::dialect::OpYamlInfoParser> GetParser(Operation *op) {
   std::unique_ptr<paddle::dialect::OpYamlInfoParser> op_info_parser(nullptr);
-  std::string op_name = op->dyn_cast<paddle::dialect::PhiKernelOp>().op_name();
+  std::string op_name = op->dyn_cast<PhiKernelOp>().op_name();
   auto op_info = IrContext::Instance()->GetRegisteredOpInfo(op_name);
   if (op_info.HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
     auto impl =
@@ -57,15 +57,13 @@ Place GetVarPlace(const paddle::framework::Variable *var,
   return place;
 }
 
-class RemoveShadowFeedPattern
-    : public OpRewritePattern<paddle::dialect::PhiKernelOp> {
+class RemoveShadowFeedPattern : public OpRewritePattern<PhiKernelOp> {
  public:
   explicit RemoveShadowFeedPattern(IrContext *context,
                                    const Block *block,
                                    const Place &place,
                                    const paddle::framework::Scope *scope)
-      : OpRewritePattern<paddle::dialect::PhiKernelOp>::OpRewritePattern(
-            context),
+      : OpRewritePattern<PhiKernelOp>::OpRewritePattern(context),
         place_(place),
         scope_(scope),
         kwargs_map_() {
@@ -74,14 +72,13 @@ class RemoveShadowFeedPattern
     }
   }
 
-  bool IsSamePlaceShadowFeed(paddle::dialect::PhiKernelOp op) const {
+  bool IsSamePlaceShadowFeed(PhiKernelOp op) const {
     if (op.op_name() == "pd_op.shadow_feed") {
       auto in = op.operand_source(0);
       auto *var = [&]() -> paddle::framework::Variable * {
         auto *defined_op = in.defining_op();
-        if (defined_op && defined_op->isa<paddle::dialect::PhiKernelOp>()) {
-          if (defined_op->dyn_cast<paddle::dialect::PhiKernelOp>()
-                  .kernel_name() != "data")
+        if (defined_op && defined_op->isa<PhiKernelOp>()) {
+          if (defined_op->dyn_cast<PhiKernelOp>().kernel_name() != "data")
             return nullptr;
           const auto &name = defined_op->attributes()
                                  .at("name")
@@ -125,7 +122,7 @@ class RemoveShadowFeedPattern
     return false;
   }
 
-  bool IsTensorAttrShadowFeed(paddle::dialect::PhiKernelOp op) const {
+  bool IsTensorAttrShadowFeed(PhiKernelOp op) const {
     if (op.op_name() == "pd_op.shadow_feed") {
       auto in = op.operand_source(0);
       if (!kwargs_map_.count(in)) {
@@ -134,7 +131,7 @@ class RemoveShadowFeedPattern
       auto out = op.result(0);
       if (out.use_count() == 1) {
         auto use_op = out.first_use().owner();
-        if (!use_op->isa<paddle::dialect::PhiKernelOp>()) {
+        if (!use_op->isa<PhiKernelOp>()) {
           return false;
         }
         auto op_info_parser = GetParser(use_op);
@@ -149,11 +146,11 @@ class RemoveShadowFeedPattern
     return false;
   }
 
-  bool Match(paddle::dialect::PhiKernelOp op) const override {
+  bool Match(PhiKernelOp op) const override {
     return IsSamePlaceShadowFeed(op) || IsTensorAttrShadowFeed(op);
   }
 
-  void Rewrite(paddle::dialect::PhiKernelOp op,
+  void Rewrite(PhiKernelOp op,
                PatternRewriter &rewriter) const override {  // NOLINT
     auto in = op.operand_source(0);
     auto out = op.result(0);
@@ -168,18 +165,16 @@ class RemoveShadowFeedPattern
   std::unordered_map<Value, std::string> kwargs_map_;
 };
 
-class RemoveShadowFeedPatternInference
-    : public OpRewritePattern<paddle::dialect::PhiKernelOp> {
+class RemoveShadowFeedPatternInference : public OpRewritePattern<PhiKernelOp> {
  public:
   explicit RemoveShadowFeedPatternInference(IrContext *context)
-      : OpRewritePattern<paddle::dialect::PhiKernelOp>::OpRewritePattern(
-            context) {}
+      : OpRewritePattern<PhiKernelOp>::OpRewritePattern(context) {}
 
-  bool Match(paddle::dialect::PhiKernelOp op) const override {
+  bool Match(PhiKernelOp op) const override {
     return op.op_name() == "pd_op.shadow_feed";
   }
 
-  void Rewrite(paddle::dialect::PhiKernelOp op,
+  void Rewrite(PhiKernelOp op,
                PatternRewriter &rewriter) const override {  // NOLINT
     auto in = op.operand_source(0);
     auto out = op.result(0);
