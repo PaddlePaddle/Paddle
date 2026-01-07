@@ -142,7 +142,7 @@ void ConvTransposeRawKernel(const Context& dev_ctx,
       (data_layout != DataLayout::NHWC
            ? static_cast<int>(out_dims[1]) / groups
            : static_cast<int>(out_dims[out_dims.size() - 1]) / groups);
-  funcs::Col2ImFunctor<funcs::ColFormat::kCFO, Context, T> col2im;
+  funcs::Col2ImFunctor<funcs::ColFormat::CFO, Context, T> col2im;
   funcs::Col2VolFunctor<Context, T> col2vol;
   funcs::ConcatFunctor<Context, T> concat_functor;
 

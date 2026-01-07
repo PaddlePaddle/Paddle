@@ -39,7 +39,7 @@ GarbageCollector::GarbageCollector(const phi::Place &place,
   }
 }
 
-CPUGarbageCollector::CPUGarbageCollector(const phi::CPUPlace &place,
+CPUGarbageCollector::CPUGarbageCollector(const CPUPlace &place,
                                          size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}
 

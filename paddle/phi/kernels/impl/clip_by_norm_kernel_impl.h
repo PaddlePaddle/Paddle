@@ -45,7 +45,7 @@ void ClipByNormFunctor(const Context& dev_ctx,
       temp + (static_cast<T>(1) - temp) * max_norm / (x_norm + epsilon);
   Eigen::array<int, 1> one_dim{{1}};
   Eigen::DSizes<int, 1> m_dsize(input->numel());
-  if (dev_ctx.GetPlace() == phi::CPUPlace()) {
+  if (dev_ctx.GetPlace() == CPUPlace()) {
     out.device(*place) = x * scaling.reshape(one_dim).eval().broadcast(m_dsize);
   } else {
     out.device(*place) = x * scaling.reshape(one_dim).broadcast(m_dsize);

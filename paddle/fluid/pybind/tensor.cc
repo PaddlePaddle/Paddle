@@ -399,7 +399,7 @@ phi::DenseTensor RebuildTensorFromVmmMeta(const py::tuple &meta) {
   auto alloc = std::make_unique<memory::allocation::VmmImportedAllocation>(
       reinterpret_cast<void *>(base + header->offset),
       header->alloc_size,
-      phi::GPUPlace(device_id),
+      GPUPlace(device_id),
       keep);
   phi::DenseTensor tensor;
   tensor.Resize(phi::make_ddim(dims_vec));
@@ -450,8 +450,7 @@ std::tuple<phi::DenseTensor, bool> HandleTensorCopy(
   }
 
   if (force_copy || src.place() != dst_place) {
-    phi::Place ctx_place =
-        src.place() != phi::CPUPlace() ? src.place() : dst_place;
+    phi::Place ctx_place = src.place() != CPUPlace() ? src.place() : dst_place;
     phi::DenseTensor dst(
         std::make_shared<phi::Allocation>(nullptr, 0, dst_place), src.meta());
     const auto *dev_ctx = phi::DeviceContextPool::Instance().Get(ctx_place);
@@ -537,7 +536,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              self.mutable_data<float>(place);
            })
       .def("_alloc_float",
-           [](phi::DenseTensor &self, phi::GPUPlace &place) {
+           [](phi::DenseTensor &self, GPUPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("_alloc_float",
@@ -545,15 +544,15 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              self.mutable_data<float>(place);
            })
       .def("_alloc_float",
-           [](phi::DenseTensor &self, phi::CPUPlace &place) {
+           [](phi::DenseTensor &self, CPUPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("_alloc_double",
-           [](phi::DenseTensor &self, phi::CPUPlace &place) {
+           [](phi::DenseTensor &self, CPUPlace &place) {
              self.mutable_data<double>(place);
            })
       .def("_alloc_int",
-           [](phi::DenseTensor &self, phi::CPUPlace &place) {
+           [](phi::DenseTensor &self, CPUPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
@@ -565,7 +564,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
-           [](phi::DenseTensor &self, phi::GPUPlace &place) {
+           [](phi::DenseTensor &self, GPUPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
@@ -578,7 +577,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            })
       .def("_mutable_data",
            [](phi::DenseTensor &self,
-              phi::CPUPlace &place,
+              CPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
                  self.mutable_data(place, phi::TransToPhiDataType(type)));
@@ -599,7 +598,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            })
       .def("_mutable_data",
            [](phi::DenseTensor &self,
-              phi::GPUPlace &place,
+              GPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
                  self.mutable_data(place, phi::TransToPhiDataType(type)));
@@ -613,7 +612,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            })
       .def("_clear", &phi::DenseTensor::clear)
       .def("_copy_from",
-           &TensorCopyFrom<phi::CPUPlace>,
+           &TensorCopyFrom<CPUPlace>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("batch_size") = -1)
@@ -628,7 +627,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("_copy_from",
-           &TensorCopyFrom<phi::GPUPlace>,
+           &TensorCopyFrom<GPUPlace>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("batch_size") = -1)
@@ -648,7 +647,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("set",
-           SetTensorFromPyArray<phi::CPUPlace>,
+           SetTensorFromPyArray<CPUPlace>,
            py::arg("array"),
            py::arg("place"),
            py::arg("zero_copy") = false)
@@ -663,7 +662,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("place"),
            py::arg("zero_copy") = false)
       .def("set",
-           SetTensorFromPyArray<phi::GPUPlace>,
+           SetTensorFromPyArray<GPUPlace>,
            py::arg("array"),
            py::arg("place"),
            py::arg("zero_copy") = false)
@@ -973,7 +972,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                  std::make_shared<memory::allocation::Allocation>(
                      cuda_ipc_allocation->ptr(),
                      cuda_ipc_allocation->base_ptr(), size,
-                     phi::GPUPlace(device_id));
+                     GPUPlace(device_id));
 
              self.ResetHolderWithType(shared_reader_holder, dtype);
              self.Resize(dims);
@@ -989,7 +988,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                       tensor dims, lod information, device index.
 
        )DOC")
-      .def("_share_device_ipc",
+      .def("_share_cuda",
            [](phi::DenseTensor self) {
              if (!self.IsInitialized() || self.numel() == 0)
                throw std::runtime_error(
@@ -1053,9 +1052,9 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                     >>> import paddle
 
                     >>> tensor = paddle.ones([3,3])
-                    >>> metainfo = tensor.value().get_tensor()._share_device_ipc()
+                    >>> metainfo = tensor.value().get_tensor()._share_cuda()
       )DOC")
-      .def("_new_from_ipc",
+      .def("_new_shared_cuda",
            [](py::tuple t) {
               if (FLAGS_use_virtual_memory_auto_growth && t.size() == 5) {
                 return RebuildTensorFromVmmMeta(t);
@@ -1102,8 +1101,8 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                     >>> import paddle
 
                     >>> tensor = paddle.ones([3,3])
-                    >>> metainfo = tensor.value().get_tensor()._share_device_ipc()
-                    >>> tensor_from_shared = paddle.to_tensor(paddle.base.core.DenseTensor._new_from_ipc(metainfo))
+                    >>> metainfo = tensor.value().get_tensor()._share_cuda()
+                    >>> tensor_from_shared = paddle.to_tensor(paddle.base.core.DenseTensor._new_shared_cuda(metainfo))
         )DOC")
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -1157,7 +1156,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                tuple: contains data size, data type, tensor dims, lod
                       information, device index.
            )DOC")
-      .def("_share_device_ipc",
+      .def("_share_xpu",
            [](phi::DenseTensor &self) {
              if (!self.IsInitialized() || self.numel() == 0)
                throw std::runtime_error(
@@ -1167,7 +1166,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              // Get the current device ID.
              int dev_id = platform::GetXPUCurrentDeviceId();
              paddle::platform::SetXPUDeviceId(dev_id);
-             VLOG(6) << "[DEBUG XPU] _share_device_ipc: current XPU device = "
+             VLOG(6) << "[DEBUG XPU] _share_xpu: current XPU device = "
                      << dev_id;
 
              auto *holder = dynamic_cast<memory::allocation::Allocation *>(
@@ -1180,18 +1179,18 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              void *base_ptr = holder->base_ptr();
              ptrdiff_t offset_bytes = reinterpret_cast<char *>(holder->ptr()) -
                                       reinterpret_cast<char *>(base_ptr);
-             VLOG(6) << "[DEBUG XPU] _share_device_ipc: base_ptr = " << base_ptr
+             VLOG(6) << "[DEBUG XPU] _share_xpu: base_ptr = " << base_ptr
                      << ", offset_bytes = " << offset_bytes;
              cudaIpcMemHandle_t handle;
              int ret = cudaIpcGetMemHandle(&handle, base_ptr);
-             VLOG(6) << "[DEBUG XPU] _share_device_ipc: "
-                     << "cudaIpcGetMemHandle returned: " << ret;
+             VLOG(6) << "[DEBUG XPU] _share_xpu: cudaIpcGetMemHandle returned: "
+                     << ret;
              PADDLE_ENFORCE_XPU_SUCCESS(ret);
              // Use the correct size for the IPC handle.
              auto _handle = py::bytes(
                  reinterpret_cast<char *>(&handle),
                  (py::ssize_t)sizeof(cudaIpcMemHandle_t));
-             VLOG(6) << "[DEBUG XPU] _share_device_ipc: IPC handle (bytes) = "
+             VLOG(6) << "[DEBUG XPU] _share_xpu: IPC handle (bytes) = "
                      << _handle;
              const auto &device_id =
                  paddle::platform::GetXPUCurrentDeviceId();
@@ -1201,8 +1200,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              size_t data_size = self.numel() *
                  framework::SizeOfType(
                      framework::TransToProtoVarType(self.type()));
-             VLOG(6) << "[DEBUG XPU] _share_device_ipc: data_size = "
-                     << data_size;
+             VLOG(6) << "[DEBUG XPU] _share_xpu: data_size = " << data_size;
              return py::make_tuple(_handle,
                                    (py::size_t)offset_bytes,
                                    data_size,
@@ -1218,7 +1216,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                tuple: contains handle, offset, data size, data type,
                       tensor dims, lod information, and device id.
            )DOC")
-      .def("_new_from_ipc",
+      .def("_new_shared_xpu",
            [](py::tuple t) {
              if (t.size() != 7)
                throw std::runtime_error(
@@ -1227,14 +1225,14 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              // Get the current device ID.
              int dev_id = platform::GetXPUCurrentDeviceId();
              paddle::platform::SetXPUDeviceId(dev_id);
-             VLOG(6) << "[DEBUG XPU] _new_from_ipc: current XPU device = "
+             VLOG(6) << "[DEBUG XPU] _new_shared_xpu: current XPU device = "
                      << dev_id;
 
              phi::DenseTensor tensor;
              const std::string &handle = t[0].cast<std::string>();
              ptrdiff_t offset_bytes = (ptrdiff_t)t[1].cast<int64_t>();
              auto device_id = t[6].cast<int>();
-             VLOG(6) << "[DEBUG XPU] _new_from_ipc: handle = " << handle
+             VLOG(6) << "[DEBUG XPU] _new_shared_xpu: handle = " << handle
                      << ", offset_bytes = " << offset_bytes;
              auto base_ptr = memory::allocation::GetIpcBasePtr(handle);
              size_t size = t[2].cast<size_t>();
@@ -1248,7 +1246,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                  static_cast<phi::DataType>(t[3].cast<int>()));
              tensor.Resize(common::make_ddim(
                  t[4].cast<std::vector<int>>()));
-             VLOG(6) << "[DEBUG XPU] _new_from_ipc: Reshape tensor dims: "
+             VLOG(6) << "[DEBUG XPU] _new_shared_xpu: Reshape tensor dims: "
                      << tensor.dims();
              return tensor;
            },
@@ -1311,12 +1309,12 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                // copy data & reset holder
                if (phi::is_cuda_pinned_place(holder->place())) {
 #ifdef PADDLE_WITH_CUDA
-                 memory::Copy(phi::CPUPlace(), shared_holder->ptr(),
+                 memory::Copy(CPUPlace(), shared_holder->ptr(),
                               phi::GPUPinnedPlace(), data_ptr, data_size);
 #endif
                } else {
-                 memory::Copy(phi::CPUPlace(), shared_holder->ptr(),
-                              phi::CPUPlace(), data_ptr, data_size);
+                 memory::Copy(CPUPlace(), shared_holder->ptr(),
+                              CPUPlace(), data_ptr, data_size);
                }
                self.ResetHolder(shared_holder);
                mmap_allocation = shared_holder.get();

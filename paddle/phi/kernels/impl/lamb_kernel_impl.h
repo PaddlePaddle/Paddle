@@ -186,8 +186,7 @@ void ComputeImpl(const Context& dev_ctx,
   // Diff from here
 
   if (dev_ctx.GetPlace().GetType() == AllocationType::GPU &&
-      beta1_pow.place() == phi::CPUPlace() &&
-      beta2_pow.place() == phi::CPUPlace()) {
+      beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
     LambMomentREGUpdateFunctor<T, IsMultiPrecision> moment_update_functor(
         weight_decay,
         beta1,

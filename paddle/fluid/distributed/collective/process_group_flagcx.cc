@@ -427,7 +427,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Barrier(
                     0,
                     common::errors::PreconditionNotMet(
                         "The barrier device id must greater or equal than 0."));
-  phi::GPUPlace place(opts.device_id);
+  GPUPlace place(opts.device_id);
   auto allocator = std::unique_ptr<phi::Allocator>(
       new paddle::experimental::DefaultAllocator(place));
   phi::DenseTensorMeta meta(phi::DataType::FLOAT32, phi::DDim{1});
@@ -816,7 +816,7 @@ void ProcessGroupFlagcx::SyncCalcStream(const Place& place,
 
 void ProcessGroupFlagcx::EagerConnect() {
   const auto deviceId = phi::backends::gpu::GetCurrentDeviceId();
-  const auto& place = phi::GPUPlace(deviceId);
+  const auto& place = GPUPlace(deviceId);
   const auto key = GetKeyFromPlace(place);
 
   platform::CUDADeviceGuard cuda_guard(place);
@@ -831,7 +831,7 @@ void ProcessGroupFlagcx::EagerConnect() {
 
 void ProcessGroupFlagcx::EagerConnectRingExchange() {
   std::vector<std::pair<int, int>> peers;
-  const auto& place = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
+  const auto& place = GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
 
   for (int rank = 0; rank < size_; rank++) {
     auto peer_rank = rank + 1 >= size_ ? 0 : rank + 1;
