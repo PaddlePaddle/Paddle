@@ -156,9 +156,9 @@ class TestConverterResNet50Move(unittest.TestCase):
         raise ValueError(
             f"\n\n[DEBUG ERROR] 打印两个 Tensor 数据:\n"
             f"--- Tensor output_expect (Shape: {output_expected.shape}) ---\n"
-            f"{output_expected.numpy()}\n\n"
+            f"{output_expected}\n\n"
             f"--- Tensor output_trt (Shape: {output_trt.shape}) ---\n"
-            f"{output_trt.numpy()}"
+            f"{output_trt}"
         )
         np.testing.assert_allclose(
             output_expected,
