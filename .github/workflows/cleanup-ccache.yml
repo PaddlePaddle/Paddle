@@ -2,7 +2,7 @@ name: Cleanup ccache
 
 on:
   schedule:
-    - cron: "0 16 * * FRI" # Weekly on Saturday at 00:00 UTC+8
+    - cron: "0 16 * * Sat" # Weekly on Sunday at 00:00 UTC+8
   workflow_dispatch:
 
 concurrency:
