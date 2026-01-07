@@ -160,10 +160,12 @@ class TestI0Op_ZeroSize(OpTest):
 
 
 class TestI0API_Compatibility(unittest.TestCase):
+    DTYPE = "float64"
+    DATA = [0, 1, 2, 3, 4, 5]
+
     def setUp(self):
-        self.x = np.array([0, 1, 2, 3, 4, 5])
+        self.x = np.array(self.DATA).astype(self.DTYPE)
         self.out = output_i0(self.x)
-        self.dtype = "float64"
         self.place = get_places()
 
     def test_dygraph_Compatibility(self):
@@ -196,34 +198,37 @@ class TestI0API_Compatibility(unittest.TestCase):
         ref_out = output_i0(self.x)
         # Check
         for out in paddle_dygraph_out:
-            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-5)
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-5)
         paddle.enable_static()
 
     def test_static_Compatibility(self):
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(
-                name="x", shape=self.x.shape, dtype=self.dtype
-            )
-            # Position args (args)
-            out1 = paddle.i0(x)
-            # Key words args (kwargs) for paddle
-            out2 = paddle.i0(x=x)
-            # Key words args for torch
-            out3 = paddle.i0(input=x)
-            # Tensor method args
-            out4 = x.i0()
+        def run(place):
+            paddle.enable_static()
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data(
+                    name="x", shape=self.x.shape, dtype=self.DTYPE
+                )
+                # Position args (args)
+                out1 = paddle.i0(x)
+                # Key words args (kwargs) for paddle
+                out2 = paddle.i0(x=x)
+                # Key words args for torch
+                out3 = paddle.i0(input=x)
+                # Tensor method args
+                out4 = x.i0()
 
-            exe = paddle.static.Executor(self.place)
-            fetches = exe.run(
-                paddle.static.default_main_program(),
-                feed={"x": self.x},
-                fetch_list=[out1, out2, out3, out4],
-            )
-            ref_out = output_i0(self.x)
-            for out in fetches:
-                np.testing.assert_allclose(out, ref_out, rtol=1e-5)
-        paddle.disable_static()
+                exe = paddle.static.Executor(place)
+                fetches = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={"x": self.x},
+                    fetch_list=[out1, out2, out3, out4],
+                )
+                for out in fetches:
+                    np.testing.assert_allclose(out, self.out, rtol=1e-5)
+            paddle.disable_static()
+
+        for place in self.place:
+            run(place)
 
 
 if __name__ == "__main__":
