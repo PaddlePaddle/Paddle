@@ -174,7 +174,7 @@ class TestI1API_Compatibility(unittest.TestCase):
         self.place = get_places()
 
     def test_dygraph_Compatibility(self):
-        paddle.disable_static()
+        paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x)
         paddle_dygraph_out = []
         # Position args (args)
@@ -204,12 +204,13 @@ class TestI1API_Compatibility(unittest.TestCase):
         # Check
         for out in paddle_dygraph_out:
             np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-5)
-        paddle.enable_static()
+        paddle.enable_static(self.place)
 
     def test_static_Compatibility(self):
-        main = paddle.static.Program()
+        paddle.enable_static(self.place)
+        main = paddle.static.default_main_program()
         startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
+        with paddle.static.program_guard(startup):
             x = paddle.static.data(
                 name="x", shape=self.x.shape, dtype=self.dtype
             )
@@ -231,6 +232,7 @@ class TestI1API_Compatibility(unittest.TestCase):
             ref_out = reference_i1e(self.x)
             for out in fetches:
                 np.testing.assert_allclose(out, ref_out, rtol=1e-5)
+        paddle.disable_static(self.place)
 
 
 if __name__ == "__main__":
