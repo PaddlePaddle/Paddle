@@ -4,10 +4,10 @@ include(CheckCCompilerFlag)
 include(CheckCXXSymbolExists)
 include(CheckTypeSize)
 
-function(check_compiler_cxx14_flag)
+function(check_compiler_cxx17_flag)
   if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 5.4)
-      message(FATAL_ERROR "Unsupported GCC version. GCC >= 5.4 required.")
+    if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 8.2)
+      message(FATAL_ERROR "Unsupported GCC version. GCC >= 8.2 required.")
     elseif(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.2)
       message(
         WARNING
@@ -32,7 +32,7 @@ function(check_compiler_cxx14_flag)
   endif()
 endfunction()
 
-check_compiler_cxx14_flag()
+check_compiler_cxx17_flag()
 
 if(NOT WIN32)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
