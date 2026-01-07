@@ -56,7 +56,7 @@ void LodResetKernel(const Context& dev_ctx,
       auto* lod = lod_t->data<int>();
       DenseTensor lod_cpu;
       if (lod_t->place().GetType() == phi::AllocationType::GPU) {
-        Copy(dev_ctx, *lod_t, phi::CPUPlace(), true, &lod_cpu);
+        Copy(dev_ctx, *lod_t, CPUPlace(), true, &lod_cpu);
         lod = lod_cpu.data<int>();
       }
       level0 = std::vector<int>(lod, lod + lod_t->numel());

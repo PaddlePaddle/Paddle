@@ -95,7 +95,7 @@ void GPUCollectFpnProposalsOpKernel(
     auto score_in = score_ins[i];
     if (multi_rois_num.size() > 0) {
       DenseTensor temp;
-      Copy(dev_ctx, *multi_rois_num[i], phi::CPUPlace(), true, &temp);
+      Copy(dev_ctx, *multi_rois_num[i], CPUPlace(), true, &temp);
       const int* length_in = temp.data<int>();
       lod_size = multi_rois_num[i]->numel();
       for (size_t n = 0; n < lod_size; ++n) {
@@ -240,7 +240,7 @@ void GPUCollectFpnProposalsOpKernel(
   GetLengthLoD<<<blocks, threads, 0, dev_ctx.stream()>>>(
       real_post_num, out_id_data, length_lod_data);
   std::vector<int> length_lod_cpu(lod_size);
-  phi::memory_utils::Copy(phi::CPUPlace(),
+  phi::memory_utils::Copy(CPUPlace(),
                           length_lod_cpu.data(),
                           place,
                           length_lod_data,

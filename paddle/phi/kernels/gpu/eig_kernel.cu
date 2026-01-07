@@ -32,7 +32,7 @@ void EigKernel(const Context& dev_ctx,
     return;
   }
 
-  auto cpu_place = phi::CPUPlace();
+  auto cpu_place = CPUPlace();
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
 
@@ -108,8 +108,8 @@ void EigKernel(const Context& dev_ctx,
   }
 
   // copy result from cpu to gpu tensor
-  Copy(dev_ctx, out_w_cpu, phi::GPUPlace(), false, out_w);
-  Copy(dev_ctx, out_v_cpu, phi::GPUPlace(), false, out_v);
+  Copy(dev_ctx, out_w_cpu, GPUPlace(), false, out_w);
+  Copy(dev_ctx, out_v_cpu, GPUPlace(), false, out_v);
 }
 
 }  // namespace phi

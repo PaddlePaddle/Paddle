@@ -149,13 +149,11 @@ void MoeCombineGradKernel(const Context& dev_ctx,
                           DenseTensor* grad_combine_weights_helper) {
   dev_ctx.template Alloc<T>(grad_x);
   dev_ctx.template Alloc<T>(grad_combine_weights_helper);
-  phi::Full<T, Context>(
-      dev_ctx, phi::IntArray(common::vectorize(grad_x->dims())), 0, grad_x);
-  phi::Full<T, Context>(
-      dev_ctx,
-      phi::IntArray(common::vectorize(grad_combine_weights_helper->dims())),
-      0,
-      grad_combine_weights_helper);
+  Full<T, Context>(dev_ctx, grad_x->dims(), 0, grad_x);
+  Full<T, Context>(dev_ctx,
+                   grad_combine_weights_helper->dims(),
+                   0,
+                   grad_combine_weights_helper);
   auto x_shape = x.dims();
   auto combine_weights_shape = combine_weights.dims();
   moe_combine_bwd<T, Context>(dev_ctx,
@@ -182,18 +180,13 @@ void MoeCombineAutoGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(grad_combine_weights_helper);
   dev_ctx.template Alloc<int32_t>(grad_scatter_index);
 
-  phi::Full<T, Context>(
-      dev_ctx, phi::IntArray(common::vectorize(grad_x->dims())), 0, grad_x);
-  phi::Full<T, Context>(
-      dev_ctx,
-      phi::IntArray(common::vectorize(grad_combine_weights_helper->dims())),
-      0,
-      grad_combine_weights_helper);
-  phi::Full<int32_t, Context>(
-      dev_ctx,
-      phi::IntArray(common::vectorize(grad_scatter_index->dims())),
-      0,
-      grad_scatter_index);
+  Full<T, Context>(dev_ctx, grad_x->dims(), 0, grad_x);
+  Full<T, Context>(dev_ctx,
+                   grad_combine_weights_helper->dims(),
+                   0,
+                   grad_combine_weights_helper);
+  Full<int32_t, Context>(
+      dev_ctx, grad_scatter_index->dims(), 0, grad_scatter_index);
 
   // TODO(nieyuntao): Temporarily use 'grad_combine_weight_intermediate' to
   // bypass the grad_combine_weights_helper's shape mismatch to kernel shape
@@ -207,11 +200,10 @@ void MoeCombineAutoGradKernel(const Context& dev_ctx,
                          x.dims()[1]}));
   grad_combine_weight_intermediate_meta.set_dtype(combine_weights.dtype());
   dev_ctx.template Alloc<T>(grad_combine_weight_intermediate);
-  phi::Full<T, Context>(dev_ctx,
-                        phi::IntArray(common::vectorize(
-                            grad_combine_weight_intermediate->dims())),
-                        0,
-                        grad_combine_weight_intermediate);
+  Full<T, Context>(dev_ctx,
+                   grad_combine_weight_intermediate->dims(),
+                   0,
+                   grad_combine_weight_intermediate);
 
   auto x_shape = x.dims();
   auto combine_weights_shape = combine_weights.dims();

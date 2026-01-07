@@ -320,8 +320,7 @@ void ProdStrideKernel(const Context& dev_ctx,
 
   if (x_.numel() == 0) {
     // fill with 1.
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 1, out);
+    phi::Full<T, Context>(dev_ctx, out->dims(), 1, out);
     return;
   }
 
@@ -647,8 +646,7 @@ void MeanStrideKernel(const Context& dev_ctx,
   }
 
   if (x_.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    phi::Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     return;
   }
 

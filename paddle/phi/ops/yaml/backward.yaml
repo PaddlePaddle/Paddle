@@ -4239,14 +4239,15 @@
     data_type: w
 
 - backward_op: rms_norm_grad
-  forward: rms_norm (Tensor x, Tensor scale, float epsilon) -> Tensor(y), Tensor(invvar)
-  args: (Tensor x, Tensor scale,Tensor invvar, Tensor y_grad, float epsilon)
+  forward: rms_norm (Tensor x, Tensor scale, int64_t[] normalized_shape={}, double epsilon = 1e-5) -> Tensor(y), Tensor(invvar)
+  args: (Tensor x, Tensor scale, Tensor invvar, Tensor y_grad, int64_t[] normalized_shape={}, double epsilon = 1e-5)
   output: Tensor(x_grad), Tensor(scale_grad)
   infer_meta:
     func: RMSNormGradInferMeta
   kernel:
     func: rms_norm_grad
     data_type: x
+  optional : scale
 
 - backward_op: shuffle_batch_grad
   forward: shuffle_batch (Tensor x, Tensor seed, int startup_seed=0) -> Tensor(out), Tensor(shuffle_idx), Tensor(seed_out)

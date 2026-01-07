@@ -77,7 +77,7 @@ void BindDeepEPApi(pybind11::module *m) {
              cudaStream_t comm_stream = self.get_comm_stream();
              auto s = phi::Stream(reinterpret_cast<phi::StreamId>(comm_stream));
 #if defined(PADDLE_WITH_CUDA)
-             return phi::CUDAStream(phi::GPUPlace(device_id), s);
+             return phi::CUDAStream(GPUPlace(device_id), s);
 #elif defined(PADDLE_WITH_XPU)
              return phi::XPUCUDAStream(phi::XPUPlace(device_id), s);
 #endif

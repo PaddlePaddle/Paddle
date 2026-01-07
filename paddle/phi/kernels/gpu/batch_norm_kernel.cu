@@ -937,7 +937,7 @@ void BatchNormKernel(const Context &dev_ctx,
     // if (dev_ctx.HasInput("MomentumTensor")) {
     //   const auto *mom_tensor = MomentumTensor;
     //   DenseTensor mom_cpu;
-    //   paddle::framework::TensorCopySync(*mom_tensor, phi::CPUPlace(),
+    //   paddle::framework::TensorCopySync(*mom_tensor, CPUPlace(),
     //                                     &mom_cpu);
     //   momentum = mom_cpu.data<float>()[0];
     // }

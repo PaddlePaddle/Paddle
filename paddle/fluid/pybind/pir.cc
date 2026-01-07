@@ -2972,9 +2972,9 @@ void BindPassManager(pybind11::module *m) {
                } else if (py::isinstance<framework::Scope>(attr.second)) {
                  pass->SetNotOwned(attr.first,
                                    attr.second.cast<framework::Scope *>());
-               } else if (py::isinstance<phi::GPUPlace>(attr.second)) {
+               } else if (py::isinstance<GPUPlace>(attr.second)) {
                  pass->Set(attr.first,
-                           new phi::Place(attr.second.cast<phi::GPUPlace>()));
+                           new phi::Place(attr.second.cast<GPUPlace>()));
                } else {
                  PADDLE_THROW(common::errors::InvalidArgument(
                      "The pass attr is not supported this type."));

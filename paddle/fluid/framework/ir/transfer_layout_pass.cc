@@ -267,7 +267,7 @@ void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
 
         framework::TransDataLayout(phi::DataLayout::NCHW,
                                    phi::DataLayout::NHWC,
-                                   phi::CPUPlace{},
+                                   CPUPlace{},
                                    *filter_tensor,
                                    &temp_tensor);
         *filter_tensor = temp_tensor;

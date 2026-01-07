@@ -276,8 +276,8 @@ void WarpctcKernel(const Context& dev_ctx,
 
     DenseTensor logits_length_cpu;
     DenseTensor labels_length_cpu;
-    Copy(dev_ctx, *logits_length, phi::CPUPlace(), false, &logits_length_cpu);
-    Copy(dev_ctx, *labels_length, phi::CPUPlace(), false, &labels_length_cpu);
+    Copy(dev_ctx, *logits_length, CPUPlace(), false, &logits_length_cpu);
+    Copy(dev_ctx, *labels_length, CPUPlace(), false, &labels_length_cpu);
 
     logits_lod.push_back(0);
     label_lod.push_back(0);
@@ -358,7 +358,7 @@ void WarpctcKernel(const Context& dev_ctx,
     T* pad_value_data = dev_ctx.template HostAlloc<T>(&cpu_pad_value);
     *pad_value_data = static_cast<T>(0);
     DenseTensor pad_value;
-    if (dev_ctx.GetPlace() == phi::CPUPlace()) {
+    if (dev_ctx.GetPlace() == CPUPlace()) {
       pad_value = cpu_pad_value;
     } else {
       Copy(dev_ctx, cpu_pad_value, dev_ctx.GetPlace(), true, &pad_value);
@@ -401,7 +401,7 @@ void WarpctcKernel(const Context& dev_ctx,
     lod.push_back(label_lod);
     warpctc_label.set_lod(lod);
 
-    if (dev_ctx.GetPlace() == phi::CPUPlace()) {
+    if (dev_ctx.GetPlace() == CPUPlace()) {
       funcs::UnpaddingDenseTensorFunctor<Context, int>()(
           dev_ctx,
           label,
@@ -424,10 +424,10 @@ void WarpctcKernel(const Context& dev_ctx,
           0 /*lod_level*/,
           false /*norm_by_times*/,
           funcs::kBatchLengthWidth);
-      Copy(dev_ctx, gpu_label, phi::CPUPlace(), true, &warpctc_label);
+      Copy(dev_ctx, gpu_label, CPUPlace(), true, &warpctc_label);
     }
   } else {
-    Copy(dev_ctx, label, phi::CPUPlace(), true, &warpctc_label);
+    Copy(dev_ctx, label, CPUPlace(), true, &warpctc_label);
   }
 
   const int* warpctc_label_data = warpctc_label.data<int>();

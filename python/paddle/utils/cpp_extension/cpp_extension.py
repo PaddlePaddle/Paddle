@@ -21,8 +21,6 @@ import copy
 import concurrent
 import functools
 import re
-import warnings
-import collections
 import setuptools
 import sys
 import paddle
@@ -1476,116 +1474,6 @@ def load(
     custom_op_api = _import_module_from_library(name, build_base_dir, verbose)
 
     return custom_op_api
-
-
-def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
-    """
-    Determine CUDA arch flags to use.
-
-    For an arch, say "6.1", the added compile flag will be
-    ``-gencode=arch=compute_61,code=sm_61``.
-    For an added "+PTX", an additional
-    ``-gencode=arch=compute_xx,code=compute_xx`` is added.
-    """
-    # If cflags is given, there may already be user-provided arch flags in it
-    if cflags is not None:
-        for flag in cflags:
-            if any(x in flag for x in ['PADDLE_EXTENSION_NAME']):
-                continue
-            if 'arch' in flag:
-                return []
-
-    named_arches = collections.OrderedDict(
-        [
-            ('Pascal', '6.0;6.1+PTX'),
-            ('Volta+Tegra', '7.2'),
-            ('Volta', '7.0+PTX'),
-            ('Turing', '7.5+PTX'),
-            ('Ampere+Tegra', '8.7'),
-            ('Ampere', '8.0;8.6+PTX'),
-            ('Ada', '8.9+PTX'),
-            ('Hopper', '9.0+PTX'),
-            ('Blackwell+Tegra', '10.1'),
-            ('Blackwell', '10.0;12.0+PTX'),
-        ]
-    )
-
-    supported_arches = [
-        '6.0',
-        '6.1',
-        '6.2',
-        '7.0',
-        '7.2',
-        '7.5',
-        '8.0',
-        '8.6',
-        '8.7',
-        '8.9',
-        '9.0',
-        '9.0a',
-        '10.0',
-        '10.0a',
-        '10.1',
-        '10.1a',
-        '12.0',
-        '12.0a',
-    ]
-    valid_arch_strings = supported_arches + [
-        s + "+PTX" for s in supported_arches
-    ]
-
-    _arch_list = os.environ.get("PADDLE_CUDA_ARCH_LIST")
-
-    if not _arch_list:
-        warnings.warn(
-            "PADDLE_CUDA_ARCH_LIST are not set, all archs for visible cards are included for compilation. \n"
-            "If this is not desired, please set os.environ['PADDLE_CUDA_ARCH_LIST']."
-        )
-        arch_list = []
-        dev_types = core.get_all_custom_device_type()
-        if core.is_compiled_with_cuda():
-            for dev_id in range(paddle.device.cuda.device_count()):
-                capability = paddle.device.cuda.get_device_capability(
-                    dev_id
-                )  # (major, minor)
-                arch = f"{capability[0]}.{capability[1]}"
-                if arch not in arch_list:
-                    arch_list.append(arch)
-            arch_list = sorted(arch_list)
-            if arch_list:
-                arch_list[-1] += '+PTX'
-        elif dev_types and core.is_compiled_with_custom_device(dev_types[0]):
-            for dev_id in range(paddle.device.device_count()):
-                capability = paddle.device.get_device_capability(
-                    dev_types[0], dev_id
-                )
-                arch = f"{capability[0]}.{capability[1]}"
-                if arch not in arch_list:
-                    arch_list.append(arch)
-            arch_list = sorted(arch_list)
-            if arch_list:
-                arch_list[-1] += '+PTX'
-        else:
-            raise RuntimeError(
-                "Paddle is not compiled with CUDA or Custom Device, cannot determine CUDA arch."
-            )
-    else:
-        _arch_list = _arch_list.replace(' ', ';')
-        for named_arch, archival in named_arches.items():
-            _arch_list = _arch_list.replace(named_arch, archival)
-        arch_list = _arch_list.split(';')
-
-    flags = []
-    for arch in arch_list:
-        if arch not in valid_arch_strings:
-            raise ValueError(f"Unknown CUDA arch ({arch}) or GPU not supported")
-        version = arch.split('+')[0]
-        major, minor = version.split('.')
-        num = f"{major}{minor}"
-        flags.append(f"-gencode=arch=compute_{num},code=sm_{num}")
-        if arch.endswith('+PTX'):
-            flags.append(f"-gencode=arch=compute_{num},code=compute_{num}")
-    return sorted(set(flags))
 
 
 def _get_pybind11_abi_build_flags():

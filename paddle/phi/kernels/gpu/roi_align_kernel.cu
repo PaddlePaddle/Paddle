@@ -182,7 +182,7 @@ void RoiAlignKernel(const Context& dev_ctx,
   DenseTensor roi_batch_id_list;
   roi_batch_id_list.Resize({rois_num});
   int* roi_batch_id_data = dev_ctx.template HostAlloc<int>(&roi_batch_id_list);
-  auto cplace = phi::CPUPlace();
+  auto cplace = CPUPlace();
   auto gplace = dev_ctx.GetPlace();
   if (boxes_num) {
     int64_t boxes_batch_size = boxes_num->numel();
