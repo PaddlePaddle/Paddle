@@ -43,7 +43,7 @@ void IndexAddKernel(const Context& dev_ctx,
     return;
   }
   if (index.numel() == 0) {
-    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
 

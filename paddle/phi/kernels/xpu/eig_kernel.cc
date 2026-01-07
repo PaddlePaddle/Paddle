@@ -108,8 +108,8 @@ void EigKernel(const Context& dev_ctx,
   }
 
   // copy result from cpu to xpu tensor
-  phi::Copy(dev_ctx, out_w_cpu, phi::XPUPlace(), false, out_w);
-  phi::Copy(dev_ctx, out_v_cpu, phi::XPUPlace(), false, out_v);
+  Copy(dev_ctx, out_w_cpu, phi::XPUPlace(), false, out_w);
+  Copy(dev_ctx, out_v_cpu, phi::XPUPlace(), false, out_v);
 }
 
 }  // namespace phi
