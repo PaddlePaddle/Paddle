@@ -36,8 +36,8 @@ class AssignFunctor {
   AssignFunctor(framework::Variable *out, const phi::DeviceContext &dev_ctx)
       : out_(out), dev_ctx_(dev_ctx) {}
 
-  void operator()(const phi::DenseTensor &lod_tensor) const {
-    auto &out_tensor = *out_->GetMutable<phi::DenseTensor>();
+  void operator()(const DenseTensor &lod_tensor) const {
+    auto &out_tensor = *out_->GetMutable<DenseTensor>();
     copy_tensor(lod_tensor, &out_tensor);
   }
 
@@ -68,8 +68,7 @@ class AssignFunctor {
   }
 
  private:
-  void copy_tensor(const phi::DenseTensor &lod_tensor,
-                   phi::DenseTensor *out) const {
+  void copy_tensor(const DenseTensor &lod_tensor, DenseTensor *out) const {
     if (!lod_tensor.IsInitialized()) return;
     auto &out_tensor = *out;
     paddle::framework::TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
