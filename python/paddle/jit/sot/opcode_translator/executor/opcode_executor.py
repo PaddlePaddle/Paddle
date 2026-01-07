@@ -1072,9 +1072,7 @@ class OpcodeExecutorBase:
 
         if (
             isinstance(method, MethodVariable)
-            and not paddle.base.libpaddle.has_custom_getattro(
-                method.bound_instance.get_py_type()
-            )
+            and not paddle.base.libpaddle.has_custom_getattro(obj.get_py_type())
             and hasattr(obj.get_py_type(), method_name)
         ):
             # bound method or the class override the __getattr__
