@@ -115,19 +115,14 @@ SpmdInfo LinearV2InferSpmdBase(const DistMetaTensor& input,
   output_dist_attr_dst.set_partial_status(partial_on_dims);
 
   if (output_dist_attr_dst.is_partial()) {
-    bias_dist_attr_dst.set_partial_status(
-        output_dist_attr_dst.partial_status());
-    if (!IsPartialLegal(bias_dist_attr_dst) ||
-        !IsPartialLegal(output_dist_attr_dst)) {
-      VLOG(4) << "LinearV2 partial output illegal, force set output "
-                 "to replicated.";
-      output_dist_attr_dst.clean_partial_status();
-      bias_dist_attr_dst.clean_partial_status();
-      SetTensorDistAttrReplicated(&x_dist_attr_dst, input_ndim);
-      SetTensorDistAttrReplicated(&y_dist_attr_dst, weight_ndim);
-      SetTensorDistAttrReplicated(&bias_dist_attr_dst, bias_ndim);
-      SetTensorDistAttrReplicated(&output_dist_attr_dst, out_axes.size());
-    }
+    // NOTE(Pan Zhaowu): linear_v2, as a fused matmul+elew op, which is
+    // different from legacy hacked behaviour, so disabled partial distribution
+    // strategy for now.
+    output_dist_attr_dst.clean_partial_status();
+    SetTensorDistAttrReplicated(&x_dist_attr_dst, input_ndim);
+    SetTensorDistAttrReplicated(&y_dist_attr_dst, weight_ndim);
+    SetTensorDistAttrReplicated(&bias_dist_attr_dst, bias_ndim);
+    SetTensorDistAttrReplicated(&output_dist_attr_dst, out_axes.size());
   }
   TensorDistAttr output_reserve_dist_attr_dst =
       CopyTensorDistAttrForOutput(output_dist_attr_dst);
