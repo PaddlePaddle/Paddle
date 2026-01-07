@@ -1,8 +1,6 @@
 name: Cleanup ccache
 
 on:
-  pull_request:
-    branches: [develop] # Remove before merge, just for testing
   schedule:
     - cron: "0 16 * * FRI" # Weekly on Saturday at 00:00 UTC+8
   workflow_dispatch:
