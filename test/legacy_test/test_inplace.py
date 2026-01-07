@@ -1520,6 +1520,20 @@ class TestDygraphInplacBitwiseAnd(TestDygraphInplaceLogicAnd):
         with self.assertRaises(ValueError):
             self.inplace_api_processing(broadcast_input)
 
+class TestDygraphInplacBitwiseAndAlias1(TestDygraphInplacBitwiseAnd):
+    def inplace_api_processing(self, var):
+        return paddle.bitwise_and_(var, other=self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.bitwise_and(var, other=self.y)
+
+
+class TestDygraphInplacBitwiseAndAlias2(TestDygraphInplacBitwiseAnd):
+    def inplace_api_processing(self, var):
+        return paddle.bitwise_and_(input=var, other=self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.bitwise_and(input=var, other=self.y)
 
 class TestDygraphInplacBitwiseOr(TestDygraphInplacBitwiseAnd):
     def inplace_api_processing(self, var):
