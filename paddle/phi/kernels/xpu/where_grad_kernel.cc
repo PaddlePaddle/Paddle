@@ -30,16 +30,10 @@ void WhereGradKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   if (out_grad.numel() == 0) {
     if (x_grad) {
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(x_grad->dims())),
-                            static_cast<T>(0),
-                            x_grad);
+      Full<T, Context>(dev_ctx, x_grad->dims(), static_cast<T>(0), x_grad);
     }
     if (y_grad) {
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(y_grad->dims())),
-                            static_cast<T>(0),
-                            y_grad);
+      Full<T, Context>(dev_ctx, y_grad->dims(), static_cast<T>(0), y_grad);
     }
     return;
   }
