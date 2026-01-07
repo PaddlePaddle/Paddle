@@ -28,7 +28,8 @@ jobs:
           PADDLE_ROOT: /paddle
           CCACHE_MAXSIZE: 50G
           CCACHE_LIMIT_MULTIPLE: 0.8
-          CCACHE_DIR: "/home/data/cfs/.ccache/l2"
+          CCACHE_DIR: "/home/data/shared/.ccache/l1" # L1 cache on machine shared dir
+          CCACHE_SECONDARY_STORAGE: "file:///home/data/cfs/.ccache/l2" # L2 cache on cfs
         run: |
           set -x
           container_name=${TASK}-$(date +%s)
@@ -67,7 +68,7 @@ jobs:
             echo "Current ccache stats before cleanup:"
             ccache -s
             # Trim L2 ccache to free up space, trim all caches exceeding 15days
-            ccache --evict-older-than 15d
+            ccache --trim-dir ${CCACHE_SECONDARY_STORAGE} --evict-older-than 15d
             # Show ccache stats after cleanup
             echo "Current ccache stats after cleanup:"
             ccache -s
