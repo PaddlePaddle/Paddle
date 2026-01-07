@@ -53,14 +53,6 @@ jobs:
             -e no_proxy \
             -w /paddle --network host ${docker_image}
 
-      - name: Install ccache inside container
-        run: |
-          docker exec -t ${container_name} bash -c '
-            source ${{ github.workspace }}/../../../proxy
-            apt-get update
-            apt-get install -y ccache
-          '
-
       - name: Cleanup L2 ccache inside container
         run: |
           docker exec -t ${container_name} bash -c '
