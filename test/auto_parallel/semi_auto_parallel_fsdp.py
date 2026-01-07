@@ -42,6 +42,7 @@ class TestSemiAutoParallelFSDP:
         self._backend = os.getenv("backend")
         self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["dp"])
+        dist.auto_parallel.set_mesh(self._mesh)
         self.gradient_accumulation_steps = 2
 
     def create_dist_loader(self, batch_size):
