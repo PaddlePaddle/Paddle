@@ -692,7 +692,7 @@ static void inline CreateVariableIfNotExist(
         auto var_desc = PyObjectCast<framework::VarDesc>(py_var_desc);
         Py_DECREF(py_var_desc);
         var = const_cast<framework::Scope *>(&scope)->Var(para_name);
-        auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+        auto *tensor_temp = var->GetMutable<DenseTensor>();
         tensor_temp->Resize(common::make_ddim(var_desc.GetShape()));
         tensor_temp->mutable_data(
             exe->GetPlace(), phi::TransToPhiDataType(var_desc.GetDataType()));
@@ -770,8 +770,8 @@ int DLPackDLTensorFromPyObjectNoSync(void *py_obj, DLTensor *out) {
     // Use handle (non-owning) to avoid unnecessary refcount operations
     py::handle handle(static_cast<PyObject *>(py_obj));
     paddle::Tensor tensor = handle.cast<paddle::Tensor>();
-    std::shared_ptr<phi::DenseTensor> dense_tensor =
-        std::static_pointer_cast<phi::DenseTensor>(tensor.impl());
+    std::shared_ptr<DenseTensor> dense_tensor =
+        std::static_pointer_cast<DenseTensor>(tensor.impl());
     paddle::framework::ToDLPackNonOwningImpl(*dense_tensor, out);
     return 0;
   } catch (const std::exception &e) {
@@ -785,8 +785,8 @@ int DLPackManagedTensorFromPyObjectNoSync(void *py_obj,
   try {
     py::handle handle(static_cast<PyObject *>(py_obj));
     paddle::Tensor tensor = handle.cast<paddle::Tensor>();
-    std::shared_ptr<phi::DenseTensor> dense_tensor =
-        std::static_pointer_cast<phi::DenseTensor>(tensor.impl());
+    std::shared_ptr<DenseTensor> dense_tensor =
+        std::static_pointer_cast<DenseTensor>(tensor.impl());
     *out = paddle::framework::ToDLPackVersioned(*dense_tensor);
     return 0;
   } catch (const std::exception &e) {
@@ -798,8 +798,8 @@ int DLPackManagedTensorFromPyObjectNoSync(void *py_obj,
 int DLPackManagedTensorToPyObjectNoSync(DLManagedTensorVersioned *src,
                                         void **py_obj_out) {
   try {
-    phi::DenseTensor dense_tensor = paddle::framework::FromDLPackVersioned(src);
-    paddle::Tensor tensor(std::make_shared<phi::DenseTensor>(dense_tensor));
+    DenseTensor dense_tensor = paddle::framework::FromDLPackVersioned(src);
+    paddle::Tensor tensor(std::make_shared<DenseTensor>(dense_tensor));
     egr::EagerUtils::autograd_meta(&tensor)->SetPersistable(false);
     *py_obj_out = ToPyObject(tensor);
     return 0;
@@ -821,8 +821,8 @@ int DLPackManagedTensorAllocator(::DLTensor *prototype,
     phi::DataType dtype =
         paddle::framework::DLDataTypeToPhiDataType(prototype->dtype);
     paddle::Tensor tensor = paddle::empty(shape, dtype, place);
-    std::shared_ptr<phi::DenseTensor> dense_tensor =
-        std::static_pointer_cast<phi::DenseTensor>(tensor.impl());
+    std::shared_ptr<DenseTensor> dense_tensor =
+        std::static_pointer_cast<DenseTensor>(tensor.impl());
     *out = paddle::framework::ToDLPackVersioned(*dense_tensor);
     return 0;
   } catch (const std::exception &e) {
@@ -2306,8 +2306,8 @@ All parameter, weight, gradient are variables in Paddle.
            [](const Variable &var) -> float { return var.Get<float>(); })
       .def(
           "get_tensor",
-          [](Variable &self) -> phi::DenseTensor * {
-            return self.GetMutable<phi::DenseTensor>();
+          [](Variable &self) -> DenseTensor * {
+            return self.GetMutable<DenseTensor>();
           },
           py::return_value_policy::reference)
       .def("get_bytes",
@@ -3072,7 +3072,7 @@ All parameter, weight, gradient are variables in Paddle.
            [](Executor &self,
               ExecutorPrepareContext *ctx,
               Scope *scope,
-              std::map<std::string, const phi::DenseTensor *> *feed_targets,
+              std::map<std::string, const DenseTensor *> *feed_targets,
               std::map<std::string, FetchType *> *fetch_targets,
               bool create_local_scope = true,
               bool create_vars = true,
@@ -3377,7 +3377,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,
-            const phi::DenseTensor &,
+            const DenseTensor &,
             const std::string &)>(&framework::SetVariable));
   m.def(
       "set_vlog_level",
@@ -3436,7 +3436,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,
-            const phi::DenseTensor &,
+            const DenseTensor &,
             const std::string &,
             size_t)>(&framework::SetFeedVariable));
   m.def("get_fetch_variable",
@@ -3512,7 +3512,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::return_value_policy::reference)
       .def("__len__", [](phi::TensorArray &self) { return self.size(); })
       .def("__setitem__",
-           [](phi::TensorArray &self, size_t i, const phi::DenseTensor &t) {
+           [](phi::TensorArray &self, size_t i, const DenseTensor &t) {
              PADDLE_ENFORCE_LT(i,
                                self.size(),
                                common::errors::InvalidArgument(
@@ -3522,7 +3522,7 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def(
           "append",
-          [](phi::TensorArray &self, const phi::DenseTensor &t) {
+          [](phi::TensorArray &self, const DenseTensor &t) {
             self.emplace_back();
             self.back().ShareDataWith(t);
             self.back().set_lod(t.lod());
@@ -3590,7 +3590,7 @@ All parameter, weight, gradient are variables in Paddle.
 
       .def(
           "append",
-          [](FetchList &self, const phi::DenseTensor &t) {
+          [](FetchList &self, const DenseTensor &t) {
             self.emplace_back();
             auto &dense_tensor = PADDLE_GET(phi::DenseTensor, self.back());
             dense_tensor.ShareDataWith(t);
