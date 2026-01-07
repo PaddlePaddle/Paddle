@@ -8,11 +8,6 @@ function(check_compiler_cxx17_flag)
   if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 8.2)
       message(FATAL_ERROR "Unsupported GCC version. GCC >= 8.2 required.")
-    elseif(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.2)
-      message(
-        WARNING
-          "Found GCC ${CMAKE_CXX_COMPILER_VERSION} which is too high, recommended to use GCC 8.2"
-      )
     endif()
   elseif(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang")
     # cmake >= 3.0 compiler id "AppleClang" on Mac OS X, otherwise "Clang"
@@ -157,8 +152,8 @@ if(NOT WIN32)
       -Wno-unused-parameter
       -Wno-unused-function
       -Wno-error=array-bounds #Warning in Eigen, gcc 12.2
-      -Wno-error=ignored-attributes # Warnings in Eigen, gcc 6.3
-      -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
+      -Wno-error=ignored-attributes
+      -Wno-error=int-in-bool-context
       -Wimplicit-fallthrough=0 # Warning in tinyformat.h
       ${fsanitize})
 
