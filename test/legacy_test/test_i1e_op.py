@@ -200,7 +200,7 @@ class TestI1EAPI_Compatibility(unittest.TestCase):
             # Check
             for out in paddle_dygraph_out:
                 np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-5)
-            paddle.enable_static(self.place)
+            paddle.enable_static()
 
         for place in self.place:
             run(place)
