@@ -43,7 +43,7 @@ void ConvTransposeRawKernel(const Context& dev_ctx,
         dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     return;
   }
-  const DataLayout data_layout = common::StringToDataLayout(data_format);
+  const DataLayout data_layout = StringToDataLayout(data_format);
   // The filter will be reshaped, so it should not be constant
   DenseTensor filter_ = filter;
   std::vector<int> paddings_ = paddings;

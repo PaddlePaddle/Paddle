@@ -51,7 +51,7 @@ void GroupNormKernel(const Context& dev_ctx,
   }
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
 

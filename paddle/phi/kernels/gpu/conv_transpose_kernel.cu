@@ -42,7 +42,7 @@ void DepthwiseConv2dTransposeKernel(const Context& dev_ctx,
         dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     return;
   }
-  const DataLayout data_layout = common::StringToDataLayout(data_format);
+  const DataLayout data_layout = StringToDataLayout(data_format);
   DenseTensor filter_ = filter;
   dev_ctx.template Alloc<T>(out);
 
