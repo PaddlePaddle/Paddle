@@ -186,7 +186,7 @@ int TransformerInputConvertPlugin::enqueue(
   cub::DeviceScan::ExclusiveSum(
       NULL, temp_storage_bytes, input1, output2, B + 1);
   // Allocate temporary storage
-  phi::GPUPlace place(platform::GetCurrentDeviceId());
+  GPUPlace place(platform::GetCurrentDeviceId());
   auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
   // Run exclusive prefix sum
   cub::DeviceScan::ExclusiveSum(

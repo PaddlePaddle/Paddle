@@ -235,7 +235,8 @@ bool AffineGridOpInferSymbolicShape(
         op->attribute<paddle::dialect::IntArrayAttribute>("output_shape")
             .data()
             .GetData();
-    output_shape_size = output_shape.size();
+    // NOTE(large-tensor): output shape size is a small integer
+    output_shape_size = static_cast<int>(output_shape.size());
     for (const auto &i : output_shape) {
       output_shape_data.push_back(symbol::DimExpr{i});
     }
@@ -245,7 +246,8 @@ bool AffineGridOpInferSymbolicShape(
 
     output_shape_data = details::GetOrCreateExprVecFromData(
         output_shape_or_data, infer_context);
-    output_shape_size = output_shape_data.size();
+    // NOTE(large-tensor): output shape size is a small integer
+    output_shape_size = static_cast<int>(output_shape_data.size());
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The input arguments must have the shape of output, please check!"));
@@ -339,13 +341,15 @@ bool MinMaxOpInferSymbolicShape(pir::Operation *op,
     keepdims = GetBoolAttr(op, "keepdims");
     const auto &axis_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    // NOTE(large-tensor): axis is a small integer.
     axis = static_cast<int>(
         axis_shape_or_data.data().value().at(0).Get<int64_t>());
   }
   const auto &input_sym_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
 
-  int rank = input_sym_shape.size();
+  // NOTE(large-tensor): tensor rank is a small integer
+  int rank = static_cast<int>(input_sym_shape.size());
   if (axis < 0) axis += rank;
 
   const auto &out_sym_shape = [&] {
@@ -475,7 +479,8 @@ bool AsStridedOpInferSymbolicShape(
   const std::vector<int> &shape =
       paddle::dialect::details::GetVectorAttr<int>(op, "dims");
 
-  int rank = shape.size();
+  // NOTE(large-tensor): tensor rank is a small integer
+  int rank = static_cast<int>(shape.size());
   std::vector<symbol::DimExpr> out_shape;
   for (int i = 0; i < rank; ++i) {
     symbol::DimExpr out_unknown = infer_context->GetNextSymName();
@@ -1012,8 +1017,9 @@ bool DiagEmbedOpInferSymbolicShape(
   int offset = attributes.at("offset").dyn_cast<pir::Int32Attribute>().data();
 
   const auto &x_dims = operand_shape_or_data.shape();
-  int dim1_ = dim1 < 0 ? x_dims.size() + dim1 + 1 : dim1;
-  int dim2_ = dim2 < 0 ? x_dims.size() + dim2 + 1 : dim2;
+  // NOTE(large-tensor): tensor dimensions are small integers
+  int dim1_ = dim1 < 0 ? static_cast<int>(x_dims.size()) + dim1 + 1 : dim1;
+  int dim2_ = dim2 < 0 ? static_cast<int>(x_dims.size()) + dim2 + 1 : dim2;
   int64_t offset_ = static_cast<int64_t>(std::abs(offset));
   symbol::DimExpr new_dim_len =
       symbol::DimExpr(offset_) + x_dims.at(x_dims.size() - 1);
@@ -1041,8 +1047,9 @@ bool DiagonalOpInferSymbolicShape(
   int offset = attributes.at("offset").dyn_cast<pir::Int32Attribute>().data();
 
   const auto &x_dims = operand_shape_or_data.shape();
-  int axis1_ = axis1 < 0 ? x_dims.size() + axis1 : axis1;
-  int axis2_ = axis2 < 0 ? x_dims.size() + axis2 : axis2;
+  // NOTE(large-tensor): tensor dimensions are small integers
+  int axis1_ = axis1 < 0 ? static_cast<int>(x_dims.size()) + axis1 : axis1;
+  int axis2_ = axis2 < 0 ? static_cast<int>(x_dims.size()) + axis2 : axis2;
 
   auto out_dims = x_dims;
   auto axis1_size = out_dims.at(axis1_);
@@ -1210,7 +1217,8 @@ bool FrameOpInferSymbolicShape(pir::Operation *op,
   if (axis == 0) {
     seq_length = x_shape[0];
     start_axis = 1;
-    end_axis = x_rank - 1;
+    // NOTE(large-tensor): tensor rank is a small integer
+    end_axis = static_cast<int>(x_rank - 1);
   } else {
     seq_length = x_shape[x_rank - 1];
     start_axis = 0;
@@ -1514,7 +1522,8 @@ bool FlattenOpInferSymbolicShape(
 
   const auto &x_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
-  int in_dims_size = x_shape.size();
+  // NOTE(large-tensor): tensor dimensions are small integers
+  int in_dims_size = static_cast<int>(x_shape.size());
 
   if (in_dims_size == 0) {
     PADDLE_ENFORCE_EQ(
@@ -1776,7 +1785,8 @@ bool KthvalueOpInferSymbolicShape(
   bool keepdim = GetBoolAttr(op, "keepdim");
 
   const auto &input_dims = operand_shape_or_data.shape();
-  const int &dim_size = input_dims.size();
+  // NOTE(large-tensor): tensor dimensions are small integers
+  const int dim_size = static_cast<int>(input_dims.size());
   if (axis < 0) axis += dim_size;
   std::vector<symbol::DimExpr> out_dims;
   for (int i = 0; i < axis; i++) {
@@ -1816,7 +1826,8 @@ bool InverseOpInferSymbolicShape(
   const auto &input_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   std::vector<symbol::DimExpr> input_dims = input_shape.shape();
-  int input_rank = input_dims.size();
+  // NOTE(large-tensor): tensor rank is a small integer
+  int input_rank = static_cast<int>(input_dims.size());
 
   infer_context->AddEqualCstr(input_dims[input_rank - 2],
                               input_dims[input_rank - 1]);
@@ -1869,7 +1880,8 @@ bool LrnOpInferSymbolicShape(pir::Operation *op,
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
-  int x_size = x_shape.size();
+  // NOTE(large-tensor): tensor dimensions are small integers
+  int x_size = static_cast<int>(x_shape.size());
   PADDLE_ENFORCE_EQ(
       x_size,
       4,
@@ -1901,7 +1913,8 @@ bool LuOpInferSymbolicShape(pir::Operation *op,
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
-  int x_rank = x_shape.size();
+  // NOTE(large-tensor): tensor rank is a small integer
+  int x_rank = static_cast<int>(x_shape.size());
 
   PADDLE_ENFORCE_GE(
       x_rank,
@@ -1989,7 +2002,8 @@ bool ModeOpInferSymbolicShape(pir::Operation *op,
   int axis = op->attribute<pir::Int32Attribute>("axis").data();
   bool keepdim = op->attribute<pir::BoolAttribute>("keepdim").data();
 
-  int dim_size = x_shape.size();
+  // NOTE(large-tensor): tensor dimensions are small integers
+  int dim_size = static_cast<int>(x_shape.size());
 
   if (axis < 0) {
     axis += dim_size;
@@ -2027,7 +2041,8 @@ bool MaxoutOpInferSymbolicShape(pir::Operation *op,
   int axis = op->attribute<pir::Int32Attribute>("axis").data();
 
   if (axis < 0) {
-    axis += x_shape.size();
+    // NOTE(large-tensor): tensor rank is a small integer
+    axis += static_cast<int>(x_shape.size());
   }
 
   std::vector<symbol::DimExpr> output_shape = x_shape;
@@ -2243,7 +2258,8 @@ bool MatrixPowerOpInferSymbolicShape(
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
-  const int n_dim = x_shape.size();
+  // NOTE(large-tensor): tensor dimensions are small integers
+  const int n_dim = static_cast<int>(x_shape.size());
 
   PADDLE_ENFORCE_GE(n_dim,
                     2,
@@ -2448,7 +2464,10 @@ bool NormOpInferSymbolicShape(pir::Operation *op,
   bool is_test = op->attribute<pir::BoolAttribute>("is_test").data();
 
   if (!is_test) {
-    if (axis < 0) axis += x_shape.size();
+    if (axis < 0) {
+      // NOTE(large-tensor): tensor rank is a small integer
+      axis += static_cast<int>(x_shape.size());
+    }
 
     auto norm_shape = x_shape;
     norm_shape[axis] = symbol::DimExpr(1);
@@ -2466,7 +2485,8 @@ bool NonzeroOpInferSymbolicShape(
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &x_shape = x_shape_or_data.shape();
-  int rank = x_shape.size();
+  // NOTE(large-tensor): tensor rank is a small integer
+  int rank = static_cast<int>(x_shape.size());
 
   PADDLE_ENFORCE_GE(
       rank,
@@ -2553,7 +2573,8 @@ bool OverlapAddOpInferSymbolicShape(
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
-  const int x_rank = x_dims.size();
+  // NOTE(large-tensor): tensor rank is a small integer
+  const int x_rank = static_cast<int>(x_dims.size());
 
   int hop_length = op->attribute<pir::Int32Attribute>("hop_length").data();
   int axis = op->attribute<pir::Int32Attribute>("axis").data();
@@ -2740,7 +2761,8 @@ bool PNormOpInferSymbolicShape(pir::Operation *op,
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &x_shape = x_shape_or_data.shape();
-  int x_rank = x_shape.size();
+  // NOTE(large-tensor): tensor rank is a small integer
+  int x_rank = static_cast<int>(x_shape.size());
 
   int axis = op->attribute<pir::Int32Attribute>("axis").data();
   bool keepdim = op->attribute<pir::BoolAttribute>("keepdim").data();
@@ -2775,7 +2797,7 @@ bool PNormOpInferSymbolicShape(pir::Operation *op,
     }
   } else {
     if (keepdim) {
-      for (int i = 0; i < x_rank; ++i) {
+      for (unsigned int i = 0; i < x_rank; ++i) {
         if (i == axis) {
           out_shape.emplace_back(symbol::DimExpr(1));
         } else {
@@ -2783,7 +2805,7 @@ bool PNormOpInferSymbolicShape(pir::Operation *op,
         }
       }
     } else {
-      for (int i = 0; i < x_rank; ++i) {
+      for (unsigned int i = 0; i < x_rank; ++i) {
         if (i != axis) {
           out_shape.emplace_back(x_shape[i]);
         }
@@ -2995,7 +3017,8 @@ bool QrOpInferSymbolicShape(pir::Operation *op,
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
-  int x_rank = x_shape.size();
+  // NOTE(large-tensor): tensor rank is a small integer
+  unsigned int x_rank = static_cast<unsigned int>(x_shape.size());
 
   PADDLE_ENFORCE_GE(
       x_rank,
@@ -3064,7 +3087,8 @@ bool RepeatInterleaveOpInferSymbolicShape(
   // what should I do if axis is null
   int axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
 
-  int x_rank = operand_shape_or_data.shape().size();
+  // NOTE(large-tensor): tensor rank is a small integer
+  int x_rank = static_cast<int>(operand_shape_or_data.shape().size());
   if (axis < 0) axis += x_rank;
 
   const auto &out_sym_shape = [&] {
@@ -3574,7 +3598,8 @@ bool SplitWithNumOpInferSymbolicShape(
 
   const auto &x_s_or_d =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  int rank = x_s_or_d.shape().size();
+  // NOTE(large-tensor): tensor rank is a small integer
+  int rank = static_cast<int>(x_s_or_d.shape().size());
 
   const auto &out_s_d = [&](int64_t split_axis, int64_t res_num) {
     symbol::DimExpr input_axis_dim = x_s_or_d.shape().at(split_axis);
@@ -4319,7 +4344,8 @@ bool UniqueOpInferSymbolicShape(pir::Operation *op,
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &x_dims_sym = x_shape_or_data.shape();
-  const size_t rank = x_dims_sym.size();
+  // NOTE(large-tensor): tensor rank is a small integer
+  const int rank = static_cast<int>(x_dims_sym.size());
   const std::vector<int> axes =
       paddle::dialect::details::GetVectorAttr<int>(op, "axis");
 
@@ -4387,7 +4413,8 @@ bool UniqueConsecutiveOpInferSymbolicShape(
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &x_dims_sym = x_shape_or_data.shape();
-  const size_t rank = x_dims_sym.size();
+  // NOTE(large-tensor): tensor rank is a small integer
+  const int rank = static_cast<int>(x_dims_sym.size());
   const std::vector<int> axes =
       paddle::dialect::details::GetVectorAttr<int>(op, "axis");
   const bool return_inverse = GetBoolAttr(op, "return_inverse");

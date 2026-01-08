@@ -157,7 +157,7 @@ void MultiClassNMSKernel(const Context& dev_ctx,
       std::vector<T> temp_value(out_dim, 0.0f);
       memory_utils::Copy(dev_ctx.GetPlace(),
                          out_ptr,
-                         phi::CPUPlace(),
+                         CPUPlace(),
                          temp_value.data(),
                          1 * out_dim * sizeof(T));
 
@@ -167,7 +167,7 @@ void MultiClassNMSKernel(const Context& dev_ctx,
       std::vector<int> temp_idx(1, 0);
       memory_utils::Copy(dev_ctx.GetPlace(),
                          out_index_ptr,
-                         phi::CPUPlace(),
+                         CPUPlace(),
                          temp_idx.data(),
                          1 * sizeof(int));
     } else {
@@ -182,7 +182,7 @@ void MultiClassNMSKernel(const Context& dev_ctx,
     T* out_ptr = out->template data<T>();
     memory_utils::Copy(dev_ctx.GetPlace(),
                        out_ptr,
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        outs_vec_.data(),
                        num_kept * out_dim * sizeof(T));
     if (return_index) {
@@ -191,7 +191,7 @@ void MultiClassNMSKernel(const Context& dev_ctx,
       int* out_index_ptr = index->template data<int>();
       memory_utils::Copy(dev_ctx.GetPlace(),
                          out_index_ptr,
-                         phi::CPUPlace(),
+                         CPUPlace(),
                          out_index_vec_.data(),
                          num_kept * sizeof(int));
     }

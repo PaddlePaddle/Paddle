@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#ifdef PADDLE_WITH_DNNL
 #include <thread>
 #include "dnnl.hpp"  // NOLINT
 #include "glog/logging.h"
@@ -320,3 +320,4 @@ enum class RNNReorderType { PP_NTC, PP_TNC, NTC_PP, TNC_PP };
 
 }  // namespace funcs
 }  // namespace phi
+#endif

@@ -63,7 +63,7 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
       cpu_local_count_data = local_count->data<int64_t>();
       local_count_len = local_count->numel();
     } else {
-      Copy(dev_ctx, *local_count, phi::CPUPlace(), true, &cpu_local_count);
+      Copy(dev_ctx, *local_count, CPUPlace(), true, &cpu_local_count);
       cpu_local_count_data = cpu_local_count.data<int64_t>();
       local_count_len = cpu_local_count.numel();
     }
@@ -72,7 +72,7 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
     if (global_count->place().GetType() == AllocationType::CPU) {
       cpu_global_count_data = global_count->data<int64_t>();
     } else {
-      Copy(dev_ctx, *global_count, phi::CPUPlace(), true, &cpu_global_count);
+      Copy(dev_ctx, *global_count, CPUPlace(), true, &cpu_global_count);
       cpu_global_count_data = cpu_global_count.data<int64_t>();
     }
 

@@ -94,7 +94,7 @@ class ContextProjectFunctor {
                   DenseTensor* col) {
     auto lod_level_0 = in.lod()[0];
 
-    funcs::Im2ColFunctor<funcs::ColFormat::kOCF, DeviceContext, float>
+    funcs::Im2ColFunctor<funcs::ColFormat::OCF, DeviceContext, float>
         im2col_ocf;
 
     std::vector<int> dilation({1, 1});
@@ -223,7 +223,7 @@ class ContextProjectGradFunctor {
                   DenseTensor* col) {
     auto lod_level_0 = in.lod()[0];
 
-    funcs::Col2ImFunctor<funcs::ColFormat::kOCF, DeviceContext, float>
+    funcs::Col2ImFunctor<funcs::ColFormat::OCF, DeviceContext, float>
         col2im_ocf;
 
     std::vector<int> dilation({1, 1});

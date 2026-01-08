@@ -426,8 +426,8 @@ void QuantDequantOnednnPass::TransposeWeight(phi::DenseTensor* input) const {
 
   phi::DenseTensor trans_tensor;
   trans_tensor.Resize(out_dims);
-  float* trans_data = trans_tensor.mutable_data<float>(phi::CPUPlace());
-  float* in_data = input->mutable_data<float>(phi::CPUPlace());
+  float* trans_data = trans_tensor.mutable_data<float>(CPUPlace());
+  float* in_data = input->mutable_data<float>(CPUPlace());
 
   for (int64_t out_idx = 0; out_idx < count; ++out_idx) {
     int64_t in_idx = 0;
@@ -489,7 +489,7 @@ void QuantDequantOnednnPass::ConvertFromINT8ToFP32(
 
     weight_tensor->clear();  // clear int weight
     weight_tensor->Resize(common::make_ddim(common::vectorize(weight_dims)));
-    auto* new_weight_data = weight_tensor->mutable_data<float>(phi::CPUPlace());
+    auto* new_weight_data = weight_tensor->mutable_data<float>(CPUPlace());
     memcpy(new_weight_data,
            weight_data.data(),
            weight_tensor->numel() * sizeof(float));
@@ -531,7 +531,7 @@ void QuantDequantOnednnPass::ConvertFromINT8ToFP32(
     }
     weight_tensor->clear();  // clear int weight
     weight_tensor->Resize(common::make_ddim(common::vectorize(weight_dims)));
-    auto* new_weight_data = weight_tensor->mutable_data<float>(phi::CPUPlace());
+    auto* new_weight_data = weight_tensor->mutable_data<float>(CPUPlace());
     memcpy(new_weight_data,
            weight_data.data(),
            weight_tensor->numel() * sizeof(float));
@@ -576,7 +576,7 @@ void QuantDequantOnednnPass::DequantizeOpWeights(
           weight_var_name,
           op_desc->Type()));
   auto* weight_tensor = var->GetMutable<phi::DenseTensor>();
-  float* fp32_weight_data = weight_tensor->mutable_data<float>(phi::CPUPlace());
+  float* fp32_weight_data = weight_tensor->mutable_data<float>(CPUPlace());
   ConvertFromINT8ToFP32(
       scales, weight_tensor, nullptr, fp32_weight_data, weight_var_name);
 }
@@ -620,8 +620,7 @@ void QuantDequantOnednnPass::DequantizeOpWeightsFromONNXFormat(
           weight_var_name,
           op_desc->Type()));
   auto* weight_tensor = var->GetMutable<phi::DenseTensor>();
-  int8_t* int8_weight_data =
-      weight_tensor->mutable_data<int8_t>(phi::CPUPlace());
+  int8_t* int8_weight_data = weight_tensor->mutable_data<int8_t>(CPUPlace());
 
   ConvertFromINT8ToFP32(
       scales, weight_tensor, int8_weight_data, nullptr, weight_var_name);

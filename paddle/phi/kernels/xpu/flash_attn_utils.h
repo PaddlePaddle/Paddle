@@ -80,7 +80,7 @@ static void GenerateRNGState(
     const int64_t num_heads) {
   if (fixed_seed_offset.get_ptr()) {
     if ((fixed_seed_offset->place()).GetType() == AllocationType::XPU) {
-      memory_utils::Copy(phi::CPUPlace(),
+      memory_utils::Copy(CPUPlace(),
                          seed_offset_data,
                          fixed_seed_offset->place(),
                          fixed_seed_offset->data<int64_t>(),

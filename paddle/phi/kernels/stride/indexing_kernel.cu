@@ -332,11 +332,7 @@ void IndexPutGradKernel_V2(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(x_grad);
     // Fill value_grad with 0.
     if (value_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(value_grad->dims())),
-          0,
-          value_grad);
+      phi::Full<T, Context>(dev_ctx, value_grad->dims(), 0, value_grad);
     }
     return;
   }
@@ -390,10 +386,7 @@ void IndexPutGradKernel_V2(const Context& dev_ctx,
       x_grad->ShareInplaceVersionCounterWith(out_grad);
     } else {
       DenseTensor value_zero;
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(value.dims())),
-                            0,
-                            &value_zero);
+      phi::Full<T, Context>(dev_ctx, value.dims(), 0, &value_zero);
       if (funcs::IsInUint32Range(x_grad->numel(), value.numel())) {
         LaunchIndexPutKernel_V2<T, Context>(
             dev_ctx, out_grad, indices, value_zero, false, x_grad);

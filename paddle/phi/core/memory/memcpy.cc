@@ -399,6 +399,7 @@ void Copy<phi::XPUPinnedPlace, phi::XPUPlace>(phi::XPUPinnedPlace dst_place,
                     reinterpret_cast<cudaStream_t>(stream));
 
   } else {
+    cudaDeviceSynchronize();
     phi::RecordEvent record_event(
         "cudaMemcpy:XPU->XPUPinned", phi::TracerEventType::UserDefined, 1);
     cudaMemcpy(dst, src, num, cudaMemcpyDeviceToHost);
@@ -435,6 +436,7 @@ void Copy<phi::XPUPlace, phi::XPUPinnedPlace>(phi::XPUPlace dst_place,
                     cudaMemcpyHostToDevice,
                     reinterpret_cast<cudaStream_t>(stream));
   } else {
+    cudaDeviceSynchronize();
     phi::RecordEvent record_event(
         "cudaMemcpy:XPUPinned->XPU", phi::TracerEventType::UserDefined, 1);
     cudaMemcpy(dst, src, num, cudaMemcpyHostToDevice);
