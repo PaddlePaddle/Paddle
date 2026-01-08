@@ -75,7 +75,6 @@ def test_save_load_with_missing_key_and_unexpected_keys():
         )
         raise AssertionError
     except Exception as e:
-        print(e)
         pass
 
 

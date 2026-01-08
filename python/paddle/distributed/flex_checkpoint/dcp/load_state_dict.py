@@ -1712,16 +1712,10 @@ def logger_missing_key_and_unexpected_keys_before_aoa(
         flatten_global_src_key_list
     )
     if len(missing_keys) > 0:
-        print(
-            f"Missing keys:{missing_keys}, check whether the checkpoint is complete."
-        )
         logger.warning(
             f"Missing keys:{missing_keys}, check whether the checkpoint is complete."
         )
     if len(unexpected_keys) > 0:
-        print(
-            f"Unexpected keys:{unexpected_keys}, check whether the checkpoint is complete."
-        )
         logger.warning(
             f"Unexpected keys:{unexpected_keys}, check whether the checkpoint is complete."
         )
