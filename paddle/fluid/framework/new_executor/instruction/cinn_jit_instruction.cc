@@ -60,8 +60,8 @@ class CinnJitInstruction::FnPtrImpl {
                   binding_info.dim_idx));
         },
         [&](const CINNKernelInfo::ArgValueIdx& binding_info) -> int64_t {
-          const auto& tensor = [&]() -> DenseTensor {
-            DenseTensor new_tensor =
+          const auto& tensor = [&]() -> phi::DenseTensor {
+            phi::DenseTensor new_tensor =
                 *(kernel_tensor_args[binding_info.arg_idx]);
             if (new_tensor.place() == CPUPlace()) {
               return new_tensor;
@@ -281,7 +281,7 @@ CinnJitInstruction::CinnJitInstruction(
     auto var_name = value_exec_info->GetVarName(in);
     auto tensor = value_exec_info->GetScope()
                       ->FindVar(var_name)
-                      ->GetMutable<DenseTensor>();
+                      ->GetMutable<phi::DenseTensor>();
     tensor_args_.push_back(tensor);
   }
 
@@ -303,8 +303,9 @@ CinnJitInstruction::CinnJitInstruction(
                           "cinn jit instruction only support DenseTensorType"));
     auto var_name = value_exec_info->GetVarName(result);
 
-    auto tensor =
-        value_exec_info->GetScope()->Var(var_name)->GetMutable<DenseTensor>();
+    auto tensor = value_exec_info->GetScope()
+                      ->Var(var_name)
+                      ->GetMutable<phi::DenseTensor>();
 
     ir_dims_.push_back(
         result.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
