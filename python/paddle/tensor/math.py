@@ -6621,7 +6621,7 @@ def __lshift__(
         raise TypeError(
             "unsupported operand type(s) for <<: 'Tensor' and 'float'"
         )
-    return bitwise_left_shift(x, y, is_arithmetic, None, None)
+    return bitwise_left_shift(x, y, is_arithmetic, None)
 
 
 def __rshift__(
@@ -6635,7 +6635,7 @@ def __rshift__(
         raise TypeError(
             "unsupported operand type(s) for <<: 'Tensor' and 'float'"
         )
-    return bitwise_right_shift(x, y, is_arithmetic, None, None)
+    return bitwise_right_shift(x, y, is_arithmetic, None)
 
 
 def __rlshift__(
