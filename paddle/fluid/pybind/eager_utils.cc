@@ -735,9 +735,9 @@ phi::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_place_pytype)) {  // NOLINT
     place = ::pybind11::handle(obj).cast<phi::Place>();
   } else if (PyObject_TypeCheck(obj, g_cudaplace_pytype)) {
-    place = ::pybind11::handle(obj).cast<phi::GPUPlace>();
+    place = ::pybind11::handle(obj).cast<GPUPlace>();
   } else if (PyObject_TypeCheck(obj, g_cpuplace_pytype)) {
-    place = ::pybind11::handle(obj).cast<phi::CPUPlace>();
+    place = ::pybind11::handle(obj).cast<CPUPlace>();
   } else if (PyObject_TypeCheck(obj, g_xpuplace_pytype)) {
     place = ::pybind11::handle(obj).cast<phi::XPUPlace>();
   } else if (PyObject_TypeCheck(obj, g_cudapinnedplace_pytype)) {
@@ -2464,7 +2464,7 @@ std::vector<pir::Value> CastPyArg2VectorOfValueOrLong(
     } else if (PyObject_CheckLong(item)) {
       int64_t k_tmp = CastPyArg2Long(item, op_type, arg_pos);
       value_list.emplace_back(
-          paddle::dialect::full(shape, k_tmp, dtype, phi::CPUPlace()));
+          paddle::dialect::full(shape, k_tmp, dtype, CPUPlace()));
     } else if (item == Py_None) {
       continue;  // skip
     } else {

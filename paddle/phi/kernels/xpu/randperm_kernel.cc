@@ -34,7 +34,7 @@ void RandpermKernel(const Context& dev_ctx,
     engine = dev_ctx.GetGenerator()->GetCPUEngine();
   }
 
-  if (dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
+  if (dev_ctx.GetPlace().GetType() == AllocationType::CPU) {
     T* out_data = dev_ctx.template HostAlloc<T>(out);
     for (int i = 0; i < n; ++i) {
       out_data[i] = static_cast<T>(i);

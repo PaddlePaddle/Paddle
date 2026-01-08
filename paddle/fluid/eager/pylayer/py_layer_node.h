@@ -45,8 +45,13 @@ class GradNodePyLayer : public GradNodeBase {
   GradNodePyLayer(const GradNodePyLayer& other) : GradNodeBase(other) {
     this->ctx_ = other.ctx_;
     Py_INCREF(this->ctx_);
+    this->name_ = other.name_;
     this->forward_outputs_meta_ = other.forward_outputs_meta_;
     this->forward_outputs_place_ = other.forward_outputs_place_;
+    this->forward_outputs_dist_attr_ = other.forward_outputs_dist_attr_;
+    this->forward_outputs_global_dims_ = other.forward_outputs_global_dims_;
+    this->forward_outputs_is_dist_meta_ = other.forward_outputs_is_dist_meta_;
+    this->grad_in_dtype_consistent_ = other.grad_in_dtype_consistent_;
   }
 
   ~GradNodePyLayer() override;

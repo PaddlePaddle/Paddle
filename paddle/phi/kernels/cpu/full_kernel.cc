@@ -28,7 +28,7 @@ void FullValue(const Context& dev_ctx, DenseTensor* tensor, VType val) {
   if (tensor->numel() == 0) {
     return;
   }
-  auto t = phi::EigenVector<T>::Flatten(*tensor);
+  auto t = EigenVector<T>::Flatten(*tensor);
   t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(val));
 }
 

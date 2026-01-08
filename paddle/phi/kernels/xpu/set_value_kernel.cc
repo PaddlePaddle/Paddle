@@ -412,7 +412,7 @@ void SetValueKernel(const Context& dev_ctx,
       reinterpret_cast<T*>(RAII_GUARD.alloc_l3_or_gm<XPUType>(values_size));
   memory_utils::Copy(dev_ctx.GetPlace(),
                      value_data,
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      value_data_uint8_cpu,
                      values_length);
   auto value_dims = common::make_ddim(shape);

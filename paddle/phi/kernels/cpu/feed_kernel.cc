@@ -56,7 +56,7 @@ void FeedDenseTensorKernel(const Context& dev_ctx,
   if (phi::is_same_place(in_tensor.place(), place)) {
     out->ShareDataWith(in_tensor);
   } else {
-    phi::Copy(dev_ctx, in_tensor, place, false, out);
+    Copy(dev_ctx, in_tensor, place, false, out);
   }
 
   out->set_lod(in_tensor.lod());

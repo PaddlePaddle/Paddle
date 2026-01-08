@@ -50,7 +50,7 @@ void IndexAddGradKernel(const Context& dev_ctx,
   }
   if (index.numel() == 0) {
     if (x_grad) {
-      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+      Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
     if (add_value_grad) {
       phi::Full<T, Context>(
@@ -63,7 +63,7 @@ void IndexAddGradKernel(const Context& dev_ctx,
   }
   if (add_value.numel() == 0) {
     if (x_grad) {
-      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+      Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
     if (add_value_grad) {
       dev_ctx.template Alloc<T>(add_value_grad);
@@ -99,7 +99,7 @@ void IndexAddGradKernel(const Context& dev_ctx,
 
   // get x_grad: copy out_grad to x_grad.
   if (x_grad) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   }
 
   // get add_value_grad: index_select(out_grad, index, axis)

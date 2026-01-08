@@ -44,12 +44,12 @@ void LarsMomentumKernel(
     dev_ctx.template Alloc<T>(param_out[i]);
     dev_ctx.template Alloc<T>(velocity_out[i]);
 
-    auto p_out = phi::EigenVector<T>::Flatten(*(param_out[i]));
-    auto v_out = phi::EigenVector<T>::Flatten(*(velocity_out[i]));
-    auto p = phi::EigenVector<T>::Flatten(*(param[i]));
-    auto v = phi::EigenVector<T>::Flatten(*(velocity[i]));
+    auto p_out = EigenVector<T>::Flatten(*(param_out[i]));
+    auto v_out = EigenVector<T>::Flatten(*(velocity_out[i]));
+    auto p = EigenVector<T>::Flatten(*(param[i]));
+    auto v = EigenVector<T>::Flatten(*(velocity[i]));
     Eigen::TensorMap<Eigen::Tensor<const T, 1, 1>> g =
-        phi::EigenVector<T>::Flatten(*(grad[i]));
+        EigenVector<T>::Flatten(*(grad[i]));
     auto rescale_g = static_cast<T>(rescale_grad) * g;
 
     DenseTensor p_norm_t, g_norm_t;

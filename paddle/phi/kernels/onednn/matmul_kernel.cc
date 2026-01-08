@@ -37,12 +37,12 @@ KernelKey MatmulGetkernelTypeForVar(const GetKernelTypeForVarContext *ctx) {
 #ifdef PADDLE_WITH_DNNL
     // When matmul_v2 is first oneDNN op in a chain (there was some non oneDNN
     // op previously) then we also need to rotate shape NHWC -> NCWH
-    if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
-        (tensor.layout() != phi::DataLayout::ONEDNN) &&
+    if ((expected_kernel_type.layout() == DataLayout::ONEDNN) &&
+        (tensor.layout() != DataLayout::ONEDNN) &&
         phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-            phi::DataLayout::NHWC) {
+            DataLayout::NHWC) {
       return phi::KernelKey(
-          tensor.place(), phi::DataLayout::NHWC, expected_kernel_type.dtype());
+          tensor.place(), DataLayout::NHWC, expected_kernel_type.dtype());
     }
 #endif
     return phi::KernelKey(

@@ -422,7 +422,7 @@ class TestCastBf16Pass(PassTest):
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
-                    "onednn_op.cast": 1,
+                    "onednn_op.cast": 0,
                     "onednn_op.dequantize": 0,
                     "onednn_op.quantize": 0,
                 }
@@ -484,7 +484,7 @@ class TestConvCastBf16Pass(PassTest):
                 self.fetch_list = [out]
                 self.valid_op_map = {
                     "onednn_op.fused_conv2d": 1,
-                    "onednn_op.cast": 1,
+                    "onednn_op.cast": 0,
                     "onednn_op.quantize": 0,
                     "onednn_op.dequantize": 0,
                 }

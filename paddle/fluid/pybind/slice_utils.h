@@ -230,7 +230,7 @@ inline T GetDenseTensorValue(const phi::DenseTensor* x) {
   T value = static_cast<T>(0);
   if (!(x->place().GetType() == phi::AllocationType::CPU)) {
     phi::DenseTensor cpu_x;
-    framework::TensorCopy(*x, phi::CPUPlace(), &cpu_x);
+    framework::TensorCopy(*x, CPUPlace(), &cpu_x);
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     const phi::DeviceContext* dev_ctx = pool.Get(x->place());

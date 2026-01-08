@@ -303,7 +303,7 @@ int ProductRuleBook(const Context& dev_ctx,
   const int64_t non_zero_num = x.nnz();
   const auto& indices = x.indices();
   const IntT* indices_ptr = indices.data<IntT>();
-  DenseTensor in_indices = phi::Empty<Context>(
+  DenseTensor in_indices = Empty<Context>(
       dev_ctx, DenseTensorMeta(indices_dtype, {x.nnz()}, DataLayout::NCHW));
   int* counter_ptr = counter_per_kernel->data<int>();
   int* offsets_ptr = offsets_per_kernel->data<int>();
@@ -312,7 +312,7 @@ int ProductRuleBook(const Context& dev_ctx,
   const int rulebook_cols = kernel_size * non_zero_num;
   DenseTensorMeta rulebook_meta(
       indices_dtype, {rulebook_rows, rulebook_cols}, DataLayout::NCHW);
-  *rulebook = phi::Empty(dev_ctx, std::move(rulebook_meta));
+  *rulebook = Empty(dev_ctx, std::move(rulebook_meta));
   IntT* rulebook_ptr = rulebook->data<IntT>();
 
   const auto x_dims = x.dims();
@@ -380,7 +380,7 @@ int ProductRuleBook(const Context& dev_ctx,
     // call lower_bound to get the real index of out_index
     const IntT* in_indices_ptr = in_indices.data<IntT>();
     IntT* out_indices_ptr = rulebook_ptr + 2 * rulebook_len;
-    DenseTensor bound = phi::Empty(
+    DenseTensor bound = Empty(
         dev_ctx,
         DenseTensorMeta(
             indices_dtype, {static_cast<int>(rulebook_len)}, DataLayout::NCHW));
@@ -470,7 +470,7 @@ int ProductRuleBook(const Context& dev_ctx,
     // 3. sorted or merge the out index
     out_index->ResizeAndAllocate({static_cast<int>(rulebook_len)});
     unique_value->ResizeAndAllocate({static_cast<int>(rulebook_len)});
-    DenseTensor unique_key = phi::Empty(
+    DenseTensor unique_key = Empty(
         dev_ctx,
         DenseTensorMeta(
             indices_dtype, {static_cast<int>(rulebook_len)}, DataLayout::NCHW));
@@ -516,8 +516,8 @@ int ProductRuleBook(const Context& dev_ctx,
         indices_dtype, {sparse_dim, out_non_zero_num}, DataLayout::NCHW);
     DenseTensorMeta values_meta(
         x.dtype(), {out_non_zero_num, kernel_sizes[4]}, x.values().layout());
-    DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
-    DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
+    DenseTensor out_indices = Empty(dev_ctx, std::move(indices_meta));
+    DenseTensor out_values = Empty(dev_ctx, std::move(values_meta));
 
     IntT* out_indices_ptr = out_indices.data<IntT>();
 
@@ -537,11 +537,11 @@ int ProductRuleBook(const Context& dev_ctx,
                                rulebook_ptr + 2 * rulebook_len);
     out->SetMember(out_indices, out_values, out_dims, true);
   } else {
-    DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
-    DenseTensor out_values = phi::Empty(
-        dev_ctx,
-        DenseTensorMeta(
-            x.dtype(), {x.nnz(), kernel_sizes[4]}, x.values().layout()));
+    DenseTensor out_indices = EmptyLike<IntT>(dev_ctx, x.indices());
+    DenseTensor out_values =
+        Empty(dev_ctx,
+              DenseTensorMeta(
+                  x.dtype(), {x.nnz(), kernel_sizes[4]}, x.values().layout()));
     phi::Copy(dev_ctx, x.indices(), dev_ctx.GetPlace(), false, &out_indices);
     out->SetMember(out_indices, out_values, out_dims, true);
   }

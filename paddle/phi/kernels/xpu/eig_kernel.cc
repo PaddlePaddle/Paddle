@@ -32,7 +32,7 @@ void EigKernel(const Context& dev_ctx,
     return;
   }
 
-  auto cpu_place = phi::CPUPlace();
+  auto cpu_place = CPUPlace();
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
 
@@ -81,8 +81,8 @@ void EigKernel(const Context& dev_ctx,
 
     // 3. construct complex vectors
     DenseTensor real_v_trans_cpu =
-        phi::TransposeLast2Dim<phi::dtype::Real<T>, phi::CPUContext>(
-            (*cpu_ctx), real_v_cpu);
+        TransposeLast2Dim<phi::dtype::Real<T>, phi::CPUContext>((*cpu_ctx),
+                                                                real_v_cpu);
     DenseTensor out_v_trans_cpu;
     out_v_trans_cpu.Resize(x.dims());
     (*cpu_ctx).template Alloc<phi::dtype::Complex<T>>(&out_v_trans_cpu);

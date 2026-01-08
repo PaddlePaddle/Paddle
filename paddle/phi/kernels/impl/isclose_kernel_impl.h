@@ -267,7 +267,7 @@ struct GetTensorValue<phi::GPUContext, T> {
     T value;
     const auto gpu_place = dev_ctx.GetPlace();
     memory_utils::Copy(
-        phi::CPUPlace(), &value, gpu_place, data, sizeof(T), dev_ctx.stream());
+        CPUPlace(), &value, gpu_place, data, sizeof(T), dev_ctx.stream());
     return value;
   }
 };

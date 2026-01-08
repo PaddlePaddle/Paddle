@@ -23,12 +23,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/elementwise/elementwise_op_function.h"
-
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/onednn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {

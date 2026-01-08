@@ -91,15 +91,15 @@ phi::KernelKey PoolOpGetKernelTypeForVar(
   const DenseTensor& tensor = dev_ctx->GetTensor();
   const phi::KernelKey& expected_kernel_type = dev_ctx->GetKernelKey();
 #ifdef PADDLE_WITH_DNNL
-  if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
-      (tensor.layout() != phi::DataLayout::ONEDNN)) {
+  if ((expected_kernel_type.layout() == DataLayout::ONEDNN) &&
+      (tensor.layout() != DataLayout::ONEDNN)) {
     const AttributeMap& attrs = dev_ctx->GetAttrs();
     auto it = attrs.find("data_format");
     const std::string data_format = PADDLE_GET_CONST(std::string, it->second);
     auto dl = common::StringToDataLayout(data_format);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
-    if (dl != phi::DataLayout::ANY) {
+    if (dl != DataLayout::ANY) {
       return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
     }
   }

@@ -47,25 +47,25 @@ class PADDLE_API DistTensor final
 
   /// \brief Construct a dist tensor based dtype.
   /// \param dtype The dtype of the current tensor.
-  explicit DistTensor(phi::DataType dtype);
+  explicit DistTensor(DataType dtype);
 
   /// \brief Construct a dist tensor based dense tensor.
   /// \param global_value The global dense tensor of the current tensor.
   /// \param dist_attr The distributed attributes of the current tensor.
-  DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
+  DistTensor(const std::shared_ptr<DenseTensor>& global_value,
              const TensorDistAttr& dist_attr);
 
   /// \brief Construct a dist tensor based dense tensor.
   /// \param process_mesh The process mesh of the current tensor.
   /// \param placements The distributed placements of the current tensor.
-  DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
+  DistTensor(const std::shared_ptr<DenseTensor>& global_value,
              const ProcessMesh& process_mesh,
              const Placements& placements);
 
   /// \brief Construct a dist tensor based local dense tensor.
   /// \param global_dims The global dim of the dist tensor.
   /// \param dist_attr The distributed attributes of the current tensor.
-  DistTensor(const std::shared_ptr<phi::DenseTensor>& local_value,
+  DistTensor(const std::shared_ptr<DenseTensor>& local_value,
              const DDim& global_dims,
              const TensorDistAttr& dist_attr);
 
@@ -73,7 +73,7 @@ class PADDLE_API DistTensor final
   /// \param global_dims The global dim of the dist tensor.
   /// \param process_mesh The process mesh of the current tensor.
   /// \param placements The distributed placements of the current tensor.
-  DistTensor(const std::shared_ptr<phi::DenseTensor>& local_value,
+  DistTensor(const std::shared_ptr<DenseTensor>& local_value,
              const DDim& global_dims,
              const ProcessMesh& process_mesh,
              const Placements& placements);

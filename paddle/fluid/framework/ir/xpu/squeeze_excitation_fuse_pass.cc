@@ -355,7 +355,7 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
     new_filter_t.Resize(DDim({mul_1_w_len + mul_2_w_len}));
     new_filter_t.set_type(phi::DataType::INT16);
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
-        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(CPUPlace()));
     auto* new_filter_data = cpu_ctx->Alloc<int16_t>(&new_filter_t);
 
     memcpy(new_filter_data,
@@ -452,7 +452,7 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
       new_bias_t.Resize(DDim({mul_1_bias_numel + mul_2_bias_numel}));
       new_bias_t.set_type(phi::DataType::FLOAT32);
       auto* cpu_ctx = static_cast<phi::CPUContext*>(
-          phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+          phi::DeviceContextPool::Instance().Get(CPUPlace()));
       auto* new_bias_data = cpu_ctx->Alloc<float>(&new_bias_t);
 
       memcpy(new_bias_data,

@@ -62,7 +62,7 @@ void DeQuantizeLinearImpl(const Context& dev_ctx,
   dev_ctx.template Alloc<D>(out, out->numel() * sizeof(D));
 
   if (only_observer) {
-    phi::Copy(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
+    Copy(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
     return;
   }
 
@@ -180,7 +180,7 @@ void QuantizeLinearTrainKernel(const Context& dev_ctx,
                                                         out_accum,
                                                         out_scale);
     if (only_observer) {
-      phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
+      Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
     } else {
       funcs::ClipAndFakeQuantFunctor<Context, T>()(
           dev_ctx, *in, *out_scale, qmax, round_type, out);
@@ -190,7 +190,7 @@ void QuantizeLinearTrainKernel(const Context& dev_ctx,
     funcs::FindChannelAbsMaxFunctor<Context, T>()(
         dev_ctx, *in, quant_axis, out_scale_data);
     if (only_observer) {
-      phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
+      Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
     } else {
       funcs::ChannelClipAndFakeQuantFunctor<Context, T>()(
           dev_ctx, *in, *out_scale, qmax, round_type, quant_axis, out);
@@ -220,14 +220,14 @@ void QuantizeLinearInferKernel(const Context& dev_ctx,
 
   if (quant_axis < 0) {
     if (only_observer) {
-      phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
+      Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
     } else {
       funcs::ClipAndFakeQuantFunctor<Context, T>()(
           dev_ctx, *in, *in_scale, qmax, round_type, out);
     }
   } else {
     if (only_observer) {
-      phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
+      Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
     } else {
       funcs::ChannelClipAndFakeQuantFunctor<Context, T>()(
           dev_ctx, *in, *in_scale, qmax, round_type, quant_axis, out);

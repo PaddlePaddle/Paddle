@@ -111,7 +111,7 @@ struct BeamSearchDecodeXPUFunctor {
     int r = 0;
 
     // First make a copy of XPU data on CPU
-    if (step_ids.at(0).place().GetType() == phi::AllocationType::XPU) {
+    if (step_ids.at(0).place().GetType() == AllocationType::XPU) {
       // Copy all tensors in the input tensor array
       for (auto& step_id : step_ids) {
         DenseTensor out;
@@ -129,7 +129,7 @@ struct BeamSearchDecodeXPUFunctor {
       }
     }
 
-    if (step_scores.at(0).place().GetType() == phi::AllocationType::XPU) {
+    if (step_scores.at(0).place().GetType() == AllocationType::XPU) {
       // Copy all tensors in the input tensor array
       for (auto& step_score : step_scores) {
         DenseTensor out;
