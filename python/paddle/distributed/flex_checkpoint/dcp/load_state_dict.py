@@ -540,7 +540,9 @@ def _handle_aoa(
         ]
         for param_name, local_tensor_metas in state_dict_metadata.items()
     }
-
+    logger_missing_key_and_unexpected_keys_before_aoa(
+        metadata, load_dict, process_group, safetensors, use_dist
+    )
     aoa_engine = AOAEngine(
         source_state_shard_info=source_state_shard_info,
         destination_state_shard_info=destination_state_shard_info,
@@ -1666,6 +1668,63 @@ def merge_sharded_state_dict(
     SaveSafetensor.save_single_safetenors(
         local_state_dict_to_save, paddle.distributed.get_rank()
     )
+
+
+def logger_missing_key_and_unexpected_keys_before_aoa(
+    metadata: Metadata,
+    state_dict: dict[str, Tensor] | dict[str, ShardedWeight],
+    process_group: Group | None = None,
+    safetensors: bool = False,
+    use_dist: bool = False,
+):
+    first_key = next(iter(state_dict), None)
+    if isinstance(first_key, tuple):
+        flat_state_dict = state_dict
+    else:
+        flat_state_dict, mapping = flatten_state_dict(state_dict)
+
+    global_src_key_list = []
+    dst_key_list = [
+        key if isinstance(key, str) else key[0]
+        for key in flat_state_dict.keys()
+    ]
+    global_dst_key_list = []
+    if use_dist:
+        paddle.distributed.all_gather_object(
+            global_dst_key_list, dst_key_list, process_group
+        )
+        flatten_global_src_key_list = [
+            item for sublist in global_dst_key_list for item in sublist
+        ]
+    else:
+        global_dst_key_list.extend(dst_key_list)
+        flatten_global_src_key_list = global_dst_key_list
+
+    for local_tensor_index, file_name in metadata.storage_metadata.items():
+        if (
+            local_tensor_index.replica_id is not None
+            and local_tensor_index.replica_id != 0
+        ):
+            continue
+        global_src_key_list.append(local_tensor_index.tensor_key)
+    missing_keys = set(flatten_global_src_key_list) - set(global_src_key_list)
+    unexpected_keys = set(global_src_key_list) - set(
+        flatten_global_src_key_list
+    )
+    if len(missing_keys) > 0:
+        print(
+            f"Missing keys:{missing_keys}, check whether the checkpoint is complete."
+        )
+        logger.warning(
+            f"Missing keys:{missing_keys}, check whether the checkpoint is complete."
+        )
+    if len(unexpected_keys) > 0:
+        print(
+            f"Unexpected keys:{unexpected_keys}, check whether the checkpoint is complete."
+        )
+        logger.warning(
+            f"Unexpected keys:{unexpected_keys}, check whether the checkpoint is complete."
+        )
 
 
 class SavePartialSafetensors:
