@@ -90,8 +90,7 @@ using GlooOptions = paddle::distributed::ProcessGroupGloo::GlooOptions;
 using ProcessGroupFlagcx = paddle::distributed::ProcessGroupFlagcx;
 #endif
 
-static UNUSED void *use_ccl_comm_func =
-    phi::detail::GetCCLComm(phi::CPUPlace());
+static UNUSED void *use_ccl_comm_func = phi::detail::GetCCLComm(CPUPlace());
 
 void BindDistributed(py::module *m) {
   py::enum_<distributed::ReduceOp>(*m, "ReduceOp")
@@ -576,8 +575,7 @@ void BindDistributed(py::module *m) {
                 auto *dev_ctx =
                     self.GetDeviceContext(in_tensor.place(), use_calc_stream);
                 SplitTensor(*dev_ctx, *out_dense, &out_tensor_list);
-                if (!use_calc_stream &&
-                    dev_ctx->GetPlace() != phi::CPUPlace()) {
+                if (!use_calc_stream && dev_ctx->GetPlace() != CPUPlace()) {
                   // calculate stream will wait comm stream
                   task->UpdateWaitChain(*dev_ctx);
                 }

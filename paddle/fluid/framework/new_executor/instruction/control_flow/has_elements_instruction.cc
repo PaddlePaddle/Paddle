@@ -61,7 +61,7 @@ void HasElementsInstruction::Run() {
   }
 
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  bool* has_elements = pool.Get(phi::CPUPlace())->Alloc<bool>(bool_tensor_);
+  bool* has_elements = pool.Get(CPUPlace())->Alloc<bool>(bool_tensor_);
   *has_elements = !stack_element_var_array_->empty();
 
   if (FLAGS_check_cuda_error) [[unlikely]] {

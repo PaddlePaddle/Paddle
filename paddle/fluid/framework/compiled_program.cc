@@ -646,7 +646,7 @@ void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
           common::errors::PreconditionNotMet("Not compiled with BKCL."));
 #endif
     } else {
-      phi::CPUPlace cpu;
+      CPUPlace cpu;
       for (size_t i = 1; i < member_->places_.size(); ++i) {
         auto local_scope = member_->local_scopes_[i];
         auto *t = local_scope->Var(var)->GetMutable<phi::DenseTensor>();

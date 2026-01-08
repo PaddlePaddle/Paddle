@@ -126,7 +126,7 @@ void PartialSumOpCUDAKernel(const Context &dev_ctx,
 
     phi::memory_utils::Copy(dev_ctx.GetPlace(),
                             tmp_in_array->ptr(),
-                            phi::CPUPlace(),
+                            CPUPlace(),
                             reinterpret_cast<void *>(in_data.data()),
                             in_data.size() * sizeof(T *));
 
@@ -207,7 +207,7 @@ void PartialSumGradOpCUDAKernel(const Context &dev_ctx,
 
     phi::memory_utils::Copy(dev_ctx.GetPlace(),
                             tmp_out_array->ptr(),
-                            phi::CPUPlace(),
+                            CPUPlace(),
                             reinterpret_cast<void *>(out_data.data()),
                             out_data.size() * sizeof(T *));
 

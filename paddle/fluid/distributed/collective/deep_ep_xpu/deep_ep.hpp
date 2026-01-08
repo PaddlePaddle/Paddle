@@ -105,10 +105,6 @@ struct Buffer {
   volatile int* moe_recv_rdma_counter = nullptr;
   int* moe_recv_rdma_counter_mapped = nullptr;
 
-  std::optional<deep_ep::detail::Tensor> last_topk_idx = std::nullopt;
-  std::optional<deep_ep::detail::Tensor> last_topk_weights = std::nullopt;
-  int last_num_experts = 0;
-
  public:
   Buffer(int rank,
          int num_ranks,

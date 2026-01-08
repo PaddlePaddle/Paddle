@@ -255,7 +255,7 @@ class PYBIND11_HIDDEN NumpyAllocation : public memory::Allocation {
   explicit NumpyAllocation(const py::array &arr)
       : Allocation(const_cast<void *>(arr.data()),
                    sizeof(T) * (arr.size()),
-                   phi::CPUPlace()),
+                   CPUPlace()),
         arr_(arr.ptr()) {
     PADDLE_ENFORCE_NOT_NULL(
         arr_,
@@ -352,22 +352,20 @@ T TensorGetElement(const phi::DenseTensor &self, size_t offset) {
 #ifdef PADDLE_WITH_XPU
     const T *a = self.data<T>();
     auto p = self.place();
-    paddle::memory::Copy(phi::CPUPlace(), &b, p, a + offset, sizeof(T));
+    paddle::memory::Copy(CPUPlace(), &b, p, a + offset, sizeof(T));
 #endif
   } else if (phi::is_gpu_place(self.place()) ||
              phi::is_cuda_pinned_place(self.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     const T *a = self.data<T>();
     auto p = self.place();
-    paddle::memory::Copy(
-        phi::CPUPlace(), &b, p, a + offset, sizeof(T), nullptr);
+    paddle::memory::Copy(CPUPlace(), &b, p, a + offset, sizeof(T), nullptr);
 #endif
   } else if (phi::is_custom_place(self.place())) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     const T *a = self.data<T>();
     auto p = self.place();
-    paddle::memory::Copy(
-        phi::CPUPlace(), &b, p, a + offset, sizeof(T), nullptr);
+    paddle::memory::Copy(CPUPlace(), &b, p, a + offset, sizeof(T), nullptr);
 #endif
   }
   VLOG(10) << "TensorGetElement, place: " << self.place()
@@ -390,22 +388,20 @@ void TensorSetElement(phi::DenseTensor *self, size_t offset, T elem) {
 #ifdef PADDLE_WITH_XPU
     auto p = self->place();
     T *a = self->mutable_data<T>(p);
-    paddle::memory::Copy(p, a + offset, phi::CPUPlace(), &elem, sizeof(T));
+    paddle::memory::Copy(p, a + offset, CPUPlace(), &elem, sizeof(T));
 #endif
   } else if (phi::is_gpu_place(self->place()) ||
              phi::is_cuda_pinned_place(self->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto p = self->place();
     T *a = self->mutable_data<T>(p);
-    paddle::memory::Copy(
-        p, a + offset, phi::CPUPlace(), &elem, sizeof(T), nullptr);
+    paddle::memory::Copy(p, a + offset, CPUPlace(), &elem, sizeof(T), nullptr);
 #endif
   } else if (phi::is_custom_place(self->place())) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     auto p = self->place();
     T *a = self->mutable_data<T>(p);
-    paddle::memory::Copy(
-        p, a + offset, phi::CPUPlace(), &elem, sizeof(T), nullptr);
+    paddle::memory::Copy(p, a + offset, CPUPlace(), &elem, sizeof(T), nullptr);
 #endif
   }
 }
@@ -441,7 +437,7 @@ void SetTensorFromPyArrayT(
     auto dst = self->mutable_data<T>(place);
     memory::Copy(tmp_place,
                  static_cast<void *>(dst),
-                 phi::CPUPlace(),
+                 CPUPlace(),
                  static_cast<const void *>(array.data()),
                  array.nbytes());
 #else
@@ -658,7 +654,7 @@ void SetUVATensorFromPyArrayImpl(
                            0);
   std::shared_ptr<memory::allocation::Allocation> holder =
       std::make_shared<memory::allocation::Allocation>(
-          cuda_device_pointer, need_allocate_size, phi::GPUPlace(device_id));
+          cuda_device_pointer, need_allocate_size, GPUPlace(device_id));
   self_tensor->ResetHolderWithType(holder, phi::TransToPhiDataType(data_type));
 #endif
 }
@@ -684,7 +680,7 @@ void SetUVATensorFromPyArray(const std::shared_ptr<paddle::Tensor> &self,
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 1}));
   std::shared_ptr<phi::DenseTensor> tmp_t = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
+      std::make_unique<paddle::experimental::DefaultAllocator>(CPUPlace())
           .get(),
       meta);
   self.get()->set_impl(tmp_t);
@@ -975,7 +971,7 @@ inline phi::DenseTensor *PySliceTensor(const phi::DenseTensor &self,
   if (phi::is_gpu_place(self.place())) {
     std::unique_ptr<phi::DenseTensor> holder;
     phi::DenseTensor src;
-    framework::TensorCopySync(self, phi::CPUPlace(), &src);
+    framework::TensorCopySync(self, CPUPlace(), &src);
     phi::DenseTensor *output = _pySliceTensor(src, obj);
     holder.reset(output);
     phi::DenseTensor *dst = _getTensor(*output, output->dims());
@@ -1024,7 +1020,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
                        base);
     } else {
       phi::DenseTensor cpu_tensor;
-      phi::CPUPlace cpu_place;
+      CPUPlace cpu_place;
 
       cpu_tensor.set_meta(tensor.meta());
       auto tmp_allocation_ptr =
@@ -1050,7 +1046,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
 #ifdef PADDLE_WITH_XPU
     auto p = tensor.place();
     phi::DenseTensor cpu_tensor;
-    phi::CPUPlace cpu_place;
+    CPUPlace cpu_place;
 
     cpu_tensor.set_meta(tensor.meta());
     auto tmp_allocation_ptr = memory::Alloc(cpu_place, tensor.Holder()->size());
@@ -1083,7 +1079,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
     gpuMemcpyKind kind = hipMemcpyDeviceToHost;
 #endif
     phi::DenseTensor cpu_tensor;
-    phi::CPUPlace cpu_place;
+    CPUPlace cpu_place;
 
     cpu_tensor.set_meta(tensor.meta());
     auto tmp_allocation_ptr = memory::Alloc(cpu_place, tensor.Holder()->size());
@@ -1121,7 +1117,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
       auto &ctx = *pool.Get(tensor.place());
       auto p = dense_tensor->place();
       phi::DenseTensor cpu_tensor;
-      phi::CPUPlace cpu_place;
+      CPUPlace cpu_place;
 
       cpu_tensor.set_meta(dense_tensor->meta());
       auto tmp_allocation_ptr =
@@ -1151,7 +1147,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
     auto &ctx = *pool.Get(tensor.place());
     auto p = tensor.place();
     phi::DenseTensor cpu_tensor;
-    phi::CPUPlace cpu_place;
+    CPUPlace cpu_place;
 
     cpu_tensor.set_meta(tensor.meta());
     auto tmp_allocation_ptr = memory::Alloc(cpu_place, tensor.Holder()->size());

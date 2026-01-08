@@ -130,7 +130,7 @@ void OneDNNMixedPhiKernelInstruction::Run() {
                                                 tmp_layout,
                                                 *input,
                                                 transed_tensor,
-                                                phi::CPUPlace());
+                                                CPUPlace());
           tmp_kernel_context.UpdataInput(i, transed_tensor);
           auto meta_tensor = phi::MetaTensor(transed_tensor);
           auto input_meta_tensor = phi::MetaTensor(input);
