@@ -1131,7 +1131,7 @@ void CastPyArg2AttrIRBlock(PyObject* obj,
       (::pybind11::detail::instance*)obj;  // NOLINT
   void** vh = inst->simple_layout ? inst->simple_value_holder
                                   : &inst->nonsimple.values_and_holders[0];
-  attrs[key] = reinterpret_cast<::pir::Block*&>(vh[0]);
+  attrs[key] = reinterpret_cast<pir::Block*&>(vh[0]);
 }
 
 void CastPyArg2AttrIRProgram(PyObject* obj,
@@ -1140,8 +1140,8 @@ void CastPyArg2AttrIRProgram(PyObject* obj,
                              const std::string& op_type,
                              ssize_t arg_pos) {
   VLOG(3) << "After Process pir::Program*";
-  const std::shared_ptr<::pir::Program> program =
-      ::py::handle(obj).cast<std::shared_ptr<::pir::Program>>();
+  const std::shared_ptr<pir::Program> program =
+      ::py::handle(obj).cast<std::shared_ptr<pir::Program>>();
   attrs[key] = program;
 }
 
@@ -1150,7 +1150,7 @@ void CastPyArg2AttrValues(PyObject* obj,
                           const std::string& key,
                           const std::string& op_type,
                           ssize_t arg_pos) {
-  std::vector<::pir::Value> results;
+  std::vector<pir::Value> results;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
@@ -1161,7 +1161,7 @@ void CastPyArg2AttrValues(PyObject* obj,
           (::pybind11::detail::instance*)item;  // NOLINT
       void** vh = inst->simple_layout ? inst->simple_value_holder
                                       : &inst->nonsimple.values_and_holders[0];
-      ::pir::Value* value = reinterpret_cast<::pir::Value*>(vh[0]);
+      pir::Value* value = reinterpret_cast<pir::Value*>(vh[0]);
       results.emplace_back(pir::Value(value->impl()));
     }
   } else {
