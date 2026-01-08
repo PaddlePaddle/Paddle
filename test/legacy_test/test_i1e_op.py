@@ -208,9 +208,7 @@ class TestI1EAPI_Compatibility(unittest.TestCase):
     def test_static_Compatibility(self):
         def run(place):
             paddle.enable_static()
-            main = paddle.static.default_main_program()
-            startup = paddle.static.Program()
-            with paddle.static.program_guard(startup):
+            with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data(
                     name="x", shape=self.x.shape, dtype=self.DTYPE
                 )
@@ -225,7 +223,7 @@ class TestI1EAPI_Compatibility(unittest.TestCase):
 
                 exe = paddle.static.Executor(place)
                 fetches = exe.run(
-                    main,
+                    paddle.static.default_main_program(),
                     feed={"x": self.x},
                     fetch_list=[out1, out2, out3, out4],
                 )

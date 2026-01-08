@@ -221,7 +221,7 @@ class TestI1API_Compatibility(unittest.TestCase):
                 # Tensor method args
                 out4 = x.i1()
 
-                exe = paddle.static.Executor(self.place)
+                exe = paddle.static.Executor(place)
                 fetches = exe.run(
                     paddle.static.default_main_program(),
                     feed={"x": self.x},
