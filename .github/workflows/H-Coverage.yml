@@ -352,6 +352,7 @@ jobs:
       group: GZ_BD-CPU
     env:
       TASK: fleet-ci-paddle-build-whl-${{ github.event.pull_request.number }}
+      docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:cuda129-coverage-test"
     steps:
       - name: Check docker image and run container
         run: |
