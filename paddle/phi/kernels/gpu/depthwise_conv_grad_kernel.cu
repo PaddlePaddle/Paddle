@@ -43,11 +43,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
   if (input.numel() == 0) {
     if (input_grad) dev_ctx.template Alloc<T>(input_grad);
     if (filter_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(filter_grad->dims())),
-          0,
-          filter_grad);
+      Full<T, Context>(dev_ctx, filter_grad->dims(), 0, filter_grad);
     }
     return;
   }

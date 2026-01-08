@@ -43,8 +43,7 @@ void AffineGrid4DCUDAKernel(const Context& dev_ctx,
 
   if (input.numel() == 0) {
     output->Resize(common::make_ddim({n, h, w, 2}));
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    Full<T, Context>(dev_ctx, output->dims(), 0, output);
     return;
   }
 
@@ -92,8 +91,7 @@ void AffineGrid5DCUDAKernel(const Context& dev_ctx,
 
   if (input.numel() == 0) {
     output->Resize(common::make_ddim({n, d, h, w, 3}));
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    Full<T, Context>(dev_ctx, output->dims(), 0, output);
     return;
   }
 

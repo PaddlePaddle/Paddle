@@ -186,11 +186,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(x_grad);
     // Fill value_grad with 0.
     if (value_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(value_grad->dims())),
-          0,
-          value_grad);
+      Full<T, Context>(dev_ctx, value_grad->dims(), 0, value_grad);
     }
     return;
   }

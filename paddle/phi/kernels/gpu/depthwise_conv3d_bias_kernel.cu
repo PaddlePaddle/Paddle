@@ -302,8 +302,7 @@ void DepthwiseConv3dBiasKernel(const Context& dev_ctx,
                                DenseTensor* out) {
   // Check & Alloc (0-size)
   if (input.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
 
