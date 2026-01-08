@@ -217,7 +217,7 @@ struct CSoftmaxWithMultiLabelCrossEntropyFunctor<phi::GPUContext, T> {
     predicted_logits.Resize({N, C});
     dev_ctx.template Alloc<T>(&predicted_logits);
 
-    auto t = phi::EigenVector<T>::Flatten(predicted_logits);
+    auto t = EigenVector<T>::Flatten(predicted_logits);
     t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
     const int64_t start_index = rank * D;

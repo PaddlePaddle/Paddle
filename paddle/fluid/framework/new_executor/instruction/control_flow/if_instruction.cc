@@ -36,10 +36,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
-
-#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
-#endif
 
 COMMON_DECLARE_bool(check_cuda_error);
 
@@ -232,8 +229,7 @@ void IfInstruction::Run() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
       phi::DenseTensor cpu_cond;
-      paddle::framework::TensorCopySync(
-          cond_tensor, phi::CPUPlace(), &cpu_cond);
+      paddle::framework::TensorCopySync(cond_tensor, CPUPlace(), &cpu_cond);
       cond = cpu_cond.data<bool>()[0];
 #else
       PADDLE_THROW(common::errors::PreconditionNotMet(

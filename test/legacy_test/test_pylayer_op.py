@@ -779,6 +779,42 @@ class TestPyLayer(unittest.TestCase):
         z.backward()
         self.assertEqual(cus_tanh_backward_input.dtype, paddle.float16)
 
+    def test_pylayer_with_partial_grad(self):
+        class tanh(PyLayer):
+            @staticmethod
+            def forward(ctx, x1, x2, func1, func2=paddle.square):
+                ctx.func = func2
+                y1 = func1(x1)
+                y2 = func1(x2)
+                ctx.save_for_backward(y1, y2)
+                ctx.mark_non_differentiable(y2)
+                return y1, 1, y2, None
+
+            @staticmethod
+            def backward(ctx, dy1, dy2):
+                y1, y2 = ctx.saved_tensor()
+                re1 = dy1 * (1 - ctx.func(y1))
+                re2 = dy2 * (1 - paddle.square(y2))
+                return re1, re2
+
+        input1 = paddle.randn([2, 3]).astype("float64")
+        input2 = input1.detach().clone()
+        input1.stop_gradient = False
+        input2.stop_gradient = False
+        z = tanh.apply(input1, input1, paddle.tanh, paddle.square)
+        z = z[0] + z[2]
+        out = z.mean()
+        (input1_grad,) = paddle.grad(out, [input1], retain_graph=True)
+
+        y2_0 = paddle.tanh(input2)
+        y2_1 = paddle.tanh(input2)
+        y2_1.stop_gradient = True
+        z2 = y2_0 + y2_1
+        out2 = z2.mean()
+        (input2_grad,) = paddle.grad(out2, [input2], retain_graph=True)
+
+        np.testing.assert_allclose(input1_grad, input2_grad)
+
 
 if __name__ == '__main__':
     unittest.main()

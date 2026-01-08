@@ -152,9 +152,9 @@ void MoeGateDispatchPartialNoSoftMaxTopkKernel(
       *scatter_index_rev = phi::Slice<int32_t, Context>(
           dev_ctx, *scatter_index_rev, {0}, {0}, {expert_offset_host.back()});
     } else {
-      *y = phi::Empty<T, Context>(dev_ctx, {1, x_shape[1]});
+      *y = Empty<T, Context>(dev_ctx, {1, x_shape[1]});
       *scatter_index_rev =
-          phi::Empty<int32_t, Context>(dev_ctx, {});  // special treatment
+          Empty<int32_t, Context>(dev_ctx, {});  // special treatment
     }
   }
 }

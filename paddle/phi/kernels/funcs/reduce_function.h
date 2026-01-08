@@ -983,7 +983,7 @@ CubTensorReduceImpl(const Tx* x_data,
                             reducer,
                             reducer.initial(),
                             stream);
-  DenseTensor tmp = phi::Empty<uint8_t, phi::GPUContext>(
+  DenseTensor tmp = Empty<uint8_t, phi::GPUContext>(
       dev_ctx, {static_cast<int64_t>(temp_storage_bytes)});
 
   auto* temp_storage = dev_ctx.Alloc<uint8_t>(&tmp);

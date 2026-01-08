@@ -86,11 +86,11 @@ void BatchFCGradOpCUDAKernel(const Context& dev_ctx,
   auto& place = *dev_ctx.eigen_device();
   // initialize
   dev_ctx.template Alloc<T>(dx);
-  auto dx_eigen = phi::EigenVector<T>::Flatten(*dx);
+  auto dx_eigen = EigenVector<T>::Flatten(*dx);
   dx_eigen.device(place) = dx_eigen.constant(static_cast<T>(0));
 
   dev_ctx.template Alloc<T>(dw);
-  auto dw_eigen = phi::EigenVector<T>::Flatten(*dw);
+  auto dw_eigen = EigenVector<T>::Flatten(*dw);
   dw_eigen.device(place) = dw_eigen.constant(static_cast<T>(0));
 
   // get data ptr
@@ -101,7 +101,7 @@ void BatchFCGradOpCUDAKernel(const Context& dev_ctx,
   T* dw_data = dw->data<T>();
 
   dev_ctx.template Alloc<T>(db);
-  auto db_eigen = phi::EigenVector<T>::Flatten(*db);
+  auto db_eigen = EigenVector<T>::Flatten(*db);
   db_eigen.device(place) = db_eigen.constant(static_cast<T>(0));
   T* db_data = db->data<T>();
   add_bias_grad<T>(

@@ -58,8 +58,8 @@ void DGCMomentumKernel(const Context& dev_ctx,
           "DGC is not useful when num_trainers <= 1, but now nranks=%d",
           nranks));
 
-  auto grad_e = phi::EigenVector<T>::Flatten(grad);
-  auto grad_out_e = phi::EigenVector<T>::Flatten(*grad_out);
+  auto grad_e = EigenVector<T>::Flatten(grad);
+  auto grad_out_e = EigenVector<T>::Flatten(*grad_out);
 
   auto& eigen_ctx = *dev_ctx.eigen_device();
 

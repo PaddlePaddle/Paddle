@@ -234,7 +234,7 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
       phi::DataType type_data = phi::DataType::FLOAT32;
       phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       const phi::DeviceContext *dev_ctx = nullptr;
-      dev_ctx = pool.Get(phi::CPUPlace());
+      dev_ctx = pool.Get(CPUPlace());
       dev_ctx->Alloc(tensor_temp, type_data);
       tensor_out.push_back(tensor_temp);
     }
@@ -491,14 +491,14 @@ void TensorRTEngineInstruction::BindInputTensor(
           nvinfer1::TensorIOMode::kINPUT) {
     shape_v.resize(input_tensor.numel());
     if (input_tensor.dtype() == phi::DataType::INT32) {
-      phi::memory_utils::Copy(phi::CPUPlace(),
+      phi::memory_utils::Copy(CPUPlace(),
                               shape_v.data(),
                               input_tensor.place(),
                               input_tensor.data<int32_t>(),
                               input_tensor.numel() * sizeof(int),
                               nullptr);
     } else if (input_tensor.dtype() == phi::DataType::INT64 && support_int64) {
-      phi::memory_utils::Copy(phi::CPUPlace(),
+      phi::memory_utils::Copy(CPUPlace(),
                               shape_v.data(),
                               input_tensor.place(),
                               input_tensor.data<int64_t>(),
@@ -514,7 +514,7 @@ void TensorRTEngineInstruction::BindInputTensor(
           reinterpret_cast<const phi::GPUContext &>(*dev_ctx_),
           input_tensor,
           phi::DataType::INT32);
-      phi::memory_utils::Copy(phi::CPUPlace(),
+      phi::memory_utils::Copy(CPUPlace(),
                               shape_v.data(),
                               int32_tensor->place(),
                               int32_tensor->data<int32_t>(),

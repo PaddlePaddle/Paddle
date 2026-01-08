@@ -326,7 +326,7 @@ void MemoryEfficientAttentionGradKernel(
 
     DenseTensor delta;
     if (KernelType::kKernelComputesDelta) {
-      phi::EmptyKernel<float, Context>(
+      EmptyKernel<float, Context>(
           dev_ctx,
           {output.dims()[0], output.dims()[2], output.dims()[1]},
           output.dtype(),
@@ -344,14 +344,14 @@ void MemoryEfficientAttentionGradKernel(
           phi::Multiply<float, Context>(dev_ctx, output_grad_tmp, output_tmp);
 
       DenseTensor delta_sum;
-      phi::EmptyKernel<float, Context>(
+      EmptyKernel<float, Context>(
           dev_ctx,
           {delta_mul.dims()[0], delta_mul.dims()[1], delta_mul.dims()[2]},
           DataType::FLOAT32,
           &delta_sum);
       phi::SumKernel<float, Context>(
           dev_ctx, delta_mul, {-1}, delta_mul.dtype(), false, &delta_sum);
-      phi::EmptyKernel<float, Context>(
+      EmptyKernel<float, Context>(
           dev_ctx,
           {delta_mul.dims()[0], delta_mul.dims()[2], delta_mul.dims()[1]},
           DataType::FLOAT32,

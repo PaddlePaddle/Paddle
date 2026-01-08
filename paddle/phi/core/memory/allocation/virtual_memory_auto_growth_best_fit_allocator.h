@@ -83,6 +83,7 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   void ExtendOrCompact(size_t size);
   void TryMergeBlock2Blocks(std::list<Block>::iterator iter);
   void DumpInfo(std::string phase) const;
+  std::list<Block>::iterator FindBlockByPtr(void *ptr);
 
   std::shared_ptr<Allocator> underlying_allocator_;
   std::unique_ptr<MemoryCompactionStrategy> memory_compactor_;

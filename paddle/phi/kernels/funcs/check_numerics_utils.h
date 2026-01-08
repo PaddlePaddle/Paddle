@@ -198,7 +198,7 @@ inline std::string GetCpuHintString(const std::string& op_type,
   }
 
   std::stringstream ss;
-  if (place.GetType() == phi::AllocationType::GPU) {
+  if (place.GetType() == AllocationType::GPU) {
     ss << "[device=gpu:" << device_id << ", ";
   } else {
     ss << "[device=cpu, ";

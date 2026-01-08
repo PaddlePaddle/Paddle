@@ -58,7 +58,7 @@ void MaskedSelectKernel(const Context& dev_ctx,
       xpu::nonzero_count(
           dev_ctx.x_context(), mask_data, out_size, mask.numel()),
       "nonzero_count ");
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      static_cast<void*>(&out_size_cpu),
                      mask.place(),
                      static_cast<void*>(out_size),

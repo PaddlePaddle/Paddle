@@ -217,8 +217,8 @@ void AdamDenseParamSparseGradKernel(
     }
   }
 
-  phi::SelectedRows tmp_grad_merge;
-  const phi::SelectedRows* grad_merge_ptr;
+  SelectedRows tmp_grad_merge;
+  const SelectedRows* grad_merge_ptr;
   if (is_strict_sorted) {
     grad_merge_ptr = &grad;
   } else {

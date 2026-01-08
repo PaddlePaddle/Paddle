@@ -100,7 +100,7 @@ inline void GetResidualsTensor(const Context& dev_ctx,
   }
 
   IntArray empty_shape({0});
-  DenseTensor empty_tensor = phi::Empty<T, Context>(dev_ctx, empty_shape);
+  DenseTensor empty_tensor = Empty<T, Context>(dev_ctx, empty_shape);
   Copy<Context>(dev_ctx, empty_tensor, dev_ctx.GetPlace(), true, residuals);
 }
 
@@ -233,7 +233,7 @@ inline void BatchedOrmqr<GPUContext, float>(const GPUContext& dev_ctx,
 
     // check the error info
     int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &info_h,
                        dev_ctx.GetPlace(),
                        info_d,
@@ -302,7 +302,7 @@ inline void BatchedOrmqr<GPUContext, double>(const GPUContext& dev_ctx,
 
     // check the error info
     int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &info_h,
                        dev_ctx.GetPlace(),
                        info_d,

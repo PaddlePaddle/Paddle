@@ -19,7 +19,7 @@ jobs:
     permissions:
       contents: read
     env:
-      CI_TEAM_MEMBERS: '["tianshuo78520a", "swgu98", "risemeup1" , "XieYunshen", "luotao1", "ooooo-create"]'
+      CI_TEAM_MEMBERS: '["swgu98", "risemeup1" , "XieYunshen", "luotao1", "ooooo-create"]'
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
     steps:
@@ -28,8 +28,8 @@ jobs:
         uses: PFCCLab/ci-bypass@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          non-pull-request-event-strategy: 'never-skipped'
-          type: 'composite'
+          non-pull-request-event-strategy: "never-skipped"
+          type: "composite"
           composite-rule: |
             {
               "any": [

@@ -41,7 +41,7 @@ void CPUIndexElementwisePutWithTensorKernel(
   }
   T* output_ = dev_ctx.template Alloc<T>(output);
   if (!is_initialized || !is_same_place) {
-    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
   }
 
   int64_t num_indices = 0;
@@ -120,7 +120,7 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
   T* output_ = dev_ctx.template Alloc<T>(output);
   T value_T = value.to<T>();
   if (!is_initialized || !is_same_place) {
-    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
   }
 
   int64_t num_indices = 0;
@@ -211,7 +211,7 @@ void IndexElementwisePutWithTensorKernel(
   }
   if (index.empty()) {
     if (!out->initialized()) {
-      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     }
     return;
   }
@@ -255,7 +255,7 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
   }
   if (index.empty()) {
     if (!out->initialized()) {
-      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     }
     return;
   }

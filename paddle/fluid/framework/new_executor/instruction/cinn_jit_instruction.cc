@@ -63,12 +63,12 @@ class CinnJitInstruction::FnPtrImpl {
           const auto& tensor = [&]() -> phi::DenseTensor {
             phi::DenseTensor new_tensor =
                 *(kernel_tensor_args[binding_info.arg_idx]);
-            if (new_tensor.place() == phi::CPUPlace()) {
+            if (new_tensor.place() == CPUPlace()) {
               return new_tensor;
             }
             framework::TensorCopySync(
                 *(kernel_tensor_args[binding_info.arg_idx]),
-                phi::CPUPlace(),
+                CPUPlace(),
                 &new_tensor);
             return new_tensor;
           }();
@@ -98,6 +98,7 @@ class CinnJitInstruction::FnPtrImpl {
     }
   }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void Run(const std::vector<phi::DenseTensor*>& kernel_tensor_args,
            void* stream,
            bool is_gpu) {
@@ -166,6 +167,7 @@ class CinnJitInstruction::FnPtrImpl {
     }
     VLOG(6) << "End Run: " << cinn_kernel_info_.fn_name;
   }
+#endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
   void InferShape(const std::vector<phi::DenseTensor*>& kernel_tensor_args,
                   const std::vector<phi::DDim>& ir_dim,

@@ -28,8 +28,8 @@ struct GraphSendRecvSumFunctor {
   void operator()(const bool& first_flag UNUSED,
                   const DenseTensor& src_slice,
                   DenseTensor* dst_slice) {
-    auto eigen_src = phi::EigenVector<T>::Flatten(src_slice);
-    auto eigen_dst = phi::EigenVector<T>::Flatten(*dst_slice);
+    auto eigen_src = EigenVector<T>::Flatten(src_slice);
+    auto eigen_dst = EigenVector<T>::Flatten(*dst_slice);
     eigen_dst += eigen_src;
   }
 };
@@ -39,8 +39,8 @@ struct GraphSendRecvMinFunctor {
   void operator()(const bool& first_flag,
                   const DenseTensor& src_slice,
                   DenseTensor* dst_slice) {
-    auto eigen_src = phi::EigenVector<T>::Flatten(src_slice);
-    auto eigen_dst = phi::EigenVector<T>::Flatten(*dst_slice);
+    auto eigen_src = EigenVector<T>::Flatten(src_slice);
+    auto eigen_dst = EigenVector<T>::Flatten(*dst_slice);
     if (first_flag) {
       eigen_dst += eigen_src;
     } else {
@@ -54,8 +54,8 @@ struct GraphSendRecvMaxFunctor {
   void operator()(const int& first_flag,
                   const DenseTensor& src_slice,
                   DenseTensor* dst_slice) {
-    auto eigen_src = phi::EigenVector<T>::Flatten(src_slice);
-    auto eigen_dst = phi::EigenVector<T>::Flatten(*dst_slice);
+    auto eigen_src = EigenVector<T>::Flatten(src_slice);
+    auto eigen_dst = EigenVector<T>::Flatten(*dst_slice);
     if (first_flag) {
       eigen_dst += eigen_src;
     } else {
