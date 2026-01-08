@@ -253,7 +253,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: always()
+        if: steps.check-approval.outputs.can-skip != 'true'
         run: |
           docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
           docker stop ${container_name}
