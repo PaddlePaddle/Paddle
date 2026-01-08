@@ -1693,12 +1693,12 @@ def logger_missing_key_and_unexpected_keys_before_aoa(
         paddle.distributed.all_gather_object(
             global_dst_key_list, dst_key_list, process_group
         )
-        flatten_global_src_key_list = [
+        flatten_global_dst_key_list = [
             item for sublist in global_dst_key_list for item in sublist
         ]
     else:
         global_dst_key_list.extend(dst_key_list)
-        flatten_global_src_key_list = global_dst_key_list
+        flatten_global_dst_key_list = global_dst_key_list
 
     for local_tensor_index, file_name in metadata.storage_metadata.items():
         if (
@@ -1707,17 +1707,17 @@ def logger_missing_key_and_unexpected_keys_before_aoa(
         ):
             continue
         global_src_key_list.append(local_tensor_index.tensor_key)
-    missing_keys = set(flatten_global_src_key_list) - set(global_src_key_list)
+    missing_keys = set(flatten_global_dst_key_list) - set(global_src_key_list)
     unexpected_keys = set(global_src_key_list) - set(
-        flatten_global_src_key_list
+        flatten_global_dst_key_list
     )
     if len(missing_keys) > 0:
         logger.warning(
-            f"Missing keys:{missing_keys}, check whether the checkpoint is complete."
+            f"Missing keys:{missing_keys}, check whether the checkpoint is complete and note whether the aoa_statements is complete."
         )
     if len(unexpected_keys) > 0:
         logger.warning(
-            f"Unexpected keys:{unexpected_keys}, check whether the checkpoint is complete."
+            f"Unexpected keys:{unexpected_keys}, check whether the model is complete and note whether the aoa_statements is complete."
         )
 
 

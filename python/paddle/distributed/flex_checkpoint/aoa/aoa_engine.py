@@ -670,9 +670,9 @@ class AOAEngine:
                         self.output_vars[model_state_key] = None
                     else:
                         assert model_state_key in self.input_vars, (
-                            f"{model_state_key} is in dst_keys (needs to be loaded), "
-                            f"but not found in src_keys. "
-                            f"If it is a new key and you want to load it, please use the add primitive in aoa_statements: "
+                            f"{model_state_key} needs to be loaded, "
+                            f"but not found in checkpoint. "
+                            f"If the key exists in the current model but not in the loaded checkpoint, please use the add primitive in aoa_statements: "
                             f"_ -> {model_state_key}, and {model_state_key} will be randomly initialized."
                         )
                         self.output_vars[model_state_key] = self.input_vars[
