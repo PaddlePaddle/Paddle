@@ -30,29 +30,25 @@
 #include "unsupported/Eigen/CXX11/Tensor"
 #endif
 
-namespace phi {
-class DenseTensor;
-}  // namespace phi
-
 namespace paddle::framework {
 class Scope;
 }  // namespace paddle::framework
 
-namespace {
+namespace paddle {
 template <typename T1, typename T2>
-void ConvertTensorType(phi::DenseTensor* tensor) {
+void ConvertTensorType(DenseTensor* tensor) {
   DenseTensor tmp_tensor;
   tmp_tensor.set_type(phi::CppTypeToDataType<T2>::Type());
   tmp_tensor.Resize(tensor->dims());
-  auto* tmp_data = tmp_tensor.mutable_data<T2>(phi::CPUPlace());
-  auto* data = tensor->mutable_data<T1>(phi::CPUPlace());
+  auto* tmp_data = tmp_tensor.mutable_data<T2>(CPUPlace());
+  auto* data = tensor->mutable_data<T1>(CPUPlace());
   for (int i = 0; i < tensor->numel(); i++) {
     tmp_data[i] = static_cast<T2>(data[i]);
   }
   tensor->clear();
-  paddle::framework::TensorCopySync(tmp_tensor, phi::CPUPlace(), tensor);
+  paddle::framework::TensorCopySync(tmp_tensor, CPUPlace(), tensor);
 }
-}  // namespace
+}  // namespace paddle
 
 namespace paddle::framework::ir {
 
