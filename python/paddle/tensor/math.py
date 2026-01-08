@@ -6649,7 +6649,7 @@ def __rlshift__(
         raise TypeError(
             "unsupported operand type(s) for <<: 'float' and 'Tensor'"
         )
-    return bitwise_left_shift(y, x, is_arithmetic, None, None)
+    return bitwise_left_shift(y, x, is_arithmetic, None)
 
 
 def __rrshift__(
@@ -6663,7 +6663,7 @@ def __rrshift__(
         raise TypeError(
             "unsupported operand type(s) for <<: 'float' and 'Tensor'"
         )
-    return bitwise_right_shift(y, x, is_arithmetic, None, None)
+    return bitwise_right_shift(y, x, is_arithmetic, None)
 
 
 def copysign(x: Tensor, y: Tensor | float, name: str | None = None) -> Tensor:
