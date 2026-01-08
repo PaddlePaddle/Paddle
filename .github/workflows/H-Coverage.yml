@@ -163,7 +163,9 @@ jobs:
           ccache -z
           cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Manual -DCUDA_ARCH_BIN="90" -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON -DON_INFER=OFF -DWITH_NVSHMEM=ON
           make -j20
+          EXIT_CODE=$?
           ccache -s
+          exit $EXIT_CODE
           '
 
       - name: Clean up env
