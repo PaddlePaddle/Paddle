@@ -204,11 +204,11 @@ Place GetDefaultPlace() {
     return paddle::DefaultCustomPlace();
   }
 #elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (phi::backends::gpu::GetGPUDeviceCount() > 0) {
+  if (phi::backends::gpu::GetGPUDeviceCount() >= 0) {
     return paddle::DefaultGPUPlace();
   }
 #elif defined(PADDLE_WITH_XPU)
-  if (phi::backends::xpu::GetXPUDeviceCount() > 0) {
+  if (phi::backends::xpu::GetXPUDeviceCount() >= 0) {
     return paddle::DefaultXPUPlace();
   }
 #endif
