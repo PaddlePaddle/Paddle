@@ -512,13 +512,12 @@ class RReluTest_ZeroSize(RReluTest):
 
 
 class TestRRELUOpClass_Inplace(unittest.TestCase):
-    def _test_case1_cpu(self):
+    def test_case(self):
         x_np = np.random.uniform(-1.0, 1.0, [1, 2, 3, 4]).astype('float32')
         lower_0 = 0.05
         upper_0 = 0.25
         y_ref = ref_rrelu(x_np, lower_0, upper_0)
-
-        place = base.CPUPlace()
+        place = get_device_place()
         with dygraph.guard(place) as g:
             x_var1 = paddle.to_tensor(x_np)
             x_var2 = paddle.to_tensor(x_np)
@@ -542,42 +541,6 @@ class TestRRELUOpClass_Inplace(unittest.TestCase):
         np.testing.assert_allclose(
             y_ref, x_var2.numpy(), rtol=1e-05, atol=1e-08
         )
-
-    def _test_case1_gpu(self):
-        x = np.random.uniform(-1.0, 1.0, [1, 2, 3, 4]).astype('float32')
-        lower_1 = 0.1
-        upper_1 = 0.33
-        y_ref = ref_rrelu(x, lower_1, upper_1)
-
-        place = get_device_place()
-        with dygraph.guard(place) as g:
-            x_var1 = paddle.to_tensor(x)
-            x_var2 = paddle.to_tensor(x)
-
-            y_var1 = F.rrelu(
-                x_var1, lower_1, upper_1, training=False, inplace=True
-            )
-            y_test1 = y_var1.numpy()
-
-            func = paddle.nn.RReLU(lower_1, upper_1, True)
-            func.training = False
-            y_var2 = func(x_var2)
-            y_test2 = y_var2.numpy()
-
-        np.testing.assert_allclose(y_ref, y_test1, rtol=1e-05, atol=1e-08)
-        np.testing.assert_allclose(y_ref, y_test2, rtol=1e-05, atol=1e-08)
-
-        np.testing.assert_allclose(
-            y_ref, x_var1.numpy(), rtol=1e-05, atol=1e-08
-        )
-        np.testing.assert_allclose(
-            y_ref, x_var2.numpy(), rtol=1e-05, atol=1e-08
-        )
-
-    def test_cases(self):
-        self._test_case1_cpu()
-        if base.is_compiled_with_cuda() or is_custom_device():
-            self._test_case1_gpu()
 
 
 class TestRRELUAPI(unittest.TestCase):

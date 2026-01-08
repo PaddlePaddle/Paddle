@@ -16,12 +16,12 @@ import copy
 import unittest
 
 import numpy as np
-from op_test import get_device_place, get_places, is_custom_device
+from op_test import get_device_place, get_places
 
 import paddle
 import paddle.base.dygraph as dg
 import paddle.nn.functional as F
-from paddle import base, nn
+from paddle import nn
 
 
 def ref_mish(x, threshold=20.0):
@@ -32,33 +32,7 @@ def ref_mish(x, threshold=20.0):
 
 
 class TestMishOpClass_Inplace(unittest.TestCase):
-    def _test_case1_cpu(self):
-        x = np.random.uniform(-1, 1, [10, 12]).astype(np.float32)
-        y_ref = ref_mish(x)
-
-        place = base.CPUPlace()
-        with dg.guard(place) as g:
-            x_var1 = paddle.to_tensor(x)
-            x_var2 = paddle.to_tensor(x)
-
-            y_var1 = F.mish(x_var1, True)
-            y_test1 = y_var1.numpy()
-
-            func = nn.Mish(True)
-            y_var2 = func(x_var2)
-            y_test2 = y_var2.numpy()
-
-        np.testing.assert_allclose(y_ref, y_test1, rtol=1e-05, atol=1e-08)
-        np.testing.assert_allclose(y_ref, y_test2, rtol=1e-05, atol=1e-08)
-
-        np.testing.assert_allclose(
-            y_ref, x_var1.numpy(), rtol=1e-05, atol=1e-08
-        )
-        np.testing.assert_allclose(
-            y_ref, x_var2.numpy(), rtol=1e-05, atol=1e-08
-        )
-
-    def _test_case1_gpu(self):
+    def test_case(self):
         x = np.random.uniform(-1, 1, [10, 12]).astype(np.float32)
         y_ref = ref_mish(x)
 
@@ -83,11 +57,6 @@ class TestMishOpClass_Inplace(unittest.TestCase):
         np.testing.assert_allclose(
             y_ref, x_var2.numpy(), rtol=1e-05, atol=1e-08
         )
-
-    def test_cases(self):
-        self._test_case1_cpu()
-        if base.is_compiled_with_cuda() or is_custom_device():
-            self._test_case1_gpu()
 
 
 class TestMishAPI(unittest.TestCase):
