@@ -1850,21 +1850,17 @@ def randint(
 
     if in_dynamic_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
-        res = _C_ops.randint(low, high, shape, dtype, _current_expected_place())
-        if out is not None:
-            paddle.assign(res, out)
-            return out
-        return res
+        return _C_ops.randint(
+            low, high, shape, dtype, _current_expected_place(), out=out
+        )
     elif in_pir_mode():
         check_shape(shape, 'randint')
         check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
         if paddle.utils._contain_var(shape):
             shape = paddle.utils.get_int_tensor_list(shape)
-        res = _C_ops.randint(low, high, shape, dtype, _current_expected_place())
-        if out is not None:
-            paddle.assign(res, out)
-            return out
-        return res
+        return _C_ops.randint(
+            low, high, shape, dtype, _current_expected_place(), out=out
+        )
     else:
         check_shape(shape, 'randint')
         check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')

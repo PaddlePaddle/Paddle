@@ -294,6 +294,7 @@ def std(
     unbiased: bool = True,
     keepdim: bool = False,
     name: str | None = None,
+    *,
     out: Tensor | None = None,
 ) -> Tensor:
     """
@@ -354,10 +355,7 @@ def std(
     var_out = var(
         x, axis=axis, unbiased=unbiased, keepdim=keepdim, name=name, out=out
     )
-    if out is not None:
-        out.sqrt_()
-        return out
-    return paddle.sqrt(var_out)
+    return paddle.sqrt(var_out, out=out)
 
 
 def numel(x: Tensor, name: str | None = None) -> Tensor:
