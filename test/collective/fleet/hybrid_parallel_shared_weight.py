@@ -30,6 +30,8 @@ from paddle.distributed.fleet.meta_parallel import (
 )
 from paddle.nn import Layer
 
+os.environ['FLAGS_profile_optimizer_details_steps'] = "1"
+
 
 def print_hook_fn(grad):
     print(grad)
