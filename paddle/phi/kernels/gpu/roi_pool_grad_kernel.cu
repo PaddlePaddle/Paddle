@@ -111,7 +111,7 @@ void RoiPoolGradKernel(const Context& dev_ctx,
       // upgraded.
 
       std::vector<int> boxes_num_list(boxes_batch_size);
-      memory_utils::Copy(phi::CPUPlace(),
+      memory_utils::Copy(CPUPlace(),
                          boxes_num_list.data(),
                          gplace,
                          boxes_num->data<int>(),
@@ -141,7 +141,7 @@ void RoiPoolGradKernel(const Context& dev_ctx,
     int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
     memory_utils::Copy(gplace,
                        roi_id_data,
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        box_batch_id_data,
                        bytes,
                        dev_ctx.stream());

@@ -18,11 +18,11 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
 
-namespace {
+namespace paddle::framework {
 template <typename T1, typename T2>
 void ConvertTensorType(phi::DenseTensor* tensor) {
   auto* dev_ctx = static_cast<phi::CPUContext*>(
-      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(CPUPlace()));
   phi::DenseTensor tmp_tensor;
   tmp_tensor.set_type(phi::CppTypeToDataType<T2>::Type());
   tmp_tensor.Resize(tensor->dims());
@@ -33,9 +33,9 @@ void ConvertTensorType(phi::DenseTensor* tensor) {
     tmp_data[i] = static_cast<T2>(data[i]);
   }
   tensor->clear();
-  paddle::framework::TensorCopySync(tmp_tensor, phi::CPUPlace(), tensor);
+  paddle::framework::TensorCopySync(tmp_tensor, CPUPlace(), tensor);
 }
-}  // namespace
+}  // namespace paddle::framework
 
 namespace paddle::framework::ir {
 

@@ -1243,7 +1243,7 @@ static void Interpolate1DCUDABwd(
 
   if (out_size) {
     DenseTensor sizes;
-    Copy(dev_ctx, *out_size, phi::CPUPlace(), true, &sizes);
+    Copy(dev_ctx, *out_size, CPUPlace(), true, &sizes);
 
     auto size_data = sizes.data<int>();
     out_w = size_data[0];
@@ -1376,7 +1376,7 @@ static void Interpolate2DCUDABwd(
 
   if (out_size) {
     DenseTensor sizes;
-    Copy(dev_ctx, *out_size, phi::CPUPlace(), true, &sizes);
+    Copy(dev_ctx, *out_size, CPUPlace(), true, &sizes);
     auto size_data = sizes.data<int>();
     out_h = size_data[0];
     out_w = size_data[1];
@@ -1655,7 +1655,7 @@ static void InterpolateAA2DCUDABwd(
     }
     if (out_size) {
       DenseTensor sizes;
-      Copy(dev_ctx, *out_size, phi::CPUPlace(), true, &sizes);
+      Copy(dev_ctx, *out_size, CPUPlace(), true, &sizes);
       auto size_data = sizes.data<int>();
       out_h = size_data[0];
       out_w = size_data[1];
@@ -1889,7 +1889,7 @@ static void Interpolate3DCUDABwd(
 
   if (out_size) {
     DenseTensor sizes;
-    Copy(dev_ctx, *out_size, phi::CPUPlace(), true, &sizes);
+    Copy(dev_ctx, *out_size, CPUPlace(), true, &sizes);
     auto size_data = sizes.data<int>();
     out_d = size_data[0];
     out_h = size_data[1];

@@ -551,7 +551,7 @@ bool GetCondData(const phi::DenseTensor& cond) {
   std::unique_ptr<phi::DenseTensor> cpu_cond{new phi::DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
-  paddle::framework::TensorCopySync(cond, phi::CPUPlace(), cpu_cond.get());
+  paddle::framework::TensorCopySync(cond, CPUPlace(), cpu_cond.get());
 #else
   PADDLE_THROW(common::errors::PreconditionNotMet(
       "This version of PaddlePaddle does NOT support GPU/XPU but got "
