@@ -66,13 +66,13 @@ inline void UniformRealDistribution(phi::bfloat16* data,
 }
 
 inline std::vector<int64_t> GetNewDataFromShapeTensor(
-    const phi::DenseTensor* new_data_tensor) {
-  phi::DenseTensor cpu_starts_tensor;
+    const DenseTensor* new_data_tensor) {
+  DenseTensor cpu_starts_tensor;
   auto* dev_ctx =
       phi::DeviceContextPool::Instance().Get(cpu_starts_tensor.place());
   if (new_data_tensor->dtype() == phi::DataType::INT64) {
     auto* new_data = new_data_tensor->data<int64_t>();
-    if (new_data_tensor->place().GetType() == phi::AllocationType::GPU) {
+    if (new_data_tensor->place().GetType() == AllocationType::GPU) {
       phi::Copy(*dev_ctx,
                 *new_data_tensor,
                 phi::CPUPlace(),
@@ -86,7 +86,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
   } else if (new_data_tensor->dtype() == phi::DataType::INT32) {
     auto* new_data = new_data_tensor->data<int32_t>();
     std::vector<int64_t> vec_new_data;
-    if (new_data_tensor->place().GetType() == phi::AllocationType::GPU) {
+    if (new_data_tensor->place().GetType() == AllocationType::GPU) {
       phi::Copy(*dev_ctx,
                 *new_data_tensor,
                 phi::CPUPlace(),
@@ -107,8 +107,8 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
 }
 
 inline std::vector<int64_t> GetNewDataFromShapeTensorList(
-    const std::vector<const phi::DenseTensor*>& list_new_shape_tensor) {
-  phi::DenseTensor temp;
+    const std::vector<const DenseTensor*>& list_new_shape_tensor) {
+  DenseTensor temp;
   auto* dev_ctx = phi::DeviceContextPool::Instance().Get(temp.place());
   std::vector<int64_t> vec_new_shape;
   vec_new_shape.reserve(list_new_shape_tensor.size());
@@ -123,15 +123,15 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
             tensor->dims()));
 
     if (tensor->dtype() == phi::DataType::INT32) {
-      if (tensor->place().GetType() == phi::AllocationType::GPU) {
+      if (tensor->place().GetType() == AllocationType::GPU) {
         phi::Copy(*dev_ctx, *tensor, phi::CPUPlace(), true, &temp);
         vec_new_shape.push_back(static_cast<int64_t>(*temp.data<int32_t>()));
       } else {
         vec_new_shape.push_back(static_cast<int64_t>(*tensor->data<int32_t>()));
       }
     } else if (tensor->dtype() == phi::DataType::INT64) {
-      if (tensor->place().GetType() == phi::AllocationType::GPU) {
-        phi::DenseTensor temp;
+      if (tensor->place().GetType() == AllocationType::GPU) {
+        DenseTensor temp;
         phi::Copy(*dev_ctx, *tensor, phi::CPUPlace(), true, &temp);
         vec_new_shape.push_back(*temp.data<int64_t>());
       } else {
@@ -183,7 +183,7 @@ struct UniformGenerator {
 
 template <typename T>
 void UniformRandom(const phi::GPUContext& dev_ctx,
-                   phi::DenseTensor* tensor,
+                   DenseTensor* tensor,
                    int attr_seed,
                    float attr_min,
                    float attr_max,
@@ -204,9 +204,9 @@ void UniformRandom(const phi::GPUContext& dev_ctx,
   if (seed == 0) {
     // Use global Generator seed
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    phi::funcs::uniform_distribution<MT> dist;
-    phi::funcs::uniform_real_transform<MT> trans(min, max);
-    phi::funcs::distribution_and_transform<T>(dev_ctx, tensor, dist, trans);
+    funcs::uniform_distribution<MT> dist;
+    funcs::uniform_real_transform<MT> trans(min, max);
+    funcs::distribution_and_transform<T>(dev_ctx, tensor, dist, trans);
   } else {
     // Use OP seed
     auto func =

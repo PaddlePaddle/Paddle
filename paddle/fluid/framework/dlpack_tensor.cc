@@ -153,7 +153,7 @@ static ::DLDataType GetDLDataTypeFromTypeIndex(phi::DataType type) {
 struct DLDeviceVisitor {
   using argument_type = const phi::Place &;
   using result_type = ::DLDevice;
-  inline ::DLDevice operator()(const phi::CPUPlace &place) const {
+  inline ::DLDevice operator()(const CPUPlace &place) const {
     ::DLDevice device;
     device.device_type = kDLCPU;
     device.device_id = 0;
@@ -276,7 +276,7 @@ phi::DataType DLDataTypeToPhiDataType(::DLDataType type) {
 phi::Place DLDeviceToPlace(const ::DLDevice &dl_device) {
   phi::Place place;
   if (dl_device.device_type == kDLCPU) {
-    place = phi::CPUPlace();
+    place = CPUPlace();
   } else if (dl_device.device_type == kDLCUDA) {
     place = phi::GPUPlace(dl_device.device_id);
   } else if (dl_device.device_type == kDLCUDAHost) {
@@ -300,10 +300,6 @@ struct PaddleDLMTensor {
 template <typename T>
 static void deleter(T *self) {
   if (self && self->manager_ctx) {
-    delete[] self->dl_tensor
-        .shape;  // delete shape allocated in ToDLPack manually
-    delete[] self->dl_tensor
-        .strides;  // delete strides allocated in ToDLPack manually
     delete static_cast<PaddleDLMTensor<T> *>(self->manager_ctx);
   }
 }
@@ -326,30 +322,13 @@ T *ToDLPackImpl(const phi::DenseTensor &src, uint64_t flags) {
   pdDLMTensor->tensor.manager_ctx = pdDLMTensor;
   pdDLMTensor->tensor.deleter = &deleter<T>;
 
-  // init ndim
   using DimType = decltype(pdDLMTensor->tensor.dl_tensor.ndim);  // int32_t
-  auto _shape = src.dims();
-  pdDLMTensor->tensor.dl_tensor.ndim = static_cast<DimType>(_shape.size());
-  DimType ndim = pdDLMTensor->tensor.dl_tensor.ndim;
-
-  // init shape
-  int64_t *shape = new int64_t[ndim];
-  for (DimType i = 0; i < ndim; ++i) {
-    shape[i] = _shape[i];
-  }
-  pdDLMTensor->tensor.dl_tensor.shape = shape;
-
-  // init strides
-  auto _strides = src.strides();
-  int64_t *strides = new int64_t[ndim];
-  for (int i = 0; i < src.dims().size(); i++) {
-    strides[i] = _strides[i];
-    if (shape[i] < 2) {
-      strides[i] = 1;
-    }
-  }
+  pdDLMTensor->tensor.dl_tensor.ndim = static_cast<DimType>(src.dims().size());
   pdDLMTensor->tensor.dl_tensor.data = const_cast<void *>(src.data());
-  pdDLMTensor->tensor.dl_tensor.strides = strides;
+  pdDLMTensor->tensor.dl_tensor.shape =
+      const_cast<int64_t *>(pdDLMTensor->handle.dims().Get());
+  pdDLMTensor->tensor.dl_tensor.strides =
+      const_cast<int64_t *>(pdDLMTensor->handle.strides().Get());
   pdDLMTensor->tensor.dl_tensor.device = PlaceToDLDevice(src.place());
   pdDLMTensor->tensor.dl_tensor.dtype = PhiDataTypeToDLDataType(src.dtype());
   pdDLMTensor->tensor.dl_tensor.byte_offset = 0;

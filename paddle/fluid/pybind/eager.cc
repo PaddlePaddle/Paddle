@@ -137,7 +137,7 @@ void EmptyStringTensorInitializer(TensorObject* self,
   auto ddims = common::make_ddim(dims);
   self->tensor.set_name(name);
   // Note(zhoushunjie): Only support CPUPlace when create StringTensor
-  auto actual_place = phi::CPUPlace();
+  auto actual_place = CPUPlace();
   // Allocate memory
   paddle::experimental::DefaultAllocator string_allocator(actual_place);
   std::shared_ptr<phi::StringTensor> string_tensor =
@@ -165,7 +165,7 @@ void InitTensorWithNumpyValue(TensorObject* self,
   phi::DenseTensor* impl_ptr =
       static_cast<phi::DenseTensor*>(self->tensor.impl().get());
   if (phi::is_cpu_place(place)) {
-    SetTensorFromPyArray<phi::CPUPlace>(impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<CPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (phi::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
     phi::backends::xpu::SetXPUDeviceId(place.device);
@@ -186,7 +186,7 @@ void InitTensorWithNumpyValue(TensorObject* self,
     PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU if use CUDAPlace."));
 #endif
-    SetTensorFromPyArray<phi::GPUPlace>(impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<GPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (phi::is_cuda_pinned_place(place)) {
     SetTensorFromPyArray<phi::GPUPinnedPlace>(
         impl_ptr, array, place, zero_copy);
@@ -227,7 +227,7 @@ void InitStringTensorWithNumpyValue(TensorObject* self, const py::object& obj) {
   phi::Place place = impl_ptr->place();
   auto array = obj.cast<py::array>();
   if (phi::is_cpu_place(place)) {
-    SetStringTensorFromPyArray<phi::CPUPlace>(impl_ptr, array, place);
+    SetStringTensorFromPyArray<CPUPlace>(impl_ptr, array, place);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "StringTensor only support CPUPlace now, but receive %s",

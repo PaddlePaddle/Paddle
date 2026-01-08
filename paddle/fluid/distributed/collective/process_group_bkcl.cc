@@ -499,7 +499,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllToAll(
           phi::XPUPlace place = in_tensor.place();
 #if defined(PADDLE_WITH_FLAGCX)
           auto allocator_cpu = std::unique_ptr<phi::Allocator>(
-              new paddle::experimental::DefaultAllocator(phi::CPUPlace()));
+              new paddle::experimental::DefaultAllocator(CPUPlace()));
 #endif
           auto allocator = std::unique_ptr<phi::Allocator>(
               new paddle::experimental::DefaultAllocator(place));
@@ -517,49 +517,49 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllToAll(
 #endif
 
 #if defined(PADDLE_WITH_FLAGCX)
-          memory::Copy(phi::CPUPlace(),
+          memory::Copy(CPUPlace(),
                        in_size_tensor.data(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        in_numel_vec.data(),
                        in_size_tensor.numel() * sizeof(int64_t));
-          memory::Copy(phi::CPUPlace(),
+          memory::Copy(CPUPlace(),
                        in_offset_tensor.data(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        in_offset_vec.data(),
                        in_offset_tensor.numel() * sizeof(int64_t));
-          memory::Copy(phi::CPUPlace(),
+          memory::Copy(CPUPlace(),
                        out_size_tensor.data(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        out_numel_vec.data(),
                        out_size_tensor.numel() * sizeof(int64_t));
-          memory::Copy(phi::CPUPlace(),
+          memory::Copy(CPUPlace(),
                        out_offset_tensor.data(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        out_offset_vec.data(),
                        out_offset_tensor.numel() * sizeof(int64_t));
 #else
 
           memory::Copy(place,
                        in_size_tensor.data(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        in_numel_vec.data(),
                        in_size_tensor.numel() * sizeof(int64_t));
 
           memory::Copy(place,
                        in_offset_tensor.data(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        in_offset_vec.data(),
                        in_offset_tensor.numel() * sizeof(int64_t));
 
           memory::Copy(place,
                        out_size_tensor.data(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        out_numel_vec.data(),
                        out_size_tensor.numel() * sizeof(int64_t));
 
           memory::Copy(place,
                        out_offset_tensor.data(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        out_offset_vec.data(),
                        out_offset_tensor.numel() * sizeof(int64_t));
 #endif
@@ -679,7 +679,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllToAll(
         phi::XPUPlace place = in_tensors[0].place();
 #if defined(PADDLE_WITH_FLAGCX)
         auto allocator_cpu = std::unique_ptr<phi::Allocator>(
-            new paddle::experimental::DefaultAllocator(phi::CPUPlace()));
+            new paddle::experimental::DefaultAllocator(CPUPlace()));
 #endif
         auto allocator = std::unique_ptr<phi::Allocator>(
             new paddle::experimental::DefaultAllocator(place));
@@ -713,51 +713,51 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllToAll(
                               &concated_in_tensor);
         }
 #if defined(PADDLE_WITH_FLAGCX)
-        memory::Copy(phi::CPUPlace(),
+        memory::Copy(CPUPlace(),
                      in_size_tensor.data(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      in_numel_vec.data(),
                      in_size_tensor.numel() * sizeof(int64_t));
 
-        memory::Copy(phi::CPUPlace(),
+        memory::Copy(CPUPlace(),
                      in_offset_tensor.data(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      in_offset_vec.data(),
                      in_offset_tensor.numel() * sizeof(int64_t));
 
-        memory::Copy(phi::CPUPlace(),
+        memory::Copy(CPUPlace(),
                      out_size_tensor.data(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      out_numel_vec.data(),
                      out_size_tensor.numel() * sizeof(int64_t));
 
-        memory::Copy(phi::CPUPlace(),
+        memory::Copy(CPUPlace(),
                      out_offset_tensor.data(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      out_offset_vec.data(),
                      out_offset_tensor.numel() * sizeof(int64_t));
 #else
         memory::Copy(place,
                      in_size_tensor.data(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      in_numel_vec.data(),
                      in_size_tensor.numel() * sizeof(int64_t));
 
         memory::Copy(place,
                      in_offset_tensor.data(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      in_offset_vec.data(),
                      in_offset_tensor.numel() * sizeof(int64_t));
 
         memory::Copy(place,
                      out_size_tensor.data(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      out_numel_vec.data(),
                      out_size_tensor.numel() * sizeof(int64_t));
 
         memory::Copy(place,
                      out_offset_tensor.data(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      out_offset_vec.data(),
                      out_offset_tensor.numel() * sizeof(int64_t));
 #endif

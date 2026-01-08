@@ -45,7 +45,7 @@ void InterpolateKernel(
   using XPUType = typename XPUTypeTrait<T>::Type;
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   int64_t n, c, in_d, in_h, in_w;
-  phi::funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
+  funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   double scale_h = -1;
   double scale_w = -1;
@@ -123,7 +123,7 @@ void InterpolateKernel(
       errors::InvalidArgument("out_w in Attr(out_shape) of Op(interpolate) "
                               "should be greater than 0."));
 
-  phi::DDim dim_out;
+  DDim dim_out;
   if (data_layout == DataLayout::NCHW) {
     dim_out = {n, c, out_h, out_w};
   } else {

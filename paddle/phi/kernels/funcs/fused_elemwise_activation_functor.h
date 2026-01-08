@@ -27,7 +27,7 @@
 namespace phi {
 namespace funcs {
 
-static inline bool IsBcastY(const phi::DDim &x_dim, const phi::DDim &y_dim) {
+static inline bool IsBcastY(const DDim &x_dim, const DDim &y_dim) {
   bool bcast_y = x_dim.size() >= y_dim.size();
   if (x_dim.size() == y_dim.size()) {
     for (int i = 0; i < x_dim.size(); ++i) {
@@ -141,30 +141,30 @@ template <typename DeviceContext,
 void RunBinaryCompoundFunctor(const DeviceContext &dev_ctx,
                               const BinaryFunctor &binary_functor,
                               const UnaryFunctor &unary_functor,
-                              const phi::DenseTensor &in_x,
-                              const phi::DenseTensor &in_y,
-                              std::vector<phi::DenseTensor *> *outputs,
+                              const DenseTensor &in_x,
+                              const DenseTensor &in_y,
+                              std::vector<DenseTensor *> *outputs,
                               int axis,
                               bool save_intermediate_out) {
   // Z = Binary(X, Unary(Y))
   // intermediate_out = Unary(Y)
   // out = Binary(X, Unary(Y))
   // In this case, the shape of intermediate_out and out are different.
-  phi::funcs::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>
-      compound_func(binary_functor, unary_functor);
+  funcs::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor> compound_func(
+      binary_functor, unary_functor);
   if (save_intermediate_out) {
-    phi::funcs::FusedElemwiseAndActComputeEx<
+    funcs::FusedElemwiseAndActComputeEx<
         DeviceContext,
         T,
-        phi::funcs::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>,
+        funcs::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>,
         true /*KeepIntermediateValue*/,
         false /*SameShapeOfIntermediateOutAndOut*/>(
         dev_ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
   } else {
-    phi::funcs::FusedElemwiseAndActComputeEx<
+    funcs::FusedElemwiseAndActComputeEx<
         DeviceContext,
         T,
-        phi::funcs::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>,
+        funcs::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>,
         false /*KeepIntermediateValue*/,
         false /*SameShapeOfIntermediateOutAndOut*/>(
         dev_ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
@@ -178,9 +178,9 @@ template <typename DeviceContext,
 void RunUnaryCompoundFunctors(const DeviceContext &dev_ctx,
                               const UnaryFunctor &unary_functor,
                               const BinaryFunctor &binary_functor,
-                              const phi::DenseTensor &in_x,
-                              const phi::DenseTensor &in_y,
-                              std::vector<phi::DenseTensor *> *outputs,
+                              const DenseTensor &in_x,
+                              const DenseTensor &in_y,
+                              std::vector<DenseTensor *> *outputs,
                               int axis,
                               bool save_intermediate_out) {
   // Z = Unary(Binary(X, Y))
@@ -188,22 +188,22 @@ void RunUnaryCompoundFunctors(const DeviceContext &dev_ctx,
   // out = Unary(Binary(X, Y))
   // In this case, the shape of intermediate_out and out are the same.
 
-  phi::funcs::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>
-      compound_func(unary_functor, binary_functor);
+  funcs::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor> compound_func(
+      unary_functor, binary_functor);
 
   if (save_intermediate_out) {
-    phi::funcs::FusedElemwiseAndActComputeEx<
+    funcs::FusedElemwiseAndActComputeEx<
         DeviceContext,
         T,
-        phi::funcs::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>,
+        funcs::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>,
         true /*KeepIntermediateValue*/,
         true /*SameShapeOfIntermediateOutAndOut*/>(
         dev_ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
   } else {
-    phi::funcs::FusedElemwiseAndActComputeEx<
+    funcs::FusedElemwiseAndActComputeEx<
         DeviceContext,
         T,
-        phi::funcs::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>,
+        funcs::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>,
         false /*KeepIntermediateValue*/,
         true /*SameShapeOfIntermediateOutAndOut*/>(
         dev_ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
@@ -220,32 +220,32 @@ void RunBinaryCompoundGradFunctors(const DeviceContext &dev_ctx,
                                    const BinaryGradFunctor &binary_grad_functor,
                                    const UnaryFunctor &unary_functor,
                                    const UnaryGradFunctor &unary_grad_functor,
-                                   const phi::DenseTensor *in_x,
-                                   const phi::DenseTensor *in_y,
-                                   const phi::DenseTensor *in_out,
-                                   const phi::DenseTensor *in_intermediate_out,
-                                   const phi::DenseTensor *in_out_grad,
-                                   phi::DenseTensor *x_grad,
-                                   phi::DenseTensor *y_grad,
-                                   phi::DenseTensor *d_intermediate_out,
+                                   const DenseTensor *in_x,
+                                   const DenseTensor *in_y,
+                                   const DenseTensor *in_out,
+                                   const DenseTensor *in_intermediate_out,
+                                   const DenseTensor *in_out_grad,
+                                   DenseTensor *x_grad,
+                                   DenseTensor *y_grad,
+                                   DenseTensor *d_intermediate_out,
                                    int axis) {
   // Z = Binary(X, Unary(Y))
 
-  using BinaryCompoundDxFunctor = phi::funcs::
-      BinaryCompoundGradDxFunctor<T, BinaryGradFunctor, UnaryFunctor>;
+  using BinaryCompoundDxFunctor =
+      funcs::BinaryCompoundGradDxFunctor<T, BinaryGradFunctor, UnaryFunctor>;
   using BinaryCompoundDyFunctor =
-      phi::funcs::BinaryCompoundGradDyFunctor<T,
-                                              BinaryGradFunctor,
-                                              UnaryFunctor,
-                                              UnaryGradFunctor,
-                                              InPlace>;
+      funcs::BinaryCompoundGradDyFunctor<T,
+                                         BinaryGradFunctor,
+                                         UnaryFunctor,
+                                         UnaryGradFunctor,
+                                         InPlace>;
   using BinaryCompoundDIntermediateOutFunctor =
-      phi::funcs::BinaryCompoundGradDIntermediateOutFunctor<T,
-                                                            BinaryGradFunctor,
-                                                            UnaryFunctor>;
+      funcs::BinaryCompoundGradDIntermediateOutFunctor<T,
+                                                       BinaryGradFunctor,
+                                                       UnaryFunctor>;
 
   if (in_intermediate_out) {
-    phi::funcs::FusedElemwiseAndActGradComputeEx<
+    funcs::FusedElemwiseAndActGradComputeEx<
         DeviceContext,
         T,
         BinaryCompoundDxFunctor,
@@ -269,7 +269,7 @@ void RunBinaryCompoundGradFunctors(const DeviceContext &dev_ctx,
         BinaryCompoundDIntermediateOutFunctor(binary_grad_functor,
                                               unary_functor));
   } else {
-    phi::funcs::FusedElemwiseAndActGradComputeEx<
+    funcs::FusedElemwiseAndActGradComputeEx<
         DeviceContext,
         T,
         BinaryCompoundDxFunctor,
@@ -305,37 +305,37 @@ void RunUnaryCompoundGradFunctors(const DeviceContext &dev_ctx,
                                   const UnaryGradFunctor &unary_grad_functor,
                                   const BinaryFunctor &binary_functor,
                                   const BinaryGradFunctor &binary_grad_functor,
-                                  const phi::DenseTensor *in_x,
-                                  const phi::DenseTensor *in_y,
-                                  const phi::DenseTensor *in_out,
-                                  const phi::DenseTensor *in_intermediate_out,
-                                  const phi::DenseTensor *in_out_grad,
-                                  phi::DenseTensor *x_grad,
-                                  phi::DenseTensor *y_grad,
-                                  phi::DenseTensor *d_intermediate_out,
+                                  const DenseTensor *in_x,
+                                  const DenseTensor *in_y,
+                                  const DenseTensor *in_out,
+                                  const DenseTensor *in_intermediate_out,
+                                  const DenseTensor *in_out_grad,
+                                  DenseTensor *x_grad,
+                                  DenseTensor *y_grad,
+                                  DenseTensor *d_intermediate_out,
                                   int axis) {
   // Z = Unary(Binary(X, Y))
 
   using UnaryCompoundDxFunctor =
-      phi::funcs::UnaryCompoundGradDxFunctor<T,
-                                             UnaryGradFunctor,
-                                             BinaryFunctor,
-                                             BinaryGradFunctor,
-                                             InPlace>;
+      funcs::UnaryCompoundGradDxFunctor<T,
+                                        UnaryGradFunctor,
+                                        BinaryFunctor,
+                                        BinaryGradFunctor,
+                                        InPlace>;
   using UnaryCompoundDyFunctor =
-      phi::funcs::UnaryCompoundGradDyFunctor<T,
-                                             UnaryGradFunctor,
-                                             BinaryFunctor,
-                                             BinaryGradFunctor,
-                                             InPlace>;
+      funcs::UnaryCompoundGradDyFunctor<T,
+                                        UnaryGradFunctor,
+                                        BinaryFunctor,
+                                        BinaryGradFunctor,
+                                        InPlace>;
   using UnaryCompoundDIntermediateFunctor =
-      phi::funcs::UnaryCompoundGradDIntermediateFunctor<T,
-                                                        UnaryGradFunctor,
-                                                        BinaryFunctor,
-                                                        InPlace>;
+      funcs::UnaryCompoundGradDIntermediateFunctor<T,
+                                                   UnaryGradFunctor,
+                                                   BinaryFunctor,
+                                                   InPlace>;
 
   if (in_intermediate_out) {
-    phi::funcs::FusedElemwiseAndActGradComputeEx<
+    funcs::FusedElemwiseAndActGradComputeEx<
         DeviceContext,
         T,
         UnaryCompoundDxFunctor,
@@ -359,7 +359,7 @@ void RunUnaryCompoundGradFunctors(const DeviceContext &dev_ctx,
             unary_grad_functor, binary_functor, binary_grad_functor),
         UnaryCompoundDIntermediateFunctor(unary_grad_functor, binary_functor));
   } else {
-    phi::funcs::FusedElemwiseAndActGradComputeEx<
+    funcs::FusedElemwiseAndActGradComputeEx<
         DeviceContext,
         T,
         UnaryCompoundDxFunctor,
@@ -387,9 +387,9 @@ void RunUnaryCompoundGradFunctors(const DeviceContext &dev_ctx,
 
 template <typename DeviceContext, typename T>
 void RunFunctors(const DeviceContext &dev_ctx,
-                 const phi::DenseTensor &in_x,
-                 const phi::DenseTensor &in_y,
-                 std::vector<phi::DenseTensor *> *outputs,
+                 const DenseTensor &in_x,
+                 const DenseTensor &in_y,
+                 std::vector<DenseTensor *> *outputs,
                  std::vector<std::string> functor_list,
                  float in_scale,
                  int axis,
@@ -403,11 +403,11 @@ void RunFunctors(const DeviceContext &dev_ctx,
     T scale = static_cast<T>(in_scale);
     RunBinaryCompoundFunctor<DeviceContext,
                              T,
-                             phi::funcs::AddFunctor<T>,
-                             phi::funcs::ScaleFunctor<T>>(
+                             funcs::AddFunctor<T>,
+                             funcs::ScaleFunctor<T>>(
         dev_ctx,
-        phi::funcs::AddFunctor<T>(),
-        phi::funcs::ScaleFunctor<T>(scale),
+        funcs::AddFunctor<T>(),
+        funcs::ScaleFunctor<T>(scale),
         in_x,
         in_y,
         outputs,
@@ -418,11 +418,11 @@ void RunFunctors(const DeviceContext &dev_ctx,
     T scale = static_cast<T>(in_scale);
     RunUnaryCompoundFunctors<DeviceContext,
                              T,
-                             phi::funcs::ScaleFunctor<T>,
-                             phi::funcs::AddFunctor<T>>(
+                             funcs::ScaleFunctor<T>,
+                             funcs::AddFunctor<T>>(
         dev_ctx,
-        phi::funcs::ScaleFunctor<T>(scale),
-        phi::funcs::AddFunctor<T>(),
+        funcs::ScaleFunctor<T>(scale),
+        funcs::AddFunctor<T>(),
         in_x,
         in_y,
         outputs,
@@ -432,40 +432,38 @@ void RunFunctors(const DeviceContext &dev_ctx,
     // Z = Binary(X, Unary(Y))
     RunBinaryCompoundFunctor<DeviceContext,
                              T,
-                             phi::funcs::AddFunctor<T>,
-                             phi::funcs::ReluFunctor<T>>(
-        dev_ctx,
-        phi::funcs::AddFunctor<T>(),
-        phi::funcs::ReluFunctor<T>(),
-        in_x,
-        in_y,
-        outputs,
-        axis,
-        save_intermediate_out);
+                             funcs::AddFunctor<T>,
+                             funcs::ReluFunctor<T>>(dev_ctx,
+                                                    funcs::AddFunctor<T>(),
+                                                    funcs::ReluFunctor<T>(),
+                                                    in_x,
+                                                    in_y,
+                                                    outputs,
+                                                    axis,
+                                                    save_intermediate_out);
   } else if (funcs_str == "relu,elementwise_add") {
     // Z = Unary(Binary(X, Y))
     RunUnaryCompoundFunctors<DeviceContext,
                              T,
-                             phi::funcs::ReluFunctor<T>,
-                             phi::funcs::AddFunctor<T>>(
-        dev_ctx,
-        phi::funcs::ReluFunctor<T>(),
-        phi::funcs::AddFunctor<T>(),
-        in_x,
-        in_y,
-        outputs,
-        axis,
-        save_intermediate_out);
+                             funcs::ReluFunctor<T>,
+                             funcs::AddFunctor<T>>(dev_ctx,
+                                                   funcs::ReluFunctor<T>(),
+                                                   funcs::AddFunctor<T>(),
+                                                   in_x,
+                                                   in_y,
+                                                   outputs,
+                                                   axis,
+                                                   save_intermediate_out);
   } else if (funcs_str == "elementwise_mul,scale") {
     // Z = Binary(X, Unary(Y))
     T scale = static_cast<T>(in_scale);
     RunBinaryCompoundFunctor<DeviceContext,
                              T,
-                             phi::funcs::MultiplyFunctor<T>,
-                             phi::funcs::ScaleFunctor<T>>(
+                             funcs::MultiplyFunctor<T>,
+                             funcs::ScaleFunctor<T>>(
         dev_ctx,
-        phi::funcs::MultiplyFunctor<T>(),
-        phi::funcs::ScaleFunctor<T>(scale),
+        funcs::MultiplyFunctor<T>(),
+        funcs::ScaleFunctor<T>(scale),
         in_x,
         in_y,
         outputs,
@@ -475,39 +473,37 @@ void RunFunctors(const DeviceContext &dev_ctx,
     // Z = Unary(Binary(X, Y))
     RunUnaryCompoundFunctors<DeviceContext,
                              T,
-                             phi::funcs::TanhFunctor<T>,
-                             phi::funcs::AddFunctor<T>>(
-        dev_ctx,
-        phi::funcs::TanhFunctor<T>(),
-        phi::funcs::AddFunctor<T>(),
-        in_x,
-        in_y,
-        outputs,
-        axis,
-        save_intermediate_out);
+                             funcs::TanhFunctor<T>,
+                             funcs::AddFunctor<T>>(dev_ctx,
+                                                   funcs::TanhFunctor<T>(),
+                                                   funcs::AddFunctor<T>(),
+                                                   in_x,
+                                                   in_y,
+                                                   outputs,
+                                                   axis,
+                                                   save_intermediate_out);
   } else if (funcs_str == "elementwise_mul,tanh") {
     // Z = Binary(X, Unary(Y))
     RunBinaryCompoundFunctor<DeviceContext,
                              T,
-                             phi::funcs::MultiplyFunctor<T>,
-                             phi::funcs::TanhFunctor<T>>(
-        dev_ctx,
-        phi::funcs::MultiplyFunctor<T>(),
-        phi::funcs::TanhFunctor<T>(),
-        in_x,
-        in_y,
-        outputs,
-        axis,
-        save_intermediate_out);
+                             funcs::MultiplyFunctor<T>,
+                             funcs::TanhFunctor<T>>(dev_ctx,
+                                                    funcs::MultiplyFunctor<T>(),
+                                                    funcs::TanhFunctor<T>(),
+                                                    in_x,
+                                                    in_y,
+                                                    outputs,
+                                                    axis,
+                                                    save_intermediate_out);
   } else if (funcs_str == "elementwise_mul,sigmoid") {
     // Z = Binary(X, Unary(Y))
     RunBinaryCompoundFunctor<DeviceContext,
                              T,
-                             phi::funcs::MultiplyFunctor<T>,
-                             phi::funcs::SigmoidFunctor<T>>(
+                             funcs::MultiplyFunctor<T>,
+                             funcs::SigmoidFunctor<T>>(
         dev_ctx,
-        phi::funcs::MultiplyFunctor<T>(),
-        phi::funcs::SigmoidFunctor<T>(),
+        funcs::MultiplyFunctor<T>(),
+        funcs::SigmoidFunctor<T>(),
         in_x,
         in_y,
         outputs,
@@ -517,16 +513,15 @@ void RunFunctors(const DeviceContext &dev_ctx,
     // Z = Unary(Binary(X, Y))
     RunUnaryCompoundFunctors<DeviceContext,
                              T,
-                             phi::funcs::GeluFunctor<T>,
-                             phi::funcs::AddFunctor<T>>(
-        dev_ctx,
-        phi::funcs::GeluFunctor<T>(),
-        phi::funcs::AddFunctor<T>(),
-        in_x,
-        in_y,
-        outputs,
-        axis,
-        save_intermediate_out);
+                             funcs::GeluFunctor<T>,
+                             funcs::AddFunctor<T>>(dev_ctx,
+                                                   funcs::GeluFunctor<T>(),
+                                                   funcs::AddFunctor<T>(),
+                                                   in_x,
+                                                   in_y,
+                                                   outputs,
+                                                   axis,
+                                                   save_intermediate_out);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument("%s has not been implemented.",
                                                  funcs_str));
@@ -535,14 +530,14 @@ void RunFunctors(const DeviceContext &dev_ctx,
 
 template <typename DeviceContext, typename T, bool InPlace>
 void RunGradFunctors(const DeviceContext &dev_ctx,
-                     const phi::DenseTensor *in_x,
-                     const phi::DenseTensor *in_y,
-                     const phi::DenseTensor *in_out,
-                     const phi::DenseTensor *in_intermediate_out,
-                     const phi::DenseTensor *in_out_grad,
-                     phi::DenseTensor *x_grad,
-                     phi::DenseTensor *y_grad,
-                     phi::DenseTensor *d_intermediate_out,
+                     const DenseTensor *in_x,
+                     const DenseTensor *in_y,
+                     const DenseTensor *in_out,
+                     const DenseTensor *in_intermediate_out,
+                     const DenseTensor *in_out_grad,
+                     DenseTensor *x_grad,
+                     DenseTensor *y_grad,
+                     DenseTensor *d_intermediate_out,
                      std::vector<std::string> functor_list,
                      float in_scale,
                      int axis) {
@@ -554,56 +549,54 @@ void RunGradFunctors(const DeviceContext &dev_ctx,
     T scale = static_cast<T>(in_scale);
     RunBinaryCompoundGradFunctors<DeviceContext,
                                   T,
-                                  phi::funcs::AddGradFunctor<T>,
-                                  phi::funcs::ScaleFunctor<T>,
-                                  phi::funcs::ScaleGradFunctor<T>,
-                                  InPlace>(
-        dev_ctx,
-        phi::funcs::AddGradFunctor<T>(),
-        phi::funcs::ScaleFunctor<T>(scale),
-        phi::funcs::ScaleGradFunctor<T>(scale),
-        in_x,
-        in_y,
-        in_out,
-        in_intermediate_out,
-        in_out_grad,
-        x_grad,
-        y_grad,
-        d_intermediate_out,
-        axis);
+                                  funcs::AddGradFunctor<T>,
+                                  funcs::ScaleFunctor<T>,
+                                  funcs::ScaleGradFunctor<T>,
+                                  InPlace>(dev_ctx,
+                                           funcs::AddGradFunctor<T>(),
+                                           funcs::ScaleFunctor<T>(scale),
+                                           funcs::ScaleGradFunctor<T>(scale),
+                                           in_x,
+                                           in_y,
+                                           in_out,
+                                           in_intermediate_out,
+                                           in_out_grad,
+                                           x_grad,
+                                           y_grad,
+                                           d_intermediate_out,
+                                           axis);
   } else if (funcs_str == "scale_grad,elementwise_add_grad") {
     // The backward of Z = Unary(Binary(X, Y))
     T scale = static_cast<T>(in_scale);
     RunUnaryCompoundGradFunctors<DeviceContext,
                                  T,
-                                 phi::funcs::ScaleGradFunctor<T>,
-                                 phi::funcs::AddFunctor<T>,
-                                 phi::funcs::AddGradFunctor<T>,
-                                 InPlace>(
-        dev_ctx,
-        phi::funcs::ScaleGradFunctor<T>(scale),
-        phi::funcs::AddFunctor<T>(),
-        phi::funcs::AddGradFunctor<T>(),
-        in_x,
-        in_y,
-        in_out,
-        in_intermediate_out,
-        in_out_grad,
-        x_grad,
-        y_grad,
-        d_intermediate_out,
-        axis);
+                                 funcs::ScaleGradFunctor<T>,
+                                 funcs::AddFunctor<T>,
+                                 funcs::AddGradFunctor<T>,
+                                 InPlace>(dev_ctx,
+                                          funcs::ScaleGradFunctor<T>(scale),
+                                          funcs::AddFunctor<T>(),
+                                          funcs::AddGradFunctor<T>(),
+                                          in_x,
+                                          in_y,
+                                          in_out,
+                                          in_intermediate_out,
+                                          in_out_grad,
+                                          x_grad,
+                                          y_grad,
+                                          d_intermediate_out,
+                                          axis);
   } else if (funcs_str == "elementwise_add_grad,relu_grad") {
     // The backward of Z = Binary(X, Unary(Y))
     RunBinaryCompoundGradFunctors<DeviceContext,
                                   T,
-                                  phi::funcs::AddGradFunctor<T>,
-                                  phi::funcs::ReluFunctor<T>,
-                                  phi::funcs::ReluGradFunctor<T>,
+                                  funcs::AddGradFunctor<T>,
+                                  funcs::ReluFunctor<T>,
+                                  funcs::ReluGradFunctor<T>,
                                   InPlace>(dev_ctx,
-                                           phi::funcs::AddGradFunctor<T>(),
-                                           phi::funcs::ReluFunctor<T>(),
-                                           phi::funcs::ReluGradFunctor<T>(),
+                                           funcs::AddGradFunctor<T>(),
+                                           funcs::ReluFunctor<T>(),
+                                           funcs::ReluGradFunctor<T>(),
                                            in_x,
                                            in_y,
                                            in_out,
@@ -617,13 +610,13 @@ void RunGradFunctors(const DeviceContext &dev_ctx,
     // The backward of Z = Unary(Binary(X, Y))
     RunUnaryCompoundGradFunctors<DeviceContext,
                                  T,
-                                 phi::funcs::ReluGradFunctor<T>,
-                                 phi::funcs::AddFunctor<T>,
-                                 phi::funcs::AddGradFunctor<T>,
+                                 funcs::ReluGradFunctor<T>,
+                                 funcs::AddFunctor<T>,
+                                 funcs::AddGradFunctor<T>,
                                  InPlace>(dev_ctx,
-                                          phi::funcs::ReluGradFunctor<T>(),
-                                          phi::funcs::AddFunctor<T>(),
-                                          phi::funcs::AddGradFunctor<T>(),
+                                          funcs::ReluGradFunctor<T>(),
+                                          funcs::AddFunctor<T>(),
+                                          funcs::AddGradFunctor<T>(),
                                           in_x,
                                           in_y,
                                           in_out,
@@ -638,34 +631,33 @@ void RunGradFunctors(const DeviceContext &dev_ctx,
     T scale = static_cast<T>(in_scale);
     RunBinaryCompoundGradFunctors<DeviceContext,
                                   T,
-                                  phi::funcs::MulGradFunctor<T>,
-                                  phi::funcs::ScaleFunctor<T>,
-                                  phi::funcs::ScaleGradFunctor<T>,
-                                  InPlace>(
-        dev_ctx,
-        phi::funcs::MulGradFunctor<T>(),
-        phi::funcs::ScaleFunctor<T>(scale),
-        phi::funcs::ScaleGradFunctor<T>(scale),
-        in_x,
-        in_y,
-        in_out,
-        in_intermediate_out,
-        in_out_grad,
-        x_grad,
-        y_grad,
-        d_intermediate_out,
-        axis);
+                                  funcs::MulGradFunctor<T>,
+                                  funcs::ScaleFunctor<T>,
+                                  funcs::ScaleGradFunctor<T>,
+                                  InPlace>(dev_ctx,
+                                           funcs::MulGradFunctor<T>(),
+                                           funcs::ScaleFunctor<T>(scale),
+                                           funcs::ScaleGradFunctor<T>(scale),
+                                           in_x,
+                                           in_y,
+                                           in_out,
+                                           in_intermediate_out,
+                                           in_out_grad,
+                                           x_grad,
+                                           y_grad,
+                                           d_intermediate_out,
+                                           axis);
   } else if (funcs_str == "tanh_grad,elementwise_add_grad") {
     // The backward of Z = Unary(Binary(X, Y))
     RunUnaryCompoundGradFunctors<DeviceContext,
                                  T,
-                                 phi::funcs::TanhGradFunctor<T>,
-                                 phi::funcs::AddFunctor<T>,
-                                 phi::funcs::AddGradFunctor<T>,
+                                 funcs::TanhGradFunctor<T>,
+                                 funcs::AddFunctor<T>,
+                                 funcs::AddGradFunctor<T>,
                                  InPlace>(dev_ctx,
-                                          phi::funcs::TanhGradFunctor<T>(),
-                                          phi::funcs::AddFunctor<T>(),
-                                          phi::funcs::AddGradFunctor<T>(),
+                                          funcs::TanhGradFunctor<T>(),
+                                          funcs::AddFunctor<T>(),
+                                          funcs::AddGradFunctor<T>(),
                                           in_x,
                                           in_y,
                                           in_out,
@@ -679,13 +671,13 @@ void RunGradFunctors(const DeviceContext &dev_ctx,
     // The backward of Z = Binary(X, Unary(Y))
     RunBinaryCompoundGradFunctors<DeviceContext,
                                   T,
-                                  phi::funcs::MulGradFunctor<T>,
-                                  phi::funcs::TanhFunctor<T>,
-                                  phi::funcs::TanhGradFunctor<T>,
+                                  funcs::MulGradFunctor<T>,
+                                  funcs::TanhFunctor<T>,
+                                  funcs::TanhGradFunctor<T>,
                                   InPlace>(dev_ctx,
-                                           phi::funcs::MulGradFunctor<T>(),
-                                           phi::funcs::TanhFunctor<T>(),
-                                           phi::funcs::TanhGradFunctor<T>(),
+                                           funcs::MulGradFunctor<T>(),
+                                           funcs::TanhFunctor<T>(),
+                                           funcs::TanhGradFunctor<T>(),
                                            in_x,
                                            in_y,
                                            in_out,
@@ -699,13 +691,13 @@ void RunGradFunctors(const DeviceContext &dev_ctx,
     // The backward of Z = Binary(X, Unary(Y))
     RunBinaryCompoundGradFunctors<DeviceContext,
                                   T,
-                                  phi::funcs::MulGradFunctor<T>,
-                                  phi::funcs::SigmoidFunctor<T>,
-                                  phi::funcs::SigmoidGradFunctor<T>,
+                                  funcs::MulGradFunctor<T>,
+                                  funcs::SigmoidFunctor<T>,
+                                  funcs::SigmoidGradFunctor<T>,
                                   InPlace>(dev_ctx,
-                                           phi::funcs::MulGradFunctor<T>(),
-                                           phi::funcs::SigmoidFunctor<T>(),
-                                           phi::funcs::SigmoidGradFunctor<T>(),
+                                           funcs::MulGradFunctor<T>(),
+                                           funcs::SigmoidFunctor<T>(),
+                                           funcs::SigmoidGradFunctor<T>(),
                                            in_x,
                                            in_y,
                                            in_out,
@@ -719,13 +711,13 @@ void RunGradFunctors(const DeviceContext &dev_ctx,
     // The backward of Z = Unary(Binary(X, Y))
     RunUnaryCompoundGradFunctors<DeviceContext,
                                  T,
-                                 phi::funcs::GeluGradFunctor<T>,
-                                 phi::funcs::AddFunctor<T>,
-                                 phi::funcs::AddGradFunctor<T>,
+                                 funcs::GeluGradFunctor<T>,
+                                 funcs::AddFunctor<T>,
+                                 funcs::AddGradFunctor<T>,
                                  InPlace>(dev_ctx,
-                                          phi::funcs::GeluGradFunctor<T>(),
-                                          phi::funcs::AddFunctor<T>(),
-                                          phi::funcs::AddGradFunctor<T>(),
+                                          funcs::GeluGradFunctor<T>(),
+                                          funcs::AddFunctor<T>(),
+                                          funcs::AddGradFunctor<T>(),
                                           in_x,
                                           in_y,
                                           in_out,

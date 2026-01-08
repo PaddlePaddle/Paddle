@@ -20,12 +20,9 @@
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/phi/core/framework/reader.h"
 #include "paddle/phi/core/operators/reader/buffered_reader.h"
-
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/onednn_helper.h"
-#endif
 
 COMMON_DECLARE_bool(cache_inference_while_scope);
 
@@ -214,7 +211,7 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
 
   if (op_type == "batch_norm" && parameter_name == "ReserveSpace") {
     if (dynamic_cast<const OperatorWithKernel*>(&op)->kernel_type()->place_ ==
-        phi::CPUPlace()) {
+        CPUPlace()) {
       VLOG(2) << "Skip fake initialization for: " << parameter_name;
       return false;
     }
@@ -269,7 +266,7 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
     return op.Attr<std::string>("pooltype") == "MEAN" &&
            dynamic_cast<const OperatorWithKernel*>(&op)
                    ->kernel_type()
-                   ->place_ != phi::CPUPlace();
+                   ->place_ != CPUPlace();
   }
 
   return tensor && !IsExtendedTensor(*tensor);
@@ -345,7 +342,7 @@ void FakeInitializeTensor(const phi::DeviceContext& dev_ctx,
     }
     phi::Copy(*dev_ctx_for_copy, *tensor, place, /*blocking=*/true, tensor);
   } else {
-    if (place == phi::CPUPlace()) {
+    if (place == CPUPlace()) {
       dev_ctx.HostAlloc(tensor,
                         dtype,
                         /*requested_size=*/0,
@@ -724,7 +721,7 @@ void FakeInitializeOutputsForOperatorBase(
         std::dynamic_pointer_cast<operators::reader::BufferedReader>(
             reader->Get());
     phi::Place target_place =
-        buffered_reader ? buffered_reader->GetPlace() : phi::CPUPlace();
+        buffered_reader ? buffered_reader->GetPlace() : CPUPlace();
 
     auto& outputs = op.Outputs("Out");
     auto& var_types = reader->VarTypes();

@@ -50,23 +50,23 @@ static void LerpGradFunction(const Context& dev_ctx,
   DDim dx_dims;
   DDim dy_dims;
 
-  auto w_dims = phi::funcs::ExtendDims2Rank(w.dims(), D);
-  auto g_dims = phi::funcs::ExtendDims2Rank(out_grad.dims(), D);
+  auto w_dims = funcs::ExtendDims2Rank(w.dims(), D);
+  auto g_dims = funcs::ExtendDims2Rank(out_grad.dims(), D);
   Eigen::DSizes<int, D> dx_bcast_dims;
   Eigen::DSizes<int, D> dy_bcast_dims;
   Eigen::DSizes<int, D> w_bcast_dims;
   Eigen::DSizes<int, D> g_bcast_dims;
 
   if (dx) {
-    dx_dims = phi::funcs::ExtendDims2Rank(dx->dims(), D);
-    phi::funcs::GetBroadcastDims<D>(dx_dims, out_dims, &dx_bcast_dims);
+    dx_dims = funcs::ExtendDims2Rank(dx->dims(), D);
+    funcs::GetBroadcastDims<D>(dx_dims, out_dims, &dx_bcast_dims);
   }
   if (dy) {
-    dy_dims = phi::funcs::ExtendDims2Rank(dy->dims(), D);
-    phi::funcs::GetBroadcastDims<D>(dy_dims, out_dims, &dy_bcast_dims);
+    dy_dims = funcs::ExtendDims2Rank(dy->dims(), D);
+    funcs::GetBroadcastDims<D>(dy_dims, out_dims, &dy_bcast_dims);
   }
-  phi::funcs::GetBroadcastDims<D>(w_dims, out_dims, &w_bcast_dims);
-  phi::funcs::GetBroadcastDims<D>(g_dims, out_dims, &g_bcast_dims);
+  funcs::GetBroadcastDims<D>(w_dims, out_dims, &w_bcast_dims);
+  funcs::GetBroadcastDims<D>(g_dims, out_dims, &g_bcast_dims);
 
   auto eigen_w = phi::EigenTensor<T, D>::From(w, w_dims);
   auto eigen_dout = phi::EigenTensor<T, D>::From(dout, g_dims);

@@ -38,7 +38,7 @@ void AddNKernel(const Context &dev_ctx,
     return;
   }
 
-  std::vector<const phi::SelectedRows *> inputs;
+  std::vector<const SelectedRows *> inputs;
   SelectedRows temp_in0;
 
   if (in_place) {
@@ -73,7 +73,7 @@ void AddNKernel(const Context &dev_ctx,
     }
   }
   if (has_data) {
-    phi::funcs::scatter::MergeAdd<Context, T> merge_add;
+    funcs::scatter::MergeAdd<Context, T> merge_add;
     merge_add(dev_ctx, inputs, out);
 
     out->SyncIndex();

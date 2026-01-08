@@ -816,6 +816,7 @@ template <typename Fn>
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Collective(
     std::vector<phi::DenseTensor>& inputs,
     std::vector<phi::DenseTensor>& outputs,
+    bool use_calc_stream,
     Fn fn,
     CommType op_type) {
   CheckTensorContiguous(inputs);
@@ -841,7 +842,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Collective(
     GroupStart(device_type_);
     for (size_t i = 0; i < inputs.size(); ++i) {
       phi::DeviceGuard guard(places[i]);
-      const auto& xccl_stream = *places_to_ctx_.at(key)[i]->GetStream();
+      auto& xccl_stream = use_calc_stream
+                              ? *place_to_calc_ctx_.at(key)->GetStream()
+                              : *places_to_ctx_.at(key)[i]->GetStream();
       fn(inputs[i],
          outputs[i],
          places_to_ctx_.at(key)[i]->xccl_comm(),
@@ -922,7 +925,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::PointToPoint(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
-    const AllreduceOptions& opts) {
+    const AllreduceOptions& opts,
+    bool use_calc_stream,
+    bool sync_op UNUSED) {
   CheckTensorContiguous(in_tensors);
   CheckTensorContiguous(out_tensors);
 
@@ -933,6 +938,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
   return Collective(
       in_tensors,
       out_tensors,
+      use_calc_stream,
       [&](const phi::DenseTensor& input,
           phi::DenseTensor& output,
           const phi::ccl::CCLComm& comm,
@@ -962,6 +968,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
   return Collective(
       in_tensors,
       out_tensors,
+      false,
       [&](phi::DenseTensor& input,
           phi::DenseTensor& output,
           const phi::ccl::CCLComm& comm,
@@ -1045,7 +1052,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
     std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors) {
+    std::vector<phi::DenseTensor>& out_tensors,
+    bool use_calc_stream,
+    bool sync_op UNUSED) {
   CheckTensorContiguous(in_tensors);
   CheckTensorContiguous(out_tensors);
 
@@ -1060,6 +1069,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
   return Collective(
       in_tensors,
       out_tensors,
+      use_calc_stream,
       [&](const phi::DenseTensor& input,
           phi::DenseTensor& output,
           const phi::ccl::CCLComm& comm,
@@ -1087,6 +1097,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
   return Collective(
       in_tensors,
       out_tensors,
+      false,
       [&](phi::DenseTensor& input,
           phi::DenseTensor& output,
           const phi::ccl::CCLComm& comm,
@@ -1216,6 +1227,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
   return Collective(
       in_tensors,
       out_tensors,
+      false,
       [&](const phi::DenseTensor& input,
           phi::DenseTensor& output,
           const phi::ccl::CCLComm& comm,
@@ -1248,6 +1260,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Scatter(
   return Collective(
       in_tensors,
       out_tensors,
+      false,
       [&](phi::DenseTensor& input,
           phi::DenseTensor& output,
           const phi::ccl::CCLComm& comm,

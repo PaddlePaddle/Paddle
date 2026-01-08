@@ -556,7 +556,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : baddbmm
-  args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
+  args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0, DataType out_dtype=DataType::UNDEFINED)
   output : Tensor(out)
   infer_meta :
     func : BaddbmmInferMeta
@@ -957,6 +957,7 @@
     spmd_rule : CeluInfoSpmd
   kernel :
     func : celu
+  inplace : (x -> out)
   backward : celu_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
@@ -1441,6 +1442,18 @@
   backward : depthwise_conv2d_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
+- op : depthwise_conv2d_bias
+  args : (Tensor input, Tensor filter, Tensor bias, int[] strides={1, 1}, int[] paddings={0, 0}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
+  output : Tensor(out)
+  infer_meta :
+    func : DepthwiseConv2dBiasInferMeta
+  kernel :
+    func : depthwise_conv2d_bias
+    data_type : input
+  optional : bias
+  backward : depthwise_conv2d_bias_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : depthwise_conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
   output : Tensor(out)
@@ -1450,6 +1463,18 @@
     func : depthwise_conv2d_transpose
     data_type : x
   backward : depthwise_conv2d_transpose_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : depthwise_conv3d_bias
+  args : (Tensor input, Tensor filter, Tensor bias, int[] strides={1, 1, 1}, int[] paddings={0, 0, 0}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1, 1}, str data_format="NCDHW")
+  output : Tensor(out)
+  infer_meta :
+    func : DepthwiseConv3dBiasInferMeta
+  kernel :
+    func : depthwise_conv3d_bias
+    data_type : input
+  optional : bias
+  backward : depthwise_conv3d_bias_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : dequantize_abs_max
@@ -1531,7 +1556,7 @@
 
 - op : diag
   args : (Tensor x, int offset = 0, float padding_value = 0.0)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : DiagInferMeta
   kernel :
@@ -2406,6 +2431,19 @@
   backward : fused_bn_add_activation_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : fused_rms_norm_quant
+  args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
+  output : Tensor(out), Tensor(residual_out), Tensor(inv_var)
+  infer_meta :
+    func : FusedRmsNormQuantInferMeta
+  kernel :
+    func : fused_rms_norm_quant
+    data_type : x
+  optional : bias, residual, norm_bias, residual_out
+  intermediate : inv_var
+  backward : fused_rms_norm_quant_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : fused_softmax_mask
   args : (Tensor x, Tensor mask)
   output : Tensor(out)
@@ -3125,6 +3163,7 @@
     func : LerpInferMeta
   kernel :
     func : lerp
+    data_type : x
   inplace : (x -> out)
   backward : lerp_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
@@ -4616,19 +4655,6 @@
   backward : rint_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op : rms_norm
-  args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
-  output : Tensor(out), Tensor(residual_out), Tensor(inv_var)
-  infer_meta :
-    func : RmsNormInferMeta
-  kernel :
-    func : rms_norm
-    data_type : x
-  optional : bias, residual, norm_bias, residual_out
-  intermediate : inv_var
-  backward : rms_norm_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
 - op : rmsprop_
   args : (Tensor param, Tensor mean_square, Tensor grad, Tensor moment, Tensor learning_rate, Tensor mean_grad, Tensor master_param, float epsilon = 1.0e-10f, float decay = 0.9f, float momentum = 0.0f, bool centered = false, bool multi_precision = false)
   output : Tensor(param_out), Tensor(moment_out), Tensor(mean_square_out), Tensor(mean_grad_out), Tensor(master_param_outs)
@@ -6082,3 +6108,15 @@
      data_type: numbers
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
+
+- op: rms_norm
+  args: (Tensor x, Tensor scale, int64_t[] normalized_shape={}, double epsilon= 1e-5)
+  output: Tensor(y), Tensor(invvar)
+  infer_meta:
+    func: RmsNormInferMeta
+  kernel:
+    func: rms_norm
+    data_type: x
+  optional : scale
+  backward: rms_norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface

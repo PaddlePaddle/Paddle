@@ -36,7 +36,7 @@ void CumprodKernel(const Context &dev_ctx,
   size_t outer_dim, mid_dim, inner_dim;
   GetCumprodDimInfo(x->dims(), dim, &outer_dim, &mid_dim, &inner_dim);
   if (x->dims().size() == 0) {
-    phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, out);
+    Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, out);
     return;
   }
 

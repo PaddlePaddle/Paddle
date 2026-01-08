@@ -73,20 +73,20 @@ void FusedGemmEpilogueGradKernel(
           << ", activation_grad=" << activation_grad
           << ", reserve_space=" << reserve_space.get_ptr();
 
-  phi::funcs::ComputeFusedGemmEpilogueBackward<T>(dev_ctx,
-                                                  &out_grad,
-                                                  &x,
-                                                  &y,
-                                                  reserve_space.get_ptr(),
-                                                  M,
-                                                  N,
-                                                  K,
-                                                  trans_x,
-                                                  trans_y,
-                                                  activation_grad,
-                                                  x_grad,
-                                                  y_grad,
-                                                  bias_grad);
+  funcs::ComputeFusedGemmEpilogueBackward<T>(dev_ctx,
+                                             &out_grad,
+                                             &x,
+                                             &y,
+                                             reserve_space.get_ptr(),
+                                             M,
+                                             N,
+                                             K,
+                                             trans_x,
+                                             trans_y,
+                                             activation_grad,
+                                             x_grad,
+                                             y_grad,
+                                             bias_grad);
 #endif
 }
 

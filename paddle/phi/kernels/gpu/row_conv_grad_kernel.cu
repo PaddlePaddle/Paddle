@@ -267,8 +267,8 @@ void RowConvGradKernel(const Context &dev_ctx,
   const T *weights = Filter->data<T>();
   const T *dout = dOut->data<T>();
 
-  phi::DenseTensor *dX = x_grad;
-  phi::DenseTensor *dFilter = filter_grad;
+  DenseTensor *dX = x_grad;
+  DenseTensor *dFilter = filter_grad;
   int batch_size = 0;
   bool is_tensor = X->lod().empty();
   if (is_tensor) {

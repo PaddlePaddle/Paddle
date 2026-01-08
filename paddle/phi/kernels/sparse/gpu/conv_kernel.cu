@@ -100,11 +100,11 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   if (subm) {
     // the out shape of subm_conv is same as input shape
     // reset the padding=kernel_size/2 and strides=1
-    phi::funcs::sparse::ResetSubmKernelSizeAndStrides(
+    funcs::sparse::ResetSubmKernelSizeAndStrides(
         kernel.dims(), &subm_paddings, &subm_strides);
   }
 
-  phi::funcs::sparse::GetOutShape(
+  funcs::sparse::GetOutShape(
       x_dims, kernel_sizes, subm_paddings, dilations, subm_strides, &out_dims);
   const int in_channels = is2D ? kernel_dims[2] : kernel_dims[3];
   const int out_channels = is2D ? kernel_dims[3] : kernel_dims[4];
@@ -129,10 +129,10 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   // Second algorithm:
   // https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf
   // 1. product rulebook
-  DenseTensor counter_per_kernel = phi::Empty<int>(dev_ctx, {kernel_size});
-  DenseTensor offsets_per_kernel = phi::Empty<int>(dev_ctx, {kernel_size});
-  DenseTensor out_index = phi::Empty<int>(dev_ctx, {1});
-  DenseTensor unique_value = phi::Empty<int>(dev_ctx, {1});
+  DenseTensor counter_per_kernel = Empty<int>(dev_ctx, {kernel_size});
+  DenseTensor offsets_per_kernel = Empty<int>(dev_ctx, {kernel_size});
+  DenseTensor out_index = Empty<int>(dev_ctx, {1});
+  DenseTensor unique_value = Empty<int>(dev_ctx, {1});
 
   if (is2D) {
     VLOG(6) << "call SubmConv2D or Conv2D " << subm << " and the key is "
@@ -146,16 +146,16 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   const IntT* rulebook_ptr = nullptr;
   bool need_product_rulebook = true;
   if (subm && !key.empty()) {
-    rulebook_ptr = phi::funcs::sparse::PrepareSubm<T, IntT, GPUContext>(
-        dev_ctx,
-        x,
-        key,
-        out_dims,
-        out,
-        h_counter_ptr,
-        h_offsets_ptr,
-        &rulebook_len,
-        &need_product_rulebook);
+    rulebook_ptr =
+        funcs::sparse::PrepareSubm<T, IntT, GPUContext>(dev_ctx,
+                                                        x,
+                                                        key,
+                                                        out_dims,
+                                                        out,
+                                                        h_counter_ptr,
+                                                        h_offsets_ptr,
+                                                        &rulebook_len,
+                                                        &need_product_rulebook);
   }
 
   if (need_product_rulebook) {
@@ -184,14 +184,14 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
     for (int i = 0; i < kernel_size; ++i) {
       h_counter_tensor_ptr[i] = h_counter_ptr[i];
     }
-    phi::funcs::sparse::SaveToTable(dev_ctx,
-                                    x,
-                                    key,
-                                    tmp_rulebook,
-                                    h_counter_tensor,
-                                    out,
-                                    rulebook,
-                                    counter);
+    funcs::sparse::SaveToTable(dev_ctx,
+                               x,
+                               key,
+                               tmp_rulebook,
+                               h_counter_tensor,
+                               out,
+                               rulebook,
+                               counter);
   }
   if (subm) {
     auto config =
@@ -213,13 +213,11 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                        unique_value_ptr);
   }
   // 2. gather
-  phi::DenseTensor in_features =
-      phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
-  phi::DenseTensor out_features =
-      phi::Empty<T>(dev_ctx, {rulebook_len, out_channels});
+  DenseTensor in_features = Empty<T>(dev_ctx, {rulebook_len, in_channels});
+  DenseTensor out_features = Empty<T>(dev_ctx, {rulebook_len, out_channels});
   T* in_features_ptr = in_features.data<T>();
   T* out_features_ptr = out_features.data<T>();
-  phi::funcs::SetConstant<GPUContext, T> set_zero;
+  funcs::SetConstant<GPUContext, T> set_zero;
   set_zero(dev_ctx, &out_features, static_cast<T>(0.0f));
 
   Gather<T, IntT>(dev_ctx,
@@ -230,7 +228,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                   in_features_ptr);
 
   // 3. call gemm for every werght
-  auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<GPUContext, T>(dev_ctx);
   auto* out_values = out->mutable_values();
   T* out_values_ptr = out_values->data<T>();
   set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
@@ -262,15 +260,15 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   }
 
   // 4. scatter
-  phi::funcs::sparse::ScatterV2<T>(dev_ctx,
-                                   out_features_ptr,
-                                   out_index.data<int>(),
-                                   unique_value.data<int>(),
-                                   out->nnz(),
-                                   kernel_size,
-                                   out_channels,
-                                   1,
-                                   out_values_ptr);
+  funcs::sparse::ScatterV2<T>(dev_ctx,
+                              out_features_ptr,
+                              out_index.data<int>(),
+                              unique_value.data<int>(),
+                              out->nnz(),
+                              kernel_size,
+                              out_channels,
+                              1,
+                              out_values_ptr);
 }
 
 /**

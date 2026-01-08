@@ -43,7 +43,12 @@ from paddle._C_ops import (  # noqa: F401
 )
 
 
-def celu(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
+def celu(
+    x: Tensor,
+    alpha: float = 1.0,
+    inplace: bool = False,
+    name: str | None = None,
+) -> Tensor:
     r"""
     celu activation.
 
@@ -56,6 +61,7 @@ def celu(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
     Parameters:
         x (Tensor): The input Tensor with data type float16, float32, or float64.
         alpha (float, optional): The 'alpha' value of the CELU formula. Default is 1.0.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -73,11 +79,23 @@ def celu(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.19865242,  6.        ],
              [ 1.        , 15.60000038]])
+            >>> out = F.celu(x, alpha=0.2, inplace=True)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.19865242,  6.        ],
+             [ 1.        , 15.60000038]])
+            >>> print(x)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.19865242,  6.        ],
+             [ 1.        , 15.60000038]])
     """
     if alpha == 0:
         raise ZeroDivisionError("alpha cannot be 0 for celu")
     if in_dynamic_or_pir_mode():
-        return _C_ops.celu(x, alpha)
+        if inplace:
+            return _C_ops.celu_(x, alpha)
+        else:
+            return _C_ops.celu(x, alpha)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'celu'
@@ -1820,3 +1838,38 @@ def gumbel_softmax(
         attrs={'temperature': temperature, 'hard': hard, 'axis': axis},
     )
     return out
+
+
+def swiglu(
+    x: Tensor, y: Tensor | None = None, name: str | None = None
+) -> Tensor:
+    """
+    This function performs SwiGLU activation to the input Tensor.
+
+    .. math::
+
+        out = silu(x) * y when y is not None
+        out = silu(xs[0]) * xs[1] when y is None, where xs = paddle.chunk(x, 2, axis=-1)
+
+    Args:
+        x (Tensor): The first input Tensor of SwiGLU.
+        y (Tensor, optional): The second input Tensor of SwiGLU. Default: None.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        A Tensor with the same data type with x and y.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+            >>> x = paddle.to_tensor([1, 2], dtype='float32')
+            >>> out1, out2 = F.swiglu(x), F.swiglu(x, x)
+            >>> print(out1, out2)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [1.46211720]) Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [0.73105860, 3.52318811])
+    """
+    if in_dynamic_or_pir_mode():
+        return _C_ops.swiglu(x, y)

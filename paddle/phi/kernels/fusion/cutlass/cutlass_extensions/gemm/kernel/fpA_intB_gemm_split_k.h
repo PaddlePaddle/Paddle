@@ -1037,7 +1037,7 @@ struct GemmFpAIntBSplitK {
     gemm();
 #elif defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 750) && (__CUDA_ARCH__ < 800)
     gemm();
-#elif defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800) && (__CUDA_ARCH__ < 910)
+#elif defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800) && (__CUDA_ARCH__ < 1010)
     gemm();
 #else
     CUTLASS_NOT_IMPLEMENTED();

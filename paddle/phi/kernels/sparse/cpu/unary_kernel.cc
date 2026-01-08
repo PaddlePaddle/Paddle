@@ -30,12 +30,11 @@ void DivScalarCooKernel(const Context& dev_ctx,
                         SparseCooTensor* out) {
   EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
 
-  auto eigen_out =
-      phi::EigenVector<T>::Flatten(*(out->mutable_non_zero_elements()));
-  auto eigen_x = phi::EigenVector<T>::Flatten(x.non_zero_elements());
+  auto eigen_out = EigenVector<T>::Flatten(*(out->mutable_non_zero_elements()));
+  auto eigen_x = EigenVector<T>::Flatten(x.non_zero_elements());
   auto& dev = *dev_ctx.eigen_device();
 
-  phi::funcs::EigenDiv<std::decay_t<decltype(dev)>, T>::Eval(
+  funcs::EigenDiv<std::decay_t<decltype(dev)>, T>::Eval(
       dev, eigen_out, eigen_x, static_cast<T>(scalar));
 }
 
@@ -46,12 +45,11 @@ void DivScalarCsrKernel(const Context& dev_ctx,
                         SparseCsrTensor* out) {
   EmptyLikeCsrKernel<T, Context>(dev_ctx, x, out);
 
-  auto eigen_out =
-      phi::EigenVector<T>::Flatten(*(out->mutable_non_zero_elements()));
-  auto eigen_x = phi::EigenVector<T>::Flatten(x.non_zero_elements());
+  auto eigen_out = EigenVector<T>::Flatten(*(out->mutable_non_zero_elements()));
+  auto eigen_x = EigenVector<T>::Flatten(x.non_zero_elements());
   auto& dev = *dev_ctx.eigen_device();
 
-  phi::funcs::EigenDiv<std::decay_t<decltype(dev)>, T>::Eval(
+  funcs::EigenDiv<std::decay_t<decltype(dev)>, T>::Eval(
       dev, eigen_out, eigen_x, static_cast<T>(scalar));
 }
 

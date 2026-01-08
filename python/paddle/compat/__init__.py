@@ -21,13 +21,14 @@ from typing_extensions import overload
 import paddle
 from paddle import _C_ops
 from paddle.base import core
+from paddle.base.data_feeder import promote_types
 from paddle.base.framework import Variable
 from paddle.framework import (
     in_dynamic_mode,
 )
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
-from . import nn  # noqa: F401
+from . import nn as nn
 from .proxy import (  # noqa: F401
     disable_torch_proxy,
     enable_torch_proxy,
@@ -43,6 +44,7 @@ if TYPE_CHECKING:
     from paddle import Tensor
 
 __all__ = [
+    'allclose',
     'equal',
     'slogdet',
     'sort',
@@ -61,38 +63,57 @@ def __getattr__(name):
         return paddle_triton_fun()
 
 
-_types = [
-    paddle.uint8,
-    paddle.int8,
-    paddle.int16,
-    paddle.int32,
-    paddle.int64,
-    paddle.float16,
-    paddle.float32,
-    paddle.float64,
-    paddle.bool,
-    paddle.bfloat16,
-]
-u1, i1, i2, i4, i8, f2, f4, f8, b1, bf = _types
+@ForbidKeywordsDecorator(
+    illegal_keys={"x", "y"},
+    func_name="paddle.compat.allclose",
+    correct_name="paddle.allclose",
+)
+def allclose(
+    input: Tensor,
+    other: Tensor,
+    rtol: float = 1e-05,
+    atol: float = 1e-08,
+    equal_nan: bool = False,
+    name: str | None = None,
+) -> bool:
+    """
+    Check if all :math:`input` and :math:`other` satisfy the condition:
 
-_promote_matrix = [
-    [u1, i2, i2, i4, i8, f2, f4, f8, u1, bf],  # u1
-    [i2, i1, i2, i4, i8, f2, f4, f8, i1, bf],  # i1
-    [i2, i2, i2, i4, i8, f2, f4, f8, i2, bf],  # i2
-    [i4, i4, i4, i4, i8, f2, f4, f8, i4, bf],  # i4
-    [i8, i8, i8, i8, i8, f2, f4, f8, i8, bf],  # i8
-    [f2, f2, f2, f2, f2, f2, f4, f8, f2, f4],  # f2
-    [f4, f4, f4, f4, f4, f4, f4, f8, f4, f4],  # f4
-    [f8, f8, f8, f8, f8, f8, f8, f8, f8, f8],  # f8
-    [u1, i1, i2, i4, i8, f2, f4, f8, b1, bf],  # b1
-    [bf, bf, bf, bf, bf, f4, f4, f8, bf, bf],  # bf
-]
+    .. math::
+        \\left| input - other \\right| \\leq atol + rtol \\times \\left| other \\right|
 
-PROMOTE_DICT = {
-    (t1, t2): _promote_matrix[i][j]
-    for i, t1 in enumerate(_types)
-    for j, t2 in enumerate(_types)
-}
+    elementwise, for all elements of :math:`input` and :math:`other`. This is analogous to :math:`numpy.allclose`, namely that it returns :math:`True` if
+    two tensors are elementwise equal within a tolerance.
+
+    Args:
+        input (Tensor): The input tensor, it's data type should be float16, float32, float64.
+        other (Tensor): The input tensor, it's data type should be float16, float32, float64.
+        rtol (float, optional): The relative tolerance. Default: :math:`1e-5` .
+        atol (float, optional): The absolute tolerance. Default: :math:`1e-8` .
+        equal_nan (bool, optional): ${equal_nan_comment}. Default: False.
+        name (str|None, optional): Name for the operation. For more information, please
+            refer to :ref:`api_guide_Name`. Default: None.
+
+    Returns:
+        bool: True if the two tensors are elementwise equal within a tolerance, False otherwise.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([10000., 1e-07])
+            >>> y = paddle.to_tensor([10000.1, 1e-08])
+            >>> result1 = paddle.compat.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name="ignore_nan")
+            >>> print(result1)
+            False
+            >>> result2 = paddle.compat.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=True, name="equal_nan")
+            >>> print(result2)
+            False
+    """
+    return paddle.allclose(
+        input, other, rtol=rtol, atol=atol, equal_nan=equal_nan, name=name
+    ).item()
 
 
 @ForbidKeywordsDecorator(
@@ -132,7 +153,7 @@ def equal(
     if input.dtype == other.dtype:
         return paddle.equal_all(input, other).item()
 
-    common_dtype = PROMOTE_DICT.get(input.dtype, other.dtype)
+    common_dtype = promote_types(input.dtype, other.dtype)
     if input.dtype != common_dtype:
         input = input.cast(common_dtype)
     if other.dtype != common_dtype:

@@ -100,8 +100,8 @@ void DepthwiseConvKernel(const Context& dev_ctx,
   auto filter_dims = filter.dims();
 
   DDim in_data_dims;
-  const phi::DataLayout data_layout = common::StringToDataLayout(data_format);
-  if (data_layout != phi::DataLayout::NHWC) {
+  const DataLayout data_layout = common::StringToDataLayout(data_format);
+  if (data_layout != DataLayout::NHWC) {
     in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   } else {
     in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);

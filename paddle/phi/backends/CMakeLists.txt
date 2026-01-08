@@ -49,7 +49,6 @@ list(
   APPEND
   BACKENDS_SRCS
   callback_manager.cc
-  device_guard.cc
   stream.cc
   event.cc
   device_manager.cc

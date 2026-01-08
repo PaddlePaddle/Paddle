@@ -154,7 +154,7 @@ void RoiPoolKernel(const Context& dev_ctx,
             boxes_batch_size,
             batch_size));
     std::vector<int> boxes_num_list(boxes_batch_size);
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        boxes_num_list.data(),
                        gplace,
                        boxes_num->data<int>(),
@@ -204,7 +204,7 @@ void RoiPoolKernel(const Context& dev_ctx,
   int* box_id_data = reinterpret_cast<int*>(box_ptr->ptr());
   memory_utils::Copy(gplace,
                      box_id_data,
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      box_batch_id_data,
                      bytes,
                      dev_ctx.stream());

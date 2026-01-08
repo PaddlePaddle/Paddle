@@ -24,10 +24,10 @@
 namespace phi {
 #ifdef PADDLE_WITH_FLASHATTN_V3
 
-#define CHECK_DEVICE(x)         \
-  PADDLE_ENFORCE_EQ(            \
-      x.place().GetType(),      \
-      phi::AllocationType::GPU, \
+#define CHECK_DEVICE(x)    \
+  PADDLE_ENFORCE_EQ(       \
+      x.place().GetType(), \
+      AllocationType::GPU, \
       common::errors::InvalidArgument(#x " must be on CUDA Device"))
 
 #define CHECK_SHAPE(x, ...)                           \

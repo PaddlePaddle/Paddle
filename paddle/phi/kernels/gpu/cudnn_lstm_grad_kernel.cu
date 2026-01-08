@@ -56,13 +56,13 @@ void CudnnLSTMGradKernel(
 
   auto running_weight_list = *weight_list.get_ptr();
   int weight_numel = size_sum(running_weight_list);
-  bool continuous = is_continuous<T, std::vector<const phi::DenseTensor *>>(
-      running_weight_list);
+  bool continuous =
+      is_continuous<T, std::vector<const DenseTensor *>>(running_weight_list);
 
   auto handle = dev_ctx.cudnn_handle();
   auto place = dev_ctx.GetPlace();
   auto stream = dev_ctx.stream();
-  phi::DenseTensor weight_whole;
+  DenseTensor weight_whole;
   T *weight_data = nullptr;
 
   if (!continuous) {
@@ -74,7 +74,7 @@ void CudnnLSTMGradKernel(
     weight_data = const_cast<T *>(running_weight_list[0]->data<T>());
   }
 
-  phi::DenseTensor weight_grad;
+  DenseTensor weight_grad;
   funcs::SetConstant<phi::GPUContext, T> zero;
   weight_grad.Resize({weight_numel});
   dev_ctx.template Alloc<T>(&weight_grad);
@@ -143,9 +143,9 @@ void CudnnLSTMGradKernel(
                 SequenceLength,
                 &workspace_size,
                 &reserve_size,
-                const_cast<phi::DenseTensor *>(&state_out));
+                const_cast<DenseTensor *>(&state_out));
 
-  phi::DenseTensor workspace_data_;
+  DenseTensor workspace_data_;
   workspace_data_.Resize({static_cast<int64_t>(workspace_size)});
   dev_ctx.template Alloc<uint8_t>(&workspace_data_);
   const uint8_t *reserve_data = reserve.data<uint8_t>();

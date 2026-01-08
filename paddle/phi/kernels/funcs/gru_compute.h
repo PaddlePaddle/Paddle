@@ -46,8 +46,8 @@ struct GRUUnitFunctor {
                       GRUMetaValue<T> value,
                       int frame_size,
                       int batch_size,
-                      const phi::funcs::detail::ActivationType active_node,
-                      const phi::funcs::detail::ActivationType active_gate,
+                      const funcs::detail::ActivationType active_node,
+                      const funcs::detail::ActivationType active_gate,
                       bool origin_mode);
 };
 
@@ -58,8 +58,8 @@ struct GRUUnitGradFunctor {
                       GRUMetaGrad<T> grad,
                       int frame_size,
                       int batch_size,
-                      const phi::funcs::detail::ActivationType active_node,
-                      const phi::funcs::detail::ActivationType active_gate,
+                      const funcs::detail::ActivationType active_node,
+                      const funcs::detail::ActivationType active_gate,
                       bool origin_mode);
 };
 
@@ -69,8 +69,8 @@ struct GRUUnitFunctorV2 {
                       GRUMetaValue<T> value,
                       int frame_size,
                       int batch_size,
-                      const phi::funcs::detail::ActivationType active_node,
-                      const phi::funcs::detail::ActivationType active_gate);
+                      const funcs::detail::ActivationType active_node,
+                      const funcs::detail::ActivationType active_gate);
 };
 
 template <typename DeviceContext, typename T>
@@ -80,8 +80,8 @@ struct GRUUnitGradFunctorV2 {
                       GRUMetaGrad<T> grad,
                       int frame_size,
                       int batch_size,
-                      const phi::funcs::detail::ActivationType active_node,
-                      const phi::funcs::detail::ActivationType active_gate);
+                      const funcs::detail::ActivationType active_node,
+                      const funcs::detail::ActivationType active_gate);
 };
 
 }  // namespace funcs

@@ -39,7 +39,7 @@ elementwise_inner_add(const phi::CPUContext& dev_ctx,
                       size_t src_index,
                       IndexT dst_index,
                       size_t slice_size) {
-  auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
   blas.VADD(slice_size,
             src_pointer + src_index * slice_size,
             dst_pointer + dst_index * slice_size,

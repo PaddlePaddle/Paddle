@@ -152,7 +152,6 @@ void LapackEig(DenseTensor* input,
                const Context& dev_ctx) {
   char jobvl = 'N';
   char jobvr = 'V';  // only right eigenvectors are computed
-  int num_dims = input->dims().size();
   int order = static_cast<int>(input->dims(-1));
 
   T* input_data = input->data<T>();
@@ -247,11 +246,10 @@ void MagmaEig(const Context& dev_ctx,
       common::errors::PreconditionNotMet(
           "the numel of input should be in [0, "
           "std::numeric_limits<int32_t>::max()]"));
-  auto num_dims = input.dims().size();
   // magma will modify original input, so copy to cpu at any case
   DenseTensor input_copy_cpu;
   input_copy_cpu.Resize(input.dims());
-  phi::Copy(dev_ctx, input, phi::CPUPlace(), false, &input_copy_cpu);
+  Copy(dev_ctx, input, CPUPlace(), false, &input_copy_cpu);
 
   using RealT = typename phi::dtype::Real<T>;
   magma_vec_t jobvr = MagmaVec;
@@ -276,7 +274,7 @@ void MagmaEig(const Context& dev_ctx,
   phi::dtype::Real<T>* rwork_data = nullptr;
 
   rwork.Resize(common::make_ddim({lda * 2}));
-  auto cpu_place = phi::CPUPlace();
+  auto cpu_place = CPUPlace();
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
   rwork_data = (*cpu_ctx).template Alloc<phi::dtype::Real<T>>(&rwork);
@@ -340,15 +338,14 @@ void ApplyEigKernelMagma(const Context& dev_ctx,
                          DenseTensor* real_v_cpu) {
   // transfer to column-major memory layout i.e. common::make_ddim from
   // transposed_input: [*,row,col]->[*,col,row]
-  DenseTensor input_column_major_gpu =
-      phi::TransposeLast2Dim<T>(dev_ctx, input);
+  DenseTensor input_column_major_gpu = TransposeLast2Dim<T>(dev_ctx, input);
   int num_dims = input.dims().size();
   TransposeTwoAxis<T, Context>(
       input, &input_column_major_gpu, num_dims - 1, num_dims - 2, dev_ctx);
 
   DenseTensor vectors_row_major_cpu;
   vectors_row_major_cpu.Resize(input.dims());
-  auto cpu_place = phi::CPUPlace();
+  auto cpu_place = CPUPlace();
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
   (*cpu_ctx).template Alloc<T>(&vectors_row_major_cpu);
@@ -451,7 +448,7 @@ void ComputeBackwardForComplexInput(const DenseTensor& L,
         Fill<T, Context>(dev_ctx, common::vectorize<int64_t>(V.dims()), T(0));
   }
 
-  DenseTensor trans_v = phi::TransposeLast2Dim<T>(dev_ctx, V);
+  DenseTensor trans_v = TransposeLast2Dim<T>(dev_ctx, V);
   DenseTensor Vh = phi::Conj<T>(dev_ctx, trans_v);
   DenseTensor Lconj = phi::Conj<T>(dev_ctx, L);
   DenseTensor Econj = phi::Subtract<T>(

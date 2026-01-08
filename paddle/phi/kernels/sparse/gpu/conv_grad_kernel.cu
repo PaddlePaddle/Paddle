@@ -63,32 +63,30 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
   const int out_channels = is2D ? kernel_dims[3] : kernel_dims[4];
 
   int rulebook_len = 0;
-  const IntT* rulebook_ptr = phi::funcs::sparse::GetRulebookPtr<IntT>(
-      out, rulebook, key, &rulebook_len);
-  const int* counter_ptr = phi::funcs::sparse::GetCounterPtr(out, counter, key);
+  const IntT* rulebook_ptr =
+      funcs::sparse::GetRulebookPtr<IntT>(out, rulebook, key, &rulebook_len);
+  const int* counter_ptr = funcs::sparse::GetCounterPtr(out, counter, key);
 
-  phi::DenseTensor in_features =
-      phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
-  phi::DenseTensor d_x_features =
-      phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
-  phi::DenseTensor out_grad_features =
-      phi::Empty<T>(dev_ctx, {rulebook_len, out_channels});
+  DenseTensor in_features = Empty<T>(dev_ctx, {rulebook_len, in_channels});
+  DenseTensor d_x_features = Empty<T>(dev_ctx, {rulebook_len, in_channels});
+  DenseTensor out_grad_features =
+      Empty<T>(dev_ctx, {rulebook_len, out_channels});
 
   T* in_features_ptr = in_features.data<T>();
   T* d_x_features_ptr = d_x_features.data<T>();
   T* out_grad_features_ptr = out_grad_features.data<T>();
   T* d_kernel_ptr = nullptr;
   if (!is_params_freezing) {
-    *kernel_grad = phi::EmptyLike<T>(dev_ctx, kernel);
+    *kernel_grad = EmptyLike<T>(dev_ctx, kernel);
     d_kernel_ptr = kernel_grad->data<T>();
     phi::backends::gpu::GpuMemsetAsync(
         d_kernel_ptr, 0, sizeof(T) * kernel_grad->numel(), dev_ctx.stream());
   }
 
   int half_kernel_size = kernel_size / 2;
-  auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
-  DenseTensor x_grad_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
-  DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.values());
+  auto blas = funcs::GetBlas<GPUContext, T>(dev_ctx);
+  DenseTensor x_grad_indices = EmptyLike<IntT>(dev_ctx, x.indices());
+  DenseTensor x_grad_values = EmptyLike<T>(dev_ctx, x.values());
   T* x_grad_values_ptr = x_grad_values.data<T>();
   phi::backends::gpu::GpuMemsetAsync(x_grad_values_ptr,
                                      0,
@@ -113,15 +111,15 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
   offsets[kernel_size] = offset;
 
   if (subm) {
-    phi::funcs::sparse::SubmPreProcess<T, GPUContext>(dev_ctx,
-                                                      x,
-                                                      kernel,
-                                                      out_grad.values(),
-                                                      in_channels,
-                                                      out_channels,
-                                                      half_kernel_size,
-                                                      kernel_grad,
-                                                      &x_grad_values);
+    funcs::sparse::SubmPreProcess<T, GPUContext>(dev_ctx,
+                                                 x,
+                                                 kernel,
+                                                 out_grad.values(),
+                                                 in_channels,
+                                                 out_channels,
+                                                 half_kernel_size,
+                                                 kernel_grad,
+                                                 &x_grad_values);
     if (max_count == 0) {
       return;
     }
@@ -129,10 +127,9 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
 
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
-  DenseTensor unique_value = phi::Empty<int>(
-      dev_ctx, {static_cast<int>(x_grad->nnz() * kernel_size * 2)});
-  DenseTensor out_index =
-      phi::Empty<int>(dev_ctx, {static_cast<int>(x.nnz() * 2)});
+  DenseTensor unique_value =
+      Empty<int>(dev_ctx, {static_cast<int>(x_grad->nnz() * kernel_size * 2)});
+  DenseTensor out_index = Empty<int>(dev_ctx, {static_cast<int>(x.nnz() * 2)});
   int* out_index_ptr = out_index.data<int>();
   int* unique_value_ptr = unique_value.data<int>();
   phi::backends::gpu::GpuMemsetAsync(
@@ -215,15 +212,15 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
   }
 
   // 4. scatter
-  phi::funcs::sparse::ScatterV2<T>(dev_ctx,
-                                   d_x_features_ptr,
-                                   out_index.data<int>(),
-                                   unique_value.data<int>(),
-                                   x_grad->nnz(),
-                                   kernel_size,
-                                   in_channels,
-                                   2,
-                                   x_grad_values_ptr);
+  funcs::sparse::ScatterV2<T>(dev_ctx,
+                              d_x_features_ptr,
+                              out_index.data<int>(),
+                              unique_value.data<int>(),
+                              x_grad->nnz(),
+                              kernel_size,
+                              in_channels,
+                              2,
+                              x_grad_values_ptr);
 }
 
 template <typename T, typename Context>

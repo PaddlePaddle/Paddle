@@ -255,7 +255,7 @@ TEST(save_load_version_compat, attribute_patch_test2) {
                 .attribute("op4_attr7")
                 .dyn_cast<::paddle::dialect::DataLayoutAttribute>()
                 .data(),
-            phi::DataLayout::kNHWC);
+            phi::DataLayout::NHWC);
 }
 
 // Test for op I/O and op attribute modification.

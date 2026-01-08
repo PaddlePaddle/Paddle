@@ -261,7 +261,7 @@ void DeviceWorker::DumpParam(const Scope& scope, const int batch_id) {
     }
     phi::DenseTensor cpu_tensor;
     if (phi::is_gpu_place(tensor->place())) {
-      TensorCopySync(*tensor, phi::CPUPlace(), &cpu_tensor);
+      TensorCopySync(*tensor, CPUPlace(), &cpu_tensor);
       tensor = &cpu_tensor;
     }
     int64_t len = tensor->numel();
@@ -376,7 +376,7 @@ void DeviceWorker::DumpField(
       }
       phi::DenseTensor cpu_tensor;
       if (phi::is_gpu_place(tensor->place())) {
-        TensorCopySync(*tensor, phi::CPUPlace(), &cpu_tensor);
+        TensorCopySync(*tensor, CPUPlace(), &cpu_tensor);
         cpu_tensor.set_lod(tensor->lod());
         tensor = &cpu_tensor;
       }
@@ -464,7 +464,7 @@ void DeviceWorker::DumpField(
     }
     phi::DenseTensor cpu_tensor;
     if (phi::is_gpu_place(tensor->place())) {
-      TensorCopySync(*tensor, phi::CPUPlace(), &cpu_tensor);
+      TensorCopySync(*tensor, CPUPlace(), &cpu_tensor);
       cpu_tensor.set_lod(tensor->lod());
       tensor = &cpu_tensor;
     }

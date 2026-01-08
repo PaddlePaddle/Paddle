@@ -684,6 +684,16 @@ bool DepthwiseConv2dOpInferSymbolicShape(
   return Conv2dOpInferSymbolicShape(op, infer_context);
 }
 
+bool DepthwiseConv2dBiasOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return Conv2dOpInferSymbolicShape(op, infer_context);
+}
+
+bool DepthwiseConv3dBiasOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return Conv3dOpInferSymbolicShape(op, infer_context);
+}
+
 bool DepthwiseConv2dTransposeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return Conv2dTransposeOpInferSymbolicShape(op, infer_context);
@@ -963,6 +973,7 @@ bool GatherOpInferSymbolicShape(pir::Operation *op,
             "3 when the axis is not set."));
     const auto &axis_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(2));
+    // NOTE(large-tensor): axis is a small integer
     axis =
         static_cast<int>(axis_shape_or_data.data().value()[0].Get<int64_t>());
   }
@@ -973,7 +984,10 @@ bool GatherOpInferSymbolicShape(pir::Operation *op,
   const std::vector<symbol::DimExpr> &index_sym_shape =
       index_shape_or_data.shape();
 
-  if (axis < 0) axis += input_sym_shape.size();
+  if (axis < 0) {
+    // NOTE(large-tensor): tensor rank is a small integer
+    axis += static_cast<int>(input_sym_shape.size());
+  }
 
   const auto &out_sym_shape = [&] {
     std::vector<symbol::DimExpr> out_sym_shape;

@@ -52,6 +52,11 @@ class TestSparseUnary(unittest.TestCase):
             mask = paddle.randint(0, 2, [8, 16, 32]).astype("float64")
             while paddle.sum(mask) == 0:
                 mask = paddle.randint(0, 2, [8, 16, 32]).astype("float64")
+        elif dtype in ['int32', 'int64']:
+            origin_x = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
+            mask = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
+            while paddle.sum(mask) == 0:
+                mask = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
         else:
             origin_x = paddle.rand([8, 16, 32], dtype)
             mask = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
@@ -100,9 +105,10 @@ class TestSparseUnary(unittest.TestCase):
             expect_grad = np.nan_to_num(dense_x.grad.numpy(), 0.0, 0.0, 0.0)
         else:
             expect_grad = (dense_x.grad * mask).numpy()
-        np.testing.assert_allclose(
-            sp_x.grad.to_dense().numpy(), expect_grad, rtol=1e-05
-        )
+        if dtype not in ['int32', 'int64']:
+            np.testing.assert_allclose(
+                sp_x.grad.to_dense().numpy(), expect_grad, rtol=1e-05
+            )
 
     def compare_with_dense(self, dense_func, sparse_func, dtype='float32'):
         for device in devices:
@@ -258,9 +264,13 @@ class TestSparseUnary(unittest.TestCase):
 
     def test_sparse_deg2rad(self):
         self.compare_with_dense(paddle.deg2rad, paddle.sparse.deg2rad)
+        self.compare_with_dense(paddle.deg2rad, paddle.sparse.deg2rad, 'int32')
+        self.compare_with_dense(paddle.deg2rad, paddle.sparse.deg2rad, 'int64')
 
     def test_sparse_rad2deg(self):
         self.compare_with_dense(paddle.rad2deg, paddle.sparse.rad2deg)
+        self.compare_with_dense(paddle.rad2deg, paddle.sparse.rad2deg, 'int32')
+        self.compare_with_dense(paddle.rad2deg, paddle.sparse.rad2deg, 'int64')
 
     def test_sparse_neg(self):
         self.compare_with_dense(paddle.neg, paddle.sparse.neg)
@@ -317,6 +327,16 @@ class TestSparseUnaryStatic(unittest.TestCase):
             n = 0
             while paddle.sum(mask) == 0:
                 mask = paddle.randint(0, 2, [8, 16, 32]).astype("float64")
+                n += 1
+                if n > 1000:
+                    mask[0] = 1
+                    break
+        elif dtype in ['int32', 'int64']:
+            origin_x = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
+            mask = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
+            n = 0
+            while paddle.sum(mask) == 0:
+                mask = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
                 n += 1
                 if n > 1000:
                     mask[0] = 1
@@ -539,9 +559,13 @@ class TestSparseUnaryStatic(unittest.TestCase):
 
     def test_sparse_deg2rad(self):
         self.compare_with_dense(paddle.deg2rad, paddle.sparse.deg2rad)
+        self.compare_with_dense(paddle.deg2rad, paddle.sparse.deg2rad, 'int32')
+        self.compare_with_dense(paddle.deg2rad, paddle.sparse.deg2rad, 'int64')
 
     def test_sparse_rad2deg(self):
         self.compare_with_dense(paddle.rad2deg, paddle.sparse.rad2deg)
+        self.compare_with_dense(paddle.rad2deg, paddle.sparse.rad2deg, 'int32')
+        self.compare_with_dense(paddle.rad2deg, paddle.sparse.rad2deg, 'int64')
 
     def test_sparse_neg(self):
         self.compare_with_dense(paddle.neg, paddle.sparse.neg)

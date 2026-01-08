@@ -624,7 +624,7 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
   auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
   framework::RuntimeContext ctx({}, {});
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(phi::CPUPlace());
+  auto* dev_ctx = pool.Get(CPUPlace());
   const auto& op_info = op->Info();
   auto* attr_checker = op_info.Checker();
   if (attr_checker) {

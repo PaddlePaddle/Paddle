@@ -34,7 +34,7 @@ void InverseGradKernel(const Context& dev_ctx,
     if (out_grad.numel() == 0) {
       return;
     }
-    auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+    auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
     DenseTensor tmp_out;
     tmp_out.Resize(out.dims());
@@ -48,25 +48,23 @@ void InverseGradKernel(const Context& dev_ctx,
       phi::ConjKernel<T, Context>(dev_ctx, out, &out_conj);
 
       auto mat_dim_a0 =
-          phi::funcs::CreateMatrixDescriptor(out_grad.dims(), 0, false);
-      auto mat_dim_b0 = phi::funcs::CreateMatrixDescriptor(out.dims(), 0, true);
+          funcs::CreateMatrixDescriptor(out_grad.dims(), 0, false);
+      auto mat_dim_b0 = funcs::CreateMatrixDescriptor(out.dims(), 0, true);
       blas.MatMul(
           out_grad, mat_dim_a0, out_conj, mat_dim_b0, T(1), &tmp_out, T(0));
 
-      auto mat_dim_a1 = phi::funcs::CreateMatrixDescriptor(out.dims(), 0, true);
-      auto mat_dim_b1 =
-          phi::funcs::CreateMatrixDescriptor(tmp_out.dims(), 0, false);
+      auto mat_dim_a1 = funcs::CreateMatrixDescriptor(out.dims(), 0, true);
+      auto mat_dim_b1 = funcs::CreateMatrixDescriptor(tmp_out.dims(), 0, false);
       blas.MatMul(
           out_conj, mat_dim_a1, tmp_out, mat_dim_b1, T(-1), in_grad, T(0));
     } else {
       auto mat_dim_a0 =
-          phi::funcs::CreateMatrixDescriptor(out_grad.dims(), 0, false);
-      auto mat_dim_b0 = phi::funcs::CreateMatrixDescriptor(out.dims(), 0, true);
+          funcs::CreateMatrixDescriptor(out_grad.dims(), 0, false);
+      auto mat_dim_b0 = funcs::CreateMatrixDescriptor(out.dims(), 0, true);
       blas.MatMul(out_grad, mat_dim_a0, out, mat_dim_b0, T(1), &tmp_out, T(0));
 
-      auto mat_dim_a1 = phi::funcs::CreateMatrixDescriptor(out.dims(), 0, true);
-      auto mat_dim_b1 =
-          phi::funcs::CreateMatrixDescriptor(tmp_out.dims(), 0, false);
+      auto mat_dim_a1 = funcs::CreateMatrixDescriptor(out.dims(), 0, true);
+      auto mat_dim_b1 = funcs::CreateMatrixDescriptor(tmp_out.dims(), 0, false);
       blas.MatMul(out, mat_dim_a1, tmp_out, mat_dim_b1, T(-1), in_grad, T(0));
     }
   }

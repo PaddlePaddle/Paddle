@@ -54,11 +54,11 @@ void BindJit(pybind11::module *m) {
       .def("input_names", &jit::BaseFunctionInfo::InputArgNames)
       .def("output_names", &jit::BaseFunctionInfo::OutputArgNames);
 
-  m->def("Load", [](const std::string &path, const phi::CPUPlace &cpu_place) {
+  m->def("Load", [](const std::string &path, const CPUPlace &cpu_place) {
     return paddle::jit::Load(path, cpu_place);
   });
 
-  m->def("Load", [](const std::string &path, const phi::GPUPlace &cuda_place) {
+  m->def("Load", [](const std::string &path, const GPUPlace &cuda_place) {
     return paddle::jit::Load(path, cuda_place);
   });
 }

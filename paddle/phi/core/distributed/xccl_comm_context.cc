@@ -67,8 +67,8 @@ XCCLCommContext::XCCLCommContext(const phi::Place& place,
   g_xccl_comm_contexts.push_back(this);
 }
 
-void XCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
-                                const phi::DenseTensor& in_tensor,
+void XCCLCommContext::Broadcast(DenseTensor* out_tensor,
+                                const DenseTensor& in_tensor,
                                 int root,
                                 const phi::stream::stream_t& stream) const {
   CommStaticCheck::SameShape(*out_tensor,
@@ -96,8 +96,8 @@ void XCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
   }
 }
 
-void XCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
-                                const phi::DenseTensor& in_tensor,
+void XCCLCommContext::AllGather(DenseTensor* out_tensor,
+                                const DenseTensor& in_tensor,
                                 const phi::stream::stream_t& stream) const {
   phi::distributed::CommStaticCheck::GatherLikeShape(
       *out_tensor,
@@ -114,8 +114,8 @@ void XCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
                                    xccl_comm_,
                                    stream);
 }
-void XCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
-                                    const phi::DenseTensor& in_tensor,
+void XCCLCommContext::ReduceScatter(DenseTensor* out_tensor,
+                                    const DenseTensor& in_tensor,
                                     phi::ccl::CCLReduceOp reduce_type,
                                     const phi::stream::stream_t& stream) const {
   phi::distributed::CommStaticCheck::ScatterLikeShape(
@@ -135,7 +135,7 @@ void XCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
                                        stream);
 }
 
-void XCCLCommContext::Send(const phi::DenseTensor& in_tensor,
+void XCCLCommContext::Send(const DenseTensor& in_tensor,
                            const int64_t& count,
                            const int& peer,
                            const phi::stream::stream_t& stream) const {
@@ -152,7 +152,7 @@ void XCCLCommContext::Send(const phi::DenseTensor& in_tensor,
           << common::product(in_tensor.dims()) << " to " << peer;
 }
 
-void XCCLCommContext::Recv(phi::DenseTensor* out_tensor,
+void XCCLCommContext::Recv(DenseTensor* out_tensor,
                            const int64_t& count,
                            const int& peer,
                            const phi::stream::stream_t& stream) const {
@@ -169,8 +169,8 @@ void XCCLCommContext::Recv(phi::DenseTensor* out_tensor,
           << common::product(out_tensor->dims()) << " from " << peer;
 }
 
-void XCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
-                                const phi::DenseTensor& in_tensor,
+void XCCLCommContext::AllReduce(DenseTensor* out_tensor,
+                                const DenseTensor& in_tensor,
                                 phi::ccl::CCLReduceOp reduce_type,
                                 const phi::stream::stream_t stream) const {
   phi::distributed::CommStaticCheck::SameShape(*out_tensor,
@@ -189,8 +189,8 @@ void XCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
                                    stream);
 }
 
-void XCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
-                             const phi::DenseTensor& in_tensor,
+void XCCLCommContext::Reduce(DenseTensor* out_tensor,
+                             const DenseTensor& in_tensor,
                              phi::ccl::CCLReduceOp reduce_type,
                              int root,
                              const phi::stream::stream_t& stream) const {

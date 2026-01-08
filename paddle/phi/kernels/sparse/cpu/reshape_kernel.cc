@@ -37,7 +37,7 @@ void ReshapeCooCPUKernel(const Context& dev_ctx,
 
   // Use DDim::reshape to handle -1 and 0 in the argument "shape"
   std::vector<int> new_shape(shape.GetData().begin(), shape.GetData().end());
-  phi::DDim out_dims = x.dims().reshape(new_shape);
+  DDim out_dims = x.dims().reshape(new_shape);
   // get sparse part dimensions of x and out
   std::vector<int64_t> x_sparse_part_dims;
   std::vector<int64_t> out_sparse_part_dims;
@@ -57,9 +57,9 @@ void ReshapeCooCPUKernel(const Context& dev_ctx,
   const auto* x_indices_data = x_indices.data<IntT>();
   auto* out_indices_data = out_indices.data<IntT>();
 
-  const phi::DDim& x_sparse_part_strides =
+  const DDim& x_sparse_part_strides =
       common::stride(common::make_ddim(x_sparse_part_dims));
-  const phi::DDim& out_sparse_part_strides =
+  const DDim& out_sparse_part_strides =
       common::stride(common::make_ddim(out_sparse_part_dims));
   int64_t location = 0;
   for (int64_t j = 0; j < x_nnz; ++j) {

@@ -139,6 +139,8 @@ class ProcessMesh(core.ProcessMesh):
         shape: _NumpyShapeLike | None = None,
         process_ids: Iterable[Any] | None = None,
     ) -> None:
+        paddle.base.framework.global_var._in_auto_parallel_ = True
+
         # Use shape and process_ids just for compatibility
         # Users should not use these directly
         if mesh is None:

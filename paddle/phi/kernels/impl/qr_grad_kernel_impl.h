@@ -65,10 +65,10 @@ void QrGradKernel(const Context& dev_ctx,
   DenseTensor& dA = *x_grad;
 
   dev_ctx.template Alloc<T>(&dA);
-  phi::funcs::SetConstant<Context, T>()(dev_ctx, &dA, T(0));
+  funcs::SetConstant<Context, T>()(dev_ctx, &dA, T(0));
 
   bool compute_q, reduced;
-  std::tie(compute_q, reduced) = phi::funcs::ParseQrMode(mode);
+  std::tie(compute_q, reduced) = funcs::ParseQrMode(mode);
   if (!compute_q) {
     PADDLE_THROW(errors::InvalidArgument(
         "The derivative of qr is not implemented when mode='%s'.", mode));
@@ -187,7 +187,7 @@ void QrGradKernel(const Context& dev_ctx,
 
   if (m >= n) {
     auto dA_tmp = m_ge_n_case(dev_ctx, dQ, dR, A, Q, R);
-    phi::Copy(dev_ctx, dA_tmp, dA.place(), false, &dA);
+    Copy(dev_ctx, dA_tmp, dA.place(), false, &dA);
   } else {
     // If m < n for input matrices A, we partition A = [X|Y] and R = [U|V]
     // Calculate dX and dY individually and concatenate them to get dA
@@ -218,7 +218,7 @@ void QrGradKernel(const Context& dev_ctx,
     dY = Matmul<T, Context>(dev_ctx, Q, dV);
     // Concatenate dX and dY to get dA.
     auto dA_tmp = Concat<T, Context>(dev_ctx, {&dX, &dY}, -1);
-    phi::Copy(dev_ctx, dA_tmp, dA.place(), false, &dA);
+    Copy(dev_ctx, dA_tmp, dA.place(), false, &dA);
   }
 }
 

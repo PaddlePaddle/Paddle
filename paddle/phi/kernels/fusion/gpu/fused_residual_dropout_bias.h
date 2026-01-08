@@ -134,11 +134,11 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
       *var_val += (tmp * tmp);
     }
     if (std::is_same<OutType, int8_t>::value) {
-      dest_vec_out_type[ii] = phi::funcs::quant_helper(dest_vec[ii],
-                                                       quant_next_in_scale,
-                                                       quant_round_type,
-                                                       quant_max_bound,
-                                                       quant_min_bound);
+      dest_vec_out_type[ii] = funcs::quant_helper(dest_vec[ii],
+                                                  quant_next_in_scale,
+                                                  quant_round_type,
+                                                  quant_max_bound,
+                                                  quant_min_bound);
     }
   }
 
@@ -301,7 +301,7 @@ __global__ void FusedResidualDropoutBias(
   } else {
     factor = static_cast<T>(1);
   }
-  phi::funcs::ReluFunctor<T> relu;
+  funcs::ReluFunctor<T> relu;
   for (int64_t r = row_id; r < rows; r += gridDim.y * gridDim.z) {
     for (int64_t i = col_id * VecSize; i < cols;
          i += blockDim.x * gridDim.x * VecSize) {
@@ -310,7 +310,7 @@ __global__ void FusedResidualDropoutBias(
                                         VecSize,
                                         false,
                                         false,
-                                        phi::funcs::ReluFunctor<T>,
+                                        funcs::ReluFunctor<T>,
                                         InType,
                                         OutType,
                                         HasDropout>(r,
@@ -355,7 +355,7 @@ void LaunchResidualDropoutBias(const uint64_t rows,
                                const T *bias,
                                MaskType *mask_data,
                                OutType *dst,
-                               const phi::GPUContext &dev_ctx,
+                               const GPUContext &dev_ctx,
                                const float quant_last_in_scale = 1.0,
                                const float *dequant_out_scale_data = nullptr,
                                const float quant_next_in_scale = 1.0,
@@ -457,7 +457,7 @@ void LaunchResidualDropoutBiasGrad(const T *dout,
                                    const uint32_t cols,
                                    T *dx,
                                    T *dbias,
-                                   const phi::GPUContext &dev_ctx) {
+                                   const GPUContext &dev_ctx) {
   const T zero = static_cast<T>(0.0f);
   auto factor = dropout_prob == static_cast<float>(1.0f)
                     ? zero

@@ -47,8 +47,8 @@ void GraphSendRecvCpuGradLoop(const int& index_size,
       const IndexT& dst_idx = d_index[i];
       auto src_slice = src.Slice(src_idx, src_idx + 1);
       auto dst_slice = dst->Slice(dst_idx, dst_idx + 1);
-      auto eigen_src = phi::EigenVector<T>::Flatten(src_slice);
-      auto eigen_dst = phi::EigenVector<T>::Flatten(dst_slice);
+      auto eigen_src = EigenVector<T>::Flatten(src_slice);
+      auto eigen_dst = EigenVector<T>::Flatten(dst_slice);
       eigen_dst += (eigen_src / static_cast<T>(dst_count[src_idx]));
     }
   } else if (reduce_op == "MIN" || reduce_op == "MAX") {
@@ -58,13 +58,13 @@ void GraphSendRecvCpuGradLoop(const int& index_size,
       auto input_slice = input.Slice(forward_src_idx, forward_src_idx + 1);
       auto output_slice =
           output->Slice(forward_dst_idx, forward_dst_idx + 1);  // NOLINT
-      auto eigen_input = phi::EigenVector<T>::Flatten(input_slice);
-      auto eigen_output = phi::EigenVector<T>::Flatten(output_slice);
+      auto eigen_input = EigenVector<T>::Flatten(input_slice);
+      auto eigen_output = EigenVector<T>::Flatten(output_slice);
 
       auto src_slice = src.Slice(forward_dst_idx, forward_dst_idx + 1);
       auto dst_slice = dst->Slice(forward_src_idx, forward_src_idx + 1);
-      auto eigen_src = phi::EigenVector<T>::Flatten(src_slice);
-      auto eigen_dst = phi::EigenVector<T>::Flatten(dst_slice);
+      auto eigen_src = EigenVector<T>::Flatten(src_slice);
+      auto eigen_dst = EigenVector<T>::Flatten(dst_slice);
       eigen_dst += eigen_src * (eigen_output == eigen_input);
     }
   }

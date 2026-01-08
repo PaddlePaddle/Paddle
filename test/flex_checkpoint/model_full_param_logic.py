@@ -25,6 +25,9 @@ from paddle.distributed.fleet.meta_parallel import (
     SharedLayerDesc,
     VocabParallelEmbedding,
 )
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import (
+    GroupShardedStage3,
+)
 
 
 class SimpleMLP(nn.Layer):
@@ -45,6 +48,20 @@ class SimpleMLP(nn.Layer):
         x = self.linear2(x)
         x = paddle.matmul(x, self.llm_head.weight, transpose_y=True)
         return x
+
+
+class MLP(paddle.nn.Layer):
+    def __init__(self, linear_size=1000, param_attr=None, bias_attr=None):
+        super().__init__()
+        self._linear1 = nn.Linear(linear_size, linear_size)
+        self._linear2 = nn.Linear(linear_size, linear_size)
+        self._linear3 = nn.Linear(linear_size, 10)
+
+    def forward(self, inputs):
+        y = self._linear1(inputs)
+        y = self._linear2(y)
+        y = self._linear3(y)
+        return y
 
 
 class SimpleMLPPipeline(PipelineLayer):
@@ -361,9 +378,38 @@ class TestFullParamHVGroupLogic(TestFullParamLogic):
         self.run_full_param_with_aoa_test(memory_growth_threshold=1)
 
 
+class TestFullParamLogicWithSharding3:
+    def __init__(self):
+        paddle.distributed.init_parallel_env()
+
+    def run_test(self):
+        model = MLP()
+        opt = paddle.optimizer.AdamW(parameters=model.parameters())
+        model = GroupShardedStage3(model, opt, segment_size=256)
+        model.train()
+        x = paddle.randn([4, 1000])
+        loss = model(x).mean()
+        loss.backward()
+        opt.step()
+        opt.clear_grad()
+        model.get_all_parameters(convert2cpu=True)
+        param_md5_list = []
+        for param in model.parameters():
+            param_md5_list.append(param._md5sum())
+        full_param_iter = model.full()
+        full_param = dict(full_param_iter)
+        full_param_md5_list = []
+        for name, param in full_param.items():
+            full_param_md5_list.append(param._md5sum())
+        assert param_md5_list == full_param_md5_list
+
+
 if __name__ == '__main__':
     test_using_hv_group = int(os.getenv("test_using_hv_group", "0")) == 1
+    test_with_sharding3 = int(os.getenv("test_with_sharding3", "0")) == 1
     if test_using_hv_group:
         TestFullParamHVGroupLogic().run_test()
+    elif test_with_sharding3:
+        TestFullParamLogicWithSharding3().run_test()
     else:
         TestFullParamLogic().run_test()

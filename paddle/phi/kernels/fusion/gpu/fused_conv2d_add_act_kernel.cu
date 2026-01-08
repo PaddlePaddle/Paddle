@@ -624,7 +624,7 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
     if (transformed_input.dims()[0] == 1 &&
         compute_format == CUDNN_TENSOR_NCHW) {
       // share data with Output
-      phi::DenseTensor t;
+      DenseTensor t;
       t.ShareDataWith(*output);
       auto y_dims = output->dims();
       t.Resize({y_dims[1], y_dims[2], y_dims[3]});

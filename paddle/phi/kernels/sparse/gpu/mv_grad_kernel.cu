@@ -91,12 +91,8 @@ void MvCooGradKernel(const Context &dev_ctx,
     dvec->Resize(vec.dims());
     dev_ctx.template Alloc<T>(dvec);
 
-    auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+    auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
     sparse_blas.SPMV(true, static_cast<T>(1), x, dout, static_cast<T>(0), dvec);
-#else
-    PADDLE_THROW(common::errors::Unimplemented(
-        " vec.grad of 'sparse.mv' use cusparseSpMV, "
-        "which is supported from CUDA 11.0"));
 #endif
   }
 }
@@ -139,12 +135,8 @@ void MvCsrGradKernel(const Context &dev_ctx,
     dvec->Resize(vec.dims());
     dev_ctx.template Alloc<T>(dvec);
 
-    auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+    auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
     sparse_blas.SPMV(true, static_cast<T>(1), x, dout, static_cast<T>(0), dvec);
-#else
-    PADDLE_THROW(common::errors::Unimplemented(
-        " vec.grad of 'sparse.mv' use cusparseSpMV, "
-        "which is supported from CUDA 11.0"));
 #endif
   }
 }

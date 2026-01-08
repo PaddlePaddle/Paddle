@@ -366,9 +366,8 @@ bool BatchNormOpInferSymbolicShape(
           x_dims,
           x_dims.size()));
 
-  symbol::DimExpr C = (data_layout == DataLayout::kNCHW)
-                          ? x_dims[1]
-                          : x_dims[x_dims.size() - 1];
+  symbol::DimExpr C =
+      (data_layout == DataLayout::NCHW) ? x_dims[1] : x_dims[x_dims.size() - 1];
 
   if (!scale_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
     std::vector<symbol::DimExpr> scale_dims = scale_shape_or_data.shape();
@@ -507,7 +506,7 @@ bool BicubicInterpOpInferSymbolicShape(
     if (!size_tensor.empty()) {
       // top priority size
       std::vector<symbol::DimExpr> dim_out;
-      if (data_layout == DataLayout::kNCHW) {
+      if (data_layout == DataLayout::NCHW) {
         dim_out = {x.shape()[0], x.shape()[1], symbol::DimExpr{out_w}};
       } else {
         dim_out = {x.shape()[0], symbol::DimExpr{out_w}, x.shape()[2]};
@@ -526,7 +525,7 @@ bool BicubicInterpOpInferSymbolicShape(
     out_w_tmp = symbol::DimExpr(next_sym);
 
     std::vector<symbol::DimExpr> dim_out;
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout == DataLayout::NCHW) {
       dim_out = {x.shape()[0], x.shape()[1], out_w_tmp};
     } else {
       dim_out = {x.shape()[0], out_w_tmp, x.shape()[2]};
@@ -572,9 +571,9 @@ bool BicubicInterpOpInferSymbolicShape(
         float scale_h = scale[0];
         float scale_w = scale[1];
         const auto &in_h =
-            data_layout == DataLayout::kNCHW ? x.shape()[2] : x.shape()[1];
+            data_layout == DataLayout::NCHW ? x.shape()[2] : x.shape()[1];
         const auto &in_w =
-            data_layout == DataLayout::kNCHW ? x.shape()[3] : x.shape()[2];
+            data_layout == DataLayout::NCHW ? x.shape()[3] : x.shape()[2];
         return std::make_tuple(GetOutDimByScale(in_h, scale_h),
                                GetOutDimByScale(in_w, scale_w));
       }
@@ -584,7 +583,7 @@ bool BicubicInterpOpInferSymbolicShape(
 
     const std::vector<symbol::DimExpr> dim_out = [&] {
       const auto &[out_h_sym, out_w_sym] = GetOutHW();
-      if (data_layout == DataLayout::kNCHW) {
+      if (data_layout == DataLayout::NCHW) {
         return std::vector<symbol::DimExpr>{
             x.shape()[0], x.shape()[1], out_h_sym, out_w_sym};
       } else {
@@ -626,11 +625,11 @@ bool BicubicInterpOpInferSymbolicShape(
         float scale_h = scale[1];
         float scale_w = scale[2];
         const auto &in_d =
-            data_layout == DataLayout::kNCHW ? x.shape()[2] : x.shape()[1];
+            data_layout == DataLayout::NCHW ? x.shape()[2] : x.shape()[1];
         const auto &in_h =
-            data_layout == DataLayout::kNCHW ? x.shape()[3] : x.shape()[2];
+            data_layout == DataLayout::NCHW ? x.shape()[3] : x.shape()[2];
         const auto &in_w =
-            data_layout == DataLayout::kNCHW ? x.shape()[4] : x.shape()[3];
+            data_layout == DataLayout::NCHW ? x.shape()[4] : x.shape()[3];
         return std::make_tuple(GetOutDimByScale(in_d, scale_d),
                                GetOutDimByScale(in_h, scale_h),
                                GetOutDimByScale(in_w, scale_w));
@@ -643,7 +642,7 @@ bool BicubicInterpOpInferSymbolicShape(
 
     const std::vector<symbol::DimExpr> dim_out = [&] {
       const auto &[out_d_sym, out_h_sym, out_w_sym] = GetOutDHW();
-      if (data_layout == DataLayout::kNCHW) {
+      if (data_layout == DataLayout::NCHW) {
         return std::vector<symbol::DimExpr>{
             x.shape()[0], x.shape()[1], out_d_sym, out_h_sym, out_w_sym};
       } else {
@@ -740,7 +739,8 @@ bool BroadcastTensorsOpInferSymbolicShape(
   // 1. Find Output rank = max(Inputs rank)
   int target_rank = 0;
   for (const auto &input_shape_or_data : input_shape_or_data_list) {
-    int tmp_rank = input_shape_or_data.shape().size();
+    // NOTE(large-tensor): tensor rank is a small integer
+    int tmp_rank = static_cast<int>(input_shape_or_data.shape().size());
     target_rank = std::max(target_rank, tmp_rank);
   }
   // 2. Output dim(axis=x) = max(Inputs dim(axis=x))
@@ -749,7 +749,8 @@ bool BroadcastTensorsOpInferSymbolicShape(
   for (int i = 0; i < target_rank; i++) {
     auto tmp_dim = symbol::DimExpr{1};
     for (const auto &input_shape_or_data : input_shape_or_data_list) {
-      int axis = input_shape_or_data.shape().size();
+      // NOTE(large-tensor): tensor rank is a small integer
+      int axis = static_cast<int>(input_shape_or_data.shape().size());
       axis = i - target_rank + axis;
       if (axis >= 0) {
         infer_context->AddBroadcastableCstr(input_shape_or_data.shape()[axis],
@@ -1143,7 +1144,10 @@ bool CrossEntropyWithSoftmaxOpInferSymbolicShape(
   const auto &index_dim = index_shape.shape();
   const auto &attributes = op->attributes();
   int axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
-  if (axis < 0) axis += input_shape.shape().size();
+  if (axis < 0) {
+    // NOTE(large-tensor): tensor rank is a small integer
+    axis += static_cast<int>(input_shape.shape().size());
+  }
   bool soft_label =
       attributes.at("soft_label").dyn_cast<pir::BoolAttribute>().data();
   PADDLE_ENFORCE(!soft_label || input_dim.size() == index_dim.size(),
@@ -1197,7 +1201,8 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
   const auto &shape_data_list =
       x_shape.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
-  size_t rank = shape_data_list.at(0).shape().size();
+  // NOTE(large-tensor): tensor rank is a small integer
+  int rank = static_cast<int>(shape_data_list.at(0).shape().size());
   const int64_t axis = [&] {
     int64_t axis = axis_expr.data()->at(0).dyn_cast<int64_t>();
     return axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
@@ -1216,8 +1221,8 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
 
   const std::vector<symbol::DimExpr> &out_dims = [&] {
     std::vector<symbol::DimExpr> out_dims = shape_data_list.at(0).shape();
-    for (size_t i = 0; i < rank; ++i) {
-      if (i != static_cast<size_t>(axis)) {
+    for (int i = 0; i < rank; ++i) {
+      if (i != axis) {
         details::BuildCstrEqForTensorListAlongAxis(
             infer_context, shape_data_list, i);
         continue;
@@ -2751,7 +2756,7 @@ bool GroupNormOpInferSymbolicShape(
 
   infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
 
-  int64_t channel_idx;
+  size_t channel_idx;
   std::string data_format =
       op->attribute<pir::StrAttribute>("data_format").AsString();
   if (data_format == "NHWC") {
@@ -2867,9 +2872,10 @@ bool LerpOpInferSymbolicShape(pir::Operation *op,
   std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
   std::vector<symbol::DimExpr> y_shape = y_shape_or_data.shape();
   std::vector<symbol::DimExpr> w_shape = w_shape_or_data.shape();
-  int x_ndims = x_shape.size();
-  int y_ndims = y_shape.size();
-  int w_ndims = w_shape.size();
+  // NOTE(large-tensor): tensor dimensions are small integers
+  int x_ndims = static_cast<int>(x_shape.size());
+  int y_ndims = static_cast<int>(y_shape.size());
+  int w_ndims = static_cast<int>(w_shape.size());
   std::vector<symbol::DimExpr> out1_shape;
   std::vector<symbol::DimExpr> out2_shape;
   int diffxy = x_ndims - y_ndims;
@@ -3414,6 +3420,59 @@ bool RoiAlignOpInferSymbolicShape(
   return true;
 }
 
+bool RmsNormOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  // Get the shapes of input tensors
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &scale_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  std::vector<int64_t> normalized_shape =
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "normalized_shape");
+
+  std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
+  int x_dims_size = x_dims.size();
+  int normalized_shape_size = normalized_shape.size();
+  int begin_norm_axis = x_dims_size - normalized_shape_size;
+
+  // Flatten x_dims to 2D and get dim[1]
+  PADDLE_ENFORCE_LT(normalized_shape_size,
+                    x_dims_size,
+                    "normalized_shape must be less than x_dims");
+  for (int i = 0; i < normalized_shape_size; i++) {
+    infer_context->AddEqualCstr(
+        x_dims[x_dims_size - i - 1],
+        symbol::DimExpr(normalized_shape[normalized_shape_size - i - 1]));
+  }
+
+  if (!scale_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+    std::vector<symbol::DimExpr> scale_dims = scale_shape_or_data.shape();
+    PADDLE_ENFORCE_EQ(
+        scale_dims.size(),
+        normalized_shape_size,
+        "scale_dims.size() must be equal to normalized_shape_size");
+    for (int i = 0; i < normalized_shape_size; i++) {
+      infer_context->AddEqualCstr(scale_dims[i],
+                                  symbol::DimExpr(normalized_shape[i]));
+    }
+  }
+
+  // Set output shapes
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_dims)});
+
+  // Set invvar
+  std::vector<symbol::DimExpr> before_norm_dims(
+      x_dims.begin(), x_dims.begin() + begin_norm_axis);
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(before_norm_dims)});
+
+  return true;
+}
+
 bool SpectralNormOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &weight_shape =
@@ -3688,7 +3747,7 @@ bool NceOpInferSymbolicShape(pir::Operation *op,
     infer_context->AddEqualCstr(weight_shape[0], bias_shape[0]);
   }
 
-  int num_total_classes =
+  int64_t num_total_classes =
       op->attribute<pir::Int64Attribute>("num_total_classes").data();
   infer_context->AddEqualCstr(symbol::DimExpr(num_total_classes),
                               weight_shape[0]);
@@ -3700,7 +3759,7 @@ bool NceOpInferSymbolicShape(pir::Operation *op,
           symbol::TensorShapeOrDataDimExprs(out_shape)});
 
   bool is_test = op->attribute<pir::BoolAttribute>("is_test").data();
-  int num_neg_samples =
+  int64_t num_neg_samples =
       op->attribute<pir::Int64Attribute>("num_neg_samples").data();
   if (!is_test) {
     std::vector<symbol::DimExpr> sample_out_shape = {x_shape[0]};
@@ -3994,7 +4053,7 @@ bool RandomRouting_OpInferSymbolicShape(
   return RandomRoutingOpInferSymbolicShape(op, infer_context);
 }
 
-bool RmsNormOpInferSymbolicShape(
+bool FusedRmsNormQuantOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
@@ -4072,7 +4131,7 @@ bool RnnOpInferSymbolicShape(pir::Operation *op,
                         "The rank of PreState in RNN  must be 3. But "
                         "the received rank is %d.",
                         pre_state_shape_or_data_list[0].shape().size()));
-  for (size_t i = 0; i < 3; ++i) {
+  for (int i = 0; i < 3; ++i) {
     details::BuildCstrEqForTensorListAlongAxis(
         infer_context, pre_state_shape_or_data_list, i);
   }
@@ -4344,7 +4403,8 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(operand_source)
           .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
-  size_t rank = shape_data_list.at(0).shape().size();
+  // NOTE(large-tensor): tensor rank is a small integer
+  int rank = static_cast<int>(shape_data_list.at(0).shape().size());
   if (axis < 0) axis += rank + 1;
   const symbol::ShapeOrDataDimExprs shape_data = [&] {
     std::vector<symbol::DimExpr> result_shape = {};
@@ -4378,7 +4438,7 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
     } else {
       // case 2: data is empty, eg: shape_data_list =
       // [[shape:{5,6,7},data:{}],...]
-      for (size_t i = 0; i < rank; ++i) {
+      for (int i = 0; i < rank; ++i) {
         details::BuildCstrEqForTensorListAlongAxis(
             infer_context, shape_data_list, i);
       }
@@ -4759,9 +4819,10 @@ bool WhereOpInferSymbolicShape(pir::Operation *op,
   const std::vector<pir::Value> &operands = {
       op->operand_source(0), op->operand_source(1), op->operand_source(2)};
 
-  size_t rank = x_shape.size();
+  // NOTE(large-tensor): tensor rank is a small integer
+  int rank = static_cast<int>(x_shape.size());
 
-  for (size_t i = 0; i < rank; ++i) {
+  for (int i = 0; i < rank; ++i) {
     paddle::dialect::details::BuildCstrEqForTensorListAlongAxis(
         infer_context, operands, i);
   }
@@ -4849,7 +4910,8 @@ bool YoloLossOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(2)).shape();
   const std::vector<int> &anchors_mask =
       paddle::dialect::details::GetVectorAttr<int>(op, "anchor_mask");
-  int mask_num = anchors_mask.size();
+  // NOTE(large-tensor): mask number is a small integer
+  int mask_num = static_cast<int>(anchors_mask.size());
   int class_num = op->attribute<pir::Int32Attribute>("class_num").data();
 
   PADDLE_ENFORCE_EQ(x_shape.size(),

@@ -13,9 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/mv_kernel.h"
-
-#include <vector>
-
 #include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -51,11 +48,8 @@ void MvKernelImpl(const Context& dev_ctx,
   std::vector<int64_t> out_dim = {x_dim[x_ndims - 2]};
   out->Resize(common::make_ddim(out_dim));
   dev_ctx.template Alloc<T>(out);
-  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPMV(false, static_cast<T>(1), x, vec, static_cast<T>(0), out);
-#else
-  PADDLE_THROW(common::errors::Unimplemented(
-      " 'sparse.mv' use cusparseSpMV, which is supported from CUDA 11.0"));
 #endif
 }
 

@@ -38,7 +38,7 @@ void LSTMInference(const bool &has_seq_length,
                    T *out_data,
                    T *last_h_data,
                    T *last_c_data,
-                   phi::DenseTensor *workspace_data,
+                   DenseTensor *workspace_data,
                    const size_t &workspace_size) {
 #if CUDNN_VERSION >= 90000
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -215,7 +215,7 @@ void CudnnLSTMKernel(
 
   size_t workspace_size;
   size_t reserve_size;
-  phi::DenseTensor weight_whole;
+  DenseTensor weight_whole;
   T *w_data = nullptr;
   int weight_numel;
   bool w_initialized = false;
@@ -228,8 +228,8 @@ void CudnnLSTMKernel(
   }
   if (!w_initialized) {
     auto running_weight_list = *weight_list.get_ptr();
-    bool continuous = is_continuous<T, std::vector<const phi::DenseTensor *>>(
-        running_weight_list);
+    bool continuous =
+        is_continuous<T, std::vector<const DenseTensor *>>(running_weight_list);
     weight_numel = size_sum(running_weight_list);
 
     if (!continuous) {
@@ -246,7 +246,7 @@ void CudnnLSTMKernel(
         for (size_t i = 0; i < running_weight_list.size(); ++i) {
           size_t len = running_weight_list[i]->numel();
           auto dim = running_weight_list[i]->dims();
-          const_cast<phi::DenseTensor *>(running_weight_list[i])
+          const_cast<DenseTensor *>(running_weight_list[i])
               ->ShareDataWith(
                   weight_whole.Slice(static_cast<int64_t>(offset),
                                      static_cast<int64_t>(offset + len)))
@@ -278,7 +278,7 @@ void CudnnLSTMKernel(
                 &reserve_size,
                 state_out);
 
-  phi::DenseTensor workspace_data_;
+  DenseTensor workspace_data_;
   workspace_data_.Resize({static_cast<int64_t>(workspace_size)});
   dev_ctx.template Alloc<uint8_t>(&workspace_data_);
 
