@@ -144,6 +144,25 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
         )
         ckpt_path.cleanup()
 
+    def test_save_load_with_missing_key_and_unexpected_keys(self):
+        """Test logger missing key and unexpected keys."""
+        ckpt_path = tempfile.TemporaryDirectory()
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, {"device_num": ["1", "2"]}
+        )
+        for envs in envs_list:
+            envs["ckpt_path"] = ckpt_path.name
+            super().setUp(
+                num_of_devices=int(envs["device_num"]),
+                timeout=60,
+                nnode=1,
+            )
+            self.run_test_case(
+                "test_save_load_with_missing_key_and_unexpected_keys.py",
+                user_defined_envs=envs,
+            )
+            ckpt_path.cleanup()
+
 
 if __name__ == '__main__':
     unittest.main()

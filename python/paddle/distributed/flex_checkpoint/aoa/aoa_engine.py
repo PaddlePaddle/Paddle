@@ -666,13 +666,18 @@ class AOAEngine:
             for name in self.destination_state_shard_info:
                 model_state_key, _ = split_optimizer_state_key(name)
                 if model_state_key not in self.output_vars:
-                    self.output_vars[model_state_key] = (
-                        None
-                        if model_state_key in self.need_add_output_vars
-                        else self.input_vars[
+                    if model_state_key in self.need_add_output_vars:
+                        self.output_vars[model_state_key] = None
+                    else:
+                        assert model_state_key in self.input_vars, (
+                            f"{model_state_key} is in dst_keys (needs to be loaded), "
+                            f"but not found in src_keys. "
+                            f"If it is a new key and you want to load it, please use the add primitive in aoa_statements: "
+                            f"_ -> {model_state_key}, and {model_state_key} will be randomly initialized."
+                        )
+                        self.output_vars[model_state_key] = self.input_vars[
                             model_state_key
-                        ]  # Assertion implied by direct access
-                    )
+                        ]
         else:
             # When destination_state_shard_info is not provided, the AOAEngine automatically derives it
             # from source_state_shard_info and aha_statements. In this case, all destination_states
