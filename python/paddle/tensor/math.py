@@ -34,7 +34,7 @@ from paddle._C_ops import (  # noqa: F401
     fmax,
     fmin,
     heaviside,
-    i1，
+    i1,
     i1e,
     isfinite,
     isinf,
