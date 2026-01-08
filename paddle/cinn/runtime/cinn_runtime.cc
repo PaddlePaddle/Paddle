@@ -127,53 +127,6 @@ cinn_buffer_t* cinn_buffer_new_default(int target,
   return buf;
 }
 
-cinn_type_t cinn_unk_t() { return cinn_type_t(cinn_type_unk, 0); }
-cinn_type_t cinn_bool_t(int num_asterisks) {
-  return cinn_type_t(cinn_type_int, 1, num_asterisks);
-}
-
-cinn_type_t cinn_int8_t(int num_asterisks) {
-  return cinn_type_t(cinn_type_int, 8, num_asterisks);
-}
-cinn_type_t cinn_int16_t(int num_asterisks) {
-  return cinn_type_t(cinn_type_int, 16, num_asterisks);
-}
-cinn_type_t cinn_int32_t(int num_asterisks) {
-  return cinn_type_t(cinn_type_int, 32, num_asterisks);
-}
-cinn_type_t cinn_int64_t(int num_asterisks) {
-  return cinn_type_t(cinn_type_int, 64, num_asterisks);
-}
-
-cinn_type_t cinn_uint8_t(int num_asterisks) {
-  return cinn_type_t(cinn_type_uint, 8, num_asterisks);
-}
-cinn_type_t cinn_uint16_t(int num_asterisks) {
-  return cinn_type_t(cinn_type_uint, 16, num_asterisks);
-}
-cinn_type_t cinn_uint32_t(int num_asterisks) {
-  return cinn_type_t(cinn_type_uint, 32, num_asterisks);
-}
-cinn_type_t cinn_uint64_t(int num_asterisks) {
-  return cinn_type_t(cinn_type_uint, 64, num_asterisks);
-}
-
-cinn_type_t cinn_bfloat16_t(int num_asterisks) {
-  return cinn_type_t(cinn_type_bfloat, 16, num_asterisks);
-}
-cinn_type_t cinn_float8e4m3_t(int num_asterisks) {
-  return cinn_type_t(cinn_type_float8e4m3, 8, num_asterisks);
-}
-cinn_type_t cinn_float16_t(int num_asterisks) {
-  return cinn_type_t(cinn_type_float, 16, num_asterisks);
-}
-cinn_type_t cinn_float32_t(int num_asterisks) {
-  return cinn_type_t(cinn_type_float, 32, num_asterisks);
-}
-cinn_type_t cinn_float64_t(int num_asterisks) {
-  return cinn_type_t(cinn_type_float, 64, num_asterisks);
-}
-
 int cinn_host_abs_int32(int v) { return abs(v); }
 int64_t cinn_host_abs_int64(int64_t v) { return abs(v); }
 
@@ -231,6 +184,53 @@ WELFORD_COMBINE_MACRO(fp64, double)
 #undef WELFORD_COMBINE_MACRO
 
 }  // extern "C"
+
+cinn_type_t cinn_unk_t() { return cinn_type_t(cinn_type_unk, 0); }
+cinn_type_t cinn_bool_t(int num_asterisks) {
+  return cinn_type_t(cinn_type_int, 1, num_asterisks);
+}
+
+cinn_type_t cinn_int8_t(int num_asterisks) {
+  return cinn_type_t(cinn_type_int, 8, num_asterisks);
+}
+cinn_type_t cinn_int16_t(int num_asterisks) {
+  return cinn_type_t(cinn_type_int, 16, num_asterisks);
+}
+cinn_type_t cinn_int32_t(int num_asterisks) {
+  return cinn_type_t(cinn_type_int, 32, num_asterisks);
+}
+cinn_type_t cinn_int64_t(int num_asterisks) {
+  return cinn_type_t(cinn_type_int, 64, num_asterisks);
+}
+
+cinn_type_t cinn_uint8_t(int num_asterisks) {
+  return cinn_type_t(cinn_type_uint, 8, num_asterisks);
+}
+cinn_type_t cinn_uint16_t(int num_asterisks) {
+  return cinn_type_t(cinn_type_uint, 16, num_asterisks);
+}
+cinn_type_t cinn_uint32_t(int num_asterisks) {
+  return cinn_type_t(cinn_type_uint, 32, num_asterisks);
+}
+cinn_type_t cinn_uint64_t(int num_asterisks) {
+  return cinn_type_t(cinn_type_uint, 64, num_asterisks);
+}
+
+cinn_type_t cinn_bfloat16_t(int num_asterisks) {
+  return cinn_type_t(cinn_type_bfloat, 16, num_asterisks);
+}
+cinn_type_t cinn_float8e4m3_t(int num_asterisks) {
+  return cinn_type_t(cinn_type_float8e4m3, 8, num_asterisks);
+}
+cinn_type_t cinn_float16_t(int num_asterisks) {
+  return cinn_type_t(cinn_type_float, 16, num_asterisks);
+}
+cinn_type_t cinn_float32_t(int num_asterisks) {
+  return cinn_type_t(cinn_type_float, 32, num_asterisks);
+}
+cinn_type_t cinn_float64_t(int num_asterisks) {
+  return cinn_type_t(cinn_type_float, 64, num_asterisks);
+}
 
 struct cinn_buffer_t* cinn_buffer_t::new_(cinn_device_kind_t device,
                                           cinn_type_t type,

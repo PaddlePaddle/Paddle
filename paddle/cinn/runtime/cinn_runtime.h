@@ -105,24 +105,28 @@ typedef struct cinn_type_t {
 
 //! Some primitive types.
 // @{
-extern cinn_type_t cinn_unk_t();
-extern cinn_type_t cinn_bool_t(int num_asterisks = 0);
+#ifdef __cplusplus
+}  // extern "C"
+cinn_type_t cinn_unk_t();
+cinn_type_t cinn_bool_t(int num_asterisks = 0);
 
-extern cinn_type_t cinn_int8_t(int num_asterisks = 0);
-extern cinn_type_t cinn_int16_t(int num_asterisks = 0);
-extern cinn_type_t cinn_int32_t(int num_asterisks = 0);
-extern cinn_type_t cinn_int64_t(int num_asterisks = 0);
+cinn_type_t cinn_int8_t(int num_asterisks = 0);
+cinn_type_t cinn_int16_t(int num_asterisks = 0);
+cinn_type_t cinn_int32_t(int num_asterisks = 0);
+cinn_type_t cinn_int64_t(int num_asterisks = 0);
 
-extern cinn_type_t cinn_uint8_t(int num_asterisks = 0);
-extern cinn_type_t cinn_uint16_t(int num_asterisks = 0);
-extern cinn_type_t cinn_uint32_t(int num_asterisks = 0);
-extern cinn_type_t cinn_uint64_t(int num_asterisks = 0);
+cinn_type_t cinn_uint8_t(int num_asterisks = 0);
+cinn_type_t cinn_uint16_t(int num_asterisks = 0);
+cinn_type_t cinn_uint32_t(int num_asterisks = 0);
+cinn_type_t cinn_uint64_t(int num_asterisks = 0);
 
-extern cinn_type_t cinn_bfloat16_t(int num_asterisks = 0);
-extern cinn_type_t cinn_float8e4m3_t(int num_asterisks = 0);
-extern cinn_type_t cinn_float16_t(int num_asterisks = 0);
-extern cinn_type_t cinn_float32_t(int num_asterisks = 0);
-extern cinn_type_t cinn_float64_t(int num_asterisks = 0);
+cinn_type_t cinn_bfloat16_t(int num_asterisks = 0);
+cinn_type_t cinn_float8e4m3_t(int num_asterisks = 0);
+cinn_type_t cinn_float16_t(int num_asterisks = 0);
+cinn_type_t cinn_float32_t(int num_asterisks = 0);
+cinn_type_t cinn_float64_t(int num_asterisks = 0);
+extern "C" {
+#endif
 extern int cinn_host_abs_int32(int v);
 extern int64_t cinn_host_abs_int64(int64_t v);
 // @}
