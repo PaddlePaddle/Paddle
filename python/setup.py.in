@@ -1439,8 +1439,18 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
         # The sw_64 not support patchelf, so we just disable that.
         if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
             for command in commands:
-                if os.system(command) != 0:
-                    raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s" % (ext_name, command))
+                if sys.platform == 'darwin':
+                    process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    stdout, stderr = process.communicate()
+                    if process.returncode != 0:
+                         error_msg = stderr.decode('utf-8')
+                         if "duplicate path" in error_msg:
+                             print("Warning: Ignoring duplicate rpath error for command: " + command)
+                         else:
+                             raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s, error: %s" % (ext_name, command, error_msg))
+                else:
+                    if os.system(command) != 0:
+                        raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s" % (ext_name, command))
 
 ext_modules = [Extension('_foo', ['stub.cc'])]
 if os.name == 'nt':
