@@ -846,13 +846,13 @@ if __is_metainfo_generated and is_compiled_with_cuda():
 
                 from .version import cuda as cuda_version
 
-                cuda_majar_version = cuda_version().split('.')[0]
+                cuda_major_version = cuda_version().split('.')[0]
 
                 lib_paths = []
                 lib_paths += glob.glob(
                     os.path.join(
                         nvidia_package_path,
-                        f'cu{cuda_majar_version}',
+                        f'cu{cuda_major_version}',
                         'lib',
                         lib_glob,
                     )
