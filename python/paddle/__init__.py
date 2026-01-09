@@ -865,7 +865,7 @@ if __is_metainfo_generated and is_compiled_with_cuda():
                     ctypes.CDLL(lib_path)
                     break
 
-            _preload_nvidia_lib(nvidia_package_path, "libnvrtc_builtins.so.*")
+            _preload_nvidia_lib(nvidia_package_path, "libnvrtc-builtins.so.*")
 
     elif (
         platform.system() == 'Windows'
