@@ -1308,7 +1308,7 @@ void MoeCombineAutoGradInferMeta(const MetaTensor& x,
   grad_x->set_dtype(x.dtype());
 
   grad_combine_weights_helper->set_dims(
-      common::make_ddim({combine_weights_shape[0], combine_weights_shape[1]}));
+      make_ddim({combine_weights_shape[0], combine_weights_shape[1]}));
   grad_combine_weights_helper->set_dtype(x.dtype());
   PADDLE_ENFORCE_NE(
       grad_scatter_index,
