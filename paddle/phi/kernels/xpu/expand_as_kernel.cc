@@ -27,7 +27,7 @@ void ExpandAs(const Context& dev_ctx,
               const std::vector<int64_t>& target_shape_,
               DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto vec_in_dims = common::vectorize<int64_t>(x.dims());
+  auto vec_in_dims = vectorize<int64_t>(x.dims());
   std::vector<int64_t> target_shape(target_shape_.begin(), target_shape_.end());
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
@@ -65,7 +65,7 @@ void ExpandAs(const Context& dev_ctx,
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
   auto& x_shape = vec_in_dims;
-  auto out_shape = common::vectorize<int64_t>(out_dims);
+  auto out_shape = vectorize<int64_t>(out_dims);
 
   int r = 0;
 

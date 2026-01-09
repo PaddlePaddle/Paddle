@@ -50,7 +50,7 @@ void EigKernel(const Context& dev_ctx,
 
     DenseTensor real_w_cpu, real_v_cpu;
 
-    std::vector<int64_t> real_w_dim = common::vectorize<int64_t>(out_w->dims());
+    std::vector<int64_t> real_w_dim = vectorize<int64_t>(out_w->dims());
     real_w_dim.back() *= 2;
     real_w_cpu.Resize(common::make_ddim(real_w_dim));
     (*cpu_ctx).template Alloc<phi::dtype::Real<T>>(&real_w_cpu);

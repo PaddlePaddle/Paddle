@@ -65,13 +65,13 @@ void IndexPutKernel(const Context& dev_ctx,
   DenseTensor res_indices(DataType::INT64);
   // Broadcast and merge indices
   XPUDealWithIndices<Context>(dev_ctx, int_indices_v, bd_dims, &res_indices);
-  auto index_shape = common::vectorize<int64_t>(res_indices.dims());
-  auto x_shape = common::vectorize<int64_t>(x.dims());
+  auto index_shape = vectorize<int64_t>(res_indices.dims());
+  auto x_shape = vectorize<int64_t>(x.dims());
 
   const T* value_data = value.data<T>();
 
   // Broadcast value
-  auto value_shape = common::vectorize<int64_t>(value.dims());
+  auto value_shape = vectorize<int64_t>(value.dims());
   int64_t value_rank = bd_dims.size() + (x_shape.size() - int_indices_v.size());
   std::vector<int64_t> value_shape_bd(value_rank);
   std::copy(index_shape.begin(), index_shape.end() - 1, value_shape_bd.begin());

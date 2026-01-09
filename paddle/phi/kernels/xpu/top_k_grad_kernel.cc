@@ -73,11 +73,8 @@ void TopkGradKernel(const Context& dev_ctx,
   int64_t pre, n, post;
   GetDims(in_dims, axis, &pre, &n, &post);
 
-  FullKernel<T, Context>(dev_ctx,
-                         common::vectorize(x_grad->dims()),
-                         0.0f,
-                         x_grad->dtype(),
-                         x_grad);
+  FullKernel<T, Context>(
+      dev_ctx, vectorize(x_grad->dims()), 0.0f, x_grad->dtype(), x_grad);
 
   // launch the xpu kernel to assign the grad
   int ret = xpu::scatter_element<XPUType, int64_t>(
@@ -86,9 +83,9 @@ void TopkGradKernel(const Context& dev_ctx,
       reinterpret_cast<const XPUType*>(out_grad_data),
       indices_data,
       reinterpret_cast<XPUType*>(x_grad_data),
-      common::vectorize(x_grad->dims()),
-      common::vectorize(out_grad.dims()),
-      common::vectorize(indices.dims()),
+      vectorize(x_grad->dims()),
+      vectorize(out_grad.dims()),
+      vectorize(indices.dims()),
       axis,
       /*reduction=override*/ 0);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "scatter");
