@@ -33,7 +33,7 @@ void ExpandKernel(const Context& dev_ctx,
     *out = x;
     return;
   }
-  auto vec_in_dims = common::vectorize<int64_t>(in_dims);
+  auto vec_in_dims = vectorize<int64_t>(in_dims);
   auto diff = expand_shape.size() - vec_in_dims.size();
   PADDLE_ENFORCE_GE(
       diff,

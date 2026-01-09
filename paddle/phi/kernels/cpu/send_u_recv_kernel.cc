@@ -101,7 +101,7 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& dev_ctx,
     }
   } else {
     // Set out dim following out_size.
-    std::vector<int64_t> dims_ = common::vectorize(src_dims);
+    std::vector<int64_t> dims_ = vectorize(src_dims);
     if (!dims_.empty()) {
       dims_[0] = out_size;
     }

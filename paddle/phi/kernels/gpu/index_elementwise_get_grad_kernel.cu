@@ -98,8 +98,8 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& dev_ctx,
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
                            phi::SizeOf(input.dtype()),
-                           common::vectorize<int64_t>(value.dims()),
-                           common::vectorize<int64_t>(value.strides()),
+                           vectorize<int64_t>(value.dims()),
+                           vectorize<int64_t>(value.strides()),
                            phi::SizeOf(value.dtype()),
                            shape_tmp,
                            stride_tmp,
@@ -285,9 +285,9 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
   int64_t num_indices = linearIndex.numel();
 
   if (expandedValue.numel() < num_indices * nElemBefore * sliceSize) {
-    auto expanded_size = common::vectorize<int64_t>(expandedValue.dims());
-    auto size1 = common::vectorize<int64_t>(expandedValue.dims());
-    auto size2 = common::vectorize<int64_t>(linearIndex.dims());
+    auto expanded_size = vectorize<int64_t>(expandedValue.dims());
+    auto size1 = vectorize<int64_t>(expandedValue.dims());
+    auto size2 = vectorize<int64_t>(linearIndex.dims());
     if (funcs::are_expandable(size1, size2)) {
       expanded_size = funcs::infer_size_dimvector(size1, size2);
     }

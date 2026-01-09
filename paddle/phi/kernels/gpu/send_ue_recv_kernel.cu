@@ -49,7 +49,7 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& dev_ctx,
 
   auto out_dims = out->dims();
   int64_t memset_size = 1;
-  std::vector<int64_t> dims_ = common::vectorize(out_dims);
+  std::vector<int64_t> dims_ = vectorize(out_dims);
   if (out_size <= 0) {
     dims_[0] = x.dims()[0];
   } else {
@@ -289,7 +289,7 @@ void SendUERecvKernel(const Context& dev_ctx,
 
   if (x.numel() == 0 || y.numel() == 0 || src_index.numel() == 0 ||
       dst_index.numel() == 0) {
-    std::vector<int64_t> dims_ = common::vectorize(out->dims());
+    std::vector<int64_t> dims_ = vectorize(out->dims());
     if (out_size_data[0] <= 0) {
       dims_[0] = x.dims()[0];
     } else {
