@@ -25,6 +25,8 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/gpu/quant_utils.h"
 
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
+
 namespace phi {
 
 constexpr size_t k_block_span = 128;
@@ -455,6 +457,82 @@ __global__ void __launch_bounds__(512)
   }
 }
 
+template <typename T, bool use_pow2_scale>
+__global__ void quant_per_token_per_block_padding(
+    const T *const input,
+    __nv_fp8_e4m3 *const quanted_res,
+    float *const quanted_scale,
+    const size_t rows,
+    const size_t cols,
+    const size_t padded_rows,
+    const bool use_finegrained_range,
+    const float epsilon) {
+  const size_t bid = blockIdx.x;
+  const size_t tid = threadIdx.x;
+  const size_t warp_id = tid / 32;
+  const size_t lane_id = tid % 32;
+  const size_t num_warp = blockDim.x / 32;
+  static constexpr int NUM_PER_THREADS = 128 / 32;  // 4
+  const size_t end_iter = cols / 128;               // warp_iter_num
+
+  AlignedVector<T, NUM_PER_THREADS> load_vec;
+  AlignedVector<float, NUM_PER_THREADS> load_vec_float;
+  AlignedVector<__nv_fp8_e4m3, NUM_PER_THREADS> res_vec;
+
+  for (size_t token_idx = bid; token_idx < rows; token_idx += gridDim.x) {
+    const T *input_now = input + token_idx * cols;
+    __nv_fp8_e4m3 *quanted_res_now = quanted_res + token_idx * cols;
+    // deal a block per warp
+    for (size_t iter = warp_id; iter < end_iter; iter += num_warp) {
+      float *quanted_scale_now = quanted_scale + iter * padded_rows + token_idx;
+      const size_t offset = iter * 128 + lane_id * NUM_PER_THREADS;
+
+      Load<T, NUM_PER_THREADS>(input_now + offset, &load_vec);
+
+      // get max value per thread
+      float max_value_thread = -5e4;
+#pragma unroll
+      for (int vid = 0; vid < NUM_PER_THREADS; vid++) {
+        load_vec_float[vid] = static_cast<float>(load_vec[vid]);
+        max_value_thread = max(abs(load_vec_float[vid]), max_value_thread);
+      }
+      // get max value per warp
+      max_value_thread = max(__shfl_down_sync(0xffffffff, max_value_thread, 16),
+                             max_value_thread);
+      max_value_thread = max(__shfl_down_sync(0xffffffff, max_value_thread, 8),
+                             max_value_thread);
+      max_value_thread = max(__shfl_down_sync(0xffffffff, max_value_thread, 4),
+                             max_value_thread);
+      max_value_thread = max(__shfl_down_sync(0xffffffff, max_value_thread, 2),
+                             max_value_thread);
+      max_value_thread = max(__shfl_down_sync(0xffffffff, max_value_thread, 1),
+                             max_value_thread);
+      // broadcast max_value
+      max_value_thread = __shfl_sync(0xFFFFFFFF, max_value_thread, 0);
+      // max_value_thread = max(max_value_thread, epsilon);
+
+      if (use_finegrained_range) {
+        max_value_thread *= 7.0f;
+      }
+
+      float blockwise_scale =
+          ScaleWrapper<use_pow2_scale>(max_value_thread, epsilon);
+      float scale_to_store = 1.0f / blockwise_scale;
+      // quant
+#pragma unroll
+      for (int vid = 0; vid < NUM_PER_THREADS; vid++) {
+        res_vec[vid] =
+            static_cast<__nv_fp8_e4m3>(load_vec_float[vid] * blockwise_scale);
+      }
+      // store
+      Store<__nv_fp8_e4m3, NUM_PER_THREADS>(res_vec, quanted_res_now + offset);
+      if (lane_id == 0) {
+        *quanted_scale_now = scale_to_store;
+      }
+    }
+  }
+}
+
 template <typename Context,
           bool using_1x128_vec_quant,
           bool input_transpose,
@@ -471,45 +549,128 @@ void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
   // using namespace cute;
   const size_t src_rows = X.dims()[0];
   const size_t src_cols = X.dims()[1];
-  const size_t quanted_cols = scale->dims()[1];
-  const size_t quanted_rows = scale_transposed->dims()[1];
 
-  dim3 block, grid;
-  if constexpr (using_1x128_vec_quant) {
-    block.x = 32;
-    block.y = 16;
-    grid.x = (src_cols + k_block_span - 1) / k_block_span;
-    grid.y = (src_rows + k_block_span - 1) / k_block_span;
-  } else {
-    block.x = 256;
-    grid.x = (src_cols + k_block_span - 1) / k_block_span;
-    grid.y = (src_rows + k_block_span - 1) / k_block_span;
-  }
+  PD_CHECK(X.dtype() == phi::DataType::BFLOAT16 ||
+               X.dtype() == phi::DataType::FLOAT16,
+           "X datatype error, can only be bfloat16 or float16");
 
-  auto kernel = using_1x128_vec_quant
-                    ? quantize_1x128_kernel<input_transpose,
-                                            output_scale_transpose,
-                                            return_transpose_only,
-                                            using_pow2_scale>
-                    : quantize_128x128_kernel<input_transpose,
+  if (src_rows % 128 == 0 && X.dtype() == DataType::BFLOAT16) {
+    const size_t quanted_cols = scale->dims()[1];
+    const size_t quanted_rows = scale_transposed->dims()[1];
+
+    dim3 block, grid;
+    if constexpr (using_1x128_vec_quant) {
+      block.x = 32;
+      block.y = 16;
+      grid.x = (src_cols + k_block_span - 1) / k_block_span;
+      grid.y = (src_rows + k_block_span - 1) / k_block_span;
+    } else {
+      block.x = 256;
+      grid.x = (src_cols + k_block_span - 1) / k_block_span;
+      grid.y = (src_rows + k_block_span - 1) / k_block_span;
+    }
+
+    auto kernel = using_1x128_vec_quant
+                      ? quantize_1x128_kernel<input_transpose,
                                               output_scale_transpose,
                                               return_transpose_only,
-                                              using_pow2_scale>;
-  kernel<<<grid, block, 0, dev_ctx.stream()>>>(
-      reinterpret_cast<const __nv_bfloat16 *>(X.data<phi::bfloat16>()),
-      reinterpret_cast<__nv_fp8_e4m3 *>(out->data<phi::float8_e4m3fn>()),
-      input_transpose ? reinterpret_cast<__nv_fp8_e4m3 *>(
-                            out_transposed->data<phi::float8_e4m3fn>())
-                      : nullptr,
-      reinterpret_cast<float *>(scale->data<float>()),
-      input_transpose
-          ? reinterpret_cast<float *>(scale_transposed->data<float>())
-          : nullptr,
-      src_cols,
-      src_rows,
-      quanted_cols,
-      quanted_rows,
-      epsilon);
+                                              using_pow2_scale>
+                      : quantize_128x128_kernel<input_transpose,
+                                                output_scale_transpose,
+                                                return_transpose_only,
+                                                using_pow2_scale>;
+
+    kernel<<<grid, block, 0, dev_ctx.stream()>>>(
+        reinterpret_cast<const __nv_bfloat16 *>(X.data<phi::bfloat16>()),
+        reinterpret_cast<__nv_fp8_e4m3 *>(out->data<phi::float8_e4m3fn>()),
+        input_transpose ? reinterpret_cast<__nv_fp8_e4m3 *>(
+                              out_transposed->data<phi::float8_e4m3fn>())
+                        : nullptr,
+        reinterpret_cast<float *>(scale->data<float>()),
+        input_transpose
+            ? reinterpret_cast<float *>(scale_transposed->data<float>())
+            : nullptr,
+        src_cols,
+        src_rows,
+        quanted_cols,
+        quanted_rows,
+        epsilon);
+
+  } else {
+    PD_CHECK(
+        !input_transpose && output_scale_transpose && !return_transpose_only,
+        "Currently only supports: input_transpose=False and "
+        "output_scale_transpose=True and return_transpose_only=False.");
+
+    using ScaleDtype = float;
+    const size_t block_size = 128;
+
+    PADDLE_ENFORCE(src_cols % 128 == 0, "src_cols must be divisible by 128");
+
+    const size_t tma_alignment_bytes = 16;
+    const size_t tma_alignment_elements =
+        tma_alignment_bytes / sizeof(ScaleDtype);
+    const size_t padded_rows =
+        ((src_rows + tma_alignment_elements - 1) / tma_alignment_elements) *
+        tma_alignment_elements;
+    const size_t min_grid_x = 132 * 8;
+    const size_t min_block_x = 1024;
+    const size_t gridx = min(min_grid_x, src_rows);
+    const size_t blockx = min(min_block_x, src_cols / 128 * 32);
+
+    bool use_finegrained_range = false;
+    char *env_var = getenv("PER_TOKEN_QUANT_FP8_USE_FINEGRAINED_RANGE");
+    if (env_var) {
+      use_finegrained_range = static_cast<bool>(std::stoi(env_var));
+    }
+
+    auto *out_ptr = out->data<phi::float8_e4m3fn>();
+    auto *scale_ptr = scale->data<float>();
+
+    // printf("[DEBUG_FP8] src_rows: %d, src_cols: %d\n", src_rows, src_cols);
+    // printf("[DEBUG_FP8] out_ptr: %p, out_numel: %ld\n", out_ptr,
+    // out->numel()); printf("[DEBUG_FP8] scale_ptr: %p, scale_numel: %ld\n",
+    //        scale_ptr,
+    //        scale->numel());
+
+    // printf(
+    //     "[DEBUG_FP8] out_shape [%ld, %ld]\n", out->dims()[0],
+    //     out->dims()[1]);
+    // printf("[DEBUG_FP8] scale_shape [%ld, %ld]\n",
+    //        scale->dims()[0],
+    //        scale->dims()[1]);
+    switch (X.dtype()) {
+      case paddle::DataType::BFLOAT16:
+        quant_per_token_per_block_padding<__nv_bfloat16, using_pow2_scale>
+            <<<gridx, blockx, 0, dev_ctx.stream()>>>(
+                reinterpret_cast<const __nv_bfloat16 *>(
+                    X.data<phi::bfloat16>()),
+                reinterpret_cast<__nv_fp8_e4m3 *>(
+                    out->data<phi::float8_e4m3fn>()),
+                reinterpret_cast<float *>(scale->data<float>()),
+                src_rows,
+                src_cols,
+                padded_rows,
+                use_finegrained_range,
+                epsilon);
+        break;
+      case paddle::DataType::FLOAT16:
+        quant_per_token_per_block_padding<__half, using_pow2_scale>
+            <<<gridx, blockx, 0, dev_ctx.stream()>>>(
+                reinterpret_cast<const __half *>(X.data<phi::float16>()),
+                reinterpret_cast<__nv_fp8_e4m3 *>(
+                    out->data<phi::float8_e4m3fn>()),
+                reinterpret_cast<float *>(scale->data<float>()),
+                src_rows,
+                src_cols,
+                padded_rows,
+                use_finegrained_range,
+                epsilon);
+        break;
+      default:
+        PD_THROW("Unsupported data type for PerTokenQuant");
+    }
+  }
 }
 
 // T is x's input type and out_dtype is in args
@@ -527,8 +688,9 @@ void FP8QuantBlockWiseKernel(const Context &dev_ctx,
                              DenseTensor *scale,
                              DenseTensor *out_transposed,
                              DenseTensor *scale_transposed) {
-  PD_CHECK(X.dtype() == phi::DataType::BFLOAT16,
-           "X datatype error, can only be bfloat16");
+  PD_CHECK(X.dtype() == phi::DataType::BFLOAT16 ||
+               X.dtype() == phi::DataType::FLOAT16,
+           "X datatype error, can only be bfloat16 or float16");
 
   dev_ctx.template Alloc<phi::float8_e4m3fn>(out);
   dev_ctx.template Alloc<float>(scale);
@@ -574,6 +736,7 @@ PD_REGISTER_KERNEL(fp8_quant_blockwise,
                    GPU,
                    ALL_LAYOUT,
                    phi::FP8QuantBlockWiseKernel,
+                   phi::float16,
                    phi::bfloat16,
                    float,
                    double) {}
