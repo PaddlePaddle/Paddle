@@ -25,24 +25,33 @@
 namespace xfft_internal::xpu {
 // just for declaration here, the real implementation is in libcufft.so
 template <typename T, typename TComplex>
-int combine_as_complex(int N, const T* real, const T* imag, TComplex* out);
+int combine_as_complex(
+    const XPUStream stream, int N, const T* real, const T* imag, TComplex* out);
 template <>
-int combine_as_complex(int N,
+int combine_as_complex(const XPUStream stream,
+                       int N,
                        const float* real,
                        const float* imag,
                        float2* out);
 template <>
-int combine_as_complex(int N,
+int combine_as_complex(const XPUStream stream,
+                       int N,
                        const double* real,
                        const double* imag,
                        double2* out);
 
 template <typename TComplex, typename T>
-int complex_spilt(int N, const TComplex* in, T* real, T* imag);
+int complex_spilt(
+    const XPUStream stream, int N, const TComplex* in, T* real, T* imag);
 template <>
-int complex_spilt(int N, const float2* in, float* real, float* imag);
+int complex_spilt(
+    const XPUStream stream, int N, const float2* in, float* real, float* imag);
 template <>
-int complex_spilt(int N, const double2* in, double* real, double* imag);
+int complex_spilt(const XPUStream stream,
+                  int N,
+                  const double2* in,
+                  double* real,
+                  double* imag);
 }  // namespace xfft_internal::xpu
 
 namespace phi {
@@ -73,16 +82,14 @@ void RealGradKernel(const Context& dev_ctx,
       dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
   DenseTensor imag = Fill<phi::dtype::Real<T>, Context>(
       dev_ctx, common::vectorize<int>(dout.dims()), phi::dtype::Real<T>(0.0));
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
   int r = xfft_internal::xpu::combine_as_complex(
+      dev_ctx.x_context()->xpu_stream,
       numel,
       reinterpret_cast<const phi::dtype::Real<T>*>(
           dout.data<phi::dtype::Real<T>>()),
       imag.data<phi::dtype::Real<T>>(),
       reinterpret_cast<XPUComplexType*>(dx_data));
   PADDLE_ENFORCE_XPU_SUCCESS(r);
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
 }
 
 template <typename T, typename Context>
@@ -100,16 +107,14 @@ void ImagGradKernel(const Context& dev_ctx,
       dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
   DenseTensor real = Fill<phi::dtype::Real<T>, Context>(
       dev_ctx, common::vectorize<int>(dout.dims()), phi::dtype::Real<T>(0.0));
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
   int r = xfft_internal::xpu::combine_as_complex(
+      dev_ctx.x_context()->xpu_stream,
       numel,
       real.data<phi::dtype::Real<T>>(),
       reinterpret_cast<const phi::dtype::Real<T>*>(
           dout.data<phi::dtype::Real<T>>()),
       reinterpret_cast<XPUComplexType*>(dx_data));
   PADDLE_ENFORCE_XPU_SUCCESS(r);
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
 }
 
 template <typename T, typename Context>
@@ -146,15 +151,13 @@ void ComplexGradKernel(const Context& dev_ctx,
   imag_dout.Resize(dout.dims());
   T* real_data = dev_ctx.template Alloc<T>(&real_dout);
   T* imag_data = dev_ctx.template Alloc<T>(&imag_dout);
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
   int r = xfft_internal::xpu::complex_spilt(
+      dev_ctx.x_context()->xpu_stream,
       numel,
       reinterpret_cast<const XPUComplexType*>(dout.data<C>()),
       real_data,
       imag_data);
   PADDLE_ENFORCE_XPU_SUCCESS(r);
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
   if (dx) {
     if (x.dims() == dout.dims()) {
       dx->ShareDataWith(real_dout);

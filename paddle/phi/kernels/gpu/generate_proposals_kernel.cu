@@ -522,7 +522,7 @@ void GenerateProposalsKernel(const Context &dev_ctx,
   T *rpn_roi_probs_data = rpn_roi_probs->data<T>();
 
   auto place = dev_ctx.GetPlace();
-  auto cpu_place = phi::CPUPlace();
+  auto cpu_place = CPUPlace();
 
   int64_t num_proposals = 0;
   std::vector<size_t> offset(1, 0);

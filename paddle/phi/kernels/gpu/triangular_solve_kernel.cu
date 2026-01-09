@@ -113,7 +113,7 @@ void TriangularSolveKernel(const Context& dev_ctx,
           phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
       memory_utils::Copy(dev_ctx.GetPlace(),
                          gpu_a_ptrs_data->ptr(),
-                         phi::CPUPlace(),
+                         CPUPlace(),
                          static_cast<void*>(cpu_a_ptrs.data()),
                          cpu_a_ptrs.size() * sizeof(T*),
                          dev_ctx.stream());
@@ -137,7 +137,7 @@ void TriangularSolveKernel(const Context& dev_ctx,
         }
         memory_utils::Copy(dev_ctx.GetPlace(),
                            gpu_b_ptrs_data->ptr(),
-                           phi::CPUPlace(),
+                           CPUPlace(),
                            static_cast<void*>(cpu_b_ptrs_for_chunk.data()),
                            cpu_b_ptrs_for_chunk.size() * sizeof(T*),
                            dev_ctx.stream());
@@ -170,7 +170,7 @@ void TriangularSolveKernel(const Context& dev_ctx,
 
       memory_utils::Copy(dev_ctx.GetPlace(),
                          tmp_gpu_ptrs_data->ptr(),
-                         phi::CPUPlace(),
+                         CPUPlace(),
                          static_cast<void*>(cpu_ptrs.data()),
                          cpu_ptrs.size() * sizeof(T*),
                          dev_ctx.stream());

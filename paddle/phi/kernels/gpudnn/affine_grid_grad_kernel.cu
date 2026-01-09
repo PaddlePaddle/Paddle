@@ -42,10 +42,7 @@ void AffineGridGradCudnnKernel(const Context& dev_ctx,
           "Only support for CUDAPlace.Please switch your context from "
           "CPUPlace to CUDAPlace or update your cudnn."));
   if (output_grad.numel() == 0 || input_grad->numel() == 0) {
-    phi::Full<T, Context>(dev_ctx,
-                          phi::IntArray(common::vectorize(input_grad->dims())),
-                          0,
-                          input_grad);
+    Full<T, Context>(dev_ctx, input_grad->dims(), 0, input_grad);
     return;
   }
   auto handle = dev_ctx.cudnn_handle();

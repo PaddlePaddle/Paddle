@@ -133,8 +133,8 @@ void LayerNormKernel(const Context& dev_ctx,
   }
 
   auto ker =
-      phi::jit::KernelFuncs<phi::jit::LayerNormTuple<T>, phi::CPUPlace>::Cache()
-          .At(right);
+      phi::jit::KernelFuncs<phi::jit::LayerNormTuple<T>, CPUPlace>::Cache().At(
+          right);
   ker(x_tmp.data<T>(),
       out.data<T>(),
       mean_tmp.data<T>(),

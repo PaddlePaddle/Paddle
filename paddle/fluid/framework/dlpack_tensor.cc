@@ -153,7 +153,7 @@ static ::DLDataType GetDLDataTypeFromTypeIndex(phi::DataType type) {
 struct DLDeviceVisitor {
   using argument_type = const phi::Place &;
   using result_type = ::DLDevice;
-  inline ::DLDevice operator()(const phi::CPUPlace &place) const {
+  inline ::DLDevice operator()(const CPUPlace &place) const {
     ::DLDevice device;
     device.device_type = kDLCPU;
     device.device_id = 0;
@@ -276,7 +276,7 @@ phi::DataType DLDataTypeToPhiDataType(::DLDataType type) {
 phi::Place DLDeviceToPlace(const ::DLDevice &dl_device) {
   phi::Place place;
   if (dl_device.device_type == kDLCPU) {
-    place = phi::CPUPlace();
+    place = CPUPlace();
   } else if (dl_device.device_type == kDLCUDA) {
     place = phi::GPUPlace(dl_device.device_id);
   } else if (dl_device.device_type == kDLCUDAHost) {

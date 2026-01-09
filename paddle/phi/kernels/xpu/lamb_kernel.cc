@@ -62,7 +62,7 @@ void LambKernel(const Context& dev_ctx,
       cpu_skip_update = *(skip_update->data<bool>());
     } else {
       const bool* skip_update_flag = skip_update->data<bool>();
-      memory_utils::Copy(phi::CPUPlace(),
+      memory_utils::Copy(CPUPlace(),
                          static_cast<void*>(&cpu_skip_update),
                          dev_ctx.GetPlace(),
                          static_cast<const void*>(skip_update_flag),

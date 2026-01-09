@@ -41,14 +41,18 @@ class TestSemiAutoParallelFSDP:
     def __init__(self):
         self._backend = os.getenv("backend")
         self._seed = eval(os.getenv("seed"))
-        self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        self._mesh = dist.ProcessMesh([0, 1], dim_names=["dp"])
+        dist.auto_parallel.set_mesh(self._mesh)
         self.gradient_accumulation_steps = 2
 
-    def create_dist_loader(self):
+    def create_dist_loader(self, batch_size):
         dataset = RandomDataset(num_samples=10, input_dim=10)
 
         sampler = DistributedBatchSampler(
-            dataset=dataset, batch_size=2, shuffle=True, drop_last=False
+            dataset=dataset,
+            batch_size=batch_size,
+            shuffle=True,
+            drop_last=False,
         )
 
         loader = DataLoader(
@@ -61,15 +65,16 @@ class TestSemiAutoParallelFSDP:
     def test_sharding_stage_3(self):
         paddle.seed(self._seed)
         model = paddle.nn.Linear(10, 10)
-        data_loader = self.create_dist_loader()
+        data_loader = self.create_dist_loader(1)
         dist_loader = dist.shard_dataloader(
             dataloader=data_loader,
             meshes=[self._mesh],
+            shard_dims="dp",
         )
         opt = paddle.optimizer.AdamW(parameters=model.parameters())
 
         # use sharding stage 3
-        opt = dist.shard_optimizer(opt, dist.ShardingStage3("x", self._mesh))
+        opt = dist.shard_optimizer(opt, dist.ShardingStage3("dp", self._mesh))
 
         stage_losses = []
         tr_loss_add = float(0)
@@ -84,13 +89,44 @@ class TestSemiAutoParallelFSDP:
                 opt.step()
                 opt.clear_grad()
             step += 1
-            stage_losses.append(tr_loss._md5sum())
+            stage_losses.append(tr_loss._local_value()._md5sum())
         return stage_losses
 
     def test_fsdp(self):
         paddle.seed(self._seed)
         model = paddle.nn.Linear(10, 10)
-        data_loader = self.create_dist_loader()
+        data_loader = self.create_dist_loader(1)
+        dist_loader = dist.shard_dataloader(
+            dataloader=data_loader,
+            meshes=[self._mesh],
+            shard_dims="dp",
+        )
+        opt = paddle.optimizer.AdamW(parameters=model.parameters())
+
+        # use FSDP
+        model = fully_shard(model, mesh=self._mesh)
+
+        stage_losses = []
+        tr_loss_add = float(0)
+        step = 0
+        for batch in dist_loader:
+            tr_loss = model(batch[0])
+            tr_loss.backward()
+            tr_loss_add += tr_loss
+            if (step + 1) % self.gradient_accumulation_steps == 0:
+                tr_loss_add /= self.gradient_accumulation_steps
+                tr_loss = tr_loss_add
+                opt.step()
+                opt.clear_grad()
+            step += 1
+            stage_losses.append(tr_loss._local_value()._md5sum())
+        return stage_losses
+
+    def test_fsdp_with_auto_dp(self):
+        dist.enable_auto_dp()
+        paddle.seed(self._seed)
+        model = paddle.nn.Linear(10, 10)
+        data_loader = self.create_dist_loader(2)
         dist_loader = dist.shard_dataloader(
             dataloader=data_loader,
             meshes=[self._mesh],
@@ -113,7 +149,7 @@ class TestSemiAutoParallelFSDP:
                 opt.step()
                 opt.clear_grad()
             step += 1
-            stage_losses.append(tr_loss._md5sum())
+            stage_losses.append(tr_loss._local_value()._md5sum())
         return stage_losses
 
     def run_test_case(self):
@@ -127,6 +163,9 @@ class TestSemiAutoParallelFSDP:
         losses_stage_3 = self.test_sharding_stage_3()
         losses_fsdp = self.test_fsdp()
         assert losses_stage_3 == losses_fsdp
+
+        losses_fsdp_with_auto_dp = self.test_fsdp_with_auto_dp()
+        assert losses_fsdp_with_auto_dp == losses_fsdp
 
 
 if __name__ == '__main__':
