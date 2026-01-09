@@ -298,17 +298,6 @@ def std(
 ) -> Tensor: ...
 
 
-@overload
-def std(
-    input: Tensor,
-    dim: int | Sequence[int] | None = None,
-    *,
-    correction: float = 1,
-    keepdim: bool = False,
-    out: Tensor | None = None,
-) -> Tensor: ...
-
-
 def std(*args: Any, **kwargs: Any) -> Tensor:
     """
     Computes the standard-deviation of ``x`` along ``axis`` .
@@ -372,7 +361,7 @@ def std(*args: Any, **kwargs: Any) -> Tensor:
             >>> print(out4.numpy())
             [[1.721326]]
 
-            >>> out5 = paddle.std(input=x, dim=[0, 1])
+            >>> out5 = paddle.std(input=x, dim=[0, 1])  # type: ignore[call-arg]
             >>> print(out5.numpy())
             1.6329932
 
