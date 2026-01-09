@@ -535,6 +535,8 @@ bool GetSupportsCooperativeLaunchImpl(NVGPUArch) {
   return supportsCoopLaunch != 0;
 }
 
+bool GetSupportsCooperativeLaunchImpl(CustomDeviceArch) { return false; }
+
 bool GetSupportsCooperativeLaunchImpl(HygonDCUArchHIP) { return false; }
 
 bool GetSupportsCooperativeLaunchImpl(HygonDCUArchSYCL) { return false; }
@@ -543,17 +545,6 @@ bool GetSupportsCooperativeLaunch(Arch arch) {
   return std::visit(
       [](const auto &impl) { return GetSupportsCooperativeLaunchImpl(impl); },
       arch.variant());
-}
-
-bool GetSupportsCooperativeLaunchImpl(CustomDeviceArch) {
-  int supportsCoopLaunch = 0;
-#ifdef CINN_WITH_CUSTOM_DEVICE
-  CINN_NOT_IMPLEMENTED
-  // const auto place = phi::CustomPlace(arch.device_type, arch.device_id);
-  // return phi::DeviceManager::GetDeviceAttribute(place,
-  // phi::DeviceAttribute::COOPERATIVE_LAUNCH);
-#endif
-  return supportsCoopLaunch != 0;
 }
 
 bool Target::get_supports_cooperative_launch() const {

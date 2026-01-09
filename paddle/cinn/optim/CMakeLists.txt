@@ -45,6 +45,6 @@ gather_srcs(
 
 if(WITH_CUDA
    OR WITH_ROCM
-   OR CINN_WITH_CUSTOM_DEVICE)
+   OR WITH_CUSTOM_DEVICE)
   gather_srcs(cinnapi_src SRCS transform_gpu_forloop.cc)
 endif()
