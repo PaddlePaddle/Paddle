@@ -65,7 +65,9 @@ jobs:
       - name: Check docker image and run container
         env:
           CACHE_DIR: "/root/.cache/coverage"
-          CCACHE_DIR: "/root/.ccache/coverage"
+          CCACHE_DIR: "/home/data/shared/.ccache/l1" # L1 cache on machine shared dir
+          CCACHE_SECONDARY_STORAGE: "file:///home/data/cfs/.ccache/l2" # L2 cache on cfs
+          CCACHE_MAXSIZE: 50G
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
           CTEST_PARALLEL_LEVEL: 2
           WITH_GPU: "ON"
@@ -84,7 +86,6 @@ jobs:
           WITH_SHARED_PHI: "ON"
           WITH_CINN: "ON"
           INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
-          CCACHE_MAXSIZE: 200G
           CCACHE_LIMIT_MULTIPLE: 0.8
           ON_INFER: "ON"
           PADDLE_CUDA_INSTALL_REQUIREMENTS: "ON"
@@ -98,7 +99,7 @@ jobs:
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
-            -v "/home/data/cfs/.ccache:/root/.ccache" \
+            -v "/home/data/shared:/home/data/shared" \
             -v "/dev/shm:/dev/shm" \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
@@ -111,6 +112,7 @@ jobs:
             -e GIT_PR_ID \
             -e CACHE_DIR \
             -e CCACHE_DIR \
+            -e CCACHE_SECONDARY_STORAGE \
             -e ci_scripts \
             -e FLAGS_fraction_of_gpu_memory_to_use \
             -e CTEST_PARALLEL_LEVEL \

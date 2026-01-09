@@ -357,6 +357,13 @@ jobs:
       docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:cuda129-coverage-test"
     steps:
       - name: Check docker image and run container
+        env:
+          CCACHE_DIR: "/home/data/shared/.ccache/l1" # L1 cache on machine shared dir
+          CCACHE_SECONDARY_STORAGE: "file:///home/data/cfs/.ccache/l2" # L2 cache on cfs
+          CCACHE_MAXSIZE: 50G
+          CCACHE_LIMIT_MULTIPLE: 0.8
+          CCACHE_STATSLOG: /paddle/build/.stats.log
+          CCACHE_SLOPPINESS: clang_index_store,time_macros,include_file_mtime
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
@@ -364,6 +371,7 @@ jobs:
           docker run -d -t --name ${container_name} \
             -v "/dev/shm:/dev/shm"  \
             -v "/home/data/cfs:/home/data/cfs" \
+            -v "/home/data/shared:/home/data/shared" \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
             -e BRANCH \
@@ -373,6 +381,12 @@ jobs:
             -e ci_scripts \
             -e no_proxy \
             -e CI_name \
+            -e CCACHE_DIR \
+            -e CCACHE_SECONDARY_STORAGE \
+            -e CCACHE_MAXSIZE \
+            -e CCACHE_LIMIT_MULTIPLE \
+            -e CCACHE_STATSLOG \
+            -e CCACHE_SLOPPINESS \
             -w /paddle --network host ${docker_image}
 
       - name: uv build whl
