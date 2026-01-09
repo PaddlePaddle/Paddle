@@ -2146,7 +2146,8 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
       (X.dtype() == DataType::BFLOAT16 || X.dtype() == DataType::FLOAT16),
       true,
       common::errors::InvalidArgument(
-          "Currently only support BFloat16 or Float16 input, but received %s.",
+          "The data type of input X is expected to be BFloat16 or Float16, "
+          "but received %s.",
           X.dtype()));
 
   const int64_t rows = x_dims[0];
@@ -2164,6 +2165,30 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                         "The last dim of Input(X) should be exactly divided "
                         "by 128 , but got %d",
                         cols));
+
+  if (rows % 128 != 0) {
+    PADDLE_ENFORCE_EQ(
+        input_transpose,
+        0,
+        common::errors::InvalidArgument("When rows is not aligned to 128, only "
+                                        "supports input_transpose=False, "
+                                        "but received input_transpose=%d.",
+                                        input_transpose));
+    PADDLE_ENFORCE_EQ(return_transpose_only,
+                      0,
+                      common::errors::InvalidArgument(
+                          "When rows is not aligned to 128, only supports "
+                          "return_transpose_only=False, "
+                          "but received return_transpose_only=%d.",
+                          return_transpose_only));
+    PADDLE_ENFORCE_EQ(using_1x128_vec_quant,
+                      1,
+                      common::errors::InvalidArgument(
+                          "When rows is not aligned to 128, only supports "
+                          "using_1x128_vec_quant=True, "
+                          "but received using_1x128_vec_quant=%d.",
+                          using_1x128_vec_quant));
+  }
 
   const int64_t row_quantized = (rows + 127) / 128;
   const int64_t col_quantized = (cols + 127) / 128;
