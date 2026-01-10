@@ -115,7 +115,7 @@ VirtualMemoryAutoGrowthBestFitAllocator::
     VirtualMemoryAutoGrowthBestFitAllocator(
         const std::shared_ptr<Allocator> &underlying_allocator,
         size_t alignment,
-        const phi::GPUPlace &place)
+        const GPUPlace &place)
     : underlying_allocator_(
           std::make_shared<AlignedAllocator>(underlying_allocator, alignment)),
       alignment_(alignment),
