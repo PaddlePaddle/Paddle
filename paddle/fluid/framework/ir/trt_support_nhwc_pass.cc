@@ -290,7 +290,7 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
 
               framework::TransDataLayout(phi::DataLayout::NHWC,
                                          phi::DataLayout::NCHW,
-                                         phi::CPUPlace{},
+                                         CPUPlace{},
                                          temp_tensor,
                                          weight_tensor);
             }

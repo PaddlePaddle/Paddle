@@ -1013,7 +1013,7 @@ def hsigmoid_loss(
         A tensor with the cost of hierarchical sigmoid, its shape is [N, 1] and data type is the same as `input`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1024,26 +1024,26 @@ def hsigmoid_loss(
             >>> input = paddle.uniform([4, 3])
             >>> print(input)
             Tensor(shape=[4, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    [[ 0.73167229,  0.04029441, -0.48078126],
-                     [ 0.81050646, -0.15199822, -0.18717426],
-                     [ 0.94041789,  0.48874724,  0.03570259],
-                     [ 0.46585739,  0.95573163, -0.91368192]])
+                   [[0.86583614, 0.52014720, 0.25960937],
+                    [0.90525323, 0.42400089, 0.40641287],
+                    [0.97020894, 0.74437362, 0.51785129],
+                    [0.73292869, 0.97786582, 0.04315904]])
             >>> label = paddle.to_tensor([0, 1, 4, 5])
             >>> num_classes = 5
             >>> weight = paddle.uniform([num_classes - 1, 3])
             >>> print(weight)
             Tensor(shape=[4, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    [[-0.14721161,  0.43916738, -0.58377075],
-                     [-0.60536981, -0.23151302, -0.70793629],
-                     [-0.54572451, -0.10784978, -0.56684279],
-                     [ 0.35370791, -0.07079649,  0.84765708]])
+                   [[0.42639419, 0.71958369, 0.20811461],
+                    [0.19731510, 0.38424349, 0.14603184],
+                    [0.22713774, 0.44607511, 0.21657862],
+                    [0.67685395, 0.46460176, 0.92382854]])
             >>> out = F.hsigmoid_loss(input, label, num_classes, weight)
             >>> print(out)
             Tensor(shape=[4, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    [[2.23681736],
-                     [1.97140026],
-                     [1.66425037],
-                     [2.54727197]])
+                   [[2.37209344],
+                    [2.03524041],
+                    [2.56769133],
+                    [2.48895621]])
 
     """
     if num_classes < 2:

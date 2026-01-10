@@ -93,7 +93,7 @@ void LookupTableGradCUDAKernel(
   const T *d_output = d_output_t->data<T>();
   T *d_table = dev_ctx.template Alloc<T>(d_table_t);
 
-  auto t = phi::EigenVector<T>::Flatten(*d_table_t);
+  auto t = EigenVector<T>::Flatten(*d_table_t);
   t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
 #ifdef PADDLE_WITH_HIP

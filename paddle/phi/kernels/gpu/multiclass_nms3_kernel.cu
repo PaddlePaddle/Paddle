@@ -1007,7 +1007,7 @@ void MultiClassNMSGPUKernel(const Context& dev_ctx,
     DenseTensor bboxes_cpu, scores_cpu, rois_num_cpu_tenor;
     DenseTensor out_cpu, index_cpu, nms_rois_num_cpu;
     paddle::optional<DenseTensor> rois_num_cpu(paddle::none);
-    auto cpu_place = phi::CPUPlace();
+    auto cpu_place = CPUPlace();
     auto gpu_place = dev_ctx.GetPlace();
 
     // copy from GPU to CPU

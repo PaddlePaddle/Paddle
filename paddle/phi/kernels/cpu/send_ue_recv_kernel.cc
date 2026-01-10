@@ -178,7 +178,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& dev_ctx,
       for (int i = 0; i < input_size; i++) {
         if (dst_count_data[i] == 0) continue;
         auto out_slice = out->Slice(i, i + 1);
-        auto eigen_out = phi::EigenVector<T>::Flatten(out_slice);
+        auto eigen_out = EigenVector<T>::Flatten(out_slice);
         eigen_out = eigen_out / static_cast<T>(dst_count_data[i]);
       }
     }

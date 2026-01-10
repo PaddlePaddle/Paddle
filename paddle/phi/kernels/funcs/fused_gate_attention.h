@@ -1151,7 +1151,7 @@ class FlashAttnWithGating {
   DenseTensor CreateWorkspace(uint64_t workspace_size) {
     DenseTensor workspace;
     if (workspace_size > 0) {
-      workspace = phi::Empty<float, phi::GPUContext>(
+      workspace = Empty<float, phi::GPUContext>(
           dev_ctx_, {int64_t(workspace_size / sizeof(float))});
     }
     VLOG(5) << "Allocate workspace: workspace_size=" << workspace_size;

@@ -13,9 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/matmul_kernel.h"
-
-#include <vector>
-
 #include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/enforce.h"
@@ -91,16 +88,6 @@ void MatmulKernelImpl(const Context& dev_ctx,
   auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPMM(
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
-#else
-#ifdef PADDLE_WITH_CUDA
-  PADDLE_THROW(common::errors::Unimplemented(
-      "forward of 'sparse.matmul' use cusparseSpMM, "
-      "which is supported from CUDA 11.0"));
-#elif defined(PADDLE_WITH_HIP)
-  PADDLE_THROW(common::errors::Unimplemented(
-      "forward of 'sparse.matmul' use rocsparse_spmm, "
-      "which is supported from ROCM 4.2.0"));
-#endif
 #endif
 }
 

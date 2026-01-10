@@ -336,7 +336,7 @@ struct RowwiseAdd<phi::CPUContext, T> {
                           out_dims.to_str().c_str()));
 
     auto in = phi::EigenMatrix<T>::From(input);
-    auto vec = phi::EigenVector<T>::Flatten(vector);
+    auto vec = EigenVector<T>::Flatten(vector);
     auto out = phi::EigenMatrix<T>::From(*output);
 
     for (int64_t i = 0; i < in_dims[0]; ++i) {

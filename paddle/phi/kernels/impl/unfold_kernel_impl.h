@@ -37,7 +37,7 @@ void UnfoldKernel(const Context& dev_ctx,
     return;
   }
 
-  funcs::Im2ColFunctor<funcs::ColFormat::kCFO, Context, T> im2col;
+  funcs::Im2ColFunctor<funcs::ColFormat::CFO, Context, T> im2col;
   const auto& x_dims = x.dims();
 
   int64_t out_height = funcs::CalcOutputSize(x_dims[2],

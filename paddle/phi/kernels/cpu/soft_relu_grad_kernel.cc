@@ -61,10 +61,10 @@ void SoftmaxGradKernel(const Context& dev_ctx,
                        float threshold,
                        DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
-  auto dout = phi::EigenVector<T>::Flatten(out_grad);
-  auto out = phi::EigenVector<T>::Flatten(out_in);
-  auto dx = phi::EigenVector<T>::Flatten(*x_grad);
-  auto x = phi::EigenVector<T>::Flatten(x_in);
+  auto dout = EigenVector<T>::Flatten(out_grad);
+  auto out = EigenVector<T>::Flatten(out_in);
+  auto dx = EigenVector<T>::Flatten(*x_grad);
+  auto x = EigenVector<T>::Flatten(x_in);
   auto* eigen_dev = dev_ctx.eigen_device();
   SoftReluGradFunctor<T> functor;
   functor.SetAttrs(threshold);

@@ -463,7 +463,7 @@ def layer_norm(
 
 def rms_norm(
     input: Tensor,
-    normalized_shape: int | Sequence[int],
+    normalized_shape: Sequence[int],
     weight: Tensor | None = None,
     eps: float = 1e-5,
     name: str | None = None,
@@ -473,7 +473,7 @@ def rms_norm(
 
     Args:
         input (Tensor): Input tensor of shape [rows, cols] or higher dimensions (flattened to 2D).
-        normalized_shape(int|list|tuple): Input shape from an expected input of
+        normalized_shape(list|tuple): Input shape from an expected input of
             size :math:`[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`.
             If it is a single integer, this module will normalize over the last dimension
             which is expected to be of that specific size.
@@ -485,46 +485,9 @@ def rms_norm(
         out (Tensor): Normalized tensor of same shape as input.
         invvar (Tensor): Tensor of shape [rows], the inverse standard deviation of each row.
     """
-    input_shape = list(input.shape)
-    input_ndim = len(input_shape)
-    if isinstance(normalized_shape, numbers.Integral):
-        normalized_shape = [normalized_shape]
-    elif isinstance(normalized_shape, tuple):
-        normalized_shape = list(normalized_shape)
-    elif not isinstance(normalized_shape, list):
-        raise ValueError(
-            "`normalized_shape` should be int, list of ints or tuple of ints."
-        )
-
-    normalized_ndim = len(normalized_shape)
-    begin_norm_axis = input_ndim - normalized_ndim
-    if input_ndim < normalized_ndim or (
-        not paddle.utils.is_same_shape(
-            input_shape[begin_norm_axis:], normalized_shape
-        )
-    ):
-        str_normalized_shape = str(normalized_shape)
-        raise ValueError(
-            'Given normalized_shape is '
-            + str_normalized_shape
-            + ', expected input with shape [*, '
-            + str_normalized_shape[1:]
-            + ', but got input shape '
-            + str(input_shape)
-        )
-
-    if normalized_ndim != 1:
-        raise ValueError(
-            'Given len(normalized_shape) is '
-            + normalized_ndim
-            + ', expected len(normalized_shape) is 1.'
-        )
-
-    if weight is None:
-        raise ValueError("weight must not be None.")
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.rms_norm(input, weight, eps)
+        return _C_ops.rms_norm(input, weight, normalized_shape, eps)
 
     helper = LayerHelper('rms_norm', **locals())
     from paddle.base.data_feeder import convert_dtype
@@ -539,7 +502,7 @@ def rms_norm(
         type='rms_norm',
         inputs=inputs,
         outputs={'out': out, 'invvar': invvar},
-        attrs={'eps': eps},
+        attrs={"normalized_shape": normalized_shape, "eps": eps},
     )
     return out, invvar
 

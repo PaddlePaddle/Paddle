@@ -55,8 +55,8 @@ void SoftmaxKernel(const Context& dev_ctx,
                    DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
 
-  auto x_flatten = phi::EigenVector<T>::Flatten(x);
-  auto out_flatten = phi::EigenVector<T>::Flatten(*out);
+  auto x_flatten = EigenVector<T>::Flatten(x);
+  auto out_flatten = EigenVector<T>::Flatten(*out);
   auto* eigen_dev = dev_ctx.eigen_device();
   SoftReluFunctor<T> functor;
   functor.SetAttrs(threshold);

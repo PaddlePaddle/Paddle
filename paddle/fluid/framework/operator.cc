@@ -68,8 +68,8 @@ namespace paddle::framework {
 std::vector<std::tuple<phi::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(phi::GPUPlace(0), LibraryType::kCUDNN),
     std::make_tuple(phi::GPUPlace(0), LibraryType::kPlain),
-    std::make_tuple(phi::CPUPlace(), LibraryType::kMKLDNN),
-    std::make_tuple(phi::CPUPlace(), LibraryType::kPlain),
+    std::make_tuple(CPUPlace(), LibraryType::kMKLDNN),
+    std::make_tuple(CPUPlace(), LibraryType::kPlain),
 };
 
 static DDim GetDimsDebug(const Scope& scope,
@@ -1523,7 +1523,7 @@ bool OperatorWithKernel::SupportsCPUBF16() const {
                          op_kernels.end(),
                          [](OpKernelMap::const_reference kern_pair) {
                            return phi::is_cpu_place(kern_pair.first.place_) &&
-                                  kern_pair.first.place_ == phi::CPUPlace() &&
+                                  kern_pair.first.place_ == CPUPlace() &&
                                   kern_pair.first.data_type_ ==
                                       proto::VarType::Type::VarType_Type_BF16;
                          });
@@ -1981,7 +1981,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
             phi::KernelFactory::Instance().SelectKernel(phi_kernel_name,
                                                         phi_cpu_kernel_key));
 
-        dev_ctx = pool.Get(phi::CPUPlace());
+        dev_ctx = pool.Get(CPUPlace());
         if (phi_kernel_->IsValid()) {
           VLOG(6) << "Static graph mode PrepareImpl - kernel name: "
                   << phi_kernel_name << " | kernel key: " << phi_cpu_kernel_key
@@ -2191,7 +2191,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 
   if (HasAttr("op_device")) {
     if (Attr<std::string>("op_device") == "cpu") {
-      expected_kernel_key.place_ = phi::CPUPlace();
+      expected_kernel_key.place_ = CPUPlace();
     } else if (Attr<std::string>("op_device").find("gpu") !=
                std::string::npos) {
       auto device = Attr<std::string>("op_device");
@@ -2205,7 +2205,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
       // when the Op that does not have GPUKernel is assigned to GPU, the
       // CPUKernel will be executed and a warning will be given at the same
       // time.
-      expected_kernel_key.place_ = phi::CPUPlace();
+      expected_kernel_key.place_ = CPUPlace();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (SupportGPU()) {
         auto& dev_ctx = ctx.device_context();
@@ -2230,7 +2230,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
       // when the Op that does not have NPUKernel is assigned to NPU, the
       // CPUKernel will be executed and a warning will be given at the same
       // time.
-      expected_kernel_key.place_ = phi::CPUPlace();
+      expected_kernel_key.place_ = CPUPlace();
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       if (SupportCustomDevice()) {
         auto& dev_ctx = ctx.device_context();
@@ -2255,7 +2255,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
       // when the Op that does not have XPUKernel is assigned to XPU, the
       // CPUKernel will be executed and a warning will be given at the same
       // time.
-      expected_kernel_key.place_ = phi::CPUPlace();
+      expected_kernel_key.place_ = CPUPlace();
 #ifdef PADDLE_WITH_XPU
       if (SupportXPU()) {
         auto& dev_ctx = ctx.device_context();
@@ -2346,7 +2346,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
     VLOG(3) << "fluid missing XPU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
-    expected_kernel_key.place_ = phi::CPUPlace();
+    expected_kernel_key.place_ = CPUPlace();
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
@@ -2377,7 +2377,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
       if (kernel_iter == kernels.end()) {
         expected_kernel_key.library_type_ =
             cache_expected_kernel_key_library_type;
-        expected_kernel_key.place_ = phi::CPUPlace();
+        expected_kernel_key.place_ = CPUPlace();
         kernel_iter = kernels.find(expected_kernel_key);
       } else {
         VLOG(3) << "fluid using XPU KP kernel: " << type_
@@ -2391,7 +2391,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
       VLOG(3) << "fluid missing XPU kernel: " << type_
               << ", expected_kernel_key:" << expected_kernel_key
               << ", fallbacking to CPU one!";
-      expected_kernel_key.place_ = phi::CPUPlace();
+      expected_kernel_key.place_ = CPUPlace();
       kernel_iter = kernels.find(expected_kernel_key);
     }
   }
@@ -2403,7 +2403,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
     VLOG(3) << "missing IPU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
-    expected_kernel_key.place_ = phi::CPUPlace();
+    expected_kernel_key.place_ = CPUPlace();
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
@@ -2415,7 +2415,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
             << " kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
-    expected_kernel_key.place_ = phi::CPUPlace();
+    expected_kernel_key.place_ = CPUPlace();
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
