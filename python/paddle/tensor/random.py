@@ -1738,7 +1738,7 @@ def uniform_(
     return _C_ops.uniform_inplace_(x, min, max, seed, 0, 0, 1.0)
 
 
-@param_one_alias({"shape": ["size"]})
+@param_one_alias(["shape", "size"])
 def randint(
     low: int = 0,
     high: int | None = None,
