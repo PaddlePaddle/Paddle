@@ -2,7 +2,7 @@ name: Night-Coverage
 
 on:
   schedule:
-    - cron: '0 18 * * * '
+    - cron: "0 18 * * *"
 
 permissions: read-all
 
@@ -54,7 +54,6 @@ jobs:
           # clean workspace
           cd ${{ github.workspace }}
           rm -rf * .[^.]*
-
 
   build:
     name: Coverage build
@@ -228,7 +227,6 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
           docker stop ${{ env.container_name }}
           docker rm ${{ env.container_name }}
-
 
   test:
     name: Coverage test
