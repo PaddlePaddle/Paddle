@@ -268,7 +268,11 @@ def summary(
             ...         )
             ...
             ...         if num_classes > 0:
-            ...             self.fc = nn.Sequential(nn.Linear(400, 120), nn.Linear(120, 84), nn.Linear(84, 10))
+            ...             self.fc = nn.Sequential(
+            ...                 nn.Linear(400, 120),
+            ...                 nn.Linear(120, 84),
+            ...                 nn.Linear(84, 10),
+            ...             )
             ...
             ...     def forward(self, inputs):
             ...         x = self.features(inputs['x1'])
