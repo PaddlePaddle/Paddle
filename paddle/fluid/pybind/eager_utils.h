@@ -136,6 +136,16 @@ PyObject* ToPyObject(const paddle::Tensor& value,
                      PyObject* args,
                      const std::map<ssize_t, ssize_t>& inplace_var_idx_map);
 PyObject* ToPyObject(PyObject* args, ssize_t arg_idx);
+PyObject* ToPyObject(
+    const paddle::Tensor& value,
+    PyObject* args,
+    PyObject* kwargs,
+    const std::map<ssize_t, ssize_t>& inplace_var_idx_map,
+    const std::map<ssize_t, std::vector<std::string>>& inplace_var_name_map);
+PyObject* ToPyObject(PyObject* args,
+                     PyObject* kwargs,
+                     ssize_t arg_idx,
+                     std::vector<std::string> arg_names);
 PyObject* ToPyObject(const std::vector<bool>& value);
 PyObject* ToPyObject(const std::vector<int>& value);
 PyObject* ToPyObject(const std::vector<int64_t>& value);
@@ -284,6 +294,27 @@ struct TupleTensorResult {
       PyTuple_SET_ITEM(result, N - 1, ToPyObject(std::get<N - 1>(out)));
     }
   }
+
+  static void Run(
+      const Tuple& out,
+      PyObject* result,
+      PyObject* args,
+      PyObject* kwargs,
+      const std::map<ssize_t, ssize_t>& inplace_var_idx_map,
+      const std::map<ssize_t, std::vector<std::string>>& inplace_var_name_map) {
+    TupleTensorResult<Tuple, N - 1>::Run(
+        out, result, args, kwargs, inplace_var_idx_map, inplace_var_name_map);
+    if (!inplace_var_idx_map.empty() && inplace_var_idx_map.count(N - 1)) {
+      PyTuple_SET_ITEM(result,
+                       N - 1,
+                       ToPyObject(args,
+                                  kwargs,
+                                  inplace_var_idx_map.at(N - 1),
+                                  inplace_var_name_map.at(N - 1)));
+    } else {
+      PyTuple_SET_ITEM(result, N - 1, ToPyObject(std::get<N - 1>(out)));
+    }
+  }
 };
 
 template <typename Tuple>
@@ -298,6 +329,25 @@ struct TupleTensorResult<Tuple, 1> {
                   const std::map<ssize_t, ssize_t>& inplace_var_idx_map) {
     if (!inplace_var_idx_map.empty() && inplace_var_idx_map.count(0)) {
       PyTuple_SET_ITEM(result, 0, ToPyObject(args, inplace_var_idx_map.at(0)));
+    } else {
+      PyTuple_SET_ITEM(result, 0, ToPyObject(std::get<0>(out)));
+    }
+  }
+
+  static void Run(
+      const Tuple& out,
+      PyObject* result,
+      PyObject* args,
+      PyObject* kwargs,
+      const std::map<ssize_t, ssize_t>& inplace_var_idx_map,
+      const std::map<ssize_t, std::vector<std::string>>& inplace_var_name_map) {
+    if (!inplace_var_idx_map.empty() && inplace_var_idx_map.count(0)) {
+      PyTuple_SET_ITEM(result,
+                       0,
+                       ToPyObject(args,
+                                  kwargs,
+                                  inplace_var_idx_map.at(0),
+                                  inplace_var_name_map.at(0)));
     } else {
       PyTuple_SET_ITEM(result, 0, ToPyObject(std::get<0>(out)));
     }
@@ -333,6 +383,34 @@ PyObject* ToPyObject(const std::tuple<Args...>& out,
 
   TupleTensorResult<decltype(out), sizeof...(Args)>::Run(
       out, result, args, inplace_var_idx_map);
+
+  return result;
+}
+
+template <typename... Args>
+PyObject* ToPyObject(
+    const std::tuple<Args...>& out,
+    PyObject* args,
+    PyObject* kwargs,
+    const std::map<ssize_t, ssize_t>& inplace_var_idx_map,
+    const std::map<ssize_t, std::vector<std::string>>& inplace_var_name_map) {
+  // For inplace op, directly return the input PyObject of the inplace tensor.
+  // [Parameter]
+  // out: Outputs tuple after executing op.
+  // args: Input PyObject.
+  // kwargs: Input PyObject.
+  // inplace_var_idx_map: Index of Tensors in inplace_map, e.g. {{value_idx,
+  // arg_idx}}.
+  // - value_idx: Index of inplace tensor in outputs tuple. Used to find the
+  // output inplace tensor.
+  // - arg_idx: Index of inplace PyObject in input args. Used to find the input
+  // inplace PyObject.
+  // inplace_var_name_map: Name of Tensors in inplace_map
+  auto len = sizeof...(Args);
+  PyObject* result = PyTuple_New(len);
+
+  TupleTensorResult<decltype(out), sizeof...(Args)>::Run(
+      out, result, args, kwargs, inplace_var_idx_map, inplace_var_name_map);
 
   return result;
 }
