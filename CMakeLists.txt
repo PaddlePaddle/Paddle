@@ -380,8 +380,17 @@ unset(WITH_RECORD_BUILDTIME CACHE)
 
 # PY_VERSION
 if(NOT PY_VERSION)
-  set(PY_VERSION 3.9)
-elseif(${PY_VERSION} VERSION_LESS 3.9)
+  find_package(
+    Python
+    COMPONENTS Interpreter
+    QUIET)
+  if(Python_FOUND)
+    set(PY_VERSION "${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}")
+  else()
+    set(PY_VERSION 3.9)
+  endif()
+endif()
+if(${PY_VERSION} VERSION_LESS 3.9)
   message(FATAL_ERROR "Paddle only support Python version>=3.9 now")
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})

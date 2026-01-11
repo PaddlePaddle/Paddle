@@ -5,9 +5,12 @@
 
 if(NOT PYTHON_EXECUTABLE)
   if(NumPy_FIND_QUIETLY)
-    find_package(PythonInterp QUIET)
+    find_package(
+      Python
+      COMPONENTS Interpreter
+      QUIET)
   else()
-    find_package(PythonInterp)
+    find_package(Python COMPONENTS Interpreter)
     set(_numpy_out 1)
   endif()
 endif()
