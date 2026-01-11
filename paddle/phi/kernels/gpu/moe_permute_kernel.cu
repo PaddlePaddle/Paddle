@@ -164,6 +164,7 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
     const probs_T *__restrict__ probs_topk,
     const scale_T *__restrict__ XScale,
     const int *__restrict__ expert_base_offset,
+    const int *__restrict__ expert_base_offset_end,
     X_T *__restrict__ X_unzipped,
     int *__restrict__ zipped_expertwise_rowmap,
     probs_T *__restrict__ probs_unzipped,
@@ -376,6 +377,7 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
     pipe.consumer_release();
   }
 }
+
 template <typename T, typename Context>
 void dispatch_tokens_unzip_stable(const Context &dev_ctx,
                                   const DenseTensor &X,
@@ -383,6 +385,7 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
                                   const DenseTensor &expert_prob_topk,
                                   const paddle::optional<DenseTensor> &XScale,
                                   const DenseTensor &expert_offsets,
+                                  const DenseTensor &expert_offset_end,
                                   DenseTensor *X_unzipped,
                                   DenseTensor *zipped_expertwise_rowmap,
                                   DenseTensor *token_prob_unzipped,
@@ -398,10 +401,7 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
   dim3 grid, block;
   grid.x =
       (total_zipped_tokens_num + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
-  block.x = 512;
-
-int smem_size = 7168 * sizeof(phi::bfloat16) * 2;
-//std::cout <<"token_length " <<token_length<<" smem size "<<smem_size<< std::endl;
+  block.x = 256;
 #define DTYPE_CASE(dtype, type) dtype == phi::DataType::type
 #define GET_DATA(tensor, type) tensor.data<type>()
 #define GET_PTR_DATA(tensor, type) tensor->data<type>()
@@ -412,12 +412,13 @@ int smem_size = 7168 * sizeof(phi::bfloat16) * 2;
                                            SCALE_T,                          \
                                            HAS_SCALE,                        \
                                            DO_GATHER>;                       \
-  kernel<<<grid, block, smem_size , dev_ctx.stream()>>>(                              \
+  kernel<<<grid, block, 0, dev_ctx.stream()>>>(                              \
       GET_DATA(X, TOKEN_T),                                                  \
       GET_DATA(expert_routemap_topk, INT_T),                                 \
       GET_DATA(expert_prob_topk, PROB_T),                                    \
       XScale ? GET_PTR_DATA(XScale.get_ptr(), SCALE_T) : nullptr,            \
       GET_DATA(expert_offsets, int),                                         \
+      GET_DATA(expert_offset_end, int),                                      \
       GET_PTR_DATA(X_unzipped, TOKEN_T),                                     \
       GET_PTR_DATA(zipped_expertwise_rowmap, INT_T),                         \
       GET_PTR_DATA(token_prob_unzipped, PROB_T),                             \
@@ -466,6 +467,83 @@ int smem_size = 7168 * sizeof(phi::bfloat16) * 2;
 #undef HANDLE_EXPERT_CASE
 #undef HANDLE_TOKEN_TYPE
 #undef HANDLE_PROB_TYPE
+}
+template <typename X_T,
+          typename SCALE_T,
+          bool FILLING_X_UNZIPPED,
+          bool FILLING_X_SCALE_UNZIPPED>
+__global__ __launch_bounds__(512) void filling_padding_rows_kernel(
+    X_T *__restrict__ X_unzipped_ptr,
+    SCALE_T *__restrict__ XScale_unzipped_ptr,
+    float *__restrict__ token_prob_unzipped_ptr,
+    const int cols,
+    const int quanted_cols,
+    const int *__restrict__ padding_rows) {
+  uint32_t rows = padding_rows[blockIdx.x];
+  if constexpr (FILLING_X_UNZIPPED) {
+    vectorized_memset(&X_unzipped_ptr[rows * cols], static_cast<X_T>(0), cols);
+  }
+  if constexpr (FILLING_X_SCALE_UNZIPPED) {
+    unrolled_memset(&XScale_unzipped_ptr[rows * quanted_cols],
+                    static_cast<SCALE_T>(0),
+                    quanted_cols);
+  }
+  if (threadIdx.x == 0) {
+    token_prob_unzipped_ptr[rows] = static_cast<float>(0.0);
+  }
+}
+template <typename X_T, typename SCALE_T, typename Context>
+void FillingPaddingRows(const Context &dev_ctx,
+                        X_T *X_unzipped_ptr,
+                        SCALE_T *XScale_unzipped_ptr,
+                        float *token_prob_unzipped_ptr,
+                        const int cols,
+                        const int quanted_cols,
+                        const std::vector<int> &padding_rows) {
+  if (padding_rows.empty()) return;
+
+  // Allocate GPU memory for padding_rows using DenseTensor
+  DenseTensor padding_tokens_tensor;
+  padding_tokens_tensor.Resize({static_cast<int64_t>(padding_rows.size())});
+  dev_ctx.template Alloc<int>(&padding_tokens_tensor);
+
+  // Copy padding_rows from host to device
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(padding_tokens_tensor.data<int>(),
+                                             padding_rows.data(),
+                                             sizeof(int) * padding_rows.size(),
+                                             cudaMemcpyHostToDevice,
+                                             dev_ctx.stream()));
+
+  dim3 grid, block;
+  grid.x = padding_rows.size();
+  block.x = 512;
+// Launch kernel
+#define DISPATCH_CASE(FILLING_X_UNZIPPED, FILLING_X_SCALE_UNZIPPED) \
+  filling_padding_rows_kernel<X_T,                                  \
+                              SCALE_T,                              \
+                              FILLING_X_UNZIPPED,                   \
+                              FILLING_X_SCALE_UNZIPPED>             \
+      <<<grid, block, 0, dev_ctx.stream()>>>(                       \
+          X_unzipped_ptr,                                           \
+          XScale_unzipped_ptr,                                      \
+          token_prob_unzipped_ptr,                                  \
+          cols,                                                     \
+          quanted_cols,                                             \
+          padding_tokens_tensor.data<int>());
+#define HANDLE_X_SCALED(X_UNZIPPED)     \
+  if (XScale_unzipped_ptr != nullptr) { \
+    DISPATCH_CASE(X_UNZIPPED, true)     \
+  } else {                              \
+    DISPATCH_CASE(X_UNZIPPED, false)    \
+  }
+
+  if (X_unzipped_ptr != nullptr) {
+    HANDLE_X_SCALED(true)
+  } else {
+    HANDLE_X_SCALED(false)
+  }
+#undef DISPATCH_CASE
+#undef HANDLE_X_SCALED
 }
 
 template <typename T, typename Context>
@@ -516,10 +594,12 @@ void MoePermuteKernel(const Context &dev_ctx,
 
   // Expert base offset initialization, tensor numeric range [0, max_token_num]
   int expert_offset[MAX_NUM_EXPERTS];
+  int expert_offset_end[MAX_NUM_EXPERTS];
   int tokens_cumulated = 0;
   for (int i = 0; i < MAX_NUM_EXPERTS; i++) {
     if (i < num_experts) {
       expert_offset[i] = tokens_cumulated;
+      expert_offset_end[i] = expert_offset[i] + tokens_per_expert[i] - 1;
       tokens_cumulated +=
           ((tokens_per_expert[i] + padding_multiplex - 1) / padding_multiplex) *
           padding_multiplex;
@@ -535,6 +615,16 @@ void MoePermuteKernel(const Context &dev_ctx,
                                              sizeof(int) * MAX_NUM_EXPERTS,
                                              cudaMemcpyHostToDevice,
                                              dev_ctx.stream()));
+
+  DenseTensor expert_offset_end_tensor;
+  expert_offset_end_tensor.Resize({MAX_NUM_EXPERTS});
+  dev_ctx.template Alloc<int>(&expert_offset_end_tensor);
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaMemcpyAsync(expert_offset_end_tensor.data<int>(),
+                      expert_offset_end,
+                      sizeof(int) * MAX_NUM_EXPERTS,
+                      cudaMemcpyHostToDevice,
+                      dev_ctx.stream()));
   // ------------------- resource allocate -------------------------
   const int output_rows = tokens_cumulated;
   const int64_t topk = expert_routemap_topk.dims()[1];
@@ -571,50 +661,110 @@ void MoePermuteKernel(const Context &dev_ctx,
     XScale_unzipped_ptr =
         reinterpret_cast<void *>(XScale_unzipped->data<float>());
   }
-
-  // -------- Memset all padding area to zero, with regard to do_gather
-  auto memset_invalid_rows =
-      [&](void *ptr, int64_t element_size, int64_t stride) {
-        for (int i = 0; i < num_experts; i++) {
-          int64_t next_expert_offset =
-              i < num_experts - 1 ? expert_offset[i + 1] : output_rows;
-          int64_t invalid_rows =
-              next_expert_offset - expert_offset[i] - tokens_per_expert[i];
-          int64_t cur_expert_end = expert_offset[i] + tokens_per_expert[i];
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              cudaMemsetAsync(ptr + cur_expert_end * stride * element_size,
-                              0,
-                              element_size * invalid_rows * stride,
-                              dev_ctx.stream()));
-        }
-      };
-  if (do_gather) {  // no gather, no memset
-    memset_invalid_rows(X_unzipped_ptr, sizeof(T), cols);
-    if (XScale) {
-      memset_invalid_rows(XScale_unzipped_ptr,
-                          using_ue8m0_scale ? sizeof(int32_t) : sizeof(float),
-                          quanted_cols);
-    }
-  }
-  // Probs will be memset to zero whatsoever
-  memset_invalid_rows(token_prob_unzipped_ptr, sizeof(float), 1);
-
   // Handle 0-size input
   if (X.numel() == 0) return;
+
+  std::vector<int> padding_rows;
+  for (int i = 0; i < num_experts; i++) {
+    int64_t next_expert_offset =
+        i < num_experts - 1 ? expert_offset[i + 1] : output_rows;
+    int64_t invalid_rows =
+        next_expert_offset - expert_offset[i] - tokens_per_expert[i];
+    int64_t cur_expert_end = expert_offset[i] + tokens_per_expert[i];
+    for (int i = 0; i < invalid_rows; ++i) {
+      padding_rows.push_back(cur_expert_end + i);
+    }
+  }
+  if (using_ue8m0_scale) {
+    FillingPaddingRows(dev_ctx,
+                       do_gather ? X_unzipped->data<T>() : nullptr,
+                       XScale ? XScale_unzipped->data<int32_t>() : nullptr,
+                       token_prob_unzipped->data<float>(),
+                       cols,
+                       quanted_cols,
+                       padding_rows);
+  } else {
+    FillingPaddingRows(dev_ctx,
+                       do_gather ? X_unzipped->data<T>() : nullptr,
+                       XScale ? XScale_unzipped->data<float>() : nullptr,
+                       token_prob_unzipped->data<float>(),
+                       cols,
+                       quanted_cols,
+                       padding_rows);
+  }
+  // // -------- Memset all padding area to zero, with regard to do_gather
+  // auto memset_invalid_rows =
+  //     [&](void *ptr, int64_t element_size, int64_t stride) {
+  //       for (int i = 0; i < num_experts; i++) {
+  //         int64_t next_expert_offset =
+  //             i < num_experts - 1 ? expert_offset[i + 1] : output_rows;
+  //         int64_t invalid_rows =
+  //             next_expert_offset - expert_offset[i] - tokens_per_expert[i];
+  //         int64_t cur_expert_end = expert_offset[i] + tokens_per_expert[i];
+  //         PADDLE_ENFORCE_GPU_SUCCESS(
+  //             cudaMemsetAsync(ptr + cur_expert_end * stride * element_size,
+  //                             0,
+  //                             element_size * invalid_rows * stride,
+  //                             dev_ctx.stream()));
+  //       }
+  //     };
+  // if (do_gather) {  // no gather, no memset
+  //   memset_invalid_rows(X_unzipped_ptr, sizeof(T), cols);
+  //   if (XScale) {
+  //     memset_invalid_rows(XScale_unzipped_ptr,
+  //                         using_ue8m0_scale ? sizeof(int32_t) :
+  //                         sizeof(float), quanted_cols);
+  //   }
+  // }
+  // Probs will be memset to zero whatsoever
+  // memset_invalid_rows(token_prob_unzipped_ptr, sizeof(float), 1);
+
+  // memset all
+  // auto memset_all = [&](void *ptr, int64_t element_size, int64_t total_size)
+  // {
+  //   PADDLE_ENFORCE_GPU_SUCCESS(
+  //       cudaMemsetAsync(ptr, 0, total_size * element_size,
+  //       dev_ctx.stream()));
+  // };
+
+  // // if (do_gather) {  // no gather, no memset
+  // //   memset_all(X_unzipped_ptr, sizeof(T), output_rows * cols);
+  // //   if (XScale) {
+  // //     memset_all(XScale_unzipped_ptr,
+  // //                         using_ue8m0_scale ? sizeof(int32_t) :
+  // //                         sizeof(float), output_rows * quanted_cols);
+  // //   }
+  // // }
+  // // Probs will be memset to zero whatsoever
+  // memset_all(token_prob_unzipped_ptr, sizeof(float), output_rows);
 
   // -------- Initialize semaphore for cumsum ---------------
   const int cumsum_blocknum =
       (rows + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
-  DenseTensor global_expertwise_block_cumsum =
-      phi::Full<int, Context>(dev_ctx,
-                              phi::IntArray({cumsum_blocknum + 1, num_experts}),
-                              CUMSUM_INVALID_TAG);
+  // DenseTensor global_expertwise_block_cumsum =
+  //     phi::Full<int, Context>(dev_ctx,
+  //                             phi::IntArray({cumsum_blocknum + 1,
+  //                             num_experts}), CUMSUM_INVALID_TAG);
+
+  DenseTensor global_expertwise_block_cumsum;
+  global_expertwise_block_cumsum.Resize(
+      {static_cast<int64_t>(cumsum_blocknum + 1),
+       static_cast<int64_t>(num_experts)});
+  dev_ctx.template Alloc<int>(&global_expertwise_block_cumsum);
+
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaMemsetAsync(global_expertwise_block_cumsum.data<int>(),
+                      -1,
+                      global_expertwise_block_cumsum.numel() * sizeof(int),
+                      dev_ctx.stream()));
+
   dispatch_tokens_unzip_stable<T, Context>(dev_ctx,
                                            X,
                                            expert_routemap_topk,
                                            expert_prob_topk,
                                            XScale,
                                            expert_offset_tensor,
+                                           expert_offset_end_tensor,
                                            X_unzipped,
                                            zipped_expertwise_rowmap,
                                            token_prob_unzipped,
@@ -639,3 +789,4 @@ PD_REGISTER_KERNEL(moe_permute,
                    phi::MoePermuteKernel,
                    phi::float8_e4m3fn,
                    phi::bfloat16) {}
+
