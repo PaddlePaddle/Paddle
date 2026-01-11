@@ -25,7 +25,7 @@ if(WIN32)
          "Compile demo with static/shared library, default use dynamic." OFF)
   if(NOT PYTHON_EXECUTABLE)
     find_package(
-      Python
+      Python ${PY_VERSION}
       COMPONENTS Interpreter
       REQUIRED)
   endif()

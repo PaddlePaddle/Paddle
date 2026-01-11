@@ -144,7 +144,7 @@ set(operants_manager_source_file_tmp ${operants_manager_source_file}.tmp)
 
 if(NOT PYTHON_EXECUTABLE)
   find_package(
-    Python
+    Python ${PY_VERSION}
     COMPONENTS Interpreter
     REQUIRED)
 endif()

@@ -6,11 +6,11 @@
 if(NOT PYTHON_EXECUTABLE)
   if(NumPy_FIND_QUIETLY)
     find_package(
-      Python
+      Python ${PY_VERSION}
       COMPONENTS Interpreter
       QUIET)
   else()
-    find_package(Python COMPONENTS Interpreter)
+    find_package(Python ${PY_VERSION} COMPONENTS Interpreter)
     set(_numpy_out 1)
   endif()
 endif()
