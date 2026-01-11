@@ -22,6 +22,7 @@
 #include <c10/core/ScalarType.h>
 #include <c10/core/Storage.h>
 #include <c10/core/SymInt.h>
+#include <c10/core/SymIntArrayRef.h>
 #include <c10/core/TensorOptions.h>
 #include <utils/int_array_ref_conversion.h>
 #include <utils/scalar_type_conversion.h>
@@ -86,8 +87,17 @@ class PADDLE_API TensorBase {
     }
     return tensor_.strides()[static_cast<int>(dim)];
   }
+
+  c10::SymInt sym_stride(int64_t dim) const {
+    return static_cast<c10::SymInt>(stride(dim));
+  }
+
   c10::IntArrayRef strides() const {
     return compat::_PD_PhiDDimToIntArrayRef(tensor_.strides());
+  }
+
+  c10::SymIntArrayRef sym_strides() const {
+    return c10::SymIntArrayRef(strides());
   }
 
   int64_t size(int64_t dim) const {
@@ -97,13 +107,21 @@ class PADDLE_API TensorBase {
     return tensor_.dims()[static_cast<int>(dim)];
   }
 
+  c10::SymInt sym_size(int64_t dim) const {
+    return static_cast<c10::SymInt>(size(dim));
+  }
+
   c10::IntArrayRef sizes() const {
     return compat::_PD_PhiDDimToIntArrayRef(tensor_.dims());
   }
 
+  c10::SymIntArrayRef sym_sizes() const { return c10::SymIntArrayRef(sizes()); }
+
   int64_t numel() const { return tensor_.numel(); }
 
-  c10::ScalarType dtype() const {  // Should we use `TypeMeta` here?
+  c10::SymInt sym_numel() const { return static_cast<c10::SymInt>(numel()); }
+
+  c10::ScalarType dtype() const {  // Should we use `caffe2::TypeMeta` here?
     return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
   }
 
