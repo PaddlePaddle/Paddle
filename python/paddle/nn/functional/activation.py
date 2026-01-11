@@ -493,6 +493,7 @@ def leaky_relu(
 
 
 @inplace_apis_in_dygraph_only
+@param_one_alias(["x", "input"])
 def leaky_relu_(
     x: Tensor, negative_slope: float = 0.01, name: str | None = None
 ) -> Tensor:
@@ -780,6 +781,7 @@ def relu(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
 
 
 @inplace_apis_in_dygraph_only
+@param_one_alias(["x", "input"])
 def relu_(x: Tensor, name: str | None = None) -> Tensor:
     """
     Inplace version of ``relu`` API, the output Tensor will be inplaced with input ``x``.
