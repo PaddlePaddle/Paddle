@@ -259,7 +259,7 @@ bool GPUDeviceCode::Compile(bool include_path) {
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
       DeviceContextPool::Instance().Get(place_));
   int compute_capability = dev_ctx->GetComputeCapability();
-  std::vector<const char*> options = {"-std=c++11"};
+  std::vector<const char*> options = {"-std=c++17"};
   std::string include_option;
   if (include_path) {
     std::string cuda_include_path = FindCUDAIncludePath();
@@ -338,7 +338,7 @@ bool GPUDeviceCode::Compile(bool include_path) {
   int compute_capability = dev_ctx->GetComputeCapability();
   std::string compute_flag =
       "--gpu-architecture=compute_" + std::to_string(compute_capability);
-  std::vector<const char*> options = {"--std=c++11", compute_flag.c_str()};
+  std::vector<const char*> options = {"--std=c++17", compute_flag.c_str()};
   std::string include_option;
   if (include_path) {
     std::string cuda_include_path = FindCUDAIncludePath();
