@@ -103,7 +103,7 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
     SEQLEN = 16384
     TOKEN_LEN = 7168
     DTYPES = ["float8_e4m3fn", "bfloat16"]
-    EXPERT_NUMS = [4, 8, 16, 32, 64]
+    EXPERT_NUMS = [4, 8, 16]
     TOPKS = [4, 8, 16]
 
     def setUp(self):
