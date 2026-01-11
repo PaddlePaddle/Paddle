@@ -142,8 +142,11 @@ set(phi_tensor_operants_source_file_tmp ${phi_tensor_operants_source_file}.tmp)
 set(operants_manager_header_file_tmp ${operants_manager_header_file}.tmp)
 set(operants_manager_source_file_tmp ${operants_manager_source_file}.tmp)
 
-if(NOT PYTHONINTERP_FOUND)
-  find_package(PythonInterp REQUIRED)
+if(NOT PYTHON_EXECUTABLE)
+  find_package(
+    Python
+    COMPONENTS Interpreter
+    REQUIRED)
 endif()
 
 execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml)
