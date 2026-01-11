@@ -853,6 +853,14 @@ class TestLogSigmoidAPI(unittest.TestCase):
             )
             F.log_sigmoid(x_fp16)
 
+    def test_features(self):
+        # test alias
+        with dynamic_guard():
+            x = paddle.to_tensor([-1.0, 1.0])
+            out = F.log_sigmoid(input=x)
+            expected = F.log_sigmoid(x)
+            np.testing.assert_allclose(out.numpy(), expected.numpy())
+
 
 class TestLogSigmoidOutAndParaDecorator(unittest.TestCase):
     def setUp(self) -> None:
@@ -3074,6 +3082,20 @@ class TestReluAPI(unittest.TestCase):
             )
             self.relu(x_fp16)
 
+    def test_features(self):
+        # test alias and inplace
+        if self.relu == F.relu:
+            with dynamic_guard():
+                x = paddle.to_tensor([-1.0, 1.0])
+                out = F.relu(input=x)
+                expected = F.relu(x)
+                np.testing.assert_allclose(out.numpy(), expected.numpy())
+
+                # inplace test
+                x_inplace = paddle.to_tensor([-1.0, 1.0])
+                F.relu(x_inplace, inplace=True)
+                np.testing.assert_allclose(x_inplace.numpy(), expected.numpy())
+
 
 class TestReluInplaceAPI(TestReluAPI):
     # test paddle.nn.functional.relu_
@@ -3214,6 +3236,19 @@ class TestLeakyReluAPI(unittest.TestCase):
                 name='x_fp16', shape=[12, 10], dtype='float16'
             )
             F.leaky_relu(x_fp16)
+
+    def test_features(self):
+        # test alias and inplace
+        with dynamic_guard():
+            x = paddle.to_tensor([-1.0, 1.0])
+            out = F.leaky_relu(input=x)
+            expected = F.leaky_relu(x)
+            np.testing.assert_allclose(out.numpy(), expected.numpy())
+
+            # inplace test
+            x_inplace = paddle.to_tensor([-1.0, 1.0])
+            F.leaky_relu(x_inplace, inplace=True)
+            np.testing.assert_allclose(x_inplace.numpy(), expected.numpy())
 
 
 def gelu(x, approximate):
