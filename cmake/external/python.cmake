@@ -16,11 +16,15 @@ include(python_module)
 
 check_py_version(${PY_VERSION})
 
+if(DEFINED PYTHON_EXECUTABLE AND NOT DEFINED Python_EXECUTABLE)
+  set(Python_EXECUTABLE ${PYTHON_EXECUTABLE})
+endif()
+
 set(Python_FIND_VIRTUALENV FIRST)
 
 # Find Python with minimum PY_VERSION specified or will raise error!
 find_package(
-  Python ${PY_VERSION} EXACT
+  Python ${PY_VERSION}
   COMPONENTS Interpreter Development
   REQUIRED)
 
