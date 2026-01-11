@@ -16,7 +16,7 @@ set(fused_bw_op_yaml_file ${ops_yaml_dir}/fused_backward.yaml)
 
 if(NOT PYTHON_EXECUTABLE)
   find_package(
-    Python
+    Python ${PY_VERSION}
     COMPONENTS Interpreter
     REQUIRED)
 endif()
