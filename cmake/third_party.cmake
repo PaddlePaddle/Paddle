@@ -348,6 +348,12 @@ include(external/gflags) # download, build, install gflags
 include(external/glog) # download, build, install glog
 
 ########################### include third_party according to flags ###############################
+if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+  include(external/python) # find python and python_module
+  include(external/pybind11) # prepare submodule pybind11
+  list(APPEND third_party_deps extern_pybind)
+endif()
+
 if(WITH_GPU
    AND NOT WITH_ARM
    AND NOT WIN32
@@ -449,12 +455,6 @@ endif()
 include(external/yaml) # find first, then build yaml
 if(TARGET extern_yaml)
   list(APPEND third_party_deps extern_yaml)
-endif()
-
-if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
-  include(external/python) # find python and python_module
-  include(external/pybind11) # prepare submodule pybind11
-  list(APPEND third_party_deps extern_pybind)
 endif()
 
 if(WITH_TESTING OR WITH_DISTRIBUTE)
