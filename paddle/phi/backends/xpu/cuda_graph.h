@@ -174,11 +174,6 @@ class CUDAGraph {
   ~CUDAGraph() { Reset(); }
   CUDAGraphID ID() const { return id_; }
 
-  // using XPUPostResetCallback =
-  //     std::function<void(paddle::optional<const CUDAGraph &>)>;
-  // using XPUPreCaptureCallback = std::function<void()>;
-  // using XPUPostCaptureCallback = std::function<void()>;
-  // using SetSeedFunc = std::function<bool(gpuKernelParams *, bool)>;
 
   static int64_t SetMemoryPoolID(int64_t pool_id) {
     auto &pool_id_ = capturing_graph_->pool_id_;

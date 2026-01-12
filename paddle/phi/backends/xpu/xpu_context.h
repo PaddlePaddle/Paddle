@@ -134,15 +134,11 @@ class XPUContext : public DeviceContext,
   XPUStream get_current_stream();
   static const char* name() { return "XPUContext"; }
   int SetCurrentStream(int idx);
-  bool IsDefaultStream(XPUStream stream) const;
-  bool IsCurrentStreamDefault() const;
   void StreamWaitStreamInPool(int wait_stream, int record_stream) const;
   void StreamWaitEventInPool(int wait_stream, XPUEvent event) const;
   int get_idle_stream();
   int get_current_stream_idx();
   XPUStreamHandle* get_current_stream_handle();
-  // Print stream information for debugging
-  void PrintStreamInfo() const;
 
  private:
   struct Impl;

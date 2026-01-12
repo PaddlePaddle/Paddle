@@ -61,16 +61,6 @@ void CUDAGraph::Reset() {
   is_reset_ = true;
 }
 
-// CUDAGraph::CUDAGraph() {
-//   ThrowErrorIfNotSupportCUDAGraph();
-//   id_ = UniqueID();
-// }
-
-// CUDAGraph::~CUDAGraph() { Reset(); }
-
-// CUDAGraphID CUDAGraph::ID() const { return id_; }
-
-// int64_t CUDAGraph::PoolID() const { return pool_id_; }
 
 void CUDAGraph::Replay() {
   is_replayed_ = true;
@@ -308,73 +298,6 @@ std::unique_ptr<CUDAGraph> CUDAGraph::EndCapture() {
 
     return hooks;
   }
-
-  // void CUDAGraph::AddPostResetCallback(XPUPostResetCallback callback) {
-  //   std::lock_guard<std::mutex> guard(mtx_);
-  //   cudagraph_post_reset_callbacks_.push_back(std::move(callback));
-  // }
-
-  // void CUDAGraph::AddPreCaptureCallback(XPUPreCaptureCallback callback) {
-  //   cudagraph_pre_capture_callbacks_.push_back(std::move(callback));
-  // }
-
-  // void CUDAGraph::AddPostCaptureCallback(XPUPostCaptureCallback callback) {
-  //   std::lock_guard<std::mutex> guard(mtx_);
-  //   cudagraph_post_capture_callbacks_.push_back(std::move(callback));
-  // }
-
-  // void CUDAGraph::AddJoiningStream(XPUStream stream) {
-  //   streams_to_join_.insert(stream);
-  // }
-
-  // bool CUDAGraph::IsReplayed() const {
-  //   return is_replayed_;
-  // }
-
-  // void CUDAGraph::AddJoiningStreamDuringCapturing(XPUStream stream){
-  //   capturing_graph_->AddJoiningStream(stream);
-  // }
-
-  // void CUDAGraph::AddPostResetCallbackDuringCapturing(
-  //   XPUPostResetCallback callback) {
-  //   capturing_graph_->AddPostResetCallback(std::move(callback));
-  // }
-
-  // void CUDAGraph::AddPostCaptureCallbackDuringCapturing(
-  //   XPUPostCaptureCallback callback) {
-  //   capturing_graph_->AddPostCaptureCallback(std::move(callback));
-  // }
-
-  // bool CUDAGraph::IsCapturing() {
-  //   return capturing_graph_ != nullptr;
-  // }
-
-  // CUDAGraphID CUDAGraph::CapturingID() {
-  //   return capturing_graph_->id_;
-  // }
-
-  // phi::XPUPlace CUDAGraph::CapturingPlace() {
-  //   return capturing_graph_->place_;
-  // }
-
-  // bool CUDAGraph::IsThreadLocalCapturing() {
-  //   return IsCapturing() &&
-  //          capturing_graph_->capture_mode_ ==
-  //          xpuStreamCaptureModeThreadLocal;
-  // }
-
-  // bool CUDAGraph::IsThisThreadCapturing() {
-  //   if (UNLIKELY(IsCapturing())) {
-  //     return !IsThreadLocalCapturing() || capturing_thread_id_.get() ==
-  //     std::this_thread::get_id();
-  //   }
-  //   return false;
-  // }
-
-  // void CUDAGraph::RecordRandomKernelInfo(SetSeedFunc set_seed_func) {
-  //   std::lock_guard<std::mutex> guard(capturing_graph_->func_mtx_);
-  //   capturing_graph_->set_seed_funcs_.emplace_back(std::move(set_seed_func));
-  // }
 
 }  // namespace xpu
 }  // namespace backends

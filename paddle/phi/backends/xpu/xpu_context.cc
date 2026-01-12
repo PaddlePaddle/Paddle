@@ -226,7 +226,7 @@ struct XPUContext::Impl {
 
     xpu_version_ = backends::xpu::get_xpu_version(place_.device);
     SetL3Cache(l3_default_size);
-    CreateStream();  // 创建新的Stream
+    CreateStream();  // Cuda Graph need non default stream(not null stream)
   }
 
   void SetXContext(xpu::Context* context) {
@@ -360,8 +360,6 @@ XPUContext::XPUContext() : DeviceContext() {
     }
   }
   current_stream_idx = 0;
-  // Print stream information after initialization
-  // PrintStreamInfo();
 }
 
 XPUContext::XPUContext(const XPUPlace& place, bool is_comm_context)
@@ -608,47 +606,6 @@ XPUStreamHandle* XPUContext::get_current_stream_handle() {
     current_stream_handle.set_stream(s);
   }
   return &current_stream_handle;
-}
-
-bool XPUContext::IsDefaultStream(XPUStream stream) const {
-  return stream == impls_[0]->context_->get_stream();
-}
-
-bool XPUContext::IsCurrentStreamDefault() const {
-  if (stream_pool.empty()) {
-    return true;
-  }
-  return IsDefaultStream(stream_pool[current_stream_idx]);
-}
-
-void XPUContext::PrintStreamInfo() const {
-  LOG(INFO) << "========== XPU Stream Information ==========";
-  LOG(INFO) << "Device ID: " << static_cast<int>(GetPlace().GetDeviceId());
-  LOG(INFO) << "Total Stream Number (impls_): " << GetStreamNum();
-  LOG(INFO) << "Stream Pool Size: " << stream_pool.size();
-  LOG(INFO) << "Current Stream Index: " << current_stream_idx;
-  LOG(INFO) << "Current Stream Handle ID: " << current_stream_handle.id();
-  LOG(INFO) << "Current Stream Handle Raw Stream: "
-            << static_cast<void*>(current_stream_handle.raw_stream());
-
-  LOG(INFO) << "--- Stream Pool Details ---";
-  for (size_t i = 0; i < stream_pool.size(); ++i) {
-    LOG(INFO) << "  Stream Pool[" << i
-              << "]: " << static_cast<void*>(stream_pool[i])
-              << (static_cast<int>(i) == current_stream_idx ? " [CURRENT]" : "")
-              << (i < idle_stream_flags.size() && idle_stream_flags[i]
-                      ? " [IDLE]"
-                      : " [BUSY]");
-  }
-
-  LOG(INFO) << "--- Impl Streams ---";
-  for (int64_t i = 0; i < GetStreamNum(); ++i) {
-    XPUStream impl_stream = stream(i);
-    LOG(INFO) << "  Impl[" << i
-              << "] Stream: " << static_cast<void*>(impl_stream);
-  }
-
-  LOG(INFO) << "===========================================";
 }
 
 void XPUContext::Init() { impls_[0]->Init(); }
