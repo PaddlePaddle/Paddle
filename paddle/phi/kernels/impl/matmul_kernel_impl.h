@@ -436,8 +436,7 @@ void MatMulFunctionImplWithBlas(
       // "use_accuracy_compatible_kernel"
       if (!FLAGS_use_legacy_gemm && FLAGS_use_accuracy_compatible_kernel) {
         // x_batch_size == 1 && M != 1 || !transy
-        DenseTensor processedY =
-            trans_y ? Y : phi::TransposeLast2Dim<T>(dev_ctx, Y);
+        DenseTensor processedY = trans_y ? Y : TransposeLast2Dim<T>(dev_ctx, Y);
         DenseTensor processedX = X;
         blas.GEMM(CblasNoTrans,
                   trans_x ? CblasNoTrans : CblasTrans,
@@ -457,7 +456,7 @@ void MatMulFunctionImplWithBlas(
         actual_dim[actual_dim.size() - 1] =
             out_original_shape[out_original_shape.size() - 2];
         Out->Resize(common::make_ddim(actual_dim));
-        DenseTensor transposedOut = phi::TransposeLast2Dim<T>(dev_ctx, *Out);
+        DenseTensor transposedOut = TransposeLast2Dim<T>(dev_ctx, *Out);
         *Out = transposedOut;
         Out->Resize(out_original_shape);
       } else  // NOLINT
@@ -1992,7 +1991,7 @@ DispatchMatmulFP8Kernel(const Context& dev_ctx,
       common::errors::InvalidArgument(
           "fp8 matmul need y_dims[0] % 16 = 0, got y_dims[0] = %d", y_dims[0]));
 
-  phi::DenseTensor workspace;
+  DenseTensor workspace;
   workspace.Resize({30 * 1024 * 1024});
   dev_ctx.template Alloc<int8_t>(&workspace);
   dev_ctx.template Alloc<phi::float16>(out);

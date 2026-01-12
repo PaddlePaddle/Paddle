@@ -57,7 +57,7 @@ void MeshgridForward(const Context& dev_ctx,
     view_shape[i] = shape[i];
 
     DenseTensor reshape_ins_tensor;
-    phi::Copy(dev_ctx, *ins[i], dev_ctx.GetPlace(), false, &reshape_ins_tensor);
+    Copy(dev_ctx, *ins[i], dev_ctx.GetPlace(), false, &reshape_ins_tensor);
     DDim out_dims_reshape = common::make_ddim(view_shape);
     reshape_ins_tensor.Resize(out_dims_reshape);
     DDim out_dims = common::make_ddim(shape);

@@ -40,7 +40,7 @@ void TransposeKernel(const Context& dev_ctx,
     return;
   }
   if (formatted_axis.size() == 0) {
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
 
@@ -73,7 +73,7 @@ void TransposeKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
     return;
   }
   if (formatted_axis.size() == 0) {
-    phi::Copy<XPUContext>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<XPUContext>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
 

@@ -69,7 +69,7 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
         common::errors::InvalidArgument(
             "Scope in DeleteQuantDequantOpPass should not be null."));
     const phi::DenseTensor& input_scale_tensor =
-        scope->FindVar(input_scale_var_name)->Get<phi::DenseTensor>();
+        scope->FindVar(input_scale_var_name)->Get<DenseTensor>();
     PADDLE_ENFORCE_EQ(phi::is_cpu_place(input_scale_tensor.place()),
                       true,
                       common::errors::InvalidArgument(

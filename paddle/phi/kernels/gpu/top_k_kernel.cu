@@ -73,7 +73,7 @@ void TopkKernel(const Context& dev_ctx,
 
   // 0d input tensor
   if (in_dims.size() == 0) {
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     dev_ctx.template Alloc<int64_t>(indices);
     funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
@@ -90,10 +90,8 @@ void TopkKernel(const Context& dev_ctx,
     indices->Resize(out_dims);
   }
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
-    phi::Full<int64_t, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(indices->dims())), 0, indices);
+    Full<T, Context>(dev_ctx, out->dims(), NAN, out);
+    Full<int64_t, Context>(dev_ctx, indices->dims(), 0, indices);
     return;
   }
   PADDLE_ENFORCE_GE(

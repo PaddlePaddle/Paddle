@@ -1714,12 +1714,12 @@ void Blas<phi::CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 
 template <typename DeviceContext>
 template <typename T>
-void Blas<DeviceContext>::MatMul(const phi::DenseTensor &mat_a,
+void Blas<DeviceContext>::MatMul(const DenseTensor &mat_a,
                                  bool trans_a,
-                                 const phi::DenseTensor &mat_b,
+                                 const DenseTensor &mat_b,
                                  bool trans_b,
                                  T alpha,
-                                 phi::DenseTensor *mat_out,
+                                 DenseTensor *mat_out,
                                  T beta) const {
   const auto &dim_a = mat_a.dims();
   const auto &dim_b = mat_b.dims();
@@ -2398,12 +2398,12 @@ void Blas<phi::CPUContext>::MatMul(
 
 template <typename DeviceContext>
 template <typename T>
-void Blas<DeviceContext>::MatMul(const phi::DenseTensor &mat_a,
+void Blas<DeviceContext>::MatMul(const DenseTensor &mat_a,
                                  const MatDescriptor &dim_a,
-                                 const phi::DenseTensor &mat_b,
+                                 const DenseTensor &mat_b,
                                  const MatDescriptor &dim_b,
                                  T alpha,
-                                 phi::DenseTensor *mat_out,
+                                 DenseTensor *mat_out,
                                  T beta) const {
   MatMul(mat_a.data<T>(),
          dim_a,
@@ -2496,13 +2496,13 @@ void Blas<DeviceContext>::MatMul(const T *mat_a,
  */
 template <typename DeviceContext>
 template <typename T>
-void Blas<DeviceContext>::MatMulWithHead(const phi::DenseTensor &mat_a,
+void Blas<DeviceContext>::MatMulWithHead(const DenseTensor &mat_a,
                                          const MatDescriptor &dim_a,
-                                         const phi::DenseTensor &mat_b,
+                                         const DenseTensor &mat_b,
                                          const MatDescriptor &dim_b,
                                          T alpha,
                                          int head_number,
-                                         phi::DenseTensor *mat_out,
+                                         DenseTensor *mat_out,
                                          T beta,
                                          bool mat_b_split_vertical) const {
   PADDLE_ENFORCE_EQ(
@@ -2659,13 +2659,13 @@ void Blas<DeviceContext>::MatMulWithHead(const phi::DenseTensor &mat_a,
  */
 template <typename DeviceContext>
 template <typename T>
-void Blas<DeviceContext>::MatMulWithHead(const phi::DenseTensor &mat_a,
+void Blas<DeviceContext>::MatMulWithHead(const DenseTensor &mat_a,
                                          const MatDescriptor &dim_a,
-                                         const phi::DenseTensor &mat_b,
+                                         const DenseTensor &mat_b,
                                          const MatDescriptor &dim_b,
                                          T alpha,
                                          int head_number,
-                                         phi::DenseTensor *mat_out,
+                                         DenseTensor *mat_out,
                                          T beta,
                                          bool mat_b_split_vertical) const {
   PADDLE_ENFORCE_EQ(

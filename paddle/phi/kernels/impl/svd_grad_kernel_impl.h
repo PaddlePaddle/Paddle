@@ -72,7 +72,7 @@ static DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
 
 template <typename T, typename Context>
 DenseTensor Hermitian(const Context& dev_ctx, const DenseTensor& x) {
-  return ::phi::TransposeLast2Dim<T>(dev_ctx, Conj<T, Context>(dev_ctx, x));
+  return TransposeLast2Dim<T>(dev_ctx, Conj<T, Context>(dev_ctx, x));
 }
 
 template <typename T, typename Context>

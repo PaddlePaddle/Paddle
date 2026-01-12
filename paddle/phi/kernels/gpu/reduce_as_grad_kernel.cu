@@ -32,7 +32,7 @@ void ReduceAsGradKernel(const Context& dev_ctx,
   dev_ctx.Alloc(x_grad, x.dtype());
 
   if (reduce_dim.size() == 0) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     return;
   }
   auto update_dims = common::vectorize(x.dims());

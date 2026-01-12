@@ -57,12 +57,12 @@ void CSplitKernel(const Context& dev_ctx,
   std::vector<int64_t> split_list(nranks, dims[dims_size - 1]);
   int axis = dims_size - 1;
 
-  auto x_tmp = std::make_shared<phi::DenseTensor>();
+  auto x_tmp = std::make_shared<DenseTensor>();
   x_tmp->ShareDataWith(*x);
   paddle::Tensor x_tensor(x_tmp);
   auto outputs = paddle::experimental::split(x_tensor, split_list, axis);
   out->ShareDataWith(
-      *reinterpret_cast<phi::DenseTensor*>(outputs[rank].impl().get()));
+      *reinterpret_cast<DenseTensor*>(outputs[rank].impl().get()));
 }
 }  // namespace phi
 

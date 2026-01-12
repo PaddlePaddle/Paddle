@@ -500,7 +500,7 @@ template <typename T, typename Context>
 void ContiguousKernel(const Context& dev_ctx,
                       const DenseTensor& input,
                       DenseTensor* out) {
-  phi::DenseTensorMeta meta = input.meta();
+  DenseTensorMeta meta = input.meta();
   std::vector<int> axis;
   DDim src_stride = meta.strides;
   DDim src_shape = meta.dims;
@@ -509,7 +509,7 @@ void ContiguousKernel(const Context& dev_ctx,
     meta.strides = meta.calc_strides(meta.dims);
     out->set_meta(meta);
     DenseTensor tmp_tensor = input;
-    phi::DenseTensorMeta tmp_meta = meta;
+    DenseTensorMeta tmp_meta = meta;
     tmp_meta.strides = src_stride;
     tmp_meta.dims = src_shape;
     tmp_tensor.set_meta(tmp_meta);

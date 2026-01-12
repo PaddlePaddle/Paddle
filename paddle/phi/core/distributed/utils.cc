@@ -17,10 +17,10 @@
 namespace phi {
 namespace distributed {
 
-phi::DenseTensor GetPartialTensor(const phi::DenseTensor& tensor,
-                                  int64_t offset,
-                                  int64_t numel) {
-  phi::DenseTensor tensor_flattened;
+DenseTensor GetPartialTensor(const DenseTensor& tensor,
+                             int64_t offset,
+                             int64_t numel) {
+  DenseTensor tensor_flattened;
   tensor_flattened.ShareDataWith(tensor);
   tensor_flattened.Resize({tensor.numel()});
   return tensor_flattened.Slice(offset, offset + numel);

@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from paddle import Tensor
 
 __all__ = [
+    'allclose',
     'equal',
     'slogdet',
     'sort',
@@ -60,6 +61,59 @@ __all__ = [
 def __getattr__(name):
     if name == "paddle_triton":
         return paddle_triton_fun()
+
+
+@ForbidKeywordsDecorator(
+    illegal_keys={"x", "y"},
+    func_name="paddle.compat.allclose",
+    correct_name="paddle.allclose",
+)
+def allclose(
+    input: Tensor,
+    other: Tensor,
+    rtol: float = 1e-05,
+    atol: float = 1e-08,
+    equal_nan: bool = False,
+    name: str | None = None,
+) -> bool:
+    """
+    Check if all :math:`input` and :math:`other` satisfy the condition:
+
+    .. math::
+        \\left| input - other \\right| \\leq atol + rtol \\times \\left| other \\right|
+
+    elementwise, for all elements of :math:`input` and :math:`other`. This is analogous to :math:`numpy.allclose`, namely that it returns :math:`True` if
+    two tensors are elementwise equal within a tolerance.
+
+    Args:
+        input (Tensor): The input tensor, it's data type should be float16, float32, float64.
+        other (Tensor): The input tensor, it's data type should be float16, float32, float64.
+        rtol (float, optional): The relative tolerance. Default: :math:`1e-5` .
+        atol (float, optional): The absolute tolerance. Default: :math:`1e-8` .
+        equal_nan (bool, optional): ${equal_nan_comment}. Default: False.
+        name (str|None, optional): Name for the operation. For more information, please
+            refer to :ref:`api_guide_Name`. Default: None.
+
+    Returns:
+        bool: True if the two tensors are elementwise equal within a tolerance, False otherwise.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([10000., 1e-07])
+            >>> y = paddle.to_tensor([10000.1, 1e-08])
+            >>> result1 = paddle.compat.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name="ignore_nan")
+            >>> print(result1)
+            False
+            >>> result2 = paddle.compat.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=True, name="equal_nan")
+            >>> print(result2)
+            False
+    """
+    return paddle.allclose(
+        input, other, rtol=rtol, atol=atol, equal_nan=equal_nan, name=name
+    ).item()
 
 
 @ForbidKeywordsDecorator(

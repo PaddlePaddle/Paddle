@@ -58,14 +58,14 @@ void ShuffleBatchKernel(const Context& dev_ctx,
   int64_t seed_int = 0;
   if (seed.initialized()) {
     const auto& seed_place = seed.place().GetType();
-    bool is_gpu_place = seed_place == phi::AllocationType::GPU ||
-                        seed_place == phi::AllocationType::CUSTOM;
+    bool is_gpu_place = seed_place == AllocationType::GPU ||
+                        seed_place == AllocationType::CUSTOM;
     if (is_gpu_place) {
       // NOTE: We have overwritten GetKernelTypeForVar, so seed_place would
       // not be CUDAPlace in practice. This case would only happen in Python
       // op_test framework.
-      phi::DenseTensor tmp_tensor;
-      phi::Copy(dev_ctx, seed, phi::CPUPlace(), false, &tmp_tensor);
+      DenseTensor tmp_tensor;
+      Copy(dev_ctx, seed, CPUPlace(), false, &tmp_tensor);
       seed_int = *(tmp_tensor.data<int64_t>());
     } else {
       seed_int = *(seed.data<int64_t>());

@@ -27,11 +27,11 @@ template <typename T,
           typename InfoT = int,
           typename OutT = int>
 void TDMChildInner(const Context &dev_ctx,
-                   const phi::DenseTensor &input,
-                   const phi::DenseTensor &tree_info,
+                   const DenseTensor &input,
+                   const DenseTensor &tree_info,
                    int child_nums,
-                   phi::DenseTensor *child,
-                   phi::DenseTensor *mask) {
+                   DenseTensor *child,
+                   DenseTensor *mask) {
   auto info_dims = tree_info.dims();
   int64_t node_nums = info_dims[0];
   int64_t length = info_dims[1];
@@ -108,12 +108,12 @@ void TDMChildInner(const Context &dev_ctx,
 
 template <typename T, typename Context>
 void TDMChildKernel(const Context &dev_ctx,
-                    const phi::DenseTensor &x,
-                    const phi::DenseTensor &tree_info,
+                    const DenseTensor &x,
+                    const DenseTensor &tree_info,
                     int child_nums,
                     phi::DataType dtype,
-                    phi::DenseTensor *child,
-                    phi::DenseTensor *leaf_mask) {
+                    DenseTensor *child,
+                    DenseTensor *leaf_mask) {
   const auto &input_type = x.dtype();
   bool input_type_match =
       input_type == DataType::INT32 || input_type == DataType::INT64;

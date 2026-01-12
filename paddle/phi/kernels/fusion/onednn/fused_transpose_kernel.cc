@@ -66,7 +66,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
   auto x_dims = x.dims();
   if ((x_dims.size() >= 3) &&
       (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-       phi::DataLayout::NHWC)) {
+       DataLayout::NHWC)) {
     int axis_size = static_cast<int>(axis.size());
     std::vector<int> formatted_axis = axis;
     std::vector<int> count(axis_size, 0);
@@ -79,8 +79,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
 
     std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
     x_dims = x_dims.reshape(dims);
-    VLOG(3)
-        << "Rotating Shape in Transpose from: kMKLDNN to: kNHWC output_shape";
+    VLOG(3) << "Rotating Shape in Transpose from: ONEDNN to: NHWC output_shape";
 
     DDim out_dims(x_dims);
     for (size_t i = 0; i < axis.size(); i++) {

@@ -35,11 +35,11 @@ void SequenceConvGradXPUKernel(const Context& dev_ctx,
   auto* in = &x;
   auto* filter_p = &filter;
 
-  PADDLE_ENFORCE_EQ(in->lod().empty(),
-                    false,
-                    common::errors::InvalidArgument(
-                        "Input(X) phi::DenseTensor of SequenceConvOp "
-                        "does not contain LoD information."));
+  PADDLE_ENFORCE_EQ(
+      in->lod().empty(),
+      false,
+      common::errors::InvalidArgument("Input(X) DenseTensor of SequenceConvOp "
+                                      "does not contain LoD information."));
   PADDLE_ENFORCE_EQ(
       in->lod().size(),
       1UL,

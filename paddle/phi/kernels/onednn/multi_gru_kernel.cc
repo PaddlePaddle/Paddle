@@ -675,11 +675,11 @@ class MultiGRUHandler {
   // on Ti size, thus we need another key to cache them
   std::string memory_key_;
 
-  const phi::DenseTensor* x_;
-  const std::vector<const phi::DenseTensor*> weights_x_;
-  const std::vector<const phi::DenseTensor*> weights_h_;
-  const std::vector<const phi::DenseTensor*> biases_;
-  phi::DenseTensor* hidden_;
+  const DenseTensor* x_;
+  const std::vector<const DenseTensor*> weights_x_;
+  const std::vector<const DenseTensor*> weights_h_;
+  const std::vector<const DenseTensor*> biases_;
+  DenseTensor* hidden_;
   std::vector<dnnl::primitive_attr> attrs_;
   const phi::Vector<size_t>& x_lod_;
 };

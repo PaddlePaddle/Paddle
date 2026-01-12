@@ -246,13 +246,8 @@ void MedianKernel(const Context& dev_ctx,
                   DenseTensor* out,
                   DenseTensor* median_index) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
-    phi::Full<int64_t, Context>(
-        dev_ctx,
-        phi::IntArray(common::vectorize(median_index->dims())),
-        0,
-        median_index);
+    Full<T, Context>(dev_ctx, out->dims(), NAN, out);
+    Full<int64_t, Context>(dev_ctx, median_index->dims(), 0, median_index);
     return;
   }
   DenseTensor tmp_x;

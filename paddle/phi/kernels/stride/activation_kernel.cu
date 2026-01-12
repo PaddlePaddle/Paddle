@@ -47,7 +47,11 @@ namespace phi {
           "be called, something wrong has happened!"));                       \
     }                                                                         \
     DenseTensor x_;                                                           \
-    if (!FLAGS_use_stride_compute_kernel) {                                   \
+    bool zero_size = false;                                                   \
+    if (x.numel() == 0) {                                                     \
+      zero_size = true;                                                       \
+    }                                                                         \
+    if (!FLAGS_use_stride_compute_kernel || zero_size) {                      \
       if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
@@ -113,7 +117,11 @@ DEFINE_CUDA_ACTIVATION_STRIDE_OP(Ceil, CudaCeilFunctor)
           "be called, something wrong has happened!"));                       \
     }                                                                         \
     DenseTensor x_;                                                           \
-    if (!FLAGS_use_stride_compute_kernel) {                                   \
+    bool zero_size = false;                                                   \
+    if (x.numel() == 0) {                                                     \
+      zero_size = true;                                                       \
+    }                                                                         \
+    if (!FLAGS_use_stride_compute_kernel || zero_size) {                      \
       if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
@@ -166,7 +174,11 @@ DEFINE_CUDA_ACTIVATION_WITH_INT_IN_FLOAT_OUT_STRIDE_OP(Expm1, CudaExpm1Functor)
           "be called, something wrong has happened!"));                        \
     }                                                                          \
     DenseTensor x_;                                                            \
-    if (!FLAGS_use_stride_compute_kernel) {                                    \
+    bool zero_size = false;                                                    \
+    if (x.numel() == 0) {                                                      \
+      zero_size = true;                                                        \
+    }                                                                          \
+    if (!FLAGS_use_stride_compute_kernel || zero_size) {                       \
       if (!x.meta().is_contiguous()) {                                         \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                           \
       } else {                                                                 \
@@ -213,7 +225,11 @@ DEFINE_CUDA_ACTIVATION_WITH_INT_IN_FLOAT_OUT_STRIDE_OP(Expm1, CudaExpm1Functor)
           "be called, something wrong has happened!"));                        \
     }                                                                          \
     DenseTensor x_;                                                            \
-    if (!FLAGS_use_stride_compute_kernel) {                                    \
+    bool zero_size = false;                                                    \
+    if (x.numel() == 0) {                                                      \
+      zero_size = true;                                                        \
+    }                                                                          \
+    if (!FLAGS_use_stride_compute_kernel || zero_size) {                       \
       if (!x.meta().is_contiguous()) {                                         \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                           \
       } else {                                                                 \
@@ -268,7 +284,11 @@ DEFINE_CUDA_ACTIVATION_STRIDE_WITH_ONE_ATTRS(Mish, CudaMishFunctor, threshold)
           "be called, something wrong has happened!"));                        \
     }                                                                          \
     DenseTensor x_;                                                            \
-    if (!FLAGS_use_stride_compute_kernel) {                                    \
+    bool zero_size = false;                                                    \
+    if (x.numel() == 0) {                                                      \
+      zero_size = true;                                                        \
+    }                                                                          \
+    if (!FLAGS_use_stride_compute_kernel || zero_size) {                       \
       if (!x.meta().is_contiguous()) {                                         \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                           \
       } else {                                                                 \
@@ -329,7 +349,11 @@ void SoftplusStrideKernel(const Context &dev_ctx,
         "something wrong has happened!"));
   }
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  bool zero_size = false;
+  if (x.numel() == 0) {
+    zero_size = true;
+  }
+  if (!FLAGS_use_stride_compute_kernel || zero_size) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -368,7 +392,11 @@ void RoundStrideKernel(const Context &dev_ctx,
         "be called, something wrong has happened!"));
   }
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  bool zero_size = false;
+  if (x.numel() == 0) {
+    zero_size = true;
+  }
+  if (!FLAGS_use_stride_compute_kernel || zero_size) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -412,7 +440,11 @@ void HardSwishStrideKernel(const Context &dev_ctx,
         "be called, something wrong has happened!"));
   }
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  bool zero_size = false;
+  if (x.numel() == 0) {
+    zero_size = true;
+  }
+  if (!FLAGS_use_stride_compute_kernel || zero_size) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -454,7 +486,7 @@ void HardSwishStrideKernel(const Context &dev_ctx,
 template <typename T, typename Enable = void>
 struct CudaAbsFunctor;
 template <typename T>
-struct CudaAbsFunctor<T, phi::funcs::Complex<T, phi::dtype::Real<T>>> {
+struct CudaAbsFunctor<T, funcs::Complex<T, phi::dtype::Real<T>>> {
   __device__ __forceinline__ phi::dtype::Real<T> operator()(const T x) const {
     return abs(x);
   }
@@ -485,7 +517,11 @@ void AbsStrideKernel(const Context &dev_ctx,
         "be called, something wrong has happened!"));
   }
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  bool zero_size = false;
+  if (x.numel() == 0) {
+    zero_size = true;
+  }
+  if (!FLAGS_use_stride_compute_kernel || zero_size) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {

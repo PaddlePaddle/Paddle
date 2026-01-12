@@ -215,7 +215,7 @@ static OffsetCalculator<N, OffsetT, signed_strides> make_offset_calculator(
 
 template <int N, bool signed_strides = false, typename OffsetT = uint32_t>
 static OffsetCalculator<N, OffsetT, signed_strides> make_offset_calculator(
-    const phi::DenseTensorIteratorBase& iter) {
+    const DenseTensorIteratorBase& iter) {
   PADDLE_ENFORCE_LE(N,
                     iter.ntensors(),
                     ::common::errors::InvalidArgument(
@@ -227,9 +227,11 @@ static OffsetCalculator<N, OffsetT, signed_strides> make_offset_calculator(
   return OffsetCalculator<N, OffsetT, signed_strides>(
       iter.ndim(), iter.shape().data(), strides.data());
 }
+
 constexpr bool IsInUint32Range(int64_t value) {
-  return value >= 0 && value <= std::numeric_limits<int32_t>::max();
+  return value >= 0 && value <= std::numeric_limits<uint32_t>::max();
 }
+
 constexpr bool IsInUint32Range(int64_t v1, int64_t v2) {
   return IsInUint32Range(v1) && IsInUint32Range(v2);
 }

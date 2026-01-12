@@ -164,7 +164,7 @@ void ConvTransposeGradRawKernel(const Context& dev_ctx,
     DenseTensor dfilter_;
     funcs::SetConstant<Context, T> set_zero;
 
-    funcs::Im2ColFunctor<funcs::ColFormat::kCFO, Context, T> im2col;
+    funcs::Im2ColFunctor<funcs::ColFormat::CFO, Context, T> im2col;
     funcs::Vol2ColFunctor<Context, T> vol2col;
     funcs::ConcatFunctor<Context, T> concat_functor;
 

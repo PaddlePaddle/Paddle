@@ -117,9 +117,9 @@ template <typename T>
 class Unpool2dMaxFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
-                  const phi::DenseTensor& input,
-                  const phi::DenseTensor& indices,
-                  phi::DenseTensor* output) {
+                  const DenseTensor& input,
+                  const DenseTensor& indices,
+                  DenseTensor* output) {
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
     int64_t batch_size = input.dims()[0];
@@ -169,11 +169,11 @@ template <typename T>
 class Unpool2dMaxGradFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
-                  const phi::DenseTensor& input,
-                  const phi::DenseTensor& indices,
-                  const phi::DenseTensor& output,
-                  const phi::DenseTensor& output_grad,
-                  phi::DenseTensor* input_grad) {
+                  const DenseTensor& input,
+                  const DenseTensor& indices,
+                  const DenseTensor& output,
+                  const DenseTensor& output_grad,
+                  DenseTensor* input_grad) {
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
     int64_t batch_size = input.dims()[0];
@@ -225,9 +225,9 @@ template <typename T>
 class Unpool3dMaxFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
-                  const phi::DenseTensor& input,
-                  const phi::DenseTensor& indices,
-                  phi::DenseTensor* output) {
+                  const DenseTensor& input,
+                  const DenseTensor& indices,
+                  DenseTensor* output) {
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
     int64_t batch_size = input.dims()[0];
@@ -287,11 +287,11 @@ template <typename T>
 class Unpool3dMaxGradFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
-                  const phi::DenseTensor& input,
-                  const phi::DenseTensor& indices,
-                  const phi::DenseTensor& output,
-                  const phi::DenseTensor& output_grad,
-                  phi::DenseTensor* input_grad) {
+                  const DenseTensor& input,
+                  const DenseTensor& indices,
+                  const DenseTensor& output,
+                  const DenseTensor& output_grad,
+                  DenseTensor* input_grad) {
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
     int64_t batch_size = input.dims()[0];

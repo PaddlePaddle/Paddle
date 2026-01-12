@@ -65,7 +65,7 @@ void CalculateGrad(const Context& dev_ctx,
       std::vector<int> out_grad_dims_2(out_grad_dims_1.begin() + 1,
                                        out_grad_dims_1.end());
       out_grad_dims_2.emplace(out_grad_dims_2.begin(), x_grad_dims[0]);
-      DenseTensor x_grad_v2 = phi::Empty<T, Context>(dev_ctx, out_grad_dims_2);
+      DenseTensor x_grad_v2 = Empty<T, Context>(dev_ctx, out_grad_dims_2);
       funcs::SetConstant<Context, T>()(dev_ctx, &x_grad_v2, static_cast<T>(0));
       T* x_grad_v2_data = x_grad_v2.data<T>();
 #ifdef PADDLE_WITH_MKLML
@@ -122,7 +122,7 @@ void CalculateGrad(const Context& dev_ctx,
       std::vector<int> out_grad_dims_2(out_grad_dims_1.begin() + 1,
                                        out_grad_dims_1.end());
       out_grad_dims_2.emplace(out_grad_dims_2.begin(), x_grad_dims[0]);
-      DenseTensor x_grad_v2 = phi::Empty<T, Context>(dev_ctx, out_grad_dims_2);
+      DenseTensor x_grad_v2 = Empty<T, Context>(dev_ctx, out_grad_dims_2);
       funcs::SetConstant<Context, T>()(dev_ctx, &x_grad_v2, static_cast<T>(0));
       T* x_grad_v2_data = x_grad_v2.data<T>();
 #ifdef PADDLE_WITH_MKLML
@@ -243,10 +243,8 @@ void SendUVGradKernel(const Context& dev_ctx,
 
   if (out_grad.numel() == 0 || x.numel() == 0 || y.numel() == 0 ||
       src_index.numel() == 0 || dst_index.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+    Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
+    Full<T, Context>(dev_ctx, y_grad->dims(), 0, y_grad);
     return;
   }
 

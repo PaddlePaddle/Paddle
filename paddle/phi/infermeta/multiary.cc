@@ -6165,6 +6165,7 @@ void MoePermuteInferMeta(const MetaTensor& X,
                          const std::vector<int>& tokens_per_expert,
                          const int padding_alignment,
                          const bool do_gather,
+                         const bool using_ue8m0_scale,
                          MetaTensor* X_unzipped,
                          MetaTensor* zipped_expertwise_rowmap,
                          MetaTensor* token_prob_unzipped,
@@ -6188,10 +6189,18 @@ void MoePermuteInferMeta(const MetaTensor& X,
                     common::errors::InvalidArgument(
                         "Input expert_prob_topk's dtype should be FLOAT32"));
   if (XScale && do_gather) {
-    PADDLE_ENFORCE_EQ(XScale.dtype(),
-                      DataType::FLOAT32,
-                      common::errors::InvalidArgument(
-                          "Input XScale's dtype should be FLOAT32"));
+    if (using_ue8m0_scale) {
+      PADDLE_ENFORCE_EQ(XScale.dtype(),
+                        DataType::INT32,
+                        common::errors::InvalidArgument(
+                            "Input XScale's dtype should be INT32 if "
+                            "using_ue8m0_scale is True"));
+    } else {
+      PADDLE_ENFORCE_EQ(XScale.dtype(),
+                        DataType::FLOAT32,
+                        common::errors::InvalidArgument(
+                            "Input XScale's dtype should be FLOAT32"));
+    }
     const int64_t quanted_cols = XScale.dims()[1];
     XScale_unzipped->set_dims({-1, quanted_cols});
     XScale_unzipped->set_dtype(XScale.dtype());
@@ -6541,14 +6550,14 @@ void TopPSamplingInferMeta(const MetaTensor& x,
       mode == "truncated" || mode == "non-truncated",
       errors::InvalidArgument("mode must be 'truncated' or 'non-truncated'."));
 
-  ids->set_dims(phi::make_ddim({bsz, 1}));
+  ids->set_dims(make_ddim({bsz, 1}));
   ids->set_dtype(DataType::INT64);
-  out->set_dims(phi::make_ddim({bsz, 1}));
+  out->set_dims(make_ddim({bsz, 1}));
   out->set_dtype(x.dtype());
   if (k > 0) {
-    topk_ids->set_dims(phi::make_ddim({bsz, k}));
+    topk_ids->set_dims(make_ddim({bsz, k}));
     topk_ids->set_dtype(DataType::INT64);
-    topk_scores->set_dims(phi::make_ddim({bsz, k}));
+    topk_scores->set_dims(make_ddim({bsz, k}));
     topk_scores->set_dtype(x.dtype());
   }
 }
@@ -6648,10 +6657,10 @@ void CalAuxLossInferMeta(const MetaTensor& gate_prob,
             "The input dispatch_tokens_mask type should be BOOL"));
   }
 
-  l_aux_loss->set_dims(phi::make_ddim({}));
+  l_aux_loss->set_dims(make_ddim({}));
   l_aux_loss->set_dtype(gate_prob.dtype());
 
-  seqlen_floats->set_dims(phi::make_ddim({}));
+  seqlen_floats->set_dims(make_ddim({}));
   seqlen_floats->set_dtype(gate_prob.dtype());
 
   ce->set_dims({gate_prob_dims[1]});

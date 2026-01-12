@@ -38,7 +38,7 @@ template <typename T>
 class AttnMatMul {
  public:
   // (m, n, k) = bsz_seq, output_size, input_size
-  AttnMatMul(const phi::GPUContext& dev_ctx,
+  AttnMatMul(const GPUContext& dev_ctx,
              bool transA,
              bool transB,
              int bsz_seq,
@@ -53,11 +53,11 @@ class AttnMatMul {
         input_size_(input_size),
         compute_bias_(compute_bias) {}
 
-  void ComputeForward(const phi::DenseTensor* weight,
-                      const phi::DenseTensor* input,
-                      const phi::DenseTensor* bias,
-                      phi::DenseTensor* output,
-                      phi::DenseTensor* bias_out,
+  void ComputeForward(const DenseTensor* weight,
+                      const DenseTensor* input,
+                      const DenseTensor* bias,
+                      DenseTensor* output,
+                      DenseTensor* bias_out,
                       bool fused = false) {
     VLOG(6) << "input.shape={" << input->dims() << "}, weight.shape={"
             << weight->dims() << "}, output.shape={" << output->dims()
@@ -100,7 +100,7 @@ class AttnMatMul {
     T beta = static_cast<T>(0.0);
 
     // (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
-    auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
+    auto blas = funcs::GetBlas<GPUContext, T>(dev_ctx_);
     blas.GEMM(transA,
               transB,
               bsz_seq_,
@@ -113,18 +113,18 @@ class AttnMatMul {
               output->data<T>());
     if (compute_bias_) {
       // bias_out = output + bias
-      std::vector<const phi::DenseTensor*> ins = {output, bias};
-      std::vector<phi::DenseTensor*> outs = {bias_out};
+      std::vector<const DenseTensor*> ins = {output, bias};
+      std::vector<DenseTensor*> outs = {bias_out};
       funcs::BroadcastKernel<T>(dev_ctx_, ins, &outs, funcs::AddFunctor<T>());
     }
   }
 
-  void ComputeBackward(const phi::DenseTensor* input,
-                       const phi::DenseTensor* weight,
-                       const phi::DenseTensor* d_output,
-                       phi::DenseTensor* d_input,
-                       phi::DenseTensor* d_weight,
-                       phi::DenseTensor* d_bias,
+  void ComputeBackward(const DenseTensor* input,
+                       const DenseTensor* weight,
+                       const DenseTensor* d_output,
+                       DenseTensor* d_input,
+                       DenseTensor* d_weight,
+                       DenseTensor* d_bias,
                        bool use_addto = false,
                        bool fused = false) {
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
@@ -152,7 +152,7 @@ class AttnMatMul {
     T beta_dA = use_addto ? static_cast<T>(1.0) : static_cast<T>(0.0);
     T beta_dB = static_cast<T>(0.0);
 
-    auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
+    auto blas = funcs::GetBlas<GPUContext, T>(dev_ctx_);
     if (!transA_) {
       // forward: gemm-nt
       if (transB_) {
@@ -259,11 +259,11 @@ class AttnMatMul {
 
       gpuStream_t stream = dev_ctx_.stream();
       if (support_case_1 || support_case_2) {
-        phi::SumKernel<T, phi::GPUContext>(
+        phi::SumKernel<T, GPUContext>(
             dev_ctx_, *d_output, {0, 1}, d_output->dtype(), false, d_bias);
 
       } else if (support_case_3 || support_case_4) {
-        phi::SumKernel<T, phi::GPUContext>(
+        phi::SumKernel<T, GPUContext>(
             dev_ctx_, *d_output, {0, 1, 2}, d_output->dtype(), false, d_bias);
       } else {
         PADDLE_THROW(common::errors::InvalidArgument(
@@ -275,7 +275,7 @@ class AttnMatMul {
   }
 
  private:
-  const phi::GPUContext& dev_ctx_;
+  const GPUContext& dev_ctx_;
 
   bool transA_;
   bool transB_;
