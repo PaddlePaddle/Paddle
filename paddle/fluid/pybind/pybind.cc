@@ -1854,11 +1854,11 @@ PYBIND11_MODULE(libpaddle, m) {
           })
       .def_static("end_capture", &platform::EndCUDAGraphCapture)
       .def_static("gen_new_memory_pool_id",
-                  &phi::backends::xpu::XPUGraph::UniqueMemoryPoolID)
-      .def("replay", &phi::backends::xpu::XPUGraph::Replay)
-      .def("reset", &phi::backends::xpu::XPUGraph::Reset)
+                  &phi::backends::xpu::CUDAGraph::UniqueMemoryPoolID)
+      .def("replay", &phi::backends::xpu::CUDAGraph::Replay)
+      .def("reset", &phi::backends::xpu::CUDAGraph::Reset)
       .def("print_to_dot_files",
-           &phi::backends::xpu::XPUGraph::PrintToDotFiles);
+           &phi::backends::xpu::CUDAGraph::PrintToDotFiles);
 
 #endif
 

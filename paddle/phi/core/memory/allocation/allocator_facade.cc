@@ -60,7 +60,7 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/backends/xpu/xpu_graph.h"
+#include "paddle/phi/backends/xpu/cuda_graph.h"
 #include "paddle/phi/core/memory/allocation/stream_safe_xpu_allocator.h"
 #include "paddle/phi/core/memory/allocation/xpu_allocator.h"
 #include "paddle/phi/core/memory/allocation/xpu_pinned_allocator.h"
@@ -1692,7 +1692,7 @@ AllocatorFacadePrivate* AllocatorFacade::GetPrivate() const {
 #if defined(PADDLE_WITH_XPU)
   if (UNLIKELY(IsCUDAGraphCapturing()) &&
       !FLAGS_use_cuda_malloc_async_allocator) {
-    auto id = phi::backends::xpu::XPUGraph::CapturingPoolID();
+    auto id = phi::backends::xpu::CUDAGraph::CapturingPoolID();
     auto iter = cuda_graph_map_.find(id);
     PADDLE_ENFORCE_NE(
         iter,

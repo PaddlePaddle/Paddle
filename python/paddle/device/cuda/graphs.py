@@ -46,7 +46,7 @@ if (
     def is_cuda_graph_supported():
         return True
 elif is_compiled_with_xpu():
-    from paddle.base.core import XPUGraph as CoreCUDAGraph
+    from paddle.base.core import CUDAGraph as CoreCUDAGraph
 
     def is_cuda_graph_supported():
         return True

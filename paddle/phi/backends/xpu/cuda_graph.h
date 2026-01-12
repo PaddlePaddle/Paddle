@@ -174,11 +174,11 @@ class CUDAGraph {
   ~CUDAGraph() { Reset(); }
   CUDAGraphID ID() const { return id_; }
 
-  using XPUPostResetCallback =
-      std::function<void(paddle::optional<const CUDAGraph &>)>;
-  using XPUPreCaptureCallback = std::function<void()>;
-  using XPUPostCaptureCallback = std::function<void()>;
-  using SetSeedFunc = std::function<bool(gpuKernelParams *, bool)>;
+  // using XPUPostResetCallback =
+  //     std::function<void(paddle::optional<const CUDAGraph &>)>;
+  // using XPUPreCaptureCallback = std::function<void()>;
+  // using XPUPostCaptureCallback = std::function<void()>;
+  // using SetSeedFunc = std::function<bool(gpuKernelParams *, bool)>;
 
   static int64_t SetMemoryPoolID(int64_t pool_id) {
     auto &pool_id_ = capturing_graph_->pool_id_;
@@ -222,7 +222,7 @@ class CUDAGraph {
     cudagraph_post_capture_callbacks_.push_back(std::move(callback));
   }
 
-  void AddJoiningStream(cudaStream_t stream) {
+  void AddJoiningStream(XPUStream stream) {
     streams_to_join_.insert(stream);
   }
 
@@ -277,6 +277,8 @@ class CUDAGraph {
     std::lock_guard<std::mutex> guard(capturing_graph_->func_mtx_);
     capturing_graph_->set_seed_funcs_.emplace_back(std::move(set_seed_func));
   }
+
+  static int64_t UniqueMemoryPoolID();
 
  private:
   static CUDAGraphID UniqueID();

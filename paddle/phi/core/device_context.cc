@@ -23,7 +23,7 @@
 #endif
 
 #if defined(PADDLE_WITH_XPU)
-#include "paddle/phi/backends/xpu/xpu_graph.h"
+#include "paddle/phi/backends/xpu/cuda_graph.h"
 #endif
 
 #include "paddle/phi/core/dense_tensor.h"
@@ -203,7 +203,7 @@ struct DeviceContext::Impl {
         (!fake_alloc && tensor->numel() != 0) && !pinned;
     if (must_cuda_graph_allocator &&
         place.GetType() == phi::AllocationType::GPU &&
-        phi::backends::xpu::XPUGraph::IsThisThreadCapturing()) {
+        phi::backends::xpu::CUDAGraph::IsThisThreadCapturing()) {
       PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
                               common::errors::InvalidArgument(
                                   "Required cuda_graph_allocator_ shall not be "

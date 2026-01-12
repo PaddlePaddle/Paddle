@@ -61,16 +61,16 @@ void CUDAGraph::Reset() {
   is_reset_ = true;
 }
 
-CUDAGraph::CUDAGraph() {
-  ThrowErrorIfNotSupportCUDAGraph();
-  id_ = UniqueID();
-}
+// CUDAGraph::CUDAGraph() {
+//   ThrowErrorIfNotSupportCUDAGraph();
+//   id_ = UniqueID();
+// }
 
-CUDAGraph::~CUDAGraph() { Reset(); }
+// CUDAGraph::~CUDAGraph() { Reset(); }
 
-CUDAGraphID CUDAGraph::ID() const { return id_; }
+// CUDAGraphID CUDAGraph::ID() const { return id_; }
 
-int64_t CUDAGraph::PoolID() const { return pool_id_; }
+// int64_t CUDAGraph::PoolID() const { return pool_id_; }
 
 void CUDAGraph::Replay() {
   is_replayed_ = true;
@@ -205,6 +205,7 @@ std::unique_ptr<CUDAGraph> CUDAGraph::EndCapture() {
   EndSegmentCapture();
   capturing_thread_id_ = paddle::none;
   return std::move(capturing_graph_);
+}
 
   bool CUDAGraph::IsValidCapturing() {
     if (!IsCapturing()) return false;
