@@ -1257,11 +1257,10 @@ class Executor:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy
-            >>> import os
 
             >>> # Executor is only used in static graph mode
             >>> paddle.enable_static()
@@ -1281,21 +1280,13 @@ class Executor:
             ...     hidden = paddle.static.nn.fc(data, 10)
             ...     loss = paddle.mean(hidden)
             ...     paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
-            ...
             >>> # Run the startup program once and only once.
             >>> # Not need to optimize/compile the startup program.
             >>> exe.run(startup_program)
 
-            >>> # Run the main program directly without compile.
+            >>> # Run the main program.
             >>> x = numpy.random.random(size=(10, 1)).astype('float32')
-            >>> loss_data, = exe.run(train_program, feed={"X": x}, fetch_list=[loss.name])
-
-            >>> # Or, compiled the program and run. See `CompiledProgram`
-            >>> # for more details.
-            >>> compiled_prog = paddle.static.CompiledProgram(
-            ...     train_program)
-            >>> loss_data, = exe.run(compiled_prog, feed={"X": x}, fetch_list=[loss.name])
-
+            >>> (loss_data,) = exe.run(train_program, feed={"X": x}, fetch_list=[loss])
     """
 
     place: _Place

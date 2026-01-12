@@ -168,13 +168,8 @@ void SendURecvKernel(const Context& dev_ctx,
           out_size_data[0] <= 0 ? x.dims()[0] : out_size_data[0];
       dst_count->Resize({input_size});
     }
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
-    phi::Full<int32_t, Context>(
-        dev_ctx,
-        phi::IntArray(common::vectorize(dst_count->dims())),
-        0,
-        dst_count);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
+    Full<int32_t, Context>(dev_ctx, dst_count->dims(), 0, dst_count);
     return;
   }
 

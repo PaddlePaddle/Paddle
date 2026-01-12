@@ -343,7 +343,7 @@ static PyObject* eager_api_read_next_tensor_list(PyObject* self,
       auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
       autograd_meta->SetPersistable(false);
       autograd_meta->SetStopGradient(true);
-      tensor.set_impl(std::make_shared<phi::DenseTensor>(tensor_base));
+      tensor.set_impl(std::make_shared<DenseTensor>(tensor_base));
       return tensor;
     };
     for (auto& tensor_base : tensor_base_list) {
@@ -530,9 +530,9 @@ static Tensor InitializedEmptyTensor() {
       egr::Controller::Instance().GenerateUniqueName("generated_tensor"));
   auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
   autograd_meta->SetPersistable(false);
-  std::shared_ptr<phi::DenseTensor> dense_tensor = nullptr;
+  std::shared_ptr<DenseTensor> dense_tensor = nullptr;
   std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
-  dense_tensor = std::make_shared<phi::DenseTensor>(
+  dense_tensor = std::make_shared<DenseTensor>(
       allocation_ptr, phi::DenseTensorMeta(phi::DataType::FLOAT32, ddims));
   tensor.set_impl(dense_tensor);
   autograd_meta->SetGradNode(
@@ -956,9 +956,9 @@ static PyObject* eager_api_sparse_coo_tensor(PyObject* self,
         non_zero_elements.is_dense_tensor(),
         common::errors::Fatal("the non-zero elements must be a DenseTensor."));
     auto dense_indices =
-        std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_indices.impl());
+        std::dynamic_pointer_cast<DenseTensor>(non_zero_indices.impl());
     auto dense_elements =
-        std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_elements.impl());
+        std::dynamic_pointer_cast<DenseTensor>(non_zero_elements.impl());
     // TODO(zhangkaihuo): After creating SparseCooTensor, call coalesced() to
     // sort and merge duplicate indices
     std::shared_ptr<phi::SparseCooTensor> coo_tensor =
@@ -1005,11 +1005,11 @@ static PyObject* eager_api_sparse_csr_tensor(PyObject* self,
         common::errors::Fatal("the non-zero elements must be a DenseTensor."));
 
     auto dense_crows =
-        std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_crows.impl());
+        std::dynamic_pointer_cast<DenseTensor>(non_zero_crows.impl());
     auto dense_cols =
-        std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_cols.impl());
+        std::dynamic_pointer_cast<DenseTensor>(non_zero_cols.impl());
     auto dense_elements =
-        std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_elements.impl());
+        std::dynamic_pointer_cast<DenseTensor>(non_zero_elements.impl());
     std::shared_ptr<phi::SparseCsrTensor> csr_tensor =
         std::make_shared<phi::SparseCsrTensor>(*dense_crows,
                                                *dense_cols,

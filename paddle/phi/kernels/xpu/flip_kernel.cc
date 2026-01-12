@@ -37,7 +37,7 @@ void FlipKernel(const Context& dev_ctx,
     return;
   }
   if (formatted_axis.size() == 0) {
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
   std::vector<int64_t> x_shape = common::vectorize(x.dims());

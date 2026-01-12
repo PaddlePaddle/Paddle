@@ -67,7 +67,7 @@ void TileGradKernel(const Context& dev_ctx,
   }
   // no need reduce, just copy
   if (just_copy) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     // TensorCopy may change the dims of dx
     x_grad->Resize(x_dims);
   } else {

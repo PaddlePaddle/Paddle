@@ -45,7 +45,7 @@ int GetMaxLen(const GPUContext& dev_ctx,
   int max_len_cpu = 0;
   GetMaxLenKernel<blockSize><<<1, blockSize, 0, dev_ctx.stream()>>>(
       seq_lens_tensor.data<int>(), max_len_tensor->data<int>(), batch_size);
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      &max_len_cpu,
                      dev_ctx.GetPlace(),
                      max_len_tensor->data<int>(),

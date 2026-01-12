@@ -103,16 +103,16 @@ void EmptyTensorInitializer(TensorObject* self,
     VLOG(6) << "in EmptyTensorInitializer, create DenseTensor";
     if (var_type == paddle::framework::proto::VarType::DENSE_TENSOR) {
       // TODO(jiabin): Maybe support LegacyLoD later
-      std::shared_ptr<phi::DenseTensor> dense_tensor = nullptr;
+      std::shared_ptr<DenseTensor> dense_tensor = nullptr;
       if (dims.size() == 1 && dims[0] == 0) {
         std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
-        dense_tensor = std::make_shared<phi::DenseTensor>(
+        dense_tensor = std::make_shared<DenseTensor>(
             allocation_ptr, phi::DenseTensorMeta(dtype, ddims));
       } else {
         // TODO(dev): we need enhance check for ddims.
-        dense_tensor = std::make_shared<phi::DenseTensor>(
-            std::make_shared<phi::Allocation>(),
-            phi::DenseTensorMeta(dtype, ddims));
+        dense_tensor =
+            std::make_shared<DenseTensor>(std::make_shared<phi::Allocation>(),
+                                          phi::DenseTensorMeta(dtype, ddims));
       }
       self->tensor.set_impl(dense_tensor);
     } else if (var_type == paddle::framework::proto::VarType::SELECTED_ROWS) {
@@ -249,15 +249,15 @@ void InitDistTensorWithTensor(TensorObject* self,
   self->tensor.set_name(name);
   VLOG(4) << "Do TensorCopy from DenseTensor to DistTensor.";
   if (place == src.place()) {
-    std::shared_ptr<phi::DenseTensor> tensor =
-        std::static_pointer_cast<phi::DenseTensor>(src.impl());
+    std::shared_ptr<DenseTensor> tensor =
+        std::static_pointer_cast<DenseTensor>(src.impl());
     self->tensor.set_impl(
         std::make_shared<DistTensor>(tensor, process_mesh, placements));
     VLOG(4) << "Same place, do ShareDataWith for DistTensor.";
   } else {
-    std::shared_ptr<phi::DenseTensor> tensor;
+    std::shared_ptr<DenseTensor> tensor;
     if (src.initialized()) {
-      tensor = std::static_pointer_cast<phi::DenseTensor>(
+      tensor = std::static_pointer_cast<DenseTensor>(
           src.copy_to(place, true).impl());
     } else {
       // lazy init branch. The src tensor is on undefined place.
@@ -265,7 +265,7 @@ void InitDistTensorWithTensor(TensorObject* self,
           src.place().GetType() == phi::AllocationType::UNDEFINED,
           common::errors::InvalidArgument("Only undefined place is support for "
                                           "uninitialized input tensor."));
-      tensor = std::static_pointer_cast<phi::DenseTensor>(src.impl());
+      tensor = std::static_pointer_cast<DenseTensor>(src.impl());
     }
     self->tensor.set_impl(
         std::make_shared<DistTensor>(tensor, process_mesh, placements));
@@ -302,15 +302,14 @@ void InitDistTensorWithTensor(TensorObject* self,
   auto global_ddims = common::make_ddim(global_dims);
   VLOG(4) << "Do TensorCopy from DenseTensor to DistTensor.";
   if (place == local_tensor.place()) {
-    std::shared_ptr<phi::DenseTensor> tensor =
-        std::static_pointer_cast<phi::DenseTensor>(local_tensor.impl());
+    std::shared_ptr<DenseTensor> tensor =
+        std::static_pointer_cast<DenseTensor>(local_tensor.impl());
     self->tensor.set_impl(std::make_shared<DistTensor>(
         tensor, global_ddims, process_mesh, placements));
     VLOG(4) << "Same place, do ShareDataWith for DistTensor.";
   } else {
-    std::shared_ptr<phi::DenseTensor> tensor =
-        std::static_pointer_cast<phi::DenseTensor>(
-            local_tensor.copy_to(place, true).impl());
+    std::shared_ptr<DenseTensor> tensor = std::static_pointer_cast<DenseTensor>(
+        local_tensor.copy_to(place, true).impl());
     self->tensor.set_impl(std::make_shared<DistTensor>(
         tensor, global_ddims, process_mesh, placements));
     VLOG(4) << "Different place, do TensorCopy for DistTensor.";
@@ -357,10 +356,10 @@ void InitTensorWithFrameworkTensor(TensorObject* self,
                                    const std::string& name) {
   self->tensor.set_name(name);
   if (place == src.place()) {
-    self->tensor.set_impl(std::make_shared<phi::DenseTensor>(src));
+    self->tensor.set_impl(std::make_shared<DenseTensor>(src));
     VLOG(4) << "Same place, do ShareDataWith";
   } else {
-    auto temp = paddle::Tensor(std::make_shared<phi::DenseTensor>(src));
+    auto temp = paddle::Tensor(std::make_shared<DenseTensor>(src));
     self->tensor.set_impl(temp.copy_to(place, true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
@@ -582,7 +581,7 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
   InitTensorWithNumpyValue(py_tensor_ptr, numpy_value, place, zero_copy);
 }
 
-// initialize Tensor by Tensor or phi::DenseTensor (mix args and
+// initialize Tensor by Tensor or DenseTensor (mix args and
 // kwargs) automatically.
 void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
                             std::unordered_map<std::string, PyObject*> kws_map,
@@ -660,7 +659,7 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
     }
   } else {
     // init by framework tensor
-    phi::DenseTensor src_tensor;
+    DenseTensor src_tensor;
     if (kw_order_map["value"] <= args_num) {
       src_tensor = CastPyArg2FrameworkTensor(
           PyTuple_GET_ITEM(args, kw_order_map["value"] - 1),
