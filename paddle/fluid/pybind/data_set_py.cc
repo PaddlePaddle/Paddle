@@ -80,7 +80,7 @@ class IterableDatasetWrapper {
       tensors_.emplace_back();
       for (auto &var_name : slots_) {
         auto *var = scopes_.back()->Var(var_name);
-        auto *t = var->GetMutable<phi::DenseTensor>();
+        auto *t = var->GetMutable<DenseTensor>();
         tensors_.back().emplace_back(t);
       }
     }
@@ -114,7 +114,7 @@ class IterableDatasetWrapper {
     exhaustive_num_ = 0;
   }
 
-  std::vector<std::unordered_map<std::string, phi::DenseTensor>> Next() {
+  std::vector<std::unordered_map<std::string, DenseTensor>> Next() {
     PADDLE_ENFORCE_EQ(
         is_started_,
         true,
@@ -122,7 +122,7 @@ class IterableDatasetWrapper {
             "Reader must be started when getting next batch data."));
     size_t device_num = places_.size();
 
-    std::vector<std::unordered_map<std::string, phi::DenseTensor>> result(
+    std::vector<std::unordered_map<std::string, DenseTensor>> result(
         device_num);
 
     size_t read_num = 0;
@@ -176,7 +176,7 @@ class IterableDatasetWrapper {
   }
 
  private:
-  bool IsValidDenseTensor(const phi::DenseTensor &tensor) const {
+  bool IsValidDenseTensor(const DenseTensor &tensor) const {
     if (!drop_last_) return true;
     return static_cast<size_t>(tensor.dims()[0]) == batch_size_;
   }
@@ -193,7 +193,7 @@ class IterableDatasetWrapper {
   size_t exhaustive_num_;
 
   std::vector<std::unique_ptr<framework::Scope>> scopes_;
-  std::vector<std::vector<phi::DenseTensor *>> tensors_;
+  std::vector<std::vector<DenseTensor *>> tensors_;
   bool is_started_{false};
 };
 

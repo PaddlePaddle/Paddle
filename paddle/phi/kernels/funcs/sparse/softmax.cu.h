@@ -45,7 +45,7 @@ inline DenseTensor GetOffsets(const Context& dev_ctx,
   auto strides_ptr = strides.data<IntT>();
   memory_utils::Copy(dev_ctx.GetPlace(),
                      strides_ptr,
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      host_strides.data(),
                      sizeof(IntT) * host_strides.size(),
                      dev_ctx.stream());

@@ -78,7 +78,7 @@ void AdamDenseKernel(
   const float* beta1_const_pow_ptr = nullptr;
   DenseTensor xpu_beta1_pow;
   if (beta1_pow.place() == CPUPlace()) {
-    phi::Copy(dev_ctx, beta1_pow, dev_ctx.GetPlace(), false, &xpu_beta1_pow);
+    Copy(dev_ctx, beta1_pow, dev_ctx.GetPlace(), false, &xpu_beta1_pow);
     if (xpu_beta1_pow.dtype() == DataType::FLOAT16)
       funcs::GetDataPointer<Context, float>(
           xpu_beta1_pow, &beta1_pow_ptr, dev_ctx, &RAII_GUARD);
@@ -96,7 +96,7 @@ void AdamDenseKernel(
   const float* beta2_const_pow_ptr = nullptr;
   DenseTensor xpu_beta2_pow;
   if (beta2_pow.place() == CPUPlace()) {
-    phi::Copy(dev_ctx, beta2_pow, dev_ctx.GetPlace(), false, &xpu_beta2_pow);
+    Copy(dev_ctx, beta2_pow, dev_ctx.GetPlace(), false, &xpu_beta2_pow);
     if (xpu_beta2_pow.dtype() == DataType::FLOAT16)
       funcs::GetDataPointer<Context, float>(
           xpu_beta2_pow, &beta2_pow_ptr, dev_ctx, &RAII_GUARD);
@@ -145,12 +145,12 @@ void AdamDenseKernel(
 
   if (skip_update_) {
     VLOG(4) << "Adam skip update";
-    phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
-    phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
-    phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
+    Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
+    Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
+    Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
     if (!use_global_beta_pow) {
-      phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
-      phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
+      Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
+      Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
     }
     return;
   }
@@ -305,7 +305,7 @@ void MergedAdamKernel(
   DenseTensor lr_host;
   lr_host.Resize(learning_rate[0]->dims());
   dev_ctx.template HostAlloc<float>(&lr_host);
-  phi::Copy(dev_ctx, *learning_rate[0], CPUPlace(), false, &lr_host);
+  Copy(dev_ctx, *learning_rate[0], CPUPlace(), false, &lr_host);
   float lr_ = *(lr_host.template data<float>());
 
   float beta1_pow_data;
@@ -315,7 +315,7 @@ void MergedAdamKernel(
     DenseTensor beta1_pow_host;
     beta1_pow_host.Resize(beta1_pow[0]->dims());
     dev_ctx.template HostAlloc<float>(&beta1_pow_host);
-    phi::Copy(dev_ctx, *beta1_pow[0], CPUPlace(), false, &beta1_pow_host);
+    Copy(dev_ctx, *beta1_pow[0], CPUPlace(), false, &beta1_pow_host);
     beta1_pow_data = *(beta1_pow_host.template data<float>());
   }
 
@@ -326,7 +326,7 @@ void MergedAdamKernel(
     DenseTensor beta2_pow_host;
     beta2_pow_host.Resize(beta2_pow[0]->dims());
     dev_ctx.template HostAlloc<float>(&beta2_pow_host);
-    phi::Copy(dev_ctx, *beta2_pow[0], CPUPlace(), false, &beta2_pow_host);
+    Copy(dev_ctx, *beta2_pow[0], CPUPlace(), false, &beta2_pow_host);
     beta2_pow_data = *(beta2_pow_host.template data<float>());
   }
 
@@ -450,9 +450,9 @@ void MergedAdamKernel(
 
   // update param, moment1, moment2
   for (int i = 0; i < param_num; i++) {
-    phi::Copy(dev_ctx, *param[i], dev_ctx.GetPlace(), false, param_out[i]);
-    phi::Copy(dev_ctx, *moment1[i], dev_ctx.GetPlace(), false, moment1_out[i]);
-    phi::Copy(dev_ctx, *moment2[i], dev_ctx.GetPlace(), false, moment2_out[i]);
+    Copy(dev_ctx, *param[i], dev_ctx.GetPlace(), false, param_out[i]);
+    Copy(dev_ctx, *moment1[i], dev_ctx.GetPlace(), false, moment1_out[i]);
+    Copy(dev_ctx, *moment2[i], dev_ctx.GetPlace(), false, moment2_out[i]);
   }
 
   if (!use_global_beta_pow) {

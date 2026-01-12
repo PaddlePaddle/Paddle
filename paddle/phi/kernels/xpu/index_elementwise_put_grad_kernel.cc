@@ -144,7 +144,7 @@ void LaunchIndexElementwisePutWithTensorGradXPUKernel(
     DenseTensor* value_grad,
     DenseTensor* x_grad) {
   if (x_grad && !value_grad) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
 
     XPUIndexElementwisePutGradKernel<T, Context, int64_t>(dev_ctx,
                                                           out_grad,
@@ -158,7 +158,7 @@ void LaunchIndexElementwisePutWithTensorGradXPUKernel(
                                                           value_grad);
   } else if (value_grad) {
     if (x_grad) {
-      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+      Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
     if (value_grad->numel() == 1) {
       DenseTensor tmp_value_grad(value_grad->dtype());
@@ -248,7 +248,7 @@ void LaunchIndexElementwisePutGradXPUKernel(
     const int64_t slice_offset,
     DenseTensor* x_grad) {
   if (x_grad) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
 
     XPUIndexElementwisePutGradKernel<T, Context, int64_t>(dev_ctx,
                                                           out_grad,
@@ -288,7 +288,7 @@ void IndexElementwisePutGradKernel(
   std::vector<DenseTensor> tmp_args;
   if (indices.empty()) {
     if (x_grad) {
-      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+      Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
     return;
   }
@@ -330,7 +330,7 @@ void IndexElementwisePutWithTensorGradKernel(
   std::vector<DenseTensor> tmp_args;
   if (indices.empty()) {
     if (x_grad) {
-      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+      Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
     if (value_grad) {
       FullKernel<T, Context>(dev_ctx,

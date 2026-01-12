@@ -82,18 +82,14 @@ void DepthwiseConv2dTransposeGradKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     if (dx) dev_ctx.template Alloc<T>(dx);
     if (dfilter) {
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(dfilter->dims())),
-                            0,
-                            dfilter);
+      Full<T, Context>(dev_ctx, dfilter->dims(), 0, dfilter);
     }
     return;
   }
   if (filter.numel() == 0) {
     if (dfilter) dev_ctx.template Alloc<T>(dfilter);
     if (dx) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
     }
     return;
   }

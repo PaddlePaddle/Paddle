@@ -57,8 +57,7 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
                             DenseTensor* x_grad) {
   if (out_grad.numel() == 0 && x_grad) {
     // x = [1, 2], mask = [False, False], out = [], x_grad = [0, 0]
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     return;
   }
   // x_grad.size() == x.size()

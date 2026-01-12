@@ -51,7 +51,7 @@ bool TensorIsfinite(const phi::DenseTensor& tensor);
       auto place = in_.place();                                              \
       auto* ctx = static_cast<phi::device##Context*>(                        \
           phi::DeviceContextPool::Instance().Get(place));                    \
-      phi::DenseTensor tmp;                                                  \
+      DenseTensor tmp;                                                       \
       tmp.Resize(in_.dims());                                                \
       out_->Resize({1});                                                     \
       std::vector<int64_t> dims(tmp.dims().size());                          \
@@ -128,17 +128,17 @@ inline void TensorIsfinite(const phi::DenseTensor& tensor,
 
 // copy the result bool to cpu
 inline bool TensorContainsNAN(const phi::DenseTensor& tensor) {
-  phi::DenseTensor out;
+  DenseTensor out;
   TensorContainsNAN(tensor, &out);
   return paddle::framework::GetValue<bool>(&out);
 }
 inline bool TensorContainsInf(const phi::DenseTensor& tensor) {
-  phi::DenseTensor out;
+  DenseTensor out;
   TensorContainsInf(tensor, &out);
   return paddle::framework::GetValue<bool>(&out);
 }
 inline bool TensorIsfinite(const phi::DenseTensor& tensor) {
-  phi::DenseTensor out;
+  DenseTensor out;
   TensorIsfinite(tensor, &out);
   return paddle::framework::GetValue<bool>(&out);
 }
@@ -161,11 +161,11 @@ class OverflowKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {
     auto* x = ctx.InputVar("X");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* out = ctx.Output<DenseTensor>("Out");
     out->template mutable_data<T>(ctx.GetPlace());
     Functor functor;
-    if (x->IsType<phi::DenseTensor>()) {
-      auto* in = ctx.Input<phi::DenseTensor>("X");
+    if (x->IsType<DenseTensor>()) {
+      auto* in = ctx.Input<DenseTensor>("X");
       functor(*in, out);
     } else if (x->IsType<phi::SelectedRows>()) {
       auto& in = ctx.Input<phi::SelectedRows>("X")->value();
@@ -175,7 +175,7 @@ class OverflowKernel : public framework::OpKernel<T> {
                         false,
                         common::errors::InvalidArgument(
                             "The input type mismatch, the type of Input(X) "
-                            "must be phi::DenseTensor or "
+                            "must be DenseTensor or "
                             "SelectedRows, please check your input."));
     }
   }
