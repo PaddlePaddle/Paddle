@@ -135,10 +135,10 @@ namespace cg = cooperative_groups;
 
 namespace phi {
 
-#define CUMSUM_BLOCK_SIZE 48
+#define CUMSUM_BLOCK_SIZE 44
 #define CUMSUM_INVALID_TAG -1
 #ifndef MAX_NUM_EXPERTS
-#define MAX_NUM_EXPERTS 16
+#define MAX_NUM_EXPERTS 32
 #endif
 
 template <typename probs_T>
@@ -198,6 +198,29 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
         expert_infos_t();
   }
   __syncthreads();
+  // Preload the tokens to smem
+  extern __shared__ float smem_fp32[];
+  X_T *smem = reinterpret_cast<X_T *>(smem_fp32);
+  X_T *A0 = smem + 0 * token_length;
+  X_T *A1 = smem + 1 * token_length;
+  cg::thread_block block = cg::this_thread_block();
+  constexpr auto scope = cuda::thread_scope_block;
+  constexpr int stages = 2;
+// Suppress NVCC warning about dynamic initialization -
+// cuda::pipeline_shared_state is trivially initializable and designed for use
+// with __shared__ memory
+#pragma nv_diag_suppress 20054
+  __shared__ cuda::pipeline_shared_state<scope, stages> pstate;
+#pragma nv_diag_default 20054
+  auto pipe = cuda::make_pipeline(block, &pstate);
+  // Prime stage 0.
+  pipe.producer_acquire();
+  cuda::memcpy_async(block,
+                     A0,
+                     X + block_row_base * token_length,
+                     cuda::aligned_size_t<32>(token_length * sizeof(X_T)),
+                     pipe);
+  pipe.producer_commit();
 
   // ---------------Expertwise deterministic job scheduling ---------------
   if (threadIdx.x < num_experts) {
@@ -300,37 +323,12 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
       }
     }
   }
-
-  extern __shared__ float smem_fp32[];
-  X_T *smem = reinterpret_cast<X_T *>(smem_fp32);
-  X_T *A0 = smem + 0 * token_length;
-  X_T *A1 = smem + 1 * token_length;
-  cg::thread_block block = cg::this_thread_block();
-  constexpr auto scope = cuda::thread_scope_block;
-  constexpr int stages = 2;
-// Suppress NVCC warning about dynamic initialization -
-// cuda::pipeline_shared_state is trivially initializable and designed for use
-// with __shared__ memory
-#pragma nv_diag_suppress 20054
-  __shared__ cuda::pipeline_shared_state<scope, stages> pstate;
-#pragma nv_diag_default 20054
-  auto pipe = cuda::make_pipeline(block, &pstate);
-  // Prime stage 0.
-  pipe.producer_acquire();
-  cuda::memcpy_async(block,
-                     A0,
-                     X + block_row_base * token_length,
-                     cuda::aligned_size_t<32>(token_length * sizeof(X_T)),
-                     pipe);
-  pipe.producer_commit();
-
   // --------------------------- Jobs schedule done -------------------------
   __syncthreads();
   const int block_row_end =
       std::min(block_row_base + CUMSUM_BLOCK_SIZE, total_zipped_tokens_num);
   for (int row = block_row_base; row < block_row_end; row++) {
     // OOB check
-    if (row >= total_zipped_tokens_num) return;
     const int internal_row = row - block_row_base;
     X_T *a_stage = (internal_row % 2 == 0) ? A0 : A1;
     X_T *a_next = (internal_row % 2 == 0) ? A1 : A0;
