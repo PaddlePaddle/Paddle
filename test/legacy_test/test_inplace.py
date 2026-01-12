@@ -103,19 +103,20 @@ class TestInplaceCompatibility(unittest.TestCase):
         self.shape = [10, 20, 1]
         self.dtype = "float32"
         self.x_np = np.random.uniform(-5, 5, self.shape).astype(self.dtype)
+        self.set_inplace_api()
 
     def numpy_api_processing(self, var):
         return np.abs(var)
 
-    def inplace_api(self):
-        return paddle.abs_
+    def set_inplace_api(self):
+        self.inplace_api = paddle.abs_
 
     def test_inplace_compatibility_dygraph(self):
         paddle.disable_static()
         ref_out = self.numpy_api_processing(self.x_np)
         x = paddle.to_tensor(self.x_np)
-        out1 = self.inplace_api()(x=x)
-        out2 = self.inplace_api()(input=x)
+        out1 = self.inplace_api(x=x)
+        out2 = self.inplace_api(input=x)
         np.testing.assert_allclose(out1.numpy(), ref_out, rtol=1e-05)
         np.testing.assert_allclose(out2.numpy(), ref_out, rtol=1e-05)
 
@@ -126,8 +127,8 @@ class TestInplaceCompatibility(unittest.TestCase):
         startup = paddle.static.Program()
         with paddle.base.program_guard(main, startup):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
-            out1 = self.inplace_api()(x=x)
-            out2 = self.inplace_api()(input=x)
+            out1 = self.inplace_api(x=x)
+            out2 = self.inplace_api(input=x)
             fetch_list = [out1, out2]
             exe = paddle.base.Executor()
             fetches = exe.run(
