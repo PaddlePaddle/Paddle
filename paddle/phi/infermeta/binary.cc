@@ -19,8 +19,10 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/api/lib/data_type_set.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -31,12 +33,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/correlation_funcs.h"
-
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/phi/backends/onednn/onednn_helper.h"
-#endif
-
-#include "paddle/common/flags.h"
 
 COMMON_DECLARE_bool(manually_trans_conv_filter);
 
@@ -1319,6 +1315,52 @@ void DepthwiseConvInferMeta(const MetaTensor& input,
                             const std::string& data_format,
                             MetaTensor* out,
                             MetaConfig config) {
+  ConvInferMeta(input,
+                filter,
+                strides,
+                paddings,
+                padding_algorithm,
+                dilations,
+                groups,
+                data_format,
+                out,
+                config);
+}
+
+void DepthwiseConv2dBiasInferMeta(const MetaTensor& input,
+                                  const MetaTensor& filter,
+                                  const MetaTensor& bias,
+                                  const std::vector<int>& strides,
+                                  const std::vector<int>& paddings,
+                                  const std::string& padding_algorithm,
+                                  int groups,
+                                  const std::vector<int>& dilations,
+                                  const std::string& data_format,
+                                  MetaTensor* out,
+                                  MetaConfig config) {
+  ConvInferMeta(input,
+                filter,
+                strides,
+                paddings,
+                padding_algorithm,
+                dilations,
+                groups,
+                data_format,
+                out,
+                config);
+}
+
+void DepthwiseConv3dBiasInferMeta(const MetaTensor& input,
+                                  const MetaTensor& filter,
+                                  const MetaTensor& bias,
+                                  const std::vector<int>& strides,
+                                  const std::vector<int>& paddings,
+                                  const std::string& padding_algorithm,
+                                  int groups,
+                                  const std::vector<int>& dilations,
+                                  const std::string& data_format,
+                                  MetaTensor* out,
+                                  MetaConfig config) {
   ConvInferMeta(input,
                 filter,
                 strides,
@@ -3841,6 +3883,90 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void RmsNormInferMeta(const MetaTensor& x,
+                      const MetaTensor& scale,
+                      const std::vector<int64_t>& normalized_shape,
+                      double epsilon,
+                      MetaTensor* y,
+                      MetaTensor* invvar) {
+  auto x_dim = x.dims();
+  // std::vector<int64_t> normalized_shape_data = normalized_shape.GetData();
+  int normalized_shape_size = normalized_shape.size();
+  int x_dims_size = x_dim.size();
+  int begin_norm_axis = x_dims_size - normalized_shape_size;
+
+  PADDLE_ENFORCE_GT(begin_norm_axis,
+                    0,
+                    common::errors::InvalidArgument(
+                        "'begin_norm_axis' in Op(LayerNorm) should be "
+                        "greater than zero. But received [%d].",
+                        begin_norm_axis));
+
+  PADDLE_ENFORCE_LT(
+      begin_norm_axis,
+      x_dims_size,
+      common::errors::InvalidArgument(
+          "'begin_norm_axis' must be less than the dimensions of X,"
+          "But received 'begin_norm_axis' is [%d],"
+          "received the dimensions of X is [%d].",
+          begin_norm_axis,
+          x_dims_size));
+
+  for (int i = 0; i < normalized_shape_size; i++) {
+    PADDLE_ENFORCE_EQ(x_dim[x_dims_size - i - 1],
+                      normalized_shape[normalized_shape_size - i - 1],
+                      common::errors::InvalidArgument(
+                          "The %d-th dimension of X is not equal to the %d-th "
+                          "dimension of NormalizedShape.",
+                          x_dims_size - i - 1,
+                          normalized_shape_size - i - 1));
+  }
+
+  if (scale) {
+    auto scale_dim = scale.dims();
+    PADDLE_ENFORCE_EQ(scale_dim.size(),
+                      normalized_shape_size,
+                      common::errors::InvalidArgument(
+                          "The dimensions of Input(Scale) must be equal to the "
+                          "dimensions of NormalizedShape. "
+                          "But received: the dimensions of Input(Scale) is "
+                          "[%d], the dimensions of NormalizedShape is [%d].",
+                          scale_dim.size(),
+                          normalized_shape_size));
+    for (int i = 0; i < normalized_shape_size; i++) {
+      PADDLE_ENFORCE_EQ(scale_dim[i],
+                        normalized_shape[i],
+                        common::errors::InvalidArgument(
+                            "The %d-th dimension of Input(Scale) is not equal "
+                            "to the %d-th dimension of NormalizedShape.",
+                            i,
+                            i));
+    }
+  }
+
+  auto matrix_dim = common::flatten_to_2d(x_dim, begin_norm_axis);
+  auto before_norm_dims = slice_ddim(x_dim, 0, begin_norm_axis);
+  int64_t right = matrix_dim[1];
+
+  PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f,
+                    true,
+                    common::errors::InvalidArgument(
+                        "'epsilon' in Op(LayerNorm) should be between"
+                        "0.0 and 0.001, But received [%s].",
+                        epsilon));
+
+  DataType x_dtype = x.dtype();
+  y->set_dims(x_dim);
+  y->set_dtype(x_dtype);
+
+  DataType param_type =
+      (x_dtype == DataType::BFLOAT16 || x_dtype == DataType::FLOAT16)
+          ? DataType::FLOAT32
+          : x_dtype;
+  invvar->set_dims({before_norm_dims});
+  invvar->set_dtype(param_type);
+}
+
 void RowConvInferMeta(const MetaTensor& x,
                       const MetaTensor& filter,
                       MetaTensor* out) {
@@ -3980,7 +4106,7 @@ void ShuffleBatchInferMeta(const MetaTensor& x,
   seed_out->share_dims(seed);
   seed_out->share_lod(seed);
   seed_out->set_dtype(seed.dtype());
-  shuffle_idx->set_dims(phi::make_ddim({-1}));
+  shuffle_idx->set_dims(make_ddim({-1}));
 }
 
 void SequenceMaskInferMeta(const MetaTensor& x,

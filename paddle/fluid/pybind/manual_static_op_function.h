@@ -189,7 +189,7 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
       } else {
         std::vector<int64_t> shape_tmp = CastPyArg2Longs(shape_obj, "full", 0);
         shape = paddle::dialect::full_int_array(
-            shape_tmp, phi::DataType::INT64, phi::CPUPlace());
+            shape_tmp, phi::DataType::INT64, CPUPlace());
       }
 
       if (PyObject_CheckIRValue(value_obj)) {
@@ -208,7 +208,7 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
           value = paddle::dialect::full(std::vector<int64_t>{1},
                                         value_tmp,
                                         phi::DataType::FLOAT32,
-                                        phi::CPUPlace());
+                                        CPUPlace());
         }
       }
 
@@ -318,10 +318,8 @@ static PyObject *static_api_array_read(PyObject *self,
       i = CastPyArg2Value(i_obj, "array_read", 1, false);
     } else {
       int64_t i_tmp = CastPyArg2Int(i_obj, "array_read", 1);
-      i = paddle::dialect::full(std::vector<int64_t>{1},
-                                i_tmp,
-                                phi::DataType::INT64,
-                                phi::CPUPlace());
+      i = paddle::dialect::full(
+          std::vector<int64_t>{1}, i_tmp, phi::DataType::INT64, CPUPlace());
     }
 
     // Call ir static api
@@ -382,10 +380,8 @@ static PyObject *static_api_array_write_(PyObject *self,
       i = CastPyArg2Value(i_obj, "array_write_", 2, false);
     } else {
       int64_t i_tmp = CastPyArg2Int(i_obj, "array_write_", 2);
-      i = paddle::dialect::full(std::vector<int64_t>{1},
-                                i_tmp,
-                                phi::DataType::INT64,
-                                phi::CPUPlace());
+      i = paddle::dialect::full(
+          std::vector<int64_t>{1}, i_tmp, phi::DataType::INT64, CPUPlace());
     }
 
     // Call ir static api
@@ -489,7 +485,7 @@ static PyObject *static_api_slice_array(PyObject *self,
       std::vector<int64_t> starts_tmp =
           CastPyArg2Longs(starts_obj, "slice_array", 1);
       starts = paddle::dialect::full_int_array(
-          starts_tmp, phi::DataType::INT64, phi::CPUPlace());
+          starts_tmp, phi::DataType::INT64, CPUPlace());
     }
 
     PyObject *ends_obj = PyTuple_GET_ITEM(args, 2);
@@ -504,7 +500,7 @@ static PyObject *static_api_slice_array(PyObject *self,
       std::vector<int64_t> ends_tmp =
           CastPyArg2Longs(ends_obj, "slice_array", 2);
       ends = paddle::dialect::full_int_array(
-          ends_tmp, phi::DataType::INT64, phi::CPUPlace());
+          ends_tmp, phi::DataType::INT64, CPUPlace());
     }
 
     // Call ir static api
@@ -544,7 +540,7 @@ static PyObject *static_api_slice_array_dense(PyObject *self,
       std::vector<int64_t> starts_tmp =
           CastPyArg2Longs(starts_obj, "slice_array_dense", 1);
       starts = paddle::dialect::full_int_array(
-          starts_tmp, phi::DataType::INT64, phi::CPUPlace());
+          starts_tmp, phi::DataType::INT64, CPUPlace());
     }
     // Call ir static api
     CallStackRecorder callstack_recorder("slice_array_dense");

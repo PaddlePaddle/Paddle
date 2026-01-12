@@ -48,7 +48,7 @@ void StftKernel(const Context& dev_ctx,
   std::vector<int64_t> axes = {1};
 
   // Frame
-  phi::DenseTensor frames;
+  DenseTensor frames;
   DDim frames_dims(out->dims());
   frames_dims.at(axes.back()) = n_fft;
   frames.Resize(frames_dims);
@@ -63,7 +63,7 @@ void StftKernel(const Context& dev_ctx,
                                     /*is_grad*/ false);
 
   // Window
-  phi::DenseTensor frames_w;
+  DenseTensor frames_w;
   frames_w.Resize(frames_dims);
   dev_ctx.template Alloc<T>(&frames_w);
   funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T, T>(
@@ -89,7 +89,7 @@ void StftKernel(const Context& dev_ctx,
     DDim onesided_dims(out->dims());
     const int64_t onesided_axis_size = out->dims().at(axes.back()) / 2 + 1;
     onesided_dims.at(axes.back()) = onesided_axis_size;
-    phi::DenseTensor onesided_out;
+    DenseTensor onesided_out;
     onesided_out.Resize(onesided_dims);
     dev_ctx.template Alloc<T>(&onesided_out);
     fft_r2c_func(dev_ctx, frames_w, &onesided_out, axes, normalization, true);

@@ -100,12 +100,12 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
   // skip_update=true, just copy input to output
   if (skip_update_) {
     VLOG(4) << "Adamw skip update";
-    phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
-    phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
-    phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
+    Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
+    Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
+    Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
     if (!use_global_beta_pow) {
-      phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
-      phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
+      Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
+      Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
     }
     return;
   }
@@ -646,12 +646,12 @@ void AdamwDenseKernel(
   }
   if (skip_update_) {
     VLOG(4) << "Adamw skip update";
-    phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
-    phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
-    phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
+    Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
+    Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
+    Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
     if (!use_global_beta_pow) {
-      phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
-      phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
+      Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
+      Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
     }
     return;
   }
@@ -665,8 +665,8 @@ void AdamwDenseKernel(
   DenseTensor xpu_beta1_pow;
   DenseTensor xpu_beta2_pow;
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
-    phi::Copy(dev_ctx, beta1_pow, dev_ctx.GetPlace(), false, &xpu_beta1_pow);
-    phi::Copy(dev_ctx, beta2_pow, dev_ctx.GetPlace(), false, &xpu_beta2_pow);
+    Copy(dev_ctx, beta1_pow, dev_ctx.GetPlace(), false, &xpu_beta1_pow);
+    Copy(dev_ctx, beta2_pow, dev_ctx.GetPlace(), false, &xpu_beta2_pow);
     dev_ctx.Wait();
     beta1_pow_ptr = xpu_beta1_pow.template data<float>();
     beta2_pow_ptr = xpu_beta2_pow.template data<float>();

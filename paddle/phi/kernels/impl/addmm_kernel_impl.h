@@ -116,7 +116,7 @@ void AddmmKernel(const Context& dev_ctx,
 
   // Just return input X beta
   if (x.numel() == 0 || y.numel() == 0) {
-    auto eigen_out2 = phi::EigenVector<T>::Flatten(*out);
+    auto eigen_out2 = EigenVector<T>::Flatten(*out);
     eigen_out2.device(place) = eigen_out2 * static_cast<T>(beta);
     return;
   }

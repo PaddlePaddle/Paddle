@@ -31,7 +31,7 @@ static void SortDescending(const XPUContext& dev_ctx,
                            int pre_nms_top_n) {
   auto* value_data = value.data<T>();
   auto place = dev_ctx.GetPlace();
-  auto cpu_place = phi::CPUPlace();
+  auto cpu_place = CPUPlace();
 
   DenseTensor scores_slice_cpu;
   scores_slice_cpu.Resize({value.numel()});
@@ -180,11 +180,8 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
 
   int keep_num;
   const auto xpu_place = dev_ctx.GetPlace();
-  memory_utils::Copy(phi::CPUPlace(),
-                     &keep_num,
-                     xpu_place,
-                     keep_num_t.data<int>(),
-                     sizeof(int));
+  memory_utils::Copy(
+      CPUPlace(), &keep_num, xpu_place, keep_num_t.data<int>(), sizeof(int));
   keep_index.Resize({keep_num});
 
   DenseTensor scores_filter, proposals_filter;
@@ -354,7 +351,7 @@ void GenerateProposalsKernel(const Context& dev_ctx,
   tmp_variances.Resize(common::make_ddim({tmp_variances.numel() / 4, 4}));
 
   auto place = dev_ctx.GetPlace();
-  auto cpu_place = phi::CPUPlace();
+  auto cpu_place = CPUPlace();
 
   int num_proposals = 0;
   std::vector<size_t> offset(1, 0);

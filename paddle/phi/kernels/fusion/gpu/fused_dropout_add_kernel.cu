@@ -188,7 +188,7 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
 
     // we assume seed/offset is same across iterations
     // seed_offset_data should preserved by cudaGraph pool
-    const phi::GPUContext* dev_ctx_p = &dev_ctx;
+    const GPUContext* dev_ctx_p = &dev_ctx;
 
     // seed_offset_data should preserved by cudaGraph pool
     auto gen_cuda = dev_ctx.GetGenerator();
@@ -255,8 +255,8 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
   } else {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     MT factor = static_cast<MT>(1.0f - dropout_rate);
-    std::vector<phi::DenseTensor*> outs = {out};
-    std::vector<const phi::DenseTensor*> ins = {&x, &y};
+    std::vector<DenseTensor*> outs = {out};
+    std::vector<const DenseTensor*> ins = {&x, &y};
 
     funcs::ElementwiseKernel<T>(
         dev_ctx, ins, &outs, ScaleAddFuctor<T>(factor, upscale_in_train));

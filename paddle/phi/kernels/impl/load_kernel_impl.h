@@ -29,7 +29,7 @@ void LoadKernel(const Context& dev_ctx,
                 int64_t seek,
                 const std::vector<int64_t>& shape,
                 bool load_as_fp16,
-                phi::DenseTensor* out) {
+                DenseTensor* out) {
   // FIXME(yuyang18): We save variable to local file now, but we should change
   // it to save an output stream.
   std::ifstream fin(file_path, std::ios::binary);

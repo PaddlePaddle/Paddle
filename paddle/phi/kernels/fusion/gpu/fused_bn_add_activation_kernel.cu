@@ -120,7 +120,7 @@ void FusedBatchNormAddActKernel(const Context &dev_ctx,
   size_t reserve_space_size = 0;
   void *reserve_space_ptr = nullptr;
   void *workspace_ptr = nullptr;
-  phi::DenseTensor workspace_tensor;
+  DenseTensor workspace_tensor;
   // Create reserve space and workspace for batch norm.
   // Create tensor for each batchnorm op, it will be used in the
   // backward. Thus this tensor shouldn't be temp.

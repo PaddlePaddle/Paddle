@@ -85,18 +85,18 @@ void SyncBatchNormKernel(const Context& dev_ctx,
     // x, x^2, 1, here 1 is used to calc device num
     // device num also can be got from phi::DeviceContextPool
     const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
-    phi::DenseTensor stats_tensor;
+    DenseTensor stats_tensor;
     stats_tensor.Resize({static_cast<int64_t>(bytes)});
     dev_ctx.template Alloc<BatchNormParamType<T>>(&stats_tensor);
     auto* stats_data = stats_tensor.data<BatchNormParamType<T>>();
     auto* stats = reinterpret_cast<BatchNormParamType<T>*>(stats_data);
     const int threads = 512;
     int grid = std::min(C, (max_threads + threads - 1) / threads);
-    if (layout == phi::DataLayout::NCHW) {
-      KeLocalStats<T, threads, phi::DataLayout::NCHW>
+    if (layout == DataLayout::NCHW) {
+      KeLocalStats<T, threads, DataLayout::NCHW>
           <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     } else {
-      KeLocalStats<T, threads, phi::DataLayout::NHWC>
+      KeLocalStats<T, threads, DataLayout::NHWC>
           <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     }
 
@@ -119,7 +119,7 @@ void SyncBatchNormKernel(const Context& dev_ctx,
         dev_ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
 
     int64_t reserve_space_size = 0;
-    phi::DenseTensor tmp_reserve_space;
+    DenseTensor tmp_reserve_space;
     if (reserve_space == nullptr) {
       reserve_space = &tmp_reserve_space;
     }
@@ -147,30 +147,28 @@ void SyncBatchNormKernel(const Context& dev_ctx,
   int grid2 =
       (std::min(x_numel, static_cast<int64_t>(max_threads)) + block - 1) /
       block;
-  if (layout == phi::DataLayout::NCHW) {
-    KeNormAffine<T, phi::DataLayout::NCHW>
-        <<<grid2, block, 0, stream>>>(x_d,
-                                      s_d,
-                                      b_d,
-                                      mean_data,
-                                      var_data,
-                                      epsilon,
-                                      C,
-                                      H * W * D,
-                                      x_numel,
-                                      y_d);
+  if (layout == DataLayout::NCHW) {
+    KeNormAffine<T, DataLayout::NCHW><<<grid2, block, 0, stream>>>(x_d,
+                                                                   s_d,
+                                                                   b_d,
+                                                                   mean_data,
+                                                                   var_data,
+                                                                   epsilon,
+                                                                   C,
+                                                                   H * W * D,
+                                                                   x_numel,
+                                                                   y_d);
   } else {
-    KeNormAffine<T, phi::DataLayout::NHWC>
-        <<<grid2, block, 0, stream>>>(x_d,
-                                      s_d,
-                                      b_d,
-                                      mean_data,
-                                      var_data,
-                                      epsilon,
-                                      C,
-                                      H * W * D,
-                                      x_numel,
-                                      y_d);
+    KeNormAffine<T, DataLayout::NHWC><<<grid2, block, 0, stream>>>(x_d,
+                                                                   s_d,
+                                                                   b_d,
+                                                                   mean_data,
+                                                                   var_data,
+                                                                   epsilon,
+                                                                   C,
+                                                                   H * W * D,
+                                                                   x_numel,
+                                                                   y_d);
   }
 }
 

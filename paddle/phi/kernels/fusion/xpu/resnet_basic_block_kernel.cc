@@ -279,18 +279,18 @@ void ResNetBasicBlockXPUKernel(const Context &dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   // input
-  const phi::DenseTensor *x = &x_in;
-  const phi::DenseTensor *filter1 = &filter1_in;
-  const phi::DenseTensor *scale1 = &scale1_in;
-  const phi::DenseTensor *bias1 = &bias1_in;
-  const phi::DenseTensor *filter2 = &filter2_in;
-  const phi::DenseTensor *scale2 = &scale2_in;
-  const phi::DenseTensor *bias2 = &bias2_in;
+  const DenseTensor *x = &x_in;
+  const DenseTensor *filter1 = &filter1_in;
+  const DenseTensor *scale1 = &scale1_in;
+  const DenseTensor *bias1 = &bias1_in;
+  const DenseTensor *filter2 = &filter2_in;
+  const DenseTensor *scale2 = &scale2_in;
+  const DenseTensor *bias2 = &bias2_in;
 
   // output
-  phi::DenseTensor *conv1_output = conv1;
-  phi::DenseTensor *conv2_output = conv2;
-  phi::DenseTensor *output = out;
+  DenseTensor *conv1_output = conv1;
+  DenseTensor *conv2_output = conv2;
+  DenseTensor *output = out;
 
   auto x_data = reinterpret_cast<const XPUType *>(x->data<T>());
   auto conv1_filter_data =
@@ -397,8 +397,8 @@ void ResNetBasicBlockXPUKernel(const Context &dev_ctx,
   // 1. short
   const XPUType *z_out_data = nullptr;
   if (attr.has_shortcut) {
-    phi::DenseTensor *conv3_out = conv3;
-    const phi::DenseTensor *filter3 = filter3_in.get_ptr();
+    DenseTensor *conv3_out = conv3;
+    const DenseTensor *filter3 = filter3_in.get_ptr();
     auto conv3_filter_data =
         reinterpret_cast<const XPUType *>(filter3->data<T>());
     auto conv3_output_data =
@@ -438,8 +438,8 @@ void ResNetBasicBlockXPUKernel(const Context &dev_ctx,
                attr.group);
 
     // bn3
-    const phi::DenseTensor *scale3 = scale3_in.get_ptr();
-    const phi::DenseTensor *bias3 = bias3_in.get_ptr();
+    const DenseTensor *scale3 = scale3_in.get_ptr();
+    const DenseTensor *bias3 = bias3_in.get_ptr();
     auto bias3_data = bias3->data<float>();
     auto scale3_data = scale3->data<float>();
 
@@ -447,8 +447,8 @@ void ResNetBasicBlockXPUKernel(const Context &dev_ctx,
     PADDLE_ENFORCE_XDNN_NOT_NULL(bn3_output_data);
 
     if (!attr.global_stats) {
-      phi::DenseTensor *running_mean3 = mean3_out;
-      phi::DenseTensor *running_var3 = var3_out;
+      DenseTensor *running_mean3 = mean3_out;
+      DenseTensor *running_var3 = var3_out;
 
       auto saved_mean3_data = dev_ctx.template Alloc<float>(saved_mean3);
       auto saved_invstd3_data = dev_ctx.template Alloc<float>(saved_invstd3);
@@ -535,8 +535,8 @@ void ResNetBasicBlockXPUKernel(const Context &dev_ctx,
 
   // 3. bn1 + relu
   if (!attr.global_stats) {
-    phi::DenseTensor *running_mean1 = mean1_out;
-    phi::DenseTensor *running_var1 = var1_out;
+    DenseTensor *running_mean1 = mean1_out;
+    DenseTensor *running_var1 = var1_out;
 
     auto saved_mean1_data = dev_ctx.template Alloc<float>(saved_mean1);
     auto saved_invstd1_data = dev_ctx.template Alloc<float>(saved_invstd1);
@@ -633,9 +633,9 @@ void ResNetBasicBlockXPUKernel(const Context &dev_ctx,
 
   // 5. bn2
   if (!attr.global_stats) {
-    phi::DenseTensor *saved_var2 = saved_invstd2;
-    phi::DenseTensor *running_mean2 = mean2_out;
-    phi::DenseTensor *running_var2 = var2_out;
+    DenseTensor *saved_var2 = saved_invstd2;
+    DenseTensor *running_mean2 = mean2_out;
+    DenseTensor *running_var2 = var2_out;
 
     auto saved_mean2_data = dev_ctx.template Alloc<float>(saved_mean2);
     auto saved_var2_data = dev_ctx.template Alloc<float>(saved_var2);

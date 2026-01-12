@@ -1007,15 +1007,14 @@ void MultiClassNMSGPUKernel(const Context& dev_ctx,
     DenseTensor bboxes_cpu, scores_cpu, rois_num_cpu_tenor;
     DenseTensor out_cpu, index_cpu, nms_rois_num_cpu;
     paddle::optional<DenseTensor> rois_num_cpu(paddle::none);
-    auto cpu_place = phi::CPUPlace();
+    auto cpu_place = CPUPlace();
     auto gpu_place = dev_ctx.GetPlace();
 
     // copy from GPU to CPU
-    phi::Copy(dev_ctx, bboxes, cpu_place, false, &bboxes_cpu);
-    phi::Copy(dev_ctx, scores, cpu_place, false, &scores_cpu);
+    Copy(dev_ctx, bboxes, cpu_place, false, &bboxes_cpu);
+    Copy(dev_ctx, scores, cpu_place, false, &scores_cpu);
     if (has_roisnum) {
-      phi::Copy(
-          dev_ctx, *rois_num.get_ptr(), cpu_place, false, &rois_num_cpu_tenor);
+      Copy(dev_ctx, *rois_num.get_ptr(), cpu_place, false, &rois_num_cpu_tenor);
       rois_num_cpu = paddle::optional<DenseTensor>(rois_num_cpu_tenor);
     }
     dev_ctx.Wait();
@@ -1036,9 +1035,9 @@ void MultiClassNMSGPUKernel(const Context& dev_ctx,
                                             &index_cpu,
                                             &nms_rois_num_cpu);
     // copy back
-    phi::Copy(dev_ctx, out_cpu, gpu_place, false, out);
-    phi::Copy(dev_ctx, index_cpu, gpu_place, false, index);
-    phi::Copy(dev_ctx, nms_rois_num_cpu, gpu_place, false, nms_rois_num);
+    Copy(dev_ctx, out_cpu, gpu_place, false, out);
+    Copy(dev_ctx, index_cpu, gpu_place, false, index);
+    Copy(dev_ctx, nms_rois_num_cpu, gpu_place, false, nms_rois_num);
     return;
   }
 

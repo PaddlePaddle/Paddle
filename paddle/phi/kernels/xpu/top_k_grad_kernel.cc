@@ -66,7 +66,7 @@ void TopkGradKernel(const Context& dev_ctx,
   const int64_t* indices_data = indices.data<int64_t>();
 
   if (in_dims.size() == 0) {
-    phi::Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     return;
   }
 

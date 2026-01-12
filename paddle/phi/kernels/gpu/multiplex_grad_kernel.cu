@@ -31,7 +31,7 @@ void MultiplexGradKernel(const Context& dev_ctx,
   for (size_t i = 0; i < ins_grad.size(); i++) {
     if (ins_grad[i]) {
       dev_ctx.template Alloc<T>(ins_grad[i]);
-      auto t = phi::EigenVector<T>::Flatten(*ins_grad[i]);
+      auto t = EigenVector<T>::Flatten(*ins_grad[i]);
       t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
       idx = i;
     }
@@ -41,7 +41,7 @@ void MultiplexGradKernel(const Context& dev_ctx,
   auto rows = ins_grad[idx]->dims()[0];
   auto cols = ins_grad[idx]->numel() / rows;
   DenseTensor index_t_cpu;
-  phi::Copy(dev_ctx, ids, phi::CPUPlace(), true, &index_t_cpu);
+  Copy(dev_ctx, ids, CPUPlace(), true, &index_t_cpu);
   auto* index = index_t_cpu.data<int32_t>();
   auto stream = dev_ctx.stream();
   for (auto i = 0; i < rows; i++) {

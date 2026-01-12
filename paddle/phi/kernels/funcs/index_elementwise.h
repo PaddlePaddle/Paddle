@@ -118,7 +118,7 @@ CPUmake_offset_calculator(int ndim,
 
 template <int N, bool signed_strides = false>
 static CPUOffsetCalculator<N, uint32_t, signed_strides>
-CPUmake_offset_calculator(const phi::DenseTensorIteratorBase& iter) {
+CPUmake_offset_calculator(const DenseTensorIteratorBase& iter) {
   PADDLE_ENFORCE_LE(N,
                     iter.ntensors(),
                     ::common::errors::InvalidArgument(

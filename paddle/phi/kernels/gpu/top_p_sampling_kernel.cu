@@ -1108,7 +1108,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
   DenseTensor ps_now;
   ps_now.Resize(phi::make_ddim({bs, 1}));
   dev_ctx.template Alloc<T>(&ps_now);
-  phi::Copy(dev_ctx, ps, dev_ctx.GetPlace(), false, &ps_now);
+  Copy(dev_ctx, ps, dev_ctx.GetPlace(), false, &ps_now);
 
   DenseTensor inds_input;
   inds_input.Resize(phi::make_ddim({bs, vocab_size}));

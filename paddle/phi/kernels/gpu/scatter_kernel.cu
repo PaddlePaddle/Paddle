@@ -30,14 +30,14 @@ void ScatterKernel(const Context &dev_ctx,
                    DenseTensor *out) {
   if (index.numel() == 0) {
     dev_ctx.template Alloc<T>(out);
-    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
   if (out && out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
   }
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   // use template class to support int32_t and int64_t
   auto index_type = index.dtype();
   bool index_type_match =

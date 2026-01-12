@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable, Iterable, Sequence
-from typing import Union, overload
+from typing import Any, Union, overload
 
 from typing_extensions import TypeAlias
 
@@ -69,6 +69,11 @@ class CustomOpDef:
             "register_fake", "torch.library.CustomOpDef"
         )
         return fn
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        return PYTHON_OP_REGISTRY.get_operator(
+            f"{self._namespace}::{self._name}"
+        )(*args, **kwargs)
 
 
 @overload

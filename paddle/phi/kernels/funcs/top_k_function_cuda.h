@@ -84,7 +84,7 @@ struct NumericTraits<phi::bfloat16>
 namespace phi {
 namespace funcs {
 
-using Tensor = phi::DenseTensor;
+using Tensor = DenseTensor;
 
 inline void GetDims(
     const DDim& dim, int axis, int64_t* pre, int64_t* n, int64_t* post) {
@@ -1080,12 +1080,12 @@ __global__ void AssignGradWithAxis(const T* grad_out,
 // use the radix sort for the topk
 template <typename T>
 bool SortTopk(const phi::GPUContext& dev_ctx,
-              const phi::DenseTensor* input_tensor,
+              const DenseTensor* input_tensor,
               const int64_t num_cols,
               const int64_t num_rows,
               const int k,
-              phi::DenseTensor* out_tensor,
-              phi::DenseTensor* indices_tensor,
+              DenseTensor* out_tensor,
+              DenseTensor* indices_tensor,
               bool largest = true) {
   auto cu_stream = dev_ctx.stream();
 

@@ -54,7 +54,7 @@ void FillDiagonalTensorGradKernel(const Context &dev_ctx,
   if (x_grad) {
     auto *data = dev_ctx.template Alloc<T>(x_grad);
     auto dx_dims = x_grad->dims();
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
 
     for (int i = 0; i < dx_dims.size(); i++) {
       if (i != dim1 && i != dim2) {

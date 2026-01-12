@@ -34,11 +34,11 @@ void SequenceConvKernel(const Context& dev_ctx,
                         DenseTensor* out) {
   auto* in = &x;
   dev_ctx.template Alloc<T>(out);
-  PADDLE_ENFORCE_EQ(in->lod().empty(),
-                    false,
-                    common::errors::InvalidArgument(
-                        "Input(X) phi::DenseTensor of SequenceConvOp "
-                        "does not contain LoD information."));
+  PADDLE_ENFORCE_EQ(
+      in->lod().empty(),
+      false,
+      common::errors::InvalidArgument("Input(X) DenseTensor of SequenceConvOp "
+                                      "does not contain LoD information."));
   PADDLE_ENFORCE_EQ(
       in->lod().size(),
       1UL,
@@ -47,7 +47,7 @@ void SequenceConvKernel(const Context& dev_ctx,
           "present. But received: lod level %u.",
           in->lod().size()));
 
-  const phi::DenseTensor* padding_data_p = nullptr;
+  const DenseTensor* padding_data_p = nullptr;
   if (padding_trainable) {
     padding_data_p = padding_data.get_ptr();
   }
@@ -57,7 +57,7 @@ void SequenceConvKernel(const Context& dev_ctx,
   auto sequence_width = static_cast<int64_t>(in->dims()[1]);
 
   DDim col_shape = {in->dims()[0], context_length * sequence_width};
-  phi::DenseTensor col;
+  DenseTensor col;
   col.Resize(col_shape);
   dev_ctx.template Alloc<T>(&col);
   // Because if padding_trainable is false, padding data should be zeros.
@@ -116,7 +116,7 @@ void SequenceConvGradKernel(const Context& dev_ctx,
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   // use col_shape in the im2col calculation
   DDim col_shape = {in->dims()[0], sequence_width * context_length};
-  phi::DenseTensor col;
+  DenseTensor col;
 
   if (in_g || filter_g || (padding_trainable && padding_data_g)) {
     col.Resize(col_shape);
@@ -151,7 +151,7 @@ void SequenceConvGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(padding_data_g);
     set_zero(dev_ctx, padding_data_g, static_cast<T>(0));
 
-    phi::DenseTensor* input = const_cast<phi::DenseTensor*>(in);
+    DenseTensor* input = const_cast<DenseTensor*>(in);
     seq_project_grad_functor(dev_ctx,
                              *input,
                              padding_trainable,
@@ -170,9 +170,9 @@ void SequenceConvGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(filter_g);
     set_zero(dev_ctx, filter_g, static_cast<T>(0));
 
-    phi::DenseTensor out_grad = *out_g;
+    DenseTensor out_grad = *out_g;
 
-    const phi::DenseTensor* padding_data_p = nullptr;
+    const DenseTensor* padding_data_p = nullptr;
     if (padding_trainable) {
       padding_data_p = padding_data.get_ptr();
     }

@@ -22,7 +22,7 @@ template <typename T, typename Context>
 void FusedSoftmaxMaskFuseUpperTriangleKernel(const Context& dev_ctx,
                                              const DenseTensor& x,
                                              DenseTensor* out) {
-  bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
+  bool is_gpu_place = dev_ctx.GetPlace().GetType() == AllocationType::GPU;
   PADDLE_ENFORCE_EQ(is_gpu_place,
                     true,
                     common::errors::Unimplemented(

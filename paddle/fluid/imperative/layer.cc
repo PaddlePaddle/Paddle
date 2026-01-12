@@ -23,12 +23,10 @@
 #include "paddle/fluid/imperative/prepared_operator.h"
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/platform/profiler.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/onednn_helper.h"
-#endif
 
 COMMON_DECLARE_bool(use_mkldnn);
 COMMON_DECLARE_bool(use_onednn);
@@ -98,8 +96,8 @@ static std::string DebugString(
     const framework::Variable& var = vars[i]->Var();
     if (!var.IsInitialized()) {
       ss << "NOT_INITED_VAR";
-    } else if (var.IsType<phi::DenseTensor>()) {
-      auto& tensor = var.Get<phi::DenseTensor>();
+    } else if (var.IsType<DenseTensor>()) {
+      auto& tensor = var.Get<DenseTensor>();
       ss << "DenseTensor<";
       if (tensor.IsInitialized()) {
         ss << framework::DataTypeToString(
@@ -238,7 +236,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
     } else {
       phi::RecordEvent record_event(
           "ClearGradient", phi::TracerEventType::UserDefined, 2);
-      auto* grad_t = grad_var_->MutableVar()->GetMutable<phi::DenseTensor>();
+      auto* grad_t = grad_var_->MutableVar()->GetMutable<DenseTensor>();
       if (grad_t->IsInitialized()) {
         if (set_to_zero) {
           auto* dev_ctx =
@@ -285,20 +283,20 @@ bool VarBase::_IsGradientSetEmpty() {
 std::shared_ptr<VarBase> VarBase::NewVarBase(const phi::Place& dst_place,
                                              const bool blocking) const {
   PADDLE_ENFORCE_EQ(
-      Var().IsInitialized() && (Var().IsType<phi::DenseTensor>() ||
-                                Var().IsType<phi::SelectedRows>()),
+      Var().IsInitialized() &&
+          (Var().IsType<DenseTensor>() || Var().IsType<phi::SelectedRows>()),
       true,
       common::errors::InvalidArgument(
           "Variable is not initialized or Variable's type is not "
           "DenseTensor or SelectedRows when getting numpy tensor"));
 
-  if (Var().IsType<phi::DenseTensor>()) {
-    auto& src_tensor = Var().Get<phi::DenseTensor>();
+  if (Var().IsType<DenseTensor>()) {
+    auto& src_tensor = Var().Get<DenseTensor>();
     // TODO(Jiabin): change this after move unique_name generator to CXX
     auto new_var = std::make_shared<VarBase>(
         true, Name() + std::to_string(copied_counter_++));
 
-    auto* dst_tensor = new_var->MutableVar()->GetMutable<phi::DenseTensor>();
+    auto* dst_tensor = new_var->MutableVar()->GetMutable<DenseTensor>();
     dst_tensor->set_lod(src_tensor.lod());
     new_var->SetPersistable(Persistable());
     new_var->SetDataType(DataType());
@@ -369,9 +367,9 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
   }
 
   phi::Place place = src.Place();
-  if (src.Var().IsType<phi::DenseTensor>()) {
-    auto& src_tensor = src.Var().Get<phi::DenseTensor>();
-    auto* dst_tensor = MutableVar()->GetMutable<phi::DenseTensor>();
+  if (src.Var().IsType<DenseTensor>()) {
+    auto& src_tensor = src.Var().Get<DenseTensor>();
+    auto* dst_tensor = MutableVar()->GetMutable<DenseTensor>();
     if (dst_tensor && dst_tensor->IsInitialized()) {
       PADDLE_ENFORCE_EQ(dst_tensor->dims(),
                         src_tensor.dims(),
@@ -451,13 +449,13 @@ void VarBase::_CopyGradientFrom(const VarBase& src) {
   }
   VLOG(4) << " VarBase copy gradient with " << src.Name();
   if (grad_var_) {
-    auto& src_tensor = src.Var().Get<phi::DenseTensor>();
+    auto& src_tensor = src.Var().Get<DenseTensor>();
     PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(),
                       true,
                       common::errors::InvalidArgument(
                           "Tensor %s has not been initialized", src.Name()));
-    auto* grad_t = grad_var_->MutableVar()->GetMutable<phi::DenseTensor>();
-    auto* var_ = MutableVar()->GetMutable<phi::DenseTensor>();
+    auto* grad_t = grad_var_->MutableVar()->GetMutable<DenseTensor>();
+    auto* var_ = MutableVar()->GetMutable<DenseTensor>();
     grad_t->ShareDataWith(src_tensor);
     grad_t->Resize(var_->dims());
   }
@@ -586,13 +584,13 @@ void ClearNoNeedBufferInputs(OpBase* op) {
       if (!each_var) continue;
 
       auto& var = each_var->Var();
-      PADDLE_ENFORCE_EQ(var.IsType<phi::DenseTensor>(),
+      PADDLE_ENFORCE_EQ(var.IsType<DenseTensor>(),
                         true,
                         common::errors::PermissionDenied(
                             "NoNeedBufferVars only support DenseTensor"));
       auto new_var = new VariableWrapper(each_var->Name());
-      auto* new_tensor = new_var->MutableVar()->GetMutable<phi::DenseTensor>();
-      auto& old_tensor = var.Get<phi::DenseTensor>();
+      auto* new_tensor = new_var->MutableVar()->GetMutable<DenseTensor>();
+      auto& old_tensor = var.Get<DenseTensor>();
       new_tensor->Resize(old_tensor.dims());
       new_tensor->set_lod(old_tensor.lod());
       new_tensor->set_type(old_tensor.dtype());
