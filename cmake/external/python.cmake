@@ -20,26 +20,54 @@ if(DEFINED PYTHON_EXECUTABLE AND NOT DEFINED Python_EXECUTABLE)
   set(Python_EXECUTABLE ${PYTHON_EXECUTABLE})
 endif()
 
-set(Python_FIND_VIRTUALENV FIRST)
+# Debug: Print PATH information
+message(STATUS "=== Python Debug Information ===")
+message(STATUS "PY_VERSION: ${PY_VERSION}")
+message(STATUS "PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
+if(UNIX AND NOT APPLE)
+  execute_process(
+    COMMAND sh -c "echo $PATH"
+    OUTPUT_VARIABLE PATH_VALUE
+    OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+  if(PATH_VALUE)
+    message(STATUS "PATH: ${PATH_VALUE}")
+  endif()
+  execute_process(
+    COMMAND sh -c "which python 2>/dev/null || true"
+    OUTPUT_VARIABLE WHICH_PYTHON
+    OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+  if(WHICH_PYTHON)
+    message(STATUS "which python: ${WHICH_PYTHON}")
+  endif()
+  execute_process(
+    COMMAND sh -c "which python3 2>/dev/null || true"
+    OUTPUT_VARIABLE WHICH_PYTHON3
+    OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+  if(WHICH_PYTHON3)
+    message(STATUS "which python3: ${WHICH_PYTHON3}")
+  endif()
+  execute_process(
+    COMMAND sh -c "which python${PY_VERSION} 2>/dev/null || true"
+    OUTPUT_VARIABLE WHICH_PYTHON_VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+  if(WHICH_PYTHON_VERSION)
+    message(STATUS "which python${PY_VERSION}: ${WHICH_PYTHON_VERSION}")
+  endif()
+endif()
+message(STATUS "=== End Python Debug Information ===")
 
-# Find Python with minimum PY_VERSION specified or will raise error!
-find_package(
-  Python ${PY_VERSION}
-  COMPONENTS Interpreter Development
-  REQUIRED)
+# Temporarily revert to old FindPythonInterp/FindPythonLibs for debugging
+find_package(PythonInterp ${PY_VERSION} REQUIRED)
+find_package(PythonLibs ${PY_VERSION} REQUIRED)
 
-set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
-set(PYTHON_INCLUDE_DIR ${Python_INCLUDE_DIRS})
-set(PYTHON_LIBRARIES ${Python_LIBRARIES})
-
-list(GET Python_LIBRARIES 0 PYTHON_LIBRARY)
+list(GET PYTHON_LIBRARIES 0 PYTHON_LIBRARY)
 
 # Fixme: Maybe find a static library. Get SHARED/STATIC by FIND_PACKAGE.
 add_library(python SHARED IMPORTED GLOBAL)
 set_property(TARGET python PROPERTY IMPORTED_LOCATION ${PYTHON_LIBRARIES})
 
 set(py_env "")
-if(Python_FOUND)
+if(PYTHONINTERP_FOUND)
   find_python_module(pip REQUIRED)
   find_python_module(numpy REQUIRED)
   find_python_module(wheel REQUIRED)
