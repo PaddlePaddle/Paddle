@@ -119,6 +119,8 @@ class TestInplaceCompatibility(unittest.TestCase):
         out2 = self.inplace_api(input=x)
         np.testing.assert_allclose(out1.numpy(), ref_out, rtol=1e-05)
         np.testing.assert_allclose(out2.numpy(), ref_out, rtol=1e-05)
+        y = paddle.empty([])
+        self.assertRaises(ValueError, self.inplace_api(x, out=y))
 
     def test_inplace_compatibility_static(self):
         paddle.enable_static()
