@@ -15,9 +15,9 @@
 import os
 
 from paddle.base.core import (
-    XPUPlace,
     CUDAPlace,
     CustomPlace,
+    XPUPlace,
     get_all_custom_device_type,
     is_compiled_with_cuda,
     is_compiled_with_custom_device,
@@ -47,6 +47,7 @@ if (
         return True
 elif is_compiled_with_xpu():
     from paddle.base.core import XPUGraph as CoreCUDAGraph
+
     def is_cuda_graph_supported():
         return True
 else:
@@ -72,7 +73,9 @@ cuda_graph_id = 0
 
 class CUDAGraph:
     def __init__(self, place=None, mode="thread_local", pool_id=None):
-        assert CoreCUDAGraph is not None, ("CUDA Graph is only supported on PaddlePaddle compiled with NVIDIA GPU.")
+        assert CoreCUDAGraph is not None, (
+            "CUDA Graph is only supported on PaddlePaddle compiled with NVIDIA GPU."
+        )
 
         self._graph = None
         if place is None:

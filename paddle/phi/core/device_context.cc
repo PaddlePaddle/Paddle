@@ -204,11 +204,11 @@ struct DeviceContext::Impl {
     if (must_cuda_graph_allocator &&
         place.GetType() == phi::AllocationType::GPU &&
         phi::backends::xpu::XPUGraph::IsThisThreadCapturing()) {
-        PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
-                                common::errors::InvalidArgument(
-                                "Required cuda_graph_allocator_ shall not be "
-                                "nullptr, but received nullptr."));
-        allocator = cuda_graph_allocator_;
+      PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
+                              common::errors::InvalidArgument(
+                                  "Required cuda_graph_allocator_ shall not be "
+                                  "nullptr, but received nullptr."));
+      allocator = cuda_graph_allocator_;
     }
 #endif
 

@@ -359,11 +359,15 @@ void InitCUDNNRelatedHandle(phi::XPUContext* dev_ctx) {
   // dev_ctx->cudnn_handle();
   // dev_ctx->cusolver_dn_handle();
 }
-phi::DeviceContext* SelectXPUGraphDeviceContext(phi::XPUPlace place, int64_t* pool_id) {
+phi::DeviceContext* SelectXPUGraphDeviceContext(phi::XPUPlace place,
+                                                int64_t* pool_id) {
   phi::DeviceContext* mutable_dev_ctx;
   // 框架的单例管理器，负责全局管理所有参与 CUDA Graph 捕获的设备上下文
-  // GetAllCapturingDeviceContexts()：获取当前所有需要参与 Graph 捕获的设备上下文列表（每个上下文对应一个 CUDA 流）；
-  auto all_capturing_dev_ctxs = phi::backends::xpu::XPUGraphContextManager::Instance().GetAllCapturingDeviceContexts();
+  // GetAllCapturingDeviceContexts()：获取当前所有需要参与 Graph
+  // 捕获的设备上下文列表（每个上下文对应一个 CUDA 流）；
+  auto all_capturing_dev_ctxs =
+      phi::backends::xpu::XPUGraphContextManager::Instance()
+          .GetAllCapturingDeviceContexts();
   auto num_stream = all_capturing_dev_ctxs.size();
   if (num_stream > 0) {
     // Capturing device contexts will only be recorded in new
@@ -372,17 +376,28 @@ phi::DeviceContext* SelectXPUGraphDeviceContext(phi::XPUPlace place, int64_t* po
     // This restriction can be removed if device context is
     // recorded in other modes.
     // Record method: RecordCapturingDeviceContext.
-    // FLAGS_use_stream_safe_cuda_allocator是框架的内存分配器标志，控制是否启用 “流安全的 CUDA 分配器”；而新执行器（FLAGS_new_executor_use_cuda_graph）使用 CUDA Graph 时，需要禁用该标志以适配 Graph 的内存分配规则；
-    PADDLE_ENFORCE_EQ(FLAGS_new_executor_use_cuda_graph, true, common::errors::InvalidArgument("FLAGS_new_executor_use_cuda_graph must be True when capturing stream is recorded."));
+    // FLAGS_use_stream_safe_cuda_allocator是框架的内存分配器标志，控制是否启用
+    // “流安全的 CUDA
+    // 分配器”；而新执行器（FLAGS_new_executor_use_cuda_graph）使用 CUDA Graph
+    // 时，需要禁用该标志以适配 Graph 的内存分配规则；
+    PADDLE_ENFORCE_EQ(FLAGS_new_executor_use_cuda_graph,
+                      true,
+                      common::errors::InvalidArgument(
+                          "FLAGS_new_executor_use_cuda_graph must be True when "
+                          "capturing stream is recorded."));
     if (num_stream > 1) {
-      // std::cout << "Use a new stream to capture cuda graph. Used in multi-stream scenarios with new executor." << std::endl;
+      // std::cout << "Use a new stream to capture cuda graph. Used in
+      // multi-stream scenarios with new executor." << std::endl;
       // 内存分配器标志临时适配
       if (*pool_id <= phi::backends::xpu::XPUGraph::kInvalidPoolID) {
         *pool_id = phi::backends::xpu::XPUGraph::UniqueMemoryPoolID();
       }
-      mutable_dev_ctx = phi::backends::xpu::XPUGraphContextManager::Instance().Get(*pool_id, place, 0);
+      mutable_dev_ctx =
+          phi::backends::xpu::XPUGraphContextManager::Instance().Get(
+              *pool_id, place, 0);
     } else {
-      // std::cout << "Use recorded stream to capture cuda graph. Used in single-stream scenarios with new executor. "<< std::endl;
+      // std::cout << "Use recorded stream to capture cuda graph. Used in
+      // single-stream scenarios with new executor. "<< std::endl;
       mutable_dev_ctx = *(all_capturing_dev_ctxs.begin());
     }
   } else {
@@ -392,18 +407,24 @@ phi::DeviceContext* SelectXPUGraphDeviceContext(phi::XPUPlace place, int64_t* po
   return mutable_dev_ctx;
 }
 
-void BeginCUDAGraphCapture(phi::XPUPlace place, phi::backends::xpu::xpuStreamCaptureMode mode, int64_t pool_id) {
-  // std::cout << "[开始捕获Graph] BeginCUDAGraphCapture place " << place << " mode " << mode << " pool id " << pool_id << std::endl;
+void BeginCUDAGraphCapture(phi::XPUPlace place,
+                           phi::backends::xpu::xpuStreamCaptureMode mode,
+                           int64_t pool_id) {
+  // std::cout << "[开始捕获Graph] BeginCUDAGraphCapture place " << place << "
+  // mode " << mode << " pool id " << pool_id << std::endl;
   auto* mutable_dev_ctx = SelectXPUGraphDeviceContext(place, &pool_id);
   auto* dev_ctx = reinterpret_cast<phi::XPUContext*>(mutable_dev_ctx);
 
-  auto all_capturing_dev_ctxs = phi::backends::xpu::XPUGraphContextManager::Instance().GetAllCapturingDeviceContexts();
+  auto all_capturing_dev_ctxs =
+      phi::backends::xpu::XPUGraphContextManager::Instance()
+          .GetAllCapturingDeviceContexts();
   auto num_stream = all_capturing_dev_ctxs.size();
-  // std::cout << "[捕获Graph] all_capturing_dev_ctxs size " << num_stream << std::endl;
+  // std::cout << "[捕获Graph] all_capturing_dev_ctxs size " << num_stream <<
+  // std::endl;
   if (num_stream > 1) {
     for (auto all_capturing_dev_ctx : all_capturing_dev_ctxs) {
       auto* capturing_dev_ctx =
-         reinterpret_cast<phi::XPUContext*>(all_capturing_dev_ctx);
+          reinterpret_cast<phi::XPUContext*>(all_capturing_dev_ctx);
       InitCUDNNRelatedHandle(capturing_dev_ctx);
     }
   }
@@ -413,13 +434,17 @@ void BeginCUDAGraphCapture(phi::XPUPlace place, phi::backends::xpu::xpuStreamCap
 
   // When using cuda graph in new executor, fast GC must be used.
   // FLAGS_use_stream_safe_cuda_allocator should be true.
-  auto old_value = FLAGS_use_stream_safe_cuda_allocator && !FLAGS_new_executor_use_cuda_graph;
+  auto old_value = FLAGS_use_stream_safe_cuda_allocator &&
+                   !FLAGS_new_executor_use_cuda_graph;
   if (old_value) {
     FLAGS_use_stream_safe_cuda_allocator = false;
   }
   pool_id = phi::backends::xpu::XPUGraph::SetMemoryPoolID(pool_id);
-  memory::allocation::AllocatorFacade::Instance().PrepareMemoryPoolForXPUGraph(pool_id);
-  dev_ctx->SetCUDAGraphAllocator(memory::allocation::AllocatorFacade::Instance().GetAllocator(place).get());
+  memory::allocation::AllocatorFacade::Instance().PrepareMemoryPoolForXPUGraph(
+      pool_id);
+  dev_ctx->SetCUDAGraphAllocator(memory::allocation::AllocatorFacade::Instance()
+                                     .GetAllocator(place)
+                                     .get());
   if (old_value) {
     FLAGS_use_stream_safe_cuda_allocator = true;
   }
@@ -449,10 +474,12 @@ void BeginCUDAGraphCapture(phi::XPUPlace place, phi::backends::xpu::xpuStreamCap
               << " wait for cuda graph dev_ctx: " << dev_ctx;
     }
   }
-  // std::cout << "[捕获Graph] AddPostResetCallbackIfCapturingCUDAGraph " << std::endl;
+  // std::cout << "[捕获Graph] AddPostResetCallbackIfCapturingCUDAGraph " <<
+  // std::endl;
   AddPostResetCallbackIfCapturingCUDAGraph(
       [=](paddle::optional<const phi::backends::xpu::XPUGraph&> graph) {
-            memory::allocation::AllocatorFacade::Instance().RemoveMemoryPoolOfXPUGraph(pool_id);
+        memory::allocation::AllocatorFacade::Instance()
+            .RemoveMemoryPoolOfXPUGraph(pool_id);
       });
 }
 

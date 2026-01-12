@@ -226,7 +226,7 @@ struct XPUContext::Impl {
 
     xpu_version_ = backends::xpu::get_xpu_version(place_.device);
     SetL3Cache(l3_default_size);
-    CreateStream(); // 创建新的Stream
+    CreateStream();  // 创建新的Stream
   }
 
   void SetXContext(xpu::Context* context) {
