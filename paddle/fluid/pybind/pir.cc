@@ -615,7 +615,7 @@ void BindProgram(py::module *m) {
                  auto is_persistable =
                      var.attribute<BoolAttribute>(kAttrIsPersistable);
                  if (is_persistable && is_persistable.data()) {
-                   if (var.defining_op()->isa<::pir::ParameterOp>()) {
+                   if (var.defining_op()->isa<pir::ParameterOp>()) {
                      std::string var_name =
                          name_analysis::GetValueFirstName(var);
                      auto tensor =
