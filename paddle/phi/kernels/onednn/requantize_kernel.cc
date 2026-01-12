@@ -99,7 +99,7 @@ void ReQuantOpKernel(const Context& dev_ctx,
   auto reorder_p =
       reorder_handler.AcquireReorder(dst_memory_p, src_memory_p, attrs);
 
-  auto& astream = phi::OneDNNContext::tls().get_stream();
+  auto& astream = OneDNNContext::tls().get_stream();
 
   auto zero_points_md = dnnl::memory::desc(
       {1}, dnnl::memory::data_type::s32, dnnl::memory::format_tag::x);
