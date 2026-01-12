@@ -12,11 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <iterator>  // NOLINT
-#include "dnnl.hpp"  // NOLINT
-#include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {

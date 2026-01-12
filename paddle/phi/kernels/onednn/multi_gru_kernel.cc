@@ -12,14 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <initializer_list>
-#include <iostream>
-#include <memory>
-
-#include "dnnl.hpp"  // NOLINT
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/mixed_vector.h"
 
 namespace phi {
 
