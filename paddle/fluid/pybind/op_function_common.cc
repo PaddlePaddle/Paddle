@@ -1559,8 +1559,8 @@ PyObject* GetItemFromArgsOrKWArgs(PyObject* args,
       return arg;
     }
   } else {
-    // get item from kwargs if kwargs has unused items
-    if (kwargs && *remaining_kwargs > 0) {
+    // get item from kwargs
+    if (kwargs) {
       PyObject* arg = nullptr;
       for (const std::string& keyword : keywords) {
         arg = PyDict_GetItemString(kwargs, keyword.c_str());

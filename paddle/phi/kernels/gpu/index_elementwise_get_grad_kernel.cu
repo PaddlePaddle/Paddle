@@ -324,8 +324,8 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
     auto stream = dev_ctx.stream();
 
     auto shape = phi::IntArray(common::vectorize<int64_t>(linearIndex.dims()));
-    auto divisor = phi::Full<IndexT, phi::GPUContext>(
-        dev_ctx, shape, phi::Scalar(sliceSize));
+    auto divisor =
+        Full<IndexT, phi::GPUContext>(dev_ctx, shape, phi::Scalar(sliceSize));
 
     DenseTensor linearIndex_d = phi::FloorDivide<IndexT, phi::GPUContext>(
         dev_ctx, linearIndex, divisor);

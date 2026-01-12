@@ -64,11 +64,11 @@ void MultiClassNMSKernel(const Context& dev_ctx,
       rois_num_host.Resize(rois_num.get_ptr()->dims());
       if (rois_num.get_ptr()->dtype() == phi::DataType::INT64) {
         dev_ctx.template HostAlloc<int64_t>(&rois_num_host);
-        phi::Copy(dev_ctx,
-                  *rois_num.get_ptr(),
-                  rois_num_host.place(),
-                  false,
-                  &rois_num_host);
+        Copy(dev_ctx,
+             *rois_num.get_ptr(),
+             rois_num_host.place(),
+             false,
+             &rois_num_host);
         n = rois_num.get_ptr()->numel();
         for (int64_t i = 0; i < n; i++) {
           rois_num_vec.push_back(rois_num_host.data<int64_t>()[i]);
@@ -76,11 +76,11 @@ void MultiClassNMSKernel(const Context& dev_ctx,
         }
       } else if (rois_num.get_ptr()->dtype() == phi::DataType::INT32) {
         dev_ctx.template HostAlloc<int>(&rois_num_host);
-        phi::Copy(dev_ctx,
-                  *rois_num.get_ptr(),
-                  rois_num_host.place(),
-                  false,
-                  &rois_num_host);
+        Copy(dev_ctx,
+             *rois_num.get_ptr(),
+             rois_num_host.place(),
+             false,
+             &rois_num_host);
         n = rois_num.get_ptr()->numel();
         for (int64_t i = 0; i < n; i++) {
           rois_num_vec.push_back(rois_num_host.data<int>()[i]);
@@ -209,8 +209,7 @@ void MultiClassNMSKernel(const Context& dev_ctx,
     for (int64_t i = 1; i <= n; i++) {
       nms_rois_num_cpu_data[i - 1] = batch_starts[i] - batch_starts[i - 1];
     }
-    phi::Copy(
-        dev_ctx, nms_rois_num_cpu, nms_rois_num->place(), true, nms_rois_num);
+    Copy(dev_ctx, nms_rois_num_cpu, nms_rois_num->place(), true, nms_rois_num);
   }
   LegacyLoD lod;
   if (num_kept == 0) {

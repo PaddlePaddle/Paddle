@@ -32,7 +32,7 @@ void DenseTensorArray2DenseTensorVector(
     std::string var_name = base_name + std::to_string(i);
     framework::Variable *g_feed_value =
         const_cast<framework::Scope &>(scope).Var(var_name);
-    auto &feed_input = *(g_feed_value->GetMutable<phi::DenseTensor>());
+    auto &feed_input = *(g_feed_value->GetMutable<DenseTensor>());
     feed_input.ShareDataWith(inx[i]);
     res_names->push_back(var_name);
   }
@@ -48,7 +48,7 @@ void DenseTensorVectorResizeFromDenseTensorArray(
     std::string var_name = base_name + std::to_string(i);
     framework::Variable *g_feed_value =
         const_cast<framework::Scope &>(scope).Var(var_name);
-    auto &feed_input = *(g_feed_value->GetMutable<phi::DenseTensor>());
+    auto &feed_input = *(g_feed_value->GetMutable<DenseTensor>());
     auto dims = inx[i].dims();
     feed_input.Resize(dims);
     res_names->push_back(var_name);
@@ -68,7 +68,7 @@ void DenseTensorArrayCreateFromDenseTensorArray(
     std::string var_name = output_lod_tensor_array_name + std::to_string(i);
     framework::Variable *g_feed_value =
         const_cast<framework::Scope &>(scope).Var(var_name);
-    auto &feed_input = *(g_feed_value->GetMutable<phi::DenseTensor>());
+    auto &feed_input = *(g_feed_value->GetMutable<DenseTensor>());
     grad_inx.push_back(feed_input);
   }
 }
@@ -86,7 +86,7 @@ class DenseTensorArray2TensorOp : public framework::OperatorBase {
     attrs["axis"] = axis;
 
     auto &inx = scope.FindVar(Input("X"))->Get<phi::TensorArray>();
-    auto &out = *scope.FindVar(Output("Out"))->GetMutable<phi::DenseTensor>();
+    auto &out = *scope.FindVar(Output("Out"))->GetMutable<DenseTensor>();
 
     const size_t n = inx.size();
     PADDLE_ENFORCE_GT(
@@ -271,7 +271,7 @@ class DenseTensorArray2TensorGradOp : public framework::OperatorBase {
 
     for (size_t i = 0; i < grad_names.size(); i++) {
       std::string var_name = grad_names[i];
-      auto &feed_input = scope.FindVar(var_name)->Get<phi::DenseTensor>();
+      auto &feed_input = scope.FindVar(var_name)->Get<DenseTensor>();
       grad_inx[i].ShareDataWith(feed_input);
     }
   }

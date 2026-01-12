@@ -54,12 +54,11 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   ~PirInterpreter();
 
-  paddle::framework::FetchList Run(
-      const std::vector<std::string>& feed_names,
-      const std::vector<phi::DenseTensor>& feed_tensors,
-      bool need_fetch = true,
-      bool enable_job_schedule_profiler = false,
-      bool switch_stream = false) override;
+  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
+                                   const std::vector<DenseTensor>& feed_tensors,
+                                   bool need_fetch = true,
+                                   bool enable_job_schedule_profiler = false,
+                                   bool switch_stream = false) override;
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true,

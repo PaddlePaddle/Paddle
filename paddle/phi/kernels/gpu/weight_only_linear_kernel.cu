@@ -47,8 +47,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
 #endif
 
   dev_ctx.template Alloc<T>(out);
-  Full<T, Context>(
-      dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+  Full<T, Context>(dev_ctx, out->dims(), 0, out);
   if (out->numel() == 0 || x.numel() == 0 || weight.numel() == 0) {
     return;
   }

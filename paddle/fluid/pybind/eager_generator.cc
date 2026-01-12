@@ -830,7 +830,7 @@ static bool CollectGradInformationFromOpInfo(
       ins[in_name].emplace_back(std::make_shared<paddle::imperative::VarBase>(
           "auto_" + in_name + "_" + std::to_string(i)));
       ins[in_name][i]->SetOverriddenStopGradient(false);
-      ins[in_name][i]->MutableVar()->GetMutable<phi::DenseTensor>();
+      ins[in_name][i]->MutableVar()->GetMutable<DenseTensor>();
     }
   } else {
     for (const proto::OpProto::Var& input : op_proto.inputs()) {
@@ -854,7 +854,7 @@ static bool CollectGradInformationFromOpInfo(
       ins[in_name] = {
           std::make_shared<paddle::imperative::VarBase>("auto_" + in_name)};
       ins[in_name][0]->SetOverriddenStopGradient(false);
-      ins[in_name][0]->MutableVar()->GetMutable<phi::DenseTensor>();
+      ins[in_name][0]->MutableVar()->GetMutable<DenseTensor>();
     }
   }
   VLOG(6) << "Prepared Forward Ins Map, size = " << ins.size();
@@ -872,7 +872,7 @@ static bool CollectGradInformationFromOpInfo(
     outs[out_name] = {
         std::make_shared<paddle::imperative::VarBase>("auto_" + out_name)};
     outs[out_name][0]->SetOverriddenStopGradient(false);
-    outs[out_name][0]->MutableVar()->GetMutable<phi::DenseTensor>();
+    outs[out_name][0]->MutableVar()->GetMutable<DenseTensor>();
   }
   VLOG(6) << "Prepared Forward Outs Map, size = " << outs.size();
 

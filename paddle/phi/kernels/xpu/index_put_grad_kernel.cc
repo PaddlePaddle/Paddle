@@ -56,7 +56,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
 
   if (int_indices_v.empty()) {
     if (x_grad) {
-      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+      Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
     if (value_grad) {
       FullKernel<T, Context>(dev_ctx,
@@ -88,7 +88,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
   int ret = 0;
   using XPUType = typename XPUTypeTrait<T>::Type;
   if (x_grad) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     if (!accumulate) {
       DenseTensor zero_tensor(x_grad->dtype());
       FullKernel<T, Context>(

@@ -64,7 +64,7 @@ void BlockMultiHeadAttentionXPUPass::InplaceBlockMultiHeadAttentionXPU(
     if (node->IsOp() && node->Op()->Type() == "block_multihead_attention") {
       auto* op_desc = node->Op();
       op_desc->SetType("block_multihead_attention_xpu");
-      phi::DenseTensor cache_k_per_batch_maxs;
+      DenseTensor cache_k_per_batch_maxs;
       auto base_name = op_desc->Input("qkv")[0];
       int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
       std::string cache_k_per_batch_maxs_name = base_name + "_max_cache_k";
@@ -76,7 +76,7 @@ void BlockMultiHeadAttentionXPUPass::InplaceBlockMultiHeadAttentionXPU(
           proto::VarType::Type::VarType_Type_FP32);
       Node* cache_k_per_batch_maxs_in =
           graph->CreateVarNode(&cache_k_per_batch_maxs_desc);
-      phi::DenseTensor cpu_tensor;
+      DenseTensor cpu_tensor;
       auto* cpu_ctx = static_cast<phi::CPUContext*>(
           phi::DeviceContextPool::Instance().Get(CPUPlace()));
       cpu_tensor.set_type(phi::DataType::FLOAT32);
@@ -85,9 +85,9 @@ void BlockMultiHeadAttentionXPUPass::InplaceBlockMultiHeadAttentionXPU(
       memcpy(cpu_ctx->Alloc<float>(&cpu_tensor),
              tmp.data(),
              max_batch_size * max_ptr_size * sizeof(float));
-      Assign(cpu_tensor,
-             scope->Var(cache_k_per_batch_maxs_name)
-                 ->GetMutable<phi::DenseTensor>());
+      Assign(
+          cpu_tensor,
+          scope->Var(cache_k_per_batch_maxs_name)->GetMutable<DenseTensor>());
       op_desc->SetInput("cache_k_per_batch_maxs",
                         {cache_k_per_batch_maxs_name});
 
@@ -100,9 +100,9 @@ void BlockMultiHeadAttentionXPUPass::InplaceBlockMultiHeadAttentionXPU(
           proto::VarType::Type::VarType_Type_FP32);
       Node* cache_v_per_batch_maxs_in =
           graph->CreateVarNode(&cache_v_per_batch_maxs_desc);
-      Assign(cpu_tensor,
-             scope->Var(cache_v_per_batch_maxs_name)
-                 ->GetMutable<phi::DenseTensor>());
+      Assign(
+          cpu_tensor,
+          scope->Var(cache_v_per_batch_maxs_name)->GetMutable<DenseTensor>());
       op_desc->SetInput("cache_v_per_batch_maxs",
                         {cache_v_per_batch_maxs_name});
 
