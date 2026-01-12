@@ -57,28 +57,28 @@ inline std::vector<T> TransformDimOrder(const std::vector<T>& dims) {
   return transformed_dims;
 }
 
-inline cudnnDataType_t ToCudnnDataType(const phi::DataType& t) {
+inline cudnnDataType_t ToCudnnDataType(const DataType& t) {
   cudnnDataType_t type = CUDNN_DATA_FLOAT;
   switch (t) {
-    case phi::DataType::FLOAT16:
+    case DataType::FLOAT16:
       type = CUDNN_DATA_HALF;
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       type = CUDNN_DATA_FLOAT;
       break;
-    case phi::DataType::FLOAT64:
+    case DataType::FLOAT64:
       type = CUDNN_DATA_DOUBLE;
       break;
 #if CUDNN_VERSION_MIN(8, 6, 0) && CUDA_VERSION >= 11080
-    case phi::DataType::FLOAT8_E4M3FN:
+    case DataType::FLOAT8_E4M3FN:
       type = CUDNN_DATA_FP8_E4M3;
       break;
-    case phi::DataType::FLOAT8_E5M2:
+    case DataType::FLOAT8_E5M2:
       type = CUDNN_DATA_FP8_E5M2;
       break;
 #endif
 #if CUDNN_VERSION_MIN(8, 1, 0)
-    case phi::DataType::BFLOAT16:
+    case DataType::BFLOAT16:
       type = CUDNN_DATA_BFLOAT16;
       break;
 #endif
@@ -139,7 +139,7 @@ class TensorDescriptor {
   }
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
-  void set(const phi::DenseTensor& tensor, const int groups = 1) {
+  void set(const DenseTensor& tensor, const int groups = 1) {
     auto dims = common::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
@@ -175,7 +175,7 @@ class TensorDescriptor {
                                                    transformed_dims.data()));
   }
 
-  void set(const phi::DenseTensor& tensor, const cudnnTensorFormat_t format) {
+  void set(const DenseTensor& tensor, const cudnnTensorFormat_t format) {
     auto dims = common::vectorize<int>(tensor.dims());
     auto dtype = ToCudnnDataType(tensor.dtype());
     set(dims, format, dtype);
@@ -227,7 +227,7 @@ class FilterDescriptor {
                                                  transformed_dims.data()));
   }
 
-  void set(const phi::DenseTensor& tensor,
+  void set(const DenseTensor& tensor,
            const cudnnTensorFormat_t format,
            const int groups = 1) {
     auto dims = common::vectorize<int>(tensor.dims());

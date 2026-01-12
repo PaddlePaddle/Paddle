@@ -27,11 +27,11 @@ std::vector<std::function<void()>> CUDAGraph::cudagraph_pre_capture_callbacks_;
 void CUDAGraph::Reset() {
   if (is_reset_) return;
   for (auto graph : graphs_) {
-    phi::DeviceManager::CudaGraphDestroy(place_, graph);
+    DeviceManager::CudaGraphDestroy(place_, graph);
   }
   graphs_.clear();
   for (auto exec_graph : exec_graphs_) {
-    phi::DeviceManager::CudaGraphExecDestroy(place_, exec_graph);
+    DeviceManager::CudaGraphExecDestroy(place_, exec_graph);
   }
   exec_graphs_.clear();
   // callback should be called in reverse order because the latter added
@@ -58,7 +58,7 @@ void CUDAGraph::Replay() {
         hook(exec_graphs_[i]);
       }
     }
-    phi::DeviceManager::CudaGraphLaunch(place_, exec_graphs_[i], stream_);
+    DeviceManager::CudaGraphLaunch(place_, exec_graphs_[i], stream_);
   }
   is_first_run_ = false;
 }
@@ -81,9 +81,9 @@ void CUDAGraph::BeginSegmentCapture() {
   for (auto &hook : cudagraph_pre_capture_callbacks_) {
     hook();
   }
-  phi::DeviceManager::CUDAStreamBeginCapture(capturing_graph_->place_,
-                                             capturing_graph_->stream_,
-                                             capturing_graph_->capture_mode_);
+  DeviceManager::CUDAStreamBeginCapture(capturing_graph_->place_,
+                                        capturing_graph_->stream_,
+                                        capturing_graph_->capture_mode_);
   PADDLE_ENFORCE_EQ(IsValidCapturing(),
                     true,
                     common::errors::PermissionDenied(
@@ -93,9 +93,9 @@ void CUDAGraph::BeginSegmentCapture() {
            << ", memory pool id " << capturing_graph_->pool_id_;
 }
 
-void CUDAGraph::BeginCapture(phi::CustomPlace place,
-                             phi::stream::stream_t stream,
-                             phi::graph::streamCaptureMode mode) {
+void CUDAGraph::BeginCapture(CustomPlace place,
+                             stream::stream_t stream,
+                             graph::streamCaptureMode mode) {
   PADDLE_ENFORCE_EQ(IsCapturing(),
                     false,
                     common::errors::PermissionDenied(
@@ -108,7 +108,7 @@ void CUDAGraph::BeginCapture(phi::CustomPlace place,
   capturing_graph_->place_ = place;
   capturing_graph_->stream_ = stream;
   capturing_graph_->capture_mode_ = mode;
-  if (mode == phi::graph::streamCaptureMode::StreamCaptureModeThreadLocal) {
+  if (mode == graph::streamCaptureMode::StreamCaptureModeThreadLocal) {
     capturing_thread_id_ = std::this_thread::get_id();
     VLOG(10) << "Capturing CUDA Graph in thread local mode, thread id: "
              << capturing_thread_id_;
@@ -125,26 +125,25 @@ void CUDAGraph::EndSegmentCapture() {
     VLOG(10) << "Joining steam when the capture is going to end stream ="
              << stream;
     if (stream == capturing_graph_->stream_) continue;
-    phi::event::Event event;
-    event.Init(capturing_graph_->place_,
-               phi::event::Event::Flag::DisableTiming);
-    phi::stream::Stream s(capturing_graph_->place_, stream);
+    event::Event event;
+    event.Init(capturing_graph_->place_, event::Event::Flag::DisableTiming);
+    stream::Stream s(capturing_graph_->place_, stream);
     event.Record(&s);
-    phi::stream::Stream capture_stream(capturing_graph_->place_,
-                                       capturing_graph_->stream_);
+    stream::Stream capture_stream(capturing_graph_->place_,
+                                  capturing_graph_->stream_);
     capture_stream.WaitEvent(&event);
     event.Destroy();
   }
   capturing_graph_->streams_to_join_.clear();
 
-  phi::graph::CUDAGraph_t graph;
-  phi::DeviceManager::CudaStreamEndCapture(
+  graph::CUDAGraph_t graph;
+  DeviceManager::CudaStreamEndCapture(
       capturing_graph_->place_, capturing_graph_->stream_, &graph);
   auto num_nodes = static_cast<size_t>(-1);
-  phi::DeviceManager::CudaGraphGetNodes(
+  DeviceManager::CudaGraphGetNodes(
       capturing_graph_->place_, graph, nullptr, &num_nodes);
   if (num_nodes == 0) {
-    phi::DeviceManager::CudaGraphDestroy(capturing_graph_->place_, graph);
+    DeviceManager::CudaGraphDestroy(capturing_graph_->place_, graph);
     VLOG(10) << "Skip empty CUDA Graph with ID " << capturing_graph_->id_
              << ", segment id " << capturing_graph_->graphs_.size()
              << ", memory pool id " << capturing_graph_->pool_id_;
@@ -161,8 +160,8 @@ void CUDAGraph::EndSegmentCapture() {
       CUDAGraphNodeLauncher::Instance().GetParameterSettersForExecGraph(
           capturing_graph_->place_, graph));
 
-  phi::graph::CUDAGraphExec_t exec_graph;
-  phi::DeviceManager::CudaGraphInstantiate(
+  graph::CUDAGraphExec_t exec_graph;
+  DeviceManager::CudaGraphInstantiate(
       capturing_graph_->place_, &exec_graph, &graph, nullptr, nullptr, 0);
 
   VLOG(10) << "End to capture CUDA Graph with ID " << capturing_graph_->id_
@@ -180,11 +179,11 @@ std::unique_ptr<CUDAGraph> CUDAGraph::EndCapture() {
 
 bool CUDAGraph::IsValidCapturing() {
   if (!IsCapturing()) return false;
-  phi::graph::streamCaptureStatus status =
-      phi::graph::streamCaptureStatus::StreamCaptureStatusNone;
-  phi::DeviceManager::CudaStreamGetCaptureInfo(
+  graph::streamCaptureStatus status =
+      graph::streamCaptureStatus::StreamCaptureStatusNone;
+  DeviceManager::CudaStreamGetCaptureInfo(
       capturing_graph_->place_, capturing_graph_->stream_, &status);
-  return status == phi::graph::streamCaptureStatus::StreamCaptureStatusActive;
+  return status == graph::streamCaptureStatus::StreamCaptureStatusActive;
 }
 
 static std::string ConcatPath(const std::string &dirname,
@@ -208,7 +207,7 @@ void CUDAGraph::PrintToDotFiles(const std::string &dirname,
         ConcatPath(dirname, "segment_" + std::to_string(i) + ".dot");
     VLOG(10) << "Save the " << i << "-th segment of graph " << id_ << " to "
              << filename;
-    phi::DeviceManager::CudaGraphDebugDotPrint(
+    DeviceManager::CudaGraphDebugDotPrint(
         place_, graphs_[i], filename.c_str(), flags);
   }
 }
@@ -229,9 +228,9 @@ void CUDAGraphNodeLauncher::KernelNodeLaunch(
 
 std::vector<GraphExecuterSetter_t>
 CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(
-    const phi::Place &place, phi::graph::CUDAGraph_t graph) {
-  phi::graph::GraphHookManager graph_hook;
-  phi::DeviceManager::GetParameterSetterForExecGraph(place, graph, &graph_hook);
+    const phi::Place &place, graph::CUDAGraph_t graph) {
+  graph::GraphHookManager graph_hook;
+  DeviceManager::GetParameterSetterForExecGraph(place, graph, &graph_hook);
   std::vector<GraphExecuterSetter_t> hooks;
   for (size_t i = 0; i < graph_hook.hooks.size(); i++) {
     hooks.emplace_back(graph_hook.hooks[i]);
