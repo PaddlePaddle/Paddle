@@ -1561,8 +1561,17 @@ class Model:
             ...     model = paddle.Model(net)
             ...     optim = paddle.optimizer.SGD(learning_rate=1e-3, parameters=model.parameters())
             ...
-            ...     amp_configs = {"level": "O1", "custom_white_list": {'conv2d'}, "use_dynamic_loss_scaling": True}
-            ...     model.prepare(optim, paddle.nn.CrossEntropyLoss(), paddle.metric.Accuracy(), amp_configs=amp_configs)
+            ...     amp_configs = {
+            ...         "level": "O1",
+            ...         "custom_white_list": {'conv2d'},
+            ...         "use_dynamic_loss_scaling": True,
+            ...     }
+            ...     model.prepare(
+            ...         optim,
+            ...         paddle.nn.CrossEntropyLoss(),
+            ...         paddle.metric.Accuracy(),
+            ...         amp_configs=amp_configs,
+            ...     )
             ...
             ...     transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
             ...     data = paddle.vision.datasets.MNIST(mode='train', transform=transform)
