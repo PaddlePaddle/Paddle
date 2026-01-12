@@ -1331,6 +1331,52 @@ void DepthwiseConvInferMeta(const MetaTensor& input,
                 config);
 }
 
+void DepthwiseConv2dBiasInferMeta(const MetaTensor& input,
+                                  const MetaTensor& filter,
+                                  const MetaTensor& bias,
+                                  const std::vector<int>& strides,
+                                  const std::vector<int>& paddings,
+                                  const std::string& padding_algorithm,
+                                  int groups,
+                                  const std::vector<int>& dilations,
+                                  const std::string& data_format,
+                                  MetaTensor* out,
+                                  MetaConfig config) {
+  ConvInferMeta(input,
+                filter,
+                strides,
+                paddings,
+                padding_algorithm,
+                dilations,
+                groups,
+                data_format,
+                out,
+                config);
+}
+
+void DepthwiseConv3dBiasInferMeta(const MetaTensor& input,
+                                  const MetaTensor& filter,
+                                  const MetaTensor& bias,
+                                  const std::vector<int>& strides,
+                                  const std::vector<int>& paddings,
+                                  const std::string& padding_algorithm,
+                                  int groups,
+                                  const std::vector<int>& dilations,
+                                  const std::string& data_format,
+                                  MetaTensor* out,
+                                  MetaConfig config) {
+  ConvInferMeta(input,
+                filter,
+                strides,
+                paddings,
+                padding_algorithm,
+                dilations,
+                groups,
+                data_format,
+                out,
+                config);
+}
+
 void CvmInferMeta(const MetaTensor& x,
                   const MetaTensor& cvm,
                   bool use_cvm,
