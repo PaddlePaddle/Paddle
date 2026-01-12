@@ -14,7 +14,7 @@ gather_srcs(
 
 cinn_cc_library(
   cinn_runtime SRCS cinn_runtime.cc buffer.cc #cinn_x86_device_impl.cc
-  DEPS cinn_custom_device_runtime)
+)
 
 if(WITH_OPENMP)
   cinn_cc_library(tiny_runtime STATIC SRCS tiny_runtime.cc)

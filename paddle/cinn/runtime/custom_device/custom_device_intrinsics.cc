@@ -11,17 +11,25 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#ifndef CINN_WITH_CUSTOM_DEVICE
+#error "STOP!!! I AM BEING COMPILED! 停下！我正在被编译！"
+#endif
+
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
-using cinn::backends::GlobalSymbolRegistry;
 #include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
-using cinn::runtime::custom_device::CustomBackendAPI;
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/runtime/custom_device/custom_device_util.h"
 
+namespace cinn {
+namespace runtime {
+namespace custom_device {
+using cinn::backends::GlobalSymbolRegistry;
+using cinn::runtime::custom_device::CustomBackendAPI;
 using cinn_buffer_ptr_t = cinn_buffer_t *;
 using cinn_int_ptr_t = int *;
 
-CINN_REGISTER_HELPER(cinn_custom_device_host_api) {
+// 普通函数，不再是宏
+void ForceRegisterCinnCustomDeviceHostAPI() {
   GlobalSymbolRegistry::Global().RegisterFn(
       "backend_api.custom_device",
       reinterpret_cast<void *>(CustomBackendAPI::Global()));  // TODO(xuyuhan)
@@ -53,10 +61,10 @@ CINN_REGISTER_HELPER(cinn_custom_device_host_api) {
       .template AddInputType(cinn::common::type_of<int64_t>())
       .template AddInputType(cinn::common::type_of<int64_t **>())
       .End();
-  return true;
 }
 
-CINN_REGISTER_HELPER(custom_device_intrinsics) {
+void ForceRegisterCinnCustomDeviceIntrinsics() {
+  fprintf(stderr, "!!! [DEBUG] CINN Custom Device Intrinsics Registering... !!!\n");
   auto target = cinn::common::DefaultCustomDeviceTarget();
 
 // bool for 1 input 1 output
@@ -71,7 +79,7 @@ CINN_REGISTER_HELPER(custom_device_intrinsics) {
 // bool for 2 input 1 output
 #define REGISTER_EXTERN_FUNC_2_IN_1_OUT_BOOL(func__) \
   REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(            \
-      cinn_custom_devicetom_device_##func__##_bool, target, bool, bool, bool)
+      cinn_custom_device_##func__##_bool, target, bool, bool, bool)
 
   REGISTER_EXTERN_FUNC_2_IN_1_OUT_BOOL(bitwise_and);
   REGISTER_EXTERN_FUNC_2_IN_1_OUT_BOOL(bitwise_or);
@@ -178,7 +186,7 @@ CINN_REGISTER_HELPER(custom_device_intrinsics) {
 
 #define REGISTER_EXTERN_FUNC_1_IN_FLOAT_1_OUT_BOOL(func__) \
   REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(                  \
-      cinn_custom_devicetom_device_##func__##_fp32, target, float, bool);
+      cinn_custom_device_##func__##_fp32, target, float, bool);
 
   REGISTER_EXTERN_FUNC_1_IN_FLOAT_1_OUT_BOOL(isnan);
   REGISTER_EXTERN_FUNC_1_IN_FLOAT_1_OUT_BOOL(isfinite);
@@ -450,5 +458,7 @@ CINN_REGISTER_HELPER(custom_device_intrinsics) {
       .template AddInputType(cinn::common::type_of<int>())
       .End();
 
-  return true;
+}
+}
+}
 }
