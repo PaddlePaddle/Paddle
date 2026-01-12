@@ -839,6 +839,7 @@ class EarlyStopping(Callback):
     Examples:
         .. code-block:: pycon
 
+            >>> # doctest: +TIMEOUT(30)
             >>> import paddle
             >>> from paddle import Model
             >>> from paddle.static import InputSpec

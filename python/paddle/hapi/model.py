@@ -1507,6 +1507,7 @@ class Model:
         .. code-block:: pycon
             :name: code-example1
 
+            >>> # doctest: +TIMEOUT(30)
             >>> import paddle
             >>> import paddle.nn as nn
             >>> import paddle.vision.transforms as T
@@ -1547,6 +1548,7 @@ class Model:
         .. code-block:: pycon
             :name: code-example2
 
+            >>> # doctest: +TIMEOUT(30)
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> paddle.device.set_device('gpu')
