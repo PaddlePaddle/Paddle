@@ -2924,7 +2924,7 @@ class Executor:
 
             .. code-block:: python
 
-                >>> # doctest: +SKIP("This has diff in xdoctest env")
+                >>> # doctest: +SKIP("This does not supported in PIR mode")
                 >>> import paddle
 
                 >>> paddle.enable_static()
