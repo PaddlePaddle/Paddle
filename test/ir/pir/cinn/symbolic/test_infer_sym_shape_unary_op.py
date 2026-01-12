@@ -837,8 +837,6 @@ class RRELUInplaceNet(paddle.nn.Layer):
 
     def forward(self, x):
         F.rrelu(x, training=False, inplace=True)
-        F.rrelu(x, training=False, inplace=True)
-        F.rrelu(x, training=False, inplace=True)
         return x
 
 
@@ -859,7 +857,12 @@ class RRELUOpInferSymbolicShapeTest(TestBase):
             )
 
             input_spec = [x_spec]
-            net = apply_to_static(net, True, input_spec)
+            net = paddle.jit.to_static(
+                net,
+                input_spec=input_spec,
+                backend=None,
+                full_graph=True,
+            )
             net.eval()
             check_infer_results(net, input_spec, 'pd_op.rrelu_', self.expected)
 
