@@ -61,7 +61,6 @@ void CUDAGraph::Reset() {
   is_reset_ = true;
 }
 
-
 void CUDAGraph::Replay() {
   is_replayed_ = true;
   PADDLE_ENFORCE_EQ(is_reset_,
@@ -197,107 +196,104 @@ std::unique_ptr<CUDAGraph> CUDAGraph::EndCapture() {
   return std::move(capturing_graph_);
 }
 
-  bool CUDAGraph::IsValidCapturing() {
-    if (!IsCapturing()) return false;
-    cudaStreamCaptureStatus status;
-    CUDAGraphID id;
-    PADDLE_ENFORCE_XPU_SUCCESS(cudaStreamGetCaptureInfo(
-        static_cast<cudaStream_t>(capturing_graph_->stream_), &status, &id));
-    return status == cudaStreamCaptureStatusActive;
-  }
+bool CUDAGraph::IsValidCapturing() {
+  if (!IsCapturing()) return false;
+  cudaStreamCaptureStatus status;
+  CUDAGraphID id;
+  PADDLE_ENFORCE_XPU_SUCCESS(cudaStreamGetCaptureInfo(
+      static_cast<cudaStream_t>(capturing_graph_->stream_), &status, &id));
+  return status == cudaStreamCaptureStatusActive;
+}
 
-  static std::string ConcatPath(const std::string &dirname,
-                                const std::string &filename) {
+static std::string ConcatPath(const std::string &dirname,
+                              const std::string &filename) {
 #ifdef _WIN32
-    const std::array<char, 3> kFileSep = {"\\"};
+  const std::array<char, 3> kFileSep = {"\\"};
 #else
-    const std::array<char, 2> kFileSep = {"/"};
+  const std::array<char, 2> kFileSep = {"/"};
 #endif
-    if (!dirname.empty() && dirname.back() == kFileSep[0]) {
-      return dirname + filename;
-    } else {
-      return dirname + kFileSep.data() + filename;
-    }
+  if (!dirname.empty() && dirname.back() == kFileSep[0]) {
+    return dirname + filename;
+  } else {
+    return dirname + kFileSep.data() + filename;
   }
+}
 
-  void CUDAGraph::PrintToDotFiles(const std::string &dirname,
-                                  unsigned int flags) {
-    ThrowErrorIfNotSupportCUDAGraph();
-    for (size_t i = 0; i < graphs_.size(); ++i) {
-      auto filename =
-          ConcatPath(dirname, "segment_" + std::to_string(i) + ".dot");
-      VLOG(10) << "Save the " << i << "-th segment of graph " << id_ << " to "
-               << filename;
-      PADDLE_ENFORCE_XPU_SUCCESS(
-          cudaGraphDebugDotPrint(graphs_[i], filename.c_str(), flags));
-    }
-  }
-
-  void CUDAGraphNodeLauncher::KernelNodeLaunch(
-      parameterSetter_t parameterSetter,
-      gpuKernelCallback_t xpuKernelCallback) {
-    if (UNLIKELY(phi::backends::xpu::CUDAGraph::IsThisThreadCapturing())) {
-      unsigned int id = GenerateIdentifier();
-      auto cudaFunc = xpuKernelCallback(id);
-
-      parameterSetters[cudaFunc][id] = parameterSetter;
-      VLOG(10) << "Launch kernel with cudaFunc = " << cudaFunc
-               << " id = " << id;
-    } else {
-      xpuKernelCallback(0);
-    }
-  }
-
-  std::vector<CUDAGraphExecuterSetter_t>
-  CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
-    size_t num_nodes;
-    PADDLE_ENFORCE_XPU_SUCCESS(cudaGraphGetNodes(graph, nullptr, &num_nodes));
-    std::vector<cudaGraphNode_t> nodes(num_nodes);
+void CUDAGraph::PrintToDotFiles(const std::string &dirname,
+                                unsigned int flags) {
+  ThrowErrorIfNotSupportCUDAGraph();
+  for (size_t i = 0; i < graphs_.size(); ++i) {
+    auto filename =
+        ConcatPath(dirname, "segment_" + std::to_string(i) + ".dot");
+    VLOG(10) << "Save the " << i << "-th segment of graph " << id_ << " to "
+             << filename;
     PADDLE_ENFORCE_XPU_SUCCESS(
-        cudaGraphGetNodes(graph, nodes.data(), &num_nodes));
+        cudaGraphDebugDotPrint(graphs_[i], filename.c_str(), flags));
+  }
+}
 
-    std::vector<std::function<void(cudaGraphExec_t)>> hooks;
-    for (auto node : nodes) {
-      cudaGraphNode_t cuNode = node;
-      cudaGraphNodeType pType;
-      PADDLE_ENFORCE_XPU_SUCCESS(cudaGraphNodeGetType(cuNode, &pType));
-      if (pType == CU_GRAPH_NODE_TYPE_KERNEL) {
-        cudaKernelNodeParams cuParams;
-        PADDLE_ENFORCE_XPU_SUCCESS(
-            cudaGraphKernelNodeGetParams(cuNode, &cuParams));
-        gpuKernelParams kernel_params(cuParams.kernelParams);
-        auto kernel =
-            parameterSetters.find(static_cast<cudaFunction_t>(cuParams.func));
-        VLOG(10) << "[GetParameterSettersForExecGraph] cuParams.func = "
-                 << cuParams.func;
-        // There exists a parameter setter
-        if (kernel != parameterSetters.end()) {
-          auto launchSequence = kernel->second;
-          unsigned int id = kernel_params.As<int>(0);
+void CUDAGraphNodeLauncher::KernelNodeLaunch(
+    parameterSetter_t parameterSetter, gpuKernelCallback_t xpuKernelCallback) {
+  if (UNLIKELY(phi::backends::xpu::CUDAGraph::IsThisThreadCapturing())) {
+    unsigned int id = GenerateIdentifier();
+    auto cudaFunc = xpuKernelCallback(id);
 
-          VLOG(10)
-              << "[GetParameterSettersForExecGraph] Find launch kernel id = "
-              << id;
-          auto parameterSetter = launchSequence.find(id);
-          if (parameterSetter != launchSequence.end()) {
-            auto setter = parameterSetter->second;
-            hooks.emplace_back(
-                [setter, cuNode, cuParams](cudaGraphExec_t exec_graph) {
-                  gpuKernelParams kernel_params(cuParams.kernelParams);
-                  setter(kernel_params);
-                  PADDLE_ENFORCE_XPU_SUCCESS(cudaGraphExecKernelNodeSetParams(
-                      static_cast<CUgraphExec>(exec_graph), cuNode, &cuParams));
-                });
-          } else {
-            PADDLE_THROW(common::errors::InvalidArgument(
-                "Error: does not find launch id"));
-          }
+    parameterSetters[cudaFunc][id] = parameterSetter;
+    VLOG(10) << "Launch kernel with cudaFunc = " << cudaFunc << " id = " << id;
+  } else {
+    xpuKernelCallback(0);
+  }
+}
+
+std::vector<CUDAGraphExecuterSetter_t>
+CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
+  size_t num_nodes;
+  PADDLE_ENFORCE_XPU_SUCCESS(cudaGraphGetNodes(graph, nullptr, &num_nodes));
+  std::vector<cudaGraphNode_t> nodes(num_nodes);
+  PADDLE_ENFORCE_XPU_SUCCESS(
+      cudaGraphGetNodes(graph, nodes.data(), &num_nodes));
+
+  std::vector<std::function<void(cudaGraphExec_t)>> hooks;
+  for (auto node : nodes) {
+    cudaGraphNode_t cuNode = node;
+    cudaGraphNodeType pType;
+    PADDLE_ENFORCE_XPU_SUCCESS(cudaGraphNodeGetType(cuNode, &pType));
+    if (pType == CU_GRAPH_NODE_TYPE_KERNEL) {
+      cudaKernelNodeParams cuParams;
+      PADDLE_ENFORCE_XPU_SUCCESS(
+          cudaGraphKernelNodeGetParams(cuNode, &cuParams));
+      gpuKernelParams kernel_params(cuParams.kernelParams);
+      auto kernel =
+          parameterSetters.find(static_cast<cudaFunction_t>(cuParams.func));
+      VLOG(10) << "[GetParameterSettersForExecGraph] cuParams.func = "
+               << cuParams.func;
+      // There exists a parameter setter
+      if (kernel != parameterSetters.end()) {
+        auto launchSequence = kernel->second;
+        unsigned int id = kernel_params.As<int>(0);
+
+        VLOG(10) << "[GetParameterSettersForExecGraph] Find launch kernel id = "
+                 << id;
+        auto parameterSetter = launchSequence.find(id);
+        if (parameterSetter != launchSequence.end()) {
+          auto setter = parameterSetter->second;
+          hooks.emplace_back(
+              [setter, cuNode, cuParams](cudaGraphExec_t exec_graph) {
+                gpuKernelParams kernel_params(cuParams.kernelParams);
+                setter(kernel_params);
+                PADDLE_ENFORCE_XPU_SUCCESS(cudaGraphExecKernelNodeSetParams(
+                    static_cast<CUgraphExec>(exec_graph), cuNode, &cuParams));
+              });
+        } else {
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "Error: does not find launch id"));
         }
       }
     }
-
-    return hooks;
   }
+
+  return hooks;
+}
 
 }  // namespace xpu
 }  // namespace backends

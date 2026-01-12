@@ -383,8 +383,10 @@ phi::DeviceContext* SelectXPUGraphDeviceContext(phi::XPUPlace place,
                           "capturing stream is recorded."));
     if (num_stream > 1) {
       VLOG(4) << "Use a new stream to capture cuda graph. Used in
-      multi-stream scenarios with new executor.";
-      if (*pool_id <= phi::backends::xpu::CUDAGraph::kInvalidPoolID) {
+                     multi -
+                     stream scenarios with new executor.";
+                     if (*pool_id <=
+                         phi::backends::xpu::CUDAGraph::kInvalidPoolID) {
         *pool_id = phi::backends::xpu::CUDAGraph::UniqueMemoryPoolID();
       }
       mutable_dev_ctx =
@@ -392,8 +394,9 @@ phi::DeviceContext* SelectXPUGraphDeviceContext(phi::XPUPlace place,
               *pool_id, place, 0);
     } else {
       VLOG(4) << "Use recorded stream to capture cuda graph. Used in
-      single-stream scenarios with new executor. ";
-      mutable_dev_ctx = *(all_capturing_dev_ctxs.begin());
+                     single -
+                     stream scenarios with new executor.";
+                     mutable_dev_ctx = *(all_capturing_dev_ctxs.begin());
     }
   } else {
     mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);

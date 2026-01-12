@@ -19,8 +19,8 @@
 #include <string>
 
 #include "paddle/common/flags.h"
-#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/cuda_graph.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/common/place.h"

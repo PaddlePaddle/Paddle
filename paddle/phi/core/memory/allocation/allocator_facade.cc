@@ -59,8 +59,8 @@
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/cpu/cpu_info.h"
-#include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/backends/xpu/cuda_graph.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/memory/allocation/stream_safe_xpu_allocator.h"
 #include "paddle/phi/core/memory/allocation/xpu_allocator.h"
 #include "paddle/phi/core/memory/allocation/xpu_pinned_allocator.h"

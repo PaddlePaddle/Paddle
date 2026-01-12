@@ -174,7 +174,6 @@ class CUDAGraph {
   ~CUDAGraph() { Reset(); }
   CUDAGraphID ID() const { return id_; }
 
-
   static int64_t SetMemoryPoolID(int64_t pool_id) {
     auto &pool_id_ = capturing_graph_->pool_id_;
     PADDLE_ENFORCE_EQ(pool_id_,
@@ -217,9 +216,7 @@ class CUDAGraph {
     cudagraph_post_capture_callbacks_.push_back(std::move(callback));
   }
 
-  void AddJoiningStream(XPUStream stream) {
-    streams_to_join_.insert(stream);
-  }
+  void AddJoiningStream(XPUStream stream) { streams_to_join_.insert(stream); }
 
   void PrintToDotFiles(const std::string &dirname, unsigned int flags);
 
