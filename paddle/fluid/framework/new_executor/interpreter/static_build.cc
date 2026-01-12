@@ -71,8 +71,8 @@ static VarMetaInfo GetVarMetaInfo(const Scope& scope, const std::string& name) {
     return VarMetaInfo(name, dtype, place);
   }
 
-  if (var->IsType<phi::DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+  if (var->IsType<DenseTensor>()) {
+    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
     if (!UNLIKELY(!tensor.has_allocation())) {
       dtype = tensor.dtype();
       place = tensor.place();
@@ -274,8 +274,8 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
 
 phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
   if (var) {
-    if (var->template IsType<phi::DenseTensor>()) {
-      return var->template GetMutable<phi::DenseTensor>();
+    if (var->template IsType<DenseTensor>()) {
+      return var->template GetMutable<DenseTensor>();
     } else if (var->template IsType<phi::SelectedRows>()) {
       return var->template GetMutable<phi::SelectedRows>();
     } else if (var->template IsType<phi::SparseCooTensor>()) {
@@ -540,8 +540,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
     }
 
     if (var->Type() == framework::proto::VarType::DENSE_TENSOR) {
-      input_var_original_places[in_name] =
-          (var->Get<phi::DenseTensor>()).place();
+      input_var_original_places[in_name] = (var->Get<DenseTensor>()).place();
     } else {
       VLOG(10) << "[while op]"
                << "skip backup input " << in_name << " type:"
@@ -572,11 +571,11 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
       if (no_copy_var_names.find(input_var_name) == no_copy_var_names.end()) {
         std::string input_var_rename = input_var_name + "@TMP_COPY";
         framework::Variable* input_var = scope.FindVar(input_var_name);
-        if (input_var->IsType<phi::DenseTensor>()) {
+        if (input_var->IsType<DenseTensor>()) {
           rename_vars.push_back(input_var_rename);
-          auto input_var_tensor = input_var->Get<phi::DenseTensor>();
-          auto* rename_input_var_tensor = current_scope.Var(input_var_rename)
-                                              ->GetMutable<phi::DenseTensor>();
+          auto input_var_tensor = input_var->Get<DenseTensor>();
+          auto* rename_input_var_tensor =
+              current_scope.Var(input_var_rename)->GetMutable<DenseTensor>();
           framework::TensorCopy(
               input_var_tensor, dev_place, rename_input_var_tensor);
           rename_input_var_tensor->set_lod(input_var_tensor.lod());
@@ -620,9 +619,9 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
 
     for (auto& name : current_scope->LocalVarNames()) {
       auto* var = current_scope->Var(name);
-      if (var->IsType<phi::DenseTensor>()) {
+      if (var->IsType<DenseTensor>()) {
         // Clear all lod information for all lod_tensors.
-        auto* t = var->GetMutable<phi::DenseTensor>();
+        auto* t = var->GetMutable<DenseTensor>();
         phi::LegacyLoD empty_lod;
         t->set_lod(empty_lod);
       } else if (var->IsType<phi::TensorArray>()) {

@@ -603,54 +603,52 @@ void BindProgram(py::module *m) {
              return name_analysis::GetAllParameterValues(self);
            })
       .def("num_ops", [](Program &self) { return self.num_ops(); })
-      .def(
-          "_state_dict",
-          [](std::shared_ptr<Program> self,
-             const std::string &mode = "all",
-             const framework::Scope &scope = framework::Scope()) {
-            std::unordered_map<std::string, phi::DenseTensor> state_dict_all;
-            std::unordered_map<std::string, phi::DenseTensor> state_dict_param;
-            std::unordered_map<std::string, phi::DenseTensor> state_dict_opt;
-            for (auto op : self->block()->ops()) {
-              for (auto var : op->results()) {
-                auto is_persistable =
-                    var.attribute<BoolAttribute>(kAttrIsPersistable);
-                if (is_persistable && is_persistable.data()) {
-                  if (var.defining_op()->isa<::pir::ParameterOp>()) {
-                    std::string var_name =
-                        name_analysis::GetValueFirstName(var);
-                    auto tensor =
-                        scope.FindVar(var_name)->GetMutable<phi::DenseTensor>();
-                    state_dict_param[var_name] = *tensor;
-                    state_dict_all[var_name] = *tensor;
-                  } else if (var.defining_op()
-                                 ->isa<paddle::dialect::DataOp>()) {
-                    std::string var_name =
-                        name_analysis::GetValueFirstName(var);
-                    auto tensor =
-                        scope.FindVar(var_name)->GetMutable<phi::DenseTensor>();
-                    state_dict_opt[var_name] = *tensor;
-                    state_dict_all[var_name] = *tensor;
-                  }
-                }
-              }
-            }
-            if (mode == "all") {
-              return state_dict_all;
-            } else if (mode == "param") {
-              return state_dict_param;
-            } else if (mode == "opt") {
-              return state_dict_opt;
-            } else {
-              PADDLE_THROW(common::errors::InvalidArgument(
-                  "The mode is not supported."));
-            }
-          })
+      .def("_state_dict",
+           [](std::shared_ptr<Program> self,
+              const std::string &mode = "all",
+              const framework::Scope &scope = framework::Scope()) {
+             std::unordered_map<std::string, DenseTensor> state_dict_all;
+             std::unordered_map<std::string, DenseTensor> state_dict_param;
+             std::unordered_map<std::string, DenseTensor> state_dict_opt;
+             for (auto op : self->block()->ops()) {
+               for (auto var : op->results()) {
+                 auto is_persistable =
+                     var.attribute<BoolAttribute>(kAttrIsPersistable);
+                 if (is_persistable && is_persistable.data()) {
+                   if (var.defining_op()->isa<::pir::ParameterOp>()) {
+                     std::string var_name =
+                         name_analysis::GetValueFirstName(var);
+                     auto tensor =
+                         scope.FindVar(var_name)->GetMutable<DenseTensor>();
+                     state_dict_param[var_name] = *tensor;
+                     state_dict_all[var_name] = *tensor;
+                   } else if (var.defining_op()
+                                  ->isa<paddle::dialect::DataOp>()) {
+                     std::string var_name =
+                         name_analysis::GetValueFirstName(var);
+                     auto tensor =
+                         scope.FindVar(var_name)->GetMutable<DenseTensor>();
+                     state_dict_opt[var_name] = *tensor;
+                     state_dict_all[var_name] = *tensor;
+                   }
+                 }
+               }
+             }
+             if (mode == "all") {
+               return state_dict_all;
+             } else if (mode == "param") {
+               return state_dict_param;
+             } else if (mode == "opt") {
+               return state_dict_opt;
+             } else {
+               PADDLE_THROW(common::errors::InvalidArgument(
+                   "The mode is not supported."));
+             }
+           })
       .def(
           "set_state_dict",
           [](std::shared_ptr<Program> self,
-             const std::unordered_map<std::string, phi::DenseTensor>
-                 &state_dict,
+             const std::unordered_map<std::string, DenseTensor> &state_dict,
              const framework::Scope &scope = framework::Scope(),
              bool copy_tensor = false) {
             for (auto item : state_dict) {
@@ -660,11 +658,11 @@ void BindProgram(py::module *m) {
                     "The variable %s is not found.", item.first));
               } else {
                 if (copy_tensor) {
-                  auto *mutable_tensor = var->GetMutable<phi::DenseTensor>();
+                  auto *mutable_tensor = var->GetMutable<DenseTensor>();
                   paddle::framework::TensorCopy(
                       item.second, item.second.place(), mutable_tensor);
                 } else {
-                  *var->GetMutable<phi::DenseTensor>() = item.second;
+                  *var->GetMutable<DenseTensor>() = item.second;
                 }
               }
             }
@@ -2566,7 +2564,7 @@ static void inline CreateVariableIfNotExist(
                                   "Please set argument [executor] not None "
                                   "or run startup program first"));
       var = scope->Var(para_name);
-      auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+      auto *tensor_temp = var->GetMutable<DenseTensor>();
       tensor_temp->Resize(
           common::make_ddim(phi::vectorize(GetValueDims(value))));
       phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();

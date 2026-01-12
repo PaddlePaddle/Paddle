@@ -581,10 +581,8 @@ class MiniBatchGpuPack {
   }
   phi::DenseTensor& float_tensor(void) { return float_tensor_; }
   phi::DenseTensor& uint64_tensor(void) { return uint64_tensor_; }
-  std::vector<phi::DenseTensor>& float_tensor_vec(void) {
-    return float_tensor_vec_;
-  }
-  std::vector<phi::DenseTensor>& uint64_tensor_vec(void) {
+  std::vector<DenseTensor>& float_tensor_vec(void) { return float_tensor_vec_; }
+  std::vector<DenseTensor>& uint64_tensor_vec(void) {
     return uint64_tensor_vec_;
   }
 
@@ -655,11 +653,11 @@ class MiniBatchGpuPack {
   const SlotRecord* batch_ins_ = nullptr;
 
   // uint64 tensor
-  phi::DenseTensor uint64_tensor_;
-  std::vector<phi::DenseTensor> uint64_tensor_vec_;
+  DenseTensor uint64_tensor_;
+  std::vector<DenseTensor> uint64_tensor_vec_;
   // float tensor
-  phi::DenseTensor float_tensor_;
-  std::vector<phi::DenseTensor> float_tensor_vec_;
+  DenseTensor float_tensor_;
+  std::vector<DenseTensor> float_tensor_vec_;
   // batch
   HostBuffer<size_t> offsets_;
   HostBuffer<void*> h_tensor_ptrs_;
@@ -1138,7 +1136,7 @@ class GraphDataGenerator {
   std::vector<size_t> infer_node_start_;
   std::vector<size_t> infer_node_end_;
   std::string infer_node_type_;
-  phi::DenseTensor multi_node_sync_stat_;
+  DenseTensor multi_node_sync_stat_;
 };
 
 class DataFeed {

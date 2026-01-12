@@ -33,7 +33,7 @@ void TransposeGradKernel(const Context& dev_ctx,
 
   size_t axis_size = axis.size();
   if (axis_size == 0) {
-    phi::Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     return;
   }
 
@@ -75,7 +75,7 @@ void TransposeGradKernel<phi::complex64, XPUContext>(
 
   size_t axis_size = axis.size();
   if (axis_size == 0) {
-    phi::Copy<XPUContext>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy<XPUContext>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     return;
   }
 

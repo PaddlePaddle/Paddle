@@ -138,6 +138,14 @@ class TestBincountOpError(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.run_network(net_func)
 
+    def test_input_type_errors_static(self):
+        """Test input tensor should only contain non-negative ints in static graph."""
+        paddle.enable_static()
+        with self.assertRaises(TypeError):
+            x = paddle.static.data(name='x', dtype='float32', shape=[5])
+            paddle.bincount(x)
+        paddle.disable_static()
+
     def test_weights_shape_error(self):
         """Test weights tensor should have the same shape as input tensor."""
 

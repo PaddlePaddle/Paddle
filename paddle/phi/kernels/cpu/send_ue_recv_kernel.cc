@@ -275,12 +275,8 @@ void SendUERecvKernel(const Context& dev_ctx,
       dst_count->Resize({input_size});
     }
     out->Resize(common::make_ddim(dims_));
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
-    phi::Full<int, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(dst_count->dims())),
-                            0,
-                            dst_count);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
+    Full<int, Context>(dev_ctx, dst_count->dims(), 0, dst_count);
     return;
   }
 

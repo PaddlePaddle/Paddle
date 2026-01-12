@@ -38,8 +38,7 @@ void DepthwiseConv2dTransposeKernel(const Context& dev_ctx,
                                     const std::string& data_format,
                                     DenseTensor* out) {
   if (x.numel() == 0 || filter.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
   const DataLayout data_layout = common::StringToDataLayout(data_format);

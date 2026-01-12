@@ -219,8 +219,8 @@ void IfInstruction::Run() {
   }
 
   bool cond = true;
-  if (cond_var_->IsType<phi::DenseTensor>()) {
-    auto& cond_tensor = cond_var_->Get<phi::DenseTensor>();
+  if (cond_var_->IsType<DenseTensor>()) {
+    auto& cond_tensor = cond_var_->Get<DenseTensor>();
     if (phi::is_cpu_place(cond_tensor.place())) {
       cond = cond_tensor.data<bool>()[0];
     } else {
@@ -228,7 +228,7 @@ void IfInstruction::Run() {
       // phi::is_xpu_place(cond.place()) is true
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
-      phi::DenseTensor cpu_cond;
+      DenseTensor cpu_cond;
       paddle::framework::TensorCopySync(cond_tensor, CPUPlace(), &cpu_cond);
       cond = cpu_cond.data<bool>()[0];
 #else
@@ -242,7 +242,7 @@ void IfInstruction::Run() {
     auto& cond_array = cond_var_->Get<VariableRefArray>();
     cond = std::all_of(
         cond_array.begin(), cond_array.end(), [](const Variable* t) {
-          return t->Get<phi::DenseTensor>().numel() != 0;
+          return t->Get<DenseTensor>().numel() != 0;
         });
   }
   if (cond) {
