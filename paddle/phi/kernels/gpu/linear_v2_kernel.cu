@@ -80,12 +80,10 @@ void LinearV2Kernel(const Context& dev_ctx,
     const auto out_dim_original = out->dims();
     const auto [M, N, K] = canonicalize_dims(input, weight);
     VLOG(10) << "M: " << M << ", N: " << N << ", K: " << K;
-
-    DenseTensor input_processed;
-    DenseTensor weight_processed;
-    DenseTensor output_processed;
-    phi::ReshapeKernel<Context>(dev_ctx, input, {M, K}, &input_processed);
-    phi::ReshapeKernel<Context>(dev_ctx, weight, {K, N}, &weight_processed);
+    DenseTensor input_processed = input;
+    DenseTensor weight_processed = weight;
+    input_processed.Resize(common::make_ddim({M, K}));
+    weight_processed.Resize(common::make_ddim({K, N}));
     out->Resize(common::make_ddim({M, N}));
     VLOG(10) << "input_processed: " << input_processed.dims()
              << ", weight_processed: " << weight_processed.dims()
@@ -103,8 +101,8 @@ void LinearV2Kernel(const Context& dev_ctx,
       // CublasLt path with bias add epilogue
       phi::funcs::LinearWithCublasLt<T>::Run(
           dev_ctx,
-          &input,
-          &weight,
+          &input_processed,
+          &weight_processed,
           out,
           static_cast<const void*>(bias_processed.data<T>()),
           nullptr,
@@ -115,10 +113,9 @@ void LinearV2Kernel(const Context& dev_ctx,
           false,
           phi::funcs::MatmulFusedType::kMatmulBias);
     } else {
-      DenseTensor bias_processed;
+      DenseTensor bias_processed = bias;
       if (bias.numel() != (M * N)) {
-        phi::ReshapeKernel<Context>(
-            dev_ctx, bias, {1, bias.numel()}, &bias_processed);
+        bias_processed.Resize(common::make_ddim({1, bias.numel()}));
         VLOG(10) << "bias.dim(): " << bias.dims();
         VLOG(10) << "M*N: " << M * N;
         VLOG(10) << "bias tiling and addmm calculating";
