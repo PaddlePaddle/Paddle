@@ -1556,10 +1556,18 @@ class Model:
             >>> def run_example_code():
             ...     device = paddle.set_device('gpu')
             ...
-            ...     net = nn.Sequential(nn.Flatten(1), nn.Linear(784, 200), nn.Tanh(), nn.Linear(200, 10))
+            ...     net = nn.Sequential(
+            ...         nn.Flatten(1),
+            ...         nn.Linear(784, 200),
+            ...         nn.Tanh(),
+            ...         nn.Linear(200, 10),
+            ...     )
             ...
             ...     model = paddle.Model(net)
-            ...     optim = paddle.optimizer.SGD(learning_rate=1e-3, parameters=model.parameters())
+            ...     optim = paddle.optimizer.SGD(
+            ...         learning_rate=1e-3,
+            ...         parameters=model.parameters(),
+            ...     )
             ...
             ...     amp_configs = {
             ...         "level": "O1",
