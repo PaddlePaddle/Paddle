@@ -29,6 +29,7 @@ from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     param_two_alias,
     param_two_alias_one_default,
+    use_first_signature,
 )
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
@@ -298,6 +299,18 @@ def std(
 ) -> Tensor: ...
 
 
+@overload
+def std(
+    input: Tensor,
+    dim: int | Sequence[int] | None = None,
+    *,
+    correction: float = 1,
+    keepdim: bool = False,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
+@use_first_signature
 def std(*args: Any, **kwargs: Any) -> Tensor:
     """
     Computes the standard-deviation of ``x`` along ``axis`` .
