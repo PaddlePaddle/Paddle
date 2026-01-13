@@ -378,15 +378,16 @@ else()
 endif()
 unset(WITH_RECORD_BUILDTIME CACHE)
 
-# PY_VERSION
+# some third-party CMake require a Python interpreter and need to locate Python
+# ensure Python_EXECUTABLE compatible
 if(DEFINED PYTHON_EXECUTABLE AND NOT DEFINED Python_EXECUTABLE)
   set(Python_EXECUTABLE ${PYTHON_EXECUTABLE})
 endif()
+set(Python_FIND_STRATEGY VERSION)
+
+# PY_VERSION
 if(NOT PY_VERSION)
-  find_package(
-    Python
-    COMPONENTS Interpreter
-    QUIET)
+  find_package(Python COMPONENTS Interpreter)
   if(Python_FOUND)
     set(PY_VERSION "${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}")
   else()
