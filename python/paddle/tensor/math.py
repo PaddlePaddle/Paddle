@@ -49,6 +49,7 @@ from paddle._C_ops import (  # noqa: F401
     sign,
     sin,
     sum,
+    tan,
     tanh,
 )
 from paddle.base.libpaddle import DataType
@@ -123,7 +124,6 @@ from .ops import (  # noqa: F401
     sqrt_,
     square,
     square_,
-    tan,
     tan_,
 )
 
@@ -5082,8 +5082,15 @@ def deg2rad(
     if in_dynamic_or_pir_mode():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
-        _C_ops.scale(x, deg2rad_scale, 0.0, True, out=out)
-        return out
+        if in_pir_mode():
+            res = _C_ops.scale(x, deg2rad_scale, 0.0, True)
+            if out is not None:
+                paddle.assign(res, out)
+                return out
+            return res
+
+        res = _C_ops.scale(x, deg2rad_scale, 0.0, True, out=out)
+        return out if out is not None else res
     else:
         check_variable_and_dtype(
             x, 'x', ['int32', 'int64', 'float32', 'float64'], 'deg2rad'
