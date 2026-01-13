@@ -51,7 +51,7 @@ void PReluGradKernel(const Context& dev_ctx,
   if (x_rank == 0) {
     x_shape = std::vector<int64_t>({1});
   } else {
-    x_shape = common::vectorize<int64_t>(x_dim);
+    x_shape = vectorize<int64_t>(x_dim);
   }
 
   // mode = 0: channel_nchw, xshape = {n, c, h, w}, alpha_shape = {c}

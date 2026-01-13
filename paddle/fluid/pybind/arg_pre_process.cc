@@ -153,6 +153,25 @@ void LogsumexpPreProcess(pir::Value* x,
 void SumPreProcess(Value* x, Value* axis) {
   paddle::dialect::SetStopGradient(axis);
 }
+
+void BinCountPreProcess(Tensor* x,
+                        paddle::optional<Tensor>* weights,
+                        Scalar* minlength) {
+  CheckDataType("bincount",
+                "x",
+                x->dtype(),
+                {phi::DataType::INT32, phi::DataType::INT64});
+}
+
+void BinCountPreProcess(Value* x,
+                        paddle::optional<Value>* weights,
+                        Value* minlength) {
+  CheckDataType("bincount",
+                "x",
+                pir::GetValueDtype(*x),
+                {phi::DataType::INT32, phi::DataType::INT64});
+}
+
 void IsClosePreProcess(Value* x, Value* y, Value* rtol, Value* atol) {
   /*
   if in_pir_mode():

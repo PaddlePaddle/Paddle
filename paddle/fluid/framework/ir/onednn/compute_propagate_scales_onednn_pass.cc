@@ -38,7 +38,7 @@ void ComputePropagateScalesOnednnPass::GetQuantInfo(
   GetInfoFromTheTmpOp(graph, "has_quant_info", "var_quant_scales", &info_map);
 
   for (auto& item : info_map) {
-    phi::DenseTensor tensor;
+    DenseTensor tensor;
     GetTensorFromVector(item.second, &tensor);
     auto pair = std::make_pair(false, tensor);
     var_quant_scales->insert(std::make_pair(item.first, pair));
@@ -110,14 +110,14 @@ void ComputePropagateScalesOnednnPass::ComputeVarScales(
               "The input persistable var [%s] of [%s] op is not found.",
               var_name,
               op_desc->Type()));
-      auto* weight_tensor = var->GetMutable<phi::DenseTensor>();
+      auto* weight_tensor = var->GetMutable<DenseTensor>();
       const auto dims = weight_tensor->dims();
       int volume = 1;
       for (int i = 1; i < dims.size(); i++) {
         volume *= dims[i];
       }
 
-      phi::DenseTensor tmp_tensor;
+      DenseTensor tmp_tensor;
       std::vector<int64_t> reshape_dims = {dims[0], volume};
       tmp_tensor.Resize(common::make_ddim(reshape_dims));
       auto* weight_data = weight_tensor->data<float>();
@@ -127,7 +127,7 @@ void ComputePropagateScalesOnednnPass::ComputeVarScales(
       }
 
       auto scales_v = GetScales(&tmp_tensor, axis);
-      phi::DenseTensor tensor;
+      DenseTensor tensor;
       GetTensorFromVector(scales_v, &tensor);
       auto pair = std::make_pair(false, tensor);
       var_quant_scales->insert(std::make_pair(var_name, pair));
@@ -151,8 +151,8 @@ void ComputePropagateScalesOnednnPass::ComputeSingleGruWeightScales(
       common::errors::NotFound("The input persistable var [%s] is not found.",
                                wh_var_name));
 
-  const auto* wx_tensor = wx_var->GetMutable<phi::DenseTensor>();
-  const auto* wh_tensor = wh_var->GetMutable<phi::DenseTensor>();
+  const auto* wx_tensor = wx_var->GetMutable<DenseTensor>();
+  const auto* wh_tensor = wh_var->GetMutable<DenseTensor>();
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
   int64_t OC = wh_tensor->dims()[0];
@@ -228,7 +228,7 @@ void ComputePropagateScalesOnednnPass::ComputeGruWeightScales(
       for (int i = 0; i < wx_names_size; i++) {
         auto wh_var_name = wh_var_names[i];
         auto wx_var_name = wx_var_names[i];
-        phi::DenseTensor tensor;
+        DenseTensor tensor;
         ComputeSingleGruWeightScales(scope, wx_var_name, wh_var_name, &tensor);
         auto pair = std::make_pair(false, tensor);
         var_quant_scales->insert(std::make_pair(wx_var_name, pair));
@@ -253,8 +253,8 @@ void ComputePropagateScalesOnednnPass::ComputeSingleLstmWeightScales(
       common::errors::NotFound("The input persistable var [%s] is not found.",
                                wh_var_name));
 
-  const auto* wx_tensor = wx_var->GetMutable<phi::DenseTensor>();
-  const auto* wh_tensor = wh_var->GetMutable<phi::DenseTensor>();
+  const auto* wx_tensor = wx_var->GetMutable<DenseTensor>();
+  const auto* wh_tensor = wh_var->GetMutable<DenseTensor>();
   std::vector<float> scale(wx_tensor->dims()[1]);
 
   for (int row_id = 0; row_id < wx_tensor->dims()[0]; row_id++) {
@@ -307,7 +307,7 @@ void ComputePropagateScalesOnednnPass::ComputeLstmWeightScales(
       for (int i = 0; i < wx_names_size; i++) {
         auto wh_var_name = wh_var_names[i];
         auto wx_var_name = wx_var_names[i];
-        phi::DenseTensor tensor;
+        DenseTensor tensor;
         ComputeSingleLstmWeightScales(scope, wx_var_name, wh_var_name, &tensor);
         auto pair = std::make_pair(false, tensor);
         var_quant_scales->insert(std::make_pair(wx_var_name, pair));
@@ -362,7 +362,7 @@ void ComputePropagateScalesOnednnPass::UpdateScaleOpInOutScales(
     name = output_name;
   }
 
-  phi::DenseTensor tmp_tensor;
+  DenseTensor tmp_tensor;
   auto pair = iter->second;
   const auto tensor = pair.second;
   tmp_tensor.Resize(tensor.dims());
