@@ -23,6 +23,7 @@ from codegen_utils import (
 IMPORT_TEMPLATE = """
 import paddle
 from paddle import _C_ops
+from paddle.tensor import magic_method_func
 from .. import core
 """
 
@@ -56,10 +57,18 @@ def _{name}(*args, **kwargs):
     return _C_ops.{name}(*args, **kwargs)
 """
 SET_METHOD_TEMPLATE = """
-    # set methods for paddle.Tensor in dygraph
+    # set methods && magical methods for paddle.Tensor in dygraph
     local_tensor = core.eager.Tensor
+
+    magic_method_dict = {v: k for k, v in magic_method_func}
+
     for method_name, method in methods_map:
         setattr(local_tensor, method_name, method)
+
+        magic_name = magic_method_dict.get(method_name)
+        if magic_name:
+            setattr(local_tensor, magic_name, method)
+
         setattr(paddle.tensor, method_name, method)
 
 """

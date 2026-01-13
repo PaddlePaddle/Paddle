@@ -71,9 +71,9 @@ void PutAlongAxisKernel(const Context& dev_ctx,
                         DataTypeToString(DataType::INT64)));
 
   auto input_dtype = x.dtype();
-  std::vector<int64_t> x_shape = common::vectorize<int64_t>(x.dims());
-  std::vector<int64_t> index_shape = common::vectorize<int64_t>(index.dims());
-  std::vector<int64_t> value_shape = common::vectorize<int64_t>(value.dims());
+  std::vector<int64_t> x_shape = vectorize<int64_t>(x.dims());
+  std::vector<int64_t> index_shape = vectorize<int64_t>(index.dims());
+  std::vector<int64_t> value_shape = vectorize<int64_t>(value.dims());
   using XPUType = typename XPUTypeTrait<T>::Type;
   int64_t reduce_mode = get_reduction_mode(reduce);
 

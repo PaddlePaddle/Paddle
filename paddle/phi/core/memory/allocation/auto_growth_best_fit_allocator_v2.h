@@ -33,7 +33,7 @@ class AutoGrowthBestFitAllocatorV2 : public AutoGrowthBestFitAllocator {
   AutoGrowthBestFitAllocatorV2(
       const std::shared_ptr<Allocator> &underlying_allocator,
       size_t alignment,
-      phi::GPUPlace place,
+      GPUPlace place,
       size_t chunk_size = 0,
       bool allow_free_idle_chunk = true,
       int extra_padding_size = 0);
@@ -42,7 +42,7 @@ class AutoGrowthBestFitAllocatorV2 : public AutoGrowthBestFitAllocator {
   phi::Allocation *AllocateImpl(size_t size) override;
 
  private:
-  phi::GPUPlace place_;
+  GPUPlace place_;
   bool is_first_switch_to_regular_{true};
   std::map<std::pair<size_t, void *>, BlockIt> free_blocks_;
 };

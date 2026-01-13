@@ -89,32 +89,31 @@ class TotalMemoryCompactor final : public MemoryCompactionStrategy {
 #if defined(PADDLE_WITH_CUDA)
 // return a pair of <largest_free_block_size, sum_of_n_largest_free_block_size>
 PADDLE_API extern std::pair<size_t, size_t> VmmMaxFreeSize(
-    const phi::GPUPlace& place, int32_t n);
+    const GPUPlace& place, int32_t n);
 
 // Try using Allocator to simulate an allocation, simulating a request for
 // vector<size>.
-PADDLE_API extern bool TryAllocBatch(const phi::GPUPlace& place,
+PADDLE_API extern bool TryAllocBatch(const GPUPlace& place,
                                      const std::vector<size_t>& sizes);
 
 // Compact memory of free blocks held by the VmmAllocator.
-PADDLE_API extern size_t VmmCompact(const phi::GPUPlace& place);
+PADDLE_API extern size_t VmmCompact(const GPUPlace& place);
 
 // Get VMM allocator free block info.
 PADDLE_API extern std::vector<std::vector<std::pair<size_t, uintptr_t>>>
-FreeBlockInfoOfVmmAllocator(const phi::GPUPlace& place);
+FreeBlockInfoOfVmmAllocator(const GPUPlace& place);
 
 // Get VMM allocator all block info.
 PADDLE_API extern std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
-AllBlockInfoOfVmmAllocator(const phi::GPUPlace& place);
+AllBlockInfoOfVmmAllocator(const GPUPlace& place);
 
 // Get allocate event when start FLAGS_record_alloc_event.
 PADDLE_API extern std::vector<
     std::tuple<uintptr_t, bool, uint64_t, size_t, int64_t, int64_t>>
-GetAllocateEvent(const phi::GPUPlace& place);
+GetAllocateEvent(const GPUPlace& place);
 
 // Get compact count and size when start FLAGS_enable_compact_mem.
-PADDLE_API extern std::vector<size_t> GetCompactSize(
-    const phi::GPUPlace& place);
+PADDLE_API extern std::vector<size_t> GetCompactSize(const GPUPlace& place);
 #endif
 
 }  // namespace memory

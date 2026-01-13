@@ -182,11 +182,10 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
           if (root_var->IsType<phi::SelectedRows>()) {
             continue;
           }
-          phi::DenseTensor* root_tensor =
-              root_var->GetMutable<phi::DenseTensor>();
+          phi::DenseTensor* root_tensor = root_var->GetMutable<DenseTensor>();
           auto* ptr = scope->Var(name);
           InitializeVariable(ptr, proto::VarType::DENSE_TENSOR);
-          phi::DenseTensor* thread_tensor = ptr->GetMutable<phi::DenseTensor>();
+          phi::DenseTensor* thread_tensor = ptr->GetMutable<DenseTensor>();
           TensorCopy(*root_tensor, place, thread_tensor);
         }
       }
@@ -268,9 +267,9 @@ void MultiTrainer::MergeDenseParam() {
     for (auto& name : trainable_param_) {
       VLOG(2) << "merge var " << name << " to root scope";
       Variable* root_var = root_scope_->FindVar(name);
-      phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
+      phi::DenseTensor* root_tensor = root_var->GetMutable<DenseTensor>();
       Variable* var = thread_scope->FindVar(name);
-      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+      phi::DenseTensor* tensor = var->GetMutable<DenseTensor>();
       TensorCopySync((*tensor), root_tensor->place(), root_tensor);
     }
   } else {
@@ -280,10 +279,9 @@ void MultiTrainer::MergeDenseParam() {
       for (auto& name : varnames) {
         VLOG(2) << "merge var " << name << " to root scope";
         Variable* root_var = root_scope_->FindVar(name);
-        phi::DenseTensor* root_tensor =
-            root_var->GetMutable<phi::DenseTensor>();
+        phi::DenseTensor* root_tensor = root_var->GetMutable<DenseTensor>();
         Variable* var = thread_scope->FindVar(name);
-        phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+        phi::DenseTensor* tensor = var->GetMutable<DenseTensor>();
         TensorCopySync((*tensor), root_tensor->place(), root_tensor);
       }
     }
@@ -295,10 +293,10 @@ void MultiTrainer::MergeDenseParam() {
 template <typename T>
 void MultiTrainer::MergeToRootScope(phi::DenseTensor* root_tensor,
                                     phi::DenseTensor* tensor) {
-  phi::DenseTensor tmp_root;
+  DenseTensor tmp_root;
   TensorCopy(*root_tensor, CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
-  phi::DenseTensor tmp_tensor;
+  DenseTensor tmp_tensor;
   TensorCopy(*tensor, CPUPlace(), &tmp_tensor);
   T* data = tmp_tensor.data<T>();
   for (int i = 0; i < tmp_tensor.numel(); i++) {
@@ -312,7 +310,7 @@ void MultiTrainer::MergeWorkerVars() {
     if (root_var == nullptr) {
       continue;
     }
-    phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
+    phi::DenseTensor* root_tensor = root_var->GetMutable<DenseTensor>();
 #ifdef PADDLE_WITH_HETERPS
     for (int j = 0; j < thread_num_; j++) {
 #else
@@ -324,8 +322,7 @@ void MultiTrainer::MergeWorkerVars() {
       if (thread_var == nullptr) {
         continue;
       }
-      phi::DenseTensor* thread_tensor =
-          thread_var->GetMutable<phi::DenseTensor>();
+      phi::DenseTensor* thread_tensor = thread_var->GetMutable<DenseTensor>();
 #define MergeCallback(cpp_type, proto_type)                                    \
   do {                                                                         \
     if (framework::TransToProtoVarType(root_tensor->dtype()) == proto_type) {  \
@@ -402,7 +399,7 @@ void MultiTrainer::ResetDataset(Dataset* dataset) {
     if (root_var->IsType<phi::SelectedRows>()) {
       continue;
     }
-    phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
+    phi::DenseTensor* root_tensor = root_var->GetMutable<DenseTensor>();
     for (int j = 0; j < thread_num_; ++j) {
       Scope* cur_thread_scope = workers_[j]->GetThreadScope();
       Variable* thread_var =
@@ -410,8 +407,7 @@ void MultiTrainer::ResetDataset(Dataset* dataset) {
       if (thread_var == nullptr) {
         continue;
       }
-      phi::DenseTensor* thread_tensor =
-          thread_var->GetMutable<phi::DenseTensor>();
+      phi::DenseTensor* thread_tensor = thread_var->GetMutable<DenseTensor>();
       auto dev_ctx_ = workers_[j]->GetDeviceContext();
 #define MergeCallback2(cpp_type, proto_type)                                   \
   do {                                                                         \
@@ -424,7 +420,7 @@ void MultiTrainer::ResetDataset(Dataset* dataset) {
                 << ", thread tensor type=" << thread_tensor->dtype();          \
         exit(-1);                                                              \
       }                                                                        \
-      phi::DenseTensor tmp_tensor;                                             \
+      DenseTensor tmp_tensor;                                                  \
       TensorCopy(*thread_tensor, CPUPlace(), &tmp_tensor);                     \
       phi::funcs::set_constant(*dev_ctx_, thread_tensor, 0.0);                 \
     }                                                                          \

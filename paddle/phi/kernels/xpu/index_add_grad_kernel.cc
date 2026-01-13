@@ -47,7 +47,7 @@ void IndexAddGradKernel(const Context& dev_ctx,
   }
 
   if (x_grad) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   }
   if (add_value_grad) {
     phi::IndexSelectKernel<T, Context>(
