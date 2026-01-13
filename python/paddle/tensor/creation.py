@@ -4032,7 +4032,7 @@ def geometric_(
     probs = paddle.to_tensor(probs).astype(x.dtype)
     x.uniform_(min=float(tiny), max=float(1))
     x.log_().divide_(paddle.log1p(-(probs)))
-    x.floor_().add_(1.0)
+    x.floor_().add_(paddle.to_tensor(1.0, dtype=x.dtype))
     return x
 
 
