@@ -174,8 +174,8 @@ void CudaGraphInstruction::Run() {
   if (cuda_graph_ != nullptr && *cuda_graph_state_ref_ == 3) {
     VLOG(4) << "Start replaying cuda graph @" << cuda_graph_.get();
     for (size_t i = 0; i < input_vars_.size(); ++i) {
-      if (input_vars_[i]->IsType<phi::DenseTensor>()) {
-        auto* tensor = input_vars_[i]->GetMutable<phi::DenseTensor>();
+      if (input_vars_[i]->IsType<DenseTensor>()) {
+        auto* tensor = input_vars_[i]->GetMutable<DenseTensor>();
         if (tensor->data() != input_tensors_.at(i).data()) {
           LOG(WARNING) << "The input [" << i << "] tensor addr for "
                        << "cuda graph is changed. Pay attention to this!";
@@ -192,8 +192,7 @@ void CudaGraphInstruction::Run() {
 
     // set the output tensors into scope
     for (size_t i = 0; i < output_vars_.size(); ++i) {
-      *(output_vars_[i]->GetMutable<phi::DenseTensor>()) =
-          output_tensors_.at(i);
+      *(output_vars_[i]->GetMutable<DenseTensor>()) = output_tensors_.at(i);
     }
     VLOG(4) << "Finish replaying cuda graph";
     return;
@@ -206,10 +205,10 @@ void CudaGraphInstruction::Run() {
         place_, cudaStreamCaptureModeRelaxed, cuda_graph_capture_pool_id_);
 
     auto RecordTensorsForReplay = [&](const std::vector<Variable*>& vars) {
-      std::vector<phi::DenseTensor> record_tensors;
+      std::vector<DenseTensor> record_tensors;
       record_tensors.reserve(vars.size());
       for (auto& var : vars) {
-        auto& tensor = var->Get<phi::DenseTensor>();
+        auto& tensor = var->Get<DenseTensor>();
         const auto& holder = tensor.Holder();
         // Note: new_holder only record the memory address of the tensor for
         // cuda graph, original tensor memory will be freed to allocator after

@@ -777,7 +777,7 @@ void MultiEncoderXPUFusePass::PrepareInputMax(
     block_input_max_in_desc->SetDataType(fc_input_max_desc.GetDataType());
     (*input_max_nodes)[i] = fc_input_max_in;
 
-    phi::DenseTensor fc_max_in_cpu_tensor;
+    DenseTensor fc_max_in_cpu_tensor;
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
         phi::DeviceContextPool::Instance().Get(CPUPlace()));
     fc_max_in_cpu_tensor.set_type(phi::DataType::FLOAT32);
@@ -787,7 +787,7 @@ void MultiEncoderXPUFusePass::PrepareInputMax(
            output_scales.data(),
            max_ptr_size * sizeof(float));
     Assign(fc_max_in_cpu_tensor,
-           scope->Var(fc_input_max_name)->GetMutable<phi::DenseTensor>());
+           scope->Var(fc_input_max_name)->GetMutable<DenseTensor>());
   }
 }
 
@@ -804,16 +804,16 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(
     Node** qkv_w_intx,
     Node** qkv_w_max,
     Node** qkv_scale_max) const {
-  phi::DenseTensor qkv_w_intx_t;
-  phi::DenseTensor qkv_w_max_t;
-  phi::DenseTensor qkv_scale_max_t;
+  DenseTensor qkv_w_intx_t;
+  DenseTensor qkv_w_max_t;
+  DenseTensor qkv_scale_max_t;
   size_t qkv_w_intx_hash;
-  phi::DenseTensor q_w_t;
-  phi::DenseTensor k_w_t;
-  phi::DenseTensor v_w_t;
-  Assign(scope->Var(q_w->Name())->Get<phi::DenseTensor>(), &q_w_t);
-  Assign(scope->Var(k_w->Name())->Get<phi::DenseTensor>(), &k_w_t);
-  Assign(scope->Var(v_w->Name())->Get<phi::DenseTensor>(), &v_w_t);
+  DenseTensor q_w_t;
+  DenseTensor k_w_t;
+  DenseTensor v_w_t;
+  Assign(scope->Var(q_w->Name())->Get<DenseTensor>(), &q_w_t);
+  Assign(scope->Var(k_w->Name())->Get<DenseTensor>(), &k_w_t);
+  Assign(scope->Var(v_w->Name())->Get<DenseTensor>(), &v_w_t);
   Transpose2D(&q_w_t);
   Transpose2D(&k_w_t);
   Transpose2D(&v_w_t);
@@ -909,12 +909,12 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(
     if (qkv_w_intx_var == nullptr) {
       // Create qkv_w_intx/qkv_w_max variable/tensor
       Assign(qkv_w_intx_t,
-             scope->Var(qkv_w_intx_name)->GetMutable<phi::DenseTensor>());
+             scope->Var(qkv_w_intx_name)->GetMutable<DenseTensor>());
       Assign(qkv_w_max_t,
-             scope->Var(qkv_w_max_name)->GetMutable<phi::DenseTensor>());
+             scope->Var(qkv_w_max_name)->GetMutable<DenseTensor>());
       if (is_per_channel) {
         Assign(qkv_scale_max_t,
-               scope->Var(qkv_scale_max_name)->GetMutable<phi::DenseTensor>());
+               scope->Var(qkv_scale_max_name)->GetMutable<DenseTensor>());
       }
     } else {
       // Share the same variable
@@ -954,20 +954,17 @@ void MultiEncoderXPUFusePass::PrepareQKVBias(Graph* graph,
                                              Node* k_bias,
                                              Node* v_bias,
                                              Node** qkv_bias) const {
-  auto* q_bias_tensor =
-      scope->Var(q_bias->Name())->GetMutable<phi::DenseTensor>();
-  auto* k_bias_tensor =
-      scope->Var(k_bias->Name())->GetMutable<phi::DenseTensor>();
-  auto* v_bias_tensor =
-      scope->Var(v_bias->Name())->GetMutable<phi::DenseTensor>();
-  phi::DenseTensor q_bias_fp32_tensor;
-  phi::DenseTensor k_bias_fp32_tensor;
-  phi::DenseTensor v_bias_fp32_tensor;
+  auto* q_bias_tensor = scope->Var(q_bias->Name())->GetMutable<DenseTensor>();
+  auto* k_bias_tensor = scope->Var(k_bias->Name())->GetMutable<DenseTensor>();
+  auto* v_bias_tensor = scope->Var(v_bias->Name())->GetMutable<DenseTensor>();
+  DenseTensor q_bias_fp32_tensor;
+  DenseTensor k_bias_fp32_tensor;
+  DenseTensor v_bias_fp32_tensor;
   CastToFp32(q_bias_tensor, &q_bias_fp32_tensor);
   CastToFp32(k_bias_tensor, &k_bias_fp32_tensor);
   CastToFp32(v_bias_tensor, &v_bias_fp32_tensor);
 
-  phi::DenseTensor qkv_bias_tensor;
+  DenseTensor qkv_bias_tensor;
   int64_t q_bias_fp32_size = q_bias_fp32_tensor.numel();
   qkv_bias_tensor.Resize(DDim({q_bias_fp32_size * 3}));
   qkv_bias_tensor.set_type(phi::DataType::FLOAT32);
@@ -1003,7 +1000,7 @@ void MultiEncoderXPUFusePass::PrepareQKVBias(Graph* graph,
     block_qkv_bias_desc->SetShape(qkv_bias_desc.GetShape());
     block_qkv_bias_desc->SetDataType(qkv_bias_desc.GetDataType());
     Assign(qkv_bias_tensor,
-           scope->Var(qkv_bias_name)->GetMutable<phi::DenseTensor>());
+           scope->Var(qkv_bias_name)->GetMutable<DenseTensor>());
   }
 }
 
@@ -1149,7 +1146,7 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
     auto* block = q_matmul->Op()->Block();
     auto* scope = param_scope();
     auto weight_dtype =
-        scope->FindVar(q_matmul_w->Name())->Get<phi::DenseTensor>().dtype();
+        scope->FindVar(q_matmul_w->Name())->Get<DenseTensor>().dtype();
     std::string use_precision = "float32";
     if (weight_dtype == phi::DataType::INT8) {
       use_precision = "int8";
@@ -1332,8 +1329,7 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
       smooth_scale_names.push_back(smooth_scale_1_weight->Name());
       smooth_scale_names.push_back(smooth_scale_2_weight->Name());
       for (auto smooth_scale_name : smooth_scale_names) {
-        auto* in =
-            scope->FindVar(smooth_scale_name)->GetMutable<phi::DenseTensor>();
+        auto* in = scope->FindVar(smooth_scale_name)->GetMutable<DenseTensor>();
         CastToFp16(in);
       }
     }
@@ -1615,14 +1611,14 @@ bool MultiEncoderXPUFusePass::ApplyMultiEncoderXPUFuse(ir::Graph* graph) const {
   VarDesc x_fp16_desc(x_fp16_name);
   auto* x_fp16 = graph->CreateVarNode(&x_fp16_desc);
   block->Var(x_fp16_name);
-  scope->Var(x_fp16_name)->GetMutable<phi::DenseTensor>();
+  scope->Var(x_fp16_name)->GetMutable<DenseTensor>();
   out_nodes.push_back(x_fp16);
   // Create out_fp16 variable/mode/tensor
   std::string out_fp16_name = out_name + "_fp16";
   VarDesc out_fp16_desc(out_fp16_name);
   auto* out_fp16 = graph->CreateVarNode(&out_fp16_desc);
   block->Var(out_fp16_name);
-  scope->Var(out_fp16_name)->GetMutable<phi::DenseTensor>();
+  scope->Var(out_fp16_name)->GetMutable<DenseTensor>();
   out_nodes.push_back(out_fp16);
 
   // Generate multi_encoder_xpu op
@@ -1736,7 +1732,7 @@ int MultiEncoderXPUFusePass::CastMask(ir::Graph* graph) const {
     VarDesc new_mask_desc(new_mask_name);
     auto* new_mask = graph->CreateVarNode(&new_mask_desc);
     block->Var(new_mask_name);
-    scope->Var(new_mask_name)->GetMutable<phi::DenseTensor>();
+    scope->Var(new_mask_name)->GetMutable<DenseTensor>();
 
     // Create cast op
     framework::OpDesc cast_op_desc(block);

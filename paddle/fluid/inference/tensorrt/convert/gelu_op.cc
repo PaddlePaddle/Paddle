@@ -45,7 +45,7 @@ class GeluOpConverter : public OpConverter {
       auto create_weights = [&](float data, std::string type) -> float* {
         std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
         tmp_tensor->Resize({1});
-        auto* tmp_data = tmp_tensor->mutable_data<float>(phi::CPUPlace());
+        auto* tmp_data = tmp_tensor->mutable_data<float>(CPUPlace());
         tmp_data[0] = data;
         engine_->SetWeights(out_name + "_gelu_op_" + type,
                             std::move(tmp_tensor));
@@ -146,7 +146,7 @@ class GeluOpConverter : public OpConverter {
       auto create_weights = [&](float data, std::string type) -> float* {
         std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
         tmp_tensor->Resize({1});
-        auto* tmp_data = tmp_tensor->mutable_data<float>(phi::CPUPlace());
+        auto* tmp_data = tmp_tensor->mutable_data<float>(CPUPlace());
         tmp_data[0] = data;
         engine_->SetWeights(out_name + "_gelu_op_" + type,
                             std::move(tmp_tensor));

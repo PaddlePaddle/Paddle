@@ -172,7 +172,7 @@ bool TransferLayoutElimPass::AllInputIsTransferlayout(
     // appear before this var, but temporarily disable this if.
     if (var->Var()->Persistable() && false) {
       auto var_dims =
-          scope->FindVar(var->Name())->GetMutable<phi::DenseTensor>()->dims();
+          scope->FindVar(var->Name())->GetMutable<DenseTensor>()->dims();
       if (var_dims.size() == 1) {
         continue;
       }

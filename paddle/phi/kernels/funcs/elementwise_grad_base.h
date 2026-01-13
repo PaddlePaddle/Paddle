@@ -1161,7 +1161,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                              DX_OP dx_op,
                              DY_OP dy_op) {
   const auto gplace = dev_ctx.GetPlace();
-  auto cplace = phi::CPUPlace();
+  auto cplace = CPUPlace();
   const T *x_data = x.data<T>();
   const T *y_data = y.data<T>();
   const Tout *out_data = out.data<Tout>();

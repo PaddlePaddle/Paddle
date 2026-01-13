@@ -201,7 +201,7 @@ T** GetDevicePointerArray(const Context& dev_ctx,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   phi::memory_utils::Copy(dev_ctx.GetPlace(),
                           d_indices_data->ptr(),
-                          phi::CPUPlace(),
+                          CPUPlace(),
                           reinterpret_cast<void*>(h_indices_v.data()),
                           h_indices_v.size() * sizeof(T*),
                           dev_ctx.stream());

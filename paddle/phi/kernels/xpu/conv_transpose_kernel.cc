@@ -59,7 +59,7 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
   DDim filter_data_dims = slice_ddim(filter.dims(), 2, filter.dims().size());
 
 #ifdef PADDLE_WITH_XPU_XRE5
-  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
+  std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
   std::vector<int64_t> paddings_ =
       std::vector<int64_t>(paddings.begin(), paddings.end());
   std::vector<int64_t> dilations_ =
@@ -213,7 +213,7 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_fusion_v2");
   }
 #else
-  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
+  std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
   std::vector<int64_t> strides_ =
       std::vector<int64_t>(strides.begin(), strides.end());
   std::vector<int64_t> paddings_ =
@@ -388,7 +388,7 @@ void Conv3dTransposeKernel(const Context& dev_ctx,
   DDim filter_data_dims =
       common::slice_ddim(filter.dims(), 2, filter.dims().size());
 
-  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
+  std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
   std::vector<int64_t> paddings_ =
       std::vector<int64_t>(paddings.begin(), paddings.end());
   std::vector<int64_t> dilations_ =

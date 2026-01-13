@@ -16,6 +16,7 @@
 
 #include <ATen/core/TensorAccessor.h>
 #include <c10/core/Device.h>
+#include <c10/core/Layout.h>
 #include <c10/core/MemoryFormat.h>
 #include <c10/core/Scalar.h>
 #include <c10/core/ScalarType.h>
@@ -206,6 +207,25 @@ class PADDLE_API TensorBase {
   }
 
   bool defined() const { return tensor_.defined(); }
+
+  Layout layout() const {
+    switch (tensor_.layout()) {
+      case common::DataLayout::STRIDED:
+      case common::DataLayout::NCHW:
+      case common::DataLayout::NHWC:
+      case common::DataLayout::NCDHW:
+      case common::DataLayout::NDHWC:
+        return c10::kStrided;
+      case common::DataLayout::SPARSE_COO:
+        return c10::kSparse;
+      case common::DataLayout::SPARSE_CSR:
+        return c10::kSparseCsr;
+      case common::DataLayout::ONEDNN:
+        return c10::kMkldnn;
+      default:
+        return c10::kStrided;
+    }
+  }
 
   // Return a `TensorAccessor` for CPU `Tensor`s. You have to specify scalar
   // type and
