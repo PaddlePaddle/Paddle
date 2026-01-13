@@ -32,10 +32,10 @@ namespace detail {
 static DDim CheckAndGetOutputDim(const DDim& dim_x) {
   auto x_vec = common::vectorize(dim_x);
   if (x_vec.size() == 2) {
-    return common::make_ddim({});
+    return make_ddim({});
   }
   x_vec.erase(x_vec.end() - 2, x_vec.end());
-  return common::make_ddim(x_vec);
+  return make_ddim(x_vec);
 }
 }  // namespace detail
 
@@ -1181,7 +1181,7 @@ void GlobalGatherInferMeta(const MetaTensor& x,
       common::errors::InvalidArgument("The input tensor's dimension must be 2. "
                                       "But received input's dimension = %d.",
                                       ndim_input));
-  DDim out_dims = common::make_ddim({-1, -1});
+  DDim out_dims = make_ddim({-1, -1});
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
 }
@@ -1200,7 +1200,7 @@ void GlobalScatterInferMeta(const MetaTensor& x,
                                       "But received input's dimension = %d.",
                                       ndim_input));
 
-  DDim out_dims = common::make_ddim({-1, -1});
+  DDim out_dims = make_ddim({-1, -1});
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
 }
@@ -3070,7 +3070,7 @@ void QuantLinearInferMeta(const MetaTensor& x,
           in_mat_dims[1],
           in_mat_dims,
           w_dims0,
-          common::make_ddim({w_dims0, w_dims1})));
+          make_ddim({w_dims0, w_dims1})));
   output_dims.reserve(static_cast<size_t>(in_num_col_dims) +
                       static_cast<size_t>(1));
   for (int i = 0; i < in_num_col_dims; ++i) {

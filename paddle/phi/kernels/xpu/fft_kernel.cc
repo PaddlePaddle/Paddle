@@ -92,7 +92,7 @@ void FFTR2CKernel(const Context& dev_ctx,
         out->dims().at(last_fft_axis) / 2 + 1;
     onesided_out_shape[last_fft_axis] = onesided_last_axis_size;
     DenseTensor onesided_out =
-        Empty<C, Context>(dev_ctx, common::vectorize(onesided_out_shape));
+        Empty<C, Context>(dev_ctx, vectorize(onesided_out_shape));
     fft_r2c_func(dev_ctx, x, &onesided_out, axes, norm_type, forward);
     funcs::FFTFillConj<Context, C>(dev_ctx, &onesided_out, out, axes);
   }

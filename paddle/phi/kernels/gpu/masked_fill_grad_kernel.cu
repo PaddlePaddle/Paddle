@@ -331,7 +331,7 @@ void MaskedFillGradKernel(const Context& dev_ctx,
   bool expand_x = false;
   bool expand_v = false;
   auto expanded_size =
-      common::vectorize(funcs::BroadcastTwoDims(x_dims, mask_dims, -1));
+      vectorize(funcs::BroadcastTwoDims(x_dims, mask_dims, -1));
   auto expanded_dims = common::make_ddim(expanded_size);
   bool flag = funcs::CanDispatchMaskFillShortcut(out_grad_dims, mask_dims);
   if (expanded_dims != x_dims) flag = false;

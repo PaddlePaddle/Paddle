@@ -1286,7 +1286,7 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
     if (fused_output) {
       fused_output->set_dims(common::make_ddim({numel}));
       fused_output->set_dtype(dtype);
-      VLOG(4) << "fused_output size:" << common::make_ddim({numel});
+      VLOG(4) << "fused_output size:" << make_ddim({numel});
     }
 #else
     return;
@@ -1317,7 +1317,7 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
       if (fused_output) {
         fused_output->set_dims(common::make_ddim({numel}));
         fused_output->set_dtype(dtype);
-        VLOG(4) << "fused_output size:" << common::make_ddim({numel});
+        VLOG(4) << "fused_output size:" << make_ddim({numel});
       }
     }
   }
@@ -1351,8 +1351,7 @@ void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
                         "The size of input meta vector should be greater "
                         "than 0."));
   if (axis_scalar.FromTensor() && !config.is_runtime) {
-    auto out_dims =
-        common::make_ddim(std::vector<int>(x.at(0)->dims().size(), -1));
+    auto out_dims = make_ddim(std::vector<int>(x.at(0)->dims().size(), -1));
     out->set_dims(out_dims);
     out->set_dtype(x.at(0)->dtype());
     out->set_layout(x.at(0)->layout());
@@ -2705,7 +2704,7 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
     }
   }
 
-  auto out_dims = common::make_ddim(x_dims_vec);
+  auto out_dims = make_ddim(x_dims_vec);
 
   out->set_dims(out_dims);
   if (residual_out && !norm_weight && !norm_bias) {
@@ -4267,7 +4266,7 @@ void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
       out_shape[i] = inputs[i]->dims()[0];
     }
   }
-  auto out_dims = common::make_ddim(out_shape);
+  auto out_dims = make_ddim(out_shape);
   for (auto& output : outputs) {
     output->set_dims(out_dims);
     output->set_dtype(inputs[0]->dtype());
@@ -4352,7 +4351,7 @@ void MultiDotInferMeta(const std::vector<const MetaTensor*>& x,
 
   // If the first tensor is 1D of size n view it as a row vector (1, n)
   if (first_dim.size() == 1) {
-    first_dim = common::make_ddim({1, first_dim[0]});
+    first_dim = make_ddim({1, first_dim[0]});
     is_vector = true;
   }
 
@@ -4366,12 +4365,11 @@ void MultiDotInferMeta(const std::vector<const MetaTensor*>& x,
 
   // If the last tensor is 1D of size n view it as a column vector (n, 1)
   if (last_dim.size() == 1) {
-    last_dim = common::make_ddim({last_dim[0], 1});
-    out_dim =
-        is_vector ? common::make_ddim({}) : common::make_ddim({first_dim[0]});
+    last_dim = make_ddim({last_dim[0], 1});
+    out_dim = is_vector ? make_ddim({}) : make_ddim({first_dim[0]});
   } else {
-    out_dim = is_vector ? common::make_ddim({last_dim[1]})
-                        : common::make_ddim({first_dim[0], last_dim[1]});
+    out_dim = is_vector ? make_ddim({last_dim[1]})
+                        : make_ddim({first_dim[0], last_dim[1]});
   }
 
   auto width = first_dim.at(1);
@@ -5417,7 +5415,7 @@ void SendUERecvInferMeta(const MetaTensor& x,
   std::vector<int64_t> out_dims_array(max_dim);
   // Only need to broadcast dimensions other than the 0th dimension.
   funcs::GetBroadcastDimsArrays(common::make_ddim(x_dims2),
-                                common::make_ddim(y_dims2),
+                                make_ddim(y_dims2),
                                 x_dims_array.data(),
                                 y_dims_array.data(),
                                 out_dims_array.data(),
@@ -5490,7 +5488,7 @@ void SendUVInferMeta(const MetaTensor& x,
   std::vector<int64_t> out_dims_array(max_dim);
   // Only need to broadcast dimensions other than the 0th dimension.
   funcs::GetBroadcastDimsArrays(common::make_ddim(x_dims2),
-                                common::make_ddim(y_dims2),
+                                make_ddim(y_dims2),
                                 x_dims_array.data(),
                                 y_dims_array.data(),
                                 out_dims_array.data(),

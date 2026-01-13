@@ -88,11 +88,11 @@ void ScatterNdAddGradKernel(const Context &dev_ctx,
       return;
     }
 
-    auto index_shape_vec = common::vectorize<int64_t>(index.dims());
+    auto index_shape_vec = vectorize<int64_t>(index.dims());
     if (index_shape_vec.size() == 1) {
       index_shape_vec.insert(index_shape_vec.begin(), 1);
     }
-    auto out_grad_shape_vec = common::vectorize<int64_t>(out_grad.dims());
+    auto out_grad_shape_vec = vectorize<int64_t>(out_grad.dims());
     xpu::VectorParam<int64_t> out_grad_shape_param = {
         out_grad_shape_vec.data(),
         static_cast<int64_t>(out_grad_shape_vec.size()),

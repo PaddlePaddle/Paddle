@@ -61,7 +61,7 @@ void ConvKernel(const Context& dev_ctx,
   DDim in_data_dims = common::slice_ddim(input.dims(), 2, input.dims().size());
   DDim filter_data_dims =
       common::slice_ddim(filter.dims(), 2, filter.dims().size());
-  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
+  std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
   UpdatePaddingAndDilation<int64_t>(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -90,8 +90,7 @@ void ConvKernel(const Context& dev_ctx,
   if (data_format == "NHWC") {
     filter_data_tmp = RAII_GUARD.alloc<XPUType>(filter.numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(filter_data_tmp);
-    std::vector<int64_t> filter_shape =
-        common::vectorize<int64_t>(filter.dims());
+    std::vector<int64_t> filter_shape = vectorize<int64_t>(filter.dims());
     int r = xpu::transpose<XPUType>(dev_ctx.x_context(),
                                     filter_data,
                                     filter_data_tmp,
@@ -203,7 +202,7 @@ void Conv3DKernel(const Context& dev_ctx,
 
   DDim filter_data_dims =
       common::slice_ddim(filter.dims(), 2, filter.dims().size());
-  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
+  std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
   UpdatePaddingAndDilation<int64_t>(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -234,8 +233,7 @@ void Conv3DKernel(const Context& dev_ctx,
   if (data_format == "NDHWC") {
     filter_data_tmp = RAII_GUARD.alloc<XPUType>(filter.numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(filter_data_tmp);
-    std::vector<int64_t> filter_shape =
-        common::vectorize<int64_t>(filter.dims());
+    std::vector<int64_t> filter_shape = vectorize<int64_t>(filter.dims());
     int r = xpu::transpose<XPUType>(dev_ctx.x_context(),
                                     filter_data,
                                     filter_data_tmp,
