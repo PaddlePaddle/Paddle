@@ -44,7 +44,12 @@ if dev_type and not core.is_compiled_with_custom_device(dev_type):
     raise Exception(
         "No custom device available, please install paddle with custom device support"
     )
-if dev_type and dev_type in ['metax_gpu', 'iluvatar_gpu']:
+if dev_type and dev_type in [
+    paddle.get_flags(["FLAGS_custom_backend_name"])[
+        "FLAGS_custom_backend_name"
+    ],
+    'iluvatar_gpu',
+]:
     from .gpgpu_backend import get_device_properties
 else:
     from .default_backend import get_device_properties

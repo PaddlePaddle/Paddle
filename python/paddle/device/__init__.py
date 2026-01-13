@@ -909,7 +909,9 @@ def get_device_module(device: _CustomPlaceLike = None):
     if isinstance(device, str):
         device = device.lower().split(':')[0]
         custom_device_types = {
-            "metax_gpu",
+            paddle.get_flags(["FLAGS_custom_backend_name"])[
+                "FLAGS_custom_backend_name"
+            ],
             "biren_gpu",
             "custom_cpu",
             "gcu",

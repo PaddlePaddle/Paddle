@@ -233,7 +233,10 @@ def _is_custom_device_bfloat16_supported() -> bool:
         place.get_device_type() == 'npu'
         or place.get_device_type() == 'intel_hpu'
         or place.get_device_type() == 'iluvatar_gpu'
-        or place.get_device_type() == 'metax_gpu'
+        or place.get_device_type()
+        == paddle.get_flags(["FLAGS_custom_backend_name"])[
+            "FLAGS_custom_backend_name"
+        ]
     )
 
 

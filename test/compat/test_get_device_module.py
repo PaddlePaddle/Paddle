@@ -26,7 +26,9 @@ class TestGetDeviceModule(unittest.TestCase):
         self.assertIs(get_device_module("xpu:0"), paddle.device.xpu)
 
         custom_devices = [
-            "metax_gpu",
+            paddle.get_flags(["FLAGS_custom_backend_name"])[
+                "FLAGS_custom_backend_name"
+            ],
             "biren_gpu",
             "custom_cpu",
             "gcu",
@@ -58,7 +60,9 @@ class TestGetDeviceModule(unittest.TestCase):
         elif current_device_type == "xpu":
             self.assertIs(current_device_module, paddle.device.xpu)
         elif current_device_type in [
-            "metax_gpu",
+            paddle.get_flags(["FLAGS_custom_backend_name"])[
+                "FLAGS_custom_backend_name"
+            ],
             "biren_gpu",
             "custom_cpu",
             "gcu",
